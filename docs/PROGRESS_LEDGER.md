@@ -498,3 +498,90 @@ Objetivos:
 - distinguir explicitamente comando de evento;
 - preparar a fundação para ordenação e resolução determinística de turnos;
 - adicionar testes de domínio correspondentes.
+
+---
+
+## 2026-09-14 — M0.7.3 Simulation Command Identity concluído
+
+Milestone:
+
+**M0 — Project Baseline**
+
+Stage:
+
+**M0.7 — Minimum Kernel Baseline and Progress Calibration**
+
+Subcheckpoint:
+
+**M0.7.3 — Simulation Command Identity**
+
+Progress:
+
+**Ainda não consolidado oficialmente**
+
+GPP:
+
+**Ainda não consolidado / 1000**
+
+Scope Confidence:
+
+**Moderada**
+
+Risk:
+
+**HIGH**
+
+Critical Path:
+
+**estabelecimento do Simulation Kernel mínimo e fechamento do M0**
+
+### Concluído
+
+- `CommandId` criado como identidade fortemente tipada de comandos;
+- identidade composta por turno e sequência;
+- sequência zero definida como inválida;
+- igualdade determinística de identificadores validada;
+- contrato `ISimulationCommand` criado;
+- contrato `ISimulationEvent` criado;
+- distinção entre intenção e ocorrência da simulação materializada no código;
+- build completo da solução aprovado;
+- testes automatizados aprovados.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- testes totais: 10;
+- testes aprovados: 10;
+- falhas: 0;
+- `ValidTurnAndSequenceCreateCommandId`: aprovado;
+- `ZeroSequenceIsRejected`: aprovado;
+- `SameTurnAndSequenceProduceEqualIds`: aprovado;
+- `DifferentSequencesProduceDifferentIds`: aprovado.
+
+### Decisões relevantes
+
+- `Command` representa intenção submetida à simulação;
+- `Event` representa ocorrência produzida ou resolvida pela simulação;
+- Command e Event permanecerão conceitos distintos;
+- `CommandId.Sequence` será uma sequência autoritativa global dentro do turno;
+- a sequência será atribuída pela autoridade da simulação, evitando colisões entre jogadores;
+- eventual identidade da requisição original do cliente será um conceito separado.
+
+### Scope Change
+
+Nenhum.
+
+### Novos riscos
+
+Nenhum risco estrutural novo identificado neste subcheckpoint.
+
+### Próximo subcheckpoint
+
+**M0.7.4 — Simulation Event Identity**
+
+Objetivos:
+
+- estabelecer identidade determinística para eventos;
+- permitir rastrear a origem de um evento;
+- preparar a futura sequência determinística de resolução;
+- adicionar testes de domínio correspondentes.
