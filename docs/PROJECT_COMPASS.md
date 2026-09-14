@@ -493,19 +493,22 @@ Milestone:
 **M0 — Project Baseline**
 
 Etapa:
-**M0.6 — Repository Baseline and Source Control**
+**M0.7 — Minimum Kernel Baseline and Progress Calibration**
 
 Progresso oficial:
 **ainda não estabelecido**
 
 Motivo:
-o baseline M0 ainda não foi integralmente fechado.
+o baseline M0 ainda precisa do Kernel mínimo e da primeira calibração formal de GPP.
 
 Scope Confidence:
 **moderada**
 
 Critical Path atual:
-**conclusão da fundação do projeto e início do Simulation Kernel**
+**estabelecimento do Simulation Kernel mínimo e fechamento do M0**
+
+Última revisão de baseline:
+**2026-09-14**
 
 ---
 

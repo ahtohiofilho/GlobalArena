@@ -254,3 +254,84 @@ Objetivos:
 - criar primeiro commit;
 - sincronizar branch `main`;
 - registrar baseline remoto.
+
+---
+
+## 2026-09-14 — M0.6 Repository Baseline and Source Control concluído
+
+Milestone:
+
+**M0 — Project Baseline**
+
+Stage:
+
+**M0.6 — Repository Baseline and Source Control**
+
+Progress:
+
+**Ainda não consolidado oficialmente**
+
+GPP:
+
+**Ainda não consolidado / 1000**
+
+Scope Confidence:
+
+**Moderada**
+
+Risk:
+
+**HIGH**
+
+Critical Path:
+
+**estabelecer o mínimo Simulation Kernel e concluir o baseline M0**
+
+### Concluído
+
+- primeiro stage Git auditado;
+- 24 arquivos incluídos no baseline inaugural;
+- verificação de whitespace aprovada;
+- build completo da solução aprovado;
+- testes automatizados aprovados;
+- commit inaugural criado;
+- repositório GitHub canônico criado;
+- repositório configurado como privado;
+- remote `origin` configurado;
+- branch `main` publicada e configurada para rastrear `origin/main`;
+- integridade entre commit local e remoto confirmada;
+- política de finais de linha padronizada com `.gitattributes`;
+- arquivos de texto normalizados para LF no repositório.
+
+### Evidências
+
+- repositório canônico: `ahtohiofilho/GlobalArena`;
+- branch: `main`;
+- commit baseline: `67f0aead77ccc63fd21b23508bc9a6f5792b8f71`;
+- mensagem: `chore: establish Global Arena project baseline`;
+- projetos compilados: 6/6;
+- testes: 1 aprovado, 0 falhas;
+- working tree limpa após o push;
+- `git diff --cached --check`: aprovado;
+- política Git de texto: `* text=auto eol=lf`.
+
+### Scope Change
+
+Nenhum.
+
+### Novos riscos
+
+Nenhum risco estrutural novo identificado neste checkpoint.
+
+### Próximo checkpoint
+
+**M0.7 — Minimum Kernel Baseline and Progress Calibration**
+
+Objetivos:
+
+- substituir o código de template por um Kernel mínimo real;
+- estabelecer os primeiros contratos fundamentais da simulação;
+- adicionar testes reais de domínio;
+- validar determinismo mínimo;
+- decompor o restante do M0;
+- calcular o primeiro baseline oficial de GPP e percentual global.

@@ -511,7 +511,7 @@ Current Milestone:
 
 Current Stage:
 
-**Documentation and architecture baseline**
+**M0.7 — Minimum Kernel Baseline and Progress Calibration**
 
 Official Progress:
 
@@ -519,6 +519,10 @@ Official Progress:
 
 Motivo:
 
-a decomposição inicial de capabilities ainda não foi concluída.
+o Kernel mínimo e a decomposição final do baseline M0 ainda precisam ser concluídos.
 
 O primeiro percentual oficial será calculado no fechamento do baseline M0.
+
+Last Baseline Review:
+
+**2026-09-14**
