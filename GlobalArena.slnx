@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="GlobalArena.Benchmarks/GlobalArena.Benchmarks.csproj" />
+  <Project Path="GlobalArena.Console/GlobalArena.Console.csproj" />
+  <Project Path="GlobalArena.Kernel/GlobalArena.Kernel.csproj" />
+  <Project Path="GlobalArena.Simulation/GlobalArena.Simulation.csproj" />
+  <Project Path="GlobalArena.Tests/GlobalArena.Tests.csproj" />
+  <Project Path="GlobalArena.World/GlobalArena.World.csproj" />
+</Solution>
