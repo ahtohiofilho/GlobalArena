@@ -335,3 +335,84 @@ Objetivos:
 - validar determinismo mínimo;
 - decompor o restante do M0;
 - calcular o primeiro baseline oficial de GPP e percentual global.
+
+---
+
+## 2026-09-14 — M0.7.1 Deterministic Simulation Primitives concluído
+
+Milestone:
+
+**M0 — Project Baseline**
+
+Stage:
+
+**M0.7 — Minimum Kernel Baseline and Progress Calibration**
+
+Subcheckpoint:
+
+**M0.7.1 — Deterministic Simulation Primitives**
+
+Progress:
+
+**Ainda não consolidado oficialmente**
+
+GPP:
+
+**Ainda não consolidado / 1000**
+
+Scope Confidence:
+
+**Moderada**
+
+Risk:
+
+**HIGH**
+
+Critical Path:
+
+**estabelecimento do Simulation Kernel mínimo e fechamento do M0**
+
+### Concluído
+
+- primeiro tipo de domínio real criado no Kernel;
+- `SimulationSeed` criado como value type imutável;
+- gerador pseudoaleatório determinístico criado;
+- algoritmo SplitMix64 implementado explicitamente;
+- dependência de `System.Random` evitada para o núcleo determinístico;
+- teste de igualdade de sequência para seeds idênticas criado;
+- vetor de referência fixo criado para detectar quebra futura de determinismo;
+- teste de template removido;
+- arquivo de testes renomeado para refletir sua responsabilidade real;
+- build completo da solução aprovado;
+- testes automatizados aprovados.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- testes: 2 aprovados, 0 falhas;
+- `SameSeedProducesSameSequence`: aprovado;
+- `SeedZeroProducesStableReferenceSequence`: aprovado.
+
+### Decisões relevantes
+
+- aleatoriedade da simulação será controlada por seed explícita;
+- mudanças futuras no algoritmo determinístico deverão ser tratadas como alteração de compatibilidade;
+- testes de referência protegerão replay e reprodutibilidade.
+
+### Scope Change
+
+Nenhum.
+
+### Novos riscos
+
+Nenhum risco estrutural novo identificado neste subcheckpoint.
+
+### Próximo subcheckpoint
+
+**M0.7.2 — Turn Identity Primitive**
+
+Objetivos:
+
+- criar representação fortemente tipada para número de turno;
+- impedir estados inválidos básicos;
+- adicionar testes de domínio correspondentes.
