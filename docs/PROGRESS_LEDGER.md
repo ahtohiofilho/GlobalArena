@@ -416,3 +416,85 @@ Objetivos:
 - criar representação fortemente tipada para número de turno;
 - impedir estados inválidos básicos;
 - adicionar testes de domínio correspondentes.
+
+---
+
+## 2026-09-14 — M0.7.2 Turn Identity Primitive concluído
+
+Milestone:
+
+**M0 — Project Baseline**
+
+Stage:
+
+**M0.7 — Minimum Kernel Baseline and Progress Calibration**
+
+Subcheckpoint:
+
+**M0.7.2 — Turn Identity Primitive**
+
+Progress:
+
+**Ainda não consolidado oficialmente**
+
+GPP:
+
+**Ainda não consolidado / 1000**
+
+Scope Confidence:
+
+**Moderada**
+
+Risk:
+
+**HIGH**
+
+Critical Path:
+
+**estabelecimento do Simulation Kernel mínimo e fechamento do M0**
+
+### Concluído
+
+- `TurnNumber` criado como tipo fortemente tipado para identidade de turno;
+- turno zero definido como estado inválido;
+- avanço de turno encapsulado em `Next()`;
+- proteção contra overflow adicionada;
+- testes de criação, validação, avanço e limite máximo implementados;
+- build completo da solução aprovado;
+- testes automatizados aprovados.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- testes totais: 6;
+- testes aprovados: 6;
+- falhas: 0;
+- `PositiveValueCreatesTurnNumber`: aprovado;
+- `ZeroIsRejected`: aprovado;
+- `NextAdvancesExactlyOneTurn`: aprovado;
+- `MaximumValueCannotAdvance`: aprovado.
+
+### Decisões relevantes
+
+- números de turno não serão representados por inteiros genéricos nas interfaces fundamentais;
+- invariantes básicos de turno permanecerão encapsulados no próprio tipo;
+- estados numericamente possíveis, mas inválidos no domínio, serão rejeitados na criação.
+
+### Scope Change
+
+Nenhum.
+
+### Novos riscos
+
+Nenhum risco estrutural novo identificado neste subcheckpoint.
+
+### Próximo subcheckpoint
+
+**M0.7.3 — Simulation Command Identity**
+
+Objetivos:
+
+- estabelecer identidade determinística para comandos;
+- distinguir explicitamente comando de evento;
+- preparar a fundação para ordenação e resolução determinística de turnos;
+- adicionar testes de domínio correspondentes.
