@@ -761,3 +761,92 @@ Objetivos:
 - preservar separação entre estado persistente e contexto de execução;
 - definir o mínimo necessário para permitir futura resolução de turno;
 - adicionar testes de domínio correspondentes.
+
+
+---
+
+## 2026-09-18 — M0.7.6 Minimum World State concluído
+
+Milestone:
+
+**M0 — Project Baseline**
+
+Stage:
+
+**M0.7 — Minimum Kernel Baseline and Progress Calibration**
+
+Subcheckpoint:
+
+**M0.7.6 — Minimum World State**
+
+Progress:
+
+**Ainda não consolidado oficialmente**
+
+GPP:
+
+**Ainda não consolidado / 1000**
+
+Scope Confidence:
+
+**Moderada**
+
+Risk:
+
+**HIGH**
+
+Critical Path:
+
+**estabelecimento do Simulation Kernel mínimo e fechamento do M0**
+
+### Concluído
+
+- `WorldState` criado como raiz explícita do estado autoritativo do mundo;
+- criação inicial encapsulada por `WorldState.CreateInitial()`;
+- construtor direto mantido privado;
+- cada criação inicial produz uma instância independente;
+- `WorldState` mantido separado de `SimulationContext`;
+- nenhum estado fictício de planeta, território, civilização, economia ou guerra foi introduzido prematuramente;
+- igualdade estrutural global não foi imposta ao estado do mundo;
+- build completo da solução aprovado;
+- testes automatizados aprovados.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- testes totais: 21;
+- testes aprovados: 21;
+- falhas: 0;
+- `CreateInitialReturnsWorldState`: aprovado;
+- `SeparateInitialStatesAreSeparateInstances`: aprovado;
+- `git diff --check`: aprovado.
+
+### Decisões relevantes
+
+- `WorldState` será a raiz do estado autoritativo do mundo;
+- o baseline mínimo poderá existir antes da definição das capabilities concretas do mundo;
+- `SimulationContext` não fará parte do `WorldState`;
+- seed, PRNG, Commands e EventLog permanecerão fora do estado mundial;
+- não será utilizado singleton para representar estado inicial;
+- igualdade estrutural de todo o mundo não será assumida como contrato padrão;
+- novos dados só entrarão no `WorldState` quando houver ownership e necessidade concreta.
+
+### Scope Change
+
+Nenhum.
+
+### Novos riscos
+
+Nenhum risco estrutural novo identificado neste subcheckpoint.
+
+### Próximo subcheckpoint
+
+**M0.7.7 — Minimum Turn Resolution Contract**
+
+Objetivos:
+
+- estabelecer o contrato mínimo de entrada e saída para resolução de turno;
+- conectar conceitualmente `WorldState`, Commands e `SimulationContext`;
+- preservar separação entre estado, contexto, orquestração e resultado;
+- preparar a futura implementação de event queue, deterministic shuffle e resolução sequencial;
+- adicionar testes de domínio correspondentes.

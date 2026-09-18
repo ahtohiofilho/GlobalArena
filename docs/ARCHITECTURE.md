@@ -360,6 +360,37 @@ StrategicVertex
 Terrain
 Infrastructure
 
+## 10.1 Minimum WorldState
+
+`WorldState` representa a raiz do estado autoritativo do mundo utilizado pela simulação.
+
+O baseline mínimo atual estabelece apenas a existência dessa raiz, sem antecipar estruturas de planeta, territórios, civilizações, economia ou guerra que ainda não possuem contratos concretos.
+
+A criação inicial ocorre através de:
+
+`WorldState.CreateInitial()`
+
+Cada chamada produz uma nova instância independente.
+
+O `WorldState` não contém o contexto determinístico da resolução.
+
+Portanto, não pertencem ao estado do mundo:
+
+- `SimulationContext`;
+- `TurnNumber` utilizado como contexto da resolução;
+- `SimulationSeed`;
+- estado mutável do PRNG;
+- Commands;
+- EventLog.
+
+Esses conceitos permanecem separados conforme o modelo de execução.
+
+O `WorldState` também não utiliza igualdade estrutural por valor como contrato global. À medida que o mundo crescer, comparações determinísticas deverão utilizar mecanismos explícitos e adequados ao estado relevante, evitando transformar automaticamente toda a estrutura mundial em um grande value object.
+
+Novos dados só deverão ser incorporados ao `WorldState` quando existir ownership de domínio e necessidade concreta na simulação.
+
+Essa abordagem evita preencher prematuramente a raiz do mundo com conceitos ainda não definidos.
+
 ---
 
 # 11. Topologia estratégica
