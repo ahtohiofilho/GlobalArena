@@ -496,7 +496,7 @@ Etapa:
 **M0.7 — Minimum Kernel Baseline and Progress Calibration**
 
 Subetapa atual:
-**M0.7.8 — Minimum Turn Resolver**
+**M0.7.9 — Baseline Calibration and M0 Closure**
 
 Progresso oficial:
 **ainda não estabelecido**

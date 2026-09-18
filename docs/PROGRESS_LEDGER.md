@@ -944,3 +944,99 @@ Objetivos:
 - evitar introduzir shuffle, EventLog ou regras de domínio antes da existência de comportamento concreto;
 - preparar a expansão incremental da pipeline de resolução;
 - adicionar testes correspondentes.
+
+---
+
+## 2026-09-18 — M0.7.8 Minimum Turn Resolver concluído
+
+Milestone:
+
+**M0 — Project Baseline**
+
+Stage:
+
+**M0.7 — Minimum Kernel Baseline and Progress Calibration**
+
+Subcheckpoint:
+
+**M0.7.8 — Minimum Turn Resolver**
+
+Progress:
+
+**Ainda não consolidado oficialmente**
+
+GPP:
+
+**Ainda não consolidado / 1000**
+
+Scope Confidence:
+
+**Moderada**
+
+Risk:
+
+**HIGH**
+
+Critical Path:
+
+**estabelecimento do Simulation Kernel mínimo e fechamento do M0**
+
+### Concluído
+
+- `TurnResolver` criado como primeiro componente executável de resolução de turno;
+- resolver passou a consumir `TurnResolutionInput`;
+- resolver passou a produzir `TurnResolutionResult`;
+- turno vazio preserva o mesmo `WorldState`;
+- turno vazio produz zero Events;
+- ausência de Commands não consome aleatoriedade nem altera estado;
+- Commands não suportados são rejeitados explicitamente;
+- Commands não são ignorados silenciosamente;
+- nenhuma infraestrutura prematura de handlers, dispatcher, shuffle ou EventLog foi criada;
+- input nulo é rejeitado explicitamente;
+- build completo da solução aprovado;
+- testes automatizados aprovados.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- testes totais: 29;
+- testes aprovados: 29;
+- falhas: 0;
+- `EmptyTurnPreservesWorldState`: aprovado;
+- `EmptyTurnProducesNoEvents`: aprovado;
+- `CommandsAreRejectedUntilCommandResolutionExists`: aprovado;
+- `NullInputIsRejected`: aprovado;
+- `git diff --check`: aprovado.
+
+### Decisões relevantes
+
+- o primeiro comportamento do `TurnResolver` será a resolução determinística de um turno vazio;
+- ausência de Commands implica ausência de alteração de estado e ausência de Events;
+- o mesmo `WorldState` poderá ser retornado enquanto nenhuma mudança tiver ocorrido;
+- Commands permanecerão explicitamente não suportados até existir infraestrutura concreta para processá-los;
+- o resolver não deverá descartar Commands silenciosamente;
+- `ITurnResolver` não será criado enquanto não existir necessidade real de múltiplas implementações;
+- handlers, dispatcher, event queue, shuffle e EventLog continuarão fora deste baseline mínimo.
+
+### Scope Change
+
+Nenhum.
+
+### Novos riscos
+
+Nenhum risco estrutural novo identificado neste subcheckpoint.
+
+### Próximo subcheckpoint
+
+**M0.7.9 — Baseline Calibration and M0 Closure**
+
+Objetivos:
+
+- verificar integralmente a Definition of Done do M0;
+- decompor e calibrar o primeiro baseline oficial de GPP;
+- calcular o primeiro percentual oficial do V1;
+- revisar Scope Confidence, Technical Risk e Critical Path;
+- verificar se documentação, arquitetura, riscos e ADRs estão coerentes com o estado implementado;
+- congelar o baseline inicial do V1;
+- fechar formalmente o M0;
+- preparar a transição para M1 — Deterministic Simulation Kernel.

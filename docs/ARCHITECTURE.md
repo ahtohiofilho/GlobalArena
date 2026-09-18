@@ -395,6 +395,64 @@ O objetivo deste contrato é estabelecer a fronteira estável entre:
 4. estado resultante;
 5. ocorrências produzidas.
 
+## 8.2 Minimum Turn Resolver
+
+`TurnResolver` materializa o primeiro comportamento executável da pipeline de resolução.
+
+O baseline atual suporta explicitamente a resolução de um turno sem Commands.
+
+Entrada:
+
+WorldState
++
+zero Commands
++
+SimulationContext
+
+→ TurnResolver →
+
+mesmo WorldState
++
+zero Events
+
+Quando a entrada não contém Commands:
+
+- o `WorldState` de entrada é preservado;
+- nenhuma nova instância de estado é criada pelo resolver;
+- nenhum Event é produzido;
+- nenhuma aleatoriedade é consumida;
+- nenhuma regra de domínio é executada.
+
+Quando existem Commands, o resolver rejeita explicitamente a resolução com `NotSupportedException`.
+
+Essa rejeição é deliberada.
+
+Enquanto não existir infraestrutura concreta de processamento de Commands, o resolver não deverá:
+
+- ignorar Commands silenciosamente;
+- fingir que Commands foram executados;
+- gerar Events artificiais;
+- alterar o `WorldState`;
+- consumir a seed sem necessidade.
+
+O comportamento atual estabelece uma propriedade importante do Kernel:
+
+**ausência de intenção produz ausência de alteração de estado e ausência de eventos.**
+
+O `TurnResolver` ainda não implementa:
+
+- validação de Commands;
+- transformação de Commands em Events;
+- event queue;
+- deterministic shuffle;
+- execução sequencial;
+- revalidação;
+- consolidação de mudanças;
+- avanço de turno;
+- EventLog.
+
+Essas capacidades permanecem pertencentes ao desenvolvimento do Deterministic Simulation Kernel após o fechamento do baseline M0.
+
 ---
 
 # 9. Turn Policy

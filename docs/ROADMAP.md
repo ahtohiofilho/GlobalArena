@@ -515,7 +515,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M0.7.8 — Minimum Turn Resolver**
+**M0.7.9 — Baseline Calibration and M0 Closure**
 
 Official Progress:
 
