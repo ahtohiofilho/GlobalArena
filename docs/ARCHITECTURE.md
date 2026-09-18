@@ -172,28 +172,90 @@ O Kernel não deve conhecer:
 
 # 6. Modelo de execução
 
-Entrada fundamental:
+A simulação recebe três categorias fundamentais de entrada:
+
+- `WorldState`: estado autoritativo do mundo antes da resolução;
+- Commands: intenções submetidas à simulação;
+- `SimulationContext`: metadados imutáveis necessários para executar aquela resolução de forma reproduzível.
+
+Modelo conceitual:
 
 WorldState
 +
 Commands
 +
-Seed / SimulationContext
+SimulationContext
 
-Saída:
+→ Simulation →
 
 NewWorldState
 +
 EventLog
 
-A mesma entrada, utilizando:
+Para uma mesma versão das regras, a combinação do mesmo:
 
-- a mesma versão do ruleset;
-- o mesmo estado;
-- os mesmos comandos;
-- a mesma seed;
+- estado inicial;
+- conjunto de comandos;
+- turno;
+- seed;
 
 deve produzir o mesmo resultado.
+
+Esse princípio constitui a base para:
+
+- determinismo;
+- replay;
+- testes automatizados;
+- diagnóstico de divergências;
+- multiplayer autoritativo;
+- simulações headless.
+
+## 6.1 Minimum SimulationContext
+
+`SimulationContext` representa exclusivamente o contexto determinístico de uma execução.
+
+O baseline mínimo atual é:
+
+- `TurnNumber Turn`;
+- `SimulationSeed Seed`.
+
+Conceitualmente:
+
+SimulationContext
+=
+TurnNumber
++
+SimulationSeed
+
+O contexto é imutável e comparável por valor.
+
+Ele não representa o estado do jogo e não é responsável por armazenar as entradas ou os resultados da resolução.
+
+Por isso, não pertencem ao `SimulationContext`:
+
+- `WorldState`;
+- Commands;
+- EventLog;
+- estado mutável do PRNG.
+
+O `WorldState` permanece como estado autoritativo da simulação.
+
+Commands permanecem como intenções de entrada.
+
+O `EventLog` permanece como produto da resolução.
+
+O estado mutável do gerador pseudoaleatório pertence à execução da resolução e poderá ser criado a partir da `SimulationSeed`, sem ser persistido dentro do contexto.
+
+Essa separação mantém distintas quatro responsabilidades:
+
+1. estado do mundo;
+2. intenções submetidas;
+3. contexto determinístico da execução;
+4. resultado produzido pela simulação.
+
+Campos adicionais só deverão ser incorporados ao `SimulationContext` quando representarem metadados determinísticos realmente necessários à execução e possuírem contrato arquitetural explícito.
+
+Versionamento de ruleset, por exemplo, permanece previsto pela arquitetura, mas não faz parte do baseline mínimo enquanto seu contrato próprio não estiver definido.
 
 ---
 

@@ -496,7 +496,7 @@ Etapa:
 **M0.7 — Minimum Kernel Baseline and Progress Calibration**
 
 Subetapa atual:
-**M0.7.5 — Minimum Simulation Context**
+**M0.7.6 — Minimum World State**
 
 Progresso oficial:
 **ainda não estabelecido**

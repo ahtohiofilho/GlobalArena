@@ -515,7 +515,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M0.7.5 — Minimum Simulation Context**
+**M0.7.6 — Minimum World State**
 
 Official Progress:
 

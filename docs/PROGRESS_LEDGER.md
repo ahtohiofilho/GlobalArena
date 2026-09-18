@@ -674,3 +674,90 @@ Objetivos:
 - definir explicitamente quais dados acompanham uma resolução de simulação;
 - preservar separação entre contexto, estado do mundo e comandos;
 - adicionar testes de domínio correspondentes.
+
+---
+
+## 2026-09-18 — M0.7.5 Minimum Simulation Context concluído
+
+Milestone:
+
+**M0 — Project Baseline**
+
+Stage:
+
+**M0.7 — Minimum Kernel Baseline and Progress Calibration**
+
+Subcheckpoint:
+
+**M0.7.5 — Minimum Simulation Context**
+
+Progress:
+
+**Ainda não consolidado oficialmente**
+
+GPP:
+
+**Ainda não consolidado / 1000**
+
+Scope Confidence:
+
+**Moderada**
+
+Risk:
+
+**HIGH**
+
+Critical Path:
+
+**estabelecimento do Simulation Kernel mínimo e fechamento do M0**
+
+### Concluído
+
+- `SimulationContext` criado como value type imutável;
+- contexto mínimo composto por `TurnNumber` e `SimulationSeed`;
+- contexto de execução mantido separado de `WorldState`;
+- contexto de execução mantido separado de Commands;
+- estado mutável do PRNG não foi incorporado ao contexto;
+- igualdade determinística por valor estabelecida;
+- build completo da solução aprovado;
+- testes automatizados aprovados.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- testes totais: 19;
+- testes aprovados: 19;
+- falhas: 0;
+- `TurnAndSeedCreateSimulationContext`: aprovado;
+- `SameTurnAndSeedProduceEqualContexts`: aprovado;
+- `DifferentTurnsProduceDifferentContexts`: aprovado;
+- `DifferentSeedsProduceDifferentContexts`: aprovado;
+- `git diff --check`: aprovado.
+
+### Decisões relevantes
+
+- `SimulationContext` mínimo será composto por `TurnNumber` e `SimulationSeed`;
+- `WorldState` não fará parte do contexto;
+- Commands não farão parte do contexto;
+- o estado mutável do PRNG não fará parte do contexto;
+- o PRNG poderá ser derivado da seed pela camada de resolução;
+- campos adicionais só serão adicionados quando houver contrato arquitetural explícito.
+
+### Scope Change
+
+Nenhum.
+
+### Novos riscos
+
+Nenhum risco estrutural novo identificado neste subcheckpoint.
+
+### Próximo subcheckpoint
+
+**M0.7.6 — Minimum World State**
+
+Objetivos:
+
+- estabelecer uma representação mínima e explícita do estado autoritativo do mundo;
+- preservar separação entre estado persistente e contexto de execução;
+- definir o mínimo necessário para permitir futura resolução de turno;
+- adicionar testes de domínio correspondentes.
