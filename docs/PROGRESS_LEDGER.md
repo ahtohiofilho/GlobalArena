@@ -850,3 +850,97 @@ Objetivos:
 - preservar separação entre estado, contexto, orquestração e resultado;
 - preparar a futura implementação de event queue, deterministic shuffle e resolução sequencial;
 - adicionar testes de domínio correspondentes.
+
+---
+
+## 2026-09-18 — M0.7.7 Minimum Turn Resolution Contract concluído
+
+Milestone:
+
+**M0 — Project Baseline**
+
+Stage:
+
+**M0.7 — Minimum Kernel Baseline and Progress Calibration**
+
+Subcheckpoint:
+
+**M0.7.7 — Minimum Turn Resolution Contract**
+
+Progress:
+
+**Ainda não consolidado oficialmente**
+
+GPP:
+
+**Ainda não consolidado / 1000**
+
+Scope Confidence:
+
+**Moderada**
+
+Risk:
+
+**HIGH**
+
+Critical Path:
+
+**estabelecimento do Simulation Kernel mínimo e fechamento do M0**
+
+### Concluído
+
+- `TurnResolutionInput` criado como contrato explícito de entrada da resolução;
+- entrada composta por `WorldState`, Commands e `SimulationContext`;
+- coleção de Commands capturada no momento da criação;
+- alterações posteriores na coleção original não modificam a entrada já criada;
+- `TurnResolutionResult` criado como contrato explícito de saída da resolução;
+- resultado composto por `ResultingWorldState` e Events;
+- coleção de Events capturada no momento da criação;
+- alterações posteriores na coleção original não modificam o resultado já criado;
+- estado, contexto, comandos e resultado permaneceram conceitos separados;
+- nenhum comportamento de resolução foi introduzido prematuramente;
+- build completo da solução aprovado;
+- testes automatizados aprovados.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- testes totais: 25;
+- testes aprovados: 25;
+- falhas: 0;
+- `InputCarriesWorldStateCommandsAndContext`: aprovado;
+- `InputSnapshotsCommandCollection`: aprovado;
+- `ResultCarriesWorldStateAndEvents`: aprovado;
+- `ResultSnapshotsEventCollection`: aprovado;
+- `git diff --check`: aprovado.
+
+### Decisões relevantes
+
+- o contrato de resolução pertence ao módulo `GlobalArena.Simulation`;
+- `TurnResolutionInput` conectará `WorldState`, Commands e `SimulationContext` sem transferir ownership entre eles;
+- as coleções de Commands e Events terão membership e ordem estabilizadas na criação do contrato;
+- os objetos individuais não serão clonados pelo contrato;
+- `TurnResolutionResult.Events` ainda não constitui o contrato definitivo de `EventLog`;
+- validação, geração de eventos, shuffle, execução e consolidação permanecerão responsabilidades futuras do `TurnResolver`;
+- nenhuma regra de resolução será incorporada aos tipos de entrada e saída.
+
+### Scope Change
+
+Nenhum.
+
+### Novos riscos
+
+Nenhum risco estrutural novo identificado neste subcheckpoint.
+
+### Próximo subcheckpoint
+
+**M0.7.8 — Minimum Turn Resolver**
+
+Objetivos:
+
+- materializar o primeiro componente responsável por resolver um turno;
+- consumir `TurnResolutionInput` e produzir `TurnResolutionResult`;
+- preservar determinismo e separação de responsabilidades;
+- evitar introduzir shuffle, EventLog ou regras de domínio antes da existência de comportamento concreto;
+- preparar a expansão incremental da pipeline de resolução;
+- adicionar testes correspondentes.

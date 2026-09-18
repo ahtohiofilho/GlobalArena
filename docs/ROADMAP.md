@@ -515,7 +515,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M0.7.7 — Minimum Turn Resolution Contract**
+**M0.7.8 — Minimum Turn Resolver**
 
 Official Progress:
 

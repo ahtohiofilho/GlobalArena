@@ -324,6 +324,77 @@ Cada evento deve ser revalidado no momento de sua execução.
 
 A aleatoriedade da fila deve ser reproduzível.
 
+## 8.1 Minimum Turn Resolution Contract
+
+A resolução de turno possui um contrato explícito de entrada e saída antes da implementação do `TurnResolver`.
+
+A entrada mínima é representada por `TurnResolutionInput`.
+
+Ela contém:
+
+- `WorldState WorldState`;
+- `IReadOnlyList<ISimulationCommand> Commands`;
+- `SimulationContext Context`.
+
+Conceitualmente:
+
+WorldState
++
+Commands
++
+SimulationContext
+
+→ TurnResolutionInput
+
+A coleção de Commands é capturada no momento da criação da entrada.
+
+Alterações posteriores na coleção originalmente fornecida não modificam o conjunto de comandos da resolução.
+
+Essa proteção estabiliza a membership e a ordem da coleção recebida pelo contrato, sem implicar cópia profunda dos Commands individuais.
+
+O `WorldState` é referenciado como estado autoritativo de entrada e não é incorporado ao `SimulationContext`.
+
+O resultado mínimo é representado por `TurnResolutionResult`.
+
+Ele contém:
+
+- `WorldState ResultingWorldState`;
+- `IReadOnlyList<ISimulationEvent> Events`.
+
+Conceitualmente:
+
+TurnResolutionResult
+=
+ResultingWorldState
++
+Events
+
+A coleção de Events também é capturada no momento da criação do resultado, impedindo que alterações posteriores na coleção original modifiquem silenciosamente o resultado já produzido.
+
+Nesse estágio, `Events` não constitui ainda o contrato definitivo de `EventLog`.
+
+O EventLog permanece como capability própria e será definido quando existirem requisitos concretos de replay, persistência e diagnóstico.
+
+O contrato atual não executa:
+
+- validação de Commands;
+- geração de Events;
+- deterministic shuffle;
+- resolução sequencial;
+- revalidação de Events;
+- mutação ou consolidação do `WorldState`;
+- avanço de turno.
+
+Essas responsabilidades pertencem às futuras etapas do `TurnResolver` e da pipeline de resolução.
+
+O objetivo deste contrato é estabelecer a fronteira estável entre:
+
+1. estado autoritativo de entrada;
+2. intenções submetidas;
+3. contexto determinístico;
+4. estado resultante;
+5. ocorrências produzidas.
+
 ---
 
 # 9. Turn Policy
