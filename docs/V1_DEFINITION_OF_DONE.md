@@ -1,8 +1,8 @@
 # Global Arena — V1 Definition of Done
 
 **Versão:** 0.1
-**Status:** Draft
-**Milestone relacionado:** M0 — Project Baseline
+**Status:** Baseline V1 congelado
+**Milestone relacionado:** M0 — Project Baseline (concluído)
 
 ---
 
@@ -381,8 +381,24 @@ Global Arena V1 estará concluído quando:
 
 Status atual:
 
-**Draft 0.1**
+**Baseline 0.1 — congelado em 2026-09-18**
 
-Este documento ainda será refinado durante o M0.
+Este documento constitui a primeira Definition of Done oficial do Global Arena V1.
 
-A conclusão do M0 congelará o primeiro baseline oficial do escopo V1.
+O fechamento do M0 congelou este baseline como referência para:
+
+- classificação de requisitos V1 REQUIRED;
+- cálculo de progresso por GPP;
+- avaliação de milestones;
+- controle de expansão de escopo;
+- decisão futura de conclusão do V1.
+
+O congelamento deste baseline não significa que os requisitos estejam implementados.
+
+Ele significa que o horizonte inicial do V1 passa a possuir uma referência explícita e controlada.
+
+Novos detalhes descobertos dentro dos requisitos existentes não alteram automaticamente o escopo global.
+
+Inclusão, remoção ou mudança material de requisito obrigatório deverá ser tratada como Scope Change explícito e refletida nos documentos de governança correspondentes.
+
+O documento poderá evoluir por versionamento controlado sem apagar o histórico do baseline 0.1.

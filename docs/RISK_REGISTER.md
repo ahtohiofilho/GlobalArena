@@ -1,8 +1,10 @@
 # Global Arena — Risk Register
 
 **Versão:** 0.1
-**Milestone:** M0 — Project Baseline
+**Milestone:** M1 — Deterministic Simulation Kernel
 **Status:** Ativo
+**Última revisão formal:** 2026-09-18
+**Baseline V1 relacionado:** 0.1 — congelado
 
 ---
 
@@ -571,6 +573,47 @@ Risk Level atual:
 Embora existam riscos individuais classificados como CRITICAL, muitos ainda são hipóteses arquiteturais controláveis.
 
 O risco global só deverá ser classificado como CRITICAL se existir ameaça imediata ao viability do projeto ou ao Critical Path atual.
+
+## 6.1 Revisão de fechamento do M0
+
+A revisão formal realizada no fechamento do M0 não identificou motivo técnico suficiente para encerrar ou reclassificar individualmente os riscos existentes.
+
+O baseline permanece com:
+
+- 8 riscos ativos classificados individualmente como CRITICAL;
+- 4 riscos ativos classificados individualmente como HIGH;
+- Risk Level global: HIGH.
+
+A diferença entre os riscos individuais CRITICAL e o Risk Level global HIGH é deliberada.
+
+Os riscos individuais representam impacto potencial caso se materializem.
+
+O nível global representa a ameaça técnica atual ao projeto e ao Critical Path.
+
+No início do M1, o risco mais diretamente associado ao Critical Path é:
+
+**RISK-004 — Determinism failure**
+
+O M1 deverá produzir evidência executável de que:
+
+- uma resolução não vazia pode ser reproduzida;
+- a mesma entrada e seed produzem o mesmo resultado;
+- ordering e aleatoriedade permanecem controlados;
+- Commands e Events mantêm sequência determinística;
+- divergências podem ser diagnosticadas.
+
+`RISK-006 — Scope expansion` permanece em `MITIGATING`.
+
+O congelamento do baseline V1 de 1000 GPP, da V1 Definition of Done e da decomposição inicial de Foundation / Simulation Kernel constitui mitigação ativa, mas ainda não justifica encerramento do risco.
+
+Nenhum novo risco estrutural foi identificado no fechamento do M0.
+
+A próxima revisão obrigatória ocorrerá no fechamento do M1 ou antes disso caso:
+
+- o determinismo end-to-end falhe;
+- um benchmark revele limitação estrutural;
+- ocorra mudança arquitetural relevante;
+- surja novo risco capaz de afetar o Critical Path.
 
 ---
 

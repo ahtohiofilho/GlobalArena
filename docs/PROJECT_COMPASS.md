@@ -5,7 +5,7 @@
 **Nome:** Global Arena
 **Plataforma inicial:** PC
 **Modelo:** jogo de estratégia e tática em escala planetária
-**Estado atual:** M0 — Project Baseline
+**Estado atual:** M1 — Deterministic Simulation Kernel
 **Versão deste documento:** 0.1
 
 Global Arena é um jogo de estratégia em escala planetária com mundos procedurais, economia viva, civilizações, guerra tática, diplomacia e multiplayer.
@@ -64,7 +64,9 @@ WorldState
 +
 Commands
 +
-Seed
+SimulationContext
+
+No baseline atual, `SimulationContext` contém o `TurnNumber` e a `SimulationSeed` necessários para contextualizar deterministicamente uma resolução.
 
 Saída:
 
@@ -490,27 +492,55 @@ Critérios definidos em documento próprio.
 # 20. Status atual
 
 Milestone:
-**M0 — Project Baseline**
+
+**M1 — Deterministic Simulation Kernel**
 
 Etapa:
-**M0.7 — Minimum Kernel Baseline and Progress Calibration**
+
+**M1.1 — Non-empty Deterministic Turn Resolution**
 
 Subetapa atual:
-**M0.7.9 — Baseline Calibration and M0 Closure**
+
+**M1.1.1 — Command Processing Contract**
+
+M0 — Project Baseline:
+
+**concluído em 2026-09-18**
+
+Baseline V1:
+
+**congelado em 2026-09-18**
 
 Progresso oficial:
-**ainda não estabelecido**
 
-Motivo:
-o baseline M0 ainda precisa do Kernel mínimo e da primeira calibração formal de GPP.
+**4,3%**
+
+GPP conquistados:
+
+**43,25 / 1000**
+
+Foundation / Simulation Kernel:
+
+**43,25 / 70 GPP — 61,8%**
 
 Scope Confidence:
-**moderada**
+
+**50%**
+
+Technical Risk:
+
+**HIGH**
+
+Riscos críticos ativos:
+
+**8**
 
 Critical Path atual:
-**estabelecimento do Simulation Kernel mínimo e fechamento do M0**
+
+**primeira resolução não vazia reproduzível end-to-end**
 
 Última revisão de baseline:
+
 **2026-09-18**
 
 ---

@@ -1,8 +1,8 @@
 # Global Arena — Roadmap
 
 **Versão:** 0.1
-**Status:** Baseline em construção
-**Milestone atual:** M0 — Project Baseline
+**Status:** Baseline V1 congelado
+**Milestone atual:** M1 — Deterministic Simulation Kernel
 
 ---
 
@@ -66,6 +66,62 @@ Elas não aumentam automaticamente o total de 1000 GPP.
 Esse é o baseline inicial do V1.
 
 Alterações nesse total exigem Scope Change Record explícito.
+
+## 3.1 Decomposição inicial — Foundation / Simulation Kernel
+
+O orçamento de 70 GPP de Foundation / Simulation Kernel fica congelado inicialmente com a seguinte decomposição:
+
+| Capability | GPP |
+|---|---:|
+| Fundação modular, solução e infraestrutura de testes | 10 |
+| Tempo lógico, seed e PRNG determinístico | 8 |
+| Identidade e contratos de Command/Event | 8 |
+| SimulationContext | 5 |
+| WorldState mínimo | 5 |
+| Contratos de entrada/saída da resolução | 5 |
+| Orquestração mínima do TurnResolver | 4 |
+| Command → Event, validação e execução sequencial | 8 |
+| Deterministic shuffle / ordering | 5 |
+| EventLog / base de replay | 5 |
+| Turn policies | 3 |
+| Determinismo end-to-end / simulação headless automatizada | 4 |
+| **TOTAL** | **70** |
+
+Essa decomposição não altera o orçamento global de 1000 GPP.
+
+Detalhamento futuro dentro dessas capabilities redistribui o orçamento existente e não aumenta automaticamente o escopo do V1.
+
+### Baseline de maturidade no fechamento do M0
+
+| Capability | GPP | Maturidade | Fator | GPP ganhos |
+|---|---:|---|---:|---:|
+| Fundação modular, solução e infraestrutura de testes | 10 | Validada | 0.85 | 8.50 |
+| Tempo lógico, seed e PRNG determinístico | 8 | Validada | 0.85 | 6.80 |
+| Identidade e contratos de Command/Event | 8 | Validada | 0.85 | 6.80 |
+| SimulationContext | 5 | Validada | 0.85 | 4.25 |
+| WorldState mínimo | 5 | Validada | 0.85 | 4.25 |
+| Contratos de entrada/saída da resolução | 5 | Validada | 0.85 | 4.25 |
+| Orquestração mínima do TurnResolver | 4 | Validada | 0.85 | 3.40 |
+| Command → Event, validação e execução sequencial | 8 | Especificada | 0.20 | 1.60 |
+| Deterministic shuffle / ordering | 5 | Especificada | 0.20 | 1.00 |
+| EventLog / base de replay | 5 | Especificada | 0.20 | 1.00 |
+| Turn policies | 3 | Especificada | 0.20 | 0.60 |
+| Determinismo end-to-end / simulação headless automatizada | 4 | Especificada | 0.20 | 0.80 |
+| **TOTAL** | **70** |  |  | **43.25** |
+
+No fechamento do M0:
+
+**Foundation / Simulation Kernel: 43.25 / 70 GPP = 61.8%**
+
+**Global Progress: 43.25 / 1000 GPP = 4.325%**
+
+O dashboard exibe o percentual global arredondado para uma casa decimal:
+
+**Official Progress: 4.3%**
+
+Os demais domínios permanecem em 0 GPP conquistado neste baseline.
+
+Descrições conceituais de alto nível, sem contratos ou capabilities suficientemente definidos, não qualificam por si só uma capability como `Especificada`.
 
 ---
 
@@ -507,25 +563,43 @@ Last Baseline Review: YYYY-MM-DD
 
 Current Milestone:
 
-**M0 — Project Baseline**
+**M1 — Deterministic Simulation Kernel**
 
 Current Stage:
 
-**M0.7 — Minimum Kernel Baseline and Progress Calibration**
+**M1.1 — Non-empty Deterministic Turn Resolution**
 
 Current Subcheckpoint:
 
-**M0.7.9 — Baseline Calibration and M0 Closure**
+**M1.1.1 — Command Processing Contract**
 
 Official Progress:
 
-**Not yet consolidated**
+**4.3%**
 
-Motivo:
+GPP Earned:
 
-o Kernel mínimo e a decomposição final do baseline M0 ainda precisam ser concluídos.
+**43.25 / 1000**
 
-O primeiro percentual oficial será calculado no fechamento do baseline M0.
+Foundation / Simulation Kernel:
+
+**43.25 / 70 GPP — 61.8%**
+
+Scope Confidence:
+
+**50%**
+
+Technical Risk:
+
+**HIGH**
+
+Active Critical Risks:
+
+**8**
+
+Critical Path:
+
+**primeira resolução não vazia reproduzível end-to-end**
 
 Last Baseline Review:
 

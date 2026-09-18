@@ -1040,3 +1040,221 @@ Objetivos:
 - congelar o baseline inicial do V1;
 - fechar formalmente o M0;
 - preparar a transição para M1 — Deterministic Simulation Kernel.
+
+---
+
+## 2026-09-18 — M0.7.9 Baseline Calibration and M0 Closure concluído
+
+Milestone encerrado:
+
+**M0 — Project Baseline**
+
+Stage encerrado:
+
+**M0.7 — Minimum Kernel Baseline and Progress Calibration**
+
+Subcheckpoint:
+
+**M0.7.9 — Baseline Calibration and M0 Closure**
+
+### Resultado do milestone
+
+**M0 concluído**
+
+Definition of Done do M0:
+
+**11 / 11 critérios atendidos**
+
+Critérios verificados:
+
+1. `PROJECT_COMPASS.md` criado e atualizado;
+2. `V1_DEFINITION_OF_DONE.md` criado e baseline 0.1 congelado;
+3. `ARCHITECTURE.md` criado e coerente com o Kernel implementado;
+4. `ROADMAP.md` criado e primeiro baseline de GPP calibrado;
+5. `PROGRESS_LEDGER.md` criado e histórico preservado;
+6. `RISK_REGISTER.md` criado e revisado formalmente;
+7. ADRs fundamentais registrados;
+8. estrutura inicial da solução criada;
+9. infraestrutura de testes criada;
+10. Kernel mínimo compilando;
+11. primeiro baseline oficial de progresso calculado.
+
+### ADRs auditados
+
+Permanecem válidos e `Accepted`:
+
+- ADR-001 — Headless Deterministic Simulation;
+- ADR-002 — Strategic / Tactical World Hierarchy;
+- ADR-003 — Simultaneous Orders with Sequential Resolution;
+- ADR-004 — Authoritative Multiplayer;
+- ADR-005 — Modular Monolith First.
+
+Nenhum ADR novo foi necessário para o fechamento do M0.
+
+### Baseline V1
+
+O orçamento global permanece congelado em:
+
+**1000 GPP = 100% do V1**
+
+Foundation / Simulation Kernel permanece com:
+
+**70 GPP = 7% do V1**
+
+A decomposição inicial dos 70 GPP foi formalizada no Roadmap.
+
+### Calibração de Foundation / Simulation Kernel
+
+| Capability | Budget | Maturidade no fechamento do M0 | Fator | GPP ganhos |
+|---|---:|---|---:|---:|
+| Fundação modular, solução e infraestrutura de testes | 10 | Validada | 0.85 | 8.50 |
+| Tempo lógico, seed e PRNG determinístico | 8 | Validada | 0.85 | 6.80 |
+| Identidade e contratos de Command/Event | 8 | Validada | 0.85 | 6.80 |
+| SimulationContext | 5 | Validada | 0.85 | 4.25 |
+| WorldState mínimo | 5 | Validada | 0.85 | 4.25 |
+| Contratos de entrada/saída da resolução | 5 | Validada | 0.85 | 4.25 |
+| Orquestração mínima do TurnResolver | 4 | Validada | 0.85 | 3.40 |
+| Command → Event, validação e execução sequencial | 8 | Especificada | 0.20 | 1.60 |
+| Deterministic shuffle / ordering | 5 | Especificada | 0.20 | 1.00 |
+| EventLog / base de replay | 5 | Especificada | 0.20 | 1.00 |
+| Turn policies | 3 | Especificada | 0.20 | 0.60 |
+| Determinismo end-to-end / simulação headless automatizada | 4 | Especificada | 0.20 | 0.80 |
+| **TOTAL** | **70** |  |  | **43.25** |
+
+### Primeiro progresso oficial
+
+GPP conquistados:
+
+**43.25 / 1000**
+
+Global Progress exato:
+
+**4.325%**
+
+Global Progress exibido:
+
+**4.3%**
+
+Foundation / Simulation Kernel:
+
+**43.25 / 70 GPP = 61.8%**
+
+Os outros 930 GPP permanecem em 0 GPP conquistado neste baseline.
+
+Descrições conceituais de domínios futuros não foram contabilizadas como progresso sem contratos ou capabilities suficientemente definidos.
+
+### Scope Confidence
+
+**50%**
+
+Interpretação:
+
+a arquitetura e os principais sistemas do V1 estão identificados, mas ainda existem grandes áreas conceituais, riscos técnicos e detalhes de implementação por resolver.
+
+Scope Confidence não representa percentual de implementação.
+
+### Technical Risk
+
+**HIGH**
+
+Riscos individuais ativos:
+
+- 8 CRITICAL;
+- 4 HIGH.
+
+O Risk Level global permanece HIGH porque ainda não existe ameaça imediata demonstrada à viabilidade do projeto, apesar da existência de riscos individuais de impacto crítico.
+
+Risco mais diretamente associado ao próximo Critical Path:
+
+**RISK-004 — Determinism failure**
+
+### Evidência técnica do fechamento
+
+Estado técnico imediatamente anterior à calibração:
+
+- projetos compilados: 6/6;
+- testes automatizados: 29;
+- testes aprovados: 29;
+- falhas: 0;
+- `git diff --check`: aprovado;
+- `WorldState` mínimo: implementado;
+- `SimulationContext`: implementado;
+- `CommandId`: implementado;
+- `EventId`: implementado;
+- `ISimulationCommand`: implementado;
+- `ISimulationEvent`: implementado;
+- PRNG determinístico: implementado;
+- contratos de resolução: implementados;
+- `TurnResolver` mínimo: implementado;
+- resolução de turno vazio: validada.
+
+O Kernel ainda não prova determinismo end-to-end para resolução não vazia.
+
+Essa responsabilidade passa para M1.
+
+### Scope Change
+
+Nenhum.
+
+O total de 1000 GPP não foi alterado.
+
+A decomposição dos 70 GPP de Foundation / Simulation Kernel constitui calibração interna do orçamento existente, não expansão de escopo.
+
+### Revisão de governança
+
+Foram revisados no fechamento do M0:
+
+- `PROJECT_COMPASS.md`;
+- `ROADMAP.md`;
+- `V1_DEFINITION_OF_DONE.md`;
+- `RISK_REGISTER.md`;
+- `PROGRESS_LEDGER.md`;
+- `ARCHITECTURE.md`;
+- ADR-001;
+- ADR-002;
+- ADR-003;
+- ADR-004;
+- ADR-005.
+
+`ARCHITECTURE.md` e os ADRs não exigiram alteração adicional durante a calibração final.
+
+### Baseline congelado
+
+Baseline V1 inicial:
+
+**0.1**
+
+Data:
+
+**2026-09-18**
+
+O histórico deste baseline não deverá ser apagado.
+
+Mudanças materiais futuras deverão utilizar os mecanismos de Scope Change e atualização de governança definidos pelo projeto.
+
+### Próximo milestone
+
+**M1 — Deterministic Simulation Kernel**
+
+Stage inicial:
+
+**M1.1 — Non-empty Deterministic Turn Resolution**
+
+Primeiro subcheckpoint:
+
+**M1.1.1 — Command Processing Contract**
+
+Critical Path:
+
+**primeira resolução não vazia reproduzível end-to-end**
+
+Objetivos imediatos:
+
+- estabelecer o contrato mínimo de processamento de Commands;
+- permitir que um Command válido produza ocorrência(s) determinísticas;
+- preservar lineage entre `CommandId` e `EventId`;
+- manter ordering explícito e reproduzível;
+- preparar a futura fila de Events;
+- avançar incrementalmente até provar o gate do M1:
+
+**mesmo estado + mesmas ordens + mesma seed = mesmo resultado.**
