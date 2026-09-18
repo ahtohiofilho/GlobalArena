@@ -216,6 +216,17 @@ AttackResolved
 UnitDestroyed
 TerritoryControlChanged
 
+Identidade determinística:
+
+- CommandId identifica uma intenção submetida à simulação;
+- EventId identifica uma ocorrência produzida a partir de um comando;
+- EventId é composto por OriginCommandId + Sequence;
+- Sequence é local à sequência de eventos produzidos pelo comando de origem;
+- a identidade do evento não representa sua posição futura na fila de execução;
+- ordenação, shuffle determinístico e posição de resolução permanecerão conceitos separados.
+
+Essa separação preserva lineage e replay sem acoplar identidade à ordem de execução.
+
 Commands e Events não são equivalentes.
 
 Pipeline:

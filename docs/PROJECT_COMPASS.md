@@ -495,6 +495,9 @@ Milestone:
 Etapa:
 **M0.7 — Minimum Kernel Baseline and Progress Calibration**
 
+Subetapa atual:
+**M0.7.5 — Minimum Simulation Context**
+
 Progresso oficial:
 **ainda não estabelecido**
 
@@ -508,7 +511,7 @@ Critical Path atual:
 **estabelecimento do Simulation Kernel mínimo e fechamento do M0**
 
 Última revisão de baseline:
-**2026-09-14**
+**2026-09-18**
 
 ---
 

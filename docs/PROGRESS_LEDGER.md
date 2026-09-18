@@ -585,3 +585,92 @@ Objetivos:
 - permitir rastrear a origem de um evento;
 - preparar a futura sequência determinística de resolução;
 - adicionar testes de domínio correspondentes.
+
+---
+
+## 2026-09-18 — M0.7.4 Simulation Event Identity concluído
+
+Milestone:
+
+**M0 — Project Baseline**
+
+Stage:
+
+**M0.7 — Minimum Kernel Baseline and Progress Calibration**
+
+Subcheckpoint:
+
+**M0.7.4 — Simulation Event Identity**
+
+Progress:
+
+**Ainda não consolidado oficialmente**
+
+GPP:
+
+**Ainda não consolidado / 1000**
+
+Scope Confidence:
+
+**Moderada**
+
+Risk:
+
+**HIGH**
+
+Critical Path:
+
+**estabelecimento do Simulation Kernel mínimo e fechamento do M0**
+
+### Concluído
+
+- `EventId` criado como identidade fortemente tipada de eventos;
+- identidade de evento vinculada explicitamente ao `CommandId` de origem;
+- sequência zero definida como inválida;
+- múltiplos eventos do mesmo comando podem ser distinguidos deterministicamente;
+- eventos de comandos diferentes permanecem distintos mesmo com a mesma sequência;
+- `ISimulationEvent` passou a exigir `EventId`;
+- lineage entre Command e Event materializado no contrato do Kernel;
+- identidade do evento mantida separada da futura ordem de execução;
+- build completo da solução aprovado;
+- testes automatizados aprovados.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- testes totais: 15;
+- testes aprovados: 15;
+- falhas: 0;
+- `ValidOriginCommandAndSequenceCreateEventId`: aprovado;
+- `ZeroSequenceIsRejected`: aprovado;
+- `SameOriginAndSequenceProduceEqualIds`: aprovado;
+- `DifferentSequencesProduceDifferentIds`: aprovado;
+- `DifferentOriginsProduceDifferentIds`: aprovado;
+- `git diff --check`: aprovado.
+
+### Decisões relevantes
+
+- `EventId` será composto por `OriginCommandId` e sequência;
+- a sequência do evento diferencia eventos produzidos pelo mesmo comando;
+- identidade e ordem de execução permanecerão conceitos distintos;
+- shuffle ou posição na fila de resolução não serão codificados dentro do `EventId`;
+- a origem do evento permanecerá rastreável para replay, diagnóstico e auditoria determinística.
+
+### Scope Change
+
+Nenhum.
+
+### Novos riscos
+
+Nenhum risco estrutural novo identificado neste subcheckpoint.
+
+### Próximo subcheckpoint
+
+**M0.7.5 — Minimum Simulation Context**
+
+Objetivos:
+
+- estabelecer o contexto mínimo necessário para uma execução determinística;
+- definir explicitamente quais dados acompanham uma resolução de simulação;
+- preservar separação entre contexto, estado do mundo e comandos;
+- adicionar testes de domínio correspondentes.

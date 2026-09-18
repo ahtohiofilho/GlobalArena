@@ -513,6 +513,10 @@ Current Stage:
 
 **M0.7 — Minimum Kernel Baseline and Progress Calibration**
 
+Current Subcheckpoint:
+
+**M0.7.5 — Minimum Simulation Context**
+
 Official Progress:
 
 **Not yet consolidated**
@@ -525,4 +529,4 @@ O primeiro percentual oficial será calculado no fechamento do baseline M0.
 
 Last Baseline Review:
 
-**2026-09-14**
+**2026-09-18**
