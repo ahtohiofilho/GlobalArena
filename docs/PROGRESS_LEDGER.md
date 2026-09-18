@@ -1258,3 +1258,117 @@ Objetivos imediatos:
 - avançar incrementalmente até provar o gate do M1:
 
 **mesmo estado + mesmas ordens + mesma seed = mesmo resultado.**
+
+---
+
+## 2026-09-18 — M1.1.1 Command Processing Contract concluído
+
+Milestone:
+
+**M1 — Deterministic Simulation Kernel**
+
+Stage:
+
+**M1.1 — Non-empty Deterministic Turn Resolution**
+
+Subcheckpoint:
+
+**M1.1.1 — Command Processing Contract**
+
+### Progresso oficial
+
+GPP conquistados:
+
+**43.25 / 1000**
+
+Global Progress:
+
+**4.3%**
+
+Foundation / Simulation Kernel:
+
+**43.25 / 70 GPP — 61.8%**
+
+Nenhum GPP adicional foi conquistado neste subcheckpoint.
+
+A capability `Command → Event, validação e execução sequencial` permanece classificada como:
+
+**Especificada — fator 0.20**
+
+O contrato tornou a fronteira mais concreta, mas ainda não existe resolução funcional não vazia suficiente para elevar a capability para `Funcional isoladamente`.
+
+### Concluído
+
+- `ISimulationCommandProcessor` criado no módulo `GlobalArena.Simulation`;
+- contrato explícito entre `WorldState`, Command, `SimulationContext` e Events estabelecido;
+- processor pode produzir zero ou mais `ISimulationEvent`;
+- lineage entre `CommandId` e `EventId.OriginCommandId` validado em teste;
+- Command continua representando intenção;
+- Event continua representando ocorrência;
+- nenhuma lógica de dispatch foi introduzida;
+- nenhum registry de processors foi criado;
+- nenhum handler hierarchy foi criado;
+- `TurnResolver` ainda não foi alterado;
+- nenhuma regra concreta de gameplay foi introduzida.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- testes totais: 30;
+- testes aprovados: 30;
+- falhas: 0;
+- `ProcessorCanReceiveWorldCommandAndContextAndProduceEvents`: aprovado;
+- `git diff --check`: aprovado.
+
+### Incidente ambiental durante QA
+
+Uma primeira execução dos testes apresentou 11 falhas devido ao Windows Smart App Control bloquear o carregamento de `GlobalArena.World.dll`.
+
+Evidência observada:
+
+- `SmartAppControlState: On`;
+- eventos Code Integrity 3077 e 3033;
+- bloqueio por política de assinatura;
+- testes previamente aprovados também falharam pelo mesmo motivo.
+
+Após desativação do Smart App Control para o ambiente de desenvolvimento, limpeza dos artefatos e recompilação:
+
+- build: 6/6;
+- testes: 30/30;
+- falhas: 0.
+
+O incidente foi classificado como falha ambiental externa ao código do Global Arena.
+
+Nenhuma alteração de código foi necessária para corrigi-lo.
+
+### Decisões relevantes
+
+- o contrato de processamento de Commands pertence ao módulo `GlobalArena.Simulation`;
+- `ISimulationCommand` permanece mínimo e não recebe comportamento de processamento;
+- o processor recebe explicitamente `WorldState` e `SimulationContext`;
+- geração de Events permanece separada da futura execução desses Events;
+- dispatch e descoberta de processors serão introduzidos somente quando houver necessidade concreta;
+- nenhuma abstração adicional será criada apenas para antecipar tipos futuros de Commands.
+
+### Scope Change
+
+Nenhum.
+
+### Novos riscos
+
+Nenhum risco estrutural novo identificado.
+
+O incidente do Smart App Control é tratado como configuração do ambiente local de desenvolvimento e não altera o Risk Register do produto neste momento.
+
+### Próximo subcheckpoint
+
+**M1.1.2 — Single-Command Resolution Path**
+
+Objetivos:
+
+- integrar o contrato de processamento ao primeiro caminho de resolução não vazia;
+- permitir que exatamente um Command seja processado de forma explícita;
+- produzir Events preservando lineage;
+- manter o `WorldState` inalterado enquanto execução de Events ainda não existir;
+- evitar introduzir ordering de múltiplos Commands prematuramente;
+- preparar o primeiro fluxo executável Command → Event através do `TurnResolver`.

@@ -571,7 +571,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M1.1.1 — Command Processing Contract**
+**M1.1.2 — Single-Command Resolution Path**
 
 Official Progress:
 

@@ -501,7 +501,7 @@ Etapa:
 
 Subetapa atual:
 
-**M1.1.1 — Command Processing Contract**
+**M1.1.2 — Single-Command Resolution Path**
 
 M0 — Project Baseline:
 

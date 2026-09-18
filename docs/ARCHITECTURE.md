@@ -302,6 +302,62 @@ Command
 → alteração do estado
 → event log
 
+## 7.1 Minimum Command Processing Contract
+
+`ISimulationCommandProcessor` estabelece a fronteira mínima entre uma intenção submetida e a geração de ocorrências da simulação.
+
+Entrada:
+
+WorldState
++
+ISimulationCommand
++
+SimulationContext
+
+→ ISimulationCommandProcessor →
+
+0..N ISimulationEvent
+
+O processor recebe:
+
+- o `WorldState` autoritativo disponível para consulta;
+- um `ISimulationCommand`;
+- o `SimulationContext` da resolução.
+
+O resultado é uma sequência de zero ou mais `ISimulationEvent`.
+
+Esse contrato preserva a distinção arquitetural entre intenção e ocorrência.
+
+A identidade dos Events produzidos pode manter lineage com o Command de origem através de:
+
+`EventId.OriginCommandId = CommandId`
+
+O contrato não define ainda:
+
+- qual processor trata cada tipo concreto de Command;
+- registro ou descoberta de processors;
+- dispatch;
+- validação completa do Command;
+- ordering entre Commands;
+- ordering entre Events;
+- deterministic shuffle;
+- aplicação dos Events ao `WorldState`;
+- EventLog.
+
+O `WorldState` fornecido ao processor representa o estado autoritativo utilizado para avaliar a intenção.
+
+A alteração efetiva do estado permanece responsabilidade da futura etapa de execução de Events, preservando o pipeline:
+
+Command
+→ validação
+→ geração de Event(s)
+→ ordering
+→ execução
+→ revalidação
+→ novo estado.
+
+Nenhuma abstração adicional de registry, dispatcher ou handler hierarchy é estabelecida neste checkpoint.
+
 ---
 
 # 8. Turn Resolution
