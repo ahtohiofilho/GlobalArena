@@ -45,49 +45,7 @@ public sealed class EventIdTests
 
     [Fact]
     public void DifferentSequencesProduceDifferentIds()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-   {
+    {
         var commandId = new CommandId(
             new TurnNumber(12UL),
             5UL);
@@ -104,24 +62,7 @@ public sealed class EventIdTests
         var turn = new TurnNumber(12UL);
 
         var firstCommand = new CommandId(turn, 1UL);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-       var secondCommand = new CommandId(turn, 2UL);
+        var secondCommand = new CommandId(turn, 2UL);
 
         var first = new EventId(firstCommand, 1UL);
         var second = new EventId(secondCommand, 1UL);
