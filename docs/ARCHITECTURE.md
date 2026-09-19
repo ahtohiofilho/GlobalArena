@@ -626,7 +626,92 @@ O contrato não define ainda:
 - EventLog;
 - estratégia definitiva de mutabilidade ou cópia do `WorldState`.
 
-A integração do executor ao `TurnResolver` permanece responsabilidade do próximo subcheckpoint.
+A integração do executor ao `TurnResolver` é realizada pelo caminho descrito em 8.4.
+
+## 8.4 Single-Event Execution Path
+
+`TurnResolver` integra agora as duas fronteiras mínimas já estabelecidas:
+
+- `ISimulationCommandProcessor`;
+- `ISimulationEventExecutor`.
+
+O caminho não vazio suportado passa a ser:
+
+WorldState
++
+um ISimulationCommand
++
+SimulationContext
+
+→ ISimulationCommandProcessor
+→ zero ou um ISimulationEvent
+→ ISimulationEventExecutor
+→ ResultingWorldState
+
+O comportamento atual é deliberadamente restrito.
+
+### Zero Commands
+
+O comportamento previamente estabelecido permanece:
+
+- o `WorldState` é preservado;
+- nenhum Event é produzido;
+- o Event Executor não é invocado.
+
+### Um Command que produz zero Events
+
+O Command é processado normalmente.
+
+Quando o processor produz zero Events:
+
+- o `WorldState` de entrada é preservado;
+- o resultado contém zero Events;
+- o Event Executor não é invocado.
+
+### Um Command que produz exatamente um Event
+
+Quando o processor produz exatamente um Event:
+
+- o `WorldState` autoritativo é encaminhado ao Event Executor;
+- o Event produzido é encaminhado ao Event Executor;
+- o mesmo `SimulationContext` é encaminhado ao Event Executor;
+- o `WorldState` retornado pelo executor passa a ser o `ResultingWorldState`;
+- o Event produzido permanece no `TurnResolutionResult`.
+
+Esse é o primeiro caminho orquestrado completo:
+
+Command
+→ Event
+→ Event Executor
+→ ResultingWorldState
+
+O caminho prova a ligação estrutural entre intenção, ocorrência e estado resultante, mas ainda não representa uma regra concreta de gameplay nem prova determinismo end-to-end.
+
+### Mais de um Event
+
+Quando um único Command produz dois ou mais Events, a resolução é rejeitada explicitamente com `NotSupportedException` antes da execução de qualquer Event.
+
+Essa restrição evita introduzir implicitamente:
+
+- ordering entre Events;
+- resolução sequencial;
+- revalidação entre execuções;
+- event queue;
+- deterministic shuffle.
+
+### Limites ainda abertos
+
+O `TurnResolver` ainda não implementa:
+
+- validação concreta de Commands;
+- revalidação de Events no momento da execução;
+- resultado explícito para Event rejeitado;
+- execução sequencial de múltiplos Events;
+- ordering ou deterministic shuffle;
+- EventLog;
+- regras concretas de domínio que alterem propriedades observáveis do mundo.
+
+O próximo limite arquitetural é estabelecer a revalidação mínima de um Event imediatamente antes de sua execução.
 ---
 
 # 9. Turn Policy

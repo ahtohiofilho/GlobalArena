@@ -10,6 +10,7 @@ public sealed class TurnResolverTests
     public void EmptyTurnPreservesWorldState()
     {
         var state = WorldState.CreateInitial();
+        var eventExecutor = new TestEventExecutor();
 
         var input = new TurnResolutionInput(
             state,
@@ -19,11 +20,13 @@ public sealed class TurnResolverTests
                 new SimulationSeed(123UL)));
 
         var resolver = new TurnResolver(
-            new TestCommandProcessor());
+            new TestCommandProcessor(),
+            eventExecutor);
 
         var result = resolver.Resolve(input);
 
         Assert.Same(state, result.ResultingWorldState);
+        Assert.Equal(0, eventExecutor.CallCount);
     }
 
     [Fact]
@@ -37,7 +40,8 @@ public sealed class TurnResolverTests
                 new SimulationSeed(123UL)));
 
         var resolver = new TurnResolver(
-            new TestCommandProcessor());
+            new TestCommandProcessor(),
+            new TestEventExecutor());
 
         var result = resolver.Resolve(input);
 
@@ -45,7 +49,7 @@ public sealed class TurnResolverTests
     }
 
     [Fact]
-    public void SingleCommandIsProcessedAndProducesEvents()
+    public void SingleCommandSingleEventIsExecutedAndProducesResultingState()
     {
         var state = WorldState.CreateInitial();
         var turn = new TurnNumber(2UL);
@@ -63,24 +67,93 @@ public sealed class TurnResolverTests
                 turn,
                 new SimulationSeed(456UL)));
 
+        var eventExecutor = new TestEventExecutor();
+
         var resolver = new TurnResolver(
-            new TestCommandProcessor());
+            new TestCommandProcessor(),
+            eventExecutor);
 
         var result = resolver.Resolve(input);
 
-        Assert.Same(state, result.ResultingWorldState);
+        Assert.Same(
+            eventExecutor.ResultingState,
+            result.ResultingWorldState);
+
+        Assert.NotSame(
+            state,
+            result.ResultingWorldState);
 
         var simulationEvent = Assert.Single(result.Events);
 
         Assert.Equal(
             new EventId(command.Id, 1UL),
             simulationEvent.Id);
+
+        Assert.Equal(1, eventExecutor.CallCount);
+    }
+
+    [Fact]
+    public void SingleCommandWithNoEventsPreservesWorldState()
+    {
+        var state = WorldState.CreateInitial();
+        var turn = new TurnNumber(3UL);
+
+        var input = new TurnResolutionInput(
+            state,
+            new ISimulationCommand[]
+            {
+                new TestCommand(
+                    new CommandId(turn, 1UL))
+            },
+            new SimulationContext(
+                turn,
+                new SimulationSeed(789UL)));
+
+        var eventExecutor = new TestEventExecutor();
+
+        var resolver = new TurnResolver(
+            new TestCommandProcessor(eventCount: 0),
+            eventExecutor);
+
+        var result = resolver.Resolve(input);
+
+        Assert.Same(state, result.ResultingWorldState);
+        Assert.Empty(result.Events);
+        Assert.Equal(0, eventExecutor.CallCount);
+    }
+
+    [Fact]
+    public void MultipleEventsAreRejected()
+    {
+        var turn = new TurnNumber(4UL);
+
+        var input = new TurnResolutionInput(
+            WorldState.CreateInitial(),
+            new ISimulationCommand[]
+            {
+                new TestCommand(
+                    new CommandId(turn, 1UL))
+            },
+            new SimulationContext(
+                turn,
+                new SimulationSeed(101112UL)));
+
+        var eventExecutor = new TestEventExecutor();
+
+        var resolver = new TurnResolver(
+            new TestCommandProcessor(eventCount: 2),
+            eventExecutor);
+
+        Assert.Throws<NotSupportedException>(
+            () => resolver.Resolve(input));
+
+        Assert.Equal(0, eventExecutor.CallCount);
     }
 
     [Fact]
     public void MultipleCommandsAreRejected()
     {
-        var turn = new TurnNumber(3UL);
+        var turn = new TurnNumber(5UL);
 
         var input = new TurnResolutionInput(
             WorldState.CreateInitial(),
@@ -93,10 +166,11 @@ public sealed class TurnResolverTests
             },
             new SimulationContext(
                 turn,
-                new SimulationSeed(789UL)));
+                new SimulationSeed(131415UL)));
 
         var resolver = new TurnResolver(
-            new TestCommandProcessor());
+            new TestCommandProcessor(),
+            new TestEventExecutor());
 
         Assert.Throws<NotSupportedException>(
             () => resolver.Resolve(input));
@@ -106,7 +180,8 @@ public sealed class TurnResolverTests
     public void NullInputIsRejected()
     {
         var resolver = new TurnResolver(
-            new TestCommandProcessor());
+            new TestCommandProcessor(),
+            new TestEventExecutor());
 
         Assert.Throws<ArgumentNullException>(
             () => resolver.Resolve(null!));
@@ -116,7 +191,18 @@ public sealed class TurnResolverTests
     public void NullCommandProcessorIsRejected()
     {
         Assert.Throws<ArgumentNullException>(
-            () => new TurnResolver(null!));
+            () => new TurnResolver(
+                null!,
+                new TestEventExecutor()));
+    }
+
+    [Fact]
+    public void NullEventExecutorIsRejected()
+    {
+        Assert.Throws<ArgumentNullException>(
+            () => new TurnResolver(
+                new TestCommandProcessor(),
+                null!));
     }
 
     private sealed record TestCommand(
@@ -128,16 +214,50 @@ public sealed class TurnResolverTests
     private sealed class TestCommandProcessor
         : ISimulationCommandProcessor
     {
+        private readonly int _eventCount;
+
+        public TestCommandProcessor(
+            int eventCount = 1)
+        {
+            _eventCount = eventCount;
+        }
+
         public IReadOnlyList<ISimulationEvent> Process(
             WorldState worldState,
             ISimulationCommand command,
             SimulationContext context)
         {
-            return new ISimulationEvent[]
+            var events =
+                new ISimulationEvent[_eventCount];
+
+            for (var index = 0; index < _eventCount; index++)
             {
-                new TestEvent(
-                    new EventId(command.Id, 1UL))
-            };
+                events[index] = new TestEvent(
+                    new EventId(
+                        command.Id,
+                        (ulong)index + 1UL));
+            }
+
+            return events;
+        }
+    }
+
+    private sealed class TestEventExecutor
+        : ISimulationEventExecutor
+    {
+        public int CallCount { get; private set; }
+
+        public WorldState ResultingState { get; } =
+            WorldState.CreateInitial();
+
+        public WorldState Execute(
+            WorldState worldState,
+            ISimulationEvent simulationEvent,
+            SimulationContext context)
+        {
+            CallCount++;
+
+            return ResultingState;
         }
     }
 }

@@ -581,7 +581,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M1.1.4 — Single-Event Execution Path**
+**M1.1.5 — Event Revalidation Contract**
 
 Official Progress:
 

@@ -5,13 +5,17 @@ namespace GlobalArena.Simulation;
 public sealed class TurnResolver
 {
     private readonly ISimulationCommandProcessor _commandProcessor;
+    private readonly ISimulationEventExecutor _eventExecutor;
 
     public TurnResolver(
-        ISimulationCommandProcessor commandProcessor)
+        ISimulationCommandProcessor commandProcessor,
+        ISimulationEventExecutor eventExecutor)
     {
         ArgumentNullException.ThrowIfNull(commandProcessor);
+        ArgumentNullException.ThrowIfNull(eventExecutor);
 
         _commandProcessor = commandProcessor;
+        _eventExecutor = eventExecutor;
     }
 
     public TurnResolutionResult Resolve(
@@ -37,8 +41,26 @@ public sealed class TurnResolver
             input.Commands[0],
             input.Context);
 
-        return new TurnResolutionResult(
+        if (events.Count > 1)
+        {
+            throw new NotSupportedException(
+                "Multiple event resolution is not implemented yet.");
+        }
+
+        if (events.Count == 0)
+        {
+            return new TurnResolutionResult(
+                input.WorldState,
+                events);
+        }
+
+        var resultingWorldState = _eventExecutor.Execute(
             input.WorldState,
+            events[0],
+            input.Context);
+
+        return new TurnResolutionResult(
+            resultingWorldState,
             events);
     }
 }

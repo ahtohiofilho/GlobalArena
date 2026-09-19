@@ -501,7 +501,7 @@ Etapa:
 
 Subetapa atual:
 
-**M1.1.4 — Single-Event Execution Path**
+**M1.1.5 — Event Revalidation Contract**
 
 M0 — Project Baseline:
 

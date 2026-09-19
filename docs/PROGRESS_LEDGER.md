@@ -1605,3 +1605,105 @@ Objetivos:
 - manter zero Events como caminho explícito;
 - rejeitar múltiplos Events enquanto execução sequencial ainda não existir;
 - completar o primeiro caminho `Command → Event → state transition`.
+
+---
+
+## 2026-09-19 — M1.1.4 Single-Event Execution Path concluído
+
+Milestone:
+
+**M1 — Deterministic Simulation Kernel**
+
+Stage:
+
+**M1.1 — Non-empty Deterministic Turn Resolution**
+
+Subcheckpoint:
+
+**M1.1.4 — Single-Event Execution Path**
+
+### Progresso oficial
+
+GPP conquistados:
+
+**43.25 / 1000**
+
+Global Progress:
+
+**4.3%**
+
+Foundation / Simulation Kernel:
+
+**43.25 / 70 GPP — 61.8%**
+
+Nenhum GPP adicional foi conquistado neste subcheckpoint.
+
+A capability `Command → Event, validação e execução sequencial` permanece classificada como:
+
+**Especificada — fator 0.20**
+
+O fluxo `Command → Event → ResultingWorldState` agora existe através do `TurnResolver`, mas a capability completa ainda não possui revalidação real de Events, validação concreta de Commands nem execução sequencial de múltiplos Events.
+
+### Concluído
+
+- `TurnResolver` passou a depender explicitamente de `ISimulationEventExecutor`;
+- zero Commands preservam o `WorldState` e não invocam o executor;
+- um Command que produz zero Events preserva o `WorldState` e não invoca o executor;
+- um Command que produz exatamente um Event executa esse Event;
+- o `WorldState` retornado pelo executor torna-se o `ResultingWorldState`;
+- o Event produzido permanece registrado no `TurnResolutionResult`;
+- dois ou mais Events são rejeitados antes de qualquer execução;
+- dois ou mais Commands continuam explicitamente não suportados;
+- executor nulo é rejeitado;
+- nenhuma event queue foi introduzida;
+- nenhum ordering ou deterministic shuffle foi introduzido;
+- nenhuma regra concreta de gameplay foi adicionada.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- warnings de build: 0;
+- erros de build: 0;
+- testes totais: 36;
+- testes aprovados: 36;
+- falhas: 0;
+- `SingleCommandSingleEventIsExecutedAndProducesResultingState`: aprovado;
+- `SingleCommandWithNoEventsPreservesWorldState`: aprovado;
+- `MultipleEventsAreRejected`: aprovado;
+- `NullEventExecutorIsRejected`: aprovado;
+- regressões anteriores do `TurnResolver`: aprovadas;
+- `git diff --check`: aprovado;
+- SHA-256 dos dois arquivos alterados verificado no pacote de evidências.
+
+### Decisões relevantes
+
+- o executor é uma dependência explícita do `TurnResolver`;
+- zero Events possuem semântica explícita de ausência de transição de estado;
+- múltiplos Events são rejeitados até existir semântica de execução sequencial;
+- nenhum Event é executado parcialmente quando a quantidade produzida é maior que a suportada;
+- geração e execução de Events continuam separadas;
+- revalidação de Event permanece uma responsabilidade distinta a ser estabelecida antes da execução sequencial.
+
+### Scope Change
+
+Nenhum.
+
+### Novos riscos
+
+Nenhum risco estrutural novo identificado.
+
+`RISK-004 — Determinism failure` permanece relevante.
+
+O checkpoint reduz a incerteza do caminho não vazio, mas ainda não demonstra uma transição concreta de domínio reproduzível de ponta a ponta.
+
+### Próximo subcheckpoint
+
+**M1.1.5 — Event Revalidation Contract**
+
+Objetivos:
+
+- estabelecer a fronteira mínima de revalidação de um Event contra o `WorldState` atual;
+- executar a revalidação imediatamente antes da futura aplicação do Event;
+- manter validação separada da mutação do estado;
+- evitar ainda execução sequencial de múltiplos Events;
+- preparar o caminho para revalidação + execução determinística.
