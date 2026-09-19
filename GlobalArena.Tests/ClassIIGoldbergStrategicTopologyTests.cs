@@ -138,24 +138,6 @@ public sealed class ClassIIGoldbergStrategicTopologyTests
             GetSignature(second));
     }
 
-    [Fact]
-    public void ClassIIIRemainsUnsupported()
-    {
-        Assert.Throws<NotSupportedException>(
-            () =>
-                GoldbergStrategicTopologyGenerator.Generate(
-                    new GoldbergParameters(
-                        2,
-                        1)));
-
-        Assert.Throws<NotSupportedException>(
-            () =>
-                GoldbergStrategicTopologyGenerator.Generate(
-                    new GoldbergParameters(
-                        3,
-                        1)));
-    }
-
     private static void AssertReciprocalIncidence(
         StrategicTopology topology)
     {

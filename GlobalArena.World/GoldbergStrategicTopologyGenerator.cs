@@ -61,8 +61,8 @@ public static class GoldbergStrategicTopologyGenerator
                 parameters.M);
         }
 
-        throw new NotSupportedException(
-            "M2.1.5.B supports Class I G(m,0)/G(0,n) and Class II G(k,k); Class III remains unsupported.");
+        return ClassIIIGoldbergStrategicTopologyGenerator.Generate(
+            parameters);
     }
 
     private static StrategicTopology GenerateFromTriangularSeed(

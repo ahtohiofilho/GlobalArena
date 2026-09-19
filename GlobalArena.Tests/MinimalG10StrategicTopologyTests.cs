@@ -5,17 +5,6 @@ namespace GlobalArena.Tests;
 public sealed class MinimalG10StrategicTopologyTests
 {
     [Fact]
-    public void UnsupportedClassIIIParametersAreRejected()
-    {
-        Assert.Throws<NotSupportedException>(
-            () =>
-                GoldbergStrategicTopologyGenerator.Generate(
-                    new GoldbergParameters(
-                        2,
-                        1)));
-    }
-
-    [Fact]
     public void G10HasExpectedParametersAndCounts()
     {
         var topology = CreateG10();

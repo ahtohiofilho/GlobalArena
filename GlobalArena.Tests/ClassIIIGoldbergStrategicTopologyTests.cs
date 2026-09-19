@@ -2,13 +2,14 @@ using GlobalArena.World;
 
 namespace GlobalArena.Tests;
 
-public sealed class ClassIGoldbergStrategicTopologyTests
+public sealed class ClassIIIGoldbergStrategicTopologyTests
 {
     [Theory]
-    [InlineData(2, 0, 42, 120, 80, 30)]
-    [InlineData(0, 2, 42, 120, 80, 30)]
-    [InlineData(3, 0, 92, 270, 180, 80)]
-    public void ClassITopologiesHaveExpectedCountsAndDegrees(
+    [InlineData(2, 1, 72, 210, 140, 60)]
+    [InlineData(1, 2, 72, 210, 140, 60)]
+    [InlineData(3, 1, 132, 390, 260, 120)]
+    [InlineData(3, 2, 192, 570, 380, 180)]
+    public void ClassIIITopologiesHaveExpectedCountsAndDegrees(
         int m,
         int n,
         int expectedCells,
@@ -22,15 +23,9 @@ public sealed class ClassIGoldbergStrategicTopologyTests
                     m,
                     n));
 
-        Assert.Equal(
-            expectedCells,
-            topology.Cells.Count);
-        Assert.Equal(
-            expectedEdges,
-            topology.Edges.Count);
-        Assert.Equal(
-            expectedVertices,
-            topology.Vertices.Count);
+        Assert.Equal(expectedCells, topology.Cells.Count);
+        Assert.Equal(expectedEdges, topology.Edges.Count);
+        Assert.Equal(expectedVertices, topology.Vertices.Count);
 
         Assert.Equal(
             12,
@@ -56,47 +51,56 @@ public sealed class ClassIGoldbergStrategicTopologyTests
                         ? 5
                         : 6;
 
+                Assert.Equal(expectedDegree, cell.AdjacentCellIds.Count);
+                Assert.Equal(expectedDegree, cell.IncidentEdgeIds.Count);
+                Assert.Equal(expectedDegree, cell.IncidentVertexIds.Count);
+                Assert.DoesNotContain(cell.Id, cell.AdjacentCellIds);
                 Assert.Equal(
-                    expectedDegree,
-                    cell.AdjacentCellIds.Count);
+                    cell.AdjacentCellIds.Count,
+                    cell.AdjacentCellIds.Distinct().Count());
                 Assert.Equal(
-                    expectedDegree,
-                    cell.IncidentEdgeIds.Count);
+                    cell.IncidentEdgeIds.Count,
+                    cell.IncidentEdgeIds.Distinct().Count());
                 Assert.Equal(
-                    expectedDegree,
-                    cell.IncidentVertexIds.Count);
+                    cell.IncidentVertexIds.Count,
+                    cell.IncidentVertexIds.Distinct().Count());
             });
 
         Assert.All(
             topology.Edges,
             edge =>
             {
+                Assert.Equal(2, edge.IncidentCellIds.Count);
+                Assert.Equal(2, edge.IncidentVertexIds.Count);
                 Assert.Equal(
                     2,
-                    edge.IncidentCellIds.Count);
+                    edge.IncidentCellIds.Distinct().Count());
                 Assert.Equal(
                     2,
-                    edge.IncidentVertexIds.Count);
+                    edge.IncidentVertexIds.Distinct().Count());
             });
 
         Assert.All(
             topology.Vertices,
             vertex =>
             {
+                Assert.Equal(3, vertex.IncidentCellIds.Count);
+                Assert.Equal(3, vertex.IncidentEdgeIds.Count);
                 Assert.Equal(
                     3,
-                    vertex.IncidentCellIds.Count);
+                    vertex.IncidentCellIds.Distinct().Count());
                 Assert.Equal(
                     3,
-                    vertex.IncidentEdgeIds.Count);
+                    vertex.IncidentEdgeIds.Distinct().Count());
             });
     }
 
     [Theory]
-    [InlineData(2, 0)]
-    [InlineData(0, 2)]
-    [InlineData(3, 0)]
-    public void ClassITopologiesSatisfyGlobalInvariants(
+    [InlineData(2, 1)]
+    [InlineData(1, 2)]
+    [InlineData(3, 1)]
+    [InlineData(3, 2)]
+    public void ClassIIITopologiesSatisfyGlobalInvariants(
         int m,
         int n)
     {
@@ -114,30 +118,90 @@ public sealed class ClassIGoldbergStrategicTopologyTests
             - topology.Edges.Count
             + topology.Cells.Count;
 
-        Assert.Equal(
-            2,
-            euler);
+        Assert.Equal(2, euler);
     }
 
     [Fact]
-    public void RepeatedG20GenerationIsCanonical()
+    public void RepeatedG21GenerationIsCanonical()
     {
         var parameters =
             new GoldbergParameters(
                 2,
-                0);
+                1);
 
         var first =
-            GoldbergStrategicTopologyGenerator.Generate(
-                parameters);
+            GoldbergStrategicTopologyGenerator.Generate(parameters);
 
         var second =
-            GoldbergStrategicTopologyGenerator.Generate(
-                parameters);
+            GoldbergStrategicTopologyGenerator.Generate(parameters);
 
         Assert.Equal(
             GetSignature(first),
             GetSignature(second));
+    }
+
+    [Fact]
+    public void G21UsesContiguousCanonicalIds()
+    {
+        var topology =
+            GoldbergStrategicTopologyGenerator.Generate(
+                new GoldbergParameters(
+                    2,
+                    1));
+
+        Assert.Equal(
+            Enumerable.Range(
+                    1,
+                    topology.Cells.Count)
+                .Select(value => (ulong)value)
+                .ToArray(),
+            topology.Cells
+                .Select(cell => cell.Id.Value)
+                .ToArray());
+
+        Assert.Equal(
+            Enumerable.Range(
+                    1,
+                    topology.Edges.Count)
+                .Select(value => (ulong)value)
+                .ToArray(),
+            topology.Edges
+                .Select(edge => edge.Id.Value)
+                .ToArray());
+
+        Assert.Equal(
+            Enumerable.Range(
+                    1,
+                    topology.Vertices.Count)
+                .Select(value => (ulong)value)
+                .ToArray(),
+            topology.Vertices
+                .Select(vertex => vertex.Id.Value)
+                .ToArray());
+    }
+
+    [Fact]
+    public void MirrorClassIIIParametersAreBothValidAndChiral()
+    {
+        var first =
+            GoldbergStrategicTopologyGenerator.Generate(
+                new GoldbergParameters(
+                    2,
+                    1));
+
+        var mirror =
+            GoldbergStrategicTopologyGenerator.Generate(
+                new GoldbergParameters(
+                    1,
+                    2));
+
+        Assert.Equal(first.Cells.Count, mirror.Cells.Count);
+        Assert.Equal(first.Edges.Count, mirror.Edges.Count);
+        Assert.Equal(first.Vertices.Count, mirror.Vertices.Count);
+
+        Assert.NotEqual(
+            GetSignature(first),
+            GetSignature(mirror));
     }
 
     private static void AssertReciprocalIncidence(
@@ -181,6 +245,17 @@ public sealed class ClassIGoldbergStrategicTopologyTests
 
         foreach (var edge in topology.Edges)
         {
+            foreach (var cellId in edge.IncidentCellIds)
+            {
+                var cell =
+                    topology.Cells[
+                        checked((int)cellId.Value - 1)];
+
+                Assert.Contains(
+                    edge.Id,
+                    cell.IncidentEdgeIds);
+            }
+
             foreach (var vertexId in edge.IncidentVertexIds)
             {
                 var vertex =
@@ -192,6 +267,31 @@ public sealed class ClassIGoldbergStrategicTopologyTests
                     vertex.IncidentEdgeIds);
             }
         }
+
+        foreach (var vertex in topology.Vertices)
+        {
+            foreach (var cellId in vertex.IncidentCellIds)
+            {
+                var cell =
+                    topology.Cells[
+                        checked((int)cellId.Value - 1)];
+
+                Assert.Contains(
+                    vertex.Id,
+                    cell.IncidentVertexIds);
+            }
+
+            foreach (var edgeId in vertex.IncidentEdgeIds)
+            {
+                var edge =
+                    topology.Edges[
+                        checked((int)edgeId.Value - 1)];
+
+                Assert.Contains(
+                    vertex.Id,
+                    edge.IncidentVertexIds);
+            }
+        }
     }
 
     private static void AssertConnected(
@@ -199,11 +299,11 @@ public sealed class ClassIGoldbergStrategicTopologyTests
     {
         var visited =
             new HashSet<StrategicCellId>();
+
         var queue =
             new Queue<StrategicCellId>();
 
-        queue.Enqueue(
-            topology.Cells[0].Id);
+        queue.Enqueue(topology.Cells[0].Id);
 
         while (queue.Count > 0)
         {
@@ -223,8 +323,7 @@ public sealed class ClassIGoldbergStrategicTopologyTests
             {
                 if (!visited.Contains(adjacentId))
                 {
-                    queue.Enqueue(
-                        adjacentId);
+                    queue.Enqueue(adjacentId);
                 }
             }
         }
