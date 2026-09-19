@@ -581,7 +581,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M1.1.9 — Deterministic Event Ordering Contract**
+**M1.1.10 — Seeded Deterministic Event Ordering**
 
 Official Progress:
 

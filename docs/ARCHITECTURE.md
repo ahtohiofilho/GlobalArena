@@ -346,14 +346,14 @@ O contrato não define ainda:
 
 O `WorldState` fornecido ao processor representa o estado autoritativo utilizado para avaliar a intenção.
 
-A alteração efetiva do estado permanece responsabilidade da futura etapa de execução de Events, preservando o pipeline:
+A alteração efetiva do estado permanece responsabilidade da etapa de execução de Events, preservando o pipeline:
 
 Command
 → validação
 → geração de Event(s)
 → ordering
-→ execução
 → revalidação
+→ execução
 → novo estado.
 
 Nenhuma abstração adicional de registry, dispatcher ou handler hierarchy é estabelecida neste checkpoint.
@@ -455,7 +455,7 @@ O objetivo deste contrato é estabelecer a fronteira estável entre:
 
 Esta seção preserva o primeiro baseline executável do `TurnResolver`.
 
-As seções 8.3 a 8.6 documentam a evolução posterior e prevalecem sobre as limitações históricas descritas nesta seção.
+As seções 8.3 a 8.8 documentam a evolução posterior e prevalecem sobre as limitações históricas descritas nesta seção.
 
 `TurnResolver` materializa a primeira orquestração executável da pipeline de resolução.
 
@@ -982,7 +982,54 @@ O fluxo ainda não implementa:
 - resultado estruturado de rejeições;
 - regras concretas de domínio que produzam uma transição observável e reproduzível de ponta a ponta.
 
-O próximo limite arquitetural é estabelecer uma fronteira explícita de ordering determinístico para Events antes de permitir resolução sequencial de múltiplos Events.
+A fronteira explícita de ordering determinístico para Events é estabelecida pelo contrato descrito em 8.9.
+
+
+## 8.9 Deterministic Event Ordering Contract
+
+`ISimulationEventOrderer` estabelece a fronteira mínima responsável por receber uma coleção de Events e produzir uma ordem explícita antes da futura resolução sequencial.
+
+Conceitualmente:
+
+IReadOnlyList<ISimulationEvent>
++
+SimulationContext
+
+→ ISimulationEventOrderer
+→ IReadOnlyList<ISimulationEvent>
+
+O orderer recebe:
+
+- a coleção de `ISimulationEvent` produzida pela etapa anterior;
+- o `SimulationContext` da resolução.
+
+O contrato permite devolver uma nova ordem sem exigir mutação da coleção de entrada.
+
+A identidade de cada Event continua independente de sua posição na ordem resultante.
+
+Isso preserva a separação entre:
+
+Event identity
+→ lineage estável por `EventId`
+
+Event ordering
+→ posição de resolução
+
+Event revalidation
+→ elegibilidade no estado autoritativo corrente
+
+Event execution
+→ aplicação sequencial da ocorrência
+
+O contrato não define ainda:
+
+- algoritmo concreto de ordering;
+- uso concreto do PRNG;
+- integração com o `TurnResolver`;
+- execução sequencial de múltiplos Events;
+- EventLog.
+
+A implementação concreta de ordering determinístico permanece responsabilidade do próximo subcheckpoint.
 
 ---
 

@@ -2121,3 +2121,102 @@ Objetivos:
 - utilizar `SimulationContext` como parte do contrato de determinismo;
 - evitar ainda execução sequencial de múltiplos Events;
 - preparar o caminho `generation → deterministic ordering → revalidation → sequential execution`.
+
+---
+
+## 2026-09-19 — M1.1.9 Deterministic Event Ordering Contract concluído
+
+Milestone:
+
+**M1 — Deterministic Simulation Kernel**
+
+Stage:
+
+**M1.1 — Non-empty Deterministic Turn Resolution**
+
+Subcheckpoint:
+
+**M1.1.9 — Deterministic Event Ordering Contract**
+
+### Progresso oficial
+
+GPP conquistados:
+
+**43.25 / 1000**
+
+Global Progress:
+
+**4.3%**
+
+Foundation / Simulation Kernel:
+
+**43.25 / 70 GPP — 61.8%**
+
+Nenhum GPP adicional foi conquistado neste subcheckpoint.
+
+A capability `Deterministic shuffle / ordering` permanece classificada como:
+
+**Especificada — fator 0.20**
+
+A fronteira de ordering passou a existir, mas ainda não há algoritmo concreto nem integração ao `TurnResolver`.
+
+### Concluído
+
+- `ISimulationEventOrderer` criado em `GlobalArena.Simulation`;
+- contrato explícito `Events + SimulationContext → ordered Events`;
+- ordering permanece separado de identidade de Event;
+- ordering permanece separado de revalidação e execução;
+- o contrato permite devolver ordem explícita sem mutar a coleção de entrada;
+- `SimulationContext` faz parte da fronteira determinística;
+- nenhuma alteração foi feita no `TurnResolver`;
+- nenhum algoritmo concreto de shuffle foi introduzido;
+- nenhuma execução sequencial de múltiplos Events foi introduzida;
+- nenhum EventLog foi introduzido.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- warnings de build: 0;
+- erros de build: 0;
+- testes totais: 46;
+- testes aprovados: 46;
+- falhas: 0;
+- `OrdererCanReceiveEventsAndContextAndReturnExplicitOrder`: aprovado;
+- `OrdererCanReturnNewOrderWithoutMutatingInput`: aprovado;
+- `git diff --check`: aprovado;
+- SHA-256 dos dois arquivos novos verificado no pacote de evidências.
+
+### Decisões relevantes
+
+- ordering recebe `SimulationContext` explicitamente;
+- EventId não representa posição na fila;
+- o contrato não obriga mutação in-place;
+- algoritmo concreto de ordering permanece fora deste checkpoint;
+- integração com `TurnResolver` permanece adiada;
+- revalidação continuará ocorrendo após ordering e imediatamente antes da execução.
+
+### Scope Change
+
+Nenhum.
+
+### Novos riscos
+
+Nenhum risco estrutural novo identificado.
+
+`RISK-004 — Determinism failure` permanece relevante.
+
+O checkpoint reduz a incerteza sobre a fronteira de ordering, mas ainda não prova que uma mesma entrada e contexto produzam a mesma permutação.
+
+### Próximo subcheckpoint
+
+**M1.1.10 — Seeded Deterministic Event Ordering**
+
+Objetivos:
+
+- implementar um orderer concreto baseado no `DeterministicRandom` existente;
+- produzir a mesma ordem para a mesma coleção de Events e o mesmo contexto determinístico;
+- preservar a coleção de entrada;
+- preservar exatamente a membership dos Events;
+- tratar coleções vazias e unitárias sem efeitos colaterais;
+- manter a implementação ainda isolada do `TurnResolver`;
+- preparar a integração futura de ordering com execução sequencial.

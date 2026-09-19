@@ -501,7 +501,7 @@ Etapa:
 
 Subetapa atual:
 
-**M1.1.9 — Deterministic Event Ordering Contract**
+**M1.1.10 — Seeded Deterministic Event Ordering**
 
 M0 — Project Baseline:
 
