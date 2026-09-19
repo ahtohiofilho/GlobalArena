@@ -164,7 +164,7 @@ benchmark estrutural após M2.
 
 Status:
 
-OPEN
+MITIGATING
 
 Probability:
 
@@ -210,7 +210,7 @@ Mitigação:
 
 Próxima ação:
 
-spike geométrico em M2 para validar a hierarquia estratégico/tática e determinar quais famílias `G(m,n)` podem ser suportadas com os invariantes exigidos.
+definir primeiro o contrato de parâmetros e contagens Goldberg, seguido por identidades topológicas estáveis; depois executar spikes de refinamento estratégico/tático para determinar quais famílias `G(m,n)` podem ser suportadas com os invariantes exigidos.
 
 ---
 

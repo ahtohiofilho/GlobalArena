@@ -2360,17 +2360,19 @@ Seu objetivo atual é fornecer uma observação simples e estável para testes e
 
 # 11. Topologia estratégica
 
-O planeta possui um único grafo estratégico global derivado de uma topologia Goldberg.
+O planeta possui um único complexo topológico estratégico derivado de um Goldberg icosaédrico e um grafo de adjacência derivado desse complexo.
 
 A parametrização geral pretendida é `G(m,n)`.
 
 Na lógica:
 
-StrategicCell = nó estratégico e região do planeta
+StrategicCell = face Goldberg e região estratégica
 
-StrategicEdge = conexão entre regiões
+StrategicEdge = fronteira Goldberg compartilhada por duas regiões
 
-StrategicVertex = junção topológica
+StrategicVertex = vértice Goldberg onde três regiões se encontram
+
+O grafo utilizado por algoritmos estratégicos possui um nó por `StrategicCell` e uma conexão quando duas células compartilham um `StrategicEdge`.
 
 A simulação estratégica trabalha prioritariamente sobre esse grafo.
 
@@ -2379,6 +2381,63 @@ Cada `StrategicCell` representa uma região capaz de possuir estado e propriedad
 A renderização 3D é uma projeção dessa estrutura lógica.
 
 A topologia estratégica não depende da Unity.
+
+## 11.1 Goldberg combinatorial baseline
+
+Para a família icosaédrica de Goldberg, com `m` e `n` inteiros não negativos e não ambos zero:
+
+`T = m² + mn + n²`
+
+As contagens esperadas são:
+
+- `StrategicCell count = 10T + 2`;
+- `StrategicEdge count = 30T`;
+- `StrategicVertex count = 20T`;
+- pentágonos = `12`;
+- hexágonos = `10(T - 1)`.
+
+A identidade:
+
+`StrategicVertex count - StrategicEdge count + StrategicCell count = 2`
+
+deve ser preservada.
+
+Cada célula pentagonal possui grau cinco.
+
+Cada célula hexagonal possui grau seis.
+
+Cada `StrategicEdge` possui exatamente duas células incidentes.
+
+Cada `StrategicVertex` possui exatamente três células incidentes.
+
+O grafo de células deve ser conexo.
+
+`G(1,0)` é o caso mínimo de referência e corresponde ao dodecaedro:
+
+- 12 células/faces;
+- 30 arestas;
+- 20 vértices.
+
+## 11.2 Separação entre topologia e embedding
+
+Identidade, adjacência e incidência são fatos combinatórios.
+
+Coordenadas de ponto flutuante não são fonte de verdade topológica.
+
+A realização visual poderá utilizar projeção esférica, embedding poliédrico ou triangulação, mas a topologia deverá permanecer idêntica.
+
+Não é assumido que uma projeção que coloque todos os vértices exatamente sobre uma esfera preserve simultaneamente a planicidade exata de todas as faces Goldberg.
+
+## 11.3 Determinismo topológico
+
+Para os mesmos parâmetros e a mesma versão do gerador, a topologia deverá produzir:
+
+- as mesmas entidades;
+- as mesmas identidades;
+- as mesmas adjacências;
+- as mesmas incidências.
+
+A identidade lógica não poderá depender da ordem de alocação, enumeração de coleções não ordenadas ou detalhes específicos de runtime.
 
 ---
 
@@ -2405,11 +2464,21 @@ Uma região tática poderá possuir grande quantidade de microtiles e, futuramen
 
 A resolução tática não deve determinar diretamente o custo dos sistemas estratégicos recorrentes.
 
-A arquitetura assume inicialmente que o refinamento hierárquico poderá ser aplicado de forma geral sobre topologias Goldberg `G(m,n)`.
+A arquitetura assume inicialmente que refinamentos hierárquicos poderão ser construídos sobre topologias Goldberg `G(m,n)`.
 
-Essa propriedade será tratada como hipótese até validação geométrica em M2.
+Essa propriedade permanece hipótese até validação em M2.
 
-Caso a hipótese geral não se sustente, o suporte poderá ser reduzido para famílias específicas sem alterar a separação estratégico/tática.
+Não é assumido que um `G(p,q)` de maior resolução seja automaticamente um refinamento pai-filho válido de qualquer `G(m,n)`.
+
+Compatibilidade de submalha, orientação, pertencimento e fronteiras deverá ser demonstrada.
+
+Caso a hipótese geral não se sustente, o suporte poderá ser reduzido para famílias ou combinações específicas sem alterar a separação estratégico/tática.
+
+O requisito de fileiras compartilhadas de subtiles permanece parte do V1.
+
+Uma entidade tática compartilhada não poderá existir como duas identidades lógicas independentes apenas porque é observada a partir de duas regiões vizinhas.
+
+A forma de ownership dessas entidades permanece aberta para M2.
 
 ---
 
@@ -2430,6 +2499,12 @@ Essa correspondência deverá preservar:
 A representação concreta da fronteira ainda não está congelada.
 
 Ela poderá envolver faixas compartilhadas, mapeamentos de borda ou outra estrutura que preserve os invariantes necessários.
+
+Quando uma faixa ou subtile for compartilhado, deverá existir uma identidade canônica única e incidência explícita às regiões estratégicas relevantes.
+
+A correspondência vista de lados opostos da mesma fronteira deverá ser determinística e recíproca.
+
+Ownership por `StrategicEdge`, incidência múltipla ou uma estrutura própria de border band permanecem alternativas em investigação.
 
 O estado estratégico de uma conexão poderá ser derivado do estado tático correspondente.
 

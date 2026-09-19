@@ -4678,3 +4678,135 @@ Objetivos imediatos:
 - mapear o risco de pertencimento pai-filho e fronteiras estratégico/tático;
 - determinar quais hipóteses exigem spike antes de contratos de produção;
 - preservar geração e testes headless, sem dependência da Unity.
+
+---
+
+## 2026-09-19 — M2.1.1 Goldberg Hierarchy Invariants Audit concluído
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.1 — Goldberg Topology Foundation**
+
+Subcheckpoint:
+
+**M2.1.1 — Goldberg Hierarchy Invariants Audit**
+
+### Progresso oficial
+
+GPP conquistados:
+
+**70.00 / 1000**
+
+Global Progress:
+
+**7.0%**
+
+Topologia planetária / Goldberg:
+
+**0.00 / 90 GPP — 0.0%**
+
+GPP adicionais neste subcheckpoint:
+
+**+0.00 GPP**
+
+### Justificativa
+
+M2.1.1 é um audit arquitetural e matemático.
+
+Ele congela invariantes e reduz ambiguidade antes do primeiro contrato de produção, mas não implementa capability nem estabelece ainda contratos executáveis suficientes para promoção de maturidade.
+
+### Achados matemáticos congelados
+
+Para a família icosaédrica Goldberg:
+
+`T = m² + mn + n²`
+
+Contagens:
+
+- faces / StrategicCells: `10T + 2`;
+- arestas / StrategicEdges: `30T`;
+- vértices / StrategicVertices: `20T`;
+- pentágonos: `12`;
+- hexágonos: `10(T - 1)`.
+
+Invariantes:
+
+- Euler = 2;
+- exatamente 12 pentágonos;
+- células pentagonais possuem grau 5;
+- células hexagonais possuem grau 6;
+- cada aresta possui duas células incidentes;
+- cada vértice possui três células incidentes;
+- grafo de células conexo.
+
+Caso mínimo:
+
+`G(1,0)` = dodecaedro = 12 faces, 30 arestas e 20 vértices.
+
+### Achados arquiteturais
+
+- `StrategicCell` corresponde a uma face Goldberg, não a um vértice Goldberg;
+- o grafo estratégico é o grafo de adjacência entre essas faces;
+- topologia lógica deve ser separada do embedding/renderização;
+- ponto flutuante não poderá definir identidade ou adjacência;
+- projeção esférica exata e planicidade exata de todas as faces não são assumidas simultaneamente;
+- a universalidade do refinamento `G(m,n)` permanece hipótese;
+- um Goldberg de maior resolução não é considerado automaticamente filho de outro;
+- o V1 exige fileiras compartilhadas de subtiles;
+- elementos táticos compartilhados deverão possuir identidade canônica única;
+- ownership exato de border bands permanece aberto para investigação.
+
+### Decomposição GPP de M2
+
+O orçamento de 90 GPP foi decomposto sem alterar o baseline global:
+
+- Goldberg parameterization e geração estratégica: 16;
+- Strategic graph: identidade, incidência e adjacência: 12;
+- Tactical region topology: 14;
+- Shared subtile border bands: 16;
+- Strategic ↔ tactical hierarchy/refinement mapping: 16;
+- Canonical deterministic topology generation: 6;
+- Topological validation e navigability: 6;
+- Scalability / headless performance baseline: 4.
+
+Total:
+
+**90 GPP**
+
+### Riscos
+
+`RISK-003 — Goldberg hierarchy mapping` passa de `OPEN` para `MITIGATING`.
+
+Probability, Impact e Score permanecem:
+
+**2 / 4 / 8 — HIGH**
+
+A incerteza ainda existe, mas a mitigação agora possui invariantes objetivos e uma sequência de validação.
+
+### Scope Change
+
+Nenhum.
+
+O baseline V1 permanece:
+
+**1000 GPP**
+
+### Próximo subcheckpoint
+
+**M2.1.2 — Goldberg Parameter & Count Contract**
+
+Objetivos:
+
+- criar um value object mínimo para os parâmetros Goldberg;
+- rejeitar parâmetros inválidos;
+- calcular `T`;
+- expor contagens canônicas esperadas;
+- provar o caso `G(1,0)`;
+- provar casos de referência adicionais;
+- não gerar ainda a topologia;
+- não introduzir geometria 3D;
+- manter o contrato headless, determinístico e cross-platform.

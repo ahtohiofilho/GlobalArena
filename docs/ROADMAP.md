@@ -314,17 +314,29 @@ Gate:
 
 o planeta forma uma topologia fechada e navegável sem depender da Unity, e a relação estratégico → tático está demonstrada para o conjunto de famílias Goldberg oficialmente suportado.
 
-Stage inicial:
+Stages planejados:
 
 **M2.1 — Goldberg Topology Foundation**
 
-Subcheckpoint inicial:
+- M2.1.1 — Goldberg Hierarchy Invariants Audit;
+- M2.1.2 — Goldberg Parameter & Count Contract;
+- M2.1.3 — Strategic Topology Identity Contract;
+- M2.1.4 — Minimal G(1,0) Strategic Topology;
+- M2.1.5 — General Icosahedral Goldberg Generation.
 
-**M2.1.1 — Goldberg Hierarchy Invariants Audit**
+**M2.2 — Tactical Region Topology**
 
-Objetivo do primeiro subcheckpoint:
+**M2.3 — Shared Border Bands & Strategic/Tactical Mapping**
 
-auditar e congelar os invariantes matemáticos e arquiteturais necessários antes da implementação da topologia de produção.
+**M2.4 — Goldberg Family & Refinement Validation**
+
+**M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate**
+
+M2.1.1 está concluído em 2026-09-19.
+
+Próximo subcheckpoint:
+
+**M2.1.2 — Goldberg Parameter & Count Contract**
 
 ---
 
@@ -612,7 +624,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M2.1.1 — Goldberg Hierarchy Invariants Audit**
+**M2.1.2 — Goldberg Parameter & Count Contract**
 
 Official Progress:
 

@@ -286,6 +286,30 @@ Os pesos abaixo representam o orçamento funcional inicial do V1.
 | Performance / QA / release | 6% |
 | **TOTAL** | **100%** |
 
+## 15.1 Decomposição de Topologia planetária / Goldberg
+
+O orçamento congelado da área é:
+
+**90 GPP**
+
+A decomposição operacional inicial de M2 é:
+
+| Capability | GPP |
+|---|---:|
+| Goldberg parameterization e geração estratégica | 16 |
+| Strategic graph: identidade, incidência e adjacência | 12 |
+| Tactical region topology | 14 |
+| Shared subtile border bands | 16 |
+| Strategic ↔ tactical hierarchy/refinement mapping | 16 |
+| Canonical deterministic topology generation | 6 |
+| Topological validation e navigability | 6 |
+| Scalability / headless performance baseline | 4 |
+| **TOTAL** | **90** |
+
+M2.1.1 é um audit arquitetural e não promove maturidade por si só.
+
+A primeira promoção de GPP depende de contratos executáveis ou especificações de capability suficientemente fechadas nos subcheckpoints seguintes.
+
 Esses pesos constituem o baseline inicial.
 
 Novas tarefas descobertas dentro de uma área não aumentam automaticamente o peso do V1.
@@ -503,7 +527,7 @@ Etapa:
 
 Subetapa atual:
 
-**M2.1.1 — Goldberg Hierarchy Invariants Audit**
+**M2.1.2 — Goldberg Parameter & Count Contract**
 
 M0 — Project Baseline:
 

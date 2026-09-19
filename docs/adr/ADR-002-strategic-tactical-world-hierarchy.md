@@ -63,7 +63,11 @@ A forma exata dos contratos de agregação será definida quando os respectivos 
 
 ### Goldberg refinement hypothesis
 
-A arquitetura assume inicialmente que a relação hierárquica estratégico → tático poderá ser construída sobre poliedros Goldberg `G(m,n)` de forma geral.
+A arquitetura assume inicialmente que relações hierárquicas estratégico → tático poderão ser construídas sobre poliedros Goldberg `G(m,n)`.
+
+Não é assumido que qualquer `G(p,q)` de maior resolução refine automaticamente qualquer `G(m,n)`.
+
+Compatibilidade de submalha, orientação e fronteiras deverá ser demonstrada.
 
 Essa universalidade ainda não é considerada demonstrada.
 
@@ -80,6 +84,8 @@ M2 deverá validar:
 Caso limitações sejam encontradas, o conjunto de famílias suportadas poderá ser reduzido sem alterar a arquitetura fundamental de duas escalas.
 
 A representação exata das fronteiras táticas entre regiões permanece uma decisão de implementação de M2.
+
+O requisito V1 de fileiras compartilhadas de subtiles implica que elementos de fronteira compartilhados deverão possuir identidade canônica única e incidência explícita, sem duplicação lógica silenciosa entre tabuleiros vizinhos.
 
 ## Consequences
 
