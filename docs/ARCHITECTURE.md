@@ -1954,7 +1954,54 @@ Ainda não existem implementações concretas de:
 - deadline/timed;
 - correspondence.
 
-O próximo passo é introduzir a primeira policy concreta dirigida exclusivamente por readiness.
+A primeira implementação concreta baseada exclusivamente em readiness é descrita pela seção 9.2.
+
+## 9.2 Manual Ready Turn Policy
+
+`ManualReadyTurnPolicy` implementa `ITurnPolicy` com a regra mínima para fechamento manual da janela de ordens.
+
+A decisão é:
+
+`AllRequiredParticipantsReady = false`
+
+→ manter a janela aberta
+
+`AllRequiredParticipantsReady = true`
+
+→ fechar a janela
+
+### Independência de deadline
+
+`ExternalDeadlineReached` não participa da decisão desta policy.
+
+Portanto, quando readiness é `false`, a janela permanece aberta mesmo que:
+
+`ExternalDeadlineReached = true`
+
+Da mesma forma, quando readiness é `true`, a janela fecha independentemente do valor do deadline externo.
+
+Essa separação impede que uma policy manual adquira implicitamente comportamento temporizado.
+
+### Determinismo
+
+A policy depende apenas dos valores contidos em `TurnPolicyInput`.
+
+Ela não consulta:
+
+- relógio do sistema;
+- timers;
+- UI;
+- networking;
+- estado global.
+
+Para a mesma entrada, a decisão é a mesma.
+
+### Limites
+
+`ManualReadyTurnPolicy` ainda não está integrada a um orquestrador que decida quando chamar `TurnResolver`.
+
+O próximo passo é implementar a primeira policy baseada em deadline externo, reutilizando o mesmo contrato sem introduzir leitura de relógio dentro da Simulation.
+
 
 ---
 

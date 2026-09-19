@@ -3513,3 +3513,115 @@ Objetivos:
 - manter a decisão pura e sem acesso a relógio;
 - testar comportamento aberto e fechado;
 - não integrar ainda a policy ao `TurnResolver`.
+
+---
+
+## 2026-09-19 — M1.4.2 Manual Ready Turn Policy concluído
+
+Milestone:
+
+**M1 — Deterministic Simulation Kernel**
+
+Stage:
+
+**M1.4 — Turn Policy Foundation**
+
+Subcheckpoint:
+
+**M1.4.2 — Manual Ready Turn Policy**
+
+### Progresso oficial
+
+GPP conquistados:
+
+**58.45 / 1000**
+
+Global Progress:
+
+**5.8%**
+
+Foundation / Simulation Kernel:
+
+**58.45 / 70 GPP — 83.5%**
+
+GPP adicionais conquistados neste subcheckpoint:
+
+**+0.90 GPP**
+
+A capability `Turn policies`, com orçamento de 3 GPP, passa de:
+
+**Especificada — fator 0.20 — 0.60 GPP**
+
+para:
+
+**Funcional isoladamente — fator 0.50 — 1.50 GPP**
+
+Incremento:
+
+**+0.90 GPP**
+
+### Justificativa de maturidade
+
+A capability deixa de possuir somente contrato e passa a ter uma implementação concreta, executável e testada em isolamento.
+
+Ela ainda não é `Integrada`, porque nenhuma Turn Policy participa do fluxo que antecede o `TurnResolver`.
+
+### Concluído
+
+- `ManualReadyTurnPolicy` implementada;
+- input nulo é rejeitado;
+- readiness `false` mantém a janela aberta;
+- readiness `true` fecha a janela;
+- `ExternalDeadlineReached` não interfere na decisão manual;
+- a policy não consulta relógio de parede;
+- a policy não acessa UI;
+- a policy não acessa networking;
+- a policy não altera `WorldState`;
+- nenhuma alteração foi feita no `TurnResolver`.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- warnings de build: 0;
+- erros de build: 0;
+- testes totais: 93;
+- testes aprovados: 93;
+- falhas: 0;
+- `NullInputIsRejected`: aprovado;
+- `NotReadyKeepsTurnOpenRegardlessOfDeadlineSignal`: aprovado;
+- `AllRequiredParticipantsReadyClosesTurnRegardlessOfDeadlineSignal`: aprovado;
+- `git diff --check`: aprovado;
+- SHA-256 dos dois arquivos novos verificado no pacote de evidências.
+
+### Scope Change
+
+Nenhum.
+
+O total permanece:
+
+**1000 GPP**
+
+### Riscos
+
+`RISK-004 — Determinism failure` permanece `MITIGATING`.
+
+A primeira Turn Policy concreta é pura e determinística, mas ainda falta a policy baseada em deadline e a integração do mecanismo de fechamento com a resolução.
+
+### Critical Path
+
+Permanece:
+
+**Turn Policies determinísticas compartilhando o mesmo TurnResolver**
+
+### Próximo subcheckpoint
+
+**M1.4.3 — External Deadline Turn Policy**
+
+Objetivos:
+
+- implementar uma policy concreta baseada exclusivamente em `ExternalDeadlineReached`;
+- fechar a janela quando o deadline externo estiver atingido;
+- ignorar readiness nessa policy;
+- manter a Simulation sem leitura direta de relógio;
+- provar que o mesmo contrato suporta comportamento temporizado sem acoplamento temporal;
+- não integrar ainda a policy ao `TurnResolver`.

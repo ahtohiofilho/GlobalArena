@@ -581,7 +581,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M1.4.2 — Manual Ready Turn Policy**
+**M1.4.3 — External Deadline Turn Policy**
 
 Official Progress:
 
@@ -589,11 +589,11 @@ Official Progress:
 
 GPP Earned:
 
-**57.55 / 1000**
+**58.45 / 1000**
 
 Foundation / Simulation Kernel:
 
-**57.55 / 70 GPP — 82.2%**
+**58.45 / 70 GPP — 83.5%**
 
 Scope Confidence:
 
