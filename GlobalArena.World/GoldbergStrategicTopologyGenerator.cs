@@ -2,7 +2,7 @@ namespace GlobalArena.World;
 
 public static class GoldbergStrategicTopologyGenerator
 {
-    private static readonly CanonicalTriangle[] G10IcosahedronFaces =
+    private static readonly CanonicalTriangle[] IcosahedronFaces =
         new CanonicalTriangle[]
         {
             new(1, 2, 3),
@@ -37,54 +37,188 @@ public static class GoldbergStrategicTopologyGenerator
                 nameof(parameters));
         }
 
-        if (parameters.M != 1 || parameters.N != 0)
+        if (parameters.M != 0 && parameters.N != 0)
         {
             throw new NotSupportedException(
-                "M2.1.4 supports only the minimal G(1,0) strategic topology.");
+                "M2.1.5.A supports Class I Goldberg topologies only: G(m,0) or G(0,n).");
         }
 
-        return GenerateG10(parameters);
+        var frequency =
+            Math.Max(
+                parameters.M,
+                parameters.N);
+
+        return GenerateClassI(
+            parameters,
+            frequency);
     }
 
-    private static StrategicTopology GenerateG10(
-        GoldbergParameters parameters)
+    private static StrategicTopology GenerateClassI(
+        GoldbergParameters parameters,
+        int frequency)
     {
-        var canonicalPairs =
-            G10IcosahedronFaces
-                .SelectMany(GetPairs)
-                .Distinct()
-                .OrderBy(pair => pair.First)
-                .ThenBy(pair => pair.Second)
-                .ToArray();
+        EnsureMaterializable(parameters);
 
-        if (canonicalPairs.Length != 30)
+        var vertexKeys =
+            new HashSet<ClassILatticeVertexKey>();
+
+        foreach (var face in IcosahedronFaces)
         {
-            throw new InvalidOperationException(
-                "Canonical G(1,0) seed must contain exactly 30 unique edges.");
+            for (var i = 0; i <= frequency; i++)
+            {
+                for (var j = 0; j <= frequency - i; j++)
+                {
+                    vertexKeys.Add(
+                        CreateClassIVertexKey(
+                            face,
+                            frequency,
+                            i,
+                            j));
+                }
+            }
         }
 
-        var edgeIdsByPair =
-            new Dictionary<CanonicalPair, StrategicEdgeId>();
+        var orderedVertexKeys =
+            vertexKeys
+                .Order()
+                .ToArray();
 
-        var vertexIdsByPair =
-            canonicalPairs.ToDictionary(
-                pair => pair,
-                _ => new List<StrategicVertexId>());
-
-        for (var index = 0; index < canonicalPairs.Length; index++)
+        if ((ulong)orderedVertexKeys.Length
+            != parameters.StrategicCellCount)
         {
-            edgeIdsByPair.Add(
-                canonicalPairs[index],
-                new StrategicEdgeId(
+            throw new InvalidOperationException(
+                "Class I subdivision produced an unexpected strategic cell count.");
+        }
+
+        var cellIdsByVertexKey =
+            new Dictionary<ClassILatticeVertexKey, StrategicCellId>(
+                orderedVertexKeys.Length);
+
+        for (var index = 0; index < orderedVertexKeys.Length; index++)
+        {
+            cellIdsByVertexKey.Add(
+                orderedVertexKeys[index],
+                new StrategicCellId(
                     (ulong)index + 1UL));
         }
 
-        var vertices =
-            new StrategicVertex[G10IcosahedronFaces.Length];
+        var triangleKeys =
+            new HashSet<CanonicalCellTriple>();
 
-        for (var index = 0; index < G10IcosahedronFaces.Length; index++)
+        foreach (var face in IcosahedronFaces)
         {
-            var triangle = G10IcosahedronFaces[index];
+            for (var i = 0; i < frequency; i++)
+            {
+                for (var j = 0; j < frequency - i; j++)
+                {
+                    triangleKeys.Add(
+                        CanonicalCellTriple.Create(
+                            GetCellId(
+                                face,
+                                frequency,
+                                i,
+                                j,
+                                cellIdsByVertexKey),
+                            GetCellId(
+                                face,
+                                frequency,
+                                i + 1,
+                                j,
+                                cellIdsByVertexKey),
+                            GetCellId(
+                                face,
+                                frequency,
+                                i,
+                                j + 1,
+                                cellIdsByVertexKey)));
+
+                    if (i + j <= frequency - 2)
+                    {
+                        triangleKeys.Add(
+                            CanonicalCellTriple.Create(
+                                GetCellId(
+                                    face,
+                                    frequency,
+                                    i + 1,
+                                    j,
+                                    cellIdsByVertexKey),
+                                GetCellId(
+                                    face,
+                                    frequency,
+                                    i + 1,
+                                    j + 1,
+                                    cellIdsByVertexKey),
+                                GetCellId(
+                                    face,
+                                    frequency,
+                                    i,
+                                    j + 1,
+                                    cellIdsByVertexKey)));
+                    }
+                }
+            }
+        }
+
+        var orderedTriangleKeys =
+            triangleKeys
+                .Order()
+                .ToArray();
+
+        if ((ulong)orderedTriangleKeys.Length
+            != parameters.StrategicVertexCount)
+        {
+            throw new InvalidOperationException(
+                "Class I subdivision produced an unexpected strategic vertex count.");
+        }
+
+        var orderedEdgeKeys =
+            orderedTriangleKeys
+                .SelectMany(GetPairs)
+                .Distinct()
+                .Order()
+                .ToArray();
+
+        if ((ulong)orderedEdgeKeys.Length
+            != parameters.StrategicEdgeCount)
+        {
+            throw new InvalidOperationException(
+                "Class I subdivision produced an unexpected strategic edge count.");
+        }
+
+        var edgeIdsByPair =
+            new Dictionary<CanonicalCellPair, StrategicEdgeId>(
+                orderedEdgeKeys.Length);
+
+        var incidentVertexIdsByEdge =
+            new Dictionary<CanonicalCellPair, List<StrategicVertexId>>(
+                orderedEdgeKeys.Length);
+
+        for (var index = 0; index < orderedEdgeKeys.Length; index++)
+        {
+            edgeIdsByPair.Add(
+                orderedEdgeKeys[index],
+                new StrategicEdgeId(
+                    (ulong)index + 1UL));
+
+            incidentVertexIdsByEdge.Add(
+                orderedEdgeKeys[index],
+                new List<StrategicVertexId>(2));
+        }
+
+        var cellCount = orderedVertexKeys.Length;
+        var adjacentCellIds =
+            CreateSetArray<StrategicCellId>(cellCount);
+        var incidentEdgeIdsByCell =
+            CreateSetArray<StrategicEdgeId>(cellCount);
+        var incidentVertexIdsByCell =
+            CreateSetArray<StrategicVertexId>(cellCount);
+
+        var vertices =
+            new StrategicVertex[orderedTriangleKeys.Length];
+
+        for (var index = 0; index < orderedTriangleKeys.Length; index++)
+        {
+            var triangle = orderedTriangleKeys[index];
             var vertexId =
                 new StrategicVertexId(
                     (ulong)index + 1UL);
@@ -98,107 +232,112 @@ public static class GoldbergStrategicTopologyGenerator
             vertices[index] =
                 new StrategicVertex(
                     vertexId,
-                    new[]
-                    {
-                        new StrategicCellId((ulong)triangle.First),
-                        new StrategicCellId((ulong)triangle.Second),
-                        new StrategicCellId((ulong)triangle.Third)
-                    },
+                    triangle.ToArray(),
                     incidentEdgeIds);
+
+            foreach (var cellId in triangle.ToArray())
+            {
+                incidentVertexIdsByCell[
+                    checked((int)cellId.Value - 1)]
+                    .Add(vertexId);
+            }
 
             foreach (var pair in pairs)
             {
-                vertexIdsByPair[pair].Add(vertexId);
+                incidentVertexIdsByEdge[pair]
+                    .Add(vertexId);
             }
         }
 
         var edges =
-            new StrategicEdge[canonicalPairs.Length];
+            new StrategicEdge[orderedEdgeKeys.Length];
 
-        for (var index = 0; index < canonicalPairs.Length; index++)
+        for (var index = 0; index < orderedEdgeKeys.Length; index++)
         {
-            var pair = canonicalPairs[index];
+            var pair = orderedEdgeKeys[index];
             var incidentVertexIds =
-                vertexIdsByPair[pair]
+                incidentVertexIdsByEdge[pair]
                     .OrderBy(id => id.Value)
                     .ToArray();
 
             if (incidentVertexIds.Length != 2)
             {
                 throw new InvalidOperationException(
-                    "Every canonical G(1,0) edge must have exactly two incident vertices.");
+                    "Every Class I strategic edge must have exactly two incident strategic vertices.");
             }
+
+            var edgeId =
+                new StrategicEdgeId(
+                    (ulong)index + 1UL);
 
             edges[index] =
                 new StrategicEdge(
-                    new StrategicEdgeId(
-                        (ulong)index + 1UL),
-                    new StrategicCellId(
-                        (ulong)pair.First),
-                    new StrategicCellId(
-                        (ulong)pair.Second),
+                    edgeId,
+                    pair.First,
+                    pair.Second,
                     incidentVertexIds[0],
                     incidentVertexIds[1]);
+
+            var firstIndex =
+                checked((int)pair.First.Value - 1);
+            var secondIndex =
+                checked((int)pair.Second.Value - 1);
+
+            adjacentCellIds[firstIndex]
+                .Add(pair.Second);
+            adjacentCellIds[secondIndex]
+                .Add(pair.First);
+
+            incidentEdgeIdsByCell[firstIndex]
+                .Add(edgeId);
+            incidentEdgeIdsByCell[secondIndex]
+                .Add(edgeId);
         }
 
         var cells =
-            new StrategicCell[12];
+            new StrategicCell[cellCount];
 
-        for (var cellOrdinal = 1; cellOrdinal <= cells.Length; cellOrdinal++)
+        var pentagonCount = 0;
+        var hexagonCount = 0;
+
+        for (var index = 0; index < cellCount; index++)
         {
-            var cellId =
-                new StrategicCellId(
-                    (ulong)cellOrdinal);
+            var degree =
+                adjacentCellIds[index].Count;
 
-            var adjacentCellIds =
-                canonicalPairs
-                    .Where(pair => pair.Contains(cellOrdinal))
-                    .Select(
-                        pair =>
-                            new StrategicCellId(
-                                (ulong)pair.Other(cellOrdinal)))
-                    .OrderBy(id => id.Value)
-                    .ToArray();
+            var kind =
+                degree switch
+                {
+                    5 => StrategicCellKind.Pentagon,
+                    6 => StrategicCellKind.Hexagon,
+                    _ => throw new InvalidOperationException(
+                        $"Class I strategic cell degree must be 5 or 6, but was {degree}.")
+                };
 
-            var incidentEdgeIds =
-                canonicalPairs
-                    .Select(
-                        (pair, index) =>
-                            new
-                            {
-                                Pair = pair,
-                                Id =
-                                    new StrategicEdgeId(
-                                        (ulong)index + 1UL)
-                            })
-                    .Where(item => item.Pair.Contains(cellOrdinal))
-                    .Select(item => item.Id)
-                    .OrderBy(id => id.Value)
-                    .ToArray();
+            if (kind == StrategicCellKind.Pentagon)
+            {
+                pentagonCount++;
+            }
+            else
+            {
+                hexagonCount++;
+            }
 
-            var incidentVertexIds =
-                G10IcosahedronFaces
-                    .Select(
-                        (triangle, index) =>
-                            new
-                            {
-                                Triangle = triangle,
-                                Id =
-                                    new StrategicVertexId(
-                                        (ulong)index + 1UL)
-                            })
-                    .Where(item => item.Triangle.Contains(cellOrdinal))
-                    .Select(item => item.Id)
-                    .OrderBy(id => id.Value)
-                    .ToArray();
-
-            cells[cellOrdinal - 1] =
+            cells[index] =
                 new StrategicCell(
-                    cellId,
-                    StrategicCellKind.Pentagon,
-                    adjacentCellIds,
-                    incidentEdgeIds,
-                    incidentVertexIds);
+                    new StrategicCellId(
+                        (ulong)index + 1UL),
+                    kind,
+                    adjacentCellIds[index],
+                    incidentEdgeIdsByCell[index],
+                    incidentVertexIdsByCell[index]);
+        }
+
+        if ((ulong)pentagonCount != parameters.PentagonCount
+            || (ulong)hexagonCount != parameters.HexagonCount)
+        {
+            throw new InvalidOperationException(
+                "Class I subdivision produced unexpected pentagon or hexagon counts.");
         }
 
         return new StrategicTopology(
@@ -208,75 +347,293 @@ public static class GoldbergStrategicTopologyGenerator
             vertices);
     }
 
-    private static CanonicalPair[] GetPairs(
-        CanonicalTriangle triangle)
+    private static StrategicCellId GetCellId(
+        CanonicalTriangle face,
+        int frequency,
+        int i,
+        int j,
+        IReadOnlyDictionary<ClassILatticeVertexKey, StrategicCellId> cellIdsByVertexKey)
+    {
+        return cellIdsByVertexKey[
+            CreateClassIVertexKey(
+                face,
+                frequency,
+                i,
+                j)];
+    }
+
+    private static ClassILatticeVertexKey CreateClassIVertexKey(
+        CanonicalTriangle face,
+        int frequency,
+        int i,
+        int j)
+    {
+        if (i < 0
+            || j < 0
+            || i + j > frequency)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(i),
+                "Class I barycentric coordinates must lie inside the seed face.");
+        }
+
+        return ClassILatticeVertexKey.Create(
+            face.First,
+            frequency - i - j,
+            face.Second,
+            i,
+            face.Third,
+            j);
+    }
+
+    private static HashSet<T>[] CreateSetArray<T>(
+        int count)
+        where T : notnull
+    {
+        var result =
+            new HashSet<T>[count];
+
+        for (var index = 0; index < count; index++)
+        {
+            result[index] =
+                new HashSet<T>();
+        }
+
+        return result;
+    }
+
+    private static CanonicalCellPair[] GetPairs(
+        CanonicalCellTriple triangle)
     {
         return new[]
         {
-            CanonicalPair.Create(
+            CanonicalCellPair.Create(
                 triangle.First,
                 triangle.Second),
-            CanonicalPair.Create(
+            CanonicalCellPair.Create(
                 triangle.First,
                 triangle.Third),
-            CanonicalPair.Create(
+            CanonicalCellPair.Create(
                 triangle.Second,
                 triangle.Third)
         };
     }
 
-    private readonly record struct CanonicalPair(
-        int First,
-        int Second)
+    private static void EnsureMaterializable(
+        GoldbergParameters parameters)
     {
-        public static CanonicalPair Create(
-            int first,
-            int second)
+        if (parameters.StrategicCellCount > int.MaxValue
+            || parameters.StrategicEdgeCount > int.MaxValue
+            || parameters.StrategicVertexCount > int.MaxValue)
+        {
+            throw new NotSupportedException(
+                "Requested Goldberg topology exceeds the current in-memory implementation limit.");
+        }
+    }
+
+    private readonly record struct ClassILatticeVertexKey(
+        int FirstVertex,
+        int FirstWeight,
+        int SecondVertex,
+        int SecondWeight,
+        int ThirdVertex,
+        int ThirdWeight)
+        : IComparable<ClassILatticeVertexKey>
+    {
+        public static ClassILatticeVertexKey Create(
+            int firstVertex,
+            int firstWeight,
+            int secondVertex,
+            int secondWeight,
+            int thirdVertex,
+            int thirdWeight)
+        {
+            var weightedVertices =
+                new[]
+                {
+                    new WeightedSeedVertex(
+                        firstVertex,
+                        firstWeight),
+                    new WeightedSeedVertex(
+                        secondVertex,
+                        secondWeight),
+                    new WeightedSeedVertex(
+                        thirdVertex,
+                        thirdWeight)
+                }
+                .Where(item => item.Weight > 0)
+                .OrderBy(item => item.Vertex)
+                .ToArray();
+
+            return new ClassILatticeVertexKey(
+                weightedVertices.ElementAtOrDefault(0).Vertex,
+                weightedVertices.ElementAtOrDefault(0).Weight,
+                weightedVertices.ElementAtOrDefault(1).Vertex,
+                weightedVertices.ElementAtOrDefault(1).Weight,
+                weightedVertices.ElementAtOrDefault(2).Vertex,
+                weightedVertices.ElementAtOrDefault(2).Weight);
+        }
+
+        public int CompareTo(
+            ClassILatticeVertexKey other)
+        {
+            var comparison =
+                FirstVertex.CompareTo(
+                    other.FirstVertex);
+
+            if (comparison != 0)
+            {
+                return comparison;
+            }
+
+            comparison =
+                FirstWeight.CompareTo(
+                    other.FirstWeight);
+
+            if (comparison != 0)
+            {
+                return comparison;
+            }
+
+            comparison =
+                SecondVertex.CompareTo(
+                    other.SecondVertex);
+
+            if (comparison != 0)
+            {
+                return comparison;
+            }
+
+            comparison =
+                SecondWeight.CompareTo(
+                    other.SecondWeight);
+
+            if (comparison != 0)
+            {
+                return comparison;
+            }
+
+            comparison =
+                ThirdVertex.CompareTo(
+                    other.ThirdVertex);
+
+            return comparison != 0
+                ? comparison
+                : ThirdWeight.CompareTo(
+                    other.ThirdWeight);
+        }
+    }
+
+    private readonly record struct WeightedSeedVertex(
+        int Vertex,
+        int Weight);
+
+    private readonly record struct CanonicalCellPair(
+        StrategicCellId First,
+        StrategicCellId Second)
+        : IComparable<CanonicalCellPair>
+    {
+        public static CanonicalCellPair Create(
+            StrategicCellId first,
+            StrategicCellId second)
         {
             if (first == second)
             {
                 throw new ArgumentException(
-                    "Canonical edge endpoints must be distinct.");
+                    "Canonical strategic edge endpoints must be distinct.");
             }
 
-            return first < second
-                ? new CanonicalPair(first, second)
-                : new CanonicalPair(second, first);
+            return first.Value < second.Value
+                ? new CanonicalCellPair(
+                    first,
+                    second)
+                : new CanonicalCellPair(
+                    second,
+                    first);
         }
 
-        public bool Contains(int value)
+        public int CompareTo(
+            CanonicalCellPair other)
         {
-            return First == value || Second == value;
+            var comparison =
+                First.Value.CompareTo(
+                    other.First.Value);
+
+            return comparison != 0
+                ? comparison
+                : Second.Value.CompareTo(
+                    other.Second.Value);
+        }
+    }
+
+    private readonly record struct CanonicalCellTriple(
+        StrategicCellId First,
+        StrategicCellId Second,
+        StrategicCellId Third)
+        : IComparable<CanonicalCellTriple>
+    {
+        public static CanonicalCellTriple Create(
+            StrategicCellId first,
+            StrategicCellId second,
+            StrategicCellId third)
+        {
+            var values =
+                new[]
+                {
+                    first,
+                    second,
+                    third
+                }
+                .OrderBy(id => id.Value)
+                .ToArray();
+
+            if (values.Distinct().Count() != 3)
+            {
+                throw new ArgumentException(
+                    "Canonical strategic triangle must contain three distinct cells.");
+            }
+
+            return new CanonicalCellTriple(
+                values[0],
+                values[1],
+                values[2]);
         }
 
-        public int Other(int value)
+        public StrategicCellId[] ToArray()
         {
-            if (First == value)
+            return new[]
             {
-                return Second;
+                First,
+                Second,
+                Third
+            };
+        }
+
+        public int CompareTo(
+            CanonicalCellTriple other)
+        {
+            var comparison =
+                First.Value.CompareTo(
+                    other.First.Value);
+
+            if (comparison != 0)
+            {
+                return comparison;
             }
 
-            if (Second == value)
-            {
-                return First;
-            }
+            comparison =
+                Second.Value.CompareTo(
+                    other.Second.Value);
 
-            throw new ArgumentOutOfRangeException(
-                nameof(value),
-                "Value is not an endpoint of this canonical edge.");
+            return comparison != 0
+                ? comparison
+                : Third.Value.CompareTo(
+                    other.Third.Value);
         }
     }
 
     private readonly record struct CanonicalTriangle(
         int First,
         int Second,
-        int Third)
-    {
-        public bool Contains(int value)
-        {
-            return First == value
-                || Second == value
-                || Third == value;
-        }
-    }
+        int Third);
 }
