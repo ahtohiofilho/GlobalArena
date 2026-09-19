@@ -581,19 +581,19 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M1.1.10 — Seeded Deterministic Event Ordering**
+**M1.1.11 — Multi-Event Sequential Resolution Path**
 
 Official Progress:
 
-**4.3%**
+**4.5%**
 
 GPP Earned:
 
-**43.25 / 1000**
+**44.75 / 1000**
 
 Foundation / Simulation Kernel:
 
-**43.25 / 70 GPP — 61.8%**
+**44.75 / 70 GPP — 63.9%**
 
 Scope Confidence:
 

@@ -455,7 +455,7 @@ O objetivo deste contrato é estabelecer a fronteira estável entre:
 
 Esta seção preserva o primeiro baseline executável do `TurnResolver`.
 
-As seções 8.3 a 8.8 documentam a evolução posterior e prevalecem sobre as limitações históricas descritas nesta seção.
+As seções 8.3 a 8.10 documentam a evolução posterior e prevalecem sobre as limitações históricas descritas nesta seção.
 
 `TurnResolver` materializa a primeira orquestração executável da pipeline de resolução.
 
@@ -1029,7 +1029,83 @@ O contrato não define ainda:
 - execução sequencial de múltiplos Events;
 - EventLog.
 
-A implementação concreta de ordering determinístico permanece responsabilidade do próximo subcheckpoint.
+A implementação concreta de ordering determinístico é realizada pelo componente descrito em 8.10.
+
+
+## 8.10 Seeded Deterministic Event Ordering
+
+`SeededSimulationEventOrderer` implementa `ISimulationEventOrderer` utilizando o `DeterministicRandom` já estabilizado no Kernel.
+
+O comportamento concreto é:
+
+IReadOnlyList<ISimulationEvent>
++
+SimulationContext.Seed
+
+→ cópia da coleção
+→ deterministic Fisher-Yates
+→ IReadOnlyList<ISimulationEvent> ordenada
+
+### Fonte de aleatoriedade
+
+O orderer cria uma nova instância de:
+
+`DeterministicRandom(context.Seed)`
+
+para cada chamada de `Order`.
+
+O estado mutável do PRNG permanece local à operação e não é armazenado no `SimulationContext`.
+
+Nesse estágio, `TurnNumber` continua fazendo parte do `SimulationContext`, mas não é misturado adicionalmente à seed pelo orderer.
+
+A fonte explícita de aleatoriedade desta capability é `SimulationSeed`.
+
+### Algoritmo
+
+A permutação utiliza Fisher-Yates do último índice para o primeiro.
+
+A seleção do índice de troca utiliza amostragem por rejeição sobre `NextUInt64()` para evitar viés de módulo quando o limite não divide uniformemente o espaço de `UInt64`.
+
+Para a mesma:
+
+- coleção de entrada na mesma ordem;
+- `SimulationSeed`;
+- implementação do PRNG;
+- implementação do algoritmo;
+
+a ordem resultante é reproduzível.
+
+### Imutabilidade da entrada
+
+A coleção fornecida ao orderer não é reorganizada in-place.
+
+O componente cria uma cópia antes do shuffle e devolve uma coleção somente leitura.
+
+A membership é preservada exatamente:
+
+- nenhum Event é criado;
+- nenhum Event é removido;
+- nenhum Event é duplicado pelo algoritmo.
+
+### Casos limite
+
+- coleção vazia produz coleção vazia;
+- coleção unitária preserva o único Event;
+- coleção nula é rejeitada explicitamente.
+
+### Compatibilidade determinística
+
+O teste de referência com seed `0` congela uma permutação conhecida para detectar alterações futuras no comportamento.
+
+Mudanças futuras no `DeterministicRandom`, no algoritmo Fisher-Yates ou na transformação de valores aleatórios em índices deverão ser tratadas como alteração de compatibilidade do comportamento determinístico.
+
+### Limites ainda abertos
+
+O orderer concreto ainda não está integrado ao `TurnResolver`.
+
+O fluxo ainda não executa múltiplos Events sequencialmente e ainda não possui `EventLog`.
+
+O próximo limite arquitetural é integrar ordering ao caminho real e permitir resolução sequencial de múltiplos Events produzidos por um único Command.
 
 ---
 

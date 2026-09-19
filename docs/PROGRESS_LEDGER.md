@@ -2220,3 +2220,129 @@ Objetivos:
 - tratar coleções vazias e unitárias sem efeitos colaterais;
 - manter a implementação ainda isolada do `TurnResolver`;
 - preparar a integração futura de ordering com execução sequencial.
+
+---
+
+## 2026-09-19 — M1.1.10 Seeded Deterministic Event Ordering concluído
+
+Milestone:
+
+**M1 — Deterministic Simulation Kernel**
+
+Stage:
+
+**M1.1 — Non-empty Deterministic Turn Resolution**
+
+Subcheckpoint:
+
+**M1.1.10 — Seeded Deterministic Event Ordering**
+
+### Progresso oficial
+
+GPP conquistados:
+
+**44.75 / 1000**
+
+Global Progress:
+
+**4.5%**
+
+Foundation / Simulation Kernel:
+
+**44.75 / 70 GPP — 63.9%**
+
+GPP adicionais conquistados neste subcheckpoint:
+
+**+1.50 GPP**
+
+A capability `Deterministic shuffle / ordering`, com orçamento de 5 GPP, passa de:
+
+**Especificada — fator 0.20 — 1.00 GPP**
+
+para:
+
+**Funcional isoladamente — fator 0.50 — 2.50 GPP**
+
+Incremento:
+
+**+1.50 GPP**
+
+### Justificativa de maturidade
+
+A capability agora possui implementação concreta isolada e testes automatizados que demonstram comportamento determinístico reproduzível, preservação da coleção de entrada, preservação de membership e tratamento dos casos limite mínimos.
+
+Ela ainda não é classificada como `Integrada`, pois o orderer não participa do fluxo real do `TurnResolver`.
+
+### Concluído
+
+- `SeededSimulationEventOrderer` criado em `GlobalArena.Simulation`;
+- implementação concreta de `ISimulationEventOrderer`;
+- utilização explícita de `DeterministicRandom`;
+- seed obtida de `SimulationContext.Seed`;
+- Fisher-Yates determinístico implementado;
+- seleção limitada por amostragem de rejeição para evitar viés de módulo;
+- mesma entrada e mesmo contexto produzem a mesma ordem;
+- vetor de referência estável definido para seed `0`;
+- membership dos Events é preservada;
+- coleção de entrada não é mutada;
+- coleção vazia é suportada;
+- coleção unitária é suportada;
+- entrada nula é rejeitada;
+- nenhuma alteração foi feita no `TurnResolver`;
+- nenhuma execução sequencial de múltiplos Events foi introduzida;
+- nenhum EventLog foi introduzido.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- warnings de build: 0;
+- erros de build: 0;
+- testes totais: 52;
+- testes aprovados: 52;
+- falhas: 0;
+- `SameInputAndContextProducesSameOrderAcrossCalls`: aprovado;
+- `SeedZeroProducesStableReferenceOrder`: aprovado;
+- `OrderingPreservesMembershipAndDoesNotMutateInput`: aprovado;
+- `EmptyCollectionProducesEmptyOrder`: aprovado;
+- `SingleEventRemainsSingle`: aprovado;
+- `NullEventsAreRejected`: aprovado;
+- `git diff --check`: aprovado;
+- SHA-256 dos dois arquivos novos verificado no pacote de evidências.
+
+### Decisões relevantes
+
+- o algoritmo concreto de ordering é Fisher-Yates;
+- a aleatoriedade é derivada diretamente de `SimulationContext.Seed`;
+- `TurnNumber` não é misturado adicionalmente à seed neste estágio;
+- uma nova instância de PRNG é criada por operação de ordering;
+- o input é copiado antes da permutação;
+- o comportamento de referência passa a fazer parte da compatibilidade determinística;
+- integração com `TurnResolver` permanece para o próximo subcheckpoint.
+
+### Scope Change
+
+Nenhum.
+
+### Novos riscos
+
+Nenhum risco estrutural novo identificado.
+
+`RISK-004 — Determinism failure` permanece relevante, mas a incerteza específica sobre o algoritmo isolado de ordering foi reduzida.
+
+A integração do ordering ao fluxo real ainda precisa provar que múltiplos Events são processados sequencialmente contra o estado autoritativo atualizado.
+
+### Próximo subcheckpoint
+
+**M1.1.11 — Multi-Event Sequential Resolution Path**
+
+Objetivos:
+
+- integrar `ISimulationEventOrderer` ao `TurnResolver`;
+- permitir que um único Command validado produza múltiplos Events;
+- ordenar os Events antes da resolução;
+- revalidar cada Event imediatamente antes de sua execução;
+- revalidar cada Event contra o `WorldState` resultante das execuções anteriores;
+- executar sequencialmente Events aceitos;
+- preservar o estado corrente quando um Event for rejeitado e continuar a sequência;
+- manter múltiplos Commands ainda não suportados;
+- definir explicitamente a semântica de `TurnResolutionResult.Events` para a sequência ordenada.
