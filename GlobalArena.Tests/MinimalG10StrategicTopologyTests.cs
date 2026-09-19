@@ -5,13 +5,13 @@ namespace GlobalArena.Tests;
 public sealed class MinimalG10StrategicTopologyTests
 {
     [Fact]
-    public void UnsupportedGoldbergParametersAreRejected()
+    public void UnsupportedClassIIIParametersAreRejected()
     {
         Assert.Throws<NotSupportedException>(
             () =>
                 GoldbergStrategicTopologyGenerator.Generate(
                     new GoldbergParameters(
-                        1,
+                        2,
                         1)));
     }
 

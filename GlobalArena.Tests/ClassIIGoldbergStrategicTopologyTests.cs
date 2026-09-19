@@ -2,13 +2,12 @@ using GlobalArena.World;
 
 namespace GlobalArena.Tests;
 
-public sealed class ClassIGoldbergStrategicTopologyTests
+public sealed class ClassIIGoldbergStrategicTopologyTests
 {
     [Theory]
-    [InlineData(2, 0, 42, 120, 80, 30)]
-    [InlineData(0, 2, 42, 120, 80, 30)]
-    [InlineData(3, 0, 92, 270, 180, 80)]
-    public void ClassITopologiesHaveExpectedCountsAndDegrees(
+    [InlineData(1, 1, 32, 90, 60, 20)]
+    [InlineData(2, 2, 122, 360, 240, 110)]
+    public void ClassIITopologiesHaveExpectedCountsAndDegrees(
         int m,
         int n,
         int expectedCells,
@@ -93,10 +92,9 @@ public sealed class ClassIGoldbergStrategicTopologyTests
     }
 
     [Theory]
-    [InlineData(2, 0)]
-    [InlineData(0, 2)]
-    [InlineData(3, 0)]
-    public void ClassITopologiesSatisfyGlobalInvariants(
+    [InlineData(1, 1)]
+    [InlineData(2, 2)]
+    public void ClassIITopologiesSatisfyGlobalInvariants(
         int m,
         int n)
     {
@@ -120,12 +118,12 @@ public sealed class ClassIGoldbergStrategicTopologyTests
     }
 
     [Fact]
-    public void RepeatedG20GenerationIsCanonical()
+    public void RepeatedG11GenerationIsCanonical()
     {
         var parameters =
             new GoldbergParameters(
-                2,
-                0);
+                1,
+                1);
 
         var first =
             GoldbergStrategicTopologyGenerator.Generate(
@@ -141,7 +139,7 @@ public sealed class ClassIGoldbergStrategicTopologyTests
     }
 
     [Fact]
-    public void ClassIIIRemainsExplicitlyUnsupportedInTrancheB()
+    public void ClassIIIRemainsUnsupported()
     {
         Assert.Throws<NotSupportedException>(
             () =>
@@ -154,8 +152,8 @@ public sealed class ClassIGoldbergStrategicTopologyTests
             () =>
                 GoldbergStrategicTopologyGenerator.Generate(
                     new GoldbergParameters(
-                        1,
-                        2)));
+                        3,
+                        1)));
     }
 
     private static void AssertReciprocalIncidence(

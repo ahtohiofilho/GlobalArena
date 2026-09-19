@@ -27,6 +27,9 @@ public static class GoldbergStrategicTopologyGenerator
             new(10, 11, 12)
         };
 
+    private static readonly CanonicalTriangle[] ClassIISeedFaces =
+        CreateClassIISeedFaces();
+
     public static StrategicTopology Generate(
         GoldbergParameters parameters)
     {
@@ -37,39 +40,49 @@ public static class GoldbergStrategicTopologyGenerator
                 nameof(parameters));
         }
 
-        if (parameters.M != 0 && parameters.N != 0)
+        if (parameters.M == 0 || parameters.N == 0)
         {
-            throw new NotSupportedException(
-                "M2.1.5.A supports Class I Goldberg topologies only: G(m,0) or G(0,n).");
+            var frequency =
+                Math.Max(
+                    parameters.M,
+                    parameters.N);
+
+            return GenerateFromTriangularSeed(
+                parameters,
+                IcosahedronFaces,
+                frequency);
         }
 
-        var frequency =
-            Math.Max(
-                parameters.M,
-                parameters.N);
+        if (parameters.M == parameters.N)
+        {
+            return GenerateFromTriangularSeed(
+                parameters,
+                ClassIISeedFaces,
+                parameters.M);
+        }
 
-        return GenerateClassI(
-            parameters,
-            frequency);
+        throw new NotSupportedException(
+            "M2.1.5.B supports Class I G(m,0)/G(0,n) and Class II G(k,k); Class III remains unsupported.");
     }
 
-    private static StrategicTopology GenerateClassI(
+    private static StrategicTopology GenerateFromTriangularSeed(
         GoldbergParameters parameters,
+        IReadOnlyList<CanonicalTriangle> seedFaces,
         int frequency)
     {
         EnsureMaterializable(parameters);
 
         var vertexKeys =
-            new HashSet<ClassILatticeVertexKey>();
+            new HashSet<SubdivisionLatticeVertexKey>();
 
-        foreach (var face in IcosahedronFaces)
+        foreach (var face in seedFaces)
         {
             for (var i = 0; i <= frequency; i++)
             {
                 for (var j = 0; j <= frequency - i; j++)
                 {
                     vertexKeys.Add(
-                        CreateClassIVertexKey(
+                        CreateSubdivisionVertexKey(
                             face,
                             frequency,
                             i,
@@ -87,11 +100,11 @@ public static class GoldbergStrategicTopologyGenerator
             != parameters.StrategicCellCount)
         {
             throw new InvalidOperationException(
-                "Class I subdivision produced an unexpected strategic cell count.");
+                "Triangular seed subdivision produced an unexpected strategic cell count.");
         }
 
         var cellIdsByVertexKey =
-            new Dictionary<ClassILatticeVertexKey, StrategicCellId>(
+            new Dictionary<SubdivisionLatticeVertexKey, StrategicCellId>(
                 orderedVertexKeys.Length);
 
         for (var index = 0; index < orderedVertexKeys.Length; index++)
@@ -105,7 +118,7 @@ public static class GoldbergStrategicTopologyGenerator
         var triangleKeys =
             new HashSet<CanonicalCellTriple>();
 
-        foreach (var face in IcosahedronFaces)
+        foreach (var face in seedFaces)
         {
             for (var i = 0; i < frequency; i++)
             {
@@ -168,7 +181,7 @@ public static class GoldbergStrategicTopologyGenerator
             != parameters.StrategicVertexCount)
         {
             throw new InvalidOperationException(
-                "Class I subdivision produced an unexpected strategic vertex count.");
+                "Triangular seed subdivision produced an unexpected strategic vertex count.");
         }
 
         var orderedEdgeKeys =
@@ -182,7 +195,7 @@ public static class GoldbergStrategicTopologyGenerator
             != parameters.StrategicEdgeCount)
         {
             throw new InvalidOperationException(
-                "Class I subdivision produced an unexpected strategic edge count.");
+                "Triangular seed subdivision produced an unexpected strategic edge count.");
         }
 
         var edgeIdsByPair =
@@ -263,7 +276,7 @@ public static class GoldbergStrategicTopologyGenerator
             if (incidentVertexIds.Length != 2)
             {
                 throw new InvalidOperationException(
-                    "Every Class I strategic edge must have exactly two incident strategic vertices.");
+                    "Every strategic edge must have exactly two incident strategic vertices.");
             }
 
             var edgeId =
@@ -311,7 +324,7 @@ public static class GoldbergStrategicTopologyGenerator
                     5 => StrategicCellKind.Pentagon,
                     6 => StrategicCellKind.Hexagon,
                     _ => throw new InvalidOperationException(
-                        $"Class I strategic cell degree must be 5 or 6, but was {degree}.")
+                        $"Strategic cell degree must be 5 or 6, but was {degree}.")
                 };
 
             if (kind == StrategicCellKind.Pentagon)
@@ -337,7 +350,7 @@ public static class GoldbergStrategicTopologyGenerator
             || (ulong)hexagonCount != parameters.HexagonCount)
         {
             throw new InvalidOperationException(
-                "Class I subdivision produced unexpected pentagon or hexagon counts.");
+                "Triangular seed subdivision produced unexpected pentagon or hexagon counts.");
         }
 
         return new StrategicTopology(
@@ -347,22 +360,114 @@ public static class GoldbergStrategicTopologyGenerator
             vertices);
     }
 
+    private static CanonicalTriangle[] CreateClassIISeedFaces()
+    {
+        var incidentFaceCentersBySeedEdge =
+            new Dictionary<CanonicalSeedPair, List<int>>();
+
+        for (var faceIndex = 0; faceIndex < IcosahedronFaces.Length; faceIndex++)
+        {
+            var face =
+                IcosahedronFaces[faceIndex];
+            var faceCenterId =
+                13 + faceIndex;
+
+            foreach (var pair in GetSeedPairs(face))
+            {
+                if (!incidentFaceCentersBySeedEdge.TryGetValue(
+                    pair,
+                    out var faceCenters))
+                {
+                    faceCenters =
+                        new List<int>(2);
+
+                    incidentFaceCentersBySeedEdge.Add(
+                        pair,
+                        faceCenters);
+                }
+
+                faceCenters.Add(
+                    faceCenterId);
+            }
+        }
+
+        var triangles =
+            new List<CanonicalTriangle>(60);
+
+        foreach (var item in incidentFaceCentersBySeedEdge.OrderBy(item => item.Key))
+        {
+            var faceCenters =
+                item.Value
+                    .Order()
+                    .ToArray();
+
+            if (faceCenters.Length != 2)
+            {
+                throw new InvalidOperationException(
+                    "Every icosahedral seed edge must have exactly two incident faces.");
+            }
+
+            triangles.Add(
+                CanonicalTriangle.Create(
+                    item.Key.First,
+                    faceCenters[0],
+                    faceCenters[1]));
+
+            triangles.Add(
+                CanonicalTriangle.Create(
+                    item.Key.Second,
+                    faceCenters[0],
+                    faceCenters[1]));
+        }
+
+        var orderedTriangles =
+            triangles
+                .Distinct()
+                .Order()
+                .ToArray();
+
+        if (orderedTriangles.Length != 60)
+        {
+            throw new InvalidOperationException(
+                "Canonical Class II seed must contain exactly 60 triangles.");
+        }
+
+        return orderedTriangles;
+    }
+
+    private static CanonicalSeedPair[] GetSeedPairs(
+        CanonicalTriangle triangle)
+    {
+        return new[]
+        {
+            CanonicalSeedPair.Create(
+                triangle.First,
+                triangle.Second),
+            CanonicalSeedPair.Create(
+                triangle.First,
+                triangle.Third),
+            CanonicalSeedPair.Create(
+                triangle.Second,
+                triangle.Third)
+        };
+    }
+
     private static StrategicCellId GetCellId(
         CanonicalTriangle face,
         int frequency,
         int i,
         int j,
-        IReadOnlyDictionary<ClassILatticeVertexKey, StrategicCellId> cellIdsByVertexKey)
+        IReadOnlyDictionary<SubdivisionLatticeVertexKey, StrategicCellId> cellIdsByVertexKey)
     {
         return cellIdsByVertexKey[
-            CreateClassIVertexKey(
+            CreateSubdivisionVertexKey(
                 face,
                 frequency,
                 i,
                 j)];
     }
 
-    private static ClassILatticeVertexKey CreateClassIVertexKey(
+    private static SubdivisionLatticeVertexKey CreateSubdivisionVertexKey(
         CanonicalTriangle face,
         int frequency,
         int i,
@@ -374,10 +479,10 @@ public static class GoldbergStrategicTopologyGenerator
         {
             throw new ArgumentOutOfRangeException(
                 nameof(i),
-                "Class I barycentric coordinates must lie inside the seed face.");
+                "Subdivision barycentric coordinates must lie inside the seed face.");
         }
 
-        return ClassILatticeVertexKey.Create(
+        return SubdivisionLatticeVertexKey.Create(
             face.First,
             frequency - i - j,
             face.Second,
@@ -431,16 +536,16 @@ public static class GoldbergStrategicTopologyGenerator
         }
     }
 
-    private readonly record struct ClassILatticeVertexKey(
+    private readonly record struct SubdivisionLatticeVertexKey(
         int FirstVertex,
         int FirstWeight,
         int SecondVertex,
         int SecondWeight,
         int ThirdVertex,
         int ThirdWeight)
-        : IComparable<ClassILatticeVertexKey>
+        : IComparable<SubdivisionLatticeVertexKey>
     {
-        public static ClassILatticeVertexKey Create(
+        public static SubdivisionLatticeVertexKey Create(
             int firstVertex,
             int firstWeight,
             int secondVertex,
@@ -465,7 +570,7 @@ public static class GoldbergStrategicTopologyGenerator
                 .OrderBy(item => item.Vertex)
                 .ToArray();
 
-            return new ClassILatticeVertexKey(
+            return new SubdivisionLatticeVertexKey(
                 weightedVertices.ElementAtOrDefault(0).Vertex,
                 weightedVertices.ElementAtOrDefault(0).Weight,
                 weightedVertices.ElementAtOrDefault(1).Vertex,
@@ -475,7 +580,7 @@ public static class GoldbergStrategicTopologyGenerator
         }
 
         public int CompareTo(
-            ClassILatticeVertexKey other)
+            SubdivisionLatticeVertexKey other)
         {
             var comparison =
                 FirstVertex.CompareTo(
@@ -632,8 +737,97 @@ public static class GoldbergStrategicTopologyGenerator
         }
     }
 
+    private readonly record struct CanonicalSeedPair(
+        int First,
+        int Second)
+        : IComparable<CanonicalSeedPair>
+    {
+        public static CanonicalSeedPair Create(
+            int first,
+            int second)
+        {
+            if (first == second)
+            {
+                throw new ArgumentException(
+                    "Canonical seed edge endpoints must be distinct.");
+            }
+
+            return first < second
+                ? new CanonicalSeedPair(
+                    first,
+                    second)
+                : new CanonicalSeedPair(
+                    second,
+                    first);
+        }
+
+        public int CompareTo(
+            CanonicalSeedPair other)
+        {
+            var comparison =
+                First.CompareTo(
+                    other.First);
+
+            return comparison != 0
+                ? comparison
+                : Second.CompareTo(
+                    other.Second);
+        }
+    }
+
     private readonly record struct CanonicalTriangle(
         int First,
         int Second,
-        int Third);
+        int Third)
+        : IComparable<CanonicalTriangle>
+    {
+        public static CanonicalTriangle Create(
+            int first,
+            int second,
+            int third)
+        {
+            var values =
+                new[]
+                {
+                    first,
+                    second,
+                    third
+                }
+                .Order()
+                .ToArray();
+
+            if (values.Distinct().Count() != 3)
+            {
+                throw new ArgumentException(
+                    "Canonical seed triangle must contain three distinct vertices.");
+            }
+
+            return new CanonicalTriangle(
+                values[0],
+                values[1],
+                values[2]);
+        }
+
+        public int CompareTo(
+            CanonicalTriangle other)
+        {
+            var comparison =
+                First.CompareTo(
+                    other.First);
+
+            if (comparison != 0)
+            {
+                return comparison;
+            }
+
+            comparison =
+                Second.CompareTo(
+                    other.Second);
+
+            return comparison != 0
+                ? comparison
+                : Third.CompareTo(
+                    other.Third);
+        }
+    }
 }
