@@ -581,7 +581,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M1.4.4 — Turn Policy Resolution Gate Contract**
+**M1.4.5 — Turn Policy Resolution Gate Path**
 
 Official Progress:
 

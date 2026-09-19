@@ -501,7 +501,7 @@ Etapa:
 
 Subetapa atual:
 
-**M1.4.4 — Turn Policy Resolution Gate Contract**
+**M1.4.5 — Turn Policy Resolution Gate Path**
 
 M0 — Project Baseline:
 

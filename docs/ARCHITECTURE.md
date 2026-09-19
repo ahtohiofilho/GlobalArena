@@ -2060,7 +2060,93 @@ As duas primeiras policies concretas agora existem em isolamento:
 
 Nenhuma delas ainda participa de um caminho que condicione a chamada ao `TurnResolver`.
 
-O próximo passo é definir a fronteira mínima de um gate de resolução que consulte uma `ITurnPolicy` antes de permitir a execução do `TurnResolver`, sem modificar a semântica interna do resolver.
+A fronteira mínima desse gate é descrita pela seção 9.4.
+
+## 9.4 Turn Policy Resolution Gate Contract
+
+`ITurnPolicyResolutionGate` estabelece a fronteira entre a decisão de fechamento de uma `ITurnPolicy` e a execução do fluxo já existente de resolução.
+
+O contrato é:
+
+`TurnPolicyResolutionGateInput`
+
+→ `ITurnPolicyResolutionGate.Resolve`
+
+→ `TurnPolicyResolutionGateResult`
+
+### Input do gate
+
+`TurnPolicyResolutionGateInput` contém:
+
+- `PolicyInput`;
+- `ResolutionInput`.
+
+O gate recebe explicitamente tanto os fatos necessários à policy quanto o `TurnResolutionInput` que será usado caso a janela seja encerrada.
+
+### Invariante de turno
+
+O contrato exige:
+
+`PolicyInput.Turn == ResolutionInput.Context.Turn`
+
+Inputs referentes a turnos diferentes são rejeitados.
+
+Isso impede que uma decisão de fechamento tomada para um turno seja aplicada acidentalmente à resolução de outro.
+
+### Resultado com turno aberto
+
+Quando a janela permanece aberta, o resultado deve poder representar explicitamente:
+
+`WasResolved = false`
+
+e:
+
+`ResolutionResult = null`
+
+Esse estado não é um `TurnResolutionResult` vazio.
+
+Ele significa que nenhuma resolução ocorreu.
+
+### Resultado com turno resolvido
+
+Quando a janela foi fechada e a resolução ocorreu:
+
+`WasResolved = true`
+
+e:
+
+`ResolutionResult` contém o resultado real produzido pelo caminho de resolução.
+
+A factory `Resolved` rejeita resultado nulo.
+
+### Preservação dos contratos existentes
+
+Este checkpoint não altera:
+
+- `TurnResolutionInput`;
+- `TurnResolutionResult`;
+- `TurnResolver`;
+- semântica de Commands;
+- ordering de Events;
+- revalidação;
+- EventLog;
+- replay.
+
+O gate será uma camada anterior ao resolver.
+
+### Limites
+
+Este checkpoint define somente o contrato.
+
+Ainda não existe implementação concreta que:
+
+1. consulte uma `ITurnPolicy`;
+2. devolva `Open()` quando a janela permanecer aberta;
+3. invoque o `TurnResolver` quando a janela fechar;
+4. envolva o resultado em `Resolved(...)`.
+
+O próximo passo é implementar esse caminho concreto sem alterar internamente o `TurnResolver`.
+
 
 
 

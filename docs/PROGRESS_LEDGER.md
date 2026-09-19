@@ -3729,3 +3729,116 @@ Objetivos:
 - preservar `TurnResolutionInput` e `TurnResolutionResult` sem alterar sua semântica;
 - manter relógio, UI e networking fora da Simulation;
 - preparar uma implementação concreta do gate sem modificar internamente o `TurnResolver`.
+
+---
+
+## 2026-09-19 — M1.4.4 Turn Policy Resolution Gate Contract concluído
+
+Milestone:
+
+**M1 — Deterministic Simulation Kernel**
+
+Stage:
+
+**M1.4 — Turn Policy Foundation**
+
+Subcheckpoint:
+
+**M1.4.4 — Turn Policy Resolution Gate Contract**
+
+### Progresso oficial
+
+GPP conquistados:
+
+**58.45 / 1000**
+
+Global Progress:
+
+**5.8%**
+
+Foundation / Simulation Kernel:
+
+**58.45 / 70 GPP — 83.5%**
+
+GPP adicionais conquistados neste subcheckpoint:
+
+**+0.00 GPP**
+
+### Justificativa de maturidade
+
+A capability `Turn policies` permanece:
+
+**Funcional isoladamente — fator 0.50 — 1.50 GPP**
+
+O contrato do gate cria a fronteira necessária para integração, mas ainda não existe um caminho executável que consulte uma policy e condicione a chamada ao `TurnResolver`.
+
+Por isso a capability ainda não alcança `Integrada`.
+
+### Concluído
+
+- `ITurnPolicyResolutionGate` criado;
+- `TurnPolicyResolutionGateInput` criado;
+- `TurnPolicyResolutionGateResult` criado;
+- policy input nulo é rejeitado;
+- resolution input nulo é rejeitado;
+- policy e resolution inputs precisam referir-se ao mesmo turno;
+- estado de turno aberto é representado explicitamente sem `TurnResolutionResult`;
+- estado resolvido carrega o `TurnResolutionResult` real;
+- resultado resolvido nulo é rejeitado;
+- `TurnResolutionInput` permanece inalterado;
+- `TurnResolutionResult` permanece inalterado;
+- `TurnResolver` permanece inalterado;
+- nenhuma dependência de relógio, UI ou networking foi introduzida.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- warnings de build: 0;
+- erros de build: 0;
+- testes totais: 104;
+- testes aprovados: 104;
+- falhas: 0;
+- `InputCarriesPolicyAndResolutionInputs`: aprovado;
+- `InputRejectsNullPolicyInput`: aprovado;
+- `InputRejectsNullResolutionInput`: aprovado;
+- `InputRejectsDifferentTurns`: aprovado;
+- `OpenResultExplicitlyRepresentsNoResolution`: aprovado;
+- `ResolvedResultCarriesResolutionResult`: aprovado;
+- `ResolvedResultRejectsNullResolutionResult`: aprovado;
+- `GateContractReceivesInputAndReturnsResult`: aprovado;
+- `git diff --check`: aprovado;
+- SHA-256 dos quatro arquivos novos verificado no pacote de evidências.
+
+### Scope Change
+
+Nenhum.
+
+O total permanece:
+
+**1000 GPP**
+
+### Riscos
+
+`RISK-004 — Determinism failure` permanece `MITIGATING`.
+
+A fronteira de integração agora está explícita e exige consistência de turno, mas a policy ainda não governa uma resolução executável.
+
+### Critical Path
+
+Permanece:
+
+**Turn Policies determinísticas compartilhando o mesmo TurnResolver**
+
+### Próximo subcheckpoint
+
+**M1.4.5 — Turn Policy Resolution Gate Path**
+
+Objetivos:
+
+- implementar o gate concreto;
+- consultar `ITurnPolicy` antes de qualquer resolução;
+- quando a policy mantiver o turno aberto, não invocar o `TurnResolver`;
+- quando a policy fechar o turno, reutilizar o `TurnResolver` existente sem alterar sua semântica;
+- retornar `Open()` ou `Resolved(...)` conforme o outcome;
+- provar integração com testes automatizados;
+- manter relógio, UI e networking fora da Simulation.
