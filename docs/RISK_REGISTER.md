@@ -264,7 +264,7 @@ Mitigação:
 
 Próxima ação:
 
-implementar e validar replay verificável a partir do EventLog integrado antes do fechamento de M1.
+validar determinismo com Turn Policies integradas e, depois, ampliar diagnóstico por hash e validação entre plataformas antes do fechamento de M1.
 
 ---
 

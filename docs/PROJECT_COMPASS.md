@@ -497,11 +497,11 @@ Milestone:
 
 Etapa:
 
-**M1.3 — Deterministic Event Log & Replay Foundation**
+**M1.4 — Turn Policy Foundation**
 
 Subetapa atual:
 
-**M1.3.4 — Replay Path**
+**M1.4.1 — Turn Policy Contract**
 
 M0 — Project Baseline:
 
@@ -513,15 +513,15 @@ Baseline V1:
 
 Progresso oficial:
 
-**5,7%**
+**5,8%**
 
 GPP conquistados:
 
-**56,80 / 1000**
+**57,55 / 1000**
 
 Foundation / Simulation Kernel:
 
-**56,80 / 70 GPP — 81,1%**
+**57,55 / 70 GPP — 82,2%**
 
 Scope Confidence:
 
@@ -537,7 +537,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**EventLog determinístico e replay verificável da resolução**
+**Turn Policies determinísticas compartilhando o mesmo TurnResolver**
 
 Última revisão de baseline:
 

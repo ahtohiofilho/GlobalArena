@@ -3269,3 +3269,138 @@ Objetivos:
 - manter entries rejeitadas sem efeito no estado;
 - provar que replay e resolução original chegam ao mesmo estado observável;
 - manter persistência física fora do escopo.
+
+---
+
+## 2026-09-19 — M1.3.4 Replay Path concluído
+
+Milestone:
+
+**M1 — Deterministic Simulation Kernel**
+
+Stage encerrado:
+
+**M1.3 — Deterministic Event Log & Replay Foundation**
+
+Subcheckpoint:
+
+**M1.3.4 — Replay Path**
+
+### Resultado do stage
+
+**M1.3 concluído**
+
+O Kernel agora captura um EventLog determinístico integrado e consegue reaplicar as transições originalmente executadas sobre um estado inicial equivalente.
+
+### Progresso oficial
+
+GPP conquistados:
+
+**57.55 / 1000**
+
+Global Progress:
+
+**5.8%**
+
+Foundation / Simulation Kernel:
+
+**57.55 / 70 GPP — 82.2%**
+
+GPP adicionais conquistados neste subcheckpoint:
+
+**+0.75 GPP**
+
+A capability `EventLog / base de replay`, com orçamento de 5 GPP, passa de:
+
+**Integrada — fator 0.70 — 3.50 GPP**
+
+para:
+
+**Validada — fator 0.85 — 4.25 GPP**
+
+Incremento:
+
+**+0.75 GPP**
+
+### Justificativa de maturidade
+
+A capability agora possui contrato, integração ao fluxo real, implementação concreta de replay e prova automatizada de equivalência observável entre resolução original e replay.
+
+Ela não alcança `Definition of Done atendida`, pois ainda permanecem fora do escopo desta prova persistência física, hash de estado, compatibilidade entre versões e validação determinística entre plataformas.
+
+### Concluído
+
+- `SimulationEventLogReplayer` implementado;
+- executor nulo é rejeitado;
+- input de replay nulo é rejeitado;
+- EventLog vazio preserva o estado inicial;
+- entries não executadas originalmente são ignoradas;
+- entries executadas originalmente são reaplicadas na ordem registrada;
+- replay utiliza o `SimulationContext` fornecido;
+- replay não refaz ordering;
+- replay não refaz revalidação;
+- replay não recebe Commands;
+- resolução original com Event rejeitado intermediário é reproduzida corretamente;
+- replay e resolução original atingem o mesmo `WorldState.Revision`;
+- estados iniciais permanecem imutáveis;
+- nenhuma persistência física foi introduzida;
+- nenhum event sourcing completo foi introduzido.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- warnings de build: 0;
+- erros de build: 0;
+- testes totais: 86;
+- testes aprovados: 86;
+- falhas: 0;
+- `NullExecutorIsRejected`: aprovado;
+- `NullInputIsRejected`: aprovado;
+- `EmptyLogPreservesInitialWorldState`: aprovado;
+- `ReplayExecutesOnlyOriginallyExecutedEntriesInRecordedOrder`: aprovado;
+- `ReplayMatchesOriginalResolutionObservableState`: aprovado;
+- `git diff --check`: aprovado;
+- SHA-256 dos dois arquivos novos verificado no pacote de evidências.
+
+### Critical Path anterior
+
+**EventLog determinístico e replay verificável da resolução**
+
+Status:
+
+**atingido**
+
+### Novo Critical Path
+
+**Turn Policies determinísticas compartilhando o mesmo TurnResolver**
+
+### Riscos
+
+`RISK-004 — Determinism failure` permanece `MITIGATING`.
+
+A cobertura agora inclui replay observavelmente equivalente, mas ainda faltam Turn Policies integradas, hash de estado e validação entre plataformas.
+
+### Scope Change
+
+Nenhum.
+
+O total permanece:
+
+**1000 GPP**
+
+### Próximo stage
+
+**M1.4 — Turn Policy Foundation**
+
+### Próximo subcheckpoint
+
+**M1.4.1 — Turn Policy Contract**
+
+Objetivos:
+
+- definir a fronteira mínima de uma Turn Policy;
+- manter a política temporal fora das regras fundamentais da simulação;
+- permitir políticas manual, temporizada e de correspondência sobre o mesmo `TurnResolver`;
+- evitar dependência de relógio de parede dentro do Kernel determinístico;
+- não introduzir networking ou UI;
+- preparar integração incremental sem alterar a semântica já validada de resolução.

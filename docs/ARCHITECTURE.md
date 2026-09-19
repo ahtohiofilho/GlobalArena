@@ -455,7 +455,7 @@ O objetivo deste contrato é estabelecer a fronteira estável entre:
 
 Esta seção preserva o primeiro baseline executável do `TurnResolver`.
 
-As seções 8.3 a 8.17 documentam a evolução posterior e prevalecem sobre as limitações históricas descritas nesta seção.
+As seções 8.3 a 8.18 documentam a evolução posterior e prevalecem sobre as limitações históricas descritas nesta seção.
 
 `TurnResolver` materializa a primeira orquestração executável da pipeline de resolução.
 
@@ -1753,7 +1753,119 @@ Este checkpoint não implementa ainda:
 - event sourcing completo;
 - replay entre versões incompatíveis do ruleset.
 
-O próximo subcheckpoint deverá implementar o replay mínimo usando o executor existente e provar equivalência observável com uma resolução original.
+A implementação concreta e a prova observável de replay são descritas pela seção 8.18.
+
+
+## 8.18 Replay Path
+
+`SimulationEventLogReplayer` implementa `ISimulationEventLogReplayer` utilizando o `ISimulationEventExecutor` já existente.
+
+O replay começa em:
+
+`SimulationReplayInput.InitialWorldState`
+
+e percorre:
+
+`SimulationReplayInput.EventLog.Entries`
+
+na ordem já validada por `ResolutionSequence`.
+
+### Entries não executadas originalmente
+
+Quando:
+
+`WasExecuted = false`
+
+o replayer não invoca o executor.
+
+A entry permanece apenas como registro histórico da resolução original e não produz transição de estado durante replay.
+
+Isso inclui Events originalmente rejeitados pela revalidação.
+
+### Entries executadas originalmente
+
+Quando:
+
+`WasExecuted = true`
+
+o replayer chama:
+
+`ISimulationEventExecutor.Execute`
+
+com:
+
+- o `WorldState` corrente do replay;
+- o Event armazenado na entry;
+- o `SimulationContext` do replay input.
+
+O estado retornado passa a ser o estado corrente para a próxima entry executada.
+
+### Separação entre replay e resolução
+
+O replayer não refaz:
+
+- validação de Commands;
+- processamento de Commands;
+- ordering de Events;
+- revalidação de Events;
+- decisões de elegibilidade.
+
+A sequência e o outcome autoritativo já estão registrados no EventLog.
+
+Replay reaplica somente as transições que a resolução original marcou como executadas.
+
+### Log vazio
+
+Quando o EventLog não possui entries:
+
+- o executor não é invocado;
+- o `InitialWorldState` é devolvido sem alteração.
+
+### Prova de equivalência observável
+
+O teste `ReplayMatchesOriginalResolutionObservableState` executa primeiro uma resolução real com:
+
+- Command válido;
+- três Events;
+- ordering determinístico;
+- uma rejeição intermediária na revalidação;
+- duas execuções efetivas.
+
+A resolução original produz um EventLog com outcomes:
+
+`true`
+→ `false`
+→ `true`
+
+Em seguida, o replay parte de um `WorldState` inicial equivalente e usa o EventLog capturado.
+
+O replay executa somente as duas entries originalmente executadas.
+
+Tanto resolução quanto replay terminam com:
+
+`WorldState.Revision = 2`
+
+Isso estabelece a primeira prova automatizada de:
+
+**estado inicial equivalente + EventLog capturado + mesmo contexto = mesmo estado observável**
+
+### Maturidade
+
+A capability `EventLog / base de replay` passa a possuir:
+
+- contrato de EventLog;
+- captura integrada;
+- contrato de replay;
+- implementação concreta de replay;
+- prova automatizada de equivalência observável.
+
+Persistência física, hash de estado, compatibilidade entre versões e validação entre plataformas permanecem fora desta prova.
+
+### Próximo limite arquitetural
+
+O próximo trabalho do M1 é tornar explícita a política que encerra a janela de ordens sem acoplar o Kernel a um único modelo temporal.
+
+A seção 9 estabelece a direção arquitetural de Turn Policies e passa a ser o próximo Critical Path.
 
 ---
 
