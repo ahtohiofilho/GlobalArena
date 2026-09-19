@@ -334,9 +334,22 @@ Stages planejados:
 
 M2.1.1 está concluído em 2026-09-19.
 
+M2.1.2 está concluído em 2026-09-19.
+
+Evidência de M2.1.2:
+
+- contrato `GoldbergParameters` implementado;
+- domínio `m >= 0`, `n >= 0`, exceto `(0,0)`;
+- aritmética `checked`;
+- vetores de referência `G(1,0)`, `G(1,1)` e `G(2,1)`;
+- Euler verificado;
+- 139/139 testes por plataforma;
+- 417 execuções cross-platform;
+- 0 falhas.
+
 Próximo subcheckpoint:
 
-**M2.1.2 — Goldberg Parameter & Count Contract**
+**M2.1.3 — Strategic Topology Identity Contract**
 
 ---
 
@@ -624,19 +637,23 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M2.1.2 — Goldberg Parameter & Count Contract**
+**M2.1.3 — Strategic Topology Identity Contract**
 
 Official Progress:
 
-**7.0%**
+**7.3%**
 
 GPP Earned:
 
-**70.00 / 1000**
+**73.20 / 1000**
 
 Foundation / Simulation Kernel:
 
 **70.00 / 70 GPP — 100.0%**
+
+Planet Topology / Goldberg:
+
+**3.20 / 90 GPP — 3.6%**
 
 Scope Confidence:
 

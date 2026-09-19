@@ -203,6 +203,8 @@ Mitigação:
 - testes topológicos;
 - geração headless;
 - validação de Euler e invariantes;
+- contrato executável de parâmetros e contagens Goldberg;
+- vetores de referência validados cross-platform;
 - testes explícitos de pertencimento pai-filho;
 - testes de continuidade entre regiões;
 - validação de casos representativos das famílias Goldberg;
@@ -210,7 +212,7 @@ Mitigação:
 
 Próxima ação:
 
-definir primeiro o contrato de parâmetros e contagens Goldberg, seguido por identidades topológicas estáveis; depois executar spikes de refinamento estratégico/tático para determinar quais famílias `G(m,n)` podem ser suportadas com os invariantes exigidos.
+definir identidades topológicas estáveis para `StrategicCell`, `StrategicEdge` e `StrategicVertex`; depois materializar `G(1,0)` e executar spikes de refinamento estratégico/tático para determinar quais famílias `G(m,n)` podem ser suportadas com os invariantes exigidos.
 
 ---
 

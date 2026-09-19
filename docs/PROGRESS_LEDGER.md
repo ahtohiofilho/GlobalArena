@@ -4810,3 +4810,196 @@ Objetivos:
 - não gerar ainda a topologia;
 - não introduzir geometria 3D;
 - manter o contrato headless, determinístico e cross-platform.
+
+---
+
+## 2026-09-19 — M2.1.2 Goldberg Parameter & Count Contract concluído
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.1 — Goldberg Topology Foundation**
+
+Subcheckpoint:
+
+**M2.1.2 — Goldberg Parameter & Count Contract**
+
+### Implementação
+
+Commit validado:
+
+`ea690f6ba8fbd13d2ca5f485ae4e47a23eb60f6b`
+
+Foram introduzidos:
+
+- `GoldbergParameters` em `GlobalArena.World`;
+- testes dedicados de parâmetros e contagens;
+- documentação arquitetural do contrato.
+
+O value object estabelece:
+
+- `m >= 0`;
+- `n >= 0`;
+- `(0,0)` inválido;
+- preservação do par ordenado `(m,n)`;
+- `T = m² + mn + n²`;
+- contagens estratégicas canônicas;
+- aritmética `checked`;
+- rejeição explícita de overflow.
+
+Vetores de referência:
+
+- `G(1,0)`: `T=1`, 12 cells, 30 edges, 20 vertices, 12 pentagons, 0 hexagons;
+- `G(1,1)`: `T=3`, 32 cells, 90 edges, 60 vertices, 12 pentagons, 20 hexagons;
+- `G(2,1)`: `T=7`, 72 cells, 210 edges, 140 vertices, 12 pentagons, 60 hexagons.
+
+### Evidência local
+
+- build: 6/6;
+- warnings: 0;
+- errors: 0;
+- testes: 139/139;
+- falhas: 0;
+- not executed: 0;
+- `git diff --check`: aprovado;
+- `git diff --cached --check`: aprovado.
+
+### Gate cross-platform
+
+Workflow:
+
+`Cross-Platform Kernel Regression Validation`
+
+Run ID:
+
+`35446789732`
+
+Resultado:
+
+**SUCCESS**
+
+Commit:
+
+`ea690f6ba8fbd13d2ca5f485ae4e47a23eb60f6b`
+
+.NET SDK:
+
+**10.0.401**
+
+Resultados:
+
+- Ubuntu 24.04.5 / x64: 139/139, 0 falhas, 0 skipped;
+- Microsoft Windows Server 2025 10.0.26100 / x64: 139/139, 0 falhas, 0 skipped;
+- macOS 26.6.2 / arm64: 139/139, 0 falhas, 0 skipped.
+
+Total:
+
+**417 execuções aprovadas / 0 falhas**
+
+Build em todos os runners:
+
+- 0 warnings;
+- 0 errors.
+
+Artefatos:
+
+- Ubuntu: ID `10585570163`, SHA-256 `10f6939fa477db98c92c71d747367ee5df8b1bd16dd1dc9cd38b0cecfd120ba0`;
+- Windows: ID `10586160060`, SHA-256 `2c175827fa7774d00595ad2f0b465e0019ab1c8ffea70f462f4b525f723cefb0`;
+- macOS: ID `10584679658`, SHA-256 `c13042dfe26a460192e309d8a7e743c7e4addbb0f3d40a00d0df21714b76140d`.
+
+### Promoção de maturidade
+
+A capability:
+
+`Goldberg parameterization e geração estratégica`
+
+passa de:
+
+**Inexistente — fator 0.00**
+
+para:
+
+**Especificada — fator 0.20**
+
+Budget:
+
+**16 GPP**
+
+GPP conquistados:
+
+**16 × 0.20 = 3.20 GPP**
+
+A promoção registra que os parâmetros, domínio válido, fórmulas, contagens e vetores de referência estão definidos por contrato executável e validados.
+
+Ela não afirma existência de um gerador estratégico funcional.
+
+### Progresso oficial
+
+GPP antes:
+
+**70.00 / 1000**
+
+GPP após:
+
+**73.20 / 1000**
+
+Incremento:
+
+**+3.20 GPP**
+
+Global Progress exato:
+
+**7.32%**
+
+Global Progress exibido:
+
+**7.3%**
+
+Topologia planetária / Goldberg:
+
+**3.20 / 90 GPP — 3.6%**
+
+Foundation / Simulation Kernel permanece:
+
+**70.00 / 70 GPP — 100.0%**
+
+### Riscos
+
+`RISK-003 — Goldberg hierarchy mapping` permanece:
+
+**MITIGATING / Probability 2 / Impact 4 / Score 8 — HIGH**
+
+A incerteza sobre parametrização e contagens foi reduzida.
+
+A incerteza crítica restante está em:
+
+- identidades topológicas;
+- geração de topologia;
+- adjacência;
+- pertencimento;
+- fronteiras compartilhadas;
+- refinamento estratégico/tático.
+
+### Scope Change
+
+Nenhum.
+
+O baseline V1 permanece:
+
+**1000 GPP**
+
+### Próximo subcheckpoint
+
+**M2.1.3 — Strategic Topology Identity Contract**
+
+Objetivos:
+
+- definir IDs estáveis e tipados para `StrategicCell`, `StrategicEdge` e `StrategicVertex`;
+- impedir IDs inválidos ou ambíguos;
+- manter identidade independente de coordenadas de ponto flutuante;
+- manter identidade independente da ordem física de criação;
+- preparar o caso mínimo `G(1,0)` sem ainda gerar sua topologia;
+- preservar determinismo e compatibilidade cross-platform.

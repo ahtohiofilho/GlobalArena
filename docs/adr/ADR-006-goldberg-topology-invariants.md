@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-09-19
+**Last revised:** 2026-09-19
 
 ## Context
 
@@ -177,6 +178,25 @@ Negative:
 - IDs canônicos precisam ser projetados antes do gerador de produção.
 
 ## Review
+
+M2.1.2 materializou o contrato de parâmetros e contagens definido por este ADR.
+
+Evidência de referência:
+
+- commit: `ea690f6ba8fbd13d2ca5f485ae4e47a23eb60f6b`;
+- workflow: `Cross-Platform Kernel Regression Validation`;
+- run ID: `35446789732`;
+- .NET SDK: `10.0.401`;
+- Ubuntu 24.04.5: 139/139;
+- Microsoft Windows Server 2025: 139/139;
+- macOS 26.6.2 arm64: 139/139;
+- total: 417 execuções aprovadas;
+- falhas: 0;
+- skipped: 0.
+
+Essa evidência valida o contrato de parâmetros e contagens.
+
+Ela não demonstra ainda geração de faces, arestas, vértices, IDs, adjacência ou refinamento estratégico/tático.
 
 Reavaliar quando:
 

@@ -306,9 +306,25 @@ A decomposição operacional inicial de M2 é:
 | Scalability / headless performance baseline | 4 |
 | **TOTAL** | **90** |
 
-M2.1.1 é um audit arquitetural e não promove maturidade por si só.
+Estado de maturidade após M2.1.2:
 
-A primeira promoção de GPP depende de contratos executáveis ou especificações de capability suficientemente fechadas nos subcheckpoints seguintes.
+| Capability | GPP | Maturidade | Fator | GPP ganhos |
+|---|---:|---|---:|---:|
+| Goldberg parameterization e geração estratégica | 16 | Especificada | 0.20 | 3.20 |
+| Strategic graph: identidade, incidência e adjacência | 12 | Inexistente | 0.00 | 0.00 |
+| Tactical region topology | 14 | Inexistente | 0.00 | 0.00 |
+| Shared subtile border bands | 16 | Inexistente | 0.00 | 0.00 |
+| Strategic ↔ tactical hierarchy/refinement mapping | 16 | Inexistente | 0.00 | 0.00 |
+| Canonical deterministic topology generation | 6 | Inexistente | 0.00 | 0.00 |
+| Topological validation e navigability | 6 | Inexistente | 0.00 | 0.00 |
+| Scalability / headless performance baseline | 4 | Inexistente | 0.00 | 0.00 |
+| **TOTAL** | **90** |  |  | **3.20** |
+
+M2.1.1 foi um audit arquitetural e não promoveu maturidade por si só.
+
+M2.1.2 promove `Goldberg parameterization e geração estratégica` para `Especificada — fator 0.20` porque o contrato executável de parâmetros, domínio válido, fórmulas, contagens esperadas e vetores de referência está congelado e validado cross-platform.
+
+Essa promoção não afirma que o gerador estratégico já existe. Implementação funcional da geração permanece para os subcheckpoints seguintes de M2.1.
 
 Esses pesos constituem o baseline inicial.
 
@@ -527,7 +543,7 @@ Etapa:
 
 Subetapa atual:
 
-**M2.1.2 — Goldberg Parameter & Count Contract**
+**M2.1.3 — Strategic Topology Identity Contract**
 
 M0 — Project Baseline:
 
@@ -537,21 +553,29 @@ M1 — Deterministic Simulation Kernel:
 
 **concluído em 2026-09-19**
 
+M2.1.2 — Goldberg Parameter & Count Contract:
+
+**concluído em 2026-09-19**
+
 Baseline V1:
 
 **congelado em 2026-09-18**
 
 Progresso oficial:
 
-**7,0%**
+**7,3%**
 
 GPP conquistados:
 
-**70,00 / 1000**
+**73,20 / 1000**
 
 Foundation / Simulation Kernel:
 
 **70,00 / 70 GPP — 100,0%**
+
+Topologia planetária / Goldberg:
+
+**3,20 / 90 GPP — 3,6%**
 
 Scope Confidence:
 
