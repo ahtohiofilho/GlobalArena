@@ -844,7 +844,61 @@ O `TurnResolver` ainda não implementa:
 - EventLog;
 - regras concretas de domínio que alterem propriedades observáveis do mundo.
 
-O próximo limite arquitetural é estabelecer a fronteira mínima de validação de Command antes de seu processamento.
+A fronteira mínima de validação de Command é estabelecida pelo contrato descrito em 8.7.
+
+
+## 8.7 Minimum Command Validation Contract
+
+`ISimulationCommandValidator` estabelece a fronteira mínima responsável por verificar se um Command pode ser processado contra o `WorldState` autoritativo atual.
+
+Conceitualmente:
+
+WorldState
++
+ISimulationCommand
++
+SimulationContext
+
+→ ISimulationCommandValidator
+→ bool IsValid
+
+O validator recebe:
+
+- o `WorldState` autoritativo atual;
+- um `ISimulationCommand`;
+- o `SimulationContext` da resolução.
+
+O resultado mínimo atual é booleano:
+
+- `true` indica que o Command pode prosseguir para processamento;
+- `false` indica que o Command não deve gerar Events naquele estado.
+
+A validação não altera o `WorldState` e não gera Events.
+
+Essa fronteira preserva a separação entre:
+
+Command Validator
+→ decisão de validade da intenção
+
+Command Processor
+→ geração de Event(s)
+
+Event Revalidator
+→ decisão de elegibilidade do Event no estado atual
+
+Event Executor
+→ aplicação da ocorrência ao estado
+
+O contrato não define ainda:
+
+- integração com o `TurnResolver`;
+- motivo estruturado de rejeição de Command;
+- validação de múltiplos Commands;
+- ordering entre Commands;
+- deterministic shuffle;
+- EventLog.
+
+A integração da validação ao caminho de resolução de um único Command permanece responsabilidade do próximo subcheckpoint.
 
 ---
 

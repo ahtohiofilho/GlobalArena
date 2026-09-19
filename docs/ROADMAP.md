@@ -581,7 +581,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M1.1.7 — Command Validation Contract**
+**M1.1.8 — Single-Command Validation Path**
 
 Official Progress:
 

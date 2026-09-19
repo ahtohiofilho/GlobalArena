@@ -1910,3 +1910,103 @@ Objetivos:
 - permitir rejeição explícita antes de `ISimulationCommandProcessor`;
 - evitar ainda múltiplos Commands e múltiplos Events;
 - preparar a integração `Command validation → Event generation → Event revalidation → execution`.
+
+---
+
+## 2026-09-19 — M1.1.7 Command Validation Contract concluído
+
+Milestone:
+
+**M1 — Deterministic Simulation Kernel**
+
+Stage:
+
+**M1.1 — Non-empty Deterministic Turn Resolution**
+
+Subcheckpoint:
+
+**M1.1.7 — Command Validation Contract**
+
+### Progresso oficial
+
+GPP conquistados:
+
+**43.25 / 1000**
+
+Global Progress:
+
+**4.3%**
+
+Foundation / Simulation Kernel:
+
+**43.25 / 70 GPP — 61.8%**
+
+Nenhum GPP adicional foi conquistado neste subcheckpoint.
+
+A capability `Command → Event, validação e execução sequencial` permanece classificada como:
+
+**Especificada — fator 0.20**
+
+A fronteira de validação de Command passou a existir, mas ainda não está integrada ao `TurnResolver` e não existe execução sequencial de múltiplos Events.
+
+### Concluído
+
+- `ISimulationCommandValidator` criado em `GlobalArena.Simulation`;
+- contrato explícito `WorldState + Command + SimulationContext → bool IsValid`;
+- o validator recebe o estado autoritativo atual;
+- o validator recebe o Command candidato ao processamento;
+- o validator recebe o mesmo `SimulationContext` da resolução;
+- o contrato permite aceitar ou rejeitar o Command;
+- validação permanece separada da geração de Events;
+- nenhuma alteração foi feita no `TurnResolver`;
+- nenhuma lógica de múltiplos Commands foi introduzida;
+- nenhum ordering ou deterministic shuffle foi introduzido;
+- nenhuma regra concreta de gameplay foi adicionada.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- warnings de build: 0;
+- erros de build: 0;
+- testes totais: 42;
+- testes aprovados: 42;
+- falhas: 0;
+- `ValidatorCanReceiveWorldCommandAndContextAndAcceptCommand`: aprovado;
+- `ValidatorCanRejectCommand`: aprovado;
+- `git diff --check`: aprovado;
+- SHA-256 dos dois arquivos novos verificado no pacote de evidências.
+
+### Decisões relevantes
+
+- a validação de Command pertence ao módulo `GlobalArena.Simulation`;
+- a decisão mínima de validação é representada por `bool IsValid`;
+- o validator não modifica o `WorldState`;
+- o validator não gera Events;
+- validação e processamento permanecem responsabilidades separadas;
+- motivo estruturado de rejeição não será introduzido antes de existir necessidade concreta;
+- a integração com o `TurnResolver` permanece para o próximo subcheckpoint.
+
+### Scope Change
+
+Nenhum.
+
+### Novos riscos
+
+Nenhum risco estrutural novo identificado.
+
+`RISK-004 — Determinism failure` permanece relevante.
+
+O checkpoint reduz a incerteza sobre a fronteira de validação de Commands, mas ainda não prova que Commands inválidos são bloqueados antes da geração de Events no fluxo real.
+
+### Próximo subcheckpoint
+
+**M1.1.8 — Single-Command Validation Path**
+
+Objetivos:
+
+- integrar `ISimulationCommandValidator` ao `TurnResolver`;
+- validar exatamente um Command antes de `ISimulationCommandProcessor`;
+- garantir que Command rejeitado não produza Events;
+- preservar o `WorldState` quando o Command for rejeitado;
+- manter múltiplos Commands ainda não suportados;
+- completar o caminho `Command validation → Event generation → Event revalidation → execution`.
