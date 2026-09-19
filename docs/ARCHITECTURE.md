@@ -2,7 +2,7 @@
 
 **Versão:** 0.1
 **Status:** Baseline inicial
-**Milestone:** M0 — Project Baseline
+**Milestone:** M2 — Planet Topology
 
 ---
 
@@ -2874,11 +2874,65 @@ A validação cross-platform deverá continuar como mecanismo de regressão à m
 
 Este checkpoint valida especificamente o caminho canônico de state hash.
 
-Ele não substitui uma execução cross-platform da suíte completa do Simulation Kernel.
+A validação cross-platform da suíte completa do Simulation Kernel é registrada pela seção 25.4.
 
-Antes do fechamento de M1, a suíte completa atual deverá ser executada nos mesmos ambientes para transformar a portabilidade do kernel em um exit gate explícito.
+## 25.4 Cross-Platform Kernel Regression Exit Gate
+
+O fechamento técnico do M1 utiliza uma regressão cross-platform da suíte completa do `GlobalArena.Tests` sobre o mesmo commit.
+
+Execução de referência:
+
+- workflow: `Cross-Platform Kernel Regression Validation`;
+- run ID: `35444833011`;
+- commit: `ae8f91f0fe9317895ea316eb05b27d4f566dacb6`;
+- .NET SDK: `10.0.401`.
+
+Ambientes validados:
+
+- Ubuntu `24.04` / x64;
+- Microsoft Windows Server `2025` / x64;
+- macOS `26` / arm64.
+
+Resultado em cada ambiente:
+
+- restore aprovado;
+- build Release aprovado;
+- 0 warnings;
+- 0 erros;
+- suíte completa: 126/126 testes aprovados;
+- 0 falhas;
+- 0 testes ignorados;
+- artefato TRX publicado.
+
+Total de execuções de teste do gate:
+
+**378 aprovadas / 0 falhas**
+
+A suíte inclui provas com resultados de referência fixos para o caminho determinístico, incluindo:
+
+- resolução end-to-end com `Revision = 3` e ordem de Events `3, 1, 2` para seed zero;
+- ordem de referência do `SeededSimulationEventOrderer` `3, 4, 2, 5, 1`;
+- vetores canônicos de `WorldStateHash`;
+- replay;
+- EventLog;
+- Turn Policies;
+- contratos e invariantes do pipeline.
+
+Consequentemente, o gate do M1:
+
+**mesmo estado + mesmas ordens + mesma seed = mesmo resultado**
+
+fica atendido para o Simulation Kernel mínimo definido neste milestone, de forma headless e com evidência automatizada em Windows, Linux e macOS.
+
+### Invariante de continuidade
+
+O fechamento do M1 não transforma determinismo ou portabilidade em assunto encerrado.
+
+Novos campos autoritativos, rulesets, algoritmos, estruturas de coleção, concorrência ou dependências externas deverão preservar esse gate e ampliar a regressão quando necessário.
 
 ---
+
+
 
 # 26. Presentation
 

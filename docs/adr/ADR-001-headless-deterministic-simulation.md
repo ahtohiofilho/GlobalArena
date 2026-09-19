@@ -67,4 +67,15 @@ Negative:
 
 ## Review
 
-Reavaliar apenas se evidência técnica demonstrar inviabilidade.
+M1 foi fechado em 2026-09-19 com regressão cross-platform completa do Simulation Kernel:
+
+- Ubuntu / x64: 126/126;
+- Windows / x64: 126/126;
+- macOS / arm64: 126/126;
+- total: 378 execuções aprovadas, 0 falhas.
+
+Run de referência: `35444833011`.
+
+A decisão permanece aceita.
+
+Reavaliar apenas se evidência técnica demonstrar inviabilidade ou se uma dependência futura exigir comportamento autoritativo específico de plataforma.

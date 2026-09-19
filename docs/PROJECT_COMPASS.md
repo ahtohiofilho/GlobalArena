@@ -5,7 +5,7 @@
 **Nome:** Global Arena
 **Plataforma inicial:** PC
 **Modelo:** jogo de estratégia e tática em escala planetária
-**Estado atual:** M1 — Deterministic Simulation Kernel
+**Estado atual:** M2 — Planet Topology
 **Versão deste documento:** 0.1
 
 Global Arena é um jogo de estratégia em escala planetária com mundos procedurais, economia viva, civilizações, guerra tática, diplomacia e multiplayer.
@@ -367,6 +367,8 @@ Critérios:
 
 ## M1 — Deterministic Simulation Kernel
 
+**Status:** concluído em 2026-09-19
+
 Objetivo:
 validar o modelo fundamental da simulação.
 
@@ -493,19 +495,23 @@ Critérios definidos em documento próprio.
 
 Milestone:
 
-**M1 — Deterministic Simulation Kernel**
+**M2 — Planet Topology**
 
 Etapa:
 
-**M1.5 — Determinism Diagnostics & Platform Validation**
+**M2.1 — Goldberg Topology Foundation**
 
 Subetapa atual:
 
-**M1.5.4 — Cross-Platform Kernel Regression Validation**
+**M2.1.1 — Goldberg Hierarchy Invariants Audit**
 
 M0 — Project Baseline:
 
 **concluído em 2026-09-18**
+
+M1 — Deterministic Simulation Kernel:
+
+**concluído em 2026-09-19**
 
 Baseline V1:
 
@@ -513,15 +519,15 @@ Baseline V1:
 
 Progresso oficial:
 
-**6,0%**
+**7,0%**
 
 GPP conquistados:
 
-**59,50 / 1000**
+**70,00 / 1000**
 
 Foundation / Simulation Kernel:
 
-**59,50 / 70 GPP — 85,0%**
+**70,00 / 70 GPP — 100,0%**
 
 Scope Confidence:
 
@@ -533,11 +539,11 @@ Technical Risk:
 
 Riscos críticos ativos:
 
-**8**
+**7**
 
 Critical Path atual:
 
-**Suíte completa do Simulation Kernel cross-platform e exit gate de M1**
+**Goldberg hierarchy mapping e prova da hierarquia estratégico/tático**
 
 Última revisão de baseline:
 

@@ -1,7 +1,7 @@
 # Global Arena — Risk Register
 
 **Versão:** 0.1
-**Milestone:** M1 — Deterministic Simulation Kernel
+**Milestone:** M2 — Planet Topology
 **Status:** Ativo
 **Última revisão formal:** 2026-09-19
 **Baseline V1 relacionado:** 0.1 — congelado
@@ -218,11 +218,11 @@ spike geométrico em M2 para validar a hierarquia estratégico/tática e determi
 
 Status:
 
-MITIGATING
+WATCHING
 
 Probability:
 
-3
+2
 
 Impact:
 
@@ -230,7 +230,7 @@ Impact:
 
 Score:
 
-12 — CRITICAL
+8 — HIGH
 
 Descrição:
 
@@ -266,7 +266,7 @@ Mitigação:
 
 Próxima ação:
 
-executar a suíte completa atual do Simulation Kernel em Windows, Linux e macOS como exit gate antes do fechamento de M1.
+manter a regressão cross-platform como gate contínuo e ampliar vetores determinísticos sempre que o estado autoritativo ou as regras evoluírem.
 
 ---
 
@@ -642,3 +642,36 @@ Revisar este documento:
 - quando surgir risco novo.
 
 Riscos encerrados não devem ser apagados.
+
+---
+
+# 8. Revisão formal — fechamento do M1
+
+**Data:** 2026-09-19
+
+O M1 foi encerrado após a suíte completa do Simulation Kernel passar em Windows, Linux e macOS.
+
+`RISK-004 — Determinism failure` foi reclassificado de `CRITICAL` para `HIGH` e de `MITIGATING` para `WATCHING`.
+
+A probabilidade foi reduzida de 3 para 2 porque o projeto agora possui:
+
+- PRNG e ordering determinísticos com vetores de referência;
+- resolução end-to-end reproduzível;
+- EventLog e replay automatizados;
+- state hash canônico;
+- regressão cross-platform completa;
+- evidência em x64 e arm64.
+
+O impacto permanece 4 porque uma regressão futura de determinismo continuaria capaz de comprometer multiplayer, replay e diagnóstico.
+
+Após essa revisão:
+
+- 7 riscos ativos permanecem classificados como CRITICAL;
+- 5 riscos ativos permanecem classificados como HIGH;
+- Risk Level global permanece HIGH.
+
+O Critical Path deixa o determinismo mínimo e passa para:
+
+**RISK-003 — Goldberg hierarchy mapping**
+
+A prioridade de M2 é reduzir a incerteza sobre a hierarquia estratégico/tático antes de consolidar estruturas de produção.

@@ -2,7 +2,7 @@
 
 **Versão:** 0.1
 **Status:** Baseline V1 congelado
-**Milestone atual:** M1 — Deterministic Simulation Kernel
+**Milestone atual:** M2 — Planet Topology
 
 ---
 
@@ -267,7 +267,24 @@ Gate:
 
 mesmo estado + mesmas ordens + mesma seed = mesmo resultado.
 
+Status:
+
+**concluído em 2026-09-19**
+
+Evidência de fechamento:
+
+- suíte completa `GlobalArena.Tests`: 126/126;
+- Ubuntu, Windows e macOS;
+- 378 execuções cross-platform;
+- 0 falhas;
+- resolução determinística com resultados de referência fixos;
+- state hash canônico;
+- replay e EventLog validados;
+- execução headless.
+
 ---
+
+
 
 ## M2 — Planet Topology
 
@@ -297,7 +314,21 @@ Gate:
 
 o planeta forma uma topologia fechada e navegável sem depender da Unity, e a relação estratégico → tático está demonstrada para o conjunto de famílias Goldberg oficialmente suportado.
 
+Stage inicial:
+
+**M2.1 — Goldberg Topology Foundation**
+
+Subcheckpoint inicial:
+
+**M2.1.1 — Goldberg Hierarchy Invariants Audit**
+
+Objetivo do primeiro subcheckpoint:
+
+auditar e congelar os invariantes matemáticos e arquiteturais necessários antes da implementação da topologia de produção.
+
 ---
+
+
 
 ## M3 — Procedural World
 
@@ -573,27 +604,27 @@ Last Baseline Review: YYYY-MM-DD
 
 Current Milestone:
 
-**M1 — Deterministic Simulation Kernel**
+**M2 — Planet Topology**
 
 Current Stage:
 
-**M1.5 — Determinism Diagnostics & Platform Validation**
+**M2.1 — Goldberg Topology Foundation**
 
 Current Subcheckpoint:
 
-**M1.5.4 — Cross-Platform Kernel Regression Validation**
+**M2.1.1 — Goldberg Hierarchy Invariants Audit**
 
 Official Progress:
 
-**6.0%**
+**7.0%**
 
 GPP Earned:
 
-**59.50 / 1000**
+**70.00 / 1000**
 
 Foundation / Simulation Kernel:
 
-**59.50 / 70 GPP — 85.0%**
+**70.00 / 70 GPP — 100.0%**
 
 Scope Confidence:
 
@@ -605,11 +636,11 @@ Technical Risk:
 
 Active Critical Risks:
 
-**8**
+**7**
 
 Critical Path:
 
-**Suíte completa do Simulation Kernel cross-platform e exit gate de M1**
+**Goldberg hierarchy mapping e prova da hierarquia estratégico/tático**
 
 Last Baseline Review:
 

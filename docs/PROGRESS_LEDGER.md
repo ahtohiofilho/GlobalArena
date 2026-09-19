@@ -4478,3 +4478,203 @@ Objetivos:
 - manter zero branches de comportamento por sistema operacional dentro do núcleo;
 - registrar evidência por runner;
 - usar o resultado como último gate técnico antes da decisão formal de fechamento de M1.
+
+---
+
+## 2026-09-19 — M1.5.4 Cross-Platform Kernel Regression Validation concluído e M1 fechado
+
+Milestone encerrado:
+
+**M1 — Deterministic Simulation Kernel**
+
+Stage encerrado:
+
+**M1.5 — Determinism Diagnostics & Platform Validation**
+
+Subcheckpoint:
+
+**M1.5.4 — Cross-Platform Kernel Regression Validation**
+
+### Resultado do gate remoto
+
+Workflow:
+
+`Cross-Platform Kernel Regression Validation`
+
+Run ID:
+
+`35444833011`
+
+Commit validado:
+
+`ae8f91f0fe9317895ea316eb05b27d4f566dacb6`
+
+Resultado:
+
+**SUCCESS**
+
+Ambientes:
+
+- Ubuntu 24.04 / x64;
+- Microsoft Windows Server 2025 / x64;
+- macOS 26 / arm64.
+
+.NET SDK:
+
+**10.0.401**
+
+Resultado por ambiente:
+
+- build Release: aprovado;
+- warnings: 0;
+- erros: 0;
+- testes: 126/126 aprovados;
+- falhas: 0;
+- skipped: 0;
+- artefato TRX: publicado.
+
+Total cross-platform:
+
+**378 execuções de teste aprovadas / 0 falhas**
+
+Artefatos:
+
+- `kernel-regression-ubuntu-latest` — ID `10585337036` — SHA-256 `020e17f56ab8ad3ddf11b6d4a1fc035127caedfd5bc3624e74c9fb766972bf9e`;
+- `kernel-regression-windows-latest` — ID `10584552896` — SHA-256 `613d6356a1346ddb3681d283f20be3708034de97c2f13075e1f62aa3213ce03a`;
+- `kernel-regression-macos-latest` — ID `10585281963` — SHA-256 `51dffe21ede70eca16c4eb91be6f126072fd3dca6774f392c6ca80a97b69f03d`.
+
+### Gate determinístico do M1
+
+O gate oficial:
+
+**mesmo estado + mesmas ordens + mesma seed = mesmo resultado**
+
+foi considerado atendido.
+
+A evidência inclui testes end-to-end com resultados observáveis fixos, executados nas três plataformas, além dos vetores canônicos de state hash.
+
+O kernel permanece:
+
+- headless;
+- independente de Unity;
+- determinístico;
+- reproduzível;
+- compatível com replay;
+- preparado para diagnóstico por hash;
+- cross-platform por design.
+
+### Promoção de maturidade
+
+As 12 capabilities de `Foundation / Simulation Kernel` passam de:
+
+**Validada — fator 0.85**
+
+para:
+
+**Definition of Done atendida — fator 1.00**
+
+| Capability | GPP | Antes | Depois | Incremento |
+|---|---:|---:|---:|---:|
+| Fundação modular, solução e infraestrutura de testes | 10 | 8.50 | 10.00 | +1.50 |
+| Tempo lógico, seed e PRNG determinístico | 8 | 6.80 | 8.00 | +1.20 |
+| Identidade e contratos de Command/Event | 8 | 6.80 | 8.00 | +1.20 |
+| SimulationContext | 5 | 4.25 | 5.00 | +0.75 |
+| WorldState mínimo | 5 | 4.25 | 5.00 | +0.75 |
+| Contratos de entrada/saída da resolução | 5 | 4.25 | 5.00 | +0.75 |
+| Orquestração mínima do TurnResolver | 4 | 3.40 | 4.00 | +0.60 |
+| Command → Event, validação e execução sequencial | 8 | 6.80 | 8.00 | +1.20 |
+| Deterministic shuffle / ordering | 5 | 4.25 | 5.00 | +0.75 |
+| EventLog / base de replay | 5 | 4.25 | 5.00 | +0.75 |
+| Turn policies | 3 | 2.55 | 3.00 | +0.45 |
+| Determinismo end-to-end / simulação headless automatizada | 4 | 3.40 | 4.00 | +0.60 |
+| **TOTAL** | **70** | **59.50** | **70.00** | **+10.50** |
+
+### Progresso oficial após fechamento do M1
+
+GPP conquistados:
+
+**70.00 / 1000**
+
+Global Progress:
+
+**7.0%**
+
+Foundation / Simulation Kernel:
+
+**70.00 / 70 GPP — 100.0%**
+
+Scope Confidence:
+
+**50%**
+
+Technical Risk:
+
+**HIGH**
+
+### Riscos
+
+`RISK-004 — Determinism failure` passa de:
+
+**MITIGATING / Probability 3 / Impact 4 / Score 12 — CRITICAL**
+
+para:
+
+**WATCHING / Probability 2 / Impact 4 / Score 8 — HIGH**
+
+Justificativa:
+
+- determinismo end-to-end possui resultado de referência fixo;
+- PRNG e ordering possuem vetores estáveis;
+- replay e EventLog estão cobertos;
+- state hash possui representação canônica;
+- suíte completa passou em Windows, Linux e macOS;
+- a evidência cobre x64 e arm64.
+
+O risco não é encerrado porque novos sistemas futuros ainda podem introduzir fontes de não determinismo.
+
+Riscos críticos ativos:
+
+**7**
+
+Riscos HIGH ativos:
+
+**5**
+
+Risk Level global:
+
+**HIGH**
+
+### Scope Change
+
+Nenhum.
+
+O baseline V1 permanece:
+
+**1000 GPP**
+
+### Fechamento formal
+
+**M1 — Deterministic Simulation Kernel concluído em 2026-09-19.**
+
+### Transição
+
+Próximo milestone:
+
+**M2 — Planet Topology**
+
+Primeiro stage:
+
+**M2.1 — Goldberg Topology Foundation**
+
+Primeiro subcheckpoint:
+
+**M2.1.1 — Goldberg Hierarchy Invariants Audit**
+
+Objetivos imediatos:
+
+- auditar as premissas matemáticas e arquiteturais existentes para `G(m,n)`;
+- congelar os invariantes topológicos mínimos antes de implementar estruturas;
+- definir critérios de identidade, adjacência, Euler e navegabilidade;
+- mapear o risco de pertencimento pai-filho e fronteiras estratégico/tático;
+- determinar quais hipóteses exigem spike antes de contratos de produção;
+- preservar geração e testes headless, sem dependência da Unity.
