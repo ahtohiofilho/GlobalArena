@@ -3,7 +3,7 @@
 **Versão:** 0.1
 **Milestone:** M1 — Deterministic Simulation Kernel
 **Status:** Ativo
-**Última revisão formal:** 2026-09-18
+**Última revisão formal:** 2026-09-19
 **Baseline V1 relacionado:** 0.1 — congelado
 
 ---
@@ -180,13 +180,20 @@ Score:
 
 Descrição:
 
-A relação entre Goldberg estratégico e Goldberg tático precisa preservar:
+A relação entre Goldberg estratégico e regiões táticas precisa preservar:
 
 - adjacência;
-- pertencimento;
-- compartilhamento de tiles em arestas;
+- pertencimento pai-filho;
+- continuidade entre tabuleiros vizinhos;
 - consistência topológica;
-- capacidade de navegação.
+- capacidade de navegação;
+- mapeamento determinístico de fronteiras.
+
+A hipótese atual assume que o refinamento hierárquico poderá funcionar de forma geral sobre poliedros Goldberg `G(m,n)`.
+
+Essa universalidade ainda não foi demonstrada.
+
+Casos das diferentes famílias Goldberg podem introduzir limitações de orientação, fronteira ou pertencimento que inviabilizem uma subdivisão estritamente hierárquica em todos os casos.
 
 Erros nessa camada contaminariam diversos subsistemas.
 
@@ -196,11 +203,14 @@ Mitigação:
 - testes topológicos;
 - geração headless;
 - validação de Euler e invariantes;
-- frequências compatíveis quando necessário.
+- testes explícitos de pertencimento pai-filho;
+- testes de continuidade entre regiões;
+- validação de casos representativos das famílias Goldberg;
+- permitir redução do conjunto de famílias suportadas caso a hipótese geral não se sustente.
 
 Próxima ação:
 
-spike geométrico em M2.
+spike geométrico em M2 para validar a hierarquia estratégico/tática e determinar quais famílias `G(m,n)` podem ser suportadas com os invariantes exigidos.
 
 ---
 

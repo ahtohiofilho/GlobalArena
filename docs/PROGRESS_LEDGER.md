@@ -1473,3 +1473,53 @@ Objetivos:
 - permitir a futura revalidação do Event no momento da execução;
 - evitar event queue, shuffle e múltiplos Events antes da existência do contrato mínimo;
 - preparar o primeiro caminho `Command → Event → state transition`.
+
+---
+
+## 2026-09-19 — Refinamento arquitetural da hierarquia mundial e geração multiescala
+
+Foi realizada revisão conceitual da futura geometria planetária e da geração procedural.
+
+Nenhuma implementação foi iniciada e nenhum GPP adicional foi conquistado.
+
+### Decisões consolidadas
+
+- haverá um único grafo estratégico global;
+- cada `StrategicCell` corresponderá a uma região ou tabuleiro tático local;
+- regiões táticas vizinhas permanecerão conectadas através da topologia estratégica;
+- sistemas globais deverão operar prioritariamente sobre propriedades estratégicas agregadas;
+- a resolução tática poderá ser muito superior sem se tornar unidade obrigatória dos cálculos econômicos e estratégicos;
+- geração do mundo poderá utilizar detalhe tático e posteriormente condensá-lo em propriedades estratégicas;
+- campos físicos contínuos serão preferidos como fonte da verdade;
+- biomas serão prioritariamente classificações derivadas;
+- hidrologia deverá emergir do relevo e da disponibilidade de água, e não ser apenas decoração.
+
+### Hipótese a validar
+
+A relação hierárquica estratégico → tático será inicialmente concebida para Goldberg `G(m,n)` de forma geral.
+
+M2 deverá determinar se essa hipótese é válida para todas as famílias relevantes.
+
+Caso existam limitações, o conjunto de famílias suportadas poderá ser reduzido sem alterar a arquitetura fundamental.
+
+### Scope Change
+
+Nenhum.
+
+As decisões refinam capacidades já previstas em Planet Topology e Procedural World.
+
+### Riscos
+
+`RISK-003 — Goldberg hierarchy mapping` foi refinado para registrar explicitamente a hipótese de universalidade do refinamento `G(m,n)`.
+
+Nenhum novo risco foi criado.
+
+### Estado atual
+
+O desenvolvimento permanece em:
+
+**M1.1.3 — Single-Event Execution Contract**
+
+Official Progress permanece:
+
+**43.25 / 1000 GPP — 4.3%**

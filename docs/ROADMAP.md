@@ -277,21 +277,25 @@ estabelecer o planeta lógico.
 
 Inclui:
 
-- Goldberg estratégico;
-- Goldberg tático;
+- topologia Goldberg `G(m,n)`;
+- grafo estratégico global;
 - StrategicCell;
 - StrategicEdge;
 - StrategicVertex;
+- região/tabuleiro tático por StrategicCell;
 - TacticalCell;
 - adjacências;
-- tiles compartilhados;
-- pertencimento;
+- pertencimento pai-filho;
+- conectividade entre tabuleiros vizinhos;
+- mapeamento determinístico de fronteiras;
+- refinamento hierárquico;
+- validação da hipótese de refinamento nas famílias Goldberg relevantes;
 - testes topológicos;
 - validação de escalabilidade.
 
 Gate:
 
-o planeta forma uma topologia fechada e navegável sem depender da Unity.
+o planeta forma uma topologia fechada e navegável sem depender da Unity, e a relação estratégico → tático está demonstrada para o conjunto de famílias Goldberg oficialmente suportado.
 
 ---
 
@@ -303,19 +307,25 @@ transformar topologia em mundo.
 
 Inclui:
 
+- geração multiescala;
+- campos físicos macroscópicos;
 - elevation;
+- moisture / water availability;
+- temperature / climate;
+- condições de contorno entre regiões;
+- refinamento físico tático;
 - hydrology;
-- climate;
-- biomes;
+- biomes derivados;
 - resources;
 - habitability;
+- agregação tático → estratégico;
 - civilization placement;
 - generation versions;
 - seed reproducibility.
 
 Gate:
 
-uma seed gera um planeta funcional e reproduzível.
+uma seed gera um planeta físico funcional e reproduzível, com coerência entre escalas e sem exigir que os sistemas estratégicos recorrentes percorram diretamente toda a resolução tática.
 
 ---
 

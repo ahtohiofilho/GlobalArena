@@ -650,25 +650,37 @@ Essa abordagem evita preencher prematuramente a raiz do mundo com conceitos aind
 
 # 11. Topologia estratégica
 
-O planeta estratégico utiliza topologia derivada de um poliedro de Goldberg.
+O planeta possui um único grafo estratégico global derivado de uma topologia Goldberg.
+
+A parametrização geral pretendida é `G(m,n)`.
 
 Na lógica:
 
-StrategicCell = nó
-StrategicEdge = conexão
-StrategicVertex = junção
+StrategicCell = nó estratégico e região do planeta
 
-A simulação estratégica trabalha prioritariamente sobre o grafo.
+StrategicEdge = conexão entre regiões
 
-A renderização 3D é uma projeção dessa estrutura.
+StrategicVertex = junção topológica
+
+A simulação estratégica trabalha prioritariamente sobre esse grafo.
+
+Cada `StrategicCell` representa uma região capaz de possuir estado e propriedades estratégicas próprias.
+
+A renderização 3D é uma projeção dessa estrutura lógica.
+
+A topologia estratégica não depende da Unity.
 
 ---
 
 # 12. Camada tática
 
-Cada região estratégica possui resolução tática muito superior.
+Cada `StrategicCell` corresponde a uma região tática própria.
 
-A malha tática permite:
+Conceitualmente, cada região estratégica funciona como um tabuleiro local de resolução muito superior.
+
+Regiões táticas vizinhas permanecem conectadas através das relações existentes no grafo estratégico.
+
+A camada tática permite:
 
 - posicionamento;
 - terreno;
@@ -676,52 +688,108 @@ A malha tática permite:
 - ocupação;
 - movimento detalhado;
 - fortificação;
-- infraestrutura.
+- infraestrutura;
+- detalhe físico local.
 
-A resolução tática não deve determinar diretamente o custo dos sistemas estratégicos.
+Uma região tática poderá possuir grande quantidade de microtiles e, futuramente, múltiplos níveis hierárquicos de refinamento.
+
+A resolução tática não deve determinar diretamente o custo dos sistemas estratégicos recorrentes.
+
+A arquitetura assume inicialmente que o refinamento hierárquico poderá ser aplicado de forma geral sobre topologias Goldberg `G(m,n)`.
+
+Essa propriedade será tratada como hipótese até validação geométrica em M2.
+
+Caso a hipótese geral não se sustente, o suporte poderá ser reduzido para famílias específicas sem alterar a separação estratégico/tática.
 
 ---
 
-# 13. Arestas compartilhadas
+# 13. Conectividade entre regiões
 
-StrategicEdges possuem uma faixa de TacticalCells compartilhada pelas regiões adjacentes.
+Toda conexão entre `StrategicCells` deverá possuir correspondência determinística entre suas regiões táticas.
 
-Esses tiles constituem uma zona de transição real.
+Essa correspondência deverá preservar:
 
-Usos previstos:
+- adjacência;
+- pertencimento;
+- continuidade espacial;
+- capacidade de navegação;
+- passagem de infraestrutura;
+- passagem de sistemas físicos relevantes;
+- transições militares e logísticas.
 
-- fronteira;
+A representação concreta da fronteira ainda não está congelada.
+
+Ela poderá envolver faixas compartilhadas, mapeamentos de borda ou outra estrutura que preserve os invariantes necessários.
+
+O estado estratégico de uma conexão poderá ser derivado do estado tático correspondente.
+
+Exemplos futuros incluem:
+
 - bloqueios;
-- passagem;
-- fortalezas;
 - estradas;
 - gargalos;
+- fortificações;
 - controle militar;
-- logística.
-
-O estado estratégico de uma aresta pode ser derivado do estado tático dessa faixa.
+- capacidade logística.
 
 ---
 
 # 14. World Generation
 
-WorldGeneration será um pipeline substituível.
+`WorldGeneration` será um pipeline reproduzível e substituível.
 
-Pipeline inicial previsto:
+A geração deverá ser multiescala.
 
-Geometry
-→ Elevation
-→ Hydrology
-→ Climate
-→ Biomes
-→ Resources
-→ Habitability
-→ Civilization Placement
-→ Initial Economy
+O grafo estratégico será utilizado para coordenar propriedades macroscópicas, relações globais e condições entre regiões.
 
-Cada etapa deve possuir contratos explícitos.
+A resolução tática poderá ser utilizada durante a geração para produzir detalhe físico local muito superior ao utilizado rotineiramente pelos sistemas estratégicos.
 
-Uma etapa não deve precisar conhecer detalhes internos de etapas posteriores.
+Campos físicos contínuos são preferidos como fonte da verdade.
+
+Exemplos previstos incluem:
+
+- altitude;
+- latitude e/ou insolação;
+- temperatura;
+- umidade;
+- disponibilidade de água;
+- características do relevo.
+
+Classificações qualitativas como biomas deverão, sempre que apropriado, ser derivadas desses campos em vez de constituírem a causa primária da geração.
+
+Assim, uma região estrategicamente classificada como predominantemente desértica ainda poderá conter variações locais emergentes produzidas por seus parâmetros físicos.
+
+A geração poderá utilizar o grafo estratégico para fornecer condições de contorno às regiões táticas e posteriormente condensar o detalhe produzido em propriedades estratégicas.
+
+Conceitualmente:
+
+WorldSeed
+→ Strategic Geometry
+→ Macro Physical Fields
+→ Strategic Constraints / Boundary Conditions
+→ Tactical Refinement
+→ Physical Processes
+→ Derived Classifications
+→ Strategic Aggregation
+→ World Ready
+
+Essa sequência representa direção arquitetural e não congela a ordem exata dos algoritmos.
+
+A hidrologia deverá ser consequência do relevo e da disponibilidade de água.
+
+Rios, lagos e estruturas hidrográficas não deverão ser tratados apenas como decoração aplicada posteriormente.
+
+O relevo tático básico deverá existir antes da resolução hidrográfica local, mas o algoritmo exato, número de passagens, erosão e estratégia de otimização permanecem decisões futuras.
+
+A geração inicial poderá gastar mais processamento do que os sistemas executados repetidamente durante a partida.
+
+Entretanto:
+
+**aumentar a resolução tática pode aumentar o custo de geração do mundo, mas não deve provocar crescimento proporcional no custo recorrente dos sistemas estratégicos.**
+
+Detalhes táticos extremamente finos poderão futuramente ser materializados integralmente ou produzidos sob demanda.
+
+Essa decisão permanece aberta.
 
 ---
 
@@ -796,6 +864,12 @@ Responsabilidades previstas:
 - mercados.
 
 Economy deve operar prioritariamente sobre o grafo estratégico.
+
+Cada `StrategicCell` poderá expor propriedades econômicas agregadas derivadas de sua região tática.
+
+A economia global deverá consumir prioritariamente esses agregados em vez de percorrer rotineiramente milhões ou bilhões de microtiles.
+
+Alterações táticas relevantes poderão atualizar os agregados estratégicos correspondentes através de contratos ainda a definir.
 
 Nunca deverá depender de pathfinding global sobre toda a malha tática para operações rotineiras.
 
