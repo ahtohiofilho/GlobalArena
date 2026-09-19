@@ -571,7 +571,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M1.1.2 — Single-Command Resolution Path**
+**M1.1.3 — Single-Event Execution Contract**
 
 Official Progress:
 

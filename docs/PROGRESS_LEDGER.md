@@ -1372,3 +1372,104 @@ Objetivos:
 - manter o `WorldState` inalterado enquanto execução de Events ainda não existir;
 - evitar introduzir ordering de múltiplos Commands prematuramente;
 - preparar o primeiro fluxo executável Command → Event através do `TurnResolver`.
+
+---
+
+## 2026-09-18 — M1.1.2 Single-Command Resolution Path concluído
+
+Milestone:
+
+**M1 — Deterministic Simulation Kernel**
+
+Stage:
+
+**M1.1 — Non-empty Deterministic Turn Resolution**
+
+Subcheckpoint:
+
+**M1.1.2 — Single-Command Resolution Path**
+
+### Progresso oficial
+
+GPP conquistados:
+
+**43.25 / 1000**
+
+Global Progress:
+
+**4.3%**
+
+Foundation / Simulation Kernel:
+
+**43.25 / 70 GPP — 61.8%**
+
+Nenhum GPP adicional foi conquistado neste subcheckpoint.
+
+A capability `Command → Event, validação e execução sequencial` permanece classificada como:
+
+**Especificada — fator 0.20**
+
+O caminho `Command → Event` passou a existir através do `TurnResolver`, mas a capability completa ainda não possui validação real de Commands, execução de Events sobre o `WorldState` nem resolução sequencial suficiente para qualificá-la como `Funcional isoladamente`.
+
+### Concluído
+
+- `TurnResolver` passou a depender explicitamente de `ISimulationCommandProcessor`;
+- turno com zero Commands continua preservando o `WorldState` e produzindo zero Events;
+- exatamente um Command pode atravessar o `TurnResolver`;
+- o processor recebe o estado, o Command e o `SimulationContext`;
+- Events produzidos pelo processor são retornados pelo `TurnResolutionResult`;
+- lineage `CommandId → EventId.OriginCommandId` permanece preservado;
+- o `WorldState` permanece inalterado porque Event execution ainda não existe;
+- dois ou mais Commands continuam explicitamente não suportados;
+- processor nulo é rejeitado;
+- nenhuma infraestrutura de dispatch foi introduzida;
+- nenhum ordering de múltiplos Commands foi definido;
+- nenhum deterministic shuffle foi introduzido;
+- nenhuma regra concreta de gameplay foi adicionada.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- testes totais: 32;
+- testes aprovados: 32;
+- falhas: 0;
+- `SingleCommandIsProcessedAndProducesEvents`: aprovado;
+- `MultipleCommandsAreRejected`: aprovado;
+- `NullCommandProcessorIsRejected`: aprovado;
+- regressões anteriores do `TurnResolver`: aprovadas;
+- `git diff --check`: sem erros de whitespace.
+
+Foi emitido apenas o aviso esperado de normalização CRLF → LF no working copy de `TurnResolverTests.cs`, consistente com a política de line endings do repositório.
+
+### Decisões relevantes
+
+- o `TurnResolver` passa a orquestrar o processor diretamente;
+- não será criado dispatcher antes de existir mais de um tipo concreto de processamento que realmente exija dispatch;
+- o limite de um Command é explícito para evitar semântica implícita de ordering;
+- geração de Events permanece separada de Event execution;
+- o `ResultingWorldState` continua sendo o estado de entrada enquanto execução de Events não existir;
+- nenhuma abstração adicional foi criada antecipadamente.
+
+### Scope Change
+
+Nenhum.
+
+### Novos riscos
+
+Nenhum risco estrutural novo identificado.
+
+`RISK-004 — Determinism failure` permanece relevante.
+
+O checkpoint reduz incerteza sobre o caminho `Command → Event`, mas ainda não prova determinismo end-to-end nem execução reproduzível sobre o estado.
+
+### Próximo subcheckpoint
+
+**M1.1.3 — Single-Event Execution Contract**
+
+Objetivos:
+
+- estabelecer a fronteira mínima responsável por aplicar um Event ao `WorldState`;
+- manter geração de Events separada de sua execução;
+- permitir a futura revalidação do Event no momento da execução;
+- evitar event queue, shuffle e múltiplos Events antes da existência do contrato mínimo;
+- preparar o primeiro caminho `Command → Event → state transition`.

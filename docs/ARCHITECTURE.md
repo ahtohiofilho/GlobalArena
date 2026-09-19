@@ -453,9 +453,17 @@ O objetivo deste contrato é estabelecer a fronteira estável entre:
 
 ## 8.2 Minimum Turn Resolver
 
-`TurnResolver` materializa o primeiro comportamento executável da pipeline de resolução.
+`TurnResolver` materializa a primeira orquestração executável da pipeline de resolução.
 
-O baseline atual suporta explicitamente a resolução de um turno sem Commands.
+O resolver depende explicitamente de um:
+
+`ISimulationCommandProcessor`
+
+Essa dependência representa a fronteira atualmente disponível entre um Command submetido e os Events produzidos a partir dessa intenção.
+
+O comportamento atual possui três caminhos explícitos.
+
+### Zero Commands
 
 Entrada:
 
@@ -474,40 +482,102 @@ zero Events
 Quando a entrada não contém Commands:
 
 - o `WorldState` de entrada é preservado;
-- nenhuma nova instância de estado é criada pelo resolver;
 - nenhum Event é produzido;
+- o command processor não é invocado para produzir o resultado do turno vazio;
 - nenhuma aleatoriedade é consumida;
-- nenhuma regra de domínio é executada.
+- nenhuma regra concreta de domínio é executada.
 
-Quando existem Commands, o resolver rejeita explicitamente a resolução com `NotSupportedException`.
-
-Essa rejeição é deliberada.
-
-Enquanto não existir infraestrutura concreta de processamento de Commands, o resolver não deverá:
-
-- ignorar Commands silenciosamente;
-- fingir que Commands foram executados;
-- gerar Events artificiais;
-- alterar o `WorldState`;
-- consumir a seed sem necessidade.
-
-O comportamento atual estabelece uma propriedade importante do Kernel:
+A propriedade já estabelecida permanece válida:
 
 **ausência de intenção produz ausência de alteração de estado e ausência de eventos.**
 
+### Um Command
+
+Entrada:
+
+WorldState
++
+um ISimulationCommand
++
+SimulationContext
+
+→ TurnResolver
+→ ISimulationCommandProcessor →
+
+mesmo WorldState
++
+0..N ISimulationEvent
+
+Quando existe exatamente um Command:
+
+- o `TurnResolver` encaminha o `WorldState` autoritativo ao processor;
+- encaminha o Command recebido;
+- encaminha o `SimulationContext`;
+- recebe zero ou mais Events;
+- incorpora esses Events ao `TurnResolutionResult`;
+- preserva o `WorldState` de entrada como `ResultingWorldState`.
+
+Esse é o primeiro caminho não vazio executável da resolução:
+
+Command
+→ TurnResolver
+→ ISimulationCommandProcessor
+→ Event(s)
+
+A produção de Events não significa ainda execução desses Events.
+
+Neste estágio, nenhum Event modifica o `WorldState`.
+
+A distinção permanece:
+
+Command
+→ intenção
+
+Event
+→ ocorrência
+
+Event execution
+→ futura alteração autoritativa do estado
+
+### Mais de um Command
+
+Quando existem dois ou mais Commands, o resolver rejeita explicitamente a resolução com `NotSupportedException`.
+
+Essa restrição é deliberada.
+
+O projeto ainda não definiu:
+
+- dispatch entre processors;
+- ordering de múltiplos Commands;
+- deterministic shuffle;
+- event queue;
+- ordering entre Events;
+- execução sequencial.
+
+A rejeição explícita impede que ordering ou semântica de múltiplos Commands sejam introduzidos implicitamente.
+
+### Dependência do processor
+
+`TurnResolver` exige um `ISimulationCommandProcessor` válido em sua construção.
+
+Processor nulo é rejeitado.
+
+Nenhum registry, service locator, dispatcher ou handler hierarchy é introduzido neste estágio.
+
 O `TurnResolver` ainda não implementa:
 
-- validação de Commands;
-- transformação de Commands em Events;
+- validação completa de Commands;
+- aplicação de Events ao `WorldState`;
+- revalidação de Events;
 - event queue;
 - deterministic shuffle;
-- execução sequencial;
-- revalidação;
+- resolução de múltiplos Commands;
+- execução sequencial de Events;
 - consolidação de mudanças;
 - avanço de turno;
 - EventLog.
 
-Essas capacidades permanecem pertencentes ao desenvolvimento do Deterministic Simulation Kernel após o fechamento do baseline M0.
+O próximo limite arquitetural necessário é estabelecer como um Event válido pode ser aplicado ao estado autoritativo sem misturar geração de Events com sua execução.
 
 ---
 
