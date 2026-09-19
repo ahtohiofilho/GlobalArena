@@ -5857,3 +5857,244 @@ Objetivos:
 - tratar orientação/chiralidade explicitamente;
 - preservar Class I e Class II sem regressão;
 - executar novamente o gate cross-platform antes do fechamento formal.
+
+---
+
+## 2026-09-19 — M2.1.5.C Class III Goldberg Generalization concluído
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage encerrado:
+
+**M2.1 — Goldberg Topology Foundation**
+
+Parent checkpoint:
+
+**M2.1.5 — General Icosahedral Goldberg Generation**
+
+Subcheckpoint:
+
+**M2.1.5.C — Class III Goldberg Generalization**
+
+### Implementação
+
+Commit validado:
+
+`eda066cd45d1c16f3504a3d120b7e2500193d8f9`
+
+Commit:
+
+`feat: add Class III Goldberg topology`
+
+A tranche adicionou suporte estratégico à família Class III:
+
+- `m > 0`;
+- `n > 0`;
+- `m != n`.
+
+Class I e Class II permanecem suportadas.
+
+### Construção Class III
+
+A implementação usa uma construção combinatória determinística sobre lattice triangular inteiro.
+
+A geração Class III introduziu:
+
+- faces icosaédricas com orientação consistente;
+- domínio local skew definido por `(m,n)`;
+- teste inteiro de pertencimento ao triângulo local;
+- halo combinatório para cobrir a fronteira quiral;
+- triangulação local determinística;
+- índices de lattice redundantes para correspondência entre faces;
+- stitching cross-face por relações inteiras e rotações cíclicas;
+- união determinística de vértices equivalentes;
+- canonicalização final de cells, edges e vertices;
+- ausência de ponto flutuante como fonte de verdade topológica.
+
+### Casos validados
+
+`G(2,1)`:
+
+- 72 cells;
+- 210 edges;
+- 140 vertices;
+- 12 pentágonos;
+- 60 hexágonos.
+
+`G(1,2)`:
+
+- 72 cells;
+- 210 edges;
+- 140 vertices;
+- 12 pentágonos;
+- 60 hexágonos.
+
+`G(3,1)`:
+
+- 132 cells;
+- 390 edges;
+- 260 vertices;
+- 12 pentágonos;
+- 120 hexágonos.
+
+`G(3,2)`:
+
+- 192 cells;
+- 570 edges;
+- 380 vertices;
+- 12 pentágonos;
+- 180 hexágonos.
+
+### Invariantes provados
+
+- grau 5 para pentágonos;
+- grau 6 para hexágonos;
+- duas cells por edge;
+- dois vertices por edge;
+- três cells por vertex;
+- três edges por vertex;
+- reciprocidade de adjacência e incidência;
+- conectividade global;
+- Euler `V - E + F = 2`;
+- IDs canônicos contíguos one-based em `G(2,1)`;
+- geração repetida de `G(2,1)` reproduz a mesma assinatura canônica;
+- `G(2,1)` e `G(1,2)` preservam distinção quiral por assinaturas canônicas diferentes.
+
+### Fechamento de M2.1.5
+
+M2.1.5 está concluído.
+
+A geração estratégica agora possui implementação funcional isolada nas três classes icosaédricas:
+
+- Class I: `G(m,0)` / `G(0,n)`;
+- Class II: `G(k,k)`;
+- Class III: `m > 0`, `n > 0`, `m != n`.
+
+Isso encerra também:
+
+**M2.1 — Goldberg Topology Foundation**
+
+O próximo stage é M2.2.
+
+### Evidência local
+
+- build Release: 6/6;
+- warnings: 0;
+- errors: 0;
+- testes: 193/193;
+- falhas: 0;
+- skipped: 0;
+- `git diff --check`: aprovado;
+- `git diff --cached --check`: aprovado.
+
+### Gate cross-platform
+
+Workflow:
+
+`Cross-Platform Kernel Regression Validation`
+
+Run ID:
+
+`35458533092`
+
+Resultado:
+
+**SUCCESS**
+
+Commit:
+
+`eda066cd45d1c16f3504a3d120b7e2500193d8f9`
+
+Jobs:
+
+- Ubuntu: `success`;
+- Windows: `success`;
+- macOS: `success`.
+
+Artefatos:
+
+- Ubuntu: ID `10589106830`, SHA-256 `0407706bb7c321acd0f50fecdbf5282ee2f61e1c0e0449c39e370f4e8814bf0d`;
+- Windows: ID `10589545953`, SHA-256 `09b5f9c8c8ccc94baf8fc70300a07b35f3334541de10a7adeb68ba6f25daa7b3`;
+- macOS: ID `10589326091`, SHA-256 `d1fa19525bb0dbb1ed706cee97b4b89f4af5279bf79c9bfde4d9b754483364d2`.
+
+### Maturidade e GPP
+
+A capability agregada:
+
+`Goldberg parameterization e geração estratégica`
+
+é promovida de:
+
+**Especificada — fator 0.20 — 3.20 GPP**
+
+para:
+
+**Implementação funcional isolada — fator 0.50 — 8.00 GPP**
+
+Justificativa:
+
+M2.1.5 agora cobre as três classes icosaédricas por implementação executável, com contagens, incidência, conectividade, determinismo e casos representativos validados cross-platform.
+
+GPP antes:
+
+**79.20 / 1000**
+
+Incremento:
+
+**+4.80 GPP**
+
+GPP após:
+
+**84.00 / 1000**
+
+Global Progress:
+
+**8.4%**
+
+Topologia planetária / Goldberg:
+
+**14.00 / 90 GPP — 15.6%**
+
+Foundation / Simulation Kernel permanece:
+
+**70.00 / 70 GPP — 100.0%**
+
+### Riscos
+
+`RISK-003 — Goldberg hierarchy mapping` permanece:
+
+**MITIGATING / Probability 2 / Impact 4 / Score 8 — HIGH**
+
+A incerteza sobre a geração estratégica das classes Goldberg foi reduzida.
+
+Continuam em aberto:
+
+- topologia tática;
+- refinamento estratégico/tático;
+- border bands;
+- pertencimento pai-filho;
+- continuidade entre regiões;
+- eventual restrição de famílias caso o refinamento hierárquico não preserve os invariantes necessários.
+
+### Scope Change
+
+Nenhum.
+
+O baseline V1 permanece:
+
+**1000 GPP**
+
+### Próxima etapa
+
+**M2.2 — Tactical Region Topology**
+
+Objetivos iniciais:
+
+- definir identidade e contratos da topologia tática;
+- materializar uma região tática por `StrategicCell`;
+- definir pertencimento estratégico → tático;
+- estabelecer adjacência e conectividade tática;
+- manter a lógica independente da Unity;
+- preparar a base necessária para M2.3 — Shared Border Bands & Strategic/Tactical Mapping.

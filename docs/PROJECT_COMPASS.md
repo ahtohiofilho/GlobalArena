@@ -306,11 +306,11 @@ A decomposição operacional inicial de M2 é:
 | Scalability / headless performance baseline | 4 |
 | **TOTAL** | **90** |
 
-Estado de maturidade após M2.1.5.B:
+Estado de maturidade após M2.1.5.C:
 
 | Capability | GPP | Maturidade | Fator | GPP ganhos |
 |---|---:|---|---:|---:|
-| Goldberg parameterization e geração estratégica | 16 | Especificada | 0.20 | 3.20 |
+| Goldberg parameterization e geração estratégica | 16 | Implementação funcional isolada | 0.50 | 8.00 |
 | Strategic graph: identidade, incidência e adjacência | 12 | Implementação funcional isolada | 0.50 | 6.00 |
 | Tactical region topology | 14 | Inexistente | 0.00 | 0.00 |
 | Shared subtile border bands | 16 | Inexistente | 0.00 | 0.00 |
@@ -318,7 +318,7 @@ Estado de maturidade após M2.1.5.B:
 | Canonical deterministic topology generation | 6 | Inexistente | 0.00 | 0.00 |
 | Topological validation e navigability | 6 | Inexistente | 0.00 | 0.00 |
 | Scalability / headless performance baseline | 4 | Inexistente | 0.00 | 0.00 |
-| **TOTAL** | **90** |  |  | **9.20** |
+| **TOTAL** | **90** |  |  | **14.00** |
 
 M2.1.1 foi um audit arquitetural e não promoveu maturidade por si só.
 
@@ -332,9 +332,11 @@ Por isso, `Strategic graph: identidade, incidência e adjacência` passa diretam
 
 M2.1.5.A generalizou a geração para a família Class I `G(m,0)` / `G(0,n)` e validou `G(2,0)`, `G(0,2)` e `G(3,0)` de forma determinística e cross-platform.
 
-M2.1.5.B adicionou suporte determinístico à família Class II `G(k,k)` e validou `G(1,1)` e `G(2,2)` cross-platform, preservando a família Class I e mantendo Class III explicitamente bloqueada.
+M2.1.5.B adicionou suporte determinístico à família Class II `G(k,k)` e validou `G(1,1)` e `G(2,2)` cross-platform, preservando a família Class I.
 
-A capability agregada `Goldberg parameterization e geração estratégica` permanece em `Especificada — fator 0.20`: o modelo de maturidade usa gates discretos e M2.1.5 ainda não está completo enquanto Class III permanecer fora do suporte requerido.
+M2.1.5.C adicionou a família Class III para parâmetros positivos desiguais e validou `G(2,1)`, `G(1,2)`, `G(3,1)` e `G(3,2)`, incluindo orientação/chiralidade, determinismo e invariantes topológicos.
+
+Com as três classes icosaédricas cobertas por implementação funcional isolada e validação cross-platform representativa, M2.1.5 é encerrado e `Goldberg parameterization e geração estratégica` é promovida para `Implementação funcional isolada — fator 0.50`.
 
 Esses pesos constituem o baseline inicial.
 
@@ -549,17 +551,21 @@ Milestone:
 
 Etapa:
 
-**M2.1 — Goldberg Topology Foundation**
+**M2.2 — Tactical Region Topology**
 
 Subetapa atual:
 
-**M2.1.5.C — Class III Goldberg Generalization**
+**M2.2 — Tactical Region Topology**
 
 M0 — Project Baseline:
 
 **concluído em 2026-09-18**
 
 M1 — Deterministic Simulation Kernel:
+
+**concluído em 2026-09-19**
+
+M2.1 — Goldberg Topology Foundation:
 
 **concluído em 2026-09-19**
 
@@ -583,17 +589,21 @@ M2.1.5.B — Class II Goldberg Generalization:
 
 **concluído em 2026-09-19**
 
+M2.1.5.C — Class III Goldberg Generalization:
+
+**concluído em 2026-09-19**
+
 Baseline V1:
 
 **congelado em 2026-09-18**
 
 Progresso oficial:
 
-**7,9%**
+**8,4%**
 
 GPP conquistados:
 
-**79,20 / 1000**
+**84,00 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -601,7 +611,7 @@ Foundation / Simulation Kernel:
 
 Topologia planetária / Goldberg:
 
-**9,20 / 90 GPP — 10,2%**
+**14,00 / 90 GPP — 15,6%**
 
 Scope Confidence:
 

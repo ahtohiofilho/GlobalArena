@@ -279,11 +279,38 @@ A implementação preserva contagens, 12 pentágonos, graus 5/6, incidência 2 p
 
 Class I permanece suportada. Class III continua explicitamente não suportada.
 
-A evidência ainda não demonstra geração Goldberg geral para todas as famílias nem refinamento estratégico/tático.
+M2.1.5.C adicionou suporte à família Class III para parâmetros positivos desiguais usando uma construção de lattice inteiro com stitching combinatório entre faces.
+
+Evidência de M2.1.5.C:
+
+- commit: `eda066cd45d1c16f3504a3d120b7e2500193d8f9`;
+- workflow: `Cross-Platform Kernel Regression Validation`;
+- run ID: `35458533092`;
+- Ubuntu: job concluído com `success`;
+- Windows: job concluído com `success`;
+- macOS: job concluído com `success`;
+- suíte local: 193/193, 0 falhas, 0 skipped;
+- artefato Ubuntu: ID `10589106830`, SHA-256 `0407706bb7c321acd0f50fecdbf5282ee2f61e1c0e0449c39e370f4e8814bf0d`;
+- artefato Windows: ID `10589545953`, SHA-256 `09b5f9c8c8ccc94baf8fc70300a07b35f3334541de10a7adeb68ba6f25daa7b3`;
+- artefato macOS: ID `10589326091`, SHA-256 `d1fa19525bb0dbb1ed706cee97b4b89f4af5279bf79c9bfde4d9b754483364d2`.
+
+Casos validados na tranche:
+
+- `G(2,1)`;
+- `G(1,2)`;
+- `G(3,1)`;
+- `G(3,2)`.
+
+A implementação preserva contagens, 12 pentágonos, graus 5/6, incidência 2 por edge e 3 por vertex, reciprocidade, conectividade, Euler e IDs canônicos determinísticos.
+
+A distinção quiral foi preservada: `G(2,1)` e `G(1,2)` possuem as mesmas contagens, mas assinaturas canônicas distintas.
+
+Com M2.1.5.C, a geração estratégica possui implementação funcional isolada para Class I, Class II e Class III.
+
+A evidência ainda não demonstra refinamento estratégico/tático nem o modelo definitivo de fronteiras táticas compartilhadas.
 
 Reavaliar quando:
 
-- Class III receber validação própria;
 - o spike de refinamento hierárquico for concluído;
 - o modelo de fileiras compartilhadas for congelado;
 - uma família Goldberg oficialmente suportada for restringida ou ampliada.

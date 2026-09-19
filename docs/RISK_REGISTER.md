@@ -217,7 +217,10 @@ Mitigação:
 - geração estratégica Class II `G(k,k)` materializada;
 - `G(1,1)` e `G(2,2)` validados com contagens, graus e invariantes esperados;
 - determinismo de identidade e assinatura provado para a tranche Class II;
-- Class III mantida explicitamente fora do suporte até validação própria;
+- geração estratégica Class III para parâmetros positivos desiguais materializada;
+- `G(2,1)`, `G(1,2)`, `G(3,1)` e `G(3,2)` validados com contagens, graus e invariantes esperados;
+- orientação/chiralidade Class III tratada combinatoriamente e validada por assinaturas distintas de `G(2,1)` e `G(1,2)`;
+- suporte estratégico funcional isolado agora cobre Class I, Class II e Class III;
 - testes explícitos de pertencimento pai-filho;
 - testes de continuidade entre regiões;
 - validação de casos representativos das famílias Goldberg;
@@ -225,7 +228,7 @@ Mitigação:
 
 Próxima ação:
 
-estender a geração estratégica para Class III, começando por `G(2,1)`, preservando contagens, identidades, incidência, adjacência, conectividade, determinismo e orientação/chiralidade explícita; depois executar spikes de refinamento estratégico/tático para determinar quais famílias `G(m,n)` podem ser suportadas com os invariantes exigidos.
+iniciar M2.2 com contratos e topologia tática por `StrategicCell`, seguido de spikes explícitos de pertencimento pai-filho e continuidade entre regiões; usar as três classes Goldberg já materializadas para testar se o refinamento estratégico/tático preserva os invariantes exigidos ou se o conjunto oficialmente suportado precisará ser restringido.
 
 ---
 

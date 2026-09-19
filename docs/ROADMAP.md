@@ -459,19 +459,66 @@ GPP adicional de M2.1.5.B:
 
 A promoção para `Implementação funcional isolada — fator 0.50` permanece bloqueada até o fechamento da generalização necessária de M2.1.5.
 
-Próximo subcheckpoint:
+M2.1.5.C está concluído em 2026-09-19.
 
-**M2.1.5.C — Class III Goldberg Generalization**
+Evidência de M2.1.5.C:
+
+- suporte Class III para `m > 0`, `n > 0`, `m != n`;
+- `G(2,1)` validado com 72 cells, 210 edges, 140 vertices e 60 hexágonos;
+- `G(1,2)` validado com as mesmas contagens e assinatura quiral distinta;
+- `G(3,1)` validado com 132 cells, 390 edges, 260 vertices e 120 hexágonos;
+- `G(3,2)` validado com 192 cells, 570 edges, 380 vertices e 180 hexágonos;
+- exatamente 12 pentágonos preservados;
+- grau 5 para pentágonos e grau 6 para hexágonos;
+- incidência 2 por edge e 3 por vertex preservada;
+- reciprocidade, conectividade e Euler = 2 preservados;
+- IDs canônicos contíguos one-based explicitamente testados em `G(2,1)`;
+- geração repetida de `G(2,1)` reproduz a mesma assinatura canônica;
+- `G(2,1)` e `G(1,2)` possuem assinaturas distintas, preservando a distinção quiral;
+- Class I e Class II permanecem suportadas sem regressão;
+- build Release local com 0 warnings e 0 errors;
+- suíte local: 193/193, 0 falhas, 0 skipped;
+- workflow `Cross-Platform Kernel Regression Validation`, run `35458533092`, concluído com sucesso em Ubuntu, Windows e macOS;
+- commit validado: `eda066cd45d1c16f3504a3d120b7e2500193d8f9`.
+
+M2.1.5 está concluído com suporte funcional isolado às famílias Class I, Class II e Class III.
+
+Promoção de maturidade:
+
+`Goldberg parameterization e geração estratégica`
+
+**Especificada — 0.20 → Implementação funcional isolada — 0.50**
+
+GPP adicional de M2.1.5.C:
+
+**+4.80 GPP**
+
+GPP após o fechamento:
+
+**84.00 / 1000**
+
+Global Progress:
+
+**8.4%**
+
+Topologia planetária / Goldberg:
+
+**14.00 / 90 GPP — 15.6%**
+
+M2.1 — Goldberg Topology Foundation está concluído em 2026-09-19.
+
+Próxima etapa:
+
+**M2.2 — Tactical Region Topology**
 
 Objetivos iniciais:
 
-- materializar o primeiro caso Class III em `G(2,1)`;
-- preservar contagens de `GoldbergParameters`;
-- preservar IDs canônicos determinísticos;
-- preservar incidência, adjacência, conectividade e Euler;
-- tratar orientação/chiralidade explicitamente;
-- preservar Class I e Class II sem regressão;
-- validar novamente em Ubuntu, Windows e macOS.
+- definir identidade e contratos da topologia tática;
+- materializar uma região tática associada a `StrategicCell`;
+- congelar pertencimento estratégico → tático;
+- estabelecer adjacência e conectividade tática;
+- preservar geração headless e determinística;
+- manter a Unity fora da fonte de verdade topológica.
 
 ---
 
@@ -755,19 +802,19 @@ Current Milestone:
 
 Current Stage:
 
-**M2.1 — Goldberg Topology Foundation**
+**M2.2 — Tactical Region Topology**
 
 Current Subcheckpoint:
 
-**M2.1.5.C — Class III Goldberg Generalization**
+**M2.2 — Tactical Region Topology**
 
 Official Progress:
 
-**7.9%**
+**8.4%**
 
 GPP Earned:
 
-**79.20 / 1000**
+**84.00 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -775,7 +822,7 @@ Foundation / Simulation Kernel:
 
 Planet Topology / Goldberg:
 
-**9.20 / 90 GPP — 10.2%**
+**14.00 / 90 GPP — 15.6%**
 
 Scope Confidence:
 
