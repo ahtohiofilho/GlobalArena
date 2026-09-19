@@ -347,9 +347,29 @@ Evidência de M2.1.2:
 - 417 execuções cross-platform;
 - 0 falhas.
 
+M2.1.3 está concluído em 2026-09-19.
+
+Evidência de M2.1.3:
+
+- `StrategicCellId`, `StrategicEdgeId` e `StrategicVertexId` implementados;
+- IDs fortemente tipados e locais à topologia;
+- ordinal canônico one-based congelado;
+- `Value > 0` para identidade válida;
+- estado `default` tratado explicitamente como sentinela inválida;
+- identidade independente de coordenadas e ordem incidental de criação;
+- 154/154 testes por plataforma;
+- 462 execuções cross-platform;
+- 0 falhas.
+
+GPP adicional de M2.1.3:
+
+**+0.00 GPP**
+
+A capability agregada de strategic graph ainda não atinge `Especificada`, pois incidência e adjacência permanecem abertas.
+
 Próximo subcheckpoint:
 
-**M2.1.3 — Strategic Topology Identity Contract**
+**M2.1.4 — Minimal G(1,0) Strategic Topology**
 
 ---
 
@@ -637,7 +657,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M2.1.3 — Strategic Topology Identity Contract**
+**M2.1.4 — Minimal G(1,0) Strategic Topology**
 
 Official Progress:
 

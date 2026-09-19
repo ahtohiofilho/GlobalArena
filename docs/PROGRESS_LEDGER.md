@@ -5003,3 +5003,192 @@ Objetivos:
 - manter identidade independente da ordem física de criação;
 - preparar o caso mínimo `G(1,0)` sem ainda gerar sua topologia;
 - preservar determinismo e compatibilidade cross-platform.
+
+---
+
+## 2026-09-19 — M2.1.3 Strategic Topology Identity Contract concluído
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.1 — Goldberg Topology Foundation**
+
+Subcheckpoint:
+
+**M2.1.3 — Strategic Topology Identity Contract**
+
+### Implementação
+
+Commit validado:
+
+`11f7260ea8e7bfe0761e87cecfbe1f45a5f38a8c`
+
+Foram introduzidos:
+
+- `StrategicCellId`;
+- `StrategicEdgeId`;
+- `StrategicVertexId`;
+- testes dedicados do contrato de identidade;
+- documentação arquitetural do contrato.
+
+Cada ID:
+
+- é fortemente tipado;
+- usa `UInt64`;
+- exige valor positivo para identidade válida;
+- possui igualdade por valor;
+- é local a uma topologia estratégica;
+- não depende de coordenadas;
+- não depende de Unity;
+- não depende de ordem incidental de alocação.
+
+O valor lógico é um ordinal canônico one-based dentro do próprio tipo de entidade.
+
+### Hardening do estado default
+
+Foi identificado antes do commit que value types do CLR permitem construção implícita por `default`, contornando construtores explícitos.
+
+O contrato foi endurecido antes da consolidação.
+
+Para os três IDs:
+
+- `new ...Id(0)` é rejeitado;
+- `default(...Id).IsValid == false`;
+- acessar `Value` de uma sentinela `default` lança `InvalidOperationException`.
+
+Assim, o estado zero inevitável do `struct` não pode ser consumido silenciosamente como identidade válida.
+
+### Evidência local
+
+- build: 6/6;
+- warnings: 0;
+- errors: 0;
+- testes: 154/154;
+- falhas: 0;
+- not executed: 0;
+- `git diff --check`: aprovado;
+- `git diff --cached --check`: aprovado.
+
+### Gate cross-platform
+
+Workflow:
+
+`Cross-Platform Kernel Regression Validation`
+
+Run ID:
+
+`35447941816`
+
+Resultado:
+
+**SUCCESS**
+
+Commit:
+
+`11f7260ea8e7bfe0761e87cecfbe1f45a5f38a8c`
+
+.NET SDK:
+
+**10.0.401**
+
+Resultados:
+
+- Ubuntu 24.04.5 / x64: 154/154, 0 falhas, 0 skipped;
+- Microsoft Windows Server 2025 10.0.26100 / x64: 154/154, 0 falhas, 0 skipped;
+- macOS 26.6.2 / arm64: 154/154, 0 falhas, 0 skipped.
+
+Total:
+
+**462 execuções aprovadas / 0 falhas**
+
+Build em todos os runners:
+
+- 0 warnings;
+- 0 errors.
+
+Artefatos:
+
+- Ubuntu: ID `10585491535`, SHA-256 `50ac19648c9188e3ceb85db746ff956e272075b98ef50465ab50bc2982e608ca`;
+- Windows: ID `10585896761`, SHA-256 `9332444ea87cc4ee49c3b904b9de74bec81d8f88bc56364dc96f7845ffd82c6a`;
+- macOS: ID `10586211667`, SHA-256 `0e0268541d70be4808c531db4cf68b4ca9b1564062aef07b0bb62f2233c6a234`.
+
+### Maturidade e GPP
+
+GPP antes:
+
+**73.20 / 1000**
+
+GPP adicional:
+
+**+0.00 GPP**
+
+GPP após:
+
+**73.20 / 1000**
+
+Global Progress exibido:
+
+**7.3%**
+
+Topologia planetária / Goldberg permanece:
+
+**3.20 / 90 GPP — 3.6%**
+
+Justificativa:
+
+a capability de orçamento é `Strategic graph: identidade, incidência e adjacência`.
+
+M2.1.3 fecha apenas o subcontrato de identidade.
+
+Incidência e adjacência ainda não possuem contrato de produção materializado.
+
+Pelo modelo de maturidade do projeto, a capability agregada ainda não atende `Especificada — fator 0.20`.
+
+Não será concedido progresso parcial abaixo do primeiro gate de maturidade apenas para refletir um subcontrato.
+
+### Riscos
+
+`RISK-003 — Goldberg hierarchy mapping` permanece:
+
+**MITIGATING / Probability 2 / Impact 4 / Score 8 — HIGH**
+
+A incerteza de identidade topológica foi reduzida.
+
+A próxima prova deve materializar o caso mínimo `G(1,0)` e tornar concretos:
+
+- entidades;
+- incidência;
+- adjacência;
+- conectividade;
+- Euler;
+- atribuição determinística dos IDs.
+
+### Scope Change
+
+Nenhum.
+
+O baseline V1 permanece:
+
+**1000 GPP**
+
+### Próximo subcheckpoint
+
+**M2.1.4 — Minimal G(1,0) Strategic Topology**
+
+Objetivos:
+
+- materializar a primeira topologia estratégica completa;
+- usar `GoldbergParameters(1,0)`;
+- criar 12 cells, 30 edges e 20 vertices;
+- provar exatamente 12 pentágonos;
+- provar incidência 2 por edge;
+- provar incidência 3 por vertex;
+- provar grau 5 por cell;
+- provar reciprocidade e ausência de duplicatas;
+- provar conectividade global;
+- provar Euler = 2;
+- atribuir IDs canônicos deterministicamente;
+- permanecer headless e sem geometria de renderização.

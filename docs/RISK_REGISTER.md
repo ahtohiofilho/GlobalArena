@@ -205,6 +205,9 @@ Mitigação:
 - validação de Euler e invariantes;
 - contrato executável de parâmetros e contagens Goldberg;
 - vetores de referência validados cross-platform;
+- IDs estratégicos fortemente tipados e estáveis;
+- estado `default` dos IDs tratado como sentinela inválida;
+- contrato de identidade validado cross-platform;
 - testes explícitos de pertencimento pai-filho;
 - testes de continuidade entre regiões;
 - validação de casos representativos das famílias Goldberg;
@@ -212,7 +215,7 @@ Mitigação:
 
 Próxima ação:
 
-definir identidades topológicas estáveis para `StrategicCell`, `StrategicEdge` e `StrategicVertex`; depois materializar `G(1,0)` e executar spikes de refinamento estratégico/tático para determinar quais famílias `G(m,n)` podem ser suportadas com os invariantes exigidos.
+materializar a topologia estratégica mínima `G(1,0)` usando os IDs estáveis, provar contagens, incidência, adjacência, conectividade e Euler; depois generalizar a geração e executar spikes de refinamento estratégico/tático para determinar quais famílias `G(m,n)` podem ser suportadas com os invariantes exigidos.
 
 ---
 

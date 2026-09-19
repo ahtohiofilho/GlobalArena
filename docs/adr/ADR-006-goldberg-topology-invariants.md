@@ -175,7 +175,7 @@ Negative:
 - refinamento estratégico/tático exige spike próprio;
 - representação de border bands permanece uma decisão futura;
 - projeção visual esférica pode exigir triangulação ou tratamento geométrico separado;
-- IDs canônicos precisam ser projetados antes do gerador de produção.
+- IDs canônicos estão definidos, mas a regra concreta de atribuição durante a geração ainda precisa ser provada.
 
 ## Review
 
@@ -196,7 +196,24 @@ Evidência de referência:
 
 Essa evidência valida o contrato de parâmetros e contagens.
 
-Ela não demonstra ainda geração de faces, arestas, vértices, IDs, adjacência ou refinamento estratégico/tático.
+M2.1.3 materializou também o contrato de identidade topológica estratégica.
+
+Evidência de M2.1.3:
+
+- commit: `11f7260ea8e7bfe0761e87cecfbe1f45a5f38a8c`;
+- workflow: `Cross-Platform Kernel Regression Validation`;
+- run ID: `35447941816`;
+- .NET SDK: `10.0.401`;
+- Ubuntu 24.04.5 / x64: 154/154;
+- Microsoft Windows Server 2025 10.0.26100 / x64: 154/154;
+- macOS 26.6.2 / arm64: 154/154;
+- total: 462 execuções aprovadas;
+- falhas: 0;
+- skipped: 0.
+
+O contrato de identidade cobre tipos distintos, ordinal canônico one-based, rejeição explícita de zero e sentinela `default` inválida.
+
+A evidência ainda não demonstra geração de faces, arestas e vértices, incidência, adjacência ou refinamento estratégico/tático.
 
 Reavaliar quando:
 

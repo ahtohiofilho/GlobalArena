@@ -306,7 +306,7 @@ A decomposição operacional inicial de M2 é:
 | Scalability / headless performance baseline | 4 |
 | **TOTAL** | **90** |
 
-Estado de maturidade após M2.1.2:
+Estado de maturidade após M2.1.3:
 
 | Capability | GPP | Maturidade | Fator | GPP ganhos |
 |---|---:|---|---:|---:|
@@ -322,9 +322,15 @@ Estado de maturidade após M2.1.2:
 
 M2.1.1 foi um audit arquitetural e não promoveu maturidade por si só.
 
-M2.1.2 promove `Goldberg parameterization e geração estratégica` para `Especificada — fator 0.20` porque o contrato executável de parâmetros, domínio válido, fórmulas, contagens esperadas e vetores de referência está congelado e validado cross-platform.
+M2.1.2 promoveu `Goldberg parameterization e geração estratégica` para `Especificada — fator 0.20` porque o contrato executável de parâmetros, domínio válido, fórmulas, contagens esperadas e vetores de referência foi congelado e validado cross-platform.
 
-Essa promoção não afirma que o gerador estratégico já existe. Implementação funcional da geração permanece para os subcheckpoints seguintes de M2.1.
+M2.1.3 concluiu o subcontrato de identidade de `StrategicCell`, `StrategicEdge` e `StrategicVertex`, mas a capability agregada `Strategic graph: identidade, incidência e adjacência` ainda não atinge o gate de `Especificada — fator 0.20`.
+
+Incidência e adjacência permanecem sem contrato de produção e serão materializadas no primeiro caso funcional `G(1,0)`.
+
+Por isso, M2.1.3 não promove GPP. Essa decisão evita contabilizar uma capability agregada como especificada antes de seus contratos essenciais estarem definidos.
+
+A implementação funcional da geração estratégica também permanece para os subcheckpoints seguintes de M2.1.
 
 Esses pesos constituem o baseline inicial.
 
@@ -543,7 +549,7 @@ Etapa:
 
 Subetapa atual:
 
-**M2.1.3 — Strategic Topology Identity Contract**
+**M2.1.4 — Minimal G(1,0) Strategic Topology**
 
 M0 — Project Baseline:
 
@@ -554,6 +560,10 @@ M1 — Deterministic Simulation Kernel:
 **concluído em 2026-09-19**
 
 M2.1.2 — Goldberg Parameter & Count Contract:
+
+**concluído em 2026-09-19**
+
+M2.1.3 — Strategic Topology Identity Contract:
 
 **concluído em 2026-09-19**
 
