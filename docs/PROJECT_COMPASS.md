@@ -497,11 +497,11 @@ Milestone:
 
 Etapa:
 
-**M1.1 — Non-empty Deterministic Turn Resolution**
+**M1.2 — Multi-Command Deterministic Resolution**
 
 Subetapa atual:
 
-**M1.1.12 — Concrete Deterministic State Transition**
+**M1.2.1 — Multi-Command Resolution Contract**
 
 M0 — Project Baseline:
 
@@ -513,15 +513,15 @@ Baseline V1:
 
 Progresso oficial:
 
-**5,0%**
+**5,4%**
 
 GPP conquistados:
 
-**49,75 / 1000**
+**54,30 / 1000**
 
 Foundation / Simulation Kernel:
 
-**49,75 / 70 GPP — 71,1%**
+**54,30 / 70 GPP — 77,6%**
 
 Scope Confidence:
 
@@ -537,11 +537,11 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**primeira resolução não vazia reproduzível end-to-end**
+**resolução determinística de múltiplos Commands simultâneos**
 
 Última revisão de baseline:
 
-**2026-09-18**
+**2026-09-19**
 
 ---
 

@@ -218,7 +218,7 @@ spike geométrico em M2 para validar a hierarquia estratégico/tática e determi
 
 Status:
 
-OPEN
+MITIGATING
 
 Probability:
 
@@ -264,7 +264,7 @@ Mitigação:
 
 Próxima ação:
 
-M1 deverá provar determinismo antes de expansão do projeto.
+ampliar a prova para múltiplos Commands simultâneos e, depois, validar replay através do EventLog antes do fechamento de M1.
 
 ---
 

@@ -2487,3 +2487,176 @@ Objetivos:
 - provar a primeira resolução não vazia reproduzível end-to-end;
 - evitar ampliar gameplay ou antecipar subsistemas de M2+;
 - manter múltiplos Commands fora de escopo até que a prova mínima end-to-end esteja fechada.
+
+---
+
+## 2026-09-19 — M1.1.12 Concrete Deterministic State Transition concluído
+
+Milestone:
+
+**M1 — Deterministic Simulation Kernel**
+
+Stage encerrado:
+
+**M1.1 — Non-empty Deterministic Turn Resolution**
+
+Subcheckpoint:
+
+**M1.1.12 — Concrete Deterministic State Transition**
+
+### Resultado do stage
+
+**M1.1 concluído**
+
+A primeira resolução não vazia reproduzível end-to-end foi demonstrada.
+
+### Progresso oficial
+
+GPP conquistados:
+
+**54.30 / 1000**
+
+Global Progress:
+
+**5.4%**
+
+Foundation / Simulation Kernel:
+
+**54.30 / 70 GPP — 77.6%**
+
+GPP adicionais conquistados neste subcheckpoint:
+
+**+4.55 GPP**
+
+Três capabilities avançam de maturidade.
+
+`Command → Event, validação e execução sequencial`, orçamento 8 GPP:
+
+**Integrada — fator 0.70 — 5.60 GPP**
+
+→
+
+**Validada — fator 0.85 — 6.80 GPP**
+
+Incremento:
+
+**+1.20 GPP**
+
+`Deterministic shuffle / ordering`, orçamento 5 GPP:
+
+**Integrada — fator 0.70 — 3.50 GPP**
+
+→
+
+**Validada — fator 0.85 — 4.25 GPP**
+
+Incremento:
+
+**+0.75 GPP**
+
+`Determinismo end-to-end / simulação headless automatizada`, orçamento 4 GPP:
+
+**Especificada — fator 0.20 — 0.80 GPP**
+
+→
+
+**Validada — fator 0.85 — 3.40 GPP**
+
+Incremento:
+
+**+2.60 GPP**
+
+### Justificativa de maturidade
+
+A pipeline de produção do `TurnResolver` agora possui prova automatizada headless com estado observável real no `WorldState`.
+
+Duas execuções independentes, com estado inicial equivalente, Command equivalente, mesmo contexto e mesma seed, produzem:
+
+- a mesma ordem determinística de Events;
+- os mesmos `EventId`;
+- o mesmo estado observável final.
+
+As capabilities não atingem Definition of Done porque M1 ainda possui trabalho aberto, especialmente múltiplos Commands, EventLog, replay e Turn Policies.
+
+### Concluído
+
+- `WorldState.Revision` criado como propriedade observável mínima;
+- estado inicial começa em revisão zero;
+- `AdvanceRevision()` produz nova instância com revisão incrementada;
+- a instância anterior permanece inalterada;
+- overflow da revisão é verificado;
+- teste end-to-end headless criado;
+- duas execuções independentes são comparadas;
+- a pipeline real `validate → process → order → revalidate → execute` é exercitada;
+- `SeededSimulationEventOrderer` participa da prova;
+- três Events com seed `0` resultam na ordem `3 → 1 → 2`;
+- ambas as execuções terminam com `Revision = 3`;
+- Event IDs finais são iguais entre as execuções;
+- nenhuma regra de gameplay de M2+ foi antecipada;
+- múltiplos Commands continuam fora deste stage.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- warnings de build: 0;
+- erros de build: 0;
+- testes totais: 57;
+- testes aprovados: 57;
+- falhas: 0;
+- `InitialRevisionIsZero`: aprovado;
+- `AdvanceRevisionReturnsNewStateWithIncrementedRevision`: aprovado;
+- `IdenticalIndependentRunsProduceSameObservableStateAndEventOrder`: aprovado;
+- `git diff --check`: aprovado;
+- SHA-256 dos três arquivos alterados verificado no pacote de evidências.
+
+### Critical Path
+
+Critical Path anterior:
+
+**primeira resolução não vazia reproduzível end-to-end**
+
+Status:
+
+**atingido**
+
+Novo Critical Path:
+
+**resolução determinística de múltiplos Commands simultâneos**
+
+### Riscos
+
+`RISK-004 — Determinism failure` permanece ativo, mas passa de `OPEN` para `MITIGATING`.
+
+A primeira prova end-to-end reduz materialmente a incerteza, mas ainda não cobre:
+
+- múltiplos Commands simultâneos;
+- replay via EventLog;
+- diferenças de plataforma;
+- concorrência futura;
+- regras de domínio complexas.
+
+### Scope Change
+
+Nenhum.
+
+O total permanece:
+
+**1000 GPP**
+
+### Próximo stage
+
+**M1.2 — Multi-Command Deterministic Resolution**
+
+### Próximo subcheckpoint
+
+**M1.2.1 — Multi-Command Resolution Contract**
+
+Objetivos:
+
+- definir explicitamente a semântica de múltiplos Commands submetidos no mesmo turno;
+- preservar o modelo de planejamento simultâneo;
+- decidir contra qual `WorldState` cada Command é validado e processado;
+- estabelecer como Events de múltiplos Commands são agregados antes do ordering;
+- evitar introduzir ordering implícito entre Commands;
+- manter revalidação e execução sequencial dos Events após o ordering;
+- preparar implementação sem alterar ainda EventLog ou Turn Policies.

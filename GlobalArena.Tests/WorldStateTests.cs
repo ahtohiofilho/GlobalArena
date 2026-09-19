@@ -20,4 +20,34 @@ public sealed class WorldStateTests
 
         Assert.NotSame(first, second);
     }
+
+    [Fact]
+    public void InitialRevisionIsZero()
+    {
+        var state = WorldState.CreateInitial();
+
+        Assert.Equal(
+            0UL,
+            state.Revision);
+    }
+
+    [Fact]
+    public void AdvanceRevisionReturnsNewStateWithIncrementedRevision()
+    {
+        var state = WorldState.CreateInitial();
+
+        var advanced = state.AdvanceRevision();
+
+        Assert.NotSame(
+            state,
+            advanced);
+
+        Assert.Equal(
+            0UL,
+            state.Revision);
+
+        Assert.Equal(
+            1UL,
+            advanced.Revision);
+    }
 }

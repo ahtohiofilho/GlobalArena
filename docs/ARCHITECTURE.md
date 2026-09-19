@@ -455,7 +455,7 @@ O objetivo deste contrato é estabelecer a fronteira estável entre:
 
 Esta seção preserva o primeiro baseline executável do `TurnResolver`.
 
-As seções 8.3 a 8.11 documentam a evolução posterior e prevalecem sobre as limitações históricas descritas nesta seção.
+As seções 8.3 a 8.12 documentam a evolução posterior e prevalecem sobre as limitações históricas descritas nesta seção.
 
 `TurnResolver` materializa a primeira orquestração executável da pipeline de resolução.
 
@@ -1210,13 +1210,90 @@ Múltiplos Commands continuam explicitamente não suportados.
 
 O fluxo ainda não possui:
 
-- regra concreta de domínio que produza alteração observável do `WorldState`;
-- prova end-to-end de que duas execuções reais idênticas produzam o mesmo estado observável;
+- suporte a múltiplos Commands;
 - EventLog;
 - avanço de turno;
 - resultado estruturado de rejeições.
 
-O próximo limite arquitetural é provar uma transição concreta e observável do estado através da pipeline determinística completa.
+A primeira transição observável e a prova end-to-end de reprodutibilidade são realizadas pelo fluxo descrito em 8.12.
+
+
+## 8.12 Concrete Deterministic State Transition
+
+O `WorldState` passa a possuir uma propriedade observável mínima chamada `Revision`.
+
+O estado inicial possui:
+
+`Revision = 0`
+
+e `AdvanceRevision()` produz uma nova instância de `WorldState` com a revisão incrementada em uma unidade.
+
+Essa propriedade existe para fornecer o menor estado autoritativo observável necessário à prova determinística do Kernel sem antecipar regras de gameplay pertencentes a milestones posteriores.
+
+`Revision` não representa:
+
+- `TurnNumber`;
+- versão de save;
+- versão de ruleset;
+- versão de protocolo;
+- uma regra concreta de Warfare, Economy ou World Generation.
+
+### Prova end-to-end
+
+O teste `IdenticalIndependentRunsProduceSameObservableStateAndEventOrder` executa duas resoluções independentes com:
+
+- estados iniciais equivalentes;
+- Commands equivalentes;
+- o mesmo `SimulationContext`;
+- a mesma seed;
+- a mesma pipeline real de resolução.
+
+A pipeline exercitada é:
+
+validate
+→ process
+→ seeded deterministic ordering
+→ revalidate
+→ execute
+→ novo WorldState
+
+Cada execução gera três Events.
+
+Com seed `0`, a ordem observada é congelada como:
+
+3
+→ 1
+→ 2
+
+Cada Event executado chama `AdvanceRevision()`.
+
+As duas execuções independentes terminam com:
+
+`Revision = 3`
+
+e a mesma sequência de `EventId`.
+
+Isso estabelece a primeira prova automatizada de:
+
+**mesmo estado equivalente + mesmas ordens + mesmo contexto determinístico = mesmo resultado observável**
+
+### Imutabilidade
+
+O estado inicial permanece com `Revision = 0`.
+
+Cada avanço produz nova instância.
+
+A prova não depende de identidade de referência entre as duas execuções; compara propriedades observáveis e identidades determinísticas de Events.
+
+### Limites ainda abertos
+
+A prova atual utiliza um único Command que produz múltiplos Events.
+
+Múltiplos Commands simultâneos continuam explicitamente não suportados pelo `TurnResolver`.
+
+EventLog, replay formal e Turn Policies também permanecem capabilities abertas de M1.
+
+O próximo estágio deve estabelecer a semântica determinística para múltiplos Commands antes de ampliar o restante do Kernel.
 
 ---
 
@@ -1258,7 +1335,7 @@ Infrastructure
 
 `WorldState` representa a raiz do estado autoritativo do mundo utilizado pela simulação.
 
-O baseline mínimo atual estabelece apenas a existência dessa raiz, sem antecipar estruturas de planeta, territórios, civilizações, economia ou guerra que ainda não possuem contratos concretos.
+O baseline mínimo atual mantém essa raiz deliberadamente pequena e acrescenta apenas uma `Revision` observável para permitir prova determinística de transição de estado, sem antecipar estruturas de planeta, territórios, civilizações, economia ou guerra que ainda não possuem contratos concretos.
 
 A criação inicial ocorre através de:
 
@@ -1284,6 +1361,24 @@ O `WorldState` também não utiliza igualdade estrutural por valor como contrato
 Novos dados só deverão ser incorporados ao `WorldState` quando existir ownership de domínio e necessidade concreta na simulação.
 
 Essa abordagem evita preencher prematuramente a raiz do mundo com conceitos ainda não definidos.
+
+
+### 10.1.1 Observable Revision
+
+`WorldState.Revision` é um contador imutável mínimo utilizado para tornar uma transição de estado observável durante M1.
+
+`WorldState.CreateInitial()` inicia em revisão zero.
+
+`AdvanceRevision()`:
+
+- devolve uma nova instância;
+- preserva a instância anterior;
+- incrementa a revisão em uma unidade;
+- utiliza overflow verificado.
+
+A propriedade não deve ser interpretada como turno lógico nem como versão de persistência.
+
+Seu objetivo atual é fornecer uma observação simples e estável para testes end-to-end do Simulation Kernel.
 
 ---
 
