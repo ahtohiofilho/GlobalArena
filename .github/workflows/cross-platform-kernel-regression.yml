@@ -1,0 +1,62 @@
+name: Cross-Platform Kernel Regression Validation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/cross-platform-kernel-regression.yml"
+      - "GlobalArena.Kernel/**"
+      - "GlobalArena.World/**"
+      - "GlobalArena.Simulation/**"
+      - "GlobalArena.Tests/**"
+      - "Directory.Build.props"
+      - "GlobalArena.slnx"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate kernel on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Capture platform
+        run: dotnet --info > platform.txt
+
+      - name: Restore
+        run: dotnet restore GlobalArena.slnx
+
+      - name: Build
+        run: dotnet build GlobalArena.slnx --configuration Release --no-restore
+
+      - name: Run full kernel regression suite
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj --configuration Release --no-build --logger "trx;LogFileName=kernel-regression.trx" --results-directory artifacts
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: kernel-regression-${{ matrix.os }}
+          path: |
+            platform.txt
+            artifacts/kernel-regression.trx
+          if-no-files-found: error
