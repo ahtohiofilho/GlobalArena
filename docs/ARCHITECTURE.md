@@ -455,7 +455,7 @@ O objetivo deste contrato é estabelecer a fronteira estável entre:
 
 Esta seção preserva o primeiro baseline executável do `TurnResolver`.
 
-As seções 8.3 a 8.14 documentam a evolução posterior e prevalecem sobre as limitações históricas descritas nesta seção.
+As seções 8.3 a 8.15 documentam a evolução posterior e prevalecem sobre as limitações históricas descritas nesta seção.
 
 `TurnResolver` materializa a primeira orquestração executável da pipeline de resolução.
 
@@ -1464,7 +1464,101 @@ M1 ainda não possui:
 - hash de estado para diagnóstico;
 - validação determinística entre plataformas.
 
-O próximo Critical Path é estabelecer um EventLog determinístico capaz de sustentar replay e diagnóstico sem confundir Events produzidos com Events efetivamente executados.
+O contrato mínimo do EventLog determinístico é estabelecido pela seção 8.15.
+
+
+## 8.15 Event Log Contract
+
+`SimulationEventLogEntry` e `SimulationEventLog` estabelecem a primeira representação concreta do EventLog da resolução.
+
+O objetivo é registrar o resultado observável da etapa de resolução sem alterar a semântica já estabelecida de `TurnResolutionResult.Events`.
+
+### Separação de responsabilidades
+
+`TurnResolutionResult.Events` continua representando:
+
+- a sequência completa de Events produzidos;
+- já ordenada para resolução;
+- incluindo Events posteriormente rejeitados na revalidação.
+
+`SimulationEventLog` representa:
+
+- a sequência de avaliação desses Events durante a resolução;
+- a identidade estável de cada Event;
+- a posição efetiva na sequência de resolução;
+- se o Event estava elegível no estado corrente;
+- se o Event foi efetivamente executado.
+
+Assim, o EventLog não é substituto de `TurnResolutionResult.Events` e `TurnResolutionResult.Events` não é implicitamente promovido a EventLog.
+
+### SimulationEventLogEntry
+
+Cada entrada possui:
+
+`ResolutionSequence`
+
+`Event`
+
+`EventId`
+
+`WasEligible`
+
+`WasExecuted`
+
+`ResolutionSequence` é maior que zero e representa a posição da entrada na sequência de resolução.
+
+`EventId` é derivado do próprio Event e preserva lineage através de `OriginCommandId`.
+
+Um Event executado necessariamente deve ter sido elegível.
+
+Portanto, a combinação:
+
+`WasEligible = false`
+
+`WasExecuted = true`
+
+é inválida.
+
+Um Event rejeitado pode ser representado explicitamente como:
+
+`WasEligible = false`
+
+`WasExecuted = false`
+
+### SimulationEventLog
+
+`SimulationEventLog` recebe uma coleção de entries e cria um snapshot somente leitura.
+
+As entries devem possuir `ResolutionSequence` contínua começando em um:
+
+1
+→ 2
+→ 3
+→ ...
+
+Isso torna a ordem da resolução parte explícita do contrato e evita depender apenas da ordem física de uma coleção externa mutável.
+
+Um log vazio é válido.
+
+### Persistência e replay
+
+Este checkpoint não define:
+
+- formato físico de persistência;
+- serialização;
+- armazenamento em arquivo ou banco;
+- event sourcing completo;
+- replay automático;
+- reconstrução do `WorldState`;
+- hash de estado.
+
+O EventLog permanece uma estrutura de Simulation e a persistência física continuará responsabilidade de um módulo posterior.
+
+### Limites ainda abertos
+
+O EventLog ainda não está integrado ao `TurnResolver`.
+
+O próximo passo é capturar entries durante a pipeline real, registrando para cada Event ordenado a elegibilidade e se houve execução, sem alterar a semântica atual de resolução.
 
 ---
 

@@ -2904,3 +2904,121 @@ Objetivos:
 - evitar transformar `TurnResolutionResult.Events` implicitamente em EventLog;
 - manter persistência física fora do Kernel;
 - preparar replay determinístico sem introduzir event sourcing completo.
+
+---
+
+## 2026-09-19 — M1.3.1 Event Log Contract concluído
+
+Milestone:
+
+**M1 — Deterministic Simulation Kernel**
+
+Stage:
+
+**M1.3 — Deterministic Event Log & Replay Foundation**
+
+Subcheckpoint:
+
+**M1.3.1 — Event Log Contract**
+
+### Progresso oficial
+
+GPP conquistados:
+
+**55.80 / 1000**
+
+Global Progress:
+
+**5.6%**
+
+Foundation / Simulation Kernel:
+
+**55.80 / 70 GPP — 79.7%**
+
+GPP adicionais conquistados neste subcheckpoint:
+
+**+1.50 GPP**
+
+A capability `EventLog / base de replay`, com orçamento de 5 GPP, passa de:
+
+**Especificada — fator 0.20 — 1.00 GPP**
+
+para:
+
+**Funcional isoladamente — fator 0.50 — 2.50 GPP**
+
+Incremento:
+
+**+1.50 GPP**
+
+### Justificativa de maturidade
+
+O EventLog deixa de existir apenas como intenção arquitetural e passa a possuir representação concreta, invariantes próprios e testes automatizados.
+
+A capability ainda não é `Integrada`, pois `TurnResolver` não produz o log durante a resolução real.
+
+### Concluído
+
+- `SimulationEventLogEntry` criado;
+- `SimulationEventLog` criado;
+- cada entry preserva o Event e seu `EventId`;
+- `ResolutionSequence` é explícita e maior que zero;
+- elegibilidade e execução são registradas separadamente;
+- Event executado não pode ser marcado como inelegível;
+- Event rejeitado pode ser registrado sem execução;
+- `SimulationEventLog` cria snapshot somente leitura;
+- sequência de resolução deve ser contínua e iniciar em um;
+- log vazio é válido;
+- `TurnResolutionResult.Events` permanece semanticamente separado do EventLog;
+- nenhuma persistência física foi introduzida;
+- nenhum replay automático foi introduzido;
+- nenhum event sourcing completo foi introduzido.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- warnings de build: 0;
+- erros de build: 0;
+- testes totais: 74;
+- testes aprovados: 74;
+- falhas: 0;
+- `EntryPreservesEventIdentityResolutionOrderAndOutcome`: aprovado;
+- `RejectedEventCanBeRecordedWithoutExecution`: aprovado;
+- `ExecutedEventCannotBeMarkedIneligible`: aprovado;
+- `ResolutionSequenceMustBeGreaterThanZero`: aprovado;
+- `EventCannotBeNull`: aprovado;
+- `LogSnapshotsEntriesAndPreservesResolutionOrder`: aprovado;
+- `LogRequiresContiguousResolutionSequence`: aprovado;
+- `EmptyLogIsValid`: aprovado;
+- `git diff --check`: aprovado;
+- SHA-256 dos três arquivos novos verificado no pacote de evidências.
+
+### Scope Change
+
+Nenhum.
+
+### Riscos
+
+`RISK-004 — Determinism failure` permanece `MITIGATING`.
+
+O contrato reduz a ambiguidade entre Events produzidos e Events efetivamente executados, mas ainda falta captura no fluxo real e replay verificável.
+
+### Critical Path
+
+Permanece:
+
+**EventLog determinístico e replay verificável da resolução**
+
+### Próximo subcheckpoint
+
+**M1.3.2 — Event Log Capture Path**
+
+Objetivos:
+
+- integrar `SimulationEventLog` ao caminho real do `TurnResolver`;
+- criar uma entry para cada Event ordenado avaliado;
+- registrar `WasEligible` conforme a revalidação;
+- registrar `WasExecuted` somente quando o executor for invocado;
+- preservar Events rejeitados no log;
+- manter `TurnResolutionResult.Events` com sua semântica atual;
+- preparar o próximo passo de replay sem ainda implementar persistência física.
