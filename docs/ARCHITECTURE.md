@@ -2287,8 +2287,7 @@ Isso não encerra M1.
 
 Antes do fechamento do milestone ainda é necessário ampliar os mecanismos de diagnóstico de determinismo e realizar validação entre plataformas conforme `RISK-004`.
 
-O próximo passo é estabelecer um contrato mínimo de state hash/fingerprint determinístico sem transformar o hash em nova fonte de verdade do `WorldState`.
-
+O contrato mínimo de state hash/fingerprint determinístico é descrito a seguir.
 
 ---
 
@@ -2734,6 +2733,56 @@ Modelo inicial preferido:
 snapshot periódico
 +
 command/event log
+
+## 25.1 State Hash Contract
+
+`WorldStateHash` representa um fingerprint determinístico versionado para diagnóstico e comparação de estado.
+
+O contrato congela:
+
+- digest com 32 bytes, representado por 64 caracteres hexadecimais;
+- `FormatVersion` maior que zero;
+- digest normalizado para hexadecimal em maiúsculas;
+- igualdade baseada em `FormatVersion` e digest;
+- rejeição de digest nulo, com tamanho inválido ou com caracteres não hexadecimais.
+
+`IWorldStateHasher` define:
+
+`WorldStateHash Compute(WorldState worldState)`
+
+### Responsabilidade
+
+O hash é um mecanismo de diagnóstico.
+
+Ele não:
+
+- substitui o `WorldState`;
+- passa a ser fonte de verdade;
+- altera a semântica da simulação;
+- define persistência física;
+- define formato de save;
+- define protocolo de rede.
+
+### Versionamento
+
+`FormatVersion` identifica a definição canônica usada para produzir o fingerprint.
+
+Mudanças futuras na composição ou codificação do estado podem exigir nova versão, evitando comparar fingerprints produzidos por definições incompatíveis.
+
+### Limites deste checkpoint
+
+Este checkpoint congela somente o contrato.
+
+Ainda não existe implementação concreta de `IWorldStateHasher`.
+
+Também ainda não foi definido:
+
+- algoritmo criptográfico concreto;
+- representação binária canônica do estado;
+- ordem canônica de campos futuros;
+- validação cross-platform.
+
+O próximo passo é implementar um caminho concreto e determinístico para o `WorldState` mínimo atual, usando codificação binária explícita e independente de cultura ou plataforma.
 
 ---
 

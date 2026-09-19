@@ -581,7 +581,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M1.5.1 — State Hash Contract**
+**M1.5.2 — Canonical WorldState Hash Path**
 
 Official Progress:
 

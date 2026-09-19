@@ -4102,3 +4102,113 @@ Objetivos:
 - definir contrato versionável e reproduzível;
 - não antecipar ainda persistência física de save;
 - preparar comparação objetiva entre execuções e plataformas.
+
+---
+
+## 2026-09-19 — M1.5.1 State Hash Contract concluído
+
+Milestone:
+
+**M1 — Deterministic Simulation Kernel**
+
+Stage:
+
+**M1.5 — Determinism Diagnostics & Platform Validation**
+
+Subcheckpoint:
+
+**M1.5.1 — State Hash Contract**
+
+### Progresso oficial
+
+GPP conquistados:
+
+**59.50 / 1000**
+
+Global Progress:
+
+**6.0%**
+
+Foundation / Simulation Kernel:
+
+**59.50 / 70 GPP — 85.0%**
+
+GPP adicionais conquistados neste subcheckpoint:
+
+**+0.00 GPP**
+
+### Justificativa de maturidade
+
+O checkpoint estabelece somente o contrato versionado do fingerprint e a fronteira `IWorldStateHasher`.
+
+Nenhuma capability do baseline muda de maturidade neste ponto.
+
+O ganho de maturidade dependerá de uma implementação canônica, validação determinística e evidência cross-platform.
+
+### Concluído
+
+- `WorldStateHash` criado;
+- digest fixado em 32 bytes / 64 caracteres hexadecimais;
+- `FormatVersion = 0` rejeitado;
+- digest nulo rejeitado;
+- tamanho incorreto rejeitado;
+- caractere não hexadecimal rejeitado;
+- hexadecimal normalizado para maiúsculas;
+- igualdade considera versão e digest;
+- `IWorldStateHasher` criado;
+- contrato recebe `WorldState` e retorna `WorldStateHash`;
+- nenhum algoritmo concreto de hash foi antecipado;
+- nenhuma persistência física foi introduzida.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- warnings de build: 0;
+- erros de build: 0;
+- testes totais: 121;
+- testes aprovados: 121;
+- falhas: 0;
+- `ZeroFormatVersionIsRejected`: aprovado;
+- `NullDigestIsRejected`: aprovado;
+- `DigestWithWrongLengthIsRejected`: aprovado;
+- `NonHexDigestIsRejected`: aprovado;
+- `LowercaseDigestIsNormalizedToUppercase`: aprovado;
+- `EqualityUsesFormatVersionAndDigest`: aprovado;
+- `HasherContractReceivesWorldStateAndReturnsHash`: aprovado;
+- `git diff --check`: aprovado;
+- SHA-256 dos três arquivos novos verificado no pacote de evidências.
+
+### Scope Change
+
+Nenhum.
+
+O total permanece:
+
+**1000 GPP**
+
+### Riscos
+
+`RISK-004 — Determinism failure` permanece `MITIGATING`.
+
+A fronteira de diagnóstico por fingerprint agora existe, mas ainda falta a implementação canônica e a validação entre plataformas.
+
+### Critical Path
+
+Permanece:
+
+**State hash determinístico e validação cross-platform antes do fechamento de M1**
+
+### Próximo subcheckpoint
+
+**M1.5.2 — Canonical WorldState Hash Path**
+
+Objetivos:
+
+- implementar `IWorldStateHasher` para o `WorldState` mínimo atual;
+- definir uma codificação binária canônica explícita;
+- usar um algoritmo de digest fixo e reproduzível;
+- evitar serialização dependente de cultura, runtime ou plataforma;
+- versionar a definição como `FormatVersion = 1`;
+- provar que estados equivalentes produzem o mesmo fingerprint;
+- provar que estados observavelmente diferentes produzem fingerprint diferente;
+- preparar a execução comparativa em plataformas distintas.
