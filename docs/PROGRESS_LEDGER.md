@@ -5422,3 +5422,227 @@ Objetivos:
 - preservar Euler e conectividade;
 - manter geração headless e cross-platform;
 - não introduzir ainda refinamento tático.
+
+---
+
+## 2026-09-19 — M2.1.5.A Class I Goldberg Generalization concluído
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.1 — Goldberg Topology Foundation**
+
+Parent checkpoint:
+
+**M2.1.5 — General Icosahedral Goldberg Generation**
+
+Subcheckpoint:
+
+**M2.1.5.A — Class I Goldberg Generalization**
+
+### Implementação
+
+Commit validado:
+
+`22ba5cf7f6b4604d3356ecb786dbd6a181e15f1f`
+
+Commit:
+
+`feat: generalize Class I Goldberg topology`
+
+A tranche generalizou o gerador estratégico além do caso mínimo `G(1,0)` para a família Class I:
+
+- `G(m,0)`;
+- `G(0,n)`.
+
+Parâmetros mistos com `m > 0` e `n > 0` permanecem explicitamente não suportados neste checkpoint.
+
+### Construção Class I
+
+A geração usa subdivisão inteira determinística sobre as 20 faces da seed icosaédrica canônica.
+
+Foram introduzidos:
+
+- chaves canônicas de vértices de lattice Class I;
+- ordenação determinística das chaves;
+- atribuição sequencial one-based de `StrategicCellId`;
+- triângulos canônicos de células;
+- pares canônicos de células para edges;
+- materialização de incidência cell-edge, cell-vertex e edge-vertex;
+- classificação de cells por grau em pentágonos e hexágonos;
+- limite explícito para topologias que excedam a capacidade atual de materialização em memória.
+
+A lógica topológica permanece independente de coordenadas de ponto flutuante como fonte de verdade.
+
+### Casos validados
+
+`G(2,0)`:
+
+- 42 cells;
+- 120 edges;
+- 80 vertices;
+- 12 pentágonos;
+- 30 hexágonos.
+
+`G(0,2)`:
+
+- 42 cells;
+- 120 edges;
+- 80 vertices;
+- 12 pentágonos;
+- 30 hexágonos.
+
+`G(3,0)`:
+
+- 92 cells;
+- 270 edges;
+- 180 vertices;
+- 12 pentágonos;
+- 80 hexágonos.
+
+### Invariantes provados
+
+- grau 5 para pentágonos;
+- grau 6 para hexágonos;
+- duas cells por edge;
+- dois vertices por edge;
+- três cells por vertex;
+- três edges por vertex;
+- reciprocidade de adjacência e incidência;
+- conectividade global;
+- Euler `V - E + F = 2`;
+- geração repetida de `G(2,0)` reproduz a mesma assinatura canônica.
+
+### Fronteira explícita da tranche
+
+Permanecem não suportados:
+
+- Class II `G(1,1)`;
+- Class III `G(2,1)`.
+
+Essa rejeição é intencional e testada.
+
+M2.1.5.A não encerra M2.1.5 como um todo.
+
+### Evidência local
+
+- build Release: 6/6;
+- warnings: 0;
+- errors: 0;
+- testes: 179/179;
+- falhas: 0;
+- skipped: 0;
+- `git diff --check`: aprovado;
+- `git diff --cached --check`: aprovado.
+
+### Gate cross-platform
+
+Workflow:
+
+`Cross-Platform Kernel Regression Validation`
+
+Run ID:
+
+`35455738612`
+
+Resultado:
+
+**SUCCESS**
+
+Commit:
+
+`22ba5cf7f6b4604d3356ecb786dbd6a181e15f1f`
+
+Jobs:
+
+- Ubuntu: `success`;
+- Windows: `success`;
+- macOS: `success`.
+
+Artefatos:
+
+- Ubuntu: ID `10588466857`, SHA-256 `43e8c0c2bcd5afd1c73ec2ba028ed6ca743055b0f3b7bb1ae6930198db98c48b`;
+- Windows: ID `10588277250`, SHA-256 `4bf68f2e2be167f4c334e054da2fc57b66fb896c51015deb5b137224f26553bb`;
+- macOS: ID `10588506829`, SHA-256 `0da37493fd417ef1847e073458138a9aafe2123a1db2c7fb0a7b798b73520f60`.
+
+### Maturidade e GPP
+
+A capability agregada:
+
+`Goldberg parameterization e geração estratégica`
+
+permanece:
+
+**Especificada — fator 0.20 — 3.20 GPP**
+
+Justificativa:
+
+M2.1.5.A prova uma família executável real e reduz substancialmente a incerteza da geração, mas Class II e Class III continuam explicitamente não suportadas. O modelo de maturidade não contabiliza progresso fracionário entre os gates discretos de 0.20 e 0.50.
+
+Por isso, não há promoção prematura da capability agregada nesta tranche.
+
+GPP antes:
+
+**79.20 / 1000**
+
+Incremento:
+
+**+0.00 GPP**
+
+GPP após:
+
+**79.20 / 1000**
+
+Global Progress:
+
+**7.9%**
+
+Topologia planetária / Goldberg:
+
+**9.20 / 90 GPP — 10.2%**
+
+Foundation / Simulation Kernel permanece:
+
+**70.00 / 70 GPP — 100.0%**
+
+### Riscos
+
+`RISK-003 — Goldberg hierarchy mapping` permanece:
+
+**MITIGATING / Probability 2 / Impact 4 / Score 8 — HIGH**
+
+A incerteza específica sobre Class I foi reduzida.
+
+Continuam em aberto:
+
+- Class II;
+- Class III;
+- orientação e chiralidade;
+- refinamento estratégico/tático;
+- border bands;
+- pertencimento pai-filho.
+
+### Scope Change
+
+Nenhum.
+
+O baseline V1 permanece:
+
+**1000 GPP**
+
+### Próximo subcheckpoint
+
+**M2.1.5.B — Class II Goldberg Generalization**
+
+Objetivos:
+
+- materializar o primeiro caso Class II em `G(1,1)`;
+- preservar contagens previstas por `GoldbergParameters`;
+- preservar IDs canônicos determinísticos;
+- preservar incidência, adjacência, conectividade e Euler;
+- resolver orientação/chiralidade sem usar ponto flutuante como fonte de verdade;
+- manter Class III explicitamente bloqueada até validação própria;
+- executar novamente o gate cross-platform antes do fechamento formal.

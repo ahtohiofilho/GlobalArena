@@ -211,6 +211,10 @@ Mitigação:
 - topologia estratégica mínima `G(1,0)` materializada;
 - incidência, adjacência, conectividade e Euler validados cross-platform;
 - IDs canônicos determinísticos provados no caso mínimo;
+- geração estratégica Class I `G(m,0)` / `G(0,n)` materializada;
+- `G(2,0)`, `G(0,2)` e `G(3,0)` validados com contagens, graus e invariantes esperados;
+- determinismo de identidade e assinatura provado para a tranche Class I;
+- Class II e Class III mantidas explicitamente fora do suporte até validação própria;
 - testes explícitos de pertencimento pai-filho;
 - testes de continuidade entre regiões;
 - validação de casos representativos das famílias Goldberg;
@@ -218,7 +222,7 @@ Mitigação:
 
 Próxima ação:
 
-generalizar a geração estratégica icosaédrica para parâmetros Goldberg além de `G(1,0)`, mantendo contagens, identidades, incidência, adjacência e determinismo; depois executar spikes de refinamento estratégico/tático para determinar quais famílias `G(m,n)` podem ser suportadas com os invariantes exigidos.
+estender a geração estratégica para Class II, começando por `G(1,1)`, preservando contagens, identidades, incidência, adjacência, conectividade e determinismo; depois validar Class III e executar spikes de refinamento estratégico/tático para determinar quais famílias `G(m,n)` podem ser suportadas com os invariantes exigidos.
 
 ---
 

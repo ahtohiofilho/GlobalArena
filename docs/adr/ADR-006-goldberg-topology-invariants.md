@@ -230,10 +230,36 @@ Evidência de M2.1.4:
 
 O caso mínimo prova 12 cells, 30 edges, 20 vertices, incidência, adjacência, reciprocidade, conectividade, Euler e atribuição canônica de IDs sem coordenadas de ponto flutuante.
 
-A evidência ainda não demonstra geração Goldberg geral nem refinamento estratégico/tático.
+M2.1.5.A generalizou a geração estratégica para a família Class I `G(m,0)` / `G(0,n)` usando subdivisão inteira determinística da seed icosaédrica.
+
+Evidência de M2.1.5.A:
+
+- commit: `22ba5cf7f6b4604d3356ecb786dbd6a181e15f1f`;
+- workflow: `Cross-Platform Kernel Regression Validation`;
+- run ID: `35455738612`;
+- Ubuntu: job concluído com `success`;
+- Windows: job concluído com `success`;
+- macOS: job concluído com `success`;
+- suíte local: 179/179, 0 falhas, 0 skipped;
+- artefato Ubuntu: ID `10588466857`, SHA-256 `43e8c0c2bcd5afd1c73ec2ba028ed6ca743055b0f3b7bb1ae6930198db98c48b`;
+- artefato Windows: ID `10588277250`, SHA-256 `4bf68f2e2be167f4c334e054da2fc57b66fb896c51015deb5b137224f26553bb`;
+- artefato macOS: ID `10588506829`, SHA-256 `0da37493fd417ef1847e073458138a9aafe2123a1db2c7fb0a7b798b73520f60`.
+
+Casos validados na tranche:
+
+- `G(2,0)`;
+- `G(0,2)`;
+- `G(3,0)`.
+
+A implementação preserva contagens, 12 pentágonos, graus 5/6, incidência 2 por edge e 3 por vertex, reciprocidade, conectividade, Euler e IDs canônicos determinísticos.
+
+Class II `G(1,1)` e Class III `G(2,1)` permanecem explicitamente não suportados nesta tranche.
+
+A evidência ainda não demonstra geração Goldberg geral para todas as famílias nem refinamento estratégico/tático.
 
 Reavaliar quando:
 
+- Class II e Class III receberem validação própria;
 - o spike de refinamento hierárquico for concluído;
 - o modelo de fileiras compartilhadas for congelado;
 - uma família Goldberg oficialmente suportada for restringida ou ampliada.
