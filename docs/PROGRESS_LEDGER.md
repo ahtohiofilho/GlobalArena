@@ -4212,3 +4212,133 @@ Objetivos:
 - provar que estados equivalentes produzem o mesmo fingerprint;
 - provar que estados observavelmente diferentes produzem fingerprint diferente;
 - preparar a execução comparativa em plataformas distintas.
+
+---
+
+## 2026-09-19 — M1.5.2 Canonical WorldState Hash Path concluído
+
+Milestone:
+
+**M1 — Deterministic Simulation Kernel**
+
+Stage:
+
+**M1.5 — Determinism Diagnostics & Platform Validation**
+
+Subcheckpoint:
+
+**M1.5.2 — Canonical WorldState Hash Path**
+
+### Progresso oficial
+
+GPP conquistados:
+
+**59.50 / 1000**
+
+Global Progress:
+
+**6.0%**
+
+Foundation / Simulation Kernel:
+
+**59.50 / 70 GPP — 85.0%**
+
+GPP adicionais conquistados neste subcheckpoint:
+
+**+0.00 GPP**
+
+### Justificativa de maturidade
+
+A implementação concreta do fingerprint canônico existe e possui vetores de referência fixos.
+
+Nenhuma capability do baseline muda de maturidade neste checkpoint porque a validação cross-platform ainda está pendente.
+
+### Concluído
+
+- `CanonicalWorldStateHasher` implementado;
+- `FormatVersion = 1`;
+- SHA-256 fixado como algoritmo de digest;
+- payload canônico fixado em 16 bytes;
+- assinatura `GAWS` incluída no payload;
+- versão codificada como `UInt32` big-endian;
+- `WorldState.Revision` codificada como `UInt64` big-endian;
+- dependência de cultura eliminada;
+- dependência de serialização textual eliminada;
+- estado inicial possui vetor canônico conhecido;
+- revisão 1 possui vetor canônico conhecido;
+- estados equivalentes produzem o mesmo hash;
+- estado observavelmente diferente produz hash diferente;
+- hashing repetido do mesmo estado é estável;
+- nenhum formato de save ou protocolo de rede foi introduzido.
+
+### Vetores canônicos
+
+`Revision = 0`
+
+Payload:
+
+`47415753000000010000000000000000`
+
+SHA-256:
+
+`E52764CDAC5F546D1BD7AF34E0B03141E27EAAC1E25C40580350E2C9A72FDC9C`
+
+`Revision = 1`
+
+Payload:
+
+`47415753000000010000000000000001`
+
+SHA-256:
+
+`5F99DEE3022BD8F617BA44730B089FE08405E711F8578145938FF732C56E1C11`
+
+### Evidências
+
+- projetos compilados: 6/6;
+- warnings de build: 0;
+- erros de build: 0;
+- testes totais: 126;
+- testes aprovados: 126;
+- falhas: 0;
+- `NullWorldStateIsRejected`: aprovado;
+- `InitialStateHasKnownCanonicalHash`: aprovado;
+- `EquivalentStatesProduceSameHash`: aprovado;
+- `AdvancedStateHasKnownCanonicalHash`: aprovado;
+- `RepeatedHashingOfSameStateIsStable`: aprovado;
+- `git diff --check`: aprovado;
+- SHA-256 dos dois arquivos novos verificado no pacote de evidências;
+- vetores canônicos recalculados independentemente durante a auditoria.
+
+### Scope Change
+
+Nenhum.
+
+O total permanece:
+
+**1000 GPP**
+
+### Riscos
+
+`RISK-004 — Determinism failure` permanece `MITIGATING`.
+
+A representação canônica e os vetores de referência reduzem a incerteza de diagnóstico, mas ainda falta executar a mesma prova em plataformas distintas.
+
+### Critical Path
+
+Permanece:
+
+**State hash determinístico e validação cross-platform antes do fechamento de M1**
+
+### Próximo subcheckpoint
+
+**M1.5.3 — Cross-Platform State Hash Validation**
+
+Objetivos:
+
+- executar os testes de state hash em pelo menos duas famílias de sistema operacional;
+- preservar os mesmos vetores canônicos;
+- confirmar o mesmo digest para `Revision = 0` e `Revision = 1`;
+- registrar runtime, arquitetura e sistema operacional das execuções;
+- não alterar o algoritmo para acomodar diferenças de plataforma;
+- usar a evidência para decidir o próximo passo de fechamento de M1.

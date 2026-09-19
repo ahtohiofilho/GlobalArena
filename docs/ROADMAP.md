@@ -581,7 +581,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M1.5.2 — Canonical WorldState Hash Path**
+**M1.5.3 — Cross-Platform State Hash Validation**
 
 Official Progress:
 

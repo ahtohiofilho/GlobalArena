@@ -2773,16 +2773,62 @@ Mudanças futuras na composição ou codificação do estado podem exigir nova v
 
 Este checkpoint congela somente o contrato.
 
-Ainda não existe implementação concreta de `IWorldStateHasher`.
+A implementação concreta para o `WorldState` mínimo atual é descrita pela seção 25.2.
 
-Também ainda não foi definido:
+A validação cross-platform continua pendente.
 
-- algoritmo criptográfico concreto;
-- representação binária canônica do estado;
-- ordem canônica de campos futuros;
-- validação cross-platform.
+## 25.2 Canonical WorldState Hash Path
 
-O próximo passo é implementar um caminho concreto e determinístico para o `WorldState` mínimo atual, usando codificação binária explícita e independente de cultura ou plataforma.
+`CanonicalWorldStateHasher` implementa `IWorldStateHasher` para o `WorldState` mínimo atual.
+
+A definição canônica usa:
+
+- `FormatVersion = 1`;
+- algoritmo `SHA-256`;
+- payload binário fixo de 16 bytes;
+- assinatura ASCII `GAWS` nos primeiros 4 bytes;
+- `FormatVersion` codificado como `UInt32` big-endian;
+- `WorldState.Revision` codificado como `UInt64` big-endian.
+
+O payload é:
+
+`GAWS | UInt32BE(FormatVersion) | UInt64BE(WorldState.Revision)`
+
+Nenhuma serialização textual, cultura corrente, reflection, ordem de propriedades ou representação específica de runtime participa do cálculo.
+
+### Vetores canônicos
+
+Para `Revision = 0`:
+
+`47415753000000010000000000000000`
+
+produz:
+
+`E52764CDAC5F546D1BD7AF34E0B03141E27EAAC1E25C40580350E2C9A72FDC9C`
+
+Para `Revision = 1`:
+
+`47415753000000010000000000000001`
+
+produz:
+
+`5F99DEE3022BD8F617BA44730B089FE08405E711F8578145938FF732C56E1C11`
+
+Esses vetores passam a ser referência objetiva para comparação entre runtimes e plataformas.
+
+### Escopo
+
+A implementação cobre somente o estado observável existente hoje:
+
+- `WorldState.Revision`.
+
+Quando `WorldState` ganhar novos campos autoritativos, a definição canônica deverá ser revisada explicitamente e, se incompatível, deverá avançar o `FormatVersion`.
+
+O hash continua sendo diagnóstico, não estado autoritativo.
+
+### Próximo passo
+
+Executar os mesmos vetores e testes em plataformas distintas, preservando o mesmo código e a mesma definição canônica, antes do fechamento de M1.
 
 ---
 

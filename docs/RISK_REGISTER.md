@@ -265,7 +265,7 @@ Mitigação:
 
 Próxima ação:
 
-implementar o caminho canônico de state hash/fingerprint e, depois, realizar validação entre plataformas antes do fechamento de M1.
+executar os vetores canônicos de state hash em plataformas distintas e comparar os resultados antes do fechamento de M1.
 
 ---
 

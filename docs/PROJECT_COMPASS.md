@@ -501,7 +501,7 @@ Etapa:
 
 Subetapa atual:
 
-**M1.5.2 — Canonical WorldState Hash Path**
+**M1.5.3 — Cross-Platform State Hash Validation**
 
 M0 — Project Baseline:
 
