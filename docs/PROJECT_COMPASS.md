@@ -501,7 +501,7 @@ Etapa:
 
 Subetapa atual:
 
-**M1.1.3 — Single-Event Execution Contract**
+**M1.1.4 — Single-Event Execution Path**
 
 M0 — Project Baseline:
 

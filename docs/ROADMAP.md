@@ -581,7 +581,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M1.1.3 — Single-Event Execution Contract**
+**M1.1.4 — Single-Event Execution Path**
 
 Official Progress:
 

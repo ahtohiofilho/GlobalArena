@@ -1523,3 +1523,85 @@ O desenvolvimento permanece em:
 Official Progress permanece:
 
 **43.25 / 1000 GPP — 4.3%**
+
+---
+
+## 2026-09-19 — M1.1.3 Single-Event Execution Contract concluído
+
+Milestone:
+
+**M1 — Deterministic Simulation Kernel**
+
+Stage:
+
+**M1.1 — Non-empty Deterministic Turn Resolution**
+
+Subcheckpoint:
+
+**M1.1.3 — Single-Event Execution Contract**
+
+### Progresso oficial
+
+GPP conquistados:
+
+**43.25 / 1000**
+
+Global Progress:
+
+**4.3%**
+
+Foundation / Simulation Kernel:
+
+**43.25 / 70 GPP — 61.8%**
+
+Nenhum GPP adicional foi conquistado neste subcheckpoint.
+
+A capability `Command → Event, validação e execução sequencial` permanece classificada como:
+
+**Especificada — fator 0.20**
+
+O contrato de execução de Event foi estabelecido, mas ainda não está integrado ao fluxo do `TurnResolver` e não existe execução sequencial ou revalidação suficiente para elevar a maturidade da capability.
+
+### Concluído
+
+- `ISimulationEventExecutor` criado em `GlobalArena.Simulation`;
+- contrato explícito `WorldState + Event + SimulationContext → WorldState`;
+- geração de Events permanece separada de sua execução;
+- o contrato permite produzir um estado resultante distinto do estado recebido;
+- nenhuma regra concreta de gameplay foi introduzida;
+- nenhum dispatch de Events foi criado;
+- nenhuma event queue foi criada;
+- nenhuma política de mutabilidade do `WorldState` foi congelada.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- testes totais: 33;
+- testes aprovados: 33;
+- falhas: 0;
+- `ExecutorCanReceiveWorldEventAndContextAndProduceWorldState`: aprovado;
+- SHA-256 dos dois arquivos novos verificado;
+- `git diff --check`: aprovado.
+
+### Scope Change
+
+Nenhum.
+
+### Novos riscos
+
+Nenhum risco estrutural novo identificado.
+
+`RISK-004 — Determinism failure` permanece relevante.
+
+### Próximo subcheckpoint
+
+**M1.1.4 — Single-Event Execution Path**
+
+Objetivos:
+
+- integrar `ISimulationEventExecutor` ao `TurnResolver`;
+- permitir execução de exatamente um Event;
+- produzir um `ResultingWorldState` derivado da execução;
+- manter zero Events como caminho explícito;
+- rejeitar múltiplos Events enquanto execução sequencial ainda não existir;
+- completar o primeiro caminho `Command → Event → state transition`.

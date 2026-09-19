@@ -579,6 +579,54 @@ O `TurnResolver` ainda não implementa:
 
 O próximo limite arquitetural necessário é estabelecer como um Event válido pode ser aplicado ao estado autoritativo sem misturar geração de Events com sua execução.
 
+
+## 8.3 Minimum Event Execution Contract
+
+`ISimulationEventExecutor` estabelece a fronteira mínima entre uma ocorrência da simulação e o estado resultante de sua execução.
+
+Conceitualmente:
+
+WorldState
++
+ISimulationEvent
++
+SimulationContext
+
+→ ISimulationEventExecutor →
+
+WorldState
+
+O executor recebe:
+
+- o `WorldState` autoritativo atual;
+- um `ISimulationEvent`;
+- o `SimulationContext` da resolução.
+
+O resultado é um `WorldState`.
+
+Esse contrato mantém separadas as responsabilidades de:
+
+Command
+→ intenção
+
+Command Processor
+→ geração de Event
+
+Event Executor
+→ aplicação da ocorrência ao estado
+
+O contrato não define ainda:
+
+- dispatch entre tipos de Event;
+- revalidação de Event;
+- resultado explícito de Event rejeitado;
+- execução de múltiplos Events;
+- ordering;
+- deterministic shuffle;
+- EventLog;
+- estratégia definitiva de mutabilidade ou cópia do `WorldState`.
+
+A integração do executor ao `TurnResolver` permanece responsabilidade do próximo subcheckpoint.
 ---
 
 # 9. Turn Policy
