@@ -2439,6 +2439,88 @@ Para os mesmos parâmetros e a mesma versão do gerador, a topologia deverá pro
 
 A identidade lógica não poderá depender da ordem de alocação, enumeração de coleções não ordenadas ou detalhes específicos de runtime.
 
+## 11.4 Goldberg Parameter & Count Contract
+
+`GoldbergParameters` representa o par ordenado `G(m,n)` usado como entrada combinatória da topologia Goldberg icosaédrica.
+
+Contrato:
+
+- `m` e `n` são inteiros não negativos;
+- `(0,0)` é inválido;
+- `(m,n)` permanece um par ordenado;
+- `(m,n)` e `(n,m)` não são automaticamente canonicalizados como o mesmo value object;
+- igualdade do value object considera os dois parâmetros originais;
+- cálculos são executados com aritmética `checked`;
+- combinações cujas contagens não cabem em `UInt64` são rejeitadas explicitamente.
+
+O contrato expõe:
+
+- `M`;
+- `N`;
+- `TriangulationNumber`;
+- `StrategicCellCount`;
+- `StrategicEdgeCount`;
+- `StrategicVertexCount`;
+- `PentagonCount`;
+- `HexagonCount`.
+
+As fórmulas permanecem:
+
+`T = m² + mn + n²`
+
+`StrategicCellCount = 10T + 2`
+
+`StrategicEdgeCount = 30T`
+
+`StrategicVertexCount = 20T`
+
+`PentagonCount = 12`
+
+`HexagonCount = 10(T - 1)`
+
+Vetores de referência mínimos:
+
+`G(1,0)`:
+
+- `T = 1`;
+- cells = 12;
+- edges = 30;
+- vertices = 20;
+- pentagons = 12;
+- hexagons = 0.
+
+`G(1,1)`:
+
+- `T = 3`;
+- cells = 32;
+- edges = 90;
+- vertices = 60;
+- pentagons = 12;
+- hexagons = 20.
+
+`G(2,1)`:
+
+- `T = 7`;
+- cells = 72;
+- edges = 210;
+- vertices = 140;
+- pentagons = 12;
+- hexagons = 60.
+
+Este contrato não gera:
+
+- faces;
+- arestas;
+- vértices;
+- coordenadas;
+- mesh;
+- IDs topológicos;
+- relações de adjacência.
+
+Essas responsabilidades pertencem aos subcheckpoints posteriores de M2.1.
+
+A distinção entre `(m,n)` e `(n,m)` é preservada porque orientação/chiralidade e equivalência geométrica ainda não possuem contrato de produção congelado.
+
 ---
 
 # 12. Camada tática
