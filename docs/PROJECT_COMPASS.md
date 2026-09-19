@@ -306,31 +306,31 @@ A decomposição operacional inicial de M2 é:
 | Scalability / headless performance baseline | 4 |
 | **TOTAL** | **90** |
 
-Estado de maturidade após M2.1.3:
+Estado de maturidade após M2.1.4:
 
 | Capability | GPP | Maturidade | Fator | GPP ganhos |
 |---|---:|---|---:|---:|
 | Goldberg parameterization e geração estratégica | 16 | Especificada | 0.20 | 3.20 |
-| Strategic graph: identidade, incidência e adjacência | 12 | Inexistente | 0.00 | 0.00 |
+| Strategic graph: identidade, incidência e adjacência | 12 | Implementação funcional isolada | 0.50 | 6.00 |
 | Tactical region topology | 14 | Inexistente | 0.00 | 0.00 |
 | Shared subtile border bands | 16 | Inexistente | 0.00 | 0.00 |
 | Strategic ↔ tactical hierarchy/refinement mapping | 16 | Inexistente | 0.00 | 0.00 |
 | Canonical deterministic topology generation | 6 | Inexistente | 0.00 | 0.00 |
 | Topological validation e navigability | 6 | Inexistente | 0.00 | 0.00 |
 | Scalability / headless performance baseline | 4 | Inexistente | 0.00 | 0.00 |
-| **TOTAL** | **90** |  |  | **3.20** |
+| **TOTAL** | **90** |  |  | **9.20** |
 
 M2.1.1 foi um audit arquitetural e não promoveu maturidade por si só.
 
 M2.1.2 promoveu `Goldberg parameterization e geração estratégica` para `Especificada — fator 0.20` porque o contrato executável de parâmetros, domínio válido, fórmulas, contagens esperadas e vetores de referência foi congelado e validado cross-platform.
 
-M2.1.3 concluiu o subcontrato de identidade de `StrategicCell`, `StrategicEdge` e `StrategicVertex`, mas a capability agregada `Strategic graph: identidade, incidência e adjacência` ainda não atinge o gate de `Especificada — fator 0.20`.
+M2.1.3 fechou o subcontrato de identidade, sem promover isoladamente a capability agregada de strategic graph.
 
-Incidência e adjacência permanecem sem contrato de produção e serão materializadas no primeiro caso funcional `G(1,0)`.
+M2.1.4 materializou a primeira topologia estratégica completa em `G(1,0)`, com entidades, identidades, incidência e adjacência funcionais, reciprocidade, conectividade e invariantes topológicos validados.
 
-Por isso, M2.1.3 não promove GPP. Essa decisão evita contabilizar uma capability agregada como especificada antes de seus contratos essenciais estarem definidos.
+Por isso, `Strategic graph: identidade, incidência e adjacência` passa diretamente para `Implementação funcional isolada — fator 0.50`.
 
-A implementação funcional da geração estratégica também permanece para os subcheckpoints seguintes de M2.1.
+Essa promoção não afirma geração Goldberg geral. `Goldberg parameterization e geração estratégica` permanece em `Especificada — fator 0.20` até os subcheckpoints de generalização.
 
 Esses pesos constituem o baseline inicial.
 
@@ -549,7 +549,7 @@ Etapa:
 
 Subetapa atual:
 
-**M2.1.4 — Minimal G(1,0) Strategic Topology**
+**M2.1.5 — General Icosahedral Goldberg Generation**
 
 M0 — Project Baseline:
 
@@ -567,17 +567,21 @@ M2.1.3 — Strategic Topology Identity Contract:
 
 **concluído em 2026-09-19**
 
+M2.1.4 — Minimal G(1,0) Strategic Topology:
+
+**concluído em 2026-09-19**
+
 Baseline V1:
 
 **congelado em 2026-09-18**
 
 Progresso oficial:
 
-**7,3%**
+**7,9%**
 
 GPP conquistados:
 
-**73,20 / 1000**
+**79,20 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -585,7 +589,7 @@ Foundation / Simulation Kernel:
 
 Topologia planetária / Goldberg:
 
-**3,20 / 90 GPP — 3,6%**
+**9,20 / 90 GPP — 10,2%**
 
 Scope Confidence:
 

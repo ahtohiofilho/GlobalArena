@@ -367,9 +367,38 @@ GPP adicional de M2.1.3:
 
 A capability agregada de strategic graph ainda não atinge `Especificada`, pois incidência e adjacência permanecem abertas.
 
+M2.1.4 está concluído em 2026-09-19.
+
+Evidência de M2.1.4:
+
+- primeira topologia estratégica completa materializada;
+- `G(1,0)` com 12 cells, 30 edges e 20 vertices;
+- 12 pentágonos com grau 5;
+- incidência 2 por edge e 3 por vertex;
+- reciprocidade cell-edge, cell-vertex e edge-vertex;
+- uma única edge por par adjacente;
+- ausência de self-loop e duplicatas;
+- conectividade global;
+- Euler = 2;
+- IDs canônicos one-based;
+- geração repetida reproduz a mesma topologia;
+- 171/171 testes por plataforma;
+- 513 execuções cross-platform;
+- 0 falhas.
+
+Promoção de maturidade:
+
+`Strategic graph: identidade, incidência e adjacência`
+
+**Inexistente — 0.00 → Implementação funcional isolada — 0.50**
+
+GPP adicional de M2.1.4:
+
+**+6.00 GPP**
+
 Próximo subcheckpoint:
 
-**M2.1.4 — Minimal G(1,0) Strategic Topology**
+**M2.1.5 — General Icosahedral Goldberg Generation**
 
 ---
 
@@ -657,15 +686,15 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M2.1.4 — Minimal G(1,0) Strategic Topology**
+**M2.1.5 — General Icosahedral Goldberg Generation**
 
 Official Progress:
 
-**7.3%**
+**7.9%**
 
 GPP Earned:
 
-**73.20 / 1000**
+**79.20 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -673,7 +702,7 @@ Foundation / Simulation Kernel:
 
 Planet Topology / Goldberg:
 
-**3.20 / 90 GPP — 3.6%**
+**9.20 / 90 GPP — 10.2%**
 
 Scope Confidence:
 

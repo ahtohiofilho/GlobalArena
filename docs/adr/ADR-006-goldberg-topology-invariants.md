@@ -213,7 +213,24 @@ Evidência de M2.1.3:
 
 O contrato de identidade cobre tipos distintos, ordinal canônico one-based, rejeição explícita de zero e sentinela `default` inválida.
 
-A evidência ainda não demonstra geração de faces, arestas e vértices, incidência, adjacência ou refinamento estratégico/tático.
+M2.1.4 materializou a topologia estratégica mínima `G(1,0)` como dual combinatório de um icosaedro canônico.
+
+Evidência de M2.1.4:
+
+- commit: `a83eb7566b4128ac2d3a803b5008327123cf2eab`;
+- workflow: `Cross-Platform Kernel Regression Validation`;
+- run ID: `35450592513`;
+- .NET SDK: `10.0.401`;
+- Ubuntu 24.04.5 / x64: 171/171;
+- Microsoft Windows Server 2025 / x64: 171/171;
+- macOS 26.6.2 / arm64: 171/171;
+- total: 513 execuções aprovadas;
+- falhas: 0;
+- skipped: 0.
+
+O caso mínimo prova 12 cells, 30 edges, 20 vertices, incidência, adjacência, reciprocidade, conectividade, Euler e atribuição canônica de IDs sem coordenadas de ponto flutuante.
+
+A evidência ainda não demonstra geração Goldberg geral nem refinamento estratégico/tático.
 
 Reavaliar quando:
 

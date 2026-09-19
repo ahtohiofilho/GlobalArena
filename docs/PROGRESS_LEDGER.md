@@ -5192,3 +5192,233 @@ Objetivos:
 - provar Euler = 2;
 - atribuir IDs canônicos deterministicamente;
 - permanecer headless e sem geometria de renderização.
+
+---
+
+## 2026-09-19 — M2.1.4 Minimal G(1,0) Strategic Topology concluído
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.1 — Goldberg Topology Foundation**
+
+Subcheckpoint:
+
+**M2.1.4 — Minimal G(1,0) Strategic Topology**
+
+### Implementação
+
+Commit validado:
+
+`a83eb7566b4128ac2d3a803b5008327123cf2eab`
+
+O checkpoint materializou a primeira topologia estratégica completa do projeto.
+
+Foram introduzidos:
+
+- `StrategicCellKind`;
+- `StrategicCell`;
+- `StrategicEdge`;
+- `StrategicVertex`;
+- `StrategicTopology`;
+- `GoldbergStrategicTopologyGenerator`;
+- testes dedicados da topologia mínima;
+- hardening de `GoldbergParameters` com `IsValid`.
+
+O gerador aceita, neste checkpoint, somente:
+
+`G(1,0)`
+
+Outros parâmetros válidos são rejeitados explicitamente até a generalização em M2.1.5.
+
+### Construção canônica
+
+`G(1,0)` é materializado como dual combinatório de uma seed icosaédrica canônica.
+
+A construção produz:
+
+- 12 strategic cells;
+- 30 strategic edges;
+- 20 strategic vertices;
+- 12 pentágonos;
+- 0 hexágonos.
+
+IDs são ordinais canônicos one-based.
+
+A geração não usa coordenadas de ponto flutuante para determinar identidade, incidência ou adjacência.
+
+### Invariantes provados
+
+- grau 5 em todas as 12 cells;
+- duas cells distintas por edge;
+- dois vertices distintos por edge;
+- três cells distintas por vertex;
+- três edges distintas por vertex;
+- adjacência de cells recíproca;
+- incidência cell-edge recíproca;
+- incidência cell-vertex recíproca;
+- incidência edge-vertex recíproca;
+- exatamente uma edge por par adjacente;
+- ausência de self-loop;
+- ausência de duplicatas;
+- conectividade global;
+- Euler `V - E + F = 2`;
+- geração repetida reproduz a mesma topologia canônica.
+
+### Hardening de GoldbergParameters
+
+Foi explicitado `IsValid`.
+
+`default(GoldbergParameters)` passa a ser tratado como sentinela inválida e é rejeitado nas fronteiras de geração.
+
+### Evidência local
+
+- build: 6/6;
+- warnings: 0;
+- errors: 0;
+- testes: 171/171;
+- falhas: 0;
+- not executed: 0;
+- `git diff --check`: aprovado;
+- `git diff --cached --check`: aprovado.
+
+### Gate cross-platform
+
+Workflow:
+
+`Cross-Platform Kernel Regression Validation`
+
+Run ID:
+
+`35450592513`
+
+Resultado:
+
+**SUCCESS**
+
+Commit:
+
+`a83eb7566b4128ac2d3a803b5008327123cf2eab`
+
+.NET SDK:
+
+**10.0.401**
+
+Resultados:
+
+- Ubuntu 24.04.5 / x64: 171/171, 0 falhas, 0 skipped;
+- Microsoft Windows Server 2025 / x64: 171/171, 0 falhas, 0 skipped;
+- macOS 26.6.2 / arm64: 171/171, 0 falhas, 0 skipped.
+
+Total:
+
+**513 execuções aprovadas / 0 falhas**
+
+Build em todos os runners:
+
+- 0 warnings;
+- 0 errors.
+
+Artefatos:
+
+- Ubuntu: ID `10585514092`, SHA-256 `9d44943f178df8f482fd21f437c3f07dd736cc043cb5708e17e457c02b277799`;
+- Windows: ID `10586945273`, SHA-256 `af627788d275b1c05dc6b1a9735617a84c9269ebd2956cf39c21044c8594abe8`;
+- macOS: ID `10585943597`, SHA-256 `74906e1acf0ad35aab19a352eb211d5ad2d55e0c195b5f102125308f9bb0869b`.
+
+### Promoção de maturidade
+
+Capability:
+
+`Strategic graph: identidade, incidência e adjacência`
+
+passa de:
+
+**Inexistente — fator 0.00**
+
+para:
+
+**Implementação funcional isolada — fator 0.50**
+
+Budget:
+
+**12 GPP**
+
+GPP conquistados:
+
+**12 × 0.50 = 6.00 GPP**
+
+A promoção é suportada pela existência de uma topologia estratégica executável e isolada em `G(1,0)` com identidade, incidência, adjacência e invariantes topológicos funcionais.
+
+Ela não afirma geração Goldberg geral nem integração tática.
+
+### Progresso oficial
+
+GPP antes:
+
+**73.20 / 1000**
+
+Incremento:
+
+**+6.00 GPP**
+
+GPP após:
+
+**79.20 / 1000**
+
+Global Progress exato:
+
+**7.92%**
+
+Global Progress exibido:
+
+**7.9%**
+
+Topologia planetária / Goldberg:
+
+**9.20 / 90 GPP — 10.2%**
+
+Foundation / Simulation Kernel permanece:
+
+**70.00 / 70 GPP — 100.0%**
+
+### Riscos
+
+`RISK-003 — Goldberg hierarchy mapping` permanece:
+
+**MITIGATING / Probability 2 / Impact 4 / Score 8 — HIGH**
+
+A incerteza sobre o grafo estratégico mínimo foi reduzida.
+
+Continuam em aberto:
+
+- geração Goldberg geral;
+- orientação e chiralidade;
+- famílias suportadas;
+- refinamento estratégico/tático;
+- border bands;
+- pertencimento pai-filho.
+
+### Scope Change
+
+Nenhum.
+
+O baseline V1 permanece:
+
+**1000 GPP**
+
+### Próximo subcheckpoint
+
+**M2.1.5 — General Icosahedral Goldberg Generation**
+
+Objetivos:
+
+- generalizar além de `G(1,0)`;
+- produzir contagens previstas por `GoldbergParameters`;
+- preservar IDs canônicos determinísticos;
+- preservar incidência e adjacência válidas;
+- preservar Euler e conectividade;
+- manter geração headless e cross-platform;
+- não introduzir ainda refinamento tático.

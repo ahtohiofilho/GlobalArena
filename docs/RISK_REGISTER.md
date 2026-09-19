@@ -208,6 +208,9 @@ Mitigação:
 - IDs estratégicos fortemente tipados e estáveis;
 - estado `default` dos IDs tratado como sentinela inválida;
 - contrato de identidade validado cross-platform;
+- topologia estratégica mínima `G(1,0)` materializada;
+- incidência, adjacência, conectividade e Euler validados cross-platform;
+- IDs canônicos determinísticos provados no caso mínimo;
 - testes explícitos de pertencimento pai-filho;
 - testes de continuidade entre regiões;
 - validação de casos representativos das famílias Goldberg;
@@ -215,7 +218,7 @@ Mitigação:
 
 Próxima ação:
 
-materializar a topologia estratégica mínima `G(1,0)` usando os IDs estáveis, provar contagens, incidência, adjacência, conectividade e Euler; depois generalizar a geração e executar spikes de refinamento estratégico/tático para determinar quais famílias `G(m,n)` podem ser suportadas com os invariantes exigidos.
+generalizar a geração estratégica icosaédrica para parâmetros Goldberg além de `G(1,0)`, mantendo contagens, identidades, incidência, adjacência e determinismo; depois executar spikes de refinamento estratégico/tático para determinar quais famílias `G(m,n)` podem ser suportadas com os invariantes exigidos.
 
 ---
 
