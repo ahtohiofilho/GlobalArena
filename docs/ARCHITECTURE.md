@@ -2000,7 +2000,68 @@ Para a mesma entrada, a decisão é a mesma.
 
 `ManualReadyTurnPolicy` ainda não está integrada a um orquestrador que decida quando chamar `TurnResolver`.
 
-O próximo passo é implementar a primeira policy baseada em deadline externo, reutilizando o mesmo contrato sem introduzir leitura de relógio dentro da Simulation.
+A primeira implementação concreta baseada exclusivamente no sinal de deadline externo é descrita pela seção 9.3.
+
+## 9.3 External Deadline Turn Policy
+
+`ExternalDeadlineTurnPolicy` implementa `ITurnPolicy` com a regra mínima para fechamento de uma janela controlada por prazo externo.
+
+A decisão é:
+
+`ExternalDeadlineReached = false`
+
+→ manter a janela aberta
+
+`ExternalDeadlineReached = true`
+
+→ fechar a janela
+
+### Independência de readiness
+
+`AllRequiredParticipantsReady` não participa da decisão desta policy.
+
+Portanto, quando o deadline externo ainda não foi atingido, a janela permanece aberta mesmo que todos os participantes estejam prontos.
+
+Da mesma forma, quando o deadline externo foi atingido, a janela fecha independentemente do readiness.
+
+Essa separação mantém políticas temporais e políticas de readiness como comportamentos distintos sobre o mesmo contrato.
+
+### Fonte temporal externa
+
+A policy não calcula tempo.
+
+Ela recebe somente:
+
+`ExternalDeadlineReached`
+
+como fato já determinado por uma camada externa.
+
+A Simulation continua sem consultar:
+
+- `DateTime.Now`;
+- `DateTime.UtcNow`;
+- timers;
+- relógio do sistema;
+- UI;
+- networking.
+
+### Determinismo
+
+Para o mesmo `TurnPolicyInput`, a decisão é sempre a mesma.
+
+O comportamento da policy depende apenas dos dados recebidos.
+
+### Limites
+
+As duas primeiras policies concretas agora existem em isolamento:
+
+- `ManualReadyTurnPolicy`;
+- `ExternalDeadlineTurnPolicy`.
+
+Nenhuma delas ainda participa de um caminho que condicione a chamada ao `TurnResolver`.
+
+O próximo passo é definir a fronteira mínima de um gate de resolução que consulte uma `ITurnPolicy` antes de permitir a execução do `TurnResolver`, sem modificar a semântica interna do resolver.
+
 
 
 ---

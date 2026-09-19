@@ -501,7 +501,7 @@ Etapa:
 
 Subetapa atual:
 
-**M1.4.3 — External Deadline Turn Policy**
+**M1.4.4 — Turn Policy Resolution Gate Contract**
 
 M0 — Project Baseline:
 
