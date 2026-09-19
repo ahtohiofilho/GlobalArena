@@ -455,7 +455,7 @@ O objetivo deste contrato é estabelecer a fronteira estável entre:
 
 Esta seção preserva o primeiro baseline executável do `TurnResolver`.
 
-As seções 8.3 a 8.12 documentam a evolução posterior e prevalecem sobre as limitações históricas descritas nesta seção.
+As seções 8.3 a 8.13 documentam a evolução posterior e prevalecem sobre as limitações históricas descritas nesta seção.
 
 `TurnResolver` materializa a primeira orquestração executável da pipeline de resolução.
 
@@ -1293,7 +1293,75 @@ Múltiplos Commands simultâneos continuam explicitamente não suportados pelo `
 
 EventLog, replay formal e Turn Policies também permanecem capabilities abertas de M1.
 
-O próximo estágio deve estabelecer a semântica determinística para múltiplos Commands antes de ampliar o restante do Kernel.
+A fronteira mínima para construir Events a partir de múltiplos Commands simultâneos é estabelecida pelo contrato descrito em 8.13.
+
+
+## 8.13 Multi-Command Resolution Contract
+
+`ISimulationCommandBatchProcessor` estabelece a fronteira mínima responsável por transformar o conjunto de Commands submetidos para a mesma resolução em uma coleção de Events antes do ordering determinístico.
+
+Conceitualmente:
+
+WorldState de planejamento
++
+IReadOnlyList<ISimulationCommand>
++
+SimulationContext
+
+→ ISimulationCommandBatchProcessor
+→ IReadOnlyList<ISimulationEvent>
+
+O contrato recebe:
+
+- o `WorldState` de planejamento;
+- a coleção somente leitura de Commands submetidos;
+- o `SimulationContext` da resolução.
+
+A saída é uma coleção explícita de Events que poderá ser encaminhada posteriormente ao `ISimulationEventOrderer`.
+
+### Snapshot de planejamento
+
+O `WorldState` recebido representa o mesmo snapshot autoritativo de planejamento para o lote.
+
+A intenção arquitetural é impedir que a execução de um Command altere o estado usado para validar ou processar outro Command pertencente ao mesmo lote simultâneo.
+
+A resolução futura deverá separar:
+
+planejamento simultâneo
+→ construção agregada de Events
+→ ordering determinístico
+→ revalidação contra estado corrente
+→ execução sequencial
+
+### Commands e prioridade
+
+A posição de um Command na coleção de entrada não constitui, por si só, prioridade de execução.
+
+O contrato não transforma a ordem de chegada dos Commands em ordem autoritativa de resolução.
+
+A coleção é recebida como contexto do lote e não deve ser mutada pelo processor.
+
+### Event lineage
+
+Cada Event produzido continua possuindo identidade independente através de `EventId`.
+
+`EventId.OriginCommandId` preserva a origem do Event mesmo quando Events de vários Commands forem agregados na mesma coleção.
+
+A identidade do Event permanece separada de sua futura posição de ordering.
+
+### Limites do contrato
+
+O contrato não define ainda:
+
+- implementação concreta do batch processor;
+- política concreta para Commands inválidos;
+- integração ao `TurnResolver`;
+- algoritmo de agregação;
+- ordering entre Events;
+- EventLog;
+- Turn Policies.
+
+O próximo subcheckpoint deverá implementar o caminho de múltiplos Commands utilizando o mesmo snapshot de planejamento e encaminhar a coleção agregada de Events ao ordering determinístico existente.
 
 ---
 

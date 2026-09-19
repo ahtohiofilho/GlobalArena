@@ -581,7 +581,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M1.2.1 — Multi-Command Resolution Contract**
+**M1.2.2 — Multi-Command Resolution Path**
 
 Official Progress:
 

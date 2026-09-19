@@ -2660,3 +2660,105 @@ Objetivos:
 - evitar introduzir ordering implícito entre Commands;
 - manter revalidação e execução sequencial dos Events após o ordering;
 - preparar implementação sem alterar ainda EventLog ou Turn Policies.
+
+---
+
+## 2026-09-19 — M1.2.1 Multi-Command Resolution Contract concluído
+
+Milestone:
+
+**M1 — Deterministic Simulation Kernel**
+
+Stage:
+
+**M1.2 — Multi-Command Deterministic Resolution**
+
+Subcheckpoint:
+
+**M1.2.1 — Multi-Command Resolution Contract**
+
+### Progresso oficial
+
+GPP conquistados:
+
+**54.30 / 1000**
+
+Global Progress:
+
+**5.4%**
+
+Foundation / Simulation Kernel:
+
+**54.30 / 70 GPP — 77.6%**
+
+GPP adicionais conquistados neste subcheckpoint:
+
+**+0.00 GPP**
+
+### Justificativa de maturidade
+
+Este subcheckpoint estabelece uma nova fronteira contratual para uma capability já prevista no escopo de M1, mas ainda não integra múltiplos Commands ao fluxo real.
+
+Nenhuma capability muda de fator de maturidade neste ponto.
+
+O progresso oficial permanece inalterado até que a resolução multi-command seja implementada e exercitada no `TurnResolver`.
+
+### Concluído
+
+- `ISimulationCommandBatchProcessor` criado em `GlobalArena.Simulation`;
+- contrato recebe o `WorldState` de planejamento;
+- contrato recebe uma coleção somente leitura de Commands;
+- contrato recebe o `SimulationContext`;
+- contrato devolve uma coleção explícita de Events;
+- testes comprovam passagem do mesmo snapshot, Commands e contexto;
+- testes comprovam possibilidade de sequência explícita de Events;
+- teste preserva a coleção de Commands de entrada;
+- nenhuma alteração foi feita no `TurnResolver`;
+- nenhuma política concreta para Command inválido foi introduzida;
+- nenhum EventLog ou Turn Policy foi introduzido.
+
+### Decisão arquitetural
+
+Commands simultâneos pertencentes à mesma resolução deverão ser construídos a partir do mesmo snapshot de planejamento.
+
+A ordem de chegada dos Commands não deve se tornar implicitamente prioridade autoritativa.
+
+Os Events produzidos por todos os Commands deverão ser agregados antes do ordering determinístico e somente depois revalidados/executados sequencialmente contra o estado corrente.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- warnings de build: 0;
+- erros de build: 0;
+- testes totais: 59;
+- testes aprovados: 59;
+- falhas: 0;
+- `BatchProcessorCanReceivePlanningSnapshotCommandsAndContext`: aprovado;
+- `BatchProcessorCanReturnExplicitEventSequenceWithoutMutatingCommands`: aprovado;
+- `git diff --check`: aprovado;
+- SHA-256 dos dois arquivos novos verificado no pacote de evidências.
+
+### Scope Change
+
+Nenhum.
+
+### Riscos
+
+`RISK-004 — Determinism failure` permanece `MITIGATING`.
+
+O contrato reduz ambiguidade arquitetural, mas a resolução determinística real de múltiplos Commands ainda não foi demonstrada.
+
+### Próximo subcheckpoint
+
+**M1.2.2 — Multi-Command Resolution Path**
+
+Objetivos:
+
+- implementar um batch processor mínimo usando os contratos existentes de validação e processamento;
+- validar e processar todos os Commands contra o mesmo snapshot de planejamento;
+- agregar Events de Commands aceitos;
+- integrar o batch processor ao `TurnResolver`;
+- remover a rejeição explícita de múltiplos Commands;
+- encaminhar a coleção agregada ao `ISimulationEventOrderer`;
+- manter revalidação e execução sequencial contra o estado corrente;
+- provar que a ordem de entrada dos Commands não cria prioridade implícita de execução.
