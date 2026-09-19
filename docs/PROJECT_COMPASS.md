@@ -501,7 +501,7 @@ Etapa:
 
 Subetapa atual:
 
-**M1.5.3 — Cross-Platform State Hash Validation**
+**M1.5.4 — Cross-Platform Kernel Regression Validation**
 
 M0 — Project Baseline:
 
@@ -537,7 +537,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**State hash determinístico e validação cross-platform antes do fechamento de M1**
+**Suíte completa do Simulation Kernel cross-platform e exit gate de M1**
 
 Última revisão de baseline:
 

@@ -4342,3 +4342,139 @@ Objetivos:
 - registrar runtime, arquitetura e sistema operacional das execuções;
 - não alterar o algoritmo para acomodar diferenças de plataforma;
 - usar a evidência para decidir o próximo passo de fechamento de M1.
+
+---
+
+## 2026-09-19 — M1.5.3 Cross-Platform State Hash Validation concluído
+
+Milestone:
+
+**M1 — Deterministic Simulation Kernel**
+
+Stage:
+
+**M1.5 — Determinism Diagnostics & Platform Validation**
+
+Subcheckpoint:
+
+**M1.5.3 — Cross-Platform State Hash Validation**
+
+### Progresso oficial
+
+GPP conquistados:
+
+**59.50 / 1000**
+
+Global Progress:
+
+**6.0%**
+
+Foundation / Simulation Kernel:
+
+**59.50 / 70 GPP — 85.0%**
+
+GPP adicionais conquistados neste subcheckpoint:
+
+**+0.00 GPP**
+
+### Justificativa de maturidade
+
+O state hash canônico foi validado em três famílias de sistema operacional e em duas arquiteturas de CPU, mas o exit gate cross-platform do kernel completo ainda não foi executado.
+
+Por isso, nenhuma capability do baseline é promovida para `Definition of Done atendida` neste checkpoint.
+
+### Evidência cross-platform
+
+Workflow:
+
+`Cross-Platform State Hash Validation`
+
+Run ID:
+
+`35443826986`
+
+Commit validado:
+
+`6e218d83f80075a4e6e981e2d84e52eb72b7642c`
+
+Resultado do workflow:
+
+**SUCCESS**
+
+Ambientes:
+
+- Ubuntu 24.04.5 LTS / x64;
+- Microsoft Windows Server 2025 / x64;
+- macOS 26.6.2 / arm64.
+
+.NET SDK:
+
+**10.0.401**
+
+Resultado por ambiente:
+
+- build Release: aprovado;
+- `CanonicalWorldStateHasherTests`: 5/5 aprovados;
+- falhas: 0;
+- artefato de evidência: publicado.
+
+Total de execuções focadas:
+
+**15 testes aprovados / 0 falhas**
+
+Artefatos:
+
+- `state-hash-ubuntu-latest`;
+- `state-hash-windows-latest`;
+- `state-hash-macos-latest`.
+
+### Concluído
+
+- state hash validado em Linux;
+- state hash validado em Windows;
+- state hash validado em macOS;
+- vetor canônico de `Revision = 0` validado nos três ambientes;
+- vetor canônico de `Revision = 1` validado nos três ambientes;
+- mesma implementação usada sem branches específicos de plataforma;
+- workflow de regressão cross-platform incorporado ao repositório;
+- evidência cobre x64 e arm64;
+- núcleo de domínio e simulação explicitado como cross-platform por design.
+
+### Scope Change
+
+Nenhum.
+
+O total permanece:
+
+**1000 GPP**
+
+### Riscos
+
+`RISK-004 — Determinism failure` permanece `MITIGATING`.
+
+A fonte de risco relacionada ao caminho de state hash e à representação binária específica de plataforma foi reduzida por evidência automatizada em Windows, Linux e macOS.
+
+O risco permanece ativo porque novas capabilities futuras poderão introduzir fontes adicionais de não determinismo.
+
+### Critical Path
+
+O Critical Path muda de:
+
+**State hash determinístico e validação cross-platform antes do fechamento de M1**
+
+para:
+
+**Suíte completa do Simulation Kernel cross-platform e exit gate de M1**
+
+### Próximo subcheckpoint
+
+**M1.5.4 — Cross-Platform Kernel Regression Validation**
+
+Objetivos:
+
+- executar a suíte completa atual do `GlobalArena.Tests` em Windows, Linux e macOS;
+- usar o mesmo commit e a mesma versão do .NET;
+- provar que os contratos, resolver, ordering, replay, turn policies e state hash passam nas três plataformas;
+- manter zero branches de comportamento por sistema operacional dentro do núcleo;
+- registrar evidência por runner;
+- usar o resultado como último gate técnico antes da decisão formal de fechamento de M1.

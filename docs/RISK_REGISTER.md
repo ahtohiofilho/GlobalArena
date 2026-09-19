@@ -261,11 +261,12 @@ Mitigação:
 - command/event log;
 - validação repetida do fluxo integrado de Turn Policies;
 - hash de estado;
+- validação cross-platform automatizada do state hash em Windows, Linux e macOS;
 - avaliar uso de matemática determinística onde necessário.
 
 Próxima ação:
 
-executar os vetores canônicos de state hash em plataformas distintas e comparar os resultados antes do fechamento de M1.
+executar a suíte completa atual do Simulation Kernel em Windows, Linux e macOS como exit gate antes do fechamento de M1.
 
 ---
 

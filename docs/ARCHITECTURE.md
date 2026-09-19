@@ -2828,7 +2828,55 @@ O hash continua sendo diagnóstico, não estado autoritativo.
 
 ### Próximo passo
 
-Executar os mesmos vetores e testes em plataformas distintas, preservando o mesmo código e a mesma definição canônica, antes do fechamento de M1.
+A validação cross-platform do state hash é descrita pela seção 25.3.
+
+## 25.3 Cross-Platform State Hash Validation
+
+A definição canônica de `WorldStateHash` foi executada em GitHub Actions sobre três famílias de sistema operacional usando o mesmo commit e a mesma suíte focada de testes.
+
+Execução de referência:
+
+- workflow: `Cross-Platform State Hash Validation`;
+- run ID: `35443826986`;
+- commit: `6e218d83f80075a4e6e981e2d84e52eb72b7642c`;
+- .NET SDK: `10.0.401`.
+
+Ambientes validados:
+
+- Ubuntu `24.04.5 LTS`, image `ubuntu-24.04`, arquitetura x64;
+- Microsoft Windows Server `2025`, build `10.0.26100`, image `windows-2025-vs2026`, arquitetura x64;
+- macOS `26.6.2`, image `macos-26-arm64`, arquitetura arm64.
+
+Em cada ambiente:
+
+- checkout concluído;
+- .NET 10 configurado;
+- solução restaurada;
+- build Release concluído;
+- `CanonicalWorldStateHasherTests` executado;
+- 5 testes aprovados;
+- 0 falhas;
+- artefato de evidência publicado.
+
+Como os testes focados incluem os vetores canônicos de `Revision = 0` e `Revision = 1`, a mesma definição binária e os mesmos digests foram validados nas três plataformas.
+
+Isso estabelece evidência de portabilidade do caminho de state hash entre Windows, Linux e macOS e também entre x64 e arm64 dentro do conjunto exercitado.
+
+### Invariante arquitetural
+
+O núcleo de domínio e simulação deverá permanecer cross-platform por design.
+
+Dependências específicas de sistema operacional devem permanecer nas bordas de infraestrutura, apresentação ou integração e não devem alterar as regras autoritativas da simulação.
+
+A validação cross-platform deverá continuar como mecanismo de regressão à medida que o estado autoritativo evoluir.
+
+### Limite da evidência
+
+Este checkpoint valida especificamente o caminho canônico de state hash.
+
+Ele não substitui uma execução cross-platform da suíte completa do Simulation Kernel.
+
+Antes do fechamento de M1, a suíte completa atual deverá ser executada nos mesmos ambientes para transformar a portabilidade do kernel em um exit gate explícito.
 
 ---
 

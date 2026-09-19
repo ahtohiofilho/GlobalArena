@@ -581,7 +581,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M1.5.3 — Cross-Platform State Hash Validation**
+**M1.5.4 — Cross-Platform Kernel Regression Validation**
 
 Official Progress:
 
@@ -609,7 +609,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**State hash determinístico e validação cross-platform antes do fechamento de M1**
+**Suíte completa do Simulation Kernel cross-platform e exit gate de M1**
 
 Last Baseline Review:
 
