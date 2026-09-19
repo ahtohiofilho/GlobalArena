@@ -1806,3 +1806,107 @@ Objetivos:
 - definir explicitamente a semântica mínima do resultado quando a revalidação falha;
 - manter múltiplos Events ainda não suportados;
 - preservar separação entre geração, revalidação e execução.
+
+---
+
+## 2026-09-19 — M1.1.6 Single-Event Revalidation Path concluído
+
+Milestone:
+
+**M1 — Deterministic Simulation Kernel**
+
+Stage:
+
+**M1.1 — Non-empty Deterministic Turn Resolution**
+
+Subcheckpoint:
+
+**M1.1.6 — Single-Event Revalidation Path**
+
+### Progresso oficial
+
+GPP conquistados:
+
+**43.25 / 1000**
+
+Global Progress:
+
+**4.3%**
+
+Foundation / Simulation Kernel:
+
+**43.25 / 70 GPP — 61.8%**
+
+Nenhum GPP adicional foi conquistado neste subcheckpoint.
+
+A capability `Command → Event, validação e execução sequencial` permanece classificada como:
+
+**Especificada — fator 0.20**
+
+A revalidação de um único Event agora ocorre no fluxo real imediatamente antes da execução, mas a capability completa ainda não possui validação explícita de Commands nem execução sequencial de múltiplos Events.
+
+### Concluído
+
+- `TurnResolver` passou a depender explicitamente de `ISimulationEventRevalidator`;
+- exatamente um Event é revalidado antes de sua execução;
+- Event autorizado segue a ordem `revalidate → execute`;
+- Event rejeitado não é executado;
+- Event rejeitado preserva o `WorldState` atual;
+- Event rejeitado permanece em `TurnResolutionResult.Events` como Event produzido;
+- zero Commands não invocam revalidator nem executor;
+- zero Events não invocam revalidator nem executor;
+- dois ou mais Events continuam rejeitados antes de qualquer revalidação ou execução;
+- revalidator nulo é rejeitado;
+- nenhuma event queue foi introduzida;
+- nenhum ordering ou deterministic shuffle foi introduzido;
+- nenhuma regra concreta de gameplay foi adicionada.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- warnings de build: 0;
+- erros de build: 0;
+- testes totais: 40;
+- testes aprovados: 40;
+- falhas: 0;
+- `SingleCommandSingleEventIsRevalidatedBeforeExecutionAndProducesResultingState`: aprovado;
+- `RejectedSingleEventPreservesWorldStateAndIsNotExecuted`: aprovado;
+- `SingleCommandWithNoEventsPreservesWorldState`: aprovado;
+- `MultipleEventsAreRejected`: aprovado;
+- `NullEventRevalidatorIsRejected`: aprovado;
+- regressões anteriores do `TurnResolver`: aprovadas;
+- `git diff --check`: aprovado;
+- SHA-256 dos dois arquivos alterados verificado no pacote de evidências.
+
+### Decisões relevantes
+
+- a revalidação ocorre imediatamente antes da execução do Event;
+- Event rejeitado não produz alteração de estado;
+- `TurnResolutionResult.Events` continua representando Events produzidos, não Events necessariamente executados;
+- resultado estruturado de rejeição permanece adiado até existir necessidade concreta;
+- múltiplos Events continuam não suportados para evitar ordering implícito;
+- geração, revalidação e execução permanecem responsabilidades separadas.
+
+### Scope Change
+
+Nenhum.
+
+### Novos riscos
+
+Nenhum risco estrutural novo identificado.
+
+`RISK-004 — Determinism failure` permanece relevante.
+
+O checkpoint reduz a incerteza sobre o fluxo de execução, mas ainda não demonstra validação completa de Commands, execução sequencial de múltiplos Events ou uma transição concreta de domínio reproduzível de ponta a ponta.
+
+### Próximo subcheckpoint
+
+**M1.1.7 — Command Validation Contract**
+
+Objetivos:
+
+- estabelecer a fronteira mínima responsável por validar um Command contra o `WorldState` autoritativo;
+- manter validação de Command separada da geração de Events;
+- permitir rejeição explícita antes de `ISimulationCommandProcessor`;
+- evitar ainda múltiplos Commands e múltiplos Events;
+- preparar a integração `Command validation → Event generation → Event revalidation → execution`.

@@ -297,8 +297,8 @@ Command
 → validação inicial
 → geração de evento(s)
 → ordenação
-→ execução
 → revalidação
+→ execução
 → alteração do estado
 → event log
 
@@ -451,7 +451,11 @@ O objetivo deste contrato é estabelecer a fronteira estável entre:
 4. estado resultante;
 5. ocorrências produzidas.
 
-## 8.2 Minimum Turn Resolver
+## 8.2 Minimum Turn Resolver Baseline (historical)
+
+Esta seção preserva o primeiro baseline executável do `TurnResolver`.
+
+As seções 8.3 a 8.6 documentam a evolução posterior e prevalecem sobre as limitações históricas descritas nesta seção.
 
 `TurnResolver` materializa a primeira orquestração executável da pipeline de resolução.
 
@@ -704,8 +708,7 @@ Essa restrição evita introduzir implicitamente:
 O `TurnResolver` ainda não implementa:
 
 - validação concreta de Commands;
-- revalidação de Events no momento da execução;
-- resultado explícito para Event rejeitado;
+- resultado explícito estruturado para Event rejeitado;
 - execução sequencial de múltiplos Events;
 - ordering ou deterministic shuffle;
 - EventLog;
@@ -765,7 +768,83 @@ O contrato não define ainda:
 - deterministic shuffle;
 - EventLog.
 
-A integração da revalidação ao caminho de execução de um único Event permanece responsabilidade do próximo subcheckpoint.
+A integração da revalidação ao `TurnResolver` é realizada pelo caminho descrito em 8.6.
+
+
+## 8.6 Single-Event Revalidation Path
+
+`TurnResolver` integra agora `ISimulationEventRevalidator` ao caminho de execução de um único Event.
+
+A pipeline mínima suportada passa a ser:
+
+WorldState
++
+um ISimulationCommand
++
+SimulationContext
+
+→ ISimulationCommandProcessor
+→ zero ou um ISimulationEvent
+→ ISimulationEventRevalidator
+→ ISimulationEventExecutor
+→ ResultingWorldState
+
+A revalidação ocorre imediatamente antes da execução.
+
+### Event autorizado
+
+Quando o processor produz exatamente um Event e o revalidator retorna `true`:
+
+- o Event é revalidado contra o `WorldState` autoritativo atual;
+- o mesmo `SimulationContext` é utilizado na revalidação;
+- o Event é executado somente após a revalidação;
+- o `WorldState` retornado pelo executor torna-se o `ResultingWorldState`;
+- o Event produzido permanece em `TurnResolutionResult.Events`.
+
+A ordem mínima é explicitamente:
+
+revalidate
+→ execute
+
+### Event rejeitado
+
+Quando o revalidator retorna `false`:
+
+- o Event não é executado;
+- o `WorldState` de entrada é preservado;
+- o Event produzido permanece em `TurnResolutionResult.Events`;
+- nenhuma transição parcial de estado ocorre.
+
+Nesse estágio, `TurnResolutionResult.Events` continua representando Events produzidos pela resolução e não um `EventLog` definitivo de Events efetivamente aplicados.
+
+Um resultado estruturado de rejeição permanece fora do contrato mínimo atual.
+
+### Caminhos sem Event
+
+Quando não existem Commands ou quando um Command produz zero Events:
+
+- o revalidator não é invocado;
+- o executor não é invocado;
+- o `WorldState` é preservado.
+
+### Mais de um Event
+
+Dois ou mais Events continuam explicitamente não suportados.
+
+A rejeição ocorre antes de qualquer revalidação ou execução, evitando semântica parcial enquanto ordering e execução sequencial ainda não estiverem definidos.
+
+### Limites ainda abertos
+
+O `TurnResolver` ainda não implementa:
+
+- validação concreta de Commands antes da geração de Events;
+- resultado estruturado para rejeições;
+- execução sequencial de múltiplos Events;
+- ordering ou deterministic shuffle;
+- EventLog;
+- regras concretas de domínio que alterem propriedades observáveis do mundo.
+
+O próximo limite arquitetural é estabelecer a fronteira mínima de validação de Command antes de seu processamento.
 
 ---
 

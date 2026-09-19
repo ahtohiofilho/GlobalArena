@@ -501,7 +501,7 @@ Etapa:
 
 Subetapa atual:
 
-**M1.1.6 — Single-Event Revalidation Path**
+**M1.1.7 — Command Validation Contract**
 
 M0 — Project Baseline:
 

@@ -10,6 +10,7 @@ public sealed class TurnResolverTests
     public void EmptyTurnPreservesWorldState()
     {
         var state = WorldState.CreateInitial();
+        var eventRevalidator = new TestEventRevalidator();
         var eventExecutor = new TestEventExecutor();
 
         var input = new TurnResolutionInput(
@@ -21,11 +22,13 @@ public sealed class TurnResolverTests
 
         var resolver = new TurnResolver(
             new TestCommandProcessor(),
+            eventRevalidator,
             eventExecutor);
 
         var result = resolver.Resolve(input);
 
         Assert.Same(state, result.ResultingWorldState);
+        Assert.Equal(0, eventRevalidator.CallCount);
         Assert.Equal(0, eventExecutor.CallCount);
     }
 
@@ -41,6 +44,7 @@ public sealed class TurnResolverTests
 
         var resolver = new TurnResolver(
             new TestCommandProcessor(),
+            new TestEventRevalidator(),
             new TestEventExecutor());
 
         var result = resolver.Resolve(input);
@@ -49,7 +53,7 @@ public sealed class TurnResolverTests
     }
 
     [Fact]
-    public void SingleCommandSingleEventIsExecutedAndProducesResultingState()
+    public void SingleCommandSingleEventIsRevalidatedBeforeExecutionAndProducesResultingState()
     {
         var state = WorldState.CreateInitial();
         var turn = new TurnNumber(2UL);
@@ -67,10 +71,18 @@ public sealed class TurnResolverTests
                 turn,
                 new SimulationSeed(456UL)));
 
-        var eventExecutor = new TestEventExecutor();
+        var callOrder = new List<string>();
+
+        var eventRevalidator = new TestEventRevalidator(
+            canExecute: true,
+            callOrder);
+
+        var eventExecutor = new TestEventExecutor(
+            callOrder);
 
         var resolver = new TurnResolver(
             new TestCommandProcessor(),
+            eventRevalidator,
             eventExecutor);
 
         var result = resolver.Resolve(input);
@@ -89,14 +101,85 @@ public sealed class TurnResolverTests
             new EventId(command.Id, 1UL),
             simulationEvent.Id);
 
+        Assert.Equal(1, eventRevalidator.CallCount);
+        Assert.Same(state, eventRevalidator.WorldState);
+        Assert.Same(
+            simulationEvent,
+            eventRevalidator.SimulationEvent);
+        Assert.Equal(
+            input.Context,
+            eventRevalidator.Context);
+
         Assert.Equal(1, eventExecutor.CallCount);
+
+        Assert.Equal(
+            new[]
+            {
+                "revalidate",
+                "execute"
+            },
+            callOrder);
+    }
+
+    [Fact]
+    public void RejectedSingleEventPreservesWorldStateAndIsNotExecuted()
+    {
+        var state = WorldState.CreateInitial();
+        var turn = new TurnNumber(3UL);
+
+        var command = new TestCommand(
+            new CommandId(turn, 1UL));
+
+        var input = new TurnResolutionInput(
+            state,
+            new ISimulationCommand[]
+            {
+                command
+            },
+            new SimulationContext(
+                turn,
+                new SimulationSeed(789UL)));
+
+        var callOrder = new List<string>();
+
+        var eventRevalidator = new TestEventRevalidator(
+            canExecute: false,
+            callOrder);
+
+        var eventExecutor = new TestEventExecutor(
+            callOrder);
+
+        var resolver = new TurnResolver(
+            new TestCommandProcessor(),
+            eventRevalidator,
+            eventExecutor);
+
+        var result = resolver.Resolve(input);
+
+        Assert.Same(state, result.ResultingWorldState);
+
+        var simulationEvent = Assert.Single(result.Events);
+
+        Assert.Equal(
+            new EventId(command.Id, 1UL),
+            simulationEvent.Id);
+
+        Assert.Equal(1, eventRevalidator.CallCount);
+        Assert.Equal(0, eventExecutor.CallCount);
+
+        Assert.Equal(
+            new[]
+            {
+                "revalidate"
+            },
+            callOrder);
     }
 
     [Fact]
     public void SingleCommandWithNoEventsPreservesWorldState()
     {
         var state = WorldState.CreateInitial();
-        var turn = new TurnNumber(3UL);
+        var turn = new TurnNumber(4UL);
 
         var input = new TurnResolutionInput(
             state,
@@ -107,25 +190,28 @@ public sealed class TurnResolverTests
             },
             new SimulationContext(
                 turn,
-                new SimulationSeed(789UL)));
+                new SimulationSeed(101112UL)));
 
+        var eventRevalidator = new TestEventRevalidator();
         var eventExecutor = new TestEventExecutor();
 
         var resolver = new TurnResolver(
             new TestCommandProcessor(eventCount: 0),
+            eventRevalidator,
             eventExecutor);
 
         var result = resolver.Resolve(input);
 
         Assert.Same(state, result.ResultingWorldState);
         Assert.Empty(result.Events);
+        Assert.Equal(0, eventRevalidator.CallCount);
         Assert.Equal(0, eventExecutor.CallCount);
     }
 
     [Fact]
     public void MultipleEventsAreRejected()
     {
-        var turn = new TurnNumber(4UL);
+        var turn = new TurnNumber(5UL);
 
         var input = new TurnResolutionInput(
             WorldState.CreateInitial(),
@@ -136,24 +222,27 @@ public sealed class TurnResolverTests
             },
             new SimulationContext(
                 turn,
-                new SimulationSeed(101112UL)));
+                new SimulationSeed(131415UL)));
 
+        var eventRevalidator = new TestEventRevalidator();
         var eventExecutor = new TestEventExecutor();
 
         var resolver = new TurnResolver(
             new TestCommandProcessor(eventCount: 2),
+            eventRevalidator,
             eventExecutor);
 
         Assert.Throws<NotSupportedException>(
             () => resolver.Resolve(input));
 
+        Assert.Equal(0, eventRevalidator.CallCount);
         Assert.Equal(0, eventExecutor.CallCount);
     }
 
     [Fact]
     public void MultipleCommandsAreRejected()
     {
-        var turn = new TurnNumber(5UL);
+        var turn = new TurnNumber(6UL);
 
         var input = new TurnResolutionInput(
             WorldState.CreateInitial(),
@@ -166,10 +255,11 @@ public sealed class TurnResolverTests
             },
             new SimulationContext(
                 turn,
-                new SimulationSeed(131415UL)));
+                new SimulationSeed(161718UL)));
 
         var resolver = new TurnResolver(
             new TestCommandProcessor(),
+            new TestEventRevalidator(),
             new TestEventExecutor());
 
         Assert.Throws<NotSupportedException>(
@@ -181,6 +271,7 @@ public sealed class TurnResolverTests
     {
         var resolver = new TurnResolver(
             new TestCommandProcessor(),
+            new TestEventRevalidator(),
             new TestEventExecutor());
 
         Assert.Throws<ArgumentNullException>(
@@ -193,6 +284,17 @@ public sealed class TurnResolverTests
         Assert.Throws<ArgumentNullException>(
             () => new TurnResolver(
                 null!,
+                new TestEventRevalidator(),
+                new TestEventExecutor()));
+    }
+
+    [Fact]
+    public void NullEventRevalidatorIsRejected()
+    {
+        Assert.Throws<ArgumentNullException>(
+            () => new TurnResolver(
+                new TestCommandProcessor(),
+                null!,
                 new TestEventExecutor()));
     }
 
@@ -202,6 +304,7 @@ public sealed class TurnResolverTests
         Assert.Throws<ArgumentNullException>(
             () => new TurnResolver(
                 new TestCommandProcessor(),
+                new TestEventRevalidator(),
                 null!));
     }
 
@@ -242,9 +345,54 @@ public sealed class TurnResolverTests
         }
     }
 
+    private sealed class TestEventRevalidator
+        : ISimulationEventRevalidator
+    {
+        private readonly bool _canExecute;
+        private readonly IList<string>? _callOrder;
+
+        public TestEventRevalidator(
+            bool canExecute = true,
+            IList<string>? callOrder = null)
+        {
+            _canExecute = canExecute;
+            _callOrder = callOrder;
+        }
+
+        public int CallCount { get; private set; }
+
+        public WorldState? WorldState { get; private set; }
+
+        public ISimulationEvent? SimulationEvent { get; private set; }
+
+        public SimulationContext Context { get; private set; }
+
+        public bool CanExecute(
+            WorldState worldState,
+            ISimulationEvent simulationEvent,
+            SimulationContext context)
+        {
+            CallCount++;
+            WorldState = worldState;
+            SimulationEvent = simulationEvent;
+            Context = context;
+            _callOrder?.Add("revalidate");
+
+            return _canExecute;
+        }
+    }
+
     private sealed class TestEventExecutor
         : ISimulationEventExecutor
     {
+        private readonly IList<string>? _callOrder;
+
+        public TestEventExecutor(
+            IList<string>? callOrder = null)
+        {
+            _callOrder = callOrder;
+        }
+
         public int CallCount { get; private set; }
 
         public WorldState ResultingState { get; } =
@@ -256,6 +404,7 @@ public sealed class TurnResolverTests
             SimulationContext context)
         {
             CallCount++;
+            _callOrder?.Add("execute");
 
             return ResultingState;
         }
