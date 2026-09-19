@@ -2521,6 +2521,89 @@ Essas responsabilidades pertencem aos subcheckpoints posteriores de M2.1.
 
 A distinção entre `(m,n)` e `(n,m)` é preservada porque orientação/chiralidade e equivalência geométrica ainda não possuem contrato de produção congelado.
 
+## 11.5 Strategic Topology Identity Contract
+
+A identidade topológica estratégica utiliza três tipos distintos:
+
+- `StrategicCellId`;
+- `StrategicEdgeId`;
+- `StrategicVertexId`.
+
+Cada ID:
+
+- é um value object tipado;
+- contém um valor lógico `UInt64`;
+- exige `Value > 0` para uma identidade válida;
+- utiliza igualdade por valor;
+- expõe `IsValid`;
+- não contém coordenadas;
+- não contém estado mutável;
+- não depende de Unity;
+- não depende de ordem de alocação em memória.
+
+Como todo value type do CLR possui um estado `default` zero-inicializado que contorna construtores explícitos, `default(StrategicCellId)`, `default(StrategicEdgeId)` e `default(StrategicVertexId)` são sentinelas inválidas.
+
+Esse estado não poderá ser consumido silenciosamente como identidade:
+
+- `IsValid` retorna `false`;
+- acessar `Value` em uma sentinela `default` lança `InvalidOperationException`;
+- construtores continuam rejeitando explicitamente `0`;
+- futuros objetos de topologia e entidades deverão rejeitar IDs para os quais `IsValid == false` em suas fronteiras de entrada.
+
+Os três tipos não são intercambiáveis.
+
+O mesmo valor numérico pode existir simultaneamente nos três domínios sem colisão semântica porque o tipo faz parte do contrato de identidade.
+
+Exemplo:
+
+- `StrategicCellId(1)` identifica uma célula;
+- `StrategicEdgeId(1)` identifica uma aresta;
+- `StrategicVertexId(1)` identifica um vértice.
+
+Essas identidades são locais a uma topologia estratégica.
+
+Elas não pretendem ser identificadores globais entre planetas, partidas ou instâncias de topologia diferentes.
+
+O futuro objeto de topologia fornecerá o escopo que associa:
+
+- `GoldbergParameters`;
+- coleções de entidades;
+- seus IDs;
+- relações de incidência e adjacência.
+
+### Regra de ordinal canônico
+
+`Value` representa um ordinal canônico one-based dentro de seu próprio tipo de entidade.
+
+O gerador futuro deverá atribuir esse ordinal por uma regra determinística do algoritmo topológico.
+
+É proibido derivar identidade de:
+
+- endereço de memória;
+- ordem incidental de criação;
+- ordem de enumeração de coleção não determinística;
+- coordenada de ponto flutuante;
+- hash de runtime não estável.
+
+Para os mesmos parâmetros Goldberg e a mesma versão do gerador, a mesma entidade topológica deverá receber o mesmo ID em Windows, Linux e macOS.
+
+### Limite deste contrato
+
+M2.1.3 não define ainda:
+
+- geração de células;
+- geração de arestas;
+- geração de vértices;
+- incidência;
+- adjacência;
+- coordenadas;
+- orientação;
+- chiralidade;
+- ownership de border bands;
+- mapeamento estratégico/tático.
+
+O primeiro uso concreto dos IDs será materializado em M2.1.4 no caso mínimo `G(1,0)`.
+
 ---
 
 # 12. Camada tática
