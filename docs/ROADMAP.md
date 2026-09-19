@@ -581,7 +581,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M1.3.3 — Replay Contract**
+**M1.3.4 — Replay Path**
 
 Official Progress:
 

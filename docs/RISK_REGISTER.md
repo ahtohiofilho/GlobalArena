@@ -264,7 +264,7 @@ Mitigação:
 
 Próxima ação:
 
-validar replay verificável a partir do EventLog integrado antes do fechamento de M1.
+implementar e validar replay verificável a partir do EventLog integrado antes do fechamento de M1.
 
 ---
 

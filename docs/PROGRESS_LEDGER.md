@@ -3148,3 +3148,124 @@ Objetivos:
 - impedir que replay volte a executar Events originalmente inelegíveis;
 - manter persistência física fora do escopo;
 - preparar uma implementação de replay verificável sem introduzir event sourcing completo.
+
+---
+
+## 2026-09-19 — M1.3.3 Replay Contract concluído
+
+Milestone:
+
+**M1 — Deterministic Simulation Kernel**
+
+Stage:
+
+**M1.3 — Deterministic Event Log & Replay Foundation**
+
+Subcheckpoint:
+
+**M1.3.3 — Replay Contract**
+
+### Progresso oficial
+
+GPP conquistados:
+
+**56.80 / 1000**
+
+Global Progress:
+
+**5.7%**
+
+Foundation / Simulation Kernel:
+
+**56.80 / 70 GPP — 81.1%**
+
+GPP adicionais conquistados neste subcheckpoint:
+
+**+0.00 GPP**
+
+### Justificativa de maturidade
+
+O subcheckpoint estabelece a fronteira de replay, mas ainda não executa um EventLog nem demonstra equivalência entre resolução original e replay.
+
+A capability `EventLog / base de replay` permanece:
+
+**Integrada — fator 0.70 — 3.50 GPP**
+
+A promoção para `Validada` depende da implementação do replay e de uma prova automatizada de equivalência observável.
+
+### Concluído
+
+- `SimulationReplayInput` criado;
+- input de replay carrega `InitialWorldState`;
+- input de replay carrega `SimulationEventLog`;
+- input de replay carrega `SimulationContext`;
+- `InitialWorldState` nulo é rejeitado;
+- `SimulationEventLog` nulo é rejeitado;
+- `ISimulationEventLogReplayer` criado;
+- contrato de replay recebe `SimulationReplayInput`;
+- contrato devolve `WorldState`;
+- replay permanece separado da resolução de Commands;
+- nenhuma persistência física foi introduzida;
+- nenhuma implementação concreta de replay foi introduzida.
+
+### Semântica arquitetural
+
+Replay deverá usar o EventLog como fonte autoritativa da sequência já resolvida.
+
+A implementação futura não deverá refazer ordering nem revalidação.
+
+Entries com `WasExecuted = false` deverão ser ignoradas para execução.
+
+Entries com `WasExecuted = true` deverão ser reaplicadas na ordem de `ResolutionSequence`.
+
+O resultado do replay deverá ser comparável ao `ResultingWorldState` da resolução original.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- warnings de build: 0;
+- erros de build: 0;
+- testes totais: 81;
+- testes aprovados: 81;
+- falhas: 0;
+- `ReplayInputCarriesInitialWorldStateEventLogAndContext`: aprovado;
+- `ReplayInputRejectsNullInitialWorldState`: aprovado;
+- `ReplayInputRejectsNullEventLog`: aprovado;
+- `ReplayerContractReceivesReplayInputAndReturnsWorldState`: aprovado;
+- `git diff --check`: aprovado;
+- SHA-256 dos três arquivos novos verificado no pacote de evidências.
+
+### Scope Change
+
+Nenhum.
+
+O total permanece:
+
+**1000 GPP**
+
+### Riscos
+
+`RISK-004 — Determinism failure` permanece `MITIGATING`.
+
+O contrato agora define a fronteira de replay, mas a execução reproduzível do EventLog ainda precisa ser demonstrada.
+
+### Critical Path
+
+Permanece:
+
+**EventLog determinístico e replay verificável da resolução**
+
+### Próximo subcheckpoint
+
+**M1.3.4 — Replay Path**
+
+Objetivos:
+
+- implementar um replayer concreto usando o executor existente;
+- percorrer `SimulationEventLog.Entries` em `ResolutionSequence`;
+- executar somente entries com `WasExecuted = true`;
+- não refazer ordering;
+- não refazer revalidação;
+- manter entries rejeitadas sem efeito no estado;
+- provar que replay e resolução original chegam ao mesmo estado observável;
+- manter persistência física fora do escopo.

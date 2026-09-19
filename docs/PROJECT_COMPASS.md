@@ -501,7 +501,7 @@ Etapa:
 
 Subetapa atual:
 
-**M1.3.3 — Replay Contract**
+**M1.3.4 — Replay Path**
 
 M0 — Project Baseline:
 

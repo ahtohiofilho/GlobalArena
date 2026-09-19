@@ -455,7 +455,7 @@ O objetivo deste contrato é estabelecer a fronteira estável entre:
 
 Esta seção preserva o primeiro baseline executável do `TurnResolver`.
 
-As seções 8.3 a 8.16 documentam a evolução posterior e prevalecem sobre as limitações históricas descritas nesta seção.
+As seções 8.3 a 8.17 documentam a evolução posterior e prevalecem sobre as limitações históricas descritas nesta seção.
 
 `TurnResolver` materializa a primeira orquestração executável da pipeline de resolução.
 
@@ -1660,7 +1660,100 @@ M1 ainda não possui:
 - Turn Policies;
 - validação determinística entre plataformas.
 
-O próximo passo é definir a fronteira mínima de replay sem introduzir event sourcing completo ou persistência física prematura.
+A fronteira mínima de replay é estabelecida pela seção 8.17.
+
+
+## 8.17 Replay Contract
+
+`SimulationReplayInput` e `ISimulationEventLogReplayer` estabelecem a fronteira mínima para replay determinístico a partir de um EventLog já produzido.
+
+O replay recebe:
+
+`InitialWorldState`
+
+`SimulationEventLog`
+
+`SimulationContext`
+
+e devolve:
+
+`WorldState`
+
+### SimulationReplayInput
+
+`SimulationReplayInput` agrega os três elementos necessários para a futura reaplicação determinística:
+
+- o `WorldState` inicial sobre o qual o replay começa;
+- o `SimulationEventLog` capturado pela resolução original;
+- o mesmo tipo de `SimulationContext` utilizado pelos executores da pipeline.
+
+`InitialWorldState` e `EventLog` são obrigatórios e não podem ser nulos.
+
+O contexto permanece explícito porque a execução de Events já possui `SimulationContext` como parte de seu contrato.
+
+### ISimulationEventLogReplayer
+
+`ISimulationEventLogReplayer` define:
+
+`Replay(SimulationReplayInput) → WorldState`
+
+O contrato separa replay da resolução normal de Commands.
+
+Replay não recebe Commands e não refaz:
+
+- validação de Commands;
+- processamento de Commands;
+- ordering de Events;
+- revalidação de elegibilidade.
+
+A fonte autoritativa do replay é o EventLog previamente capturado.
+
+### Semântica esperada das entries
+
+A futura implementação deverá percorrer as entries na ordem de `ResolutionSequence`.
+
+Entries com:
+
+`WasExecuted = false`
+
+não deverão executar novamente seu Event.
+
+Entries com:
+
+`WasExecuted = true`
+
+deverão reaplicar o Event correspondente na sequência registrada.
+
+Como `SimulationEventLogEntry` já impede `WasExecuted = true` combinado com `WasEligible = false`, o replay não precisa reconstruir a decisão original de elegibilidade.
+
+### Relação com determinismo
+
+O objetivo do replay é demonstrar que:
+
+estado inicial equivalente
++
+mesmo EventLog
++
+mesmo SimulationContext
+
+→ mesmo estado resultante observável
+
+A futura implementação deverá ser comparada com o `ResultingWorldState` obtido pela resolução original.
+
+### Limites do contrato
+
+Este checkpoint não implementa ainda:
+
+- classe concreta de replay;
+- execução de Events durante replay;
+- comparação automática entre resultado original e resultado reproduzido;
+- hash de estado;
+- persistência física do EventLog;
+- serialização;
+- event sourcing completo;
+- replay entre versões incompatíveis do ruleset.
+
+O próximo subcheckpoint deverá implementar o replay mínimo usando o executor existente e provar equivalência observável com uma resolução original.
 
 ---
 
