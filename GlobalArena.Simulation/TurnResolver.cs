@@ -6,22 +6,26 @@ public sealed class TurnResolver
 {
     private readonly ISimulationCommandValidator _commandValidator;
     private readonly ISimulationCommandProcessor _commandProcessor;
+    private readonly ISimulationEventOrderer _eventOrderer;
     private readonly ISimulationEventRevalidator _eventRevalidator;
     private readonly ISimulationEventExecutor _eventExecutor;
 
     public TurnResolver(
         ISimulationCommandValidator commandValidator,
         ISimulationCommandProcessor commandProcessor,
+        ISimulationEventOrderer eventOrderer,
         ISimulationEventRevalidator eventRevalidator,
         ISimulationEventExecutor eventExecutor)
     {
         ArgumentNullException.ThrowIfNull(commandValidator);
         ArgumentNullException.ThrowIfNull(commandProcessor);
+        ArgumentNullException.ThrowIfNull(eventOrderer);
         ArgumentNullException.ThrowIfNull(eventRevalidator);
         ArgumentNullException.ThrowIfNull(eventExecutor);
 
         _commandValidator = commandValidator;
         _commandProcessor = commandProcessor;
+        _eventOrderer = eventOrderer;
         _eventRevalidator = eventRevalidator;
         _eventExecutor = eventExecutor;
     }
@@ -63,40 +67,32 @@ public sealed class TurnResolver
             command,
             input.Context);
 
-        if (events.Count > 1)
-        {
-            throw new NotSupportedException(
-                "Multiple event resolution is not implemented yet.");
-        }
-
-        if (events.Count == 0)
-        {
-            return new TurnResolutionResult(
-                input.WorldState,
-                events);
-        }
-
-        var simulationEvent = events[0];
-
-        var canExecute = _eventRevalidator.CanExecute(
-            input.WorldState,
-            simulationEvent,
+        var orderedEvents = _eventOrderer.Order(
+            events,
             input.Context);
 
-        if (!canExecute)
-        {
-            return new TurnResolutionResult(
-                input.WorldState,
-                events);
-        }
+        var currentWorldState = input.WorldState;
 
-        var resultingWorldState = _eventExecutor.Execute(
-            input.WorldState,
-            simulationEvent,
-            input.Context);
+        foreach (var simulationEvent in orderedEvents)
+        {
+            var canExecute = _eventRevalidator.CanExecute(
+                currentWorldState,
+                simulationEvent,
+                input.Context);
+
+            if (!canExecute)
+            {
+                continue;
+            }
+
+            currentWorldState = _eventExecutor.Execute(
+                currentWorldState,
+                simulationEvent,
+                input.Context);
+        }
 
         return new TurnResolutionResult(
-            resultingWorldState,
-            events);
+            currentWorldState,
+            orderedEvents);
     }
 }

@@ -2346,3 +2346,144 @@ Objetivos:
 - preservar o estado corrente quando um Event for rejeitado e continuar a sequência;
 - manter múltiplos Commands ainda não suportados;
 - definir explicitamente a semântica de `TurnResolutionResult.Events` para a sequência ordenada.
+
+---
+
+## 2026-09-19 — M1.1.11 Multi-Event Sequential Resolution Path concluído
+
+Milestone:
+
+**M1 — Deterministic Simulation Kernel**
+
+Stage:
+
+**M1.1 — Non-empty Deterministic Turn Resolution**
+
+Subcheckpoint:
+
+**M1.1.11 — Multi-Event Sequential Resolution Path**
+
+### Progresso oficial
+
+GPP conquistados:
+
+**49.75 / 1000**
+
+Global Progress:
+
+**5.0%**
+
+Foundation / Simulation Kernel:
+
+**49.75 / 70 GPP — 71.1%**
+
+GPP adicionais conquistados neste subcheckpoint:
+
+**+5.00 GPP**
+
+Duas capabilities avançam de maturidade.
+
+`Command → Event, validação e execução sequencial`, com orçamento de 8 GPP, passa de:
+
+**Especificada — fator 0.20 — 1.60 GPP**
+
+para:
+
+**Integrada — fator 0.70 — 5.60 GPP**
+
+Incremento:
+
+**+4.00 GPP**
+
+`Deterministic shuffle / ordering`, com orçamento de 5 GPP, passa de:
+
+**Funcional isoladamente — fator 0.50 — 2.50 GPP**
+
+para:
+
+**Integrada — fator 0.70 — 3.50 GPP**
+
+Incremento:
+
+**+1.00 GPP**
+
+### Justificativa de maturidade
+
+Validação de Command, geração de Events, ordering, revalidação e execução sequencial agora participam do mesmo fluxo real do `TurnResolver`.
+
+O ordering concreto também passa a poder ser utilizado diretamente no caminho de resolução de múltiplos Events.
+
+As capabilities ainda não são classificadas como `Validadas`, pois ainda falta uma regra concreta de domínio com estado observável e prova end-to-end de reprodutibilidade do resultado real.
+
+### Concluído
+
+- `TurnResolver` passou a depender de `ISimulationEventOrderer`;
+- Events produzidos são ordenados antes de revalidação;
+- a limitação que rejeitava múltiplos Events foi removida;
+- múltiplos Events são resolvidos sequencialmente;
+- cada Event é revalidado imediatamente antes de sua execução;
+- cada revalidação recebe o `WorldState` corrente;
+- Event aceito atualiza o estado usado pelo próximo Event;
+- Event rejeitado preserva o estado corrente;
+- Event rejeitado não interrompe a sequência;
+- `TurnResolutionResult.Events` contém a sequência ordenada completa de Events produzidos;
+- Events rejeitados permanecem presentes em `TurnResolutionResult.Events`;
+- zero Commands não invocam o orderer;
+- Command rejeitado não invoca o orderer;
+- Command aceito com zero Events passa pela fronteira de ordering e encerra sem revalidação;
+- múltiplos Commands continuam explicitamente não suportados;
+- `SeededSimulationEventOrderer` foi exercitado no fluxo real com múltiplos Events;
+- nenhum EventLog foi introduzido;
+- nenhuma regra concreta de gameplay foi adicionada.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- warnings de build: 0;
+- erros de build: 0;
+- testes totais: 54;
+- testes aprovados: 54;
+- falhas: 0;
+- `SingleCommandSingleEventFollowsCompleteOrderedPipeline`: aprovado;
+- `MultipleEventsAreDeterministicallyOrderedAndExecutedSequentially`: aprovado;
+- `RejectedEventInSequencePreservesCurrentStateAndResolutionContinues`: aprovado;
+- `MultipleCommandsAreRejectedBeforeOrdering`: aprovado;
+- regressões anteriores do `TurnResolver`: aprovadas;
+- `git diff --check`: aprovado;
+- SHA-256 dos dois arquivos alterados verificado no pacote de evidências.
+
+### Decisões relevantes
+
+- ordering ocorre sempre após processamento e antes de revalidação;
+- o estado autoritativo para revalidação é o estado corrente da sequência;
+- Event rejeitado é ignorado para mutação, mas não removido da sequência de Events produzidos;
+- rejeição de um Event não aborta Events posteriores;
+- `TurnResolutionResult.Events` representa Events produzidos em ordem de resolução, não apenas Events executados;
+- EventLog permanece contrato futuro separado;
+- múltiplos Commands continuam fora deste checkpoint.
+
+### Scope Change
+
+Nenhum.
+
+### Novos riscos
+
+Nenhum risco estrutural novo identificado.
+
+`RISK-004 — Determinism failure` permanece relevante.
+
+A incerteza sobre ordering e execução sequencial integrados foi reduzida, mas o Critical Path ainda exige uma transição observável de domínio reproduzível de ponta a ponta.
+
+### Próximo subcheckpoint
+
+**M1.1.12 — Concrete Deterministic State Transition**
+
+Objetivos:
+
+- introduzir a menor transição concreta e observável de `WorldState` necessária para provar o Critical Path;
+- atravessar a pipeline real `validate → process → order → revalidate → execute`;
+- executar a mesma entrada determinística mais de uma vez;
+- comparar o resultado observável das execuções;
+- provar a primeira resolução não vazia reproduzível end-to-end;
+- evitar ampliar gameplay ou antecipar subsistemas de M2+;
+- manter múltiplos Commands fora de escopo até que a prova mínima end-to-end esteja fechada.

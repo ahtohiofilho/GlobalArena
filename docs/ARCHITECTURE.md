@@ -455,7 +455,7 @@ O objetivo deste contrato é estabelecer a fronteira estável entre:
 
 Esta seção preserva o primeiro baseline executável do `TurnResolver`.
 
-As seções 8.3 a 8.10 documentam a evolução posterior e prevalecem sobre as limitações históricas descritas nesta seção.
+As seções 8.3 a 8.11 documentam a evolução posterior e prevalecem sobre as limitações históricas descritas nesta seção.
 
 `TurnResolver` materializa a primeira orquestração executável da pipeline de resolução.
 
@@ -1105,7 +1105,118 @@ O orderer concreto ainda não está integrado ao `TurnResolver`.
 
 O fluxo ainda não executa múltiplos Events sequencialmente e ainda não possui `EventLog`.
 
-O próximo limite arquitetural é integrar ordering ao caminho real e permitir resolução sequencial de múltiplos Events produzidos por um único Command.
+A integração de ordering ao caminho real e a resolução sequencial de múltiplos Events são realizadas pelo fluxo descrito em 8.11.
+
+
+## 8.11 Multi-Event Sequential Resolution Path
+
+`TurnResolver` integra agora `ISimulationEventOrderer` ao caminho real de resolução e permite que um único Command validado produza zero ou mais Events.
+
+A pipeline estrutural suportada passa a ser:
+
+WorldState
++
+um ISimulationCommand
++
+SimulationContext
+
+→ validate
+→ process
+→ order
+→ para cada Event ordenado:
+  → revalidate contra o WorldState corrente
+  → execute quando elegível
+  → atualizar o WorldState corrente
+→ TurnResolutionResult
+
+### Ordering
+
+A coleção produzida pelo `ISimulationCommandProcessor` é encaminhada ao `ISimulationEventOrderer` antes de qualquer revalidação ou execução.
+
+O `TurnResolver` utiliza a ordem devolvida pelo orderer como ordem de resolução.
+
+Isso remove a limitação anterior que rejeitava mais de um Event.
+
+### Resolução sequencial
+
+A resolução começa com:
+
+`currentWorldState = input.WorldState`
+
+Cada Event ordenado é revalidado contra o `currentWorldState` existente naquele instante.
+
+Quando o Event é elegível:
+
+- o executor recebe o estado corrente;
+- o Event é executado;
+- o estado retornado pelo executor passa a ser o novo `currentWorldState`;
+- o próximo Event é revalidado contra esse estado atualizado.
+
+Quando o Event não é elegível:
+
+- o executor não é invocado para aquele Event;
+- o `currentWorldState` é preservado;
+- a sequência continua com o próximo Event.
+
+Essa regra evita abortar silenciosamente Events posteriores apenas porque um Event intermediário foi rejeitado.
+
+### Semântica de TurnResolutionResult.Events
+
+`TurnResolutionResult.Events` passa a representar a sequência ordenada completa de Events produzidos para a resolução.
+
+A coleção inclui também Events que foram rejeitados na etapa de revalidação.
+
+Portanto:
+
+`TurnResolutionResult.Events`
+
+não significa:
+
+- somente Events executados;
+- somente Events aceitos;
+- EventLog definitivo.
+
+O futuro `EventLog` permanece uma capability separada e deverá registrar semântica suficiente para replay, persistência e diagnóstico.
+
+### Caminhos sem resolução
+
+Zero Commands:
+
+- validator não é invocado;
+- processor não é invocado;
+- orderer não é invocado;
+- revalidator não é invocado;
+- executor não é invocado;
+- o estado é preservado.
+
+Command rejeitado:
+
+- processor não é invocado;
+- orderer não é invocado;
+- nenhum Event é produzido;
+- o estado é preservado.
+
+Command aceito com zero Events:
+
+- o processor é invocado;
+- o orderer recebe a coleção vazia;
+- não há revalidação;
+- não há execução;
+- o estado é preservado.
+
+### Limites ainda abertos
+
+Múltiplos Commands continuam explicitamente não suportados.
+
+O fluxo ainda não possui:
+
+- regra concreta de domínio que produza alteração observável do `WorldState`;
+- prova end-to-end de que duas execuções reais idênticas produzam o mesmo estado observável;
+- EventLog;
+- avanço de turno;
+- resultado estruturado de rejeições.
+
+O próximo limite arquitetural é provar uma transição concreta e observável do estado através da pipeline determinística completa.
 
 ---
 

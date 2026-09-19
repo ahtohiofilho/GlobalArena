@@ -501,7 +501,7 @@ Etapa:
 
 Subetapa atual:
 
-**M1.1.11 — Multi-Event Sequential Resolution Path**
+**M1.1.12 — Concrete Deterministic State Transition**
 
 M0 — Project Baseline:
 
@@ -513,15 +513,15 @@ Baseline V1:
 
 Progresso oficial:
 
-**4,5%**
+**5,0%**
 
 GPP conquistados:
 
-**44,75 / 1000**
+**49,75 / 1000**
 
 Foundation / Simulation Kernel:
 
-**44,75 / 70 GPP — 63,9%**
+**49,75 / 70 GPP — 71,1%**
 
 Scope Confidence:
 

@@ -581,19 +581,19 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M1.1.11 — Multi-Event Sequential Resolution Path**
+**M1.1.12 — Concrete Deterministic State Transition**
 
 Official Progress:
 
-**4.5%**
+**5.0%**
 
 GPP Earned:
 
-**44.75 / 1000**
+**49.75 / 1000**
 
 Foundation / Simulation Kernel:
 
-**44.75 / 70 GPP — 63.9%**
+**49.75 / 70 GPP — 71.1%**
 
 Scope Confidence:
 
