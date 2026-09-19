@@ -428,18 +428,49 @@ GPP adicional de M2.1.5.A:
 
 A promoção para `Implementação funcional isolada — fator 0.50` permanece bloqueada até a generalização necessária de M2.1.5 cobrir as famílias adicionais oficialmente exigidas.
 
+M2.1.5.B está concluído em 2026-09-19.
+
+Evidência de M2.1.5.B:
+
+- suporte Class II `G(k,k)` materializado;
+- `G(1,1)` validado com 32 cells, 90 edges, 60 vertices e 20 hexágonos;
+- `G(2,2)` validado com 122 cells, 360 edges, 240 vertices e 110 hexágonos;
+- exatamente 12 pentágonos preservados;
+- grau 5 para pentágonos e grau 6 para hexágonos;
+- incidência 2 por edge e 3 por vertex preservada;
+- reciprocidade, conectividade e Euler = 2 preservados;
+- geração repetida de `G(1,1)` reproduz a mesma assinatura canônica;
+- Class I permanece suportada;
+- Class III permanece explicitamente não suportada;
+- build Release local com 0 warnings e 0 errors;
+- suíte local: 185/185, 0 falhas, 0 skipped;
+- workflow `Cross-Platform Kernel Regression Validation`, run `35457406818`, concluído com sucesso em Ubuntu, Windows e macOS;
+- commit validado: `5897e929d46e964ef544404c2f6b14b2dc3fc436`.
+
+M2.1.5.B fecha somente a tranche Class II.
+
+A capability agregada `Goldberg parameterization e geração estratégica` permanece:
+
+**Especificada — fator 0.20 — 3.20 GPP**
+
+GPP adicional de M2.1.5.B:
+
+**+0.00 GPP**
+
+A promoção para `Implementação funcional isolada — fator 0.50` permanece bloqueada até o fechamento da generalização necessária de M2.1.5.
+
 Próximo subcheckpoint:
 
-**M2.1.5.B — Class II Goldberg Generalization**
+**M2.1.5.C — Class III Goldberg Generalization**
 
 Objetivos iniciais:
 
-- materializar o primeiro caso Class II em `G(1,1)`;
+- materializar o primeiro caso Class III em `G(2,1)`;
 - preservar contagens de `GoldbergParameters`;
 - preservar IDs canônicos determinísticos;
 - preservar incidência, adjacência, conectividade e Euler;
-- tratar orientação/chiralidade sem usar ponto flutuante como fonte de verdade;
-- manter Class III explicitamente bloqueada até a tranche posterior;
+- tratar orientação/chiralidade explicitamente;
+- preservar Class I e Class II sem regressão;
 - validar novamente em Ubuntu, Windows e macOS.
 
 ---
@@ -728,7 +759,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M2.1.5.B — Class II Goldberg Generalization**
+**M2.1.5.C — Class III Goldberg Generalization**
 
 Official Progress:
 

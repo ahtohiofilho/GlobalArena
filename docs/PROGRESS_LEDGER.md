@@ -5646,3 +5646,214 @@ Objetivos:
 - resolver orientação/chiralidade sem usar ponto flutuante como fonte de verdade;
 - manter Class III explicitamente bloqueada até validação própria;
 - executar novamente o gate cross-platform antes do fechamento formal.
+
+---
+
+## 2026-09-19 — M2.1.5.B Class II Goldberg Generalization concluído
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.1 — Goldberg Topology Foundation**
+
+Parent checkpoint:
+
+**M2.1.5 — General Icosahedral Goldberg Generation**
+
+Subcheckpoint:
+
+**M2.1.5.B — Class II Goldberg Generalization**
+
+### Implementação
+
+Commit validado:
+
+`5897e929d46e964ef544404c2f6b14b2dc3fc436`
+
+Commit:
+
+`feat: add Class II Goldberg topology`
+
+A tranche adicionou suporte estratégico à família Class II:
+
+- `G(k,k)`.
+
+Class I permanece suportada.
+
+Class III permanece explicitamente bloqueada neste checkpoint.
+
+### Construção Class II
+
+A implementação introduziu uma seed triangular Class II canônica derivada combinatoriamente da seed icosaédrica.
+
+O gerador reutiliza a mesma infraestrutura determinística de subdivisão triangular para Class I e Class II.
+
+A construção Class II:
+
+- cria uma seed com 60 triângulos canônicos;
+- deriva relações por pares de vértices da seed icosaédrica;
+- ordena deterministicamente triângulos e chaves;
+- preserva IDs one-based;
+- preserva independência de coordenadas de ponto flutuante como fonte de verdade;
+- mantém limite explícito de materialização em memória.
+
+### Casos validados
+
+`G(1,1)`:
+
+- 32 cells;
+- 90 edges;
+- 60 vertices;
+- 12 pentágonos;
+- 20 hexágonos.
+
+`G(2,2)`:
+
+- 122 cells;
+- 360 edges;
+- 240 vertices;
+- 12 pentágonos;
+- 110 hexágonos.
+
+### Invariantes provados
+
+- grau 5 para pentágonos;
+- grau 6 para hexágonos;
+- duas cells por edge;
+- dois vertices por edge;
+- três cells por vertex;
+- três edges por vertex;
+- reciprocidade de adjacência e incidência;
+- conectividade global;
+- Euler `V - E + F = 2`;
+- geração repetida de `G(1,1)` reproduz a mesma assinatura canônica.
+
+### Fronteira explícita da tranche
+
+Permanece não suportada:
+
+- Class III, incluindo `G(2,1)`.
+
+Essa rejeição é intencional e testada.
+
+M2.1.5.B não encerra M2.1.5 como um todo.
+
+### Evidência local
+
+- build Release: 6/6;
+- warnings: 0;
+- errors: 0;
+- testes: 185/185;
+- falhas: 0;
+- skipped: 0;
+- `git diff --check`: aprovado;
+- `git diff --cached --check`: aprovado.
+
+### Gate cross-platform
+
+Workflow:
+
+`Cross-Platform Kernel Regression Validation`
+
+Run ID:
+
+`35457406818`
+
+Resultado:
+
+**SUCCESS**
+
+Commit:
+
+`5897e929d46e964ef544404c2f6b14b2dc3fc436`
+
+Jobs:
+
+- Ubuntu: `success`;
+- Windows: `success`;
+- macOS: `success`.
+
+Artefatos:
+
+- Ubuntu: ID `10588865373`, SHA-256 `f1a81d5c9fdf7eb2ec9ef92f6d4f219a5cdd1a5abd981f392b6b5849577551c2`;
+- Windows: ID `10589015239`, SHA-256 `cf02455df2e9d23ca2d487a0c4c4c5b4136a22ad349b0985889dd8c834b1d330`;
+- macOS: ID `10589020214`, SHA-256 `c75fc36e1646f8eaa97b02b2d53171a9e92a7b5f4d3a23953ca1759dfd705568`.
+
+### Maturidade e GPP
+
+A capability agregada:
+
+`Goldberg parameterization e geração estratégica`
+
+permanece:
+
+**Especificada — fator 0.20 — 3.20 GPP**
+
+Justificativa:
+
+Class I e Class II agora possuem implementações executáveis e validação cross-platform, mas Class III permanece explicitamente fora do suporte. O gate discreto de `Implementação funcional isolada — fator 0.50` fica reservado para o fechamento da generalização necessária de M2.1.5.
+
+GPP antes:
+
+**79.20 / 1000**
+
+Incremento:
+
+**+0.00 GPP**
+
+GPP após:
+
+**79.20 / 1000**
+
+Global Progress:
+
+**7.9%**
+
+Topologia planetária / Goldberg:
+
+**9.20 / 90 GPP — 10.2%**
+
+Foundation / Simulation Kernel permanece:
+
+**70.00 / 70 GPP — 100.0%**
+
+### Riscos
+
+`RISK-003 — Goldberg hierarchy mapping` permanece:
+
+**MITIGATING / Probability 2 / Impact 4 / Score 8 — HIGH**
+
+A incerteza específica sobre Class II foi reduzida.
+
+Continuam em aberto:
+
+- Class III;
+- orientação/chiralidade geral;
+- refinamento estratégico/tático;
+- border bands;
+- pertencimento pai-filho.
+
+### Scope Change
+
+Nenhum.
+
+O baseline V1 permanece:
+
+**1000 GPP**
+
+### Próximo subcheckpoint
+
+**M2.1.5.C — Class III Goldberg Generalization**
+
+Objetivos:
+
+- materializar o primeiro caso Class III em `G(2,1)`;
+- preservar contagens previstas por `GoldbergParameters`;
+- preservar IDs canônicos determinísticos;
+- preservar incidência, adjacência, conectividade e Euler;
+- tratar orientação/chiralidade explicitamente;
+- preservar Class I e Class II sem regressão;
+- executar novamente o gate cross-platform antes do fechamento formal.

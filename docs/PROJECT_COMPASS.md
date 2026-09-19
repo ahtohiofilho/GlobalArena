@@ -306,7 +306,7 @@ A decomposição operacional inicial de M2 é:
 | Scalability / headless performance baseline | 4 |
 | **TOTAL** | **90** |
 
-Estado de maturidade após M2.1.5.A:
+Estado de maturidade após M2.1.5.B:
 
 | Capability | GPP | Maturidade | Fator | GPP ganhos |
 |---|---:|---|---:|---:|
@@ -332,7 +332,9 @@ Por isso, `Strategic graph: identidade, incidência e adjacência` passa diretam
 
 M2.1.5.A generalizou a geração para a família Class I `G(m,0)` / `G(0,n)` e validou `G(2,0)`, `G(0,2)` e `G(3,0)` de forma determinística e cross-platform.
 
-Essa tranche ainda não promove a capability agregada `Goldberg parameterization e geração estratégica`: Class II e Class III permanecem explicitamente fora do suporte de produção. A maturidade permanece `Especificada — fator 0.20` até que a generalização necessária de M2.1.5 esteja fechada.
+M2.1.5.B adicionou suporte determinístico à família Class II `G(k,k)` e validou `G(1,1)` e `G(2,2)` cross-platform, preservando a família Class I e mantendo Class III explicitamente bloqueada.
+
+A capability agregada `Goldberg parameterization e geração estratégica` permanece em `Especificada — fator 0.20`: o modelo de maturidade usa gates discretos e M2.1.5 ainda não está completo enquanto Class III permanecer fora do suporte requerido.
 
 Esses pesos constituem o baseline inicial.
 
@@ -551,7 +553,7 @@ Etapa:
 
 Subetapa atual:
 
-**M2.1.5.B — Class II Goldberg Generalization**
+**M2.1.5.C — Class III Goldberg Generalization**
 
 M0 — Project Baseline:
 
@@ -574,6 +576,10 @@ M2.1.4 — Minimal G(1,0) Strategic Topology:
 **concluído em 2026-09-19**
 
 M2.1.5.A — Class I Goldberg Generalization:
+
+**concluído em 2026-09-19**
+
+M2.1.5.B — Class II Goldberg Generalization:
 
 **concluído em 2026-09-19**
 

@@ -214,7 +214,10 @@ Mitigação:
 - geração estratégica Class I `G(m,0)` / `G(0,n)` materializada;
 - `G(2,0)`, `G(0,2)` e `G(3,0)` validados com contagens, graus e invariantes esperados;
 - determinismo de identidade e assinatura provado para a tranche Class I;
-- Class II e Class III mantidas explicitamente fora do suporte até validação própria;
+- geração estratégica Class II `G(k,k)` materializada;
+- `G(1,1)` e `G(2,2)` validados com contagens, graus e invariantes esperados;
+- determinismo de identidade e assinatura provado para a tranche Class II;
+- Class III mantida explicitamente fora do suporte até validação própria;
 - testes explícitos de pertencimento pai-filho;
 - testes de continuidade entre regiões;
 - validação de casos representativos das famílias Goldberg;
@@ -222,7 +225,7 @@ Mitigação:
 
 Próxima ação:
 
-estender a geração estratégica para Class II, começando por `G(1,1)`, preservando contagens, identidades, incidência, adjacência, conectividade e determinismo; depois validar Class III e executar spikes de refinamento estratégico/tático para determinar quais famílias `G(m,n)` podem ser suportadas com os invariantes exigidos.
+estender a geração estratégica para Class III, começando por `G(2,1)`, preservando contagens, identidades, incidência, adjacência, conectividade, determinismo e orientação/chiralidade explícita; depois executar spikes de refinamento estratégico/tático para determinar quais famílias `G(m,n)` podem ser suportadas com os invariantes exigidos.
 
 ---
 

@@ -255,11 +255,35 @@ A implementação preserva contagens, 12 pentágonos, graus 5/6, incidência 2 p
 
 Class II `G(1,1)` e Class III `G(2,1)` permanecem explicitamente não suportados nesta tranche.
 
+M2.1.5.B adicionou suporte à família Class II `G(k,k)` por meio de uma seed triangular canônica derivada combinatoriamente da seed icosaédrica.
+
+Evidência de M2.1.5.B:
+
+- commit: `5897e929d46e964ef544404c2f6b14b2dc3fc436`;
+- workflow: `Cross-Platform Kernel Regression Validation`;
+- run ID: `35457406818`;
+- Ubuntu: job concluído com `success`;
+- Windows: job concluído com `success`;
+- macOS: job concluído com `success`;
+- suíte local: 185/185, 0 falhas, 0 skipped;
+- artefato Ubuntu: ID `10588865373`, SHA-256 `f1a81d5c9fdf7eb2ec9ef92f6d4f219a5cdd1a5abd981f392b6b5849577551c2`;
+- artefato Windows: ID `10589015239`, SHA-256 `cf02455df2e9d23ca2d487a0c4c4c5b4136a22ad349b0985889dd8c834b1d330`;
+- artefato macOS: ID `10589020214`, SHA-256 `c75fc36e1646f8eaa97b02b2d53171a9e92a7b5f4d3a23953ca1759dfd705568`.
+
+Casos validados na tranche:
+
+- `G(1,1)`;
+- `G(2,2)`.
+
+A implementação preserva contagens, 12 pentágonos, graus 5/6, incidência 2 por edge e 3 por vertex, reciprocidade, conectividade, Euler e IDs canônicos determinísticos.
+
+Class I permanece suportada. Class III continua explicitamente não suportada.
+
 A evidência ainda não demonstra geração Goldberg geral para todas as famílias nem refinamento estratégico/tático.
 
 Reavaliar quando:
 
-- Class II e Class III receberem validação própria;
+- Class III receber validação própria;
 - o spike de refinamento hierárquico for concluído;
 - o modelo de fileiras compartilhadas for congelado;
 - uma família Goldberg oficialmente suportada for restringida ou ampliada.
