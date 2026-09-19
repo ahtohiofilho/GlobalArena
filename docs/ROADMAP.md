@@ -581,19 +581,19 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M1.4.5 — Turn Policy Resolution Gate Path**
+**M1.4.6 — Turn Policy Determinism Validation**
 
 Official Progress:
 
-**5.8%**
+**5.9%**
 
 GPP Earned:
 
-**58.45 / 1000**
+**59.05 / 1000**
 
 Foundation / Simulation Kernel:
 
-**58.45 / 70 GPP — 83.5%**
+**59.05 / 70 GPP — 84.4%**
 
 Scope Confidence:
 

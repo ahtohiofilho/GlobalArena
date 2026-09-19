@@ -2145,10 +2145,88 @@ Ainda não existe implementação concreta que:
 3. invoque o `TurnResolver` quando a janela fechar;
 4. envolva o resultado em `Resolved(...)`.
 
-O próximo passo é implementar esse caminho concreto sem alterar internamente o `TurnResolver`.
+A implementação concreta desse caminho é descrita pela seção 9.5.
 
+## 9.5 Turn Policy Resolution Gate Path
 
+`TurnPolicyResolutionGate` implementa `ITurnPolicyResolutionGate` compondo:
 
+- uma `ITurnPolicy`;
+- o `TurnResolver` já existente.
+
+O gate não reimplementa a resolução.
+
+Ele decide somente se o resolver deve ou não ser chamado.
+
+### Turno ainda aberto
+
+O fluxo é:
+
+`ITurnPolicy.ShouldClose(PolicyInput)`
+
+quando retorna:
+
+`false`
+
+o gate devolve:
+
+`TurnPolicyResolutionGateResult.Open()`
+
+e não chama:
+
+`TurnResolver.Resolve(...)`
+
+Isso significa que nenhuma validação, transformação de Commands, ordering, revalidação ou execução de Events ocorre enquanto a policy mantiver a janela aberta.
+
+### Turno fechado
+
+Quando:
+
+`ITurnPolicy.ShouldClose(PolicyInput) = true`
+
+o gate chama:
+
+`TurnResolver.Resolve(ResolutionInput)`
+
+e envolve o resultado real em:
+
+`TurnPolicyResolutionGateResult.Resolved(...)`
+
+Toda a semântica interna continua pertencendo ao `TurnResolver`.
+
+### Reuso do mesmo resolver
+
+As implementações concretas:
+
+- `ManualReadyTurnPolicy`;
+- `ExternalDeadlineTurnPolicy`;
+
+podem ser usadas por gates diferentes compartilhando a mesma instância de `TurnResolver`.
+
+Isso prova a direção arquitetural definida para single-player e multiplayer: políticas diferentes de fechamento podem compartilhar o mesmo núcleo determinístico de resolução.
+
+### Preservação do resolver
+
+Este checkpoint não altera:
+
+- `TurnResolver`;
+- `TurnResolutionInput`;
+- `TurnResolutionResult`;
+- pipeline Command → Event;
+- deterministic ordering;
+- revalidação;
+- EventLog;
+- replay.
+
+O gate é estritamente uma camada anterior à resolução.
+
+### Maturidade
+
+A capability `Turn policies` passa a estar integrada ao caminho real de resolução.
+
+Ela ainda não é considerada `Validada`, porque falta uma prova específica de determinismo repetido do fluxo integrado com policies.
+
+O próximo passo é validar que entradas equivalentes, mesma policy, mesmos Commands e mesma seed produzem a mesma decisão e o mesmo resultado observável através do gate.
 
 ---
 

@@ -3842,3 +3842,127 @@ Objetivos:
 - retornar `Open()` ou `Resolved(...)` conforme o outcome;
 - provar integração com testes automatizados;
 - manter relógio, UI e networking fora da Simulation.
+
+---
+
+## 2026-09-19 — M1.4.5 Turn Policy Resolution Gate Path concluído
+
+Milestone:
+
+**M1 — Deterministic Simulation Kernel**
+
+Stage:
+
+**M1.4 — Turn Policy Foundation**
+
+Subcheckpoint:
+
+**M1.4.5 — Turn Policy Resolution Gate Path**
+
+### Progresso oficial
+
+GPP conquistados:
+
+**59.05 / 1000**
+
+Global Progress:
+
+**5.9%**
+
+Foundation / Simulation Kernel:
+
+**59.05 / 70 GPP — 84.4%**
+
+GPP adicionais conquistados neste subcheckpoint:
+
+**+0.60 GPP**
+
+A capability `Turn policies`, com orçamento de 3 GPP, passa de:
+
+**Funcional isoladamente — fator 0.50 — 1.50 GPP**
+
+para:
+
+**Integrada — fator 0.70 — 2.10 GPP**
+
+Incremento:
+
+**+0.60 GPP**
+
+### Justificativa de maturidade
+
+A decisão de uma `ITurnPolicy` agora governa de fato se o caminho existente de resolução será executado.
+
+Quando a policy mantém a janela aberta, nenhuma etapa do pipeline do `TurnResolver` é acionada.
+
+Quando a policy fecha a janela, o mesmo `TurnResolver` já validado é reutilizado sem alteração de sua semântica interna.
+
+As policies manual e por deadline também foram exercitadas sobre a mesma instância de resolver.
+
+A capability ainda não alcança `Validada`, pois falta uma prova dedicada de determinismo repetido do fluxo completo através do gate.
+
+### Concluído
+
+- `TurnPolicyResolutionGate` implementado;
+- policy nula é rejeitada;
+- resolver nulo é rejeitado;
+- input nulo é rejeitado;
+- policy é consultada antes da resolução;
+- policy aberta retorna `Open()`;
+- policy aberta não aciona nenhuma etapa do pipeline de resolução;
+- policy fechada reutiliza o `TurnResolver`;
+- resultado real do resolver é retornado em `Resolved(...)`;
+- `ManualReadyTurnPolicy` e `ExternalDeadlineTurnPolicy` compartilham o mesmo resolver;
+- `TurnResolver` permanece inalterado;
+- nenhuma dependência de relógio, UI ou networking foi introduzida.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- warnings de build: 0;
+- erros de build: 0;
+- testes totais: 110;
+- testes aprovados: 110;
+- falhas: 0;
+- `NullPolicyIsRejected`: aprovado;
+- `NullResolverIsRejected`: aprovado;
+- `NullInputIsRejected`: aprovado;
+- `OpenPolicyReturnsOpenWithoutInvokingResolverPipeline`: aprovado;
+- `ClosedPolicyResolvesThroughExistingTurnResolver`: aprovado;
+- `ConcretePoliciesCanShareSameTurnResolver`: aprovado;
+- `git diff --check`: aprovado;
+- SHA-256 dos dois arquivos novos verificado no pacote de evidências.
+
+### Scope Change
+
+Nenhum.
+
+O total permanece:
+
+**1000 GPP**
+
+### Riscos
+
+`RISK-004 — Determinism failure` permanece `MITIGATING`.
+
+A integração das Turn Policies ao resolver foi alcançada. A próxima ação continua sendo validar determinismo do fluxo integrado e, depois, ampliar diagnóstico por hash e validação entre plataformas antes do fechamento de M1.
+
+### Critical Path
+
+Permanece:
+
+**Turn Policies determinísticas compartilhando o mesmo TurnResolver**
+
+### Próximo subcheckpoint
+
+**M1.4.6 — Turn Policy Determinism Validation**
+
+Objetivos:
+
+- executar repetidamente o fluxo integrado através do gate com inputs equivalentes;
+- provar a mesma decisão de fechamento para a mesma policy e mesmos fatos;
+- provar o mesmo resultado observável quando a resolução ocorre;
+- validar tanto `ManualReadyTurnPolicy` quanto `ExternalDeadlineTurnPolicy`;
+- preservar o mesmo `TurnResolver` e a mesma seed;
+- promover `Turn policies` para `Validada` somente se a prova automatizada passar;
+- preparar o fechamento do stage M1.4 sem encerrar ainda o M1.
