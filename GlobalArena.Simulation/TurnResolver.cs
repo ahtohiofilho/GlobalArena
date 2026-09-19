@@ -4,19 +4,23 @@ namespace GlobalArena.Simulation;
 
 public sealed class TurnResolver
 {
+    private readonly ISimulationCommandValidator _commandValidator;
     private readonly ISimulationCommandProcessor _commandProcessor;
     private readonly ISimulationEventRevalidator _eventRevalidator;
     private readonly ISimulationEventExecutor _eventExecutor;
 
     public TurnResolver(
+        ISimulationCommandValidator commandValidator,
         ISimulationCommandProcessor commandProcessor,
         ISimulationEventRevalidator eventRevalidator,
         ISimulationEventExecutor eventExecutor)
     {
+        ArgumentNullException.ThrowIfNull(commandValidator);
         ArgumentNullException.ThrowIfNull(commandProcessor);
         ArgumentNullException.ThrowIfNull(eventRevalidator);
         ArgumentNullException.ThrowIfNull(eventExecutor);
 
+        _commandValidator = commandValidator;
         _commandProcessor = commandProcessor;
         _eventRevalidator = eventRevalidator;
         _eventExecutor = eventExecutor;
@@ -40,9 +44,23 @@ public sealed class TurnResolver
                 Array.Empty<ISimulationEvent>());
         }
 
+        var command = input.Commands[0];
+
+        var isValid = _commandValidator.IsValid(
+            input.WorldState,
+            command,
+            input.Context);
+
+        if (!isValid)
+        {
+            return new TurnResolutionResult(
+                input.WorldState,
+                Array.Empty<ISimulationEvent>());
+        }
+
         var events = _commandProcessor.Process(
             input.WorldState,
-            input.Commands[0],
+            command,
             input.Context);
 
         if (events.Count > 1)

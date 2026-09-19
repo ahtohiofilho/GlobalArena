@@ -2010,3 +2010,114 @@ Objetivos:
 - preservar o `WorldState` quando o Command for rejeitado;
 - manter múltiplos Commands ainda não suportados;
 - completar o caminho `Command validation → Event generation → Event revalidation → execution`.
+
+---
+
+## 2026-09-19 — M1.1.8 Single-Command Validation Path concluído
+
+Milestone:
+
+**M1 — Deterministic Simulation Kernel**
+
+Stage:
+
+**M1.1 — Non-empty Deterministic Turn Resolution**
+
+Subcheckpoint:
+
+**M1.1.8 — Single-Command Validation Path**
+
+### Progresso oficial
+
+GPP conquistados:
+
+**43.25 / 1000**
+
+Global Progress:
+
+**4.3%**
+
+Foundation / Simulation Kernel:
+
+**43.25 / 70 GPP — 61.8%**
+
+Nenhum GPP adicional foi conquistado neste subcheckpoint.
+
+A capability `Command → Event, validação e execução sequencial` permanece classificada como:
+
+**Especificada — fator 0.20**
+
+O caminho de um único Command agora integra validação, geração de Event, revalidação e execução, mas a capability completa ainda não possui ordering explícito nem execução sequencial de múltiplos Events.
+
+### Concluído
+
+- `TurnResolver` passou a depender explicitamente de `ISimulationCommandValidator`;
+- zero Commands não invocam validator, processor, revalidator nem executor;
+- exatamente um Command é validado antes do processor;
+- Command rejeitado preserva o `WorldState`;
+- Command rejeitado produz zero Events;
+- Command rejeitado não invoca processor, revalidator ou executor;
+- Command aceito segue o caminho `validate → process → revalidate → execute`;
+- um Command que produz zero Events preserva o estado e encerra após `process`;
+- Event rejeitado continua preservando o estado e não é executado;
+- dois ou mais Events continuam rejeitados antes de revalidação ou execução;
+- dois ou mais Commands continuam rejeitados antes de validação individual;
+- validator nulo é rejeitado;
+- nenhuma event queue foi introduzida;
+- nenhum ordering ou deterministic shuffle foi introduzido;
+- nenhuma regra concreta de gameplay foi adicionada.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- warnings de build: 0;
+- erros de build: 0;
+- testes totais: 44;
+- testes aprovados: 44;
+- falhas: 0;
+- `SingleCommandSingleEventFollowsValidationRevalidationAndExecutionPipeline`: aprovado;
+- `RejectedCommandPreservesWorldStateAndProducesNoEvents`: aprovado;
+- `RejectedSingleEventPreservesWorldStateAndIsNotExecuted`: aprovado;
+- `SingleCommandWithNoEventsPreservesWorldState`: aprovado;
+- `MultipleEventsAreRejected`: aprovado;
+- `MultipleCommandsAreRejected`: aprovado;
+- `NullCommandValidatorIsRejected`: aprovado;
+- regressões anteriores do `TurnResolver`: aprovadas;
+- `git diff --check`: aprovado;
+- SHA-256 dos dois arquivos alterados verificado no pacote de evidências.
+
+### Decisões relevantes
+
+- validação de Command ocorre antes de geração de Events;
+- Command rejeitado não produz Event;
+- ausência de Event encerra a pipeline antes da revalidação;
+- revalidação continua imediatamente antes da execução;
+- múltiplos Commands continuam sem semântica de ordering;
+- múltiplos Events continuam sem semântica de ordering ou execução sequencial;
+- resultado estruturado de rejeição permanece adiado;
+- validação, processamento, revalidação e execução permanecem responsabilidades separadas.
+
+### Scope Change
+
+Nenhum.
+
+### Novos riscos
+
+Nenhum risco estrutural novo identificado.
+
+`RISK-004 — Determinism failure` permanece relevante.
+
+O checkpoint completa estruturalmente o caminho de um Command e um Event, mas ainda não demonstra ordering determinístico de múltiplos Events nem uma transição concreta de domínio reproduzível de ponta a ponta.
+
+### Próximo subcheckpoint
+
+**M1.1.9 — Deterministic Event Ordering Contract**
+
+Objetivos:
+
+- estabelecer a fronteira mínima de ordering para uma coleção de Events;
+- manter ordering separado de revalidação e execução;
+- permitir que múltiplos Events recebam uma ordem explícita antes da futura execução sequencial;
+- utilizar `SimulationContext` como parte do contrato de determinismo;
+- evitar ainda execução sequencial de múltiplos Events;
+- preparar o caminho `generation → deterministic ordering → revalidation → sequential execution`.

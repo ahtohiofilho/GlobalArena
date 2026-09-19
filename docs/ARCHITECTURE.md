@@ -837,14 +837,13 @@ A rejeição ocorre antes de qualquer revalidação ou execução, evitando sem�
 
 O `TurnResolver` ainda não implementa:
 
-- validação concreta de Commands antes da geração de Events;
 - resultado estruturado para rejeições;
 - execução sequencial de múltiplos Events;
 - ordering ou deterministic shuffle;
 - EventLog;
 - regras concretas de domínio que alterem propriedades observáveis do mundo.
 
-A fronteira mínima de validação de Command é estabelecida pelo contrato descrito em 8.7.
+A fronteira mínima de validação de Command é estabelecida pelo contrato descrito em 8.7, e sua integração ao fluxo real é documentada em 8.8.
 
 
 ## 8.7 Minimum Command Validation Contract
@@ -898,7 +897,92 @@ O contrato não define ainda:
 - deterministic shuffle;
 - EventLog.
 
-A integração da validação ao caminho de resolução de um único Command permanece responsabilidade do próximo subcheckpoint.
+A integração da validação ao caminho de resolução de um único Command é realizada pelo fluxo descrito em 8.8.
+
+
+## 8.8 Single-Command Validation Path
+
+`TurnResolver` integra agora `ISimulationCommandValidator` ao caminho real de resolução de um único Command.
+
+A pipeline mínima suportada passa a ser:
+
+WorldState
++
+um ISimulationCommand
++
+SimulationContext
+
+→ ISimulationCommandValidator
+→ ISimulationCommandProcessor
+→ zero ou um ISimulationEvent
+→ ISimulationEventRevalidator
+→ ISimulationEventExecutor
+→ ResultingWorldState
+
+A ordem do caminho não vazio é explicitamente:
+
+validate
+→ process
+→ revalidate
+→ execute
+
+### Command aceito
+
+Quando o validator retorna `true`:
+
+- o mesmo `WorldState` autoritativo é encaminhado ao processor;
+- o mesmo Command é encaminhado ao processor;
+- o mesmo `SimulationContext` permanece em toda a resolução;
+- o caminho anterior de geração, revalidação e execução continua válido.
+
+### Command rejeitado
+
+Quando o validator retorna `false`:
+
+- o processor não é invocado;
+- nenhum Event é produzido;
+- o Event Revalidator não é invocado;
+- o Event Executor não é invocado;
+- o `WorldState` de entrada é preservado;
+- `TurnResolutionResult.Events` é vazio.
+
+Nenhum resultado estruturado de rejeição é introduzido neste checkpoint.
+
+### Turno vazio
+
+Quando existem zero Commands:
+
+- o validator não é invocado;
+- o processor não é invocado;
+- o revalidator não é invocado;
+- o executor não é invocado;
+- o `WorldState` é preservado.
+
+### Mais de um Command
+
+Dois ou mais Commands continuam explicitamente não suportados.
+
+A rejeição ocorre antes de qualquer validação individual, evitando semântica implícita de ordering entre Commands.
+
+### Mais de um Event
+
+Dois ou mais Events continuam explicitamente não suportados.
+
+A rejeição ocorre após validação e processamento do Command, porém antes de qualquer revalidação ou execução de Event.
+
+### Limites ainda abertos
+
+O fluxo ainda não implementa:
+
+- ordering explícito de múltiplos Events;
+- deterministic shuffle;
+- execução sequencial de múltiplos Events;
+- múltiplos Commands;
+- EventLog;
+- resultado estruturado de rejeições;
+- regras concretas de domínio que produzam uma transição observável e reproduzível de ponta a ponta.
+
+O próximo limite arquitetural é estabelecer uma fronteira explícita de ordering determinístico para Events antes de permitir resolução sequencial de múltiplos Events.
 
 ---
 

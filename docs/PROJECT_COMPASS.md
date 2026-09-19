@@ -501,7 +501,7 @@ Etapa:
 
 Subetapa atual:
 
-**M1.1.8 — Single-Command Validation Path**
+**M1.1.9 — Deterministic Event Ordering Contract**
 
 M0 — Project Baseline:
 
