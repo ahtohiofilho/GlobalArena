@@ -1707,3 +1707,102 @@ Objetivos:
 - manter validação separada da mutação do estado;
 - evitar ainda execução sequencial de múltiplos Events;
 - preparar o caminho para revalidação + execução determinística.
+
+---
+
+## 2026-09-19 — M1.1.5 Event Revalidation Contract concluído
+
+Milestone:
+
+**M1 — Deterministic Simulation Kernel**
+
+Stage:
+
+**M1.1 — Non-empty Deterministic Turn Resolution**
+
+Subcheckpoint:
+
+**M1.1.5 — Event Revalidation Contract**
+
+### Progresso oficial
+
+GPP conquistados:
+
+**43.25 / 1000**
+
+Global Progress:
+
+**4.3%**
+
+Foundation / Simulation Kernel:
+
+**43.25 / 70 GPP — 61.8%**
+
+Nenhum GPP adicional foi conquistado neste subcheckpoint.
+
+A capability `Command → Event, validação e execução sequencial` permanece classificada como:
+
+**Especificada — fator 0.20**
+
+A fronteira de revalidação de Event passou a existir, mas ainda não está integrada ao `TurnResolver` e não existe execução sequencial de múltiplos Events.
+
+### Concluído
+
+- `ISimulationEventRevalidator` criado em `GlobalArena.Simulation`;
+- contrato explícito `WorldState + Event + SimulationContext → bool CanExecute`;
+- o revalidator recebe o estado autoritativo atual;
+- o revalidator recebe o Event candidato à execução;
+- o revalidator recebe o mesmo `SimulationContext` da resolução;
+- o contrato permite autorizar ou rejeitar a execução;
+- a revalidação permanece separada da alteração de estado;
+- nenhuma alteração foi feita no `TurnResolver`;
+- nenhuma event queue foi introduzida;
+- nenhum ordering ou deterministic shuffle foi introduzido;
+- nenhuma regra concreta de gameplay foi adicionada.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- warnings de build: 0;
+- erros de build: 0;
+- testes totais: 38;
+- testes aprovados: 38;
+- falhas: 0;
+- `RevalidatorCanReceiveWorldEventAndContextAndAllowExecution`: aprovado;
+- `RevalidatorCanRejectExecution`: aprovado;
+- `git diff --check`: aprovado;
+- SHA-256 dos dois arquivos novos verificado no pacote de evidências.
+
+### Decisões relevantes
+
+- a revalidação pertence ao módulo `GlobalArena.Simulation`;
+- a decisão mínima de revalidação é representada por `bool CanExecute`;
+- o contrato não modifica o `WorldState`;
+- revalidação e execução permanecem responsabilidades separadas;
+- motivo estruturado de rejeição não será introduzido antes de existir necessidade concreta;
+- a semântica do resultado de turno para Event rejeitado será definida durante a integração, sem antecipar EventLog.
+
+### Scope Change
+
+Nenhum.
+
+### Novos riscos
+
+Nenhum risco estrutural novo identificado.
+
+`RISK-004 — Determinism failure` permanece relevante.
+
+O checkpoint reduz a incerteza sobre a fronteira de revalidação, mas ainda não prova que a decisão ocorre imediatamente antes da execução no fluxo real.
+
+### Próximo subcheckpoint
+
+**M1.1.6 — Single-Event Revalidation Path**
+
+Objetivos:
+
+- integrar `ISimulationEventRevalidator` ao `TurnResolver`;
+- revalidar exatamente um Event imediatamente antes de sua execução;
+- garantir que Event rejeitado não seja executado;
+- definir explicitamente a semântica mínima do resultado quando a revalidação falha;
+- manter múltiplos Events ainda não suportados;
+- preservar separação entre geração, revalidação e execução.

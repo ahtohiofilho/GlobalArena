@@ -711,7 +711,62 @@ O `TurnResolver` ainda não implementa:
 - EventLog;
 - regras concretas de domínio que alterem propriedades observáveis do mundo.
 
-O próximo limite arquitetural é estabelecer a revalidação mínima de um Event imediatamente antes de sua execução.
+O próximo limite arquitetural é integrar a revalidação mínima ao caminho de execução de um único Event.
+
+## 8.5 Minimum Event Revalidation Contract
+
+`ISimulationEventRevalidator` estabelece a fronteira mínima responsável por verificar se um Event ainda pode ser executado contra o `WorldState` autoritativo atual.
+
+Conceitualmente:
+
+WorldState
++
+ISimulationEvent
++
+SimulationContext
+
+→ ISimulationEventRevalidator
+→ bool CanExecute
+
+O revalidator recebe:
+
+- o `WorldState` autoritativo atual;
+- um `ISimulationEvent`;
+- o `SimulationContext` da resolução.
+
+O resultado mínimo atual é booleano:
+
+- `true` indica que o Event pode prosseguir para execução;
+- `false` indica que o Event não deve ser executado contra aquele estado.
+
+A revalidação não altera o `WorldState`.
+
+Essa fronteira existe porque o estado pode ter mudado entre a geração de um Event e o momento em que esse Event for efetivamente executado.
+
+O contrato preserva a separação entre:
+
+Command Processor
+→ geração de Event
+
+Event Revalidator
+→ decisão de elegibilidade no estado atual
+
+Event Executor
+→ aplicação da ocorrência ao estado
+
+O contrato não define ainda:
+
+- integração com o `TurnResolver`;
+- semântica final do `TurnResolutionResult` quando a revalidação falha;
+- motivo estruturado de rejeição;
+- revalidação de múltiplos Events;
+- execução sequencial;
+- ordering;
+- deterministic shuffle;
+- EventLog.
+
+A integração da revalidação ao caminho de execução de um único Event permanece responsabilidade do próximo subcheckpoint.
+
 ---
 
 # 9. Turn Policy
