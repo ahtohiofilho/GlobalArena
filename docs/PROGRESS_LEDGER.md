@@ -3022,3 +3022,129 @@ Objetivos:
 - preservar Events rejeitados no log;
 - manter `TurnResolutionResult.Events` com sua semântica atual;
 - preparar o próximo passo de replay sem ainda implementar persistência física.
+
+---
+
+## 2026-09-19 — M1.3.2 Event Log Capture Path concluído
+
+Milestone:
+
+**M1 — Deterministic Simulation Kernel**
+
+Stage:
+
+**M1.3 — Deterministic Event Log & Replay Foundation**
+
+Subcheckpoint:
+
+**M1.3.2 — Event Log Capture Path**
+
+### Progresso oficial
+
+GPP conquistados:
+
+**56.80 / 1000**
+
+Global Progress:
+
+**5.7%**
+
+Foundation / Simulation Kernel:
+
+**56.80 / 70 GPP — 81.1%**
+
+GPP adicionais conquistados neste subcheckpoint:
+
+**+1.00 GPP**
+
+A capability `EventLog / base de replay`, com orçamento de 5 GPP, passa de:
+
+**Funcional isoladamente — fator 0.50 — 2.50 GPP**
+
+para:
+
+**Integrada — fator 0.70 — 3.50 GPP**
+
+Incremento:
+
+**+1.00 GPP**
+
+### Justificativa de maturidade
+
+O EventLog deixa de existir apenas como estrutura isolada e passa a ser produzido pela pipeline real do `TurnResolver`.
+
+A capability ainda não é `Validada`, porque replay verificável ainda não foi implementado e a prova atual cobre captura determinística, não reconstrução ou reaplicação da resolução.
+
+### Concluído
+
+- `TurnResolutionResult` passa a carregar `SimulationEventLog`;
+- EventLog nulo é rejeitado no contrato de resultado;
+- turno vazio produz EventLog vazio;
+- uma entry é criada para cada Event ordenado avaliado;
+- `ResolutionSequence` segue a ordem real de resolução;
+- Event elegível e executado registra `true / true`;
+- Event rejeitado registra `false / false`;
+- Events rejeitados permanecem em `TurnResolutionResult.Events`;
+- Events rejeitados também permanecem no EventLog com outcome explícito;
+- execução sequencial e atualização do `WorldState` permanecem inalteradas;
+- EventLog é criado somente no resultado final da resolução;
+- duas resoluções independentes equivalentes produzem EventLogs equivalentes;
+- nenhuma persistência física foi introduzida;
+- nenhum replay foi implementado.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- warnings de build: 0;
+- erros de build: 0;
+- testes totais: 77;
+- testes aprovados: 77;
+- falhas: 0;
+- `ResultCarriesWorldStateEventsAndEventLog`: aprovado;
+- `EmptyTurnProducesEmptyEventLog`: aprovado;
+- `AcceptedAndRejectedEventsAreCapturedInResolutionOrder`: aprovado;
+- `IdenticalResolutionsProduceEquivalentEventLogs`: aprovado;
+- `git diff --check`: aprovado;
+- SHA-256 dos quatro arquivos alterados verificado no pacote de evidências.
+
+### Semântica preservada
+
+`TurnResolutionResult.Events` continua sendo a sequência ordenada completa de Events produzidos.
+
+`TurnResolutionResult.EventLog` passa a registrar o resultado da avaliação desses mesmos Events durante a pipeline real.
+
+A introdução do EventLog não transforma a coleção `Events` em lista de Events executados.
+
+### Scope Change
+
+Nenhum.
+
+O total permanece:
+
+**1000 GPP**
+
+### Riscos
+
+`RISK-004 — Determinism failure` permanece `MITIGATING`.
+
+A captura determinística do EventLog agora está integrada, mas replay verificável, hash de estado, diferenças de plataforma e concorrência futura continuam em aberto.
+
+### Critical Path
+
+Permanece:
+
+**EventLog determinístico e replay verificável da resolução**
+
+### Próximo subcheckpoint
+
+**M1.3.3 — Replay Contract**
+
+Objetivos:
+
+- definir a entrada mínima necessária para replay;
+- definir a relação entre estado inicial, EventLog e estado resultante;
+- preservar a ordem registrada por `ResolutionSequence`;
+- decidir como entries rejeitadas participam do replay;
+- impedir que replay volte a executar Events originalmente inelegíveis;
+- manter persistência física fora do escopo;
+- preparar uma implementação de replay verificável sem introduzir event sourcing completo.

@@ -455,7 +455,7 @@ O objetivo deste contrato é estabelecer a fronteira estável entre:
 
 Esta seção preserva o primeiro baseline executável do `TurnResolver`.
 
-As seções 8.3 a 8.15 documentam a evolução posterior e prevalecem sobre as limitações históricas descritas nesta seção.
+As seções 8.3 a 8.16 documentam a evolução posterior e prevalecem sobre as limitações históricas descritas nesta seção.
 
 `TurnResolver` materializa a primeira orquestração executável da pipeline de resolução.
 
@@ -1556,9 +1556,111 @@ O EventLog permanece uma estrutura de Simulation e a persistência física conti
 
 ### Limites ainda abertos
 
-O EventLog ainda não está integrado ao `TurnResolver`.
+A integração do EventLog ao caminho real do `TurnResolver` é realizada pela seção 8.16.
 
-O próximo passo é capturar entries durante a pipeline real, registrando para cada Event ordenado a elegibilidade e se houve execução, sem alterar a semântica atual de resolução.
+
+## 8.16 Event Log Capture Path
+
+`TurnResolver` integra `SimulationEventLog` ao caminho real de resolução.
+
+O resultado da resolução passa a carregar três saídas distintas:
+
+`ResultingWorldState`
+
+`Events`
+
+`EventLog`
+
+As responsabilidades permanecem separadas.
+
+### TurnResolutionResult.Events
+
+`TurnResolutionResult.Events` continua representando a sequência completa e ordenada de Events produzidos para a resolução.
+
+A coleção inclui Events que posteriormente foram rejeitados durante a revalidação.
+
+Essa semântica não é alterada pela introdução do EventLog.
+
+### TurnResolutionResult.EventLog
+
+`TurnResolutionResult.EventLog` representa a avaliação efetiva da sequência ordenada durante a resolução.
+
+Para cada Event ordenado, o resolver cria exatamente uma `SimulationEventLogEntry`.
+
+A posição da entry é:
+
+`ResolutionSequence = index + 1`
+
+e segue a mesma ordem de `TurnResolutionResult.Events`.
+
+### Event elegível
+
+Quando o revalidator retorna `true`:
+
+- o Event é executado;
+- o `WorldState` corrente é atualizado;
+- a entry recebe `WasEligible = true`;
+- a entry recebe `WasExecuted = true`.
+
+A entry é adicionada somente após o executor retornar com sucesso.
+
+Se a execução lançar exceção, a resolução não produz um `TurnResolutionResult` parcial.
+
+### Event rejeitado
+
+Quando o revalidator retorna `false`:
+
+- o executor não é invocado;
+- o estado corrente é preservado;
+- a entry recebe `WasEligible = false`;
+- a entry recebe `WasExecuted = false`;
+- a resolução continua com o próximo Event.
+
+Events rejeitados permanecem representados simultaneamente em:
+
+- `TurnResolutionResult.Events`;
+- `TurnResolutionResult.EventLog`.
+
+A diferença é que o EventLog registra explicitamente o resultado da elegibilidade.
+
+### Turno vazio
+
+Zero Commands continua encerrando antes de validation, processing, ordering, revalidation e execution.
+
+O resultado contém:
+
+- o mesmo `WorldState`;
+- zero Events;
+- `SimulationEventLog` vazio.
+
+### Reprodutibilidade
+
+O teste `IdenticalResolutionsProduceEquivalentEventLogs` executa duas resoluções independentes com entrada equivalente, mesmo contexto e mesma seed.
+
+As duas execuções produzem EventLogs equivalentes quanto a:
+
+- `ResolutionSequence`;
+- `EventId`;
+- `WasEligible`;
+- `WasExecuted`.
+
+Isso demonstra que a captura do EventLog participa do comportamento determinístico observável da pipeline.
+
+### Limites ainda abertos
+
+O EventLog agora está integrado, mas replay ainda não foi definido.
+
+M1 ainda não possui:
+
+- contrato de replay;
+- aplicação de um EventLog pré-existente sobre um estado inicial;
+- validação de resultado de replay;
+- hash de estado;
+- persistência física do log;
+- Turn Policies;
+- validação determinística entre plataformas.
+
+O próximo passo é definir a fronteira mínima de replay sem introduzir event sourcing completo ou persistência física prematura.
 
 ---
 

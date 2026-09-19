@@ -41,7 +41,9 @@ public sealed class TurnResolver
         {
             return new TurnResolutionResult(
                 input.WorldState,
-                Array.Empty<ISimulationEvent>());
+                Array.Empty<ISimulationEvent>(),
+                new SimulationEventLog(
+                    Array.Empty<SimulationEventLogEntry>()));
         }
 
         var events = _commandBatchProcessor.BuildEvents(
@@ -55,8 +57,17 @@ public sealed class TurnResolver
 
         var currentWorldState = input.WorldState;
 
-        foreach (var simulationEvent in orderedEvents)
+        var eventLogEntries =
+            new List<SimulationEventLogEntry>(
+                orderedEvents.Count);
+
+        for (var index = 0;
+             index < orderedEvents.Count;
+             index++)
         {
+            var simulationEvent =
+                orderedEvents[index];
+
             var canExecute = _eventRevalidator.CanExecute(
                 currentWorldState,
                 simulationEvent,
@@ -64,6 +75,13 @@ public sealed class TurnResolver
 
             if (!canExecute)
             {
+                eventLogEntries.Add(
+                    new SimulationEventLogEntry(
+                        (ulong)index + 1UL,
+                        simulationEvent,
+                        wasEligible: false,
+                        wasExecuted: false));
+
                 continue;
             }
 
@@ -71,10 +89,19 @@ public sealed class TurnResolver
                 currentWorldState,
                 simulationEvent,
                 input.Context);
+
+            eventLogEntries.Add(
+                new SimulationEventLogEntry(
+                    (ulong)index + 1UL,
+                    simulationEvent,
+                    wasEligible: true,
+                    wasExecuted: true));
         }
 
         return new TurnResolutionResult(
             currentWorldState,
-            orderedEvents);
+            orderedEvents,
+            new SimulationEventLog(
+                eventLogEntries));
     }
 }

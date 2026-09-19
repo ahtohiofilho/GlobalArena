@@ -581,19 +581,19 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M1.3.2 — Event Log Capture Path**
+**M1.3.3 — Replay Contract**
 
 Official Progress:
 
-**5.6%**
+**5.7%**
 
 GPP Earned:
 
-**55.80 / 1000**
+**56.80 / 1000**
 
 Foundation / Simulation Kernel:
 
-**55.80 / 70 GPP — 79.7%**
+**56.80 / 70 GPP — 81.1%**
 
 Scope Confidence:
 

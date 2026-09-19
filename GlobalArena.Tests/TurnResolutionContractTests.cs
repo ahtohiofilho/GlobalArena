@@ -59,7 +59,7 @@ public sealed class TurnResolutionContractTests
     }
 
     [Fact]
-    public void ResultCarriesWorldStateAndEvents()
+    public void ResultCarriesWorldStateEventsAndEventLog()
     {
         var state = WorldState.CreateInitial();
         var commandId = new CommandId(
@@ -72,14 +72,31 @@ public sealed class TurnResolutionContractTests
         var second = new TestEvent(
             new EventId(commandId, 2UL));
 
+        var eventLog = new SimulationEventLog(
+            new[]
+            {
+                new SimulationEventLogEntry(
+                    resolutionSequence: 1UL,
+                    first,
+                    wasEligible: true,
+                    wasExecuted: true),
+                new SimulationEventLogEntry(
+                    resolutionSequence: 2UL,
+                    second,
+                    wasEligible: false,
+                    wasExecuted: false)
+            });
+
         var result = new TurnResolutionResult(
             state,
-            new ISimulationEvent[] { first, second });
+            new ISimulationEvent[] { first, second },
+            eventLog);
 
         Assert.Same(state, result.ResultingWorldState);
         Assert.Equal(2, result.Events.Count);
         Assert.Same(first, result.Events[0]);
         Assert.Same(second, result.Events[1]);
+        Assert.Same(eventLog, result.EventLog);
     }
 
     [Fact]
@@ -98,7 +115,9 @@ public sealed class TurnResolutionContractTests
 
         var result = new TurnResolutionResult(
             state,
-            events);
+            events,
+            new SimulationEventLog(
+                Array.Empty<SimulationEventLogEntry>()));
 
         events.Add(
             new TestEvent(

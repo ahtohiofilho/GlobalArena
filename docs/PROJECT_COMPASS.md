@@ -501,7 +501,7 @@ Etapa:
 
 Subetapa atual:
 
-**M1.3.2 — Event Log Capture Path**
+**M1.3.3 — Replay Contract**
 
 M0 — Project Baseline:
 
@@ -513,15 +513,15 @@ Baseline V1:
 
 Progresso oficial:
 
-**5,6%**
+**5,7%**
 
 GPP conquistados:
 
-**55,80 / 1000**
+**56,80 / 1000**
 
 Foundation / Simulation Kernel:
 
-**55,80 / 70 GPP — 79,7%**
+**56,80 / 70 GPP — 81,1%**
 
 Scope Confidence:
 
