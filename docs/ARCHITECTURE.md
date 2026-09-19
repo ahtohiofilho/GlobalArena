@@ -2451,7 +2451,9 @@ Contrato:
 - `(m,n)` e `(n,m)` não são automaticamente canonicalizados como o mesmo value object;
 - igualdade do value object considera os dois parâmetros originais;
 - cálculos são executados com aritmética `checked`;
-- combinações cujas contagens não cabem em `UInt64` são rejeitadas explicitamente.
+- combinações cujas contagens não cabem em `UInt64` são rejeitadas explicitamente;
+- `IsValid` distingue instâncias construídas de `default(GoldbergParameters)`;
+- o estado `default`, inevitável para um value type CLR, é uma sentinela inválida e deve ser rejeitado nas fronteiras que consomem parâmetros Goldberg.
 
 O contrato expõe:
 
@@ -2602,7 +2604,121 @@ M2.1.3 não define ainda:
 - ownership de border bands;
 - mapeamento estratégico/tático.
 
-O primeiro uso concreto dos IDs será materializado em M2.1.4 no caso mínimo `G(1,0)`.
+O primeiro uso concreto dos IDs é materializado em M2.1.4 no caso mínimo `G(1,0)`.
+
+## 11.6 Minimal G(1,0) Strategic Topology
+
+M2.1.4 materializa a primeira topologia estratégica completa do projeto sem introduzir geometria de renderização.
+
+O contrato de produção é exposto por:
+
+`GoldbergStrategicTopologyGenerator.Generate(GoldbergParameters)`
+
+Nesta etapa o gerador aceita apenas:
+
+`G(1,0)`
+
+Outros parâmetros válidos são rejeitados explicitamente com `NotSupportedException` até M2.1.5 generalizar a geração.
+
+`default(GoldbergParameters)` é rejeitado como parâmetro inválido.
+
+### Construção combinatória canônica
+
+`G(1,0)` é o dodecaedro e é construído como dual combinatório de um icosaedro canônico.
+
+A seed interna do icosaedro contém:
+
+- 12 vértices canônicos;
+- 30 arestas únicas;
+- 20 faces triangulares.
+
+O dual mapeia:
+
+- vértice do icosaedro → `StrategicCell`;
+- aresta do icosaedro → `StrategicEdge`;
+- face triangular do icosaedro → `StrategicVertex`.
+
+Nenhuma coordenada é usada para definir essas relações.
+
+### Atribuição canônica de IDs
+
+`StrategicCellId`:
+
+- usa os ordinais `1..12` dos vértices da seed canônica.
+
+`StrategicEdgeId`:
+
+- normaliza cada par de células incidentes como `(menor, maior)`;
+- remove duplicatas;
+- ordena os pares lexicograficamente;
+- atribui ordinais `1..30`.
+
+`StrategicVertexId`:
+
+- usa a ordem canônica congelada das 20 faces triangulares;
+- atribui ordinais `1..20`.
+
+Todas as coleções públicas de incidência e adjacência são expostas em ordem crescente de ID.
+
+A ordem de enumeração de `Dictionary`, endereço de memória ou coordenada de ponto flutuante não participa da identidade.
+
+### Entidades
+
+`StrategicCell` contém:
+
+- `Id`;
+- `Kind`;
+- células adjacentes;
+- arestas incidentes;
+- vértices incidentes.
+
+`StrategicEdge` contém:
+
+- `Id`;
+- exatamente duas células incidentes;
+- exatamente dois vértices incidentes.
+
+`StrategicVertex` contém:
+
+- `Id`;
+- exatamente três células incidentes;
+- exatamente três arestas incidentes.
+
+`StrategicTopology` contém:
+
+- `GoldbergParameters`;
+- coleção canônica de cells;
+- coleção canônica de edges;
+- coleção canônica de vertices.
+
+### Invariantes do caso G(1,0)
+
+A implementação deve provar:
+
+- 12 `StrategicCells`;
+- 30 `StrategicEdges`;
+- 20 `StrategicVertices`;
+- 12 células pentagonais;
+- grau 5 em toda célula;
+- incidência 2 por edge;
+- incidência 3 por vertex;
+- reciprocidade entre relações;
+- uma única edge por par de células adjacentes;
+- ausência de self-loop;
+- ausência de adjacência duplicada;
+- conectividade global;
+- Euler igual a 2;
+- geração repetida produz a mesma topologia canônica.
+
+M2.1.4 ainda não introduz:
+
+- coordenadas;
+- mesh;
+- projeção esférica;
+- hexágonos;
+- geração Goldberg geral;
+- refinamento tático;
+- border bands.
 
 ---
 

@@ -32,6 +32,15 @@ public sealed class GoldbergParametersTests
     }
 
     [Fact]
+    public void DefaultParametersAreInvalid()
+    {
+        var parameters =
+            default(GoldbergParameters);
+
+        Assert.False(parameters.IsValid);
+    }
+
+    [Fact]
     public void G10HasDodecahedralReferenceCounts()
     {
         var parameters =
@@ -39,6 +48,7 @@ public sealed class GoldbergParametersTests
                 1,
                 0);
 
+        Assert.True(parameters.IsValid);
         Assert.Equal(1UL, parameters.TriangulationNumber);
         Assert.Equal(12UL, parameters.StrategicCellCount);
         Assert.Equal(30UL, parameters.StrategicEdgeCount);

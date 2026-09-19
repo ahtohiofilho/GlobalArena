@@ -2,6 +2,10 @@ namespace GlobalArena.World;
 
 public readonly record struct GoldbergParameters
 {
+    private readonly bool _isValid;
+
+    public bool IsValid => _isValid;
+
     public int M { get; }
 
     public int N { get; }
@@ -63,5 +67,6 @@ public readonly record struct GoldbergParameters
         PentagonCount = 12UL;
         HexagonCount = checked(
             10UL * checked(triangulationNumber - 1UL));
+        _isValid = true;
     }
 }
