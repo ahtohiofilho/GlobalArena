@@ -4,8 +4,7 @@ namespace GlobalArena.Simulation;
 
 public sealed class TurnResolver
 {
-    private readonly ISimulationCommandValidator _commandValidator;
-    private readonly ISimulationCommandProcessor _commandProcessor;
+    private readonly ISimulationCommandBatchProcessor _commandBatchProcessor;
     private readonly ISimulationEventOrderer _eventOrderer;
     private readonly ISimulationEventRevalidator _eventRevalidator;
     private readonly ISimulationEventExecutor _eventExecutor;
@@ -23,8 +22,11 @@ public sealed class TurnResolver
         ArgumentNullException.ThrowIfNull(eventRevalidator);
         ArgumentNullException.ThrowIfNull(eventExecutor);
 
-        _commandValidator = commandValidator;
-        _commandProcessor = commandProcessor;
+        _commandBatchProcessor =
+            new SimulationCommandBatchProcessor(
+                commandValidator,
+                commandProcessor);
+
         _eventOrderer = eventOrderer;
         _eventRevalidator = eventRevalidator;
         _eventExecutor = eventExecutor;
@@ -35,12 +37,6 @@ public sealed class TurnResolver
     {
         ArgumentNullException.ThrowIfNull(input);
 
-        if (input.Commands.Count > 1)
-        {
-            throw new NotSupportedException(
-                "Multiple command resolution is not implemented yet.");
-        }
-
         if (input.Commands.Count == 0)
         {
             return new TurnResolutionResult(
@@ -48,23 +44,9 @@ public sealed class TurnResolver
                 Array.Empty<ISimulationEvent>());
         }
 
-        var command = input.Commands[0];
-
-        var isValid = _commandValidator.IsValid(
+        var events = _commandBatchProcessor.BuildEvents(
             input.WorldState,
-            command,
-            input.Context);
-
-        if (!isValid)
-        {
-            return new TurnResolutionResult(
-                input.WorldState,
-                Array.Empty<ISimulationEvent>());
-        }
-
-        var events = _commandProcessor.Process(
-            input.WorldState,
-            command,
+            input.Commands,
             input.Context);
 
         var orderedEvents = _eventOrderer.Order(

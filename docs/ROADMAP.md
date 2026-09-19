@@ -577,11 +577,11 @@ Current Milestone:
 
 Current Stage:
 
-**M1.2 — Multi-Command Deterministic Resolution**
+**M1.3 — Deterministic Event Log & Replay Foundation**
 
 Current Subcheckpoint:
 
-**M1.2.2 — Multi-Command Resolution Path**
+**M1.3.1 — Event Log Contract**
 
 Official Progress:
 
@@ -609,7 +609,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**resolução determinística de múltiplos Commands simultâneos**
+**EventLog determinístico e replay verificável da resolução**
 
 Last Baseline Review:
 

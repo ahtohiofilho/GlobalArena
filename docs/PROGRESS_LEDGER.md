@@ -2762,3 +2762,145 @@ Objetivos:
 - encaminhar a coleção agregada ao `ISimulationEventOrderer`;
 - manter revalidação e execução sequencial contra o estado corrente;
 - provar que a ordem de entrada dos Commands não cria prioridade implícita de execução.
+
+---
+
+## 2026-09-19 — M1.2.2 Multi-Command Resolution Path concluído
+
+Milestone:
+
+**M1 — Deterministic Simulation Kernel**
+
+Stage encerrado:
+
+**M1.2 — Multi-Command Deterministic Resolution**
+
+Subcheckpoint:
+
+**M1.2.2 — Multi-Command Resolution Path**
+
+### Resultado do stage
+
+**M1.2 concluído**
+
+A resolução determinística de múltiplos Commands simultâneos foi demonstrada.
+
+### Progresso oficial
+
+GPP conquistados:
+
+**54.30 / 1000**
+
+Global Progress:
+
+**5.4%**
+
+Foundation / Simulation Kernel:
+
+**54.30 / 70 GPP — 77.6%**
+
+GPP adicionais conquistados neste subcheckpoint:
+
+**+0.00 GPP**
+
+### Justificativa de maturidade
+
+A capability `Command → Event, validação e execução sequencial` já estava classificada como `Validada` no fechamento do M1.1.
+
+M1.2 amplia a evidência dessa validação para múltiplos Commands simultâneos, mas não justifica promoção para `Definition of Done atendida`, pois o Kernel ainda não fechou EventLog, replay e Turn Policies.
+
+A capability `Determinismo end-to-end / simulação headless automatizada` também permanece `Validada`: a prova agora cobre lotes multi-command com ordem física de entrada invertida, mas ainda não cobre replay formal, diagnóstico por hash ou variações de plataforma.
+
+### Concluído
+
+- `SimulationCommandBatchProcessor` implementado;
+- validator e processor nulos são rejeitados;
+- Commands nulos dentro do lote são rejeitados;
+- lote vazio produz zero Events;
+- Commands são canonicalizados por `CommandId`;
+- `CommandId` duplicado é rejeitado antes da validação;
+- todos os Commands são validados contra o mesmo planning `WorldState`;
+- todos os Commands aceitos são processados contra o mesmo planning `WorldState`;
+- Commands inválidos são ignorados sem impedir Commands válidos posteriores;
+- Events de Commands aceitos são agregados;
+- coleção agregada é somente leitura;
+- `TurnResolver` integra o batch processor;
+- rejeição explícita de múltiplos Commands foi removida;
+- Events agregados passam pelo ordering determinístico existente;
+- revalidação e execução sequencial continuam usando o estado corrente;
+- lote com todos os Commands rejeitados ainda atravessa o orderer com coleção vazia;
+- zero Commands continua encerrando antes do batch processor e do orderer;
+- dois lotes equivalentes com ordem física de entrada invertida produzem o mesmo resultado observável e a mesma sequência de EventIds.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- warnings de build: 0;
+- erros de build: 0;
+- testes totais: 66;
+- testes aprovados: 66;
+- falhas: 0;
+- `CommandsAreValidatedAndProcessedAgainstSamePlanningSnapshot`: aprovado;
+- `InputOrderDoesNotChangeAggregatedEventSequence`: aprovado;
+- `InvalidCommandsAreSkippedWhileValidCommandsContinue`: aprovado;
+- `DuplicateCommandIdsAreRejectedBeforeValidation`: aprovado;
+- `MultipleCommandsAreBuiltBeforeOrderingAndExecutedSequentially`: aprovado;
+- `EquivalentMultiCommandBatchesIgnoreInputArrivalOrder`: aprovado;
+- `git diff --check`: aprovado;
+- SHA-256 dos cinco arquivos alterados verificado no pacote de evidências.
+
+### Decisões relevantes
+
+- `CommandId` fornece a canonicalização estável do lote antes da produção de Events;
+- canonicalização não substitui ordering de Events;
+- todos os Commands do lote usam o mesmo snapshot de planejamento;
+- mutações de estado só começam após a agregação e o ordering;
+- Commands inválidos não abortam automaticamente o restante do lote;
+- duplicidade de `CommandId` é tratada como erro estrutural;
+- `TurnResolver` compõe o batch processor concreto a partir dos contratos de validator e processor existentes;
+- EventLog permanece responsabilidade separada.
+
+### Critical Path
+
+Critical Path anterior:
+
+**resolução determinística de múltiplos Commands simultâneos**
+
+Status:
+
+**atingido**
+
+Novo Critical Path:
+
+**EventLog determinístico e replay verificável da resolução**
+
+### Riscos
+
+`RISK-004 — Determinism failure` permanece `MITIGATING`.
+
+A evidência agora cobre múltiplos Commands e independência da ordem física da coleção, mas ainda faltam replay formal, diagnóstico por hash, concorrência futura e diferenças de plataforma.
+
+### Scope Change
+
+Nenhum.
+
+O total permanece:
+
+**1000 GPP**
+
+### Próximo stage
+
+**M1.3 — Deterministic Event Log & Replay Foundation**
+
+### Próximo subcheckpoint
+
+**M1.3.1 — Event Log Contract**
+
+Objetivos:
+
+- definir a fronteira mínima do EventLog;
+- distinguir Events produzidos/ordenados de Events efetivamente executados;
+- preservar `EventId`, ordem de resolução e resultado de elegibilidade necessário ao replay;
+- evitar transformar `TurnResolutionResult.Events` implicitamente em EventLog;
+- manter persistência física fora do Kernel;
+- preparar replay determinístico sem introduzir event sourcing completo.

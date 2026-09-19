@@ -264,7 +264,7 @@ Mitigação:
 
 Próxima ação:
 
-ampliar a prova para múltiplos Commands simultâneos e, depois, validar replay através do EventLog antes do fechamento de M1.
+validar captura determinística do EventLog e replay verificável antes do fechamento de M1.
 
 ---
 

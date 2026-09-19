@@ -202,14 +202,15 @@ public sealed class TurnResolverTests
         Assert.Empty(result.Events);
         Assert.Equal(1, commandValidator.CallCount);
         Assert.Equal(0, commandProcessor.CallCount);
-        Assert.Equal(0, eventOrderer.CallCount);
+        Assert.Equal(1, eventOrderer.CallCount);
         Assert.Equal(0, eventRevalidator.CallCount);
         Assert.Equal(0, eventExecutor.CallCount);
 
         Assert.Equal(
             new[]
             {
-                "validate"
+                "validate",
+                "order"
             },
             callOrder);
     }
@@ -552,38 +553,102 @@ public sealed class TurnResolverTests
     }
 
     [Fact]
-    public void MultipleCommandsAreRejectedBeforeOrdering()
+    public void MultipleCommandsAreBuiltBeforeOrderingAndExecutedSequentially()
     {
+        var state = WorldState.CreateInitial();
         var turn = new TurnNumber(8UL);
 
         var input = new TurnResolutionInput(
-            WorldState.CreateInitial(),
+            state,
             new ISimulationCommand[]
             {
                 new TestCommand(
-                    new CommandId(turn, 1UL)),
+                    new CommandId(turn, 2UL)),
                 new TestCommand(
-                    new CommandId(turn, 2UL))
+                    new CommandId(turn, 1UL))
             },
             new SimulationContext(
                 turn,
                 new SimulationSeed(192021UL)));
 
-        var commandValidator = new TestCommandValidator();
-        var eventOrderer = new TestEventOrderer();
+        var callOrder = new List<string>();
+
+        var commandValidator =
+            new TestCommandValidator(
+                callOrder: callOrder);
+
+        var commandProcessor =
+            new TestCommandProcessor(
+                callOrder: callOrder);
+
+        var eventOrderer =
+            new TestEventOrderer(
+                callOrder: callOrder);
+
+        var eventRevalidator =
+            new TestEventRevalidator(
+                callOrder: callOrder);
+
+        var eventExecutor =
+            new TestEventExecutor(
+                callOrder: callOrder);
 
         var resolver = new TurnResolver(
             commandValidator,
-            new TestCommandProcessor(),
+            commandProcessor,
             eventOrderer,
-            new TestEventRevalidator(),
-            new TestEventExecutor());
+            eventRevalidator,
+            eventExecutor);
 
-        Assert.Throws<NotSupportedException>(
-            () => resolver.Resolve(input));
+        var result = resolver.Resolve(input);
 
-        Assert.Equal(0, commandValidator.CallCount);
-        Assert.Equal(0, eventOrderer.CallCount);
+        Assert.Equal(
+            2,
+            commandValidator.CallCount);
+
+        Assert.Equal(
+            2,
+            commandProcessor.CallCount);
+
+        Assert.Equal(
+            1,
+            eventOrderer.CallCount);
+
+        Assert.Equal(
+            2,
+            eventRevalidator.CallCount);
+
+        Assert.Equal(
+            2,
+            eventExecutor.CallCount);
+
+        Assert.Equal(
+            new ulong[]
+            {
+                1UL,
+                2UL
+            },
+            result.Events.Select(
+                simulationEvent =>
+                    simulationEvent
+                        .Id
+                        .OriginCommandId
+                        .Sequence));
+
+        Assert.Equal(
+            new[]
+            {
+                "validate",
+                "process",
+                "validate",
+                "process",
+                "order",
+                "revalidate",
+                "execute",
+                "revalidate",
+                "execute"
+            },
+            callOrder);
     }
 
     [Fact]

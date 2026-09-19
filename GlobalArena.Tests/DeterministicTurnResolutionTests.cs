@@ -96,6 +96,82 @@ public sealed class DeterministicTurnResolutionTests
                     simulationEvent.Id));
     }
 
+    [Fact]
+    public void EquivalentMultiCommandBatchesIgnoreInputArrivalOrder()
+    {
+        var turn = new TurnNumber(2UL);
+        var context = new SimulationContext(
+            turn,
+            new SimulationSeed(987UL));
+
+        var firstResult = CreateResolver().Resolve(
+            new TurnResolutionInput(
+                WorldState.CreateInitial(),
+                new ISimulationCommand[]
+                {
+                    new RevisionCommand(
+                        new CommandId(
+                            turn,
+                            1UL),
+                        EventCount: 1),
+                    new RevisionCommand(
+                        new CommandId(
+                            turn,
+                            2UL),
+                        EventCount: 1)
+                },
+                context));
+
+        var secondResult = CreateResolver().Resolve(
+            new TurnResolutionInput(
+                WorldState.CreateInitial(),
+                new ISimulationCommand[]
+                {
+                    new RevisionCommand(
+                        new CommandId(
+                            turn,
+                            2UL),
+                        EventCount: 1),
+                    new RevisionCommand(
+                        new CommandId(
+                            turn,
+                            1UL),
+                        EventCount: 1)
+                },
+                context));
+
+        Assert.Equal(
+            2UL,
+            firstResult.ResultingWorldState.Revision);
+
+        Assert.Equal(
+            firstResult.ResultingWorldState.Revision,
+            secondResult.ResultingWorldState.Revision);
+
+        Assert.Equal(
+            firstResult.Events.Select(
+                simulationEvent =>
+                    simulationEvent.Id),
+            secondResult.Events.Select(
+                simulationEvent =>
+                    simulationEvent.Id));
+
+        Assert.Equal(
+            new ulong[]
+            {
+                1UL,
+                2UL
+            },
+            firstResult.Events
+                .Select(
+                    simulationEvent =>
+                        simulationEvent
+                            .Id
+                            .OriginCommandId
+                            .Sequence)
+                .OrderBy(sequence => sequence));
+    }
+
     private static TurnResolver CreateResolver()
     {
         return new TurnResolver(

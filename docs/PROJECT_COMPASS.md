@@ -497,11 +497,11 @@ Milestone:
 
 Etapa:
 
-**M1.2 — Multi-Command Deterministic Resolution**
+**M1.3 — Deterministic Event Log & Replay Foundation**
 
 Subetapa atual:
 
-**M1.2.2 — Multi-Command Resolution Path**
+**M1.3.1 — Event Log Contract**
 
 M0 — Project Baseline:
 
@@ -537,7 +537,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**resolução determinística de múltiplos Commands simultâneos**
+**EventLog determinístico e replay verificável da resolução**
 
 Última revisão de baseline:
 

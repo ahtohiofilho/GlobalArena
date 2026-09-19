@@ -455,7 +455,7 @@ O objetivo deste contrato é estabelecer a fronteira estável entre:
 
 Esta seção preserva o primeiro baseline executável do `TurnResolver`.
 
-As seções 8.3 a 8.13 documentam a evolução posterior e prevalecem sobre as limitações históricas descritas nesta seção.
+As seções 8.3 a 8.14 documentam a evolução posterior e prevalecem sobre as limitações históricas descritas nesta seção.
 
 `TurnResolver` materializa a primeira orquestração executável da pipeline de resolução.
 
@@ -1361,7 +1361,110 @@ O contrato não define ainda:
 - EventLog;
 - Turn Policies.
 
-O próximo subcheckpoint deverá implementar o caminho de múltiplos Commands utilizando o mesmo snapshot de planejamento e encaminhar a coleção agregada de Events ao ordering determinístico existente.
+A implementação concreta e a integração desse contrato ao caminho real são descritas em 8.14.
+
+
+## 8.14 Multi-Command Resolution Path
+
+`SimulationCommandBatchProcessor` implementa `ISimulationCommandBatchProcessor` utilizando os contratos já existentes de validação e processamento de Commands.
+
+O fluxo concreto é:
+
+IReadOnlyList<ISimulationCommand>
++
+WorldState de planejamento
++
+SimulationContext
+
+→ canonicalização por CommandId
+→ validação de cada Command contra o mesmo planning WorldState
+→ processamento dos Commands aceitos contra o mesmo planning WorldState
+→ agregação dos Events
+→ ISimulationEventOrderer
+→ revalidação sequencial
+→ execução sequencial
+
+### Canonicalização do lote
+
+Antes da validação, o batch processor cria uma visão canônica dos Commands ordenando por:
+
+1. `CommandId.Turn.Value`;
+2. `CommandId.Sequence`.
+
+A coleção de entrada não é mutada.
+
+A canonicalização existe para que a ordem física de chegada ou enumeração do mesmo conjunto de Commands não altere a sequência agregada entregue ao ordering determinístico.
+
+Essa etapa não constitui prioridade autoritativa de execução.
+
+A ordem autoritativa dos Events continua pertencendo ao `ISimulationEventOrderer`.
+
+### Identidade de Command
+
+`CommandId` duplicado dentro do mesmo lote é rejeitado antes de qualquer validação ou processamento.
+
+Isso impede ambiguidade de lineage para Events produzidos no mesmo ciclo de resolução.
+
+### Validação e processamento
+
+Todos os Commands são avaliados contra o mesmo `planningWorldState`.
+
+Para cada Command na visão canônica:
+
+- o validator recebe o snapshot de planejamento;
+- Command inválido é ignorado para produção de Events;
+- Command válido é processado contra o mesmo snapshot;
+- os Events produzidos são anexados à coleção agregada.
+
+Nenhuma execução de Event ocorre durante essa fase.
+
+Portanto, um Command posterior do lote não observa mutações causadas por Events de um Command anterior.
+
+### Integração com TurnResolver
+
+`TurnResolver` deixa de rejeitar múltiplos Commands.
+
+Para entradas não vazias, o resolver:
+
+1. constrói os Events através do batch processor;
+2. encaminha a coleção agregada ao orderer;
+3. revalida cada Event ordenado contra o estado corrente;
+4. executa Events aceitos sequencialmente;
+5. utiliza o estado resultante de cada execução para a próxima revalidação.
+
+Zero Commands continua preservando o estado e encerrando antes da fase de batch processing e ordering.
+
+Quando todos os Commands são rejeitados, a coleção vazia produzida pelo batch processor ainda atravessa a fronteira do orderer e não há revalidação nem execução.
+
+### Prova de independência da ordem de chegada
+
+O teste `EquivalentMultiCommandBatchesIgnoreInputArrivalOrder` executa dois lotes equivalentes com a ordem física dos Commands invertida.
+
+Mantidos:
+
+- os mesmos CommandIds;
+- o mesmo estado inicial equivalente;
+- o mesmo `SimulationContext`;
+- a mesma seed;
+
+as duas resoluções produzem:
+
+- a mesma sequência final de `EventId`;
+- a mesma revisão observável do `WorldState`.
+
+Isso demonstra que a ordem da coleção recebida não cria prioridade implícita.
+
+### Limites ainda abertos
+
+M1 ainda não possui:
+
+- EventLog definitivo;
+- replay formal;
+- Turn Policies;
+- hash de estado para diagnóstico;
+- validação determinística entre plataformas.
+
+O próximo Critical Path é estabelecer um EventLog determinístico capaz de sustentar replay e diagnóstico sem confundir Events produzidos com Events efetivamente executados.
 
 ---
 
