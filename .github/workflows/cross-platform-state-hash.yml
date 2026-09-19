@@ -1,0 +1,60 @@
+name: Cross-Platform State Hash Validation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/cross-platform-state-hash.yml"
+      - "GlobalArena.Simulation/CanonicalWorldStateHasher.cs"
+      - "GlobalArena.Simulation/WorldStateHash.cs"
+      - "GlobalArena.Simulation/IWorldStateHasher.cs"
+      - "GlobalArena.Tests/CanonicalWorldStateHasherTests.cs"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Capture platform
+        run: dotnet --info > platform.txt
+
+      - name: Restore
+        run: dotnet restore GlobalArena.slnx
+
+      - name: Build
+        run: dotnet build GlobalArena.slnx --configuration Release --no-restore
+
+      - name: Run state hash validation
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj --configuration Release --no-build --filter "FullyQualifiedName~CanonicalWorldStateHasherTests" --logger "trx;LogFileName=state-hash.trx" --results-directory artifacts
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: state-hash-${{ matrix.os }}
+          path: |
+            platform.txt
+            artifacts/state-hash.trx
+          if-no-files-found: error
