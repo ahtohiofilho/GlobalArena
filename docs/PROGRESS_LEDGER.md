@@ -3966,3 +3966,139 @@ Objetivos:
 - preservar o mesmo `TurnResolver` e a mesma seed;
 - promover `Turn policies` para `Validada` somente se a prova automatizada passar;
 - preparar o fechamento do stage M1.4 sem encerrar ainda o M1.
+
+---
+
+## 2026-09-19 — M1.4.6 Turn Policy Determinism Validation concluído
+
+Milestone:
+
+**M1 — Deterministic Simulation Kernel**
+
+Stage:
+
+**M1.4 — Turn Policy Foundation**
+
+Subcheckpoint:
+
+**M1.4.6 — Turn Policy Determinism Validation**
+
+### Progresso oficial
+
+GPP conquistados:
+
+**59.50 / 1000**
+
+Global Progress:
+
+**6.0%**
+
+Foundation / Simulation Kernel:
+
+**59.50 / 70 GPP — 85.0%**
+
+GPP adicionais conquistados neste subcheckpoint:
+
+**+0.45 GPP**
+
+A capability `Turn policies`, com orçamento de 3 GPP, passa de:
+
+**Integrada — fator 0.70 — 2.10 GPP**
+
+para:
+
+**Validada — fator 0.85 — 2.55 GPP**
+
+Incremento:
+
+**+0.45 GPP**
+
+### Justificativa de maturidade
+
+O fluxo integrado de Turn Policies foi submetido a prova automatizada repetida usando o gate concreto, o `TurnResolver` real e o `SeededSimulationEventOrderer`.
+
+Para inputs equivalentes, mesma policy, mesmos Commands e mesma seed, as execuções repetidas produzem a mesma decisão de fechamento e, quando há resolução, o mesmo resultado observável.
+
+A prova cobre as duas policies concretas e compara estado observável, ordem de Events e outcomes do EventLog.
+
+### Concluído
+
+- determinismo da decisão aberta da `ManualReadyTurnPolicy` validado;
+- determinismo da resolução fechada da `ManualReadyTurnPolicy` validado;
+- determinismo da decisão aberta da `ExternalDeadlineTurnPolicy` validado;
+- determinismo da resolução fechada da `ExternalDeadlineTurnPolicy` validado;
+- `SeededSimulationEventOrderer` real usado na prova;
+- múltiplos Commands usados em ordem física não canônica;
+- mesma seed reutilizada nas execuções equivalentes;
+- `WorldState.Revision` comparada;
+- ordem dos `EventId` comparada;
+- `ResolutionSequence` comparada;
+- `WasEligible` comparado;
+- `WasExecuted` comparado;
+- nenhum código de produção precisou ser alterado.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- warnings de build: 0;
+- erros de build: 0;
+- testes totais: 114;
+- testes aprovados: 114;
+- falhas: 0;
+- `ManualReadyOpenDecisionIsDeterministicAcrossEquivalentInputs`: aprovado;
+- `ManualReadyClosedResolutionIsDeterministicAcrossEquivalentInputs`: aprovado;
+- `ExternalDeadlineOpenDecisionIsDeterministicAcrossEquivalentInputs`: aprovado;
+- `ExternalDeadlineClosedResolutionIsDeterministicAcrossEquivalentInputs`: aprovado;
+- `git diff --check`: aprovado;
+- SHA-256 do arquivo de validação verificado no pacote de evidências.
+
+### Fechamento do Stage M1.4
+
+**M1.4 — Turn Policy Foundation concluído.**
+
+A capability `Turn policies` está agora em maturidade:
+
+**Validada — 0.85**
+
+O milestone M1 permanece aberto.
+
+### Scope Change
+
+Nenhum.
+
+O total permanece:
+
+**1000 GPP**
+
+### Riscos
+
+`RISK-004 — Determinism failure` permanece `MITIGATING`.
+
+A incerteza relativa à integração das Turn Policies foi reduzida por prova automatizada, mas state hash/fingerprint e validação entre plataformas continuam pendentes antes do fechamento de M1.
+
+### Critical Path
+
+O Critical Path muda de:
+
+**Turn Policies determinísticas compartilhando o mesmo TurnResolver**
+
+para:
+
+**State hash determinístico e validação cross-platform antes do fechamento de M1**
+
+### Próximo stage
+
+**M1.5 — Determinism Diagnostics & Platform Validation**
+
+### Próximo subcheckpoint
+
+**M1.5.1 — State Hash Contract**
+
+Objetivos:
+
+- definir o que entra no fingerprint determinístico do estado observável;
+- manter o hash como mecanismo de diagnóstico, não como fonte de verdade;
+- evitar dependência de serialização instável;
+- definir contrato versionável e reproduzível;
+- não antecipar ainda persistência física de save;
+- preparar comparação objetiva entre execuções e plataformas.

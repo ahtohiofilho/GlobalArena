@@ -259,12 +259,13 @@ Mitigação:
 - testes repetidos;
 - evitar estado global;
 - command/event log;
+- validação repetida do fluxo integrado de Turn Policies;
 - hash de estado;
 - avaliar uso de matemática determinística onde necessário.
 
 Próxima ação:
 
-validar determinismo com Turn Policies integradas e, depois, ampliar diagnóstico por hash e validação entre plataformas antes do fechamento de M1.
+definir state hash/fingerprint determinístico e, depois, realizar validação entre plataformas antes do fechamento de M1.
 
 ---
 

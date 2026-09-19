@@ -2226,7 +2226,69 @@ A capability `Turn policies` passa a estar integrada ao caminho real de resoluç
 
 Ela ainda não é considerada `Validada`, porque falta uma prova específica de determinismo repetido do fluxo integrado com policies.
 
-O próximo passo é validar que entradas equivalentes, mesma policy, mesmos Commands e mesma seed produzem a mesma decisão e o mesmo resultado observável através do gate.
+A validação determinística desse fluxo integrado é descrita pela seção 9.6.
+
+## 9.6 Turn Policy Determinism Validation
+
+A validação executa repetidamente o caminho:
+
+`TurnPolicyResolutionGate`
+
+→ `ITurnPolicy`
+
+→ `TurnResolver`
+
+com inputs equivalentes.
+
+As duas policies concretas são cobertas:
+
+- `ManualReadyTurnPolicy`;
+- `ExternalDeadlineTurnPolicy`.
+
+### Decisão aberta
+
+Para o mesmo `TurnPolicyInput`, quando a policy mantém a janela aberta, execuções repetidas produzem:
+
+`WasResolved = false`
+
+e:
+
+`ResolutionResult = null`
+
+Nenhum resultado sintético de resolução é criado.
+
+### Decisão fechada
+
+Para o mesmo turno, mesmos Commands, mesma seed e mesmos fatos da policy, execuções repetidas produzem o mesmo resultado observável.
+
+A prova compara:
+
+- `WorldState.Revision`;
+- quantidade e ordem dos Events;
+- `EventId`;
+- quantidade de entradas do EventLog;
+- `ResolutionSequence`;
+- `WasEligible`;
+- `WasExecuted`.
+
+### Ordering determinístico
+
+A validação utiliza o `SeededSimulationEventOrderer` real com múltiplos Commands e a mesma `SimulationSeed`.
+
+Assim, a prova cobre a policy e o caminho determinístico já existente de ordering e execução, em vez de validar somente um stub do resolver.
+
+### Maturidade
+
+A capability `Turn policies` passa de `Integrada` para `Validada`.
+
+Com isso, todas as capabilities atualmente decompostas no orçamento de Foundation / Simulation Kernel alcançam pelo menos maturidade `Validada`.
+
+Isso não encerra M1.
+
+Antes do fechamento do milestone ainda é necessário ampliar os mecanismos de diagnóstico de determinismo e realizar validação entre plataformas conforme `RISK-004`.
+
+O próximo passo é estabelecer um contrato mínimo de state hash/fingerprint determinístico sem transformar o hash em nova fonte de verdade do `WorldState`.
+
 
 ---
 

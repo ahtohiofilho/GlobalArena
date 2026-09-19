@@ -577,23 +577,23 @@ Current Milestone:
 
 Current Stage:
 
-**M1.4 — Turn Policy Foundation**
+**M1.5 — Determinism Diagnostics & Platform Validation**
 
 Current Subcheckpoint:
 
-**M1.4.6 — Turn Policy Determinism Validation**
+**M1.5.1 — State Hash Contract**
 
 Official Progress:
 
-**5.9%**
+**6.0%**
 
 GPP Earned:
 
-**59.05 / 1000**
+**59.50 / 1000**
 
 Foundation / Simulation Kernel:
 
-**59.05 / 70 GPP — 84.4%**
+**59.50 / 70 GPP — 85.0%**
 
 Scope Confidence:
 
@@ -609,7 +609,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**Turn Policies determinísticas compartilhando o mesmo TurnResolver**
+**State hash determinístico e validação cross-platform antes do fechamento de M1**
 
 Last Baseline Review:
 
