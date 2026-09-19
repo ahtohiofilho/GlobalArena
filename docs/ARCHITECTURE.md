@@ -1885,6 +1885,77 @@ Após o fechamento, todos utilizam o mesmo TurnResolver.
 
 Isso permite que single-player e multiplayer compartilhem o mesmo núcleo.
 
+## 9.1 Turn Policy Contract
+
+`ITurnPolicy` estabelece a fronteira mínima responsável por decidir se a janela de ordens de um turno deve ser encerrada.
+
+O contrato é:
+
+`TurnPolicyInput`
+
+→ `ITurnPolicy.ShouldClose`
+
+→ `bool`
+
+### TurnPolicyInput
+
+O input contém somente fatos necessários para a decisão:
+
+- `Turn`;
+- `AllRequiredParticipantsReady`;
+- `ExternalDeadlineReached`.
+
+`Turn` identifica explicitamente o turno ao qual a decisão se refere.
+
+`AllRequiredParticipantsReady` representa o fato de que todos os participantes exigidos para aquela política já estão prontos.
+
+`ExternalDeadlineReached` representa um sinal temporal já calculado fora da Simulation.
+
+### Relógio de parede
+
+O contrato não consulta:
+
+- `DateTime.Now`;
+- `DateTime.UtcNow`;
+- relógio do sistema;
+- timers de UI;
+- timers de networking.
+
+Uma política temporizada ou de correspondência recebe somente o fato determinístico de que o prazo externo já foi atingido.
+
+A responsabilidade por transformar tempo real em `ExternalDeadlineReached` pertence a uma camada externa posterior.
+
+### Separação de responsabilidades
+
+`ITurnPolicy` decide apenas:
+
+**a janela de ordens deve fechar agora?**
+
+A policy não:
+
+- executa `TurnResolver`;
+- valida Commands;
+- processa Events;
+- altera `WorldState`;
+- acessa networking;
+- acessa UI.
+
+Isso mantém a decisão temporal separada da resolução determinística já validada.
+
+### Extensibilidade
+
+O mesmo contrato suporta políticas dirigidas por readiness e por deadline sem alterar o `TurnResolver`.
+
+O checkpoint congela somente a fronteira.
+
+Ainda não existem implementações concretas de:
+
+- readiness/manual;
+- deadline/timed;
+- correspondence.
+
+O próximo passo é introduzir a primeira policy concreta dirigida exclusivamente por readiness.
+
 ---
 
 # 10. World

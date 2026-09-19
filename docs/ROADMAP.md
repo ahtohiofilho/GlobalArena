@@ -581,7 +581,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M1.4.1 — Turn Policy Contract**
+**M1.4.2 — Manual Ready Turn Policy**
 
 Official Progress:
 

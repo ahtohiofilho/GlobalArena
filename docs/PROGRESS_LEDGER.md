@@ -3404,3 +3404,112 @@ Objetivos:
 - evitar dependência de relógio de parede dentro do Kernel determinístico;
 - não introduzir networking ou UI;
 - preparar integração incremental sem alterar a semântica já validada de resolução.
+
+---
+
+## 2026-09-19 — M1.4.1 Turn Policy Contract concluído
+
+Milestone:
+
+**M1 — Deterministic Simulation Kernel**
+
+Stage:
+
+**M1.4 — Turn Policy Foundation**
+
+Subcheckpoint:
+
+**M1.4.1 — Turn Policy Contract**
+
+### Progresso oficial
+
+GPP conquistados:
+
+**57.55 / 1000**
+
+Global Progress:
+
+**5.8%**
+
+Foundation / Simulation Kernel:
+
+**57.55 / 70 GPP — 82.2%**
+
+GPP adicionais conquistados neste subcheckpoint:
+
+**+0.00 GPP**
+
+### Justificativa de maturidade
+
+A capability `Turn policies`, com orçamento de 3 GPP, já estava contabilizada como `Especificada — fator 0.20 — 0.60 GPP`.
+
+Este checkpoint torna o contrato executável e testado, mas ainda não introduz uma policy concreta.
+
+Por isso a maturidade permanece:
+
+**Especificada — fator 0.20 — 0.60 GPP**
+
+A promoção para `Funcional isoladamente` exige pelo menos comportamento concreto de policy, não apenas a fronteira.
+
+### Concluído
+
+- `TurnPolicyInput` criado;
+- o input carrega `Turn`;
+- o input carrega `AllRequiredParticipantsReady`;
+- o input carrega `ExternalDeadlineReached`;
+- `ITurnPolicy` criado;
+- o contrato retorna uma decisão booleana de fechamento;
+- readiness pode ser fornecido como fato explícito;
+- deadline pode ser fornecido como fato explícito;
+- nenhuma leitura de relógio de parede foi introduzida;
+- nenhuma dependência de UI foi introduzida;
+- nenhuma dependência de networking foi introduzida;
+- nenhuma alteração foi feita no `TurnResolver`.
+
+### Evidências
+
+- projetos compilados: 6/6;
+- warnings de build: 0;
+- erros de build: 0;
+- testes totais: 90;
+- testes aprovados: 90;
+- falhas: 0;
+- `InputCarriesTurnReadinessAndDeadlineSignal`: aprovado;
+- `PolicyContractReceivesInputAndReturnsDecision`: aprovado;
+- `ContractSupportsReadinessDrivenClosure`: aprovado;
+- `ContractSupportsExternallySuppliedDeadlineClosure`: aprovado;
+- `git diff --check`: aprovado;
+- SHA-256 dos três arquivos novos verificado no pacote de evidências.
+
+### Scope Change
+
+Nenhum.
+
+O total permanece:
+
+**1000 GPP**
+
+### Riscos
+
+`RISK-004 — Determinism failure` permanece `MITIGATING`.
+
+O contrato evita dependência direta de relógio real dentro da Simulation, mas ainda faltam policies concretas e integração com o caminho de resolução.
+
+### Critical Path
+
+Permanece:
+
+**Turn Policies determinísticas compartilhando o mesmo TurnResolver**
+
+### Próximo subcheckpoint
+
+**M1.4.2 — Manual Ready Turn Policy**
+
+Objetivos:
+
+- implementar a primeira policy concreta;
+- fechar a janela somente quando `AllRequiredParticipantsReady = true`;
+- ignorar `ExternalDeadlineReached` nessa policy;
+- manter a decisão pura e sem acesso a relógio;
+- testar comportamento aberto e fechado;
+- não integrar ainda a policy ao `TurnResolver`.

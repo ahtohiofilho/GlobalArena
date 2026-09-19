@@ -501,7 +501,7 @@ Etapa:
 
 Subetapa atual:
 
-**M1.4.1 — Turn Policy Contract**
+**M1.4.2 — Manual Ready Turn Policy**
 
 M0 — Project Baseline:
 
