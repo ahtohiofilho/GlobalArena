@@ -380,6 +380,10 @@ M2.4 estabelece scaled refinement compatibility, representative multi-family reg
 
 A capability `Strategic ↔ tactical hierarchy/refinement mapping` permanece em `Inexistente — fator 0.00`, porque multi-family durable lineage, full parent-child ownership e physical tactical-border mapping continuam ausentes. Esses requisitos seguem para M2.5 e para o M2 exit gate.
 
+O entry audit de M2.5 confirmou que o milestone não pode ser encerrado por uma regressão de performance isolada. O exit gate ainda exige physical boundary attachment, cross-region navigability, decisão explícita sobre hierarchy/refinement coverage e um benchmark headless quantitativo sobre o workload final aceito para M2.
+
+M2.5.1 congela os requisitos do exit gate, a decomposição operacional de M2.5 e o primeiro budget quantitativo de M2 topology baseline. Nenhuma maturity capability é promovida por esse design.
+
 Esses pesos constituem o baseline inicial.
 
 Novas tarefas descobertas dentro de uma área não aumentam automaticamente o peso do V1.
@@ -597,7 +601,7 @@ Etapa:
 
 Subetapa atual:
 
-**M2.5 — entry audit / decomposition**
+**M2.5.1 — Exit Gate Requirements & Performance Budget Contract**
 
 M0 — Project Baseline:
 
@@ -737,7 +741,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**Goldberg family/refinement validation e mapeamento físico estratégico/tático**
+**M2 exit semantics: physical strategic/tactical boundary attachment, navigability, refinement coverage e scalability baseline**
 
 Última revisão de baseline:
 

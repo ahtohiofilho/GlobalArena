@@ -3,7 +3,7 @@
 **Versão:** 0.1
 **Milestone:** M2 — Planet Topology
 **Status:** Ativo
-**Última revisão formal:** 2026-09-19
+**Última revisão formal:** 2026-09-20
 **Baseline V1 relacionado:** 0.1 — congelado
 
 ---
@@ -484,9 +484,34 @@ Continuam abertos:
 
 `RISK-003` permanece HIGH.
 
+O entry audit read-only de M2.5 confirmou:
+
+- M2 exit ready: no;
+- physical tactical-border mapping permanece ausente;
+- cross-region tactical navigability permanece ausente;
+- multi-family durable lineage permanece ausente;
+- o tactical graph atual continua sendo o reference graph de três células;
+- o benchmark project continua placeholder;
+- a regressão cross-platform atual não mede performance.
+
+O probe observacional mostrou que o workload atual de referência constrói os canonical large cases com ampla margem frente ao primeiro budget proposto, mas isso não constitui acceptance evidence porque M2.5.2/M2.5.3 ainda podem alterar o workload obrigatório.
+
+M2.5.1 congela um budget inicial de M2 topology baseline:
+
+- median elapsed `<= 1000 ms`;
+- max elapsed sample `<= 2000 ms`;
+- median managed allocation `<= 192 MiB`;
+- max managed allocation sample `<= 256 MiB`;
+- 1 warmup + 5 measured samples;
+- canonical cases Class I `G(16,0)`, Class II `G(10,10)` e Class III `G(12,7)`.
+
+Esse budget não fecha `RISK-002` nem `RISK-012`, não representa high-resolution tactical performance e não reduz `RISK-003` por si só.
+
+`RISK-003` permanece HIGH.
+
 Próxima ação:
 
-iniciar M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate com audit read-only de escalabilidade, cobertura cross-platform e requisitos ainda ausentes para o fechamento de M2.
+submeter o design M2.5.1 a audit e, após congelamento, iniciar M2.5.2 — Strategic/Tactical Physical Boundary Attachment & Cross-Region Traversal.
 
 ---
 

@@ -10053,3 +10053,176 @@ M2:
 Next gate:
 
 **READ_ONLY_AUDIT**
+
+---
+
+## 2026-09-20 — M2.5 entry audit and M2.5.1 exit-gate/performance-budget design
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate**
+
+Subcheckpoint:
+
+**M2.5.1 — Exit Gate Requirements & Performance Budget Contract**
+
+### Read-only entry audit
+
+Baseline:
+
+`e9e50c0ff957b286186e16cc7e9de86a01100256`
+
+Result:
+
+**PASS_READY_FOR_M2_5_1_DESIGN**
+
+Evidence:
+
+- branch `main`;
+- HEAD = origin/main;
+- worktree clean;
+- Release build: 0 warnings, 0 errors;
+- tests: 366/366;
+- no repository mutation;
+- no commit;
+- no push;
+- source snapshot: 38 files;
+- 38/38 SHA-256 hashes recomputed without divergence.
+
+### Exit-gate findings
+
+M2 exit ready:
+
+**NO**
+
+The audit confirmed that M2 still requires:
+
+- deterministic physical strategic/tactical boundary attachment;
+- cross-region tactical traversal/navigability;
+- explicit hierarchy/refinement coverage decision for officially supported Goldberg families;
+- scalability validation;
+- final cross-platform exit regression.
+
+Current structural gaps include:
+
+- benchmark project remains `Hello, World!`;
+- existing kernel workflow does not run benchmarks;
+- current `TacticalRegion` remains a three-cell reference graph;
+- physical `TacticalCell`-to-border mapping is absent;
+- dedicated world navigation/traversal production files: 0;
+- multi-family durable lineage remains absent.
+
+### Observational scalability probe
+
+The probe was intentionally threshold-free.
+
+Cases:
+
+- Class I medium `G(8,0)`: 642 cells;
+- Class II medium `G(6,6)`: 1082 cells;
+- Class III medium `G(8,5)`: 1292 cells;
+- Class I large `G(16,0)`: 2562 cells;
+- Class II large `G(10,10)`: 3002 cells;
+- Class III large `G(12,7)`: 2772 cells.
+
+All counts and integrated reference coverage were valid.
+
+Large-case observations:
+
+- `G(16,0)`: median 84.784 ms, max 116.604 ms, median allocation 63,876,136 bytes;
+- `G(10,10)`: median 65.171 ms, max 70.425 ms, median allocation 75,541,888 bytes;
+- `G(12,7)`: median 58.798 ms, max 82.909 ms, median allocation 62,493,848 bytes.
+
+These values are observational evidence only.
+
+### M2.5 decomposition frozen in design
+
+- M2.5.1 — Exit Gate Requirements & Performance Budget Contract;
+- M2.5.2 — Strategic/Tactical Physical Boundary Attachment & Cross-Region Traversal;
+- M2.5.3 — Hierarchy/Refinement Coverage Decision for Officially Supported Goldberg Families;
+- M2.5.4 — Headless Scalability Benchmark Harness & Baseline;
+- M2.5.5 — Cross-Platform Regression, Exit Audit & M2 Formal Close.
+
+### Performance budget design
+
+Canonical load cases:
+
+- Class I `G(16,0)`;
+- Class II `G(10,10)`;
+- Class III `G(12,7)`.
+
+Measurement protocol:
+
+- Release/headless;
+- .NET 10;
+- 1 warmup per case;
+- 5 measured samples per case;
+- OS/runtime/architecture recorded;
+- elapsed time recorded;
+- managed allocation recorded;
+- structural validation required.
+
+Hard M2 topology baseline budgets:
+
+- median elapsed: `<= 1000 ms`;
+- maximum elapsed sample: `<= 2000 ms`;
+- median managed allocation: `<= 192 MiB`;
+- maximum managed allocation sample: `<= 256 MiB`.
+
+The M2.5.4 harness must measure the final production workload required by M2 after M2.5.2/M2.5.3, not merely the current three-cell tactical reference pipeline.
+
+If the required topology workload changes, older benchmark evidence cannot satisfy the exit gate.
+
+### Scope boundary
+
+This contract does not:
+
+- define final V1 planet sizes;
+- close tactical-resolution scalability risk;
+- close memory-footprint risk;
+- prove high-resolution tactical performance;
+- replace physical border mapping;
+- replace navigability;
+- establish universal Goldberg refinement.
+
+### GPP
+
+GPP change:
+
+**0.00**
+
+GPP remains:
+
+**109.50 / 1000**
+
+Global Progress remains:
+
+**11.0%**
+
+Planet Topology remains:
+
+**39.50 / 90 — 43.9%**
+
+`Strategic ↔ tactical hierarchy/refinement mapping` remains:
+
+**Inexistente — factor 0.00**
+
+`RISK-003` remains:
+
+**HIGH**
+
+### Scope Change
+
+None.
+
+Baseline V1 remains:
+
+**1000 GPP**
+
+### Next gate
+
+**M2.5.1 DESIGN AUDIT**

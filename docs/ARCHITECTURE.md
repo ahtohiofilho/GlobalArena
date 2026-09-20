@@ -4142,6 +4142,127 @@ O próximo stage é:
 
 `M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate`.
 
+## 12.9 M2.5 entry audit and exit-gate contract
+
+O entry audit read-only de M2.5 confirmou que o milestone M2 ainda não satisfaz seu exit gate.
+
+Baseline auditada:
+
+`e9e50c0ff957b286186e16cc7e9de86a01100256`
+
+Evidência local:
+
+- Release build: 0 warnings, 0 errors;
+- suíte: 366/366;
+- worktree limpo;
+- no repository mutation;
+- no commit;
+- no push;
+- 38/38 snapshot hashes recomputados sem divergência.
+
+O audit confirmou que M2 exige conjuntamente:
+
+- conectividade entre tabuleiros táticos vizinhos;
+- mapeamento determinístico de fronteiras;
+- pertencimento pai-filho;
+- refinamento hierárquico;
+- navegabilidade;
+- comportamento explícito para as famílias Goldberg oficialmente suportadas;
+- validação de escalabilidade;
+- regressão cross-platform.
+
+O estado atual ainda possui as seguintes lacunas:
+
+- `GlobalArena.Benchmarks` continua como placeholder `Hello, World!`;
+- o workflow de regressão atual não executa benchmark/scalability gate;
+- `TacticalRegion` continua materializada pelo reference graph de três células;
+- physical `TacticalCell`-to-shared-border attachment está ausente;
+- cross-region tactical traversal/navigability está ausente;
+- multi-family durable refinement lineage está ausente;
+- `Strategic ↔ tactical hierarchy/refinement mapping` permanece em fator `0.00`.
+
+Por isso, M2.5 não poderá ser um stage apenas de performance.
+
+### M2.5 decomposition
+
+M2.5 é decomposto em:
+
+- M2.5.1 — Exit Gate Requirements & Performance Budget Contract;
+- M2.5.2 — Strategic/Tactical Physical Boundary Attachment & Cross-Region Traversal;
+- M2.5.3 — Hierarchy/Refinement Coverage Decision for Officially Supported Goldberg Families;
+- M2.5.4 — Headless Scalability Benchmark Harness & Baseline;
+- M2.5.5 — Cross-Platform Regression, Exit Audit & M2 Formal Close.
+
+### M2.5.1 performance budget contract
+
+M2.5.1 congela um budget de **M2 topology baseline**, não um budget final de V1.
+
+Os canonical M2 load cases serão:
+
+- Class I: `G(16,0)` — `T=256`, 2562 cells, 7680 edges, 5120 vertices;
+- Class II: `G(10,10)` — `T=300`, 3002 cells, 9000 edges, 6000 vertices;
+- Class III: `G(12,7)` — `T=277`, 2772 cells, 8310 edges, 5540 vertices.
+
+O workload medido em M2.5.4 deverá construir do zero, em Release e headless, toda a produção exigida pelo M2 exit gate após M2.5.2/M2.5.3.
+
+Isso inclui no mínimo:
+
+- `StrategicTopology`;
+- todas as `TacticalRegion`;
+- todos os `SharedBorderBand`;
+- `StrategicTacticalBorderAggregate`;
+- qualquer estrutura adicional de boundary attachment/traversal tornada obrigatória por M2.5.2/M2.5.3.
+
+A metodologia mínima será:
+
+- 1 warmup por case;
+- 5 measured samples por case;
+- processo headless;
+- .NET 10;
+- registro de OS, arquitetura e runtime;
+- tempo por `Stopwatch`;
+- managed allocation report;
+- validação estrutural antes de aceitar a amostra.
+
+Hard budgets por canonical load case:
+
+- median elapsed time: `<= 1000 ms`;
+- maximum elapsed sample: `<= 2000 ms`;
+- median managed allocation: `<= 192 MiB`;
+- maximum managed allocation sample: `<= 256 MiB`.
+
+Esses limites são intencionalmente amplos para o primeiro baseline de M2.
+
+O entry audit observou, sem threshold e ainda sobre o workload atual de referência:
+
+- `G(16,0)`: median 84.784 ms, max 116.604 ms, median allocation 63,876,136 bytes;
+- `G(10,10)`: median 65.171 ms, max 70.425 ms, median allocation 75,541,888 bytes;
+- `G(12,7)`: median 58.798 ms, max 82.909 ms, median allocation 62,493,848 bytes.
+
+Esses números são evidência observacional, não acceptance evidence.
+
+Se M2.5.2 ou M2.5.3 alterar o workload obrigatório do M2, qualquer benchmark anterior à mudança deixa de ser suficiente para fechamento.
+
+Falha em budget bloqueia M2 close. O budget não poderá ser relaxado silenciosamente; mudança exige nova evidência e decisão arquitetural explícita.
+
+### Scope boundary
+
+O budget de M2.5.1:
+
+- não define planet size final do V1;
+- não fecha `RISK-002 — Tactical resolution scalability`;
+- não fecha `RISK-012 — Memory footprint`;
+- não prova performance de uma futura high-resolution tactical mesh;
+- não substitui o requirement de physical boundary mapping;
+- não substitui navigability;
+- não prova universal Goldberg refinement.
+
+Nenhuma promoção de GPP ocorre em M2.5.1.
+
+O próximo gate é:
+
+`M2.5.1 DESIGN AUDIT`.
+
 O estado estratégico de uma conexão poderá futuramente ser derivado do estado tático correspondente.
 
 Exemplos futuros incluem:

@@ -343,6 +343,12 @@ Stages planejados:
 
 **M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate**
 
+- M2.5.1 — Exit Gate Requirements & Performance Budget Contract;
+- M2.5.2 — Strategic/Tactical Physical Boundary Attachment & Cross-Region Traversal;
+- M2.5.3 — Hierarchy/Refinement Coverage Decision for Officially Supported Goldberg Families;
+- M2.5.4 — Headless Scalability Benchmark Harness & Baseline;
+- M2.5.5 — Cross-Platform Regression, Exit Audit & M2 Formal Close.
+
 M2.1.1 está concluído em 2026-09-19.
 
 M2.1.2 está concluído em 2026-09-19.
@@ -1461,9 +1467,55 @@ Stage atual:
 
 **M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate**
 
+O entry audit read-only de M2.5 foi aprovado no baseline:
+
+`e9e50c0ff957b286186e16cc7e9de86a01100256`.
+
+Resultado:
+
+**PASS_READY_FOR_M2_5_1_DESIGN**
+
+O audit confirmou:
+
+- 366/366 testes;
+- Release build com 0 warnings e 0 errors;
+- 38/38 snapshot hashes válidos;
+- benchmark project ainda placeholder;
+- current regression workflow sem benchmark;
+- tactical reference graph ainda com três células;
+- physical tactical-border mapping ausente;
+- dedicated cross-region navigation contract ausente;
+- multi-family durable lineage ausente;
+- M2 exit ready: no.
+
+Probe observacional sem threshold:
+
+- Class I `G(16,0)`: median 84.784 ms, max 116.604 ms, median allocation 63,876,136 bytes;
+- Class II `G(10,10)`: median 65.171 ms, max 70.425 ms, median allocation 75,541,888 bytes;
+- Class III `G(12,7)`: median 58.798 ms, max 82.909 ms, median allocation 62,493,848 bytes.
+
+M2.5.1 congela o seguinte first M2 topology performance budget para o workload final aceito após M2.5.2/M2.5.3:
+
+- 1 warmup + 5 measured samples por canonical load case;
+- median elapsed `<= 1000 ms`;
+- max elapsed sample `<= 2000 ms`;
+- median managed allocation `<= 192 MiB`;
+- max managed allocation sample `<= 256 MiB`;
+- Class I `G(16,0)`;
+- Class II `G(10,10)`;
+- Class III `G(12,7)`.
+
+O budget é M2-specific e não define o planet size final do V1.
+
+Nenhuma promoção de GPP ocorre no design.
+
+Subcheckpoint atual:
+
+**M2.5.1 — Exit Gate Requirements & Performance Budget Contract**
+
 Próximo gate:
 
-**READ_ONLY_AUDIT**
+**M2.5.1 DESIGN AUDIT**
 
 ---
 
@@ -1629,7 +1681,7 @@ Somente um ou poucos itens devem ser classificados como Critical Path.
 
 Status atual:
 
-**Goldberg family/refinement validation e mapeamento físico estratégico/tático**
+**M2 exit semantics: physical strategic/tactical boundary attachment, navigability, refinement coverage e scalability baseline**
 
 ---
 
@@ -1751,7 +1803,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M2.5 — entry audit / decomposition**
+**M2.5.1 — Exit Gate Requirements & Performance Budget Contract**
 
 Official Progress:
 
