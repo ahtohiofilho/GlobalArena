@@ -9458,3 +9458,138 @@ Baseline V1 permanece:
 Próximo gate:
 
 **READ_ONLY_AUDIT**
+
+---
+
+## 2026-09-20 — M2.4.4 multi-family scaled refinement audit and design
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.4 — Goldberg Family & Refinement Validation**
+
+Subcheckpoint:
+
+**M2.4.4 — Class I/II/III Scaled Refinement Validation**
+
+### Read-only audit
+
+Baseline:
+
+`fecbb17dfb69f885bd0a69ce4b6f69165a3f5519`
+
+Resultado:
+
+**PASS_READY_FOR_MULTI_FAMILY_REFINEMENT_DESIGN**
+
+Local evidence:
+
+- build Release: 0 warnings, 0 errors;
+- tests: 340/340;
+- branch `main`;
+- HEAD = origin/main;
+- worktree clean;
+- no repository mutation;
+- no commit;
+- no push;
+- source snapshot: 36 files;
+- 36/36 SHA-256 hashes independently reproducible.
+
+### Audit probe
+
+Seven audit pairs:
+
+- Class I base;
+- Class I general;
+- Class I inverted axis;
+- Class II base;
+- Class II general;
+- Class III right chirality;
+- Class III left chirality.
+
+Todos confirmaram:
+
+- public count scaling;
+- deterministic generation;
+- 12 pentagons;
+- construction-scale embedding no probe.
+
+Audit-only internal evidence:
+
+- Class I/II `SubdivisionLatticeVertexKey` is scale-homogeneous;
+- Class III local `(LocalPoint, LatticeIndex)` is scale-homogeneous;
+- raw DSU root is not durable provenance;
+- Class III global durable provenance remains absent.
+
+Current mapping scope:
+
+- cell reference supported pairs: 1;
+- shared-border continuity supported pairs: 1.
+
+### Design decision
+
+M2.4.4 será validation-only.
+
+Nenhuma production API será alterada.
+
+Implementation planejada:
+
+`GlobalArena.Tests/GoldbergScaledRefinementFamilyValidationTests.cs`
+
+14 Facts.
+
+Representative implementation matrix:
+
+- Class I normal/inverted;
+- Class II;
+- Class III both chiralities;
+- scales 2 and 3.
+
+Tests use public contracts only.
+
+Reflection/private generator structures remain outside the test contract.
+
+### Scope and GPP
+
+M2.4.4 does not establish multi-family lineage.
+
+GPP change:
+
+**0.00**
+
+GPP remains:
+
+**109.50 / 1000**
+
+Global Progress remains:
+
+**11.0%**
+
+Planet Topology remains:
+
+**39.50 / 90 — 43.9%**
+
+`Strategic ↔ tactical hierarchy/refinement mapping` remains:
+
+**Inexistente — fator 0.00**
+
+### Planned test count
+
+Baseline:
+
+`340`
+
+New Facts:
+
+`14`
+
+Expected:
+
+`354`
+
+### Next gate
+
+**M2.4.4 DESIGN AUDIT**

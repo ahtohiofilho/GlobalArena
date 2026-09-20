@@ -393,9 +393,28 @@ Ainda permanecem abertos:
 - Class III continuity;
 - full hierarchy coverage.
 
+O audit read-only de M2.4.4 confirmou que scaled compatibility, count scaling e deterministic topology generation se mantêm nos representative pairs de Class I, Class II e Class III.
+
+Também confirmou:
+
+- Class I/II possuem construction keys scale-homogeneous;
+- Class III local lattice coordinates são scale-homogeneous;
+- isso não prova durable global Class III lineage;
+- raw DSU roots não são identidade estável;
+- multi-family cell reference mapping permanece ausente;
+- multi-family border continuity mapping permanece ausente.
+
+Decisão de redução de risco:
+
+M2.4.4 será validation-only.
+
+O checkpoint congelará executable regression evidence sobre public multi-family invariants sem promover private implementation details a public identity.
+
+Isso evita aumentar RISK-003 com um provenance contract prematuro.
+
 Próxima ação:
 
-iniciar M2.4.4 — Class I/II/III Scaled Refinement Validation com audit read-only para determinar quais invariants de provenance e continuity podem ser generalizados para pares Class I, Class II e Class III sem publicar implementation details instáveis e sem inferir lineage por IDs locais.
+implementar `GoldbergScaledRefinementFamilyValidationTests` com 14 Facts cobrindo Class I normal/inverted, Class II, Class III ambas as chiralities e scales 2/3, preservando explicitamente o current narrow scope dos reference/continuity mappers e sem alteração de production ou GPP.
 
 ---
 

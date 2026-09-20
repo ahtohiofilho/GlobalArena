@@ -3829,6 +3829,122 @@ Ainda não existe middle-cell ownership, coarse-vertex to fine-junction mapping,
 
 O próximo subcheckpoint é M2.4.4 — Class I/II/III Scaled Refinement Validation.
 
+## 12.7 M2.4.4 multi-family scaled refinement validation
+
+O audit read-only de M2.4.4 validou sete pares representativos em Class I, Class II e Class III.
+
+Resultados públicos:
+
+- exact scaled-parameter compatibility: validada;
+- topology count scaling: validado;
+- canonical determinism: validado;
+- 12 pentágonos em coarse/fine: validado;
+- Class I normal: validada;
+- Class I inverted axis: validada;
+- Class II: validada;
+- Class III right chirality: validada;
+- Class III left chirality: validada.
+
+O audit também confirmou, apenas como evidência interna de construção:
+
+- Class I/II possuem scale-homogeneous `SubdivisionLatticeVertexKey`;
+- Class III possui scale-homogeneous local `(LocalPoint, LatticeIndex)`;
+- raw `DisjointSet` root continua sendo implementation detail;
+- Class III ainda não possui durable global provenance publicada.
+
+### Design decision
+
+M2.4.4 será **validation-only**.
+
+Nenhum novo production type será introduzido neste checkpoint.
+
+Motivo:
+
+a evidência pública atual prova compatibilidade matemática, counts e determinismo multi-family, mas ainda não prova global durable lineage de Class III.
+
+Transformar private local coordinates ou raw DSU roots em public identity agora criaria um contrato prematuro.
+
+### Validation surface
+
+Será adicionado somente:
+
+`GlobalArena.Tests/GoldbergScaledRefinementFamilyValidationTests.cs`
+
+com 14 Facts.
+
+Representative pairs:
+
+- Class I: `G(1,0) -> G(2,0)`, scale 2;
+- Class I general: `G(2,0) -> G(4,0)`, scale 2;
+- Class I inverted axis: `G(0,2) -> G(0,4)`, scale 2;
+- Class I scale 3: `G(1,0) -> G(3,0)`;
+- Class II: `G(1,1) -> G(2,2)`, scale 2;
+- Class II general: `G(2,2) -> G(4,4)`, scale 2;
+- Class II scale 3: `G(1,1) -> G(3,3)`;
+- Class III right: `G(2,1) -> G(4,2)`, scale 2;
+- Class III left: `G(1,2) -> G(2,4)`, scale 2;
+- Class III right scale 3: `G(2,1) -> G(6,3)`;
+- Class III left scale 3: `G(1,2) -> G(3,6)`.
+
+Cada representative pair deverá validar somente public invariants:
+
+- refinement `Scale`;
+- exact parameter multiplication;
+- generated topology counts equal parameter counts;
+- `fine.StrategicCellCount = scale^2 * (coarse.StrategicCellCount - 2) + 2`;
+- fine edges and vertices scale by `scale^2`;
+- 12 pentágonos em coarse e fine;
+- Euler;
+- deterministic repeated topology signatures.
+
+Aggregate validation deverá confirmar:
+
+- todos os representative pairs permanecem deterministic;
+- todos preservam 12 pentágonos e Euler;
+- current `GoldbergScaledRefinementReferenceMapper` continua suportando somente `G(1,0) -> G(2,0)`;
+- current `GoldbergScaledSharedBorderContinuityMapper` continua disponível somente através desse reference pair.
+
+### Private construction evidence boundary
+
+A evidência do audit sobre:
+
+- `SubdivisionLatticeVertexKey`;
+- `LocalPoint`;
+- `LatticeIndex`;
+- `DisjointSet`;
+
+não será transformada em production API neste checkpoint.
+
+Os testes de M2.4.4 não usarão reflection para congelar private implementation details.
+
+Essa evidência permanece material de arquitetura para uma futura generalização de provenance, não contrato público atual.
+
+### Scope boundary
+
+M2.4.4 não:
+
+- generaliza `GoldbergScaledRefinementReferenceMapper`;
+- generaliza shared-border continuity;
+- cria Class II cell lineage;
+- cria Class III cell lineage;
+- publica raw DSU roots;
+- cria parent-child ownership;
+- cria coarse-vertex junction mapping;
+- cria physical tactical-border mapping;
+- prova universal Goldberg refinement.
+
+M2.4.4 não promove GPP no design.
+
+Baseline de testes:
+
+`340`.
+
+Esperado após implementação:
+
+`354`.
+
+O próximo gate após implementação/cross-platform será M2.4.5 — Refinement Stage Validation & M2.4 Close.
+
 O estado estratégico de uma conexão poderá futuramente ser derivado do estado tático correspondente.
 
 Exemplos futuros incluem:

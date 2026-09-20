@@ -687,6 +687,10 @@ M2.4.3 — Shared Border Refinement Continuity:
 
 **concluído em 2026-09-20**
 
+M2.4.4 — Class I/II/III Scaled Refinement Validation:
+
+**design congelado; implementação pendente**
+
 Baseline V1:
 
 **congelado em 2026-09-18**

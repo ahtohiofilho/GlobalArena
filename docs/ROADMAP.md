@@ -1311,9 +1311,64 @@ Subcheckpoint atual:
 
 **M2.4.4 — Class I/II/III Scaled Refinement Validation**
 
+O audit read-only de M2.4.4 confirmou:
+
+- 340/340 testes no baseline;
+- 7 audit pairs cobrindo Class I, Class II e Class III;
+- public count scaling em todos os audit pairs;
+- canonical determinism em todos os audit pairs;
+- 12 pentágonos em coarse/fine em todos os audit pairs;
+- scale-homogeneous Class I/II construction keys;
+- scale-homogeneous Class III local lattice coordinates;
+- current cell reference mapper suporta somente um pair;
+- current border continuity mapper suporta somente um pair;
+- Class III durable global provenance continua ausente;
+- raw DSU roots continuam implementation details.
+
+Design congelado para M2.4.4:
+
+- validation-only;
+- nenhuma mudança em production;
+- novo test file: `GoldbergScaledRefinementFamilyValidationTests.cs`;
+- 14 Facts;
+- representative pairs Class I/II/III;
+- scale 2 e scale 3;
+- Class I normal e inverted axis;
+- Class III ambas as chiralities;
+- somente public invariants;
+- sem reflection no test suite;
+- sem generalização prematura de provenance;
+- current reference/continuity scope explicitamente preservado.
+
+Baseline:
+
+`340`.
+
+Expected after implementation:
+
+`354`.
+
+M2.4.4 não promove GPP.
+
+GPP permanece:
+
+**109.50 / 1000**
+
+Global Progress permanece:
+
+**11.0%**
+
+Topologia planetária / Goldberg permanece:
+
+**39.50 / 90 GPP — 43.9%**
+
+`Strategic ↔ tactical hierarchy/refinement mapping` permanece:
+
+**Inexistente — 0.00**
+
 Próximo gate:
 
-**READ_ONLY_AUDIT**
+**M2.4.4 DESIGN AUDIT**
 
 ---
 
