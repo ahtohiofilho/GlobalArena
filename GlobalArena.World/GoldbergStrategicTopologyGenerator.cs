@@ -50,6 +50,43 @@ public static class GoldbergStrategicTopologyGenerator
             return GenerateFromTriangularSeed(
                 parameters,
                 IcosahedronFaces,
+                frequency)
+                .Topology;
+        }
+
+        if (parameters.M == parameters.N)
+        {
+            return GenerateFromTriangularSeed(
+                parameters,
+                ClassIISeedFaces,
+                parameters.M)
+                .Topology;
+        }
+
+        return ClassIIIGoldbergStrategicTopologyGenerator.Generate(
+            parameters);
+    }
+
+    internal static TriangularSeedGenerationResult GenerateWithSeedVertexProvenance(
+        GoldbergParameters parameters)
+    {
+        if (!parameters.IsValid)
+        {
+            throw new ArgumentException(
+                "Goldberg parameters must be valid.",
+                nameof(parameters));
+        }
+
+        if (parameters.M == 0 || parameters.N == 0)
+        {
+            var frequency =
+                Math.Max(
+                    parameters.M,
+                    parameters.N);
+
+            return GenerateFromTriangularSeed(
+                parameters,
+                IcosahedronFaces,
                 frequency);
         }
 
@@ -61,11 +98,11 @@ public static class GoldbergStrategicTopologyGenerator
                 parameters.M);
         }
 
-        return ClassIIIGoldbergStrategicTopologyGenerator.Generate(
-            parameters);
+        throw new NotSupportedException(
+            "Canonical seed-vertex provenance is not exposed for Class III generation.");
     }
 
-    private static StrategicTopology GenerateFromTriangularSeed(
+    private static TriangularSeedGenerationResult GenerateFromTriangularSeed(
         GoldbergParameters parameters,
         IReadOnlyList<CanonicalTriangle> seedFaces,
         int frequency)
@@ -353,11 +390,44 @@ public static class GoldbergStrategicTopologyGenerator
                 "Triangular seed subdivision produced unexpected pentagon or hexagon counts.");
         }
 
-        return new StrategicTopology(
-            parameters,
-            cells,
-            edges,
-            vertices);
+        var topology =
+            new StrategicTopology(
+                parameters,
+                cells,
+                edges,
+                vertices);
+
+        var seedVertexCellIds =
+            new Dictionary<int, StrategicCellId>(
+                12);
+
+        for (var index = 0;
+             index < orderedVertexKeys.Length;
+             index++)
+        {
+            if (!orderedVertexKeys[index]
+                .TryGetCanonicalIcosahedronSeedVertex(
+                    frequency,
+                    out var seedVertexId))
+            {
+                continue;
+            }
+
+            seedVertexCellIds.Add(
+                seedVertexId,
+                new StrategicCellId(
+                    (ulong)index + 1UL));
+        }
+
+        if (seedVertexCellIds.Count != 12)
+        {
+            throw new InvalidOperationException(
+                "Triangular seed generation must expose exactly 12 canonical icosahedron seed vertices.");
+        }
+
+        return new TriangularSeedGenerationResult(
+            topology,
+            seedVertexCellIds);
     }
 
     private static CanonicalTriangle[] CreateClassIISeedFaces()
@@ -536,6 +606,49 @@ public static class GoldbergStrategicTopologyGenerator
         }
     }
 
+    internal sealed class TriangularSeedGenerationResult
+    {
+        public StrategicTopology Topology { get; }
+
+        public IReadOnlyDictionary<int, StrategicCellId> SeedVertexCellIds { get; }
+
+        public TriangularSeedGenerationResult(
+            StrategicTopology topology,
+            IReadOnlyDictionary<int, StrategicCellId> seedVertexCellIds)
+        {
+            ArgumentNullException.ThrowIfNull(topology);
+            ArgumentNullException.ThrowIfNull(seedVertexCellIds);
+
+            if (seedVertexCellIds.Count != 12)
+            {
+                throw new ArgumentException(
+                    "Triangular seed provenance must contain exactly 12 canonical seed vertices.",
+                    nameof(seedVertexCellIds));
+            }
+
+            if (
+                seedVertexCellIds.Keys.Any(
+                    seedVertex =>
+                        seedVertex is < 1 or > 12)
+                || seedVertexCellIds.Values.Any(
+                    cellId =>
+                        !cellId.IsValid))
+            {
+                throw new ArgumentException(
+                    "Triangular seed provenance contains invalid identity values.",
+                    nameof(seedVertexCellIds));
+            }
+
+            Topology =
+                topology;
+
+            SeedVertexCellIds =
+                new System.Collections.ObjectModel.ReadOnlyDictionary<int, StrategicCellId>(
+                    new Dictionary<int, StrategicCellId>(
+                        seedVertexCellIds));
+        }
+    }
+
     private readonly record struct SubdivisionLatticeVertexKey(
         int FirstVertex,
         int FirstWeight,
@@ -577,6 +690,30 @@ public static class GoldbergStrategicTopologyGenerator
                 weightedVertices.ElementAtOrDefault(1).Weight,
                 weightedVertices.ElementAtOrDefault(2).Vertex,
                 weightedVertices.ElementAtOrDefault(2).Weight);
+        }
+
+        public bool TryGetCanonicalIcosahedronSeedVertex(
+            int frequency,
+            out int seedVertexId)
+        {
+            if (
+                FirstVertex is >= 1 and <= 12
+                && FirstWeight == frequency
+                && SecondVertex == 0
+                && SecondWeight == 0
+                && ThirdVertex == 0
+                && ThirdWeight == 0)
+            {
+                seedVertexId =
+                    FirstVertex;
+
+                return true;
+            }
+
+            seedVertexId =
+                0;
+
+            return false;
         }
 
         public int CompareTo(
