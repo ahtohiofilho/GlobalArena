@@ -648,14 +648,40 @@ Subcheckpoint atual:
 
 **M2.2.4 — Tactical Region Validation & M2.2 Close**
 
-Objetivos iniciais:
+O audit read-only confirmou que os contratos centrais de M2.2 já possuem boa cobertura e que não há justificativa para novo production type nesta tranche.
 
-- auditar a cobertura acumulada de invariantes táticos locais e da materialização estratégica → tática;
-- ampliar validações somente onde houver lacunas reais;
-- validar edge cases representativos e determinismo do stage M2.2 como conjunto;
-- executar gate cross-platform final de M2.2;
-- decidir se `Tactical region topology` pode ser promovida para `Validada — fator 0.85`;
-- fechar formalmente M2.2 sem antecipar shared border bands de M2.3.
+Lacunas reais identificadas:
+
+- snapshot/read-only semantics de `TacticalCell.AdjacentCellIds` não possuem prova direta;
+- snapshot/read-only semantics de `TacticalRegion.Cells` não possuem prova direta;
+- o materializador foi validado apenas com representantes mínimos `G(1,0)`, `G(1,1)` e `G(2,1)`;
+- não existe prova stage-level em mirrored Class I, Class II maior, Class III de quiralidade oposta e Class III maior;
+- não existe ainda smoke de escala tática acumulada sobre `G(3,2)`;
+- não existe assinatura canônica acumulada repetida de uma materialização maior.
+
+Design congelado para esta tranche:
+
+- nenhuma alteração de production code prevista;
+- adicionar somente `GlobalArena.Tests/TacticalRegionStageValidationTests.cs`;
+- validar snapshot + read-only de `TacticalCell.AdjacentCellIds`;
+- validar snapshot + read-only de `TacticalRegion.Cells`;
+- validar `G(0,2)` → 42 regiões;
+- validar `G(2,2)` → 122 regiões;
+- validar `G(1,2)` → 72 regiões;
+- validar `G(3,1)` → 132 regiões;
+- validar `G(3,2)` → 192 regiões;
+- em `G(3,2)`, validar 576 `TacticalCellId` globalmente únicos no reference graph atual;
+- em `G(3,2)`, validar que toda adjacência permanece no mesmo parent;
+- repetir a materialização de `G(3,2)` e comparar assinatura canônica completa;
+- não usar threshold de wall-clock;
+- manter benchmark quantitativo para o gate específico de escalabilidade;
+- preservar shared border bands e cross-region adjacency para M2.3.
+
+Com os nove novos casos de teste previstos, a suíte deverá passar de 232 para 241 testes.
+
+Próximo gate:
+
+implementar somente a validação adicional, sem commit/push, e auditar a evidência antes de congelar a implementação.
 
 ---
 

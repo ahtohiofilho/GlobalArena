@@ -6974,3 +6974,130 @@ Objetivos:
 - executar regressão cross-platform final;
 - decidir promoção de `Tactical region topology` para `Validada — fator 0.85`;
 - encerrar M2.2 sem antecipar M2.3.
+
+---
+
+## 2026-09-20 — M2.2.4 Tactical Region Validation audit e design
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.2 — Tactical Region Topology**
+
+Subcheckpoint:
+
+**M2.2.4 — Tactical Region Validation & M2.2 Close**
+
+### Audit read-only
+
+Baseline auditado:
+
+`8ed9ae2017e8618300521a485689ca545f98bc7e`
+
+Resultado:
+
+**PASS_READY_FOR_DESIGN**
+
+Evidência:
+
+- branch `main`;
+- HEAD = origin/main;
+- worktree limpo;
+- build Release com 0 warnings e 0 errors;
+- suíte completa: 232/232, 0 falhas, 0 skipped;
+- 37 métodos de teste tático inventariados nos três arquivos acumulados de M2.2;
+- nenhum commit;
+- nenhum push;
+- nenhuma mutação do repositório;
+- 18 fontes/documentos relevantes incluídos no snapshot;
+- 18 hashes SHA-256 recomputados sem divergência.
+
+### Conclusão do audit
+
+Os contratos centrais de M2.2 já estão implementados e cobertos.
+
+As lacunas restantes são de validação:
+
+- snapshot/read-only semantics diretas em `TacticalCell` e `TacticalRegion`;
+- variantes Goldberg além dos representantes mínimos já usados pelo materializador;
+- unicidade global de `TacticalCellId` em materialização maior;
+- assinatura stage-level determinística em caso maior;
+- smoke de escala sem threshold temporal frágil.
+
+Não foi identificada necessidade de novo production type.
+
+### Design congelado
+
+M2.2.4 será validation-only.
+
+Arquivo novo previsto:
+
+`GlobalArena.Tests/TacticalRegionStageValidationTests.cs`
+
+Nenhum arquivo de production code deverá mudar se os testes passarem sobre o comportamento atual.
+
+### Matriz adicional
+
+Serão adicionados nove casos executados:
+
+1. snapshot/read-only de `TacticalCell.AdjacentCellIds`;
+2. snapshot/read-only de `TacticalRegion.Cells`;
+3. `G(0,2)` → 42 regiões;
+4. `G(2,2)` → 122 regiões;
+5. `G(1,2)` → 72 regiões;
+6. `G(3,1)` → 132 regiões;
+7. `G(3,2)` → 192 regiões;
+8. `G(3,2)` com 576 `TacticalCellId` únicos e adjacency parent-local;
+9. duas materializações de `G(3,2)` com assinatura canônica completa idêntica.
+
+Baseline:
+
+**232 testes**
+
+Esperado após implementação:
+
+**241 testes**
+
+### Performance boundary
+
+Não será introduzido threshold de wall-clock.
+
+`G(3,2)` será usado como smoke determinístico de escala.
+
+Benchmark quantitativo continua reservado ao gate específico de escalabilidade, especialmente M2.5.
+
+### Limites preservados
+
+Continuam fora de M2.2.4:
+
+- shared border bands;
+- ownership multi-região;
+- adjacency cross-region;
+- mapping tático por `StrategicEdge`;
+- geometria tática final;
+- refinamento hierárquico Goldberg.
+
+### GPP
+
+Nenhuma promoção é contabilizada no design.
+
+GPP permanece:
+
+**93.80 / 1000**
+
+Global Progress permanece:
+
+**9.4%**
+
+Se a implementação, auditoria e regressão cross-platform passarem, o fechamento formal poderá avaliar:
+
+`Tactical region topology`
+
+**Integrada ao sistema — 0.70 → Validada — 0.85**
+
+Incremento potencial:
+
+**+2.10 GPP**

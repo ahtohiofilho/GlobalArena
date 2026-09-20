@@ -239,7 +239,7 @@ Mitigação:
 
 Próxima ação:
 
-executar M2.2.4 como gate de validação acumulada da topologia tática e da materialização estratégico → tático, cobrindo edge cases e determinismo do stage antes de seu fechamento; manter shared border bands, pertencimento multi-região e conectividade cross-region reservados para M2.3.
+executar a tranche validation-only de M2.2.4 com provas adicionais de snapshot/read-only semantics, variantes Goldberg representativas, unicidade global de identidade tática e assinatura determinística acumulada em `G(3,2)`; após regressão cross-platform, decidir o fechamento de M2.2 e a promoção de `Tactical region topology` para `Validada — fator 0.85`, mantendo shared border bands e continuidade cross-region para M2.3.
 
 ---
 

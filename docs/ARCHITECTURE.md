@@ -2871,6 +2871,60 @@ A materialização continua sem congelar:
 - ownership cross-region;
 - adjacência tática cross-region.
 
+## 12.4 Gate de validação acumulada de M2.2
+
+M2.2.4 valida a topologia tática como stage integrado antes de avançar para contratos cross-region.
+
+O audit acumulado confirmou cobertura direta já existente para:
+
+- identidade `TacticalCellId`;
+- rejeição de estado default inválido;
+- ownership por parent estratégico;
+- rejeição de self-loop, duplicatas, dangling adjacency e adjacência cross-region;
+- reciprocidade e conectividade local;
+- ordenação canônica de células e adjacências;
+- geração local determinística;
+- materialização um-para-um `StrategicCell -> TacticalRegion`;
+- coleção materializada somente leitura;
+- materialização representativa em Class I, Class II e Class III;
+- regressão cross-platform.
+
+M2.2.4 será deliberadamente validation-only.
+
+Nenhum production type novo será criado nesta tranche, salvo se a validação revelar um defeito real que exija correção antes do fechamento.
+
+O conjunto adicional de validação deverá provar:
+
+- snapshot e read-only semantics de `TacticalCell.AdjacentCellIds`;
+- snapshot e read-only semantics de `TacticalRegion.Cells`;
+- materialização adicional de `G(0,2)`, `G(2,2)`, `G(1,2)`, `G(3,1)` e `G(3,2)`;
+- cardinalidade de `G(3,2)` com 192 regiões e 576 células táticas no reference graph atual;
+- unicidade global de `TacticalCellId` no conjunto materializado;
+- preservação de parent-local adjacency em escala maior;
+- assinatura canônica idêntica em materializações repetidas de `G(3,2)`.
+
+`G(3,2)` funciona como smoke determinístico de escala para este stage.
+
+M2.2.4 não introduzirá threshold de wall-clock.
+
+Benchmark e baseline de performance quantitativa permanecem pertencentes às capabilities e gates específicos de escalabilidade, especialmente M2.5.
+
+A validação adicional deverá ser implementada em um arquivo de testes dedicado:
+
+`GlobalArena.Tests/TacticalRegionStageValidationTests.cs`
+
+Se todos os gates locais e cross-platform passarem, M2.2 poderá ser encerrado e `Tactical region topology` poderá ser avaliada para promoção de `Integrada ao sistema — fator 0.70` para `Validada — fator 0.85`.
+
+Esse fechamento não constitui prova de:
+
+- shared border bands;
+- continuidade tática entre regiões;
+- ownership multi-região;
+- refinamento hierárquico Goldberg;
+- geometria tática final.
+
+Esses itens permanecem para M2.3 e etapas seguintes.
+
 ---
 
 # 13. Conectividade entre regiões
