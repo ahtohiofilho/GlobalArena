@@ -6660,3 +6660,128 @@ Objetivos:
 - preservar correspondência um-para-um;
 - provar canonicalização e determinismo do conjunto de regiões;
 - manter shared border bands e conectividade cross-region fora do escopo até M2.3.
+
+---
+
+## 2026-09-20 — M2.2.3 Strategic-to-Tactical Region Materialization audit e design
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.2 — Tactical Region Topology**
+
+Subcheckpoint:
+
+**M2.2.3 — Strategic-to-Tactical Region Materialization**
+
+### Audit read-only
+
+Baseline auditado:
+
+`d0048fcc0a52ce6fb6455455351b3921dfa2d811`
+
+Resultado:
+
+**PASS_READY_FOR_DESIGN**
+
+Evidência:
+
+- branch `main`;
+- HEAD = origin/main;
+- worktree limpo;
+- build Release com 0 warnings e 0 errors;
+- suíte completa: 221/221, 0 falhas, 0 skipped;
+- nenhum commit;
+- nenhum push;
+- nenhuma mutação do repositório;
+- 17 fontes/documentos relevantes incluídos no snapshot com hashes SHA-256.
+
+### Conclusão do audit
+
+`StrategicTopology` já fornece o aggregate autoritativo necessário para a entrada de M2.2.3.
+
+Sua coleção `Cells` possui:
+
+- cardinalidade validada contra `GoldbergParameters`;
+- IDs contíguos one-based;
+- ordem canônica estável.
+
+`TacticalRegion` já carrega diretamente o `StrategicCellId` pai, e `MinimalTacticalRegionGraphGenerator` já materializa um grafo local válido para qualquer parent estratégico válido.
+
+Não existe hoje:
+
+- materializador estratégico → tático;
+- aggregate tático cross-region;
+- contrato de shared border band;
+- adjacência tática cross-region.
+
+### Design congelado
+
+Será introduzido:
+
+`StrategicTacticalRegionMaterializer`
+
+Operação:
+
+`Materialize(StrategicTopology) -> IReadOnlyList<TacticalRegion>`
+
+Regras:
+
+- input nulo é rejeitado;
+- uma região por `StrategicCell`;
+- ordem das regiões preserva `StrategicTopology.Cells`;
+- cada região usa o `StrategicCellId` correspondente como parent;
+- cada região é construída via `MinimalTacticalRegionGraphGenerator`;
+- nenhum parent é omitido ou duplicado;
+- resultado é snapshot somente leitura;
+- gerações repetidas devem produzir a mesma assinatura canônica.
+
+### Decisão sobre aggregate tático
+
+Nenhum novo aggregate/container será criado em M2.2.3.
+
+A coleção somente leitura é suficiente para o objetivo desta tranche.
+
+Um container cross-region poderá ser definido em M2.3 quando shared border bands e incidência entre regiões fornecerem invariantes concretos para justificar sua existência.
+
+### Cobertura de famílias Goldberg
+
+O materializador opera sobre `StrategicTopology`, não sobre classes Goldberg específicas.
+
+A implementação deverá ser compatível com qualquer topologia estratégica válida já suportada.
+
+Os testes usarão casos representativos de:
+
+- Class I;
+- Class II;
+- Class III.
+
+### Limites preservados
+
+Continuam fora de M2.2.3:
+
+- shared border bands;
+- ownership multi-região;
+- adjacência tática cross-region;
+- mapping tático por `StrategicEdge`;
+- geometria final;
+- coordenadas;
+- mesh;
+- resolução final de refinamento.
+
+### GPP
+
+Nenhuma promoção adicional de maturidade é contabilizada no design.
+
+GPP permanece:
+
+**91.00 / 1000**
+
+Global Progress permanece:
+
+**9.1%**
+
+A próxima promoção depende da implementação, integração e gates posteriores.

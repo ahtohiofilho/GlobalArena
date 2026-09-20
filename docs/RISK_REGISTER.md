@@ -235,7 +235,7 @@ Mitigação:
 
 Próxima ação:
 
-materializar em M2.2.3 uma `TacticalRegion` determinística para cada `StrategicCell` suportada, provando correspondência um-para-um e assinatura canônica do conjunto de regiões; manter shared border bands, pertencimento multi-região e conectividade cross-region fora do escopo até M2.3.
+implementar em M2.2.3 `StrategicTacticalRegionMaterializer`, consumindo `StrategicTopology` e produzindo uma coleção somente leitura com exatamente uma `TacticalRegion` por `StrategicCell`, em ordem canônica e com assinatura determinística; manter aggregate cross-region, shared border bands, pertencimento multi-região e conectividade cross-region fora do escopo até M2.3.
 
 ---
 

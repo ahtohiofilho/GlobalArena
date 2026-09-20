@@ -603,13 +603,35 @@ Subcheckpoint atual:
 
 **M2.2.3 — Strategic-to-Tactical Region Materialization**
 
-Objetivos iniciais:
+O audit read-only de M2.2.3 confirmou que:
 
-- materializar uma `TacticalRegion` para cada `StrategicCell` suportada pelo contrato da etapa;
-- preservar correspondência um-para-um entre região tática e parent estratégico;
-- reutilizar o gerador local canônico sem introduzir identidade redundante;
-- provar ordenação e assinatura determinísticas do conjunto de regiões;
-- manter shared border bands e adjacência cross-region fora do escopo até M2.3.
+- `StrategicTopology` já é o aggregate autoritativo da topologia estratégica;
+- `StrategicTopology.Cells` possui ordem canônica e IDs contíguos one-based validados;
+- `TacticalRegion` já carrega diretamente o `StrategicCellId` pai;
+- não existe materializador estratégico → tático;
+- não existe aggregate tático cross-region;
+- shared border bands e conectividade cross-region continuam reservadas a M2.3.
+
+Design congelado para esta tranche:
+
+- introduzir `StrategicTacticalRegionMaterializer`;
+- entrada: `StrategicTopology`;
+- saída: `IReadOnlyList<TacticalRegion>`;
+- rejeitar input nulo;
+- materializar exatamente uma região por `StrategicCell`;
+- usar `MinimalTacticalRegionGraphGenerator` para cada parent;
+- preservar a ordem de `StrategicTopology.Cells`;
+- garantir correspondência um-para-um sem omissions ou parents duplicados;
+- devolver snapshot somente leitura;
+- provar determinismo da assinatura completa do conjunto;
+- validar casos representativos de Class I, Class II e Class III;
+- não introduzir aggregate/container adicional antes de existir semântica cross-region que o justifique;
+- não usar `StrategicEdge` ou `StrategicVertex` para criar adjacência tática cross-region nesta tranche;
+- manter shared border bands, ownership multi-região e geometria final fora do escopo até M2.3.
+
+Próximo gate:
+
+implementar e validar o materializador sem commit/push antes da auditoria.
 
 ---
 

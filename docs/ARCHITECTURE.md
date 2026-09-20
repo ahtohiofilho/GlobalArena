@@ -2827,6 +2827,50 @@ Também não afirma que a topologia física final seja uma cadeia.
 
 A geometria hexagonal/pentagonal de alta resolução, refinamento de superfície, border bands e conectividade cross-region permanecem decisões posteriores.
 
+## 12.3 Materialização estratégica → tática
+
+M2.2.3 estabelece a primeira materialização do conjunto de regiões táticas a partir de uma topologia estratégica já válida.
+
+A entrada autoritativa será um `StrategicTopology`.
+
+Essa escolha preserva a topologia estratégica já canonicalizada como fonte da verdade para a cardinalidade e a identidade das regiões a materializar.
+
+A operação conceitual será:
+
+`StrategicTacticalRegionMaterializer.Materialize(StrategicTopology) -> IReadOnlyList<TacticalRegion>`
+
+O materializador deverá:
+
+- rejeitar `StrategicTopology` nulo;
+- percorrer `StrategicTopology.Cells` na ordem canônica já validada;
+- criar exatamente uma `TacticalRegion` para cada `StrategicCell`;
+- usar `MinimalTacticalRegionGraphGenerator.Generate(cell.Id)` para cada região nesta tranche;
+- preservar `TacticalRegion.StrategicCellId == StrategicCell.Id`;
+- preservar a mesma ordem canônica da coleção estratégica;
+- impedir omissões ou duplicação de parents no resultado;
+- devolver snapshot somente leitura;
+- produzir a mesma assinatura canônica em materializações repetidas da mesma topologia.
+
+M2.2.3 não introduz um aggregate/container tático adicional.
+
+A coleção somente leitura é suficiente para provar a correspondência um-para-um neste checkpoint.
+
+Um aggregate mais rico poderá ser introduzido em M2.3 caso shared border bands, incidência multi-região ou outras relações cross-region exijam ownership e invariantes próprios.
+
+O materializador não utilizará `StrategicEdge` ou `StrategicVertex` para criar adjacência tática cross-region em M2.2.3.
+
+O contrato é genérico para qualquer `StrategicTopology` válido já produzido pelo gerador suportado, incluindo as famílias Class I, Class II e Class III. Casos representativos deverão ser usados nos testes sem transformar esses exemplos em restrição adicional do contrato.
+
+A materialização continua sem congelar:
+
+- geometria tática final;
+- resolução de refinamento;
+- coordenadas;
+- mesh;
+- shared border bands;
+- ownership cross-region;
+- adjacência tática cross-region.
+
 ---
 
 # 13. Conectividade entre regiões
