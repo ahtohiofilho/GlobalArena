@@ -1037,13 +1037,87 @@ M2.3 continua aberto.
 
 A identidade, materialização por edge e incidence cross-region derivada estão agora integradas. Ainda faltam validação acumulada do stage e fechamento de M2.3.
 
-Próximo subcheckpoint:
+Subcheckpoint atual:
 
 **M2.3.5 — Shared Border Validation & M2.3 Close**
 
+O audit read-only confirmou:
+
+- M2.3.4 está formalmente fechado;
+- baseline local permanece em 291/291 testes;
+- não existe arquivo de validação acumulada específico para M2.3;
+- os contratos públicos existentes são suficientes para executar o gate sem alterar production code;
+- `StrategicCell.IncidentEdgeIds` já permite validar continuidade lógica cell↔edge↔incidence;
+- `StrategicEdge.IncidentCellIds` já mantém exatamente dois parents canônicos;
+- o aggregate já expõe regions, bands e incidences como snapshots somente leitura;
+- malformed input, canonicalização e snapshot mutation já possuem testes diretos em M2.3.4;
+- não existe production mapping físico de `TacticalCell` para border element;
+- não existe adjacency tática cross-region;
+- o único match do guard físico continua sendo o teste que confirma rejeição de adjacency cross-region.
+
+Design congelado para M2.3.5:
+
+- validation-only;
+- nenhum production file alterado;
+- criar somente `GlobalArena.Tests/SharedBorderStageValidationTests.cs`;
+- validar continuidade lógica de cada `StrategicCell` contra `IncidentEdgeIds`;
+- validar grau derivado 5 para pentágonos e 6 para hexágonos;
+- validar handshake global: soma de graus regionais = `2 * Edges.Count`;
+- validar que cada incidence é observada por exatamente suas duas regions;
+- validar unicidade global de `SharedBorderElementId` no aggregate;
+- validar edge-locality de todos os border elements;
+- validar presença do reference element ordinal `1` em cada band sem congelar quantidade física final;
+- validar adjacency tática estritamente parent-local em todas as regions do aggregate;
+- validar determinismo de duas pipelines independentes desde `GoldbergParameters`;
+- adicionar cobertura `G(0,2)`, `G(1,2)`, `G(2,1)` e `G(3,1)`;
+- não duplicar malformed-input tests já existentes;
+- não duplicar snapshot-mutation tests já existentes;
+- não introduzir mapping físico, geometry, mesh, pathfinding ou adjacency tática cross-region;
+- não alegar refinamento Goldberg universal.
+
+Matriz prevista:
+
+- 6 Facts;
+- 4 casos de uma Theory;
+- 10 casos executados adicionais;
+- baseline: 291;
+- esperado após validation-only implementation: 301.
+
+M2.3.5 design não promove GPP.
+
+Se 301/301 testes passarem, a auditoria aprovar o arquivo validation-only e a regressão cross-platform passar em Ubuntu, Windows e macOS, o fechamento formal poderá avaliar:
+
+`Shared subtile border bands`
+
+**Integrada ao sistema — 0.70 → Validada — 0.85**
+
+Incremento potencial:
+
+**+2.40 GPP**
+
+GPP potencial após fechamento:
+
+**109.50 / 1000**
+
+Global Progress potencial:
+
+**11.0%**
+
+Topologia planetária / Goldberg potencial:
+
+**39.50 / 90 GPP — 43.9%**
+
+`Strategic ↔ tactical hierarchy/refinement mapping` permanece em `0.00`.
+
+O fechamento de M2.3 não encerra M2.
+
+Próximo stage após o fechamento de M2.3:
+
+**M2.4 — Goldberg Family & Refinement Validation**
+
 Próximo gate:
 
-executar audit read-only de validação acumulada de shared border, determinismo, cobertura representativa, invariantes cross-region e limites ainda abertos antes do fechamento de M2.3.
+auditar este design, congelá-lo em commit documental e então adicionar somente o arquivo validation-only, sem commit/push durante QA.
 
 ---
 

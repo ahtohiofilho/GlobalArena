@@ -268,7 +268,7 @@ Mitigação:
 
 Próxima ação:
 
-executar M2.3.5 como gate de validação acumulada e fechamento do stage, cobrindo determinismo, snapshot/read-only semantics, malformed-input regression e representantes Goldberg adicionais sem antecipar mapping físico de `TacticalCell`, adjacency tática cross-region, geometria ou refinamento Goldberg universal; somente depois reavaliar o próximo trecho da hierarquia estratégico/tático.
+executar M2.3.5 como validation-only gate, usando `StrategicCell.IncidentEdgeIds`, `StrategicEdge.IncidentCellIds` e o aggregate cross-region para provar continuidade lógica, graus pentagonais/hexagonais, handshake global, unicidade/edge-locality de border elements, adjacency tática parent-local e determinismo de pipelines independentes; adicionar representantes `G(0,2)`, `G(1,2)`, `G(2,1)` e `G(3,1)` sem alterar production code. Após o fechamento de M2.3, avançar para M2.4 — Goldberg Family & Refinement Validation, mantendo physical mapping e universal refinement como risco aberto.
 
 ---
 

@@ -3227,7 +3227,71 @@ O gate local atingiu 291/291 testes, e a regressão cross-platform passou em Ubu
 
 Nenhum `SharedBorderIncidenceId`, mapping físico, geometry, mesh ou adjacency tática cross-region foi introduzido.
 
-Esses limites permanecem para M2.3.5 e gates posteriores.
+M2.3.5 será um gate de validação acumulada sem alteração de production code.
+
+A validação será feita em um único arquivo:
+
+`GlobalArena.Tests/SharedBorderStageValidationTests.cs`
+
+Objetivo:
+
+provar os invariantes integrados de M2.3 através dos contratos públicos já existentes, sem introduzir nova semântica antes do fechamento do stage.
+
+O gate validará:
+
+- para cada `StrategicCell`, o conjunto de `SharedBorderIncidence.StrategicEdge.Id` observado através das regiões incidentes coincide exatamente com `StrategicCell.IncidentEdgeIds`;
+- regiões de células pentagonais participam de exatamente cinco incidences;
+- regiões de células hexagonais participam de exatamente seis incidences;
+- a soma dos graus regionais derivados é exatamente `2 * StrategicTopology.Edges.Count`;
+- cada `SharedBorderIncidence` é observada por exatamente duas regiões e por nenhuma terceira;
+- todos os `SharedBorderElementId` continuam globalmente únicos no aggregate;
+- cada border element continua pertencendo ao `StrategicEdgeId` do próprio band;
+- cada band contém o elemento lógico de referência com `LocalOrdinal == 1`, sem congelar a cardinalidade física final;
+- toda adjacency de `TacticalCell` continua estritamente local ao mesmo `StrategicCellId`;
+- duas pipelines independentes criadas a partir dos mesmos `GoldbergParameters` produzem a mesma assinatura canônica completa.
+
+A cobertura Goldberg adicional de stage será:
+
+- Class I invertida `G(0,2)` → 42 regions / 120 bands / 120 incidences;
+- Class III `G(1,2)` → 72 regions / 210 bands / 210 incidences;
+- Class III chiral correspondente `G(2,1)` → 72 regions / 210 bands / 210 incidences;
+- Class III `G(3,1)` → 132 regions / 390 bands / 390 incidences.
+
+M2.3.5 não repetirá testes de malformed input e snapshot mutation já provados diretamente em M2.3.4.
+
+Matriz adicional:
+
+- 6 Facts;
+- 4 execuções de uma Theory;
+- 10 casos executados adicionais;
+- baseline: 291;
+- esperado: 301.
+
+Nenhum production file será alterado.
+
+Se o gate local, a auditoria da implementação de testes e a regressão cross-platform passarem, o fechamento formal de M2.3 poderá promover:
+
+`Shared subtile border bands`
+
+de:
+
+`Integrada ao sistema — fator 0.70`
+
+para:
+
+`Validada — fator 0.85`.
+
+A promoção potencial é de `+2.40 GPP`.
+
+`Strategic ↔ tactical hierarchy/refinement mapping` permanecerá em `0.00`, porque physical `TacticalCell`-to-border mapping e refinement continuam sem prova.
+
+O fechamento de M2.3 não encerra M2.
+
+O próximo stage após M2.3 é:
+
+`M2.4 — Goldberg Family & Refinement Validation`
+
+Esses limites permanecem para M2.4 e gates posteriores.
 
 O estado estratégico de uma conexão poderá futuramente ser derivado do estado tático correspondente.
 

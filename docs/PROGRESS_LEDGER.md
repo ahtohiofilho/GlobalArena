@@ -8248,3 +8248,135 @@ Baseline V1 permanece:
 Próximo gate:
 
 **READ_ONLY_AUDIT**
+
+---
+
+## 2026-09-20 — M2.3.5 Shared Border Validation & M2.3 Close audit e design
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.3 — Shared Border Bands & Strategic/Tactical Mapping**
+
+Subcheckpoint:
+
+**M2.3.5 — Shared Border Validation & M2.3 Close**
+
+### Audit read-only
+
+Baseline auditado:
+
+`3cad4c28b9a1a4c0902242d9e939e1dc8b690fc1`
+
+Resultado:
+
+**PASS_READY_FOR_VALIDATION_DESIGN**
+
+Evidência:
+
+- branch `main`;
+- HEAD = origin/main;
+- worktree limpo;
+- build Release com 0 warnings e 0 errors;
+- suíte completa: 291/291, 0 falhas, 0 skipped;
+- nenhum commit;
+- nenhum push;
+- nenhuma mutação do repositório;
+- 42 fontes/documentos relevantes no snapshot;
+- 42 hashes SHA-256 recomputados sem divergência;
+- nenhum production stage-validation type adicional necessário;
+- nenhum production physical border mapping encontrado;
+- o único match do guard físico foi o teste que confirma rejeição de cross-region tactical adjacency.
+
+### Conclusão
+
+M2.3.5 pode ser validation-only.
+
+Os contratos públicos atuais permitem provar os invariantes acumulados sem adicionar estado ou comportamento de produção.
+
+### Design congelado
+
+Novo arquivo único:
+
+`GlobalArena.Tests/SharedBorderStageValidationTests.cs`
+
+Nenhum production file será alterado.
+
+O gate validará:
+
+- exact cell-to-incidence edge sets contra `StrategicCell.IncidentEdgeIds`;
+- degree 5 para parents pentagonais;
+- degree 6 para parents hexagonais;
+- handshake global de incidência;
+- exatamente duas region observations por incidence;
+- unicidade global de `SharedBorderElementId`;
+- edge-locality dos border elements;
+- presença do reference element ordinal `1` sem congelar cardinalidade física;
+- adjacency tática estritamente parent-local;
+- determinismo de duas pipelines independentes completas.
+
+### Cobertura Goldberg adicional
+
+- `G(0,2)` → 42 / 120 / 120;
+- `G(1,2)` → 72 / 210 / 210;
+- `G(2,1)` → 72 / 210 / 210;
+- `G(3,1)` → 132 / 390 / 390.
+
+### Validation matrix
+
+- 6 Facts;
+- 4 execuções de uma Theory;
+- 10 novos casos executados;
+- baseline: 291;
+- esperado: 301.
+
+### Non-duplication
+
+Não serão repetidos os testes diretos já existentes para malformed aggregate input, canonicalização básica ou source-list mutation/read-only snapshot.
+
+### GPP
+
+M2.3.5 audit/design não promove maturidade.
+
+GPP permanece:
+
+**107.10 / 1000**
+
+Global Progress permanece:
+
+**10.7%**
+
+Promoção potencial após implementação, audit e CI:
+
+`Shared subtile border bands`
+
+**Integrada ao sistema — 0.70 → Validada — 0.85**
+
+Incremento potencial:
+
+**+2.40 GPP**
+
+Potencial após fechamento:
+
+- `109.50 / 1000`;
+- `11.0%`;
+- Planet Topology `39.50 / 90 — 43.9%`.
+
+`Strategic ↔ tactical hierarchy/refinement mapping` permanece em `0.00`.
+
+### Stage boundary
+
+M2.3 poderá ser encerrado após este gate.
+
+M2 continuará aberto.
+
+Próximo stage planejado:
+
+**M2.4 — Goldberg Family & Refinement Validation**
+
+Próximo gate:
+
+**VALIDATION_DESIGN_AUDIT**
