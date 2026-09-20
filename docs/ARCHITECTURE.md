@@ -3120,7 +3120,87 @@ O fechamento local atingiu 271/271 testes, e a regressão cross-platform passou 
 
 O elemento único por band continua sendo apenas um artefato lógico de referência. Ele não congela a cardinalidade física final da fronteira.
 
-O aggregate cross-region, incidência regional derivada em conjunto com `TacticalRegion`, e o mapping físico entre células locais e border elements permanecem para M2.3.4 e M2.3.5.
+M2.3.4 congela o aggregate lógico que une os contratos já materializados de estratégia, regiões táticas e shared borders.
+
+Será introduzido:
+
+`StrategicTacticalBorderAggregate`
+
+com construção conceitual:
+
+`new StrategicTacticalBorderAggregate(StrategicTopology, IEnumerable<TacticalRegion>, IEnumerable<SharedBorderBand>)`
+
+A `StrategicTopology` fornecida permanece a fonte autoritativa da estrutura estratégica.
+
+O aggregate não regenerará regiões nem border bands. Ele receberá as coleções já materializadas para poder validar explicitamente cobertura, uniqueness e consistência cross-region.
+
+O contrato exigirá cobertura exata de regiões:
+
+- exatamente uma `TacticalRegion` por `StrategicCell`;
+- nenhum parent ausente;
+- nenhum `StrategicCellId` duplicado;
+- nenhuma região cujo parent não exista na topologia fornecida;
+- exposição pública canonicalizada pela ordem de `StrategicTopology.Cells`, independentemente da ordem de entrada.
+
+O contrato exigirá cobertura exata de border bands:
+
+- exatamente um `SharedBorderBand` por `StrategicEdge`;
+- nenhum edge ausente;
+- nenhum `StrategicEdgeId` duplicado;
+- nenhum band cujo edge não exista na topologia fornecida;
+- exposição pública canonicalizada pela ordem de `StrategicTopology.Edges`, independentemente da ordem de entrada.
+
+Também será introduzido:
+
+`SharedBorderIncidence`
+
+Cada incidence representará uma relação derivada e possuirá referências para:
+
+- o `StrategicEdge` autoritativo;
+- o `SharedBorderBand` daquele edge;
+- exatamente duas `TacticalRegion` incidentes.
+
+A identidade da incidence continuará sendo o próprio `StrategicEdge.Id`; não haverá um novo ID redundante.
+
+As duas regiões serão resolvidas exclusivamente por:
+
+`StrategicEdge.IncidentCellIds`
+
+e expostas na mesma ordem canônica desses IDs.
+
+Assim, a incidence não armazenará uma cópia independente de `StrategicCellId` como segunda fonte da verdade.
+
+`StrategicTacticalBorderAggregate` exporá:
+
+- `StrategicTopology`;
+- `IReadOnlyList<TacticalRegion> TacticalRegions`;
+- `IReadOnlyList<SharedBorderBand> SharedBorderBands`;
+- `IReadOnlyList<SharedBorderIncidence> SharedBorderIncidences`.
+
+Todas as coleções serão snapshots somente leitura.
+
+M2.3.4 não introduzirá lookup APIs adicionais por ID; as coleções canônicas e a incidence derivada são suficientes para esta tranche.
+
+A construção repetida do aggregate sobre inputs semanticamente equivalentes deverá produzir assinatura canônica idêntica.
+
+Validação representativa será feita em:
+
+- Class I `G(2,0)` → 42 regiões, 120 bands e 120 incidences;
+- Class II `G(2,2)` → 122 regiões, 360 bands e 360 incidences;
+- Class III `G(3,2)` → 192 regiões, 570 bands e 570 incidences.
+
+M2.3.4 continua sem definir:
+
+- mapping físico entre `TacticalCell` region-owned e border elements;
+- adjacency direta entre `TacticalCell` de regiões diferentes;
+- quantidade física final de elementos por band;
+- geometria;
+- coordenadas;
+- mesh;
+- pathfinding cross-region final;
+- refinamento Goldberg universal.
+
+Esses limites permanecem para M2.3.5 e gates posteriores.
 
 O estado estratégico de uma conexão poderá futuramente ser derivado do estado tático correspondente.
 

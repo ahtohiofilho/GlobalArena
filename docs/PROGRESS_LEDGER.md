@@ -7918,3 +7918,158 @@ Baseline V1 permanece:
 Próximo gate:
 
 **READ_ONLY_AUDIT**
+
+---
+
+## 2026-09-20 — M2.3.4 Cross-Region Aggregate & Derived Incidence audit e design
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.3 — Shared Border Bands & Strategic/Tactical Mapping**
+
+Subcheckpoint:
+
+**M2.3.4 — Cross-Region Aggregate & Derived Incidence**
+
+### Audit read-only
+
+Baseline auditado:
+
+`341f9f8dbc594064da07b6e0c3cf43674acbab9f`
+
+Resultado:
+
+**PASS_READY_FOR_DESIGN**
+
+Evidência:
+
+- branch `main`;
+- HEAD = origin/main;
+- worktree limpo;
+- build Release com 0 warnings e 0 errors;
+- suíte completa: 271/271, 0 falhas, 0 skipped;
+- nenhum commit;
+- nenhum push;
+- nenhuma mutação do repositório;
+- 38 fontes/documentos relevantes incluídos no snapshot;
+- 38 hashes SHA-256 recomputados sem divergência;
+- nenhum production aggregate cross-region existente;
+- nenhum production mapping físico ou adjacency tática cross-region encontrado;
+- o único match do guard de adjacency foi o teste que confirma que cross-region adjacency é rejeitada.
+
+### Conclusão do audit
+
+Os contratos necessários para justificar o aggregate já existem separadamente:
+
+- `StrategicTopology` fornece cells, edges e incidence autoritativa;
+- `StrategicTacticalRegionMaterializer` produz uma região por strategic cell;
+- `StrategicEdgeSharedBorderBandMaterializer` produz um band por strategic edge;
+- `StrategicEdge.IncidentCellIds` fornece exatamente dois parents em ordem canônica.
+
+O missing contract é a validação conjunta dessas coleções.
+
+### Design congelado
+
+Será criado:
+
+`StrategicTacticalBorderAggregate`
+
+Input:
+
+- `StrategicTopology`;
+- `IEnumerable<TacticalRegion>`;
+- `IEnumerable<SharedBorderBand>`.
+
+O aggregate não rematerializa regiões ou bands.
+
+Ele valida cobertura exata, rejeita missing/duplicate/foreign entries e canonicaliza as coleções conforme a topologia autoritativa.
+
+Também será criado:
+
+`SharedBorderIncidence`
+
+Cada incidence referencia:
+
+- o `StrategicEdge` autoritativo;
+- o `SharedBorderBand` correspondente;
+- duas `TacticalRegion` resolvidas por `StrategicEdge.IncidentCellIds`.
+
+Nenhum novo incidence ID será criado.
+
+### Public surface
+
+`StrategicTacticalBorderAggregate`:
+
+- `StrategicTopology`;
+- `TacticalRegions`;
+- `SharedBorderBands`;
+- `SharedBorderIncidences`.
+
+As coleções serão snapshots somente leitura.
+
+Nenhum lookup API adicional será adicionado nesta tranche.
+
+### Validation matrix
+
+- 17 Facts;
+- 3 casos de uma Theory;
+- 20 casos executados adicionais.
+
+Baseline:
+
+**271 testes**
+
+Esperado após implementação:
+
+**291 testes**
+
+### Cobertura representativa
+
+- Class I `G(2,0)` → 42 regiões / 120 bands / 120 incidences;
+- Class II `G(2,2)` → 122 regiões / 360 bands / 360 incidences;
+- Class III `G(3,2)` → 192 regiões / 570 bands / 570 incidences.
+
+### Limites preservados
+
+Continuam fora de M2.3.4:
+
+- mapping físico de `TacticalCell` para border element;
+- adjacency tática cross-region;
+- geometria;
+- coordinates;
+- mesh;
+- cardinalidade física final da fronteira;
+- pathfinding cross-region;
+- refinamento Goldberg universal.
+
+### GPP
+
+M2.3.4 audit/design não promove maturidade.
+
+GPP permanece:
+
+**103.90 / 1000**
+
+Global Progress permanece:
+
+**10.4%**
+
+Se implementação, auditoria e regressão cross-platform passarem, o fechamento formal poderá avaliar:
+
+`Shared subtile border bands`
+
+**Implementação funcional isolada — 0.50 → Integrada ao sistema — 0.70**
+
+Incremento potencial:
+
+**+3.20 GPP**
+
+`Strategic ↔ tactical hierarchy/refinement mapping` permanece sem promoção neste gate.
+
+Próximo gate:
+
+**DESIGN_AUDIT**

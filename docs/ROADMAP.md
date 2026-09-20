@@ -910,13 +910,83 @@ M2.3 continua aberto.
 
 A identidade e a materialização 1:1 de border bands por `StrategicEdge` agora são funcionais e determinísticas. A integração cross-region conjunta com `TacticalRegion` ainda não existe.
 
-Próximo subcheckpoint:
+Subcheckpoint atual:
 
 **M2.3.4 — Cross-Region Aggregate & Derived Incidence**
 
+O audit read-only confirmou:
+
+- não existe production aggregate cross-region;
+- `StrategicTopology` permanece o aggregate estratégico autoritativo;
+- existe exatamente uma `TacticalRegion` por `StrategicCell` quando usada a materialização validada;
+- existe exatamente um `SharedBorderBand` por `StrategicEdge` quando usada a materialização validada;
+- `StrategicEdge.IncidentCellIds` já fornece exatamente duas regiões estratégicas em ordem canônica;
+- `TacticalCell` continua rejeitando adjacency cross-region direta;
+- não existe production code de geometry/mesh/bridge tático cross-region;
+- o único match do guard de adjacency foi o teste que confirma a rejeição desse comportamento;
+- nenhuma derived incidence view existe ainda.
+
+Design congelado para M2.3.4:
+
+- criar `StrategicTacticalBorderAggregate`;
+- constructor input: `StrategicTopology`, `IEnumerable<TacticalRegion>`, `IEnumerable<SharedBorderBand>`;
+- não materializar regiões ou bands internamente;
+- manter `StrategicTopology` como fonte estratégica autoritativa;
+- validar exatamente uma região por `StrategicCell`;
+- rejeitar região nula, parent duplicado, parent ausente ou parent estrangeiro;
+- canonicalizar `TacticalRegions` pela ordem de `StrategicTopology.Cells`;
+- validar exatamente um band por `StrategicEdge`;
+- rejeitar band nulo, edge duplicado, edge ausente ou edge estrangeiro;
+- canonicalizar `SharedBorderBands` pela ordem de `StrategicTopology.Edges`;
+- criar `SharedBorderIncidence`;
+- identity da incidence = `StrategicEdge.Id`, sem novo ID;
+- cada incidence referencia o `StrategicEdge` autoritativo;
+- cada incidence referencia o `SharedBorderBand` correspondente;
+- cada incidence resolve exatamente duas `TacticalRegion` por `StrategicEdge.IncidentCellIds`;
+- ordem das regiões incidentes = ordem canônica de `IncidentCellIds`;
+- não copiar incident `StrategicCellId` como segunda fonte de verdade;
+- criar exatamente uma incidence por `StrategicEdge`;
+- canonicalizar incidences pela ordem de `StrategicTopology.Edges`;
+- expor topology, regions, bands e incidences como snapshots somente leitura;
+- não criar lookup APIs adicionais nesta tranche;
+- validar determinismo de assinatura em construções repetidas;
+- preservar referências aos objetos region/band fornecidos, sem clonar domain entities;
+- não introduzir mapping físico de `TacticalCell` para border elements;
+- não introduzir adjacency tática cross-region;
+- não introduzir geometria, coordinates ou mesh.
+
+Production files previstos:
+
+- `GlobalArena.World/StrategicTacticalBorderAggregate.cs`;
+- `GlobalArena.World/SharedBorderIncidence.cs`.
+
+Tests previstos:
+
+- `GlobalArena.Tests/StrategicTacticalBorderAggregateTests.cs`.
+
+Matriz prevista:
+
+- 17 Facts;
+- 3 casos de uma Theory representativa;
+- 20 casos executados adicionais;
+- baseline: 271 testes;
+- esperado após implementação: 291 testes.
+
+Representantes:
+
+- Class I `G(2,0)` → 42 regiões / 120 bands / 120 incidences;
+- Class II `G(2,2)` → 122 regiões / 360 bands / 360 incidences;
+- Class III `G(3,2)` → 192 regiões / 570 bands / 570 incidences.
+
+M2.3.4 design não promove GPP.
+
+Se implementação, auditoria e regressão cross-platform passarem, o fechamento formal poderá avaliar `Shared subtile border bands` para promoção de `Implementação funcional isolada — fator 0.50` para `Integrada ao sistema — fator 0.70`.
+
+`Strategic ↔ tactical hierarchy/refinement mapping` permanece sem promoção neste gate porque o mapping físico de refinement e continuidade local ainda não foi provado.
+
 Próximo gate:
 
-executar audit read-only do aggregate necessário para validar conjuntamente `StrategicTopology`, `TacticalRegion` e `SharedBorderBand`, derivando incidence regional de `StrategicEdge` sem duplicar ownership ou antecipar geometria física.
+auditar o design congelado, fazer commit/push documental e então implementar somente o aggregate e a derived incidence sem antecipar M2.3.5.
 
 ---
 

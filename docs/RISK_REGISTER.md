@@ -258,7 +258,7 @@ Mitigação:
 
 Próxima ação:
 
-iniciar M2.3.4 com audit read-only do aggregate cross-region capaz de validar conjuntamente `StrategicTopology`, a coleção canônica de `TacticalRegion` e os `SharedBorderBand`, derivando as duas regiões incidentes de cada `StrategicEdge`, exigindo cobertura exata e reciprocidade sem duplicar ownership, sem adjacency tática cross-region direta e sem assumir refinamento Goldberg universal.
+congelar e implementar M2.3.4 com `StrategicTacticalBorderAggregate` e `SharedBorderIncidence`, validando cobertura exata de `StrategicCell`/`TacticalRegion` e `StrategicEdge`/`SharedBorderBand`, derivando as duas regiões incidentes exclusivamente de `StrategicEdge.IncidentCellIds` e preservando ordering/determinismo; manter mapping físico de `TacticalCell`, adjacency tática cross-region, geometria e refinamento Goldberg universal fora desta tranche.
 
 ---
 
