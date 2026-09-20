@@ -3096,6 +3096,30 @@ Casos representativos de validação:
 
 Esses casos validam cobertura do contrato genérico sobre `StrategicTopology`; não constituem prova de refinamento Goldberg universal.
 
+M2.3.3 implementou `StrategicEdgeSharedBorderBandMaterializer`.
+
+A implementação:
+
+- recebe apenas uma `StrategicTopology` já válida;
+- rejeita entrada nula;
+- percorre `StrategicTopology.Edges` em ordem canônica;
+- materializa exatamente um `SharedBorderBand` por edge;
+- preserva identidade `band.StrategicEdgeId == edge.Id`;
+- usa um único `SharedBorderElementId(edge.Id, 1)` de referência por band;
+- retorna snapshot somente leitura;
+- preserva identidade global única dos reference elements;
+- produz assinatura determinística em materializações repetidas.
+
+A validação representativa cobriu:
+
+- Class I `G(2,0)` com 120 bands;
+- Class II `G(2,2)` com 360 bands;
+- Class III `G(3,2)` com 570 bands.
+
+O fechamento local atingiu 271/271 testes, e a regressão cross-platform passou em Ubuntu, Windows e macOS.
+
+O elemento único por band continua sendo apenas um artefato lógico de referência. Ele não congela a cardinalidade física final da fronteira.
+
 O aggregate cross-region, incidência regional derivada em conjunto com `TacticalRegion`, e o mapping físico entre células locais e border elements permanecem para M2.3.4 e M2.3.5.
 
 O estado estratégico de uma conexão poderá futuramente ser derivado do estado tático correspondente.

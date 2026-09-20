@@ -7744,3 +7744,177 @@ Incremento potencial:
 Próximo gate:
 
 **DESIGN_AUDIT**
+
+---
+
+## 2026-09-20 — M2.3.3 StrategicEdge-to-Border Materialization formal close
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.3 — Shared Border Bands & Strategic/Tactical Mapping**
+
+Subcheckpoint concluído:
+
+**M2.3.3 — StrategicEdge-to-Border Materialization**
+
+### Implementation commit
+
+Commit:
+
+`3007738fc66d7fa9b8dcff415207f0e6fe9aad93`
+
+Mensagem:
+
+`feat: materialize shared border bands`
+
+Production:
+
+- `GlobalArena.World/StrategicEdgeSharedBorderBandMaterializer.cs`.
+
+Tests:
+
+- `GlobalArena.Tests/StrategicEdgeSharedBorderBandMaterializerTests.cs`.
+
+### Contrato implementado
+
+`StrategicEdgeSharedBorderBandMaterializer.Materialize(StrategicTopology)`:
+
+- rejeita topologia nula;
+- usa apenas a `StrategicTopology` fornecida;
+- materializa um band por `StrategicEdge`;
+- preserva a ordem canônica de `StrategicTopology.Edges`;
+- preserva `band.StrategicEdgeId == edge.Id`;
+- garante cobertura exata de edges;
+- cria um único reference element por band;
+- usa `SharedBorderElementId(edge.Id, 1)`;
+- retorna snapshot somente leitura;
+- mantém IDs dos reference elements globalmente únicos;
+- reproduz assinatura canônica idêntica em materializações repetidas.
+
+O reference element único permanece não geométrico.
+
+### Cobertura representativa
+
+- Class I `G(2,0)` → 120 bands;
+- Class II `G(2,2)` → 360 bands;
+- Class III `G(3,2)` → 570 bands.
+
+Esses casos não constituem prova de refinamento Goldberg universal.
+
+### Evidência local
+
+- build Release: 0 warnings;
+- build Release: 0 errors;
+- testes: 271/271;
+- falhas: 0;
+- skipped: 0;
+- `git diff --check`: aprovado;
+- `git diff --cached --check`: aprovado.
+
+### Gate cross-platform
+
+Workflow:
+
+`Cross-Platform Kernel Regression Validation`
+
+Run ID:
+
+`35495093016`
+
+Resultado:
+
+**SUCCESS**
+
+Commit:
+
+`3007738fc66d7fa9b8dcff415207f0e6fe9aad93`
+
+Jobs:
+
+- Ubuntu: `success`;
+- Windows: `success`;
+- macOS: `success`.
+
+Artefatos:
+
+- Ubuntu: ID `10600338251`, SHA-256 `48195eb711b5537a5dc18485748d064ae32645692e4634160a8985ef86b7569e`;
+- Windows: ID `10600343326`, SHA-256 `f9ba192868a4935276785ada04adf32885187e7c25315cb47daa5dda375d284b`;
+- macOS: ID `10600153583`, SHA-256 `2e382c70edf6e015c4f036519d1bdeb58a92c9aeb1b1b0624683cba3d6ead1b8`.
+
+### Maturidade e GPP
+
+A capability:
+
+`Shared subtile border bands`
+
+é promovida de:
+
+**Especificada — fator 0.20 — 3.20 GPP**
+
+para:
+
+**Implementação funcional isolada — fator 0.50 — 8.00 GPP**
+
+Incremento:
+
+**+4.80 GPP**
+
+GPP antes:
+
+**99.10 / 1000**
+
+GPP após:
+
+**103.90 / 1000**
+
+Global Progress:
+
+**10.4%**
+
+Topologia planetária / Goldberg:
+
+**33.90 / 90 GPP — 37.7%**
+
+### Limites preservados
+
+M2.3.3 não prova:
+
+- aggregate cross-region;
+- derived regional incidence conjunta;
+- mapping entre `TacticalRegion` e `SharedBorderBand`;
+- mapping físico entre region-owned `TacticalCell` e shared border elements;
+- quantidade física final de elementos por band;
+- geometria, coordinates ou mesh;
+- adjacency tática cross-region;
+- pathfinding cross-region final;
+- refinamento Goldberg universal.
+
+### Riscos
+
+`RISK-003 — Goldberg hierarchy mapping` permanece:
+
+**MITIGATING / Probability 2 / Impact 4 / Score 8 — HIGH**
+
+A identidade e a materialização de border bands foram reduzidas a contratos executáveis.
+
+A próxima incerteza crítica passa para o aggregate cross-region e derived incidence conjunta.
+
+### Scope Change
+
+Nenhum.
+
+Baseline V1 permanece:
+
+**1000 GPP**
+
+### Próximo subcheckpoint
+
+**M2.3.4 — Cross-Region Aggregate & Derived Incidence**
+
+Próximo gate:
+
+**READ_ONLY_AUDIT**

@@ -244,6 +244,13 @@ Mitigação:
 - elementos são canonicalizados por ordinal e expostos como snapshot somente leitura;
 - incidência regional e orientação permanecem derivadas do `StrategicEdge`, evitando segunda fonte de verdade;
 - regressão cross-platform de M2.3.2 passou em Ubuntu, Windows e macOS;
+- M2.3.3 materializou exatamente um `SharedBorderBand` por `StrategicEdge`;
+- ordering de `StrategicTopology.Edges` foi preservado na coleção de bands;
+- o reference element `SharedBorderElementId(edge.Id, 1)` provou identidade e cobertura sem congelar geometria;
+- IDs de reference elements foram validados como globalmente únicos;
+- materialização repetida produziu assinatura canônica idêntica;
+- Class I `G(2,0)`, Class II `G(2,2)` e Class III `G(3,2)` validaram 120, 360 e 570 bands respectivamente;
+- regressão cross-platform de M2.3.3 passou em Ubuntu, Windows e macOS;
 - testes explícitos de pertencimento pai-filho;
 - testes de continuidade entre regiões;
 - validação de casos representativos das famílias Goldberg;
@@ -251,7 +258,7 @@ Mitigação:
 
 Próxima ação:
 
-congelar e implementar M2.3.3 com materialização determinística de exatamente um `SharedBorderBand` por `StrategicEdge`, usando um único `SharedBorderElement(edge.Id, 1)` de referência por band para provar cobertura, identity, ordering e determinismo sem congelar geometria; manter aggregate cross-region, incidence combinada com `TacticalRegion`, mapping físico e refinamento Goldberg para os gates posteriores.
+iniciar M2.3.4 com audit read-only do aggregate cross-region capaz de validar conjuntamente `StrategicTopology`, a coleção canônica de `TacticalRegion` e os `SharedBorderBand`, derivando as duas regiões incidentes de cada `StrategicEdge`, exigindo cobertura exata e reciprocidade sem duplicar ownership, sem adjacency tática cross-region direta e sem assumir refinamento Goldberg universal.
 
 ---
 

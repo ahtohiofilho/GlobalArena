@@ -204,6 +204,65 @@ Negative:
 - ainda não existe incidence combinada com `TacticalRegion`;
 - ainda não existe navegação cross-region real.
 
+## M2.3.3 implementation evidence
+
+Implementation commit:
+
+`3007738fc66d7fa9b8dcff415207f0e6fe9aad93`
+
+Production type:
+
+`GlobalArena.World/StrategicEdgeSharedBorderBandMaterializer.cs`
+
+Tests:
+
+`GlobalArena.Tests/StrategicEdgeSharedBorderBandMaterializerTests.cs`
+
+Validated behavior:
+
+- null topology rejected;
+- exactly one band per `StrategicEdge`;
+- canonical `StrategicTopology.Edges` order preserved;
+- every edge appears exactly once;
+- each band contains exactly one reference element in this tranche;
+- reference identity = `SharedBorderElementId(edge.Id, 1)`;
+- reference element IDs are globally unique;
+- returned band collection is read-only;
+- repeated materialization has identical canonical signature;
+- Class I `G(2,0)` → 120 bands;
+- Class II `G(2,2)` → 360 bands;
+- Class III `G(3,2)` → 570 bands.
+
+Local validation:
+
+- Release build: 0 warnings, 0 errors;
+- tests: 271/271;
+- failures: 0;
+- skipped: 0.
+
+Cross-platform validation:
+
+- workflow: `Cross-Platform Kernel Regression Validation`;
+- run ID: `35495093016`;
+- Ubuntu: `success`;
+- Windows: `success`;
+- macOS: `success`;
+- Ubuntu artifact: ID `10600338251`, SHA-256 `48195eb711b5537a5dc18485748d064ae32645692e4634160a8985ef86b7569e`;
+- Windows artifact: ID `10600343326`, SHA-256 `f9ba192868a4935276785ada04adf32885187e7c25315cb47daa5dda375d284b`;
+- macOS artifact: ID `10600153583`, SHA-256 `2e382c70edf6e015c4f036519d1bdeb58a92c9aeb1b1b0624683cba3d6ead1b8`.
+
+Promotion:
+
+`Shared subtile border bands`
+
+`Especificada — fator 0.20`
+
+→
+
+`Implementação funcional isolada — fator 0.50`
+
+M2.3.3 prova materialização determinística 1:1 por strategic edge, sem ainda provar integração cross-region com tactical regions ou geometria final.
+
 ## Invariant
 
 M2.3.3 materializa exatamente um border band lógico por `StrategicEdge`; a cardinalidade física final da fronteira permanece aberta.

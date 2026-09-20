@@ -306,19 +306,19 @@ A decomposição operacional inicial de M2 é:
 | Scalability / headless performance baseline | 4 |
 | **TOTAL** | **90** |
 
-Estado de maturidade após M2.3.2:
+Estado de maturidade após M2.3.3:
 
 | Capability | GPP | Maturidade | Fator | GPP ganhos |
 |---|---:|---|---:|---:|
 | Goldberg parameterization e geração estratégica | 16 | Implementação funcional isolada | 0.50 | 8.00 |
 | Strategic graph: identidade, incidência e adjacência | 12 | Implementação funcional isolada | 0.50 | 6.00 |
 | Tactical region topology | 14 | Validada | 0.85 | 11.90 |
-| Shared subtile border bands | 16 | Especificada | 0.20 | 3.20 |
+| Shared subtile border bands | 16 | Implementação funcional isolada | 0.50 | 8.00 |
 | Strategic ↔ tactical hierarchy/refinement mapping | 16 | Inexistente | 0.00 | 0.00 |
 | Canonical deterministic topology generation | 6 | Inexistente | 0.00 | 0.00 |
 | Topological validation e navigability | 6 | Inexistente | 0.00 | 0.00 |
 | Scalability / headless performance baseline | 4 | Inexistente | 0.00 | 0.00 |
-| **TOTAL** | **90** |  |  | **29.10** |
+| **TOTAL** | **90** |  |  | **33.90** |
 
 M2.1.1 foi um audit arquitetural e não promoveu maturidade por si só.
 
@@ -362,7 +362,11 @@ M2.3.2 implementou `SharedBorderElementId`, `SharedBorderElement` e `SharedBorde
 
 Por isso, `Shared subtile border bands` é promovida de `Inexistente — fator 0.00` para `Especificada — fator 0.20`.
 
-A promoção para `Implementação funcional isolada — fator 0.50` permanece bloqueada até a materialização determinística por `StrategicEdge` e validação correspondente.
+M2.3.3 adicionou `StrategicEdgeSharedBorderBandMaterializer`, materializando exatamente um `SharedBorderBand` por `StrategicEdge` em ordem canônica, usando um único `SharedBorderElement(edge.Id, 1)` de referência por band. Cobertura, identidade global, ordering, snapshot somente leitura e determinismo foram validados em Class I, Class II e Class III, com 271/271 testes locais e regressão cross-platform aprovada em Ubuntu, Windows e macOS.
+
+Por isso, `Shared subtile border bands` é promovida de `Especificada — fator 0.20` para `Implementação funcional isolada — fator 0.50`.
+
+A promoção para `Integrada — fator 0.70` permanece bloqueada até o aggregate cross-region de M2.3.4 validar conjuntamente `StrategicTopology`, `TacticalRegion` e `SharedBorderBand`.
 
 Esses pesos constituem o baseline inicial.
 
@@ -581,7 +585,7 @@ Etapa:
 
 Subetapa atual:
 
-**M2.3.3 — StrategicEdge-to-Border Materialization**
+**M2.3.4 — Cross-Region Aggregate & Derived Incidence**
 
 M0 — Project Baseline:
 
@@ -647,17 +651,21 @@ M2.3.2 — Shared Border Identity & Band Contract:
 
 **concluído em 2026-09-20**
 
+M2.3.3 — StrategicEdge-to-Border Materialization:
+
+**concluído em 2026-09-20**
+
 Baseline V1:
 
 **congelado em 2026-09-18**
 
 Progresso oficial:
 
-**9,9%**
+**10,4%**
 
 GPP conquistados:
 
-**99,10 / 1000**
+**103,90 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -665,7 +673,7 @@ Foundation / Simulation Kernel:
 
 Topologia planetária / Goldberg:
 
-**29,10 / 90 GPP — 32,3%**
+**33,90 / 90 GPP — 37,7%**
 
 Scope Confidence:
 
@@ -681,7 +689,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**shared border bands e prova da hierarquia estratégico/tático**
+**aggregate cross-region e prova da hierarquia estratégico/tático**
 
 Última revisão de baseline:
 

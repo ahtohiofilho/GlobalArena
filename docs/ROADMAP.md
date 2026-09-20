@@ -853,13 +853,70 @@ Matriz prevista:
 - baseline: 259 testes;
 - esperado após implementação: 271 testes.
 
-M2.3.3 design não promove GPP.
+M2.3.3 está concluído em 2026-09-20.
 
-Se implementação, auditoria e regressão cross-platform passarem, o fechamento formal poderá avaliar `Shared subtile border bands` para promoção de `Especificada — fator 0.20` para `Implementação funcional isolada — fator 0.50`.
+Evidência de M2.3.3:
+
+- `StrategicEdgeSharedBorderBandMaterializer` implementado;
+- entrada autoritativa: `StrategicTopology`;
+- topologia nula é rejeitada;
+- exatamente um `SharedBorderBand` é materializado por `StrategicEdge`;
+- a ordem de `StrategicTopology.Edges` é preservada;
+- `band.StrategicEdgeId == edge.Id` posição a posição;
+- cada edge aparece exatamente uma vez;
+- cada band usa exatamente um `SharedBorderElement` de referência;
+- reference ID = `SharedBorderElementId(edge.Id, 1)`;
+- o elemento de referência continua explicitamente não geométrico;
+- IDs dos reference elements são globalmente únicos;
+- coleção retornada é snapshot somente leitura;
+- materializações repetidas produzem assinatura canônica idêntica;
+- Class I `G(2,0)` validada com 120 bands;
+- Class II `G(2,2)` validada com 360 bands;
+- Class III `G(3,2)` validada com 570 bands;
+- nenhum `GoldbergParameters` separado é recebido;
+- nenhuma topologia é regenerada;
+- não existe dependência de `TacticalRegion`;
+- nenhum `StrategicCellId`, `StrategicVertexId`, `TacticalCellId` ou `SharedBorderBandId` foi duplicado no materializador;
+- nenhum aggregate cross-region foi introduzido;
+- nenhuma geometria, mesh ou adjacency tática cross-region foi introduzida;
+- build Release local com 0 warnings e 0 errors;
+- suíte local: 271/271, 0 falhas, 0 skipped;
+- workflow `Cross-Platform Kernel Regression Validation`, run `35495093016`, concluído com sucesso em Ubuntu, Windows e macOS;
+- commit validado: `3007738fc66d7fa9b8dcff415207f0e6fe9aad93`.
+
+Promoção de maturidade:
+
+`Shared subtile border bands`
+
+**Especificada — 0.20 → Implementação funcional isolada — 0.50**
+
+GPP adicional de M2.3.3:
+
+**+4.80 GPP**
+
+GPP após o fechamento:
+
+**103.90 / 1000**
+
+Global Progress:
+
+**10.4%**
+
+Topologia planetária / Goldberg:
+
+**33.90 / 90 GPP — 37.7%**
+
+M2.3 continua aberto.
+
+A identidade e a materialização 1:1 de border bands por `StrategicEdge` agora são funcionais e determinísticas. A integração cross-region conjunta com `TacticalRegion` ainda não existe.
+
+Próximo subcheckpoint:
+
+**M2.3.4 — Cross-Region Aggregate & Derived Incidence**
 
 Próximo gate:
 
-implementar somente o materializador e seus testes, sem commit/push, após auditoria e congelamento deste design.
+executar audit read-only do aggregate necessário para validar conjuntamente `StrategicTopology`, `TacticalRegion` e `SharedBorderBand`, derivando incidence regional de `StrategicEdge` sem duplicar ownership ou antecipar geometria física.
 
 ---
 
@@ -1147,15 +1204,15 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M2.3.3 — StrategicEdge-to-Border Materialization**
+**M2.3.4 — Cross-Region Aggregate & Derived Incidence**
 
 Official Progress:
 
-**9.9%**
+**10.4%**
 
 GPP Earned:
 
-**99.10 / 1000**
+**103.90 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -1163,7 +1220,7 @@ Foundation / Simulation Kernel:
 
 Planet Topology / Goldberg:
 
-**29.10 / 90 GPP — 32.3%**
+**33.90 / 90 GPP — 37.7%**
 
 Scope Confidence:
 
@@ -1179,7 +1236,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**shared border bands e prova da hierarquia estratégico/tático**
+**aggregate cross-region e prova da hierarquia estratégico/tático**
 
 Last Baseline Review:
 
