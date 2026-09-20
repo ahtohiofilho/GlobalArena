@@ -707,11 +707,49 @@ Stage atual:
 
 Subcheckpoint atual:
 
-**M2.3.1 — Shared Border Contract Audit**
+**M2.3.1 — Shared Border Contract Audit & Design**
+
+O audit read-only confirmou:
+
+- não existe hoje production type de shared border;
+- `StrategicEdge` já representa canonicamente uma fronteira estratégica;
+- cada `StrategicEdge` possui exatamente duas `StrategicCell` incidentes e dois `StrategicVertex` incidentes;
+- incidence e ordering estratégicos já são determinísticos;
+- `TacticalCellId` é deliberadamente region-owned e rejeita adjacency cross-region;
+- existe exatamente uma `TacticalRegion` por `StrategicCell`;
+- o reference graph tático `1 <-> 2 <-> 3` não representa geometria final;
+- nenhum aggregate cross-region existe;
+- refinamento Goldberg universal continua não demonstrado.
+
+Design congelado:
+
+- haverá exatamente um `SharedBorderBand` lógico por `StrategicEdge`;
+- a identidade do band será o próprio `StrategicEdgeId`;
+- não haverá `SharedBorderBandId` redundante;
+- elementos compartilhados usarão `SharedBorderElementId = StrategicEdgeId + LocalOrdinal`;
+- `LocalOrdinal` será one-based;
+- a orientação canônica da sequência seguirá `min(IncidentVertexIds) -> max(IncidentVertexIds)`;
+- `SharedBorderBand` exigirá elementos não vazios, IDs pertencentes ao mesmo edge, ordinais únicos e contíguos e exposição somente leitura;
+- os dois parents estratégicos serão derivados do `StrategicEdge`, não duplicados como fonte independente dentro do band;
+- `TacticalCellId` continuará exclusivo de elementos region-owned;
+- M2.3 não representará um elemento compartilhado como dois `TacticalCellId`;
+- nenhuma adjacency direta entre `TacticalCell` de regiões diferentes será introduzida no contrato inicial;
+- a quantidade e geometria final de elementos por border band continuam abertas;
+- o aggregate cross-region será projetado somente depois que band identity e materialization existirem.
+
+Decomposição de M2.3:
+
+- **M2.3.1 — Shared Border Contract Audit & Design**;
+- **M2.3.2 — Shared Border Identity & Band Contract**;
+- **M2.3.3 — StrategicEdge-to-Border Materialization**;
+- **M2.3.4 — Cross-Region Aggregate & Derived Incidence**;
+- **M2.3.5 — Shared Border Validation & M2.3 Close**.
+
+M2.3.1 é somente audit/design e não promove GPP.
 
 Próximo gate:
 
-executar audit read-only da arquitetura de fronteira compartilhada, identidade canônica, incidência entre regiões e relação com `StrategicEdge`, sem implementar antes de congelar o contrato.
+auditar o design congelado, fazer commit/push documental e então implementar M2.3.2 sem antecipar materialização, aggregate ou geometria final.
 
 ---
 

@@ -244,7 +244,7 @@ Mitigação:
 
 Próxima ação:
 
-iniciar M2.3.1 com audit read-only do contrato de fronteira compartilhada, investigando identidade canônica única, incidência multi-região, relação com `StrategicEdge`, reciprocidade e continuidade entre regiões antes de qualquer implementação; não assumir refinamento Goldberg geral sem prova.
+congelar e implementar primeiro o contrato de identidade de fronteira de M2.3: um `SharedBorderBand` por `StrategicEdge`, identidade de elemento compartilhado baseada em `StrategicEdgeId + LocalOrdinal` e orientação canônica pelos `IncidentVertexIds`; preservar `TacticalCellId` como region-owned e adiar aggregate cross-region, vínculo físico com células locais e refinamento Goldberg até os subcheckpoints próprios.
 
 ---
 

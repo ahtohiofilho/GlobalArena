@@ -2964,9 +2964,67 @@ Quando uma faixa ou subtile for compartilhado, deverá existir uma identidade ca
 
 A correspondência vista de lados opostos da mesma fronteira deverá ser determinística e recíproca.
 
-Ownership por `StrategicEdge`, incidência múltipla ou uma estrutura própria de border band permanecem alternativas em investigação.
+M2.3.1 congela a direção arquitetural da fronteira compartilhada.
 
-O estado estratégico de uma conexão poderá ser derivado do estado tático correspondente.
+Cada `StrategicEdge` possuirá exatamente um `SharedBorderBand` lógico.
+
+A identidade do band será o próprio `StrategicEdgeId`; não será criado um `SharedBorderBandId` redundante.
+
+Elementos lógicos compartilhados da fronteira usarão uma categoria própria de identidade:
+
+`SharedBorderElementId = StrategicEdgeId + LocalOrdinal`
+
+Regras:
+
+- `StrategicEdgeId` deve ser válido;
+- `LocalOrdinal` é one-based;
+- `LocalOrdinal > 0`;
+- `default(SharedBorderElementId)` é inválido;
+- a identidade não pertence a nenhuma `TacticalRegion`;
+- o mesmo elemento compartilhado não poderá ser materializado como dois `TacticalCellId` region-owned.
+
+A sequência canônica de uma faixa será orientada pelo próprio `StrategicEdge`.
+
+A direção conceitual será:
+
+`min(IncidentVertexIds) -> max(IncidentVertexIds)`
+
+e `LocalOrdinal` crescerá nessa direção canônica.
+
+Isso fornece orientação estável independente do lado da região que observa a fronteira e evita que cada região invente sua própria ordem.
+
+`SharedBorderBand` deverá:
+
+- carregar o `StrategicEdgeId` que o identifica;
+- possuir coleção não vazia de `SharedBorderElement`;
+- exigir que todos os elementos usem o mesmo `StrategicEdgeId`;
+- exigir ordinais locais únicos, contíguos e one-based;
+- expor os elementos em ordem canônica;
+- preservar snapshot somente leitura.
+
+Os dois `StrategicCellId` incidentes não serão uma segunda fonte de verdade armazenada independentemente no band.
+
+Incidência regional deverá ser derivada autoritativamente de:
+
+`StrategicTopology.Edges[StrategicEdgeId].IncidentCellIds`
+
+Da mesma forma, a orientação canônica deverá ser derivada de `IncidentVertexIds`.
+
+M2.3 não alterará o significado de `TacticalCellId`, que continua representando somente células region-owned.
+
+Também não serão criadas adjacências diretas entre `TacticalCell` de regiões diferentes neste primeiro contrato de fronteira.
+
+Quando os bands estiverem materializados, um aggregate cross-region passa a ser arquiteturalmente justificável porque haverá invariantes próprios entre:
+
+- `StrategicTopology`;
+- uma `TacticalRegion` por `StrategicCell`;
+- um `SharedBorderBand` por `StrategicEdge`.
+
+Esse aggregate deverá ser projetado em subcheckpoint posterior de M2.3 e possuir a responsabilidade de validar a incidência derivada e a cobertura completa de edges, em vez de duplicar relações dentro de `TacticalRegion`.
+
+A quantidade final de elementos por band, a geometria física da fileira, o vínculo entre region-owned tactical cells e elementos compartilhados, coordenadas, mesh e refinamento Goldberg cross-region continuam não congelados.
+
+O estado estratégico de uma conexão poderá futuramente ser derivado do estado tático correspondente.
 
 Exemplos futuros incluem:
 

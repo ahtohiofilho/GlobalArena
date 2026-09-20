@@ -7292,3 +7292,140 @@ Primeiro subcheckpoint:
 **M2.3.1 — Shared Border Contract Audit**
 
 O próximo gate será read-only antes de qualquer implementação.
+
+---
+
+## 2026-09-20 — M2.3.1 Shared Border Contract audit e design
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.3 — Shared Border Bands & Strategic/Tactical Mapping**
+
+Subcheckpoint:
+
+**M2.3.1 — Shared Border Contract Audit & Design**
+
+### Audit read-only
+
+Baseline auditado:
+
+`f471673004d8f0367c744e0360c8f39a4f28ba75`
+
+Resultado:
+
+**PASS_READY_FOR_DESIGN**
+
+Evidência:
+
+- branch `main`;
+- HEAD = origin/main;
+- worktree limpo;
+- build Release com 0 warnings e 0 errors;
+- suíte completa: 241/241, 0 falhas, 0 skipped;
+- nenhum commit;
+- nenhum push;
+- nenhuma mutação do repositório;
+- 28 fontes/documentos relevantes incluídos no snapshot;
+- 28 hashes SHA-256 recomputados sem divergência.
+
+### Conclusão do audit
+
+Não existe hoje production type de shared border.
+
+O contrato estratégico já fornece a âncora necessária:
+
+- `StrategicEdge` representa uma fronteira estratégica;
+- cada edge possui exatamente duas `StrategicCell` incidentes;
+- cada edge possui exatamente dois `StrategicVertex` incidentes;
+- as coleções incidentes são canônicas;
+- cada par de `StrategicCell` adjacentes possui um único edge.
+
+O contrato tático existente impõe:
+
+- `TacticalCellId` é region-owned;
+- adjacency cross-region direta é rejeitada;
+- uma região tática existe para cada `StrategicCell`;
+- o reference graph atual não representa geometria física final.
+
+### Design congelado
+
+Cada `StrategicEdge` terá exatamente um `SharedBorderBand` lógico.
+
+A identidade do band será:
+
+`StrategicEdgeId`
+
+Não haverá `SharedBorderBandId` redundante.
+
+Elementos compartilhados usarão:
+
+`SharedBorderElementId = StrategicEdgeId + LocalOrdinal`
+
+`LocalOrdinal` será one-based.
+
+A orientação canônica será derivada de:
+
+`StrategicEdge.IncidentVertexIds[0] -> StrategicEdge.IncidentVertexIds[1]`
+
+Os incidentes regionais continuarão autoritativos em:
+
+`StrategicEdge.IncidentCellIds`
+
+e não serão duplicados como uma segunda fonte de verdade no band.
+
+### Boundary com M2.2
+
+`TacticalCellId`, `TacticalCell` e `TacticalRegion` mantêm sua semântica region-owned.
+
+Um border element compartilhado não será representado por dois `TacticalCellId`.
+
+Nenhuma adjacency direta cross-region será criada em M2.3.2.
+
+### Aggregate cross-region
+
+O audit confirmou que um aggregate cross-region passa a ser justificável quando border bands forem materializados.
+
+Seu shape e nome final serão projetados em M2.3.4.
+
+M2.3.1 não antecipa essa implementação.
+
+### Decomposição de M2.3
+
+- M2.3.1 — Shared Border Contract Audit & Design;
+- M2.3.2 — Shared Border Identity & Band Contract;
+- M2.3.3 — StrategicEdge-to-Border Materialization;
+- M2.3.4 — Cross-Region Aggregate & Derived Incidence;
+- M2.3.5 — Shared Border Validation & M2.3 Close.
+
+### Limites preservados
+
+Continuam abertos:
+
+- quantidade final de elementos por border band;
+- geometria física da faixa;
+- coordenadas e mesh;
+- ligação concreta entre region-owned cells e shared border elements;
+- pathfinding cross-region final;
+- refinamento Goldberg universal.
+
+### GPP
+
+M2.3.1 é audit/design.
+
+Nenhuma maturidade é promovida neste gate.
+
+GPP permanece:
+
+**95.90 / 1000**
+
+Global Progress permanece:
+
+**9.6%**
+
+Próximo gate:
+
+**DESIGN_AUDIT**
