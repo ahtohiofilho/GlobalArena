@@ -306,19 +306,19 @@ A decomposição operacional inicial de M2 é:
 | Scalability / headless performance baseline | 4 |
 | **TOTAL** | **90** |
 
-Estado de maturidade após M2.3.4:
+Estado de maturidade após M2.3.5 / fechamento de M2.3:
 
 | Capability | GPP | Maturidade | Fator | GPP ganhos |
 |---|---:|---|---:|---:|
 | Goldberg parameterization e geração estratégica | 16 | Implementação funcional isolada | 0.50 | 8.00 |
 | Strategic graph: identidade, incidência e adjacência | 12 | Implementação funcional isolada | 0.50 | 6.00 |
 | Tactical region topology | 14 | Validada | 0.85 | 11.90 |
-| Shared subtile border bands | 16 | Integrada ao sistema | 0.70 | 11.20 |
+| Shared subtile border bands | 16 | Validada | 0.85 | 13.60 |
 | Strategic ↔ tactical hierarchy/refinement mapping | 16 | Inexistente | 0.00 | 0.00 |
 | Canonical deterministic topology generation | 6 | Inexistente | 0.00 | 0.00 |
 | Topological validation e navigability | 6 | Inexistente | 0.00 | 0.00 |
 | Scalability / headless performance baseline | 4 | Inexistente | 0.00 | 0.00 |
-| **TOTAL** | **90** |  |  | **37.10** |
+| **TOTAL** | **90** |  |  | **39.50** |
 
 M2.1.1 foi um audit arquitetural e não promoveu maturidade por si só.
 
@@ -370,7 +370,11 @@ M2.3.4 introduziu `StrategicTacticalBorderAggregate` e `SharedBorderIncidence`, 
 
 Com 291/291 testes locais e regressão cross-platform aprovada em Ubuntu, Windows e macOS, `Shared subtile border bands` é promovida de `Implementação funcional isolada — fator 0.50` para `Integrada ao sistema — fator 0.70`.
 
-A promoção para `Validada — fator 0.85` permanece bloqueada até M2.3.5 fechar validação acumulada, edge cases adicionais e continuidade contratual. `Strategic ↔ tactical hierarchy/refinement mapping` permanece sem promoção porque mapping físico e refinement cross-region continuam abertos.
+M2.3.5 fechou a validação acumulada de shared borders sem alterar production code. O gate provou continuidade `StrategicCell.IncidentEdgeIds` ↔ derived incidences, graus 5/6 para pentágonos/hexágonos, handshake global, exatamente duas regions por incidence, unicidade e edge-locality de border elements, adjacency tática estritamente parent-local e determinismo de duas pipelines completas independentes.
+
+A cobertura adicional validou `G(0,2)`, `G(1,2)`, `G(2,1)` e `G(3,1)`. Com 301/301 testes locais e regressão cross-platform aprovada em Ubuntu, Windows e macOS, `Shared subtile border bands` é promovida de `Integrada ao sistema — fator 0.70` para `Validada — fator 0.85`.
+
+M2.3 é encerrado. `Strategic ↔ tactical hierarchy/refinement mapping` permanece sem promoção porque mapping físico, traversal tático cross-region e universal Goldberg refinement continuam abertos para M2.4.
 
 Esses pesos constituem o baseline inicial.
 
@@ -585,11 +589,11 @@ Milestone:
 
 Etapa:
 
-**M2.3 — Shared Border Bands & Strategic/Tactical Mapping**
+**M2.4 — Goldberg Family & Refinement Validation**
 
 Subetapa atual:
 
-**M2.3.5 — Shared Border Validation & M2.3 Close**
+**M2.4 — Goldberg Family & Refinement Validation**
 
 M0 — Project Baseline:
 
@@ -663,17 +667,25 @@ M2.3.4 — Cross-Region Aggregate & Derived Incidence:
 
 **concluído em 2026-09-20**
 
+M2.3.5 — Shared Border Validation & M2.3 Close:
+
+**concluído em 2026-09-20**
+
+M2.3 — Shared Border Bands & Strategic/Tactical Mapping:
+
+**concluído em 2026-09-20**
+
 Baseline V1:
 
 **congelado em 2026-09-18**
 
 Progresso oficial:
 
-**10,7%**
+**11,0%**
 
 GPP conquistados:
 
-**107,10 / 1000**
+**109,50 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -681,7 +693,7 @@ Foundation / Simulation Kernel:
 
 Topologia planetária / Goldberg:
 
-**37,10 / 90 GPP — 41,2%**
+**39,50 / 90 GPP — 43,9%**
 
 Scope Confidence:
 
@@ -697,7 +709,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**validação acumulada de shared borders e continuidade estratégico/tático**
+**Goldberg family/refinement validation e mapeamento físico estratégico/tático**
 
 Última revisão de baseline:
 

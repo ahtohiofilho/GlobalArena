@@ -232,6 +232,77 @@ The next planned stage is:
 
 `M2.4 — Goldberg Family & Refinement Validation`
 
+## M2.3.5 implementation evidence
+
+Validation commit:
+
+`799ea942e2b81f99bbc0d8f560a73041e86a0e14`
+
+Added file:
+
+`GlobalArena.Tests/SharedBorderStageValidationTests.cs`
+
+Validation matrix executed:
+
+- 6 Facts;
+- 4 Theory executions;
+- 10 new executed cases;
+- full suite: 301/301.
+
+Validated integrated invariants:
+
+- every strategic cell sees exactly the edge IDs in `StrategicCell.IncidentEdgeIds`;
+- pentagon regions have derived degree 5;
+- hexagon regions have derived degree 6;
+- total regional incidence degree equals `2 * Edges.Count`;
+- every incidence resolves exactly two regions;
+- border element IDs remain globally unique;
+- every border element remains edge-local;
+- every band exposes an ordinal-one reference element without freezing final physical cardinality;
+- tactical adjacency remains strictly parent-local;
+- independently materialized full pipelines produce identical canonical signatures.
+
+Additional representative coverage:
+
+- `G(0,2)` → 42 / 120 / 120;
+- `G(1,2)` → 72 / 210 / 210;
+- `G(2,1)` → 72 / 210 / 210;
+- `G(3,1)` → 132 / 390 / 390.
+
+Local validation:
+
+- Release build: 0 warnings, 0 errors;
+- tests: 301/301;
+- failures: 0;
+- skipped: 0.
+
+Cross-platform validation:
+
+- workflow: `Cross-Platform Kernel Regression Validation`;
+- run ID: `35497801912`;
+- Ubuntu: `success`;
+- Windows: `success`;
+- macOS: `success`;
+- Ubuntu artifact: ID `10600972082`, SHA-256 `24369ed813e558e9a55ed4a224ac76c74360d99cd4eb39773233a486a5255452`;
+- Windows artifact: ID `10601701916`, SHA-256 `5b03ef47eebf96c33015ab3325b66beaeb7e4ab44699c26acba1217538cf266b`;
+- macOS artifact: ID `10601302677`, SHA-256 `86d1bb7f30c9a061d504272af33606780d65fb386f386360e395b31f45c65f15`.
+
+Promotion:
+
+`Shared subtile border bands`
+
+`Integrada ao sistema — fator 0.70`
+
+→
+
+`Validada — fator 0.85`
+
+M2.3 is closed after this gate.
+
+The next stage is:
+
+`M2.4 — Goldberg Family & Refinement Validation`
+
 ## Consequences
 
 Positive:

@@ -3293,6 +3293,38 @@ O próximo stage após M2.3 é:
 
 Esses limites permanecem para M2.4 e gates posteriores.
 
+M2.3.5 foi concluído como validation-only gate, sem alteração de production code.
+
+A validação acumulada de M2.3 provou:
+
+- correspondência exata entre `StrategicCell.IncidentEdgeIds` e as incidences observadas por sua `TacticalRegion`;
+- degree 5 para regions de parents pentagonais;
+- degree 6 para regions de parents hexagonais;
+- handshake global `sum(region incidence degree) == 2 * StrategicTopology.Edges.Count`;
+- exatamente duas regions por `SharedBorderIncidence`;
+- unicidade global de `SharedBorderElementId` no aggregate;
+- edge-locality de todos os border elements;
+- presença do reference element ordinal `1` em cada band sem congelar cardinalidade física;
+- adjacency de `TacticalCell` estritamente parent-local;
+- determinismo de duas pipelines completas e independentes iniciadas pelos mesmos `GoldbergParameters`.
+
+A cobertura adicional incluiu:
+
+- `G(0,2)` → 42 regions / 120 bands / 120 incidences;
+- `G(1,2)` → 72 regions / 210 bands / 210 incidences;
+- `G(2,1)` → 72 regions / 210 bands / 210 incidences;
+- `G(3,1)` → 132 regions / 390 bands / 390 incidences.
+
+O gate local atingiu 301/301 testes e a regressão cross-platform passou em Ubuntu, Windows e macOS.
+
+M2.3 — Shared Border Bands & Strategic/Tactical Mapping está encerrado.
+
+`Shared subtile border bands` atinge maturidade `Validada — fator 0.85`.
+
+M2.3 não prova physical `TacticalCell`-to-border mapping, direct cross-region tactical adjacency, final border geometry, final physical border cardinality ou universal Goldberg refinement.
+
+Esses problemas passam explicitamente para M2.4 — Goldberg Family & Refinement Validation.
+
 O estado estratégico de uma conexão poderá futuramente ser derivado do estado tático correspondente.
 
 Exemplos futuros incluem:

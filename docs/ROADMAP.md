@@ -1083,41 +1083,69 @@ Matriz prevista:
 - baseline: 291;
 - esperado após validation-only implementation: 301.
 
-M2.3.5 design não promove GPP.
+M2.3.5 está concluído em 2026-09-20.
 
-Se 301/301 testes passarem, a auditoria aprovar o arquivo validation-only e a regressão cross-platform passar em Ubuntu, Windows e macOS, o fechamento formal poderá avaliar:
+Evidência de M2.3.5:
+
+- validation-only;
+- nenhum production file alterado;
+- arquivo adicionado: `GlobalArena.Tests/SharedBorderStageValidationTests.cs`;
+- exact cell-to-incidence edge sets validados contra `StrategicCell.IncidentEdgeIds`;
+- regions de parents pentagonais validadas com grau 5;
+- regions de parents hexagonais validadas com grau 6;
+- handshake global validado: soma dos graus regionais = `2 * Edges.Count`;
+- cada incidence observada por exatamente duas regions;
+- `SharedBorderElementId` globalmente único no aggregate;
+- border elements permanecem edge-local;
+- reference element ordinal `1` validado sem congelar cardinalidade física final;
+- adjacency tática permanece estritamente parent-local;
+- duas pipelines independentes desde `GoldbergParameters` produzem assinatura canônica idêntica;
+- `G(0,2)` validado com 42 regions / 120 bands / 120 incidences;
+- `G(1,2)` validado com 72 regions / 210 bands / 210 incidences;
+- `G(2,1)` validado com 72 regions / 210 bands / 210 incidences;
+- `G(3,1)` validado com 132 regions / 390 bands / 390 incidences;
+- build Release local com 0 warnings e 0 errors;
+- suíte local: 301/301, 0 falhas, 0 skipped;
+- workflow `Cross-Platform Kernel Regression Validation`, run `35497801912`, concluído com sucesso em Ubuntu, Windows e macOS;
+- commit validado: `799ea942e2b81f99bbc0d8f560a73041e86a0e14`.
+
+Promoção de maturidade:
 
 `Shared subtile border bands`
 
 **Integrada ao sistema — 0.70 → Validada — 0.85**
 
-Incremento potencial:
+GPP adicional de M2.3.5:
 
 **+2.40 GPP**
 
-GPP potencial após fechamento:
+GPP após o fechamento:
 
 **109.50 / 1000**
 
-Global Progress potencial:
+Global Progress:
 
 **11.0%**
 
-Topologia planetária / Goldberg potencial:
+Topologia planetária / Goldberg:
 
 **39.50 / 90 GPP — 43.9%**
 
-`Strategic ↔ tactical hierarchy/refinement mapping` permanece em `0.00`.
+M2.3 está concluído em 2026-09-20.
 
-O fechamento de M2.3 não encerra M2.
+O stage fecha a identidade, materialização, aggregate cross-region e validação acumulada de shared borders no nível lógico. Não fecha mapping físico, geometry, traversal tático cross-region ou refinamento Goldberg universal.
 
-Próximo stage após o fechamento de M2.3:
+`Strategic ↔ tactical hierarchy/refinement mapping` permanece:
+
+**Inexistente — 0.00**
+
+Stage atual:
 
 **M2.4 — Goldberg Family & Refinement Validation**
 
 Próximo gate:
 
-auditar este design, congelá-lo em commit documental e então adicionar somente o arquivo validation-only, sem commit/push durante QA.
+**READ_ONLY_AUDIT**
 
 ---
 
@@ -1283,7 +1311,7 @@ Somente um ou poucos itens devem ser classificados como Critical Path.
 
 Status atual:
 
-**Project Baseline / arquitetura inicial**
+**Goldberg family/refinement validation e mapeamento físico estratégico/tático**
 
 ---
 
@@ -1401,19 +1429,19 @@ Current Milestone:
 
 Current Stage:
 
-**M2.3 — Shared Border Bands & Strategic/Tactical Mapping**
+**M2.4 — Goldberg Family & Refinement Validation**
 
 Current Subcheckpoint:
 
-**M2.3.5 — Shared Border Validation & M2.3 Close**
+**M2.4 — Goldberg Family & Refinement Validation**
 
 Official Progress:
 
-**10.7%**
+**11.0%**
 
 GPP Earned:
 
-**107.10 / 1000**
+**109.50 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -1421,7 +1449,7 @@ Foundation / Simulation Kernel:
 
 Planet Topology / Goldberg:
 
-**37.10 / 90 GPP — 41.2%**
+**39.50 / 90 GPP — 43.9%**
 
 Scope Confidence:
 
@@ -1437,7 +1465,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**validação acumulada de shared borders e continuidade estratégico/tático**
+**Goldberg family/refinement validation e mapeamento físico estratégico/tático**
 
 Last Baseline Review:
 

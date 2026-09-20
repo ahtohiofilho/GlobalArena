@@ -266,9 +266,21 @@ Mitigação:
 - validação de casos representativos das famílias Goldberg;
 - permitir redução do conjunto de famílias suportadas caso a hipótese geral não se sustente.
 
+M2.3.5 fechou o stage com validation-only e regressão cross-platform aprovada:
+
+- continuidade lógica `StrategicCell.IncidentEdgeIds` ↔ derived incidences validada;
+- graus pentagonais e hexagonais validados em 5 e 6;
+- handshake global validado;
+- exatamente duas regions por incidence confirmado;
+- border element IDs globalmente únicos e edge-local;
+- adjacency tática parent-local preservada;
+- duas pipelines completas independentes produziram assinatura canônica idêntica;
+- `G(0,2)`, `G(1,2)`, `G(2,1)` e `G(3,1)` adicionados à cobertura acumulada;
+- regressão cross-platform de M2.3.5 passou em Ubuntu, Windows e macOS.
+
 Próxima ação:
 
-executar M2.3.5 como validation-only gate, usando `StrategicCell.IncidentEdgeIds`, `StrategicEdge.IncidentCellIds` e o aggregate cross-region para provar continuidade lógica, graus pentagonais/hexagonais, handshake global, unicidade/edge-locality de border elements, adjacency tática parent-local e determinismo de pipelines independentes; adicionar representantes `G(0,2)`, `G(1,2)`, `G(2,1)` e `G(3,1)` sem alterar production code. Após o fechamento de M2.3, avançar para M2.4 — Goldberg Family & Refinement Validation, mantendo physical mapping e universal refinement como risco aberto.
+iniciar M2.4 — Goldberg Family & Refinement Validation com audit read-only do gap entre o modelo lógico já validado e o mapping/refinement físico ainda ausente, incluindo famílias oficialmente suportadas, continuidade de fronteira e critérios para eventualmente promover `Strategic ↔ tactical hierarchy/refinement mapping`; não assumir universal refinement antes de prova executável.
 
 ---
 

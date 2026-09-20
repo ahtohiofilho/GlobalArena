@@ -8380,3 +8380,179 @@ Próximo stage planejado:
 Próximo gate:
 
 **VALIDATION_DESIGN_AUDIT**
+
+---
+
+## 2026-09-20 — M2.3.5 Shared Border Validation & M2.3 formal close
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage concluído:
+
+**M2.3 — Shared Border Bands & Strategic/Tactical Mapping**
+
+Subcheckpoint concluído:
+
+**M2.3.5 — Shared Border Validation & M2.3 Close**
+
+### Validation commit
+
+Commit:
+
+`799ea942e2b81f99bbc0d8f560a73041e86a0e14`
+
+Mensagem:
+
+`test: validate shared border stage`
+
+Arquivo único:
+
+`GlobalArena.Tests/SharedBorderStageValidationTests.cs`
+
+Production changes:
+
+**0**
+
+### Evidência local
+
+- build Release: 0 warnings;
+- build Release: 0 errors;
+- testes: 301/301;
+- falhas: 0;
+- skipped: 0;
+- `git diff --check`: aprovado;
+- `git diff --cached --check`: aprovado.
+
+### Validação acumulada de M2.3
+
+Foram provados:
+
+- exact cell-to-incidence edge sets contra `StrategicCell.IncidentEdgeIds`;
+- degree 5 para regions de parents pentagonais;
+- degree 6 para regions de parents hexagonais;
+- handshake global `sum(region degree) == 2 * Edges.Count`;
+- exatamente duas regions por incidence;
+- unicidade global de `SharedBorderElementId`;
+- edge-locality de border elements;
+- ordinal-one reference element por band sem congelar cardinalidade física final;
+- adjacency tática estritamente parent-local;
+- determinismo de duas pipelines completas independentes.
+
+Cobertura adicional:
+
+- `G(0,2)` → 42 regions / 120 bands / 120 incidences;
+- `G(1,2)` → 72 regions / 210 bands / 210 incidences;
+- `G(2,1)` → 72 regions / 210 bands / 210 incidences;
+- `G(3,1)` → 132 regions / 390 bands / 390 incidences.
+
+### Gate cross-platform
+
+Workflow:
+
+`Cross-Platform Kernel Regression Validation`
+
+Run ID:
+
+`35497801912`
+
+Resultado:
+
+**SUCCESS**
+
+Commit:
+
+`799ea942e2b81f99bbc0d8f560a73041e86a0e14`
+
+Jobs:
+
+- Ubuntu: `success`;
+- Windows: `success`;
+- macOS: `success`.
+
+Artefatos:
+
+- Ubuntu: ID `10600972082`, SHA-256 `24369ed813e558e9a55ed4a224ac76c74360d99cd4eb39773233a486a5255452`;
+- Windows: ID `10601701916`, SHA-256 `5b03ef47eebf96c33015ab3325b66beaeb7e4ab44699c26acba1217538cf266b`;
+- macOS: ID `10601302677`, SHA-256 `86d1bb7f30c9a061d504272af33606780d65fb386f386360e395b31f45c65f15`.
+
+### Maturidade e GPP
+
+Capability:
+
+`Shared subtile border bands`
+
+é promovida de:
+
+**Integrada ao sistema — fator 0.70 — 11.20 GPP**
+
+para:
+
+**Validada — fator 0.85 — 13.60 GPP**
+
+Incremento:
+
+**+2.40 GPP**
+
+GPP antes:
+
+**107.10 / 1000**
+
+GPP após:
+
+**109.50 / 1000**
+
+Global Progress:
+
+**11.0%**
+
+Topologia planetária / Goldberg:
+
+**39.50 / 90 GPP — 43.9%**
+
+`Strategic ↔ tactical hierarchy/refinement mapping` permanece:
+
+**Inexistente — fator 0.00**
+
+### Stage boundary
+
+M2.3 está:
+
+**CONCLUÍDO**
+
+M2 permanece:
+
+**ABERTO**
+
+Ainda não estão provados:
+
+- physical `TacticalCell`-to-border mapping;
+- direct cross-region tactical adjacency;
+- final border geometry;
+- final physical border element cardinality;
+- universal Goldberg refinement.
+
+### Riscos
+
+`RISK-003 — Goldberg hierarchy mapping` permanece:
+
+**MITIGATING / Probability 2 / Impact 4 / Score 8 — HIGH**
+
+O risco agora se concentra no refinement/mapping físico e na validação das famílias/refinement em M2.4.
+
+### Scope Change
+
+Nenhum.
+
+Baseline V1 permanece:
+
+**1000 GPP**
+
+### Próximo stage
+
+**M2.4 — Goldberg Family & Refinement Validation**
+
+Próximo gate:
+
+**READ_ONLY_AUDIT**
