@@ -1220,9 +1220,47 @@ Subcheckpoint atual:
 
 **M2.4.2 — Canonical Construction Provenance & Reference Mapping**
 
+O audit read-only de M2.4.2 confirmou que:
+
+- provenance combinatória existe internamente nos geradores;
+- Class I/II usam `SubdivisionLatticeVertexKey` antes da atribuição dos IDs;
+- Class III usa lattice/orientation/stitching com `DisjointSet` roots;
+- nenhuma provenance é exposta como contrato cross-resolution;
+- nenhum parent-child mapping production type existe;
+- igualdade de `StrategicCellId` entre resoluções não é lineage.
+
+Design congelado para a primeira tranche de M2.4.2:
+
+- reference pair único: `G(1,0) -> G(2,0)`;
+- scale: 2;
+- provenance canônica: os 12 vertices do seed icosaédrico;
+- novo ID: `IcosahedronSeedVertexId`, domínio `1..12`;
+- relation: `GoldbergScaledCellReference`;
+- aggregate: `GoldbergScaledRefinementReferenceMap`;
+- materializer: `GoldbergScaledRefinementReferenceMapper`;
+- exatamente 12 references;
+- ordem canônica por seed vertex;
+- coarse/fine IDs únicos;
+- coleção read-only;
+- nenhum lineage inferido por ordinal.
+
+Canonical reference vector:
+
+`1:1->6, 2:2->11, 3:3->15, 4:4->19, 5:5->23, 6:6->26, 7:7->30, 8:8->33, 9:9->36, 10:10->39, 11:11->41, 12:12->42`.
+
+Validation planejada:
+
+- 14 Facts;
+- baseline: 313;
+- esperado após implementação: 327.
+
+M2.4.2 não define full parent-child ownership, edge-chain refinement, Class II mapping, Class III mapping, tactical refinement ou universal refinement.
+
+GPP não é promovido neste design.
+
 Próximo gate:
 
-**READ_ONLY_AUDIT**
+**M2.4.2 DESIGN AUDIT**
 
 ---
 

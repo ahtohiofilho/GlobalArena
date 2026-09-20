@@ -8845,3 +8845,166 @@ Baseline V1 permanece:
 Próximo gate:
 
 **READ_ONLY_AUDIT**
+
+---
+
+## 2026-09-20 — M2.4.2 audit e canonical seed-vertex reference mapping design
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.4 — Goldberg Family & Refinement Validation**
+
+Subcheckpoint:
+
+**M2.4.2 — Canonical Construction Provenance & Reference Mapping**
+
+### Audit read-only
+
+Baseline:
+
+`271480fb914c9a98c4ebeb5f4b37e1359841d58c`
+
+Resultado:
+
+**PASS_READY_FOR_PROVENANCE_DESIGN**
+
+Evidência:
+
+- branch `main`;
+- HEAD = origin/main;
+- worktree limpo;
+- build Release: 0 warnings, 0 errors;
+- suíte: 313/313;
+- nenhum commit;
+- nenhum push;
+- nenhuma mutação;
+- snapshot de 24 arquivos;
+- 24/24 hashes SHA-256 recomputados sem divergência.
+
+### Findings
+
+Class I / Class II:
+
+- `SubdivisionLatticeVertexKey` existe antes de `StrategicCellId`;
+- construction keys são canonicalizados e ordenados;
+- provenance não é exposta.
+
+Class III:
+
+- usa `LocalPoint`;
+- usa `LatticeIndex`;
+- usa seed-face orientation;
+- usa `DisjointSet`;
+- canonicaliza por roots;
+- raw roots não são identidade durável.
+
+Confirmado também:
+
+- nenhum public provenance/mapping production type;
+- nenhum parent-child reference map;
+- igualdade de strategic IDs entre resoluções não é lineage;
+- physical tactical-border mapping continua ausente;
+- universal Goldberg refinement continua não provado.
+
+### Design congelado
+
+Reference pair:
+
+`G(1,0) -> G(2,0)`
+
+Scale:
+
+`2`
+
+Nova provenance identity:
+
+`IcosahedronSeedVertexId(1..12)`
+
+Novos contracts planejados:
+
+- `GoldbergScaledCellReference`;
+- `GoldbergScaledRefinementReferenceMap`;
+- `GoldbergScaledRefinementReferenceMapper`.
+
+O mapper reutilizará provenance do mesmo construction path do gerador.
+
+Não será permitido derivar lineage por ordinal de `StrategicCellId`.
+
+### Canonical oracle
+
+`1:1->6`
+
+`2:2->11`
+
+`3:3->15`
+
+`4:4->19`
+
+`5:5->23`
+
+`6:6->26`
+
+`7:7->30`
+
+`8:8->33`
+
+`9:9->36`
+
+`10:10->39`
+
+`11:11->41`
+
+`12:12->42`
+
+### Coverage
+
+- 12/12 coarse cells possuem reference;
+- 12/42 fine cells possuem seed-vertex reference;
+- 30 fine cells intermediárias não recebem owner neste checkpoint.
+
+### Validation matrix planejada
+
+- 14 Facts;
+- baseline: 313;
+- esperado: 327.
+
+### Scope exclusions
+
+M2.4.2 não define:
+
+- full parent-child ownership;
+- mapping de fine cells intermediárias;
+- coarse-edge para fine-edge-chain;
+- coarse-vertex junction mapping;
+- Class II reference mapping;
+- Class III reference mapping;
+- tactical refinement;
+- universal Goldberg refinement.
+
+### GPP
+
+Nenhuma promoção no design.
+
+GPP permanece:
+
+**109.50 / 1000**
+
+Global Progress permanece:
+
+**11.0%**
+
+Planet Topology permanece:
+
+**39.50 / 90 — 43.9%**
+
+`Strategic ↔ tactical hierarchy/refinement mapping` permanece:
+
+**Inexistente — fator 0.00**
+
+### Próximo gate
+
+**M2.4.2 DESIGN AUDIT**

@@ -3425,6 +3425,142 @@ M2.4.1 está concluído.
 
 O próximo subcheckpoint é M2.4.2 — Canonical Construction Provenance & Reference Mapping, que deverá investigar e congelar como provenance combinatória pode produzir um primeiro mapping executável entre coarse e fine sem usar coincidência de ordinais como lineage.
 
+## 12.5 M2.4.2 canonical construction provenance and reference mapping
+
+O audit read-only de M2.4.2 confirmou que os geradores já possuem provenance combinatória suficiente internamente, mas ela é descartada antes de se tornar parte de um contrato cross-resolution.
+
+No caminho Class I / Class II:
+
+- `SubdivisionLatticeVertexKey` representa uma posição canônica por seed vertices ponderados;
+- os keys são ordenados antes da atribuição de `StrategicCellId`;
+- `StrategicCellId` continua sendo identidade de saída local à topologia, não provenance.
+
+No caminho Class III:
+
+- `LocalPoint`, `LatticeIndex`, `SeedFace`, `FaceEdgeReference` e `DisjointSet` preservam informação de construção;
+- a costura é canonicalizada por roots;
+- os roots são detalhes internos e não podem se tornar identidade durável.
+
+M2.4.2 não tentará resolver toda a provenance de Class I, II e III em um único salto.
+
+O primeiro reference mapping executável será limitado ao par:
+
+`G(1,0) -> G(2,0)`
+
+com:
+
+`scale = 2`.
+
+Esse par é escolhido porque todo `StrategicCell` coarse de `G(1,0)` corresponde a um dos 12 vertices canônicos do icosaedro base.
+
+### Icosahedron seed provenance
+
+M2.4.2 introduzirá:
+
+`IcosahedronSeedVertexId`
+
+com domínio:
+
+`1..12`.
+
+O tipo:
+
+- é uma identidade de provenance de construção;
+- não é `StrategicCellId`;
+- rejeita zero;
+- rejeita valores acima de 12;
+- trata `default` como inválido;
+- não usa coordenadas floating-point.
+
+### Reference relation
+
+M2.4.2 introduzirá:
+
+`GoldbergScaledCellReference`
+
+com:
+
+- `IcosahedronSeedVertexId SeedVertexId`;
+- `StrategicCellId CoarseCellId`;
+- `StrategicCellId FineCellId`.
+
+A relação significa apenas:
+
+o coarse cell e o fine cell foram materializados a partir do mesmo vertex canônico do seed icosaédrico.
+
+Ela não significa:
+
+- ownership de fine cells pelo coarse cell;
+- parent-child completo;
+- cobertura de todas as fine cells;
+- edge refinement;
+- vertex refinement;
+- tactical refinement.
+
+### Reference map
+
+M2.4.2 introduzirá:
+
+`GoldbergScaledRefinementReferenceMap`
+
+e:
+
+`GoldbergScaledRefinementReferenceMapper`.
+
+O mapper:
+
+- recebe um `GoldbergScaledRefinement`;
+- nesta tranche aceita somente `G(1,0) -> G(2,0)`, scale 2;
+- rejeita outros pares com `NotSupportedException`;
+- obtém coarse/fine references da provenance de construção do gerador;
+- não calcula lineage por igualdade ou aritmética de `StrategicCellId`;
+- produz exatamente 12 references;
+- ordena references por `SeedVertexId`;
+- exige seed IDs únicos;
+- exige coarse IDs únicos;
+- exige fine IDs únicos;
+- retorna coleção read-only.
+
+O public behavior de `GoldbergStrategicTopologyGenerator.Generate` permanece inalterado.
+
+A implementação poderá extrair um carrier interno de provenance do caminho triangular, mas esse carrier não será public API e não deverá duplicar o algoritmo de geração.
+
+### Canonical reference vector
+
+Para o baseline atual, o reference vector congelado de `G(1,0) -> G(2,0)` é:
+
+- seed 1: coarse cell 1 -> fine cell 6;
+- seed 2: coarse cell 2 -> fine cell 11;
+- seed 3: coarse cell 3 -> fine cell 15;
+- seed 4: coarse cell 4 -> fine cell 19;
+- seed 5: coarse cell 5 -> fine cell 23;
+- seed 6: coarse cell 6 -> fine cell 26;
+- seed 7: coarse cell 7 -> fine cell 30;
+- seed 8: coarse cell 8 -> fine cell 33;
+- seed 9: coarse cell 9 -> fine cell 36;
+- seed 10: coarse cell 10 -> fine cell 39;
+- seed 11: coarse cell 11 -> fine cell 41;
+- seed 12: coarse cell 12 -> fine cell 42.
+
+Esse vetor é consequência do canonical construction ordering atual e fornece um oracle independente para o primeiro reference mapping.
+
+### Scope boundary
+
+M2.4.2 não:
+
+- mapeia fine cells intermediárias para coarse parents;
+- define ownership de cells em coarse boundaries;
+- define coarse-edge para fine-edge-chain;
+- define coarse-vertex para fine junction;
+- altera `TacticalRegion`;
+- altera `SharedBorderBand`;
+- suporta Class II ou Class III reference mapping;
+- prova universal Goldberg refinement.
+
+Class II e Class III permanecem para M2.4.4 depois que M2.4.3 congelar continuidade de shared borders sobre o reference pair.
+
+M2.4.2 não promove GPP no design. A capability `Strategic ↔ tactical hierarchy/refinement mapping` permanece em fator `0.00` enquanto só existir anchor/reference correspondence e não hierarchy coverage executável.
+
 O estado estratégico de uma conexão poderá futuramente ser derivado do estado tático correspondente.
 
 Exemplos futuros incluem:

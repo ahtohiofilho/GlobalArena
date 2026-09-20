@@ -679,6 +679,10 @@ M2.4.1 — Scaled Refinement Compatibility Contract:
 
 **concluído em 2026-09-20**
 
+M2.4.2 — Canonical Construction Provenance & Reference Mapping:
+
+**design congelado; implementação pendente**
+
 Baseline V1:
 
 **congelado em 2026-09-18**

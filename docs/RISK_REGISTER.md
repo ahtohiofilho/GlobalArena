@@ -302,9 +302,23 @@ O contrato `GoldbergScaledRefinement` agora:
 
 A incerteza de compatibilidade de parâmetros foi reduzida, mas o núcleo do RISK-003 permanece aberto: ainda não existe provenance/mapping executável entre entidades coarse e fine.
 
+O audit read-only de M2.4.2 confirmou que a provenance necessária não está ausente; ela está encapsulada dentro dos geradores.
+
+Class I/II preservam provenance por `SubdivisionLatticeVertexKey` antes de converter construction keys em `StrategicCellId`.
+
+Class III preserva provenance por lattice local, orientação de seed faces e stitching via `DisjointSet`, mas os roots atuais são implementation details e não podem ser publicados como identidade.
+
+Decisão de redução de risco:
+
+M2.4.2 começará somente pelo reference pair `G(1,0) -> G(2,0)`, onde os 12 coarse cells correspondem exatamente aos 12 vertices canônicos do icosaedro base.
+
+A provenance pública mínima será `IcosahedronSeedVertexId(1..12)` e o reference mapping associará cada seed vertex a um coarse `StrategicCellId` e a um fine `StrategicCellId`.
+
+Isso cria uma primeira correspondência cross-resolution baseada em construction provenance sem ainda forçar ownership das fine cells intermediárias.
+
 Próxima ação:
 
-executar M2.4.2 — Canonical Construction Provenance & Reference Mapping começando por audit read-only da construção combinatória dos geradores Class I, II e III, para identificar qual provenance está disponível ou precisa ser exposta antes de congelar um primeiro parent-child mapping. Não inferir lineage por igualdade de IDs e não promover GPP antes de mapping executável.
+implementar o design auditado de M2.4.2 com exatamente 12 seed-vertex references para `G(1,0) -> G(2,0)`, preservando `StrategicCellId` como identidade local, sem edge-chain mapping, sem Class II/III mapping e sem promoção de GPP.
 
 ---
 
