@@ -232,7 +232,7 @@ Mitigação:
 
 Próxima ação:
 
-materializar em M2.2.2 o primeiro grafo tático local canônico e determinístico usando o contrato de M2.2.1; depois avançar para materialização estratégica → tática em M2.2.3, mantendo shared border bands fora do escopo até M2.3.
+implementar em M2.2.2 um reference graph tático mínimo de três células (`1 <-> 2 <-> 3`) para provar geração canônica e determinística sem congelar geometria física; depois avançar para materialização estratégica → tática em M2.2.3, mantendo shared border bands e conectividade cross-region fora do escopo até M2.3.
 
 ---
 

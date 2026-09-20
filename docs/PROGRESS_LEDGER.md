@@ -6374,3 +6374,107 @@ Objetivos:
 - preservar o contrato de identidade e ownership de M2.2.1;
 - provar geração repetida determinística;
 - manter shared border bands e conectividade cross-region fora do escopo até M2.3.
+
+---
+
+## 2026-09-20 — M2.2.2 Minimal Tactical Region Graph audit e design
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.2 — Tactical Region Topology**
+
+Subcheckpoint:
+
+**M2.2.2 — Minimal Tactical Region Graph**
+
+### Audit read-only
+
+Baseline auditado:
+
+`2ce399acf41ea16a783700fe85214c0a3fe7a9d1`
+
+Resultado:
+
+**PASS_READY_FOR_DESIGN**
+
+Evidência:
+
+- branch `main`;
+- HEAD = origin/main;
+- worktree limpo;
+- build Release com 0 warnings e 0 errors;
+- suíte completa: 211/211, 0 falhas, 0 skipped;
+- nenhum commit;
+- nenhum push;
+- nenhuma mutação do repositório;
+- 12 hashes de fontes/documentação recomputados sem divergência.
+
+### Conclusão do audit
+
+A documentação vigente não fixa uma forma local ou contagem final de células para `TacticalRegion`.
+
+O projeto exige uma malha tática de alta resolução e estabelece requisitos futuros de hexágonos e shared border bands, mas M2.2 permanece explicitamente sem coordenadas, mesh, refinamento físico e sem semântica cross-region.
+
+Portanto, M2.2.2 não deve inventar a geometria final.
+
+### Design congelado
+
+Será introduzido:
+
+`MinimalTacticalRegionGraphGenerator`
+
+Entrada:
+
+`StrategicCellId`
+
+Saída:
+
+`TacticalRegion`
+
+Reference graph:
+
+`1 <-> 2 <-> 3`
+
+A escolha de três células é mínima e deliberada: permite testar uma célula com múltiplas adjacências sem fixar uma geometria física.
+
+Invariantes:
+
+- parent válido obrigatório;
+- ordinais canônicos one-based;
+- adjacência recíproca;
+- ausência de self-loop;
+- ausência de duplicatas;
+- conectividade;
+- ordenação canônica;
+- geração repetida determinística.
+
+### Limites
+
+Não são definidos em M2.2.2:
+
+- quantidade final de microtiles;
+- geometria hexagonal/pentagonal concreta;
+- coordenadas;
+- mesh;
+- resolução de refinamento;
+- shared border bands;
+- ownership cross-region;
+- adjacência cross-region.
+
+### GPP
+
+Nenhuma promoção adicional de maturidade é contabilizada no design.
+
+GPP permanece:
+
+**86.80 / 1000**
+
+Global Progress permanece:
+
+**8.7%**
+
+A próxima promoção depende da implementação executável e dos gates correspondentes.

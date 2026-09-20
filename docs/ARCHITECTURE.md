@@ -2789,6 +2789,44 @@ Elementos compartilhados de fronteira permanecem fora deste contrato e serão de
 
 Coordenadas, mesh, terreno, renderização e conteúdo físico permanecem fora da fonte de verdade topológica deste checkpoint.
 
+## 12.2 Grafo tático mínimo de referência
+
+M2.2.2 materializa um primeiro grafo tático local apenas para provar geração determinística sobre o contrato de M2.2.1.
+
+O audit de M2.2.2 não encontrou contrato existente que fixe:
+
+- contagem final de células de uma região tática;
+- geometria local definitiva;
+- coordenadas 2D ou 3D;
+- shape de pentágono ou hexágono para cada `TacticalCell`;
+- layout de fronteira;
+- ownership cross-region.
+
+Por isso, o primeiro grafo é deliberadamente um **reference graph**, e não a topologia física final do planeta.
+
+A referência mínima será um caminho canônico de três células:
+
+`1 <-> 2 <-> 3`
+
+onde os números representam `LocalOrdinal`.
+
+Esse grafo é o menor conectado que também permite validar uma célula com múltiplas adjacências e sua ordenação canônica.
+
+O gerador de referência deverá:
+
+- receber um `StrategicCellId` válido;
+- criar exatamente três `TacticalCellId` com ordinais one-based `1`, `2`, `3`;
+- materializar adjacências recíprocas `1-2` e `2-3`;
+- retornar uma `TacticalRegion` válida;
+- produzir a mesma assinatura canônica em gerações repetidas;
+- não usar ponto flutuante, coordenadas, hash de runtime ou ordem incidental como fonte de identidade.
+
+Esse grafo não afirma que uma região tática real terá três células.
+
+Também não afirma que a topologia física final seja uma cadeia.
+
+A geometria hexagonal/pentagonal de alta resolução, refinamento de superfície, border bands e conectividade cross-region permanecem decisões posteriores.
+
 ---
 
 # 13. Conectividade entre regiões

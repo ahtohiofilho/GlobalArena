@@ -559,14 +559,26 @@ Subcheckpoint atual:
 
 **M2.2.2 — Minimal Tactical Region Graph**
 
-Objetivos iniciais:
+O audit read-only de M2.2.2 confirmou que o repositório não congela ainda uma contagem final de células nem uma geometria local definitiva para `TacticalRegion`.
 
-- materializar o primeiro grafo tático local canônico;
-- produzir conectividade real sem depender de montagem manual nos testes;
-- preservar `TacticalCellId` e o contrato de ownership de M2.2.1;
-- preservar invariantes de adjacência recíproca, ausência de self-loop e ausência de duplicatas;
-- provar determinismo de assinatura na geração repetida;
-- manter shared border bands e conectividade cross-region fora do escopo até M2.3.
+Design congelado para esta tranche:
+
+- introduzir `MinimalTacticalRegionGraphGenerator`;
+- entrada: um `StrategicCellId` válido;
+- saída: uma `TacticalRegion` canônica;
+- reference graph mínimo: três células com `LocalOrdinal` `1`, `2`, `3`;
+- conectividade: `1 <-> 2 <-> 3`;
+- IDs continuam derivados somente de `ParentStrategicCellId + LocalOrdinal`;
+- geração repetida deve reproduzir a mesma assinatura;
+- resultado deve satisfazer automaticamente os invariantes de `TacticalRegion`;
+- nenhum ponto flutuante ou coordenada participa da fonte de verdade;
+- nenhuma semântica de shared border band ou adjacência cross-region será introduzida.
+
+A cadeia de três células é apenas um fixture topológico executável para provar geração e determinismo. Ela não congela a forma, resolução ou número final de microtiles de uma região real.
+
+Próximo gate:
+
+implementar e validar o gerador mínimo sem commit/push antes da auditoria.
 
 ---
 
