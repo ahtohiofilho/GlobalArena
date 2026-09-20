@@ -3618,6 +3618,176 @@ Ainda não existe full parent-child coverage, coarse-edge para fine-edge-chain m
 
 O próximo subcheckpoint é M2.4.3 — Shared Border Refinement Continuity.
 
+## 12.6 M2.4.3 shared border refinement continuity
+
+O audit read-only de M2.4.3 executou um probe externo ao repositório sobre o reference pair:
+
+`G(1,0) -> G(2,0)`
+
+com:
+
+`scale = 2`.
+
+O probe confirmou:
+
+- 30 coarse `StrategicEdge`;
+- 120 fine `StrategicEdge`;
+- 30 coarse `SharedBorderBand`;
+- 120 fine `SharedBorderBand`;
+- nenhum par de fine anchor cells é diretamente adjacente;
+- cada par de fine anchors correspondente a um coarse edge possui exatamente um common neighbor;
+- existem exatamente 30 unique two-edge chains;
+- os 30 middle fine cells são distintos;
+- os 30 middle fine cells são exatamente os 30 hexágonos de `G(2,0)`;
+- as chains usam exatamente 60 fine edges distintos;
+- os 60 fine edges representam metade dos 120 fine edges;
+- os 60 fine bands correspondentes existem;
+- todos os bands atuais continuam com um único reference `SharedBorderElement`.
+
+Isso permite congelar um primeiro contrato de continuidade lógica de shared border sem criar geometry física.
+
+### Cross-resolution shared border reference
+
+M2.4.3 introduzirá:
+
+`GoldbergScaledSharedBorderReference`
+
+com:
+
+- `StrategicEdgeId CoarseStrategicEdgeId`;
+- `StrategicCellId MiddleFineCellId`;
+- `IReadOnlyList<StrategicEdgeId> FineStrategicEdgeIds`.
+
+Para o reference pair de M2.4.3:
+
+- cada coarse edge possui exatamente dois fine edge IDs;
+- os dois fine edges formam uma chain contínua;
+- a chain começa no fine anchor correspondente ao primeiro `IncidentCellId` do coarse edge;
+- passa pelo único middle fine cell;
+- termina no fine anchor correspondente ao segundo `IncidentCellId` do coarse edge.
+
+Essa ordering é uma ordering lógica de chain.
+
+Ela não redefine a orientação interna conceitual de `SharedBorderBand` e não representa geometry física.
+
+### Continuity map
+
+M2.4.3 introduzirá:
+
+`GoldbergScaledSharedBorderContinuityMap`
+
+com:
+
+- `GoldbergScaledRefinementReferenceMap CellReferenceMap`;
+- `IReadOnlyList<GoldbergScaledSharedBorderReference> BorderReferences`.
+
+Invariants para o reference pair:
+
+- exatamente 30 border references;
+- exatamente uma reference por coarse edge;
+- exatamente dois fine edge IDs por reference;
+- 30 middle fine cell IDs únicos;
+- 60 fine edge IDs globalmente únicos;
+- ordem canônica por `CoarseStrategicEdgeId`;
+- snapshot read-only.
+
+### Mapper
+
+M2.4.3 introduzirá:
+
+`GoldbergScaledSharedBorderContinuityMapper.Materialize(GoldbergScaledRefinementReferenceMap)`.
+
+O mapper:
+
+- exige o cell reference map validado de M2.4.2;
+- gera coarse e fine topologies a partir dos parâmetros do refinement;
+- usa `CoarseStrategicEdge.IncidentCellIds` para localizar os dois fine anchor cells via provenance;
+- encontra o unique common fine neighbor;
+- resolve os dois fine `StrategicEdge` que conectam anchor -> middle -> anchor;
+- verifica que os respectivos coarse/fine `SharedBorderBand` existem;
+- não compara coarse e fine `StrategicEdgeId` como lineage;
+- não deriva mapping por arithmetic de IDs;
+- não usa floating point;
+- rejeita qualquer situação que não possua uma única two-edge chain.
+
+### SharedBorder semantics
+
+Uma border reference representa:
+
+um coarse `SharedBorderBand`, identificado por seu `StrategicEdgeId`, correspondendo logicamente a dois fine `SharedBorderBand`, identificados pelos dois fine `StrategicEdgeId`.
+
+Ela não transforma:
+
+- `StrategicEdge` em `SharedBorderElement`;
+- `SharedBorderElement` em `StrategicEdge`;
+- `SharedBorderElement` em `TacticalCell`.
+
+A cardinalidade atual de um reference element por band permanece inalterada.
+
+M2.4.3 não define cardinalidade física final de border elements.
+
+### Canonical reference vector
+
+O oracle congelado usa:
+
+`coarseEdge:middleFineCell:fineEdge1,fineEdge2`
+
+e é:
+
+- `1:1:3,6`;
+- `2:2:8,11`;
+- `3:3:13,16`;
+- `4:4:18,21`;
+- `5:5:22,25`;
+- `6:7:27,29`;
+- `7:8:31,33`;
+- `8:9:35,38`;
+- `9:10:39,42`;
+- `10:12:44,46`;
+- `11:13:48,50`;
+- `12:14:51,54`;
+- `13:16:56,58`;
+- `14:17:60,62`;
+- `15:18:63,66`;
+- `16:20:68,70`;
+- `17:21:72,74`;
+- `18:22:75,78`;
+- `19:24:80,82`;
+- `20:25:83,85`;
+- `21:27:87,89`;
+- `22:28:91,93`;
+- `23:29:94,97`;
+- `24:31:99,101`;
+- `25:32:102,104`;
+- `26:34:106,108`;
+- `27:35:109,111`;
+- `28:37:113,115`;
+- `29:38:116,118`;
+- `30:40:119,120`.
+
+Esse vector é um oracle de validação do canonical output atual.
+
+O algoritmo de production não poderá usar esse vector hard-coded para construir o mapping.
+
+### Scope boundary
+
+M2.4.3 não:
+
+- atribui ownership das 30 middle fine cells a um único coarse cell;
+- mapeia coarse vertices para fine junctions;
+- altera `SharedBorderElement`;
+- altera a cardinalidade atual de `SharedBorderBand`;
+- define physical tactical-border mapping;
+- define final border geometry;
+- suporta Class II ou Class III continuity;
+- prova universal Goldberg refinement.
+
+Class II e Class III permanecem para M2.4.4.
+
+M2.4.3 não promove GPP no design.
+
+`Strategic ↔ tactical hierarchy/refinement mapping` permanece em fator `0.00` até existir hierarchy coverage mais ampla do que seed anchors e logical edge chains.
+
 O estado estratégico de uma conexão poderá futuramente ser derivado do estado tático correspondente.
 
 Exemplos futuros incluem:

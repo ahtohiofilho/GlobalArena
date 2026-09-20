@@ -9167,3 +9167,149 @@ Baseline V1 permanece:
 Próximo gate:
 
 **READ_ONLY_AUDIT**
+
+---
+
+## 2026-09-20 — M2.4.3 audit e shared border refinement continuity design
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.4 — Goldberg Family & Refinement Validation**
+
+Subcheckpoint:
+
+**M2.4.3 — Shared Border Refinement Continuity**
+
+### Audit read-only
+
+Baseline:
+
+`b7ca6faa400ad5dc235dc33a7eaeb66f65acc7e7`
+
+Resultado:
+
+**PASS_READY_FOR_BORDER_CONTINUITY_DESIGN**
+
+Evidência:
+
+- branch `main`;
+- HEAD = origin/main;
+- worktree limpo;
+- build Release: 0 warnings, 0 errors;
+- suíte: 327/327;
+- nenhum commit;
+- nenhum push;
+- nenhuma mutação;
+- snapshot de 32 arquivos;
+- 32/32 hashes SHA-256 recomputados sem divergência;
+- probe externo ao repositório executado com sucesso.
+
+### Probe findings
+
+Reference pair:
+
+`G(1,0) -> G(2,0)`
+
+Scale:
+
+`2`
+
+Resultados:
+
+- coarse cells: 12;
+- coarse edges: 30;
+- coarse vertices: 20;
+- fine cells: 42;
+- fine edges: 120;
+- fine vertices: 80;
+- coarse bands: 30;
+- fine bands: 120;
+- direct anchor adjacency: 0;
+- common-neighbor count min/max: 1/1;
+- unique two-edge chains: 30;
+- unique middle fine cells: 30;
+- unique mapped fine edges: 60;
+- fine pentagons: 12;
+- fine hexagons: 30;
+- all middle cells are hexagons: yes;
+- all fine hexagons covered as middle: yes;
+- mapped fine-edge coverage: 60/120;
+- mapped fine-band references: 60;
+- mapped bands remain single-element: yes.
+
+### Design congelado
+
+Novos production contracts planejados:
+
+- `GoldbergScaledSharedBorderReference`;
+- `GoldbergScaledSharedBorderContinuityMap`;
+- `GoldbergScaledSharedBorderContinuityMapper`.
+
+Input:
+
+`GoldbergScaledRefinementReferenceMap`.
+
+Cada coarse edge produzirá:
+
+- one coarse edge reference;
+- one unique middle fine cell;
+- ordered two-fine-edge chain.
+
+Chain orientation:
+
+first coarse incident-cell fine anchor -> middle -> second coarse incident-cell fine anchor.
+
+Coverage esperada:
+
+- coarse edges: 30/30;
+- coarse bands: 30/30;
+- fine edges: 60/120;
+- fine bands: 60/120;
+- fine hexagons as middle cells: 30/30.
+
+### Validation matrix
+
+- 13 Facts;
+- baseline: 327;
+- esperado: 340.
+
+### Scope exclusions
+
+M2.4.3 não define:
+
+- middle-cell ownership;
+- coarse-vertex junction mapping;
+- physical tactical-border mapping;
+- final physical border cardinality;
+- geometry;
+- Class II continuity;
+- Class III continuity;
+- universal Goldberg refinement.
+
+### GPP
+
+Nenhuma promoção no design.
+
+GPP permanece:
+
+**109.50 / 1000**
+
+Global Progress permanece:
+
+**11.0%**
+
+Planet Topology permanece:
+
+**39.50 / 90 — 43.9%**
+
+`Strategic ↔ tactical hierarchy/refinement mapping` permanece:
+
+**Inexistente — fator 0.00**
+
+### Próximo gate
+
+**M2.4.3 DESIGN AUDIT**

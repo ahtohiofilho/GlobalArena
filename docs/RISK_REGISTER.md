@@ -336,9 +336,40 @@ Ainda permanecem abertos:
 - Class III mapping;
 - full hierarchy coverage.
 
+O audit read-only de M2.4.3 confirmou uma estrutura de continuidade lógica forte no reference pair `G(1,0) -> G(2,0)`.
+
+Para cada um dos 30 coarse edges:
+
+- os dois fine anchor cells não são diretamente adjacentes;
+- existe exatamente um common fine neighbor;
+- esse neighbor é um hexágono;
+- a chain anchor -> middle -> anchor usa exatamente dois fine edges.
+
+Globalmente:
+
+- existem 30 middle fine cells únicos;
+- eles cobrem exatamente os 30 hexágonos de `G(2,0)`;
+- existem 60 fine edges únicos nas chains;
+- metade dos 120 fine edges permanece fora das coarse-edge chains;
+- cada mapped fine edge possui seu próprio `SharedBorderBand`;
+- a cardinalidade atual dos bands permanece single-element.
+
+Isso reduz RISK-003 porque a continuidade de coarse edges possui agora um reference pattern executável e determinístico.
+
+Ainda permanecem abertos:
+
+- ownership de middle fine cells;
+- coarse-vertex para fine junction mapping;
+- os outros 60 fine edges;
+- physical tactical-border mapping;
+- final border geometry/cardinality;
+- Class II continuity;
+- Class III continuity;
+- full hierarchy coverage.
+
 Próxima ação:
 
-iniciar M2.4.3 — Shared Border Refinement Continuity com audit read-only do reference pair `G(1,0) -> G(2,0)`, investigando como cada coarse `StrategicEdge` pode ser associado deterministicamente a uma chain de fine edges usando provenance combinatória, sem inferir relações por IDs locais e sem promover GPP antes de coverage executável.
+implementar o design auditado de M2.4.3 como logical shared-border continuity para `G(1,0) -> G(2,0)`, com exatamente 30 coarse-to-two-fine edge references, preservando `SharedBorderElement` e a cardinalidade atual dos bands e sem promover GPP.
 
 ---
 

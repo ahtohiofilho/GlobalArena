@@ -1264,9 +1264,56 @@ Subcheckpoint atual:
 
 **M2.4.3 — Shared Border Refinement Continuity**
 
+O audit read-only de M2.4.3 confirmou no reference pair `G(1,0) -> G(2,0)`:
+
+- 30 coarse edges;
+- 120 fine edges;
+- zero direct adjacency entre os fine anchors de qualquer coarse edge;
+- exatamente um common fine neighbor por coarse edge;
+- exatamente 30 unique two-edge chains;
+- 30 middle fine cells únicos;
+- os 30 middle cells são exatamente os 30 fine hexagons;
+- 60 fine edges distintos usados pelas chains;
+- 60/120 fine edges cobertos;
+- 30 coarse bands e 120 fine bands;
+- todos os bands atuais continuam single-element.
+
+Design congelado para M2.4.3:
+
+- relation: `GoldbergScaledSharedBorderReference`;
+- aggregate: `GoldbergScaledSharedBorderContinuityMap`;
+- mapper: `GoldbergScaledSharedBorderContinuityMapper`;
+- input autoritativo: `GoldbergScaledRefinementReferenceMap`;
+- exatamente 30 references;
+- uma reference por coarse edge;
+- dois fine edge IDs por reference;
+- 30 middle fine cell IDs únicos;
+- 60 fine edge IDs globalmente únicos;
+- chain ordering do fine anchor do primeiro coarse incident cell para o segundo;
+- mapping de bands derivado pela identidade de cada edge;
+- nenhuma mudança em `SharedBorderElement`;
+- nenhuma mudança na cardinalidade atual dos bands;
+- nenhuma geometry física.
+
+Canonical oracle:
+
+`1:1:3,6 | 2:2:8,11 | 3:3:13,16 | 4:4:18,21 | 5:5:22,25 | 6:7:27,29 | 7:8:31,33 | 8:9:35,38 | 9:10:39,42 | 10:12:44,46 | 11:13:48,50 | 12:14:51,54 | 13:16:56,58 | 14:17:60,62 | 15:18:63,66 | 16:20:68,70 | 17:21:72,74 | 18:22:75,78 | 19:24:80,82 | 20:25:83,85 | 21:27:87,89 | 22:28:91,93 | 23:29:94,97 | 24:31:99,101 | 25:32:102,104 | 26:34:106,108 | 27:35:109,111 | 28:37:113,115 | 29:38:116,118 | 30:40:119,120`.
+
+Validation planejada:
+
+- 13 Facts;
+- baseline: 327;
+- esperado após implementação: 340.
+
+M2.4.3 continua reference-pair-only.
+
+Class II e Class III permanecem para M2.4.4.
+
+GPP não é promovido neste design.
+
 Próximo gate:
 
-**READ_ONLY_AUDIT**
+**M2.4.3 DESIGN AUDIT**
 
 ---
 
