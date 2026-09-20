@@ -440,9 +440,34 @@ Continuam abertos no RISK-003:
 - physical tactical-border mapping;
 - universal Goldberg refinement.
 
+O audit read-only acumulado de M2.4.5 confirmou que M2.4 pode avançar para um final validation gate sem alterar production.
+
+A evidência acumulada suporta:
+
+- scaled compatibility;
+- representative multi-family topology regression;
+- first-pair canonical seed provenance;
+- first-pair logical shared-border edge-chain continuity.
+
+A evidência acumulada não suporta:
+
+- multi-family durable cell lineage;
+- Class III global stitched provenance;
+- multi-family edge continuity;
+- full parent-child ownership;
+- coarse-vertex fine-junction mapping;
+- physical tactical-border mapping;
+- universal Goldberg refinement.
+
+Decisão de redução de risco:
+
+M2.4.5 será validation-only e consolidará 12 Facts cumulativos usando somente public contracts.
+
+Se o gate final passar cross-platform, M2.4 poderá ser fechado, mas RISK-003 continuará HIGH e a capability `Strategic ↔ tactical hierarchy/refinement mapping` continuará em fator 0.00.
+
 Próxima ação:
 
-iniciar M2.4.5 — Refinement Stage Validation & M2.4 Close com audit read-only do conjunto completo de evidências M2.4.1–M2.4.4, determinando o que pode ser formalmente declarado no fechamento do stage sem extrapolar o narrow lineage coverage atual.
+implementar `GoldbergRefinementStageValidationTests` e, após auditoria + regressão cross-platform, executar o formal close de M2.4 e transferir o Critical Path para M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate.
 
 ---
 

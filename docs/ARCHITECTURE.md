@@ -4000,6 +4000,102 @@ Permanecem abertos:
 
 O próximo subcheckpoint é M2.4.5 — Refinement Stage Validation & M2.4 Close.
 
+## 12.8 M2.4.5 refinement stage validation and M2.4 close
+
+O audit read-only acumulado de M2.4.5 confirmou que M2.4.1–M2.4.4 formam um conjunto coerente de contratos e evidências, desde que o fechamento do stage preserve explicitamente seus limites.
+
+O audit confirmou:
+
+- os quatro formal-close commits anteriores pertencem à ancestry atual;
+- build Release com 0 warnings e 0 errors;
+- suíte atual em 354/354;
+- 11 representative scaled pairs em Class I/II/III;
+- scales 2 e 3;
+- deterministic topology generation;
+- Euler e 12 pentágonos em todos os pares;
+- 12 canonical seed-cell references no reference pair `G(1,0) -> G(2,0)`;
+- 30 shared-border continuity references;
+- 30 unique middle fine cells;
+- middle fine cells = todos os 30 fine hexagons;
+- 60 unique mapped fine edges;
+- 60/120 fine-edge coverage;
+- mapped coarse/fine shared-border bands existentes;
+- current single-element band semantics preservada;
+- 10 non-reference representative pairs rejeitados pelo current reference mapper.
+
+### Design decision
+
+M2.4.5 será **validation-only**.
+
+Nenhum production type será adicionado ou alterado.
+
+Será criado somente:
+
+`GlobalArena.Tests/GoldbergRefinementStageValidationTests.cs`
+
+com 12 Facts cumulativos.
+
+### Final stage validation matrix
+
+1. all 11 representative scaled pairs preserve public scale/count invariants;
+2. all representative topologies reproduce canonical signatures;
+3. all representative pairs preserve Euler and 12 pentagons;
+4. current reference mapper accepts only `G(1,0) -> G(2,0)` among the representative matrix;
+5. reference map contains exactly 12 canonical seed references with unique coarse/fine anchors;
+6. repeated reference-map materialization is deterministic;
+7. continuity map contains exactly 30 references in coarse-edge order;
+8. middle fine cells are exactly the 30 fine hexagons;
+9. continuity uses exactly 60 globally unique fine edges;
+10. every ordered two-edge chain connects the two expected fine anchors through its middle fine cell;
+11. all mapped coarse/fine bands exist, mapped fine-edge coverage remains 60/120, and current single-element band semantics remain unchanged;
+12. repeated continuity materialization is deterministic and exposed collections remain read-only.
+
+Baseline:
+
+`354`.
+
+Expected after implementation:
+
+`366`.
+
+### Stage close semantics
+
+Se a implementação de M2.4.5, a suíte completa e a regressão cross-platform passarem, M2.4 poderá ser fechado formalmente.
+
+O fechamento de M2.4 poderá declarar:
+
+- scaled refinement compatibility para os pares suportados pelo contract;
+- representative multi-family topology regression coverage em Class I/II/III;
+- canonical seed provenance e cell-reference mapping para o first reference pair;
+- logical coarse-edge to fine-edge-chain continuity para o first reference pair.
+
+O fechamento de M2.4 **não poderá** declarar:
+
+- multi-family entity lineage;
+- multi-family edge-chain continuity;
+- durable global Class III provenance;
+- parent-child ownership completo;
+- coarse-vertex to fine-junction mapping;
+- physical tactical-border mapping;
+- final physical border geometry/cardinality;
+- universal Goldberg refinement.
+
+### Maturity and GPP
+
+M2.4.5 não promove GPP no design.
+
+`Strategic ↔ tactical hierarchy/refinement mapping` permanece:
+
+`Inexistente — fator 0.00`.
+
+O stage poderá fechar com essa capability ainda em `0.00` porque o escopo validado de M2.4 será registrado de forma estrita, enquanto a cobertura de hierarchy/physical mapping necessária ao M2 exit gate permanece para M2.5.
+
+`RISK-003` permanece HIGH.
+
+Após o formal close de M2.4, o próximo stage será:
+
+`M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate`.
+
 O estado estratégico de uma conexão poderá futuramente ser derivado do estado tático correspondente.
 
 Exemplos futuros incluem:

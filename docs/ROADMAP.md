@@ -1354,9 +1354,63 @@ Subcheckpoint atual:
 
 **M2.4.5 — Refinement Stage Validation & M2.4 Close**
 
+O audit read-only acumulado de M2.4.5 confirmou:
+
+- ancestry válida dos formal closes M2.4.1–M2.4.4;
+- build Release: 0 warnings, 0 errors;
+- suíte: 354/354;
+- 11 representative scaled pairs em Class I/II/III;
+- scales 2 e 3;
+- scaled count relations, Euler, 12 pentagons e determinism aprovados;
+- reference map do first pair com 12 canonical seed references;
+- continuity map do first pair com 30 coarse-edge references;
+- 30 unique middle fine cells = todos os 30 fine hexagons;
+- 60 unique mapped fine edges;
+- fine-edge coverage: 60/120;
+- mapped bands existentes;
+- current single-element band semantics preservada;
+- 10 non-reference representative pairs rejeitados pelo current reference mapper;
+- physical tactical mapping continua ausente.
+
+Design congelado para M2.4.5:
+
+- validation-only;
+- nenhuma mudança em production;
+- novo test file: `GoldbergRefinementStageValidationTests.cs`;
+- 12 Facts cumulativos;
+- somente public contracts;
+- sem reflection/private generator details;
+- expected suite: 366;
+- M2.4 pode fechar após implementação + cross-platform PASS;
+- stage close não implica multi-family lineage;
+- stage close não implica physical tactical-border mapping;
+- stage close não implica universal Goldberg refinement.
+
+M2.4.5 não promove GPP.
+
+GPP permanece:
+
+**109.50 / 1000**
+
+Global Progress permanece:
+
+**11.0%**
+
+Topologia planetária / Goldberg permanece:
+
+**39.50 / 90 GPP — 43.9%**
+
+`Strategic ↔ tactical hierarchy/refinement mapping` permanece:
+
+**Inexistente — 0.00**
+
+`RISK-003` permanece:
+
+**HIGH**
+
 Próximo gate:
 
-**READ_ONLY_AUDIT**
+**M2.4.5 DESIGN AUDIT**
 
 ---
 

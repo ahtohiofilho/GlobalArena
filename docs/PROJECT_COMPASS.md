@@ -691,6 +691,10 @@ M2.4.4 — Class I/II/III Scaled Refinement Validation:
 
 **concluído em 2026-09-20**
 
+M2.4.5 — Refinement Stage Validation & M2.4 Close:
+
+**design congelado; implementação pendente**
+
 Baseline V1:
 
 **congelado em 2026-09-18**

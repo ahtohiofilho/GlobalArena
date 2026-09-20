@@ -9733,3 +9733,141 @@ Baseline V1 remains:
 Next gate:
 
 **READ_ONLY_AUDIT**
+
+---
+
+## 2026-09-20 — M2.4.5 refinement stage validation audit and design
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.4 — Goldberg Family & Refinement Validation**
+
+Subcheckpoint:
+
+**M2.4.5 — Refinement Stage Validation & M2.4 Close**
+
+### Read-only audit
+
+Baseline:
+
+`bf93af60e55fa52d8a3a905827cb650881a3d5ab`
+
+Resultado:
+
+**PASS_READY_FOR_REFINEMENT_STAGE_VALIDATION_DESIGN**
+
+Local evidence:
+
+- build Release: 0 warnings, 0 errors;
+- tests: 354/354;
+- branch `main`;
+- HEAD = origin/main;
+- worktree clean;
+- no repository mutation;
+- no commit;
+- no push;
+- source snapshot: 33 files;
+- 33/33 SHA-256 hashes recomputed without divergence.
+
+### Cumulative stage probe
+
+Representative pairs:
+
+**11**
+
+Results:
+
+- all scaled pairs valid: yes;
+- all deterministic: yes;
+- all Euler: yes;
+- all preserve 12 pentagons: yes;
+- non-reference representative pairs rejected: 10;
+- reference cell count: 12;
+- canonical seed IDs: yes;
+- unique coarse/fine anchors: yes;
+- continuity reference count: 30;
+- unique middle fine cells: 30;
+- mapped fine edge count: 60;
+- mapped fine edges globally unique: yes;
+- middle fine cells exactly fine hexagons: yes;
+- ordered chains valid: yes;
+- all mapped bands exist: yes;
+- current single-element band semantics preserved: yes;
+- fine-edge coverage: 60/120.
+
+### Design decision
+
+M2.4.5 será validation-only.
+
+Implementation planejada:
+
+`GlobalArena.Tests/GoldbergRefinementStageValidationTests.cs`
+
+12 Facts cumulativos.
+
+Nenhuma production API será alterada.
+
+### Closure boundary
+
+Se M2.4.5 passar implementation audit e cross-platform regression, M2.4 poderá ser fechado.
+
+M2.4 close may claim:
+
+- scaled compatibility;
+- representative Class I/II/III scaled regression;
+- first-pair canonical seed provenance;
+- first-pair logical shared-border continuity.
+
+M2.4 close may not claim:
+
+- multi-family entity lineage;
+- physical tactical-border mapping;
+- universal Goldberg refinement.
+
+### Maturity and GPP
+
+GPP change:
+
+**0.00**
+
+GPP remains:
+
+**109.50 / 1000**
+
+Global Progress remains:
+
+**11.0%**
+
+Planet Topology remains:
+
+**39.50 / 90 — 43.9%**
+
+`Strategic ↔ tactical hierarchy/refinement mapping` remains:
+
+**Inexistente — fator 0.00**
+
+`RISK-003` remains:
+
+**HIGH**
+
+### Planned test count
+
+Baseline:
+
+`354`
+
+New Facts:
+
+`12`
+
+Expected:
+
+`366`
+
+### Next gate
+
+**M2.4.5 DESIGN AUDIT**
