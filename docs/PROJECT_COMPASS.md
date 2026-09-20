@@ -593,7 +593,7 @@ Etapa:
 
 Subetapa atual:
 
-**M2.4 — Goldberg Family & Refinement Validation**
+**M2.4.1 — Scaled Refinement Compatibility Contract**
 
 M0 — Project Baseline:
 

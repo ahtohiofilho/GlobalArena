@@ -335,6 +335,12 @@ Stages planejados:
 
 **M2.4 — Goldberg Family & Refinement Validation**
 
+- M2.4.1 — Scaled Refinement Compatibility Contract;
+- M2.4.2 — Canonical Construction Provenance & Reference Mapping;
+- M2.4.3 — Shared Border Refinement Continuity;
+- M2.4.4 — Class I/II/III Scaled Refinement Validation;
+- M2.4.5 — Refinement Stage Validation & M2.4 Close.
+
 **M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate**
 
 M2.1.1 está concluído em 2026-09-19.
@@ -1149,6 +1155,73 @@ Próximo gate:
 
 ---
 
+## M2.4 — Goldberg Family & Refinement Validation
+
+M2.4 iniciou em 2026-09-20 com audit read-only sobre o baseline formalmente fechado de M2.3.
+
+O audit confirmou:
+
+- baseline local em 301/301 testes;
+- geração estratégica existente para Class I, Class II e Class III;
+- `TacticalRegion` ainda usa o minimal reference graph de M2.2;
+- shared border lógico e incidence cross-region estão validados;
+- nenhum production type de refinement/mapping coarse→fine existe;
+- nenhuma physical tactical-border mapping existe;
+- final border cardinality permanece aberta;
+- universal Goldberg refinement permanece não provado.
+
+Decisão para M2.4.1:
+
+definir somente um contrato conservador de compatibilidade por escala inteira.
+
+Supported baseline:
+
+para `scale >= 2`,
+
+`fine = (coarse.M * scale, coarse.N * scale)`.
+
+Exemplos que M2.4.1 deverá aceitar:
+
+- `G(1,0) -> G(2,0)`, scale 2;
+- `G(0,2) -> G(0,6)`, scale 3;
+- `G(1,1) -> G(2,2)`, scale 2;
+- `G(2,1) -> G(4,2)`, scale 2;
+- `G(1,2) -> G(3,6)`, scale 3.
+
+Exemplos que deverá rejeitar:
+
+- mesma resolução;
+- refinement invertido;
+- Class I com eixo trocado;
+- pares não colineares;
+- Class III com quiralidade trocada.
+
+Production contract planejado:
+
+`GlobalArena.World/GoldbergScaledRefinement.cs`
+
+Validation planejada:
+
+`GlobalArena.Tests/GoldbergScaledRefinementTests.cs`
+
+Matriz planejada:
+
+- 7 Facts;
+- 5 execuções de uma Theory;
+- 12 novos casos executados;
+- baseline: 301;
+- esperado: 313.
+
+M2.4.1 não cria mapping de IDs, não materializa topologias, não altera `TacticalRegion`, não expande `SharedBorderBand` e não promove GPP.
+
+O objetivo de M2.4.1 é transformar uma hipótese ampla de refinement em um subconjunto explicitamente suportado e testável antes de qualquer mapping físico.
+
+Próximo gate:
+
+**M2.4.1 DESIGN AUDIT**
+
+---
+
 
 
 ## M3 — Procedural World
@@ -1433,7 +1506,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M2.4 — Goldberg Family & Refinement Validation**
+**M2.4.1 — Scaled Refinement Compatibility Contract**
 
 Official Progress:
 

@@ -3325,6 +3325,70 @@ M2.3 não prova physical `TacticalCell`-to-border mapping, direct cross-region t
 
 Esses problemas passam explicitamente para M2.4 — Goldberg Family & Refinement Validation.
 
+## 12.4 M2.4 refinement compatibility baseline
+
+O audit read-only de M2.4 confirmou que o repositório possui geração estratégica funcional para Class I, Class II e Class III, mas não possui nenhum production contract de coarse-to-fine refinement.
+
+M2.4 separa explicitamente duas ideias que não podem ser confundidas:
+
+- gerar duas topologias Goldberg válidas;
+- provar que uma delas é um refinamento hierárquico suportado da outra.
+
+Contagens maiores, `TriangulationNumber` maior ou igualdade de fórmulas não constituem prova de refinement.
+
+O baseline V1 de compatibilidade será conservador.
+
+Uma relação Goldberg coarse→fine será considerada suportada inicialmente somente quando existir um inteiro `scale >= 2` tal que:
+
+`fine.M == coarse.M * scale`
+
+e
+
+`fine.N == coarse.N * scale`.
+
+Essa regra preserva direção/orientação do vetor Goldberg e, para Class III, preserva a mesma quiralidade. Ela fornece um subconjunto verificável de relações candidatas a refinement sem declarar impossíveis outras relações matematicamente válidas.
+
+A prova de compatibilidade por escala será representada por:
+
+`GoldbergScaledRefinement`
+
+com:
+
+- `GoldbergParameters CoarseParameters`;
+- `GoldbergParameters FineParameters`;
+- `int Scale`.
+
+O objeto:
+
+- rejeita parâmetros `default`/inválidos;
+- rejeita `scale == 1`;
+- rejeita direção coarse→fine invertida;
+- rejeita troca de eixo Class I;
+- rejeita pares não colineares no espaço inteiro `(m,n)`;
+- rejeita troca de quiralidade Class III;
+- não gera `StrategicTopology`;
+- não cria parent-child mapping;
+- não usa coordenadas de ponto flutuante;
+- não compara IDs locais de duas topologias como se fossem linhagem.
+
+M2.4.1 valida apenas a compatibilidade matemática conservadora por escala.
+
+O mapping real de entidades permanece para M2.4.2 e deverá ser derivado de provenance de construção inteira/combinatória, não de coincidência de ordinal de `StrategicCellId`.
+
+O `MinimalTacticalRegionGraphGenerator` permanece um reference graph de M2.2 e não é reinterpretado como refinement físico.
+
+`SharedBorderElement` continua sendo entidade de fronteira própria e não será reinterpretado como `TacticalCell`.
+
+M2.4 fica decomposto em:
+
+- M2.4.1 — Scaled Refinement Compatibility Contract;
+- M2.4.2 — Canonical Construction Provenance & Reference Mapping;
+- M2.4.3 — Shared Border Refinement Continuity;
+- M2.4.4 — Class I/II/III Scaled Refinement Validation;
+- M2.4.5 — Refinement Stage Validation & M2.4 Close.
+
+M2.4.1 não promove GPP. `Strategic ↔ tactical hierarchy/refinement mapping` permanece em fator `0.00` até existir parent-child mapping executável.
+
 O estado estratégico de uma conexão poderá futuramente ser derivado do estado tático correspondente.
 
 Exemplos futuros incluem:

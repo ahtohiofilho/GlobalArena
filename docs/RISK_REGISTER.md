@@ -278,9 +278,20 @@ M2.3.5 fechou o stage com validation-only e regressão cross-platform aprovada:
 - `G(0,2)`, `G(1,2)`, `G(2,1)` e `G(3,1)` adicionados à cobertura acumulada;
 - regressão cross-platform de M2.3.5 passou em Ubuntu, Windows e macOS.
 
+M2.4 iniciou com audit read-only sobre o gap de refinement.
+
+O audit confirmou:
+
+- não existe production mapping coarse→fine;
+- `StrategicCellId`, `StrategicEdgeId` e `StrategicVertexId` são locais à topologia e não podem ser usados como lineage entre resoluções;
+- geração Class I, II e III prova topologias individuais, não relações de refinement;
+- `MinimalTacticalRegionGraphGenerator` continua reference-only;
+- shared border lógico está validado, mas physical border cardinality e tactical-border mapping permanecem abertos;
+- nenhuma fórmula universal de refinement está provada.
+
 Próxima ação:
 
-iniciar M2.4 — Goldberg Family & Refinement Validation com audit read-only do gap entre o modelo lógico já validado e o mapping/refinement físico ainda ausente, incluindo famílias oficialmente suportadas, continuidade de fronteira e critérios para eventualmente promover `Strategic ↔ tactical hierarchy/refinement mapping`; não assumir universal refinement antes de prova executável.
+implementar M2.4.1 com `GoldbergScaledRefinement` como witness explícito de compatibilidade apenas para pares de escala inteira `fine=(k*m,k*n)`, `k>=2`, cobrindo Class I, Class II e Class III sem criar parent-child mapping, sem usar floating point e sem promover GPP. Pares não escalados devem permanecer unsupported, não declarados matematicamente impossíveis.
 
 ---
 

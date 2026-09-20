@@ -8556,3 +8556,141 @@ Baseline V1 permanece:
 Próximo gate:
 
 **READ_ONLY_AUDIT**
+
+---
+
+## 2026-09-20 — M2.4 audit e M2.4.1 refinement compatibility design
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.4 — Goldberg Family & Refinement Validation**
+
+Subcheckpoint:
+
+**M2.4.1 — Scaled Refinement Compatibility Contract**
+
+### Audit read-only
+
+Baseline:
+
+`d5639a8c3fd5b7e3baf348d89c5c486efe49eb0f`
+
+Resultado:
+
+**PASS_READY_FOR_REFINEMENT_DESIGN**
+
+Evidência:
+
+- branch `main`;
+- HEAD = origin/main;
+- worktree limpo;
+- build Release com 0 warnings e 0 errors;
+- suíte baseline: 301/301;
+- nenhum commit;
+- nenhum push;
+- nenhuma mutação do repositório;
+- snapshot de 58 arquivos;
+- 58/58 hashes SHA-256 recomputados sem divergência;
+- nenhum production mapping coarse→fine encontrado.
+
+### Audit findings
+
+Confirmado:
+
+- Class I, Class II e Class III possuem geração estratégica;
+- generation support não equivale a refinement support;
+- IDs estratégicos são locais à topologia;
+- minimal tactical graph permanece reference-only;
+- shared border logical incidence está validada;
+- physical tactical-border mapping está ausente;
+- final border cardinality permanece aberta;
+- universal Goldberg refinement permanece não provado.
+
+### Design congelado
+
+M2.4 adota inicialmente apenas scaled refinement compatibility.
+
+Para um inteiro `scale >= 2`:
+
+`fine.M = coarse.M * scale`
+
+e:
+
+`fine.N = coarse.N * scale`.
+
+Novo production type planejado:
+
+`GlobalArena.World/GoldbergScaledRefinement.cs`
+
+Novo test file planejado:
+
+`GlobalArena.Tests/GoldbergScaledRefinementTests.cs`
+
+Public surface planejada:
+
+- `CoarseParameters`;
+- `FineParameters`;
+- `Scale`.
+
+O tipo não materializa topology e não produz mapping.
+
+### Validation matrix
+
+- 7 Facts;
+- 5 Theory executions;
+- 12 novos casos executados;
+- baseline: 301;
+- esperado: 313.
+
+Supported examples:
+
+- `G(1,0) -> G(2,0)`, scale 2;
+- `G(0,2) -> G(0,6)`, scale 3;
+- `G(1,1) -> G(2,2)`, scale 2;
+- `G(2,1) -> G(4,2)`, scale 2;
+- `G(1,2) -> G(3,6)`, scale 3.
+
+Explicit rejection:
+
+- invalid params;
+- same resolution;
+- reversed direction;
+- non-collinear pair;
+- Class I axis swap;
+- Class III chirality swap.
+
+### M2.4 decomposition
+
+- M2.4.1 — Scaled Refinement Compatibility Contract;
+- M2.4.2 — Canonical Construction Provenance & Reference Mapping;
+- M2.4.3 — Shared Border Refinement Continuity;
+- M2.4.4 — Class I/II/III Scaled Refinement Validation;
+- M2.4.5 — Refinement Stage Validation & M2.4 Close.
+
+### GPP
+
+Nenhuma promoção neste design.
+
+GPP permanece:
+
+**109.50 / 1000**
+
+Global Progress permanece:
+
+**11.0%**
+
+Planet Topology permanece:
+
+**39.50 / 90 — 43.9%**
+
+`Strategic ↔ tactical hierarchy/refinement mapping` permanece:
+
+**Inexistente — fator 0.00**
+
+### Próximo gate
+
+**M2.4.1 DESIGN AUDIT**
