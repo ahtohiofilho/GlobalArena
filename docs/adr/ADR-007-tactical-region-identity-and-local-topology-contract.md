@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-09-20
+**Last revised:** 2026-09-20
 
 ## Context
 
@@ -156,6 +157,48 @@ Negative:
 - M2.2 ainda não permite navegação direta entre regiões táticas;
 - células compartilhadas de fronteira ainda não existem no modelo;
 - M2.3 poderá introduzir uma segunda categoria de identidade tática ou generalizar o contrato de identidade.
+
+## M2.2.1 validation evidence
+
+Implementation commit:
+
+`1c834e4dcc14deaf01422dd7ab102534aae92307`
+
+Validated executable contract:
+
+- `TacticalCellId = ParentStrategicCellId + LocalOrdinal`;
+- `TacticalRegion` identity = parent `StrategicCellId`;
+- no redundant `TacticalRegionId`;
+- intra-region adjacency only;
+- no self-loop;
+- no duplicate adjacency;
+- no cross-region adjacency;
+- no dangling adjacency;
+- reciprocal adjacency;
+- connected local region graph;
+- canonical public ordering.
+
+Local validation:
+
+- Release build: 0 warnings, 0 errors;
+- tests: 211/211;
+- failures: 0;
+- skipped: 0.
+
+Cross-platform validation:
+
+- workflow: `Cross-Platform Kernel Regression Validation`;
+- run ID: `35489047998`;
+- Ubuntu: `success`;
+- Windows: `success`;
+- macOS: `success`;
+- Ubuntu artifact: ID `10598209467`, SHA-256 `fdde72a42981b12d28f5c51fe0cb4207170c1f4cb093064ffc2b3ebe6fd2e777`;
+- Windows artifact: ID `10598815074`, SHA-256 `c561b65ea6cd412d29e632cba68b0447092aa4be6251fad877f665dd66caab0d`;
+- macOS artifact: ID `10598187841`, SHA-256 `b77494e3b0c99978c5d30acfa6e2fc1ef04f1494b9c176f8613ccde94a207fd7`.
+
+M2.2.1 establishes the executable specification gate for tactical region topology.
+
+It does not yet materialize a canonical tactical graph generator, so the capability remains below `Implementação funcional isolada — fator 0.50`.
 
 ## Invariant
 

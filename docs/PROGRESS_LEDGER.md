@@ -6173,3 +6173,204 @@ Global Progress permanece:
 **8.4%**
 
 A promoção da capability `Tactical region topology` depende do contrato executável e de sua validação.
+
+---
+
+## 2026-09-20 — M2.2.1 Tactical Identity & Region Contract concluído
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.2 — Tactical Region Topology**
+
+Subcheckpoint:
+
+**M2.2.1 — Tactical Identity & Region Contract**
+
+### Implementação
+
+Commit validado:
+
+`1c834e4dcc14deaf01422dd7ab102534aae92307`
+
+Commit:
+
+`feat: add tactical region contract`
+
+O contrato executável introduziu:
+
+- `TacticalCellId`;
+- `TacticalCell`;
+- `TacticalRegion`.
+
+### Identidade e ownership
+
+`TacticalRegion` é identificado diretamente pelo `StrategicCellId` pai.
+
+Não existe `TacticalRegionId` redundante.
+
+`TacticalCellId` é composto por:
+
+`ParentStrategicCellId + LocalOrdinal`
+
+Regras validadas:
+
+- parent estratégico deve ser válido;
+- `LocalOrdinal > 0`;
+- ordinal local one-based;
+- `default(TacticalCellId)` é sentinela inválida;
+- igualdade depende do pai e do ordinal;
+- IDs com pais distintos permanecem distintos mesmo com o mesmo ordinal.
+
+### Invariantes locais
+
+`TacticalCell` valida:
+
+- ausência de self-loop;
+- ausência de adjacências duplicadas;
+- ausência de adjacência cross-region;
+- ordenação canônica de adjacências.
+
+`TacticalRegion` valida:
+
+- pelo menos uma célula;
+- todas as células pertencem ao mesmo pai estratégico;
+- IDs não se repetem;
+- toda adjacência resolve para uma célula existente;
+- adjacência é recíproca;
+- grafo local é conectado;
+- coleção pública é ordenada canonicamente.
+
+### Fronteira explícita
+
+M2.2.1 não materializa:
+
+- shared border bands;
+- identidade de entidades compartilhadas;
+- adjacência tática cross-region;
+- refinamento estratégico/tático;
+- mesh, coordenadas, terreno ou renderização.
+
+Esses contratos permanecem reservados aos subcheckpoints seguintes, especialmente M2.3 para fronteiras compartilhadas.
+
+### Evidência local
+
+- build Release: 0 warnings;
+- build Release: 0 errors;
+- testes: 211/211;
+- falhas: 0;
+- skipped: 0;
+- `git diff --check`: aprovado;
+- `git diff --cached --check`: aprovado.
+
+### Gate cross-platform
+
+Workflow:
+
+`Cross-Platform Kernel Regression Validation`
+
+Run ID:
+
+`35489047998`
+
+Resultado:
+
+**SUCCESS**
+
+Commit:
+
+`1c834e4dcc14deaf01422dd7ab102534aae92307`
+
+Jobs:
+
+- Ubuntu: `success`;
+- Windows: `success`;
+- macOS: `success`.
+
+Artefatos:
+
+- Ubuntu: ID `10598209467`, SHA-256 `fdde72a42981b12d28f5c51fe0cb4207170c1f4cb093064ffc2b3ebe6fd2e777`;
+- Windows: ID `10598815074`, SHA-256 `c561b65ea6cd412d29e632cba68b0447092aa4be6251fad877f665dd66caab0d`;
+- macOS: ID `10598187841`, SHA-256 `b77494e3b0c99978c5d30acfa6e2fc1ef04f1494b9c176f8613ccde94a207fd7`.
+
+### Maturidade e GPP
+
+A capability:
+
+`Tactical region topology`
+
+é promovida de:
+
+**Inexistente — fator 0.00 — 0.00 GPP**
+
+para:
+
+**Especificada — fator 0.20 — 2.80 GPP**
+
+Justificativa:
+
+M2.2.1 fecha um contrato executável e validado cross-platform para identidade, ownership e invariantes estruturais locais, mas ainda não materializa um gerador de grafo tático local funcional. Por isso, a promoção para `Implementação funcional isolada — fator 0.50` permanece bloqueada.
+
+GPP antes:
+
+**84.00 / 1000**
+
+Incremento:
+
+**+2.80 GPP**
+
+GPP após:
+
+**86.80 / 1000**
+
+Global Progress:
+
+**8.7%**
+
+Topologia planetária / Goldberg:
+
+**16.80 / 90 GPP — 18.7%**
+
+Foundation / Simulation Kernel permanece:
+
+**70.00 / 70 GPP — 100.0%**
+
+### Riscos
+
+`RISK-003 — Goldberg hierarchy mapping` permanece:
+
+**MITIGATING / Probability 2 / Impact 4 / Score 8 — HIGH**
+
+A incerteza sobre identidade e ownership tático local foi reduzida.
+
+Continuam em aberto:
+
+- materialização do grafo tático;
+- materialização estratégica → tática;
+- shared border bands;
+- pertencimento multi-região;
+- continuidade cross-region;
+- refinamento hierárquico Goldberg.
+
+### Scope Change
+
+Nenhum.
+
+O baseline V1 permanece:
+
+**1000 GPP**
+
+### Próximo subcheckpoint
+
+**M2.2.2 — Minimal Tactical Region Graph**
+
+Objetivos:
+
+- materializar o primeiro grafo tático local canônico;
+- gerar conectividade local sem montagem manual dos testes;
+- preservar o contrato de identidade e ownership de M2.2.1;
+- provar geração repetida determinística;
+- manter shared border bands e conectividade cross-region fora do escopo até M2.3.

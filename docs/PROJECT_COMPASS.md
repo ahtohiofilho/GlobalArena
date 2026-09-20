@@ -306,19 +306,19 @@ A decomposição operacional inicial de M2 é:
 | Scalability / headless performance baseline | 4 |
 | **TOTAL** | **90** |
 
-Estado de maturidade após M2.1.5.C:
+Estado de maturidade após M2.2.1:
 
 | Capability | GPP | Maturidade | Fator | GPP ganhos |
 |---|---:|---|---:|---:|
 | Goldberg parameterization e geração estratégica | 16 | Implementação funcional isolada | 0.50 | 8.00 |
 | Strategic graph: identidade, incidência e adjacência | 12 | Implementação funcional isolada | 0.50 | 6.00 |
-| Tactical region topology | 14 | Inexistente | 0.00 | 0.00 |
+| Tactical region topology | 14 | Especificada | 0.20 | 2.80 |
 | Shared subtile border bands | 16 | Inexistente | 0.00 | 0.00 |
 | Strategic ↔ tactical hierarchy/refinement mapping | 16 | Inexistente | 0.00 | 0.00 |
 | Canonical deterministic topology generation | 6 | Inexistente | 0.00 | 0.00 |
 | Topological validation e navigability | 6 | Inexistente | 0.00 | 0.00 |
 | Scalability / headless performance baseline | 4 | Inexistente | 0.00 | 0.00 |
-| **TOTAL** | **90** |  |  | **14.00** |
+| **TOTAL** | **90** |  |  | **16.80** |
 
 M2.1.1 foi um audit arquitetural e não promoveu maturidade por si só.
 
@@ -337,6 +337,12 @@ M2.1.5.B adicionou suporte determinístico à família Class II `G(k,k)` e valid
 M2.1.5.C adicionou a família Class III para parâmetros positivos desiguais e validou `G(2,1)`, `G(1,2)`, `G(3,1)` e `G(3,2)`, incluindo orientação/chiralidade, determinismo e invariantes topológicos.
 
 Com as três classes icosaédricas cobertas por implementação funcional isolada e validação cross-platform representativa, M2.1.5 é encerrado e `Goldberg parameterization e geração estratégica` é promovida para `Implementação funcional isolada — fator 0.50`.
+
+M2.2.1 congelou e implementou o contrato executável de identidade e invariantes locais para `TacticalRegion` e `TacticalCell`, com validação cross-platform.
+
+Por isso, `Tactical region topology` é promovida de `Inexistente — fator 0.00` para `Especificada — fator 0.20`.
+
+A promoção para `Implementação funcional isolada — fator 0.50` permanece bloqueada até a materialização de um grafo tático local funcional em M2.2.2 e sua evolução nos subcheckpoints seguintes.
 
 Esses pesos constituem o baseline inicial.
 
@@ -555,7 +561,7 @@ Etapa:
 
 Subetapa atual:
 
-**M2.2.1 — Tactical Identity & Region Contract**
+**M2.2.2 — Minimal Tactical Region Graph**
 
 M0 — Project Baseline:
 
@@ -593,17 +599,21 @@ M2.1.5.C — Class III Goldberg Generalization:
 
 **concluído em 2026-09-19**
 
+M2.2.1 — Tactical Identity & Region Contract:
+
+**concluído em 2026-09-20**
+
 Baseline V1:
 
 **congelado em 2026-09-18**
 
 Progresso oficial:
 
-**8,4%**
+**8,7%**
 
 GPP conquistados:
 
-**84,00 / 1000**
+**86,80 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -611,7 +621,7 @@ Foundation / Simulation Kernel:
 
 Topologia planetária / Goldberg:
 
-**14,00 / 90 GPP — 15,6%**
+**16,80 / 90 GPP — 18,7%**
 
 Scope Confidence:
 
@@ -631,7 +641,7 @@ Critical Path atual:
 
 Última revisão de baseline:
 
-**2026-09-19**
+**2026-09-20**
 
 ---
 

@@ -221,6 +221,10 @@ Mitigação:
 - `G(2,1)`, `G(1,2)`, `G(3,1)` e `G(3,2)` validados com contagens, graus e invariantes esperados;
 - orientação/chiralidade Class III tratada combinatoriamente e validada por assinaturas distintas de `G(2,1)` e `G(1,2)`;
 - suporte estratégico funcional isolado agora cobre Class I, Class II e Class III;
+- contrato tático M2.2.1 materializado com `TacticalCellId`, `TacticalCell` e `TacticalRegion`;
+- identidade tática region-owned ancorada em `StrategicCellId + LocalOrdinal`;
+- ownership regional e invariantes locais de adjacência/conectividade validados cross-platform;
+- shared border bands e adjacência cross-region permanecem explicitamente fora de M2.2.1;
 - testes explícitos de pertencimento pai-filho;
 - testes de continuidade entre regiões;
 - validação de casos representativos das famílias Goldberg;
@@ -228,7 +232,7 @@ Mitigação:
 
 Próxima ação:
 
-implementar M2.2.1 com identidade tática region-owned, `TacticalRegion` identificado pelo `StrategicCellId` pai e invariantes locais de adjacência/conectividade; manter shared border bands fora do contrato até M2.3, quando pertencimento multi-região e continuidade cross-region serão validados explicitamente.
+materializar em M2.2.2 o primeiro grafo tático local canônico e determinístico usando o contrato de M2.2.1; depois avançar para materialização estratégica → tática em M2.2.3, mantendo shared border bands fora do escopo até M2.3.
 
 ---
 

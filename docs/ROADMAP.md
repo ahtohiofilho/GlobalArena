@@ -512,34 +512,61 @@ Topologia planetária / Goldberg:
 
 M2.1 — Goldberg Topology Foundation está concluído em 2026-09-19.
 
-Etapa atual:
+M2.2.1 está concluído em 2026-09-20.
 
-**M2.2 — Tactical Region Topology**
+Evidência de M2.2.1:
+
+- `TacticalCellId` implementado como `ParentStrategicCellId + LocalOrdinal`;
+- parent estratégico inválido é rejeitado;
+- ordinal local zero é rejeitado;
+- `default(TacticalCellId)` é sentinela inválida;
+- igualdade de identidade preserva pai e ordinal;
+- `TacticalCell` rejeita self-loop, duplicatas e adjacência cross-region;
+- adjacências locais são ordenadas canonicamente;
+- `TacticalRegion` é identificado diretamente pelo `StrategicCellId` pai;
+- não existe `TacticalRegionId` redundante;
+- região vazia, pais mistos, IDs duplicados, referência pendente, não reciprocidade e desconectividade são rejeitados;
+- um grafo local conectado e canonicamente ordenado é aceito;
+- shared border bands e adjacência cross-region permanecem explicitamente fora do escopo até M2.3;
+- build Release local com 0 warnings e 0 errors;
+- suíte local: 211/211, 0 falhas, 0 skipped;
+- workflow `Cross-Platform Kernel Regression Validation`, run `35489047998`, concluído com sucesso em Ubuntu, Windows e macOS;
+- commit validado: `1c834e4dcc14deaf01422dd7ab102534aae92307`.
+
+Promoção de maturidade:
+
+`Tactical region topology`
+
+**Inexistente — 0.00 → Especificada — 0.20**
+
+GPP adicional de M2.2.1:
+
+**+2.80 GPP**
+
+GPP após o fechamento:
+
+**86.80 / 1000**
+
+Global Progress:
+
+**8.7%**
+
+Topologia planetária / Goldberg:
+
+**16.80 / 90 GPP — 18.7%**
 
 Subcheckpoint atual:
 
-**M2.2.1 — Tactical Identity & Region Contract**
+**M2.2.2 — Minimal Tactical Region Graph**
 
-O audit read-only inicial confirmou:
+Objetivos iniciais:
 
-- nenhum tipo `Tactical*` existe ainda no código;
-- `StrategicCellId` já fornece a identidade canônica do pai;
-- a arquitetura exige uma região tática por `StrategicCell`;
-- shared border bands pertencem ao escopo de M2.3 e não devem ser antecipadas silenciosamente em M2.2.
-
-Contrato congelado para M2.2.1:
-
-- não criar `TacticalRegionId` redundante;
-- `TacticalRegion` é identificado pelo `StrategicCellId` pai;
-- `TacticalCellId` para células region-owned usa `ParentStrategicCellId + LocalOrdinal`;
-- topologia de M2.2 é estritamente intra-região;
-- adjacências locais devem ser recíprocas, sem self-loop, sem duplicatas e conectadas;
-- shared border entities não podem ser duplicadas entre regiões e permanecem para M2.3;
-- Unity, mesh, coordenadas, terreno e conteúdo físico continuam fora da fonte de verdade.
-
-Próximo gate:
-
-implementar o contrato executável de M2.2.1 e validá-lo antes de materializar o primeiro grafo tático local.
+- materializar o primeiro grafo tático local canônico;
+- produzir conectividade real sem depender de montagem manual nos testes;
+- preservar `TacticalCellId` e o contrato de ownership de M2.2.1;
+- preservar invariantes de adjacência recíproca, ausência de self-loop e ausência de duplicatas;
+- provar determinismo de assinatura na geração repetida;
+- manter shared border bands e conectividade cross-region fora do escopo até M2.3.
 
 ---
 
@@ -827,15 +854,15 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M2.2 — Tactical Region Topology**
+**M2.2.2 — Minimal Tactical Region Graph**
 
 Official Progress:
 
-**8.4%**
+**8.7%**
 
 GPP Earned:
 
-**84.00 / 1000**
+**86.80 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -843,7 +870,7 @@ Foundation / Simulation Kernel:
 
 Planet Topology / Goldberg:
 
-**14.00 / 90 GPP — 15.6%**
+**16.80 / 90 GPP — 18.7%**
 
 Scope Confidence:
 
@@ -863,4 +890,4 @@ Critical Path:
 
 Last Baseline Review:
 
-**2026-09-19**
+**2026-09-20**
