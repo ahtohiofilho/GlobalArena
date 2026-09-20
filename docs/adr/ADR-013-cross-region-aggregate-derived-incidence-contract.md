@@ -316,6 +316,69 @@ Negative:
 - no physical border geometry exists;
 - no cross-region tactical adjacency is created.
 
+## M2.3.4 implementation evidence
+
+Implementation commit:
+
+`75b6929004a2149195a46772a6e7aae3ad509211`
+
+Production types:
+
+- `GlobalArena.World/StrategicTacticalBorderAggregate.cs`;
+- `GlobalArena.World/SharedBorderIncidence.cs`.
+
+Tests:
+
+`GlobalArena.Tests/StrategicTacticalBorderAggregateTests.cs`
+
+Validated behavior:
+
+- null topology, region enumerable and band enumerable rejected;
+- null region and band entries rejected;
+- missing, duplicate and foreign tactical region parents rejected;
+- missing, duplicate and foreign shared border edge IDs rejected;
+- shuffled input collections canonicalized to authoritative topology order;
+- exactly one derived incidence produced per strategic edge;
+- each incidence references the authoritative `StrategicEdge`;
+- each incidence references the matching `SharedBorderBand`;
+- exactly two incident regions are resolved in `IncidentCellIds` order;
+- public collections are read-only snapshots;
+- supplied domain object references are preserved;
+- repeated construction over equivalent inputs produces identical canonical signature;
+- Class I `G(2,0)` → 42 regions / 120 bands / 120 incidences;
+- Class II `G(2,2)` → 122 regions / 360 bands / 360 incidences;
+- Class III `G(3,2)` → 192 regions / 570 bands / 570 incidences.
+
+Local validation:
+
+- Release build: 0 warnings, 0 errors;
+- tests: 291/291;
+- failures: 0;
+- skipped: 0.
+
+Cross-platform validation:
+
+- workflow: `Cross-Platform Kernel Regression Validation`;
+- run ID: `35496490603`;
+- Ubuntu: `success`;
+- Windows: `success`;
+- macOS: `success`;
+- Ubuntu artifact: ID `10601480346`, SHA-256 `6b204bcd14b9f447970895c7ebb876571ee1f890e621debeac17e34aeee699ce`;
+- Windows artifact: ID `10601170800`, SHA-256 `a513588b2bf387625fe2ce680cf84c1a24ac2b2d2ff21e4138cd7c159fb0d45b`;
+- macOS artifact: ID `10601425467`, SHA-256 `7ee468cc77a6de353935c1297c391b50aed806c341f5e6e8e7035df19bb36a12`.
+
+Promotion:
+
+`Shared subtile border bands`
+
+`Implementação funcional isolada — fator 0.50`
+
+→
+
+`Integrada ao sistema — fator 0.70`
+
+M2.3.4 proves joint strategic/tactical/border incidence integration while preserving the explicit boundary before physical tactical-border mapping.
+
 ## Invariant
 
 For every `StrategicEdge` in the authoritative topology, the aggregate contains exactly one matching `SharedBorderBand` and exactly one derived incidence that resolves the same two `TacticalRegion` objects identified by `StrategicEdge.IncidentCellIds`.

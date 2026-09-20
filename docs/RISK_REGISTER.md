@@ -251,6 +251,16 @@ Mitigação:
 - materialização repetida produziu assinatura canônica idêntica;
 - Class I `G(2,0)`, Class II `G(2,2)` e Class III `G(3,2)` validaram 120, 360 e 570 bands respectivamente;
 - regressão cross-platform de M2.3.3 passou em Ubuntu, Windows e macOS;
+- M2.3.4 introduziu `StrategicTacticalBorderAggregate` como aggregate cross-region mínimo;
+- cobertura de `TacticalRegion` agora é validada exatamente contra `StrategicTopology.Cells`;
+- cobertura de `SharedBorderBand` agora é validada exatamente contra `StrategicTopology.Edges`;
+- missing, duplicate e foreign region/band entries são rejeitados;
+- `SharedBorderIncidence` deriva exatamente duas regiões por `StrategicEdge.IncidentCellIds`;
+- ordering de regions, bands e incidences é canonicalizado pela topologia autoritativa;
+- snapshots read-only e preservação de referências dos domain objects foram validados;
+- construção repetida do aggregate produziu assinatura canônica idêntica;
+- Class I `G(2,0)`, Class II `G(2,2)` e Class III `G(3,2)` validaram joint coverage de 42/120/120, 122/360/360 e 192/570/570;
+- regressão cross-platform de M2.3.4 passou em Ubuntu, Windows e macOS;
 - testes explícitos de pertencimento pai-filho;
 - testes de continuidade entre regiões;
 - validação de casos representativos das famílias Goldberg;
@@ -258,7 +268,7 @@ Mitigação:
 
 Próxima ação:
 
-congelar e implementar M2.3.4 com `StrategicTacticalBorderAggregate` e `SharedBorderIncidence`, validando cobertura exata de `StrategicCell`/`TacticalRegion` e `StrategicEdge`/`SharedBorderBand`, derivando as duas regiões incidentes exclusivamente de `StrategicEdge.IncidentCellIds` e preservando ordering/determinismo; manter mapping físico de `TacticalCell`, adjacency tática cross-region, geometria e refinamento Goldberg universal fora desta tranche.
+executar M2.3.5 como gate de validação acumulada e fechamento do stage, cobrindo determinismo, snapshot/read-only semantics, malformed-input regression e representantes Goldberg adicionais sem antecipar mapping físico de `TacticalCell`, adjacency tática cross-region, geometria ou refinamento Goldberg universal; somente depois reavaliar o próximo trecho da hierarquia estratégico/tático.
 
 ---
 

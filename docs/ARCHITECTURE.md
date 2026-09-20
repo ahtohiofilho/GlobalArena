@@ -3200,6 +3200,33 @@ M2.3.4 continua sem definir:
 - pathfinding cross-region final;
 - refinamento Goldberg universal.
 
+M2.3.4 implementou `StrategicTacticalBorderAggregate` e `SharedBorderIncidence`.
+
+A implementação validada:
+
+- recebe uma `StrategicTopology` e coleções já materializadas de regions e bands;
+- não rematerializa dependências internamente;
+- exige exatamente uma `TacticalRegion` por `StrategicCell`;
+- exige exatamente um `SharedBorderBand` por `StrategicEdge`;
+- rejeita entries nulas, ausentes, duplicadas ou estrangeiras;
+- canonicaliza regions por `StrategicTopology.Cells`;
+- canonicaliza bands e incidences por `StrategicTopology.Edges`;
+- deriva duas regiões incidentes por `StrategicEdge.IncidentCellIds`;
+- preserva a ordem canônica das duas regiões incidentes;
+- mantém referências aos domain objects fornecidos;
+- expõe snapshots somente leitura;
+- produz assinatura canônica determinística em construções repetidas.
+
+A validação representativa cobriu:
+
+- Class I `G(2,0)` com 42 regions, 120 bands e 120 incidences;
+- Class II `G(2,2)` com 122 regions, 360 bands e 360 incidences;
+- Class III `G(3,2)` com 192 regions, 570 bands e 570 incidences.
+
+O gate local atingiu 291/291 testes, e a regressão cross-platform passou em Ubuntu, Windows e macOS.
+
+Nenhum `SharedBorderIncidenceId`, mapping físico, geometry, mesh ou adjacency tática cross-region foi introduzido.
+
 Esses limites permanecem para M2.3.5 e gates posteriores.
 
 O estado estratégico de uma conexão poderá futuramente ser derivado do estado tático correspondente.

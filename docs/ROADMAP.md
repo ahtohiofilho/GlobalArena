@@ -978,15 +978,72 @@ Representantes:
 - Class II `G(2,2)` → 122 regiões / 360 bands / 360 incidences;
 - Class III `G(3,2)` → 192 regiões / 570 bands / 570 incidences.
 
-M2.3.4 design não promove GPP.
+M2.3.4 está concluído em 2026-09-20.
 
-Se implementação, auditoria e regressão cross-platform passarem, o fechamento formal poderá avaliar `Shared subtile border bands` para promoção de `Implementação funcional isolada — fator 0.50` para `Integrada ao sistema — fator 0.70`.
+Evidência de M2.3.4:
 
-`Strategic ↔ tactical hierarchy/refinement mapping` permanece sem promoção neste gate porque o mapping físico de refinement e continuidade local ainda não foi provado.
+- `StrategicTacticalBorderAggregate` implementado;
+- `SharedBorderIncidence` implementado;
+- `StrategicTopology` permanece a fonte autoritativa;
+- input nulo de topology/regions/bands é rejeitado;
+- elementos nulos são rejeitados;
+- cobertura de regions é exatamente uma por `StrategicCell`;
+- missing, duplicate e foreign region parents são rejeitados;
+- cobertura de bands é exatamente um por `StrategicEdge`;
+- missing, duplicate e foreign band edges são rejeitados;
+- inputs fora de ordem são canonicalizados por `StrategicTopology.Cells` e `StrategicTopology.Edges`;
+- existe exatamente uma derived incidence por strategic edge;
+- cada incidence referencia o `StrategicEdge` autoritativo;
+- cada incidence referencia o band correspondente;
+- cada incidence resolve exatamente duas `TacticalRegion` na ordem de `IncidentCellIds`;
+- nenhuma cópia independente de incident `StrategicCellId` foi introduzida;
+- referências aos domain objects fornecidos são preservadas;
+- coleções públicas e incident regions são snapshots somente leitura;
+- construções repetidas sobre inputs semanticamente equivalentes produzem assinatura canônica idêntica;
+- Class I `G(2,0)` validada com 42 regions / 120 bands / 120 incidences;
+- Class II `G(2,2)` validada com 122 regions / 360 bands / 360 incidences;
+- Class III `G(3,2)` validada com 192 regions / 570 bands / 570 incidences;
+- nenhuma rematerialização interna foi introduzida;
+- nenhum `SharedBorderIncidenceId` foi criado;
+- nenhum mapping físico, geometry, mesh ou adjacency tática cross-region foi introduzido;
+- build Release local com 0 warnings e 0 errors;
+- suíte local: 291/291, 0 falhas, 0 skipped;
+- workflow `Cross-Platform Kernel Regression Validation`, run `35496490603`, concluído com sucesso em Ubuntu, Windows e macOS;
+- commit validado: `75b6929004a2149195a46772a6e7aae3ad509211`.
+
+Promoção de maturidade:
+
+`Shared subtile border bands`
+
+**Implementação funcional isolada — 0.50 → Integrada ao sistema — 0.70**
+
+GPP adicional de M2.3.4:
+
+**+3.20 GPP**
+
+GPP após o fechamento:
+
+**107.10 / 1000**
+
+Global Progress:
+
+**10.7%**
+
+Topologia planetária / Goldberg:
+
+**37.10 / 90 GPP — 41.2%**
+
+M2.3 continua aberto.
+
+A identidade, materialização por edge e incidence cross-region derivada estão agora integradas. Ainda faltam validação acumulada do stage e fechamento de M2.3.
+
+Próximo subcheckpoint:
+
+**M2.3.5 — Shared Border Validation & M2.3 Close**
 
 Próximo gate:
 
-auditar o design congelado, fazer commit/push documental e então implementar somente o aggregate e a derived incidence sem antecipar M2.3.5.
+executar audit read-only de validação acumulada de shared border, determinismo, cobertura representativa, invariantes cross-region e limites ainda abertos antes do fechamento de M2.3.
 
 ---
 
@@ -1274,15 +1331,15 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M2.3.4 — Cross-Region Aggregate & Derived Incidence**
+**M2.3.5 — Shared Border Validation & M2.3 Close**
 
 Official Progress:
 
-**10.4%**
+**10.7%**
 
 GPP Earned:
 
-**103.90 / 1000**
+**107.10 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -1290,7 +1347,7 @@ Foundation / Simulation Kernel:
 
 Planet Topology / Goldberg:
 
-**33.90 / 90 GPP — 37.7%**
+**37.10 / 90 GPP — 41.2%**
 
 Scope Confidence:
 
@@ -1306,7 +1363,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**aggregate cross-region e prova da hierarquia estratégico/tático**
+**validação acumulada de shared borders e continuidade estratégico/tático**
 
 Last Baseline Review:
 

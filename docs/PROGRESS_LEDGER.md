@@ -8073,3 +8073,178 @@ Incremento potencial:
 Próximo gate:
 
 **DESIGN_AUDIT**
+
+---
+
+## 2026-09-20 — M2.3.4 Cross-Region Aggregate & Derived Incidence formal close
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.3 — Shared Border Bands & Strategic/Tactical Mapping**
+
+Subcheckpoint concluído:
+
+**M2.3.4 — Cross-Region Aggregate & Derived Incidence**
+
+### Implementation commit
+
+Commit:
+
+`75b6929004a2149195a46772a6e7aae3ad509211`
+
+Mensagem:
+
+`feat: add cross-region aggregate incidence`
+
+Production:
+
+- `GlobalArena.World/StrategicTacticalBorderAggregate.cs`;
+- `GlobalArena.World/SharedBorderIncidence.cs`.
+
+Tests:
+
+- `GlobalArena.Tests/StrategicTacticalBorderAggregateTests.cs`.
+
+### Contrato implementado
+
+`StrategicTacticalBorderAggregate`:
+
+- mantém `StrategicTopology` como fonte autoritativa;
+- recebe regions e bands já materializados;
+- rejeita inputs nulos;
+- rejeita elementos nulos;
+- exige exatamente uma region por strategic cell;
+- exige exatamente um band por strategic edge;
+- rejeita missing, duplicate e foreign IDs;
+- canonicaliza regions pela ordem de `StrategicTopology.Cells`;
+- canonicaliza bands pela ordem de `StrategicTopology.Edges`;
+- constrói exatamente uma incidence por edge;
+- expõe snapshots somente leitura.
+
+`SharedBorderIncidence`:
+
+- referencia o `StrategicEdge` autoritativo;
+- referencia o band correspondente;
+- resolve exatamente duas regions por `StrategicEdge.IncidentCellIds`;
+- preserva a ordem canônica de incident cells;
+- não cria um novo incidence ID;
+- não duplica incident strategic cell IDs como segunda fonte de verdade.
+
+### Evidência local
+
+- build Release: 0 warnings;
+- build Release: 0 errors;
+- testes: 291/291;
+- falhas: 0;
+- skipped: 0;
+- `git diff --check`: aprovado;
+- `git diff --cached --check`: aprovado.
+
+### Gate cross-platform
+
+Workflow:
+
+`Cross-Platform Kernel Regression Validation`
+
+Run ID:
+
+`35496490603`
+
+Resultado:
+
+**SUCCESS**
+
+Commit:
+
+`75b6929004a2149195a46772a6e7aae3ad509211`
+
+Jobs:
+
+- Ubuntu: `success`;
+- Windows: `success`;
+- macOS: `success`.
+
+Artefatos:
+
+- Ubuntu: ID `10601480346`, SHA-256 `6b204bcd14b9f447970895c7ebb876571ee1f890e621debeac17e34aeee699ce`;
+- Windows: ID `10601170800`, SHA-256 `a513588b2bf387625fe2ce680cf84c1a24ac2b2d2ff21e4138cd7c159fb0d45b`;
+- macOS: ID `10601425467`, SHA-256 `7ee468cc77a6de353935c1297c391b50aed806c341f5e6e8e7035df19bb36a12`.
+
+### Maturidade e GPP
+
+A capability:
+
+`Shared subtile border bands`
+
+é promovida de:
+
+**Implementação funcional isolada — fator 0.50 — 8.00 GPP**
+
+para:
+
+**Integrada ao sistema — fator 0.70 — 11.20 GPP**
+
+Incremento:
+
+**+3.20 GPP**
+
+GPP antes:
+
+**103.90 / 1000**
+
+GPP após:
+
+**107.10 / 1000**
+
+Global Progress:
+
+**10.7%**
+
+Topologia planetária / Goldberg:
+
+**37.10 / 90 GPP — 41.2%**
+
+### Limites preservados
+
+M2.3.4 não prova:
+
+- mapping físico entre `TacticalCell` e shared border element;
+- adjacency tática cross-region;
+- geometria, coordinates ou mesh;
+- cardinalidade física final do border band;
+- pathfinding cross-region final;
+- refinamento Goldberg universal.
+
+`Strategic ↔ tactical hierarchy/refinement mapping` permanece:
+
+**Inexistente — fator 0.00**
+
+### Riscos
+
+`RISK-003 — Goldberg hierarchy mapping` permanece:
+
+**MITIGATING / Probability 2 / Impact 4 / Score 8 — HIGH**
+
+A incerteza de incidence cross-region foi reduzida a contratos executáveis.
+
+O próximo gate concentra-se na validação acumulada do stage e no fechamento de M2.3.
+
+### Scope Change
+
+Nenhum.
+
+Baseline V1 permanece:
+
+**1000 GPP**
+
+### Próximo subcheckpoint
+
+**M2.3.5 — Shared Border Validation & M2.3 Close**
+
+Próximo gate:
+
+**READ_ONLY_AUDIT**
