@@ -2761,6 +2761,34 @@ Uma entidade tática compartilhada não poderá existir como duas identidades l�
 
 A forma de ownership dessas entidades permanece aberta para M2.
 
+## 12.1 Contrato mínimo de TacticalRegion
+
+M2.2 separa explicitamente topologia intra-região de conectividade entre regiões.
+
+Cada `StrategicCell` identifica exatamente uma `TacticalRegion`; não existe `TacticalRegionId` separado nesta etapa.
+
+Para células region-owned, `TacticalCellId` será formado conceitualmente por:
+
+`ParentStrategicCellId + LocalOrdinal`
+
+O ordinal local é one-based e a identidade não depende de coordenadas de ponto flutuante ou ordem incidental de criação.
+
+Uma `TacticalRegion` materializada deverá preservar:
+
+- pertencimento explícito ao `StrategicCell` pai;
+- IDs canônicos;
+- adjacência local sem self-loop ou duplicatas;
+- reciprocidade;
+- resolução de todas as referências locais;
+- conectividade do grafo interno;
+- geração determinística.
+
+M2.2 não cria adjacências táticas cross-region.
+
+Elementos compartilhados de fronteira permanecem fora deste contrato e serão definidos em M2.3. Eles não poderão ser representados pela duplicação silenciosa de duas células region-owned.
+
+Coordenadas, mesh, terreno, renderização e conteúdo físico permanecem fora da fonte de verdade topológica deste checkpoint.
+
 ---
 
 # 13. Conectividade entre regiões

@@ -326,6 +326,11 @@ Stages planejados:
 
 **M2.2 — Tactical Region Topology**
 
+- M2.2.1 — Tactical Identity & Region Contract;
+- M2.2.2 — Minimal Tactical Region Graph;
+- M2.2.3 — Strategic-to-Tactical Region Materialization;
+- M2.2.4 — Tactical Region Validation & M2.2 Close.
+
 **M2.3 — Shared Border Bands & Strategic/Tactical Mapping**
 
 **M2.4 — Goldberg Family & Refinement Validation**
@@ -507,18 +512,34 @@ Topologia planetária / Goldberg:
 
 M2.1 — Goldberg Topology Foundation está concluído em 2026-09-19.
 
-Próxima etapa:
+Etapa atual:
 
 **M2.2 — Tactical Region Topology**
 
-Objetivos iniciais:
+Subcheckpoint atual:
 
-- definir identidade e contratos da topologia tática;
-- materializar uma região tática associada a `StrategicCell`;
-- congelar pertencimento estratégico → tático;
-- estabelecer adjacência e conectividade tática;
-- preservar geração headless e determinística;
-- manter a Unity fora da fonte de verdade topológica.
+**M2.2.1 — Tactical Identity & Region Contract**
+
+O audit read-only inicial confirmou:
+
+- nenhum tipo `Tactical*` existe ainda no código;
+- `StrategicCellId` já fornece a identidade canônica do pai;
+- a arquitetura exige uma região tática por `StrategicCell`;
+- shared border bands pertencem ao escopo de M2.3 e não devem ser antecipadas silenciosamente em M2.2.
+
+Contrato congelado para M2.2.1:
+
+- não criar `TacticalRegionId` redundante;
+- `TacticalRegion` é identificado pelo `StrategicCellId` pai;
+- `TacticalCellId` para células region-owned usa `ParentStrategicCellId + LocalOrdinal`;
+- topologia de M2.2 é estritamente intra-região;
+- adjacências locais devem ser recíprocas, sem self-loop, sem duplicatas e conectadas;
+- shared border entities não podem ser duplicadas entre regiões e permanecem para M2.3;
+- Unity, mesh, coordenadas, terreno e conteúdo físico continuam fora da fonte de verdade.
+
+Próximo gate:
+
+implementar o contrato executável de M2.2.1 e validá-lo antes de materializar o primeiro grafo tático local.
 
 ---
 

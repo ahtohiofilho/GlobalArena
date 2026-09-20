@@ -228,7 +228,7 @@ Mitigação:
 
 Próxima ação:
 
-iniciar M2.2 com contratos e topologia tática por `StrategicCell`, seguido de spikes explícitos de pertencimento pai-filho e continuidade entre regiões; usar as três classes Goldberg já materializadas para testar se o refinamento estratégico/tático preserva os invariantes exigidos ou se o conjunto oficialmente suportado precisará ser restringido.
+implementar M2.2.1 com identidade tática region-owned, `TacticalRegion` identificado pelo `StrategicCellId` pai e invariantes locais de adjacência/conectividade; manter shared border bands fora do contrato até M2.3, quando pertencimento multi-região e continuidade cross-region serão validados explicitamente.
 
 ---
 

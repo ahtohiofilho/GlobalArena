@@ -555,7 +555,7 @@ Etapa:
 
 Subetapa atual:
 
-**M2.2 — Tactical Region Topology**
+**M2.2.1 — Tactical Identity & Region Contract**
 
 M0 — Project Baseline:
 

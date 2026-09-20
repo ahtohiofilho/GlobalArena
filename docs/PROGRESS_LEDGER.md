@@ -6098,3 +6098,78 @@ Objetivos iniciais:
 - estabelecer adjacência e conectividade tática;
 - manter a lógica independente da Unity;
 - preparar a base necessária para M2.3 — Shared Border Bands & Strategic/Tactical Mapping.
+
+---
+
+## 2026-09-20 — M2.2.1 Tactical Region Topology Contract Audit e design
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.2 — Tactical Region Topology**
+
+Subcheckpoint:
+
+**M2.2.1 — Tactical Identity & Region Contract**
+
+### Audit read-only
+
+Baseline auditado:
+
+`45e0ddd4ea1af87756d265828e08c8fbf07c27cc`
+
+Resultado:
+
+**PASS_READY_FOR_DESIGN**
+
+Evidência local:
+
+- branch `main`;
+- HEAD = origin/main;
+- worktree limpo;
+- build Release com 0 warnings e 0 errors;
+- suíte completa: 193/193, 0 falhas, 0 skipped;
+- nenhum tipo `Tactical*` existente no código;
+- nenhuma mutação do repositório;
+- nenhum commit;
+- nenhum push.
+
+### Decisões de design
+
+O contrato mínimo de M2.2.1 congela:
+
+- uma `TacticalRegion` por `StrategicCell`;
+- ausência de `TacticalRegionId` redundante;
+- identidade de células region-owned por `ParentStrategicCellId + LocalOrdinal`;
+- ordinal local one-based;
+- topologia estritamente intra-região em M2.2;
+- adjacência local recíproca, sem self-loop e sem duplicatas;
+- conectividade local obrigatória;
+- geração canônica determinística;
+- shared border bands explicitamente deferidas para M2.3;
+- proibição de duplicar silenciosamente uma entidade compartilhada em duas identidades regionais;
+- ausência de dependência de Unity, mesh ou coordenadas de ponto flutuante como fonte de verdade.
+
+### Decomposição de M2.2
+
+- M2.2.1 — Tactical Identity & Region Contract;
+- M2.2.2 — Minimal Tactical Region Graph;
+- M2.2.3 — Strategic-to-Tactical Region Materialization;
+- M2.2.4 — Tactical Region Validation & M2.2 Close.
+
+### GPP
+
+Nenhuma promoção de maturidade é contabilizada neste design.
+
+GPP permanece:
+
+**84.00 / 1000**
+
+Global Progress permanece:
+
+**8.4%**
+
+A promoção da capability `Tactical region topology` depende do contrato executável e de sua validação.
