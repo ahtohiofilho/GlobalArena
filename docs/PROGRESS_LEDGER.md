@@ -9593,3 +9593,143 @@ Expected:
 ### Next gate
 
 **M2.4.4 DESIGN AUDIT**
+
+---
+
+## 2026-09-20 — M2.4.4 Class I/II/III Scaled Refinement Validation formal close
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.4 — Goldberg Family & Refinement Validation**
+
+Subcheckpoint concluído:
+
+**M2.4.4 — Class I/II/III Scaled Refinement Validation**
+
+### Validation commit
+
+Commit:
+
+`b9ef26225e6413e3ae5ec07e6fee3b59e6424ca6`
+
+Mensagem:
+
+`test: validate multi-family scaled refinement`
+
+### Executable coverage
+
+Implementation kind:
+
+**validation-only**
+
+Production file changes:
+
+**0**
+
+Test file:
+
+`GlobalArena.Tests/GoldbergScaledRefinementFamilyValidationTests.cs`
+
+Coverage:
+
+- 14 Facts;
+- 11 representative scaled pairs;
+- Class I normal;
+- Class I inverted axis;
+- Class II;
+- Class III right chirality;
+- Class III left chirality;
+- scale 2;
+- scale 3;
+- public count scaling;
+- Euler;
+- 12 pentagons;
+- deterministic canonical topology signatures;
+- narrow reference/continuity scope preserved.
+
+### Local evidence
+
+- build Release: 0 warnings;
+- build Release: 0 errors;
+- tests: 354/354;
+- failures: 0;
+- `git diff --check`: approved;
+- `git diff --cached --check`: approved.
+
+### Cross-platform gate
+
+Workflow:
+
+`Cross-Platform Kernel Regression Validation`
+
+Run ID:
+
+`35503057993`
+
+Result:
+
+**SUCCESS**
+
+Commit:
+
+`b9ef26225e6413e3ae5ec07e6fee3b59e6424ca6`
+
+Jobs:
+
+- Ubuntu: `success`;
+- Windows: `success`;
+- macOS: `success`.
+
+Artifacts:
+
+- Ubuntu: ID `10603081083`, SHA-256 `b086dea9b8c41661b540ff22915939075d499d36f83d32e9b03b4becba300873`;
+- Windows: ID `10603240743`, SHA-256 `95b44d8fab94151c6e08270ca96774918bdfc191ae67b90ea2147092c4b1692b`;
+- macOS: ID `10602902650`, SHA-256 `09d8f89e935d7b0431297cc09bbaac800dc2b9caf552b05216af22a86df4c2ad`.
+
+### Maturity and GPP
+
+M2.4.4 does not promote GPP.
+
+`Strategic ↔ tactical hierarchy/refinement mapping` remains:
+
+**Inexistente — fator 0.00**
+
+GPP:
+
+**109.50 / 1000**
+
+Global Progress:
+
+**11.0%**
+
+Planet Topology:
+
+**39.50 / 90 GPP — 43.9%**
+
+### Risk
+
+`RISK-003 — Goldberg hierarchy mapping` remains:
+
+**MITIGATING / Probability 2 / Impact 4 / Score 8 — HIGH**
+
+Multi-family scaled behavior is now regression-tested, but durable multi-family entity lineage remains unproven.
+
+### Scope Change
+
+None.
+
+Baseline V1 remains:
+
+**1000 GPP**
+
+### Next subcheckpoint
+
+**M2.4.5 — Refinement Stage Validation & M2.4 Close**
+
+Next gate:
+
+**READ_ONLY_AUDIT**

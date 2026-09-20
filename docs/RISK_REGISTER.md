@@ -412,9 +412,37 @@ O checkpoint congelará executable regression evidence sobre public multi-family
 
 Isso evita aumentar RISK-003 com um provenance contract prematuro.
 
+M2.4.4 foi implementado e validado cross-platform como validation-only.
+
+A regressão agora cobre public scaled behavior em:
+
+- Class I normal;
+- Class I inverted axis;
+- Class II;
+- Class III right chirality;
+- Class III left chirality;
+- scales 2 e 3.
+
+Isso reduz o risco de regressão multi-family sem criar um provenance contract prematuro.
+
+O current reference/continuity scope permanece deliberadamente narrow:
+
+- cell reference mapping: apenas `G(1,0) -> G(2,0)`;
+- shared-border continuity: apenas o mesmo reference pair.
+
+Continuam abertos no RISK-003:
+
+- multi-family durable cell provenance;
+- Class III global stitched provenance;
+- multi-family edge continuity;
+- parent-child ownership;
+- coarse-vertex junction mapping;
+- physical tactical-border mapping;
+- universal Goldberg refinement.
+
 Próxima ação:
 
-implementar `GoldbergScaledRefinementFamilyValidationTests` com 14 Facts cobrindo Class I normal/inverted, Class II, Class III ambas as chiralities e scales 2/3, preservando explicitamente o current narrow scope dos reference/continuity mappers e sem alteração de production ou GPP.
+iniciar M2.4.5 — Refinement Stage Validation & M2.4 Close com audit read-only do conjunto completo de evidências M2.4.1–M2.4.4, determinando o que pode ser formalmente declarado no fechamento do stage sem extrapolar o narrow lineage coverage atual.
 
 ---
 

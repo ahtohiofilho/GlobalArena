@@ -196,6 +196,58 @@ remains:
 
 The purpose of this checkpoint is to widen regression confidence across Goldberg families while preserving a strict distinction between validated scaled behavior and proven entity lineage.
 
+## Implementation evidence
+
+M2.4.4 foi implementado no commit:
+
+`b9ef26225e6413e3ae5ec07e6fee3b59e6424ca6`
+
+Implementation delta:
+
+- `GlobalArena.Tests/GoldbergScaledRefinementFamilyValidationTests.cs`;
+- production delta: none.
+
+Executable validation:
+
+- 14 Facts;
+- 11 representative scaled pairs;
+- Class I normal/inverted;
+- Class II;
+- Class III both chiralities;
+- scales 2 and 3;
+- exact parameter scaling;
+- topology count scaling;
+- Euler;
+- 12-pentagon invariant;
+- deterministic canonical topology signatures;
+- narrow reference/continuity scope preserved.
+
+Local validation:
+
+- Release build: 0 warnings, 0 errors;
+- tests: 354/354;
+- failures: 0.
+
+Cross-platform validation:
+
+- workflow: `Cross-Platform Kernel Regression Validation`;
+- run ID: `35503057993`;
+- commit: `b9ef26225e6413e3ae5ec07e6fee3b59e6424ca6`;
+- Ubuntu: `success`;
+- Windows: `success`;
+- macOS: `success`;
+- Ubuntu artifact: ID `10603081083`, SHA-256 `b086dea9b8c41661b540ff22915939075d499d36f83d32e9b03b4becba300873`;
+- Windows artifact: ID `10603240743`, SHA-256 `95b44d8fab94151c6e08270ca96774918bdfc191ae67b90ea2147092c4b1692b`;
+- macOS artifact: ID `10602902650`, SHA-256 `09d8f89e935d7b0431297cc09bbaac800dc2b9caf552b05216af22a86df4c2ad`.
+
+M2.4.4 está concluído.
+
+Nenhuma maturidade/GPP é promovida porque multi-family scaled regression coverage não equivale a multi-family entity lineage.
+
+O próximo subcheckpoint é:
+
+`M2.4.5 — Refinement Stage Validation & M2.4 Close`
+
 ## Consequences
 
 Positive:

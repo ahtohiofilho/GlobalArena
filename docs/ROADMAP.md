@@ -1307,46 +1307,30 @@ Topologia planetária / Goldberg permanece:
 
 **39.50 / 90 GPP — 43.9%**
 
-Subcheckpoint atual:
+M2.4.4 está concluído em 2026-09-20.
 
-**M2.4.4 — Class I/II/III Scaled Refinement Validation**
+Evidência de M2.4.4:
 
-O audit read-only de M2.4.4 confirmou:
-
-- 340/340 testes no baseline;
-- 7 audit pairs cobrindo Class I, Class II e Class III;
-- public count scaling em todos os audit pairs;
-- canonical determinism em todos os audit pairs;
-- 12 pentágonos em coarse/fine em todos os audit pairs;
-- scale-homogeneous Class I/II construction keys;
-- scale-homogeneous Class III local lattice coordinates;
-- current cell reference mapper suporta somente um pair;
-- current border continuity mapper suporta somente um pair;
-- Class III durable global provenance continua ausente;
-- raw DSU roots continuam implementation details.
-
-Design congelado para M2.4.4:
-
-- validation-only;
-- nenhuma mudança em production;
-- novo test file: `GoldbergScaledRefinementFamilyValidationTests.cs`;
+- implementation kind: validation-only;
+- production files alterados: 0;
+- test file: `GoldbergScaledRefinementFamilyValidationTests.cs`;
 - 14 Facts;
-- representative pairs Class I/II/III;
-- scale 2 e scale 3;
+- 11 representative pairs;
 - Class I normal e inverted axis;
-- Class III ambas as chiralities;
-- somente public invariants;
-- sem reflection no test suite;
-- sem generalização prematura de provenance;
-- current reference/continuity scope explicitamente preservado.
-
-Baseline:
-
-`340`.
-
-Expected after implementation:
-
-`354`.
+- Class II;
+- Class III right e left chirality;
+- scales 2 e 3;
+- public scaled invariants validados;
+- Euler validado;
+- 12 pentágonos preservados;
+- deterministic canonical topology signatures validadas;
+- current reference mapper scope preservado em `G(1,0) -> G(2,0)`;
+- current continuity mapper scope preservado no mesmo reference pair;
+- nenhum private generator detail promovido a public lineage;
+- build Release local com 0 warnings e 0 errors;
+- suíte local: 354/354, 0 falhas;
+- workflow `Cross-Platform Kernel Regression Validation`, run `35503057993`, concluído com sucesso em Ubuntu, Windows e macOS;
+- commit validado: `b9ef26225e6413e3ae5ec07e6fee3b59e6424ca6`.
 
 M2.4.4 não promove GPP.
 
@@ -1366,9 +1350,13 @@ Topologia planetária / Goldberg permanece:
 
 **Inexistente — 0.00**
 
+Subcheckpoint atual:
+
+**M2.4.5 — Refinement Stage Validation & M2.4 Close**
+
 Próximo gate:
 
-**M2.4.4 DESIGN AUDIT**
+**READ_ONLY_AUDIT**
 
 ---
 

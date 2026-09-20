@@ -3943,7 +3943,62 @@ Esperado após implementação:
 
 `354`.
 
-O próximo gate após implementação/cross-platform será M2.4.5 — Refinement Stage Validation & M2.4 Close.
+M2.4.4 foi implementado como validation-only e validado cross-platform.
+
+Implementation delta:
+
+- `GlobalArena.Tests/GoldbergScaledRefinementFamilyValidationTests.cs`;
+- 14 Facts;
+- 11 representative scaled pairs;
+- nenhuma alteração em `GlobalArena.World`.
+
+Coverage executável:
+
+- Class I normal;
+- Class I inverted axis;
+- Class II;
+- Class III right chirality;
+- Class III left chirality;
+- scale 2;
+- scale 3.
+
+A suíte valida por public contracts:
+
+- `GoldbergScaledRefinement.Scale`;
+- exact parameter multiplication;
+- topology entity counts;
+- scale-squared count relations;
+- Euler;
+- 12 pentágonos;
+- deterministic canonical topology signatures.
+
+O checkpoint também preserva explicitamente o narrow scope atual:
+
+- `GoldbergScaledRefinementReferenceMapper` continua suportando apenas `G(1,0) -> G(2,0)`;
+- `GoldbergScaledSharedBorderContinuityMapper` continua dependente desse mesmo reference pair;
+- nenhum private generator detail foi promovido a public lineage.
+
+A suíte local atingiu 354/354 testes.
+
+A regressão `Cross-Platform Kernel Regression Validation`, run `35503057993`, passou em Ubuntu, Windows e macOS.
+
+M2.4.4 está concluído.
+
+M2.4.4 não promove GPP.
+
+`Strategic ↔ tactical hierarchy/refinement mapping` permanece em fator `0.00`.
+
+Permanecem abertos:
+
+- multi-family cell lineage;
+- multi-family edge-chain continuity;
+- durable Class III global provenance;
+- parent-child ownership;
+- coarse-vertex junction mapping;
+- physical tactical-border mapping;
+- universal Goldberg refinement.
+
+O próximo subcheckpoint é M2.4.5 — Refinement Stage Validation & M2.4 Close.
 
 O estado estratégico de uma conexão poderá futuramente ser derivado do estado tático correspondente.
 

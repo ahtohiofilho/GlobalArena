@@ -593,7 +593,7 @@ Etapa:
 
 Subetapa atual:
 
-**M2.4.4 — Class I/II/III Scaled Refinement Validation**
+**M2.4.5 — Refinement Stage Validation & M2.4 Close**
 
 M0 — Project Baseline:
 
@@ -689,7 +689,7 @@ M2.4.3 — Shared Border Refinement Continuity:
 
 M2.4.4 — Class I/II/III Scaled Refinement Validation:
 
-**design congelado; implementação pendente**
+**concluído em 2026-09-20**
 
 Baseline V1:
 
