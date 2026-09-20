@@ -306,7 +306,7 @@ A decomposição operacional inicial de M2 é:
 | Scalability / headless performance baseline | 4 |
 | **TOTAL** | **90** |
 
-Estado de maturidade após M2.3.5 / fechamento de M2.3:
+Estado de maturidade após M2.4.5 / fechamento de M2.4:
 
 | Capability | GPP | Maturidade | Fator | GPP ganhos |
 |---|---:|---|---:|---:|
@@ -374,7 +374,11 @@ M2.3.5 fechou a validação acumulada de shared borders sem alterar production c
 
 A cobertura adicional validou `G(0,2)`, `G(1,2)`, `G(2,1)` e `G(3,1)`. Com 301/301 testes locais e regressão cross-platform aprovada em Ubuntu, Windows e macOS, `Shared subtile border bands` é promovida de `Integrada ao sistema — fator 0.70` para `Validada — fator 0.85`.
 
-M2.3 é encerrado. `Strategic ↔ tactical hierarchy/refinement mapping` permanece sem promoção porque mapping físico, traversal tático cross-region e universal Goldberg refinement continuam abertos para M2.4.
+M2.3 é encerrado. `Strategic ↔ tactical hierarchy/refinement mapping` permanece sem promoção porque mapping físico, traversal tático cross-region e universal Goldberg refinement continuam abertos.
+
+M2.4 estabelece scaled refinement compatibility, representative multi-family regression coverage e first-pair provenance/edge-chain continuity. O stage fecha após M2.4.5 com 366/366 testes locais e regressão cross-platform aprovada em Ubuntu, Windows e macOS no run `35504415048`.
+
+A capability `Strategic ↔ tactical hierarchy/refinement mapping` permanece em `Inexistente — fator 0.00`, porque multi-family durable lineage, full parent-child ownership e physical tactical-border mapping continuam ausentes. Esses requisitos seguem para M2.5 e para o M2 exit gate.
 
 Esses pesos constituem o baseline inicial.
 
@@ -589,11 +593,11 @@ Milestone:
 
 Etapa:
 
-**M2.4 — Goldberg Family & Refinement Validation**
+**M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate**
 
 Subetapa atual:
 
-**M2.4.5 — Refinement Stage Validation & M2.4 Close**
+**M2.5 — entry audit / decomposition**
 
 M0 — Project Baseline:
 
@@ -693,7 +697,11 @@ M2.4.4 — Class I/II/III Scaled Refinement Validation:
 
 M2.4.5 — Refinement Stage Validation & M2.4 Close:
 
-**design congelado; implementação pendente**
+**concluído em 2026-09-20**
+
+M2.4 — Goldberg Family & Refinement Validation:
+
+**concluído em 2026-09-20**
 
 Baseline V1:
 

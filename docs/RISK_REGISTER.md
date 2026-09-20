@@ -465,9 +465,28 @@ M2.4.5 será validation-only e consolidará 12 Facts cumulativos usando somente 
 
 Se o gate final passar cross-platform, M2.4 poderá ser fechado, mas RISK-003 continuará HIGH e a capability `Strategic ↔ tactical hierarchy/refinement mapping` continuará em fator 0.00.
 
+M2.4.5 foi implementado e validado cross-platform no commit `01583a55f24119e398296c2c620cd76ab64277ca`, com 366/366 testes e run `35504415048` aprovado em Ubuntu, Windows e macOS.
+
+M2.4 está formalmente concluído, mas o fechamento não remove as lacunas centrais de RISK-003.
+
+Continuam abertos:
+
+- multi-family durable cell lineage;
+- Class III global stitched provenance;
+- multi-family edge continuity;
+- full parent-child ownership;
+- coarse-vertex fine-junction mapping;
+- physical tactical-border mapping;
+- final physical border geometry/cardinality;
+- universal Goldberg refinement no sentido forte de lineage/hierarchy.
+
+`Strategic ↔ tactical hierarchy/refinement mapping` permanece em fator 0.00.
+
+`RISK-003` permanece HIGH.
+
 Próxima ação:
 
-implementar `GoldbergRefinementStageValidationTests` e, após auditoria + regressão cross-platform, executar o formal close de M2.4 e transferir o Critical Path para M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate.
+iniciar M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate com audit read-only de escalabilidade, cobertura cross-platform e requisitos ainda ausentes para o fechamento de M2.
 
 ---
 

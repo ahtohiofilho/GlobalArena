@@ -9871,3 +9871,185 @@ Expected:
 ### Next gate
 
 **M2.4.5 DESIGN AUDIT**
+
+---
+
+## 2026-09-20 — M2.4.5 final validation and M2.4 formal close
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage concluído:
+
+**M2.4 — Goldberg Family & Refinement Validation**
+
+Subcheckpoint concluído:
+
+**M2.4.5 — Refinement Stage Validation & M2.4 Close**
+
+### Validation commit
+
+Commit:
+
+`01583a55f24119e398296c2c620cd76ab64277ca`
+
+Mensagem:
+
+`test: validate refinement stage closure`
+
+### Final executable gate
+
+Implementation kind:
+
+**validation-only**
+
+Production file changes:
+
+**0**
+
+Test file:
+
+`GlobalArena.Tests/GoldbergRefinementStageValidationTests.cs`
+
+Facts:
+
+**12**
+
+Local suite:
+
+**366/366**
+
+Build Release:
+
+**0 warnings / 0 errors**
+
+Cumulative proof:
+
+- 11 representative scaled pairs;
+- Class I, Class II and Class III;
+- scales 2 and 3;
+- deterministic canonical topology signatures;
+- Euler;
+- 12 pentagons;
+- current reference mapper scope frozen to `G(1,0) -> G(2,0)`;
+- 12 canonical seed references;
+- deterministic reference materialization;
+- 30 shared-border continuity references;
+- 30 unique middle fine cells;
+- middle fine cells exactly the 30 fine hexagons;
+- 60 globally unique mapped fine edges;
+- ordered two-edge chains valid;
+- mapped coarse/fine bands exist;
+- 60/120 fine-edge coverage;
+- single-element band semantics preserved;
+- deterministic repeated continuity materialization;
+- exposed collections read-only.
+
+### Cross-platform gate
+
+Workflow:
+
+`Cross-Platform Kernel Regression Validation`
+
+Run ID:
+
+`35504415048`
+
+Result:
+
+**SUCCESS**
+
+Commit:
+
+`01583a55f24119e398296c2c620cd76ab64277ca`
+
+Jobs:
+
+- Ubuntu: `success`;
+- Windows: `success`;
+- macOS: `success`.
+
+Artifacts:
+
+- Ubuntu: ID `10603462272`, SHA-256 `993e45d8fd0bc8db44ff69104d12098aa4d36b977242facac3084cceadb12870`;
+- Windows: ID `10603512233`, SHA-256 `91cd09f24215b3a3924f774093da20cc80174dbaff3733317f4f49afea30c133`;
+- macOS: ID `10603527151`, SHA-256 `4ba22e7c24aafd0902e367531b5f47f4736d7267f6e6402ca7e4648d7de6aeb8`.
+
+### M2.4 closure boundary
+
+M2.4 close records:
+
+- exact scaled compatibility for the supported contract;
+- representative multi-family topology regression in Class I/II/III;
+- first-pair canonical seed provenance and cell references;
+- first-pair logical coarse-edge to two-fine-edge continuity.
+
+M2.4 close does not establish:
+
+- multi-family entity lineage;
+- multi-family edge-chain continuity;
+- durable global Class III provenance;
+- full parent-child ownership;
+- coarse-vertex to fine-junction mapping;
+- physical tactical-border mapping;
+- final physical border geometry/cardinality;
+- universal Goldberg refinement.
+
+### Maturity and GPP
+
+GPP change:
+
+**0.00**
+
+GPP remains:
+
+**109.50 / 1000**
+
+Global Progress remains:
+
+**11.0%**
+
+Planet Topology remains:
+
+**39.50 / 90 — 43.9%**
+
+`Strategic ↔ tactical hierarchy/refinement mapping` remains:
+
+**Inexistente — fator 0.00**
+
+### Risk
+
+`RISK-003 — Goldberg hierarchy mapping` remains:
+
+**MITIGATING / Probability 2 / Impact 4 / Score 8 — HIGH**
+
+### Scope Change
+
+None.
+
+Baseline V1 remains:
+
+**1000 GPP**
+
+### Stage status
+
+M2.4.5:
+
+**CLOSED**
+
+M2.4:
+
+**CLOSED**
+
+M2:
+
+**OPEN**
+
+### Next stage
+
+**M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate**
+
+Next gate:
+
+**READ_ONLY_AUDIT**

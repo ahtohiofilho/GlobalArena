@@ -1408,9 +1408,62 @@ Topologia planetária / Goldberg permanece:
 
 **HIGH**
 
+M2.4.5 está concluído em 2026-09-20.
+
+Evidência final:
+
+- implementation kind: validation-only;
+- production files alterados: 0;
+- test file: `GoldbergRefinementStageValidationTests.cs`;
+- 12 Facts cumulativos;
+- suíte local: 366/366;
+- build Release: 0 warnings, 0 errors;
+- 11 representative scaled pairs;
+- deterministic signatures;
+- Euler e 12 pentagons;
+- 12 canonical seed references no first reference pair;
+- 30 continuity references;
+- 30 middle fine cells = 30 fine hexagons;
+- 60 globally unique mapped fine edges;
+- fine-edge coverage: 60/120;
+- ordered two-edge chains válidos;
+- mapped shared-border bands presentes;
+- single-element band semantics preservada;
+- exposed collections read-only;
+- workflow `Cross-Platform Kernel Regression Validation`, run `35504415048`, concluído com sucesso em Ubuntu, Windows e macOS;
+- commit validado: `01583a55f24119e398296c2c620cd76ab64277ca`.
+
+M2.4 — Goldberg Family & Refinement Validation está concluído em 2026-09-20.
+
+O stage fecha sem promover GPP e sem alegar multi-family lineage, physical tactical-border mapping ou universal Goldberg refinement.
+
+GPP permanece:
+
+**109.50 / 1000**
+
+Global Progress permanece:
+
+**11.0%**
+
+Topologia planetária / Goldberg permanece:
+
+**39.50 / 90 GPP — 43.9%**
+
+`Strategic ↔ tactical hierarchy/refinement mapping` permanece:
+
+**Inexistente — 0.00**
+
+`RISK-003` permanece:
+
+**HIGH**
+
+Stage atual:
+
+**M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate**
+
 Próximo gate:
 
-**M2.4.5 DESIGN AUDIT**
+**READ_ONLY_AUDIT**
 
 ---
 
@@ -1694,11 +1747,11 @@ Current Milestone:
 
 Current Stage:
 
-**M2.4 — Goldberg Family & Refinement Validation**
+**M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate**
 
 Current Subcheckpoint:
 
-**M2.4.4 — Class I/II/III Scaled Refinement Validation**
+**M2.5 — entry audit / decomposition**
 
 Official Progress:
 

@@ -4092,7 +4092,53 @@ O stage poderá fechar com essa capability ainda em `0.00` porque o escopo valid
 
 `RISK-003` permanece HIGH.
 
-Após o formal close de M2.4, o próximo stage será:
+M2.4.5 foi implementado como validation-only no commit:
+
+`01583a55f24119e398296c2c620cd76ab64277ca`.
+
+Implementation delta:
+
+- `GlobalArena.Tests/GoldbergRefinementStageValidationTests.cs`;
+- 12 Facts cumulativos;
+- nenhuma alteração em `GlobalArena.World`.
+
+A suíte local atingiu 366/366 testes.
+
+A regressão `Cross-Platform Kernel Regression Validation`, run `35504415048`, passou em Ubuntu, Windows e macOS.
+
+O final gate confirmou em conjunto:
+
+- 11 representative scaled pairs em Class I/II/III;
+- scales 2 e 3;
+- deterministic canonical topology signatures;
+- Euler;
+- 12 pentágonos;
+- current reference mapper restrito ao first reference pair;
+- 12 canonical seed references no first reference pair;
+- 30 continuity references;
+- 30 middle fine cells equivalentes aos 30 fine hexagons;
+- 60 unique mapped fine edges;
+- 60/120 fine-edge coverage;
+- ordered two-edge chains válidos;
+- mapped shared-border bands existentes;
+- current single-element band semantics preservada;
+- read-only exposed collections.
+
+M2.4.5 está concluído.
+
+M2.4 — Goldberg Family & Refinement Validation está formalmente concluído.
+
+O fechamento do stage registra scaled refinement behavior validado e first-pair provenance/continuity contracts, mas não estabelece complete strategic-to-tactical hierarchy mapping.
+
+`Strategic ↔ tactical hierarchy/refinement mapping` permanece:
+
+`Inexistente — fator 0.00`.
+
+M2.4 não promove GPP.
+
+`RISK-003` permanece HIGH.
+
+O próximo stage é:
 
 `M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate`.
 

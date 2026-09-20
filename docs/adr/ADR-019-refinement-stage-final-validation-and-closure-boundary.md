@@ -158,6 +158,70 @@ M2.5 must evaluate unresolved hierarchy/physical mapping requirements before M2 
 
 M2.5 must not inherit an assumption that M2 exit criteria are already satisfied.
 
+## Implementation evidence
+
+M2.4.5 foi implementado no commit:
+
+`01583a55f24119e398296c2c620cd76ab64277ca`
+
+Implementation delta:
+
+- `GlobalArena.Tests/GoldbergRefinementStageValidationTests.cs`;
+- production delta: none.
+
+Local validation:
+
+- Release build: 0 warnings, 0 errors;
+- tests: 366/366;
+- failures: 0.
+
+Cumulative executable validation:
+
+- 12 Facts;
+- 11 representative scaled pairs;
+- scales 2 and 3;
+- deterministic canonical topology signatures;
+- Euler;
+- 12-pentagon invariant;
+- current reference mapper accepts only `G(1,0) -> G(2,0)` among the representative matrix;
+- 12 canonical seed references with unique coarse/fine anchors;
+- deterministic reference-map materialization;
+- 30 continuity references in coarse-edge order;
+- 30 unique middle fine cells equal to all 30 fine hexagons;
+- 60 globally unique mapped fine edges;
+- ordered anchor -> middle -> anchor two-edge chains;
+- mapped coarse/fine shared-border bands exist;
+- fine-edge coverage remains 60/120;
+- current single-element band semantics remain unchanged;
+- repeated continuity materialization is deterministic;
+- exposed collections remain read-only.
+
+Cross-platform validation:
+
+- workflow: `Cross-Platform Kernel Regression Validation`;
+- run ID: `35504415048`;
+- commit: `01583a55f24119e398296c2c620cd76ab64277ca`;
+- Ubuntu: `success`;
+- Windows: `success`;
+- macOS: `success`;
+- Ubuntu artifact: ID `10603462272`, SHA-256 `993e45d8fd0bc8db44ff69104d12098aa4d36b977242facac3084cceadb12870`;
+- Windows artifact: ID `10603512233`, SHA-256 `91cd09f24215b3a3924f774093da20cc80174dbaff3733317f4f49afea30c133`;
+- macOS artifact: ID `10603527151`, SHA-256 `4ba22e7c24aafd0902e367531b5f47f4736d7267f6e6402ca7e4648d7de6aeb8`.
+
+M2.4.5 está concluído.
+
+M2.4 — Goldberg Family & Refinement Validation está formalmente concluído.
+
+No GPP promotion occurs.
+
+`Strategic ↔ tactical hierarchy/refinement mapping` remains at factor `0.00`.
+
+`RISK-003` remains HIGH.
+
+The next stage is:
+
+`M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate`.
+
 ## Consequences
 
 Positive:
