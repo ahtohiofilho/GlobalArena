@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-09-20
+**Last revised:** 2026-09-20
 
 ## Context
 
@@ -116,6 +117,47 @@ Negative:
 - o reference graph não representa a escala ou geometria final;
 - M2.2.3 precisará definir como regiões reais são materializadas a partir da topologia estratégica;
 - refinamento e fronteiras continuam em aberto.
+
+## M2.2.2 validation evidence
+
+Implementation commit:
+
+`cf5e3d5093c21bfc9a67b38e6c16ce35d35d70c2`
+
+Validated executable behavior:
+
+- `MinimalTacticalRegionGraphGenerator.Generate(StrategicCellId)` returns a valid `TacticalRegion`;
+- invalid parent is rejected;
+- exactly three cells are generated;
+- canonical local ordinals are `1`, `2`, `3`;
+- adjacency is `1:[2]`, `2:[1,3]`, `3:[2]`;
+- every cell preserves the requested parent identity;
+- no self-loop or duplicate adjacency is produced;
+- adjacency is reciprocal;
+- the local graph is connected;
+- repeated generation produces the same canonical signature.
+
+Local validation:
+
+- Release build: 0 warnings, 0 errors;
+- tests: 221/221;
+- failures: 0;
+- skipped: 0.
+
+Cross-platform validation:
+
+- workflow: `Cross-Platform Kernel Regression Validation`;
+- run ID: `35489984263`;
+- Ubuntu: `success`;
+- Windows: `success`;
+- macOS: `success`;
+- Ubuntu artifact: ID `10599175837`, SHA-256 `1dd4cec09127ee85d544e8b05e48fd545700d0f060b810554704054396f8cabe`;
+- Windows artifact: ID `10598796445`, SHA-256 `974be369c713d57176da745bccd520769d117735db2188f1b05d84e9355200ec`;
+- macOS artifact: ID `10598413759`, SHA-256 `d06408fd3b7c48da6337e689f71f7523d099eae31cb0d00ba9203b7b20e0fa88`.
+
+M2.2.2 establishes the first functionally isolated tactical region graph generator.
+
+It remains a reference graph and does not freeze final tactical geometry.
 
 ## Invariant
 

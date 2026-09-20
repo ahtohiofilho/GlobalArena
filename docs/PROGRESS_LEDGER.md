@@ -6478,3 +6478,185 @@ Global Progress permanece:
 **8.7%**
 
 A próxima promoção depende da implementação executável e dos gates correspondentes.
+
+---
+
+## 2026-09-20 — M2.2.2 Minimal Tactical Region Graph concluído
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.2 — Tactical Region Topology**
+
+Subcheckpoint:
+
+**M2.2.2 — Minimal Tactical Region Graph**
+
+### Implementação
+
+Commit validado:
+
+`cf5e3d5093c21bfc9a67b38e6c16ce35d35d70c2`
+
+Commit:
+
+`feat: add minimal tactical region graph`
+
+A tranche introduziu:
+
+`MinimalTacticalRegionGraphGenerator`
+
+Operação:
+
+`Generate(StrategicCellId) -> TacticalRegion`
+
+Reference graph:
+
+`1 <-> 2 <-> 3`
+
+### Comportamento validado
+
+- parent estratégico inválido é rejeitado;
+- exatamente três células são geradas;
+- ordinais locais canônicos `1`, `2`, `3`;
+- parent estratégico preservado em todas as identidades;
+- adjacências `1:[2]`, `2:[1,3]`, `3:[2]`;
+- ausência de self-loop;
+- ausência de adjacência duplicada;
+- reciprocidade;
+- conectividade;
+- geração repetida com assinatura canônica idêntica.
+
+### Limite arquitetural preservado
+
+O reference graph não congela:
+
+- geometria tática final;
+- resolução final;
+- quantidade real de microtiles;
+- coordenadas;
+- mesh;
+- refinamento físico;
+- shared border bands;
+- ownership cross-region;
+- adjacência cross-region.
+
+### Evidência local
+
+- build Release: 0 warnings;
+- build Release: 0 errors;
+- testes: 221/221;
+- falhas: 0;
+- skipped: 0;
+- `git diff --check`: aprovado;
+- `git diff --cached --check`: aprovado.
+
+### Gate cross-platform
+
+Workflow:
+
+`Cross-Platform Kernel Regression Validation`
+
+Run ID:
+
+`35489984263`
+
+Resultado:
+
+**SUCCESS**
+
+Commit:
+
+`cf5e3d5093c21bfc9a67b38e6c16ce35d35d70c2`
+
+Jobs:
+
+- Ubuntu: `success`;
+- Windows: `success`;
+- macOS: `success`.
+
+Artefatos:
+
+- Ubuntu: ID `10599175837`, SHA-256 `1dd4cec09127ee85d544e8b05e48fd545700d0f060b810554704054396f8cabe`;
+- Windows: ID `10598796445`, SHA-256 `974be369c713d57176da745bccd520769d117735db2188f1b05d84e9355200ec`;
+- macOS: ID `10598413759`, SHA-256 `d06408fd3b7c48da6337e689f71f7523d099eae31cb0d00ba9203b7b20e0fa88`.
+
+### Maturidade e GPP
+
+A capability:
+
+`Tactical region topology`
+
+é promovida de:
+
+**Especificada — fator 0.20 — 2.80 GPP**
+
+para:
+
+**Implementação funcional isolada — fator 0.50 — 7.00 GPP**
+
+Justificativa:
+
+M2.2.2 introduz um gerador executável de topologia tática local, preserva o contrato de identidade de M2.2.1 e prova conectividade, reciprocidade, canonicalização e determinismo cross-platform. A integração com a topologia estratégica completa ainda pertence a M2.2.3.
+
+GPP antes:
+
+**86.80 / 1000**
+
+Incremento:
+
+**+4.20 GPP**
+
+GPP após:
+
+**91.00 / 1000**
+
+Global Progress:
+
+**9.1%**
+
+Topologia planetária / Goldberg:
+
+**21.00 / 90 GPP — 23.3%**
+
+Foundation / Simulation Kernel permanece:
+
+**70.00 / 70 GPP — 100.0%**
+
+### Riscos
+
+`RISK-003 — Goldberg hierarchy mapping` permanece:
+
+**MITIGATING / Probability 2 / Impact 4 / Score 8 — HIGH**
+
+A incerteza sobre geração local tática foi reduzida.
+
+Continuam em aberto:
+
+- materialização estratégica → tática;
+- shared border bands;
+- pertencimento multi-região;
+- continuidade cross-region;
+- refinamento hierárquico Goldberg.
+
+### Scope Change
+
+Nenhum.
+
+O baseline V1 permanece:
+
+**1000 GPP**
+
+### Próximo subcheckpoint
+
+**M2.2.3 — Strategic-to-Tactical Region Materialization**
+
+Objetivos:
+
+- materializar uma região tática para cada `StrategicCell` suportada;
+- preservar correspondência um-para-um;
+- provar canonicalização e determinismo do conjunto de regiões;
+- manter shared border bands e conectividade cross-region fora do escopo até M2.3.

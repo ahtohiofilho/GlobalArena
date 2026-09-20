@@ -225,6 +225,9 @@ Mitigação:
 - identidade tática region-owned ancorada em `StrategicCellId + LocalOrdinal`;
 - ownership regional e invariantes locais de adjacência/conectividade validados cross-platform;
 - shared border bands e adjacência cross-region permanecem explicitamente fora de M2.2.1;
+- `MinimalTacticalRegionGraphGenerator` materializa um reference graph local canônico;
+- ordinais `1`, `2`, `3`, reciprocidade, conectividade e determinismo do grafo tático mínimo foram validados cross-platform;
+- o reference graph não congela geometria física, resolução final ou semântica cross-region;
 - testes explícitos de pertencimento pai-filho;
 - testes de continuidade entre regiões;
 - validação de casos representativos das famílias Goldberg;
@@ -232,7 +235,7 @@ Mitigação:
 
 Próxima ação:
 
-implementar em M2.2.2 um reference graph tático mínimo de três células (`1 <-> 2 <-> 3`) para provar geração canônica e determinística sem congelar geometria física; depois avançar para materialização estratégica → tática em M2.2.3, mantendo shared border bands e conectividade cross-region fora do escopo até M2.3.
+materializar em M2.2.3 uma `TacticalRegion` determinística para cada `StrategicCell` suportada, provando correspondência um-para-um e assinatura canônica do conjunto de regiões; manter shared border bands, pertencimento multi-região e conectividade cross-region fora do escopo até M2.3.
 
 ---
 

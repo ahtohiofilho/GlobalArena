@@ -555,30 +555,61 @@ Topologia planetária / Goldberg:
 
 **16.80 / 90 GPP — 18.7%**
 
+M2.2.2 está concluído em 2026-09-20.
+
+Evidência de M2.2.2:
+
+- `MinimalTacticalRegionGraphGenerator` implementado;
+- entrada por `StrategicCellId` válido;
+- saída por `TacticalRegion`;
+- reference graph canônico com três células;
+- ordinais locais `1`, `2`, `3`;
+- conectividade `1 <-> 2 <-> 3`;
+- parent estratégico preservado em todas as identidades;
+- ausência de self-loop e adjacência duplicada;
+- reciprocidade preservada;
+- grafo conectado;
+- geração repetida reproduz a mesma assinatura canônica;
+- nenhuma geometria física final foi congelada;
+- shared border bands e adjacência cross-region permanecem fora do escopo;
+- build Release local com 0 warnings e 0 errors;
+- suíte local: 221/221, 0 falhas, 0 skipped;
+- workflow `Cross-Platform Kernel Regression Validation`, run `35489984263`, concluído com sucesso em Ubuntu, Windows e macOS;
+- commit validado: `cf5e3d5093c21bfc9a67b38e6c16ce35d35d70c2`.
+
+Promoção de maturidade:
+
+`Tactical region topology`
+
+**Especificada — 0.20 → Implementação funcional isolada — 0.50**
+
+GPP adicional de M2.2.2:
+
+**+4.20 GPP**
+
+GPP após o fechamento:
+
+**91.00 / 1000**
+
+Global Progress:
+
+**9.1%**
+
+Topologia planetária / Goldberg:
+
+**21.00 / 90 GPP — 23.3%**
+
 Subcheckpoint atual:
 
-**M2.2.2 — Minimal Tactical Region Graph**
+**M2.2.3 — Strategic-to-Tactical Region Materialization**
 
-O audit read-only de M2.2.2 confirmou que o repositório não congela ainda uma contagem final de células nem uma geometria local definitiva para `TacticalRegion`.
+Objetivos iniciais:
 
-Design congelado para esta tranche:
-
-- introduzir `MinimalTacticalRegionGraphGenerator`;
-- entrada: um `StrategicCellId` válido;
-- saída: uma `TacticalRegion` canônica;
-- reference graph mínimo: três células com `LocalOrdinal` `1`, `2`, `3`;
-- conectividade: `1 <-> 2 <-> 3`;
-- IDs continuam derivados somente de `ParentStrategicCellId + LocalOrdinal`;
-- geração repetida deve reproduzir a mesma assinatura;
-- resultado deve satisfazer automaticamente os invariantes de `TacticalRegion`;
-- nenhum ponto flutuante ou coordenada participa da fonte de verdade;
-- nenhuma semântica de shared border band ou adjacência cross-region será introduzida.
-
-A cadeia de três células é apenas um fixture topológico executável para provar geração e determinismo. Ela não congela a forma, resolução ou número final de microtiles de uma região real.
-
-Próximo gate:
-
-implementar e validar o gerador mínimo sem commit/push antes da auditoria.
+- materializar uma `TacticalRegion` para cada `StrategicCell` suportada pelo contrato da etapa;
+- preservar correspondência um-para-um entre região tática e parent estratégico;
+- reutilizar o gerador local canônico sem introduzir identidade redundante;
+- provar ordenação e assinatura determinísticas do conjunto de regiões;
+- manter shared border bands e adjacência cross-region fora do escopo até M2.3.
 
 ---
 
@@ -866,15 +897,15 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M2.2.2 — Minimal Tactical Region Graph**
+**M2.2.3 — Strategic-to-Tactical Region Materialization**
 
 Official Progress:
 
-**8.7%**
+**9.1%**
 
 GPP Earned:
 
-**86.80 / 1000**
+**91.00 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -882,7 +913,7 @@ Foundation / Simulation Kernel:
 
 Planet Topology / Goldberg:
 
-**16.80 / 90 GPP — 18.7%**
+**21.00 / 90 GPP — 23.3%**
 
 Scope Confidence:
 
