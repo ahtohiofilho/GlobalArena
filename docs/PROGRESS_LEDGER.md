@@ -6785,3 +6785,192 @@ Global Progress permanece:
 **9.1%**
 
 A próxima promoção depende da implementação, integração e gates posteriores.
+
+---
+
+## 2026-09-20 — M2.2.3 Strategic-to-Tactical Region Materialization concluído
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.2 — Tactical Region Topology**
+
+Subcheckpoint:
+
+**M2.2.3 — Strategic-to-Tactical Region Materialization**
+
+### Implementação
+
+Commit validado:
+
+`69472665f629218fcd789bcde21e159844b0e1fd`
+
+Commit:
+
+`feat: materialize tactical regions from strategic topology`
+
+A tranche introduziu:
+
+`StrategicTacticalRegionMaterializer`
+
+Operação:
+
+`Materialize(StrategicTopology) -> IReadOnlyList<TacticalRegion>`
+
+### Comportamento validado
+
+- input nulo é rejeitado;
+- a cardinalidade tática coincide com `StrategicTopology.Cells.Count`;
+- existe exatamente uma `TacticalRegion` por `StrategicCell`;
+- a ordem canônica estratégica é preservada;
+- cada parent estratégico aparece exatamente uma vez;
+- cada região mantém o reference graph de M2.2.2;
+- nenhuma adjacência local cruza parent estratégico;
+- a coleção de regiões é somente leitura;
+- materialização repetida produz a mesma assinatura canônica.
+
+### Cobertura Goldberg
+
+Casos representativos validados:
+
+- Class I: `G(1,0)` → 12 regiões;
+- Class II: `G(1,1)` → 32 regiões;
+- Class III: `G(2,1)` → 72 regiões.
+
+O materializador depende de `StrategicTopology`, não de uma família Goldberg específica.
+
+### Limite arquitetural preservado
+
+M2.2.3 não introduz:
+
+- aggregate tático cross-region;
+- shared border bands;
+- ownership multi-região;
+- adjacência tática cross-region;
+- mapping tático por `StrategicEdge`;
+- geometria final;
+- coordenadas;
+- mesh;
+- resolução final de refinamento.
+
+### Evidência local
+
+- build Release: 0 warnings;
+- build Release: 0 errors;
+- testes: 232/232;
+- falhas: 0;
+- skipped: 0;
+- `git diff --check`: aprovado;
+- `git diff --cached --check`: aprovado.
+
+### Gate cross-platform
+
+Workflow:
+
+`Cross-Platform Kernel Regression Validation`
+
+Run ID:
+
+`35491174076`
+
+Resultado:
+
+**SUCCESS**
+
+Commit:
+
+`69472665f629218fcd789bcde21e159844b0e1fd`
+
+Jobs:
+
+- Ubuntu: `success`;
+- Windows: `success`;
+- macOS: `success`.
+
+Artefatos:
+
+- Ubuntu: ID `10599660050`, SHA-256 `d7e6d7bcf3740a978f521aeb3f4752a6ba84f0e672f497887c8b9593ff470d46`;
+- Windows: ID `10599370772`, SHA-256 `02c2462df5e7c6dfa5ff88e787a31fd51d384c082d701cdc49da05f35bb644cd`;
+- macOS: ID `10598524789`, SHA-256 `2b522065454d54bf509f6c4d90165a3d366b2e4a6a68d33eae7b96ffd793f2cd`.
+
+### Maturidade e GPP
+
+A capability:
+
+`Tactical region topology`
+
+é promovida de:
+
+**Implementação funcional isolada — fator 0.50 — 7.00 GPP**
+
+para:
+
+**Integrada ao sistema — fator 0.70 — 9.80 GPP**
+
+Justificativa:
+
+M2.2.3 cria a ligação executável entre a topologia estratégica e a topologia tática, preservando identidade pai-filho, cardinalidade um-para-um, ordem canônica, isolamento de adjacência local e determinismo cross-platform. A validação acumulada e edge cases do stage permanecem para M2.2.4.
+
+GPP antes:
+
+**91.00 / 1000**
+
+Incremento:
+
+**+2.80 GPP**
+
+GPP após:
+
+**93.80 / 1000**
+
+Global Progress:
+
+**9.4%**
+
+Topologia planetária / Goldberg:
+
+**23.80 / 90 GPP — 26.4%**
+
+Foundation / Simulation Kernel permanece:
+
+**70.00 / 70 GPP — 100.0%**
+
+### Riscos
+
+`RISK-003 — Goldberg hierarchy mapping` permanece:
+
+**MITIGATING / Probability 2 / Impact 4 / Score 8 — HIGH**
+
+A incerteza sobre a correspondência executável estratégico → tático foi reduzida.
+
+Continuam em aberto:
+
+- validação acumulada de M2.2;
+- shared border bands;
+- pertencimento multi-região;
+- continuidade cross-region;
+- refinamento hierárquico Goldberg.
+
+### Scope Change
+
+Nenhum.
+
+O baseline V1 permanece:
+
+**1000 GPP**
+
+### Próximo subcheckpoint
+
+**M2.2.4 — Tactical Region Validation & M2.2 Close**
+
+Objetivos:
+
+- auditar a cobertura acumulada do stage;
+- fechar lacunas reais de invariantes e edge cases;
+- validar determinismo de M2.2 como conjunto;
+- executar regressão cross-platform final;
+- decidir promoção de `Tactical region topology` para `Validada — fator 0.85`;
+- encerrar M2.2 sem antecipar M2.3.

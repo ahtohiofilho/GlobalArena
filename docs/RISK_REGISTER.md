@@ -228,6 +228,10 @@ Mitigação:
 - `MinimalTacticalRegionGraphGenerator` materializa um reference graph local canônico;
 - ordinais `1`, `2`, `3`, reciprocidade, conectividade e determinismo do grafo tático mínimo foram validados cross-platform;
 - o reference graph não congela geometria física, resolução final ou semântica cross-region;
+- `StrategicTacticalRegionMaterializer` integra `StrategicTopology` ao conjunto de regiões táticas;
+- correspondência um-para-um `StrategicCell` → `TacticalRegion`, ordem canônica e determinismo foram validados cross-platform;
+- casos representativos Class I, Class II e Class III materializam corretamente;
+- nenhum aggregate ou adjacency cross-region foi inventado antes dos contratos de M2.3;
 - testes explícitos de pertencimento pai-filho;
 - testes de continuidade entre regiões;
 - validação de casos representativos das famílias Goldberg;
@@ -235,7 +239,7 @@ Mitigação:
 
 Próxima ação:
 
-implementar em M2.2.3 `StrategicTacticalRegionMaterializer`, consumindo `StrategicTopology` e produzindo uma coleção somente leitura com exatamente uma `TacticalRegion` por `StrategicCell`, em ordem canônica e com assinatura determinística; manter aggregate cross-region, shared border bands, pertencimento multi-região e conectividade cross-region fora do escopo até M2.3.
+executar M2.2.4 como gate de validação acumulada da topologia tática e da materialização estratégico → tático, cobrindo edge cases e determinismo do stage antes de seu fechamento; manter shared border bands, pertencimento multi-região e conectividade cross-region reservados para M2.3.
 
 ---
 

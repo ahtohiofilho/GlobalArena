@@ -306,19 +306,19 @@ A decomposição operacional inicial de M2 é:
 | Scalability / headless performance baseline | 4 |
 | **TOTAL** | **90** |
 
-Estado de maturidade após M2.2.2:
+Estado de maturidade após M2.2.3:
 
 | Capability | GPP | Maturidade | Fator | GPP ganhos |
 |---|---:|---|---:|---:|
 | Goldberg parameterization e geração estratégica | 16 | Implementação funcional isolada | 0.50 | 8.00 |
 | Strategic graph: identidade, incidência e adjacência | 12 | Implementação funcional isolada | 0.50 | 6.00 |
-| Tactical region topology | 14 | Implementação funcional isolada | 0.50 | 7.00 |
+| Tactical region topology | 14 | Integrada ao sistema | 0.70 | 9.80 |
 | Shared subtile border bands | 16 | Inexistente | 0.00 | 0.00 |
 | Strategic ↔ tactical hierarchy/refinement mapping | 16 | Inexistente | 0.00 | 0.00 |
 | Canonical deterministic topology generation | 6 | Inexistente | 0.00 | 0.00 |
 | Topological validation e navigability | 6 | Inexistente | 0.00 | 0.00 |
 | Scalability / headless performance baseline | 4 | Inexistente | 0.00 | 0.00 |
-| **TOTAL** | **90** |  |  | **21.00** |
+| **TOTAL** | **90** |  |  | **23.80** |
 
 M2.1.1 foi um audit arquitetural e não promoveu maturidade por si só.
 
@@ -344,9 +344,13 @@ Por isso, `Tactical region topology` foi promovida de `Inexistente — fator 0.0
 
 M2.2.2 materializou o primeiro grafo tático local por meio de `MinimalTacticalRegionGraphGenerator`, com reference graph canônico `1 <-> 2 <-> 3`, invariantes estruturais preservados e geração repetida determinística validada cross-platform.
 
-Por isso, `Tactical region topology` é promovida de `Especificada — fator 0.20` para `Implementação funcional isolada — fator 0.50`.
+Por isso, `Tactical region topology` foi promovida de `Especificada — fator 0.20` para `Implementação funcional isolada — fator 0.50`.
 
-A promoção para `Integrada ao sistema — fator 0.70` permanece bloqueada até a materialização estratégica → tática de M2.2.3 e os gates de validação de M2.2.4.
+M2.2.3 integrou a topologia tática à topologia estratégica por meio de `StrategicTacticalRegionMaterializer`, materializando exatamente uma `TacticalRegion` por `StrategicCell`, preservando ordem canônica, identidade pai-filho e determinismo em casos representativos Class I, Class II e Class III.
+
+Por isso, `Tactical region topology` é promovida de `Implementação funcional isolada — fator 0.50` para `Integrada ao sistema — fator 0.70`.
+
+A promoção para `Validada — fator 0.85` permanece bloqueada até M2.2.4 — Tactical Region Validation & M2.2 Close.
 
 Esses pesos constituem o baseline inicial.
 
@@ -565,7 +569,7 @@ Etapa:
 
 Subetapa atual:
 
-**M2.2.3 — Strategic-to-Tactical Region Materialization**
+**M2.2.4 — Tactical Region Validation & M2.2 Close**
 
 M0 — Project Baseline:
 
@@ -611,17 +615,21 @@ M2.2.2 — Minimal Tactical Region Graph:
 
 **concluído em 2026-09-20**
 
+M2.2.3 — Strategic-to-Tactical Region Materialization:
+
+**concluído em 2026-09-20**
+
 Baseline V1:
 
 **congelado em 2026-09-18**
 
 Progresso oficial:
 
-**9,1%**
+**9,4%**
 
 GPP conquistados:
 
-**91,00 / 1000**
+**93,80 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -629,7 +637,7 @@ Foundation / Simulation Kernel:
 
 Topologia planetária / Goldberg:
 
-**21,00 / 90 GPP — 23,3%**
+**23,80 / 90 GPP — 26,4%**
 
 Scope Confidence:
 

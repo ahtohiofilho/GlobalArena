@@ -599,39 +599,63 @@ Topologia planetária / Goldberg:
 
 **21.00 / 90 GPP — 23.3%**
 
+M2.2.3 está concluído em 2026-09-20.
+
+Evidência de M2.2.3:
+
+- `StrategicTacticalRegionMaterializer` implementado;
+- entrada por `StrategicTopology`;
+- saída por `IReadOnlyList<TacticalRegion>`;
+- input nulo rejeitado;
+- exatamente uma região materializada por `StrategicCell`;
+- ordem canônica de `StrategicTopology.Cells` preservada;
+- todos os parents estratégicos aparecem exatamente uma vez;
+- cada região preserva o reference graph validado de M2.2.2;
+- coleção retornada é somente leitura;
+- materialização repetida reproduz a mesma assinatura canônica;
+- nenhuma adjacência local cruza parent estratégico;
+- casos representativos Class I `G(1,0)`, Class II `G(1,1)` e Class III `G(2,1)` validados;
+- nenhum aggregate tático cross-region foi introduzido;
+- shared border bands e adjacência cross-region permanecem fora do escopo até M2.3;
+- build Release local com 0 warnings e 0 errors;
+- suíte local: 232/232, 0 falhas, 0 skipped;
+- workflow `Cross-Platform Kernel Regression Validation`, run `35491174076`, concluído com sucesso em Ubuntu, Windows e macOS;
+- commit validado: `69472665f629218fcd789bcde21e159844b0e1fd`.
+
+Promoção de maturidade:
+
+`Tactical region topology`
+
+**Implementação funcional isolada — 0.50 → Integrada ao sistema — 0.70**
+
+GPP adicional de M2.2.3:
+
+**+2.80 GPP**
+
+GPP após o fechamento:
+
+**93.80 / 1000**
+
+Global Progress:
+
+**9.4%**
+
+Topologia planetária / Goldberg:
+
+**23.80 / 90 GPP — 26.4%**
+
 Subcheckpoint atual:
 
-**M2.2.3 — Strategic-to-Tactical Region Materialization**
+**M2.2.4 — Tactical Region Validation & M2.2 Close**
 
-O audit read-only de M2.2.3 confirmou que:
+Objetivos iniciais:
 
-- `StrategicTopology` já é o aggregate autoritativo da topologia estratégica;
-- `StrategicTopology.Cells` possui ordem canônica e IDs contíguos one-based validados;
-- `TacticalRegion` já carrega diretamente o `StrategicCellId` pai;
-- não existe materializador estratégico → tático;
-- não existe aggregate tático cross-region;
-- shared border bands e conectividade cross-region continuam reservadas a M2.3.
-
-Design congelado para esta tranche:
-
-- introduzir `StrategicTacticalRegionMaterializer`;
-- entrada: `StrategicTopology`;
-- saída: `IReadOnlyList<TacticalRegion>`;
-- rejeitar input nulo;
-- materializar exatamente uma região por `StrategicCell`;
-- usar `MinimalTacticalRegionGraphGenerator` para cada parent;
-- preservar a ordem de `StrategicTopology.Cells`;
-- garantir correspondência um-para-um sem omissions ou parents duplicados;
-- devolver snapshot somente leitura;
-- provar determinismo da assinatura completa do conjunto;
-- validar casos representativos de Class I, Class II e Class III;
-- não introduzir aggregate/container adicional antes de existir semântica cross-region que o justifique;
-- não usar `StrategicEdge` ou `StrategicVertex` para criar adjacência tática cross-region nesta tranche;
-- manter shared border bands, ownership multi-região e geometria final fora do escopo até M2.3.
-
-Próximo gate:
-
-implementar e validar o materializador sem commit/push antes da auditoria.
+- auditar a cobertura acumulada de invariantes táticos locais e da materialização estratégica → tática;
+- ampliar validações somente onde houver lacunas reais;
+- validar edge cases representativos e determinismo do stage M2.2 como conjunto;
+- executar gate cross-platform final de M2.2;
+- decidir se `Tactical region topology` pode ser promovida para `Validada — fator 0.85`;
+- fechar formalmente M2.2 sem antecipar shared border bands de M2.3.
 
 ---
 
@@ -919,15 +943,15 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M2.2.3 — Strategic-to-Tactical Region Materialization**
+**M2.2.4 — Tactical Region Validation & M2.2 Close**
 
 Official Progress:
 
-**9.1%**
+**9.4%**
 
 GPP Earned:
 
-**91.00 / 1000**
+**93.80 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -935,7 +959,7 @@ Foundation / Simulation Kernel:
 
 Planet Topology / Goldberg:
 
-**21.00 / 90 GPP — 23.3%**
+**23.80 / 90 GPP — 26.4%**
 
 Scope Confidence:
 

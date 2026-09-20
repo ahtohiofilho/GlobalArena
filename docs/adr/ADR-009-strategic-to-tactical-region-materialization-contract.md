@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-09-20
+**Last revised:** 2026-09-20
 
 ## Context
 
@@ -141,6 +142,44 @@ Negative:
 - a coleção materializada ainda não representa conectividade tática entre regiões;
 - `StrategicEdge` ainda não possui representação tática;
 - a topologia local continua sendo o reference graph mínimo, não a geometria final.
+
+## M2.2.3 validation evidence
+
+Implementation commit:
+
+`69472665f629218fcd789bcde21e159844b0e1fd`
+
+Validated executable behavior:
+
+- `StrategicTacticalRegionMaterializer.Materialize(StrategicTopology)` returns a read-only collection of `TacticalRegion`;
+- null input is rejected;
+- region count equals `StrategicTopology.Cells.Count`;
+- region ordering matches the canonical strategic cell order;
+- each strategic parent appears exactly once;
+- every region preserves the M2.2.2 minimal reference graph;
+- tactical adjacency remains local to the same strategic parent;
+- repeated materialization produces the same canonical signature;
+- representative Class I `G(1,0)`, Class II `G(1,1)` and Class III `G(2,1)` inputs materialize correctly.
+
+Local validation:
+
+- Release build: 0 warnings, 0 errors;
+- tests: 232/232;
+- failures: 0;
+- skipped: 0.
+
+Cross-platform validation:
+
+- workflow: `Cross-Platform Kernel Regression Validation`;
+- run ID: `35491174076`;
+- Ubuntu: `success`;
+- Windows: `success`;
+- macOS: `success`;
+- Ubuntu artifact: ID `10599660050`, SHA-256 `d7e6d7bcf3740a978f521aeb3f4752a6ba84f0e672f497887c8b9593ff470d46`;
+- Windows artifact: ID `10599370772`, SHA-256 `02c2462df5e7c6dfa5ff88e787a31fd51d384c082d701cdc49da05f35bb644cd`;
+- macOS artifact: ID `10598524789`, SHA-256 `2b522065454d54bf509f6c4d90165a3d366b2e4a6a68d33eae7b96ffd793f2cd`.
+
+M2.2.3 establishes an integrated strategic-to-tactical materialization path while preserving the explicit boundary before M2.3.
 
 ## Invariant
 
