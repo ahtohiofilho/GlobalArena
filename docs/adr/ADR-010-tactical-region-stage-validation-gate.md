@@ -168,6 +168,54 @@ Negative:
 - a geometria tática final continua não demonstrada;
 - continuidade entre regiões continua aberta.
 
+## M2.2.4 validation evidence
+
+Validation commit:
+
+`66f10e0bbf5c986ef7dd380df73079f5d5037324`
+
+Validated behavior:
+
+- tranche permaneceu validation-only;
+- zero production files foram alterados;
+- `TacticalCell.AdjacentCellIds` preserva snapshot e read-only semantics;
+- `TacticalRegion.Cells` preserva snapshot e read-only semantics;
+- `G(0,2)`, `G(2,2)`, `G(1,2)`, `G(3,1)` e `G(3,2)` materializam com as cardinalidades esperadas;
+- `G(3,2)` materializa 192 regiões e 576 células táticas no reference graph atual;
+- as 576 identidades táticas de `G(3,2)` são globalmente únicas;
+- toda adjacency permanece no mesmo parent estratégico;
+- duas materializações independentes de `G(3,2)` produzem assinatura canônica completa idêntica.
+
+Local validation:
+
+- Release build: 0 warnings, 0 errors;
+- tests: 241/241;
+- failures: 0;
+- skipped: 0.
+
+Cross-platform validation:
+
+- workflow: `Cross-Platform Kernel Regression Validation`;
+- run ID: `35492380549`;
+- Ubuntu: `success`;
+- Windows: `success`;
+- macOS: `success`;
+- Ubuntu artifact: ID `10599441597`, SHA-256 `ea0a7ad0e2fb617a4f9f66d6409f761ff080d4ee2f757d411579810c5fe83c42`;
+- Windows artifact: ID `10598904761`, SHA-256 `a32cfe12ccfaf1082f98d0c430971a73053ddc4950b3e8aea33bbc876bb9200a`;
+- macOS artifact: ID `10599761157`, SHA-256 `4c5a5153cb516b1bfea681c555fdb23e196c9d1dd13600e6a8514272ed65d7b0`.
+
+Promotion:
+
+`Tactical region topology`
+
+`Integrada ao sistema — fator 0.70`
+
+→
+
+`Validada — fator 0.85`
+
+M2.2 é formalmente encerrado após este gate.
+
 ## Invariant
 
 M2.2.4 valida o stage intra-região e sua materialização estratégica; não transforma M2.2 em prova de conectividade tática cross-region.

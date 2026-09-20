@@ -644,44 +644,74 @@ Topologia planetária / Goldberg:
 
 **23.80 / 90 GPP — 26.4%**
 
+M2.2.4 está concluído em 2026-09-20.
+
+Evidência de M2.2.4:
+
+- tranche executada como validation-only;
+- nenhum production type foi criado ou alterado;
+- `TacticalCell.AdjacentCellIds` validado como snapshot somente leitura;
+- `TacticalRegion.Cells` validado como snapshot somente leitura;
+- `G(0,2)` validado com 42 regiões;
+- `G(2,2)` validado com 122 regiões;
+- `G(1,2)` validado com 72 regiões;
+- `G(3,1)` validado com 132 regiões;
+- `G(3,2)` validado com 192 regiões;
+- `G(3,2)` produziu 576 `TacticalCellId` globalmente únicos no reference graph atual;
+- toda adjacency materializada em `G(3,2)` permaneceu parent-local;
+- duas materializações independentes de `G(3,2)` reproduziram a mesma assinatura canônica completa;
+- nenhum threshold de wall-clock foi introduzido;
+- build Release local com 0 warnings e 0 errors;
+- suíte local: 241/241, 0 falhas, 0 skipped;
+- workflow `Cross-Platform Kernel Regression Validation`, run `35492380549`, concluído com sucesso em Ubuntu, Windows e macOS;
+- commit validado: `66f10e0bbf5c986ef7dd380df73079f5d5037324`.
+
+Promoção de maturidade:
+
+`Tactical region topology`
+
+**Integrada ao sistema — 0.70 → Validada — 0.85**
+
+GPP adicional de M2.2.4:
+
+**+2.10 GPP**
+
+GPP após o fechamento:
+
+**95.90 / 1000**
+
+Global Progress:
+
+**9.6%**
+
+Topologia planetária / Goldberg:
+
+**25.90 / 90 GPP — 28.8%**
+
+M2.2 — Tactical Region Topology está concluído em 2026-09-20.
+
+O fechamento de M2.2 prova a topologia intra-região, a materialização um-para-um a partir de `StrategicTopology`, canonicalização, ownership local, determinismo e validação cross-platform.
+
+M2.2 não prova ainda:
+
+- shared border bands;
+- ownership multi-região;
+- adjacência tática cross-region;
+- mapping tático por `StrategicEdge`;
+- geometria tática final;
+- refinamento hierárquico Goldberg.
+
+Stage atual:
+
+**M2.3 — Shared Border Bands & Strategic/Tactical Mapping**
+
 Subcheckpoint atual:
 
-**M2.2.4 — Tactical Region Validation & M2.2 Close**
-
-O audit read-only confirmou que os contratos centrais de M2.2 já possuem boa cobertura e que não há justificativa para novo production type nesta tranche.
-
-Lacunas reais identificadas:
-
-- snapshot/read-only semantics de `TacticalCell.AdjacentCellIds` não possuem prova direta;
-- snapshot/read-only semantics de `TacticalRegion.Cells` não possuem prova direta;
-- o materializador foi validado apenas com representantes mínimos `G(1,0)`, `G(1,1)` e `G(2,1)`;
-- não existe prova stage-level em mirrored Class I, Class II maior, Class III de quiralidade oposta e Class III maior;
-- não existe ainda smoke de escala tática acumulada sobre `G(3,2)`;
-- não existe assinatura canônica acumulada repetida de uma materialização maior.
-
-Design congelado para esta tranche:
-
-- nenhuma alteração de production code prevista;
-- adicionar somente `GlobalArena.Tests/TacticalRegionStageValidationTests.cs`;
-- validar snapshot + read-only de `TacticalCell.AdjacentCellIds`;
-- validar snapshot + read-only de `TacticalRegion.Cells`;
-- validar `G(0,2)` → 42 regiões;
-- validar `G(2,2)` → 122 regiões;
-- validar `G(1,2)` → 72 regiões;
-- validar `G(3,1)` → 132 regiões;
-- validar `G(3,2)` → 192 regiões;
-- em `G(3,2)`, validar 576 `TacticalCellId` globalmente únicos no reference graph atual;
-- em `G(3,2)`, validar que toda adjacência permanece no mesmo parent;
-- repetir a materialização de `G(3,2)` e comparar assinatura canônica completa;
-- não usar threshold de wall-clock;
-- manter benchmark quantitativo para o gate específico de escalabilidade;
-- preservar shared border bands e cross-region adjacency para M2.3.
-
-Com os nove novos casos de teste previstos, a suíte deverá passar de 232 para 241 testes.
+**M2.3.1 — Shared Border Contract Audit**
 
 Próximo gate:
 
-implementar somente a validação adicional, sem commit/push, e auditar a evidência antes de congelar a implementação.
+executar audit read-only da arquitetura de fronteira compartilhada, identidade canônica, incidência entre regiões e relação com `StrategicEdge`, sem implementar antes de congelar o contrato.
 
 ---
 
@@ -965,19 +995,19 @@ Current Milestone:
 
 Current Stage:
 
-**M2.2 — Tactical Region Topology**
+**M2.3 — Shared Border Bands & Strategic/Tactical Mapping**
 
 Current Subcheckpoint:
 
-**M2.2.4 — Tactical Region Validation & M2.2 Close**
+**M2.3.1 — Shared Border Contract Audit**
 
 Official Progress:
 
-**9.4%**
+**9.6%**
 
 GPP Earned:
 
-**93.80 / 1000**
+**95.90 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -985,7 +1015,7 @@ Foundation / Simulation Kernel:
 
 Planet Topology / Goldberg:
 
-**23.80 / 90 GPP — 26.4%**
+**25.90 / 90 GPP — 28.8%**
 
 Scope Confidence:
 
@@ -1001,7 +1031,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**Goldberg hierarchy mapping e prova da hierarquia estratégico/tático**
+**shared border bands e prova da hierarquia estratégico/tático**
 
 Last Baseline Review:
 

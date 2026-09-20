@@ -2913,7 +2913,22 @@ A validação adicional deverá ser implementada em um arquivo de testes dedicad
 
 `GlobalArena.Tests/TacticalRegionStageValidationTests.cs`
 
-Se todos os gates locais e cross-platform passarem, M2.2 poderá ser encerrado e `Tactical region topology` poderá ser avaliada para promoção de `Integrada ao sistema — fator 0.70` para `Validada — fator 0.85`.
+O gate final de M2.2 foi aprovado em 2026-09-20.
+
+A tranche M2.2.4 permaneceu validation-only e adicionou somente `GlobalArena.Tests/TacticalRegionStageValidationTests.cs`.
+
+Resultado acumulado:
+
+- Release build com 0 warnings e 0 errors;
+- 241/241 testes locais;
+- snapshot/read-only semantics de `TacticalCell` e `TacticalRegion` diretamente validadas;
+- variantes `G(0,2)`, `G(2,2)`, `G(1,2)`, `G(3,1)` e `G(3,2)` materializadas;
+- `G(3,2)` com 192 regiões e 576 identidades táticas globalmente únicas;
+- adjacency parent-local preservada;
+- assinatura stage-level determinística em materializações repetidas;
+- regressão cross-platform aprovada em Ubuntu, Windows e macOS.
+
+Com esse gate, M2.2 — Tactical Region Topology é encerrado e `Tactical region topology` alcança maturidade `Validada — fator 0.85`.
 
 Esse fechamento não constitui prova de:
 

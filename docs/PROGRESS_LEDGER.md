@@ -7101,3 +7101,194 @@ Se a implementação, auditoria e regressão cross-platform passarem, o fechamen
 Incremento potencial:
 
 **+2.10 GPP**
+
+---
+
+## 2026-09-20 — M2.2.4 Tactical Region Validation e fechamento de M2.2
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage concluído:
+
+**M2.2 — Tactical Region Topology**
+
+Subcheckpoint concluído:
+
+**M2.2.4 — Tactical Region Validation & M2.2 Close**
+
+### Validation commit
+
+Commit:
+
+`66f10e0bbf5c986ef7dd380df73079f5d5037324`
+
+Mensagem:
+
+`test: validate tactical region stage`
+
+A tranche permaneceu validation-only.
+
+Arquivos de production code alterados:
+
+**0**
+
+Arquivo de validação adicionado:
+
+`GlobalArena.Tests/TacticalRegionStageValidationTests.cs`
+
+### Validações adicionais
+
+Foram adicionados nove casos executados:
+
+- snapshot/read-only de `TacticalCell.AdjacentCellIds`;
+- snapshot/read-only de `TacticalRegion.Cells`;
+- Class I mirrored `G(0,2)` → 42 regiões;
+- Class II maior `G(2,2)` → 122 regiões;
+- Class III quiralidade oposta `G(1,2)` → 72 regiões;
+- Class III `G(3,1)` → 132 regiões;
+- Class III `G(3,2)` → 192 regiões;
+- `G(3,2)` → 576 `TacticalCellId` globalmente únicos, com adjacency parent-local;
+- duas materializações independentes de `G(3,2)` → assinatura canônica completa idêntica.
+
+Nenhum threshold de wall-clock foi usado.
+
+Benchmark quantitativo continua reservado aos gates específicos de escalabilidade.
+
+### Evidência local
+
+- build Release: 0 warnings;
+- build Release: 0 errors;
+- testes: 241/241;
+- falhas: 0;
+- skipped: 0;
+- `git diff --check`: aprovado;
+- `git diff --cached --check`: aprovado.
+
+### Gate cross-platform
+
+Workflow:
+
+`Cross-Platform Kernel Regression Validation`
+
+Run ID:
+
+`35492380549`
+
+Resultado:
+
+**SUCCESS**
+
+Commit:
+
+`66f10e0bbf5c986ef7dd380df73079f5d5037324`
+
+Jobs:
+
+- Ubuntu: `success`;
+- Windows: `success`;
+- macOS: `success`.
+
+Artefatos:
+
+- Ubuntu: ID `10599441597`, SHA-256 `ea0a7ad0e2fb617a4f9f66d6409f761ff080d4ee2f757d411579810c5fe83c42`;
+- Windows: ID `10598904761`, SHA-256 `a32cfe12ccfaf1082f98d0c430971a73053ddc4950b3e8aea33bbc876bb9200a`;
+- macOS: ID `10599761157`, SHA-256 `4c5a5153cb516b1bfea681c555fdb23e196c9d1dd13600e6a8514272ed65d7b0`.
+
+### Fechamento de M2.2
+
+M2.2 agora prova:
+
+- identidade tática region-owned determinística;
+- invariantes locais de adjacency e conectividade;
+- canonicalização de células e adjacências;
+- grafo tático mínimo gerado deterministicamente;
+- uma `TacticalRegion` por `StrategicCell`;
+- materialização canônica para famílias Goldberg suportadas;
+- snapshots somente leitura;
+- unicidade global de identidade tática no conjunto materializado;
+- determinismo stage-level;
+- regressão cross-platform.
+
+M2.2 não prova:
+
+- shared border bands;
+- ownership multi-região;
+- adjacência tática cross-region;
+- mapping tático por `StrategicEdge`;
+- geometria tática final;
+- refinamento hierárquico Goldberg.
+
+### Maturidade e GPP
+
+A capability:
+
+`Tactical region topology`
+
+é promovida de:
+
+**Integrada ao sistema — fator 0.70 — 9.80 GPP**
+
+para:
+
+**Validada — fator 0.85 — 11.90 GPP**
+
+Incremento:
+
+**+2.10 GPP**
+
+GPP antes:
+
+**93.80 / 1000**
+
+GPP após:
+
+**95.90 / 1000**
+
+Global Progress:
+
+**9.6%**
+
+Topologia planetária / Goldberg:
+
+**25.90 / 90 GPP — 28.8%**
+
+Foundation / Simulation Kernel permanece:
+
+**70.00 / 70 GPP — 100.0%**
+
+### Riscos
+
+`RISK-003 — Goldberg hierarchy mapping` permanece:
+
+**MITIGATING / Probability 2 / Impact 4 / Score 8 — HIGH**
+
+A incerteza intra-região foi reduzida materialmente.
+
+A parte crítica passa agora para:
+
+- shared border bands;
+- identidade canônica de fronteira;
+- incidência multi-região;
+- relação com `StrategicEdge`;
+- continuidade cross-region;
+- refinamento hierárquico Goldberg.
+
+### Scope Change
+
+Nenhum.
+
+Baseline V1 permanece:
+
+**1000 GPP**
+
+### Próximo stage
+
+**M2.3 — Shared Border Bands & Strategic/Tactical Mapping**
+
+Primeiro subcheckpoint:
+
+**M2.3.1 — Shared Border Contract Audit**
+
+O próximo gate será read-only antes de qualquer implementação.

@@ -306,19 +306,19 @@ A decomposição operacional inicial de M2 é:
 | Scalability / headless performance baseline | 4 |
 | **TOTAL** | **90** |
 
-Estado de maturidade após M2.2.3:
+Estado de maturidade após M2.2:
 
 | Capability | GPP | Maturidade | Fator | GPP ganhos |
 |---|---:|---|---:|---:|
 | Goldberg parameterization e geração estratégica | 16 | Implementação funcional isolada | 0.50 | 8.00 |
 | Strategic graph: identidade, incidência e adjacência | 12 | Implementação funcional isolada | 0.50 | 6.00 |
-| Tactical region topology | 14 | Integrada ao sistema | 0.70 | 9.80 |
+| Tactical region topology | 14 | Validada | 0.85 | 11.90 |
 | Shared subtile border bands | 16 | Inexistente | 0.00 | 0.00 |
 | Strategic ↔ tactical hierarchy/refinement mapping | 16 | Inexistente | 0.00 | 0.00 |
 | Canonical deterministic topology generation | 6 | Inexistente | 0.00 | 0.00 |
 | Topological validation e navigability | 6 | Inexistente | 0.00 | 0.00 |
 | Scalability / headless performance baseline | 4 | Inexistente | 0.00 | 0.00 |
-| **TOTAL** | **90** |  |  | **23.80** |
+| **TOTAL** | **90** |  |  | **25.90** |
 
 M2.1.1 foi um audit arquitetural e não promoveu maturidade por si só.
 
@@ -348,9 +348,13 @@ Por isso, `Tactical region topology` foi promovida de `Especificada — fator 0.
 
 M2.2.3 integrou a topologia tática à topologia estratégica por meio de `StrategicTacticalRegionMaterializer`, materializando exatamente uma `TacticalRegion` por `StrategicCell`, preservando ordem canônica, identidade pai-filho e determinismo em casos representativos Class I, Class II e Class III.
 
-Por isso, `Tactical region topology` é promovida de `Implementação funcional isolada — fator 0.50` para `Integrada ao sistema — fator 0.70`.
+Por isso, `Tactical region topology` foi promovida de `Implementação funcional isolada — fator 0.50` para `Integrada ao sistema — fator 0.70`.
 
-A promoção para `Validada — fator 0.85` permanece bloqueada até M2.2.4 — Tactical Region Validation & M2.2 Close.
+M2.2.4 fechou as lacunas de validação acumulada sem alterar production code: snapshot/read-only semantics foram provadas diretamente, variantes Goldberg adicionais foram materializadas, `G(3,2)` validou 192 regiões e 576 identidades táticas únicas, e duas materializações completas reproduziram a mesma assinatura canônica.
+
+Com 241/241 testes locais e regressão cross-platform aprovada em Ubuntu, Windows e macOS, `Tactical region topology` é promovida de `Integrada ao sistema — fator 0.70` para `Validada — fator 0.85`.
+
+M2.2 é encerrado sem antecipar shared border bands, ownership multi-região ou conectividade tática cross-region, que permanecem para M2.3.
 
 Esses pesos constituem o baseline inicial.
 
@@ -565,11 +569,11 @@ Milestone:
 
 Etapa:
 
-**M2.2 — Tactical Region Topology**
+**M2.3 — Shared Border Bands & Strategic/Tactical Mapping**
 
 Subetapa atual:
 
-**M2.2.4 — Tactical Region Validation & M2.2 Close**
+**M2.3.1 — Shared Border Contract Audit**
 
 M0 — Project Baseline:
 
@@ -619,17 +623,25 @@ M2.2.3 — Strategic-to-Tactical Region Materialization:
 
 **concluído em 2026-09-20**
 
+M2.2.4 — Tactical Region Validation & M2.2 Close:
+
+**concluído em 2026-09-20**
+
+M2.2 — Tactical Region Topology:
+
+**concluído em 2026-09-20**
+
 Baseline V1:
 
 **congelado em 2026-09-18**
 
 Progresso oficial:
 
-**9,4%**
+**9,6%**
 
 GPP conquistados:
 
-**93,80 / 1000**
+**95,90 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -637,7 +649,7 @@ Foundation / Simulation Kernel:
 
 Topologia planetária / Goldberg:
 
-**23,80 / 90 GPP — 26,4%**
+**25,90 / 90 GPP — 28,8%**
 
 Scope Confidence:
 
@@ -653,7 +665,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**Goldberg hierarchy mapping e prova da hierarquia estratégico/tático**
+**shared border bands e prova da hierarquia estratégico/tático**
 
 Última revisão de baseline:
 

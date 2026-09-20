@@ -232,6 +232,11 @@ Mitigação:
 - correspondência um-para-um `StrategicCell` → `TacticalRegion`, ordem canônica e determinismo foram validados cross-platform;
 - casos representativos Class I, Class II e Class III materializam corretamente;
 - nenhum aggregate ou adjacency cross-region foi inventado antes dos contratos de M2.3;
+- M2.2.4 validou snapshot/read-only semantics diretamente sem alterar production code;
+- `G(0,2)`, `G(2,2)`, `G(1,2)`, `G(3,1)` e `G(3,2)` foram materializados no gate acumulado;
+- `G(3,2)` validou 192 regiões, 576 identidades táticas globalmente únicas e adjacency estritamente parent-local;
+- duas materializações completas de `G(3,2)` reproduziram a mesma assinatura canônica;
+- regressão cross-platform final de M2.2 passou em Ubuntu, Windows e macOS;
 - testes explícitos de pertencimento pai-filho;
 - testes de continuidade entre regiões;
 - validação de casos representativos das famílias Goldberg;
@@ -239,7 +244,7 @@ Mitigação:
 
 Próxima ação:
 
-executar a tranche validation-only de M2.2.4 com provas adicionais de snapshot/read-only semantics, variantes Goldberg representativas, unicidade global de identidade tática e assinatura determinística acumulada em `G(3,2)`; após regressão cross-platform, decidir o fechamento de M2.2 e a promoção de `Tactical region topology` para `Validada — fator 0.85`, mantendo shared border bands e continuidade cross-region para M2.3.
+iniciar M2.3.1 com audit read-only do contrato de fronteira compartilhada, investigando identidade canônica única, incidência multi-região, relação com `StrategicEdge`, reciprocidade e continuidade entre regiões antes de qualquer implementação; não assumir refinamento Goldberg geral sem prova.
 
 ---
 
