@@ -1170,55 +1170,59 @@ O audit confirmou:
 - final border cardinality permanece aberta;
 - universal Goldberg refinement permanece não provado.
 
-Decisão para M2.4.1:
+M2.4.1 está concluído em 2026-09-20.
 
-definir somente um contrato conservador de compatibilidade por escala inteira.
+Evidência de M2.4.1:
 
-Supported baseline:
+- production type `GlobalArena.World/GoldbergScaledRefinement.cs`;
+- tests `GlobalArena.Tests/GoldbergScaledRefinementTests.cs`;
+- compatibilidade suportada somente para `fine=(coarse.M*scale, coarse.N*scale)`, com `scale >= 2`;
+- parâmetros `default` rejeitados;
+- mesma resolução rejeitada;
+- direção coarse→fine invertida rejeitada;
+- pares não colineares rejeitados;
+- troca de eixo Class I rejeitada;
+- troca de quiralidade Class III rejeitada;
+- Class I `G(1,0) -> G(2,0)` validada com scale 2;
+- Class I invertida `G(0,2) -> G(0,6)` validada com scale 3;
+- Class II `G(1,1) -> G(2,2)` validada com scale 2;
+- Class III `G(2,1) -> G(4,2)` validada com scale 2;
+- Class III `G(1,2) -> G(3,6)` validada com scale 3;
+- relação `fine.T == coarse.T * scale^2` validada como consequência;
+- nenhum `StrategicTopology` é materializado pelo contrato;
+- nenhum parent-child mapping é criado;
+- nenhum ID local é reutilizado como lineage;
+- `TacticalRegion`, `SharedBorderBand` e aggregate permanecem inalterados;
+- build Release local com 0 warnings e 0 errors;
+- suíte local: 313/313, 0 falhas, 0 skipped;
+- workflow `Cross-Platform Kernel Regression Validation`, run `35499086790`, concluído com sucesso em Ubuntu, Windows e macOS;
+- commit validado: `4de075510904c03b261555ad62173599d233537d`.
 
-para `scale >= 2`,
+M2.4.1 não promove GPP.
 
-`fine = (coarse.M * scale, coarse.N * scale)`.
+`Strategic ↔ tactical hierarchy/refinement mapping` permanece:
 
-Exemplos que M2.4.1 deverá aceitar:
+**Inexistente — 0.00**
 
-- `G(1,0) -> G(2,0)`, scale 2;
-- `G(0,2) -> G(0,6)`, scale 3;
-- `G(1,1) -> G(2,2)`, scale 2;
-- `G(2,1) -> G(4,2)`, scale 2;
-- `G(1,2) -> G(3,6)`, scale 3.
+GPP permanece:
 
-Exemplos que deverá rejeitar:
+**109.50 / 1000**
 
-- mesma resolução;
-- refinement invertido;
-- Class I com eixo trocado;
-- pares não colineares;
-- Class III com quiralidade trocada.
+Global Progress permanece:
 
-Production contract planejado:
+**11.0%**
 
-`GlobalArena.World/GoldbergScaledRefinement.cs`
+Topologia planetária / Goldberg permanece:
 
-Validation planejada:
+**39.50 / 90 GPP — 43.9%**
 
-`GlobalArena.Tests/GoldbergScaledRefinementTests.cs`
+Subcheckpoint atual:
 
-Matriz planejada:
-
-- 7 Facts;
-- 5 execuções de uma Theory;
-- 12 novos casos executados;
-- baseline: 301;
-- esperado: 313.
-
-M2.4.1 não cria mapping de IDs, não materializa topologias, não altera `TacticalRegion`, não expande `SharedBorderBand` e não promove GPP.
-
-O objetivo de M2.4.1 é transformar uma hipótese ampla de refinement em um subconjunto explicitamente suportado e testável antes de qualquer mapping físico.
+**M2.4.2 — Canonical Construction Provenance & Reference Mapping**
 
 Próximo gate:
 
-**M2.4.1 DESIGN AUDIT**
+**READ_ONLY_AUDIT**
 
 ---
 
@@ -1506,7 +1510,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M2.4.1 — Scaled Refinement Compatibility Contract**
+**M2.4.2 — Canonical Construction Provenance & Reference Mapping**
 
 Official Progress:
 

@@ -593,7 +593,7 @@ Etapa:
 
 Subetapa atual:
 
-**M2.4.1 — Scaled Refinement Compatibility Contract**
+**M2.4.2 — Canonical Construction Provenance & Reference Mapping**
 
 M0 — Project Baseline:
 
@@ -672,6 +672,10 @@ M2.3.5 — Shared Border Validation & M2.3 Close:
 **concluído em 2026-09-20**
 
 M2.3 — Shared Border Bands & Strategic/Tactical Mapping:
+
+**concluído em 2026-09-20**
+
+M2.4.1 — Scaled Refinement Compatibility Contract:
 
 **concluído em 2026-09-20**
 

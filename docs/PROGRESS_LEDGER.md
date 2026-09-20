@@ -8694,3 +8694,154 @@ Planet Topology permanece:
 ### Próximo gate
 
 **M2.4.1 DESIGN AUDIT**
+
+---
+
+## 2026-09-20 — M2.4.1 Scaled Refinement Compatibility Contract formal close
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.4 — Goldberg Family & Refinement Validation**
+
+Subcheckpoint concluído:
+
+**M2.4.1 — Scaled Refinement Compatibility Contract**
+
+### Implementation commit
+
+Commit:
+
+`4de075510904c03b261555ad62173599d233537d`
+
+Mensagem:
+
+`feat: add scaled Goldberg refinement compatibility`
+
+Arquivos:
+
+- `GlobalArena.World/GoldbergScaledRefinement.cs`;
+- `GlobalArena.Tests/GoldbergScaledRefinementTests.cs`.
+
+### Contrato validado
+
+Supported baseline:
+
+`fine.M = coarse.M * scale`
+
+`fine.N = coarse.N * scale`
+
+com:
+
+`scale >= 2`
+
+Foram validados:
+
+- parâmetros coarse/fine inválidos rejeitados;
+- same resolution rejeitada;
+- reverse refinement rejeitado;
+- non-collinear pair rejeitado;
+- Class I axis swap rejeitado;
+- Class III chirality swap rejeitado;
+- Class I `G(1,0) -> G(2,0)` scale 2;
+- Class I invertida `G(0,2) -> G(0,6)` scale 3;
+- Class II `G(1,1) -> G(2,2)` scale 2;
+- Class III `G(2,1) -> G(4,2)` scale 2;
+- Class III `G(1,2) -> G(3,6)` scale 3;
+- `fine.T == coarse.T * scale^2`.
+
+O contrato não:
+
+- materializa topologia;
+- cria parent-child mapping;
+- usa IDs como lineage;
+- altera tactical region;
+- altera shared border;
+- usa floating point.
+
+### Evidência local
+
+- build Release: 0 warnings;
+- build Release: 0 errors;
+- testes: 313/313;
+- falhas: 0;
+- skipped: 0;
+- `git diff --check`: aprovado;
+- `git diff --cached --check`: aprovado.
+
+### Gate cross-platform
+
+Workflow:
+
+`Cross-Platform Kernel Regression Validation`
+
+Run ID:
+
+`35499086790`
+
+Resultado:
+
+**SUCCESS**
+
+Commit:
+
+`4de075510904c03b261555ad62173599d233537d`
+
+Jobs:
+
+- Ubuntu: `success`;
+- Windows: `success`;
+- macOS: `success`.
+
+Artefatos:
+
+- Ubuntu: ID `10601344453`, SHA-256 `9d51be3e4247413de3738410e01b87fa3976377896150a456887385ea1e699ae`;
+- Windows: ID `10601529472`, SHA-256 `9fb99db6fa2254ce143b05186864ea83680df73007d8636b4ec9a820d4afd8b3`;
+- macOS: ID `10601259733`, SHA-256 `d8777dcf4c6d38c0794c192a16645bc0d2f1c6a29f66cab715de8c4eedf6d227`.
+
+### Maturidade e GPP
+
+M2.4.1 não promove GPP.
+
+`Strategic ↔ tactical hierarchy/refinement mapping` permanece:
+
+**Inexistente — fator 0.00**
+
+GPP:
+
+**109.50 / 1000**
+
+Global Progress:
+
+**11.0%**
+
+Topologia planetária / Goldberg:
+
+**39.50 / 90 GPP — 43.9%**
+
+### Riscos
+
+`RISK-003 — Goldberg hierarchy mapping` permanece:
+
+**MITIGATING / Probability 2 / Impact 4 / Score 8 — HIGH**
+
+A compatibilidade de parâmetros agora possui contrato executável, mas provenance e mapping de entidades ainda estão abertos.
+
+### Scope Change
+
+Nenhum.
+
+Baseline V1 permanece:
+
+**1000 GPP**
+
+### Próximo subcheckpoint
+
+**M2.4.2 — Canonical Construction Provenance & Reference Mapping**
+
+Próximo gate:
+
+**READ_ONLY_AUDIT**

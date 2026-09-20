@@ -3389,6 +3389,42 @@ M2.4 fica decomposto em:
 
 M2.4.1 não promove GPP. `Strategic ↔ tactical hierarchy/refinement mapping` permanece em fator `0.00` até existir parent-child mapping executável.
 
+M2.4.1 foi implementado e validado cross-platform.
+
+A implementação introduziu somente:
+
+- `GoldbergScaledRefinement`;
+- `GoldbergScaledRefinementTests`.
+
+O contrato:
+
+- recebe `CoarseParameters` e `FineParameters`;
+- deriva `Scale` por divisão inteira exata;
+- exige `Scale >= 2`;
+- exige `fine.M == coarse.M * Scale`;
+- exige `fine.N == coarse.N * Scale`;
+- rejeita parâmetros `default`;
+- rejeita mesma resolução;
+- rejeita direção coarse→fine invertida;
+- rejeita pares não colineares;
+- rejeita troca de eixo Class I;
+- rejeita troca de quiralidade Class III;
+- preserva a consequência `fine.T == coarse.T * Scale^2`;
+- não materializa `StrategicTopology`;
+- não cria lineage de IDs;
+- não cria parent-child mapping;
+- não altera `TacticalRegion`;
+- não altera `SharedBorderBand`;
+- não usa floating point.
+
+A suíte local atingiu 313/313 testes.
+
+A regressão `Cross-Platform Kernel Regression Validation`, run `35499086790`, passou em Ubuntu, Windows e macOS.
+
+M2.4.1 está concluído.
+
+O próximo subcheckpoint é M2.4.2 — Canonical Construction Provenance & Reference Mapping, que deverá investigar e congelar como provenance combinatória pode produzir um primeiro mapping executável entre coarse e fine sem usar coincidência de ordinais como lineage.
+
 O estado estratégico de uma conexão poderá futuramente ser derivado do estado tático correspondente.
 
 Exemplos futuros incluem:

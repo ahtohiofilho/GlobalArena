@@ -289,9 +289,22 @@ O audit confirmou:
 - shared border lógico está validado, mas physical border cardinality e tactical-border mapping permanecem abertos;
 - nenhuma fórmula universal de refinement está provada.
 
+M2.4.1 foi implementado e validado cross-platform.
+
+O contrato `GoldbergScaledRefinement` agora:
+
+- reconhece somente pares de escala inteira exata;
+- preserva orientação/quiralidade;
+- rejeita relações unsupported explicitamente;
+- não cria parent-child mapping;
+- não usa IDs locais como lineage;
+- não introduz geometry ou floating point.
+
+A incerteza de compatibilidade de parâmetros foi reduzida, mas o núcleo do RISK-003 permanece aberto: ainda não existe provenance/mapping executável entre entidades coarse e fine.
+
 Próxima ação:
 
-implementar M2.4.1 com `GoldbergScaledRefinement` como witness explícito de compatibilidade apenas para pares de escala inteira `fine=(k*m,k*n)`, `k>=2`, cobrindo Class I, Class II e Class III sem criar parent-child mapping, sem usar floating point e sem promover GPP. Pares não escalados devem permanecer unsupported, não declarados matematicamente impossíveis.
+executar M2.4.2 — Canonical Construction Provenance & Reference Mapping começando por audit read-only da construção combinatória dos geradores Class I, II e III, para identificar qual provenance está disponível ou precisa ser exposta antes de congelar um primeiro parent-child mapping. Não inferir lineage por igualdade de IDs e não promover GPP antes de mapping executável.
 
 ---
 

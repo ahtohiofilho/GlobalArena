@@ -211,6 +211,60 @@ remains:
 
 until an executable parent-child mapping exists.
 
+## Implementation evidence
+
+M2.4.1 foi implementado no commit:
+
+`4de075510904c03b261555ad62173599d233537d`
+
+Arquivos:
+
+- `GlobalArena.World/GoldbergScaledRefinement.cs`;
+- `GlobalArena.Tests/GoldbergScaledRefinementTests.cs`.
+
+O contrato executável confirma:
+
+- coarse e fine válidos são obrigatórios;
+- `Scale` é derivado por razão inteira exata;
+- `Scale >= 2`;
+- ambas as componentes precisam satisfazer exatamente a mesma escala;
+- same-resolution, reverse direction, non-collinear pairs, Class I axis swap e Class III chirality swap são rejeitados;
+- supported pairs preservam `fine.T == coarse.T * Scale^2`.
+
+Cobertura de referência:
+
+- `G(1,0) -> G(2,0)` → scale 2;
+- `G(0,2) -> G(0,6)` → scale 3;
+- `G(1,1) -> G(2,2)` → scale 2;
+- `G(2,1) -> G(4,2)` → scale 2;
+- `G(1,2) -> G(3,6)` → scale 3.
+
+Validação local:
+
+- Release build: 0 warnings, 0 errors;
+- suíte: 313/313;
+- failures: 0;
+- skipped: 0.
+
+Cross-platform:
+
+- workflow: `Cross-Platform Kernel Regression Validation`;
+- run ID: `35499086790`;
+- Ubuntu: `success`;
+- Windows: `success`;
+- macOS: `success`;
+- Ubuntu artifact: ID `10601344453`, SHA-256 `9d51be3e4247413de3738410e01b87fa3976377896150a456887385ea1e699ae`;
+- Windows artifact: ID `10601529472`, SHA-256 `9fb99db6fa2254ce143b05186864ea83680df73007d8636b4ec9a820d4afd8b3`;
+- macOS artifact: ID `10601259733`, SHA-256 `d8777dcf4c6d38c0794c192a16645bc0d2f1c6a29f66cab715de8c4eedf6d227`.
+
+M2.4.1 está concluído.
+
+Nenhuma maturidade/GPP é promovida neste subcheckpoint porque o contrato representa compatibilidade de parâmetros, não parent-child mapping executável.
+
+O próximo subcheckpoint é:
+
+`M2.4.2 — Canonical Construction Provenance & Reference Mapping`
+
 ## Consequences
 
 Positive:
