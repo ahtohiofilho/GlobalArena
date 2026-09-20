@@ -9313,3 +9313,148 @@ Planet Topology permanece:
 ### Próximo gate
 
 **M2.4.3 DESIGN AUDIT**
+
+---
+
+## 2026-09-20 — M2.4.3 Shared Border Refinement Continuity formal close
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.4 — Goldberg Family & Refinement Validation**
+
+Subcheckpoint concluído:
+
+**M2.4.3 — Shared Border Refinement Continuity**
+
+### Implementation commit
+
+Commit:
+
+`ed71d86e58967cd2e9b1484200d07c57821d196f`
+
+Mensagem:
+
+`feat: add shared border refinement continuity`
+
+### Production contract validado
+
+Reference pair:
+
+`G(1,0) -> G(2,0)`
+
+Scale:
+
+`2`
+
+Production:
+
+- `GoldbergScaledSharedBorderReference`;
+- `GoldbergScaledSharedBorderContinuityMap`;
+- `GoldbergScaledSharedBorderContinuityMapper`.
+
+Coverage:
+
+- coarse edges: 30/30;
+- coarse bands: 30/30;
+- middle fine cells: 30/30 fine hexagons;
+- mapped fine edges: 60/120;
+- mapped fine bands: 60/120.
+
+Chain:
+
+`first fine anchor -> middle fine cell -> second fine anchor`
+
+Semantics preservadas:
+
+- `SharedBorderElement` inalterado;
+- `SharedBorderBand` inalterado;
+- current band element cardinality inalterada;
+- nenhuma physical geometry introduzida;
+- nenhuma equality/arithmetic de cross-resolution edge IDs usada como lineage.
+
+### Evidência local
+
+- build Release: 0 warnings;
+- build Release: 0 errors;
+- testes: 340/340;
+- falhas: 0;
+- `git diff --check`: aprovado;
+- `git diff --cached --check`: aprovado.
+
+### Gate cross-platform
+
+Workflow:
+
+`Cross-Platform Kernel Regression Validation`
+
+Run ID:
+
+`35501841291`
+
+Resultado:
+
+**SUCCESS**
+
+Commit:
+
+`ed71d86e58967cd2e9b1484200d07c57821d196f`
+
+Jobs:
+
+- Ubuntu: `success`;
+- Windows: `success`;
+- macOS: `success`.
+
+Artefatos:
+
+- Ubuntu: ID `10602048662`, SHA-256 `5663fd3f150830a61ca1cca3fdd7c4c261cbe569e35c68e49367353a3ce2eeda`;
+- Windows: ID `10602537946`, SHA-256 `3354ef5cda4d8372520695e56bcd1ef9407c1ccca5aa4196feb8e6be6f29b840`;
+- macOS: ID `10602601598`, SHA-256 `27a675dee0e5123b96df300c8208e6ba3d13167c209f7592b2c08bbefabbc87c`.
+
+### Maturidade e GPP
+
+M2.4.3 não promove GPP.
+
+`Strategic ↔ tactical hierarchy/refinement mapping` permanece:
+
+**Inexistente — fator 0.00**
+
+GPP:
+
+**109.50 / 1000**
+
+Global Progress:
+
+**11.0%**
+
+Topologia planetária / Goldberg:
+
+**39.50 / 90 GPP — 43.9%**
+
+### Riscos
+
+`RISK-003 — Goldberg hierarchy mapping` permanece:
+
+**MITIGATING / Probability 2 / Impact 4 / Score 8 — HIGH**
+
+Cell-anchor provenance e coarse-edge continuity existem para o primeiro reference pair, mas full hierarchy coverage e multi-family validation permanecem abertos.
+
+### Scope Change
+
+Nenhum.
+
+Baseline V1 permanece:
+
+**1000 GPP**
+
+### Próximo subcheckpoint
+
+**M2.4.4 — Class I/II/III Scaled Refinement Validation**
+
+Próximo gate:
+
+**READ_ONLY_AUDIT**

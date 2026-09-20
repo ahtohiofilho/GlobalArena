@@ -367,9 +367,35 @@ Ainda permanecem abertos:
 - Class III continuity;
 - full hierarchy coverage.
 
+M2.4.3 foi implementado e validado cross-platform.
+
+O projeto agora possui continuidade lógica executável de shared borders para `G(1,0) -> G(2,0)`:
+
+- 30/30 coarse edges cobertos;
+- 30/30 coarse bands cobertos;
+- 30 unique middle fine cells;
+- os 30 middle cells são todos os fine hexagons;
+- 60/120 fine edges cobertos;
+- 60/120 fine bands cobertos;
+- ordering determinística anchor -> middle -> anchor;
+- current single-element band semantics preservada.
+
+Isso reduz novamente RISK-003 porque a relação coarse-edge -> fine-edge-chain deixou de ser apenas um probe e passou a existir como production contract executável.
+
+Ainda permanecem abertos:
+
+- ownership das middle fine cells;
+- coarse-vertex para fine-junction mapping;
+- os outros 60 fine edges;
+- physical tactical-border mapping;
+- final border geometry/cardinality;
+- Class II continuity;
+- Class III continuity;
+- full hierarchy coverage.
+
 Próxima ação:
 
-implementar o design auditado de M2.4.3 como logical shared-border continuity para `G(1,0) -> G(2,0)`, com exatamente 30 coarse-to-two-fine edge references, preservando `SharedBorderElement` e a cardinalidade atual dos bands e sem promover GPP.
+iniciar M2.4.4 — Class I/II/III Scaled Refinement Validation com audit read-only para determinar quais invariants de provenance e continuity podem ser generalizados para pares Class I, Class II e Class III sem publicar implementation details instáveis e sem inferir lineage por IDs locais.
 
 ---
 

@@ -289,6 +289,67 @@ remains:
 
 A logical coarse-edge chain is valuable evidence, but it is not yet full strategic↔tactical hierarchy/refinement coverage.
 
+## Implementation evidence
+
+M2.4.3 foi implementado no commit:
+
+`ed71d86e58967cd2e9b1484200d07c57821d196f`
+
+Production:
+
+- `GlobalArena.World/GoldbergScaledSharedBorderReference.cs`;
+- `GlobalArena.World/GoldbergScaledSharedBorderContinuityMap.cs`;
+- `GlobalArena.World/GoldbergScaledSharedBorderContinuityMapper.cs`.
+
+Tests:
+
+- `GlobalArena.Tests/GoldbergScaledSharedBorderContinuityTests.cs`.
+
+Resultado:
+
+- reference pair `G(1,0) -> G(2,0)`;
+- scale 2;
+- 30/30 coarse edge references;
+- two fine edges por chain;
+- 30 unique middle fine cells;
+- middle fine cells = todos os 30 fine hexagons;
+- 60 unique fine edge IDs;
+- 60/120 fine edge coverage;
+- 30/30 coarse band coverage;
+- 60/120 fine band coverage;
+- current single-element band semantics preservada;
+- canonical continuity oracle validado;
+- deterministic repeated materialization;
+- read-only collections;
+- no `SharedBorderElement` semantic change;
+- no physical border geometry;
+- no cross-topology edge-ID lineage inference.
+
+Validação local:
+
+- Release build: 0 warnings, 0 errors;
+- suíte: 340/340;
+- failures: 0.
+
+Cross-platform:
+
+- workflow: `Cross-Platform Kernel Regression Validation`;
+- run ID: `35501841291`;
+- Ubuntu: `success`;
+- Windows: `success`;
+- macOS: `success`;
+- Ubuntu artifact: ID `10602048662`, SHA-256 `5663fd3f150830a61ca1cca3fdd7c4c261cbe569e35c68e49367353a3ce2eeda`;
+- Windows artifact: ID `10602537946`, SHA-256 `3354ef5cda4d8372520695e56bcd1ef9407c1ccca5aa4196feb8e6be6f29b840`;
+- macOS artifact: ID `10602601598`, SHA-256 `27a675dee0e5123b96df300c8208e6ba3d13167c209f7592b2c08bbefabbc87c`.
+
+M2.4.3 está concluído.
+
+Nenhuma maturidade/GPP é promovida porque logical edge-chain continuity ainda não representa full strategic↔tactical hierarchy/refinement coverage.
+
+O próximo subcheckpoint é:
+
+`M2.4.4 — Class I/II/III Scaled Refinement Validation`
+
 ## Consequences
 
 Positive:

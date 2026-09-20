@@ -3788,6 +3788,47 @@ M2.4.3 não promove GPP no design.
 
 `Strategic ↔ tactical hierarchy/refinement mapping` permanece em fator `0.00` até existir hierarchy coverage mais ampla do que seed anchors e logical edge chains.
 
+M2.4.3 foi implementado e validado cross-platform.
+
+A implementação introduziu:
+
+- `GoldbergScaledSharedBorderReference`;
+- `GoldbergScaledSharedBorderContinuityMap`;
+- `GoldbergScaledSharedBorderContinuityMapper`;
+- tests dedicados em `GoldbergScaledSharedBorderContinuityTests`.
+
+Resultado executável para `G(1,0) -> G(2,0)`:
+
+- 30/30 coarse strategic edges cobertos;
+- exatamente uma border reference por coarse edge;
+- exatamente dois fine strategic edges por chain;
+- 30 middle fine cells únicos;
+- os 30 middle fine cells são exatamente os 30 hexágonos de `G(2,0)`;
+- 60 fine strategic edges distintos utilizados;
+- 60/120 fine edges cobertos;
+- 30/30 coarse shared-border bands resolvidos;
+- 60/120 fine shared-border bands resolvidos;
+- current single-element band semantics preservada;
+- ordering lógica `first fine anchor -> middle -> second fine anchor`;
+- repeated materialization determinística;
+- collections read-only.
+
+O mapper não usa igualdade ou arithmetic de `StrategicEdgeId` entre resoluções como lineage.
+
+O mapper não usa o canonical oracle hard-coded para construir continuity.
+
+`SharedBorderElement`, `SharedBorderBand`, `SharedBorderIncidence`, `StrategicTacticalBorderAggregate` e `StrategicEdgeSharedBorderBandMaterializer` permaneceram semanticamente inalterados.
+
+A suíte local atingiu 340/340 testes.
+
+A regressão `Cross-Platform Kernel Regression Validation`, run `35501841291`, passou em Ubuntu, Windows e macOS.
+
+M2.4.3 está concluído.
+
+Ainda não existe middle-cell ownership, coarse-vertex to fine-junction mapping, physical tactical-border mapping, final physical border geometry/cardinality, Class II continuity ou Class III continuity.
+
+O próximo subcheckpoint é M2.4.4 — Class I/II/III Scaled Refinement Validation.
+
 O estado estratégico de uma conexão poderá futuramente ser derivado do estado tático correspondente.
 
 Exemplos futuros incluem:

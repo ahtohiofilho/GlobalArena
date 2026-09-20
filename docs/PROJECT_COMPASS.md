@@ -593,7 +593,7 @@ Etapa:
 
 Subetapa atual:
 
-**M2.4.3 — Shared Border Refinement Continuity**
+**M2.4.4 — Class I/II/III Scaled Refinement Validation**
 
 M0 — Project Baseline:
 
@@ -685,7 +685,7 @@ M2.4.2 — Canonical Construction Provenance & Reference Mapping:
 
 M2.4.3 — Shared Border Refinement Continuity:
 
-**design congelado; implementação pendente**
+**concluído em 2026-09-20**
 
 Baseline V1:
 
