@@ -7607,3 +7607,140 @@ Baseline V1 permanece:
 Próximo gate:
 
 **READ_ONLY_AUDIT**
+
+---
+
+## 2026-09-20 — M2.3.3 StrategicEdge-to-Border Materialization audit e design
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.3 — Shared Border Bands & Strategic/Tactical Mapping**
+
+Subcheckpoint:
+
+**M2.3.3 — StrategicEdge-to-Border Materialization**
+
+### Audit read-only
+
+Baseline auditado:
+
+`26d6dd30434910afe1ced0f62a08a3faadb6cdd3`
+
+Resultado:
+
+**PASS_READY_FOR_DESIGN**
+
+Evidência:
+
+- branch `main`;
+- HEAD = origin/main;
+- worktree limpo;
+- build Release com 0 warnings e 0 errors;
+- suíte completa: 259/259, 0 falhas, 0 skipped;
+- nenhum commit;
+- nenhum push;
+- nenhuma mutação do repositório;
+- 35 fontes/documentos relevantes incluídos no snapshot;
+- 35 hashes SHA-256 recomputados sem divergência;
+- nenhum materializador de shared border existente;
+- nenhum aggregate cross-region prematuro identificado.
+
+### Conclusão do audit
+
+`StrategicTopology.Edges` já fornece:
+
+- coleção canônica;
+- IDs one-based contíguos;
+- um objeto por fronteira estratégica;
+- incidência estratégica já validada.
+
+`SharedBorderBand` já usa `StrategicEdgeId` como identidade.
+
+Logo, M2.3.3 não precisa criar nova identidade ou aggregate.
+
+### Design congelado
+
+Será criado:
+
+`StrategicEdgeSharedBorderBandMaterializer`
+
+API:
+
+`Materialize(StrategicTopology) -> IReadOnlyList<SharedBorderBand>`
+
+Regras:
+
+- topologia nula é rejeitada;
+- a topologia fornecida é a única fonte da verdade;
+- exatamente um band por edge;
+- mesma ordem canônica de `StrategicTopology.Edges`;
+- identidade do band igual ao `StrategicEdgeId` correspondente;
+- cada edge aparece uma única vez;
+- cada band recebe exatamente um `SharedBorderElement` de referência;
+- reference ID = `SharedBorderElementId(edge.Id, 1)`;
+- o elemento único é não geométrico;
+- coleção retornada é snapshot somente leitura;
+- materialização repetida é determinística;
+- nenhum `StrategicCellId`, `StrategicVertexId` ou `TacticalCellId` é duplicado no materializador.
+
+### Cobertura representativa prevista
+
+- Class I `G(2,0)` → 120 bands;
+- Class II `G(2,2)` → 360 bands;
+- Class III `G(3,2)` → 570 bands.
+
+### Matriz de testes prevista
+
+- 9 Facts;
+- 3 casos de Theory;
+- 12 casos executados adicionais.
+
+Baseline:
+
+**259 testes**
+
+Esperado após implementação:
+
+**271 testes**
+
+### Limites preservados
+
+Continuam fora de M2.3.3:
+
+- aggregate cross-region;
+- derived regional incidence conjunta;
+- mapping físico para `TacticalCell`;
+- geometry/coordinates/mesh;
+- quantidade final de elementos por band;
+- pathfinding cross-region;
+- refinamento Goldberg universal.
+
+### GPP
+
+Nenhuma promoção é contabilizada no design.
+
+GPP permanece:
+
+**99.10 / 1000**
+
+Global Progress permanece:
+
+**9.9%**
+
+Se implementação, auditoria e regressão cross-platform passarem, o fechamento formal poderá avaliar:
+
+`Shared subtile border bands`
+
+**Especificada — 0.20 → Implementação funcional isolada — 0.50**
+
+Incremento potencial:
+
+**+4.80 GPP**
+
+Próximo gate:
+
+**DESIGN_AUDIT**

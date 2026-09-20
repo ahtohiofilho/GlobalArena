@@ -251,7 +251,7 @@ Mitigação:
 
 Próxima ação:
 
-iniciar M2.3.3 com audit read-only da materialização `StrategicEdge` → `SharedBorderBand`, definindo cardinalidade de referência, cobertura exata de edges, ordering e determinismo sem antecipar o aggregate cross-region, vínculo físico com células region-owned ou refinamento Goldberg universal.
+congelar e implementar M2.3.3 com materialização determinística de exatamente um `SharedBorderBand` por `StrategicEdge`, usando um único `SharedBorderElement(edge.Id, 1)` de referência por band para provar cobertura, identity, ordering e determinismo sem congelar geometria; manter aggregate cross-region, incidence combinada com `TacticalRegion`, mapping físico e refinamento Goldberg para os gates posteriores.
 
 ---
 

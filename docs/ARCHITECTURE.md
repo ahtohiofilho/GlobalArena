@@ -3048,6 +3048,56 @@ O gate local fechou com 259/259 testes e regressão cross-platform aprovada em U
 
 M2.3.2 não materializa ainda um band para cada edge existente no planeta. Essa responsabilidade pertence a M2.3.3.
 
+M2.3.3 congelará a primeira materialização determinística de border bands a partir de uma `StrategicTopology` já válida.
+
+A operação conceitual será:
+
+`StrategicEdgeSharedBorderBandMaterializer.Materialize(StrategicTopology) -> IReadOnlyList<SharedBorderBand>`
+
+A entrada autoritativa será somente `StrategicTopology`.
+
+O materializador não receberá `GoldbergParameters` separados, não regenerará topologia e não dependerá de `TacticalRegion`.
+
+Para esta tranche, cada `StrategicEdge` produzirá exatamente um `SharedBorderBand` com exatamente um `SharedBorderElement` de referência:
+
+`SharedBorderElementId(edge.Id, 1)`
+
+Esse único elemento é deliberadamente não geométrico.
+
+Ele existe apenas para provar materialização, identidade, cobertura, ordering e determinismo sem congelar:
+
+- comprimento físico da fronteira;
+- quantidade final de subtiles;
+- largura de border band;
+- coordenadas;
+- mesh;
+- ligação com células táticas region-owned.
+
+Invariantes de M2.3.3:
+
+- topologia nula é rejeitada;
+- exatamente um band é criado por `StrategicEdge`;
+- a ordem dos bands é a ordem canônica de `StrategicTopology.Edges`;
+- `band.StrategicEdgeId == edge.Id` na mesma posição;
+- cada edge aparece exatamente uma vez;
+- nenhum band referencia edge fora da topologia fornecida;
+- cada band possui exatamente um elemento de referência nesta tranche;
+- esse elemento usa ordinal local `1`;
+- IDs dos elementos são globalmente únicos porque incluem `StrategicEdgeId`;
+- a coleção retornada é snapshot somente leitura;
+- materializações repetidas produzem a mesma assinatura canônica;
+- nenhum `StrategicCellId`, `StrategicVertexId` ou `TacticalCellId` é duplicado no materializador.
+
+Casos representativos de validação:
+
+- Class I `G(2,0)` → 120 bands;
+- Class II `G(2,2)` → 360 bands;
+- Class III `G(3,2)` → 570 bands.
+
+Esses casos validam cobertura do contrato genérico sobre `StrategicTopology`; não constituem prova de refinamento Goldberg universal.
+
+O aggregate cross-region, incidência regional derivada em conjunto com `TacticalRegion`, e o mapping físico entre células locais e border elements permanecem para M2.3.4 e M2.3.5.
+
 O estado estratégico de uma conexão poderá futuramente ser derivado do estado tático correspondente.
 
 Exemplos futuros incluem:

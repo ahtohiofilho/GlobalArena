@@ -801,13 +801,65 @@ M2.3 continua aberto.
 
 O contrato local de identidade e invariantes do band está congelado e implementado, mas ainda não existe materialização de um band para cada `StrategicEdge`.
 
-Próximo subcheckpoint:
+Subcheckpoint atual:
 
 **M2.3.3 — StrategicEdge-to-Border Materialization**
 
+O audit read-only confirmou:
+
+- não existe materializador de shared border;
+- `StrategicTopology.Edges` é a coleção canônica e somente leitura de edges;
+- `StrategicEdgeId` é contiguous canonical one-based;
+- cada edge possui exatamente duas células e dois vértices incidentes;
+- `SharedBorderBand` já possui identidade por `StrategicEdgeId`;
+- `SharedBorderElementId` já usa `StrategicEdgeId + LocalOrdinal`;
+- a quantidade final de elementos por border band continua aberta;
+- nenhum aggregate cross-region foi introduzido antecipadamente.
+
+Design congelado para M2.3.3:
+
+- criar `StrategicEdgeSharedBorderBandMaterializer`;
+- API: `Materialize(StrategicTopology) -> IReadOnlyList<SharedBorderBand>`;
+- rejeitar topologia nula;
+- usar exclusivamente a `StrategicTopology` fornecida como fonte da verdade;
+- não receber `GoldbergParameters` adicionais;
+- não regenerar topologia;
+- não depender de `TacticalRegion`;
+- criar exatamente um `SharedBorderBand` por `StrategicEdge`;
+- preservar a ordem canônica de `StrategicTopology.Edges`;
+- preservar `band.StrategicEdgeId == edge.Id` posição a posição;
+- usar exatamente um `SharedBorderElement` de referência por band nesta tranche;
+- usar `SharedBorderElementId(edge.Id, 1)` como identidade de referência;
+- tratar o elemento único como artefato lógico não geométrico;
+- devolver snapshot somente leitura;
+- validar cobertura exata de edges;
+- validar unicidade global de IDs de elementos;
+- validar determinismo por assinatura canônica repetida;
+- validar representantes Class I `G(2,0)`, Class II `G(2,2)` e Class III `G(3,2)`;
+- não duplicar `StrategicCellId`, `StrategicVertexId` ou `TacticalCellId`;
+- não introduzir aggregate cross-region;
+- não introduzir geometria, mesh ou adjacency tática cross-region.
+
+Arquivos de implementação previstos:
+
+- `GlobalArena.World/StrategicEdgeSharedBorderBandMaterializer.cs`;
+- `GlobalArena.Tests/StrategicEdgeSharedBorderBandMaterializerTests.cs`.
+
+Matriz prevista:
+
+- 9 Facts;
+- 3 casos de Theory;
+- 12 casos executados adicionais;
+- baseline: 259 testes;
+- esperado após implementação: 271 testes.
+
+M2.3.3 design não promove GPP.
+
+Se implementação, auditoria e regressão cross-platform passarem, o fechamento formal poderá avaliar `Shared subtile border bands` para promoção de `Especificada — fator 0.20` para `Implementação funcional isolada — fator 0.50`.
+
 Próximo gate:
 
-executar audit read-only da estratégia de materialização por `StrategicEdge`, da cardinalidade de referência e dos invariantes de cobertura/determinismo, sem implementar antes de congelar o design.
+implementar somente o materializador e seus testes, sem commit/push, após auditoria e congelamento deste design.
 
 ---
 
