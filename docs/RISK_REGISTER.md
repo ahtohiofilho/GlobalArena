@@ -237,6 +237,13 @@ Mitigação:
 - `G(3,2)` validou 192 regiões, 576 identidades táticas globalmente únicas e adjacency estritamente parent-local;
 - duas materializações completas de `G(3,2)` reproduziram a mesma assinatura canônica;
 - regressão cross-platform final de M2.2 passou em Ubuntu, Windows e macOS;
+- M2.3.1 congelou `StrategicEdgeId` como identidade do `SharedBorderBand`;
+- M2.3.1 congelou `SharedBorderElementId = StrategicEdgeId + LocalOrdinal`;
+- M2.3.2 implementou identidade e invariantes locais de shared border sem reutilizar `TacticalCellId`;
+- `SharedBorderBand` rejeita edge inválido, coleção vazia, elementos de outro edge, IDs duplicados e gaps de ordinal;
+- elementos são canonicalizados por ordinal e expostos como snapshot somente leitura;
+- incidência regional e orientação permanecem derivadas do `StrategicEdge`, evitando segunda fonte de verdade;
+- regressão cross-platform de M2.3.2 passou em Ubuntu, Windows e macOS;
 - testes explícitos de pertencimento pai-filho;
 - testes de continuidade entre regiões;
 - validação de casos representativos das famílias Goldberg;
@@ -244,7 +251,7 @@ Mitigação:
 
 Próxima ação:
 
-congelar e implementar primeiro o contrato de identidade de fronteira de M2.3: um `SharedBorderBand` por `StrategicEdge`, identidade de elemento compartilhado baseada em `StrategicEdgeId + LocalOrdinal` e orientação canônica pelos `IncidentVertexIds`; preservar `TacticalCellId` como region-owned e adiar aggregate cross-region, vínculo físico com células locais e refinamento Goldberg até os subcheckpoints próprios.
+iniciar M2.3.3 com audit read-only da materialização `StrategicEdge` → `SharedBorderBand`, definindo cardinalidade de referência, cobertura exata de edges, ordering e determinismo sem antecipar o aggregate cross-region, vínculo físico com células region-owned ou refinamento Goldberg universal.
 
 ---
 

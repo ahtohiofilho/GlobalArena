@@ -3024,6 +3024,30 @@ Esse aggregate deverá ser projetado em subcheckpoint posterior de M2.3 e possui
 
 A quantidade final de elementos por band, a geometria física da fileira, o vínculo entre region-owned tactical cells e elementos compartilhados, coordenadas, mesh e refinamento Goldberg cross-region continuam não congelados.
 
+M2.3.2 materializou o contrato local por meio de:
+
+- `SharedBorderElementId`;
+- `SharedBorderElement`;
+- `SharedBorderBand`.
+
+A implementação validada preserva:
+
+- `SharedBorderElementId = StrategicEdgeId + LocalOrdinal`;
+- ordinal one-based e estado `default` inválido;
+- identidade do band diretamente pelo `StrategicEdgeId`;
+- coleção de elementos obrigatoriamente não vazia;
+- pertencimento de todos os elementos ao mesmo edge;
+- IDs únicos;
+- ordinais contíguos;
+- canonicalização por `LocalOrdinal`;
+- snapshot somente leitura;
+- ausência de estado duplicado de `StrategicCellId` e `StrategicVertexId`;
+- ausência de dependência de `TacticalCellId`.
+
+O gate local fechou com 259/259 testes e regressão cross-platform aprovada em Ubuntu, Windows e macOS.
+
+M2.3.2 não materializa ainda um band para cada edge existente no planeta. Essa responsabilidade pertence a M2.3.3.
+
 O estado estratégico de uma conexão poderá futuramente ser derivado do estado tático correspondente.
 
 Exemplos futuros incluem:

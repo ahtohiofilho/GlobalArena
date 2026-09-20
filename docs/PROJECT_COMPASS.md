@@ -306,19 +306,19 @@ A decomposição operacional inicial de M2 é:
 | Scalability / headless performance baseline | 4 |
 | **TOTAL** | **90** |
 
-Estado de maturidade após M2.2:
+Estado de maturidade após M2.3.2:
 
 | Capability | GPP | Maturidade | Fator | GPP ganhos |
 |---|---:|---|---:|---:|
 | Goldberg parameterization e geração estratégica | 16 | Implementação funcional isolada | 0.50 | 8.00 |
 | Strategic graph: identidade, incidência e adjacência | 12 | Implementação funcional isolada | 0.50 | 6.00 |
 | Tactical region topology | 14 | Validada | 0.85 | 11.90 |
-| Shared subtile border bands | 16 | Inexistente | 0.00 | 0.00 |
+| Shared subtile border bands | 16 | Especificada | 0.20 | 3.20 |
 | Strategic ↔ tactical hierarchy/refinement mapping | 16 | Inexistente | 0.00 | 0.00 |
 | Canonical deterministic topology generation | 6 | Inexistente | 0.00 | 0.00 |
 | Topological validation e navigability | 6 | Inexistente | 0.00 | 0.00 |
 | Scalability / headless performance baseline | 4 | Inexistente | 0.00 | 0.00 |
-| **TOTAL** | **90** |  |  | **25.90** |
+| **TOTAL** | **90** |  |  | **29.10** |
 
 M2.1.1 foi um audit arquitetural e não promoveu maturidade por si só.
 
@@ -355,6 +355,14 @@ M2.2.4 fechou as lacunas de validação acumulada sem alterar production code: s
 Com 241/241 testes locais e regressão cross-platform aprovada em Ubuntu, Windows e macOS, `Tactical region topology` é promovida de `Integrada ao sistema — fator 0.70` para `Validada — fator 0.85`.
 
 M2.2 é encerrado sem antecipar shared border bands, ownership multi-região ou conectividade tática cross-region, que permanecem para M2.3.
+
+M2.3.1 congelou o contrato de identidade e ownership de fronteira compartilhada: um `SharedBorderBand` lógico por `StrategicEdge`, identidade de elemento `StrategicEdgeId + LocalOrdinal`, incidência regional derivada da edge e preservação de `TacticalCellId` como region-owned.
+
+M2.3.2 implementou `SharedBorderElementId`, `SharedBorderElement` e `SharedBorderBand`, com invariantes de edge válido, coleção não vazia, pertencimento ao mesmo edge, ordinais one-based contíguos, ordenação canônica e snapshot somente leitura. A suíte passou para 259/259 e a regressão cross-platform foi aprovada em Ubuntu, Windows e macOS.
+
+Por isso, `Shared subtile border bands` é promovida de `Inexistente — fator 0.00` para `Especificada — fator 0.20`.
+
+A promoção para `Implementação funcional isolada — fator 0.50` permanece bloqueada até a materialização determinística por `StrategicEdge` e validação correspondente.
 
 Esses pesos constituem o baseline inicial.
 
@@ -573,7 +581,7 @@ Etapa:
 
 Subetapa atual:
 
-**M2.3.1 — Shared Border Contract Audit**
+**M2.3.3 — StrategicEdge-to-Border Materialization**
 
 M0 — Project Baseline:
 
@@ -631,17 +639,25 @@ M2.2 — Tactical Region Topology:
 
 **concluído em 2026-09-20**
 
+M2.3.1 — Shared Border Contract Audit & Design:
+
+**concluído em 2026-09-20**
+
+M2.3.2 — Shared Border Identity & Band Contract:
+
+**concluído em 2026-09-20**
+
 Baseline V1:
 
 **congelado em 2026-09-18**
 
 Progresso oficial:
 
-**9,6%**
+**9,9%**
 
 GPP conquistados:
 
-**95,90 / 1000**
+**99,10 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -649,7 +665,7 @@ Foundation / Simulation Kernel:
 
 Topologia planetária / Goldberg:
 
-**25,90 / 90 GPP — 28,8%**
+**29,10 / 90 GPP — 32,3%**
 
 Scope Confidence:
 

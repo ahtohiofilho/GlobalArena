@@ -707,7 +707,7 @@ Stage atual:
 
 Subcheckpoint atual:
 
-**M2.3.1 — Shared Border Contract Audit & Design**
+**M2.3.3 — StrategicEdge-to-Border Materialization**
 
 O audit read-only confirmou:
 
@@ -747,9 +747,67 @@ Decomposição de M2.3:
 
 M2.3.1 é somente audit/design e não promove GPP.
 
+M2.3.2 está concluído em 2026-09-20.
+
+Evidência de M2.3.2:
+
+- `SharedBorderElementId` implementado como `StrategicEdgeId + LocalOrdinal`;
+- edge inválido é rejeitado;
+- ordinal local zero é rejeitado;
+- `default(SharedBorderElementId)` é sentinela inválida;
+- igualdade de identidade preserva edge e ordinal;
+- `SharedBorderElement` exige identidade válida;
+- `SharedBorderBand` usa diretamente `StrategicEdgeId` como identidade do band;
+- não existe `SharedBorderBandId` redundante;
+- coleção nula ou vazia é rejeitada;
+- elementos nulos são rejeitados;
+- todos os elementos devem pertencer ao mesmo `StrategicEdgeId`;
+- IDs duplicados são rejeitados;
+- ordinais devem formar sequência canônica one-based contígua;
+- entrada fora de ordem é canonicalizada por `LocalOrdinal`;
+- `Elements` preserva snapshot somente leitura;
+- nenhum `TacticalCellId` foi usado no contrato;
+- incidência regional e orientação por vértices não foram duplicadas dentro do band;
+- nenhuma adjacency tática cross-region foi introduzida;
+- quantidade final de elementos e geometria física permanecem abertas;
+- build Release local com 0 warnings e 0 errors;
+- suíte local: 259/259, 0 falhas, 0 skipped;
+- workflow `Cross-Platform Kernel Regression Validation`, run `35494073354`, concluído com sucesso em Ubuntu, Windows e macOS;
+- commit validado: `d7d16f0d1dd54d9d71b8163329950d87b2771b92`.
+
+Promoção de maturidade:
+
+`Shared subtile border bands`
+
+**Inexistente — 0.00 → Especificada — 0.20**
+
+GPP adicional de M2.3.2:
+
+**+3.20 GPP**
+
+GPP após o fechamento:
+
+**99.10 / 1000**
+
+Global Progress:
+
+**9.9%**
+
+Topologia planetária / Goldberg:
+
+**29.10 / 90 GPP — 32.3%**
+
+M2.3 continua aberto.
+
+O contrato local de identidade e invariantes do band está congelado e implementado, mas ainda não existe materialização de um band para cada `StrategicEdge`.
+
+Próximo subcheckpoint:
+
+**M2.3.3 — StrategicEdge-to-Border Materialization**
+
 Próximo gate:
 
-auditar o design congelado, fazer commit/push documental e então implementar M2.3.2 sem antecipar materialização, aggregate ou geometria final.
+executar audit read-only da estratégia de materialização por `StrategicEdge`, da cardinalidade de referência e dos invariantes de cobertura/determinismo, sem implementar antes de congelar o design.
 
 ---
 
@@ -1037,15 +1095,15 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M2.3.1 — Shared Border Contract Audit**
+**M2.3.3 — StrategicEdge-to-Border Materialization**
 
 Official Progress:
 
-**9.6%**
+**9.9%**
 
 GPP Earned:
 
-**95.90 / 1000**
+**99.10 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -1053,7 +1111,7 @@ Foundation / Simulation Kernel:
 
 Planet Topology / Goldberg:
 
-**25.90 / 90 GPP — 28.8%**
+**29.10 / 90 GPP — 32.3%**
 
 Scope Confidence:
 

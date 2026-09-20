@@ -220,6 +220,67 @@ Negative:
 - um aggregate cross-region adicional será necessário;
 - o vínculo entre células locais e border elements continua para subcheckpoint posterior.
 
+## M2.3.2 implementation evidence
+
+Implementation commit:
+
+`d7d16f0d1dd54d9d71b8163329950d87b2771b92`
+
+Implemented production types:
+
+- `SharedBorderElementId`;
+- `SharedBorderElement`;
+- `SharedBorderBand`.
+
+Validated behavior:
+
+- identity = `StrategicEdgeId + LocalOrdinal`;
+- invalid edge rejected;
+- zero ordinal rejected;
+- `default(SharedBorderElementId)` invalid;
+- equality includes edge and ordinal;
+- band identity uses `StrategicEdgeId` directly;
+- no `SharedBorderBandId`;
+- null and empty element collections rejected;
+- null elements rejected;
+- all elements must belong to the same edge;
+- duplicate IDs rejected;
+- ordinals must be contiguous and one-based;
+- input is canonicalized by `LocalOrdinal`;
+- `Elements` is a read-only snapshot;
+- no `TacticalCellId` dependency;
+- no duplicated `StrategicCellId` or `StrategicVertexId` state.
+
+Local validation:
+
+- Release build: 0 warnings, 0 errors;
+- tests: 259/259;
+- failures: 0;
+- skipped: 0.
+
+Cross-platform validation:
+
+- workflow: `Cross-Platform Kernel Regression Validation`;
+- run ID: `35494073354`;
+- Ubuntu: `success`;
+- Windows: `success`;
+- macOS: `success`;
+- Ubuntu artifact: ID `10600002363`, SHA-256 `5d2806006e274940cc9033d28cfd2461237acecf9dafaf84d50b7b5d942d2aa4`;
+- Windows artifact: ID `10599802786`, SHA-256 `b97c076dfece77710db08b4a2d4ef305a7ed25aa3f80a0561ad2b6938f0e074d`;
+- macOS artifact: ID `10600575098`, SHA-256 `7a1046e3ac6fbd489ffcb45078ce21641e8ef141550fdd3fd68d1e734e575049`.
+
+Promotion:
+
+`Shared subtile border bands`
+
+`Inexistente — fator 0.00`
+
+→
+
+`Especificada — fator 0.20`
+
+M2.3.2 fecha o contrato local de identidade e invariantes, sem ainda provar materialização por edge ou integração cross-region.
+
 ## Invariant
 
 Um elemento lógico compartilhado de fronteira possui uma única identidade baseada em `StrategicEdgeId + LocalOrdinal`; ele nunca é duplicado como dois `TacticalCellId` region-owned.

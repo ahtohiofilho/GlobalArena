@@ -7429,3 +7429,181 @@ Global Progress permanece:
 Próximo gate:
 
 **DESIGN_AUDIT**
+
+---
+
+## 2026-09-20 — M2.3.2 Shared Border Identity & Band Contract
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.3 — Shared Border Bands & Strategic/Tactical Mapping**
+
+Subcheckpoint concluído:
+
+**M2.3.2 — Shared Border Identity & Band Contract**
+
+### Implementation commit
+
+Commit:
+
+`d7d16f0d1dd54d9d71b8163329950d87b2771b92`
+
+Mensagem:
+
+`feat: add shared border identity contract`
+
+Arquivos de production code:
+
+- `GlobalArena.World/SharedBorderElementId.cs`;
+- `GlobalArena.World/SharedBorderElement.cs`;
+- `GlobalArena.World/SharedBorderBand.cs`.
+
+Arquivo de testes:
+
+- `GlobalArena.Tests/SharedBorderContractTests.cs`.
+
+### Contrato implementado
+
+`SharedBorderElementId`:
+
+- usa `StrategicEdgeId + LocalOrdinal`;
+- rejeita edge inválido;
+- rejeita ordinal zero;
+- trata `default` como identidade inválida;
+- preserva igualdade por edge + ordinal.
+
+`SharedBorderElement`:
+
+- exige `SharedBorderElementId` válido.
+
+`SharedBorderBand`:
+
+- usa `StrategicEdgeId` como identidade;
+- não introduz `SharedBorderBandId`;
+- exige coleção não nula e não vazia;
+- rejeita elemento nulo;
+- exige todos os elementos no mesmo edge;
+- rejeita IDs duplicados;
+- exige ordinais contíguos one-based;
+- canonicaliza por `LocalOrdinal`;
+- preserva snapshot somente leitura.
+
+O contrato não armazena cópias independentes de `StrategicCellId` incidentes nem de `StrategicVertexId`.
+
+`TacticalCellId` permanece region-owned e nenhuma adjacency cross-region foi introduzida.
+
+### Evidência local
+
+- build Release: 0 warnings;
+- build Release: 0 errors;
+- testes: 259/259;
+- falhas: 0;
+- skipped: 0;
+- `git diff --check`: aprovado;
+- `git diff --cached --check`: aprovado.
+
+### Gate cross-platform
+
+Workflow:
+
+`Cross-Platform Kernel Regression Validation`
+
+Run ID:
+
+`35494073354`
+
+Resultado:
+
+**SUCCESS**
+
+Commit:
+
+`d7d16f0d1dd54d9d71b8163329950d87b2771b92`
+
+Jobs:
+
+- Ubuntu: `success`;
+- Windows: `success`;
+- macOS: `success`.
+
+Artefatos:
+
+- Ubuntu: ID `10600002363`, SHA-256 `5d2806006e274940cc9033d28cfd2461237acecf9dafaf84d50b7b5d942d2aa4`;
+- Windows: ID `10599802786`, SHA-256 `b97c076dfece77710db08b4a2d4ef305a7ed25aa3f80a0561ad2b6938f0e074d`;
+- macOS: ID `10600575098`, SHA-256 `7a1046e3ac6fbd489ffcb45078ce21641e8ef141550fdd3fd68d1e734e575049`.
+
+### Maturidade e GPP
+
+A capability:
+
+`Shared subtile border bands`
+
+é promovida de:
+
+**Inexistente — fator 0.00 — 0.00 GPP**
+
+para:
+
+**Especificada — fator 0.20 — 3.20 GPP**
+
+Incremento:
+
+**+3.20 GPP**
+
+GPP antes:
+
+**95.90 / 1000**
+
+GPP após:
+
+**99.10 / 1000**
+
+Global Progress:
+
+**9.9%**
+
+Topologia planetária / Goldberg:
+
+**29.10 / 90 GPP — 32.3%**
+
+### Limites preservados
+
+M2.3.2 não prova:
+
+- materialização de um band por `StrategicEdge`;
+- cobertura de todos os edges;
+- aggregate cross-region;
+- mapping entre region-owned `TacticalCell` e shared border elements;
+- geometria física da faixa;
+- pathfinding cross-region;
+- refinamento Goldberg universal.
+
+### Riscos
+
+`RISK-003 — Goldberg hierarchy mapping` permanece:
+
+**MITIGATING / Probability 2 / Impact 4 / Score 8 — HIGH**
+
+A identidade da fronteira agora está congelada e executável.
+
+A próxima incerteza imediata é a materialização determinística e a cobertura de `StrategicEdge`.
+
+### Scope Change
+
+Nenhum.
+
+Baseline V1 permanece:
+
+**1000 GPP**
+
+### Próximo subcheckpoint
+
+**M2.3.3 — StrategicEdge-to-Border Materialization**
+
+Próximo gate:
+
+**READ_ONLY_AUDIT**
