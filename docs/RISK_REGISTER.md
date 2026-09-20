@@ -316,9 +316,29 @@ A provenance pública mínima será `IcosahedronSeedVertexId(1..12)` e o referen
 
 Isso cria uma primeira correspondência cross-resolution baseada em construction provenance sem ainda forçar ownership das fine cells intermediárias.
 
+M2.4.2 foi implementado e validado cross-platform.
+
+O projeto agora possui uma primeira correspondência cross-resolution baseada em provenance de construção para `G(1,0) -> G(2,0)`:
+
+- 12 seed vertices canônicos;
+- 12 coarse cells cobertas;
+- 12 fine seed-vertex cells referenciadas;
+- nenhum lineage derivado de ordinal de `StrategicCellId`.
+
+Isso reduz RISK-003, mas não resolve o núcleo de continuidade de fronteira.
+
+Ainda permanecem abertos:
+
+- as 30 fine cells intermediárias;
+- coarse-edge para fine-edge-chain mapping;
+- coarse-vertex junction mapping;
+- Class II mapping;
+- Class III mapping;
+- full hierarchy coverage.
+
 Próxima ação:
 
-implementar o design auditado de M2.4.2 com exatamente 12 seed-vertex references para `G(1,0) -> G(2,0)`, preservando `StrategicCellId` como identidade local, sem edge-chain mapping, sem Class II/III mapping e sem promoção de GPP.
+iniciar M2.4.3 — Shared Border Refinement Continuity com audit read-only do reference pair `G(1,0) -> G(2,0)`, investigando como cada coarse `StrategicEdge` pode ser associado deterministicamente a uma chain de fine edges usando provenance combinatória, sem inferir relações por IDs locais e sem promover GPP antes de coverage executável.
 
 ---
 

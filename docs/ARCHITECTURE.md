@@ -3561,6 +3561,63 @@ Class II e Class III permanecem para M2.4.4 depois que M2.4.3 congelar continuid
 
 M2.4.2 não promove GPP no design. A capability `Strategic ↔ tactical hierarchy/refinement mapping` permanece em fator `0.00` enquanto só existir anchor/reference correspondence e não hierarchy coverage executável.
 
+M2.4.2 foi implementado e validado cross-platform.
+
+A implementação introduziu:
+
+- `IcosahedronSeedVertexId`;
+- `GoldbergScaledCellReference`;
+- `GoldbergScaledRefinementReferenceMap`;
+- `GoldbergScaledRefinementReferenceMapper`;
+- provenance interna reutilizável no caminho triangular de `GoldbergStrategicTopologyGenerator`.
+
+O reference mapper suporta exatamente:
+
+`G(1,0) -> G(2,0)`
+
+com:
+
+`scale = 2`.
+
+Foram materializadas 12 references em ordem canônica de seed vertex.
+
+Coverage:
+
+- coarse: 12/12 cells referenciadas;
+- fine: 12/42 cells referenciadas;
+- as 30 fine cells intermediárias permanecem sem owner neste checkpoint.
+
+O canonical reference vector validado é:
+
+- `1:1->6`;
+- `2:2->11`;
+- `3:3->15`;
+- `4:4->19`;
+- `5:5->23`;
+- `6:6->26`;
+- `7:7->30`;
+- `8:8->33`;
+- `9:9->36`;
+- `10:10->39`;
+- `11:11->41`;
+- `12:12->42`.
+
+O mapper reutiliza o mesmo construction path do gerador.
+
+Ele não deriva lineage por igualdade de `StrategicCellId`.
+
+O public contract de `GoldbergStrategicTopologyGenerator.Generate` permanece inalterado.
+
+A suíte local atingiu 327/327 testes.
+
+A regressão `Cross-Platform Kernel Regression Validation`, run `35500232516`, passou em Ubuntu, Windows e macOS.
+
+M2.4.2 está concluído.
+
+Ainda não existe full parent-child coverage, coarse-edge para fine-edge-chain mapping, Class II reference mapping ou Class III reference mapping.
+
+O próximo subcheckpoint é M2.4.3 — Shared Border Refinement Continuity.
+
 O estado estratégico de uma conexão poderá futuramente ser derivado do estado tático correspondente.
 
 Exemplos futuros incluem:

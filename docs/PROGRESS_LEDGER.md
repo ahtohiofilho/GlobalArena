@@ -9008,3 +9008,162 @@ Planet Topology permanece:
 ### Próximo gate
 
 **M2.4.2 DESIGN AUDIT**
+
+---
+
+## 2026-09-20 — M2.4.2 Canonical Construction Provenance & Reference Mapping formal close
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.4 — Goldberg Family & Refinement Validation**
+
+Subcheckpoint concluído:
+
+**M2.4.2 — Canonical Construction Provenance & Reference Mapping**
+
+### Implementation commit
+
+Commit:
+
+`d76128d4d0528979c3c1a5c1d5d59a745a10c868`
+
+Mensagem:
+
+`feat: add canonical provenance reference mapping`
+
+### Contrato validado
+
+Reference pair:
+
+`G(1,0) -> G(2,0)`
+
+Scale:
+
+`2`
+
+Production:
+
+- `IcosahedronSeedVertexId`;
+- `GoldbergScaledCellReference`;
+- `GoldbergScaledRefinementReferenceMap`;
+- `GoldbergScaledRefinementReferenceMapper`;
+- internal triangular-seed provenance carrier reutilizado pelo generator.
+
+Coverage:
+
+- coarse: 12/12;
+- fine reference anchors: 12/42;
+- 30 fine cells intermediárias continuam sem owner.
+
+Canonical oracle:
+
+`1:1->6`
+
+`2:2->11`
+
+`3:3->15`
+
+`4:4->19`
+
+`5:5->23`
+
+`6:6->26`
+
+`7:7->30`
+
+`8:8->33`
+
+`9:9->36`
+
+`10:10->39`
+
+`11:11->41`
+
+`12:12->42`
+
+### Evidência local
+
+- build Release: 0 warnings;
+- build Release: 0 errors;
+- testes: 327/327;
+- falhas: 0;
+- `git diff --check`: aprovado;
+- `git diff --cached --check`: aprovado.
+
+### Gate cross-platform
+
+Workflow:
+
+`Cross-Platform Kernel Regression Validation`
+
+Run ID:
+
+`35500232516`
+
+Resultado:
+
+**SUCCESS**
+
+Commit:
+
+`d76128d4d0528979c3c1a5c1d5d59a745a10c868`
+
+Jobs:
+
+- Ubuntu: `success`;
+- Windows: `success`;
+- macOS: `success`.
+
+Artefatos:
+
+- Ubuntu: ID `10601956541`, SHA-256 `d71e5a8c56d053e0d026333d8e01e0ec9120a80d77435994d5e9ffbdd8f7ba6a`;
+- Windows: ID `10602001451`, SHA-256 `32ed88f05625e8eac28d652d444d8e9c53b66daf0c882ad1c95ff6c691432111`;
+- macOS: ID `10601789846`, SHA-256 `f209c825d1a04f8395b6605c252a971f85e37621fb4c17c3c60fa4d636631812`.
+
+### Maturidade e GPP
+
+M2.4.2 não promove GPP.
+
+`Strategic ↔ tactical hierarchy/refinement mapping` permanece:
+
+**Inexistente — fator 0.00**
+
+GPP:
+
+**109.50 / 1000**
+
+Global Progress:
+
+**11.0%**
+
+Topologia planetária / Goldberg:
+
+**39.50 / 90 GPP — 43.9%**
+
+### Riscos
+
+`RISK-003 — Goldberg hierarchy mapping` permanece:
+
+**MITIGATING / Probability 2 / Impact 4 / Score 8 — HIGH**
+
+A provenance cross-resolution existe para seed anchors, mas edge continuity, full hierarchy coverage e multi-family mapping permanecem abertos.
+
+### Scope Change
+
+Nenhum.
+
+Baseline V1 permanece:
+
+**1000 GPP**
+
+### Próximo subcheckpoint
+
+**M2.4.3 — Shared Border Refinement Continuity**
+
+Próximo gate:
+
+**READ_ONLY_AUDIT**

@@ -593,7 +593,7 @@ Etapa:
 
 Subetapa atual:
 
-**M2.4.2 — Canonical Construction Provenance & Reference Mapping**
+**M2.4.3 — Shared Border Refinement Continuity**
 
 M0 — Project Baseline:
 
@@ -681,7 +681,7 @@ M2.4.1 — Scaled Refinement Compatibility Contract:
 
 M2.4.2 — Canonical Construction Provenance & Reference Mapping:
 
-**design congelado; implementação pendente**
+**concluído em 2026-09-20**
 
 Baseline V1:
 

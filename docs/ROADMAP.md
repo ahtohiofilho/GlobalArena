@@ -1216,51 +1216,57 @@ Topologia planetária / Goldberg permanece:
 
 **39.50 / 90 GPP — 43.9%**
 
+M2.4.2 está concluído em 2026-09-20.
+
+Evidência de M2.4.2:
+
+- `IcosahedronSeedVertexId` implementado com domínio `1..12`;
+- `GoldbergScaledCellReference` implementado;
+- `GoldbergScaledRefinementReferenceMap` implementado;
+- `GoldbergScaledRefinementReferenceMapper` implementado;
+- `GoldbergStrategicTopologyGenerator` passou a expor provenance interna reutilizável no caminho triangular sem alterar seu public contract;
+- reference pair suportado nesta tranche: `G(1,0) -> G(2,0)`, scale 2;
+- exatamente 12 references materializadas;
+- todas as 12 coarse cells cobertas uma vez;
+- 12 fine reference IDs únicos;
+- as 12 fine cells referenciadas são os 12 pentágonos;
+- canonical vector validado: `1:1->6, 2:2->11, 3:3->15, 4:4->19, 5:5->23, 6:6->26, 7:7->30, 8:8->33, 9:9->36, 10:10->39, 11:11->41, 12:12->42`;
+- materialização repetida canônica;
+- coleção read-only;
+- Class I scale 3 permanece unsupported nesta tranche;
+- Class II permanece unsupported nesta tranche;
+- Class III permanece unsupported nesta tranche;
+- nenhum lineage é inferido por igualdade ou aritmética de `StrategicCellId`;
+- build Release local com 0 warnings e 0 errors;
+- suíte local: 327/327, 0 falhas;
+- workflow `Cross-Platform Kernel Regression Validation`, run `35500232516`, concluído com sucesso em Ubuntu, Windows e macOS;
+- commit validado: `d76128d4d0528979c3c1a5c1d5d59a745a10c868`.
+
+M2.4.2 não promove GPP.
+
+`Strategic ↔ tactical hierarchy/refinement mapping` permanece:
+
+**Inexistente — 0.00**
+
+GPP permanece:
+
+**109.50 / 1000**
+
+Global Progress permanece:
+
+**11.0%**
+
+Topologia planetária / Goldberg permanece:
+
+**39.50 / 90 GPP — 43.9%**
+
 Subcheckpoint atual:
 
-**M2.4.2 — Canonical Construction Provenance & Reference Mapping**
-
-O audit read-only de M2.4.2 confirmou que:
-
-- provenance combinatória existe internamente nos geradores;
-- Class I/II usam `SubdivisionLatticeVertexKey` antes da atribuição dos IDs;
-- Class III usa lattice/orientation/stitching com `DisjointSet` roots;
-- nenhuma provenance é exposta como contrato cross-resolution;
-- nenhum parent-child mapping production type existe;
-- igualdade de `StrategicCellId` entre resoluções não é lineage.
-
-Design congelado para a primeira tranche de M2.4.2:
-
-- reference pair único: `G(1,0) -> G(2,0)`;
-- scale: 2;
-- provenance canônica: os 12 vertices do seed icosaédrico;
-- novo ID: `IcosahedronSeedVertexId`, domínio `1..12`;
-- relation: `GoldbergScaledCellReference`;
-- aggregate: `GoldbergScaledRefinementReferenceMap`;
-- materializer: `GoldbergScaledRefinementReferenceMapper`;
-- exatamente 12 references;
-- ordem canônica por seed vertex;
-- coarse/fine IDs únicos;
-- coleção read-only;
-- nenhum lineage inferido por ordinal.
-
-Canonical reference vector:
-
-`1:1->6, 2:2->11, 3:3->15, 4:4->19, 5:5->23, 6:6->26, 7:7->30, 8:8->33, 9:9->36, 10:10->39, 11:11->41, 12:12->42`.
-
-Validation planejada:
-
-- 14 Facts;
-- baseline: 313;
-- esperado após implementação: 327.
-
-M2.4.2 não define full parent-child ownership, edge-chain refinement, Class II mapping, Class III mapping, tactical refinement ou universal refinement.
-
-GPP não é promovido neste design.
+**M2.4.3 — Shared Border Refinement Continuity**
 
 Próximo gate:
 
-**M2.4.2 DESIGN AUDIT**
+**READ_ONLY_AUDIT**
 
 ---
 
@@ -1548,7 +1554,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M2.4.2 — Canonical Construction Provenance & Reference Mapping**
+**M2.4.3 — Shared Border Refinement Continuity**
 
 Official Progress:
 

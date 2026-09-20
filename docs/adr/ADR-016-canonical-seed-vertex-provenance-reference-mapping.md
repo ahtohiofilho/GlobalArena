@@ -241,6 +241,62 @@ does not automatically advance because seed-anchor correspondence is not full pa
 
 Any promotion requires a later explicit maturity review backed by executable hierarchy coverage.
 
+## Implementation evidence
+
+M2.4.2 foi implementado no commit:
+
+`d76128d4d0528979c3c1a5c1d5d59a745a10c868`
+
+Arquivos principais:
+
+- `GlobalArena.World/IcosahedronSeedVertexId.cs`;
+- `GlobalArena.World/GoldbergScaledCellReference.cs`;
+- `GlobalArena.World/GoldbergScaledRefinementReferenceMap.cs`;
+- `GlobalArena.World/GoldbergScaledRefinementReferenceMapper.cs`;
+- `GlobalArena.World/GoldbergStrategicTopologyGenerator.cs`;
+- `GlobalArena.Tests/IcosahedronSeedVertexIdTests.cs`;
+- `GlobalArena.Tests/GoldbergScaledRefinementReferenceMapTests.cs`.
+
+Resultado executável:
+
+- reference pair `G(1,0) -> G(2,0)`;
+- scale 2;
+- 12/12 coarse cells referenciadas;
+- 12/42 fine cells referenciadas;
+- 12 fine references correspondem aos pentágonos;
+- canonical oracle validado;
+- materialização repetida determinística;
+- coleção read-only;
+- public API de `GoldbergStrategicTopologyGenerator.Generate` preservada;
+- construction path triangular reutilizado;
+- nenhuma second implementation da subdivisão;
+- nenhum lineage por igualdade de `StrategicCellId`.
+
+Validação local:
+
+- Release build: 0 warnings, 0 errors;
+- suíte: 327/327;
+- failures: 0.
+
+Cross-platform:
+
+- workflow: `Cross-Platform Kernel Regression Validation`;
+- run ID: `35500232516`;
+- Ubuntu: `success`;
+- Windows: `success`;
+- macOS: `success`;
+- Ubuntu artifact: ID `10601956541`, SHA-256 `d71e5a8c56d053e0d026333d8e01e0ec9120a80d77435994d5e9ffbdd8f7ba6a`;
+- Windows artifact: ID `10602001451`, SHA-256 `32ed88f05625e8eac28d652d444d8e9c53b66daf0c882ad1c95ff6c691432111`;
+- macOS artifact: ID `10601789846`, SHA-256 `f209c825d1a04f8395b6605c252a971f85e37621fb4c17c3c60fa4d636631812`.
+
+M2.4.2 está concluído.
+
+Nenhuma maturidade/GPP é promovida porque o resultado ainda é seed-anchor reference correspondence, não full hierarchy coverage.
+
+O próximo subcheckpoint é:
+
+`M2.4.3 — Shared Border Refinement Continuity`
+
 ## Consequences
 
 Positive:
