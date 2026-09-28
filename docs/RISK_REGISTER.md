@@ -976,3 +976,43 @@ O Critical Path deixa o determinismo mínimo e passa para:
 **RISK-003 — Goldberg hierarchy mapping**
 
 A prioridade de M2 é reduzir a incerteza sobre a hierarquia estratégico/tático antes de consolidar estruturas de produção.
+
+---
+
+# 9. M2.5.2 vertex-aware physical mapping review
+
+**Data:** 2026-09-20
+
+The M2.5.2-A read-only audit isolated a previously implicit three-way physical-incidence requirement at each coarse `StrategicVertex`.
+
+No new risk ID is created.
+
+The finding remains inside:
+
+**RISK-003 — Goldberg hierarchy mapping**
+
+Current classification remains:
+
+**HIGH**
+
+The mitigation path is refined to require:
+
+- one continuous fine Goldberg physical topology;
+- canonical physical tile identity independent of observation side;
+- complete coarse→fine incidence with counts 1, 2 or 3;
+- derivation of edge and vertex anchors from the authoritative coarse topology;
+- explicit proof that a vertex-shared tile is one canonical physical tile;
+- cross-region traversal through fine-topology adjacency;
+- family/scale coverage decision in M2.5.3.
+
+The first vertex-aware mapping target is `G(1,0) -> G(3,0)` scale 3.
+
+The count decomposition `12 + 60 + 20 = 92` is a design target only and does not reduce RISK-003 until the provenance/mapping is implemented and validated.
+
+`RISK-002 — Tactical resolution scalability` remains open.
+
+`RISK-012 — Memory footprint` remains open.
+
+Global Risk Level remains:
+
+**HIGH**

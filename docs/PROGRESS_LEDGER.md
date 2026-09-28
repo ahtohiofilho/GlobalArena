@@ -10226,3 +10226,223 @@ Baseline V1 remains:
 ### Next gate
 
 **M2.5.1 DESIGN AUDIT**
+
+---
+
+## 2026-09-20 — M2.5.2-A vertex-aware audit and M2.5.2-B physical mesh design
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate**
+
+Subcheckpoint:
+
+**M2.5.2 — Strategic/Tactical Physical Boundary Attachment & Cross-Region Traversal**
+
+### M2.5.2-A audit evidence
+
+Baseline:
+
+`714cc1f06bbb1dc411fdb1bfcda2c3a19f8a9acd`
+
+Result:
+
+**PASS_READY_FOR_M2_5_2_VERTEX_AWARE_DESIGN**
+
+Evidence package:
+
+`M2.5.2-A-READONLY-AUDIT-R5-VERTEX-AWARE-20260920-084339.zip`
+
+Validated:
+
+- branch `main`;
+- HEAD = origin/main;
+- Release build: PASS;
+- compiler warning lines: 0;
+- compiler error lines: 0;
+- tests: 366/366;
+- failures: 0;
+- not executed: 0;
+- tracked files hashed: 156;
+- tracked hash drift: 0;
+- worktree clean after: True;
+- evidence manifest hashes verified.
+
+### Architectural finding
+
+The current M2.3 shared-border model is valid as an edge-scoped logical/non-geometric sub-contract but cannot be promoted to universal physical tactical identity.
+
+The current M2.2 `TacticalCellId` remains region-owned and parent-local.
+
+A physical tile at a `StrategicVertex` is incident to three strategic cells and must remain one canonical physical element.
+
+### M2.5.2-B design direction
+
+The physical tactical mesh is modeled as one continuous fine Goldberg topology.
+
+Fine topology cells provide:
+
+- canonical physical tiles;
+- canonical physical adjacency.
+
+A new physical identity is proposed:
+
+`PhysicalTacticalTileId = FineGoldbergParameters + FineStrategicCellId`
+
+Cross-level incidence maps every fine tile to exactly 1, 2 or 3 coarse strategic cells.
+
+Interpretation:
+
+- 1 = interior;
+- 2 = strategic edge;
+- 3 = strategic vertex.
+
+Edge and vertex anchors are derived from the authoritative coarse topology.
+
+### Vertex-aware reference target
+
+First target:
+
+`G(1,0) -> G(3,0)`
+
+scale:
+
+`3`
+
+Design-target count decomposition:
+
+`12 + (30 * 2) + 20 = 92`
+
+This is not yet implementation evidence.
+
+M2.5.2-C must prove the provenance and mapping.
+
+### Decomposition
+
+- M2.5.2-A — audit — completed;
+- M2.5.2-B — identity/incidence contract;
+- M2.5.2-C — physical incidence materialization;
+- M2.5.2-D — traversal contract/validation;
+- M2.5.2-E — accumulated validation/close.
+
+### GPP
+
+GPP change:
+
+**0.00**
+
+GPP remains:
+
+**109.50 / 1000**
+
+Global Progress remains:
+
+**11.0%**
+
+Planet Topology remains:
+
+**39.50 / 90 — 43.9%**
+
+`Strategic ↔ tactical hierarchy/refinement mapping` remains:
+
+**Inexistente — factor 0.00**
+
+### Risk
+
+`RISK-003 — Goldberg hierarchy mapping` remains:
+
+**HIGH**
+
+The risk focus is now the proof of complete coarse→fine physical incidence, especially the 3-way vertex case and later multi-family coverage.
+
+`RISK-002` and `RISK-012` remain open; this design does not close tactical-resolution scalability or memory footprint.
+
+### Scope Change
+
+None.
+
+Baseline V1 remains:
+
+**1000 GPP**
+
+### Next gate
+
+**M2.5.2-B DESIGN AUDIT**
+---
+
+## 2026-09-20 — M2.5.2-B design audit and formal freeze
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate**
+
+Subcheckpoint:
+
+**M2.5.2-B — Global Physical Tactical Identity & Coarse Incidence Contract**
+
+Design audit result:
+
+**PASS_READY_FOR_M2_5_2_B_FORMAL_CLOSE**
+
+Evidence reviewed:
+
+$DesignEvidenceName
+
+Evidence SHA-256:
+
+$DesignEvidenceSha256
+
+Audit confirmation:
+
+- HEAD/origin baseline remained $ExpectedHead;
+- exact six-file documentation changeset;
+- no production file modified;
+- Release build passed with 0 warnings and 0 errors;
+- 366/366 tests passed;
+- all evidence-manifest payload hashes verified;
+- canonical physical tactical mesh direction accepted;
+- one physical identity per fine Goldberg cell accepted;
+- coarse incidence cardinality 1/2/3 accepted;
+- vertex-shared tile remains one canonical physical element;
+- M2.2 region-owned identity and M2.3 edge-scoped logical border identity remain preserved;
+- G(1,0) -> G(3,0) scale 3 remains a target to be proved, not claimed as completed evidence.
+
+GPP change:
+
+**0.00**
+
+GPP remains:
+
+**109.50 / 1000**
+
+Global Progress remains:
+
+**11.0%**
+
+Planet Topology remains:
+
+**39.50 / 90 — 43.9%**
+
+Strategic ↔ tactical hierarchy/refinement mapping remains:
+
+**Inexistente — factor 0.00**
+
+RISK-003 remains:
+
+**HIGH**
+
+M2 remains:
+
+**OPEN**
+
+Next gate after formal close:
+
+**M2.5.2-B IMPLEMENTATION**

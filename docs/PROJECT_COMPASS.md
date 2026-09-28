@@ -601,7 +601,7 @@ Etapa:
 
 Subetapa atual:
 
-**M2.5.1 — Exit Gate Requirements & Performance Budget Contract**
+**M2.5.2 — Strategic/Tactical Physical Boundary Attachment & Cross-Region Traversal**
 
 M0 — Project Baseline:
 
@@ -741,7 +741,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M2 exit semantics: physical strategic/tactical boundary attachment, navigability, refinement coverage e scalability baseline**
+**M2.5.2 coarse→fine physical incidence, vertex-aware navigability, refinement coverage e scalability baseline**
 
 Última revisão de baseline:
 

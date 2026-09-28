@@ -4263,6 +4263,45 @@ O próximo gate é:
 
 `M2.5.1 DESIGN AUDIT`.
 
+
+## 13.x — Malha tática física global contínua (M2.5.2)
+
+O audit vertex-aware de M2.5.2-A confirmou que os contratos de M2.2 e M2.3 são insuficientes, isoladamente, para representar a identidade física global.
+
+M2.5.2 passa a separar explicitamente:
+
+- contratos lógicos/reference de região e border band;
+- malha tática física global.
+
+A malha física será representada por uma `StrategicTopology` Goldberg fina dentro de um contexto coarse→fine aceito.
+
+As células da topologia fina são os tiles táticos físicos canônicos e a adjacency da topologia fina é a adjacency física canônica.
+
+A identidade física proposta é:
+
+`PhysicalTacticalTileId = FineGoldbergParameters + FineStrategicCellId`
+
+A relação com a partição estratégica grossa é representada por incidência coarse→fine explícita:
+
+- 1 coarse `StrategicCell` → tile interior;
+- 2 coarse `StrategicCell` → tile sobre `StrategicEdge`;
+- 3 coarse `StrategicCell` → tile sobre `StrategicVertex`.
+
+Os anchors de edge/vertex são derivados da `StrategicTopology` grossa e não duplicados como segunda fonte de verdade.
+
+O caso de `StrategicVertex` é obrigatoriamente uma única célula fina compartilhada pelas três regiões estratégicas incidentes. Não poderá ser convertido em três `SharedBorderElement`.
+
+`TacticalCellId` continua sendo identidade region-owned do reference graph de M2.2.
+
+`SharedBorderElementId` continua sendo identidade lógica edge-scoped de M2.3.
+
+Nenhum dos dois será usado como identidade física universal.
+
+A navegação cross-region deverá usar a adjacency da topologia fina contínua, evitando costura por adjacências artificiais entre boards regionais independentes.
+
+A primeira referência vertex-aware a ser provada em implementação é `G(1,0) -> G(3,0)`, scale 3. A decomposição de contagem `12 + 60 + 20 = 92` é alvo de design e ainda depende de prova de provenance/mapping.
+
+Detalhes e limites estão congelados em `ADR-021`.
 O estado estratégico de uma conexão poderá futuramente ser derivado do estado tático correspondente.
 
 Exemplos futuros incluem:

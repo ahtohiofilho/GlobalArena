@@ -1521,6 +1521,59 @@ Próximo gate:
 
 
 
+
+### M2.5.2 — Vertex-aware physical tactical mesh design
+
+O audit read-only M2.5.2-A foi concluído em 2026-09-20 no baseline:
+
+`714cc1f06bbb1dc411fdb1bfcda2c3a19f8a9acd`
+
+Resultado:
+
+**PASS_READY_FOR_M2_5_2_VERTEX_AWARE_DESIGN**
+
+Evidência:
+
+- Release build: 0 warnings, 0 errors;
+- suíte: 366/366;
+- tracked hash drift: 0;
+- worktree clean;
+- `SharedBorderElementId` confirmado como edge-scoped logical/non-geometric contract;
+- `StrategicVertex` confirmado com incidência estratégica 3-way;
+- global physical tactical identity ausente;
+- physical boundary attachment ausente;
+- cross-region tactical traversal ausente.
+
+Design proposto em ADR-021:
+
+- a malha tática física é uma topologia Goldberg fina contínua;
+- cada fine topology cell é um único physical tactical tile;
+- identidade proposta: `PhysicalTacticalTileId = FineGoldbergParameters + FineStrategicCellId`;
+- coarse incidence explícita classifica tiles em 1-cell, 2-cell ou 3-cell incidence;
+- 2-cell incidence deriva uma `StrategicEdge`;
+- 3-cell incidence deriva um `StrategicVertex`;
+- edge/vertex tiles nunca são duplicados por strategic region;
+- `TacticalCellId` permanece reference/region-owned;
+- `SharedBorderElementId` permanece logical/edge-scoped;
+- traversal físico usa a adjacency da fine Goldberg topology;
+- primeiro target vertex-aware: `G(1,0) -> G(3,0)`, scale 3;
+- a decomposição `12 + 60 + 20 = 92` é design target ainda não provado.
+
+Decomposição de M2.5.2:
+
+- M2.5.2-A — Vertex-Aware Physical Boundary Read-Only Audit — concluído;
+- M2.5.2-B — Global Physical Tactical Identity & Coarse Incidence Contract;
+- M2.5.2-C — Vertex-Aware Physical Incidence Materialization;
+- M2.5.2-D — Fine-Topology Cross-Region Traversal Contract & Validation;
+- M2.5.2-E — Accumulated Validation & M2.5.2 Close.
+
+Nenhuma promoção de GPP ocorre no design.
+
+Próximo gate após design audit:
+
+**M2.5.2-B IMPLEMENTATION**
+
+---
 ## M3 — Procedural World
 
 Objetivo:
@@ -1803,7 +1856,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M2.5.1 — Exit Gate Requirements & Performance Budget Contract**
+**M2.5.2 — Strategic/Tactical Physical Boundary Attachment & Cross-Region Traversal**
 
 Official Progress:
 
