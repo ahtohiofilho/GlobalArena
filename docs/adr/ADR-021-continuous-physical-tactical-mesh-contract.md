@@ -1,6 +1,6 @@
 # ADR-021 — Continuous Physical Tactical Mesh Identity, Coarse Incidence and Cross-Region Traversal Contract
 
-**Status:** Accepted — amended 2026-09-28 by M2.5.2-C provenance audit
+**Status:** Accepted — amended through M2.5.2-D traversal close on 2026-09-28
 **Date:** 2026-09-20
 
 ## Context
@@ -216,8 +216,8 @@ M2.5.2 is decomposed into:
 - **M2.5.2-A — Vertex-Aware Physical Boundary Read-Only Audit** — completed;
 - **M2.5.2-B — Global Physical Tactical Identity & Coarse Incidence Contract**;
 - **M2.5.2-C — Vertex-Aware Physical Incidence Materialization**;
-- **M2.5.2-D — Fine-Topology Cross-Region Traversal Contract & Validation**;
-- **M2.5.2-E — Accumulated Validation & M2.5.2 Close**.
+- **M2.5.2-D — Fine-Topology Cross-Region Traversal Contract & Validation** — completed;
+- **M2.5.2-E — Accumulated Validation & M2.5.2 Close** — next.
 
 M2.5.3 remains responsible for deciding the officially supported Goldberg family/refinement coverage beyond the first proven physical reference mapping.
 
@@ -464,3 +464,38 @@ Validated:
 M2.5.2-C is closed.
 
 The materializer remains deliberately reference-target-specific. General family/scale coverage remains M2.5.3, and fine-topology cross-region traversal remains M2.5.2-D.
+## 2026-09-28 — M2.5.2-D traversal implementation close
+
+Evidence package:
+
+`GlobalArena-Evidence-M2.5.2-D-TRAVERSAL-IMPLEMENTATION-R2-20260928-101812.zip`
+
+Evidence package SHA-256:
+
+`99f1d20c8f252f3d2bdc84dea5c5f53c1158a1f4faed025d9057c7ef381ae8b9`
+
+Baseline:
+
+`1fa9c1e56008533aa1847e80d5f9130992ad5fcc`
+
+Implemented:
+
+- `PhysicalTacticalPath`;
+- `PhysicalTacticalPathfinder`;
+- deterministic BFS shortest-path traversal over authoritative fine-topology adjacency.
+
+Validated:
+
+- edge-shared cross-coarse traversal;
+- vertex-shared cross-coarse traversal;
+- distant traversal across distinct coarse ownership;
+- no synthetic cross-region adjacency;
+- no legacy tactical identity dependency;
+- deterministic path results;
+- read-only path snapshots;
+- accumulated tests: `417/417`;
+- compiler warnings/errors: `0/0`.
+
+M2.5.2-D is closed.
+
+Next: M2.5.2-E accumulated validation and M2.5.2 close.

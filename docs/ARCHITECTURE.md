@@ -4376,7 +4376,42 @@ Quality gate:
 - tests: 402/402;
 - new tests in M2.5.2-C materializer tranche: 13.
 
-M2.5.2-C closes the first functional physical coarse-to-fine incidence materialization. Fine-topology cross-region traversal remains M2.5.2-D.
+M2.5.2-C closes the first functional physical coarse-to-fine incidence materialization. M2.5.2-D now closes deterministic fine-topology cross-region traversal for the accepted reference target.
+
+### M2.5.2-D traversal implementation evidence
+
+Physical traversal now uses only the authoritative fine topology:
+
+`PhysicalTacticalIncidenceMap.FineTopology.Cells[*].AdjacentCellIds`
+
+Production artifacts:
+
+- `PhysicalTacticalPath`;
+- `PhysicalTacticalPathfinder`.
+
+Validated invariants:
+
+- deterministic BFS shortest paths;
+- canonical `PhysicalTacticalTileId` endpoints and path steps;
+- no repeated physical identity in a returned path;
+- read-only path snapshots;
+- edge-shared cross-coarse traversal;
+- vertex-shared cross-coarse traversal;
+- distant traversal across distinct coarse ownership;
+- shortest-path distance independently cross-checked;
+- no synthetic cross-region adjacency;
+- no `TacticalCellId` or `SharedBorderElementId` dependency;
+- accumulated tests: `417/417`.
+
+Evidence:
+
+`GlobalArena-Evidence-M2.5.2-D-TRAVERSAL-IMPLEMENTATION-R2-20260928-101812.zip`
+
+Evidence SHA-256:
+
+`99f1d20c8f252f3d2bdc84dea5c5f53c1158a1f4faed025d9057c7ef381ae8b9`
+
+M2.5.2-D is closed. M2.5.2-E remains responsible for accumulated validation and M2.5.2 close.
 O estado estratégico de uma conexão poderá futuramente ser derivado do estado tático correspondente.
 
 Exemplos futuros incluem:

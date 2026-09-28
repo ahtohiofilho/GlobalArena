@@ -10755,3 +10755,76 @@ M2.5.2-C status:
 Next gate:
 
 **M2.5.2-D — Fine-Topology Cross-Region Traversal Contract & Validation**
+---
+
+## 2026-09-28 — M2.5.2-D fine-topology traversal close
+
+Baseline:
+
+`1fa9c1e56008533aa1847e80d5f9130992ad5fcc`
+
+Evidence:
+
+`GlobalArena-Evidence-M2.5.2-D-TRAVERSAL-IMPLEMENTATION-R2-20260928-101812.zip`
+
+Evidence SHA-256:
+
+`99f1d20c8f252f3d2bdc84dea5c5f53c1158a1f4faed025d9057c7ef381ae8b9`
+
+Implemented:
+
+- `PhysicalTacticalPath`;
+- `PhysicalTacticalPathfinder`;
+- 15 focused traversal tests.
+
+Validated:
+
+- source graph: fine `StrategicTopology`;
+- adjacency: `StrategicCell.AdjacentCellIds`;
+- deterministic BFS shortest path;
+- edge-shared traversal: PASS;
+- vertex-shared traversal: PASS;
+- distant distinct-coarse-ownership traversal: PASS;
+- synthetic cross-region adjacency: False;
+- accumulated tests: 417/417;
+- QA commit/push: False.
+
+Maturity promotion:
+
+`Topological validation e navigability`
+
+from:
+
+**Inexistente — factor 0.00**
+
+to:
+
+**Implementação funcional isolada — factor 0.50**
+
+GPP change:
+
+**+3.00**
+
+GPP:
+
+**120.50 / 1000**
+
+Global Progress:
+
+**12.1%**
+
+Planet Topology:
+
+**50.50 / 90 — 56.1%**
+
+`RISK-003` remains **HIGH**.
+
+M2 remains **OPEN**.
+
+M2.5.2-D status:
+
+**CLOSED**
+
+Next gate:
+
+**M2.5.2-E — Accumulated Validation & M2.5.2 Close**

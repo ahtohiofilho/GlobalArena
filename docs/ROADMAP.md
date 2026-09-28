@@ -1566,7 +1566,7 @@ Decomposição de M2.5.2:
 - M2.5.2-A — Vertex-Aware Physical Boundary Read-Only Audit — concluído;
 - M2.5.2-B — Global Physical Tactical Identity & Coarse Incidence Contract;
 - M2.5.2-C — Vertex-Aware Physical Incidence Materialization — concluído;
-- M2.5.2-D — Fine-Topology Cross-Region Traversal Contract & Validation;
+- M2.5.2-D — Fine-Topology Cross-Region Traversal Contract & Validation — concluído;
 - M2.5.2-E — Accumulated Validation & M2.5.2 Close.
 
 Nenhuma promoção de GPP ocorre no design.
@@ -1595,7 +1595,7 @@ O materializador coarse→fine permanece deliberadamente ausente nesta tranche.
 
 Próximo gate:
 
-**M2.5.2-D — Fine-Topology Cross-Region Traversal Contract & Validation**
+**M2.5.2-E — Accumulated Validation & M2.5.2 Close**
 
 ---
 ## M3 — Procedural World
@@ -1880,15 +1880,15 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M2.5.2 — Strategic/Tactical Physical Boundary Attachment & Cross-Region Traversal**
+**M2.5.2-E — Accumulated Validation & M2.5.2 Close**
 
 Official Progress:
 
-**11.0%**
+**12.1%**
 
 GPP Earned:
 
-**109.50 / 1000**
+**120.50 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -1896,7 +1896,7 @@ Foundation / Simulation Kernel:
 
 Planet Topology / Goldberg:
 
-**39.50 / 90 GPP — 43.9%**
+**50.50 / 90 GPP — 56.1%**
 
 Scope Confidence:
 
@@ -1912,7 +1912,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**Goldberg family/refinement validation e mapeamento físico estratégico/tático**
+**M2.5.2-E accumulated physical-mesh validation, refinement coverage e scalability baseline**
 
 Last Baseline Review:
 
@@ -1937,3 +1937,24 @@ Evidence:
 M2.5.2-C está concluído.
 
 Traversal físico cross-region permanece fora desta tranche e passa a ser o foco do M2.5.2-D.
+#### M2.5.2-D traversal close
+
+Traversal físico cross-region concluído no reference target `G(1,0) -> G(6,0)`:
+
+- source graph: fine `StrategicTopology`;
+- adjacency source: `StrategicCell.AdjacentCellIds`;
+- algoritmo: deterministic BFS shortest path;
+- edge-shared traversal: PASS;
+- vertex-shared traversal: PASS;
+- synthetic cross-region adjacency: False;
+- accumulated tests: `417/417`.
+
+Evidence:
+
+`GlobalArena-Evidence-M2.5.2-D-TRAVERSAL-IMPLEMENTATION-R2-20260928-101812.zip`
+
+M2.5.2-D está concluído.
+
+Próximo gate:
+
+**M2.5.2-E — Accumulated Validation & M2.5.2 Close**

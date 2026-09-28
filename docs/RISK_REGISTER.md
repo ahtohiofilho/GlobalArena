@@ -1105,3 +1105,31 @@ Reason:
 Global Risk Level remains:
 
 **HIGH**
+---
+
+# 12. M2.5.2-D fine-topology traversal close
+
+**Date:** 2026-09-28
+
+Evidence:
+
+`GlobalArena-Evidence-M2.5.2-D-TRAVERSAL-IMPLEMENTATION-R2-20260928-101812.zip`
+
+Validated:
+
+- fine-topology BFS traversal implemented;
+- canonical physical path identity;
+- edge-shared cross-coarse traversal: PASS;
+- vertex-shared cross-coarse traversal: PASS;
+- distant distinct-coarse-ownership traversal: PASS;
+- synthetic cross-region adjacency: False;
+- 417/417 tests;
+- 0 compiler warnings/errors.
+
+`RISK-003 — Goldberg hierarchy mapping` remains **HIGH** because generalized family/refinement coverage remains open and M2.5.2-E accumulated validation is still pending.
+
+`RISK-002 — Tactical resolution scalability` remains open.
+
+`RISK-012 — Memory footprint` remains open.
+
+Global Risk Level remains **HIGH**.

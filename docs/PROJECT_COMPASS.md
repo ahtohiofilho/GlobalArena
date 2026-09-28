@@ -316,9 +316,9 @@ Estado de maturidade após M2.5.2-C / fechamento do materializador físico de re
 | Shared subtile border bands | 16 | Validada | 0.85 | 13.60 |
 | Strategic ↔ tactical hierarchy/refinement mapping | 16 | Implementação funcional isolada | 0.50 | 8.00 |
 | Canonical deterministic topology generation | 6 | Inexistente | 0.00 | 0.00 |
-| Topological validation e navigability | 6 | Inexistente | 0.00 | 0.00 |
+| Topological validation e navigability | 6 | Implementação funcional isolada | 0.50 | 3.00 |
 | Scalability / headless performance baseline | 4 | Inexistente | 0.00 | 0.00 |
-| **TOTAL** | **90** |  |  | **47.50** |
+| **TOTAL** | **90** |  |  | **50.50** |
 
 M2.1.1 foi um audit arquitetural e não promoveu maturidade por si só.
 
@@ -603,7 +603,7 @@ Etapa:
 
 Subetapa atual:
 
-**M2.5.2-D — Fine-Topology Cross-Region Traversal Contract & Validation**
+**M2.5.2-E — Accumulated Validation & M2.5.2 Close**
 
 M0 — Project Baseline:
 
@@ -715,11 +715,11 @@ Baseline V1:
 
 Progresso oficial:
 
-**11,8%**
+**12,1%**
 
 GPP conquistados:
 
-**117,50 / 1000**
+**120,50 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -727,7 +727,7 @@ Foundation / Simulation Kernel:
 
 Topologia planetária / Goldberg:
 
-**47,50 / 90 GPP — 52,8%**
+**50,50 / 90 GPP — 56,1%**
 
 Scope Confidence:
 
@@ -743,7 +743,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M2.5.2-D fine-topology cross-region traversal, refinement coverage e scalability baseline**
+**M2.5.2-E accumulated physical-mesh validation, refinement coverage e scalability baseline**
 
 Última revisão de baseline:
 
