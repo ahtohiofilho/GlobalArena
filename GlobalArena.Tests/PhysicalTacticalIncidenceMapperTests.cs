@@ -42,17 +42,25 @@ public sealed class PhysicalTacticalIncidenceMapperTests
     }
 
     [Fact]
-    public void DifferentScaleSixPairIsNotAcceptedAsReferenceTarget()
+    public void DifferentOfficialClassIScaleSixPairIsAccepted()
     {
-        var refinement =
-            new GoldbergScaledRefinement(
-                new GoldbergParameters(2, 0),
-                new GoldbergParameters(12, 0));
+        var map =
+            PhysicalTacticalIncidenceMapper.Materialize(
+                new GoldbergScaledRefinement(
+                    new GoldbergParameters(2, 0),
+                    new GoldbergParameters(12, 0)));
 
-        Assert.Throws<NotSupportedException>(
-            () =>
-                PhysicalTacticalIncidenceMapper.Materialize(
-                    refinement));
+        Assert.Equal(
+            new GoldbergParameters(2, 0),
+            map.CoarseTopology.Parameters);
+
+        Assert.Equal(
+            new GoldbergParameters(12, 0),
+            map.FineTopology.Parameters);
+
+        Assert.Equal(
+            1442,
+            map.TileIncidences.Count);
     }
 
     [Fact]

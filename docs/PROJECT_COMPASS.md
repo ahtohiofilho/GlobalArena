@@ -306,7 +306,7 @@ A decomposição operacional inicial de M2 é:
 | Scalability / headless performance baseline | 4 |
 | **TOTAL** | **90** |
 
-Estado de maturidade após M2.5.2-E / fechamento acumulado do physical tactical mesh de referência:
+Estado de maturidade após M2.5.3-C / durable Class I scale-6 lineage e generalized physical mapping:
 
 | Capability | GPP | Maturidade | Fator | GPP ganhos |
 |---|---:|---|---:|---:|
@@ -314,11 +314,11 @@ Estado de maturidade após M2.5.2-E / fechamento acumulado do physical tactical 
 | Strategic graph: identidade, incidência e adjacência | 12 | Implementação funcional isolada | 0.50 | 6.00 |
 | Tactical region topology | 14 | Validada | 0.85 | 11.90 |
 | Shared subtile border bands | 16 | Validada | 0.85 | 13.60 |
-| Strategic ↔ tactical hierarchy/refinement mapping | 16 | Implementação funcional isolada | 0.50 | 8.00 |
+| Strategic ↔ tactical hierarchy/refinement mapping | 16 | Integrada ao sistema | 0.70 | 11.20 |
 | Canonical deterministic topology generation | 6 | Inexistente | 0.00 | 0.00 |
 | Topological validation e navigability | 6 | Integrada ao sistema | 0.70 | 4.20 |
 | Scalability / headless performance baseline | 4 | Inexistente | 0.00 | 0.00 |
-| **TOTAL** | **90** |  |  | **51.70** |
+| **TOTAL** | **90** |  |  | **54.90** |
 
 M2.1.1 foi um audit arquitetural e não promoveu maturidade por si só.
 
@@ -388,7 +388,13 @@ M2.5.2-B introduz a identidade física global e o contrato de incidência coarse
 
 M2.5.2-D implementa traversal determinístico de menor caminho diretamente sobre a adjacency autoritativa da fine topology. M2.5.2-E fecha a validação acumulada do reference target sem alterar production code: confirma `362/362` tiles, assinatura `312/30/20`, cobertura `30/30` de coarse edges, cobertura `20/20` de coarse vertices, reciprocidade das `1080` fine edges e valida exaustivamente os `65.703/65.703` pares de shortest path contra uma BFS independente. Como mapping, incidence e navigability agora operam em conjunto no mesmo physical mesh e o contrato integrado foi exaustivamente provado no reference target, `Topological validation e navigability` é promovida de `Implementação funcional isolada — fator 0.50` para `Integrada ao sistema — fator 0.70`. A promoção para `Validada — 0.85` permanece condicionada ao gate cross-platform/final de M2.5.5.
 
-M2.5.3-A prova que o suporte estratégico Class I/II/III, o contrato `GoldbergScaledRefinement` e o physical mapper possuem envelopes diferentes. O physical mapper segue restrito a `G(1,0) -> G(6,0)`; o mapa de 12 seeds é insuficiente para coarse Class I não unitária e Class II; Class III ainda não expõe provenance adequada. M2.5.3-B congela como direção de design o physical hierarchy oficial Class I em scale 6, mantendo Class II/III como suporte estratégico/refinement-candidate, sem alegar physical lineage universal. Nenhuma promoção de GPP ocorre no design.
+M2.5.3-A prova que o suporte estratégico Class I/II/III, o contrato `GoldbergScaledRefinement` e o physical mapper possuem envelopes diferentes. M2.5.3-B congela o physical hierarchy oficial de M2 como Class I em scale 6, preservando Class II/III como suporte estratégico sem alegar physical lineage universal.
+
+M2.5.3-C implementa durable Class I construction lineage usando as mesmas integer/combinatorial `SubdivisionLatticeVertexKey` da geração autoritativa. Cada coarse Class I cell recebe um fine anchor exato pela multiplicação da construction key pelo scale 6. O `PhysicalTacticalIncidenceMapper` passa a aceitar as formas oficiais `G(k,0) -> G(6k,0)` e `G(0,k) -> G(0,6k)`, deriva ownership por multi-source BFS sobre a adjacency da fine topology, valida toda incidência 2-way contra coarse edges e toda incidência 3-way contra coarse vertices e aplica a assinatura generalizada congelada. A implementação preserva o reference target e valida `k=1,2,3`, incluindo o eixo Class I invertido, sem floating-point ownership, sem igualdade de ordinal local como lineage e sem adjacency cross-region sintética.
+
+Como durable lineage, authoritative topology generation, physical incidence materialization e fine-topology traversal agora operam conjuntamente dentro do physical hierarchy oficial, `Strategic ↔ tactical hierarchy/refinement mapping` é promovida de `Implementação funcional isolada — fator 0.50 — 8.00 GPP` para `Integrada ao sistema — fator 0.70 — 11.20 GPP`.
+
+A promoção para `Validada — fator 0.85` permanece condicionada ao accumulated coverage gate M2.5.3-D e aos gates posteriores de performance/cross-platform aplicáveis.
 
 Esses pesos constituem o baseline inicial.
 
@@ -607,7 +613,11 @@ Etapa:
 
 Subetapa atual:
 
-**M2.5.3-C — Class I Scale-6 Durable Lineage & Physical Mapping**
+**M2.5.3-D — Accumulated Coverage Validation & M2.5.3 Close**
+
+M2.5.3-C — Class I Scale-6 Durable Lineage & Physical Mapping:
+
+**concluído em 2026-09-28**
 
 M0 — Project Baseline:
 
@@ -719,11 +729,11 @@ Baseline V1:
 
 Progresso oficial:
 
-**12,2%**
+**12,5%**
 
 GPP conquistados:
 
-**121,70 / 1000**
+**124,90 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -731,7 +741,7 @@ Foundation / Simulation Kernel:
 
 Topologia planetária / Goldberg:
 
-**51,70 / 90 GPP — 57,4%**
+**54,90 / 90 GPP — 61,0%**
 
 Scope Confidence:
 
@@ -747,11 +757,11 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M2.5.3-C durable Class I scale-6 lineage e generalized physical mapping**
+**M2.5.3-D accumulated Class I scale-6 coverage validation e M2.5.3 close**
 
 Última revisão de baseline:
 
-**2026-09-20**
+**2026-09-28**
 
 ---
 

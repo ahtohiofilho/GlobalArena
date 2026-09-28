@@ -2017,11 +2017,44 @@ Decomposição:
 
 - M2.5.3-A — Hierarchy/Refinement Coverage Feasibility Audit — concluído;
 - M2.5.3-B — Official Coverage Contract & Design Freeze — concluído;
-- M2.5.3-C — Class I Scale-6 Durable Lineage & Physical Mapping;
-- M2.5.3-D — Accumulated Coverage Validation & M2.5.3 Close.
+- M2.5.3-C — Class I Scale-6 Durable Lineage & Physical Mapping — concluído;
+- M2.5.3-D — Accumulated Coverage Validation & M2.5.3 Close — atual.
 
-Nenhuma promoção de GPP ocorre no design.
+M2.5.3-C implementation evidence:
+
+- durable Class I lineage derives exact fine anchors by scaling canonical integer construction keys;
+- official physical mapper accepts only Class I scale 6;
+- `G(1,0) -> G(6,0)` remains compatible;
+- `G(0,1) -> G(0,6)`, `G(2,0) -> G(12,0)`, `G(0,2) -> G(0,12)` and `G(3,0) -> G(18,0)` are covered;
+- generalized signatures `312/30/20/362`, `1242/120/80/1442` and `2792/270/180/3242` are enforced;
+- every 2-way incidence validates against an authoritative coarse edge;
+- every 3-way incidence validates against an authoritative coarse vertex;
+- physical traversal remains based on authoritative fine adjacency;
+- Class II/III physical hierarchy remains outside the official M2 support envelope;
+- suite accumulated after implementation: `429/429`.
+
+Maturity promotion:
+
+`Strategic ↔ tactical hierarchy/refinement mapping`
+
+from:
+
+**Implementação funcional isolada — fator 0.50 — 8.00 GPP**
+
+to:
+
+**Integrada ao sistema — fator 0.70 — 11.20 GPP**
+
+Increment:
+
+**+3.20 GPP**
+
+Current totals:
+
+- GPP: `124.90 / 1000`;
+- Global Progress: `12.5%`;
+- Planet Topology: `54.90 / 90 — 61.0%`.
 
 Próximo gate:
 
-**M2.5.3-C — Class I Scale-6 Durable Lineage & Physical Mapping**
+**M2.5.3-D — Accumulated Coverage Validation & M2.5.3 Close**

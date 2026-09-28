@@ -11164,3 +11164,120 @@ Current product-development gate remains:
 **M2.5.3-C — Class I Scale-6 Durable Lineage & Physical Mapping**
 
 GA-SRP is engineering infrastructure and does not create a gameplay milestone.
+---
+
+## 2026-09-28 — M2.5.3-C durable Class I scale-6 lineage and physical mapping close
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate**
+
+Subcheckpoint closed:
+
+**M2.5.3-C — Class I Scale-6 Durable Lineage & Physical Mapping**
+
+Baseline:
+
+`4dc7d1808cff656e2db49e074a949e1968203175`
+
+Implementation audit evidence:
+
+`GlobalArena-Evidence-M2.5.3-C-CLASS-I-LINEAGE-IMPLEMENTATION-R3-20260928-171219.zip`
+
+Evidence SHA-256:
+
+`4bf920c56c271b28146a425902cb93d5e70dd9fd449955fd2f365d11f4ac0ea1`
+
+Audit result:
+
+**PASS_READY_FOR_M2_5_3_C_IMPLEMENTATION_FORMAL_CLOSE**
+
+Production implementation:
+
+- `GoldbergStrategicTopologyGenerator` now exposes internal durable Class I scale-refinement lineage based on canonical integer construction keys;
+- every coarse Class I cell maps to one distinct authoritative fine anchor by scaling its construction key;
+- `PhysicalTacticalIncidenceMapper` now supports the official Class I scale-6 family rather than only `G(1,0) -> G(6,0)`;
+- physical ownership is derived by multi-source BFS over authoritative fine topology adjacency;
+- every 2-way incidence validates against a coarse `StrategicEdge`;
+- every 3-way incidence validates against a coarse `StrategicVertex`;
+- frozen generalized Class I scale-6 signatures are enforced at runtime;
+- Class II/III physical hierarchy remains explicitly unsupported by M2.
+
+Validated coverage:
+
+- `G(1,0) -> G(6,0)`: `312 / 30 / 20 / 362`;
+- `G(0,1) -> G(0,6)`: reference-equivalent inverted axis coverage;
+- `G(2,0) -> G(12,0)`: `1242 / 120 / 80 / 1442`;
+- `G(0,2) -> G(0,12)`: `1242 / 120 / 80 / 1442`;
+- `G(3,0) -> G(18,0)`: `2792 / 270 / 180 / 3242`;
+- every coarse edge represented exactly once in the validated generalized cases;
+- every coarse vertex represented exactly once in the validated generalized cases;
+- repeated materialization deterministic;
+- pathfinder traverses across distinct exclusive coarse owners using authoritative fine adjacency;
+- floating-point ownership: False;
+- local-ID equality as lineage: False;
+- synthetic cross-region adjacency: False.
+
+Quality gate:
+
+- Release build: PASS;
+- compiler warnings: `0`;
+- compiler errors: `0`;
+- tests: `429/429`;
+- failed: `0`;
+- not executed: `0`;
+- implementation changeset: exactly `4` files;
+- implementation QA commit/push: False;
+- evidence manifest payloads: `14/14` verified.
+
+Maturity promotion:
+
+`Strategic ↔ tactical hierarchy/refinement mapping`
+
+from:
+
+**Implementação funcional isolada — factor 0.50 — 8.00 GPP**
+
+to:
+
+**Integrada ao sistema — factor 0.70 — 11.20 GPP**
+
+GPP change:
+
+**+3.20**
+
+GPP:
+
+**124.90 / 1000**
+
+Global Progress:
+
+**12.5%**
+
+Planet Topology:
+
+**54.90 / 90 — 61.0%**
+
+`RISK-003` remains:
+
+**HIGH**
+
+Reason:
+
+Durable lineage and generalized official Class I physical mapping are implemented and integrated, but accumulated coverage validation, measured performance and later M2 exit regression remain open.
+
+M2 remains:
+
+**OPEN**
+
+M2.5.3-C status:
+
+**CLOSED**
+
+Next gate:
+
+**M2.5.3-D — Accumulated Coverage Validation & M2.5.3 Close**

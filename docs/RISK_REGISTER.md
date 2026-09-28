@@ -509,9 +509,24 @@ Esse budget não fecha `RISK-002` nem `RISK-012`, não representa high-resolutio
 
 `RISK-003` permanece HIGH.
 
+M2.5.3-C generalized Class I physical hierarchy implementation passed its implementation audit:
+
+- canonical integer construction keys now provide durable lineage for every coarse Class I strategic cell;
+- coarse construction keys scale exactly to distinct authoritative fine anchors;
+- physical incidence materialization now accepts the official Class I scale-6 family instead of only the unit-base reference pair;
+- representative `k=1`, `k=2` and `k=3` cases passed, including the inverted Class I axis;
+- frozen generalized count signatures are enforced at runtime;
+- every observed 2-way incidence must equal one authoritative coarse edge signature;
+- every observed 3-way incidence must equal one authoritative coarse vertex signature;
+- ownership remains independent of floating-point coordinates and local ordinal equality;
+- physical traversal remains on authoritative fine adjacency;
+- Class II/III remain outside official M2 physical hierarchy scope.
+
+This materially mitigates the durable-lineage and generalized Class I coverage portion of RISK-003, but the risk remains HIGH until accumulated coverage validation, performance acceptance and the later M2 exit gates complete.
+
 Próxima ação:
 
-submeter o design M2.5.1 a audit e, após congelamento, iniciar M2.5.2 — Strategic/Tactical Physical Boundary Attachment & Cross-Region Traversal.
+executar M2.5.3-D — Accumulated Coverage Validation & M2.5.3 Close.
 
 ---
 

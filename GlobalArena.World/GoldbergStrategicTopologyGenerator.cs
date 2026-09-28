@@ -101,7 +101,128 @@ public static class GoldbergStrategicTopologyGenerator
         throw new NotSupportedException(
             "Canonical seed-vertex provenance is not exposed for Class III generation.");
     }
+internal static ClassIScaledRefinementGenerationResult GenerateClassIScaledRefinementLineage(
+    GoldbergScaledRefinement refinement)
+{
+    ArgumentNullException.ThrowIfNull(refinement);
 
+    if (!IsClassI(
+        refinement.CoarseParameters)
+        || !IsClassI(
+            refinement.FineParameters))
+    {
+        throw new NotSupportedException(
+            "Class I scaled refinement lineage supports only G(k,0) or G(0,k) coarse and fine topologies.");
+    }
+
+    var coarseFrequency =
+        Math.Max(
+            refinement.CoarseParameters.M,
+            refinement.CoarseParameters.N);
+
+    var fineFrequency =
+        Math.Max(
+            refinement.FineParameters.M,
+            refinement.FineParameters.N);
+
+    if (checked(coarseFrequency * refinement.Scale)
+        != fineFrequency)
+    {
+        throw new InvalidOperationException(
+            "Class I scaled refinement frequency must preserve the refinement scale.");
+    }
+
+    var coarse =
+        GenerateFromTriangularSeed(
+            refinement.CoarseParameters,
+            IcosahedronFaces,
+            coarseFrequency);
+
+    var fine =
+        GenerateFromTriangularSeed(
+            refinement.FineParameters,
+            IcosahedronFaces,
+            fineFrequency);
+
+    var coarseKeys =
+        CreateOrderedSubdivisionVertexKeys(
+            IcosahedronFaces,
+            coarseFrequency);
+
+    var fineKeys =
+        CreateOrderedSubdivisionVertexKeys(
+            IcosahedronFaces,
+            fineFrequency);
+
+    if (coarseKeys.Length
+        != coarse.Topology.Cells.Count
+        || fineKeys.Length
+        != fine.Topology.Cells.Count)
+    {
+        throw new InvalidOperationException(
+            "Class I construction lineage keys must cover both authoritative topologies.");
+    }
+
+    var fineCellIdsByKey =
+        new Dictionary<
+            SubdivisionLatticeVertexKey,
+            StrategicCellId>(
+            fineKeys.Length);
+
+    for (var index = 0;
+         index < fineKeys.Length;
+         index++)
+    {
+        fineCellIdsByKey.Add(
+            fineKeys[index],
+            new StrategicCellId(
+                (ulong)index + 1UL));
+    }
+
+    var fineAnchorByCoarseCellId =
+        new Dictionary<
+            StrategicCellId,
+            StrategicCellId>(
+            coarseKeys.Length);
+
+    for (var index = 0;
+         index < coarseKeys.Length;
+         index++)
+    {
+        var coarseCellId =
+            new StrategicCellId(
+                (ulong)index + 1UL);
+
+        var scaledKey =
+            coarseKeys[index]
+                .Scale(
+                    refinement.Scale);
+
+        if (!fineCellIdsByKey.TryGetValue(
+            scaledKey,
+            out var fineCellId))
+        {
+            throw new InvalidOperationException(
+                "Scaled Class I construction key is missing from the authoritative fine topology.");
+        }
+
+        fineAnchorByCoarseCellId.Add(
+            coarseCellId,
+            fineCellId);
+    }
+
+    return new ClassIScaledRefinementGenerationResult(
+        coarse.Topology,
+        fine.Topology,
+        fineAnchorByCoarseCellId);
+}
+
+private static bool IsClassI(
+    GoldbergParameters parameters)
+{
+    return parameters.IsValid
+        && ((parameters.M == 0) != (parameters.N == 0));
+}
     private static TriangularSeedGenerationResult GenerateFromTriangularSeed(
         GoldbergParameters parameters,
         IReadOnlyList<CanonicalTriangle> seedFaces,
@@ -109,29 +230,10 @@ public static class GoldbergStrategicTopologyGenerator
     {
         EnsureMaterializable(parameters);
 
-        var vertexKeys =
-            new HashSet<SubdivisionLatticeVertexKey>();
-
-        foreach (var face in seedFaces)
-        {
-            for (var i = 0; i <= frequency; i++)
-            {
-                for (var j = 0; j <= frequency - i; j++)
-                {
-                    vertexKeys.Add(
-                        CreateSubdivisionVertexKey(
-                            face,
-                            frequency,
-                            i,
-                            j));
-                }
-            }
-        }
-
         var orderedVertexKeys =
-            vertexKeys
-                .Order()
-                .ToArray();
+            CreateOrderedSubdivisionVertexKeys(
+                seedFaces,
+                frequency);
 
         if ((ulong)orderedVertexKeys.Length
             != parameters.StrategicCellCount)
@@ -450,7 +552,33 @@ public static class GoldbergStrategicTopologyGenerator
             dominantSeedVertexIdsByCell);
     }
 
-    private static CanonicalTriangle[] CreateClassIISeedFaces()
+private static SubdivisionLatticeVertexKey[] CreateOrderedSubdivisionVertexKeys(
+    IReadOnlyList<CanonicalTriangle> seedFaces,
+    int frequency)
+{
+    var vertexKeys =
+        new HashSet<SubdivisionLatticeVertexKey>();
+
+    foreach (var face in seedFaces)
+    {
+        for (var i = 0; i <= frequency; i++)
+        {
+            for (var j = 0; j <= frequency - i; j++)
+            {
+                vertexKeys.Add(
+                    CreateSubdivisionVertexKey(
+                        face,
+                        frequency,
+                        i,
+                        j));
+            }
+        }
+    }
+
+    return vertexKeys
+        .Order()
+        .ToArray();
+}    private static CanonicalTriangle[] CreateClassIISeedFaces()
     {
         var incidentFaceCentersBySeedEdge =
             new Dictionary<CanonicalSeedPair, List<int>>();
@@ -626,7 +754,89 @@ public static class GoldbergStrategicTopologyGenerator
         }
     }
 
-    internal sealed class TriangularSeedGenerationResult
+internal sealed class ClassIScaledRefinementGenerationResult
+{
+    public StrategicTopology CoarseTopology { get; }
+
+    public StrategicTopology FineTopology { get; }
+
+    public IReadOnlyDictionary<StrategicCellId, StrategicCellId>
+        FineAnchorByCoarseCellId { get; }
+
+    public ClassIScaledRefinementGenerationResult(
+        StrategicTopology coarseTopology,
+        StrategicTopology fineTopology,
+        IReadOnlyDictionary<StrategicCellId, StrategicCellId>
+            fineAnchorByCoarseCellId)
+    {
+        ArgumentNullException.ThrowIfNull(
+            coarseTopology);
+        ArgumentNullException.ThrowIfNull(
+            fineTopology);
+        ArgumentNullException.ThrowIfNull(
+            fineAnchorByCoarseCellId);
+
+        if (fineAnchorByCoarseCellId.Count
+            != coarseTopology.Cells.Count)
+        {
+            throw new ArgumentException(
+                "Class I scaled refinement lineage must contain exactly one fine anchor for every coarse strategic cell.",
+                nameof(fineAnchorByCoarseCellId));
+        }
+
+        var expectedCoarseCellIds =
+            coarseTopology.Cells
+                .Select(cell => cell.Id)
+                .OrderBy(id => id.Value)
+                .ToArray();
+
+        var actualCoarseCellIds =
+            fineAnchorByCoarseCellId.Keys
+                .OrderBy(id => id.Value)
+                .ToArray();
+
+        if (!actualCoarseCellIds.SequenceEqual(
+            expectedCoarseCellIds))
+        {
+            throw new ArgumentException(
+                "Class I scaled refinement lineage must cover every coarse strategic cell exactly once.",
+                nameof(fineAnchorByCoarseCellId));
+        }
+
+        var fineCellIds =
+            fineAnchorByCoarseCellId.Values
+                .OrderBy(id => id.Value)
+                .ToArray();
+
+        if (fineCellIds.Distinct().Count()
+            != fineCellIds.Length
+            || fineCellIds.Any(
+                id =>
+                    !id.IsValid
+                    || id.Value
+                        > (ulong)fineTopology.Cells.Count))
+        {
+            throw new ArgumentException(
+                "Class I scaled refinement lineage must reference distinct existing fine strategic cells.",
+                nameof(fineAnchorByCoarseCellId));
+        }
+
+        CoarseTopology =
+            coarseTopology;
+
+        FineTopology =
+            fineTopology;
+
+        FineAnchorByCoarseCellId =
+            new System.Collections.ObjectModel.ReadOnlyDictionary<
+                StrategicCellId,
+                StrategicCellId>(
+                new Dictionary<
+                    StrategicCellId,
+                    StrategicCellId>(
+                    fineAnchorByCoarseCellId));
+    }
+}    internal sealed class TriangularSeedGenerationResult
     {
         public StrategicTopology Topology { get; }
 
@@ -806,7 +1016,24 @@ public static class GoldbergStrategicTopologyGenerator
             return false;
         }
 
-        public int[] GetDominantSeedVertexIds()
+    public SubdivisionLatticeVertexKey Scale(
+        int scale)
+    {
+        if (scale <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(scale),
+                "Subdivision lattice scale must be positive.");
+        }
+
+        return new SubdivisionLatticeVertexKey(
+            FirstVertex,
+            checked(FirstWeight * scale),
+            SecondVertex,
+            checked(SecondWeight * scale),
+            ThirdVertex,
+            checked(ThirdWeight * scale));
+    }        public int[] GetDominantSeedVertexIds()
         {
             var weightedVertices =
                 new[]

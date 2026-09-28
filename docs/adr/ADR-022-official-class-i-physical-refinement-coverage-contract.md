@@ -1,6 +1,6 @@
 # ADR-022 — Official Class I Physical Refinement Coverage Contract
 
-**Status:** Accepted — frozen by M2.5.3-B on 2026-09-28
+**Status:** Accepted — frozen by M2.5.3-B and implemented by M2.5.3-C on 2026-09-28
 **Date:** 2026-09-28
 
 ## Context
@@ -238,18 +238,51 @@ M2.5.4 establishes the first quantitative envelope for the topology model accept
 
 ### 12. Progress accounting
 
-This design decision does not promote GPP by itself.
+The M2.5.3-B design freeze itself promoted no GPP.
 
-Current totals remain:
+M2.5.3-C later supplied implementation and validation evidence for durable Class I scale-6 lineage and generalized physical mapping.
 
-- GPP: `121.70 / 1000`;
-- Global Progress: `12.2%`;
-- Planet Topology: `51.70 / 90 — 57.4%`;
-- `Strategic ↔ tactical hierarchy/refinement mapping`: `Implementação funcional isolada — 0.50`;
+Current totals after M2.5.3-C formal close:
+
+- GPP: `124.90 / 1000`;
+- Global Progress: `12.5%`;
+- Planet Topology: `54.90 / 90 — 61.0%`;
+- `Strategic ↔ tactical hierarchy/refinement mapping`: `Integrada ao sistema — 0.70`;
 - `Topological validation e navigability`: `Integrada ao sistema — 0.70`;
 - `RISK-003`: HIGH.
 
-Any maturity promotion requires implementation and validation evidence.
+The `Strategic ↔ tactical hierarchy/refinement mapping` promotion contributes `+3.20 GPP`.
+
+Promotion to `Validada — 0.85` remains reserved for accumulated coverage validation and the applicable later exit gates.
+
+### 13. M2.5.3-C implementation evidence
+
+Implementation audit evidence:
+
+`GlobalArena-Evidence-M2.5.3-C-CLASS-I-LINEAGE-IMPLEMENTATION-R3-20260928-171219.zip`
+
+SHA-256:
+
+`4bf920c56c271b28146a425902cb93d5e70dd9fd449955fd2f365d11f4ac0ea1`
+
+The implementation:
+
+- shares canonical Class I subdivision construction keys with authoritative topology generation;
+- maps every coarse Class I cell to one exact fine anchor by scaling the integer construction key by the refinement scale;
+- rejects physical hierarchy families outside official Class I scale 6;
+- uses multi-source BFS over authoritative fine adjacency to derive nearest coarse ownership;
+- validates 2-way ties against authoritative coarse edges;
+- validates 3-way ties against authoritative coarse vertices;
+- enforces the frozen generalized Class I scale-6 signatures;
+- preserves the accepted `G(1,0) -> G(6,0)` reference behavior;
+- validates representative `k=2` and `k=3` cases and the inverted Class I axis;
+- does not use floating-point ownership;
+- does not use local `StrategicCellId` ordinal equality as cross-resolution lineage;
+- does not synthesize cross-region adjacency.
+
+The audit passed with Release build `0 warnings / 0 errors` and `429/429` tests.
+
+M2.5.3-D remains responsible for accumulated coverage validation and stage closure.
 
 ## Consequences
 
