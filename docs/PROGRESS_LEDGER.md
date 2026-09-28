@@ -10394,15 +10394,15 @@ Design audit result:
 
 Evidence reviewed:
 
-$DesignEvidenceName
+`GlobalArena-Evidence-M2.5.2-B-VERTEX-AWARE-PHYSICAL-MESH-DESIGN-R2-20260920-094603.zip`
 
 Evidence SHA-256:
 
-$DesignEvidenceSha256
+`b165f3d3db1ef1e9dbe030d8adca75577952a5ce8aabdc54dbe8034f8587f363`
 
 Audit confirmation:
 
-- HEAD/origin baseline remained $ExpectedHead;
+- HEAD/origin baseline remained `714cc1f06bbb1dc411fdb1bfcda2c3a19f8a9acd`;
 - exact six-file documentation changeset;
 - no production file modified;
 - Release build passed with 0 warnings and 0 errors;

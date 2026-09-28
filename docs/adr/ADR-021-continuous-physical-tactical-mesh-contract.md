@@ -305,11 +305,11 @@ A physical tactical tile is a single canonical cell of one continuous fine Goldb
 
 Design evidence package:
 
-$DesignEvidenceName
+`GlobalArena-Evidence-M2.5.2-B-VERTEX-AWARE-PHYSICAL-MESH-DESIGN-R2-20260920-094603.zip`
 
 Evidence package SHA-256:
 
-$DesignEvidenceSha256
+`b165f3d3db1ef1e9dbe030d8adca75577952a5ce8aabdc54dbe8034f8587f363`
 
 Audit result:
 
@@ -317,7 +317,7 @@ Audit result:
 
 Validated:
 
-- baseline HEAD/origin/main = $ExpectedHead;
+- baseline HEAD/origin/main = `714cc1f06bbb1dc411fdb1bfcda2c3a19f8a9acd`;
 - Release build = PASS;
 - compiler warnings = 0;
 - compiler errors = 0;
