@@ -11080,3 +11080,87 @@ M2 remains:
 Next gate:
 
 **M2.5.3-C — Class I Scale-6 Durable Lineage & Physical Mapping**
+---
+
+## 2026-09-28 — GA Script Reliability Protocol formally adopted
+
+Engineering infrastructure:
+
+**GA-SRP 1.0 — Global Arena Script Reliability Protocol**
+
+Adoption evidence:
+
+`GlobalArena-Evidence-GA-SCRIPT-RELIABILITY-PROTOCOL-BOOTSTRAP-R5-20260928-170041.zip`
+
+Adoption evidence SHA-256:
+
+`b6f6b56ec137a57db6285040e6a152ded2fa036eaf8dbbd311171eafba01a3a1`
+
+Formally adopted artifacts:
+
+- `docs/SCRIPT_RELIABILITY_PROTOCOL.md` — normative source of truth;
+- `scripts/Test-GAScriptReliability.ps1` — executable reliability gate;
+- `scripts/Invoke-GASafeScript.ps1` — preferred one-command safe runner.
+
+Validated adoption gate:
+
+- Windows PowerShell: `5.1.26100.9444`;
+- validator self-tests: `10/10`;
+- bootstrap parser errors: `0`;
+- bootstrap rule violations: `0`;
+- validator parser errors: `0`;
+- validator rule violations: `0`;
+- safe runner parser errors: `0`;
+- safe runner rule violations: `0`;
+- Release build: PASS;
+- compiler warnings: `0`;
+- compiler errors: `0`;
+- repository tests: `417/417`;
+- staged infrastructure files: `3`;
+- evidence manifest payloads: `12/12` verified;
+- bootstrap commit/push: False.
+
+Protocol rules accumulated through adoption:
+
+**GA-SR-001 through GA-SR-023**
+
+Operating rule:
+
+**a reusable failure class discovered once becomes a permanent regression guard whenever mechanical validation is feasible.**
+
+Authority:
+
+- repository protocol is normative;
+- conversation memory is advisory;
+- new repository automation must pass the appropriate GA-SRP profile before substantive execution;
+- QA and formal-close scripts remain separate.
+
+Progress accounting:
+
+**+0.00 GPP**
+
+Current GPP remains:
+
+**121.70 / 1000**
+
+Global Progress remains:
+
+**12.2%**
+
+Planet Topology remains:
+
+**51.70 / 90 — 57.4%**
+
+`RISK-003` remains:
+
+**HIGH**
+
+M2 remains:
+
+**OPEN**
+
+Current product-development gate remains:
+
+**M2.5.3-C — Class I Scale-6 Durable Lineage & Physical Mapping**
+
+GA-SRP is engineering infrastructure and does not create a gameplay milestone.
