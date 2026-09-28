@@ -1016,3 +1016,42 @@ The count decomposition `12 + 60 + 20 = 92` is a design target only and does not
 Global Risk Level remains:
 
 **HIGH**
+---
+
+# 10. M2.5.2-C provenance target correction
+
+**Date:** 2026-09-28
+
+Evidence:
+
+`GlobalArena-Evidence-M2.5.2-C-R3-READONLY-PROVENANCE-INCIDENCE-AUDIT-20260928-090905.zip`
+
+Result:
+
+**PASS_M2_5_2_C_TARGET_CORRECTION_REQUIRED**
+
+The previous section 9 target `G(1,0) -> G(3,0)` is superseded as the first complete physical-incidence target.
+
+Canonical provenance classification established:
+
+- scale 2: edge-aware only — `12/30/0`;
+- scale 3: vertex-aware only — `72/0/20`;
+- scale 6: edge-and-vertex-aware — `312/30/20`.
+
+M2.5.2-C therefore moves its first materialization target to:
+
+`G(1,0) -> G(6,0)`
+
+This does not reduce `RISK-003` yet because the production materializer and complete coverage proof remain absent.
+
+`RISK-003 — Goldberg hierarchy mapping` remains:
+
+**HIGH**
+
+`RISK-002 — Tactical resolution scalability` remains open.
+
+`RISK-012 — Memory footprint` remains open.
+
+Global Risk Level remains:
+
+**HIGH**

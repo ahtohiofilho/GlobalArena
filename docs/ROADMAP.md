@@ -1556,8 +1556,10 @@ Design proposto em ADR-021:
 - `TacticalCellId` permanece reference/region-owned;
 - `SharedBorderElementId` permanece logical/edge-scoped;
 - traversal físico usa a adjacency da fine Goldberg topology;
-- primeiro target vertex-aware: `G(1,0) -> G(3,0)`, scale 3;
-- a decomposição `12 + 60 + 20 = 92` é design target ainda não provado.
+- audit de provenance M2.5.2-C: `G(1,0) -> G(3,0)`, scale 3, é vertex-aware apenas (`72 interior + 0 edge + 20 vertex = 92`);
+- primeiro target de materialização com edge + vertex simultaneamente: `G(1,0) -> G(6,0)`, scale 6;
+- decomposição auditada do novo target: `312 interior + 30 edge-shared + 20 vertex-shared = 362`;
+- a materialização production desse mapping permanece pendente no M2.5.2-C.
 
 Decomposição de M2.5.2:
 

@@ -4299,7 +4299,7 @@ Nenhum dos dois será usado como identidade física universal.
 
 A navegação cross-region deverá usar a adjacency da topologia fina contínua, evitando costura por adjacências artificiais entre boards regionais independentes.
 
-A primeira referência vertex-aware a ser provada em implementação é `G(1,0) -> G(3,0)`, scale 3. A decomposição de contagem `12 + 60 + 20 = 92` é alvo de design e ainda depende de prova de provenance/mapping.
+O audit de provenance do M2.5.2-C corrigiu o primeiro target de materialização. `G(1,0) -> G(3,0)`, scale 3, é vertex-aware mas não edge-aware: `72 interior + 0 edge-shared + 20 vertex-shared = 92`. O primeiro scale testado que contém simultaneamente incidência física 2-way e 3-way é `G(1,0) -> G(6,0)`, scale 6, com target de materialização `312 interior + 30 edge-shared + 20 vertex-shared = 362`. Essa decomposição é agora sustentada pelo audit combinatório de provenance, mas ainda precisa ser materializada e validada em production code pelo M2.5.2-C.
 
 Detalhes e limites estão congelados em `ADR-021`.
 ### M2.5.2-B implementation evidence

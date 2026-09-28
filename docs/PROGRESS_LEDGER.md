@@ -10547,3 +10547,98 @@ M2.5.2-B status:
 Next gate:
 
 **M2.5.2-C — Vertex-Aware Physical Incidence Materialization**
+---
+
+## 2026-09-28 — M2.5.2-C provenance audit and target correction
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate**
+
+Subcheckpoint:
+
+**M2.5.2-C — Vertex-Aware Physical Incidence Materialization**
+
+Baseline:
+
+`8ebb5129a3ec0968e95191e5f32d189d1086ead8`
+
+Evidence:
+
+`GlobalArena-Evidence-M2.5.2-C-R3-READONLY-PROVENANCE-INCIDENCE-AUDIT-20260928-090905.zip`
+
+Evidence SHA-256:
+
+`1bb41fb0943fab64f015558cc7836adac60e154c977f150a945e35daa6c67d1f`
+
+Audit result:
+
+**PASS_M2_5_2_C_TARGET_CORRECTION_REQUIRED**
+
+Quality gate:
+
+- Release build: PASS;
+- compiler warnings: 0;
+- compiler errors: 0;
+- tests: 389/389;
+- failed: 0;
+- not executed: 0;
+- tracked hash drift: 0;
+- worktree clean after: True;
+- repository mutation: False.
+
+Provenance findings:
+
+- `G(1,0) -> G(2,0)`: `12 interior + 30 edge-shared + 0 vertex-shared = 42`;
+- `G(1,0) -> G(3,0)`: `72 interior + 0 edge-shared + 20 vertex-shared = 92`;
+- `G(1,0) -> G(6,0)`: `312 interior + 30 edge-shared + 20 vertex-shared = 362`.
+
+Decision:
+
+The original `G(1,0) -> G(3,0)` M2.5.2-C reference target is superseded because it does not exercise 2-way edge incidence.
+
+The first complete edge-and-vertex-aware materialization target becomes:
+
+**`G(1,0) -> G(6,0)`, scale 6**
+
+Expected production incidence signature:
+
+**312 interior / 30 edge-shared / 20 vertex-shared / 362 total**
+
+This correction does not yet implement the materializer.
+
+GPP change:
+
+**0.00**
+
+GPP remains:
+
+**109.50 / 1000**
+
+Global Progress remains:
+
+**11.0%**
+
+Planet Topology remains:
+
+**39.50 / 90 — 43.9%**
+
+`Strategic ↔ tactical hierarchy/refinement mapping` remains:
+
+**Inexistente — factor 0.00**
+
+`RISK-003` remains:
+
+**HIGH**
+
+M2 remains:
+
+**OPEN**
+
+Next gate:
+
+**M2.5.2-C MATERIALIZER IMPLEMENTATION**

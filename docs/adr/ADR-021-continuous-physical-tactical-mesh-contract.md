@@ -1,6 +1,6 @@
 # ADR-021 — Continuous Physical Tactical Mesh Identity, Coarse Incidence and Cross-Region Traversal Contract
 
-**Status:** Accepted
+**Status:** Accepted — amended 2026-09-28 by M2.5.2-C provenance audit
 **Date:** 2026-09-20
 
 ## Context
@@ -171,33 +171,43 @@ Crossing a strategic boundary is observed from coarse incidence; it is not imple
 
 At a vertex-shared tile, one canonical fine tile may participate in traversal involving any of the three incident coarse strategic regions according to the fine topology's actual adjacency.
 
-### 9. Minimal vertex-aware reference target
+### 9. Minimal edge-and-vertex-aware materialization target
 
-The first vertex-aware implementation target for M2.5.2 is:
+The M2.5.2-C provenance audit evaluated the canonical Class I triangular-seed subdivision by coarse-cell barycentric dominance.
 
-`G(1,0) -> G(3,0)`
+The deterministic incidence interpretation is:
 
-with scale `3`.
+- unique maximum seed weight -> interior to one coarse `StrategicCell`;
+- two-way maximum tie -> incident to one coarse `StrategicEdge`;
+- three-way maximum tie -> incident to one coarse `StrategicVertex`.
 
-The count relationship is structurally compatible with the intended minimal vertex-aware partition:
+Reference findings:
 
-- coarse cells: `12`;
-- coarse edges: `30`;
-- coarse vertices: `20`;
-- fine cells: `92`;
-- design-target decomposition: `12 + (30 * 2) + 20 = 92`.
+- `G(1,0) -> G(2,0)`, scale `2`: `12 interior + 30 edge-shared + 0 vertex-shared = 42`;
+- `G(1,0) -> G(3,0)`, scale `3`: `72 interior + 0 edge-shared + 20 vertex-shared = 92`;
+- `G(1,0) -> G(6,0)`, scale `6`: `312 interior + 30 edge-shared + 20 vertex-shared = 362`.
 
-Interpretation target:
+Therefore the original scale-3 target is rejected as the first complete M2.5.2-C materialization target because it contains no 2-way edge-shared fine cells under the canonical provenance classifier.
 
-- 12 coarse-cell-center physical tiles;
-- 2 edge-shared physical tiles per coarse edge;
-- 1 vertex-shared physical tile per coarse vertex.
+The corrected first materialization target is:
 
-This count decomposition is a design target, not implementation evidence.
+`G(1,0) -> G(6,0)`
 
-M2.5.2-C must prove the actual canonical mapping from generator/refinement provenance before the decomposition can be treated as validated.
+with scale `6`.
 
-The already validated `G(1,0) -> G(2,0)` scale-2 reference pair remains useful for M2.4 continuity evidence, but it does not currently provide a separate proven set of vertex-shared physical cells.
+Audit-derived target decomposition:
+
+- fine cells: `362`;
+- interior physical tiles: `312`;
+- edge-shared physical tiles: `30`;
+- vertex-shared physical tiles: `20`;
+- total: `312 + 30 + 20 = 362`.
+
+This audit proves target suitability and the expected incidence signature. It does not yet constitute the production coarse-to-fine materializer.
+
+M2.5.2-C must still materialize every fine cell exactly once, derive its canonical coarse incidence, and reproduce the audited `312/30/20` signature.
+
+The scale-2 and scale-3 pairs remain useful reference cases because they isolate edge-only and vertex-only incidence respectively.
 
 ### 10. M2.5.2 decomposition
 
@@ -254,7 +264,7 @@ The M2.5.1 invalidation rule remains in force.
 
 This ADR does not yet:
 
-- prove `G(1,0) -> G(3,0)` provenance mapping;
+- prove and materialize the corrected `G(1,0) -> G(6,0)` coarse-to-fine physical incidence mapping;
 - define multi-family physical incidence;
 - define official scale support;
 - prove Class II or Class III physical refinement;
@@ -332,7 +342,7 @@ Validated:
 
 The design audit accepts the continuous fine Goldberg topology as the physical tactical substrate and accepts the 1/2/3 coarse-incidence vocabulary as the M2.5.2 contract direction.
 
-The G(1,0) -> G(3,0) scale-3 decomposition remains a design target until M2.5.2-C proves canonical provenance/materialization.
+The original G(1,0) -> G(3,0) scale-3 decomposition was a design target at audit time; the later M2.5.2-C provenance audit rejected it as edge-complete and superseded it with G(1,0) -> G(6,0).
 ## M2.5.2-B implementation evidence
 
 Implementation evidence package:
@@ -376,4 +386,39 @@ Validation:
 
 This closes the M2.5.2-B production vocabulary contract only.
 
-The `G(1,0) -> G(3,0)` physical mapping and complete coverage of all fine cells remain to be proved by M2.5.2-C.
+The corrected `G(1,0) -> G(6,0)` physical mapping and complete coverage of all 362 fine cells remain to be materialized and proved by M2.5.2-C.
+## 2026-09-28 — M2.5.2-C provenance target amendment
+
+Evidence package:
+
+`GlobalArena-Evidence-M2.5.2-C-R3-READONLY-PROVENANCE-INCIDENCE-AUDIT-20260928-090905.zip`
+
+Evidence SHA-256:
+
+`1bb41fb0943fab64f015558cc7836adac60e154c977f150a945e35daa6c67d1f`
+
+Baseline:
+
+`8ebb5129a3ec0968e95191e5f32d189d1086ead8`
+
+Audit result:
+
+**PASS_M2_5_2_C_TARGET_CORRECTION_REQUIRED**
+
+Validated:
+
+- Release build: 0 warnings, 0 errors;
+- tests: 389/389;
+- tracked hash drift: 0;
+- worktree clean;
+- repository mutation: False;
+- `G(1,0) -> G(2,0)`: 12 interior, 30 edge-shared, 0 vertex-shared;
+- `G(1,0) -> G(3,0)`: 72 interior, 0 edge-shared, 20 vertex-shared;
+- `G(1,0) -> G(6,0)`: 312 interior, 30 edge-shared, 20 vertex-shared;
+- scale 6 is the first tested scale in 2..12 containing both non-zero edge-shared and vertex-shared incidence.
+
+Decision amendment:
+
+The scale-3 target is superseded for the first complete physical incidence materialization. M2.5.2-C will use scale 6 as its first edge-and-vertex-aware reference target.
+
+This amendment changes the reference target only. It does not change the physical identity contract, the 1/2/3 incidence contract, the no-duplication invariant, GPP, or current risk classification.
