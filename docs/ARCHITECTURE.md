@@ -4411,7 +4411,38 @@ Evidence SHA-256:
 
 `99f1d20c8f252f3d2bdc84dea5c5f53c1158a1f4faed025d9057c7ef381ae8b9`
 
-M2.5.2-D is closed. M2.5.2-E remains responsible for accumulated validation and M2.5.2 close.
+M2.5.2-D is closed. M2.5.2-E subsequently completed accumulated validation and formally closes the M2.5.2 physical tactical mesh reference contract.
+
+### M2.5.2-E accumulated validation and close
+
+M2.5.2-E performs no production mutation. It validates the complete accepted `G(1,0) -> G(6,0)` physical tactical contract as one integrated system.
+
+Accumulated proof:
+
+- `362/362` canonical physical tiles covered;
+- incidence signature `312 interior / 30 edge-shared / 20 vertex-shared`;
+- all `30/30` coarse `StrategicEdge` values represented exactly once;
+- all `20/20` coarse `StrategicVertex` values represented exactly once;
+- `1080` authoritative fine edges with reciprocal adjacency;
+- edge-shared neighborhood pattern `3+3`;
+- vertex-shared neighborhood pattern `2+2+2`;
+- all `65.703/65.703` unordered-with-self physical tile pairs validated for shortest path;
+- each path distance cross-checked against an independent BFS oracle;
+- maximum shortest distance observed in the reference target: `18`;
+- `61.441` endpoint pairs with distinct coarse-incidence ownership validated;
+- deterministic representative traversal;
+- no synthetic cross-region adjacency;
+- tracked repository hash drift: `0`.
+
+Evidence:
+
+`GlobalArena-Evidence-M2.5.2-E-R2-READONLY-ACCUMULATED-VALIDATION-20260928-120824.zip`
+
+Evidence SHA-256:
+
+`2d26ea5a00c0457d733d0e0886b858238b13ef2f2161e675950b3f62278542e1`
+
+M2.5.2 is closed. Official family/refinement support beyond the reference target remains M2.5.3.
 O estado estratégico de uma conexão poderá futuramente ser derivado do estado tático correspondente.
 
 Exemplos futuros incluem:

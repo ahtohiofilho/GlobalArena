@@ -306,7 +306,7 @@ A decomposição operacional inicial de M2 é:
 | Scalability / headless performance baseline | 4 |
 | **TOTAL** | **90** |
 
-Estado de maturidade após M2.5.2-C / fechamento do materializador físico de referência:
+Estado de maturidade após M2.5.2-E / fechamento acumulado do physical tactical mesh de referência:
 
 | Capability | GPP | Maturidade | Fator | GPP ganhos |
 |---|---:|---|---:|---:|
@@ -316,9 +316,9 @@ Estado de maturidade após M2.5.2-C / fechamento do materializador físico de re
 | Shared subtile border bands | 16 | Validada | 0.85 | 13.60 |
 | Strategic ↔ tactical hierarchy/refinement mapping | 16 | Implementação funcional isolada | 0.50 | 8.00 |
 | Canonical deterministic topology generation | 6 | Inexistente | 0.00 | 0.00 |
-| Topological validation e navigability | 6 | Implementação funcional isolada | 0.50 | 3.00 |
+| Topological validation e navigability | 6 | Integrada ao sistema | 0.70 | 4.20 |
 | Scalability / headless performance baseline | 4 | Inexistente | 0.00 | 0.00 |
-| **TOTAL** | **90** |  |  | **50.50** |
+| **TOTAL** | **90** |  |  | **51.70** |
 
 M2.1.1 foi um audit arquitetural e não promoveu maturidade por si só.
 
@@ -385,6 +385,8 @@ O entry audit de M2.5 confirmou que o milestone não pode ser encerrado por uma 
 M2.5.1 congela os requisitos do exit gate, a decomposição operacional de M2.5 e o primeiro budget quantitativo de M2 topology baseline. Nenhuma maturity capability é promovida por esse design.
 
 M2.5.2-B introduz a identidade física global e o contrato de incidência coarse 1/2/3. M2.5.2-C materializa integralmente o primeiro target edge-and-vertex-aware `G(1,0) -> G(6,0)`, cobrindo 362/362 tiles físicos com assinatura 312 interior / 30 edge-shared / 20 vertex-shared, incluindo cobertura exata de todos os coarse edges e vertices. Por existir agora uma implementação física funcional, porém ainda restrita ao reference target e sem traversal/family coverage universal, `Strategic ↔ tactical hierarchy/refinement mapping` é promovida de `Inexistente — fator 0.00` para `Implementação funcional isolada — fator 0.50`.
+
+M2.5.2-D implementa traversal determinístico de menor caminho diretamente sobre a adjacency autoritativa da fine topology. M2.5.2-E fecha a validação acumulada do reference target sem alterar production code: confirma `362/362` tiles, assinatura `312/30/20`, cobertura `30/30` de coarse edges, cobertura `20/20` de coarse vertices, reciprocidade das `1080` fine edges e valida exaustivamente os `65.703/65.703` pares de shortest path contra uma BFS independente. Como mapping, incidence e navigability agora operam em conjunto no mesmo physical mesh e o contrato integrado foi exaustivamente provado no reference target, `Topological validation e navigability` é promovida de `Implementação funcional isolada — fator 0.50` para `Integrada ao sistema — fator 0.70`. A promoção para `Validada — 0.85` permanece condicionada ao gate cross-platform/final de M2.5.5.
 
 Esses pesos constituem o baseline inicial.
 
@@ -603,7 +605,7 @@ Etapa:
 
 Subetapa atual:
 
-**M2.5.2-E — Accumulated Validation & M2.5.2 Close**
+**M2.5.3 — Hierarchy/Refinement Coverage Decision**
 
 M0 — Project Baseline:
 
@@ -715,11 +717,11 @@ Baseline V1:
 
 Progresso oficial:
 
-**12,1%**
+**12,2%**
 
 GPP conquistados:
 
-**120,50 / 1000**
+**121,70 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -727,7 +729,7 @@ Foundation / Simulation Kernel:
 
 Topologia planetária / Goldberg:
 
-**50,50 / 90 GPP — 56,1%**
+**51,70 / 90 GPP — 57,4%**
 
 Scope Confidence:
 
@@ -743,7 +745,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M2.5.2-E accumulated physical-mesh validation, refinement coverage e scalability baseline**
+**M2.5.3 hierarchy/refinement coverage decision e generalização do physical mapping**
 
 Última revisão de baseline:
 

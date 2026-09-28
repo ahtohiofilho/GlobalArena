@@ -1133,3 +1133,42 @@ Validated:
 `RISK-012 — Memory footprint` remains open.
 
 Global Risk Level remains **HIGH**.
+---
+
+# 13. M2.5.2-E accumulated validation and close
+
+**Date:** 2026-09-28
+
+Evidence:
+
+`GlobalArena-Evidence-M2.5.2-E-R2-READONLY-ACCUMULATED-VALIDATION-20260928-120824.zip`
+
+Result:
+
+**PASS_READY_FOR_M2_5_2_E_FORMAL_CLOSE**
+
+Accumulated validation confirms:
+
+- `362/362` physical fine tiles;
+- incidence signature `312/30/20`;
+- coarse edge coverage `30/30`;
+- coarse vertex coverage `20/20`;
+- `1080` reciprocal fine edges;
+- `65.703/65.703` shortest-path pairs validated against an independent BFS oracle;
+- no synthetic cross-region adjacency;
+- deterministic traversal;
+- `417/417` automated tests;
+- compiler warnings/errors `0/0`;
+- tracked hash drift `0`.
+
+Risk effect:
+
+The physical boundary attachment and reference-target cross-region navigability requirements of M2.5.2 are now closed.
+
+`RISK-003 — Goldberg hierarchy mapping` remains **HIGH**, but its remaining uncertainty is narrowed to official family/refinement coverage and generalization beyond the accepted reference target. That decision moves to M2.5.3.
+
+`RISK-002 — Tactical resolution scalability` remains open and proceeds toward M2.5.4.
+
+`RISK-012 — Memory footprint` remains open.
+
+Global Risk Level remains **HIGH**.

@@ -10828,3 +10828,105 @@ M2.5.2-D status:
 Next gate:
 
 **M2.5.2-E — Accumulated Validation & M2.5.2 Close**
+---
+
+## 2026-09-28 — M2.5.2-E accumulated validation and M2.5.2 close
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate**
+
+Subcheckpoint:
+
+**M2.5.2-E — Accumulated Validation & M2.5.2 Close**
+
+Baseline:
+
+`85488f1cd860f12fd91ef91bba3b13e75ad88239`
+
+Evidence:
+
+`GlobalArena-Evidence-M2.5.2-E-R2-READONLY-ACCUMULATED-VALIDATION-20260928-120824.zip`
+
+Evidence SHA-256:
+
+`2d26ea5a00c0457d733d0e0886b858238b13ef2f2161e675950b3f62278542e1`
+
+Audit result:
+
+**PASS_READY_FOR_M2_5_2_E_FORMAL_CLOSE**
+
+Accumulated validation:
+
+- Release build: PASS;
+- compiler warnings: 0;
+- compiler errors: 0;
+- tests: `417/417`;
+- fine physical tile coverage: `362/362`;
+- incidence signature: `312 interior / 30 edge / 20 vertex`;
+- coarse edge coverage: `30/30`;
+- coarse vertex coverage: `20/20`;
+- authoritative fine edges: `1080`;
+- directed reciprocal adjacency references: `2160`;
+- edge-shared neighborhood pattern: `3+3`;
+- vertex-shared neighborhood pattern: `2+2+2`;
+- all-pair shortest-path validation: `65.703/65.703`;
+- distinct coarse-ownership endpoint pairs: `61.441`;
+- maximum shortest distance: `18`;
+- total validated path steps: `552.103`;
+- deterministic representative traversal: True;
+- synthetic cross-region adjacency: False;
+- tracked hash drift: 0;
+- repository mutation: False.
+
+Maturity promotion:
+
+`Topological validation e navigability`
+
+from:
+
+**Implementação funcional isolada — factor 0.50 — 3.00 GPP**
+
+to:
+
+**Integrada ao sistema — factor 0.70 — 4.20 GPP**
+
+Increment:
+
+**+1.20 GPP**
+
+Reason:
+
+Physical incidence, authoritative fine adjacency and deterministic shortest-path traversal now operate together as one validated reference-target contract, and every tile pair has been checked against an independent BFS distance oracle. Final `Validada — 0.85` maturity remains reserved for the later cross-platform/final regression gate.
+
+GPP:
+
+**121.70 / 1000**
+
+Global Progress:
+
+**12.2%**
+
+Planet Topology:
+
+**51.70 / 90 — 57.4%**
+
+`RISK-003` remains:
+
+**HIGH**
+
+M2 remains:
+
+**OPEN**
+
+M2.5.2 status:
+
+**CLOSED**
+
+Next gate:
+
+**M2.5.3 — Hierarchy/Refinement Coverage Decision**

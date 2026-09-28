@@ -1564,10 +1564,10 @@ Design proposto em ADR-021:
 Decomposição de M2.5.2:
 
 - M2.5.2-A — Vertex-Aware Physical Boundary Read-Only Audit — concluído;
-- M2.5.2-B — Global Physical Tactical Identity & Coarse Incidence Contract;
+- M2.5.2-B — Global Physical Tactical Identity & Coarse Incidence Contract — concluído;
 - M2.5.2-C — Vertex-Aware Physical Incidence Materialization — concluído;
 - M2.5.2-D — Fine-Topology Cross-Region Traversal Contract & Validation — concluído;
-- M2.5.2-E — Accumulated Validation & M2.5.2 Close.
+- M2.5.2-E — Accumulated Validation & M2.5.2 Close — concluído;`n- M2.5.2 — Strategic/Tactical Physical Boundary Attachment & Cross-Region Traversal — concluído.
 
 Nenhuma promoção de GPP ocorre no design.
 
@@ -1593,9 +1593,9 @@ Evidência:
 
 O materializador coarse→fine permanece deliberadamente ausente nesta tranche.
 
-Próximo gate:
+Próximo gate histórico:
 
-**M2.5.2-E — Accumulated Validation & M2.5.2 Close**
+**M2.5.2-C — Vertex-Aware Physical Incidence Materialization**
 
 ---
 ## M3 — Procedural World
@@ -1880,15 +1880,15 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M2.5.2-E — Accumulated Validation & M2.5.2 Close**
+**M2.5.3 — Hierarchy/Refinement Coverage Decision**
 
 Official Progress:
 
-**12.1%**
+**12.2%**
 
 GPP Earned:
 
-**120.50 / 1000**
+**121.70 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -1896,7 +1896,7 @@ Foundation / Simulation Kernel:
 
 Planet Topology / Goldberg:
 
-**50.50 / 90 GPP — 56.1%**
+**51.70 / 90 GPP — 57.4%**
 
 Scope Confidence:
 
@@ -1912,7 +1912,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**M2.5.2-E accumulated physical-mesh validation, refinement coverage e scalability baseline**
+**M2.5.3 hierarchy/refinement coverage decision e generalização do physical mapping**
 
 Last Baseline Review:
 
@@ -1955,6 +1955,30 @@ Evidence:
 
 M2.5.2-D está concluído.
 
+#### M2.5.2-E accumulated validation and M2.5.2 close
+
+Validação acumulada concluída sem alteração de production code:
+
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- suíte: `417/417`;
+- fine tile coverage: `362/362`;
+- incidence signature: `312 interior / 30 edge / 20 vertex`;
+- coarse edge coverage: `30/30`;
+- coarse vertex coverage: `20/20`;
+- fine edges: `1080`, com reciprocidade integral;
+- shortest paths: `65.703/65.703` pares validados contra BFS independente;
+- cross-ownership endpoint pairs: `61.441`;
+- maximum shortest distance no reference target: `18`;
+- synthetic cross-region adjacency: `False`;
+- tracked hash drift: `0`.
+
+Evidence:
+
+`GlobalArena-Evidence-M2.5.2-E-R2-READONLY-ACCUMULATED-VALIDATION-20260928-120824.zip`
+
+M2.5.2 está concluído.
+
 Próximo gate:
 
-**M2.5.2-E — Accumulated Validation & M2.5.2 Close**
+**M2.5.3 — Hierarchy/Refinement Coverage Decision**

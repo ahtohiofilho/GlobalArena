@@ -1,6 +1,6 @@
 # ADR-021 — Continuous Physical Tactical Mesh Identity, Coarse Incidence and Cross-Region Traversal Contract
 
-**Status:** Accepted — amended through M2.5.2-D traversal close on 2026-09-28
+**Status:** Accepted — M2.5.2 reference contract closed on 2026-09-28
 **Date:** 2026-09-20
 
 ## Context
@@ -203,9 +203,7 @@ Audit-derived target decomposition:
 - vertex-shared physical tiles: `20`;
 - total: `312 + 30 + 20 = 362`.
 
-This audit proves target suitability and the expected incidence signature. It does not yet constitute the production coarse-to-fine materializer.
-
-M2.5.2-C must still materialize every fine cell exactly once, derive its canonical coarse incidence, and reproduce the audited `312/30/20` signature.
+This audit established target suitability and the expected incidence signature. M2.5.2-C subsequently materialized every fine cell exactly once, derived canonical coarse incidence and reproduced the audited `312/30/20` signature.
 
 The scale-2 and scale-3 pairs remain useful reference cases because they isolate edge-only and vertex-only incidence respectively.
 
@@ -214,10 +212,10 @@ The scale-2 and scale-3 pairs remain useful reference cases because they isolate
 M2.5.2 is decomposed into:
 
 - **M2.5.2-A — Vertex-Aware Physical Boundary Read-Only Audit** — completed;
-- **M2.5.2-B — Global Physical Tactical Identity & Coarse Incidence Contract**;
-- **M2.5.2-C — Vertex-Aware Physical Incidence Materialization**;
+- **M2.5.2-B — Global Physical Tactical Identity & Coarse Incidence Contract** — completed;
+- **M2.5.2-C — Vertex-Aware Physical Incidence Materialization** — completed;
 - **M2.5.2-D — Fine-Topology Cross-Region Traversal Contract & Validation** — completed;
-- **M2.5.2-E — Accumulated Validation & M2.5.2 Close** — next.
+- **M2.5.2-E — Accumulated Validation & M2.5.2 Close** — completed.`n`n**M2.5.2 — closed.**
 
 M2.5.3 remains responsible for deciding the officially supported Goldberg family/refinement coverage beyond the first proven physical reference mapping.
 
@@ -264,7 +262,7 @@ The M2.5.1 invalidation rule remains in force.
 
 This ADR does not yet:
 
-- prove and materialize the corrected `G(1,0) -> G(6,0)` coarse-to-fine physical incidence mapping;
+- generalize physical incidence and traversal beyond the accepted `G(1,0) -> G(6,0)` reference target;
 - define multi-family physical incidence;
 - define official scale support;
 - prove Class II or Class III physical refinement;
@@ -292,21 +290,22 @@ Negative:
 
 - M2.2's current three-cell local graph is no longer sufficient as a physical model;
 - M2.3's current one-element shared-border materializer remains reference-only;
-- a complete coarse↔fine incidence mapper is now required;
-- the first vertex-aware mapping still requires implementation evidence;
-- family/scale support remains unresolved until M2.5.3.
+- physical incidence and traversal are currently proven only for the accepted reference target;
+- official family/scale support remains unresolved until M2.5.3;
+- final cross-platform regression and performance gates remain later M2.5 work.
 
 ## Progress accounting
 
-M2.5.2-B design does not promote GPP.
+After formal M2.5.2 close:
 
-Current totals remain:
-
-- GPP: `109.50 / 1000`;
-- Global Progress: `11.0%`;
-- Planet Topology: `39.50 / 90 — 43.9%`;
-- `Strategic ↔ tactical hierarchy/refinement mapping`: `0.00`;
+- GPP: `121.70 / 1000`;
+- Global Progress: `12.2%`;
+- Planet Topology: `51.70 / 90 — 57.4%`;
+- `Strategic ↔ tactical hierarchy/refinement mapping`: `Implementação funcional isolada — 0.50`;
+- `Topological validation e navigability`: `Integrada ao sistema — 0.70`;
 - `RISK-003`: HIGH.
+
+The navigability capability is not promoted to `Validada — 0.85` yet because final cross-platform/final regression remains M2.5.5.
 
 ## Invariant
 
@@ -499,3 +498,44 @@ Validated:
 M2.5.2-D is closed.
 
 Next: M2.5.2-E accumulated validation and M2.5.2 close.
+## 2026-09-28 — M2.5.2-E accumulated validation close
+
+Evidence package:
+
+`GlobalArena-Evidence-M2.5.2-E-R2-READONLY-ACCUMULATED-VALIDATION-20260928-120824.zip`
+
+Evidence SHA-256:
+
+`2d26ea5a00c0457d733d0e0886b858238b13ef2f2161e675950b3f62278542e1`
+
+Baseline:
+
+`85488f1cd860f12fd91ef91bba3b13e75ad88239`
+
+Result:
+
+**PASS_READY_FOR_M2_5_2_E_FORMAL_CLOSE**
+
+Validated:
+
+- Release build PASS with `0` warnings and `0` errors;
+- automated tests `417/417`;
+- physical tile coverage `362/362`;
+- incidence signature `312/30/20`;
+- coarse edge coverage `30/30`;
+- coarse vertex coverage `20/20`;
+- authoritative fine edges `1080` with reciprocal adjacency;
+- edge-shared `3+3` neighbor pattern;
+- vertex-shared `2+2+2` neighbor pattern;
+- all `65.703/65.703` unordered-with-self tile pairs shortest-path validated;
+- independent BFS distance oracle agrees for every pair;
+- `61.441` distinct coarse-ownership endpoint pairs validated;
+- maximum shortest distance `18`;
+- deterministic representative traversal;
+- no synthetic cross-region adjacency;
+- tracked repository hash drift `0`;
+- no repository mutation during the audit.
+
+M2.5.2 is closed.
+
+M2.5.3 now owns the decision and implementation scope for official hierarchy/refinement coverage beyond the accepted reference target.
