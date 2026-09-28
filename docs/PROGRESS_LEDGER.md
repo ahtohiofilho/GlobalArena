@@ -10930,3 +10930,153 @@ M2.5.2 status:
 Next gate:
 
 **M2.5.3 — Hierarchy/Refinement Coverage Decision**
+---
+
+## 2026-09-28 — M2.5.3-A coverage feasibility audit / M2.5.3-B design direction
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate**
+
+Subcheckpoint:
+
+**M2.5.3-B — Official Coverage Contract & Design Freeze**
+
+Baseline:
+
+`4d0f82dccbc6b59f9fcd1cef1e6d98208dfd24b0`
+
+Audit evidence:
+
+`GlobalArena-Evidence-M2.5.3-A-R2-READONLY-HIERARCHY-COVERAGE-AUDIT-20260928-131956.zip`
+
+Audit evidence SHA-256:
+
+`b06095778ecae5f160a538d78504a47dedfab5f32dde290d81e138b3b7d48dd4`
+
+Audit result:
+
+**PASS_M2_5_3_COVERAGE_DECISION_INPUT_READY**
+
+Observed support matrix:
+
+- strategic topology: Class I / II / III;
+- public scaled-refinement compatibility: representative Class I / II / III;
+- physical incidence mapper: only `G(1,0) -> G(6,0)`;
+- Class I unit-base provenance: sufficient;
+- Class I non-unit coarse provenance: current 12-seed primitive insufficient;
+- Class II: current 12-seed primitive insufficient;
+- Class III: compatible physical provenance unavailable.
+
+M2.5.3-B proposed design freeze:
+
+- official M2 physical hierarchy family: Class I;
+- official scale: 6;
+- accepted rays: `G(k,0) -> G(6k,0)` and `G(0,k) -> G(0,6k)`;
+- `k >= 1`, bounded by implementation and measured performance;
+- durable lineage must cover every coarse Class I cell;
+- Class II/III remain strategic topology support but are outside M2 physical hierarchy support;
+- universal physical refinement is explicitly not claimed.
+
+Expected Class I scale-6 count contract for coarse triangulation number `Tc`:
+
+- fine physical tiles: `360 * Tc + 2`;
+- interior: `310 * Tc + 2`;
+- edge-shared: `30 * Tc`;
+- vertex-shared: `20 * Tc`.
+
+Design GPP change:
+
+**+0.00 GPP**
+
+Current GPP remains:
+
+**121.70 / 1000**
+
+Global Progress remains:
+
+**12.2%**
+
+Planet Topology remains:
+
+**51.70 / 90 — 57.4%**
+
+`RISK-003` remains:
+
+**HIGH**
+
+M2 remains:
+
+**OPEN**
+
+Next implementation gate after design freeze:
+
+**M2.5.3-C — Class I Scale-6 Durable Lineage & Physical Mapping**
+---
+
+## 2026-09-28 — M2.5.3-B official coverage contract frozen
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate**
+
+Subcheckpoint closed:
+
+**M2.5.3-B — Official Coverage Contract & Design Freeze**
+
+Design evidence:
+
+`GlobalArena-Evidence-M2.5.3-B-COVERAGE-DESIGN-R5-20260928-141339.zip`
+
+Design evidence SHA-256:
+
+`16ad4d9044ce4d2f9854e763a44e005846325f0a0f0c35413b6f2d62bc4cba0d`
+
+Frozen contract:
+
+- strategic Goldberg generation remains Class I / II / III;
+- official M2 physical hierarchy family is Class I;
+- official physical scale is 6;
+- accepted rays are `G(k,0) -> G(6k,0)` and `G(0,k) -> G(0,6k)`;
+- `k >= 1`, subject to implementation, in-memory and measured performance limits;
+- durable lineage must cover every coarse Class I cell;
+- Class II/III physical hierarchy is outside official M2 scope;
+- universal Goldberg physical refinement is not claimed;
+- final V1 world-size limits remain unfrozen;
+- M2.5.4 owns the measured topology performance envelope.
+
+GPP change:
+
+**+0.00 GPP**
+
+Current GPP:
+
+**121.70 / 1000**
+
+Global Progress:
+
+**12.2%**
+
+Planet Topology:
+
+**51.70 / 90 — 57.4%**
+
+`RISK-003` remains:
+
+**HIGH**
+
+M2 remains:
+
+**OPEN**
+
+Next gate:
+
+**M2.5.3-C — Class I Scale-6 Durable Lineage & Physical Mapping**

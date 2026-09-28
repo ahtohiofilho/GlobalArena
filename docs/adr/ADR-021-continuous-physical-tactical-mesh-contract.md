@@ -215,7 +215,9 @@ M2.5.2 is decomposed into:
 - **M2.5.2-B — Global Physical Tactical Identity & Coarse Incidence Contract** — completed;
 - **M2.5.2-C — Vertex-Aware Physical Incidence Materialization** — completed;
 - **M2.5.2-D — Fine-Topology Cross-Region Traversal Contract & Validation** — completed;
-- **M2.5.2-E — Accumulated Validation & M2.5.2 Close** — completed.`n`n**M2.5.2 — closed.**
+- **M2.5.2-E — Accumulated Validation & M2.5.2 Close** — completed.
+
+**M2.5.2 — closed.**
 
 M2.5.3 remains responsible for deciding the officially supported Goldberg family/refinement coverage beyond the first proven physical reference mapping.
 
@@ -291,7 +293,9 @@ Negative:
 - M2.2's current three-cell local graph is no longer sufficient as a physical model;
 - M2.3's current one-element shared-border materializer remains reference-only;
 - physical incidence and traversal are currently proven only for the accepted reference target;
-- official family/scale support remains unresolved until M2.5.3;
+- M2.5.3-B freezes Class I scale 6 as the official M2 physical hierarchy boundary;
+- durable non-unit Class I lineage remains to be implemented by M2.5.3-C;
+- Class II/III physical hierarchy remains outside official M2 scope;
 - final cross-platform regression and performance gates remain later M2.5 work.
 
 ## Progress accounting
@@ -539,3 +543,20 @@ Validated:
 M2.5.2 is closed.
 
 M2.5.3 now owns the decision and implementation scope for official hierarchy/refinement coverage beyond the accepted reference target.
+## 2026-09-28 — M2.5.3-A coverage audit / ADR-022 handoff
+
+Evidence:
+
+`GlobalArena-Evidence-M2.5.3-A-R2-READONLY-HIERARCHY-COVERAGE-AUDIT-20260928-131956.zip`
+
+The audit distinguishes strategic Goldberg family support from executable physical hierarchy support.
+
+ADR-022 now owns the frozen official M2 physical hierarchy coverage contract:
+
+- Class I only for physical hierarchy;
+- scale 6;
+- both Class I axes preserved;
+- durable lineage required beyond the 12-cell unit coarse reference;
+- Class II/III physical hierarchy not claimed by M2.
+
+ADR-021 continues to own the continuous physical mesh and canonical 1/2/3 incidence invariant.

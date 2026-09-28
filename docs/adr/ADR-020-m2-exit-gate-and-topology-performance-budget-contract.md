@@ -82,6 +82,14 @@ At minimum the workload includes:
 
 A benchmark that measures only the pre-M2.5 three-cell reference pipeline cannot close M2 if later subcheckpoints add required topology structures.
 
+M2.5.3-B further specializes the final workload rule:
+
+- the Class I `G(16,0)` acceptance case must include the official scale-6 physical hierarchy workload, including its `G(96,0)` fine topology and required physical incidence/traversal structures;
+- Class II `G(10,10)` and Class III `G(12,7)` remain strategic/logical generator acceptance cases because Class II/III physical hierarchy is outside the official M2 support boundary;
+- benchmark reports must state this workload distinction explicitly and must not imply Class II/III physical hierarchy coverage.
+
+The existing hard budgets remain unchanged until measured evidence justifies either optimization or a governed budget revision.
+
 ### 5. Measurement protocol
 
 For each canonical load case:

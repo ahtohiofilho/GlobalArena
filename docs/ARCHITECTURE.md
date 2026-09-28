@@ -4443,6 +4443,54 @@ Evidence SHA-256:
 `2d26ea5a00c0457d733d0e0886b858238b13ef2f2161e675950b3f62278542e1`
 
 M2.5.2 is closed. Official family/refinement support beyond the reference target remains M2.5.3.
+
+### M2.5.3 physical hierarchy coverage contract
+
+M2.5.3 separates strategic topology family support from physical strategic-to-tactical hierarchy support.
+
+The M2.5.3-A coverage audit proves:
+
+- strategic topology generation supports Class I, II and III;
+- the public scaled-refinement compatibility contract accepts representative pairs from all three families;
+- executable physical incidence currently supports only `G(1,0) -> G(6,0)`;
+- the current 12-seed primitive is complete only for the Class I unit coarse topology;
+- non-unit Class I requires durable lineage covering every coarse cell;
+- Class II requires lineage beyond the current 12-seed map;
+- Class III currently exposes no compatible dominant-seed provenance.
+
+The M2.5.3-B frozen design contract is therefore:
+
+`official M2 physical hierarchy = Class I, scale 6`
+
+with accepted forms:
+
+`G(k,0) -> G(6k,0)`
+
+and:
+
+`G(0,k) -> G(0,6k)`.
+
+This does not remove strategic Class II/III generation.
+
+It does not claim universal Goldberg physical refinement.
+
+The scale-6 mapping must preserve exact single canonical physical identities and derive 1/2/3 coarse incidence from durable integer/combinatorial lineage.
+
+For coarse triangulation number `Tc`, the implementation target is:
+
+- fine cells: `360 * Tc + 2`;
+- edge-shared physical tiles: `30 * Tc`;
+- vertex-shared physical tiles: `20 * Tc`;
+- interior physical tiles: `310 * Tc + 2`.
+
+The existing `G(1,0) -> G(6,0)` behavior remains the compatibility oracle.
+
+Final supported world-size limits are not frozen here; M2.5.4 must measure the complete accepted workload.
+
+Evidence:
+
+`GlobalArena-Evidence-M2.5.3-A-R2-READONLY-HIERARCHY-COVERAGE-AUDIT-20260928-131956.zip`
+
 O estado estratégico de uma conexão poderá futuramente ser derivado do estado tático correspondente.
 
 Exemplos futuros incluem:

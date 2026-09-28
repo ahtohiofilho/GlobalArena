@@ -1172,3 +1172,47 @@ The physical boundary attachment and reference-target cross-region navigability 
 `RISK-012 — Memory footprint` remains open.
 
 Global Risk Level remains **HIGH**.
+---
+
+# 14. M2.5.3-A hierarchy/refinement coverage feasibility audit
+
+**Date:** 2026-09-28
+
+Evidence:
+
+`GlobalArena-Evidence-M2.5.3-A-R2-READONLY-HIERARCHY-COVERAGE-AUDIT-20260928-131956.zip`
+
+Result:
+
+**PASS_M2_5_3_COVERAGE_DECISION_INPUT_READY**
+
+Validated:
+
+- public scaled-refinement compatibility accepts representative Class I/II/III pairs;
+- strategic topology generation supports Class I/II/III;
+- physical incidence mapper supports only `G(1,0) -> G(6,0)`;
+- current Class I unit-base 12-seed provenance is sufficient for the reference pair;
+- non-unit Class I coarse topology is not covered by the 12-seed lineage primitive;
+- Class II dominant provenance includes seed identities outside the exposed 12-seed map;
+- Class III dominant provenance is unavailable to the physical mapper;
+- universal physical refinement is not proved;
+- 417/417 tests;
+- 0 compiler warnings/errors;
+- tracked hash drift 0;
+- repository mutation False.
+
+Design response:
+
+M2.5.3-B freezes the official M2 physical hierarchy scope as Class I scale 6, with durable lineage required for every coarse Class I cell.
+
+`RISK-003 — Goldberg hierarchy mapping` remains **HIGH**.
+
+Reason:
+
+The coverage boundary is now explicit, but the generalized Class I physical mapping is not implemented yet.
+
+`RISK-002 — Tactical resolution scalability` remains open and becomes more relevant because the Class I `G(16,0)` M2 load case implies a scale-6 fine topology `G(96,0)` if full physical hierarchy construction is benchmarked.
+
+`RISK-012 — Memory footprint` remains open for the same reason.
+
+Global Risk Level remains **HIGH**.

@@ -1880,7 +1880,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M2.5.3 — Hierarchy/Refinement Coverage Decision**
+**M2.5.3-C — Class I Scale-6 Durable Lineage & Physical Mapping**
 
 Official Progress:
 
@@ -1912,7 +1912,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**M2.5.3 hierarchy/refinement coverage decision e generalização do physical mapping**
+**M2.5.3-C durable Class I scale-6 lineage e generalized physical mapping**
 
 Last Baseline Review:
 
@@ -1979,6 +1979,49 @@ Evidence:
 
 M2.5.2 está concluído.
 
+### M2.5.3 — Hierarchy/Refinement Coverage Decision
+
+M2.5.3-A concluiu o audit read-only de feasibility/coverage.
+
+Evidência:
+
+`GlobalArena-Evidence-M2.5.3-A-R2-READONLY-HIERARCHY-COVERAGE-AUDIT-20260928-131956.zip`
+
+SHA-256:
+
+`b06095778ecae5f160a538d78504a47dedfab5f32dde290d81e138b3b7d48dd4`
+
+Achados:
+
+- strategic topology generation suporta Class I, II e III;
+- `GoldbergScaledRefinement` aceita representative scaled pairs das três classes;
+- `PhysicalTacticalIncidenceMapper` suporta somente `G(1,0) -> G(6,0)`;
+- Class I unit-base possui provenance suficiente no mecanismo atual;
+- Class I non-unit coarse requer lineage além dos 12 seed vertices;
+- Class II requer lineage além do mapa atual de 12 seeds;
+- Class III não expõe a provenance necessária ao physical mapper;
+- universal physical refinement não está provado.
+
+Decisão proposta para freeze em M2.5.3-B:
+
+- suporte estratégico Class I/II/III permanece;
+- physical strategic-to-tactical hierarchy oficial de M2: Class I;
+- formas oficiais: `G(k,0) -> G(6k,0)` e `G(0,k) -> G(0,6k)`;
+- `k >= 1`, sujeito aos limites de implementação e ao performance envelope do M2.5.4;
+- scale físico oficial de M2: `6`;
+- Class II/III physical hierarchy fica fora do scope oficial de M2;
+- M2.5.3-C deve implementar durable Class I lineage e remover a limitação física ao coarse unit-base;
+- M2.5.3-D fará accumulated validation e fechamento do stage.
+
+Decomposição:
+
+- M2.5.3-A — Hierarchy/Refinement Coverage Feasibility Audit — concluído;
+- M2.5.3-B — Official Coverage Contract & Design Freeze — concluído;
+- M2.5.3-C — Class I Scale-6 Durable Lineage & Physical Mapping;
+- M2.5.3-D — Accumulated Coverage Validation & M2.5.3 Close.
+
+Nenhuma promoção de GPP ocorre no design.
+
 Próximo gate:
 
-**M2.5.3 — Hierarchy/Refinement Coverage Decision**
+**M2.5.3-C — Class I Scale-6 Durable Lineage & Physical Mapping**

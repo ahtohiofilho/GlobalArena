@@ -388,6 +388,8 @@ M2.5.2-B introduz a identidade física global e o contrato de incidência coarse
 
 M2.5.2-D implementa traversal determinístico de menor caminho diretamente sobre a adjacency autoritativa da fine topology. M2.5.2-E fecha a validação acumulada do reference target sem alterar production code: confirma `362/362` tiles, assinatura `312/30/20`, cobertura `30/30` de coarse edges, cobertura `20/20` de coarse vertices, reciprocidade das `1080` fine edges e valida exaustivamente os `65.703/65.703` pares de shortest path contra uma BFS independente. Como mapping, incidence e navigability agora operam em conjunto no mesmo physical mesh e o contrato integrado foi exaustivamente provado no reference target, `Topological validation e navigability` é promovida de `Implementação funcional isolada — fator 0.50` para `Integrada ao sistema — fator 0.70`. A promoção para `Validada — 0.85` permanece condicionada ao gate cross-platform/final de M2.5.5.
 
+M2.5.3-A prova que o suporte estratégico Class I/II/III, o contrato `GoldbergScaledRefinement` e o physical mapper possuem envelopes diferentes. O physical mapper segue restrito a `G(1,0) -> G(6,0)`; o mapa de 12 seeds é insuficiente para coarse Class I não unitária e Class II; Class III ainda não expõe provenance adequada. M2.5.3-B congela como direção de design o physical hierarchy oficial Class I em scale 6, mantendo Class II/III como suporte estratégico/refinement-candidate, sem alegar physical lineage universal. Nenhuma promoção de GPP ocorre no design.
+
 Esses pesos constituem o baseline inicial.
 
 Novas tarefas descobertas dentro de uma área não aumentam automaticamente o peso do V1.
@@ -605,7 +607,7 @@ Etapa:
 
 Subetapa atual:
 
-**M2.5.3 — Hierarchy/Refinement Coverage Decision**
+**M2.5.3-C — Class I Scale-6 Durable Lineage & Physical Mapping**
 
 M0 — Project Baseline:
 
@@ -745,7 +747,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M2.5.3 hierarchy/refinement coverage decision e generalização do physical mapping**
+**M2.5.3-C durable Class I scale-6 lineage e generalized physical mapping**
 
 Última revisão de baseline:
 
