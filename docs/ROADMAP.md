@@ -1597,6 +1597,61 @@ Próximo gate histórico:
 
 **M2.5.2-C — Vertex-Aware Physical Incidence Materialization**
 
+### M2.5.4 — Headless Scalability Benchmark Harness & Baseline
+
+Decomposição:
+
+- M2.5.4-A — Final Workload Performance Spike & Bottleneck Diagnosis — concluído;
+- M2.5.4-B — Product/Stress Scale Envelope Audit — concluído;
+- M2.5.4-C — Benchmark Contract & Scale Envelope Design Freeze — concluído;
+- M2.5.4-D — Permanent Headless Benchmark Harness Implementation — atual;
+- M2.5.4-E — Baseline Validation & M2.5.4 Close.
+
+M2.5.4-A evidence established:
+
+- the historical full physical `G(16,0) -> G(96,0)` workload completes but exceeds all four original blocking budgets;
+- R4 decomposition isolates fine `G(96,0)` topology generation as the dominant cost;
+- fine topology accounts for approximately `87.74%` of physical-pipeline managed allocation and `75.34%` of elapsed time;
+- the performance failure is not a topology-correctness failure.
+
+M2.5.4-B evidence established:
+
+- provisional strategic product hypothesis: `m+n <= 15`;
+- provisional tactical product hypothesis: up to roughly 12 rings, normally less;
+- final V1 scale remains unfrozen pending visual/gameplay validation;
+- `G(15,0)` has `2252` strategic cells;
+- scale-6 physical `G(15,0) -> G(90,0)` has `81002` fine cells;
+- area-equivalent scale near 12 hex rings is about `21.656`;
+- `G(15,0)` at scale 21 would approach `992252` fine cells;
+- allocation per fine tile remained approximately linear across the measured scale-6 sweep;
+- measured allocation-per-tile spread: `1.010`;
+- measured time-per-tile spread: `1.696`.
+
+M2.5.4-C freezes the separation between product acceptance and engineering stress without freezing final V1 scale.
+
+Blocking M2 benchmark cases after the design freeze:
+
+- Class I strategic/logical: `G(15,0)`;
+- Class II strategic/logical: `G(7,7)`;
+- Class III strategic/logical: `G(14,1)`;
+- Class I physical scale-6 semantic acceptance: `G(4,0) -> G(24,0)`.
+
+Non-blocking stress baseline:
+
+- full physical `G(16,0) -> G(96,0)`.
+
+The M2.5.1 hard thresholds remain unchanged for blocking acceptance cases:
+
+- median elapsed `<= 1000 ms`;
+- max elapsed `<= 2000 ms`;
+- median managed allocation `<= 192 MiB`;
+- max managed allocation `<= 256 MiB`.
+
+No GPP promotion occurs in the design freeze.
+
+Próximo gate:
+
+**M2.5.4-D — Permanent Headless Benchmark Harness Implementation**
 ---
 ## M3 — Procedural World
 
@@ -1880,7 +1935,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M2.5.4 — Headless Scalability Benchmark Harness & Baseline**
+**M2.5.4-D — Permanent Headless Benchmark Harness Implementation**
 
 Official Progress:
 
@@ -1912,7 +1967,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**M2.5.4 measured topology performance envelope para o workload final aceito de M2**
+**M2.5.4-D permanent headless benchmark harness implementation against the frozen acceptance/stress contract**
 
 Last Baseline Review:
 

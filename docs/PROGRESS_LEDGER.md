@@ -11398,3 +11398,136 @@ M2.5.3 status:
 Next gate:
 
 **M2.5.4 — Headless Scalability Benchmark Harness & Baseline**
+---
+
+## 2026-09-28 — M2.5.4-C scale-envelope design freeze formal close
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate**
+
+Subcheckpoint closed:
+
+**M2.5.4-C — Benchmark Contract & Scale Envelope Design Freeze**
+
+Design-freeze QA evidence:
+
+`GlobalArena-Evidence-M2.5.4-C-R3-SCALE-ENVELOPE-DESIGN-FREEZE-20260928-193422.zip`
+
+QA evidence SHA-256:
+
+`3480e59e8b334e69686590b1282eb71fcaf060485330a1481e13cbb485c14092`
+
+QA audit:
+
+- evidence manifest payloads: `20/20` verified;
+- exact staged files: `8`;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- tests: `429/429`;
+- GA-SRP version: `1.1`;
+- validator self-tests: `12/12`;
+- parser/rule violations: `0/0`;
+- QA commit/push: False;
+- result: `PASS_READY_FOR_M2_5_4_C_FORMAL_AUDIT`.
+
+Input evidence:
+
+`GlobalArena-Evidence-M2.5.4-A-R4-READONLY-PERFORMANCE-DECOMPOSITION-DIAGNOSTIC-20260928-182725.zip`
+
+SHA-256:
+
+`537c207a16a300af343e4927fddfda0284dd64c11b35623734e73e0146a4cc0f`
+
+and:
+
+`GlobalArena-Evidence-M2.5.4-B-R1-READONLY-SCALE-ENVELOPE-AUDIT-20260928-185801.zip`
+
+SHA-256:
+
+`431e433f0c880719f8b431aea594e71acd0e06808a7f9d3f936d9eb6bfa3db5f`
+
+Measured findings:
+
+- `G(16,0) -> G(96,0)` is valid and completes;
+- its physical pipeline exceeds the original blocking budgets;
+- fine `G(96,0)` generation is the dominant component;
+- fine-generation share: approximately `87.74%` of allocation and `75.34%` of elapsed time;
+- scale-6 allocation per fine tile is approximately linear;
+- allocation-per-tile spread across `k=4,8,12,15`: `1.010`;
+- time-per-tile spread: `1.696`;
+- `G(15,0) -> G(90,0)` has `81002` fine cells;
+- scale 21 at `G(15,0)` approaches one million fine cells.
+
+Product planning hypotheses captured without freezing V1:
+
+- strategic Goldberg around `m+n <= 15`;
+- tactical density up to roughly 12 rings in some contexts and normally less;
+- final scale remains subject to later visual/gameplay validation;
+- larger technically viable scales remain desirable as robustness headroom.
+
+Design decision:
+
+- separate semantic support, blocking product acceptance and non-blocking engineering stress;
+- keep Class I scale 6 as the M2 semantic/refinement contract;
+- do not interpret scale 6 as final V1 tactical density;
+- do not interpret provisional strategic and tactical maxima as independent simultaneous requirements;
+- revise the M2 blocking benchmark workload while leaving hard thresholds unchanged.
+
+Blocking M2.5.4 benchmark cases:
+
+- Class I strategic/logical `G(15,0)`;
+- Class II strategic/logical `G(7,7)`;
+- Class III strategic/logical `G(14,1)`;
+- Class I physical semantic acceptance `G(4,0) -> G(24,0)`.
+
+Non-blocking stress baseline:
+
+- full physical `G(16,0) -> G(96,0)`.
+
+Hard blocking budgets remain:
+
+- median elapsed `<= 1000 ms`;
+- max elapsed `<= 2000 ms`;
+- median managed allocation `<= 192 MiB`;
+- max managed allocation `<= 256 MiB`.
+
+GA-SRP evolution:
+
+- GA-SR-024 added from the M2.5.4-A R2 failure class;
+- native `dotnet run` diagnostics must not merge stderr through `2>&1` under Windows PowerShell 5.1 with fail-fast error handling;
+- durable stdout/stderr redirection is required for diagnostic native probes;
+- protocol version moves to `1.1`;
+- the one-off C# CS0136 naming defect from R3 is not promoted as a separate protocol rule.
+
+GPP change:
+
+**+0.00**
+
+GPP remains:
+
+**124.90 / 1000**
+
+Global Progress remains:
+
+**12.5%**
+
+Planet Topology remains:
+
+**54.90 / 90 — 61.0%**
+
+M2 remains:
+
+**OPEN**
+
+M2.5.4-C status:
+
+**CLOSED**
+
+Next gate:
+
+**M2.5.4-D — Permanent Headless Benchmark Harness Implementation**

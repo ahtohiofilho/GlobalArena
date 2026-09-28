@@ -603,6 +603,37 @@ Critérios definidos em documento próprio.
 
 ---
 
+## 15.2 M2.5.4 performance-scale envelope
+
+M2.5.4 separates three distinct concerns:
+
+- semantic support — what the topology model can represent correctly;
+- product acceptance — what M2 must execute inside the blocking performance budget;
+- engineering stress — larger valid workloads used to measure robustness headroom without defining final V1 size.
+
+Current product-scale hypotheses are intentionally provisional:
+
+- strategic Goldberg size is expected to remain around `m+n <= 15`;
+- tactical density may reach roughly 12 rings in some contexts and normally less;
+- neither value is a frozen V1 contract;
+- final product scale depends on later visual and gameplay validation.
+
+The two provisional maxima are not independent. A large strategic topology combined with a dense tactical realization can multiply the physical tile count dramatically. M2.5.4 therefore owns a combined scale envelope rather than two unrelated maxima.
+
+The official Class I scale-6 hierarchy remains the M2 semantic/refinement contract. It is not a declaration that scale 6 is the final tactical density of the game.
+
+Measured evidence shows the current Class I physical pipeline scales approximately linearly in managed allocation per fine tile, but the constant allocation cost is high. `G(16,0) -> G(96,0)` is retained as a stress-baseline candidate rather than a product-performance requirement.
+
+The blocking M2.5.4 benchmark contract is revised to use:
+
+- strategic/logical Class I: `G(15,0)`;
+- strategic/logical Class II: `G(7,7)`;
+- strategic/logical Class III: `G(14,1)`;
+- physical Class I semantic acceptance: `G(4,0) -> G(24,0)`, scale 6.
+
+The historical full physical `G(16,0) -> G(96,0)` workload remains a non-blocking stress case. Topology correctness still applies; only its performance numbers are non-blocking.
+
+The hard M2.5.1 thresholds themselves remain unchanged.
 # 20. Status atual
 
 Milestone:
@@ -615,7 +646,11 @@ Etapa:
 
 Subetapa atual:
 
-**M2.5.4 — Headless Scalability Benchmark Harness & Baseline**
+**M2.5.4-D — Permanent Headless Benchmark Harness Implementation**
+
+M2.5.4-C — Benchmark Contract & Scale Envelope Design Freeze:
+
+**concluído em 2026-09-28**
 
 M2.5.3 — Hierarchy/Refinement Coverage Decision for Officially Supported Goldberg Families:
 
@@ -767,7 +802,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M2.5.4 measured topology performance envelope para o workload final aceito de M2**
+**M2.5.4-D permanent headless benchmark harness implementation against the frozen product-acceptance / stress lanes**
 
 Última revisão de baseline:
 

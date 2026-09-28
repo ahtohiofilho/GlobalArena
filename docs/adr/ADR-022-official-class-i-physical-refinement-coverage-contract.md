@@ -313,6 +313,33 @@ M2.5.3 is therefore closed.
 
 The official M2 physical hierarchy contract remains Class I scale 6. Performance acceptance remains owned by M2.5.4, and the final cross-platform/exit regression remains owned by M2.5.5.
 
+### 15. M2.5.4 scale-envelope clarification
+
+M2.5.4 evidence clarifies the role of this ADR's scale-6 contract.
+
+The official Class I scale-6 hierarchy remains the physical hierarchy supported by M2.
+
+That scale is a topology/refinement semantic contract. It is not a frozen statement about the final tactical density that players will see.
+
+Current product planning hypotheses are:
+
+- strategic Goldberg around `m+n <= 15`;
+- tactical density up to roughly 12 rings in some contexts and normally less;
+- final V1 scale not frozen until later visual/gameplay validation.
+
+The hypotheses interact multiplicatively and therefore require a combined scale envelope.
+
+The previous requirement that full physical `G(16,0) -> G(96,0)` satisfy the blocking M2 product-performance budget is superseded by the governed M2.5.4 amendment to ADR-020.
+
+`G(16,0) -> G(96,0)` remains an engineering stress baseline.
+
+The blocking M2 physical semantic acceptance case becomes:
+
+`G(4,0) -> G(24,0)`
+
+with the same scale-6 lineage, incidence, authoritative edge/vertex validation and traversal semantics.
+
+This does not reduce the generalized semantic support proved in M2.5.3. It changes only which valid scale is required to satisfy the blocking product-performance budget.
 ## Consequences
 
 Positive:

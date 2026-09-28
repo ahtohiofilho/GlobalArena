@@ -210,6 +210,45 @@ function Test-GAScriptText {
         }
     }
 
+    for ($recordIndex = 0;
+         $recordIndex -lt $codeLines.Count;
+         $recordIndex++)
+    {
+        if ($codeLines[$recordIndex].Text -notmatch
+            '&\s*dotnet(?:\.exe)?\s+run\b')
+        {
+            continue
+        }
+
+        $windowEnd =
+            [Math]::Min(
+                $recordIndex + 12,
+                $codeLines.Count - 1)
+
+        $windowLines =
+            @(
+                for ($windowIndex = $recordIndex;
+                     $windowIndex -le $windowEnd;
+                     $windowIndex++)
+                {
+                    $codeLines[$windowIndex].Text
+                }
+            )
+
+        $windowText =
+            $windowLines -join "`n"
+
+        if ($windowText -match '2>&1')
+        {
+            $violations.Add(
+                (New-Violation `
+                    -Rule 'GA-SR-024' `
+                    -Line $codeLines[$recordIndex].Number `
+                    -Message 'Diagnostic dotnet run must redirect stdout/stderr durably instead of merging native stderr through 2>&1.'))
+
+            break
+        }
+    }
     $variableSpellingsByScope = @{}
 
     $variableExpressions =
@@ -593,6 +632,44 @@ if (@(Get-ChildItem -LiteralPath '.').Count -eq 0) {
     Assert-Case `
         -Name 'normalized-get-childitem-count-safe' `
         -Text $normalizedCountSafe `
+        -SelectedProfile 'General' `
+        -ShouldPass $true
+
+    $nativeStderrTrap = @'
+#requires -Version 5.1
+$ErrorActionPreference = 'Stop'
+$output = @(
+    & dotnet run `
+        --project 'probe.csproj' `
+        -c Release 2>&1
+)
+'@
+
+    Assert-Case `
+        -Name 'native-dotnet-run-stderr-merge' `
+        -Text $nativeStderrTrap `
+        -SelectedProfile 'General' `
+        -ShouldPass $false `
+        -ExpectedRule 'GA-SR-024'
+
+    $nativeStderrSafe = @'
+#requires -Version 5.1
+$ErrorActionPreference = 'Stop'
+$process = Start-Process `
+    -FilePath 'dotnet' `
+    -ArgumentList @('run', '--project', 'probe.csproj', '-c', 'Release') `
+    -Wait `
+    -PassThru `
+    -RedirectStandardOutput 'stdout.log' `
+    -RedirectStandardError 'stderr.log'
+if ($process.ExitCode -ne 0) {
+    throw 'probe failed'
+}
+'@
+
+    Assert-Case `
+        -Name 'native-dotnet-run-durable-redirection-safe' `
+        -Text $nativeStderrSafe `
         -SelectedProfile 'General' `
         -ShouldPass $true
 

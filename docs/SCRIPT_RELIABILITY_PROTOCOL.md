@@ -1,7 +1,7 @@
 # Global Arena — Script Reliability Protocol
 
 **Protocol ID:** GA-SRP
-**Version:** 1.0
+**Version:** 1.1
 **Status:** Active
 **Effective date:** 2026-09-28
 **Scope:** PowerShell automation used to inspect, modify, validate or formally close work in the Global Arena repository.
@@ -248,17 +248,18 @@ a previous failed script left a partial state that a later script had to recover
 Guard:
 automatic recovery may occur only when the dirty-state shape and relevant artifacts match a specifically recognized state.
 
-### GA-SR-018 — Nested script payload transport is delimiter-independent
+### GA-SR-018 — Nested PowerShell payload transport is delimiter-independent
 
-Observed failure:
-the GA-SRP bootstrap embedded complete PowerShell scripts inside a raw single-quoted here-string. The embedded scripts contained their own here-string terminators, which prematurely closed the outer payload and made the bootstrap itself unparsable.
+Observed failures:
+the GA-SRP bootstrap embedded complete PowerShell scripts inside a raw single-quoted here-string, and a later M2.5.4 design-freeze script embedded validator self-test snippets containing their own here-string delimiters. In both cases an inner terminator prematurely closed the outer payload and made the carrier script unparsable.
 
 Guard:
 
-- a PowerShell script that transports another complete PowerShell script must not embed that payload as a raw here-string;
-- use Base64/UTF-8 transport or an external file;
-- bootstrap payload transport must be delimiter-independent;
-- once GA-SRP is installed, the native Windows PowerShell 5.1 parser gate remains the final syntax authority.
+- any transported PowerShell payload that can contain the carrier's here-string delimiter must not be embedded as a raw same-delimiter here-string;
+- this applies to complete scripts, validator fixtures, probe snippets and other executable PowerShell fragments;
+- use Base64/UTF-8 transport, an external file, or another delimiter-independent representation;
+- bootstrap and protocol-upgrade payload transport must be delimiter-independent;
+- the native Windows PowerShell 5.1 parser gate remains the final syntax authority and must block execution on any recurrence.
 
 ### GA-SR-019 — Avoid `New-Object List[object]` with array subexpression
 
@@ -317,6 +318,19 @@ Guard:
 - the detector must allow equivalent spellings in separate function/scriptblock scopes;
 - GA-SR-021 applies: both unsafe and safe neighboring fixtures are required.
 
+### GA-SR-024 — Native diagnostic stderr is redirected durably
+
+Observed failure:
+a read-only performance diagnostic invoked `dotnet run ... 2>&1` under Windows PowerShell 5.1 with `$ErrorActionPreference = 'Stop'`. Native stderr was converted into a terminating `RemoteException` before the script could persist the actual compiler/runtime output.
+
+Guard:
+
+- diagnostic `dotnet run` probes must not rely on PowerShell stream merging through `2>&1`;
+- redirect stdout and stderr to durable evidence files, for example with `Start-Process -RedirectStandardOutput` and `-RedirectStandardError`;
+- evaluate the native process exit code only after those files exist and their contents can be included in evidence;
+- GA-SR-022 still applies: the immediate native output must survive a failed gate;
+- the validator rejects the observed direct `dotnet run ... 2>&1` pattern;
+- GA-SR-021 applies: the detector has both failing and safe neighboring fixtures.
 ### GA-SR-017 — Protocol regression promotion
 
 When a new failure occurs:

@@ -144,6 +144,15 @@ Descrição:
 
 A alta resolução tática pode gerar uso excessivo de memória e CPU se cada subtile for modelado como objeto independente pesado.
 
+M2.5.4 evidence:
+
+- full physical `G(16,0) -> G(96,0)` completes but exceeds the original product-performance budget;
+- fine `G(96,0)` topology generation is the dominant measured cost;
+- scale-6 allocation per fine tile is approximately linear across `k=4,8,12,15`;
+- observed allocation-per-tile spread is `1.010`;
+- observed time-per-tile spread is `1.696`;
+- the main current issue is a high constant cost per fine tile rather than demonstrated combinatorial explosion.
+
 Mitigação:
 
 - data-oriented design;
@@ -152,11 +161,13 @@ Mitigação:
 - carregamento e processamento seletivo;
 - evitar GameObject por tile;
 - benchmarks de memória;
-- níveis de atividade.
+- níveis de atividade;
+- separar blocking product acceptance de non-blocking stress scale;
+- manter escala final do produto dependente de validação visual/gameplay.
 
 Próxima ação:
 
-benchmark estrutural após M2.
+implementar o benchmark headless permanente de M2.5.4 com product-acceptance e stress lanes separados, preservando os budgets atuais para os casos bloqueantes.
 
 ---
 
@@ -868,7 +879,16 @@ Score:
 
 Descrição:
 
-Planetas gigantes com milhões de subtiles podem exceder budgets de memória se os dados forem representados de forma ingênua.
+Planetas gigantes com centenas de milhares ou milhões de subtiles podem exceder budgets de memória se os dados forem representados de forma ingênua.
+
+M2.5.4 evidence:
+
+- `G(15,0) -> G(90,0)` scale 6 implies `81002` fine cells;
+- a scale near the area of a 12-ring hex region is roughly `21.656`;
+- `G(15,0)` at scale 21 approaches `992252` fine cells;
+- `G(15,0)` at scale 22 exceeds one million fine cells;
+- observed scale-6 managed allocation is approximately linear per fine tile;
+- the current representation allocates roughly 22 KB per fine tile across the measured sweep.
 
 Mitigação:
 
@@ -878,7 +898,9 @@ Mitigação:
 - bit fields quando apropriado;
 - dados derivados não persistidos quando barato recalcular;
 - streaming;
-- profiling.
+- profiling;
+- não materializar simultaneamente uma combinação de máximos estratégicos e táticos sem evidência de produto que a justifique;
+- manter stress cases para detectar perda de robustez sem transformar stress scale em requisito de produto.
 
 ---
 

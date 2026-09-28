@@ -176,6 +176,104 @@ Current totals remain:
 - `Strategic ↔ tactical hierarchy/refinement mapping`: `0.00`;
 - `RISK-003`: HIGH.
 
+### 11. M2.5.4 governed scale-envelope revision
+
+M2.5.4 produced two additional evidence sets after the original M2.5.1 contract:
+
+Performance decomposition:
+
+`GlobalArena-Evidence-M2.5.4-A-R4-READONLY-PERFORMANCE-DECOMPOSITION-DIAGNOSTIC-20260928-182725.zip`
+
+SHA-256:
+
+`537c207a16a300af343e4927fddfda0284dd64c11b35623734e73e0146a4cc0f`
+
+Scale-envelope audit:
+
+`GlobalArena-Evidence-M2.5.4-B-R1-READONLY-SCALE-ENVELOPE-AUDIT-20260928-185801.zip`
+
+SHA-256:
+
+`431e433f0c880719f8b431aea594e71acd0e06808a7f9d3f936d9eb6bfa3db5f`
+
+The evidence shows:
+
+- full physical `G(16,0) -> G(96,0)` is topologically valid and completes;
+- its measured performance exceeds all four original blocking budgets;
+- fine `G(96,0)` topology generation dominates that workload;
+- fine topology contributed about `87.74%` of managed allocation and `75.34%` of elapsed time in the decomposition run;
+- scale-6 managed allocation per fine tile remained approximately linear across `k=4,8,12,15`;
+- allocation-per-tile spread was `1.010`;
+- time-per-tile spread was `1.696`.
+
+The original M2.5.1 workload selection is therefore revised in a governed way. The hard thresholds are not relaxed.
+
+#### 11.1 Blocking M2 product-acceptance lane
+
+The permanent M2.5.4 harness must include these blocking cases:
+
+- Class I strategic/logical: `G(15,0)`;
+- Class II strategic/logical: `G(7,7)`;
+- Class III strategic/logical: `G(14,1)`;
+- Class I physical semantic acceptance: `G(4,0) -> G(24,0)`, scale 6.
+
+Each strategic/logical case includes the accepted logical M2 workload:
+
+- `StrategicTopology`;
+- all `TacticalRegion` instances;
+- all `SharedBorderBand` instances;
+- `StrategicTacticalBorderAggregate`.
+
+The physical acceptance case additionally includes:
+
+- authoritative coarse and fine `StrategicTopology`;
+- complete `PhysicalTacticalIncidenceMap`;
+- physical incidence validation required by the production mapper;
+- the same logical structures materialized from the authoritative coarse topology.
+
+The unchanged hard budgets apply to every blocking case:
+
+- median elapsed `<= 1000 ms`;
+- maximum elapsed sample `<= 2000 ms`;
+- median managed allocation `<= 192 MiB`;
+- maximum managed allocation sample `<= 256 MiB`.
+
+#### 11.2 Non-blocking engineering stress lane
+
+The permanent harness must also retain:
+
+`G(16,0) -> G(96,0)`
+
+as a full physical stress baseline.
+
+Stress-case topology correctness, output validation and deterministic semantics remain mandatory.
+
+Its elapsed/allocation figures are recorded and compared over time, but exceeding the product-acceptance thresholds does not by itself block M2.
+
+A crash, invalid topology, broken lineage/incidence semantics or determinism regression in the stress case still blocks the corresponding correctness gate.
+
+#### 11.3 Provisional product scale hypothesis
+
+Current product planning expects:
+
+- strategic Goldberg size around `m+n <= 15`;
+- tactical density up to roughly 12 rings in some contexts and normally less.
+
+These are hypotheses, not frozen V1 limits.
+
+Final scale will be selected only after later visual and gameplay validation.
+
+The strategic and tactical maxima cannot be treated as independent simultaneous requirements. Their product determines the physical workload.
+
+The M2 Class I scale-6 hierarchy is a semantic/refinement contract and must not be interpreted as the final V1 tactical density.
+
+#### 11.4 Combined envelope rule
+
+M2.5.4 benchmarks a combined scale envelope.
+
+The benchmark must not infer a final V1 planet size from one topology parameter alone.
+
+Larger technically valid workloads remain desirable as robustness headroom and may be retained as stress cases even when they exceed the blocking product-performance envelope.
 ## Consequences
 
 Positive:
