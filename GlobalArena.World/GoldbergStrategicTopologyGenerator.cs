@@ -425,9 +425,29 @@ public static class GoldbergStrategicTopologyGenerator
                 "Triangular seed generation must expose exactly 12 canonical icosahedron seed vertices.");
         }
 
+        var dominantSeedVertexIdsByCell =
+            new Dictionary<StrategicCellId, IReadOnlyList<int>>(
+                orderedVertexKeys.Length);
+
+        for (var index = 0;
+             index < orderedVertexKeys.Length;
+             index++)
+        {
+            var cellId =
+                new StrategicCellId(
+                    (ulong)index + 1UL);
+
+            dominantSeedVertexIdsByCell.Add(
+                cellId,
+                Array.AsReadOnly(
+                    orderedVertexKeys[index]
+                        .GetDominantSeedVertexIds()));
+        }
+
         return new TriangularSeedGenerationResult(
             topology,
-            seedVertexCellIds);
+            seedVertexCellIds,
+            dominantSeedVertexIdsByCell);
     }
 
     private static CanonicalTriangle[] CreateClassIISeedFaces()
@@ -612,12 +632,18 @@ public static class GoldbergStrategicTopologyGenerator
 
         public IReadOnlyDictionary<int, StrategicCellId> SeedVertexCellIds { get; }
 
+        public IReadOnlyDictionary<StrategicCellId, IReadOnlyList<int>>
+            DominantSeedVertexIdsByCell { get; }
+
         public TriangularSeedGenerationResult(
             StrategicTopology topology,
-            IReadOnlyDictionary<int, StrategicCellId> seedVertexCellIds)
+            IReadOnlyDictionary<int, StrategicCellId> seedVertexCellIds,
+            IReadOnlyDictionary<StrategicCellId, IReadOnlyList<int>>
+                dominantSeedVertexIdsByCell)
         {
             ArgumentNullException.ThrowIfNull(topology);
             ArgumentNullException.ThrowIfNull(seedVertexCellIds);
+            ArgumentNullException.ThrowIfNull(dominantSeedVertexIdsByCell);
 
             if (seedVertexCellIds.Count != 12)
             {
@@ -639,6 +665,64 @@ public static class GoldbergStrategicTopologyGenerator
                     nameof(seedVertexCellIds));
             }
 
+            if (dominantSeedVertexIdsByCell.Count != topology.Cells.Count)
+            {
+                throw new ArgumentException(
+                    "Dominant seed provenance must contain exactly one entry for every generated strategic cell.",
+                    nameof(dominantSeedVertexIdsByCell));
+            }
+
+            var expectedCellIds =
+                topology.Cells
+                    .Select(cell => cell.Id)
+                    .OrderBy(id => id.Value)
+                    .ToArray();
+
+            var actualCellIds =
+                dominantSeedVertexIdsByCell.Keys
+                    .OrderBy(id => id.Value)
+                    .ToArray();
+
+            if (!actualCellIds.SequenceEqual(expectedCellIds))
+            {
+                throw new ArgumentException(
+                    "Dominant seed provenance keys must cover every generated strategic cell exactly once.",
+                    nameof(dominantSeedVertexIdsByCell));
+            }
+
+            var provenanceCopy =
+                new Dictionary<StrategicCellId, IReadOnlyList<int>>(
+                    dominantSeedVertexIdsByCell.Count);
+
+            foreach (var pair in dominantSeedVertexIdsByCell)
+            {
+                if (pair.Value is null)
+                {
+                    throw new ArgumentException(
+                        "Dominant seed provenance cannot contain null value collections.",
+                        nameof(dominantSeedVertexIdsByCell));
+                }
+
+                var seedVertexIds =
+                    pair.Value
+                        .Order()
+                        .ToArray();
+
+                if (seedVertexIds.Length is < 1 or > 3
+                    || seedVertexIds.Any(seedVertexId => seedVertexId <= 0)
+                    || seedVertexIds.Distinct().Count() != seedVertexIds.Length)
+                {
+                    throw new ArgumentException(
+                        "Dominant seed provenance must contain one, two, or three unique positive seed vertex IDs per generated cell.",
+                        nameof(dominantSeedVertexIdsByCell));
+                }
+
+                provenanceCopy.Add(
+                    pair.Key,
+                    Array.AsReadOnly(
+                        seedVertexIds));
+            }
+
             Topology =
                 topology;
 
@@ -646,6 +730,12 @@ public static class GoldbergStrategicTopologyGenerator
                 new System.Collections.ObjectModel.ReadOnlyDictionary<int, StrategicCellId>(
                     new Dictionary<int, StrategicCellId>(
                         seedVertexCellIds));
+
+            DominantSeedVertexIdsByCell =
+                new System.Collections.ObjectModel.ReadOnlyDictionary<
+                    StrategicCellId,
+                    IReadOnlyList<int>>(
+                    provenanceCopy);
         }
     }
 
@@ -714,6 +804,49 @@ public static class GoldbergStrategicTopologyGenerator
                 0;
 
             return false;
+        }
+
+        public int[] GetDominantSeedVertexIds()
+        {
+            var weightedVertices =
+                new[]
+                {
+                    new WeightedSeedVertex(
+                        FirstVertex,
+                        FirstWeight),
+                    new WeightedSeedVertex(
+                        SecondVertex,
+                        SecondWeight),
+                    new WeightedSeedVertex(
+                        ThirdVertex,
+                        ThirdWeight)
+                }
+                .Where(
+                    item =>
+                        item.Vertex > 0
+                        && item.Weight > 0)
+                .ToArray();
+
+            if (weightedVertices.Length == 0)
+            {
+                throw new InvalidOperationException(
+                    "Subdivision lattice key must contain at least one weighted seed vertex.");
+            }
+
+            var maximumWeight =
+                weightedVertices.Max(
+                    item =>
+                        item.Weight);
+
+            return weightedVertices
+                .Where(
+                    item =>
+                        item.Weight == maximumWeight)
+                .Select(
+                    item =>
+                        item.Vertex)
+                .Order()
+                .ToArray();
         }
 
         public int CompareTo(

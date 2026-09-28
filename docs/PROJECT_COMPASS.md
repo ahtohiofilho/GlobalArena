@@ -306,7 +306,7 @@ A decomposição operacional inicial de M2 é:
 | Scalability / headless performance baseline | 4 |
 | **TOTAL** | **90** |
 
-Estado de maturidade após M2.4.5 / fechamento de M2.4:
+Estado de maturidade após M2.5.2-C / fechamento do materializador físico de referência:
 
 | Capability | GPP | Maturidade | Fator | GPP ganhos |
 |---|---:|---|---:|---:|
@@ -314,11 +314,11 @@ Estado de maturidade após M2.4.5 / fechamento de M2.4:
 | Strategic graph: identidade, incidência e adjacência | 12 | Implementação funcional isolada | 0.50 | 6.00 |
 | Tactical region topology | 14 | Validada | 0.85 | 11.90 |
 | Shared subtile border bands | 16 | Validada | 0.85 | 13.60 |
-| Strategic ↔ tactical hierarchy/refinement mapping | 16 | Inexistente | 0.00 | 0.00 |
+| Strategic ↔ tactical hierarchy/refinement mapping | 16 | Implementação funcional isolada | 0.50 | 8.00 |
 | Canonical deterministic topology generation | 6 | Inexistente | 0.00 | 0.00 |
 | Topological validation e navigability | 6 | Inexistente | 0.00 | 0.00 |
 | Scalability / headless performance baseline | 4 | Inexistente | 0.00 | 0.00 |
-| **TOTAL** | **90** |  |  | **39.50** |
+| **TOTAL** | **90** |  |  | **47.50** |
 
 M2.1.1 foi um audit arquitetural e não promoveu maturidade por si só.
 
@@ -383,6 +383,8 @@ A capability `Strategic ↔ tactical hierarchy/refinement mapping` permanece em 
 O entry audit de M2.5 confirmou que o milestone não pode ser encerrado por uma regressão de performance isolada. O exit gate ainda exige physical boundary attachment, cross-region navigability, decisão explícita sobre hierarchy/refinement coverage e um benchmark headless quantitativo sobre o workload final aceito para M2.
 
 M2.5.1 congela os requisitos do exit gate, a decomposição operacional de M2.5 e o primeiro budget quantitativo de M2 topology baseline. Nenhuma maturity capability é promovida por esse design.
+
+M2.5.2-B introduz a identidade física global e o contrato de incidência coarse 1/2/3. M2.5.2-C materializa integralmente o primeiro target edge-and-vertex-aware `G(1,0) -> G(6,0)`, cobrindo 362/362 tiles físicos com assinatura 312 interior / 30 edge-shared / 20 vertex-shared, incluindo cobertura exata de todos os coarse edges e vertices. Por existir agora uma implementação física funcional, porém ainda restrita ao reference target e sem traversal/family coverage universal, `Strategic ↔ tactical hierarchy/refinement mapping` é promovida de `Inexistente — fator 0.00` para `Implementação funcional isolada — fator 0.50`.
 
 Esses pesos constituem o baseline inicial.
 
@@ -601,7 +603,7 @@ Etapa:
 
 Subetapa atual:
 
-**M2.5.2-C — Vertex-Aware Physical Incidence Materialization**
+**M2.5.2-D — Fine-Topology Cross-Region Traversal Contract & Validation**
 
 M0 — Project Baseline:
 
@@ -713,11 +715,11 @@ Baseline V1:
 
 Progresso oficial:
 
-**11,0%**
+**11,8%**
 
 GPP conquistados:
 
-**109,50 / 1000**
+**117,50 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -725,7 +727,7 @@ Foundation / Simulation Kernel:
 
 Topologia planetária / Goldberg:
 
-**39,50 / 90 GPP — 43,9%**
+**47,50 / 90 GPP — 52,8%**
 
 Scope Confidence:
 
@@ -741,7 +743,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M2.5.2 coarse→fine physical incidence, vertex-aware navigability, refinement coverage e scalability baseline**
+**M2.5.2-D fine-topology cross-region traversal, refinement coverage e scalability baseline**
 
 Última revisão de baseline:
 

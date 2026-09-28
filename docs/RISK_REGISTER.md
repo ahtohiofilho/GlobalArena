@@ -1055,3 +1055,53 @@ This does not reduce `RISK-003` yet because the production materializer and comp
 Global Risk Level remains:
 
 **HIGH**
+---
+
+# 11. M2.5.2-C physical incidence materializer close
+
+**Date:** 2026-09-28
+
+Evidence:
+
+`GlobalArena-Evidence-M2.5.2-C-MATERIALIZER-IMPLEMENTATION-R1-20260928-093748.zip`
+
+Result:
+
+**PASS_READY_FOR_M2_5_2_C_MATERIALIZER_FORMAL_CLOSE**
+
+The corrected reference target `G(1,0) -> G(6,0)` is now materialized in production code.
+
+Validated:
+
+- fine physical tile coverage: `362/362`;
+- interior incidence: `312`;
+- edge-shared incidence: `30`;
+- vertex-shared incidence: `20`;
+- all 30 authoritative coarse strategic edges represented exactly once;
+- all 20 authoritative coarse strategic vertices represented exactly once;
+- deterministic repeated materialization;
+- read-only incidence map;
+- 402/402 tests;
+- 0 compiler warnings/errors.
+
+Risk effect:
+
+The reference physical coarse-to-fine mapping is no longer absent. `RISK-003` is narrowed from absence of any physical mapping to lack of generalized family/scale coverage and durable lineage beyond the accepted reference target.
+
+`RISK-003 — Goldberg hierarchy mapping` remains:
+
+**HIGH**
+
+Reason:
+
+- physical materialization is currently reference-target-specific;
+- M2.5.3 must still decide and validate official family/refinement coverage;
+- M2.5.2-D must still prove cross-region traversal over the fine topology.
+
+`RISK-002 — Tactical resolution scalability` remains open.
+
+`RISK-012 — Memory footprint` remains open.
+
+Global Risk Level remains:
+
+**HIGH**

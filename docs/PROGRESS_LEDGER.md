@@ -10642,3 +10642,116 @@ M2 remains:
 Next gate:
 
 **M2.5.2-C MATERIALIZER IMPLEMENTATION**
+---
+
+## 2026-09-28 — M2.5.2-C physical incidence materializer close
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate**
+
+Subcheckpoint:
+
+**M2.5.2-C — Vertex-Aware Physical Incidence Materialization**
+
+Baseline:
+
+`26f89282a3f9638b8e8c24b96c1af4ad20f72b61`
+
+Evidence:
+
+`GlobalArena-Evidence-M2.5.2-C-MATERIALIZER-IMPLEMENTATION-R1-20260928-093748.zip`
+
+Evidence SHA-256:
+
+`bd3ff882fc0cf9c411f351dabd64a0c245a230a8c075bc028e79193592b38f98`
+
+Audit result:
+
+**PASS_READY_FOR_M2_5_2_C_MATERIALIZER_FORMAL_CLOSE**
+
+Production changes:
+
+- `GoldbergStrategicTopologyGenerator` now exposes deterministic dominant triangular-seed provenance internally;
+- `PhysicalTacticalIncidenceMap` added;
+- `PhysicalTacticalIncidenceMapper` added;
+- 13 focused materializer tests added.
+
+Validated physical mapping:
+
+- reference pair: `G(1,0) -> G(6,0)`, scale 6;
+- fine tiles: `362/362` covered exactly once;
+- interior: `312`;
+- edge-shared: `30`;
+- vertex-shared: `20`;
+- all 30 coarse edges covered exactly once;
+- all 20 coarse vertices covered exactly once;
+- all 12 fine pentagons remain interior and cover all 12 coarse cells;
+- repeated materialization deterministic;
+- read-only map snapshot;
+- no legacy `TacticalCellId` / `SharedBorderElementId` physical-identity dependency.
+
+Quality gate:
+
+- Release build: PASS;
+- compiler warnings: 0;
+- compiler errors: 0;
+- baseline tests: 389;
+- new tests: 13;
+- accumulated tests: 402/402;
+- failed: 0;
+- not executed: 0;
+- implementation changeset: exactly 4 files;
+- QA commit/push: False.
+
+Maturity promotion:
+
+`Strategic ↔ tactical hierarchy/refinement mapping`
+
+from:
+
+**Inexistente — factor 0.00**
+
+to:
+
+**Implementação funcional isolada — factor 0.50**
+
+GPP change:
+
+**+8.00**
+
+GPP:
+
+**117.50 / 1000**
+
+Global Progress:
+
+**11.8%**
+
+Planet Topology:
+
+**47.50 / 90 — 52.8%**
+
+`RISK-003` remains:
+
+**HIGH**
+
+Reason:
+
+The first physical mapping is functional and complete for the accepted reference target, but generalized family/scale coverage and cross-region traversal are still open.
+
+M2 remains:
+
+**OPEN**
+
+M2.5.2-C status:
+
+**CLOSED**
+
+Next gate:
+
+**M2.5.2-D — Fine-Topology Cross-Region Traversal Contract & Validation**

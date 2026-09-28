@@ -1559,13 +1559,13 @@ Design proposto em ADR-021:
 - audit de provenance M2.5.2-C: `G(1,0) -> G(3,0)`, scale 3, é vertex-aware apenas (`72 interior + 0 edge + 20 vertex = 92`);
 - primeiro target de materialização com edge + vertex simultaneamente: `G(1,0) -> G(6,0)`, scale 6;
 - decomposição auditada do novo target: `312 interior + 30 edge-shared + 20 vertex-shared = 362`;
-- a materialização production desse mapping permanece pendente no M2.5.2-C.
+- a materialização production `G(1,0) -> G(6,0)` foi concluída no M2.5.2-C com cobertura `362/362` e assinatura `312/30/20`.
 
 Decomposição de M2.5.2:
 
 - M2.5.2-A — Vertex-Aware Physical Boundary Read-Only Audit — concluído;
 - M2.5.2-B — Global Physical Tactical Identity & Coarse Incidence Contract;
-- M2.5.2-C — Vertex-Aware Physical Incidence Materialization;
+- M2.5.2-C — Vertex-Aware Physical Incidence Materialization — concluído;
 - M2.5.2-D — Fine-Topology Cross-Region Traversal Contract & Validation;
 - M2.5.2-E — Accumulated Validation & M2.5.2 Close.
 
@@ -1595,7 +1595,7 @@ O materializador coarse→fine permanece deliberadamente ausente nesta tranche.
 
 Próximo gate:
 
-**M2.5.2-C — Vertex-Aware Physical Incidence Materialization**
+**M2.5.2-D — Fine-Topology Cross-Region Traversal Contract & Validation**
 
 ---
 ## M3 — Procedural World
@@ -1917,3 +1917,23 @@ Critical Path:
 Last Baseline Review:
 
 **2026-09-20**
+#### M2.5.2-C materializer close
+
+Materialização física concluída no reference target `G(1,0) -> G(6,0)`:
+
+- cobertura física: `362/362`;
+- interior: `312`;
+- edge-shared: `30`;
+- vertex-shared: `20`;
+- todos os 30 coarse edges cobertos exatamente uma vez;
+- todos os 20 coarse vertices cobertos exatamente uma vez;
+- determinismo e snapshots read-only validados;
+- suíte acumulada: `402/402`.
+
+Evidence:
+
+`GlobalArena-Evidence-M2.5.2-C-MATERIALIZER-IMPLEMENTATION-R1-20260928-093748.zip`
+
+M2.5.2-C está concluído.
+
+Traversal físico cross-region permanece fora desta tranche e passa a ser o foco do M2.5.2-D.

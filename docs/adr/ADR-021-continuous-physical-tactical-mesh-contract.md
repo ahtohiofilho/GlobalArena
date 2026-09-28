@@ -422,3 +422,45 @@ Decision amendment:
 The scale-3 target is superseded for the first complete physical incidence materialization. M2.5.2-C will use scale 6 as its first edge-and-vertex-aware reference target.
 
 This amendment changes the reference target only. It does not change the physical identity contract, the 1/2/3 incidence contract, the no-duplication invariant, GPP, or current risk classification.
+## 2026-09-28 — M2.5.2-C materializer implementation close
+
+Evidence package:
+
+`GlobalArena-Evidence-M2.5.2-C-MATERIALIZER-IMPLEMENTATION-R1-20260928-093748.zip`
+
+Evidence package SHA-256:
+
+`bd3ff882fc0cf9c411f351dabd64a0c245a230a8c075bc028e79193592b38f98`
+
+Baseline HEAD/origin/main:
+
+`26f89282a3f9638b8e8c24b96c1af4ad20f72b61`
+
+Result:
+
+**PASS_READY_FOR_M2_5_2_C_MATERIALIZER_FORMAL_CLOSE**
+
+Implemented:
+
+- dominant triangular-seed provenance for every generated fine strategic cell;
+- `PhysicalTacticalIncidenceMap`;
+- `PhysicalTacticalIncidenceMapper`;
+- complete `G(1,0) -> G(6,0)` physical incidence materialization.
+
+Validated:
+
+- `362/362` fine tiles covered exactly once;
+- `312` one-cell incidences;
+- `30` two-cell incidences;
+- `20` three-cell incidences;
+- all coarse edges represented exactly once by the two-cell incidence set;
+- all coarse vertices represented exactly once by the three-cell incidence set;
+- 12 fine pentagons remain one-cell interior incidences and cover all 12 coarse strategic cells;
+- repeated materialization is deterministic;
+- public map snapshot is read-only;
+- Release build passes with 0 warnings and 0 errors;
+- accumulated tests: `402/402`.
+
+M2.5.2-C is closed.
+
+The materializer remains deliberately reference-target-specific. General family/scale coverage remains M2.5.3, and fine-topology cross-region traversal remains M2.5.2-D.

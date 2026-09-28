@@ -4335,7 +4335,48 @@ Validation result:
 - exact production/test changeset: 4 new files;
 - no coarse→fine physical incidence materializer yet.
 
-M2.5.2-B therefore freezes the production vocabulary only. Complete physical incidence materialization remains M2.5.2-C.
+M2.5.2-B freezes the production vocabulary. M2.5.2-C now materializes the accepted `G(1,0) -> G(6,0)` reference mapping completely; family/scale generalization remains a later gate.
+### M2.5.2-C materializer implementation evidence
+
+M2.5.2-C now exposes deterministic dominant triangular-seed provenance and materializes the accepted physical incidence reference target:
+
+`G(1,0) -> G(6,0)`, scale `6`.
+
+Production artifacts:
+
+- `PhysicalTacticalIncidenceMap`;
+- `PhysicalTacticalIncidenceMapper`;
+- dominant-seed provenance exposed by `GoldbergStrategicTopologyGenerator`.
+
+Validated reference invariants:
+
+- every fine strategic cell becomes exactly one canonical `PhysicalTacticalTileId`;
+- all `362/362` fine tiles are covered exactly once;
+- `312` tiles have one coarse-cell incidence;
+- `30` tiles have two-cell incidence and cover the `30` authoritative coarse `StrategicEdge` values exactly once;
+- `20` tiles have three-cell incidence and cover the `20` authoritative coarse `StrategicVertex` values exactly once;
+- the 12 fine pentagons remain interior and cover the 12 coarse strategic cells;
+- repeated materialization is deterministic;
+- public incidence collections are read-only;
+- no `TacticalCellId` or `SharedBorderElementId` is used as physical identity.
+
+Evidence:
+
+`GlobalArena-Evidence-M2.5.2-C-MATERIALIZER-IMPLEMENTATION-R1-20260928-093748.zip`
+
+Evidence SHA-256:
+
+`bd3ff882fc0cf9c411f351dabd64a0c245a230a8c075bc028e79193592b38f98`
+
+Quality gate:
+
+- Release build: PASS;
+- compiler warnings: 0;
+- compiler errors: 0;
+- tests: 402/402;
+- new tests in M2.5.2-C materializer tranche: 13.
+
+M2.5.2-C closes the first functional physical coarse-to-fine incidence materialization. Fine-topology cross-region traversal remains M2.5.2-D.
 O estado estratégico de uma conexão poderá futuramente ser derivado do estado tático correspondente.
 
 Exemplos futuros incluem:
