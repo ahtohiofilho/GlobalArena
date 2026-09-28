@@ -1571,7 +1571,29 @@ Nenhuma promoção de GPP ocorre no design.
 
 Próximo gate após design audit:
 
-**M2.5.2-B IMPLEMENTATION**
+**M2.5.2-B IMPLEMENTATION — CONCLUÍDO**
+
+#### M2.5.2-B implementation close
+
+Implementados e auditados:
+
+- `PhysicalTacticalTileId`;
+- `PhysicalTacticalTileIncidence`;
+- canonicalização read-only da incidência coarse;
+- validação de incidência 1/2/3;
+- validação estrutural edge-aware e vertex-aware;
+- 23 novos testes;
+- suíte acumulada: 389/389.
+
+Evidência:
+
+`GlobalArena-Evidence-M2.5.2-B-IMPLEMENTATION-R2-20260928-083834.zip`
+
+O materializador coarse→fine permanece deliberadamente ausente nesta tranche.
+
+Próximo gate:
+
+**M2.5.2-C — Vertex-Aware Physical Incidence Materialization**
 
 ---
 ## M3 — Procedural World

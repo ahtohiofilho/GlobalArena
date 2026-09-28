@@ -601,7 +601,7 @@ Etapa:
 
 Subetapa atual:
 
-**M2.5.2 — Strategic/Tactical Physical Boundary Attachment & Cross-Region Traversal**
+**M2.5.2-C — Vertex-Aware Physical Incidence Materialization**
 
 M0 — Project Baseline:
 

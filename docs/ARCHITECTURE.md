@@ -4302,6 +4302,40 @@ A navegação cross-region deverá usar a adjacency da topologia fina contínua,
 A primeira referência vertex-aware a ser provada em implementação é `G(1,0) -> G(3,0)`, scale 3. A decomposição de contagem `12 + 60 + 20 = 92` é alvo de design e ainda depende de prova de provenance/mapping.
 
 Detalhes e limites estão congelados em `ADR-021`.
+### M2.5.2-B implementation evidence
+
+The minimum physical identity/incidence vocabulary is now implemented:
+
+- `PhysicalTacticalTileId` is scoped by `FineGoldbergParameters + FineStrategicCellId`;
+- fine cell identity is rejected when it falls outside the selected fine Goldberg topology;
+- `PhysicalTacticalTileIncidence` requires an accepted scaled coarse→fine refinement relation;
+- incidence cardinality is restricted to exactly 1, 2 or 3 coarse strategic cells;
+- two-cell incidence must correspond to one authoritative coarse `StrategicEdge`;
+- three-cell incidence must correspond to one authoritative coarse `StrategicVertex`;
+- incident coarse cells are exposed as a canonical read-only snapshot;
+- the contract has no dependency on `TacticalCellId` or `SharedBorderElementId`.
+
+Implementation evidence:
+
+`GlobalArena-Evidence-M2.5.2-B-IMPLEMENTATION-R2-20260928-083834.zip`
+
+Evidence SHA-256:
+
+`9d1e552a6f15c0e390bf645fa86b6fb24d03bb41c4c98844c0dcbaaa2a2ca4fc`
+
+Validation baseline:
+
+`716976f2bda735527323746ae6d623a2686292ad`
+
+Validation result:
+
+- Release build: 0 warnings, 0 errors;
+- tests: 389/389;
+- new tests in this tranche: 23;
+- exact production/test changeset: 4 new files;
+- no coarse→fine physical incidence materializer yet.
+
+M2.5.2-B therefore freezes the production vocabulary only. Complete physical incidence materialization remains M2.5.2-C.
 O estado estratégico de uma conexão poderá futuramente ser derivado do estado tático correspondente.
 
 Exemplos futuros incluem:

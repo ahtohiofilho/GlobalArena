@@ -10446,3 +10446,104 @@ M2 remains:
 Next gate after formal close:
 
 **M2.5.2-B IMPLEMENTATION**
+---
+
+## 2026-09-28 — M2.5.2-B physical identity/incidence implementation close
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate**
+
+Subcheckpoint:
+
+**M2.5.2-B — Global Physical Tactical Identity & Coarse Incidence Contract**
+
+Implementation audit result:
+
+**PASS_READY_FOR_M2_5_2_B_IMPLEMENTATION_FORMAL_CLOSE**
+
+Baseline:
+
+`716976f2bda735527323746ae6d623a2686292ad`
+
+Evidence:
+
+`GlobalArena-Evidence-M2.5.2-B-IMPLEMENTATION-R2-20260928-083834.zip`
+
+Evidence SHA-256:
+
+`9d1e552a6f15c0e390bf645fa86b6fb24d03bb41c4c98844c0dcbaaa2a2ca4fc`
+
+Production contract added:
+
+- `PhysicalTacticalTileId`;
+- `PhysicalTacticalTileIncidence`.
+
+Validated invariants:
+
+- physical identity = fine Goldberg parameters + fine strategic cell ID;
+- fine cell identity must exist within the selected fine topology cardinality;
+- incidence cardinality is exactly 1, 2 or 3;
+- two-cell incidence must match a coarse `StrategicEdge`;
+- three-cell incidence must match a coarse `StrategicVertex`;
+- incidence ordering is canonical;
+- incidence snapshot is read-only;
+- no dependency on `TacticalCellId`;
+- no dependency on `SharedBorderElementId`;
+- no physical incidence materializer in this tranche.
+
+Quality gate:
+
+- Release build: 0 warnings, 0 errors;
+- baseline tests: 366;
+- new tests: 23;
+- accumulated tests: 389/389;
+- failures: 0;
+- not executed: 0;
+- implementation files: 4;
+- prior tracked files changed during QA: 0;
+- evidence manifest hashes: 9/9 valid.
+
+GPP change:
+
+**0.00**
+
+GPP remains:
+
+**109.50 / 1000**
+
+Global Progress remains:
+
+**11.0%**
+
+Planet Topology remains:
+
+**39.50 / 90 — 43.9%**
+
+`Strategic ↔ tactical hierarchy/refinement mapping` remains:
+
+**Inexistente — factor 0.00**
+
+Reason:
+
+The vocabulary now exists, but no complete coarse→fine physical incidence materialization has been proved yet.
+
+`RISK-003` remains:
+
+**HIGH**
+
+M2 remains:
+
+**OPEN**
+
+M2.5.2-B status:
+
+**CLOSED**
+
+Next gate:
+
+**M2.5.2-C — Vertex-Aware Physical Incidence Materialization**
