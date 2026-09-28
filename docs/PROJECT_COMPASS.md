@@ -394,7 +394,9 @@ M2.5.3-C implementa durable Class I construction lineage usando as mesmas intege
 
 Como durable lineage, authoritative topology generation, physical incidence materialization e fine-topology traversal agora operam conjuntamente dentro do physical hierarchy oficial, `Strategic ↔ tactical hierarchy/refinement mapping` é promovida de `Implementação funcional isolada — fator 0.50 — 8.00 GPP` para `Integrada ao sistema — fator 0.70 — 11.20 GPP`.
 
-A promoção para `Validada — fator 0.85` permanece condicionada ao accumulated coverage gate M2.5.3-D e aos gates posteriores de performance/cross-platform aplicáveis.
+M2.5.3-D fecha a validação acumulada do physical hierarchy oficial sem alterar production code. O gate valida `k=1..4` nos dois eixos Class I, incluindo `k=4` como caso fora da amostra de implementação; confirma as fórmulas generalizadas, cobertura exata de coarse edges e vertices, cobertura integral das fine tiles, determinismo repetido em `k=4`, traversal cross-owner sobre a fine topology autoritativa e rejeição de scale incorreto, Class II e Class III no physical mapper.
+
+M2.5.3 está encerrado. A capability `Strategic ↔ tactical hierarchy/refinement mapping` permanece em `Integrada ao sistema — fator 0.70` neste fechamento porque o nível `Validada — fator 0.85` exige também performance mínima e regressão de saída aplicável. Esses gates pertencem a M2.5.4 e M2.5.5.
 
 Esses pesos constituem o baseline inicial.
 
@@ -613,7 +615,15 @@ Etapa:
 
 Subetapa atual:
 
-**M2.5.3-D — Accumulated Coverage Validation & M2.5.3 Close**
+**M2.5.4 — Headless Scalability Benchmark Harness & Baseline**
+
+M2.5.3 — Hierarchy/Refinement Coverage Decision for Officially Supported Goldberg Families:
+
+**concluído em 2026-09-28**
+
+M2.5.3-D — Accumulated Coverage Validation & M2.5.3 Close:
+
+**concluído em 2026-09-28**
 
 M2.5.3-C — Class I Scale-6 Durable Lineage & Physical Mapping:
 
@@ -757,7 +767,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M2.5.3-D accumulated Class I scale-6 coverage validation e M2.5.3 close**
+**M2.5.4 measured topology performance envelope para o workload final aceito de M2**
 
 Última revisão de baseline:
 

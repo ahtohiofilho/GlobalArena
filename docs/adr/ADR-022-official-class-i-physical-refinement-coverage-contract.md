@@ -1,6 +1,6 @@
 # ADR-022 — Official Class I Physical Refinement Coverage Contract
 
-**Status:** Accepted — frozen by M2.5.3-B and implemented by M2.5.3-C on 2026-09-28
+**Status:** Accepted — frozen by M2.5.3-B, implemented by M2.5.3-C and coverage-validated by M2.5.3-D on 2026-09-28
 **Date:** 2026-09-28
 
 ## Context
@@ -253,7 +253,7 @@ Current totals after M2.5.3-C formal close:
 
 The `Strategic ↔ tactical hierarchy/refinement mapping` promotion contributes `+3.20 GPP`.
 
-Promotion to `Validada — 0.85` remains reserved for accumulated coverage validation and the applicable later exit gates.
+M2.5.3-D completed accumulated coverage validation, including out-of-sample `k=4` on both Class I axes. Promotion to `Validada — 0.85` remains reserved for the performance minimum and applicable later exit regression required by the project maturity model.
 
 ### 13. M2.5.3-C implementation evidence
 
@@ -282,7 +282,36 @@ The implementation:
 
 The audit passed with Release build `0 warnings / 0 errors` and `429/429` tests.
 
-M2.5.3-D remains responsible for accumulated coverage validation and stage closure.
+### 14. M2.5.3-D accumulated coverage evidence
+
+Accumulated validation evidence:
+
+`GlobalArena-Evidence-M2.5.3-D-R1-READONLY-ACCUMULATED-COVERAGE-VALIDATION-20260928-174320.zip`
+
+SHA-256:
+
+`c4b9afb9db62caddbddd215c852a855c63789ffdd84c48f2dfea54d0825f42b6`
+
+The read-only gate validated:
+
+- `k=1..4` on both official Class I axes;
+- out-of-sample `k=4` generalized mapping;
+- exact generalized count formulas;
+- complete authoritative coarse-edge coverage;
+- complete authoritative coarse-vertex coverage;
+- exact fine-tile coverage;
+- repeated deterministic `k=4` materialization on both axes;
+- cross-owner traversal through authoritative fine adjacency;
+- rejection of wrong-scale Class I physical mapping;
+- rejection of Class II physical mapping;
+- rejection of Class III physical mapping;
+- repository mutation: False;
+- Release build: `0 warnings / 0 errors`;
+- automated tests: `429/429`.
+
+M2.5.3 is therefore closed.
+
+The official M2 physical hierarchy contract remains Class I scale 6. Performance acceptance remains owned by M2.5.4, and the final cross-platform/exit regression remains owned by M2.5.5.
 
 ## Consequences
 

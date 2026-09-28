@@ -1880,15 +1880,15 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M2.5.3-C — Class I Scale-6 Durable Lineage & Physical Mapping**
+**M2.5.4 — Headless Scalability Benchmark Harness & Baseline**
 
 Official Progress:
 
-**12.2%**
+**12.5%**
 
 GPP Earned:
 
-**121.70 / 1000**
+**124.90 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -1896,7 +1896,7 @@ Foundation / Simulation Kernel:
 
 Planet Topology / Goldberg:
 
-**51.70 / 90 GPP — 57.4%**
+**54.90 / 90 GPP — 61.0%**
 
 Scope Confidence:
 
@@ -1912,11 +1912,11 @@ Active Critical Risks:
 
 Critical Path:
 
-**M2.5.3-C durable Class I scale-6 lineage e generalized physical mapping**
+**M2.5.4 measured topology performance envelope para o workload final aceito de M2**
 
 Last Baseline Review:
 
-**2026-09-20**
+**2026-09-28**
 #### M2.5.2-C materializer close
 
 Materialização física concluída no reference target `G(1,0) -> G(6,0)`:
@@ -2018,7 +2018,8 @@ Decomposição:
 - M2.5.3-A — Hierarchy/Refinement Coverage Feasibility Audit — concluído;
 - M2.5.3-B — Official Coverage Contract & Design Freeze — concluído;
 - M2.5.3-C — Class I Scale-6 Durable Lineage & Physical Mapping — concluído;
-- M2.5.3-D — Accumulated Coverage Validation & M2.5.3 Close — atual.
+- M2.5.3-D — Accumulated Coverage Validation & M2.5.3 Close — concluído;
+- M2.5.3 — Hierarchy/Refinement Coverage Decision for Officially Supported Goldberg Families — concluído.
 
 M2.5.3-C implementation evidence:
 
@@ -2033,23 +2034,32 @@ M2.5.3-C implementation evidence:
 - Class II/III physical hierarchy remains outside the official M2 support envelope;
 - suite accumulated after implementation: `429/429`.
 
-Maturity promotion:
+M2.5.3-D accumulated validation evidence:
+
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- suite: `429/429`;
+- `k=1`, `k=2`, `k=3` and out-of-sample `k=4` validated on both Class I axes;
+- exact generalized count formulas: PASS;
+- authoritative coarse-edge coverage: PASS;
+- authoritative coarse-vertex coverage: PASS;
+- exact fine-tile coverage: PASS;
+- repeated `k=4` determinism on both axes: PASS;
+- cross-owner fine-topology traversal at `k=4`: PASS;
+- wrong-scale Class I rejection: PASS;
+- Class II physical rejection: PASS;
+- Class III physical rejection: PASS;
+- repository mutation: False.
+
+Maturity remains:
 
 `Strategic ↔ tactical hierarchy/refinement mapping`
 
-from:
-
-**Implementação funcional isolada — fator 0.50 — 8.00 GPP**
-
-to:
-
 **Integrada ao sistema — fator 0.70 — 11.20 GPP**
 
-Increment:
+No additional GPP is awarded by M2.5.3-D because `Validada — 0.85` still requires performance minimum and the applicable later exit regression.
 
-**+3.20 GPP**
-
-Current totals:
+Current totals remain:
 
 - GPP: `124.90 / 1000`;
 - Global Progress: `12.5%`;
@@ -2057,4 +2067,4 @@ Current totals:
 
 Próximo gate:
 
-**M2.5.3-D — Accumulated Coverage Validation & M2.5.3 Close**
+**M2.5.4 — Headless Scalability Benchmark Harness & Baseline**

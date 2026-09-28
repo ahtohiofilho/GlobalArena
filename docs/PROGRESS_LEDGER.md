@@ -11281,3 +11281,120 @@ M2.5.3-C status:
 Next gate:
 
 **M2.5.3-D — Accumulated Coverage Validation & M2.5.3 Close**
+---
+
+## 2026-09-28 — M2.5.3-D accumulated coverage validation and M2.5.3 close
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate**
+
+Subcheckpoint closed:
+
+**M2.5.3-D — Accumulated Coverage Validation & M2.5.3 Close**
+
+Stage closed:
+
+**M2.5.3 — Hierarchy/Refinement Coverage Decision for Officially Supported Goldberg Families**
+
+Baseline:
+
+`559ddc5cb4af8b8ce98644965061a990eb3eb928`
+
+Evidence:
+
+`GlobalArena-Evidence-M2.5.3-D-R1-READONLY-ACCUMULATED-COVERAGE-VALIDATION-20260928-174320.zip`
+
+Evidence SHA-256:
+
+`c4b9afb9db62caddbddd215c852a855c63789ffdd84c48f2dfea54d0825f42b6`
+
+Audit result:
+
+**PASS_READY_FOR_M2_5_3_D_FORMAL_CLOSE**
+
+Quality gate:
+
+- Release build: PASS;
+- compiler warnings: `0`;
+- compiler errors: `0`;
+- tests: `429/429`;
+- failed: `0`;
+- not executed: `0`;
+- evidence manifest payloads: `17/17` verified;
+- repository mutation: False;
+- commit/push during validation: False;
+- worktree clean after: True.
+
+Accumulated official Class I scale-6 coverage:
+
+- `k=1` normal/inverted: PASS;
+- `k=2` normal/inverted: PASS;
+- `k=3` normal/inverted: PASS;
+- `k=4` normal/inverted out-of-sample: PASS;
+- `k=4` signature: `4962 interior / 480 edge / 320 vertex / 5762 total`;
+- exact generalized count formulas: PASS;
+- authoritative coarse-edge coverage: PASS;
+- authoritative coarse-vertex coverage: PASS;
+- exact fine-tile coverage: PASS;
+- repeated `k=4` determinism on both axes: PASS;
+- cross-owner `k=4` fine-topology traversal: PASS;
+- wrong-scale Class I rejection: PASS;
+- Class II physical rejection: PASS;
+- Class III physical rejection: PASS.
+
+Scope freeze preserved:
+
+- official physical hierarchy family: Class I;
+- official physical scale: `6`;
+- official rays: `G(k,0) -> G(6k,0)` and `G(0,k) -> G(0,6k)`;
+- Class II/III physical hierarchy: outside official M2 scope;
+- universal physical Goldberg refinement: not claimed.
+
+Maturity:
+
+`Strategic ↔ tactical hierarchy/refinement mapping`
+
+remains:
+
+**Integrada ao sistema — factor 0.70 — 11.20 GPP**
+
+Reason:
+
+Accumulated coverage is now validated, but the project maturity model reserves `Validada — 0.85` for capability evidence that also satisfies minimum performance and applicable later exit regression. Those gates remain M2.5.4 and M2.5.5.
+
+GPP change:
+
+**+0.00**
+
+GPP remains:
+
+**124.90 / 1000**
+
+Global Progress remains:
+
+**12.5%**
+
+Planet Topology remains:
+
+**54.90 / 90 — 61.0%**
+
+`RISK-003` remains:
+
+**HIGH**
+
+M2 remains:
+
+**OPEN**
+
+M2.5.3 status:
+
+**CLOSED**
+
+Next gate:
+
+**M2.5.4 — Headless Scalability Benchmark Harness & Baseline**

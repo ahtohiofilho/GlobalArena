@@ -522,11 +522,23 @@ M2.5.3-C generalized Class I physical hierarchy implementation passed its implem
 - physical traversal remains on authoritative fine adjacency;
 - Class II/III remain outside official M2 physical hierarchy scope.
 
-This materially mitigates the durable-lineage and generalized Class I coverage portion of RISK-003, but the risk remains HIGH until accumulated coverage validation, performance acceptance and the later M2 exit gates complete.
+M2.5.3-D then closed accumulated coverage validation without production mutation:
+
+- `k=1..4` passed on both Class I axes;
+- `k=4` provided an out-of-sample generalized case;
+- exact generalized count formulas passed;
+- every authoritative coarse edge and coarse vertex was represented exactly once;
+- exact fine-tile coverage passed;
+- repeated `k=4` materialization was deterministic on both axes;
+- cross-owner traversal used authoritative fine adjacency;
+- wrong-scale Class I, Class II physical and Class III physical cases remained rejected;
+- `429/429` tests passed with `0/0` compiler warnings/errors.
+
+This closes the official-family/refinement coverage uncertainty owned by M2.5.3. `RISK-003` remains HIGH under the current governance until measured performance and the later M2 exit gates validate the accepted workload in its final execution envelope.
 
 Próxima ação:
 
-executar M2.5.3-D — Accumulated Coverage Validation & M2.5.3 Close.
+executar M2.5.4 — Headless Scalability Benchmark Harness & Baseline.
 
 ---
 
