@@ -214,8 +214,16 @@ function Test-GAScriptText {
          $recordIndex -lt $codeLines.Count;
          $recordIndex++)
     {
-        if ($codeLines[$recordIndex].Text -notmatch
-            '&\s*dotnet(?:\.exe)?\s+run\b')
+        $recordText =
+            $codeLines[$recordIndex].Text
+
+        $isObservedNativeStderrRisk =
+            ($recordText -match
+                '&\s*dotnet(?:\.exe)?\s+run\b') -or
+            ($recordText -match
+                '&\s*git(?:\.exe)?\s+push\b')
+
+        if (-not $isObservedNativeStderrRisk)
         {
             continue
         }
@@ -244,7 +252,7 @@ function Test-GAScriptText {
                 (New-Violation `
                     -Rule 'GA-SR-024' `
                     -Line $codeLines[$recordIndex].Number `
-                    -Message 'Diagnostic dotnet run must redirect stdout/stderr durably instead of merging native stderr through 2>&1.'))
+                    -Message 'Observed native stderr-risk command must redirect stdout/stderr durably instead of merging through 2>&1.'))
 
             break
         }
@@ -342,20 +350,28 @@ function Test-GAScriptText {
         $ScriptText.Replace("`r`n", "`n").
             Replace("`r", "`n")
 
+    $gitCommandPrefix =
+        '(?im)(?:^|[@(])\s*&?\s*git(?:\.exe)?\b[^\r\n]*\b'
+
     $hasCommit =
-        $normalized -match '(?im)^\s*&?\s*git(?:\.exe)?\b[^\r\n]*\bcommit\b'
+        $normalized -match
+            ($gitCommandPrefix + 'commit\b')
 
     $hasPush =
-        $normalized -match '(?im)^\s*&?\s*git(?:\.exe)?\b[^\r\n]*\bpush\b'
+        $normalized -match
+            ($gitCommandPrefix + 'push\b')
 
     $hasGitAdd =
-        $normalized -match '(?im)^\s*&?\s*git(?:\.exe)?\b[^\r\n]*\badd\b'
+        $normalized -match
+            ($gitCommandPrefix + 'add\b')
 
     $hasGitReset =
-        $normalized -match '(?im)^\s*&?\s*git(?:\.exe)?\b[^\r\n]*\breset\b'
+        $normalized -match
+            ($gitCommandPrefix + 'reset\b')
 
     $hasGitRestore =
-        $normalized -match '(?im)^\s*&?\s*git(?:\.exe)?\b[^\r\n]*\brestore\b'
+        $normalized -match
+            ($gitCommandPrefix + 'restore\b')
 
     if ($SelectedProfile -eq 'ReadOnly')
     {
@@ -671,6 +687,57 @@ if ($process.ExitCode -ne 0) {
         -Name 'native-dotnet-run-durable-redirection-safe' `
         -Text $nativeStderrSafe `
         -SelectedProfile 'General' `
+        -ShouldPass $true
+
+    $nativeGitPushTrap = @'
+#requires -Version 5.1
+$ErrorActionPreference = 'Stop'
+$output = @(
+    & git push origin main 2>&1
+)
+'@
+
+    Assert-Case `
+        -Name 'native-git-push-stderr-merge' `
+        -Text $nativeGitPushTrap `
+        -SelectedProfile 'General' `
+        -ShouldPass $false `
+        -ExpectedRule 'GA-SR-024'
+
+    $nativeGitPushSafe = @'
+#requires -Version 5.1
+$ErrorActionPreference = 'Stop'
+$process = Start-Process `
+    -FilePath 'git' `
+    -ArgumentList @('push', 'origin', 'main') `
+    -Wait `
+    -PassThru `
+    -RedirectStandardOutput 'stdout.log' `
+    -RedirectStandardError 'stderr.log'
+if ($process.ExitCode -ne 0) {
+    throw 'push failed'
+}
+'@
+
+    Assert-Case `
+        -Name 'native-git-push-durable-redirection-safe' `
+        -Text $nativeGitPushSafe `
+        -SelectedProfile 'General' `
+        -ShouldPass $true
+
+    $formalCloseInlineGitSafe = @'
+#requires -Version 5.1
+$ErrorActionPreference = 'Stop'
+$commitOutput = @(& git commit -m 'fixture')
+$pushOutput = @(& git push origin main)
+Write-Host 'EVIDENCE_ZIP=fixture.zip'
+Write-Host 'FAILURE_EVIDENCE_ZIP=fixture-fail.zip'
+'@
+
+    Assert-Case `
+        -Name 'formalclose-inline-git-detection-safe' `
+        -Text $formalCloseInlineGitSafe `
+        -SelectedProfile 'FormalClose' `
         -ShouldPass $true
 
     if ($script:testsFailed -ne 0)

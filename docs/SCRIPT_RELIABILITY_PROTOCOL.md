@@ -1,7 +1,7 @@
 # Global Arena — Script Reliability Protocol
 
 **Protocol ID:** GA-SRP
-**Version:** 1.1
+**Version:** 1.2
 **Status:** Active
 **Effective date:** 2026-09-28
 **Scope:** PowerShell automation used to inspect, modify, validate or formally close work in the Global Arena repository.
@@ -318,19 +318,23 @@ Guard:
 - the detector must allow equivalent spellings in separate function/scriptblock scopes;
 - GA-SR-021 applies: both unsafe and safe neighboring fixtures are required.
 
-### GA-SR-024 — Native diagnostic stderr is redirected durably
+### GA-SR-024 — Native stderr is durably separated before exit evaluation
 
-Observed failure:
-a read-only performance diagnostic invoked `dotnet run ... 2>&1` under Windows PowerShell 5.1 with `$ErrorActionPreference = 'Stop'`. Native stderr was converted into a terminating `RemoteException` before the script could persist the actual compiler/runtime output.
+Observed failures:
+
+- a read-only performance diagnostic invoked `dotnet run ... 2>&1` under Windows PowerShell 5.1 with `$ErrorActionPreference = 'Stop'`; native stderr became a terminating `RemoteException` before the real compiler/runtime output could be persisted;
+- the M2.5.4-C formal-close script invoked `git push ... 2>&1`; Git wrote its normal remote-status line to stderr, PowerShell converted it into a terminating error, and the script reported FAIL even though the commit had already been pushed successfully.
 
 Guard:
 
-- diagnostic `dotnet run` probes must not rely on PowerShell stream merging through `2>&1`;
-- redirect stdout and stderr to durable evidence files, for example with `Start-Process -RedirectStandardOutput` and `-RedirectStandardError`;
-- evaluate the native process exit code only after those files exist and their contents can be included in evidence;
+- native commands known to emit informational or diagnostic stderr must not rely on direct PowerShell stream merging through `2>&1` when `$ErrorActionPreference = 'Stop'`;
+- stdout and stderr must be redirected to durable files, preferably with `Start-Process -RedirectStandardOutput` and `-RedirectStandardError`, when output participates in an auditable gate;
+- evaluate the native process exit code only after durable stdout/stderr capture is available;
+- post-action verification remains authoritative for externally visible state such as a Git push;
 - GA-SR-022 still applies: the immediate native output must survive a failed gate;
-- the validator rejects the observed direct `dotnet run ... 2>&1` pattern;
-- GA-SR-021 applies: the detector has both failing and safe neighboring fixtures.
+- the validator mechanically rejects the observed `dotnet run ... 2>&1` and `git push ... 2>&1` forms;
+- additional native commands are added to the detector when evidence demonstrates the same failure mode;
+- GA-SR-021 applies: each detector extension requires failing and safe neighboring fixtures.
 ### GA-SR-017 — Protocol regression promotion
 
 When a new failure occurs:
