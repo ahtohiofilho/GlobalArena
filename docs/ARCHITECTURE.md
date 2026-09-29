@@ -1,8 +1,8 @@
 # Global Arena — Architecture
 
-**Versão:** 0.1
-**Status:** Baseline inicial
-**Milestone:** M2 — Planet Topology
+**Versão:** 0.2
+**Status:** M3 world-generation design baseline
+**Milestone:** M3 — Procedural World
 
 ---
 
@@ -4545,7 +4545,92 @@ WorldSeed
 
 Essa sequência representa direção arquitetural e não congela a ordem exata dos algoritmos.
 
+## 14.1 M3.1 frozen world-generation boundary
+
+M3.1 freezes the architectural boundary before production world-generation algorithms are introduced.
+
+Identity and versioning:
+
+- `WorldSeed` is a world-generation identity value and is distinct from `SimulationSeed`;
+- the initial executable representation will preserve a 64-bit unsigned seed payload, including zero;
+- no implicit conversion or semantic alias between `WorldSeed` and `SimulationSeed` is allowed;
+- `WorldGenerationVersion` is a positive version identifier for generator semantics;
+- if the same generation request and seed would intentionally produce a materially different world because generator semantics changed, `WorldGenerationVersion` must change;
+- deterministic sub-streams may be derived from `WorldSeed`, but they must use explicit domain separation and must not depend on mutable global random state, wall-clock time, process state or unordered enumeration.
+
+Initial request boundary:
+
+`WorldGenerationRequest`
+
+will minimally identify:
+
+- `WorldSeed`;
+- `WorldGenerationVersion`;
+- `GoldbergParameters` for the strategic topology requested.
+
+Additional generation options may be introduced later, but once they influence output they become part of the deterministic request contract.
+
+Topology ownership:
+
+- M3 consumes the authoritative M2 topology implementation;
+- strategic topology creation remains owned by `GoldbergStrategicTopologyGenerator`;
+- M3 must not duplicate Goldberg topology algorithms;
+- tactical physical materialization uses the M2 physical hierarchy contracts only where an M3 stage requires tactical detail;
+- the M2 official Class I scale-6 hierarchy is a validated topology contract, not a declaration of final V1 tactical density.
+
+Result boundary:
+
+`WorldGenerationResult`
+
+will be an immutable generation-domain result rather than an in-place mutation of `WorldState`.
+
+The result may progressively contain:
+
+- canonical strategic topology;
+- macro physical fields;
+- tactical physical fields when materialized;
+- derived classifications;
+- strategic aggregates;
+- resource potential;
+- habitability;
+- deterministic civilization-start-site candidates.
+
+`WorldState` integration is deferred until generated-world contracts are sufficiently stable. M3 must not use the minimal `WorldState.Revision` state as an ad hoc storage bag for partially generated layers.
+
+Cross-scale rule:
+
+- macro fields may be computed at strategic scale;
+- tactical materialization is stage-specific and must not be assumed globally resident;
+- strategic constraints or boundary conditions must be explicit before local tactical refinement;
+- tactical physical detail may be aggregated back into strategic values;
+- recurring strategic systems must consume strategic aggregates rather than scan the full tactical resolution.
+
+Classification rule:
+
+- physical scalar fields are primary where practical;
+- hydrology follows elevation / relief and water availability;
+- biomes are derived from physical fields rather than becoming the primary cause of those fields;
+- resources are generated as world properties or potentials, not as Economy runtime inventories;
+- civilization placement in M3 means deterministic start-site suitability/candidates, not live Civilization or Economy runtime state.
+
+Module boundary:
+
+M3 begins as a logical `WorldGeneration` module inside `GlobalArena.World`.
+
+No separate `GlobalArena.WorldGeneration` project is created by default. Physical project separation requires concrete evidence that compile-time dependency control, ownership or test isolation benefits from it, consistent with ADR-005.
+
+Determinism contract:
+
+the same:
+
+`WorldGenerationRequest + WorldGenerationVersion + WorldSeed`
+
+must produce the same semantic generated-world result on supported platforms.
+
+Cross-platform deterministic signatures and performance budgets remain M3 exit concerns and will be made executable before M3 closes.
+
 A hidrologia deverá ser consequência do relevo e da disponibilidade de água.
+
 
 Rios, lagos e estruturas hidrográficas não deverão ser tratados apenas como decoração aplicada posteriormente.
 
@@ -4576,7 +4661,18 @@ Objetivo:
 
 uma seed deve continuar semanticamente rastreável mesmo após evolução do gerador.
 
+M3.1 freezes the following distinction:
+
+- `WorldSeed` owns procedural world-generation randomness;
+- `SimulationSeed` owns deterministic simulation-resolution randomness;
+- equal numeric payloads do not make the two seed domains semantically equivalent;
+- `WorldGenerationVersion` versions generator semantics independently from future `RulesetVersion`;
+- generation algorithms must not read real time or ambient process randomness.
+
+The initial executable M3.1 contract will use `WorldGenerationVersion = 1` as the first valid generator version and reject non-positive/default version values.
+
 ---
+
 
 # 16. Civilizations
 

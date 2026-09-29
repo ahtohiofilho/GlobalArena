@@ -1419,3 +1419,79 @@ Global Risk Level remains:
 **HIGH**
 
 The Critical Path moves from M2 topology exit semantics to the M3 procedural-world foundation.
+---
+
+# 18. M3 entry and M3.1-A world-generation design-freeze risk review
+
+**Date:** 2026-09-29
+
+Evidence:
+
+`GlobalArena-Evidence-M3-ENTRY-AUDIT-R2-20260929-155250.zip`
+
+SHA-256:
+
+`400dfbb0b8cd5f4d05cfa787953c5e7aa5d26d09cbe96493a5f3b945033c51a6`
+
+Result:
+
+**PASS_READY_FOR_M3_1_CONTRACT_AND_DESIGN_FREEZE**
+
+Risk assessment:
+
+No new structural risk ID is introduced at M3 entry. The identified risk classes are already covered by the existing register.
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+M3 response:
+
+- separate `WorldSeed` from `SimulationSeed`;
+- version generator semantics;
+- forbid ambient randomness and wall-clock-dependent generation;
+- require stable ordering and later cross-platform generated-world signatures.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+M3 response:
+
+- freeze request/result boundaries before physical algorithms;
+- reuse M2 topology as an authoritative dependency;
+- keep generated layers outside ad hoc `WorldState` mutation;
+- preserve logical module ownership inside the modular monolith.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+M3 response:
+
+- World Generation budget remains exactly `100 GPP`;
+- resources mean generated world properties/potentials, not Economy implementation;
+- civilization placement means start-site suitability/candidates, not Civilizations runtime implementation;
+- no new V1 capability is added by M3.1-A.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+M3 response:
+
+- tactical materialization is stage-specific;
+- the validated M2 scale-6 hierarchy is not treated as final product density;
+- recurring strategic systems consume aggregates.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+M3 response:
+
+- no requirement to keep full tactical detail globally resident;
+- field representation should remain data-oriented and keyed by canonical identities;
+- M3.6 must establish generation-time and memory budgets before M3 closes.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M3.1 executable contracts and deterministic pipeline skeleton**

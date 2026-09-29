@@ -671,6 +671,58 @@ The blocking M2.5.4 benchmark contract is revised to use:
 The historical full physical `G(16,0) -> G(96,0)` workload remains a non-blocking stress case. Topology correctness still applies; only its performance numbers are non-blocking.
 
 The hard M2.5.1 thresholds themselves remain unchanged.
+
+## 15.3 Decomposição de World Generation / biomas / recursos
+
+O orçamento congelado da área permanece:
+
+**100 GPP**
+
+M3.1-A congela a decomposição operacional sem alterar o baseline global de `1000 GPP`:
+
+| Capability | GPP | M3 stage owner |
+|---|---:|---|
+| World generation identity, seed/versioning & deterministic pipeline contracts | 10 | M3.1 |
+| Strategic geometry bridge & macro physical-field substrate | 12 | M3.2 |
+| Elevation, relief & land/water foundation | 14 | M3.2 |
+| Temperature, climate, moisture & water availability | 14 | M3.3 |
+| Cross-scale boundary conditions, tactical refinement & strategic aggregation | 14 | M3.3 |
+| Hydrology | 12 | M3.4 |
+| Derived biomes | 8 | M3.4 |
+| Resources | 7 | M3.5 |
+| Habitability & civilization-placement suitability | 5 | M3.5 |
+| Determinism, cross-platform validation, performance baseline & M3 exit | 4 | M3.6 |
+| **TOTAL** | **100** |  |
+
+Initial maturity at the M3.1-A design freeze:
+
+| Capability | GPP | Maturity | Factor | GPP earned |
+|---|---:|---|---:|---:|
+| World generation identity, seed/versioning & deterministic pipeline contracts | 10 | Inexistente | 0.00 | 0.00 |
+| Strategic geometry bridge & macro physical-field substrate | 12 | Inexistente | 0.00 | 0.00 |
+| Elevation, relief & land/water foundation | 14 | Inexistente | 0.00 | 0.00 |
+| Temperature, climate, moisture & water availability | 14 | Inexistente | 0.00 | 0.00 |
+| Cross-scale boundary conditions, tactical refinement & strategic aggregation | 14 | Inexistente | 0.00 | 0.00 |
+| Hydrology | 12 | Inexistente | 0.00 | 0.00 |
+| Derived biomes | 8 | Inexistente | 0.00 | 0.00 |
+| Resources | 7 | Inexistente | 0.00 | 0.00 |
+| Habitability & civilization-placement suitability | 5 | Inexistente | 0.00 | 0.00 |
+| Determinism, cross-platform validation, performance baseline & M3 exit | 4 | Inexistente | 0.00 | 0.00 |
+| **TOTAL** | **100** |  |  | **0.00** |
+
+M3.1-A is a governance/design freeze. It does not promote implementation maturity and therefore awards no GPP.
+
+Stage allocation:
+
+- M3.1 — `10 GPP`;
+- M3.2 — `26 GPP`;
+- M3.3 — `28 GPP`;
+- M3.4 — `20 GPP`;
+- M3.5 — `12 GPP`;
+- M3.6 — `4 GPP`.
+
+The decomposition redistributes the already approved `100 GPP` World Generation budget and is not a Scope Change.
+
 # 20. Status atual
 
 Milestone:
@@ -679,39 +731,31 @@ Milestone:
 
 Etapa atual:
 
-**M3 entry — Procedural World architecture, scale contract & decomposition**
+**M3.1 — World Generation Contracts, Seed/Versioning & Pipeline**
 
 Subetapa atual:
 
-**M3 entry audit — world-generation contracts, risks and stage decomposition**
+**M3.1-B — Executable World Generation Identity & Pipeline Contracts**
+
+M3 entry audit:
+
+**concluído em 2026-09-29**
+
+M3.1-A — Architecture, Contract & GPP Design Freeze:
+
+**concluído em 2026-09-29**
 
 M2 — Planet Topology:
 
 **concluído em 2026-09-29**
 
-M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate:
+M1 — Deterministic Simulation Kernel:
 
-**concluído em 2026-09-29**
-
-M2.5.5 — Cross-Platform Regression, Exit Audit & M2 Formal Close:
-
-**concluído em 2026-09-29**
-
-M2.5.4 — Headless Scalability Benchmark Harness & Baseline:
-
-**concluído em 2026-09-29**
-
-M2.5.3 — Hierarchy/Refinement Coverage Decision for Officially Supported Goldberg Families:
-
-**concluído em 2026-09-28**
+**concluído em 2026-09-19**
 
 M0 — Project Baseline:
 
 **concluído em 2026-09-18**
-
-M1 — Deterministic Simulation Kernel:
-
-**concluído em 2026-09-19**
 
 Baseline V1:
 
@@ -733,6 +777,10 @@ Topologia planetária / Goldberg:
 
 **76,50 / 90 GPP — 85,0%**
 
+World Generation / biomas / recursos:
+
+**0,00 / 100 GPP — 0,0%**
+
 Scope Confidence:
 
 **50%**
@@ -747,7 +795,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M3 multiscale procedural world foundation: deterministic physical fields, cross-scale continuity and seed reproducibility**
+**M3.1 executable seed/versioned world-generation contract and deterministic pipeline skeleton**
 
 Última revisão de baseline:
 

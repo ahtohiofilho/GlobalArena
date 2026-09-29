@@ -1713,29 +1713,70 @@ Próximo gate:
 
 Objetivo:
 
-transformar topologia em mundo.
+transformar a topologia validada de M2 em um mundo físico procedural, reproduzível e consumível por sistemas posteriores.
 
-Inclui:
+M3 contract:
 
-- geração multiescala;
-- campos físicos macroscópicos;
-- elevation;
-- moisture / water availability;
+- `WorldSeed` is distinct from `SimulationSeed`;
+- generator semantics are identified by `WorldGenerationVersion`;
+- M2 remains the authoritative source of Goldberg strategic topology and physical incidence semantics;
+- physical scalar fields are primary where practical;
+- tactical detail is materialized only when a stage requires it;
+- strategic systems consume aggregates rather than routinely traversing all tactical detail;
+- resources are world potentials/properties, not Economy runtime inventories;
+- civilization placement produces deterministic start-site suitability/candidates, not live Civilization runtime state;
+- same request + seed + generation version must reproduce the same semantic world.
+
+### M3.1 — World Generation Contracts, Seed/Versioning & Pipeline — 10 GPP
+
+- M3 entry audit — concluded;
+- M3.1-A — Architecture, Contract & GPP Design Freeze — concluded;
+- M3.1-B — Executable World Generation Identity & Pipeline Contracts — current;
+- M3.1-C — Deterministic Pipeline Skeleton & Contract Validation — planned;
+- M3.1-D — Accumulated M3.1 Validation & Close — planned.
+
+### M3.2 — Strategic Geometry Bridge, Elevation & Land/Water — 26 GPP
+
+- strategic geometry bridge;
+- macro physical-field substrate;
+- elevation / relief;
+- initial land/water foundation.
+
+### M3.3 — Climate Inputs & Cross-Scale Physical Refinement — 28 GPP
+
 - temperature / climate;
-- condições de contorno entre regiões;
-- refinamento físico tático;
-- hydrology;
-- biomes derivados;
-- resources;
+- moisture / water availability;
+- strategic boundary conditions;
+- tactical physical refinement where required;
+- strategic aggregation contract.
+
+### M3.4 — Hydrology & Derived Biomes — 20 GPP
+
+- hydrology derived from terrain/water inputs;
+- derived biome classification.
+
+### M3.5 — Resources, Habitability & Civilization Placement Inputs — 12 GPP
+
+- resource potential/distribution;
 - habitability;
-- agregação tático → estratégico;
-- civilization placement;
-- generation versions;
-- seed reproducibility.
+- deterministic civilization start-site suitability/candidates.
+
+### M3.6 — Determinism, Performance, Cross-Platform Validation & M3 Exit — 4 GPP
+
+- canonical generated-world signature/hash contract;
+- cross-platform deterministic regression;
+- generation-time and memory budgets;
+- accumulated M3 exit audit.
+
+Total M3 budget:
+
+**100 GPP**
 
 Gate:
 
-uma seed gera um planeta físico funcional e reproduzível, com coerência entre escalas e sem exigir que os sistemas estratégicos recorrentes percorram diretamente toda a resolução tática.
+a seed and generation version, together with the same generation request, produce a functionally equivalent physical world across supported platforms, with coherent strategic/tactical scale boundaries and performance compatible with the approved V1 product envelope.
+
+The final V1 strategic/tactical scale is not frozen by M3.1-A.
 
 ---
 
@@ -1987,11 +2028,19 @@ Current Milestone:
 
 Current Stage:
 
-**M3 entry — Procedural World architecture, scale contract & decomposition**
+**M3.1 — World Generation Contracts, Seed/Versioning & Pipeline**
 
 Current Subcheckpoint:
 
-**M3 entry audit — world-generation contracts, risks and stage decomposition**
+**M3.1-B — Executable World Generation Identity & Pipeline Contracts**
+
+M3 Entry Audit:
+
+**concluded on 2026-09-29**
+
+M3.1-A — Architecture, Contract & GPP Design Freeze:
+
+**concluded on 2026-09-29**
 
 Official Progress:
 
@@ -2009,6 +2058,10 @@ Planet Topology / Goldberg:
 
 **76.50 / 90 GPP — 85.0%**
 
+World Generation / biomes / resources:
+
+**0.00 / 100 GPP — 0.0%**
+
 Scope Confidence:
 
 **50%**
@@ -2023,7 +2076,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**M3 multiscale procedural world foundation: deterministic physical fields, cross-scale continuity and seed reproducibility**
+**M3.1 executable seed/versioned world-generation contract and deterministic pipeline skeleton**
 
 Last Baseline Review:
 

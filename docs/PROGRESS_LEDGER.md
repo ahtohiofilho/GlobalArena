@@ -11847,3 +11847,102 @@ Immediate objectives:
 - define seed/version reproducibility requirements;
 - decompose the existing 100 GPP World Generation budget without changing the 1000 GPP V1 baseline;
 - review M3-specific risks before production implementation begins.
+---
+
+## 2026-09-29 — M3 entry audit and M3.1-A world-generation contract/design freeze
+
+Milestone:
+
+**M3 — Procedural World**
+
+Accepted entry-audit evidence:
+
+`GlobalArena-Evidence-M3-ENTRY-AUDIT-R2-20260929-155250.zip`
+
+Evidence SHA-256:
+
+`400dfbb0b8cd5f4d05cfa787953c5e7aa5d26d09cbe96493a5f3b945033c51a6`
+
+Evidence audit:
+
+- evidence manifest: `25/25` verified;
+- baseline HEAD: `7ea33fc0cba91e9041ecddd4ed71f2ecbbf5cffb`;
+- repository mutation: False;
+- GA-SRP `1.4`: `19/19`;
+- target ReadOnly validation: `PARSER_ERRORS=0`, `RULE_VIOLATIONS=0`;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- tests: `435/435`;
+- worktree final: clean.
+
+Existing foundations confirmed:
+
+- `SimulationSeed` and deterministic PRNG infrastructure;
+- `SimulationContext` carries simulation seed explicitly;
+- M2 strategic topology generation;
+- M2 Class I physical incidence / cross-region mapping contracts;
+- `GlobalArena.World -> GlobalArena.Kernel` dependency;
+- modular-monolith architecture permits logical WorldGeneration ownership inside `GlobalArena.World`.
+
+Missing production contracts confirmed:
+
+- `WorldSeed`;
+- `WorldGenerationVersion`;
+- world-generation request/result contracts;
+- concrete deterministic world-generation pipeline;
+- typed physical fields;
+- hydrology / biome / habitability production contracts.
+
+### M3.1-A decisions frozen
+
+1. `WorldSeed` is semantically distinct from `SimulationSeed`.
+2. Initial `WorldSeed` payload is unsigned 64-bit and preserves zero as a valid seed value.
+3. `WorldGenerationVersion` is positive and versions generator semantics.
+4. The initial generation request identifies seed, generation version and strategic `GoldbergParameters`.
+5. M3 reuses the authoritative M2 topology generators; it does not duplicate Goldberg topology algorithms.
+6. `WorldGenerationResult` is an immutable generation-domain boundary and does not mutate `WorldState` in place.
+7. Macro physical fields may be strategic; tactical detail is materialized only where a stage requires it.
+8. Tactical detail may be aggregated back to strategic data; recurring strategic consumers must not scan full tactical resolution.
+9. Hydrology derives from relief/water inputs; biomes derive from physical fields.
+10. Resources in M3 are world properties/potentials, not Economy runtime inventories.
+11. Civilization placement in M3 is deterministic start-site suitability/candidates, not live Civilization runtime state.
+12. The logical WorldGeneration module begins inside `GlobalArena.World`; no separate project is created without evidence.
+13. The same request + `WorldSeed` + `WorldGenerationVersion` must reproduce the same semantic generated world on supported platforms.
+
+### 100-GPP M3 decomposition frozen
+
+| Capability | GPP |
+|---|---:|
+| World generation identity, seed/versioning & deterministic pipeline contracts | 10 |
+| Strategic geometry bridge & macro physical-field substrate | 12 |
+| Elevation, relief & land/water foundation | 14 |
+| Temperature, climate, moisture & water availability | 14 |
+| Cross-scale boundary conditions, tactical refinement & strategic aggregation | 14 |
+| Hydrology | 12 |
+| Derived biomes | 8 |
+| Resources | 7 |
+| Habitability & civilization-placement suitability | 5 |
+| Determinism, cross-platform validation, performance baseline & M3 exit | 4 |
+| **TOTAL** | **100** |
+
+Stage allocation:
+
+- M3.1: `10 GPP`;
+- M3.2: `26 GPP`;
+- M3.3: `28 GPP`;
+- M3.4: `20 GPP`;
+- M3.5: `12 GPP`;
+- M3.6: `4 GPP`.
+
+Progress effect:
+
+- M3.1-A is governance/design only;
+- GPP change: **+0.00**;
+- project GPP remains **146.50 / 1000**;
+- global progress remains **14.7%**;
+- World Generation remains **0.00 / 100 GPP** until executable implementation exists;
+- V1 scope remains **1000 GPP**.
+
+Next gate:
+
+**M3.1-B — Executable World Generation Identity & Pipeline Contracts**
