@@ -1605,7 +1605,7 @@ Decomposição:
 - M2.5.4-B — Product/Stress Scale Envelope Audit — concluído;
 - M2.5.4-C — Benchmark Contract & Scale Envelope Design Freeze — concluído;
 - M2.5.4-D — Permanent Headless Benchmark Harness Implementation — concluído;
-- M2.5.4-E — Baseline Validation & M2.5.4 Close — atual.
+- M2.5.4-E — Baseline Validation & M2.5.4 Close — concluído.
 
 M2.5.4-A evidence established:
 
@@ -1649,9 +1649,15 @@ The M2.5.1 hard thresholds remain unchanged for blocking acceptance cases:
 
 No GPP promotion occurs in the design freeze.
 
+M2.5.4-D and M2.5.4-E subsequently established the permanent harness and the committed accumulated performance baseline.
+
+M2.5.4 status:
+
+**CLOSED**
+
 Próximo gate:
 
-**M2.5.4-D — Permanent Headless Benchmark Harness Implementation**
+**M2.5.5 — Cross-Platform Regression, Exit Audit & M2 Formal Close**
 ---
 ## M3 — Procedural World
 
@@ -1935,7 +1941,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M2.5.4-E — Baseline Validation & M2.5.4 Close**
+**M2.5.5 — Cross-Platform Regression, Exit Audit & M2 Formal Close**
 
 Official Progress:
 
@@ -1967,7 +1973,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**M2.5.4-E baseline validation and M2.5.4 close against the permanent benchmark harness**
+**M2.5.5 cross-platform regression, accumulated M2 exit audit and M2 formal close**
 
 Last Baseline Review:
 

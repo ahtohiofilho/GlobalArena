@@ -1305,3 +1305,47 @@ The approximately `2.045 GB` allocation observed in the `G(16,0) -> G(96,0)` str
 Global Risk Level remains:
 
 **HIGH**
+
+---
+
+# 16. M2.5.4-E accumulated performance-baseline review
+
+**Date:** 2026-09-29
+
+Evidence:
+
+`GlobalArena-Evidence-M2.5.4-E-R1-BASELINE-VALIDATION-20260929-075531.zip`
+
+Result:
+
+**PASS_READY_FOR_M2_5_4_E_FORMAL_CLOSE**
+
+Validated:
+
+- committed permanent benchmark harness baseline;
+- three independent full harness executions;
+- four blocking product-acceptance cases passed every hard elapsed/allocation budget in every run;
+- full physical `G(16,0) -> G(96,0)` stress correctness passed in every run;
+- stress median elapsed remained approximately `2.55–2.66 s`;
+- stress managed allocation remained approximately `2.045 GB`;
+- Release build: PASS;
+- automated tests: `435/435`;
+- repository mutation: False.
+
+Risk effect:
+
+`RISK-002 — Tactical resolution scalability` remains open.
+
+The M2 blocking product envelope is now quantitatively stable on the committed Windows baseline, but final V1 scale and broader tactical density remain deliberately unfrozen.
+
+`RISK-012 — Memory footprint` remains open.
+
+The stress baseline continues to show approximately `2.045 GB` of managed allocation per run, reinforcing the requirement to avoid assuming simultaneous strategic/tactical maxima as a V1 product envelope.
+
+`RISK-003 — Goldberg hierarchy mapping` remains **HIGH** until M2.5.5 completes cross-platform regression and the accumulated M2 exit audit.
+
+M2.5.4 no longer blocks M2 on local committed-baseline scalability evidence.
+
+Global Risk Level remains:
+
+**HIGH**

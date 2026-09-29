@@ -11599,3 +11599,90 @@ Progress:
 Next gate:
 
 **M2.5.4-E — Baseline Validation & M2.5.4 Close**
+
+---
+
+## 2026-09-29 — M2.5.4-E baseline validation and M2.5.4 formal close
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate**
+
+Subcheckpoint closed:
+
+**M2.5.4-E — Baseline Validation & M2.5.4 Close**
+
+Stage component closed:
+
+**M2.5.4 — Headless Scalability Benchmark Harness & Baseline**
+
+Accepted validation evidence:
+
+`GlobalArena-Evidence-M2.5.4-E-R1-BASELINE-VALIDATION-20260929-075531.zip`
+
+Evidence SHA-256:
+
+`51e24153d2c8eaeeb018861a5619048b2fc1a3ad6951ec5bdb124d4c53c9723a`
+
+Evidence audit:
+
+- evidence manifest payloads: `21/21` verified;
+- committed baseline HEAD: `296977c9f0260c7ddaa01efa50319337178fb046`;
+- repository mutation: False;
+- GA-SRP version: `1.3`;
+- validator self-tests: `17/17`;
+- ReadOnly target validation: PASS;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- automated tests: `435/435`;
+- permanent harness independent executions: `3/3`;
+- each harness execution: one warmup plus five measured samples per case;
+- every hard blocking budget passed in every independent execution;
+- stress correctness passed in every independent execution;
+- stress performance remained non-blocking under the frozen contract.
+
+Accumulated committed baseline, median of run medians:
+
+- Class I logical `G(15,0)`: `106.750 ms`, `59,420,168 B`;
+- Class II logical `G(7,7)`: `29.582 ms`, `38,513,440 B`;
+- Class III logical `G(14,1)`: `36.333 ms`, `48,431,232 B`;
+- Class I physical `G(4,0) -> G(24,0)`: `86.750 ms`, `127,424,528 B`;
+- non-blocking physical stress `G(16,0) -> G(96,0)`: `2606.878 ms`, `2,044,791,080 B`.
+
+Observed cross-run median ranges:
+
+- `G(15,0)`: `105.278–109.010 ms`;
+- `G(7,7)`: `26.464–36.871 ms`;
+- `G(14,1)`: `35.626–36.743 ms`;
+- `G(4,0) -> G(24,0)`: `85.061–90.596 ms`;
+- stress `G(16,0) -> G(96,0)`: `2546.676–2662.767 ms`.
+
+The cross-run ranges are baseline evidence only and do not introduce a new hard threshold.
+
+M2.5.4 accumulated conclusion:
+
+- A — performance spike and bottleneck diagnosis: complete;
+- B — product/stress scale-envelope audit: complete;
+- C — benchmark contract and design freeze: complete;
+- D — permanent headless harness implementation: formally closed;
+- E — accumulated committed-baseline validation: complete;
+- M2.5.4 status: **CLOSED**.
+
+Risk and progress:
+
+- `RISK-002 — Tactical resolution scalability`: remains open;
+- `RISK-012 — Memory footprint`: remains open;
+- `RISK-003 — Goldberg hierarchy mapping`: remains **HIGH** pending M2.5.5 cross-platform exit regression;
+- GPP change: **+0.00**;
+- GPP remains: **124.90 / 1000**;
+- Global Progress remains: **12.5%**;
+- Planet Topology remains: **54.90 / 90 — 61.0%**;
+- M2 remains: **OPEN**.
+
+Next gate:
+
+**M2.5.5 — Cross-Platform Regression, Exit Audit & M2 Formal Close**

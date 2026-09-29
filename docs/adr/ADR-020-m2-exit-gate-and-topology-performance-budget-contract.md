@@ -274,6 +274,28 @@ M2.5.4 benchmarks a combined scale envelope.
 The benchmark must not infer a final V1 planet size from one topology parameter alone.
 
 Larger technically valid workloads remain desirable as robustness headroom and may be retained as stress cases even when they exceed the blocking product-performance envelope.
+
+### 12. M2.5.4 permanent baseline close
+
+M2.5.4 is formally closed on the committed permanent harness and accumulated baseline evidence:
+
+`GlobalArena-Evidence-M2.5.4-E-R1-BASELINE-VALIDATION-20260929-075531.zip`
+
+SHA-256:
+
+`51e24153d2c8eaeeb018861a5619048b2fc1a3ad6951ec5bdb124d4c53c9723a`
+
+The committed baseline confirms:
+
+- four blocking cases pass all unchanged hard budgets across three independent harness executions;
+- the full physical `G(16,0) -> G(96,0)` stress case remains topologically correct while performance remains non-blocking;
+- the benchmark contract is now executable and permanent in `GlobalArena.Benchmarks`;
+- the accepted benchmark workload matches the governed M2.5.4-C acceptance/stress split;
+- final V1 world-size limits remain unfrozen;
+- M2 remains open for M2.5.5 cross-platform regression and accumulated exit audit.
+
+The earlier consequence statements about missing physical boundary attachment and missing refinement coverage are historical M2.5.1 context; M2.5.2 and M2.5.3 subsequently satisfied those M2 requirements within their frozen scope.
+
 ## Consequences
 
 Positive:

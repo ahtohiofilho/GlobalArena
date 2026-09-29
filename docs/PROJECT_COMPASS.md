@@ -646,7 +646,15 @@ Etapa:
 
 Subetapa atual:
 
-**M2.5.4-E — Baseline Validation & M2.5.4 Close**
+**M2.5.5 — Cross-Platform Regression, Exit Audit & M2 Formal Close**
+
+M2.5.4 — Headless Scalability Benchmark Harness & Baseline:
+
+**concluído em 2026-09-29**
+
+M2.5.4-E — Baseline Validation & M2.5.4 Close:
+
+**concluído em 2026-09-29**
 
 M2.5.4-D — Permanent Headless Benchmark Harness Implementation:
 
@@ -806,7 +814,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M2.5.4-E baseline validation and M2.5.4 close against the permanent benchmark harness**
+**M2.5.5 cross-platform regression, accumulated M2 exit audit and M2 formal close**
 
 Última revisão de baseline:
 
