@@ -11946,3 +11946,72 @@ Progress effect:
 Next gate:
 
 **M3.1-B — Executable World Generation Identity & Pipeline Contracts**
+---
+
+## 2026-09-29 — M3.1-B executable world-generation identity and pipeline contracts
+
+Subcheckpoint closed:
+
+**M3.1-B — Executable World Generation Identity & Pipeline Contracts**
+
+Accepted QA evidence:
+
+`GlobalArena-Evidence-M3.1-B-R1-EXECUTABLE-WORLDGEN-CONTRACTS-20260929-162926.zip`
+
+Evidence SHA-256:
+
+`2fdc52f81c9c87a4c96a2d88cdfa369cc97123274d878a56a992cd55e8fcbca9`
+
+Evidence audit:
+
+- evidence manifest: `24/24` verified;
+- baseline HEAD: `f828545e0b027a1ddeda0fb830a7646f2102f96a`;
+- GA-SRP `1.4`: `19/19`;
+- target QaMutation validation: `PARSER_ERRORS=0`, `RULE_VIOLATIONS=0`;
+- diff diagnostics: `0/0`;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- tests: `455/455`;
+- exact staged files: `6`;
+- commit created during QA: False;
+- push performed during QA: False.
+
+Executable contracts introduced:
+
+- `WorldSeed` with `ulong` payload and zero preserved as a valid world seed;
+- `WorldGenerationVersion` with positive identity, invalid default and `Initial = 1`;
+- immutable `WorldGenerationRequest` carrying seed, generation version and strategic `GoldbergParameters`;
+- immutable `WorldGenerationResult` carrying the request and authoritative `StrategicTopology`;
+- `IWorldGenerator` request-to-result pipeline boundary;
+- contract tests proving seed/version identity, invalid defaults, request equality, result invariants and authoritative M2 topology reuse.
+
+Maturity effect:
+
+`World generation identity, seed/versioning & deterministic pipeline contracts`
+
+moves from:
+
+**Inexistente — fator 0.00 — 0.00 GPP**
+
+to:
+
+**Especificada — fator 0.20 — 2.00 GPP**
+
+Reason:
+
+M3.1-B now has executable identity/version/request/result/interface contracts and local automated validation, but it does not yet contain the concrete deterministic generation pipeline, domain-separated random streams, accumulated cross-platform regression or M3.1 exit validation.
+
+Progress effect:
+
+- GPP change: **+2.00**;
+- project GPP: **148.50 / 1000**;
+- Global Progress exact: **14.850%**;
+- Global Progress displayed: **14.9%**;
+- World Generation / biomas / recursos: **2.00 / 100 — 2.0%**;
+- V1 baseline remains **1000 GPP**.
+
+The push of these production/test files is expected to trigger the existing cross-platform regression workflow automatically. Its result is evidence for subsequent M3.1 validation and does not by itself raise the capability beyond `Especificada — 0.20`.
+
+Next gate:
+
+**M3.1-C — Deterministic Pipeline Skeleton & Contract Validation**

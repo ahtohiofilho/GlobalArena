@@ -698,7 +698,7 @@ Initial maturity at the M3.1-A design freeze:
 
 | Capability | GPP | Maturity | Factor | GPP earned |
 |---|---:|---|---:|---:|
-| World generation identity, seed/versioning & deterministic pipeline contracts | 10 | Inexistente | 0.00 | 0.00 |
+| World generation identity, seed/versioning & deterministic pipeline contracts | 10 | Especificada | 0.20 | 2.00 |
 | Strategic geometry bridge & macro physical-field substrate | 12 | Inexistente | 0.00 | 0.00 |
 | Elevation, relief & land/water foundation | 14 | Inexistente | 0.00 | 0.00 |
 | Temperature, climate, moisture & water availability | 14 | Inexistente | 0.00 | 0.00 |
@@ -708,9 +708,11 @@ Initial maturity at the M3.1-A design freeze:
 | Resources | 7 | Inexistente | 0.00 | 0.00 |
 | Habitability & civilization-placement suitability | 5 | Inexistente | 0.00 | 0.00 |
 | Determinism, cross-platform validation, performance baseline & M3 exit | 4 | Inexistente | 0.00 | 0.00 |
-| **TOTAL** | **100** |  |  | **0.00** |
+| **TOTAL** | **100** |  |  | **2.00** |
 
 M3.1-A is a governance/design freeze. It does not promote implementation maturity and therefore awards no GPP.
+
+M3.1-B materializes the executable seed/version/request/result/interface boundary and promotes `World generation identity, seed/versioning & deterministic pipeline contracts` to `Especificada — fator 0.20`, adding `2.00 GPP`. Concrete deterministic generation behavior remains for M3.1-C; accumulated cross-platform validation remains for the later M3.1 close.
 
 Stage allocation:
 
@@ -735,13 +737,17 @@ Etapa atual:
 
 Subetapa atual:
 
-**M3.1-B — Executable World Generation Identity & Pipeline Contracts**
+**M3.1-C — Deterministic Pipeline Skeleton & Contract Validation**
 
 M3 entry audit:
 
 **concluído em 2026-09-29**
 
 M3.1-A — Architecture, Contract & GPP Design Freeze:
+
+**concluído em 2026-09-29**
+
+M3.1-B — Executable World Generation Identity & Pipeline Contracts:
 
 **concluído em 2026-09-29**
 
@@ -763,11 +769,11 @@ Baseline V1:
 
 Progresso oficial:
 
-**14,7%**
+**14,9%**
 
 GPP conquistados:
 
-**146,50 / 1000**
+**148,50 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -779,7 +785,7 @@ Topologia planetária / Goldberg:
 
 World Generation / biomas / recursos:
 
-**0,00 / 100 GPP — 0,0%**
+**2,00 / 100 GPP — 2,0%**
 
 Scope Confidence:
 
@@ -795,7 +801,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M3.1 executable seed/versioned world-generation contract and deterministic pipeline skeleton**
+**M3.1 deterministic world-generation pipeline skeleton, explicit domain-separated randomness and contract validation**
 
 Última revisão de baseline:
 

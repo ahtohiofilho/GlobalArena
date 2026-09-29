@@ -1495,3 +1495,60 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M3.1 executable contracts and deterministic pipeline skeleton**
+---
+
+# 19. M3.1-B executable world-generation contract risk review
+
+**Date:** 2026-09-29
+
+Evidence:
+
+`GlobalArena-Evidence-M3.1-B-R1-EXECUTABLE-WORLDGEN-CONTRACTS-20260929-162926.zip`
+
+SHA-256:
+
+`2fdc52f81c9c87a4c96a2d88cdfa369cc97123274d878a56a992cd55e8fcbca9`
+
+Result:
+
+**PASS_READY_FOR_M3_1_B_FORMAL_CLOSE**
+
+Validated:
+
+- explicit `WorldSeed` domain;
+- explicit positive `WorldGenerationVersion`;
+- immutable request/result boundaries;
+- `IWorldGenerator` executable interface;
+- authoritative M2 strategic topology reuse;
+- local Release suite `455/455`;
+- zero compiler warnings/errors.
+
+Risk effect:
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+The seed/version boundary is executable, but deterministic sub-stream derivation, concrete pipeline behavior and cross-platform generated-world equivalence remain for M3.1-C / M3.1-D.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+The first request/result/interface boundary now exists and reduces ambiguity, but the pipeline composition model has not yet been exercised by a concrete generator.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+The implementation stays inside the frozen M3.1-A boundary: no Economy runtime state, Civilization runtime state, UI or networking responsibility was added.
+
+`RISK-002 — Tactical resolution scalability` and `RISK-012 — Memory footprint` remain unchanged.
+
+M3.1-B materializes no tactical physical field and therefore does not change the existing scale/memory envelope.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M3.1-C deterministic pipeline skeleton and contract validation**
