@@ -1,7 +1,7 @@
 # Global Arena — Script Reliability Protocol
 
 **Protocol ID:** GA-SRP
-**Version:** 1.2
+**Version:** 1.3
 **Status:** Active
 **Effective date:** 2026-09-28
 **Scope:** PowerShell automation used to inspect, modify, validate or formally close work in the Global Arena repository.
@@ -335,6 +335,24 @@ Guard:
 - the validator mechanically rejects the observed `dotnet run ... 2>&1` and `git push ... 2>&1` forms;
 - additional native commands are added to the detector when evidence demonstrates the same failure mode;
 - GA-SR-021 applies: each detector extension requires failing and safe neighboring fixtures.
+### GA-SR-025 — Durable native capture waits for the exact process, not the Windows process tree
+
+Observed failure:
+the M2.5.4-D R2 QA run launched `dotnet build` through `Start-Process -Wait -PassThru` with durable stdout/stderr redirection. The build log reported a successful build in `7.11 s` and its evidence timestamp was `06:25:10`, but the next test gate did not begin until `06:40:22`. The approximately 15-minute gap is consistent with Windows `Start-Process -Wait` waiting on descendant processes such as persistent .NET build servers after the direct `dotnet` process had already completed.
+
+Guard:
+
+- GA automation must not use `Start-Process -Wait` for durable native-process capture;
+- launch with `Start-Process -PassThru` without `-Wait`;
+- wait on the returned `System.Diagnostics.Process` object with `WaitForExit(timeoutMilliseconds)` so the gate is bounded to the exact launched process;
+- every exact-process wait must have a finite timeout appropriate to the command;
+- after a successful timed `WaitForExit(timeoutMilliseconds)`, call parameterless `WaitForExit()` and `Refresh()` on the same direct `Process` before reading `ExitCode`; this finalizes the direct process state without reintroducing `Start-Process -Wait` process-tree waiting;
+- timeout failure evidence must preserve the direct process ID and durable stdout/stderr paths;
+- durable logs should be read with sharing that tolerates descendant processes still holding inherited file handles;
+- GA-SR-022 and GA-SR-024 remain applicable;
+- the validator rejects `Start-Process` commands containing the `-Wait` parameter;
+- GA-SR-021 applies: the detector has both failing and safe neighboring fixtures.
+
 ### GA-SR-017 — Protocol regression promotion
 
 When a new failure occurs:

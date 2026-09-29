@@ -257,6 +257,47 @@ function Test-GAScriptText {
             break
         }
     }
+    $startProcessCommands =
+        @(
+            $ast.FindAll(
+                {
+                    param($node)
+
+                    if ($node -isnot
+                        [System.Management.Automation.Language.CommandAst])
+                    {
+                        return $false
+                    }
+
+                    return $node.GetCommandName() -eq
+                        'Start-Process'
+                },
+                $true)
+        )
+
+    foreach ($startProcessCommand in $startProcessCommands)
+    {
+        $hasWaitParameter =
+            @(
+                $startProcessCommand.CommandElements |
+                    Where-Object {
+                        $_ -is
+                            [System.Management.Automation.Language.CommandParameterAst] -and
+                        $_.ParameterName -eq
+                            'Wait'
+                    }
+            ).Count -gt 0
+
+        if ($hasWaitParameter)
+        {
+            $violations.Add(
+                (New-Violation `
+                    -Rule 'GA-SR-025' `
+                    -Line $startProcessCommand.Extent.StartLineNumber `
+                    -Message 'Do not use Start-Process -Wait; launch with -PassThru and wait on the exact returned Process with a finite WaitForExit(timeout).'))
+        }
+    }
+
     $variableSpellingsByScope = @{}
 
     $variableExpressions =
@@ -674,10 +715,19 @@ $ErrorActionPreference = 'Stop'
 $process = Start-Process `
     -FilePath 'dotnet' `
     -ArgumentList @('run', '--project', 'probe.csproj', '-c', 'Release') `
-    -Wait `
     -PassThru `
     -RedirectStandardOutput 'stdout.log' `
     -RedirectStandardError 'stderr.log'
+
+$completed = $process.WaitForExit(600000)
+
+if (-not $completed) {
+    throw 'probe timeout'
+}
+
+$process.WaitForExit()
+$process.Refresh()
+
 if ($process.ExitCode -ne 0) {
     throw 'probe failed'
 }
@@ -710,10 +760,19 @@ $ErrorActionPreference = 'Stop'
 $process = Start-Process `
     -FilePath 'git' `
     -ArgumentList @('push', 'origin', 'main') `
-    -Wait `
     -PassThru `
     -RedirectStandardOutput 'stdout.log' `
     -RedirectStandardError 'stderr.log'
+
+$completed = $process.WaitForExit(600000)
+
+if (-not $completed) {
+    throw 'push timeout'
+}
+
+$process.WaitForExit()
+$process.Refresh()
+
 if ($process.ExitCode -ne 0) {
     throw 'push failed'
 }
@@ -738,6 +797,53 @@ Write-Host 'FAILURE_EVIDENCE_ZIP=fixture-fail.zip'
         -Name 'formalclose-inline-git-detection-safe' `
         -Text $formalCloseInlineGitSafe `
         -SelectedProfile 'FormalClose' `
+        -ShouldPass $true
+
+    $startProcessWaitTrap = @'
+#requires -Version 5.1
+$process = Start-Process `
+    -FilePath 'dotnet' `
+    -ArgumentList @('build', 'GlobalArena.slnx', '-c', 'Release') `
+    -Wait `
+    -PassThru `
+    -RedirectStandardOutput 'stdout.log' `
+    -RedirectStandardError 'stderr.log'
+'@
+
+    Assert-Case `
+        -Name 'start-process-process-tree-wait' `
+        -Text $startProcessWaitTrap `
+        -SelectedProfile 'General' `
+        -ShouldPass $false `
+        -ExpectedRule 'GA-SR-025'
+
+    $exactProcessWaitSafe = @'
+#requires -Version 5.1
+$process = Start-Process `
+    -FilePath 'dotnet' `
+    -ArgumentList @('build', 'GlobalArena.slnx', '-c', 'Release') `
+    -PassThru `
+    -RedirectStandardOutput 'stdout.log' `
+    -RedirectStandardError 'stderr.log'
+
+$completed = $process.WaitForExit(600000)
+
+if (-not $completed) {
+    throw 'native process timeout'
+}
+
+$process.WaitForExit()
+$process.Refresh()
+
+if ($process.ExitCode -ne 0) {
+    throw 'native process failed'
+}
+'@
+
+    Assert-Case `
+        -Name 'exact-process-bounded-wait-safe' `
+        -Text $exactProcessWaitSafe `
+        -SelectedProfile 'General' `
         -ShouldPass $true
 
     if ($script:testsFailed -ne 0)
