@@ -11531,3 +11531,71 @@ M2.5.4-C status:
 Next gate:
 
 **M2.5.4-D — Permanent Headless Benchmark Harness Implementation**
+---
+
+## 2026-09-29 — M2.5.4-D permanent headless benchmark harness formal close
+
+Milestone:
+
+**M2 — Planet Topology**
+
+Stage:
+
+**M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate**
+
+Subcheckpoint closed:
+
+**M2.5.4-D — Permanent Headless Benchmark Harness Implementation**
+
+Accepted QA evidence:
+
+`GlobalArena-Evidence-M2.5.4-D-R2-PERMANENT-BENCHMARK-HARNESS-20260929-062457.zip`
+
+QA evidence SHA-256:
+
+`4c8cfbbe7cd874ea9967b5e3e1b73a33a64f886db4dc0ec7e5df9c0bd4165cf5`
+
+Validated implementation:
+
+- permanent `GlobalArena.Benchmarks` headless harness replaces the placeholder executable;
+- Release configuration is enforced for acceptance execution;
+- every benchmark case uses one warmup plus five measured samples in the same process;
+- output is invariant-culture and machine-readable;
+- each sample records elapsed time, managed allocation and GC collection deltas;
+- workload correctness is validated before a sample is accepted;
+- four product-acceptance cases are blocking;
+- `G(16,0) -> G(96,0)` remains a correctness-blocking but performance-non-blocking engineering stress case;
+- hard budgets remain unchanged.
+
+Accepted QA baseline:
+
+- Class I logical `G(15,0)`: median `104.138 ms`, max `117.138 ms`, median allocation `59,420,168 B`;
+- Class II logical `G(7,7)`: median `30.395 ms`, max `33.077 ms`, median allocation `38,795,680 B`;
+- Class III logical `G(14,1)`: median `35.024 ms`, max `62.837 ms`, median allocation `48,431,232 B`;
+- Class I physical `G(4,0) -> G(24,0)`: median `121.386 ms`, max `211.302 ms`, median allocation `127,332,368 B`, max allocation `127,424,528 B`;
+- all four blocking cases pass median/max elapsed and median/max allocation budgets;
+- stress `G(16,0) -> G(96,0)`: median `3818.293 ms`, max `7984.860 ms`, managed allocation `2,044,791,080 B`;
+- stress topology/correctness: PASS;
+- stress performance: observed and non-blocking by the frozen M2.5.4-C contract;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- automated tests: `435/435`.
+
+GA-SRP:
+
+- GA-SRP `1.3` is active before this formal close;
+- GA-SR-025 prevents `Start-Process -Wait` process-tree stalls in durable native-process gates;
+- current validator self-tests: `17/17`.
+
+Progress:
+
+- M2.5.4-D status: **CLOSED**;
+- GPP change: **+0.00**;
+- GPP remains: **124.90 / 1000**;
+- Global Progress remains: **12.5%**;
+- Planet Topology remains: **54.90 / 90 — 61.0%**;
+- M2 remains: **OPEN**.
+
+Next gate:
+
+**M2.5.4-E — Baseline Validation & M2.5.4 Close**

@@ -646,7 +646,11 @@ Etapa:
 
 Subetapa atual:
 
-**M2.5.4-D — Permanent Headless Benchmark Harness Implementation**
+**M2.5.4-E — Baseline Validation & M2.5.4 Close**
+
+M2.5.4-D — Permanent Headless Benchmark Harness Implementation:
+
+**concluído em 2026-09-29**
 
 M2.5.4-C — Benchmark Contract & Scale Envelope Design Freeze:
 
@@ -802,11 +806,11 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M2.5.4-D permanent headless benchmark harness implementation against the frozen product-acceptance / stress lanes**
+**M2.5.4-E baseline validation and M2.5.4 close against the permanent benchmark harness**
 
 Última revisão de baseline:
 
-**2026-09-28**
+**2026-09-29**
 
 ---
 

@@ -1604,8 +1604,8 @@ Decomposição:
 - M2.5.4-A — Final Workload Performance Spike & Bottleneck Diagnosis — concluído;
 - M2.5.4-B — Product/Stress Scale Envelope Audit — concluído;
 - M2.5.4-C — Benchmark Contract & Scale Envelope Design Freeze — concluído;
-- M2.5.4-D — Permanent Headless Benchmark Harness Implementation — atual;
-- M2.5.4-E — Baseline Validation & M2.5.4 Close.
+- M2.5.4-D — Permanent Headless Benchmark Harness Implementation — concluído;
+- M2.5.4-E — Baseline Validation & M2.5.4 Close — atual.
 
 M2.5.4-A evidence established:
 
@@ -1935,7 +1935,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M2.5.4-D — Permanent Headless Benchmark Harness Implementation**
+**M2.5.4-E — Baseline Validation & M2.5.4 Close**
 
 Official Progress:
 
@@ -1967,11 +1967,11 @@ Active Critical Risks:
 
 Critical Path:
 
-**M2.5.4-D permanent headless benchmark harness implementation against the frozen acceptance/stress contract**
+**M2.5.4-E baseline validation and M2.5.4 close against the permanent benchmark harness**
 
 Last Baseline Review:
 
-**2026-09-28**
+**2026-09-29**
 #### M2.5.2-C materializer close
 
 Materialização física concluída no reference target `G(1,0) -> G(6,0)`:

@@ -1265,3 +1265,43 @@ The coverage boundary is now explicit, but the generalized Class I physical mapp
 `RISK-012 — Memory footprint` remains open for the same reason.
 
 Global Risk Level remains **HIGH**.
+---
+
+# 15. M2.5.4-D permanent benchmark harness review
+
+**Date:** 2026-09-29
+
+Evidence:
+
+`GlobalArena-Evidence-M2.5.4-D-R2-PERMANENT-BENCHMARK-HARNESS-20260929-062457.zip`
+
+Result:
+
+**PASS_READY_FOR_M2_5_4_D_FORMAL_AUDIT**
+
+Validated:
+
+- the permanent headless harness encodes the frozen M2.5.4-C acceptance/stress split;
+- all four blocking product-acceptance workloads pass all four hard budgets;
+- `G(16,0) -> G(96,0)` remains structurally correct and deterministic enough for the current stress lane, while its performance remains outside the blocking budgets;
+- stress median elapsed is approximately `3.818 s`;
+- stress max elapsed is approximately `7.985 s`;
+- stress managed allocation is approximately `2.045 GB` per measured run;
+- automated tests: `435/435`;
+- compiler warnings/errors: `0/0`.
+
+Risk effect:
+
+`RISK-002 — Tactical resolution scalability` remains open.
+
+The blocking M2 product-acceptance lane now has executable passing performance evidence, but the larger engineering-stress lane continues to demonstrate substantial headroom cost.
+
+`RISK-012 — Memory footprint` remains open.
+
+The approximately `2.045 GB` allocation observed in the `G(16,0) -> G(96,0)` stress case confirms that simultaneous large-scale physical materialization remains a real memory concern and should not be inferred as a V1 product requirement.
+
+`RISK-003 — Goldberg hierarchy mapping` remains **HIGH** pending accumulated M2.5.4 baseline validation and the later M2.5.5 exit regression.
+
+Global Risk Level remains:
+
+**HIGH**
