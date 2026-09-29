@@ -167,7 +167,7 @@ Mitigação:
 
 Próxima ação:
 
-implementar o benchmark headless permanente de M2.5.4 com product-acceptance e stress lanes separados, preservando os budgets atuais para os casos bloqueantes.
+manter o permanent benchmark harness como regression baseline e revisitar o envelope quando M3/M5 congelarem densidade tática e tamanho de mundo do produto.
 
 ---
 
@@ -175,7 +175,7 @@ implementar o benchmark headless permanente de M2.5.4 com product-acceptance e s
 
 Status:
 
-MITIGATING
+WATCHING
 
 Probability:
 
@@ -549,7 +549,7 @@ This closes the official-family/refinement coverage uncertainty owned by M2.5.3.
 
 Próxima ação:
 
-executar M2.5.4 — Headless Scalability Benchmark Harness & Baseline.
+monitorar durante M3 e nos consumidores posteriores se novos requisitos de escala ou família exigem ampliar o physical hierarchy além do scope oficial de M2.
 
 ---
 
@@ -902,6 +902,10 @@ Mitigação:
 - não materializar simultaneamente uma combinação de máximos estratégicos e táticos sem evidência de produto que a justifique;
 - manter stress cases para detectar perda de robustez sem transformar stress scale em requisito de produto.
 
+Próxima ação:
+
+recalibrar o memory budget quando o tamanho estratégico e a densidade tática de produto forem congelados por evidência de world generation e client.
+
 ---
 
 # 5. Riscos globais atuais
@@ -910,7 +914,6 @@ Critical:
 
 - Economy scalability
 - Tactical resolution scalability
-- Determinism
 - Multiplayer synchronization
 - Scope expansion
 - Architecture underengineering
@@ -920,6 +923,7 @@ Critical:
 High:
 
 - Goldberg hierarchy
+- Determinism
 - Architecture overengineering
 - AI complexity
 - Save compatibility
@@ -1349,3 +1353,69 @@ M2.5.4 no longer blocks M2 on local committed-baseline scalability evidence.
 Global Risk Level remains:
 
 **HIGH**
+---
+
+# 17. M2.5.5 accumulated exit audit and M2 formal close risk review
+
+**Date:** 2026-09-29
+
+Evidence:
+
+`GlobalArena-Evidence-M2.5.5-R1-ACCUMULATED-M2-EXIT-AUDIT-20260929-152623.zip`
+
+SHA-256:
+
+`931dd69bf4f15b40cf3a9ea31c5ddaa6ec9ab001062266386de02db973bea719`
+
+Result:
+
+**PASS_READY_FOR_M2_FORMAL_CLOSE**
+
+Validated:
+
+- M2 exit requirements: `10/10`;
+- local Release suite: `435/435`;
+- permanent benchmark harness: PASS;
+- all blocking performance budgets: PASS;
+- cross-platform suite: Ubuntu `435/435`, Windows `435/435`, macOS `435/435`;
+- current cross-platform-relevant source/test/workflow drift: `0`;
+- official Class I scale-6 physical hierarchy and Class I/II/III strategic support boundaries remain explicit.
+
+Risk effect:
+
+`RISK-003 — Goldberg hierarchy mapping` moves from `MITIGATING` to `WATCHING`.
+
+Probability remains `2`, impact remains `4`, score remains `8 — HIGH`.
+
+Reason:
+
+- the accepted M2 physical hierarchy scope is explicit;
+- durable Class I lineage is implemented;
+- coarse edge/vertex physical incidence is validated;
+- cross-region traversal uses authoritative fine adjacency;
+- accumulated performance gates pass for the blocking product envelope;
+- the applicable production/test tree has passed the full suite on Ubuntu, Windows and macOS.
+
+The risk is not closed because later final-scale decisions or later topology consumers may require extensions outside the currently accepted M2 physical scope.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+Its next decision point moves from M2 benchmark implementation to later product-scale validation. The full physical `G(16,0) -> G(96,0)` stress lane remains useful headroom evidence but is not a V1 product requirement.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+The approximately `2.045 GB` managed allocation observed for the full physical stress case remains a warning against simultaneous materialization of independent strategic and tactical maxima.
+
+Active CRITICAL risks remain:
+
+**7**
+
+Active HIGH risks remain:
+
+**5**
+
+Global Risk Level remains:
+
+**HIGH**
+
+The Critical Path moves from M2 topology exit semantics to the M3 procedural-world foundation.

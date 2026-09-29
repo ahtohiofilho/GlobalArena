@@ -11686,3 +11686,164 @@ Risk and progress:
 Next gate:
 
 **M2.5.5 — Cross-Platform Regression, Exit Audit & M2 Formal Close**
+---
+
+## 2026-09-29 — M2.5.5 accumulated exit audit and M2 formal close
+
+Milestone closed:
+
+**M2 — Planet Topology**
+
+Stage closed:
+
+**M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate**
+
+Subcheckpoint closed:
+
+**M2.5.5 — Cross-Platform Regression, Exit Audit & M2 Formal Close**
+
+Accepted exit-audit evidence:
+
+`GlobalArena-Evidence-M2.5.5-R1-ACCUMULATED-M2-EXIT-AUDIT-20260929-152623.zip`
+
+Evidence SHA-256:
+
+`931dd69bf4f15b40cf3a9ea31c5ddaa6ec9ab001062266386de02db973bea719`
+
+Evidence audit:
+
+- manifest payloads: `19/19` verified;
+- baseline HEAD: `fb7eaf744b93b0adf4c8c3dccc4527237f8c6296`;
+- GA-SRP version: `1.4`;
+- GA-SRP self-tests: `19/19`;
+- target ReadOnly validation: `PARSER_ERRORS=0`, `RULE_VIOLATIONS=0`;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- local automated tests: `435/435`;
+- permanent benchmark harness: PASS;
+- all four blocking workloads pass all hard budgets;
+- full physical stress correctness remains mandatory and passed;
+- repository mutation during audit: False.
+
+Cross-platform regression:
+
+GitHub Actions run:
+
+`36557455921`
+
+Validated production/test commit:
+
+`296977c9f0260c7ddaa01efa50319337178fb046`
+
+Results:
+
+- Ubuntu: `435/435`;
+- Windows: `435/435`;
+- macOS: `435/435`;
+- total cross-platform executions represented by the three full suites: `1305/1305`;
+- current cross-platform-relevant source/test/workflow drift from the validated commit: `0`.
+
+M2 exit gate:
+
+1. headless — PASS;
+2. deterministic — PASS;
+3. topologically closed — PASS;
+4. navigable — PASS;
+5. strategic-to-tactical parent/child semantics — PASS;
+6. physical/shared boundary attachment — PASS;
+7. neighboring tactical-region traversal through the canonical fine-topology contract — PASS;
+8. official Goldberg refinement/family scope explicit — PASS;
+9. quantitative scalability evidence — PASS;
+10. cross-platform regression — PASS.
+
+Exit requirements:
+
+**10 / 10**
+
+### Final M2 maturity calibration
+
+M2 closes at `Validada — fator 0.85`, not at `1.00`.
+
+The remaining factor `0.15` is reserved for V1 Definition of Done evidence that depends on later final product-scale decisions and integration with later consumers.
+
+| Capability | Budget | Before | M2 close | Delta |
+|---|---:|---:|---:|---:|
+| Goldberg parameterization e geração estratégica | 16 | 8.00 | 13.60 | +5.60 |
+| Strategic graph: identidade, incidência e adjacência | 12 | 6.00 | 10.20 | +4.20 |
+| Tactical region topology | 14 | 11.90 | 11.90 | +0.00 |
+| Shared subtile border bands | 16 | 13.60 | 13.60 | +0.00 |
+| Strategic ↔ tactical hierarchy/refinement mapping | 16 | 11.20 | 13.60 | +2.40 |
+| Canonical deterministic topology generation | 6 | 0.00 | 5.10 | +5.10 |
+| Topological validation e navigability | 6 | 4.20 | 5.10 | +0.90 |
+| Scalability / headless performance baseline | 4 | 0.00 | 3.40 | +3.40 |
+| **TOTAL** | **90** | **54.90** | **76.50** | **+21.60** |
+
+Official progress after M2:
+
+- GPP: **146.50 / 1000**;
+- Global Progress exact: **14.650%**;
+- Global Progress displayed: **14.7%**;
+- Foundation / Simulation Kernel: **70.00 / 70 — 100.0%**;
+- Planet Topology / Goldberg: **76.50 / 90 — 85.0%**;
+- Scope Confidence: **50%**;
+- Technical Risk: **HIGH**.
+
+### Risk review
+
+`RISK-003 — Goldberg hierarchy mapping` moves from:
+
+**MITIGATING / Probability 2 / Impact 4 / Score 8 — HIGH**
+
+to:
+
+**WATCHING / Probability 2 / Impact 4 / Score 8 — HIGH**
+
+The risk remains monitored because final product scale and future consumers may expose new requirements, but the accepted M2 physical scope is now explicit and validated.
+
+`RISK-002 — Tactical resolution scalability` remains:
+
+**OPEN / CRITICAL**
+
+`RISK-012 — Memory footprint` remains:
+
+**OPEN / CRITICAL**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Global Risk Level remains:
+
+**HIGH**
+
+### Scope change
+
+None.
+
+The V1 baseline remains:
+
+**1000 GPP**
+
+No topology budget was expanded. M2 closure promotes maturity inside the existing 90 GPP topology budget.
+
+### Formal transition
+
+**M2 — Planet Topology concluded on 2026-09-29.**
+
+Next milestone:
+
+**M3 — Procedural World**
+
+First work item:
+
+**M3 entry audit — world-generation contracts, risks and stage decomposition**
+
+Immediate objectives:
+
+- audit the current contracts that M3 can safely build on;
+- define the first deterministic physical-field contracts;
+- freeze the strategic/tactical aggregation boundary for world generation;
+- identify which M3 stages require strategic-scale versus tactical-scale materialization;
+- define seed/version reproducibility requirements;
+- decompose the existing 100 GPP World Generation budget without changing the 1000 GPP V1 baseline;
+- review M3-specific risks before production implementation begins.

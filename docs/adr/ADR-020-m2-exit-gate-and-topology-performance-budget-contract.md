@@ -296,6 +296,43 @@ The committed baseline confirms:
 
 The earlier consequence statements about missing physical boundary attachment and missing refinement coverage are historical M2.5.1 context; M2.5.2 and M2.5.3 subsequently satisfied those M2 requirements within their frozen scope.
 
+### 13. M2.5.5 exit validation and M2 close
+
+M2.5.5 accumulated exit evidence:
+
+`GlobalArena-Evidence-M2.5.5-R1-ACCUMULATED-M2-EXIT-AUDIT-20260929-152623.zip`
+
+SHA-256:
+
+`931dd69bf4f15b40cf3a9ea31c5ddaa6ec9ab001062266386de02db973bea719`
+
+The final M2 exit audit confirms all ten requirements of this ADR:
+
+1. headless execution;
+2. deterministic topology behavior;
+3. topologically closed accepted model;
+4. navigability;
+5. explicit strategic-to-tactical parent/child semantics;
+6. physical/shared boundary attachment;
+7. cross-region traversal through authoritative fine-topology adjacency;
+8. explicit official Goldberg refinement/family scope;
+9. quantitative scalability evidence;
+10. cross-platform regression.
+
+The applicable cross-platform production/test tree was validated by GitHub Actions run `36557455921` at commit `296977c9f0260c7ddaa01efa50319337178fb046`, with `435/435` tests on Ubuntu, Windows and macOS. No cross-platform-relevant production, test, benchmark or workflow file changed between that validated commit and the final M2 exit-audit baseline.
+
+M2 is therefore formally eligible to close.
+
+The M2 topology maturity closes at factor `0.85`, not `1.00`. Final V1 world-size limits remain unfrozen and later final-scale/consumer integration remains outside the M2 exit claim.
+
+Residual scope:
+
+- `RISK-002 — Tactical resolution scalability` remains open;
+- `RISK-012 — Memory footprint` remains open;
+- Class II/III physical hierarchy remains outside the official M2 support boundary;
+- `G(16,0) -> G(96,0)` remains non-blocking engineering stress;
+- final V1 strategic/tactical scale selection remains a later product decision.
+
 ## Consequences
 
 Positive:
@@ -306,12 +343,13 @@ Positive:
 - benchmark evidence cannot silently survive a material workload change;
 - performance cannot conceal missing topology semantics.
 
-Negative:
+Residual / deferred:
 
-- M2 remains open;
-- boundary attachment and navigability still require production work;
-- refinement coverage still requires an explicit decision;
-- first performance thresholds may need revision if later M2 production semantics materially increase the workload.
+- final V1 world-size and tactical-density limits remain unfrozen;
+- `RISK-002 — Tactical resolution scalability` remains open;
+- `RISK-012 — Memory footprint` remains open;
+- Class II/III physical hierarchy remains outside the official M2 support boundary;
+- later product evidence may require a governed revision of the current topology performance envelope without invalidating the M2 exit proof.
 
 ## Invariant
 

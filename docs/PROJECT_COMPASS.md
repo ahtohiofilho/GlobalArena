@@ -306,19 +306,46 @@ A decomposição operacional inicial de M2 é:
 | Scalability / headless performance baseline | 4 |
 | **TOTAL** | **90** |
 
-Estado de maturidade após M2.5.3-C / durable Class I scale-6 lineage e generalized physical mapping:
+Estado de maturidade após o fechamento formal de M2:
 
 | Capability | GPP | Maturidade | Fator | GPP ganhos |
 |---|---:|---|---:|---:|
-| Goldberg parameterization e geração estratégica | 16 | Implementação funcional isolada | 0.50 | 8.00 |
-| Strategic graph: identidade, incidência e adjacência | 12 | Implementação funcional isolada | 0.50 | 6.00 |
+| Goldberg parameterization e geração estratégica | 16 | Validada | 0.85 | 13.60 |
+| Strategic graph: identidade, incidência e adjacência | 12 | Validada | 0.85 | 10.20 |
 | Tactical region topology | 14 | Validada | 0.85 | 11.90 |
 | Shared subtile border bands | 16 | Validada | 0.85 | 13.60 |
-| Strategic ↔ tactical hierarchy/refinement mapping | 16 | Integrada ao sistema | 0.70 | 11.20 |
-| Canonical deterministic topology generation | 6 | Inexistente | 0.00 | 0.00 |
-| Topological validation e navigability | 6 | Integrada ao sistema | 0.70 | 4.20 |
-| Scalability / headless performance baseline | 4 | Inexistente | 0.00 | 0.00 |
-| **TOTAL** | **90** |  |  | **54.90** |
+| Strategic ↔ tactical hierarchy/refinement mapping | 16 | Validada | 0.85 | 13.60 |
+| Canonical deterministic topology generation | 6 | Validada | 0.85 | 5.10 |
+| Topological validation e navigability | 6 | Validada | 0.85 | 5.10 |
+| Scalability / headless performance baseline | 4 | Validada | 0.85 | 3.40 |
+| **TOTAL** | **90** |  |  | **76.50** |
+
+O fechamento de M2 promove somente capabilities que agora possuem evidência acumulada de testes, edge cases, performance mínima aplicável e regressão cross-platform. Nenhuma capability de Topologia planetária / Goldberg é promovida a fator `1.00` neste milestone: o fator `1.00` permanece reservado à Definition of Done do V1, incluindo decisões finais de escala e integração com consumidores posteriores.
+
+Promoções de M2.5.5:
+
+- `Goldberg parameterization e geração estratégica`: `0.50 -> 0.85`, `+5.60 GPP`;
+- `Strategic graph: identidade, incidência e adjacência`: `0.50 -> 0.85`, `+4.20 GPP`;
+- `Strategic ↔ tactical hierarchy/refinement mapping`: `0.70 -> 0.85`, `+2.40 GPP`;
+- `Canonical deterministic topology generation`: `0.00 -> 0.85`, `+5.10 GPP`;
+- `Topological validation e navigability`: `0.70 -> 0.85`, `+0.90 GPP`;
+- `Scalability / headless performance baseline`: `0.00 -> 0.85`, `+3.40 GPP`.
+
+GPP adicional no fechamento de M2:
+
+**+21.60 GPP**
+
+GPP global após M2:
+
+**146.50 / 1000**
+
+Global Progress:
+
+**14.7%**
+
+Topologia planetária / Goldberg:
+
+**76.50 / 90 GPP — 85.0%**
 
 M2.1.1 foi um audit arquitetural e não promoveu maturidade por si só.
 
@@ -397,6 +424,12 @@ Como durable lineage, authoritative topology generation, physical incidence mate
 M2.5.3-D fecha a validação acumulada do physical hierarchy oficial sem alterar production code. O gate valida `k=1..4` nos dois eixos Class I, incluindo `k=4` como caso fora da amostra de implementação; confirma as fórmulas generalizadas, cobertura exata de coarse edges e vertices, cobertura integral das fine tiles, determinismo repetido em `k=4`, traversal cross-owner sobre a fine topology autoritativa e rejeição de scale incorreto, Class II e Class III no physical mapper.
 
 M2.5.3 está encerrado. A capability `Strategic ↔ tactical hierarchy/refinement mapping` permanece em `Integrada ao sistema — fator 0.70` neste fechamento porque o nível `Validada — fator 0.85` exige também performance mínima e regressão de saída aplicável. Esses gates pertencem a M2.5.4 e M2.5.5.
+
+M2.5.5 fecha o exit gate acumulado de M2. A evidência read-only confirma `435/435` testes no HEAD atual, permanent benchmark harness aprovado, os quatro workloads bloqueantes dentro dos budgets, stress topology correctness preservada e regressão cross-platform de `435/435` em Ubuntu, Windows e macOS no run `36557455921`. Entre o commit cross-platform validado `296977c9f0260c7ddaa01efa50319337178fb046` e o baseline final de M2 não existe drift em código de produção, testes, benchmark ou workflow cross-platform.
+
+Os 10 requisitos de saída congelados em ADR-020 estão atendidos: execução headless, determinismo, fechamento topológico, navegabilidade, semântica pai-filho, attachment físico de fronteira, traversal cross-region, scope oficial de refinement/famílias explícito, evidência quantitativa de escalabilidade e regressão cross-platform.
+
+M2 é encerrado em `Validada — fator 0.85` para a área de Topologia planetária / Goldberg. O `RISK-003 — Goldberg hierarchy mapping` passa de `MITIGATING` para `WATCHING`; `RISK-002 — Tactical resolution scalability` e `RISK-012 — Memory footprint` permanecem abertos porque o tamanho final do produto e a densidade tática final ainda dependem de validação posterior.
 
 Esses pesos constituem o baseline inicial.
 
@@ -502,6 +535,8 @@ Inclui:
 
 ## M2 — Planet Topology
 
+**Status: concluído em 2026-09-29**
+
 Objetivo:
 estabelecer a representação lógica do planeta.
 
@@ -519,6 +554,8 @@ Inclui:
 ---
 
 ## M3 — Procedural World
+
+**Status: atual desde 2026-09-29**
 
 Objetivo:
 gerar um planeta jogável procedimentalmente.
@@ -638,41 +675,33 @@ The hard M2.5.1 thresholds themselves remain unchanged.
 
 Milestone:
 
-**M2 — Planet Topology**
+**M3 — Procedural World**
 
-Etapa:
+Etapa atual:
 
-**M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate**
+**M3 entry — Procedural World architecture, scale contract & decomposition**
 
 Subetapa atual:
 
-**M2.5.5 — Cross-Platform Regression, Exit Audit & M2 Formal Close**
+**M3 entry audit — world-generation contracts, risks and stage decomposition**
+
+M2 — Planet Topology:
+
+**concluído em 2026-09-29**
+
+M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate:
+
+**concluído em 2026-09-29**
+
+M2.5.5 — Cross-Platform Regression, Exit Audit & M2 Formal Close:
+
+**concluído em 2026-09-29**
 
 M2.5.4 — Headless Scalability Benchmark Harness & Baseline:
 
 **concluído em 2026-09-29**
 
-M2.5.4-E — Baseline Validation & M2.5.4 Close:
-
-**concluído em 2026-09-29**
-
-M2.5.4-D — Permanent Headless Benchmark Harness Implementation:
-
-**concluído em 2026-09-29**
-
-M2.5.4-C — Benchmark Contract & Scale Envelope Design Freeze:
-
-**concluído em 2026-09-28**
-
 M2.5.3 — Hierarchy/Refinement Coverage Decision for Officially Supported Goldberg Families:
-
-**concluído em 2026-09-28**
-
-M2.5.3-D — Accumulated Coverage Validation & M2.5.3 Close:
-
-**concluído em 2026-09-28**
-
-M2.5.3-C — Class I Scale-6 Durable Lineage & Physical Mapping:
 
 **concluído em 2026-09-28**
 
@@ -684,113 +713,17 @@ M1 — Deterministic Simulation Kernel:
 
 **concluído em 2026-09-19**
 
-M2.1 — Goldberg Topology Foundation:
-
-**concluído em 2026-09-19**
-
-M2.1.2 — Goldberg Parameter & Count Contract:
-
-**concluído em 2026-09-19**
-
-M2.1.3 — Strategic Topology Identity Contract:
-
-**concluído em 2026-09-19**
-
-M2.1.4 — Minimal G(1,0) Strategic Topology:
-
-**concluído em 2026-09-19**
-
-M2.1.5.A — Class I Goldberg Generalization:
-
-**concluído em 2026-09-19**
-
-M2.1.5.B — Class II Goldberg Generalization:
-
-**concluído em 2026-09-19**
-
-M2.1.5.C — Class III Goldberg Generalization:
-
-**concluído em 2026-09-19**
-
-M2.2.1 — Tactical Identity & Region Contract:
-
-**concluído em 2026-09-20**
-
-M2.2.2 — Minimal Tactical Region Graph:
-
-**concluído em 2026-09-20**
-
-M2.2.3 — Strategic-to-Tactical Region Materialization:
-
-**concluído em 2026-09-20**
-
-M2.2.4 — Tactical Region Validation & M2.2 Close:
-
-**concluído em 2026-09-20**
-
-M2.2 — Tactical Region Topology:
-
-**concluído em 2026-09-20**
-
-M2.3.1 — Shared Border Contract Audit & Design:
-
-**concluído em 2026-09-20**
-
-M2.3.2 — Shared Border Identity & Band Contract:
-
-**concluído em 2026-09-20**
-
-M2.3.3 — StrategicEdge-to-Border Materialization:
-
-**concluído em 2026-09-20**
-
-M2.3.4 — Cross-Region Aggregate & Derived Incidence:
-
-**concluído em 2026-09-20**
-
-M2.3.5 — Shared Border Validation & M2.3 Close:
-
-**concluído em 2026-09-20**
-
-M2.3 — Shared Border Bands & Strategic/Tactical Mapping:
-
-**concluído em 2026-09-20**
-
-M2.4.1 — Scaled Refinement Compatibility Contract:
-
-**concluído em 2026-09-20**
-
-M2.4.2 — Canonical Construction Provenance & Reference Mapping:
-
-**concluído em 2026-09-20**
-
-M2.4.3 — Shared Border Refinement Continuity:
-
-**concluído em 2026-09-20**
-
-M2.4.4 — Class I/II/III Scaled Refinement Validation:
-
-**concluído em 2026-09-20**
-
-M2.4.5 — Refinement Stage Validation & M2.4 Close:
-
-**concluído em 2026-09-20**
-
-M2.4 — Goldberg Family & Refinement Validation:
-
-**concluído em 2026-09-20**
-
 Baseline V1:
 
 **congelado em 2026-09-18**
 
 Progresso oficial:
 
-**12,5%**
+**14,7%**
 
 GPP conquistados:
 
-**124,90 / 1000**
+**146,50 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -798,7 +731,7 @@ Foundation / Simulation Kernel:
 
 Topologia planetária / Goldberg:
 
-**54,90 / 90 GPP — 61,0%**
+**76,50 / 90 GPP — 85,0%**
 
 Scope Confidence:
 
@@ -814,7 +747,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M2.5.5 cross-platform regression, accumulated M2 exit audit and M2 formal close**
+**M3 multiscale procedural world foundation: deterministic physical fields, cross-scale continuity and seed reproducibility**
 
 Última revisão de baseline:
 

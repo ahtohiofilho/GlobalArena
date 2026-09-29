@@ -288,6 +288,8 @@ Evidência de fechamento:
 
 ## M2 — Planet Topology
 
+**Status: concluído em 2026-09-29**
+
 Objetivo:
 
 estabelecer o planeta lógico.
@@ -1655,11 +1657,59 @@ M2.5.4 status:
 
 **CLOSED**
 
+M2.5.5 — Cross-Platform Regression, Exit Audit & M2 Formal Close:
+
+**concluído em 2026-09-29**
+
+M2 exit audit evidence:
+
+`GlobalArena-Evidence-M2.5.5-R1-ACCUMULATED-M2-EXIT-AUDIT-20260929-152623.zip`
+
+SHA-256:
+
+`931dd69bf4f15b40cf3a9ea31c5ddaa6ec9ab001062266386de02db973bea719`
+
+Exit result:
+
+- GA-SRP `1.4`: `19/19`;
+- Release build: PASS;
+- local suite: `435/435`;
+- permanent benchmark harness: PASS;
+- blocking performance budgets: PASS;
+- cross-platform regression: Ubuntu `435/435`, Windows `435/435`, macOS `435/435`;
+- cross-platform-relevant drift after validated commit: `0`;
+- M2 exit requirements: `10/10`.
+
+M2 — Planet Topology:
+
+**CLOSED**
+
+M2 final maturity:
+
+**76.50 / 90 GPP — 85.0%**
+
+GPP promotion at M2 close:
+
+**+21.60 GPP**
+
+Global total:
+
+**146.50 / 1000 — 14.7%**
+
+The remaining 15% of the topology budget is not silently claimed by milestone closure. Factor `1.00` remains reserved for V1 Definition of Done and later final-scale/consumer integration evidence.
+
+Próximo milestone:
+
+**M3 — Procedural World**
+
 Próximo gate:
 
-**M2.5.5 — Cross-Platform Regression, Exit Audit & M2 Formal Close**
+**M3 entry audit — world-generation contracts, risks and stage decomposition**
+
 ---
 ## M3 — Procedural World
+
+**Status: atual desde 2026-09-29**
 
 Objetivo:
 
@@ -1819,7 +1869,7 @@ Somente um ou poucos itens devem ser classificados como Critical Path.
 
 Status atual:
 
-**M2 exit semantics: physical strategic/tactical boundary attachment, navigability, refinement coverage e scalability baseline**
+**M3 multiscale procedural world foundation: deterministic physical fields, cross-scale continuity and seed reproducibility**
 
 ---
 
@@ -1933,23 +1983,23 @@ Last Baseline Review: YYYY-MM-DD
 
 Current Milestone:
 
-**M2 — Planet Topology**
+**M3 — Procedural World**
 
 Current Stage:
 
-**M2.5 — Scalability, Cross-Platform Regression & M2 Exit Gate**
+**M3 entry — Procedural World architecture, scale contract & decomposition**
 
 Current Subcheckpoint:
 
-**M2.5.5 — Cross-Platform Regression, Exit Audit & M2 Formal Close**
+**M3 entry audit — world-generation contracts, risks and stage decomposition**
 
 Official Progress:
 
-**12.5%**
+**14.7%**
 
 GPP Earned:
 
-**124.90 / 1000**
+**146.50 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -1957,7 +2007,7 @@ Foundation / Simulation Kernel:
 
 Planet Topology / Goldberg:
 
-**54.90 / 90 GPP — 61.0%**
+**76.50 / 90 GPP — 85.0%**
 
 Scope Confidence:
 
@@ -1973,11 +2023,12 @@ Active Critical Risks:
 
 Critical Path:
 
-**M2.5.5 cross-platform regression, accumulated M2 exit audit and M2 formal close**
+**M3 multiscale procedural world foundation: deterministic physical fields, cross-scale continuity and seed reproducibility**
 
 Last Baseline Review:
 
 **2026-09-29**
+
 #### M2.5.2-C materializer close
 
 Materialização física concluída no reference target `G(1,0) -> G(6,0)`:
