@@ -298,6 +298,74 @@ function Test-GAScriptText {
         }
     }
 
+    $capturedDiffCheckAssignments =
+        @(
+            $ast.FindAll(
+                {
+                    param($node)
+
+                    if ($node -isnot
+                        [System.Management.Automation.Language.AssignmentStatementAst])
+                    {
+                        return $false
+                    }
+
+                    if ($node.Left -isnot
+                        [System.Management.Automation.Language.VariableExpressionAst])
+                    {
+                        return $false
+                    }
+
+                    $rightText =
+                        $node.Right.Extent.Text
+
+                    $isBoundedProcess =
+                        $rightText -match
+                            '(?i)\bInvoke-BoundedProcess\b'
+
+                    $isGit =
+                        $rightText -match
+                            '(?is)-FilePath\s+[''"]git[''"]'
+
+                    $isDiffCheck =
+                        ($rightText -match
+                            '(?is)[''"]diff[''"]') -and
+                        ($rightText -match
+                            '(?is)[''"]--check[''"]')
+
+                    return $isBoundedProcess -and
+                        $isGit -and
+                        $isDiffCheck
+                },
+                $true)
+        )
+
+    foreach ($capturedDiffCheckAssignment in
+        $capturedDiffCheckAssignments)
+    {
+        $resultVariableName =
+            $capturedDiffCheckAssignment.Left.VariablePath.UserPath
+
+        $escapedResultVariable =
+            [System.Text.RegularExpressions.Regex]::Escape(
+                '$' + $resultVariableName)
+
+        $inspectsCapturedDiagnostics =
+            ($ScriptText -match
+                ($escapedResultVariable + '\.Stdout\b')) -or
+            ($ScriptText -match
+                ($escapedResultVariable + '\.Stderr\b'))
+
+        if (-not $inspectsCapturedDiagnostics)
+        {
+            $violations.Add(
+                (New-Violation `
+                    -Rule 'GA-SR-026' `
+                    -Line $capturedDiffCheckAssignment.Extent.StartLineNumber `
+                    -Message 'Captured git diff --check result is evaluated without inspecting captured stdout/stderr diagnostics; diagnostics are authoritative in addition to process state.'))
+        }
+    }
+
     $variableSpellingsByScope = @{}
 
     $variableExpressions =
@@ -843,6 +911,69 @@ if ($process.ExitCode -ne 0) {
     Assert-Case `
         -Name 'exact-process-bounded-wait-safe' `
         -Text $exactProcessWaitSafe `
+        -SelectedProfile 'General' `
+        -ShouldPass $true
+
+    $capturedDiffCheckExitOnlyTrap = @'
+#requires -Version 5.1
+$diffCheck = Invoke-BoundedProcess `
+    -FilePath 'git' `
+    -ArgumentList @(
+        '-c',
+        'core.safecrlf=false',
+        'diff',
+        '--cached',
+        '--check'
+    ) `
+    -Name 'git-cached-diff-check'
+
+if ($diffCheck.ExitCode -ne 0) {
+    throw 'git diff --cached --check failed'
+}
+'@
+
+    Assert-Case `
+        -Name 'captured-diff-check-exitcode-only' `
+        -Text $capturedDiffCheckExitOnlyTrap `
+        -SelectedProfile 'General' `
+        -ShouldPass $false `
+        -ExpectedRule 'GA-SR-026'
+
+    $capturedDiffCheckDiagnosticsSafe = @'
+#requires -Version 5.1
+$diffCheck = Invoke-BoundedProcess `
+    -FilePath 'git' `
+    -ArgumentList @(
+        '-c',
+        'core.safecrlf=false',
+        'diff',
+        '--cached',
+        '--check'
+    ) `
+    -Name 'git-cached-diff-check'
+
+$diffCheckText =
+    $diffCheck.Stdout +
+    "`n" +
+    $diffCheck.Stderr
+
+$diagnostics =
+    @(
+        $diffCheckText -split "`n" |
+            Where-Object {
+                [string]::IsNullOrWhiteSpace("$_") -eq $false
+            }
+    )
+
+if (($diffCheck.ExitCode -ne 0) -or
+    ($diagnostics.Count -ne 0)) {
+    throw 'git diff --cached --check failed'
+}
+'@
+
+    Assert-Case `
+        -Name 'captured-diff-check-diagnostics-safe' `
+        -Text $capturedDiffCheckDiagnosticsSafe `
         -SelectedProfile 'General' `
         -ShouldPass $true
 

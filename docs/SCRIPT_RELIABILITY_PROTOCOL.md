@@ -1,7 +1,7 @@
 # Global Arena — Script Reliability Protocol
 
 **Protocol ID:** GA-SRP
-**Version:** 1.3
+**Version:** 1.4
 **Status:** Active
 **Effective date:** 2026-09-28
 **Scope:** PowerShell automation used to inspect, modify, validate or formally close work in the Global Arena repository.
@@ -352,6 +352,22 @@ Guard:
 - GA-SR-022 and GA-SR-024 remain applicable;
 - the validator rejects `Start-Process` commands containing the `-Wait` parameter;
 - GA-SR-021 applies: the detector has both failing and safe neighboring fixtures.
+
+### GA-SR-026 — Captured `git diff --check` diagnostics are authoritative
+
+Observed failures:
+
+- the M2.5.4-E R1 formal-close correctly stopped on `git diff --cached --check` because `PROGRESS_LEDGER.md` and `RISK_REGISTER.md` contained new blank lines at EOF;
+- the M2.5.4-E R2 recovery re-ran the same check through durable native-process capture. The captured stdout contained exactly the two expected `new blank line at EOF` diagnostics, but the returned `Process.ExitCode` was observed as `0`, so an exit-code-only gate incorrectly rejected the known residue signature instead of using the diagnostic content.
+
+Guard:
+
+- when `git diff --check` or `git diff --cached --check` is executed through durable captured-process infrastructure, success requires both a successful process state and zero non-empty diagnostic lines across captured stdout/stderr;
+- captured diagnostics must be persisted before the gate can fail, per GA-SR-022;
+- a captured diff-check result must not be judged only by `.ExitCode`;
+- direct synchronous Git invocation with immediate `$LASTEXITCODE` is not changed by this rule;
+- the validator rejects the observed `Invoke-BoundedProcess` captured Git diff-check pattern when the result variable's stdout/stderr is never inspected;
+- GA-SR-021 applies: the detector has failing and safe neighboring fixtures.
 
 ### GA-SR-017 — Protocol regression promotion
 
