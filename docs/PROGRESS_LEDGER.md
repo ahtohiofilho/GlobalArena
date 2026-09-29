@@ -12015,3 +12015,83 @@ The push of these production/test files is expected to trigger the existing cros
 Next gate:
 
 **M3.1-C — Deterministic Pipeline Skeleton & Contract Validation**
+---
+
+## 2026-09-29 — M3.1-C deterministic pipeline skeleton and contract validation
+
+Subcheckpoint closed:
+
+**M3.1-C — Deterministic Pipeline Skeleton & Contract Validation**
+
+Accepted QA evidence:
+
+`GlobalArena-Evidence-M3.1-C-R1-DETERMINISTIC-PIPELINE-SKELETON-20260929-164625.zip`
+
+Evidence SHA-256:
+
+`a70d4adace51bfcbb87f51b7119180cac70714672d8fb915cabb6135a6eaf6ab`
+
+Evidence audit:
+
+- evidence manifest: `23/23` verified;
+- baseline HEAD: `a5580c93f40d87351bcaed70f6fcaa74c6b788ce`;
+- GA-SRP `1.4`: `19/19`;
+- target QaMutation validation: `PARSER_ERRORS=0`, `RULE_VIOLATIONS=0`;
+- diff diagnostics: `0/0`;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- tests: `475/475`;
+- exact staged files: `5`;
+- commit created during QA: False;
+- push performed during QA: False.
+
+M3.1-B cross-platform prerequisite:
+
+- workflow run: `36620448832`;
+- Ubuntu: PASS;
+- Windows: PASS;
+- macOS: PASS;
+- artifacts uploaded on all three platforms.
+
+Executable M3.1-C implementation:
+
+- `DeterministicWorldGenerator` provides the first concrete `IWorldGenerator`;
+- generation version `1` is an explicit supported-version boundary;
+- the authoritative M2 Goldberg topology generator remains the topology source;
+- `WorldGenerationRandomDomain` defines explicit world-generation randomness domains;
+- `WorldGenerationRandomStreamFactory` derives each stream from `WorldSeed + WorldGenerationVersion + GoldbergParameters + domain`;
+- stream derivation does not convert through `SimulationSeed`;
+- stream creation/advancement order cannot couple independent domains;
+- a fixed deterministic vector is frozen in automated tests;
+- unsupported future world-generation versions fail explicitly.
+
+Maturity effect:
+
+`World generation identity, seed/versioning & deterministic pipeline contracts`
+
+moves from:
+
+**Especificada — fator 0.20 — 2.00 GPP**
+
+to:
+
+**Funcional isoladamente — fator 0.50 — 5.00 GPP**
+
+Reason:
+
+the capability now has executable identity/version contracts, a concrete generator, deterministic domain-separated random streams, explicit version support and a 475-test local regression suite. It is not promoted to `Integrada` or `Validada` yet because the M3.1-C commit must first complete its own cross-platform regression and M3.1-D must perform accumulated stage validation.
+
+Progress effect:
+
+- GPP change: **+3.00**;
+- project GPP: **151.50 / 1000**;
+- Global Progress exact: **15.150%**;
+- Global Progress displayed: **15.2%**;
+- World Generation / biomas / recursos: **5.00 / 100 — 5.0%**;
+- V1 baseline remains **1000 GPP**.
+
+The M3.1-C formal-close push is expected to trigger the existing cross-platform regression workflow automatically.
+
+Next gate:
+
+**M3.1-D — Accumulated M3.1 Validation & Close**

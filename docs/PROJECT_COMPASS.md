@@ -694,11 +694,11 @@ M3.1-A congela a decomposição operacional sem alterar o baseline global de `10
 | Determinism, cross-platform validation, performance baseline & M3 exit | 4 | M3.6 |
 | **TOTAL** | **100** |  |
 
-Initial maturity at the M3.1-A design freeze:
+Current M3 maturity after closed subcheckpoints:
 
 | Capability | GPP | Maturity | Factor | GPP earned |
 |---|---:|---|---:|---:|
-| World generation identity, seed/versioning & deterministic pipeline contracts | 10 | Especificada | 0.20 | 2.00 |
+| World generation identity, seed/versioning & deterministic pipeline contracts | 10 | Funcional isoladamente | 0.50 | 5.00 |
 | Strategic geometry bridge & macro physical-field substrate | 12 | Inexistente | 0.00 | 0.00 |
 | Elevation, relief & land/water foundation | 14 | Inexistente | 0.00 | 0.00 |
 | Temperature, climate, moisture & water availability | 14 | Inexistente | 0.00 | 0.00 |
@@ -708,11 +708,13 @@ Initial maturity at the M3.1-A design freeze:
 | Resources | 7 | Inexistente | 0.00 | 0.00 |
 | Habitability & civilization-placement suitability | 5 | Inexistente | 0.00 | 0.00 |
 | Determinism, cross-platform validation, performance baseline & M3 exit | 4 | Inexistente | 0.00 | 0.00 |
-| **TOTAL** | **100** |  |  | **2.00** |
+| **TOTAL** | **100** |  |  | **5.00** |
 
 M3.1-A is a governance/design freeze. It does not promote implementation maturity and therefore awards no GPP.
 
-M3.1-B materializes the executable seed/version/request/result/interface boundary and promotes `World generation identity, seed/versioning & deterministic pipeline contracts` to `Especificada — fator 0.20`, adding `2.00 GPP`. Concrete deterministic generation behavior remains for M3.1-C; accumulated cross-platform validation remains for the later M3.1 close.
+M3.1-B materializes the executable seed/version/request/result/interface boundary and promotes `World generation identity, seed/versioning & deterministic pipeline contracts` to `Especificada — fator 0.20`, adding `2.00 GPP`.
+
+M3.1-C adds the concrete deterministic generator, explicit supported generation version, domain-separated random streams and a fixed deterministic regression vector. This promotes the same capability to `Funcional isoladamente — fator 0.50`, adding another `3.00 GPP`. The M3.1-C post-push cross-platform regression and accumulated stage validation remain for M3.1-D before any further promotion.
 
 Stage allocation:
 
@@ -737,7 +739,7 @@ Etapa atual:
 
 Subetapa atual:
 
-**M3.1-C — Deterministic Pipeline Skeleton & Contract Validation**
+**M3.1-D — Accumulated M3.1 Validation & Close**
 
 M3 entry audit:
 
@@ -748,6 +750,10 @@ M3.1-A — Architecture, Contract & GPP Design Freeze:
 **concluído em 2026-09-29**
 
 M3.1-B — Executable World Generation Identity & Pipeline Contracts:
+
+**concluído em 2026-09-29**
+
+M3.1-C — Deterministic Pipeline Skeleton & Contract Validation:
 
 **concluído em 2026-09-29**
 
@@ -769,11 +775,11 @@ Baseline V1:
 
 Progresso oficial:
 
-**14,9%**
+**15,2%**
 
 GPP conquistados:
 
-**148,50 / 1000**
+**151,50 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -785,7 +791,7 @@ Topologia planetária / Goldberg:
 
 World Generation / biomas / recursos:
 
-**2,00 / 100 GPP — 2,0%**
+**5,00 / 100 GPP — 5,0%**
 
 Scope Confidence:
 
@@ -801,7 +807,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M3.1 deterministic world-generation pipeline skeleton, explicit domain-separated randomness and contract validation**
+**M3.1 accumulated deterministic/cross-platform validation and stage close**
 
 Última revisão de baseline:
 

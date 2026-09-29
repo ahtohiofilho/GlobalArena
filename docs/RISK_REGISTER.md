@@ -1552,3 +1552,62 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M3.1-C deterministic pipeline skeleton and contract validation**
+---
+
+# 20. M3.1-C deterministic pipeline risk review
+
+**Date:** 2026-09-29
+
+Evidence:
+
+`GlobalArena-Evidence-M3.1-C-R1-DETERMINISTIC-PIPELINE-SKELETON-20260929-164625.zip`
+
+SHA-256:
+
+`a70d4adace51bfcbb87f51b7119180cac70714672d8fb915cabb6135a6eaf6ab`
+
+Result:
+
+**PASS_READY_FOR_M3_1_C_FORMAL_CLOSE**
+
+Validated locally:
+
+- concrete deterministic `IWorldGenerator`;
+- explicit world-generation version `1` support boundary;
+- authoritative M2 topology reuse;
+- domain-separated deterministic random streams;
+- seed/version/Goldberg/domain participation in stream derivation;
+- stream-order independence;
+- fixed deterministic known vector;
+- local Release suite `475/475`;
+- zero compiler warnings/errors.
+
+Risk effect:
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+M3.1-C materially reduces this risk by making domain-separated generation randomness executable and testable, but its new production/test tree has not yet completed the post-push Ubuntu/Windows/macOS regression. M3.1-D must consume that evidence before any further maturity promotion.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+The pipeline boundary is now exercised by a concrete generator and M2 topology reuse. Broader generated-world layer composition remains future M3 work.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+M3.1-C remains inside the frozen M3.1-A scope and introduces no Economy, Civilization runtime, UI or networking responsibility.
+
+`RISK-002 — Tactical resolution scalability` and `RISK-012 — Memory footprint` remain unchanged.
+
+M3.1-C generates strategic topology and deterministic random streams but does not materialize new tactical physical fields.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M3.1-D accumulated deterministic and cross-platform validation**
