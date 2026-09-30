@@ -2830,3 +2830,105 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M3.6 determinism, performance, cross-platform validation and M3 exit**
+---
+
+# 42. M3.6-A world-generation exit contract risk review
+
+**Date:** 2026-09-30
+
+Gate:
+
+**M3.6-A — World Generation Exit, Signature & Performance Contract Freeze**
+
+Risk posture:
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+M3.6 makes whole-result generated-world equivalence explicit through a canonical SHA-256 payload and fixed Class I/II/III known vectors. Cross-platform digest equality becomes a blocking M3 exit condition.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+M3.6-C must measure complete world-generation managed allocation under an explicit Release benchmark protocol. Exact numeric thresholds are not invented by M3.6-A; they require observational calibration evidence.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+M3.6 measures the accepted strategic world-generation pipeline and does not silently expand the workload into global tactical residency. Tactical scale risks remain governed by the existing M2/M3 cross-scale contracts and later product-scale evidence.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+The canonical signature must cover the authoritative generated-world result explicitly rather than relying on serializer/reflection behavior.
+
+`RISK-007 — Architecture overengineering` remains `OPEN / HIGH`.
+
+M3.6 reuses SHA-256, explicit binary encoding, the existing CI workflow and the established M2 benchmark discipline. It does not introduce a generalized serialization framework or new benchmarking platform.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+M3.6 adds no Economy runtime, Civilization runtime, AI, networking, UI or new world-content layer.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate after formal close:
+
+**M3.6-B canonical generated-world signature and regression vectors**
+---
+
+# 43. M3.6-A formal-close risk confirmation
+
+**Date:** 2026-09-30
+
+Checkpoint:
+
+**M3.6-A — World Generation Exit, Signature & Performance Contract Freeze — CLOSED**
+
+Accepted QA:
+
+`GlobalArena-Evidence-M3.6-A-R1-WORLDGEN-EXIT-SIGNATURE-PERFORMANCE-CONTRACT-FREEZE-20260930-161834.zip`
+
+Result:
+
+**PASS_READY_FOR_M3_6_A_FORMAL_CLOSE**
+
+Risk confirmation:
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+Whole-result generated-world equivalence is now an accepted architecture contract. M3.6-B must make the canonical signature executable and freeze known Class I/II/III digests before cross-platform equality can be claimed.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+The accepted contract requires managed-allocation measurement for complete generation, but no numeric budget is invented before observational calibration.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+M3.6 remains scoped to the accepted strategic world-generation result and does not introduce global tactical residency or global tactical pathfinding.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+ADR-028 requires explicit canonical binary coverage rather than serializer/reflection-dependent hashing.
+
+`RISK-007 — Architecture overengineering` remains `OPEN / HIGH`.
+
+The accepted direction reuses SHA-256, existing CI and the established M2 benchmark discipline rather than adding generalized serialization/benchmark infrastructure.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+No Economy runtime, Civilization runtime, AI, networking, UI or new generated-world content was added by M3.6-A.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M3.6-B canonical generated-world signature and regression vectors**

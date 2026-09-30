@@ -896,6 +896,48 @@ This promotes `Habitability & civilization-placement suitability` to `Funcional 
 M3.5-D closes accumulated resources, habitability and civilization-placement validation. The accepted ReadOnly gate revalidates `43/43` M3.5-specific tests and the `696/696` Release suite locally, and consumes cross-platform run `36759069345`, where the same accepted source tree passed `696/696` on Windows, Ubuntu and macOS with zero compiler warnings/errors and artifacts uploaded on all three platforms.
 
 `Resources` and `Habitability & civilization-placement suitability` are therefore promoted to `Validada — fator 0.85`. M3.5 closes at `10.20 / 12 GPP — 85.0%`; the remaining `1.80 GPP` is reserved for later V1 Definition of Done evidence.
+### 15.8 M3.6 deterministic exit, signature and performance decomposition
+
+M3.6 owns the final `4 GPP` World Generation capability:
+
+`Determinism, cross-platform validation, performance baseline & M3 exit`.
+
+Operational decomposition:
+
+- M3.6-A — World Generation Exit, Signature & Performance Contract Freeze;
+- M3.6-B — Canonical Generated-World Signature & Regression Vectors;
+- M3.6-C — World Generation Performance & Memory Acceptance;
+- M3.6-D — Accumulated Cross-Platform M3 Exit Validation & Close.
+
+Frozen direction:
+
+- M3.6 adds proof/acceptance infrastructure, not another gameplay layer;
+- the generated world receives an explicit canonical SHA-256 signature;
+- signature-format versioning is separate from `WorldGenerationVersion`;
+- canonical serialization is explicit binary, big-endian, framed and order-stable;
+- the signature covers request identity plus every authoritative strategic layer resident in `WorldGenerationResult`;
+- Class I/II/III known regression vectors must match on Windows, Ubuntu and macOS;
+- complete `IWorldGenerator.Generate(request)` is the M3 performance workload;
+- benchmark methodology follows the established M2 discipline;
+- exact numeric time/allocation thresholds require a separate ReadOnly observational calibration before M3.6-C acceptance;
+- hosted CI timing is non-blocking, while cross-platform digest correctness is blocking;
+- the final M3.6-D gate must be ReadOnly over production code.
+
+Planned maturity progression:
+
+- M3.6-A: no GPP;
+- M3.6-B: `Funcional isoladamente — 0.50 — 2.00 GPP`;
+- M3.6-C: `Integrada — 0.70 — 2.80 GPP`;
+- M3.6-D: `Validada — 0.85 — 3.40 GPP`.
+
+Projected M3 close after M3.6-D:
+
+- World Generation: `85.00 / 100 GPP — 85.0%`;
+- M3.6 V1 DoD reserve: `0.60 GPP`.
+
+M3.6-A awards no GPP.
+
+Project progress remains `228.10 / 1000 — 22.8%` and World Generation remains `81.60 / 100 — 81.6%` until executable M3.6 evidence is accepted.
 # 20. Status atual
 
 Milestone:
@@ -908,7 +950,7 @@ Etapa atual:
 
 Subetapa atual:
 
-**M3.6 — Determinism, Performance, Cross-Platform Validation & M3 Exit**
+**M3.6-B — Canonical Generated-World Signature & Regression Vectors**
 
 M3 entry audit:
 
@@ -990,6 +1032,10 @@ M3.5 — Resources, Habitability & Civilization Placement Inputs:
 
 **concluído em 2026-09-30**
 
+M3.6-A — World Generation Exit, Signature & Performance Contract Freeze:
+
+**concluído em 2026-09-30**
+
 M2 — Planet Topology:
 
 **concluído em 2026-09-29**
@@ -1040,7 +1086,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M3.6 determinism, performance, cross-platform validation and M3 exit**
+**M3.6-B canonical generated-world signature and regression vectors**
 
 Última revisão de baseline:
 

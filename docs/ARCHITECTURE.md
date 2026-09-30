@@ -5165,6 +5165,94 @@ M3.5-A is a design/governance freeze and awards no GPP.
 
 Implementation maturity is earned only by executable later checkpoints.
 ---
+## 14.6 M3.6 deterministic world-generation exit contract
+
+M3.6 adds no new gameplay layer.
+
+Its responsibility is to prove the accumulated generated world through:
+
+- a canonical SHA-256 generated-world signature;
+- cross-platform known regression vectors;
+- explicit generation-time and managed-memory budgets;
+- accumulated M3 exit validation.
+
+### Canonical generated-world signature
+
+The signature is an explicit binary contract over `WorldGenerationResult`.
+
+It binds:
+
+- request identity;
+- canonical strategic topology identity;
+- strategic physical fields;
+- climate fields;
+- hydrology;
+- derived biomes;
+- resource potential;
+- habitability;
+- civilization-placement suitability;
+- active version markers that materially define generated-world semantics.
+
+Serialization must be canonical and platform-independent:
+
+- big-endian integers;
+- explicit framing/counts;
+- canonical ordering;
+- no JSON/reflection serializer;
+- no culture-sensitive text;
+- no unordered enumeration.
+
+The signature format has its own version independent from `WorldGenerationVersion`.
+
+### M3 regression vectors
+
+M3.6-B freezes known digests for:
+
+- Class I — seed `0`, version `1`, `G(2,0)`;
+- Class II — seed `42`, version `1`, `G(2,2)`;
+- Class III — seed `ulong.MaxValue`, version `1`, `G(2,1)`.
+
+All supported CI platforms must produce the same digests.
+
+### Performance and memory
+
+M3.6-C measures complete strategic generation through `IWorldGenerator.Generate(request)`.
+
+Measurement protocol:
+
+- Release only;
+- invariant culture;
+- 1 warmup;
+- 5 measured runs;
+- `Stopwatch` elapsed time;
+- `GC.GetAllocatedBytesForCurrentThread`;
+- GC generation counts;
+- median and maximum time/allocation;
+- blocking Class I/II/III workloads;
+- optional larger non-blocking stress workload.
+
+Numeric budgets are calibrated from a separate ReadOnly observational run before acceptance thresholds are frozen.
+
+Hosted CI timing is not a blocking performance metric. CI remains authoritative for correctness and digest equivalence.
+
+### M3.6 decomposition
+
+- **M3.6-A — World Generation Exit, Signature & Performance Contract Freeze**;
+- **M3.6-B — Canonical Generated-World Signature & Regression Vectors**;
+- **M3.6-C — World Generation Performance & Memory Acceptance**;
+- **M3.6-D — Accumulated Cross-Platform M3 Exit Validation & Close**.
+
+Planned maturity:
+
+- A: no GPP;
+- B: factor `0.50`;
+- C: factor `0.70`;
+- D: factor `0.85`.
+
+M3.6 closes at `3.40 / 4 GPP — 85.0%`; `0.60 GPP` remains reserved for V1 Definition of Done.
+
+No M3.6 checkpoint creates Economy or Civilization runtime state.
+---
 # 15. Seeds e geração reproduzível
 
 

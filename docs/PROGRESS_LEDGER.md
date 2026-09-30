@@ -13538,3 +13538,116 @@ Progress effect:
 Next stage:
 
 **M3.6 — Determinism, Performance, Cross-Platform Validation & M3 Exit**
+---
+
+## 2026-09-30 — M3.6-A world-generation exit, signature and performance contract freeze candidate
+
+Current gate:
+
+**M3.6-A — World Generation Exit, Signature & Performance Contract Freeze**
+
+Accepted baseline:
+
+- M3.5 formal-close commit: `5abe65344ada3922a2fc2929830c268c241e32c2`;
+- M3.5: `10.20 / 12 GPP — 85.0%`;
+- project: `228.10 / 1000 — 22.8%`;
+- World Generation: `81.60 / 100 — 81.6%`;
+- local full suite at M3.5 close: `696/696`;
+- accepted M3.5 source tree passed `696/696` on Windows, Ubuntu and macOS.
+
+M3.6-A proposed freeze:
+
+- M3.6 is proof/acceptance work, not a new world-content stage;
+- canonical generated-world digest uses SHA-256;
+- signature format is explicitly versioned independently from `WorldGenerationVersion`;
+- canonical payload uses explicit framed big-endian binary encoding and canonical ordering;
+- payload covers request identity plus all authoritative strategic `WorldGenerationResult` layers;
+- transient caches, presentation and later runtime domains are excluded;
+- known regression requests cover Class I `G(2,0)`, Class II `G(2,2)` and Class III `G(2,1)`;
+- the same known digests must pass on Windows, Ubuntu and macOS;
+- performance workload is complete `IWorldGenerator.Generate(request)`;
+- benchmark protocol is Release, 1 warmup + 5 measured, elapsed/allocation/GC metrics;
+- exact numeric performance budgets require ReadOnly observational calibration before M3.6-C acceptance;
+- hosted CI elapsed time is non-blocking; digest correctness remains blocking;
+- final M3.6-D production validation is ReadOnly.
+
+Checkpoint plan:
+
+1. M3.6-A — contract/decomposition freeze;
+2. M3.6-B — canonical signature and known regression vectors;
+3. M3.6-C — performance/memory calibration and acceptance;
+4. M3.6-D — accumulated cross-platform M3 exit.
+
+M3.6-A awards:
+
+**0.00 GPP**
+
+Project remains:
+
+- `228.10 / 1000 — 22.8%`;
+- World Generation `81.60 / 100 — 81.6%`.
+
+Candidate next checkpoint after formal close:
+
+**M3.6-B — Canonical Generated-World Signature & Regression Vectors**
+---
+
+## 2026-09-30 — M3.6-A world-generation exit, signature and performance contract freeze formal close
+
+Checkpoint closed:
+
+**M3.6-A — World Generation Exit, Signature & Performance Contract Freeze**
+
+Accepted QA evidence:
+
+`GlobalArena-Evidence-M3.6-A-R1-WORLDGEN-EXIT-SIGNATURE-PERFORMANCE-CONTRACT-FREEZE-20260930-161834.zip`
+
+Evidence SHA-256:
+
+`9791cd61cc0ff1484954145b225cad10859be5ed2dcc6a8ac28a875ecd671014`
+
+Accepted validation:
+
+- manifest: `25/25` verified;
+- baseline HEAD/origin-main: `5abe65344ada3922a2fc2929830c268c241e32c2`;
+- candidate hashes: `6/6`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- diff diagnostics: clean;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- full regression: `696/696`;
+- QA commit/push: none.
+
+ADR-028 becomes:
+
+**Accepted**
+
+Frozen M3.6 contracts:
+
+- M3.6 owns proof and acceptance, not another gameplay-content layer;
+- generated-world signature uses SHA-256;
+- signature format is explicitly versioned independently from `WorldGenerationVersion`;
+- canonical payload uses explicit framed big-endian binary serialization and canonical ordering;
+- request identity and all authoritative strategic `WorldGenerationResult` layers are covered;
+- representative Class I/II/III known digest vectors are mandatory;
+- cross-platform digest equality on Windows, Ubuntu and macOS is blocking;
+- complete `IWorldGenerator.Generate(request)` is the generation-performance workload;
+- benchmark protocol uses Release, invariant culture, one warmup and five measured samples;
+- elapsed time, managed allocation and GC counts are captured;
+- exact numeric budgets require separate observational calibration before acceptance;
+- hosted CI elapsed timing is not a blocker;
+- the final M3.6-D production validation gate is ReadOnly.
+
+M3.6-A awards:
+
+**0.00 GPP**
+
+Project remains:
+
+- `228.10 / 1000 — 22.8%`;
+- World Generation `81.60 / 100 — 81.6%`.
+
+Next checkpoint:
+
+**M3.6-B — Canonical Generated-World Signature & Regression Vectors**

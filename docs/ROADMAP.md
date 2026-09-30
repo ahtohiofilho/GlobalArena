@@ -1815,10 +1815,31 @@ M3.5-C adds executable habitability, local placement suitability and a determini
 M3.5 closes at `10.20 / 12 GPP — 85.0%` after accumulated local and cross-platform validation. `Resources` and `Habitability & civilization-placement suitability` are both `Validada — fator 0.85`. The remaining `1.80 GPP` is reserved for later V1 Definition of Done evidence.
 ### M3.6 — Determinism, Performance, Cross-Platform Validation & M3 Exit — 4 GPP
 
-- canonical generated-world signature/hash contract;
-- cross-platform deterministic regression;
-- generation-time and memory budgets;
-- accumulated M3 exit audit.
+- M3.6-A — World Generation Exit, Signature & Performance Contract Freeze — concluded;
+- M3.6-B — Canonical Generated-World Signature & Regression Vectors — current;
+- M3.6-C — World Generation Performance & Memory Acceptance — planned;
+- M3.6-D — Accumulated Cross-Platform M3 Exit Validation & Close — planned.
+
+Stage envelope:
+
+- canonical SHA-256 generated-world signature with an explicit independent format version;
+- explicit canonical binary serialization of request identity and authoritative `WorldGenerationResult` layers;
+- known Class I/II/III regression digests;
+- Windows/Ubuntu/macOS digest equivalence;
+- complete `IWorldGenerator.Generate(request)` performance workload;
+- explicit Release time/allocation benchmark contract;
+- evidence-driven numeric budget calibration;
+- accumulated M3 exit audit over one accepted source tree.
+
+M3.6-A freezes the exit/signature/measurement contract only and awards no GPP.
+
+Planned maturity progression:
+
+- M3.6-B — factor `0.50` — `2.00 GPP`;
+- M3.6-C — factor `0.70` — `2.80 GPP`;
+- M3.6-D — factor `0.85` — `3.40 GPP`.
+
+M3.6 closes at `85.0%` maturity, reserving `0.60 GPP` for V1 Definition of Done.
 
 Total M3 budget:
 
@@ -2084,7 +2105,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M3.6 — Determinism, Performance, Cross-Platform Validation & M3 Exit**
+**M3.6-B — Canonical Generated-World Signature & Regression Vectors**
 
 M3 Entry Audit:
 
@@ -2144,7 +2165,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**M3.6 determinism, performance, cross-platform validation and M3 exit**
+**M3.6-B canonical generated-world signature and regression vectors**
 
 Last Baseline Review:
 
