@@ -13896,3 +13896,126 @@ Next milestone:
 Immediate next activity:
 
 **M4 entry and decomposition — not yet frozen**
+
+---
+
+## 2026-09-30 — M4.1-A systemic vertical-slice architecture, ownership and GPP freeze candidate
+
+Milestone:
+
+**M4 — Systemic Vertical Slice**
+
+Checkpoint:
+
+**M4.1-A — Systemic Vertical Slice Architecture, Domain Ownership & GPP Freeze**
+
+Purpose:
+
+freeze the smallest end-to-end gameplay loop and domain ownership rules before Economy, Warfare or runtime Civilizations implementation begins.
+
+Candidate ADR:
+
+**ADR-029 — M4 Systemic Vertical Slice Boundaries, Ownership and Loop Contract**
+
+Key decisions:
+
+- M4 creates no new GPP domain;
+- M4 draws from existing Civilizations/Diplomacy, Economy and Warfare budgets;
+- M4-owned tranche: `254 GPP`;
+- Civilizations/Diplomacy tranche: `50 / 70 GPP`;
+- Economy tranche: `96 / 140 GPP`;
+- Warfare tranche: `108 / 140 GPP`;
+- M4.1-A itself awards `0.00 GPP`;
+- generated-world state remains immutable procedural input;
+- runtime authoritative state belongs to `WorldState`;
+- authoritative mutation remains `Command -> Event -> WorldState`;
+- `TurnResolver` remains orchestration, not domain business logic;
+- Economy and Warfare interact through explicit effects/events and dependency invalidation;
+- routine Economy and movement remain strategic-first;
+- UI, multiplayer, AI decision-making and final content/balance are excluded.
+
+Frozen minimum systemic loop:
+
+world generation
+-> runtime civilizations
+-> territory/control
+-> production/consumption
+-> trade/route
+-> military order
+-> movement/combat
+-> control/access change
+-> affected route invalidation
+-> affected economy recomputation
+-> deterministic turn completion.
+
+No GPP is awarded until executable evidence exists.
+
+Project remains:
+
+- `231.50 / 1000`;
+- `23.2%`.
+
+Next after formal close:
+
+**M4.1-B — Executable Runtime State & Domain Identity Contracts**
+---
+
+## 2026-09-30 — M4.1-A systemic vertical-slice architecture, ownership and GPP freeze formal close
+
+Checkpoint closed:
+
+**M4.1-A — Systemic Vertical Slice Architecture, Domain Ownership & GPP Freeze**
+
+Accepted QA evidence:
+
+`GlobalArena-Evidence-M4.1-A-R2-SYSTEMIC-VERTICAL-SLICE-ARCHITECTURE-DOMAIN-OWNERSHIP-GPP-FREEZE-20260930-173327.zip`
+
+Evidence SHA-256:
+
+`5ce5d8a6a04c4d8b066ee6fa1e810b16c74ec070abd323b3d4491019d8d95bac`
+
+Accepted validation:
+
+- manifest: `26/26` verified;
+- baseline HEAD/origin-main: `1770c0856c9698ddfaae0322ab1343ed99b7535c`;
+- candidate hashes: `6/6`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- full regression: `717/717`;
+- exact candidate set: `6` documentation/governance files;
+- production code changed: False;
+- QA commit/push: none.
+
+ADR-029 becomes:
+
+**Accepted**
+
+Frozen M4 entry contract:
+
+- M4 creates no new GPP domain;
+- M4-owned tranche is `254 GPP` drawn from existing V1 budgets;
+- Civilizations/Diplomacy tranche: `50 / 70 GPP`;
+- Economy tranche: `96 / 140 GPP`;
+- Warfare tranche: `108 / 140 GPP`;
+- `WorldGenerationResult` remains immutable procedural input;
+- runtime authoritative mutable state belongs to `WorldState`;
+- authoritative mutation remains `Command -> Event -> WorldState`;
+- `TurnResolver` remains orchestration rather than domain business logic;
+- Economy/Warfare coupling uses explicit effects and dependency invalidation;
+- routine Economy and movement remain strategic-first;
+- M4 proves systemic interaction breadth before final domain depth.
+
+M4.1-A awards:
+
+**0.00 GPP**
+
+Project remains:
+
+- `231.50 / 1000`;
+- `23.2%`.
+
+Next checkpoint:
+
+**M4.1-B — Executable Runtime State & Domain Identity Contracts**

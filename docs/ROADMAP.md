@@ -1867,28 +1867,49 @@ M3 closed on `2026-09-30`.
 
 Objetivo:
 
-validar o loop sistêmico principal.
+validar o primeiro loop sistêmico principal headless.
 
 Deve ser possível:
 
 - gerar mundo;
-- criar civilizações;
-- produzir;
-- consumir;
-- criar comércio;
-- calcular rotas;
-- emitir ordens;
+- instanciar civilizações runtime;
+- estabelecer propriedade/controle territorial;
+- produzir e consumir ao menos uma mercadoria runtime;
+- estabelecer comércio por rota estratégica explícita;
+- emitir ordens militares;
 - movimentar unidades;
-- combater;
-- alterar controle;
-- bloquear aresta;
-- invalidar rota;
-- recalcular economia;
-- avançar turno.
+- combater deterministicamente;
+- alterar controle territorial e/ou acesso de aresta estratégica;
+- invalidar somente rotas econômicas dependentes da mudança;
+- recalcular a economia afetada;
+- avançar o turno pela pipeline determinística existente.
+
+Operational decomposition:
+
+- M4.1 — Systemic Runtime Contracts & Ownership Foundation;
+- M4.2 — Runtime Civilizations, Territory & Baseline Diplomacy;
+- M4.3 — Strategic Stocks, Production & Consumption;
+- M4.4 — Trade, Strategic Routes & Dependency Invalidation;
+- M4.5 — Units, Orders & Strategic Movement;
+- M4.6 — Combat, Control Transfer & Edge Blocking;
+- M4.7 — End-to-End Turn Coupling & Systemic Vertical Slice;
+- M4.8 — Accumulated Determinism, Performance, Cross-Platform Validation & M4 Exit.
+
+Current subcheckpoint:
+
+**M4.1-B — Executable Runtime State & Domain Identity Contracts**
+
+GPP rule:
+
+M4 uses a `254 GPP` tranche drawn from existing Civilizations/Diplomacy, Economy and Warfare budgets. It does not add scope to the `1000 GPP` baseline.
+
+M4.1-A awards no GPP.
 
 Gate:
 
-guerra e economia interferem uma na outra através dos contratos arquiteturais.
+warfare and economy interfere with each other through explicit contracts inside a deterministic headless turn, without direct mutation of each other's internals.
+
+Presentation, multiplayer, AI decision-making and final balance are outside M4.
 
 ---
 
@@ -2115,7 +2136,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M4 entry and decomposition — not yet frozen**
+**M4.1-B — Executable Runtime State & Domain Identity Contracts**
 
 M3 Entry Audit:
 
@@ -2175,7 +2196,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**M4 Systemic Vertical Slice entry and decomposition**
+**M4.1-B executable runtime state and domain identity contracts**
 
 Last Baseline Review:
 

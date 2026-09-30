@@ -6001,6 +6001,41 @@ A arquitetura estará cumprindo sua função se for possível:
 
 ---
 
+
+## 42.1 M4 systemic vertical-slice integration contract
+
+M4 begins the runtime gameplay layer over the validated M0-M3 foundation.
+
+Authoritative runtime mutation remains:
+
+`Command -> Event -> WorldState`
+
+`WorldGenerationResult` remains immutable procedural source data and is not reused as mutable gameplay state.
+
+`TurnResolver` remains an orchestration boundary. Domain rules for Civilizations, Economy and Warfare remain owned by their respective logical modules.
+
+The minimum systemic dependency direction is:
+
+`World Generation`
+-> runtime civilization instantiation
+-> ownership/control
+-> Economy and Warfare
+
+and, for cross-system effects:
+
+`Warfare`
+-> territorial/strategic-edge effect
+-> Economy route dependency invalidation
+-> affected economic recomputation.
+
+Warfare does not mutate Economy internals directly.
+
+Economy does not mutate Warfare internals directly.
+
+Routine economy and movement remain strategic-first. M4 does not introduce routine global tactical pathfinding.
+
+The accepted M4 entry contract and GPP ownership decomposition are recorded in ADR-029.
+
 # 43. Status
 
 Versão atual:

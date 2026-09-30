@@ -3142,3 +3142,147 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M4 entry/decomposition freeze**
+
+---
+
+# 47. M4 entry/decomposition risk review
+
+**Date:** 2026-09-30
+
+Milestone:
+
+**M4 — Systemic Vertical Slice**
+
+Checkpoint:
+
+**M4.1-A — Systemic Vertical Slice Architecture, Domain Ownership & GPP Freeze**
+
+Risk focus:
+
+`RISK-001 — Economy scalability` remains `OPEN / CRITICAL`.
+
+M4 response:
+
+- Economy is strategic-first;
+- route dependencies must be explicit;
+- invalidation is affected-route-only rather than global recomputation;
+- market depth and logistics depth remain outside the first slice.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+M4 response:
+
+- runtime authority is frozen before implementation;
+- `WorldState` owns mutable authoritative state;
+- `WorldGenerationResult` remains immutable;
+- domain mutations flow through Commands/Events;
+- TurnResolver remains orchestration.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+M4 response:
+
+- no new GPP domain;
+- the M4 tranche is `254 GPP` drawn from the existing `350 GPP` Civilizations/Diplomacy + Economy + Warfare baseline;
+- final markets, tactical warfare depth, AI, UI, multiplayer and persistence completion remain outside the slice.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+M4 response:
+
+- recurring economic routing and strategic movement do not depend on global tactical pathfinding;
+- local tactical depth remains future work.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+M4 response:
+
+- runtime domain states must avoid copying generated-world topology/fields;
+- strategic IDs reference authoritative world structures rather than duplicating them;
+- M4.8 owns accumulated performance/memory evidence.
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+M4 response:
+
+- same authoritative initial state + commands + SimulationContext must remain reproducible;
+- no wall-clock or ambient randomness in domain resolution;
+- M4.8 requires representative cross-platform regression.
+
+`RISK-007 — Architecture overengineering` remains `OPEN / HIGH`.
+
+M4 response:
+
+- new physical projects are created only when a domain begins real executable implementation;
+- no generalized bus, ECS, plugin framework or distributed subsystem is introduced by the entry freeze.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M4.1-B executable runtime state and domain identity contracts**
+---
+
+# 48. M4.1-A formal-close risk confirmation
+
+**Date:** 2026-09-30
+
+Checkpoint:
+
+**M4.1-A — Systemic Vertical Slice Architecture, Domain Ownership & GPP Freeze — CLOSED**
+
+Accepted QA:
+
+`GlobalArena-Evidence-M4.1-A-R2-SYSTEMIC-VERTICAL-SLICE-ARCHITECTURE-DOMAIN-OWNERSHIP-GPP-FREEZE-20260930-173327.zip`
+
+Result:
+
+**PASS_READY_FOR_M4_1_A_FORMAL_CLOSE**
+
+Risk confirmation:
+
+`RISK-001 — Economy scalability` remains `OPEN / CRITICAL`.
+
+Strategic-first routing and affected-route-only invalidation are now accepted M4 contracts.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+Runtime ownership and mutation direction are now explicit before executable M4 implementation begins.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+M4 has no new GPP domain. Its `254 GPP` tranche is a cross-domain view over existing V1 budgets.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+Routine M4 Economy and strategic movement remain independent of global tactical pathfinding.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+M4 runtime state must reference generated-world identities rather than duplicate generated topology/fields.
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+M4 executable contracts remain bound to deterministic command/event resolution.
+
+`RISK-007 — Architecture overengineering` remains `OPEN / HIGH`.
+
+Physical domain projects are created only when the first real executable capability requires them.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M4.1-B executable runtime state and domain identity contracts**

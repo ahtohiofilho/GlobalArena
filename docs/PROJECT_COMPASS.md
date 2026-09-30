@@ -940,6 +940,85 @@ Projected M3 close after M3.6-D:
 M3.6-A awards no GPP.
 
 Project progress remains `228.10 / 1000 — 22.8%` and World Generation remains `81.60 / 100 — 81.6%` until executable M3.6 evidence is accepted.
+
+## 15.9 M4 Systemic Vertical Slice decomposition
+
+M4 does not create a new GPP domain.
+
+It operates across already frozen V1 budgets:
+
+- Civilizations / Diplomacy: `70 GPP`;
+- Economy / comércio / logística: `140 GPP`;
+- Warfare / unidades / combate: `140 GPP`.
+
+ADR-029 freezes the full operational decomposition of those three domains and identifies the M4-owned vertical-slice tranche.
+
+### M4-owned tranche
+
+| Domain | Existing V1 budget | M4-owned tranche |
+|---|---:|---:|
+| Civilizations / Diplomacy | 70 | 50 |
+| Economy / comércio / logística | 140 | 96 |
+| Warfare / unidades / combate | 140 | 108 |
+| **TOTAL** | **350** | **254** |
+
+The `254 GPP` is not additional scope. It is a cross-domain ownership view over existing baseline points.
+
+M4.1-A is a governance/design freeze and awards:
+
+**0.00 GPP**
+
+No capability is promoted merely because its decomposition is documented.
+
+Executable contracts and behavior are required before any capability reaches `Especificada` or above.
+
+### Operational stages
+
+- M4.1 — Systemic Runtime Contracts & Ownership Foundation;
+- M4.2 — Runtime Civilizations, Territory & Baseline Diplomacy;
+- M4.3 — Strategic Stocks, Production & Consumption;
+- M4.4 — Trade, Strategic Routes & Dependency Invalidation;
+- M4.5 — Units, Orders & Strategic Movement;
+- M4.6 — Combat, Control Transfer & Edge Blocking;
+- M4.7 — End-to-End Turn Coupling & Systemic Vertical Slice;
+- M4.8 — Accumulated Determinism, Performance, Cross-Platform Validation & M4 Exit.
+
+### Slice rule
+
+M4 proves breadth of systemic interaction before depth of content.
+
+The first slice may use minimal runtime commodities and minimal deterministic combat semantics.
+
+It does not freeze final:
+
+- commodity catalogue;
+- production/consumption coefficients;
+- price/market-clearing model;
+- unit catalogue;
+- combat formula;
+- morale/supply model;
+- diplomacy depth;
+- civilization-count formula;
+- UI/presentation.
+
+### Runtime authority
+
+`WorldGenerationResult` remains immutable procedural input.
+
+Runtime mutable state belongs to `WorldState`.
+
+Authoritative changes continue through:
+
+`Command -> Event -> WorldState`
+
+The existing `TurnResolver` orchestrates ordering and execution but does not own domain business logic.
+
+### M4 exit target
+
+M4 exit requires a deterministic headless scenario in which production/trade and warfare interact through explicit state/event contracts, a warfare-caused control/access change invalidates only affected economic route dependencies, economy recomputes the affected state, and the turn completes reproducibly.
+
+Representative cross-platform regression and applicable performance/memory evidence remain mandatory before M4 exit.
+
 # 20. Status atual
 
 Milestone:
@@ -952,7 +1031,7 @@ Etapa atual:
 
 Subetapa atual:
 
-**M4 entry and decomposition — not yet frozen**
+**M4.1-B — Executable Runtime State & Domain Identity Contracts**
 
 M3 entry audit:
 
@@ -1108,7 +1187,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M4 Systemic Vertical Slice entry and decomposition**
+**M4.1-B executable runtime state and domain identity contracts**
 
 Última revisão de baseline:
 
