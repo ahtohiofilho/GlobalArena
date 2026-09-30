@@ -1758,7 +1758,7 @@ M3.2 closes after accumulated local and cross-platform validation at `22.10 / 26
 - M3.3-A — Climate & Cross-Scale Physical Contract Freeze — concluded;
 - M3.3-B — Executable Strategic Temperature, Moisture & Water Availability — concluded;
 - M3.3-C — Bounded Tactical Refinement & Strategic Aggregation — concluded;
-- M3.3-D — Accumulated M3.3 Validation & Close — current.
+- M3.3-D — Accumulated M3.3 Validation & Close — concluded.
 
 Stage envelope:
 
@@ -1769,6 +1769,8 @@ Stage envelope:
 - deterministic strategic aggregation.
 
 M3.3-A freezes ownership, deterministic random domains, physical tactical identity, bounded materialization and aggregation boundaries only and awards no GPP.
+
+M3.3 closes after accumulated local, cross-platform and bounded-path performance validation at `23.80 / 28 GPP — 85.0%`. The remaining `4.20 GPP` is reserved for later V1 Definition of Done evidence. The retained tactical patch is bounded; transient construction-time global M2 physical incidence materialization remains an open memory/scalability limitation.
 
 ### M3.4 — Hydrology & Derived Biomes — 20 GPP
 
@@ -2048,11 +2050,11 @@ Current Milestone:
 
 Current Stage:
 
-**M3.3 — Climate Inputs & Cross-Scale Physical Refinement**
+**M3.4 — Hydrology & Derived Biomes**
 
 Current Subcheckpoint:
 
-**M3.3-D — Accumulated M3.3 Validation & Close**
+**M3.4 entry/design audit — hydrology and derived biome contracts**
 
 M3 Entry Audit:
 
@@ -2080,11 +2082,11 @@ M3.1-D — Accumulated M3.1 Validation & Close:
 
 Official Progress:
 
-**19.1%**
+**20.1%**
 
 GPP Earned:
 
-**191.10 / 1000**
+**200.90 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -2096,7 +2098,7 @@ Planet Topology / Goldberg:
 
 World Generation / biomes / resources:
 
-**44.60 / 100 GPP — 44.6%**
+**54.40 / 100 GPP — 54.4%**
 
 Scope Confidence:
 
@@ -2112,7 +2114,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**M3.3-D accumulated M3.3 deterministic, cross-platform and bounded-physical validation**
+**M3.4 hydrology and derived biome contract design**
 
 Last Baseline Review:
 

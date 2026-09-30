@@ -2178,3 +2178,64 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M3.3-D accumulated M3.3 validation and close**
+---
+
+# 31. M3.3 accumulated validation and stage-close risk review
+
+**Date:** 2026-09-30
+
+Accepted accumulated evidence:
+
+`GlobalArena-Evidence-M3.3-D-R1-ACCUMULATED-M33-VALIDATION-20260930-110833.zip`
+
+Result:
+
+**M3.3 CLOSED — 23.80 / 28 GPP — 85.0%**
+
+Validated:
+
+- deterministic strategic temperature and moisture domain separation;
+- derived water availability without an independent random domain;
+- strategic climate integration into generated-world results;
+- bounded retained tactical physical patches;
+- M2 physical tactical identity reuse;
+- deterministic incident-strategic boundary values;
+- deterministic `6/3/2` weighted strategic aggregation;
+- targeted M3.3 suite `70/70`;
+- full local suite `609/609`;
+- Windows/macOS/Ubuntu cross-platform regression `609/609` on all three platforms;
+- bounded-path performance inside the existing blocking M2 physical budget.
+
+Risk effect:
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+M3.3 has accumulated local and cross-platform validation with explicit deterministic domains, integer arithmetic, fixed regression vectors and no tactical RNG in the accepted bounded baseline. Later hydrology, biomes, resources and full-world signatures can still introduce new determinism risk.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+M3.3 proves the strategic climate layer and a first executable strategic↔tactical physical-field boundary. Hydrology and biome composition in M3.4 are the next architecture-coupling gate.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+The retained M3.3 patch is bounded and does not retain the global physical incidence map. The construction path still materializes that M2 map transiently before projection, so final tactical construction-memory risk remains unresolved.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+The bounded path passes the inherited blocking physical budget at `G(4,0) -> G(24,0)`, but construction cost remains tied to transient global incidence materialization. Final V1 tactical density and product-scale behavior remain later validation work.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+M3.3 closed inside its frozen `28 GPP` envelope and did not absorb hydrology, biomes, resources, Civilization runtime, Economy runtime, networking or presentation.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M3.4 entry/design audit — hydrology and derived biome contracts**

@@ -12780,3 +12780,93 @@ Progress effect:
 Next checkpoint:
 
 **M3.3-D — Accumulated M3.3 Validation & Close**
+---
+
+## 2026-09-30 — M3.3-D accumulated M3.3 validation and formal close
+
+Stage closed:
+
+**M3.3 — Climate Inputs & Cross-Scale Physical Refinement**
+
+Closing checkpoint:
+
+**M3.3-D — Accumulated M3.3 Validation & Close**
+
+Accepted QA evidence:
+
+`GlobalArena-Evidence-M3.3-D-R1-ACCUMULATED-M33-VALIDATION-20260930-110833.zip`
+
+Evidence SHA-256:
+
+`e6c9deba05b6aea0e7f6d0f5fe6ede74c34cd2998bacb683530a3ff98a98b58e`
+
+Accepted accumulated validation:
+
+- evidence manifest: `79/79` verified;
+- baseline HEAD/origin-main: `14f6b411182068a7d536060e40a2bb0b05e9b1e5`;
+- accepted M3.3 executable/test hashes: `17/17`;
+- GA-SRP self-tests: `19/19`;
+- target `ReadOnly` validation: PASS;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- targeted M3.3 suite: `70/70`;
+- full local Release suite: `609/609`;
+- cross-platform run `36724972469`: success;
+- Windows: `609/609`, `0` warnings/errors;
+- macOS: `609/609`, `0` warnings/errors;
+- Ubuntu: `609/609`, `0` warnings/errors;
+- bounded performance probe on `G(4,0) -> G(24,0)` target 1: PASS;
+- bounded performance median elapsed: `124.159 ms`;
+- bounded performance max elapsed: `238.726 ms`;
+- bounded performance median managed allocation: `126471144` bytes;
+- bounded performance max managed allocation: `126483480` bytes;
+- probe budget source: existing `M2TopologyBenchmarkContract`;
+- repository mutation during QA: none.
+
+Maturity effect:
+
+`Temperature, climate, moisture & water availability`
+
+moves from:
+
+**Funcional isoladamente — factor 0.50 — 7.00 GPP**
+
+to:
+
+**Validada — factor 0.85 — 11.90 GPP**
+
+`Cross-scale boundary conditions, tactical refinement & strategic aggregation`
+
+moves from:
+
+**Funcional isoladamente — factor 0.50 — 7.00 GPP**
+
+to:
+
+**Validada — factor 0.85 — 11.90 GPP**
+
+Stage result:
+
+**M3.3 CLOSED — 23.80 / 28 GPP — 85.0%**
+
+The remaining `4.20 GPP` is not awarded for stage completion. Factor `1.00` remains reserved for V1 Definition of Done evidence.
+
+Progress effect:
+
+- GPP delta: **+9.80**;
+- project GPP: **200.90 / 1000**;
+- Global Progress exact: **20.090%**;
+- Global Progress displayed: **20.1%**;
+- World Generation / biomas / recursos: **54.40 / 100 — 54.4%**.
+
+Known retained limitation:
+
+the retained tactical patch is bounded, but the current construction path still materializes the M2 global physical incidence map transiently before projection. This validation does not close final tactical-memory or product-scale scalability risks.
+
+Next stage:
+
+**M3.4 — Hydrology & Derived Biomes**
+
+Next gate:
+
+**M3.4 entry/design audit — hydrology and derived biome contracts**

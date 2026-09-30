@@ -701,14 +701,14 @@ Current M3 maturity after closed subcheckpoints:
 | World generation identity, seed/versioning & deterministic pipeline contracts | 10 | Validada | 0.85 | 8.50 |
 | Strategic geometry bridge & macro physical-field substrate | 12 | Validada | 0.85 | 10.20 |
 | Elevation, relief & land/water foundation | 14 | Validada | 0.85 | 11.90 |
-| Temperature, climate, moisture & water availability | 14 | Funcional isoladamente | 0.50 | 7.00 |
-| Cross-scale boundary conditions, tactical refinement & strategic aggregation | 14 | Funcional isoladamente | 0.50 | 7.00 |
+| Temperature, climate, moisture & water availability | 14 | Validada | 0.85 | 11.90 |
+| Cross-scale boundary conditions, tactical refinement & strategic aggregation | 14 | Validada | 0.85 | 11.90 |
 | Hydrology | 12 | Inexistente | 0.00 | 0.00 |
 | Derived biomes | 8 | Inexistente | 0.00 | 0.00 |
 | Resources | 7 | Inexistente | 0.00 | 0.00 |
 | Habitability & civilization-placement suitability | 5 | Inexistente | 0.00 | 0.00 |
 | Determinism, cross-platform validation, performance baseline & M3 exit | 4 | Inexistente | 0.00 | 0.00 |
-| **TOTAL** | **100** |  |  | **44.60** |
+| **TOTAL** | **100** |  |  | **54.40** |
 
 M3.1-A is a governance/design freeze. It does not promote implementation maturity and therefore awards no GPP.
 
@@ -799,6 +799,11 @@ M3.3-B materializes the strategic climate layer with deterministic fixed-point t
 M3.3-C materializes a bounded retained tactical scalar patch using M2 physical identity, explicit deterministic incident-strategic boundary values and deterministic strategic aggregation with explicit `6/3/2` interior/edge/vertex weights. This promotes `Cross-scale boundary conditions, tactical refinement & strategic aggregation` to `Funcional isoladamente — fator 0.50`, adding `7.00 GPP`.
 
 The retained patch does not keep the global M2 incidence map, but the current construction path still materializes that map transiently before projection. `RISK-012` and `RISK-002` therefore remain open; this close must not be interpreted as final tactical-memory or product-scale validation.
+M3.3-D closes accumulated validation without production-code mutation. The accepted gate revalidates the `70/70` M3.3-specific slice and the `609/609` full Release suite locally, consumes cross-platform run `36724972469` with `609/609` on Windows, macOS and Ubuntu, and accepts the bounded-path performance probe against the existing M2 blocking physical budget.
+
+Both M3.3 capabilities are therefore promoted to `Validada — fator 0.85`. M3.3 closes at `23.80 / 28 GPP — 85.0%`. The remaining `4.20 GPP` is not awarded merely for stage completion; factor `1.00` remains reserved for V1 Definition of Done evidence.
+
+The retained patch is bounded, but transient global M2 physical incidence materialization remains an acknowledged construction-memory/scalability limitation and keeps `RISK-012` and `RISK-002` open.
 # 20. Status atual
 
 Milestone:
@@ -807,11 +812,11 @@ Milestone:
 
 Etapa atual:
 
-**M3.3 — Climate Inputs & Cross-Scale Physical Refinement**
+**M3.4 — Hydrology & Derived Biomes**
 
 Subetapa atual:
 
-**M3.3-D — Accumulated M3.3 Validation & Close**
+**M3.4 entry/design audit — hydrology and derived biome contracts**
 
 M3 entry audit:
 
@@ -845,6 +850,14 @@ M3.2-D — Accumulated M3.2 Validation & Close:
 
 **concluído em 2026-09-30**
 
+M3.3 — Climate Inputs & Cross-Scale Physical Refinement:
+
+**concluído em 2026-09-30**
+
+M3.3-D — Accumulated M3.3 Validation & Close:
+
+**concluído em 2026-09-30**
+
 M2 — Planet Topology:
 
 **concluído em 2026-09-29**
@@ -863,11 +876,11 @@ Baseline V1:
 
 Progresso oficial:
 
-**19,1%**
+**20,1%**
 
 GPP conquistados:
 
-**191,10 / 1000**
+**200,90 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -879,7 +892,7 @@ Topologia planetária / Goldberg:
 
 World Generation / biomas / recursos:
 
-**44,60 / 100 GPP — 44,6%**
+**54,40 / 100 GPP — 54,4%**
 
 Scope Confidence:
 
@@ -895,7 +908,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M3.3-D accumulated M3.3 deterministic, cross-platform and bounded-physical validation**
+**M3.4 hydrology and derived biome contract design**
 
 Última revisão de baseline:
 
