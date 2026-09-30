@@ -2932,3 +2932,76 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M3.6-B canonical generated-world signature and regression vectors**
+---
+
+# 44. M3.6-B canonical generated-world signature risk review
+
+**Date:** 2026-09-30
+
+Checkpoint:
+
+**M3.6-B — Canonical Generated-World Signature & Regression Vectors**
+
+Accepted QA:
+
+`GlobalArena-Evidence-M3.6-B-R2-CANONICAL-WORLD-SIGNATURE-REGRESSION-VECTORS-20260930-164008.zip`
+
+Result:
+
+**PASS_READY_FOR_M3_6_B_FORMAL_CLOSE**
+
+Validated locally:
+
+- SHA-256 whole-result signature;
+- signature format version `1`;
+- explicit big-endian binary framing;
+- canonical strategic topology incidence coverage;
+- request/world-generation identity binding;
+- all authoritative strategic result layers covered;
+- `15/15` signature tests;
+- `711/711` full Release suite;
+- compiler warnings/errors `0/0`.
+
+Frozen regression digests:
+
+- Class I: `fa9677da59098b4eccc4a3911299520ad0549780b4470b2fae96f607da774c52`;
+- Class II: `a7d8fa845d373b9f77484dd0f1955fdc3d1897041d71eec0a785a5e4028e2f4c`;
+- Class III: `91829cd3837be046631c83523b3857001479dd2cd5bed38e1a425b07b7cef349`.
+
+Risk effect:
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+Whole-result determinism now has an executable canonical digest and known Class I/II/III vectors. The post-commit cross-platform workflow for the accepted source tree remains the immediate attestation gate.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+Signature implementation does not resolve complete generation allocation budgets. M3.6-C owns observational calibration and acceptance.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+Canonical coverage is explicit and avoids reflection/serializer-dependent ordering.
+
+`RISK-007 — Architecture overengineering` remains `OPEN / HIGH`.
+
+The implementation remains a narrow SHA-256 writer over the generated-world contract rather than a generalized serialization subsystem.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+No Economy runtime, Civilization runtime, AI, networking, UI or new world-content semantics were introduced.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Immediate gate:
+
+**post-commit Windows/Ubuntu/macOS digest attestation for the M3.6-B source commit**
+
+Next risk review gate after successful attestation:
+
+**M3.6-C world-generation performance and memory acceptance**

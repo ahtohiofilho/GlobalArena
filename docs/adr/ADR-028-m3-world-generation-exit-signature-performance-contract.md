@@ -124,9 +124,15 @@ M3.6-B must freeze known SHA-256 digests for representative requests covering al
 
 Baseline vector requests are:
 
-- Class I: `seed = 0`, `WorldGenerationVersion = 1`, `G(2,0)`;
-- Class II: `seed = 42`, `WorldGenerationVersion = 1`, `G(2,2)`;
-- Class III: `seed = ulong.MaxValue`, `WorldGenerationVersion = 1`, `G(2,1)`.
+- Class I: seed = 0, WorldGenerationVersion = 1, G(2,0);
+- Class II: seed = 42, WorldGenerationVersion = 1, G(2,2);
+- Class III: seed = ulong.MaxValue, WorldGenerationVersion = 1, G(2,1).
+
+Frozen SHA-256 digests for signature format version 1:
+
+- Class I: $ClassIDigest;
+- Class II: $ClassIIDigest;
+- Class III: $ClassIIIDigest.
 
 The same vectors must execute under the existing Windows, Ubuntu and macOS regression workflow.
 

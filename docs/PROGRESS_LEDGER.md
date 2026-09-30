@@ -13651,3 +13651,80 @@ Project remains:
 Next checkpoint:
 
 **M3.6-B — Canonical Generated-World Signature & Regression Vectors**
+---
+
+## 2026-09-30 — M3.6-B canonical generated-world signature and regression vectors formal close
+
+Checkpoint closed:
+
+**M3.6-B — Canonical Generated-World Signature & Regression Vectors**
+
+Accepted QA evidence:
+
+`GlobalArena-Evidence-M3.6-B-R2-CANONICAL-WORLD-SIGNATURE-REGRESSION-VECTORS-20260930-164008.zip`
+
+Evidence SHA-256:
+
+`83625771ab3a9ad4a7f21d4864a3870047e6cc5ee654d3781e09fbc8b72e13c4`
+
+Accepted QA:
+
+- manifest: `30/30` verified;
+- baseline HEAD/origin-main: `cf13982e61344d1b4108d017ccd73c1e82ba3b8d`;
+- candidate hashes: `3/3`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- targeted signature tests: `15/15`;
+- full regression: `711/711`;
+- QA commit/push: none.
+
+Canonical generated-world signature:
+
+- algorithm: `SHA-256`;
+- signature format version: `1`;
+- canonical integer encoding: big-endian;
+- explicit section framing/counts;
+- request identity included;
+- canonical topology cells/edges/vertices and incidence included;
+- physical, climate, hydrology, biome, resource, habitability and placement-suitability layers included;
+- active default habitability/placement policy versions included;
+- JSON/reflection/culture-sensitive serialization excluded.
+
+Known regression vectors:
+
+- Class I — seed `0`, version `1`, `G(2,0)`:
+  `fa9677da59098b4eccc4a3911299520ad0549780b4470b2fae96f607da774c52`
+- Class II — seed `42`, version `1`, `G(2,2)`:
+  `a7d8fa845d373b9f77484dd0f1955fdc3d1897041d71eec0a785a5e4028e2f4c`
+- Class III — seed `ulong.MaxValue`, version `1`, `G(2,1)`:
+  `91829cd3837be046631c83523b3857001479dd2cd5bed38e1a425b07b7cef349`
+
+Maturity effect:
+
+`Determinism, cross-platform validation, performance baseline & M3 exit`
+
+moves from:
+
+**Inexistente — factor 0.00 — 0.00 GPP**
+
+to:
+
+**Funcional isoladamente — factor 0.50 — 2.00 GPP**
+
+Progress effect:
+
+- GPP delta: **+2.00**;
+- project GPP: **230.10 / 1000**;
+- Global Progress exact: **23.010%**;
+- Global Progress displayed: **23.0%**;
+- World Generation / biomas / recursos: **83.60 / 100 — 83.6%**.
+
+Post-commit requirement:
+
+the source commit produced by this formal close must pass the existing Windows, Ubuntu and macOS workflow with the frozen known-digest tests before M3.6-C acceptance work proceeds.
+
+Next checkpoint after that attestation:
+
+**M3.6-C — World Generation Performance & Memory Acceptance**

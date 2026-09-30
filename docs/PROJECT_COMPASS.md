@@ -707,8 +707,8 @@ Current M3 maturity after closed subcheckpoints:
 | Derived biomes | 8 | Validada | 0.85 | 6.80 |
 | Resources | 7 | Validada | 0.85 | 5.95 |
 | Habitability & civilization-placement suitability | 5 | Validada | 0.85 | 4.25 |
-| Determinism, cross-platform validation, performance baseline & M3 exit | 4 | Inexistente | 0.00 | 0.00 |
-| **TOTAL** | **100** |  |  | **81.60** |
+| Determinism, cross-platform validation, performance baseline & M3 exit | 4 | Funcional isoladamente | 0.50 | 2.00 |
+| **TOTAL** | **100** |  |  | **83.60** |
 
 M3.1-A is a governance/design freeze. It does not promote implementation maturity and therefore awards no GPP.
 
@@ -950,7 +950,7 @@ Etapa atual:
 
 Subetapa atual:
 
-**M3.6-B — Canonical Generated-World Signature & Regression Vectors**
+**M3.6-C — World Generation Performance & Memory Acceptance**
 
 M3 entry audit:
 
@@ -1036,6 +1036,10 @@ M3.6-A — World Generation Exit, Signature & Performance Contract Freeze:
 
 **concluído em 2026-09-30**
 
+M3.6-B — Canonical Generated-World Signature & Regression Vectors:
+
+**concluído em 2026-09-30**
+
 M2 — Planet Topology:
 
 **concluído em 2026-09-29**
@@ -1054,11 +1058,11 @@ Baseline V1:
 
 Progresso oficial:
 
-**22,8%**
+**23,0%**
 
 GPP conquistados:
 
-**228,10 / 1000**
+**230,10 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -1070,7 +1074,7 @@ Topologia planetária / Goldberg:
 
 World Generation / biomas / recursos:
 
-**81,60 / 100 GPP — 81,6%**
+**83,60 / 100 GPP — 83,6%**
 
 Scope Confidence:
 
@@ -1086,7 +1090,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M3.6-B canonical generated-world signature and regression vectors**
+**M3.6-C world-generation performance and memory acceptance**
 
 Última revisão de baseline:
 
