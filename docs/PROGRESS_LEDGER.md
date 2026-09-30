@@ -12109,34 +12109,34 @@ Subcheckpoint closed:
 
 Accepted QA evidence:
 
-$AcceptedQaEvidenceName
+GlobalArena-Evidence-M3.1-D-R1-ACCUMULATED-M31-VALIDATION-20260929-221715.zip
 
 Evidence SHA-256:
 
-$AcceptedQaEvidenceSha256
+33f1b9cb5ada5c4b7f23bf505ff69a07b97d49a6116ddd1db4da66965c4e5d27
 
 Evidence audit:
 
-- evidence manifest: $AcceptedQaManifestCount/37 verified;
-- baseline HEAD/origin-main: $ExpectedHead;
+- evidence manifest: 37/37 verified;
+- baseline HEAD/origin-main: 2e737933e2370676e7a838007b0fbafde17d7c8c;
 - repository mutation during QA: False;
-- GA-SRP self-tests: $ExpectedSelfTests/19;
+- GA-SRP self-tests: 19/19;
 - target ReadOnly validation: PARSER_ERRORS=0, RULE_VIOLATIONS=0;
-- diff diagnostics:  /0;
+- diff diagnostics: 0/0;
 - Release build: PASS;
-- compiler warnings/errors:  /0;
-- targeted M3.1 tests: $AcceptedTargetedTests/40;
-- full local regression: $AcceptedFullTests/475;
+- compiler warnings/errors: 0/0;
+- targeted M3.1 tests: 40/40;
+- full local regression: 475/475;
 - final worktree: clean.
 
 Accepted post-push cross-platform evidence:
 
 - workflow: Cross-Platform Kernel Regression Validation;
-- run: $AcceptedCrossPlatformRunId;
-- HEAD: $ExpectedHead;
-- Ubuntu: 475/475,   warnings,   errors, artifact uploaded;
-- Windows: 475/475,   warnings,   errors, artifact uploaded;
-- macOS: 475/475,   warnings,   errors, artifact uploaded.
+- run: 36623662001;
+- HEAD: 2e737933e2370676e7a838007b0fbafde17d7c8c;
+- Ubuntu: 475/475, 0 warnings, 0 errors, artifact uploaded;
+- Windows: 475/475, 0 warnings, 0 errors, artifact uploaded;
+- macOS: 475/475, 0 warnings, 0 errors, artifact uploaded.
 
 Accumulated M3.1 validation confirmed:
 
@@ -12182,3 +12182,130 @@ Progress effect:
 Next gate:
 
 **M3.2 — Strategic Geometry Bridge, Elevation & Land/Water**
+---
+
+## 2026-09-29 — M3.2-A strategic geometry and physical-field design freeze
+
+Stage:
+
+**M3.2 — Strategic Geometry Bridge, Elevation & Land/Water**
+
+Subcheckpoint:
+
+**M3.2-A — Strategic Geometry & Physical-Field Contract Freeze**
+
+Baseline:
+
+86757b30ce67c35d8fc1283d0c2d94b4044423e7
+
+Repository audit confirmed:
+
+- M2 StrategicTopology remains combinatorial and authoritative;
+- strategic cell IDs are contiguous canonical one-based ordinals;
+- StrategicCell.AdjacentCellIds are validated and stored in canonical sorted order;
+- Goldberg strategic generation remains authoritative for Class I, Class II and Class III;
+- Architecture section 11.2 explicitly keeps floating-point coordinates outside the topological source of truth;
+- M3.1 already provides WorldSeed, WorldGenerationVersion, deterministic generation request/result boundaries and domain-separated random streams;
+- no production StrategicSurfaceGraph exists before this checkpoint;
+- no production StrategicScalarField exists before this checkpoint.
+
+Decision:
+
+M3.2 will bridge M2 topology into physical-field algorithms through a derived immutable StrategicSurfaceGraph.
+
+The canonical surface index is zero-based and follows the existing contiguous cell identity:
+
+index = checked((int)StrategicCellId.Value - 1)
+
+Neighbor indexes are derived only from StrategicCell.AdjacentCellIds and remain sorted canonically.
+
+The initial macro scalar substrate will be StrategicScalarField using signed Int64 raw values with denominator 1_000_000.
+
+This establishes an exact integer/fixed-point authoritative boundary for M3.2 macro fields without making rendering coordinates a source of truth.
+
+Elevation will consume only WorldGenerationRandomDomain.Elevation.
+
+Land/water will be derived from elevation and an explicit sea-level contract rather than consuming independent classification randomness.
+
+Relief will be derived from canonical neighboring elevation relationships.
+
+M3.2 decomposition:
+
+- M3.2-A — Strategic Geometry & Physical-Field Contract Freeze;
+- M3.2-B — Executable Strategic Surface Graph & Scalar Field Substrate;
+- M3.2-C — Deterministic Elevation, Relief & Land/Water Foundation;
+- M3.2-D — Accumulated M3.2 Validation & Close.
+
+Scope exclusions remain:
+
+- no global tactical materialization;
+- no final render embedding;
+- no temperature/moisture;
+- no hydrology;
+- no biomes;
+- no resources;
+- no Civilization runtime state;
+- no Economy runtime state;
+- no WorldState mutation;
+- no networking or presentation dependency.
+
+GPP effect:
+
+**0.00**
+
+Reason:
+
+M3.2-A is an architecture/data-contract freeze, not executable implementation.
+
+Project GPP remains:
+
+**155.00 / 1000 — 15.5%**
+
+Next checkpoint:
+
+**M3.2-B — Executable Strategic Surface Graph & Scalar Field Substrate**
+---
+
+## 2026-09-29 — M3.2-A formal close
+
+Decision gate:
+
+**M3.2-A — Strategic Geometry & Physical-Field Contract Freeze**
+
+Accepted QA evidence:
+
+`GlobalArena-Evidence-M3.2-A-R4-GOVERNANCE-SANITIZATION-20260929-224521.zip`
+
+Evidence SHA-256:
+
+`0de3136a31640b34bcc56ab67c0b151549b399740a134462f09fc6a7b11ea44e`
+
+Accepted validation:
+
+- evidence manifest: `27/27` verified;
+- baseline HEAD/origin-main: `86757b30ce67c35d8fc1283d0c2d94b4044423e7`;
+- staged candidate files: `6`;
+- residual PowerShell placeholders: `0`;
+- residual NUL characters: `0`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- diff diagnostics: `0/0`;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- full regression: `475/475`;
+- commit/push during QA: none.
+
+Formal decision:
+
+- ADR-024 accepted;
+- authoritative M2 topology remains the sole strategic topology source;
+- `StrategicSurfaceGraph` is frozen as the derived dense-index physical-field bridge;
+- `StrategicScalarField` is frozen with signed `Int64` raw values and denominator `1_000_000`;
+- global tactical materialization remains outside M3.2-A;
+- project GPP remains `155.00 / 1000 — 15.5%`.
+
+M3.2-A is closed.
+
+Next checkpoint:
+
+**M3.2-B — Executable Strategic Surface Graph & Scalar Field Substrate**

@@ -2,7 +2,7 @@
 
 **Versão:** 0.1
 **Status:** Baseline V1 congelado
-**Milestone atual:** M2 — Planet Topology
+**Milestone atual:** M3 — Procedural World
 
 ---
 
@@ -1737,10 +1737,19 @@ M3 contract:
 
 ### M3.2 — Strategic Geometry Bridge, Elevation & Land/Water — 26 GPP
 
+- M3.2-A — Strategic Geometry & Physical-Field Contract Freeze — concluded;
+- M3.2-B — Executable Strategic Surface Graph & Scalar Field Substrate — current;
+- M3.2-C — Deterministic Elevation, Relief & Land/Water Foundation — planned;
+- M3.2-D — Accumulated M3.2 Validation & Close — planned.
+
+Stage envelope:
+
 - strategic geometry bridge;
 - macro physical-field substrate;
 - elevation / relief;
 - initial land/water foundation.
+
+M3.2-A freezes the data and determinism boundary only and awards no GPP.
 
 ### M3.3 — Climate Inputs & Cross-Scale Physical Refinement — 28 GPP
 
@@ -2032,7 +2041,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**Strategic Geometry Bridge & Macro Physical-Field Substrate**
+**M3.2-B — Executable Strategic Surface Graph & Scalar Field Substrate**
 
 M3 Entry Audit:
 

@@ -5,7 +5,7 @@
 **Nome:** Global Arena
 **Plataforma inicial:** PC
 **Modelo:** jogo de estratégia e tática em escala planetária
-**Estado atual:** M2 — Planet Topology
+**Estado atual:** M3 — Procedural World
 **Versão deste documento:** 0.1
 
 Global Arena é um jogo de estratégia em escala planetária com mundos procedurais, economia viva, civilizações, guerra tática, diplomacia e multiplayer.
@@ -731,6 +731,34 @@ Stage allocation:
 
 The decomposition redistributes the already approved `100 GPP` World Generation budget and is not a Scope Change.
 
+### 15.4 M3.2 strategic geometry and physical-field decomposition
+
+M3.2 consumes the authoritative M2 `StrategicTopology` without duplicating Goldberg generation.
+
+The stage is decomposed into:
+
+- M3.2-A — Strategic Geometry & Physical-Field Contract Freeze;
+- M3.2-B — Executable Strategic Surface Graph & Scalar Field Substrate;
+- M3.2-C — Deterministic Elevation, Relief & Land/Water Foundation;
+- M3.2-D — Accumulated M3.2 Validation & Close.
+
+Frozen M3.2 data direction:
+
+`StrategicTopology`
+→ `StrategicSurfaceGraph`
+→ `StrategicScalarField`
+→ deterministic elevation
+→ derived relief
+→ explicit sea-level classification
+→ land/water foundation
+
+The strategic surface graph is a derived data-oriented view of M2 topology, not a second topology source.
+
+The initial macro scalar substrate uses signed `Int64` fixed-point raw values with denominator `1_000_000`.
+
+No tactical global materialization is introduced by M3.2-A.
+
+No GPP is awarded by the design freeze. Current project progress remains `155.00 / 1000 — 15.5%`.
 # 20. Status atual
 
 Milestone:
@@ -743,7 +771,7 @@ Etapa atual:
 
 Subetapa atual:
 
-**Strategic Geometry Bridge & Macro Physical-Field Substrate**
+**M3.2-B — Executable Strategic Surface Graph & Scalar Field Substrate**
 
 M3 entry audit:
 

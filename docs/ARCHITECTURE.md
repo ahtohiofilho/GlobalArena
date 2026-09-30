@@ -4648,6 +4648,143 @@ Essa decisão permanece aberta.
 
 ---
 
+## 14.2 M3.2 strategic geometry bridge and macro physical-field substrate
+
+M3.2 begins by separating **authoritative topology** from the **data-oriented physical-field domain** that consumes it.
+
+The M2 `StrategicTopology` remains the source of truth for:
+
+- `StrategicCellId`;
+- `StrategicEdgeId`;
+- `StrategicVertexId`;
+- adjacency;
+- incidence;
+- Goldberg family and parameters.
+
+M3.2 does not introduce a second Goldberg generator and does not reinterpret a rendering embedding as topology.
+
+### Strategic surface graph
+
+The first executable bridge will be named:
+
+`StrategicSurfaceGraph`
+
+It is an immutable, derived view over one authoritative `StrategicTopology`.
+
+Its purpose is to make strategic physical-field algorithms operate over compact canonical indexes without repeatedly traversing object graphs or depending on unstable collection enumeration.
+
+Contract:
+
+- exactly one surface node exists for every `StrategicCell`;
+- node index is canonical and zero-based;
+- for the current contiguous one-based cell identity contract, `index = checked((int)StrategicCellId.Value - 1)`;
+- reverse lookup from canonical index to `StrategicCellId` is explicit;
+- neighbor indexes are derived only from `StrategicCell.AdjacentCellIds`;
+- neighbor indexes are stored in ascending canonical order;
+- pentagon degree remains `5`;
+- hexagon degree remains `6`;
+- the surface graph does not own or mutate topology;
+- the surface graph does not create tactical cells;
+- the surface graph does not contain gameplay state.
+
+This bridge is intentionally topological/data-oriented rather than a rendering embedding.
+
+The architectural rule from section 11.2 remains binding:
+
+**floating-point coordinates are not a source of truth for topology.**
+
+A later presentation embedding may use spherical coordinates or mesh geometry without changing the M3.2 physical-field identity contract.
+
+### Strategic scalar substrate
+
+The first macro physical-field storage contract will be named:
+
+`StrategicScalarField`
+
+It is immutable and aligned one-to-one with a `StrategicSurfaceGraph`.
+
+Initial authoritative scalar representation:
+
+- signed `Int64` raw values;
+- fixed denominator `1_000_000`;
+- no culture-dependent parsing or formatting participates in generation;
+- no `float` or `double` value is required to reproduce authoritative M3.2 scalar output;
+- one raw value exists for every strategic surface node;
+- lookup by `StrategicCellId` is deterministic through the canonical graph index;
+- array/list order is canonical and must not depend on dictionary enumeration.
+
+The fixed-point substrate is a deterministic storage and calculation boundary, not a declaration that every later M3 algorithm must avoid floating-point intermediates forever. Any later authoritative use of floating point requires its own deterministic contract and validation.
+
+### M3.2 field ownership
+
+M3.2 owns two capabilities:
+
+1. `Strategic geometry bridge & macro physical-field substrate` — `12 GPP`;
+2. `Elevation, relief & land/water foundation` — `14 GPP`.
+
+The first capability provides the reusable strategic surface/index and scalar-field substrate.
+
+The second capability will build deterministic elevation on that substrate.
+
+`Elevation` randomness must come only from the existing `WorldGenerationRandomDomain.Elevation` stream.
+
+Land/water is derived from elevation plus an explicit deterministic sea-level contract.
+
+Land/water must not consume an independent random stream merely to classify a cell.
+
+Relief is derived from elevation relationships between canonical neighboring strategic cells; it is not an unrelated random label.
+
+### M3.2 scope boundary
+
+M3.2 does not yet:
+
+- materialize the global tactical physical mesh;
+- define final render coordinates;
+- implement temperature or moisture;
+- implement hydrology;
+- derive biomes;
+- generate resources;
+- create civilization runtime state;
+- mutate `WorldState`;
+- create Economy inventories;
+- introduce networking or presentation dependencies.
+
+Tactical physical refinement remains stage-specific and is deferred until a later M3 stage requires it.
+
+### Determinism and iteration rules
+
+Authoritative M3.2 field generation must use:
+
+- canonical strategic node order;
+- canonical neighbor order;
+- explicit world-generation random domains;
+- checked arithmetic where overflow would otherwise become silent;
+- immutable output boundaries.
+
+It must not depend on:
+
+- wall-clock time;
+- `Random.Shared`;
+- `System.Random`;
+- unordered dictionary/hash-set enumeration;
+- UI or presentation state;
+- network state;
+- mutable process-global RNG state.
+
+### M3.2 checkpoint decomposition
+
+M3.2 is decomposed into:
+
+- **M3.2-A — Strategic Geometry & Physical-Field Contract Freeze**;
+- **M3.2-B — Executable Strategic Surface Graph & Scalar Field Substrate**;
+- **M3.2-C — Deterministic Elevation, Relief & Land/Water Foundation**;
+- **M3.2-D — Accumulated M3.2 Validation & Close**.
+
+M3.2-A is a design/governance freeze and awards no GPP.
+
+Implementation maturity is earned only by executable later checkpoints.
+
+---
 # 15. Seeds e geração reproduzível
 
 Todo planeta procedural deverá possuir uma WorldSeed.

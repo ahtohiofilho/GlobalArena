@@ -1,9 +1,9 @@
 # Global Arena — Risk Register
 
 **Versão:** 0.1
-**Milestone:** M2 — Planet Topology
+**Milestone:** M3 — Procedural World
 **Status:** Ativo
-**Última revisão formal:** 2026-09-20
+**Última revisão formal:** 2026-09-29
 **Baseline V1 relacionado:** 0.1 — congelado
 
 ---
@@ -1619,11 +1619,11 @@ Next risk review gate:
 
 Evidence:
 
-$AcceptedQaEvidenceName
+GlobalArena-Evidence-M3.1-D-R1-ACCUMULATED-M31-VALIDATION-20260929-221715.zip
 
 SHA-256:
 
-$AcceptedQaEvidenceSha256
+33f1b9cb5ada5c4b7f23bf505ff69a07b97d49a6116ddd1db4da66965c4e5d27
 
 Result:
 
@@ -1631,10 +1631,10 @@ Result:
 
 Validated:
 
-- accepted M3.1 source/test tree unchanged from HEAD $ExpectedHead;
+- accepted M3.1 source/test tree unchanged from HEAD 2e737933e2370676e7a838007b0fbafde17d7c8c;
 - targeted M3.1 suite 40/40;
 - full local Release suite 475/475;
-- compiler warnings/errors  /0;
+- compiler warnings/errors 0/0;
 - Ubuntu cross-platform suite 475/475;
 - Windows cross-platform suite 475/475;
 - macOS cross-platform suite 475/475;
@@ -1676,3 +1676,119 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M3.2 strategic geometry bridge, macro physical-field substrate and elevation/land-water foundation**
+---
+
+# 22. M3.2-A strategic geometry and physical-field design risk review
+
+**Date:** 2026-09-29
+
+Baseline:
+
+86757b30ce67c35d8fc1283d0c2d94b4044423e7
+
+Decision gate:
+
+**M3.2-A — Strategic Geometry & Physical-Field Contract Freeze**
+
+Key architectural finding:
+
+M2 intentionally separates combinatorial topology from geometric/render embedding. StrategicTopology provides stable identity, adjacency and incidence, but coordinates are not topological truth.
+
+Risk response:
+
+### RISK-004 — Determinism failure
+
+Status remains:
+
+**WATCHING / HIGH**
+
+M3.2-A reduces a new source of determinism risk by freezing the first macro physical-field substrate on canonical integer indexes and signed fixed-point raw values rather than platform-sensitive floating-point topology identity.
+
+Later algorithms still require deterministic regression evidence, so the risk is not closed.
+
+### RISK-008 — Architecture underengineering
+
+Status remains:
+
+**OPEN / CRITICAL**
+
+The geometry bridge is explicitly a derived view over M2 topology rather than a second generator.
+
+This avoids duplicate Goldberg ownership while creating a dedicated data-oriented boundary for physical fields.
+
+The risk remains critical until the bridge and field substrate are executable and consumed by real generated-world stages.
+
+### RISK-012 — Memory footprint
+
+Status remains:
+
+**OPEN / CRITICAL**
+
+M3.2-A forbids mandatory global tactical physical materialization.
+
+The first macro substrate is O(strategic cells) and uses compact canonical arrays/indexes.
+
+Later tactical refinement remains stage-specific and must preserve this constraint.
+
+### RISK-002 — Tactical resolution scalability
+
+Status remains:
+
+**OPEN / CRITICAL**
+
+No new tactical density is frozen by M3.2-A.
+
+The M2 Class I scale-6 hierarchy remains a validated semantic contract rather than a mandatory always-resident M3 field resolution.
+
+### RISK-006 — Scope expansion
+
+Status remains:
+
+**MITIGATING / CRITICAL**
+
+M3.2-A keeps climate, hydrology, biomes, resources, Economy runtime and Civilization runtime outside this checkpoint.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M3.2-B executable strategic surface graph and fixed-point scalar substrate**
+---
+
+# 23. M3.2-A formal close risk confirmation
+
+**Date:** 2026-09-29
+
+Accepted QA:
+
+`GlobalArena-Evidence-M3.2-A-R4-GOVERNANCE-SANITIZATION-20260929-224521.zip`
+
+Result:
+
+**M3.2-A CLOSED**
+
+Risk posture is unchanged by this design-only close:
+
+- `RISK-004 — Determinism failure`: `WATCHING / HIGH`;
+- `RISK-008 — Architecture underengineering`: `OPEN / CRITICAL`;
+- `RISK-012 — Memory footprint`: `OPEN / CRITICAL`;
+- `RISK-002 — Tactical resolution scalability`: `OPEN / CRITICAL`;
+- `RISK-006 — Scope expansion`: `MITIGATING / CRITICAL`.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M3.2-B executable strategic surface graph and fixed-point scalar substrate**
