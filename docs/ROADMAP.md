@@ -1733,7 +1733,7 @@ M3 contract:
 - M3.1-A — Architecture, Contract & GPP Design Freeze — concluded;
 - M3.1-B — Executable World Generation Identity & Pipeline Contracts — concluded;
 - M3.1-C — Deterministic Pipeline Skeleton & Contract Validation — concluded;
-- M3.1-D — Accumulated M3.1 Validation & Close — current.
+- M3.1-D — Accumulated M3.1 Validation & Close — concluded.
 
 ### M3.2 — Strategic Geometry Bridge, Elevation & Land/Water — 26 GPP
 
@@ -2028,13 +2028,17 @@ Current Milestone:
 
 Current Stage:
 
-**M3.1 — World Generation Contracts, Seed/Versioning & Pipeline**
+**M3.2 — Strategic Geometry Bridge, Elevation & Land/Water**
 
 Current Subcheckpoint:
 
-**M3.1-D — Accumulated M3.1 Validation & Close**
+**Strategic Geometry Bridge & Macro Physical-Field Substrate**
 
 M3 Entry Audit:
+
+**concluded on 2026-09-29**
+
+M3.1 — World Generation Contracts, Seed/Versioning & Pipeline:
 
 **concluded on 2026-09-29**
 
@@ -2050,13 +2054,17 @@ M3.1-C — Deterministic Pipeline Skeleton & Contract Validation:
 
 **concluded on 2026-09-29**
 
+M3.1-D — Accumulated M3.1 Validation & Close:
+
+**concluded on 2026-09-29**
+
 Official Progress:
 
-**15.2%**
+**15.5%**
 
 GPP Earned:
 
-**151.50 / 1000**
+**155.00 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -2068,7 +2076,7 @@ Planet Topology / Goldberg:
 
 World Generation / biomes / resources:
 
-**5.00 / 100 GPP — 5.0%**
+**8.50 / 100 GPP — 8.5%**
 
 Scope Confidence:
 
@@ -2084,7 +2092,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**M3.1 accumulated deterministic/cross-platform validation and stage close**
+**M3.2 strategic geometry bridge and macro physical-field substrate**
 
 Last Baseline Review:
 

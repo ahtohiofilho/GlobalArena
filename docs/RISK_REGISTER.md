@@ -1611,3 +1611,68 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M3.1-D accumulated deterministic and cross-platform validation**
+---
+
+# 21. M3.1-D accumulated deterministic validation and M3.1 close risk review
+
+**Date:** 2026-09-29
+
+Evidence:
+
+$AcceptedQaEvidenceName
+
+SHA-256:
+
+$AcceptedQaEvidenceSha256
+
+Result:
+
+**PASS_READY_FOR_M3_1_D_FORMAL_CLOSE**
+
+Validated:
+
+- accepted M3.1 source/test tree unchanged from HEAD $ExpectedHead;
+- targeted M3.1 suite 40/40;
+- full local Release suite 475/475;
+- compiler warnings/errors  /0;
+- Ubuntu cross-platform suite 475/475;
+- Windows cross-platform suite 475/475;
+- macOS cross-platform suite 475/475;
+- cross-platform artifacts uploaded on all three platforms;
+- domain-separated deterministic random-stream contract preserved;
+- fixed deterministic vector preserved;
+- no production-code mutation in the accumulated close gate.
+
+Risk effect:
+
+RISK-004 — Determinism failure remains WATCHING / HIGH.
+
+M3.1-D materially reduces the world-generation determinism risk: the executable generation identity/version boundary, deterministic stream partitioning and current regression vector now pass locally and on Ubuntu, Windows and macOS. The risk remains watching because later M3 physical layers must extend determinism to the complete generated-world semantics and M3.6 still owns the final generated-world signature and accumulated exit regression.
+
+RISK-008 — Architecture underengineering remains OPEN / CRITICAL.
+
+The M3.1 request/result/generator boundary is now validated and closed, but strategic physical fields, cross-scale refinement and later generated-world layer composition remain future architecture work.
+
+RISK-006 — Scope expansion remains MITIGATING / CRITICAL.
+
+M3.1 closes inside the frozen budget and responsibility envelope. No Economy runtime state, live Civilization state, UI, networking or unrelated product capability was introduced.
+
+RISK-002 — Tactical resolution scalability remains OPEN / CRITICAL.
+
+M3.1 does not materialize new tactical physical fields. Scale pressure moves to the later cross-scale refinement stages where tactical detail is introduced selectively.
+
+RISK-012 — Memory footprint remains OPEN / CRITICAL.
+
+The M3.1 contracts do not require global tactical materialization. Later M3 physical-field representation must continue to preserve the data-oriented and selective-materialization constraints.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M3.2 strategic geometry bridge, macro physical-field substrate and elevation/land-water foundation**

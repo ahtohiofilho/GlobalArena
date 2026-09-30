@@ -698,7 +698,7 @@ Current M3 maturity after closed subcheckpoints:
 
 | Capability | GPP | Maturity | Factor | GPP earned |
 |---|---:|---|---:|---:|
-| World generation identity, seed/versioning & deterministic pipeline contracts | 10 | Funcional isoladamente | 0.50 | 5.00 |
+| World generation identity, seed/versioning & deterministic pipeline contracts | 10 | Validada | 0.85 | 8.50 |
 | Strategic geometry bridge & macro physical-field substrate | 12 | Inexistente | 0.00 | 0.00 |
 | Elevation, relief & land/water foundation | 14 | Inexistente | 0.00 | 0.00 |
 | Temperature, climate, moisture & water availability | 14 | Inexistente | 0.00 | 0.00 |
@@ -708,13 +708,17 @@ Current M3 maturity after closed subcheckpoints:
 | Resources | 7 | Inexistente | 0.00 | 0.00 |
 | Habitability & civilization-placement suitability | 5 | Inexistente | 0.00 | 0.00 |
 | Determinism, cross-platform validation, performance baseline & M3 exit | 4 | Inexistente | 0.00 | 0.00 |
-| **TOTAL** | **100** |  |  | **5.00** |
+| **TOTAL** | **100** |  |  | **8.50** |
 
 M3.1-A is a governance/design freeze. It does not promote implementation maturity and therefore awards no GPP.
 
 M3.1-B materializes the executable seed/version/request/result/interface boundary and promotes `World generation identity, seed/versioning & deterministic pipeline contracts` to `Especificada — fator 0.20`, adding `2.00 GPP`.
 
-M3.1-C adds the concrete deterministic generator, explicit supported generation version, domain-separated random streams and a fixed deterministic regression vector. This promotes the same capability to `Funcional isoladamente — fator 0.50`, adding another `3.00 GPP`. The M3.1-C post-push cross-platform regression and accumulated stage validation remain for M3.1-D before any further promotion.
+M3.1-C adds the concrete deterministic generator, explicit supported generation version, domain-separated random streams and a fixed deterministic regression vector. This promotes the same capability to `Funcional isoladamente — fator 0.50`, adding another `3.00 GPP`.
+
+M3.1-D closes accumulated validation without production-code mutation. The accepted gate revalidates the `475/475` Release suite locally, validates the `40/40` M3.1-specific slice and consumes cross-platform run `36623662001`, where the same accepted tree passed `475/475` on Ubuntu, Windows and macOS with zero compiler warnings/errors and artifacts uploaded on all three platforms. The capability is therefore promoted to `Validada — fator 0.85`, adding `3.50 GPP`.
+
+M3.1 closes at `8.50 / 10 GPP`. The remaining `1.50 GPP` is not awarded merely for stage completion; `100%` remains reserved for V1 Definition of Done evidence.
 
 Stage allocation:
 
@@ -735,13 +739,17 @@ Milestone:
 
 Etapa atual:
 
-**M3.1 — World Generation Contracts, Seed/Versioning & Pipeline**
+**M3.2 — Strategic Geometry Bridge, Elevation & Land/Water**
 
 Subetapa atual:
 
-**M3.1-D — Accumulated M3.1 Validation & Close**
+**Strategic Geometry Bridge & Macro Physical-Field Substrate**
 
 M3 entry audit:
+
+**concluído em 2026-09-29**
+
+M3.1 — World Generation Contracts, Seed/Versioning & Pipeline:
 
 **concluído em 2026-09-29**
 
@@ -754,6 +762,10 @@ M3.1-B — Executable World Generation Identity & Pipeline Contracts:
 **concluído em 2026-09-29**
 
 M3.1-C — Deterministic Pipeline Skeleton & Contract Validation:
+
+**concluído em 2026-09-29**
+
+M3.1-D — Accumulated M3.1 Validation & Close:
 
 **concluído em 2026-09-29**
 
@@ -775,11 +787,11 @@ Baseline V1:
 
 Progresso oficial:
 
-**15,2%**
+**15,5%**
 
 GPP conquistados:
 
-**151,50 / 1000**
+**155,00 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -791,7 +803,7 @@ Topologia planetária / Goldberg:
 
 World Generation / biomas / recursos:
 
-**5,00 / 100 GPP — 5,0%**
+**8,50 / 100 GPP — 8,5%**
 
 Scope Confidence:
 
@@ -807,14 +819,13 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M3.1 accumulated deterministic/cross-platform validation and stage close**
+**M3.2 strategic geometry bridge and macro physical-field substrate**
 
 Última revisão de baseline:
 
 **2026-09-29**
 
 ---
-
 # 21. Política de atualização
 
 Este documento deverá ser revisado quando:

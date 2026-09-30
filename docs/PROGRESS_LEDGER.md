@@ -12095,3 +12095,90 @@ The M3.1-C formal-close push is expected to trigger the existing cross-platform 
 Next gate:
 
 **M3.1-D — Accumulated M3.1 Validation & Close**
+---
+
+## 2026-09-29 — M3.1-D accumulated validation and M3.1 close
+
+Stage closed:
+
+**M3.1 — World Generation Contracts, Seed/Versioning & Pipeline**
+
+Subcheckpoint closed:
+
+**M3.1-D — Accumulated M3.1 Validation & Close**
+
+Accepted QA evidence:
+
+$AcceptedQaEvidenceName
+
+Evidence SHA-256:
+
+$AcceptedQaEvidenceSha256
+
+Evidence audit:
+
+- evidence manifest: $AcceptedQaManifestCount/37 verified;
+- baseline HEAD/origin-main: $ExpectedHead;
+- repository mutation during QA: False;
+- GA-SRP self-tests: $ExpectedSelfTests/19;
+- target ReadOnly validation: PARSER_ERRORS=0, RULE_VIOLATIONS=0;
+- diff diagnostics:  /0;
+- Release build: PASS;
+- compiler warnings/errors:  /0;
+- targeted M3.1 tests: $AcceptedTargetedTests/40;
+- full local regression: $AcceptedFullTests/475;
+- final worktree: clean.
+
+Accepted post-push cross-platform evidence:
+
+- workflow: Cross-Platform Kernel Regression Validation;
+- run: $AcceptedCrossPlatformRunId;
+- HEAD: $ExpectedHead;
+- Ubuntu: 475/475,   warnings,   errors, artifact uploaded;
+- Windows: 475/475,   warnings,   errors, artifact uploaded;
+- macOS: 475/475,   warnings,   errors, artifact uploaded.
+
+Accumulated M3.1 validation confirmed:
+
+- WorldSeed remains semantically and structurally distinct from SimulationSeed;
+- WorldGenerationVersion.Initial = 1 remains the explicit supported-version boundary;
+- WorldGenerationRequest preserves seed, version and strategic Goldberg parameters;
+- WorldGenerationResult preserves the request and authoritative strategic topology;
+- IWorldGenerator remains the executable request/result boundary;
+- DeterministicWorldGenerator reuses the authoritative M2 Goldberg topology generator;
+- world-generation randomness is separated by explicit domains;
+- stream derivation includes WorldSeed + WorldGenerationVersion + GoldbergParameters + domain;
+- stream creation and advancement order do not couple independent domains;
+- the fixed deterministic regression vector remains stable;
+- no Simulation, networking or Console responsibility leaked into the M3.1 generation boundary.
+
+Maturity effect:
+
+World generation identity, seed/versioning & deterministic pipeline contracts
+
+moves from:
+
+**Funcional isoladamente — fator 0.50 — 5.00 GPP**
+
+to:
+
+**Validada — fator 0.85 — 8.50 GPP**
+
+Reason:
+
+M3.1 now has executable identity/version contracts, a concrete deterministic generator, domain-separated random streams, fixed-vector regression coverage, full local accumulated validation and the applicable Ubuntu/Windows/macOS regression on the exact accepted production/test tree.
+
+M3.1 is closed at the Validada — 0.85 maturity level. The remaining 1.50 GPP of this capability is not awarded merely for stage completion; 100% remains reserved for V1 Definition of Done evidence.
+
+Progress effect:
+
+- GPP change: **+3.50**;
+- project GPP: **155.00 / 1000**;
+- Global Progress exact: **15.500%**;
+- Global Progress displayed: **15.5%**;
+- World Generation / biomas / recursos: **8.50 / 100 — 8.5%**;
+- V1 baseline remains **1000 GPP**.
+
+Next gate:
+
+**M3.2 — Strategic Geometry Bridge, Elevation & Land/Water**
