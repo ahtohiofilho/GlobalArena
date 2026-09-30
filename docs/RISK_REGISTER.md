@@ -2756,3 +2756,77 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M3.5-D accumulated M3.5 validation and close**
+---
+
+# 41. M3.5 accumulated validation close risk review
+
+**Date:** 2026-09-30
+
+Stage:
+
+**M3.5 — Resources, Habitability & Civilization Placement Inputs — CLOSED**
+
+Accepted accumulated evidence:
+
+`GlobalArena-Evidence-M3.5-D-R1-ACCUMULATED-M35-VALIDATION-20260930-153633.zip`
+
+Evidence SHA-256:
+
+`d86a3f02365301382eff23a00b767534750cb72b1fda5332f4172c28737c3780`
+
+Cross-platform source-tree attestation:
+
+- workflow: `Cross-Platform Kernel Regression Validation`;
+- run: `36759069345`;
+- HEAD: `2350f4d6f61077fe1725c81ed712392c3bdcfd40`;
+- Windows: `696/696`, `0` warnings, `0` errors;
+- Ubuntu: `696/696`, `0` warnings, `0` errors;
+- macOS: `696/696`, `0` warnings, `0` errors;
+- artifacts uploaded on all three platforms.
+
+Risk effect:
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+M3.5's accepted resource, habitability and placement contracts are deterministic locally and pass the same full suite on all three supported CI platforms. M3.6 still owns the canonical generated-world signature/hash contract and accumulated M3 determinism exit evidence.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+Resources, environmental habitability, local placement suitability and multi-start dispersion are now executable and validated as separate strategic responsibilities with centralized/versioned policy boundaries.
+
+`RISK-010 — Architecture overengineering` remains `WATCHING / HIGH`.
+
+M3.5 closes without freezing the final resource catalogue, weighted geography, sea-transition costs, optimization solver or civilization-count formula.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+M3.5 retains strategic scalar residency and transient strategic selection structures only. M3.6 must establish generation-time and memory budgets before M3 exit.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+Resource/habitability/placement logic remains strategic-first and requires no global tactical pathfinding.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+M3.5 added no Civilization runtime, Economy runtime, diplomacy, ownership, tactical settlement simulation, AI, networking or presentation responsibility.
+
+Calibration remains intentionally open:
+
+- final resource taxonomy and abundance curves;
+- water eligibility/weight;
+- land/water transition costs;
+- local-quality-versus-dispersion weights;
+- initial-reference behavior;
+- final civilization-count policy.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M3.6 determinism, performance, cross-platform validation and M3 exit**

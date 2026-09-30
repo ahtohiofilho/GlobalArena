@@ -13439,3 +13439,102 @@ Progress effect:
 Next checkpoint:
 
 **M3.5-D — Accumulated M3.5 Validation & Close**
+---
+
+## 2026-09-30 — M3.5-D accumulated resources, habitability and placement validation formal close
+
+Stage closed:
+
+**M3.5 — Resources, Habitability & Civilization Placement Inputs**
+
+Checkpoint closed:
+
+**M3.5-D — Accumulated M3.5 Validation & Close**
+
+Accepted evidence:
+
+`GlobalArena-Evidence-M3.5-D-R1-ACCUMULATED-M35-VALIDATION-20260930-153633.zip`
+
+Evidence SHA-256:
+
+`d86a3f02365301382eff23a00b767534750cb72b1fda5332f4172c28737c3780`
+
+Accepted validation:
+
+- evidence manifest: `38/38` verified;
+- baseline HEAD/origin-main: `2350f4d6f61077fe1725c81ed712392c3bdcfd40`;
+- accepted executable/test hashes: `11/11`;
+- GA-SRP self-tests: `19/19`;
+- target `ReadOnly` validation: PASS;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- targeted M3.5 tests: `43/43`;
+- full local regression: `696/696`;
+- cross-platform workflow run `36759069345`: SUCCESS;
+- Windows: `696/696`, zero warnings/errors;
+- Ubuntu: `696/696`, zero warnings/errors;
+- macOS: `696/696`, zero warnings/errors;
+- artifacts uploaded on all three platforms;
+- repository files modified by validation: `0`;
+- validation commit/push: none.
+
+Validated contract:
+
+- strategic normalized resource potential;
+- explicit `Resources` random-domain ownership;
+- centralized/versioned habitability policy;
+- environmental habitability separate from placement;
+- centralized/versioned placement policy;
+- local placement suitability separate from habitability;
+- placement policy supports local quality plus spatial dispersion;
+- deterministic `CivilizationPlacement` reference stream;
+- strategic BFS baseline;
+- water treatment remains configurable;
+- land/water transition costs remain unfrozen;
+- civilization-count formula remains unfrozen;
+- no global tactical pathfinding requirement;
+- no Civilization runtime instantiation.
+
+Maturity promotion:
+
+`Resources`
+
+from:
+
+**Funcional isoladamente — factor 0.50 — 3.50 GPP**
+
+to:
+
+**Validada — factor 0.85 — 5.95 GPP**
+
+`Habitability & civilization-placement suitability`
+
+from:
+
+**Funcional isoladamente — factor 0.50 — 2.50 GPP**
+
+to:
+
+**Validada — factor 0.85 — 4.25 GPP**
+
+M3.5 closes at:
+
+**10.20 / 12 GPP — 85.0%**
+
+The remaining:
+
+**1.80 GPP**
+
+is reserved for later V1 Definition of Done evidence.
+
+Progress effect:
+
+- GPP delta: **+4.20**;
+- project GPP: **228.10 / 1000**;
+- Global Progress exact: **22.810%**;
+- Global Progress displayed: **22.8%**;
+- World Generation / biomas / recursos: **81.60 / 100 — 81.6%**.
+
+Next stage:
+
+**M3.6 — Determinism, Performance, Cross-Platform Validation & M3 Exit**

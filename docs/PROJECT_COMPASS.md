@@ -705,10 +705,10 @@ Current M3 maturity after closed subcheckpoints:
 | Cross-scale boundary conditions, tactical refinement & strategic aggregation | 14 | Validada | 0.85 | 11.90 |
 | Hydrology | 12 | Validada | 0.85 | 10.20 |
 | Derived biomes | 8 | Validada | 0.85 | 6.80 |
-| Resources | 7 | Funcional isoladamente | 0.50 | 3.50 |
-| Habitability & civilization-placement suitability | 5 | Funcional isoladamente | 0.50 | 2.50 |
+| Resources | 7 | Validada | 0.85 | 5.95 |
+| Habitability & civilization-placement suitability | 5 | Validada | 0.85 | 4.25 |
 | Determinism, cross-platform validation, performance baseline & M3 exit | 4 | Inexistente | 0.00 | 0.00 |
-| **TOTAL** | **100** |  |  | **77.40** |
+| **TOTAL** | **100** |  |  | **81.60** |
 
 M3.1-A is a governance/design freeze. It does not promote implementation maturity and therefore awards no GPP.
 
@@ -893,6 +893,9 @@ M3.5-C adds executable strategic habitability and civilization-placement suitabi
 The baseline selector uses a deterministic `CivilizationPlacement` reference and strategic unweighted graph distance, but water treatment, transition costs, quality-versus-dispersion weights, initial-reference behavior and civilization count remain deliberately open behind versioned policies.
 
 This promotes `Habitability & civilization-placement suitability` to `Funcional isoladamente — fator 0.50`, adding `2.50 GPP`.
+M3.5-D closes accumulated resources, habitability and civilization-placement validation. The accepted ReadOnly gate revalidates `43/43` M3.5-specific tests and the `696/696` Release suite locally, and consumes cross-platform run `36759069345`, where the same accepted source tree passed `696/696` on Windows, Ubuntu and macOS with zero compiler warnings/errors and artifacts uploaded on all three platforms.
+
+`Resources` and `Habitability & civilization-placement suitability` are therefore promoted to `Validada — fator 0.85`. M3.5 closes at `10.20 / 12 GPP — 85.0%`; the remaining `1.80 GPP` is reserved for later V1 Definition of Done evidence.
 # 20. Status atual
 
 Milestone:
@@ -901,11 +904,11 @@ Milestone:
 
 Etapa atual:
 
-**M3.5 — Resources, Habitability & Civilization Placement Inputs**
+**M3.6 — Determinism, Performance, Cross-Platform Validation & M3 Exit**
 
 Subetapa atual:
 
-**M3.5-D — Accumulated M3.5 Validation & Close**
+**M3.6 — Determinism, Performance, Cross-Platform Validation & M3 Exit**
 
 M3 entry audit:
 
@@ -979,6 +982,14 @@ M3.5-C — Executable Habitability & Civilization Placement Suitability:
 
 **concluído em 2026-09-30**
 
+M3.5-D — Accumulated M3.5 Validation & Close:
+
+**concluído em 2026-09-30**
+
+M3.5 — Resources, Habitability & Civilization Placement Inputs:
+
+**concluído em 2026-09-30**
+
 M2 — Planet Topology:
 
 **concluído em 2026-09-29**
@@ -997,11 +1008,11 @@ Baseline V1:
 
 Progresso oficial:
 
-**22,4%**
+**22,8%**
 
 GPP conquistados:
 
-**223,90 / 1000**
+**228,10 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -1013,7 +1024,7 @@ Topologia planetária / Goldberg:
 
 World Generation / biomas / recursos:
 
-**77,40 / 100 GPP — 77,4%**
+**81,60 / 100 GPP — 81,6%**
 
 Scope Confidence:
 
@@ -1029,7 +1040,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M3.5-D accumulated M3.5 validation and close**
+**M3.6 determinism, performance, cross-platform validation and M3 exit**
 
 Última revisão de baseline:
 

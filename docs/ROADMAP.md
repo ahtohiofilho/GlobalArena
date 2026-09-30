@@ -1796,7 +1796,7 @@ M3.4 closes at `17.00 / 20 GPP — 85.0%` after accumulated local and cross-plat
 - M3.5-A — Resources, Habitability & Placement Policy Freeze — concluded;
 - M3.5-B — Executable Strategic Resource Potential — concluded;
 - M3.5-C — Executable Habitability & Civilization Placement Suitability — concluded;
-- M3.5-D — Accumulated M3.5 Validation & Close — current.
+- M3.5-D — Accumulated M3.5 Validation & Close — concluded.
 
 Stage envelope:
 
@@ -1812,6 +1812,7 @@ M3.5-A freezes ownership, separation of responsibilities and calibration boundar
 
 M3.5-B adds the first executable strategic resource-potential field: one normalized deterministic `GeneralPotential` value per strategic node using the `Resources` random domain. It deliberately does not freeze the final resource catalogue or Economy behavior.
 M3.5-C adds executable habitability, local placement suitability and a deterministic strategic candidate selector. The selector can combine local quality with spatial dispersion, while water/land costs, exact weights and civilization count remain calibratable and unfrozen.
+M3.5 closes at `10.20 / 12 GPP — 85.0%` after accumulated local and cross-platform validation. `Resources` and `Habitability & civilization-placement suitability` are both `Validada — fator 0.85`. The remaining `1.80 GPP` is reserved for later V1 Definition of Done evidence.
 ### M3.6 — Determinism, Performance, Cross-Platform Validation & M3 Exit — 4 GPP
 
 - canonical generated-world signature/hash contract;
@@ -2079,11 +2080,11 @@ Current Milestone:
 
 Current Stage:
 
-**M3.5 — Resources, Habitability & Civilization Placement Inputs**
+**M3.6 — Determinism, Performance, Cross-Platform Validation & M3 Exit**
 
 Current Subcheckpoint:
 
-**M3.5-D — Accumulated M3.5 Validation & Close**
+**M3.6 — Determinism, Performance, Cross-Platform Validation & M3 Exit**
 
 M3 Entry Audit:
 
@@ -2111,11 +2112,11 @@ M3.1-D — Accumulated M3.1 Validation & Close:
 
 Official Progress:
 
-**22.4%**
+**22.8%**
 
 GPP Earned:
 
-**223.90 / 1000**
+**228.10 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -2127,7 +2128,7 @@ Planet Topology / Goldberg:
 
 World Generation / biomes / resources:
 
-**77.40 / 100 GPP — 77.4%**
+**81.60 / 100 GPP — 81.6%**
 
 Scope Confidence:
 
@@ -2143,7 +2144,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**M3.5-D accumulated M3.5 validation and close**
+**M3.6 determinism, performance, cross-platform validation and M3 exit**
 
 Last Baseline Review:
 
