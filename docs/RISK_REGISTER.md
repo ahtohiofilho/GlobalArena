@@ -1851,3 +1851,63 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M3.2-C deterministic elevation, relief and land/water foundation**
+---
+
+# 25. M3.2-C deterministic elevation and land/water risk review
+
+**Date:** 2026-09-30
+
+Evidence:
+
+`GlobalArena-Evidence-M3.2-C-R1-DETERMINISTIC-ELEVATION-RELIEF-LAND-WATER-20260930-084020.zip`
+
+Result:
+
+**PASS_READY_FOR_M3_2_C_FORMAL_CLOSE**
+
+Validated:
+
+- deterministic fixed-point strategic elevation;
+- elevation randomness isolated to `WorldGenerationRandomDomain.Elevation`;
+- fixed initial-version elevation regression vector;
+- relief derived from canonical strategic neighbors;
+- explicit deterministic sea-level contract;
+- land/water derived from elevation without independent randomness;
+- integrated strategic physical-field result;
+- targeted suite `32/32`;
+- full local Release suite `539/539`;
+- compiler warnings/errors `0/0`.
+
+Risk effect:
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+The first terrain semantics are now executable with integer/fixed-point authoritative state and a deterministic regression vector. M3.2-D must consume the post-push Ubuntu/Windows/macOS regression before any accumulated maturity promotion.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+The physical-field substrate now has a real terrain consumer and generation-result integration. The risk remains open because later climate, cross-scale refinement, hydrology and other world layers still depend on this architecture.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+M3.2-C remains O(strategic cells) and introduces no global tactical field residency.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+No tactical materialization or new tactical density is introduced by the elevation/relief/land-water foundation.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+M3.2-C implements only elevation, derived relief and initial land/water. Climate, moisture, hydrology, biomes, resources, Civilization runtime, Economy runtime, networking and presentation remain outside this checkpoint.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M3.2-D accumulated M3.2 validation and close**

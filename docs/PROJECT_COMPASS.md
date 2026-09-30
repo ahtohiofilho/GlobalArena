@@ -700,7 +700,7 @@ Current M3 maturity after closed subcheckpoints:
 |---|---:|---|---:|---:|
 | World generation identity, seed/versioning & deterministic pipeline contracts | 10 | Validada | 0.85 | 8.50 |
 | Strategic geometry bridge & macro physical-field substrate | 12 | Funcional isoladamente | 0.50 | 6.00 |
-| Elevation, relief & land/water foundation | 14 | Inexistente | 0.00 | 0.00 |
+| Elevation, relief & land/water foundation | 14 | Funcional isoladamente | 0.50 | 7.00 |
 | Temperature, climate, moisture & water availability | 14 | Inexistente | 0.00 | 0.00 |
 | Cross-scale boundary conditions, tactical refinement & strategic aggregation | 14 | Inexistente | 0.00 | 0.00 |
 | Hydrology | 12 | Inexistente | 0.00 | 0.00 |
@@ -708,7 +708,7 @@ Current M3 maturity after closed subcheckpoints:
 | Resources | 7 | Inexistente | 0.00 | 0.00 |
 | Habitability & civilization-placement suitability | 5 | Inexistente | 0.00 | 0.00 |
 | Determinism, cross-platform validation, performance baseline & M3 exit | 4 | Inexistente | 0.00 | 0.00 |
-| **TOTAL** | **100** |  |  | **14.50** |
+| **TOTAL** | **100** |  |  | **21.50** |
 
 M3.1-A is a governance/design freeze. It does not promote implementation maturity and therefore awards no GPP.
 
@@ -759,6 +759,8 @@ The initial macro scalar substrate uses signed `Int64` fixed-point raw values wi
 No tactical global materialization is introduced by M3.2-A.
 
 No GPP is awarded by the design freeze. M3.2-B subsequently materializes the executable `StrategicSurfaceGraph`, immutable `StrategicScalarField` and generation-result integration. This promotes `Strategic geometry bridge & macro physical-field substrate` to `Funcional isoladamente — fator 0.50`, adding `6.00 GPP`.
+
+M3.2-C adds deterministic fixed-point strategic elevation, derived relief, explicit sea-level classification and integrated land/water fields. This promotes `Elevation, relief & land/water foundation` to `Funcional isoladamente — fator 0.50`, adding `7.00 GPP`. Accumulated and cross-platform validation remain the M3.2-D gate.
 # 20. Status atual
 
 Milestone:
@@ -771,7 +773,7 @@ Etapa atual:
 
 Subetapa atual:
 
-**M3.2-C — Deterministic Elevation, Relief & Land/Water Foundation**
+**M3.2-D — Accumulated M3.2 Validation & Close**
 
 M3 entry audit:
 
@@ -815,11 +817,11 @@ Baseline V1:
 
 Progresso oficial:
 
-**16,1%**
+**16,8%**
 
 GPP conquistados:
 
-**161,00 / 1000**
+**168,00 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -831,7 +833,7 @@ Topologia planetária / Goldberg:
 
 World Generation / biomas / recursos:
 
-**14,50 / 100 GPP — 14,5%**
+**21,50 / 100 GPP — 21,5%**
 
 Scope Confidence:
 
@@ -847,11 +849,11 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M3.2 deterministic elevation, relief and land/water foundation**
+**M3.2 accumulated deterministic and cross-platform physical-field validation**
 
 Última revisão de baseline:
 
-**2026-09-29**
+**2026-09-30**
 
 ---
 # 21. Política de atualização

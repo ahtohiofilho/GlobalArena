@@ -1739,8 +1739,8 @@ M3 contract:
 
 - M3.2-A — Strategic Geometry & Physical-Field Contract Freeze — concluded;
 - M3.2-B — Executable Strategic Surface Graph & Scalar Field Substrate — concluded;
-- M3.2-C — Deterministic Elevation, Relief & Land/Water Foundation — current;
-- M3.2-D — Accumulated M3.2 Validation & Close — planned.
+- M3.2-C — Deterministic Elevation, Relief & Land/Water Foundation — concluded;
+- M3.2-D — Accumulated M3.2 Validation & Close — current.
 
 Stage envelope:
 
@@ -2041,7 +2041,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M3.2-C — Deterministic Elevation, Relief & Land/Water Foundation**
+**M3.2-D — Accumulated M3.2 Validation & Close**
 
 M3 Entry Audit:
 
@@ -2069,11 +2069,11 @@ M3.1-D — Accumulated M3.1 Validation & Close:
 
 Official Progress:
 
-**16.1%**
+**16.8%**
 
 GPP Earned:
 
-**161.00 / 1000**
+**168.00 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -2085,7 +2085,7 @@ Planet Topology / Goldberg:
 
 World Generation / biomes / resources:
 
-**14.50 / 100 GPP — 14.5%**
+**21.50 / 100 GPP — 21.5%**
 
 Scope Confidence:
 
@@ -2105,7 +2105,7 @@ Critical Path:
 
 Last Baseline Review:
 
-**2026-09-29**
+**2026-09-30**
 
 #### M2.5.2-C materializer close
 

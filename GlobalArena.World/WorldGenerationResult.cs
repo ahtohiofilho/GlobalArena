@@ -8,6 +8,8 @@ public sealed class WorldGenerationResult
 
     public StrategicSurfaceGraph StrategicSurfaceGraph { get; }
 
+    public StrategicPhysicalFieldSet StrategicPhysicalFields { get; }
+
     public WorldGenerationResult(
         WorldGenerationRequest request,
         StrategicTopology strategicTopology)
@@ -28,5 +30,9 @@ public sealed class WorldGenerationResult
         StrategicSurfaceGraph =
             new StrategicSurfaceGraph(
                 strategicTopology);
+        StrategicPhysicalFields =
+            StrategicPhysicalFieldSet.Generate(
+                request,
+                StrategicSurfaceGraph);
     }
 }

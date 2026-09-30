@@ -12379,3 +12379,75 @@ Progress effect:
 Next checkpoint:
 
 **M3.2-C — Deterministic Elevation, Relief & Land/Water Foundation**
+---
+
+## 2026-09-30 — M3.2-C deterministic elevation, relief and land/water foundation close
+
+Checkpoint closed:
+
+**M3.2-C — Deterministic Elevation, Relief & Land/Water Foundation**
+
+Accepted QA evidence:
+
+`GlobalArena-Evidence-M3.2-C-R1-DETERMINISTIC-ELEVATION-RELIEF-LAND-WATER-20260930-084020.zip`
+
+Evidence SHA-256:
+
+`1b47cba2b3a2fabecc6991fe6babfbb3b4f52c72f776147ecf360d4e788931cc`
+
+Accepted QA:
+
+- manifest: `35/35` verified;
+- baseline HEAD/origin-main: `0af0069d3e8ca75caad5955f73b86e49f1ce8238`;
+- accepted implementation/test files: `11`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- diff diagnostics: `0/0`;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- targeted M3.2-C tests: `32/32`;
+- full local regression: `539/539`;
+- QA commit/push: none.
+
+Executable capability now includes:
+
+- deterministic strategic macro elevation using only `WorldGenerationRandomDomain.Elevation`;
+- signed `Int64` fixed-point elevation values in `[-1_000_000, +1_000_000]`;
+- stable elevation regression vector for the initial generation version;
+- strategic relief derived as maximum absolute elevation delta over canonical neighboring cells;
+- explicit `StrategicSeaLevel`, with default raw value `0`;
+- deterministic land/water classification;
+- land when `elevation > sea level`;
+- water when `elevation <= sea level`;
+- no independent land/water random stream;
+- integrated `StrategicPhysicalFieldSet` in `WorldGenerationResult`;
+- no global tactical materialization;
+- no hydrology, biome or resource implementation in this checkpoint.
+
+Maturity effect:
+
+`Elevation, relief & land/water foundation`
+
+moves from:
+
+**Inexistente — factor 0.00 — 0.00 GPP**
+
+to:
+
+**Funcional isoladamente — factor 0.50 — 7.00 GPP**
+
+Reason:
+
+the frozen M3.2 physical-field direction now has executable deterministic elevation, derived relief, explicit sea-level classification, generation-result integration and focused/full regression evidence. Accumulated M3.2 and cross-platform validation remain the M3.2-D gate.
+
+Progress effect:
+
+- GPP delta: **+7.00**;
+- project GPP: **168.00 / 1000**;
+- Global Progress exact: **16.800%**;
+- Global Progress displayed: **16.8%**;
+- World Generation / biomas / recursos: **21.50 / 100 — 21.5%**.
+
+Next checkpoint:
+
+**M3.2-D — Accumulated M3.2 Validation & Close**
