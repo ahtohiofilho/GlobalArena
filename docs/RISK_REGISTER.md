@@ -2333,3 +2333,63 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M3.4-B executable strategic drainage and flow accumulation**
+---
+
+# 34. M3.4-B strategic hydrology risk review
+
+**Date:** 2026-09-30
+
+Accepted QA:
+
+`GlobalArena-Evidence-M3.4-B-R1-STRATEGIC-DRAINAGE-FLOW-ACCUMULATION-20260930-120955.zip`
+
+Result:
+
+**PASS_READY_FOR_M3_4_B_FORMAL_CLOSE**
+
+Validated:
+
+- strict lower-neighbor drainage;
+- canonical tie-breaking;
+- explicit water outlets and inland sinks;
+- structurally acyclic strategic drainage;
+- deterministic fixed-point flow accumulation;
+- runoff conservation at hydrologic terminals;
+- no Hydrology random stream;
+- targeted suite `20/20`;
+- full local Release suite `629/629`;
+- compiler warnings/errors `0/0`.
+
+Risk effect:
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+Hydrology introduces no random stream and uses canonical graph traversal plus deterministic integer arithmetic. Cross-platform validation after the source commit remains required before M3.4-C begins.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+Strategic hydrology is now executable and integrated into world generation. Derived biome composition remains the next M3.4 architecture gate.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+The hydrology representation is strategic-scale and does not introduce global tactical hydrology arrays. Existing M3.3 transient physical-incidence construction limits remain separate.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+M3.4-B operates only on strategic graph fields. Tactical hydrology remains outside this checkpoint.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+Depression filling/spill routing, erosion, sediment, tactical river geometry, resources, habitability, Civilization runtime, Economy runtime, networking and presentation remain outside M3.4-B.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M3.4-C executable derived strategic biome classification**

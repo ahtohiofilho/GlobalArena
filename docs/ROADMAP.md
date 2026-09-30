@@ -1775,8 +1775,8 @@ M3.3 closes after accumulated local, cross-platform and bounded-path performance
 ### M3.4 — Hydrology & Derived Biomes — 20 GPP
 
 - M3.4-A — Hydrology & Derived Biome Contract Freeze — concluded;
-- M3.4-B — Executable Strategic Drainage & Flow Accumulation — current;
-- M3.4-C — Executable Derived Strategic Biome Classification — planned;
+- M3.4-B — Executable Strategic Drainage & Flow Accumulation — concluded;
+- M3.4-C — Executable Derived Strategic Biome Classification — current;
 - M3.4-D — Accumulated M3.4 Validation & Close — planned.
 
 Stage envelope:
@@ -2067,7 +2067,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M3.4-B — Executable Strategic Drainage & Flow Accumulation**
+**M3.4-C — Executable Derived Strategic Biome Classification**
 
 M3 Entry Audit:
 
@@ -2095,11 +2095,11 @@ M3.1-D — Accumulated M3.1 Validation & Close:
 
 Official Progress:
 
-**20.1%**
+**20.7%**
 
 GPP Earned:
 
-**200.90 / 1000**
+**206.90 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -2111,7 +2111,7 @@ Planet Topology / Goldberg:
 
 World Generation / biomes / resources:
 
-**54.40 / 100 GPP — 54.4%**
+**60.40 / 100 GPP — 60.4%**
 
 Scope Confidence:
 
@@ -2127,7 +2127,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**M3.4-B executable strategic drainage and flow accumulation**
+**M3.4-C executable derived strategic biome classification**
 
 Last Baseline Review:
 

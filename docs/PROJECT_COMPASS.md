@@ -703,12 +703,12 @@ Current M3 maturity after closed subcheckpoints:
 | Elevation, relief & land/water foundation | 14 | Validada | 0.85 | 11.90 |
 | Temperature, climate, moisture & water availability | 14 | Validada | 0.85 | 11.90 |
 | Cross-scale boundary conditions, tactical refinement & strategic aggregation | 14 | Validada | 0.85 | 11.90 |
-| Hydrology | 12 | Inexistente | 0.00 | 0.00 |
+| Hydrology | 12 | Funcional isoladamente | 0.50 | 6.00 |
 | Derived biomes | 8 | Inexistente | 0.00 | 0.00 |
 | Resources | 7 | Inexistente | 0.00 | 0.00 |
 | Habitability & civilization-placement suitability | 5 | Inexistente | 0.00 | 0.00 |
 | Determinism, cross-platform validation, performance baseline & M3 exit | 4 | Inexistente | 0.00 | 0.00 |
-| **TOTAL** | **100** |  |  | **54.40** |
+| **TOTAL** | **100** |  |  | **60.40** |
 
 M3.1-A is a governance/design freeze. It does not promote implementation maturity and therefore awards no GPP.
 
@@ -839,6 +839,11 @@ Frozen direction:
 M3.4-A is a governance/design freeze and awards no GPP.
 
 Project progress therefore remains `200.90 / 1000 — 20.1%` until executable M3.4 evidence is accepted.
+M3.4-B adds executable strategic drainage and flow accumulation. Land nodes drain only to strictly lower adjacent elevation; lowest elevation wins and canonical node index breaks ties. Water cells are terminal outlets, local land minima are explicit inland sinks, and strict descent excludes cycles by construction.
+
+Local land runoff is the accepted strategic water-availability value. Water nodes add no new local runoff but receive upstream accumulation. Accumulation propagates in descending elevation order using deterministic integer arithmetic. The baseline consumes no Hydrology random stream.
+
+This promotes `Hydrology` to `Funcional isoladamente — fator 0.50`, adding `6.00 GPP`. `Derived biomes` remains at `0.00` until executable M3.4-C evidence is accepted.
 # 20. Status atual
 
 Milestone:
@@ -851,7 +856,7 @@ Etapa atual:
 
 Subetapa atual:
 
-**M3.4-B — Executable Strategic Drainage & Flow Accumulation**
+**M3.4-C — Executable Derived Strategic Biome Classification**
 
 M3 entry audit:
 
@@ -897,6 +902,10 @@ M3.4-A — Hydrology & Derived Biome Contract Freeze:
 
 **concluído em 2026-09-30**
 
+M3.4-B — Executable Strategic Drainage & Flow Accumulation:
+
+**concluído em 2026-09-30**
+
 M2 — Planet Topology:
 
 **concluído em 2026-09-29**
@@ -915,11 +924,11 @@ Baseline V1:
 
 Progresso oficial:
 
-**20,1%**
+**20,7%**
 
 GPP conquistados:
 
-**200,90 / 1000**
+**206,90 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -931,7 +940,7 @@ Topologia planetária / Goldberg:
 
 World Generation / biomas / recursos:
 
-**54,40 / 100 GPP — 54,4%**
+**60,40 / 100 GPP — 60,4%**
 
 Scope Confidence:
 
@@ -947,7 +956,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M3.4-B executable strategic drainage and flow accumulation**
+**M3.4-C executable derived strategic biome classification**
 
 Última revisão de baseline:
 

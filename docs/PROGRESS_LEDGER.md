@@ -12981,3 +12981,75 @@ Project remains:
 Next checkpoint:
 
 **M3.4-B — Executable Strategic Drainage & Flow Accumulation**
+---
+
+## 2026-09-30 — M3.4-B strategic drainage and flow accumulation formal close
+
+Checkpoint closed:
+
+**M3.4-B — Executable Strategic Drainage & Flow Accumulation**
+
+Accepted QA evidence:
+
+`GlobalArena-Evidence-M3.4-B-R1-STRATEGIC-DRAINAGE-FLOW-ACCUMULATION-20260930-120955.zip`
+
+Evidence SHA-256:
+
+`614d2f5168984b7d4d7ec2189f5f2318145046df6f4c0c59fff57c95ac12508c`
+
+Accepted QA:
+
+- manifest: `28/28` verified;
+- baseline HEAD/origin-main: `10d3b5cd907447c64b3c6dbd07432a68ffc147c0`;
+- accepted implementation/test files: `5`;
+- candidate hashes: `5/5`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- diff diagnostics: `0/0`;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- targeted M3.4-B tests: `20/20`;
+- full local regression: `629/629`;
+- QA commit/push: none.
+
+Executable capability now includes:
+
+- `StrategicHydrologyFieldSet` integrated into `WorldGenerationResult`;
+- deterministic strategic downstream selection;
+- strictly lower adjacent elevation requirement;
+- lowest elevation then canonical node-index tie-breaking;
+- explicit `WaterOutlet` and `InlandSink` node kinds;
+- structurally acyclic drainage graph;
+- land runoff derived from strategic water availability;
+- zero new local runoff on water nodes;
+- deterministic descending-elevation flow accumulation;
+- `Int128` accumulation intermediates with checked `Int64` fixed-point storage;
+- no Hydrology random stream consumed.
+
+Maturity effect:
+
+`Hydrology`
+
+moves from:
+
+**Inexistente — factor 0.00 — 0.00 GPP**
+
+to:
+
+**Funcional isoladamente — factor 0.50 — 6.00 GPP**
+
+`Derived biomes` remains:
+
+**Inexistente — factor 0.00 — 0.00 GPP**
+
+Progress effect:
+
+- GPP delta: **+6.00**;
+- project GPP: **206.90 / 1000**;
+- Global Progress exact: **20.690%**;
+- Global Progress displayed: **20.7%**;
+- World Generation / biomas / recursos: **60.40 / 100 — 60.4%**.
+
+Next checkpoint:
+
+**M3.4-C — Executable Derived Strategic Biome Classification**
