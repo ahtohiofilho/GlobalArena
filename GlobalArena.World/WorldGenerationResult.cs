@@ -6,6 +6,8 @@ public sealed class WorldGenerationResult
 
     public StrategicTopology StrategicTopology { get; }
 
+    public StrategicSurfaceGraph StrategicSurfaceGraph { get; }
+
     public WorldGenerationResult(
         WorldGenerationRequest request,
         StrategicTopology strategicTopology)
@@ -23,5 +25,8 @@ public sealed class WorldGenerationResult
 
         Request = request;
         StrategicTopology = strategicTopology;
+        StrategicSurfaceGraph =
+            new StrategicSurfaceGraph(
+                strategicTopology);
     }
 }

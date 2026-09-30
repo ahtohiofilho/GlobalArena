@@ -1738,8 +1738,8 @@ M3 contract:
 ### M3.2 — Strategic Geometry Bridge, Elevation & Land/Water — 26 GPP
 
 - M3.2-A — Strategic Geometry & Physical-Field Contract Freeze — concluded;
-- M3.2-B — Executable Strategic Surface Graph & Scalar Field Substrate — current;
-- M3.2-C — Deterministic Elevation, Relief & Land/Water Foundation — planned;
+- M3.2-B — Executable Strategic Surface Graph & Scalar Field Substrate — concluded;
+- M3.2-C — Deterministic Elevation, Relief & Land/Water Foundation — current;
 - M3.2-D — Accumulated M3.2 Validation & Close — planned.
 
 Stage envelope:
@@ -2041,7 +2041,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M3.2-B — Executable Strategic Surface Graph & Scalar Field Substrate**
+**M3.2-C — Deterministic Elevation, Relief & Land/Water Foundation**
 
 M3 Entry Audit:
 
@@ -2069,11 +2069,11 @@ M3.1-D — Accumulated M3.1 Validation & Close:
 
 Official Progress:
 
-**15.5%**
+**16.1%**
 
 GPP Earned:
 
-**155.00 / 1000**
+**161.00 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -2085,7 +2085,7 @@ Planet Topology / Goldberg:
 
 World Generation / biomes / resources:
 
-**8.50 / 100 GPP — 8.5%**
+**14.50 / 100 GPP — 14.5%**
 
 Scope Confidence:
 
@@ -2101,7 +2101,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**M3.2 strategic geometry bridge and macro physical-field substrate**
+**M3.2 deterministic elevation, relief and land/water foundation**
 
 Last Baseline Review:
 

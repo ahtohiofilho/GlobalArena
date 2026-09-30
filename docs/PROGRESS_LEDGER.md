@@ -12309,3 +12309,73 @@ M3.2-A is closed.
 Next checkpoint:
 
 **M3.2-B — Executable Strategic Surface Graph & Scalar Field Substrate**
+---
+
+## 2026-09-29 — M3.2-B executable strategic surface graph and scalar substrate close
+
+Checkpoint closed:
+
+**M3.2-B — Executable Strategic Surface Graph & Scalar Field Substrate**
+
+Accepted QA evidence:
+
+`GlobalArena-Evidence-M3.2-B-R1-EXECUTABLE-SURFACE-GRAPH-SCALAR-SUBSTRATE-20260929-225811.zip`
+
+Evidence SHA-256:
+
+`594420b7979ff08dde9ea1bd33b5071316f71d722b3920233fb9d67a328c7482`
+
+Accepted QA:
+
+- manifest: `29/29` verified;
+- baseline HEAD/origin-main: `df475962a321f32f65ebf7a40a42d2c45c96016d`;
+- accepted implementation/test files: `5`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- diff diagnostics: `0/0`;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- targeted M3.2-B tests: `32/32`;
+- full local regression: `507/507`;
+- QA commit/push: none.
+
+Executable capability now includes:
+
+- immutable `StrategicSurfaceGraph`;
+- one canonical zero-based dense node index per authoritative `StrategicCellId`;
+- canonical sorted neighbor indexes derived only from M2 strategic adjacency;
+- explicit reverse mapping from node index to `StrategicCellId`;
+- immutable `StrategicScalarField`;
+- signed `Int64` raw scalar storage;
+- fixed denominator `1_000_000`;
+- defensive copy and read-only scalar snapshots;
+- integration of the strategic surface graph into `WorldGenerationResult`;
+- no global tactical physical-field materialization.
+
+Maturity effect:
+
+`Strategic geometry bridge & macro physical-field substrate`
+
+moves from:
+
+**Inexistente — factor 0.00 — 0.00 GPP**
+
+to:
+
+**Funcional isoladamente — factor 0.50 — 6.00 GPP**
+
+Reason:
+
+the frozen ADR-024 contracts now have executable production types, generation-result integration and focused/full regression evidence. Cross-platform and accumulated M3.2 validation remain later gates.
+
+Progress effect:
+
+- GPP delta: **+6.00**;
+- project GPP: **161.00 / 1000**;
+- Global Progress exact: **16.100%**;
+- Global Progress displayed: **16.1%**;
+- World Generation / biomas / recursos: **14.50 / 100 — 14.5%**.
+
+Next checkpoint:
+
+**M3.2-C — Deterministic Elevation, Relief & Land/Water Foundation**

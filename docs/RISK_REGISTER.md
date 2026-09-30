@@ -1792,3 +1792,62 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M3.2-B executable strategic surface graph and fixed-point scalar substrate**
+---
+
+# 24. M3.2-B executable physical-field substrate risk review
+
+**Date:** 2026-09-29
+
+Evidence:
+
+`GlobalArena-Evidence-M3.2-B-R1-EXECUTABLE-SURFACE-GRAPH-SCALAR-SUBSTRATE-20260929-225811.zip`
+
+Result:
+
+**PASS_READY_FOR_M3_2_B_FORMAL_CLOSE**
+
+Validated:
+
+- canonical dense strategic surface indexing;
+- canonical sorted strategic-neighbor indexes;
+- immutable `Int64` fixed-point scalar substrate;
+- denominator `1_000_000`;
+- `WorldGenerationResult` integration;
+- no global tactical materialization;
+- targeted suite `32/32`;
+- full local Release suite `507/507`;
+- compiler warnings/errors `0/0`.
+
+Risk effect:
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+The first physical-field substrate now avoids ambient randomness and platform-sensitive floating-point storage in its authoritative baseline. M3.2-C must still prove deterministic elevation/relief/land-water semantics, and later accumulated/cross-platform gates remain required.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+The previously frozen physical-field bridge is now executable and integrated into generation results, materially reducing ambiguity. The risk remains open because real physical-process consumers and later cross-scale refinement are not yet implemented.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+The new macro substrate is O(strategic cells) and does not require global tactical residency. Later tactical physical fields must preserve selective materialization.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+M3.2-B adds no new tactical density and therefore does not expand the accepted physical hierarchy envelope.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+M3.2-B stays inside the frozen strategic geometry and macro physical-field substrate boundary and adds no climate, hydrology, biome, Economy, Civilization runtime, networking or presentation responsibility.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M3.2-C deterministic elevation, relief and land/water foundation**
