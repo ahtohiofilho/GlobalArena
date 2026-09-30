@@ -2393,3 +2393,62 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M3.4-C executable derived strategic biome classification**
+---
+
+# 35. M3.4-C derived biome risk review
+
+**Date:** 2026-09-30
+
+Accepted QA:
+
+`GlobalArena-Evidence-M3.4-C-R1-DERIVED-STRATEGIC-BIOME-CLASSIFICATION-20260930-130245.zip`
+
+Result:
+
+**PASS_READY_FOR_M3_4_C_FORMAL_CLOSE**
+
+Validated:
+
+- finite derived strategic biome taxonomy;
+- explicit versioned fixed-point thresholds;
+- deterministic precedence;
+- water classification precedence;
+- hydrology-composed wetland classification;
+- no Biomes random stream;
+- targeted suite `24/24`;
+- full local Release suite `653/653`;
+- compiler warnings/errors `0/0`.
+
+Risk effect:
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+Biome classification consumes accepted deterministic fields only and introduces no random stream. Cross-platform validation after the source commit remains required before accumulated M3.4 close.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+M3.4 now has executable hydrology and derived biome composition. Accumulated validation is the remaining stage gate.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+Biome storage is strategic-scale and introduces no global tactical biome residency.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+M3.4-C operates on strategic fields only. Tactical ecological detail remains outside this checkpoint.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+Resources, habitability, civilization placement, tactical ecological simulation, dynamic weather, Economy runtime, networking and presentation remain outside M3.4-C.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M3.4-D accumulated M3.4 validation and close**

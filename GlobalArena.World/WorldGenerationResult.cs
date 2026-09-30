@@ -14,6 +14,8 @@ public sealed class WorldGenerationResult
 
     public StrategicHydrologyFieldSet StrategicHydrologyFields { get; }
 
+    public StrategicBiomeMap StrategicBiomes { get; }
+
     public WorldGenerationResult(
         WorldGenerationRequest request,
         StrategicTopology strategicTopology)
@@ -47,5 +49,10 @@ public sealed class WorldGenerationResult
             StrategicHydrologyFieldGenerator.Generate(
                 StrategicPhysicalFields,
                 StrategicClimateFields);
+        StrategicBiomes =
+            StrategicBiomeClassifier.Generate(
+                StrategicPhysicalFields,
+                StrategicClimateFields,
+                StrategicHydrologyFields);
     }
 }

@@ -704,11 +704,11 @@ Current M3 maturity after closed subcheckpoints:
 | Temperature, climate, moisture & water availability | 14 | Validada | 0.85 | 11.90 |
 | Cross-scale boundary conditions, tactical refinement & strategic aggregation | 14 | Validada | 0.85 | 11.90 |
 | Hydrology | 12 | Funcional isoladamente | 0.50 | 6.00 |
-| Derived biomes | 8 | Inexistente | 0.00 | 0.00 |
+| Derived biomes | 8 | Funcional isoladamente | 0.50 | 4.00 |
 | Resources | 7 | Inexistente | 0.00 | 0.00 |
 | Habitability & civilization-placement suitability | 5 | Inexistente | 0.00 | 0.00 |
 | Determinism, cross-platform validation, performance baseline & M3 exit | 4 | Inexistente | 0.00 | 0.00 |
-| **TOTAL** | **100** |  |  | **60.40** |
+| **TOTAL** | **100** |  |  | **64.40** |
 
 M3.1-A is a governance/design freeze. It does not promote implementation maturity and therefore awards no GPP.
 
@@ -844,6 +844,11 @@ M3.4-B adds executable strategic drainage and flow accumulation. Land nodes drai
 Local land runoff is the accepted strategic water-availability value. Water nodes add no new local runoff but receive upstream accumulation. Accumulation propagates in descending elevation order using deterministic integer arithmetic. The baseline consumes no Hydrology random stream.
 
 This promotes `Hydrology` to `Funcional isoladamente — fator 0.50`, adding `6.00 GPP`. `Derived biomes` remains at `0.00` until executable M3.4-C evidence is accepted.
+M3.4-C adds deterministic derived strategic biome classification over the accepted physical, climate and hydrology fields. The executable taxonomy is finite and table-driven with fixed-point thresholds and explicit precedence.
+
+Water classification has precedence. Terrestrial ordering is `PolarIce`, `Tundra`, `Highland`, `Wetland`, `Desert`, `Rainforest`, `Forest`, then `Grassland`. Wetland classification composes accepted hydrology through `InlandSink`, water availability and flow accumulation. No Biomes random stream is consumed.
+
+This promotes `Derived biomes` to `Funcional isoladamente — fator 0.50`, adding `4.00 GPP`.
 # 20. Status atual
 
 Milestone:
@@ -856,7 +861,7 @@ Etapa atual:
 
 Subetapa atual:
 
-**M3.4-C — Executable Derived Strategic Biome Classification**
+**M3.4-D — Accumulated M3.4 Validation & Close**
 
 M3 entry audit:
 
@@ -906,6 +911,10 @@ M3.4-B — Executable Strategic Drainage & Flow Accumulation:
 
 **concluído em 2026-09-30**
 
+M3.4-C — Executable Derived Strategic Biome Classification:
+
+**concluído em 2026-09-30**
+
 M2 — Planet Topology:
 
 **concluído em 2026-09-29**
@@ -924,11 +933,11 @@ Baseline V1:
 
 Progresso oficial:
 
-**20,7%**
+**21,1%**
 
 GPP conquistados:
 
-**206,90 / 1000**
+**210,90 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -940,7 +949,7 @@ Topologia planetária / Goldberg:
 
 World Generation / biomas / recursos:
 
-**60,40 / 100 GPP — 60,4%**
+**64,40 / 100 GPP — 64,4%**
 
 Scope Confidence:
 
@@ -956,7 +965,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M3.4-C executable derived strategic biome classification**
+**M3.4-D accumulated hydrology and derived-biome validation**
 
 Última revisão de baseline:
 

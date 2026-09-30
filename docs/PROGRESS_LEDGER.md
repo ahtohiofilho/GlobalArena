@@ -13053,3 +13053,70 @@ Progress effect:
 Next checkpoint:
 
 **M3.4-C — Executable Derived Strategic Biome Classification**
+---
+
+## 2026-09-30 — M3.4-C derived strategic biome classification formal close
+
+Checkpoint closed:
+
+**M3.4-C — Executable Derived Strategic Biome Classification**
+
+Accepted QA evidence:
+
+`GlobalArena-Evidence-M3.4-C-R1-DERIVED-STRATEGIC-BIOME-CLASSIFICATION-20260930-130245.zip`
+
+Evidence SHA-256:
+
+`4ecfcd7d4f62ad7b6eabd9cc215845e1bd6d616b9563e9346423b27cecf3e7f7`
+
+Accepted QA:
+
+- manifest: `28/28` verified;
+- baseline HEAD/origin-main: `77c96fe647764f66770972c3d14ed0e8e3818372`;
+- candidate hashes: `5/5`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- targeted M3.4-C tests: `24/24`;
+- full local regression: `653/653`;
+- QA commit/push: none.
+
+Executable capability now includes:
+
+- `StrategicBiomeMap` integrated into `WorldGenerationResult`;
+- finite nine-kind strategic biome taxonomy;
+- explicit fixed-point thresholds;
+- deterministic precedence;
+- water-biome precedence;
+- hydrology-composed wetland classification using `InlandSink`, water availability and flow accumulation;
+- no Biomes random stream consumed;
+- accepted physical/climate/hydrology source fields remain immutable inputs.
+
+Maturity effect:
+
+`Derived biomes`
+
+moves from:
+
+**Inexistente — factor 0.00 — 0.00 GPP**
+
+to:
+
+**Funcional isoladamente — factor 0.50 — 4.00 GPP**
+
+`Hydrology` remains:
+
+**Funcional isoladamente — factor 0.50 — 6.00 GPP**
+
+Progress effect:
+
+- GPP delta: **+4.00**;
+- project GPP: **210.90 / 1000**;
+- Global Progress exact: **21.090%**;
+- Global Progress displayed: **21.1%**;
+- World Generation / biomas / recursos: **64.40 / 100 — 64.4%**.
+
+Next checkpoint:
+
+**M3.4-D — Accumulated M3.4 Validation & Close**
