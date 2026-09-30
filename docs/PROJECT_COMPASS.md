@@ -765,6 +765,36 @@ M3.2-C adds deterministic fixed-point strategic elevation, derived relief, expli
 M3.2-D closes accumulated validation without production-code mutation. The accepted gate revalidates the `64/64` M3.2-specific slice and the `539/539` full Release suite locally, and consumes cross-platform run `36710766790`, where the same accepted tree passed `539/539` on Windows, macOS and Ubuntu with zero compiler warnings/errors and artifacts uploaded on all three platforms.
 
 Both M3.2 capabilities are therefore promoted to `Validada — fator 0.85`. M3.2 closes at `22.10 / 26 GPP — 85.0%`. The remaining `3.90 GPP` is not awarded merely for stage completion; factor `1.00` remains reserved for V1 Definition of Done evidence.
+### 15.5 M3.3 climate and cross-scale physical decomposition
+
+M3.3 owns the remaining pre-hydrology climate and cross-scale physical foundation:
+
+- `Temperature, climate, moisture & water availability` — `14 GPP`;
+- `Cross-scale boundary conditions, tactical refinement & strategic aggregation` — `14 GPP`.
+
+Operational decomposition:
+
+- M3.3-A — Climate & Cross-Scale Physical Contract Freeze;
+- M3.3-B — Executable Strategic Temperature, Moisture & Water Availability;
+- M3.3-C — Bounded Tactical Refinement & Strategic Aggregation;
+- M3.3-D — Accumulated M3.3 Validation & Close.
+
+Frozen direction:
+
+- strategic temperature uses only the `Temperature` world-generation random domain;
+- strategic moisture uses only the `Moisture` world-generation random domain;
+- water availability is derived and receives no independent random domain;
+- physical tactical identity reuses M2 `PhysicalTacticalTileId` / physical hierarchy contracts;
+- logical `TacticalCellId` is not promoted into physical high-resolution identity;
+- tactical physical fields are bounded/on-demand rather than globally resident by default;
+- stochastic tactical residuals belong only to `TacticalRefinement` and must be order-independent by stable scope identity;
+- strategic boundary conditions are explicit;
+- strategic aggregation is deterministic and canonical;
+- hydrology, biomes and resources remain later stages.
+
+M3.3-A is a governance/design freeze and awards no GPP.
+
+Project progress therefore remains `177.10 / 1000 — 17.7%` until executable M3.3 evidence is accepted.
 # 20. Status atual
 
 Milestone:
@@ -777,7 +807,7 @@ Etapa atual:
 
 Subetapa atual:
 
-**M3.3 entry/design audit — climate inputs and cross-scale boundary contracts**
+**M3.3-B — Executable Strategic Temperature, Moisture & Water Availability**
 
 M3 entry audit:
 
@@ -861,7 +891,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M3.3 climate inputs and cross-scale physical refinement contract design**
+**M3.3-B executable strategic temperature, moisture and water availability**
 
 Última revisão de baseline:
 

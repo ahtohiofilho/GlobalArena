@@ -12537,3 +12537,109 @@ Next stage:
 Next gate:
 
 **M3.3 entry/design audit — climate inputs, moisture/water availability and cross-scale boundary contracts**
+---
+
+## 2026-09-30 — M3.3-A climate and cross-scale physical contract freeze
+
+Stage:
+
+**M3.3 — Climate Inputs & Cross-Scale Physical Refinement**
+
+Subcheckpoint:
+
+**M3.3-A — Climate & Cross-Scale Physical Contract Freeze**
+
+Baseline:
+
+`9608fb2f514c1d6e4ab3541c76a1dbea78f2cba9`
+
+Accepted predecessor:
+
+- M3.2 formally closed at `22.10 / 26 GPP — 85.0%`;
+- project progress `177.10 / 1000 — 17.7%`;
+- World Generation `30.60 / 100 — 30.6%`.
+
+Design freeze:
+
+- M3.3 owns two 14 GPP capabilities;
+- strategic climate values continue on the `StrategicScalarField` fixed-point substrate;
+- temperature owns only `WorldGenerationRandomDomain.Temperature`;
+- moisture owns only `WorldGenerationRandomDomain.Moisture`;
+- water availability is derived and has no independent random domain;
+- M2 physical hierarchy remains authoritative for physical tactical identity;
+- `TacticalRegion` / `TacticalCellId` remain logical reference contracts and are not redefined as physical field identity;
+- tactical physical materialization is bounded/on-demand by default;
+- no persistent full-planet tactical scalar array is accepted by this design;
+- tactical stochastic residuals belong to `WorldGenerationRandomDomain.TacticalRefinement`;
+- tactical stochastic results must be independent of patch request order;
+- boundary conditions are explicit and canonical;
+- strategic aggregation is deterministic and canonical;
+- hydrology, biomes and resources remain outside M3.3-A.
+
+GPP effect:
+
+**0.00**
+
+Project progress remains:
+
+**177.10 / 1000 — 17.7%**
+
+Next checkpoint after formal close:
+
+**M3.3-B — Executable Strategic Temperature, Moisture & Water Availability**
+---
+
+## 2026-09-30 — M3.3-A formal close
+
+Decision gate:
+
+**M3.3-A — Climate & Cross-Scale Physical Contract Freeze**
+
+Accepted QA evidence:
+
+`GlobalArena-Evidence-M3.3-A-R2-CLIMATE-CROSS-SCALE-CONTRACT-FREEZE-20260930-093817.zip`
+
+Evidence SHA-256:
+
+`d7589441b2af8bf8b1dc3e06db01303bcc2d859a29506e8ebf83b87e0fce9c2a`
+
+Accepted validation:
+
+- evidence manifest: `26/26` verified;
+- baseline HEAD/origin-main: `9608fb2f514c1d6e4ab3541c76a1dbea78f2cba9`;
+- staged candidate files: `6`;
+- residual PowerShell placeholders: `0`;
+- residual NUL characters: `0`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- diff diagnostics: `0/0`;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- full regression: `539/539`;
+- commit/push during QA: none.
+
+Formal decision:
+
+- ADR-025 accepted;
+- strategic temperature owns only `WorldGenerationRandomDomain.Temperature`;
+- strategic moisture owns only `WorldGenerationRandomDomain.Moisture`;
+- water availability remains derived with no independent random domain;
+- M2 physical hierarchy remains authoritative for physical tactical identity;
+- tactical physical fields remain bounded/on-demand by default;
+- stochastic tactical refinement belongs to `TacticalRefinement` and must be order-independent by stable scope identity;
+- boundary conditions and strategic aggregation remain explicit and deterministic;
+- M3.3-A awards no GPP.
+
+Project progress remains:
+
+**177.10 / 1000 — 17.7%**
+
+World Generation remains:
+
+**30.60 / 100 — 30.6%**
+
+M3.3-A is closed.
+
+Next checkpoint:
+
+**M3.3-B — Executable Strategic Temperature, Moisture & Water Availability**

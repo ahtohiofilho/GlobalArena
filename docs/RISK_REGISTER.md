@@ -1979,3 +1979,83 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M3.3 entry/design audit — climate inputs and cross-scale physical refinement**
+---
+
+# 27. M3.3-A climate and cross-scale physical design risk review
+
+**Date:** 2026-09-30
+
+Baseline:
+
+`9608fb2f514c1d6e4ab3541c76a1dbea78f2cba9`
+
+Design result:
+
+**M3.3-A candidate frozen for validation**
+
+Risk effect:
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+M3.3 explicitly assigns temperature, moisture and tactical-refinement randomness to separate existing domains. Tactical refinement additionally requires scope-keyed/order-independent deterministic derivation before stochastic local detail can be accepted.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+M3.3 reuses the M2 physical hierarchy instead of creating a parallel tactical topology, and keeps strategic aggregates as the persistent macro boundary. The risk remains open until the executable cross-scale contracts prove this separation.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+The design rejects persistent global tactical physical-field residency by default. M3.3-C must provide bounded materialization evidence and must not silently turn a globally materialized M2 reference map into a permanent generated-world storage requirement.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+M3.3-C must demonstrate that physical refinement scope and aggregation do not make recurring strategic work proportional to global tactical resolution.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+Hydrology, biomes, resources, Civilization runtime, Economy runtime, networking and presentation remain outside M3.3-A.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M3.3-B executable strategic temperature, moisture and water availability**
+---
+
+# 28. M3.3-A formal close risk confirmation
+
+**Date:** 2026-09-30
+
+Accepted QA:
+
+`GlobalArena-Evidence-M3.3-A-R2-CLIMATE-CROSS-SCALE-CONTRACT-FREEZE-20260930-093817.zip`
+
+Result:
+
+**M3.3-A CLOSED**
+
+Risk posture is unchanged by this design-only close:
+
+- `RISK-004 — Determinism failure`: `WATCHING / HIGH`;
+- `RISK-008 — Architecture underengineering`: `OPEN / CRITICAL`;
+- `RISK-012 — Memory footprint`: `OPEN / CRITICAL`;
+- `RISK-002 — Tactical resolution scalability`: `OPEN / CRITICAL`;
+- `RISK-006 — Scope expansion`: `MITIGATING / CRITICAL`.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M3.3-B executable strategic temperature, moisture and water availability**

@@ -4784,6 +4784,146 @@ M3.2-A is a design/governance freeze and awards no GPP.
 
 Implementation maturity is earned only by executable later checkpoints.
 
+
+## 14.3 M3.3 climate inputs and cross-scale physical refinement
+
+M3.3 extends the validated M3.2 strategic physical-field substrate without replacing its topology, fixed-point representation or deterministic world-generation boundary.
+
+M3.3 owns two capabilities:
+
+1. `Temperature, climate, moisture & water availability` — `14 GPP`;
+2. `Cross-scale boundary conditions, tactical refinement & strategic aggregation` — `14 GPP`.
+
+### Strategic climate-field direction
+
+Strategic-scale climate inputs remain aligned one-to-one with `StrategicSurfaceGraph` and use the existing immutable `StrategicScalarField` fixed-point substrate unless a later ADR explicitly justifies a different authoritative representation.
+
+The initial executable M3.3 strategic climate aggregate will be represented by:
+
+`StrategicClimateFieldSet`
+
+with strategic fields for:
+
+- temperature;
+- moisture;
+- water availability.
+
+Random-domain ownership is frozen as follows:
+
+- strategic temperature consumes only `WorldGenerationRandomDomain.Temperature`;
+- strategic moisture consumes only `WorldGenerationRandomDomain.Moisture`;
+- water availability has no independent random domain and is derived from accepted physical inputs;
+- hydrology remains outside M3.3 and must not be smuggled into water-availability generation.
+
+M3.3 does not freeze a qualitative climate-class enum.
+
+Physical scalar fields remain primary. Later derived classifications must not become the cause of temperature, moisture or water availability.
+
+No latitude or insolation value may become authoritative merely because a rendering embedding can provide floating-point coordinates. If latitude/insolation becomes required by a later executable climate algorithm, it first requires an explicit deterministic physical-coordinate or insolation contract.
+
+### Cross-scale physical identity
+
+M3.3 must reuse the physical hierarchy already owned by M2.
+
+The M2 contracts remain authoritative for:
+
+- `GoldbergScaledRefinement`;
+- `PhysicalTacticalTileId`;
+- `PhysicalTacticalTileIncidence`;
+- `PhysicalTacticalIncidenceMap`;
+- supported coarse-to-fine physical hierarchy families and scales.
+
+`TacticalRegion` and `TacticalCellId` remain the logical/reference-region contracts established by M2.2. They must not be reinterpreted as the authoritative physical high-resolution field identity.
+
+M3.3 must not create a third tactical topology or derive cross-region physical identity from local ordinals.
+
+### Bounded tactical field materialization
+
+The persistent generated-world baseline remains strategic.
+
+Tactical physical fields are materialized only where a generation stage requires local detail.
+
+M3.3 does not require a full-planet tactical scalar array to remain resident.
+
+A future tactical physical-field patch must:
+
+- be bounded to an explicitly requested physical refinement scope;
+- use canonical M2 physical identities;
+- expose deterministic canonical ordering;
+- preserve shared edge/vertex physical identity rather than duplicating boundary state;
+- avoid dependence on request order, thread scheduling or global mutable caches.
+
+If the current M2 public API can only provide a global physical incidence map for a required operation, M3.3 must not silently make that global residency a permanent generated-world contract. A bounded adapter, bounded projection or later explicit memory decision is required before persistent tactical fields are accepted.
+
+### Boundary conditions
+
+Strategic physical fields provide explicit boundary conditions to any tactical refinement.
+
+Boundary input must be derived from:
+
+- the target strategic cell;
+- canonical adjacent strategic cells where required;
+- already accepted strategic physical fields;
+- the requested physical refinement contract.
+
+Boundary-condition ordering must be canonical.
+
+A tactical patch must not infer boundary values from presentation geometry or neighboring patch creation order.
+
+### Tactical refinement randomness
+
+Any stochastic local variation introduced only by tactical refinement belongs to:
+
+`WorldGenerationRandomDomain.TacticalRefinement`.
+
+Patch generation order must not alter authoritative output.
+
+Therefore, an executable tactical-refinement random contract must be keyed or deterministically derived from stable generation identity plus stable physical scope identity before stochastic patch refinement is accepted.
+
+A single ambient sequential stream whose result changes when patches are requested in another order is not acceptable.
+
+### Strategic aggregation
+
+Tactical detail may be aggregated back into strategic values.
+
+Strategic aggregation must:
+
+- consume canonical physical identities in canonical order;
+- use deterministic arithmetic;
+- make weighting explicit;
+- reject silent dependence on hash/dictionary enumeration;
+- return strategic-scale outputs without requiring recurring strategic systems to scan the tactical mesh.
+
+Aggregation does not mutate M2 topology.
+
+### M3.3 scope boundary
+
+M3.3 does not yet:
+
+- implement hydrology;
+- derive biomes;
+- generate resources;
+- create Civilization runtime state;
+- create Economy runtime inventories;
+- mutate `WorldState`;
+- introduce networking;
+- introduce Unity or presentation dependencies;
+- freeze final V1 tactical density;
+- declare universal Goldberg physical refinement beyond M2 accepted contracts.
+
+### M3.3 checkpoint decomposition
+
+M3.3 is decomposed into:
+
+- **M3.3-A — Climate & Cross-Scale Physical Contract Freeze**;
+- **M3.3-B — Executable Strategic Temperature, Moisture & Water Availability**;
+- **M3.3-C — Bounded Tactical Refinement & Strategic Aggregation**;
+- **M3.3-D — Accumulated M3.3 Validation & Close**.
+
+M3.3-A is a design/governance freeze and awards no GPP.
+
+Implementation maturity is earned only by executable later checkpoints.
+
 ---
 # 15. Seeds e geração reproduzível
 

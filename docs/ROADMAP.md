@@ -1755,11 +1755,20 @@ M3.2 closes after accumulated local and cross-platform validation at `22.10 / 26
 
 ### M3.3 — Climate Inputs & Cross-Scale Physical Refinement — 28 GPP
 
-- temperature / climate;
-- moisture / water availability;
-- strategic boundary conditions;
-- tactical physical refinement where required;
-- strategic aggregation contract.
+- M3.3-A — Climate & Cross-Scale Physical Contract Freeze — concluded;
+- M3.3-B — Executable Strategic Temperature, Moisture & Water Availability — current;
+- M3.3-C — Bounded Tactical Refinement & Strategic Aggregation — planned;
+- M3.3-D — Accumulated M3.3 Validation & Close — planned.
+
+Stage envelope:
+
+- strategic temperature / climate inputs;
+- strategic moisture / water availability;
+- explicit strategic boundary conditions;
+- bounded tactical physical refinement using M2 physical identity;
+- deterministic strategic aggregation.
+
+M3.3-A freezes ownership, deterministic random domains, physical tactical identity, bounded materialization and aggregation boundaries only and awards no GPP.
 
 ### M3.4 — Hydrology & Derived Biomes — 20 GPP
 
@@ -2043,7 +2052,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M3.3 entry/design audit — climate inputs and cross-scale boundary contracts**
+**M3.3-B — Executable Strategic Temperature, Moisture & Water Availability**
 
 M3 Entry Audit:
 
@@ -2103,7 +2112,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**M3.3 climate inputs and cross-scale physical refinement contract design**
+**M3.3-B executable strategic temperature, moisture and water availability**
 
 Last Baseline Review:
 
