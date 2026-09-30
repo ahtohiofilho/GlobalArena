@@ -2452,3 +2452,64 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M3.4-D accumulated M3.4 validation and close**
+---
+
+# 36. M3.4 accumulated validation close risk review
+
+**Date:** 2026-09-30
+
+Accepted evidence:
+
+`GlobalArena-Evidence-M3.4-D-R2-ACCUMULATED-M34-VALIDATION-20260930-134154.zip`
+
+Result:
+
+**PASS_READY_FOR_M3_4_D_FORMAL_CLOSE**
+
+Validated:
+
+- deterministic strategic drainage and explicit outlet/sink semantics;
+- deterministic fixed-point flow accumulation;
+- no Hydrology random stream consumed;
+- deterministic derived strategic biome classification;
+- explicit water precedence and hydrology-composed wetland classification;
+- no Biomes random stream consumed;
+- M3.4-specific suite `44/44`;
+- full local Release suite `653/653`;
+- cross-platform `653/653` on Windows, macOS and Ubuntu;
+- compiler warnings/errors `0/0`;
+- cross-platform artifacts uploaded on all three platforms.
+
+Risk effect:
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+The accepted M3.4 tree passed deterministic local and cross-platform regression on all supported CI platforms. Final generated-world signature and M3-wide exit determinism remain owned by M3.6.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+M3.4 now has accepted strategic hydrology and derived-biome contracts, executable integration and accumulated validation. Resources, habitability and civilization-placement inputs remain the next architecture boundary.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+M3.4 adds only strategic-scale resident hydrology and biome fields. Existing transient tactical physical-incidence construction limits remain open for later M3 performance/memory validation.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+No global tactical hydrology or biome residency was introduced by M3.4.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+M3.4 closed without absorbing resources, habitability, civilization runtime, economy runtime, networking or presentation.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M3.5 resources, habitability and civilization-placement contract/decomposition**

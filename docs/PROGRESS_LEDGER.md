@@ -13120,3 +13120,78 @@ Progress effect:
 Next checkpoint:
 
 **M3.4-D — Accumulated M3.4 Validation & Close**
+---
+
+## 2026-09-30 — M3.4-D accumulated hydrology and derived-biome validation formal close
+
+Stage closed:
+
+**M3.4 — Hydrology & Derived Biomes**
+
+Accepted validation evidence:
+
+`GlobalArena-Evidence-M3.4-D-R2-ACCUMULATED-M34-VALIDATION-20260930-134154.zip`
+
+Evidence SHA-256:
+
+`567a6b83f57031cba54d7070779c5440605e1816cf5e48be6a9ee66a58d8b124`
+
+Accepted audit:
+
+- evidence manifest: `36/36` verified;
+- baseline HEAD/origin-main: `49c032ca8922a9cda3b1e73097f3467ede731dd3`;
+- M3.4 executable/test hashes: `9/9`;
+- GA-SRP self-tests: `19/19`;
+- target `ReadOnly` validation: PASS;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- M3.4-specific tests: `44/44`;
+- full local regression: `653/653`;
+- GitHub Actions run `36742871415`: success;
+- Windows: `653/653`;
+- macOS: `653/653`;
+- Ubuntu: `653/653`;
+- cross-platform compiler warnings/errors: `0/0`;
+- artifacts uploaded on all three platforms;
+- repository files modified by validation: `0`;
+- validation commit/push: none.
+
+Maturity effect:
+
+`Hydrology`
+
+moves from:
+
+**Funcional isoladamente — factor 0.50 — 6.00 GPP**
+
+to:
+
+**Validada — factor 0.85 — 10.20 GPP**
+
+`Derived biomes`
+
+moves from:
+
+**Funcional isoladamente — factor 0.50 — 4.00 GPP**
+
+to:
+
+**Validada — factor 0.85 — 6.80 GPP**
+
+M3.4 closes at:
+
+**17.00 / 20 GPP — 85.0%**
+
+The remaining **3.00 GPP** is reserved for later V1 Definition of Done evidence and is not awarded merely for stage completion.
+
+Progress effect:
+
+- GPP delta: **+7.00**;
+- project GPP: **217.90 / 1000**;
+- Global Progress exact: **21.790%**;
+- Global Progress displayed: **21.8%**;
+- World Generation / biomas / recursos: **71.40 / 100 — 71.4%**.
+
+Next stage:
+
+**M3.5 — Resources, Habitability & Civilization Placement Inputs**

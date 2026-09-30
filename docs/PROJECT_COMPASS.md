@@ -703,12 +703,12 @@ Current M3 maturity after closed subcheckpoints:
 | Elevation, relief & land/water foundation | 14 | Validada | 0.85 | 11.90 |
 | Temperature, climate, moisture & water availability | 14 | Validada | 0.85 | 11.90 |
 | Cross-scale boundary conditions, tactical refinement & strategic aggregation | 14 | Validada | 0.85 | 11.90 |
-| Hydrology | 12 | Funcional isoladamente | 0.50 | 6.00 |
-| Derived biomes | 8 | Funcional isoladamente | 0.50 | 4.00 |
+| Hydrology | 12 | Validada | 0.85 | 10.20 |
+| Derived biomes | 8 | Validada | 0.85 | 6.80 |
 | Resources | 7 | Inexistente | 0.00 | 0.00 |
 | Habitability & civilization-placement suitability | 5 | Inexistente | 0.00 | 0.00 |
 | Determinism, cross-platform validation, performance baseline & M3 exit | 4 | Inexistente | 0.00 | 0.00 |
-| **TOTAL** | **100** |  |  | **64.40** |
+| **TOTAL** | **100** |  |  | **71.40** |
 
 M3.1-A is a governance/design freeze. It does not promote implementation maturity and therefore awards no GPP.
 
@@ -849,6 +849,9 @@ M3.4-C adds deterministic derived strategic biome classification over the accept
 Water classification has precedence. Terrestrial ordering is `PolarIce`, `Tundra`, `Highland`, `Wetland`, `Desert`, `Rainforest`, `Forest`, then `Grassland`. Wetland classification composes accepted hydrology through `InlandSink`, water availability and flow accumulation. No Biomes random stream is consumed.
 
 This promotes `Derived biomes` to `Funcional isoladamente — fator 0.50`, adding `4.00 GPP`.
+M3.4-D closes accumulated validation without production-code mutation. The accepted gate revalidates the `44/44` M3.4-specific slice and the `653/653` full Release suite locally, consumes cross-platform run `36742871415` with `653/653` on Windows, macOS and Ubuntu, and confirms zero compiler warnings/errors with artifacts uploaded on all three platforms.
+
+Hydrology and Derived biomes are therefore promoted to `Validada — fator 0.85`. M3.4 closes at `17.00 / 20 GPP — 85.0%`. The remaining `3.00 GPP` is reserved for later V1 Definition of Done evidence.
 # 20. Status atual
 
 Milestone:
@@ -857,11 +860,11 @@ Milestone:
 
 Etapa atual:
 
-**M3.4 — Hydrology & Derived Biomes**
+**M3.5 — Resources, Habitability & Civilization Placement Inputs**
 
 Subetapa atual:
 
-**M3.4-D — Accumulated M3.4 Validation & Close**
+**M3.5 — contract/decomposition freeze**
 
 M3 entry audit:
 
@@ -915,6 +918,14 @@ M3.4-C — Executable Derived Strategic Biome Classification:
 
 **concluído em 2026-09-30**
 
+M3.4-D — Accumulated M3.4 Validation & Close:
+
+**concluído em 2026-09-30**
+
+M3.4 — Hydrology & Derived Biomes:
+
+**concluído em 2026-09-30**
+
 M2 — Planet Topology:
 
 **concluído em 2026-09-29**
@@ -933,11 +944,11 @@ Baseline V1:
 
 Progresso oficial:
 
-**21,1%**
+**21,8%**
 
 GPP conquistados:
 
-**210,90 / 1000**
+**217,90 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -949,7 +960,7 @@ Topologia planetária / Goldberg:
 
 World Generation / biomas / recursos:
 
-**64,40 / 100 GPP — 64,4%**
+**71,40 / 100 GPP — 71,4%**
 
 Scope Confidence:
 
@@ -965,7 +976,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M3.4-D accumulated hydrology and derived-biome validation**
+**M3.5 resources, habitability and civilization-placement contract/decomposition**
 
 Última revisão de baseline:
 

@@ -1777,7 +1777,7 @@ M3.3 closes after accumulated local, cross-platform and bounded-path performance
 - M3.4-A — Hydrology & Derived Biome Contract Freeze — concluded;
 - M3.4-B — Executable Strategic Drainage & Flow Accumulation — concluded;
 - M3.4-C — Executable Derived Strategic Biome Classification — concluded;
-- M3.4-D — Accumulated M3.4 Validation & Close — current.
+- M3.4-D — Accumulated M3.4 Validation & Close — concluded.
 
 Stage envelope:
 
@@ -1790,6 +1790,7 @@ Stage envelope:
 
 M3.4-A freezes the hydrology/biome ownership and deterministic contracts only and awards no GPP.
 
+M3.4 closes at `17.00 / 20 GPP — 85.0%` after accumulated local and cross-platform validation. Hydrology and Derived biomes are both `Validada — fator 0.85`. The remaining `3.00 GPP` is reserved for later V1 Definition of Done evidence.
 ### M3.5 — Resources, Habitability & Civilization Placement Inputs — 12 GPP
 
 - resource potential/distribution;
@@ -2063,11 +2064,11 @@ Current Milestone:
 
 Current Stage:
 
-**M3.4 — Hydrology & Derived Biomes**
+**M3.5 — Resources, Habitability & Civilization Placement Inputs**
 
 Current Subcheckpoint:
 
-**M3.4-D — Accumulated M3.4 Validation & Close**
+**M3.5 — contract/decomposition freeze**
 
 M3 Entry Audit:
 
@@ -2095,11 +2096,11 @@ M3.1-D — Accumulated M3.1 Validation & Close:
 
 Official Progress:
 
-**21.1%**
+**21.8%**
 
 GPP Earned:
 
-**210.90 / 1000**
+**217.90 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -2111,7 +2112,7 @@ Planet Topology / Goldberg:
 
 World Generation / biomes / resources:
 
-**64.40 / 100 GPP — 64.4%**
+**71.40 / 100 GPP — 71.4%**
 
 Scope Confidence:
 
@@ -2127,7 +2128,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**M3.4-D accumulated hydrology and derived-biome validation**
+**M3.5 resources, habitability and civilization-placement contract/decomposition**
 
 Last Baseline Review:
 
