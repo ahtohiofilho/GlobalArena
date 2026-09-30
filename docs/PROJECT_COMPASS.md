@@ -705,10 +705,10 @@ Current M3 maturity after closed subcheckpoints:
 | Cross-scale boundary conditions, tactical refinement & strategic aggregation | 14 | Validada | 0.85 | 11.90 |
 | Hydrology | 12 | Validada | 0.85 | 10.20 |
 | Derived biomes | 8 | Validada | 0.85 | 6.80 |
-| Resources | 7 | Inexistente | 0.00 | 0.00 |
+| Resources | 7 | Funcional isoladamente | 0.50 | 3.50 |
 | Habitability & civilization-placement suitability | 5 | Inexistente | 0.00 | 0.00 |
 | Determinism, cross-platform validation, performance baseline & M3 exit | 4 | Inexistente | 0.00 | 0.00 |
-| **TOTAL** | **100** |  |  | **71.40** |
+| **TOTAL** | **100** |  |  | **74.90** |
 
 M3.1-A is a governance/design freeze. It does not promote implementation maturity and therefore awards no GPP.
 
@@ -885,6 +885,9 @@ Frozen direction:
 M3.5-A is a governance/design freeze and awards no GPP.
 
 Project progress remains `217.90 / 1000 — 21.8%` and World Generation remains `71.40 / 100 — 71.4%` until executable M3.5 evidence is accepted.
+M3.5-B adds a deterministic strategic resource-potential substrate. The executable baseline exposes one normalized `GeneralPotential` scalar per strategic node, generated exclusively from the `Resources` world-generation domain and integrated into `WorldGenerationResult`.
+
+This promotes `Resources` to `Funcional isoladamente — fator 0.50`, adding `3.50 GPP`. The final resource catalogue, abundance curves, physical-field coefficients and Economy runtime semantics remain deliberately unfrozen.
 # 20. Status atual
 
 Milestone:
@@ -897,7 +900,7 @@ Etapa atual:
 
 Subetapa atual:
 
-**M3.5-B — Executable Strategic Resource Potential**
+**M3.5-C — Executable Habitability & Civilization Placement Suitability**
 
 M3 entry audit:
 
@@ -963,6 +966,10 @@ M3.5-A — Resources, Habitability & Placement Policy Freeze:
 
 **concluído em 2026-09-30**
 
+M3.5-B — Executable Strategic Resource Potential:
+
+**concluído em 2026-09-30**
+
 M2 — Planet Topology:
 
 **concluído em 2026-09-29**
@@ -981,11 +988,11 @@ Baseline V1:
 
 Progresso oficial:
 
-**21,8%**
+**22,1%**
 
 GPP conquistados:
 
-**217,90 / 1000**
+**221,40 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -997,7 +1004,7 @@ Topologia planetária / Goldberg:
 
 World Generation / biomas / recursos:
 
-**71,40 / 100 GPP — 71,4%**
+**74,90 / 100 GPP — 74,9%**
 
 Scope Confidence:
 
@@ -1013,7 +1020,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M3.5-B executable strategic resource potential**
+**M3.5-C executable habitability and civilization-placement suitability**
 
 Última revisão de baseline:
 

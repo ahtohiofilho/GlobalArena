@@ -2619,3 +2619,66 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M3.5-B executable strategic resource potential**
+---
+
+# 39. M3.5-B strategic resource-potential risk review
+
+**Date:** 2026-09-30
+
+Accepted QA:
+
+`GlobalArena-Evidence-M3.5-B-R1-EXECUTABLE-STRATEGIC-RESOURCE-POTENTIAL-20260930-144439.zip`
+
+Result:
+
+**PASS_READY_FOR_M3_5_B_FORMAL_CLOSE**
+
+Validated:
+
+- normalized strategic resource-potential field;
+- canonical strategic graph alignment;
+- deterministic `Resources` domain ownership;
+- zero-seed reproducibility;
+- independent regeneration from the accepted request;
+- integration into `WorldGenerationResult`;
+- targeted suite `14/14`;
+- full local Release suite `667/667`;
+- compiler warnings/errors `0/0`.
+
+Risk effect:
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+Resource potential is driven only by the explicit deterministic `Resources` world-generation stream. Cross-platform validation after the source commit remains required before accumulated M3.5 close.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+M3.5 now has an executable strategic resource-potential substrate, while final resource taxonomy and world-property coupling remain deliberately open for later calibrated expansion.
+
+`RISK-010 — Architecture overengineering` remains `WATCHING / HIGH`.
+
+The implementation avoids introducing a premature resource catalogue, extraction model or economy rules.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+The new field is one strategic scalar per strategic node and introduces no global tactical resource residency.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+The resource substrate is strategic-only and introduces no tactical scan/pathfinding dependency.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+No Economy runtime, extraction, production, trade, Civilization runtime, AI, networking or presentation responsibility was added.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M3.5-C executable habitability and civilization-placement suitability**

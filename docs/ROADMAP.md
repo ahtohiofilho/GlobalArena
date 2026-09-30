@@ -1794,8 +1794,8 @@ M3.4 closes at `17.00 / 20 GPP — 85.0%` after accumulated local and cross-plat
 ### M3.5 — Resources, Habitability & Civilization Placement Inputs — 12 GPP
 
 - M3.5-A — Resources, Habitability & Placement Policy Freeze — concluded;
-- M3.5-B — Executable Strategic Resource Potential — current;
-- M3.5-C — Executable Habitability & Civilization Placement Suitability — planned;
+- M3.5-B — Executable Strategic Resource Potential — concluded;
+- M3.5-C — Executable Habitability & Civilization Placement Suitability — current;
 - M3.5-D — Accumulated M3.5 Validation & Close — planned.
 
 Stage envelope:
@@ -1810,6 +1810,7 @@ Stage envelope:
 
 M3.5-A freezes ownership, separation of responsibilities and calibration boundaries only. It does not freeze the final resource catalogue, habitability coefficients, water/land traversal costs, start-distribution algorithm or civilization-count formula, and awards no GPP.
 
+M3.5-B adds the first executable strategic resource-potential field: one normalized deterministic `GeneralPotential` value per strategic node using the `Resources` random domain. It deliberately does not freeze the final resource catalogue or Economy behavior.
 ### M3.6 — Determinism, Performance, Cross-Platform Validation & M3 Exit — 4 GPP
 
 - canonical generated-world signature/hash contract;
@@ -2081,7 +2082,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M3.5-B — Executable Strategic Resource Potential**
+**M3.5-C — Executable Habitability & Civilization Placement Suitability**
 
 M3 Entry Audit:
 
@@ -2109,11 +2110,11 @@ M3.1-D — Accumulated M3.1 Validation & Close:
 
 Official Progress:
 
-**21.8%**
+**22.1%**
 
 GPP Earned:
 
-**217.90 / 1000**
+**221.40 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -2125,7 +2126,7 @@ Planet Topology / Goldberg:
 
 World Generation / biomes / resources:
 
-**71.40 / 100 GPP — 71.4%**
+**74.90 / 100 GPP — 74.9%**
 
 Scope Confidence:
 
@@ -2141,7 +2142,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**M3.5-B executable strategic resource potential**
+**M3.5-C executable habitability and civilization-placement suitability**
 
 Last Baseline Review:
 

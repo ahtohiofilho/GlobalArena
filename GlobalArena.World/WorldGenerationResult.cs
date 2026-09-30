@@ -16,6 +16,8 @@ public sealed class WorldGenerationResult
 
     public StrategicBiomeMap StrategicBiomes { get; }
 
+    public StrategicResourcePotentialFieldSet StrategicResourcePotentialFields { get; }
+
     public WorldGenerationResult(
         WorldGenerationRequest request,
         StrategicTopology strategicTopology)
@@ -54,5 +56,9 @@ public sealed class WorldGenerationResult
                 StrategicPhysicalFields,
                 StrategicClimateFields,
                 StrategicHydrologyFields);
+        StrategicResourcePotentialFields =
+            StrategicResourcePotentialFieldSet.Generate(
+                request,
+                StrategicSurfaceGraph);
     }
 }

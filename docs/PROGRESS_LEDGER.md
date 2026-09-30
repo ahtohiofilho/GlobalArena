@@ -13306,3 +13306,67 @@ Project remains:
 Next checkpoint:
 
 **M3.5-B — Executable Strategic Resource Potential**
+---
+
+## 2026-09-30 — M3.5-B executable strategic resource potential formal close
+
+Checkpoint closed:
+
+**M3.5-B — Executable Strategic Resource Potential**
+
+Accepted QA evidence:
+
+`GlobalArena-Evidence-M3.5-B-R1-EXECUTABLE-STRATEGIC-RESOURCE-POTENTIAL-20260930-144439.zip`
+
+Evidence SHA-256:
+
+`ffbe2a8ae2d507403c86cf7afba01c7de5ac45eaf5e8454fddc44c7b7c7e819a`
+
+Accepted QA:
+
+- manifest: `26/26` verified;
+- baseline HEAD/origin-main: `f3d1113563b5d30e21361da87ecdd6b14b2b82f5`;
+- candidate hashes: `4/4`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- diff diagnostics: clean;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- targeted M3.5-B tests: `14/14`;
+- full local regression: `667/667`;
+- QA commit/push: none.
+
+Executable capability now includes:
+
+- `StrategicResourcePotentialFieldGenerator`;
+- `StrategicResourcePotentialFieldSet`;
+- one normalized strategic `GeneralPotential` value per strategic node;
+- deterministic generation from `WorldGenerationRandomDomain.Resources`;
+- zero seed remains valid;
+- integration into `WorldGenerationResult`;
+- no Economy runtime state;
+- no final resource catalogue or biome/resource coefficients frozen.
+
+Maturity effect:
+
+`Resources`
+
+moves from:
+
+**Inexistente — factor 0.00 — 0.00 GPP**
+
+to:
+
+**Funcional isoladamente — factor 0.50 — 3.50 GPP**
+
+Progress effect:
+
+- GPP delta: **+3.50**;
+- project GPP: **221.40 / 1000**;
+- Global Progress exact: **22.140%**;
+- Global Progress displayed: **22.1%**;
+- World Generation / biomas / recursos: **74.90 / 100 — 74.9%**.
+
+Next checkpoint:
+
+**M3.5-C — Executable Habitability & Civilization Placement Suitability**
