@@ -1817,8 +1817,8 @@ M3.5 closes at `10.20 / 12 GPP — 85.0%` after accumulated local and cross-plat
 
 - M3.6-A — World Generation Exit, Signature & Performance Contract Freeze — concluded;
 - M3.6-B — Canonical Generated-World Signature & Regression Vectors — concluded;
-- M3.6-C — World Generation Performance & Memory Acceptance — current;
-- M3.6-D — Accumulated Cross-Platform M3 Exit Validation & Close — planned.
+- M3.6-C — World Generation Performance & Memory Acceptance — concluded;
+- M3.6-D — Accumulated Cross-Platform M3 Exit Validation & Close — current.
 
 Stage envelope:
 
@@ -2105,7 +2105,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M3.6-C — World Generation Performance & Memory Acceptance**
+**M3.6-D — Accumulated Cross-Platform M3 Exit Validation & Close**
 
 M3 Entry Audit:
 
@@ -2133,11 +2133,11 @@ M3.1-D — Accumulated M3.1 Validation & Close:
 
 Official Progress:
 
-**23.0%**
+**23.1%**
 
 GPP Earned:
 
-**230.10 / 1000**
+**230.90 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -2149,7 +2149,7 @@ Planet Topology / Goldberg:
 
 World Generation / biomes / resources:
 
-**83.60 / 100 GPP — 83.6%**
+**84.40 / 100 GPP — 84.4%**
 
 Scope Confidence:
 
@@ -2165,7 +2165,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**M3.6-C world-generation performance and memory acceptance**
+**M3.6-D accumulated cross-platform M3 exit validation and close**
 
 Last Baseline Review:
 

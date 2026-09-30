@@ -13728,3 +13728,79 @@ the source commit produced by this formal close must pass the existing Windows, 
 Next checkpoint after that attestation:
 
 **M3.6-C — World Generation Performance & Memory Acceptance**
+---
+
+## 2026-09-30 — M3.6-C world-generation performance and memory acceptance formal close
+
+Checkpoint closed:
+
+**M3.6-C — World Generation Performance & Memory Acceptance**
+
+Accepted QA evidence:
+
+`GlobalArena-Evidence-M3.6-C-R1-WORLDGEN-PERFORMANCE-MEMORY-ACCEPTANCE-20260930-170024.zip`
+
+Evidence SHA-256:
+
+`1042c3e74487a7430f08023f38a9b4aa066e592df40db61d5d3724d35452e796`
+
+Accepted QA:
+
+- manifest: `30/30` verified;
+- baseline HEAD/origin-main: `a41c8b51706b34f7285794edde802ea775ce87eb`;
+- candidate hashes: `5/5`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- targeted benchmark-contract tests: `6/6`;
+- full regression: `717/717`;
+- blocking benchmark budget: PASS;
+- stress correctness: PASS;
+- QA commit/push: none.
+
+Accepted calibration evidence:
+
+`GlobalArena-Evidence-M3.6-C-CAL-R1-READONLY-WORLDGEN-PERFORMANCE-OBSERVATION-20260930-165501.zip`
+
+Calibration SHA-256:
+
+`bfac03fe19352d5c69b32ab33b7fea3e302b298201adb5f60aff5990179a7cd4`
+
+Frozen blocking budgets:
+
+- median elapsed: `200 ms`;
+- maximum elapsed: `300 ms`;
+- median managed allocation: `64 MiB`;
+- maximum managed allocation: `96 MiB`.
+
+Accepted benchmark observations:
+
+- Class I `G(15,0)`: median `81.865 ms`, max `104.276 ms`, allocation `45,357,680 bytes`;
+- Class II `G(7,7)`: median `26.962 ms`, max `35.828 ms`, allocation `29,710,056 bytes`;
+- Class III `G(14,1)`: median `30.986 ms`, max `84.255 ms`, allocation `35,978,200 bytes`;
+- non-blocking Class I stress `G(24,0)`: correctness PASS; allocation above blocking budget remains non-blocking by contract.
+
+Maturity effect:
+
+`Determinism, cross-platform validation, performance baseline & M3 exit`
+
+moves from:
+
+**Funcional isoladamente — factor 0.50 — 2.00 GPP**
+
+to:
+
+**Integrada — factor 0.70 — 2.80 GPP**
+
+Progress effect:
+
+- GPP delta: **+0.80**;
+- project GPP: **230.90 / 1000**;
+- Global Progress exact: **23.090%**;
+- Global Progress displayed: **23.1%**;
+- World Generation / biomas / recursos: **84.40 / 100 — 84.4%**.
+
+Next checkpoint:
+
+**M3.6-D — Accumulated Cross-Platform M3 Exit Validation & Close**

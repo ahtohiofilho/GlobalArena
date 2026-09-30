@@ -3005,3 +3005,72 @@ Immediate gate:
 Next risk review gate after successful attestation:
 
 **M3.6-C world-generation performance and memory acceptance**
+---
+
+# 45. M3.6-C world-generation performance and memory acceptance risk review
+
+**Date:** 2026-09-30
+
+Checkpoint:
+
+**M3.6-C — World Generation Performance & Memory Acceptance**
+
+Accepted QA:
+
+`GlobalArena-Evidence-M3.6-C-R1-WORLDGEN-PERFORMANCE-MEMORY-ACCEPTANCE-20260930-170024.zip`
+
+Result:
+
+**PASS_READY_FOR_M3_6_C_FORMAL_CLOSE**
+
+Validated:
+
+- evidence-driven budgets frozen before acceptance execution;
+- complete `IWorldGenerator.Generate(request)` workload;
+- Release `1` warmup + `5` measured samples;
+- Class I/II/III blocking cases;
+- explicit non-blocking `G(24,0)` stress case;
+- elapsed-time budget PASS;
+- managed-allocation budget PASS for all blocking cases;
+- canonical signature stability across repeated benchmark generation;
+- targeted tests `6/6`;
+- full suite `717/717`;
+- compiler warnings/errors `0/0`.
+
+Risk effect:
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+Benchmark generation repeatedly produced stable canonical signatures. Final M3.6-D still owns accumulated source-tree and cross-platform exit proof.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+Strategic world generation now has accepted blocking allocation budgets and all three representative blocking cases pass. The larger `G(24,0)` stress case allocates above the blocking budget by design and remains a non-blocking scale observation; broader physical/tactical memory risks remain open.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+The accepted benchmark covers complete strategic world generation and does not claim global tactical residency performance.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+Performance acceptance is now explicit, versioned in source and guarded by tests rather than being an informal machine observation.
+
+`RISK-007 — Architecture overengineering` remains `OPEN / HIGH`.
+
+The benchmark reuses the existing `GlobalArena.Benchmarks` executable and M2-style harness discipline.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+No new world-content, Economy runtime, Civilization runtime, AI, networking or UI responsibility was introduced.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M3.6-D accumulated cross-platform M3 exit validation and close**

@@ -174,9 +174,44 @@ M3.6-A freezes the measurement method and acceptance structure, not arbitrary mi
 
 Before M3.6-C accepts blocking numeric budgets, a ReadOnly observational calibration must record current world-generation measurements on the reference development machine.
 
-Numeric thresholds must then be explicit in the benchmark contract before acceptance testing is evaluated.
+Accepted calibration evidence:
 
-Thresholds may include reasonable engineering headroom but may not be selected after a failing acceptance run merely to make the run pass.
+`GlobalArena-Evidence-M3.6-C-CAL-R1-READONLY-WORLDGEN-PERFORMANCE-OBSERVATION-20260930-165501.zip`
+
+Evidence SHA-256:
+
+`bfac03fe19352d5c69b32ab33b7fea3e302b298201adb5f60aff5990179a7cd4`
+
+Reference environment:
+
+- OS: `Microsoft Windows 10.0.26200`;
+- runtime: `.NET 10.0.12`;
+- architecture: `X64`;
+- processor count: `12`;
+- processor identifier: `Intel64 Family 6 Model 186 Stepping 2, GenuineIntel`.
+
+Accepted blocking observations:
+
+- Class I `G(15,0)`: median `77.164 ms`, max `112.262 ms`, allocation `45,357,680 bytes`;
+- Class II `G(7,7)`: median `27.346 ms`, max `42.996 ms`, allocation `29,710,056 bytes`;
+- Class III `G(14,1)`: median `24.934 ms`, max `49.385 ms`, allocation `35,978,200 bytes`.
+
+Non-blocking stress observation:
+
+- Class I `G(24,0)`: median `69.938 ms`, max `78.902 ms`, allocation `115,168,824 bytes`.
+
+Frozen blocking acceptance budgets, selected before the first acceptance run:
+
+- median elapsed time: `200 ms`;
+- maximum elapsed time: `300 ms`;
+- median managed allocation: `64 MiB` (`67,108,864 bytes`);
+- maximum managed allocation: `96 MiB` (`100,663,296 bytes`).
+
+The same budgets apply to all three blocking Class I/II/III cases.
+
+The `G(24,0)` stress case remains correctness-required but performance-non-blocking.
+
+These thresholds include engineering headroom over the accepted reference observations and may not be raised in response to a failing acceptance run without a new explicit calibration/review cycle.
 
 ### 9. Cross-platform performance policy
 
