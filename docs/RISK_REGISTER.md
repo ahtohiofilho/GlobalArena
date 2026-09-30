@@ -1911,3 +1911,71 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M3.2-D accumulated M3.2 validation and close**
+---
+
+# 26. M3.2 accumulated validation and close risk review
+
+**Date:** 2026-09-30
+
+Accepted evidence:
+
+`GlobalArena-Evidence-M3.2-D-R1-ACCUMULATED-M32-VALIDATION-20260930-085711.zip`
+
+Cross-platform run:
+
+`36710766790`
+
+Result:
+
+**M3.2 CLOSED**
+
+Validated across the accepted M3.2 envelope:
+
+- authoritative M2 topology reuse;
+- canonical dense strategic indexing;
+- canonical neighbor ordering;
+- immutable `Int64` fixed-point scalar substrate;
+- deterministic elevation domain ownership;
+- fixed deterministic elevation vector;
+- relief derived from canonical strategic neighbors;
+- explicit deterministic sea level;
+- land/water derived from elevation without independent randomness;
+- integrated strategic physical fields in `WorldGenerationResult`;
+- no global tactical physical-field materialization;
+- local accumulated tests `64/64`;
+- local full Release suite `539/539`;
+- Windows/macOS/Ubuntu `539/539` each with zero compiler warnings/errors.
+
+Risk effect:
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+M3.2 physical fields now have local and cross-platform deterministic regression evidence. The risk remains active because climate, tactical refinement, hydrology, resources and later state/signature evolution can introduce new nondeterministic paths.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+The strategic physical-field substrate has now survived executable consumption and cross-platform validation. The risk remains open because M3.3 introduces the first cross-scale boundary/refinement contracts and broader physical-system coupling.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+M3.2 closed without global tactical field residency. M3.3 must preserve selective tactical materialization and strategic aggregation rather than expanding to full-planet tactical arrays.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+M3.2 does not change tactical density. M3.3 cross-scale refinement will be the next stage where physical-field tactical materialization can materially affect this risk.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+M3.2 closed inside its frozen 26 GPP envelope and did not absorb climate, hydrology, biomes, resources, Economy runtime, Civilization runtime, networking or presentation.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M3.3 entry/design audit — climate inputs and cross-scale physical refinement**

@@ -12451,3 +12451,89 @@ Progress effect:
 Next checkpoint:
 
 **M3.2-D — Accumulated M3.2 Validation & Close**
+---
+
+## 2026-09-30 — M3.2-D accumulated validation and M3.2 close
+
+Checkpoint closed:
+
+**M3.2-D — Accumulated M3.2 Validation & Close**
+
+Accepted evidence:
+
+`GlobalArena-Evidence-M3.2-D-R1-ACCUMULATED-M32-VALIDATION-20260930-085711.zip`
+
+Evidence SHA-256:
+
+`9f16036c4a9cc64d7f89fda5ac27ce3cc8862433bb90a75520383760a15c6af1`
+
+Accepted accumulated validation:
+
+- manifest: `42/42` verified;
+- baseline HEAD/origin-main: `adccc34aab91d85c1516fab9912e2fbc3895a1c3`;
+- accepted M3.2 implementation/test hashes: `15/15`;
+- GA-SRP self-tests: `19/19`;
+- target `ReadOnly` validation: PASS;
+- diff diagnostics: `0/0`;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- targeted accumulated M3.2 tests: `64/64`;
+- full local Release regression: `539/539`;
+- repository mutation during audit: none.
+
+Cross-platform acceptance:
+
+- workflow: `Cross-Platform Kernel Regression Validation`;
+- run: `36710766790`;
+- head: `adccc34aab91d85c1516fab9912e2fbc3895a1c3`;
+- Windows: `539/539`, `0` warnings/errors, artifact uploaded;
+- macOS: `539/539`, `0` warnings/errors, artifact uploaded;
+- Ubuntu: `539/539`, `0` warnings/errors, artifact uploaded.
+
+Maturity effect:
+
+`Strategic geometry bridge & macro physical-field substrate`
+
+moves from:
+
+**Funcional isoladamente — factor 0.50 — 6.00 GPP**
+
+to:
+
+**Validada — factor 0.85 — 10.20 GPP**
+
+and:
+
+`Elevation, relief & land/water foundation`
+
+moves from:
+
+**Funcional isoladamente — factor 0.50 — 7.00 GPP**
+
+to:
+
+**Validada — factor 0.85 — 11.90 GPP**
+
+M3.2 closes at:
+
+**22.10 / 26 GPP — 85.0%**
+
+The remaining `3.90 GPP` is not awarded merely for stage completion. Factor `1.00` remains reserved for V1 Definition of Done evidence.
+
+Progress effect:
+
+- GPP delta: **+9.10**;
+- project GPP: **177.10 / 1000**;
+- Global Progress exact: **17.710%**;
+- Global Progress displayed: **17.7%**;
+- World Generation / biomas / recursos: **30.60 / 100 — 30.6%**.
+
+M3.2 is closed.
+
+Next stage:
+
+**M3.3 — Climate Inputs & Cross-Scale Physical Refinement**
+
+Next gate:
+
+**M3.3 entry/design audit — climate inputs, moisture/water availability and cross-scale boundary contracts**

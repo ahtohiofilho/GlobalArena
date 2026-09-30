@@ -1740,7 +1740,7 @@ M3 contract:
 - M3.2-A — Strategic Geometry & Physical-Field Contract Freeze — concluded;
 - M3.2-B — Executable Strategic Surface Graph & Scalar Field Substrate — concluded;
 - M3.2-C — Deterministic Elevation, Relief & Land/Water Foundation — concluded;
-- M3.2-D — Accumulated M3.2 Validation & Close — current.
+- M3.2-D — Accumulated M3.2 Validation & Close — concluded.
 
 Stage envelope:
 
@@ -1750,6 +1750,8 @@ Stage envelope:
 - initial land/water foundation.
 
 M3.2-A freezes the data and determinism boundary only and awards no GPP.
+
+M3.2 closes after accumulated local and cross-platform validation at `22.10 / 26 GPP — 85.0%`. The remaining `3.90 GPP` is reserved for later V1 Definition of Done evidence.
 
 ### M3.3 — Climate Inputs & Cross-Scale Physical Refinement — 28 GPP
 
@@ -2037,11 +2039,11 @@ Current Milestone:
 
 Current Stage:
 
-**M3.2 — Strategic Geometry Bridge, Elevation & Land/Water**
+**M3.3 — Climate Inputs & Cross-Scale Physical Refinement**
 
 Current Subcheckpoint:
 
-**M3.2-D — Accumulated M3.2 Validation & Close**
+**M3.3 entry/design audit — climate inputs and cross-scale boundary contracts**
 
 M3 Entry Audit:
 
@@ -2069,11 +2071,11 @@ M3.1-D — Accumulated M3.1 Validation & Close:
 
 Official Progress:
 
-**16.8%**
+**17.7%**
 
 GPP Earned:
 
-**168.00 / 1000**
+**177.10 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -2085,7 +2087,7 @@ Planet Topology / Goldberg:
 
 World Generation / biomes / resources:
 
-**21.50 / 100 GPP — 21.5%**
+**30.60 / 100 GPP — 30.6%**
 
 Scope Confidence:
 
@@ -2101,7 +2103,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**M3.2 deterministic elevation, relief and land/water foundation**
+**M3.3 climate inputs and cross-scale physical refinement contract design**
 
 Last Baseline Review:
 

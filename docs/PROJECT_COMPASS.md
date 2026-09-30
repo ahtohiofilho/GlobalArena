@@ -699,8 +699,8 @@ Current M3 maturity after closed subcheckpoints:
 | Capability | GPP | Maturity | Factor | GPP earned |
 |---|---:|---|---:|---:|
 | World generation identity, seed/versioning & deterministic pipeline contracts | 10 | Validada | 0.85 | 8.50 |
-| Strategic geometry bridge & macro physical-field substrate | 12 | Funcional isoladamente | 0.50 | 6.00 |
-| Elevation, relief & land/water foundation | 14 | Funcional isoladamente | 0.50 | 7.00 |
+| Strategic geometry bridge & macro physical-field substrate | 12 | Validada | 0.85 | 10.20 |
+| Elevation, relief & land/water foundation | 14 | Validada | 0.85 | 11.90 |
 | Temperature, climate, moisture & water availability | 14 | Inexistente | 0.00 | 0.00 |
 | Cross-scale boundary conditions, tactical refinement & strategic aggregation | 14 | Inexistente | 0.00 | 0.00 |
 | Hydrology | 12 | Inexistente | 0.00 | 0.00 |
@@ -708,7 +708,7 @@ Current M3 maturity after closed subcheckpoints:
 | Resources | 7 | Inexistente | 0.00 | 0.00 |
 | Habitability & civilization-placement suitability | 5 | Inexistente | 0.00 | 0.00 |
 | Determinism, cross-platform validation, performance baseline & M3 exit | 4 | Inexistente | 0.00 | 0.00 |
-| **TOTAL** | **100** |  |  | **21.50** |
+| **TOTAL** | **100** |  |  | **30.60** |
 
 M3.1-A is a governance/design freeze. It does not promote implementation maturity and therefore awards no GPP.
 
@@ -760,7 +760,11 @@ No tactical global materialization is introduced by M3.2-A.
 
 No GPP is awarded by the design freeze. M3.2-B subsequently materializes the executable `StrategicSurfaceGraph`, immutable `StrategicScalarField` and generation-result integration. This promotes `Strategic geometry bridge & macro physical-field substrate` to `Funcional isoladamente — fator 0.50`, adding `6.00 GPP`.
 
-M3.2-C adds deterministic fixed-point strategic elevation, derived relief, explicit sea-level classification and integrated land/water fields. This promotes `Elevation, relief & land/water foundation` to `Funcional isoladamente — fator 0.50`, adding `7.00 GPP`. Accumulated and cross-platform validation remain the M3.2-D gate.
+M3.2-C adds deterministic fixed-point strategic elevation, derived relief, explicit sea-level classification and integrated land/water fields. This promotes `Elevation, relief & land/water foundation` to `Funcional isoladamente — fator 0.50`, adding `7.00 GPP`.
+
+M3.2-D closes accumulated validation without production-code mutation. The accepted gate revalidates the `64/64` M3.2-specific slice and the `539/539` full Release suite locally, and consumes cross-platform run `36710766790`, where the same accepted tree passed `539/539` on Windows, macOS and Ubuntu with zero compiler warnings/errors and artifacts uploaded on all three platforms.
+
+Both M3.2 capabilities are therefore promoted to `Validada — fator 0.85`. M3.2 closes at `22.10 / 26 GPP — 85.0%`. The remaining `3.90 GPP` is not awarded merely for stage completion; factor `1.00` remains reserved for V1 Definition of Done evidence.
 # 20. Status atual
 
 Milestone:
@@ -769,11 +773,11 @@ Milestone:
 
 Etapa atual:
 
-**M3.2 — Strategic Geometry Bridge, Elevation & Land/Water**
+**M3.3 — Climate Inputs & Cross-Scale Physical Refinement**
 
 Subetapa atual:
 
-**M3.2-D — Accumulated M3.2 Validation & Close**
+**M3.3 entry/design audit — climate inputs and cross-scale boundary contracts**
 
 M3 entry audit:
 
@@ -799,6 +803,14 @@ M3.1-D — Accumulated M3.1 Validation & Close:
 
 **concluído em 2026-09-29**
 
+M3.2 — Strategic Geometry Bridge, Elevation & Land/Water:
+
+**concluído em 2026-09-30**
+
+M3.2-D — Accumulated M3.2 Validation & Close:
+
+**concluído em 2026-09-30**
+
 M2 — Planet Topology:
 
 **concluído em 2026-09-29**
@@ -817,11 +829,11 @@ Baseline V1:
 
 Progresso oficial:
 
-**16,8%**
+**17,7%**
 
 GPP conquistados:
 
-**168,00 / 1000**
+**177,10 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -833,7 +845,7 @@ Topologia planetária / Goldberg:
 
 World Generation / biomas / recursos:
 
-**21,50 / 100 GPP — 21,5%**
+**30,60 / 100 GPP — 30,6%**
 
 Scope Confidence:
 
@@ -849,7 +861,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M3.2 accumulated deterministic and cross-platform physical-field validation**
+**M3.3 climate inputs and cross-scale physical refinement contract design**
 
 Última revisão de baseline:
 
