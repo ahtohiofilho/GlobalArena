@@ -2239,3 +2239,97 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M3.4 entry/design audit — hydrology and derived biome contracts**
+---
+
+# 32. M3.4-A hydrology and derived biome design risk review
+
+**Date:** 2026-09-30
+
+Gate:
+
+**M3.4-A — Hydrology & Derived Biome Contract Freeze**
+
+Risk posture:
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+The proposed hydrology graph uses strict elevation descent and canonical tie-breaking, while the biome classifier is fixed-point/table-driven. Hydrology and biome random domains remain unused by the baseline.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+M3.4 introduces a new derived-system composition boundary over terrain, climate and graph topology. The contract freeze prevents rivers/biomes from becoming presentation-driven or from mutating their source fields.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+The M3.4 baseline remains strategic-first and does not require global tactical hydrology/biome arrays. Existing M3.3 transient global physical-incidence construction risk remains unresolved and is not worsened by this freeze.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+No recurring strategic hydrology operation is allowed to depend on a globally resident tactical mesh. Tactical hydrology remains outside the M3.4 strategic baseline.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+Erosion, sediment, weather, seasons, ocean circulation, resources, habitability, Civilization runtime, Economy runtime, networking and presentation remain outside M3.4-A.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate after formal close:
+
+**M3.4-B executable strategic drainage and flow accumulation**
+---
+
+# 33. M3.4-A formal-close risk confirmation
+
+**Date:** 2026-09-30
+
+Checkpoint:
+
+**M3.4-A — Hydrology & Derived Biome Contract Freeze — CLOSED**
+
+Accepted QA:
+
+`GlobalArena-Evidence-M3.4-A-R2-HYDROLOGY-BIOME-CONTRACT-FREEZE-20260930-113127.zip`
+
+Result:
+
+**PASS_READY_FOR_M3_4_A_FORMAL_CLOSE**
+
+Risk confirmation:
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+The frozen baseline uses strict elevation descent, canonical tie-breaking, fixed-point/integer accumulation semantics and no Hydrology/Biomes random stream.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+The hydrology/biome ownership and dependency order are frozen before implementation. M3.4-B is the next executable architecture gate.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+M3.4 remains strategic-first and introduces no global tactical hydrology/biome residency.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+Tactical hydrology is not part of the strategic baseline. Existing M3.3 transient physical-incidence construction limitations remain separate and unresolved.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+Erosion, sediment, weather, seasons, ocean circulation, resources, habitability, Civilization runtime, Economy runtime, networking and presentation remain outside M3.4-A.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M3.4-B executable strategic drainage and flow accumulation**

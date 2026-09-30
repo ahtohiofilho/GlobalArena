@@ -1774,8 +1774,21 @@ M3.3 closes after accumulated local, cross-platform and bounded-path performance
 
 ### M3.4 — Hydrology & Derived Biomes — 20 GPP
 
-- hydrology derived from terrain/water inputs;
-- derived biome classification.
+- M3.4-A — Hydrology & Derived Biome Contract Freeze — concluded;
+- M3.4-B — Executable Strategic Drainage & Flow Accumulation — current;
+- M3.4-C — Executable Derived Strategic Biome Classification — planned;
+- M3.4-D — Accumulated M3.4 Validation & Close — planned.
+
+Stage envelope:
+
+- hydrology derived from accepted terrain and water-availability inputs;
+- deterministic strategic drainage;
+- explicit inland sinks and water outlets;
+- deterministic strategic flow accumulation;
+- derived strategic biome classification;
+- strategic-first residency with no required global tactical hydrology array.
+
+M3.4-A freezes the hydrology/biome ownership and deterministic contracts only and awards no GPP.
 
 ### M3.5 — Resources, Habitability & Civilization Placement Inputs — 12 GPP
 
@@ -2054,7 +2067,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M3.4 entry/design audit — hydrology and derived biome contracts**
+**M3.4-B — Executable Strategic Drainage & Flow Accumulation**
 
 M3 Entry Audit:
 
@@ -2114,7 +2127,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**M3.4 hydrology and derived biome contract design**
+**M3.4-B executable strategic drainage and flow accumulation**
 
 Last Baseline Review:
 

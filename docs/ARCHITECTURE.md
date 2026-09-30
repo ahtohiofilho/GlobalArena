@@ -4924,8 +4924,147 @@ M3.3-A is a design/governance freeze and awards no GPP.
 
 Implementation maturity is earned only by executable later checkpoints.
 
+## 14.4 M3.4 hydrology and derived biomes
+
+M3.4 consumes the validated M3.2/M3.3 physical-field substrate and adds strategic hydrology plus derived biome classification.
+
+M3.4 owns two capabilities:
+
+1. `Hydrology` — `12 GPP`;
+2. `Derived biomes` — `8 GPP`.
+
+### Strategic hydrology direction
+
+Hydrology remains downstream of accepted physical fields.
+
+The baseline hydrology inputs are:
+
+- `StrategicSurfaceGraph`;
+- strategic elevation;
+- strategic relief where required;
+- strategic land/water;
+- strategic water availability.
+
+The baseline does not consume `WorldGenerationRandomDomain.Hydrology`.
+
+The enum domain remains reserved for a later explicitly approved stochastic residual.
+
+### Deterministic drainage graph
+
+For each land node, downstream flow may target only a canonical adjacent node whose elevation is strictly lower.
+
+Selection order is:
+
+1. lowest adjacent elevation;
+2. lowest canonical node index as a tie-breaker.
+
+Water nodes are terminal water outlets.
+
+Land nodes with no strictly lower adjacent node are explicit inland sink/basin terminals.
+
+Every directed drainage edge strictly decreases elevation.
+
+Therefore the baseline drainage graph is acyclic by construction and does not require a later cycle-breaking pass.
+
+### Flow accumulation
+
+The initial executable hydrology aggregate will be represented by:
+
+`StrategicHydrologyFieldSet`.
+
+It will expose deterministic strategic drainage structure and flow accumulation aligned one-to-one with `StrategicSurfaceGraph`.
+
+Land-node local runoff is derived from accepted strategic water availability.
+
+Water nodes add no local runoff but may receive upstream accumulation.
+
+Accumulation is processed in descending elevation order with canonical node-index tie-breaking.
+
+Authoritative accumulation uses integer/fixed-point semantics, checked `Int64` storage and wider deterministic intermediate arithmetic where required.
+
+### Rivers and basins
+
+Strategic flow accumulation is the physical substrate for later river/stream significance.
+
+Visual river geometry is not authoritative hydrology.
+
+Land nodes that cannot descend are explicit basin terminals.
+
+M3.4 does not silently convert every sink into an ocean-connected path by arbitrary carving.
+
+Detailed depression fill/spill, erosion, sediment and tactical shoreline algorithms remain later decisions.
+
+### Derived biome direction
+
+Biomes remain derived classifications.
+
+The initial executable biome output will be:
+
+`StrategicBiomeMap`.
+
+It remains aligned one-to-one with `StrategicSurfaceGraph`.
+
+A biome classifier may consume only accepted generated-world fields such as:
+
+- land/water;
+- temperature;
+- moisture;
+- water availability;
+- elevation/relief where explicitly required;
+- strategic hydrology outputs where explicitly required.
+
+Water classification has precedence over terrestrial biome classification.
+
+Terrestrial biome rules use explicit fixed-point thresholds and deterministic precedence.
+
+The baseline does not consume `WorldGenerationRandomDomain.Biomes`.
+
+Exact initial terrestrial biome names and threshold values become versioned/tested generator semantics when implemented by M3.4-C.
+
+### Strategic-first residency
+
+M3.4 does not require globally resident tactical hydrology or tactical biome arrays.
+
+Any future tactical hydrology/detail must use the bounded physical-field rules already established by M3.3 rather than creating a second global tactical residency assumption.
+
+Recurring strategic systems consume strategic hydrology/biome outputs.
+
+### M3.4 scope boundary
+
+M3.4 does not implement:
+
+- erosion;
+- sediment transport;
+- dynamic weather;
+- seasons;
+- ocean circulation;
+- tectonics;
+- globally resident tactical hydrology;
+- visual river/lake presentation;
+- resources;
+- habitability;
+- civilization placement;
+- Civilization runtime state;
+- Economy runtime state;
+- `WorldState` mutation;
+- networking;
+- presentation.
+
+### M3.4 checkpoint decomposition
+
+M3.4 is decomposed into:
+
+- **M3.4-A — Hydrology & Derived Biome Contract Freeze**;
+- **M3.4-B — Executable Strategic Drainage & Flow Accumulation**;
+- **M3.4-C — Executable Derived Strategic Biome Classification**;
+- **M3.4-D — Accumulated M3.4 Validation & Close**.
+
+M3.4-A is a design/governance freeze and awards no GPP.
+
+Implementation maturity is earned only by executable later checkpoints.
 ---
 # 15. Seeds e geração reproduzível
+
 
 Todo planeta procedural deverá possuir uma WorldSeed.
 

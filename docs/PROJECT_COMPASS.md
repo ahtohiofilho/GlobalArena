@@ -804,6 +804,41 @@ M3.3-D closes accumulated validation without production-code mutation. The accep
 Both M3.3 capabilities are therefore promoted to `Validada — fator 0.85`. M3.3 closes at `23.80 / 28 GPP — 85.0%`. The remaining `4.20 GPP` is not awarded merely for stage completion; factor `1.00` remains reserved for V1 Definition of Done evidence.
 
 The retained patch is bounded, but transient global M2 physical incidence materialization remains an acknowledged construction-memory/scalability limitation and keeps `RISK-012` and `RISK-002` open.
+### 15.6 M3.4 hydrology and derived biome decomposition
+
+M3.4 owns:
+
+- `Hydrology` — `12 GPP`;
+- `Derived biomes` — `8 GPP`.
+
+Operational decomposition:
+
+- M3.4-A — Hydrology & Derived Biome Contract Freeze;
+- M3.4-B — Executable Strategic Drainage & Flow Accumulation;
+- M3.4-C — Executable Derived Strategic Biome Classification;
+- M3.4-D — Accumulated M3.4 Validation & Close.
+
+Frozen direction:
+
+- hydrology is derived from accepted strategic terrain and water availability;
+- the baseline hydrology path consumes no `Hydrology` RNG;
+- land drainage may target only a strictly lower adjacent strategic cell;
+- lowest elevation wins, then canonical node index resolves ties;
+- water nodes are terminal outlets;
+- land nodes without a lower neighbor are explicit inland sink/basin terminals;
+- strict elevation descent makes the drainage graph acyclic by construction;
+- land runoff derives from strategic water availability;
+- flow accumulation is deterministic integer/fixed-point arithmetic;
+- biomes remain derived classifications;
+- water classification has precedence;
+- terrestrial classification uses explicit fixed-point thresholds and deterministic precedence;
+- the baseline biome classifier consumes no `Biomes` RNG;
+- tactical hydrology is not globally resident by default;
+- resources and habitability remain later stages.
+
+M3.4-A is a governance/design freeze and awards no GPP.
+
+Project progress therefore remains `200.90 / 1000 — 20.1%` until executable M3.4 evidence is accepted.
 # 20. Status atual
 
 Milestone:
@@ -816,7 +851,7 @@ Etapa atual:
 
 Subetapa atual:
 
-**M3.4 entry/design audit — hydrology and derived biome contracts**
+**M3.4-B — Executable Strategic Drainage & Flow Accumulation**
 
 M3 entry audit:
 
@@ -855,6 +890,10 @@ M3.3 — Climate Inputs & Cross-Scale Physical Refinement:
 **concluído em 2026-09-30**
 
 M3.3-D — Accumulated M3.3 Validation & Close:
+
+**concluído em 2026-09-30**
+
+M3.4-A — Hydrology & Derived Biome Contract Freeze:
 
 **concluído em 2026-09-30**
 
@@ -908,7 +947,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M3.4 hydrology and derived biome contract design**
+**M3.4-B executable strategic drainage and flow accumulation**
 
 Última revisão de baseline:
 

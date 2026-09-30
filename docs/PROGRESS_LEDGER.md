@@ -12870,3 +12870,114 @@ Next stage:
 Next gate:
 
 **M3.4 entry/design audit — hydrology and derived biome contracts**
+---
+
+## 2026-09-30 — M3.4-A hydrology and derived biome contract freeze candidate
+
+Current gate:
+
+**M3.4-A — Hydrology & Derived Biome Contract Freeze**
+
+Accepted baseline:
+
+- M3.3 formal close commit: `9955fa63f0edaab4e10bbb317c73db0e79062623`;
+- M3.3 formal evidence: `GlobalArena-Evidence-M3.3-D-FORMAL-CLOSE-R1-20260930-111601.zip`;
+- formal evidence SHA-256: `8ec2cc767246f609015b554c82a65a299962eee88f4e77f6461b908a464d06ca`;
+- M3.3: `23.80 / 28 GPP — 85.0%`;
+- project: `200.90 / 1000 — 20.1%`;
+- World Generation: `54.40 / 100 — 54.4%`.
+
+M3.4-A proposed freeze:
+
+- hydrology consumes accepted strategic terrain/water inputs;
+- baseline hydrology uses no random stream;
+- downstream land flow requires a strictly lower canonical neighbor;
+- lowest elevation wins; canonical node index breaks ties;
+- water cells are terminal outlets;
+- local land minima are explicit inland sinks/basins;
+- strict descent guarantees an acyclic drainage graph;
+- land runoff derives from strategic water availability;
+- strategic flow accumulation uses deterministic integer/fixed-point arithmetic;
+- river significance is derived from hydrologic accumulation rather than presentation decoration;
+- biomes remain derived classifications;
+- water biome precedence is explicit;
+- terrestrial biome rules use fixed-point thresholds and deterministic precedence;
+- baseline biome classification uses no random stream;
+- detailed erosion, sediment, tactical river geometry, resources and habitability remain outside M3.4-A.
+
+Checkpoint plan:
+
+1. M3.4-A — contract freeze;
+2. M3.4-B — executable strategic drainage and flow accumulation;
+3. M3.4-C — executable derived strategic biome classification;
+4. M3.4-D — accumulated validation and close.
+
+M3.4-A awards:
+
+**0.00 GPP**
+
+Candidate next checkpoint after formal close:
+
+**M3.4-B — Executable Strategic Drainage & Flow Accumulation**
+---
+
+## 2026-09-30 — M3.4-A hydrology and derived biome contract freeze formal close
+
+Checkpoint closed:
+
+**M3.4-A — Hydrology & Derived Biome Contract Freeze**
+
+Accepted QA evidence:
+
+`GlobalArena-Evidence-M3.4-A-R2-HYDROLOGY-BIOME-CONTRACT-FREEZE-20260930-113127.zip`
+
+Evidence SHA-256:
+
+`3dabc27809d53446de2983d10fdb143cbce5e97ccc3721b03b7ec4c489d7d06f`
+
+Accepted validation:
+
+- manifest: `25/25` verified;
+- baseline HEAD/origin-main: `9955fa63f0edaab4e10bbb317c73db0e79062623`;
+- candidate hashes: `6/6`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- diff diagnostics: `0/0`;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- full regression: `609/609`;
+- QA commit/push: none.
+
+ADR-026 becomes:
+
+**Accepted**
+
+Frozen contracts:
+
+- strategic hydrology is derived from accepted terrain and water-availability inputs;
+- baseline hydrology consumes no random stream;
+- land drainage targets only strictly lower adjacent strategic cells;
+- lowest elevation wins, then canonical node index breaks ties;
+- water nodes are terminal outlets;
+- land local minima are explicit inland sink/basin terminals;
+- strict descent makes the drainage graph acyclic by construction;
+- land runoff derives from strategic water availability;
+- flow accumulation uses deterministic integer/fixed-point arithmetic;
+- biomes remain derived classifications;
+- water classification has precedence;
+- terrestrial biome classification uses explicit fixed-point thresholds and deterministic precedence;
+- baseline biome classification consumes no random stream;
+- no global tactical hydrology residency is introduced.
+
+M3.4-A awards:
+
+**0.00 GPP**
+
+Project remains:
+
+- `200.90 / 1000 — 20.1%`;
+- World Generation `54.40 / 100 — 54.4%`.
+
+Next checkpoint:
+
+**M3.4-B — Executable Strategic Drainage & Flow Accumulation**
