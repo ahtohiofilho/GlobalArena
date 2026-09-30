@@ -2682,3 +2682,77 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M3.5-C executable habitability and civilization-placement suitability**
+---
+
+# 40. M3.5-C habitability and placement-suitability risk review
+
+**Date:** 2026-09-30
+
+Accepted QA:
+
+`GlobalArena-Evidence-M3.5-C-R1-EXECUTABLE-HABITABILITY-PLACEMENT-SUITABILITY-20260930-151626.zip`
+
+Result:
+
+**PASS_READY_FOR_M3_5_C_FORMAL_CLOSE**
+
+Validated:
+
+- versioned centralized habitability policy;
+- deterministic strategic habitability;
+- versioned centralized placement policy;
+- separate local placement suitability;
+- configurable water multipliers;
+- deterministic `CivilizationPlacement` reference stream;
+- candidate selection balancing local suitability and dispersion;
+- canonical tie-breaking;
+- baseline strategic BFS distance;
+- targeted suite `29/29`;
+- full local Release suite `696/696`;
+- compiler warnings/errors `0/0`.
+
+Risk effect:
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+Placement randomness is isolated to the explicit `CivilizationPlacement` stream, while habitability and local suitability are deterministic derivations. Cross-platform validation after this source commit remains required before accumulated M3.5 close.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+M3.5 now has executable separation between environmental habitability, local placement suitability and multi-start dispersion. Exact balance remains behind versioned policy objects.
+
+`RISK-010 — Architecture overengineering` remains `WATCHING / HIGH`.
+
+The implementation uses a simple strategic BFS-distance baseline and deliberately does not introduce weighted geography, sea-transition costs, optimization solvers or a civilization-count model before visual evidence exists.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+Habitability and local placement suitability add only strategic scalar fields. Candidate selection uses transient strategic arrays/queues and no global tactical residency.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+Placement remains strategic-only and does not require tactical pathfinding.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+No Civilization runtime entities, ownership, diplomacy, Economy runtime, tactical settlement simulation, AI, networking or presentation responsibility was added.
+
+Calibration risk remains explicit:
+
+- water eligibility/weight is not final;
+- land-water transition costs are not frozen;
+- local-quality-versus-dispersion weights are not final;
+- initial-reference behavior is configurable;
+- final civilization count remains outside this checkpoint.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M3.5-D accumulated M3.5 validation and close**

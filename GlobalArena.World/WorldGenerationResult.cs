@@ -18,6 +18,10 @@ public sealed class WorldGenerationResult
 
     public StrategicResourcePotentialFieldSet StrategicResourcePotentialFields { get; }
 
+    public StrategicScalarField StrategicHabitability { get; }
+
+    public StrategicScalarField StrategicCivilizationPlacementSuitability { get; }
+
     public WorldGenerationResult(
         WorldGenerationRequest request,
         StrategicTopology strategicTopology)
@@ -60,5 +64,14 @@ public sealed class WorldGenerationResult
             StrategicResourcePotentialFieldSet.Generate(
                 request,
                 StrategicSurfaceGraph);
+        StrategicHabitability =
+            StrategicHabitabilityFieldGenerator.Generate(
+                StrategicPhysicalFields,
+                StrategicClimateFields);
+        StrategicCivilizationPlacementSuitability =
+            StrategicCivilizationPlacementSuitabilityGenerator.Generate(
+                StrategicPhysicalFields,
+                StrategicHabitability,
+                StrategicResourcePotentialFields);
     }
 }

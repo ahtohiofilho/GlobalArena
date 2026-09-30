@@ -13370,3 +13370,72 @@ Progress effect:
 Next checkpoint:
 
 **M3.5-C — Executable Habitability & Civilization Placement Suitability**
+---
+
+## 2026-09-30 — M3.5-C executable habitability and civilization-placement suitability formal close
+
+Checkpoint closed:
+
+**M3.5-C — Executable Habitability & Civilization Placement Suitability**
+
+Accepted QA evidence:
+
+`GlobalArena-Evidence-M3.5-C-R1-EXECUTABLE-HABITABILITY-PLACEMENT-SUITABILITY-20260930-151626.zip`
+
+Evidence SHA-256:
+
+`8c305895c36af38c3c5ba8443f550907c911805d5d654b7b9cd266373e87f9ab`
+
+Accepted QA:
+
+- manifest: `30/30` verified;
+- baseline HEAD/origin-main: `f845044e1e070991bca3aa83882b7466445b43ea`;
+- candidate hashes: `8/8`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- diff diagnostics: clean;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- targeted M3.5-C tests: `29/29`;
+- full local regression: `696/696`;
+- QA commit/push: none.
+
+Executable capability now includes:
+
+- versioned `StrategicHabitabilityPolicy`;
+- deterministic strategic habitability field;
+- versioned `StrategicCivilizationPlacementPolicy`;
+- separate local placement-suitability field;
+- policy-configurable water multipliers;
+- deterministic initial placement reference using the `CivilizationPlacement` domain;
+- candidate selector capable of combining local suitability with spatial dispersion;
+- configurable exclusion of the initial reference;
+- baseline unweighted strategic graph distance;
+- integration of habitability and placement suitability into `WorldGenerationResult`;
+- no civilization-count formula;
+- no Civilization runtime state;
+- no frozen water/land transition-cost model.
+
+Maturity effect:
+
+`Habitability & civilization-placement suitability`
+
+moves from:
+
+**Inexistente — factor 0.00 — 0.00 GPP**
+
+to:
+
+**Funcional isoladamente — factor 0.50 — 2.50 GPP**
+
+Progress effect:
+
+- GPP delta: **+2.50**;
+- project GPP: **223.90 / 1000**;
+- Global Progress exact: **22.390%**;
+- Global Progress displayed: **22.4%**;
+- World Generation / biomas / recursos: **77.40 / 100 — 77.4%**.
+
+Next checkpoint:
+
+**M3.5-D — Accumulated M3.5 Validation & Close**
