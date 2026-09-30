@@ -3074,3 +3074,71 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M3.6-D accumulated cross-platform M3 exit validation and close**
+---
+
+# 46. M3 exit risk review
+
+**Date:** 2026-09-30
+
+Milestone:
+
+**M3 — Procedural World — CLOSED**
+
+Accepted exit evidence:
+
+`GlobalArena-Evidence-M3.6-D-R1-ACCUMULATED-CROSS-PLATFORM-M3-EXIT-VALIDATION-20260930-171117.zip`
+
+Evidence SHA-256:
+
+`700dc74cac63a2612fe984391cf07db6c3c5a71de8a391ec396a781bac71b88b`
+
+Exit validation:
+
+- local Release build: PASS;
+- local full suite: `717/717`;
+- M3.6 targeted tests: `21/21`;
+- blocking world-generation performance/memory budgets: PASS;
+- stress correctness: PASS;
+- canonical generated-world signature vectors: PASS;
+- Windows/Ubuntu/macOS regression: `717/717` on each platform;
+- compiler warnings/errors: `0/0` on each platform;
+- artifacts uploaded on all three platforms;
+- final accumulated gate was ReadOnly.
+
+Risk effect:
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+The M3 world-generation component now has strong deterministic and cross-platform evidence. The broader risk remains relevant to subsequent systemic simulation, command resolution and future save/network boundaries.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+Representative strategic generation fits the accepted blocking budgets, but the larger `G(24,0)` stress case exceeds the blocking allocation envelope and global tactical/runtime memory remains unresolved.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+M3 proves strategic-first generation and accepted cross-scale contracts; product-scale runtime tactical workloads remain future evidence.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+M3 exits with explicit versioning, canonical signatures, benchmark contracts and evidence gates. M4 must preserve explicit domain boundaries while connecting previously separate systems.
+
+`RISK-007 — Architecture overengineering` remains `OPEN / HIGH`.
+
+The M3 close did not introduce generalized infrastructure beyond the accepted needs of deterministic generation, hashing and benchmarking.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+Runtime civilizations, Economy, trade, routes, warfare, diplomacy, AI, networking and presentation remain outside M3 and move only through their owning milestones.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M4 entry/decomposition freeze**

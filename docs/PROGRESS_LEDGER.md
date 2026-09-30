@@ -13804,3 +13804,95 @@ Progress effect:
 Next checkpoint:
 
 **M3.6-D — Accumulated Cross-Platform M3 Exit Validation & Close**
+---
+
+## 2026-09-30 — M3.6-D accumulated cross-platform M3 exit formal close
+
+Milestone closed:
+
+**M3 — Procedural World**
+
+Checkpoint closed:
+
+**M3.6-D — Accumulated Cross-Platform M3 Exit Validation & Close**
+
+Accepted evidence:
+
+`GlobalArena-Evidence-M3.6-D-R1-ACCUMULATED-CROSS-PLATFORM-M3-EXIT-VALIDATION-20260930-171117.zip`
+
+Evidence SHA-256:
+
+`700dc74cac63a2612fe984391cf07db6c3c5a71de8a391ec396a781bac71b88b`
+
+Accepted accumulated validation:
+
+- evidence manifest: `21/21` verified;
+- accepted source HEAD/origin-main: `e4840b83da457d4505b008e014475311efd9d088`;
+- GA-SRP self-tests: `19/19`;
+- target `ReadOnly` validation: PASS;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- targeted M3.6 tests: `21/21`;
+- full local regression: `717/717`;
+- blocking world-generation benchmark: PASS;
+- stress correctness: PASS;
+- cross-platform workflow run `36770289135`: SUCCESS;
+- Windows: `717/717`, zero warnings/errors, artifact uploaded;
+- Ubuntu: `717/717`, zero warnings/errors, artifact uploaded;
+- macOS: `717/717`, zero warnings/errors, artifact uploaded;
+- repository files modified by accumulated validation: `0`;
+- accumulated validation commit/push: none.
+
+Maturity promotion:
+
+`Determinism, cross-platform validation, performance baseline & M3 exit`
+
+from:
+
+**Integrada — factor 0.70 — 2.80 GPP**
+
+to:
+
+**Validada — factor 0.85 — 3.40 GPP**
+
+M3 / World Generation closes at:
+
+**85.00 / 100 GPP — 85.0%**
+
+The remaining:
+
+**15.00 GPP**
+
+is reserved for later V1 Definition of Done evidence.
+
+M3.6 specifically closes at:
+
+**3.40 / 4 GPP — 85.0%**
+
+with:
+
+**0.60 GPP**
+
+reserved for later V1 Definition of Done evidence.
+
+Progress effect:
+
+- GPP delta: **+0.60**;
+- project GPP: **231.50 / 1000**;
+- Global Progress exact: **23.150%**;
+- Global Progress displayed: **23.2%**;
+- World Generation / biomas / recursos: **85.00 / 100 — 85.0%**.
+
+M3 exit conclusion:
+
+the generated-world foundation now has deterministic seed/version contracts, canonical topology/field generation, climate/hydrology/biome/resource/habitability/placement layers, canonical SHA-256 world signatures, frozen regression vectors, explicit performance/memory budgets and accumulated Windows/Ubuntu/macOS validation.
+
+Scope intentionally left to later owners includes runtime civilizations, Economy, trade, routes, warfare, ownership, diplomacy, AI, networking and presentation.
+
+Next milestone:
+
+**M4 — Systemic Vertical Slice**
+
+Immediate next activity:
+
+**M4 entry and decomposition — not yet frozen**

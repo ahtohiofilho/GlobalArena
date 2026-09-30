@@ -555,7 +555,7 @@ Inclui:
 
 ## M3 — Procedural World
 
-**Status: atual desde 2026-09-29**
+**Status: concluído em 2026-09-30**
 
 Objetivo:
 gerar um planeta jogável procedimentalmente.
@@ -572,7 +572,9 @@ Inclui:
 
 ---
 
-## M4 — Simulation Vertical Slice
+## M4 — Systemic Vertical Slice
+
+**Status: atual desde 2026-09-30**
 
 Objetivo:
 primeiro ciclo sistêmico completo.
@@ -707,8 +709,8 @@ Current M3 maturity after closed subcheckpoints:
 | Derived biomes | 8 | Validada | 0.85 | 6.80 |
 | Resources | 7 | Validada | 0.85 | 5.95 |
 | Habitability & civilization-placement suitability | 5 | Validada | 0.85 | 4.25 |
-| Determinism, cross-platform validation, performance baseline & M3 exit | 4 | Integrada | 0.70 | 2.80 |
-| **TOTAL** | **100** |  |  | **84.40** |
+| Determinism, cross-platform validation, performance baseline & M3 exit | 4 | Validada | 0.85 | 3.40 |
+| **TOTAL** | **100** |  |  | **85.00** |
 
 M3.1-A is a governance/design freeze. It does not promote implementation maturity and therefore awards no GPP.
 
@@ -942,15 +944,15 @@ Project progress remains `228.10 / 1000 — 22.8%` and World Generation remains 
 
 Milestone:
 
-**M3 — Procedural World**
+**M4 — Systemic Vertical Slice**
 
 Etapa atual:
 
-**M3.6 — Determinism, Performance, Cross-Platform Validation & M3 Exit**
+**M4 — Systemic Vertical Slice**
 
 Subetapa atual:
 
-**M3.6-D — Accumulated Cross-Platform M3 Exit Validation & Close**
+**M4 entry and decomposition — not yet frozen**
 
 M3 entry audit:
 
@@ -1044,6 +1046,18 @@ M3.6-C — World Generation Performance & Memory Acceptance:
 
 **concluído em 2026-09-30**
 
+M3.6-D — Accumulated Cross-Platform M3 Exit Validation & Close:
+
+**concluído em 2026-09-30**
+
+M3.6 — Determinism, Performance, Cross-Platform Validation & M3 Exit:
+
+**concluído em 2026-09-30**
+
+M3 — Procedural World:
+
+**concluído em 2026-09-30**
+
 M2 — Planet Topology:
 
 **concluído em 2026-09-29**
@@ -1062,11 +1076,11 @@ Baseline V1:
 
 Progresso oficial:
 
-**23,1%**
+**23,2%**
 
 GPP conquistados:
 
-**230,90 / 1000**
+**231,50 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -1078,7 +1092,7 @@ Topologia planetária / Goldberg:
 
 World Generation / biomas / recursos:
 
-**84,40 / 100 GPP — 84,4%**
+**85,00 / 100 GPP — 85,0%**
 
 Scope Confidence:
 
@@ -1094,7 +1108,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M3.6-D accumulated cross-platform M3 exit validation and close**
+**M4 Systemic Vertical Slice entry and decomposition**
 
 Última revisão de baseline:
 

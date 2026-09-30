@@ -1818,7 +1818,7 @@ M3.5 closes at `10.20 / 12 GPP — 85.0%` after accumulated local and cross-plat
 - M3.6-A — World Generation Exit, Signature & Performance Contract Freeze — concluded;
 - M3.6-B — Canonical Generated-World Signature & Regression Vectors — concluded;
 - M3.6-C — World Generation Performance & Memory Acceptance — concluded;
-- M3.6-D — Accumulated Cross-Platform M3 Exit Validation & Close — current.
+- M3.6-D — Accumulated Cross-Platform M3 Exit Validation & Close — concluded.
 
 Stage envelope:
 
@@ -1853,6 +1853,16 @@ The final V1 strategic/tactical scale is not frozen by M3.1-A.
 
 ---
 
+M3 formal close:
+
+- M3 / World Generation: `85.00 / 100 GPP — 85.0%`;
+- M3.6: `3.40 / 4 GPP — Validada — factor 0.85`;
+- `15.00 GPP` of World Generation remain reserved for V1 Definition of Done evidence;
+- final accumulated local gate: `717/717`;
+- cross-platform exit source tree: `717/717` on Windows, Ubuntu and macOS with zero compiler warnings/errors;
+- canonical generated-world signatures and blocking performance/memory budgets accepted.
+
+M3 closed on `2026-09-30`.
 ## M4 — Systemic Vertical Slice
 
 Objetivo:
@@ -1983,7 +1993,7 @@ Somente um ou poucos itens devem ser classificados como Critical Path.
 
 Status atual:
 
-**M3 multiscale procedural world foundation: deterministic physical fields, cross-scale continuity and seed reproducibility**
+**M4 Systemic Vertical Slice entry: decompose the end-to-end gameplay loop before implementation**
 
 ---
 
@@ -2097,15 +2107,15 @@ Last Baseline Review: YYYY-MM-DD
 
 Current Milestone:
 
-**M3 — Procedural World**
+**M4 — Systemic Vertical Slice**
 
 Current Stage:
 
-**M3.6 — Determinism, Performance, Cross-Platform Validation & M3 Exit**
+**M4 — Systemic Vertical Slice**
 
 Current Subcheckpoint:
 
-**M3.6-D — Accumulated Cross-Platform M3 Exit Validation & Close**
+**M4 entry and decomposition — not yet frozen**
 
 M3 Entry Audit:
 
@@ -2133,11 +2143,11 @@ M3.1-D — Accumulated M3.1 Validation & Close:
 
 Official Progress:
 
-**23.1%**
+**23.2%**
 
 GPP Earned:
 
-**230.90 / 1000**
+**231.50 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -2149,7 +2159,7 @@ Planet Topology / Goldberg:
 
 World Generation / biomes / resources:
 
-**84.40 / 100 GPP — 84.4%**
+**85.00 / 100 GPP — 85.0%**
 
 Scope Confidence:
 
@@ -2165,7 +2175,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**M3.6-D accumulated cross-platform M3 exit validation and close**
+**M4 Systemic Vertical Slice entry and decomposition**
 
 Last Baseline Review:
 
