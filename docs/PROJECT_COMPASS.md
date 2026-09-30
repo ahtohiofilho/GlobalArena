@@ -852,6 +852,39 @@ This promotes `Derived biomes` to `Funcional isoladamente — fator 0.50`, addin
 M3.4-D closes accumulated validation without production-code mutation. The accepted gate revalidates the `44/44` M3.4-specific slice and the `653/653` full Release suite locally, consumes cross-platform run `36742871415` with `653/653` on Windows, macOS and Ubuntu, and confirms zero compiler warnings/errors with artifacts uploaded on all three platforms.
 
 Hydrology and Derived biomes are therefore promoted to `Validada — fator 0.85`. M3.4 closes at `17.00 / 20 GPP — 85.0%`. The remaining `3.00 GPP` is reserved for later V1 Definition of Done evidence.
+### 15.7 M3.5 resources, habitability and civilization-placement decomposition
+
+M3.5 owns:
+
+- `Resources` — `7 GPP`;
+- `Habitability & civilization-placement suitability` — `5 GPP`.
+
+Operational decomposition:
+
+- M3.5-A — Resources, Habitability & Placement Policy Freeze;
+- M3.5-B — Executable Strategic Resource Potential;
+- M3.5-C — Executable Habitability & Civilization Placement Suitability;
+- M3.5-D — Accumulated M3.5 Validation & Close.
+
+Frozen direction:
+
+- generated resource potential belongs to World Generation, not Economy runtime;
+- resource potential remains strategic-first and may be represented by one or more compact strategic channels;
+- final resource catalogue, abundance curves and tactical deposit geometry remain open;
+- habitability is a derived environmental suitability signal distinct from resource richness;
+- civilization placement is a separate layer from habitability;
+- placement must be able to balance local suitability and separation from already selected starts;
+- high suitability is a tendency rather than an absolute highest-score requirement;
+- exact placement algorithm, first-reference policy, distance metric and quality-versus-distance weights remain open;
+- water eligibility, water weight, coast/island handling and land-water transition costs remain open;
+- tunable weights/thresholds must be centralized behind a coherent versioned calibration boundary;
+- `Resources`, `Habitability` and `CivilizationPlacement` random domains remain distinct; consumption is optional, but any stochastic residual must use only its owned domain;
+- M3.5 remains strategic-first and does not require global tactical pathfinding for placement;
+- candidate/suitability generation does not instantiate Civilization runtime state.
+
+M3.5-A is a governance/design freeze and awards no GPP.
+
+Project progress remains `217.90 / 1000 — 21.8%` and World Generation remains `71.40 / 100 — 71.4%` until executable M3.5 evidence is accepted.
 # 20. Status atual
 
 Milestone:
@@ -864,7 +897,7 @@ Etapa atual:
 
 Subetapa atual:
 
-**M3.5 — contract/decomposition freeze**
+**M3.5-B — Executable Strategic Resource Potential**
 
 M3 entry audit:
 
@@ -926,6 +959,10 @@ M3.4 — Hydrology & Derived Biomes:
 
 **concluído em 2026-09-30**
 
+M3.5-A — Resources, Habitability & Placement Policy Freeze:
+
+**concluído em 2026-09-30**
+
 M2 — Planet Topology:
 
 **concluído em 2026-09-29**
@@ -976,7 +1013,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M3.5 resources, habitability and civilization-placement contract/decomposition**
+**M3.5-B executable strategic resource potential**
 
 Última revisão de baseline:
 

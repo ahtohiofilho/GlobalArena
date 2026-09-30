@@ -1793,9 +1793,22 @@ M3.4-A freezes the hydrology/biome ownership and deterministic contracts only an
 M3.4 closes at `17.00 / 20 GPP — 85.0%` after accumulated local and cross-platform validation. Hydrology and Derived biomes are both `Validada — fator 0.85`. The remaining `3.00 GPP` is reserved for later V1 Definition of Done evidence.
 ### M3.5 — Resources, Habitability & Civilization Placement Inputs — 12 GPP
 
-- resource potential/distribution;
-- habitability;
-- deterministic civilization start-site suitability/candidates.
+- M3.5-A — Resources, Habitability & Placement Policy Freeze — concluded;
+- M3.5-B — Executable Strategic Resource Potential — current;
+- M3.5-C — Executable Habitability & Civilization Placement Suitability — planned;
+- M3.5-D — Accumulated M3.5 Validation & Close — planned.
+
+Stage envelope:
+
+- strategic resource potential/distribution as generated-world data;
+- habitability as a separate derived environmental suitability signal;
+- civilization-placement suitability/candidates as a distinct decision layer;
+- deterministic domain-separated variation where explicitly used;
+- placement policy capable of balancing local suitability with spatial dispersion;
+- centralized/versioned calibration boundary for tunable weights and thresholds;
+- strategic-first placement without global tactical pathfinding.
+
+M3.5-A freezes ownership, separation of responsibilities and calibration boundaries only. It does not freeze the final resource catalogue, habitability coefficients, water/land traversal costs, start-distribution algorithm or civilization-count formula, and awards no GPP.
 
 ### M3.6 — Determinism, Performance, Cross-Platform Validation & M3 Exit — 4 GPP
 
@@ -2068,7 +2081,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M3.5 — contract/decomposition freeze**
+**M3.5-B — Executable Strategic Resource Potential**
 
 M3 Entry Audit:
 
@@ -2128,7 +2141,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**M3.5 resources, habitability and civilization-placement contract/decomposition**
+**M3.5-B executable strategic resource potential**
 
 Last Baseline Review:
 

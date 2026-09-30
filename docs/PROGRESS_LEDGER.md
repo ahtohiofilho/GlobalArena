@@ -13195,3 +13195,114 @@ Progress effect:
 Next stage:
 
 **M3.5 — Resources, Habitability & Civilization Placement Inputs**
+---
+
+## 2026-09-30 — M3.5-A resources, habitability and placement policy freeze candidate
+
+Current gate:
+
+**M3.5-A — Resources, Habitability & Placement Policy Freeze**
+
+Accepted baseline:
+
+- M3.4 formal close commit: `f6de6e16ca33f9817b28e58c0ea9065ef6d92de0`;
+- M3.4: `17.00 / 20 GPP — 85.0%`;
+- project: `217.90 / 1000 — 21.8%`;
+- World Generation: `71.40 / 100 — 71.4%`.
+
+M3.5-A proposed freeze:
+
+- generated resource potential belongs to World Generation and is not Economy runtime inventory;
+- resource representation remains strategic-first and calibratable;
+- final resource taxonomy, abundance curves and tactical deposit geometry remain open;
+- habitability is a derived environmental suitability signal distinct from resource richness and placement choice;
+- placement suitability/candidates remain separate from habitability;
+- placement must support a balance between local suitability and dispersion among selected starts;
+- high suitability is a tendency, not an absolute requirement that the best-scoring cells always win;
+- the historical fertility/farthest-reference prototype is not adopted as a mandatory algorithm;
+- exact first-reference mechanism, distance metric, candidate pooling and quality-versus-distance weights remain open;
+- water suitability/eligibility, coast/island treatment and land-water transition costs remain open;
+- tunable weights and thresholds require a centralized/versioned calibration boundary;
+- `Resources`, `Habitability` and `CivilizationPlacement` random-domain ownership remains explicit;
+- M3.5 does not instantiate Civilization or Economy runtime state;
+- strategic placement must not require global tactical pathfinding.
+
+Checkpoint plan:
+
+1. M3.5-A — policy/contract freeze;
+2. M3.5-B — executable strategic resource potential;
+3. M3.5-C — executable habitability and civilization-placement suitability;
+4. M3.5-D — accumulated validation and close.
+
+M3.5-A awards:
+
+**0.00 GPP**
+
+Project remains:
+
+- `217.90 / 1000 — 21.8%`;
+- World Generation `71.40 / 100 — 71.4%`.
+
+Candidate next checkpoint after formal close:
+
+**M3.5-B — Executable Strategic Resource Potential**
+---
+
+## 2026-09-30 — M3.5-A resources, habitability and placement policy freeze formal close
+
+Checkpoint closed:
+
+**M3.5-A — Resources, Habitability & Placement Policy Freeze**
+
+Accepted QA evidence:
+
+`GlobalArena-Evidence-M3.5-A-R1-RESOURCES-HABITABILITY-PLACEMENT-POLICY-FREEZE-20260930-143139.zip`
+
+Evidence SHA-256:
+
+`22fbe6316242d3a9639e166a6619187d7586091d2e8c9360127e4c3c706e9afe`
+
+Accepted validation:
+
+- manifest: `25/25` verified;
+- baseline HEAD/origin-main: `f6de6e16ca33f9817b28e58c0ea9065ef6d92de0`;
+- candidate documentation hashes: `6/6`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- diff diagnostics: clean;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- full regression: `653/653`;
+- QA commit/push: none.
+
+ADR-027 becomes:
+
+**Accepted**
+
+Frozen contracts:
+
+- resource potential is generated-world data, not Economy runtime inventory;
+- final resource taxonomy/abundance remains calibratable;
+- habitability is distinct from resource richness and placement choice;
+- civilization placement is a separate strategic decision layer;
+- placement must be capable of combining local suitability with spatial dispersion;
+- high suitability is a tendency rather than an absolute highest-score rule;
+- exact placement algorithm, first-reference policy and quality-versus-distance weights remain open;
+- water eligibility/weight, coast/island treatment and land-water transition costs remain open;
+- tunable weights and thresholds require a centralized/versioned calibration boundary;
+- random domains for Resources, Habitability and CivilizationPlacement remain separate;
+- strategic placement does not require global tactical pathfinding;
+- candidate generation does not instantiate Civilization or Economy runtime state.
+
+M3.5-A awards:
+
+**0.00 GPP**
+
+Project remains:
+
+- `217.90 / 1000 — 21.8%`;
+- World Generation `71.40 / 100 — 71.4%`.
+
+Next checkpoint:
+
+**M3.5-B — Executable Strategic Resource Potential**

@@ -2513,3 +2513,109 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M3.5 resources, habitability and civilization-placement contract/decomposition**
+---
+
+# 37. M3.5-A resources, habitability and placement design risk review
+
+**Date:** 2026-09-30
+
+Gate:
+
+**M3.5-A — Resources, Habitability & Placement Policy Freeze**
+
+Risk posture:
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+Resources, habitability and placement retain explicit world-generation random-domain ownership. Any stochastic residual must use only its owned deterministic stream; ambient/process randomness remains forbidden.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+M3.5 separates generated resource potential, environmental habitability and civilization-placement choice so later calibration can change placement behavior without rewriting physical world generation.
+
+`RISK-010 — Architecture overengineering` remains `WATCHING / HIGH`.
+
+The freeze deliberately avoids selecting a sophisticated optimization algorithm, final resource taxonomy or detailed water/traversal model before visual/gameplay evidence exists.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+M3.5 remains strategic-first and introduces no requirement for globally resident tactical resource/habitability maps.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+World-scale civilization placement must operate on strategic graph data/aggregates and may not require global tactical pathfinding.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+M3.5 produces generated-world inputs only. Civilization runtime, Economy runtime, diplomacy, ownership, tactical settlement simulation, AI, networking and presentation remain outside the stage.
+
+Calibration risk:
+
+The exact balance between local quality and spatial dispersion cannot be finalized before sufficient visualization/gameplay evidence exists. The architecture therefore freezes a policy boundary rather than a final formula.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate after formal close:
+
+**M3.5-B executable strategic resource potential**
+---
+
+# 38. M3.5-A formal-close risk confirmation
+
+**Date:** 2026-09-30
+
+Checkpoint:
+
+**M3.5-A — Resources, Habitability & Placement Policy Freeze — CLOSED**
+
+Accepted QA:
+
+`GlobalArena-Evidence-M3.5-A-R1-RESOURCES-HABITABILITY-PLACEMENT-POLICY-FREEZE-20260930-143139.zip`
+
+Result:
+
+**PASS_READY_FOR_M3_5_A_FORMAL_CLOSE**
+
+Risk confirmation:
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+The accepted freeze preserves explicit world-generation random-domain ownership and forbids ambient/process randomness.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+Resources, habitability and placement now have explicit ownership and dependency separation before executable implementation begins.
+
+`RISK-010 — Architecture overengineering` remains `WATCHING / HIGH`.
+
+The freeze intentionally leaves final resource taxonomy, placement algorithm and traversal-cost model open until visual/gameplay evidence justifies stronger constraints.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+M3.5 remains strategic-first and introduces no global tactical resource/habitability residency.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+Civilization placement is constrained to strategic graph inputs/aggregates rather than global tactical pathfinding.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+No Civilization runtime, Economy runtime, diplomacy, ownership, tactical settlement simulation, AI, networking or presentation responsibility was added.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M3.5-B executable strategic resource potential**

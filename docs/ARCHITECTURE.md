@@ -5063,6 +5063,108 @@ M3.4-A is a design/governance freeze and awards no GPP.
 
 Implementation maturity is earned only by executable later checkpoints.
 ---
+## 14.5 M3.5 resources, habitability and civilization-placement inputs
+
+M3.5 converts the validated physical world into strategic inputs that later Economy and Civilization systems may consume.
+
+M3.5 owns:
+
+1. `Resources` — `7 GPP`;
+2. `Habitability & civilization-placement suitability` — `5 GPP`.
+
+### Resource-potential direction
+
+Generated resources represent strategic world potential/distribution, not Economy runtime inventory.
+
+Resource potential remains aligned with the canonical strategic graph and may consume accepted physical, climate, hydrology and biome inputs.
+
+The final resource catalogue, abundance curves, rarity coefficients, tactical deposit geometry and extraction rules remain open.
+
+If stochastic resource variation is introduced, it uses only `WorldGenerationRandomDomain.Resources`.
+
+### Habitability direction
+
+Habitability is a derived environmental suitability signal.
+
+It remains separate from:
+
+- resource richness;
+- civilization-start selection;
+- Civilization runtime state.
+
+The exact formula and coefficients remain calibratable.
+
+If stochastic habitability variation is introduced, it uses only `WorldGenerationRandomDomain.Habitability`.
+
+### Civilization-placement direction
+
+Placement suitability consumes strategic generated-world inputs and remains a separate decision layer.
+
+The policy must be capable of balancing:
+
+- local suitability;
+- spatial separation among selected starts;
+- deterministic seeded variation where approved.
+
+High suitability is a tendency rather than an absolute rule requiring selection of the highest-value cells.
+
+The exact placement algorithm is intentionally not frozen by M3.5-A.
+
+Open calibration includes:
+
+- quality-versus-distance weights;
+- graph-distance or weighted-traversal metric;
+- first-reference policy;
+- minimum separation;
+- water eligibility/weight;
+- land-water and water-land transition costs;
+- coast/island treatment;
+- candidate-pool size.
+
+Historical prototype behavior may inform later calibration but is not an implementation contract.
+
+### Calibration boundary
+
+Weights and thresholds expected to change during visual/gameplay tuning must be centralized in a coherent versioned policy/configuration boundary rather than scattered as unrelated constants.
+
+A material change in generated-world semantics remains governed by `WorldGenerationVersion`.
+
+M3.5 does not require a tuning UI.
+
+### Strategic-first residency
+
+Resources, habitability and placement operate on strategic generated-world data.
+
+M3.5 does not require globally resident tactical resource/habitability arrays or global tactical pathfinding for civilization placement.
+
+### Scope boundary
+
+M3.5 does not create:
+
+- Civilization runtime entities;
+- names/colors/visual identity;
+- ownership;
+- diplomacy;
+- Economy runtime;
+- production/extraction;
+- tactical settlement simulation;
+- AI strategy;
+- networking;
+- presentation.
+
+### M3.5 checkpoint decomposition
+
+M3.5 is decomposed into:
+
+- **M3.5-A — Resources, Habitability & Placement Policy Freeze**;
+- **M3.5-B — Executable Strategic Resource Potential**;
+- **M3.5-C — Executable Habitability & Civilization Placement Suitability**;
+- **M3.5-D — Accumulated M3.5 Validation & Close**.
+
+M3.5-A is a design/governance freeze and awards no GPP.
+
+Implementation maturity is earned only by executable later checkpoints.
+---
 # 15. Seeds e geração reproduzível
 
 
