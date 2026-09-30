@@ -701,14 +701,14 @@ Current M3 maturity after closed subcheckpoints:
 | World generation identity, seed/versioning & deterministic pipeline contracts | 10 | Validada | 0.85 | 8.50 |
 | Strategic geometry bridge & macro physical-field substrate | 12 | Validada | 0.85 | 10.20 |
 | Elevation, relief & land/water foundation | 14 | Validada | 0.85 | 11.90 |
-| Temperature, climate, moisture & water availability | 14 | Inexistente | 0.00 | 0.00 |
+| Temperature, climate, moisture & water availability | 14 | Funcional isoladamente | 0.50 | 7.00 |
 | Cross-scale boundary conditions, tactical refinement & strategic aggregation | 14 | Inexistente | 0.00 | 0.00 |
 | Hydrology | 12 | Inexistente | 0.00 | 0.00 |
 | Derived biomes | 8 | Inexistente | 0.00 | 0.00 |
 | Resources | 7 | Inexistente | 0.00 | 0.00 |
 | Habitability & civilization-placement suitability | 5 | Inexistente | 0.00 | 0.00 |
 | Determinism, cross-platform validation, performance baseline & M3 exit | 4 | Inexistente | 0.00 | 0.00 |
-| **TOTAL** | **100** |  |  | **30.60** |
+| **TOTAL** | **100** |  |  | **37.60** |
 
 M3.1-A is a governance/design freeze. It does not promote implementation maturity and therefore awards no GPP.
 
@@ -794,7 +794,9 @@ Frozen direction:
 
 M3.3-A is a governance/design freeze and awards no GPP.
 
-Project progress therefore remains `177.10 / 1000 — 17.7%` until executable M3.3 evidence is accepted.
+M3.3-B materializes the strategic climate layer with deterministic fixed-point temperature, deterministic fixed-point moisture, derived water availability and `WorldGenerationResult` integration. This promotes `Temperature, climate, moisture & water availability` to `Funcional isoladamente — fator 0.50`, adding `7.00 GPP`.
+
+Cross-scale boundary conditions, tactical refinement and strategic aggregation remain at `0.00` until executable M3.3-C evidence is accepted.
 # 20. Status atual
 
 Milestone:
@@ -807,7 +809,7 @@ Etapa atual:
 
 Subetapa atual:
 
-**M3.3-B — Executable Strategic Temperature, Moisture & Water Availability**
+**M3.3-C — Bounded Tactical Refinement & Strategic Aggregation**
 
 M3 entry audit:
 
@@ -859,11 +861,11 @@ Baseline V1:
 
 Progresso oficial:
 
-**17,7%**
+**18,4%**
 
 GPP conquistados:
 
-**177,10 / 1000**
+**184,10 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -875,7 +877,7 @@ Topologia planetária / Goldberg:
 
 World Generation / biomas / recursos:
 
-**30,60 / 100 GPP — 30,6%**
+**37,60 / 100 GPP — 37,6%**
 
 Scope Confidence:
 
@@ -891,7 +893,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M3.3-B executable strategic temperature, moisture and water availability**
+**M3.3-C bounded tactical refinement and strategic aggregation**
 
 Última revisão de baseline:
 

@@ -1756,8 +1756,8 @@ M3.2 closes after accumulated local and cross-platform validation at `22.10 / 26
 ### M3.3 — Climate Inputs & Cross-Scale Physical Refinement — 28 GPP
 
 - M3.3-A — Climate & Cross-Scale Physical Contract Freeze — concluded;
-- M3.3-B — Executable Strategic Temperature, Moisture & Water Availability — current;
-- M3.3-C — Bounded Tactical Refinement & Strategic Aggregation — planned;
+- M3.3-B — Executable Strategic Temperature, Moisture & Water Availability — concluded;
+- M3.3-C — Bounded Tactical Refinement & Strategic Aggregation — current;
 - M3.3-D — Accumulated M3.3 Validation & Close — planned.
 
 Stage envelope:
@@ -2052,7 +2052,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M3.3-B — Executable Strategic Temperature, Moisture & Water Availability**
+**M3.3-C — Bounded Tactical Refinement & Strategic Aggregation**
 
 M3 Entry Audit:
 
@@ -2080,11 +2080,11 @@ M3.1-D — Accumulated M3.1 Validation & Close:
 
 Official Progress:
 
-**17.7%**
+**18.4%**
 
 GPP Earned:
 
-**177.10 / 1000**
+**184.10 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -2096,7 +2096,7 @@ Planet Topology / Goldberg:
 
 World Generation / biomes / resources:
 
-**30.60 / 100 GPP — 30.6%**
+**37.60 / 100 GPP — 37.6%**
 
 Scope Confidence:
 
@@ -2112,7 +2112,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**M3.3-B executable strategic temperature, moisture and water availability**
+**M3.3-C bounded tactical refinement and strategic aggregation**
 
 Last Baseline Review:
 

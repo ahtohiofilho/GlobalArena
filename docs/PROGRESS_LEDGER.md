@@ -12643,3 +12643,69 @@ M3.3-A is closed.
 Next checkpoint:
 
 **M3.3-B — Executable Strategic Temperature, Moisture & Water Availability**
+---
+
+## 2026-09-30 — M3.3-B strategic climate fields formal close
+
+Checkpoint closed:
+
+**M3.3-B — Executable Strategic Temperature, Moisture & Water Availability**
+
+Accepted QA evidence:
+
+`GlobalArena-Evidence-M3.3-B-R1-STRATEGIC-CLIMATE-FIELDS-20260930-095956.zip`
+
+Evidence SHA-256:
+
+`639b06389c0a110e5ce7c5ba10fc3c3094b763ff52c3b8fbcae939ac5196b05f`
+
+Accepted QA:
+
+- manifest: `33/33` verified;
+- baseline HEAD/origin-main: `15f7c685d4006162618aae7b0f4df29f43acefe0`;
+- accepted implementation/test files: `9`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- diff diagnostics: `0/0`;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- targeted M3.3-B tests: `36/36`;
+- full local regression: `575/575`;
+- QA commit/push: none.
+
+Executable capability now includes:
+
+- `StrategicClimateFieldSet`;
+- deterministic strategic temperature using only `WorldGenerationRandomDomain.Temperature`;
+- deterministic strategic moisture using only `WorldGenerationRandomDomain.Moisture`;
+- signed fixed-point temperature in `[-1_000_000, +1_000_000]`;
+- normalized fixed-point moisture in `[0, 1_000_000]`;
+- derived strategic water availability with no independent random stream;
+- water-cell availability fixed at `1_000_000`;
+- land-cell availability derived from strategic moisture;
+- integration into `WorldGenerationResult`;
+- no tactical refinement, hydrology, biome or resource implementation.
+
+Maturity effect:
+
+`Temperature, climate, moisture & water availability`
+
+moves from:
+
+**Inexistente — factor 0.00 — 0.00 GPP**
+
+to:
+
+**Funcional isoladamente — factor 0.50 — 7.00 GPP**
+
+Progress effect:
+
+- GPP delta: **+7.00**;
+- project GPP: **184.10 / 1000**;
+- Global Progress exact: **18.410%**;
+- Global Progress displayed: **18.4%**;
+- World Generation / biomas / recursos: **37.60 / 100 — 37.6%**.
+
+Next checkpoint:
+
+**M3.3-C — Bounded Tactical Refinement & Strategic Aggregation**

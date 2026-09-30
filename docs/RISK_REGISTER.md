@@ -2059,3 +2059,63 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M3.3-B executable strategic temperature, moisture and water availability**
+---
+
+# 29. M3.3-B strategic climate fields risk review
+
+**Date:** 2026-09-30
+
+Accepted QA:
+
+`GlobalArena-Evidence-M3.3-B-R1-STRATEGIC-CLIMATE-FIELDS-20260930-095956.zip`
+
+Result:
+
+**PASS_READY_FOR_M3_3_B_FORMAL_CLOSE**
+
+Validated:
+
+- deterministic strategic temperature;
+- deterministic strategic moisture;
+- derived strategic water availability;
+- explicit domain separation for Temperature and Moisture;
+- no independent water-availability RNG;
+- fixed-point strategic climate storage;
+- `WorldGenerationResult` integration;
+- targeted suite `36/36`;
+- full local Release suite `575/575`;
+- compiler warnings/errors `0/0`.
+
+Risk effect:
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+Strategic climate inputs now have deterministic domain-separated executable contracts and stable regression vectors. Cross-platform validation remains required at later accumulated gates.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+The strategic climate layer now uses the accepted M3.2 substrate. M3.3-C remains the key architectural gate for bounded physical refinement and strategic aggregation.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+M3.3-B adds only O(strategic cells) persistent fields. Tactical physical-field residency remains deferred to bounded M3.3-C contracts.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+M3.3-B adds no tactical materialization. M3.3-C must prove bounded physical scope and avoid global tactical work in recurring strategic paths.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+Hydrology, biomes, resources, Civilization runtime, Economy runtime, networking and presentation remain outside M3.3-B.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M3.3-C bounded tactical refinement and strategic aggregation**
