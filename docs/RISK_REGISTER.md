@@ -2119,3 +2119,62 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M3.3-C bounded tactical refinement and strategic aggregation**
+---
+
+# 30. M3.3-C bounded tactical refinement and aggregation risk review
+
+**Date:** 2026-09-30
+
+Accepted QA:
+
+`GlobalArena-Evidence-M3.3-C-R2-BOUNDED-TACTICAL-REFINEMENT-AGGREGATION-20260930-104047.zip`
+
+Result:
+
+**PASS_READY_FOR_M3_3_C_FORMAL_CLOSE**
+
+Validated:
+
+- bounded retained tactical scalar patches;
+- M2 physical tactical identity reuse;
+- explicit deterministic strategic boundary values;
+- canonical physical ordering;
+- explicit `6/3/2` aggregation weighting;
+- deterministic strategic aggregation;
+- targeted suite `34/34`;
+- full local Release suite `609/609`;
+- compiler warnings/errors `0/0`.
+
+Risk effect:
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+M3.3-C adds no tactical RNG and uses deterministic integer arithmetic and canonical identity ordering. M3.3-D still requires accumulated and cross-platform validation of the accepted M3.3 tree.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+The M2 physical identity model is now consumed by an executable M3 bounded projection and strategic aggregation contract. The risk remains open until later stages prove broader physical-system composition.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+The retained patch is bounded and does not retain the global physical incidence map. However, current materialization still creates the M2 full incidence map transiently before projection. This must not be mistaken for a fully bounded construction-memory implementation.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+The current output scope is bounded, but construction cost still includes the global M2 incidence materialization. M3.3-D can validate current correctness and minimum performance evidence, but final V1 tactical density/scalability remains unresolved.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+Hydrology, biomes, resources, Civilization runtime, Economy runtime, networking and presentation remain outside M3.3-C.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M3.3-D accumulated M3.3 validation and close**

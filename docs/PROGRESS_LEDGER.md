@@ -12709,3 +12709,74 @@ Progress effect:
 Next checkpoint:
 
 **M3.3-C — Bounded Tactical Refinement & Strategic Aggregation**
+---
+
+## 2026-09-30 — M3.3-C bounded tactical refinement and aggregation formal close
+
+Checkpoint closed:
+
+**M3.3-C — Bounded Tactical Refinement & Strategic Aggregation**
+
+Accepted QA evidence:
+
+`GlobalArena-Evidence-M3.3-C-R2-BOUNDED-TACTICAL-REFINEMENT-AGGREGATION-20260930-104047.zip`
+
+Evidence SHA-256:
+
+`c71ff9fd3986b16ff3f9087dbf309901dc16eb942047923d7c311f5e24db95ad`
+
+Accepted QA:
+
+- manifest: `31/31` verified;
+- baseline HEAD/origin-main: `01cffe7d9ffd28dbefc1bb148925f015f101b730`;
+- exact R1 staged residue safely recovered by hash;
+- accepted implementation/test files: `8`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- diff diagnostics: `0/0`;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- targeted M3.3-C tests: `34/34`;
+- full local regression: `609/609`;
+- QA commit/push: none.
+
+Executable capability now includes:
+
+- bounded tactical scalar patch per target strategic cell;
+- M2 `PhysicalTacticalTileId` reused as physical identity;
+- explicit incident-strategic boundary values;
+- boundary values computed with deterministic integer arithmetic;
+- deterministic canonical physical ordering;
+- explicit aggregation weights `6 / 3 / 2` for interior / edge / vertex incidence;
+- strategic aggregation via deterministic `Int128` weighted mean;
+- patch-retained state does not retain `PhysicalTacticalIncidenceMap`;
+- no tactical random stream is consumed by this deterministic baseline;
+- no persistent full-planet tactical scalar array.
+
+Implementation caveat retained as an active risk:
+
+the current materializer obtains the M2 physical incidence map globally and then projects it into a bounded retained patch. Global incidence residency is transient rather than persistent. This is sufficient for isolated functional maturity, but it does not close tactical-memory or tactical-scale risks.
+
+Maturity effect:
+
+`Cross-scale boundary conditions, tactical refinement & strategic aggregation`
+
+moves from:
+
+**Inexistente — factor 0.00 — 0.00 GPP**
+
+to:
+
+**Funcional isoladamente — factor 0.50 — 7.00 GPP**
+
+Progress effect:
+
+- GPP delta: **+7.00**;
+- project GPP: **191.10 / 1000**;
+- Global Progress exact: **19.110%**;
+- Global Progress displayed: **19.1%**;
+- World Generation / biomas / recursos: **44.60 / 100 — 44.6%**.
+
+Next checkpoint:
+
+**M3.3-D — Accumulated M3.3 Validation & Close**
