@@ -1154,6 +1154,35 @@ Civilizations / Diplomacy:
 
 The next implementation target is baseline diplomacy state. No diplomacy or later ownership-link GPP is credited by M4.2-C.
 
+
+### M4.2 maturity after M4.2-D
+
+M4.2-D makes the baseline symmetric diplomacy relation state executable as sparse authoritative Runtime state.
+
+| Capability | GPP | Maturidade | Fator | GPP ganhos |
+|---|---:|---|---:|---:|
+| Runtime civilization identity & roster | 8 | Funcional isoladamente | 0.50 | 4.00 |
+| World-to-runtime civilization instantiation | 8 | Funcional isoladamente | 0.50 | 4.00 |
+| Territory/control ownership state | 10 | Funcional isoladamente | 0.50 | 5.00 |
+| Baseline diplomacy relation state | 8 | Funcional isoladamente | 0.50 | 4.00 |
+| Economic/military ownership links | 6 | Não existente | 0.00 | 0.00 |
+| Validation/observability/systemic integration | 10 | Não existente | 0.00 | 0.00 |
+| **TOTAL M4.2 tranche** | **50** |  |  | **17.00** |
+
+M4.2-D increment:
+
+**+4.00 GPP**
+
+Project:
+
+**260.50 / 1000 — 26.1%**
+
+Civilizations / Diplomacy:
+
+**17.00 / 70 — 24.3%**
+
+The next implementation target is ownership-link integration and accumulated M4.2 validation. No ownership-link or systemic-integration GPP is credited by M4.2-D.
+
 ### Runtime authority
 
 `WorldGenerationResult` remains immutable procedural input.
@@ -1184,7 +1213,11 @@ Etapa atual:
 
 Subetapa atual:
 
-**M4.2-D — Baseline Diplomacy State**
+**M4.2-E — Ownership-Link Integration, Accumulated Validation & M4.2 Close**
+
+M4.2-D — Baseline Diplomacy State:
+
+**concluído em 2026-10-01**
 
 M4.2-C — Strategic Territory Control:
 
@@ -1336,11 +1369,11 @@ Baseline V1:
 
 Progresso oficial:
 
-**25,7%**
+**26,1%**
 
 GPP conquistados:
 
-**256,50 / 1000**
+**260,50 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -1364,7 +1397,7 @@ Warfare / unidades / combate:
 
 Civilizações / diplomacia:
 
-**13,00 / 70 GPP — 18,6%**
+**17,00 / 70 GPP — 24,3%**
 
 Scope Confidence:
 
@@ -1380,7 +1413,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M4.2-D baseline diplomacy state**
+**M4.2-E ownership-link integration, accumulated validation and M4.2 close**
 
 Última revisão de baseline:
 

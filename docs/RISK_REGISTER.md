@@ -3651,3 +3651,66 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M4.2-D baseline diplomacy state**
+
+---
+
+# 55. M4.2-D baseline diplomacy state risk review
+
+**Date:** 2026-10-01
+
+Checkpoint:
+
+**M4.2-D — Baseline Diplomacy State**
+
+Accepted QA:
+
+`__QA_NAME__`
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+Mitigation advanced:
+
+- diplomacy is now explicit authoritative Runtime state;
+- canonical pair identity, lookup and immutable replacement semantics are executable;
+- aggregate invariants validate all persisted participants;
+- canonical hashing covers baseline diplomacy.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+Only the existing `Baseline diplomacy relation state` capability advances.
+
+Treaties, reputation, scoring, casus belli, alliance obligations, diplomacy AI and automatic Economy/Warfare effects remain outside M4.2-D.
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+Diplomacy pairs are canonicalized by civilization identity, Neutral is implicit, and persisted overrides enter canonical WorldState hash format `6`.
+
+Post-commit cross-platform state-hash attestation remains mandatory before M4.2-E implementation.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+Diplomacy stores only non-neutral pair overrides and does not introduce a dense O(N^2) relation matrix.
+
+`RISK-001 — Economy scalability` remains `OPEN / CRITICAL`.
+
+M4.2-D introduces no trade-access rule or Economy recomputation.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+Diplomacy remains strategic identity state and introduces no tactical residency or pathfinding.
+
+`RISK-007 — Architecture overengineering` remains `OPEN / HIGH`.
+
+The implementation adds three focused Runtime diplomacy types and extends the existing aggregate/hash boundary without a new framework or project.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M4.2-E ownership-link integration, accumulated validation and M4.2 close**

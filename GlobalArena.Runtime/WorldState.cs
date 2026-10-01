@@ -15,6 +15,8 @@ public sealed class WorldState
 
     public StrategicTerritoryRuntimeState Territory { get; }
 
+    public BaselineDiplomacyRuntimeState Diplomacy { get; }
+
     public EconomyRuntimeState Economy { get; }
 
     public WarfareRuntimeState Warfare { get; }
@@ -26,6 +28,7 @@ public sealed class WorldState
             worldBinding: null,
             CivilizationRuntimeState.Empty,
             StrategicTerritoryRuntimeState.Empty,
+            BaselineDiplomacyRuntimeState.Empty,
             EconomyRuntimeState.Empty,
             WarfareRuntimeState.Empty);
     }
@@ -39,6 +42,7 @@ public sealed class WorldState
                 generatedWorld),
             CivilizationRuntimeState.Empty,
             StrategicTerritoryRuntimeState.Empty,
+            BaselineDiplomacyRuntimeState.Empty,
             EconomyRuntimeState.Empty,
             WarfareRuntimeState.Empty);
     }
@@ -66,6 +70,7 @@ public sealed class WorldState
             binding,
             Civilizations,
             Territory,
+            Diplomacy,
             Economy,
             Warfare);
     }
@@ -81,6 +86,7 @@ public sealed class WorldState
             WorldBinding,
             civilizations,
             Territory,
+            Diplomacy,
             Economy,
             Warfare);
     }
@@ -96,6 +102,23 @@ public sealed class WorldState
             WorldBinding,
             Civilizations,
             territory,
+            Diplomacy,
+            Economy,
+            Warfare);
+    }
+
+    public WorldState WithDiplomacy(
+        BaselineDiplomacyRuntimeState diplomacy)
+    {
+        ArgumentNullException.ThrowIfNull(
+            diplomacy);
+
+        return new WorldState(
+            Revision,
+            WorldBinding,
+            Civilizations,
+            Territory,
+            diplomacy,
             Economy,
             Warfare);
     }
@@ -111,6 +134,7 @@ public sealed class WorldState
             WorldBinding,
             Civilizations,
             Territory,
+            Diplomacy,
             economy,
             Warfare);
     }
@@ -126,6 +150,7 @@ public sealed class WorldState
             WorldBinding,
             Civilizations,
             Territory,
+            Diplomacy,
             Economy,
             warfare);
     }
@@ -137,6 +162,7 @@ public sealed class WorldState
             WorldBinding,
             Civilizations,
             Territory,
+            Diplomacy,
             Economy,
             Warfare);
     }
@@ -146,6 +172,7 @@ public sealed class WorldState
         RuntimeWorldBinding? worldBinding,
         CivilizationRuntimeState civilizations,
         StrategicTerritoryRuntimeState territory,
+        BaselineDiplomacyRuntimeState diplomacy,
         EconomyRuntimeState economy,
         WarfareRuntimeState warfare)
     {
@@ -154,6 +181,9 @@ public sealed class WorldState
 
         ArgumentNullException.ThrowIfNull(
             territory);
+
+        ArgumentNullException.ThrowIfNull(
+            diplomacy);
 
         ArgumentNullException.ThrowIfNull(
             economy);
@@ -165,6 +195,7 @@ public sealed class WorldState
             worldBinding,
             civilizations,
             territory,
+            diplomacy,
             economy,
             warfare);
 
@@ -172,6 +203,7 @@ public sealed class WorldState
         WorldBinding = worldBinding;
         Civilizations = civilizations;
         Territory = territory;
+        Diplomacy = diplomacy;
         Economy = economy;
         Warfare = warfare;
     }
@@ -180,6 +212,7 @@ public sealed class WorldState
         RuntimeWorldBinding? worldBinding,
         CivilizationRuntimeState civilizations,
         StrategicTerritoryRuntimeState territory,
+        BaselineDiplomacyRuntimeState diplomacy,
         EconomyRuntimeState economy,
         WarfareRuntimeState warfare)
     {
@@ -220,6 +253,24 @@ public sealed class WorldState
             {
                 throw new InvalidOperationException(
                     $"Territorial control references strategic cell {control.StrategicCellId.Value}, which does not belong to the bound generated world.");
+            }
+        }
+
+        foreach (var relation in
+            diplomacy.Relations)
+        {
+            if (!civilizationIds.Contains(
+                relation.First))
+            {
+                throw new InvalidOperationException(
+                    $"Diplomacy participant {relation.First.Value} is not present in the runtime civilization roster.");
+            }
+
+            if (!civilizationIds.Contains(
+                relation.Second))
+            {
+                throw new InvalidOperationException(
+                    $"Diplomacy participant {relation.Second.Value} is not present in the runtime civilization roster.");
             }
         }
 

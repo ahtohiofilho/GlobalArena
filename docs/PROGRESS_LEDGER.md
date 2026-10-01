@@ -14434,3 +14434,81 @@ No GPP is awarded yet to baseline diplomacy, economic/military ownership-link co
 Next after post-commit cross-platform attestation:
 
 **M4.2-D — Baseline Diplomacy State**
+
+---
+
+## 2026-10-01 — M4.2-D baseline diplomacy state formal close
+
+Checkpoint closed:
+
+**M4.2-D — Baseline Diplomacy State**
+
+Accepted QA evidence:
+
+`__QA_NAME__`
+
+Evidence SHA-256:
+
+`__QA_SHA__`
+
+Accepted validation:
+
+- evidence manifest: `32/32`;
+- accepted baseline HEAD/origin-main: `d71256057c3dd89460770ec6afe3e1260937220f`;
+- baseline M4.2-C post-commit kernel regression run `36903079477`: Windows/Ubuntu/macOS `793/793`, PASS;
+- baseline M4.2-C state-hash run `36903079370`: Windows/Ubuntu/macOS `12/12`, PASS;
+- candidate hashes: `8/8`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- targeted M4.2-D tests: `27/27`;
+- full regression: `820/820`;
+- exact QA candidate set: `8` files;
+- QA commit/push: none.
+
+Executable behavior accepted:
+
+- diplomacy vocabulary is `Neutral / Enemy / Ally`;
+- Neutral is implicit and is never persisted;
+- Enemy and Ally are sparse persisted overrides;
+- pair identity is canonical and symmetric;
+- duplicate canonical pairs are rejected;
+- self-relations are not persisted;
+- setting Neutral removes an existing override;
+- persisted diplomacy participants must exist in the civilization roster;
+- civilization identities cannot be dropped while diplomacy references them;
+- diplomacy remains immutable-by-replacement in `WorldState`;
+- no treaty, scoring, diplomacy AI or automatic Economy/Warfare behavior is introduced.
+
+Canonical state hash:
+
+- format version: `6`;
+- diplomacy pair identities and relation kinds are covered;
+- canonical/symmetric representation is deterministic;
+- diplomacy-state regression vector is frozen.
+
+Maturity:
+
+- Runtime civilization identity & roster: `8 × 0.50 = 4.00 GPP`;
+- World-to-runtime civilization instantiation: `8 × 0.50 = 4.00 GPP`;
+- Territory/control ownership state: `10 × 0.50 = 5.00 GPP`;
+- Baseline diplomacy relation state: `8 × 0.50 = 4.00 GPP`.
+
+M4.2-D GPP delta:
+
+**+4.00**
+
+Civilizations / Diplomacy:
+
+**17.00 / 70 — 24.3%**
+
+Project:
+
+**260.50 / 1000 — 26.1%**
+
+No GPP is awarded yet to economic/military ownership-link completion or M4.2 systemic integration.
+
+Next after post-commit cross-platform attestation:
+
+**M4.2-E — Ownership-Link Integration, Accumulated Validation & M4.2 Close**

@@ -6189,6 +6189,34 @@ M4.2-C does not introduce conquest, control-transfer behavior, tactical ownershi
 
 The accepted decision is recorded in ADR-034.
 
+
+## 42.7 Baseline diplomacy state
+
+M4.2-D introduces executable authoritative baseline diplomacy over runtime civilization identities.
+
+`BaselineDiplomacyRelationKind` defines `Neutral`, `Enemy`, and `Ally`.
+
+`BaselineDiplomacyRuntimeState` is sparse:
+
+- Neutral is implicit and is not persisted;
+- Enemy and Ally are persisted as pair overrides;
+- civilization pairs are canonicalized by ascending identity;
+- pair lookup is symmetric;
+- duplicate canonical pairs are rejected;
+- self-relations are never persisted.
+
+`WithRelation` returns an immutable replacement snapshot. Setting Neutral removes the persisted override.
+
+`WorldState` owns diplomacy as authoritative Runtime state and validates that every persisted participant exists in the civilization roster.
+
+A civilization identity cannot be removed while diplomacy references it.
+
+The canonical `WorldState` hash is format version `6` and covers canonical diplomacy pairs after territory and before Economy.
+
+M4.2-D does not introduce treaties, scoring, reputation, diplomacy AI, alliance obligations or automatic Economy/Warfare effects.
+
+The accepted decision is recorded in ADR-035.
+
 # 43. Status
 
 Versão atual:

@@ -1897,7 +1897,17 @@ Operational decomposition:
 
 Current subcheckpoint:
 
-**M4.2-D — Baseline Diplomacy State**
+**M4.2-E — Ownership-Link Integration, Accumulated Validation & M4.2 Close**
+
+M4.2-D closed baseline diplomacy state:
+
+- Neutral is implicit and is not persisted;
+- Enemy and Ally are sparse canonical pair overrides;
+- pair identity and lookup are symmetric;
+- self-relations are not persisted;
+- every persisted diplomacy participant must exist in the civilization roster;
+- canonical WorldState hash format is `6`;
+- M4.2-D GPP delta: `+4.00`.
 
 M4.2-C closed strategic territory control:
 
@@ -2078,7 +2088,7 @@ Somente um ou poucos itens devem ser classificados como Critical Path.
 
 Status atual:
 
-**M4.2-D baseline diplomacy state**
+**M4.2-E ownership-link integration, accumulated validation and M4.2 close**
 
 ---
 
@@ -2200,7 +2210,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M4.2-D — Baseline Diplomacy State**
+**M4.2-E — Ownership-Link Integration, Accumulated Validation & M4.2 Close**
 
 M3 Entry Audit:
 
@@ -2228,11 +2238,11 @@ M3.1-D — Accumulated M3.1 Validation & Close:
 
 Official Progress:
 
-**25.7%**
+**26.1%**
 
 GPP Earned:
 
-**256.50 / 1000**
+**260.50 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -2256,7 +2266,7 @@ Warfare / units / combat:
 
 Civilizations / Diplomacy:
 
-**13.00 / 70 GPP — 18.6%**
+**17.00 / 70 GPP — 24.3%**
 
 Scope Confidence:
 
@@ -2272,7 +2282,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**M4.2-D baseline diplomacy state**
+**M4.2-E ownership-link integration, accumulated validation and M4.2 close**
 
 Last Baseline Review:
 
