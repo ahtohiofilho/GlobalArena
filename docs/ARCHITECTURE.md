@@ -6093,6 +6093,39 @@ The canonical `WorldState` hash is format version `3` and includes generated-wor
 
 The accepted decision is recorded in ADR-031.
 
+
+## 42.4 M4.2 runtime civilizations, territory and baseline diplomacy contract
+
+M4.2 turns the existing civilization identity roster into runtime presence on the generated world.
+
+The accepted direction is strategic-first:
+
+`WorldGenerationResult`
+-> deterministic start selection
+-> runtime civilization records
+-> sparse strategic territorial control
+-> sparse symmetric baseline diplomacy.
+
+Runtime civilization count remains an explicit materialization input. The final product-level formula for recommending or choosing that count remains open.
+
+The current baseline requires civilization starts on strategic land.
+
+Civilization identities are assigned canonically as `1..N` in deterministic selected-start order.
+
+Initial territorial ownership is sparse:
+
+- each civilization owns its unique start cell;
+- all other strategic cells begin unowned;
+- one cell has at most one owner.
+
+Baseline diplomacy uses `Enemy`, `Neutral`, and `Ally`.
+
+Neutral is implicit/default. Only non-neutral relations need persistence, and pair identity is canonical/symmetric.
+
+Civilization, territory and diplomacy state remain authoritative Runtime state and must participate in canonical WorldState hashing when implemented.
+
+The accepted decision is recorded in ADR-032.
+
 # 43. Status
 
 Versão atual:

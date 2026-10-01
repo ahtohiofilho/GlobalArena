@@ -1897,7 +1897,35 @@ Operational decomposition:
 
 Current subcheckpoint:
 
-**M4.2-A — Runtime Civilizations, Territory & Baseline Diplomacy Contract Freeze**
+**M4.2-B — Deterministic Runtime Civilization Materialization**
+
+M4.2-A closed the Civilization/Territory/Diplomacy contract freeze with ADR-032 Accepted and `0.00 GPP` awarded.
+
+
+M4.2-A freezes the Civilization/Diplomacy runtime contract before implementation.
+
+Baseline decisions:
+
+- civilization count is an explicit runtime materialization input; the final count formula remains open;
+- generated-world placement suitability and the accepted deterministic candidate selector remain authoritative for starts;
+- runtime civilization starts must be strategic land;
+- civilization IDs are assigned `1..N` in deterministic selected-start order;
+- each civilization initially controls its own start cell;
+- all other strategic cells begin unowned;
+- territorial control is sparse and one-owner-per-cell;
+- diplomacy baseline is symmetric `Enemy / Neutral / Ally`;
+- Neutral is implicit/default and only non-neutral overrides require persistence.
+
+M4.2 decomposition:
+
+- M4.2-A — contract freeze;
+- M4.2-B — deterministic runtime civilization materialization;
+- M4.2-C — strategic territory control;
+- M4.2-D — baseline diplomacy state;
+- M4.2-E — ownership-link integration, accumulated validation and close.
+
+M4.2-A awards no GPP. Project progress remains `247.50 / 1000 — 24.8%`.
+
 
 M4.1-C closed the runtime foundation:
 
@@ -2030,7 +2058,7 @@ Somente um ou poucos itens devem ser classificados como Critical Path.
 
 Status atual:
 
-**M4.2-A runtime civilizations, territory and baseline diplomacy contract freeze**
+**M4.2-B deterministic runtime civilization materialization**
 
 ---
 
@@ -2152,7 +2180,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M4.2-A — Runtime Civilizations, Territory & Baseline Diplomacy Contract Freeze**
+**M4.2-B — Deterministic Runtime Civilization Materialization**
 
 M3 Entry Audit:
 
@@ -2224,11 +2252,11 @@ Active Critical Risks:
 
 Critical Path:
 
-**M4.2-A runtime civilizations, territory and baseline diplomacy contract freeze**
+**M4.2-B deterministic runtime civilization materialization**
 
 Last Baseline Review:
 
-**2026-09-30**
+**2026-10-01**
 
 #### M2.5.2-C materializer close
 

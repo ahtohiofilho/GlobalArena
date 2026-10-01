@@ -3411,3 +3411,123 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M4.2-A runtime civilizations, territory and baseline diplomacy contract freeze**
+
+---
+
+# 51. M4.2-A civilization/territory/diplomacy contract risk review
+
+**Date:** 2026-10-01
+
+Milestone:
+
+**M4 — Systemic Vertical Slice**
+
+Checkpoint:
+
+**M4.2-A — Runtime Civilizations, Territory & Baseline Diplomacy Contract Freeze**
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+M4.2 response:
+
+- civilization creation, territorial control and diplomacy receive separate authoritative contracts;
+- final civilization count is not entangled with runtime materialization;
+- territory and diplomacy remain explicit Runtime state rather than inferred side effects.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+M4.2-A adds no new GPP domain and awards `0.00 GPP`.
+
+Cities, population, culture, government, diplomacy AI, treaty depth and tactical ownership remain outside this freeze.
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+M4.2 freezes deterministic identity assignment and continued use of the accepted deterministic M3.5 placement selector.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+Territorial control and diplomacy are frozen as sparse state. M4.2 does not require dense world-owner arrays or an O(N^2) diplomacy matrix.
+
+`RISK-001 — Economy scalability` remains `OPEN / CRITICAL`.
+
+Civilization ownership remains referenced by stable identity; M4.2 does not add Economy behavior or direct Economy mutation.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+Territorial control is strategic-only in M4.2. Tactical ownership/occupation remains outside the stage.
+
+`RISK-007 — Architecture overengineering` remains `OPEN / HIGH`.
+
+M4.2 uses the existing Runtime aggregation boundary and does not introduce a new framework, event bus or distributed subsystem.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M4.2-B deterministic runtime civilization materialization**
+
+---
+
+# 52. M4.2-A formal-close risk confirmation
+
+**Date:** 2026-10-01
+
+Checkpoint:
+
+**M4.2-A — Runtime Civilizations, Territory & Baseline Diplomacy Contract Freeze — CLOSED**
+
+Accepted QA:
+
+`__QA_NAME__`
+
+Result:
+
+**PASS_READY_FOR_M4_2_A_FORMAL_CLOSE**
+
+Risk confirmation:
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+The M4.2 civilization, territory and diplomacy boundaries are now frozen before executable implementation.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+M4.2-A awards `0.00 GPP` and does not add cities, population, diplomacy AI, treaty depth or tactical territorial ownership.
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+Deterministic start selection and canonical `CivilizationId(1..N)` assignment are accepted requirements for M4.2-B.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+Territory and diplomacy remain sparse-state contracts; dense world-owner arrays and mandatory O(N^2) diplomacy matrices are not required.
+
+`RISK-001 — Economy scalability` remains `OPEN / CRITICAL`.
+
+Civilization ownership identity remains a contract boundary only; no Economy behavior is introduced.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+M4.2 territorial state is strategic-only.
+
+`RISK-007 — Architecture overengineering` remains `OPEN / HIGH`.
+
+The stage continues to use the accepted Runtime aggregation boundary without new framework infrastructure.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M4.2-B deterministic runtime civilization materialization**

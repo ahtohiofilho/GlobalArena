@@ -14165,3 +14165,125 @@ No GPP is awarded yet to civilization instantiation, territory, diplomacy, produ
 Next checkpoint after post-commit cross-platform attestation:
 
 **M4.2-A — Runtime Civilizations, Territory & Baseline Diplomacy Contract Freeze**
+
+---
+
+## 2026-10-01 — M4.2-A runtime civilizations, territory and baseline diplomacy contract freeze candidate
+
+Milestone:
+
+**M4 — Systemic Vertical Slice**
+
+Stage:
+
+**M4.2 — Runtime Civilizations, Territory & Baseline Diplomacy**
+
+Checkpoint:
+
+**M4.2-A — Runtime Civilizations, Territory & Baseline Diplomacy Contract Freeze**
+
+Purpose:
+
+freeze deterministic civilization materialization, strategic territorial ownership and minimum diplomacy semantics before executable M4.2 implementation.
+
+Candidate ADR:
+
+**ADR-032 — M4.2 Runtime Civilizations, Strategic Territory and Baseline Diplomacy Contract**
+
+Accepted M4.1 source baseline:
+
+`fbda6e20889f879660fb012a92142c8c43162a3b`
+
+Cross-platform attestation already accepted for that baseline:
+
+- kernel regression run `36866313282`: Windows/Ubuntu/macOS `757/757`, zero warnings/errors;
+- state-hash run `36866313163`: Windows/Ubuntu/macOS `10/10`, zero warnings/errors.
+
+Key freeze decisions:
+
+- final civilization-count formula remains open;
+- M4.2 runtime materialization receives explicit positive civilization count;
+- M3.5 deterministic placement remains start-position authority;
+- runtime start eligibility requires strategic land;
+- civilization IDs are canonical `1..N`;
+- initial control assigns only each civilization's start cell;
+- all remaining strategic cells start unowned;
+- territorial ownership is sparse and exclusive per cell;
+- diplomacy baseline is symmetric `Enemy / Neutral / Ally`;
+- Neutral is default and need not be stored;
+- only non-neutral canonical pair overrides require persistence;
+- authoritative Civilization/Territory/Diplomacy state will be covered by WorldState hashing when implemented.
+
+M4.2-A GPP delta:
+
+**0.00**
+
+Project remains:
+
+**247.50 / 1000 — 24.8%**
+
+Next after formal close:
+
+**M4.2-B — Deterministic Runtime Civilization Materialization**
+
+---
+
+## 2026-10-01 — M4.2-A runtime civilizations, territory and baseline diplomacy contract freeze formal close
+
+Checkpoint closed:
+
+**M4.2-A — Runtime Civilizations, Territory & Baseline Diplomacy Contract Freeze**
+
+Accepted QA evidence:
+
+`__QA_NAME__`
+
+Evidence SHA-256:
+
+`__QA_SHA__`
+
+Accepted validation:
+
+- evidence manifest: `26/26`;
+- accepted baseline HEAD/origin-main: `fbda6e20889f879660fb012a92142c8c43162a3b`;
+- candidate hashes: `6/6`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- full regression: `757/757`;
+- exact candidate set: `6` documentation/governance files;
+- production code changed: False;
+- QA commit/push: none.
+
+ADR-032 becomes:
+
+**Accepted**
+
+Frozen M4.2 contract:
+
+- final civilization-count formula remains open;
+- runtime materialization receives explicit positive civilization count;
+- M3.5 placement suitability/selector remain authoritative for starts;
+- runtime starts must be strategic land;
+- civilization IDs are deterministic `1..N`;
+- each civilization initially controls exactly its own start cell;
+- all other strategic cells begin unowned;
+- territorial ownership is sparse and exclusive;
+- baseline diplomacy is symmetric `Enemy / Neutral / Ally`;
+- Neutral is implicit/default;
+- only non-neutral canonical pair overrides require persistence;
+- Civilization/Territory/Diplomacy remain authoritative Runtime state;
+- implementation must enter canonical WorldState hashing when introduced.
+
+M4.2-A awards:
+
+**0.00 GPP**
+
+Project remains:
+
+**247.50 / 1000 — 24.8%**
+
+Next checkpoint:
+
+**M4.2-B — Deterministic Runtime Civilization Materialization**

@@ -1057,6 +1057,45 @@ No credit is assigned yet to:
 
 M4.1 is closed after M4.1-C subject to post-commit cross-platform attestation of the accepted source tree.
 
+
+### M4.2 contract freeze
+
+M4.2 owns the executable Civilization/Diplomacy portion of the systemic vertical slice.
+
+Operational decomposition:
+
+- M4.2-A — Runtime Civilizations, Territory & Baseline Diplomacy Contract Freeze;
+- M4.2-B — Deterministic Runtime Civilization Materialization;
+- M4.2-C — Strategic Territory Control;
+- M4.2-D — Baseline Diplomacy State;
+- M4.2-E — Ownership-Link Integration, Accumulated Validation & M4.2 Close.
+
+Frozen baseline direction:
+
+- civilization count remains an explicit positive runtime input;
+- the final civilization-count formula remains open;
+- M3.5 placement suitability and selector remain the placement authority;
+- runtime start cells must be strategic land;
+- identities are assigned deterministically as `CivilizationId(1..N)` in selected-start order;
+- each civilization initially controls exactly its own start cell;
+- all other strategic cells begin unowned;
+- territorial ownership is sparse and one-owner-per-cell;
+- diplomacy vocabulary is `Enemy`, `Neutral`, `Ally`;
+- diplomacy is symmetric in the baseline;
+- Neutral is implicit/default;
+- only non-neutral pair overrides need persistence;
+- no city, population, tactical ownership, diplomacy AI, treaty depth, production, trade or combat behavior is introduced by the freeze.
+
+M4.2-A awards:
+
+**0.00 GPP**
+
+Project progress therefore remains:
+
+**247.50 / 1000 — 24.8%**
+
+until executable M4.2 evidence is accepted.
+
 ### Runtime authority
 
 `WorldGenerationResult` remains immutable procedural input.
@@ -1087,7 +1126,11 @@ Etapa atual:
 
 Subetapa atual:
 
-**M4.2-A — Runtime Civilizations, Territory & Baseline Diplomacy Contract Freeze**
+**M4.2-B — Deterministic Runtime Civilization Materialization**
+
+M4.2-A — Runtime Civilizations, Territory & Baseline Diplomacy Contract Freeze:
+
+**concluído em 2026-10-01**
 
 M4.1-A — Systemic Vertical Slice Architecture, Domain Ownership & GPP Freeze:
 
@@ -1271,7 +1314,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M4.2-A runtime civilizations, territory and baseline diplomacy contract freeze**
+**M4.2-B deterministic runtime civilization materialization**
 
 Última revisão de baseline:
 
