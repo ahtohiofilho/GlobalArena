@@ -6158,6 +6158,37 @@ The canonical `WorldState` hash is format version `4` and covers civilization st
 
 The accepted decision is recorded in ADR-033.
 
+
+## 42.6 Strategic territory control
+
+M4.2-C introduces explicit authoritative strategic territorial ownership.
+
+Territory is represented by `StrategicTerritoryRuntimeState` as a sparse set of `StrategicTerritoryControlEntry` values.
+
+Each entry maps one `StrategicCellId` to one controlling `CivilizationId`.
+
+Absence means unowned.
+
+Entries are canonicalized by strategic-cell identity, and duplicate controlled cells are rejected.
+
+`RuntimeStrategicTerritoryMaterializer` creates initial territory from materialized civilization starts:
+
+- every civilization must have a `StartCellId`;
+- each civilization controls its own start cell;
+- no additional cells are assigned by the baseline materializer.
+
+`WorldState` owns territory as immutable-by-replacement authoritative state.
+
+Cross-domain validation requires territorial controllers to exist in the civilization roster and, for bound states, controlled cells to belong to the generated world.
+
+A civilization identity cannot be removed while territory still references it.
+
+The canonical `WorldState` hash is format version `5` and covers strategic-cell/controller pairs in canonical order.
+
+M4.2-C does not introduce conquest, control-transfer behavior, tactical ownership, diplomacy effects, Economy effects or Warfare mechanics.
+
+The accepted decision is recorded in ADR-034.
+
 # 43. Status
 
 Versão atual:

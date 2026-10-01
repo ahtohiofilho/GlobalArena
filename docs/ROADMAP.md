@@ -1897,7 +1897,17 @@ Operational decomposition:
 
 Current subcheckpoint:
 
-**M4.2-C — Strategic Territory Control**
+**M4.2-D — Baseline Diplomacy State**
+
+M4.2-C closed strategic territory control:
+
+- territory is sparse authoritative Runtime state;
+- absence of an entry means unowned;
+- one strategic cell has at most one controlling civilization;
+- initial control derives from each materialized civilization `StartCellId`;
+- controller identities and bound-world cells are validated;
+- canonical WorldState hash format is `5`;
+- M4.2-C GPP delta: `+5.00`.
 
 M4.2-B closed deterministic runtime civilization materialization:
 
@@ -2068,7 +2078,7 @@ Somente um ou poucos itens devem ser classificados como Critical Path.
 
 Status atual:
 
-**M4.2-C strategic territory control**
+**M4.2-D baseline diplomacy state**
 
 ---
 
@@ -2190,7 +2200,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M4.2-C — Strategic Territory Control**
+**M4.2-D — Baseline Diplomacy State**
 
 M3 Entry Audit:
 
@@ -2218,11 +2228,11 @@ M3.1-D — Accumulated M3.1 Validation & Close:
 
 Official Progress:
 
-**25.2%**
+**25.7%**
 
 GPP Earned:
 
-**251.50 / 1000**
+**256.50 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -2246,7 +2256,7 @@ Warfare / units / combat:
 
 Civilizations / Diplomacy:
 
-**8.00 / 70 GPP — 11.4%**
+**13.00 / 70 GPP — 18.6%**
 
 Scope Confidence:
 
@@ -2262,7 +2272,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**M4.2-C strategic territory control**
+**M4.2-D baseline diplomacy state**
 
 Last Baseline Review:
 

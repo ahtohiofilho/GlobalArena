@@ -3589,3 +3589,65 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M4.2-C strategic territory control**
+
+---
+
+# 54. M4.2-C strategic territory control risk review
+
+**Date:** 2026-10-01
+
+Checkpoint:
+
+**M4.2-C — Strategic Territory Control**
+
+Accepted QA:
+
+`__QA_NAME__`
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+Mitigation advanced:
+
+- territorial ownership is now explicit authoritative Runtime state rather than inferred from civilization origin;
+- aggregate invariants validate controller identity and bound-world cell membership;
+- canonical hashing covers territorial ownership.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+Only the existing `Territory/control ownership state` capability advances.
+
+Conquest, occupation, tactical ownership, diplomacy behavior, Economy effects and Warfare behavior remain outside M4.2-C.
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+Territory entries are canonicalized by strategic-cell identity and enter canonical WorldState hash format `5`.
+
+Post-commit cross-platform state-hash attestation remains mandatory before M4.2-D implementation.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+Territorial ownership is sparse and stores only controlled strategic cells; no dense global owner array or tactical ownership map is introduced.
+
+`RISK-001 — Economy scalability` remains `OPEN / CRITICAL`.
+
+M4.2-C introduces no Economy recomputation or route behavior.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+Territorial ownership is strategic-only and does not create routine tactical residency or pathfinding.
+
+`RISK-007 — Architecture overengineering` remains `OPEN / HIGH`.
+
+The implementation extends the existing Runtime aggregate with three focused territory types and no new framework or project boundary.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M4.2-D baseline diplomacy state**

@@ -1125,6 +1125,35 @@ Civilizations / Diplomacy:
 
 The next implementation target is explicit strategic territorial control. No territory or diplomacy GPP is credited by M4.2-B.
 
+
+### M4.2 maturity after M4.2-C
+
+M4.2-C makes strategic territorial control executable as sparse authoritative Runtime state.
+
+| Capability | GPP | Maturidade | Fator | GPP ganhos |
+|---|---:|---|---:|---:|
+| Runtime civilization identity & roster | 8 | Funcional isoladamente | 0.50 | 4.00 |
+| World-to-runtime civilization instantiation | 8 | Funcional isoladamente | 0.50 | 4.00 |
+| Territory/control ownership state | 10 | Funcional isoladamente | 0.50 | 5.00 |
+| Baseline diplomacy relation state | 8 | Não existente | 0.00 | 0.00 |
+| Economic/military ownership links | 6 | Não existente | 0.00 | 0.00 |
+| Validation/observability/systemic integration | 10 | Não existente | 0.00 | 0.00 |
+| **TOTAL M4.2 tranche** | **50** |  |  | **13.00** |
+
+M4.2-C increment:
+
+**+5.00 GPP**
+
+Project:
+
+**256.50 / 1000 — 25.7%**
+
+Civilizations / Diplomacy:
+
+**13.00 / 70 — 18.6%**
+
+The next implementation target is baseline diplomacy state. No diplomacy or later ownership-link GPP is credited by M4.2-C.
+
 ### Runtime authority
 
 `WorldGenerationResult` remains immutable procedural input.
@@ -1155,7 +1184,11 @@ Etapa atual:
 
 Subetapa atual:
 
-**M4.2-C — Strategic Territory Control**
+**M4.2-D — Baseline Diplomacy State**
+
+M4.2-C — Strategic Territory Control:
+
+**concluído em 2026-10-01**
 
 M4.2-B — Deterministic Runtime Civilization Materialization:
 
@@ -1303,11 +1336,11 @@ Baseline V1:
 
 Progresso oficial:
 
-**25,2%**
+**25,7%**
 
 GPP conquistados:
 
-**251,50 / 1000**
+**256,50 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -1331,7 +1364,7 @@ Warfare / unidades / combate:
 
 Civilizações / diplomacia:
 
-**8,00 / 70 GPP — 11,4%**
+**13,00 / 70 GPP — 18,6%**
 
 Scope Confidence:
 
@@ -1347,7 +1380,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M4.2-C strategic territory control**
+**M4.2-D baseline diplomacy state**
 
 Última revisão de baseline:
 

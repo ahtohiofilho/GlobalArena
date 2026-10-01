@@ -14358,3 +14358,79 @@ No GPP is awarded yet to territory, diplomacy, ownership links or M4.2 systemic 
 Next after post-commit cross-platform attestation:
 
 **M4.2-C — Strategic Territory Control**
+
+---
+
+## 2026-10-01 — M4.2-C strategic territory control formal close
+
+Checkpoint closed:
+
+**M4.2-C — Strategic Territory Control**
+
+Accepted QA evidence:
+
+`__QA_NAME__`
+
+Evidence SHA-256:
+
+`__QA_SHA__`
+
+Accepted validation:
+
+- evidence manifest: `31/31`;
+- accepted baseline HEAD/origin-main: `01b94fffdb7600b45d04f291b1912728ccfb5444`;
+- baseline M4.2-B post-commit kernel regression run `36873889105`: Windows/Ubuntu/macOS `772/772`, PASS;
+- baseline M4.2-B state-hash run `36873889184`: Windows/Ubuntu/macOS `12/12`, PASS;
+- candidate hashes: `7/7`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- targeted M4.2-C tests: `21/21`;
+- full regression: `793/793`;
+- exact QA candidate set: `7` files;
+- QA commit/push: none.
+
+Executable behavior accepted:
+
+- strategic territory is sparse authoritative Runtime state;
+- absence of a territorial entry means unowned;
+- one strategic cell has at most one controller;
+- territory is canonicalized by strategic-cell identity;
+- initial territory assigns each materialized civilization its own `StartCellId`;
+- identity-only civilizations cannot materialize initial territory;
+- territorial controllers must exist in the civilization roster;
+- bound territory cells must belong to the generated world;
+- civilization identities cannot be dropped while territory references them;
+- territory remains immutable-by-replacement in `WorldState`.
+
+Canonical state hash:
+
+- format version: `5`;
+- strategic-cell/controller ownership pairs are covered;
+- equivalent input ordering produces the same hash;
+- territory-state regression vector is frozen.
+
+Maturity:
+
+- Runtime civilization identity & roster: `8 × 0.50 = 4.00 GPP`;
+- World-to-runtime civilization instantiation: `8 × 0.50 = 4.00 GPP`;
+- Territory/control ownership state: `10 × 0.50 = 5.00 GPP`.
+
+M4.2-C GPP delta:
+
+**+5.00**
+
+Civilizations / Diplomacy:
+
+**13.00 / 70 — 18.6%**
+
+Project:
+
+**256.50 / 1000 — 25.7%**
+
+No GPP is awarded yet to baseline diplomacy, economic/military ownership-link completion or M4.2 systemic integration.
+
+Next after post-commit cross-platform attestation:
+
+**M4.2-D — Baseline Diplomacy State**

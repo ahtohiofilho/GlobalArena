@@ -13,6 +13,8 @@ public sealed class WorldState
 
     public CivilizationRuntimeState Civilizations { get; }
 
+    public StrategicTerritoryRuntimeState Territory { get; }
+
     public EconomyRuntimeState Economy { get; }
 
     public WarfareRuntimeState Warfare { get; }
@@ -23,6 +25,7 @@ public sealed class WorldState
             revision: 0UL,
             worldBinding: null,
             CivilizationRuntimeState.Empty,
+            StrategicTerritoryRuntimeState.Empty,
             EconomyRuntimeState.Empty,
             WarfareRuntimeState.Empty);
     }
@@ -35,6 +38,7 @@ public sealed class WorldState
             RuntimeWorldBinding.FromGeneratedWorld(
                 generatedWorld),
             CivilizationRuntimeState.Empty,
+            StrategicTerritoryRuntimeState.Empty,
             EconomyRuntimeState.Empty,
             WarfareRuntimeState.Empty);
     }
@@ -61,6 +65,7 @@ public sealed class WorldState
             Revision,
             binding,
             Civilizations,
+            Territory,
             Economy,
             Warfare);
     }
@@ -75,6 +80,22 @@ public sealed class WorldState
             Revision,
             WorldBinding,
             civilizations,
+            Territory,
+            Economy,
+            Warfare);
+    }
+
+    public WorldState WithTerritory(
+        StrategicTerritoryRuntimeState territory)
+    {
+        ArgumentNullException.ThrowIfNull(
+            territory);
+
+        return new WorldState(
+            Revision,
+            WorldBinding,
+            Civilizations,
+            territory,
             Economy,
             Warfare);
     }
@@ -89,6 +110,7 @@ public sealed class WorldState
             Revision,
             WorldBinding,
             Civilizations,
+            Territory,
             economy,
             Warfare);
     }
@@ -103,6 +125,7 @@ public sealed class WorldState
             Revision,
             WorldBinding,
             Civilizations,
+            Territory,
             Economy,
             warfare);
     }
@@ -113,6 +136,7 @@ public sealed class WorldState
             checked(Revision + 1UL),
             WorldBinding,
             Civilizations,
+            Territory,
             Economy,
             Warfare);
     }
@@ -121,11 +145,15 @@ public sealed class WorldState
         ulong revision,
         RuntimeWorldBinding? worldBinding,
         CivilizationRuntimeState civilizations,
+        StrategicTerritoryRuntimeState territory,
         EconomyRuntimeState economy,
         WarfareRuntimeState warfare)
     {
         ArgumentNullException.ThrowIfNull(
             civilizations);
+
+        ArgumentNullException.ThrowIfNull(
+            territory);
 
         ArgumentNullException.ThrowIfNull(
             economy);
@@ -136,12 +164,14 @@ public sealed class WorldState
         ValidateCrossDomainInvariants(
             worldBinding,
             civilizations,
+            territory,
             economy,
             warfare);
 
         Revision = revision;
         WorldBinding = worldBinding;
         Civilizations = civilizations;
+        Territory = territory;
         Economy = economy;
         Warfare = warfare;
     }
@@ -149,6 +179,7 @@ public sealed class WorldState
     private static void ValidateCrossDomainInvariants(
         RuntimeWorldBinding? worldBinding,
         CivilizationRuntimeState civilizations,
+        StrategicTerritoryRuntimeState territory,
         EconomyRuntimeState economy,
         WarfareRuntimeState warfare)
     {
@@ -170,6 +201,25 @@ public sealed class WorldState
                     throw new InvalidOperationException(
                         $"Civilization {civilization.Id.Value} references start cell {startCellId.Value}, which does not belong to the bound generated world.");
                 }
+            }
+        }
+
+        foreach (var control in
+            territory.Controls)
+        {
+            if (!civilizationIds.Contains(
+                control.Controller))
+            {
+                throw new InvalidOperationException(
+                    $"Territorial controller {control.Controller.Value} is not present in the runtime civilization roster.");
+            }
+
+            if (worldBinding is not null
+                && !worldBinding.Contains(
+                    control.StrategicCellId))
+            {
+                throw new InvalidOperationException(
+                    $"Territorial control references strategic cell {control.StrategicCellId.Value}, which does not belong to the bound generated world.");
             }
         }
 
