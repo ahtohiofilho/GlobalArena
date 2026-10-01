@@ -1,48 +1,176 @@
 using System.Buffers.Binary;
 using System.Security.Cryptography;
-using GlobalArena.World;
+using GlobalArena.Runtime;
 
 namespace GlobalArena.Simulation;
 
 public sealed class CanonicalWorldStateHasher
     : IWorldStateHasher
 {
-    public const uint FormatVersion = 1U;
+    public const uint FormatVersion = 2U;
 
-    private const int PayloadByteLength = 16;
+    private static readonly byte[] Magic =
+    {
+        (byte)'G',
+        (byte)'A',
+        (byte)'W',
+        (byte)'S'
+    };
 
     public WorldStateHash Compute(
         WorldState worldState)
     {
-        ArgumentNullException.ThrowIfNull(worldState);
+        ArgumentNullException.ThrowIfNull(
+            worldState);
 
-        Span<byte> payload =
-            stackalloc byte[PayloadByteLength];
+        using var hash =
+            IncrementalHash.CreateHash(
+                HashAlgorithmName.SHA256);
 
-        payload[0] = (byte)'G';
-        payload[1] = (byte)'A';
-        payload[2] = (byte)'W';
-        payload[3] = (byte)'S';
+        hash.AppendData(
+            Magic);
 
-        BinaryPrimitives.WriteUInt32BigEndian(
-            payload.Slice(
-                4,
-                4),
+        AppendUInt32(
+            hash,
             FormatVersion);
 
-        BinaryPrimitives.WriteUInt64BigEndian(
-            payload.Slice(
-                8,
-                8),
+        AppendUInt64(
+            hash,
             worldState.Revision);
 
+        AppendUInt32(
+            hash,
+            10U);
+
+        AppendUInt32(
+            hash,
+            checked(
+                (uint)worldState
+                    .Civilizations
+                    .Civilizations
+                    .Count));
+
+        foreach (var civilization in
+            worldState
+                .Civilizations
+                .Civilizations)
+        {
+            AppendUInt64(
+                hash,
+                civilization.Value);
+        }
+
+        AppendUInt32(
+            hash,
+            20U);
+
+        AppendUInt32(
+            hash,
+            checked(
+                (uint)worldState
+                    .Economy
+                    .StrategicStocks
+                    .Count));
+
+        foreach (var stock in
+            worldState
+                .Economy
+                .StrategicStocks)
+        {
+            AppendUInt64(
+                hash,
+                stock.Owner.Value);
+
+            AppendUInt32(
+                hash,
+                stock.Commodity.Value);
+
+            AppendInt64(
+                hash,
+                stock.Quantity);
+        }
+
+        AppendUInt32(
+            hash,
+            30U);
+
+        AppendUInt32(
+            hash,
+            checked(
+                (uint)worldState
+                    .Warfare
+                    .Units
+                    .Count));
+
+        foreach (var unit in
+            worldState
+                .Warfare
+                .Units)
+        {
+            AppendUInt64(
+                hash,
+                unit.Id.Value);
+
+            AppendUInt64(
+                hash,
+                unit.Owner.Value);
+
+            AppendUInt64(
+                hash,
+                unit.StrategicCellId.Value);
+        }
+
         var digest =
-            SHA256.HashData(
-                payload);
+            hash.GetHashAndReset();
 
         return new WorldStateHash(
             FormatVersion,
             Convert.ToHexString(
                 digest));
+    }
+
+    private static void AppendUInt32(
+        IncrementalHash hash,
+        uint value)
+    {
+        Span<byte> buffer =
+            stackalloc byte[4];
+
+        BinaryPrimitives.WriteUInt32BigEndian(
+            buffer,
+            value);
+
+        hash.AppendData(
+            buffer);
+    }
+
+    private static void AppendUInt64(
+        IncrementalHash hash,
+        ulong value)
+    {
+        Span<byte> buffer =
+            stackalloc byte[8];
+
+        BinaryPrimitives.WriteUInt64BigEndian(
+            buffer,
+            value);
+
+        hash.AppendData(
+            buffer);
+    }
+
+    private static void AppendInt64(
+        IncrementalHash hash,
+        long value)
+    {
+        Span<byte> buffer =
+            stackalloc byte[8];
+
+        BinaryPrimitives.WriteInt64BigEndian(
+            buffer,
+            value);
+
+        hash.AppendData(
+            buffer);
     }
 }

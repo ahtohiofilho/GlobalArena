@@ -14019,3 +14019,69 @@ Project remains:
 Next checkpoint:
 
 **M4.1-B — Executable Runtime State & Domain Identity Contracts**
+
+---
+
+## 2026-09-30 — M4.1-B executable runtime state and domain identity contracts formal close
+
+Checkpoint closed:
+
+**M4.1-B — Executable Runtime State & Domain Identity Contracts**
+
+Accepted QA evidence:
+
+`__QA_NAME__`
+
+Evidence SHA-256:
+
+`__QA_SHA__`
+
+Accepted validation:
+
+- evidence manifest: `75/75`;
+- baseline regression: `717/717`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- targeted M4.1-B tests: `30/30`;
+- full regression: `742/742`;
+- exact QA candidate set: `48` paths;
+- QA commit/push: none.
+
+Architecture accepted:
+
+- new `GlobalArena.Runtime` project;
+- `WorldState` moved from `GlobalArena.World` to `GlobalArena.Runtime`;
+- generated-world ownership remains immutable and independent of runtime state;
+- `WorldState` aggregates Civilization, Economy and Warfare runtime snapshots;
+- state remains immutable-by-replacement;
+- simulation turn ordering semantics are preserved;
+- canonical WorldState hash format advances to version `2`;
+- canonical hash now covers civilization roster, strategic stocks and military units.
+
+Maturity promotions:
+
+- Civilizations / `Runtime civilization identity & roster`: `8 × 0.20 = 1.60 GPP`;
+- Economy / `Strategic stocks/inventories`: `12 × 0.20 = 2.40 GPP`;
+- Warfare / `Unit identity/ownership/state`: `12 × 0.20 = 2.40 GPP`.
+
+GPP delta:
+
+**+6.40**
+
+Project:
+
+**237.90 / 1000 — 23.8%**
+
+Domain progress introduced by M4:
+
+- Civilizations / Diplomacy: `1.60 / 70 — 2.3%`;
+- Economy: `2.40 / 140 — 1.7%`;
+- Warfare: `2.40 / 140 — 1.7%`.
+
+No production, trade, movement, combat, territory or diplomacy behavior receives GPP from M4.1-B.
+
+Next checkpoint after cross-platform attestation:
+
+**M4.1-C — Runtime World Binding & Cross-Domain Invariant Contracts**

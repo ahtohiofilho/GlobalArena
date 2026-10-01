@@ -1,3 +1,4 @@
+using GlobalArena.Runtime;
 namespace GlobalArena.Simulation;
 
 public readonly record struct WorldStateHash

@@ -1897,7 +1897,14 @@ Operational decomposition:
 
 Current subcheckpoint:
 
-**M4.1-B — Executable Runtime State & Domain Identity Contracts**
+**M4.1-C — Runtime World Binding & Cross-Domain Invariant Contracts**
+
+M4.1-B closed with the first executable authoritative runtime-state contracts:
+
+- `GlobalArena.Runtime` owns `WorldState`;
+- Civilization roster, strategic stocks and military unit state are canonicalized;
+- canonical WorldState hash format is `2`;
+- M4.1-B GPP delta: `+6.40`.
 
 GPP rule:
 
@@ -2014,7 +2021,7 @@ Somente um ou poucos itens devem ser classificados como Critical Path.
 
 Status atual:
 
-**M4 Systemic Vertical Slice entry: decompose the end-to-end gameplay loop before implementation**
+**M4.1-C runtime world binding and cross-domain invariant contracts**
 
 ---
 
@@ -2136,7 +2143,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M4.1-B — Executable Runtime State & Domain Identity Contracts**
+**M4.1-C — Runtime World Binding & Cross-Domain Invariant Contracts**
 
 M3 Entry Audit:
 
@@ -2164,11 +2171,11 @@ M3.1-D — Accumulated M3.1 Validation & Close:
 
 Official Progress:
 
-**23.2%**
+**23.8%**
 
 GPP Earned:
 
-**231.50 / 1000**
+**237.90 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -2181,6 +2188,18 @@ Planet Topology / Goldberg:
 World Generation / biomes / resources:
 
 **85.00 / 100 GPP — 85.0%**
+
+Economy / trade / logistics:
+
+**2.40 / 140 GPP — 1.7%**
+
+Warfare / units / combat:
+
+**2.40 / 140 GPP — 1.7%**
+
+Civilizations / Diplomacy:
+
+**1.60 / 70 GPP — 2.3%**
 
 Scope Confidence:
 
@@ -2196,7 +2215,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**M4.1-B executable runtime state and domain identity contracts**
+**M4.1-C runtime world binding and cross-domain invariant contracts**
 
 Last Baseline Review:
 

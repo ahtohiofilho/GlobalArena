@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\GlobalArena.Kernel\GlobalArena.Kernel.csproj" />
     <ProjectReference Include="..\GlobalArena.World\GlobalArena.World.csproj" />
+    <ProjectReference Include="..\GlobalArena.Runtime\GlobalArena.Runtime.csproj" />
     <ProjectReference Include="..\GlobalArena.Simulation\GlobalArena.Simulation.csproj" />
     <ProjectReference Include="..\GlobalArena.Benchmarks\GlobalArena.Benchmarks.csproj" />
   </ItemGroup>

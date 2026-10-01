@@ -1,3 +1,4 @@
+using GlobalArena.Runtime;
 using GlobalArena.Simulation;
 using GlobalArena.World;
 
@@ -27,7 +28,7 @@ public sealed class CanonicalWorldStateHasherTests
                 WorldState.CreateInitial());
 
         Assert.Equal(
-            1U,
+            2U,
             hash.FormatVersion);
 
         Assert.Equal(
@@ -107,11 +108,95 @@ public sealed class CanonicalWorldStateHasherTests
             second);
     }
 
+    [Fact]
+    public void PopulatedRuntimeStateHasKnownCanonicalHash()
+    {
+        var state =
+            WorldState.CreateInitial()
+                .WithCivilizations(
+                    new CivilizationRuntimeState(
+                        new[]
+                        {
+                            new CivilizationId(2UL),
+                            new CivilizationId(1UL)
+                        }))
+                .WithEconomy(
+                    new EconomyRuntimeState(
+                        new[]
+                        {
+                            new StrategicStockEntry(
+                                new CivilizationId(1UL),
+                                new CommodityId(2U),
+                                50L),
+                            new StrategicStockEntry(
+                                new CivilizationId(1UL),
+                                new CommodityId(1U),
+                                25L)
+                        }))
+                .WithWarfare(
+                    new WarfareRuntimeState(
+                        new[]
+                        {
+                            new MilitaryUnitRuntimeState(
+                                new MilitaryUnitId(5UL),
+                                new CivilizationId(2UL),
+                                new StrategicCellId(10UL)),
+                            new MilitaryUnitRuntimeState(
+                                new MilitaryUnitId(2UL),
+                                new CivilizationId(1UL),
+                                new StrategicCellId(3UL))
+                        }));
+
+        var hash =
+            new CanonicalWorldStateHasher()
+                .Compute(
+                    state);
+
+        Assert.Equal(
+            PopulatedStateDigest,
+            hash.HexDigest);
+    }
+
+    [Fact]
+    public void CanonicalStateOrderingProducesSameHash()
+    {
+        var first =
+            WorldState.CreateInitial()
+                .WithCivilizations(
+                    new CivilizationRuntimeState(
+                        new[]
+                        {
+                            new CivilizationId(2UL),
+                            new CivilizationId(1UL)
+                        }));
+
+        var second =
+            WorldState.CreateInitial()
+                .WithCivilizations(
+                    new CivilizationRuntimeState(
+                        new[]
+                        {
+                            new CivilizationId(1UL),
+                            new CivilizationId(2UL)
+                        }));
+
+        var hasher =
+            new CanonicalWorldStateHasher();
+
+        Assert.Equal(
+            hasher.Compute(first),
+            hasher.Compute(second));
+    }
+
     private const string InitialStateDigest =
-        "E52764CDAC5F546D1BD7AF34E0B03141"
-        + "E27EAAC1E25C40580350E2C9A72FDC9C";
+        "7B12D1367BB66CDF1253FC84EE0BA353"
+        + "4E35385C3BCFCCA1FA3B69F8010BF382";
 
     private const string RevisionOneDigest =
-        "5F99DEE3022BD8F617BA44730B089FE0"
-        + "8405E711F8578145938FF732C56E1C11";
+        "B63286E292B766B823F39EB821807AAA"
+        + "59E219F3CF69F2DCCD42766C86EAEFCE";
+
+    private const string PopulatedStateDigest =
+        "224CB950072A309D1EF0EED3BE3F489"
+        + "46BE2CEDA19DAB0654B5D69915F7067C8";
 }

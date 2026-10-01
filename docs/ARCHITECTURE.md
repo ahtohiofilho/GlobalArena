@@ -6036,6 +6036,37 @@ Routine economy and movement remain strategic-first. M4 does not introduce routi
 
 The accepted M4 entry contract and GPP ownership decomposition are recorded in ADR-029.
 
+
+## 42.2 Authoritative runtime-state module
+
+M4.1-B establishes `GlobalArena.Runtime` as the aggregation boundary for mutable authoritative gameplay state.
+
+Dependency direction:
+
+`GlobalArena.Kernel`
+and
+`GlobalArena.World`
+-> `GlobalArena.Runtime`
+-> `GlobalArena.Simulation`
+
+`GlobalArena.World` does not depend on Runtime.
+
+`WorldState` is owned by `GlobalArena.Runtime`, not by generated-world code.
+
+The initial runtime aggregate contains:
+
+- canonical civilization roster;
+- canonical strategic stocks;
+- canonical military-unit identities, owners and strategic locations.
+
+The aggregate remains immutable-by-replacement.
+
+The canonical WorldState hash is format version `2` and covers the authoritative M4 runtime snapshots using explicit big-endian encoding and canonical ordering.
+
+Turn-resolution orchestration remains unchanged.
+
+The accepted decision is recorded in ADR-030.
+
 # 43. Status
 
 Versão atual:

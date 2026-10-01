@@ -3286,3 +3286,64 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M4.1-B executable runtime state and domain identity contracts**
+
+---
+
+# 49. M4.1-B runtime-state boundary risk review
+
+**Date:** 2026-09-30
+
+Checkpoint:
+
+**M4.1-B — Executable Runtime State & Domain Identity Contracts**
+
+Accepted QA:
+
+`__QA_NAME__`
+
+Risk effect:
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+Mitigation advanced:
+
+- mutable authoritative gameplay state now has an explicit owner;
+- generated-world state remains independent of runtime state;
+- Civilization, Economy and Warfare snapshots share one authoritative aggregate;
+- TurnResolver remains orchestration rather than a domain-rule container.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+M4.1-B promotes only three explicitly budgeted capabilities to `Especificada (0.20)` and awards exactly `6.40 GPP`.
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+Canonical WorldState hash format `2` now includes the first M4 authoritative runtime domains with stable ordering and regression vectors.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+Runtime state references `StrategicCellId` instead of duplicating generated topology or fields. Runtime-scale memory evidence remains future work.
+
+`RISK-001 — Economy scalability` remains `OPEN / CRITICAL`.
+
+M4.1-B introduces only canonical strategic stock state. Production, routing and invalidation behavior are not yet implemented.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+Military runtime state stores strategic location identity only. No global tactical residency or pathfinding is introduced.
+
+`RISK-007 — Architecture overengineering` remains `OPEN / HIGH`.
+
+Only one aggregation project, `GlobalArena.Runtime`, is introduced to solve the concrete ownership/dependency problem. Separate Civilization/Economy/Warfare projects remain deferred until executable domain behavior requires them.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M4.1-C runtime world binding and cross-domain invariant contracts**

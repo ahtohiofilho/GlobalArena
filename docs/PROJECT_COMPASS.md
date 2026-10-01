@@ -1001,6 +1001,33 @@ It does not freeze final:
 - civilization-count formula;
 - UI/presentation.
 
+
+### M4 maturity after M4.1-B
+
+M4.1-B promotes only the first executable state/identity contracts.
+
+| Domain | Capability | GPP | Maturidade | Fator | GPP ganhos |
+|---|---|---:|---|---:|---:|
+| Civilizations / Diplomacy | Runtime civilization identity & roster | 8 | Especificada | 0.20 | 1.60 |
+| Economy | Strategic stocks/inventories | 12 | Especificada | 0.20 | 2.40 |
+| Warfare | Unit identity/ownership/state | 12 | Especificada | 0.20 | 2.40 |
+| **TOTAL M4.1-B** |  | **32** |  |  | **6.40** |
+
+No credit is assigned yet to:
+
+- world-to-runtime civilization instantiation;
+- territory/control;
+- diplomacy;
+- production/consumption;
+- trade/routes;
+- military orders;
+- movement;
+- combat.
+
+The M4.1-B close therefore changes project progress by exactly:
+
+**+6.40 GPP**
+
 ### Runtime authority
 
 `WorldGenerationResult` remains immutable procedural input.
@@ -1031,7 +1058,7 @@ Etapa atual:
 
 Subetapa atual:
 
-**M4.1-B — Executable Runtime State & Domain Identity Contracts**
+**M4.1-C — Runtime World Binding & Cross-Domain Invariant Contracts**
 
 M3 entry audit:
 
@@ -1155,11 +1182,11 @@ Baseline V1:
 
 Progresso oficial:
 
-**23,2%**
+**23,8%**
 
 GPP conquistados:
 
-**231,50 / 1000**
+**237,90 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -1172,6 +1199,18 @@ Topologia planetária / Goldberg:
 World Generation / biomas / recursos:
 
 **85,00 / 100 GPP — 85,0%**
+
+Economia / comércio / logística:
+
+**2,40 / 140 GPP — 1,7%**
+
+Warfare / unidades / combate:
+
+**2,40 / 140 GPP — 1,7%**
+
+Civilizações / diplomacia:
+
+**1,60 / 70 GPP — 2,3%**
 
 Scope Confidence:
 
@@ -1187,7 +1226,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M4.1-B executable runtime state and domain identity contracts**
+**M4.1-C runtime world binding and cross-domain invariant contracts**
 
 Última revisão de baseline:
 

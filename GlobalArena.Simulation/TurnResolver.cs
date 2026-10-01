@@ -1,3 +1,4 @@
+using GlobalArena.Runtime;
 using GlobalArena.Kernel;
 
 namespace GlobalArena.Simulation;
