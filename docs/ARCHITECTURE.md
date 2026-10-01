@@ -6217,6 +6217,35 @@ M4.2-D does not introduce treaties, scoring, reputation, diplomacy AI, alliance 
 
 The accepted decision is recorded in ADR-035.
 
+
+## 42.8 M4.2 ownership-link integration and stage close
+
+M4.2-E closes the runtime civilization stage without adding production code.
+
+The accumulated integration scenario binds:
+
+`Generated World`
+-> deterministic runtime civilizations
+-> initial strategic territory
+-> baseline diplomacy
+-> Economy ownership references
+-> Warfare ownership/location references
+-> canonical `WorldState` hash.
+
+`WorldState` remains the common invariant boundary.
+
+All Territory, Diplomacy, Economy and Warfare civilization references must resolve to the authoritative runtime civilization roster.
+
+No subsystem receives a second ownership authority and no direct Territory/Diplomacy/Economy/Warfare mutation coupling is introduced.
+
+M4.2-E keeps canonical WorldState hash format `6` because no new authoritative payload field is added.
+
+The stage closes at `Integrada ao sistema — factor 0.70`, with broader validation maturity reserved for later M4 accumulated evidence.
+
+Production, consumption, trade, routing, military orders, movement, combat and conquest remain outside M4.2.
+
+The accepted decision is recorded in ADR-036.
+
 # 43. Status
 
 Versão atual:

@@ -1897,7 +1897,19 @@ Operational decomposition:
 
 Current subcheckpoint:
 
-**M4.2-E — Ownership-Link Integration, Accumulated Validation & M4.2 Close**
+**M4.3 — Strategic Stocks, Production & Consumption**
+
+M4.2-E closed ownership-link integration and accumulated validation:
+
+- the representative bound state integrates materialized civilizations, initial territory, baseline diplomacy, Economy ownership and Warfare ownership/location references;
+- invalid Economy/Warfare owners remain rejected by WorldState invariants;
+- no production code is added by M4.2-E;
+- canonical WorldState hash format remains `6`;
+- accumulated M4.2 tests pass `79/79`;
+- M4.2 closes at `35.00 / 50 GPP — 70.0%`;
+- M4.2-E GPP delta: `+18.00`.
+
+M4.2 — Runtime Civilizations, Territory & Baseline Diplomacy: closed.
 
 M4.2-D closed baseline diplomacy state:
 
@@ -2088,7 +2100,7 @@ Somente um ou poucos itens devem ser classificados como Critical Path.
 
 Status atual:
 
-**M4.2-E ownership-link integration, accumulated validation and M4.2 close**
+**M4.3 strategic stocks, production and consumption**
 
 ---
 
@@ -2210,7 +2222,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M4.2-E — Ownership-Link Integration, Accumulated Validation & M4.2 Close**
+**M4.3 — Strategic Stocks, Production & Consumption**
 
 M3 Entry Audit:
 
@@ -2238,11 +2250,11 @@ M3.1-D — Accumulated M3.1 Validation & Close:
 
 Official Progress:
 
-**26.1%**
+**27.9%**
 
 GPP Earned:
 
-**260.50 / 1000**
+**278.50 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -2266,7 +2278,7 @@ Warfare / units / combat:
 
 Civilizations / Diplomacy:
 
-**17.00 / 70 GPP — 24.3%**
+**35.00 / 70 GPP — 50.0%**
 
 Scope Confidence:
 
@@ -2282,7 +2294,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**M4.2-E ownership-link integration, accumulated validation and M4.2 close**
+**M4.3 strategic stocks, production and consumption**
 
 Last Baseline Review:
 

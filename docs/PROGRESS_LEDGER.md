@@ -14512,3 +14512,93 @@ No GPP is awarded yet to economic/military ownership-link completion or M4.2 sys
 Next after post-commit cross-platform attestation:
 
 **M4.2-E — Ownership-Link Integration, Accumulated Validation & M4.2 Close**
+
+---
+
+## 2026-10-01 — M4.2-E ownership-link integration, accumulated validation and M4.2 close
+
+Checkpoint closed:
+
+**M4.2-E — Ownership-Link Integration, Accumulated Validation & M4.2 Close**
+
+Stage closed:
+
+**M4.2 — Runtime Civilizations, Territory & Baseline Diplomacy**
+
+Accepted QA evidence:
+
+`GlobalArena-Evidence-M4.2-E-R2-OWNERSHIP-LINK-INTEGRATION-ACCUMULATED-VALIDATION-20261001-154255.zip`
+
+Evidence SHA-256:
+
+`667e3dd3bb6ef24dba26312f8ac14f9c0bf8dabd766728683324e61def1422f3`
+
+Accepted validation:
+
+- evidence manifest: `25/25`;
+- accepted baseline HEAD/origin-main: `2008f42bb900c2066bb5fc463bb39992758d7f4d`;
+- baseline M4.2-D post-commit kernel regression run `36907101729`: Windows/Ubuntu/macOS `820/820`, PASS;
+- baseline M4.2-D state-hash run `36907101724`: Windows/Ubuntu/macOS `12/12`, PASS;
+- candidate hashes: `1/1`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- accumulated targeted M4.2 tests: `79/79`;
+- full regression: `838/838`;
+- exact QA candidate set: `1` test file;
+- production code changed: False;
+- QA commit/push: none.
+
+Accumulated M4.2 behavior accepted:
+
+- deterministic runtime civilization materialization remains stable;
+- materialized starts remain unique strategic land;
+- initial territory controls exactly civilization starts;
+- unassigned strategic cells remain unowned;
+- Neutral remains the implicit diplomacy default;
+- Enemy/Ally overrides remain canonical and symmetric;
+- Economy stock owners resolve to the materialized civilization roster;
+- Warfare unit owners resolve to the materialized civilization roster;
+- invalid Economy/Warfare ownership remains rejected;
+- bound military locations remain constrained to the generated world;
+- Territory, Diplomacy, Economy and Warfare coexist without direct mutable coupling;
+- equivalent canonical input ordering produces the same integrated hash;
+- the representative M4.2 exit scenario is deterministic.
+
+Canonical state hash:
+
+- format version remains `6`;
+- no authoritative payload field is added by M4.2-E;
+- integrated M4.2 regression vector is frozen.
+
+Maturity at M4.2 close:
+
+- Runtime civilization identity & roster: `8 × 0.70 = 5.60 GPP`;
+- World-to-runtime civilization instantiation: `8 × 0.70 = 5.60 GPP`;
+- Territory/control ownership state: `10 × 0.70 = 7.00 GPP`;
+- Baseline diplomacy relation state: `8 × 0.70 = 5.60 GPP`;
+- Economic/military ownership links: `6 × 0.70 = 4.20 GPP`;
+- Validation/observability/systemic integration: `10 × 0.70 = 7.00 GPP`.
+
+M4.2 total:
+
+**35.00 / 50 — 70.0%**
+
+M4.2-E GPP delta:
+
+**+18.00**
+
+Civilizations / Diplomacy:
+
+**35.00 / 70 — 50.0%**
+
+Project:
+
+**278.50 / 1000 — 27.9%**
+
+No production, trade, movement, combat or conquest capability receives GPP from M4.2-E.
+
+Next after post-commit cross-platform attestation:
+
+**M4.3 — Strategic Stocks, Production & Consumption**

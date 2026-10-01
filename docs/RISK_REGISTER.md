@@ -3714,3 +3714,67 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M4.2-E ownership-link integration, accumulated validation and M4.2 close**
+
+---
+
+# 56. M4.2-E ownership-link integration and M4.2 close risk review
+
+**Date:** 2026-10-01
+
+Checkpoint:
+
+**M4.2-E — Ownership-Link Integration, Accumulated Validation & M4.2 Close**
+
+Stage:
+
+**M4.2 — Runtime Civilizations, Territory & Baseline Diplomacy — CLOSED**
+
+Accepted QA:
+
+`GlobalArena-Evidence-M4.2-E-R2-OWNERSHIP-LINK-INTEGRATION-ACCUMULATED-VALIDATION-20261001-154255.zip`
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+Mitigation advanced:
+
+- the complete M4.2 civilization/territory/diplomacy slice now coexists with Economy and Warfare ownership references in one authoritative aggregate;
+- a deterministic representative exit scenario exercises the shared ownership boundary;
+- canonical hashing covers the integrated state without adding a parallel authority.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+M4.2-E adds no production code and no production, trade, routing, movement, combat, conquest or diplomacy-AI behavior.
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+The integrated scenario freezes a known WorldState hash-format-6 regression vector and accumulated M4.2 tests pass deterministically.
+
+Post-commit Windows/Ubuntu/macOS kernel and state-hash attestation is mandatory before M4.3 implementation.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+M4.2-E adds only test evidence and no new runtime resident state.
+
+`RISK-001 — Economy scalability` remains `OPEN / CRITICAL`.
+
+Ownership references are integrated, but production, consumption, routing and invalidation behavior remain for M4.3/M4.4.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+Warfare remains strategic-location state only; M4.2-E adds no tactical residency or pathfinding.
+
+`RISK-007 — Architecture overengineering` remains `OPEN / HIGH`.
+
+The close reuses existing Runtime and WorldState boundaries and introduces no new production framework.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M4.3 strategic stocks, production and consumption contract freeze**

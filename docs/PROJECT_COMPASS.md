@@ -1183,6 +1183,43 @@ Civilizations / Diplomacy:
 
 The next implementation target is ownership-link integration and accumulated M4.2 validation. No ownership-link or systemic-integration GPP is credited by M4.2-D.
 
+
+### M4.2 maturity after M4.2-E close
+
+M4.2-E integrates the complete M4.2 runtime civilization slice with the existing Economy and Warfare ownership references without adding later gameplay behavior.
+
+| Capability | GPP | Maturidade | Fator | GPP ganhos |
+|---|---:|---|---:|---:|
+| Runtime civilization identity & roster | 8 | Integrada ao sistema | 0.70 | 5.60 |
+| World-to-runtime civilization instantiation | 8 | Integrada ao sistema | 0.70 | 5.60 |
+| Territory/control ownership state | 10 | Integrada ao sistema | 0.70 | 7.00 |
+| Baseline diplomacy relation state | 8 | Integrada ao sistema | 0.70 | 5.60 |
+| Economic/military ownership links | 6 | Integrada ao sistema | 0.70 | 4.20 |
+| Validation/observability/systemic integration | 10 | Integrada ao sistema | 0.70 | 7.00 |
+| **TOTAL M4.2 tranche** | **50** |  |  | **35.00** |
+
+M4.2-E increment:
+
+**+18.00 GPP**
+
+M4.2 closes at:
+
+**35.00 / 50 — 70.0%**
+
+Project:
+
+**278.50 / 1000 — 27.9%**
+
+Civilizations / Diplomacy:
+
+**35.00 / 70 — 50.0%**
+
+The `0.85` validated factor remains reserved for broader accumulated M4 validation and later consumer evidence.
+
+Next implementation stage after post-commit cross-platform attestation:
+
+**M4.3 — Strategic Stocks, Production & Consumption**
+
 ### Runtime authority
 
 `WorldGenerationResult` remains immutable procedural input.
@@ -1213,7 +1250,15 @@ Etapa atual:
 
 Subetapa atual:
 
-**M4.2-E — Ownership-Link Integration, Accumulated Validation & M4.2 Close**
+**M4.3 — Strategic Stocks, Production & Consumption**
+
+M4.2 — Runtime Civilizations, Territory & Baseline Diplomacy:
+
+**concluído em 2026-10-01**
+
+M4.2-E — Ownership-Link Integration, Accumulated Validation & M4.2 Close:
+
+**concluído em 2026-10-01**
 
 M4.2-D — Baseline Diplomacy State:
 
@@ -1369,11 +1414,11 @@ Baseline V1:
 
 Progresso oficial:
 
-**26,1%**
+**27,9%**
 
 GPP conquistados:
 
-**260,50 / 1000**
+**278,50 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -1397,7 +1442,7 @@ Warfare / unidades / combate:
 
 Civilizações / diplomacia:
 
-**17,00 / 70 GPP — 24,3%**
+**35,00 / 70 GPP — 50,0%**
 
 Scope Confidence:
 
@@ -1413,7 +1458,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M4.2-E ownership-link integration, accumulated validation and M4.2 close**
+**M4.3 strategic stocks, production and consumption**
 
 Última revisão de baseline:
 
