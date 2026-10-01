@@ -1897,7 +1897,16 @@ Operational decomposition:
 
 Current subcheckpoint:
 
-**M4.1-C — Runtime World Binding & Cross-Domain Invariant Contracts**
+**M4.2-A — Runtime Civilizations, Territory & Baseline Diplomacy Contract Freeze**
+
+M4.1-C closed the runtime foundation:
+
+- runtime state is bound to canonical generated-world identity;
+- cross-domain Civilization/Economy/Warfare ownership invariants are enforced;
+- bound unit locations must belong to the generated world;
+- canonical WorldState hash format is `3`;
+- M4.1-C GPP delta: `+9.60`;
+- M4.1 — Systemic Runtime Contracts & Ownership Foundation: concluded.
 
 M4.1-B closed with the first executable authoritative runtime-state contracts:
 
@@ -2021,7 +2030,7 @@ Somente um ou poucos itens devem ser classificados como Critical Path.
 
 Status atual:
 
-**M4.1-C runtime world binding and cross-domain invariant contracts**
+**M4.2-A runtime civilizations, territory and baseline diplomacy contract freeze**
 
 ---
 
@@ -2143,7 +2152,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M4.1-C — Runtime World Binding & Cross-Domain Invariant Contracts**
+**M4.2-A — Runtime Civilizations, Territory & Baseline Diplomacy Contract Freeze**
 
 M3 Entry Audit:
 
@@ -2171,11 +2180,11 @@ M3.1-D — Accumulated M3.1 Validation & Close:
 
 Official Progress:
 
-**23.8%**
+**24.8%**
 
 GPP Earned:
 
-**237.90 / 1000**
+**247.50 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -2191,15 +2200,15 @@ World Generation / biomes / resources:
 
 Economy / trade / logistics:
 
-**2.40 / 140 GPP — 1.7%**
+**6.00 / 140 GPP — 4.3%**
 
 Warfare / units / combat:
 
-**2.40 / 140 GPP — 1.7%**
+**6.00 / 140 GPP — 4.3%**
 
 Civilizations / Diplomacy:
 
-**1.60 / 70 GPP — 2.3%**
+**4.00 / 70 GPP — 5.7%**
 
 Scope Confidence:
 
@@ -2215,7 +2224,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**M4.1-C runtime world binding and cross-domain invariant contracts**
+**M4.2-A runtime civilizations, territory and baseline diplomacy contract freeze**
 
 Last Baseline Review:
 

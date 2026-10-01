@@ -3347,3 +3347,67 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M4.1-C runtime world binding and cross-domain invariant contracts**
+
+---
+
+# 50. M4.1-C runtime binding and invariant risk review
+
+**Date:** 2026-10-01
+
+Checkpoint:
+
+**M4.1-C — Runtime World Binding & Cross-Domain Invariant Contracts**
+
+Stage:
+
+**M4.1 — Systemic Runtime Contracts & Ownership Foundation — CLOSED**
+
+Accepted QA:
+
+`__QA_NAME__`
+
+Risk effect:
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+Mitigation advanced:
+
+- runtime state is bound to one generated-world identity;
+- generated topology is not copied into Runtime;
+- cross-domain references are checked at `WorldState` construction/replacement boundaries.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+Only the three existing M4.1 capabilities advance from factor `0.20` to `0.50`. No new capability receives credit.
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+Canonical WorldState hash format `3` now includes generated-world identity and the first cross-domain runtime state.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+Runtime world binding stores compact identity and strategic-cell count rather than duplicating topology or generated fields.
+
+`RISK-001 — Economy scalability` remains `OPEN / CRITICAL`.
+
+The stock state is coherent with civilization ownership, but production, routing and invalidation are still unimplemented.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+Warfare state references strategic cells only; no routine global tactical state or pathfinding is introduced.
+
+`RISK-007 — Architecture overengineering` remains `OPEN / HIGH`.
+
+M4.1-C adds a compact binding/invariant layer rather than new framework infrastructure.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M4.2-A runtime civilizations, territory and baseline diplomacy contract freeze**

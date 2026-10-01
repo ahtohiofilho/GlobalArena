@@ -1028,6 +1028,35 @@ The M4.1-B close therefore changes project progress by exactly:
 
 **+6.40 GPP**
 
+
+### M4 maturity after M4.1-C
+
+M4.1-C integrates the first three runtime-state capabilities with generated-world identity and cross-domain invariants.
+
+| Domain | Capability | GPP | Maturidade | Fator | GPP ganhos |
+|---|---|---:|---|---:|---:|
+| Civilizations / Diplomacy | Runtime civilization identity & roster | 8 | Funcional isoladamente | 0.50 | 4.00 |
+| Economy | Strategic stocks/inventories | 12 | Funcional isoladamente | 0.50 | 6.00 |
+| Warfare | Unit identity/ownership/state | 12 | Funcional isoladamente | 0.50 | 6.00 |
+| **TOTAL M4.1-C** |  | **32** |  |  | **16.00** |
+
+Increment over M4.1-B:
+
+**+9.60 GPP**
+
+No credit is assigned yet to:
+
+- world-to-runtime civilization instantiation;
+- territory/control;
+- diplomacy;
+- production/consumption;
+- trade/routes;
+- military orders;
+- movement;
+- combat.
+
+M4.1 is closed after M4.1-C subject to post-commit cross-platform attestation of the accepted source tree.
+
 ### Runtime authority
 
 `WorldGenerationResult` remains immutable procedural input.
@@ -1058,7 +1087,23 @@ Etapa atual:
 
 Subetapa atual:
 
-**M4.1-C — Runtime World Binding & Cross-Domain Invariant Contracts**
+**M4.2-A — Runtime Civilizations, Territory & Baseline Diplomacy Contract Freeze**
+
+M4.1-A — Systemic Vertical Slice Architecture, Domain Ownership & GPP Freeze:
+
+**concluído em 2026-09-30**
+
+M4.1-B — Executable Runtime State & Domain Identity Contracts:
+
+**concluído em 2026-10-01**
+
+M4.1-C — Runtime World Binding & Cross-Domain Invariant Contracts:
+
+**concluído em 2026-10-01**
+
+M4.1 — Systemic Runtime Contracts & Ownership Foundation:
+
+**concluído em 2026-10-01**
 
 M3 entry audit:
 
@@ -1182,11 +1227,11 @@ Baseline V1:
 
 Progresso oficial:
 
-**23,8%**
+**24,8%**
 
 GPP conquistados:
 
-**237,90 / 1000**
+**247,50 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -1202,15 +1247,15 @@ World Generation / biomas / recursos:
 
 Economia / comércio / logística:
 
-**2,40 / 140 GPP — 1,7%**
+**6,00 / 140 GPP — 4,3%**
 
 Warfare / unidades / combate:
 
-**2,40 / 140 GPP — 1,7%**
+**6,00 / 140 GPP — 4,3%**
 
 Civilizações / diplomacia:
 
-**1,60 / 70 GPP — 2,3%**
+**4,00 / 70 GPP — 5,7%**
 
 Scope Confidence:
 
@@ -1226,11 +1271,11 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M4.1-C runtime world binding and cross-domain invariant contracts**
+**M4.2-A runtime civilizations, territory and baseline diplomacy contract freeze**
 
 Última revisão de baseline:
 
-**2026-09-30**
+**2026-10-01**
 
 ---
 # 21. Política de atualização

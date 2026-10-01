@@ -7,7 +7,7 @@ namespace GlobalArena.Simulation;
 public sealed class CanonicalWorldStateHasher
     : IWorldStateHasher
 {
-    public const uint FormatVersion = 2U;
+    public const uint FormatVersion = 3U;
 
     private static readonly byte[] Magic =
     {
@@ -33,6 +33,42 @@ public sealed class CanonicalWorldStateHasher
         AppendUInt32(
             hash,
             FormatVersion);
+
+        AppendUInt32(
+            hash,
+            5U);
+
+        if (worldState.WorldBinding is null)
+        {
+            AppendUInt32(
+                hash,
+                0U);
+        }
+        else
+        {
+            AppendUInt32(
+                hash,
+                1U);
+
+            AppendUInt32(
+                hash,
+                checked(
+                    (uint)worldState
+                        .WorldBinding
+                        .WorldSignatureFormatVersion));
+
+            hash.AppendData(
+                Convert.FromHexString(
+                    worldState
+                        .WorldBinding
+                        .WorldSignatureSha256Hex));
+
+            AppendUInt64(
+                hash,
+                worldState
+                    .WorldBinding
+                    .StrategicCellCount);
+        }
 
         AppendUInt64(
             hash,

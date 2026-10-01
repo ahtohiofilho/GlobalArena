@@ -6067,6 +6067,32 @@ Turn-resolution orchestration remains unchanged.
 
 The accepted decision is recorded in ADR-030.
 
+
+## 42.3 Runtime world binding and cross-domain invariants
+
+M4.1-C binds authoritative runtime state to generated-world identity without copying generated topology.
+
+`RuntimeWorldBinding` stores:
+
+- generated-world signature format version;
+- canonical generated-world SHA-256 digest;
+- strategic cell count.
+
+The binding derives from `WorldGenerationCanonicalSignature`.
+
+Authoritative `WorldState` invariants now require:
+
+- Economy stock owners to exist in the Civilization roster;
+- Warfare unit owners to exist in the Civilization roster;
+- referenced owners to remain present while Economy/Warfare still reference them;
+- bound military-unit strategic locations to belong to the generated world.
+
+`WorldState` may remain unbound for generic kernel/simulation tests, but an authoritative game state may bind only once. Rebinding to another generated world is rejected.
+
+The canonical `WorldState` hash is format version `3` and includes generated-world binding identity.
+
+The accepted decision is recorded in ADR-031.
+
 # 43. Status
 
 Versão atual:

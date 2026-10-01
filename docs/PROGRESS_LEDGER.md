@@ -14085,3 +14085,83 @@ No production, trade, movement, combat, territory or diplomacy behavior receives
 Next checkpoint after cross-platform attestation:
 
 **M4.1-C — Runtime World Binding & Cross-Domain Invariant Contracts**
+
+---
+
+## 2026-10-01 — M4.1-C runtime world binding and cross-domain invariant contracts formal close
+
+Checkpoint closed:
+
+**M4.1-C — Runtime World Binding & Cross-Domain Invariant Contracts**
+
+Stage closed:
+
+**M4.1 — Systemic Runtime Contracts & Ownership Foundation**
+
+Accepted QA evidence:
+
+`__QA_NAME__`
+
+Evidence SHA-256:
+
+`__QA_SHA__`
+
+Accepted validation:
+
+- evidence manifest: `31/31`;
+- baseline regression: `742/742`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- targeted M4.1-C tests: `22/22`;
+- full regression: `757/757`;
+- exact QA candidate set: `5` files;
+- QA commit/push: none.
+
+Runtime binding accepted:
+
+- `RuntimeWorldBinding` uses canonical generated-world signature identity;
+- runtime binding stores no generated topology copy;
+- `WorldState` may bind once to one generated world;
+- same-world rebinding is idempotent;
+- different-world rebinding is rejected.
+
+Cross-domain invariants accepted:
+
+- Economy owners must exist in Civilization roster;
+- Warfare owners must exist in Civilization roster;
+- referenced owners cannot be removed while still in use;
+- bound military-unit locations must exist in the generated world.
+
+Canonical state hash:
+
+- format version: `3`;
+- generated-world binding included;
+- unbound and bound regression vectors frozen.
+
+Maturity promotions:
+
+- Civilizations / runtime identity & roster: `8 × 0.50 = 4.00 GPP`;
+- Economy / strategic stocks: `12 × 0.50 = 6.00 GPP`;
+- Warfare / unit identity/ownership/state: `12 × 0.50 = 6.00 GPP`.
+
+GPP delta:
+
+**+9.60**
+
+Project:
+
+**247.50 / 1000 — 24.8%**
+
+Domain progress:
+
+- Civilizations / Diplomacy: `4.00 / 70 — 5.7%`;
+- Economy: `6.00 / 140 — 4.3%`;
+- Warfare: `6.00 / 140 — 4.3%`.
+
+No GPP is awarded yet to civilization instantiation, territory, diplomacy, production, trade, routing, orders, movement or combat.
+
+Next checkpoint after post-commit cross-platform attestation:
+
+**M4.2-A — Runtime Civilizations, Territory & Baseline Diplomacy Contract Freeze**
