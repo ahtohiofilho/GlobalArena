@@ -28,7 +28,7 @@ public sealed class CanonicalWorldStateHasherTests
                 WorldState.CreateInitial());
 
         Assert.Equal(
-            3U,
+            4U,
             hash.FormatVersion);
 
         Assert.Equal(
@@ -224,6 +224,78 @@ public sealed class CanonicalWorldStateHasherTests
             second);
     }
 
+    [Fact]
+    public void MaterializedCivilizationStartsHaveKnownCanonicalHash()
+    {
+        var state =
+            WorldState.CreateBound(
+                    GenerateWorld(
+                        0UL))
+                .WithCivilizations(
+                    new CivilizationRuntimeState(
+                        new[]
+                        {
+                            new CivilizationRuntimeRecord(
+                                new CivilizationId(2UL),
+                                new StrategicCellId(10UL)),
+                            new CivilizationRuntimeRecord(
+                                new CivilizationId(1UL),
+                                new StrategicCellId(3UL))
+                        }));
+
+        var hash =
+            new CanonicalWorldStateHasher()
+                .Compute(
+                    state);
+
+        Assert.Equal(
+            MaterializedCivilizationDigest,
+            hash.HexDigest);
+    }
+
+    [Fact]
+    public void DifferentCivilizationStartChangesCanonicalHash()
+    {
+        var first =
+            WorldState.CreateBound(
+                    GenerateWorld(
+                        0UL))
+                .WithCivilizations(
+                    new CivilizationRuntimeState(
+                        new[]
+                        {
+                            new CivilizationRuntimeRecord(
+                                new CivilizationId(1UL),
+                                new StrategicCellId(3UL)),
+                            new CivilizationRuntimeRecord(
+                                new CivilizationId(2UL),
+                                new StrategicCellId(10UL))
+                        }));
+
+        var second =
+            WorldState.CreateBound(
+                    GenerateWorld(
+                        0UL))
+                .WithCivilizations(
+                    new CivilizationRuntimeState(
+                        new[]
+                        {
+                            new CivilizationRuntimeRecord(
+                                new CivilizationId(1UL),
+                                new StrategicCellId(4UL)),
+                            new CivilizationRuntimeRecord(
+                                new CivilizationId(2UL),
+                                new StrategicCellId(10UL))
+                        }));
+
+        var hasher =
+            new CanonicalWorldStateHasher();
+
+        Assert.NotEqual(
+            hasher.Compute(first),
+            hasher.Compute(second));
+    }
+
     private static WorldState CreatePopulatedState(
         WorldState state)
     {
@@ -284,22 +356,26 @@ public sealed class CanonicalWorldStateHasherTests
         + "0549780b4470b2fae96f607da774c52";
 
     private const string InitialStateDigest =
-        "52250B8136E932317C99C7F09AE6CECD"
-        + "D45809F93DAFBB1BC3A9205C5BAE5BA7";
+        "9B8FE2B8C5FED45D34C98AD9D46B7C2F"
+        + "27F129705ED1C80CB2AD321F4C6CDDFE";
 
     private const string RevisionOneDigest =
-        "AF14602906AC5FD10820013EA854FC59"
-        + "C05DF7C168C8DD448FD485AA1DC6CEE3";
+        "B371E034BB5A7AE82CA1AB492BFF28AE"
+        + "F232F09E66185265D6397E283E2B4965";
 
     private const string PopulatedStateDigest =
-        "8488D66C564C78B32114BFE13881BBEE"
-        + "3E75B9CE964649C6620D5AA9776822C5";
+        "78C89FDE844417C6F878C42BF25C2D80"
+        + "73DD8E985F82DF412C9AFB9A618EDB42";
 
     private const string BoundInitialStateDigest =
-        "8768F97E5E510749980428C49D47FCC6"
-        + "A7CCFE92B44235A05D3266125FDC43AA";
+        "C28AC884E42AA4EABEF5D838682CAB61"
+        + "43F6F4F73BDD4C6AD90F290FAD21AC3D";
 
     private const string BoundPopulatedStateDigest =
-        "19A7B9B18FADBB2F6795C54BDF8BDFD9"
-        + "79BED79F93CDDEA8F6FB6D6AFF792C8E";
+        "5AAB0751879BC3987843918EC68FBEED"
+        + "540D74E47A8692A046ED2339A5187F1C";
+
+    private const string MaterializedCivilizationDigest =
+        "88811860D6D3E14E26893153A30E5FF5"
+        + "2C40A2C78AAEF4A1E8EF42505E11A7F6";
 }

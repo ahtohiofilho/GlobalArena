@@ -3531,3 +3531,61 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M4.2-B deterministic runtime civilization materialization**
+
+---
+
+# 53. M4.2-B deterministic civilization materialization risk review
+
+**Date:** 2026-10-01
+
+Checkpoint:
+
+**M4.2-B — Deterministic Runtime Civilization Materialization**
+
+Accepted QA:
+
+`__QA_NAME__`
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+Mitigation advanced:
+
+- generated-world placement inputs now materialize authoritative runtime civilization records;
+- civilization origin is explicit rather than inferred;
+- legacy identity-only runtime contracts remain compatible.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+Only the existing `World-to-runtime civilization instantiation` capability advances. Territory, diplomacy, cities, population and AI remain outside this checkpoint.
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+The accepted selector remains authoritative and `StartCellId` enters canonical WorldState hash format `4`.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+M4.2-B stores one compact strategic start identity per materialized civilization and introduces no tactical ownership state.
+
+`RISK-001 — Economy scalability` remains `OPEN / CRITICAL`.
+
+No Economy behavior changes.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+Civilization starts reference strategic cells only.
+
+`RISK-007 — Architecture overengineering` remains `OPEN / HIGH`.
+
+The implementation extends existing Runtime state with a compact record/materializer and introduces no new framework layer.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M4.2-C strategic territory control**

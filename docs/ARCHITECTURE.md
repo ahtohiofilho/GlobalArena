@@ -6126,6 +6126,38 @@ Civilization, territory and diplomacy state remain authoritative Runtime state a
 
 The accepted decision is recorded in ADR-032.
 
+
+## 42.5 Deterministic runtime civilization materialization
+
+M4.2-B makes runtime civilizations executable without introducing territory or diplomacy early.
+
+`RuntimeCivilizationMaterializer` receives a generated world plus an explicit positive civilization count.
+
+The accepted M3.5 placement selector remains authoritative.
+
+Runtime materialization preserves selector order and adds only the M4.2 land-start eligibility rule:
+
+- deterministic selector prefixes are requested;
+- water candidates are filtered while preserving selector order;
+- the prefix expands deterministically until enough land candidates exist or the candidate domain is exhausted;
+- the first `N` eligible land candidates become runtime starts.
+
+Materialized civilizations receive canonical identities `1..N`.
+
+`CivilizationRuntimeRecord` carries civilization identity and optional strategic start cell.
+
+Identity-only records remain supported for generic simulation states.
+
+Materialized start cells must be unique.
+
+Bound `WorldState` rejects a materialized civilization start outside the bound generated world.
+
+`StartCellId` is civilization origin only. Strategic territorial ownership remains owned by M4.2-C.
+
+The canonical `WorldState` hash is format version `4` and covers civilization start-cell presence and identity.
+
+The accepted decision is recorded in ADR-033.
+
 # 43. Status
 
 Versão atual:

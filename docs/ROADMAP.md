@@ -1897,7 +1897,17 @@ Operational decomposition:
 
 Current subcheckpoint:
 
-**M4.2-B — Deterministic Runtime Civilization Materialization**
+**M4.2-C — Strategic Territory Control**
+
+M4.2-B closed deterministic runtime civilization materialization:
+
+- explicit civilization count remains the runtime input;
+- M3.5 placement selector remains authoritative;
+- runtime land eligibility is enforced while preserving selector order;
+- civilization identities are canonical `1..N`;
+- start cells are unique and bound-world validated;
+- canonical WorldState hash format is `4`;
+- M4.2-B GPP delta: `+4.00`.
 
 M4.2-A closed the Civilization/Territory/Diplomacy contract freeze with ADR-032 Accepted and `0.00 GPP` awarded.
 
@@ -2058,7 +2068,7 @@ Somente um ou poucos itens devem ser classificados como Critical Path.
 
 Status atual:
 
-**M4.2-B deterministic runtime civilization materialization**
+**M4.2-C strategic territory control**
 
 ---
 
@@ -2180,7 +2190,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M4.2-B — Deterministic Runtime Civilization Materialization**
+**M4.2-C — Strategic Territory Control**
 
 M3 Entry Audit:
 
@@ -2208,11 +2218,11 @@ M3.1-D — Accumulated M3.1 Validation & Close:
 
 Official Progress:
 
-**24.8%**
+**25.2%**
 
 GPP Earned:
 
-**247.50 / 1000**
+**251.50 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -2236,7 +2246,7 @@ Warfare / units / combat:
 
 Civilizations / Diplomacy:
 
-**4.00 / 70 GPP — 5.7%**
+**8.00 / 70 GPP — 11.4%**
 
 Scope Confidence:
 
@@ -2252,7 +2262,7 @@ Active Critical Risks:
 
 Critical Path:
 
-**M4.2-B deterministic runtime civilization materialization**
+**M4.2-C strategic territory control**
 
 Last Baseline Review:
 

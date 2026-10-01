@@ -1096,6 +1096,35 @@ Project progress therefore remains:
 
 until executable M4.2 evidence is accepted.
 
+
+### M4.2 maturity after M4.2-B
+
+M4.2-B materializes deterministic runtime civilizations from the generated world.
+
+| Capability | GPP | Maturidade | Fator | GPP ganhos |
+|---|---:|---|---:|---:|
+| Runtime civilization identity & roster | 8 | Funcional isoladamente | 0.50 | 4.00 |
+| World-to-runtime civilization instantiation | 8 | Funcional isoladamente | 0.50 | 4.00 |
+| Territory/control ownership state | 10 | Não existente | 0.00 | 0.00 |
+| Baseline diplomacy relation state | 8 | Não existente | 0.00 | 0.00 |
+| Economic/military ownership links | 6 | Não existente | 0.00 | 0.00 |
+| Validation/observability/systemic integration | 10 | Não existente | 0.00 | 0.00 |
+| **TOTAL M4.2 tranche** | **50** |  |  | **8.00** |
+
+M4.2-B increment:
+
+**+4.00 GPP**
+
+Project:
+
+**251.50 / 1000 — 25.2%**
+
+Civilizations / Diplomacy:
+
+**8.00 / 70 — 11.4%**
+
+The next implementation target is explicit strategic territorial control. No territory or diplomacy GPP is credited by M4.2-B.
+
 ### Runtime authority
 
 `WorldGenerationResult` remains immutable procedural input.
@@ -1126,7 +1155,11 @@ Etapa atual:
 
 Subetapa atual:
 
-**M4.2-B — Deterministic Runtime Civilization Materialization**
+**M4.2-C — Strategic Territory Control**
+
+M4.2-B — Deterministic Runtime Civilization Materialization:
+
+**concluído em 2026-10-01**
 
 M4.2-A — Runtime Civilizations, Territory & Baseline Diplomacy Contract Freeze:
 
@@ -1270,11 +1303,11 @@ Baseline V1:
 
 Progresso oficial:
 
-**24,8%**
+**25,2%**
 
 GPP conquistados:
 
-**247,50 / 1000**
+**251,50 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -1298,7 +1331,7 @@ Warfare / unidades / combate:
 
 Civilizações / diplomacia:
 
-**4,00 / 70 GPP — 5,7%**
+**8,00 / 70 GPP — 11,4%**
 
 Scope Confidence:
 
@@ -1314,7 +1347,7 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M4.2-B deterministic runtime civilization materialization**
+**M4.2-C strategic territory control**
 
 Última revisão de baseline:
 

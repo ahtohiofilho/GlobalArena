@@ -157,6 +157,22 @@ public sealed class WorldState
                 .Civilizations
                 .ToHashSet();
 
+        if (worldBinding is not null)
+        {
+            foreach (var civilization in
+                civilizations.Records)
+            {
+                if (civilization.StartCellId
+                    is StrategicCellId startCellId
+                    && !worldBinding.Contains(
+                        startCellId))
+                {
+                    throw new InvalidOperationException(
+                        $"Civilization {civilization.Id.Value} references start cell {startCellId.Value}, which does not belong to the bound generated world.");
+                }
+            }
+        }
+
         foreach (var stock in
             economy.StrategicStocks)
         {

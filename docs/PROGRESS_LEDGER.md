@@ -14287,3 +14287,74 @@ Project remains:
 Next checkpoint:
 
 **M4.2-B — Deterministic Runtime Civilization Materialization**
+
+---
+
+## 2026-10-01 — M4.2-B deterministic runtime civilization materialization formal close
+
+Checkpoint closed:
+
+**M4.2-B — Deterministic Runtime Civilization Materialization**
+
+Accepted QA evidence:
+
+`__QA_NAME__`
+
+Evidence SHA-256:
+
+`__QA_SHA__`
+
+Accepted validation:
+
+- evidence manifest: `33/33`;
+- accepted baseline HEAD/origin-main: `5b73bbaef8d6d3814a004dac1f94fa9850242570`;
+- candidate hashes: `7/7`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- baseline regression: `757/757`;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- targeted M4.2-B tests: `25/25`;
+- full regression: `772/772`;
+- exact QA candidate set: `7` files;
+- QA commit/push: none.
+
+Executable behavior accepted:
+
+- explicit positive civilization-count input;
+- M3.5 selector remains placement authority;
+- deterministic selector order is preserved after land eligibility;
+- water start candidates are rejected by runtime eligibility;
+- identities are assigned canonically as `CivilizationId(1..N)`;
+- materialized starts are unique;
+- legacy identity-only CivilizationRuntimeState remains valid;
+- bound WorldState rejects starts outside the generated world.
+
+Canonical state hash:
+
+- format version: `4`;
+- civilization start-cell presence and identity are covered;
+- materialized-state regression vector frozen.
+
+Maturity:
+
+- Runtime civilization identity & roster: `8 × 0.50 = 4.00 GPP`;
+- World-to-runtime civilization instantiation: `8 × 0.50 = 4.00 GPP`.
+
+M4.2-B GPP delta:
+
+**+4.00**
+
+Civilizations / Diplomacy:
+
+**8.00 / 70 — 11.4%**
+
+Project:
+
+**251.50 / 1000 — 25.2%**
+
+No GPP is awarded yet to territory, diplomacy, ownership links or M4.2 systemic integration.
+
+Next after post-commit cross-platform attestation:
+
+**M4.2-C — Strategic Territory Control**
