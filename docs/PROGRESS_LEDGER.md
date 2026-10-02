@@ -14700,3 +14700,84 @@ Project remains:
 Next after formal close:
 
 **M4.3-B — Economic Point & Localized Workforce/Activity Substrate**
+---
+
+## 2026-10-02 — M4.3-B economic point and localized workforce/activity substrate formal close
+
+Milestone:
+
+**M4 — Systemic Vertical Slice**
+
+Stage:
+
+**M4.3 — Economic Points, Workforce, Production & Demand**
+
+Checkpoint:
+
+**M4.3-B — Economic Point & Localized Workforce/Activity Substrate**
+
+Accepted QA evidence:
+
+`GlobalArena-Evidence-M4.3-B-R3-ECONOMIC-POINT-LOCALIZED-WORKFORCE-ACTIVITY-SUBSTRATE-20261002-101554.zip`
+
+Evidence SHA-256:
+
+`1719dc2424d32f691df1bb4c2c7d3451cfcc3455d6d3830da4a2c53e6fe4d790`
+
+Accepted source baseline:
+
+`96f9a58f835087bffa1c2f9219660c1416268fcd`
+
+Accepted validation:
+
+- evidence manifest: `25/25`;
+- exact staged candidate set: `15`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- targeted regression: `85/85`;
+- full regression: `858/858`;
+- residual `StrategicStockEntry` / `StrategicStocks` C# references: `0`;
+- QA commit/push: none.
+
+Executable migration:
+
+- `CommodityId`: preserved;
+- `WorldState.Economy` / `WithEconomy`: preserved;
+- `EconomyRuntimeState`: reshaped to canonical EconomicPoints;
+- `StrategicStockEntry`: retired from active V1 source;
+- point owner invariant: active;
+- point strategic-anchor/world-binding invariant: active;
+- activities: Agriculture / Mining / TradeLogistics;
+- total, allocated and unallocated workforce: represented;
+- canonical WorldState hash format: `7`;
+- affected territory, diplomacy and integrated known vectors: rebased.
+
+Scope exclusions remain:
+
+- production/demand flow resolver;
+- population growth;
+- diminishing-return formula;
+- infrastructure;
+- routes;
+- markets;
+- water filling;
+- pricing;
+- financial settlement.
+
+GPP:
+
+- refined `Commodity identity, economic points/locality & flow substrate`: `12 GPP`, functional-isolated factor `0.50`, confirmed `6.00 GPP`;
+- historical `6.00 GPP` is confirmed rather than duplicated;
+- M4.3-B delta: `0.00`;
+- Economy remains `6.00 / 140 — 4.3%`;
+- Project remains `278.50 / 1000 — 27.9%`.
+
+Accepted implementation ADR:
+
+**ADR-038 — M4.3-B Economic Point Runtime Substrate & WorldState Hash v7**
+
+Next after post-commit cross-platform kernel/hash-v7 attestation:
+
+**M4.3-C — Deterministic Production & Demand Flow Resolution**

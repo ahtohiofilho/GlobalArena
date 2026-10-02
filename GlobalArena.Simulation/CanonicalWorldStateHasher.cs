@@ -7,7 +7,7 @@ namespace GlobalArena.Simulation;
 public sealed class CanonicalWorldStateHasher
     : IWorldStateHasher
 {
-    public const uint FormatVersion = 6U;
+    public const uint FormatVersion = 7U;
 
     private static readonly byte[] Magic =
     {
@@ -182,25 +182,49 @@ public sealed class CanonicalWorldStateHasher
             checked(
                 (uint)worldState
                     .Economy
-                    .StrategicStocks
+                    .EconomicPoints
                     .Count));
 
-        foreach (var stock in
+        foreach (var point in
             worldState
                 .Economy
-                .StrategicStocks)
+                .EconomicPoints)
         {
             AppendUInt64(
                 hash,
-                stock.Owner.Value);
+                point.Id.Value);
+
+            AppendUInt64(
+                hash,
+                point.Owner.Value);
+
+            AppendUInt64(
+                hash,
+                point.StrategicCellId.Value);
+
+            AppendUInt64(
+                hash,
+                point.Workforce);
 
             AppendUInt32(
                 hash,
-                stock.Commodity.Value);
+                checked(
+                    (uint)point
+                        .ActivityAllocations
+                        .Count));
 
-            AppendInt64(
-                hash,
-                stock.Quantity);
+            foreach (var allocation in
+                point.ActivityAllocations)
+            {
+                AppendUInt32(
+                    hash,
+                    checked(
+                        (uint)allocation.Kind));
+
+                AppendUInt64(
+                    hash,
+                    allocation.Workforce);
+            }
         }
 
         AppendUInt32(
@@ -265,21 +289,6 @@ public sealed class CanonicalWorldStateHasher
             stackalloc byte[8];
 
         BinaryPrimitives.WriteUInt64BigEndian(
-            buffer,
-            value);
-
-        hash.AppendData(
-            buffer);
-    }
-
-    private static void AppendInt64(
-        IncrementalHash hash,
-        long value)
-    {
-        Span<byte> buffer =
-            stackalloc byte[8];
-
-        BinaryPrimitives.WriteInt64BigEndian(
             buffer,
             value);
 

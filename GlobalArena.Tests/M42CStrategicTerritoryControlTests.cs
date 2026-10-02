@@ -514,6 +514,6 @@ public sealed class M42CStrategicTerritoryControlTests
     }
 
     private const string KnownTerritoryDigest =
-        "53B752F6CF06C3A2585E17453F817FE6"
-        + "95759D290137D3244C56107E59CB8A99";
+        "01DEA66DE26245DDF3DFAF502F7DE3F3"
+        + "8F313DDD9E78F8407BB554D5C6E010D5";
 }

@@ -140,10 +140,11 @@ public sealed class M41CRuntimeWorldBindingInvariantTests
                 new EconomyRuntimeState(
                     new[]
                     {
-                        new StrategicStockEntry(
+                        new EconomicPointRuntimeState(
+                            new EconomicPointId(1UL),
                             new CivilizationId(2UL),
-                            new CommodityId(1U),
-                            10L)
+                            new StrategicCellId(1UL),
+                            0UL)
                     })));
     }
 
@@ -213,10 +214,11 @@ public sealed class M41CRuntimeWorldBindingInvariantTests
                     new EconomyRuntimeState(
                         new[]
                         {
-                            new StrategicStockEntry(
+                            new EconomicPointRuntimeState(
+                                new EconomicPointId(1UL),
                                 new CivilizationId(2UL),
-                                new CommodityId(1U),
-                                10L)
+                                new StrategicCellId(1UL),
+                                0UL)
                         }));
 
         Assert.Throws<InvalidOperationException>(
@@ -277,10 +279,17 @@ public sealed class M41CRuntimeWorldBindingInvariantTests
                     new EconomyRuntimeState(
                         new[]
                         {
-                            new StrategicStockEntry(
+                            new EconomicPointRuntimeState(
+                                new EconomicPointId(1UL),
                                 new CivilizationId(1UL),
-                                new CommodityId(1U),
-                                25L)
+                                new StrategicCellId(1UL),
+                                1UL,
+                                new[]
+                                {
+                                    new EconomicActivityWorkforceAllocation(
+                                        EconomicActivityKind.Agriculture,
+                                        1UL)
+                                })
                         }))
                 .WithWarfare(
                     new WarfareRuntimeState(
@@ -307,7 +316,7 @@ public sealed class M41CRuntimeWorldBindingInvariantTests
                 .WorldSignatureSha256Hex);
 
         Assert.Single(
-            state.Economy.StrategicStocks);
+            state.Economy.EconomicPoints);
 
         Assert.Single(
             state.Warfare.Units);
@@ -327,10 +336,11 @@ public sealed class M41CRuntimeWorldBindingInvariantTests
                 new EconomyRuntimeState(
                     new[]
                     {
-                        new StrategicStockEntry(
+                        new EconomicPointRuntimeState(
+                            new EconomicPointId(1UL),
                             new CivilizationId(1UL),
-                            new CommodityId(1U),
-                            10L)
+                            new StrategicCellId(2UL),
+                            1UL)
                     }))
             .WithWarfare(
                 new WarfareRuntimeState(

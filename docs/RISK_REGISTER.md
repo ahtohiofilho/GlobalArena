@@ -3831,3 +3831,52 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M4.3-B economic point and localized workforce/activity substrate**
+---
+
+# 58. M4.3-B economic point substrate and hash-v7 risk review
+
+**Date:** 2026-10-02
+
+Checkpoint:
+
+**M4.3-B — Economic Point & Localized Workforce/Activity Substrate**
+
+`RISK-001 — Economy scalability` remains `OPEN / CRITICAL`.
+
+The resident Economy is now sparse by EconomicPoint and no longer persists civilization-wide physical stock quantities. Heavy market allocation remains deferred. This improves the data model but does not yet prove market-scale performance.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+M4.3-B materially reduces ambiguity by making locality, ownership, strategic anchor and workforce/activity allocation executable. Production/demand and market boundaries still require implementation evidence.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+No City/Hub framework, physical inventory system, population-growth algorithm, infrastructure model, routes, water filling or pricing was introduced.
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+Economic points and activity allocations are canonical and now participate in WorldState hash format `7`. Post-commit Windows/Ubuntu/macOS kernel and hash-v7 regression is required before M4.3-C proceeds.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+Resident Economy stores sparse point/workforce/activity state rather than per-unit commodity inventory. Scale evidence for large EconomicPoint counts remains future work.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+EconomicPoint uses a strategic routing anchor. No routine global tactical Economy pathfinding is introduced.
+
+`RISK-007 — Architecture overengineering` remains `OPEN / HIGH`.
+
+The implementation adds focused value types/runtime records inside the existing Runtime aggregate and does not introduce City, Hub or a new framework/project boundary.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M4.3-C deterministic production and demand flow resolution**

@@ -28,7 +28,7 @@ public sealed class CanonicalWorldStateHasherTests
                 WorldState.CreateInitial());
 
         Assert.Equal(
-            6U,
+            7U,
             hash.FormatVersion);
 
         Assert.Equal(
@@ -311,14 +311,31 @@ public sealed class CanonicalWorldStateHasherTests
                 new EconomyRuntimeState(
                     new[]
                     {
-                        new StrategicStockEntry(
+                        new EconomicPointRuntimeState(
+                            new EconomicPointId(2UL),
                             new CivilizationId(1UL),
-                            new CommodityId(2U),
-                            50L),
-                        new StrategicStockEntry(
+                            new StrategicCellId(4UL),
+                            10UL,
+                            new[]
+                            {
+                                new EconomicActivityWorkforceAllocation(
+                                    EconomicActivityKind.TradeLogistics,
+                                    3UL),
+                                new EconomicActivityWorkforceAllocation(
+                                    EconomicActivityKind.Agriculture,
+                                    7UL)
+                            }),
+                        new EconomicPointRuntimeState(
+                            new EconomicPointId(1UL),
                             new CivilizationId(1UL),
-                            new CommodityId(1U),
-                            25L)
+                            new StrategicCellId(3UL),
+                            6UL,
+                            new[]
+                            {
+                                new EconomicActivityWorkforceAllocation(
+                                    EconomicActivityKind.Mining,
+                                    6UL)
+                            })
                     }))
             .WithWarfare(
                 new WarfareRuntimeState(
@@ -356,26 +373,26 @@ public sealed class CanonicalWorldStateHasherTests
         + "0549780b4470b2fae96f607da774c52";
 
     private const string InitialStateDigest =
-        "346FDBC6D4444D870BEA599E586932D6"
-        + "9EE1E5E5139222AD74C11324FFA87912";
+        "0510E5244C8FD1169D5D966B793C68BA"
+        + "0C296822DB6A75FA111846B8395194C5";
 
     private const string RevisionOneDigest =
-        "A360F7D8A423283E01E2FF99228BDB9"
-        + "BB6D9776547E02B6BFE52AF9866CD53FC";
+        "3B8485AD1C79F885106592AA91F5C456"
+        + "3796E7F5A067C4A8C1FAC268D557F18E";
 
     private const string PopulatedStateDigest =
-        "A1D8A3F78B4ECF3C2119BECCACDC4681"
-        + "676A901610188EDA1A50942122B8AEE5";
+        "BC7066464A5BA40B77B7B3111D660EFB"
+        + "3F0BF4DD3EF67C7AF8E13F5AC9E84BEB";
 
     private const string BoundInitialStateDigest =
-        "AD76D9347063868451202A4F1C1C6D7C"
-        + "48423E9152C408CE6ECD03B32CD75A19";
+        "CC9353E179581E49A49BD8F27E6F9335"
+        + "18D7C65738E3EE9D7DC5D7B5FF7BECD3";
 
     private const string BoundPopulatedStateDigest =
-        "B6CBB197AD69D3D9ADBAFB9EE1A2F1A4"
-        + "A7796463B922F0115E82F537BF55A072";
+        "90A1FDFF0CD336904126A2D00E1D56B6"
+        + "76B0B706A0DF49DF8479A6C3009C2C8F";
 
     private const string MaterializedCivilizationDigest =
-        "16E2ADC8F66DB3B9967F9E53304DFF43"
-        + "1369CEAB7C117D86598D737255BC99E2";
+        "9EF9ADDC283CF27BA843FC1CED7A78C4"
+        + "DFC7104273D880EAB9B5F5699FB60C13";
 }

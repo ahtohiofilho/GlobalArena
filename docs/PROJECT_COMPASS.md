@@ -1257,13 +1257,13 @@ M4.4 is refined to:
 
 Water-filling remains the leading allocation hypothesis for M4.4, while literal packet iteration is not frozen.
 
-The current `6.00 GPP` Economy credit is historical evidence from the M4.1 runtime Economy substrate.
+The historical `6.00 GPP` Economy credit has now been revalidated by executable M4.3-B migration evidence.
 
-M4.3-A does not retroactively rescore that credit by documentation alone.
+M4.3-B preserves CommodityId and the WorldState Economy boundary, replaces persistent StrategicStockEntry semantics with localized EconomicPoints, migrates ownership/world-binding invariants, and advances the canonical WorldState hash to format `7`.
 
-M4.3-B must perform an executable reuse audit and determine exactly which existing Commodity/Economy ownership/hash contracts remain authoritative after the move away from persistent stock semantics.
+The refined `Commodity identity, economic points/locality & flow substrate` capability remains at functional-isolated factor `0.50`, confirming the existing `6.00 GPP` without adding new credit.
 
-M4.3-A awards:
+M4.3-B awards:
 
 **0.00 GPP**
 
@@ -1271,11 +1271,11 @@ Project therefore remains:
 
 **278.50 / 1000 — 27.9%**
 
-Economy / trade / logistics remains provisionally:
+Economy / trade / logistics:
 
 **6.00 / 140 — 4.3%**
 
-Any later GPP correction must be justified by executable migration evidence, not by this design freeze.
+The `Workforce, production & demand` capability remains unpromoted until M4.3-C provides executable production/demand behavior.
 
 ### Runtime authority
 
@@ -1307,7 +1307,11 @@ Etapa atual:
 
 Subetapa atual:
 
-**M4.3-B — Economic Point & Localized Workforce/Activity Substrate**
+**M4.3-C — Deterministic Production & Demand Flow Resolution**
+
+M4.3-B — Economic Point & Localized Workforce/Activity Substrate:
+
+**concluído em 2026-10-02**
 
 M4.3-A — Economic Points, Workforce, Production & Demand Contract Freeze:
 
@@ -1519,7 +1523,11 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M4.3-B economic point and localized workforce/activity substrate**
+**M4.3-C deterministic production and demand flow resolution**
+
+Entry gate:
+
+**post-commit cross-platform kernel/hash-v7 attestation for M4.3-B**
 
 Última revisão de baseline:
 

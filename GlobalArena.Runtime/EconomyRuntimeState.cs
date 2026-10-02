@@ -4,63 +4,61 @@ public sealed class EconomyRuntimeState
 {
     private static readonly EconomyRuntimeState EmptyInstance =
         new(
-            Array.Empty<StrategicStockEntry>());
+            Array.Empty<EconomicPointRuntimeState>());
+
+    private readonly EconomicPointRuntimeState[] _economicPoints;
+
+    private readonly IReadOnlyList<EconomicPointRuntimeState> _readOnlyEconomicPoints;
 
     public static EconomyRuntimeState Empty =>
         EmptyInstance;
 
-    public IReadOnlyList<StrategicStockEntry> StrategicStocks { get; }
+    public IReadOnlyList<EconomicPointRuntimeState> EconomicPoints =>
+        _readOnlyEconomicPoints;
 
     public EconomyRuntimeState(
-        IEnumerable<StrategicStockEntry> strategicStocks)
+        IEnumerable<EconomicPointRuntimeState> economicPoints)
     {
         ArgumentNullException.ThrowIfNull(
-            strategicStocks);
+            economicPoints);
 
         var canonical =
-            strategicStocks
-                .ToArray();
+            economicPoints.ToArray();
 
         if (canonical.Any(
-            stock =>
-                stock is null))
+            point =>
+                point is null))
         {
             throw new ArgumentException(
-                "Strategic stock collection cannot contain null.",
-                nameof(strategicStocks));
+                "Economy runtime state cannot contain null economic points.",
+                nameof(economicPoints));
         }
 
         canonical =
             canonical
                 .OrderBy(
-                    stock =>
-                        stock.Owner.Value)
-                .ThenBy(
-                    stock =>
-                        stock.Commodity.Value)
+                    point =>
+                        point.Id.Value)
                 .ToArray();
 
         for (var index = 1;
              index < canonical.Length;
              index++)
         {
-            var previous =
-                canonical[index - 1];
-
-            var current =
-                canonical[index];
-
-            if (previous.Owner == current.Owner
-                && previous.Commodity == current.Commodity)
+            if (canonical[index - 1].Id
+                == canonical[index].Id)
             {
                 throw new ArgumentException(
-                    "Strategic stock collection cannot contain duplicate owner/commodity keys.",
-                    nameof(strategicStocks));
+                    "Economy runtime state cannot contain duplicate economic point identities.",
+                    nameof(economicPoints));
             }
         }
 
-        StrategicStocks =
+        _economicPoints =
+            canonical;
+
+        _readOnlyEconomicPoints =
             Array.AsReadOnly(
-                canonical);
+                _economicPoints);
     }
 }

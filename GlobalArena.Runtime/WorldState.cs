@@ -274,14 +274,22 @@ public sealed class WorldState
             }
         }
 
-        foreach (var stock in
-            economy.StrategicStocks)
+        foreach (var point in
+            economy.EconomicPoints)
         {
             if (!civilizationIds.Contains(
-                stock.Owner))
+                point.Owner))
             {
                 throw new InvalidOperationException(
-                    $"Strategic stock owner {stock.Owner.Value} is not present in the runtime civilization roster.");
+                    $"Economic point owner {point.Owner.Value} is not present in the runtime civilization roster.");
+            }
+
+            if (worldBinding is not null
+                && !worldBinding.Contains(
+                    point.StrategicCellId))
+            {
+                throw new InvalidOperationException(
+                    $"Economic point {point.Id.Value} references strategic cell {point.StrategicCellId.Value}, which does not belong to the bound generated world.");
             }
         }
 

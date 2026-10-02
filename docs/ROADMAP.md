@@ -1897,7 +1897,22 @@ Operational decomposition:
 
 Current subcheckpoint:
 
-**M4.3-B — Economic Point & Localized Workforce/Activity Substrate**
+**M4.3-C — Deterministic Production & Demand Flow Resolution**
+
+M4.3-B — Economic Point & Localized Workforce/Activity Substrate: closed.
+
+M4.3-B executable close:
+
+- EconomicPointId and localized EconomicPoint runtime state are authoritative;
+- workforce is localized with sparse canonical Agriculture / Mining / TradeLogistics allocations;
+- StrategicStockEntry persistent inventory semantics are retired from active V1 state;
+- CommodityId and WorldState Economy aggregate boundary are preserved;
+- point owners and bound-world strategic anchors are validated;
+- canonical WorldState hash format is `7`;
+- targeted regression: `85/85`;
+- full local Release regression: `858/858`;
+- existing Economy `6.00 GPP` is confirmed, not duplicated;
+- M4.3-B GPP delta: `0.00`.
 
 M4.3-A — Economic Points, Workforce, Production & Demand Contract Freeze: closed.
 
@@ -2126,7 +2141,7 @@ Somente um ou poucos itens devem ser classificados como Critical Path.
 
 Status atual:
 
-**M4.3-B economic point and localized workforce/activity substrate**
+**M4.3-C deterministic production and demand flow resolution**
 
 ---
 
@@ -2248,7 +2263,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M4.3-B — Economic Point & Localized Workforce/Activity Substrate**
+**M4.3-C — Deterministic Production & Demand Flow Resolution**
 
 M3 Entry Audit:
 
@@ -2320,7 +2335,11 @@ Active Critical Risks:
 
 Critical Path:
 
-**M4.3-B economic point and localized workforce/activity substrate**
+**M4.3-C deterministic production and demand flow resolution**
+
+Entry gate:
+
+**post-commit cross-platform kernel/hash-v7 attestation for M4.3-B**
 
 Last Baseline Review:
 

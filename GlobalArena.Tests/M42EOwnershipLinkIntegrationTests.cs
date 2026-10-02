@@ -29,7 +29,7 @@ public sealed class M42EOwnershipLinkIntegrationTests
 
         Assert.Equal(
             2,
-            state.Economy.StrategicStocks.Count);
+            state.Economy.EconomicPoints.Count);
 
         Assert.Equal(
             3,
@@ -258,10 +258,10 @@ public sealed class M42EOwnershipLinkIntegrationTests
             state.Civilizations.Civilizations.ToHashSet();
 
         Assert.All(
-            state.Economy.StrategicStocks,
-            stock =>
+            state.Economy.EconomicPoints,
+            point =>
                 Assert.Contains(
-                    stock.Owner,
+                    point.Owner,
                     civilizationIds));
     }
 
@@ -293,10 +293,11 @@ public sealed class M42EOwnershipLinkIntegrationTests
                 new EconomyRuntimeState(
                     new[]
                     {
-                        new StrategicStockEntry(
+                        new EconomicPointRuntimeState(
+                            new EconomicPointId(10UL),
                             new CivilizationId(4UL),
-                            new CommodityId(1U),
-                            10L)
+                            new StrategicCellId(1UL),
+                            0UL)
                     })));
     }
 
@@ -467,11 +468,11 @@ public sealed class M42EOwnershipLinkIntegrationTests
                 state.Civilizations.Civilizations);
         }
 
-        foreach (var stock in
-            state.Economy.StrategicStocks)
+        foreach (var point in
+            state.Economy.EconomicPoints)
         {
             Assert.Contains(
-                stock.Owner,
+                point.Owner,
                 state.Civilizations.Civilizations);
         }
 
@@ -550,14 +551,28 @@ public sealed class M42EOwnershipLinkIntegrationTests
                 new EconomyRuntimeState(
                     new[]
                     {
-                        new StrategicStockEntry(
+                        new EconomicPointRuntimeState(
+                            new EconomicPointId(2UL),
                             new CivilizationId(2UL),
-                            new CommodityId(1U),
-                            30L),
-                        new StrategicStockEntry(
+                            secondStart,
+                            3UL,
+                            new[]
+                            {
+                                new EconomicActivityWorkforceAllocation(
+                                    EconomicActivityKind.TradeLogistics,
+                                    3UL)
+                            }),
+                        new EconomicPointRuntimeState(
+                            new EconomicPointId(1UL),
                             new CivilizationId(1UL),
-                            new CommodityId(1U),
-                            25L)
+                            firstStart,
+                            4UL,
+                            new[]
+                            {
+                                new EconomicActivityWorkforceAllocation(
+                                    EconomicActivityKind.Agriculture,
+                                    4UL)
+                            })
                     }))
             .WithWarfare(
                 new WarfareRuntimeState(
@@ -601,16 +616,30 @@ public sealed class M42EOwnershipLinkIntegrationTests
                 new CivilizationId(2UL))
         };
 
-        StrategicStockEntry[] stocks =
+        EconomicPointRuntimeState[] points =
         {
             new(
+                new EconomicPointId(1UL),
                 new CivilizationId(1UL),
-                new CommodityId(1U),
-                25L),
+                new StrategicCellId(3UL),
+                4UL,
+                new[]
+                {
+                    new EconomicActivityWorkforceAllocation(
+                        EconomicActivityKind.Agriculture,
+                        4UL)
+                }),
             new(
+                new EconomicPointId(2UL),
                 new CivilizationId(2UL),
-                new CommodityId(1U),
-                30L)
+                new StrategicCellId(10UL),
+                3UL,
+                new[]
+                {
+                    new EconomicActivityWorkforceAllocation(
+                        EconomicActivityKind.TradeLogistics,
+                        3UL)
+                })
         };
 
         MilitaryUnitRuntimeState[] units =
@@ -634,7 +663,7 @@ public sealed class M42EOwnershipLinkIntegrationTests
                 territory);
 
             Array.Reverse(
-                stocks);
+                points);
 
             Array.Reverse(
                 units);
@@ -654,7 +683,7 @@ public sealed class M42EOwnershipLinkIntegrationTests
                     BaselineDiplomacyRelationKind.Enemy))
             .WithEconomy(
                 new EconomyRuntimeState(
-                    stocks))
+                    points))
             .WithWarfare(
                 new WarfareRuntimeState(
                     units));
@@ -677,6 +706,6 @@ public sealed class M42EOwnershipLinkIntegrationTests
     }
 
     private const string KnownIntegratedDigest =
-        "ACF5314F2E481B07A2E7DB5E88D189DD"
-        + "68EE05666A9EDE62B2012BE5AAEC53D5";
+        "915B8B9BD471164732F6262BE4BD66E2"
+        + "76C85A5BEE3104A8B51A46C108FFC1CD";
 }

@@ -6413,6 +6413,28 @@ M4.4 is refined as:
 
 The accepted decision is recorded in ADR-037.
 
+
+## 42.10 M4.3-B economic point runtime substrate and hash v7
+
+M4.3-B replaces the temporary inventory-shaped Economy payload with the first executable localized economic substrate.
+
+Authoritative resident Economy state now consists of canonical EconomicPoints.
+
+Each point carries stable identity, civilization owner, strategic routing anchor, localized workforce and sparse canonical allocation across Agriculture, Mining and Trade / Logistics.
+
+`StrategicStockEntry` is no longer active V1 authoritative state.
+
+`CommodityId` remains available for production/demand flows and later market allocation.
+
+`WorldState` preserves the existing Economy aggregate boundary while validating point ownership against the civilization roster and point anchors against `RuntimeWorldBinding` when bound.
+
+`CanonicalWorldStateHasher` format advances from `6` to `7` because the authoritative Economy payload semantics changed.
+
+M4.3-B deliberately does not implement production, demand, population growth, diminishing returns, infrastructure, routes, markets, water filling, pricing or financial settlement.
+
+The existing `6.00 GPP` Economy credit is now confirmed as functional-isolated maturity of the refined `Commodity identity, economic points/locality & flow substrate` capability. M4.3-B adds `0.00 GPP`.
+
+The accepted implementation decision is recorded in ADR-038.
 # 43. Status
 
 Versão atual:

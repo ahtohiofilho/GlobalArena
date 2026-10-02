@@ -143,78 +143,77 @@ public sealed class M41BRuntimeStateContractTests
     }
 
     [Fact]
-    public void StrategicStockRejectsNegativeQuantity()
+    public void EconomicPointIdRejectsZero()
     {
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => new StrategicStockEntry(
-                new CivilizationId(1UL),
-                new CommodityId(1U),
-                -1L));
+            () => new EconomicPointId(0UL));
     }
 
     [Fact]
-    public void EconomyStateIsCanonicalByOwnerAndCommodity()
+    public void EconomyStateIsCanonicalByPointIdentity()
     {
         var state =
             new EconomyRuntimeState(
                 new[]
                 {
-                    new StrategicStockEntry(
+                    new EconomicPointRuntimeState(
+                        new EconomicPointId(3UL),
                         new CivilizationId(2UL),
-                        new CommodityId(1U),
-                        20L),
-                    new StrategicStockEntry(
+                        new StrategicCellId(3UL),
+                        0UL),
+                    new EconomicPointRuntimeState(
+                        new EconomicPointId(1UL),
                         new CivilizationId(1UL),
-                        new CommodityId(2U),
-                        12L),
-                    new StrategicStockEntry(
+                        new StrategicCellId(1UL),
+                        0UL),
+                    new EconomicPointRuntimeState(
+                        new EconomicPointId(2UL),
                         new CivilizationId(1UL),
-                        new CommodityId(1U),
-                        11L)
+                        new StrategicCellId(2UL),
+                        0UL)
                 });
 
         Assert.Equal(
-            new[]
+            new ulong[]
             {
-                (1UL, 1U, 11L),
-                (1UL, 2U, 12L),
-                (2UL, 1U, 20L)
+                1UL,
+                2UL,
+                3UL
             },
-            state.StrategicStocks.Select(
-                stock =>
-                    (
-                        stock.Owner.Value,
-                        stock.Commodity.Value,
-                        stock.Quantity
-                    )));
+            state.EconomicPoints.Select(
+                point =>
+                    point.Id.Value));
     }
 
     [Fact]
-    public void EconomyStateRejectsDuplicateOwnerCommodityKey()
+    public void EconomyStateRejectsDuplicatePointIdentity()
     {
         Assert.Throws<ArgumentException>(
             () => new EconomyRuntimeState(
                 new[]
                 {
-                    new StrategicStockEntry(
+                    new EconomicPointRuntimeState(
+                        new EconomicPointId(1UL),
                         new CivilizationId(1UL),
-                        new CommodityId(2U),
-                        5L),
-                    new StrategicStockEntry(
+                        new StrategicCellId(1UL),
+                        0UL),
+                    new EconomicPointRuntimeState(
+                        new EconomicPointId(1UL),
                         new CivilizationId(1UL),
-                        new CommodityId(2U),
-                        6L)
+                        new StrategicCellId(2UL),
+                        0UL)
                 }));
     }
 
     [Fact]
-    public void StrategicStockRejectsInvalidOwner()
+    public void EconomicPointRejectsInvalidOwner()
     {
         Assert.Throws<ArgumentException>(
-            () => new StrategicStockEntry(
+            () => new EconomicPointRuntimeState(
+                new EconomicPointId(1UL),
                 default,
-                new CommodityId(1U),
-                0L));
+                new StrategicCellId(1UL),
+                0UL));
     }
 
     [Fact]
@@ -293,7 +292,7 @@ public sealed class M41BRuntimeStateContractTests
 
         Assert.Equal(0UL, state.Revision);
         Assert.Empty(state.Civilizations.Civilizations);
-        Assert.Empty(state.Economy.StrategicStocks);
+        Assert.Empty(state.Economy.EconomicPoints);
         Assert.Empty(state.Warfare.Units);
     }
 
@@ -314,10 +313,17 @@ public sealed class M41BRuntimeStateContractTests
             new EconomyRuntimeState(
                 new[]
                 {
-                    new StrategicStockEntry(
+                    new EconomicPointRuntimeState(
+                        new EconomicPointId(1UL),
                         new CivilizationId(1UL),
-                        new CommodityId(1U),
-                        10L)
+                        new StrategicCellId(1UL),
+                        1UL,
+                        new[]
+                        {
+                            new EconomicActivityWorkforceAllocation(
+                                EconomicActivityKind.Agriculture,
+                                1UL)
+                        })
                 });
 
         var warfare =
@@ -341,7 +347,7 @@ public sealed class M41BRuntimeStateContractTests
 
         Assert.NotSame(initial, populated);
         Assert.Empty(initial.Civilizations.Civilizations);
-        Assert.Empty(initial.Economy.StrategicStocks);
+        Assert.Empty(initial.Economy.EconomicPoints);
         Assert.Empty(initial.Warfare.Units);
 
         Assert.Same(
@@ -372,10 +378,11 @@ public sealed class M41BRuntimeStateContractTests
                     new EconomyRuntimeState(
                         new[]
                         {
-                            new StrategicStockEntry(
+                            new EconomicPointRuntimeState(
+                                new EconomicPointId(1UL),
                                 new CivilizationId(1UL),
-                                new CommodityId(1U),
-                                3L)
+                                new StrategicCellId(2UL),
+                                1UL)
                         }))
                 .WithWarfare(
                     new WarfareRuntimeState(
