@@ -3778,3 +3778,56 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M4.3 strategic stocks, production and consumption contract freeze**
+---
+
+# 57. M4.3-A economic points, workforce, production and demand contract risk review
+
+**Date:** 2026-10-02
+
+Milestone:
+
+**M4 — Systemic Vertical Slice**
+
+Checkpoint:
+
+**M4.3-A — Economic Points, Workforce, Production & Demand Contract Freeze**
+
+`RISK-001 — Economy scalability` remains `OPEN / CRITICAL`.
+
+The Economy is explicitly flow-based and strategic-first. Heavy global allocation is deferred to sparse economic points and later route/market work rather than persistent physical item inventories or one graph copy per producer.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+The contract now distinguishes persistent economic configuration from per-cycle supply/demand/flow workspace and financial results. This avoids incorrectly treating the M4.1 inventory-shaped substrate as the final Economy model.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+Cities, administrative centers, physical inventory, detailed industry chains, exact population rules, exact logistics formulas, water-filling implementation and final price functions are not frozen or implemented by M4.3-A.
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+Future population placement, production/demand resolution and market allocation must use deterministic/versioned simulation rules. Ambient randomness and order-dependent producer resolution remain prohibited.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+Per-cycle commodity supply/demand/flow should be transient workspace or bounded caches, not durable object-per-unit inventory. Economic points remain sparse relative to the tactical mesh.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+Economic points need strategic routing anchors. The exact tactical representation remains open and global Economy must not require routine global tactical pathfinding.
+
+`RISK-007 — Architecture overengineering` remains `OPEN / HIGH`.
+
+The model freezes only EconomicPoint, workforce/activity boundaries and flow semantics. Hub behavior is emergent from logistics specialization; no mandatory city or hub framework is introduced.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M4.3-B economic point and localized workforce/activity substrate**

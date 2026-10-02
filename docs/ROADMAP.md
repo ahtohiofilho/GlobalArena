@@ -1888,8 +1888,8 @@ Operational decomposition:
 
 - M4.1 — Systemic Runtime Contracts & Ownership Foundation;
 - M4.2 — Runtime Civilizations, Territory & Baseline Diplomacy;
-- M4.3 — Strategic Stocks, Production & Consumption;
-- M4.4 — Trade, Strategic Routes & Dependency Invalidation;
+- M4.3 — Economic Points, Workforce, Production & Demand;
+- M4.4 — Markets, Trade, Routes & Flow Allocation;
 - M4.5 — Units, Orders & Strategic Movement;
 - M4.6 — Combat, Control Transfer & Edge Blocking;
 - M4.7 — End-to-End Turn Coupling & Systemic Vertical Slice;
@@ -1897,7 +1897,33 @@ Operational decomposition:
 
 Current subcheckpoint:
 
-**M4.3 — Strategic Stocks, Production & Consumption**
+**M4.3-B — Economic Point & Localized Workforce/Activity Substrate**
+
+M4.3-A — Economic Points, Workforce, Production & Demand Contract Freeze: closed.
+
+M4.3 decomposition:
+
+- M4.3-A — Economic Points, Workforce, Production & Demand Contract Freeze;
+- M4.3-B — Economic Point & Localized Workforce/Activity Substrate;
+- M4.3-C — Deterministic Production & Demand Flow Resolution;
+- M4.3-D — Accumulated Validation & M4.3 Close.
+
+M4.3-A freezes the flow-based Economy boundary before implementation:
+
+- economic points replace mandatory cities as the baseline spatial abstraction;
+- workforce is localized;
+- Agriculture, Mining and Trade / Logistics are the three baseline economic activities;
+- Agriculture uses diffuse productive potential;
+- Mining depends on concentrated deposits;
+- Trade / Logistics uses workforce and infrastructure to raise transfer capacity;
+- production is a recurring supply flow rather than durable physical inventory;
+- consumption is represented as recurring demand;
+- market activity settles primarily into financial return;
+- hub-like centers emerge through logistics specialization rather than a mandatory Hub entity;
+- population growth, diminishing-return formulas and logistics-capacity formulas remain open;
+- water-filling, market prices, routes and inter-point allocation remain for M4.4.
+
+M4.3-A awards `0.00 GPP`.
 
 M4.2-E closed ownership-link integration and accumulated validation:
 
@@ -2100,7 +2126,7 @@ Somente um ou poucos itens devem ser classificados como Critical Path.
 
 Status atual:
 
-**M4.3 strategic stocks, production and consumption**
+**M4.3-B economic point and localized workforce/activity substrate**
 
 ---
 
@@ -2222,7 +2248,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M4.3 — Strategic Stocks, Production & Consumption**
+**M4.3-B — Economic Point & Localized Workforce/Activity Substrate**
 
 M3 Entry Audit:
 
@@ -2294,11 +2320,11 @@ Active Critical Risks:
 
 Critical Path:
 
-**M4.3 strategic stocks, production and consumption**
+**M4.3-B economic point and localized workforce/activity substrate**
 
 Last Baseline Review:
 
-**2026-10-01**
+**2026-10-02**
 
 #### M2.5.2-C materializer close
 

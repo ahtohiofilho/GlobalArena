@@ -6246,6 +6246,173 @@ Production, consumption, trade, routing, military orders, movement, combat and c
 
 The accepted decision is recorded in ADR-036.
 
+
+## 42.9 M4.3 economic points, workforce, production and demand contract
+
+M4.3 begins the executable Economy layer by refining the temporary inventory-shaped runtime substrate established in M4.1.
+
+The V1 Economy direction is flow-based rather than physical-inventory-first.
+
+Production for one economic cycle is an abstract supply flow. Demand is an abstract consumption flow. Market allocation and financial settlement convert those flows into economic return during the cycle.
+
+Goods are not required to persist as physical stored inventory between cycles.
+
+The persistent Economy model must instead be able to represent economically meaningful places and the capabilities that generate or process flow.
+
+### Economic points
+
+The fundamental spatial abstraction is an `EconomicPoint`.
+
+M4.3 does not require cities as first-class entities.
+
+An economic point represents a location where population/workforce and economic activity may exist.
+
+It requires at minimum:
+
+- stable runtime identity;
+- owning civilization identity;
+- location with a strategic routing anchor;
+- localized workforce/population quantity or future-compatible workforce reference;
+- economic activity configuration.
+
+The final physical realization remains open.
+
+An economic point may later correspond to:
+
+- a strategic cell;
+- a tactical site projected to a strategic parent;
+- a settlement-like location;
+- another compact representation justified by later architecture/UI evidence.
+
+### Three economic activities
+
+The baseline conceptual activities are:
+
+1. Agriculture;
+2. Mining;
+3. Trade / Logistics.
+
+Agriculture uses diffuse productive potential.
+
+Mining depends on concentrated resource deposits.
+
+Trade / Logistics consumes workforce and infrastructure to increase transfer capacity and reduce the marginal cost of moving large flows.
+
+A point may host one or more activities.
+
+A location may therefore become economically important through trade/logistics even when it has little or no direct agricultural/mineral production.
+
+### Workforce and endogenous concentration
+
+Workforce is localized.
+
+The exact population-growth model is not frozen by M4.3.
+
+The architecture must allow future population growth to be decoupled from immediate economic growth and to place new workforce only among already populated/economically inhabited locations through deterministic simulation rules.
+
+The player may influence economic geography indirectly by creating available productive/logistics opportunities rather than selecting every population placement.
+
+Agriculture and mining must support diminishing marginal productivity from additional workforce as a future rule.
+
+The exact function is not frozen.
+
+This preserves the strategic trade-off between:
+
+- concentrating workforce and keeping transport/internal-market costs low;
+- expanding to new productive points to avoid diminishing returns.
+
+### Production and demand are flows
+
+M4.3 does not model production as durable stored goods by default.
+
+For each economic cycle:
+
+`productive capability + workforce + local conditions`
+-> supply flow
+
+and:
+
+`population / economic activity`
+-> demand flow.
+
+The market system later allocates supply to reachable demand and produces financial return.
+
+Unsold or unconsumed flow is not automatically carried into the next cycle as physical inventory.
+
+A future deeper physical-inventory model remains possible, but it is not required by the V1 M4 contract.
+
+### Production-potential derivation remains replaceable
+
+Economy must not depend permanently on one world-classification method.
+
+Agricultural potential may derive from:
+
+- explicit biome;
+- continuous physical/resource fields;
+- a hybrid.
+
+Mining potential is based on concentrated deposits/resources.
+
+Economy should consume a stable economic-potential/profile boundary so World Generation may evolve without rewriting Economy.
+
+The exact commodity catalogue is not frozen.
+
+Historical examples such as six grains and six minerals are non-binding design references.
+
+### Trade/logistics capacity and emergent hubs
+
+`Hub` is not frozen as a separate mandatory entity.
+
+A point becomes hub-like by specializing in Trade / Logistics and acquiring infrastructure and workforce.
+
+Even a point with zero dedicated trade workforce or specialized infrastructure retains a small baseline transfer ability. Small flows may therefore move without a formal port/customs/market structure.
+
+As volume rises, specialized infrastructure and trade/logistics workforce become economically necessary.
+
+The future transfer-cost model must support increasing marginal cost as flow approaches or exceeds practical local transfer capacity.
+
+The exact formula is not frozen.
+
+Infrastructure alone does not imply unlimited throughput, and workforce alone does not create modern logistics capacity. Their interaction may later be complementary.
+
+This allows port-like or customs-like centers to emerge endogenously from economic incentives rather than from a mandatory city/hub classification.
+
+### M4.4 forward boundary
+
+M4.4 owns global markets and inter-point flow allocation.
+
+It must be able to support:
+
+- multiple producers and consumers of the same commodity;
+- transport-sensitive destination attractiveness;
+- local/internal destinations with zero or low transfer cost;
+- one shared strategic routing graph rather than permanent graph copies per producer;
+- route-edge dependency tracking;
+- incremental invalidation when strategic access changes;
+- capacity-sensitive transfer costs;
+- deterministic simultaneous allocation.
+
+Water-filling is the leading allocation hypothesis.
+
+Literal packet simulation such as fixed `0.001` increments is not frozen. A deterministic analytical, batched or event-driven equivalent is preferred if it preserves the intended marginal-allocation behavior more efficiently.
+
+An inverse-square scarcity curve such as `price = 1 / (supply / demand)^2` remains a calibratable pricing hypothesis, not a frozen law.
+
+Market allocation ultimately settles into financial return. Physical commodity stock carry-over is not required.
+
+### Operational decomposition
+
+- M4.3-A — Economic Points, Workforce, Production & Demand Contract Freeze;
+- M4.3-B — Economic Point & Localized Workforce/Activity Substrate;
+- M4.3-C — Deterministic Production & Demand Flow Resolution;
+- M4.3-D — Accumulated Validation & M4.3 Close.
+
+M4.4 is refined as:
+
+**M4.4 — Markets, Trade, Routes & Flow Allocation**
+
+The accepted decision is recorded in ADR-037.
+
 # 43. Status
 
 Versão atual:

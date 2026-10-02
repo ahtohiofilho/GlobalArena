@@ -976,8 +976,8 @@ Executable contracts and behavior are required before any capability reaches `Es
 
 - M4.1 — Systemic Runtime Contracts & Ownership Foundation;
 - M4.2 — Runtime Civilizations, Territory & Baseline Diplomacy;
-- M4.3 — Strategic Stocks, Production & Consumption;
-- M4.4 — Trade, Strategic Routes & Dependency Invalidation;
+- M4.3 — Economic Points, Workforce, Production & Demand;
+- M4.4 — Markets, Trade, Routes & Flow Allocation;
 - M4.5 — Units, Orders & Strategic Movement;
 - M4.6 — Combat, Control Transfer & Edge Blocking;
 - M4.7 — End-to-End Turn Coupling & Systemic Vertical Slice;
@@ -1218,7 +1218,64 @@ The `0.85` validated factor remains reserved for broader accumulated M4 validati
 
 Next implementation stage after post-commit cross-platform attestation:
 
-**M4.3 — Strategic Stocks, Production & Consumption**
+**M4.3 — Economic Points, Workforce, Production & Demand**
+
+### M4.3 contract baseline before implementation
+
+M4.3 refines the Economy direction from persistent inventory semantics toward localized recurring economic flows.
+
+The fundamental spatial abstraction is an economic point, not a mandatory city.
+
+The three baseline activities are:
+
+- Agriculture;
+- Mining;
+- Trade / Logistics.
+
+Agriculture is based on diffuse productive potential.
+
+Mining depends on concentrated deposits.
+
+Trade / Logistics consumes infrastructure and workforce to raise transfer capacity and support large economic flows.
+
+Production and demand are resolved as flows for each economic cycle. Goods are not required to survive as physical inventory into later cycles.
+
+Financial return is the important persistent outcome of market activity.
+
+The exact population-growth model, workforce-allocation UX, diminishing-return function, commodity catalogue, logistics-capacity function, market-clearing algorithm and price function remain open.
+
+M4.3 decomposition:
+
+- M4.3-A — Economic Points, Workforce, Production & Demand Contract Freeze;
+- M4.3-B — Economic Point & Localized Workforce/Activity Substrate;
+- M4.3-C — Deterministic Production & Demand Flow Resolution;
+- M4.3-D — Accumulated Validation & M4.3 Close.
+
+M4.4 is refined to:
+
+**Markets, Trade, Routes & Flow Allocation**
+
+Water-filling remains the leading allocation hypothesis for M4.4, while literal packet iteration is not frozen.
+
+The current `6.00 GPP` Economy credit is historical evidence from the M4.1 runtime Economy substrate.
+
+M4.3-A does not retroactively rescore that credit by documentation alone.
+
+M4.3-B must perform an executable reuse audit and determine exactly which existing Commodity/Economy ownership/hash contracts remain authoritative after the move away from persistent stock semantics.
+
+M4.3-A awards:
+
+**0.00 GPP**
+
+Project therefore remains:
+
+**278.50 / 1000 — 27.9%**
+
+Economy / trade / logistics remains provisionally:
+
+**6.00 / 140 — 4.3%**
+
+Any later GPP correction must be justified by executable migration evidence, not by this design freeze.
 
 ### Runtime authority
 
@@ -1250,7 +1307,11 @@ Etapa atual:
 
 Subetapa atual:
 
-**M4.3 — Strategic Stocks, Production & Consumption**
+**M4.3-B — Economic Point & Localized Workforce/Activity Substrate**
+
+M4.3-A — Economic Points, Workforce, Production & Demand Contract Freeze:
+
+**concluído em 2026-10-02**
 
 M4.2 — Runtime Civilizations, Territory & Baseline Diplomacy:
 
@@ -1458,11 +1519,11 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M4.3 strategic stocks, production and consumption**
+**M4.3-B economic point and localized workforce/activity substrate**
 
 Última revisão de baseline:
 
-**2026-10-01**
+**2026-10-02**
 
 ---
 # 21. Política de atualização

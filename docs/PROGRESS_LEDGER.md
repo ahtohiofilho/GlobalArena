@@ -14602,3 +14602,101 @@ No production, trade, movement, combat or conquest capability receives GPP from 
 Next after post-commit cross-platform attestation:
 
 **M4.3 — Strategic Stocks, Production & Consumption**
+---
+
+## 2026-10-02 — M4.3-A economic points, workforce, production and demand contract freeze formal close
+
+Milestone:
+
+**M4 — Systemic Vertical Slice**
+
+Stage:
+
+**M4.3 — Economic Points, Workforce, Production & Demand**
+
+Checkpoint:
+
+**M4.3-A — Economic Points, Workforce, Production & Demand Contract Freeze**
+
+Purpose:
+
+freeze the flow-based localized Economy architecture before executable M4.3 implementation.
+
+Accepted ADR:
+
+**ADR-037 — M4.3 Economic Points, Workforce, Production & Demand Contract**
+
+Accepted QA evidence:
+
+`GlobalArena-Evidence-M4.3-A-R8-ECONOMIC-POINTS-WORKFORCE-PRODUCTION-DEMAND-CONTRACT-FREEZE-20261002-093824.zip`
+
+Evidence SHA-256:
+
+`9e9760fd465cda452b60344f8cb06417c43927fa52b2b833f0c3586dc10ccc4e`
+
+Accepted validation:
+
+- evidence manifest: `28/28`;
+- candidate hashes: `6/6`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- full regression: `838/838`;
+- exact candidate set: `6` documentation/governance files;
+- production code changed: False;
+- QA commit/push: none.
+
+Accepted source baseline:
+
+`91fdbfecd37936ad4ae55d8423797d8a0a9ae86c`
+
+Post-M4.2 cross-platform source attestation:
+
+- kernel regression run `36910059213`: Windows/Ubuntu/macOS success;
+- manually dispatched state-hash run `36911180167`: Windows/Ubuntu/macOS success.
+
+Design conclusions:
+
+- cities are not required as first-class Economy entities;
+- economic points provide localized ownership, workforce and activity;
+- Agriculture, Mining and Trade / Logistics are the three baseline activities;
+- Agriculture consumes diffuse productive potential;
+- Mining requires concentrated deposits;
+- Trade / Logistics consumes workforce and infrastructure to support transfer capacity;
+- points with little/no direct production may become economically important logistics centers;
+- small flows remain possible without specialized logistics infrastructure or trade workforce;
+- increasing volume creates pressure for infrastructure and workforce rather than a binary trade/no-trade rule;
+- exact logistics-capacity and congestion curves remain open;
+- workforce is localized and future production rules may use diminishing marginal returns;
+- exact population-growth and workforce-placement rules remain open and must be deterministic when implemented;
+- production is a recurring supply flow, not durable physical inventory by default;
+- consumption is recurring demand, not inventory subtraction;
+- unsold flow is not automatically carried into the next cycle;
+- market allocation settles into financial return;
+- a future physical-inventory mode remains architecturally possible but is not part of this M4 contract;
+- production potential may derive from biome, direct physical/resource fields or a hybrid;
+- commodity catalogue remains open;
+- M4.4 owns water-filling-style allocation, markets, routes, transport/transfer costs and financial settlement;
+- literal `0.001` packet iteration and inverse-square pricing are hypotheses, not frozen algorithms;
+- one shared strategic graph plus sparse caches/dependencies is preferred over graph copies per producer.
+
+Operational refinement:
+
+- M4.3 — Economic Points, Workforce, Production & Demand;
+- M4.4 — Markets, Trade, Routes & Flow Allocation.
+
+GPP:
+
+- M4.3-A delta: `0.00`;
+- current Economy credit `6.00 / 140` remains provisional historical credit;
+- M4.3-B must audit executable reuse of the M4.1 Economy substrate before any re-score;
+- no retroactive GPP change is made by documentation alone.
+
+Project remains:
+
+**278.50 / 1000 — 27.9%**
+
+Next after formal close:
+
+**M4.3-B — Economic Point & Localized Workforce/Activity Substrate**
