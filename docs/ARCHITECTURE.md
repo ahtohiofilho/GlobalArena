@@ -6435,6 +6435,27 @@ M4.3-B deliberately does not implement production, demand, population growth, di
 The existing `6.00 GPP` Economy credit is now confirmed as functional-isolated maturity of the refined `Commodity identity, economic points/locality & flow substrate` capability. M4.3-B adds `0.00 GPP`.
 
 The accepted implementation decision is recorded in ADR-038.
+
+## 42.11 M4.3-C deterministic production and demand flow resolution
+
+M4.3-C adds a pure transient resolver over the localized Economy substrate.
+
+Production opportunities are explicit deterministic fixed-point inputs keyed by EconomicPoint, CommodityId and Agriculture/Mining activity.
+
+Supply uses the workforce allocated to the selected producing activity.
+
+Demand profiles are explicit deterministic fixed-point inputs keyed by EconomicPoint and CommodityId, and demand uses total localized workforce so productive, logistics and unallocated workers can all consume.
+
+Resolved supply and demand are transient per-cycle flow values. They are not persisted into WorldState and do not change canonical WorldState hash format `7`.
+
+The implementation uses UInt128 intermediate multiplication, UInt64 raw fixed-point quantities and fail-fast overflow behavior. No floating-point simulation arithmetic is introduced.
+
+M4.3-C does not freeze the final commodity catalogue, agriculture/worldgen mapping, commodity-specific deposits, diminishing returns, population growth, routes, market allocation, water filling, pricing or financial settlement.
+
+The `Workforce, production & demand` capability advances to functional-isolated factor `0.50`, earning `9.00 GPP`.
+
+The accepted implementation decision is recorded in ADR-039.
+
 # 43. Status
 
 Versão atual:

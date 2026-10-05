@@ -1897,7 +1897,24 @@ Operational decomposition:
 
 Current subcheckpoint:
 
-**M4.3-C — Deterministic Production & Demand Flow Resolution**
+**M4.3-D — Accumulated Validation & M4.3 Close**
+
+M4.3-C — Deterministic Production & Demand Flow Resolution: closed.
+
+M4.3-C executable close:
+
+- explicit fixed-point EconomicProductionPotential and EconomicDemandProfile inputs;
+- deterministic transient EconomicSupplyFlow and EconomicDemandFlow outputs;
+- Agriculture/Mining supply uses allocated activity workforce;
+- demand uses total localized workforce;
+- equivalent input ordering yields canonical equivalent flow ordering;
+- UInt128 intermediate arithmetic and fail-fast overflow;
+- no float/double/decimal simulation arithmetic;
+- no WorldState mutation and hash remains format `7`;
+- targeted regression: `28/28`;
+- full local Release regression: `886/886`;
+- `Workforce, production & demand`: `9.00 / 18 GPP — factor 0.50`;
+- M4.3-C GPP delta: `+9.00`.
 
 M4.3-B — Economic Point & Localized Workforce/Activity Substrate: closed.
 
@@ -2141,7 +2158,7 @@ Somente um ou poucos itens devem ser classificados como Critical Path.
 
 Status atual:
 
-**M4.3-C deterministic production and demand flow resolution**
+**M4.3-D accumulated validation and M4.3 close**
 
 ---
 
@@ -2263,7 +2280,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M4.3-C — Deterministic Production & Demand Flow Resolution**
+**M4.3-D — Accumulated Validation & M4.3 Close**
 
 M3 Entry Audit:
 
@@ -2291,11 +2308,11 @@ M3.1-D — Accumulated M3.1 Validation & Close:
 
 Official Progress:
 
-**27.9%**
+**28.8%**
 
 GPP Earned:
 
-**278.50 / 1000**
+**287.50 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -2311,7 +2328,7 @@ World Generation / biomes / resources:
 
 Economy / trade / logistics:
 
-**6.00 / 140 GPP — 4.3%**
+**15.00 / 140 GPP — 10.7%**
 
 Warfare / units / combat:
 
@@ -2335,15 +2352,15 @@ Active Critical Risks:
 
 Critical Path:
 
-**M4.3-C deterministic production and demand flow resolution**
+**M4.3-D accumulated validation and M4.3 close**
 
 Entry gate:
 
-**post-commit cross-platform kernel/hash-v7 attestation for M4.3-B**
+**post-commit cross-platform kernel/state-hash-v7 attestation for M4.3-C**
 
 Last Baseline Review:
 
-**2026-10-02**
+**2026-10-05**
 
 #### M2.5.2-C materializer close
 

@@ -1257,25 +1257,27 @@ M4.4 is refined to:
 
 Water-filling remains the leading allocation hypothesis for M4.4, while literal packet iteration is not frozen.
 
-The historical `6.00 GPP` Economy credit has now been revalidated by executable M4.3-B migration evidence.
+The `Commodity identity, economic points/locality & flow substrate` capability remains at functional-isolated factor `0.50`, contributing the previously confirmed `6.00 GPP`.
 
-M4.3-B preserves CommodityId and the WorldState Economy boundary, replaces persistent StrategicStockEntry semantics with localized EconomicPoints, migrates ownership/world-binding invariants, and advances the canonical WorldState hash to format `7`.
+M4.3-C now provides deterministic isolated production/demand behavior through explicit fixed-point transient flow contracts.
 
-The refined `Commodity identity, economic points/locality & flow substrate` capability remains at functional-isolated factor `0.50`, confirming the existing `6.00 GPP` without adding new credit.
+The refined `Workforce, production & demand` capability has an `18 GPP` budget and advances to functional-isolated factor `0.50`:
 
-M4.3-B awards:
+**9.00 GPP**
 
-**0.00 GPP**
+M4.3-C awards:
 
-Project therefore remains:
+**+9.00 GPP**
 
-**278.50 / 1000 — 27.9%**
+Project therefore becomes:
 
-Economy / trade / logistics:
+**287.50 / 1000 — 28.8%**
 
-**6.00 / 140 — 4.3%**
+Economy / trade / logistics becomes:
 
-The `Workforce, production & demand` capability remains unpromoted until M4.3-C provides executable production/demand behavior.
+**15.00 / 140 — 10.7%**
+
+Production/demand flows remain transient and canonical WorldState hash format remains `7`.
 
 ### Runtime authority
 
@@ -1307,7 +1309,11 @@ Etapa atual:
 
 Subetapa atual:
 
-**M4.3-C — Deterministic Production & Demand Flow Resolution**
+**M4.3-D — Accumulated Validation & M4.3 Close**
+
+M4.3-C — Deterministic Production & Demand Flow Resolution:
+
+**concluído em 2026-10-05**
 
 M4.3-B — Economic Point & Localized Workforce/Activity Substrate:
 
@@ -1479,11 +1485,11 @@ Baseline V1:
 
 Progresso oficial:
 
-**27,9%**
+**28,8%**
 
 GPP conquistados:
 
-**278,50 / 1000**
+**287,50 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -1499,7 +1505,7 @@ World Generation / biomas / recursos:
 
 Economia / comércio / logística:
 
-**6,00 / 140 GPP — 4,3%**
+**15,00 / 140 GPP — 10,7%**
 
 Warfare / unidades / combate:
 
@@ -1523,15 +1529,15 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M4.3-C deterministic production and demand flow resolution**
+**M4.3-D accumulated validation and M4.3 close**
 
 Entry gate:
 
-**post-commit cross-platform kernel/hash-v7 attestation for M4.3-B**
+**post-commit cross-platform kernel/state-hash-v7 attestation for M4.3-C**
 
 Última revisão de baseline:
 
-**2026-10-02**
+**2026-10-05**
 
 ---
 # 21. Política de atualização

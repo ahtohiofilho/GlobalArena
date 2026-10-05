@@ -14781,3 +14781,87 @@ Accepted implementation ADR:
 Next after post-commit cross-platform kernel/hash-v7 attestation:
 
 **M4.3-C — Deterministic Production & Demand Flow Resolution**
+---
+
+## 2026-10-05 — M4.3-C deterministic production and demand flow resolution formal close
+
+Milestone:
+
+**M4 — Systemic Vertical Slice**
+
+Stage:
+
+**M4.3 — Economic Points, Workforce, Production & Demand**
+
+Checkpoint:
+
+**M4.3-C — Deterministic Production & Demand Flow Resolution**
+
+Accepted QA evidence:
+
+`GlobalArena-Evidence-M4.3-C-R1-DETERMINISTIC-PRODUCTION-DEMAND-FLOW-RESOLUTION-20261005-190007.zip`
+
+Evidence SHA-256:
+
+`ed32f45f3ef1ba105fec12c164a25ab42b592d07d42aa9d219504817198554ce`
+
+Accepted source baseline:
+
+`7de28169f397612b3b0a7fadb5d9360b623a6812`
+
+Accepted validation:
+
+- evidence manifest: `33/33`;
+- exact staged candidate set: `7`;
+- candidate hashes/snapshots: `7/7`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- targeted regression: `28/28`;
+- full regression: `886/886`;
+- WorldState hash format: `7`;
+- QA commit/push: none.
+
+Executable production/demand boundary:
+
+- production and demand are transient per-cycle values;
+- CommodityId remains the commodity identity;
+- Agriculture/Mining production uses allocated activity workforce;
+- TradeLogistics does not directly emit commodity production in M4.3-C;
+- demand uses total localized workforce;
+- rates use normalized fixed-point denominator `1,000,000`;
+- raw resolved quantities use UInt64 with UInt128 multiplication intermediate;
+- overflow is fail-fast;
+- outputs are canonical and duplicate keys are rejected;
+- WorldState is not mutated;
+- final worldgen agriculture/mining mapping remains unfrozen.
+
+Scope exclusions remain:
+
+- persistent inventory;
+- population growth;
+- final diminishing-return curve;
+- commodity-specific deposit generation/depletion;
+- logistics infrastructure/capacity;
+- routes;
+- market allocation/water filling;
+- pricing;
+- financial settlement;
+- turn-resolver integration.
+
+GPP:
+
+- `Commodity identity, economic points/locality & flow substrate`: remains `6.00 / 12`;
+- `Workforce, production & demand`: `18 GPP`, functional-isolated factor `0.50`, earns `9.00 GPP`;
+- M4.3-C delta: `+9.00`;
+- Economy becomes `15.00 / 140 — 10.7%`;
+- Project becomes `287.50 / 1000 — 28.8%`.
+
+Accepted implementation ADR:
+
+**ADR-039 — M4.3-C Deterministic Production & Demand Flow Resolution**
+
+Next after post-commit cross-platform kernel/state-hash-v7 attestation:
+
+**M4.3-D — Accumulated Validation & M4.3 Close**

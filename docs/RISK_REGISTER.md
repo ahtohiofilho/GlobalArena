@@ -3880,3 +3880,52 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M4.3-C deterministic production and demand flow resolution**
+---
+
+# 59. M4.3-C deterministic production and demand flow risk review
+
+**Date:** 2026-10-05
+
+Checkpoint:
+
+**M4.3-C — Deterministic Production & Demand Flow Resolution**
+
+`RISK-001 — Economy scalability` remains `OPEN / CRITICAL`.
+
+M4.3-C resolves local production and demand in linear passes over sparse explicit inputs without routing or per-unit physical inventory. Global market allocation scale remains for M4.4.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+Production/demand contracts are now executable and deterministic, materially reducing ambiguity. Worldgen adapters, market allocation and financial settlement are still intentionally open.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+No City/Hub framework, persistent inventory, population-growth system, infrastructure model, routing solver, water-filling implementation or pricing model was introduced.
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+M4.3-C uses canonical input/output ordering, fixed-point integer arithmetic and fail-fast overflow while leaving canonical WorldState hash format at `7`. Post-commit cross-platform kernel/state-hash-v7 regression is required before M4.3-D closes the stage.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+Supply and demand are transient sparse flow arrays rather than durable commodity objects. Large-scale EconomicPoint/commodity workload evidence remains future work.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+M4.3-C performs no tactical pathfinding and uses only the existing strategic EconomicPoint identity/location substrate.
+
+`RISK-007 — Architecture overengineering` remains `OPEN / HIGH`.
+
+The implementation adds focused transient Simulation types and one pure resolver without introducing a new project/framework boundary.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M4.3-D accumulated validation and M4.3 close**
