@@ -4223,3 +4223,52 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M4.4-F accumulated validation and M4.4 close**
+---
+
+# 66. M4.4-F accumulated integration and M4.4 close risk review
+
+**Date:** 2026-10-06
+
+Stage:
+
+**M4.4 — Markets, Trade, Routes & Flow Allocation**
+
+`RISK-001 — Economy scalability` remains `OPEN / CRITICAL`.
+
+M4.4 now has integrated route, transfer, allocation, settlement and selective cache invalidation behavior. Large-world economic query volume, memory and performance remain for later M4 accumulated/performance evidence.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+The economic strategic-flow slice is integrated. The wider systemic slice still lacks Warfare-side movement/combat and turn coupling.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+M4.4 closed without introducing persistent inventories, treasury/banking depth, weighted global routing, deep warehousing, embargo/treaty depth or tactical economic pathfinding.
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+The end-to-end economic path is deterministic locally. Post-commit cross-platform regression is required before M4.5 implementation.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+Route caching remains sparse and dependency-indexed. Larger workload memory evidence remains pending.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+M4.4 remains strategic-graph based and does not couple economic routing to tactical pathfinding.
+
+`RISK-007 — Architecture overengineering` remains `OPEN / HIGH`.
+
+The closed economic slice uses focused contracts and derived transient outputs rather than new persistent framework layers.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M4.5-A units, orders and strategic movement contract freeze**

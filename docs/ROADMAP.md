@@ -1897,7 +1897,32 @@ Operational decomposition:
 
 Current subcheckpoint:
 
-**M4.4-F — Accumulated Validation & M4.4 Close**
+**M4.5-A — Units, Orders & Strategic Movement Contract Freeze**
+
+M4.4 — Markets, Trade, Routes & Flow Allocation: closed.
+
+M4.4-F — Accumulated Validation & M4.4 Close: closed.
+
+M4.4-F integrated close:
+
+- direct integrated pipeline: route cache -> route resolution -> transfer signal -> market allocation -> settlement;
+- strategic-edge closure selectively invalidates the affected route and changes transfer economics;
+- higher transfer cost reduces net settlement return;
+- reopening restores the canonical route and original settlement;
+- unreachable cached route suppresses trade until a queried frontier edge reopens;
+- same-point exchange remains zero-hop and zero-transfer-cost;
+- repeated end-to-end execution is deterministic;
+- production code delta: none;
+- direct integration regression: `6/6`;
+- accumulated M4.4 regression: `125/125`;
+- full local Release regression: `1011/1011`;
+- M4.4 capability budget: `54 GPP`;
+- maturity promotion: `0.50 -> 0.70`;
+- M4.4 credit: `37.80 / 54 GPP`;
+- M4.4-F promotion delta: `+10.80 GPP`;
+- Economy total: `58.80 / 140 — 42.0%`;
+- Project total: `331.30 / 1000 — 33.1%`;
+- factor `0.85` remains reserved for later M4 exit evidence.
 
 M4.4-E — Route Dependency Cache & Incremental Invalidation: closed.
 
@@ -2296,7 +2321,7 @@ Somente um ou poucos itens devem ser classificados como Critical Path.
 
 Status atual:
 
-**M4.4-F accumulated validation and M4.4 close**
+**M4.5-A units, orders and strategic movement contract freeze**
 
 ---
 
@@ -2418,7 +2443,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M4.4-F — Accumulated Validation & M4.4 Close**
+**M4.5-A — Units, Orders & Strategic Movement Contract Freeze**
 
 M3 Entry Audit:
 
@@ -2446,11 +2471,11 @@ M3.1-D — Accumulated M3.1 Validation & Close:
 
 Official Progress:
 
-**32.1%**
+**33.1%**
 
 GPP Earned:
 
-**320.50 / 1000**
+**331.30 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -2466,7 +2491,7 @@ World Generation / biomes / resources:
 
 Economy / trade / logistics:
 
-**48.00 / 140 GPP — 34.3%**
+**58.80 / 140 GPP — 42.0%**
 
 Warfare / units / combat:
 
@@ -2490,11 +2515,11 @@ Active Critical Risks:
 
 Critical Path:
 
-**M4.4-F accumulated validation and M4.4 close**
+**M4.5-A units, orders and strategic movement contract freeze**
 
 Entry gate:
 
-**post-commit cross-platform regression for M4.4-E**
+**post-commit cross-platform regression for M4.4-F**
 
 Last Baseline Review:
 

@@ -15313,3 +15313,75 @@ Accepted implementation ADR:
 Next after post-commit cross-platform regression:
 
 **M4.4-F — Accumulated Validation & M4.4 Close**
+---
+
+## 2026-10-06 — M4.4-F accumulated integration validation and M4.4 close
+
+Milestone:
+
+**M4 — Systemic Vertical Slice**
+
+Stage:
+
+**M4.4 — Markets, Trade, Routes & Flow Allocation**
+
+Checkpoint:
+
+**M4.4-F — Accumulated Validation & M4.4 Close**
+
+Accepted QA evidence:
+
+`GlobalArena-Evidence-M4.4-F-R4-INTEGRATED-PIPELINE-VALIDATION-20261006-154129.zip`
+
+Evidence SHA-256:
+
+`a990ea9c685b8403260a8d8287acf377e840342275d27158badbaa02589ddf32`
+
+Accepted source baseline:
+
+`045e14e963ea31c68a7ae423566c57e5f61ac63b`
+
+Accepted validation:
+
+- evidence manifest: `24/24`;
+- integration test candidate hash/snapshot: `1/1`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- direct integrated regression: `6/6`;
+- accumulated M4.4 regression: `125/125`;
+- full regression: `1011/1011`;
+- production code delta: none;
+- WorldState hash format: `7`;
+- QA commit/push: none.
+
+Integrated M4.4 proof:
+
+- route cache -> route resolution -> transfer signal -> market allocation -> settlement executes end-to-end;
+- closing a direct strategic edge invalidates the affected route;
+- the longer recomputed route increases transfer cost and lowers net settlement return;
+- reopening restores the canonical route and original settlement;
+- unreachable cached routes suppress trade until a queried frontier edge reopens;
+- same-point local exchange remains zero-hop and zero-transfer-cost;
+- repeated end-to-end execution is deterministic.
+
+Maturity:
+
+- M4.4 capability budget: `54 GPP`;
+- prior factor: `0.50`, credit `27.00 / 54`;
+- accepted factor after close: `0.70`, credit `37.80 / 54`;
+- promotion delta: `+10.80 GPP`;
+- Economy becomes `58.80 / 140 — 42.0%`;
+- Project becomes `331.30 / 1000 — 33.1%`;
+- factor `0.85` remains reserved for later M4 exit evidence.
+
+Accepted close ADR:
+
+**ADR-046 — M4.4 Accumulated Integration Validation & Close**
+
+M4.4 is closed.
+
+Next after post-commit cross-platform regression:
+
+**M4.5-A — Units, Orders & Strategic Movement Contract Freeze**

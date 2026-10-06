@@ -1309,7 +1309,15 @@ Etapa atual:
 
 Subetapa atual:
 
-**M4.4-F — Accumulated Validation & M4.4 Close**
+**M4.5-A — Units, Orders & Strategic Movement Contract Freeze**
+
+M4.4 — Markets, Trade, Routes & Flow Allocation:
+
+**concluído em 2026-10-06**
+
+M4.4-F — Accumulated Validation & M4.4 Close:
+
+**concluído em 2026-10-06**
 
 M4.4-E — Route Dependency Cache & Incremental Invalidation:
 
@@ -1513,11 +1521,11 @@ Baseline V1:
 
 Progresso oficial:
 
-**32,1%**
+**33,1%**
 
 GPP conquistados:
 
-**320,50 / 1000**
+**331,30 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -1533,7 +1541,7 @@ World Generation / biomas / recursos:
 
 Economia / comércio / logística:
 
-**48,00 / 140 GPP — 34,3%**
+**58,80 / 140 GPP — 42,0%**
 
 Warfare / unidades / combate:
 
@@ -1557,11 +1565,11 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M4.4-F accumulated validation and M4.4 close**
+**M4.5-A units, orders and strategic movement contract freeze**
 
 Entry gate:
 
-**post-commit cross-platform regression for M4.4-E**
+**post-commit cross-platform regression for M4.4-F**
 
 Última revisão de baseline:
 

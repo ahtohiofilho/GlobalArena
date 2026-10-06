@@ -6602,6 +6602,34 @@ No dense all-pairs matrix, persistent cache, market cache, transfer cache or wei
 
 The accepted implementation decision is recorded in ADR-045.
 
+## 42.18 M4.4-F accumulated integration validation and M4.4 close
+
+M4.4-F closes the Markets, Trade, Routes & Flow Allocation stage with direct end-to-end integration evidence.
+
+The accepted pipeline is:
+
+`route cache -> route resolution -> transfer signal -> market allocation -> settlement`.
+
+The integration suite proves that strategic-edge access changes selectively invalidate route dependencies, recomputed route length changes transfer cost, and the resulting settlement changes deterministically.
+
+Reopening the direct edge restores the canonical route and original settlement.
+
+Unreachable cached relationships suppress trade until a queried frontier edge reopens.
+
+Same-point exchange remains zero-hop and zero-transfer-cost.
+
+M4.4-F changes no production contract and adds test-only integration evidence.
+
+Accumulated M4.4 validation is `125/125`; full Release regression is `1011/1011`.
+
+Canonical WorldState hash remains format `7`.
+
+The M4.4 capability set totals `54 GPP` and is promoted from factor `0.50` to `0.70`, earning an additional `10.80 GPP`.
+
+M4.4 closes at `37.80 / 54 GPP` integrated maturity.
+
+The accepted close decision is recorded in ADR-046.
+
 # 43. Status
 
 Versão atual:
