@@ -1309,7 +1309,11 @@ Etapa atual:
 
 Subetapa atual:
 
-**M4.5-A — Units, Orders & Strategic Movement Contract Freeze**
+**M4.5-B — Military Order Identity & Validation**
+
+M4.5-A — Units, Orders & Strategic Movement Contract Freeze:
+
+**concluído em 2026-10-06**
 
 M4.4 — Markets, Trade, Routes & Flow Allocation:
 
@@ -1565,11 +1569,11 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M4.5-A units, orders and strategic movement contract freeze**
+**M4.5-B military order identity and validation**
 
 Entry gate:
 
-**post-commit cross-platform regression for M4.4-F**
+**post-commit cross-platform regression for M4.5-A**
 
 Última revisão de baseline:
 

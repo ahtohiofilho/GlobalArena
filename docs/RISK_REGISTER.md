@@ -4272,3 +4272,48 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M4.5-A units, orders and strategic movement contract freeze**
+---
+
+# 67. M4.5-A units, orders and strategic movement contract-freeze risk review
+
+**Date:** 2026-10-06
+
+Stage:
+
+**M4.5 — Units, Orders & Strategic Movement**
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+Military movement contracts are frozen, but executable order validation and movement mutation remain to be proven in M4.5-B/C/D.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+M4.5 baseline excludes combat, occupancy conflict, movement points, unit catalogue depth, supply, morale, terrain mobility and tactical pathfinding.
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+The design relies on canonical command/event ordering and execution-time stale-source revalidation. These invariants require executable proof in M4.5-B/C.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+Routine strategic movement explicitly avoids tactical pathfinding.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+M4.5-A adds no runtime storage. Later command/event volume and movement integration remain subject to accumulated validation.
+
+`RISK-007 — Architecture overengineering` remains `OPEN / HIGH`.
+
+The movement contract reuses the existing generic Command -> Event -> WorldState pipeline instead of introducing a parallel movement framework.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M4.5-B military order identity and validation**

@@ -6630,6 +6630,32 @@ M4.4 closes at `37.80 / 54 GPP` integrated maturity.
 
 The accepted close decision is recorded in ADR-046.
 
+## 42.19 M4.5-A units, orders and strategic movement contract freeze
+
+M4.5-A freezes the baseline Warfare movement contract before implementation.
+
+Existing Runtime authority remains `MilitaryUnitId + Owner + StrategicCellId` inside canonical `WarfareRuntimeState`.
+
+One baseline movement order traverses exactly one strategic edge.
+
+The command identifies issuer, unit and destination, while authoritative source location is read from current WorldState.
+
+Planning validates ownership and direct strategic adjacency.
+
+The resulting event snapshots expected source, destination and traversed StrategicEdgeId.
+
+Execution-time revalidation requires the unit and owner still match, current location still equals expected source and the move remains one-edge adjacent.
+
+This makes later same-unit stale movement events fail after an earlier event changes the source.
+
+Co-location is allowed during M4.5; combat, hostile occupancy resolution, control transfer and strategic-edge blocking belong to M4.6.
+
+Routine movement does not use tactical pathfinding or Economy route-cache authority.
+
+M4.5-A changes no executable production contract and awards no GPP.
+
+The accepted contract is recorded in ADR-047.
+
 # 43. Status
 
 Versão atual:

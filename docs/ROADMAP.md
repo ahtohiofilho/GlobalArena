@@ -1897,7 +1897,26 @@ Operational decomposition:
 
 Current subcheckpoint:
 
-**M4.5-A — Units, Orders & Strategic Movement Contract Freeze**
+**M4.5-B — Military Order Identity & Validation**
+
+M4.5-A — Units, Orders & Strategic Movement Contract Freeze: closed.
+
+M4.5-A contract freeze:
+
+- existing unit runtime authority remains MilitaryUnitId + Owner + StrategicCellId;
+- WarfareRuntimeState remains the canonical unit roster;
+- one baseline movement order traverses exactly one strategic edge;
+- command-authored source location is forbidden; source comes from WorldState;
+- movement planning derives expected source, destination and traversed StrategicEdgeId;
+- planning validation and execution-time event revalidation are both required;
+- stale same-unit events fail after an earlier movement changes the unit source;
+- unit co-location is allowed during M4.5;
+- combat, hostile occupancy, control transfer and strategic-edge blocking are deferred to M4.6;
+- routine movement does not use tactical pathfinding;
+- Economy route-cache authority is not reused for military movement;
+- M4.5 capability budget: `42 GPP`;
+- current M4.5 credit remains `6.00 / 42`;
+- M4.5-A GPP delta: `0.00`.
 
 M4.4 — Markets, Trade, Routes & Flow Allocation: closed.
 
@@ -2321,7 +2340,7 @@ Somente um ou poucos itens devem ser classificados como Critical Path.
 
 Status atual:
 
-**M4.5-A units, orders and strategic movement contract freeze**
+**M4.5-B military order identity and validation**
 
 ---
 
@@ -2443,7 +2462,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M4.5-A — Units, Orders & Strategic Movement Contract Freeze**
+**M4.5-B — Military Order Identity & Validation**
 
 M3 Entry Audit:
 
@@ -2515,11 +2534,11 @@ Active Critical Risks:
 
 Critical Path:
 
-**M4.5-A units, orders and strategic movement contract freeze**
+**M4.5-B military order identity and validation**
 
 Entry gate:
 
-**post-commit cross-platform regression for M4.4-F**
+**post-commit cross-platform regression for M4.5-A**
 
 Last Baseline Review:
 

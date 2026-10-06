@@ -15385,3 +15385,72 @@ M4.4 is closed.
 Next after post-commit cross-platform regression:
 
 **M4.5-A — Units, Orders & Strategic Movement Contract Freeze**
+---
+
+## 2026-10-06 — M4.5-A units, orders and strategic movement contract freeze
+
+Milestone:
+
+**M4 — Systemic Vertical Slice**
+
+Stage:
+
+**M4.5 — Units, Orders & Strategic Movement**
+
+Checkpoint:
+
+**M4.5-A — Contract Freeze**
+
+Accepted entry/design evidence:
+
+`GlobalArena-Evidence-M4.5-A-R2-UNITS-ORDERS-STRATEGIC-MOVEMENT-CONTRACT-FREEZE-20261006-160220.zip`
+
+Evidence SHA-256:
+
+`2338025167b5abcb36db1cea4c738a9dc5ba0f7938c9c2f1ba9947755371d46d`
+
+Accepted source baseline:
+
+`5baa717d86f6858fd0942b7acd7b2ae152ec6051`
+
+Accepted validation:
+
+- evidence manifest: `16/16`;
+- GA-SRP self-tests: `19/19`;
+- target `ReadOnly` validation: PASS;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- full regression: `1011/1011`;
+- WorldState hash format: `7`;
+- existing dedicated M4.5 movement types: `0`;
+- repository mutation: none;
+- commit/push during entry audit: none.
+
+Frozen contract:
+
+- one movement order = one strategic-edge traversal;
+- command carries issuer, unit and destination;
+- authoritative source is derived from WorldState;
+- direct strategic adjacency required;
+- event captures expected source, destination and traversed edge;
+- planning validation plus execution-time revalidation;
+- stale same-unit event rejection after prior movement;
+- co-location allowed during M4.5;
+- combat/control/edge blocking deferred to M4.6;
+- no tactical pathfinding or Economy route-cache authority.
+
+GPP:
+
+- M4.5 capability budget: `42 GPP`;
+- entering credit: `6.00 / 42`;
+- M4.5-A delta: `0.00`;
+- Project remains `331.30 / 1000 — 33.1%`;
+- Warfare remains `6.00 / 140 — 4.3%`.
+
+Accepted contract ADR:
+
+**ADR-047 — M4.5 Units, Orders & Strategic Movement Contract Freeze**
+
+Next after post-commit cross-platform regression:
+
+**M4.5-B — Military Order Identity & Validation**
