@@ -1897,7 +1897,27 @@ Operational decomposition:
 
 Current subcheckpoint:
 
-**M4.3-D — Accumulated Validation & M4.3 Close**
+**M4.4-A — Markets, Trade, Routes & Flow Allocation Contract Freeze**
+
+M4.3 — Economic Points, Workforce, Production & Demand: closed.
+
+M4.3-D — Accumulated Validation & M4.3 Close: closed.
+
+M4.3 accumulated close:
+
+- resident EconomicPoint/workforce/activity substrate preserved;
+- deterministic transient Agriculture/Mining supply and recurring demand preserved;
+- canonical WorldState hash remains `7`;
+- accumulated M4.3 targeted regression: `113/113`;
+- full local Release regression: `886/886`;
+- cross-platform full regression on M4.3-C source commit: `886/886` on Windows, Ubuntu and macOS;
+- persistent commodity inventory remains absent;
+- combined M4.3 Economy capability budget: `30 GPP`;
+- integrated factor: `0.70`;
+- M4.3 capability credit: `21.00 / 30`;
+- M4.3-D GPP delta: `+6.00`;
+- Economy total: `21.00 / 140 — 15.0%`;
+- Project total: `293.50 / 1000 — 29.4%`.
 
 M4.3-C — Deterministic Production & Demand Flow Resolution: closed.
 
@@ -2158,7 +2178,7 @@ Somente um ou poucos itens devem ser classificados como Critical Path.
 
 Status atual:
 
-**M4.3-D accumulated validation and M4.3 close**
+**M4.4-A markets, trade, routes and flow allocation contract freeze**
 
 ---
 
@@ -2280,7 +2300,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M4.3-D — Accumulated Validation & M4.3 Close**
+**M4.4-A — Markets, Trade, Routes & Flow Allocation Contract Freeze**
 
 M3 Entry Audit:
 
@@ -2308,11 +2328,11 @@ M3.1-D — Accumulated M3.1 Validation & Close:
 
 Official Progress:
 
-**28.8%**
+**29.4%**
 
 GPP Earned:
 
-**287.50 / 1000**
+**293.50 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -2328,7 +2348,7 @@ World Generation / biomes / resources:
 
 Economy / trade / logistics:
 
-**15.00 / 140 GPP — 10.7%**
+**21.00 / 140 GPP — 15.0%**
 
 Warfare / units / combat:
 
@@ -2352,15 +2372,15 @@ Active Critical Risks:
 
 Critical Path:
 
-**M4.3-D accumulated validation and M4.3 close**
+**M4.4-A markets, trade, routes and flow allocation contract freeze**
 
 Entry gate:
 
-**post-commit cross-platform kernel/state-hash-v7 attestation for M4.3-C**
+**M4.3 accepted accumulated validation and integrated Economy foundation**
 
 Last Baseline Review:
 
-**2026-10-05**
+**2026-10-06**
 
 #### M2.5.2-C materializer close
 

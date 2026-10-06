@@ -3929,3 +3929,52 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M4.3-D accumulated validation and M4.3 close**
+---
+
+# 60. M4.3-D accumulated validation and M4.3 close risk review
+
+**Date:** 2026-10-06
+
+Checkpoint:
+
+**M4.3-D — Accumulated Validation & M4.3 Close**
+
+`RISK-001 — Economy scalability` remains `OPEN / CRITICAL`.
+
+M4.3 proves deterministic sparse local production/demand behavior and cross-platform regression, but M4.4 still owns the expensive global allocation/routing problem and requires explicit performance design.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+The local Economy ownership and flow boundary is now integrated. The primary unresolved Economy architecture moves to market allocation, route dependencies, transfer capacity/cost and financial settlement.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+M4.3 closes without introducing cities, hubs, persistent physical inventory, population-growth simulation, infrastructure depth, routing, water-filling, pricing or settlement beyond its approved scope.
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+The complete `886/886` suite passes on Windows, Ubuntu and macOS for the M4.3-C source commit, and accumulated local M4.3 validation remains green. M4.4 must preserve deterministic allocation semantics as global routing/market logic is added.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+M4.3 uses sparse resident points and transient flows, but M4.4 must avoid producer-by-consumer dense state and uncontrolled permanent route graph duplication.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+M4.3 performs no global tactical pathfinding. M4.4 must retain the shared strategic graph as routing authority and keep tactical effects projected selectively.
+
+`RISK-007 — Architecture overengineering` remains `OPEN / HIGH`.
+
+M4.3 closes with compact Runtime/Simulation boundaries and no City/Hub framework. M4.4-A must continue to resist framework growth beyond market/routing evidence.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M4.4-A markets, trade, routes and flow allocation contract freeze**

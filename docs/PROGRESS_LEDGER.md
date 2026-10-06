@@ -14865,3 +14865,87 @@ Accepted implementation ADR:
 Next after post-commit cross-platform kernel/state-hash-v7 attestation:
 
 **M4.3-D — Accumulated Validation & M4.3 Close**
+---
+
+## 2026-10-06 — M4.3-D accumulated validation and M4.3 formal close
+
+Milestone:
+
+**M4 — Systemic Vertical Slice**
+
+Stage:
+
+**M4.3 — Economic Points, Workforce, Production & Demand**
+
+Checkpoint:
+
+**M4.3-D — Accumulated Validation & M4.3 Close**
+
+Accepted accumulated evidence:
+
+`GlobalArena-Evidence-M4.3-D-R2-ACCUMULATED-M43-VALIDATION-20261006-131042.zip`
+
+Evidence SHA-256:
+
+`0ae41a0a8c58a85f61028e25547575970884a3360c3d7a949e53e192e46ee299`
+
+Accepted source baseline:
+
+`6e1fcd6ea6d40ea69bdaca16e4c0fc7b1d8edc1d`
+
+Accepted validation:
+
+- evidence manifest: `17/17`;
+- GA-SRP self-tests: `19/19`;
+- target `ReadOnly` validation: PASS;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- accumulated M4.3 targeted regression: `113/113`;
+- full local Release regression: `886/886`;
+- WorldState hash format: `7`;
+- repository mutation: none;
+- QA commit/push: none.
+
+Accepted cross-platform attestation on source commit `6e1fcd6ea6d40ea69bdaca16e4c0fc7b1d8edc1d`:
+
+- workflow run: `37381532472`;
+- Windows full regression: `886/886`;
+- Ubuntu full regression: `886/886`;
+- macOS full regression: `886/886`;
+- complete suite includes canonical WorldState hash tests;
+- dedicated state-hash workflow did not auto-trigger because no path in its push filter changed.
+
+M4.3 integrated boundary:
+
+- stable localized EconomicPoint identity/ownership/strategic anchor;
+- total workforce and sparse Agriculture/Mining/TradeLogistics allocations;
+- CommodityId preserved;
+- deterministic Agriculture/Mining supply flow;
+- deterministic recurring demand from total localized workforce;
+- canonical transient output ordering;
+- no mandatory persistent commodity inventory;
+- transient flows remain outside WorldState;
+- canonical WorldState hash remains `7`.
+
+Maturity and GPP:
+
+- `Commodity identity, economic points/locality & flow substrate`: `12 GPP`, factor `0.70`, earns `8.40`;
+- `Workforce, production & demand`: `18 GPP`, factor `0.70`, earns `12.60`;
+- M4.3 capability set: `21.00 / 30`;
+- M4.3-D delta: `+6.00`;
+- Economy becomes `21.00 / 140 — 15.0%`;
+- Project becomes `293.50 / 1000 — 29.4%`.
+
+The `0.85` Validated factor remains reserved for broader downstream consumer, scale and M4-exit evidence.
+
+Accepted close ADR:
+
+**ADR-040 — M4.3 Accumulated Validation, Integrated Maturity & Close**
+
+M4.3 status:
+
+**CLOSED**
+
+Next:
+
+**M4.4-A — Markets, Trade, Routes & Flow Allocation Contract Freeze**

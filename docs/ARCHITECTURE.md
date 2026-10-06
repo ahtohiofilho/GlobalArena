@@ -6456,6 +6456,30 @@ The `Workforce, production & demand` capability advances to functional-isolated 
 
 The accepted implementation decision is recorded in ADR-039.
 
+## 42.12 M4.3-D accumulated validation and M4.3 close
+
+M4.3-D validates the complete M4.3 Economy foundation as one integrated boundary.
+
+The resident side remains EconomicPoint identity, civilization ownership, strategic anchor, localized workforce and canonical activity allocation.
+
+The transient side resolves deterministic Agriculture/Mining supply and recurring localized demand without persisting per-cycle commodity inventory.
+
+Accumulated M4.3 targeted regression passes `113/113`, and the complete Release regression passes `886/886`.
+
+The M4.3-C source commit also passes the complete `886/886` suite on Windows, Ubuntu and macOS.
+
+Canonical WorldState hash remains format `7`.
+
+The `Commodity identity, economic points/locality & flow substrate` and `Workforce, production & demand` capabilities are promoted together from functional-isolated factor `0.50` to integrated factor `0.70`.
+
+Their combined `30 GPP` budget therefore earns `21.00 GPP`, a M4.3-D delta of `+6.00 GPP`.
+
+M4.3 is closed.
+
+The next architectural gate is M4.4-A, which must freeze market allocation, strategic reachability/routing, transfer-cost/capacity and financial-settlement boundaries before implementation.
+
+The accepted accumulated-close decision is recorded in ADR-040.
+
 # 43. Status
 
 Versão atual:
