@@ -6504,6 +6504,28 @@ The M4.4-owned capability budget is `54 GPP`. M4.4-A is a contract freeze and aw
 
 The accepted contract-freeze decision is recorded in ADR-041.
 
+## 42.14 M4.4-B deterministic strategic route identity, reachability and access
+
+M4.4-B adds executable deterministic strategic reachability over the shared `StrategicSurfaceGraph`.
+
+`StrategicEconomicRouteKey` is directional between source and destination EconomicPoints.
+
+`StrategicEdgeAccessSnapshot` is a sparse explicit closed-edge overlay; absent edge overrides are open.
+
+`StrategicEconomicRouteResolver` reuses one shared surface graph, derives a stable cell-pair-to-`StrategicEdgeId` lookup, and resolves unweighted shortest-hop paths with canonical equal-hop tie-breaking.
+
+Same-point and co-located exchange use one strategic cell and zero strategic edges.
+
+Resolved routes expose ordered cell traversal and ordered `StrategicEdgeId` dependencies. Closed edges are never traversed.
+
+Routing remains derived and outside WorldState, so canonical hash format remains `7`.
+
+Transfer cost/capacity, weighted economic path preference, market allocation, settlement and route cache remain outside M4.4-B.
+
+`Strategic route identity & pathfinding` advances to functional-isolated factor `0.50`, earning `8.00 / 16 GPP`.
+
+The accepted implementation decision is recorded in ADR-042.
+
 # 43. Status
 
 Versão atual:

@@ -4027,3 +4027,52 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M4.4-B deterministic strategic route identity, reachability and access**
+---
+
+# 62. M4.4-B strategic route identity and reachability risk review
+
+**Date:** 2026-10-06
+
+Checkpoint:
+
+**M4.4-B — Deterministic Strategic Route Identity, Reachability & Access**
+
+`RISK-001 — Economy scalability` remains `OPEN / CRITICAL`.
+
+M4.4-B reuses one shared StrategicSurfaceGraph and does not duplicate the graph per producer/consumer/commodity. Route-query volume and later cache/allocation scale still require evidence.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+Route identity, reachability, edge access and dependency identity are executable. Transfer cost/capacity, market allocation, settlement and cache invalidation remain intentionally unresolved.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+No Market/City/Hub framework, persistent inventory, full treasury, pricing model, transfer-capacity system or route cache was introduced in M4.4-B.
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+Shortest-hop BFS uses canonical graph neighbor ordering, repeated resolution is deterministic and equal-hop alternatives have deterministic canonical selection. Cross-platform regression is required after formal close.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+M4.4-B derives one cell-pair-to-edge lookup per resolver and no per-route cache. M4.4-E must prove selective sparse caching and invalidation.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+PhysicalTacticalPathfinder is not used by global Economy routing. Warfare may later project edge availability through the access overlay.
+
+`RISK-007 — Architecture overengineering` remains `OPEN / HIGH`.
+
+The route layer consists of focused Simulation contracts/resolver and does not create a separate market/transport framework.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M4.4-C transfer cost and capacity signal**

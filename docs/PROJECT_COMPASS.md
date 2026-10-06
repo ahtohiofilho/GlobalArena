@@ -1309,7 +1309,11 @@ Etapa atual:
 
 Subetapa atual:
 
-**M4.4-B — Deterministic Strategic Route Identity, Reachability & Access**
+**M4.4-C — Transfer Cost & Capacity Signal**
+
+M4.4-B — Deterministic Strategic Route Identity, Reachability & Access:
+
+**concluído em 2026-10-06**
 
 M4.4-A — Markets, Trade, Routes & Flow Allocation Contract Freeze:
 
@@ -1497,11 +1501,11 @@ Baseline V1:
 
 Progresso oficial:
 
-**29,4%**
+**30,2%**
 
 GPP conquistados:
 
-**293,50 / 1000**
+**301,50 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -1517,7 +1521,7 @@ World Generation / biomas / recursos:
 
 Economia / comércio / logística:
 
-**21,00 / 140 GPP — 15,0%**
+**29,00 / 140 GPP — 20,7%**
 
 Warfare / unidades / combate:
 
@@ -1541,11 +1545,11 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M4.4-B deterministic strategic route identity, reachability and access**
+**M4.4-C transfer cost and capacity signal**
 
 Entry gate:
 
-**M4.4-A accepted market/route/allocation contract freeze**
+**post-commit cross-platform regression for M4.4-B**
 
 Última revisão de baseline:
 

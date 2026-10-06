@@ -15032,3 +15032,72 @@ Accepted ADR:
 Next:
 
 **M4.4-B — Deterministic Strategic Route Identity, Reachability & Access**
+---
+
+## 2026-10-06 — M4.4-B deterministic strategic route identity, reachability and access formal close
+
+Milestone:
+
+**M4 — Systemic Vertical Slice**
+
+Stage:
+
+**M4.4 — Markets, Trade, Routes & Flow Allocation**
+
+Checkpoint:
+
+**M4.4-B — Deterministic Strategic Route Identity, Reachability & Access**
+
+Accepted QA evidence:
+
+`GlobalArena-Evidence-M4.4-B-R1-DETERMINISTIC-STRATEGIC-ROUTE-IDENTITY-REACHABILITY-ACCESS-20261006-134342.zip`
+
+Evidence SHA-256:
+
+`ba8927dc26bb388557e5770708a93ef5ed181a88a9817ee8688622b5f5b33760`
+
+Accepted source baseline:
+
+`2dc53f5ca0b869c8ec90221722a191501db83fb9`
+
+Accepted validation:
+
+- evidence manifest: `29/29`;
+- candidate hashes/snapshots: `5/5`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- targeted regression: `26/26`;
+- full regression: `912/912`;
+- WorldState hash format: `7`;
+- QA commit/push: none.
+
+Executable route boundary:
+
+- directional route identity between EconomicPoints;
+- shared StrategicSurfaceGraph routing authority;
+- stable StrategicEdgeId dependencies;
+- sparse explicit closed-edge access overlay;
+- same-point/co-located exchange with zero traversed strategic edges;
+- deterministic unweighted shortest-hop reachability;
+- canonical equal-hop tie-breaking;
+- explicit unreachable result;
+- no PhysicalTacticalPathfinder use;
+- no transfer cost/capacity, market allocation, settlement or route cache;
+- routing state remains derived and outside WorldState.
+
+GPP:
+
+- Strategic route identity & pathfinding: `16 GPP`, functional-isolated factor `0.50`, earns `8.00 GPP`;
+- M4.4-B delta: `+8.00`;
+- Economy becomes `29.00 / 140 — 20.7%`;
+- Project becomes `301.50 / 1000 — 30.2%`.
+
+Accepted implementation ADR:
+
+**ADR-042 — M4.4-B Deterministic Strategic Route Identity, Reachability & Access**
+
+Next after post-commit cross-platform regression:
+
+**M4.4-C — Transfer Cost & Capacity Signal**

@@ -1897,7 +1897,27 @@ Operational decomposition:
 
 Current subcheckpoint:
 
-**M4.4-B — Deterministic Strategic Route Identity, Reachability & Access**
+**M4.4-C — Transfer Cost & Capacity Signal**
+
+M4.4-B — Deterministic Strategic Route Identity, Reachability & Access: closed.
+
+M4.4-B executable close:
+
+- directional `StrategicEconomicRouteKey`;
+- shared `StrategicSurfaceGraph` routing substrate;
+- sparse explicit `StrategicEdgeAccessSnapshot`;
+- same-point/co-located zero-edge routes;
+- deterministic unweighted shortest-hop BFS;
+- canonical equal-hop tie-breaking;
+- ordered `StrategicEdgeId` route dependencies;
+- closed-edge avoidance and explicit unreachable result;
+- route state remains derived and outside WorldState;
+- targeted regression: `26/26`;
+- full local Release regression: `912/912`;
+- `Strategic route identity & pathfinding`: `8.00 / 16 GPP — factor 0.50`;
+- M4.4-B GPP delta: `+8.00`;
+- Economy total: `29.00 / 140 — 20.7%`;
+- Project total: `301.50 / 1000 — 30.2%`.
 
 M4.4-A — Markets, Trade, Routes & Flow Allocation Contract Freeze: closed.
 
@@ -2208,7 +2228,7 @@ Somente um ou poucos itens devem ser classificados como Critical Path.
 
 Status atual:
 
-**M4.4-B deterministic strategic route identity, reachability and access**
+**M4.4-C transfer cost and capacity signal**
 
 ---
 
@@ -2330,7 +2350,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M4.4-B — Deterministic Strategic Route Identity, Reachability & Access**
+**M4.4-C — Transfer Cost & Capacity Signal**
 
 M3 Entry Audit:
 
@@ -2358,11 +2378,11 @@ M3.1-D — Accumulated M3.1 Validation & Close:
 
 Official Progress:
 
-**29.4%**
+**30.2%**
 
 GPP Earned:
 
-**293.50 / 1000**
+**301.50 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -2378,7 +2398,7 @@ World Generation / biomes / resources:
 
 Economy / trade / logistics:
 
-**21.00 / 140 GPP — 15.0%**
+**29.00 / 140 GPP — 20.7%**
 
 Warfare / units / combat:
 
@@ -2402,11 +2422,11 @@ Active Critical Risks:
 
 Critical Path:
 
-**M4.4-B deterministic strategic route identity, reachability and access**
+**M4.4-C transfer cost and capacity signal**
 
 Entry gate:
 
-**M4.4-A accepted market/route/allocation contract freeze**
+**post-commit cross-platform regression for M4.4-B**
 
 Last Baseline Review:
 
