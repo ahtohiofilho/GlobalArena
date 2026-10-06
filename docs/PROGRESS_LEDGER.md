@@ -15243,3 +15243,73 @@ Accepted implementation ADR:
 Next after post-commit cross-platform regression:
 
 **M4.4-E — Route Dependency Cache & Incremental Invalidation**
+---
+
+## 2026-10-06 — M4.4-E route dependency cache and incremental invalidation formal close
+
+Milestone:
+
+**M4 — Systemic Vertical Slice**
+
+Stage:
+
+**M4.4 — Markets, Trade, Routes & Flow Allocation**
+
+Checkpoint:
+
+**M4.4-E — Route Dependency Cache & Incremental Invalidation**
+
+Accepted QA evidence:
+
+`GlobalArena-Evidence-M4.4-E-R1-ROUTE-DEPENDENCY-CACHE-INVALIDATION-20261006-150520.zip`
+
+Evidence SHA-256:
+
+`289c9c1e30ee5f8f6e3f7b86342d84a8880a1b5d3c4e869a72ac542733b50a82`
+
+Accepted source baseline:
+
+`3e58f4d521d5b84f3ca7923843ee34474fedfa39`
+
+Accepted validation:
+
+- evidence manifest: `28/28`;
+- candidate hashes/snapshots: `4/4`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- targeted regression: `24/24`;
+- full regression: `1005/1005`;
+- WorldState hash format: `7`;
+- QA commit/push: none.
+
+Executable cache/invalidation boundary:
+
+- direct resolver behavior preserved through detailed deterministic search;
+- final traversal dependencies remain separate from search dependencies;
+- every queried edge-access dependency is recorded;
+- closed non-traversed queried edges invalidate correctly when reopened;
+- reachable and unreachable results are cacheable;
+- endpoint StrategicCellId anchors guard against stale point relocation;
+- deleted points fail rather than return stale cache entries;
+- access changes use symmetric-difference selective invalidation;
+- sparse reverse edge-to-route dependency index;
+- canonical affected-route output;
+- same-point zero-edge routes carry no search dependencies;
+- cache remains derived outside WorldState.
+
+GPP:
+
+- Route dependency cache & invalidation: `14 GPP`, functional-isolated factor `0.50`, earns `7.00 GPP`;
+- M4.4-E delta: `+7.00`;
+- Economy becomes `48.00 / 140 — 34.3%`;
+- Project becomes `320.50 / 1000 — 32.1%`.
+
+Accepted implementation ADR:
+
+**ADR-045 — M4.4-E Route Dependency Cache & Incremental Invalidation**
+
+Next after post-commit cross-platform regression:
+
+**M4.4-F — Accumulated Validation & M4.4 Close**

@@ -25,19 +25,12 @@ public sealed class StrategicEconomicRouteResolver
             new Dictionary<(ulong First, ulong Second), StrategicEdgeId>(
                 surfaceGraph.StrategicTopology.Edges.Count);
 
-        foreach (var edge in
-            surfaceGraph.StrategicTopology.Edges)
+        foreach (var edge in surfaceGraph.StrategicTopology.Edges)
         {
-            var first =
-                edge.IncidentCellIds[0].Value;
-
-            var second =
-                edge.IncidentCellIds[1].Value;
-
             var key =
                 NormalizePair(
-                    first,
-                    second);
+                    edge.IncidentCellIds[0].Value,
+                    edge.IncidentCellIds[1].Value);
 
             if (!_edgeByCellPair.TryAdd(
                 key,
@@ -58,6 +51,23 @@ public sealed class StrategicEconomicRouteResolver
         StrategicEdgeAccessSnapshot access,
         out StrategicEconomicRoute? route)
     {
+        var resolution =
+            ResolveDetailed(
+                economy,
+                key,
+                access);
+
+        route =
+            resolution.Route;
+
+        return resolution.IsReachable;
+    }
+
+    public StrategicEconomicRouteResolution ResolveDetailed(
+        EconomyRuntimeState economy,
+        StrategicEconomicRouteKey key,
+        StrategicEdgeAccessSnapshot access)
+    {
         ArgumentNullException.ThrowIfNull(
             economy);
 
@@ -67,12 +77,18 @@ public sealed class StrategicEconomicRouteResolver
         ValidateAccessSnapshot(
             access);
 
+        if (!key.SourceEconomicPointId.IsValid
+            || !key.DestinationEconomicPointId.IsValid)
+        {
+            throw new ArgumentException(
+                "Strategic economic route key must contain valid EconomicPoint identities.",
+                nameof(key));
+        }
+
         var points =
             economy
                 .EconomicPoints
-                .ToDictionary(
-                    point =>
-                        point.Id);
+                .ToDictionary(point => point.Id);
 
         if (!points.TryGetValue(
             key.SourceEconomicPointId,
@@ -98,58 +114,50 @@ public sealed class StrategicEconomicRouteResolver
             _surfaceGraph.GetNodeIndex(
                 destinationPoint.StrategicCellId);
 
-        if (sourceIndex
-            == destinationIndex)
+        if (sourceIndex == destinationIndex)
         {
-            route =
+            return new StrategicEconomicRouteResolution(
+                true,
                 new StrategicEconomicRoute(
                     key,
                     new[]
                     {
                         sourcePoint.StrategicCellId
                     },
-                    Array.Empty<StrategicEdgeId>());
-
-            return true;
+                    Array.Empty<StrategicEdgeId>()),
+                Array.Empty<StrategicEdgeId>());
         }
 
-        var nodeCount =
-            _surfaceGraph.NodeCount;
-
         var visited =
-            new bool[nodeCount];
+            new bool[_surfaceGraph.NodeCount];
 
         var parent =
             Enumerable
                 .Repeat(
                     -1,
-                    nodeCount)
+                    _surfaceGraph.NodeCount)
                 .ToArray();
 
         var parentEdge =
-            new StrategicEdgeId[nodeCount];
+            new StrategicEdgeId[_surfaceGraph.NodeCount];
+
+        var searchDependencies =
+            new HashSet<StrategicEdgeId>();
 
         var queue =
             new Queue<int>();
 
-        visited[sourceIndex] =
-            true;
+        visited[sourceIndex] = true;
+        queue.Enqueue(sourceIndex);
 
-        queue.Enqueue(
-            sourceIndex);
+        var found = false;
 
-        var found =
-            false;
-
-        while (queue.Count > 0
-            && !found)
+        while (queue.Count > 0 && !found)
         {
             var currentIndex =
                 queue.Dequeue();
 
-            foreach (var neighborIndex in
-                _surfaceGraph.GetNeighborIndexes(
-                    currentIndex))
+            foreach (var neighborIndex in _surfaceGraph.GetNeighborIndexes(currentIndex))
             {
                 if (visited[neighborIndex])
                 {
@@ -161,27 +169,21 @@ public sealed class StrategicEconomicRouteResolver
                         currentIndex,
                         neighborIndex);
 
-                if (!access.IsOpen(
-                    edgeId))
+                searchDependencies.Add(
+                    edgeId);
+
+                if (!access.IsOpen(edgeId))
                 {
                     continue;
                 }
 
-                visited[neighborIndex] =
-                    true;
+                visited[neighborIndex] = true;
+                parent[neighborIndex] = currentIndex;
+                parentEdge[neighborIndex] = edgeId;
 
-                parent[neighborIndex] =
-                    currentIndex;
-
-                parentEdge[neighborIndex] =
-                    edgeId;
-
-                if (neighborIndex
-                    == destinationIndex)
+                if (neighborIndex == destinationIndex)
                 {
-                    found =
-                        true;
-
+                    found = true;
                     break;
                 }
 
@@ -192,10 +194,10 @@ public sealed class StrategicEconomicRouteResolver
 
         if (!found)
         {
-            route =
-                null;
-
-            return false;
+            return new StrategicEconomicRouteResolution(
+                false,
+                null,
+                searchDependencies);
         }
 
         var reverseCells =
@@ -208,11 +210,9 @@ public sealed class StrategicEconomicRouteResolver
             destinationIndex;
 
         reverseCells.Add(
-            _surfaceGraph.GetCellId(
-                cursor));
+            _surfaceGraph.GetCellId(cursor));
 
-        while (cursor
-            != sourceIndex)
+        while (cursor != sourceIndex)
         {
             var predecessor =
                 parent[cursor];
@@ -235,24 +235,41 @@ public sealed class StrategicEconomicRouteResolver
             reverseEdges.Add(
                 edgeId);
 
-            cursor =
-                predecessor;
+            cursor = predecessor;
 
             reverseCells.Add(
-                _surfaceGraph.GetCellId(
-                    cursor));
+                _surfaceGraph.GetCellId(cursor));
         }
 
         reverseCells.Reverse();
         reverseEdges.Reverse();
 
-        route =
+        return new StrategicEconomicRouteResolution(
+            true,
             new StrategicEconomicRoute(
                 key,
                 reverseCells,
-                reverseEdges);
+                reverseEdges),
+            searchDependencies);
+    }
 
-        return true;
+    internal void ValidateAccessSnapshot(
+        StrategicEdgeAccessSnapshot access)
+    {
+        ArgumentNullException.ThrowIfNull(
+            access);
+
+        var edgeCount =
+            (ulong)_surfaceGraph.StrategicTopology.Edges.Count;
+
+        foreach (var edgeId in access.ClosedEdgeIds)
+        {
+            if (edgeId.Value > edgeCount)
+            {
+                throw new KeyNotFoundException(
+                    $"Strategic edge {edgeId.Value} does not belong to this surface graph.");
+            }
+        }
     }
 
     private void ValidateGraphEdgeCoverage()
@@ -261,9 +278,7 @@ public sealed class StrategicEconomicRouteResolver
              nodeIndex < _surfaceGraph.NodeCount;
              nodeIndex++)
         {
-            foreach (var neighborIndex in
-                _surfaceGraph.GetNeighborIndexes(
-                    nodeIndex))
+            foreach (var neighborIndex in _surfaceGraph.GetNeighborIndexes(nodeIndex))
             {
                 _ =
                     GetEdgeId(
@@ -273,44 +288,14 @@ public sealed class StrategicEconomicRouteResolver
         }
     }
 
-    private void ValidateAccessSnapshot(
-        StrategicEdgeAccessSnapshot access)
-    {
-        var edgeCount =
-            (ulong)_surfaceGraph.StrategicTopology.Edges.Count;
-
-        foreach (var edgeId in
-            access.ClosedEdgeIds)
-        {
-            if (edgeId.Value
-                > edgeCount)
-            {
-                throw new KeyNotFoundException(
-                    $"Strategic edge {edgeId.Value} does not belong to this surface graph.");
-            }
-        }
-    }
-
     private StrategicEdgeId GetEdgeId(
         int firstNodeIndex,
         int secondNodeIndex)
     {
-        var first =
-            _surfaceGraph
-                .GetCellId(
-                    firstNodeIndex)
-                .Value;
-
-        var second =
-            _surfaceGraph
-                .GetCellId(
-                    secondNodeIndex)
-                .Value;
-
         var key =
             NormalizePair(
-                first,
-                second);
+                _surfaceGraph.GetCellId(firstNodeIndex).Value,
+                _surfaceGraph.GetCellId(secondNodeIndex).Value);
 
         if (!_edgeByCellPair.TryGetValue(
             key,

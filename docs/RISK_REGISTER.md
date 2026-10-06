@@ -4174,3 +4174,52 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M4.4-E route dependency cache and incremental invalidation**
+---
+
+# 65. M4.4-E route dependency cache and incremental invalidation risk review
+
+**Date:** 2026-10-06
+
+Checkpoint:
+
+**M4.4-E — Route Dependency Cache & Incremental Invalidation**
+
+`RISK-001 — Economy scalability` remains `OPEN / CRITICAL`.
+
+Selective dependency invalidation and sparse route caching are executable, but large-world route-query volume and cache memory/performance still require accumulated validation and later scale evidence.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+M4.4 now has executable route identity, transfer signals, market allocation and dependency caching. Accumulated M4.4 validation remains unresolved until M4.4-F.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+No dense all-pairs routing matrix, persistent route store, weighted routing framework, market cache, transfer cache or resident treasury was introduced.
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+Cache invalidation uses canonical edge identities and canonical affected-route ordering. Post-commit cross-platform regression is required before accumulated M4.4 close.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+The implementation uses sparse queried-route entries and sparse reverse dependency indexing instead of global all-pairs storage. M4.4-F must inspect accumulated memory/performance behavior before integrated maturity promotion.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+Route caching remains on the strategic graph and does not invoke tactical pathfinding.
+
+`RISK-007 — Architecture overengineering` remains `OPEN / HIGH`.
+
+The cache is a focused derived Simulation component and does not introduce persistent infrastructure or duplicate world authority.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M4.4-F accumulated validation and M4.4 close**

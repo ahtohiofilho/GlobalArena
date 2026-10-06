@@ -1897,7 +1897,30 @@ Operational decomposition:
 
 Current subcheckpoint:
 
-**M4.4-E — Route Dependency Cache & Incremental Invalidation**
+**M4.4-F — Accumulated Validation & M4.4 Close**
+
+M4.4-E — Route Dependency Cache & Incremental Invalidation: closed.
+
+M4.4-E executable close:
+
+- final route traversal dependencies remain distinct from search dependencies;
+- deterministic detailed BFS records every queried edge-access dependency;
+- closed queried non-traversed edges participate in reopening invalidation;
+- reachable and unreachable route results are cacheable;
+- endpoint StrategicCellId anchor drift forces local recomputation;
+- deleted EconomicPoints never return stale cached routes;
+- access snapshot updates use symmetric-difference selective invalidation;
+- sparse reverse StrategicEdgeId-to-route-key dependency index;
+- explicit dependency invalidation returns canonical affected route keys;
+- same-point zero-edge routes carry zero search dependencies;
+- cache hit/miss is observability-only;
+- no dense all-pairs matrix, persistent cache, market cache, transfer cache or weighted routing;
+- targeted regression: `24/24`;
+- full local Release regression: `1005/1005`;
+- `Route dependency cache & invalidation`: `7.00 / 14 GPP — factor 0.50`;
+- M4.4-E GPP delta: `+7.00`;
+- Economy total: `48.00 / 140 — 34.3%`;
+- Project total: `320.50 / 1000 — 32.1%`.
 
 M4.4-D — Deterministic Market Allocation & Settlement Output: closed.
 
@@ -2273,7 +2296,7 @@ Somente um ou poucos itens devem ser classificados como Critical Path.
 
 Status atual:
 
-**M4.4-E route dependency cache and incremental invalidation**
+**M4.4-F accumulated validation and M4.4 close**
 
 ---
 
@@ -2395,7 +2418,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M4.4-E — Route Dependency Cache & Incremental Invalidation**
+**M4.4-F — Accumulated Validation & M4.4 Close**
 
 M3 Entry Audit:
 
@@ -2423,11 +2446,11 @@ M3.1-D — Accumulated M3.1 Validation & Close:
 
 Official Progress:
 
-**31.4%**
+**32.1%**
 
 GPP Earned:
 
-**313.50 / 1000**
+**320.50 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -2443,7 +2466,7 @@ World Generation / biomes / resources:
 
 Economy / trade / logistics:
 
-**41.00 / 140 GPP — 29.3%**
+**48.00 / 140 GPP — 34.3%**
 
 Warfare / units / combat:
 
@@ -2467,11 +2490,11 @@ Active Critical Risks:
 
 Critical Path:
 
-**M4.4-E route dependency cache and incremental invalidation**
+**M4.4-F accumulated validation and M4.4 close**
 
 Entry gate:
 
-**post-commit cross-platform regression for M4.4-D**
+**post-commit cross-platform regression for M4.4-E**
 
 Last Baseline Review:
 

@@ -6574,6 +6574,34 @@ No persistent inventory, resident treasury, weighted rerouting or route cache is
 
 The accepted implementation decision is recorded in ADR-044.
 
+## 42.17 M4.4-E route dependency cache and incremental invalidation
+
+M4.4-E adds sparse derived caching over deterministic strategic economic route resolution.
+
+Final `StrategicEconomicRoute.DependencyEdgeIds` remain the edges actually traversed by the resolved route.
+
+Detailed resolution adds separate `SearchDependencyEdgeIds`: every StrategicEdgeId whose access state was queried before deterministic BFS terminates.
+
+This distinction makes reopening invalidation correct when a previously closed non-traversed edge can become a shorter or canonically preferred route.
+
+Reachable and unreachable route resolutions are cacheable.
+
+`StrategicEconomicRouteCache` snapshots endpoint StrategicCellId anchors, evicts on anchor drift and never serves deleted EconomicPoints.
+
+Access snapshot changes use symmetric-difference detection and a sparse reverse StrategicEdgeId-to-route-key index, invalidating only dependent relationships.
+
+Explicit dependency invalidation returns canonical affected route keys.
+
+Cache hit/miss is observability-only.
+
+Cache state remains derived outside WorldState; canonical hash format remains `7`.
+
+No dense all-pairs matrix, persistent cache, market cache, transfer cache or weighted routing is introduced.
+
+`Route dependency cache & invalidation` advances to functional-isolated factor `0.50`, earning `7.00 / 14 GPP`.
+
+The accepted implementation decision is recorded in ADR-045.
+
 # 43. Status
 
 Versão atual:
