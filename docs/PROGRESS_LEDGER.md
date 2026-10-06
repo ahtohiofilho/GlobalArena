@@ -15172,3 +15172,74 @@ Accepted implementation ADR:
 Next after post-commit cross-platform regression:
 
 **M4.4-D — Deterministic Market Allocation & Settlement Output**
+---
+
+## 2026-10-06 — M4.4-D deterministic market allocation and settlement formal close
+
+Milestone:
+
+**M4 — Systemic Vertical Slice**
+
+Stage:
+
+**M4.4 — Markets, Trade, Routes & Flow Allocation**
+
+Checkpoint:
+
+**M4.4-D — Deterministic Market Allocation & Settlement Output**
+
+Accepted QA evidence:
+
+`GlobalArena-Evidence-M4.4-D-R2-DETERMINISTIC-MARKET-ALLOCATION-SETTLEMENT-20261006-143459.zip`
+
+Evidence SHA-256:
+
+`a0ce45f526a1dc142ec7bb90c0255efb34bc86d68977e3d058e94b80c44330ef`
+
+Accepted source baseline:
+
+`bb4bdefad29751be1d4c5acbaf7d0bfb3949d441`
+
+Accepted validation:
+
+- evidence manifest: `29/29`;
+- candidate hashes/snapshots: `5/5`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- targeted regression: `39/39`;
+- full regression: `981/981`;
+- WorldState hash format: `7`;
+- R1 compile-only test ambiguity corrected in R2;
+- QA commit/push: none.
+
+Executable market/settlement boundary:
+
+- explicit fixed-point market allocation policy;
+- deterministic bounded demand-value and transfer-cost bands;
+- finite per-commodity residual min-cost-flow network;
+- deterministic Bellman-Ford successive shortest augmenting paths;
+- Int128 signed economics and residual reverse edges;
+- positive unit-net-return allocation only;
+- exact supply, demand and route-capacity enforcement;
+- source activity attribution preserved;
+- deterministic settlement gross/transfer/net outputs;
+- canonical input-order-independent result ordering;
+- no persistent inventory, treasury mutation, weighted rerouting or route cache;
+- market/settlement output remains derived outside WorldState.
+
+GPP:
+
+- Market allocation & financial settlement: `14 GPP`, functional-isolated factor `0.50`, earns `7.00 GPP`;
+- M4.4-D delta: `+7.00`;
+- Economy becomes `41.00 / 140 — 29.3%`;
+- Project becomes `313.50 / 1000 — 31.4%`.
+
+Accepted implementation ADR:
+
+**ADR-044 — M4.4-D Deterministic Market Allocation & Settlement Output**
+
+Next after post-commit cross-platform regression:
+
+**M4.4-E — Route Dependency Cache & Incremental Invalidation**

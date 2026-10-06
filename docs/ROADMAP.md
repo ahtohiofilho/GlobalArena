@@ -1897,7 +1897,30 @@ Operational decomposition:
 
 Current subcheckpoint:
 
-**M4.4-D — Deterministic Market Allocation & Settlement Output**
+**M4.4-E — Route Dependency Cache & Incremental Invalidation**
+
+M4.4-D — Deterministic Market Allocation & Settlement Output: closed.
+
+M4.4-D executable close:
+
+- explicit fixed-point market allocation policy with bounded demand/transfer bands;
+- transient supply/demand and transfer signals remain the input boundary;
+- allocation partitions independently by CommodityId in the M4 baseline;
+- finite residual network enforces supply, demand and route capacity;
+- deterministic successive shortest augmenting path with Bellman-Ford relaxation;
+- Int128 signed path economics;
+- residual reverse edges permit correction of earlier assignments;
+- only strictly positive unit-net-return trade is emitted;
+- source Agriculture/Mining activity attribution is preserved;
+- deterministic gross/transfer/net settlement output;
+- canonical result ordering is input-order independent;
+- no persistent inventory, resident treasury, weighted rerouting or route cache;
+- targeted regression: `39/39`;
+- full local Release regression: `981/981`;
+- `Market allocation & financial settlement`: `7.00 / 14 GPP — factor 0.50`;
+- M4.4-D GPP delta: `+7.00`;
+- Economy total: `41.00 / 140 — 29.3%`;
+- Project total: `313.50 / 1000 — 31.4%`.
 
 M4.4-C — Transfer Cost & Capacity Signal: closed.
 
@@ -2250,7 +2273,7 @@ Somente um ou poucos itens devem ser classificados como Critical Path.
 
 Status atual:
 
-**M4.4-D deterministic market allocation and settlement output**
+**M4.4-E route dependency cache and incremental invalidation**
 
 ---
 
@@ -2372,7 +2395,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M4.4-D — Deterministic Market Allocation & Settlement Output**
+**M4.4-E — Route Dependency Cache & Incremental Invalidation**
 
 M3 Entry Audit:
 
@@ -2400,11 +2423,11 @@ M3.1-D — Accumulated M3.1 Validation & Close:
 
 Official Progress:
 
-**30.7%**
+**31.4%**
 
 GPP Earned:
 
-**306.50 / 1000**
+**313.50 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -2420,7 +2443,7 @@ World Generation / biomes / resources:
 
 Economy / trade / logistics:
 
-**34.00 / 140 GPP — 24.3%**
+**41.00 / 140 GPP — 29.3%**
 
 Warfare / units / combat:
 
@@ -2444,11 +2467,11 @@ Active Critical Risks:
 
 Critical Path:
 
-**M4.4-D deterministic market allocation and settlement output**
+**M4.4-E route dependency cache and incremental invalidation**
 
 Entry gate:
 
-**post-commit cross-platform regression for M4.4-C**
+**post-commit cross-platform regression for M4.4-D**
 
 Last Baseline Review:
 

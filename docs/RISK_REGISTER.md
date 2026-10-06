@@ -4125,3 +4125,52 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M4.4-D deterministic market allocation and settlement output**
+---
+
+# 64. M4.4-D deterministic market allocation and settlement risk review
+
+**Date:** 2026-10-06
+
+Checkpoint:
+
+**M4.4-D — Deterministic Market Allocation & Settlement Output**
+
+`RISK-001 — Economy scalability` remains `OPEN / CRITICAL`.
+
+M4.4-D uses bounded demand/transfer bands and finite residual augmentation instead of raw-unit packet iteration. Large-world producer/destination graph scale and cache-assisted invalidation remain to be proven.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+Deterministic market allocation and settlement are executable. Route dependency caching/invalidation and accumulated M4.4 integration remain unresolved.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+No resident treasury, persistent inventory, weighted rerouting, shared cross-commodity throughput framework, banking or deep warehousing was introduced.
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+Market allocation uses canonical ordering, bounded deterministic bands, Int128 signed economics and deterministic residual relaxation. Cross-platform regression is required after formal close.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+The allocator builds transient per-commodity residual networks and does not persist dense route matrices. M4.4-E must prove sparse route dependency cache behavior.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+Market allocation consumes strategic transfer signals and does not invoke tactical pathfinding.
+
+`RISK-007 — Architecture overengineering` remains `OPEN / HIGH`.
+
+The implementation adds focused policy/result/resolver contracts without introducing Market, City, Hub, Treasury or Inventory frameworks.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M4.4-E route dependency cache and incremental invalidation**

@@ -6548,6 +6548,32 @@ Transfer policy/signal remain derived outside WorldState and canonical hash form
 
 The accepted implementation decision is recorded in ADR-043.
 
+## 42.16 M4.4-D deterministic market allocation and settlement output
+
+M4.4-D adds deterministic profitable trade allocation and financial settlement output over transient supply/demand and transfer signals.
+
+`EconomicMarketAllocationPolicy` makes initial/floor unit value and bounded demand/transfer band counts explicit.
+
+Demand and transfer capacity are partitioned exactly into deterministic monotone bands.
+
+`EconomicMarketAllocationResolver` builds a finite residual network independently per CommodityId and resolves it using deterministic successive shortest augmenting paths with Bellman-Ford relaxation.
+
+Signed path economics use Int128 and settlement multiplication uses UInt128.
+
+Residual reverse edges allow earlier assignments to be corrected instead of freezing greedy choices.
+
+Only strictly positive unit-net-return allocations are emitted.
+
+`EconomicTradeAllocation` preserves source EconomicPoint, source activity, destination, commodity, quantity, unit economics and deterministic gross/transfer/net settlement outputs.
+
+Market allocation and settlement remain derived outside WorldState; canonical hash format remains `7`.
+
+No persistent inventory, resident treasury, weighted rerouting or route cache is introduced.
+
+`Market allocation & financial settlement` advances to functional-isolated factor `0.50`, earning `7.00 / 14 GPP`.
+
+The accepted implementation decision is recorded in ADR-044.
+
 # 43. Status
 
 Versão atual:
