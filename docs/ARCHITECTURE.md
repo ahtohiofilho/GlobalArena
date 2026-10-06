@@ -6480,6 +6480,30 @@ The next architectural gate is M4.4-A, which must freeze market allocation, stra
 
 The accepted accumulated-close decision is recorded in ADR-040.
 
+## 42.13 M4.4-A markets, trade, routes and flow allocation contract freeze
+
+M4.4-A freezes the global Economy allocation boundary before implementation.
+
+M4.3 transient supply/demand flows remain the upstream input and no persistent commodity inventory is reintroduced.
+
+The shared `StrategicSurfaceGraph` is the global Economy routing authority. Stable `StrategicEdgeId` values are the route dependency identity.
+
+Strategic route access is consumed through an explicit deterministic edge-access overlay, keeping Economy decoupled from the later Warfare implementation that may block or reopen edges.
+
+Routes are directional between EconomicPoints, support same-point zero-edge exchange and require canonical equal-cost tie-breaking.
+
+Transfer cost/capacity signals are deterministic fixed-point policies. Small exchange remains possible without specialized infrastructure while future logistics workforce/infrastructure may increase effective throughput through a versioned policy seam.
+
+Market allocation resolves per CommodityId and must respect supply, demand and reachability bounds while preserving deterministic marginal allocation semantics. Literal micro-packet iteration is not required.
+
+Price/value policy remains versioned and calibratable. Financial settlement is an output seam rather than a full treasury/money-supply model.
+
+Route dependency cache state is derived, excluded from WorldState hashing and must support selective invalidation by StrategicEdgeId.
+
+The M4.4-owned capability budget is `54 GPP`. M4.4-A is a contract freeze and awards `0.00 GPP`.
+
+The accepted contract-freeze decision is recorded in ADR-041.
+
 # 43. Status
 
 Versão atual:

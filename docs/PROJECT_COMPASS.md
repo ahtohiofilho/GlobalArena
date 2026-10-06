@@ -1309,7 +1309,11 @@ Etapa atual:
 
 Subetapa atual:
 
-**M4.4-A — Markets, Trade, Routes & Flow Allocation Contract Freeze**
+**M4.4-B — Deterministic Strategic Route Identity, Reachability & Access**
+
+M4.4-A — Markets, Trade, Routes & Flow Allocation Contract Freeze:
+
+**concluído em 2026-10-06**
 
 M4.3 — Economic Points, Workforce, Production & Demand:
 
@@ -1537,11 +1541,11 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M4.4-A markets, trade, routes and flow allocation contract freeze**
+**M4.4-B deterministic strategic route identity, reachability and access**
 
 Entry gate:
 
-**M4.3 accepted accumulated validation and integrated Economy foundation**
+**M4.4-A accepted market/route/allocation contract freeze**
 
 Última revisão de baseline:
 

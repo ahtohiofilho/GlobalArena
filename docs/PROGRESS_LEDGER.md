@@ -14949,3 +14949,86 @@ M4.3 status:
 Next:
 
 **M4.4-A — Markets, Trade, Routes & Flow Allocation Contract Freeze**
+---
+
+## 2026-10-06 — M4.4-A markets, trade, routes and flow allocation contract freeze
+
+Milestone:
+
+**M4 — Systemic Vertical Slice**
+
+Stage:
+
+**M4.4 — Markets, Trade, Routes & Flow Allocation**
+
+Checkpoint:
+
+**M4.4-A — Markets, Trade, Routes & Flow Allocation Contract Freeze**
+
+Accepted entry/design evidence:
+
+`GlobalArena-Evidence-M4.4-A-ENTRY-DESIGN-AUDIT-R1-20261006-132650.zip`
+
+Evidence SHA-256:
+
+`208098fcb02500d56d0388e8578f7cdf8f0d283affadb2baf410ba598015a225`
+
+Accepted source baseline:
+
+`f33ff6e64c6985eda328be38991d6a3f53510f33`
+
+Accepted validation:
+
+- evidence manifest: `14/14`;
+- GA-SRP self-tests: `19/19`;
+- target `ReadOnly` validation: PASS;
+- full Release regression: `886/886`;
+- repository mutation: none;
+- commit/push: none.
+
+Frozen M4.4 direction:
+
+- M4.3 transient EconomicSupplyFlow/EconomicDemandFlow are the upstream input;
+- no persistent commodity inventory;
+- no mandatory Market/City/Hub entity;
+- StrategicSurfaceGraph is the shared global routing authority;
+- StrategicEdgeId identifies route dependencies;
+- routes are directional and same-point local exchange uses zero strategic edges;
+- deterministic equal-cost path tie-breaking uses canonical identities;
+- route access consumes an explicit strategic-edge overlay;
+- Economy does not own Warfare's reason for edge blocking;
+- fixed-point transfer cost/capacity policy seam;
+- deterministic per-CommodityId allocation;
+- literal micro-packet iteration is not required;
+- exact market-value formula remains calibratable;
+- deterministic settlement output is separate from a full treasury model;
+- route cache is derived/non-authoritative and excluded from WorldState hash;
+- edge changes invalidate only dependent cached routes/relationships.
+
+M4.4-owned capability budget:
+
+- Market allocation & financial settlement: `14 GPP`;
+- Strategic route identity & pathfinding: `16 GPP`;
+- Route dependency cache & invalidation: `14 GPP`;
+- Transport/transfer cost & capacity signal: `10 GPP`;
+- total: `54 GPP`.
+
+M4.4-A GPP delta:
+
+`0.00`.
+
+Project remains:
+
+`293.50 / 1000 — 29.4%`.
+
+Economy remains:
+
+`21.00 / 140 — 15.0%`.
+
+Accepted ADR:
+
+**ADR-041 — M4.4 Markets, Trade, Routes & Flow Allocation Contract Freeze**
+
+Next:
+
+**M4.4-B — Deterministic Strategic Route Identity, Reachability & Access**

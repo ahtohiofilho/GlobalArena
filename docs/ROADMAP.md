@@ -1897,7 +1897,37 @@ Operational decomposition:
 
 Current subcheckpoint:
 
-**M4.4-A — Markets, Trade, Routes & Flow Allocation Contract Freeze**
+**M4.4-B — Deterministic Strategic Route Identity, Reachability & Access**
+
+M4.4-A — Markets, Trade, Routes & Flow Allocation Contract Freeze: closed.
+
+M4.4-A frozen direction:
+
+- M4.3 transient supply/demand remain the upstream per-cycle input;
+- no mandatory Market/City/Hub entity;
+- `StrategicSurfaceGraph` is the shared global routing substrate;
+- `StrategicEdgeId` is the route dependency identity;
+- strategic access uses an explicit edge overlay decoupled from Warfare;
+- same-point exchange is zero-edge/zero-distance;
+- equal-cost route ties use canonical stable IDs;
+- transfer cost/capacity policies are fixed-point and versioned;
+- market allocation resolves independently per CommodityId;
+- literal micro-packet water filling is not required;
+- price/value formula remains calibratable;
+- deterministic settlement is an output seam, not a full treasury model;
+- route cache is derived/non-authoritative and selectively invalidated by edge dependency;
+- M4.4 capability budget: `54 GPP`;
+- M4.4-A GPP delta: `0.00`;
+- project remains `293.50 / 1000 — 29.4%`.
+
+M4.4 decomposition:
+
+- M4.4-A — Markets, Trade, Routes & Flow Allocation Contract Freeze;
+- M4.4-B — Deterministic Strategic Route Identity, Reachability & Access;
+- M4.4-C — Transfer Cost & Capacity Signal;
+- M4.4-D — Deterministic Market Allocation & Settlement Output;
+- M4.4-E — Route Dependency Cache & Incremental Invalidation;
+- M4.4-F — Accumulated Validation & M4.4 Close.
 
 M4.3 — Economic Points, Workforce, Production & Demand: closed.
 
@@ -2178,7 +2208,7 @@ Somente um ou poucos itens devem ser classificados como Critical Path.
 
 Status atual:
 
-**M4.4-A markets, trade, routes and flow allocation contract freeze**
+**M4.4-B deterministic strategic route identity, reachability and access**
 
 ---
 
@@ -2300,7 +2330,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M4.4-A — Markets, Trade, Routes & Flow Allocation Contract Freeze**
+**M4.4-B — Deterministic Strategic Route Identity, Reachability & Access**
 
 M3 Entry Audit:
 
@@ -2372,11 +2402,11 @@ Active Critical Risks:
 
 Critical Path:
 
-**M4.4-A markets, trade, routes and flow allocation contract freeze**
+**M4.4-B deterministic strategic route identity, reachability and access**
 
 Entry gate:
 
-**M4.3 accepted accumulated validation and integrated Economy foundation**
+**M4.4-A accepted market/route/allocation contract freeze**
 
 Last Baseline Review:
 

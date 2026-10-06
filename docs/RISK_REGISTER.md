@@ -3978,3 +3978,52 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M4.4-A markets, trade, routes and flow allocation contract freeze**
+---
+
+# 61. M4.4-A markets, routes and allocation contract risk review
+
+**Date:** 2026-10-06
+
+Checkpoint:
+
+**M4.4-A — Markets, Trade, Routes & Flow Allocation Contract Freeze**
+
+`RISK-001 — Economy scalability` remains `OPEN / CRITICAL`.
+
+The contract explicitly rejects one graph per producer and dense producer-by-consumer permanent state. M4.4-B through M4.4-E must still prove route and allocation scale empirically.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+The global allocation boundary is now specified: route authority, access overlay, cost/capacity seam, allocation semantics, settlement output and invalidation ownership are explicit. Concrete executable contracts remain to be implemented.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+M4.4-A does not introduce cities, hubs, persistent inventory, deep warehousing, full treasury/credit, final pricing, embargo/treaty depth or global tactical pathfinding.
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+Canonical route tie-breaking, fixed-point transport policies and deterministic allocation are frozen requirements. M4.4-B must first prove deterministic route identity/reachability before pricing/allocation layers are added.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+Route cache is frozen as derived sparse optimization state with selective dependency invalidation rather than permanent duplicated graph state. Scale evidence is still required.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+Global Economy routing remains on StrategicSurfaceGraph. PhysicalTacticalPathfinder is explicitly excluded as the global Economy route authority.
+
+`RISK-007 — Architecture overengineering` remains `OPEN / HIGH`.
+
+No mandatory Market/City/Hub object, treasury framework or logistics-infrastructure framework is introduced at contract freeze.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M4.4-B deterministic strategic route identity, reachability and access**
