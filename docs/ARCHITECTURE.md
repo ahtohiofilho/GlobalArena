@@ -6526,6 +6526,28 @@ Transfer cost/capacity, weighted economic path preference, market allocation, se
 
 The accepted implementation decision is recorded in ADR-042.
 
+## 42.15 M4.4-C transfer cost and capacity signal
+
+M4.4-C adds deterministic fixed-point transfer cost/capacity signals over already-resolved strategic economic routes.
+
+`EconomicTransferPolicy` makes cost-per-hop, positive base route capacity, TradeLogistics capacity contribution and congestion scale explicit versionable policy inputs.
+
+`EconomicTransferSignalResolver` validates route endpoints against EconomyRuntimeState, derives endpoint TradeLogistics workforce, computes effective capacity with UInt128 intermediates and fails fast on UInt64 overflow.
+
+Only TradeLogistics workforce increases route capacity. Agriculture, Mining and unallocated workforce do not.
+
+Base strategic unit cost is `HopCount * RawCostPerHop`; zero-hop local/co-located routes therefore have zero strategic base cost.
+
+`EconomicTransferSignal` exposes deterministic marginal unit cost under a linear normalized congestion surcharge and rejects loads above effective capacity.
+
+No float/double/decimal simulation arithmetic, weighted rerouting, market allocation, settlement or route cache is introduced.
+
+Transfer policy/signal remain derived outside WorldState and canonical hash format remains `7`.
+
+`Transport/transfer cost & capacity signal` advances to functional-isolated factor `0.50`, earning `5.00 / 10 GPP`.
+
+The accepted implementation decision is recorded in ADR-043.
+
 # 43. Status
 
 Versão atual:

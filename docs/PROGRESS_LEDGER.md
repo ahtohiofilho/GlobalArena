@@ -15101,3 +15101,74 @@ Accepted implementation ADR:
 Next after post-commit cross-platform regression:
 
 **M4.4-C — Transfer Cost & Capacity Signal**
+---
+
+## 2026-10-06 — M4.4-C transfer cost and capacity signal formal close
+
+Milestone:
+
+**M4 — Systemic Vertical Slice**
+
+Stage:
+
+**M4.4 — Markets, Trade, Routes & Flow Allocation**
+
+Checkpoint:
+
+**M4.4-C — Transfer Cost & Capacity Signal**
+
+Accepted QA evidence:
+
+`GlobalArena-Evidence-M4.4-C-R1-TRANSFER-COST-CAPACITY-SIGNAL-20261006-140246.zip`
+
+Evidence SHA-256:
+
+`a9f4bab11901324f6a44d8c624de79426e6063593922689bca73415b4230a458`
+
+Accepted source baseline:
+
+`1b7e8fff1dac69fbcb3ea63b06c44872ac2c767d`
+
+Accepted validation:
+
+- evidence manifest: `28/28`;
+- candidate hashes/snapshots: `4/4`;
+- GA-SRP self-tests: `19/19`;
+- target `QaMutation` validation: PASS;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- targeted regression: `30/30`;
+- full regression: `942/942`;
+- WorldState hash format: `7`;
+- QA commit/push: none.
+
+Executable transfer boundary:
+
+- explicit fixed-point EconomicTransferPolicy;
+- positive base transfer capacity;
+- endpoint TradeLogistics workforce increases capacity;
+- Agriculture, Mining and unallocated workforce do not increase capacity;
+- same EconomicPoint endpoint workforce is counted once;
+- base strategic transfer cost uses route HopCount;
+- zero-hop local route has zero strategic base cost;
+- deterministic linear congestion surcharge;
+- above-capacity load is rejected;
+- UInt128 intermediate arithmetic and fail-fast overflow;
+- no floating-point simulation arithmetic;
+- no weighted rerouting, market allocation, settlement or route cache;
+- transfer signal remains derived outside WorldState.
+
+GPP:
+
+- Transport/transfer cost & capacity signal: `10 GPP`, functional-isolated factor `0.50`, earns `5.00 GPP`;
+- M4.4-C delta: `+5.00`;
+- Economy becomes `34.00 / 140 — 24.3%`;
+- Project becomes `306.50 / 1000 — 30.7%`.
+
+Accepted implementation ADR:
+
+**ADR-043 — M4.4-C Transfer Cost & Capacity Signal**
+
+Next after post-commit cross-platform regression:
+
+**M4.4-D — Deterministic Market Allocation & Settlement Output**

@@ -4076,3 +4076,52 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M4.4-C transfer cost and capacity signal**
+---
+
+# 63. M4.4-C transfer cost and capacity signal risk review
+
+**Date:** 2026-10-06
+
+Checkpoint:
+
+**M4.4-C — Transfer Cost & Capacity Signal**
+
+`RISK-001 — Economy scalability` remains `OPEN / CRITICAL`.
+
+M4.4-C computes transfer signals from an already-resolved route and endpoint workforce without producer-by-consumer permanent state. M4.4-D market allocation scale remains unproven.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+Route reachability plus transfer cost/capacity are now executable. Market allocation, price/value policy, settlement and cache invalidation remain the main unresolved Economy architecture.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+No weighted rerouting, commodity-specific transport pricing, persistent inventory, treasury framework, deep infrastructure/warehousing or route cache was introduced.
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+Transfer signals use fixed-point arithmetic, UInt128 intermediates and deterministic policy inputs. Cross-platform regression is required after formal close.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+Transfer policy/signal are derived transient objects with no resident route-load matrix. M4.4-D/E still require sparse allocation/cache evidence.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+M4.4-C consumes strategic routes and does not invoke tactical pathfinding.
+
+`RISK-007 — Architecture overengineering` remains `OPEN / HIGH`.
+
+The implementation adds only focused policy/signal/resolver contracts and no transport framework, infrastructure hierarchy or treasury model.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M4.4-D deterministic market allocation and settlement output**

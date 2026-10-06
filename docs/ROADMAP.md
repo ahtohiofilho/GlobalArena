@@ -1897,7 +1897,29 @@ Operational decomposition:
 
 Current subcheckpoint:
 
-**M4.4-C — Transfer Cost & Capacity Signal**
+**M4.4-D — Deterministic Market Allocation & Settlement Output**
+
+M4.4-C — Transfer Cost & Capacity Signal: closed.
+
+M4.4-C executable close:
+
+- explicit immutable fixed-point `EconomicTransferPolicy`;
+- positive base route capacity even with zero TradeLogistics workforce;
+- only endpoint TradeLogistics workforce increases effective capacity;
+- same EconomicPoint endpoint logistics workforce is counted once;
+- base strategic unit cost derives from route hop count;
+- zero-hop local route has zero strategic base cost;
+- deterministic linear congestion marginal-cost signal;
+- proposed load above capacity is rejected;
+- UInt128 intermediates with fail-fast UInt64 bounds;
+- no float/double/decimal simulation arithmetic;
+- transfer state remains derived and outside WorldState;
+- targeted regression: `30/30`;
+- full local Release regression: `942/942`;
+- `Transport/transfer cost & capacity signal`: `5.00 / 10 GPP — factor 0.50`;
+- M4.4-C GPP delta: `+5.00`;
+- Economy total: `34.00 / 140 — 24.3%`;
+- Project total: `306.50 / 1000 — 30.7%`.
 
 M4.4-B — Deterministic Strategic Route Identity, Reachability & Access: closed.
 
@@ -2228,7 +2250,7 @@ Somente um ou poucos itens devem ser classificados como Critical Path.
 
 Status atual:
 
-**M4.4-C transfer cost and capacity signal**
+**M4.4-D deterministic market allocation and settlement output**
 
 ---
 
@@ -2350,7 +2372,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M4.4-C — Transfer Cost & Capacity Signal**
+**M4.4-D — Deterministic Market Allocation & Settlement Output**
 
 M3 Entry Audit:
 
@@ -2378,11 +2400,11 @@ M3.1-D — Accumulated M3.1 Validation & Close:
 
 Official Progress:
 
-**30.2%**
+**30.7%**
 
 GPP Earned:
 
-**301.50 / 1000**
+**306.50 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -2398,7 +2420,7 @@ World Generation / biomes / resources:
 
 Economy / trade / logistics:
 
-**29.00 / 140 GPP — 20.7%**
+**34.00 / 140 GPP — 24.3%**
 
 Warfare / units / combat:
 
@@ -2422,11 +2444,11 @@ Active Critical Risks:
 
 Critical Path:
 
-**M4.4-C transfer cost and capacity signal**
+**M4.4-D deterministic market allocation and settlement output**
 
 Entry gate:
 
-**post-commit cross-platform regression for M4.4-B**
+**post-commit cross-platform regression for M4.4-C**
 
 Last Baseline Review:
 
