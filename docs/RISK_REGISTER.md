@@ -908,6 +908,50 @@ recalibrar o memory budget quando o tamanho estratégico e a densidade tática d
 
 ---
 
+## RISK-013 — Human design visibility lag
+
+Status:
+
+MITIGATING
+
+Probability:
+
+3
+
+Impact:
+
+3
+
+Score:
+
+9 — HIGH
+
+Descrição:
+
+Experience-sensitive gameplay rules can become expensive architectural commitments when backend implementation advances substantially before the human designer can observe the real spatial or interactive system.
+
+The risk is highest when the designer does not already have a concrete mental model for the subsystem.
+
+Warfare exposed this gap because map structure, unit movement, occupancy and future combat semantics are difficult to judge confidently from contracts and tests alone.
+
+Mitigação:
+
+- distinguish reusable substrate from experience-sensitive design;
+- keep M4.5-C limited to minimal deterministic movement substrate;
+- require M4.5-D Human Visibility Gate before deep M4.6 combat implementation;
+- use a low-cost replaceable viewer rather than prematurely freezing production UI technology;
+- require explicit human review before detailed combat semantics are frozen;
+- apply progressive visibility gates to later systems when visual/spatial/interaction feedback materially affects upcoming design decisions.
+
+Trigger:
+
+a subsystem begins accumulating experience-sensitive rules while the designer cannot yet observe representative behavior directly.
+
+Próxima ação:
+
+complete minimal M4.5-C movement execution, then build the M4.5-D visibility MVP before freezing M4.6 combat design.
+
+---
 # 5. Riscos globais atuais
 
 Critical:
@@ -927,6 +971,7 @@ High:
 - Architecture overengineering
 - AI complexity
 - Save compatibility
+- Human design visibility lag
 
 ---
 
@@ -4375,3 +4420,49 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M4.5-C deterministic strategic movement command/event execution**
+---
+
+# 69. Progressive human visibility governance risk review
+
+**Date:** 2026-10-06
+
+Decision:
+
+**ADR-049 — Progressive Human Visibility Gates for Experience-Sensitive Design**
+
+A new risk is recorded:
+
+`RISK-013 — Human design visibility lag — MITIGATING / HIGH`.
+
+The risk does not invalidate completed M4.5-A/B work because the existing Warfare implementation remains reusable infrastructure rather than a complex military design.
+
+Mitigation changes the critical sequence:
+
+- M4.5-C may implement only minimal deterministic movement execution;
+- M4.5-D must provide human-observable strategic map/unit behavior;
+- deeper M4.6 combat design is blocked until human review;
+- M4.6 detailed decomposition remains intentionally open until that review.
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+The visibility gate reduces the chance that missing product-level feedback is mistaken for an architecture requirement.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+The visibility gate is observability/governance work and does not expand the 1000-GPP V1 baseline.
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+M4.5-B post-commit cross-platform regression passed `1026/1026` on Windows, Ubuntu and macOS.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M4.5-C minimal deterministic strategic movement execution**

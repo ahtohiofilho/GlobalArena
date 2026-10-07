@@ -1897,7 +1897,35 @@ Operational decomposition:
 
 Current subcheckpoint:
 
-**M4.5-C — Deterministic Strategic Movement Command/Event Execution**
+**M4.5-C — Minimal Deterministic Strategic Movement Execution**
+
+Revised M4.5 decomposition under ADR-049:
+
+- M4.5-A — Units, Orders & Strategic Movement Contract Freeze — closed;
+- M4.5-B — Military Order Identity & Validation — closed;
+- M4.5-C — Minimal Deterministic Strategic Movement Execution;
+- M4.5-D — Human Visibility Gate & Warfare Design Review;
+- M4.5-E — Accumulated Integration Validation & M4.5 Close.
+
+M4.5-C scope guard:
+
+- implement only deterministic one-edge event/execution substrate;
+- preserve expected source, destination and traversed edge intent;
+- revalidate authoritative unit state at execution time;
+- deterministically reject stale same-unit movement events;
+- mutate only unit strategic location plus normal WorldState revision;
+- do not introduce multi-edge routing, movement points, unit classes, terrain mobility, supply, morale, formations, zones of control, hostile occupancy blocking or combat.
+
+M4.5-D human gate:
+
+- expose the real strategic map/topology through a low-cost replaceable viewer;
+- show ownership and military units;
+- allow identification/selection of a unit;
+- highlight valid movement destinations using real rules;
+- execute or step real movement and show before/after state;
+- gather explicit human Warfare design decisions before detailed M4.6 decomposition.
+
+M4.6 detailed implementation is blocked until M4.5-D is accepted.
 
 M4.5-B — Military Order Identity & Validation: closed.
 
@@ -2483,7 +2511,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M4.5-C — Deterministic Strategic Movement Command/Event Execution**
+**M4.5-C — Minimal Deterministic Strategic Movement Execution**
 
 M3 Entry Audit:
 
@@ -2559,7 +2587,11 @@ Critical Path:
 
 Entry gate:
 
-**post-commit cross-platform regression for M4.5-B**
+**M4.5-B cross-platform regression satisfied — run 37550208141; M4.5-C constrained by ADR-049**
+
+Mandatory human gate before M4.6:
+
+**M4.5-D — Human Visibility Gate & Warfare Design Review**
 
 Last Baseline Review:
 

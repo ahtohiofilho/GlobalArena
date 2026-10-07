@@ -1291,6 +1291,25 @@ Authoritative changes continue through:
 
 The existing `TurnResolver` orchestrates ordering and execution but does not own domain business logic.
 
+### Progressive human visibility governance
+
+Experience-sensitive game rules must not be allowed to become deep architectural commitments solely because the backend can be implemented before the designer can observe the system.
+
+For capabilities whose correctness is primarily structural, implementation may continue through contracts, deterministic tests and benchmarks.
+
+For capabilities whose intended behavior depends materially on spatial perception, interaction or game feel, use the following cycle when the design is not already concrete:
+
+`minimal reusable substrate -> low-cost visibility -> human design decision -> deeper rules -> updated visibility`
+
+For Warfare:
+
+- M4.5-C is restricted to minimal deterministic one-edge movement execution;
+- M4.5-D is a mandatory Human Visibility Gate & Warfare Design Review;
+- M4.6 detailed combat semantics are not frozen before M4.5-D;
+- the visibility MVP must remain replaceable and must not force the final UI/rendering technology.
+
+This policy exists to preserve human design leverage while keeping deterministic infrastructure reusable.
+
 ### M4 exit target
 
 M4 exit requires a deterministic headless scenario in which production/trade and warfare interact through explicit state/event contracts, a warfare-caused control/access change invalidates only affected economic route dependencies, economy recomputes the affected state, and the turn completes reproducibly.
@@ -1577,7 +1596,11 @@ Critical Path atual:
 
 Entry gate:
 
-**post-commit cross-platform regression for M4.5-B**
+**M4.5-B cross-platform regression satisfied — run 37550208141; M4.5-C constrained by ADR-049**
+
+Mandatory human gate before M4.6:
+
+**M4.5-D — Human Visibility Gate & Warfare Design Review**
 
 Última revisão de baseline:
 

@@ -6686,6 +6686,45 @@ Local validation is `15/15` focused tests and `1026/1026` complete Release regre
 
 The accepted implementation decision is recorded in ADR-048.
 
+## 42.21 Progressive human visibility gate before Warfare depth
+
+ADR-049 introduces a governance distinction between reusable simulation substrate and experience-sensitive game design.
+
+The current Warfare implementation remains substrate:
+
+- canonical unit identity, owner and strategic location;
+- military movement command identity;
+- world-binding validation;
+- direct-neighbor planning validation.
+
+M4.5-C is constrained to the minimum deterministic `Command -> Event -> WorldState` movement execution required to make one-edge movement real and observable.
+
+It may add expected-source/destination/edge event intent, execution-time revalidation, deterministic stale-event rejection, canonical unit-location replacement and WorldState revision advancement.
+
+It must not add movement-range balance, multi-edge route semantics, unit classes, terrain mobility, supply, morale, formations, zones of control, hostile occupancy blocking or combat.
+
+The M4.5 decomposition is revised to:
+
+- M4.5-A — contract freeze — closed;
+- M4.5-B — military order identity and validation — closed;
+- M4.5-C — minimal deterministic strategic movement execution;
+- M4.5-D — Human Visibility Gate & Warfare Design Review;
+- M4.5-E — accumulated integration validation and M4.5 close.
+
+M4.5-D is a replaceable observability MVP rather than final presentation architecture.
+
+Its purpose is to render enough of the authoritative strategic topology, ownership and unit state to let the human designer observe real movement, evaluate spatial assumptions and explicitly choose the direction of deeper Warfare.
+
+M4.6 detailed combat design is therefore intentionally not frozen before M4.5-D.
+
+The project-wide design rule becomes:
+
+`minimal reusable substrate -> low-cost visibility -> human design decision -> deeper rules -> updated visibility`
+
+This rule applies when visual/spatial/interaction feedback materially affects the quality of the next design decision. It does not require production UI for infrastructure that can be safely validated through contracts and tests.
+
+The governance change awards no GPP and does not expand the V1 baseline.
+
 # 43. Status
 
 Versão atual:

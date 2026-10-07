@@ -15533,3 +15533,67 @@ M4.5-B is closed locally.
 Next after post-commit cross-platform regression:
 
 **M4.5-C — Deterministic Strategic Movement Command/Event Execution**
+---
+
+## 2026-10-06 — Progressive Human Visibility Gate governance freeze
+
+Milestone:
+
+**M4 — Systemic Vertical Slice**
+
+Decision:
+
+**ADR-049 — Progressive Human Visibility Gates for Experience-Sensitive Design**
+
+Trigger:
+
+The Warfare stage exposed a planning risk: the deterministic backend could advance into experience-sensitive military rules before the human designer had a visual representation of the actual map and unit behavior.
+
+Accepted finding:
+
+The completed M4.5-A/B work remains reusable substrate and does not require rollback.
+
+The project changes direction before deeper Warfare semantics are introduced.
+
+Accepted post-close M4.5-B cross-platform evidence:
+
+- commit: `844f3186ca0832e0ea02bc5a091bbc3151ee7676`;
+- workflow: `Cross-Platform Kernel Regression Validation`;
+- run: `37550208141`;
+- Windows: `1026/1026`, success;
+- Ubuntu: `1026/1026`, success;
+- macOS: `1026/1026`, success;
+- total platform executions: `3078`;
+- failures: `0`.
+
+Governance change:
+
+- M4.5-C remains minimal deterministic movement execution;
+- new M4.5-D becomes Human Visibility Gate & Warfare Design Review;
+- prior accumulated-close checkpoint moves from M4.5-D to M4.5-E;
+- M4.6 detailed decomposition is deferred until human review;
+- production UI technology is not frozen by the visibility gate;
+- future experience-sensitive systems should interleave reusable substrate and low-cost observability when human feedback materially affects design.
+
+M4.5 revised decomposition:
+
+- M4.5-A — Units, Orders & Strategic Movement Contract Freeze — closed;
+- M4.5-B — Military Order Identity & Validation — closed;
+- M4.5-C — Minimal Deterministic Strategic Movement Execution;
+- M4.5-D — Human Visibility Gate & Warfare Design Review;
+- M4.5-E — Accumulated Integration Validation & M4.5 Close.
+
+GPP:
+
+- governance delta: `0.00 GPP`;
+- M4.5 remains `12.00 / 42`;
+- Warfare remains `12.00 / 140 — 8.6%`;
+- Project remains `337.30 / 1000 — 33.7%`.
+
+New risk:
+
+**RISK-013 — Human design visibility lag — HIGH**
+
+Next checkpoint:
+
+**M4.5-C — Minimal Deterministic Strategic Movement Execution**
