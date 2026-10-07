@@ -1,9 +1,9 @@
 # Global Arena — Script Reliability Protocol
 
 **Protocol ID:** GA-SRP
-**Version:** 1.4
+**Version:** 1.5
 **Status:** Active
-**Effective date:** 2026-09-28
+**Effective date:** 2026-10-06
 **Scope:** PowerShell automation used to inspect, modify, validate or formally close work in the Global Arena repository.
 
 ## 1. Purpose
@@ -60,7 +60,10 @@ Mandatory:
 - native PowerShell parser PASS;
 - `#requires -Version 5.1`;
 - no known PS5.1-hostile line-leading operators;
+- no arithmetic binary continuation operators beginning a code line;
 - no inconsistent variable spelling that differs only by case;
+- no whitespace-fragile exact C# member-chain semantic assertions;
+- no generated xUnit `Assert.Single(collection.Where(...))` anti-pattern;
 - no PowerShell-expression use of `checked(...)`;
 - no trailing whitespace in script source;
 - no fragile single-quoted multiline anchor escapes.
@@ -240,13 +243,22 @@ Guard:
 Guard:
 when a script has a bug, generate a new revision. Do not patch the old revision in place for the operator.
 
-### GA-SR-016 — Recovery is bounded by a known state
+### GA-SR-016 — Recovery is bounded by a proven controlled state
 
-Observed failure:
-a previous failed script left a partial state that a later script had to recover.
+Observed failures:
+a previous failed script left a partial state that a later script had to recover; M4.5-C later exposed an exact residual staged payload that needed safe automated normalization without risking unrelated work.
 
 Guard:
-automatic recovery may occur only when the dirty-state shape and relevant artifacts match a specifically recognized state.
+
+- automatic recovery is allowed only for an explicitly recognized state;
+- verify expected HEAD/branch when relevant;
+- verify the exact path set and exact Git status shape;
+- verify there are no unexpected unstaged or untracked paths;
+- verify controlled file content, hashes or accepted evidence identity before destructive normalization;
+- restore/remove only the proven controlled paths;
+- if any identity check differs, fail without modifying the residual state;
+- after recovery, prove the intended baseline or protected state was restored exactly;
+- capture the recovery decision and evidence in the execution ZIP.
 
 ### GA-SR-018 — Nested PowerShell payload transport is delimiter-independent
 
@@ -286,15 +298,19 @@ Guard:
 
 ### GA-SR-021 — Mechanical detectors require bad and safe fixtures
 
-Observed failure:
-the GA-SR-020 detector rejected the correct normalized form `@(Get-ChildItem ...).Count` because its regex matched the unsafe substring inside the safe expression.
+Observed failures:
+
+- the GA-SR-020 detector rejected the correct normalized form `@(Get-ChildItem ...).Count` because its regex matched the unsafe substring inside the safe expression;
+- the first GA-SR-029 implementation scanned the complete carrier text and matched its own diagnostic/documentation mention of `Assert.Single(collection.Where(...))`, causing the hardened validator to reject the hardening script itself.
 
 Guard:
 
 - every new textual detector must have at least one bad fixture that must fail;
 - every new textual detector must also have at least one safe neighboring fixture that must pass;
 - a detector is not accepted merely because it catches the known bad example;
-- self-validation must prove that the validator does not reject its own prescribed safe form.
+- detectors must be scoped to the syntactic or semantic context that actually makes the pattern unsafe;
+- documentation, diagnostic messages and detector definitions that merely describe a prohibited pattern must not be treated as occurrences of that unsafe construct;
+- self-validation must prove that the validator does not reject its own prescribed safe form or its own rule documentation.
 
 ### GA-SR-022 — Gate output is persisted before a gate can fail
 
@@ -368,6 +384,76 @@ Guard:
 - direct synchronous Git invocation with immediate `$LASTEXITCODE` is not changed by this rule;
 - the validator rejects the observed `Invoke-BoundedProcess` captured Git diff-check pattern when the result variable's stdout/stderr is never inspected;
 - GA-SR-021 applies: the detector has failing and safe neighboring fixtures.
+
+### GA-SR-027 — Arithmetic binary operators stay on the preceding expression line
+
+Observed failure:
+M4.5-B QA used a multiline arithmetic assignment in which `- $Passed` and `- $Failed` began continuation lines. Windows PowerShell 5.1 accepted the script shape but evaluated the intended calculation incorrectly, producing a false test-accounting failure.
+
+Guard:
+
+- `+`, `-`, `*`, `/` and `%` used as binary continuation operators must remain on the preceding expression line;
+- unary negative literals such as `-1` are not prohibited by this rule;
+- the validator mechanically rejects the observed line-leading binary-operator shape;
+- GA-SR-021 applies with both unsafe and safe fixtures.
+
+### GA-SR-028 — Semantic audits must tolerate source formatting
+
+Observed failures:
+M4.5-C entry/audit scripts used exact textual assertions for semantic facts. Equivalent documentation wording or a C# member access split across lines caused false audit failures even though the underlying design/code was correct.
+
+Guard:
+
+- semantic code audits must prefer AST/behavioral checks, atomic tokens or whitespace-tolerant regex over long exact source fragments;
+- exact prose assertions should target stable contract identifiers/headings/fields, not incidental sentence wording, unless the exact sentence itself is the contract;
+- exact `Assert-ContainsLiteral` checks for variable/member chains such as `worldState.WorldBinding` are prohibited because formatting may split the chain;
+- the validator mechanically rejects the observed lower-camel/member exact-literal shape;
+- reviewed audits remain responsible for broader prose brittleness that cannot be identified safely by static analysis;
+- GA-SR-021 applies with unsafe and safe neighboring fixtures.
+
+### GA-SR-029 — Generated xUnit assertions must satisfy analyzer-safe idioms
+
+Observed failure:
+M4.5-C R1 generated `Assert.Single(collection.Where(predicate))`, and the repository analyzer emitted `xUnit2031`, blocking an otherwise valid build.
+
+Guard:
+
+- generated xUnit source must use `Assert.Single(collection, predicate)` rather than filtering with `.Where(...)` before `Assert.Single`;
+- known analyzer failures that are deterministic and statically recognizable are promoted to generated-source regression guards;
+- the validator rejects the observed `Assert.Single(...Where(...))` pattern only inside payloads that are structurally recognizable as generated xUnit/C# test source;
+- plain documentation or diagnostic text that merely mentions the prohibited expression is safe and must not trigger the detector;
+- GA-SR-021 applies with unsafe, safe-code and safe-documentation fixtures.
+
+### GA-SR-030 — Accepted Git state identity uses object IDs, not rendered diff text
+
+Observed failure:
+the GA-SRP 1.5 independent audit compared the accepted hardening `git diff --cached` text with a newly captured diff. The hardening evidence used durable redirected Git output while the audit recaptured native Git text through Windows PowerShell 5.1. Unicode-sensitive diff text can be decoded or serialized differently even when the staged Git objects are identical, producing a false audit failure.
+
+Guard:
+
+- accepted staged state identity is proved by expected HEAD, exact path/status shape and staged Git object IDs;
+- use full object IDs from `git rev-parse :path`, `git ls-files --stage`, or equivalent Git object identity rather than rendered diff equality;
+- for modified tracked files, baseline HEAD plus staged blob identity proves the accepted content state;
+- for added files, staged blob identity plus exact path/status shape proves the accepted content state;
+- rendered `git diff` remains valuable human-readable evidence, but it is not an identity oracle;
+- when Unicode-sensitive native text must be consumed semantically, capture bytes durably and decode explicitly rather than comparing output captured through different transport paths;
+- direct Windows PowerShell native-text capture must not be compared against durable UTF-8 redirected output as a repository-state identity check;
+- a broad static detector is intentionally not added because context-free matching would risk the GA-SR-021 false-positive class; this rule is enforced by reviewed audit/formal-close design.
+
+### GA-SR-031 — Git capability detection recognizes safe process wrappers
+
+Observed failure:
+the GA-SRP 1.5 FormalClose script correctly executed Git through the bounded native-process helper, using `Invoke-BoundedProcess -FilePath 'git' -ArgumentList @('commit', ...)` and the equivalent wrapped `push`. GA-SR-014 looked only for direct textual `git commit` / `git push` forms, so it rejected a valid FormalClose before execution.
+
+Guard:
+
+- profile capability checks must recognize Git operations executed through approved process wrappers as well as direct native invocation;
+- inspect the PowerShell AST for `Invoke-BoundedProcess` and `Start-Process` commands targeting `git` or `git.exe`;
+- derive the Git verb from argument string nodes instead of requiring the verb to be adjacent to the executable name in rendered source text;
+- `ReadOnly` must still reject wrapped `add`, `reset`, `restore`, `commit` and `push`;
+- `QaMutation` and `Bootstrap` must still reject wrapped `commit` and `push`;
+- `FormalClose` must accept either direct or safely wrapped `commit` and `push`, and must still reject a close missing either capability;
+- GA-SR-021 applies: include a safe wrapped commit+push fixture and an unsafe wrapped commit-without-push fixture.
 
 ### GA-SR-017 — Protocol regression promotion
 

@@ -161,6 +161,9 @@ function Test-GAScriptText {
     $operatorPattern =
         '^\s*-(eq|ne|gt|ge|lt|le|like|notlike|match|notmatch|contains|notcontains|in|notin|is|isnot|and|or|xor|not|band|bor|bxor|shl|shr)\b'
 
+    $arithmeticContinuationOperatorPattern =
+        '^\s*[+\-*/%]\s+'
+
     foreach ($record in $codeLines)
     {
         if ($record.Text -match $operatorPattern)
@@ -170,6 +173,15 @@ function Test-GAScriptText {
                     -Rule 'GA-SR-002' `
                     -Line $record.Number `
                     -Message 'PowerShell operator begins a code line. Keep the operator on the preceding expression line.'))
+        }
+
+        if ($record.Text -match $arithmeticContinuationOperatorPattern)
+        {
+            $violations.Add(
+                (New-Violation `
+                    -Rule 'GA-SR-027' `
+                    -Line $record.Number `
+                    -Message 'Arithmetic binary operator begins a continuation line. Keep +, -, *, / and % on the preceding expression line in PS5.1 automation.'))
         }
 
         if ($record.Text -match '-(Old|New)\s+''[^'']*`n[^'']*''')
@@ -366,6 +378,135 @@ function Test-GAScriptText {
         }
     }
 
+    $containsLiteralCommands =
+        @(
+            $ast.FindAll(
+                {
+                    param($node)
+
+                    if ($node -isnot
+                        [System.Management.Automation.Language.CommandAst])
+                    {
+                        return $false
+                    }
+
+                    return $node.GetCommandName() -eq
+                        'Assert-ContainsLiteral'
+                },
+                $true)
+        )
+
+    foreach ($containsLiteralCommand in
+        $containsLiteralCommands)
+    {
+        $elements =
+            @(
+                $containsLiteralCommand.CommandElements
+            )
+
+        for ($elementIndex = 0;
+             $elementIndex -lt $elements.Count - 1;
+             $elementIndex++)
+        {
+            $element =
+                $elements[$elementIndex]
+
+            if ($element -isnot
+                [System.Management.Automation.Language.CommandParameterAst])
+            {
+                continue
+            }
+
+            if ($element.ParameterName -ne
+                'Literal')
+            {
+                continue
+            }
+
+            $valueAst =
+                $elements[$elementIndex + 1]
+
+            $literalValue = $null
+
+            if ($valueAst -is
+                [System.Management.Automation.Language.StringConstantExpressionAst])
+            {
+                $literalValue =
+                    $valueAst.Value
+            }
+            elseif ($valueAst -is
+                [System.Management.Automation.Language.ExpandableStringExpressionAst])
+            {
+                $literalValue =
+                    $valueAst.Value
+            }
+
+            if ($null -eq $literalValue)
+            {
+                continue
+            }
+
+            if ($literalValue -match
+                '\b[a-z_][A-Za-z0-9_]*\.[A-Z_][A-Za-z0-9_]*\b')
+            {
+                $violations.Add(
+                    (New-Violation `
+                        -Rule 'GA-SR-028' `
+                        -Line $containsLiteralCommand.Extent.StartLineNumber `
+                        -Message 'Exact semantic audit literal contains a C#-style member chain that may be split by formatting. Assert atomic tokens or use a whitespace-tolerant semantic pattern.'))
+
+                break
+            }
+        }
+    }
+
+    $xunitSingleWherePattern =
+        '(?is)Assert\.Single\s*\(\s*.{0,800}?\.Where\s*\('
+
+    $stringPayloadNodes =
+        @(
+            $ast.FindAll(
+                {
+                    param($node)
+
+                    return ($node -is
+                        [System.Management.Automation.Language.StringConstantExpressionAst]) -or
+                        ($node -is
+                            [System.Management.Automation.Language.ExpandableStringExpressionAst])
+                },
+                $true)
+        )
+
+    foreach ($stringPayloadNode in $stringPayloadNodes)
+    {
+        $payloadText =
+            $stringPayloadNode.Value
+
+        $isLikelyXunitSource =
+            ($payloadText -match
+                '(?m)^\s*\[(Fact|Theory)\]\s*$') -and
+            (($payloadText -match
+                '(?m)^\s*(public\s+)?(sealed\s+)?class\b') -or
+             ($payloadText -match
+                '(?m)^\s*namespace\s+'))
+
+        if (-not $isLikelyXunitSource)
+        {
+            continue
+        }
+
+        if ($payloadText -match $xunitSingleWherePattern)
+        {
+            $violations.Add(
+                (New-Violation `
+                    -Rule 'GA-SR-029' `
+                    -Line $stringPayloadNode.Extent.StartLineNumber `
+                    -Message 'Generated xUnit source uses the analyzer-hostile Assert.Single plus Where pattern; use the Assert.Single collection-and-predicate overload to avoid xUnit2031.'))
+
+            break
+        }
+    }
+
     $variableSpellingsByScope = @{}
 
     $variableExpressions =
@@ -481,6 +622,87 @@ function Test-GAScriptText {
     $hasGitRestore =
         $normalized -match
             ($gitCommandPrefix + 'restore\b')
+
+    $wrappedGitCommands =
+        @(
+            $ast.FindAll(
+                {
+                    param($node)
+
+                    if ($node -isnot
+                        [System.Management.Automation.Language.CommandAst])
+                    {
+                        return $false
+                    }
+
+                    $commandName =
+                        $node.GetCommandName()
+
+                    return ($commandName -eq
+                        'Invoke-BoundedProcess') -or
+                        ($commandName -eq
+                            'Start-Process')
+                },
+                $true)
+        )
+
+    foreach ($wrappedGitCommand in
+        $wrappedGitCommands)
+    {
+        $wrappedText =
+            $wrappedGitCommand.Extent.Text
+
+        $targetsGit =
+            $wrappedText -match
+                '(?is)-FilePath\s+[''"]git(?:\.exe)?[''"]'
+
+        if (-not $targetsGit)
+        {
+            continue
+        }
+
+        $argumentStrings =
+            @(
+                $wrappedGitCommand.FindAll(
+                    {
+                        param($node)
+
+                        return ($node -is
+                            [System.Management.Automation.Language.StringConstantExpressionAst]) -or
+                            ($node -is
+                                [System.Management.Automation.Language.ExpandableStringExpressionAst])
+                    },
+                    $true) |
+                    ForEach-Object {
+                        $_.Value
+                    }
+            )
+
+        if ($argumentStrings -contains 'commit')
+        {
+            $hasCommit = $true
+        }
+
+        if ($argumentStrings -contains 'push')
+        {
+            $hasPush = $true
+        }
+
+        if ($argumentStrings -contains 'add')
+        {
+            $hasGitAdd = $true
+        }
+
+        if ($argumentStrings -contains 'reset')
+        {
+            $hasGitReset = $true
+        }
+
+        if ($argumentStrings -contains 'restore')
+        {
+            $hasGitRestore = $true
+        }
+    }
 
     if ($SelectedProfile -eq 'ReadOnly')
     {
@@ -977,7 +1199,198 @@ if (($diffCheck.ExitCode -ne 0) -or
         -SelectedProfile 'General' `
         -ShouldPass $true
 
+    $arithmeticContinuationTrap = @'
+#requires -Version 5.1
+$ExpectedTotal = 20
+$Passed = 18
+$Failed = 1
+$Skipped =
+    $ExpectedTotal
+    - $Passed
+    - $Failed
+'@
+
+    Assert-Case `
+        -Name 'arithmetic-continuation-operator' `
+        -Text $arithmeticContinuationTrap `
+        -SelectedProfile 'General' `
+        -ShouldPass $false `
+        -ExpectedRule 'GA-SR-027'
+
+    $unaryNegativeSafe = @'
+#requires -Version 5.1
+$value =
+    -1
+Write-Host $value
+'@
+
+    Assert-Case `
+        -Name 'unary-negative-continuation-safe' `
+        -Text $unaryNegativeSafe `
+        -SelectedProfile 'General' `
+        -ShouldPass $true
+
+    $fragileMemberLiteralTrap = @'
+#requires -Version 5.1
+$source = 'fixture'
+Assert-ContainsLiteral `
+    -Text $source `
+    -Literal 'militaryMove.TraversedStrategicEdgeId' `
+    -Label 'fixture'
+'@
+
+    Assert-Case `
+        -Name 'fragile-member-literal-audit' `
+        -Text $fragileMemberLiteralTrap `
+        -SelectedProfile 'General' `
+        -ShouldPass $false `
+        -ExpectedRule 'GA-SR-028'
+
+    $atomicSemanticAuditSafe = @'
+#requires -Version 5.1
+$source = 'fixture'
+Assert-ContainsLiteral `
+    -Text $source `
+    -Literal 'militaryMove' `
+    -Label 'fixture'
+Assert-ContainsLiteral `
+    -Text $source `
+    -Literal 'TraversedStrategicEdgeId' `
+    -Label 'fixture'
+'@
+
+    Assert-Case `
+        -Name 'atomic-semantic-audit-safe' `
+        -Text $atomicSemanticAuditSafe `
+        -SelectedProfile 'General' `
+        -ShouldPass $true
+
+    $xunitSingleWhereTrap = @'
+#requires -Version 5.1
+$payload = @"
+using Xunit;
+
+public sealed class FixtureTests
+{
+    [Fact]
+    public void One()
+    {
+        Assert.Single(items.Where(predicate));
+    }
+}
+"@
+'@
+
+    Assert-Case `
+        -Name 'xunit-single-where-generated-source' `
+        -Text $xunitSingleWhereTrap `
+        -SelectedProfile 'General' `
+        -ShouldPass $false `
+        -ExpectedRule 'GA-SR-029'
+
+    $xunitSinglePredicateSafe = @'
+#requires -Version 5.1
+$payload = @"
+using Xunit;
+
+public sealed class FixtureTests
+{
+    [Fact]
+    public void One()
+    {
+        Assert.Single(items, predicate);
+    }
+}
+"@
+'@
+
+    Assert-Case `
+        -Name 'xunit-single-predicate-safe' `
+        -Text $xunitSinglePredicateSafe `
+        -SelectedProfile 'General' `
+        -ShouldPass $true
+
+    $xunitDocumentationMentionSafe = @'
+#requires -Version 5.1
+$note =
+    'Documentation may mention Assert.Single(collection.Where(...)) without containing generated xUnit source.'
+Write-Host $note
+'@
+
+    Assert-Case `
+        -Name 'xunit-documentation-mention-safe' `
+        -Text $xunitDocumentationMentionSafe `
+        -SelectedProfile 'General' `
+        -ShouldPass $true
+
+    $formalCloseWrappedGitSafe = @'
+#requires -Version 5.1
+$ErrorActionPreference = 'Stop'
+
+$commit =
+    Invoke-BoundedProcess `
+        -FilePath 'git' `
+        -ArgumentList @(
+            'commit',
+            '--only',
+            '-m',
+            'fixture',
+            '--',
+            'docs/file.md'
+        ) `
+        -Name 'git-commit'
+
+$push =
+    Invoke-BoundedProcess `
+        -FilePath 'git' `
+        -ArgumentList @(
+            'push',
+            'origin',
+            'main'
+        ) `
+        -Name 'git-push'
+
+Write-Host 'EVIDENCE_ZIP=fixture.zip'
+Write-Host 'FAILURE_EVIDENCE_ZIP=fixture-fail.zip'
+'@
+
+    Assert-Case `
+        -Name 'formalclose-wrapped-git-detection-safe' `
+        -Text $formalCloseWrappedGitSafe `
+        -SelectedProfile 'FormalClose' `
+        -ShouldPass $true
+
+    $formalCloseWrappedMissingPush = @'
+#requires -Version 5.1
+$ErrorActionPreference = 'Stop'
+
+$commit =
+    Invoke-BoundedProcess `
+        -FilePath 'git' `
+        -ArgumentList @(
+            'commit',
+            '--only',
+            '-m',
+            'fixture',
+            '--',
+            'docs/file.md'
+        ) `
+        -Name 'git-commit'
+
+Write-Host 'EVIDENCE_ZIP=fixture.zip'
+Write-Host 'FAILURE_EVIDENCE_ZIP=fixture-fail.zip'
+'@
+
+    Assert-Case `
+        -Name 'formalclose-wrapped-git-missing-push' `
+        -Text $formalCloseWrappedMissingPush `
+        -SelectedProfile 'FormalClose' `
+        -ShouldPass $false `
+        -ExpectedRule 'GA-SR-014'
+
     if ($script:testsFailed -ne 0)
+
+
     {
         Write-Host "SELFTESTS_PASSED=$($script:testsPassed)"
         Write-Host "SELFTESTS_FAILED=$($script:testsFailed)"
