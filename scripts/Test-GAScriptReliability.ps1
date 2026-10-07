@@ -507,6 +507,41 @@ function Test-GAScriptText {
         }
     }
 
+    $ps51UnsupportedUnsignedTypeAsts =
+        @(
+            $ast.FindAll(
+                {
+                    param($node)
+
+                    $isTypeNode =
+                        ($node -is
+                            [System.Management.Automation.Language.TypeConstraintAst]) -or
+                        ($node -is
+                            [System.Management.Automation.Language.TypeExpressionAst])
+
+                    if (-not $isTypeNode)
+                    {
+                        return $false
+                    }
+
+                    return [string]::Equals(
+                        $node.TypeName.FullName,
+                        'ulong',
+                        [System.StringComparison]::OrdinalIgnoreCase)
+                },
+                $true)
+        )
+
+    foreach ($unsupportedUnsignedTypeAst in
+        $ps51UnsupportedUnsignedTypeAsts)
+    {
+        $violations.Add(
+            (New-Violation `
+                -Rule 'GA-SR-032' `
+                -Line $unsupportedUnsignedTypeAst.Extent.StartLineNumber `
+                -Message 'The [ulong] accelerator is not available in Windows PowerShell 5.1. Use [uint64] or [System.UInt64].'))
+    }
+
     $functionDefinitions =
         @(
             $ast.FindAll(
@@ -1609,7 +1644,7 @@ Write-Host 'FAILURE_EVIDENCE_ZIP=fixture-fail.zip'
 
     $ps51UnsignedSuffixTrap = @'
 #requires -Version 5.1
-$value = [ulong]0
+$value = [uint64]0
 if ($value -ne 0UL) {
     Write-Host 'bad'
 }
@@ -1622,10 +1657,23 @@ if ($value -ne 0UL) {
         -ShouldPass $false `
         -ExpectedRule 'GA-SR-001'
 
-    $ps51UnsignedCastSafe = @'
+    $ps51UlongAcceleratorTrap = @'
 #requires -Version 5.1
 $value = [ulong]0
-if ($value -ne [ulong]1) {
+Write-Host $value
+'@
+
+    Assert-Case `
+        -Name 'ps51-ulong-accelerator-trap' `
+        -Text $ps51UlongAcceleratorTrap `
+        -SelectedProfile 'General' `
+        -ShouldPass $false `
+        -ExpectedRule 'GA-SR-032'
+
+    $ps51UnsignedCastSafe = @'
+#requires -Version 5.1
+$value = [uint64]0
+if ($value -ne [uint64]1) {
     Write-Host 'ok'
 }
 '@

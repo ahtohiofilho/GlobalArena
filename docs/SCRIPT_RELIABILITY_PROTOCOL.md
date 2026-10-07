@@ -1,7 +1,7 @@
 # Global Arena — Script Reliability Protocol
 
 **Protocol ID:** GA-SRP
-**Version:** 1.7
+**Version:** 1.8
 **Status:** Active
 **Effective date:** 2026-10-07
 **Scope:** PowerShell automation used to inspect, modify, validate or formally close work in the Global Arena repository.
@@ -455,19 +455,22 @@ Guard:
 - `FormalClose` must accept either direct or safely wrapped `commit` and `push`, and must still reject a close missing either capability;
 - GA-SR-021 applies: include a safe wrapped commit+push fixture and an unsafe wrapped commit-without-push fixture.
 
-### GA-SR-032 — PS5.1 numeric literals avoid unsupported unsigned suffix syntax
+### GA-SR-032 — PS5.1 numeric literals and type accelerators stay PS5.1-compatible
 
-Observed failure:
-the M4.5-D entry/design audit used executable PowerShell comparisons containing `0UL` and `1UL`. Windows PowerShell 5.1 does not accept that unsigned literal suffix syntax, so the native parser emitted a cascade of GA-SR-001 errors before the target could execute.
+Observed failures:
+
+- the M4.5-D entry/design audit R1 used executable PowerShell comparisons containing `0UL` and `1UL`; Windows PowerShell 5.1 rejected that newer unsigned-literal suffix syntax at parse time;
+- after the first hardening, M4.5-D entry/design audit R3 used the prescribed `[ulong]0` / `[ulong]1` casts; Windows PowerShell 5.1 parsed the script but failed at runtime because the `[ulong]` accelerator was added only in PowerShell 6.2.
 
 Guard:
 
-- repository automation remains native Windows PowerShell 5.1 syntax;
-- do not use C#-style / newer-PowerShell unsigned numeric suffixes such as `0UL`, `1UL`, `0U` or `1U` in executable PowerShell;
-- express the intended type explicitly with a PS5.1-safe cast, for example `[ulong]0` and `[ulong]1`;
-- the native PS5.1 parser remains the final mechanical authority for unsupported literal syntax;
-- the validator self-test suite permanently includes the observed comparison-context bad fixture (`-ne 0UL`) and the neighboring explicit-cast safe fixture;
-- GA-SR-021 applies to future extensions of numeric-literal portability checks.
+- repository automation remains native Windows PowerShell 5.1 syntax and runtime semantics;
+- do not use newer unsigned numeric suffixes such as `0UL`, `1UL`, `0U` or `1U` in executable PowerShell;
+- do not use the PowerShell 6.2+ `[ulong]` accelerator in PS5.1 automation;
+- use the PS5.1-compatible `[uint64]` accelerator (or the fully qualified `[System.UInt64]`) when an unsigned 64-bit cast is required;
+- the native PS5.1 parser remains authoritative for grammar failures, while the validator also rejects the observed parser-valid/runtime-invalid `[ulong]` type constraint/expression;
+- the regression suite permanently preserves the `-ne 0UL` parser trap, the `[ulong]0` runtime-compatibility trap and a neighboring `[uint64]` safe fixture;
+- GA-SR-021 applies to future extensions of numeric-literal and type-accelerator portability checks.
 
 ### GA-SR-033 — Profile Git-diff capability detection recognizes safe process wrappers
 
