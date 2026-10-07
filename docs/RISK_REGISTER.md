@@ -4317,3 +4317,61 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M4.5-B military order identity and validation**
+---
+
+# 68. M4.5-B military order identity and validation risk review
+
+**Date:** 2026-10-06
+
+Stage:
+
+**M4.5 — Units, Orders & Strategic Movement**
+
+Checkpoint:
+
+**M4.5-B — Military Order Identity & Validation — CLOSED LOCALLY**
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+Mitigation advanced:
+
+- military movement orders now have executable identity and planning-time validation;
+- authoritative unit source remains in `WorldState.Warfare`;
+- strategic adjacency remains generated-world authority;
+- world-binding mismatch is explicitly rejected.
+
+Execution-time movement mutation and stale-event behavior remain to be proven in M4.5-C.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+M4.5-B does not introduce movement points, terrain mobility, supply, morale, unit catalogue depth, combat, hostile occupancy blocking, control transfer or tactical pathfinding.
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+Command turn, world identity, authoritative source state and direct topology adjacency are validated deterministically.
+
+Execution-time stale-source revalidation and same-unit event contention remain M4.5-C obligations.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+Routine movement validation uses the strategic surface graph and does not invoke tactical pathfinding.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+M4.5-B adds command/validator behavior only and does not duplicate generated topology into runtime state.
+
+`RISK-007 — Architecture overengineering` remains `OPEN / HIGH`.
+
+The implementation reuses `ISimulationCommand`, `ISimulationCommandValidator`, `WorldState`, `RuntimeWorldBinding` and `StrategicSurfaceGraph` instead of creating a parallel warfare framework.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M4.5-C deterministic strategic movement command/event execution**

@@ -15454,3 +15454,82 @@ Accepted contract ADR:
 Next after post-commit cross-platform regression:
 
 **M4.5-B — Military Order Identity & Validation**
+---
+
+## 2026-10-06 — M4.5-B military order identity and validation
+
+Milestone:
+
+**M4 — Systemic Vertical Slice**
+
+Stage:
+
+**M4.5 — Units, Orders & Strategic Movement**
+
+Checkpoint:
+
+**M4.5-B — Military Order Identity & Validation**
+
+Accepted QA evidence:
+
+`GlobalArena-Evidence-M4.5-B-R2-MILITARY-ORDER-IDENTITY-VALIDATION-20261006-205523.zip`
+
+Accepted independent audit evidence:
+
+`GlobalArena-Evidence-M4.5-B-AUDIT-R1-20261006-205944.zip`
+
+Audit evidence SHA-256:
+
+`837292a7aeb1579c6797aaa199acd94668efda42d4b0e64260d193f606e86419`
+
+Accepted source baseline:
+
+`bfb72fb151f9824cea58508b01e1ff70d560b687`
+
+Accepted implementation:
+
+- `MilitaryMoveCommand` carries command identity, issuer, unit identity and destination strategic cell;
+- authoritative source is read from `WorldState.Warfare`;
+- command-authored source and traversed edge are absent;
+- `MilitaryMoveCommandValidator` is bound to one generated-world identity;
+- unbound or mismatched runtime worlds are rejected;
+- unknown units are rejected;
+- issuer/owner mismatch is rejected;
+- destinations outside the bound world are rejected;
+- non-neighbor destinations are rejected;
+- direct strategic neighbors are accepted;
+- co-location remains allowed;
+- no event, Warfare mutation or WorldState revision mutation is introduced.
+
+Accepted validation:
+
+- GA-SRP self-tests: `19/19`;
+- target reliability validation: parser `0`, rules `0`;
+- Release build: PASS;
+- compiler warnings/errors: `0/0`;
+- focused M4.5-B tests: `15/15`;
+- full Release regression: `1026/1026`;
+- not executed: `0`;
+- `git diff --check`: PASS;
+- `git diff --cached --check`: PASS;
+- independent ReadOnly audit: `PASS_READY_FOR_M4_5_B_FORMAL_CLOSE`.
+
+Maturity:
+
+- `Military orders / validation` budget: `12 GPP`;
+- prior factor: `0.00`;
+- accepted factor: `0.50 — functional isolated`;
+- M4.5-B delta: `+6.00 GPP`;
+- M4.5 becomes `12.00 / 42 GPP — 28.6%`;
+- Warfare becomes `12.00 / 140 — 8.6%`;
+- Project becomes `337.30 / 1000 — 33.7%`.
+
+Accepted decision ADR:
+
+**ADR-048 — M4.5-B Military Order Identity & Validation**
+
+M4.5-B is closed locally.
+
+Next after post-commit cross-platform regression:
+
+**M4.5-C — Deterministic Strategic Movement Command/Event Execution**

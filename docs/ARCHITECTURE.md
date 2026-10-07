@@ -6656,6 +6656,36 @@ M4.5-A changes no executable production contract and awards no GPP.
 
 The accepted contract is recorded in ADR-047.
 
+## 42.20 M4.5-B military order identity and validation
+
+M4.5-B materializes the first executable Warfare-side military order contract.
+
+`MilitaryMoveCommand` implements `ISimulationCommand` and contains `CommandId`, issuing `CivilizationId`, `MilitaryUnitId` and destination `StrategicCellId`.
+
+The command intentionally does not contain authoritative source location or traversed edge identity.
+
+Planning-time source authority remains the current `MilitaryUnitRuntimeState` inside `WorldState.Warfare`.
+
+`MilitaryMoveCommandValidator` is constructed from the authoritative generated world. It derives a `RuntimeWorldBinding` for identity equivalence and uses the generated `StrategicSurfaceGraph` for direct-neighbor validation.
+
+This preserves the architectural split:
+
+- `WorldState` owns mutable authoritative runtime unit state;
+- generated-world topology owns immutable strategic adjacency;
+- `RuntimeWorldBinding` proves world identity without duplicating topology.
+
+The validator rejects unsupported command types, turn mismatch, unbound or mismatched worlds, unknown units, owner/issuer mismatch, destinations outside the bound world and non-neighbor moves.
+
+A directly adjacent destination is accepted even when another unit already occupies it, preserving the M4.5 co-location rule.
+
+M4.5-B introduces no movement event, execution-time revalidation, state mutation, combat, control transfer, edge blocking or tactical pathfinding.
+
+Local validation is `15/15` focused tests and `1026/1026` complete Release regression with zero warnings/errors.
+
+`Military orders / validation` advances to functional-isolated factor `0.50`, earning `6.00 / 12 GPP`.
+
+The accepted implementation decision is recorded in ADR-048.
+
 # 43. Status
 
 Versão atual:

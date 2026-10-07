@@ -1309,7 +1309,11 @@ Etapa atual:
 
 Subetapa atual:
 
-**M4.5-B — Military Order Identity & Validation**
+**M4.5-C — Deterministic Strategic Movement Command/Event Execution**
+
+M4.5-B — Military Order Identity & Validation:
+
+**concluído em 2026-10-06**
 
 M4.5-A — Units, Orders & Strategic Movement Contract Freeze:
 
@@ -1525,11 +1529,11 @@ Baseline V1:
 
 Progresso oficial:
 
-**33,1%**
+**33,7%**
 
 GPP conquistados:
 
-**331,30 / 1000**
+**337,30 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -1549,7 +1553,7 @@ Economia / comércio / logística:
 
 Warfare / unidades / combate:
 
-**6,00 / 140 GPP — 4,3%**
+**12,00 / 140 GPP — 8,6%**
 
 Civilizações / diplomacia:
 
@@ -1569,11 +1573,11 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M4.5-B military order identity and validation**
+**M4.5-C deterministic strategic movement command/event execution**
 
 Entry gate:
 
-**post-commit cross-platform regression for M4.5-A**
+**post-commit cross-platform regression for M4.5-B**
 
 Última revisão de baseline:
 

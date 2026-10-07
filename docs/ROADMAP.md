@@ -1897,7 +1897,28 @@ Operational decomposition:
 
 Current subcheckpoint:
 
-**M4.5-B — Military Order Identity & Validation**
+**M4.5-C — Deterministic Strategic Movement Command/Event Execution**
+
+M4.5-B — Military Order Identity & Validation: closed.
+
+M4.5-B executable close:
+
+- `MilitaryMoveCommand` carries CommandId, issuer, MilitaryUnitId and destination StrategicCellId;
+- authoritative source is read from `WorldState.Warfare`;
+- command-authored source and traversed edge remain forbidden;
+- validator is tied to the generated-world identity through RuntimeWorldBinding;
+- unknown units, owner/issuer mismatch, foreign destinations and non-neighbor moves are rejected;
+- direct-neighbor moves are accepted;
+- co-location remains allowed;
+- movement event, state mutation and execution-time revalidation remain deferred to M4.5-C;
+- focused regression: `15/15`;
+- full local Release regression: `1026/1026`;
+- compiler warnings/errors: `0/0`;
+- `Military orders / validation`: `6.00 / 12 GPP — factor 0.50`;
+- M4.5-B GPP delta: `+6.00`;
+- M4.5 total: `12.00 / 42 GPP — 28.6%`;
+- Warfare total: `12.00 / 140 — 8.6%`;
+- Project total: `337.30 / 1000 — 33.7%`.
 
 M4.5-A — Units, Orders & Strategic Movement Contract Freeze: closed.
 
@@ -2462,7 +2483,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M4.5-B — Military Order Identity & Validation**
+**M4.5-C — Deterministic Strategic Movement Command/Event Execution**
 
 M3 Entry Audit:
 
@@ -2490,11 +2511,11 @@ M3.1-D — Accumulated M3.1 Validation & Close:
 
 Official Progress:
 
-**33.1%**
+**33.7%**
 
 GPP Earned:
 
-**331.30 / 1000**
+**337.30 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -2514,7 +2535,7 @@ Economy / trade / logistics:
 
 Warfare / units / combat:
 
-**6.00 / 140 GPP — 4.3%**
+**12.00 / 140 GPP — 8.6%**
 
 Civilizations / Diplomacy:
 
@@ -2534,11 +2555,11 @@ Active Critical Risks:
 
 Critical Path:
 
-**M4.5-B military order identity and validation**
+**M4.5-C deterministic strategic movement command/event execution**
 
 Entry gate:
 
-**post-commit cross-platform regression for M4.5-A**
+**post-commit cross-platform regression for M4.5-B**
 
 Last Baseline Review:
 
