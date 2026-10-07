@@ -507,6 +507,160 @@ function Test-GAScriptText {
         }
     }
 
+    $functionDefinitions =
+        @(
+            $ast.FindAll(
+                {
+                    param($node)
+
+                    $node -is
+                        [System.Management.Automation.Language.FunctionDefinitionAst]
+                },
+                $true)
+        )
+
+    foreach ($functionDefinition in $functionDefinitions)
+    {
+        if (-not [string]::Equals(
+            $functionDefinition.Name,
+            'git',
+            [System.StringComparison]::OrdinalIgnoreCase))
+        {
+            continue
+        }
+
+        $nestedGitCommands =
+            @(
+                $functionDefinition.Body.FindAll(
+                    {
+                        param($node)
+
+                        if ($node -isnot
+                            [System.Management.Automation.Language.CommandAst])
+                        {
+                            return $false
+                        }
+
+                        $nestedCommandName =
+                            $node.GetCommandName()
+
+                        return (-not [string]::IsNullOrWhiteSpace(
+                            $nestedCommandName)) -and
+                            [string]::Equals(
+                                $nestedCommandName,
+                                'git',
+                                [System.StringComparison]::OrdinalIgnoreCase)
+                    },
+                    $true)
+            )
+
+        if ($nestedGitCommands.Count -gt 0)
+        {
+            $violations.Add(
+                (New-Violation `
+                    -Rule 'GA-SR-034' `
+                    -Line $functionDefinition.Extent.StartLineNumber `
+                    -Message 'PowerShell function Git shadows the native git executable it invokes. Use a distinct wrapper name such as Invoke-GitLines and resolve git.exe explicitly when needed.'))
+        }
+    }
+
+    $trxPathFileNames =
+        @(
+            $ast.FindAll(
+                {
+                    param($node)
+
+                    if ($node -isnot
+                        [System.Management.Automation.Language.AssignmentStatementAst])
+                    {
+                        return $false
+                    }
+
+                    if ($node.Left -isnot
+                        [System.Management.Automation.Language.VariableExpressionAst])
+                    {
+                        return $false
+                    }
+
+                    return $node.Left.VariablePath.UserPath -match
+                        '(?i)TrxPath$'
+                },
+                $true) |
+                ForEach-Object {
+                    $assignment = $_
+
+                    $strings =
+                        @(
+                            $assignment.Right.FindAll(
+                                {
+                                    param($node)
+
+                                    return ($node -is
+                                        [System.Management.Automation.Language.StringConstantExpressionAst]) -or
+                                        ($node -is
+                                            [System.Management.Automation.Language.ExpandableStringExpressionAst])
+                                },
+                                $true)
+                        )
+
+                    foreach ($stringNode in $strings)
+                    {
+                        if ($stringNode.Value -match
+                            '(?i)([^\\/]+\.trx)$')
+                        {
+                            $matches[1]
+                        }
+                    }
+                } |
+                Sort-Object -Unique
+        )
+
+    $trxLoggerFileNames =
+        @(
+            $stringPayloadNodes |
+                ForEach-Object {
+                    if ($_.Value -match
+                        '(?i)^trx;LogFileName=([^\\/]+\.trx)$')
+                    {
+                        $matches[1]
+                    }
+                } |
+                Sort-Object -Unique
+        )
+
+    if (($trxPathFileNames.Count -gt 0) -and
+        ($trxLoggerFileNames.Count -gt 0))
+    {
+        $trxNamesDiffer =
+            ($trxPathFileNames.Count -ne
+                $trxLoggerFileNames.Count)
+
+        if (-not $trxNamesDiffer)
+        {
+            for ($trxIndex = 0;
+                 $trxIndex -lt $trxPathFileNames.Count;
+                 $trxIndex++)
+            {
+                if (-not [string]::Equals(
+                    $trxPathFileNames[$trxIndex],
+                    $trxLoggerFileNames[$trxIndex],
+                    [System.StringComparison]::OrdinalIgnoreCase))
+                {
+                    $trxNamesDiffer = $true
+                    break
+                }
+            }
+        }
+
+        if ($trxNamesDiffer)
+        {
+            $violations.Add(
+                (New-Violation `
+                    -Rule 'GA-SR-035' `
+                    -Message 'TRX evidence path names disagree with trx;LogFileName producer names. Derive revision-specific artifact names from one shared source of truth.'))
+        }
+    }
+
     $variableSpellingsByScope = @{}
 
     $variableExpressions =
@@ -623,6 +777,16 @@ function Test-GAScriptText {
         $normalized -match
             ($gitCommandPrefix + 'restore\b')
 
+    $hasGitDiffCheck =
+        $normalized -match
+            'git[^\r\n]*diff[^\r\n]*--check'
+
+    $hasGitCachedDiffCheck =
+        (($normalized -match
+            'git[^\r\n]*diff[^\r\n]*--cached[^\r\n]*--check') -or
+         ($normalized -match
+            'git[^\r\n]*diff[^\r\n]*--check[^\r\n]*--cached'))
+
     $wrappedGitCommands =
         @(
             $ast.FindAll(
@@ -641,7 +805,9 @@ function Test-GAScriptText {
                     return ($commandName -eq
                         'Invoke-BoundedProcess') -or
                         ($commandName -eq
-                            'Start-Process')
+                            'Start-Process') -or
+                        ($commandName -eq
+                            'Run')
                 },
                 $true)
         )
@@ -702,6 +868,17 @@ function Test-GAScriptText {
         {
             $hasGitRestore = $true
         }
+
+        if (($argumentStrings -contains 'diff') -and
+            ($argumentStrings -contains '--check'))
+        {
+            $hasGitDiffCheck = $true
+
+            if ($argumentStrings -contains '--cached')
+            {
+                $hasGitCachedDiffCheck = $true
+            }
+        }
     }
 
     if ($SelectedProfile -eq 'ReadOnly')
@@ -731,7 +908,7 @@ function Test-GAScriptText {
                     -Message "$SelectedProfile profile must not commit or push."))
         }
 
-        if ($normalized -notmatch 'git[^\r\n]*diff[^\r\n]*--check')
+        if (-not $hasGitDiffCheck)
         {
             $violations.Add(
                 (New-Violation `
@@ -739,8 +916,7 @@ function Test-GAScriptText {
                     -Message "$SelectedProfile profile must include git diff --check."))
         }
 
-        if (($normalized -notmatch 'git[^\r\n]*diff[^\r\n]*--cached[^\r\n]*--check') -and
-            ($normalized -notmatch 'git[^\r\n]*diff[^\r\n]*--check[^\r\n]*--cached'))
+        if (-not $hasGitCachedDiffCheck)
         {
             $violations.Add(
                 (New-Violation `
@@ -1387,6 +1563,176 @@ Write-Host 'FAILURE_EVIDENCE_ZIP=fixture-fail.zip'
         -SelectedProfile 'FormalClose' `
         -ShouldPass $false `
         -ExpectedRule 'GA-SR-014'
+
+    $ps51UnsignedSuffixTrap = @'
+#requires -Version 5.1
+$value = [ulong]0
+if ($value -ne 0UL) {
+    Write-Host 'bad'
+}
+'@
+
+    Assert-Case `
+        -Name 'ps51-unsigned-literal-suffix-trap' `
+        -Text $ps51UnsignedSuffixTrap `
+        -SelectedProfile 'General' `
+        -ShouldPass $false `
+        -ExpectedRule 'GA-SR-001'
+
+    $ps51UnsignedCastSafe = @'
+#requires -Version 5.1
+$value = [ulong]0
+if ($value -ne [ulong]1) {
+    Write-Host 'ok'
+}
+'@
+
+    Assert-Case `
+        -Name 'ps51-unsigned-cast-safe' `
+        -Text $ps51UnsignedCastSafe `
+        -SelectedProfile 'General' `
+        -ShouldPass $true
+
+    $wrappedDiffPairSafe = @'
+#requires -Version 5.1
+$ErrorActionPreference = 'Stop'
+
+$diff =
+    Run `
+        -FilePath 'git' `
+        -ArgumentList @(
+            'diff',
+            '--check'
+        ) `
+        -Name 'git-diff-check'
+
+$cached =
+    Run `
+        -FilePath 'git' `
+        -ArgumentList @(
+            'diff',
+            '--cached',
+            '--check'
+        ) `
+        -Name 'git-diff-cached-check'
+
+Write-Host 'rollback-ready'
+Write-Host 'EVIDENCE_ZIP=fixture.zip'
+Write-Host 'FAILURE_EVIDENCE_ZIP=fixture-fail.zip'
+'@
+
+    Assert-Case `
+        -Name 'wrapped-git-diff-pair-safe' `
+        -Text $wrappedDiffPairSafe `
+        -SelectedProfile 'Bootstrap' `
+        -ShouldPass $true
+
+    $wrappedDiffMissingCached = @'
+#requires -Version 5.1
+$ErrorActionPreference = 'Stop'
+
+$diff =
+    Run `
+        -FilePath 'git' `
+        -ArgumentList @(
+            'diff',
+            '--check'
+        ) `
+        -Name 'git-diff-check'
+
+Write-Host 'rollback-ready'
+Write-Host 'EVIDENCE_ZIP=fixture.zip'
+Write-Host 'FAILURE_EVIDENCE_ZIP=fixture-fail.zip'
+'@
+
+    Assert-Case `
+        -Name 'wrapped-git-diff-missing-cached' `
+        -Text $wrappedDiffMissingCached `
+        -SelectedProfile 'Bootstrap' `
+        -ShouldPass $false `
+        -ExpectedRule 'GA-SR-012'
+
+    $gitWrapperShadowTrap = @'
+#requires -Version 5.1
+function Git {
+    @(
+        & git -c core.safecrlf=false status
+    )
+}
+
+Git
+'@
+
+    Assert-Case `
+        -Name 'native-git-wrapper-shadow-trap' `
+        -Text $gitWrapperShadowTrap `
+        -SelectedProfile 'General' `
+        -ShouldPass $false `
+        -ExpectedRule 'GA-SR-034'
+
+    $gitWrapperDistinctSafe = @'
+#requires -Version 5.1
+function Invoke-GitLines {
+    @(
+        & git.exe -c core.safecrlf=false status
+    )
+}
+
+Invoke-GitLines
+'@
+
+    Assert-Case `
+        -Name 'native-git-wrapper-distinct-safe' `
+        -Text $gitWrapperDistinctSafe `
+        -SelectedProfile 'General' `
+        -ShouldPass $true
+
+    $trxRevisionMismatchTrap = @'
+#requires -Version 5.1
+$root = '.'
+$FullTrxPath =
+    Join-Path `
+        $root `
+        'cycle-r5-full.trx'
+
+$arguments = @(
+    '--logger',
+    'trx;LogFileName=cycle-r4-full.trx'
+)
+
+Write-Host $FullTrxPath
+Write-Host ($arguments -join ' ')
+'@
+
+    Assert-Case `
+        -Name 'trx-revision-name-mismatch-trap' `
+        -Text $trxRevisionMismatchTrap `
+        -SelectedProfile 'General' `
+        -ShouldPass $false `
+        -ExpectedRule 'GA-SR-035'
+
+    $trxRevisionMatchSafe = @'
+#requires -Version 5.1
+$root = '.'
+$FullTrxPath =
+    Join-Path `
+        $root `
+        'cycle-r5-full.trx'
+
+$arguments = @(
+    '--logger',
+    'trx;LogFileName=cycle-r5-full.trx'
+)
+
+Write-Host $FullTrxPath
+Write-Host ($arguments -join ' ')
+'@
+
+    Assert-Case `
+        -Name 'trx-revision-name-match-safe' `
+        -Text $trxRevisionMatchSafe `
+        -SelectedProfile 'General' `
+        -ShouldPass $true
 
     if ($script:testsFailed -ne 0)
 

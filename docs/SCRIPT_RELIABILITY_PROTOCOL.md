@@ -1,9 +1,9 @@
 # Global Arena — Script Reliability Protocol
 
 **Protocol ID:** GA-SRP
-**Version:** 1.5
+**Version:** 1.6
 **Status:** Active
-**Effective date:** 2026-10-06
+**Effective date:** 2026-10-07
 **Scope:** PowerShell automation used to inspect, modify, validate or formally close work in the Global Arena repository.
 
 ## 1. Purpose
@@ -454,6 +454,64 @@ Guard:
 - `QaMutation` and `Bootstrap` must still reject wrapped `commit` and `push`;
 - `FormalClose` must accept either direct or safely wrapped `commit` and `push`, and must still reject a close missing either capability;
 - GA-SR-021 applies: include a safe wrapped commit+push fixture and an unsafe wrapped commit-without-push fixture.
+
+### GA-SR-032 — PS5.1 numeric literals avoid unsupported unsigned suffix syntax
+
+Observed failure:
+the M4.5-D entry/design audit used executable PowerShell comparisons containing `0UL` and `1UL`. Windows PowerShell 5.1 does not accept that unsigned literal suffix syntax, so the native parser emitted a cascade of GA-SR-001 errors before the target could execute.
+
+Guard:
+
+- repository automation remains native Windows PowerShell 5.1 syntax;
+- do not use C#-style / newer-PowerShell unsigned numeric suffixes such as `0UL`, `1UL`, `0U` or `1U` in executable PowerShell;
+- express the intended type explicitly with a PS5.1-safe cast, for example `[ulong]0` and `[ulong]1`;
+- the native PS5.1 parser remains the final mechanical authority for unsupported literal syntax;
+- the validator self-test suite permanently includes the observed comparison-context bad fixture (`-ne 0UL`) and the neighboring explicit-cast safe fixture;
+- GA-SR-021 applies to future extensions of numeric-literal portability checks.
+
+### GA-SR-033 — Profile Git-diff capability detection recognizes safe process wrappers
+
+Observed failure:
+the first GA-SRP 1.6 hardening script contained both required Git hygiene gates, but executed them through a bounded helper using `-FilePath 'git'` and `-ArgumentList` values for `diff`, `--check` and `--cached`. The installed Bootstrap profile searched only for a direct rendered Git command and rejected the target before execution.
+
+Guard:
+
+- QaMutation and Bootstrap profile capability checks recognize required Git diff hygiene whether Git is invoked directly or through an approved process wrapper;
+- wrapper-aware detection inspects `Invoke-BoundedProcess`, `Start-Process` and the GA local bounded `Run` helper when `-FilePath` targets `git` or `git.exe`;
+- a wrapped argument set containing `diff` and `--check` satisfies the ordinary diff-hygiene capability;
+- the cached gate additionally requires `--cached`;
+- a target that supplies only ordinary `diff --check` and omits the cached check remains invalid;
+- direct synchronous Git forms remain valid;
+- this extends the wrapper capability model introduced by GA-SR-031 without weakening mutation restrictions;
+- GA-SR-021 applies with complete and incomplete wrapped fixtures.
+
+### GA-SR-034 — Native-command wrappers must not shadow the executable they invoke
+
+Observed failure:
+the GA-SRP 1.6 hardening R2 declared a PowerShell function named `Git` and invoked `& git -c ...` from inside it. PowerShell command resolution is case-insensitive, so the invocation could resolve to the wrapper function itself rather than `git.exe`; PowerShell then tried to bind native option `-c` as a function parameter and failed before any repository mutation.
+
+Guard:
+
+- helper functions that wrap a native executable must use a distinct PowerShell command name such as `Invoke-GitLines`, `Invoke-NativeGit` or `Invoke-BoundedProcess`;
+- do not name a wrapper `Git`, `Dotnet`, `Pwsh`, `PowerShell` or another native executable name when its body invokes the same command name;
+- when ambiguity matters, resolve the application explicitly, for example `git.exe`, while still keeping the wrapper name distinct;
+- the current mechanical detector covers the observed Git-shadowing form and can be extended evidence-first to other native executables;
+- the self-test suite permanently includes an unsafe `function Git { & git ... }` fixture and a safe `Invoke-GitLines { & git.exe ... }` neighboring fixture;
+- GA-SR-021 applies to detector extensions.
+
+### GA-SR-035 — Revision-specific artifact names use one source of truth
+
+Observed failure:
+the GA-SRP 1.6 hardening R4 expected `ga-srp-1.6-hardening-r4-full.trx` through `$FullTrxPath`, but its `dotnet test --logger` argument still generated the copied-forward R3 filename. The tests themselves passed `1044/1044`, yet evidence validation failed because the script looked for an artifact name that the test command never produced.
+
+Guard:
+
+- revision-specific evidence filenames must not be independently hard-coded in multiple places;
+- prefer one shared filename variable reused by the producer command and the consumer/evidence path;
+- when literal `*TrxPath` assignments and literal `trx;LogFileName=...` values coexist, the validator compares their filename sets and rejects disagreement;
+- a copied revision must not retain an older revision token in a producer/consumer artifact-name pair;
+- the mechanical guard targets the observed TRX producer/consumer class and can be extended evidence-first to other revision-specific artifacts;
+- GA-SR-021 applies: mismatched and matching TRX-name fixtures are permanent neighboring regressions.
 
 ### GA-SR-017 — Protocol regression promotion
 
