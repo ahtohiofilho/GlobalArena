@@ -661,6 +661,49 @@ function Test-GAScriptText {
         }
     }
 
+    foreach ($functionDefinition in $functionDefinitions)
+    {
+        $functionParameters = @()
+
+        if ($null -ne
+            $functionDefinition.Parameters)
+        {
+            $functionParameters +=
+                @(
+                    $functionDefinition.Parameters
+                )
+        }
+
+        if ($null -ne
+            $functionDefinition.Body.ParamBlock)
+        {
+            $functionParameters +=
+                @(
+                    $functionDefinition.Body.ParamBlock.Parameters
+                )
+        }
+
+        foreach ($functionParameter in $functionParameters)
+        {
+            $parameterName =
+                $functionParameter.Name.VariablePath.UserPath
+
+            if ([string]::Equals(
+                $parameterName,
+                'args',
+                [System.StringComparison]::OrdinalIgnoreCase))
+            {
+                $violations.Add(
+                    (New-Violation `
+                        -Rule 'GA-SR-036' `
+                        -Line $functionParameter.Extent.StartLineNumber `
+                        -Message 'Function parameter $Args shadows the PowerShell automatic $args variable. Use a distinct name such as $ArgumentList.'))
+
+                break
+            }
+        }
+    }
+
     $variableSpellingsByScope = @{}
 
     $variableExpressions =
@@ -1731,6 +1774,41 @@ Write-Host ($arguments -join ' ')
     Assert-Case `
         -Name 'trx-revision-name-match-safe' `
         -Text $trxRevisionMatchSafe `
+        -SelectedProfile 'General' `
+        -ShouldPass $true
+
+    $automaticArgsParameterTrap = @'
+#requires -Version 5.1
+function Invoke-Native(
+    [string]$FilePath,
+    [string[]]$Args
+) {
+    Write-Host $FilePath
+    Write-Host $Args.Count
+}
+'@
+
+    Assert-Case `
+        -Name 'automatic-args-function-parameter-trap' `
+        -Text $automaticArgsParameterTrap `
+        -SelectedProfile 'General' `
+        -ShouldPass $false `
+        -ExpectedRule 'GA-SR-036'
+
+    $automaticArgsParameterSafe = @'
+#requires -Version 5.1
+function Invoke-Native(
+    [string]$FilePath,
+    [string[]]$ArgumentList
+) {
+    Write-Host $FilePath
+    Write-Host $ArgumentList.Count
+}
+'@
+
+    Assert-Case `
+        -Name 'automatic-args-function-parameter-safe' `
+        -Text $automaticArgsParameterSafe `
         -SelectedProfile 'General' `
         -ShouldPass $true
 

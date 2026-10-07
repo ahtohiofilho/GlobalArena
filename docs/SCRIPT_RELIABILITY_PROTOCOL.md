@@ -1,7 +1,7 @@
 # Global Arena — Script Reliability Protocol
 
 **Protocol ID:** GA-SRP
-**Version:** 1.6
+**Version:** 1.7
 **Status:** Active
 **Effective date:** 2026-10-07
 **Scope:** PowerShell automation used to inspect, modify, validate or formally close work in the Global Arena repository.
@@ -512,6 +512,20 @@ Guard:
 - a copied revision must not retain an older revision token in a producer/consumer artifact-name pair;
 - the mechanical guard targets the observed TRX producer/consumer class and can be extended evidence-first to other revision-specific artifacts;
 - GA-SR-021 applies: mismatched and matching TRX-name fixtures are permanent neighboring regressions.
+
+### GA-SR-036 — Function parameters must not shadow PowerShell automatic variables
+
+Observed failure:
+the M4.5-D entry/design audit R2 declared a helper as `Run([string]$Exe,[string[]]$Args,...)`. PowerShell variable names are case-insensitive and `$args` is an automatic variable containing undeclared function arguments. The collision caused the helper's intended argument-list parameter to be empty at runtime, so `Start-Process -ArgumentList` failed before the first subprocess could start.
+
+Guard:
+
+- do not declare a PowerShell function parameter named `$Args` / `$args`;
+- use a distinct descriptive name such as `$ArgumentList`, `$NativeArguments` or `$ProcessArguments`;
+- the validator inspects real `ParameterAst` nodes inside function definitions, so documentation and string payloads that merely mention `$args` are not violations;
+- the current mechanical detector is intentionally limited to the observed `$args` automatic-variable collision and may be extended evidence-first if another automatic-variable parameter collision is observed;
+- the self-test suite permanently includes an unsafe function-parameter `$Args` fixture and a safe `$ArgumentList` neighboring fixture;
+- GA-SR-021 applies to detector extensions.
 
 ### GA-SR-017 — Protocol regression promotion
 
