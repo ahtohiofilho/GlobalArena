@@ -1279,7 +1279,45 @@ Economy / trade / logistics becomes:
 
 Production/demand flows remain transient and canonical WorldState hash format remains `7`.
 
+
+### M4.5 maturity after M4.5-C
+
+M4.5-C closes the minimal deterministic one-edge movement execution substrate defined by ADR-047 and constrained by ADR-049.
+
+| Capability | GPP | Maturidade | Fator | GPP ganhos |
+|---|---:|---|---:|---:|
+| Unit identity / ownership / state | 12 | Funcional isoladamente | 0.50 | 6.00 |
+| Military orders / validation | 12 | Funcional isoladamente | 0.50 | 6.00 |
+| Strategic movement | 18 | Funcional isoladamente | 0.50 | 9.00 |
+| **TOTAL M4.5 current** | **42** |  |  | **21.00** |
+
+M4.5-C increment:
+
+**+9.00 GPP**
+
+Project:
+
+**346.30 / 1000 — 34.6%**
+
+Warfare / units / combat:
+
+**21.00 / 140 — 15.0%**
+
+M4.5:
+
+**21.00 / 42 — 50.0%**
+
+The movement substrate now executes through the real `Command -> Event -> WorldState` pipeline, revalidates expected source/owner/topology at execution time, rejects stale same-unit events deterministically, preserves co-location and mutates only unit strategic location plus normal WorldState revision.
+
+No credit is assigned to combat, control transfer, hostile blocking, movement points, unit classes, terrain mobility, supply, morale, formations, zones of control or tactical pathfinding.
+
+The next mandatory checkpoint is:
+
+**M4.5-D — Human Visibility Gate & Warfare Design Review**
+
+M4.6 remains blocked until the human visibility/design gate is accepted.
 ### Runtime authority
+
 
 `WorldGenerationResult` remains immutable procedural input.
 
@@ -1328,7 +1366,11 @@ Etapa atual:
 
 Subetapa atual:
 
-**M4.5-C — Deterministic Strategic Movement Command/Event Execution**
+**M4.5-D — Human Visibility Gate & Warfare Design Review**
+
+M4.5-C — Minimal Deterministic Strategic Movement Execution:
+
+**concluído em 2026-10-06**
 
 M4.5-B — Military Order Identity & Validation:
 
@@ -1548,11 +1590,11 @@ Baseline V1:
 
 Progresso oficial:
 
-**33,7%**
+**34,6%**
 
 GPP conquistados:
 
-**337,30 / 1000**
+**346,30 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -1572,7 +1614,7 @@ Economia / comércio / logística:
 
 Warfare / unidades / combate:
 
-**12,00 / 140 GPP — 8,6%**
+**21,00 / 140 GPP — 15,0%**
 
 Civilizações / diplomacia:
 
@@ -1592,11 +1634,11 @@ Riscos críticos ativos:
 
 Critical Path atual:
 
-**M4.5-C deterministic strategic movement command/event execution**
+**M4.5-D human visibility gate and Warfare design review**
 
 Entry gate:
 
-**M4.5-B cross-platform regression satisfied — run 37550208141; M4.5-C constrained by ADR-049**
+**M4.5-C independent audit accepted; M4.5-D is mandatory under ADR-049 before deeper M4.6 Warfare design**
 
 Mandatory human gate before M4.6:
 

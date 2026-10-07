@@ -4466,3 +4466,65 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M4.5-C minimal deterministic strategic movement execution**
+---
+
+# 70. M4.5-C minimal deterministic strategic movement execution risk review
+
+**Date:** 2026-10-06
+
+Stage:
+
+**M4.5 — Units, Orders & Strategic Movement**
+
+Checkpoint:
+
+**M4.5-C — Minimal Deterministic Strategic Movement Execution — CLOSED LOCALLY**
+
+Accepted independent audit:
+
+`GlobalArena-Evidence-M4.5-C-AUDIT-R2-20261006-235519.zip`
+
+`RISK-008 — Architecture underengineering` remains `OPEN / CRITICAL`.
+
+Mitigation advanced:
+
+- the real Command -> Event -> WorldState movement path is executable;
+- planning-derived expected source/destination/traversed-edge intent is preserved into execution;
+- event revalidation consumes authoritative current state;
+- stale same-unit movement is deterministically rejected rather than resolved by ad-hoc overwrite.
+
+`RISK-006 — Scope expansion` remains `MITIGATING / CRITICAL`.
+
+M4.5-C deliberately excludes multi-edge routing, movement points, unit classes, terrain mobility, supply, morale, formations, zones of control, hostile occupancy blocking, combat, damage/destruction, control transfer and tactical pathfinding.
+
+`RISK-004 — Determinism failure` remains `WATCHING / HIGH`.
+
+Deterministic event ordering plus execution-time stale-source revalidation are now covered by focused and full regression. Post-commit cross-platform attestation remains required before this checkpoint is treated as cross-platform accumulated evidence.
+
+`RISK-002 — Tactical resolution scalability` remains `OPEN / CRITICAL`.
+
+Routine movement continues to use only strategic topology adjacency and does not invoke tactical pathfinding.
+
+`RISK-012 — Memory footprint` remains `OPEN / CRITICAL`.
+
+The movement substrate adds focused command/event processing without duplicating strategic topology or adding a resident path cache.
+
+`RISK-007 — Architecture overengineering` remains `OPEN / HIGH`.
+
+The implementation reuses the existing generic simulation contracts and Runtime Warfare aggregate rather than introducing a parallel movement engine.
+
+`RISK-013 — Human design visibility lag` remains `MITIGATING / HIGH`.
+
+The backend movement substrate is intentionally minimal and reversible. The next checkpoint is the mandatory human-observable map/unit gate before experience-sensitive Warfare rules are frozen.
+
+Global Risk Level remains:
+
+**HIGH**
+
+Active CRITICAL risks remain:
+
+**7**
+
+Next risk review gate:
+
+**M4.5-D Human Visibility Gate & Warfare Design Review**

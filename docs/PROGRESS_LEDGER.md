@@ -15597,3 +15597,117 @@ New risk:
 Next checkpoint:
 
 **M4.5-C — Minimal Deterministic Strategic Movement Execution**
+---
+
+## 2026-10-06 — M4.5-C Minimal Deterministic Strategic Movement Execution formal close
+
+Milestone:
+
+**M4 — Systemic Vertical Slice**
+
+Stage:
+
+**M4.5 — Units, Orders & Strategic Movement**
+
+Subcheckpoint concluído:
+
+**M4.5-C — Minimal Deterministic Strategic Movement Execution**
+
+Accepted independent audit:
+
+`GlobalArena-Evidence-M4.5-C-AUDIT-R2-20261006-235519.zip`
+
+Audit SHA-256:
+
+`1592fa66a35db3d0f31c1f84691070a0dbc6a59035f5dc3c3ead031e91221fb5`
+
+### Executable movement substrate
+
+Production:
+
+- `MilitaryMoveEvent`;
+- `MilitaryMoveCommandProcessor`;
+- `MilitaryMoveEventRevalidator`;
+- `MilitaryMoveEventExecutor`.
+
+Validation:
+
+- authoritative source derives from current `WorldState.Warfare`;
+- exactly one direct strategic edge is the baseline movement;
+- movement event carries expected source, destination and traversed edge;
+- execution-time revalidation covers world/turn/unit/owner/source/destination/edge;
+- stale same-unit events are rejected deterministically after an earlier movement changes source;
+- unit co-location remains allowed;
+- executor mutates only the moved unit strategic location and advances WorldState revision once;
+- real `TurnResolver` execution is covered;
+- deterministic equivalent inputs reproduce equivalent results.
+
+### Deliberate exclusions
+
+M4.5-C does not implement:
+
+- multi-edge military routing;
+- movement points or range/speed systems;
+- unit catalogue/classes;
+- terrain mobility;
+- supply/fuel;
+- morale;
+- formations;
+- zones of control;
+- hostile occupancy blocking;
+- combat;
+- damage/destruction;
+- control transfer;
+- tactical pathfinding.
+
+### Evidence
+
+- GA-SRP `1.5`: `28/28`;
+- staged object identity: `5/5`;
+- focused M4.5-C tests: `18/18`;
+- full Release regression: `1044/1044`;
+- compiler warnings/errors: `0/0`;
+- `git diff --check`: PASS;
+- `git diff --cached --check`: PASS;
+- independent semantic audit: PASS;
+- forbidden deeper Warfare scope: absent.
+
+### Maturity and GPP
+
+`Strategic movement` advances to:
+
+**Funcional isoladamente — fator 0.50 — 9.00 / 18 GPP**
+
+Increment:
+
+**+9.00 GPP**
+
+M4.5:
+
+**21.00 / 42 GPP — 50.0%**
+
+Warfare / units / combat:
+
+**21.00 / 140 GPP — 15.0%**
+
+Project:
+
+**346.30 / 1000 — 34.6%**
+
+Scope baseline remains:
+
+**1000 GPP**
+
+### Governance
+
+ADR-047 movement contracts remain authoritative.
+
+ADR-049 remains authoritative for sequencing.
+
+M4.5-D is mandatory before deeper M4.6 Warfare design.
+
+### Próximo subcheckpoint
+
+**M4.5-D — Human Visibility Gate & Warfare Design Review**
+
+M4.6 detailed design/implementation remains blocked until that human gate is accepted.

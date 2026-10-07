@@ -1897,7 +1897,7 @@ Operational decomposition:
 
 Current subcheckpoint:
 
-**M4.5-C — Minimal Deterministic Strategic Movement Execution**
+**M4.5-D — Human Visibility Gate & Warfare Design Review**
 
 Revised M4.5 decomposition under ADR-049:
 
@@ -1927,7 +1927,31 @@ M4.5-D human gate:
 
 M4.6 detailed implementation is blocked until M4.5-D is accepted.
 
+M4.5-C — Minimal Deterministic Strategic Movement Execution: closed.
+
+M4.5-C executable close:
+
+- `MilitaryMoveEvent` records deterministic event identity, issuer/unit, expected authoritative source, destination and traversed strategic edge;
+- `MilitaryMoveCommandProcessor` derives movement intent from authoritative `WorldState` and the shared strategic topology;
+- execution-time revalidation rejects wrong world/turn, missing unit, owner mismatch, stale source, invalid destination and wrong/non-adjacent traversed edge;
+- stale same-unit events are rejected after an earlier ordered event moves the unit;
+- co-location remains allowed and creates no combat semantics;
+- executor replaces only the moved unit location while preserving identity/owner and advances WorldState revision once;
+- real `TurnResolver` pipeline behavior is covered;
+- deterministic equivalent input/context behavior is covered;
+- focused regression: `18/18`;
+- full local Release regression: `1044/1044`;
+- compiler warnings/errors: `0/0`;
+- forbidden deeper Warfare scope remains absent;
+- `Strategic movement`: `9.00 / 18 GPP — factor 0.50`;
+- M4.5-C GPP delta: `+9.00`;
+- M4.5 total: `21.00 / 42 GPP — 50.0%`;
+- Warfare total: `21.00 / 140 — 15.0%`;
+- Project total: `346.30 / 1000 — 34.6%`;
+- next mandatory checkpoint: `M4.5-D — Human Visibility Gate & Warfare Design Review`;
+- M4.6 remains blocked by ADR-049.
 M4.5-B — Military Order Identity & Validation: closed.
+
 
 M4.5-B executable close:
 
@@ -2389,7 +2413,7 @@ Somente um ou poucos itens devem ser classificados como Critical Path.
 
 Status atual:
 
-**M4.5-B military order identity and validation**
+**M4.5-D human visibility gate and Warfare design review**
 
 ---
 
@@ -2511,7 +2535,7 @@ Current Stage:
 
 Current Subcheckpoint:
 
-**M4.5-C — Minimal Deterministic Strategic Movement Execution**
+**M4.5-D — Human Visibility Gate & Warfare Design Review**
 
 M3 Entry Audit:
 
@@ -2539,11 +2563,11 @@ M3.1-D — Accumulated M3.1 Validation & Close:
 
 Official Progress:
 
-**33.7%**
+**34.6%**
 
 GPP Earned:
 
-**337.30 / 1000**
+**346.30 / 1000**
 
 Foundation / Simulation Kernel:
 
@@ -2563,7 +2587,7 @@ Economy / trade / logistics:
 
 Warfare / units / combat:
 
-**12.00 / 140 GPP — 8.6%**
+**21.00 / 140 GPP — 15.0%**
 
 Civilizations / Diplomacy:
 
@@ -2583,11 +2607,11 @@ Active Critical Risks:
 
 Critical Path:
 
-**M4.5-C deterministic strategic movement command/event execution**
+**M4.5-D human visibility gate and Warfare design review**
 
 Entry gate:
 
-**M4.5-B cross-platform regression satisfied — run 37550208141; M4.5-C constrained by ADR-049**
+**M4.5-C independent audit accepted; M4.5-D mandatory under ADR-049 before deeper M4.6 Warfare design**
 
 Mandatory human gate before M4.6:
 
