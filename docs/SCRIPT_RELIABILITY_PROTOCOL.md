@@ -1,7 +1,7 @@
 # Global Arena — Script Reliability Protocol
 
 **Protocol ID:** GA-SRP
-**Version:** 1.9
+**Version:** 1.10
 **Status:** Active
 **Effective date:** 2026-10-07
 **Scope:** PowerShell automation used to inspect, modify, validate or formally close work in the Global Arena repository.
@@ -544,6 +544,22 @@ Guard:
 - the native Windows PowerShell 5.1 parser remains the mechanical authority for this grammar failure;
 - the self-test suite permanently includes the observed unsafe parameter/argument line-break fixture and an explicit-continuation safe neighboring fixture;
 - GA-SR-021 applies to future detector extensions if a parser-valid neighboring form later requires static enforcement.
+
+### GA-SR-038 — Native process argument transport must preserve one-argument boundaries
+
+Observed failure:
+the M4.5-D World MVP pivot FormalClose R2 invoked `git commit` through `Invoke-BoundedProcess`, whose durable native-process implementation uses `Start-Process -ArgumentList`. The commit message was supplied as the variable `$CommitMessage` after `-m`. Because Windows PowerShell 5.1 / `Start-Process` flattens `ArgumentList` into a native command line, the whitespace inside the message was not preserved as one Git argument. Git received `docs:` as the commit message and interpreted `pivot`, `M4.5-D`, `to`, `geometric`, `world` and `MVP` as pathspecs. The commit did not occur.
+
+Guard:
+
+- an array passed to `Start-Process -ArgumentList` must not be assumed to preserve PowerShell array-element boundaries at the native process boundary;
+- whitespace-bearing native arguments require transport that explicitly preserves quoting/boundaries;
+- for Git commits executed through approved process wrappers, do not pass `-m` followed directly by a variable expression;
+- a whitespace-bearing commit message sent through the current bounded `Start-Process` transport must be represented as an explicitly native-quoted literal, or the script must use another reviewed transport that preserves one-argument identity;
+- exit code alone is not a substitute for post-action verification; commit identity must still be verified from Git state;
+- the validator mechanically rejects the observed wrapped Git `commit -m $Variable` form;
+- the self-test suite permanently includes the unsafe variable-message fixture and a safe explicitly quoted neighboring fixture;
+- GA-SR-021 applies to future extensions of native argument-boundary detection.
 
 ### GA-SR-017 — Protocol regression promotion
 

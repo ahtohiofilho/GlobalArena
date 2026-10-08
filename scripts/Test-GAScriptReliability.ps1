@@ -959,6 +959,65 @@ function Test-GAScriptText {
         }
     }
 
+    foreach ($wrappedGitCommand in $wrappedGitCommands)
+    {
+        $wrappedText =
+            $wrappedGitCommand.Extent.Text
+
+        $targetsGit =
+            $wrappedText -match
+                '(?is)-FilePath\s+[''"]git(?:\.exe)?[''"]'
+
+        if (-not $targetsGit)
+        {
+            continue
+        }
+
+        $argumentStrings =
+            @(
+                $wrappedGitCommand.FindAll(
+                    {
+                        param($node)
+
+                        return ($node -is
+                            [System.Management.Automation.Language.StringConstantExpressionAst]) -or
+                            ($node -is
+                                [System.Management.Automation.Language.ExpandableStringExpressionAst])
+                    },
+                    $true) |
+                    ForEach-Object {
+                        $_.Value
+                    }
+            )
+
+        $isGitCommit =
+            $argumentStrings -contains
+                'commit'
+
+        $hasMessageSwitch =
+            $argumentStrings -contains
+                '-m'
+
+        if (-not ($isGitCommit -and
+            $hasMessageSwitch))
+        {
+            continue
+        }
+
+        $unsafeVariableMessageTransport =
+            $wrappedText -match
+                '(?is)[''"]-m[''"]\s*,\s*\$[A-Za-z_][A-Za-z0-9_:]*'
+
+        if ($unsafeVariableMessageTransport)
+        {
+            $violations.Add(
+                (New-Violation `
+                    -Rule 'GA-SR-038' `
+                    -Line $wrappedGitCommand.Extent.StartLineNumber `
+                    -Message 'Wrapped git commit passes -m followed by a variable through Start-Process-style ArgumentList transport. Whitespace-bearing values can split into multiple native arguments. Use an explicitly native-quoted literal or another reviewed one-argument-preserving transport.'))
+        }
+    }
+
     if ($SelectedProfile -eq 'ReadOnly')
     {
         if ($hasCommit -or
@@ -1893,6 +1952,52 @@ if (-not $exists) {
     Assert-Case `
         -Name 'ps51-command-argument-explicit-continuation-safe' `
         -Text $commandArgumentExplicitContinuationSafe `
+        -SelectedProfile 'General' `
+        -ShouldPass $true
+
+    $nativeCommitVariableMessageTrap = @'
+#requires -Version 5.1
+$CommitMessage = 'docs: fixture message'
+
+$commit =
+    Invoke-BoundedProcess `
+        -FilePath 'git.exe' `
+        -ArgumentList @(
+            'commit',
+            '-m',
+            $CommitMessage,
+            '--',
+            'docs/file.md'
+        ) `
+        -Name 'git-commit'
+'@
+
+    Assert-Case `
+        -Name 'native-commit-variable-message-boundary-trap' `
+        -Text $nativeCommitVariableMessageTrap `
+        -SelectedProfile 'General' `
+        -ShouldPass $false `
+        -ExpectedRule 'GA-SR-038'
+
+    $nativeCommitQuotedLiteralSafe = @'
+#requires -Version 5.1
+
+$commit =
+    Invoke-BoundedProcess `
+        -FilePath 'git.exe' `
+        -ArgumentList @(
+            'commit',
+            '-m',
+            '"docs: fixture message"',
+            '--',
+            'docs/file.md'
+        ) `
+        -Name 'git-commit'
+'@
+
+    Assert-Case `
+        -Name 'native-commit-quoted-literal-boundary-safe' `
+        -Text $nativeCommitQuotedLiteralSafe `
         -SelectedProfile 'General' `
         -ShouldPass $true
 
