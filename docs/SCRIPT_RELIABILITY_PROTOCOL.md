@@ -1,7 +1,7 @@
 # Global Arena — Script Reliability Protocol
 
 **Protocol ID:** GA-SRP
-**Version:** 1.8
+**Version:** 1.9
 **Status:** Active
 **Effective date:** 2026-10-07
 **Scope:** PowerShell automation used to inspect, modify, validate or formally close work in the Global Arena repository.
@@ -529,6 +529,21 @@ Guard:
 - the current mechanical detector is intentionally limited to the observed `$args` automatic-variable collision and may be extended evidence-first if another automatic-variable parameter collision is observed;
 - the self-test suite permanently includes an unsafe function-parameter `$Args` fixture and a safe `$ArgumentList` neighboring fixture;
 - GA-SR-021 applies to detector extensions.
+
+### GA-SR-037 — Command invocation line breaks require explicit continuation in PS5.1
+
+Observed failure:
+the M4.5-D World MVP pivot independent audit R1 split command invocations between a named parameter and its argument inside grouping parentheses, for example `Test-Path -LiteralPath` on one line and the path expression on the next. Windows PowerShell 5.1 does not treat the surrounding parentheses as implicit command-line continuation, so the target produced a parser-error cascade before execution.
+
+Guard:
+
+- do not split a PowerShell command invocation between a named parameter token and its argument unless the command line is explicitly continued;
+- surrounding `(...)` does not make command invocation newlines safe in Windows PowerShell 5.1;
+- prefer either a single logical command line or explicit backtick continuation before moving parameter/argument pairs to following lines;
+- when readability would require fragile nested command formatting, assign the command result to a temporary variable before using it inside `if`, member access or another expression;
+- the native Windows PowerShell 5.1 parser remains the mechanical authority for this grammar failure;
+- the self-test suite permanently includes the observed unsafe parameter/argument line-break fixture and an explicit-continuation safe neighboring fixture;
+- GA-SR-021 applies to future detector extensions if a parser-valid neighboring form later requires static enforcement.
 
 ### GA-SR-017 — Protocol regression promotion
 

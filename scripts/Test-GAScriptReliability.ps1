@@ -1860,6 +1860,42 @@ function Invoke-Native(
         -SelectedProfile 'General' `
         -ShouldPass $true
 
+    $commandArgumentLineBreakTrap = @'
+#requires -Version 5.1
+$path = 'fixture.txt'
+
+if (-not (Test-Path -LiteralPath
+    $path)) {
+    Write-Host 'missing'
+}
+'@
+
+    Assert-Case `
+        -Name 'ps51-command-argument-linebreak-trap' `
+        -Text $commandArgumentLineBreakTrap `
+        -SelectedProfile 'General' `
+        -ShouldPass $false `
+        -ExpectedRule 'GA-SR-001'
+
+    $commandArgumentExplicitContinuationSafe = @'
+#requires -Version 5.1
+$path = 'fixture.txt'
+
+$exists =
+    Test-Path `
+        -LiteralPath $path
+
+if (-not $exists) {
+    Write-Host 'missing'
+}
+'@
+
+    Assert-Case `
+        -Name 'ps51-command-argument-explicit-continuation-safe' `
+        -Text $commandArgumentExplicitContinuationSafe `
+        -SelectedProfile 'General' `
+        -ShouldPass $true
+
     if ($script:testsFailed -ne 0)
 
 
