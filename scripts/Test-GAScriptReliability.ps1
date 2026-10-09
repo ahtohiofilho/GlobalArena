@@ -460,6 +460,116 @@ function Test-GAScriptText {
         }
     }
 
+    $containsAllCommands =
+        @(
+            $ast.FindAll(
+                {
+                    param($node)
+
+                    if ($node -isnot
+                        [System.Management.Automation.Language.CommandAst])
+                    {
+                        return $false
+                    }
+
+                    return $node.GetCommandName() -eq
+                        'Assert-ContainsAll'
+                },
+                $true)
+        )
+
+    foreach ($containsAllCommand in $containsAllCommands)
+    {
+        $elements =
+            @(
+                $containsAllCommand.CommandElements
+            )
+
+        for ($elementIndex = 0;
+             $elementIndex -lt $elements.Count - 1;
+             $elementIndex++)
+        {
+            $element =
+                $elements[$elementIndex]
+
+            if ($element -isnot
+                [System.Management.Automation.Language.CommandParameterAst])
+            {
+                continue
+            }
+
+            if ($element.ParameterName -ne
+                'Tokens')
+            {
+                continue
+            }
+
+            $tokenValueAst =
+                $elements[$elementIndex + 1]
+
+            $tokenStringNodes =
+                @(
+                    $tokenValueAst.FindAll(
+                        {
+                            param($node)
+
+                            return ($node -is
+                                [System.Management.Automation.Language.StringConstantExpressionAst]) -or
+                                ($node -is
+                                    [System.Management.Automation.Language.ExpandableStringExpressionAst])
+                        },
+                        $true)
+                )
+
+            foreach ($tokenStringNode in $tokenStringNodes)
+            {
+                $tokenValue =
+                    $tokenStringNode.Value.Trim()
+
+                if ([string]::IsNullOrWhiteSpace(
+                    $tokenValue))
+                {
+                    continue
+                }
+
+                $isStableHeading =
+                    $tokenValue -match
+                        '^#{1,6}\s+\S'
+
+                $isStructuredField =
+                    $tokenValue -match
+                        '^[A-Z][A-Z0-9_.-]*=[^\s].*$'
+
+                $isStableStatusField =
+                    $tokenValue -match
+                        '^\*\*Status:\*\*\s+\S'
+
+                $wordLikeCount =
+                    [System.Text.RegularExpressions.Regex]::Matches(
+                        $tokenValue,
+                        '[A-Za-z][A-Za-z0-9/_-]*').
+                        Count
+
+                $isIncidentalProse =
+                    ($wordLikeCount -ge 4) -and
+                    (-not $isStableHeading) -and
+                    (-not $isStructuredField) -and
+                    (-not $isStableStatusField)
+
+                if ($isIncidentalProse)
+                {
+                    $violations.Add(
+                        (New-Violation `
+                            -Rule 'GA-SR-039' `
+                            -Line $containsAllCommand.Extent.StartLineNumber `
+                            -Message 'Assert-ContainsAll -Tokens contains a prose-like exact literal. Use atomic stable contract tokens, an exact stable heading/field, or case/whitespace-tolerant semantic matching.'))
+
+                    break
+                }
+            }
+        }
+    }
+
     $xunitSingleWherePattern =
         '(?is)Assert\.Single\s*\(\s*.{0,800}?\.Where\s*\('
 
@@ -1575,6 +1685,43 @@ Assert-ContainsLiteral `
     Assert-Case `
         -Name 'atomic-semantic-audit-safe' `
         -Text $atomicSemanticAuditSafe `
+        -SelectedProfile 'General' `
+        -ShouldPass $true
+
+    $proseTokenSetTrap = @'
+#requires -Version 5.1
+$source = 'fixture'
+Assert-ContainsAll `
+    -Text $source `
+    -Label 'fixture' `
+    -Tokens @(
+        'renderer, camera, HUD, colors, strategic/tactical viewport layout'
+    )
+'@
+
+    Assert-Case `
+        -Name 'prose-token-set-exactness-trap' `
+        -Text $proseTokenSetTrap `
+        -SelectedProfile 'General' `
+        -ShouldPass $false `
+        -ExpectedRule 'GA-SR-039'
+
+    $stableTokenSetSafe = @'
+#requires -Version 5.1
+$source = 'fixture'
+Assert-ContainsAll `
+    -Text $source `
+    -Label 'fixture' `
+    -Tokens @(
+        'ADR-052',
+        'RENDERER_CHOICE=OPEN',
+        '# Stable Contract Heading'
+    )
+'@
+
+    Assert-Case `
+        -Name 'stable-token-set-semantic-audit-safe' `
+        -Text $stableTokenSetSafe `
         -SelectedProfile 'General' `
         -ShouldPass $true
 

@@ -1,9 +1,9 @@
 # Global Arena — Script Reliability Protocol
 
 **Protocol ID:** GA-SRP
-**Version:** 1.10
+**Version:** 1.11
 **Status:** Active
-**Effective date:** 2026-10-07
+**Effective date:** 2026-10-09
 **Scope:** PowerShell automation used to inspect, modify, validate or formally close work in the Global Arena repository.
 
 ## 1. Purpose
@@ -63,6 +63,7 @@ Mandatory:
 - no arithmetic binary continuation operators beginning a code line;
 - no inconsistent variable spelling that differs only by case;
 - no whitespace-fragile exact C# member-chain semantic assertions;
+- no prose-like exact semantic token arrays that turn incidental wording/case into audit truth;
 - no generated xUnit `Assert.Single(collection.Where(...))` anti-pattern;
 - no PowerShell-expression use of `checked(...)`;
 - no trailing whitespace in script source;
@@ -560,6 +561,20 @@ Guard:
 - the validator mechanically rejects the observed wrapped Git `commit -m $Variable` form;
 - the self-test suite permanently includes the unsafe variable-message fixture and a safe explicitly quoted neighboring fixture;
 - GA-SR-021 applies to future extensions of native argument-boundary detection.
+
+### GA-SR-039 — Semantic token sets must not encode incidental prose exactness
+
+Observed failure:
+M4.5-D.1 repeated the semantic-audit brittleness already described by GA-SR-028 through a different helper shape. Geometry contract QA R1 used an exact prose token whose wording did not exactly match the ADR, and the independent contract audit R2 later used another exact prose fragment that differed only by capitalization (`renderer` versus `Renderer`). In both cases the underlying staged contract was correct, but `Assert-ContainsAll -Tokens` converted incidental prose spelling/case into a false audit gate.
+
+Guard:
+
+- semantic token arrays must prefer atomic contract identifiers, structured `KEY=VALUE` fields, exact stable headings or explicit case/whitespace-tolerant semantic matching;
+- sentence-like or list-like prose fragments are not stable exact tokens merely because they currently appear in documentation;
+- the validator mechanically inspects direct `Assert-ContainsAll -Tokens @(...)` literal arrays and rejects prose-like exact tokens with four or more word-like terms unless they are recognized stable headings, structured fields or the ADR status field;
+- the mechanical scope intentionally targets the observed direct token-array form and may be extended evidence-first if another helper shape reproduces the same failure;
+- the self-test suite permanently includes the observed list-like prose failure shape and a neighboring stable atomic/field/heading fixture;
+- GA-SR-028 remains the broader semantic-audit principle and GA-SR-021 applies to future detector extensions.
 
 ### GA-SR-017 — Protocol regression promotion
 
