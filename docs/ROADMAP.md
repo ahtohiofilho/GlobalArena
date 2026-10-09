@@ -2796,3 +2796,33 @@ M4.6 remains blocked through D.5. Existing M4.4 Economy and M4.5-C movement subs
 GPP delta `0.00`; official progress remains **346.30 / 1000 — 34.6%**.
 
 Decision authority: **ADR-051**.
+
+## 2026-10-08 — M4.5-D.1 geometry contract freeze
+
+Feasibility audit result:
+
+**YES — canonical spherical strategic geometry is feasible by extracting/retaining provenance from the existing authoritative Goldberg construction.**
+
+No second Goldberg generator is permitted.
+
+D.1 contract freezes:
+
+- normalized double-precision unit-sphere points;
+- one construction-derived center per `StrategicCell`;
+- one spherical-dual position per `StrategicVertex`;
+- one canonical CCW boundary cycle per strategic cell;
+- Class I/II reuse of integer construction keys;
+- stable stitched construction provenance for Class III;
+- immutable geometry ownership in `WorldGenerationResult`;
+- no geometry ownership in `WorldState`;
+- no canonical-signature format change solely for derived geometry.
+
+D.2 remains implementation-only after D.1 audit/formal close.
+
+Renderer, engine, camera, HUD, colors, interaction design and strategic/tactical viewport layout remain deliberately open.
+
+Tactical 3D geometry remains D.4. Product tactical density remains a later human-calibration decision.
+
+GPP delta `0.00`; project remains **346.30 / 1000 — 34.6%**.
+
+Decision: **ADR-052**.

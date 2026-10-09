@@ -4552,3 +4552,29 @@ No new risk ID is introduced. Global Risk Level remains **HIGH**.
 Decision authority: **ADR-051 — Geometric World MVP, Continuous Tactical Surface & Client Integration Boundary**.
 
 Critical Path: **M4.5-D.1 — Goldberg Geometric World MVP Feasibility Audit & Contract Freeze**.
+
+# 72. M4.5-D.1 geometry feasibility and contract-freeze risk review
+
+**Date:** 2026-10-08
+
+The ReadOnly M4.5-D.1 feasibility audit passed and found no need for a second Goldberg topology generator.
+
+`RISK-013 — Human design visibility lag` remains **MITIGATING / HIGH**. The mitigation path is now concrete: D.2 will produce real canonical spherical strategic geometry, D.3 will expose it for human calibration, and D.5 remains the acceptance gate.
+
+`RISK-007 — Architecture overengineering` remains **OPEN / HIGH**, but D.1 narrows the response: only four minimal presentation-neutral strategic geometry types are frozen; no renderer project, engine, duplicated edge-geometry store or UI framework is introduced.
+
+`RISK-008 — Architecture underengineering` remains **OPEN / CRITICAL**. ADR-052 requires geometry to derive from the same Goldberg construction and keeps `StrategicTopology` authoritative. The renderer is prohibited from inventing world positions.
+
+`RISK-004 — Determinism failure` remains **WATCHING / HIGH**. Exact logical identity remains integer/combinatorial. Floating-point geometry is derived, tolerance-validated and excluded from topology identity and runtime-state hashing.
+
+`RISK-003 — Goldberg hierarchy mapping` remains **WATCHING / HIGH**. The accepted Class I scale-6 continuous physical hierarchy and canonical coarse incidence `1/2/3` are unchanged. D.1 does not claim Class II/III tactical physical lineage.
+
+`RISK-012 — Memory footprint` remains **OPEN / CRITICAL**. D.2 adds only strategic geometry. Global tactical geometry is not materialized by this contract and bounded/on-demand fine materialization remains preferred.
+
+No new risk ID is introduced.
+
+Global Risk Level remains **HIGH**.
+
+Decision: **ADR-052 — Canonical Spherical Strategic Geometry Contract**.
+
+Critical Path: **independent D.1 contract audit -> D.1 FormalClose -> M4.5-D.2 canonical spherical strategic geometry**.

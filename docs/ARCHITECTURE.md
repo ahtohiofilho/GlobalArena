@@ -6752,3 +6752,37 @@ Client dependency direction remains `presentation/client -> application/session 
 Presentation is read-only with respect to authoritative state and emits commands/intents through simulation.
 
 Existing Economy and Warfare substrates are retained, but deeper experience-sensitive calibration is blocked until the geometric World MVP provides human-accepted spatial evidence.
+
+# 44. M4.5-D.1 canonical spherical strategic geometry contract
+
+M4.5-D.1 feasibility evidence confirms that the current Goldberg generators are combinatorial and intentionally contain no 3D embedding.
+
+ADR-052 freezes the bridge from authoritative topology to presentation-neutral spherical geometry.
+
+The frozen generated-world contract is:
+
+`StrategicTopology + same Goldberg construction provenance -> StrategicSphericalGeometry`
+
+`StrategicTopology` remains authoritative for IDs, adjacency, incidence and polygon kind.
+
+M4.5-D.2 will introduce:
+
+- `SphericalPoint3`;
+- `StrategicCellGeometry`;
+- `StrategicVertexGeometry`;
+- `StrategicSphericalGeometry`;
+- one immutable strategic-geometry property on `WorldGenerationResult`.
+
+Strategic cell centers are derived from the construction provenance used by the same Goldberg generation path. Class I/II reuse integer `SubdivisionLatticeVertexKey` weights. Class III must retain stable stitched construction provenance without promoting raw DSU roots to durable identity.
+
+Strategic vertices are spherical dual points derived from their three incident cell-center directions. Cell boundary order is a canonical cyclic order over the authoritative incident vertices: lowest vertex ID first and counter-clockwise as viewed from outside the unit sphere.
+
+Strategic edges remain derivable from authoritative edge endpoint vertex IDs and do not receive mandatory duplicate geometry storage in D.2.
+
+Floating-point geometry is derived and non-authoritative. It cannot define topology, ownership or simulation rules and does not enter mutable `WorldState` or runtime-state hashing.
+
+The existing canonical world-signature format is not changed solely for derived spherical geometry.
+
+Renderer, camera, HUD, colors, strategic/tactical viewport layout, interaction design and tactical 3D geometry remain outside D.1/D.2 contract ownership.
+
+Decision authority: **ADR-052 — Canonical Spherical Strategic Geometry Contract**.

@@ -1686,3 +1686,30 @@ M4.6 remains blocked through D.5.
 Official progress remains **346.30 / 1000 — 34.6%**. Pivot delta: **0.00 GPP**.
 
 Accepted decision: **ADR-051**.
+
+## 2026-10-08 — M4.5-D.1 geometry feasibility confirmed and contract freeze
+
+The ReadOnly feasibility audit passed on the formally closed M4.5-D baseline.
+
+Accepted findings:
+
+- current Class I/II and Class III Goldberg generation has no production 3D embedding;
+- Class I/II already expose sufficient canonical integer construction provenance internally;
+- Class III has sufficient local construction state but requires stable stitched provenance to survive final cell canonicalization;
+- no second Goldberg topology generator is required;
+- current strategic incidence ordering is not polygon winding;
+- immutable generated-world geometry remains separate from mutable `WorldState`.
+
+ADR-052 freezes the D.2 geometry contract around `SphericalPoint3`, strategic cell centers, spherical dual strategic vertices and canonical CCW cell boundaries.
+
+Renderer choice and UI layout remain open.
+
+Critical Path remains:
+
+**M4.5-D.1 contract audit/formal close -> M4.5-D.2 Canonical Spherical Strategic Geometry -> D.3 3D Worldgen MVP -> D.4 continuous tactical mesh visualization -> D.5 human world-scale acceptance**
+
+M4.6 remains blocked through D.5.
+
+Official progress remains **346.30 / 1000 — 34.6%**. D.1 contract-freeze delta: **0.00 GPP**.
+
+Decision: **ADR-052**.

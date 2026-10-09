@@ -15753,3 +15753,66 @@ GPP delta `0.00`.
 M4.5 remains `21.00 / 42 — 50.0%`; Warfare `21.00 / 140 — 15.0%`; Project `346.30 / 1000 — 34.6%`.
 
 Next: **M4.5-D.1 — Goldberg Geometric World MVP Feasibility Audit & Contract Freeze**.
+
+## 2026-10-08 — M4.5-D.1 geometry feasibility audit PASS and geometry contract freeze
+
+Checkpoint:
+
+**M4.5-D.1 — Goldberg Geometric World MVP Feasibility Audit & Contract Freeze**
+
+Accepted ReadOnly evidence:
+
+`GlobalArena-Evidence-M4.5-D.1-GEOMETRY-FEASIBILITY-AUDIT-R1-20261008-210559.zip`
+
+SHA-256:
+
+`a64d7a9ba21649f02e4c18a152287ed670ca8e26053d9a7bf315c6e9d6866b2b`
+
+Evidence validation:
+
+- internal manifest `12/12`;
+- baseline `e7027e1b87045458e176653725549116faa9bebe`;
+- GA-SRP `43/43`;
+- target parser/rule violations `0/0`;
+- Release build `0 warnings / 0 errors`;
+- full regression `1044/1044`;
+- audited source/document blobs `11/11`;
+- repository mutation `False`;
+- commit/push none.
+
+Feasibility findings:
+
+- current Goldberg production generation is combinatorial and has no 3D embedding;
+- Class I/II already retain canonical integer construction provenance;
+- Class III already retains face-local construction data and stitching state but does not expose stable final per-cell provenance;
+- current `StrategicCell.IncidentVertexIds` order is canonical by ID and cannot be used as polygon winding;
+- `StrategicSurfaceGraph` is not render geometry;
+- `WorldGenerationResult` currently has no spherical geometry aggregate;
+- one canonical Class I scale-6 physical tactical topology with coarse incidence `1/2/3` remains preserved.
+
+Decision:
+
+**ADR-052 — Canonical Spherical Strategic Geometry Contract**
+
+The D.2 contract freezes presentation-neutral unit-sphere geometry derived from the same authoritative Goldberg construction. It explicitly avoids a second topology generator, raw-DSU-root identity, geometry in `WorldState`, renderer commitment and UI-layout commitment.
+
+Planned public generated-world geometry types:
+
+- `SphericalPoint3`;
+- `StrategicCellGeometry`;
+- `StrategicVertexGeometry`;
+- `StrategicSphericalGeometry`.
+
+The world canonical-signature format remains unchanged solely for this derived geometry.
+
+GPP delta:
+
+**0.00**
+
+Project remains:
+
+**346.30 / 1000 — 34.6%**
+
+Next:
+
+**independent M4.5-D.1 geometry contract audit, then FormalClose before D.2 implementation**.
