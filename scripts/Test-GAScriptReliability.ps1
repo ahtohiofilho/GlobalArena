@@ -965,6 +965,66 @@ function Test-GAScriptText {
         $normalized -match
             ($gitCommandPrefix + 'restore\b')
 
+    # GA-SR-014 WRAPPER-CONTRACT COVERAGE
+    # Fail closed unless the one actual wrapper definition has an approved body.
+    $gitLinesDefinitions = @(
+        $ast.FindAll(
+            {
+                param($node)
+                ($node -is [System.Management.Automation.Language.FunctionDefinitionAst]) -and
+                ($node.Name -eq 'Invoke-GitLines')
+            },
+            $true)
+    )
+    $approvedGitLinesWrapper = $false
+    if ($gitLinesDefinitions.Count -eq 1)
+    {
+        $wrapperBody = $gitLinesDefinitions[0].Body.Extent.Text
+        $wrapperBody = $wrapperBody.Replace("`r`n", "`n").Replace("`r", "`n")
+        # Both the fixture and the reviewed FormalClose transport are allowed.
+        # No additional statements, nested functions, or overriding body allowed.
+        $wrapperPattern = '(?s)^\{\s*\$out\s*=\s*&\s*git\.exe\s+@argv\s+2>&1\s*(?:;|\n)\s*(?:if\s*\(\s*\$LASTEXITCODE\s+-ne\s+0\s*\)\s*\{\s*throw\s*\(\s*''git ''\s*\+\s*\(\s*\$argv\s+-join\s+'' ''\s*\)\s*\+\s*'' failed: ''\s*\+\s*\(\s*\$out\s+-join\s+"`n"\s*\)\s*\)\s*\}\s*(?:;|\n)\s*)?return\s+,@\(\$out\)\s*\}$'
+        $approvedGitLinesWrapper = $wrapperBody -match $wrapperPattern
+    }
+    if ($approvedGitLinesWrapper)
+    {
+        $gitLinesInvocations = @(
+            $ast.FindAll(
+                {
+                    param($node)
+                    ($node -is [System.Management.Automation.Language.CommandAst]) -and
+                    ($node.GetCommandName() -eq 'Invoke-GitLines')
+                },
+                $true)
+        )
+        foreach ($gitLinesInvocation in $gitLinesInvocations)
+        {
+            # GA-SR-014-AUD-002: Calls inside a function definition do not
+            # establish that the FormalClose flow invokes commit or push.
+            # Conservative scope: only direct script flow is accepted.
+            $callAncestor = $gitLinesInvocation.Parent
+            $insideFunctionDefinition = $false
+            while ($null -ne $callAncestor)
+            {
+                if ($callAncestor -is [System.Management.Automation.Language.FunctionDefinitionAst])
+                {
+                    $insideFunctionDefinition = $true
+                    break
+                }
+                $callAncestor = $callAncestor.Parent
+            }
+            if ($insideFunctionDefinition) { continue }
+            $invocationText = $gitLinesInvocation.Extent.Text
+            if ($invocationText -match '(?s)^Invoke-GitLines\s+@\(\s*[\x27\x22]commit[\x27\x22]\s*,')
+            {
+                $hasCommit = $true
+            }
+            if ($invocationText -match '(?s)^Invoke-GitLines\s+@\(\s*[\x27\x22]push[\x27\x22]\s*,')
+            {
+                $hasPush = $true
+            }
+        }
+    }
     $hasGitDiffCheck =
         $normalized -match
             'git[^\r\n]*diff[^\r\n]*--check'
