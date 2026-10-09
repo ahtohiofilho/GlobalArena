@@ -1762,3 +1762,11 @@ Critical Path becomes:
 **M4.5-D.2 Completion QA / FormalClose -> M4.5-D.3 Strategic Worldgen 3D MVP & Human Calibration Surface -> D.4 continuous tactical mesh visualization -> D.5 human world-scale acceptance**
 
 M4.6 remains blocked through D.5.
+
+## 2026-10-09 — M4.5-D.3 Strategic Worldgen 3D MVP formal close
+
+M4.5-D.3 technical MVP uses the canonical strategic spherical geometry from M4.5-D.2. A local .NET 10 world snapshot exporter and HTML inspection surface provide rotational globe viewing, zoom, cell inspection, pentagon/hexagon identification and biome presentation. The visualizer remains a calibration surface; it does not own authoritative topology, modify the simulation kernel, or implement tactical mesh visualization (D.4).
+
+Independent reaudits addressed snapshot structure and HTML injection (D3-AUD-001), spherical horizon clipping (D3-AUD-002), edge/vertex incidence (D3-AUD-003), and canonical outward CCW winding (D3-AUD-004). Remediation QA R5 and independent reaudit R4 were accepted for technical close. Human visual acceptance at final product scale remains a separate gate in D.5; no claim of completed product-level UX acceptance is made.
+
+No GPP delta is booked in this close; the official project score remains 346.30 / 1000 (34.6%) until a separately approved rebaseline. M4.6 remains blocked through D.5.
