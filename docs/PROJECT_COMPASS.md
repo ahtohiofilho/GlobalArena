@@ -1660,3 +1660,29 @@ Este documento deverá ser revisado quando:
 - houver mudança significativa no Critical Path.
 
 Mudanças históricas não devem ser apagadas do Progress Ledger.
+
+## 2026-10-07 — Critical-path reorientation: Geometric World MVP
+
+Human review rejected the first M4.5-D presentation-only graph viewer as sufficient for game-design calibration.
+
+Technical state remained valid; geometric fidelity was not accepted.
+
+Critical Path becomes:
+
+**M4.5-D.1 — Goldberg Geometric World MVP Feasibility Audit & Contract Freeze**
+
+M4.5-D sequence:
+
+- D.1 — geometry feasibility / contract freeze;
+- D.2 — canonical spherical strategic geometry;
+- D.3 — strategic worldgen 3D MVP;
+- D.4 — continuous tactical mesh visualization with canonical `1/2/3` incidence;
+- D.5 — human world-scale acceptance and reintegration direction.
+
+ADR-021 already preserves: interior -> 1 strategic cell; strategic-edge physical tile -> 2 strategic cells; strategic-vertex physical tile -> 3 strategic cells; shared physical tile -> one canonical identity.
+
+M4.6 remains blocked through D.5.
+
+Official progress remains **346.30 / 1000 — 34.6%**. Pivot delta: **0.00 GPP**.
+
+Accepted decision: **ADR-051**.

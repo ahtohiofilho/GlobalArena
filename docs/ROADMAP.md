@@ -2772,3 +2772,27 @@ Current totals remain:
 Próximo gate:
 
 **M2.5.4 — Headless Scalability Benchmark Harness & Baseline**
+
+## 2026-10-07 — World MVP critical-path pivot
+
+The first M4.5-D viewer passed technical QA but failed the human design-sufficiency gate because its arbitrary layout could not support decisions about real Goldberg geometry, strategic scale, tactical density or movement cadence.
+
+Revised Critical Path:
+
+**M4.5-D — Geometric World MVP & Human Design Gate**
+
+1. **M4.5-D.1 — Goldberg Geometric World MVP Feasibility Audit & Contract Freeze**
+2. **M4.5-D.2 — Canonical Spherical Strategic Geometry**
+3. **M4.5-D.3 — Strategic Worldgen 3D MVP & Human Calibration Surface**
+4. **M4.5-D.4 — Continuous Tactical Mesh Visualization & 1/2/3 Incidence Gate**
+5. **M4.5-D.5 — Human World-Scale Acceptance & System Reintegration Direction**
+
+Retained contracts: strategic Goldberg topology; ADR-021 continuous fine physical topology; canonical tactical incidence `1/2/3`; edge-shared tile belongs to 2 strategic cells; vertex-shared tile belongs to 3; no shared physical identity duplication.
+
+Current Class I scale 6 is not final product density.
+
+M4.6 remains blocked through D.5. Existing M4.4 Economy and M4.5-C movement substrate are retained.
+
+GPP delta `0.00`; official progress remains **346.30 / 1000 — 34.6%**.
+
+Decision authority: **ADR-051**.

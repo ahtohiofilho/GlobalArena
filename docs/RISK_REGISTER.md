@@ -4528,3 +4528,27 @@ Active CRITICAL risks remain:
 Next risk review gate:
 
 **M4.5-D Human Visibility Gate & Warfare Design Review**
+
+# 71. M4.5-D human review finding and geometric World MVP risk review
+
+**Date:** 2026-10-07
+
+The first M4.5-D diagnostic viewer passed technical QA and failed the human design-sufficiency gate.
+
+`RISK-013 — Human design visibility lag` remains **MITIGATING / HIGH**. Its mitigation is strengthened: actual Goldberg spherical geometry must be visible before spatial rules are frozen; arbitrary graph-layout observability is diagnostic-only.
+
+`RISK-003 — Goldberg hierarchy mapping` remains **WATCHING / HIGH**. No regression was found; the existing continuous fine Goldberg topology and canonical `1/2/3` coarse incidence become direct World MVP inputs.
+
+`RISK-002 — Tactical resolution scalability` remains **OPEN / CRITICAL**. Product tactical density must be visually calibrated.
+
+`RISK-012 — Memory footprint` remains **OPEN / CRITICAL**. Prefer bounded/on-demand fine tactical materialization.
+
+`RISK-008 — Architecture underengineering` remains **OPEN / CRITICAL**. The viewer/client must consume authoritative world/runtime/simulation contracts rather than own gameplay state.
+
+`RISK-007 — Architecture overengineering` remains **OPEN / HIGH**. Do not create new rendering abstractions or project splits before the geometry feasibility audit demonstrates a need.
+
+No new risk ID is introduced. Global Risk Level remains **HIGH**.
+
+Decision authority: **ADR-051 — Geometric World MVP, Continuous Tactical Surface & Client Integration Boundary**.
+
+Critical Path: **M4.5-D.1 — Goldberg Geometric World MVP Feasibility Audit & Contract Freeze**.

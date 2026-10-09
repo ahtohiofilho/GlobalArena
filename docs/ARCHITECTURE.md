@@ -6736,3 +6736,19 @@ Status:
 Baseline inicial.
 
 Este documento deverá ser refinado conforme os spikes técnicos produzirem evidência real.
+
+## 42.22 Geometric World MVP and presentation boundary
+
+Human review established that an arbitrary graph layout is insufficient for spatial game-design decisions even when wired to authoritative state and movement.
+
+ADR-051 reorients the critical path to a world-generation-first geometric MVP.
+
+Strategic presentation must consume canonical spherical Goldberg geometry derived from the same construction as StrategicTopology; it must not invent world geometry in the UI.
+
+The physical tactical model remains the continuous fine Goldberg topology of ADR-021: one canonical physical identity with coarse incidence `1` interior, `2` edge-shared and `3` vertex-shared. Boundary tiles are never duplicated by observation side.
+
+Client dependency direction remains `presentation/client -> application/session orchestration -> immutable generated world + mutable WorldState + Simulation`.
+
+Presentation is read-only with respect to authoritative state and emits commands/intents through simulation.
+
+Existing Economy and Warfare substrates are retained, but deeper experience-sensitive calibration is blocked until the geometric World MVP provides human-accepted spatial evidence.

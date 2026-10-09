@@ -15711,3 +15711,45 @@ M4.5-D is mandatory before deeper M4.6 Warfare design.
 **M4.5-D — Human Visibility Gate & Warfare Design Review**
 
 M4.6 detailed design/implementation remains blocked until that human gate is accepted.
+
+## 2026-10-07 — M4.5-D human review finding and Geometric World MVP pivot
+
+Checkpoint:
+
+**M4.5-D — Human Visibility Gate & Warfare Design Review — remains OPEN**
+
+Technical implementation QA evidence:
+
+`GlobalArena-Evidence-M4.5-D-IMPLEMENTATION-QA-R1-20261007-124630.zip`
+
+SHA-256:
+
+`d008de606a37b96ba7d70e44751f2d2747d80a1fe7cce2130a46f323bf2ff449`
+
+Provisional viewer staged object:
+
+`aecaa0b6b78a693c7822d48e9c0d05ca0c179d4e`
+
+Technical QA proved GA-SRP `39/39`, build `0/0`, regression `1044/1044`, real movement `27 -> 13`, revision `0 -> 1` and execution through `MilitaryMoveCommandValidator + TurnResolver`.
+
+Human review result:
+
+**NOT ACCEPTED AS THE HUMAN DESIGN GATE**
+
+The presentation-only graph layout did not preserve actual Goldberg spatial geometry and could not support reliable calibration of strategic Goldberg configuration, region scale, pentagon/hexagon distribution, tactical density, strategic/tactical relationship, movement cadence or future combat geometry.
+
+Existing ADR-021 production contracts already provide the required continuous physical tactical model: incidence `1` interior, `2` edge-shared and `3` vertex-shared, with one canonical physical tile identity.
+
+Decision:
+
+- do not commit the provisional graph viewer as product/design baseline;
+- retain completed topology/worldgen/economy/minimal-war substrate;
+- reorient M4.5-D to ADR-051 Geometric World MVP;
+- keep M4.6 blocked;
+- preserve external client/save/multiplayer seams.
+
+GPP delta `0.00`.
+
+M4.5 remains `21.00 / 42 — 50.0%`; Warfare `21.00 / 140 — 15.0%`; Project `346.30 / 1000 — 34.6%`.
+
+Next: **M4.5-D.1 — Goldberg Geometric World MVP Feasibility Audit & Contract Freeze**.

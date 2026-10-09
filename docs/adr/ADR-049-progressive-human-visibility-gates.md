@@ -201,3 +201,15 @@ M4.5-C proceeds, but only as minimal deterministic movement substrate.
 Before combat or other deeper military semantics are implemented, Global Arena must expose the real map/unit state through M4.5-D and return the design decision to the human owner.
 
 This reduces the expected cost of later Warfare redesign while preserving the deterministic architecture already built.
+
+## 2026-10-07 — Human review outcome and geometric visibility amendment
+
+The first M4.5-D diagnostic viewer passed technical QA but was rejected by the human owner as sufficient game-design visibility.
+
+Its presentation-only graph layout proved topology/state/movement plumbing but did not preserve actual Goldberg geometry.
+
+Therefore M4.5-D remains open, the provisional viewer is not promoted to product baseline, and ADR-051 becomes authoritative for the geometric World MVP sequence.
+
+The minimum visibility criterion is strengthened from visible authoritative graph state to actual generated spatial geometry at the fidelity needed for design decisions.
+
+M4.6 remains blocked. GPP delta: `0.00`.
