@@ -10,11 +10,16 @@ public sealed class StrategicTopology
 
     public IReadOnlyList<StrategicVertex> Vertices { get; }
 
+    internal IReadOnlyList<StrategicCellConstructionProvenance>
+        CellConstructionProvenance { get; }
+
     internal StrategicTopology(
         GoldbergParameters parameters,
         IEnumerable<StrategicCell> cells,
         IEnumerable<StrategicEdge> edges,
-        IEnumerable<StrategicVertex> vertices)
+        IEnumerable<StrategicVertex> vertices,
+        IEnumerable<StrategicCellConstructionProvenance>?
+            cellConstructionProvenance = null)
     {
         if (!parameters.IsValid)
         {
@@ -30,6 +35,10 @@ public sealed class StrategicTopology
         var cellArray = cells.ToArray();
         var edgeArray = edges.ToArray();
         var vertexArray = vertices.ToArray();
+
+        var constructionProvenanceArray =
+            cellConstructionProvenance?.ToArray()
+            ?? Array.Empty<StrategicCellConstructionProvenance>();
 
         if ((ulong)cellArray.Length != parameters.StrategicCellCount
             || (ulong)edgeArray.Length != parameters.StrategicEdgeCount
@@ -69,9 +78,29 @@ public sealed class StrategicTopology
             }
         }
 
+        if (constructionProvenanceArray.Length != 0
+            && constructionProvenanceArray.Length != cellArray.Length)
+        {
+            throw new ArgumentException(
+                "Strategic cell construction provenance must be empty or cover every strategic cell exactly once.",
+                nameof(cellConstructionProvenance));
+        }
+
+        if (constructionProvenanceArray.Any(
+            item =>
+                !item.IsValid))
+        {
+            throw new ArgumentException(
+                "Strategic cell construction provenance contains an invalid carrier.",
+                nameof(cellConstructionProvenance));
+        }
+
         Parameters = parameters;
         Cells = Array.AsReadOnly(cellArray);
         Edges = Array.AsReadOnly(edgeArray);
         Vertices = Array.AsReadOnly(vertexArray);
+        CellConstructionProvenance =
+            Array.AsReadOnly(
+                constructionProvenanceArray);
     }
 }

@@ -30,6 +30,27 @@ public static class GoldbergStrategicTopologyGenerator
     private static readonly CanonicalTriangle[] ClassIISeedFaces =
         CreateClassIISeedFaces();
 
+    internal static int[] GetCanonicalIcosahedronFaceVertexIds(
+        int faceIndex)
+    {
+        if (faceIndex < 0
+            || faceIndex >= IcosahedronFaces.Length)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(faceIndex));
+        }
+
+        var face =
+            IcosahedronFaces[faceIndex];
+
+        return new[]
+        {
+            face.First,
+            face.Second,
+            face.Third
+        };
+    }
+
     public static StrategicTopology Generate(
         GoldbergParameters parameters)
     {
@@ -492,12 +513,20 @@ private static bool IsClassI(
                 "Triangular seed subdivision produced unexpected pentagon or hexagon counts.");
         }
 
+        var constructionProvenance =
+            orderedVertexKeys
+                .Select(
+                    key =>
+                        key.ToConstructionProvenance())
+                .ToArray();
+
         var topology =
             new StrategicTopology(
                 parameters,
                 cells,
                 edges,
-                vertices);
+                vertices,
+                constructionProvenance);
 
         var seedVertexCellIds =
             new Dictionary<int, StrategicCellId>(
@@ -990,6 +1019,18 @@ internal sealed class ClassIScaledRefinementGenerationResult
                 weightedVertices.ElementAtOrDefault(1).Weight,
                 weightedVertices.ElementAtOrDefault(2).Vertex,
                 weightedVertices.ElementAtOrDefault(2).Weight);
+        }
+
+        public StrategicCellConstructionProvenance
+            ToConstructionProvenance()
+        {
+            return StrategicCellConstructionProvenance.Create(
+                FirstVertex,
+                FirstWeight,
+                SecondVertex,
+                SecondWeight,
+                ThirdVertex,
+                ThirdWeight);
         }
 
         public bool TryGetCanonicalIcosahedronSeedVertex(

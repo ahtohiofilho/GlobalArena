@@ -15816,3 +15816,88 @@ Project remains:
 Next:
 
 **independent M4.5-D.1 geometry contract audit, then FormalClose before D.2 implementation**.
+
+## 2026-10-09 — M4.5-D.2 canonical spherical strategic geometry implementation and independent audit PASS
+
+Checkpoint:
+
+**M4.5-D.2 — Canonical Spherical Strategic Geometry**
+
+Accepted implementation QA:
+
+`GlobalArena-Evidence-M4.5-D.2-CANONICAL-SPHERICAL-GEOMETRY-QA-R2-20261009-154434.zip`
+
+SHA-256:
+
+`7f3f787703a2904d6378f71c0b71fcc2a5672e6f5068a1c517f8eb65ac6c6ac7`
+
+Implementation QA evidence:
+
+- manifest `33/33`;
+- baseline `73db345370aaba69702436539815069be1d9355d`;
+- GA-SRP `45/45`;
+- exact staged paths/object IDs `12/12`;
+- Release build `0 warnings / 0 errors`;
+- focused geometry tests `18/18`;
+- full regression `1062/1062`;
+- commit/push `False/False`.
+
+Accepted independent audit:
+
+`GlobalArena-Evidence-M4.5-D.2-CANONICAL-SPHERICAL-GEOMETRY-AUDIT-R1-20261009-155731.zip`
+
+SHA-256:
+
+`342c272087eb25b827a55aab58af10ecced0455d4e6bc527cefb64dbc8e19708`
+
+Independent audit evidence:
+
+- manifest `46/46`;
+- accepted QA R2 `33/33`;
+- exact live staged path/object identity `12/12`;
+- four public geometry contracts `4/4`;
+- Class I/II provenance `PASS`;
+- Class III stable stitched provenance `PASS`;
+- raw DSU root durable identity `False`;
+- cell centers on unit sphere `PASS`;
+- outward dual strategic vertices `PASS`;
+- canonical lowest-ID-start outward-CCW boundaries `PASS`;
+- `WorldGenerationResult` geometry integration `PASS`;
+- canonical signature source unchanged `True`;
+- canonical signature format change `False`;
+- GA-SRP `45/45`;
+- Release build `0 warnings / 0 errors`;
+- geometry tests `18/18`;
+- broader Class III topology/provenance tests `11/11`;
+- canonical signature tests `15/15`;
+- full regression `1062/1062`;
+- repository mutation `False`;
+- commit/push `False/False`.
+
+Implemented production contract:
+
+`StrategicTopology + retained Goldberg construction provenance -> StrategicSphericalGeometry`
+
+The implementation keeps topology authoritative and geometry derived/non-authoritative. Class I/II reuse integer subdivision construction data. Class III retains stable construction provenance across stitching while DSU root ordinals remain internal only. Boundary order is reconstructed from authoritative incidence rather than numeric incident-ID order.
+
+GPP decision:
+
+**0.00**
+
+Rationale: D.2 is a necessary generated-world geometry substrate, but it does not yet deliver renderer/interactivity or satisfy the human visibility gate. No already-validated Topology/World Generation capability is promoted beyond factor `0.85`, and no Renderização 3D / interação / UI maturity is credited before D.3 produces an observable calibration surface.
+
+Project remains:
+
+**346.30 / 1000 — 34.6%**
+
+M4.5 remains:
+
+**21.00 / 42 GPP — 50.0%**
+
+Warfare / units / combat remains:
+
+**21.00 / 140 GPP — 15.0%**
+
+Next:
+
+**M4.5-D.2 Completion QA / FormalClose, then M4.5-D.3 — Strategic Worldgen 3D MVP & Human Calibration Surface**

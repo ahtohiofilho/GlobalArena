@@ -2826,3 +2826,44 @@ Tactical 3D geometry remains D.4. Product tactical density remains a later human
 GPP delta `0.00`; project remains **346.30 / 1000 — 34.6%**.
 
 Decision: **ADR-052**.
+
+## 2026-10-09 — M4.5-D.2 canonical spherical strategic geometry implementation complete
+
+D.2 implementation and independent audit are accepted for completion governance.
+
+Implemented scope:
+
+- `SphericalPoint3`;
+- `StrategicCellGeometry`;
+- `StrategicVertexGeometry`;
+- `StrategicSphericalGeometry`;
+- fixed canonical icosahedron seed directions;
+- Class I/II construction-to-sphere derivation;
+- stable Class III stitched construction provenance;
+- unit-sphere strategic cell centers;
+- outward spherical-dual strategic vertices;
+- canonical strategic cell boundary winding;
+- immutable `WorldGenerationResult.StrategicSphericalGeometry`;
+- executable geometry invariants and regression coverage.
+
+Preserved boundaries:
+
+- `StrategicTopology` remains authoritative;
+- raw DSU roots are not durable identity;
+- `WorldState` does not own geometry;
+- canonical world-signature source/format is unchanged solely for geometry;
+- no renderer, engine, camera, HUD, interaction layout or tactical 3D geometry enters D.2.
+
+Accepted independent audit:
+
+`GlobalArena-Evidence-M4.5-D.2-CANONICAL-SPHERICAL-GEOMETRY-AUDIT-R1-20261009-155731.zip`
+
+SHA-256 `342c272087eb25b827a55aab58af10ecced0455d4e6bc527cefb64dbc8e19708`; manifest `46/46`; geometry `18/18`; Class III topology/provenance `11/11`; signature regression `15/15`; full regression `1062/1062`.
+
+D.2 GPP delta is `0.00`; official progress remains **346.30 / 1000 — 34.6%**.
+
+After D.2 FormalClose, next checkpoint:
+
+**M4.5-D.3 — Strategic Worldgen 3D MVP & Human Calibration Surface**
+
+D.4 remains tactical mesh visualization; D.5 remains the human world-scale acceptance gate. M4.6 remains blocked through D.5.

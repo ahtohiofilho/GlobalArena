@@ -1713,3 +1713,52 @@ M4.6 remains blocked through D.5.
 Official progress remains **346.30 / 1000 — 34.6%**. D.1 contract-freeze delta: **0.00 GPP**.
 
 Decision: **ADR-052**.
+
+## 2026-10-09 — M4.5-D.2 canonical spherical strategic geometry implemented and independently audited
+
+M4.5-D.2 has an accepted implementation candidate and independent audit on baseline `73db345370aaba69702436539815069be1d9355d`.
+
+Accepted implementation state:
+
+- four public presentation-neutral spherical geometry types are implemented;
+- Class I/II geometry reuses canonical `SubdivisionLatticeVertexKey` construction provenance;
+- Class III retains stable stitched construction provenance without promoting raw DSU roots to durable identity;
+- strategic cell centers are unit-sphere directions;
+- strategic vertices are outward spherical dual points;
+- strategic cell boundaries use authoritative incidence with canonical lowest-ID start and outward CCW winding;
+- `WorldGenerationResult` exposes immutable `StrategicSphericalGeometry`;
+- mutable `WorldState` remains geometry-free;
+- canonical world-signature source and format remain unchanged solely for derived geometry.
+
+Independent audit evidence:
+
+`GlobalArena-Evidence-M4.5-D.2-CANONICAL-SPHERICAL-GEOMETRY-AUDIT-R1-20261009-155731.zip`
+
+SHA-256:
+
+`342c272087eb25b827a55aab58af10ecced0455d4e6bc527cefb64dbc8e19708`
+
+Validation:
+
+- manifest `46/46`;
+- GA-SRP `45/45`;
+- Release build `0 warnings / 0 errors`;
+- geometry tests `18/18`;
+- Class III topology/provenance tests `11/11`;
+- canonical signature regression tests `15/15`;
+- full regression `1062/1062`;
+- exact staged implementation identity `12/12`.
+
+GPP accounting decision:
+
+**D.2 delta: 0.00 GPP.**
+
+D.2 supplies canonical generated-world geometry but does not itself deliver renderer/interactivity or satisfy the human visibility gate. Existing Topology and World Generation capabilities are already at their validated `0.85` ceiling, while the Renderização 3D / interação / UI budget has not yet earned a product-facing capability from D.2 alone. No maturity factor is promoted prematurely.
+
+Project remains **346.30 / 1000 — 34.6%**.
+
+Critical Path becomes:
+
+**M4.5-D.2 Completion QA / FormalClose -> M4.5-D.3 Strategic Worldgen 3D MVP & Human Calibration Surface -> D.4 continuous tactical mesh visualization -> D.5 human world-scale acceptance**
+
+M4.6 remains blocked through D.5.

@@ -6786,3 +6786,29 @@ The existing canonical world-signature format is not changed solely for derived 
 Renderer, camera, HUD, colors, strategic/tactical viewport layout, interaction design and tactical 3D geometry remain outside D.1/D.2 contract ownership.
 
 Decision authority: **ADR-052 — Canonical Spherical Strategic Geometry Contract**.
+
+# 45. M4.5-D.2 canonical spherical strategic geometry implementation
+
+M4.5-D.2 implements the presentation-neutral spherical geometry contract frozen by ADR-052.
+
+The immutable generated-world path is now:
+
+`StrategicTopology + retained Goldberg construction provenance -> StrategicSphericalGeometry -> WorldGenerationResult`
+
+Production geometry includes `SphericalPoint3`, `StrategicCellGeometry`, `StrategicVertexGeometry` and `StrategicSphericalGeometry`.
+
+Class I and Class II reuse `SubdivisionLatticeVertexKey` construction data. Class III retains stable construction provenance through the existing oriented-face / `LocalPoint` / `LatticeIndex` / DSU stitching path; raw DSU root ordinals remain internal implementation details and are not durable identity.
+
+Strategic cell centers are normalized unit-sphere points derived from construction provenance. Strategic vertices are outward spherical dual points derived from the three incident strategic cell centers. Strategic cell boundaries are reconstructed from authoritative topology incidence, begin at the lowest `StrategicVertexId` and use counter-clockwise winding as viewed from outside the sphere.
+
+`StrategicTopology` remains authoritative for identity, adjacency, incidence and polygon kind. Floating-point geometry remains derived data and is not used as topology, ownership or simulation identity.
+
+`WorldGenerationResult` now exposes immutable `StrategicSphericalGeometry`. Mutable `WorldState` remains geometry-free.
+
+The canonical world-signature source and format remain unchanged solely for this derived geometry.
+
+Accepted independent D.2 evidence validates Class I, Class II, both Class III chiralities, stitched provenance, unit normalization, outward dual construction, boundary winding and complete generated-world integration.
+
+Renderer, camera, HUD, interaction design and tactical 3D geometry remain outside D.2. The next geometric World MVP checkpoint is M4.5-D.3 — Strategic Worldgen 3D MVP & Human Calibration Surface.
+
+Decision authority remains **ADR-052 — Canonical Spherical Strategic Geometry Contract**.

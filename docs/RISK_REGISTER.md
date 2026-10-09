@@ -4578,3 +4578,29 @@ Global Risk Level remains **HIGH**.
 Decision: **ADR-052 — Canonical Spherical Strategic Geometry Contract**.
 
 Critical Path: **independent D.1 contract audit -> D.1 FormalClose -> M4.5-D.2 canonical spherical strategic geometry**.
+
+# 73. M4.5-D.2 canonical spherical strategic geometry risk review
+
+**Date:** 2026-10-09
+
+M4.5-D.2 implementation and independent audit passed.
+
+`RISK-013 — Human design visibility lag` remains **MITIGATING / HIGH**. Canonical strategic spherical geometry now exists in generated-world data, removing the arbitrary-layout blocker. Human visibility is still not satisfied until D.3 renders this geometry as a calibration surface and D.5 accepts world scale.
+
+`RISK-008 — Architecture underengineering` remains **OPEN / CRITICAL**. D.2 materially reduces this risk by anchoring presentation coordinates to the same authoritative Goldberg construction, but the client/rendering integration boundary is not exercised until D.3.
+
+`RISK-007 — Architecture overengineering` remains **OPEN / HIGH**. D.2 stayed presentation-neutral: four public geometry contracts, no renderer project, no engine commitment and no duplicated strategic-edge geometry store.
+
+`RISK-004 — Determinism failure` remains **WATCHING / HIGH**. Logical identity remains exact integer/combinatorial state. Derived floating-point geometry is tolerance-validated and excluded from topology identity, mutable runtime state and canonical signature format.
+
+`RISK-003 — Goldberg hierarchy mapping` remains **WATCHING / HIGH**. Strategic geometry now covers Class I, Class II and both Class III chiralities, but the accepted tactical physical hierarchy remains the Class I scale-6 model from ADR-021. D.2 does not expand tactical lineage support.
+
+`RISK-012 — Memory footprint` remains **OPEN / CRITICAL**. D.2 materializes strategic geometry only. Global tactical 3D geometry is still deferred to D.4 and bounded/on-demand tactical materialization remains preferred.
+
+No new risk ID is introduced.
+
+Global Risk Level remains **HIGH**.
+
+Decision authority: **ADR-052 — Canonical Spherical Strategic Geometry Contract**.
+
+Critical Path: **D.2 Completion QA / FormalClose -> D.3 strategic worldgen 3D MVP -> D.4 tactical mesh visualization -> D.5 human world-scale acceptance**.

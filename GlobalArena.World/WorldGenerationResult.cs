@@ -6,6 +6,8 @@ public sealed class WorldGenerationResult
 
     public StrategicTopology StrategicTopology { get; }
 
+    public StrategicSphericalGeometry StrategicSphericalGeometry { get; }
+
     public StrategicSurfaceGraph StrategicSurfaceGraph { get; }
 
     public StrategicPhysicalFieldSet StrategicPhysicalFields { get; }
@@ -39,6 +41,9 @@ public sealed class WorldGenerationResult
 
         Request = request;
         StrategicTopology = strategicTopology;
+        StrategicSphericalGeometry =
+            StrategicSphericalGeometryGenerator.Generate(
+                strategicTopology);
         StrategicSurfaceGraph =
             new StrategicSurfaceGraph(
                 strategicTopology);

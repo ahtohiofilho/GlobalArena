@@ -240,6 +240,14 @@ internal static class ClassIIIGoldbergStrategicTopologyGenerator
                     (ulong)index + 1UL));
         }
 
+        var constructionProvenance =
+            CreateConstructionProvenance(
+                parameters,
+                orientedFaces,
+                localPattern,
+                disjointSet,
+                orderedRoots);
+
         var orderedTriangleKeys =
             rootTriangles
                 .Select(
@@ -262,13 +270,16 @@ internal static class ClassIIIGoldbergStrategicTopologyGenerator
         return AssembleTopology(
             parameters,
             orderedRoots.Length,
-            orderedTriangleKeys);
+            orderedTriangleKeys,
+            constructionProvenance);
     }
 
     private static StrategicTopology AssembleTopology(
         GoldbergParameters parameters,
         int cellCount,
-        IReadOnlyList<CanonicalCellTriple> orderedTriangleKeys)
+        IReadOnlyList<CanonicalCellTriple> orderedTriangleKeys,
+        IReadOnlyList<StrategicCellConstructionProvenance>
+            constructionProvenance)
     {
         var orderedEdgeKeys =
             orderedTriangleKeys
@@ -476,7 +487,173 @@ internal static class ClassIIIGoldbergStrategicTopologyGenerator
             parameters,
             cells,
             edges,
-            vertices);
+            vertices,
+            constructionProvenance);
+    }
+
+    private static StrategicCellConstructionProvenance[]
+        CreateConstructionProvenance(
+            GoldbergParameters parameters,
+            IReadOnlyList<SeedFace> orientedFaces,
+            LocalPattern localPattern,
+            DisjointSet disjointSet,
+            IReadOnlyList<int> orderedRoots)
+    {
+        var expectedRoots =
+            new HashSet<int>(
+                orderedRoots);
+
+        var provenanceByRoot =
+            new Dictionary<
+                int,
+                StrategicCellConstructionProvenance>(
+                orderedRoots.Count);
+
+        var localPointCount =
+            localPattern.Points.Length;
+
+        for (var faceIndex = 0;
+             faceIndex < orientedFaces.Count;
+             faceIndex++)
+        {
+            var face =
+                orientedFaces[faceIndex];
+
+            for (var localIndex = 0;
+                 localIndex < localPointCount;
+                 localIndex++)
+            {
+                var root =
+                    disjointSet.Find(
+                        checked(
+                            checked(
+                                faceIndex
+                                * localPointCount)
+                            + localIndex));
+
+                if (!expectedRoots.Contains(
+                    root))
+                {
+                    continue;
+                }
+
+                if (!TryCreateConstructionProvenance(
+                    parameters,
+                    face,
+                    localPattern.Points[
+                        localIndex],
+                    out var candidate))
+                {
+                    continue;
+                }
+
+                if (provenanceByRoot.TryGetValue(
+                    root,
+                    out var existing))
+                {
+                    if (existing != candidate)
+                    {
+                        throw new InvalidOperationException(
+                            "Class III stitched equivalents must resolve to identical stable construction provenance.");
+                    }
+
+                    continue;
+                }
+
+                provenanceByRoot.Add(
+                    root,
+                    candidate);
+            }
+        }
+
+        if (provenanceByRoot.Count
+            != orderedRoots.Count)
+        {
+            throw new InvalidOperationException(
+                "Class III stable construction provenance must cover every final strategic cell.");
+        }
+
+        return orderedRoots
+            .Select(
+                root =>
+                    provenanceByRoot[root])
+            .ToArray();
+    }
+
+    private static bool TryCreateConstructionProvenance(
+        GoldbergParameters parameters,
+        SeedFace face,
+        LocalPoint point,
+        out StrategicCellConstructionProvenance provenance)
+    {
+        var triangulationNumber =
+            checked(
+                (long)parameters
+                    .TriangulationNumber);
+
+        var m =
+            (long)parameters.M;
+
+        var n =
+            (long)parameters.N;
+
+        var p =
+            (long)point.P;
+
+        var q =
+            (long)point.Q;
+
+        var firstWeight =
+            checked(
+                triangulationNumber
+                - checked(m * p)
+                - checked(
+                    checked(m + n)
+                    * q));
+
+        var secondWeight =
+            checked(
+                checked(
+                    checked(m + n)
+                    * p)
+                + checked(n * q));
+
+        var thirdWeight =
+            checked(
+                checked(-n * p)
+                + checked(m * q));
+
+        if (firstWeight < 0
+            || secondWeight < 0
+            || thirdWeight < 0)
+        {
+            provenance =
+                default;
+
+            return false;
+        }
+
+        if (checked(
+            checked(
+                firstWeight
+                + secondWeight)
+            + thirdWeight)
+            != triangulationNumber)
+        {
+            throw new InvalidOperationException(
+                "Class III barycentric construction weights must sum to the Goldberg triangulation number.");
+        }
+
+        provenance =
+            StrategicCellConstructionProvenance.Create(
+                face.First,
+                firstWeight,
+                face.Second,
+                secondWeight,
+                face.Third,
+                thirdWeight);
+
+        return true;
     }
 
     private static SeedFace[] CreateConsistentlyOrientedFaces()
