@@ -15909,3 +15909,11 @@ M4.5-D.3 technical MVP uses the canonical strategic spherical geometry from M4.5
 Independent reaudits addressed snapshot structure and HTML injection (D3-AUD-001), spherical horizon clipping (D3-AUD-002), edge/vertex incidence (D3-AUD-003), and canonical outward CCW winding (D3-AUD-004). Remediation QA R5 and independent reaudit R4 were accepted for technical close. Human visual acceptance at final product scale remains a separate gate in D.5; no claim of completed product-level UX acceptance is made.
 
 No GPP delta is booked in this close; the official project score remains 346.30 / 1000 (34.6%) until a separately approved rebaseline. M4.6 remains blocked through D.5.
+
+## 2026-10-09 — M4.5-D.4-A production viewport query formal close
+
+D.4-A closes the read-only physical tactical viewport query contract. The query selects globally canonical physical tile IDs by breadth-first expansion over authoritative coarse strategic adjacency and union of physical tile incidences. This does not introduce geometric ring entities or duplicate physical tile identities. The physical refinement model remains conceptually G(m,n) -> G(Nm,Nn), with materialization currently validated only for the existing Class I scale-six envelope; Class III refinement is not claimed.
+
+Remediation QA R3 passed Release build, 4 viewport tests and 1066 full regression tests. Independent readonly re-audit R2 accepted the narrow contract. D.4 TacticalMeshViewer files are explicitly out of scope and remain untracked; D.4 itself is NOT formally closed. Performance benchmarks and reusable prepared query indexes remain future work before high-frequency camera use.
+
+No new GPP delta is booked in this scoped close; retain the official baseline until formally rebaselined. D.5 and M4.6 gates remain unchanged.
