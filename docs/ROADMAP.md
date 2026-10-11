@@ -2883,3 +2883,6 @@ D.4-A closes the read-only physical tactical viewport query contract. The query 
 Remediation QA R3 passed Release build, 4 viewport tests and 1066 full regression tests. Independent readonly re-audit R2 accepted the narrow contract. D.4 TacticalMeshViewer files are explicitly out of scope and remain untracked; D.4 itself is NOT formally closed. Performance benchmarks and reusable prepared query indexes remain future work before high-frequency camera use.
 
 No new GPP delta is booked in this scoped close; retain the official baseline until formally rebaselined. D.5 and M4.6 gates remain unchanged.
+## GA-MESH-001 â€” geometria CENTROID (2026-10-10)
+
+Gate A: migracao matematica para media normalizada dos tres centros incidentes, preservando identidades, topologia e contorno dos poligonos. QA R4: 1112/1112 testes; auditoria read-only aprovada com escopo delimitado. Geometria estrategica visualmente aceita. Snapshots gerados com a formula anterior nao sao equivalentes geometricamente. Gate B (recorte tatico) permanece pendente. Ver docs/ADR-GA-MESH-001-CENTROID-CANONICAL.md.

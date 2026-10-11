@@ -125,103 +125,19 @@ internal static class StrategicSphericalGeometryGenerator
         StrategicVertex vertex,
         IReadOnlyList<SphericalPoint3> cellCenters)
     {
-        var incident =
-            vertex.IncidentCellIds;
-
-        if (incident.Count != 3)
+        if (vertex.IncidentCellIds.Count != 3)
         {
             throw new InvalidOperationException(
                 "Strategic dual vertex requires exactly three incident cells.");
         }
 
-        var first =
-            GetCellCenter(
-                cellCenters,
-                incident[0]);
-
-        var second =
-            GetCellCenter(
-                cellCenters,
-                incident[1]);
-
-        var third =
-            GetCellCenter(
-                cellCenters,
-                incident[2]);
-
-        var firstX =
-            second.X - first.X;
-
-        var firstY =
-            second.Y - first.Y;
-
-        var firstZ =
-            second.Z - first.Z;
-
-        var secondX =
-            third.X - first.X;
-
-        var secondY =
-            third.Y - first.Y;
-
-        var secondZ =
-            third.Z - first.Z;
-
-        var normalX =
-            firstY * secondZ
-            - firstZ * secondY;
-
-        var normalY =
-            firstZ * secondX
-            - firstX * secondZ;
-
-        var normalZ =
-            firstX * secondY
-            - firstY * secondX;
-
-        var outwardX =
-            first.X
-            + second.X
-            + third.X;
-
-        var outwardY =
-            first.Y
-            + second.Y
-            + third.Y;
-
-        var outwardZ =
-            first.Z
-            + second.Z
-            + third.Z;
-
-        var outwardDot =
-            normalX * outwardX
-            + normalY * outwardY
-            + normalZ * outwardZ;
-
-        if (!double.IsFinite(outwardDot)
-            || outwardDot == 0d)
-        {
-            throw new InvalidOperationException(
-                "Strategic dual vertex geometry is degenerate.");
-        }
-
-        if (outwardDot < 0d)
-        {
-            normalX =
-                -normalX;
-
-            normalY =
-                -normalY;
-
-            normalZ =
-                -normalZ;
-        }
-
+        var a = GetCellCenter(cellCenters, vertex.IncidentCellIds[0]);
+        var b = GetCellCenter(cellCenters, vertex.IncidentCellIds[1]);
+        var c = GetCellCenter(cellCenters, vertex.IncidentCellIds[2]);
         return new SphericalPoint3(
-            normalX,
-            normalY,
-            normalZ);
+            a.X + b.X + c.X,
+            a.Y + b.Y + c.Y,
+            a.Z + b.Z + c.Z);
     }
 
     private static StrategicVertexId[] CreateCanonicalBoundary(

@@ -383,31 +383,12 @@ public sealed class StrategicSphericalGeometryTests
                             .Center)
                 .ToArray();
 
-        var firstDot =
-            Dot(
-                vertexGeometry.Position,
-                centers[0]);
+        var centroid = new SphericalPoint3(
+            centers[0].X + centers[1].X + centers[2].X,
+            centers[0].Y + centers[1].Y + centers[2].Y,
+            centers[0].Z + centers[1].Z + centers[2].Z);
 
-        var secondDot =
-            Dot(
-                vertexGeometry.Position,
-                centers[1]);
-
-        var thirdDot =
-            Dot(
-                vertexGeometry.Position,
-                centers[2]);
-
-        AssertClose(
-            firstDot,
-            secondDot,
-            GeometryTolerance);
-
-        AssertClose(
-            firstDot,
-            thirdDot,
-            GeometryTolerance);
-
+        AssertPointClose(centroid, vertexGeometry.Position);
         var outward =
             new[]
             {
