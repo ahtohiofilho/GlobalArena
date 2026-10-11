@@ -4627,3 +4627,7 @@ Gate A: migracao matematica para media normalizada dos tres centros incidentes, 
 ## GA-MESH-001 â€” Gate B logical presentation contracts (2026-10-10)
 
 Gate B logical contracts approved in local QA and read-only audit: PhysicalTacticalViewportFrame (strategic focus, neighbors, canonical physical IDs) and MeshPresentationPlan (strategic overview from StrategicTopology, tactical neighborhood from canonical frame). Regression: 1120/1120 tests in presentation R2; neighborhood R3: 1115/1115. This formal close covers the logical contracts only. OpenGL yellow-highlight experiment is excluded; independent tactical camera, detail geometry/LOD and visual acceptance remain pending. Class I scale-six restriction of PhysicalTacticalIncidenceMapper remains unchanged. See docs/ADR-GA-MESH-001-GATE-B-PRESENTATION-CONTRACTS.md.
+
+## GA-MESH-001 â€” Gate B logical presentation contracts (2026-10-10)
+
+Gate B logical contracts approved in local QA and read-only audit: PhysicalTacticalViewportFrame (strategic focus, neighbors, canonical physical IDs) and MeshPresentationPlan (strategic overview from StrategicTopology, tactical neighborhood from canonical frame). Regression: 1120/1120 tests in presentation R2; neighborhood R3: 1115/1115. This formal close covers the logical contracts only. OpenGL yellow-highlight experiment is excluded; independent tactical camera, detail geometry/LOD and visual acceptance remain pending. Class I scale-six restriction of PhysicalTacticalIncidenceMapper remains unchanged. See docs/ADR-GA-MESH-001-TACTICAL-MATH-FOUNDATION.md.
