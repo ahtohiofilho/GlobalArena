@@ -17,9 +17,12 @@ public partial class GlobePreview : SubViewportContainer
     private Label? _detailsLabel;
     private ulong? _selectedCellId;
     private readonly System.Collections.Generic.Dictionary<ulong, int> _cellDegree = new();
+    // Read-only data sampled by canonical cell identity from WorldGenerationResult.
+    private readonly System.Collections.Generic.Dictionary<ulong, (string Biome, long Habitability, long Elevation)> _worldFacts = new();
     private bool _movedSincePress;
     private Vector2 _pressPosition;
     private const float ClickThresholdPixels = 6f;
+    private bool _showBiomeColors;
 
     private const float DragSensitivity = 0.006f;
     private const float MinZoom = 1.55f;
@@ -63,10 +66,14 @@ public partial class GlobePreview : SubViewportContainer
         {
             var degree = cell.BoundaryVertexIds.Count;
             _cellDegree.Add(cell.CellId.Value, degree);
+            _worldFacts.Add(cell.CellId.Value, (
+                generation.StrategicBiomes.GetKind(cell.CellId).ToString(),
+                generation.StrategicHabitability.GetRawValue(cell.CellId),
+                generation.StrategicPhysicalFields.Elevation.GetRawValue(cell.CellId)));
             if (degree != 5 && degree != 6)
                 throw new InvalidOperationException("Unexpected Goldberg polygon degree.");
             var center = ToGodot(cell.Center);
-            var color = DiagnosticColor(cell.CellId.Value);
+            var color = PresentationColor(cell.CellId.Value);
             for (var index = 0; index < degree; index++)
             {
                 var first = ToGodot(geometry.GetVertex(cell.BoundaryVertexIds[index]).Position);
@@ -127,6 +134,22 @@ public partial class GlobePreview : SubViewportContainer
         _detailsLabel.AddThemeColorOverride("font_color", new Color("#d9e9f4"));
         AddChild(_detailsLabel);
         GD.Print("GA_PROD_TERRITORY_PANEL_READY_03C diagnostic=true");
+        GD.Print("GA_PROD_WORLD_DATA_READY_04 cells=" + _worldFacts.Count);
+        var biomeButton = new Button
+        {
+            Text = "VIEW: CELL COLORS",
+            Position = new Vector2(365f, 8f),
+            CustomMinimumSize = new Vector2(174f, 32f),
+            MouseFilter = MouseFilterEnum.Stop
+        };
+        biomeButton.Pressed += () =>
+        {
+            _showBiomeColors = !_showBiomeColors;
+            biomeButton.Text = _showBiomeColors ? "VIEW: BIOMES" : "VIEW: CELL COLORS";
+            RefreshSelectionColors();
+        };
+        AddChild(biomeButton);
+        GD.Print("GA_PROD_BIOME_VIEW_READY_04 toggle=button");
         GD.Print($"GA_PROD_GLOBE_READY_02B_NO_BORDERS cells={geometry.Cells.Count} vertices={geometry.Vertices.Count} triangles={triangleCount} borders=0");
     }
 
@@ -207,7 +230,11 @@ public partial class GlobePreview : SubViewportContainer
         if (_detailsLabel is not null)
         {
             if (hitId.HasValue && _cellDegree.TryGetValue(hitId.Value, out var degree))
-                _detailsLabel.Text = $"Canonical cell {hitId.Value}  |  {(degree == 5 ? "Pentagon" : "Hexagon")}  |  {degree} sides";
+                _detailsLabel.Text = $"Canonical cell {hitId.Value}  |  {(degree == 5 ? "Pentagon" : "Hexagon")}  |  {degree} sides"
+                    + (_worldFacts.TryGetValue(hitId.Value, out var facts)
+                        ? $"\nBiome: {facts.Biome}  |  Habitability: {facts.Habitability}/{StrategicScalarField.Denominator}"
+                          + $"\nElevation (normalized raw): {facts.Elevation}/{StrategicScalarField.Denominator}"
+                        : "\nWorld data unavailable");
             else
                 _detailsLabel.Text = "Select a territory to view its canonical identity";
         }
@@ -245,7 +272,7 @@ public partial class GlobePreview : SubViewportContainer
         {
             var color = _selectedCellId == t.Id
                 ? new Color(1f, 0.95f, 0.65f)
-                : DiagnosticColor(t.Id);
+                : PresentationColor(t.Id);
             AddVertex(tool, t.A, color);
             AddVertex(tool, t.B, color);
             AddVertex(tool, t.C, color);
@@ -262,6 +289,25 @@ public partial class GlobePreview : SubViewportContainer
         _camera.Position = position;
     }
 
+    // Diagnostic mode remains available; biome mode uses only canonical generated facts.
+    private Color PresentationColor(ulong cellId)
+    {
+        if (!_showBiomeColors || !_worldFacts.TryGetValue(cellId, out var facts))
+            return DiagnosticColor(cellId);
+        return facts.Biome switch
+        {
+            "Water" => new Color("#306fba"),
+            "PolarIce" => new Color("#dbeafa"),
+            "Tundra" => new Color("#aebca7"),
+            "Highland" => new Color("#8c8175"),
+            "Wetland" => new Color("#538b77"),
+            "Desert" => new Color("#d7b679"),
+            "Rainforest" => new Color("#206b46"),
+            "Forest" => new Color("#43834a"),
+            "Grassland" => new Color("#9db963"),
+            _ => DiagnosticColor(cellId)
+        };
+    }
     // Stable pseudo-random palette, determined only by canonical cell ID (no mutable RNG).
     private static Color DiagnosticColor(ulong cellId)
     {

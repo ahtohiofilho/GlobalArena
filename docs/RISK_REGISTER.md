@@ -4666,3 +4666,7 @@ GA-PROD-03.A viewport drag initially inverted vertical movement by hemisphere an
 ## GA-PROD-03.BC - Integrated strategic picking risks (2026-10-12)
 
 The Godot diagnostic G(3,0) renderer performs nearest-hit ray/triangle picking over 540 canonical triangles, uses a six-pixel movement threshold for click versus drag, and reconstructs 540 visual triangles on selection-color changes. Risks requiring a later scale gate: per-click linear ray traversal and repeated mesh rebuild when increasing planet resolution; surface/triangle-edge floating-point boundary ties; overlay layout adaptability; automated input interaction coverage. Current verification does not establish these as optimized for large worlds. GA-PROD-03A camera-aligned drag and opacity remain protected regression contracts. No global risk re-score is implied.
+
+## GA-PROD-04 - World data visualization follow-up risks (2026-10-12)
+
+Biome map, habitability and elevation are sampled from the authoritative generated world. The current G(3,0) client uses fixed diagnostic color palettes and refreshes the entire 540-triangle mesh on color-mode change or selection. UI overlay fit, accessible color contrast, normalized raw-value meaning, high-resolution GPU update cost, terrain visualization and cross-platform graphical behavior remain to be validated before commercial readiness. This note does not silently re-score global risk or close unrelated outstanding risks.
