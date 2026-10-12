@@ -11,6 +11,15 @@ public partial class GlobePreview : SubViewportContainer
     private Node3D? _planet;
     private Camera3D? _camera;
     private bool _dragging;
+    private readonly System.Collections.Generic.List<(ulong Id, Vector3 A, Vector3 B, Vector3 C)> _pickTriangles = new();
+    private Label? _pickedLabel;
+    private MeshInstance3D? _surfaceInstance;
+    private Label? _detailsLabel;
+    private ulong? _selectedCellId;
+    private readonly System.Collections.Generic.Dictionary<ulong, int> _cellDegree = new();
+    private bool _movedSincePress;
+    private Vector2 _pressPosition;
+    private const float ClickThresholdPixels = 6f;
 
     private const float DragSensitivity = 0.006f;
     private const float MinZoom = 1.55f;
@@ -47,11 +56,13 @@ public partial class GlobePreview : SubViewportContainer
             throw new InvalidOperationException("Authoritative globe geometry/count contract failed.");
 
         var surface = new SurfaceTool();
+        _pickTriangles.Clear();
         surface.Begin(Mesh.PrimitiveType.Triangles);
         var triangleCount = 0;
         foreach (var cell in geometry.Cells)
         {
             var degree = cell.BoundaryVertexIds.Count;
+            _cellDegree.Add(cell.CellId.Value, degree);
             if (degree != 5 && degree != 6)
                 throw new InvalidOperationException("Unexpected Goldberg polygon degree.");
             var center = ToGodot(cell.Center);
@@ -60,6 +71,7 @@ public partial class GlobePreview : SubViewportContainer
             {
                 var first = ToGodot(geometry.GetVertex(cell.BoundaryVertexIds[index]).Position);
                 var second = ToGodot(geometry.GetVertex(cell.BoundaryVertexIds[(index + 1) % degree]).Position);
+                _pickTriangles.Add((cell.CellId.Value, center, first, second));
                 AddVertex(surface, center, color);
                 AddVertex(surface, first, color);
                 AddVertex(surface, second, color);
@@ -71,7 +83,7 @@ public partial class GlobePreview : SubViewportContainer
             throw new InvalidOperationException($"Canonical globe triangulation mismatch: {triangleCount}.");
         _planet = new Node3D();
         world.AddChild(_planet);
-        _planet.AddChild(new MeshInstance3D
+        _surfaceInstance = new MeshInstance3D
         {
             Mesh = mesh,
             MaterialOverride = new StandardMaterial3D
@@ -82,7 +94,8 @@ public partial class GlobePreview : SubViewportContainer
                 // Double-sided opaque triangles: depth testing, not winding, owns occlusion.
                 CullMode = BaseMaterial3D.CullModeEnum.Disabled
             }
-        });
+        };
+        _planet.AddChild(_surfaceInstance);
         var camera = new Camera3D
         {
             Position = new Vector3(0f, 0.05f, 3.15f),
@@ -93,6 +106,27 @@ public partial class GlobePreview : SubViewportContainer
         _camera = camera;
         camera.LookAt(Vector3.Zero, Vector3.Up);
         GD.Print("GA_PROD_NAV_READY_03A orbit=drag zoom=wheel");
+        _pickedLabel = new Label
+        {
+            Text = "Territory: none  |  Left click to inspect",
+            Position = new Vector2(12f, 12f),
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        _pickedLabel.AddThemeColorOverride("font_color", new Color("#ffffff"));
+        _pickedLabel.AddThemeColorOverride("font_shadow_color", new Color("#000000"));
+        _pickedLabel.AddThemeConstantOverride("shadow_offset_x", 1);
+        _pickedLabel.AddThemeConstantOverride("shadow_offset_y", 1);
+        AddChild(_pickedLabel);
+        GD.Print("GA_PROD_PICK_READY_03B triangles=" + _pickTriangles.Count);
+        _detailsLabel = new Label
+        {
+            Text = "Select a territory to view its canonical identity",
+            Position = new Vector2(12f, 38f),
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        _detailsLabel.AddThemeColorOverride("font_color", new Color("#d9e9f4"));
+        AddChild(_detailsLabel);
+        GD.Print("GA_PROD_TERRITORY_PANEL_READY_03C diagnostic=true");
         GD.Print($"GA_PROD_GLOBE_READY_02B_NO_BORDERS cells={geometry.Cells.Count} vertices={geometry.Vertices.Count} triangles={triangleCount} borders=0");
     }
 
@@ -108,7 +142,17 @@ public partial class GlobePreview : SubViewportContainer
         {
             if (button.ButtonIndex == MouseButton.Left)
             {
-                _dragging = button.Pressed;
+                if (button.Pressed)
+                {
+                    _dragging = true;
+                    _movedSincePress = false;
+                    _pressPosition = button.Position;
+                }
+                else
+                {
+                    if (_dragging && !_movedSincePress) PickTerritory(button.Position);
+                    _dragging = false;
+                }
                 AcceptEvent();
             }
             else if (button.Pressed && button.ButtonIndex == MouseButton.WheelUp)
@@ -130,11 +174,86 @@ public partial class GlobePreview : SubViewportContainer
             var cameraBasis = _camera.GlobalTransform.Basis.Orthonormalized();
             var yaw = new Quaternion(cameraBasis.Y.Normalized(), motion.Relative.X * DragSensitivity);
             var pitch = new Quaternion(cameraBasis.X.Normalized(), motion.Relative.Y * DragSensitivity);
+            if (!_movedSincePress && motion.Position.DistanceTo(_pressPosition) >= ClickThresholdPixels)
+                _movedSincePress = true;
+            if (!_movedSincePress) return;
             _planet.Quaternion = (yaw * pitch * _planet.Quaternion).Normalized();
             AcceptEvent();
         }
     }
 
+    private void PickTerritory(Vector2 localPoint)
+    {
+        if (_planet is null || _camera is null || _pickedLabel is null) return;
+        var origin = _camera.ProjectRayOrigin(localPoint);
+        var direction = _camera.ProjectRayNormal(localPoint).Normalized();
+        var transform = _planet.GlobalTransform;
+        var nearest = float.PositiveInfinity;
+        ulong? hitId = null;
+        foreach (var triangle in _pickTriangles)
+        {
+            if (!RayTriangle(origin, direction, transform * triangle.A, transform * triangle.B,
+                    transform * triangle.C, out var distance)) continue;
+            if (distance >= nearest) continue;
+            nearest = distance;
+            hitId = triangle.Id;
+        }
+        _pickedLabel.Text = hitId.HasValue ? $"Territory ID: {hitId.Value}" : "Territory: none";
+        if (hitId != _selectedCellId)
+        {
+            _selectedCellId = hitId;
+            RefreshSelectionColors();
+        }
+        if (_detailsLabel is not null)
+        {
+            if (hitId.HasValue && _cellDegree.TryGetValue(hitId.Value, out var degree))
+                _detailsLabel.Text = $"Canonical cell {hitId.Value}  |  {(degree == 5 ? "Pentagon" : "Hexagon")}  |  {degree} sides";
+            else
+                _detailsLabel.Text = "Select a territory to view its canonical identity";
+        }
+        GD.Print(hitId.HasValue ? $"GA_PROD_PICK_03B cell={hitId.Value}" : "GA_PROD_PICK_03B miss");
+    }
+
+    private static bool RayTriangle(Vector3 origin, Vector3 direction, Vector3 a, Vector3 b,
+        Vector3 c, out float distance)
+    {
+        distance = 0f;
+        var edge1 = b - a;
+        var edge2 = c - a;
+        var cross = direction.Cross(edge2);
+        var det = edge1.Dot(cross);
+        if (Mathf.Abs(det) < 0.000001f) return false;
+        var inverse = 1f / det;
+        var fromA = origin - a;
+        var u = inverse * fromA.Dot(cross);
+        if (u < 0f || u > 1f) return false;
+        var q = fromA.Cross(edge1);
+        var v = inverse * direction.Dot(q);
+        if (v < 0f || u + v > 1f) return false;
+        var t = inverse * edge2.Dot(q);
+        if (t <= 0.0001f) return false;
+        distance = t;
+        return true;
+    }
+    // Repaint existing canonical triangles in place; never create overlay outlines or new topology.
+    private void RefreshSelectionColors()
+    {
+        if (_surfaceInstance is null) return;
+        var tool = new SurfaceTool();
+        tool.Begin(Mesh.PrimitiveType.Triangles);
+        foreach (var t in _pickTriangles)
+        {
+            var color = _selectedCellId == t.Id
+                ? new Color(1f, 0.95f, 0.65f)
+                : DiagnosticColor(t.Id);
+            AddVertex(tool, t.A, color);
+            AddVertex(tool, t.B, color);
+            AddVertex(tool, t.C, color);
+        }
+        var replacement = tool.Commit();
+        if (replacement is null) throw new InvalidOperationException("Selection recolor mesh unavailable.");
+        _surfaceInstance.Mesh = replacement;
+    }
     private void ChangeZoom(float delta)
     {
         if (_camera is null) return;
