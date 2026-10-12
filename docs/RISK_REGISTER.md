@@ -4674,3 +4674,7 @@ Biome map, habitability and elevation are sampled from the authoritative generat
 ## GA-PROD-05 - Four-layer globe presentation risks (2026-10-12)
 
 Diagnostic colors, biomes, habitability and elevation currently share a 92-cell preview rendering surface. Readability, scalar legend semantics, accessibility/color contrast, high-resolution performance and GPU recoloring remain to be measured at product scale. The visual attestation covers the current local Godot interaction only, not cross-device acceptance. No global risk rating or GPP values are silently changed.
+
+## GA-PROD-06 - Map legend and presentation risks (2026-10-12)
+
+Contextual legends describe current diagnostic modes but do not establish calibrated physical units, accessibility, complete color-contrast coverage or high-resolution performance. Validate readability and placement at production layout and scale. Maintain separate evidence for user-facing visual acceptance; headless runtime is insufficient for interaction proof. No GPP or global risk rating changes are silently inferred.

@@ -23,6 +23,7 @@ public partial class GlobePreview : SubViewportContainer
     private Vector2 _pressPosition;
     private const float ClickThresholdPixels = 6f;
     private int _mapMode; // 0 cells, 1 biomes, 2 habitability, 3 elevation
+    private Label? _mapLegend;
 
     private const float DragSensitivity = 0.006f;
     private const float MinZoom = 1.55f;
@@ -153,8 +154,22 @@ public partial class GlobePreview : SubViewportContainer
                 _ => "VIEW: CELL COLORS"
             };
             RefreshSelectionColors();
+            UpdateMapLegend();
         };
         AddChild(mapModeButton);
+        _mapLegend = new Label
+        {
+            Position = new Vector2(12f, 410f),
+            Size = new Vector2(520f, 72f),
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        _mapLegend.AddThemeColorOverride("font_color", new Color("#e2edf6"));
+        _mapLegend.AddThemeColorOverride("font_shadow_color", new Color("#08131e"));
+        _mapLegend.AddThemeConstantOverride("shadow_offset_x", 1);
+        _mapLegend.AddThemeConstantOverride("shadow_offset_y", 1);
+        AddChild(_mapLegend);
+        UpdateMapLegend();
+        GD.Print("GA_PROD_LEGEND_READY_06 modes=4");
         GD.Print("GA_PROD_WORLD_LAYERS_READY_05 modes=4");
         GD.Print($"GA_PROD_GLOBE_READY_02B_NO_BORDERS cells={geometry.Cells.Count} vertices={geometry.Vertices.Count} triangles={triangleCount} borders=0");
     }
@@ -295,6 +310,17 @@ public partial class GlobePreview : SubViewportContainer
         _camera.Position = position;
     }
 
+    private void UpdateMapLegend()
+    {
+        if (_mapLegend is null) return;
+        _mapLegend.Text = _mapMode switch
+        {
+            1 => "BIOMES | Blue: Water  White: Ice  Gray: Highland\nGreen: Forest/Wetland  Yellow: Desert/Grassland",
+            2 => "HABITABILITY | Dark: lower suitability  Light: higher suitability\nNormalized domain index (0 to 1); not a population estimate",
+            3 => "ELEVATION | Dark: lower elevation  Light: higher elevation\nNormalized procedural field; not meters",
+            _ => "CELL COLORS | Deterministic colors distinguish adjacent territories\nColors do not imply ownership, biome, or political borders"
+        };
+    }
     // Diagnostic mode remains available; biome mode uses only canonical generated facts.
     private Color PresentationColor(ulong cellId)
     {
