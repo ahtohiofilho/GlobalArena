@@ -4670,3 +4670,7 @@ The Godot diagnostic G(3,0) renderer performs nearest-hit ray/triangle picking o
 ## GA-PROD-04 - World data visualization follow-up risks (2026-10-12)
 
 Biome map, habitability and elevation are sampled from the authoritative generated world. The current G(3,0) client uses fixed diagnostic color palettes and refreshes the entire 540-triangle mesh on color-mode change or selection. UI overlay fit, accessible color contrast, normalized raw-value meaning, high-resolution GPU update cost, terrain visualization and cross-platform graphical behavior remain to be validated before commercial readiness. This note does not silently re-score global risk or close unrelated outstanding risks.
+
+## GA-PROD-05 - Four-layer globe presentation risks (2026-10-12)
+
+Diagnostic colors, biomes, habitability and elevation currently share a 92-cell preview rendering surface. Readability, scalar legend semantics, accessibility/color contrast, high-resolution performance and GPU recoloring remain to be measured at product scale. The visual attestation covers the current local Godot interaction only, not cross-device acceptance. No global risk rating or GPP values are silently changed.

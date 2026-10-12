@@ -22,7 +22,7 @@ public partial class GlobePreview : SubViewportContainer
     private bool _movedSincePress;
     private Vector2 _pressPosition;
     private const float ClickThresholdPixels = 6f;
-    private bool _showBiomeColors;
+    private int _mapMode; // 0 cells, 1 biomes, 2 habitability, 3 elevation
 
     private const float DragSensitivity = 0.006f;
     private const float MinZoom = 1.55f;
@@ -135,21 +135,27 @@ public partial class GlobePreview : SubViewportContainer
         AddChild(_detailsLabel);
         GD.Print("GA_PROD_TERRITORY_PANEL_READY_03C diagnostic=true");
         GD.Print("GA_PROD_WORLD_DATA_READY_04 cells=" + _worldFacts.Count);
-        var biomeButton = new Button
+        var mapModeButton = new Button
         {
             Text = "VIEW: CELL COLORS",
             Position = new Vector2(365f, 8f),
             CustomMinimumSize = new Vector2(174f, 32f),
             MouseFilter = MouseFilterEnum.Stop
         };
-        biomeButton.Pressed += () =>
+        mapModeButton.Pressed += () =>
         {
-            _showBiomeColors = !_showBiomeColors;
-            biomeButton.Text = _showBiomeColors ? "VIEW: BIOMES" : "VIEW: CELL COLORS";
+            _mapMode = (_mapMode + 1) % 4;
+            mapModeButton.Text = _mapMode switch
+            {
+                1 => "VIEW: BIOMES",
+                2 => "VIEW: HABITABILITY",
+                3 => "VIEW: ELEVATION",
+                _ => "VIEW: CELL COLORS"
+            };
             RefreshSelectionColors();
         };
-        AddChild(biomeButton);
-        GD.Print("GA_PROD_BIOME_VIEW_READY_04 toggle=button");
+        AddChild(mapModeButton);
+        GD.Print("GA_PROD_WORLD_LAYERS_READY_05 modes=4");
         GD.Print($"GA_PROD_GLOBE_READY_02B_NO_BORDERS cells={geometry.Cells.Count} vertices={geometry.Vertices.Count} triangles={triangleCount} borders=0");
     }
 
@@ -292,8 +298,18 @@ public partial class GlobePreview : SubViewportContainer
     // Diagnostic mode remains available; biome mode uses only canonical generated facts.
     private Color PresentationColor(ulong cellId)
     {
-        if (!_showBiomeColors || !_worldFacts.TryGetValue(cellId, out var facts))
+        if (!_worldFacts.TryGetValue(cellId, out var facts) || _mapMode == 0)
             return DiagnosticColor(cellId);
+        if (_mapMode == 2)
+        {
+            var normalized = Mathf.Clamp((float)facts.Habitability / StrategicScalarField.Denominator, 0f, 1f);
+            return new Color(0.15f + 0.75f * normalized, 0.24f + 0.59f * normalized, 0.44f - 0.22f * normalized);
+        }
+        if (_mapMode == 3)
+        {
+            var normalized = Mathf.Clamp((float)facts.Elevation / StrategicScalarField.Denominator, 0f, 1f);
+            return new Color(0.12f + 0.76f * normalized, 0.26f + 0.65f * normalized, 0.40f + 0.48f * normalized);
+        }
         return facts.Biome switch
         {
             "Water" => new Color("#306fba"),
