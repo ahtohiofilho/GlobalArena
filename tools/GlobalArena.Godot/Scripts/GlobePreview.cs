@@ -4,8 +4,8 @@ using Godot;
 
 namespace GlobalArena.Godot;
 
-// GA-PROD-02A: view-only projection of the authoritative spherical geometry.
-// This class never creates a second Goldberg topology or changes core IDs.
+// GA-PROD-02B: continuous canonical Goldberg surface; deterministic per-cell diagnostic colors.
+// No inset, borders, duplicate topology or simulation ownership in the renderer.
 public partial class GlobePreview : SubViewportContainer
 {
     private Node3D? _planet;
@@ -25,7 +25,6 @@ public partial class GlobePreview : SubViewportContainer
             TransparentBg = true
         };
         AddChild(viewport);
-
         var world = new Node3D();
         viewport.AddChild(world);
 
@@ -36,66 +35,48 @@ public partial class GlobePreview : SubViewportContainer
         var generation = new DeterministicWorldGenerator().Generate(request);
         var geometry = generation.StrategicSphericalGeometry;
         var topology = generation.StrategicTopology;
-
-        if (geometry.Cells.Count != topology.Cells.Count
-            || geometry.Vertices.Count != topology.Vertices.Count
-            || geometry.Cells.Count != 92)
-        {
+        if (geometry.Cells.Count != topology.Cells.Count ||
+            geometry.Vertices.Count != topology.Vertices.Count ||
+            geometry.Cells.Count != 92 || geometry.Vertices.Count != 180)
             throw new InvalidOperationException("Authoritative globe geometry/count contract failed.");
-        }
 
         var surface = new SurfaceTool();
         surface.Begin(Mesh.PrimitiveType.Triangles);
         var triangleCount = 0;
-
         foreach (var cell in geometry.Cells)
         {
-            if (cell.BoundaryVertexIds.Count != 5 && cell.BoundaryVertexIds.Count != 6)
-            {
+            var degree = cell.BoundaryVertexIds.Count;
+            if (degree != 5 && degree != 6)
                 throw new InvalidOperationException("Unexpected Goldberg polygon degree.");
-            }
-
             var center = ToGodot(cell.Center);
-            var baseColor = cell.BoundaryVertexIds.Count == 5
-                ? new Color(0.34f, 0.66f, 0.81f)
-                : (cell.CellId.Value % 7UL < 3UL
-                    ? new Color(0.15f, 0.51f, 0.65f)
-                    : new Color(0.10f, 0.36f, 0.51f));
-
-            for (var index = 0; index < cell.BoundaryVertexIds.Count; index++)
+            var color = DiagnosticColor(cell.CellId.Value);
+            for (var index = 0; index < degree; index++)
             {
                 var first = ToGodot(geometry.GetVertex(cell.BoundaryVertexIds[index]).Position);
-                var second = ToGodot(geometry.GetVertex(
-                    cell.BoundaryVertexIds[(index + 1) % cell.BoundaryVertexIds.Count]).Position);
-
-                // Slightly inset the polygon vertices to make canonical borders visible.
-                const float inset = 0.965f;
-                first = (center + (first - center) * inset).Normalized();
-                second = (center + (second - center) * inset).Normalized();
-                AddVertex(surface, center, baseColor);
-                AddVertex(surface, first, baseColor);
-                AddVertex(surface, second, baseColor);
+                var second = ToGodot(geometry.GetVertex(cell.BoundaryVertexIds[(index + 1) % degree]).Position);
+                AddVertex(surface, center, color);
+                AddVertex(surface, first, color);
+                AddVertex(surface, second, color);
                 triangleCount++;
             }
         }
-
-        var arrayMesh = surface.Commit();
-        if (arrayMesh is null || triangleCount == 0)
-        {
-            throw new InvalidOperationException("No canonical globe triangles generated.");
-        }
-
-        var material = new StandardMaterial3D
-        {
-            VertexColorUseAsAlbedo = true,
-            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
-            CullMode = BaseMaterial3D.CullModeEnum.Disabled
-        };
-
+        var mesh = surface.Commit();
+        if (mesh is null || triangleCount != 540)
+            throw new InvalidOperationException($"Canonical globe triangulation mismatch: {triangleCount}.");
         _planet = new Node3D();
         world.AddChild(_planet);
-        _planet.AddChild(new MeshInstance3D { Mesh = arrayMesh, MaterialOverride = material });
-
+        _planet.AddChild(new MeshInstance3D
+        {
+            Mesh = mesh,
+            MaterialOverride = new StandardMaterial3D
+            {
+                VertexColorUseAsAlbedo = true,
+                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+                Transparency = BaseMaterial3D.TransparencyEnum.Disabled,
+                // Double-sided opaque triangles: depth testing, not winding, owns occlusion.
+                CullMode = BaseMaterial3D.CullModeEnum.Disabled
+            }
+        });
         var camera = new Camera3D
         {
             Position = new Vector3(0f, 0.05f, 3.15f),
@@ -104,22 +85,34 @@ public partial class GlobePreview : SubViewportContainer
         };
         world.AddChild(camera);
         camera.LookAt(Vector3.Zero, Vector3.Up);
-
-        GD.Print($"GA_PROD_GLOBE_READY_02A cells={geometry.Cells.Count} vertices={geometry.Vertices.Count} triangles={triangleCount}");
+        GD.Print($"GA_PROD_GLOBE_READY_02B_NO_BORDERS cells={geometry.Cells.Count} vertices={geometry.Vertices.Count} triangles={triangleCount} borders=0");
     }
 
     public override void _Process(double delta)
     {
-        if (_planet is not null)
+        if (_planet is not null) _planet.RotateY((float)(delta * 0.12));
+    }
+
+    // Stable pseudo-random palette, determined only by canonical cell ID (no mutable RNG).
+    private static Color DiagnosticColor(ulong cellId)
+    {
+        unchecked
         {
-            _planet.RotateY((float)(delta * 0.12));
+            var x = cellId + 0x9E3779B97F4A7C15UL;
+            x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9UL;
+            x = (x ^ (x >> 27)) * 0x94D049BB133111EBUL;
+            x ^= x >> 31;
+            var hue = (float)((x & 0xFFFFFFUL) / 16777216.0);
+            var sat = 0.45f + (float)(((x >> 24) & 255UL) / 255.0) * 0.30f;
+            var val = 0.62f + (float)(((x >> 32) & 255UL) / 255.0) * 0.25f;
+            return Color.FromHsv(hue, sat, val);
         }
     }
 
-    private static void AddVertex(SurfaceTool surface, Vector3 position, Color color)
+    private static void AddVertex(SurfaceTool tool, Vector3 position, Color color)
     {
-        surface.SetColor(color);
-        surface.AddVertex(position);
+        tool.SetColor(color);
+        tool.AddVertex(position);
     }
 
     private static Vector3 ToGodot(SphericalPoint3 point) =>

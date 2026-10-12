@@ -2919,3 +2919,7 @@ Status: validated UI bootstrap; the menu displays and `SYSTEM STATUS` responds. 
 ## 2026-10-12 â€” GA-PROD-02.A â€” First canonical globe in Godot
 
 Status: implementation and visual/headless audit passed. Production Godot client renders the existing `GlobalArena.World` canonical `G(3,0)` strategic surface (92 cells). Known gap artifact: opposite hemisphere visible through inset tile edges. Next: refine continuous opaque planet and border overlay, then add user-controlled orbit/zoom and strategic picking. Existing 1,000-GPP progress baseline unchanged pending formal capability calibration.
+
+## 2026-10-12 â€” GA-PROD-02.B â€” Continuous strategic globe formal close
+
+The production Godot client now draws the canonical G(3,0) strategic world as one continuous opaque surface: no inset polygons, border overlays, or artificial gaps. Deterministic diagnostic per-cell colors expose territory adjacency. The authoritative topology and geometry remain in GlobalArena.World. QA R6 verified Debug/Release solution and client builds, 1,157 regressions and Godot headless runtime (92 cells, 180 vertices, 540 triangles, zero drawn borders). A 2026-10-12 visual screenshot was accepted for the rendered frame; no claim of exhaustive animated/driver acceptance. Close does not change 1000-GPP calibration. Next: GA-PROD-03 navigable globe, camera orbit/zoom and authoritative territory picking. See docs/ADR-GA-PROD-02B-CONTINUOUS-STRATEGIC-SURFACE.md.

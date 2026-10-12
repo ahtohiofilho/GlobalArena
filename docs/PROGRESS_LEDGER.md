@@ -15977,3 +15977,7 @@ Stage: GA-PROD-02.A. Audit R1 approved on 2026-10-12; visual validation by user 
 
 ### Next
 - GA-PROD-02.B: opaque surface/border rendering refinement, followed by navigation/selection under a distinct QA gate.
+
+## 2026-10-12 â€” GA-PROD-02.B â€” Continuous strategic globe formal close
+
+Formal close scope: continuous opaque strategic Goldberg mesh, canonical shared boundary vertices, diagnostic cell-ID-derived palette; no border geometry or inset. QA R6 evidence: 1,157/1,157 tests; four Debug/Release builds passed; headless Godot 4.7.2 emitted `GA_PROD_GLOBE_READY_02B_NO_BORDERS cells=92 vertices=180 triangles=540 borders=0`. User screenshot accepted 2026-10-12 for this visual checkpoint. Limitation: single captured view does not validate all rotations, hardware and interaction. No game navigation, picking or economic turn loop yet. GPP delta 0.00; keep approved existing project baseline until formal recalibration. Next GA-PROD-03. ADR: docs/ADR-GA-PROD-02B-CONTINUOUS-STRATEGIC-SURFACE.md.
