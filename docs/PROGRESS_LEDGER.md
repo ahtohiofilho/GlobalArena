@@ -15981,3 +15981,11 @@ Stage: GA-PROD-02.A. Audit R1 approved on 2026-10-12; visual validation by user 
 ## 2026-10-12 â€” GA-PROD-02.B â€” Continuous strategic globe formal close
 
 Formal close scope: continuous opaque strategic Goldberg mesh, canonical shared boundary vertices, diagnostic cell-ID-derived palette; no border geometry or inset. QA R6 evidence: 1,157/1,157 tests; four Debug/Release builds passed; headless Godot 4.7.2 emitted `GA_PROD_GLOBE_READY_02B_NO_BORDERS cells=92 vertices=180 triangles=540 borders=0`. User screenshot accepted 2026-10-12 for this visual checkpoint. Limitation: single captured view does not validate all rotations, hardware and interaction. No game navigation, picking or economic turn loop yet. GPP delta 0.00; keep approved existing project baseline until formal recalibration. Next GA-PROD-03. ADR: docs/ADR-GA-PROD-02B-CONTINUOUS-STRATEGIC-SURFACE.md.
+
+## GA-PROD-03.A - Navigable Globe Formal Close (2026-10-12)
+
+Status: QA R4 technically approved and user interaction acceptance confirmed. The production Godot client provides user-driven screen-space globe drag and bounded wheel zoom. The earlier automatic rotation is disabled. Vertical dragging was corrected to follow pointer direction consistently across both hemispheres. Strategic geometry, canonical cell identities, deterministic diagnostic colors and the no-border opaque surface remain unchanged.
+
+Evidence: GA-PROD-03A-QA-R4-20261012-160331.zip (1,157 regression tests, solution Release, Godot Debug/Release, Godot headless runtime). User manually accepted horizontal/vertical dragging and zoom, including vertical direction on both hemispheres. The headless check is not a substitute for this manual observation.
+
+Scope: navigation only; no territory picking or game turn logic. Next: GA-PROD-03.B canonical strategic-cell selection. No GPP delta booked without explicit capability recalibration. See docs/ADR-GA-PROD-03A-ORBIT-ZOOM-INTERACTION.md.

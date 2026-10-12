@@ -2923,3 +2923,11 @@ Status: implementation and visual/headless audit passed. Production Godot client
 ## 2026-10-12 â€” GA-PROD-02.B â€” Continuous strategic globe formal close
 
 The production Godot client now draws the canonical G(3,0) strategic world as one continuous opaque surface: no inset polygons, border overlays, or artificial gaps. Deterministic diagnostic per-cell colors expose territory adjacency. The authoritative topology and geometry remain in GlobalArena.World. QA R6 verified Debug/Release solution and client builds, 1,157 regressions and Godot headless runtime (92 cells, 180 vertices, 540 triangles, zero drawn borders). A 2026-10-12 visual screenshot was accepted for the rendered frame; no claim of exhaustive animated/driver acceptance. Close does not change 1000-GPP calibration. Next: GA-PROD-03 navigable globe, camera orbit/zoom and authoritative territory picking. See docs/ADR-GA-PROD-02B-CONTINUOUS-STRATEGIC-SURFACE.md.
+
+## GA-PROD-03.A - Navigable Globe Formal Close (2026-10-12)
+
+Status: QA R4 technically approved and user interaction acceptance confirmed. The production Godot client provides user-driven screen-space globe drag and bounded wheel zoom. The earlier automatic rotation is disabled. Vertical dragging was corrected to follow pointer direction consistently across both hemispheres. Strategic geometry, canonical cell identities, deterministic diagnostic colors and the no-border opaque surface remain unchanged.
+
+Evidence: GA-PROD-03A-QA-R4-20261012-160331.zip (1,157 regression tests, solution Release, Godot Debug/Release, Godot headless runtime). User manually accepted horizontal/vertical dragging and zoom, including vertical direction on both hemispheres. The headless check is not a substitute for this manual observation.
+
+Scope: navigation only; no territory picking or game turn logic. Next: GA-PROD-03.B canonical strategic-cell selection. No GPP delta booked without explicit capability recalibration. See docs/ADR-GA-PROD-03A-ORBIT-ZOOM-INTERACTION.md.

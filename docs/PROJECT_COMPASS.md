@@ -1814,3 +1814,7 @@ The production PC client now runs on Godot 4.7.2 .NET and references the indepen
 ## 2026-10-12 â€” GA-PROD-02.A â€” Canonical strategic globe presentation
 
 The production Godot 4.7.2 .NET application now consumes authoritative `WorldGenerationResult.StrategicSphericalGeometry` and renders a slowly rotating `G(3,0)` globe. All strategic cell IDs, vertices and polygon boundaries originate in the independent `GlobalArena.World` project. The renderer only converts coordinates to Godot `Vector3` and constructs GPU triangles; it does not define a second topology. The first visual implementation is not a finished globe: inset polygons leave see-through gaps. Opaque underlying surface and border overlays remain next-stage rendering work.
+
+## GA-PROD-03.A - Production globe navigation (2026-10-12)
+
+Godot production viewport supports screen-space mouse drag and bounded wheel zoom, with user-validated vertical drag orientation across both hemispheres. GlobalArena.World remains authoritative for geometry/strategic IDs; no selection or simulation changes. See ADR-GA-PROD-03A-ORBIT-ZOOM-INTERACTION.md. GPP baseline remains 346.30 / 1000 (34.6%), pending explicit capability/maturity reconciliation; do not treat this as a newly measured score.

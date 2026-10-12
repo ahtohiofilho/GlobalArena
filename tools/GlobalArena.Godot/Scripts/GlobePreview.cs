@@ -9,13 +9,19 @@ namespace GlobalArena.Godot;
 public partial class GlobePreview : SubViewportContainer
 {
     private Node3D? _planet;
+    private Camera3D? _camera;
+    private bool _dragging;
+
+    private const float DragSensitivity = 0.006f;
+    private const float MinZoom = 1.55f;
+    private const float MaxZoom = 6.0f;
 
     public override void _Ready()
     {
         Position = new Vector2(660, 135);
         Size = new Vector2(550, 490);
         Stretch = true;
-        MouseFilter = MouseFilterEnum.Ignore;
+        MouseFilter = MouseFilterEnum.Stop;
 
         var viewport = new SubViewport
         {
@@ -84,13 +90,57 @@ public partial class GlobePreview : SubViewportContainer
             Fov = 48f
         };
         world.AddChild(camera);
+        _camera = camera;
         camera.LookAt(Vector3.Zero, Vector3.Up);
+        GD.Print("GA_PROD_NAV_READY_03A orbit=drag zoom=wheel");
         GD.Print($"GA_PROD_GLOBE_READY_02B_NO_BORDERS cells={geometry.Cells.Count} vertices={geometry.Vertices.Count} triangles={triangleCount} borders=0");
     }
 
     public override void _Process(double delta)
     {
-        if (_planet is not null) _planet.RotateY((float)(delta * 0.12));
+        // GA-PROD-03A: no automatic spin; player controls the globe.
+    }
+
+    public override void _GuiInput(InputEvent @event)
+    {
+        if (_planet is null || _camera is null) return;
+        if (@event is InputEventMouseButton button)
+        {
+            if (button.ButtonIndex == MouseButton.Left)
+            {
+                _dragging = button.Pressed;
+                AcceptEvent();
+            }
+            else if (button.Pressed && button.ButtonIndex == MouseButton.WheelUp)
+            {
+                ChangeZoom(-0.25f);
+                AcceptEvent();
+            }
+            else if (button.Pressed && button.ButtonIndex == MouseButton.WheelDown)
+            {
+                ChangeZoom(0.25f);
+                AcceptEvent();
+            }
+        }
+        else if (@event is InputEventMouseMotion motion && _dragging &&
+                 (motion.ButtonMask & MouseButtonMask.Left) != 0)
+        {
+            // Screen-space orbital dragging: axes stay aligned to camera, not planet Euler angles.
+            // Compose in world space so the same mouse direction works at every longitude.
+            var cameraBasis = _camera.GlobalTransform.Basis.Orthonormalized();
+            var yaw = new Quaternion(cameraBasis.Y.Normalized(), motion.Relative.X * DragSensitivity);
+            var pitch = new Quaternion(cameraBasis.X.Normalized(), motion.Relative.Y * DragSensitivity);
+            _planet.Quaternion = (yaw * pitch * _planet.Quaternion).Normalized();
+            AcceptEvent();
+        }
+    }
+
+    private void ChangeZoom(float delta)
+    {
+        if (_camera is null) return;
+        var position = _camera.Position;
+        position.Z = Mathf.Clamp(position.Z + delta, MinZoom, MaxZoom);
+        _camera.Position = position;
     }
 
     // Stable pseudo-random palette, determined only by canonical cell ID (no mutable RNG).
