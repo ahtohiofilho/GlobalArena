@@ -15940,3 +15940,22 @@ Local Windows Forms host in tools/GlobalArena.TacticalViewport consumes canonica
 ## GA-MESH-001 â€” Oblique spherical 3D tactical prototype baseline (2026-10-11)
 
 The Windows Forms 3D test host at tools/GlobalArena.TacticalViewport3D consumes canonical fine spherical vertices at G(6,0) -> G(36,0). The TacticalObliqueCamera math supplies a locally oriented adjustable oblique perspective near 45 degrees above the tangent plane. The experimental rasterizer uses a software depth buffer, tile-id picking, and depth-tested polygon edge rendering. Visual evidence for focus 29 demonstrated visible hex boundaries and selection of physical tile 1794. This is an approved technical prototype only, not a production-ready GPU renderer, fully tested input/occlusion implementation, or final terrain LOD system. The 2D reference viewport and legacy NativeGlobe diagnostic viewer remain independent. See docs/ADR-GA-MESH-001-TACTICAL-VIEWPORT-3D.md.
+
+## 2026-10-12 â€” GA-PROD-01.B â€” Godot production shell
+
+Stage: GA-PROD-01.B (production Godot client bootstrap).
+
+### Verified
+- Godot 4.7.2 .NET application shell loads and displays the Global Arena menu.
+- `Main._Ready()` executes in headless runtime; GUI screenshot confirms rendered menu.
+- `SYSTEM STATUS` responds to the user's click (visual retest on 2026-10-12).
+- Debug and Release builds and 1,157 automated regression tests passed in QA R6.
+- The client references `GlobalArena.World`; the world/simulation remain independent of Godot.
+- Root cause of the initial gray screen: incorrect Godot .NET `project/assembly_name` setting; corrected in QA R6.
+
+### Limits
+- No interactive planet, Goldberg rendering, camera/picking, turn gameplay or finished UI claimed.
+- No new GPP or overall completion percentage assigned by this client-only checkpoint; recalculate through the existing capability/maturity ledger when calibrated.
+
+### Next
+- GA-PROD-02: integrate the existing canonical Goldberg geometry with the production Godot client, without moving authoritative IDs or geometry into the renderer.

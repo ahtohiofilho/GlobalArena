@@ -2911,3 +2911,7 @@ The Windows Forms 3D test host at tools/GlobalArena.TacticalViewport3D consumes 
 ## 2026-10-11 — Transversal production MVP and commercial gates (planning overlay)
 
 The original milestone chronology and 1000-GPP V1 baseline remain intact pending a separate scope/reconciliation decision. New prospective vertical-slice sequence: production Godot bootstrap/UI → navigable globe & accurate picking → interactive economic turn loop → lean warfare/AI → end-to-end play/save → public demo → commercial candidate. Each player-facing gate triggers the corresponding **MKT-00..MKT-07** marketing cycle in `docs/MARKETING_ROADMAP.md`; marketing tasks are completed and audited before returning to code. There are no invented weekly/monthly or hours-per-week deadlines. See ADR-053/054.
+
+## 2026-10-12 â€” GA-PROD-01.B â€” Godot production shell
+
+Status: validated UI bootstrap; the menu displays and `SYSTEM STATUS` responds. Godot C# class loading, Debug/Release build, headless start and 1,157 regression tests were verified for the QA R6 baseline. This is an application-foundation checkpoint, not a playable slice or Goldberg viewport. Next: GA-PROD-02 canonical globe rendering, then GA-PROD-03 navigation/selection. Existing 1000-GPP baseline and historical maturity values remain unchanged pending explicit capability recalibration.

@@ -1806,3 +1806,7 @@ The Windows Forms 3D test host at tools/GlobalArena.TacticalViewport3D consumes 
 ## 2026-10-11 — Product-direction consolidation (prospective; history preserved)
 
 Production application direction: Godot 4 .NET for PC and independent C#/.NET 10 simulation core. Economy becomes abstract, hub-emergent and hierarchical without transport modality micro-management or initial commodity-specific logistics. Solo-dev commercial strategy is Steam-centered and milestone-gated without calendar estimates. See ADR-053, ADR-054, PRODUCT_POSITIONING, MARKETING_ROADMAP and MARKETING_METRICS. Historical GPP progress and previous technical milestones are not retroactively recalculated or marked complete by this planning record.
+
+## 2026-10-12 â€” GA-PROD-01.B â€” Godot production shell
+
+The production PC client now runs on Godot 4.7.2 .NET and references the independent `GlobalArena.World` project. Its initial menu displays and handles a system-status click. The C# assembly binding is explicit (`project/assembly_name="GlobalArena.Godot"`). Godot is presentation/application glue and is not the authority for strategic/tactical geometry or simulation. Goldberg rendering and gameplay remain subsequent milestones, governed by ADR-054.
