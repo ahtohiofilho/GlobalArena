@@ -1810,3 +1810,7 @@ Production application direction: Godot 4 .NET for PC and independent C#/.NET 10
 ## 2026-10-12 â€” GA-PROD-01.B â€” Godot production shell
 
 The production PC client now runs on Godot 4.7.2 .NET and references the independent `GlobalArena.World` project. Its initial menu displays and handles a system-status click. The C# assembly binding is explicit (`project/assembly_name="GlobalArena.Godot"`). Godot is presentation/application glue and is not the authority for strategic/tactical geometry or simulation. Goldberg rendering and gameplay remain subsequent milestones, governed by ADR-054.
+
+## 2026-10-12 â€” GA-PROD-02.A â€” Canonical strategic globe presentation
+
+The production Godot 4.7.2 .NET application now consumes authoritative `WorldGenerationResult.StrategicSphericalGeometry` and renders a slowly rotating `G(3,0)` globe. All strategic cell IDs, vertices and polygon boundaries originate in the independent `GlobalArena.World` project. The renderer only converts coordinates to Godot `Vector3` and constructs GPU triangles; it does not define a second topology. The first visual implementation is not a finished globe: inset polygons leave see-through gaps. Opaque underlying surface and border overlays remain next-stage rendering work.

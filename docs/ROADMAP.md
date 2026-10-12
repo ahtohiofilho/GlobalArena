@@ -2915,3 +2915,7 @@ The original milestone chronology and 1000-GPP V1 baseline remain intact pending
 ## 2026-10-12 â€” GA-PROD-01.B â€” Godot production shell
 
 Status: validated UI bootstrap; the menu displays and `SYSTEM STATUS` responds. Godot C# class loading, Debug/Release build, headless start and 1,157 regression tests were verified for the QA R6 baseline. This is an application-foundation checkpoint, not a playable slice or Goldberg viewport. Next: GA-PROD-02 canonical globe rendering, then GA-PROD-03 navigation/selection. Existing 1000-GPP baseline and historical maturity values remain unchanged pending explicit capability recalibration.
+
+## 2026-10-12 â€” GA-PROD-02.A â€” First canonical globe in Godot
+
+Status: implementation and visual/headless audit passed. Production Godot client renders the existing `GlobalArena.World` canonical `G(3,0)` strategic surface (92 cells). Known gap artifact: opposite hemisphere visible through inset tile edges. Next: refine continuous opaque planet and border overlay, then add user-controlled orbit/zoom and strategic picking. Existing 1,000-GPP progress baseline unchanged pending formal capability calibration.

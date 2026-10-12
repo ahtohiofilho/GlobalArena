@@ -4654,3 +4654,7 @@ Commercial/product risks now recognized: insufficient authentic gameplay media f
 ## 2026-10-12 â€” GA-PROD-01.B â€” Godot production shell
 
 Integration observation: initial Godot GUI runtime showed a blank/gray window because the .NET assembly name in `project.godot` was misconfigured despite successful builds. QA R6 corrected `project/assembly_name`, and headless execution plus user-observed GUI/button interaction passed. Keep C# class-instantiation runtime smoke tests as a mandatory gate for future Godot scene integrations; compile-only validation is insufficient. This checkpoint does not demonstrate globe rendering, picking, GPU compatibility at scale or end-to-end game performance; retain those as open validation surfaces.
+
+## 2026-10-12 â€” GA-PROD-02.A â€” Inset polygon gap rendering artifact
+
+Status: OPEN (presentation refinement). The first Godot canonical `G(3,0)` preview renders each strategic polygon independently with inset=0.965, leaving gaps through which the opposite hemisphere is visible during rotation. Geometry itself was supplied by `GlobalArena.World` and passed audit; the observed defect does not establish a topological failure. Mitigation: render a continuous opaque sphere/surface under separate boundary overlay or construct watertight shared-edge rendering, preserving authoritative IDs and geometry. Gate: visual orbit/rotation test confirms no opposite-hemisphere bleed-through. Navigation, picking and scale/performance remain unvalidated separately.

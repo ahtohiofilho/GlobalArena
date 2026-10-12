@@ -52,6 +52,7 @@ public partial class Main : Control
         _status = new Label { Text = "GA-PROD-01.B | Godot client bootstrap" };
         _status.AddThemeColorOverride("font_color", new Color("#90a9bc"));
         layout.AddChild(_status);
+        AddChild(new GlobePreview());
     }
 
     private void ShowStatus()

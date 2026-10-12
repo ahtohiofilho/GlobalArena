@@ -15959,3 +15959,21 @@ Stage: GA-PROD-01.B (production Godot client bootstrap).
 
 ### Next
 - GA-PROD-02: integrate the existing canonical Goldberg geometry with the production Godot client, without moving authoritative IDs or geometry into the renderer.
+
+## 2026-10-12 â€” GA-PROD-02.A â€” Canonical Goldberg globe in production Godot
+
+Stage: GA-PROD-02.A. Audit R1 approved on 2026-10-12; visual validation by user screenshots approved.
+
+### Verified
+- Existing `GlobalArena.World` world generation supplies the canonical `G(3,0)` geometry to the Godot client.
+- The view draws 92 strategic cells, 180 canonical vertices and 540 triangles; headless runtime marker `GA_PROD_GLOBE_READY_02A` was observed.
+- UI shell and `SYSTEM STATUS` remained functional; globe rotation and polygonal form observed visually.
+- Debug and Release builds completed with no reported errors or warnings; 1,157 regressions passed.
+
+### Known limitation
+- The renderer intentionally insets the visible polygon faces (`inset = 0.965f`), leaving actual gaps between them. The gaps allow the opposite hemisphere to appear while the globe rotates. This is a presentation defect, not demonstrated topology corruption; an opaque continuous planet surface or a separate overlay for borders is deferred to graphic refinement.
+- No camera controls, strategic selection/picking, final shading, gameplay or turn loop implemented in this checkpoint.
+- No new V1 GPP or global completion percentage assigned without existing capability/maturity recalibration.
+
+### Next
+- GA-PROD-02.B: opaque surface/border rendering refinement, followed by navigation/selection under a distinct QA gate.
