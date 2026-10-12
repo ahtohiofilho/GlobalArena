@@ -6812,3 +6812,8 @@ Accepted independent D.2 evidence validates Class I, Class II, both Class III ch
 Renderer, camera, HUD, interaction design and tactical 3D geometry remain outside D.2. The next geometric World MVP checkpoint is M4.5-D.3 — Strategic Worldgen 3D MVP & Human Calibration Surface.
 
 Decision authority remains **ADR-052 — Canonical Spherical Strategic Geometry Contract**.
+
+
+## 2026-10-11 — Prospective production and Economy architecture reconciliation
+
+Prior Unity-oriented references are historical and not the current production-engine decision. ADR-054 selects Godot 4 .NET solely for presentation/application, preserving engine-independent C#/.NET 10 simulation. ADR-053 defines abstract strategic-graph logistics: capacity, cost, access, congestion; emergent hubs, derived regional consolidation, no dedicated vehicle/mode enum, no initial per-commodity logistics specialization, no global all-pairs route recompute by default. Accepted ADR-037/041 contracts remain valid; implementation and migration require future QA gates.

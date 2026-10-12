@@ -266,3 +266,8 @@ The critical path moves to:
 **M4.4-B — Deterministic Strategic Route Identity, Reachability & Access**
 
 M4.4-B must prove deterministic route identity, same-point local exchange, graph reachability, explicit edge access blocking and canonical equal-cost tie-breaking before transport pricing or market allocation is added.
+
+
+## 2026-10-11 — Prospective route/allocation refinement
+
+ADR-053 adds derived, potentially item-dependent hub associations, abstract logistics links, hierarchical route candidate selection, congestion/consolidation and iterative-market allocation research. These are later design directions, not claims that the M4.4 fixed-point route, cache or settlement implementation already supports them. Historical ADR-041 implementation gates remain unchanged; no all-pairs refresh is introduced.

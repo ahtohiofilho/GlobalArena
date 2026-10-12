@@ -2906,3 +2906,8 @@ Local Windows Forms host in tools/GlobalArena.TacticalViewport consumes canonica
 ## GA-MESH-001 â€” Oblique spherical 3D tactical prototype baseline (2026-10-11)
 
 The Windows Forms 3D test host at tools/GlobalArena.TacticalViewport3D consumes canonical fine spherical vertices at G(6,0) -> G(36,0). The TacticalObliqueCamera math supplies a locally oriented adjustable oblique perspective near 45 degrees above the tangent plane. The experimental rasterizer uses a software depth buffer, tile-id picking, and depth-tested polygon edge rendering. Visual evidence for focus 29 demonstrated visible hex boundaries and selection of physical tile 1794. This is an approved technical prototype only, not a production-ready GPU renderer, fully tested input/occlusion implementation, or final terrain LOD system. The 2D reference viewport and legacy NativeGlobe diagnostic viewer remain independent. See docs/ADR-GA-MESH-001-TACTICAL-VIEWPORT-3D.md.
+
+
+## 2026-10-11 — Transversal production MVP and commercial gates (planning overlay)
+
+The original milestone chronology and 1000-GPP V1 baseline remain intact pending a separate scope/reconciliation decision. New prospective vertical-slice sequence: production Godot bootstrap/UI → navigable globe & accurate picking → interactive economic turn loop → lean warfare/AI → end-to-end play/save → public demo → commercial candidate. Each player-facing gate triggers the corresponding **MKT-00..MKT-07** marketing cycle in `docs/MARKETING_ROADMAP.md`; marketing tasks are completed and audited before returning to code. There are no invented weekly/monthly or hours-per-week deadlines. See ADR-053/054.

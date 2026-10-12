@@ -368,3 +368,8 @@ Large logistics centers can emerge from throughput incentives rather than a mand
 M4.4 can then solve the expensive global problem as deterministic flows over a sparse set of economically active points and the shared strategic graph.
 
 The design remains open to a later physical-inventory expansion if gameplay evidence justifies the additional complexity.
+
+
+## 2026-10-11 — Prospective product refinement
+
+See ADR-053 for the accepted forward-looking product direction: productive points and ports as economic-location roles, emergent cities/hubs, no distinct customs-point class, abstract logistics, and no mandatory physical transport mode or per-commodity logistics specialization initially. This addendum does not change the already accepted M4.3 implementation or canonical state contracts.

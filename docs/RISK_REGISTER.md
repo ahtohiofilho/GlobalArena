@@ -4643,3 +4643,10 @@ Local Windows Forms host in tools/GlobalArena.TacticalViewport consumes canonica
 ## GA-MESH-001 â€” Oblique spherical 3D tactical prototype baseline (2026-10-11)
 
 The Windows Forms 3D test host at tools/GlobalArena.TacticalViewport3D consumes canonical fine spherical vertices at G(6,0) -> G(36,0). The TacticalObliqueCamera math supplies a locally oriented adjustable oblique perspective near 45 degrees above the tangent plane. The experimental rasterizer uses a software depth buffer, tile-id picking, and depth-tested polygon edge rendering. Visual evidence for focus 29 demonstrated visible hex boundaries and selection of physical tile 1794. This is an approved technical prototype only, not a production-ready GPU renderer, fully tested input/occlusion implementation, or final terrain LOD system. The 2D reference viewport and legacy NativeGlobe diagnostic viewer remain independent. See docs/ADR-GA-MESH-001-TACTICAL-VIEWPORT-3D.md.
+
+
+## 2026-10-11 — Additional monitoring under existing risks
+
+RISK-001 Economy scalability: investigate economic graph caching, edge-dependency invalidation including improved paths after cost reductions, region/hub aggregation accuracy, small-world exhaustive reference tests, deterministic turn benchmark and congestion. These are mitigation plans, not evidence of resolved performance.
+
+Commercial/product risks now recognized: insufficient authentic gameplay media for store opening; discovery without preexisting followers; Steam store conversion uncertainty; game engine integration overhead; and misleading prototype-vs-production communications. Mitigate through milestone-gated MKT-00..07, truthful capture provenance, creator-targeted outreach, early UI implementation, and evidence-based commercial decisions. Risk ratings and historic register IDs are not silently re-scored in this additive note.

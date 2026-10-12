@@ -1801,3 +1801,8 @@ Local Windows Forms host in tools/GlobalArena.TacticalViewport consumes canonica
 ## GA-MESH-001 â€” Oblique spherical 3D tactical prototype baseline (2026-10-11)
 
 The Windows Forms 3D test host at tools/GlobalArena.TacticalViewport3D consumes canonical fine spherical vertices at G(6,0) -> G(36,0). The TacticalObliqueCamera math supplies a locally oriented adjustable oblique perspective near 45 degrees above the tangent plane. The experimental rasterizer uses a software depth buffer, tile-id picking, and depth-tested polygon edge rendering. Visual evidence for focus 29 demonstrated visible hex boundaries and selection of physical tile 1794. This is an approved technical prototype only, not a production-ready GPU renderer, fully tested input/occlusion implementation, or final terrain LOD system. The 2D reference viewport and legacy NativeGlobe diagnostic viewer remain independent. See docs/ADR-GA-MESH-001-TACTICAL-VIEWPORT-3D.md.
+
+
+## 2026-10-11 — Product-direction consolidation (prospective; history preserved)
+
+Production application direction: Godot 4 .NET for PC and independent C#/.NET 10 simulation core. Economy becomes abstract, hub-emergent and hierarchical without transport modality micro-management or initial commodity-specific logistics. Solo-dev commercial strategy is Steam-centered and milestone-gated without calendar estimates. See ADR-053, ADR-054, PRODUCT_POSITIONING, MARKETING_ROADMAP and MARKETING_METRICS. Historical GPP progress and previous technical milestones are not retroactively recalculated or marked complete by this planning record.
