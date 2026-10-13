@@ -18,11 +18,11 @@ public partial class GlobePreview : SubViewportContainer
     private ulong? _selectedCellId;
     private readonly System.Collections.Generic.Dictionary<ulong, int> _cellDegree = new();
     // Read-only data sampled by canonical cell identity from WorldGenerationResult.
-    private readonly System.Collections.Generic.Dictionary<ulong, (string Biome, long Habitability, long Elevation)> _worldFacts = new();
+    private readonly System.Collections.Generic.Dictionary<ulong, (string Biome, long Habitability, long Elevation, long ResourcePotential)> _worldFacts = new();
     private bool _movedSincePress;
     private Vector2 _pressPosition;
     private const float ClickThresholdPixels = 6f;
-    private int _mapMode; // 0 cells, 1 biomes, 2 habitability, 3 elevation
+    private int _mapMode; // 0 cells, 1 biomes, 2 habitability, 3 elevation, 4 resources
     private Label? _mapLegend;
 
     private const float DragSensitivity = 0.006f;
@@ -70,7 +70,8 @@ public partial class GlobePreview : SubViewportContainer
             _worldFacts.Add(cell.CellId.Value, (
                 generation.StrategicBiomes.GetKind(cell.CellId).ToString(),
                 generation.StrategicHabitability.GetRawValue(cell.CellId),
-                generation.StrategicPhysicalFields.Elevation.GetRawValue(cell.CellId)));
+                generation.StrategicPhysicalFields.Elevation.GetRawValue(cell.CellId),
+                generation.StrategicResourcePotentialFields.GeneralPotential.GetRawValue(cell.CellId)));
             if (degree != 5 && degree != 6)
                 throw new InvalidOperationException("Unexpected Goldberg polygon degree.");
             var center = ToGodot(cell.Center);
@@ -145,12 +146,13 @@ public partial class GlobePreview : SubViewportContainer
         };
         mapModeButton.Pressed += () =>
         {
-            _mapMode = (_mapMode + 1) % 4;
+            _mapMode = (_mapMode + 1) % 5;
             mapModeButton.Text = _mapMode switch
             {
                 1 => "VIEW: BIOMES",
                 2 => "VIEW: HABITABILITY",
                 3 => "VIEW: ELEVATION",
+                4 => "VIEW: RESOURCES",
                 _ => "VIEW: CELL COLORS"
             };
             RefreshSelectionColors();
@@ -170,6 +172,7 @@ public partial class GlobePreview : SubViewportContainer
         AddChild(_mapLegend);
         UpdateMapLegend();
         GD.Print("GA_PROD_LEGEND_READY_06 modes=4");
+        GD.Print("GA_PROD_RESOURCE_VIEW_READY_08 modes=5 cells=" + _worldFacts.Count);
         GD.Print("GA_PROD_WORLD_LAYERS_READY_05 modes=4");
         GD.Print($"GA_PROD_GLOBE_READY_02B_NO_BORDERS cells={geometry.Cells.Count} vertices={geometry.Vertices.Count} triangles={triangleCount} borders=0");
     }
@@ -255,6 +258,7 @@ public partial class GlobePreview : SubViewportContainer
                     + (_worldFacts.TryGetValue(hitId.Value, out var facts)
                         ? $"\nBiome: {facts.Biome}  |  Habitability: {FormatIndex(facts.Habitability)}"
                           + $"\nRelative elevation index: {FormatIndex(facts.Elevation)} (not meters)"
+                          + $"\nGeneral resource potential: {FormatIndex(facts.ResourcePotential)} (not reserves)"
                         : "\nWorld data unavailable");
             else
                 _detailsLabel.Text = "Select a territory to view its canonical identity";
@@ -324,6 +328,7 @@ public partial class GlobePreview : SubViewportContainer
             1 => "BIOMES | Blue: Water  White: Ice  Gray: Highland\nGreen: Forest/Wetland  Yellow: Desert/Grassland",
             2 => "HABITABILITY | Dark: lower  Light: higher\nRelative index 0-100%; not a population estimate",
             3 => "ELEVATION | Dark: lower  Light: higher\nRelative procedural index 0-100%; not meters",
+            4 => "RESOURCES | Dark: lower  Light: higher\nGeneral potential index 0-100%; not confirmed deposits",
             _ => "CELL COLORS | Deterministic colors distinguish adjacent territories\nColors do not imply ownership, biome, or political borders"
         };
     }
@@ -341,6 +346,11 @@ public partial class GlobePreview : SubViewportContainer
         {
             var normalized = Mathf.Clamp((float)facts.Elevation / StrategicScalarField.Denominator, 0f, 1f);
             return new Color(0.12f + 0.76f * normalized, 0.26f + 0.65f * normalized, 0.40f + 0.48f * normalized);
+        }
+        if (_mapMode == 4)
+        {
+            var normalized = Mathf.Clamp((float)facts.ResourcePotential / StrategicScalarField.Denominator, 0f, 1f);
+            return new Color(0.20f + 0.70f * normalized, 0.18f + 0.46f * normalized, 0.32f - 0.15f * normalized);
         }
         return facts.Biome switch
         {

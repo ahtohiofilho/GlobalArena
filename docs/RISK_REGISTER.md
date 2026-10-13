@@ -4682,3 +4682,7 @@ Contextual legends describe current diagnostic modes but do not establish calibr
 ## GA-PROD-07 - Readable scalar presentation risks (2026-10-12)
 
 Percentage displays are derived presentation indices, not validated physical units. The normalized elevation field must never be labeled in meters; habitability is not population. Headless Godot startup does not prove text legibility or all interaction states. Scale, contrast, localization and field-calibration risks remain pending. No GPP, baseline or global risk grade changes are inferred from label-format improvement.
+
+## GA-PROD-08 - Resource potential map risks (2026-10-13)
+
+General resource potential is a relative scalar (0-100%) and is not a validated mineral reserve, measured mass, extractable inventory, yield, or trade availability. Visual color scale and explanatory legend require F5 operator acceptance; headless boot does not verify contrast, usability, accessibility or runtime frame rate under all resolutions. No economic or physical stock ownership is introduced into the Godot renderer. No GPP or risk priority recalibration is inferred from this presentation-only milestone.
