@@ -232,6 +232,17 @@ public partial class GlobePreview : SubViewportContainer
             overviewButton.Text = overviewLabel.Visible ? "HIDE STATS" : "WORLD STATS";
         };
         AddChild(overviewButton);
+        // GA-PROD-12: player can explicitly clear the selected territory.
+        var clearSelectionButton = new Button
+        {
+            Text = "CLEAR SELECTION",
+            Position = new Vector2(365f, 80f),
+            CustomMinimumSize = new Vector2(174f, 32f),
+            MouseFilter = MouseFilterEnum.Stop
+        };
+        clearSelectionButton.Pressed += ClearTerritorySelection;
+        AddChild(clearSelectionButton);
+        GD.Print("GA_PROD_CLEAR_SELECTION_READY_12 button=true");
         GD.Print($"GA_PROD_WORLD_SUMMARY_READY_09 cells={_worldFacts.Count} water={waterCount} toggle=button");
         GD.Print($"GA_PROD_BIOME_BREAKDOWN_READY_10 cells={_worldFacts.Count} categories={biomeCounts.Count}");
         GD.Print("GA_PROD_WORLD_LAYERS_READY_05 modes=4");
@@ -325,6 +336,17 @@ public partial class GlobePreview : SubViewportContainer
                 _detailsLabel.Text = "Select a territory to view its canonical identity";
         }
         GD.Print(hitId.HasValue ? $"GA_PROD_PICK_03B cell={hitId.Value}" : "GA_PROD_PICK_03B miss");
+    }
+
+    private void ClearTerritorySelection()
+    {
+        _selectedCellId = null;
+        if (_pickedLabel is not null)
+            _pickedLabel.Text = "Territory: none  |  Left click to inspect";
+        if (_detailsLabel is not null)
+            _detailsLabel.Text = "Select a territory to view its canonical identity";
+        RefreshSelectionColors();
+        GD.Print("GA_PROD_SELECTION_CLEARED_12");
     }
 
     private static bool RayTriangle(Vector3 origin, Vector3 direction, Vector3 a, Vector3 b,

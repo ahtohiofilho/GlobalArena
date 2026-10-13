@@ -1854,3 +1854,7 @@ WORLD STATS now includes deterministic per-biome counts across all 92 canonical 
 ## GA-PROD-11 - Direct map selection formal close (2026-10-13)
 
 The Godot globe switches directly between its five map layers through an OptionButton rather than cycling through modes one press at a time. Existing canonical world data, color rendering, legends, WORLD STATS, territory picking, navigation and Goldberg geometry are preserved. QA R1 passed 1,157/1,157 regression tests, Release solution and Godot Debug/Release builds, headless marker GA_PROD_MAP_SELECTOR_READY_11 options=5 initial=0, and SHA-256 integrity 26/26. GUI functionality requires operator-attested verification with -VisualAccepted. GPP remains at its formal baseline pending rebaseline. ADR: docs/ADR-GA-PROD-11-DIRECT-MAP-SELECTOR.md.
+
+## GA-PROD-12 - Clear selection formal close (2026-10-13)
+
+The Godot globe now provides CLEAR SELECTION to remove the active territory highlight and restore the no-selection details panel. Existing canonical world data, color rendering, legends, WORLD STATS, territory picking, navigation and Goldberg geometry are preserved. QA R2 passed 1,157/1,157 regression tests, Release solution and Godot Debug/Release builds, headless marker GA_PROD_CLEAR_SELECTION_READY_12 button=true, and SHA-256 integrity 26/26. GUI functionality requires operator-attested verification with -VisualAccepted. GPP remains at its formal baseline pending rebaseline. ADR: docs/ADR-GA-PROD-12-CLEAR-SELECTION.md.

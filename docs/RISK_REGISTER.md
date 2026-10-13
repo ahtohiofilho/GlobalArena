@@ -4698,3 +4698,7 @@ Biomes not represented by the current deterministic seed appear with zero; this 
 ## GA-PROD-11 - Direct map selector risks (2026-10-13)
 
 Headless Godot startup does not prove mouse interaction, popup rendering, layer switching, legend updates, or absence of GUI overlap. The operator must visually inspect all five direct mode selections and verify selection/drag/zoom. Preserve the canonical data model and 92-cell continuous opaque geometry. No GPP change without formal rebaseline.
+
+## GA-PROD-12 - Clear selection risks (2026-10-13)
+
+Headless Godot startup does not prove mouse interaction, clear-button interaction, deselection repaint, legend updates, or absence of GUI overlap. The operator must verify CLEAR SELECTION resets the highlight and detail text, without impairing selection/drag/zoom. Preserve the canonical data model and 92-cell continuous opaque geometry. No GPP change without formal rebaseline.
