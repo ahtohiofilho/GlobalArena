@@ -1894,3 +1894,7 @@ Display a read-only relative zoom percentage (0-100%) linked to the existing cam
 ## GA-PROD-21 - visual zoom buttons formal close (2026-10-13)
 
 The Godot globe gains visible + and - controls that call the existing ChangeZoom method, retaining current zoom limits, the percentage indicator and R camera reset. QA R1 passed 1,157/1,157 tests, solution/Godot builds, runtime GA_PROD_ZOOM_BUTTONS_READY_21 count=2 and SHA-256 checks 26/26. Interactive behavior and placement require operator confirmation using -VisualAccepted. Canonical topology, procedural world and baseline GPP remain unchanged. ADR: docs/ADR-GA-PROD-21-ZOOM-BUTTONS.md.
+
+## GA-PROD-22 - keyboard zoom formal close (2026-10-13)
+
+PageUp and PageDown provide zoom-in and zoom-out through the existing ChangeZoom path, preserving camera limits, the on-screen percentage indicator, mouse-wheel/buttons, reset (R), world modes and territory selection. The UI shortcut hint documents the new keys. QA R1 passed 1,157/1,157 tests, solution/Godot builds, runtime GA_PROD_ZOOM_KEYS_READY_22 keys=PageUp,PageDown, and 26/26 SHA-256 hashes. Interaction is operator-attested via -VisualAccepted. Baseline GPP is unchanged. ADR: docs/ADR-GA-PROD-22-KEYBOARD-ZOOM.md.

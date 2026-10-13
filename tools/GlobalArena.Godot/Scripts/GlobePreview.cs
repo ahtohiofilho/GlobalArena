@@ -251,7 +251,7 @@ public partial class GlobePreview : SubViewportContainer
         // Keyboard shortcut discovery belongs to presentation only.
         var shortcutHint = new Label
         {
-            Text = "1-5 MAPS | ESC CLEAR | R RESET | L LEGEND | S STATS",
+            Text = "1-5 MAPS | PGUP/PGDN ZOOM | ESC CLEAR | R RESET | L LEGEND | S STATS",
             Position = new Vector2(12f, 380f),
             Size = new Vector2(520f, 25f),
             MouseFilter = MouseFilterEnum.Ignore
@@ -289,6 +289,7 @@ public partial class GlobePreview : SubViewportContainer
         };
         zoomOutButton.Pressed += () => ChangeZoom(0.25f);
         AddChild(zoomOutButton);
+        GD.Print("GA_PROD_ZOOM_KEYS_READY_22 keys=PageUp,PageDown");
         GD.Print("GA_PROD_ZOOM_BUTTONS_READY_21 count=2");
         GD.Print("GA_PROD_ZOOM_INDICATOR_READY_20 range=0-100");
         GD.Print("GA_PROD_VIEW_RESET_READY_15 key=R");
@@ -318,6 +319,12 @@ public partial class GlobePreview : SubViewportContainer
         if (key.Keycode == Key.L)
         {
             ToggleMapLegend();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+        if (key.Keycode == Key.Pageup || key.Keycode == Key.Pagedown)
+        {
+            ChangeZoom(key.Keycode == Key.Pageup ? -0.25f : 0.25f);
             GetViewport().SetInputAsHandled();
             return;
         }

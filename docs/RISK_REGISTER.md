@@ -4738,3 +4738,7 @@ The Godot headless runtime verifies control initialization, but does not verify 
 ## GA-PROD-21 - zoom buttons UX risks (2026-10-13)
 
 Headless Godot validates UI control initialization but not pointer interaction, placement, synchronization with percentage, or R reset. Operator acceptance covers + and - mouse actions, zoom limits, mouse wheel, reset, and avoiding overlaps with existing controls. No new domain or geometry risk is introduced.
+
+## GA-PROD-22 - keyboard zoom interaction risks (2026-10-13)
+
+Headless startup does not exercise PageUp/PageDown keyboard dispatch, focus conditions, zoom bounds, synchronization of the relative indicator, or shortcut hint legibility. Confirm these in F5 before -VisualAccepted. No new world generation or geometry changes.
