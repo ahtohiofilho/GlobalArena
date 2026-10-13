@@ -24,6 +24,7 @@ public partial class GlobePreview : SubViewportContainer
     private const float ClickThresholdPixels = 6f;
     private int _mapMode; // 0 cells, 1 biomes, 2 habitability, 3 elevation, 4 resources
     private Label? _mapLegend;
+    private OptionButton? _mapLayerSelector;
 
     private const float DragSensitivity = 0.006f;
     private const float MinZoom = 1.55f;
@@ -157,6 +158,7 @@ public partial class GlobePreview : SubViewportContainer
             UpdateMapLegend();
         };
         AddChild(mapLayerSelector);
+        _mapLayerSelector = mapLayerSelector;
         GD.Print("GA_PROD_MAP_SELECTOR_READY_11 options=5 initial=0");
         _mapLegend = new Label
         {
@@ -243,6 +245,7 @@ public partial class GlobePreview : SubViewportContainer
         clearSelectionButton.Pressed += ClearTerritorySelection;
         AddChild(clearSelectionButton);
         GD.Print("GA_PROD_CLEAR_SELECTION_READY_12 button=true");
+        GD.Print("GA_PROD_KEYBOARD_NAV_READY_13 keys=1-5,escape");
         GD.Print($"GA_PROD_WORLD_SUMMARY_READY_09 cells={_worldFacts.Count} water={waterCount} toggle=button");
         GD.Print($"GA_PROD_BIOME_BREAKDOWN_READY_10 cells={_worldFacts.Count} categories={biomeCounts.Count}");
         GD.Print("GA_PROD_WORLD_LAYERS_READY_05 modes=4");
@@ -252,6 +255,33 @@ public partial class GlobePreview : SubViewportContainer
     public override void _Process(double delta)
     {
         // GA-PROD-03A: no automatic spin; player controls the globe.
+    }
+
+    // Accessible keyboard shortcuts: digits 1-5 choose a layer; Escape clears a selection.
+    public override void _UnhandledKeyInput(InputEvent @event)
+    {
+        if (@event is not InputEventKey key || !key.Pressed || key.Echo) return;
+        if (key.Keycode == Key.Escape)
+        {
+            ClearTerritorySelection();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+        var targetMode = key.Keycode switch
+        {
+            Key.Key1 => 0,
+            Key.Key2 => 1,
+            Key.Key3 => 2,
+            Key.Key4 => 3,
+            Key.Key5 => 4,
+            _ => -1
+        };
+        if (targetMode < 0 || _mapLayerSelector is null) return;
+        _mapMode = targetMode;
+        _mapLayerSelector.Select(targetMode);
+        RefreshSelectionColors();
+        UpdateMapLegend();
+        GetViewport().SetInputAsHandled();
     }
 
     public override void _GuiInput(InputEvent @event)

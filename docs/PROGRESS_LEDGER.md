@@ -16029,3 +16029,7 @@ The Godot globe switches directly between its five map layers through an OptionB
 ## GA-PROD-12 - Clear selection formal close (2026-10-13)
 
 The Godot globe now provides CLEAR SELECTION to remove the active territory highlight and restore the no-selection details panel. Existing canonical world data, color rendering, legends, WORLD STATS, territory picking, navigation and Goldberg geometry are preserved. QA R2 passed 1,157/1,157 regression tests, Release solution and Godot Debug/Release builds, headless marker GA_PROD_CLEAR_SELECTION_READY_12 button=true, and SHA-256 integrity 26/26. GUI functionality requires operator-attested verification with -VisualAccepted. GPP remains at its formal baseline pending rebaseline. ADR: docs/ADR-GA-PROD-12-CLEAR-SELECTION.md.
+
+## GA-PROD-13 - Keyboard navigation formal close (2026-10-13)
+
+The Godot globe supports keyboard shortcuts 1-5 for direct map-layer selection and Escape to clear the selected territory while keeping the on-screen selector synchronized. Existing canonical world data, color rendering, legends, WORLD STATS, territory picking, navigation and Goldberg geometry are preserved. QA R1 passed 1,157/1,157 regression tests, Release solution and Godot Debug/Release builds, headless marker GA_PROD_KEYBOARD_NAV_READY_13 keys=1-5,escape, and SHA-256 integrity 26/26. GUI functionality requires operator-attested verification with -VisualAccepted. GPP remains at its formal baseline pending rebaseline. ADR: docs/ADR-GA-PROD-13-KEYBOARD-NAVIGATION.md.
