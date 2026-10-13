@@ -16049,3 +16049,7 @@ The globe supports L to hide and restore the contextual map legend without chang
 ## GA-PROD-17 - WORLD STATS shortcut formal close (2026-10-13)
 
 The globe supports S to toggle the existing WORLD STATS panel by reusing its button action, with the label and state synchronized. Existing keyboard shortcuts, map modes and canonical Goldberg geometry remain unchanged. QA R1 passed 1,157/1,157 tests, solution/Godot builds, runtime marker GA_PROD_STATS_SHORTCUT_READY_17 key=S and ZIP integrity 26/26. Interactive behavior is operator-attested using -VisualAccepted. GPP unchanged pending formal recalibration. ADR: docs/ADR-GA-PROD-17-WORLD-STATS-SHORTCUT.md.
+
+## GA-PROD-18 - shortcut hint layout formal close (2026-10-13)
+
+Move the existing shortcut hint to y=380 to avoid overlap with CLEAR SELECTION in the canonical globe presentation. All shortcuts, map layers, territory selection and the WORLD STATS panel remain unchanged. QA R1 passed 1,157/1,157 regression tests, solution/Godot builds, runtime GA_PROD_SHORTCUT_LAYOUT_READY_18 hint_y=380 and 26/26 SHA-256 checks. Visual placement is operator-attested with -VisualAccepted. No GPP adjustment pending formal recalibration. ADR: docs/ADR-GA-PROD-18-SHORTCUT-HINT-LAYOUT.md.

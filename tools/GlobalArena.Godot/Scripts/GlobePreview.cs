@@ -251,12 +251,13 @@ public partial class GlobePreview : SubViewportContainer
         var shortcutHint = new Label
         {
             Text = "1-5 MAPS | ESC CLEAR | R RESET | L LEGEND | S STATS",
-            Position = new Vector2(365f, 81f),
-            Size = new Vector2(174f, 25f),
+            Position = new Vector2(12f, 380f),
+            Size = new Vector2(520f, 25f),
             MouseFilter = MouseFilterEnum.Ignore
         };
         shortcutHint.AddThemeColorOverride("font_color", new Color("#d9e9f4"));
         AddChild(shortcutHint);
+        GD.Print("GA_PROD_SHORTCUT_LAYOUT_READY_18 hint_y=380");
         GD.Print("GA_PROD_STATS_SHORTCUT_READY_17 key=S");
         GD.Print("GA_PROD_LEGEND_TOGGLE_READY_16 key=L");
         GD.Print("GA_PROD_VIEW_RESET_READY_15 key=R");

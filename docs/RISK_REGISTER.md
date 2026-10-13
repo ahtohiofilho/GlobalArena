@@ -4722,3 +4722,7 @@ Headless Godot validates initialization only, not interactive toggling or legibi
 ## GA-PROD-17 - WORLD STATS shortcut UX risks (2026-10-13)
 
 Headless Godot validates initialization only, not the S shortcut, popup legibility or synchronization of the WORLD STATS button. Operator must test S twice, button and shortcut interchangeably, existing L, R and Esc keyboard commands, map layers, picking and navigation. Canonical world contracts and existing GPP baseline remain unchanged.
+
+## GA-PROD-18 - shortcut hint layout UX risks (2026-10-13)
+
+Headless Godot confirms control creation and placement marker, not actual readability or absence of overlapping UI at the target display resolution. Operator must verify shortcut hint versus CLEAR SELECTION and WORLD STATS, all five maps, picking, navigation and shortcuts. No changes to topology or domain data.
