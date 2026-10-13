@@ -4766,3 +4766,7 @@ Headless Godot confirms startup and canonical cell counts but cannot verify rend
 ## GA-PROD-28 - scrollable WORLD STATS UX risks (2026-10-13)
 
 Headless runtime confirms ScrollContainer creation, not scrolling, scroll focus, clipping, final-line visibility, legibility or input conflicts with the globe. Operator must verify scrolling up/down, button/S toggle state and background navigation using F5 before acceptance. No changes to canonical world fields, simulation or Goldberg geometry.
+
+## GA-PROD-29 - WORLD STATS scroll reset interaction risks (2026-10-13)
+
+Headless runtime verifies control initialization, not scroll position after reopening, keyboard/button synchronization or mouse interaction. Operator must test scrolling, closing, reopening, preserved map controls and input focus via F5 before visual acceptance. No change to domain simulation or geometry.

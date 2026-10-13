@@ -298,6 +298,7 @@ public partial class GlobePreview : SubViewportContainer
         overviewButton.Pressed += () =>
         {
             overviewScroll.Visible = !overviewScroll.Visible;
+            if (overviewScroll.Visible) overviewScroll.ScrollVertical = 0;
             overviewButton.Text = overviewScroll.Visible ? "HIDE STATS" : "WORLD STATS";
         };
         AddChild(overviewButton);
@@ -361,6 +362,7 @@ public partial class GlobePreview : SubViewportContainer
         GD.Print("GA_PROD_KEYBOARD_HINT_READY_14 keys=1-5,escape");
         GD.Print("GA_PROD_KEYBOARD_NAV_READY_13 keys=1-5,escape");
         GD.Print($"GA_PROD_WORLD_SUMMARY_READY_09 cells={_worldFacts.Count} water={waterCount} toggle=button");
+        GD.Print("GA_PROD_STATS_SCROLL_RESET_READY_29 on=open");
         GD.Print("GA_PROD_WORLD_STATS_SCROLL_READY_28 viewport=520x240");
         GD.Print($"GA_PROD_LAND_RESOURCES_READY_27 land={landCellCount} water={waterCount}");
         GD.Print($"GA_PROD_LAND_HABITABILITY_READY_26 land={landCellCount} water={waterCount}");

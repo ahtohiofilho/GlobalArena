@@ -16093,3 +16093,7 @@ WORLD STATS shows mean general resource potential across the 41 non-water strate
 ## GA-PROD-28 - scrollable WORLD STATS formal close (2026-10-13)
 
 WORLD STATS now hosts its read-only canonical indicators in a vertically scrollable 520x240 viewport, retaining the button and S shortcut and preserving all previously implemented world statistics. The scroll container owns panel visibility. QA R1 passed 1,157/1,157 tests, solution/Godot builds, runtime GA_PROD_WORLD_STATS_SCROLL_READY_28 viewport=520x240, and 26/26 SHA-256 evidence hashes. Interactive scrolling and readability are operator-attested using -VisualAccepted. The 1,000-GPP baseline remains unchanged pending formal recalibration. ADR: docs/ADR-GA-PROD-28-SCROLLABLE-WORLD-STATS.md.
+
+## GA-PROD-29 - WORLD STATS scroll reset formal close (2026-10-13)
+
+Reopening the existing scrollable WORLD STATS panel resets its vertical scroll position to the beginning, preserving the S shortcut and button state. The change is presentational and does not affect canonical generated data, five map modes, picking or Goldberg geometry. QA R1 passed 1,157/1,157 tests, solution/Godot builds, runtime GA_PROD_STATS_SCROLL_RESET_READY_29 on=open and 26/26 SHA-256 hashes. Visual behavior is operator-attested using -VisualAccepted. GPP unchanged pending formal recalibration. ADR: docs/ADR-GA-PROD-29-WORLD-STATS-SCROLL-RESET.md.
