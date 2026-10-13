@@ -4762,3 +4762,7 @@ Headless startup verifies calculation and rendering setup but not actual display
 ## GA-PROD-27 - non-water resource mean presentation risks (2026-10-13)
 
 Headless Godot confirms startup and canonical cell counts but cannot verify rendered WORLD STATS readability or correct interaction. The resource index is a procedural potential signal, not a reserve estimate; the mean is per-cell and not geographic-area-weighted. Operator must verify F5 before formal acceptance.
+
+## GA-PROD-28 - scrollable WORLD STATS UX risks (2026-10-13)
+
+Headless runtime confirms ScrollContainer creation, not scrolling, scroll focus, clipping, final-line visibility, legibility or input conflicts with the globe. Operator must verify scrolling up/down, button/S toggle state and background navigation using F5 before acceptance. No changes to canonical world fields, simulation or Goldberg geometry.

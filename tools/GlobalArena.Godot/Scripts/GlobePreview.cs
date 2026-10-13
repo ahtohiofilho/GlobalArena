@@ -258,9 +258,8 @@ public partial class GlobePreview : SubViewportContainer
         var averageResources = (double)totalResources / _worldFacts.Count;
         var overviewLabel = new Label
         {
-            Position = new Vector2(12f, 118f),
-            Size = new Vector2(520f, 240f),
-            Visible = false,
+            CustomMinimumSize = new Vector2(500f, 360f),
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
             MouseFilter = MouseFilterEnum.Ignore,
             Text = $"WORLD OVERVIEW | {_worldFacts.Count} strategic cells"
                 + $"\nWater: {waterCount}  |  Other biomes: {_worldFacts.Count - waterCount}"
@@ -278,7 +277,17 @@ public partial class GlobePreview : SubViewportContainer
         overviewLabel.AddThemeColorOverride("font_shadow_color", new Color("#08131e"));
         overviewLabel.AddThemeConstantOverride("shadow_offset_x", 1);
         overviewLabel.AddThemeConstantOverride("shadow_offset_y", 1);
-        AddChild(overviewLabel);
+        var overviewScroll = new ScrollContainer
+        {
+            Position = new Vector2(12f, 118f),
+            Size = new Vector2(520f, 240f),
+            Visible = false,
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
+            MouseFilter = MouseFilterEnum.Stop
+        };
+        overviewScroll.AddChild(overviewLabel);
+        AddChild(overviewScroll);
         var overviewButton = new Button
         {
             Text = "WORLD STATS",
@@ -288,8 +297,8 @@ public partial class GlobePreview : SubViewportContainer
         };
         overviewButton.Pressed += () =>
         {
-            overviewLabel.Visible = !overviewLabel.Visible;
-            overviewButton.Text = overviewLabel.Visible ? "HIDE STATS" : "WORLD STATS";
+            overviewScroll.Visible = !overviewScroll.Visible;
+            overviewButton.Text = overviewScroll.Visible ? "HIDE STATS" : "WORLD STATS";
         };
         AddChild(overviewButton);
         _worldStatsButton = overviewButton;
@@ -352,6 +361,7 @@ public partial class GlobePreview : SubViewportContainer
         GD.Print("GA_PROD_KEYBOARD_HINT_READY_14 keys=1-5,escape");
         GD.Print("GA_PROD_KEYBOARD_NAV_READY_13 keys=1-5,escape");
         GD.Print($"GA_PROD_WORLD_SUMMARY_READY_09 cells={_worldFacts.Count} water={waterCount} toggle=button");
+        GD.Print("GA_PROD_WORLD_STATS_SCROLL_READY_28 viewport=520x240");
         GD.Print($"GA_PROD_LAND_RESOURCES_READY_27 land={landCellCount} water={waterCount}");
         GD.Print($"GA_PROD_LAND_HABITABILITY_READY_26 land={landCellCount} water={waterCount}");
         GD.Print($"GA_PROD_WORLD_MEANS_READY_25 cells={_worldFacts.Count} measures=2");
