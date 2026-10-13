@@ -3027,3 +3027,7 @@ WORLD STATS now reports unweighted mean habitability and mean resource potential
 ## GA-PROD-26 - non-water habitability formal close (2026-10-13)
 
 WORLD STATS now shows mean habitability over the 41 non-water strategic cells while retaining the all-cell mean over 92 cells. The value is an unweighted average of canonical scalar indices, not geographic-area-weighted suitability. QA R1 passed 1,157/1,157 tests, solution/Godot builds, runtime GA_PROD_LAND_HABITABILITY_READY_26 land=41 water=51 and 26/26 SHA-256 checks. Visual presentation is operator-attested with -VisualAccepted. GPP remains unchanged pending formal reconciliation. ADR: docs/ADR-GA-PROD-26-LAND-HABITABILITY.md.
+
+## GA-PROD-27 - non-water resource mean formal close (2026-10-13)
+
+WORLD STATS shows mean general resource potential across the 41 non-water strategic cells alongside the global 92-cell mean. Values are canonical procedural indices, not proven deposits, and averages are unweighted by geographical area. QA R1 passed 1,157/1,157 tests, solution and Godot builds, runtime GA_PROD_LAND_RESOURCES_READY_27 land=41 water=51, and 26/26 SHA-256 evidence hashes. Visual presentation is operator-attested with -VisualAccepted. GPP unchanged pending formal reconciliation. ADR: docs/ADR-GA-PROD-27-LAND-RESOURCE-MEAN.md.

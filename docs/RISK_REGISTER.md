@@ -4758,3 +4758,7 @@ Headless runtime confirms the world means UI initializes but does not verify vis
 ## GA-PROD-26 - non-water habitability presentation risks (2026-10-13)
 
 Headless startup verifies calculation and rendering setup but not actual display legibility or overlap in WORLD STATS. Operator acceptance must verify the non-water mean against the retained global mean and confirm navigation. Biome Water is excluded only for the non-water metric. Indices are unweighted per strategic cell and not surface-area statistics.
+
+## GA-PROD-27 - non-water resource mean presentation risks (2026-10-13)
+
+Headless Godot confirms startup and canonical cell counts but cannot verify rendered WORLD STATS readability or correct interaction. The resource index is a procedural potential signal, not a reserve estimate; the mean is per-cell and not geographic-area-weighted. Operator must verify F5 before formal acceptance.

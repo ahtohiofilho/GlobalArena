@@ -234,17 +234,25 @@ public partial class GlobePreview : SubViewportContainer
             }
         }
         long landHabitabilityTotal = 0;
+        long landResourceTotal = 0;
         int landCellCount = 0;
         foreach (var facts in _worldFacts.Values)
         {
             if (facts.Biome == "Water") continue;
-            checked { landHabitabilityTotal += facts.Habitability; }
+            checked
+            {
+                landHabitabilityTotal += facts.Habitability;
+                landResourceTotal += facts.ResourcePotential;
+            }
             landCellCount++;
         }
         if (landCellCount != _worldFacts.Count - waterCount)
             throw new InvalidOperationException("Non-water cell count mismatch.");
         var landMeanHabitability = landCellCount > 0
             ? FormatMeanIndex((double)landHabitabilityTotal / landCellCount)
+            : "N/A (no non-water cells)";
+        var landMeanResources = landCellCount > 0
+            ? FormatMeanIndex((double)landResourceTotal / landCellCount)
             : "N/A (no non-water cells)";
         var averageHabitability = (double)totalHabitability / _worldFacts.Count;
         var averageResources = (double)totalResources / _worldFacts.Count;
@@ -262,7 +270,8 @@ public partial class GlobePreview : SubViewportContainer
                 + $"\nMean habitability: {FormatMeanIndex(averageHabitability)} (all cells)"
                 + $"\nNon-water mean habitability: {landMeanHabitability} ({landCellCount} cells)"
                 + $"\nResource potential: {FormatIndex(lowestResources)} - {FormatIndex(highestResources)}"
-                + $"\nMean resource potential: {FormatMeanIndex(averageResources)} (per cell)"
+                + $"\nMean resource potential: {FormatMeanIndex(averageResources)} (all cells)"
+                + $"\nNon-water mean resource potential: {landMeanResources} ({landCellCount} cells)"
                 + "\nIndices are procedural, not population or proven reserves"
         };
         overviewLabel.AddThemeColorOverride("font_color", new Color("#f5f7ff"));
@@ -343,6 +352,7 @@ public partial class GlobePreview : SubViewportContainer
         GD.Print("GA_PROD_KEYBOARD_HINT_READY_14 keys=1-5,escape");
         GD.Print("GA_PROD_KEYBOARD_NAV_READY_13 keys=1-5,escape");
         GD.Print($"GA_PROD_WORLD_SUMMARY_READY_09 cells={_worldFacts.Count} water={waterCount} toggle=button");
+        GD.Print($"GA_PROD_LAND_RESOURCES_READY_27 land={landCellCount} water={waterCount}");
         GD.Print($"GA_PROD_LAND_HABITABILITY_READY_26 land={landCellCount} water={waterCount}");
         GD.Print($"GA_PROD_WORLD_MEANS_READY_25 cells={_worldFacts.Count} measures=2");
         GD.Print($"GA_PROD_DOMINANT_BIOME_READY_24 cells={_worldFacts.Count} count={dominantCount}");
