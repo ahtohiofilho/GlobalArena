@@ -253,8 +253,8 @@ public partial class GlobePreview : SubViewportContainer
             if (hitId.HasValue && _cellDegree.TryGetValue(hitId.Value, out var degree))
                 _detailsLabel.Text = $"Canonical cell {hitId.Value}  |  {(degree == 5 ? "Pentagon" : "Hexagon")}  |  {degree} sides"
                     + (_worldFacts.TryGetValue(hitId.Value, out var facts)
-                        ? $"\nBiome: {facts.Biome}  |  Habitability: {facts.Habitability}/{StrategicScalarField.Denominator}"
-                          + $"\nElevation (normalized raw): {facts.Elevation}/{StrategicScalarField.Denominator}"
+                        ? $"\nBiome: {facts.Biome}  |  Habitability: {FormatIndex(facts.Habitability)}"
+                          + $"\nRelative elevation index: {FormatIndex(facts.Elevation)} (not meters)"
                         : "\nWorld data unavailable");
             else
                 _detailsLabel.Text = "Select a territory to view its canonical identity";
@@ -310,14 +310,20 @@ public partial class GlobePreview : SubViewportContainer
         _camera.Position = position;
     }
 
+    // Read-only percentage display; underlying deterministic raw field remains unchanged.
+    private static string FormatIndex(long raw)
+    {
+        var percent = (double)raw * 100.0 / StrategicScalarField.Denominator;
+        return percent.ToString("F1", System.Globalization.CultureInfo.InvariantCulture) + "%";
+    }
     private void UpdateMapLegend()
     {
         if (_mapLegend is null) return;
         _mapLegend.Text = _mapMode switch
         {
             1 => "BIOMES | Blue: Water  White: Ice  Gray: Highland\nGreen: Forest/Wetland  Yellow: Desert/Grassland",
-            2 => "HABITABILITY | Dark: lower suitability  Light: higher suitability\nNormalized domain index (0 to 1); not a population estimate",
-            3 => "ELEVATION | Dark: lower elevation  Light: higher elevation\nNormalized procedural field; not meters",
+            2 => "HABITABILITY | Dark: lower  Light: higher\nRelative index 0-100%; not a population estimate",
+            3 => "ELEVATION | Dark: lower  Light: higher\nRelative procedural index 0-100%; not meters",
             _ => "CELL COLORS | Deterministic colors distinguish adjacent territories\nColors do not imply ownership, biome, or political borders"
         };
     }

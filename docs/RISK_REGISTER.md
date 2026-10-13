@@ -4678,3 +4678,7 @@ Diagnostic colors, biomes, habitability and elevation currently share a 92-cell 
 ## GA-PROD-06 - Map legend and presentation risks (2026-10-12)
 
 Contextual legends describe current diagnostic modes but do not establish calibrated physical units, accessibility, complete color-contrast coverage or high-resolution performance. Validate readability and placement at production layout and scale. Maintain separate evidence for user-facing visual acceptance; headless runtime is insufficient for interaction proof. No GPP or global risk rating changes are silently inferred.
+
+## GA-PROD-07 - Readable scalar presentation risks (2026-10-12)
+
+Percentage displays are derived presentation indices, not validated physical units. The normalized elevation field must never be labeled in meters; habitability is not population. Headless Godot startup does not prove text legibility or all interaction states. Scale, contrast, localization and field-calibration risks remain pending. No GPP, baseline or global risk grade changes are inferred from label-format improvement.
