@@ -4710,3 +4710,7 @@ Headless Godot startup cannot prove actual keyboard focus, shortcuts, selector s
 ## GA-PROD-14 - Shortcut hint UX risks (2026-10-13)
 
 Headless startup cannot establish readability or absence of overlap with controls, labels, or viewport content at the supported window size. The operator must inspect the hint, verify keyboard shortcuts 1-5 and Escape, and check WORLD STATS, selection, drag and zoom. Canonical geometry, simulation ownership and the unchanged GPP baseline remain protected.
+
+## GA-PROD-15 - Reset globe view UX risks (2026-10-13)
+
+Godot headless startup confirms reset handler initialization, not successful interactive restoration of rotation, zoom and preservation of selection or map mode. The operator must rotate and zoom, press R and confirm both return to initial values without changing selected territory or active map; test new hint, WORLD STATS and keyboard navigation. Canonical geometry and unchanged GPP baseline remain protected.

@@ -1866,3 +1866,7 @@ The Godot globe supports keyboard shortcuts 1-5 for direct map-layer selection a
 ## GA-PROD-14 - Keyboard shortcut hint formal close (2026-10-13)
 
 The globe now displays a compact on-screen reminder (MAPS: 1-5 | CLEAR: ESC), making already implemented keyboard shortcuts discoverable. The change is presentation-only: canonical generation, five map layers, world statistics, terrain selection, rotation/zoom, and the 92-cell Goldberg topology remain unchanged. QA R1 passed 1,157/1,157 regression tests, solution Release and Godot Debug/Release builds, headless marker GA_PROD_KEYBOARD_HINT_READY_14 keys=1-5,escape, and ZIP SHA-256 integrity 26/26. Actual readability, overlap, and interaction remain operator-attested using -VisualAccepted. GPP unchanged pending formal recalibration. ADR: docs/ADR-GA-PROD-14-KEYBOARD-SHORTCUT-HINT.md.
+
+## GA-PROD-15 - Reset globe view formal close (2026-10-13)
+
+The globe now supports R to restore the initial globe orientation and camera zoom while preserving the selected territory and active map layer. Its on-screen hint includes the reset key. The action is presentation-only and preserves the canonical world generation, five map layers, WORLD STATS, picking and 92-cell Goldberg geometry. QA R1 passed 1,157/1,157 regression tests, Release and Godot Debug/Release builds, Godot headless marker GA_PROD_VIEW_RESET_READY_15 key=R and ZIP integrity 26/26. The operator attests actual R-key interaction through -VisualAccepted. GPP unchanged pending formal recalibration. ADR: docs/ADR-GA-PROD-15-RESET-GLOBE-VIEW.md.

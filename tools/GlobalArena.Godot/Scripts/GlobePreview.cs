@@ -248,13 +248,14 @@ public partial class GlobePreview : SubViewportContainer
         // Keyboard shortcut discovery belongs to presentation only.
         var shortcutHint = new Label
         {
-            Text = "MAPS: 1-5    |    CLEAR: ESC",
+            Text = "MAPS: 1-5 | ESC: CLEAR | R: RESET",
             Position = new Vector2(365f, 81f),
             Size = new Vector2(174f, 25f),
             MouseFilter = MouseFilterEnum.Ignore
         };
         shortcutHint.AddThemeColorOverride("font_color", new Color("#d9e9f4"));
         AddChild(shortcutHint);
+        GD.Print("GA_PROD_VIEW_RESET_READY_15 key=R");
         GD.Print("GA_PROD_KEYBOARD_HINT_READY_14 keys=1-5,escape");
         GD.Print("GA_PROD_KEYBOARD_NAV_READY_13 keys=1-5,escape");
         GD.Print($"GA_PROD_WORLD_SUMMARY_READY_09 cells={_worldFacts.Count} water={waterCount} toggle=button");
@@ -272,6 +273,12 @@ public partial class GlobePreview : SubViewportContainer
     public override void _UnhandledKeyInput(InputEvent @event)
     {
         if (@event is not InputEventKey key || !key.Pressed || key.Echo) return;
+        if (key.Keycode == Key.R)
+        {
+            ResetGlobeCamera();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
         if (key.Keycode == Key.Escape)
         {
             ClearTerritorySelection();
@@ -430,6 +437,17 @@ public partial class GlobePreview : SubViewportContainer
         if (replacement is null) throw new InvalidOperationException("Selection recolor mesh unavailable.");
         _surfaceInstance.Mesh = replacement;
     }
+    private void ResetGlobeCamera()
+    {
+        if (_planet is null || _camera is null) return;
+        _dragging = false;
+        _movedSincePress = false;
+        _planet.Quaternion = Quaternion.Identity;
+        _camera.Position = new Vector3(0f, 0.05f, 3.15f);
+        _camera.LookAt(Vector3.Zero, Vector3.Up);
+        GD.Print("GA_PROD_VIEW_RESET_15");
+    }
+
     private void ChangeZoom(float delta)
     {
         if (_camera is null) return;
