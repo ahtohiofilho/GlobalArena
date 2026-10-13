@@ -271,6 +271,25 @@ public partial class GlobePreview : SubViewportContainer
         AddChild(zoomLabel);
         _zoomLabel = zoomLabel;
         UpdateZoomLabel();
+        var zoomInButton = new Button
+        {
+            Text = "+",
+            Position = new Vector2(230f, 335f),
+            CustomMinimumSize = new Vector2(40f, 30f),
+            MouseFilter = MouseFilterEnum.Stop
+        };
+        zoomInButton.Pressed += () => ChangeZoom(-0.25f);
+        AddChild(zoomInButton);
+        var zoomOutButton = new Button
+        {
+            Text = "-",
+            Position = new Vector2(275f, 335f),
+            CustomMinimumSize = new Vector2(40f, 30f),
+            MouseFilter = MouseFilterEnum.Stop
+        };
+        zoomOutButton.Pressed += () => ChangeZoom(0.25f);
+        AddChild(zoomOutButton);
+        GD.Print("GA_PROD_ZOOM_BUTTONS_READY_21 count=2");
         GD.Print("GA_PROD_ZOOM_INDICATOR_READY_20 range=0-100");
         GD.Print("GA_PROD_VIEW_RESET_READY_15 key=R");
         GD.Print("GA_PROD_KEYBOARD_HINT_READY_14 keys=1-5,escape");

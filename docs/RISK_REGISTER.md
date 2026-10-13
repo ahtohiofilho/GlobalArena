@@ -4734,3 +4734,7 @@ Legacy runtime gates may drift when UI mode counts evolve. Formal close requires
 ## GA-PROD-20 - zoom indicator UX risks (2026-10-13)
 
 The Godot headless runtime verifies control initialization, but does not verify zoom percentage changes during mouse scroll or R reset, pixel legibility, or lack of visual overlap. These require F5 operator acceptance. Zoom is explicitly relative, not a physical scale.
+
+## GA-PROD-21 - zoom buttons UX risks (2026-10-13)
+
+Headless Godot validates UI control initialization but not pointer interaction, placement, synchronization with percentage, or R reset. Operator acceptance covers + and - mouse actions, zoom limits, mouse wheel, reset, and avoiding overlaps with existing controls. No new domain or geometry risk is introduced.

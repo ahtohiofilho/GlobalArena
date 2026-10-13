@@ -16061,3 +16061,7 @@ Align the legacy GA_PROD_WORLD_LAYERS_READY_05 and GA_PROD_LEGEND_READY_06 runti
 ## GA-PROD-20 - relative zoom indicator formal close (2026-10-13)
 
 Display a read-only relative zoom percentage (0-100%) linked to the existing camera zoom range, updating when the user scrolls and resets with R. This percentage is not a physical distance scale. QA R1 passed 1,157/1,157 tests, solution/Godot builds, runtime GA_PROD_ZOOM_INDICATOR_READY_20 range=0-100, and 26/26 SHA-256 hashes. Visual behavior is operator-attested with -VisualAccepted. Canonical world topology and 1,000-GPP baseline unchanged. ADR: docs/ADR-GA-PROD-20-ZOOM-INDICATOR.md.
+
+## GA-PROD-21 - visual zoom buttons formal close (2026-10-13)
+
+The Godot globe gains visible + and - controls that call the existing ChangeZoom method, retaining current zoom limits, the percentage indicator and R camera reset. QA R1 passed 1,157/1,157 tests, solution/Godot builds, runtime GA_PROD_ZOOM_BUTTONS_READY_21 count=2 and SHA-256 checks 26/26. Interactive behavior and placement require operator confirmation using -VisualAccepted. Canonical topology, procedural world and baseline GPP remain unchanged. ADR: docs/ADR-GA-PROD-21-ZOOM-BUTTONS.md.
