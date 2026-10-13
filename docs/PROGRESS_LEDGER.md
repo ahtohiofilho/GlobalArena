@@ -16041,3 +16041,7 @@ The globe now displays a compact on-screen reminder (MAPS: 1-5 | CLEAR: ESC), ma
 ## GA-PROD-15 - Reset globe view formal close (2026-10-13)
 
 The globe now supports R to restore the initial globe orientation and camera zoom while preserving the selected territory and active map layer. Its on-screen hint includes the reset key. The action is presentation-only and preserves the canonical world generation, five map layers, WORLD STATS, picking and 92-cell Goldberg geometry. QA R1 passed 1,157/1,157 regression tests, Release and Godot Debug/Release builds, Godot headless marker GA_PROD_VIEW_RESET_READY_15 key=R and ZIP integrity 26/26. The operator attests actual R-key interaction through -VisualAccepted. GPP unchanged pending formal recalibration. ADR: docs/ADR-GA-PROD-15-RESET-GLOBE-VIEW.md.
+
+## GA-PROD-16 - Legend visibility toggle formal close (2026-10-13)
+
+The globe supports L to hide and restore the contextual map legend without changing map layer, selection or simulation. Existing keyboard shortcuts, WORLD STATS and canonical Goldberg geometry remain unchanged. QA R1 passed 1,157/1,157 tests, solution/Godot builds, runtime marker GA_PROD_LEGEND_TOGGLE_READY_16 key=L and ZIP integrity 26/26. Interactive legend behavior is operator-attested using -VisualAccepted. GPP unchanged pending formal recalibration. ADR: docs/ADR-GA-PROD-16-LEGEND-TOGGLE.md.

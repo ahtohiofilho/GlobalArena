@@ -248,13 +248,14 @@ public partial class GlobePreview : SubViewportContainer
         // Keyboard shortcut discovery belongs to presentation only.
         var shortcutHint = new Label
         {
-            Text = "MAPS: 1-5 | ESC: CLEAR | R: RESET",
+            Text = "1-5: MAPS | ESC: CLEAR | R: RESET | L: LEGEND",
             Position = new Vector2(365f, 81f),
             Size = new Vector2(174f, 25f),
             MouseFilter = MouseFilterEnum.Ignore
         };
         shortcutHint.AddThemeColorOverride("font_color", new Color("#d9e9f4"));
         AddChild(shortcutHint);
+        GD.Print("GA_PROD_LEGEND_TOGGLE_READY_16 key=L");
         GD.Print("GA_PROD_VIEW_RESET_READY_15 key=R");
         GD.Print("GA_PROD_KEYBOARD_HINT_READY_14 keys=1-5,escape");
         GD.Print("GA_PROD_KEYBOARD_NAV_READY_13 keys=1-5,escape");
@@ -273,6 +274,12 @@ public partial class GlobePreview : SubViewportContainer
     public override void _UnhandledKeyInput(InputEvent @event)
     {
         if (@event is not InputEventKey key || !key.Pressed || key.Echo) return;
+        if (key.Keycode == Key.L)
+        {
+            ToggleMapLegend();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
         if (key.Keycode == Key.R)
         {
             ResetGlobeCamera();
@@ -462,6 +469,13 @@ public partial class GlobePreview : SubViewportContainer
         var percent = (double)raw * 100.0 / StrategicScalarField.Denominator;
         return percent.ToString("F1", System.Globalization.CultureInfo.InvariantCulture) + "%";
     }
+    private void ToggleMapLegend()
+    {
+        if (_mapLegend is null) return;
+        _mapLegend.Visible = !_mapLegend.Visible;
+        GD.Print("GA_PROD_LEGEND_TOGGLED_16 visible=" + _mapLegend.Visible);
+    }
+
     private void UpdateMapLegend()
     {
         if (_mapLegend is null) return;

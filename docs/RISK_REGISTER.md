@@ -4714,3 +4714,7 @@ Headless startup cannot establish readability or absence of overlap with control
 ## GA-PROD-15 - Reset globe view UX risks (2026-10-13)
 
 Godot headless startup confirms reset handler initialization, not successful interactive restoration of rotation, zoom and preservation of selection or map mode. The operator must rotate and zoom, press R and confirm both return to initial values without changing selected territory or active map; test new hint, WORLD STATS and keyboard navigation. Canonical geometry and unchanged GPP baseline remain protected.
+
+## GA-PROD-16 - Legend visibility UX risks (2026-10-13)
+
+Headless Godot validates initialization only, not interactive toggling or legibility. Operator must test L twice, layer changes with the legend hidden, display restoration, map selection, R, Esc and WORLD STATS. Only the presentation layer is affected; preserve canonical world contracts and the existing GPP baseline.
