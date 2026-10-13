@@ -222,6 +222,19 @@ public partial class GlobePreview : SubViewportContainer
         }
         if (dominantCount < 0) throw new InvalidOperationException("Canonical biome summary is empty.");
         var dominantShare = 100.0 * dominantCount / _worldFacts.Count;
+        // Unweighted arithmetic mean across strategic cells; never imply geographic area weighting.
+        long totalHabitability = 0;
+        long totalResources = 0;
+        foreach (var facts in _worldFacts.Values)
+        {
+            checked
+            {
+                totalHabitability += facts.Habitability;
+                totalResources += facts.ResourcePotential;
+            }
+        }
+        var averageHabitability = (double)totalHabitability / _worldFacts.Count;
+        var averageResources = (double)totalResources / _worldFacts.Count;
         var overviewLabel = new Label
         {
             Position = new Vector2(12f, 118f),
@@ -233,7 +246,9 @@ public partial class GlobePreview : SubViewportContainer
                 + biomeDistribution
                 + $"\nMost common biome: {dominantBiome} ({dominantCount} cells, {dominantShare:F1}%)"
                 + $"\nHabitability index: {FormatIndex(lowestHabitability)} - {FormatIndex(highestHabitability)}"
+                + $"\nMean habitability: {FormatMeanIndex(averageHabitability)} (per cell)"
                 + $"\nResource potential: {FormatIndex(lowestResources)} - {FormatIndex(highestResources)}"
+                + $"\nMean resource potential: {FormatMeanIndex(averageResources)} (per cell)"
                 + "\nIndices are procedural, not population or proven reserves"
         };
         overviewLabel.AddThemeColorOverride("font_color", new Color("#f5f7ff"));
@@ -314,6 +329,7 @@ public partial class GlobePreview : SubViewportContainer
         GD.Print("GA_PROD_KEYBOARD_HINT_READY_14 keys=1-5,escape");
         GD.Print("GA_PROD_KEYBOARD_NAV_READY_13 keys=1-5,escape");
         GD.Print($"GA_PROD_WORLD_SUMMARY_READY_09 cells={_worldFacts.Count} water={waterCount} toggle=button");
+        GD.Print($"GA_PROD_WORLD_MEANS_READY_25 cells={_worldFacts.Count} measures=2");
         GD.Print($"GA_PROD_DOMINANT_BIOME_READY_24 cells={_worldFacts.Count} count={dominantCount}");
         GD.Print($"GA_PROD_BIOME_SHARE_READY_23 cells={_worldFacts.Count} categories={biomeCounts.Count}");
         GD.Print($"GA_PROD_BIOME_BREAKDOWN_READY_10 cells={_worldFacts.Count} categories={biomeCounts.Count}");
@@ -542,6 +558,11 @@ public partial class GlobePreview : SubViewportContainer
     }
 
     // Read-only percentage display; underlying deterministic raw field remains unchanged.
+    private static string FormatMeanIndex(double meanRaw)
+    {
+        return (meanRaw * 100.0 / StrategicScalarField.Denominator)
+            .ToString("F1", System.Globalization.CultureInfo.InvariantCulture) + "%";
+    }
     private static string FormatIndex(long raw)
     {
         var percent = (double)raw * 100.0 / StrategicScalarField.Denominator;

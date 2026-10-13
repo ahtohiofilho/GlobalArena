@@ -1906,3 +1906,7 @@ WORLD STATS now displays both canonical tile counts and percentage shares for al
 ## GA-PROD-24 - dominant biome formal close (2026-10-13)
 
 WORLD STATS now identifies the dominant canonical biome with its strategic cell count and percentage of the 92 cells. Deterministic ordinal tie-breaking is used; this is a cell-count share, not spherical surface area. QA R1 passed 1,157/1,157 tests, builds, runtime GA_PROD_DOMINANT_BIOME_READY_24 cells=92 count=51, and 26/26 SHA-256 checks. Visual legibility is operator-attested with -VisualAccepted. Domain generation, geometry and GPP remain unchanged. ADR: docs/ADR-GA-PROD-24-DOMINANT-BIOME.md.
+
+## GA-PROD-25 - world mean indices formal close (2026-10-13)
+
+WORLD STATS now reports unweighted mean habitability and mean resource potential, computed exclusively from the 92 canonical strategic cell samples. Percentages are indices, not demographic or mineral-stock measurements and are not weighted by spherical surface area. QA R1 passed 1,157/1,157 tests, solution/Godot builds, runtime GA_PROD_WORLD_MEANS_READY_25 cells=92 measures=2 and 26/26 SHA-256 checks. Visual presentation is operator-attested through -VisualAccepted. Domain topology, generation and GPP remain unchanged. ADR: docs/ADR-GA-PROD-25-WORLD-MEAN-INDICES.md.
