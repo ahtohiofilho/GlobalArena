@@ -25,6 +25,7 @@ public partial class GlobePreview : SubViewportContainer
     private int _mapMode; // 0 cells, 1 biomes, 2 habitability, 3 elevation, 4 resources
     private Label? _mapLegend;
     private OptionButton? _mapLayerSelector;
+    private Button? _worldStatsButton;
 
     private const float DragSensitivity = 0.006f;
     private const float MinZoom = 1.55f;
@@ -234,6 +235,7 @@ public partial class GlobePreview : SubViewportContainer
             overviewButton.Text = overviewLabel.Visible ? "HIDE STATS" : "WORLD STATS";
         };
         AddChild(overviewButton);
+        _worldStatsButton = overviewButton;
         // GA-PROD-12: player can explicitly clear the selected territory.
         var clearSelectionButton = new Button
         {
@@ -248,13 +250,14 @@ public partial class GlobePreview : SubViewportContainer
         // Keyboard shortcut discovery belongs to presentation only.
         var shortcutHint = new Label
         {
-            Text = "1-5: MAPS | ESC: CLEAR | R: RESET | L: LEGEND",
+            Text = "1-5 MAPS | ESC CLEAR | R RESET | L LEGEND | S STATS",
             Position = new Vector2(365f, 81f),
             Size = new Vector2(174f, 25f),
             MouseFilter = MouseFilterEnum.Ignore
         };
         shortcutHint.AddThemeColorOverride("font_color", new Color("#d9e9f4"));
         AddChild(shortcutHint);
+        GD.Print("GA_PROD_STATS_SHORTCUT_READY_17 key=S");
         GD.Print("GA_PROD_LEGEND_TOGGLE_READY_16 key=L");
         GD.Print("GA_PROD_VIEW_RESET_READY_15 key=R");
         GD.Print("GA_PROD_KEYBOARD_HINT_READY_14 keys=1-5,escape");
@@ -274,6 +277,12 @@ public partial class GlobePreview : SubViewportContainer
     public override void _UnhandledKeyInput(InputEvent @event)
     {
         if (@event is not InputEventKey key || !key.Pressed || key.Echo) return;
+        if (key.Keycode == Key.S && _worldStatsButton is not null)
+        {
+            _worldStatsButton.EmitSignal(BaseButton.SignalName.Pressed);
+            GetViewport().SetInputAsHandled();
+            return;
+        }
         if (key.Keycode == Key.L)
         {
             ToggleMapLegend();

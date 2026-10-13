@@ -2987,3 +2987,7 @@ The globe now supports R to restore the initial globe orientation and camera zoo
 ## GA-PROD-16 - Legend visibility toggle formal close (2026-10-13)
 
 The globe supports L to hide and restore the contextual map legend without changing map layer, selection or simulation. Existing keyboard shortcuts, WORLD STATS and canonical Goldberg geometry remain unchanged. QA R1 passed 1,157/1,157 tests, solution/Godot builds, runtime marker GA_PROD_LEGEND_TOGGLE_READY_16 key=L and ZIP integrity 26/26. Interactive legend behavior is operator-attested using -VisualAccepted. GPP unchanged pending formal recalibration. ADR: docs/ADR-GA-PROD-16-LEGEND-TOGGLE.md.
+
+## GA-PROD-17 - WORLD STATS shortcut formal close (2026-10-13)
+
+The globe supports S to toggle the existing WORLD STATS panel by reusing its button action, with the label and state synchronized. Existing keyboard shortcuts, map modes and canonical Goldberg geometry remain unchanged. QA R1 passed 1,157/1,157 tests, solution/Godot builds, runtime marker GA_PROD_STATS_SHORTCUT_READY_17 key=S and ZIP integrity 26/26. Interactive behavior is operator-attested using -VisualAccepted. GPP unchanged pending formal recalibration. ADR: docs/ADR-GA-PROD-17-WORLD-STATS-SHORTCUT.md.

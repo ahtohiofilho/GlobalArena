@@ -4718,3 +4718,7 @@ Godot headless startup confirms reset handler initialization, not successful int
 ## GA-PROD-16 - Legend visibility UX risks (2026-10-13)
 
 Headless Godot validates initialization only, not interactive toggling or legibility. Operator must test L twice, layer changes with the legend hidden, display restoration, map selection, R, Esc and WORLD STATS. Only the presentation layer is affected; preserve canonical world contracts and the existing GPP baseline.
+
+## GA-PROD-17 - WORLD STATS shortcut UX risks (2026-10-13)
+
+Headless Godot validates initialization only, not the S shortcut, popup legibility or synchronization of the WORLD STATS button. Operator must test S twice, button and shortcut interchangeably, existing L, R and Esc keyboard commands, map layers, picking and navigation. Canonical world contracts and existing GPP baseline remain unchanged.
