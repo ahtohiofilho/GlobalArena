@@ -187,14 +187,30 @@ public partial class GlobePreview : SubViewportContainer
             lowestResources = Math.Min(lowestResources, facts.ResourcePotential);
             highestResources = Math.Max(highestResources, facts.ResourcePotential);
         }
+        // GA-PROD-10: count canonical biome labels; never synthesize a second biome model.
+        var biomeCounts = new System.Collections.Generic.Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var facts in _worldFacts.Values)
+        {
+            if (!biomeCounts.TryAdd(facts.Biome, 1))
+                biomeCounts[facts.Biome]++;
+        }
+        string BiomeCount(string kind) => kind + ": " +
+            (biomeCounts.TryGetValue(kind, out var count) ? count : 0);
+        var biomeDistribution =
+            "\n" + string.Join("  |  ", BiomeCount("Water"), BiomeCount("PolarIce"), BiomeCount("Tundra"))
+            + "\n" + string.Join("  |  ", BiomeCount("Highland"), BiomeCount("Wetland"), BiomeCount("Desert"))
+            + "\n" + string.Join("  |  ", BiomeCount("Rainforest"), BiomeCount("Forest"), BiomeCount("Grassland"));
+        if (System.Linq.Enumerable.Sum(biomeCounts.Values) != _worldFacts.Count)
+            throw new InvalidOperationException("Canonical biome distribution count mismatch.");
         var overviewLabel = new Label
         {
             Position = new Vector2(12f, 118f),
-            Size = new Vector2(520f, 140f),
+            Size = new Vector2(520f, 240f),
             Visible = false,
             MouseFilter = MouseFilterEnum.Ignore,
             Text = $"WORLD OVERVIEW | {_worldFacts.Count} strategic cells"
                 + $"\nWater: {waterCount}  |  Other biomes: {_worldFacts.Count - waterCount}"
+                + biomeDistribution
                 + $"\nHabitability index: {FormatIndex(lowestHabitability)} - {FormatIndex(highestHabitability)}"
                 + $"\nResource potential: {FormatIndex(lowestResources)} - {FormatIndex(highestResources)}"
                 + "\nIndices are procedural, not population or proven reserves"
@@ -218,6 +234,7 @@ public partial class GlobePreview : SubViewportContainer
         };
         AddChild(overviewButton);
         GD.Print($"GA_PROD_WORLD_SUMMARY_READY_09 cells={_worldFacts.Count} water={waterCount} toggle=button");
+        GD.Print($"GA_PROD_BIOME_BREAKDOWN_READY_10 cells={_worldFacts.Count} categories={biomeCounts.Count}");
         GD.Print("GA_PROD_WORLD_LAYERS_READY_05 modes=4");
         GD.Print($"GA_PROD_GLOBE_READY_02B_NO_BORDERS cells={geometry.Cells.Count} vertices={geometry.Vertices.Count} triangles={triangleCount} borders=0");
     }

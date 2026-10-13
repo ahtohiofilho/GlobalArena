@@ -4690,3 +4690,7 @@ General resource potential is a relative scalar (0-100%) and is not a validated 
 ## GA-PROD-09 - Strategic world summary risks (2026-10-13)
 
 The water/other counts and resource/habitability extrema describe a fixed procedural seed and canonical 92-cell topology, not aggregate production, ownership, demographic or measured physical resources. GUI F5 inspection is required for legibility, the button toggle, overlap with the selection details, and navigation. Headless startup does not establish visual acceptance, accessibility or performance at all display scales. The renderer remains read-only and does not own strategic simulation or GPP recalibration.
+
+## GA-PROD-10 - Canonical biome distribution risks (2026-10-13)
+
+Biomes not represented by the current deterministic seed appear with zero; this does not mean the generator lacks those biome kinds. Biome frequencies are per strategic cell, not equal-surface-area coverage. GUI F5 acceptance is required to validate overview legibility, visibility toggle, overlap and unchanged navigation, picking and five map layers. Headless execution does not prove GUI usability. No GPP increase without a formal baseline review.
