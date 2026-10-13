@@ -4770,3 +4770,7 @@ Headless runtime confirms ScrollContainer creation, not scrolling, scroll focus,
 ## GA-PROD-29 - WORLD STATS scroll reset interaction risks (2026-10-13)
 
 Headless runtime verifies control initialization, not scroll position after reopening, keyboard/button synchronization or mouse interaction. Operator must test scrolling, closing, reopening, preserved map controls and input focus via F5 before visual acceptance. No change to domain simulation or geometry.
+
+## GA-PROD-30 - WORLD STATS keyboard interaction risks (2026-10-13)
+
+Godot headless startup validates markers but not actual Home/End key handling, input focus, bottom scrolling, or hidden-panel behavior. Operator must verify the shortcuts, S and button interaction, and unaffected globe navigation using F5. No changes to procedural data or geometry.

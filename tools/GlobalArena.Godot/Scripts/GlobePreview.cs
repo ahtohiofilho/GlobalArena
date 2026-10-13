@@ -27,6 +27,7 @@ public partial class GlobePreview : SubViewportContainer
     private Label? _zoomLabel;
     private OptionButton? _mapLayerSelector;
     private Button? _worldStatsButton;
+    private ScrollContainer? _worldStatsScroll;
 
     private const float DragSensitivity = 0.006f;
     private const float MinZoom = 1.55f;
@@ -288,6 +289,7 @@ public partial class GlobePreview : SubViewportContainer
         };
         overviewScroll.AddChild(overviewLabel);
         AddChild(overviewScroll);
+        _worldStatsScroll = overviewScroll;
         var overviewButton = new Button
         {
             Text = "WORLD STATS",
@@ -362,6 +364,7 @@ public partial class GlobePreview : SubViewportContainer
         GD.Print("GA_PROD_KEYBOARD_HINT_READY_14 keys=1-5,escape");
         GD.Print("GA_PROD_KEYBOARD_NAV_READY_13 keys=1-5,escape");
         GD.Print($"GA_PROD_WORLD_SUMMARY_READY_09 cells={_worldFacts.Count} water={waterCount} toggle=button");
+        GD.Print("GA_PROD_STATS_KEYS_READY_30 keys=Home,End");
         GD.Print("GA_PROD_STATS_SCROLL_RESET_READY_29 on=open");
         GD.Print("GA_PROD_WORLD_STATS_SCROLL_READY_28 viewport=520x240");
         GD.Print($"GA_PROD_LAND_RESOURCES_READY_27 land={landCellCount} water={waterCount}");
@@ -383,6 +386,15 @@ public partial class GlobePreview : SubViewportContainer
     public override void _UnhandledKeyInput(InputEvent @event)
     {
         if (@event is not InputEventKey key || !key.Pressed || key.Echo) return;
+        if (_worldStatsScroll is not null && _worldStatsScroll.Visible &&
+            (key.Keycode == Key.Home || key.Keycode == Key.End))
+        {
+            _worldStatsScroll.ScrollVertical = key.Keycode == Key.Home
+                ? 0
+                : (int)_worldStatsScroll.GetVScrollBar().MaxValue;
+            GetViewport().SetInputAsHandled();
+            return;
+        }
         if (key.Keycode == Key.S && _worldStatsButton is not null)
         {
             _worldStatsButton.EmitSignal(BaseButton.SignalName.Pressed);

@@ -16097,3 +16097,7 @@ WORLD STATS now hosts its read-only canonical indicators in a vertically scrolla
 ## GA-PROD-29 - WORLD STATS scroll reset formal close (2026-10-13)
 
 Reopening the existing scrollable WORLD STATS panel resets its vertical scroll position to the beginning, preserving the S shortcut and button state. The change is presentational and does not affect canonical generated data, five map modes, picking or Goldberg geometry. QA R1 passed 1,157/1,157 tests, solution/Godot builds, runtime GA_PROD_STATS_SCROLL_RESET_READY_29 on=open and 26/26 SHA-256 hashes. Visual behavior is operator-attested using -VisualAccepted. GPP unchanged pending formal recalibration. ADR: docs/ADR-GA-PROD-29-WORLD-STATS-SCROLL-RESET.md.
+
+## GA-PROD-30 - WORLD STATS Home/End keyboard navigation formal close (2026-10-13)
+
+Home and End navigate to the beginning and end of the existing scrollable WORLD STATS panel only while visible. Reuse the existing ScrollContainer without changing strategic indicators, the S toggle, five map modes, selection, or canonical Goldberg geometry. QA R1 passed 1,157/1,157 tests, solution/Godot builds, runtime GA_PROD_STATS_KEYS_READY_30 keys=Home,End, and 26/26 SHA-256 checks. Interactive keyboard behavior is operator-attested via -VisualAccepted. GPP unchanged pending formal recalibration. ADR: docs/ADR-GA-PROD-30-WORLD-STATS-KEYS.md.
