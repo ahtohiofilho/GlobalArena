@@ -245,6 +245,17 @@ public partial class GlobePreview : SubViewportContainer
         clearSelectionButton.Pressed += ClearTerritorySelection;
         AddChild(clearSelectionButton);
         GD.Print("GA_PROD_CLEAR_SELECTION_READY_12 button=true");
+        // Keyboard shortcut discovery belongs to presentation only.
+        var shortcutHint = new Label
+        {
+            Text = "MAPS: 1-5    |    CLEAR: ESC",
+            Position = new Vector2(365f, 81f),
+            Size = new Vector2(174f, 25f),
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        shortcutHint.AddThemeColorOverride("font_color", new Color("#d9e9f4"));
+        AddChild(shortcutHint);
+        GD.Print("GA_PROD_KEYBOARD_HINT_READY_14 keys=1-5,escape");
         GD.Print("GA_PROD_KEYBOARD_NAV_READY_13 keys=1-5,escape");
         GD.Print($"GA_PROD_WORLD_SUMMARY_READY_09 cells={_worldFacts.Count} water={waterCount} toggle=button");
         GD.Print($"GA_PROD_BIOME_BREAKDOWN_READY_10 cells={_worldFacts.Count} categories={biomeCounts.Count}");

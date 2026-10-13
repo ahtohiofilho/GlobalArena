@@ -4706,3 +4706,7 @@ Headless Godot startup does not prove mouse interaction, clear-button interactio
 ## GA-PROD-13 - Keyboard navigation risks (2026-10-13)
 
 Headless Godot startup cannot prove actual keyboard focus, shortcuts, selector synchronization, deselection repaint, or GUI overlap behavior. The operator must verify each shortcut 1-5, Escape, selector/legend consistency, and normal selection/drag/zoom. Preserve the canonical data model and 92-cell continuous opaque geometry. No GPP change without formal rebaseline.
+
+## GA-PROD-14 - Shortcut hint UX risks (2026-10-13)
+
+Headless startup cannot establish readability or absence of overlap with controls, labels, or viewport content at the supported window size. The operator must inspect the hint, verify keyboard shortcuts 1-5 and Escape, and check WORLD STATS, selection, drag and zoom. Canonical geometry, simulation ownership and the unchanged GPP baseline remain protected.
