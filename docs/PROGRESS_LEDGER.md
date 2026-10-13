@@ -16069,3 +16069,7 @@ The Godot globe gains visible + and - controls that call the existing ChangeZoom
 ## GA-PROD-22 - keyboard zoom formal close (2026-10-13)
 
 PageUp and PageDown provide zoom-in and zoom-out through the existing ChangeZoom path, preserving camera limits, the on-screen percentage indicator, mouse-wheel/buttons, reset (R), world modes and territory selection. The UI shortcut hint documents the new keys. QA R1 passed 1,157/1,157 tests, solution/Godot builds, runtime GA_PROD_ZOOM_KEYS_READY_22 keys=PageUp,PageDown, and 26/26 SHA-256 hashes. Interaction is operator-attested via -VisualAccepted. Baseline GPP is unchanged. ADR: docs/ADR-GA-PROD-22-KEYBOARD-ZOOM.md.
+
+## GA-PROD-23 - biome percentage shares formal close (2026-10-13)
+
+WORLD STATS now displays both canonical tile counts and percentage shares for all nine supported biomes, using the 92-cell total as denominator; categories with zero cells remain visible. Source simulation and Goldberg geometry are unchanged. QA R1 passed 1,157/1,157 tests, solution/Godot builds, runtime GA_PROD_BIOME_SHARE_READY_23 cells=92 categories=8 and 26/26 SHA-256 checks. Visual readability is operator-attested via -VisualAccepted. GPP unchanged pending formal recalibration. ADR: docs/ADR-GA-PROD-23-BIOME-SHARES.md.

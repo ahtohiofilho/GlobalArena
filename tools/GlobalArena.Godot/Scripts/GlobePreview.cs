@@ -197,8 +197,12 @@ public partial class GlobePreview : SubViewportContainer
             if (!biomeCounts.TryAdd(facts.Biome, 1))
                 biomeCounts[facts.Biome]++;
         }
-        string BiomeCount(string kind) => kind + ": " +
-            (biomeCounts.TryGetValue(kind, out var count) ? count : 0);
+        string BiomeCount(string kind)
+        {
+            var count = biomeCounts.TryGetValue(kind, out var present) ? present : 0;
+            var percent = 100.0 * count / _worldFacts.Count;
+            return kind + ": " + count + " (" + percent.ToString("F1", System.Globalization.CultureInfo.InvariantCulture) + "%)";
+        }
         var biomeDistribution =
             "\n" + string.Join("  |  ", BiomeCount("Water"), BiomeCount("PolarIce"), BiomeCount("Tundra"))
             + "\n" + string.Join("  |  ", BiomeCount("Highland"), BiomeCount("Wetland"), BiomeCount("Desert"))
@@ -296,6 +300,7 @@ public partial class GlobePreview : SubViewportContainer
         GD.Print("GA_PROD_KEYBOARD_HINT_READY_14 keys=1-5,escape");
         GD.Print("GA_PROD_KEYBOARD_NAV_READY_13 keys=1-5,escape");
         GD.Print($"GA_PROD_WORLD_SUMMARY_READY_09 cells={_worldFacts.Count} water={waterCount} toggle=button");
+        GD.Print($"GA_PROD_BIOME_SHARE_READY_23 cells={_worldFacts.Count} categories={biomeCounts.Count}");
         GD.Print($"GA_PROD_BIOME_BREAKDOWN_READY_10 cells={_worldFacts.Count} categories={biomeCounts.Count}");
         GD.Print("GA_PROD_WORLD_LAYERS_READY_05 modes=5");
         GD.Print($"GA_PROD_GLOBE_READY_02B_NO_BORDERS cells={geometry.Cells.Count} vertices={geometry.Vertices.Count} triangles={triangleCount} borders=0");

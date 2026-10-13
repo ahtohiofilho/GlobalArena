@@ -4742,3 +4742,7 @@ Headless Godot validates UI control initialization but not pointer interaction, 
 ## GA-PROD-22 - keyboard zoom interaction risks (2026-10-13)
 
 Headless startup does not exercise PageUp/PageDown keyboard dispatch, focus conditions, zoom bounds, synchronization of the relative indicator, or shortcut hint legibility. Confirm these in F5 before -VisualAccepted. No new world generation or geometry changes.
+
+## GA-PROD-23 - biome share presentation risks (2026-10-13)
+
+Headless runtime confirms initialization but not percentage layout or readability. Operator must verify counts, percentage shares, zero-count category and WORLD STATS layout in F5. Percentage values describe the fraction of strategic cells, not planetary surface area. No new simulation or topology risk.
