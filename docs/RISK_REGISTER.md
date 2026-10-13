@@ -4730,3 +4730,7 @@ Headless Godot confirms control creation and placement marker, not actual readab
 ## GA-PROD-19 - diagnostic drift risk (2026-10-13)
 
 Legacy runtime gates may drift when UI mode counts evolve. Formal close requires both five-mode markers and the five-option selector marker while rejecting the obsolete modes=4 strings. Add this incident pattern to the next GA-SRP review; no change to GPP or runtime behavior.
+
+## GA-PROD-20 - zoom indicator UX risks (2026-10-13)
+
+The Godot headless runtime verifies control initialization, but does not verify zoom percentage changes during mouse scroll or R reset, pixel legibility, or lack of visual overlap. These require F5 operator acceptance. Zoom is explicitly relative, not a physical scale.

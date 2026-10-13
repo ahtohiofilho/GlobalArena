@@ -2999,3 +2999,7 @@ Move the existing shortcut hint to y=380 to avoid overlap with CLEAR SELECTION i
 ## GA-PROD-19 - five-mode diagnostic contract close (2026-10-13)
 
 Align the legacy GA_PROD_WORLD_LAYERS_READY_05 and GA_PROD_LEGEND_READY_06 runtime markers to modes=5, consistent with the five-option selector and existing resources layer. No changes to topology, world fields or player interactions. QA R1 passed 1,157/1,157 tests, solution/Godot builds, runtime marker checks and 26/26 SHA-256 hashes. This diagnostics-only milestone needs no additional visual acceptance. GPP remains unchanged pending formal recalibration. ADR: docs/ADR-GA-PROD-19-RUNTIME-MODE-CONTRACT.md.
+
+## GA-PROD-20 - relative zoom indicator formal close (2026-10-13)
+
+Display a read-only relative zoom percentage (0-100%) linked to the existing camera zoom range, updating when the user scrolls and resets with R. This percentage is not a physical distance scale. QA R1 passed 1,157/1,157 tests, solution/Godot builds, runtime GA_PROD_ZOOM_INDICATOR_READY_20 range=0-100, and 26/26 SHA-256 hashes. Visual behavior is operator-attested with -VisualAccepted. Canonical world topology and 1,000-GPP baseline unchanged. ADR: docs/ADR-GA-PROD-20-ZOOM-INDICATOR.md.

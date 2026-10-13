@@ -24,6 +24,7 @@ public partial class GlobePreview : SubViewportContainer
     private const float ClickThresholdPixels = 6f;
     private int _mapMode; // 0 cells, 1 biomes, 2 habitability, 3 elevation, 4 resources
     private Label? _mapLegend;
+    private Label? _zoomLabel;
     private OptionButton? _mapLayerSelector;
     private Button? _worldStatsButton;
 
@@ -260,6 +261,17 @@ public partial class GlobePreview : SubViewportContainer
         GD.Print("GA_PROD_SHORTCUT_LAYOUT_READY_18 hint_y=380");
         GD.Print("GA_PROD_STATS_SHORTCUT_READY_17 key=S");
         GD.Print("GA_PROD_LEGEND_TOGGLE_READY_16 key=L");
+        var zoomLabel = new Label
+        {
+            Position = new Vector2(12f, 340f),
+            Size = new Vector2(210f, 24f),
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        zoomLabel.AddThemeColorOverride("font_color", new Color("#d9e9f4"));
+        AddChild(zoomLabel);
+        _zoomLabel = zoomLabel;
+        UpdateZoomLabel();
+        GD.Print("GA_PROD_ZOOM_INDICATOR_READY_20 range=0-100");
         GD.Print("GA_PROD_VIEW_RESET_READY_15 key=R");
         GD.Print("GA_PROD_KEYBOARD_HINT_READY_14 keys=1-5,escape");
         GD.Print("GA_PROD_KEYBOARD_NAV_READY_13 keys=1-5,escape");
@@ -462,6 +474,7 @@ public partial class GlobePreview : SubViewportContainer
         _planet.Quaternion = Quaternion.Identity;
         _camera.Position = new Vector3(0f, 0.05f, 3.15f);
         _camera.LookAt(Vector3.Zero, Vector3.Up);
+        UpdateZoomLabel();
         GD.Print("GA_PROD_VIEW_RESET_15");
     }
 
@@ -471,6 +484,15 @@ public partial class GlobePreview : SubViewportContainer
         var position = _camera.Position;
         position.Z = Mathf.Clamp(position.Z + delta, MinZoom, MaxZoom);
         _camera.Position = position;
+        UpdateZoomLabel();
+    }
+
+    // Shows relative proximity within the configured camera range, not a physical scale.
+    private void UpdateZoomLabel()
+    {
+        if (_camera is null || _zoomLabel is null) return;
+        var closeness = Mathf.Clamp((MaxZoom - _camera.Position.Z) / (MaxZoom - MinZoom), 0f, 1f);
+        _zoomLabel.Text = $"ZOOM: {Mathf.RoundToInt(closeness * 100f)}% (relative)";
     }
 
     // Read-only percentage display; underlying deterministic raw field remains unchanged.
