@@ -4686,3 +4686,7 @@ Percentage displays are derived presentation indices, not validated physical uni
 ## GA-PROD-08 - Resource potential map risks (2026-10-13)
 
 General resource potential is a relative scalar (0-100%) and is not a validated mineral reserve, measured mass, extractable inventory, yield, or trade availability. Visual color scale and explanatory legend require F5 operator acceptance; headless boot does not verify contrast, usability, accessibility or runtime frame rate under all resolutions. No economic or physical stock ownership is introduced into the Godot renderer. No GPP or risk priority recalibration is inferred from this presentation-only milestone.
+
+## GA-PROD-09 - Strategic world summary risks (2026-10-13)
+
+The water/other counts and resource/habitability extrema describe a fixed procedural seed and canonical 92-cell topology, not aggregate production, ownership, demographic or measured physical resources. GUI F5 inspection is required for legibility, the button toggle, overlap with the selection details, and navigation. Headless startup does not establish visual acceptance, accessibility or performance at all display scales. The renderer remains read-only and does not own strategic simulation or GPP recalibration.

@@ -173,6 +173,51 @@ public partial class GlobePreview : SubViewportContainer
         UpdateMapLegend();
         GD.Print("GA_PROD_LEGEND_READY_06 modes=4");
         GD.Print("GA_PROD_RESOURCE_VIEW_READY_08 modes=5 cells=" + _worldFacts.Count);
+        // GA-PROD-09: optional strategic overview computed from canonical per-cell samples.
+        int waterCount = 0;
+        long lowestHabitability = long.MaxValue;
+        long highestHabitability = long.MinValue;
+        long lowestResources = long.MaxValue;
+        long highestResources = long.MinValue;
+        foreach (var facts in _worldFacts.Values)
+        {
+            if (facts.Biome == "Water") waterCount++;
+            lowestHabitability = Math.Min(lowestHabitability, facts.Habitability);
+            highestHabitability = Math.Max(highestHabitability, facts.Habitability);
+            lowestResources = Math.Min(lowestResources, facts.ResourcePotential);
+            highestResources = Math.Max(highestResources, facts.ResourcePotential);
+        }
+        var overviewLabel = new Label
+        {
+            Position = new Vector2(12f, 118f),
+            Size = new Vector2(520f, 140f),
+            Visible = false,
+            MouseFilter = MouseFilterEnum.Ignore,
+            Text = $"WORLD OVERVIEW | {_worldFacts.Count} strategic cells"
+                + $"\nWater: {waterCount}  |  Other biomes: {_worldFacts.Count - waterCount}"
+                + $"\nHabitability index: {FormatIndex(lowestHabitability)} - {FormatIndex(highestHabitability)}"
+                + $"\nResource potential: {FormatIndex(lowestResources)} - {FormatIndex(highestResources)}"
+                + "\nIndices are procedural, not population or proven reserves"
+        };
+        overviewLabel.AddThemeColorOverride("font_color", new Color("#f5f7ff"));
+        overviewLabel.AddThemeColorOverride("font_shadow_color", new Color("#08131e"));
+        overviewLabel.AddThemeConstantOverride("shadow_offset_x", 1);
+        overviewLabel.AddThemeConstantOverride("shadow_offset_y", 1);
+        AddChild(overviewLabel);
+        var overviewButton = new Button
+        {
+            Text = "WORLD STATS",
+            Position = new Vector2(365f, 44f),
+            CustomMinimumSize = new Vector2(174f, 32f),
+            MouseFilter = MouseFilterEnum.Stop
+        };
+        overviewButton.Pressed += () =>
+        {
+            overviewLabel.Visible = !overviewLabel.Visible;
+            overviewButton.Text = overviewLabel.Visible ? "HIDE STATS" : "WORLD STATS";
+        };
+        AddChild(overviewButton);
+        GD.Print($"GA_PROD_WORLD_SUMMARY_READY_09 cells={_worldFacts.Count} water={waterCount} toggle=button");
         GD.Print("GA_PROD_WORLD_LAYERS_READY_05 modes=4");
         GD.Print($"GA_PROD_GLOBE_READY_02B_NO_BORDERS cells={geometry.Cells.Count} vertices={geometry.Vertices.Count} triangles={triangleCount} borders=0");
     }
