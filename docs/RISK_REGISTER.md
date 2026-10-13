@@ -4746,3 +4746,7 @@ Headless startup does not exercise PageUp/PageDown keyboard dispatch, focus cond
 ## GA-PROD-23 - biome share presentation risks (2026-10-13)
 
 Headless runtime confirms initialization but not percentage layout or readability. Operator must verify counts, percentage shares, zero-count category and WORLD STATS layout in F5. Percentage values describe the fraction of strategic cells, not planetary surface area. No new simulation or topology risk.
+
+## GA-PROD-24 - dominant biome summary risks (2026-10-13)
+
+The runtime verifies the canonical biome count and initialization, not visual readability and panel layout. Operator acceptance must check WORLD STATS, the Water dominant biome with 51 cells (55.4% of 92), and the remaining selection and navigation controls. Biome percentages measure share of cells, not physical area.

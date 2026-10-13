@@ -1902,3 +1902,7 @@ PageUp and PageDown provide zoom-in and zoom-out through the existing ChangeZoom
 ## GA-PROD-23 - biome percentage shares formal close (2026-10-13)
 
 WORLD STATS now displays both canonical tile counts and percentage shares for all nine supported biomes, using the 92-cell total as denominator; categories with zero cells remain visible. Source simulation and Goldberg geometry are unchanged. QA R1 passed 1,157/1,157 tests, solution/Godot builds, runtime GA_PROD_BIOME_SHARE_READY_23 cells=92 categories=8 and 26/26 SHA-256 checks. Visual readability is operator-attested via -VisualAccepted. GPP unchanged pending formal recalibration. ADR: docs/ADR-GA-PROD-23-BIOME-SHARES.md.
+
+## GA-PROD-24 - dominant biome formal close (2026-10-13)
+
+WORLD STATS now identifies the dominant canonical biome with its strategic cell count and percentage of the 92 cells. Deterministic ordinal tie-breaking is used; this is a cell-count share, not spherical surface area. QA R1 passed 1,157/1,157 tests, builds, runtime GA_PROD_DOMINANT_BIOME_READY_24 cells=92 count=51, and 26/26 SHA-256 checks. Visual legibility is operator-attested with -VisualAccepted. Domain generation, geometry and GPP remain unchanged. ADR: docs/ADR-GA-PROD-24-DOMINANT-BIOME.md.

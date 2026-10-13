@@ -209,6 +209,19 @@ public partial class GlobePreview : SubViewportContainer
             + "\n" + string.Join("  |  ", BiomeCount("Rainforest"), BiomeCount("Forest"), BiomeCount("Grassland"));
         if (System.Linq.Enumerable.Sum(biomeCounts.Values) != _worldFacts.Count)
             throw new InvalidOperationException("Canonical biome distribution count mismatch.");
+        string dominantBiome = "";
+        int dominantCount = -1;
+        foreach (var item in biomeCounts)
+        {
+            if (item.Value > dominantCount ||
+                (item.Value == dominantCount && string.CompareOrdinal(item.Key, dominantBiome) < 0))
+            {
+                dominantBiome = item.Key;
+                dominantCount = item.Value;
+            }
+        }
+        if (dominantCount < 0) throw new InvalidOperationException("Canonical biome summary is empty.");
+        var dominantShare = 100.0 * dominantCount / _worldFacts.Count;
         var overviewLabel = new Label
         {
             Position = new Vector2(12f, 118f),
@@ -218,6 +231,7 @@ public partial class GlobePreview : SubViewportContainer
             Text = $"WORLD OVERVIEW | {_worldFacts.Count} strategic cells"
                 + $"\nWater: {waterCount}  |  Other biomes: {_worldFacts.Count - waterCount}"
                 + biomeDistribution
+                + $"\nMost common biome: {dominantBiome} ({dominantCount} cells, {dominantShare:F1}%)"
                 + $"\nHabitability index: {FormatIndex(lowestHabitability)} - {FormatIndex(highestHabitability)}"
                 + $"\nResource potential: {FormatIndex(lowestResources)} - {FormatIndex(highestResources)}"
                 + "\nIndices are procedural, not population or proven reserves"
@@ -300,6 +314,7 @@ public partial class GlobePreview : SubViewportContainer
         GD.Print("GA_PROD_KEYBOARD_HINT_READY_14 keys=1-5,escape");
         GD.Print("GA_PROD_KEYBOARD_NAV_READY_13 keys=1-5,escape");
         GD.Print($"GA_PROD_WORLD_SUMMARY_READY_09 cells={_worldFacts.Count} water={waterCount} toggle=button");
+        GD.Print($"GA_PROD_DOMINANT_BIOME_READY_24 cells={_worldFacts.Count} count={dominantCount}");
         GD.Print($"GA_PROD_BIOME_SHARE_READY_23 cells={_worldFacts.Count} categories={biomeCounts.Count}");
         GD.Print($"GA_PROD_BIOME_BREAKDOWN_READY_10 cells={_worldFacts.Count} categories={biomeCounts.Count}");
         GD.Print("GA_PROD_WORLD_LAYERS_READY_05 modes=5");
