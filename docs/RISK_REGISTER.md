@@ -4694,3 +4694,7 @@ The water/other counts and resource/habitability extrema describe a fixed proced
 ## GA-PROD-10 - Canonical biome distribution risks (2026-10-13)
 
 Biomes not represented by the current deterministic seed appear with zero; this does not mean the generator lacks those biome kinds. Biome frequencies are per strategic cell, not equal-surface-area coverage. GUI F5 acceptance is required to validate overview legibility, visibility toggle, overlap and unchanged navigation, picking and five map layers. Headless execution does not prove GUI usability. No GPP increase without a formal baseline review.
+
+## GA-PROD-11 - Direct map selector risks (2026-10-13)
+
+Headless Godot startup does not prove mouse interaction, popup rendering, layer switching, legend updates, or absence of GUI overlap. The operator must visually inspect all five direct mode selections and verify selection/drag/zoom. Preserve the canonical data model and 92-cell continuous opaque geometry. No GPP change without formal rebaseline.

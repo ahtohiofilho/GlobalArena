@@ -137,28 +137,27 @@ public partial class GlobePreview : SubViewportContainer
         AddChild(_detailsLabel);
         GD.Print("GA_PROD_TERRITORY_PANEL_READY_03C diagnostic=true");
         GD.Print("GA_PROD_WORLD_DATA_READY_04 cells=" + _worldFacts.Count);
-        var mapModeButton = new Button
+        // GA-PROD-11: direct selection; no forced cycling through unrelated layers.
+        var mapLayerSelector = new OptionButton
         {
-            Text = "VIEW: CELL COLORS",
             Position = new Vector2(365f, 8f),
             CustomMinimumSize = new Vector2(174f, 32f),
             MouseFilter = MouseFilterEnum.Stop
         };
-        mapModeButton.Pressed += () =>
+        mapLayerSelector.AddItem("CELL COLORS", 0);
+        mapLayerSelector.AddItem("BIOMES", 1);
+        mapLayerSelector.AddItem("HABITABILITY", 2);
+        mapLayerSelector.AddItem("ELEVATION", 3);
+        mapLayerSelector.AddItem("RESOURCES", 4);
+        mapLayerSelector.Select(0);
+        mapLayerSelector.ItemSelected += selectedIndex =>
         {
-            _mapMode = (_mapMode + 1) % 5;
-            mapModeButton.Text = _mapMode switch
-            {
-                1 => "VIEW: BIOMES",
-                2 => "VIEW: HABITABILITY",
-                3 => "VIEW: ELEVATION",
-                4 => "VIEW: RESOURCES",
-                _ => "VIEW: CELL COLORS"
-            };
+            _mapMode = mapLayerSelector.GetItemId((int)selectedIndex);
             RefreshSelectionColors();
             UpdateMapLegend();
         };
-        AddChild(mapModeButton);
+        AddChild(mapLayerSelector);
+        GD.Print("GA_PROD_MAP_SELECTOR_READY_11 options=5 initial=0");
         _mapLegend = new Label
         {
             Position = new Vector2(12f, 410f),
