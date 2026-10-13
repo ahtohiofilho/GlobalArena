@@ -233,6 +233,19 @@ public partial class GlobePreview : SubViewportContainer
                 totalResources += facts.ResourcePotential;
             }
         }
+        long landHabitabilityTotal = 0;
+        int landCellCount = 0;
+        foreach (var facts in _worldFacts.Values)
+        {
+            if (facts.Biome == "Water") continue;
+            checked { landHabitabilityTotal += facts.Habitability; }
+            landCellCount++;
+        }
+        if (landCellCount != _worldFacts.Count - waterCount)
+            throw new InvalidOperationException("Non-water cell count mismatch.");
+        var landMeanHabitability = landCellCount > 0
+            ? FormatMeanIndex((double)landHabitabilityTotal / landCellCount)
+            : "N/A (no non-water cells)";
         var averageHabitability = (double)totalHabitability / _worldFacts.Count;
         var averageResources = (double)totalResources / _worldFacts.Count;
         var overviewLabel = new Label
@@ -246,7 +259,8 @@ public partial class GlobePreview : SubViewportContainer
                 + biomeDistribution
                 + $"\nMost common biome: {dominantBiome} ({dominantCount} cells, {dominantShare:F1}%)"
                 + $"\nHabitability index: {FormatIndex(lowestHabitability)} - {FormatIndex(highestHabitability)}"
-                + $"\nMean habitability: {FormatMeanIndex(averageHabitability)} (per cell)"
+                + $"\nMean habitability: {FormatMeanIndex(averageHabitability)} (all cells)"
+                + $"\nNon-water mean habitability: {landMeanHabitability} ({landCellCount} cells)"
                 + $"\nResource potential: {FormatIndex(lowestResources)} - {FormatIndex(highestResources)}"
                 + $"\nMean resource potential: {FormatMeanIndex(averageResources)} (per cell)"
                 + "\nIndices are procedural, not population or proven reserves"
@@ -329,6 +343,7 @@ public partial class GlobePreview : SubViewportContainer
         GD.Print("GA_PROD_KEYBOARD_HINT_READY_14 keys=1-5,escape");
         GD.Print("GA_PROD_KEYBOARD_NAV_READY_13 keys=1-5,escape");
         GD.Print($"GA_PROD_WORLD_SUMMARY_READY_09 cells={_worldFacts.Count} water={waterCount} toggle=button");
+        GD.Print($"GA_PROD_LAND_HABITABILITY_READY_26 land={landCellCount} water={waterCount}");
         GD.Print($"GA_PROD_WORLD_MEANS_READY_25 cells={_worldFacts.Count} measures=2");
         GD.Print($"GA_PROD_DOMINANT_BIOME_READY_24 cells={_worldFacts.Count} count={dominantCount}");
         GD.Print($"GA_PROD_BIOME_SHARE_READY_23 cells={_worldFacts.Count} categories={biomeCounts.Count}");

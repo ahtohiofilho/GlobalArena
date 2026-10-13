@@ -3023,3 +3023,7 @@ WORLD STATS now identifies the dominant canonical biome with its strategic cell 
 ## GA-PROD-25 - world mean indices formal close (2026-10-13)
 
 WORLD STATS now reports unweighted mean habitability and mean resource potential, computed exclusively from the 92 canonical strategic cell samples. Percentages are indices, not demographic or mineral-stock measurements and are not weighted by spherical surface area. QA R1 passed 1,157/1,157 tests, solution/Godot builds, runtime GA_PROD_WORLD_MEANS_READY_25 cells=92 measures=2 and 26/26 SHA-256 checks. Visual presentation is operator-attested through -VisualAccepted. Domain topology, generation and GPP remain unchanged. ADR: docs/ADR-GA-PROD-25-WORLD-MEAN-INDICES.md.
+
+## GA-PROD-26 - non-water habitability formal close (2026-10-13)
+
+WORLD STATS now shows mean habitability over the 41 non-water strategic cells while retaining the all-cell mean over 92 cells. The value is an unweighted average of canonical scalar indices, not geographic-area-weighted suitability. QA R1 passed 1,157/1,157 tests, solution/Godot builds, runtime GA_PROD_LAND_HABITABILITY_READY_26 land=41 water=51 and 26/26 SHA-256 checks. Visual presentation is operator-attested with -VisualAccepted. GPP remains unchanged pending formal reconciliation. ADR: docs/ADR-GA-PROD-26-LAND-HABITABILITY.md.

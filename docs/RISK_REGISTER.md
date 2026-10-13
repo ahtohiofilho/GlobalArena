@@ -4754,3 +4754,7 @@ The runtime verifies the canonical biome count and initialization, not visual re
 ## GA-PROD-25 - world means presentation risks (2026-10-13)
 
 Headless runtime confirms the world means UI initializes but does not verify visual formatting, panel fit or readability. Operator acceptance must verify both mean indices, existing minimum/maximum values, biome breakdown and navigation. Both measures are unweighted averages of 92 cells and do not represent geographic-area-weighted quantities.
+
+## GA-PROD-26 - non-water habitability presentation risks (2026-10-13)
+
+Headless startup verifies calculation and rendering setup but not actual display legibility or overlap in WORLD STATS. Operator acceptance must verify the non-water mean against the retained global mean and confirm navigation. Biome Water is excluded only for the non-water metric. Indices are unweighted per strategic cell and not surface-area statistics.
