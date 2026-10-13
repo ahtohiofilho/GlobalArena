@@ -173,7 +173,7 @@ public partial class GlobePreview : SubViewportContainer
         _mapLegend.AddThemeConstantOverride("shadow_offset_y", 1);
         AddChild(_mapLegend);
         UpdateMapLegend();
-        GD.Print("GA_PROD_LEGEND_READY_06 modes=4");
+        GD.Print("GA_PROD_LEGEND_READY_06 modes=5");
         GD.Print("GA_PROD_RESOURCE_VIEW_READY_08 modes=5 cells=" + _worldFacts.Count);
         // GA-PROD-09: optional strategic overview computed from canonical per-cell samples.
         int waterCount = 0;
@@ -265,7 +265,7 @@ public partial class GlobePreview : SubViewportContainer
         GD.Print("GA_PROD_KEYBOARD_NAV_READY_13 keys=1-5,escape");
         GD.Print($"GA_PROD_WORLD_SUMMARY_READY_09 cells={_worldFacts.Count} water={waterCount} toggle=button");
         GD.Print($"GA_PROD_BIOME_BREAKDOWN_READY_10 cells={_worldFacts.Count} categories={biomeCounts.Count}");
-        GD.Print("GA_PROD_WORLD_LAYERS_READY_05 modes=4");
+        GD.Print("GA_PROD_WORLD_LAYERS_READY_05 modes=5");
         GD.Print($"GA_PROD_GLOBE_READY_02B_NO_BORDERS cells={geometry.Cells.Count} vertices={geometry.Vertices.Count} triangles={triangleCount} borders=0");
     }
 

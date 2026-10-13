@@ -4726,3 +4726,7 @@ Headless Godot validates initialization only, not the S shortcut, popup legibili
 ## GA-PROD-18 - shortcut hint layout UX risks (2026-10-13)
 
 Headless Godot confirms control creation and placement marker, not actual readability or absence of overlapping UI at the target display resolution. Operator must verify shortcut hint versus CLEAR SELECTION and WORLD STATS, all five maps, picking, navigation and shortcuts. No changes to topology or domain data.
+
+## GA-PROD-19 - diagnostic drift risk (2026-10-13)
+
+Legacy runtime gates may drift when UI mode counts evolve. Formal close requires both five-mode markers and the five-option selector marker while rejecting the obsolete modes=4 strings. Add this incident pattern to the next GA-SRP review; no change to GPP or runtime behavior.

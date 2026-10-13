@@ -1882,3 +1882,7 @@ The globe supports S to toggle the existing WORLD STATS panel by reusing its but
 ## GA-PROD-18 - shortcut hint layout formal close (2026-10-13)
 
 Move the existing shortcut hint to y=380 to avoid overlap with CLEAR SELECTION in the canonical globe presentation. All shortcuts, map layers, territory selection and the WORLD STATS panel remain unchanged. QA R1 passed 1,157/1,157 regression tests, solution/Godot builds, runtime GA_PROD_SHORTCUT_LAYOUT_READY_18 hint_y=380 and 26/26 SHA-256 checks. Visual placement is operator-attested with -VisualAccepted. No GPP adjustment pending formal recalibration. ADR: docs/ADR-GA-PROD-18-SHORTCUT-HINT-LAYOUT.md.
+
+## GA-PROD-19 - five-mode diagnostic contract close (2026-10-13)
+
+Align the legacy GA_PROD_WORLD_LAYERS_READY_05 and GA_PROD_LEGEND_READY_06 runtime markers to modes=5, consistent with the five-option selector and existing resources layer. No changes to topology, world fields or player interactions. QA R1 passed 1,157/1,157 tests, solution/Godot builds, runtime marker checks and 26/26 SHA-256 hashes. This diagnostics-only milestone needs no additional visual acceptance. GPP remains unchanged pending formal recalibration. ADR: docs/ADR-GA-PROD-19-RUNTIME-MODE-CONTRACT.md.
