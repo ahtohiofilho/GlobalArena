@@ -78,6 +78,20 @@ public partial class Main : Control
         hud.AddThemeConstantOverride("separation", 8);
         panelScroll.AddChild(hud);
         globe.TransferHud(hud);
+        // Keep the calibration buttons visible even when the context scrolls.
+        foreach (var child in hud.GetChildren())
+        {
+            if (child is HBoxContainer row)
+            {
+                bool calibrationRow = false;
+                foreach (var entry in row.GetChildren())
+                    if (entry is Button control && control.Text.StartsWith("LAND ")) calibrationRow = true;
+                if (calibrationRow) row.Reparent(rightLayout);
+            }
+            else if (child is Button next && next.Text == "NEXT SEED")
+                next.Reparent(rightLayout);
+        }
+        GD.Print("GA_UI_CALIBRATION_ACCESS_READY_01 fixed-controls=true");
 
         _status = new Label { Text = "GA-UI-FOUNDATION-01  |  Map and context areas separated" };
         _status.AddThemeColorOverride("font_color", new Color("#90a9bc"));

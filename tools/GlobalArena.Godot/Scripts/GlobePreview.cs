@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using GlobalArena.World;
 using Godot;
 
@@ -14,6 +15,12 @@ public partial class GlobePreview : SubViewportContainer
     private readonly System.Collections.Generic.List<(ulong Id, Vector3 A, Vector3 B, Vector3 C)> _pickTriangles = new();
     private Label? _pickedLabel;
     private MeshInstance3D? _surfaceInstance;
+    private MeshInstance3D? _highResSurface; // Experimental G(12,0), never canonical ownership
+    private StrategicSphericalGeometry? _finePreviewGeometry;
+    private int _fineFrequency = 12;
+    private int _fineLandTargetPercent = 35;
+    private ulong _finePreviewSeed = 20261013UL;
+    private Label? _fineCalibrationLabel;
     private Label? _detailsLabel;
     private ulong? _selectedCellId;
     private readonly System.Collections.Generic.Dictionary<ulong, int> _cellDegree = new();
@@ -22,7 +29,8 @@ public partial class GlobePreview : SubViewportContainer
     private bool _movedSincePress;
     private Vector2 _pressPosition;
     private const float ClickThresholdPixels = 6f;
-    private int _mapMode; // 0 cells, 1 biomes, 2 habitability, 3 elevation, 4 resources
+    private int _mapMode; // 0 cells, 1 biomes, 2 habitability, 3 elevation, 4 resources, 5 experimental radial relief
+    private readonly System.Collections.Generic.Dictionary<ulong, long> _experimentalElevation = new();
     private Label? _mapLegend;
     private Label? _zoomLabel;
     private OptionButton? _mapLayerSelector;
@@ -65,6 +73,23 @@ public partial class GlobePreview : SubViewportContainer
             geometry.Cells.Count != 92 || geometry.Vertices.Count != 180)
             throw new InvalidOperationException("Authoritative globe geometry/count contract failed.");
 
+        // Read-only experiment. Strategic world generation and biome authority remain unchanged.
+        var sample = TacticalRadialElevationGenerator.Generate(geometry, 20261013UL);
+        if (sample.Count != geometry.Cells.Count) throw new InvalidOperationException("Experimental radial sample size mismatch.");
+        long lowestExperimental = long.MaxValue;
+        long highestExperimental = long.MinValue;
+        int dryExperimental = 0;
+        int saturatedExperimental = 0;
+        for (int index = 0; index < sample.Count; index++)
+        {
+            long elevation = sample[index];
+            _experimentalElevation.Add(geometry.Cells[index].CellId.Value, elevation);
+            lowestExperimental = Math.Min(lowestExperimental, elevation);
+            highestExperimental = Math.Max(highestExperimental, elevation);
+            if (elevation > 0L) dryExperimental++;
+            if (Math.Abs(elevation) >= StrategicScalarField.Denominator) saturatedExperimental++;
+        }
+        GD.Print($"GA_WORLDGEN_01B_VISUAL_READY count={sample.Count} land_percent={(100.0 * dryExperimental / sample.Count):F1} min={lowestExperimental} max={highestExperimental} saturated={saturatedExperimental} seed=20261013 diagnostic_resolution=strategic");
         var surface = new SurfaceTool();
         _pickTriangles.Clear();
         surface.Begin(Mesh.PrimitiveType.Triangles);
@@ -111,6 +136,54 @@ public partial class GlobePreview : SubViewportContainer
             }
         };
         _planet.AddChild(_surfaceInstance);
+        // Independent fine-grid diagnostic: same seeded field, different sample density.
+        var fineRequest = new WorldGenerationRequest(
+            new WorldSeed(20261012UL), WorldGenerationVersion.Initial,
+            new GoldbergParameters(12, 0));
+        var fineGeneration = new DeterministicWorldGenerator().Generate(fineRequest);
+        var fineGeometry = fineGeneration.StrategicSphericalGeometry;
+        _finePreviewGeometry = fineGeometry;
+        var fineSample = TacticalRadialElevationGenerator.GenerateVaried(fineGeometry, 20261013UL);
+        if (fineGeometry.Cells.Count != 1442 || fineSample.Count != 1442)
+            throw new InvalidOperationException("High-res preview must contain exactly 1442 cells.");
+        var fineTool = new SurfaceTool();
+        fineTool.Begin(Mesh.PrimitiveType.Triangles);
+        int fineTriangleCount = 0;
+        int fineLandCount = 0;
+        int fineSaturatedCount = 0;
+        long fineMinimum = long.MaxValue;
+        long fineMaximum = long.MinValue;
+        for (int i = 0; i < fineGeometry.Cells.Count; i++)
+        {
+            var fineCell = fineGeometry.Cells[i];
+            var elevation = fineSample[i];
+            if (elevation > 0) fineLandCount++;
+            if (Math.Abs(elevation) >= StrategicScalarField.Denominator) fineSaturatedCount++;
+            fineMinimum = Math.Min(fineMinimum, elevation);
+            fineMaximum = Math.Max(fineMaximum, elevation);
+            var fineColor = ExperimentalReliefColor(elevation);
+            var centerPoint = ToGodot(fineCell.Center);
+            for (int j = 0; j < fineCell.BoundaryVertexIds.Count; j++)
+            {
+                var a = ToGodot(fineGeometry.GetVertex(fineCell.BoundaryVertexIds[j]).Position);
+                var b = ToGodot(fineGeometry.GetVertex(fineCell.BoundaryVertexIds[(j + 1) % fineCell.BoundaryVertexIds.Count]).Position);
+                AddVertex(fineTool, centerPoint, fineColor);
+                AddVertex(fineTool, a, fineColor);
+                AddVertex(fineTool, b, fineColor);
+                fineTriangleCount++;
+            }
+        }
+        var fineMesh = fineTool.Commit();
+        if (fineMesh is null || fineTriangleCount <= 0)
+            throw new InvalidOperationException("High-res experimental globe mesh was not produced.");
+        _highResSurface = new MeshInstance3D
+        {
+            Mesh = fineMesh,
+            Visible = false,
+            MaterialOverride = _surfaceInstance.MaterialOverride
+        };
+        _planet.AddChild(_highResSurface);
+        GD.Print($"GA_WORLDGEN_01B_HIGHRES_READY count={fineGeometry.Cells.Count} triangles={fineTriangleCount} land_percent={(100.0 * fineLandCount / fineSample.Count):F1} min={fineMinimum} max={fineMaximum} saturated={fineSaturatedCount} seed=20261013 mode=experimental");
         var camera = new Camera3D
         {
             Position = new Vector3(0f, 0.05f, 3.15f),
@@ -155,10 +228,21 @@ public partial class GlobePreview : SubViewportContainer
         mapLayerSelector.AddItem("HABITABILITY", 2);
         mapLayerSelector.AddItem("ELEVATION", 3);
         mapLayerSelector.AddItem("RESOURCES", 4);
+        mapLayerSelector.AddItem("RELEVO EXP.", 5);
+        mapLayerSelector.AddItem("RELEVO EXP. HD", 6);
+        mapLayerSelector.AddItem("RELEVO EXP. ULTRA", 7);
+        mapLayerSelector.AddItem("RELEVO INDEP. ULTRA", 8);
+        mapLayerSelector.AddItem("RELEVO PESOS MED.", 9);
+        mapLayerSelector.AddItem("RELEVO PESOS EQ.", 10);
         mapLayerSelector.Select(0);
         mapLayerSelector.ItemSelected += selectedIndex =>
         {
             _mapMode = mapLayerSelector.GetItemId((int)selectedIndex);
+            if (_mapMode == 6 || _mapMode == 7 || _mapMode == 8 || _mapMode == 9 || _mapMode == 10)
+            {
+                EnsureFinePreviewResolution(_mapMode == 6 ? 12 : 48);
+                RebuildCalibratedFinePreview();
+            }
             RefreshSelectionColors();
             UpdateMapLegend();
         };
@@ -469,7 +553,7 @@ public partial class GlobePreview : SubViewportContainer
                 }
                 else
                 {
-                    if (_dragging && !_movedSincePress) PickTerritory(button.Position);
+                    if (_mapMode != 6 && _dragging && !_movedSincePress) PickTerritory(button.Position);
                     _dragging = false;
                 }
                 AcceptEvent();
@@ -571,9 +655,131 @@ public partial class GlobePreview : SubViewportContainer
         return true;
     }
     // Repaint existing canonical triangles in place; never create overlay outlines or new topology.
+    // Preview-only recalibration. Field values and canonical WorldGenerationResult are untouched.
+    private void EnsureFinePreviewResolution(int frequency)
+    {
+        if (_fineFrequency == frequency) return;
+        if (_highResSurface is null) throw new InvalidOperationException("Missing experimental mesh holder");
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var request = new WorldGenerationRequest(new WorldSeed(20261012UL),
+            WorldGenerationVersion.Initial, new GoldbergParameters(frequency, 0));
+        var generated = new DeterministicWorldGenerator().Generate(request);
+        var newGeometry = generated.StrategicSphericalGeometry;
+        var expectedCount = 10 * frequency * frequency + 2;
+        if (newGeometry.Cells.Count != expectedCount)
+            throw new InvalidOperationException($"Fine topology mismatch: {newGeometry.Cells.Count} != {expectedCount}");
+        _finePreviewGeometry = newGeometry;
+        _fineFrequency = frequency;
+        RebuildCalibratedFinePreview();
+        watch.Stop();
+        GD.Print($"GA_WORLDGEN_01B_ULTRA_READY frequency={frequency} cells={expectedCount} elapsed_ms={watch.ElapsedMilliseconds} seed={_finePreviewSeed}");
+    }
+
+    private void RebuildCalibratedFinePreview()
+    {
+        if (_finePreviewGeometry is null || _highResSurface is null) return;
+        var geometry = _finePreviewGeometry;
+        var generationWatch = System.Diagnostics.Stopwatch.StartNew();
+        var values = (_mapMode == 9
+            ? TacticalIndependentScaleGenerator.GenerateWeighted(geometry, _finePreviewSeed, 0.75, 1.50, 2.00)
+            : _mapMode == 10
+            ? TacticalIndependentScaleGenerator.GenerateWeighted(geometry, _finePreviewSeed, 0.50, 2.00, 3.00)
+            : _mapMode == 8
+            ? TacticalIndependentScaleGenerator.Generate(geometry, _finePreviewSeed)
+            : TacticalRadialElevationGenerator.GenerateVaried(geometry, _finePreviewSeed)).ToArray();
+        generationWatch.Stop();
+        int expectedFineCells = 10 * _fineFrequency * _fineFrequency + 2;
+        if (values.Length != expectedFineCells) throw new InvalidOperationException("HD calibration cell count mismatch.");
+        var sorted = values.OrderBy(value => value).ToArray();
+        int cutoffIndex = Math.Clamp((int)Math.Floor(values.Length * (100.0 - _fineLandTargetPercent) / 100.0), 0, values.Length - 1);
+        long seaLevel = sorted[cutoffIndex];
+        var surface = new SurfaceTool();
+        surface.Begin(Mesh.PrimitiveType.Triangles);
+        int land = 0;
+        int saturated = 0;
+        for (int i = 0; i < geometry.Cells.Count; i++)
+        {
+            var cell = geometry.Cells[i];
+            long height = values[i];
+            if (height > seaLevel) land++;
+            if (Math.Abs(height) >= StrategicScalarField.Denominator) saturated++;
+            var color = ExperimentalReliefColor(height - seaLevel);
+            var center = ToGodot(cell.Center);
+            for (int j = 0; j < cell.BoundaryVertexIds.Count; j++)
+            {
+                var a = ToGodot(geometry.GetVertex(cell.BoundaryVertexIds[j]).Position);
+                var b = ToGodot(geometry.GetVertex(cell.BoundaryVertexIds[(j + 1) % cell.BoundaryVertexIds.Count]).Position);
+                AddVertex(surface, center, color);
+                AddVertex(surface, a, color);
+                AddVertex(surface, b, color);
+            }
+        }
+        var mesh = surface.Commit();
+        if (mesh is null) throw new InvalidOperationException("Calibration mesh could not be generated.");
+        _highResSurface.Mesh = mesh;
+        var topology = GoldbergStrategicTopologyGenerator.Generate(new GoldbergParameters(_fineFrequency, 0));
+        double deltaSum = 0;
+        long maxDelta = 0;
+        int edgeCount = 0;
+        for (int i = 0; i < topology.Cells.Count; i++)
+        {
+            foreach (var adjacent in topology.Cells[i].AdjacentCellIds)
+            {
+                int j = checked((int)adjacent.Value - 1);
+                if (j <= i) continue;
+                long delta = Math.Abs(values[i] - values[j]);
+                deltaSum += delta;
+                maxDelta = Math.Max(maxDelta, delta);
+                edgeCount++;
+            }
+        }
+        var visited = new bool[values.Length];
+        int landComponents = 0;
+        int largestComponent = 0;
+        for (int i = 0; i < values.Length; i++)
+        {
+            if (visited[i] || values[i] <= seaLevel) continue;
+            landComponents++;
+            int size = 0;
+            var queue = new System.Collections.Generic.Queue<int>();
+            queue.Enqueue(i);
+            visited[i] = true;
+            while (queue.Count > 0)
+            {
+                int current = queue.Dequeue();
+                size++;
+                foreach (var adjacent in topology.Cells[current].AdjacentCellIds)
+                {
+                    int j = checked((int)adjacent.Value - 1);
+                    if (visited[j] || values[j] <= seaLevel) continue;
+                    visited[j] = true;
+                    queue.Enqueue(j);
+                }
+            }
+            largestComponent = Math.Max(largestComponent, size);
+        }
+        double actualLand = 100.0 * land / values.Length;
+        if (_fineCalibrationLabel is not null)
+        {
+            _fineCalibrationLabel.Text = $"G({_fineFrequency},0) | HD SEED {_finePreviewSeed} | CENTERS {TacticalRadialElevationGenerator.GetVariedDeformationCount(_finePreviewSeed)} | TARGET {_fineLandTargetPercent}%\nLAND {actualLand:F1}% | CONTINENTS {landComponents} | LARGEST {largestComponent}\nNEIGHBOR MEAN {deltaSum / edgeCount:F0} | MAX {maxDelta} | SAT {saturated}";
+        }
+        GD.Print($"GA_WORLDGEN_01B_DIVERSITY_MODEL mode={_mapMode} seed={_finePreviewSeed} target={_fineLandTargetPercent} generation_ms={generationWatch.ElapsedMilliseconds}");
+        GD.Print($"GA_WORLDGEN_01B_CALIBRATION_READY centers={TacticalRadialElevationGenerator.GetVariedDeformationCount(_finePreviewSeed)} seed={_finePreviewSeed} target={_fineLandTargetPercent} actual={actualLand:F2} sea={seaLevel} components={landComponents} largest={largestComponent} mean_delta={deltaSum / edgeCount:F1} max_delta={maxDelta} saturated={saturated} count={values.Length} generation_ms={generationWatch.ElapsedMilliseconds}");
+    }
+
     private void RefreshSelectionColors()
     {
         if (_surfaceInstance is null) return;
+        bool fineView = _mapMode == 6 || _mapMode == 7 || _mapMode == 8 || _mapMode == 9 || _mapMode == 10;
+        _surfaceInstance.Visible = !fineView;
+        if (_highResSurface is not null) _highResSurface.Visible = fineView;
+        if (fineView)
+        {
+            _selectedCellId = null;
+            if (_pickedLabel is not null) _pickedLabel.Text = "HD experimental relief | picking disabled";
+            if (_detailsLabel is not null) _detailsLabel.Text = $"{10 * _fineFrequency * _fineFrequency + 2} fine-grid samples | not canonical territory";
+            return;
+        }
         var tool = new SurfaceTool();
         tool.Begin(Mesh.PrimitiveType.Triangles);
         foreach (var t in _pickTriangles)
@@ -645,14 +851,35 @@ public partial class GlobePreview : SubViewportContainer
             2 => "HABITABILITY | Dark: lower  Light: higher\nRelative index 0-100%; not a population estimate",
             3 => "ELEVATION | Dark: lower  Light: higher\nRelative procedural index 0-100%; not meters",
             4 => "RESOURCES | Dark: lower  Light: higher\nGeneral potential index 0-100%; not confirmed deposits",
+            5 => "RELEVO EXP. | Blue: below datum  Green: lowland  Brown: elevated\nRadial prototype sampled at strategic preview resolution; NOT canonical terrain",
+            6 => "RELEVO EXP. HD | G(12,0): 1442 cells vs G(3,0): 92\nSame seed & radial field; experimental only; territory picking disabled",
+            7 => "RELEVO EXP. ULTRA | G(48,0): 23042 cells\nHierarchical baseline; experimental only; picking disabled",
+            8 => "RELEVO INDEP. ULTRA | G(48,0): 23042 cells\nIndependent macro/medium/micro scales; same seed & sea-level target",
+            9 => "RELEVO PESOS MED. | G(48,0)\nMacro 0.75, medium 1.50, micro 2.00; experimental",
+            10 => "RELEVO PESOS EQ. | G(48,0)\nMacro 0.50, medium 2.00, micro 3.00; experimental",
             _ => "CELL COLORS | Deterministic colors distinguish adjacent territories\nColors do not imply ownership, biome, or political borders"
         };
     }
     // Diagnostic mode remains available; biome mode uses only canonical generated facts.
+    private static Color ExperimentalReliefColor(long elevation)
+    {
+        var ratio = Mathf.Clamp((float)elevation / StrategicScalarField.Denominator, -1f, 1f);
+        if (ratio < 0f) return new Color(0.04f, 0.18f + 0.28f * (1f + ratio), 0.42f + 0.38f * (1f + ratio));
+        if (ratio < 0.35f) return new Color(0.23f + ratio * 0.5f, 0.52f - ratio * 0.22f, 0.23f);
+        return new Color(0.45f + 0.32f * ratio, 0.34f + 0.26f * ratio, 0.24f + 0.25f * ratio);
+    }
+
     private Color PresentationColor(ulong cellId)
     {
         if (!_worldFacts.TryGetValue(cellId, out var facts) || _mapMode == 0)
             return DiagnosticColor(cellId);
+        if (_mapMode == 5 && _experimentalElevation.TryGetValue(cellId, out var experimental))
+        {
+            var ratio = Mathf.Clamp((float)experimental / StrategicScalarField.Denominator, -1f, 1f);
+            if (ratio < 0f) return new Color(0.04f, 0.18f + 0.28f * (1f + ratio), 0.42f + 0.38f * (1f + ratio));
+            if (ratio < 0.35f) return new Color(0.23f + ratio * 0.5f, 0.52f - ratio * 0.22f, 0.23f);
+            return new Color(0.45f + 0.32f * ratio, 0.34f + 0.26f * ratio, 0.24f + 0.25f * ratio);
+        }
         if (_mapMode == 2)
         {
             var normalized = Mathf.Clamp((float)facts.Habitability / StrategicScalarField.Denominator, 0f, 1f);
@@ -729,6 +956,24 @@ public partial class GlobePreview : SubViewportContainer
             if (control is Button or OptionButton)
                 control.CustomMinimumSize = new Vector2(0f, 32f);
         }
+        var heading = new Label { Text = "HD CALIBRATION | experimental only" };
+        heading.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        sidebar.AddChild(heading);
+        _fineCalibrationLabel = new Label();
+        _fineCalibrationLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        sidebar.AddChild(_fineCalibrationLabel);
+        var coverage = new HBoxContainer();
+        var minus = new Button { Text = "LAND -5%" };
+        var plus = new Button { Text = "LAND +5%" };
+        minus.Pressed += () => { _fineLandTargetPercent = Math.Max(25, _fineLandTargetPercent - 5); RebuildCalibratedFinePreview(); };
+        plus.Pressed += () => { _fineLandTargetPercent = Math.Min(45, _fineLandTargetPercent + 5); RebuildCalibratedFinePreview(); };
+        coverage.AddChild(minus);
+        coverage.AddChild(plus);
+        sidebar.AddChild(coverage);
+        var nextSeed = new Button { Text = "NEXT SEED" };
+        nextSeed.Pressed += () => { _finePreviewSeed++; RebuildCalibratedFinePreview(); };
+        sidebar.AddChild(nextSeed);
+        RebuildCalibratedFinePreview();
         GD.Print("GA_UI_HUD_TRANSFER_READY_01");
         GD.Print("GA_UI_VIEWPORT_READY_02 hud=sidebar map=retained");
     }
