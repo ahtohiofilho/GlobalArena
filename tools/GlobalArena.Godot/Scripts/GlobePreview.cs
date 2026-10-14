@@ -35,14 +35,16 @@ public partial class GlobePreview : SubViewportContainer
 
     public override void _Ready()
     {
-        Position = new Vector2(660, 135);
-        Size = new Vector2(550, 490);
+        // Container layout owns the bounds; never position the map over the HUD.
+        CustomMinimumSize = new Vector2(360f, 300f);
+        SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        SizeFlagsVertical = SizeFlags.ExpandFill;
         Stretch = true;
         MouseFilter = MouseFilterEnum.Stop;
 
         var viewport = new SubViewport
         {
-            Size = new Vector2I(550, 490),
+            Size = new Vector2I(550, 490), // Stretch resizes the viewport to the containing map region.
             RenderTargetUpdateMode = SubViewport.UpdateMode.Always,
             OwnWorld3D = true,
             TransparentBg = true
@@ -181,6 +183,8 @@ public partial class GlobePreview : SubViewportContainer
         int waterCount = 0;
         long lowestHabitability = long.MaxValue;
         long highestHabitability = long.MinValue;
+        long lowestElevation = long.MaxValue;
+        long highestElevation = long.MinValue;
         long lowestResources = long.MaxValue;
         long highestResources = long.MinValue;
         foreach (var facts in _worldFacts.Values)
@@ -188,6 +192,8 @@ public partial class GlobePreview : SubViewportContainer
             if (facts.Biome == "Water") waterCount++;
             lowestHabitability = Math.Min(lowestHabitability, facts.Habitability);
             highestHabitability = Math.Max(highestHabitability, facts.Habitability);
+            lowestElevation = Math.Min(lowestElevation, facts.Elevation);
+            highestElevation = Math.Max(highestElevation, facts.Elevation);
             lowestResources = Math.Min(lowestResources, facts.ResourcePotential);
             highestResources = Math.Max(highestResources, facts.ResourcePotential);
         }
@@ -225,12 +231,14 @@ public partial class GlobePreview : SubViewportContainer
         var dominantShare = 100.0 * dominantCount / _worldFacts.Count;
         // Unweighted arithmetic mean across strategic cells; never imply geographic area weighting.
         long totalHabitability = 0;
+        long totalElevation = 0;
         long totalResources = 0;
         foreach (var facts in _worldFacts.Values)
         {
             checked
             {
                 totalHabitability += facts.Habitability;
+                totalElevation += facts.Elevation;
                 totalResources += facts.ResourcePotential;
             }
         }
@@ -256,6 +264,7 @@ public partial class GlobePreview : SubViewportContainer
             ? FormatMeanIndex((double)landResourceTotal / landCellCount)
             : "N/A (no non-water cells)";
         var averageHabitability = (double)totalHabitability / _worldFacts.Count;
+        var averageElevation = (double)totalElevation / _worldFacts.Count;
         var averageResources = (double)totalResources / _worldFacts.Count;
         var overviewLabel = new Label
         {
@@ -269,6 +278,8 @@ public partial class GlobePreview : SubViewportContainer
                 + $"\nHabitability index: {FormatIndex(lowestHabitability)} - {FormatIndex(highestHabitability)}"
                 + $"\nMean habitability: {FormatMeanIndex(averageHabitability)} (all cells)"
                 + $"\nNon-water mean habitability: {landMeanHabitability} ({landCellCount} cells)"
+                + $"\nRelative elevation index: {FormatIndex(lowestElevation)} - {FormatIndex(highestElevation)}"
+                + $"\nMean relative elevation: {FormatMeanIndex(averageElevation)} (all cells; not meters)"
                 + $"\nResource potential: {FormatIndex(lowestResources)} - {FormatIndex(highestResources)}"
                 + $"\nMean resource potential: {FormatMeanIndex(averageResources)} (all cells)"
                 + $"\nNon-water mean resource potential: {landMeanResources} ({landCellCount} cells)"
@@ -364,6 +375,7 @@ public partial class GlobePreview : SubViewportContainer
         GD.Print("GA_PROD_KEYBOARD_HINT_READY_14 keys=1-5,escape");
         GD.Print("GA_PROD_KEYBOARD_NAV_READY_13 keys=1-5,escape");
         GD.Print($"GA_PROD_WORLD_SUMMARY_READY_09 cells={_worldFacts.Count} water={waterCount} toggle=button");
+        GD.Print($"GA_PROD_ELEVATION_STATS_READY_31 cells={_worldFacts.Count} measures=3");
         GD.Print("GA_PROD_STATS_KEYS_READY_30 keys=Home,End");
         GD.Print("GA_PROD_STATS_SCROLL_RESET_READY_29 on=open");
         GD.Print("GA_PROD_WORLD_STATS_SCROLL_READY_28 viewport=520x240");
@@ -694,4 +706,30 @@ public partial class GlobePreview : SubViewportContainer
 
     private static Vector3 ToGodot(SphericalPoint3 point) =>
         new((float)point.X, (float)point.Y, (float)point.Z);
+
+    // UI foundation: controls belong to the context panel instead of overlapping the map.
+    public void TransferHud(VBoxContainer sidebar)
+    {
+        foreach (var child in GetChildren())
+        {
+            if (child is not Control control) continue;
+            control.Reparent(sidebar);
+            control.Position = Vector2.Zero;
+            control.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            if (control is Label label)
+            {
+                label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+                label.CustomMinimumSize = Vector2.Zero;
+            }
+            if (control is ScrollContainer stats)
+            {
+                stats.CustomMinimumSize = new Vector2(0f, 230f);
+                stats.SizeFlagsVertical = SizeFlags.ExpandFill;
+            }
+            if (control is Button or OptionButton)
+                control.CustomMinimumSize = new Vector2(0f, 32f);
+        }
+        GD.Print("GA_UI_HUD_TRANSFER_READY_01");
+        GD.Print("GA_UI_VIEWPORT_READY_02 hud=sidebar map=retained");
+    }
 }
