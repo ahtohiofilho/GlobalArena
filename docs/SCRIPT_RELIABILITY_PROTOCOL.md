@@ -1,9 +1,9 @@
 # Global Arena — Script Reliability Protocol
 
 **Protocol ID:** GA-SRP
-**Version:** 1.11
+**Version:** 1.13
 **Status:** Active
-**Effective date:** 2026-10-09
+**Effective date:** 2026-10-16
 **Scope:** PowerShell automation used to inspect, modify, validate or formally close work in the Global Arena repository.
 
 ## 1. Purpose
@@ -575,6 +575,46 @@ Guard:
 - the mechanical scope intentionally targets the observed direct token-array form and may be extended evidence-first if another helper shape reproduces the same failure;
 - the self-test suite permanently includes the observed list-like prose failure shape and a neighboring stable atomic/field/heading fixture;
 - GA-SR-028 remains the broader semantic-audit principle and GA-SR-021 applies to future detector extensions.
+
+### GA-SR-040 — Normalize command output before indexing and trimming
+
+Observed failure (WorldGen V2 discovery R2): `(Get-Sample)[0].Trim()` may select a `System.Char` when the command returns one string.
+
+Guard: detect direct index `[0]` applied to a parenthesized command expression immediately before `.Trim()`. Use `[string](Command)` if one text value is expected; use an explicitly materialized array if indexed lines are intended. Require bad and safe fixtures per GA-SR-021. This detector is intentionally narrow; it does not prove every indexed result is safe.
+
+### GA-SR-041 — TrimEnd accepts characters, not multicharacter strings
+
+Observed failure (WorldGen V2 discovery R3): `TrimEnd('\\', '/')` supplied a two-character string to a char argument.
+
+Guard: reject a direct multi-character string literal argument in a `.TrimEnd()` invocation. Use `[char]92`, `[char]47`, or an exact single-character literal. Do not match quoted code examples or normal replacement operations. Require a matching safe fixture.
+
+### GA-SR-042 — Empty diagnostics are first-class evidence
+
+Observed failure (WorldGen V2 FormalClose R1): a mandatory string argument used for a diagnostic/evidence helper rejected empty stdout or stderr.
+
+Guard: writers named `Write-Evidence`, `Write-Diagnostic`, `Write-Log`, or `Write-Text` with a mandatory `[string]` parameter called `Value`, `Text`, or `Content` must declare `[AllowEmptyString()]`. The detector operates on parsed function definitions, not quoted documentation. It supplements GA-SR-009 and does not replace runtime tests with empty stdout/stderr.
+
+### GA-SRP incident prevention and release control (2026-10-16)
+
+- Every generated PS5.1 script must pass the current reliability gate before delivery. Native parser checks are necessary but cannot prove runtime correctness.
+- On Windows PowerShell 5.1, BOMless UTF-8 script literals containing non-ASCII characters can be decoded with the local ANSI code page. Use ASCII-only stable anchors (such as rule IDs), or a deliberate Unicode-safe file encoding, and include an exact-match fixture before repository mutation.
+- Path comparisons shall use canonical absolute paths and a directory-separator boundary, with an inside-path and a same-prefix sibling regression.
+- Before staging text, reject `CRCRLF`, normalize intentional controlled files to LF, and enforce a final LF per `.editorconfig`. Verify the actual staged content with `git diff --cached --check`.
+- Preserve native stdout and stderr separately and use process exit codes to decide pass/fail. A warning on stderr alone does not mean failure.
+- Recovery scripts must be idempotent for their explicitly recognized commit/staging state; never silently reset committed work.
+- The GA-SR-040–042 self-tests are permanent mechanical regression fixtures. Path, CRCRLF and external process runtime behavior additionally require integration checks on Windows PowerShell 5.1.
+
+### GA-SR-043 — Join-Path positional argument limit in Windows PowerShell 5.1
+
+Observed failure (GA-SRP 1.12 independent audit R1, 2026-10-16): `Join-Path $HOME 'Downloads' 'QA-R4.zip'` passed three positional operands. The reliability gate accepted the script, but Windows PowerShell 5.1 failed at runtime with `PositionalParameterNotFound`, before any evidence ZIP was created.
+
+Guard:
+
+- detect `Join-Path` calls with three or more positional operands and no named parameters, using `CommandAst` rather than scanning quoted payloads;
+- reject the PowerShell 7 `-AdditionalChildPath` argument in PowerShell 5.1 scripts;
+- use nested `Join-Path` calls or `[System.IO.Path]::Combine(...)` for three or more segments;
+- include paired bad/safe fixtures for both cases, as required by GA-SR-021;
+- do not treat passing the parser/static gate as proof of runtime parameter binding. Before delivery, smoke-test critical command invocations on Windows PowerShell 5.1 or use an equivalent constrained compatibility probe. The detector intentionally does not claim to cover all possible mixed named/positional binding errors.
 
 ### GA-SR-017 — Protocol regression promotion
 

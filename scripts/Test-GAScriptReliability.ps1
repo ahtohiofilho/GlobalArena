@@ -155,6 +155,137 @@ function Test-GAScriptText {
                 -Message 'Missing exact #requires -Version 5.1 declaration.'))
     }
 
+    # GA-SR-040: reject indexing an unnormalized command result prior to Trim().
+    $incidentMethodCalls = @(
+        $ast.FindAll(
+            {
+                param($node)
+                return $node -is [System.Management.Automation.Language.InvokeMemberExpressionAst]
+            },
+            $true)
+    )
+    foreach ($incidentCall in $incidentMethodCalls)
+    {
+        $incidentMethod = $incidentCall.Member.Extent.Text
+        if ($incidentMethod -ceq 'Trim')
+        {
+            $incidentReceiver = $incidentCall.Expression
+            if ($incidentReceiver -is [System.Management.Automation.Language.IndexExpressionAst])
+            {
+                $incidentIndex = $incidentReceiver.Index.Extent.Text.Trim()
+                $incidentTarget = $incidentReceiver.Target
+                if (($incidentIndex -ceq '0') -and
+                    ($incidentTarget -is [System.Management.Automation.Language.ParenExpressionAst]))
+                {
+                    $incidentCommands = @(
+                        $incidentTarget.FindAll(
+                            {
+                                param($node)
+                                return $node -is [System.Management.Automation.Language.CommandAst]
+                            },
+                            $true)
+                    )
+                    if ($incidentCommands.Count -gt 0)
+                    {
+                        $violations.Add(
+                            (New-Violation `
+                                -Rule 'GA-SR-040' `
+                                -Line $incidentCall.Extent.StartLineNumber `
+                                -Message 'Index [0] selects a character when a command returns one string. Normalize result to a string or explicit array before Trim().'))
+                    }
+                }
+            }
+        }
+        if ($incidentMethod -ceq 'TrimEnd')
+        {
+            foreach ($incidentArgument in @($incidentCall.Arguments))
+            {
+                if (($incidentArgument -is [System.Management.Automation.Language.StringConstantExpressionAst]) -and
+                    ($incidentArgument.Value.Length -gt 1))
+                {
+                    $violations.Add(
+                        (New-Violation `
+                            -Rule 'GA-SR-041' `
+                            -Line $incidentCall.Extent.StartLineNumber `
+                            -Message 'TrimEnd requires char arguments: this literal contains multiple characters. Use [char]92 or a single character literal.'))
+                    break
+                }
+            }
+        }
+    }
+
+    # GA-SR-042: diagnostic writers must accept empty string content.
+    $incidentWriters = @(
+        $ast.FindAll(
+            {
+                param($node)
+                return $node -is [System.Management.Automation.Language.FunctionDefinitionAst]
+            },
+            $true)
+    )
+    foreach ($incidentWriter in $incidentWriters)
+    {
+        if ($incidentWriter.Name -notmatch '^Write-(Evidence|Diagnostic|Log|Text)$')
+        {
+            continue
+        }
+        $incidentParameters = @()
+        if ($null -ne $incidentWriter.Body.ParamBlock)
+        {
+            $incidentParameters = @($incidentWriter.Body.ParamBlock.Parameters)
+        }
+        else
+        {
+            $incidentParameters = @($incidentWriter.Parameters)
+        }
+        foreach ($incidentParameter in $incidentParameters)
+        {
+            $incidentParameterText = $incidentParameter.Extent.Text
+            $incidentMandatory = $incidentParameterText -match '(?is)\[Parameter\([^\]]*\bMandatory\b'
+            $incidentTextType = $incidentParameterText -match '(?is)\[string\]\s*\$(Value|Text|Content)\b'
+            $incidentEmptyAllowed = $incidentParameterText -match '(?is)\[AllowEmptyString\s*\('
+            if ($incidentMandatory -and $incidentTextType -and (-not $incidentEmptyAllowed))
+            {
+                $violations.Add(
+                    (New-Violation `
+                        -Rule 'GA-SR-042' `
+                        -Line $incidentParameter.Extent.StartLineNumber `
+                        -Message 'Mandatory diagnostic string parameter must permit empty content with [AllowEmptyString()].'))
+            }
+        }
+    }
+    # GA-SR-043: Join-Path on PowerShell 5.1 accepts at most two positional path operands.
+    # AdditionalChildPath belongs to newer PowerShell versions and is not PS5.1-safe.
+    $joinPathCalls = @(
+        $ast.FindAll(
+            {
+                param($node)
+                return ($node -is [System.Management.Automation.Language.CommandAst]) -and
+                    ($node.GetCommandName() -eq 'Join-Path')
+            },
+            $true)
+    )
+    foreach ($joinPathCall in $joinPathCalls)
+    {
+        $joinElements = @($joinPathCall.CommandElements)
+        $joinArguments = @($joinElements | Select-Object -Skip 1)
+        $joinNamed = @($joinArguments | Where-Object {
+            $_ -is [System.Management.Automation.Language.CommandParameterAst]
+        })
+        $hasUnsupportedAdditionalChildPath = @($joinNamed | Where-Object {
+            $_.ParameterName -eq 'AdditionalChildPath'
+        }).Count -gt 0
+        $hasExcessPositionalOperands = ($joinNamed.Count -eq 0) -and
+            ($joinArguments.Count -gt 2)
+        if ($hasUnsupportedAdditionalChildPath -or $hasExcessPositionalOperands)
+        {
+            $violations.Add(
+                (New-Violation `
+                    -Rule 'GA-SR-043' `
+                    -Line $joinPathCall.Extent.StartLineNumber `
+                    -Message 'PS5.1 Join-Path accepts only Path and ChildPath. Use nested Join-Path calls or [System.IO.Path]::Combine for three path segments; do not use AdditionalChildPath.'))
+        }
+    }
     $codeLines =
         @(Get-CodeLineRecords -Text $ScriptText)
 
@@ -2208,6 +2339,122 @@ $commit =
         -SelectedProfile 'General' `
         -ShouldPass $true
 
+    $incidentScalarTrap = @'
+#requires -Version 5.1
+function Get-Sample { return 'C:\Example' }
+$repoRoot = (Get-Sample)[0].Trim()
+'@
+    Assert-Case `
+        -Name 'incident-unsafe-scalar-index' `
+        -Text $incidentScalarTrap `
+        -SelectedProfile 'General' `
+        -ShouldPass $false `
+        -ExpectedRule 'GA-SR-040'
+
+    $incidentScalarSafe = @'
+#requires -Version 5.1
+function Get-Sample { return 'C:\Example' }
+$repoRoot = [string](Get-Sample)
+Write-Host $repoRoot.Trim()
+'@
+    Assert-Case `
+        -Name 'incident-safe-scalar-string' `
+        -Text $incidentScalarSafe `
+        -SelectedProfile 'General' `
+        -ShouldPass $true
+
+    $incidentCharTrap = @'
+#requires -Version 5.1
+$repoRoot = 'C:\Example'
+$prefix = $repoRoot.TrimEnd('\\', '/')
+'@
+    Assert-Case `
+        -Name 'incident-unsafe-trimend' `
+        -Text $incidentCharTrap `
+        -SelectedProfile 'General' `
+        -ShouldPass $false `
+        -ExpectedRule 'GA-SR-041'
+
+    $incidentCharSafe = @'
+#requires -Version 5.1
+$repoRoot = 'C:\Example'
+$prefix = $repoRoot.TrimEnd([char]92, [char]47)
+'@
+    Assert-Case `
+        -Name 'incident-safe-trimend-chars' `
+        -Text $incidentCharSafe `
+        -SelectedProfile 'General' `
+        -ShouldPass $true
+
+    $incidentEmptyTrap = @'
+#requires -Version 5.1
+function Write-Diagnostic {
+    param([Parameter(Mandatory)][string]$Value)
+    Write-Host $Value
+}
+Write-Diagnostic -Value ''
+'@
+    Assert-Case `
+        -Name 'incident-unsafe-mandatory-empty' `
+        -Text $incidentEmptyTrap `
+        -SelectedProfile 'General' `
+        -ShouldPass $false `
+        -ExpectedRule 'GA-SR-042'
+
+    $incidentEmptySafe = @'
+#requires -Version 5.1
+function Write-Diagnostic {
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Value)
+    Write-Host $Value
+}
+Write-Diagnostic -Value ''
+'@
+    Assert-Case `
+        -Name 'incident-safe-mandatory-empty' `
+        -Text $incidentEmptySafe `
+        -SelectedProfile 'General' `
+        -ShouldPass $true
+    $joinPathThreeOperandsTrap = @'
+#requires -Version 5.1
+$qaZipPath = Join-Path $HOME 'Downloads' 'QA-R4.zip'
+'@
+    Assert-Case `
+        -Name 'join-path-three-positional-ps51-trap' `
+        -Text $joinPathThreeOperandsTrap `
+        -SelectedProfile 'General' `
+        -ShouldPass $false `
+        -ExpectedRule 'GA-SR-043'
+
+    $joinPathNestedSafe = @'
+#requires -Version 5.1
+$qaZipPath = Join-Path (Join-Path $HOME 'Downloads') 'QA-R4.zip'
+'@
+    Assert-Case `
+        -Name 'join-path-nested-ps51-safe' `
+        -Text $joinPathNestedSafe `
+        -SelectedProfile 'General' `
+        -ShouldPass $true
+
+    $joinPathNewerSwitchTrap = @'
+#requires -Version 5.1
+$qaZipPath = Join-Path -Path $HOME -ChildPath 'Downloads' -AdditionalChildPath 'QA-R4.zip'
+'@
+    Assert-Case `
+        -Name 'join-path-additionalchildpath-ps51-trap' `
+        -Text $joinPathNewerSwitchTrap `
+        -SelectedProfile 'General' `
+        -ShouldPass $false `
+        -ExpectedRule 'GA-SR-043'
+
+    $joinPathCombineSafe = @'
+#requires -Version 5.1
+$qaZipPath = [System.IO.Path]::Combine($HOME, 'Downloads', 'QA-R4.zip')
+'@
+    Assert-Case `
+        -Name 'join-path-pathcombine-ps51-safe' `
+        -Text $joinPathCombineSafe `
+        -SelectedProfile 'General' `
+        -ShouldPass $true
     if ($script:testsFailed -ne 0)
 
 
