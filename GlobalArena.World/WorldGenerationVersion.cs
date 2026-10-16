@@ -20,6 +20,9 @@ public readonly record struct WorldGenerationVersion
 
     public bool IsValid => _value > 0;
 
+    public static WorldGenerationVersion ProceduralBiomesV2 =>
+        new(2);
+
     public static WorldGenerationVersion Initial =>
         new(1);
 
