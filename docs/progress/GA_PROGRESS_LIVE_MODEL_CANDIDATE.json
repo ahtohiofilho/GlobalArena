@@ -1,0 +1,162 @@
+{
+    "schemaVersion":  "GA_PROGRESS_LIVE_MODEL_CONTRACT_1",
+    "status":  "QA_CANDIDATE_NOT_AUTHORITATIVE",
+    "authoritativeCapabilityCoverage":  false,
+    "currentApprovedReference":  {
+                                     "sourceHead":  "5a1f763f6e8dfd73018ed5af2e9ab080f3998354",
+                                     "earnedGpp":  377.8,
+                                     "scopeGpp":  1000,
+                                     "displayPercent":  "37.8",
+                                     "scopeChangeApproved":  false
+                                 },
+    "domains":  [
+                    {
+                        "id":  "foundation",
+                        "label":  "Foundation / Simulation Kernel",
+                        "budgetGpp":  70,
+                        "earnedGpp":  70.00,
+                        "authority":  "PUBLISHED_ACCOUNTING_REFERENCE_ONLY"
+                    },
+                    {
+                        "id":  "topology",
+                        "label":  "Planet Topology / Goldberg",
+                        "budgetGpp":  90,
+                        "earnedGpp":  76.50,
+                        "authority":  "PUBLISHED_ACCOUNTING_REFERENCE_ONLY"
+                    },
+                    {
+                        "id":  "world-generation",
+                        "label":  "World Generation / biomas / recursos",
+                        "budgetGpp":  100,
+                        "earnedGpp":  85.00,
+                        "authority":  "PUBLISHED_ACCOUNTING_REFERENCE_ONLY"
+                    },
+                    {
+                        "id":  "economy",
+                        "label":  "Economy / comercio / logistica",
+                        "budgetGpp":  140,
+                        "earnedGpp":  58.80,
+                        "authority":  "PUBLISHED_ACCOUNTING_REFERENCE_ONLY"
+                    },
+                    {
+                        "id":  "warfare",
+                        "label":  "Warfare / unidades / combate",
+                        "budgetGpp":  140,
+                        "earnedGpp":  21.00,
+                        "authority":  "PUBLISHED_ACCOUNTING_REFERENCE_ONLY"
+                    },
+                    {
+                        "id":  "civilizations",
+                        "label":  "Civilizations / Diplomacy",
+                        "budgetGpp":  70,
+                        "earnedGpp":  35.00,
+                        "authority":  "PUBLISHED_ACCOUNTING_REFERENCE_ONLY"
+                    },
+                    {
+                        "id":  "ai",
+                        "label":  "Artificial Intelligence",
+                        "budgetGpp":  80,
+                        "earnedGpp":  0.00,
+                        "authority":  "PUBLISHED_ACCOUNTING_REFERENCE_ONLY"
+                    },
+                    {
+                        "id":  "multiplayer",
+                        "label":  "Multiplayer / Networking",
+                        "budgetGpp":  90,
+                        "earnedGpp":  0.00,
+                        "authority":  "PUBLISHED_ACCOUNTING_REFERENCE_ONLY"
+                    },
+                    {
+                        "id":  "persistence",
+                        "label":  "Persistence / Save / Replay",
+                        "budgetGpp":  60,
+                        "earnedGpp":  0.00,
+                        "authority":  "PUBLISHED_ACCOUNTING_REFERENCE_ONLY"
+                    },
+                    {
+                        "id":  "ui",
+                        "label":  "Rendering / Interaction / UI",
+                        "budgetGpp":  100,
+                        "earnedGpp":  31.50,
+                        "authority":  "PUBLISHED_ACCOUNTING_REFERENCE_ONLY"
+                    },
+                    {
+                        "id":  "performance",
+                        "label":  "Performance / QA / Release",
+                        "budgetGpp":  60,
+                        "earnedGpp":  0.00,
+                        "authority":  "PUBLISHED_ACCOUNTING_REFERENCE_ONLY"
+                    }
+                ],
+    "uiCapabilityReference":  [
+                                  {
+                                      "id":  "ui-strategic-globe",
+                                      "budgetGpp":  20,
+                                      "factor":  0.5
+                                  },
+                                  {
+                                      "id":  "ui-camera-input",
+                                      "budgetGpp":  20,
+                                      "factor":  0.5
+                                  },
+                                  {
+                                      "id":  "ui-world-statistics",
+                                      "budgetGpp":  15,
+                                      "factor":  0.5
+                                  },
+                                  {
+                                      "id":  "ui-tactical-prototype",
+                                      "budgetGpp":  20,
+                                      "factor":  0.2
+                                  },
+                                  {
+                                      "id":  "ui-gameplay-interaction",
+                                      "budgetGpp":  15,
+                                      "factor":  0
+                                  },
+                                  {
+                                      "id":  "ui-final-player-experience",
+                                      "budgetGpp":  10,
+                                      "factor":  0
+                                  }
+                              ],
+    "scenarioVectors":  [
+                            {
+                                "id":  "APPROVED_BASELINE",
+                                "earnedGpp":  377.80,
+                                "scopeGpp":  1000,
+                                "displayPercent":  "37.8",
+                                "isPublishedReference":  true
+                            },
+                            {
+                                "id":  "NEW_MATURITY_UNBOOKED",
+                                "earnedGpp":  397.80,
+                                "scopeGpp":  1000,
+                                "displayPercent":  "39.8",
+                                "isPublishedReference":  false
+                            },
+                            {
+                                "id":  "SCOPE_1100_UNAPPROVED",
+                                "earnedGpp":  377.80,
+                                "scopeGpp":  1100,
+                                "displayPercent":  "34.3",
+                                "isPublishedReference":  false
+                            },
+                            {
+                                "id":  "SCOPE_1200_UNAPPROVED",
+                                "earnedGpp":  377.80,
+                                "scopeGpp":  1200,
+                                "displayPercent":  "31.5",
+                                "isPublishedReference":  false
+                            },
+                            {
+                                "id":  "COMBINED_REPLAN_UNAPPROVED",
+                                "earnedGpp":  397.80,
+                                "scopeGpp":  1100,
+                                "displayPercent":  "36.2",
+                                "isPublishedReference":  false
+                            }
+                        ],
+    "mutationAuthorized":  false,
+    "gppCreditGranted":  0
+}
