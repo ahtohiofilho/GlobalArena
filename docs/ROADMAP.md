@@ -3043,3 +3043,79 @@ Reopening the existing scrollable WORLD STATS panel resets its vertical scroll p
 ## GA-PROD-30 - WORLD STATS Home/End keyboard navigation formal close (2026-10-13)
 
 Home and End navigate to the beginning and end of the existing scrollable WORLD STATS panel only while visible. Reuse the existing ScrollContainer without changing strategic indicators, the S toggle, five map modes, selection, or canonical Goldberg geometry. QA R1 passed 1,157/1,157 tests, solution/Godot builds, runtime GA_PROD_STATS_KEYS_READY_30 keys=Home,End, and 26/26 SHA-256 checks. Interactive keyboard behavior is operator-attested via -VisualAccepted. GPP unchanged pending formal recalibration. ADR: docs/ADR-GA-PROD-30-WORLD-STATS-KEYS.md.
+
+## 2026-10-18 - GA-PROGRESS-REBASELINE-TECHNICAL-FLOOR-CANDIDATE-2026-10-18
+
+Status: QA CANDIDATE ONLY; NOT APPROVED; NOT BOOKED.
+
+The last authoritative project score remains 346.30 / 1000 GPP (34.6%).
+The proposed technical-only maturity floor for Rendering / Interaction / UI
+is 31.50 of its already reserved 100 GPP. Proposed project total:
+377.80 / 1000 (37.8%). This is a candidate to audit, not an official score.
+
+Capability budget and proposed factor: canonical globe 20 x 0.50;
+strategic camera/input 20 x 0.50; world layers/stats 15 x 0.50;
+tactical visualization prototype 20 x 0.20; gameplay UI 15 x 0.00;
+final V1 UX 10 x 0.00. Sum of UI budgets: 100; sum of credits: 31.50.
+
+Ledger attestation claims and required visual attestations are different.
+Do not promote to integrated 0.70 without independent original evidence and
+capability-wide human validation. WorldGen V2 and GA-SRP maintenance do not
+add further V1 GPP under this candidate.
+
+Do not reinterpret the fixed 1000-GPP V1 baseline as a real-time remaining
+work forecast. A revised denominator requires a Scope Change Record with
+independent re-estimation, explicit approval and recalculation, including
+possible percentage regression. Both baseline and revised percent must be
+retained once a scope change is authorized. No such change is approved here.
+
+## 2026-10-18 - GA-PROGRESS-TECHNICAL-FLOOR-MATURITY-DECISION-2026-10-18
+
+Status: MATURITY DECISION QA CANDIDATE, NOT YET FORMALLY PUBLISHED.
+
+Proposed credit to approve through independent audit and scoped FormalClose:
+UI Rendering / Interaction / UI technical floor 31.50 / 100.00 GPP.
+No promotion to factor 0.70. Existing factors: 0.50, 0.50, 0.50,
+0.20, 0.00, 0.00 against budgets 20, 20, 15, 20, 15, 10.
+Current official score remains 346.30 / 1000 = 34.6% until FormalClose.
+Proposed replacement after FormalClose: 377.80 / 1000 = 37.8%.
+
+The prior candidate and independent audit are retained as historical evidence.
+A 1000-GPP fixed baseline is NOT automatically a revised forecast.
+Any changed denominator requires separately approved Scope Change Record.
+Recompute both earned and total when such an approved re-estimate occurs.
+
+## 2026-10-18 - GA-PROGRESS-TECHNICAL-FLOOR-MATURITY-APPROVAL-2026-10-18
+
+Decision: APPROVE THE TECHNICAL FLOOR FOR SCOPED BOOKING, subject to
+independent approval QA audit and documentation-only FormalClose.
+This QA does not itself book GPP, change the official value or commit.
+
+Rendering / Interaction / UI technical earned credit: 31.50 / 100 GPP.
+Prior accepted project baseline: 346.30 / 1000 GPP (34.6%).
+Authorized next-booking target: 377.80 / 1000 GPP (37.8%).
+No 0.70 GUI integration award; non-evidenced player UX remains at 0.00.
+No new scope is authorized. 1000 GPP remains the current V1 denominator.
+
+This is a historical credit reconciliation, not a new forecast of remaining
+work. Maintain the live formula earned / approved total and re-evaluate both
+terms if future accepted requirements change effort or V1 scope.
+The technical evidence audit is GA-PROGRESS-TECHNICAL-FLOOR-DECISION-
+INDEPENDENT-AUDIT-R2-20261018-145243.zip.
+
+## 2026-10-18 - GA-PROGRESS-TECHNICAL-FLOOR-SCOPED-FORMAL-CLOSE
+
+Current official progress: 377.80 / 1000 GPP (37.8%).
+Prior official historical value: 346.30 / 1000 GPP (34.6%).
+Rendering / Interaction / UI: 31.50 / 100 GPP after approved technical
+maturity reconciliation (six previously audited capabilities).
+This is a +31.50 GPP credit, not an expansion of V1 scope.
+The V1 denominator remains 1000 GPP; no Scope Change Record is approved.
+The displayed percentage must be computed from accepted earned GPP
+and the current approved denominator. If either changes, recalculate;
+the result may decrease when real remaining work increases.
+Provisional +38.50 and +42.50 UI alternatives remain unapproved.
+
+OFFICIAL_PROGRESS_UPDATED=True
+MATURITY_CREDIT_BOOKED=True
+SCOPE_CHANGE_APPROVED=FalseIndependent audit SHA256: 1E445E302346C02DF748DCADCF2D737CFCCB066294D72C71891BAE5CD436DF77

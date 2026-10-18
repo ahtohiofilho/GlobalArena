@@ -16101,3 +16101,127 @@ Reopening the existing scrollable WORLD STATS panel resets its vertical scroll p
 ## GA-PROD-30 - WORLD STATS Home/End keyboard navigation formal close (2026-10-13)
 
 Home and End navigate to the beginning and end of the existing scrollable WORLD STATS panel only while visible. Reuse the existing ScrollContainer without changing strategic indicators, the S toggle, five map modes, selection, or canonical Goldberg geometry. QA R1 passed 1,157/1,157 tests, solution/Godot builds, runtime GA_PROD_STATS_KEYS_READY_30 keys=Home,End, and 26/26 SHA-256 checks. Interactive keyboard behavior is operator-attested via -VisualAccepted. GPP unchanged pending formal recalibration. ADR: docs/ADR-GA-PROD-30-WORLD-STATS-KEYS.md.
+
+## 2026-10-18 - GA-PROGRESS-REBASELINE-TECHNICAL-FLOOR-CANDIDATE-2026-10-18
+
+Status: QA CANDIDATE ONLY; NOT APPROVED; NOT BOOKED.
+Evidence: GA-PROGRESS-HUMAN-ATTESTATION-REVIEW-R1-20261018-031906.zip.
+This candidate is appended to the historical ledger without changing earlier entries.
+
+Historical official project: 346.30 / 1000 GPP = 34.6% displayed.
+
+| Proposed Rendering / Interaction / UI capability | Budget | Factor | Candidate earned |
+|---|---:|---:|---:|
+| Strategic canonical globe | 20 | 0.50 | 10.00 |
+| Strategic camera and input | 20 | 0.50 | 10.00 |
+| World layers, legends and stats | 15 | 0.50 | 7.50 |
+| Tactical visualization prototype | 20 | 0.20 | 4.00 |
+| Gameplay interaction UI | 15 | 0.00 | 0.00 |
+| Final V1 player experience | 10 | 0.00 | 0.00 |
+| TOTAL | 100 | | 31.50 |
+
+Proposed credit delta: +31.50 GPP (not booked).
+Proposed project: 377.80 / 1000 = 37.8% (not official).
+Proposed UI maturity: 31.50 / 100 = 31.5% (not official).
+Original +42.50 UI scenario and +38.50 documented-attestation
+scenario remain rejected as automatic credits.
+
+The original human -VisualAccepted execution evidence is not established by
+an attestation condition or a ledger-level claim. Further promotion needs
+independent evidence and human capability acceptance.
+
+Scope baseline remains 1000 GPP; no Scope Change Record has been approved.
+Future denominators must be supported by a formal scope/effort re-estimate,
+not arbitrary sensitivity scenarios. The visible progress can regress when
+an approved revised total changes. Earlier official scores remain immutable.
+
+Next: independent QA candidate audit, explicit maturity decision,
+then a separately authorized FormalClose for the actual official score.
+
+## 2026-10-18 - GA-PROGRESS-TECHNICAL-FLOOR-MATURITY-DECISION-2026-10-18
+
+Status: PENDING INDEPENDENT DECISION AUDIT AND FORMAL CLOSE.
+Evidence: GA-PROGRESS-TECHNICAL-FLOOR-INDEPENDENT-AUDIT-R2-20261018-143218.zip.
+Prior QA proved 47/47 evidence hashes; independent audit passed
+55/55 GA-SRP self-tests and three append-only document checks.
+
+| UI capability | Reserved GPP | Maturity | Credit |
+|---|---:|---:|---:|
+| Strategic canonical globe | 20.00 | 0.50 | 10.00 |
+| Strategic camera and input | 20.00 | 0.50 | 10.00 |
+| World layers, legends and stats | 15.00 | 0.50 | 7.50 |
+| Tactical visualization prototype | 20.00 | 0.20 | 4.00 |
+| Gameplay interaction UI | 15.00 | 0.00 | 0.00 |
+| Final V1 player experience | 10.00 | 0.00 | 0.00 |
+| TOTAL | 100.00 | | 31.50 |
+
+Technical decision candidate: +31.50 UI GPP over previously official
+346.30 = 377.80 / 1000 (37.8%). This is NOT YET BOOKED.
+The original 34.6% remains an immutable historical checkpoint.
+Unverified interactive acceptance cannot grant 0.70 integration factor;
+42.50 and 38.50 UI scenarios remain unapproved alternatives.
+
+This decision does not increase the V1 GPP budget and gives no credit
+for already counted WorldGen, topology or GA-SRP maintenance.
+Independent audit and separate formal close must pass before booking.
+A future approved effort/scope re-estimate may legitimately cause
+progress to regress; do not hide such changes in a fixed-percent display.
+
+## 2026-10-18 - GA-PROGRESS-TECHNICAL-FLOOR-MATURITY-APPROVAL-2026-10-18
+
+Status: TECHNICAL MATURITY FLOOR APPROVED FOR SCOPED BOOKING,
+PENDING INDEPENDENT AUDIT AND FORMAL CLOSE. NOT YET OFFICIAL.
+
+Evidence: GA-PROGRESS-TECHNICAL-FLOOR-DECISION-INDEPENDENT-AUDIT-R2-
+20261018-145243.zip; 43/43 hashes, GA-SRP 55/55,
+three documents byte-exact to the prior audited snapshots.
+
+| UI capability | Budget | Factor | Approved technical credit |
+|---|---:|---:|---:|
+| Strategic canonical globe | 20.00 | 0.50 | 10.00 |
+| Strategic camera and input | 20.00 | 0.50 | 10.00 |
+| World layers, legends and stats | 15.00 | 0.50 | 7.50 |
+| Tactical visualization prototype | 20.00 | 0.20 | 4.00 |
+| Gameplay interaction UI | 15.00 | 0.00 | 0.00 |
+| Final V1 player experience | 10.00 | 0.00 | 0.00 |
+| TOTAL | 100.00 | | 31.50 |
+
+Book only after independent audit and scoped FormalClose:
+346.30 historical + 31.50 UI = 377.80 / 1000 = 37.8%.
+34.6% remains the prior historical checkpoint; do not rewrite it.
+No double-count of simulation, WorldGen, Goldberg or GA-SRP work.
+No approval of 38.50 or 42.50 alternative credits and no change
+of the approved V1 denominator. Recompute progress whenever an
+approved rescope changes the actual total; regression is permitted.
+
+## 2026-10-18 - GA-PROGRESS-TECHNICAL-FLOOR-SCOPED-FORMAL-CLOSE
+
+Status: FORMALLY BOOKED after independent maturity approval audit and
+scoped documentation close. The previous 346.30 / 1000 (34.6%) historical
+checkpoint is preserved above, unchanged.
+
+Rendering / Interaction / UI - approved conservative technical floor:
+
+| Capability | Budget | Maturity factor | Earned GPP |
+|---|---:|---:|---:|
+| Strategic canonical globe | 20.00 | 0.50 | 10.00 |
+| Strategic camera and input | 20.00 | 0.50 | 10.00 |
+| World layers, legends and stats | 15.00 | 0.50 | 7.50 |
+| Tactical visualization prototype | 20.00 | 0.20 | 4.00 |
+| Gameplay interaction UI | 15.00 | 0.00 | 0.00 |
+| Final V1 player experience | 10.00 | 0.00 | 0.00 |
+| TOTAL | 100.00 | | 31.50 |
+
+Earned before reconciliation: 346.30 GPP.
+Increment booked in this close: +31.50 GPP (UI only).
+Current official earned: 377.80 / 1000 GPP = 37.8%.
+Remaining to the currently approved V1 baseline: 622.20 GPP.
+No 0.70 UI maturity is credited; no duplicate WorldGen or Goldberg credit.
+No V1 scope change or additional denominator is approved by this close.
+The formula is accepted earned GPP / approved V1 GPP denominator.
+Recompute it whenever capability maturity or approved V1 scope changes;
+percentage regression is valid if remaining accepted work increases.
+
+OFFICIAL_PROGRESS_UPDATED=True
+MATURITY_CREDIT_BOOKED=True
+SCOPE_CHANGE_APPROVED=FalseIndependent audit SHA256: 1E445E302346C02DF748DCADCF2D737CFCCB066294D72C71891BAE5CD436DF77

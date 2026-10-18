@@ -1930,3 +1930,48 @@ Reopening the existing scrollable WORLD STATS panel resets its vertical scroll p
 ## GA-PROD-30 - WORLD STATS Home/End keyboard navigation formal close (2026-10-13)
 
 Home and End navigate to the beginning and end of the existing scrollable WORLD STATS panel only while visible. Reuse the existing ScrollContainer without changing strategic indicators, the S toggle, five map modes, selection, or canonical Goldberg geometry. QA R1 passed 1,157/1,157 tests, solution/Godot builds, runtime GA_PROD_STATS_KEYS_READY_30 keys=Home,End, and 26/26 SHA-256 checks. Interactive keyboard behavior is operator-attested via -VisualAccepted. GPP unchanged pending formal recalibration. ADR: docs/ADR-GA-PROD-30-WORLD-STATS-KEYS.md.
+
+## 2026-10-18 - GA-PROGRESS-REBASELINE-TECHNICAL-FLOOR-CANDIDATE-2026-10-18
+
+This is a documentation-only QA candidate, not a change to the official dashboard.
+Historical earned: 346.30 / 1000 (34.6%). Candidate UI credit: +31.50 GPP;
+candidate total: 377.80 / 1000 (37.8%). No scope increase approved.
+The six UI capabilities use the existing 100-GPP UI budget and factors
+0.50/0.50/0.50/0.20/0.00/0.00 on budgets 20/20/15/20/15/10.
+The audited Human Attestation Review R1 requires an explicit maturity
+decision; documented attestations do not automatically justify 0.70 factors.
+Do not publish this candidate as the actual dashboard until independent
+audit and approved accounting FormalClose. Any effective scope expansion
+must follow the Scope Change Record governance, not an assumed denominator.
+
+## 2026-10-18 - GA-PROGRESS-TECHNICAL-FLOOR-MATURITY-DECISION-2026-10-18
+
+Maturity decision QA candidate: 31.50 / 100 Rendering / Interaction / UI.
+Proposed project earned: 377.80 / 1000 GPP (37.8%) after approval.
+Until independent audit and scoped FormalClose, official remains 34.6%.
+No human-only visual integration promotion and no scope change approved.
+This is a documentation-only candidate; all previous ledger entries remain.
+
+## 2026-10-18 - GA-PROGRESS-TECHNICAL-FLOOR-MATURITY-APPROVAL-2026-10-18
+
+Technical maturity decision: approve conservative 31.50 / 100 GPP UI
+credit for scoped booking after independent audit and FormalClose.
+Official prior checkpoint: 346.30 / 1000 (34.6%).
+Post-close booking target: 377.80 / 1000 (37.8%).
+No 0.70 visual integration promotion; no scope change approved.
+The ratio must track both accepted earned GPP and approved scope.
+
+## 2026-10-18 - GA-PROGRESS-TECHNICAL-FLOOR-SCOPED-FORMAL-CLOSE
+
+Official current Global Arena progress: 377.80 / 1000 GPP (37.8%).
+Prior historical checkpoint: 346.30 / 1000 GPP (34.6%).
+This document-only close books +31.50 GPP in Rendering / Interaction / UI
+at the conservative technical maturity floor. Gameplay UI and final V1
+player experience remain uncredited; the 0.70 UI integration factor
+remains pending specific acceptance. Denominator is unchanged at 1000.
+Recalculate earned / approved total on every accepted capability and
+scope revision, including decreases when the estimated route expands.
+
+OFFICIAL_PROGRESS_UPDATED=True
+MATURITY_CREDIT_BOOKED=True
+SCOPE_CHANGE_APPROVED=FalseIndependent audit SHA256: 1E445E302346C02DF748DCADCF2D737CFCCB066294D72C71891BAE5CD436DF77
