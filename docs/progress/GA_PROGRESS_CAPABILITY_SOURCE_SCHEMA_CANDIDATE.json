@@ -1,0 +1,202 @@
+{
+    "schemaVersion":  "GA_PROGRESS_CAPABILITY_SOURCE_SCHEMA_1",
+    "status":  "SCHEMA_QA_CANDIDATE_NOT_AUTHORITATIVE",
+    "isAuthoritative":  false,
+    "canPublishRevision":  false,
+    "newGppGranted":  0,
+    "approvedReference":  {
+                              "sourceHead":  "e1ff06a37fd5994f05bce87803cc4994cefa3f3b",
+                              "earnedGpp":  377.8,
+                              "scopeGpp":  1000,
+                              "displayPercent":  "37.8"
+                          },
+    "sourceReference":  {
+                            "path":  "docs/progress/GA_PROGRESS_LIVE_MODEL_CANDIDATE.json",
+                            "sha256":  "93B3A4FF4700C90E7AC315F8D749F1FDFE10BCB7D990DA5A75EB7DC8C8B955AA",
+                            "authority":  "PUBLISHED_ACCOUNTING_REFERENCE_ONLY"
+                        },
+    "domainCoverage":  [
+                           {
+                               "domainId":  "foundation",
+                               "budgetGpp":  70,
+                               "earnedGpp":  70.00,
+                               "capabilityRecordCount":  0,
+                               "coverageStatus":  "AGGREGATE_ONLY_DETAILS_MISSING",
+                               "approvedCapabilityRevisionId":  null
+                           },
+                           {
+                               "domainId":  "topology",
+                               "budgetGpp":  90,
+                               "earnedGpp":  76.50,
+                               "capabilityRecordCount":  0,
+                               "coverageStatus":  "AGGREGATE_ONLY_DETAILS_MISSING",
+                               "approvedCapabilityRevisionId":  null
+                           },
+                           {
+                               "domainId":  "world-generation",
+                               "budgetGpp":  100,
+                               "earnedGpp":  85.00,
+                               "capabilityRecordCount":  0,
+                               "coverageStatus":  "AGGREGATE_ONLY_DETAILS_MISSING",
+                               "approvedCapabilityRevisionId":  null
+                           },
+                           {
+                               "domainId":  "economy",
+                               "budgetGpp":  140,
+                               "earnedGpp":  58.80,
+                               "capabilityRecordCount":  0,
+                               "coverageStatus":  "AGGREGATE_ONLY_DETAILS_MISSING",
+                               "approvedCapabilityRevisionId":  null
+                           },
+                           {
+                               "domainId":  "warfare",
+                               "budgetGpp":  140,
+                               "earnedGpp":  21.00,
+                               "capabilityRecordCount":  0,
+                               "coverageStatus":  "AGGREGATE_ONLY_DETAILS_MISSING",
+                               "approvedCapabilityRevisionId":  null
+                           },
+                           {
+                               "domainId":  "civilizations",
+                               "budgetGpp":  70,
+                               "earnedGpp":  35.00,
+                               "capabilityRecordCount":  0,
+                               "coverageStatus":  "AGGREGATE_ONLY_DETAILS_MISSING",
+                               "approvedCapabilityRevisionId":  null
+                           },
+                           {
+                               "domainId":  "ai",
+                               "budgetGpp":  80,
+                               "earnedGpp":  0.00,
+                               "capabilityRecordCount":  0,
+                               "coverageStatus":  "AGGREGATE_ONLY_DETAILS_MISSING",
+                               "approvedCapabilityRevisionId":  null
+                           },
+                           {
+                               "domainId":  "multiplayer",
+                               "budgetGpp":  90,
+                               "earnedGpp":  0.00,
+                               "capabilityRecordCount":  0,
+                               "coverageStatus":  "AGGREGATE_ONLY_DETAILS_MISSING",
+                               "approvedCapabilityRevisionId":  null
+                           },
+                           {
+                               "domainId":  "persistence",
+                               "budgetGpp":  60,
+                               "earnedGpp":  0.00,
+                               "capabilityRecordCount":  0,
+                               "coverageStatus":  "AGGREGATE_ONLY_DETAILS_MISSING",
+                               "approvedCapabilityRevisionId":  null
+                           },
+                           {
+                               "domainId":  "ui",
+                               "budgetGpp":  100,
+                               "earnedGpp":  31.50,
+                               "capabilityRecordCount":  6,
+                               "coverageStatus":  "REFERENCE_DETAIL_NO_REVISION_LINK",
+                               "approvedCapabilityRevisionId":  null
+                           },
+                           {
+                               "domainId":  "performance",
+                               "budgetGpp":  60,
+                               "earnedGpp":  0.00,
+                               "capabilityRecordCount":  0,
+                               "coverageStatus":  "AGGREGATE_ONLY_DETAILS_MISSING",
+                               "approvedCapabilityRevisionId":  null
+                           }
+                       ],
+    "uiCapabilityRecords":  [
+                                {
+                                    "id":  "ui-strategic-globe",
+                                    "domainId":  "ui",
+                                    "budgetGpp":  20,
+                                    "factor":  0.5,
+                                    "evidenceLinkStatus":  "NEEDS_IMMUTABLE_ACCEPTANCE_LINK",
+                                    "acceptedRevisionId":  null
+                                },
+                                {
+                                    "id":  "ui-camera-input",
+                                    "domainId":  "ui",
+                                    "budgetGpp":  20,
+                                    "factor":  0.5,
+                                    "evidenceLinkStatus":  "NEEDS_IMMUTABLE_ACCEPTANCE_LINK",
+                                    "acceptedRevisionId":  null
+                                },
+                                {
+                                    "id":  "ui-world-statistics",
+                                    "domainId":  "ui",
+                                    "budgetGpp":  15,
+                                    "factor":  0.5,
+                                    "evidenceLinkStatus":  "NEEDS_IMMUTABLE_ACCEPTANCE_LINK",
+                                    "acceptedRevisionId":  null
+                                },
+                                {
+                                    "id":  "ui-tactical-prototype",
+                                    "domainId":  "ui",
+                                    "budgetGpp":  20,
+                                    "factor":  0.2,
+                                    "evidenceLinkStatus":  "NEEDS_IMMUTABLE_ACCEPTANCE_LINK",
+                                    "acceptedRevisionId":  null
+                                },
+                                {
+                                    "id":  "ui-gameplay-interaction",
+                                    "domainId":  "ui",
+                                    "budgetGpp":  15,
+                                    "factor":  0,
+                                    "evidenceLinkStatus":  "NEEDS_IMMUTABLE_ACCEPTANCE_LINK",
+                                    "acceptedRevisionId":  null
+                                },
+                                {
+                                    "id":  "ui-final-player-experience",
+                                    "domainId":  "ui",
+                                    "budgetGpp":  10,
+                                    "factor":  0,
+                                    "evidenceLinkStatus":  "NEEDS_IMMUTABLE_ACCEPTANCE_LINK",
+                                    "acceptedRevisionId":  null
+                                }
+                            ],
+    "scenarioVectors":  [
+                            {
+                                "id":  "APPROVED_BASELINE",
+                                "earnedGpp":  377.80,
+                                "scopeGpp":  1000,
+                                "displayPercent":  "37.8",
+                                "isPublishedReference":  true
+                            },
+                            {
+                                "id":  "NEW_MATURITY_UNBOOKED",
+                                "earnedGpp":  397.80,
+                                "scopeGpp":  1000,
+                                "displayPercent":  "39.8",
+                                "isPublishedReference":  false
+                            },
+                            {
+                                "id":  "SCOPE_1100_UNAPPROVED",
+                                "earnedGpp":  377.80,
+                                "scopeGpp":  1100,
+                                "displayPercent":  "34.3",
+                                "isPublishedReference":  false
+                            },
+                            {
+                                "id":  "SCOPE_1200_UNAPPROVED",
+                                "earnedGpp":  377.80,
+                                "scopeGpp":  1200,
+                                "displayPercent":  "31.5",
+                                "isPublishedReference":  false
+                            },
+                            {
+                                "id":  "COMBINED_REPLAN_UNAPPROVED",
+                                "earnedGpp":  397.80,
+                                "scopeGpp":  1100,
+                                "displayPercent":  "36.2",
+                                "isPublishedReference":  false
+                            }
+                        ],
+    "revisionPolicy":  {
+                           "requiresIndependentAudit":  true,
+                           "requiresFormalClose":  true,
+                           "scopeChangeRequiresApprovedScr":  true,
+                           "allowPercentRegression":  true,
+                           "allowUnapprovedPromotion":  false
+                       }
+}
