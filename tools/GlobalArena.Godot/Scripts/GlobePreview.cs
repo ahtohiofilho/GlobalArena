@@ -23,6 +23,8 @@ public partial class GlobePreview : SubViewportContainer
     private Label? _fineCalibrationLabel;
     private Label? _detailsLabel;
     private ulong? _selectedCellId;
+    // Bridge-01: emit only canonical strategic identities; experimental fine tiles are not strategic IDs.
+    public event Action<ulong?>? CanonicalTerritorySelectionChanged;
     private readonly System.Collections.Generic.Dictionary<ulong, int> _cellDegree = new();
     // Read-only data sampled by canonical cell identity from WorldGenerationResult.
     private readonly System.Collections.Generic.Dictionary<ulong, (string Biome, long Habitability, long Elevation, long ResourcePotential)> _worldFacts = new();
@@ -605,6 +607,7 @@ public partial class GlobePreview : SubViewportContainer
         if (hitId != _selectedCellId)
         {
             _selectedCellId = hitId;
+            CanonicalTerritorySelectionChanged?.Invoke(hitId);
             RefreshSelectionColors();
         }
         if (_detailsLabel is not null)
@@ -625,6 +628,7 @@ public partial class GlobePreview : SubViewportContainer
     private void ClearTerritorySelection()
     {
         _selectedCellId = null;
+        CanonicalTerritorySelectionChanged?.Invoke(null);
         if (_pickedLabel is not null)
             _pickedLabel.Text = "Territory: none  |  Left click to inspect";
         if (_detailsLabel is not null)

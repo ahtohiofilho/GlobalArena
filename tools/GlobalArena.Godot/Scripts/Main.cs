@@ -6,6 +6,26 @@ namespace GlobalArena.Godot;
 public partial class Main : Control
 {
     private Label? _status;
+    private Label? _tacticalBridgeStatus;
+    private Button? _openTacticalContext;
+    private ulong? _bridgeSelection;
+
+    private void OnCanonicalTerritorySelectionChanged(ulong? selectedId)
+    {
+        _bridgeSelection = selectedId;
+        if (_openTacticalContext is not null) _openTacticalContext.Disabled = !selectedId.HasValue;
+        if (_tacticalBridgeStatus is not null)
+            _tacticalBridgeStatus.Text = selectedId.HasValue
+                ? $"Territory {selectedId.Value} selected | tactical context available"
+                : "Select a canonical territory to enable tactical context";
+    }
+
+    private void OpenTacticalContext()
+    {
+        if (!_bridgeSelection.HasValue || _tacticalBridgeStatus is null) return;
+        _tacticalBridgeStatus.Text = $"Tactical focus: canonical territory {_bridgeSelection.Value}. Tactical mesh viewport pending integration.";
+        GD.Print($"GA_UI_BRIDGE_01_TACTICAL_FOCUS cell={_bridgeSelection.Value}");
+    }
 
     public override void _Ready()
     {
@@ -56,6 +76,7 @@ public partial class Main : Control
             SizeFlagsVertical = SizeFlags.ExpandFill
         };
         mapRegion.AddChild(globe);
+        globe.CanonicalTerritorySelectionChanged += OnCanonicalTerritorySelectionChanged;
         GD.Print("GA_UI_VIEWPORT_READY_02 parent=map-region sizing=expand-fill");
 
         var rightPanel = new PanelContainer { CustomMinimumSize = new Vector2(390f, 0f), SizeFlagsVertical = SizeFlags.ExpandFill };
@@ -72,6 +93,15 @@ public partial class Main : Control
         var panelTitle = new Label { Text = "TERRITORY & WORLD" };
         panelTitle.AddThemeFontSizeOverride("font_size", 17);
         rightLayout.AddChild(panelTitle);
+        var tacticalBridgeTitle = new Label { Text = "TACTICAL CONTEXT" };
+        tacticalBridgeTitle.AddThemeFontSizeOverride("font_size", 15);
+        rightLayout.AddChild(tacticalBridgeTitle);
+        _tacticalBridgeStatus = new Label { Text = "Select a canonical territory to enable tactical context" };
+        _tacticalBridgeStatus.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        rightLayout.AddChild(_tacticalBridgeStatus);
+        _openTacticalContext = new Button { Text = "OPEN TACTICAL CONTEXT", Disabled = true };
+        _openTacticalContext.Pressed += OpenTacticalContext;
+        rightLayout.AddChild(_openTacticalContext);
         var panelScroll = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         rightLayout.AddChild(panelScroll);
         var hud = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
