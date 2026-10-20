@@ -49,6 +49,23 @@ public sealed class MeshPresentationPlan
         return StrategicOverview(map.CoarseTopology);
     }
 
+    /// <summary>
+    /// Optional fine physical identities for the same strategic overview.
+    /// This is a renderer-neutral selection, not a GPU draw guarantee or a
+    /// change in strategic/tactical simulation semantics.
+    /// </summary>
+    public static MeshPresentationPlan StrategicOverview(
+        PhysicalTacticalIncidenceMap map, bool includeFineTiles)
+    {
+        ArgumentNullException.ThrowIfNull(map);
+        var overview = StrategicOverview(map.CoarseTopology);
+        if (!includeFineTiles) return overview;
+        var tiles = map.TileIncidences
+            .Select(incidence => incidence.PhysicalTacticalTileId)
+            .ToArray();
+        return new MeshPresentationPlan(MeshPresentationMode.StrategicOverview,
+            null, overview.StrategicCellIds.ToArray(), tiles);
+    }
     /// <summary>Plan for focus + actual adjacent strategic cells, without re-identifying fine tiles.</summary>
     public static MeshPresentationPlan TacticalNeighborhood(
         PhysicalTacticalIncidenceMap map, StrategicCellId focus)
