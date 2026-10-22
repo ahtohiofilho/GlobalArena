@@ -6,8 +6,19 @@ namespace GlobalArena.Godot;
 public partial class Main : Control
 {
     private Label? _status;
+    // GA_LAYOUT_DIAGNOSTIC_02: temporary non-mutating runtime metrics.
+    private Control? _layoutDiagnosticFrame;
+    private Control? _layoutDiagnosticRoot;
+    private string _lastLoggedLayoutSignature = "";
     private Label? _tacticalBridgeStatus;
     private Button? _openTacticalContext;
+    private Button? _returnStrategicContext;
+    private CheckBox? _tacticalTileEdges;
+    private GlobePreview? _strategicGlobe;
+    private TacticalContextPreview? _tacticalPreview;
+    private VBoxContainer? _tacticalInspector;
+    private Label? _tacticalTileSummary;
+    private Label? _tacticalTileTerrain;
     private ulong? _bridgeSelection;
 
     private void OnCanonicalTerritorySelectionChanged(ulong? selectedId)
@@ -20,11 +31,58 @@ public partial class Main : Control
                 : "Select a canonical territory to enable tactical context";
     }
 
+    // R30: physical tile facts are read-only display data, never a game order.
+    private void OnPhysicalTileInspected(ulong? tileId, string summary, string terrain)
+    {
+        if (_tacticalTileSummary is null || _tacticalTileTerrain is null) return;
+        _tacticalTileSummary.Text = tileId.HasValue ? summary : "Select a physical tile on the tactical map";
+        _tacticalTileTerrain.Text = tileId.HasValue ? terrain : "Tile attributes will appear here";
+        GD.Print($"GA_UI_TACTICAL_INSPECTOR_R30 selected={(tileId.HasValue ? tileId.Value.ToString() : "none")} source=canonical_read_only");
+    }
+
     private void OpenTacticalContext()
     {
-        if (!_bridgeSelection.HasValue || _tacticalBridgeStatus is null) return;
-        _tacticalBridgeStatus.Text = $"Tactical focus: canonical territory {_bridgeSelection.Value}. Tactical mesh viewport pending integration.";
-        GD.Print($"GA_UI_BRIDGE_01_TACTICAL_FOCUS cell={_bridgeSelection.Value}");
+        if (!_bridgeSelection.HasValue || _tacticalBridgeStatus is null ||
+            _strategicGlobe is null || _tacticalPreview is null || _returnStrategicContext is null ||
+            _openTacticalContext is null) return;
+        try
+        {
+            _tacticalPreview.Open(_bridgeSelection.Value);
+            _strategicGlobe.Visible = false;
+            _tacticalPreview.Visible = true;
+            if (_tacticalInspector is not null) _tacticalInspector.Visible = true;
+            _openTacticalContext.Visible = false;
+            _returnStrategicContext.Visible = true;
+            if (_tacticalTileEdges is not null)
+            {
+                _tacticalTileEdges.ButtonPressed = false;
+                _tacticalTileEdges.Visible = true;
+            }
+            _tacticalBridgeStatus.Text = $"LOCAL TACTICAL | strategic {_bridgeSelection.Value} and adjacent territories";
+            GD.Print($"GA_UI_TACTICAL_TRANSITION_OPEN focus={_bridgeSelection.Value}");
+        }
+        catch (System.Exception exception)
+        {
+            _tacticalBridgeStatus.Text = "Tactical view failed to load; see Godot log";
+            GD.PushError($"GA_UI_TACTICAL_TRANSITION_FAIL: {exception}");
+        }
+    }
+
+    private void ReturnStrategicContext()
+    {
+        if (_strategicGlobe is null || _tacticalPreview is null ||
+            _openTacticalContext is null || _returnStrategicContext is null ||
+            _tacticalBridgeStatus is null) return;
+        _tacticalPreview.Visible = false;
+        if (_tacticalInspector is not null) _tacticalInspector.Visible = false;
+        _strategicGlobe.Visible = true;
+        _openTacticalContext.Visible = true;
+        _returnStrategicContext.Visible = false;
+        if (_tacticalTileEdges is not null) _tacticalTileEdges.Visible = false;
+        _tacticalBridgeStatus.Text = _bridgeSelection.HasValue
+            ? $"Territory {_bridgeSelection.Value} selected | tactical context available"
+            : "Select a canonical territory to enable tactical context";
+        GD.Print("GA_UI_TACTICAL_TRANSITION_RETURN globe_state_preserved=true");
     }
 
     public override void _Ready()
@@ -45,7 +103,9 @@ public partial class Main : Control
         frame.AddThemeConstantOverride("margin_bottom", 16);
         AddChild(frame);
 
-        var root = new VBoxContainer();
+        _layoutDiagnosticFrame = frame;
+        var root = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
+        _layoutDiagnosticRoot = root;
         root.AddThemeConstantOverride("separation", 12);
         frame.AddChild(root);
 
@@ -76,7 +136,17 @@ public partial class Main : Control
             SizeFlagsVertical = SizeFlags.ExpandFill
         };
         mapRegion.AddChild(globe);
+        _strategicGlobe = globe;
         globe.CanonicalTerritorySelectionChanged += OnCanonicalTerritorySelectionChanged;
+        _tacticalPreview = new TacticalContextPreview
+        {
+            Visible = false,
+            CustomMinimumSize = new Vector2(360f, 300f),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill
+        };
+        mapRegion.AddChild(_tacticalPreview);
+        _tacticalPreview.PhysicalTileInspected += OnPhysicalTileInspected;
         GD.Print("GA_UI_VIEWPORT_READY_02 parent=map-region sizing=expand-fill");
 
         var rightPanel = new PanelContainer { CustomMinimumSize = new Vector2(390f, 0f), SizeFlagsVertical = SizeFlags.ExpandFill };
@@ -99,9 +169,30 @@ public partial class Main : Control
         _tacticalBridgeStatus = new Label { Text = "Select a canonical territory to enable tactical context" };
         _tacticalBridgeStatus.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         rightLayout.AddChild(_tacticalBridgeStatus);
+        // MVP inspection in the existing right column; the tactical viewport stays unchanged.
+        var inspector = new VBoxContainer { Visible = false };
+        inspector.AddThemeConstantOverride("separation", 5);
+        var inspectorTitle = new Label { Text = "SELECTED PHYSICAL TILE" };
+        inspectorTitle.AddThemeFontSizeOverride("font_size", 15);
+        inspector.AddChild(inspectorTitle);
+        var inspectorSummary = new Label { Text = "Select a physical tile on the tactical map", AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        inspector.AddChild(inspectorSummary);
+        var inspectorTerrain = new Label { Text = "Tile attributes will appear here", AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        inspector.AddChild(inspectorTerrain);
+        rightLayout.AddChild(inspector);
+        _tacticalInspector = inspector;
+        _tacticalTileSummary = inspectorSummary;
+        _tacticalTileTerrain = inspectorTerrain;
+        GD.Print("GA_UI_TACTICAL_INSPECTOR_READY_R30 sidebar=true simulation_mutation=false");
         _openTacticalContext = new Button { Text = "OPEN TACTICAL CONTEXT", Disabled = true };
         _openTacticalContext.Pressed += OpenTacticalContext;
         rightLayout.AddChild(_openTacticalContext);
+        _returnStrategicContext = new Button { Text = "RETURN TO STRATEGIC GLOBE", Visible = false };
+        _returnStrategicContext.Pressed += ReturnStrategicContext;
+        rightLayout.AddChild(_returnStrategicContext);
+        _tacticalTileEdges = new CheckBox { Text = "TACTICAL TILE EDGES", ButtonPressed = false, Visible = false };
+        _tacticalTileEdges.Toggled += enabled => _tacticalPreview?.SetEdgesVisible(enabled);
+        rightLayout.AddChild(_tacticalTileEdges);
         var panelScroll = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         rightLayout.AddChild(panelScroll);
         var hud = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
@@ -130,6 +221,18 @@ public partial class Main : Control
         GD.Print("GA_UI_FOUNDATION_RESIZE_READY_02 responsive=true");
     }
 
+    // GA_LAYOUT_DIAGNOSTIC_02: capture geometry once on launch and after resize.
+    public override void _Process(double delta)
+    {
+        if (_layoutDiagnosticFrame is null || _layoutDiagnosticRoot is null) return;
+        var view = GetViewport();
+        if (view is null) return;
+        var current = view.GetVisibleRect().Size;
+        var signature = $"{current}/{Size}/{_layoutDiagnosticFrame.Size}/{_layoutDiagnosticRoot.Size}/{DisplayServer.WindowGetSize()}";
+        if (signature == _lastLoggedLayoutSignature) return;
+        _lastLoggedLayoutSignature = signature;
+        GD.Print($"GA_LAYOUT_DIAGNOSTIC_02 viewport={current} main={Size} frame={_layoutDiagnosticFrame.Size} root={_layoutDiagnosticRoot.Size} window={DisplayServer.WindowGetSize()} screen={DisplayServer.ScreenGetSize()}");
+    }
     private void ShowStatus()
     {
         if (_status is null) return;
