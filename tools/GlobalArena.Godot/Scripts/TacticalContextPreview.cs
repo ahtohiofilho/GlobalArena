@@ -49,6 +49,10 @@ public partial class TacticalContextPreview : SubViewportContainer
     private Vector3 _cameraTarget;
     // R23: projection-independent canonical prefetch, never a rendered chart or a camera owner.
     private PhysicalTacticalIncidenceMap? _cachedPhysicalMap;
+    // R35: expose the SAME authoritative map used by rendering, no duplicate identity model.
+    public PhysicalTacticalIncidenceMap? CanonicalPhysicalIncidenceMap => _cachedPhysicalMap;
+    public WorldGenerationResult? PresentedCoarseWorld { get; private set; }
+    public ulong? SelectedCanonicalPhysicalTileId => _selectedFineTileId;
     private readonly Dictionary<ulong, PhysicalTacticalResidentTransferPlan> _preparedTransfers = new();
     private readonly Dictionary<ulong, SphericalPoint3[]> _preparedCanonicalTileGeometry = new();
     // R25: pan intent is advisory; it selects existing canonical prefetch plans only.
@@ -713,6 +717,7 @@ public partial class TacticalContextPreview : SubViewportContainer
             new WorldGenerationRequest(new WorldSeed(20261012UL),
                 WorldGenerationVersion.Initial, refinement.FineParameters));
         _cachedCoarseGeometry = coarseWorld.StrategicSphericalGeometry;
+        PresentedCoarseWorld = coarseWorld;
         if (coarseWorld.StrategicTopology.Cells.Count != physical.CoarseTopology.Cells.Count ||
             fineWorld.StrategicTopology.Cells.Count != physical.FineTopology.Cells.Count)
             throw new InvalidOperationException("Physical and geometric topology counts differ.");

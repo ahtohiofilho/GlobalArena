@@ -1,4 +1,6 @@
 using Godot;
+using GlobalArena.Runtime;
+using GlobalArena.World;
 
 namespace GlobalArena.Godot;
 
@@ -19,6 +21,18 @@ public partial class Main : Control
     private VBoxContainer? _tacticalInspector;
     private Label? _tacticalTileSummary;
     private Label? _tacticalTileTerrain;
+    private Label? _tacticalTileRuntime;
+    private WorldState? _attachedRuntimeState;
+
+    // R35: only an external gameplay owner may supply a real runtime snapshot.
+    // Never create a demonstration WorldState inside the UI.
+    public void AttachRuntimeState(WorldState? state)
+    {
+        _attachedRuntimeState = state;
+        if (_tacticalPreview is not null && _tacticalPreview.SelectedCanonicalPhysicalTileId.HasValue)
+            OnPhysicalTileInspected(_tacticalPreview.SelectedCanonicalPhysicalTileId,
+                _tacticalTileSummary?.Text ?? "", _tacticalTileTerrain?.Text ?? "");
+    }
     private ulong? _bridgeSelection;
 
     private void OnCanonicalTerritorySelectionChanged(ulong? selectedId)
@@ -37,6 +51,34 @@ public partial class Main : Control
         if (_tacticalTileSummary is null || _tacticalTileTerrain is null) return;
         _tacticalTileSummary.Text = tileId.HasValue ? summary : "Select a physical tile on the tactical map";
         _tacticalTileTerrain.Text = tileId.HasValue ? terrain : "Tile attributes will appear here";
+        if (_tacticalTileRuntime is not null)
+        {
+            _tacticalTileRuntime.Text = "RUNTIME | Select a physical tile";
+            if (tileId.HasValue && _tacticalPreview?.CanonicalPhysicalIncidenceMap is { } incidence &&
+                _tacticalPreview.PresentedCoarseWorld is { } world)
+            {
+                var canonicalTile = new PhysicalTacticalTileId(
+                    incidence.Refinement.FineParameters, new StrategicCellId(tileId.Value));
+                var inspected = TacticalTileRuntimeInspector.Read(incidence, world, canonicalTile, _attachedRuntimeState);
+                string availability = inspected.Availability switch
+                {
+                    TacticalRuntimeAvailability.NoRuntimeState => "Runtime not connected",
+                    TacticalRuntimeAvailability.UnboundWorld => "Runtime world not bound",
+                    TacticalRuntimeAvailability.WorldMismatch => "Runtime/world signature mismatch",
+                    TacticalRuntimeAvailability.Bound => "Runtime connected",
+                    _ => "Runtime unavailable"
+                };
+                string incidentFacts = string.Join(" | ", inspected.IncidentControls.Select(fact =>
+                    inspected.Availability != TacticalRuntimeAvailability.Bound
+                        ? $"T{fact.StrategicCellId.Value}: unavailable"
+                        : fact.Controller.HasValue
+                            ? $"T{fact.StrategicCellId.Value}: civilization {fact.Controller.Value.Value}"
+                            : $"T{fact.StrategicCellId.Value}: no control"));
+                _tacticalTileRuntime.Text = $"RUNTIME | {availability}\n{incidentFacts}";
+                GD.Print($"GA_UI_TACTICAL_RUNTIME_R35 selected={tileId.Value} status={inspected.Availability} " +
+                    $"incidence_count={inspected.IncidentControls.Count} revision={(inspected.Revision.HasValue ? inspected.Revision.Value.ToString() : "none")} mutation=false");
+            }
+        }
         GD.Print($"GA_UI_TACTICAL_INSPECTOR_R30 selected={(tileId.HasValue ? tileId.Value.ToString() : "none")} source=canonical_read_only");
     }
 
@@ -179,11 +221,15 @@ public partial class Main : Control
         inspector.AddChild(inspectorSummary);
         var inspectorTerrain = new Label { Text = "Tile attributes will appear here", AutowrapMode = TextServer.AutowrapMode.WordSmart };
         inspector.AddChild(inspectorTerrain);
+        var inspectorRuntime = new Label { Text = "RUNTIME | Select a physical tile", AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        inspector.AddChild(inspectorRuntime);
         rightLayout.AddChild(inspector);
         _tacticalInspector = inspector;
         _tacticalTileSummary = inspectorSummary;
         _tacticalTileTerrain = inspectorTerrain;
+        _tacticalTileRuntime = inspectorRuntime;
         GD.Print("GA_UI_TACTICAL_INSPECTOR_READY_R30 sidebar=true simulation_mutation=false");
+        GD.Print("GA_UI_TACTICAL_RUNTIME_BRIDGE_READY_R35 state=unattached read_only=true");
         _openTacticalContext = new Button { Text = "OPEN TACTICAL CONTEXT", Disabled = true };
         _openTacticalContext.Pressed += OpenTacticalContext;
         rightLayout.AddChild(_openTacticalContext);

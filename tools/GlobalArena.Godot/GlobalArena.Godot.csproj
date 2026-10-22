@@ -8,5 +8,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../GlobalArena.World/GlobalArena.World.csproj" />
+    <ProjectReference Include="../../GlobalArena.Runtime/GlobalArena.Runtime.csproj" />
   </ItemGroup>
 </Project>
