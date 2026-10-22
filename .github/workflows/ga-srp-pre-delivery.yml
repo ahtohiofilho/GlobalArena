@@ -1,0 +1,45 @@
+name: GA-SRP pre-delivery (Windows PowerShell 5.1)
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/ga-srp/**'
+      - 'scripts/candidates/**'
+      - 'scripts/Test-GAScriptReliability.ps1'
+      - '.github/workflows/ga-srp-pre-delivery.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/ga-srp/**'
+      - 'scripts/candidates/**'
+      - 'scripts/Test-GAScriptReliability.ps1'
+      - '.github/workflows/ga-srp-pre-delivery.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pre-delivery:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Regression suite using official GA-SRP validator
+        shell: powershell
+        run: |
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File '.\scripts\ga-srp\Test-GASRPPreDelivery.ps1'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Validate exact candidates before release
+        shell: powershell
+        run: |
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File '.\scripts\ga-srp\Invoke-GASRPPreDelivery.ps1' -CandidatesDirectory '.\scripts\candidates' -OutputDirectory "$env:RUNNER_TEMP\ga-srp-result"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Publish only validated script artifacts
+        if: ${{ success() && hashFiles('scripts/candidates/*.ps1') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-srp-approved-scripts
+          path: ${{ runner.temp }}\ga-srp-result\approved\
+          if-no-files-found: error
+          retention-days: 14
