@@ -14,6 +14,8 @@ public partial class Main : Control
     private string _lastLoggedLayoutSignature = "";
     private Label? _tacticalBridgeStatus;
     private Button? _openTacticalContext;
+    // GA-UI-MVP: the globe-only calibration controls live in Main sidebar.
+    private readonly System.Collections.Generic.List<Control> _strategicCalibrationGroups = new();
     private Button? _returnStrategicContext;
     private CheckBox? _tacticalTileEdges;
     private GlobePreview? _strategicGlobe;
@@ -82,6 +84,15 @@ public partial class Main : Control
         GD.Print($"GA_UI_TACTICAL_INSPECTOR_R30 selected={(tileId.HasValue ? tileId.Value.ToString() : "none")} source=canonical_read_only");
     }
 
+    private void SetStrategicCalibrationControlsVisible(bool visible)
+    {
+        if (_strategicCalibrationGroups.Count != 2)
+            throw new System.InvalidOperationException("Strategic calibration control ownership is incomplete.");
+        foreach (var control in _strategicCalibrationGroups)
+            control.Visible = visible;
+        GD.Print($"GA_UI_STRATEGIC_CONTROL_OWNERSHIP_R1 context={(visible ? "STRATEGIC" : "TACTICAL")} groups=2 controls=3 visible={visible.ToString().ToLowerInvariant()}");
+    }
+
     private void OpenTacticalContext()
     {
         if (!_bridgeSelection.HasValue || _tacticalBridgeStatus is null ||
@@ -92,6 +103,7 @@ public partial class Main : Control
             _tacticalPreview.Open(_bridgeSelection.Value);
             _strategicGlobe.Visible = false;
             _tacticalPreview.Visible = true;
+            SetStrategicCalibrationControlsVisible(false);
             if (_tacticalInspector is not null) _tacticalInspector.Visible = true;
             _openTacticalContext.Visible = false;
             _returnStrategicContext.Visible = true;
@@ -118,6 +130,7 @@ public partial class Main : Control
         _tacticalPreview.Visible = false;
         if (_tacticalInspector is not null) _tacticalInspector.Visible = false;
         _strategicGlobe.Visible = true;
+        SetStrategicCalibrationControlsVisible(true);
         _openTacticalContext.Visible = true;
         _returnStrategicContext.Visible = false;
         if (_tacticalTileEdges is not null) _tacticalTileEdges.Visible = false;
@@ -253,11 +266,21 @@ public partial class Main : Control
                 bool calibrationRow = false;
                 foreach (var entry in row.GetChildren())
                     if (entry is Button control && control.Text.StartsWith("LAND ")) calibrationRow = true;
-                if (calibrationRow) row.Reparent(rightLayout);
+                if (calibrationRow)
+                {
+                    row.Reparent(rightLayout);
+                    _strategicCalibrationGroups.Add(row);
+                }
             }
             else if (child is Button next && next.Text == "NEXT SEED")
+            {
                 next.Reparent(rightLayout);
+                _strategicCalibrationGroups.Add(next);
+            }
         }
+        if (_strategicCalibrationGroups.Count != 2)
+            throw new System.InvalidOperationException("Expected LAND +/- row and NEXT SEED control.");
+        GD.Print("GA_UI_STRATEGIC_CONTROL_OWNERSHIP_READY_R1 groups=2 controls=3 context=STRATEGIC");
         GD.Print("GA_UI_CALIBRATION_ACCESS_READY_01 fixed-controls=true");
 
         _status = new Label { Text = "GA-UI-FOUNDATION-01  |  Map and context areas separated" };
