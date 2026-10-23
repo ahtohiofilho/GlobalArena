@@ -15,6 +15,9 @@ public partial class TacticalContextPreview : SubViewportContainer
     private Camera3D? _camera;
     private MeshInstance3D? _surface;
     private MeshInstance3D? _edges;
+    private MeshInstance3D? _territoryBoundaries;
+    private IReadOnlyList<PhysicalTacticalTerritoryBoundaryPath>? _cachedBoundaryPaths;
+    private bool _showTerritoryBoundaries = true;
     private MeshInstance3D? _selectedTileOutline;
     private Label? _information;
     private Label? _selection;
@@ -208,9 +211,8 @@ public partial class TacticalContextPreview : SubViewportContainer
             }
             else
             {
-                tint = owners.Contains(_activeFocus)
-                    ? new Color("#4aa6b2")
-                    : Color.FromHsv(((int)owners[0] % 11) / 11f, 0.27f, 0.70f);
+                // Keep the dormant post-MVP extension visually neutral as well.
+                tint = Color.FromHsv(((int)owners[0] % 11) / 11f, 0.27f, 0.70f);
             }
             _extendedPhysicalTiles.Add(id, (points, tint, owners, polygon));
             _renderedPhysicalTileIds.Add(id);
@@ -301,12 +303,15 @@ public partial class TacticalContextPreview : SubViewportContainer
         _world.AddChild(_surface);
         _edges = new MeshInstance3D { Visible = false };
         _world.AddChild(_edges);
+        _territoryBoundaries = new MeshInstance3D();
+        _world.AddChild(_territoryBoundaries);
         _extensionSurface = new MeshInstance3D();
         _world.AddChild(_extensionSurface);
         _extensionEdges = new MeshInstance3D { Visible = false };
         _world.AddChild(_extensionEdges);
         _surface.MaterialOverride = MakeMaterial();
         _edges.MaterialOverride = MakeMaterial();
+        _territoryBoundaries.MaterialOverride = MakeMaterial();
         _extensionSurface.MaterialOverride = _surface.MaterialOverride;
         _extensionEdges.MaterialOverride = _edges.MaterialOverride;
         // Presentation-only selection overlay. Never creates or replaces a physical tile ID.
@@ -407,6 +412,14 @@ public partial class TacticalContextPreview : SubViewportContainer
             GD.Print($"GA_TACTICAL_FRAME_TOGGLE cover={_coverViewport} focus={_activeFocus}");
         };
         terrainRow.AddChild(framingButton);
+        var bordersToggle = new CheckBox { Text = "TERRITORY LIMITS", ButtonPressed = true };
+        bordersToggle.Toggled += visible =>
+        {
+            _showTerritoryBoundaries = visible;
+            if (_territoryBoundaries is not null) _territoryBoundaries.Visible = visible;
+            GD.Print($"GA_TACTICAL_TERRITORY_BORDERS_TOGGLE visible={visible}");
+        };
+        terrainRow.AddChild(bordersToggle);
         AddChild(controls);
         GD.Print("GA_TACTICAL_LOCAL_VIEW_READY orthographic_camera=true pitch_from_horizontal_deg=45 equidistant_default=true framing_rings_default=2 resident_rings_default=3 zoom_ratio_to_ring2_cover=0.55 framing_cover_experimental_default=true");
         GD.Print("GA_TACTICAL_CAMERA_STATE_READY_R13 rotation_preserves_zoom=true probe_is_non_mutating=true");
@@ -442,7 +455,11 @@ public partial class TacticalContextPreview : SubViewportContainer
 
     private Vector3 Flatten(SphericalPoint3 point, float lift = 0f)
     {
-        var p = ConvertPoint(point);
+        return FlattenUnitVector(ConvertPoint(point), lift);
+    }
+
+    private Vector3 FlattenUnitVector(Vector3 p, float lift)
+    {
         var east = p.Dot(_basisEast);
         var north = p.Dot(_basisNorth);
         if (_equidistant)
@@ -667,7 +684,7 @@ public partial class TacticalContextPreview : SubViewportContainer
 
     public void Open(ulong focusValue)
     {
-        if (_camera is null || _surface is null || _edges is null || _information is null || _selection is null || _selectedTileOutline is null)
+        if (_camera is null || _surface is null || _edges is null || _territoryBoundaries is null || _information is null || _selection is null || _selectedTileOutline is null)
             throw new InvalidOperationException("Tactical preview is not ready.");
         ResetExtendedResident();
         if (_activeFocus != focusValue) _selectedFineTileId = null;
@@ -768,9 +785,8 @@ public partial class TacticalContextPreview : SubViewportContainer
             }
             else
             {
-                tint = owners.Contains(focus)
-                    ? new Color("#4aa6b2")
-                    : Color.FromHsv(((int)owners[0].Value % 11) / 11f, 0.27f, 0.70f);
+                // Diagnostic mode keeps per-incidence coloring without central-focus bias.
+                tint = Color.FromHsv(((int)owners[0].Value % 11) / 11f, 0.27f, 0.70f);
             }
             var center = Flatten(cell.Center);
             var polygon = new Vector2[cell.BoundaryVertexIds.Count];
@@ -825,12 +841,54 @@ public partial class TacticalContextPreview : SubViewportContainer
         if (lineMesh is null || edgeCount == 0)
             throw new InvalidOperationException("Canonical physical edge visualization missing.");
 
+        // Mesh-derived MVP border paths: canonical physical centers only.
+        // Presentation boundary is not an obstacle or a territory ownership rewrite.
+        var boundaryPaths = _cachedBoundaryPaths ??=
+            PhysicalTacticalTerritoryBoundaryMaterializer.Materialize(physical);
+        var boundaryTool = new SurfaceTool();
+        boundaryTool.Begin(Mesh.PrimitiveType.Lines);
+        var boundaryTint = new Color("#84969a");
+        int strategicEdgesRendered = 0;
+        int boundarySegments = 0;
+        const float surfaceEpsilon = 0.00035f;
+        foreach (var path in boundaryPaths)
+        {
+            var coarseEdge = physical.CoarseTopology.Edges[checked((int)path.StrategicEdgeId.Value - 1)];
+            if (!coarseEdge.IncidentCellIds.Any(selectedStrategic.Contains)) continue;
+            bool contributed = false;
+            for (int index = 1; index < path.FineCellIds.Count; index++)
+            {
+                var firstId = path.FineCellIds[index - 1];
+                var secondId = path.FineCellIds[index];
+                // Only overlay physical cells actually resident in this chart.
+                if (!selectedPhysical.Contains(firstId) || !selectedPhysical.Contains(secondId)) continue;
+                var firstCenter = geometry.GetCell(firstId).Center;
+                var secondCenter = geometry.GetCell(secondId).Center;
+                if (_equidistant &&
+                    (ConvertPoint(firstCenter).Dot(_surfaceNormal) <= 0.00001f ||
+                     ConvertPoint(secondCenter).Dot(_surfaceNormal) <= 0.00001f)) continue;
+                AddColored(boundaryTool, Flatten(firstCenter, surfaceEpsilon), boundaryTint);
+                AddColored(boundaryTool, Flatten(secondCenter, surfaceEpsilon), boundaryTint);
+                boundarySegments++;
+                contributed = true;
+            }
+            if (contributed) strategicEdgesRendered++;
+        }
+        var boundaryMesh = boundaryTool.Commit();
+        boundaryTool.Dispose();
+        if (boundaryMesh is null || strategicEdgesRendered == 0 || boundarySegments == 0)
+            throw new InvalidOperationException("Mesh-aligned territory boundary overlay is empty.");
+
         var oldSurface = _surface.Mesh;
         var oldEdges = _edges.Mesh;
+        var oldBoundaries = _territoryBoundaries.Mesh;
         _surface.Mesh = faceMesh;
         _edges.Mesh = lineMesh;
+        _territoryBoundaries.Mesh = boundaryMesh;
+        _territoryBoundaries.Visible = _showTerritoryBoundaries;
         oldSurface?.Dispose();
         oldEdges?.Dispose();
+        oldBoundaries?.Dispose();
         // Preserve the optional edge toggle while changing rings or projection.
         SetEdgesVisible(_edges.Visible);
 
@@ -852,6 +910,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         // A tile outside the new region is deselected rather than inventing an alias.
         SelectPhysicalTile(_selectedFineTileId);
         GD.Print($"GA_TACTICAL_LOCAL_OPEN focus={focusValue} framing_rings={_ringCount} resident_rings={_residentRingCount} frame_tiles={framingTiles.Count} projection={(_equidistant ? "Equidistant" : "Orthographic")} regions={selectedStrategic.Count} physical_tiles={selectedPhysical.Count} triangles={countTriangles} edges={edgeCount} parameters=G(3,0)>G(18,0) duplicate_ids=0");
+        GD.Print($"GA_TACTICAL_TERRITORY_BORDERS_MESH_R1 focus={focusValue} strategic_edges={strategicEdgesRendered} segments={boundarySegments} source=physical_centers surface_epsilon=0.00035 toggle={_showTerritoryBoundaries} movement_unchanged=true");
         GD.Print($"GA_TACTICAL_TERRAIN_01C focus={focusValue} visible={_showExperimentalTerrain} seed={TerrainExperimentSeed} land_target=35 physical_reference_cached={_terrainReference is not null} strategic_globe_v1_unchanged=true");
     }
 
