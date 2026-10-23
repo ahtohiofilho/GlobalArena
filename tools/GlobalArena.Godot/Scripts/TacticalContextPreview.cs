@@ -31,7 +31,7 @@ public partial class TacticalContextPreview : SubViewportContainer
     private readonly List<(ulong Id, Vector2[] Polygon, ulong[] Owners, int Degree, int Ring)> _polygons = new();
     // Framing geometry and resident geometry have separate scopes.
     private readonly List<Vector2[]> _framingPolygons = new();
-    private const float InitialZoomToRing2Cover = 0.55f;
+    private const float InitialZoomToRing2Cover = 0.95f;
     private int _residentRingCount = 3;
     private Vector3 _basisEast;
     private Vector3 _basisNorth;
@@ -343,6 +343,9 @@ public partial class TacticalContextPreview : SubViewportContainer
             MouseFilter = MouseFilterEnum.Ignore
         };
         _selection.AddThemeColorOverride("font_color", new Color("#9cbdc9"));
+        // Full physical-tile text is presented in the existing sidebar inspector.
+        // Keep the label data source live for PhysicalTileInspected, but not over terrain.
+        _selection.Visible = false;
         AddChild(_selection);
         _terrainDetails = new Label
         {
@@ -351,10 +354,12 @@ public partial class TacticalContextPreview : SubViewportContainer
             MouseFilter = MouseFilterEnum.Ignore
         };
         _terrainDetails.AddThemeColorOverride("font_color", new Color("#f1d7a3"));
+        // Terrain details remain available to the sidebar via the existing event.
+        _terrainDetails.Visible = false;
         AddChild(_terrainDetails);
 
         // Research controls live inside the tactical view; Main.cs and GlobePreview.cs remain untouched.
-        var controls = new VBoxContainer { Position = new Vector2(12f, 100f) };
+        var controls = new VBoxContainer { Position = new Vector2(12f, 48f) };
         controls.AddThemeConstantOverride("separation", 3);
         var primaryRow = new HBoxContainer();
         primaryRow.AddThemeConstantOverride("separation", 7);
@@ -905,7 +910,8 @@ public partial class TacticalContextPreview : SubViewportContainer
         UpdateCameraOrientation();
         UpdateCameraFraming();
         PrepareAdjacentCanonicalData(physical, focus, geometry, physicalTiles);
-        _information.Text = $"TACTICAL LOCAL | strategic {focusValue} | frame {_ringCount} / resident {_residentRingCount} rings | {selectedStrategic.Count} regions, {selectedPhysical.Count} physical tiles | {(_equidistant ? "EQUIDISTANT" : "DIRECT")} | {(_showExperimentalTerrain ? "01C EXP" : "IDS")}";
+        // Constrain the on-map status to concise navigation data. Full diagnostics stay in GD.Print.
+        _information.Text = $"TACTICAL | territory {focusValue} | G(18,0) | {(_equidistant ? "EQUIDISTANT" : "DIRECT")} | frame {_ringCount}";
         // Recompute the presentation-only selection outline after a ring or projection change.
         // A tile outside the new region is deselected rather than inventing an alias.
         SelectPhysicalTile(_selectedFineTileId);
