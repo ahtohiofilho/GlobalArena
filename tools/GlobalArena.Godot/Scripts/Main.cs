@@ -20,6 +20,9 @@ public partial class Main : Control
     private CheckBox? _tacticalTileEdges;
     private GlobePreview? _strategicGlobe;
     private TacticalContextPreview? _tacticalPreview;
+    // Presentation-only sidebar ownership for map-free tactical controls.
+    private VBoxContainer? _tacticalHudPanel;
+    private VBoxContainer? _strategicHudPanel;
     private VBoxContainer? _tacticalInspector;
     private Label? _tacticalTileSummary;
     private Label? _tacticalTileTerrain;
@@ -103,6 +106,8 @@ public partial class Main : Control
             _tacticalPreview.Open(_bridgeSelection.Value);
             _strategicGlobe.Visible = false;
             _tacticalPreview.Visible = true;
+            if (_strategicHudPanel is not null) _strategicHudPanel.Visible = false;
+            if (_tacticalHudPanel is not null) _tacticalHudPanel.Visible = true;
             SetStrategicCalibrationControlsVisible(false);
             if (_tacticalInspector is not null) _tacticalInspector.Visible = true;
             _openTacticalContext.Visible = false;
@@ -128,6 +133,8 @@ public partial class Main : Control
             _openTacticalContext is null || _returnStrategicContext is null ||
             _tacticalBridgeStatus is null) return;
         _tacticalPreview.Visible = false;
+        if (_tacticalHudPanel is not null) _tacticalHudPanel.Visible = false;
+        if (_strategicHudPanel is not null) _strategicHudPanel.Visible = true;
         if (_tacticalInspector is not null) _tacticalInspector.Visible = false;
         _strategicGlobe.Visible = true;
         SetStrategicCalibrationControlsVisible(true);
@@ -263,12 +270,21 @@ public partial class Main : Control
         rightLayout.AddChild(_tacticalTileEdges);
         var panelScroll = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         rightLayout.AddChild(panelScroll);
+        // GA_UI_TACTICAL_HUD_SIDEBAR_R1: one scroll region, distinct context-only panels.
         var hud = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         hud.AddThemeConstantOverride("separation", 8);
         panelScroll.AddChild(hud);
-        globe.TransferHud(hud);
+        var tacticalHud = new VBoxContainer { Visible = false, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        tacticalHud.AddThemeConstantOverride("separation", 5);
+        hud.AddChild(tacticalHud);
+        _tacticalPreview.TransferHud(tacticalHud);
+        _tacticalHudPanel = tacticalHud;
+        var strategicHud = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        hud.AddChild(strategicHud);
+        globe.TransferHud(strategicHud);
+        _strategicHudPanel = strategicHud;
         // Keep the calibration buttons visible even when the context scrolls.
-        foreach (var child in hud.GetChildren())
+        foreach (var child in strategicHud.GetChildren())
         {
             if (child is HBoxContainer row)
             {

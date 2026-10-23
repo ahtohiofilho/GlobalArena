@@ -20,6 +20,8 @@ public partial class TacticalContextPreview : SubViewportContainer
     private bool _showTerritoryBoundaries = true;
     private MeshInstance3D? _selectedTileOutline;
     private Label? _information;
+    private VBoxContainer? _hudControls;
+    private bool _hudTransferred;
     private Label? _selection;
     private Label? _terrainDetails;
     private WorldGenerationV2PhysicalComposition? _terrainReference;
@@ -358,8 +360,9 @@ public partial class TacticalContextPreview : SubViewportContainer
         _terrainDetails.Visible = false;
         AddChild(_terrainDetails);
 
-        // Research controls live inside the tactical view; Main.cs and GlobePreview.cs remain untouched.
+        // Controls begin in the tactical view and are transferred to the sidebar by Main.
         var controls = new VBoxContainer { Position = new Vector2(12f, 48f) };
+        _hudControls = controls;
         controls.AddThemeConstantOverride("separation", 3);
         var primaryRow = new HBoxContainer();
         primaryRow.AddThemeConstantOverride("separation", 7);
@@ -433,6 +436,30 @@ public partial class TacticalContextPreview : SubViewportContainer
         GD.Print("GA_TACTICAL_PREFETCH_INTENT_COMPONENT_READY_R25 directional=true advisory_only=true chart_unchanged=true");
         GD.Print("GA_TACTICAL_RESIDENT_EXTENSION_COMPONENT_READY_R27 additive=true original_projection=true safe_horizon_rejection=true base_chart_unchanged=true");
         GD.Print($"GA_TACTICAL_MVP_SCOPE_READY_R29 expansion_enabled={EnablePostMvpResidentExpansion.ToString().ToLowerInvariant()} ring_buffer={_residentRingCount} prefetch_intent=advisory");
+    }
+
+    // GA_UI_TACTICAL_HUD_SIDEBAR_R1: move existing controls, never recreate handlers.
+    // The map retains exclusive responsibility for rendering and tile interaction.
+    public void TransferHud(VBoxContainer sidebar)
+    {
+        ArgumentNullException.ThrowIfNull(sidebar);
+        if (_hudTransferred || _hudControls is null || _information is null)
+            throw new InvalidOperationException("Tactical HUD transfer requires a live untransferred view.");
+        if (_hudControls.GetChildCount() != 3 ||
+            _hudControls.GetChild(2) is not HBoxContainer terrainRow ||
+            terrainRow.GetChildCount() != 3 ||
+            terrainRow.GetChild(2) is not CheckBox boundaries ||
+            boundaries.Text != "TERRITORY LIMITS")
+            throw new InvalidOperationException("Unexpected tactical controls; refusing unsafe HUD transfer.");
+        // Three buttons do not fit in the 390px sidebar; keep the border toggle on its own row.
+        boundaries.Reparent(_hudControls);
+        _information.Reparent(sidebar);
+        _information.Position = Vector2.Zero;
+        _information.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _hudControls.Reparent(sidebar);
+        _hudControls.Position = Vector2.Zero;
+        _hudTransferred = true;
+        GD.Print("GA_UI_TACTICAL_HUD_SIDEBAR_READY_R1 toolbar=sidebar map_overlay=false handlers_preserved=true gameplay_unchanged=true");
     }
 
     private static StandardMaterial3D MakeMaterial() => new()
