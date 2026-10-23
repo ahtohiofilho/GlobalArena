@@ -182,8 +182,17 @@ public partial class Main : Control
         content.AddThemeConstantOverride("separation", 12);
         root.AddChild(content);
 
+        // GA-UI-MVP-SQUARE: the layout column stretches; its map remains 1:1.
+        // AspectRatioContainer defaults to centered FIT, without clipping either viewport.
+        var squareMapSlot = new AspectRatioContainer
+        {
+            Ratio = 1f,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill
+        };
+        content.AddChild(squareMapSlot);
         var mapRegion = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
-        content.AddChild(mapRegion);
+        squareMapSlot.AddChild(mapRegion);
         var globe = new GlobePreview
         {
             CustomMinimumSize = new Vector2(360f, 300f),
