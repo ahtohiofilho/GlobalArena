@@ -860,11 +860,34 @@ public partial class TacticalContextPreview : SubViewportContainer
         {
             var coarseEdge = physical.CoarseTopology.Edges[checked((int)path.StrategicEdgeId.Value - 1)];
             if (!coarseEdge.IncidentCellIds.Any(selectedStrategic.Contains)) continue;
-            bool contributed = false;
-            for (int index = 1; index < path.FineCellIds.Count; index++)
+            // VISUAL-ONLY SHAPE R1: 3-owner junction -> 2-owner edge midpoint ->
+            // 3-owner junction. Do not change physical traversal or territory incidence.
+            if (path.FineCellIds.Count != 5)
+                throw new InvalidOperationException("Territory visual anchors require the audited five-center MVP path.");
+            var visualAnchors = new[]
             {
-                var firstId = path.FineCellIds[index - 1];
-                var secondId = path.FineCellIds[index];
+                path.FineCellIds[0],
+                path.FineCellIds[2],
+                path.FineCellIds[4]
+            };
+            var midpointOwners = physical.TileIncidences[checked((int)visualAnchors[1].Value - 1)]
+                .IncidentCoarseCellIds;
+            if (!midpointOwners.SequenceEqual(coarseEdge.IncidentCellIds))
+                throw new InvalidOperationException("Visual territory midpoint must share the expected two strategic cells.");
+            for (int junctionIndex = 0; junctionIndex < 2; junctionIndex++)
+            {
+                var expectedJunction = physical.CoarseTopology.Vertices[
+                    checked((int)coarseEdge.IncidentVertexIds[junctionIndex].Value - 1)].IncidentCellIds;
+                var actualJunction = physical.TileIncidences[
+                    checked((int)visualAnchors[junctionIndex * 2].Value - 1)].IncidentCoarseCellIds;
+                if (!actualJunction.SequenceEqual(expectedJunction))
+                    throw new InvalidOperationException("Visual territory junction must match the expected three-way incidence.");
+            }
+            bool contributed = false;
+            for (int index = 1; index < visualAnchors.Length; index++)
+            {
+                var firstId = visualAnchors[index - 1];
+                var secondId = visualAnchors[index];
                 // Only overlay physical cells actually resident in this chart.
                 if (!selectedPhysical.Contains(firstId) || !selectedPhysical.Contains(secondId)) continue;
                 var firstCenter = geometry.GetCell(firstId).Center;
@@ -917,6 +940,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         SelectPhysicalTile(_selectedFineTileId);
         GD.Print($"GA_TACTICAL_LOCAL_OPEN focus={focusValue} framing_rings={_ringCount} resident_rings={_residentRingCount} frame_tiles={framingTiles.Count} projection={(_equidistant ? "Equidistant" : "Orthographic")} regions={selectedStrategic.Count} physical_tiles={selectedPhysical.Count} triangles={countTriangles} edges={edgeCount} parameters=G(3,0)>G(18,0) duplicate_ids=0");
         GD.Print($"GA_TACTICAL_TERRITORY_BORDERS_MESH_R1 focus={focusValue} strategic_edges={strategicEdgesRendered} segments={boundarySegments} source=physical_centers surface_epsilon=0.00035 toggle={_showTerritoryBoundaries} movement_unchanged=true");
+        GD.Print($"GA_TACTICAL_TERRITORY_SHAPE_ANCHORS_R1 focus={focusValue} anchors=3-2-3 segments={boundarySegments} feature=visual_only highlight=false movement_unchanged=true");
         GD.Print($"GA_TACTICAL_TERRAIN_01C focus={focusValue} visible={_showExperimentalTerrain} seed={TerrainExperimentSeed} land_target=35 physical_reference_cached={_terrainReference is not null} strategic_globe_v1_unchanged=true");
     }
 
