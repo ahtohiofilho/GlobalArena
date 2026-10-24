@@ -87,8 +87,11 @@ public sealed class PhasedTurnResolutionEngine : ITurnResolutionEngine
                 var entry = result.EventLog.Entries[index];
                 if (entry.EventId != simulationEvent.Id)
                     throw new InvalidOperationException("Phase event log identity differs from ordered events: " + id);
-                if (simulationEvent.Id.OriginCommandId.Turn != input.Context.Turn)
+                if (simulationEvent.Id.Turn != input.Context.Turn)
                     throw new InvalidOperationException("Phase event belongs to a different turn: " + id);
+                if (simulationEvent.Id.OriginKind == EventOriginKind.System &&
+                    !string.Equals(simulationEvent.Id.SystemPhaseId, id, StringComparison.Ordinal))
+                    throw new InvalidOperationException("System event declares the wrong originating phase: " + id);
                 if (!observedEventIds.Add(simulationEvent.Id))
                     throw new InvalidOperationException("Repeated event identity across phases: " + id);
                 allEvents.Add(simulationEvent);
