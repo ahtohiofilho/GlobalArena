@@ -4,11 +4,11 @@ public sealed class TurnPolicyResolutionGate
     : ITurnPolicyResolutionGate
 {
     private readonly ITurnPolicy _turnPolicy;
-    private readonly TurnResolver _turnResolver;
+    private readonly ITurnResolutionEngine _turnResolver;
 
     public TurnPolicyResolutionGate(
         ITurnPolicy turnPolicy,
-        TurnResolver turnResolver)
+        ITurnResolutionEngine turnResolver)
     {
         ArgumentNullException.ThrowIfNull(turnPolicy);
         ArgumentNullException.ThrowIfNull(turnResolver);

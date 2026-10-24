@@ -3,7 +3,7 @@ using GlobalArena.Kernel;
 
 namespace GlobalArena.Simulation;
 
-public sealed class TurnResolver
+public sealed class TurnResolver : ITurnResolutionEngine
 {
     private readonly ISimulationCommandBatchProcessor _commandBatchProcessor;
     private readonly ISimulationEventOrderer _eventOrderer;
