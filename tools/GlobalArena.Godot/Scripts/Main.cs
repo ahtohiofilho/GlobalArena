@@ -40,6 +40,14 @@ public partial class Main : Control
             OnPhysicalTileInspected(_tacticalPreview.SelectedCanonicalPhysicalTileId,
                 _tacticalTileSummary?.Text ?? "", _tacticalTileTerrain?.Text ?? "");
     }
+    // R39: ingress for an external authoritative snapshot. Godot never resolves a turn.
+    // CanonicalGameSession validates world binding and revision before publication.
+    public void ReceiveAuthoritativeSnapshot(WorldState next)
+    {
+        if (_canonicalSession is null)
+            throw new System.InvalidOperationException("Canonical session is not initialized.");
+        _canonicalSession.AcceptSnapshot(next);
+    }
     private ulong? _bridgeSelection;
 
     private void OnCanonicalTerritorySelectionChanged(ulong? selectedId)
@@ -333,6 +341,14 @@ public partial class Main : Control
     // GA_LAYOUT_DIAGNOSTIC_02: capture geometry once on launch and after resize.
     public override void _Process(double delta)
     {
+        // Pull accepted snapshots on the Godot thread; no polling of simulation rules.
+        // Reference comparison also detects a new snapshot with an unchanged revision.
+        var latest = _canonicalSession?.Snapshot;
+        if (latest is not null && !object.ReferenceEquals(_attachedRuntimeState, latest))
+        {
+            AttachRuntimeState(latest);
+            GD.Print($"GA_UI_RUNTIME_SNAPSHOT_REFRESH_R39 revision={latest.Revision} presentation_only=true");
+        }
         if (_layoutDiagnosticFrame is null || _layoutDiagnosticRoot is null) return;
         var view = GetViewport();
         if (view is null) return;
