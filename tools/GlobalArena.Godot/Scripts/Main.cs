@@ -28,6 +28,8 @@ public partial class Main : Control
     private Label? _tacticalTileTerrain;
     private Label? _tacticalTileRuntime;
     private WorldState? _attachedRuntimeState;
+    // R38: composition owner, not a second simulation state inside the renderer.
+    private CanonicalGameSession? _canonicalSession;
 
     // R35: only an external gameplay owner may supply a real runtime snapshot.
     // Never create a demonstration WorldState inside the UI.
@@ -218,6 +220,19 @@ public partial class Main : Control
         };
         mapRegion.AddChild(_tacticalPreview);
         _tacticalPreview.PhysicalTileInspected += OnPhysicalTileInspected;
+        // R38: the session owns a real canonical bound WorldState. Zero controllers
+        // means "no control", not invented gameplay. Worldgen 01C stays experimental.
+        _canonicalSession = CanonicalGameSession.Start(
+            new WorldGenerationRequest(new WorldSeed(20261012UL),
+                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)));
+        AttachRuntimeState(_canonicalSession.Snapshot);
+        if (_canonicalSession.Snapshot.WorldBinding !=
+            RuntimeWorldBinding.FromGeneratedWorld(_canonicalSession.GeneratedWorld))
+            throw new System.InvalidOperationException("Canonical session signature mismatch.");
+        GD.Print($"GA_UI_TACTICAL_SESSION_READY_R38 bound=true revision={_canonicalSession.Snapshot.Revision} " +
+            $"civilizations={_canonicalSession.Snapshot.Civilizations.Civilizations.Count} " +
+            $"controls={_canonicalSession.Snapshot.Territory.Controls.Count} " +
+            "read_only_ui=true source=canonical_generated_world");
         GD.Print("GA_UI_VIEWPORT_READY_02 parent=map-region sizing=expand-fill");
 
         var rightPanel = new PanelContainer { CustomMinimumSize = new Vector2(390f, 0f), SizeFlagsVertical = SizeFlags.ExpandFill };
