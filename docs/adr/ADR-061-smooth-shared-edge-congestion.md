@@ -48,3 +48,7 @@ The example of pack animals on a stone road illustrates the intended behavior: c
 - Explicit review of the fact that this PR offers the **cost function and its exact aggregation**, not yet the new market optimizer that internalizes it.
 
 **Previous candidate rejected:** the first PR #12 proposal used an edge-specific hard mass capacity and reported overload at a fixed value. It was replaced on the same unmerged branch because it contradicted the intended soft, economic saturation model.
+
+## Forward compatibility note — ADR-064 Proposed (2026-10-26)
+
+The reference to ADR-053's **abstract** transport model and the lack of mode classes describe the implemented scope at the time of PR #12, not a prohibition on future technology-identifiable built infrastructure. [ADR-064](ADR-064-technology-persistent-transport-and-continuous-endogenous-pricing.md) proposes technology-persistent asset/service contracts while preserving this ADR's exact continuous congestion law, exact integral, and absence of a congestion threshold. A unit-price value derived from the curve is not a permanent, arbitrary price substituted for the curve. ADR-064 is not yet accepted and introduces no change to this implemented evaluator.
