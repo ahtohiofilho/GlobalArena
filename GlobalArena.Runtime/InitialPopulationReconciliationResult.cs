@@ -2,8 +2,8 @@ namespace GlobalArena.Runtime;
 
 /// <summary>
 /// Immutable-view validated initial census snapshot. This is an explicit
-/// external bootstrap result: the resident census is NOT part of the
-/// authoritative WorldState until a separate demographic state contract exists.
+/// external bootstrap result. Call RuntimePopulationMaterializer.Materialize
+/// to explicitly attach it to authoritative WorldState population state.
 /// </summary>
 public sealed class InitialPopulationReconciliationResult
 {
