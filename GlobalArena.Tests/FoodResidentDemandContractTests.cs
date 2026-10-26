@@ -1,6 +1,7 @@
 using GlobalArena.Kernel;
 using GlobalArena.Runtime;
 using GlobalArena.Simulation;
+using GlobalArena.World;
 
 namespace GlobalArena.Tests;
 
@@ -54,8 +55,8 @@ public sealed class FoodResidentDemandContractTests
     {
         var list = new List<FoodCommodityDefinition>
         {
-            new(new CommodityId(9U), "legumes"),
-            new(new CommodityId(7U), "grain")
+            new(new CommodityId(9U), "legumes", 2_000UL),
+            new(new CommodityId(7U), "grain", 1_000UL)
         };
         var catalog = new FoodCommodityCatalog(list);
         list.Clear();
@@ -203,7 +204,7 @@ public sealed class FoodResidentDemandContractTests
         Assert.Empty(empty);
 
         var catalog = Catalog();
-        Assert.Empty(new FoodResidentDemandResolver().Resolve(State(), empty));
+        Assert.Empty(new EconomicResidentDemandResolver().Resolve(State(), empty));
         Assert.Equal(2, catalog.Commodities.Count);
     }
 
