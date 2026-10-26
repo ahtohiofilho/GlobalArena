@@ -1,24 +1,23 @@
 using GlobalArena.Runtime;
-using GlobalArena.World;
 
 namespace GlobalArena.Simulation;
 
 /// <summary>
-/// Explicit food identity for the existing commodity-flow system. The food
-/// baseline measures physical quantity in kilograms; one kilogram is one
-/// fixed-point whole commodity unit. This is a declared interpretation for
-/// inputs using this contract, not an inference about historical test flows.
-/// It does not imply nutritional energy or consumption satisfaction.
+/// Explicit food identity and physical mass scale for a whole abstract
+/// commodity flow unit. GramsPerFlowUnit is caller-provided: flow units are
+/// not assumed to be kilograms or tonnes by convention. This does not define
+/// caloric value, actual consumption, or persistent physical inventory.
 /// </summary>
 public sealed class FoodCommodityDefinition
 {
-    public const ulong RawQuantityPerKilogram =
-        (ulong)StrategicScalarField.Denominator;
-
     public CommodityId CommodityId { get; }
     public string StableKey { get; }
+    public ulong GramsPerFlowUnit { get; }
 
-    public FoodCommodityDefinition(CommodityId commodityId, string stableKey)
+    public FoodCommodityDefinition(
+        CommodityId commodityId,
+        string stableKey,
+        ulong gramsPerFlowUnit)
     {
         if (!commodityId.IsValid)
             throw new ArgumentException(
@@ -35,7 +34,13 @@ public sealed class FoodCommodityDefinition
                 "Food stable keys must be nonempty lowercase ASCII letters, digits or hyphens.",
                 nameof(stableKey));
 
+        if (gramsPerFlowUnit == 0UL)
+            throw new ArgumentOutOfRangeException(
+                nameof(gramsPerFlowUnit),
+                "Food mass per whole flow unit must be positive.");
+
         CommodityId = commodityId;
         StableKey = stableKey;
+        GramsPerFlowUnit = gramsPerFlowUnit;
     }
 }
