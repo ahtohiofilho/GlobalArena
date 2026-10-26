@@ -271,12 +271,9 @@ public sealed class EconomicTurnLockedFreightMarketTests
             new[] { new EconomicSupplyFlow(P(1), C(7),
                 EconomicActivityKind.Agriculture, 3 * One) },
             new[] { new EconomicDemandFlow(P(3), C(7), 3 * One) });
-        var values = new[] { new EconomicTurnCommodityValueOffer(P(3), C(7),
-            new LinearCommodityMarketValue(300_000, 300_000)) };
-        // The curve above may become negative past one unit, so constrain
-        // the per-turn demand to a range in which the exact function is valid.
-        values[0] = new EconomicTurnCommodityValueOffer(P(3), C(7),
-            new LinearCommodityMarketValue(400_000, 120_000));
+        var values = new[] { new EconomicTurnCommodityValueOffer(
+            P(3), C(7), new LinearCommodityMarketValue(
+                400_000, 120_000)) };
         var quotes = new[] { Quote(1, 1, 3, 900) };
         var reservations = new[] { new EconomicTurnSourceReservation(
             P(1), C(7), EconomicActivityKind.Agriculture, 20_000) };
