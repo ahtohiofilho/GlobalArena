@@ -110,7 +110,7 @@ public sealed class EconomicCongestionPricedFoodMarketTests
         WorldGenerationResult world, WorldState state,
         ulong referenceGrams = 1_000UL,
         ulong baseCost = 0UL,
-        ulong congestionCost = 100UL) =>
+        ulong congestionCost = 10UL) =>
         Route(world, state).EdgePath.Select(edge =>
             new FoodStrategicEdgeCongestionProfile(
                 edge, referenceGrams, baseCost, congestionCost)).ToArray();
@@ -206,7 +206,7 @@ public sealed class EconomicCongestionPricedFoodMarketTests
                     2_000_000UL)
             });
         var result = Resolve(world, state, single,
-            Bids().Take(1), Offers().Take(1),
+            Bids(grainPrice: 9_000_000UL).Take(1), Offers().Take(1),
             Profiles(world, state, referenceGrams: 100UL, congestionCost: 1UL));
 
         Assert.Equal(2_000_000UL,
@@ -240,7 +240,7 @@ public sealed class EconomicCongestionPricedFoodMarketTests
 
         Assert.Equal(new BigInteger(900_000), selection.RawGrossTradeValue.Numerator);
         Assert.Equal(BigInteger.One, selection.RawGrossTradeValue.Denominator);
-        Assert.Equal(new BigInteger(100_000 * hops),
+        Assert.Equal(new BigInteger(10_000 * hops),
             selection.RawAdditionalCongestionCost.Numerator *
                 3 / selection.RawAdditionalCongestionCost.Denominator);
         Assert.True(selection.RawNetTradeReturn.Numerator > 0);
