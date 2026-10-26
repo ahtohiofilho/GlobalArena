@@ -1,12 +1,14 @@
 using GlobalArena.Runtime;
+using GlobalArena.World;
 
 namespace GlobalArena.Simulation;
 
 /// <summary>
-/// Converts caller-supplied food identity and per-resident mass requirements
-/// into the already accepted resident-demand input contract. No rate or
-/// population is synthesized. Result may feed the optional resident-market
-/// turn phase unchanged.
+/// Converts caller-supplied food requirements in grams per resident/cycle to
+/// the accepted resident-demand fixed-point rate. Demands can be passed to
+/// the opt-in resident market phase. Inexact conversions, unavailable food
+/// identities and rates exceeding the accepted rate range fail closed.
+/// No consumption, nutritional satisfaction or physical delivery is asserted.
 /// </summary>
 public static class FoodResidentDemandProfileMaterializer
 {
@@ -48,7 +50,7 @@ public static class FoodResidentDemandProfileMaterializer
                     "Duplicate food requirement point/commodity key.",
                     nameof(requirements));
 
-            if (!catalog.Contains(row.CommodityId))
+            if (!catalog.TryGet(row.CommodityId, out var food))
                 throw new InvalidOperationException(
                     $"Food requirement references an unregistered food commodity {row.CommodityId.Value}.");
 
@@ -56,10 +58,25 @@ public static class FoodResidentDemandProfileMaterializer
                 throw new InvalidOperationException(
                     $"Food requirement references an unknown economic point {row.EconomicPointId.Value}.");
 
+            // One whole flow unit equals food.GramsPerFlowUnit grams. The
+            // existing resolver uses fixed-point whole flow units.
+            var numerator = (UInt128)row.GramsPerResidentPerCycle
+                * (ulong)StrategicScalarField.Denominator;
+            var denominator = food!.GramsPerFlowUnit;
+            if (numerator % denominator != 0U)
+                throw new InvalidOperationException(
+                    "Food grams-per-resident cannot be represented exactly in this commodity's flow-unit scale.");
+
+            var raw = numerator / denominator;
+            if (raw == 0U ||
+                raw > (ulong)StrategicScalarField.Denominator)
+                throw new InvalidOperationException(
+                    "Food requirement exceeds the supported normalized per-resident demand rate.");
+
             profiles[index] = new EconomicResidentDemandProfile(
                 row.EconomicPointId,
                 row.CommodityId,
-                row.RawKilogramsPerResidentPerCycle);
+                checked((long)raw));
         }
 
         return Array.AsReadOnly(profiles);
