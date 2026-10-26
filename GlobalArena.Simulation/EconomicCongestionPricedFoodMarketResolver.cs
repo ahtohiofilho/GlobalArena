@@ -33,7 +33,9 @@ public sealed class EconomicCongestionPricedFoodMarketResolver
         IEnumerable<EconomicCongestionRouteOffer> offers,
         FoodCommodityCatalog catalog,
         IEnumerable<FoodStrategicEdgeCongestionProfile> profiles,
-        EconomicCongestionMarketSearchPolicy searchPolicy)
+        EconomicCongestionMarketSearchPolicy searchPolicy,
+        StrategicCongestionRoutingMode routingMode =
+            StrategicCongestionRoutingMode.FixedShortestHop)
     {
         ArgumentNullException.ThrowIfNull(generatedWorld);
         ArgumentNullException.ThrowIfNull(worldState);
@@ -44,6 +46,10 @@ public sealed class EconomicCongestionPricedFoodMarketResolver
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentNullException.ThrowIfNull(profiles);
         ArgumentNullException.ThrowIfNull(searchPolicy);
+
+        if (routingMode != StrategicCongestionRoutingMode.FixedShortestHop &&
+            routingMode != StrategicCongestionRoutingMode.AdaptiveLowestMarginalCost)
+            throw new ArgumentOutOfRangeException(nameof(routingMode));
 
         if (worldState.WorldBinding is null ||
             worldState.WorldBinding != RuntimeWorldBinding.FromGeneratedWorld(generatedWorld))
@@ -112,6 +118,23 @@ public sealed class EconomicCongestionPricedFoodMarketResolver
                 throw new ArgumentException("Duplicate directional route offers.", nameof(offers));
         }
 
+        if (routingMode == StrategicCongestionRoutingMode.AdaptiveLowestMarginalCost)
+        {
+            // Dynamic shortest-path search must see *every* open candidate
+            // edge at its real marginal price, not silently treat an
+            // unspecified edge as free or closed.
+            foreach (var edge in generatedWorld.StrategicTopology.Edges)
+                if (edgeAccess.IsOpen(edge.Id) && !edgeProfiles.ContainsKey(edge.Id))
+                    throw new InvalidOperationException(
+                        "Adaptive routing requires a cost profile for every open strategic edge.");
+        }
+
+        var marginalRouter = routingMode ==
+            StrategicCongestionRoutingMode.AdaptiveLowestMarginalCost
+            ? new StrategicMarginalCongestionRouteResolver(
+                generatedWorld.StrategicSurfaceGraph, worldState.Economy)
+            : null;
+
         var router = new StrategicEconomicRouteResolver(
             generatedWorld.StrategicSurfaceGraph);
         var paths = new Dictionary<StrategicEconomicRouteKey, StrategicEconomicRoute>();
@@ -172,6 +195,21 @@ public sealed class EconomicCongestionPricedFoodMarketResolver
                 if (remaining == 0UL)
                     continue;
 
+                if (marginalRouter is not null)
+                {
+                    var currentRoute = marginalRouter.Resolve(
+                        new StrategicEconomicRouteKey(
+                            lane.Supply.Flow.EconomicPointId,
+                            lane.Demand.Flow.EconomicPointId),
+                        edgeAccess, edgeProfiles, load);
+                    if (currentRoute is null)
+                        continue;
+
+                    // Updated for every candidate at every decision.
+                    // There is no memoized route after traffic changes.
+                    lane.Route = currentRoute;
+                }
+
                 var current = MarginalReturn(lane, 0UL, load, edgeProfiles);
                 if (current.Numerator <= 0)
                     continue;
@@ -231,7 +269,8 @@ public sealed class EconomicCongestionPricedFoodMarketResolver
                 chosenQuantity,
                 chosen.Bid.RawUnitValue,
                 chosen.Offer.RawBaseUnitTransferCost,
-                incremental);
+                incremental,
+                chosen.Route.EdgePath);
 
             selections.Add(selection);
             chosen.Supply.Remaining -= chosenQuantity;
@@ -358,6 +397,6 @@ public sealed class EconomicCongestionPricedFoodMarketResolver
         public EconomicCongestionDemandBid Bid { get; } = bid;
         public EconomicCongestionRouteOffer Offer { get; } = offer;
         public FoodCommodityDefinition Food { get; } = food;
-        public StrategicEconomicRoute Route { get; } = route;
+        public StrategicEconomicRoute Route { get; set; } = route;
     }
 }

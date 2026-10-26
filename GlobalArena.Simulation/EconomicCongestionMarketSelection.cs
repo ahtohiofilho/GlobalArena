@@ -1,4 +1,5 @@
 using GlobalArena.Runtime;
+using GlobalArena.World;
 
 namespace GlobalArena.Simulation;
 
@@ -22,6 +23,7 @@ public sealed class EconomicCongestionMarketSelection
     public FoodTransportCostFraction RawBaselineTransportCost { get; }
     public FoodTransportCostFraction RawAdditionalCongestionCost { get; }
     public FoodTransportCostFraction RawNetTradeReturn { get; }
+    public IReadOnlyList<StrategicEdgeId> RoutedEdgePath { get; }
 
     public EconomicCongestionMarketSelection(
         ulong decisionOrdinal,
@@ -32,7 +34,8 @@ public sealed class EconomicCongestionMarketSelection
         ulong quantity,
         ulong rawUnitValue,
         ulong rawBaseUnitTransferCost,
-        FoodTransportCostFraction rawAdditionalCongestionCost)
+        FoodTransportCostFraction rawAdditionalCongestionCost,
+        IEnumerable<StrategicEdgeId>? routedEdgePath = null)
     {
         if (decisionOrdinal == 0UL)
             throw new ArgumentOutOfRangeException(nameof(decisionOrdinal));
@@ -45,6 +48,12 @@ public sealed class EconomicCongestionMarketSelection
         if (rawUnitValue <= rawBaseUnitTransferCost)
             throw new ArgumentOutOfRangeException(nameof(rawUnitValue));
         ArgumentNullException.ThrowIfNull(rawAdditionalCongestionCost);
+        var chosenEdges = routedEdgePath?.ToArray() ?? Array.Empty<StrategicEdgeId>();
+        if (chosenEdges.Any(edge => !edge.IsValid) ||
+            chosenEdges.Distinct().Count() != chosenEdges.Length)
+            throw new ArgumentException(
+                "Selected trade route must have valid, non-repeated strategic edges.",
+                nameof(routedEdgePath));
 
         var denominator = (ulong)EconomicTransferPolicy.FixedPointDenominator;
         var gross = new FoodTransportCostFraction(
@@ -77,5 +86,6 @@ public sealed class EconomicCongestionMarketSelection
         RawBaselineTransportCost = baseline;
         RawAdditionalCongestionCost = rawAdditionalCongestionCost;
         RawNetTradeReturn = new FoodTransportCostFraction(numerator, common);
+        RoutedEdgePath = Array.AsReadOnly(chosenEdges);
     }
 }
