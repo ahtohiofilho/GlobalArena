@@ -350,8 +350,8 @@ public sealed class RuntimeInitialPopulationReconcilerTests
             new CanonicalWorldStateHasher().Compute(Bound(one)),
             new CanonicalWorldStateHasher().Compute(Bound(two)));
 
-        // This is a bootstrap validation snapshot, not resident WorldState
-        // population. A future contract must add demographic persistence.
+        // Reconciliation alone is not a WorldState mutation: attaching the
+        // validated census is a separate explicit materialization step.
         var largerCensus = Build(points, workers,
             Population(civilizations, first: 50UL, second: 20UL),
             new[] { Census(1UL, 50UL), Census(2UL, 20UL) });
