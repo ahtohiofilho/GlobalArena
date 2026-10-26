@@ -706,6 +706,6 @@ public sealed class M42EOwnershipLinkIntegrationTests
     }
 
     private const string KnownIntegratedDigest =
-        "915B8B9BD471164732F6262BE4BD66E2"
-        + "76C85A5BEE3104A8B51A46C108FFC1CD";
+        "88F58DE579E6B846E66366721536754A"
+        + "16D28445EEB08EE6EEF89C7EAA7F6E81";
 }

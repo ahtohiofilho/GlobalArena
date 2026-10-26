@@ -28,7 +28,7 @@ public sealed class CanonicalWorldStateHasherTests
                 WorldState.CreateInitial());
 
         Assert.Equal(
-            7U,
+            8U,
             hash.FormatVersion);
 
         Assert.Equal(
@@ -373,26 +373,26 @@ public sealed class CanonicalWorldStateHasherTests
         + "0549780b4470b2fae96f607da774c52";
 
     private const string InitialStateDigest =
-        "0510E5244C8FD1169D5D966B793C68BA"
-        + "0C296822DB6A75FA111846B8395194C5";
+        "7BB4EFA9FEEC9EF715AED6A3BB0BF22B"
+        + "934CC876D684331807B0CCA49E05D276";
 
     private const string RevisionOneDigest =
-        "3B8485AD1C79F885106592AA91F5C456"
-        + "3796E7F5A067C4A8C1FAC268D557F18E";
+        "D22BA1D3D2FB2DBBDBAB372AF644C8BA"
+        + "8457A2E2C3D7EE3EA86EF8463DC65CEF";
 
     private const string PopulatedStateDigest =
-        "BC7066464A5BA40B77B7B3111D660EFB"
-        + "3F0BF4DD3EF67C7AF8E13F5AC9E84BEB";
+        "D7224B08ADBC47C1EA65C5CFD03A9491"
+        + "335491284900C86893845C528B1B0905";
 
     private const string BoundInitialStateDigest =
-        "CC9353E179581E49A49BD8F27E6F9335"
-        + "18D7C65738E3EE9D7DC5D7B5FF7BECD3";
+        "4C7C83838A66C90FDA3065A72E476128"
+        + "59EA7627C3D5B8BFEEB8A8D3D63CD896";
 
     private const string BoundPopulatedStateDigest =
-        "90A1FDFF0CD336904126A2D00E1D56B6"
-        + "76B0B706A0DF49DF8479A6C3009C2C8F";
+        "2C3356F4AD889E4942C5FA0D4008E721"
+        + "62F44F0698078A58AE9059442970EBF3";
 
     private const string MaterializedCivilizationDigest =
-        "9EF9ADDC283CF27BA843FC1CED7A78C4"
-        + "DFC7104273D880EAB9B5F5699FB60C13";
+        "40544A77B7F0DAF81F6A6BFFD57696C7"
+        + "057B2DD36821E18F966B56135C4F25E0";
 }

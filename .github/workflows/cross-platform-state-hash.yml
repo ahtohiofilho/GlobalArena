@@ -6,10 +6,19 @@ on:
       - main
     paths:
       - ".github/workflows/cross-platform-state-hash.yml"
+      - "GlobalArena.Runtime/**"
       - "GlobalArena.Simulation/CanonicalWorldStateHasher.cs"
       - "GlobalArena.Simulation/WorldStateHash.cs"
       - "GlobalArena.Simulation/IWorldStateHasher.cs"
       - "GlobalArena.Tests/CanonicalWorldStateHasherTests.cs"
+  pull_request:
+    paths:
+      - ".github/workflows/cross-platform-state-hash.yml"
+      - "GlobalArena.Runtime/**"
+      - "GlobalArena.Simulation/CanonicalWorldStateHasher.cs"
+      - "GlobalArena.Simulation/WorldStateHash.cs"
+      - "GlobalArena.Simulation/IWorldStateHasher.cs"
+      - "GlobalArena.Tests/**"
   workflow_dispatch:
 
 permissions:

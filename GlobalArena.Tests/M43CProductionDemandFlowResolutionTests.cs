@@ -604,7 +604,7 @@ public sealed class M43CProductionDemandFlowResolutionTests
             after);
 
         Assert.Equal(
-            7U,
+            8U,
             after.FormatVersion);
     }
 
