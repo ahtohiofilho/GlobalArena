@@ -29,6 +29,7 @@ public sealed class FoodPointAccessObservation
             throw new ArgumentException(
                 "Food access observation requires a valid commodity ID.",
                 nameof(commodityId));
+        ArgumentNullException.ThrowIfNull(evidenceSourceKey);
         if (string.IsNullOrWhiteSpace(evidenceSourceKey) ||
             evidenceSourceKey.Any(c =>
                 !(c is >= 'a' and <= 'z') &&
