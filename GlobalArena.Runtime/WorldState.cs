@@ -155,6 +155,7 @@ public sealed class WorldState
     public WorldState WithPopulation(PopulationRuntimeState population)
     {
         ArgumentNullException.ThrowIfNull(population);
+        RejectPopulationDowngrade(population);
 
         return new WorldState(
             Revision,
@@ -177,6 +178,7 @@ public sealed class WorldState
     {
         ArgumentNullException.ThrowIfNull(economy);
         ArgumentNullException.ThrowIfNull(population);
+        RejectPopulationDowngrade(population);
 
         return new WorldState(
             Revision,
@@ -187,6 +189,13 @@ public sealed class WorldState
             economy,
             population,
             Warfare);
+    }
+
+    private void RejectPopulationDowngrade(PopulationRuntimeState next)
+    {
+        if (Population.IsInitialized && !next.IsInitialized)
+            throw new InvalidOperationException(
+                "An initialized population census cannot silently become uninitialized.");
     }
 
     public WorldState WithWarfare(
