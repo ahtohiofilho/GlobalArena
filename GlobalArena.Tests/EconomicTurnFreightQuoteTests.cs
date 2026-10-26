@@ -113,6 +113,55 @@ public sealed class EconomicTurnFreightQuoteTests
     }
 
     [Fact]
+    public void ReferenceSequentialAllocationChangesOnlyAtTurnBoundaryForFreight()
+    {
+        // Test-only one-route reference: compare the live commodity value to
+        // the precomputed constant transport charge for each proposed parcel.
+        // No production market solver is replaced by this experiment.
+        var function = new SyntheticContinuousFreightCostFunction();
+        var firstQuote = EconomicTurnFreightQuote.FromForecast(
+            1UL, Route(), new BigInteger(900_000_000), function);
+
+        static int AcceptProfitableParcels(EconomicTurnFreightQuote quote)
+        {
+            var accepted = 0;
+            const ulong quantum = 1_000_000UL;
+            const ulong gramsPerFlowUnit = 1_000UL;
+            for (ulong i = 0UL; i < 7UL; i++)
+            {
+                var currentCommodityValue = CommodityMarginalValue(
+                    i * quantum);
+                var lockedFreightCharge = quote.ChargeForRawQuantity(
+                    quantum, gramsPerFlowUnit);
+                if (currentCommodityValue.CompareTo(lockedFreightCharge) <= 0)
+                    break;
+                accepted++;
+            }
+            return accepted;
+        }
+
+        // Commodity marginal value after six accepted units reaches a point
+        // where a seventh parcel is not profitable at turn one's freight.
+        var firstAccepted = AcceptProfitableParcels(firstQuote);
+        Assert.Equal(6, firstAccepted);
+        Assert.Equal(1, function.Evaluations);
+
+        // The first turn's actual accepted mass can inform a *new* forecast.
+        var realizedMicrograms =
+            new BigInteger(firstAccepted) * 1_000_000_000;
+        var nextQuote = EconomicTurnFreightQuote.FromForecast(
+            2UL, Route(), realizedMicrograms, function);
+
+        // A newly reduced freight quote permits the seventh parcel next
+        // turn. The commodity value curve itself did not become constant.
+        Assert.Equal(7, AcceptProfitableParcels(nextQuote));
+        Assert.Equal(2, function.Evaluations);
+        Assert.Equal(new BigInteger(80_000),
+            firstQuote.ChargeForRawQuantity(
+                1_000_000UL, 1_000UL).Numerator);
+    }
+
+    [Fact]
     public void SplittingOrReorderingParcelsDoesNotChangeLockedFreightCharge()
     {
         var quote = EconomicTurnFreightQuote.FromForecast(
