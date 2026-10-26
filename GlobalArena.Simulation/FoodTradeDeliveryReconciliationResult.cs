@@ -1,19 +1,14 @@
 namespace GlobalArena.Simulation;
 
 /// <summary>
-/// Read-only per-allocation delivery-attestation coverage. Food without a
-/// recorded market trade is not represented here. No field denotes actual
-/// consumption or independently verified shipment delivery.
+/// Immutable trade-specific attestation view. Aggregate quantities are
+/// separated BY FOOD COMMODITY, because abstract flow units for different
+/// commodities have different caller-defined physical mass scales.
 /// </summary>
 public sealed class FoodTradeDeliveryReconciliationResult
 {
     public IReadOnlyList<FoodTradeDeliveryReconciliationEntry> Entries { get; }
-
-    public ulong TotalRawFoodTradeAllocated { get; }
-    public ulong RawAllocationWithAttestation { get; }
-    public ulong RawAllocationWithoutAttestation { get; }
-    public ulong TotalRawAttestedDelivered { get; }
-    public ulong RawAllocationNotAttestedDelivered { get; }
+    public IReadOnlyList<FoodTradeDeliveryCommoditySummary> CommoditySummaries { get; }
 
     public FoodTradeDeliveryReconciliationResult(
         IEnumerable<FoodTradeDeliveryReconciliationEntry> entries)
@@ -35,37 +30,42 @@ public sealed class FoodTradeDeliveryReconciliationResult
             .ToArray();
 
         var keys = new HashSet<FoodTradeAllocationIdentity>();
-        UInt128 total = 0U;
-        UInt128 observed = 0U;
-        UInt128 delivered = 0U;
-
         foreach (var row in rows)
         {
             if (!keys.Add(FoodTradeAllocationIdentity.From(row.Allocation)))
                 throw new ArgumentException(
                     "Delivery report has duplicated market allocation identities.",
                     nameof(entries));
-
-            total += row.Allocation.RawQuantity;
-            if (row.HasAttestation)
-            {
-                observed += row.Allocation.RawQuantity;
-                delivered += row.RawAttestedDeliveredQuantity!.Value;
-            }
         }
 
-        if (total > ulong.MaxValue || observed > ulong.MaxValue ||
-            delivered > ulong.MaxValue)
-            throw new OverflowException(
-                "Delivery reconciliation aggregates exceed the UInt64 range.");
+        var summaries = new List<FoodTradeDeliveryCommoditySummary>();
+        foreach (var group in rows.GroupBy(row => row.Allocation.CommodityId))
+        {
+            UInt128 total = 0U;
+            UInt128 observed = 0U;
+            UInt128 delivered = 0U;
+
+            foreach (var row in group)
+            {
+                total += row.Allocation.RawQuantity;
+                if (row.HasAttestation)
+                {
+                    observed += row.Allocation.RawQuantity;
+                    delivered += row.RawAttestedDeliveredQuantity!.Value;
+                }
+            }
+
+            if (total > ulong.MaxValue ||
+                observed > ulong.MaxValue ||
+                delivered > ulong.MaxValue)
+                throw new OverflowException(
+                    "Food delivery quantities exceed UInt64 within one commodity.");
+
+            summaries.Add(new FoodTradeDeliveryCommoditySummary(
+                group.Key, (ulong)total, (ulong)observed, (ulong)delivered));
+        }
 
         Entries = Array.AsReadOnly(rows);
-        TotalRawFoodTradeAllocated = (ulong)total;
-        RawAllocationWithAttestation = (ulong)observed;
-        RawAllocationWithoutAttestation =
-            TotalRawFoodTradeAllocated - RawAllocationWithAttestation;
-        TotalRawAttestedDelivered = (ulong)delivered;
-        RawAllocationNotAttestedDelivered =
-            RawAllocationWithAttestation - TotalRawAttestedDelivered;
+        CommoditySummaries = Array.AsReadOnly(summaries.ToArray());
     }
 }
