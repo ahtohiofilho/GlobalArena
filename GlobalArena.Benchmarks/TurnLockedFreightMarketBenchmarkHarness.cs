@@ -27,6 +27,7 @@ public static class TurnLockedFreightMarketBenchmarkHarness
 
     private static readonly Scenario[] Cases =
     {
+        new("reference-profit-boundary", 1, 1, 1),
         new("reference-small", 2, 2, 2),
         new("reference-medium", 4, 4, 3),
         new("reference-wide", 8, 8, 4)
@@ -48,12 +49,14 @@ public static class TurnLockedFreightMarketBenchmarkHarness
         }
     }
 
-    private sealed class SyntheticCommodityCurve(int commodityIndex, int destinationIndex)
+    private sealed class SyntheticCommodityCurve(
+        int commodityIndex, int destinationIndex,
+        ulong? initialOverride = null, ulong? slopeOverride = null)
         : IEconomicTurnCommodityValueCurve
     {
-        private readonly ulong _initial = checked((ulong)(
+        private readonly ulong _initial = initialOverride ?? checked((ulong)(
             900_000 + commodityIndex * 2_000 + destinationIndex * 500));
-        private readonly ulong _slope = checked((ulong)(
+        private readonly ulong _slope = slopeOverride ?? checked((ulong)(
             2_000 + destinationIndex * 50));
 
         public FoodTransportCostFraction EvaluateMarginalRawUnitValue(
@@ -171,7 +174,9 @@ public static class TurnLockedFreightMarketBenchmarkHarness
             counted.IntegratedValueEvaluations != 2L * warm.Count ||
             counted.DecisionRounds < warm.Count ||
             counted.LaneExaminations !=
-                counted.DecisionRounds * counted.CandidateLaneCount)
+                counted.DecisionRounds * counted.CandidateLaneCount ||
+            (scenario.Id == "reference-profit-boundary" &&
+             counted.BinarySearchIterations == 0))
             throw new InvalidOperationException(
                 $"{scenario.Id}: inconsistent reference diagnostic counters.");
 
@@ -299,8 +304,12 @@ public static class TurnLockedFreightMarketBenchmarkHarness
                 var destination = new EconomicPointId(checked((ulong)(1_001 + d)));
                 demands.Add(new EconomicDemandFlow(
                     destination, commodity, 4UL * Unit));
+                var boundary = scenario.Id == "reference-profit-boundary";
                 valuations.Add(new EconomicTurnCommodityValueOffer(
-                    destination, commodity, new SyntheticCommodityCurve(c, d)));
+                    destination, commodity, new SyntheticCommodityCurve(
+                        c, d,
+                        boundary ? 800_000UL : (ulong?)null,
+                        boundary ? 240_000UL : (ulong?)null)));
             }
         }
 
