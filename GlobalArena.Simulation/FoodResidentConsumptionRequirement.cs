@@ -1,24 +1,24 @@
 using GlobalArena.Runtime;
-using GlobalArena.World;
 
 namespace GlobalArena.Simulation;
 
 /// <summary>
-/// Explicit kilogram demand per resident per economic cycle, measured in
-/// fixed-point kilograms. The current M4.3 resident-demand resolver restricts
-/// a rate to (0, 1] whole commodity units per resident per cycle; reject larger
-/// rates rather than silently truncate or reinterpret them.
+/// Explicit integer grams of a named food per resident per economic cycle.
+/// This physical requirement is not itself an EconomicDemandFlow. The
+/// materializer must convert it exactly using the commodity's caller-supplied
+/// grams-per-whole-flow-unit scale, and must reject rates outside the existing
+/// M4.3 positive normalized resident-demand range.
 /// </summary>
 public sealed class FoodResidentConsumptionRequirement
 {
     public EconomicPointId EconomicPointId { get; }
     public CommodityId CommodityId { get; }
-    public long RawKilogramsPerResidentPerCycle { get; }
+    public ulong GramsPerResidentPerCycle { get; }
 
     public FoodResidentConsumptionRequirement(
         EconomicPointId economicPointId,
         CommodityId commodityId,
-        long rawKilogramsPerResidentPerCycle)
+        ulong gramsPerResidentPerCycle)
     {
         if (!economicPointId.IsValid)
             throw new ArgumentException(
@@ -28,14 +28,13 @@ public sealed class FoodResidentConsumptionRequirement
             throw new ArgumentException(
                 "Food requirement needs a valid commodity.",
                 nameof(commodityId));
-        if (rawKilogramsPerResidentPerCycle <= 0L ||
-            rawKilogramsPerResidentPerCycle > StrategicScalarField.Denominator)
+        if (gramsPerResidentPerCycle == 0UL)
             throw new ArgumentOutOfRangeException(
-                nameof(rawKilogramsPerResidentPerCycle),
-                "Food rate must fit the current positive fixed-point resident demand range.");
+                nameof(gramsPerResidentPerCycle),
+                "Food requirement must specify positive physical mass.");
 
         EconomicPointId = economicPointId;
         CommodityId = commodityId;
-        RawKilogramsPerResidentPerCycle = rawKilogramsPerResidentPerCycle;
+        GramsPerResidentPerCycle = gramsPerResidentPerCycle;
     }
 }
