@@ -4,7 +4,7 @@ namespace GlobalArena.Simulation;
 
 /// <summary>
 /// Auditable, transient outcome of one periodic production/demand evaluation.
-/// This event carries flows for downstream turn phases but does not represent
+/// This event exposes flows in the completed turn result but does not represent
 /// an inventory, financial settlement, or a resident WorldState mutation.
 /// </summary>
 public sealed class EconomicProductionDemandResolvedEvent : ISimulationEvent
