@@ -176,6 +176,77 @@ public sealed class EconomicTurnLockedFreightMarketTests
     }
 
     [Fact]
+    public void OptionalDiagnosticsPreserveAllEconomicResultsAndCountOperations()
+    {
+        var reference = Resolve();
+        var diagnostics = new EconomicTurnFreightMarketDiagnostics();
+        var measured = new EconomicTurnLockedFreightMarketResolver().Resolve(
+            1UL, Flows(), Foods(), Quotes(1), Values(), Reservations(),
+            new EconomicCongestionMarketSearchPolicy(One, 30), diagnostics);
+
+        Assert.Equal(reference.Count, measured.Count);
+        for (var index = 0; index < reference.Count; index++)
+        {
+            var expected = reference[index];
+            var actual = measured[index];
+            Assert.Equal(expected.DecisionOrdinal, actual.DecisionOrdinal);
+            Assert.Equal(expected.SourceEconomicPointId, actual.SourceEconomicPointId);
+            Assert.Equal(expected.DestinationEconomicPointId, actual.DestinationEconomicPointId);
+            Assert.Equal(expected.CommodityId, actual.CommodityId);
+            Assert.Equal(expected.RawQuantity, actual.RawQuantity);
+            Assert.Equal(0, expected.RawMarginalCommodityUnitValueAtDecision.CompareTo(
+                actual.RawMarginalCommodityUnitValueAtDecision));
+            Assert.Equal(0, expected.RawCommodityValue.CompareTo(actual.RawCommodityValue));
+            Assert.Equal(0, expected.RawFreightCharge.CompareTo(actual.RawFreightCharge));
+            Assert.Equal(0, expected.RawProducerReservationCost.CompareTo(
+                actual.RawProducerReservationCost));
+            Assert.Equal(0, expected.RawNetReturn.CompareTo(actual.RawNetReturn));
+        }
+
+        Assert.Equal(3, diagnostics.SupplyCount);
+        Assert.Equal(3, diagnostics.DemandCount);
+        Assert.Equal(4, diagnostics.QuoteCount);
+        Assert.Equal(5, diagnostics.CandidateLaneCount);
+        Assert.Equal(measured.Count, diagnostics.AcceptedTrades);
+        Assert.True(diagnostics.DecisionRounds >= measured.Count);
+        Assert.Equal(diagnostics.DecisionRounds * diagnostics.CandidateLaneCount,
+            diagnostics.LaneExaminations);
+        Assert.Equal(measured.Count * 2L, diagnostics.IntegratedValueEvaluations);
+        Assert.True(diagnostics.MarginalValueEvaluations >=
+            2L * diagnostics.QuantitySearchCalls);
+    }
+
+    [Fact]
+    public void ReusingDiagnosticsStartsFreshAndDoesNotAffectCanonicalWorldHash()
+    {
+        var state = WorldState.CreateInitial();
+        var hash = new CanonicalWorldStateHasher().Compute(state);
+        var diagnostics = new EconomicTurnFreightMarketDiagnostics();
+        var resolver = new EconomicTurnLockedFreightMarketResolver();
+
+        var first = resolver.Resolve(
+            1UL, Flows(), Foods(), Quotes(1), Values(), Reservations(),
+            new EconomicCongestionMarketSearchPolicy(One, 30), diagnostics);
+        var firstRounds = diagnostics.DecisionRounds;
+        var firstSearches = diagnostics.QuantitySearchCalls;
+
+        var second = resolver.Resolve(
+            1UL, Flows(), Foods(), Quotes(1), Values(), Reservations(),
+            new EconomicCongestionMarketSearchPolicy(One, 30), diagnostics);
+        Assert.Equal(first.Count, second.Count);
+        Assert.Equal(firstRounds, diagnostics.DecisionRounds);
+        Assert.Equal(firstSearches, diagnostics.QuantitySearchCalls);
+        Assert.Equal(second.Count, diagnostics.AcceptedTrades);
+        Assert.Equal(hash, new CanonicalWorldStateHasher().Compute(state));
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => resolver.Resolve(
+            0UL, Flows(), Foods(), Quotes(1), Values(), Reservations(),
+            new EconomicCongestionMarketSearchPolicy(One, 30), diagnostics));
+        Assert.Equal(0, diagnostics.AcceptedTrades);
+        Assert.Equal(0, diagnostics.DecisionRounds);
+    }
+
+    [Fact]
     public void ReversingAllSuppliedInputsDoesNotChangeCanonicalDecisionsOrSettlement()
     {
         var original = Resolve();
