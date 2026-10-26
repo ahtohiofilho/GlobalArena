@@ -141,6 +141,8 @@ public static class TurnLockedFreightMarketBenchmarkHarness
         var expected = Signature(warm);
         var baselineMeasurements = new Measurement[Samples];
         var countedMeasurements = new Measurement[Samples];
+        var indexedMeasurements = new Measurement[Samples];
+        var indexedCountedMeasurements = new Measurement[Samples];
 
         for (var i = 0; i < Warmups; i++)
         {
@@ -151,17 +153,32 @@ public static class TurnLockedFreightMarketBenchmarkHarness
             AssertEquivalent(expected, resolver.Resolve(
                 1UL, input.Flows, input.Catalog, input.Quotes,
                 input.Values, input.Reservations, input.Policy, warmDiagnostics));
+            AssertEquivalent(expected, resolver.Resolve(
+                1UL, input.Flows, input.Catalog, input.Quotes,
+                input.Values, input.Reservations, input.Policy, null,
+                EconomicTurnFreightCandidateSelectionMode.DependencyIndex));
         }
 
         for (var i = 0; i < Samples; i++)
         {
             // Measurements intentionally separate baseline and counted mode;
             // the underlying input and all immutable quotes are identical.
-            baselineMeasurements[i] = Measure(resolver, input, null);
-            var counters = new EconomicTurnFreightMarketDiagnostics();
-            countedMeasurements[i] = Measure(resolver, input, counters);
+            baselineMeasurements[i] = Measure(
+                resolver, input, null,
+                EconomicTurnFreightCandidateSelectionMode.Exhaustive);
+            indexedMeasurements[i] = Measure(
+                resolver, input, null,
+                EconomicTurnFreightCandidateSelectionMode.DependencyIndex);
+            countedMeasurements[i] = Measure(
+                resolver, input, new EconomicTurnFreightMarketDiagnostics(),
+                EconomicTurnFreightCandidateSelectionMode.Exhaustive);
+            indexedCountedMeasurements[i] = Measure(
+                resolver, input, new EconomicTurnFreightMarketDiagnostics(),
+                EconomicTurnFreightCandidateSelectionMode.DependencyIndex);
             if (baselineMeasurements[i].Signature != expected ||
-                countedMeasurements[i].Signature != expected)
+                countedMeasurements[i].Signature != expected ||
+                indexedMeasurements[i].Signature != expected ||
+                indexedCountedMeasurements[i].Signature != expected)
                 throw new InvalidOperationException(
                     $"{scenario.Id}: diagnostics changed an economic transcript.");
         }
@@ -191,6 +208,34 @@ public static class TurnLockedFreightMarketBenchmarkHarness
                     $"{scenario.Id}: operation counts changed between repeats.");
         }
 
+        var indexedCount = indexedCountedMeasurements[0].Diagnostics!;
+        if (indexedCount.CandidateLaneCount != counted.CandidateLaneCount ||
+            indexedCount.AcceptedTrades != counted.AcceptedTrades ||
+            indexedCount.DecisionRounds != counted.DecisionRounds ||
+            indexedCount.IntegratedValueEvaluations != counted.IntegratedValueEvaluations ||
+            indexedCount.LaneExaminations > counted.LaneExaminations ||
+            indexedCount.MarginalValueEvaluations > counted.MarginalValueEvaluations)
+            throw new InvalidOperationException(
+                $"{scenario.Id}: indexed candidate work or outcomes inconsistent.");
+        foreach (var sample in indexedCountedMeasurements)
+        {
+            var d = sample.Diagnostics!;
+            if (d.LaneExaminations != indexedCount.LaneExaminations ||
+                d.MarginalValueEvaluations != indexedCount.MarginalValueEvaluations ||
+                d.BinarySearchIterations != indexedCount.BinarySearchIterations ||
+                d.QuantitySearchCalls != indexedCount.QuantitySearchCalls)
+                throw new InvalidOperationException(
+                    $"{scenario.Id}: indexed operation counts changed between repeats.");
+        }
+
+        Console.WriteLine($"INDEX_COUNTERS={scenario.Id};" +
+            $"lanes={indexedCount.CandidateLaneCount};" +
+            $"trades={indexedCount.AcceptedTrades};" +
+            $"decision_rounds={indexedCount.DecisionRounds};" +
+            $"lane_examinations={indexedCount.LaneExaminations};" +
+            $"marginal_evaluations={indexedCount.MarginalValueEvaluations};" +
+            $"quantity_search_calls={indexedCount.QuantitySearchCalls};" +
+            $"binary_search_iterations={indexedCount.BinarySearchIterations}");
         Console.WriteLine($"CASE={scenario.Id};producers={scenario.Producers};" +
             $"destinations={scenario.Destinations};commodities={scenario.Commodities};" +
             $"quotes={input.Quotes.Length};quote_function_evaluations={input.QuoteFunctionEvaluations};" +
@@ -203,19 +248,22 @@ public static class TurnLockedFreightMarketBenchmarkHarness
             $"signature={expected}");
 
         WriteMeasurements(scenario.Id, "baseline", baselineMeasurements);
+        WriteMeasurements(scenario.Id, "indexed", indexedMeasurements);
         WriteMeasurements(scenario.Id, "diagnostics", countedMeasurements);
+        WriteMeasurements(scenario.Id, "indexed-diagnostics", indexedCountedMeasurements);
     }
 
     private static Measurement Measure(
         EconomicTurnLockedFreightMarketResolver resolver,
         Inputs input,
-        EconomicTurnFreightMarketDiagnostics? diagnostics)
+        EconomicTurnFreightMarketDiagnostics? diagnostics,
+        EconomicTurnFreightCandidateSelectionMode mode)
     {
         var before = GC.GetAllocatedBytesForCurrentThread();
         var start = Stopwatch.GetTimestamp();
         var trades = resolver.Resolve(
             1UL, input.Flows, input.Catalog, input.Quotes, input.Values,
-            input.Reservations, input.Policy, diagnostics);
+            input.Reservations, input.Policy, diagnostics, mode);
         var elapsed = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
         return new Measurement(

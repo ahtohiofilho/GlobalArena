@@ -16,7 +16,7 @@ dotnet run --project GlobalArena.Benchmarks/GlobalArena.Benchmarks.csproj --conf
 
 Run using .NET 10 Release. The dedicated [workflow](../../.github/workflows/turn-locked-freight-market-benchmark.yml) runs the same command on Ubuntu, Windows and macOS, uploading logs and `dotnet --info` evidence.
 
-Each case runs one initial resolution, one warmup pair and **five measured pairs**: the uninstrumented reference, then the same reference with optional counters enabled. Both forms must yield the **same exact SHA-256 transcript** covering trades, origins, destinations, quantities, commodity marginal values, integrated values, source reservations, freight and net returns. The initial quote function runs *before* timing: quote-evaluation count is reported separately, since this first benchmark measures **allocator cost** and not full turn construction.
+Each case runs one initial resolution, one warmup cycle and **five measured groups**: (1) exhaustive reference, (2) indexed candidates, (3) exhaustive with diagnostic counters, and (4) indexed with diagnostic counters. **All four forms must yield the same exact SHA-256 transcript** covering trades, origins, destinations, quantities, commodity marginal values, integrated values, source reservations, freight and net returns. The initial quote function runs *before* timing: quote-evaluation count is reported separately, since this first benchmark measures **allocator cost** and not full turn construction.
 
 | Synthetic case | Sources | Destinations | Commodities | Route quotes | Potential commodity lanes |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -31,8 +31,16 @@ Each producer provides three whole-flow units per commodity; each destination re
 
 - `CASE=...`: exact economic transcript signature, quote evaluations, candidate lane count, accepted decisions, number of decision rounds, lane examinations, marginal/integrated commodity value evaluations, quantity-search calls and binary-search iterations.
 - `METRICS=...`: **median and maximum** observed elapsed milliseconds and thread-local managed allocated bytes for baseline and diagnostics runs, across five samples.
+- `INDEX_COUNTERS=...`: candidate-indexed alternative search counts. Only the selected source balance and destination+commodity valuation are dirtied following a trade. The pre-turn transport quote is never re-priced within the turn. Exact margin ordering and earliest-canonical-lane tie-breaks match the exhaustive baseline.
+- `METRICS=...;mode=indexed` and `mode=indexed-diagnostics`: measure the indexed strategy beside the unoptimized reference; indexed mode is **opt-in** and does not change the reference default.
 - `RESULT=PASS_TURN_FREIGHT_MARKET_REFERENCE_BENCHMARK`: all repeated runs produced the same exact economic transcript and deterministic operation counters; **this is not a speed/scale pass criterion**.
 
 Run-to-run measurements can vary with hardware, OS, JIT, GC, CPU throttling and build configuration. Do not treat cross-platform differences, baseline-vs-instrumented overhead or any single result as a statistically significant optimization gain. Instrumentation counters are an optional **non-authoritative** caller-owned object and are never serialized to `WorldState` or included in canonical hashes. On failed calls, counters may describe partial work; the next invocation resets them.
 
 **Further milestones:** design an accelerated candidate-dirty/event-driven approach that preserves exact economic order and final ledger under the **same frozen-freight rule**; compare it with this unoptimized reference on the same machine and benchmark inputs. Measure quote construction and real multimodal route search separately when those contracts exist. Do not compare ledger equality to the intentionally different PR #13/#14 live-congestion market.
+
+## Candidate-index experiment (follow-up to reference baseline)
+
+The `EconomicTurnFreightCandidateSelectionMode.DependencyIndex` mode stores exactly computed candidate marginal profitability in a balanced ordered set. Its dependencies are **source supply** and **destination+commodity demand**, so accepting one tranche refreshes only candidate lanes sharing either balance. A canonical lane ordinal breaks rational-profit ties exactly as the exhaustive selector did. The algorithm uses no cached freight repricing: the turn-locked quote is unchanged and the independently continuous commodity market value remains authoritative. The same integrals and settlement functions are called for selected parcels.
+
+All four benchmark modes must produce byte-identical trade transcripts, checked before any performance comparison. The outcome is a deterministic greedy approximation under the **same pricing rules**, not an assertion of global economic optimality. The reference loop remains callable and is the correctness oracle. Benchmarked speed or memory benefits must be reported per input/OS; indexing can have setup and heap costs on very small or sparse scenarios. The synthetic workload is not a forecast of full-game performance.
