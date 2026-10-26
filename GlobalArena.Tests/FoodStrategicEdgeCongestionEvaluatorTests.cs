@@ -126,6 +126,33 @@ public sealed class FoodStrategicEdgeCongestionEvaluatorTests
     }
 
     [Fact]
+    public void CrossingCharacteristicScaleDoesNotTriggerAnyDiscretePenalty()
+    {
+        var profile = new FoodStrategicEdgeCongestionProfile(
+            new StrategicEdgeId(1UL), 1_000UL, 100UL, 100UL);
+        var reference = (BigInteger)1_000 * StrategicScalarField.Denominator;
+
+        var before = profile.EvaluateMarginalCostPerGram(reference - 1);
+        var atReference = profile.EvaluateMarginalCostPerGram(reference);
+        var after = profile.EvaluateMarginalCostPerGram(reference + 1);
+
+        Assert.Equal(new BigInteger(200), atReference.Numerator);
+        Assert.Equal(BigInteger.One, atReference.Denominator);
+        Assert.True(before.CompareTo(atReference) < 0);
+        Assert.True(atReference.CompareTo(after) < 0);
+
+        var increaseJustAfter = new FoodTransportCostFraction(
+            after.Numerator * atReference.Denominator
+                - atReference.Numerator * after.Denominator,
+            after.Denominator * atReference.Denominator);
+
+        // One microgram beyond the reference load causes only the local
+        // smooth-curve increment, not a discontinuous congestion penalty.
+        Assert.True(increaseJustAfter.CompareTo(
+            new FoodTransportCostFraction(1, 1_000)) < 0);
+    }
+
+    [Fact]
     public void TotalCostIsConvexIntegralNotAClippedThresholdPenalty()
     {
         var profile = new FoodStrategicEdgeCongestionProfile(
