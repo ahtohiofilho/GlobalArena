@@ -8,6 +8,17 @@ on:
       - ".github/workflows/cross-platform-kernel-regression.yml"
       - "GlobalArena.Kernel/**"
       - "GlobalArena.World/**"
+      - "GlobalArena.Runtime/**"
+      - "GlobalArena.Simulation/**"
+      - "GlobalArena.Tests/**"
+      - "Directory.Build.props"
+      - "GlobalArena.slnx"
+  pull_request:
+    paths:
+      - ".github/workflows/cross-platform-kernel-regression.yml"
+      - "GlobalArena.Kernel/**"
+      - "GlobalArena.World/**"
+      - "GlobalArena.Runtime/**"
       - "GlobalArena.Simulation/**"
       - "GlobalArena.Tests/**"
       - "Directory.Build.props"
