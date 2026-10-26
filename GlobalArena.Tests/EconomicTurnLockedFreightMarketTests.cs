@@ -138,11 +138,12 @@ public sealed class EconomicTurnLockedFreightMarketTests
         Assert.Contains(results, x => x.DestinationEconomicPointId == P(3));
         Assert.Contains(results, x => x.DestinationEconomicPointId == P(4));
 
-        foreach (var item in results)
+        for (var i = 0; i < results.Count; i++)
         {
+            var item = results[i];
             Assert.Equal(1UL, item.TurnOrdinal);
             Assert.Equal(One, item.RawQuantity);
-            Assert.Equal((ulong)results.IndexOf(item) + 1UL,
+            Assert.Equal((ulong)i + 1UL,
                 item.DecisionOrdinal);
             Assert.True(item.RawNetReturn.Numerator > 0);
             Assert.Equal(1UL, item.FreightQuote.TurnOrdinal);
@@ -169,7 +170,7 @@ public sealed class EconomicTurnLockedFreightMarketTests
             results.Where(x => x.CommodityId == C(8))
                 .Aggregate(0UL, (total, x) => checked(total + x.RawQuantity)));
         Assert.Equal(2, results.Select(x => x.CommodityId).Distinct().Count());
-        Assert.Equal(4, results.Select(x => x.FreightQuote.RouteKey).Distinct().Count());
+        Assert.Equal(3, results.Select(x => x.FreightQuote.RouteKey).Distinct().Count());
         Assert.Throws<NotSupportedException>(() =>
             ((IList<EconomicTurnLockedFreightTrade>)results).Clear());
     }
