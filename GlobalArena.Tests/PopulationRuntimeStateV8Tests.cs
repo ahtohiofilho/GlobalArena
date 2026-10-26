@@ -308,6 +308,56 @@ public sealed class PopulationRuntimeStateV8Tests
     }
 
     [Fact]
+    public void AlreadyInitializedPopulationCannotBeSilentlyUninitialized()
+    {
+        var (world, civilizations, territory) = Fixture();
+        var initial = BoundState(world, civilizations, territory,
+            InitialCensus(world, civilizations, territory));
+
+        Assert.Throws<InvalidOperationException>(() =>
+            initial.WithPopulation(PopulationRuntimeState.Uninitialized));
+
+        Assert.Throws<InvalidOperationException>(() =>
+            initial.WithEconomyAndPopulation(
+                EconomyRuntimeState.Empty,
+                PopulationRuntimeState.Uninitialized));
+
+        Assert.Equal(20UL, initial.Population.PointPopulations.Single().Residents);
+    }
+
+    [Fact]
+    public void KnownNonemptyPopulationHasStableV8CanonicalHash()
+    {
+        var state = WorldState.CreateInitial()
+            .WithCivilizations(new CivilizationRuntimeState(
+                new[] { new CivilizationId(1UL) }))
+            .WithEconomyAndPopulation(
+                new EconomyRuntimeState(new[]
+                {
+                    new EconomicPointRuntimeState(
+                        new EconomicPointId(1UL),
+                        new CivilizationId(1UL),
+                        new StrategicCellId(1UL),
+                        5UL,
+                        new[]
+                        {
+                            new EconomicActivityWorkforceAllocation(
+                                EconomicActivityKind.Agriculture, 3UL)
+                        })
+                }),
+                new PopulationRuntimeState(new[]
+                {
+                    new PopulationPointRuntimeState(
+                        new EconomicPointId(1UL), 20UL)
+                }));
+
+        Assert.Equal(
+            "E5F95A0DE100FF02ECC559943D903430" +
+            "56606326B3F8E18016B3196891120858",
+            new CanonicalWorldStateHasher().Compute(state).HexDigest);
+    }
+
+    [Fact]
     public void WorldStateRejectsNullPopulationOrEconomyReplacement()
     {
         var state = WorldState.CreateInitial();
