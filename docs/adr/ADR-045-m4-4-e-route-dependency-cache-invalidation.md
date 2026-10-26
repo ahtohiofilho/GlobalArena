@@ -177,3 +177,7 @@ The next checkpoint is:
 **M4.4-F — Accumulated Validation & M4.4 Close**
 
 Post-commit cross-platform regression is required before the accumulated M4.4 close.
+
+## 2026-10-26 — Weighted and multimodal cache is a separate future scope
+
+This accepted sparse cache handles **unweighted BFS access dependencies**; it is not a validated cache for dynamic marginal-price shortest paths or the expected use of technology-persistent infrastructure. A newly constructed or cheaper **previously unused** alternative may require broader invalidation than the traversed-path dependencies. [ADR-064 (Proposed)](ADR-064-technology-persistent-transport-and-continuous-endogenous-pricing.md) calls for a correctness oracle, snapshot/policy version keys, and measured recomputation before extending caching. These are implementation checkpoints for a pre-existing design direction, not new claims about M4.4.
