@@ -20,11 +20,12 @@ Each case runs one initial resolution, one warmup pair and **five measured pairs
 
 | Synthetic case | Sources | Destinations | Commodities | Route quotes | Potential commodity lanes |
 | --- | ---: | ---: | ---: | ---: | ---: |
+| reference-profit-boundary | 1 | 1 | 1 | 1 | 1 |
 | reference-small | 2 | 2 | 2 | 4 | 8 |
 | reference-medium | 4 | 4 | 3 | 16 | 48 |
 | reference-wide | 8 | 8 | 4 | 64 | 256 |
 
-Each producer provides three whole-flow units per commodity; each destination requests four. The numerical decision quantum is one whole-flow unit, and the fail-closed decision budget exceeds full potential supply.
+Each producer provides three whole-flow units per commodity; each destination requests four. The numerical decision quantum is one whole-flow unit, and the fail-closed decision budget exceeds full potential supply. **The profit-boundary case uses a test-only steeper continuous marginal commodity-value decline**, forcing the quantity search to stop inside a numerical tranche. Its binary-search iteration count must be positive, so benchmark coverage cannot accidentally disappear. The other three cases intentionally exercise increasingly broad profitable candidate sets.
 
 ## Output and interpretation
 
