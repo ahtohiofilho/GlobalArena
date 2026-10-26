@@ -3,13 +3,13 @@ using GlobalArena.Runtime;
 namespace GlobalArena.Simulation;
 
 /// <summary>
-/// Optional immutable food registry. No commodity ID is preallocated or
-/// inferred from its position in this collection.
+/// Optional immutable food registry. Both IDs and mass conversion scales are
+/// explicit data, never inferred from declaration order.
 /// </summary>
 public sealed class FoodCommodityCatalog
 {
     private readonly IReadOnlyList<FoodCommodityDefinition> _commodities;
-    private readonly HashSet<CommodityId> _ids;
+    private readonly Dictionary<CommodityId, FoodCommodityDefinition> _byId;
 
     public IReadOnlyList<FoodCommodityDefinition> Commodities => _commodities;
 
@@ -25,11 +25,11 @@ public sealed class FoodCommodityCatalog
 
         snapshot = snapshot.OrderBy(x => x.CommodityId.Value).ToArray();
 
-        _ids = new HashSet<CommodityId>();
+        _byId = new Dictionary<CommodityId, FoodCommodityDefinition>();
         var keys = new HashSet<string>(StringComparer.Ordinal);
         foreach (var commodity in snapshot)
         {
-            if (!_ids.Add(commodity.CommodityId))
+            if (!_byId.TryAdd(commodity.CommodityId, commodity))
                 throw new ArgumentException(
                     $"Duplicate food commodity identity {commodity.CommodityId.Value}.",
                     nameof(commodities));
@@ -43,6 +43,19 @@ public sealed class FoodCommodityCatalog
         _commodities = Array.AsReadOnly(snapshot);
     }
 
+    public bool TryGet(
+        CommodityId commodityId,
+        out FoodCommodityDefinition? definition)
+    {
+        if (!commodityId.IsValid)
+        {
+            definition = null;
+            return false;
+        }
+
+        return _byId.TryGetValue(commodityId, out definition);
+    }
+
     public bool Contains(CommodityId commodityId) =>
-        commodityId.IsValid && _ids.Contains(commodityId);
+        TryGet(commodityId, out _);
 }
