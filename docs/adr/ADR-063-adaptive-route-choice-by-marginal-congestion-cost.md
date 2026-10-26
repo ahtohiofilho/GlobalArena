@@ -34,3 +34,7 @@ ADR-061 defines threshold-free marginal edge congestion pricing; ADR-062 adds op
 - Full Windows, Ubuntu and macOS .NET 10 Release regression and known canonical hash vectors pass on the exact PR head.
 
 This is **opt-in adaptive route selection with already accepted convex costs**, not a return to fixed overload thresholds, freight limits, vehicle classes or an assertion of globally optimal continuous equilibrium.
+
+## Continuity and compatibility note — ADR-064 Proposed (2026-10-26)
+
+The current PR #14 resolver finds cheapest marginal paths on **geographic strategic edges**, not on installed road/rail/maritime assets or commercially priced services. [ADR-064](ADR-064-technology-persistent-transport-and-continuous-endogenous-pricing.md) records the previously discussed infrastructure/service direction and formalizes pending graph and function-derived quote adapters for future implementation. It does **not** replace continuous marginal cost evaluation or exact integrated settlement with fixed modal tariffs, and it does not change this PR's opt-in/default compatibility. The required follow-up implementation and benchmark gates remain pending.

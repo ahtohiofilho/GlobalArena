@@ -177,3 +177,7 @@ The next checkpoint is:
 **M4.4-E — Route Dependency Cache & Incremental Invalidation**
 
 Post-commit cross-platform regression is required before M4.4-E implementation begins.
+
+## 2026-10-26 — Existing batching is not future tariff fixation
+
+The already implemented deterministic **quantity bands** and residual min-cost-flow solver are computational allocation mechanisms, not a rule that unit freight prices are manually specified per mode. The M4.4 code continues to consume the historical abstract `EconomicTransferSignal` and its route capacity as a legacy baseline. [ADR-064 (Proposed)](ADR-064-technology-persistent-transport-and-continuous-endogenous-pricing.md) documents previously discussed continuous-price and persistent-technology intentions and calls for measured reuse/optimization without changing this accepted historical solver in place. No benchmark speedup is claimed.

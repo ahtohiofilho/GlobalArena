@@ -181,3 +181,7 @@ M4.4-D can implement market allocation and settlement output using:
 - deterministic transfer signals.
 
 Post-commit cross-platform regression is required before M4.4-D implementation begins.
+
+## 2026-10-26 — Scope clarification for the existing legacy transfer signal
+
+This accepted ADR describes the **implemented M4.4 baseline**: workforce-derived `RawEffectiveCapacity`, constant `RawCostPerHop`, linear surcharge and rejection above the legacy route-capacity band. These are *not* an assertion that a stone road accumulates investment and becomes a railway, nor do they define the future technology-persistent transport model. [ADR-064 (Proposed)](ADR-064-technology-persistent-transport-and-continuous-endogenous-pricing.md) consolidates the previously discussed intent to represent independently built technologies, keep marginal and integrated costs mathematically endogenous, and evaluate any reusable unit price from the governing functions. ADR-043's historical tests and baseline remain unchanged until a separately versioned and validated implementation transition.

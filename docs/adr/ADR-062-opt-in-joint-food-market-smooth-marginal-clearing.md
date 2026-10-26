@@ -46,3 +46,7 @@ No transport mode classes, animal capacity, trucks, railcars, hard edge ceilings
 - Full .NET 10 Release and known hash vectors green in GitHub Actions for Windows, Ubuntu and macOS on the exact PR head.
 
 This decision establishes an explicit **endogenous** congestion-priced alternative. It does not claim completion of general cargo logistics or replacement of the legacy market.
+
+## 2026-10-26 — Continuous-price and technology continuity note
+
+The omission of transport-mode classes and unit-price caches here is an **implementation scope boundary** for PR #13, not a repudiation of the previously discussed technology-persistent infrastructure direction. The `EconomicCongestionRouteOffer.RawBaseUnitTransferCost` is an explicit caller input in this baseline; it is **not yet** a validated function-derived multimodal unit quote. [ADR-064 (Proposed)](ADR-064-technology-persistent-transport-and-continuous-endogenous-pricing.md) consolidates the direction to derive reusable prices from continuous endogenous functions and to extend route/service identity without discarding exact `BigInteger` integration or the documented approximation limits. Do not claim this optimization is already implemented.

@@ -35,3 +35,7 @@ No current binding choice of exact price function, objective function, solver, t
 ## Compatibility
 
 ADR-037 and ADR-041 remain historically authoritative for previously accepted contracts. This ADR narrows future product direction where their detailed mechanics were left open. Implementations changing existing hashes/contracts require their own migration and QA gate.
+
+## 2026-10-26 — Previously discussed technology model: documentation reconciliation
+
+ADR-064 (**Proposed**) consolidates previously discussed intentions that are not yet propagated through all contracts and identifies a conflict with **Binding design §4** above: installed transport infrastructure is intended to retain a persistent technology identity; cumulative anonymous investment could not silently convert an existing asset into a different transport technology. Transport service prices would remain endogenous outputs of continuous functions, with derived unit-price quotations used only as computational optimizations. The original accepted text is preserved for historical traceability. The exact contractual supersession of §4 still requires formal architecture ratification; this note must not be read as inventing a new economic design or claiming it was previously accepted in the ADR record. Emergent hubs, hierarchical candidate markets, sparse routing and avoidance of vehicle micromanagement are not proposed for removal. See [ADR-064](ADR-064-technology-persistent-transport-and-continuous-endogenous-pricing.md).
