@@ -120,11 +120,15 @@ public sealed class EconomicTurnLockedFreightMarketTests
         IEnumerable<EconomicTurnFreightQuote>? quotes = null,
         IEnumerable<EconomicTurnCommodityValueOffer>? values = null,
         IEnumerable<EconomicTurnSourceReservation>? reservations = null,
-        EconomicCongestionMarketSearchPolicy? policy = null) =>
+        EconomicCongestionMarketSearchPolicy? policy = null,
+        EconomicTurnFreightCandidateSelectionMode mode =
+            EconomicTurnFreightCandidateSelectionMode.Exhaustive,
+        EconomicTurnFreightMarketDiagnostics? diagnostics = null) =>
         new EconomicTurnLockedFreightMarketResolver().Resolve(
             turn, flows ?? Flows(), Foods(), quotes ?? Quotes(turn),
             values ?? Values(), reservations ?? Reservations(),
-            policy ?? new EconomicCongestionMarketSearchPolicy(One, 30));
+            policy ?? new EconomicCongestionMarketSearchPolicy(One, 30),
+            diagnostics, mode);
 
     [Fact]
     public void MultipleCommoditiesAndDestinationsCompeteOnChangingMarketValueNotFreight()
@@ -173,6 +177,198 @@ public sealed class EconomicTurnLockedFreightMarketTests
         Assert.Equal(3, results.Select(x => x.FreightQuote.RouteKey).Distinct().Count());
         Assert.Throws<NotSupportedException>(() =>
             ((IList<EconomicTurnLockedFreightTrade>)results).Clear());
+    }
+
+    private static string ExactTradeTranscript(
+        IReadOnlyList<EconomicTurnLockedFreightTrade> trades) =>
+        string.Join(";", trades.Select(x => string.Join(":",
+            x.DecisionOrdinal, x.TurnOrdinal,
+            x.SourceEconomicPointId.Value, (byte)x.SourceActivity,
+            x.DestinationEconomicPointId.Value, x.CommodityId.Value,
+            x.RawQuantity,
+            x.FreightQuote.RouteKey.SourceEconomicPointId.Value,
+            x.FreightQuote.RouteKey.DestinationEconomicPointId.Value,
+            x.FreightQuote.RulesetVersion,
+            x.FreightQuote.ExpectedLoadMicrograms,
+            x.RawMarginalCommodityUnitValueAtDecision.Numerator,
+            x.RawMarginalCommodityUnitValueAtDecision.Denominator,
+            x.RawCommodityValue.Numerator, x.RawCommodityValue.Denominator,
+            x.RawFreightCharge.Numerator, x.RawFreightCharge.Denominator,
+            x.RawProducerReservationCost.Numerator,
+            x.RawProducerReservationCost.Denominator,
+            x.RawNetReturn.Numerator, x.RawNetReturn.Denominator)));
+
+    [Fact]
+    public void IndexedModeMatchesExhaustiveTranscriptAndSkipsUnrelatedReevaluation()
+    {
+        var referenceDiagnostics = new EconomicTurnFreightMarketDiagnostics();
+        var reference = Resolve(diagnostics: referenceDiagnostics);
+        var indexedDiagnostics = new EconomicTurnFreightMarketDiagnostics();
+        var indexed = Resolve(
+            mode: EconomicTurnFreightCandidateSelectionMode.DependencyIndex,
+            diagnostics: indexedDiagnostics);
+
+        Assert.Equal(ExactTradeTranscript(reference), ExactTradeTranscript(indexed));
+        Assert.Equal(reference.Count, indexedDiagnostics.AcceptedTrades);
+        Assert.Equal(referenceDiagnostics.DecisionRounds,
+            indexedDiagnostics.DecisionRounds);
+        Assert.Equal(referenceDiagnostics.IntegratedValueEvaluations,
+            indexedDiagnostics.IntegratedValueEvaluations);
+        Assert.True(indexedDiagnostics.LaneExaminations <
+            referenceDiagnostics.LaneExaminations);
+        Assert.True(indexedDiagnostics.MarginalValueEvaluations <
+            referenceDiagnostics.MarginalValueEvaluations);
+
+        var reverseIndexed = Resolve(
+            quotes: Quotes(1).Reverse(),
+            values: Values().Reverse(),
+            reservations: Reservations().Reverse(),
+            mode: EconomicTurnFreightCandidateSelectionMode.DependencyIndex);
+        Assert.Equal(ExactTradeTranscript(reference),
+            ExactTradeTranscript(reverseIndexed));
+    }
+
+    [Fact]
+    public void IndexedModePreservesEarliestCanonicalLaneAtEqualMargins()
+    {
+        var flows = new EconomicProductionDemandResult(
+            new[]
+            {
+                new EconomicSupplyFlow(P(1), C(7),
+                    EconomicActivityKind.Agriculture, 2 * One),
+                new EconomicSupplyFlow(P(2), C(7),
+                    EconomicActivityKind.Agriculture, 2 * One)
+            },
+            new[] { new EconomicDemandFlow(P(3), C(7), 3 * One) });
+        var quotes = new[] { Quote(1, 1, 3, 900), Quote(1, 2, 3, 900) };
+        var values = new[] { new EconomicTurnCommodityValueOffer(
+            P(3), C(7), new LinearCommodityMarketValue(600_000, 50_000)) };
+        var reservations = new[]
+        {
+            new EconomicTurnSourceReservation(P(1), C(7),
+                EconomicActivityKind.Agriculture, 10_000),
+            new EconomicTurnSourceReservation(P(2), C(7),
+                EconomicActivityKind.Agriculture, 10_000)
+        };
+        IReadOnlyList<EconomicTurnLockedFreightTrade> Run(
+            EconomicTurnFreightCandidateSelectionMode mode) =>
+            Resolve(flows: flows, quotes: quotes, values: values,
+                reservations: reservations, mode: mode);
+
+        var oracle = Run(EconomicTurnFreightCandidateSelectionMode.Exhaustive);
+        var indexed = Run(EconomicTurnFreightCandidateSelectionMode.DependencyIndex);
+        Assert.Equal(ExactTradeTranscript(oracle), ExactTradeTranscript(indexed));
+        Assert.Equal(new[] { P(1), P(1), P(2) },
+            indexed.Select(x => x.SourceEconomicPointId));
+    }
+
+    [Fact]
+    public void IndexedModePreservesProfitBoundaryAndFailsClosedAtBudget()
+    {
+        // The same reference must stop inside a quantum after the dynamic
+        // commodity value crosses a positive unit freight+reservation cost.
+        var flows = new EconomicProductionDemandResult(
+            new[] { new EconomicSupplyFlow(P(1), C(7),
+                EconomicActivityKind.Agriculture, 3 * One) },
+            new[] { new EconomicDemandFlow(P(3), C(7), 3 * One) });
+        var values = new[] { new EconomicTurnCommodityValueOffer(P(3), C(7),
+            new LinearCommodityMarketValue(300_000, 300_000)) };
+        // The curve above may become negative past one unit, so constrain
+        // the per-turn demand to a range in which the exact function is valid.
+        values[0] = new EconomicTurnCommodityValueOffer(P(3), C(7),
+            new LinearCommodityMarketValue(400_000, 120_000));
+        var quotes = new[] { Quote(1, 1, 3, 900) };
+        var reservations = new[] { new EconomicTurnSourceReservation(
+            P(1), C(7), EconomicActivityKind.Agriculture, 20_000) };
+        var policy = new EconomicCongestionMarketSearchPolicy(2 * One, 20);
+        var exhaustiveCounters = new EconomicTurnFreightMarketDiagnostics();
+        var indexedCounters = new EconomicTurnFreightMarketDiagnostics();
+        var reference = Resolve(
+            flows: flows, quotes: quotes, values: values,
+            reservations: reservations, policy: policy,
+            diagnostics: exhaustiveCounters);
+        var indexed = Resolve(
+            flows: flows, quotes: quotes, values: values,
+            reservations: reservations, policy: policy,
+            mode: EconomicTurnFreightCandidateSelectionMode.DependencyIndex,
+            diagnostics: indexedCounters);
+        Assert.Equal(ExactTradeTranscript(reference), ExactTradeTranscript(indexed));
+        Assert.True(exhaustiveCounters.BinarySearchIterations > 0);
+        Assert.True(indexedCounters.BinarySearchIterations > 0);
+
+        Assert.Throws<InvalidOperationException>(() =>
+            Resolve(mode: EconomicTurnFreightCandidateSelectionMode.DependencyIndex,
+                policy: new EconomicCongestionMarketSearchPolicy(One, 1)));
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            Resolve(mode: (EconomicTurnFreightCandidateSelectionMode)255));
+    }
+
+    [Fact]
+    public void SeededSparseAndDenseMarketsMatchReferenceExactly()
+    {
+        for (var seed = 1; seed <= 24; seed++)
+        {
+            var random = new Random(seed);
+            var sources = 2 + seed % 4;
+            var destinations = 2 + seed % 3;
+            var commodities = 1 + seed % 3;
+            var supply = new List<EconomicSupplyFlow>();
+            var demand = new List<EconomicDemandFlow>();
+            var foods = new List<FoodCommodityDefinition>();
+            var values = new List<EconomicTurnCommodityValueOffer>();
+            var reservations = new List<EconomicTurnSourceReservation>();
+            var quotes = new List<EconomicTurnFreightQuote>();
+            for (var c = 0; c < commodities; c++)
+            {
+                var food = C(checked((uint)(7 + c)));
+                foods.Add(new FoodCommodityDefinition(food, $"test-{c}",
+                    checked((ulong)(1_000 + c * 500))));
+                for (var i = 0; i < sources; i++)
+                {
+                    var activity = i % 2 == 0
+                        ? EconomicActivityKind.Agriculture
+                        : EconomicActivityKind.Mining;
+                    supply.Add(new EconomicSupplyFlow(P(1UL + (ulong)i),
+                        food, activity, (ulong)random.Next(1, 5) * One));
+                    reservations.Add(new EconomicTurnSourceReservation(
+                        P(1UL + (ulong)i), food, activity,
+                        (ulong)random.Next(2_000, 80_000)));
+                }
+                for (var i = 0; i < destinations; i++)
+                {
+                    var point = P(101UL + (ulong)i);
+                    demand.Add(new EconomicDemandFlow(point, food,
+                        (ulong)random.Next(1, 5) * One));
+                    values.Add(new EconomicTurnCommodityValueOffer(
+                        point, food, new LinearCommodityMarketValue(
+                            (ulong)random.Next(550_000, 950_000),
+                            (ulong)random.Next(40_000, 100_000))));
+                }
+            }
+
+            for (var src = 0; src < sources; src++)
+                for (var dest = 0; dest < destinations; dest++)
+                    if (random.Next(0, 5) != 0) // explicit unquoted route
+                        quotes.Add(Quote(1, 1UL + (ulong)src,
+                            101UL + (ulong)dest,
+                            (ulong)random.Next(350, 4_000)));
+
+            var flows = new EconomicProductionDemandResult(supply, demand);
+            var catalog = new FoodCommodityCatalog(foods);
+            var policy = new EconomicCongestionMarketSearchPolicy(
+                seed % 3 == 0 ? One / 3UL : seed % 3 == 1 ? One : 2 * One,
+                500);
+            var resolver = new EconomicTurnLockedFreightMarketResolver();
+            IReadOnlyList<EconomicTurnLockedFreightTrade> Run(
+                EconomicTurnFreightCandidateSelectionMode mode) =>
+                resolver.Resolve(1UL, flows, catalog, quotes,
+                    values, reservations, policy, null, mode);
+
+            Assert.Equal(ExactTradeTranscript(
+                Run(EconomicTurnFreightCandidateSelectionMode.Exhaustive)),
+                ExactTradeTranscript(
+                    Run(EconomicTurnFreightCandidateSelectionMode.DependencyIndex)));
+        }
     }
 
     [Fact]
