@@ -44,7 +44,7 @@ public static class TurnLockedFreightMarketBenchmarkHarness
             var denominator = expectedLoadMicrograms + 1_000_000_000;
             // Test-only smooth utilization function, not a gameplay tariff.
             return new FoodTransportCostFraction(
-                20 * denominator + 120_000 * 1_000_000, denominator);
+                20 * denominator + (BigInteger)120_000 * 1_000_000, denominator);
         }
     }
 
