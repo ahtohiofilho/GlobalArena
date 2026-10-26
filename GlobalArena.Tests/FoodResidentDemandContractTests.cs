@@ -9,8 +9,8 @@ public sealed class FoodResidentDemandContractTests
     private static FoodCommodityCatalog Catalog() =>
         new(new[]
         {
-            new FoodCommodityDefinition(new CommodityId(9U), "legumes"),
-            new FoodCommodityDefinition(new CommodityId(7U), "grain")
+            new FoodCommodityDefinition(new CommodityId(9U), "legumes", 2_000UL),
+            new FoodCommodityDefinition(new CommodityId(7U), "grain", 1_000UL)
         });
 
     private static WorldState State(
@@ -46,8 +46,8 @@ public sealed class FoodResidentDemandContractTests
                 }));
 
     private static FoodResidentConsumptionRequirement Need(
-        ulong point = 2UL, uint food = 7U, long rate = 500_000L) =>
-        new(new EconomicPointId(point), new CommodityId(food), rate);
+        ulong point = 2UL, uint food = 7U, ulong grams = 500UL) =>
+        new(new EconomicPointId(point), new CommodityId(food), grams);
 
     [Fact]
     public void FoodDefinitionsRequireExplicitStableIdsAndCanonicalOrder()
@@ -66,10 +66,11 @@ public sealed class FoodResidentDemandContractTests
         Assert.True(catalog.Contains(new CommodityId(9U)));
         Assert.False(catalog.Contains(new CommodityId(100U)));
         Assert.False(catalog.Contains(default));
-        Assert.Equal(1_000_000UL, FoodCommodityDefinition.RawQuantityPerKilogram);
+        Assert.Equal(1_000UL, catalog.Commodities[0].GramsPerFlowUnit);
+        Assert.Equal(2_000UL, catalog.Commodities[1].GramsPerFlowUnit);
         Assert.Throws<NotSupportedException>(() =>
             ((IList<FoodCommodityDefinition>)catalog.Commodities)
-                .Add(new FoodCommodityDefinition(new CommodityId(11U), "fruit")));
+                .Add(new FoodCommodityDefinition(new CommodityId(11U), "fruit", 1_000UL)));
     }
 
     [Fact]
@@ -77,7 +78,7 @@ public sealed class FoodResidentDemandContractTests
     {
         var catalog = new FoodCommodityCatalog(new[]
         {
-            new FoodCommodityDefinition(new CommodityId(4294967295U), "roots")
+            new FoodCommodityDefinition(new CommodityId(4294967295U), "roots", 1_000UL)
         });
         Assert.True(catalog.Contains(new CommodityId(uint.MaxValue)));
         Assert.False(catalog.Contains(new CommodityId(1U)));
@@ -89,14 +90,14 @@ public sealed class FoodResidentDemandContractTests
         Assert.Throws<ArgumentException>(() =>
             new FoodCommodityCatalog(new[]
             {
-                new FoodCommodityDefinition(new CommodityId(7U), "grain"),
-                new FoodCommodityDefinition(new CommodityId(7U), "rice")
+                new FoodCommodityDefinition(new CommodityId(7U), "grain", 1_000UL),
+                new FoodCommodityDefinition(new CommodityId(7U), "rice", 1_000UL)
             }));
         Assert.Throws<ArgumentException>(() =>
             new FoodCommodityCatalog(new[]
             {
-                new FoodCommodityDefinition(new CommodityId(7U), "grain"),
-                new FoodCommodityDefinition(new CommodityId(9U), "grain")
+                new FoodCommodityDefinition(new CommodityId(7U), "grain", 1_000UL),
+                new FoodCommodityDefinition(new CommodityId(9U), "grain", 1_000UL)
             }));
     }
 
@@ -108,16 +109,16 @@ public sealed class FoodResidentDemandContractTests
     public void StableKeyRejectsNoncanonicalSpellings(string key)
     {
         Assert.Throws<ArgumentException>(() =>
-            new FoodCommodityDefinition(new CommodityId(7U), key));
+            new FoodCommodityDefinition(new CommodityId(7U), key, 1_000UL));
     }
 
     [Fact]
     public void InvalidIdsAndNullCollectionsFailFast()
     {
         Assert.Throws<ArgumentException>(() =>
-            new FoodCommodityDefinition(default, "grain"));
+            new FoodCommodityDefinition(default, "grain", 1_000UL));
         Assert.Throws<ArgumentNullException>(() =>
-            new FoodCommodityDefinition(new CommodityId(1U), null!));
+            new FoodCommodityDefinition(new CommodityId(1U), null!, 1_000UL));
         Assert.Throws<ArgumentNullException>(() =>
             new FoodCommodityCatalog(null!));
         Assert.Throws<ArgumentException>(() =>
@@ -130,13 +131,39 @@ public sealed class FoodResidentDemandContractTests
                 default, 500_000L));
     }
 
-    [Theory]
-    [InlineData(0L)]
-    [InlineData(-1L)]
-    [InlineData(1_000_001L)]
-    public void FoodRequirementsRespectExistingNormalizedRateContract(long rate)
+    [Fact]
+    public void ZeroPhysicalRequirementIsRejected()
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => Need(rate: rate));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Need(grams: 0UL));
+    }
+
+    [Fact]
+    public void FoodRateBeyondCurrentNormalizedRangeIsRejectedRatherThanTruncated()
+    {
+        Assert.Throws<InvalidOperationException>(() =>
+            FoodResidentDemandProfileMaterializer.Materialize(
+                State(), Catalog(), new[] { Need(grams: 1_001UL) }));
+    }
+
+    [Fact]
+    public void InexactGramToFlowUnitConversionFailsWithoutRounding()
+    {
+        var food = new FoodCommodityCatalog(new[]
+        {
+            new FoodCommodityDefinition(new CommodityId(7U), "grain", 3UL)
+        });
+
+        Assert.Throws<InvalidOperationException>(() =>
+            FoodResidentDemandProfileMaterializer.Materialize(
+                State(), food, new[] { Need(grams: 1UL) }));
+    }
+
+    [Fact]
+    public void FoodScaleCannotBeZero()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new FoodCommodityDefinition(
+                new CommodityId(7U), "grain", 0UL));
     }
 
     [Fact]
@@ -144,9 +171,9 @@ public sealed class FoodResidentDemandContractTests
     {
         var source = new List<FoodResidentConsumptionRequirement>
         {
-            Need(point: 2UL, food: 9U, rate: 100_000L),
-            Need(point: 1UL, food: 7U, rate: 750_000L),
-            Need(point: 2UL, food: 7U, rate: 500_000L)
+            Need(point: 2UL, food: 9U, grams: 200UL),
+            Need(point: 1UL, food: 7U, grams: 750UL),
+            Need(point: 2UL, food: 7U, grams: 500UL)
         };
         var rows = FoodResidentDemandProfileMaterializer.Materialize(
             State(), Catalog(), source);
@@ -164,8 +191,8 @@ public sealed class FoodResidentDemandContractTests
         Assert.Equal(new[] { 1_500_000UL, 5_000_000UL, 1_000_000UL },
             demands.Select(flow => flow.RawQuantity));
 
-        Assert.Equal(5UL, demands[1].RawQuantity /
-            FoodCommodityDefinition.RawQuantityPerKilogram);
+        Assert.Equal(5_000UL, demands[1].RawQuantity *
+            Catalog().Commodities[0].GramsPerFlowUnit / 1_000_000UL);
     }
 
     [Fact]
@@ -214,9 +241,9 @@ public sealed class FoodResidentDemandContractTests
     {
         var requirements = new[]
         {
-            Need(point: 2UL, food: 9U, rate: 100_000L),
-            Need(point: 2UL, food: 7U, rate: 500_000L),
-            Need(point: 1UL, food: 7U, rate: 300_000L)
+            Need(point: 2UL, food: 9U, grams: 200UL),
+            Need(point: 2UL, food: 7U, grams: 500UL),
+            Need(point: 1UL, food: 7U, grams: 300UL)
         };
         var original = FoodResidentDemandProfileMaterializer.Materialize(
             State(), Catalog(), requirements);
