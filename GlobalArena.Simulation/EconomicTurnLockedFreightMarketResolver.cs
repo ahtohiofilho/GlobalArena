@@ -151,9 +151,9 @@ public sealed class EconomicTurnLockedFreightMarketResolver
                 var winner = indexedCandidates.Best;
                 if (winner is not null)
                 {
-                    chosen = lanes[winner.LaneIndex];
-                    chosenQuantity = winner.ProfitableQuantity;
-                    chosenMarginalValue = winner.MarginalValue;
+                    chosen = lanes[winner.Value.LaneIndex];
+                    chosenQuantity = winner.Value.ProfitableQuantity;
+                    chosenMarginalValue = winner.Value.MarginalValue;
                 }
             }
             else
