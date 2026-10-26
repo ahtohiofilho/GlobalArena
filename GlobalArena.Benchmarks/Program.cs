@@ -1,5 +1,11 @@
 using GlobalArena.Benchmarks;
 
+if (args.Any(argument =>
+    string.Equals(argument, "--turn-freight-market", StringComparison.Ordinal)))
+{
+    return TurnLockedFreightMarketBenchmarkHarness.Run();
+}
+
 if (args.Any(
     argument =>
         string.Equals(

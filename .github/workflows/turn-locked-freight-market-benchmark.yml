@@ -1,0 +1,74 @@
+name: Turn-Locked Freight Market Reference Benchmark
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/turn-locked-freight-market-benchmark.yml"
+      - "GlobalArena.Benchmarks/**"
+      - "GlobalArena.Simulation/**"
+      - "GlobalArena.Runtime/**"
+      - "GlobalArena.World/**"
+      - "GlobalArena.Kernel/**"
+      - "Directory.Build.props"
+      - "GlobalArena.slnx"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/turn-locked-freight-market-benchmark.yml"
+      - "GlobalArena.Benchmarks/**"
+      - "GlobalArena.Simulation/**"
+      - "GlobalArena.Runtime/**"
+      - "GlobalArena.World/**"
+      - "GlobalArena.Kernel/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  measure:
+    name: Reference benchmark on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Capture platform
+        run: dotnet --info > platform.txt
+
+      - name: Restore benchmark
+        run: dotnet restore GlobalArena.Benchmarks/GlobalArena.Benchmarks.csproj
+
+      - name: Build benchmark
+        run: dotnet build GlobalArena.Benchmarks/GlobalArena.Benchmarks.csproj --configuration Release --no-restore
+
+      - name: Benchmark reference with and without diagnostics
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet run --project GlobalArena.Benchmarks/GlobalArena.Benchmarks.csproj --configuration Release --no-build -- --turn-freight-market 2>&1 | tee turn-freight-market-benchmark.txt
+
+      - name: Upload benchmark evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: turn-freight-market-${{ matrix.os }}
+          path: |
+            platform.txt
+            turn-freight-market-benchmark.txt
+          if-no-files-found: warn

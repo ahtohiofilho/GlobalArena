@@ -22,8 +22,10 @@ public sealed class EconomicTurnLockedFreightMarketResolver
         IEnumerable<EconomicTurnFreightQuote> freightQuotes,
         IEnumerable<EconomicTurnCommodityValueOffer> commodityValues,
         IEnumerable<EconomicTurnSourceReservation> producerReservations,
-        EconomicCongestionMarketSearchPolicy searchPolicy)
+        EconomicCongestionMarketSearchPolicy searchPolicy,
+        EconomicTurnFreightMarketDiagnostics? diagnostics = null)
     {
+        diagnostics?.Reset();
         if (turnOrdinal == 0UL)
             throw new ArgumentOutOfRangeException(nameof(turnOrdinal));
         ArgumentNullException.ThrowIfNull(flows);
@@ -121,9 +123,12 @@ public sealed class EconomicTurnLockedFreightMarketResolver
                     valuations[demandKey].Curve, quote));
             }
 
+        diagnostics?.SetInputs(supplies.Length, demands.Length, quotes.Count, lanes.Count);
+
         var chosenTrades = new List<EconomicTurnLockedFreightTrade>();
         while (true)
         {
+            diagnostics?.Round();
             Lane? chosen = null;
             SignedMargin best = default;
             ulong chosenQuantity = 0UL;
@@ -131,11 +136,13 @@ public sealed class EconomicTurnLockedFreightMarketResolver
 
             foreach (var lane in lanes)
             {
+                diagnostics?.ExamineLane();
                 var remaining = Math.Min(lane.Supply.Remaining, lane.Demand.Remaining);
                 if (remaining == 0UL)
                     continue;
 
                 var curve = lane.Curve;
+                diagnostics?.EvaluateMarginal();
                 var marginal = curve.EvaluateMarginalRawUnitValue(
                     lane.Demand.Allocated);
                 ArgumentNullException.ThrowIfNull(marginal);
@@ -144,7 +151,7 @@ public sealed class EconomicTurnLockedFreightMarketResolver
                     continue;
 
                 var maximum = Math.Min(remaining, searchPolicy.RawDecisionQuantum);
-                var profitable = LargestProfitableQuantity(lane, maximum);
+                var profitable = LargestProfitableQuantity(lane, maximum, diagnostics);
                 if (profitable == 0UL)
                     continue;
 
@@ -164,7 +171,9 @@ public sealed class EconomicTurnLockedFreightMarketResolver
 
             var from = chosen.Demand.Allocated;
             var to = checked(from + chosenQuantity);
+            diagnostics?.EvaluateIntegral();
             var before = chosen.Curve.EvaluateIntegratedRawValue(from);
+            diagnostics?.EvaluateIntegral();
             var after = chosen.Curve.EvaluateIntegratedRawValue(to);
             if (before is null || after is null || after.CompareTo(before) < 0)
                 throw new InvalidOperationException(
@@ -189,14 +198,19 @@ public sealed class EconomicTurnLockedFreightMarketResolver
             chosen.Supply.Remaining -= chosenQuantity;
             chosen.Demand.Remaining -= chosenQuantity;
             chosen.Demand.Allocated = to;
+            diagnostics?.AcceptTrade();
         }
         return Array.AsReadOnly(chosenTrades.ToArray());
     }
 
-    private static ulong LargestProfitableQuantity(Lane lane, ulong maximum)
+    private static ulong LargestProfitableQuantity(
+        Lane lane, ulong maximum, EconomicTurnFreightMarketDiagnostics? diagnostics)
     {
+        diagnostics?.SearchQuantity();
         var start = lane.Demand.Allocated;
+        diagnostics?.EvaluateMarginal();
         var atStart = lane.Curve.EvaluateMarginalRawUnitValue(start);
+        diagnostics?.EvaluateMarginal();
         var atEnd = lane.Curve.EvaluateMarginalRawUnitValue(checked(start + maximum));
         if (atStart is null || atEnd is null ||
             atEnd.CompareTo(atStart) > 0)
@@ -210,7 +224,9 @@ public sealed class EconomicTurnLockedFreightMarketResolver
         ulong upper = maximum;
         while (lower < upper)
         {
+            diagnostics?.SearchStep();
             var midpoint = lower + (upper - lower) / 2UL + (upper - lower) % 2UL;
+            diagnostics?.EvaluateMarginal();
             var value = lane.Curve.EvaluateMarginalRawUnitValue(
                 checked(start + midpoint));
             if (value is null)
