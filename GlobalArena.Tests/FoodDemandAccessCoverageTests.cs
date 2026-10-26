@@ -243,7 +243,7 @@ public sealed class FoodDemandAccessCoverageTests
             new FoodAccessObservationSnapshot(default,
                 Array.Empty<FoodPointAccessObservation>()));
         Assert.Throws<ArgumentException>(() =>
-            Snapshot(null!));
+            Snapshot(new FoodPointAccessObservation[] { null! }));
         Assert.Throws<ArgumentNullException>(() =>
             new FoodAccessObservationSnapshot(new TurnNumber(1UL), null!));
     }
