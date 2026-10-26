@@ -19,6 +19,8 @@ public sealed class WorldState
 
     public EconomyRuntimeState Economy { get; }
 
+    public PopulationRuntimeState Population { get; }
+
     public WarfareRuntimeState Warfare { get; }
 
     public static WorldState CreateInitial()
@@ -30,6 +32,7 @@ public sealed class WorldState
             StrategicTerritoryRuntimeState.Empty,
             BaselineDiplomacyRuntimeState.Empty,
             EconomyRuntimeState.Empty,
+            PopulationRuntimeState.Uninitialized,
             WarfareRuntimeState.Empty);
     }
 
@@ -44,6 +47,7 @@ public sealed class WorldState
             StrategicTerritoryRuntimeState.Empty,
             BaselineDiplomacyRuntimeState.Empty,
             EconomyRuntimeState.Empty,
+            PopulationRuntimeState.Uninitialized,
             WarfareRuntimeState.Empty);
     }
 
@@ -72,6 +76,7 @@ public sealed class WorldState
             Territory,
             Diplomacy,
             Economy,
+            Population,
             Warfare);
     }
 
@@ -88,6 +93,7 @@ public sealed class WorldState
             Territory,
             Diplomacy,
             Economy,
+            Population,
             Warfare);
     }
 
@@ -104,6 +110,7 @@ public sealed class WorldState
             territory,
             Diplomacy,
             Economy,
+            Population,
             Warfare);
     }
 
@@ -120,6 +127,7 @@ public sealed class WorldState
             Territory,
             diplomacy,
             Economy,
+            Population,
             Warfare);
     }
 
@@ -136,6 +144,48 @@ public sealed class WorldState
             Territory,
             Diplomacy,
             economy,
+            Population,
+            Warfare);
+    }
+
+    /// <summary>
+    /// Replaces the complete census. Once initialized, every economic point
+    /// must have exactly one resident headcount, including zero-resident points.
+    /// </summary>
+    public WorldState WithPopulation(PopulationRuntimeState population)
+    {
+        ArgumentNullException.ThrowIfNull(population);
+
+        return new WorldState(
+            Revision,
+            WorldBinding,
+            Civilizations,
+            Territory,
+            Diplomacy,
+            Economy,
+            population,
+            Warfare);
+    }
+
+    /// <summary>
+    /// Atomic replacement required when economic point identities or workforce
+    /// change and an initialized census must be updated in the same snapshot.
+    /// </summary>
+    public WorldState WithEconomyAndPopulation(
+        EconomyRuntimeState economy,
+        PopulationRuntimeState population)
+    {
+        ArgumentNullException.ThrowIfNull(economy);
+        ArgumentNullException.ThrowIfNull(population);
+
+        return new WorldState(
+            Revision,
+            WorldBinding,
+            Civilizations,
+            Territory,
+            Diplomacy,
+            economy,
+            population,
             Warfare);
     }
 
@@ -152,6 +202,7 @@ public sealed class WorldState
             Territory,
             Diplomacy,
             Economy,
+            Population,
             warfare);
     }
 
@@ -164,6 +215,7 @@ public sealed class WorldState
             Territory,
             Diplomacy,
             Economy,
+            Population,
             Warfare);
     }
 
@@ -174,6 +226,7 @@ public sealed class WorldState
         StrategicTerritoryRuntimeState territory,
         BaselineDiplomacyRuntimeState diplomacy,
         EconomyRuntimeState economy,
+        PopulationRuntimeState population,
         WarfareRuntimeState warfare)
     {
         ArgumentNullException.ThrowIfNull(
@@ -189,6 +242,9 @@ public sealed class WorldState
             economy);
 
         ArgumentNullException.ThrowIfNull(
+            population);
+
+        ArgumentNullException.ThrowIfNull(
             warfare);
 
         ValidateCrossDomainInvariants(
@@ -197,6 +253,7 @@ public sealed class WorldState
             territory,
             diplomacy,
             economy,
+            population,
             warfare);
 
         Revision = revision;
@@ -205,6 +262,7 @@ public sealed class WorldState
         Territory = territory;
         Diplomacy = diplomacy;
         Economy = economy;
+        Population = population;
         Warfare = warfare;
     }
 
@@ -214,6 +272,7 @@ public sealed class WorldState
         StrategicTerritoryRuntimeState territory,
         BaselineDiplomacyRuntimeState diplomacy,
         EconomyRuntimeState economy,
+        PopulationRuntimeState population,
         WarfareRuntimeState warfare)
     {
         var civilizationIds =
@@ -291,6 +350,32 @@ public sealed class WorldState
                 throw new InvalidOperationException(
                     $"Economic point {point.Id.Value} references strategic cell {point.StrategicCellId.Value}, which does not belong to the bound generated world.");
             }
+        }
+
+        if (population.IsInitialized)
+        {
+            if (population.PointPopulations.Count != economy.EconomicPoints.Count)
+                throw new InvalidOperationException(
+                    "Initialized population census must contain exactly one entry per economic point.");
+
+            for (var index = 0; index < economy.EconomicPoints.Count; index++)
+            {
+                var economicPoint = economy.EconomicPoints[index];
+                var census = population.PointPopulations[index];
+
+                if (census.EconomicPointId != economicPoint.Id)
+                    throw new InvalidOperationException(
+                        "Initialized population census must reference precisely the existing economic points.");
+
+                if (census.Residents < economicPoint.Workforce)
+                    throw new InvalidOperationException(
+                        $"Economic point {economicPoint.Id.Value} cannot have more workers than residents.");
+            }
+        }
+        else if (population.PointPopulations.Count != 0)
+        {
+            throw new InvalidOperationException(
+                "An uninitialized population census cannot contain resident records.");
         }
 
         foreach (var unit in
