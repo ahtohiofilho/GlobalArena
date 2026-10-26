@@ -25,18 +25,30 @@ public sealed class FoodStrategicEdgeCapacityAuditorTests
         var state = WorldState.CreateBound(world)
             .WithCivilizations(civilizations)
             .WithTerritory(territory)
-            .WithEconomy(new EconomyRuntimeState(new[]
-            {
-                new EconomicPointRuntimeState(
-                    new EconomicPointId(1UL), source.Id,
-                    source.StartCellId!.Value, 0UL),
-                new EconomicPointRuntimeState(
-                    new EconomicPointId(2UL), destination.Id,
-                    destination.StartCellId!.Value, 0UL),
-                new EconomicPointRuntimeState(
-                    new EconomicPointId(3UL), destination.Id,
-                    destination.StartCellId!.Value, 0UL)
-            }));
+            .WithEconomyAndPopulation(
+                new EconomyRuntimeState(new[]
+                {
+                    new EconomicPointRuntimeState(
+                        new EconomicPointId(1UL), source.Id,
+                        source.StartCellId!.Value, 2UL,
+                        new[]
+                        {
+                            new EconomicActivityWorkforceAllocation(
+                                EconomicActivityKind.Agriculture, 2UL)
+                        }),
+                    new EconomicPointRuntimeState(
+                        new EconomicPointId(2UL), destination.Id,
+                        destination.StartCellId!.Value, 0UL),
+                    new EconomicPointRuntimeState(
+                        new EconomicPointId(3UL), destination.Id,
+                        destination.StartCellId!.Value, 0UL)
+                }),
+                new PopulationRuntimeState(new[]
+                {
+                    new PopulationPointRuntimeState(new EconomicPointId(1UL), 2UL),
+                    new PopulationPointRuntimeState(new EconomicPointId(2UL), 10UL),
+                    new PopulationPointRuntimeState(new EconomicPointId(3UL), 10UL)
+                }));
         return (world, state);
     }
 
@@ -142,6 +154,73 @@ public sealed class FoodStrategicEdgeCapacityAuditorTests
         Assert.All(generous.UsedEdges, row =>
             Assert.Equal((UInt128)4_000_000_000UL,
                 row.RawCapacityMicrograms));
+    }
+
+    [Fact]
+    public void ActualResidentMarketAllocatesFoodsSeparatelyButSharedEdgesRevealOverload()
+    {
+        var (world, state) = Fixture();
+        var route = Route(world, state);
+        var catalog = Catalog();
+        var foodProfiles = FoodResidentDemandProfileMaterializer.Materialize(
+            state, catalog, new[]
+            {
+                new FoodResidentConsumptionRequirement(
+                    new EconomicPointId(2UL), new CommodityId(7U), 500UL),
+                new FoodResidentConsumptionRequirement(
+                    new EconomicPointId(3UL), new CommodityId(8U), 1_000UL)
+            });
+
+        var marketPhase = new EconomicResidentFoodMarketTurnPhase(
+            new[]
+            {
+                new EconomicProductionPotential(
+                    new EconomicPointId(1UL), new CommodityId(7U),
+                    EconomicActivityKind.Agriculture, 1_000_000L),
+                new EconomicProductionPotential(
+                    new EconomicPointId(1UL), new CommodityId(8U),
+                    EconomicActivityKind.Agriculture, 1_000_000L)
+            },
+            foodProfiles,
+            new[]
+            {
+                new EconomicTransferSignal(
+                    new StrategicEconomicRouteKey(
+                        new EconomicPointId(1UL), new EconomicPointId(2UL)),
+                    route.HopCount, 100_000UL, 1_000_000UL, 0UL),
+                new EconomicTransferSignal(
+                    new StrategicEconomicRouteKey(
+                        new EconomicPointId(1UL), new EconomicPointId(3UL)),
+                    route.HopCount, 100_000UL, 1_000_000UL, 0UL)
+            },
+            new EconomicMarketAllocationPolicy(
+                900_000UL, 900_000UL, 1, 1),
+            catalog);
+
+        var hash = new CanonicalWorldStateHasher().Compute(state);
+        var resolved = marketPhase.Resolve(
+            new TurnResolutionInput(
+                state, Array.Empty<ISimulationCommand>(),
+                new SimulationContext(
+                    new TurnNumber(1UL), new SimulationSeed(5UL))),
+            state);
+
+        var chosen = Assert.IsType<EconomicMarketAllocationResolvedEvent>(
+            resolved.Events[1]).Allocation;
+        Assert.Equal(2, chosen.Allocations.Count);
+        Assert.Equal(new[] { 7U, 8U },
+            chosen.Allocations.Select(trade => trade.CommodityId.Value));
+
+        // Existing market has per-commodity capacity. Two different foods
+        // legitimately obtain separate route allocations, while the physical
+        // edge audit reveals their combined 3 kg load against 2.5 kg capacity.
+        var audit = Audit(world, state, chosen, Capacities(route, 2_500UL));
+        Assert.False(audit.AllUsedEdgesWithinCapacity);
+        Assert.All(audit.UsedEdges, edge =>
+            Assert.Equal((UInt128)500_000_000UL,
+                edge.RawOverCapacityMicrograms));
+        Assert.Equal(hash, new CanonicalWorldStateHasher().Compute(state));
+        Assert.Same(state, resolved.ResultingWorldState);
     }
 
     [Fact]
