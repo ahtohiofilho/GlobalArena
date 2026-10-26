@@ -7,7 +7,7 @@ namespace GlobalArena.Simulation;
 public sealed class CanonicalWorldStateHasher
     : IWorldStateHasher
 {
-    public const uint FormatVersion = 7U;
+    public const uint FormatVersion = 8U;
 
     private static readonly byte[] Magic =
     {
@@ -36,7 +36,7 @@ public sealed class CanonicalWorldStateHasher
 
         AppendUInt32(
             hash,
-            7U);
+            8U);
 
         if (worldState.WorldBinding is null)
         {
@@ -225,6 +225,27 @@ public sealed class CanonicalWorldStateHasher
                     hash,
                     allocation.Workforce);
             }
+        }
+
+        // Population is resident authoritative state in hash format v8.
+        // The initialization bit differentiates an absent census from an
+        // explicitly validated census containing zero residents/points.
+        AppendUInt32(
+            hash,
+            25U);
+
+        AppendUInt32(
+            hash,
+            worldState.Population.IsInitialized ? 1U : 0U);
+
+        AppendUInt32(
+            hash,
+            checked((uint)worldState.Population.PointPopulations.Count));
+
+        foreach (var population in worldState.Population.PointPopulations)
+        {
+            AppendUInt64(hash, population.EconomicPointId.Value);
+            AppendUInt64(hash, population.Residents);
         }
 
         AppendUInt32(
