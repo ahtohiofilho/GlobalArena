@@ -1,18 +1,20 @@
 # ADR-064 — Technology-Persistent Transport Infrastructure and Continuous Endogenous Pricing
 
-**Status:** Proposed — architecture reconciliation and benchmark design pending  
+**Status:** Proposed — documentation/contract reconciliation pending formal ratification  
 **Date:** 2026-10-26  
-**Scope:** Prospective transport/infrastructure economics, pricing, multimodal routing and computational strategy. No executable migration in this ADR.
+**Scope:** Consolidation of previously discussed transport and continuous-pricing intentions, conflict audit of implemented contracts, and a prospective interface/performance implementation plan. It does not claim a new economic concept or change code.
 
-## Context and drift correction
+## Context and documentation-propagation correction
 
-ADR-053 (Accepted) proposed entirely abstract links, where investment changes transfer capacity/cost without a required infrastructure technology identity. That design is no longer the intended *future infrastructure model*: an existing stone road must never automatically become a railway just because investment accumulates. A more advanced type must be constructed/replaced explicitly under its own technology/construction rules. Improvements **within** one technology remain possible when that technology permits them.
+The technology-persistent infrastructure idea, continuous endogenous prices and pre-evaluated unit costs for computational reuse were discussed before this ADR. **This document records and propagates those pre-existing design intentions; it does not originate them or assert they were already formally accepted in every contract.**
+
+ADR-053 (Accepted) documents an older entirely abstract link model, where investment changes transfer capacity/cost without requiring technology identity. That text no longer reflects the clarified intended *future infrastructure model*: an existing stone road must never automatically become a railway just because investment accumulates. A more advanced type must be constructed/replaced explicitly under its own technology/construction rules. Improvements **within** one technology remain possible when that technology permits them.
 
 ADRs 061–063 and merged PRs #12–#14 introduce exact smooth marginal congestion costs, a joint-food marginal market, and adaptive route choice. Their mathematics and deterministic audit contracts are reusable, but their current inputs are priced strategic edges, **not persisted built transport assets or services**. The accepted M4.4 transfer-signal implementation still uses abstract workforce-derived `RawEffectiveCapacity` and a hard per-route limit, retained only as a backward-compatible baseline. Do not represent it as the new physical infrastructure model.
 
-**Explicit correction:** examples of an underfilled ocean freighter, a stone road and a modern railway are *tests of generality*, not mandates for mode-specific pricing formulas, fixed tariffs, predefined operating schedules or a fixed catalogue of modes. **Continuous, endogenous mathematical functions remain the pricing authority.** A precomputed unit price is a *derived evaluation or quote* of such a function for known inputs/context, intended to reduce repeated work in allocation—not an arbitrary externally imposed substitute for the function.
+**Continuity safeguard:** examples of an underfilled ocean freighter, a stone road and a modern railway are *tests of generality*, not mandates for mode-specific pricing formulas, fixed tariffs, predefined operating schedules or a fixed catalogue of modes. **Continuous, endogenous mathematical functions remain the pricing authority.** A precomputed unit price is a *derived evaluation or quote* of such a function for known inputs/context, intended to reduce repeated work in allocation—not an arbitrary externally imposed substitute for the function.
 
-## Decision proposed for approval
+## Reconciled design direction and contracts pending ratification
 
 ### 1. Separate geography, technology, installed asset, service and market
 
@@ -38,7 +40,18 @@ The policy must declare which outputs are marginal cost, integrated cost, averag
 
 ### 3. Preserve economic math while optimizing allocation
 
-The computational goal is to **reduce function evaluations, path searches and iterations**, not substitute fixed hand-authored prices for continuous price formation.
+The computational goal is to **reduce function evaluations, path searches and iterations**, not substitute fixed hand-authored prices for continuous price formation. This is an opportunity to evaluate on the existing code, **not a claim that the concept or all optimizations are newly invented or absent**.
+
+**Verified implementation inventory (as of PR #14 merged):**
+
+| Solver/component | Already implemented | Not yet implemented in that component |
+| --- | --- | --- |
+| Legacy `EconomicMarketAllocationResolver` (ADR-044) | Bounded deterministic supply/demand/transfer bands and a residual min-cost network with Bellman-Ford augmentations; no per-raw-unit simulation | Technology/service identity and continuous-function-derived quote cache; retains legacy `RawEffectiveCapacity` |
+| `EconomicCongestionPricedFoodMarketResolver` (ADRs 062–063) | Joint-food successive-marginal selection, configurable `RawDecisionQuantum`, exact `BigInteger` integrals and binary search on monotone marginal profitability | Persistent asset/service inputs, precomputed reusable endogenous price quotes, incremental dirty-lane repricing and performance evidence |
+| `StrategicMarginalCongestionRouteResolver` (ADR-063) | Deterministic current-load cheapest-path search | Reuse of adaptive shortest-path results across successive market tranches; currently invoked anew per viable lane/decision |
+| `StrategicEconomicRouteCache` (ADR-045) | Sparse BFS reachability/access dependency invalidation | Correct cache for weighted dynamic service price changes, construction and newly attractive previously unused alternatives |
+
+The implemented trade solver is a **greedy quantized approximation**, not interchangeable by name with a continuous equilibrium water-filling solution. Benchmark both existing baselines before selecting any new acceleration strategy.
 
 - Evaluate and cache stable coefficients, forecasts, exact integrals or function-derived quotes for a pricing epoch/snapshot.
 - Reuse prices/paths across equivalent candidates and use batched, event-driven allocation, monotone intervals, or analytically determined breakpoints where supported **by the underlying functions**.
@@ -71,12 +84,12 @@ Do not presuppose a final vehicle inventory, transport-company simulation, compl
 | ADR-043 (Accepted) | Workforce-derived effective capacity; uniform cost per hop; hard legacy band limit | **Legacy-only** until an explicitly versioned migration; not the future model's physical road/rail capacity |
 | ADR-044 (Accepted) | Finite residual min-cost network and deterministic bands per commodity | Keep baseline; assess reuse of its batching/residual ideas without inheriting abstract capacity semantics |
 | ADR-045 (Accepted) | Sparse route cache and dependency invalidation for unweighted BFS | Extend to all relevant price/topology/access/service versions; improve treatment of newly cheaper *untraversed* alternatives |
-| ADR-053 (Accepted) | Abstract logistics with no mandatory transport-mode identity | **This ADR proposes replacing section 4's technology-agnostic infrastructure/investment assumption.** Retain emergent hubs, hierarchical flows, market sparsification and non-micromanagement goals |
+| ADR-053 (Accepted) | Abstract logistics with no mandatory transport-mode identity | **Reconcile an older documented assumption with the previously discussed technology-persistent intention:** after review, supersede §4 where inconsistent; retain emergent hubs, hierarchical flows, market sparsification and non-micromanagement |
 | ADR-061 (Proposed, PR #12 merged) | Exact smooth shared-edge congestion, no capacity cliff | Reuse continuous marginal/integral cost mathematics; eventually parameterize by built infrastructure/service |
 | ADR-062 (Proposed, PR #13 merged) | Joint food market, exact integral settlement, quantified greedy steps | Preserve validated behavior as opt-in reference; introduce price-function-derived service inputs in a later reviewed PR |
 | ADR-063 (Proposed, PR #14 merged) | Dynamic cheapest marginal route on strategic graph | Keep deterministic Dijkstra core; later extend to multi-edge assets, service transfers and technology-aware dependencies |
 
-This prospective architectural replacement does **not** rewrite, invalidate or claim retroactive acceptance of previous ADRs; it requires an architecture review/acceptance checkpoint. Current code remains authoritative for the *implemented legacy/opt-in baselines* until replaced by validated migrations.
+This documentation reconciliation does **not** rewrite historical ADRs, invent a new strategy, or claim retroactive formal acceptance where not recorded. The conflicting accepted text requires an architecture review/acceptance checkpoint to establish which version is binding. Current code remains authoritative for the *implemented legacy/opt-in baselines* until replaced by validated migrations.
 
 ## Implementation checkpoints (not part of this documentation PR)
 
@@ -96,4 +109,4 @@ This prospective architectural replacement does **not** rewrite, invalidate or c
 - No artificial fixed physical limit at congestion scale `S`; no silent retroactive transport-class conversion; no mixing economic selection with delivered or consumed goods.
 - Preserve cross-platform .NET 10 regression/hash checks and confirm any new canonical-state version deliberately, not as an incidental side effect.
 
-**Decision checkpoint:** This ADR remains **Proposed** until architecture review accepts its precise replacement scope for ADR-053, then a separate implementation PR may begin. Continuous equations, not preassigned modal unit prices, are the invariant.
+**Decision checkpoint:** This ADR remains **Proposed** as a propagation/reconciliation record until architecture review ratifies its precise effect on ADR-053's accepted text. No new mathematical principle is being asserted; continuous equations, not preassigned modal unit prices, remain the agreed modeling direction. Separate implementation PRs and benchmark gates still apply.
