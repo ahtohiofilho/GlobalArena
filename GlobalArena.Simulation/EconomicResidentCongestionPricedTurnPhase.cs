@@ -20,6 +20,7 @@ public sealed class EconomicResidentCongestionPricedTurnPhase : ITurnResolutionP
     private readonly FoodCommodityCatalog _catalog;
     private readonly FoodStrategicEdgeCongestionProfile[] _profiles;
     private readonly EconomicCongestionMarketSearchPolicy _policy;
+    private readonly StrategicCongestionRoutingMode _routingMode;
     private readonly EconomicCongestionPricedFoodMarketResolver _marketResolver = new();
 
     public string PhaseId => EconomicProductionDemandTurnPhase.StablePhaseId;
@@ -33,7 +34,9 @@ public sealed class EconomicResidentCongestionPricedTurnPhase : ITurnResolutionP
         IEnumerable<EconomicCongestionRouteOffer> routeOffers,
         FoodCommodityCatalog foodCatalog,
         IEnumerable<FoodStrategicEdgeCongestionProfile> profiles,
-        EconomicCongestionMarketSearchPolicy policy)
+        EconomicCongestionMarketSearchPolicy policy,
+        StrategicCongestionRoutingMode routingMode =
+            StrategicCongestionRoutingMode.FixedShortestHop)
     {
         ArgumentNullException.ThrowIfNull(generatedWorld);
         ArgumentNullException.ThrowIfNull(edgeAccess);
@@ -42,6 +45,9 @@ public sealed class EconomicResidentCongestionPricedTurnPhase : ITurnResolutionP
         ArgumentNullException.ThrowIfNull(foodCatalog);
         ArgumentNullException.ThrowIfNull(profiles);
         ArgumentNullException.ThrowIfNull(policy);
+        if (routingMode != StrategicCongestionRoutingMode.FixedShortestHop &&
+            routingMode != StrategicCongestionRoutingMode.AdaptiveLowestMarginalCost)
+            throw new ArgumentOutOfRangeException(nameof(routingMode));
 
         _generatedWorld = generatedWorld;
         _edgeAccess = edgeAccess;
@@ -57,6 +63,7 @@ public sealed class EconomicResidentCongestionPricedTurnPhase : ITurnResolutionP
                 "Congestion-priced economic turn collections cannot contain null entries.");
         _catalog = foodCatalog;
         _policy = policy;
+        _routingMode = routingMode;
     }
 
     public TurnResolutionResult Resolve(
@@ -71,7 +78,7 @@ public sealed class EconomicResidentCongestionPricedTurnPhase : ITurnResolutionP
         // All validations and market decisions finish before returning events.
         var market = _marketResolver.Resolve(
             _generatedWorld, stagedState, _edgeAccess,
-            flow.Flows, _bids, _offers, _catalog, _profiles, _policy);
+            flow.Flows, _bids, _offers, _catalog, _profiles, _policy, _routingMode);
         var marketEvent = new EconomicCongestionPricedMarketResolvedEvent(
             EventId.ForSystemPhase(
                 planningInput.Context.Turn, PhaseId, ordinal: 2UL), market);
