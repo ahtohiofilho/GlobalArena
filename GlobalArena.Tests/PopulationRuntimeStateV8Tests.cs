@@ -116,6 +116,39 @@ public sealed class PopulationRuntimeStateV8Tests
     }
 
     [Fact]
+    public void ReplayFromCompatibleInMemoryPopulationSnapshotPreservesResidentCensus()
+    {
+        var (world, civilizations, territory) = Fixture();
+        var original = BoundState(world, civilizations, territory,
+            InitialCensus(world, civilizations, territory));
+
+        var turn = new TurnNumber(2UL);
+        var simulationEvent = new RevisionOnlyTestEvent(
+            new EventId(new CommandId(turn, 1UL), 1UL));
+        var eventLog = new SimulationEventLog(new[]
+        {
+            new SimulationEventLogEntry(
+                1UL, simulationEvent,
+                wasEligible: true, wasExecuted: true)
+        });
+
+        var replayed = new SimulationEventLogReplayer(
+            new RevisionOnlyTestEventExecutor()).Replay(
+                new SimulationReplayInput(
+                    original,
+                    eventLog,
+                    new SimulationContext(turn, new SimulationSeed(99UL))));
+
+        Assert.Same(original.Population, replayed.Population);
+        Assert.Equal(20UL, replayed.Population.PointPopulations.Single().Residents);
+        Assert.Equal(original.Revision + 1UL, replayed.Revision);
+        Assert.Equal(
+            new CanonicalWorldStateHasher().Compute(original.AdvanceRevision()),
+            new CanonicalWorldStateHasher().Compute(replayed));
+        Assert.Equal(0UL, original.Revision);
+    }
+
+    [Fact]
     public void CensusRejectsMissingAndUnknownEconomicPoints()
     {
         var (world, civilizations, territory) = Fixture();
@@ -367,5 +400,18 @@ public sealed class PopulationRuntimeStateV8Tests
             state.WithEconomyAndPopulation(null!, PopulationRuntimeState.Uninitialized));
         Assert.Throws<ArgumentNullException>(() =>
             state.WithEconomyAndPopulation(EconomyRuntimeState.Empty, null!));
+    }
+    private sealed record RevisionOnlyTestEvent(EventId Id) : ISimulationEvent;
+
+    private sealed class RevisionOnlyTestEventExecutor : ISimulationEventExecutor
+    {
+        public WorldState Execute(
+            WorldState state,
+            ISimulationEvent simulationEvent,
+            SimulationContext context)
+        {
+            Assert.IsType<RevisionOnlyTestEvent>(simulationEvent);
+            return state.AdvanceRevision();
+        }
     }
 }
