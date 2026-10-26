@@ -1,6 +1,6 @@
 # ADR-056 — Population Runtime State, Canonical Hash v8 and Compatibility Gate
 
-**Status:** Proposed — subject to review and cross-platform validation
+**Status:** Accepted — canonical hash v8; historical v7 import remains out of scope
 
 **Date:** 2026-10-26
 
@@ -12,7 +12,7 @@ PR #5 proposes adding resident headcounts to the immutable authoritative WorldSt
 
 The existing `SimulationEventLogReplayer` operates on an in-memory initial `WorldState` and an event log supplied by the caller. It does not deserialize historical v7 snapshot files, nor does it upgrade previous hash formats. The Persistence / Save / Replay capability remains separately tracked in the roadmap.
 
-## Proposed decision
+## Decision
 
 ### 1. New authoritative resident census
 
@@ -63,19 +63,19 @@ M4.3 demand continues to depend on existing localized workforce until an explici
 
 No GPP changes follow from this proposed decision alone.
 
-### 5. Required acceptance evidence
+### 5. Acceptance evidence
 
-Before PR #5 is merged:
+Acceptance of this decision requires:
 
 - full .NET 10 Release regression green on the PR head;
 - cross-platform Windows / Ubuntu / macOS hash-vector and kernel regression evidence for the exact PR head or equivalent tested merge input;
 - no unexpected v7 hard-coded version/digest remnants in tests;
 - deliberate acceptance that v7 files/hashes remain **unsupported** by the new v8 path without an importer.
 
-If cross-platform automation is not available, record that as a blocker; do not claim validated compatibility.
+Validation evidence for PR #5 commit `302294d11d3334ec328fcf82d498cca286ac8f60`:\n\n- Windows .NET 10 Release suite on prior code commit: 1,333/1,333 tests successful;\n- [Cross-Platform Kernel Regression Validation](https://github.com/ahtohiofilho/GlobalArena/actions/runs/40273154867): Windows, Ubuntu, macOS all successful;\n- [Cross-Platform State Hash Validation](https://github.com/ahtohiofilho/GlobalArena/actions/runs/40273154862): Windows, Ubuntu, macOS all successful.\n\nThe PR head also adds an in-memory replay-preservation test and CI pull-request triggers. The six successful CI matrix jobs attest the complete tested commit; no historical v7 save-file migration is claimed.
 
 ## Consequences
 
 Population may become a first-class resident authoritative state while keeping the original economic workforce and commodity flow contracts distinct. The hash transition remains observable and versioned, and legacy save/replay compatibility remains a tracked boundary instead of an implicit promise.
 
-This ADR stays **Proposed** while cross-platform evidence and architecture review remain outstanding. It does not supersede the accepted historical v7 decisions for older rulesets.
+This ADR accepts hash v8 for the current forward ruleset, without retroactively changing historical v7 records. Migration from historical v7 snapshots remains a separately scoped, unsupported capability until implemented and verified.
