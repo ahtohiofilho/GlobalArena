@@ -85,8 +85,8 @@ public sealed class EconomicTransportServiceQuoteResolverTests
         var (graph, economy, flows, edge) = Fixture();
         var assets = new[]
         {
-            new EconomicTransportBuiltAsset(1, 10, edge.Id),
-            new EconomicTransportBuiltAsset(2, 20, edge.Id)
+            new EconomicTransportBuiltAsset(1, 10, edge.Id, 1UL),
+            new EconomicTransportBuiltAsset(2, 20, edge.Id, 1UL)
         };
         var firstPrice = new TestFreightFunction(100);
         var secondPrice = new TestFreightFunction(40);
@@ -105,6 +105,7 @@ public sealed class EconomicTransportServiceQuoteResolverTests
         Assert.Equal(20UL, selected.ServiceId);
         Assert.Equal(new[] { 2UL }, selected.AssetIds);
         Assert.Equal(new[] { 20UL }, selected.TechnologyTypeIds);
+        Assert.Equal(1UL, selected.TechnologyCatalogVersion);
         Assert.Equal(1, firstPrice.Calls);
         Assert.Equal(1, secondPrice.Calls);
         Assert.Equal(1UL, selected.Quote.TurnOrdinal);
@@ -173,7 +174,7 @@ public sealed class EconomicTransportServiceQuoteResolverTests
         var available = new EconomicTransportServiceOffer(
             1, Route(), new[] { 1UL }, Array.Empty<int>(),
             BigInteger.Zero, price);
-        var built = new[] { new EconomicTransportBuiltAsset(1, 10, edge.Id) };
+        var built = new[] { new EconomicTransportBuiltAsset(1, 10, edge.Id, 1UL) };
         Assert.Empty(Select(1, graph, economy, flows, built,
             Array.Empty<EconomicTransportServiceOffer>()));
 
@@ -182,7 +183,7 @@ public sealed class EconomicTransportServiceQuoteResolverTests
                 Array.Empty<EconomicTransportBuiltAsset>(), new[] { available }));
         Assert.Empty(Select(1, graph, economy, flows,
             new[] { new EconomicTransportBuiltAsset(
-                1, 10, edge.Id, isOperational: false) },
+                1, 10, edge.Id, 1UL, isOperational: false) },
             new[] { available }));
         Assert.Empty(Select(1, graph, economy, flows,
             built, new[] { available },
@@ -199,7 +200,7 @@ public sealed class EconomicTransportServiceQuoteResolverTests
         Assert.Throws<ArgumentException>(() =>
             Select(1, graph, economy, flows,
                 new[] { new EconomicTransportBuiltAsset(
-                    1, 10, new StrategicEdgeId(9_999_999UL)) },
+                    1, 10, new StrategicEdgeId(9_999_999UL), 1UL) },
                 new[] { available }));
     }
 
@@ -209,8 +210,8 @@ public sealed class EconomicTransportServiceQuoteResolverTests
         var (graph, economy, flows, edge) = Fixture();
         var built = new[]
         {
-            new EconomicTransportBuiltAsset(1, 10, edge.Id),
-            new EconomicTransportBuiltAsset(2, 20, edge.Id)
+            new EconomicTransportBuiltAsset(1, 10, edge.Id, 1UL),
+            new EconomicTransportBuiltAsset(2, 20, edge.Id, 1UL)
         };
         var a = new EconomicTransportServiceOffer(200, Route(),
             new[] { 1UL }, Array.Empty<int>(), BigInteger.Zero,
@@ -253,8 +254,8 @@ public sealed class EconomicTransportServiceQuoteResolverTests
                 new CommodityId(7U), Unit) });
         var built = new[]
         {
-            new EconomicTransportBuiltAsset(1, 10, edge.Id),
-            new EconomicTransportBuiltAsset(2, 20, otherEdge.Id)
+            new EconomicTransportBuiltAsset(1, 10, edge.Id, 1UL),
+            new EconomicTransportBuiltAsset(2, 20, otherEdge.Id, 1UL)
         };
         var price = new TestFreightFunction(80);
         EconomicTransportServiceOffer Offer(params int[] handoffs) =>
@@ -269,6 +270,15 @@ public sealed class EconomicTransportServiceQuoteResolverTests
         Assert.Equal(new[] { 1UL, 2UL }, selected.AssetIds);
         Assert.Equal(new[] { 10UL, 20UL }, selected.TechnologyTypeIds);
         Assert.Equal(1, price.Calls);
+        Assert.Throws<ArgumentException>(() =>
+            Select(1, graph, economy, flows,
+                new[]
+                {
+                    built[0],
+                    new EconomicTransportBuiltAsset(
+                        2, 20, otherEdge.Id, 2UL)
+                },
+                new[] { Offer(0) }));
         Assert.Throws<ArgumentException>(() =>
             Select(1, graph, economy, flows,
                 new[] { built[1], built[0] },
