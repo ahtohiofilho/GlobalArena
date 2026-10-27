@@ -208,6 +208,17 @@ public sealed class EconomicLogicalMultiStopServiceTests
             10 * through.Quote.RawUnitCostPerGram.Denominator) *
             12;
         Assert.Equal(new BigInteger(1200), sharedRecovered);
+        // Reconcile the entire booked manifest, not just through-cargo.
+        // Combined quote charge: 6*110 + 2*135 + 4*135 = 1470.
+        // Base movement: 12*10 = 120. Actual cargo handling at B:
+        // (2+4)*25 = 150. Remaining 1200 is the shared stop ONCE.
+        var allQuotedCharges = chosen.Aggregate(BigInteger.Zero,
+            (sum, row) => sum +
+                row.Quote.RawUnitCostPerGram.Numerator *
+                (row.Quote.ExpectedLoadMicrograms / 1_000_000) /
+                row.Quote.RawUnitCostPerGram.Denominator);
+        Assert.Equal(new BigInteger(1200),
+            allQuotedCharges - 12 * 10 - (2 + 4) * 25);
         Assert.Equal(3, pricing.Functions.Count);
         Assert.All(pricing.Functions, f => Assert.Equal(1, f.Evaluations));
     }
@@ -331,6 +342,89 @@ public sealed class EconomicLogicalMultiStopServiceTests
         Assert.Equal(originalPrice, oldSelection.Quote.RawUnitCostPerGram);
         Assert.All(priced.Functions, f => Assert.Equal(1, f.Evaluations));
         Assert.All(newPricing.Functions, f => Assert.Equal(1, f.Evaluations));
+    }
+
+    private sealed class ValueCurve : IEconomicTurnCommodityValueCurve
+    {
+        public FoodTransportCostFraction EvaluateMarginalRawUnitValue(
+            ulong quantity) =>
+            new(800_000 * (BigInteger)EconomicTransferPolicy.FixedPointDenominator -
+                10_000 * (BigInteger)quantity,
+                EconomicTransferPolicy.FixedPointDenominator);
+
+        public FoodTransportCostFraction EvaluateIntegratedRawValue(
+            ulong quantity) =>
+            new(1_600_000 * (BigInteger)quantity *
+                EconomicTransferPolicy.FixedPointDenominator -
+                10_000 * (BigInteger)quantity * quantity,
+                2 * (BigInteger)EconomicTransferPolicy.FixedPointDenominator *
+                EconomicTransferPolicy.FixedPointDenominator);
+    }
+
+    [Fact]
+    public void AggregateOriginDestinationQuotesEnterMarketWithoutRepricingSharedCalls()
+    {
+        var stops = Pattern(100UL, AllCalls, new[]
+        {
+            Cargo(1UL, 0, 2, 6_000_000UL),
+            Cargo(2UL, 0, 1, 2_000_000UL),
+            Cargo(3UL, 1, 2, 4_000_000UL)
+        });
+        var policy = new SharedStopPricing();
+        var selected = Resolve(new[] { stops }, policy);
+        var quotes = selected.Select(x => x.Quote).ToArray();
+        var pointA = new EconomicPointId(1UL);
+        var pointB = new EconomicPointId(2UL);
+        var pointC = new EconomicPointId(3UL);
+        var food = new CommodityId(7U);
+        const ulong unit = EconomicTransferPolicy.FixedPointDenominator;
+        var flows = new EconomicProductionDemandResult(
+            new[]
+            {
+                new EconomicSupplyFlow(pointA, food,
+                    EconomicActivityKind.Agriculture, 9UL * unit),
+                new EconomicSupplyFlow(pointB, food,
+                    EconomicActivityKind.Agriculture, 6UL * unit)
+            },
+            new[]
+            {
+                new EconomicDemandFlow(pointB, food, 5UL * unit),
+                new EconomicDemandFlow(pointC, food, 10UL * unit)
+            });
+        var catalog = new FoodCommodityCatalog(new[]
+        {
+            new FoodCommodityDefinition(food, "multi-stop-commodity", 1_000UL)
+        });
+        var values = new[]
+        {
+            new EconomicTurnCommodityValueOffer(pointB, food, new ValueCurve()),
+            new EconomicTurnCommodityValueOffer(pointC, food, new ValueCurve())
+        };
+        var reserves = new[]
+        {
+            new EconomicTurnSourceReservation(pointA, food,
+                EconomicActivityKind.Agriculture, 20_000UL),
+            new EconomicTurnSourceReservation(pointB, food,
+                EconomicActivityKind.Agriculture, 20_000UL)
+        };
+        var market = new EconomicTurnLockedFreightMarketResolver();
+        var search = new EconomicCongestionMarketSearchPolicy(unit, 15);
+        var exhaustive = market.Resolve(1UL, flows, catalog,
+            quotes, values, reserves, search);
+        var indexed = market.Resolve(1UL, flows, catalog,
+            quotes, values, reserves, search,
+            selectionMode: EconomicTurnFreightCandidateSelectionMode.DependencyIndex);
+        Assert.NotEmpty(exhaustive);
+        Assert.Equal(exhaustive.Count, indexed.Count);
+        for (var i = 0; i < exhaustive.Count; i++)
+        {
+            Assert.Equal(exhaustive[i].RawQuantity, indexed[i].RawQuantity);
+            Assert.Equal(0, exhaustive[i].RawNetReturn.CompareTo(
+                indexed[i].RawNetReturn));
+            Assert.Contains(exhaustive[i].FreightQuote, quotes);
+        }
+        Assert.All(policy.Functions, f => Assert.Equal(1, f.Evaluations));
+        Assert.All(quotes, q => Assert.Equal(1UL, q.TurnOrdinal));
     }
 
     [Fact]
