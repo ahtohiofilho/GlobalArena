@@ -219,6 +219,33 @@ public sealed class EconomicFineTransportPathCacheTests
     }
 
     [Fact]
+    public void ClosingOnlyUnusedConstructedEdgeReusesStillOptimalPhysicalPath()
+    {
+        var fixture = CreateFixture();
+        var endpoint = fixture.Second.IncidentCellIds.First(x =>
+            !fixture.First.IncidentCellIds.Contains(x));
+        var unused = fixture.Graph.StrategicTopology.Edges.First(e =>
+            e.Id != fixture.Second.Id &&
+            e.IncidentCellIds.Contains(endpoint) &&
+            e.Id != fixture.First.Id);
+        var assets = fixture.Assets.Append(Asset(99UL, unused)).ToArray();
+        var cache = new EconomicFineTransportPathCache();
+        var initial = Discover(fixture, cache, assets: assets);
+        Assert.Equal(new[] { 11UL, 12UL }, Assert.Single(initial.Offers).AssetPath);
+
+        var closure = new StrategicEdgeAccessSnapshot(new[] { unused.Id });
+        var surviving = Discover(fixture, cache, assets: assets, access: closure);
+        Assert.Equal(1, surviving.Counters.ReusedPaths);
+        Assert.Equal(0, surviving.Counters.SearchedPaths);
+        Assert.Equal(initial.Offers[0].AssetPath,
+            Assert.Single(surviving.Offers).AssetPath);
+        var fresh = Discover(fixture, null, assets: assets, access: closure);
+        Assert.Equal(
+            QuoteSignature(fixture, assets, fresh.Offers, 2UL, closure),
+            QuoteSignature(fixture, assets, surviving.Offers, 2UL, closure));
+    }
+
+    [Fact]
     public void ChangedAnchorOrTechnologyMustNotReinterpretCachedPath()
     {
         var fixture = CreateFixture();
