@@ -5,10 +5,14 @@ using GlobalArena.World;
 namespace GlobalArena.Simulation;
 
 /// <summary>
-/// One explicitly constructed physical asset installed on a known geographic
-/// strategic edge. Parallel assets may share an edge while retaining separate
-/// identities and technology types. The snapshot is NOT authoritative
-/// WorldState persistence and includes no anonymous investment upgrade.
+/// Experimental abstract infrastructure CROSSING between the two cells
+/// separated by one geometric shared border (StrategicEdge). The edge ID is
+/// a dual-graph adjacency key, NOT a rail/road centerline drawn along that
+/// geometric border and NOT a station/loading/unloading location. Parallel
+/// crossing assets can share the key but retain independent technologies.
+/// Precise in-tile alignments, junctions, stops, service operating rules and
+/// non-edge-based traversals need later specialized physical contracts.
+/// This snapshot is NOT authoritative WorldState persistence.
 /// </summary>
 public sealed class EconomicTransportBuiltAsset
 {
@@ -34,8 +38,9 @@ public sealed class EconomicTransportBuiltAsset
     }
 
     /// <summary>
-    /// Explicitly built asset on a qualified fine-grid corridor; identical
-    /// numerical edge ordinals from other resolutions cannot be substituted.
+    /// Explicitly built ABSTRACT crossing keyed to a qualified fine shared
+    /// border. No construction geometry or facility at the border is implied.
+    /// Identical raw edge ordinals from other resolutions cannot be substituted.
     /// </summary>
     public EconomicTransportBuiltAsset(
         ulong assetId, ulong technologyTypeId,
@@ -72,7 +77,8 @@ public sealed class EconomicTransportBuiltAsset
 }
 
 /// <summary>
-/// A deliberately offered, directional, complete service itinerary, not an
+/// A deliberately offered, directional, complete service itinerary over
+/// ABSTRACT CELL-TO-CELL CROSSINGS, not along border segments; not an
 /// inferred shortest path or permission to use all geographic adjacencies.
 /// The caller supplies a function that prices the entire itinerary, including
 /// every explicitly declared technology transfer/handling term.

@@ -1,10 +1,13 @@
 namespace GlobalArena.World;
 
 /// <summary>
-/// Fine-grid corridor identity qualified by its generated Goldberg topology.
-/// A bare StrategicEdgeId has only topology-local meaning; this wrapper stops
-/// identical coarse/fine edge ordinals being mistaken for the same asset site.
-/// Does not imply that a physical transport asset was constructed here.
+/// Qualified identity of a FINE GEOMETRIC SHARED BORDER between two Goldberg
+/// cells. The border connects two geometric vertices and separates two cells.
+/// This identity can key a DUAL-GRAPH CROSSING from one incident cell to the
+/// other; it must NEVER be interpreted as a longitudinal transport route
+/// running ALONG the border, or as the location of a cargo terminal.
+/// A bare StrategicEdgeId has only topology-local meaning; qualification
+/// prevents coarse/fine ordinal aliasing. No transport asset is implied.
 /// </summary>
 public readonly record struct PhysicalTacticalEdgeId
 {

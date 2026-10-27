@@ -60,6 +60,10 @@ public interface IEconomicFineTransportItineraryPricing
 /// <summary>
 /// Opt-in, topology-local reference discovery: one CANONICAL MINIMUM-LEG
 /// built-asset itinerary per explicitly authorized single-technology intent.
+/// A leg CROSSES a fine geometric cell boundary, moving between its two
+/// incident tiles in the DUAL graph; it does NOT trace the shared border
+/// between the two geometric vertices. Built crossings are abstract, not
+/// placed road/rail lines or loading terminals.
 /// For equal leg counts it chooses lexicographically smallest asset-ID path.
 ///
 /// This is reachability/candidate generation, NOT lowest commercial cost
