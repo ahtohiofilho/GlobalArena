@@ -130,11 +130,66 @@ unimplemented physical traversal or service-operations behavior, a new
 provider and explicit tests are required; the market and commodity
 allocator should not need modality-specific branching.
 
-**No new C# interface, enum, persistent catalogue or canonical schema is
-declared authoritative by this document.** First ratify the capability
-boundary, then implement a narrow opt-in provider/DTO with real
-constructors, validation and cross-OS tests before migration into
-`WorldState`.
+**The new logical node/link interface is non-authoritative and opt-in.**
+No canonical modal enum, persistent catalogue or WorldState schema is
+ratified by this document; facility operations and traversal-provider
+registration require later review and dedicated cross-OS validation.
+
+## Implemented opt-in logical line connectivity (after the audit)
+
+The non-authoritative experimental seam now includes
+`EconomicTransportLogicalNodeId`, `EconomicTransportLogicalLink`,
+`EconomicLogicalTransportServiceIntent`,
+`IEconomicLogicalTransportTraversalProvider`,
+`EconomicConstructedLogicalLineProvider`,
+`IEconomicLogicalTransportItineraryPricing`, and
+`EconomicLogicalTransportQuoteResolver`.
+
+Here, a *line link* has **two endpoint node identities**. Two links
+`A–B` and `B–C` can be traversed as a single `A→B→C` itinerary
+precisely because they meet at **the same B node**, with no artificial
+boundary endpoint or loading activity at B. Many approaches may share
+one node; node location is a **logical connectivity identity**, not a
+mandatory station, tile centroid or freight facility.
+
+The constructed-line provider currently searches an explicitly supplied
+set of operational links of matching technology type **and catalogue
+version**, selecting a deterministic minimum-link itinerary with
+lexicographic link-ID ties. A separate registered provider can implement
+a different traversal domain and supply an equally explicit list of
+logical nodes/links to the same quote adapter. No built Goldberg-border
+key or fixed Road/Rail/Ship enum is required by the new API. The quote
+adapter validates continuity, distinct nodes and links, the technology,
+the declared destination, and a positive provider identity/version;
+the traversal provider remains responsible for actual domain-specific
+availability. **Untrusted providers are not a bypass for infrastructure
+authorization:** a real integration must register and verify their
+world-snapshot and physical-domain capabilities.
+
+A returned node path is **transit only**. It cannot infer economic
+supply/demand rights, intermediate passenger/cargo stops, unloading,
+technology change, facility presence or transshipment. Explicit
+commercial intents authorize only their declared economic source and
+destination. A truly operational cargo loading/unloading provider and
+versioned facility registry remain a separate future stage.
+
+The pricing provider supplies one mathematical **whole-itinerary**
+cost function for each reachable offered service, evaluated once at the
+pre-economic-cycle expected load. The quote adapter produces an
+`EconomicTurnFreightQuote` directly usable by the existing market;
+the market's dynamic commodity marginal valuation is unchanged.
+This minimum-link reference **does not** guarantee minimum total
+commercial freight when the whole-route function is nonadditive.
+There is no implicit tariff, multimodal switch or capacity model.
+
+This is an **opt-in contract and executable reference**, not a
+migration of `EconomicFineTransportServiceItineraryDiscovery`,
+a universal maritime/air routing implementation, a persistent catalogue
+DTO, or a ratification of ADR-064. The earlier built **dual-grid
+crossing** resolver remains independent and supported. As next steps,
+implement adapters with verified installed assets, a capability
+registry and commercial operations at separately authorized facilities
+before making any of these contracts authoritative.
 
 ## Contract audit and invariants
 
