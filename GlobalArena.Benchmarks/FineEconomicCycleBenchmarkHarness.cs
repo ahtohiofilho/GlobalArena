@@ -126,7 +126,8 @@ public static class FineEconomicCycleBenchmarkHarness
         long TotalBytes, int AvailableOffers, int SelectedQuotes,
         int FunctionEvaluations, int Trades, string Fingerprint,
         long LaneExaminations, long MarginalEvaluations,
-        IReadOnlyList<RouteWitness> Routes);
+        IReadOnlyList<RouteWitness> Routes,
+        int ReusedPaths, int SearchedPaths);
 
     public static int Run()
     {
@@ -269,13 +270,32 @@ public static class FineEconomicCycleBenchmarkHarness
         var fixtureStart = Stopwatch.GetTimestamp();
         var frames = BuildChangingFrames(BuildSnapshot(scenario));
         var fixtureMs = Stopwatch.GetElapsedTime(fixtureStart).TotalMilliseconds;
+        // Each sample is a self-contained sequential run with its OWN
+        // transient physical-path cache. This makes cold initial and warm
+        // cross-cycle timings comparable against the full recomputation
+        // oracle, without contamination from earlier measured repetitions.
+        var cached = frames.Select(_ => new Sample[Samples]).ToArray();
+        for (var sample = 0; sample < Samples; sample++)
+        {
+            var cache = new EconomicFineTransportPathCache();
+            for (var frameIndex = 0; frameIndex < frames.Length; frameIndex++)
+            {
+                var frame = frames[frameIndex];
+                cached[frameIndex][sample] = Measure(
+                    frame.Inputs,
+                    EconomicTurnFreightCandidateSelectionMode.DependencyIndex,
+                    frame.Ordinal, frame.Access, cache);
+            }
+        }
+
         Sample? previous = null;
         Sample? initial = null;
         Sample? forecast = null;
         Sample? closure = null;
 
-        foreach (var frame in frames)
+        for (var frameIndex = 0; frameIndex < frames.Length; frameIndex++)
         {
+            var frame = frames[frameIndex];
             var first = Measure(
                 frame.Inputs, EconomicTurnFreightCandidateSelectionMode.Exhaustive,
                 frame.Ordinal, frame.Access);
@@ -302,6 +322,21 @@ public static class FineEconomicCycleBenchmarkHarness
                         "Changed-snapshot cycle economic replay was not deterministic.");
             }
 
+            var cachedSamples = cached[frameIndex];
+            foreach (var cacheRun in cachedSamples)
+            {
+                AssertSameEconomics(first, cacheRun,
+                    scenario.Id + ":" + frame.Label + ":cached");
+                if (first.Fingerprint != cacheRun.Fingerprint)
+                    throw new InvalidOperationException(
+                        "Reusing a physical itinerary changed the freight or market ledger.");
+            }
+            if (cachedSamples.Any(x =>
+                x.ReusedPaths + x.SearchedPaths != frame.Inputs.Intents.Length ||
+                x.SelectedQuotes != x.FunctionEvaluations))
+                throw new InvalidOperationException(
+                    "Physical path reuse skipped fresh per-cycle quotation.");
+
             var priorRoutes = previous?.Routes.ToDictionary(x => x.RouteKey);
             var unchangedPaths = first.Routes.Count(x =>
                 priorRoutes is not null &&
@@ -327,6 +362,13 @@ public static class FineEconomicCycleBenchmarkHarness
             var label = scenario.Id + "-cycle-" + frame.Ordinal;
             WriteMeasurements(label, "exhaustive", reference);
             WriteMeasurements(label, "indexed", indexed);
+            WriteMeasurements(label, "indexed-cached-physical", cachedSamples);
+            Console.WriteLine(
+                $"PATH_REUSE={scenario.Id};cycle={frame.Ordinal};" +
+                $"reused={cachedSamples[0].ReusedPaths};" +
+                $"searched={cachedSamples[0].SearchedPaths};" +
+                $"fresh_quote_evaluations={cachedSamples[0].FunctionEvaluations};" +
+                $"status=EXACT_PARITY");
 
             if (frame.Ordinal == 1UL)
                 initial = first;
@@ -461,9 +503,11 @@ public static class FineEconomicCycleBenchmarkHarness
     private static Sample Measure(
         Snapshot snapshot, EconomicTurnFreightCandidateSelectionMode mode,
         ulong turnOrdinal = 1UL,
-        StrategicEdgeAccessSnapshot? access = null)
+        StrategicEdgeAccessSnapshot? access = null,
+        EconomicFineTransportPathCache? physicalCache = null)
     {
         var roadAccess = access ?? StrategicEdgeAccessSnapshot.AllOpen;
+        var reuse = new EconomicFineTransportPathReuseDiagnostics();
         var costFactory = new SyntheticWholeServicePricing();
         var discoverer = new EconomicFineTransportServiceItineraryDiscovery();
         var quoter = new EconomicTransportServiceQuoteResolver();
@@ -476,7 +520,8 @@ public static class FineEconomicCycleBenchmarkHarness
         var offers = discoverer.Discover(
             snapshot.Geography, snapshot.Anchors,
             roadAccess,
-            snapshot.Assets, snapshot.Intents, costFactory);
+            snapshot.Assets, snapshot.Intents, costFactory,
+            physicalCache, reuse);
         var discoveryMs = Stopwatch.GetElapsedTime(phaseStart).TotalMilliseconds;
         var discoveryBytes = GC.GetAllocatedBytesForCurrentThread() - startBytes;
 
@@ -525,7 +570,7 @@ public static class FineEconomicCycleBenchmarkHarness
             offers.Count, selections.Count, costFactory.Functions.Sum(x => x.Calls),
             trades.Count, transcript,
             diagnostics.LaneExaminations, diagnostics.MarginalValueEvaluations,
-            routeWitnesses);
+            routeWitnesses, reuse.ReusedPaths, reuse.SearchedPaths);
     }
 
     private static string Fingerprint(

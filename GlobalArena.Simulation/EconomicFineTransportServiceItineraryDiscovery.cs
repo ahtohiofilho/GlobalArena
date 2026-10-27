@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Text;
 using GlobalArena.Runtime;
 using GlobalArena.World;
 
@@ -74,8 +75,11 @@ public sealed class EconomicFineTransportServiceItineraryDiscovery
         StrategicEdgeAccessSnapshot access,
         IEnumerable<EconomicTransportBuiltAsset> installedAssets,
         IEnumerable<EconomicFineTransportServiceIntent> serviceIntents,
-        IEconomicFineTransportItineraryPricing pricing)
+        IEconomicFineTransportItineraryPricing pricing,
+        EconomicFineTransportPathCache? physicalPathCache = null,
+        EconomicFineTransportPathReuseDiagnostics? reuseDiagnostics = null)
     {
+        reuseDiagnostics?.Reset();
         ArgumentNullException.ThrowIfNull(fineGeography);
         ArgumentNullException.ThrowIfNull(finePointAnchors);
         ArgumentNullException.ThrowIfNull(access);
@@ -147,6 +151,34 @@ public sealed class EconomicFineTransportServiceItineraryDiscovery
                     "Service intent is missing a fine economic point anchor.",
                     nameof(serviceIntents));
 
+        // Validation above always runs, even on a cache hit. Graph identity
+        // includes every geographic edge and its endpoints, so a changed
+        // topological adjacency never borrows an old route by numeric ID.
+        // Availability signatures are PER TECHNOLOGY: changes to another
+        // mode's assets do not invalidate a physically independent service.
+        var graphIsSame = physicalPathCache is not null &&
+            physicalPathCache.IsSameImmutableGraph(fineGeography);
+        var topologySignature = physicalPathCache is null ? string.Empty :
+            graphIsSame ? physicalPathCache.CurrentTopologySignature :
+            BuildTopologySignature(resolution, edges);
+        var topologyMatches = graphIsSame ||
+            (physicalPathCache is not null &&
+             physicalPathCache.HasMatchingTopology(topologySignature));
+        var availableByTechnology = physicalPathCache is null
+            ? null
+            : assets.Values.Where(x =>
+                    x.IsOperational && access.IsOpen(x.GeographicEdgeId))
+                .GroupBy(x => (
+                    x.TechnologyTypeId, x.TechnologyCatalogVersion))
+                .ToDictionary(g => g.Key, g => g
+                    .OrderBy(x => x.AssetId)
+                    .Select(x => new EconomicFineTransportPathCache.AvailableAsset(
+                        x.AssetId, x.GeographicEdgeId.Value))
+                    .ToArray());
+        var committed = physicalPathCache is null
+            ? null
+            : new Dictionary<EconomicFineTransportPathCache.PathKey,
+                EconomicFineTransportPathCache.CachedPhysicalPath>();
         var offers = new List<EconomicTransportServiceOffer>();
         foreach (var intent in intents.OrderBy(x => x.ServiceId))
         {
@@ -158,11 +190,45 @@ public sealed class EconomicFineTransportServiceItineraryDiscovery
             if (start == end)
                 continue; // No phantom zero-leg transport service.
 
-            var path = DiscoverMinLegPath(
-                start, end, intent.TechnologyTypeId,
-                intent.TechnologyCatalogVersion, adjacency);
+            var key = new EconomicFineTransportPathCache.PathKey(
+                fineGeography.GetCellId(start).Value,
+                fineGeography.GetCellId(end).Value,
+                intent.TechnologyTypeId,
+                intent.TechnologyCatalogVersion);
+            var currentAssets = availableByTechnology is null
+                ? Array.Empty<EconomicFineTransportPathCache.AvailableAsset>()
+                : availableByTechnology.GetValueOrDefault(
+                    (intent.TechnologyTypeId, intent.TechnologyCatalogVersion))
+                    ?? Array.Empty<EconomicFineTransportPathCache.AvailableAsset>();
+            ulong[]? path;
+            if (physicalPathCache is not null &&
+                physicalPathCache.TryReuse(
+                    key, topologyMatches, currentAssets, out var reused))
+            {
+                path = reused;
+                if (reuseDiagnostics is not null)
+                    reuseDiagnostics.ReusedPaths++;
+            }
+            else
+            {
+                path = DiscoverMinLegPath(
+                    start, end, intent.TechnologyTypeId,
+                    intent.TechnologyCatalogVersion, adjacency);
+                if (reuseDiagnostics is not null)
+                    reuseDiagnostics.SearchedPaths++;
+            }
             if (path is null)
+            {
+                if (reuseDiagnostics is not null)
+                    reuseDiagnostics.UnreachableIntents++;
                 continue;
+            }
+            // Every cache entry must match the fully validated CURRENT
+            // topology, per-technology constructed/operational/open assets
+            // and the CURRENT endpoint anchors. No freight is cached.
+            if (committed is not null)
+                committed[key] = new EconomicFineTransportPathCache.CachedPhysicalPath(
+                    currentAssets, (ulong[])path.Clone());
 
             var itinerary = Array.AsReadOnly(
                 path.Select(assetId => assets[assetId]).ToArray());
@@ -175,7 +241,27 @@ public sealed class EconomicFineTransportServiceItineraryDiscovery
                 Array.Empty<int>(), intent.ExpectedLoadMicrograms,
                 priceFunction));
         }
+        // Commit only after all service offers and pricing factories have
+        // successfully completed. An exception must not publish half a cache.
+        if (physicalPathCache is not null && committed is not null)
+            physicalPathCache.Replace(fineGeography, topologySignature, committed);
         return Array.AsReadOnly(offers.ToArray());
+    }
+
+    private static string BuildTopologySignature(
+        GoldbergParameters resolution,
+        IReadOnlyDictionary<StrategicEdgeId, StrategicEdge> edges)
+    {
+        var sb = new StringBuilder();
+        sb.Append(resolution.M).Append(':').Append(resolution.N).Append('|');
+        foreach (var edge in edges.Values.OrderBy(x => x.Id.Value))
+        {
+            sb.Append(edge.Id.Value).Append(':');
+            foreach (var cell in edge.IncidentCellIds.OrderBy(x => x.Value))
+                sb.Append(cell.Value).Append(',');
+            sb.Append(';');
+        }
+        return sb.ToString();
     }
 
     private static ulong[]? DiscoverMinLegPath(

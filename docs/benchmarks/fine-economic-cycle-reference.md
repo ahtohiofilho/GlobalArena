@@ -63,6 +63,60 @@ No route cache is implemented. Every close explicitly rebuilds the available ser
 
 The CLI logs `SEQUENCE` with the cycle label, turn ordinal, accepted trades, current quote/function evaluation count, unchanged physical path count, snapshot-setup time and full ledger signature, plus `PHASE` rows for each mode/cycle. `SEQUENCE_INVARIANTS=...;status=PASS` certifies structural changes observed as expected, not that a caching strategy is correct or a full world has been simulated. The changing snapshots are synthesized as independent fixtures; real movement, construction and asset-authority state transitions remain future work. An occasional close-processing pause remains a possible gameplay tradeoff and no hard deadline is asserted.
 
+## Opt-in physical-path-only dependency cache (reference experiment)
+
+The optional `EconomicFineTransportPathCache` accompanies
+`EconomicFineTransportServiceItineraryDiscovery.Discover`. It stores **only
+ordered built-asset IDs** for a canonical minimum-leg physical path. It never
+retains `EconomicTransportServiceOffer`, pricing functions, any whole-itinerary
+cost value, `EconomicTurnFreightQuote`, commodity valuations or trades. The
+caller owns one cache across snapshots; it is non-authoritative and not
+concurrency-safe. Failed input validation/pricing does not publish a partial
+cache. The cache is replaced after every successful snapshot, so it does not
+grow across arbitrarily many previous economic cycles.
+
+A reuse requires an exact match on the **fine generated topology's full edge
+and endpoint identities**, qualified physical source and destination tile IDs,
+and the declared technology type plus catalogue version. For each technology,
+the cache separately compares an exact canonical list of **available**
+built-asset IDs and their physical edge IDs, after operational checks and
+geographic closures. Hence physical modifications to a *different technology*
+do not invalidate an unaffected mode's path.
+
+Two physical-world changes permit exact canonical-path reuse:
+
+1. The available graph for that technology is **unchanged**; the same physical
+   source and destination still connect through the same minimum-leg route.
+2. The new available graph is only a **subset** of the former available graph
+   (asset removals, closures or operational suspension), while **every asset
+   on the selected old path survives with its original ID and corridor**.
+   Deleting physical edges cannot introduce a shorter or lexicographically
+   preferred alternative, so the old selected path remains the exact BFS
+   solution. If even one chosen leg was removed, or there was an addition,
+   relocation, reopening, asset replacement or technology redefinition,
+   the corresponding path must be rediscovered.
+
+Even on a cache hit, the **entire current snapshot is validated**, a new
+caller-defined whole-itinerary function is generated, each eligible service
+is re-quoted **once from the current economic-cycle forecast**, and market
+allocation starts with current supply/demand and commodity values. The cache
+does not transform a hop-minimal reference into the economically cheapest
+whole-service route; price-aware routing remains a separate, nonadditive
+problem represented by the small-world oracle.
+
+The `--fine-economic-sequence` benchmark now runs a third
+`indexed-cached-physical` variant against the independent full-recomputation
+exhaustive/indexed variants. Seven **independent four-cycle sequences** use
+separate caller-owned caches; no warm cache leaks across sampled sequences.
+Physical/service/quote/trade SHA-256 transcripts must match exactly for all
+strategies, cycles, replays and operating systems. `PATH_REUSE` logs actual
+reused and newly searched paths **and fresh quotation counts**, while
+`PHASE` reports observed phase and total timing/allocation costs. This is
+an opt-in correctness experiment, not an adopted cache for authoritative
+turn execution or a global performance guarantee. Snapshot fixture generation
+is still outside the timed economic close; no movement cadence or acceptable
+UI delay was selected. ADR-064 remains Proposed.
+
 ## Further architectural milestones
 
 This does **not** introduce a new scheduler, number of movement turns per closure, price-model cap, fixed per-mode tariff, global transportation hub algorithm, free geographic corridor, physical trade-in-transit simulation or a UI processing pause. An occasional economic close delay may be acceptable for real strategic depth; its frequency, maximum desired pause and presentation will be decided in a later design cycle after broader end-to-end profiling.
