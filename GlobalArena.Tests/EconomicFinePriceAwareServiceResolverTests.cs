@@ -337,7 +337,5 @@ public sealed class EconomicFinePriceAwareServiceResolverTests
                     new[] { new StrategicEdgeId(
                         Fine.StrategicEdgeCount + 1UL) })));
         Assert.Equal(0, prices.Functions.Count);
-        Assert.Equal(0UL, Assert.Single(
-            new[] { 0UL })); // explicit absence of any accepted quote
     }
 }
