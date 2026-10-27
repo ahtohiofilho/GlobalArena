@@ -348,10 +348,14 @@ public static class FineEconomicCycleBenchmarkHarness
             initial.Fingerprint == forecast.Fingerprint ||
             closure.SelectedQuotes >= forecast.SelectedQuotes ||
             previous.SelectedQuotes != forecast.SelectedQuotes ||
-            previous.Routes.Any(x =>
+            !previous.Routes.Any(x =>
                 x.BuiltPathAndTechnology ==
                     forecast.Routes.Single(y => y.RouteKey == x.RouteKey)
-                        .BuiltPathAndTechnology) == false)
+                        .BuiltPathAndTechnology) ||
+            !previous.Routes.Any(x =>
+                x.BuiltPathAndTechnology !=
+                    forecast.Routes.Single(y => y.RouteKey == x.RouteKey)
+                        .BuiltPathAndTechnology))
         {
             throw new InvalidOperationException(
                 "Sequential geographic/market closure fixtures did not meet " +
