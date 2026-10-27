@@ -18,13 +18,37 @@ public sealed class EconomicFineTransportPathCache
     {
         if (_prior.TryGetValue(key, out var cached) &&
             string.Equals(cached.TopologySignature, topologySignature,
-                StringComparison.Ordinal) &&
-            string.Equals(cached.AvailableAssetSignature,
-                availableAssetSignature, StringComparison.Ordinal))
+                StringComparison.Ordinal))
         {
-            // Clone: neither the caller nor a service can change cached IDs.
-            path = (ulong[])cached.AssetIds.Clone();
-            return true;
+            if (string.Equals(cached.AvailableAssetSignature,
+                    availableAssetSignature, StringComparison.Ordinal))
+            {
+                path = (ulong[])cached.AssetIds.Clone();
+                return true;
+            }
+
+            // A pure REMOVAL of eligible physical edges cannot introduce a
+            // shorter or lexicographically better path. If every asset on
+            // the previous chosen path survives unchanged, the previous
+            // canonical min-hop path is still exactly optimal. An addition,
+            // edge relocation, version change or replacement may improve
+            // the route, so those changes always require fresh search.
+            var former = cached.AvailableAssetSignature.Split(
+                ';', StringSplitOptions.RemoveEmptyEntries).ToHashSet(
+                    StringComparer.Ordinal);
+            var current = availableAssetSignature.Length == 0
+                ? Array.Empty<string>()
+                : availableAssetSignature.Split(
+                    ';', StringSplitOptions.RemoveEmptyEntries);
+            var onlyRemoved = current.Length <= former.Count &&
+                current.All(former.Contains);
+            if (onlyRemoved && cached.AssetIds.All(id => current.Any(
+                    x => x.StartsWith(id.ToString() + ":",
+                        StringComparison.Ordinal))))
+            {
+                path = (ulong[])cached.AssetIds.Clone();
+                return true;
+            }
         }
         path = Array.Empty<ulong>();
         return false;
