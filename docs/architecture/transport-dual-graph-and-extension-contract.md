@@ -191,6 +191,69 @@ implement adapters with verified installed assets, a capability
 registry and commercial operations at separately authorized facilities
 before making any of these contracts authoritative.
 
+## Implemented opt-in versioned provider registry and authorized snapshots
+
+The new experimental registry contract in
+`EconomicLogicalTransportProviderRegistry.cs` adds an explicit, versioned
+**technology-to-capability binding**:
+
+- `EconomicLogicalTransportTechnologyDefinition` (catalogue-like DTO):
+  `TechnologyTypeId`, `TechnologyCatalogVersion`, `ProviderId`,
+  `ProviderVersion`. No fixed list or enum of modal names. Multiple
+  technologies may reference one provider; a new traversal behavior requires
+  its own implementation of `IEconomicLogicalTransportTraversalProvider`.
+- `EconomicLogicalTransportProviderRegistry`: injects and validates positive,
+  unique technology and provider identities. Missing capability/version or
+  changed provider identity is **rejected**, not guessed from a technology ID.
+- `EconomicLogicalTransportAuthorizationSnapshot`:
+  explicit `SnapshotOrdinal`, economic-point-to-**logical-node**
+  `EconomicLogicalTransportPointAnchor` records and provider-owned
+  `EconomicLogicalTransportAuthorizedLink` attestations. Every returned
+  physical link must match **provider ID/version, link ID, two endpoint nodes,
+  technology ID/catalogue version and operational status**. A link absent or
+  deactivated in the snapshot cannot be traversed merely because a registered
+  provider happens to know it. An economic source or destination must also
+  have a matching endpoint anchor. The snapshot copies registrations and
+  references immutable link records so later caller collection mutations
+  cannot silently rewrite established authorizations.
+- `EconomicRegisteredLogicalTransportQuoteResolver`: strict opt-in
+  commercial adapter. Resolves each **declared service** through its
+  registered provider, checks the snapshot **before price-function creation**,
+  and then uses the independently existing logical continuity validator.
+  Each eligible service receives one fresh complete-itinerary
+  forecast-derived quote. The cheapest declared service for the same
+  economic-point pair is selected using exact rational cost, then ServiceId
+  for ties. The result records immutable `AuthorizationSnapshotOrdinal`
+  beside the existing logical selection and frozen
+  `EconomicTurnFreightQuote`. The commodity allocator remains unchanged.
+
+For example a declarative technology **71/v4** can bind to provider
+**9/v2** without needing a `Road`, `Rail` or `Maritime` enum. Another
+technology can bind to the same provider when its physical capabilities
+are compatible; an entirely different geometry can be supplied through
+another explicitly registered provider. Adding a DTO row does NOT
+magically implement traversal rules, tariffs or facility operations.
+
+**Security/trust and exact scope:** this is *snapshot authorization by
+explicit caller-supplied attestation*, not authoritative proof of physical
+construction. A future trusted post-movement world-state adapter must
+generate the authorized links based on built infrastructure, geographic
+access, technology conditions, or navigability. The provider is injected
+by a trusted caller; this registry does not load arbitrary plugins or
+execute untrusted code. Route validation checks that returned links are
+part of the **authorized snapshot**, but does not independently prove
+whether the snapshot represents physically lawful construction. No
+longitudinal road geometry or mandatory Goldberg edge key is imposed.
+No load/discharge or transfer facility is invented at a shared node,
+and anchored endpoints do not themselves imply installed terminals.
+
+The prior single-provider `EconomicLogicalTransportQuoteResolver` and
+fine Goldberg route references remain available as independent
+non-authoritative experiments. Use the *registered* variant whenever
+explicit snapshot authorization is required; the legacy reference
+API should not be mistaken for a world-authorized transport service.
+Nothing is migrated into `WorldState`, and ADR-064 remains Proposed.
+
 ## Contract audit and invariants
 
 | Question | Existing guarantee | Not yet guaranteed |
