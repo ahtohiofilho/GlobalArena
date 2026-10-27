@@ -1,35 +1,36 @@
 namespace GlobalArena.Simulation;
 
 /// <summary>
-/// Caller-owned and opt-in cache of PHYSICAL fine-grid asset paths only.
-/// Stores no freight quotes, pricing functions, forecasts, market values or
-/// trades. Never part of authoritative WorldState. Not thread-safe.
+/// Caller-owned, opt-in cache of PHYSICAL fine-grid paths only. Stores no
+/// quotes, forecasts, functions, market valuations or financial trades.
+/// Not authoritative WorldState and not safe for concurrent use.
 /// </summary>
 public sealed class EconomicFineTransportPathCache
 {
     private Dictionary<PathKey, CachedPhysicalPath> _prior = new();
+    private string _previousTopology = string.Empty;
 
     public int CachedPathCount => _prior.Count;
 
+    // One full-topology comparison PER snapshot, not per market/service.
+    internal bool HasMatchingTopology(string topologySignature) =>
+        string.Equals(_previousTopology, topologySignature,
+            StringComparison.Ordinal);
+
     internal bool TryReuse(
-        PathKey key, string topologySignature,
-        IReadOnlyList<AvailableAsset> currentAssets, out ulong[] path)
+        PathKey key, bool topologyMatches,
+        AvailableAsset[] currentAssets, out ulong[] path)
     {
         path = Array.Empty<ulong>();
-        if (!_prior.TryGetValue(key, out var cached) ||
-            !string.Equals(cached.TopologySignature, topologySignature,
-                StringComparison.Ordinal))
+        if (!topologyMatches || !_prior.TryGetValue(key, out var cached))
             return false;
 
+        // Current and prior arrays are sorted by unique asset IDs. A
+        // deletion-only graph cannot create a shorter/lexically better route.
         var former = cached.AvailableAssets;
         var a = 0;
         var b = 0;
-        // Both sequences are already sorted by the globally unique
-        // physical asset ID. An exact match, or a DELETION-ONLY subset,
-        // cannot create a new better shortest path. An asset replacement,
-        // installation, corridor relocation or new technology is not a
-        // subset and must invalidate the old route.
-        while (b < currentAssets.Count)
+        while (b < currentAssets.Length)
         {
             if (a >= former.Length)
                 return false;
@@ -44,13 +45,12 @@ public sealed class EconomicFineTransportPathCache
             b++;
         }
 
-        // Even for a deletion-only graph change, the chosen old path must
-        // survive wholly. An off-path closure is provably harmless to the
-        // canonical min-hop + asset-ID tie-break, not to freight PRICING.
+        // Even with pure removals, every previous chosen leg must survive.
+        // Binary search avoids allocating a hash set for each market path.
         foreach (var assetId in cached.AssetIds)
         {
             var lo = 0;
-            var hi = currentAssets.Count - 1;
+            var hi = currentAssets.Length - 1;
             var found = false;
             while (lo <= hi)
             {
@@ -69,14 +69,17 @@ public sealed class EconomicFineTransportPathCache
             if (!found)
                 return false;
         }
-
         path = (ulong[])cached.AssetIds.Clone();
         return true;
     }
 
     internal void Replace(
-        Dictionary<PathKey, CachedPhysicalPath> committed) =>
+        string topologySignature,
+        Dictionary<PathKey, CachedPhysicalPath> committed)
+    {
+        _previousTopology = topologySignature;
         _prior = committed;
+    }
 
     internal readonly record struct PathKey(
         ulong StartCellId, ulong EndCellId,
@@ -86,13 +89,12 @@ public sealed class EconomicFineTransportPathCache
         ulong AssetId, ulong GeographicEdgeId);
 
     internal sealed record CachedPhysicalPath(
-        string TopologySignature, AvailableAsset[] AvailableAssets,
-        ulong[] AssetIds);
+        AvailableAsset[] AvailableAssets, ulong[] AssetIds);
 }
 
 /// <summary>
-/// Observational only; these counts cannot alter canonical market results.
-/// Physical reuse still requires a new pricing function and new quote.
+/// Non-authoritative diagnostics; physical reuse still creates fresh
+/// whole-itinerary pricing functions and turn-owned freight quotes.
 /// </summary>
 public sealed class EconomicFineTransportPathReuseDiagnostics
 {
