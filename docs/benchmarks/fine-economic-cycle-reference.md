@@ -185,3 +185,65 @@ After that exact physical prefilter, the oracle still **enumerates all remaining
 The existing `--fine-economic-cycle` executable includes a **separately reported**, small `PRICE_ORACLE_PRUNE` benchmark on a constructed Goldberg physical network: 95 visited fine tiles in a tree, 94 spanning-tree physical assets, **two additional actually built cycle edges**, four explicit directional service intents and synthetic full-path cost functions. Many branch paths cannot reach their destinations without revisiting the origin. Seven warm, paired Release observations compare original exhaustive path enumeration with terminal-leaf pruning on exact completed-path count, function evaluation count, the **complete selected physical path and rational quote SHA-256 transcript**, examined physical links, elapsed milliseconds and managed thread allocations. `PRICE_ORACLE_PARITY=PASS` requires exact equality of all selected route/price outputs while strictly reducing examined links.
 
 **Limits:** this is an exact graph-theoretic elimination of dead-end branches, not an asymptotic solution to enumerating exponentially many simple paths in dense cyclic graphs. Its leaf peeling also consumes CPU and memory and may **regress time** when there are few removable branches. Only observed comparisons on selected synthetic workloads may establish a benefit; no automatic activation, world-scale acceleration claim, route model change, cycle frequency, optional user-facing pause policy or ADR-064 ratification is implied. Issue #16 remains open for stronger admissible pruning and representative workloads with many competitive costed physical routes.
+
+## Block-cut corridor elimination for exact whole-itinerary costs
+
+`EconomicFinePriceAwareSearchMode.BlockCutCorridorPruning` is a third,
+**opt-in** exact graph-theoretic candidate filter for the small-world
+`EconomicFinePriceAwareServiceResolver`. The **Exhaustive** default and
+`TerminalLeafPruning` mode remain independently available.
+
+For each explicitly authorized directional service's compatible **built,
+operational, open** physical network, construct an undirected vertex-level
+graph and determine its **biconnected components and articulation points**
+via an **iterative**, stack-safe Tarjan traversal. Build the associated
+block-cut tree. Because a simple source-to-destination path cannot enter
+a side block and return through the **same articulation vertex**, every
+valid physical itinerary is contained entirely within blocks on the
+unique block-cut tree corridor connecting source and destination. Exclude
+vertices outside those blocks *before* the existing complete simple-path
+enumeration and whole-itinerary freight price evaluations.
+
+This is strictly stronger than repeatedly deleting degree-one physical
+dead ends for networks with **dangling constructed loops**: a cycle attached
+at a single articulation vertex has no leaves, but cannot be used in a
+simple itinerary to a destination outside it. Parallel independently built
+assets on the same physical adjacency are **deduplicated only for
+articulation analysis**, not from the original asset-level candidate
+enumeration, where each priced service-path remains distinct. Technology
+catalogue version and access restrictions are still applied before graph
+construction. All allowed complete paths continue to have their
+caller-defined whole-itinerary freight functions evaluated once from
+that economic cycle's forecast. No invented additive edge tariff,
+physical throughput cap or new modal handoff is introduced.
+
+An independent generated Goldberg regression constructs a valid
+source-to-destination priced cycle with a cheaper *longer* route and
+an additional **built triangle attached at the source alone**.
+The block-cut mode must eliminate that pendant cyclic detour, preserve
+the exact profitable alternatives, evaluate the identical number of
+full-path freight functions, and examine fewer physical links than
+both exhaustive enumeration and degree-one leaf peeling. Seeded
+input permutations, parallel assets, closures, and forecast changes
+are compared against the full exhaustive oracle.
+
+One regression also anchors a destination economic point **on a physical
+itinerary's intermediate cell**, with commodity demand there, but
+provides **no commercial service intent ending at that point**:
+geographic passage must never synthesize a new freight quote, trade
+endpoint or loading/unloading stop. This **does not** implement port,
+rail terminal or transshipment eligibility; those require separate
+operational installations and explicit contracts in a later logistics
+milestone. In particular, geographic proximity to a shipping route is
+not commercial access.
+
+The `PRICE_ORACLE_PRUNE` benchmark now reports three paired
+seven-sample modes (`exhaustive`,
+`terminal-leaf-pruning`, `block-cut-corridor-pruning`), with
+precisely matching accepted service/path/quote SHA-256 signatures and
+full-path cost-function evaluation counts. Extra block-cut preprocessing
+has its own time/allocation cost. **Neither** exact graph pruning mode
+solves the exponential growth of genuinely many simple paths
+*inside* a highly connected biconnected block; no general full-world
+speedup, mandatory time budget, or economic-cycle frequency is claimed.
+ADR-064 remains Proposed.
