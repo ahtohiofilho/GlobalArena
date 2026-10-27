@@ -155,6 +155,7 @@ public static class FineEconomicCycleBenchmarkHarness
             Console.WriteLine("WORLD_SNAPSHOT_CONSTRUCTION=outside-cycle-timings");
             foreach (var scenario in Cases)
                 MeasureScenario(scenario);
+            MeasurePriceAwarePruning();
             Console.WriteLine("RESULT=PASS_FINE_ECONOMIC_CYCLE_BENCHMARK");
             return 0;
         }
@@ -413,6 +414,127 @@ public static class FineEconomicCycleBenchmarkHarness
             throw new InvalidOperationException(
                 "A replacement asset cannot inherit a prior-cycle trade ledger.");
         Console.WriteLine($"SEQUENCE_INVARIANTS={scenario.Id};status=PASS");
+    }
+
+    private sealed record PriceOracleSample(
+        double ElapsedMs, long AllocatedBytes, string QuoteFingerprint,
+        ulong CompletePaths, ulong FreightEvaluations, ulong ExaminedLinks,
+        ulong PrunedVertices, ulong RejectedLinks);
+
+    /// <summary>
+    /// An intentionally small constructed fine-grid route-price experiment
+    /// separate from the economic clearing benchmark. Two off-tree physical
+    /// edges create competing paths, while many constructed branches lead
+    /// to no destination. Both exhaustive and leaf-pruned modes must still
+    /// evaluate every valid full-itinerary cost function exactly once.
+    /// </summary>
+    private static void MeasurePriceAwarePruning()
+    {
+        var scenario = new Scenario(
+            "price-oracle-dead-branches", new GoldbergParameters(4, 0),
+            95, 2, 2, 2, Pattern.Complete, ExtraBuiltEdges: 2);
+        var builtSnapshot = BuildSnapshot(scenario);
+        // Make at least one declared commercial pair coincide with the
+        // endpoints of a genuinely CONSTRUCTED off-tree edge. That pair
+        // then has both a direct built link and an alternate built-tree
+        // route; the comparison must exercise competing physical paths.
+        var cycleEdge = builtSnapshot.Geography.StrategicTopology.Edges
+            .Single(e => e.Id == builtSnapshot.Assets[^1].GeographicEdgeId);
+        var anchors = new Dictionary<EconomicPointId, PhysicalTacticalTileId>(
+            builtSnapshot.Anchors)
+        {
+            [new EconomicPointId(1UL)] = new PhysicalTacticalTileId(
+                scenario.Resolution, cycleEdge.IncidentCellIds[0]),
+            [new EconomicPointId(1_001UL)] = new PhysicalTacticalTileId(
+                scenario.Resolution, cycleEdge.IncidentCellIds[1])
+        };
+        var snapshot = builtSnapshot with { Anchors = anchors };
+        PriceOracleSample Measure(EconomicFinePriceAwareSearchMode mode)
+        {
+            var priceFactory = new SyntheticWholeServicePricing();
+            var diagnostics = new EconomicFinePriceAwareSearchDiagnostics();
+            var startBytes = GC.GetAllocatedBytesForCurrentThread();
+            var startTicks = Stopwatch.GetTimestamp();
+            var selections = new EconomicFinePriceAwareServiceResolver().Resolve(
+                1UL, snapshot.Geography, snapshot.Anchors, snapshot.Flows,
+                StrategicEdgeAccessSnapshot.AllOpen, snapshot.Assets,
+                snapshot.Intents, priceFactory,
+                new EconomicFinePriceAwareSearchBudget(100_000UL, 512UL),
+                diagnostics, mode);
+            var elapsedMs = Stopwatch.GetElapsedTime(startTicks).TotalMilliseconds;
+            var allocatedBytes = GC.GetAllocatedBytesForCurrentThread() - startBytes;
+            if (selections.Count != snapshot.Intents.Length ||
+                diagnostics.EvaluatedFreightFunctions !=
+                    (ulong)priceFactory.Functions.Count ||
+                diagnostics.CompletePaths != diagnostics.EvaluatedFreightFunctions ||
+                diagnostics.CompletePaths <= (ulong)snapshot.Intents.Length ||
+                priceFactory.Functions.Any(f => f.Calls != 1))
+                throw new InvalidOperationException(
+                    "Whole-path oracle was incomplete or re-priced a candidate.");
+            // Exact physical paths and mathematical quotes are audited
+            // outside the timed region.
+            return new PriceOracleSample(
+                elapsedMs, allocatedBytes,
+                Fingerprint(selections, Array.Empty<EconomicTurnLockedFreightTrade>()),
+                diagnostics.CompletePaths, diagnostics.EvaluatedFreightFunctions,
+                diagnostics.ExaminedLinks, diagnostics.PrunedPhysicalVertices,
+                diagnostics.RejectedPrunedLinks);
+        }
+
+        void AssertParity(PriceOracleSample exhaustive, PriceOracleSample pruned)
+        {
+            if (exhaustive.QuoteFingerprint != pruned.QuoteFingerprint ||
+                exhaustive.CompletePaths != pruned.CompletePaths ||
+                exhaustive.FreightEvaluations != pruned.FreightEvaluations ||
+                pruned.PrunedVertices == 0UL ||
+                pruned.ExaminedLinks >= exhaustive.ExaminedLinks)
+                throw new InvalidOperationException(
+                    "Exact terminal-leaf pruning changed complete paths, " +
+                    "selected quotes or failed to avoid dead branches.");
+        }
+
+        var warmFull = Measure(EconomicFinePriceAwareSearchMode.Exhaustive);
+        var warmPruned = Measure(EconomicFinePriceAwareSearchMode.TerminalLeafPruning);
+        AssertParity(warmFull, warmPruned);
+        var full = new PriceOracleSample[Samples];
+        var prunedSamples = new PriceOracleSample[Samples];
+        for (var i = 0; i < Samples; i++)
+        {
+            full[i] = Measure(EconomicFinePriceAwareSearchMode.Exhaustive);
+            prunedSamples[i] = Measure(
+                EconomicFinePriceAwareSearchMode.TerminalLeafPruning);
+            AssertParity(full[i], prunedSamples[i]);
+            if (full[i].QuoteFingerprint != warmFull.QuoteFingerprint)
+                throw new InvalidOperationException(
+                    "Repeated complete route pricing was not deterministic.");
+        }
+
+        void Report(string mode, IReadOnlyList<PriceOracleSample> samples)
+        {
+            var times = samples.Select(x => x.ElapsedMs).Order().ToArray();
+            var bytes = samples.Select(x => x.AllocatedBytes).Order().ToArray();
+            Console.WriteLine(
+                $"PRICE_ORACLE_PRUNE=price-oracle-dead-branches;" +
+                $"mode={mode};" +
+                $"median_ms={times[times.Length / 2]:F3};" +
+                $"max_ms={times[^1]:F3};" +
+                $"median_bytes={bytes[bytes.Length / 2]};" +
+                $"max_bytes={bytes[^1]};" +
+                $"examined_links={samples[0].ExaminedLinks};" +
+                $"complete_paths={samples[0].CompletePaths};" +
+                $"freight_evaluations={samples[0].FreightEvaluations};" +
+                $"pruned_vertices={samples[0].PrunedVertices};" +
+                $"rejected_pruned_links={samples[0].RejectedLinks};" +
+                $"fingerprint={samples[0].QuoteFingerprint};" +
+                $"samples={samples.Count};status=OBSERVATIONAL");
+        }
+
+        Report("exhaustive", full);
+        Report("terminal-leaf-pruning", prunedSamples);
+        Console.WriteLine("PRICE_ORACLE_PARITY=PASS;" +
+            $"built_assets={snapshot.Assets.Length};" +
+            $"commercial_intents={snapshot.Intents.Length};" +
+            $"fingerprint={warmFull.QuoteFingerprint}");
     }
 
     private static void MeasureScenario(Scenario scenario)

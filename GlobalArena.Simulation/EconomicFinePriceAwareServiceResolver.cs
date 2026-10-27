@@ -27,6 +27,16 @@ public sealed class EconomicFinePriceAwareSearchBudget
 }
 
 /// <summary>
+/// Optional exact graph pruning for the whole-route price oracle.
+/// Default Exhaustive preserves the existing reference path.
+/// </summary>
+public enum EconomicFinePriceAwareSearchMode : byte
+{
+    Exhaustive = 0,
+    TerminalLeafPruning = 1
+}
+
+/// <summary>
 /// Optional measurements; no impact on the selection, freight, or WorldState.
 /// Caller owns the instance and must not share it between concurrent calls.
 /// </summary>
@@ -36,10 +46,13 @@ public sealed class EconomicFinePriceAwareSearchDiagnostics
     public ulong CompletePaths { get; internal set; }
     public ulong EvaluatedFreightFunctions { get; internal set; }
     public ulong SelectedServices { get; internal set; }
+    public ulong PrunedPhysicalVertices { get; internal set; }
+    public ulong RejectedPrunedLinks { get; internal set; }
 
     internal void Reset() =>
         ExaminedLinks = CompletePaths =
-            EvaluatedFreightFunctions = SelectedServices = 0UL;
+            EvaluatedFreightFunctions = SelectedServices =
+                PrunedPhysicalVertices = RejectedPrunedLinks = 0UL;
 }
 
 /// <summary>
@@ -68,7 +81,9 @@ public sealed class EconomicFinePriceAwareServiceResolver
         IEnumerable<EconomicFineTransportServiceIntent> serviceIntents,
         IEconomicFineTransportItineraryPricing pricing,
         EconomicFinePriceAwareSearchBudget budget,
-        EconomicFinePriceAwareSearchDiagnostics? diagnostics = null)
+        EconomicFinePriceAwareSearchDiagnostics? diagnostics = null,
+        EconomicFinePriceAwareSearchMode searchMode =
+            EconomicFinePriceAwareSearchMode.Exhaustive)
     {
         diagnostics?.Reset();
         if (turnOrdinal == 0UL)
@@ -81,6 +96,9 @@ public sealed class EconomicFinePriceAwareServiceResolver
         ArgumentNullException.ThrowIfNull(serviceIntents);
         ArgumentNullException.ThrowIfNull(pricing);
         ArgumentNullException.ThrowIfNull(budget);
+        if (searchMode is not EconomicFinePriceAwareSearchMode.Exhaustive and
+            not EconomicFinePriceAwareSearchMode.TerminalLeafPruning)
+            throw new ArgumentOutOfRangeException(nameof(searchMode));
 
         var resolution = fineGeography.StrategicTopology.Parameters;
         var anchors = new Dictionary<EconomicPointId, int>();
@@ -174,7 +192,7 @@ public sealed class EconomicFinePriceAwareServiceResolver
 
             var selected = SearchIntent(
                 intent, start, end, adjacency, assetMap, pricing,
-                budget, diagnostics);
+                budget, diagnostics, searchMode);
             if (selected is null)
                 continue;
 
@@ -214,8 +232,15 @@ public sealed class EconomicFinePriceAwareServiceResolver
         IReadOnlyDictionary<ulong, EconomicTransportBuiltAsset> assetMap,
         IEconomicFineTransportItineraryPricing pricing,
         EconomicFinePriceAwareSearchBudget budget,
-        EconomicFinePriceAwareSearchDiagnostics? diagnostics)
+        EconomicFinePriceAwareSearchDiagnostics? diagnostics,
+        EconomicFinePriceAwareSearchMode searchMode)
     {
+        var admissible = searchMode ==
+            EconomicFinePriceAwareSearchMode.TerminalLeafPruning
+            ? KeepPossibleSimplePathVertices(
+                start, end, intent.TechnologyTypeId,
+                intent.TechnologyCatalogVersion, adjacency, diagnostics)
+            : null;
         var visited = new bool[adjacency.Count];
         var stack = new List<Frame> { new(start, 0) };
         var path = new List<ulong>();
@@ -282,6 +307,12 @@ public sealed class EconomicFinePriceAwareServiceResolver
 
             var link = adjacency[frame.Node][frame.NextIndex];
             stack[top] = new Frame(frame.Node, frame.NextIndex + 1);
+            if (admissible is not null && !admissible[link.NextNode])
+            {
+                if (diagnostics is not null)
+                    diagnostics.RejectedPrunedLinks++;
+                continue;
+            }
             examined = checked(examined + 1UL);
             if (examined > budget.MaxExaminedLinks)
                 throw new InvalidOperationException(
@@ -299,6 +330,59 @@ public sealed class EconomicFinePriceAwareServiceResolver
             stack.Add(new Frame(link.NextNode, 0));
         }
         return best;
+    }
+
+    /// <summary>
+    /// Exact physical pruning for SIMPLE source-to-destination paths.
+    /// A nonterminal vertex with at most one eligible incident physical
+    /// edge cannot be an interior vertex of a simple route. Repeatedly
+    /// removing such leaves preserves EVERY eligible simple path.
+    /// Parallel constructed assets count as multiple incidences, which may
+    /// retain unnecessary branches but never removes a valid path.
+    /// No economic assumptions about price functions or edge additivity.
+    /// </summary>
+    private static bool[] KeepPossibleSimplePathVertices(
+        int start, int end, ulong technologyTypeId, ulong catalogVersion,
+        IReadOnlyList<List<Link>> adjacency,
+        EconomicFinePriceAwareSearchDiagnostics? diagnostics)
+    {
+        var retained = Enumerable.Repeat(true, adjacency.Count).ToArray();
+        var degree = new int[adjacency.Count];
+        var queue = new Queue<int>();
+        for (var node = 0; node < adjacency.Count; node++)
+        {
+            foreach (var link in adjacency[node])
+            {
+                if (link.TechnologyTypeId == technologyTypeId &&
+                    link.TechnologyCatalogVersion == catalogVersion)
+                    degree[node]++;
+            }
+            if (node != start && node != end && degree[node] <= 1)
+                queue.Enqueue(node);
+        }
+
+        while (queue.Count > 0)
+        {
+            var node = queue.Dequeue();
+            if (!retained[node] || node == start || node == end ||
+                degree[node] > 1)
+                continue;
+            retained[node] = false;
+            if (diagnostics is not null)
+                diagnostics.PrunedPhysicalVertices++;
+            foreach (var link in adjacency[node])
+            {
+                if (link.TechnologyTypeId != technologyTypeId ||
+                    link.TechnologyCatalogVersion != catalogVersion ||
+                    !retained[link.NextNode])
+                    continue;
+                degree[link.NextNode]--;
+                if (link.NextNode != start && link.NextNode != end &&
+                    degree[link.NextNode] <= 1)
+                    queue.Enqueue(link.NextNode);
+            }
+        }
+        return retained;
     }
 
     private static int ComparePaths(
