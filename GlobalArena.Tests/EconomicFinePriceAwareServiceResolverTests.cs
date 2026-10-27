@@ -327,7 +327,7 @@ public sealed class EconomicFinePriceAwareServiceResolverTests
                 new[] { new EconomicTransportBuiltAsset(
                     88UL, 10UL,
                     new PhysicalTacticalEdgeId(
-                        new GoldbergParameters(2, 0), asset.GeographicEdgeId),
+                        new GoldbergParameters(10, 0), asset.GeographicEdgeId),
                     2UL) }));
         Assert.Throws<ArgumentException>(() =>
             Run(fixture, prices, intents: new[] { Intent(), Intent() }));
