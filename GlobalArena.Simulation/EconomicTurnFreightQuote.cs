@@ -74,6 +74,35 @@ public sealed class EconomicTurnFreightQuote
     }
 
     /// <summary>
+    /// Internal assembly point for an already evaluated, caller-defined
+    /// continuous price of an explicit complete transport service. The
+    /// original function has already been called once at its forecast;
+    /// assembling the selected route quote must NOT call it a second time.
+    /// The service-selection provenance is carried in a separate sidecar.
+    /// </summary>
+    internal static EconomicTurnFreightQuote FromPreparedServiceUnitCost(
+        ulong turnOrdinal,
+        StrategicEconomicRouteKey routeKey,
+        ulong rulesetVersion,
+        BigInteger expectedLoadMicrograms,
+        FoodTransportCostFraction rawUnitCostPerGram)
+    {
+        if (turnOrdinal == 0UL)
+            throw new ArgumentOutOfRangeException(nameof(turnOrdinal));
+        if (!routeKey.SourceEconomicPointId.IsValid ||
+            !routeKey.DestinationEconomicPointId.IsValid)
+            throw new ArgumentException("Invalid service route.", nameof(routeKey));
+        if (rulesetVersion == 0UL)
+            throw new ArgumentOutOfRangeException(nameof(rulesetVersion));
+        if (expectedLoadMicrograms.Sign < 0)
+            throw new ArgumentOutOfRangeException(nameof(expectedLoadMicrograms));
+        ArgumentNullException.ThrowIfNull(rawUnitCostPerGram);
+        return new EconomicTurnFreightQuote(
+            turnOrdinal, routeKey, rulesetVersion,
+            expectedLoadMicrograms, rawUnitCostPerGram);
+    }
+
+    /// <summary>
     /// The exact *financial freight charge* at the turn-locked quote.
     /// This is not the integral of a varying intra-turn resource-cost curve,
     /// and such an integral must not be charged a second time.
