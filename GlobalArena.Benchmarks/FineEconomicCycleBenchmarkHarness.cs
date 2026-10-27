@@ -157,6 +157,8 @@ public static class FineEconomicCycleBenchmarkHarness
         var snapshotStart = Stopwatch.GetTimestamp();
         var snapshot = BuildSnapshot(scenario);
         var snapshotMs = Stopwatch.GetElapsedTime(snapshotStart).TotalMilliseconds;
+        if (scenario.Id == "fine-smoke")
+            CheckSmallWorldExactPathOracle(snapshot);
 
         var first = Measure(snapshot, EconomicTurnFreightCandidateSelectionMode.Exhaustive);
         var firstIndexed = Measure(snapshot,
@@ -202,6 +204,42 @@ public static class FineEconomicCycleBenchmarkHarness
             oracle.Trades != indexed.Trades)
             throw new InvalidOperationException(
                 $"{id}: indexed clearing disagrees with exhaustive full-cycle economics.");
+    }
+
+    /// <summary>
+    /// A constructed tree has exactly one simple asset path per pair.
+    /// The exponentially expensive whole-service price oracle must therefore
+    /// agree with the faster physical connectivity discovery in this small
+    /// fixture. Kept outside timed samples; large-world oracle is NOT used.
+    /// </summary>
+    private static void CheckSmallWorldExactPathOracle(Snapshot snapshot)
+    {
+        var access = StrategicEdgeAccessSnapshot.AllOpen;
+        var discovery = new EconomicFineTransportServiceItineraryDiscovery();
+        var offers = discovery.Discover(
+            snapshot.Geography, snapshot.Anchors, access,
+            snapshot.Assets, snapshot.Intents, new SyntheticWholeServicePricing());
+        var expected = new EconomicTransportServiceQuoteResolver().Resolve(
+            1UL, snapshot.Geography, snapshot.Anchors,
+            snapshot.Flows, access, snapshot.Assets, offers);
+
+        var oraclePricing = new SyntheticWholeServicePricing();
+        var exact = new EconomicFinePriceAwareServiceResolver().Resolve(
+            1UL, snapshot.Geography, snapshot.Anchors,
+            snapshot.Flows, access, snapshot.Assets, snapshot.Intents,
+            oraclePricing,
+            new EconomicFinePriceAwareSearchBudget(200_000UL, 100UL));
+
+        if (Fingerprint(expected, Array.Empty<EconomicTurnLockedFreightTrade>()) !=
+            Fingerprint(exact, Array.Empty<EconomicTurnLockedFreightTrade>()) ||
+            oraclePricing.Factories != snapshot.Intents.Length ||
+            oraclePricing.Functions.Any(x => x.Calls != 1))
+            throw new InvalidOperationException(
+                "Small-world exhaustive whole-itinerary oracle disagrees with " +
+                "the routed quote reference.");
+        Console.WriteLine(
+            $"SMALL_ORACLE=PASS;itineraries={exact.Count};" +
+            $"pricing_evaluations={oraclePricing.Functions.Count}");
     }
 
     private static Sample Measure(
