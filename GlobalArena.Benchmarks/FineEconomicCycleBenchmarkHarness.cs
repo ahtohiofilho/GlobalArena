@@ -20,7 +20,7 @@ namespace GlobalArena.Benchmarks;
 public static class FineEconomicCycleBenchmarkHarness
 {
     private const ulong Unit = EconomicTransferPolicy.FixedPointDenominator;
-    private const int Samples = 5;
+    private const int Samples = 7;
 
     private enum Pattern : byte { Complete, Local, Hub }
 
