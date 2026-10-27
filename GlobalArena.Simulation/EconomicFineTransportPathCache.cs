@@ -1,10 +1,9 @@
 namespace GlobalArena.Simulation;
 
 /// <summary>
-/// Optional, caller-owned memory of PHYSICAL fine-grid itineraries only.
-/// It holds neither freight quotes, priced functions, demand curves nor
-/// financial trades. A successful discovery replaces its entire prior view.
-/// Do not share across concurrent discoveries or authoritative WorldState.
+/// Caller-owned and opt-in cache of PHYSICAL fine-grid asset paths only.
+/// Stores no freight quotes, pricing functions, forecasts, market values or
+/// trades. Never part of authoritative WorldState. Not thread-safe.
 /// </summary>
 public sealed class EconomicFineTransportPathCache
 {
@@ -13,45 +12,66 @@ public sealed class EconomicFineTransportPathCache
     public int CachedPathCount => _prior.Count;
 
     internal bool TryReuse(
-        PathKey key, string topologySignature, string availableAssetSignature,
-        out ulong[] path)
+        PathKey key, string topologySignature,
+        IReadOnlyList<AvailableAsset> currentAssets, out ulong[] path)
     {
-        if (_prior.TryGetValue(key, out var cached) &&
-            string.Equals(cached.TopologySignature, topologySignature,
-                StringComparison.Ordinal))
-        {
-            if (string.Equals(cached.AvailableAssetSignature,
-                    availableAssetSignature, StringComparison.Ordinal))
-            {
-                path = (ulong[])cached.AssetIds.Clone();
-                return true;
-            }
-
-            // A pure REMOVAL of eligible physical edges cannot introduce a
-            // shorter or lexicographically better path. If every asset on
-            // the previous chosen path survives unchanged, the previous
-            // canonical min-hop path is still exactly optimal. An addition,
-            // edge relocation, version change or replacement may improve
-            // the route, so those changes always require fresh search.
-            var former = cached.AvailableAssetSignature.Split(
-                ';', StringSplitOptions.RemoveEmptyEntries).ToHashSet(
-                    StringComparer.Ordinal);
-            var current = availableAssetSignature.Length == 0
-                ? Array.Empty<string>()
-                : availableAssetSignature.Split(
-                    ';', StringSplitOptions.RemoveEmptyEntries);
-            var onlyRemoved = current.Length <= former.Count &&
-                current.All(former.Contains);
-            if (onlyRemoved && cached.AssetIds.All(id => current.Any(
-                    x => x.StartsWith(id.ToString() + ":",
-                        StringComparison.Ordinal))))
-            {
-                path = (ulong[])cached.AssetIds.Clone();
-                return true;
-            }
-        }
         path = Array.Empty<ulong>();
-        return false;
+        if (!_prior.TryGetValue(key, out var cached) ||
+            !string.Equals(cached.TopologySignature, topologySignature,
+                StringComparison.Ordinal))
+            return false;
+
+        var former = cached.AvailableAssets;
+        var a = 0;
+        var b = 0;
+        // Both sequences are already sorted by the globally unique
+        // physical asset ID. An exact match, or a DELETION-ONLY subset,
+        // cannot create a new better shortest path. An asset replacement,
+        // installation, corridor relocation or new technology is not a
+        // subset and must invalidate the old route.
+        while (b < currentAssets.Count)
+        {
+            if (a >= former.Length)
+                return false;
+            if (former[a].AssetId < currentAssets[b].AssetId)
+            {
+                a++;
+                continue;
+            }
+            if (former[a] != currentAssets[b])
+                return false;
+            a++;
+            b++;
+        }
+
+        // Even for a deletion-only graph change, the chosen old path must
+        // survive wholly. An off-path closure is provably harmless to the
+        // canonical min-hop + asset-ID tie-break, not to freight PRICING.
+        foreach (var assetId in cached.AssetIds)
+        {
+            var lo = 0;
+            var hi = currentAssets.Count - 1;
+            var found = false;
+            while (lo <= hi)
+            {
+                var mid = lo + (hi - lo) / 2;
+                var item = currentAssets[mid].AssetId;
+                if (item == assetId)
+                {
+                    found = true;
+                    break;
+                }
+                if (item < assetId)
+                    lo = mid + 1;
+                else
+                    hi = mid - 1;
+            }
+            if (!found)
+                return false;
+        }
+
+        path = (ulong[])cached.AssetIds.Clone();
+        return true;
     }
 
     internal void Replace(
@@ -62,15 +82,17 @@ public sealed class EconomicFineTransportPathCache
         ulong StartCellId, ulong EndCellId,
         ulong TechnologyTypeId, ulong TechnologyCatalogVersion);
 
+    internal readonly record struct AvailableAsset(
+        ulong AssetId, ulong GeographicEdgeId);
+
     internal sealed record CachedPhysicalPath(
-        string TopologySignature, string AvailableAssetSignature,
+        string TopologySignature, AvailableAsset[] AvailableAssets,
         ulong[] AssetIds);
 }
 
 /// <summary>
-/// Observational data about exactly matching physical dependencies.
-/// A reused path still generates a fresh function and turn-owned freight
-/// quote; these counters never affect clearing or canonical state.
+/// Observational only; these counts cannot alter canonical market results.
+/// Physical reuse still requires a new pricing function and new quote.
 /// </summary>
 public sealed class EconomicFineTransportPathReuseDiagnostics
 {
