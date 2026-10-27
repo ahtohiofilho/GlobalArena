@@ -258,7 +258,9 @@ public sealed class EconomicFinePriceAwareServiceResolverTests
             Run(fixture, new WholeItineraryTestPricing(),
                 new EconomicFinePriceAwareSearchBudget(10_000UL, 1UL),
                 diagnostics: diagnostics));
-        Assert.Equal(2UL, diagnostics.CompletePaths);
+        // Only the first candidate was accepted for evaluation; the
+        // second would exceed the budget and aborts without a best route.
+        Assert.Equal(1UL, diagnostics.CompletePaths);
 
         Assert.Throws<InvalidOperationException>(() =>
             Run(fixture, new WholeItineraryTestPricing(),
