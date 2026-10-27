@@ -26,7 +26,8 @@ public static class FineEconomicCycleBenchmarkHarness
 
     private sealed record Scenario(
         string Id, GoldbergParameters Resolution, int BuiltCells,
-        int Producers, int Destinations, int Commodities, Pattern Connectivity);
+        int Producers, int Destinations, int Commodities, Pattern Connectivity,
+        int ExtraBuiltEdges = 0);
 
     private static readonly Scenario[] Cases =
     {
@@ -37,7 +38,11 @@ public static class FineEconomicCycleBenchmarkHarness
         new("fine-hub", new GoldbergParameters(8, 0), 300, 8, 8, 3,
             Pattern.Hub),
         new("fine-connected", new GoldbergParameters(12, 0), 750, 12, 12, 3,
-            Pattern.Complete)
+            Pattern.Complete),
+        // Unlike preceding tree fixtures, these extra physical corridors
+        // create loops and independently constructed competing itineraries.
+        new("fine-multipath", new GoldbergParameters(8, 0), 350, 10, 10, 3,
+            Pattern.Complete, ExtraBuiltEdges: 140)
     };
 
     private sealed class SyntheticWholeServicePricing
@@ -451,6 +456,55 @@ public static class FineEconomicCycleBenchmarkHarness
 
         WriteMeasurements(scenario.Id, "exhaustive", reference);
         WriteMeasurements(scenario.Id, "indexed", indexed);
+
+        // Price a fresh next-cycle forecast on the SAME competing built
+        // physical network. One arm rediscovers everything; another is
+        // prewarmed with the prior physical paths (no quotes are cached).
+        // This is a separate paired experiment, not a claim that physical
+        // minimum hops minimize nonadditive commercial freight.
+        if (scenario.ExtraBuiltEdges > 0)
+        {
+            var next = snapshot with
+            {
+                Intents = snapshot.Intents.Select(x =>
+                    new EconomicFineTransportServiceIntent(
+                        x.ServiceId, x.RouteKey, x.TechnologyTypeId,
+                        x.TechnologyCatalogVersion,
+                        x.ExpectedLoadMicrograms * 2, x.IsAvailable)).ToArray()
+            };
+            var nextFresh = new Sample[Samples];
+            var nextCached = new Sample[Samples];
+            for (var i = 0; i < Samples; i++)
+            {
+                var cache = new EconomicFineTransportPathCache();
+                _ = Measure(snapshot,
+                    EconomicTurnFreightCandidateSelectionMode.DependencyIndex,
+                    1UL, physicalCache: cache);
+                nextCached[i] = Measure(next,
+                    EconomicTurnFreightCandidateSelectionMode.DependencyIndex,
+                    2UL, physicalCache: cache);
+                nextFresh[i] = Measure(next,
+                    EconomicTurnFreightCandidateSelectionMode.DependencyIndex,
+                    2UL);
+                AssertSameEconomics(nextFresh[i], nextCached[i],
+                    scenario.Id + ":next-cycle");
+                if (nextFresh[i].Fingerprint != nextCached[i].Fingerprint ||
+                    nextCached[i].ReusedPaths != next.Intents.Length ||
+                    nextCached[i].SearchedPaths != 0 ||
+                    nextCached[i].FunctionEvaluations != next.Intents.Length)
+                    throw new InvalidOperationException(
+                        "Competing fine-route replay or fresh quotation changed.");
+            }
+            WriteMeasurements(scenario.Id + "-next", "indexed", nextFresh);
+            WriteMeasurements(scenario.Id + "-next",
+                "indexed-cached-physical", nextCached);
+            Console.WriteLine(
+                $"MULTIPATH={scenario.Id};" +
+                $"extra_constructed_edges={scenario.ExtraBuiltEdges};" +
+                $"cached_routes={nextCached[0].ReusedPaths};" +
+                $"fresh_quotes={nextCached[0].FunctionEvaluations};" +
+                $"status=EXACT_PARITY");
+        }
     }
 
     private static void AssertSameEconomics(Sample oracle, Sample indexed, string id)
@@ -697,7 +751,36 @@ public static class FineEconomicCycleBenchmarkHarness
         if (visited.Count != scenario.BuiltCells ||
             built.Count + 1 != visited.Count)
             throw new InvalidOperationException(
-                "Physical test infrastructure was not built as a tree.");
+                "Physical test infrastructure must start as a spanning tree.");
+
+        // An explicit denser topology fixture introduces *constructed*
+        // off-tree edges, hence alternative physical routes, rather than
+        // pretending that bare geographic adjacency grants free services.
+        // The asset ID remains the unique physical fine-edge ordinal.
+        if (scenario.ExtraBuiltEdges > 0)
+        {
+            var included = visited.ToHashSet();
+            var builtIds = built.Select(x => x.GeographicEdgeId).ToHashSet();
+            var added = 0;
+            foreach (var edge in geography.StrategicTopology.Edges)
+            {
+                if (added == scenario.ExtraBuiltEdges)
+                    break;
+                var a = geography.GetNodeIndex(edge.IncidentCellIds[0]);
+                var b = geography.GetNodeIndex(edge.IncidentCellIds[1]);
+                if (!included.Contains(a) || !included.Contains(b) ||
+                    !builtIds.Add(edge.Id))
+                    continue;
+                built.Add(new EconomicTransportBuiltAsset(
+                    edge.Id.Value, 10UL,
+                    new PhysicalTacticalEdgeId(scenario.Resolution, edge.Id),
+                    1UL));
+                added++;
+            }
+            if (added != scenario.ExtraBuiltEdges)
+                throw new InvalidOperationException(
+                    "Cannot build requested competing fine corridors.");
+        }
 
         var anchors = new Dictionary<EconomicPointId, PhysicalTacticalTileId>();
         for (var i = 0; i < scenario.Producers; i++)

@@ -35,8 +35,9 @@ The physical-route oracle from PR #26 has exponential complexity over simple pat
 | `fine-local` | 162 | 99 | 6 × 6 | 2 | 18 | Each source declares three local commercial partners |
 | `fine-hub` | 642 | 299 | 8 × 8 | 3 | 28 | Declared central source/destination hubs plus local links |
 | `fine-connected` | 1,442 | 749 | 12 × 12 | 3 | 144 | Dense economic intents over sparse built physical tree |
+| `fine-multipath` | 642 | 489 | 10 × 10 | 3 | 100 | Physical connected tree plus **140 additional constructed loop edges**, creating competing itineraries |
 
-All graph paths lie on **actual generated fine-mesh adjacency**, but the tree, source/destination placement, forecasts and whole-itinerary continuous freight functions are **synthetic test fixtures**, not authentic geographic/transport-service production distributions. A single technological identity is used to isolate discovery and clear the conceptual boundaries. These workloads cannot justify maritime routing behavior, multimodal transshipment economics, asset capacities or global map performance.
+All graph paths lie on **actual generated fine-mesh adjacency**, but the constructed networks, source/destination placement, forecasts and whole-itinerary continuous freight functions are **synthetic test fixtures**, not authentic geographic/transport-service production distributions. Four original scenarios remain sparse constructed trees; the new `fine-multipath` case has **140 extra constructed non-tree physical corridors**, and consequently route alternatives. A single technological identity is used to isolate discovery and clear the conceptual boundaries. These workloads cannot justify maritime routing behavior, multimodal transshipment economics, asset capacities or global map performance.
 
 ## Interpreting evidence
 
@@ -116,6 +117,56 @@ an opt-in correctness experiment, not an adopted cache for authoritative
 turn execution or a global performance guarantee. Snapshot fixture generation
 is still outside the timed economic close; no movement cadence or acceptable
 UI delay was selected. ADR-064 remains Proposed.
+
+## Shared-source traversal and competing constructed paths
+
+The canonical **minimum-physical-leg** discoverer now uses one deterministic
+breadth-first **predecessor tree per (physical origin tile, technology type,
+technology catalogue version)** for all intents requiring a new path in
+the same economic close. It then reconstructs each destination's selected
+built-asset itinerary from the shared tree. Multiple services from one origin
+previously traversed the same constructed adjacency repeatedly. As before,
+edges are ordered by asset ID and then destination node; breadth-first
+discovery therefore preserves minimum-leg selection and canonical asset-ID
+tie-breaking. This is **not** a new cheapest-commercial-freight algorithm:
+the whole-itinerary price function may be nonadditive.
+
+The discoverer also directly indexes edges from the immutable canonical
+one-based `StrategicTopology.Edges` sequence. This avoids allocating an
+edge-ID dictionary on each call while retaining closed-edge and foreign-asset
+fail-closed validation; the topology constructor guarantees contiguous
+identity ordinals. Source trees are transient per economic close and never
+constitute an authoritative map or commodity/pricing cache.
+`EconomicFineTransportPathReuseDiagnostics.SourceTreeBuilds` reports how
+many distinct physical source trees were built, separately from how many
+service intents were searched. Cached physical itineraries remain opt-in
+and retain exactly the same conservative invalidation rules as PR #29.
+
+The new `fine-multipath` workload uses **642 generated fine cells** and
+**489 explicitly built physical assets**: a 349-edge connected spanning
+tree over 350 visited cells and 140 additional actually constructed
+fine-grid edges. One hundred directed economic service intents compete
+over multiple available physical routes; three synthetic commodities
+are commercially cleared. No bare geography-only route is admitted.
+The previous four tree-based scenarios remain intact.
+
+For that competing-path case, an extra **next-economic-cycle experiment**
+rebuilds all forecasts (triples are not hard-coded; the supplied expected
+mass is doubled in this synthetic case), then runs fresh indexed discovery
+versus a independently prewarmed *physical-only* path cache. Both arms
+form new freight quotes and solve the market; their **complete path/service/
+quote/financial SHA-256 fingerprints** must match exactly on each replay.
+The `MULTIPATH` marker prints the number of reused physical paths and
+freshly evaluated freight quotes. The small-world **whole-itinerary
+price-aware exhaustive oracle** is intentionally not applied to this
+densely connected fixture, since enumerating all simple paths is
+exponential. Consequently, matching the minimum-leg reference does
+**not** prove that its selected path is the commercially cheapest choice.
+
+The benchmark reports **observational elapsed times and allocations**;
+fewer BFS trees or cache reuse are not accepted as a speedup absent
+measured evidence. No fixed economic cycle frequency, mode tariff, route
+capacity, pause threshold or ADR-064 ratification is introduced.
 
 ## Further architectural milestones
 

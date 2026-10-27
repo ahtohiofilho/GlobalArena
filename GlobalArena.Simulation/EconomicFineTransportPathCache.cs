@@ -113,11 +113,18 @@ public sealed class EconomicFineTransportPathReuseDiagnostics
     public int ReusedPaths { get; internal set; }
     public int SearchedPaths { get; internal set; }
     public int UnreachableIntents { get; internal set; }
+    /// <summary>
+    /// Number of full canonical source BFS trees actually constructed
+    /// during this discovery; one can serve many destination intents.
+    /// Pure diagnostics, independent of authoritative game state.
+    /// </summary>
+    public int SourceTreeBuilds { get; internal set; }
 
     internal void Reset()
     {
         ReusedPaths = 0;
         SearchedPaths = 0;
         UnreachableIntents = 0;
+        SourceTreeBuilds = 0;
     }
 }

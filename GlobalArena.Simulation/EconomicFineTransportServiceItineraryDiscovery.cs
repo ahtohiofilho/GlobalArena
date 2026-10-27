@@ -99,9 +99,12 @@ public sealed class EconomicFineTransportServiceItineraryDiscovery
             anchors.Add(point, fineGeography.GetNodeIndex(tile.FineStrategicCellId));
         }
 
-        var edges = fineGeography.StrategicTopology.Edges.ToDictionary(x => x.Id);
+        // StrategicTopology guarantees canonical contiguous one-based edge
+        // ordinals. Reusing the immutable edge array eliminates an O(E)
+        // dictionary allocation at every economic close.
+        var edges = fineGeography.StrategicTopology.Edges;
         foreach (var closed in access.ClosedEdgeIds)
-            if (!edges.ContainsKey(closed))
+            if (!closed.IsValid || closed.Value > (ulong)edges.Count)
                 throw new ArgumentException(
                     "Closed edge is foreign to the fine geography.", nameof(access));
 
@@ -113,7 +116,7 @@ public sealed class EconomicFineTransportServiceItineraryDiscovery
             if (asset is null ||
                 asset.FineGeographicEdgeId is not PhysicalTacticalEdgeId fineId ||
                 fineId.FineGoldbergParameters != resolution ||
-                !edges.TryGetValue(asset.GeographicEdgeId, out var edge) ||
+                asset.GeographicEdgeId.Value > (ulong)edges.Count ||
                 !assets.TryAdd(asset.AssetId, asset))
                 throw new ArgumentException(
                     "Assets must be unique and explicitly built on this fine topology.",
@@ -122,6 +125,7 @@ public sealed class EconomicFineTransportServiceItineraryDiscovery
             if (!asset.IsOperational || !access.IsOpen(asset.GeographicEdgeId))
                 continue;
 
+            var edge = edges[checked((int)(asset.GeographicEdgeId.Value - 1UL))];
             var first = fineGeography.GetNodeIndex(edge.IncidentCellIds[0]);
             var second = fineGeography.GetNodeIndex(edge.IncidentCellIds[1]);
             adjacency[first].Add(new Link(second, asset.AssetId,
@@ -180,6 +184,12 @@ public sealed class EconomicFineTransportServiceItineraryDiscovery
             : new Dictionary<EconomicFineTransportPathCache.PathKey,
                 EconomicFineTransportPathCache.CachedPhysicalPath>();
         var offers = new List<EconomicTransportServiceOffer>();
+        // Many destinations share one source/technology. Build the exact
+        // canonical BFS predecessor tree once per source-group, then recover
+        // any number of destination itineraries without repeating traversal.
+        // Each tree remains local to THIS validated economic snapshot.
+        var sourceTrees = new Dictionary<(int Start, ulong Technology, ulong Version),
+            CanonicalSourceTree>();
         foreach (var intent in intents.OrderBy(x => x.ServiceId))
         {
             if (!intent.IsAvailable)
@@ -211,9 +221,18 @@ public sealed class EconomicFineTransportServiceItineraryDiscovery
             }
             else
             {
-                path = DiscoverMinLegPath(
-                    start, end, intent.TechnologyTypeId,
-                    intent.TechnologyCatalogVersion, adjacency);
+                var treeKey = (start, intent.TechnologyTypeId,
+                    intent.TechnologyCatalogVersion);
+                if (!sourceTrees.TryGetValue(treeKey, out var tree))
+                {
+                    tree = BuildCanonicalSourceTree(
+                        start, intent.TechnologyTypeId,
+                        intent.TechnologyCatalogVersion, adjacency);
+                    sourceTrees.Add(treeKey, tree);
+                    if (reuseDiagnostics is not null)
+                        reuseDiagnostics.SourceTreeBuilds++;
+                }
+                path = tree.PathTo(end);
                 if (reuseDiagnostics is not null)
                     reuseDiagnostics.SearchedPaths++;
             }
@@ -250,11 +269,11 @@ public sealed class EconomicFineTransportServiceItineraryDiscovery
 
     private static string BuildTopologySignature(
         GoldbergParameters resolution,
-        IReadOnlyDictionary<StrategicEdgeId, StrategicEdge> edges)
+        IReadOnlyList<StrategicEdge> edges)
     {
         var sb = new StringBuilder();
         sb.Append(resolution.M).Append(':').Append(resolution.N).Append('|');
-        foreach (var edge in edges.Values.OrderBy(x => x.Id.Value))
+        foreach (var edge in edges)
         {
             sb.Append(edge.Id.Value).Append(':');
             foreach (var cell in edge.IncidentCellIds.OrderBy(x => x.Value))
@@ -264,8 +283,8 @@ public sealed class EconomicFineTransportServiceItineraryDiscovery
         return sb.ToString();
     }
 
-    private static ulong[]? DiscoverMinLegPath(
-        int start, int end, ulong technologyTypeId, ulong catalogVersion,
+    private static CanonicalSourceTree BuildCanonicalSourceTree(
+        int start, ulong technologyTypeId, ulong catalogVersion,
         IReadOnlyList<List<Link>> adjacency)
     {
         var parents = Enumerable.Repeat(-1, adjacency.Count).ToArray();
@@ -274,39 +293,46 @@ public sealed class EconomicFineTransportServiceItineraryDiscovery
         var queue = new Queue<int>();
         visited[start] = true;
         queue.Enqueue(start);
-
-        while (queue.Count > 0 && !visited[end])
+        while (queue.Count > 0)
         {
             var current = queue.Dequeue();
+            // Already sorted by asset ID, then destination node.
+            // BFS therefore creates the minimum-leg path with the same
+            // deterministic lexicographic asset-ID tie-breaking as the
+            // former per-destination BFS.
             foreach (var link in adjacency[current])
             {
                 if (link.TechnologyTypeId != technologyTypeId ||
                     link.TechnologyCatalogVersion != catalogVersion ||
                     visited[link.NextNode])
                     continue;
-
                 visited[link.NextNode] = true;
                 parents[link.NextNode] = current;
                 parentAssets[link.NextNode] = link.AssetId;
                 queue.Enqueue(link.NextNode);
-                if (link.NextNode == end)
-                    break;
             }
         }
+        return new CanonicalSourceTree(start, parents, parentAssets);
+    }
 
-        if (!visited[end])
-            return null;
-
-        var reversed = new List<ulong>();
-        for (var node = end; node != start; node = parents[node])
+    private sealed class CanonicalSourceTree(
+        int start, int[] parents, ulong[] parentAssets)
+    {
+        public ulong[]? PathTo(int destination)
         {
-            if (parents[node] < 0 || parentAssets[node] == 0UL)
-                throw new InvalidOperationException(
-                    "Discovered service has a broken predecessor chain.");
-            reversed.Add(parentAssets[node]);
+            if (parents[destination] < 0)
+                return null;
+            var reversed = new List<ulong>();
+            for (var node = destination; node != start; node = parents[node])
+            {
+                if (parents[node] < 0 || parentAssets[node] == 0UL)
+                    throw new InvalidOperationException(
+                        "Canonical source tree has an invalid predecessor.");
+                reversed.Add(parentAssets[node]);
+            }
+            reversed.Reverse();
+            return reversed.ToArray();
         }
-        reversed.Reverse();
-        return reversed.ToArray();
     }
 
     private readonly record struct Link(
