@@ -319,6 +319,98 @@ The new strict operational entrypoint must be explicitly selected
 when cargo authorizations are intended to be enforced.
 ADR-064 remains Proposed.
 
+## Opt-in scheduled service patterns and aggregate cargo manifests
+
+A route's physical connectivity, its **scheduled operational calls**, and
+the origin/destination of **each aggregated cargo consignment** are now
+separate in `EconomicLogicalMultiStopService.cs`:
+
+- `EconomicLogicalMultiStopPattern`: an **explicitly offered**
+  one-technology service pattern with ordered scheduled
+  `EconomicLogicalServiceCall` entries and aggregate bookings. The
+  system does not automatically decide which scheduled calls to offer
+  from demand. A direct service A→C and A→B→C with an actual scheduled
+  call at B are **two distinct service patterns**.
+- `EconomicLogicalServiceConsignment`: independently declared cargo
+  origin call, destination call and **ex-ante expected microgram load**.
+  A→C cargo passing through B remains **on board**, while A→B cargo is
+  unloaded at B and B→C cargo is loaded there. One pattern can have
+  multiple aggregated origin/destination pairs, even when a single
+  vessel trip is not modeled.
+- `EconomicLogicalMultiStopLoadContext`: immutable arrays of
+  predicted **onboard load for every inter-call segment**, **boarded
+  load** and **alighted load** at each scheduled call. Their totals
+  include ALL consignments of the same offered pattern, not only
+  the currently priced pair.
+- `IEconomicLogicalMultiStopPricing`: caller-defined economic rules
+  receive the **whole pattern** (all calls and cargo forecasts), the
+  entire authorized physical link path and the subpath actually ridden
+  by each consignment. This permits separate handling of a shared
+  scheduled stop's cost and an individual consignment's real
+  load/unload operation, without charging through-cargo as if it were
+  handled in the middle. No default cost per edge, stop, day or mode
+  has been invented.
+- `EconomicLogicalMultiStopQuoteResolver`: the strict opt-in reference
+  checks that physical/cargo snapshots have the same ordinal, each
+  technology resolves through the registered versioned provider, all
+  scheduled call economic points have matching anchors, consecutive
+  calls are connected by **explicit authorized operational links**
+  forming one simple whole-service path, and all actually booked
+  embarkation/disembarkation endpoints possess compatible operational
+  facilities. It does **not** request a cargo facility merely because
+  a geographic node is traversed or a scheduled call has no
+  embarking/disembarking consignment. All the above input/availability
+  evidence is checked BEFORE any eligible freight function is created.
+  An unreachable pattern is omitted rather than partially quoted;
+  an inconsistent or spoofed route fails closed.
+- `EconomicLogicalMultiStopSelection`: one immutable selected route
+  quote per directional economic-point pair, with pattern/consignment
+  identities, **whole physical itinerary and ridden subset**,
+  provider/version, matching snapshot ordinal and actual
+  load/unload facility IDs. Competing declared patterns are compared
+  using exact rational full-route freight cost; stable
+  pattern/consignment IDs break ties. Each eligible booking's
+  pricing function is created and evaluated ONCE at its pre-cycle
+  expected load. The selected `EconomicTurnFreightQuote` can be fed
+  unchanged into the existing commodity market, whose marginal
+  commodity valuations still evolve within the economic close.
+
+**Illustrative noncanonical test economics:** a service A→B→C
+with 6 forecast grams A→C, 2 A→B, and 4 B→C has segment loads
+8 and 10 grams and call-B unloading/boarding of 2 and 4 grams.
+If a caller's price policy declares **1,200 monetary units** of
+shared stop overhead and allocates it *once* across the combined
+12 forecast grams, the shared charge is 100 per forecast gram.
+An independent caller-defined handling fee for actual load/unload
+at B applies **only** to the cargo A→B and B→C. A→C cargo remains
+aboard and pays no B-specific handling charge. A separate direct
+A→C service, not making a scheduled call at B, does not
+automatically inherit B's stop surcharge.
+
+This worked numerical policy exists **only in regression tests**.
+The framework does not guarantee that an arbitrary pricing plugin
+correctly distributes shared costs: the caller owns the allocation
+ruleset, accounting reconciliation and any real economic incentives.
+What the reference guarantees is that the pricing ruleset receives
+the full ex-ante joint cargo context rather than a blind independent
+route-per-commodity snapshot.
+
+**Boundaries:** Stops are scheduled calls, not inferred from geographic
+intermediate nodes; a call may have zero booked cargo and does not
+thereby require freight-handling grants. The current reference
+requires each scheduled call to have a distinct economic point with
+a snapshot node anchor; *technical-only* calls without economic
+points, real docking/berthing compatibility, port fees, passenger
+services, split/rejoined voyages, vessel timing, and automatic
+selection/reoptimization of service patterns are not implemented.
+The provider-supplied segment routes remain a small reference and
+do not optimize arbitrary nonadditive total-cost routes, nor
+combine different technologies. All manifests, operational stops and
+facilities are **caller-attested non-authoritative snapshots**; none
+are persisted in `WorldState`. No maritime/aviation route engine,
+canonical modal enum, fixed-capacity threshold or economy-cycle
+schedule is introduced. ADR-064 remains Proposed.
+
 ## Contract audit and invariants
 
 | Question | Existing guarantee | Not yet guaranteed |
