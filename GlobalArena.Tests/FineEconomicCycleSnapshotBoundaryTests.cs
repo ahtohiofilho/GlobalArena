@@ -171,6 +171,28 @@ public sealed class FineEconomicCycleSnapshotBoundaryTests
         Assert.Empty(quoter.Resolve(
             3UL, graph, anchors, flows, closed, assets, closedOffers));
 
+        // A later economic close can use an explicitly newly installed
+        // asset on the same geographic edge, with a NEW physical identity.
+        // Reopening geography alone does not rename the decommissioned one.
+        var replacement = new EconomicTransportBuiltAsset(
+            77UL, 10UL, new PhysicalTacticalEdgeId(resolution, edge.Id), 1UL);
+        var lastPricing = new Prices();
+        var lastOffers = discoverer.Discover(
+            graph, anchors, StrategicEdgeAccessSnapshot.AllOpen,
+            new[] { replacement },
+            new[] { Intent(100UL, 8_000_000_000UL) }, lastPricing);
+        var lastSelected = Assert.Single(quoter.Resolve(
+            4UL, graph, anchors, flows,
+            StrategicEdgeAccessSnapshot.AllOpen,
+            new[] { replacement }, lastOffers));
+        Assert.Equal(new[] { 77UL }, lastSelected.AssetIds);
+        Assert.Equal(1, Assert.Single(lastPricing.Functions).Evaluations);
+        Assert.Equal(4UL, lastSelected.Quote.TurnOrdinal);
+        Assert.Equal(1UL, firstSelected.Quote.TurnOrdinal);
+        Assert.Equal(0, lastSelected.Quote.RawUnitCostPerGram.CompareTo(
+            secondSelected.Quote.RawUnitCostPerGram));
+        Assert.NotSame(firstSelected.Quote, lastSelected.Quote);
+
         Assert.All(exact, t => Assert.Same(firstSelected.Quote, t.FreightQuote));
         Assert.Equal(1, Assert.Single(firstPricing.Functions).Evaluations);
         Assert.Equal(hash, new CanonicalWorldStateHasher().Compute(state));
