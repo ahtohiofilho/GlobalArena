@@ -16,12 +16,42 @@ public sealed class EconomicTransportBuiltAsset
     public ulong TechnologyTypeId { get; }
     public ulong TechnologyCatalogVersion { get; }
     public StrategicEdgeId GeographicEdgeId { get; }
+    /// <summary>
+    /// If present, the physical corridor belongs to the specified fine
+    /// topology, not the unqualified strategic surface. It is validated
+    /// against the topology passed at the economic-cycle snapshot.
+    /// </summary>
+    public PhysicalTacticalEdgeId? FineGeographicEdgeId { get; }
     public bool IsOperational { get; }
 
     public EconomicTransportBuiltAsset(
         ulong assetId, ulong technologyTypeId,
         StrategicEdgeId geographicEdgeId, ulong technologyCatalogVersion,
         bool isOperational = true)
+        : this(assetId, technologyTypeId, geographicEdgeId,
+            fineGeographicEdgeId: null, technologyCatalogVersion, isOperational)
+    {
+    }
+
+    /// <summary>
+    /// Explicitly built asset on a qualified fine-grid corridor; identical
+    /// numerical edge ordinals from other resolutions cannot be substituted.
+    /// </summary>
+    public EconomicTransportBuiltAsset(
+        ulong assetId, ulong technologyTypeId,
+        PhysicalTacticalEdgeId fineGeographicEdgeId,
+        ulong technologyCatalogVersion, bool isOperational = true)
+        : this(assetId, technologyTypeId,
+            fineGeographicEdgeId.FineStrategicEdgeId,
+            fineGeographicEdgeId, technologyCatalogVersion, isOperational)
+    {
+    }
+
+    private EconomicTransportBuiltAsset(
+        ulong assetId, ulong technologyTypeId,
+        StrategicEdgeId geographicEdgeId,
+        PhysicalTacticalEdgeId? fineGeographicEdgeId,
+        ulong technologyCatalogVersion, bool isOperational)
     {
         if (assetId == 0UL)
             throw new ArgumentOutOfRangeException(nameof(assetId));
@@ -36,6 +66,7 @@ public sealed class EconomicTransportBuiltAsset
         TechnologyTypeId = technologyTypeId;
         TechnologyCatalogVersion = technologyCatalogVersion;
         GeographicEdgeId = geographicEdgeId;
+        FineGeographicEdgeId = fineGeographicEdgeId;
         IsOperational = isOperational;
     }
 }
@@ -116,6 +147,7 @@ public sealed class EconomicTransportServiceSelection
     private readonly IReadOnlyList<ulong> _technologyIds;
 
     public ulong TechnologyCatalogVersion { get; }
+    public GoldbergParameters? FineTopologyParameters { get; }
     public ulong ServiceId { get; }
     public EconomicTurnFreightQuote Quote { get; }
     public IReadOnlyList<ulong> AssetIds => _assetIds;
@@ -129,6 +161,8 @@ public sealed class EconomicTransportServiceSelection
         ServiceId = offer.ServiceId;
         Quote = quote;
         TechnologyCatalogVersion = assets[0].TechnologyCatalogVersion;
+        FineTopologyParameters =
+            assets[0].FineGeographicEdgeId?.FineGoldbergParameters;
         _assetIds = Array.AsReadOnly(assets.Select(x => x.AssetId).ToArray());
         _technologyIds = Array.AsReadOnly(
             assets.Select(x => x.TechnologyTypeId).ToArray());
@@ -156,10 +190,61 @@ public sealed class EconomicTransportServiceQuoteResolver
         IEnumerable<EconomicTransportBuiltAsset> installedAssets,
         IEnumerable<EconomicTransportServiceOffer> offeredServices)
     {
+        ArgumentNullException.ThrowIfNull(economy);
+        var anchors = economy.EconomicPoints.ToDictionary(
+            x => x.Id, x => x.StrategicCellId);
+        return ResolveCore(
+            turnOrdinal, geography, anchors, fineTopology: null,
+            flows, access, installedAssets, offeredServices);
+    }
+
+    /// <summary>
+    /// Fine-grid alternative to the historical strategic-economic anchors.
+    /// Callers provide fine physical tile anchors from a completed simulation
+    /// snapshot. No coarse strategic corridor is required for market access.
+    /// Economic cycle duration is deliberately not specified here.
+    /// </summary>
+    public IReadOnlyList<EconomicTransportServiceSelection> Resolve(
+        ulong turnOrdinal,
+        StrategicSurfaceGraph fineGeography,
+        IReadOnlyDictionary<EconomicPointId, PhysicalTacticalTileId> finePointAnchors,
+        EconomicProductionDemandResult flows,
+        StrategicEdgeAccessSnapshot access,
+        IEnumerable<EconomicTransportBuiltAsset> installedAssets,
+        IEnumerable<EconomicTransportServiceOffer> offeredServices)
+    {
+        ArgumentNullException.ThrowIfNull(fineGeography);
+        ArgumentNullException.ThrowIfNull(finePointAnchors);
+        var resolution = fineGeography.StrategicTopology.Parameters;
+        var anchors = new Dictionary<EconomicPointId, StrategicCellId>();
+        foreach (var (point, tile) in finePointAnchors)
+        {
+            if (!point.IsValid || !tile.IsValid ||
+                tile.FineGoldbergParameters != resolution)
+                throw new ArgumentException(
+                    "Fine economic anchors must belong to the supplied fine topology.",
+                    nameof(finePointAnchors));
+            anchors.Add(point, tile.FineStrategicCellId);
+        }
+        return ResolveCore(
+            turnOrdinal, fineGeography, anchors, resolution,
+            flows, access, installedAssets, offeredServices);
+    }
+
+    private IReadOnlyList<EconomicTransportServiceSelection> ResolveCore(
+        ulong turnOrdinal,
+        StrategicSurfaceGraph geography,
+        IReadOnlyDictionary<EconomicPointId, StrategicCellId> anchorCells,
+        GoldbergParameters? fineTopology,
+        EconomicProductionDemandResult flows,
+        StrategicEdgeAccessSnapshot access,
+        IEnumerable<EconomicTransportBuiltAsset> installedAssets,
+        IEnumerable<EconomicTransportServiceOffer> offeredServices)
+    {
         if (turnOrdinal == 0UL)
             throw new ArgumentOutOfRangeException(nameof(turnOrdinal));
         ArgumentNullException.ThrowIfNull(geography);
-        ArgumentNullException.ThrowIfNull(economy);
+        ArgumentNullException.ThrowIfNull(anchorCells);
         ArgumentNullException.ThrowIfNull(flows);
         ArgumentNullException.ThrowIfNull(access);
         ArgumentNullException.ThrowIfNull(installedAssets);
@@ -176,14 +261,16 @@ public sealed class EconomicTransportServiceQuoteResolver
         foreach (var asset in installedAssets)
         {
             if (asset is null || !edgeById.ContainsKey(asset.GeographicEdgeId) ||
+                (fineTopology is null && asset.FineGeographicEdgeId.HasValue) ||
+                (fineTopology is not null &&
+                    (asset.FineGeographicEdgeId is not PhysicalTacticalEdgeId fineId ||
+                     fineId.FineGoldbergParameters != fineTopology.Value)) ||
                 !assets.TryAdd(asset.AssetId, asset))
                 throw new ArgumentException(
                     "Built asset must be unique and use an existing geographic edge.",
                     nameof(installedAssets));
         }
 
-        var anchorCells = economy.EconomicPoints.ToDictionary(
-            x => x.Id, x => x.StrategicCellId);
         foreach (var point in anchorCells.Values)
             geography.GetNodeIndex(point);
 
@@ -200,7 +287,7 @@ public sealed class EconomicTransportServiceQuoteResolver
             if (!anchorCells.ContainsKey(point))
                 throw new ArgumentException(
                     "Market economic point is missing its geographic anchor.",
-                    nameof(economy));
+                    nameof(anchorCells));
 
         var serviceIds = new HashSet<ulong>();
         var best = new Dictionary<StrategicEconomicRouteKey,
