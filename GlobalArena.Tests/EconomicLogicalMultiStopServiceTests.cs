@@ -194,12 +194,12 @@ public sealed class EconomicLogicalMultiStopServiceTests
         Assert.Equal(303UL, through.UnloadFacilityId);
         Assert.Equal(202UL, toMiddle.UnloadFacilityId);
         Assert.Equal(202UL, fromMiddle.LoadFacilityId);
-        Assert.Equal(new FoodTransportCostFraction(110, 1),
-            through.Quote.RawUnitCostPerGram);
-        Assert.Equal(new FoodTransportCostFraction(135, 1),
-            toMiddle.Quote.RawUnitCostPerGram);
-        Assert.Equal(new FoodTransportCostFraction(135, 1),
-            fromMiddle.Quote.RawUnitCostPerGram);
+        Assert.Equal(0, new FoodTransportCostFraction(110, 1).CompareTo(
+            through.Quote.RawUnitCostPerGram));
+        Assert.Equal(0, new FoodTransportCostFraction(135, 1).CompareTo(
+            toMiddle.Quote.RawUnitCostPerGram));
+        Assert.Equal(0, new FoodTransportCostFraction(135, 1).CompareTo(
+            fromMiddle.Quote.RawUnitCostPerGram));
 
         // 12 forecast grams × 100 raw shared charge = 1200 ONCE.
         // The other 25/g at B applies only to the 2g + 4g that
@@ -224,8 +224,8 @@ public sealed class EconomicLogicalMultiStopServiceTests
         Assert.Equal(200UL, result.PatternId);
         Assert.Equal(4UL, result.ConsignmentId);
         Assert.Equal(new[] { 9UL }, result.RiddenLinkIds);
-        Assert.Equal(new FoodTransportCostFraction(10, 1),
-            result.Quote.RawUnitCostPerGram);
+        Assert.Equal(0, new FoodTransportCostFraction(10, 1).CompareTo(
+            result.Quote.RawUnitCostPerGram));
         Assert.Equal(2, price.Functions.Count);
         Assert.All(price.Functions, f => Assert.Equal(1, f.Evaluations));
     }
@@ -244,8 +244,8 @@ public sealed class EconomicLogicalMultiStopServiceTests
             physical: Physical(links: edges),
             operations: Operations(middleHasCargoGrants: false)));
         Assert.Equal(new[] { 11UL, 20UL }, chosen.RiddenLinkIds);
-        Assert.Equal(new FoodTransportCostFraction(10, 1),
-            chosen.Quote.RawUnitCostPerGram);
+        Assert.Equal(0, new FoodTransportCostFraction(10, 1).CompareTo(
+            chosen.Quote.RawUnitCostPerGram));
         Assert.Equal(1, Assert.Single(price.Functions).Evaluations);
     }
 
@@ -258,8 +258,8 @@ public sealed class EconomicLogicalMultiStopServiceTests
         var selection = Assert.Single(Resolve(new[] { pattern }, price,
             operations: Operations(middleHasCargoGrants: false)));
         Assert.Equal(new[] { 11UL, 20UL }, selection.RiddenLinkIds);
-        Assert.Equal(new FoodTransportCostFraction(210, 1),
-            selection.Quote.RawUnitCostPerGram);
+        Assert.Equal(0, new FoodTransportCostFraction(210, 1).CompareTo(
+            selection.Quote.RawUnitCostPerGram));
         Assert.Equal(1, Assert.Single(price.Functions).Evaluations);
     }
 
@@ -286,10 +286,14 @@ public sealed class EconomicLogicalMultiStopServiceTests
         var price = new SharedStopPricing();
         var stop = Pattern(100UL, AllCalls,
             new[] { Cargo(1UL, 0, 2, 6_000_000UL) });
-        var onlyFirst = Network.Where(x => x.LinkId != 20UL).ToArray();
+        var onlyFirst = Network.Where(x => x.LinkId == 11UL).ToArray();
         var noRoute = Resolve(new[] { stop }, price,
-            physical: Physical(links: onlyFirst));
+            registry: Registry(onlyFirst), physical: Physical(links: onlyFirst));
         Assert.Empty(noRoute);
+        Assert.Empty(price.Functions);
+        Assert.Throws<InvalidOperationException>(() => Resolve(
+            new[] { stop }, price,
+            physical: Physical(links: onlyFirst)));
         Assert.Empty(price.Functions);
 
         Assert.Throws<InvalidOperationException>(() => Resolve(
@@ -360,7 +364,11 @@ public sealed class EconomicLogicalMultiStopServiceTests
         var b = Resolve(new[] { second }, new SharedStopPricing());
         Assert.Equal(a.Select(x => x.ConsignmentId),
             b.Select(x => x.ConsignmentId));
-        Assert.Equal(a.Select(x => x.Quote.RawUnitCostPerGram),
-            b.Select(x => x.Quote.RawUnitCostPerGram));
+        Assert.Equal(a.Select(x => (
+                x.Quote.RawUnitCostPerGram.Numerator,
+                x.Quote.RawUnitCostPerGram.Denominator)),
+            b.Select(x => (
+                x.Quote.RawUnitCostPerGram.Numerator,
+                x.Quote.RawUnitCostPerGram.Denominator)));
     }
 }
