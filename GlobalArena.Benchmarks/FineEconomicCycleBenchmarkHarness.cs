@@ -495,15 +495,21 @@ public static class FineEconomicCycleBenchmarkHarness
 
         var warmFull = Measure(EconomicFinePriceAwareSearchMode.Exhaustive);
         var warmPruned = Measure(EconomicFinePriceAwareSearchMode.TerminalLeafPruning);
+        var warmBlock = Measure(EconomicFinePriceAwareSearchMode.BlockCutCorridorPruning);
         AssertParity(warmFull, warmPruned);
+        AssertParity(warmFull, warmBlock);
         var full = new PriceOracleSample[Samples];
         var prunedSamples = new PriceOracleSample[Samples];
+        var blockSamples = new PriceOracleSample[Samples];
         for (var i = 0; i < Samples; i++)
         {
             full[i] = Measure(EconomicFinePriceAwareSearchMode.Exhaustive);
             prunedSamples[i] = Measure(
                 EconomicFinePriceAwareSearchMode.TerminalLeafPruning);
+            blockSamples[i] = Measure(
+                EconomicFinePriceAwareSearchMode.BlockCutCorridorPruning);
             AssertParity(full[i], prunedSamples[i]);
+            AssertParity(full[i], blockSamples[i]);
             if (full[i].QuoteFingerprint != warmFull.QuoteFingerprint)
                 throw new InvalidOperationException(
                     "Repeated complete route pricing was not deterministic.");
@@ -531,6 +537,7 @@ public static class FineEconomicCycleBenchmarkHarness
 
         Report("exhaustive", full);
         Report("terminal-leaf-pruning", prunedSamples);
+        Report("block-cut-corridor-pruning", blockSamples);
         Console.WriteLine("PRICE_ORACLE_PARITY=PASS;" +
             $"built_assets={snapshot.Assets.Length};" +
             $"commercial_intents={snapshot.Intents.Length};" +
