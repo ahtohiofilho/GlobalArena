@@ -1,3 +1,5 @@
+using GlobalArena.World;
+
 namespace GlobalArena.Simulation;
 
 /// <summary>
@@ -9,10 +11,16 @@ public sealed class EconomicFineTransportPathCache
 {
     private Dictionary<PathKey, CachedPhysicalPath> _prior = new();
     private string _previousTopology = string.Empty;
+    private StrategicSurfaceGraph? _previousGraph;
 
     public int CachedPathCount => _prior.Count;
 
     // One full-topology comparison PER snapshot, not per market/service.
+    internal bool IsSameImmutableGraph(StrategicSurfaceGraph graph) =>
+        ReferenceEquals(_previousGraph, graph);
+
+    internal string CurrentTopologySignature => _previousTopology;
+
     internal bool HasMatchingTopology(string topologySignature) =>
         string.Equals(_previousTopology, topologySignature,
             StringComparison.Ordinal);
@@ -74,9 +82,13 @@ public sealed class EconomicFineTransportPathCache
     }
 
     internal void Replace(
-        string topologySignature,
+        StrategicSurfaceGraph geography, string topologySignature,
         Dictionary<PathKey, CachedPhysicalPath> committed)
     {
+        // A StrategicSurfaceGraph captures an immutable StrategicTopology
+        // and readonly node/edge arrays; identical object identity can
+        // therefore avoid repeating its content signature computation.
+        _previousGraph = geography;
         _previousTopology = topologySignature;
         _prior = committed;
     }
