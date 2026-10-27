@@ -156,10 +156,14 @@ public sealed class EconomicFineTransportServiceItineraryDiscovery
         // topological adjacency never borrows an old route by numeric ID.
         // Availability signatures are PER TECHNOLOGY: changes to another
         // mode's assets do not invalidate a physically independent service.
+        var graphIsSame = physicalPathCache is not null &&
+            physicalPathCache.IsSameImmutableGraph(fineGeography);
         var topologySignature = physicalPathCache is null ? string.Empty :
+            graphIsSame ? physicalPathCache.CurrentTopologySignature :
             BuildTopologySignature(resolution, edges);
-        var topologyMatches = physicalPathCache is not null &&
-            physicalPathCache.HasMatchingTopology(topologySignature);
+        var topologyMatches = graphIsSame ||
+            (physicalPathCache is not null &&
+             physicalPathCache.HasMatchingTopology(topologySignature));
         var availableByTechnology = physicalPathCache is null
             ? null
             : assets.Values.Where(x =>
@@ -240,7 +244,7 @@ public sealed class EconomicFineTransportServiceItineraryDiscovery
         // Commit only after all service offers and pricing factories have
         // successfully completed. An exception must not publish half a cache.
         if (physicalPathCache is not null && committed is not null)
-            physicalPathCache.Replace(topologySignature, committed);
+            physicalPathCache.Replace(fineGeography, topologySignature, committed);
         return Array.AsReadOnly(offers.ToArray());
     }
 
