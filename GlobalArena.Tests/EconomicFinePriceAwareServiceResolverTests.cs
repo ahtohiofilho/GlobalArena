@@ -206,7 +206,7 @@ public sealed class EconomicFinePriceAwareServiceResolverTests
             new[] { new EconomicTurnSourceReservation(
                 new EconomicPointId(1UL), new CommodityId(7U),
                 EconomicActivityKind.Agriculture, 20_000UL) },
-            new EconomicCongestionMarketSearchPolicy(Unit, 10UL),
+            new EconomicCongestionMarketSearchPolicy(Unit, 10),
             selectionMode: EconomicTurnFreightCandidateSelectionMode.DependencyIndex);
         Assert.Equal(3, trades.Count);
         Assert.All(trades, t =>
