@@ -158,6 +158,8 @@ public sealed class EconomicFineTransportServiceItineraryDiscovery
         // mode's assets do not invalidate a physically independent service.
         var topologySignature = physicalPathCache is null ? string.Empty :
             BuildTopologySignature(resolution, edges);
+        var topologyMatches = physicalPathCache is not null &&
+            physicalPathCache.HasMatchingTopology(topologySignature);
         var availableByTechnology = physicalPathCache is null
             ? null
             : assets.Values.Where(x =>
@@ -197,7 +199,7 @@ public sealed class EconomicFineTransportServiceItineraryDiscovery
             ulong[]? path;
             if (physicalPathCache is not null &&
                 physicalPathCache.TryReuse(
-                    key, topologySignature, currentAssets, out var reused))
+                    key, topologyMatches, currentAssets, out var reused))
             {
                 path = reused;
                 if (reuseDiagnostics is not null)
@@ -222,7 +224,7 @@ public sealed class EconomicFineTransportServiceItineraryDiscovery
             // and the CURRENT endpoint anchors. No freight is cached.
             if (committed is not null)
                 committed[key] = new EconomicFineTransportPathCache.CachedPhysicalPath(
-                    topologySignature, currentAssets, (ulong[])path.Clone());
+                    currentAssets, (ulong[])path.Clone());
 
             var itinerary = Array.AsReadOnly(
                 path.Select(assetId => assets[assetId]).ToArray());
@@ -238,7 +240,7 @@ public sealed class EconomicFineTransportServiceItineraryDiscovery
         // Commit only after all service offers and pricing factories have
         // successfully completed. An exception must not publish half a cache.
         if (physicalPathCache is not null && committed is not null)
-            physicalPathCache.Replace(committed);
+            physicalPathCache.Replace(topologySignature, committed);
         return Array.AsReadOnly(offers.ToArray());
     }
 
