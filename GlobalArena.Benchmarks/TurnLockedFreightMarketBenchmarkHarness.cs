@@ -255,7 +255,7 @@ public static class TurnLockedFreightMarketBenchmarkHarness
             $"quantity_search_calls={indexedCount.QuantitySearchCalls};" +
             $"binary_search_iterations={indexedCount.BinarySearchIterations}");
         Console.WriteLine($"CASE={scenario.Id};pattern={scenario.Pattern};" +
-            $"producers={scenario.Producers};"
+            $"producers={scenario.Producers};" +
             $"destinations={scenario.Destinations};commodities={scenario.Commodities};" +
             $"quotes={input.Quotes.Length};quote_function_evaluations={input.QuoteFunctionEvaluations};" +
             $"lanes={counted.CandidateLaneCount};trades={warm.Count};" +
