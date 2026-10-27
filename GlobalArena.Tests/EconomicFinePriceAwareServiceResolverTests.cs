@@ -325,7 +325,7 @@ public sealed class EconomicFinePriceAwareServiceResolverTests
         for (var seed = 1; seed <= 24; seed++)
         {
             var rng = new Random(seed * 15427);
-            var closed = seed % 4 switch
+            var closed = (seed % 4) switch
             {
                 0 => new StrategicEdgeAccessSnapshot(
                     new[] { fixture.DirectEdgeId }),
