@@ -129,7 +129,7 @@ public sealed class EconomicTransportServiceQuoteResolverTests
                 EconomicActivityKind.Agriculture, 20_000UL)
         };
         var trades = market.Resolve(
-            1UL, flows, foods, selected.Select(x => x.Quote),
+            1UL, flows, foods, new[] { selected.Quote },
             valuations, reservations,
             new EconomicCongestionMarketSearchPolicy(Unit, 10));
         Assert.Equal(3, trades.Count);
