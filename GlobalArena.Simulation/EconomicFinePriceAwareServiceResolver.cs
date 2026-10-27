@@ -33,7 +33,8 @@ public sealed class EconomicFinePriceAwareSearchBudget
 public enum EconomicFinePriceAwareSearchMode : byte
 {
     Exhaustive = 0,
-    TerminalLeafPruning = 1
+    TerminalLeafPruning = 1,
+    BlockCutCorridorPruning = 2
 }
 
 /// <summary>
@@ -97,7 +98,8 @@ public sealed class EconomicFinePriceAwareServiceResolver
         ArgumentNullException.ThrowIfNull(pricing);
         ArgumentNullException.ThrowIfNull(budget);
         if (searchMode is not EconomicFinePriceAwareSearchMode.Exhaustive and
-            not EconomicFinePriceAwareSearchMode.TerminalLeafPruning)
+            not EconomicFinePriceAwareSearchMode.TerminalLeafPruning and
+            not EconomicFinePriceAwareSearchMode.BlockCutCorridorPruning)
             throw new ArgumentOutOfRangeException(nameof(searchMode));
 
         var resolution = fineGeography.StrategicTopology.Parameters;
@@ -235,12 +237,18 @@ public sealed class EconomicFinePriceAwareServiceResolver
         EconomicFinePriceAwareSearchDiagnostics? diagnostics,
         EconomicFinePriceAwareSearchMode searchMode)
     {
-        var admissible = searchMode ==
-            EconomicFinePriceAwareSearchMode.TerminalLeafPruning
-            ? KeepPossibleSimplePathVertices(
-                start, end, intent.TechnologyTypeId,
-                intent.TechnologyCatalogVersion, adjacency, diagnostics)
-            : null;
+        var admissible = searchMode switch
+        {
+            EconomicFinePriceAwareSearchMode.TerminalLeafPruning =>
+                KeepPossibleSimplePathVertices(
+                    start, end, intent.TechnologyTypeId,
+                    intent.TechnologyCatalogVersion, adjacency, diagnostics),
+            EconomicFinePriceAwareSearchMode.BlockCutCorridorPruning =>
+                KeepBlockCutCorridorVertices(
+                    start, end, intent.TechnologyTypeId,
+                    intent.TechnologyCatalogVersion, adjacency, diagnostics),
+            _ => null
+        };
         var visited = new bool[adjacency.Count];
         var stack = new List<Frame> { new(start, 0) };
         var path = new List<ulong>();
@@ -382,6 +390,34 @@ public sealed class EconomicFinePriceAwareServiceResolver
                     queue.Enqueue(link.NextNode);
             }
         }
+        return retained;
+    }
+
+    /// <summary>
+    /// Remove entire built cyclic branches that can only be entered and
+    /// exited through the SAME cut vertex. Unlike degree-one peeling this
+    /// also excludes detached-looking biconnected loops, while retaining
+    /// every simple origin-to-destination itinerary and its full pricing.
+    /// </summary>
+    private static bool[] KeepBlockCutCorridorVertices(
+        int start, int end, ulong technologyTypeId, ulong catalogVersion,
+        IReadOnlyList<List<Link>> adjacency,
+        EconomicFinePriceAwareSearchDiagnostics? diagnostics)
+    {
+        var physicalPairs = new List<(int Source, int Target)>();
+        for (var node = 0; node < adjacency.Count; node++)
+            foreach (var link in adjacency[node])
+                if (node < link.NextNode &&
+                    link.TechnologyTypeId == technologyTypeId &&
+                    link.TechnologyCatalogVersion == catalogVersion)
+                    physicalPairs.Add((node, link.NextNode));
+
+        var retained = EconomicFineBlockCutCorridorPruner
+            .KeepPotentialSimplePathVertices(
+                adjacency.Count, physicalPairs, start, end);
+        if (diagnostics is not null)
+            diagnostics.PrunedPhysicalVertices +=
+                (ulong)retained.Count(keep => !keep);
         return retained;
     }
 

@@ -223,6 +223,185 @@ public sealed class EconomicFinePriceAwareServiceResolverTests
             original.LongerAssetIds, original.DirectEdgeId);
     }
 
+    /// <summary>
+    /// Attach a fully CONSTRUCTED closed physical cycle to exactly ONE core
+    /// vertex. All its vertices have degree >= 2, so ordinary leaf peeling
+    /// leaves this useless branch intact; the block-cut graph excludes it
+    /// because any source/destination simple path would repeat the join.
+    /// </summary>
+    private static Fixture WithBuiltPendantCycle(Fixture original)
+    {
+        var edges = original.Graph.StrategicTopology.Edges;
+        var builtCells = original.Assets.SelectMany(asset =>
+            edges.Single(e => e.Id == asset.GeographicEdgeId).IncidentCellIds)
+            .ToHashSet();
+        var source = original.Anchors[new EconomicPointId(1UL)]
+            .FineStrategicCellId;
+        var sourceNeighbors = edges.Where(e =>
+                e.IncidentCellIds.Contains(source))
+            .Select(e => (Edge: e, Other: e.IncidentCellIds.First(x => x != source)))
+            .Where(x => !builtCells.Contains(x.Other))
+            .ToArray();
+
+        StrategicEdge? first = null;
+        StrategicEdge? second = null;
+        StrategicEdge? between = null;
+        foreach (var a in sourceNeighbors)
+        {
+            foreach (var b in sourceNeighbors)
+            {
+                if (a.Other == b.Other)
+                    continue;
+                var bridge = edges.FirstOrDefault(e =>
+                    e.IncidentCellIds.Contains(a.Other) &&
+                    e.IncidentCellIds.Contains(b.Other));
+                if (bridge is null)
+                    continue;
+                first = a.Edge;
+                second = b.Edge;
+                between = bridge;
+                break;
+            }
+            if (between is not null)
+                break;
+        }
+        Assert.NotNull(first);
+        Assert.NotNull(second);
+        Assert.NotNull(between);
+        var newAssets = original.Assets.Concat(new[]
+        {
+            new EconomicTransportBuiltAsset(
+                1000UL, 10UL, new PhysicalTacticalEdgeId(Fine, first!.Id), 2UL),
+            new EconomicTransportBuiltAsset(
+                1001UL, 10UL, new PhysicalTacticalEdgeId(Fine, second!.Id), 2UL),
+            new EconomicTransportBuiltAsset(
+                1002UL, 10UL, new PhysicalTacticalEdgeId(Fine, between!.Id), 2UL)
+        }).ToArray();
+        return new Fixture(original.Graph, original.Anchors,
+            newAssets, original.LongerAssetIds, original.DirectEdgeId);
+    }
+
+    [Fact]
+    public void BlockCutEliminatesCyclicDetourThatLeafPruningCannotEliminate()
+    {
+        var fixture = WithBuiltPendantCycle(MakeFixture());
+        var fullCounters = new EconomicFinePriceAwareSearchDiagnostics();
+        var leafCounters = new EconomicFinePriceAwareSearchDiagnostics();
+        var blockCounters = new EconomicFinePriceAwareSearchDiagnostics();
+        var full = Assert.Single(Run(fixture,
+            new WholeItineraryTestPricing(), diagnostics: fullCounters));
+        var leaf = Assert.Single(Run(fixture,
+            new WholeItineraryTestPricing(), diagnostics: leafCounters,
+            searchMode: EconomicFinePriceAwareSearchMode.TerminalLeafPruning));
+        var block = Assert.Single(Run(fixture,
+            new WholeItineraryTestPricing(), diagnostics: blockCounters,
+            searchMode: EconomicFinePriceAwareSearchMode.BlockCutCorridorPruning));
+
+        Assert.Equal(fixture.LongerAssetIds, block.AssetIds);
+        Assert.Equal(full.AssetIds, leaf.AssetIds);
+        Assert.Equal(full.AssetIds, block.AssetIds);
+        Assert.Equal(0, full.Quote.RawUnitCostPerGram.CompareTo(
+            block.Quote.RawUnitCostPerGram));
+        Assert.Equal(fullCounters.CompletePaths, blockCounters.CompletePaths);
+        Assert.Equal(fullCounters.EvaluatedFreightFunctions,
+            blockCounters.EvaluatedFreightFunctions);
+        Assert.Equal(2UL, blockCounters.CompletePaths);
+        Assert.True(blockCounters.ExaminedLinks < leafCounters.ExaminedLinks);
+        Assert.True(blockCounters.ExaminedLinks < fullCounters.ExaminedLinks);
+        Assert.True(blockCounters.PrunedPhysicalVertices >
+            leafCounters.PrunedPhysicalVertices);
+        Assert.True(blockCounters.RejectedPrunedLinks > 0UL);
+    }
+
+    [Fact]
+    public void BlockCutMaintainsExactEconomicChoicesAcrossPhysicalClosuresAndParallelAssets()
+    {
+        var fixture = WithBuiltPendantCycle(MakeFixture());
+        var direct = fixture.Assets.Last(x => x.AssetId == 100UL);
+        var options = fixture.Assets.Append(new EconomicTransportBuiltAsset(
+            1_500UL, 10UL,
+            new PhysicalTacticalEdgeId(Fine, direct.GeographicEdgeId),
+            2UL)).ToArray();
+        for (var seed = 1; seed <= 24; seed++)
+        {
+            var rng = new Random(seed * 15427);
+            var closed = (seed % 4) switch
+            {
+                0 => new StrategicEdgeAccessSnapshot(
+                    new[] { fixture.DirectEdgeId }),
+                1 => new StrategicEdgeAccessSnapshot(
+                    new[] { options[^2].GeographicEdgeId }),
+                _ => StrategicEdgeAccessSnapshot.AllOpen
+            };
+            var chosen = seed % 3 == 0
+                ? options.Where(x => x.AssetId != 1002UL).ToArray()
+                : options;
+            var permuted = chosen.OrderBy(_ => rng.Next()).ToArray();
+            var forecast = (ulong)(500_000_000 + seed * 5_000_000);
+            var a = new EconomicFinePriceAwareSearchDiagnostics();
+            var b = new EconomicFinePriceAwareSearchDiagnostics();
+            var baseSelection = Assert.Single(Run(
+                fixture, new WholeItineraryTestPricing(),
+                assets: chosen, access: closed,
+                intents: new[] { Intent(200UL, forecast), Intent(100UL, forecast) },
+                diagnostics: a));
+            var prunedSelection = Assert.Single(Run(
+                fixture, new WholeItineraryTestPricing(),
+                assets: permuted, access: closed,
+                intents: new[] { Intent(100UL, forecast), Intent(200UL, forecast) },
+                diagnostics: b,
+                searchMode: EconomicFinePriceAwareSearchMode.BlockCutCorridorPruning));
+            Assert.Equal(baseSelection.AssetIds, prunedSelection.AssetIds);
+            Assert.Equal(baseSelection.ServiceId, prunedSelection.ServiceId);
+            Assert.Equal(0, baseSelection.Quote.RawUnitCostPerGram.CompareTo(
+                prunedSelection.Quote.RawUnitCostPerGram));
+            Assert.Equal(a.CompletePaths, b.CompletePaths);
+            Assert.Equal(a.EvaluatedFreightFunctions, b.EvaluatedFreightFunctions);
+        }
+    }
+
+    [Fact]
+    public void PassingAnIntermediateEconomicPointDoesNotCreateACommercialStop()
+    {
+        var fixture = MakeFixture();
+        var firstLongEdge = fixture.Graph.StrategicTopology.Edges.Single(e =>
+            e.Id == fixture.Assets.First(x => x.AssetId ==
+                fixture.LongerAssetIds[0]).GeographicEdgeId);
+        var sourceCell = fixture.Anchors[new EconomicPointId(1UL)]
+            .FineStrategicCellId;
+        var intermediate = firstLongEdge.IncidentCellIds.First(x =>
+            x != sourceCell);
+        var anchors = new Dictionary<EconomicPointId, PhysicalTacticalTileId>(
+            fixture.Anchors)
+        {
+            [new EconomicPointId(3UL)] =
+                new PhysicalTacticalTileId(Fine, intermediate)
+        };
+        var flows = new EconomicProductionDemandResult(
+            new[] { new EconomicSupplyFlow(
+                new EconomicPointId(1UL), new CommodityId(7U),
+                EconomicActivityKind.Agriculture, 3UL * Unit) },
+            new[]
+            {
+                new EconomicDemandFlow(new EconomicPointId(2UL),
+                    new CommodityId(7U), 3UL * Unit),
+                new EconomicDemandFlow(new EconomicPointId(3UL),
+                    new CommodityId(7U), 3UL * Unit)
+            });
+        var actual = new EconomicFinePriceAwareServiceResolver().Resolve(
+            1UL, fixture.Graph, anchors, flows,
+            StrategicEdgeAccessSnapshot.AllOpen, fixture.Assets,
+            new[] { Intent() }, new WholeItineraryTestPricing(),
+            new EconomicFinePriceAwareSearchBudget(10_000UL, 100UL),
+            searchMode: EconomicFinePriceAwareSearchMode.BlockCutCorridorPruning);
+        var selection = Assert.Single(actual);
+        Assert.Equal(new EconomicPointId(2UL),
+            selection.Quote.RouteKey.DestinationEconomicPointId);
+        Assert.Contains(fixture.LongerAssetIds[0], selection.AssetIds);
+        // No declared service to point 3 => NO quote despite physical
+        // passage and a matching destination commodity demand there.
+    }
+
     [Fact]
     public void DeadEndPruningRetainsCheaperLongerPhysicalRouteAndExactQuote()
     {
