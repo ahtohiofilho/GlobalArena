@@ -33,7 +33,7 @@ The physical-route oracle from PR #26 has exponential complexity over simple pat
 | --- | ---: | ---: | ---: | ---: | ---: | --- |
 | `fine-smoke` | 42 | 29 | 2 × 2 | 2 | 4 | Tiny connected tree; cross-checked against exhaustive cost oracle |
 | `fine-local` | 162 | 99 | 6 × 6 | 2 | 18 | Each source declares three local commercial partners |
-| `fine-hub` | 642 | 299 | 8 × 8 | 3 | 29 | Declared central source/destination hubs plus local links |
+| `fine-hub` | 642 | 299 | 8 × 8 | 3 | 28 | Declared central source/destination hubs plus local links |
 | `fine-connected` | 1,442 | 749 | 12 × 12 | 3 | 144 | Dense economic intents over sparse built physical tree |
 
 All graph paths lie on **actual generated fine-mesh adjacency**, but the tree, source/destination placement, forecasts and whole-itinerary continuous freight functions are **synthetic test fixtures**, not authentic geographic/transport-service production distributions. A single technological identity is used to isolate discovery and clear the conceptual boundaries. These workloads cannot justify maritime routing behavior, multimodal transshipment economics, asset capacities or global map performance.
