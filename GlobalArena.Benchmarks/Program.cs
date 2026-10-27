@@ -1,6 +1,12 @@
 using GlobalArena.Benchmarks;
 
 if (args.Any(argument =>
+    string.Equals(argument, "--fine-economic-cycle", StringComparison.Ordinal)))
+{
+    return FineEconomicCycleBenchmarkHarness.Run();
+}
+
+if (args.Any(argument =>
     string.Equals(argument, "--turn-freight-market", StringComparison.Ordinal)))
 {
     return TurnLockedFreightMarketBenchmarkHarness.Run();
