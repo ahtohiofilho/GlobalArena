@@ -254,6 +254,71 @@ explicit snapshot authorization is required; the legacy reference
 API should not be mistaken for a world-authorized transport service.
 Nothing is migrated into `WorldState`, and ADR-064 remains Proposed.
 
+## Opt-in explicit cargo operations: loading, unloading, handoffs
+
+The reference platform now separates commercial handling from **logical
+line continuity** and from **physical link authorization**. A logical
+node may connect A–B, B–C, B–D and many more links: their continuity
+is unaffected by whether any cargo facility exists there. Transit
+never generates a commercial stop.
+
+The non-authoritative `EconomicLogicalCargoOperations.cs` contracts are:
+
+- `EconomicLogicalCargoFacility`: uniquely identified logical-node
+  location, associated economic point and operational state. **One
+  facility may connect many incoming links**; neither every logical
+  node nor every Goldberg boundary is an automatic facility.
+- `EconomicLogicalCargoPermission`: explicit **Load** or **Unload**
+  permission for one facility and technology type/catalogue version.
+  The operation enum is *not* a list of transport modes. The two
+  directions do not imply each other; permissions for one technology
+  do not silently grant another version or provider's service rights.
+- `EconomicLogicalCargoTransferPermission`: directed permission
+  between **distinct technology identities/versions** at a single
+  facility. `RequireTransfer` also demands explicit outgoing Load and
+  incoming Unload permissions at that same operational facility.
+  This validation is **not** an automatic multimodal itinerary planner
+  and does not invent transfer prices.
+- `EconomicLogicalCargoOperationsSnapshot`: caller-attested immutable
+  facility/grant membership with a snapshot ordinal. It deterministically
+  finds the lowest-ID matching operational facility, rejecting absent,
+  incompatible or offline permissions. A node plus a point anchor
+  alone grants **no** cargo right.
+- `EconomicOperationalLogicalTransportQuoteResolver`: opt-in strict
+  entrypoint combining the already registered physical provider/link
+  snapshot with the handling snapshot. Snapshot ordinals must match.
+  **Every active declared service's origin Load and destination Unload
+  are checked before ANY whole-itinerary freight price function is
+  created**, so an unauthorized competing offer cannot be hidden by
+  an earlier priced offer. The underlying registered physical resolver
+  still checks link identities and endpoints and forms each eligible
+  fresh ex-ante whole-itinerary quote once. The returned immutable
+  selection identifies `LoadFacilityId`, `UnloadFacilityId`,
+  `OperationsSnapshotOrdinal` and the existing physical selection
+  and `EconomicTurnFreightQuote`.
+
+This permits a constructed line A–B to join B–C at node B as one
+itinerary, even if B has no cargo handling rights. It likewise
+prevents an island near the route of a hypothetical vessel from
+receiving freight only because it is traversed or adjacent:
+a declared commercial endpoint must have a compatible operational
+facility and explicitly authorized service. **The present model
+does not implement maritime vessels or ports**; the example is
+a statement about general authorization semantics.
+
+**Design limits:** Facilities and permissions are *provided by
+the caller* as a post-movement experiment, **not** derived from
+persistent installed infrastructure in authoritative `WorldState`.
+No real station/port geometry, cargo capacities, transfer cost,
+cross-modal itinerary composition, facility construction,
+commodity-specific handling rules or automatic snapshot producer
+has been added. `EconomicLogicalTransportQuoteResolver` and
+`EconomicRegisteredLogicalTransportQuoteResolver` remain available
+as independent reference layers that do not require facility grants.
+The new strict operational entrypoint must be explicitly selected
+when cargo authorizations are intended to be enforced.
+ADR-064 remains Proposed.
+
 ## Contract audit and invariants
 
 | Question | Existing guarantee | Not yet guaranteed |
