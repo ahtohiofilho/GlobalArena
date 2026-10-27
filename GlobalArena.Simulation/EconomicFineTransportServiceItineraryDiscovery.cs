@@ -158,15 +158,17 @@ public sealed class EconomicFineTransportServiceItineraryDiscovery
         // mode's assets do not invalidate a physically independent service.
         var topologySignature = physicalPathCache is null ? string.Empty :
             BuildTopologySignature(resolution, edges);
-        var availableSignatures = physicalPathCache is null
+        var availableByTechnology = physicalPathCache is null
             ? null
             : assets.Values.Where(x =>
                     x.IsOperational && access.IsOpen(x.GeographicEdgeId))
                 .GroupBy(x => (
                     x.TechnologyTypeId, x.TechnologyCatalogVersion))
-                .ToDictionary(g => g.Key, g => string.Join(";", g
+                .ToDictionary(g => g.Key, g => g
                     .OrderBy(x => x.AssetId)
-                    .Select(x => x.AssetId + ":" + x.GeographicEdgeId.Value)));
+                    .Select(x => new EconomicFineTransportPathCache.AvailableAsset(
+                        x.AssetId, x.GeographicEdgeId.Value))
+                    .ToArray());
         var committed = physicalPathCache is null
             ? null
             : new Dictionary<EconomicFineTransportPathCache.PathKey,
@@ -187,14 +189,15 @@ public sealed class EconomicFineTransportServiceItineraryDiscovery
                 fineGeography.GetCellId(end).Value,
                 intent.TechnologyTypeId,
                 intent.TechnologyCatalogVersion);
-            var signature = availableSignatures is null ? string.Empty :
-                availableSignatures.GetValueOrDefault(
-                    (intent.TechnologyTypeId, intent.TechnologyCatalogVersion),
-                    string.Empty);
+            var currentAssets = availableByTechnology is null
+                ? Array.Empty<EconomicFineTransportPathCache.AvailableAsset>()
+                : availableByTechnology.GetValueOrDefault(
+                    (intent.TechnologyTypeId, intent.TechnologyCatalogVersion))
+                    ?? Array.Empty<EconomicFineTransportPathCache.AvailableAsset>();
             ulong[]? path;
             if (physicalPathCache is not null &&
                 physicalPathCache.TryReuse(
-                    key, topologySignature, signature, out var reused))
+                    key, topologySignature, currentAssets, out var reused))
             {
                 path = reused;
                 if (reuseDiagnostics is not null)
@@ -219,7 +222,7 @@ public sealed class EconomicFineTransportServiceItineraryDiscovery
             // and the CURRENT endpoint anchors. No freight is cached.
             if (committed is not null)
                 committed[key] = new EconomicFineTransportPathCache.CachedPhysicalPath(
-                    topologySignature, signature, (ulong[])path.Clone());
+                    topologySignature, currentAssets, (ulong[])path.Clone());
 
             var itinerary = Array.AsReadOnly(
                 path.Select(assetId => assets[assetId]).ToArray());
