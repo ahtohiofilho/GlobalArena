@@ -63,6 +63,12 @@ jobs:
           set -o pipefail
           dotnet run --project GlobalArena.Benchmarks/GlobalArena.Benchmarks.csproj --configuration Release --no-build -- --turn-freight-market 2>&1 | tee turn-freight-market-benchmark.txt
 
+      - name: Benchmark complete fine economic close
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet run --project GlobalArena.Benchmarks/GlobalArena.Benchmarks.csproj --configuration Release --no-build -- --fine-economic-cycle 2>&1 | tee fine-economic-cycle-benchmark.txt
+
       - name: Upload benchmark evidence
         if: always()
         uses: actions/upload-artifact@v7
@@ -71,4 +77,5 @@ jobs:
           path: |
             platform.txt
             turn-freight-market-benchmark.txt
+            fine-economic-cycle-benchmark.txt
           if-no-files-found: warn
