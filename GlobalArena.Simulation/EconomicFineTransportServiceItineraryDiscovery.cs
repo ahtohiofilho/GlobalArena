@@ -183,7 +183,9 @@ public sealed class EconomicFineTransportServiceItineraryDiscovery
                 continue; // No phantom zero-leg transport service.
 
             var key = new EconomicFineTransportPathCache.PathKey(
-                start, end, intent.TechnologyTypeId,
+                fineGeography.GetCellId(start).Value,
+                fineGeography.GetCellId(end).Value,
+                intent.TechnologyTypeId,
                 intent.TechnologyCatalogVersion);
             var signature = availableSignatures is null ? string.Empty :
                 availableSignatures.GetValueOrDefault(
