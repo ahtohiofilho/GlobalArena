@@ -112,12 +112,21 @@ public static class FineEconomicCycleBenchmarkHarness
         EconomicTurnSourceReservation[] Reservations,
         EconomicCongestionMarketSearchPolicy Policy);
 
+    private sealed record RouteWitness(
+        StrategicEconomicRouteKey RouteKey, ulong ServiceId,
+        string BuiltPathAndTechnology);
+
+    private sealed record CycleFrame(
+        string Label, ulong Ordinal, Snapshot Inputs,
+        StrategicEdgeAccessSnapshot Access);
+
     private sealed record Sample(
         double DiscoveryMs, double QuotationMs, double ClearingMs, double TotalMs,
         long DiscoveryBytes, long QuotationBytes, long ClearingBytes,
         long TotalBytes, int AvailableOffers, int SelectedQuotes,
         int FunctionEvaluations, int Trades, string Fingerprint,
-        long LaneExaminations, long MarginalEvaluations);
+        long LaneExaminations, long MarginalEvaluations,
+        IReadOnlyList<RouteWitness> Routes);
 
     public static int Run()
     {
@@ -150,6 +159,213 @@ public static class FineEconomicCycleBenchmarkHarness
             return 1;
         }
 #endif
+    }
+
+    /// <summary>
+    /// Four coherent post-movement snapshots, each priced/cleared afresh.
+    /// No economic-cycle cadence, route cache or persisted asset mutation.
+    /// </summary>
+    public static int RunSequence()
+    {
+#if DEBUG
+        Console.Error.WriteLine("Sequential economic cycle benchmark requires Release.");
+        Console.WriteLine("RESULT=FAIL_FINE_ECONOMIC_SEQUENCE_CONFIGURATION");
+        return 3;
+#else
+        try
+        {
+            CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+            CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
+            Console.WriteLine($"ENV_OS={RuntimeInformation.OSDescription}");
+            Console.WriteLine($"ENV_RUNTIME={RuntimeInformation.FrameworkDescription}");
+            Console.WriteLine("SCOPE=changing-post-movement-fine-economy-snapshots");
+            Console.WriteLine($"SAMPLES_PER_MODE={Samples}");
+            Console.WriteLine("PERFORMANCE_THRESHOLDS=none");
+            Console.WriteLine("REUSED_FREIGHT_QUOTES=0");
+            foreach (var scenario in Cases.Where(x =>
+                x.Id == "fine-local" || x.Id == "fine-connected"))
+                MeasureChangingSequence(scenario);
+            Console.WriteLine("RESULT=PASS_FINE_ECONOMIC_SEQUENCE_BENCHMARK");
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine(ex);
+            Console.WriteLine("RESULT=FAIL_FINE_ECONOMIC_SEQUENCE_BENCHMARK");
+            return 1;
+        }
+#endif
+    }
+
+    private static CycleFrame[] BuildChangingFrames(Snapshot initial)
+    {
+        // Forecasts and destination demand are new economic inputs only at
+        // the cycle boundary. Existing quote/trade objects are never edited.
+        var repricedIntents = initial.Intents.Select(x =>
+            new EconomicFineTransportServiceIntent(
+                x.ServiceId, x.RouteKey, x.TechnologyTypeId,
+                x.TechnologyCatalogVersion,
+                x.ExpectedLoadMicrograms * 3, x.IsAvailable)).ToArray();
+        var shiftedDemands = initial.Flows.DemandFlows.Select(x =>
+            new EconomicDemandFlow(
+                x.EconomicPointId, x.CommodityId, 3UL * Unit)).ToArray();
+        var shiftedValues = initial.Values.Select(x =>
+            new EconomicTurnCommodityValueOffer(
+                x.EconomicPointId, x.CommodityId,
+                new SyntheticCommodityValue(
+                    980_000UL + x.CommodityId.Value * 1_000UL,
+                    3_000UL + x.CommodityId.Value * 20UL))).ToArray();
+        var changed = initial with
+        {
+            Intents = repricedIntents,
+            Flows = new EconomicProductionDemandResult(
+                initial.Flows.SupplyFlows, shiftedDemands),
+            Values = shiftedValues
+        };
+
+        // Select a CORRIDOR ACTUALLY USED by a market service, rather than
+        // closing an irrelevant geographic edge and pretending access changed.
+        var offers = new EconomicFineTransportServiceItineraryDiscovery().Discover(
+            initial.Geography, initial.Anchors,
+            StrategicEdgeAccessSnapshot.AllOpen,
+            initial.Assets, initial.Intents, new SyntheticWholeServicePricing());
+        var firstLeg = offers[0].AssetPath[0];
+        var removedAsset = initial.Assets.Single(x => x.AssetId == firstLeg);
+        var closed = new StrategicEdgeAccessSnapshot(
+            new[] { removedAsset.GeographicEdgeId });
+
+        // The third snapshot closes that corridor. On the fourth snapshot,
+        // geography reopens but a NEW explicitly built physical asset
+        // replaces the previous identity, without retroactive technology
+        // renaming or mutating the earlier constructed-asset snapshot.
+        var replacementId = checked(initial.Assets.Max(x => x.AssetId) + 1UL);
+        var fineId = removedAsset.FineGeographicEdgeId
+            ?? throw new InvalidOperationException(
+                "All benchmark corridors must be fine-qualified.");
+        var replacement = new EconomicTransportBuiltAsset(
+            replacementId, removedAsset.TechnologyTypeId,
+            fineId, removedAsset.TechnologyCatalogVersion);
+        var newlyBuilt = changed with
+        {
+            Assets = initial.Assets
+                .Where(x => x.AssetId != removedAsset.AssetId)
+                .Append(replacement).ToArray()
+        };
+
+        return
+        [
+            new CycleFrame("initial", 1UL, initial,
+                StrategicEdgeAccessSnapshot.AllOpen),
+            new CycleFrame("forecast-and-demand", 2UL, changed,
+                StrategicEdgeAccessSnapshot.AllOpen),
+            new CycleFrame("closed-corridor", 3UL, changed, closed),
+            new CycleFrame("reopened-new-asset", 4UL, newlyBuilt,
+                StrategicEdgeAccessSnapshot.AllOpen)
+        ];
+    }
+
+    private static void MeasureChangingSequence(Scenario scenario)
+    {
+        var fixtureStart = Stopwatch.GetTimestamp();
+        var frames = BuildChangingFrames(BuildSnapshot(scenario));
+        var fixtureMs = Stopwatch.GetElapsedTime(fixtureStart).TotalMilliseconds;
+        Sample? previous = null;
+        Sample? initial = null;
+        Sample? forecast = null;
+        Sample? closure = null;
+
+        foreach (var frame in frames)
+        {
+            var first = Measure(
+                frame.Inputs, EconomicTurnFreightCandidateSelectionMode.Exhaustive,
+                frame.Ordinal, frame.Access);
+            var firstIndexed = Measure(
+                frame.Inputs, EconomicTurnFreightCandidateSelectionMode.DependencyIndex,
+                frame.Ordinal, frame.Access);
+            AssertSameEconomics(first, firstIndexed, scenario.Id + ":" + frame.Label);
+
+            var reference = new Sample[Samples];
+            var indexed = new Sample[Samples];
+            for (var i = 0; i < Samples; i++)
+            {
+                reference[i] = Measure(
+                    frame.Inputs, EconomicTurnFreightCandidateSelectionMode.Exhaustive,
+                    frame.Ordinal, frame.Access);
+                indexed[i] = Measure(
+                    frame.Inputs, EconomicTurnFreightCandidateSelectionMode.DependencyIndex,
+                    frame.Ordinal, frame.Access);
+                AssertSameEconomics(reference[i], indexed[i],
+                    scenario.Id + ":" + frame.Label);
+                if (reference[i].Fingerprint != first.Fingerprint ||
+                    indexed[i].Fingerprint != first.Fingerprint)
+                    throw new InvalidOperationException(
+                        "Changed-snapshot cycle economic replay was not deterministic.");
+            }
+
+            var priorRoutes = previous?.Routes.ToDictionary(x => x.RouteKey);
+            var unchangedPaths = first.Routes.Count(x =>
+                priorRoutes is not null &&
+                priorRoutes.TryGetValue(x.RouteKey, out var previousPath) &&
+                previousPath.ServiceId == x.ServiceId &&
+                previousPath.BuiltPathAndTechnology == x.BuiltPathAndTechnology);
+
+            // The unchanged-path count is only a hypothetical reuse
+            // opportunity. This reference ALWAYS runs fresh discovery,
+            // builds fresh functions, and prices new TURN-OWNED quotes.
+            Console.WriteLine(
+                $"SEQUENCE={scenario.Id};cycle={frame.Ordinal};" +
+                $"stage={frame.Label};" +
+                $"fine_cells={scenario.Resolution.StrategicCellCount};" +
+                $"assets={frame.Inputs.Assets.Length};" +
+                $"intent_count={frame.Inputs.Intents.Length};" +
+                $"quotes={first.SelectedQuotes};" +
+                $"trades={first.Trades};" +
+                $"unchanged_physical_paths={unchangedPaths};" +
+                $"new_quotes={first.FunctionEvaluations};" +
+                $"snapshot_fixture_ms={fixtureMs:F3};" +
+                $"fingerprint={first.Fingerprint}");
+            var label = scenario.Id + "-cycle-" + frame.Ordinal;
+            WriteMeasurements(label, "exhaustive", reference);
+            WriteMeasurements(label, "indexed", indexed);
+
+            if (frame.Ordinal == 1UL)
+                initial = first;
+            else if (frame.Ordinal == 2UL)
+                forecast = first;
+            else if (frame.Ordinal == 3UL)
+                closure = first;
+            previous = first;
+        }
+
+        if (initial is null || forecast is null || closure is null ||
+            previous is null ||
+            initial.Routes.Count == 0 ||
+            initial.Routes.Count != forecast.Routes.Count ||
+            initial.Routes.Any(x => !forecast.Routes.Any(y =>
+                y.RouteKey == x.RouteKey &&
+                y.ServiceId == x.ServiceId &&
+                y.BuiltPathAndTechnology == x.BuiltPathAndTechnology)) ||
+            initial.Fingerprint == forecast.Fingerprint ||
+            closure.SelectedQuotes >= forecast.SelectedQuotes ||
+            previous.SelectedQuotes != forecast.SelectedQuotes ||
+            !previous.Routes.Any(x =>
+                x.BuiltPathAndTechnology ==
+                    forecast.Routes.Single(y => y.RouteKey == x.RouteKey)
+                        .BuiltPathAndTechnology) ||
+            !previous.Routes.Any(x =>
+                x.BuiltPathAndTechnology !=
+                    forecast.Routes.Single(y => y.RouteKey == x.RouteKey)
+                        .BuiltPathAndTechnology))
+        {
+            throw new InvalidOperationException(
+                "Sequential geographic/market closure fixtures did not meet " +
+                "their required changing-snapshot invariants.");
+        }
+
+        if (closure.Fingerprint == previous.Fingerprint)
+            throw new InvalidOperationException(
+                "A replacement asset cannot inherit a prior-cycle trade ledger.");
+        Console.WriteLine($"SEQUENCE_INVARIANTS={scenario.Id};status=PASS");
     }
 
     private static void MeasureScenario(Scenario scenario)
@@ -243,8 +459,11 @@ public static class FineEconomicCycleBenchmarkHarness
     }
 
     private static Sample Measure(
-        Snapshot snapshot, EconomicTurnFreightCandidateSelectionMode mode)
+        Snapshot snapshot, EconomicTurnFreightCandidateSelectionMode mode,
+        ulong turnOrdinal = 1UL,
+        StrategicEdgeAccessSnapshot? access = null)
     {
+        var roadAccess = access ?? StrategicEdgeAccessSnapshot.AllOpen;
         var costFactory = new SyntheticWholeServicePricing();
         var discoverer = new EconomicFineTransportServiceItineraryDiscovery();
         var quoter = new EconomicTransportServiceQuoteResolver();
@@ -256,15 +475,15 @@ public static class FineEconomicCycleBenchmarkHarness
         var phaseStart = Stopwatch.GetTimestamp();
         var offers = discoverer.Discover(
             snapshot.Geography, snapshot.Anchors,
-            StrategicEdgeAccessSnapshot.AllOpen,
+            roadAccess,
             snapshot.Assets, snapshot.Intents, costFactory);
         var discoveryMs = Stopwatch.GetElapsedTime(phaseStart).TotalMilliseconds;
         var discoveryBytes = GC.GetAllocatedBytesForCurrentThread() - startBytes;
 
         phaseStart = Stopwatch.GetTimestamp();
         var selections = quoter.Resolve(
-            1UL, snapshot.Geography, snapshot.Anchors, snapshot.Flows,
-            StrategicEdgeAccessSnapshot.AllOpen,
+            turnOrdinal, snapshot.Geography, snapshot.Anchors, snapshot.Flows,
+            roadAccess,
             snapshot.Assets, offers);
         var quotationMs = Stopwatch.GetElapsedTime(phaseStart).TotalMilliseconds;
         var quotationBytes = GC.GetAllocatedBytesForCurrentThread() -
@@ -272,7 +491,7 @@ public static class FineEconomicCycleBenchmarkHarness
 
         phaseStart = Stopwatch.GetTimestamp();
         var trades = market.Resolve(
-            1UL, snapshot.Flows, snapshot.Commodities,
+            turnOrdinal, snapshot.Flows, snapshot.Commodities,
             selections.Select(x => x.Quote),
             snapshot.Values, snapshot.Reservations, snapshot.Policy,
             diagnostics, mode);
@@ -285,7 +504,8 @@ public static class FineEconomicCycleBenchmarkHarness
             costFactory.Functions.Count != offers.Count ||
             costFactory.Functions.Any(x => x.Calls != 1) ||
             selections.Count != offers.Count ||
-            offers.Count != snapshot.Intents.Length ||
+            offers.Count > snapshot.Intents.Length ||
+            (access is null && offers.Count != snapshot.Intents.Length) ||
             diagnostics.AcceptedTrades != trades.Count)
             throw new InvalidOperationException(
                 "Every authorized built service must be quoted exactly once, " +
@@ -293,12 +513,19 @@ public static class FineEconomicCycleBenchmarkHarness
 
         // Auditing is deliberately outside all three timed phases.
         var transcript = Fingerprint(selections, trades);
+        var routeWitnesses = Array.AsReadOnly(selections.Select(selection =>
+            new RouteWitness(
+                selection.Quote.RouteKey, selection.ServiceId,
+                selection.TechnologyCatalogVersion + ":" +
+                string.Join(",", selection.AssetIds) + "|" +
+                string.Join(",", selection.TechnologyTypeIds))).ToArray());
         return new Sample(
             discoveryMs, quotationMs, clearingMs, totalMs,
             discoveryBytes, quotationBytes, clearingBytes, totalBytes,
             offers.Count, selections.Count, costFactory.Functions.Sum(x => x.Calls),
             trades.Count, transcript,
-            diagnostics.LaneExaminations, diagnostics.MarginalValueEvaluations);
+            diagnostics.LaneExaminations, diagnostics.MarginalValueEvaluations,
+            routeWitnesses);
     }
 
     private static string Fingerprint(

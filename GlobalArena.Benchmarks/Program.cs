@@ -1,6 +1,12 @@
 using GlobalArena.Benchmarks;
 
 if (args.Any(argument =>
+    string.Equals(argument, "--fine-economic-sequence", StringComparison.Ordinal)))
+{
+    return FineEconomicCycleBenchmarkHarness.RunSequence();
+}
+
+if (args.Any(argument =>
     string.Equals(argument, "--fine-economic-cycle", StringComparison.Ordinal)))
 {
     return FineEconomicCycleBenchmarkHarness.Run();

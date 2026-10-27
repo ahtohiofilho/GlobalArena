@@ -48,6 +48,21 @@ All graph paths lie on **actual generated fine-mesh adjacency**, but the tree, s
 
 The previously documented [eight-case allocation-only reference](turn-locked-freight-market-reference.md) remains independently executable. Do not directly compare its quote-only or allocator-only times with this complete economic-close benchmark as if they measured the same inputs or work.
 
+## Changing economic-cycle snapshots: four sequential closes
+
+The additional `--fine-economic-sequence` command reruns a **fresh, complete physical discovery → ex-ante quotation → dynamic commodity clearing** on four coherent post-movement snapshots. It is implemented in the **same benchmark harness** and run by the three-platform workflow. No economic time scale, movement-round interval, pricing mechanism or state persistence is introduced.
+
+- **Cycle 1 — initial:** all originally built corridors open, explicit service offers, initial demand and forecasts.
+- **Cycle 2 — forecast-and-demand:** same built physical infrastructure and market access, but a new ex-ante expected volume and changed destination demand/value curves. Paths should remain physically identical; quotes are nevertheless recomputed with a **new turn ordinal**, while commodity clearing responds to the changed curves.
+- **Cycle 3 — closed-corridor:** closes an edge used by a real service, chosen from the actual constructed paths. Existing assets still exist, but that corridor becomes inaccessible; disconnected intents must vanish. All eligible offers receive fresh quotes.
+- **Cycle 4 — reopened-new-asset:** reopens the corridor, removes the old asset identity and adds a **newly identified installed physical asset** on the same fine edge and under the same explicitly supplied technology/version. Market routes return but service-path provenance must reflect the replacement; there is no hidden retroactive upgrade.
+
+Each sequence runs over two generated fine Goldberg fixtures: `fine-local` and `fine-connected`. Both the exhaustive market and the indexed market process **every cycle** with seven observations per mode; exact physical/commodity/freight ledger fingerprints must agree across market algorithms and replays. Within a sequence the fingerprint is expected to differ across changed inputs. Failure to lose offers on a closure or to detect the new asset identity is treated as an invalid workload. The benchmark records the number of **physically unchanged service paths** relative to the preceding cycle. This is an *upper-bound reuse opportunity*, **not** a proof that the routes can be safely cached without detailed dependency and access validation.
+
+No route cache is implemented. Every close explicitly rebuilds the available service itinerary set, creates a fresh whole-itinerary cost function for each available offer and evaluates every eligible function **once** on that cycle's expectation. Fresh turn-owned `EconomicTurnFreightQuote` objects are formed even when a physically identical service path survives; **financial prices are never copied forward from previous cycles**. A separate test verifies prior financial trades remain immutable after later forecast/closure changes.
+
+The CLI logs `SEQUENCE` with the cycle label, turn ordinal, accepted trades, current quote/function evaluation count, unchanged physical path count, snapshot-setup time and full ledger signature, plus `PHASE` rows for each mode/cycle. `SEQUENCE_INVARIANTS=...;status=PASS` certifies structural changes observed as expected, not that a caching strategy is correct or a full world has been simulated. The changing snapshots are synthesized as independent fixtures; real movement, construction and asset-authority state transitions remain future work. An occasional close-processing pause remains a possible gameplay tradeoff and no hard deadline is asserted.
+
 ## Further architectural milestones
 
 This does **not** introduce a new scheduler, number of movement turns per closure, price-model cap, fixed per-mode tariff, global transportation hub algorithm, free geographic corridor, physical trade-in-transit simulation or a UI processing pause. An occasional economic close delay may be acceptable for real strategic depth; its frequency, maximum desired pause and presentation will be decided in a later design cycle after broader end-to-end profiling.
