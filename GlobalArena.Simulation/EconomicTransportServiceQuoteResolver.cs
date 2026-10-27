@@ -14,12 +14,14 @@ public sealed class EconomicTransportBuiltAsset
 {
     public ulong AssetId { get; }
     public ulong TechnologyTypeId { get; }
+    public ulong TechnologyCatalogVersion { get; }
     public StrategicEdgeId GeographicEdgeId { get; }
     public bool IsOperational { get; }
 
     public EconomicTransportBuiltAsset(
         ulong assetId, ulong technologyTypeId,
-        StrategicEdgeId geographicEdgeId, bool isOperational = true)
+        StrategicEdgeId geographicEdgeId, ulong technologyCatalogVersion,
+        bool isOperational = true)
     {
         if (assetId == 0UL)
             throw new ArgumentOutOfRangeException(nameof(assetId));
@@ -28,8 +30,11 @@ public sealed class EconomicTransportBuiltAsset
         if (!geographicEdgeId.IsValid)
             throw new ArgumentException("Physical corridor edge must be valid.",
                 nameof(geographicEdgeId));
+        if (technologyCatalogVersion == 0UL)
+            throw new ArgumentOutOfRangeException(nameof(technologyCatalogVersion));
         AssetId = assetId;
         TechnologyTypeId = technologyTypeId;
+        TechnologyCatalogVersion = technologyCatalogVersion;
         GeographicEdgeId = geographicEdgeId;
         IsOperational = isOperational;
     }
@@ -110,6 +115,7 @@ public sealed class EconomicTransportServiceSelection
     private readonly IReadOnlyList<ulong> _assetIds;
     private readonly IReadOnlyList<ulong> _technologyIds;
 
+    public ulong TechnologyCatalogVersion { get; }
     public ulong ServiceId { get; }
     public EconomicTurnFreightQuote Quote { get; }
     public IReadOnlyList<ulong> AssetIds => _assetIds;
@@ -122,6 +128,7 @@ public sealed class EconomicTransportServiceSelection
     {
         ServiceId = offer.ServiceId;
         Quote = quote;
+        TechnologyCatalogVersion = assets[0].TechnologyCatalogVersion;
         _assetIds = Array.AsReadOnly(assets.Select(x => x.AssetId).ToArray());
         _technologyIds = Array.AsReadOnly(
             assets.Select(x => x.TechnologyTypeId).ToArray());
@@ -225,6 +232,11 @@ public sealed class EconomicTransportServiceQuoteResolver
                         "Service references an asset that was not built.",
                         nameof(offeredServices));
                 orderedAssets[i] = asset;
+                if (i > 0 && orderedAssets[0].TechnologyCatalogVersion !=
+                    asset.TechnologyCatalogVersion)
+                    throw new ArgumentException(
+                        "One service cannot mix technology catalogue versions.",
+                        nameof(offeredServices));
                 var edge = edgeById[asset.GeographicEdgeId];
                 var ends = edge.IncidentCellIds;
                 if (cursor == ends[0])
