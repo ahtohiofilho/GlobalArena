@@ -22,15 +22,27 @@ public static class TurnLockedFreightMarketBenchmarkHarness
     private const int Warmups = 1;
     private const int Samples = 5;
 
+    private enum RoutePattern : byte
+    {
+        Complete,
+        LocalRing,
+        HubAndLocal
+    }
+
     private sealed record Scenario(
-        string Id, int Producers, int Destinations, int Commodities);
+        string Id, int Producers, int Destinations, int Commodities,
+        RoutePattern Pattern = RoutePattern.Complete);
 
     private static readonly Scenario[] Cases =
     {
         new("reference-profit-boundary", 1, 1, 1),
         new("reference-small", 2, 2, 2),
         new("reference-medium", 4, 4, 3),
-        new("reference-wide", 8, 8, 4)
+        new("reference-wide", 8, 8, 4),
+        new("local-ring-sparse", 24, 24, 4, RoutePattern.LocalRing),
+        new("hub-and-local-sparse", 16, 16, 5, RoutePattern.HubAndLocal),
+        new("complete-medium-large", 16, 16, 5),
+        new("complete-stress", 24, 24, 5)
     };
 
     private sealed class SyntheticFreightCostFunction : IEconomicTurnFreightCostFunction
@@ -98,6 +110,10 @@ public static class TurnLockedFreightMarketBenchmarkHarness
         int Decisions, string Signature,
         EconomicTurnFreightMarketDiagnostics? Diagnostics);
 
+    private sealed record QuoteMeasurement(
+        double ElapsedMilliseconds, long AllocatedBytes,
+        int FunctionEvaluations, string Signature);
+
     public static int Run()
     {
 #if DEBUG
@@ -115,7 +131,8 @@ public static class TurnLockedFreightMarketBenchmarkHarness
             Console.WriteLine($"ENV_PROCESSORS={Environment.ProcessorCount}");
             Console.WriteLine($"WARMUPS={Warmups}");
             Console.WriteLine($"MEASURED_SAMPLES={Samples}");
-            Console.WriteLine("BENCHMARK_SCOPE=synthetic-unoptimized-reference");
+            Console.WriteLine("BENCHMARK_SCOPE=synthetic-reference-vs-indexed-with-route-sparsity");
+            Console.WriteLine("QUOTE_BUILD_SAMPLES=5");
             Console.WriteLine("PERFORMANCE_THRESHOLDS=none");
             foreach (var scenario in Cases)
                 MeasureScenario(scenario);
@@ -134,6 +151,7 @@ public static class TurnLockedFreightMarketBenchmarkHarness
     private static void MeasureScenario(Scenario scenario)
     {
         var input = BuildInputs(scenario);
+        var quoteMeasurements = MeasureQuoteConstruction(scenario, input);
         var resolver = new EconomicTurnLockedFreightMarketResolver();
         var warm = resolver.Resolve(
             1UL, input.Flows, input.Catalog, input.Quotes,
@@ -236,7 +254,8 @@ public static class TurnLockedFreightMarketBenchmarkHarness
             $"marginal_evaluations={indexedCount.MarginalValueEvaluations};" +
             $"quantity_search_calls={indexedCount.QuantitySearchCalls};" +
             $"binary_search_iterations={indexedCount.BinarySearchIterations}");
-        Console.WriteLine($"CASE={scenario.Id};producers={scenario.Producers};" +
+        Console.WriteLine($"CASE={scenario.Id};pattern={scenario.Pattern};" +
+            $"producers={scenario.Producers};" +
             $"destinations={scenario.Destinations};commodities={scenario.Commodities};" +
             $"quotes={input.Quotes.Length};quote_function_evaluations={input.QuoteFunctionEvaluations};" +
             $"lanes={counted.CandidateLaneCount};trades={warm.Count};" +
@@ -251,6 +270,7 @@ public static class TurnLockedFreightMarketBenchmarkHarness
         WriteMeasurements(scenario.Id, "indexed", indexedMeasurements);
         WriteMeasurements(scenario.Id, "diagnostics", countedMeasurements);
         WriteMeasurements(scenario.Id, "indexed-diagnostics", indexedCountedMeasurements);
+        WriteQuoteMeasurements(scenario.Id, quoteMeasurements);
     }
 
     private static Measurement Measure(
@@ -318,6 +338,111 @@ public static class TurnLockedFreightMarketBenchmarkHarness
             SHA256.HashData(Encoding.UTF8.GetBytes(sb.ToString())));
     }
 
+    private static bool HasQuotedConnection(
+        Scenario scenario, int sourceIndex, int destinationIndex)
+    {
+        return scenario.Pattern switch
+        {
+            RoutePattern.Complete => true,
+            RoutePattern.LocalRing =>
+                destinationIndex == sourceIndex % scenario.Destinations ||
+                destinationIndex ==
+                    (sourceIndex + 1) % scenario.Destinations ||
+                destinationIndex ==
+                    (sourceIndex + scenario.Destinations - 1) %
+                    scenario.Destinations,
+            RoutePattern.HubAndLocal =>
+                sourceIndex == 0 || destinationIndex == 0 ||
+                destinationIndex == sourceIndex % scenario.Destinations ||
+                destinationIndex ==
+                    (sourceIndex + 1) % scenario.Destinations,
+            _ => throw new ArgumentOutOfRangeException(nameof(scenario))
+        };
+    }
+
+    // Route availability is a synthetic, explicit economic graph fixture.
+    // A missing quote means no eligible lane. It does not imply that a
+    // physical road/rail/port exists, nor prescribe an infrastructure mode.
+    private static EconomicTurnFreightQuote[] BuildQuotes(
+        Scenario scenario, SyntheticFreightCostFunction transportFunction)
+    {
+        var result = new List<EconomicTurnFreightQuote>();
+        for (var s = 0; s < scenario.Producers; s++)
+            for (var d = 0; d < scenario.Destinations; d++)
+            {
+                if (!HasQuotedConnection(scenario, s, d))
+                    continue;
+                var route = new StrategicEconomicRouteKey(
+                    new EconomicPointId(checked((ulong)(1 + s))),
+                    new EconomicPointId(checked((ulong)(1_001 + d))));
+                var forecast = (BigInteger)(900 + s * 200 + d * 100) *
+                    1_000_000;
+                result.Add(EconomicTurnFreightQuote.FromForecast(
+                    1UL, route, forecast, transportFunction));
+            }
+        return result.ToArray();
+    }
+
+    private static string QuoteSignature(
+        IEnumerable<EconomicTurnFreightQuote> quotes)
+    {
+        var sb = new StringBuilder();
+        foreach (var q in quotes)
+        {
+            sb.Append(q.TurnOrdinal).Append(':')
+                .Append(q.RouteKey.SourceEconomicPointId.Value).Append(':')
+                .Append(q.RouteKey.DestinationEconomicPointId.Value).Append(':')
+                .Append(q.RulesetVersion).Append(':')
+                .Append(q.ExpectedLoadMicrograms).Append(':')
+                .Append(q.RawUnitCostPerGram.Numerator).Append('/')
+                .Append(q.RawUnitCostPerGram.Denominator).Append(';');
+        }
+        return Convert.ToHexString(
+            SHA256.HashData(Encoding.UTF8.GetBytes(sb.ToString())));
+    }
+
+    private static QuoteMeasurement[] MeasureQuoteConstruction(
+        Scenario scenario, Inputs reference)
+    {
+        var expected = QuoteSignature(reference.Quotes);
+        var samples = new QuoteMeasurement[Samples];
+        for (var i = 0; i < samples.Length; i++)
+        {
+            var function = new SyntheticFreightCostFunction();
+            var beforeBytes = GC.GetAllocatedBytesForCurrentThread();
+            var start = Stopwatch.GetTimestamp();
+            var quotes = BuildQuotes(scenario, function);
+            var elapsed = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
+            var allocated = GC.GetAllocatedBytesForCurrentThread() - beforeBytes;
+            var signature = QuoteSignature(quotes);
+            if (signature != expected || quotes.Length != reference.Quotes.Length ||
+                function.Evaluations != reference.QuoteFunctionEvaluations)
+                throw new InvalidOperationException(
+                    $"{scenario.Id}: pre-turn continuous quote build was not reproducible.");
+            samples[i] = new QuoteMeasurement(
+                elapsed, allocated, function.Evaluations, signature);
+        }
+        return samples;
+    }
+
+    private static void WriteQuoteMeasurements(
+        string id, IReadOnlyList<QuoteMeasurement> measurements)
+    {
+        var times = measurements
+            .Select(x => x.ElapsedMilliseconds).Order().ToArray();
+        var bytes = measurements
+            .Select(x => x.AllocatedBytes).Order().ToArray();
+        Console.WriteLine(
+            $"QUOTE_METRICS={id};" +
+            $"evaluations={measurements[0].FunctionEvaluations};" +
+            $"median_elapsed_ms={times[times.Length / 2]:F3};" +
+            $"max_elapsed_ms={times[^1]:F3};" +
+            $"median_allocated_bytes={bytes[bytes.Length / 2]};" +
+            $"max_allocated_bytes={bytes[^1]};" +
+            $"signature={measurements[0].Signature};" +
+            $"samples={measurements.Count};status=OBSERVATIONAL");
+    }
+
     private static Inputs BuildInputs(Scenario scenario)
     {
         var foods = new List<FoodCommodityDefinition>();
@@ -361,19 +486,7 @@ public static class TurnLockedFreightMarketBenchmarkHarness
             }
         }
 
-        for (var s = 0; s < scenario.Producers; s++)
-            for (var d = 0; d < scenario.Destinations; d++)
-            {
-                var route = new StrategicEconomicRouteKey(
-                    new EconomicPointId(checked((ulong)(1 + s))),
-                    new EconomicPointId(checked((ulong)(1_001 + d))));
-                // Synthetic expectation, determined from indices before the
-                // turn; unrelated to quantities later allocated this turn.
-                var forecast = (BigInteger)(900 + s * 200 + d * 100) *
-                    1_000_000;
-                quotes.Add(EconomicTurnFreightQuote.FromForecast(
-                    1UL, route, forecast, transportFunction));
-            }
+        quotes.AddRange(BuildQuotes(scenario, transportFunction));
 
         return new Inputs(
             new EconomicProductionDemandResult(supplies, demands),
