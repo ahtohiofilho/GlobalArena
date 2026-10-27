@@ -35,7 +35,7 @@ public sealed class EconomicFineTransportPathCache
         _prior = committed;
 
     internal readonly record struct PathKey(
-        int StartNode, int EndNode,
+        ulong StartCellId, ulong EndCellId,
         ulong TechnologyTypeId, ulong TechnologyCatalogVersion);
 
     internal sealed record CachedPhysicalPath(
