@@ -2,6 +2,32 @@
 
 **Status:** Experimental, opt-in integration seam. Not an authoritative persistent transport world model. Refer to [ADR-064 (Proposed)](../adr/ADR-064-technology-persistent-transport-and-continuous-endogenous-pricing.md) and [Issue #16](https://github.com/ahtohiofilho/GlobalArena/issues/16).
 
+## Important geometry clarification: a border is not the road
+
+In the generated Goldberg **geometric topology**, a `StrategicEdge`
+is the **shared border** of two tiles, with two geometric
+`IncidentVertexIds`. The experimental physical transport asset stores
+this edge ID as the **key for crossing that border between its two
+`IncidentCellIds`**, i.e. an abstract link of the **dual cell-adjacency
+graph**. Its commercial itinerary advances **cell → cell**, NOT
+vertex → vertex *along* the border. `GeographicEdgeId` is not a rail,
+road or pipeline centerline, an end-of-line terminus, or a cargo station.
+No precise in-tile alignment or crossing point is specified yet.
+
+This is a specialized **built-crossing traversal reference**, not
+the universal geometry contract for all transport technologies.
+It does not automatically make a border river passable, locate a bridge
+or offer loading/unloading at an intermediate tile. The accepted
+strategic hydrology field currently stores **downstream cell**
+connections rather than a detailed edge-aligned fine river trace;
+that future geometry needs its own explicit derivation and crossing
+compatibility contract.
+
+See [Transport dual-graph and extension contract audit](
+transport-dual-graph-and-extension-contract.md) for the verified
+distinction, required operational facility semantics, and the proposed
+capability-based architecture without choosing canonical transport modes.
+
 ## Boundaries already enforced
 
 | Layer | Reference input | Guarantee |
