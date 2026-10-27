@@ -26,3 +26,21 @@ This is a **caller-provided immutable input snapshot**, not authoritative `World
 The existing commercial allocator API supports one selected freight quote per directional economic-point pair, so multiple parallel services are **compared**, not simultaneously allocated as distinct competing carriers. This does **not** implement per-service capacity or a full multi-path water-filling solution. A later evolution must distinguish service and path identity in each trade if per-service congestion, allocation, scheduling or finite availability is introduced.
 
 Tests should use the generated strategic topology, preserve deterministic tie-breaking and verify every selected quote/asset path, both across turns and within one market clearing call. More geographically grounded performance scenarios and formal acceptance of ADR-064's supersession scope are separate checkpoints. Legacy M4.4 and PRs #12–#14 live-congestion behaviors are unchanged.
+
+## Fine-mesh geography without an obligatory strategic routing layer
+
+The reference service resolver now offers a **second, opt-in geography path** that accepts `PhysicalTacticalTileId` anchors for economic points and `PhysicalTacticalEdgeId` qualifiers for constructed corridor assets. Each fine tile/edge carries its **Goldberg resolution**. The supplied `StrategicSurfaceGraph` is instantiated from that exact *fine topology*, not the coarse strategic economic-routing graph. Despite its historical type name, the generator's fine `StrategicTopology` is used **as fine geography**; the resolver does not require travel across any coarse strategic edge.
+
+- A fine asset constructor requires `PhysicalTacticalEdgeId(fineParameters, fineEdgeId)`; the original strategic asset constructor remains available for the historical adapter. The resolver rejects mixed or mismatched geography levels even if raw edge ordinal values happen to coincide.
+- Economic-point anchors are supplied as a **frozen snapshot** `IReadOnlyDictionary<EconomicPointId, PhysicalTacticalTileId>`. They must all belong to the supplied fine Goldberg topology. The old `EconomyRuntimeState` point anchors remain untouched and are not silently interpreted as fine coordinates.
+- The geographic edge access snapshot is **topology-local** within the resolution being validated. For an eventually persisted, cross-topology closure identifier, an explicit qualified fine-edge form or mapping will be required. No such state migration is performed here.
+- Both paths use the **same** service itinerary, asset technology, catalogue-version, handoff, availability, quote-function and market resolver semantics. No duplicated market algorithm or predefined economic corridor has been introduced.
+- Fine topology may be large, but one commercial alternative is still a **fully offered service itinerary**, not every fine cell in the world. The computational budget therefore includes discovery of services and quotes as well as the market-clearing algorithm. The oceanic and other unbuilt dynamic-routing cases remain future distinct service-generation work.
+
+### Economic cycle boundary (timing deliberately deferred)
+
+The service resolver processes the **completed geography/access/asset/market snapshot supplied to one economic cycle**; it does not recompute routes on each movement round or mutate the strategic world. A future scheduler may run multiple movement rounds and then atomically assemble a new economic input snapshot, perform route/service generation, freeze function-derived transport quotes and settle allocations. That cycle length and any voluntary presentation delay are **not configured or decided** by this reference contract.
+
+Performance acceptance should prioritize deterministic economic fidelity and useful world complexity, measuring **total economic-cycle wall time**, peak stalls and the separately measured route discovery/quote formation/allocation phases. An occasional visible processing pause is not automatically a reason to discard valuable economic depth. A dedicated turn scheduler, delivery/transit state and UI treatment will be evaluated in their respective cycles.
+
+ADR-064 is still **Proposed**. Persistent built assets, fine-map economic-point binding, travel-time simulation, direct oceanic pathfinding and a rule for how/when economic cycles advance remain open architecture tasks.
