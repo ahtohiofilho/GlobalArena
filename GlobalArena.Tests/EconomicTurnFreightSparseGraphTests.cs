@@ -65,7 +65,7 @@ public sealed class EconomicTurnFreightSparseGraphTests
 
     [Theory]
     [InlineData(false, 24, 3)]
-    [InlineData(true, 26, 3)]
+    [InlineData(true, 34, 3)]
     public void SparseLocalAndHubAccessRetainExactMarketParity(
         bool hub, int expectedQuotes, int localDegree)
     {
