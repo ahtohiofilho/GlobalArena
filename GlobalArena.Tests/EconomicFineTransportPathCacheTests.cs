@@ -184,13 +184,16 @@ public sealed class EconomicFineTransportPathCacheTests
         Assert.Equal(new[] { 90UL, 12UL }, Assert.Single(rebuilt.Offers).AssetPath);
         Assert.Equal(0, rebuilt.Counters.ReusedPaths);
         Assert.Equal(1, rebuilt.Counters.SearchedPaths);
-        Assert.Equal(1, Assert.Single(rebuilt.Pricing.Functions).Evaluations);
+        // Discovery creates a price function but does not evaluate it;
+        // the quote resolver evaluates it precisely once afterwards.
+        Assert.Equal(0, Assert.Single(rebuilt.Pricing.Functions).Evaluations);
         Assert.Equal(new[] { 11UL, 12UL }, first.Offers[0].AssetPath);
 
         var fresh = Discover(fixture, null, assets: replacement);
         Assert.Equal(
             QuoteSignature(fixture, replacement, fresh.Offers, 3UL),
             QuoteSignature(fixture, replacement, rebuilt.Offers, 3UL));
+        Assert.Equal(1, Assert.Single(rebuilt.Pricing.Functions).Evaluations);
     }
 
     [Fact]
