@@ -336,6 +336,6 @@ public sealed class EconomicFinePriceAwareServiceResolverTests
                 access: new StrategicEdgeAccessSnapshot(
                     new[] { new StrategicEdgeId(
                         Fine.StrategicEdgeCount + 1UL) })));
-        Assert.Equal(0, prices.Functions.Count);
+        Assert.Empty(prices.Functions);
     }
 }
