@@ -157,14 +157,148 @@ public sealed class EconomicFinePriceAwareServiceResolverTests
         IEnumerable<EconomicFineTransportServiceIntent>? intents = null,
         StrategicEdgeAccessSnapshot? access = null,
         ulong turn = 1UL,
-        EconomicFinePriceAwareSearchDiagnostics? diagnostics = null) =>
+        EconomicFinePriceAwareSearchDiagnostics? diagnostics = null,
+        EconomicFinePriceAwareSearchMode searchMode =
+            EconomicFinePriceAwareSearchMode.Exhaustive) =>
         new EconomicFinePriceAwareServiceResolver().Resolve(
             turn, fixture.Graph, fixture.Anchors, Flows(),
             access ?? StrategicEdgeAccessSnapshot.AllOpen,
             assets ?? fixture.Assets, intents ?? new[] { Intent() },
             pricing, budget ??
                 new EconomicFinePriceAwareSearchBudget(10_000UL, 100UL),
-            diagnostics);
+            diagnostics, searchMode);
+
+    /// <summary>
+    /// Actual fine physical constructed side branches connected ONLY through
+    /// the source tile. A simple route cannot enter and then return through
+    /// its source, so these branch links are never eligible for settlement.
+    /// The original direct/longer competing economic choices still exist.
+    /// </summary>
+    private static Fixture WithBuiltSourceSpurs(
+        Fixture original, int requestedBranches)
+    {
+        var edges = original.Graph.StrategicTopology.Edges;
+        var byNode = new Dictionary<StrategicCellId, List<StrategicEdge>>();
+        foreach (var edge in edges)
+            foreach (var cell in edge.IncidentCellIds)
+            {
+                if (!byNode.TryGetValue(cell, out var adjacent))
+                    byNode[cell] = adjacent = new List<StrategicEdge>();
+                adjacent.Add(edge);
+            }
+
+        var alreadyUsed = new HashSet<StrategicCellId>();
+        foreach (var asset in original.Assets)
+        {
+            var edge = edges.First(x => x.Id == asset.GeographicEdgeId);
+            foreach (var node in edge.IncidentCellIds)
+                alreadyUsed.Add(node);
+        }
+
+        var source = original.Anchors[new EconomicPointId(1UL)]
+            .FineStrategicCellId;
+        var visited = new HashSet<StrategicCellId>(alreadyUsed);
+        var queue = new Queue<StrategicCellId>();
+        queue.Enqueue(source);
+        var additional = new List<EconomicTransportBuiltAsset>();
+        while (queue.Count > 0 && additional.Count < requestedBranches)
+        {
+            var node = queue.Dequeue();
+            foreach (var edge in byNode[node].OrderBy(x => x.Id.Value))
+            {
+                if (additional.Count == requestedBranches)
+                    break;
+                var next = edge.IncidentCellIds.First(x => x != node);
+                if (!visited.Add(next))
+                    continue;
+                additional.Add(new EconomicTransportBuiltAsset(
+                    (ulong)(1000 + additional.Count), 10UL,
+                    new PhysicalTacticalEdgeId(Fine, edge.Id), 2UL));
+                queue.Enqueue(next);
+            }
+        }
+        Assert.Equal(requestedBranches, additional.Count);
+        return new Fixture(original.Graph, original.Anchors,
+            original.Assets.Concat(additional).ToArray(),
+            original.LongerAssetIds, original.DirectEdgeId);
+    }
+
+    [Fact]
+    public void DeadEndPruningRetainsCheaperLongerPhysicalRouteAndExactQuote()
+    {
+        var fixture = WithBuiltSourceSpurs(MakeFixture(), 38);
+        var baseline = new EconomicFinePriceAwareSearchDiagnostics();
+        var pruned = new EconomicFinePriceAwareSearchDiagnostics();
+        var exhaustive = Assert.Single(Run(
+            fixture, new WholeItineraryTestPricing(), diagnostics: baseline));
+        var optimized = Assert.Single(Run(
+            fixture, new WholeItineraryTestPricing(), diagnostics: pruned,
+            searchMode: EconomicFinePriceAwareSearchMode.TerminalLeafPruning));
+        Assert.Equal(fixture.LongerAssetIds, optimized.AssetIds);
+        Assert.Equal(exhaustive.AssetIds, optimized.AssetIds);
+        Assert.Equal(0, exhaustive.Quote.RawUnitCostPerGram.CompareTo(
+            optimized.Quote.RawUnitCostPerGram));
+        Assert.Equal(baseline.CompletePaths, pruned.CompletePaths);
+        Assert.Equal(baseline.EvaluatedFreightFunctions,
+            pruned.EvaluatedFreightFunctions);
+        Assert.True(pruned.PrunedPhysicalVertices > 0UL);
+        Assert.True(pruned.RejectedPrunedLinks > 0UL);
+        Assert.True(pruned.ExaminedLinks < baseline.ExaminedLinks);
+        Assert.Equal(0UL, baseline.PrunedPhysicalVertices);
+    }
+
+    [Fact]
+    public void SeededBranchClosuresAndInputPermutationsKeepFullPriceParity()
+    {
+        var full = WithBuiltSourceSpurs(MakeFixture(), 38);
+        for (var seed = 1; seed <= 24; seed++)
+        {
+            var random = new Random(seed * 104729);
+            var extraCount = 4 + seed;
+            var selected = full.Assets.Take(
+                full.Assets.Length - 38 + extraCount).ToArray();
+            var closed = seed % 3 == 0
+                ? new StrategicEdgeAccessSnapshot(
+                    new[] { selected[^1].GeographicEdgeId })
+                : StrategicEdgeAccessSnapshot.AllOpen;
+            var permuted = selected.OrderBy(_ => random.Next()).ToArray();
+            var baseline = new EconomicFinePriceAwareSearchDiagnostics();
+            var pruning = new EconomicFinePriceAwareSearchDiagnostics();
+            var expected = Assert.Single(Run(
+                full, new WholeItineraryTestPricing(),
+                assets: selected, access: closed,
+                intents: new[] { Intent(200UL), Intent(100UL) },
+                diagnostics: baseline));
+            var actual = Assert.Single(Run(
+                full, new WholeItineraryTestPricing(),
+                assets: permuted, access: closed,
+                intents: new[] { Intent(100UL), Intent(200UL) },
+                diagnostics: pruning,
+                searchMode: EconomicFinePriceAwareSearchMode.TerminalLeafPruning));
+            Assert.Equal(100UL, actual.ServiceId);
+            Assert.Equal(expected.AssetIds, actual.AssetIds);
+            Assert.Equal(0, expected.Quote.RawUnitCostPerGram.CompareTo(
+                actual.Quote.RawUnitCostPerGram));
+            Assert.Equal(expected.Quote.ExpectedLoadMicrograms,
+                actual.Quote.ExpectedLoadMicrograms);
+            Assert.Equal(baseline.CompletePaths, pruning.CompletePaths);
+            Assert.Equal(baseline.EvaluatedFreightFunctions,
+                pruning.EvaluatedFreightFunctions);
+        }
+    }
+
+    [Fact]
+    public void PrunedSearchRespectsFailClosedPathBudgetAndInvalidSearchMode()
+    {
+        var fixture = WithBuiltSourceSpurs(MakeFixture(), 12);
+        Assert.Throws<InvalidOperationException>(() => Run(
+            fixture, new WholeItineraryTestPricing(),
+            budget: new EconomicFinePriceAwareSearchBudget(10_000UL, 1UL),
+            searchMode: EconomicFinePriceAwareSearchMode.TerminalLeafPruning));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Run(
+            fixture, new WholeItineraryTestPricing(),
+            searchMode: (EconomicFinePriceAwareSearchMode)255));
+    }
 
     [Fact]
     public void LongerItineraryCanWinByWholeServiceFreightCostNotLegCount()
