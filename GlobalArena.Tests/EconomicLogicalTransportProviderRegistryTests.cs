@@ -249,7 +249,7 @@ public sealed class EconomicLogicalTransportProviderRegistryTests
         Assert.Throws<InvalidOperationException>(() => quoter.Resolve(
             2UL, registry, Snapshot(old, ordinal: 100UL),
             new[] { Intent(expected: 9_000_000_000UL) }, prices));
-        Assert.Equal(1, prices.Functions.Count);
+        Assert.Single(prices.Functions);
 
         var second = Assert.Single(quoter.Resolve(
             2UL, registry, Snapshot(newAssets, ordinal: 101UL),
