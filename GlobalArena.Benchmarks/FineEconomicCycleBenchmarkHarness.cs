@@ -433,7 +433,22 @@ public static class FineEconomicCycleBenchmarkHarness
         var scenario = new Scenario(
             "price-oracle-dead-branches", new GoldbergParameters(4, 0),
             95, 2, 2, 2, Pattern.Complete, ExtraBuiltEdges: 2);
-        var snapshot = BuildSnapshot(scenario);
+        var builtSnapshot = BuildSnapshot(scenario);
+        // Make at least one declared commercial pair coincide with the
+        // endpoints of a genuinely CONSTRUCTED off-tree edge. That pair
+        // then has both a direct built link and an alternate built-tree
+        // route; the comparison must exercise competing physical paths.
+        var cycleEdge = builtSnapshot.Geography.StrategicTopology.Edges
+            .Single(e => e.Id == builtSnapshot.Assets[^1].GeographicEdgeId);
+        var anchors = new Dictionary<EconomicPointId, PhysicalTacticalTileId>(
+            builtSnapshot.Anchors)
+        {
+            [new EconomicPointId(1UL)] = new PhysicalTacticalTileId(
+                scenario.Resolution, cycleEdge.IncidentCellIds[0]),
+            [new EconomicPointId(1_001UL)] = new PhysicalTacticalTileId(
+                scenario.Resolution, cycleEdge.IncidentCellIds[1])
+        };
+        var snapshot = builtSnapshot with { Anchors = anchors };
         PriceOracleSample Measure(EconomicFinePriceAwareSearchMode mode)
         {
             var priceFactory = new SyntheticWholeServicePricing();
@@ -452,6 +467,7 @@ public static class FineEconomicCycleBenchmarkHarness
                 diagnostics.EvaluatedFreightFunctions !=
                     (ulong)priceFactory.Functions.Count ||
                 diagnostics.CompletePaths != diagnostics.EvaluatedFreightFunctions ||
+                diagnostics.CompletePaths <= (ulong)snapshot.Intents.Length ||
                 priceFactory.Functions.Any(f => f.Calls != 1))
                 throw new InvalidOperationException(
                     "Whole-path oracle was incomplete or re-priced a candidate.");
