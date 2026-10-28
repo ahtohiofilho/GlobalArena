@@ -215,6 +215,19 @@ public sealed class WorldState
             warfare);
     }
 
+    /// <summary>
+    /// Reconstitutes an explicitly serialized revision during snapshot import.
+    /// This constructor-style method does not authorize event execution: the
+    /// import codec MUST compare the reconstructed canonical world hash with
+    /// the digest stored in a trusted save envelope.
+    /// </summary>
+    public WorldState WithRestoredRevision(ulong revision)
+    {
+        return new WorldState(
+            revision, WorldBinding, Civilizations, Territory, Diplomacy,
+            Economy, Population, Warfare);
+    }
+
     public WorldState AdvanceRevision()
     {
         return new WorldState(
