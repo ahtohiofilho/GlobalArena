@@ -240,6 +240,17 @@ public sealed class WorldState
             Diplomacy, Economy, Population, Warfare, facilities);
     }
 
+    /// <summary>
+    /// Restore an exact snapshot revision after the importer verifies the
+    /// versioned canonical hash. Not a gameplay mutation or permission gate.
+    /// </summary>
+    public WorldState WithRestoredRevision(ulong revision)
+    {
+        return new WorldState(
+            revision, WorldBinding, Civilizations, Territory,
+            Diplomacy, Economy, Population, Warfare, TransportFacilities);
+    }
+
     public WorldState AdvanceRevision()
     {
         return new WorldState(
