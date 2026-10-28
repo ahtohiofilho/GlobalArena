@@ -27,11 +27,11 @@ These interfaces must not be presented as an existing full integration of the Py
 3. Every shared strategic edge's physical mass must equal the sum of the selected commodities traversing it.
 4. Every used edge must have an explicit declared cost profile.
 5. Its reported marginal and integrated real cost must match that declared profile evaluated at the independently recomputed mass.
-6. The sum of the **exact integrated incremental** congestion charges must equal the final integrated cost of every used edge, **only for this specific marginal resolver**.
+6. **For every individual selected tranche, in decision order**, the reported extra congestion expense must equal the recomputed difference of integrated resource cost at the loads before and after that tranche. Merely matching the final sum is insufficient (cost shifting between trades must be rejected).\n7. The sum of independently recomputed **exact integrated incremental** charges must also equal the final integrated cost of every used edge, **only for this specific marginal resolver**.
 
 The opt-in `EconomicResidentCongestionPricedTurnPhase` invokes the auditor **after resolving the candidate and before producing the event**. Failure throws and leaves the staging snapshot unmodified. This phase already did not publish the authoritative world.
 
-It deliberately does **not** audit route connectivity, supplier/buyer incentives, origin prices, the food preference derivative, transfers, liquidity, settlement, world-hash authority, global stability or selection between economically distinct regimes. Those responsibilities have distinct contracts and cannot be inferred from six tests.
+It deliberately does **not** audit route connectivity, supplier/buyer incentives, origin prices, the food preference derivative, transfers, liquidity, settlement, world-hash authority, global stability or selection between economically distinct regimes. Those responsibilities have distinct contracts and cannot be inferred from eight tests, including adversarial charge redistribution that preserves the total.
 
 ## Release-scope discipline and next integration gates
 
