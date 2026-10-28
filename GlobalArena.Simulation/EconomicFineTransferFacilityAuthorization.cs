@@ -71,7 +71,8 @@ public sealed class EconomicFineTransferFacilityAuthorizationSnapshot
         TurnOrdinal = turnOrdinal;
 
         var facilityById = new Dictionary<ulong,
-            (EconomicPhysicalResourceId Resource, PhysicalTacticalTileId Tile)>();
+            (EconomicPhysicalResourceId Resource, PhysicalTacticalTileId Tile,
+             bool IsOperational)>();
         var facilityByResource = new Dictionary<EconomicPhysicalResourceId, ulong>();
         foreach (var row in evidence)
         {
@@ -79,13 +80,16 @@ public sealed class EconomicFineTransferFacilityAuthorizationSnapshot
                 throw new ArgumentException("Transfer evidence cannot contain null.", nameof(evidence));
             if (facilityById.TryGetValue(row.FacilityId, out var existing))
             {
-                if (existing.Resource != row.ResourceId || existing.Tile != row.Tile)
+                if (existing.Resource != row.ResourceId ||
+                    existing.Tile != row.Tile ||
+                    existing.IsOperational != row.IsOperational)
                     throw new ArgumentException(
-                        "One facility identity cannot change physical resource or location.",
+                        "One facility identity cannot change resource, location or operational status within a snapshot.",
                         nameof(evidence));
             }
             else
-                facilityById.Add(row.FacilityId, (row.ResourceId, row.Tile));
+                facilityById.Add(row.FacilityId,
+                    (row.ResourceId, row.Tile, row.IsOperational));
 
             if (facilityByResource.TryGetValue(row.ResourceId, out var previous))
             {
@@ -195,8 +199,13 @@ public sealed class EconomicFineAuthorizedServicePhysicalResourceAdapter
                     "Transfer evidence must match one actual declared service handoff.",
                     nameof(transferResourceBindings));
 
-            var preceding = byAsset[offer.AssetPath[binding.AfterLegIndex]];
-            var following = byAsset[offer.AssetPath[binding.AfterLegIndex + 1]];
+            if (!byAsset.TryGetValue(offer.AssetPath[binding.AfterLegIndex],
+                    out var preceding) ||
+                !byAsset.TryGetValue(offer.AssetPath[binding.AfterLegIndex + 1],
+                    out var following))
+                throw new ArgumentException(
+                    "Transfer cannot claim a service leg missing from installed assets.",
+                    nameof(offeredServices));
             if (preceding.TechnologyCatalogVersion != following.TechnologyCatalogVersion ||
                 preceding.TechnologyTypeId == following.TechnologyTypeId)
                 throw new InvalidOperationException(
