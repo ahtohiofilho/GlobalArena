@@ -90,8 +90,8 @@ public sealed class EconomicInteriorPhysicalMarketProbeTests
         var result = Evaluate();
         Assert.InRange(result.OuterIterations, 1, 160);
         Assert.Equal(3, result.Market.OriginPrices.Count);
-        Assert.True(result.Market.OriginPrices.All(x => x > 0));
-        Assert.True(result.ResourceLoadsMicrograms.ContainsKey(Shared));
+        Assert.All(result.Market.OriginPrices, x => Assert.True(x > 0));
+        Assert.Contains(Shared, result.ResourceLoadsMicrograms.Keys);
         Assert.Equal(4, result.ResourceLoadsMicrograms.Count);
 
         var sharedMarketMass = BigInteger.Zero;
