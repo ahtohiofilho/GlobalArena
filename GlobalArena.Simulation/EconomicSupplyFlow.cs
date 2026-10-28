@@ -33,11 +33,12 @@ public sealed class EconomicSupplyFlow
         }
 
         if (activity != EconomicActivityKind.Agriculture
-            && activity != EconomicActivityKind.Mining)
+            && activity != EconomicActivityKind.Mining
+            && activity != EconomicActivityKind.Forestry)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(activity),
-                "Supply flow must originate from Agriculture or Mining.");
+                "Supply flow must originate from Agriculture, Mining or Forestry.");
         }
 
         if (rawQuantity == 0UL)
