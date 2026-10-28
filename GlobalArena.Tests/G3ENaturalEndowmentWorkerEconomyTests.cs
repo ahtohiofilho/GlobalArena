@@ -154,7 +154,7 @@ public sealed class G3ENaturalEndowmentWorkerEconomyTests
             new EconomicActivityWorkforceAllocation(EconomicActivityKind.Mining, 2UL),
             new EconomicActivityWorkforceAllocation(EconomicActivityKind.TradeLogistics, 2UL));
         var before = new CanonicalWorldStateHasher().Compute(world);
-        var result = Resolver().Resolve(generated, world, Mapping,
+        var result = Resolver().Resolve(generated!, world, Mapping,
             new[] { new EconomicDemandProfile(A, Food, 500_000L) });
 
         var water = generated.StrategicClimateFields.WaterAvailability.GetRawValue(cell);
@@ -186,15 +186,27 @@ public sealed class G3ENaturalEndowmentWorkerEconomyTests
     }
 
     [Fact]
-    public void WaterlessAgricultureCanHaveZeroOutputWithoutBlockingDemand()
+    public void PolarLandHasNoPrimitiveOutputButWorkersStillCauseDemand()
     {
-        var generated = Generate();
-        var e = StrategicPrimitiveNaturalEndowmentFieldSet.Derive(generated);
-        var cell = FirstLand(generated, id =>
-            e.SoilSuitability.GetRawValue(id) == 0L ||
-            generated.StrategicClimateFields.WaterAvailability.GetRawValue(id) == 0L ||
-            Math.Abs(generated.StrategicClimateFields.Temperature.GetRawValue(id)) == D);
-        var world = State(generated, cell, 4UL,
+        // Exact zero rainfall is not generally sampled by the generator.
+        // Use an actually generated polar-land cell, whose endowment is
+        // deliberately zero, instead of assuming a zero-value random draw.
+        WorldGenerationResult? generated = null;
+        StrategicCellId cell = default;
+        for (ulong seed = 0UL; seed < 8UL && !cell.IsValid; seed++)
+        {
+            var candidate = Generate(seed);
+            var polar = candidate.StrategicTopology.Cells.FirstOrDefault(x =>
+                candidate.StrategicPhysicalFields.LandWater.GetKind(x.Id) ==
+                    StrategicLandWaterKind.Land &&
+                candidate.StrategicBiomes.GetKind(x.Id) == StrategicBiomeKind.PolarIce);
+            if (polar is null)
+                continue;
+            generated = candidate;
+            cell = polar.Id;
+        }
+        Assert.NotNull(generated);
+        var world = State(generated!, cell, 4UL,
             new EconomicActivityWorkforceAllocation(EconomicActivityKind.Agriculture, 4UL));
         var result = Resolver().Resolve(generated, world, Mapping,
             new[] { new EconomicDemandProfile(A, Food, 500_000L) });
