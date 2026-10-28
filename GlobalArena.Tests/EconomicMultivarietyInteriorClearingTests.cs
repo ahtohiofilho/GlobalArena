@@ -111,12 +111,12 @@ public sealed class EconomicMultivarietyInteriorClearingTests
     {
         var before = Clear();
         var after = Clear(quotes: Quotes(multiplier: 1.1));
-        Assert.True(Enumerable.Range(0, 3).Any(j =>
-            Math.Abs(after.OriginPrices[j] - before.OriginPrices[j]) > 1e-4));
-        Assert.True(after.Buyers.Zip(before.Buyers).Any(pair =>
+        Assert.Contains(Enumerable.Range(0, 3), j =>
+            Math.Abs(after.OriginPrices[j] - before.OriginPrices[j]) > 1e-4);
+        Assert.Contains(after.Buyers.Zip(before.Buyers), pair =>
             Enumerable.Range(0, 3).Any(j =>
                 Math.Abs(pair.First.QuantitiesByOrigin[j] -
-                         pair.Second.QuantitiesByOrigin[j]) > 1e-4)));
+                         pair.Second.QuantitiesByOrigin[j]) > 1e-4));
         Assert.InRange(after.MaximumBudgetResidual, 0, 1e-7);
         Assert.InRange(after.MaximumSupplyResidual, 0, 1e-7);
     }
