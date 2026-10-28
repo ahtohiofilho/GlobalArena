@@ -11,6 +11,7 @@ The current opt-in C# marginal congestion solver advances by positive marginal-r
 ## Deliberately narrow safety and math
 
 - Validate all source physical edges contain enough aggregate mass, without presuming ownership or authentic route provenance. Origin/destination/commodity conservation and route reachability are **not** certified here.
+- The source and destination paths must be **nonempty**. This comparator only reassigns a *previously routed physical lot*: an empty source path must not conjure cargo, and an empty destination path must not erase its throughput. A genuinely local/no-traversal transaction needs an explicit separate source/OD contract rather than overloading this finite-route method.
 - For each source edge subtract the lot once; for each destination edge add it once. Shared edges in both paths cancel.
 - Recompute integrated real cost with `FoodStrategicEdgeCongestionProfile.EvaluateTotalCost` for the union of touched edges. Untouched edges cancel from the delta.
 - Return the normalized signed cost delta with positive denominator and immutable hypothetical load snapshot; allow positive and negative deltas **as hypothetical evaluations**.
