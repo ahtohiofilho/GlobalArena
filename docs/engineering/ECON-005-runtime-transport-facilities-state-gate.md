@@ -18,7 +18,7 @@ Permissões duplicadas e instalações duplicadas são recusadas. Transição in
 
 ## Hash canônico v9
 
-O formato `CanonicalWorldStateHasher` foi elevado **de v8 para v9**. A nova seção **35** serializa, em ordem canônica, ID da instalação, parâmetros Goldberg M/N da malha fina, célula fina, bit operacional e capacidades direcionais ordenadas (IDs de tecnologias e versão de catálogo). O estado vazio também registra a seção com contagem zero. Todos os **seis vetores SHA-256 conhecidos** do estado foram recalculados independentemente pela codificação big-endian e mantidos como teste de regressão. O hash muda se local, identidade, capacidade ou status operacional mudarem.
+O formato `CanonicalWorldStateHasher` foi elevado **de v8 para v9**. A nova seção **35** serializa, em ordem canônica, ID da instalação, parâmetros Goldberg M/N da malha fina, célula fina, bit operacional e capacidades direcionais ordenadas (IDs de tecnologias e versão de catálogo). O estado vazio também registra a seção com contagem zero. Os **dez vetores SHA-256 conhecidos** do estado (iniciais, civilizações, território, diplomacia, população e integração) foram recalculados independentemente pela codificação big-endian. A rotina externa reproduziu primeiro todos os respectivos hashes v8 antigos e então produziu os novos golden hashes v9, preservados como testes de regressão. O hash muda se local, identidade, capacidade ou status operacional mudarem.
 
 **Compatibilidade:** todo consumidor que compare hashes v8 deve tratar v9 como **mudança intencional de formato**, não como equivalência automática de saves antigos. Este PR não implementa migração de saves nem formato de armazenamento em disco. A mudança exige revisão explícita antes de merge.
 
@@ -37,7 +37,7 @@ O `EconomicPhysicalResourceId` é a identidade de **custeio econômico**, não u
 
 ## Testes e aceite
 
-Testes cobrem estado vazio, mundo não vinculado, reconstrução de hash, mudança de estado operacional/local/direção/versão, rejeição de identidades ou permissões duplicadas, imutabilidade do snapshot, ausência de mutação do mercado, ordenação independente da entrada, e projeção estrita para D2. Além disso, os golden hashes conhecidos do mundo foram atualizados para v9.
+Testes cobrem estado vazio, mundo não vinculado, reconstrução de hash, mudança de estado operacional/local/direção/versão, rejeição de identidades ou permissões duplicadas, imutabilidade do snapshot, ausência de mutação do mercado, ordenação independente da entrada, e projeção estrita para D2. Além disso, os dez golden hashes conhecidos do mundo foram atualizados para v9, incluindo as suítes específicas de território, diplomacia, população e produção.
 
 Executar as três matrizes GitHub Actions em Windows, Ubuntu e macOS no SHA final: kernel, hashes de estado e benchmark de frete. Os testes não comprovam migração de saves ou transação autoritativa de construção.
 
