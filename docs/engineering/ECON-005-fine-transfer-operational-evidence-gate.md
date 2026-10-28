@@ -12,6 +12,14 @@ Esta entrega adiciona um **segundo portão de evidência**, sem modificar nem af
 - `EconomicFineTransferFacilityAuthorizationSnapshot`: snapshot de um turno; rejeita recursos ou identidades de instalações incongruentes e permissões duplicadas. Pode representar várias transições explicitamente concedidas na mesma instalação e no mesmo tile.
 - `EconomicFineAuthorizedServicePhysicalResourceAdapter`: camada estrita que exige que o snapshot pertença ao turno avaliado, vincula cada transferência à oferta e às duas arestas instaladas, verifica autorização operacional e **rejeita falta de evidência para uma oferta multimodal disponível ANTES de avaliar qualquer cotação de frete**. Em seguida reutiliza D1 para certificar continuidade de geografia, localização de handoff e condições dos ativos.
 
+## Revisão estrutural do estado e rigor da evidência
+
+A revisão do `GlobalArena.Runtime.WorldState` na `main` confirmou que os domínios persistidos atuais são civilizações, território, diplomacia, economia, população e guerra, além do vínculo ao mundo e da revisão. **Não há coleção de instalações construídas, equipamentos logísticos, propriedade de terminais ou suas capacidades operacionais no estado autoritativo.** `StrategicCellConstructionProvenance` representa proveniência de geração geométrica de células e **não** construções executadas pelo jogador.
+
+Portanto, a autorização deste Gate D2 **não pode ser promovida a certificação de instalação construída** por confiar no `FacilityId`, no `ResourceId`, no `WorldState.Revision` ou no hash: nenhuma dessas informações demonstra a existência de um terminal. Um registro autoritativo futuro deve passar pelos contratos de persistência, invariantes entre domínios, hash canônico e atos de construção/desativação, antes de alimentar a evidência de turno. Até lá, todo resultado é de **proveniência atestada pelo chamador**, para cenários somente hipotéticos.
+
+Na revisão adicional, o snapshot foi endurecido para rejeitar estado operacional contraditório de uma mesma instalação no mesmo turno, mesmo sob permissões tecnológicas diferentes. A autorização também rejeita explicitamente referências a trechos físicos ausentes **antes de precificar o frete**, em vez de lançar uma exceção incidental por busca de ID. Esses testes adversariais se somam aos do primeiro Gate D2.
+
 ## Fronteira de autoridade — crítica
 
 **O snapshot continua sendo fornecido pelo chamador.** Ele **NÃO** consulta o mundo autoritativo para comprovar que a instalação foi construída, nem verifica permissão política ou de propriedade. O chamador deve no futuro obter os registros de um catálogo/registro de construções e instalações autenticado pelo `WorldState`, condicionado à versão do estado. Este portão apenas impede que o mercado trate um recurso simbólico sem permissão operacional declarada como um transbordo naturalmente disponível.
@@ -25,8 +33,8 @@ Adicionadas verificações adversariais ao fixture de malha fina existente:
 - instalação inexistente, não operacional, no tile errado ou com ID físico divergente é recusada;
 - transição inversa, versão tecnológica diferente ou tecnologia não concedida são recusadas;
 - snapshot de turno diferente falha;
-- ID de instalação e recurso não podem representar duas instalações nem duplicar a mesma capacidade;
-- ausência de binding de tecnologia bloqueia o serviço **antes de chamar a função de preço**;
+- ID de instalação e recurso não podem representar duas instalações nem duplicar a mesma capacidade; tampouco a mesma instalação pode estar simultaneamente operacional e inoperante no snapshot;
+- ausência de binding de tecnologia ou referência a trecho não instalado bloqueia o serviço **antes de chamar a função de preço**;
 - trânsito na mesma tecnologia não cria terminal nem recurso de transbordo;
 - auditoria de hash confirma ausência de mutação do `WorldState`.
 
