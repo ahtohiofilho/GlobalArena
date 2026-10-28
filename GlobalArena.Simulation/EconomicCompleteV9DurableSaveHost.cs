@@ -16,8 +16,8 @@ namespace GlobalArena.Simulation;
 public sealed class EconomicCompleteV9DurableSaveHost : IDisposable
 {
     private static readonly byte[] Magic = Encoding.ASCII.GetBytes("GAFH0901");
-    private const uint HeadVersion = 1U;
-    private const int HeadBodyBytes = 200;
+    private const uint HeadVersion = 2U;
+    private const int HeadBodyBytes = 232;
     private const int HeadBytes = HeadBodyBytes + 32;
     private static readonly string ZeroDigest = new('0', 64);
 
@@ -179,7 +179,8 @@ public sealed class EconomicCompleteV9DurableSaveHost : IDisposable
             new EconomicCompleteV9JournalReplayVerifier().VerifyChain(
                 generatedWorld, archive,
                 new EconomicEcologicalTransitionJournalArchive(
-                    archive.DirectoryPath), trusted, head.Sequence);
+                    archive.DirectoryPath), trusted, head.Sequence,
+                head.JournalDigest);
 
             return new EconomicCompleteV9DurableSaveHost(
                 generatedWorld, archive, lease, checkpoint, head);
@@ -245,12 +246,15 @@ public sealed class EconomicCompleteV9DurableSaveHost : IDisposable
                 turnOrdinal, demand, holds);
             var recorded = new EconomicEcologicalTransitionJournalRecord(
                 turnOrdinal, _accepted.Sha256Hex,
-                proposed.ProposedNext.Sha256Hex, demand, holds);
+                proposed.ProposedNext.Sha256Hex, demand, holds, _head.JournalDigest);
+            var journalDigest = Convert.ToHexString(
+                SHA256.HashData(EconomicEcologicalTransitionJournalCodec.Encode(
+                    recorded)));
             var next = new Head(
                 proposed.ProposedNext.WorldHash, proposed.ProposedNext.Sha256Hex,
                 _head.Current, proposed.ProposedNext.NaturalCapital.LastAppliedTurn,
                 checked(_head.Sequence + 1UL), _head.Migrated,
-                _head.LegacyWorld, _head.LegacyEcology);
+                _head.LegacyWorld, _head.LegacyEcology, journalDigest);
 
             // Failures before head publication cannot advance the accepted
             // state. Orphaned complete bundles remain unaccepted.
@@ -284,7 +288,8 @@ public sealed class EconomicCompleteV9DurableSaveHost : IDisposable
         bool migrated, string legacyWorld, string legacyEcology) =>
         new(checkpoint.WorldHash, checkpoint.Sha256Hex, ZeroDigest,
             checkpoint.NaturalCapital.LastAppliedTurn, 0UL,
-            migrated, legacyWorld.ToUpperInvariant(), legacyEcology.ToUpperInvariant());
+            migrated, legacyWorld.ToUpperInvariant(),
+            legacyEcology.ToUpperInvariant(), ZeroDigest);
 
     private static FileStream Acquire(string root) =>
         new(Path.Combine(root, ".full-v9-writer.lock"),
@@ -311,6 +316,7 @@ public sealed class EconomicCompleteV9DurableSaveHost : IDisposable
             head.Migrated ? 8U : 0U);
         Convert.FromHexString(head.LegacyWorld).CopyTo(bytes, 136);
         Convert.FromHexString(head.LegacyEcology).CopyTo(bytes, 168);
+        Convert.FromHexString(head.JournalDigest).CopyTo(bytes, 200);
         SHA256.HashData(bytes.AsSpan(0, HeadBodyBytes))
             .CopyTo(bytes, HeadBodyBytes);
 
@@ -363,18 +369,22 @@ public sealed class EconomicCompleteV9DurableSaveHost : IDisposable
         var current = Convert.ToHexString(bytes.AsSpan(48, 32));
         var previous = Convert.ToHexString(bytes.AsSpan(80, 32));
         var sequence = BinaryPrimitives.ReadUInt64BigEndian(bytes.AsSpan(120, 8));
+        var journalDigest = Convert.ToHexString(bytes.AsSpan(200, 32));
         if (sequence == 0UL && previous != ZeroDigest ||
+            sequence == 0UL && journalDigest != ZeroDigest ||
             sequence > 0UL && previous == ZeroDigest ||
+            sequence > 0UL && journalDigest == ZeroDigest ||
             current == ZeroDigest)
             throw new InvalidDataException("Invalid complete-v9 head predecessor.");
         return new Head(new WorldStateHash(format,
             Convert.ToHexString(bytes.AsSpan(16, 32))), current, previous,
             BinaryPrimitives.ReadUInt64BigEndian(bytes.AsSpan(112, 8)),
-            sequence, migrationFlag == 1U, legacyWorld, legacyEcology);
+            sequence, migrationFlag == 1U, legacyWorld, legacyEcology,
+            journalDigest);
     }
 
     private readonly record struct Head(
         WorldStateHash WorldHash, string Current, string Previous,
         ulong Turn, ulong Sequence, bool Migrated,
-        string LegacyWorld, string LegacyEcology);
+        string LegacyWorld, string LegacyEcology, string JournalDigest);
 }
