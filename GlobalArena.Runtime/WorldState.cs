@@ -23,6 +23,8 @@ public sealed class WorldState
 
     public WarfareRuntimeState Warfare { get; }
 
+    public TransportFacilitiesRuntimeState TransportFacilities { get; }
+
     public static WorldState CreateInitial()
     {
         return new WorldState(
@@ -33,7 +35,8 @@ public sealed class WorldState
             BaselineDiplomacyRuntimeState.Empty,
             EconomyRuntimeState.Empty,
             PopulationRuntimeState.Uninitialized,
-            WarfareRuntimeState.Empty);
+            WarfareRuntimeState.Empty,
+            TransportFacilitiesRuntimeState.Empty);
     }
 
     public static WorldState CreateBound(
@@ -48,7 +51,8 @@ public sealed class WorldState
             BaselineDiplomacyRuntimeState.Empty,
             EconomyRuntimeState.Empty,
             PopulationRuntimeState.Uninitialized,
-            WarfareRuntimeState.Empty);
+            WarfareRuntimeState.Empty,
+            TransportFacilitiesRuntimeState.Empty);
     }
 
     public WorldState BindToWorld(
@@ -77,7 +81,8 @@ public sealed class WorldState
             Diplomacy,
             Economy,
             Population,
-            Warfare);
+            Warfare,
+            TransportFacilities);
     }
 
     public WorldState WithCivilizations(
@@ -94,7 +99,8 @@ public sealed class WorldState
             Diplomacy,
             Economy,
             Population,
-            Warfare);
+            Warfare,
+            TransportFacilities);
     }
 
     public WorldState WithTerritory(
@@ -111,7 +117,8 @@ public sealed class WorldState
             Diplomacy,
             Economy,
             Population,
-            Warfare);
+            Warfare,
+            TransportFacilities);
     }
 
     public WorldState WithDiplomacy(
@@ -128,7 +135,8 @@ public sealed class WorldState
             diplomacy,
             Economy,
             Population,
-            Warfare);
+            Warfare,
+            TransportFacilities);
     }
 
     public WorldState WithEconomy(
@@ -145,7 +153,8 @@ public sealed class WorldState
             Diplomacy,
             economy,
             Population,
-            Warfare);
+            Warfare,
+            TransportFacilities);
     }
 
     /// <summary>
@@ -165,7 +174,8 @@ public sealed class WorldState
             Diplomacy,
             Economy,
             population,
-            Warfare);
+            Warfare,
+            TransportFacilities);
     }
 
     /// <summary>
@@ -188,7 +198,8 @@ public sealed class WorldState
             Diplomacy,
             economy,
             population,
-            Warfare);
+            Warfare,
+            TransportFacilities);
     }
 
     private void RejectPopulationDowngrade(PopulationRuntimeState next)
@@ -201,8 +212,7 @@ public sealed class WorldState
     public WorldState WithWarfare(
         WarfareRuntimeState warfare)
     {
-        ArgumentNullException.ThrowIfNull(
-            warfare);
+        ArgumentNullException.ThrowIfNull(warfare);
 
         return new WorldState(
             Revision,
@@ -212,7 +222,22 @@ public sealed class WorldState
             Diplomacy,
             Economy,
             Population,
-            warfare);
+            warfare,
+            TransportFacilities);
+    }
+
+    /// <summary>
+    /// Replaces only the identity/status records of logistical facilities.
+    /// A construction command and permissioned lifecycle are NOT provided
+    /// by this setter. Nonempty facilities require a bound world snapshot.
+    /// </summary>
+    public WorldState WithTransportFacilities(
+        TransportFacilitiesRuntimeState facilities)
+    {
+        ArgumentNullException.ThrowIfNull(facilities);
+        return new WorldState(
+            Revision, WorldBinding, Civilizations, Territory,
+            Diplomacy, Economy, Population, Warfare, facilities);
     }
 
     public WorldState AdvanceRevision()
@@ -225,7 +250,8 @@ public sealed class WorldState
             Diplomacy,
             Economy,
             Population,
-            Warfare);
+            Warfare,
+            TransportFacilities);
     }
 
     private WorldState(
@@ -236,7 +262,8 @@ public sealed class WorldState
         BaselineDiplomacyRuntimeState diplomacy,
         EconomyRuntimeState economy,
         PopulationRuntimeState population,
-        WarfareRuntimeState warfare)
+        WarfareRuntimeState warfare,
+        TransportFacilitiesRuntimeState transportFacilities)
     {
         ArgumentNullException.ThrowIfNull(
             civilizations);
@@ -255,6 +282,7 @@ public sealed class WorldState
 
         ArgumentNullException.ThrowIfNull(
             warfare);
+        ArgumentNullException.ThrowIfNull(transportFacilities);
 
         ValidateCrossDomainInvariants(
             worldBinding,
@@ -263,7 +291,8 @@ public sealed class WorldState
             diplomacy,
             economy,
             population,
-            warfare);
+            warfare,
+            transportFacilities);
 
         Revision = revision;
         WorldBinding = worldBinding;
@@ -273,6 +302,7 @@ public sealed class WorldState
         Economy = economy;
         Population = population;
         Warfare = warfare;
+        TransportFacilities = transportFacilities;
     }
 
     private static void ValidateCrossDomainInvariants(
@@ -282,8 +312,13 @@ public sealed class WorldState
         BaselineDiplomacyRuntimeState diplomacy,
         EconomyRuntimeState economy,
         PopulationRuntimeState population,
-        WarfareRuntimeState warfare)
+        WarfareRuntimeState warfare,
+        TransportFacilitiesRuntimeState transportFacilities)
     {
+        if (worldBinding is null && transportFacilities.Facilities.Count != 0)
+            throw new InvalidOperationException(
+                "Physical facilities cannot exist in an unbound world.");
+
         var civilizationIds =
             civilizations
                 .Civilizations

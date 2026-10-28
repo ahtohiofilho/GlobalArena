@@ -76,7 +76,7 @@ public sealed class PopulationRuntimeStateV8Tests
         Assert.Single(state.Population.PointPopulations);
         Assert.Equal(20UL, state.Population.PointPopulations[0].Residents);
         Assert.Equal(5UL, state.Economy.EconomicPoints[0].Workforce);
-        Assert.Equal(8U, new CanonicalWorldStateHasher().Compute(state).FormatVersion);
+        Assert.Equal(9U, new CanonicalWorldStateHasher().Compute(state).FormatVersion);
     }
 
     [Fact]
@@ -359,7 +359,7 @@ public sealed class PopulationRuntimeStateV8Tests
     }
 
     [Fact]
-    public void KnownNonemptyPopulationHasStableV8CanonicalHash()
+    public void KnownNonemptyPopulationHasStableV9CanonicalHash()
     {
         var state = WorldState.CreateInitial()
             .WithCivilizations(new CivilizationRuntimeState(
@@ -385,8 +385,8 @@ public sealed class PopulationRuntimeStateV8Tests
                 }));
 
         Assert.Equal(
-            "E5F95A0DE100FF02ECC559943D903430" +
-            "56606326B3F8E18016B3196891120858",
+            "91FC6136B7C0F55F6BE8FC176E71F522" +
+            "5D24EFB11DAEB3F7A5E3CD37308A7783",
             new CanonicalWorldStateHasher().Compute(state).HexDigest);
     }
 
