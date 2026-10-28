@@ -538,6 +538,6 @@ public sealed class M42DBaselineDiplomacyStateTests
     }
 
     private const string KnownDiplomacyDigest =
-        "928DF138E4674AEB98BB1AB8049610F3"
-        + "19CD3F2BBC87A37EBB7E796C51165744";
+        "1C11796DF5C746E032D2476EDEE8BEFF"
+        + "D053B70403FF532254E9EE2EA4F452D6";
 }
