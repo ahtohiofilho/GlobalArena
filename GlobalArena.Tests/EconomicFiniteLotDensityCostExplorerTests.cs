@@ -1,16 +1,15 @@
 using System.Numerics;
 using GlobalArena.Simulation;
-using GlobalArena.World;
 
 namespace GlobalArena.Tests;
 
 public sealed class EconomicFiniteLotDensityCostExplorerTests
 {
-    private static readonly StrategicEdgeId Ad = new(11UL);
-    private static readonly StrategicEdgeId De = new(12UL);
-    private static readonly StrategicEdgeId Df = new(13UL);
-    private static readonly StrategicEdgeId TransferD = new(14UL);
-    private static readonly StrategicEdgeId DirectAe = new(15UL);
+    private static readonly EconomicPhysicalResourceId Ad = new(11UL);
+    private static readonly EconomicPhysicalResourceId De = new(12UL);
+    private static readonly EconomicPhysicalResourceId Df = new(13UL);
+    private static readonly EconomicPhysicalResourceId TransferD = new(14UL);
+    private static readonly EconomicPhysicalResourceId DirectAe = new(15UL);
 
     // GA-ECON-004B reference parameters, expressed in 0.001 raw cost
     // units and whole physical grams. Calibration is a test example,
@@ -24,7 +23,7 @@ public sealed class EconomicFiniteLotDensityCostExplorerTests
         new EconomicDensityResourceCostProfile(DirectAe, 160UL, 1_100UL, 250UL, 24UL)
     };
 
-    private static Dictionary<StrategicEdgeId, BigInteger> Loads(bool otherTradeToF = true) => new()
+    private static Dictionary<EconomicPhysicalResourceId, BigInteger> Loads(bool otherTradeToF = true) => new()
     {
         [Ad] = otherTradeToF ? 10_000_000 : 6_000_000,
         [De] = 6_000_000,
@@ -37,9 +36,9 @@ public sealed class EconomicFiniteLotDensityCostExplorerTests
         BigInteger lot,
         bool otherTradeToF = true,
         IEnumerable<EconomicDensityResourceCostProfile>? profiles = null,
-        IEnumerable<StrategicEdgeId>? from = null,
-        IEnumerable<StrategicEdgeId>? to = null,
-        IReadOnlyDictionary<StrategicEdgeId, BigInteger>? original = null) =>
+        IEnumerable<EconomicPhysicalResourceId>? from = null,
+        IEnumerable<EconomicPhysicalResourceId>? to = null,
+        IReadOnlyDictionary<EconomicPhysicalResourceId, BigInteger>? original = null) =>
         new EconomicFiniteLotDensityCostExplorer().Compare(
             original ?? Loads(otherTradeToF),
             profiles ?? Profiles(),
