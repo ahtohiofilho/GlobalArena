@@ -7,7 +7,7 @@ namespace GlobalArena.Simulation;
 public sealed class CanonicalWorldStateHasher
     : IWorldStateHasher
 {
-    public const uint FormatVersion = 8U;
+    public const uint FormatVersion = 9U;
 
     private static readonly byte[] Magic =
     {
@@ -227,7 +227,7 @@ public sealed class CanonicalWorldStateHasher
             }
         }
 
-        // Population is resident authoritative state in hash format v8.
+        // Population remains resident authoritative state in hash format v9.
         // The initialization bit differentiates an absent census from an
         // explicitly validated census containing zero residents/points.
         AppendUInt32(
@@ -276,6 +276,27 @@ public sealed class CanonicalWorldStateHasher
             AppendUInt64(
                 hash,
                 unit.StrategicCellId.Value);
+        }
+
+        // v9: transport facility identity, exact qualified fine tile,
+        // operational status, and complete ordered directed capabilities.
+        // Even an empty facility registry contributes an explicit section.
+        AppendUInt32(hash, 35U);
+        AppendUInt32(hash, checked((uint)worldState.TransportFacilities.Facilities.Count));
+        foreach (var facility in worldState.TransportFacilities.Facilities)
+        {
+            AppendUInt64(hash, facility.FacilityId);
+            AppendUInt32(hash, checked((uint)facility.Tile.FineGoldbergParameters.M));
+            AppendUInt32(hash, checked((uint)facility.Tile.FineGoldbergParameters.N));
+            AppendUInt64(hash, facility.Tile.FineStrategicCellId.Value);
+            AppendUInt32(hash, facility.IsOperational ? 1U : 0U);
+            AppendUInt32(hash, checked((uint)facility.Transfers.Count));
+            foreach (var transfer in facility.Transfers)
+            {
+                AppendUInt64(hash, transfer.FromTechnologyTypeId);
+                AppendUInt64(hash, transfer.ToTechnologyTypeId);
+                AppendUInt64(hash, transfer.TechnologyCatalogVersion);
+            }
         }
 
         var digest =
