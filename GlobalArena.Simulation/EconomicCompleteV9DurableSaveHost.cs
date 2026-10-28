@@ -24,6 +24,7 @@ public sealed class EconomicCompleteV9DurableSaveHost : IDisposable
     private readonly object _gate = new();
     private readonly WorldGenerationResult _generated;
     private readonly EconomicCompleteV9SaveBundleArchive _archive;
+    private readonly EconomicEcologicalTransitionJournalArchive _journal;
     private readonly FileStream _lease;
     private readonly EconomicEcologicalTurnCommitResolver _turns = new();
     private EconomicEcologicalCheckpoint _accepted;
@@ -36,6 +37,7 @@ public sealed class EconomicCompleteV9DurableSaveHost : IDisposable
     {
         _generated = generated;
         _archive = archive;
+        _journal = new EconomicEcologicalTransitionJournalArchive(archive.DirectoryPath);
         _lease = lease;
         _accepted = accepted;
         _head = head;
@@ -164,9 +166,6 @@ public sealed class EconomicCompleteV9DurableSaveHost : IDisposable
                     "Complete v9 bundle differs from the durable head.");
             if (head.Sequence > 0UL)
             {
-                // Confirm that the immediately preceding published complete
-                // bundle is still present and belongs to the same world. A
-                // record of user commands is needed to prove its transition.
                 var previous = archive.Load(generatedWorld, head.Previous);
                 if (previous.NaturalCapital.LastAppliedTurn == ulong.MaxValue ||
                     previous.NaturalCapital.LastAppliedTurn + 1UL != head.Turn ||
@@ -174,6 +173,13 @@ public sealed class EconomicCompleteV9DurableSaveHost : IDisposable
                     throw new InvalidDataException(
                         "Complete-save predecessor is missing or inconsistent.");
             }
+
+            // The externally trusted head is checked before verifying
+            // the complete immutable input/output journal chain.
+            new EconomicCompleteV9JournalReplayVerifier().VerifyChain(
+                generatedWorld, archive,
+                new EconomicEcologicalTransitionJournalArchive(
+                    archive.DirectoryPath), trusted, head.Sequence);
 
             return new EconomicCompleteV9DurableSaveHost(
                 generatedWorld, archive, lease, checkpoint, head);
@@ -228,9 +234,18 @@ public sealed class EconomicCompleteV9DurableSaveHost : IDisposable
             if (actual != _head)
                 throw new InvalidOperationException(
                     "Durable complete-save head was changed externally.");
+            // Snapshot the exact inputs once: no mutable/re-enumerated
+            // orders can diverge from the data written to the replay journal.
+            ArgumentNullException.ThrowIfNull(workerDemand);
+            ArgumentNullException.ThrowIfNull(originHolds);
+            var demand = workerDemand.ToArray();
+            var holds = originHolds.ToArray();
             var proposed = _turns.Propose(
                 _generated, _accepted, expectedAcceptedDigest,
-                turnOrdinal, workerDemand, originHolds);
+                turnOrdinal, demand, holds);
+            var recorded = new EconomicEcologicalTransitionJournalRecord(
+                turnOrdinal, _accepted.Sha256Hex,
+                proposed.ProposedNext.Sha256Hex, demand, holds);
             var next = new Head(
                 proposed.ProposedNext.WorldHash, proposed.ProposedNext.Sha256Hex,
                 _head.Current, proposed.ProposedNext.NaturalCapital.LastAppliedTurn,
@@ -240,6 +255,7 @@ public sealed class EconomicCompleteV9DurableSaveHost : IDisposable
             // Failures before head publication cannot advance the accepted
             // state. Orphaned complete bundles remain unaccepted.
             _archive.Store(proposed.ProposedNext);
+            _journal.Store(recorded);
             WriteHead(path, next, overwrite: true);
             _accepted = proposed.ProposedNext;
             _head = next;
