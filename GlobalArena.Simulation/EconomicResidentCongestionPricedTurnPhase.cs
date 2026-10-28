@@ -22,6 +22,7 @@ public sealed class EconomicResidentCongestionPricedTurnPhase : ITurnResolutionP
     private readonly EconomicCongestionMarketSearchPolicy _policy;
     private readonly StrategicCongestionRoutingMode _routingMode;
     private readonly EconomicCongestionPricedFoodMarketResolver _marketResolver = new();
+    private readonly EconomicCongestionCandidateAuditor _candidateAuditor = new();
 
     public string PhaseId => EconomicProductionDemandTurnPhase.StablePhaseId;
 
@@ -79,6 +80,9 @@ public sealed class EconomicResidentCongestionPricedTurnPhase : ITurnResolutionP
         var market = _marketResolver.Resolve(
             _generatedWorld, stagedState, _edgeAccess,
             flow.Flows, _bids, _offers, _catalog, _profiles, _policy, _routingMode);
+        // ECON-005: independently reconcile physical goods and shared-resource
+        // cost BEFORE exposing the transient market result as a turn event.
+        _candidateAuditor.Audit(flow.Flows, _catalog, _profiles, market);
         var marketEvent = new EconomicCongestionPricedMarketResolvedEvent(
             EventId.ForSystemPhase(
                 planningInput.Context.Turn, PhaseId, ordinal: 2UL), market);
