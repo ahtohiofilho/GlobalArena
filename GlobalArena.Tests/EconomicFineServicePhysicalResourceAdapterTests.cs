@@ -398,6 +398,34 @@ public sealed class EconomicFineServicePhysicalResourceAdapterTests
     }
 
     [Fact]
+    public void FacilityCannotBeSimultaneouslyOperationalAndClosedInOneSnapshot()
+    {
+        var f = new Fixture(technologyChange: true);
+        Assert.Throws<ArgumentException>(() =>
+            new EconomicFineTransferFacilityAuthorizationSnapshot(
+                1UL, new[]
+                {
+                    Facility(f, operational: true),
+                    Facility(f, operational: false,
+                        fromTechnology: 20UL, toTechnology: 10UL)
+                }));
+    }
+
+    [Fact]
+    public void MissingBuiltAssetReferenceIsRejectedBeforeFreightPricing()
+    {
+        var f = new Fixture(technologyChange: true);
+        var counter = new CountedFreight();
+        var forged = new EconomicTransportServiceOffer(
+            50UL, new StrategicEconomicRouteKey(A, E),
+            new[] { 10UL, 999UL }, new[] { 0 },
+            BigInteger.Zero, counter);
+        Assert.Throws<ArgumentException>(() =>
+            Authorized(f, offers: new[] { forged }));
+        Assert.Equal(0, counter.Calls);
+    }
+
+    [Fact]
     public void MissingFacilityBindingRejectsBeforeAnyCommercialQuoteIsEvaluated()
     {
         var f = new Fixture(technologyChange: true);
