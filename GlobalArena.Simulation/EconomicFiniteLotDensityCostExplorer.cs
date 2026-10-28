@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using System.Numerics;
-using GlobalArena.World;
 
 namespace GlobalArena.Simulation;
 
@@ -18,14 +17,14 @@ public sealed class EconomicDensityResourceCostProfile
     private static readonly BigInteger Milli = 1_000;
     private static readonly BigInteger SquareRootPrecision = 1_000_000_000_000;
 
-    public StrategicEdgeId ResourceId { get; }
+    public EconomicPhysicalResourceId ResourceId { get; }
     public ulong LinearMilliCostPerGram { get; }
     public ulong DensityMilliCostPerSqrtGram { get; }
     public ulong CongestionMilliCostPerGram { get; }
     public ulong CharacteristicGramsPerEconomicCycle { get; }
 
     public EconomicDensityResourceCostProfile(
-        StrategicEdgeId resourceId,
+        EconomicPhysicalResourceId resourceId,
         ulong linearMilliCostPerGram,
         ulong densityMilliCostPerSqrtGram,
         ulong congestionMilliCostPerGram,
@@ -150,10 +149,10 @@ public enum EconomicDensityCostDeltaClassification
 public sealed class EconomicFiniteLotDensityCostExplorer
 {
     public EconomicFiniteLotDensityCostComparison Compare(
-        IReadOnlyDictionary<StrategicEdgeId, BigInteger> currentLoadsMicrograms,
+        IReadOnlyDictionary<EconomicPhysicalResourceId, BigInteger> currentLoadsMicrograms,
         IEnumerable<EconomicDensityResourceCostProfile> profiles,
-        IEnumerable<StrategicEdgeId> previousPath,
-        IEnumerable<StrategicEdgeId> proposedPath,
+        IEnumerable<EconomicPhysicalResourceId> previousPath,
+        IEnumerable<EconomicPhysicalResourceId> proposedPath,
         BigInteger lotMicrograms)
     {
         ArgumentNullException.ThrowIfNull(currentLoadsMicrograms);
@@ -163,12 +162,12 @@ public sealed class EconomicFiniteLotDensityCostExplorer
         if (lotMicrograms.Sign <= 0)
             throw new ArgumentOutOfRangeException(nameof(lotMicrograms));
 
-        var byResource = new Dictionary<StrategicEdgeId, EconomicDensityResourceCostProfile>();
+        var byResource = new Dictionary<EconomicPhysicalResourceId, EconomicDensityResourceCostProfile>();
         foreach (var profile in profiles)
             if (profile is null || !byResource.TryAdd(profile.ResourceId, profile))
                 throw new ArgumentException("Null or duplicate resource profile.", nameof(profiles));
 
-        var original = new Dictionary<StrategicEdgeId, BigInteger>();
+        var original = new Dictionary<EconomicPhysicalResourceId, BigInteger>();
         foreach (var pair in currentLoadsMicrograms)
         {
             if (!pair.Key.IsValid || pair.Value.Sign < 0)
@@ -180,7 +179,7 @@ public sealed class EconomicFiniteLotDensityCostExplorer
             original.Add(pair.Key, pair.Value);
         }
 
-        StrategicEdgeId[] ValidatePath(IEnumerable<StrategicEdgeId> path)
+        EconomicPhysicalResourceId[] ValidatePath(IEnumerable<EconomicPhysicalResourceId> path)
         {
             var sequence = path.ToArray();
             if (sequence.Any(id => !id.IsValid || !byResource.ContainsKey(id)) ||
@@ -195,7 +194,7 @@ public sealed class EconomicFiniteLotDensityCostExplorer
             if (original.GetValueOrDefault(edge) < lotMicrograms)
                 throw new InvalidOperationException("Original path cannot release the proposed physical batch.");
 
-        var hypothetical = new Dictionary<StrategicEdgeId, BigInteger>(original);
+        var hypothetical = new Dictionary<EconomicPhysicalResourceId, BigInteger>(original);
         foreach (var edge in from)
             hypothetical[edge] = hypothetical.GetValueOrDefault(edge) - lotMicrograms;
         foreach (var edge in to)
@@ -220,7 +219,7 @@ public sealed class EconomicFiniteLotDensityCostExplorer
 
         return new EconomicFiniteLotDensityCostComparison(
             lower.N, lower.D, upper.N, upper.D,
-            new ReadOnlyDictionary<StrategicEdgeId, BigInteger>(
+            new ReadOnlyDictionary<EconomicPhysicalResourceId, BigInteger>(
                 hypothetical.OrderBy(row => row.Key.Value)
                     .ToDictionary(row => row.Key, row => row.Value)));
     }
@@ -249,7 +248,7 @@ public sealed class EconomicFiniteLotDensityCostComparison
     public BigInteger CostDeltaLowerDenominator { get; }
     public BigInteger SignedCostDeltaUpperNumerator { get; }
     public BigInteger CostDeltaUpperDenominator { get; }
-    public IReadOnlyDictionary<StrategicEdgeId, BigInteger> HypotheticalLoadsMicrograms { get; }
+    public IReadOnlyDictionary<EconomicPhysicalResourceId, BigInteger> HypotheticalLoadsMicrograms { get; }
 
     public EconomicDensityCostDeltaClassification CostSign =>
         SignedCostDeltaUpperNumerator.Sign < 0
@@ -261,7 +260,7 @@ public sealed class EconomicFiniteLotDensityCostComparison
     internal EconomicFiniteLotDensityCostComparison(
         BigInteger lowerNumerator, BigInteger lowerDenominator,
         BigInteger upperNumerator, BigInteger upperDenominator,
-        IReadOnlyDictionary<StrategicEdgeId, BigInteger> hypotheticalLoadsMicrograms)
+        IReadOnlyDictionary<EconomicPhysicalResourceId, BigInteger> hypotheticalLoadsMicrograms)
     {
         SignedCostDeltaLowerNumerator = lowerNumerator;
         CostDeltaLowerDenominator = lowerDenominator;
