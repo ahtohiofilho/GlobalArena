@@ -42,7 +42,6 @@ public sealed class EconomicV8ToV9WorldSnapshotMigrator
     {
         ArgumentNullException.ThrowIfNull(generatedWorld);
         ArgumentNullException.ThrowIfNull(serializedV8World);
-        ArgumentNullException.ThrowIfNull(independentlyAcceptedV8Hash);
 
         if (independentlyAcceptedV8Hash.FormatVersion !=
             LegacyWorldStateV8Hasher.FormatVersion)
