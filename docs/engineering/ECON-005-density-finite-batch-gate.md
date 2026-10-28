@@ -14,6 +14,10 @@ C(q) = a*q + 2*b*sqrt(q) + c*q^3/(3*K^2), q >= 0
 
 `C(0)=0`. For positive `b`, the right derivative diverges at zero. Do **not** use an infinitesimal price at zero to exclude an initially empty route. Compare finite, coherent load changes.
 
+## Identidade de recurso físico (revisão de integração)
+
+Os perfis de custo usam agora `EconomicPhysicalResourceId`, um identificador próprio de recurso físico compartilhado, **sem conversão implícita para `StrategicEdgeId`**. No exemplo, `Ad`, `De`, `Df` e `TransferD` são recursos econômicos distintos; o último pode representar uma instalação/interface de transferência sem fingir que existe uma aresta geográfica adicional. A ID não decide tecnologia, tipo de transporte, capacidade, propriedade ou direção. O mapeamento entre grafo multimodal, ativos instalados, serviços permitidos e recursos consumidos permanece um contrato futuro de integração **obrigatório antes de liquidar transações**. O teste sintético fornece explicitamente as incidências.
+
 ## Cross-platform exactness and numerical certificate
 
 The only nonrational expression is `sqrt(q)`. For integer microgram load `L`, let `q=L/1,000,000` and `P=10^12`:
