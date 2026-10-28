@@ -224,6 +224,26 @@ public sealed class EconomicCompleteV9DurableSaveHost : IDisposable
     public EconomicEcologicalTurnCommitResult CommitNext(
         string expectedAcceptedDigest, ulong turnOrdinal,
         IEnumerable<EconomicDemandProfile> workerDemand,
+        IEnumerable<EconomicMaterialOriginHoldOrder> originHolds) =>
+        CommitInternal(expectedAcceptedDigest, null,
+            turnOrdinal, workerDemand, originHolds);
+
+    /// <summary>
+    /// Rejects a divergence between the audited phase proposal and the
+    /// independently recalculated durable transition BEFORE publishing
+    /// the complete bundle, journal or head.
+    /// </summary>
+    public EconomicEcologicalTurnCommitResult CommitProjected(
+        string expectedAcceptedDigest, string expectedProposedDigest,
+        ulong turnOrdinal, IEnumerable<EconomicDemandProfile> workerDemand,
+        IEnumerable<EconomicMaterialOriginHoldOrder> originHolds) =>
+        CommitInternal(expectedAcceptedDigest,
+            EconomicEcologicalSidecarArchive.NormalizeDigest(expectedProposedDigest),
+            turnOrdinal, workerDemand, originHolds);
+
+    private EconomicEcologicalTurnCommitResult CommitInternal(
+        string expectedAcceptedDigest, string? expectedProposedDigest,
+        ulong turnOrdinal, IEnumerable<EconomicDemandProfile> workerDemand,
         IEnumerable<EconomicMaterialOriginHoldOrder> originHolds)
     {
         lock (_gate)
@@ -244,6 +264,10 @@ public sealed class EconomicCompleteV9DurableSaveHost : IDisposable
             var proposed = _turns.Propose(
                 _generated, _accepted, expectedAcceptedDigest,
                 turnOrdinal, demand, holds);
+            if (expectedProposedDigest is not null &&
+                proposed.ProposedNext.Sha256Hex != expectedProposedDigest)
+                throw new InvalidOperationException(
+                    "Audited turn proposal differs from durable ecological calculation.");
             var recorded = new EconomicEcologicalTransitionJournalRecord(
                 turnOrdinal, _accepted.Sha256Hex,
                 proposed.ProposedNext.Sha256Hex, demand, holds, _head.JournalDigest);
