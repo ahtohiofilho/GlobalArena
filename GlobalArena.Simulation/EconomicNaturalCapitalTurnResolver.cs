@@ -169,7 +169,8 @@ public sealed class EconomicNaturalCapitalTurnResolver
             var afterWood = state.RawStandingWood - wood;
             var afterStone = state.RawSurfaceStone - stone;
             var soilWear = (UInt128)food * (ulong)policy.RawSoilWearPerFoodUnit / d;
-            var wear = (long)UInt128.Min(soilWear, (UInt128)state.RawSoilVitality);
+            var wear = soilWear >= (UInt128)state.RawSoilVitality
+                ? state.RawSoilVitality : checked((long)soilWear);
             var soilAfter = state.RawSoilVitality - wear;
 
             var woodGap = state.RawWoodCarryingCapacity - afterWood;
