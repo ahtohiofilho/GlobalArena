@@ -44,11 +44,12 @@ public sealed class EconomicTradeAllocation
         }
 
         if (sourceActivity != EconomicActivityKind.Agriculture
-            && sourceActivity != EconomicActivityKind.Mining)
+            && sourceActivity != EconomicActivityKind.Mining
+            && sourceActivity != EconomicActivityKind.Forestry)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(sourceActivity),
-                "Trade allocation source activity must be Agriculture or Mining.");
+                "Trade allocation source activity must be Agriculture, Mining or Forestry.");
         }
 
         if (!destinationEconomicPointId.IsValid)

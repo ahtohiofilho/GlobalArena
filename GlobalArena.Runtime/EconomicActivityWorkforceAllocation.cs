@@ -16,7 +16,7 @@ public sealed class EconomicActivityWorkforceAllocation
         {
             throw new ArgumentOutOfRangeException(
                 nameof(kind),
-                "Economic activity kind must be Agriculture, Mining or TradeLogistics.");
+                "Economic activity kind must be Agriculture, Mining, Forestry or TradeLogistics.");
         }
 
         if (workforce == 0UL)

@@ -23,7 +23,8 @@ public sealed class EconomicTurnSourceReservation
         if (!economicPointId.IsValid || !commodityId.IsValid)
             throw new ArgumentException("Reservation requires valid producer and commodity.");
         if (activity != EconomicActivityKind.Agriculture &&
-            activity != EconomicActivityKind.Mining)
+            activity != EconomicActivityKind.Mining &&
+            activity != EconomicActivityKind.Forestry)
             throw new ArgumentOutOfRangeException(nameof(activity));
         EconomicPointId = economicPointId;
         CommodityId = commodityId;
