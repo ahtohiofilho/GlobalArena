@@ -59,6 +59,14 @@ public sealed class EconomicFiniteLotCostExplorer
 
         var from = ValidatePath(currentPath, profileTable);
         var to = ValidatePath(proposedPath, profileTable);
+        // This contract reassigns a EXISTING finite load from one explicitly
+        // traversed physical path to another. Empty paths would silently
+        // create or remove resource throughput without routing provenance.
+        // An intra-point transfer without transport must use a different
+        // contract that explicitly models its source/destination.
+        if (from.Length == 0 || to.Length == 0)
+            throw new ArgumentException(
+                "Finite-lot path reassignment requires nonempty physical source and destination paths.");
         var touched = from.Concat(to).Distinct().OrderBy(edge => edge.Value).ToArray();
 
         // This caller-supplied path is a hypothetical LOAD DECOMPOSITION,
