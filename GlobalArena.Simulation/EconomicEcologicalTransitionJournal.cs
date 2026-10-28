@@ -16,6 +16,7 @@ public sealed class EconomicEcologicalTransitionJournalRecord
     public ulong TurnOrdinal { get; }
     public string PreviousCheckpointSha256Hex { get; }
     public string ResultCheckpointSha256Hex { get; }
+    public string PreviousJournalSha256Hex { get; }
     public IReadOnlyList<EconomicDemandProfile> WorkerDemand { get; }
     public IReadOnlyList<EconomicMaterialOriginHoldOrder> OriginHolds { get; }
 
@@ -23,7 +24,8 @@ public sealed class EconomicEcologicalTransitionJournalRecord
         ulong turnOrdinal, string previousCheckpointSha256Hex,
         string resultCheckpointSha256Hex,
         IEnumerable<EconomicDemandProfile> workerDemand,
-        IEnumerable<EconomicMaterialOriginHoldOrder> originHolds)
+        IEnumerable<EconomicMaterialOriginHoldOrder> originHolds,
+        string? previousJournalSha256Hex = null)
     {
         if (turnOrdinal == 0UL)
             throw new ArgumentOutOfRangeException(nameof(turnOrdinal));
@@ -44,6 +46,9 @@ public sealed class EconomicEcologicalTransitionJournalRecord
         TurnOrdinal = turnOrdinal;
         PreviousCheckpointSha256Hex = previous;
         ResultCheckpointSha256Hex = result;
+        PreviousJournalSha256Hex = previousJournalSha256Hex is null
+            ? new string('0', 64)
+            : EconomicEcologicalSidecarArchive.NormalizeDigest(previousJournalSha256Hex);
         WorkerDemand = Array.AsReadOnly(demand);
         OriginHolds = Array.AsReadOnly(holds);
     }
@@ -68,6 +73,7 @@ public static class EconomicEcologicalTransitionJournalCodec
         WriteU64(stream, record.TurnOrdinal);
         stream.Write(Convert.FromHexString(record.PreviousCheckpointSha256Hex));
         stream.Write(Convert.FromHexString(record.ResultCheckpointSha256Hex));
+        stream.Write(Convert.FromHexString(record.PreviousJournalSha256Hex));
 
         WriteU32(stream, checked((uint)record.WorkerDemand.Count));
         foreach (var demand in record.WorkerDemand)
@@ -93,7 +99,7 @@ public static class EconomicEcologicalTransitionJournalCodec
     public static EconomicEcologicalTransitionJournalRecord Decode(byte[] encoded)
     {
         ArgumentNullException.ThrowIfNull(encoded);
-        if (encoded.Length < 8 + 4 + 8 + 32 + 32 + 4 + 4 + 32)
+        if (encoded.Length < 8 + 4 + 8 + 32 + 32 + 32 + 4 + 4 + 32)
             throw new InvalidDataException("Ecological journal is truncated.");
 
         var end = encoded.Length - 32;
@@ -110,6 +116,7 @@ public static class EconomicEcologicalTransitionJournalCodec
         var turn = reader.U64();
         var prior = Convert.ToHexString(reader.Bytes(32));
         var result = Convert.ToHexString(reader.Bytes(32));
+        var priorJournal = Convert.ToHexString(reader.Bytes(32));
 
         var count = reader.Count(20);
         var demand = new EconomicDemandProfile[count];
@@ -128,7 +135,7 @@ public static class EconomicEcologicalTransitionJournalCodec
         reader.RequireEnd();
 
         var record = new EconomicEcologicalTransitionJournalRecord(
-            turn, prior, result, demand, holds);
+            turn, prior, result, demand, holds, priorJournal);
         if (!CryptographicOperations.FixedTimeEquals(
             Encode(record), encoded))
             throw new InvalidDataException("Ecological journal is not canonical.");
