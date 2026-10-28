@@ -40,3 +40,9 @@ Os diffs listados pelo GitHub são **disjuntos entre #38 e #39–#47**, inclusiv
 - Em eventual integração autorizada, aplicar #40, #41, #42, #43, #44, #45, #46 e #47 nessa ordem, atualizando bases das PRs empilhadas após merges de seus pais para não misturar commits.
 - Exigir revisão humana dos limites D1, E2/E3 e F0 antes de acoplar qualquer resultado experimental às regras de execução.
 - **Nenhuma ação de merge da `main` é efetuada neste gate.** O documento registra prontidão técnica, riscos e ações necessárias, sem substituição de testes ou decisão do mantenedor.
+
+## Revisão incremental do Gate B — fail closed em lotes sem caminho
+
+No checkpoint de consolidação foi identificado que o comparador `EconomicFiniteLotCostExplorer` de #39 aceitava, antes, caminho físico de origem ou destino vazio enquanto projetava um lote positivo. Embora o comparador não seja um roteador e não ateste posse, sua semântica é de **realocação de lote já transportado** e, por isso, exige ambos os caminhos não vazios. #39 recebeu uma guarda explícita e dois testes adversariais (um para rejeitar as três combinações de caminho vazio, outro para preservar o custo exato em um trajeto idêntico). A alteração foi propagada por merges não destrutivos de #40 a #47. Os diffs de PR foram verificados individualmente e seguem isolados.
+
+Esta prova de integração retesta a união do head atualizado de #47 com #38, sem selecionar novo mercado, executar transporte ou mudar `main`. Não confundir ausência de travessia com criação de massa: operações intraponto, se necessárias, exigirão um contrato próprio com proveniência da mercadoria.
