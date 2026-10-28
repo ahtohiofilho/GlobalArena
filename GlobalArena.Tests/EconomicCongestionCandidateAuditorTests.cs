@@ -128,7 +128,7 @@ public sealed class EconomicCongestionCandidateAuditorTests
     }
 
     [Fact]
-    public void RejectsAnUnfundedFirstTrancheHiddenByLaterFullCost()
+    public void RejectsAnUnchargedFirstTrancheHiddenByLaterFullCost()
     {
         var profile = Profile();
         var total = profile.EvaluateTotalCost(new BigInteger(11_000));
