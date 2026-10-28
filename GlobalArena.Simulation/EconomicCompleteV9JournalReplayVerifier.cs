@@ -18,7 +18,8 @@ public sealed class EconomicCompleteV9JournalReplayVerifier
         WorldGenerationResult generatedWorld,
         EconomicCompleteV9SaveBundleArchive bundles,
         EconomicEcologicalTransitionJournalArchive journal,
-        string acceptedCheckpointSha256Hex, ulong commitSequence)
+        string acceptedCheckpointSha256Hex, ulong commitSequence,
+        string expectedLatestJournalSha256Hex)
     {
         ArgumentNullException.ThrowIfNull(generatedWorld);
         ArgumentNullException.ThrowIfNull(bundles);
@@ -26,10 +27,22 @@ public sealed class EconomicCompleteV9JournalReplayVerifier
         var digest = EconomicEcologicalSidecarArchive.NormalizeDigest(
             acceptedCheckpointSha256Hex);
         var current = bundles.Load(generatedWorld, digest);
+        var expectedJournal = EconomicEcologicalSidecarArchive.NormalizeDigest(
+            expectedLatestJournalSha256Hex);
+        var zero = new string('0', 64);
+        if ((commitSequence == 0UL) != (expectedJournal == zero))
+            throw new InvalidDataException("Journal head and sequence disagree.");
 
         for (var remaining = commitSequence; remaining > 0UL; remaining--)
         {
             var step = journal.Load(current.Sha256Hex);
+            var actualJournal = Convert.ToHexString(
+                SHA256.HashData(EconomicEcologicalTransitionJournalCodec.Encode(
+                    step)));
+            if (actualJournal != expectedJournal)
+                throw new InvalidDataException(
+                    "Ecological input journal differs from the head-anchored hash chain.");
+            expectedJournal = step.PreviousJournalSha256Hex;
             if (step.ResultCheckpointSha256Hex != current.Sha256Hex ||
                 step.TurnOrdinal != current.NaturalCapital.LastAppliedTurn)
                 throw new InvalidDataException(
@@ -56,6 +69,10 @@ public sealed class EconomicCompleteV9JournalReplayVerifier
 
             current = previous;
         }
+
+        if (expectedJournal != zero)
+            throw new InvalidDataException(
+                "Ecological journal chain did not reach its genesis anchor.");
 
         // The final predecessor is the sequence-zero checkpoint, not
         // necessarily turn zero after an authenticated v8 migration.
