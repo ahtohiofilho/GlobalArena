@@ -109,7 +109,8 @@ public sealed class G3ENaturalEndowmentWorkerEconomyTests
         var generated = Generate();
         var e = StrategicPrimitiveNaturalEndowmentFieldSet.Derive(generated);
         var graph = generated.StrategicSurfaceGraph;
-        var land = FirstLand(generated);
+        var land = FirstLand(generated, id =>
+            generated.StrategicBiomes.GetKind(id) != StrategicBiomeKind.PolarIce);
         var i = graph.GetNodeIndex(land);
 
         // Smoothed stone cannot exceed the normalized scale. Soil and
