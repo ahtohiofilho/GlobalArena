@@ -19,7 +19,7 @@ Substituir, no cenário básico, a entrada manual de produtividade por um cálcu
 
 ## Fórmulas de referência (ponto fixo)
 
-Seja `D=1_000_000`:
+Seja `D=1_000_000`. Como o gerador aceita elevações no intervalo `[-D,+D]`, a diferença local de elevação pode estar em `[0,2D]`. Para uso nas fórmulas, `relief = floor(raw_relief / 2)` normaliza essa diferença para `[0,D]`.
 
 - `agriculture = floor(water * (D - abs(temperature)) * (D - relief) / D²)`
 - `wood = moisture` somente em `Forest/Rainforest`; zero nas demais classes
