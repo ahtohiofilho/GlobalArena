@@ -59,14 +59,27 @@ public sealed class EconomicCongestionCandidateAuditor
             if (!catalog.TryGet(selection.CommodityId, out var food) || food is null)
                 throw new InvalidOperationException("Candidate uses an unknown physical commodity mass.");
             var micrograms = quantity * food.GramsPerFlowUnit;
+            // Recompute each tranche's exact charge from the resource loads
+            // BEFORE this decision, not merely the grand total at the end.
+            // Matching aggregate cost is insufficient: a shifted charge can
+            // make an individual transaction look artificially profitable.
+            var expectedIncrement = Zero();
             foreach (var edge in selection.RoutedEdgePath)
             {
-                if (!declaredProfiles.ContainsKey(edge))
+                if (!declaredProfiles.TryGetValue(edge, out var profile))
                     throw new InvalidOperationException("Candidate uses an edge with no declared real-cost profile.");
-                recomputedLoads[edge] =
-                    recomputedLoads.GetValueOrDefault(edge, BigInteger.Zero) + micrograms;
+
+                var previousLoad = recomputedLoads.GetValueOrDefault(edge, BigInteger.Zero);
+                var nextLoad = previousLoad + micrograms;
+                var beforeCost = profile.EvaluateTotalCost(previousLoad);
+                var afterCost = profile.EvaluateTotalCost(nextLoad);
+                expectedIncrement = Add(expectedIncrement, SubtractNonnegative(afterCost, beforeCost));
+                recomputedLoads[edge] = nextLoad;
             }
-            sumIncrementalCost = Add(sumIncrementalCost, selection.RawAdditionalCongestionCost);
+            if (selection.RawAdditionalCongestionCost.CompareTo(expectedIncrement) != 0)
+                throw new InvalidOperationException(
+                    "Individual tranche reports an incorrect shared-resource cost increment.");
+            sumIncrementalCost = Add(sumIncrementalCost, expectedIncrement);
         }
 
         if (candidate.FinalCongestion.UsedEdges.Count != recomputedLoads.Count)
@@ -102,4 +115,10 @@ public sealed class EconomicCongestionCandidateAuditor
         FoodTransportCostFraction a, FoodTransportCostFraction b) =>
         new(a.Numerator * b.Denominator + b.Numerator * a.Denominator,
             a.Denominator * b.Denominator);
+
+    private static FoodTransportCostFraction SubtractNonnegative(
+        FoodTransportCostFraction later, FoodTransportCostFraction earlier) =>
+        new(later.Numerator * earlier.Denominator -
+                earlier.Numerator * later.Denominator,
+            later.Denominator * earlier.Denominator);
 }
