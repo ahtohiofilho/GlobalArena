@@ -51,6 +51,45 @@ public sealed class EconomicFoodPreferenceAndSingleOriginClearingTests
     }
 
     [Fact]
+    public void ReproducesIndependentEcon004cThreeCityPreferenceOracle()
+    {
+        // Independent GA-ECON-004C open/high-support Python benchmark.
+        // These fixed values are a regression oracle for the PREFERENCE
+        // evaluator only, not proof of a C# market equilibrium.
+        var populations = new[] { 10.0, 12.0, 9.0 };
+        var residuals = new[]
+        {
+            23.397242857159487, 28.157879425966712, 21.017301971979684
+        };
+        var quantities = new[]
+        {
+            new[] { 7.295076060822664, 2.6194115830809643, 2.5391107019821395 },
+            new[] { 2.6847101694844815, 10.054269574636058, 2.47039006894024 },
+            new[] { 2.5202137696928553, 2.3263188422829786, 6.240499229077621 }
+        };
+        var expectedUtility = new[]
+        {
+            7.749867708218602, 9.406966505695134, 6.814240732861318
+        };
+        var expectedWtp = new[]
+        {
+            new[] { 2.018602278324748, 2.3701177934660196, 2.3900438762685563 },
+            new[] { 2.44352296624117, 1.945197105549598, 2.511519787990762 },
+            new[] { 2.353917752774, 2.401988491721055, 2.054728401819305 }
+        };
+
+        for (var i = 0; i < populations.Length; i++)
+        {
+            var result = Preference.Evaluate(
+                populations[i], residuals[i], quantities[i], Canonical);
+            Assert.InRange(Math.Abs(result.Utility - expectedUtility[i]), 0, 2e-11);
+            for (var j = 0; j < quantities[i].Length; j++)
+                Assert.InRange(Math.Abs(result.MarginalWillingnessToPay[j] -
+                    expectedWtp[i][j]), 0, 2e-11);
+        }
+    }
+
+    [Fact]
     public void MonovarietyDoesNotDependOnUnusedDiversityCoefficients()
     {
         var baseline = Preference.Evaluate(10, 18, new[] { 6.0 }, Canonical);
