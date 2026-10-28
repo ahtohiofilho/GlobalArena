@@ -326,4 +326,36 @@ public sealed class G3HEconomicEcologicalSidecarPersistenceTests
         Assert.Equal(0UL, host.LastAppliedTurn);
     }
 
+    [Fact]
+    public void RecomputedChecksumDoesNotAuthorizeChangedNaturalCapital()
+    {
+        var generated = Generate();
+        var world = World(generated);
+        var snapshot = Initial(generated, world);
+        var bytes = EconomicEcologicalSidecarCodec.Encode(snapshot);
+
+        // Find a cell with nonzero soil and change only its encoded soil
+        // vitality, then recompute the outer corruption checksum. The inner
+        // semantic commitment must still detect this unauthorized edit.
+        var index = snapshot.NaturalCapital.Cells.ToList().FindIndex(
+            x => x.RawSoilVitality > 0L);
+        Assert.True(index >= 0);
+        const int naturalRowsOffset = 148;
+        const int naturalRowBytes = 40;
+        const int soilOffsetInRow = 32;
+        var offset = naturalRowsOffset + index * naturalRowBytes + soilOffsetInRow;
+
+        var altered = (byte[])bytes.Clone();
+        var oldSoil = BinaryPrimitives.ReadInt64BigEndian(
+            altered.AsSpan(offset, 8));
+        BinaryPrimitives.WriteInt64BigEndian(
+            altered.AsSpan(offset, 8), oldSoil - 1L);
+        Rechecksum(altered);
+
+        Assert.Throws<InvalidDataException>(() =>
+            EconomicEcologicalSidecarCodec.Decode(
+                generated, world, altered));
+    }
+
+
 }
