@@ -62,7 +62,7 @@ O log de entradas é **fornecido externamente** e deve ser autenticado/salvo por
 `GlobalArena.Tests/G3HEconomicEcologicalSidecarPersistenceTests.cs` valida:
 - round-trip byte a byte de estado inicial e posterior à retenção;
 - vínculo ao mundo e revisão exatos;
-- corrupção, truncamento, formato desconhecido, versão incompatível de hash, contagem ilegal e bytes extras rejeitados;
+- corrupção, truncamento, formato desconhecido, versão incompatível de hash, contagem ilegal e bytes extras rejeitados; **também rejeita alteração de capital natural mesmo quando um invasor recalcula o checksum externo**;
 - replay de três turnos e retomada do meio da sequência;
 - recusa de divergência e turnos repetidos;
 - aceitação CAS atômica, restauração após save e recusa de rollback com digest confiável mais recente;
