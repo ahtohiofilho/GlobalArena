@@ -72,8 +72,10 @@ public sealed class G3ENaturalEndowmentWorkerEconomyTests
     {
         var first = StrategicPrimitiveNaturalEndowmentFieldSet.Derive(Generate(0UL));
         var other = StrategicPrimitiveNaturalEndowmentFieldSet.Derive(Generate(1UL));
-        Assert.True(first.LithologyProxy.RawValues.Zip(other.LithologyProxy.RawValues,
-            (x, y) => x != y).Any(changed => changed));
+        Assert.Contains(
+            first.LithologyProxy.RawValues.Zip(other.LithologyProxy.RawValues,
+                (x, y) => x != y),
+            changed => changed);
     }
 
     [Fact]
