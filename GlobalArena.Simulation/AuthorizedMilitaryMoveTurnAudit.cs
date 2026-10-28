@@ -291,7 +291,8 @@ public sealed class AuthorizedMilitaryMoveAuditProjection
 {
     public EconomicEcologicalCheckpoint AcceptedCheckpoint { get; }
     public TurnResolutionResult Resolution { get; }
-    public byte[] Witness { get; }
+    private readonly byte[] _witness;
+    public byte[] Witness => (byte[])_witness.Clone();
     public string WitnessSha256Hex { get; }
 
     internal AuthorizedMilitaryMoveAuditProjection(
@@ -300,7 +301,7 @@ public sealed class AuthorizedMilitaryMoveAuditProjection
     {
         AcceptedCheckpoint = accepted;
         Resolution = resolution;
-        Witness = (byte[])witness.Clone();
-        WitnessSha256Hex = Convert.ToHexString(SHA256.HashData(witness));
+        _witness = (byte[])witness.Clone();
+        WitnessSha256Hex = Convert.ToHexString(SHA256.HashData(_witness));
     }
 }
