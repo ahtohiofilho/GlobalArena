@@ -210,12 +210,9 @@ public sealed class WorldState
     }
 
     public WorldState WithWarfare(
-        WarfareRuntimeState warfare,
-        TransportFacilitiesRuntimeState transportFacilities)
+        WarfareRuntimeState warfare)
     {
-        ArgumentNullException.ThrowIfNull(
-            warfare);
-        ArgumentNullException.ThrowIfNull(transportFacilities);
+        ArgumentNullException.ThrowIfNull(warfare);
 
         return new WorldState(
             Revision,
@@ -265,7 +262,8 @@ public sealed class WorldState
         BaselineDiplomacyRuntimeState diplomacy,
         EconomyRuntimeState economy,
         PopulationRuntimeState population,
-        WarfareRuntimeState warfare)
+        WarfareRuntimeState warfare,
+        TransportFacilitiesRuntimeState transportFacilities)
     {
         ArgumentNullException.ThrowIfNull(
             civilizations);
@@ -284,6 +282,7 @@ public sealed class WorldState
 
         ArgumentNullException.ThrowIfNull(
             warfare);
+        ArgumentNullException.ThrowIfNull(transportFacilities);
 
         ValidateCrossDomainInvariants(
             worldBinding,
