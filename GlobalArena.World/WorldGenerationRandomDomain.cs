@@ -10,5 +10,6 @@ public enum WorldGenerationRandomDomain : ulong
     Biomes = 6,
     Resources = 7,
     Habitability = 8,
-    CivilizationPlacement = 9
+    CivilizationPlacement = 9,
+    PrimitiveLithology = 10
 }
