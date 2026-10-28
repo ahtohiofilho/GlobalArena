@@ -47,6 +47,10 @@ public sealed class EconomicCompleteV9DurableSaveHost : IDisposable
     {
         ArgumentNullException.ThrowIfNull(generatedWorld);
         ArgumentNullException.ThrowIfNull(initial);
+        if (initial.NaturalCapital.LastAppliedTurn != 0UL ||
+            initial.MaterialReserves.AppliedTurnCursors.Count != 0)
+            throw new InvalidOperationException(
+                "A new v9 genesis head requires turn zero. Use verified migration or restore.");
         var archive = new EconomicCompleteV9SaveBundleArchive(directoryPath);
         var lease = Acquire(archive.DirectoryPath);
         try
@@ -158,6 +162,18 @@ public sealed class EconomicCompleteV9DurableSaveHost : IDisposable
                 checkpoint.NaturalCapital.LastAppliedTurn != head.Turn)
                 throw new InvalidDataException(
                     "Complete v9 bundle differs from the durable head.");
+            if (head.Sequence > 0UL)
+            {
+                // Confirm that the immediately preceding published complete
+                // bundle is still present and belongs to the same world. A
+                // record of user commands is needed to prove its transition.
+                var previous = archive.Load(generatedWorld, head.Previous);
+                if (previous.NaturalCapital.LastAppliedTurn == ulong.MaxValue ||
+                    previous.NaturalCapital.LastAppliedTurn + 1UL != head.Turn ||
+                    previous.WorldHash != head.WorldHash)
+                    throw new InvalidDataException(
+                        "Complete-save predecessor is missing or inconsistent.");
+            }
 
             return new EconomicCompleteV9DurableSaveHost(
                 generatedWorld, archive, lease, checkpoint, head);
