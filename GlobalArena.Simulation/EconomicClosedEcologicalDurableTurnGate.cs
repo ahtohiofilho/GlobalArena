@@ -147,12 +147,9 @@ public sealed class EconomicClosedEcologicalDurableTurnGate
             // A separately simulated ecological turn is accepted only by
             // the one existing durable host. CAS detects any concurrent
             // acceptance after projection; its journal is replay-verified.
-            var committed = _durable.CommitNext(
-                trusted, closureInput.Turn.Value, demand, holds);
-            if (committed.ProposedNext.Sha256Hex !=
-                    projected.ProposedCheckpointSha256Hex)
-                throw new InvalidOperationException(
-                    "Durable ecological result diverged from the preflight phase.");
+            var committed = _durable.CommitProjected(
+                trusted, projected.ProposedCheckpointSha256Hex,
+                closureInput.Turn.Value, demand, holds);
 
             return EconomicClosedEcologicalTurnResult.Committed(
                 projected, committed.ProposedNext.Sha256Hex);
