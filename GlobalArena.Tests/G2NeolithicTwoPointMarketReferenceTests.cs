@@ -75,9 +75,9 @@ public sealed class G2NeolithicTwoPointMarketReferenceTests
         var flows = Flows(world);
 
         Assert.Equal(4UL * Unit,
-            Assert.Single(flows.SupplyFlows.Where(x => x.CommodityId == Food)).RawQuantity);
+            Assert.Single(flows.SupplyFlows, x => x.CommodityId == Food).RawQuantity);
         Assert.Equal(3UL * Unit,
-            Assert.Single(flows.SupplyFlows.Where(x => x.CommodityId == Stone)).RawQuantity);
+            Assert.Single(flows.SupplyFlows, x => x.CommodityId == Stone).RawQuantity);
 
         // Legacy baseline transfer signals require neither terminal nor
         // infrastructure record. Physical route eligibility remains unproven here.
