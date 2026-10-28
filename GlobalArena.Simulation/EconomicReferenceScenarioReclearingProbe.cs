@@ -1,7 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Numerics;
 using GlobalArena.Runtime;
-using GlobalArena.World;
 
 namespace GlobalArena.Simulation;
 
@@ -14,11 +13,11 @@ namespace GlobalArena.Simulation;
 public sealed class EconomicReclearingQuotedRoute
 {
     public EconomicTurnFreightQuote Quote { get; }
-    public IReadOnlyList<StrategicEdgeId> PhysicalResources { get; }
+    public IReadOnlyList<EconomicPhysicalResourceId> PhysicalResources { get; }
 
     public EconomicReclearingQuotedRoute(
         EconomicTurnFreightQuote quote,
-        IEnumerable<StrategicEdgeId> physicalResources)
+        IEnumerable<EconomicPhysicalResourceId> physicalResources)
     {
         Quote = quote ?? throw new ArgumentNullException(nameof(quote));
         ArgumentNullException.ThrowIfNull(physicalResources);
@@ -41,14 +40,14 @@ public sealed class EconomicReclearingQuotedRoute
 public sealed class EconomicReclearedReferenceScenario
 {
     public IReadOnlyList<EconomicTurnLockedFreightTrade> Trades { get; }
-    public IReadOnlyDictionary<StrategicEdgeId, BigInteger> ResourceLoadsMicrograms { get; }
+    public IReadOnlyDictionary<EconomicPhysicalResourceId, BigInteger> ResourceLoadsMicrograms { get; }
     public BigInteger RawTradedQuantity { get; }
     public FoodTransportCostFraction RealCostLower { get; }
     public FoodTransportCostFraction RealCostUpper { get; }
 
     internal EconomicReclearedReferenceScenario(
         IReadOnlyList<EconomicTurnLockedFreightTrade> trades,
-        IReadOnlyDictionary<StrategicEdgeId, BigInteger> loads,
+        IReadOnlyDictionary<EconomicPhysicalResourceId, BigInteger> loads,
         BigInteger rawTradedQuantity,
         FoodTransportCostFraction realCostLower,
         FoodTransportCostFraction realCostUpper)
@@ -139,7 +138,7 @@ public sealed class EconomicReferenceScenarioReclearingProbe
         ArgumentNullException.ThrowIfNull(reservations);
         ArgumentNullException.ThrowIfNull(searchPolicy);
 
-        var profiles = new Dictionary<StrategicEdgeId, EconomicDensityResourceCostProfile>();
+        var profiles = new Dictionary<EconomicPhysicalResourceId, EconomicDensityResourceCostProfile>();
         foreach (var profile in realCostProfiles)
             if (profile is null || !profiles.TryAdd(profile.ResourceId, profile))
                 throw new ArgumentException("Real resource profiles must be nonnull and distinct.",
@@ -189,7 +188,7 @@ public sealed class EconomicReferenceScenarioReclearingProbe
         ulong turnOrdinal,
         EconomicProductionDemandResult flows,
         FoodCommodityCatalog catalog,
-        IReadOnlyDictionary<StrategicEdgeId, EconomicDensityResourceCostProfile> profiles,
+        IReadOnlyDictionary<EconomicPhysicalResourceId, EconomicDensityResourceCostProfile> profiles,
         EconomicReclearingQuotedRoute[] routes,
         EconomicTurnCommodityValueOffer[] values,
         EconomicTurnSourceReservation[] reservations,
@@ -220,7 +219,7 @@ public sealed class EconomicReferenceScenarioReclearingProbe
             row => (row.EconomicPointId, row.CommodityId),
             row => (BigInteger)row.RawQuantity);
         var allocatedAtDestinations = new Dictionary<(EconomicPointId, CommodityId), ulong>();
-        var actualLoads = new Dictionary<StrategicEdgeId, BigInteger>();
+        var actualLoads = new Dictionary<EconomicPhysicalResourceId, BigInteger>();
         var rawTotal = BigInteger.Zero;
         var ordinal = 0UL;
 
@@ -294,7 +293,7 @@ public sealed class EconomicReferenceScenarioReclearingProbe
 
         return new EconomicReclearedReferenceScenario(
             Array.AsReadOnly(trades.ToArray()),
-            new ReadOnlyDictionary<StrategicEdgeId, BigInteger>(
+            new ReadOnlyDictionary<EconomicPhysicalResourceId, BigInteger>(
                 actualLoads.OrderBy(row => row.Key.Value)
                     .ToDictionary(row => row.Key, row => row.Value)),
             rawTotal, costLower, costUpper);

@@ -22,6 +22,10 @@ ECON-004B mostra que ativar uma rota inicialmente vazia exige avaliar lotes fini
 
 O produtor A distribui alimento entre E e F. A rota A→E original usa o recurso compartilhado A–D, o segmento D–E e um recurso de transferência em D; A→F usa A–D e D–F. A alternativa terrestre A→E usa um recurso distinto. O teste altera a tarifa de A→E entre os cenários, mantém A→F e verifica que **o próprio mercado reequilibra as quantidades**. Os custos operacionais são recalculados sobre esses fluxos concretos, não sobre um lote antecipado de referência.
 
+## Identidade dos recursos compartilhados
+
+O custo físico é indexado por `EconomicPhysicalResourceId` (introduzido no PR #40), e **não** por `StrategicEdgeId`. Um segmento construído, um acesso local e um transbordo em D podem ocupar registros separados, sem declarar novas arestas topológicas. A correspondência entre itinerários declarados, ativos/serviços efetivamente acessíveis e o grafo multimodal ainda precisa ser certificada independentemente antes de qualquer settlement.
+
 ## Limites de admissibilidade fundamentais
 
 - O **mercado C# existente é um alocador determinístico de referência**: calcula valores marginais da mercadoria em função do consumo acumulado no destino, sob preços de reserva do produtor e cotações de frete previamente fornecidos. Não resolve os preços de origem endógenos nem o potencial completo do consumidor de GA-PROP-001; não deve ser identificado como equilíbrio competitivo.

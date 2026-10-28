@@ -1,7 +1,6 @@
 using System.Numerics;
 using GlobalArena.Runtime;
 using GlobalArena.Simulation;
-using GlobalArena.World;
 
 namespace GlobalArena.Tests;
 
@@ -13,11 +12,11 @@ public sealed class EconomicReferenceScenarioReclearingProbeTests
     private static readonly EconomicPointId E = new(2UL);
     private static readonly EconomicPointId F = new(3UL);
     private static readonly CommodityId Grain = new(7U);
-    private static readonly StrategicEdgeId Ad = new(11UL);
-    private static readonly StrategicEdgeId De = new(12UL);
-    private static readonly StrategicEdgeId Df = new(13UL);
-    private static readonly StrategicEdgeId Transfer = new(14UL);
-    private static readonly StrategicEdgeId Direct = new(15UL);
+    private static readonly EconomicPhysicalResourceId Ad = new(11UL);
+    private static readonly EconomicPhysicalResourceId De = new(12UL);
+    private static readonly EconomicPhysicalResourceId Df = new(13UL);
+    private static readonly EconomicPhysicalResourceId Transfer = new(14UL);
+    private static readonly EconomicPhysicalResourceId Direct = new(15UL);
 
     private sealed class LinearValue : IEconomicTurnCommodityValueCurve
     {
