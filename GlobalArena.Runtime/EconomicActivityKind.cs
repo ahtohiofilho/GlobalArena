@@ -4,5 +4,6 @@ public enum EconomicActivityKind : byte
 {
     Agriculture = 1,
     Mining = 2,
-    TradeLogistics = 3
+    TradeLogistics = 3,
+    Forestry = 4
 }
