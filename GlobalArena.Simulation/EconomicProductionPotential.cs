@@ -34,11 +34,12 @@ public sealed class EconomicProductionPotential
         }
 
         if (activity != EconomicActivityKind.Agriculture
-            && activity != EconomicActivityKind.Mining)
+            && activity != EconomicActivityKind.Mining
+            && activity != EconomicActivityKind.Forestry)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(activity),
-                "Production potential must target Agriculture or Mining.");
+                "Production potential must target Agriculture, Mining or Forestry.");
         }
 
         if (rawSupplyRatePerWorker <= 0L
