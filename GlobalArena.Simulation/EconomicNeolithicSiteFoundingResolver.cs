@@ -64,8 +64,9 @@ public sealed class EconomicNeolithicSiteFoundingResult
 
 /// <summary>
 /// G3-B3 reference: take people/workers from an existing point and claim an
-/// adjacent, unowned LAND strategic cell using explicit wood and stone held
-/// at the origin. Territory, economy and population are proposed together.
+/// adjacent, unowned LAND strategic cell. Basic founding requires only workers;
+/// the legacy material-funded variant remains an opt-in candidate. Territory,
+/// economy and population are proposed together.
 /// No fine-tile claim, roads, production facilities, revenue, or scheduler
 /// authorization is inferred.
 /// </summary>
@@ -88,6 +89,55 @@ public sealed class EconomicNeolithicSiteFoundingResolver
         ArgumentNullException.ThrowIfNull(relocation);
         ArgumentNullException.ThrowIfNull(recipe);
 
+        return ProposeCore(generatedWorld, originalWorld, owner, expectedWorldHash,
+            reserves, relocation, recipe);
+    }
+
+    /// <summary>
+    /// Primitive settlement: moves workers into unowned adjacent land without
+    /// spending wood or stone. This is the default Neolithic founding model,
+    /// not a technology unlock, constructed facility, or authoritative command.
+    /// The existing census is merely mirrored from workforce until the v8/v9
+    /// state compatibility problem is resolved.
+    /// </summary>
+    public EconomicNeolithicSiteFoundingResult ProposeBasic(
+        WorldGenerationResult generatedWorld, WorldState originalWorld,
+        CivilizationId owner, WorldStateHash expectedWorldHash,
+        EconomicMaterialReserveBook reserves,
+        EconomicPrimitiveWorkerMoveOrder move)
+    {
+        ArgumentNullException.ThrowIfNull(originalWorld);
+        ArgumentNullException.ThrowIfNull(move);
+        if (!originalWorld.Population.IsInitialized)
+            throw new InvalidOperationException("Basic worker founding needs an initialized legacy census.");
+
+        var source = originalWorld.Economy.EconomicPoints
+            .SingleOrDefault(x => x.Id == move.SourcePointId);
+        if (source is null || source.Owner != owner)
+            throw new InvalidOperationException("Basic founding source must belong to its issuer.");
+
+        var mirror = originalWorld.Population.PointPopulations
+            .Single(x => x.EconomicPointId == source.Id);
+        if (mirror.Residents != source.Workforce)
+            throw new InvalidOperationException(
+                "Worker-only founding requires a legacy census equal to workforce at the source.");
+
+        return ProposeCore(generatedWorld, originalWorld, owner, expectedWorldHash,
+            reserves, move.CompatibleLegacyOrder, recipe: null);
+    }
+
+    private EconomicNeolithicSiteFoundingResult ProposeCore(
+        WorldGenerationResult generatedWorld, WorldState originalWorld,
+        CivilizationId owner, WorldStateHash expectedWorldHash,
+        EconomicMaterialReserveBook reserves,
+        EconomicAdjacentSiteRelocationOrder relocation,
+        EconomicNeolithicFoundationRecipe? recipe)
+    {
+        ArgumentNullException.ThrowIfNull(generatedWorld);
+        ArgumentNullException.ThrowIfNull(originalWorld);
+        ArgumentNullException.ThrowIfNull(reserves);
+        ArgumentNullException.ThrowIfNull(relocation);
+
         var priorHash = _hasher.Compute(originalWorld);
         if (expectedWorldHash != priorHash)
             throw new InvalidOperationException("Founding references a stale or different WorldState.");
@@ -105,19 +155,23 @@ public sealed class EconomicNeolithicSiteFoundingResolver
             throw new InvalidOperationException(
                 "Founding target already contains an economic point; resolve its ownership first.");
 
-        // Materials are local: reserves at any other point are not silently
-        // transported to the founding expedition's source.
-        var inputs = new[]
+        // Basic occupation has no material prerequisite. The old
+        // explicitly material-funded path remains available only as an
+        // optional, unratified constructed-foundation experiment.
+        var nextReserves = reserves;
+        if (recipe is not null)
         {
-            new EconomicConstructionMaterialRequirement(
-                relocation.SourcePointId, recipe.WoodCommodityId,
-                recipe.RawWoodRequired),
-            new EconomicConstructionMaterialRequirement(
-                relocation.SourcePointId, recipe.StoneCommodityId,
-                recipe.RawStoneRequired)
-        };
-        // All debits are checked as one all-or-nothing candidate transition.
-        var nextReserves = _debit.Debit(originalWorld, owner, reserves, inputs);
+            var inputs = new[]
+            {
+                new EconomicConstructionMaterialRequirement(
+                    relocation.SourcePointId, recipe.WoodCommodityId,
+                    recipe.RawWoodRequired),
+                new EconomicConstructionMaterialRequirement(
+                    relocation.SourcePointId, recipe.StoneCommodityId,
+                    recipe.RawStoneRequired)
+            };
+            nextReserves = _debit.Debit(originalWorld, owner, reserves, inputs);
+        }
 
         // Stage territorial control only in a local immutable value; the
         // relocation resolver independently validates land, adjacency,
