@@ -32,6 +32,10 @@ public sealed class AuthorizedMilitaryMoveAuditArchive
         ArgumentNullException.ThrowIfNull(projection);
         var path = WitnessPath(projection.WitnessSha256Hex);
         var bytes = projection.Witness;
+        if (!CryptographicOperations.FixedTimeEquals(
+            SHA256.HashData(bytes),
+            Convert.FromHexString(projection.WitnessSha256Hex)))
+            throw new InvalidDataException("Command witness changed before archival.");
         if (File.Exists(path))
         {
             RequireSameBytes(path, bytes);
