@@ -258,4 +258,72 @@ public sealed class G3HEconomicEcologicalSidecarPersistenceTests
             new EconomicEcologicalSidecarReplayVerifier().Replay(
                 generated, world, sidecar, repeated));
     }
+    [Fact]
+    public void HostAtomicallyAcceptsOneNextTurnAndRestoresFromTrustedDigest()
+    {
+        var generated = Generate();
+        var world = World(generated);
+        var initial = Initial(generated, world);
+        var host = new EconomicEcologicalCheckpointHost(generated, initial);
+        var firstAccepted = host.AcceptedSha256Hex;
+
+        var result = host.CommitNext(firstAccepted, 1UL, Demand(), Holds());
+        Assert.Equal(result.ProposedNext.Sha256Hex, host.AcceptedSha256Hex);
+        Assert.Equal(1UL, host.LastAppliedTurn);
+        Assert.NotEqual(firstAccepted, host.AcceptedSha256Hex);
+
+        Assert.Throws<InvalidOperationException>(() =>
+            host.CommitNext(firstAccepted, 2UL, Demand(),
+                Array.Empty<EconomicMaterialOriginHoldOrder>()));
+
+        var savedBytes = host.CaptureSidecar();
+        var restored = EconomicEcologicalCheckpointHost.Restore(
+            generated, world, savedBytes, host.AcceptedSha256Hex);
+        Assert.Equal(host.AcceptedSha256Hex, restored.AcceptedSha256Hex);
+        Assert.Equal(1UL, restored.LastAppliedTurn);
+
+        var accepted = restored.AcceptedSha256Hex;
+        restored.CommitNext(accepted, 2UL, Demand(),
+            Array.Empty<EconomicMaterialOriginHoldOrder>());
+        Assert.Equal(2UL, restored.LastAppliedTurn);
+        Assert.Equal(1UL, host.LastAppliedTurn);
+    }
+
+    [Fact]
+    public void HostCannotRestoreAnEarlierValidSidecarAgainstLaterTrustedCommitment()
+    {
+        var generated = Generate();
+        var world = World(generated);
+        var initial = Initial(generated, world);
+        var host = new EconomicEcologicalCheckpointHost(generated, initial);
+        var earlierBytes = host.CaptureSidecar();
+
+        host.CommitNext(host.AcceptedSha256Hex, 1UL, Demand(), Holds());
+        var laterDigest = host.AcceptedSha256Hex;
+
+        Assert.Throws<InvalidOperationException>(() =>
+            EconomicEcologicalCheckpointHost.Restore(
+                generated, world, earlierBytes, laterDigest));
+    }
+
+    [Fact]
+    public void InvalidHostTransitionDoesNotChangeAcceptedCheckpoint()
+    {
+        var generated = Generate();
+        var host = new EconomicEcologicalCheckpointHost(
+            generated, Initial(generated, World(generated)));
+        var originalDigest = host.AcceptedSha256Hex;
+        var originalBytes = host.CaptureSidecar();
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            host.CommitNext(originalDigest, 1UL, Demand(), new[]
+            {
+                new EconomicMaterialOriginHoldOrder(
+                    A, Wood, EconomicActivityKind.Forestry, ulong.MaxValue)
+            }));
+        Assert.Equal(originalDigest, host.AcceptedSha256Hex);
+        Assert.Equal(originalBytes, host.CaptureSidecar());
+        Assert.Equal(0UL, host.LastAppliedTurn);
+    }
+
 }
