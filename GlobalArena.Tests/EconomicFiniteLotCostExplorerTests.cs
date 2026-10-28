@@ -115,6 +115,32 @@ public sealed class EconomicFiniteLotCostExplorerTests
     }
 
     [Fact]
+    public void EmptyPathsCannotInventOrEraseFinitePhysicalLoad()
+    {
+        // Without an explicit traversed source path, aggregate stock on the
+        // network does not attest that this particular lot exists. Likewise
+        // an empty proposed path cannot be treated as disappearing freight.
+        Assert.Throws<ArgumentException>(() =>
+            Compare(from: Array.Empty<StrategicEdgeId>()));
+        Assert.Throws<ArgumentException>(() =>
+            Compare(to: Array.Empty<StrategicEdgeId>()));
+        Assert.Throws<ArgumentException>(() =>
+            Compare(from: Array.Empty<StrategicEdgeId>(),
+                    to: Array.Empty<StrategicEdgeId>()));
+    }
+
+    [Fact]
+    public void IdenticalNonemptyPathCancelsWithoutAnyCostDifference()
+    {
+        var result = Compare(from: new[] { Shared, OldBranch },
+                             to: new[] { OldBranch, Shared });
+        Assert.Equal(BigInteger.Zero, result.SignedCostDeltaNumerator);
+        Assert.Equal(BigInteger.One, result.CostDeltaDenominator);
+        Assert.Equal(Loads()[Shared], result.HypotheticalLoadsMicrograms[Shared]);
+        Assert.Equal(Loads()[OldBranch], result.HypotheticalLoadsMicrograms[OldBranch]);
+    }
+
+    [Fact]
     public void RepeatedCallsDoNotMutateTheInputOrEachOthersOutput()
     {
         var inputs = Loads();
