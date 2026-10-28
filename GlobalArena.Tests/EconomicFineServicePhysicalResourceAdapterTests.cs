@@ -276,4 +276,189 @@ public sealed class EconomicFineServicePhysicalResourceAdapterTests
             comparison.RealCostSign);
         Assert.Equal(beforeHash, new CanonicalWorldStateHasher().Compute(world));
     }
+    private static EconomicFineTransferFacilityEvidence Facility(
+        Fixture f, bool operational = true,
+        ulong fromTechnology = 10UL, ulong toTechnology = 20UL,
+        ulong version = 3UL,
+        PhysicalTacticalTileId? tile = null,
+        ulong facilityId = 900UL,
+        EconomicPhysicalResourceId? resource = null) =>
+        new(facilityId, resource ?? TerminalResource,
+            tile ?? f.Junction, fromTechnology, toTechnology,
+            version, operational);
+
+    private static IReadOnlyList<EconomicReclearingQuotedRoute> Authorized(
+        Fixture f,
+        IEnumerable<EconomicFineTransferFacilityEvidence>? evidence = null,
+        IEnumerable<EconomicTransportServiceOffer>? offers = null,
+        IEnumerable<EconomicPhysicalTransferResourceBinding>? transfers = null,
+        ulong turn = 1UL,
+        ulong snapshotTurn = 1UL) =>
+        new EconomicFineAuthorizedServicePhysicalResourceAdapter().Resolve(
+            turn, f.Graph, f.Anchors, f.Flows,
+            StrategicEdgeAccessSnapshot.AllOpen, f.Assets,
+            offers ?? f.Offers, f.AssetBindings(),
+            transfers ?? f.TransferBindings(),
+            new EconomicFineTransferFacilityAuthorizationSnapshot(
+                snapshotTurn, evidence ?? new[] { Facility(f) }));
+
+    [Fact]
+    public void OperationalFacilityAtCorrectJunctionAuthorizesExactDirectedTransfer()
+    {
+        var f = new Fixture(technologyChange: true);
+        var result = Assert.Single(Authorized(f));
+        Assert.Equal(new[] { FirstResource, TerminalResource, SecondResource },
+            result.PhysicalResources);
+        Assert.Equal(1UL, result.Quote.TurnOrdinal);
+    }
+
+    [Fact]
+    public void MissingOrNonOperationalFacilityCannotAuthorizeCrossTechnologyService()
+    {
+        var f = new Fixture(technologyChange: true);
+        Assert.Throws<InvalidOperationException>(() =>
+            Authorized(f, evidence: Array.Empty<EconomicFineTransferFacilityEvidence>()));
+        Assert.Throws<InvalidOperationException>(() =>
+            Authorized(f, evidence: new[] { Facility(f, operational: false) }));
+    }
+
+    [Fact]
+    public void WrongLocationOrResourceCannotImpersonateTheInstalledFacility()
+    {
+        var f = new Fixture(technologyChange: true);
+        Assert.Throws<InvalidOperationException>(() =>
+            Authorized(f, evidence: new[] { Facility(f, tile: f.Origin) }));
+        Assert.Throws<InvalidOperationException>(() =>
+            Authorized(f, evidence: new[]
+            {
+                Facility(f, resource: new EconomicPhysicalResourceId(9000UL))
+            }));
+    }
+
+    [Fact]
+    public void PermissionIsDirectionalAndVersionBoundWithNoImplicitReciprocity()
+    {
+        var f = new Fixture(technologyChange: true);
+        Assert.Throws<InvalidOperationException>(() =>
+            Authorized(f, evidence: new[]
+            {
+                Facility(f, fromTechnology: 20UL, toTechnology: 10UL)
+            }));
+        Assert.Throws<InvalidOperationException>(() =>
+            Authorized(f, evidence: new[] { Facility(f, version: 4UL) }));
+        Assert.Throws<InvalidOperationException>(() =>
+            Authorized(f, evidence: new[]
+            {
+                Facility(f, fromTechnology: 10UL, toTechnology: 30UL)
+            }));
+    }
+
+    [Fact]
+    public void TransferEvidenceMustBeFromThisTurnSnapshot()
+    {
+        var f = new Fixture(technologyChange: true);
+        Assert.Throws<InvalidOperationException>(() =>
+            Authorized(f, snapshotTurn: 2UL));
+    }
+
+    [Fact]
+    public void FacilityIdsResourcesAndDirectedCapabilitiesMustNotAliasOrDuplicate()
+    {
+        var f = new Fixture(technologyChange: true);
+        Assert.Throws<ArgumentException>(() =>
+            new EconomicFineTransferFacilityAuthorizationSnapshot(
+                1UL, new[] { Facility(f), Facility(f) }));
+        Assert.Throws<ArgumentException>(() =>
+            new EconomicFineTransferFacilityAuthorizationSnapshot(
+                1UL, new[]
+                {
+                    Facility(f),
+                    Facility(f, facilityId: 901UL)
+                }));
+        Assert.Throws<ArgumentException>(() =>
+            new EconomicFineTransferFacilityAuthorizationSnapshot(
+                1UL, new[]
+                {
+                    Facility(f),
+                    Facility(f, resource: new EconomicPhysicalResourceId(104UL))
+                }));
+    }
+
+    private sealed class CountedFreight : IEconomicTurnFreightCostFunction
+    {
+        public ulong RulesetVersion => 1UL;
+        public int Calls { get; private set; }
+
+        public FoodTransportCostFraction EvaluateRawUnitCostPerGram(
+            BigInteger expectedLoadMicrograms)
+        {
+            Calls++;
+            return new FoodTransportCostFraction(new BigInteger(10), BigInteger.One);
+        }
+    }
+
+    [Fact]
+    public void FacilityCannotBeSimultaneouslyOperationalAndClosedInOneSnapshot()
+    {
+        var f = new Fixture(technologyChange: true);
+        Assert.Throws<ArgumentException>(() =>
+            new EconomicFineTransferFacilityAuthorizationSnapshot(
+                1UL, new[]
+                {
+                    Facility(f, operational: true),
+                    Facility(f, operational: false,
+                        fromTechnology: 20UL, toTechnology: 10UL)
+                }));
+    }
+
+    [Fact]
+    public void MissingBuiltAssetReferenceIsRejectedBeforeFreightPricing()
+    {
+        var f = new Fixture(technologyChange: true);
+        var counter = new CountedFreight();
+        var forged = new EconomicTransportServiceOffer(
+            50UL, new StrategicEconomicRouteKey(A, E),
+            new[] { 10UL, 999UL }, new[] { 0 },
+            BigInteger.Zero, counter);
+        Assert.Throws<ArgumentException>(() =>
+            Authorized(f, offers: new[] { forged }));
+        Assert.Equal(0, counter.Calls);
+    }
+
+    [Fact]
+    public void MissingFacilityBindingRejectsBeforeAnyCommercialQuoteIsEvaluated()
+    {
+        var f = new Fixture(technologyChange: true);
+        var counter = new CountedFreight();
+        var offer = new EconomicTransportServiceOffer(
+            50UL, new StrategicEconomicRouteKey(A, E),
+            new[] { 10UL, 20UL }, new[] { 0 },
+            BigInteger.Zero, counter);
+        Assert.Throws<InvalidOperationException>(() =>
+            Authorized(f, offers: new[] { offer },
+                transfers: Array.Empty<EconomicPhysicalTransferResourceBinding>()));
+        Assert.Equal(0, counter.Calls);
+    }
+
+    [Fact]
+    public void SameTechnologyTransitRequiresNoTransferFacilityOrTransferItem()
+    {
+        var f = new Fixture(technologyChange: false);
+        var result = Assert.Single(Authorized(f,
+            evidence: Array.Empty<EconomicFineTransferFacilityEvidence>(),
+            transfers: Array.Empty<EconomicPhysicalTransferResourceBinding>()));
+        Assert.Equal(new[] { FirstResource, SecondResource }, result.PhysicalResources);
+    }
+
+    [Fact]
+    public void AuthorizationSnapshotIsReadOnlyAndDoesNotMutateWorld()
+    {
+        var f = new Fixture(technologyChange: true);
+        var world = WorldState.CreateInitial();
+        var before = new CanonicalWorldStateHasher().Compute(world);
+        var result = Authorized(f);
+        Assert.Single(result);
+        Assert.Equal(before, new CanonicalWorldStateHasher().Compute(world));
+    }
+
 }
