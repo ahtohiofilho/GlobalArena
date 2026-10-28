@@ -61,13 +61,21 @@ public sealed class StrategicPrimitiveResourcePotentialFieldSet
             var water = climate.WaterAvailability.GetRawValue(index);
             var moisture = climate.Moisture.GetRawValue(index);
             var temperature = climate.Temperature.GetRawValue(index);
-            var relief = physical.Relief.GetRawValue(index);
+            var rawRelief = physical.Relief.GetRawValue(index);
             var generalPotential = general.GetRawValue(index);
 
             CheckNormalized(water, nameof(climate.WaterAvailability));
             CheckNormalized(moisture, nameof(climate.Moisture));
-            CheckNormalized(relief, nameof(physical.Relief));
             CheckNormalized(generalPotential, nameof(general));
+
+            // Elevation spans [-D, +D], so the difference between adjacent
+            // elevations (raw relief) spans [0, 2D]. Convert that physical
+            // range to the [0, D] productivity scale before combining it
+            // with normalized climate and resource fields.
+            if (rawRelief < 0L || rawRelief > 2L * d)
+                throw new InvalidOperationException(
+                    "Generated relief exceeds the possible elevation difference.");
+            var relief = rawRelief / 2L;
             if (temperature < -d || temperature > d)
                 throw new InvalidOperationException(
                     "Generated temperature is outside the accepted normalized range.");
