@@ -39,6 +39,7 @@ public sealed class EconomicCongestionCandidateAuditorTests
         FoodStrategicEdgeCongestionProfile profile,
         BigInteger? reportedLoad = null,
         FoodTransportCostFraction? firstIncrement = null,
+        FoodTransportCostFraction? secondIncrement = null,
         FoodStrategicEdgeCongestionProfile? reportingProfile = null)
     {
         // Raw 5 grain units + 3 roots units on the SAME resource:
@@ -61,7 +62,7 @@ public sealed class EconomicCongestionCandidateAuditorTests
             new EconomicCongestionMarketSelection(
                 2UL, Origin, EconomicActivityKind.Agriculture, Destination,
                 Roots, 3UL, 9_000_000UL, 0UL,
-                rootsIncrement, new[] { Edge })
+                secondIncrement ?? rootsIncrement, new[] { Edge })
         };
         return new EconomicCongestionMarketResult(selections,
             new FoodStrategicEdgeCongestionResult(new[]
@@ -104,6 +105,37 @@ public sealed class EconomicCongestionCandidateAuditorTests
         Assert.Throws<InvalidOperationException>(() =>
             Audit(Candidate(Profile(), firstIncrement:
                 new FoodTransportCostFraction(BigInteger.Zero, BigInteger.One))));
+    }
+
+    [Fact]
+    public void RejectsShiftedTrancheChargesEvenWhenGrandTotalStillBalances()
+    {
+        var profile = Profile();
+        var originalFirst = profile.EvaluateTotalCost(new BigInteger(5_000));
+        var total = profile.EvaluateTotalCost(new BigInteger(11_000));
+        var originalSecond = new FoodTransportCostFraction(
+            total.Numerator * originalFirst.Denominator -
+                originalFirst.Numerator * total.Denominator,
+            total.Denominator * originalFirst.Denominator);
+
+        // A dishonest candidate swaps the two valid positive charges.
+        // Its final edge load and TOTAL real resource cost are still exact;
+        // only the attribution to the individual economic decisions is false.
+        var falsified = Candidate(profile,
+            firstIncrement: originalSecond,
+            secondIncrement: originalFirst);
+        Assert.Throws<InvalidOperationException>(() => Audit(falsified));
+    }
+
+    [Fact]
+    public void RejectsAnUnfundedFirstTrancheHiddenByLaterFullCost()
+    {
+        var profile = Profile();
+        var total = profile.EvaluateTotalCost(new BigInteger(11_000));
+        var falsified = Candidate(profile,
+            firstIncrement: new FoodTransportCostFraction(BigInteger.Zero, BigInteger.One),
+            secondIncrement: total);
+        Assert.Throws<InvalidOperationException>(() => Audit(falsified));
     }
 
     [Fact]
