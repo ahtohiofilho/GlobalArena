@@ -62,6 +62,14 @@ public sealed class EconomicLegacyV8EcologicalState
         Sha256Hex = EconomicEcologicalCheckpoint.ComputeDigestForWorldHash(
             WorldHash, naturalCapital, materialReserves, policy, commodities);
     }
+
+    public void RequireExpectedDigest(string expectedSha256Hex)
+    {
+        ArgumentNullException.ThrowIfNull(expectedSha256Hex);
+        if (!string.Equals(expectedSha256Hex, Sha256Hex, StringComparison.Ordinal))
+            throw new InvalidOperationException(
+                "Stale or incompatible historical ecological checkpoint.");
+    }
 }
 
 /// <summary>
