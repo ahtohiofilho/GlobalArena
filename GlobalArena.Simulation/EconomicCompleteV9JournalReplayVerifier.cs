@@ -47,9 +47,12 @@ public sealed class EconomicCompleteV9JournalReplayVerifier
         {
             var hasEcology = File.Exists(journal.RecordPath(current.Sha256Hex));
             var hasMixed = File.Exists(mixedArchive.RecordPath(current.Sha256Hex));
-            if (hasEcology == hasMixed)
+            if (!hasEcology && !hasMixed)
+                throw new FileNotFoundException(
+                    "Accepted transition has no corresponding durable journal.");
+            if (hasEcology && hasMixed)
                 throw new InvalidDataException(
-                    "Committed transition requires exactly one journal type.");
+                    "Committed transition has conflicting journal types.");
             if (hasMixed)
             {
                 // A mixed entry changes the WorldState hash. Verify its
