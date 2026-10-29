@@ -40,7 +40,7 @@ jobs:
           set -euo pipefail
           /tmp/Godot_v4.4.1-stable_linux.x86_64 --headless \
             --path GlobalArena.Godot --editor --quit 2>&1 | tee /tmp/ga-godot-import.log
-          if grep -Ei '(SCRIPT ERROR|Parse Error|Failed to load script|GDScript::reload)' /tmp/ga-godot-import.log; then
+          if grep -Ei '^(ERROR:|SCRIPT ERROR:)|Parse Error|Failed to load script|GDScript::reload' /tmp/ga-godot-import.log; then
             exit 1
           fi
       - name: Run actual Godot scene click selection, founding and preview against C# motor
@@ -52,6 +52,24 @@ jobs:
             --script res://tests/ga_vs02_scene_smoke.gd \
             2>&1 | tee /tmp/ga-vs02-godot.log
           grep -q 'GA-VS02-GODOT-SMOKE-PASS' /tmp/ga-vs02-godot.log
-          if grep -Ei '(SCRIPT ERROR|Parse Error|GA-VS02 GODOT FAIL)' /tmp/ga-vs02-godot.log; then
+          if grep -Ei '^(ERROR:|SCRIPT ERROR:)|Parse Error|GA-VS02 GODOT FAIL' /tmp/ga-vs02-godot.log; then
             exit 1
           fi
+
+  csharp-bridge-windows:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build C# gameplay bridge on Windows
+        run: dotnet build GlobalArena.Console/GlobalArena.Console.csproj -c Release
+      - name: Replay canonical globe, founding and refusal with Windows .NET runtime
+        run: python tools/ci/ga-vs02-godot-bridge-smoke.py
