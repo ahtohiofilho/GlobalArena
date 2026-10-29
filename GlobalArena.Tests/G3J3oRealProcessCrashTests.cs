@@ -112,7 +112,9 @@ public sealed partial class G3J3dMixedDurableV9CommitTests
                     destination, world,
                     new J3mArchiveSource(File.ReadAllBytes(
                         Path.Combine(root, "version.zip")))));
-            Assert.Equal(0, scan.StrandedQuarantineCount);
+            // SIGKILL skips finally: the ZIP staging directory survives,
+            // even though the extracted replay directory was renamed.
+            Assert.Equal(1, scan.StrandedQuarantineCount);
         }
         else
         {
