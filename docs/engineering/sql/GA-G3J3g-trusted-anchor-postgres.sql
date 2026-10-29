@@ -169,7 +169,7 @@ CREATE OR REPLACE FUNCTION public.ga_v9_anchor_rotate_verified(
 RETURNS boolean
 LANGUAGE plpgsql VOLATILE SECURITY DEFINER
 SET search_path = pg_catalog, pg_temp
-AS $
+AS $$
 DECLARE
     changed integer;
 BEGIN
@@ -185,7 +185,7 @@ BEGIN
     GET DIAGNOSTICS changed = ROW_COUNT;
     RETURN changed = 1;
 END;
-$;
+$$;
 
 -- G3-J3j: legacy three-parameter CAS can operate ONLY before an epoch
 -- has been claimed. Once an administrator rotates writer_epoch > 0, every
