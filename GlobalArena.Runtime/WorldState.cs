@@ -23,6 +23,8 @@ public sealed class WorldState
 
     public WarfareRuntimeState Warfare { get; }
 
+    public PhysicalTacticalEconomyRuntimeState? PhysicalEconomy { get; }
+
     public static WorldState CreateInitial()
     {
         return new WorldState(
@@ -77,7 +79,8 @@ public sealed class WorldState
             Diplomacy,
             Economy,
             Population,
-            Warfare);
+            Warfare,
+            PhysicalEconomy);
     }
 
     public WorldState WithCivilizations(
@@ -94,7 +97,8 @@ public sealed class WorldState
             Diplomacy,
             Economy,
             Population,
-            Warfare);
+            Warfare,
+            PhysicalEconomy);
     }
 
     public WorldState WithTerritory(
@@ -111,7 +115,8 @@ public sealed class WorldState
             Diplomacy,
             Economy,
             Population,
-            Warfare);
+            Warfare,
+            PhysicalEconomy);
     }
 
     public WorldState WithDiplomacy(
@@ -128,7 +133,8 @@ public sealed class WorldState
             diplomacy,
             Economy,
             Population,
-            Warfare);
+            Warfare,
+            PhysicalEconomy);
     }
 
     public WorldState WithEconomy(
@@ -145,7 +151,8 @@ public sealed class WorldState
             Diplomacy,
             economy,
             Population,
-            Warfare);
+            Warfare,
+            PhysicalEconomy);
     }
 
     /// <summary>
@@ -165,7 +172,8 @@ public sealed class WorldState
             Diplomacy,
             Economy,
             population,
-            Warfare);
+            Warfare,
+            PhysicalEconomy);
     }
 
     /// <summary>
@@ -188,7 +196,29 @@ public sealed class WorldState
             Diplomacy,
             economy,
             population,
-            Warfare);
+            Warfare,
+            PhysicalEconomy);
+    }
+
+    /// <summary>
+    /// Publishes a validated physical economic snapshot without creating
+    /// strategic people, cities, economic points or implicit transport.
+    /// Caller advances the revision when committing a world transition.
+    /// </summary>
+    public WorldState WithPhysicalEconomy(
+        PhysicalTacticalEconomyRuntimeState physicalEconomy)
+    {
+        ArgumentNullException.ThrowIfNull(physicalEconomy);
+        return new WorldState(
+            Revision,
+            WorldBinding,
+            Civilizations,
+            Territory,
+            Diplomacy,
+            Economy,
+            Population,
+            Warfare,
+            physicalEconomy);
     }
 
     private void RejectPopulationDowngrade(PopulationRuntimeState next)
@@ -212,7 +242,8 @@ public sealed class WorldState
             Diplomacy,
             Economy,
             Population,
-            warfare);
+            warfare,
+            PhysicalEconomy);
     }
 
     public WorldState AdvanceRevision()
@@ -225,7 +256,8 @@ public sealed class WorldState
             Diplomacy,
             Economy,
             Population,
-            Warfare);
+            Warfare,
+            PhysicalEconomy);
     }
 
     private WorldState(
@@ -236,7 +268,8 @@ public sealed class WorldState
         BaselineDiplomacyRuntimeState diplomacy,
         EconomyRuntimeState economy,
         PopulationRuntimeState population,
-        WarfareRuntimeState warfare)
+        WarfareRuntimeState warfare,
+        PhysicalTacticalEconomyRuntimeState? physicalEconomy = null)
     {
         ArgumentNullException.ThrowIfNull(
             civilizations);
@@ -263,7 +296,8 @@ public sealed class WorldState
             diplomacy,
             economy,
             population,
-            warfare);
+            warfare,
+            physicalEconomy);
 
         Revision = revision;
         WorldBinding = worldBinding;
@@ -273,6 +307,7 @@ public sealed class WorldState
         Economy = economy;
         Population = population;
         Warfare = warfare;
+        PhysicalEconomy = physicalEconomy;
     }
 
     private static void ValidateCrossDomainInvariants(
@@ -282,8 +317,21 @@ public sealed class WorldState
         BaselineDiplomacyRuntimeState diplomacy,
         EconomyRuntimeState economy,
         PopulationRuntimeState population,
-        WarfareRuntimeState warfare)
+        WarfareRuntimeState warfare,
+        PhysicalTacticalEconomyRuntimeState? physicalEconomy = null)
     {
+        if (physicalEconomy is not null)
+        {
+            if (worldBinding is null ||
+                physicalEconomy.CoarseWorldBinding != worldBinding)
+                throw new InvalidOperationException(
+                    "Physical economy belongs to a different or unbound generated world.");
+            if (economy.EconomicPoints.Count != 0 ||
+                (population.IsInitialized && population.PointPopulations.Count != 0))
+                throw new InvalidOperationException(
+                    "Physical workforce cannot coexist with legacy strategic residents/economic points.");
+        }
+
         var civilizationIds =
             civilizations
                 .Civilizations

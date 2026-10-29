@@ -7,7 +7,10 @@ namespace GlobalArena.Simulation;
 public sealed class CanonicalWorldStateHasher
     : IWorldStateHasher
 {
+    // Hash v8 remains byte-for-byte compatible for legacy snapshots.
+    // v9 commits to the added physical economy without changing old saves.
     public const uint FormatVersion = 8U;
+    public const uint PhysicalEconomyFormatVersion = 9U;
 
     private static readonly byte[] Magic =
     {
@@ -17,12 +20,16 @@ public sealed class CanonicalWorldStateHasher
         (byte)'S'
     };
 
-    public WorldStateHash Compute(
-        WorldState worldState)
+    public WorldStateHash Compute(WorldState worldState)
     {
-        ArgumentNullException.ThrowIfNull(
-            worldState);
+        ArgumentNullException.ThrowIfNull(worldState);
+        return worldState.PhysicalEconomy is null
+            ? ComputeLegacyV8(worldState)
+            : ComputePhysicalV9(worldState);
+    }
 
+    private static WorldStateHash ComputeLegacyV8(WorldState worldState)
+    {
         using var hash =
             IncrementalHash.CreateHash(
                 HashAlgorithmName.SHA256);
@@ -285,6 +292,57 @@ public sealed class CanonicalWorldStateHasher
             FormatVersion,
             Convert.ToHexString(
                 digest));
+    }
+
+    private static WorldStateHash ComputePhysicalV9(WorldState worldState)
+    {
+        var physical = worldState.PhysicalEconomy
+            ?? throw new InvalidOperationException("Missing physical economy.");
+        var legacy = ComputeLegacyV8(worldState);
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+
+        // Explicit domain separator, tagged fields and the exact legacy
+        // digest bind all pre-existing state + topology to the new version.
+        hash.AppendData(Magic);
+        AppendUInt32(hash, PhysicalEconomyFormatVersion);
+        AppendUInt32(hash, 90U);
+        hash.AppendData(Convert.FromHexString(legacy.HexDigest));
+        AppendUInt32(hash, checked((uint)physical.CoarseParameters.M));
+        AppendUInt32(hash, checked((uint)physical.CoarseParameters.N));
+        AppendUInt32(hash, checked((uint)physical.FineParameters.M));
+        AppendUInt32(hash, checked((uint)physical.FineParameters.N));
+        AppendUInt64(hash, physical.MovementTurn);
+        AppendUInt64(hash, physical.WorkerRevision);
+        AppendUInt64(hash, physical.TotalWorkers);
+
+        AppendUInt32(hash, checked((uint)physical.Allocations.Count));
+        foreach (var allocation in physical.Allocations)
+        {
+            AppendUInt64(hash, allocation.TileId.FineStrategicCellId.Value);
+            AppendUInt32(hash, (uint)allocation.Activity);
+            AppendUInt64(hash, allocation.Workers);
+        }
+
+        AppendUInt32(hash, checked((uint)physical.Stocks.Count));
+        foreach (var stock in physical.Stocks)
+        {
+            AppendUInt64(hash, stock.TileId.FineStrategicCellId.Value);
+            AppendUInt32(hash, stock.Commodity.Value);
+            AppendUInt64(hash, stock.RawQuantity);
+        }
+
+        AppendUInt32(hash, checked((uint)physical.Cycles.Count));
+        foreach (var cycle in physical.Cycles)
+        {
+            AppendUInt64(hash, cycle.MovementTurn);
+            AppendUInt64(hash, cycle.ProducedRaw);
+            AppendUInt64(hash, cycle.FoodConsumedRaw);
+            AppendUInt64(hash, cycle.FoodUnmetRaw);
+        }
+
+        return new WorldStateHash(
+            PhysicalEconomyFormatVersion,
+            Convert.ToHexString(hash.GetHashAndReset()));
     }
 
     private static void AppendUInt32(
