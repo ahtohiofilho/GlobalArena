@@ -129,8 +129,8 @@ public sealed class G3J3cHistoricalAuthorizationCombinedV9Tests
         authority.Approved = false; // old consent cannot be re-decided by today's ACL
         var result = seal.Verify(initial, initial.Sha256Hex, Context(), signed);
         Assert.Equal(1, authority.Checks);
-        Assert.Equal(new CanonicalWorldStateHasher().Compute(
-            result.Resolution.ResultingWorldState).FormatVersion, 9U);
+        Assert.Equal(9U, new CanonicalWorldStateHasher().Compute(
+            result.Resolution.ResultingWorldState).FormatVersion);
         Assert.Single(result.Resolution.EventLog.Entries);
         Assert.True(result.Resolution.EventLog.Entries[0].WasExecuted);
         Assert.Equal(signed, IssueAfterReapproval(seal, initial, generated, authority));
