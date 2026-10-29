@@ -106,10 +106,22 @@ public sealed class CanonicalPhysicalTacticalSession
                 .AdvanceRevision();
             Game.AcceptSnapshot(next);
         }
-        else if (State.FineParameters != _fine ||
-                 State.CoarseParameters != _coarse ||
-                 State.CoarseWorldBinding != Game.Snapshot.WorldBinding)
-            throw new InvalidOperationException("Attached physical snapshot has foreign topology.");
+        else
+        {
+            var baseline = initial.BuildPhysicalRuntimeSnapshot();
+            if (State.FineParameters != _fine ||
+                State.CoarseParameters != _coarse ||
+                State.CoarseWorldBinding != Game.Snapshot.WorldBinding)
+                throw new InvalidOperationException("Attached physical snapshot has foreign topology.");
+            // Creating another wrapper around an already progressed session
+            // would lose its event journal and make an unreplayable V9 save.
+            if (Game.Snapshot.Revision != 1UL ||
+                State.MovementTurn != 0UL || State.WorkerRevision != 0UL ||
+                State.Stocks.Count != 0 || State.Cycles.Count != 0 ||
+                !State.Allocations.SequenceEqual(baseline.Allocations))
+                throw new InvalidOperationException(
+                    "Existing progressed physical game must be reopened with its canonical event journal.");
+        }
 
         _initialHashHex = _hasher.Compute(Game.Snapshot).HexDigest;
     }
