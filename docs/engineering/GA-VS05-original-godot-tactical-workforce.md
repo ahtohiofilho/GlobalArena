@@ -28,9 +28,9 @@ evitando associar trabalhadores a tiles físicos de malha errada.
   explícita em G(3,0)→G(18,0), seed 20261012, destaca o tile físico
   inicial e seleciona o foco estratégico que o contém.
 - Trabalhadores continuam sendo uma única entidade que **produz e
-  consome**, sem cidades; a infraestrutura produtiva e suas vagas
-  ainda são omitidas **apenas neste atalho experimental**, conforme
-  GA-ADR-ECON-006. Ao clicar num tile com pessoas ele vira origem; ao clicar
+  consome**, sem cidades. No Neolítico **não é necessária
+  infraestrutura construída para a produção rudimentar**
+  de alimentos, madeira ou pedra, conforme GA-ADR-ECON-007. Ao clicar num tile com pessoas ele vira origem; ao clicar
   num vizinho trabalhável vira destino; seleciona-se atividade anterior,
   atividade nova e quantidade para transferir.
 - `TacticalContextPreview.WorkerRings.cs`: anéis espessos ciano
@@ -46,26 +46,37 @@ evitando associar trabalhadores a tiles físicos de malha errada.
   compartilhado, estoque, mercado fechado ou turno canônico. O
   painel declara isso em destaque para evitar falsa integração.
 
-## Correção canônica posterior: infraestrutura antes do emprego
+## Diretriz canônica reafirmada: trabalho primitivo não exige infraestrutura
 
-A mecânica deste laboratório **não é a política econômica definitiva**.
-Conforme [GA-ADR-ECON-006](GA-ADR-ECON-006-infrastructure-first-employment.md),
-o jogo deverá **implantar infraestrutura produtiva no tile físico tático
-antes de disponibilizar vagas aos trabalhadores**. Fazenda, ponto de
-coleta e mina são instalações, não consequências implícitas da presença
-de trabalhadores; as vagas podem ficar ociosas. Trabalhadores
-continuam sendo simultaneamente produtores e consumidores; não
-existem cidades como entidades obrigatórias.
+Conforme [GA-ADR-ECON-007](GA-ADR-ECON-007-primitive-work-without-infrastructure.md),
+a produção arcaica/neolítica de **alimentos, madeira e pedra
+começa simplesmente com os trabalhadores alocados em tiles
+físicos táticos com potencial geográfico compatível**.
+Nenhuma fazenda, roçado construído, ponto de coleta ou
+instalação gratuita ativada é pré-requisito; esses trabalhos
+já são possíveis sem investimento em instalações.
 
-No Neolítico, o **roçado primitivo** e os **pontos de coleta
-de madeira/pedra** poderão ser implantados explicitamente sem
-custo material, evitando travar a civilização na ausência de
-estoques iniciais. A alocação direta atual representa apenas
-um atalho técnico temporário que comprova geometria,
-conservação e interação, **não** uma criação automática
-e canônica de instalações. Não implementar agora capacidade
-de vagas, custos de construção ou moeda sem os modelos
-correspondentes e sem concluir o laboratório.
+O laboratório GA-VS05 representa adequadamente essa
+**regra básica de produção primitiva**. Suas limitações
+reais são outras: a produção é uma prévia, o deslocamento
+entre tiles é instantâneo para teste e o estado ainda
+não participa dos turnos/estoques/saves canônicos.
+Portanto, não confundir "sem infraestrutura no trabalho
+arcaico" com "todos os trabalhos de todas as épocas
+prescindirão de infraestrutura".
+
+Fazendas avançadas, serrarias, minas equipadas, oficinas
+e demais estruturas **serão instalações físicas adicionais**,
+com produtividade, insumos, capacidades e custos próprios.
+As relações matemáticas entre investimento, trabalhadores,
+terreno e produção serão decididas posteriormente,
+quando houver condições de testá-las economicamente.
+
+**Reversão registrada:** a hipótese GA-ADR-ECON-006
+de exigir instalações mesmo para atividades primitivas
+foi superada; o PR #93/GA-VS06 foi fechado sem merge.
+Não atualizar este laboratório com o gate de instalação
+obrigatória daquele PR.
 
 ## Protocolo e riscos
 
