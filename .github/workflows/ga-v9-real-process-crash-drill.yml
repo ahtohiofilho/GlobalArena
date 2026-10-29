@@ -1,0 +1,24 @@
+name: G3-J3o Real SIGKILL Recovery Crash Drill
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/**'
+      - 'GlobalArena.Tests/**'
+      - 'tools/ci/ga-v9-real-process-crash-drill.sh'
+      - '.github/workflows/ga-v9-real-process-crash-drill.yml'
+  workflow_dispatch:
+
+jobs:
+  real-testhost-sigkill-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Real testhost group SIGKILL and freshly restarted replay inspection
+        run: bash tools/ci/ga-v9-real-process-crash-drill.sh
