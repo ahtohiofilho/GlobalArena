@@ -1,0 +1,41 @@
+name: GA-VS05 Original Godot Physical Workforce Integration
+
+on:
+  pull_request:
+    paths:
+      - 'tools/GlobalArena.Godot/**'
+      - 'GlobalArena.Simulation/EconomicPhysicalTacticalWorkerSession.cs'
+      - 'GlobalArena.Tests/GaVs05OriginalGodotTacticalWorkerBindingTests.cs'
+      - '.github/workflows/ga-vs05-original-godot-worker-integration.yml'
+  workflow_dispatch:
+
+jobs:
+  original-godot-build-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Confirm physical worker G3-G18 invariants
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs05' --logger 'console;verbosity=normal'
+      - name: Compile existing Godot CSharp production shell with worker lab
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  original-godot-build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Confirm physical worker G3-G18 invariants on Windows
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs05'
+      - name: Compile the ORIGINAL Godot CSharp project on Windows
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
