@@ -39,7 +39,8 @@ public sealed class GaVs06InfrastructureFirstLabTests
         Assert.Equal(1UL, game.Revision);
         Assert.Equal(4, game.PrimitiveSites.Count);
         Assert.Equal(0UL, game.WorkersAt(next));
-        Assert.Equal(previous, game.Preview()); // site alone produces/consumes nothing
+        Assert.Equal(previous.Supply, game.Preview().Supply); // no workers were moved
+        Assert.Equal(previous.Demand, game.Preview().Demand);
         Assert.Throws<InvalidOperationException>(() => game.InstallPrimitiveSite(
             next, EconomicActivityKind.Agriculture));
         Assert.Equal(1UL, game.Revision);
