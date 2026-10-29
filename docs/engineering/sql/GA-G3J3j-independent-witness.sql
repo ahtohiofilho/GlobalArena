@@ -130,7 +130,7 @@ CREATE OR REPLACE FUNCTION public.ga_v9_witness_rotate_verified(
 RETURNS boolean
 LANGUAGE plpgsql VOLATILE SECURITY DEFINER
 SET search_path = pg_catalog, pg_temp
-AS $
+AS $$
 DECLARE
     changed integer;
 BEGIN
@@ -150,7 +150,7 @@ BEGIN
             p_expected_ack,p_expected_ack);
     RETURN TRUE;
 END;
-$;
+$$;
 
 REVOKE ALL ON TABLE public.ga_v9_witness FROM PUBLIC;
 REVOKE ALL ON TABLE public.ga_v9_witness_acl FROM PUBLIC;
