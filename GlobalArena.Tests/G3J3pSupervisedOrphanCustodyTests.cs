@@ -5,7 +5,7 @@ using GlobalArena.Simulation;
 
 namespace GlobalArena.Tests;
 
-public sealed class G3J3pSupervisedOrphanCustodyTests
+public sealed partial class G3J3pSupervisedOrphanCustodyTests
 {
     private sealed class Isolation : IEconomicV9FormerWriterIsolationVerifier
     {
