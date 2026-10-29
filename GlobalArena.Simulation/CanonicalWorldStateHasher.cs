@@ -8,6 +8,7 @@ public sealed class CanonicalWorldStateHasher
     : IWorldStateHasher
 {
     public const uint FormatVersion = 8U;
+    public const uint PhysicalEconomyFormatVersion = 9U;
 
     private static readonly byte[] Magic =
     {
@@ -23,6 +24,9 @@ public sealed class CanonicalWorldStateHasher
         ArgumentNullException.ThrowIfNull(
             worldState);
 
+        var format = worldState.PhysicalEconomy is null
+            ? FormatVersion : PhysicalEconomyFormatVersion;
+
         using var hash =
             IncrementalHash.CreateHash(
                 HashAlgorithmName.SHA256);
@@ -32,7 +36,7 @@ public sealed class CanonicalWorldStateHasher
 
         AppendUInt32(
             hash,
-            FormatVersion);
+            format);
 
         AppendUInt32(
             hash,
@@ -278,11 +282,41 @@ public sealed class CanonicalWorldStateHasher
                 unit.StrategicCellId.Value);
         }
 
+        if (worldState.PhysicalEconomy is { } physical)
+        {
+            // New v9 tagged section. Old v8 snapshot hashes stay BIT-FOR-BIT
+            // identical; physical positions and stocks are no longer invisible
+            // to the authoritative hash when this slice exists.
+            AppendUInt32(hash, 35U);
+            AppendUInt32(hash, checked((uint)physical.CoarseParameters.M));
+            AppendUInt32(hash, checked((uint)physical.CoarseParameters.N));
+            AppendUInt32(hash, checked((uint)physical.FineParameters.M));
+            AppendUInt32(hash, checked((uint)physical.FineParameters.N));
+            AppendUInt64(hash, physical.MovementTurn);
+            AppendUInt64(hash, physical.WorkerRevision);
+            AppendUInt64(hash, physical.EconomicCycles);
+            AppendUInt64(hash, physical.TotalWorkers);
+            AppendUInt32(hash, checked((uint)physical.Workers.Count));
+            foreach (var entry in physical.Workers)
+            {
+                AppendUInt64(hash, entry.TileId.FineStrategicCellId.Value);
+                AppendUInt32(hash, checked((uint)entry.Activity));
+                AppendUInt64(hash, entry.Workers);
+            }
+            AppendUInt32(hash, checked((uint)physical.Stocks.Count));
+            foreach (var entry in physical.Stocks)
+            {
+                AppendUInt64(hash, entry.TileId.FineStrategicCellId.Value);
+                AppendUInt32(hash, entry.CommodityId.Value);
+                AppendUInt64(hash, entry.RawQuantity);
+            }
+        }
+
         var digest =
             hash.GetHashAndReset();
 
         return new WorldStateHash(
-            FormatVersion,
+            format,
             Convert.ToHexString(
                 digest));
     }
