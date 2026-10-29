@@ -143,6 +143,22 @@ public sealed class EconomicV9FailoverAdmissionGate
         IEconomicV9VerifiedBackupArchiveSource signedVersionedArchive,
         WorldStateHash? independentlyTrustedLegacyWorldHash = null,
         string? independentlyTrustedLegacyEcologicalDigest = null,
+        HistoricalMilitaryMoveAuthorizationSeal? historicalVerifier = null) =>
+        RestoreFromVerifiedVersionedBackupObserved(
+            newDestinationDirectory, generatedWorld, signedVersionedArchive,
+            null, independentlyTrustedLegacyWorldHash,
+            independentlyTrustedLegacyEcologicalDigest, historicalVerifier);
+
+    /// <summary>
+    /// Internal deterministic failpoint, deliberately inaccessible to
+    /// production callers. Observers may throw to simulate process failure.
+    /// </summary>
+    internal EconomicCompleteV9DurableSaveHost RestoreFromVerifiedVersionedBackupObserved(
+        string newDestinationDirectory, WorldGenerationResult generatedWorld,
+        IEconomicV9VerifiedBackupArchiveSource signedVersionedArchive,
+        IEconomicV9VersionedRecoveryPhaseProbe? probe,
+        WorldStateHash? independentlyTrustedLegacyWorldHash = null,
+        string? independentlyTrustedLegacyEcologicalDigest = null,
         HistoricalMilitaryMoveAuthorizationSeal? historicalVerifier = null)
     {
         ArgumentNullException.ThrowIfNull(generatedWorld);
@@ -160,6 +176,22 @@ public sealed class EconomicV9FailoverAdmissionGate
         if (parent is null || !Directory.Exists(parent))
             throw new DirectoryNotFoundException(
                 "A preprovisioned, access-controlled recovery parent is required.");
+        if ((File.GetAttributes(parent) & FileAttributes.ReparsePoint) != 0)
+            throw new IOException("Recovery parent cannot be a symlink/reparse point.");
+
+        // Advisory cross-process serialization of cooperating recovery tools.
+        // A trusted ACL on this parent (and its ancestors) is still required:
+        // this lock cannot stop a hostile process with write permissions.
+        var lockName = ".ga-j3n-recovery-" + Convert.ToHexString(
+            System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(
+                    Path.GetFileName(destination)))) + ".lock";
+        using var destinationLease = new FileStream(
+            Path.Combine(parent, lockName),
+            FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+        if (Directory.Exists(destination) || File.Exists(destination))
+            throw new IOException("Recovery destination was already claimed.");
+
         var expected = versionedWitness.ReadState(_gameId);
         var primary = _promotedPrimary.ReadSnapshot();
         RequireAgreement(primary, expected.LastAcknowledged);
@@ -184,10 +216,12 @@ public sealed class EconomicV9FailoverAdmissionGate
                         "Versioned immutable backup receipt or archive digest was rejected.");
                 downloaded.Flush(flushToDisk: true);
             }
+            probe?.OnPhase(EconomicV9VersionedRecoveryPhase.ArchiveVerified);
 
             var extracted = Path.Combine(quarantine, "replay");
             EconomicV9VersionedSaveArchive.ExtractVerifiedArchive(
                 zipPath, extracted);
+            probe?.OnPhase(EconomicV9VersionedRecoveryPhase.InventoryExtracted);
             RequireUnchanged(expected, primary, versionedWitness);
 
             // Full GAFULL09 journal replay in the quarantined directory,
@@ -210,14 +244,23 @@ public sealed class EconomicV9FailoverAdmissionGate
                         "Replayed versioned save differs from acknowledged head.");
             }
             RequireUnchanged(expected, primary, versionedWitness);
+            probe?.OnPhase(EconomicV9VersionedRecoveryPhase.ReplayVerified);
 
             // Lease from the replay was released. Publishing is a single
             // same-filesystem directory rename; only an absent target is
             // eligible. A secure recovery parent must exclude other writers.
             if (File.Exists(destination) || Directory.Exists(destination))
                 throw new IOException("Another writer claimed the recovery destination.");
+            // Persistent marker travels with the directory rename. A crash
+            // after publication leaves an explicit UNADMITTED forensic save.
+            // Only this strict gate may remove the marker on full success.
+            var marker = Path.Combine(extracted, ".ga-v9-not-admitted");
+            File.WriteAllText(marker, "G3-J3n recovery awaiting authority checks.");
+            probe?.OnPhase(EconomicV9VersionedRecoveryPhase.BeforePublish);
+            RequireUnchanged(expected, primary, versionedWitness);
             Directory.Move(extracted, destination);
             moved = true;
+            probe?.OnPhase(EconomicV9VersionedRecoveryPhase.AfterPublish);
 
             // Re-acquire the writer lease against the published directory
             // and revalidate both authorities before handing it to gameplay.
@@ -228,7 +271,9 @@ public sealed class EconomicV9FailoverAdmissionGate
                 historicalVerifier);
             try
             {
+                probe?.OnPhase(EconomicV9VersionedRecoveryPhase.BeforeAdmission);
                 RequireUnchanged(expected, primary, versionedWitness);
+                File.Delete(Path.Combine(destination, ".ga-v9-not-admitted"));
                 return admitted;
             }
             catch
