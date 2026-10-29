@@ -1,0 +1,43 @@
+name: GA-VS09 Canonical Physical Snapshot
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Runtime/PhysicalTacticalEconomyRuntimeState.cs'
+      - 'GlobalArena.Runtime/WorldState.cs'
+      - 'GlobalArena.Simulation/EconomicPhysicalTacticalOfflineSession.cs'
+      - 'GlobalArena.Simulation/CanonicalWorldStateHasher.cs'
+      - 'GlobalArena.Tests/GaVs09CanonicalPhysicalSnapshotTests.cs'
+      - '.github/workflows/ga-vs09-canonical-physical-snapshot.yml'
+  workflow_dispatch:
+
+jobs:
+  canonical-physical-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Assert physical state, legacy V8 hashes and offline replay
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs09|FullyQualifiedName~GaVs07|FullyQualifiedName~CanonicalWorldStateHasherTests|FullyQualifiedName~WorldStateTests|FullyQualifiedName~CanonicalGameSessionTests'
+      - name: Build original Godot CSharp shell
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  canonical-physical-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Regress original Windows simulation and versioned hash
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs09|FullyQualifiedName~GaVs07|FullyQualifiedName~CanonicalWorldStateHasherTests|FullyQualifiedName~WorldStateTests|FullyQualifiedName~CanonicalGameSessionTests'
+      - name: Build original Godot CSharp shell on Windows
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
