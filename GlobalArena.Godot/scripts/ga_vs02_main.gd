@@ -79,8 +79,8 @@ func _build_layout() -> void:
 	camera.position = Vector3(0, 0, distance)
 	camera.fov = 48.0
 	camera.current = true
-	camera.look_at(Vector3.ZERO, Vector3.UP)
 	world_view.add_child(camera)
+	camera.look_at(Vector3.ZERO, Vector3.UP)
 
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-40, -32, 0)
