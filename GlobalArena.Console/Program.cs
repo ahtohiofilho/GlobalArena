@@ -3,6 +3,12 @@ using GlobalArena.Runtime;
 using GlobalArena.Simulation;
 using GlobalArena.World;
 
+if (args.Length > 0 && args[0] == "godot-bridge")
+{
+    Environment.ExitCode = GaVs02GodotBridge.Run(args.Skip(1).ToArray());
+    return;
+}
+
 if (args.Length == 0 || args[0] is "--help" or "-h" or "help")
 {
     Console.WriteLine("Global Arena — recorte neolítico inspecionável (GA-VS01)");
