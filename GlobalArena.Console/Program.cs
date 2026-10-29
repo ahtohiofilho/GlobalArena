@@ -3,6 +3,12 @@ using GlobalArena.Runtime;
 using GlobalArena.Simulation;
 using GlobalArena.World;
 
+if (args.Length > 0 && args[0] == "tactical-bridge")
+{
+    Environment.ExitCode = GaVs03TacticalBridge.Run(args.Skip(1).ToArray());
+    return;
+}
+
 if (args.Length > 0 && args[0] == "godot-bridge")
 {
     Environment.ExitCode = GaVs02GodotBridge.Run(args.Skip(1).ToArray());
