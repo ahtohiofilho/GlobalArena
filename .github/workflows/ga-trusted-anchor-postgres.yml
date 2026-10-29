@@ -1,0 +1,43 @@
+name: G3-J3g PostgreSQL Trusted Anchor CAS Integration
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/**'
+      - 'GlobalArena.Tests/**'
+      - 'docs/engineering/sql/GA-G3J3g-trusted-anchor-postgres.sql'
+      - '.github/workflows/ga-trusted-anchor-postgres.yml'
+  workflow_dispatch:
+
+jobs:
+  trusted-postgres-cas:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: ga_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ga_ci_ephemeral_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ga_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    env:
+      GA_TEST_PG_CONNECTION: "Host=localhost;Port=5432;Database=ga_test;Username=postgres;Password=ga_ci_ephemeral_only;SSL Mode=Disable;Pooling=true"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Restore
+        run: dotnet restore GlobalArena.Tests/GlobalArena.Tests.csproj
+      - name: PostgreSQL integration tests
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-restore --filter FullyQualifiedName~G3J3gPostgresTrustedAnchorIntegrationTests --logger "console;verbosity=normal"
