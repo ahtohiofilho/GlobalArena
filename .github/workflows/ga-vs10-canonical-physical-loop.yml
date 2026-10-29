@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'GlobalArena.Simulation/CanonicalPhysicalTacticalSession.cs'
+      - 'GlobalArena.Runtime/CanonicalGameSession.cs'
       - 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
       - 'tools/GlobalArena.Godot/Scripts/Main.cs'
       - 'GlobalArena.Tests/GaVs10CanonicalPhysicalLoopTests.cs'
