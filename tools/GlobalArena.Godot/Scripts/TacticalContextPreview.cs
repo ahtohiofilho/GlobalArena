@@ -10,6 +10,16 @@ namespace GlobalArena.Godot;
 // No second topology, new physical identity, game orders, or mutable simulation state.
 public partial class TacticalContextPreview : SubViewportContainer
 {
+    // Coplanar tactical overlays. These are presentation-only depth-order
+    // epsilons, NOT height/elevation or strategic/physical game coordinates.
+    // Terrain triangles are exactly Y=0. Tiny Y offsets avoid z-fighting
+    // without the screen-space parallax visible at 45-degree camera pitch.
+    // Maintain strict order: mesh < edges < inspection < borders < workers.
+    private const float PhysicalEdgeSurfaceLift = 0.00012f;
+    private const float InspectedTileSurfaceLift = 0.00025f;
+    private const float TerritoryBoundarySurfaceLift = 0.00034f;
+    private const float WorkerRibbonSurfaceLift = 0.00050f;
+
     private SubViewport? _innerViewport;
     private Node3D? _world;
     private Camera3D? _camera;
@@ -237,8 +247,8 @@ public partial class TacticalContextPreview : SubViewportContainer
                     AddColored(faces, entry.Points[0], entry.Tint);
                     AddColored(faces, entry.Points[j], entry.Tint);
                     AddColored(faces, entry.Points[next], entry.Tint);
-                    AddColored(lines, entry.Points[j] + Vector3.Up * 0.006f, lineColor);
-                    AddColored(lines, entry.Points[next] + Vector3.Up * 0.006f, lineColor);
+                    AddColored(lines, entry.Points[j] + Vector3.Up * PhysicalEdgeSurfaceLift, lineColor);
+                    AddColored(lines, entry.Points[next] + Vector3.Up * PhysicalEdgeSurfaceLift, lineColor);
                 }
             }
             var faceMesh = faces.Commit();
@@ -689,8 +699,8 @@ public partial class TacticalContextPreview : SubViewportContainer
         {
             var a = matched.Polygon[i];
             var b = matched.Polygon[(i + 1) % matched.Polygon.Length];
-            AddColored(outline, new Vector3(a.X, 0.0003f, a.Y), tint);
-            AddColored(outline, new Vector3(b.X, 0.0003f, b.Y), tint);
+            AddColored(outline, new Vector3(a.X, InspectedTileSurfaceLift, a.Y), tint);
+            AddColored(outline, new Vector3(b.X, InspectedTileSurfaceLift, b.Y), tint);
         }
         var mesh = outline.Commit();
         outline.Dispose();
@@ -862,8 +872,8 @@ public partial class TacticalContextPreview : SubViewportContainer
         foreach (var edge in physical.FineTopology.Edges)
         {
             if (!edge.IncidentCellIds.Any(selectedPhysical.Contains)) continue;
-            var first = Flatten(geometry.GetVertex(edge.IncidentVertexIds[0]).Position, 0.006f);
-            var second = Flatten(geometry.GetVertex(edge.IncidentVertexIds[1]).Position, 0.006f);
+            var first = Flatten(geometry.GetVertex(edge.IncidentVertexIds[0]).Position, PhysicalEdgeSurfaceLift);
+            var second = Flatten(geometry.GetVertex(edge.IncidentVertexIds[1]).Position, PhysicalEdgeSurfaceLift);
             AddColored(lineTool, first, lineColor);
             AddColored(lineTool, second, lineColor);
             edgeCount++;
@@ -882,7 +892,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         var boundaryTint = new Color("#84969a");
         int strategicEdgesRendered = 0;
         int boundarySegments = 0;
-        const float surfaceEpsilon = 0.00035f;
+        const float surfaceEpsilon = TerritoryBoundarySurfaceLift;
         foreach (var path in boundaryPaths)
         {
             var coarseEdge = physical.CoarseTopology.Edges[checked((int)path.StrategicEdgeId.Value - 1)];
@@ -967,7 +977,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         SelectPhysicalTile(_selectedFineTileId);
         if (_workerSource.HasValue) RefreshWorkerRings();
         GD.Print($"GA_TACTICAL_LOCAL_OPEN focus={focusValue} framing_rings={_ringCount} resident_rings={_residentRingCount} frame_tiles={framingTiles.Count} projection={(_equidistant ? "Equidistant" : "Orthographic")} regions={selectedStrategic.Count} physical_tiles={selectedPhysical.Count} triangles={countTriangles} edges={edgeCount} parameters=G(3,0)>G(18,0) duplicate_ids=0");
-        GD.Print($"GA_TACTICAL_TERRITORY_BORDERS_MESH_R1 focus={focusValue} strategic_edges={strategicEdgesRendered} segments={boundarySegments} source=physical_centers surface_epsilon=0.00035 toggle={_showTerritoryBoundaries} movement_unchanged=true");
+        GD.Print($"GA_TACTICAL_TERRITORY_BORDERS_MESH_R1 focus={focusValue} strategic_edges={strategicEdgesRendered} segments={boundarySegments} source=physical_centers surface_epsilon={TerritoryBoundarySurfaceLift:F5} toggle={_showTerritoryBoundaries} movement_unchanged=true");
         GD.Print($"GA_TACTICAL_TERRITORY_SHAPE_ANCHORS_R1 focus={focusValue} anchors=3-2-3 segments={boundarySegments} feature=visual_only highlight=false movement_unchanged=true");
         GD.Print($"GA_TACTICAL_TERRAIN_01C focus={focusValue} visible={_showExperimentalTerrain} seed={TerrainExperimentSeed} land_target=35 physical_reference_cached={_terrainReference is not null} strategic_globe_v1_unchanged=true");
     }

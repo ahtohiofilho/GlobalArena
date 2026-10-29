@@ -10,7 +10,7 @@ config_version=5
 
 [application]
 
-config/name="Global Arena — VS07 Economia Offline"
+config/name="Global Arena — VS08 Contornos Rentes"
 run/main_scene="res://Scenes/Main.tscn"
 config/features=PackedStringArray("4.7", "C#", "GL Compatibility")
 
