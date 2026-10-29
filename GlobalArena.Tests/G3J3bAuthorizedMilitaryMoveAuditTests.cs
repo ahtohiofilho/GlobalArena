@@ -129,7 +129,7 @@ public sealed class G3J3bAuthorizedMilitaryMoveAuditTests
         var loadedSave = EconomicCompleteV9SaveBundleCodec.Decode(
             generated, EconomicCompleteV9SaveBundleCodec.Encode(initial));
         var replay = audit.VerifyReplay(loadedSave, initial.Sha256Hex,
-            projection.Witness);
+            Context(), projection.Witness);
         Assert.Equal(projection.WitnessSha256Hex, replay.WitnessSha256Hex);
         Assert.Equal(projection.Witness, replay.Witness);
     }
@@ -153,7 +153,7 @@ public sealed class G3J3bAuthorizedMilitaryMoveAuditTests
         Assert.Single(forward.Resolution.EventLog.Entries, x => x.WasExecuted);
         Assert.Single(forward.Resolution.EventLog.Entries, x => !x.WasExecuted);
         Assert.Equal(forward.Witness, audit.VerifyReplay(
-            initial, initial.Sha256Hex, reverse.Witness).Witness);
+            initial, initial.Sha256Hex, Context(), reverse.Witness).Witness);
     }
 
     [Fact]
@@ -199,7 +199,7 @@ public sealed class G3J3bAuthorizedMilitaryMoveAuditTests
 
         authority.Approved = false;
         Assert.Throws<UnauthorizedAccessException>(() =>
-            audit.VerifyReplay(initial, initial.Sha256Hex, witness));
+            audit.VerifyReplay(initial, initial.Sha256Hex, Context(), witness));
     }
 
     [Fact]
@@ -218,21 +218,21 @@ public sealed class G3J3bAuthorizedMilitaryMoveAuditTests
             eventTampered.AsSpan(flags, 4), 0U);
         Rechecksum(eventTampered);
         Assert.Throws<InvalidDataException>(() =>
-            audit.VerifyReplay(initial, initial.Sha256Hex, eventTampered));
+            audit.VerifyReplay(initial, initial.Sha256Hex, Context(), eventTampered));
 
         var seedTampered = (byte[])original.Clone();
         seedTampered[8 + 4 + 8 + 7] ^= 0x01;
         Rechecksum(seedTampered);
         Assert.Throws<InvalidDataException>(() =>
-            audit.VerifyReplay(initial, initial.Sha256Hex, seedTampered));
+            audit.VerifyReplay(initial, initial.Sha256Hex, Context(), seedTampered));
 
         Assert.Throws<InvalidDataException>(() =>
-            audit.VerifyReplay(initial, initial.Sha256Hex, original[..^1]));
+            audit.VerifyReplay(initial, initial.Sha256Hex, Context(), original[..^1]));
         Assert.Throws<InvalidOperationException>(() =>
-            audit.VerifyReplay(initial, new string('F', 64), original));
+            audit.VerifyReplay(initial, new string('F', 64), Context(), original));
         Assert.Throws<InvalidOperationException>(() =>
             audit.VerifyReplay(Accepted(Generate(1UL)),
-                initial.Sha256Hex, original));
+                initial.Sha256Hex, Context(), original));
     }
 
     [Fact]
@@ -249,7 +249,7 @@ public sealed class G3J3bAuthorizedMilitaryMoveAuditTests
         archive.Store(projection);
         archive.Store(projection);
         Assert.Equal(projection.Witness, archive.LoadVerified(
-            audit, initial, initial.Sha256Hex,
+            audit, initial, initial.Sha256Hex, Context(),
             projection.WitnessSha256Hex).Witness);
         Assert.Throws<ArgumentException>(() =>
             archive.WitnessPath("../../not-allowed"));
@@ -260,7 +260,7 @@ public sealed class G3J3bAuthorizedMilitaryMoveAuditTests
         Assert.Throws<InvalidDataException>(() => archive.Store(projection));
         Assert.Throws<InvalidDataException>(() =>
             archive.LoadVerified(audit, initial, initial.Sha256Hex,
-                projection.WitnessSha256Hex));
+                Context(), projection.WitnessSha256Hex));
     }
 
     [Fact]
