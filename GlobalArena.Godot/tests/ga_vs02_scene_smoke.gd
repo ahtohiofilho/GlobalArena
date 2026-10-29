@@ -7,7 +7,7 @@ func _initialize() -> void:
 	call_deferred("_run_smoke")
 
 func _run_smoke() -> void:
-	var scene = load("res://main.tscn")
+	var scene = load("res://legacy_vs02.tscn")
 	if scene == null:
 		_fail("Main scene failed to load")
 		return
