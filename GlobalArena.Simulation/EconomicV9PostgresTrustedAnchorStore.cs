@@ -42,16 +42,19 @@ public sealed class EconomicV9PostgresTrustedAnchorStore :
     {
         using var connection = _source.OpenConnection();
         using var command = new NpgsqlCommand(
-            "SELECT public.ga_v9_anchor_read(@game_id)",
+            "SELECT public.ga_v9_anchor_read(@game_id) WHERE NOT pg_is_in_recovery()",
             connection);
         command.Parameters.Add(new NpgsqlParameter("game_id", NpgsqlDbType.Text)
         {
             Value = _gameId
         });
         var value = command.ExecuteScalar();
+        // A streaming standby may have a stale, yet locally consistent,
+        // snapshot. It is NOT an authority until it is promoted. PostgreSQL
+        // itself answers pg_is_in_recovery() for this same statement.
         if (value is not string payload)
             throw new InvalidOperationException(
-                "Independently trusted v9 game anchor is not provisioned.");
+                "Trusted v9 anchor unavailable on standby or unprovisioned primary.");
         return ParseSnapshot(payload);
     }
 
