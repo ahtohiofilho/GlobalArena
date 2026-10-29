@@ -132,6 +132,14 @@ public partial class Main
     {
         if (_tacticalPreview is null || _workerLabStatus is null || _canonicalSession is null)
             return;
+        // Re-entering the laboratory must never discard its canonical
+        // journal, otherwise the next V9 save could not be replayed.
+        if (_canonicalPhysicalLab is not null)
+        {
+            _workerOrigin ??= _canonicalPhysicalLab.State.Allocations.First().TileId;
+            UpdateWorkerLabHud();
+            return;
+        }
         try
         {
             // The game already owns G(3,0); its physical topology is G(18,0).
