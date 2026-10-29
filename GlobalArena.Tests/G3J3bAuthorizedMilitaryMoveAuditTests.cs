@@ -150,8 +150,8 @@ public sealed class G3J3bAuthorizedMilitaryMoveAuditTests
 
         Assert.Equal(forward.Witness, reverse.Witness);
         Assert.Equal(2, forward.Resolution.EventLog.Entries.Count);
-        Assert.Single(forward.Resolution.EventLog.Entries.Where(x => x.WasExecuted));
-        Assert.Single(forward.Resolution.EventLog.Entries.Where(x => !x.WasExecuted));
+        Assert.Single(forward.Resolution.EventLog.Entries, x => x.WasExecuted);
+        Assert.Single(forward.Resolution.EventLog.Entries, x => !x.WasExecuted);
         Assert.Equal(forward.Witness, audit.VerifyReplay(
             initial, initial.Sha256Hex, reverse.Witness).Witness);
     }
