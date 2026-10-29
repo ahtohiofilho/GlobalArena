@@ -264,7 +264,7 @@ public sealed class EconomicV9FailoverAdmissionGate
 
             // Re-acquire the writer lease against the published directory
             // and revalidate both authorities before handing it to gameplay.
-            var admitted = RestoreAfterPromotion(
+            var admitted = RestorePublishedQuarantineForAdmission(
                 destination, generatedWorld,
                 independentlyTrustedLegacyWorldHash,
                 independentlyTrustedLegacyEcologicalDigest,
@@ -290,6 +290,44 @@ public sealed class EconomicV9FailoverAdmissionGate
             // retained as an UNADMITTED forensic artifact, never replaced
             // or silently rolled back. The caller must handle that incident.
             _ = moved;
+        }
+    }
+
+    /// <summary>
+    /// Internal continuation after a marked directory has been atomically
+    /// published. Public/legacy Restore paths reject the marker; this
+    /// private entry point performs full replay under the marker, and
+    /// only the strict caller may clear it after all authority rechecks.
+    /// </summary>
+    private EconomicCompleteV9DurableSaveHost RestorePublishedQuarantineForAdmission(
+        string directoryPath, WorldGenerationResult generatedWorld,
+        WorldStateHash? independentlyTrustedLegacyWorldHash,
+        string? independentlyTrustedLegacyEcologicalDigest,
+        HistoricalMilitaryMoveAuthorizationSeal? historicalVerifier)
+    {
+        if (!File.Exists(Path.Combine(directoryPath, ".ga-v9-not-admitted")))
+            throw new InvalidOperationException(
+                "Published recovery marker was removed before strict admission.");
+        var acknowledged = _witness.ReadLastAcknowledged(_gameId);
+        var observed = _promotedPrimary.ReadSnapshot();
+        RequireAgreement(observed, acknowledged);
+        var host = EconomicCompleteV9DurableSaveHost
+            .RestoreExternallyConfirmedForPublication(
+                directoryPath, generatedWorld, observed,
+                independentlyTrustedLegacyWorldHash,
+                independentlyTrustedLegacyEcologicalDigest, historicalVerifier);
+        try
+        {
+            if (_witness.ReadLastAcknowledged(_gameId) != acknowledged ||
+                _promotedPrimary.ReadSnapshot() != observed)
+                throw new InvalidOperationException(
+                    "Authorities changed during marked publication replay.");
+            return host;
+        }
+        catch
+        {
+            host.Dispose();
+            throw;
         }
     }
 
