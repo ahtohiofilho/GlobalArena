@@ -547,4 +547,209 @@ public sealed class G3J3dMixedDurableV9CommitTests
             Directory.Delete(folder, recursive: true);
         }
     }
+
+    private static (EconomicV9ExternalAnchor Before, EconomicV9ExternalAnchor After)
+        PreparedMixedAnchors(WorldGenerationResult generated,
+            EconomicEcologicalCheckpoint initial,
+            HistoricalMilitaryMoveAuthorizationSeal seal, byte[] certificate)
+    {
+        var before = new EconomicV9ExternalAnchor(
+            initial.Sha256Hex, new string('0', 64), 0UL, 0UL);
+        var proposed = new HistoricalMilitaryEcologicalTurnProjector(
+            generated, seal).Propose(initial, initial.Sha256Hex,
+                Context(), certificate, Demand(), Holds());
+        var next = proposed.EconomicProjection.ProposedNext;
+        var record = new EconomicMixedV9TransitionRecord(
+            1UL, Context().Seed.Value, initial.Sha256Hex, next.Sha256Hex,
+            before.JournalSha256Hex, certificate, Demand(), Holds());
+        var journalRoot = Convert.ToHexString(
+            SHA256.HashData(EconomicMixedV9TransitionCodec.Encode(record)));
+        return (before, new EconomicV9ExternalAnchor(
+            next.Sha256Hex, journalRoot, 1UL, 1UL));
+    }
+
+    [Fact]
+    public void J3ePreparedMixedRecoveryNeverSilentlyPromotesLocalHead()
+    {
+        var generated = Generate();
+        var initial = Initial(generated);
+        var seal = Seal(generated);
+        var certificate = Issue(seal, initial, generated, new HostAuthority());
+        var (before, after) = PreparedMixedAnchors(
+            generated, initial, seal, certificate);
+        var externalPrepare = new EconomicV9ExternalAnchorSnapshot(
+            before, new EconomicV9PreparedExternalAdvance(before, after));
+        var dir = Path.Combine(Path.GetTempPath(),
+            "ga-j3e-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            using (var host = EconomicCompleteV9DurableSaveHost.Create(
+                dir, generated, initial))
+            {
+                var beforePublication =
+                    EconomicCompleteV9DurableSaveHost.InspectExternalReconciliation(
+                        dir, generated, externalPrepare, historicalVerifier: seal);
+                Assert.Equal(
+                    EconomicV9ExternalReconciliationState.PreparedWithoutLocalPublication,
+                    beforePublication.State);
+                Assert.Throws<InvalidOperationException>(() =>
+                    EconomicCompleteV9DurableSaveHost.RestoreExternallyConfirmed(
+                        dir, generated, externalPrepare, historicalVerifier: seal));
+                var candidate = host.CommitMixed(initial.Sha256Hex, Context(),
+                    certificate, Demand(), Holds(), seal);
+                Assert.Equal(after.CheckpointSha256Hex,
+                    candidate.ProposedCheckpointSha256Hex);
+                Assert.Equal(after.JournalSha256Hex,
+                    host.AcceptedJournalSha256Hex);
+            }
+            var inDoubt =
+                EconomicCompleteV9DurableSaveHost.InspectExternalReconciliation(
+                    dir, generated, externalPrepare, historicalVerifier: seal);
+            Assert.Equal(
+                EconomicV9ExternalReconciliationState.LocalPublicationAwaitingExternalConfirmation,
+                inDoubt.State);
+            Assert.Equal(after, inDoubt.VerifiedLocal);
+            Assert.Throws<InvalidOperationException>(() =>
+                EconomicCompleteV9DurableSaveHost.RestoreExternallyConfirmed(
+                    dir, generated, externalPrepare, historicalVerifier: seal));
+
+            // This snapshot represents a NEW, externally confirmed CAS result,
+            // not a reconstruction of the local head or journal.
+            using var recovered =
+                EconomicCompleteV9DurableSaveHost.RestoreExternallyConfirmed(
+                    dir, generated, new EconomicV9ExternalAnchorSnapshot(after),
+                    historicalVerifier: seal);
+            Assert.Equal(after.CheckpointSha256Hex, recovered.AcceptedSha256Hex);
+            Assert.Equal(1UL, recovered.CommitSequence);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void J3eUnpreparedLocalAdvanceCannotBecomeTrustedByInspection()
+    {
+        var generated = Generate();
+        var initial = Initial(generated);
+        var seal = Seal(generated);
+        var certificate = Issue(seal, initial, generated, new HostAuthority());
+        var (before, after) = PreparedMixedAnchors(
+            generated, initial, seal, certificate);
+        var dir = Path.Combine(Path.GetTempPath(),
+            "ga-j3e-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            using (var host = EconomicCompleteV9DurableSaveHost.Create(
+                dir, generated, initial))
+                host.CommitMixed(initial.Sha256Hex, Context(),
+                    certificate, Demand(), Holds(), seal);
+
+            Assert.Throws<InvalidOperationException>(() =>
+                EconomicCompleteV9DurableSaveHost.InspectExternalReconciliation(
+                    dir, generated, new EconomicV9ExternalAnchorSnapshot(before),
+                    historicalVerifier: seal));
+
+            var mismatched = new EconomicV9ExternalAnchor(
+                after.CheckpointSha256Hex, new string('F', 64), 1UL, 1UL);
+            Assert.Throws<InvalidOperationException>(() =>
+                EconomicCompleteV9DurableSaveHost.InspectExternalReconciliation(
+                    dir, generated, new EconomicV9ExternalAnchorSnapshot(
+                        before, new EconomicV9PreparedExternalAdvance(
+                            before, mismatched)), historicalVerifier: seal));
+
+            Assert.Throws<ArgumentException>(() =>
+                new EconomicV9ExternalAnchorSnapshot(after,
+                    new EconomicV9PreparedExternalAdvance(before, after)));
+            Assert.Throws<ArgumentException>(() =>
+                new EconomicV9PreparedExternalAdvance(before,
+                    new EconomicV9ExternalAnchor(
+                        after.CheckpointSha256Hex, after.JournalSha256Hex,
+                        2UL, 2UL)));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void J3ePreparedLocalHeadWithCorruptedJournalFailsClosed()
+    {
+        var generated = Generate();
+        var initial = Initial(generated);
+        var seal = Seal(generated);
+        var certificate = Issue(seal, initial, generated, new HostAuthority());
+        var (before, after) = PreparedMixedAnchors(
+            generated, initial, seal, certificate);
+        var externalPrepare = new EconomicV9ExternalAnchorSnapshot(
+            before, new EconomicV9PreparedExternalAdvance(before, after));
+        var dir = Path.Combine(Path.GetTempPath(),
+            "ga-j3e-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            using (var host = EconomicCompleteV9DurableSaveHost.Create(
+                dir, generated, initial))
+                host.CommitMixed(initial.Sha256Hex, Context(),
+                    certificate, Demand(), Holds(), seal);
+            var path = new EconomicMixedV9TransitionArchive(dir).RecordPath(
+                after.CheckpointSha256Hex);
+            var bytes = File.ReadAllBytes(path);
+            bytes[bytes.Length / 2] ^= 0x01;
+            File.WriteAllBytes(path, bytes);
+            Assert.Throws<InvalidDataException>(() =>
+                EconomicCompleteV9DurableSaveHost.InspectExternalReconciliation(
+                    dir, generated, externalPrepare, historicalVerifier: seal));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void J3eEcologicalPreparedSuccessorAlsoRequiresIndependentSettlement()
+    {
+        var generated = Generate();
+        var initial = Initial(generated);
+        var before = new EconomicV9ExternalAnchor(
+            initial.Sha256Hex, new string('0', 64), 0UL, 0UL);
+        var dir = Path.Combine(Path.GetTempPath(),
+            "ga-j3e-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            EconomicV9ExternalAnchor after;
+            using (var host = EconomicCompleteV9DurableSaveHost.Create(
+                dir, generated, initial))
+            {
+                var next = host.CommitNext(
+                    initial.Sha256Hex, 1UL, Demand(), Holds());
+                after = new EconomicV9ExternalAnchor(
+                    next.ProposedNext.Sha256Hex,
+                    host.AcceptedJournalSha256Hex, 1UL, 1UL);
+            }
+            var pending = new EconomicV9ExternalAnchorSnapshot(
+                before, new EconomicV9PreparedExternalAdvance(before, after));
+            Assert.Equal(
+                EconomicV9ExternalReconciliationState.LocalPublicationAwaitingExternalConfirmation,
+                EconomicCompleteV9DurableSaveHost.InspectExternalReconciliation(
+                    dir, generated, pending).State);
+            Assert.Throws<InvalidOperationException>(() =>
+                EconomicCompleteV9DurableSaveHost.RestoreExternallyConfirmed(
+                    dir, generated, pending));
+            using var resumed =
+                EconomicCompleteV9DurableSaveHost.RestoreExternallyConfirmed(
+                    dir, generated, new EconomicV9ExternalAnchorSnapshot(after));
+            Assert.Equal(1UL, resumed.LastAppliedTurn);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
 }
