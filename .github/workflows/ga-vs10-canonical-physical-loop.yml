@@ -7,6 +7,7 @@ on:
       - 'GlobalArena.Runtime/CanonicalGameSession.cs'
       - 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
       - 'tools/GlobalArena.Godot/Scripts/Main.cs'
+      - 'tools/GlobalArena.Godot/project.godot'
       - 'GlobalArena.Tests/GaVs10CanonicalPhysicalLoopTests.cs'
       - '.github/workflows/ga-vs10-canonical-physical-loop.yml'
   workflow_dispatch:
