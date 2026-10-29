@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using GlobalArena.World;
+using GlobalArena.Kernel;
 
 namespace GlobalArena.Simulation;
 
@@ -19,7 +20,9 @@ public sealed class EconomicCompleteV9JournalReplayVerifier
         EconomicCompleteV9SaveBundleArchive bundles,
         EconomicEcologicalTransitionJournalArchive journal,
         string acceptedCheckpointSha256Hex, ulong commitSequence,
-        string expectedLatestJournalSha256Hex)
+        string expectedLatestJournalSha256Hex,
+        HistoricalMilitaryMoveAuthorizationSeal? historicalVerifier = null,
+        string? independentlyTrustedJournalRoot = null)
     {
         ArgumentNullException.ThrowIfNull(generatedWorld);
         ArgumentNullException.ThrowIfNull(bundles);
@@ -30,35 +33,92 @@ public sealed class EconomicCompleteV9JournalReplayVerifier
         var expectedJournal = EconomicEcologicalSidecarArchive.NormalizeDigest(
             expectedLatestJournalSha256Hex);
         var zero = new string('0', 64);
+        if (independentlyTrustedJournalRoot is not null &&
+            EconomicEcologicalSidecarArchive.NormalizeDigest(
+                independentlyTrustedJournalRoot) != expectedJournal)
+            throw new InvalidOperationException(
+                "Durable journal root differs from independently trusted root.");
+        var mixedArchive = new EconomicMixedV9TransitionArchive(
+            bundles.DirectoryPath);
         if ((commitSequence == 0UL) != (expectedJournal == zero))
             throw new InvalidDataException("Journal head and sequence disagree.");
 
         for (var remaining = commitSequence; remaining > 0UL; remaining--)
         {
-            var step = journal.Load(current.Sha256Hex);
+            var hasEcology = File.Exists(journal.RecordPath(current.Sha256Hex));
+            var hasMixed = File.Exists(mixedArchive.RecordPath(current.Sha256Hex));
+            if (!hasEcology && !hasMixed)
+                throw new FileNotFoundException(
+                    "Accepted transition has no corresponding durable journal.");
+            if (hasEcology && hasMixed)
+                throw new InvalidDataException(
+                    "Committed transition has conflicting journal types.");
+            if (hasMixed)
+            {
+                // A mixed entry changes the WorldState hash. Verify its
+                // signed military actions and ecological books together.
+                if (historicalVerifier is null ||
+                    independentlyTrustedJournalRoot is null)
+                    throw new InvalidOperationException(
+                        "Mixed replay requires historical host key and independently trusted journal root.");
+                var step = mixedArchive.Load(current.Sha256Hex);
+                var actual = Convert.ToHexString(
+                    SHA256.HashData(EconomicMixedV9TransitionCodec.Encode(step)));
+                if (actual != expectedJournal ||
+                    step.TurnOrdinal != current.NaturalCapital.LastAppliedTurn)
+                    throw new InvalidDataException(
+                        "Mixed journal differs from accepted chain or turn.");
+                expectedJournal = step.PreviousJournalSha256Hex;
+                var previous = bundles.Load(
+                    generatedWorld, step.PreviousCheckpointSha256Hex);
+                if (previous.NaturalCapital.LastAppliedTurn == ulong.MaxValue ||
+                    previous.NaturalCapital.LastAppliedTurn + 1UL != step.TurnOrdinal)
+                    throw new InvalidDataException(
+                        "Mixed journal predecessor is from another turn.");
+                var projector = new HistoricalMilitaryEcologicalTurnProjector(
+                    generatedWorld, historicalVerifier);
+                var replay = projector.Propose(
+                    previous, previous.Sha256Hex,
+                    new SimulationContext(
+                        new TurnNumber(step.TurnOrdinal),
+                        new SimulationSeed(step.Seed)),
+                    step.MilitaryAuthorizationCertificate,
+                    step.WorkerDemand, step.OriginHolds);
+                if (replay.ProposedCheckpointSha256Hex != current.Sha256Hex ||
+                    !CryptographicOperations.FixedTimeEquals(
+                        replay.CompleteV9Bundle,
+                        EconomicCompleteV9SaveBundleCodec.Encode(current)))
+                    throw new InvalidOperationException(
+                        "Mixed military/ecological transition failed deterministic replay.");
+                current = previous;
+                continue;
+            }
+
+            var ecological = journal.Load(current.Sha256Hex);
             var actualJournal = Convert.ToHexString(
                 SHA256.HashData(EconomicEcologicalTransitionJournalCodec.Encode(
-                    step)));
+                    ecological)));
             if (actualJournal != expectedJournal)
                 throw new InvalidDataException(
                     "Ecological input journal differs from the head-anchored hash chain.");
-            expectedJournal = step.PreviousJournalSha256Hex;
-            if (step.ResultCheckpointSha256Hex != current.Sha256Hex ||
-                step.TurnOrdinal != current.NaturalCapital.LastAppliedTurn)
+            expectedJournal = ecological.PreviousJournalSha256Hex;
+            if (ecological.ResultCheckpointSha256Hex != current.Sha256Hex ||
+                ecological.TurnOrdinal != current.NaturalCapital.LastAppliedTurn)
                 throw new InvalidDataException(
                     "Committed journal turn disagrees with the complete save.");
 
-            var previous = bundles.Load(
-                generatedWorld, step.PreviousCheckpointSha256Hex);
-            if (previous.NaturalCapital.LastAppliedTurn == ulong.MaxValue ||
-                previous.NaturalCapital.LastAppliedTurn + 1UL != step.TurnOrdinal ||
-                previous.WorldHash != current.WorldHash)
+            var prior = bundles.Load(
+                generatedWorld, ecological.PreviousCheckpointSha256Hex);
+            if (prior.NaturalCapital.LastAppliedTurn == ulong.MaxValue ||
+                prior.NaturalCapital.LastAppliedTurn + 1UL != ecological.TurnOrdinal ||
+                prior.WorldHash != current.WorldHash)
                 throw new InvalidDataException(
                     "Journal predecessor is from another world or turn.");
 
             var result = _resolver.Propose(
-                generatedWorld, previous, previous.Sha256Hex,
-                step.TurnOrdinal, step.WorkerDemand, step.OriginHolds);
+                generatedWorld, prior, prior.Sha256Hex,
+                ecological.TurnOrdinal, ecological.WorkerDemand,
+                ecological.OriginHolds);
 
             if (result.ProposedNext.Sha256Hex != current.Sha256Hex ||
                 !CryptographicOperations.FixedTimeEquals(
@@ -67,7 +127,7 @@ public sealed class EconomicCompleteV9JournalReplayVerifier
                 throw new InvalidOperationException(
                     "Ecological journal replay diverged from the committed full save.");
 
-            current = previous;
+            current = prior;
         }
 
         if (expectedJournal != zero)
