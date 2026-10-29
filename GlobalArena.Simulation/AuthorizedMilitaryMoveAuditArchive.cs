@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using GlobalArena.Kernel;
 
 namespace GlobalArena.Simulation;
 
@@ -78,6 +79,7 @@ public sealed class AuthorizedMilitaryMoveAuditArchive
         AuthorizedMilitaryMoveTurnAudit verifier,
         EconomicEcologicalCheckpoint accepted,
         string independentlyTrustedAcceptedCheckpointSha256Hex,
+        SimulationContext independentlyTrustedContext,
         string independentlyTrustedWitnessSha256Hex)
     {
         ArgumentNullException.ThrowIfNull(verifier);
@@ -89,7 +91,8 @@ public sealed class AuthorizedMilitaryMoveAuditArchive
             throw new InvalidDataException(
                 "Military movement witness does not match its trusted content hash.");
         var result = verifier.VerifyReplay(accepted,
-            independentlyTrustedAcceptedCheckpointSha256Hex, bytes);
+            independentlyTrustedAcceptedCheckpointSha256Hex,
+            independentlyTrustedContext, bytes);
         if (result.WitnessSha256Hex != name)
             throw new InvalidDataException("Replayed witness commitment differs.");
         return result;
