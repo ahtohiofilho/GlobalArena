@@ -28,8 +28,9 @@ evitando associar trabalhadores a tiles físicos de malha errada.
   explícita em G(3,0)→G(18,0), seed 20261012, destaca o tile físico
   inicial e seleciona o foco estratégico que o contém.
 - Trabalhadores continuam sendo uma única entidade que **produz e
-  consome**, sem cidades ou infraestrutura obrigatória para atividade
-  primitiva. Ao clicar num tile com pessoas ele vira origem; ao clicar
+  consome**, sem cidades; a infraestrutura produtiva e suas vagas
+  ainda são omitidas **apenas neste atalho experimental**, conforme
+  GA-ADR-ECON-006. Ao clicar num tile com pessoas ele vira origem; ao clicar
   num vizinho trabalhável vira destino; seleciona-se atividade anterior,
   atividade nova e quantidade para transferir.
 - `TacticalContextPreview.WorkerRings.cs`: anéis espessos ciano
@@ -44,6 +45,27 @@ evitando associar trabalhadores a tiles físicos de malha errada.
   **não é alterado pelo laboratório**. Não existe estado v9/saves
   compartilhado, estoque, mercado fechado ou turno canônico. O
   painel declara isso em destaque para evitar falsa integração.
+
+## Correção canônica posterior: infraestrutura antes do emprego
+
+A mecânica deste laboratório **não é a política econômica definitiva**.
+Conforme [GA-ADR-ECON-006](GA-ADR-ECON-006-infrastructure-first-employment.md),
+o jogo deverá **implantar infraestrutura produtiva no tile físico tático
+antes de disponibilizar vagas aos trabalhadores**. Fazenda, ponto de
+coleta e mina são instalações, não consequências implícitas da presença
+de trabalhadores; as vagas podem ficar ociosas. Trabalhadores
+continuam sendo simultaneamente produtores e consumidores; não
+existem cidades como entidades obrigatórias.
+
+No Neolítico, o **roçado primitivo** e os **pontos de coleta
+de madeira/pedra** poderão ser implantados explicitamente sem
+custo material, evitando travar a civilização na ausência de
+estoques iniciais. A alocação direta atual representa apenas
+um atalho técnico temporário que comprova geometria,
+conservação e interação, **não** uma criação automática
+e canônica de instalações. Não implementar agora capacidade
+de vagas, custos de construção ou moeda sem os modelos
+correspondentes e sem concluir o laboratório.
 
 ## Protocolo e riscos
 
