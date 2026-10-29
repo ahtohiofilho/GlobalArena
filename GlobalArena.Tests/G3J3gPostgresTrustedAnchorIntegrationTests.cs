@@ -10,6 +10,7 @@ namespace GlobalArena.Tests;
 /// The dedicated GitHub Actions PostgreSQL job sets it; ordinary kernel suites
 /// may run without a database. Tests never treat an in-memory store as durable.
 /// </summary>
+[Collection("G3J3PostgresIntegration")]
 public sealed class G3J3gPostgresTrustedAnchorIntegrationTests
 {
     private static readonly string Zero = new('0', 64);
