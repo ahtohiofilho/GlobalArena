@@ -92,8 +92,8 @@ public sealed partial class G3J3dMixedDurableV9CommitTests
                     recovered.AcceptedJournalSha256Hex);
                 Assert.Equal(2UL, recovered.CommitSequence);
                 Assert.Equal(2UL, recovered.LastAppliedTurn);
-                Assert.Equal(1, Directory.GetFiles(accepted, "*.gamixed").Length);
-                Assert.Equal(1, Directory.GetFiles(accepted, "*.gajournal").Length);
+                Assert.Single(Directory.GetFiles(accepted, "*.gamixed"));
+                Assert.Single(Directory.GetFiles(accepted, "*.gajournal"));
                 Assert.False(File.Exists(Path.Combine(
                     accepted, ".ga-v9-not-admitted")));
             }
