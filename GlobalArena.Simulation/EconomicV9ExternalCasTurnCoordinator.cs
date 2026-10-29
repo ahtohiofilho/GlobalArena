@@ -197,15 +197,19 @@ public sealed class EconomicV9ExternalCasTurnCoordinator
                 "External anchor is stale, different, or already prepared.");
         var prepared = new EconomicV9PreparedExternalAdvance(before, after);
 
-        // Durable write-ahead is the authority for exactly one candidate.
+        // Mark blocked BEFORE the external CAS invocation: the authority
+        // might durably prepare and then throw before acknowledging success.
+        // Only a definitive false response means nothing was prepared.
+        _requiresRecovery = true;
         if (!_trusted.TryPrepare(snapshot, prepared))
+        {
+            _requiresRecovery = false;
             throw new InvalidOperationException(
                 "External prepare CAS rejected the proposed v9 transition.");
+        }
 
-        // From here a crash or even an ambiguous external exception MUST NOT
-        // release this coordinator for another turn. A fresh recovery decision
-        // by the independent authority is necessary.
-        _requiresRecovery = true;
+        // An ambiguous external exception must NEVER release this coordinator
+        // for another turn until an independent recovery decision is made.
         if (_trusted.ReadSnapshot() !=
             new EconomicV9ExternalAnchorSnapshot(before, prepared))
             throw new InvalidOperationException(
