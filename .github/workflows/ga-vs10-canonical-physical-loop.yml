@@ -1,0 +1,44 @@
+name: GA-VS10 Canonical Physical Turn Save
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/CanonicalPhysicalTacticalSession.cs'
+      - 'GlobalArena.Runtime/CanonicalGameSession.cs'
+      - 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+      - 'tools/GlobalArena.Godot/Scripts/Main.cs'
+      - 'tools/GlobalArena.Godot/project.godot'
+      - 'GlobalArena.Tests/GaVs10CanonicalPhysicalLoopTests.cs'
+      - '.github/workflows/ga-vs10-canonical-physical-loop.yml'
+  workflow_dispatch:
+
+jobs:
+  canonical-loop-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Regression canonical events, v8/v9 hash, VS07 saves, VS10 replay
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs10|FullyQualifiedName~GaVs09|FullyQualifiedName~GaVs07|FullyQualifiedName~CanonicalWorldStateHasherTests|FullyQualifiedName~WorldStateTests|FullyQualifiedName~CanonicalGameSessionTests'
+      - name: Build original Godot CSharp viewer
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  canonical-loop-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Windows canonical loop, determinism and regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs10|FullyQualifiedName~GaVs09|FullyQualifiedName~GaVs07|FullyQualifiedName~CanonicalWorldStateHasherTests|FullyQualifiedName~WorldStateTests|FullyQualifiedName~CanonicalGameSessionTests'
+      - name: Build original Godot CSharp viewer on Windows
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release

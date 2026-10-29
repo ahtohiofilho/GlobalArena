@@ -10,14 +10,14 @@ using Godot;
 namespace GlobalArena.Godot;
 
 /// <summary>
-/// Explicit, opt-in in-memory Neolithic activity lab in the REAL Godot shell.
-/// Does not modify or impersonate the CanonicalGameSession WorldState.
+/// Neolithic control surface for the canonical physical economy in the real Godot shell.
+/// All live actions commit immutable CanonicalGameSession.WorldState snapshots.
 /// The renderer receives only physical tile IDs for visual highlights.
 /// </summary>
 public partial class Main
 {
-    private EconomicPhysicalTacticalWorkerSession? _workerLab;
-    private EconomicPhysicalTacticalOfflineSession? _offlineLab;
+    // One authoritative source: CanonicalGameSession.WorldState.
+    private CanonicalPhysicalTacticalSession? _canonicalPhysicalLab;
     private PhysicalTacticalTileId? _workerOrigin;
     private PhysicalTacticalTileId? _workerDestination;
     private Label? _workerLabStatus;
@@ -44,7 +44,7 @@ public partial class Main
 
         var warning = new Label
         {
-            Text = "Laboratório offline: produz/consome a cada 6 turnos e salva a sessão própria. Ainda NÃO altera o WorldState canônico; sem mercado, transporte ou cidades.",
+            Text = "Economia física CANÔNICA: produz/consome a cada 6 turnos e salva V9. Trabalhadores são residentes e produtores; sem mercado, transporte ou cidades.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         warning.AddThemeColorOverride("font_color", new Color("#e1c883"));
@@ -110,7 +110,7 @@ public partial class Main
 
         var persistence = new HBoxContainer();
         lab.AddChild(persistence);
-        var save = new Button { Text = "SALVAR PARTIDA OFFLINE", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var save = new Button { Text = "SALVAR PARTIDA CANÔNICA V9", SizeFlagsHorizontal = SizeFlags.ExpandFill };
         save.Pressed += SaveOfflineLab;
         persistence.AddChild(save);
         var load = new Button { Text = "REABRIR SAVE", SizeFlagsHorizontal = SizeFlags.ExpandFill };
@@ -122,7 +122,7 @@ public partial class Main
         _tacticalPreview.WorkerTileHovered += id =>
         {
             if (_workerLabHover is not null)
-                _workerLabHover.Text = _workerLab is null || !id.HasValue
+                _workerLabHover.Text = _canonicalPhysicalLab is null || !id.HasValue
                     ? "Sob o cursor: —"
                     : $"Sob o cursor: tile físico {id.Value}";
         };
@@ -130,40 +130,50 @@ public partial class Main
 
     private void StartWorkerLab()
     {
-        if (_tacticalPreview is null || _workerLabStatus is null)
+        if (_tacticalPreview is null || _workerLabStatus is null || _canonicalSession is null)
             return;
+        // Re-entering the laboratory must never discard its canonical
+        // journal, otherwise the next V9 save could not be replayed.
+        if (_canonicalPhysicalLab is not null)
+        {
+            _workerOrigin ??= _canonicalPhysicalLab.State.Allocations.First().TileId;
+            UpdateWorkerLabHud();
+            return;
+        }
         try
         {
-            // The existing production renderer is G(3,0)->G(18,0), not the
-            // G(2,0)->G(12,0) used by the isolated VS03/VS04 demos.
-            // Explicit instance parameters prevent invalid cross-world IDs.
-            _offlineLab = new EconomicPhysicalTacticalOfflineSession(
-                20261012UL, new GoldbergParameters(3, 0), new GoldbergParameters(18, 0));
-            _workerLab = _offlineLab.Workers;
-            _workerOrigin = _workerLab.InitialTile;
-            _workerDestination = null;
-            var focus = _workerLab.DisplayBucket(_workerLab.InitialTile);
+            // The game already owns G(3,0); its physical topology is G(18,0).
+            // No offline worker session survives beyond canonical seeding.
+            var next = new CanonicalPhysicalTacticalSession(
+                _canonicalSession, new GoldbergParameters(18, 0));
+            var origin = next.State.Allocations.First().TileId;
+            var focus = next.DisplayBucket(origin);
             _tacticalPreview.Open(focus.Value);
-            if (!_tacticalPreview.HasVisiblePhysicalTile(_workerLab.InitialTile.FineStrategicCellId.Value))
-                throw new InvalidOperationException("Worker origin is not visible in its physical map.");
+            if (!_tacticalPreview.HasVisiblePhysicalTile(origin.FineStrategicCellId.Value))
+                throw new InvalidOperationException("Canonical worker tile is not visible.");
+            _canonicalPhysicalLab = next;
+            _workerOrigin = origin;
+            _workerDestination = null;
+            AttachRuntimeState(_canonicalSession.Snapshot);
             UpdateWorkerLabHud();
-            GD.Print($"GA-VS05-ORIGINAL-UI-LAB-READY fine=18 coarse=3 source={_workerOrigin.Value.FineStrategicCellId.Value} workers={_workerLab.TotalWorkers} canonical_worldstate_untouched=true");
+            GD.Print($"GA-VS10-CANONICAL-READY revision={_canonicalSession.Snapshot.Revision} " +
+                $"source={origin.FineStrategicCellId.Value} workers={next.State.TotalWorkers} " +
+                $"hash={next.CurrentHash.HexDigest} canonical_worldstate=true");
         }
         catch (Exception ex)
         {
-            _workerLab = null;
-            _offlineLab = null;
+            _canonicalPhysicalLab = null;
             _workerOrigin = null;
             _workerDestination = null;
             _tacticalPreview.ClearWorkerRings();
-            _workerLabStatus.Text = "LAB NÃO INICIADO: " + ex.Message;
-            GD.PushError("GA-VS05-LAB-START-FAIL: " + ex);
+            _workerLabStatus.Text = "SESSÃO CANÔNICA NÃO INICIADA: " + ex.Message;
+            GD.PushError("GA-VS10-CANONICAL-START-FAIL: " + ex);
         }
     }
 
     private void HandleWorkerLabSelection(ulong? clickedTile)
     {
-        if (_workerLab is null || _workerOrigin is null || _tacticalPreview is null)
+        if (_canonicalPhysicalLab is null || _workerOrigin is null || _tacticalPreview is null)
             return;
         if (!clickedTile.HasValue)
         {
@@ -171,57 +181,66 @@ public partial class Main
             UpdateWorkerLabHud();
             return;
         }
-
         var id = new PhysicalTacticalTileId(
-            _workerLab.FineWorldParameters, new StrategicCellId(clickedTile.Value));
-        var occupied = _workerLab.WorkersAt(id);
+            _canonicalPhysicalLab.State.FineParameters,
+            new StrategicCellId(clickedTile.Value));
+        var occupied = _canonicalPhysicalLab.WorkersAt(id);
         if (occupied > 0)
         {
             _workerOrigin = id;
             _workerDestination = null;
         }
-        else if (_workerLab.AdjacentWorkable(_workerOrigin.Value).Contains(id))
-        {
+        else if (_canonicalPhysicalLab.AdjacentWorkable(_workerOrigin.Value).Contains(id))
             _workerDestination = id;
-        }
-        else _workerDestination = null;
-
+        else
+            _workerDestination = null;
         UpdateWorkerLabHud();
     }
 
     private void MoveWorkerLabWorkers()
     {
-        if (_workerLab is null || _offlineLab is null || _workerOrigin is null || _workerDestination is null ||
+        if (_canonicalPhysicalLab is null || _canonicalSession is null ||
+            _workerOrigin is null || _workerDestination is null ||
             _workerAmount is null || _workerFromJob is null || _workerToJob is null)
             return;
         try
         {
-            _offlineLab.MoveWorkers(_workerOrigin.Value, _workerDestination.Value,
+            _canonicalPhysicalLab.MoveWorkers(_workerOrigin.Value, _workerDestination.Value,
                 (EconomicActivityKind)_workerFromJob.GetSelectedId(),
                 (EconomicActivityKind)_workerToJob.GetSelectedId(),
                 checked((ulong)_workerAmount.Value));
             _workerOrigin = _workerDestination;
             _workerDestination = null;
+            AttachRuntimeState(_canonicalSession.Snapshot);
             UpdateWorkerLabHud();
-            GD.Print($"GA-VS05-ORIGINAL-UI-WORKERS-MOVED revision={_workerLab.Revision} workers={_workerLab.TotalWorkers} occupied={_workerLab.Assignments.Select(x => x.TileId).Distinct().Count()} city_entity=false canonical_worldstate_untouched=true");
+            GD.Print($"GA-VS10-CANONICAL-WORKERS-MOVED revision={_canonicalSession.Snapshot.Revision} " +
+                $"workers={_canonicalPhysicalLab.State.TotalWorkers} " +
+                $"occupied={_canonicalPhysicalLab.State.Allocations.Select(x => x.TileId).Distinct().Count()} " +
+                $"hash={_canonicalPhysicalLab.CurrentHash.HexDigest}");
         }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or OverflowException)
         {
             if (_workerLabStatus is not null)
-                _workerLabStatus.Text = "TRANSFERÊNCIA RECUSADA (sem alterar o estado): " + ex.Message;
+                _workerLabStatus.Text = "TRANSFERÊNCIA RECUSADA (estado preservado): " + ex.Message;
         }
     }
 
     private void AdvanceOfflineLabTurn()
     {
-        if (_offlineLab is null || _workerLabStatus is null) return;
+        if (_canonicalPhysicalLab is null || _canonicalSession is null ||
+            _workerLabStatus is null) return;
         try
         {
-            var cycle = _offlineLab.AdvanceMovementTurn();
+            var cycle = _canonicalPhysicalLab.AdvanceMovementTurn();
+            AttachRuntimeState(_canonicalSession.Snapshot);
             UpdateWorkerLabHud();
             GD.Print(cycle is null
-                ? $"GA-VS07-TICK movement_turn={_offlineLab.MovementTurn} settlement=false"
-                : $"GA-VS07-SETTLED movement_turn={cycle.MovementTurn} produced_raw={cycle.ProducedRaw} food_consumed_raw={cycle.FoodConsumedRaw} food_unmet_raw={cycle.FoodUnmetRaw} stock_locations={_offlineLab.Stocks.Count}");
+                ? $"GA-VS10-CANONICAL-TICK movement_turn={_canonicalPhysicalLab.State.MovementTurn} " +
+                  $"revision={_canonicalSession.Snapshot.Revision} settled=false"
+                : $"GA-VS10-CANONICAL-SETTLED movement_turn={cycle.MovementTurn} " +
+                  $"produced_raw={cycle.ProducedRaw} food_consumed_raw={cycle.FoodConsumedRaw} " +
+                  $"food_unmet_raw={cycle.FoodUnmetRaw} " +
+                  $"hash={_canonicalPhysicalLab.CurrentHash.HexDigest}");
         }
         catch (Exception ex) when (ex is InvalidOperationException or OverflowException)
         {
@@ -229,24 +248,25 @@ public partial class Main
         }
     }
 
-    private static string OfflineLabSavePath =>
+    private static string CanonicalLabSavePath =>
+        ProjectSettings.GlobalizePath("user://ga-vs10-canonical-physical.json");
+    private static string LegacyLabSavePath =>
         ProjectSettings.GlobalizePath("user://ga-vs07-neolithic-offline.json");
 
     private void SaveOfflineLab()
     {
-        if (_offlineLab is null || _workerLabStatus is null) return;
+        if (_canonicalPhysicalLab is null || _workerLabStatus is null) return;
         try
         {
-            var content = _offlineLab.ExportSaveJson();
-            // Create the file alongside its destination, then atomically
-            // replace. No canonical WorldState or network operations involved.
-            var path = OfflineLabSavePath;
+            var content = _canonicalPhysicalLab.ExportSaveJson();
+            var path = CanonicalLabSavePath;
             var temp = path + ".tmp";
             File.WriteAllText(temp, content, Encoding.UTF8);
             File.Move(temp, path, overwrite: true);
             UpdateWorkerLabHud();
-            _workerLabStatus.Text += "\nSAVE OFFLINE GRAVADO: ga-vs07-neolithic-offline.json";
-            GD.Print($"GA-VS07-SAVED movement_turn={_offlineLab.MovementTurn} cycles={_offlineLab.EconomicCycles} workers={_offlineLab.Workers.TotalWorkers}");
+            _workerLabStatus.Text += "\nSAVE CANÔNICO V9 GRAVADO: ga-vs10-canonical-physical.json";
+            GD.Print($"GA-VS10-CANONICAL-SAVED revision={_canonicalPhysicalLab.Game.Snapshot.Revision} " +
+                $"hash={_canonicalPhysicalLab.CurrentHash.HexDigest}");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
@@ -259,28 +279,38 @@ public partial class Main
         if (_tacticalPreview is null || _workerLabStatus is null) return;
         try
         {
-            var content = File.ReadAllText(OfflineLabSavePath, Encoding.UTF8);
-            var next = EconomicPhysicalTacticalOfflineSession.RestoreSaveJson(content);
-            if (next.Workers.CoarseWorldParameters != new GoldbergParameters(3, 0) ||
-                next.Workers.FineWorldParameters != new GoldbergParameters(18, 0))
-                throw new InvalidOperationException("O save não pertence à malha física G3/G18 do visualizador.");
-            var origin = next.Workers.Assignments.First().TileId;
-            var focus = next.Workers.DisplayBucket(origin);
-            // Validate a fully reconstructed state before replacing the active
-            // lab. Never publish partial data from a corrupt save.
+            // Prefer V9. Do not silently treat a corrupt V9 as legacy.
+            var hasCanonical = File.Exists(CanonicalLabSavePath);
+            var path = hasCanonical ? CanonicalLabSavePath : LegacyLabSavePath;
+            var content = File.ReadAllText(path, Encoding.UTF8);
+            var restored = hasCanonical
+                ? CanonicalPhysicalTacticalSession.RestoreSaveJson(content)
+                : CanonicalPhysicalTacticalSession.MigrateVs07SaveJson(content);
+            if (restored.State.CoarseParameters != new GoldbergParameters(3, 0) ||
+                restored.State.FineParameters != new GoldbergParameters(18, 0) ||
+                _canonicalSession is null ||
+                restored.Game.Snapshot.WorldBinding != _canonicalSession.Snapshot.WorldBinding)
+                throw new InvalidOperationException("Save não pertence ao mundo G3/G18 ativo.");
+            var origin = restored.State.Allocations.First().TileId;
+            var focus = restored.DisplayBucket(origin);
+            // Verify presentation before publishing the reconstructed session.
             _tacticalPreview.Open(focus.Value);
             if (!_tacticalPreview.HasVisiblePhysicalTile(origin.FineStrategicCellId.Value))
-                throw new InvalidOperationException("O tile de trabalho restaurado não aparece na malha.");
-            _offlineLab = next;
-            _workerLab = next.Workers;
+                throw new InvalidOperationException("Tile restaurado não aparece na malha.");
+            _canonicalSession = restored.Game;
+            _canonicalPhysicalLab = restored;
             _workerOrigin = origin;
             _workerDestination = null;
+            AttachRuntimeState(_canonicalSession.Snapshot);
             UpdateWorkerLabHud();
-            _workerLabStatus.Text += "\nSAVE OFFLINE REABERTO E VALIDADO.";
-            GD.Print($"GA-VS07-LOADED movement_turn={_offlineLab.MovementTurn} cycles={_offlineLab.EconomicCycles} workers={_workerLab.TotalWorkers}");
+            _workerLabStatus.Text += hasCanonical
+                ? "\nSAVE CANÔNICO V9 REABERTO E VALIDADO."
+                : "\nSAVE LEGADO VS07 MIGRADO EM MEMÓRIA; SALVE EM V9 PARA PERSISTIR.";
+            GD.Print($"GA-VS10-CANONICAL-LOADED revision={_canonicalSession.Snapshot.Revision} " +
+                $"hash={restored.CurrentHash.HexDigest} migrated_legacy={!hasCanonical}");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or
-            InvalidOperationException or ArgumentException)
+            InvalidOperationException or ArgumentException or OverflowException)
         {
             _workerLabStatus.Text = "SAVE NÃO CARREGADO (estado anterior preservado): " + ex.Message;
         }
@@ -288,43 +318,44 @@ public partial class Main
 
     private void UpdateWorkerLabHud()
     {
-        if (_workerLab is null || _workerOrigin is null || _tacticalPreview is null ||
+        if (_canonicalPhysicalLab is null || _workerOrigin is null || _tacticalPreview is null ||
             _workerLabStatus is null) return;
-        var available = _workerLab.AdjacentWorkable(_workerOrigin.Value);
+        var state = _canonicalPhysicalLab.State;
+        var available = _canonicalPhysicalLab.AdjacentWorkable(_workerOrigin.Value);
         _tacticalPreview.SetWorkerRings(
             _workerOrigin.Value.FineStrategicCellId.Value,
             _workerDestination?.FineStrategicCellId.Value,
             available);
 
         var origin = _workerOrigin.Value;
-        var local = _workerLab.Assignments.Where(x => x.TileId == origin).ToArray();
-        var flows = _workerLab.Preview();
-        var demand = flows.Demand.Where(x => x.TileId == origin)
-            .Aggregate(0UL, (sum, x) => checked(sum + x.RawQuantity));
+        var local = state.Allocations.Where(x => x.TileId == origin).ToArray();
+        var demand = _canonicalPhysicalLab.FoodDemandAt(origin);
         var jobs = string.Join(" | ", local.Select(x => $"{x.Activity}: {x.Workers}"));
         var destination = _workerDestination.HasValue
             ? $"Tile {_workerDestination.Value.FineStrategicCellId.Value} selecionado"
             : "Clique num vizinho contornado em verde-lima";
-        var stockFood = _offlineLab?.StockAt(origin, new CommodityId(1U)) ?? 0UL;
-        var stockStone = _offlineLab?.StockAt(origin, new CommodityId(2U)) ?? 0UL;
-        var stockWood = _offlineLab?.StockAt(origin, new CommodityId(3U)) ?? 0UL;
-        var lastCycle = _offlineLab?.Cycles.LastOrDefault();
-        var tickInfo = _offlineLab is null
-            ? "Sessão de turnos não inicializada"
-            : $"Turno de movimento: {_offlineLab.MovementTurn} | ciclos econômicos: {_offlineLab.EconomicCycles} (a cada 6)";
+        var stockFood = _canonicalPhysicalLab.StockAt(origin, new CommodityId(1U));
+        var stockStone = _canonicalPhysicalLab.StockAt(origin, new CommodityId(2U));
+        var stockWood = _canonicalPhysicalLab.StockAt(origin, new CommodityId(3U));
+        var lastCycle = state.Cycles.LastOrDefault();
+        var tickInfo =
+            $"Turno de movimento: {state.MovementTurn} | ciclos econômicos: {state.Cycles.Count} (a cada 6)";
         _workerLabStatus.Text =
             $"Origem tile {origin.FineStrategicCellId.Value} | {jobs}\n" +
             $"Destino: {destination}\n" +
-            $"Trabalhadores globais: {_workerLab.TotalWorkers} | " +
-            $"tiles ocupados: {_workerLab.Assignments.Select(x => x.TileId).Distinct().Count()} | " +
-            $"revisão: {_workerLab.Revision}\n" +
+            $"Trabalhadores globais: {state.TotalWorkers} | " +
+            $"tiles ocupados: {state.Allocations.Select(x => x.TileId).Distinct().Count()} | " +
+            $"revisão canônica: {_canonicalPhysicalLab.Game.Snapshot.Revision}\n" +
             $"Consumo alimentar na origem (prévia): {demand / 1_000_000.0:F3}\n" +
             tickInfo + "\n" +
             $"Estoque LOCAL: alimento {stockFood / 1_000_000.0:F3} | pedra {stockStone / 1_000_000.0:F3} | madeira {stockWood / 1_000_000.0:F3}\n" +
             (lastCycle is null ? "Nenhum ciclo econômico liquidado ainda.\n" :
-                $"Último ciclo: produção {lastCycle.ProducedRaw / 1_000_000.0:F3}; consumo alimentar {lastCycle.FoodConsumedRaw / 1_000_000.0:F3}; FALTA {lastCycle.FoodUnmetRaw / 1_000_000.0:F3}\n") +
-            "LAB OFFLINE: produção/consumo locais reais e save próprio; SEM transporte, mercado, fome ou WorldState canônico.";
+                $"Último ciclo: produção {lastCycle.ProducedRaw / 1_000_000.0:F3}; " +
+                $"consumo alimentar {lastCycle.FoodConsumedRaw / 1_000_000.0:F3}; " +
+                $"FALTA {lastCycle.FoodUnmetRaw / 1_000_000.0:F3}\n") +
+            "WORLDSTATE CANÔNICO V9: produção/consumo locais reais; SEM transporte, mercado ou fome.";
         if (_workerMoveButton is not null)
             _workerMoveButton.Disabled = !_workerDestination.HasValue;
     }
+
 }
