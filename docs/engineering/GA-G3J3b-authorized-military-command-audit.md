@@ -25,13 +25,13 @@ O codec binário de testemunho de execução contém:
 
 Os campos numéricos usam big-endian e formatos de largura fixa. Contagens declaradas são verificadas contra os bytes efetivamente disponíveis antes de alocar arrays. Nenhum registro depende da ordem de um dicionário ou de `GetHashCode`.
 
-`VerifyReplay` recebe o checkpoint aceito e seu digest confiável, verifica a integridade do arquivo, reconstrói as ordens, **reconsulta o autorizador externo**, executa novamente o mesmo `TurnResolver`, compara hash do estado resultante e exige bytes de transcript **idênticos**. Uma mudança de comando, semente, bandeira `WasExecuted`, origem de evento ou resultado é rejeitada mesmo que alguém recalcule apenas o checksum externo.
+`VerifyReplay` recebe o checkpoint aceito e seu digest confiável, **o turno e a semente esperados de uma fonte confiável externa**, verifica a integridade do arquivo, reconstrói as ordens, **reconsulta o autorizador externo**, executa novamente o mesmo `TurnResolver`, compara hash do estado resultante e exige bytes de transcript **idênticos**. Uma mudança de comando, semente, bandeira `WasExecuted`, origem de evento ou resultado é rejeitada mesmo que alguém recalcule apenas o checksum externo.
 
 **Limitação:** como a autorização é reconsultada no replay, uma permissão revogada pode impedir verificações históricas. Para replay histórico auditável após revogação, precisamos registrar **atestação de autorização versionada e assinada** no momento do fechamento, com política de identidade e validade específica. Isso é próximo gate; não fingimos que este codec já faz isso.
 
 ## 3. Arquivamento sem publicação
 
-`AuthorizedMilitaryMoveAuditArchive` armazena `<SHA256 do testemunho>.gamove` como blob imutável usando arquivo temporário, `Flush(true)`, renomeação sem sobrescrita e recusa de colisão com conteúdo divergente. Ao carregar, exige digests confiáveis do **checkpoint v9** e do **testemunho**, além de reautorizar e reexecutar o lote.
+`AuthorizedMilitaryMoveAuditArchive` armazena `<SHA256 do testemunho>.gamove` como blob imutável usando arquivo temporário, `Flush(true)`, renomeação sem sobrescrita e recusa de colisão com conteúdo divergente. Ao carregar, exige digests confiáveis do **checkpoint v9** e do **testemunho**, **além de turno e semente confiáveis externos**, e reautoriza e reexecutar o lote.
 
 **Importante:** arquivar o transcript não publica a mudança. Um `*.gamove` é evidência de pré-execução/projeção. O componente não chama `CanonicalGameSession.AcceptSnapshot`, `AuthoritativeTurnCommitGate`, `EconomicCompleteV9DurableSaveHost.CommitNext`, nem escreve uma nova head `full-v9-head.gahead`. Ele não cria segunda trilha paralela de aceitação.
 
