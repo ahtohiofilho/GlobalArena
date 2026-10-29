@@ -1,0 +1,44 @@
+name: GA-VS09 Canonical Physical Economy Snapshot
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Runtime/WorldState.cs'
+      - 'GlobalArena.Runtime/PhysicalEconomyRuntimeState.cs'
+      - 'GlobalArena.Simulation/CanonicalWorldStateHasher.cs'
+      - 'GlobalArena.Simulation/PhysicalEconomyWorldStatePublisher.cs'
+      - 'GlobalArena.Tests/GaVs09CanonicalPhysicalEconomyTests.cs'
+      - 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+      - '.github/workflows/ga-vs09-canonical-physical-economy.yml'
+  workflow_dispatch:
+
+jobs:
+  physical-worldstate-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Test v8 hash preservation and immutable canonical v9 physical economy
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs09|FullyQualifiedName~CanonicalWorldStateHasherTests|FullyQualifiedName~GaVs07' --logger 'console;verbosity=normal'
+      - name: Compile original Godot CSharp shell and canonical worker publisher
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  physical-worldstate-windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Verify legacy v8 hashes, v9 worker/stock hashing and six-turn settlement
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs09|FullyQualifiedName~CanonicalWorldStateHasherTests|FullyQualifiedName~GaVs07'
+      - name: Compile original Godot CSharp shell on Windows
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
