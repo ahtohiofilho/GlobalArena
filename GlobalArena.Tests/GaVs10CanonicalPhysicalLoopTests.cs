@@ -179,6 +179,25 @@ public sealed class GaVs10CanonicalPhysicalLoopTests
     }
 
     [Fact]
+    public void CanonicalSessionRejectsStalePhysicalOverwriteOrRemoval()
+    {
+        var game = NewGame();
+        var baseline = game.Game.Snapshot;
+        Assert.Throws<InvalidOperationException>(() =>
+            game.Game.AcceptSnapshot(WorldState.CreateBound(game.Game.GeneratedWorld)
+                .AdvanceRevision()));
+        var sameRevision = baseline.WithPhysicalEconomy(game.State);
+        Assert.Throws<InvalidOperationException>(() =>
+            game.Game.AcceptSnapshot(sameRevision));
+        Assert.Same(baseline, game.Game.Snapshot);
+        game.AdvanceMovementTurn();
+        Assert.Throws<InvalidOperationException>(() =>
+            new CanonicalPhysicalTacticalSession(
+                game.Game, new GoldbergParameters(18, 0)));
+        Assert.Equal(1UL, game.State.MovementTurn);
+    }
+
+    [Fact]
     public void ChecksumAndSelfHashedFabricatedEventsAreRejected()
     {
         var game = NewGame();
