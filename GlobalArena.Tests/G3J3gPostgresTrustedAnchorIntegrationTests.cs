@@ -129,7 +129,7 @@ public sealed class G3J3gPostgresTrustedAnchorIntegrationTests
     }
 
     [Fact]
-    public void J3gOnlyOneConcurrentPrepareWinsAndGamesAreIsolated()
+    public async Task J3gOnlyOneConcurrentPrepareWinsAndGamesAreIsolated()
     {
         using var source = Provision();
         if (source is null) return;
@@ -159,9 +159,9 @@ public sealed class G3J3gPostgresTrustedAnchorIntegrationTests
             return contenderB.TryPrepare(original, targetB);
         });
         start.Set();
-        Task.WaitAll(first, second);
-        Assert.NotEqual(first.Result, second.Result);
-        var winner = first.Result ? targetA : targetB;
+        var results = await Task.WhenAll(first, second);
+        Assert.NotEqual(results[0], results[1]);
+        var winner = results[0] ? targetA : targetB;
         Assert.Equal(winner, contenderA.ReadSnapshot().Prepared);
         Assert.Equal(original, otherGame.ReadSnapshot());
         Assert.False(otherGame.TryFinalize(winner));
