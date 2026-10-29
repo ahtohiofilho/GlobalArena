@@ -131,7 +131,8 @@ public sealed class AuthorizedMilitaryMoveTurnAudit
     /// </summary>
     public AuthorizedMilitaryMoveAuditProjection VerifyReplay(
         EconomicEcologicalCheckpoint accepted,
-        string independentlyAcceptedCheckpointSha256Hex, byte[] witness)
+        string independentlyAcceptedCheckpointSha256Hex,
+        SimulationContext independentlyTrustedContext, byte[] witness)
     {
         ArgumentNullException.ThrowIfNull(accepted);
         ArgumentNullException.ThrowIfNull(witness);
@@ -151,6 +152,10 @@ public sealed class AuthorizedMilitaryMoveTurnAudit
             throw new NotSupportedException("Unsupported command audit format.");
         var turn = r.U64();
         var seed = r.U64();
+        if (turn != independentlyTrustedContext.Turn.Value ||
+            seed != independentlyTrustedContext.Seed.Value)
+            throw new InvalidDataException(
+                "Command audit turn or seed differs from independently trusted execution context.");
         var checkpointDigest = Convert.ToHexString(r.Bytes(32));
         var beforeVersion = r.U32();
         var beforeDigest = Convert.ToHexString(r.Bytes(32));
