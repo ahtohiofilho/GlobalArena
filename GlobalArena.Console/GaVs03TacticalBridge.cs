@@ -80,7 +80,7 @@ internal static class GaVs03TacticalBridge
             // This is a localized projection of the one global fine topology.
             // It never creates a region-owned copy of an edge/vertex tile.
             var visibleIds = PhysicalTacticalViewportQuery.SelectTiles(
-                session.Incidence, focusId, 0);
+                session.Incidence, focusId, 1);
             var fineGeometry = session.FineWorld.StrategicSphericalGeometry;
             var physical = visibleIds.Select(id =>
             {
