@@ -70,6 +70,18 @@ public sealed class G3J3gPostgresTrustedAnchorIntegrationTests
                     new EconomicV9ExternalAnchorSnapshot(genesis))
             });
         Assert.Equal(1, command.ExecuteNonQuery());
+        // The test administrator is deliberately enrolled for this game;
+        // even superusers must pass the explicit function-level ACL check.
+        using var grant = new NpgsqlCommand(
+            """
+            INSERT INTO public.ga_trusted_v9_game_principal(game_id, login_role)
+            VALUES (@game_id, session_user)
+            """, connection);
+        grant.Parameters.Add(new NpgsqlParameter("game_id", NpgsqlDbType.Text)
+        {
+            Value = game
+        });
+        Assert.Equal(1, grant.ExecuteNonQuery());
     }
 
     [Fact]
