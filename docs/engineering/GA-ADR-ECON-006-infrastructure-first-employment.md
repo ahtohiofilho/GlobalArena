@@ -1,4 +1,14 @@
-# GA-ADR-ECON-006 — Infraestrutura produtiva antes da ocupação de trabalhadores
+# GA-ADR-ECON-006 — Infraestrutura produtiva antes da ocupação de trabalhadores (SUPERADO)
+
+> **HISTÓRICO — SUPERADO EM 29/10/2026. NÃO É DECISÃO VIGENTE.**
+> Esta hipótese de exigir instalação produtiva antes de todo trabalho
+> foi abandonada. Para agricultura rudimentar e coleta arcaica de
+> madeira/pedra, **nenhuma infraestrutura é necessária**: basta
+> alocar trabalhadores em tile físico tático adequado. Consulte a
+> decisão canônica [GA-ADR-ECON-007](GA-ADR-ECON-007-primitive-work-without-infrastructure.md).
+> O experimento GA-VS06 / PR #93 foi fechado sem merge; manter
+> GA-VS05 / PR #92 como base. O conteúdo abaixo permanece apenas
+> como registro histórico de uma opção rejeitada.
 
 Data: 29/10/2026. **Decisão de direção canônica**, ainda **não implementada**
 na sessão do laboratório GA-VS05. Compatível com os princípios do
