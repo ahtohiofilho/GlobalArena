@@ -240,7 +240,7 @@ public sealed partial class G3J3pSupervisedOrphanCustodyTests
             new EconomicV9HttpSignedCustodyAuditSink(
                 http, new Uri("https://audit.example.invalid/append?session=x"),
                 "ga-ledger", signer.ExportSubjectPublicKeyInfoPem()));
-        Assert.Throws<CryptographicException>(() =>
+        Assert.Throws<ArgumentException>(() =>
             new EconomicV9HttpSignedCustodyAuditSink(
                 http, new Uri("https://audit.example.invalid/append"),
                 "ga-ledger", "not a public key"));
