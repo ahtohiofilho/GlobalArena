@@ -148,15 +148,16 @@ public sealed partial class G3J3dMixedDurableV9CommitTests
     }
 
     [Theory]
-    [InlineData(EconomicV9VersionedRecoveryPhase.ArchiveVerified)]
-    [InlineData(EconomicV9VersionedRecoveryPhase.InventoryExtracted)]
-    [InlineData(EconomicV9VersionedRecoveryPhase.ReplayVerified)]
-    [InlineData(EconomicV9VersionedRecoveryPhase.BeforePublish)]
-    [InlineData(EconomicV9VersionedRecoveryPhase.AfterPublish)]
-    [InlineData(EconomicV9VersionedRecoveryPhase.BeforeAdmission)]
+    [InlineData("ArchiveVerified")]
+    [InlineData("InventoryExtracted")]
+    [InlineData("ReplayVerified")]
+    [InlineData("BeforePublish")]
+    [InlineData("AfterPublish")]
+    [InlineData("BeforeAdmission")]
     public void J3nEveryPublicationFailureBoundaryFailsClosed(
-        EconomicV9VersionedRecoveryPhase crashAt)
+        string crashAtName)
     {
+        var crashAt = Enum.Parse<EconomicV9VersionedRecoveryPhase>(crashAtName);
         var world = Generate();
         var initial = Initial(world);
         var parent = J3nParent();
@@ -294,11 +295,12 @@ public sealed partial class G3J3dMixedDurableV9CommitTests
     }
 
     [Theory]
-    [InlineData(EconomicV9VersionedRecoveryPhase.ReplayVerified)]
-    [InlineData(EconomicV9VersionedRecoveryPhase.AfterPublish)]
+    [InlineData("ReplayVerified")]
+    [InlineData("AfterPublish")]
     public void J3nEpochRaceNearPublicationNeverReturnsWriter(
-        EconomicV9VersionedRecoveryPhase changedAt)
+        string changedAtName)
     {
+        var changedAt = Enum.Parse<EconomicV9VersionedRecoveryPhase>(changedAtName);
         var world = Generate();
         var initial = Initial(world);
         var parent = J3nParent();
