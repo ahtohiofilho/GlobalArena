@@ -171,10 +171,10 @@ LANGUAGE sql
 VOLATILE
 SECURITY DEFINER
 SET search_path = pg_catalog, pg_temp
-AS $
+AS $$
     SELECT public.ga_v9_anchor_cas_fenced(
         p_game_id, p_expected, p_next, 0::bigint);
-$;
+$$;
 
 -- Fenced readers also fail closed on a stale generation. Do not let an
 -- old process use a new primary's snapshot to resume a previous session.
@@ -185,7 +185,7 @@ LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path = pg_catalog, pg_temp
-AS $
+AS $$
 BEGIN
     IF p_epoch IS NULL OR p_epoch <= 0 OR NOT EXISTS (
         SELECT 1 FROM public.ga_trusted_v9_anchor
@@ -196,7 +196,7 @@ BEGIN
     END IF;
     RETURN public.ga_v9_anchor_read(p_game_id);
 END;
-$;
+$$;
 
 -- SECURITY DEFINER functions are EXECUTE-able by PUBLIC by default.
 -- The administrator MUST grant only these functions to the service role.
