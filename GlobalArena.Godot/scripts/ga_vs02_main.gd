@@ -60,6 +60,9 @@ func _build_layout() -> void:
 	world_view.size = Vector2i(760, 760)
 	world_view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	world_view.handle_input_locally = true
+	# SubViewport defaults to physics_object_picking=false. Without this,
+	# the visible StaticBody3D tiles render but receive no mouse input_event.
+	world_view.physics_object_picking = true
 	viewport_box.add_child(world_view)
 
 	var environment := WorldEnvironment.new()
