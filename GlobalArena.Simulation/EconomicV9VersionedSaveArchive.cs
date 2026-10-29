@@ -219,7 +219,7 @@ public static class EconomicV9VersionedSaveArchive
     private static void ValidateName(string name)
     {
         if (string.IsNullOrWhiteSpace(name) || name.Length > 160 ||
-            name.StartsWith('.', StringComparison.Ordinal) ||
+            name.StartsWith(".", StringComparison.Ordinal) ||
             name.Contains("..", StringComparison.Ordinal) ||
             !name.All(c => c is >= 'A' and <= 'Z' or
                                 >= 'a' and <= 'z' or
@@ -232,7 +232,7 @@ public static class EconomicV9VersionedSaveArchive
     {
         var unixType = (entry.ExternalAttributes >> 16) & 0xF000;
         return unixType == 0xA000 || unixType == 0x4000 ||
-            entry.FullName.EndsWith('/', StringComparison.Ordinal);
+            entry.FullName.EndsWith("/", StringComparison.Ordinal);
     }
 
     private static bool IsUpperDigest(string value) =>
