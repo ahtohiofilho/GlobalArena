@@ -135,7 +135,21 @@ public sealed class EconomicCompleteV9DurableSaveHost : IDisposable
         WorldStateHash? independentlyTrustedLegacyWorldHash = null,
         string? independentlyTrustedLegacyEcologicalDigest = null,
         HistoricalMilitaryMoveAuthorizationSeal? historicalVerifier = null,
-        string? independentlyTrustedJournalRoot = null)
+        string? independentlyTrustedJournalRoot = null) =>
+        RestoreCore(directoryPath, generatedWorld, independentlyTrustedCurrentDigest,
+            independentlyTrustedLegacyWorldHash,
+            independentlyTrustedLegacyEcologicalDigest,
+            historicalVerifier, independentlyTrustedJournalRoot,
+            allowPublishedUnadmitted: false);
+
+    private static EconomicCompleteV9DurableSaveHost RestoreCore(
+        string directoryPath, WorldGenerationResult generatedWorld,
+        string independentlyTrustedCurrentDigest,
+        WorldStateHash? independentlyTrustedLegacyWorldHash,
+        string? independentlyTrustedLegacyEcologicalDigest,
+        HistoricalMilitaryMoveAuthorizationSeal? historicalVerifier,
+        string? independentlyTrustedJournalRoot,
+        bool allowPublishedUnadmitted)
     {
         ArgumentNullException.ThrowIfNull(generatedWorld);
         var trusted = EconomicEcologicalSidecarArchive.NormalizeDigest(
@@ -144,6 +158,11 @@ public sealed class EconomicCompleteV9DurableSaveHost : IDisposable
         var lease = Acquire(archive.DirectoryPath);
         try
         {
+            if (!allowPublishedUnadmitted &&
+                File.Exists(Path.Combine(archive.DirectoryPath,
+                    ".ga-v9-not-admitted")))
+                throw new InvalidOperationException(
+                    "Published v9 recovery remains UNADMITTED after an interrupted promotion.");
             var head = ReadHead(HeadPath(archive.DirectoryPath));
             if (head.Current != trusted)
                 throw new InvalidOperationException(
@@ -393,7 +412,21 @@ public sealed class EconomicCompleteV9DurableSaveHost : IDisposable
             EconomicV9ExternalAnchorSnapshot independentlyTrustedSnapshot,
             WorldStateHash? independentlyTrustedLegacyWorldHash = null,
             string? independentlyTrustedLegacyEcologicalDigest = null,
-            HistoricalMilitaryMoveAuthorizationSeal? historicalVerifier = null)
+            HistoricalMilitaryMoveAuthorizationSeal? historicalVerifier = null) =>
+        InspectExternalReconciliationCore(
+            directoryPath, generatedWorld, independentlyTrustedSnapshot,
+            independentlyTrustedLegacyWorldHash,
+            independentlyTrustedLegacyEcologicalDigest,
+            historicalVerifier, allowPublishedUnadmitted: false);
+
+    private static EconomicV9ExternalReconciliationAssessment
+        InspectExternalReconciliationCore(
+            string directoryPath, WorldGenerationResult generatedWorld,
+            EconomicV9ExternalAnchorSnapshot independentlyTrustedSnapshot,
+            WorldStateHash? independentlyTrustedLegacyWorldHash,
+            string? independentlyTrustedLegacyEcologicalDigest,
+            HistoricalMilitaryMoveAuthorizationSeal? historicalVerifier,
+            bool allowPublishedUnadmitted)
     {
         ArgumentNullException.ThrowIfNull(generatedWorld);
         ArgumentNullException.ThrowIfNull(independentlyTrustedSnapshot);
@@ -426,11 +459,11 @@ public sealed class EconomicCompleteV9DurableSaveHost : IDisposable
         // Restore acquires the exclusive writer lease and replays the full
         // anchored chain. Keeping its lease open while examining the head
         // avoids treating an unverified local candidate as confirmed.
-        using var verified = Restore(directoryPath, generatedWorld,
+        using var verified = RestoreCore(directoryPath, generatedWorld,
             chosen.CheckpointSha256Hex,
             independentlyTrustedLegacyWorldHash,
             independentlyTrustedLegacyEcologicalDigest,
-            historicalVerifier, chosen.JournalSha256Hex);
+            historicalVerifier, chosen.JournalSha256Hex, allowPublishedUnadmitted);
         if (verified._head != observedHead ||
             verified._head.JournalDigest != chosen.JournalSha256Hex ||
             verified._head.Sequence != chosen.Sequence ||
@@ -494,20 +527,52 @@ public sealed class EconomicCompleteV9DurableSaveHost : IDisposable
         EconomicV9ExternalAnchorSnapshot independentlyTrustedSnapshot,
         WorldStateHash? independentlyTrustedLegacyWorldHash = null,
         string? independentlyTrustedLegacyEcologicalDigest = null,
-        HistoricalMilitaryMoveAuthorizationSeal? historicalVerifier = null)
-    {
-        var assessment = InspectExternalReconciliation(
+        HistoricalMilitaryMoveAuthorizationSeal? historicalVerifier = null) =>
+        RestoreExternallyConfirmedCore(
             directoryPath, generatedWorld, independentlyTrustedSnapshot,
             independentlyTrustedLegacyWorldHash,
-            independentlyTrustedLegacyEcologicalDigest, historicalVerifier);
+            independentlyTrustedLegacyEcologicalDigest,
+            historicalVerifier, allowPublishedUnadmitted: false);
+
+    // Accessible only to the failover gate inside the simulation assembly.
+    // The marker remains on disk until the gate independently rechecks
+    // primary + witness and completes strict admission.
+    internal static EconomicCompleteV9DurableSaveHost
+        RestoreExternallyConfirmedForPublication(
+            string directoryPath, WorldGenerationResult generatedWorld,
+            EconomicV9ExternalAnchorSnapshot independentlyTrustedSnapshot,
+            WorldStateHash? independentlyTrustedLegacyWorldHash = null,
+            string? independentlyTrustedLegacyEcologicalDigest = null,
+            HistoricalMilitaryMoveAuthorizationSeal? historicalVerifier = null) =>
+        RestoreExternallyConfirmedCore(
+            directoryPath, generatedWorld, independentlyTrustedSnapshot,
+            independentlyTrustedLegacyWorldHash,
+            independentlyTrustedLegacyEcologicalDigest,
+            historicalVerifier, allowPublishedUnadmitted: true);
+
+    private static EconomicCompleteV9DurableSaveHost
+        RestoreExternallyConfirmedCore(
+            string directoryPath, WorldGenerationResult generatedWorld,
+            EconomicV9ExternalAnchorSnapshot independentlyTrustedSnapshot,
+            WorldStateHash? independentlyTrustedLegacyWorldHash,
+            string? independentlyTrustedLegacyEcologicalDigest,
+            HistoricalMilitaryMoveAuthorizationSeal? historicalVerifier,
+            bool allowPublishedUnadmitted)
+    {
+        var assessment = InspectExternalReconciliationCore(
+            directoryPath, generatedWorld, independentlyTrustedSnapshot,
+            independentlyTrustedLegacyWorldHash,
+            independentlyTrustedLegacyEcologicalDigest,
+            historicalVerifier, allowPublishedUnadmitted);
         if (assessment.State != EconomicV9ExternalReconciliationState.Confirmed)
             throw new InvalidOperationException(
                 "Cannot resume v9 gameplay until external prepare is independently settled.");
-        return Restore(directoryPath, generatedWorld,
+        return RestoreCore(directoryPath, generatedWorld,
             assessment.Confirmed.CheckpointSha256Hex,
             independentlyTrustedLegacyWorldHash,
             independentlyTrustedLegacyEcologicalDigest,
-            historicalVerifier, assessment.Confirmed.JournalSha256Hex);
+            historicalVerifier, assessment.Confirmed.JournalSha256Hex,
+            allowPublishedUnadmitted);
     }
 
     public void Dispose()
