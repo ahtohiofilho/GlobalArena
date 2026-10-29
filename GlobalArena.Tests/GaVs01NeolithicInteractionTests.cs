@@ -77,8 +77,8 @@ public sealed class GaVs01NeolithicInteractionTests
         Assert.All(next.SupplyFlows, row => Assert.True(row.RawQuantity > 0UL));
         Assert.Equal(beforePreview, session.CurrentHash);
         Assert.Equal(1UL, session.CurrentWorld.Revision);
-        Assert.Equal(2UL, session.AdvancePreview() is not null
-            ? session.CompletedPreviewTurns : 0UL);
+        session.AdvancePreview();
+        Assert.Equal(2UL, session.CompletedPreviewTurns);
         Assert.Equal(beforePreview, session.CurrentHash);
     }
 
