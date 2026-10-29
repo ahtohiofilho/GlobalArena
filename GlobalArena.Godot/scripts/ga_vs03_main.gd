@@ -460,7 +460,7 @@ func _open_tactical() -> void:
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 	camera.size = 1.35
 	camera.position = Vector3(0.0, 3.0, 0.0)
-	camera.look_at(Vector3.ZERO, Vector3.FORWARD)
+	camera.look_at(Vector3.ZERO, Vector3.BACK)
 	_rebuild()
 	_update_hud()
 
