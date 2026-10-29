@@ -20,10 +20,10 @@ docker run -d --name "$primary" --hostname ga-primary --network "$network" \
   postgres:17-alpine -c wal_level=replica -c max_wal_senders=8 \
   -c max_replication_slots=8 >/dev/null
 for attempt in $(seq 1 40); do
-  if docker exec "$primary" pg_isready -U postgres -d ga_ha >/dev/null 2>&1; then break; fi
+  if docker exec "$primary" pg_isready -h 127.0.0.1 -U postgres -d ga_ha >/dev/null 2>&1; then break; fi
   sleep 1
 done
-docker exec "$primary" pg_isready -U postgres -d ga_ha
+docker exec "$primary" pg_isready -h 127.0.0.1 -U postgres -d ga_ha
 docker exec "$primary" psql -v ON_ERROR_STOP=1 -U postgres -d postgres \
   -c "CREATE ROLE replicator REPLICATION LOGIN PASSWORD '$replication_password'"
 docker exec "$primary" sh -c 'echo "host replication replicator 0.0.0.0/0 scram-sha-256" >> "$PGDATA/pg_hba.conf"'
