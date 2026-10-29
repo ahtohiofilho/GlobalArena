@@ -1,0 +1,24 @@
+name: G3-J3p Supervised Orphan Custody And SIGKILL
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/**'
+      - 'GlobalArena.Tests/**'
+      - 'tools/ci/ga-v9-supervised-custody-sigkill.sh'
+      - '.github/workflows/ga-supervised-orphan-custody.yml'
+  workflow_dispatch:
+
+jobs:
+  supervised-custody-sigkill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Signed operator approval, durable audit, real SIGKILL and restarted reconciliation
+        run: bash tools/ci/ga-v9-supervised-custody-sigkill.sh
