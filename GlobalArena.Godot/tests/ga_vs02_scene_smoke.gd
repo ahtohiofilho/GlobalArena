@@ -1,6 +1,7 @@
 extends SceneTree
 ## This runs Godot's ACTUAL imported main scene without a desktop window.
-## It sends a tile click + founding action through the C# JSON bridge.
+## It sends mouse-button events to the ACTUAL 3D viewport GUI callback,
+## selecting land before founding through the C# JSON bridge.
 
 func _initialize() -> void:
 	call_deferred("_run_smoke")
@@ -34,17 +35,19 @@ func _run_smoke() -> void:
 	if targets.is_empty():
 		_fail("No neighboring free land")
 		return
-	# Test the actual SubViewport -> physics picking -> StaticBody3D
-	# input_event -> selection path. Calling _select_cell directly is NOT
-	# a valid mouse test (that masked the original Windows failure).
-	var viewport = ui.get("viewport_box").get_child(0) as SubViewport
-	if viewport == null or not viewport.physics_object_picking:
-		_fail("3D physics mouse picking is disabled on the SubViewport")
-		return
+	# Test the exact GUI signal path that the Godot window uses when
+	# the player clicks the globe. The old test called _select_cell() and
+	# missed the nonworking mouse path entirely.
+	var box := ui.get("viewport_box") as SubViewportContainer
+	var viewport := ui.get("scene_view") as SubViewport
 	var camera = ui.get("camera") as Camera3D
 	var globe_node = ui.get("globe") as Node3D
-	if camera == null or globe_node == null:
-		_fail("Missing interactive globe camera")
+	if box == null or viewport == null or camera == null or globe_node == null:
+		_fail("Missing interactive globe viewport or camera")
+		return
+	await process_frame
+	if box.size.x <= 0.0 or box.size.y <= 0.0:
+		_fail("Globe viewport container has no layout size")
 		return
 	var cells: Dictionary = ui.get("cell_lookup")
 	var origin_cell: Dictionary = {}
@@ -57,13 +60,11 @@ func _run_smoke() -> void:
 		return
 	var origin_id := int(origin_cell["id"])
 	ui.set("selected_cell_id", 0)
-	await physics_frame
-	await _click_cell(viewport, camera, globe_node, origin_cell)
+	await _click_cell(box, viewport, camera, globe_node, origin_cell)
 	if int(ui.get("selected_cell_id")) != origin_id:
-		_fail("Real SubViewport mouse input failed to pick original settlement")
+		_fail("GUI mouse click failed to pick the original settlement")
 		return
-	# Choose the frontier that faces the viewer most directly, avoiding
-	# a false-negative test from clicking a tile hidden behind the globe.
+	# Click a real front-facing neighbor (not one hidden behind the sphere).
 	var target: int = 0
 	var best_z := -1000.0
 	for t in targets:
@@ -74,9 +75,9 @@ func _run_smoke() -> void:
 		if world_center.z > best_z:
 			best_z = world_center.z
 			target = int(t)
-	await _click_cell(viewport, camera, globe_node, cells[target])
+	await _click_cell(box, viewport, camera, globe_node, cells[target])
 	if int(ui.get("target_cell_id")) != target:
-		_fail("Real mouse click did not choose free adjacent land")
+		_fail("GUI mouse click did not choose free adjacent land")
 		return
 	ui.call("_on_found")
 	var after: Dictionary = ui.get("snapshot")
@@ -98,25 +99,23 @@ func _fail(reason: String) -> void:
 	push_error("GA-VS02 GODOT FAIL: " + reason)
 	quit(1)
 
-func _click_cell(viewport: SubViewport, camera: Camera3D,
-		globe_node: Node3D, cell: Dictionary) -> void:
+func _click_cell(box: SubViewportContainer, viewport: SubViewport,
+		camera: Camera3D, globe_node: Node3D, cell: Dictionary) -> void:
 	var coords: Array = cell["center"]
 	var point := globe_node.to_global(Vector3(
 		float(coords[0]), float(coords[1]), float(coords[2])) * 1.004)
 	var pixel := camera.unproject_position(point)
+	var mouse_position := Vector2(
+		pixel.x * box.size.x / float(viewport.size.x),
+		pixel.y * box.size.y / float(viewport.size.y))
 	var down := InputEventMouseButton.new()
 	down.button_index = MOUSE_BUTTON_LEFT
 	down.pressed = true
-	down.position = pixel
-	down.global_position = pixel
-	viewport.push_input(down, true)
-	await physics_frame
-	await process_frame
+	down.position = mouse_position
+	box.gui_input.emit(down)
 	var up := InputEventMouseButton.new()
 	up.button_index = MOUSE_BUTTON_LEFT
 	up.pressed = false
-	up.position = pixel
-	up.global_position = pixel
-	viewport.push_input(up, true)
-	await physics_frame
+	up.position = mouse_position
+	box.gui_input.emit(up)
 	await process_frame
