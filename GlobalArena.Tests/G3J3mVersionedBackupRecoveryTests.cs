@@ -13,6 +13,7 @@ public sealed partial class G3J3dMixedDurableV9CommitTests
     {
         private readonly byte[] _bytes;
         public bool Accepted { get; set; } = true;
+        public long ExpectedEpoch { get; set; } = 3L;
         public int Downloads { get; private set; }
         public J3mArchiveSource(byte[] bytes) => _bytes = bytes;
 
@@ -24,7 +25,7 @@ public sealed partial class G3J3dMixedDurableV9CommitTests
         {
             Downloads++;
             Assert.Equal("j3l-restore", gameId);
-            Assert.Equal(3L, writerEpoch);
+            Assert.Equal(ExpectedEpoch, writerEpoch);
             if (!Accepted) return false;
             destination.Write(_bytes);
             return true;
@@ -143,7 +144,8 @@ public sealed partial class G3J3dMixedDurableV9CommitTests
             // provider cannot supply that version, verification is denied.
             var rejectedEpoch = new J3mArchiveSource(Array.Empty<byte>())
             {
-                Accepted = false
+                Accepted = false,
+                ExpectedEpoch = 4L
             };
             Assert.Throws<InvalidOperationException>(() =>
                 recovery.RestoreFromVerifiedVersionedBackup(
