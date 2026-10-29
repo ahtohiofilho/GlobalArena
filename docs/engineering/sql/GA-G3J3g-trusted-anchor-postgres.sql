@@ -17,17 +17,36 @@ CREATE TABLE IF NOT EXISTS public.ga_trusted_v9_anchor_audit (
     logged_at timestamptz NOT NULL DEFAULT clock_timestamp()
 );
 
+-- G3-J3h: the authenticated login is explicitly scoped to game_id.
+-- Management of this table is restricted to the trusted DBA. Do not grant
+-- UPDATE/INSERT/DELETE/SELECT to any runtime game login.
+CREATE TABLE IF NOT EXISTS public.ga_trusted_v9_game_principal (
+    game_id text NOT NULL REFERENCES public.ga_trusted_v9_anchor(game_id),
+    login_role name NOT NULL,
+    PRIMARY KEY (game_id, login_role)
+);
+
 -- Read only this game's canonical payload. The caller never sees the table.
 CREATE OR REPLACE FUNCTION public.ga_v9_anchor_read(p_game_id text)
 RETURNS text
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path = pg_catalog, pg_temp
 AS $$
-    SELECT snapshot
-      FROM public.ga_trusted_v9_anchor
-     WHERE game_id = p_game_id;
+BEGIN
+    -- session_user is the authenticated LOGIN, not current_user (the
+    -- SECURITY DEFINER schema owner). SET ROLE cannot impersonate a login.
+    IF NOT EXISTS (
+        SELECT 1 FROM public.ga_trusted_v9_game_principal
+         WHERE game_id = p_game_id AND login_role = session_user
+    ) THEN
+        RAISE EXCEPTION 'Trusted game anchor access denied'
+            USING ERRCODE = '42501';
+    END IF;
+    RETURN (SELECT snapshot FROM public.ga_trusted_v9_anchor
+             WHERE game_id = p_game_id);
+END;
 $$;
 
 -- Single-row linearizable CAS: compare the EXACT old serialized state before
@@ -48,6 +67,15 @@ DECLARE
     current_anchor jsonb;
     changed integer;
 BEGIN
+    -- Require an explicit per-game ACL for the actual authenticated login,
+    -- even if it still holds a legacy EXECUTE grant on this function.
+    IF NOT EXISTS (
+        SELECT 1 FROM public.ga_trusted_v9_game_principal
+         WHERE game_id = p_game_id AND login_role = session_user
+    ) THEN
+        RAISE EXCEPTION 'Trusted game anchor access denied'
+            USING ERRCODE = '42501';
+    END IF;
     IF p_game_id IS NULL OR length(p_game_id) NOT BETWEEN 1 AND 128 OR
        p_expected IS NULL OR p_next IS NULL OR
        octet_length(p_expected) NOT BETWEEN 1 AND 4096 OR
@@ -128,6 +156,7 @@ $$;
 -- The administrator MUST grant only these functions to the service role.
 REVOKE ALL ON TABLE public.ga_trusted_v9_anchor FROM PUBLIC;
 REVOKE ALL ON TABLE public.ga_trusted_v9_anchor_audit FROM PUBLIC;
+REVOKE ALL ON TABLE public.ga_trusted_v9_game_principal FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ga_v9_anchor_read(text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ga_v9_anchor_cas(text, text, text) FROM PUBLIC;
 
@@ -137,4 +166,8 @@ REVOKE ALL ON FUNCTION public.ga_v9_anchor_cas(text, text, text) FROM PUBLIC;
 --     TO ga_v9_game_service;
 -- GRANT EXECUTE ON FUNCTION public.ga_v9_anchor_cas(text, text, text)
 --     TO ga_v9_game_service;
--- Do not grant DML on either table to the service.
+-- DBA must INSERT (game_id, login_role) into
+-- public.ga_trusted_v9_game_principal for each authorized game/login.
+-- Do not grant DML on ANY of the three tables to the service.
+-- IMPORTANT: re-apply this migration before starting the game service so
+-- old unrestricted function definitions are replaced with ACL checks.

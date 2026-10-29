@@ -10,6 +10,7 @@ namespace GlobalArena.Tests;
 /// The dedicated GitHub Actions PostgreSQL job sets it; ordinary kernel suites
 /// may run without a database. Tests never treat an in-memory store as durable.
 /// </summary>
+[Collection("G3J3PostgresIntegration")]
 public sealed class G3J3gPostgresTrustedAnchorIntegrationTests
 {
     private static readonly string Zero = new('0', 64);
@@ -70,6 +71,18 @@ public sealed class G3J3gPostgresTrustedAnchorIntegrationTests
                     new EconomicV9ExternalAnchorSnapshot(genesis))
             });
         Assert.Equal(1, command.ExecuteNonQuery());
+        // The test administrator is deliberately enrolled for this game;
+        // even superusers must pass the explicit function-level ACL check.
+        using var grant = new NpgsqlCommand(
+            """
+            INSERT INTO public.ga_trusted_v9_game_principal(game_id, login_role)
+            VALUES (@game_id, session_user)
+            """, connection);
+        grant.Parameters.Add(new NpgsqlParameter("game_id", NpgsqlDbType.Text)
+        {
+            Value = game
+        });
+        Assert.Equal(1, grant.ExecuteNonQuery());
     }
 
     [Fact]
@@ -175,10 +188,13 @@ public sealed class G3J3gPostgresTrustedAnchorIntegrationTests
     {
         using var source = Provision();
         if (source is null) return;
-        Assert.Throws<InvalidOperationException>(() =>
-            new EconomicV9PostgresTrustedAnchorStore(
-                source, "unprovisioned-" + Guid.NewGuid().ToString("N"))
-                .ReadSnapshot());
+        // G3-J3h denies even reading the existence of a game without an
+        // explicit authenticated-login ACL entry.
+        Assert.Equal(PostgresErrorCodes.InsufficientPrivilege,
+            Assert.Throws<PostgresException>(() =>
+                new EconomicV9PostgresTrustedAnchorStore(
+                    source, "unprovisioned-" + Guid.NewGuid().ToString("N"))
+                    .ReadSnapshot()).SqlState);
         Assert.Throws<ArgumentException>(() =>
             new EconomicV9PostgresTrustedAnchorStore(source, "../escape"));
         var initial = new EconomicV9ExternalAnchorSnapshot(
