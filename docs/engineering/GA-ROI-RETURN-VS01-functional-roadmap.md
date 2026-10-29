@@ -4,6 +4,44 @@
 auditoria, PostgreSQL ou HA antes de demonstrar uma fatia de gameplay
 funcional e integrar a interface Godot no repositório controlado.
 
+## Atualização do caminho crítico — GA-VS03 e marketing (29/10/2026)
+
+Este documento descreve a **retomada histórica GA-VS01**, não a
+mecânica canônica mais recente. O GA-VS03 (PR #90) **substitui a
+fundação de povoamentos em hexágonos estratégicos** por trabalhadores
+residentes/produtores alocados nos tiles físicos táticos. Não existe
+cidade como entidade econômica independente. A visão estratégica
+apenas agrega os estados dos tiles físicos. O caminho de maior ROI
+agora é corrigir os destaques de seleção, recuperar a visualização
+tática local/plana já implementada, integrar à UI Godot original,
+e **fechar o ciclo econômico e a partida offline**.
+
+**Marketing deve acompanhar esses marcos sem bloquear gameplay:**
+
+- **Agora: MKT-00 pronto para ser recomendado**, somente
+  pesquisa de posicionamento, públicos/comparáveis e preparação
+  de canais; ainda não há material representativo a anunciar
+  como MVP.
+- **Com vertical slice visual convincente: MKT-01** — clipes,
+  screenshots reais e apresentação de desenvolvimento.
+- **Quando a página pública estiver justificável: MKT-02** —
+  Steamworks/Coming Soon, sujeitos a requisitos atuais e
+  autorização expressa para gastos/publicação.
+- **Com economia fechada e consequências visíveis: MKT-03**;
+  **com combate mínimo: MKT-04**.
+- **Com MVP offline jogável e salvável: MKT-05** (testadores externos);
+  **com demo estável: MKT-06**; **com candidato comercial:
+  MKT-07** (lançamento).
+
+As condições de prontidão, exemplos concretos de ações,
+recomendações proativas a cada checkpoint e limites de
+autorização ficam no
+[`../MARKETING_ROADMAP.md`](../MARKETING_ROADMAP.md).
+O vínculo com o V1/GPP consta no
+[`../ROADMAP.md`](../ROADMAP.md). **Não atribuir
+GPP adicional por atividades de divulgação nem presumir que
+protótipos de teste liberaram um gate público.**
+
 ## Diagnóstico baseado no repositório
 
 - `main` contém a solução C# (`GlobalArena.slnx`), mas

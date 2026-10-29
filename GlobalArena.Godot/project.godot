@@ -3,7 +3,7 @@
 config_version=5
 
 [application]
-config/name="Global Arena — VS02 Globo Neolítico"
+config/name="Global Arena — VS03 Trabalho Tático"
 run/main_scene="res://main.tscn"
 config/features=PackedStringArray("4.3", "GL Compatibility")
 

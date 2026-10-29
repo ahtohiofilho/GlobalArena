@@ -6,6 +6,59 @@
 
 ---
 
+# 0. Marcos de produto e marketing — orientação de ROI (29/10/2026)
+
+**Esta seção é um suplemento operacional ao baseline V1 já congelado,
+não uma alteração dos 1000 GPP, do progresso histórico ou dos M0–M3.**
+O roadmap de marketing executável é
+[`MARKETING_ROADMAP.md`](MARKETING_ROADMAP.md);
+a evidência e as métricas reais são anotadas em
+[`MARKETING_METRICS.md`](MARKETING_METRICS.md).
+A direção funcional de curto prazo consta em
+[`engineering/GA-ROI-RETURN-VS01-functional-roadmap.md`](engineering/GA-ROI-RETURN-VS01-functional-roadmap.md)
+e em
+[`engineering/GA-VS03-physical-tactical-workforce-no-cities.md`](engineering/GA-VS03-physical-tactical-workforce-no-cities.md).
+
+**Distinção obrigatória:** Neolítico é o primeiro **cenário de jogo**,
+não sinônimo de MVP. Os recortes GA-VS01–VS03 são testes de
+integração, não demonstração pública concluída nem partida completa.
+O MVP offline requer um ciclo jogável de economia física, transporte
+básico, expansão, conflito mínimo, turnos efetivos e save/load; conteúdo
+histórico posterior e multiplayer não bloqueiam o MVP offline.
+
+| Marco de produto (sequência, sem prazo inventado) | Marketing acoplado | Regra para disparar |
+|---|---|---|
+| Arquitetura e protótipo neolítico em validação (GA-VS03) | **MKT-00:** pesquisa de mercado, posicionamento e inventário de canais | Pode-se recomendar **agora**, com esforço pequeno; não é lançamento público |
+| **Vertical slice apresentável**: seleção clara, UI real, tático local legível/plano, ação e consequência verificáveis | **MKT-01:** primeiras imagens/vídeos de gameplay reais e introdução de desenvolvimento | Somente quando mídia autêntica e reproduzível vier de um build representativo |
+| Interface e material visual consistentes para página pública | **MKT-02:** preparar Steamworks e página Coming Soon, após verificar requisitos atuais | Publicação, taxas e conta sempre dependem de autorização do proprietário |
+| Economia fechada com produção, consumo, comércio, estoque e transporte com consequências visíveis | **MKT-03:** conteúdo sobre diferenciais econômicos; contatos pontuais com criadores | Prévia de produção, isoladamente, **não** satisfaz o gate |
+| Combate mínimo e consequências territoriais testáveis | **MKT-04:** atualizar mídia e divulgar dinâmica militar | Não prometer guerra antes de estar integrada |
+| **MVP offline realmente jogável**: turnos, IA básica, save/reload e teste externo | **MKT-05:** playtest fechado, feedback estruturado, correções | Jogadores externos conseguem iniciar e continuar uma partida real |
+| Demo pública estável e representativa | **MKT-06:** campanha de demo, criadores, possível festival elegível | Somente com QA e critérios atuais da plataforma verificados |
+| Versão comercial candidata e aprovada | **MKT-07:** preparação de lançamento, preços, imprensa e métricas | Aprovação explícita de lançamento e plano de suporte |
+
+**Protocolo para o assistente nas próximas retomadas do GA:** depois de
+cada marco funcional validado, verificar os gates MKT em paralelo à
+seleção do próximo incremento de desenvolvimento. Se houver um gate
+pronto, avisar ativamente: **"Agora eu faria estas ações de
+marketing: ..."**, listar ações concretas e pequenas e propor
+seus artefatos; caso ainda não esteja pronto, explicar o impedimento
+observável e continuar gameplay. Não depender de o usuário perguntar
+novamente sobre marketing. Isso é um **checkpoint nas conversas
+e revisões futuras**, não uma promessa de monitoramento autônomo em
+segundo plano. Não executar publicações, gastos, cadastros ou contato
+com terceiros sem aprovação específica.
+
+**Situação em 29/10/2026:** o GA-VS03 demonstrou alocação
+de trabalhadores em tiles táticos físicos no Windows. O destaque
+de seleção e a integração da visualização tática plana/interface
+Godot principal continuam pendentes; o mercado ainda é prévia.
+Consequentemente **MKT-00 está disponível para preparação leve**,
+e **MKT-01–07 continuam condicionais**. Nenhuma campanha ou gasto
+é considerado realizado apenas por registrar este plano.
+
+---
+
 # 1. Objetivo
 
 Este documento mantém o Global Arena inteiro em uma única escala de evolução.
