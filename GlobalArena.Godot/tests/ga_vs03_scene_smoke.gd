@@ -29,6 +29,19 @@ func _run() -> void:
 	if ui.get("mode") != "tactical":
 		_fail("Cannot open tactical physical view")
 		return
+	var camera = ui.get("camera") as Camera3D
+	if camera.projection != Camera3D.PROJECTION_ORTHOGONAL:
+		_fail("Tactical view is not actually projected flat with an orthographic camera")
+		return
+	if not ui.get("legend").visible or not ui.get("hover_label").visible:
+		_fail("Origin/destination and mouse hover controls are missing")
+		return
+	if not _has_marker(ui, "source", int(before["initialTile"])):
+		_fail("Active physical workforce source has no visible cyan ribbon")
+		return
+	if not _has_kind(ui, "eligible"):
+		_fail("Valid neighboring physical tiles are not visually outlined")
+		return
 	var center: int = int(before["initialTile"])
 	var visible: Array = ui.get("snapshot").get("physical", [])
 	var source: Dictionary = {}
@@ -54,12 +67,34 @@ func _run() -> void:
 	if int(ui.get("source_fine")) != center:
 		_fail("Mouse failed to select occupied physical source tile")
 		return
+	await _hover(ui, target)
+	if int(ui.get("hovered_tile")) != int(target["id"]):
+		_fail("Pointer hover did not reveal the physical tile")
+		return
+	if not ui.get("hover_label").text.contains(str(int(target["id"]))):
+		_fail("Mouse hover ID was not announced in the HUD")
+		return
 	await _click(ui, target)
+	if not _has_marker(ui, "destination", int(target["id"])):
+		_fail("Chosen destination has no visible amber ribbon")
+		return
+	if not _has_marker(ui, "source", center):
+		_fail("Selecting a destination hid the origin cyan ribbon")
+		return
 	if int(ui.get("destination_fine")) != int(target["id"]):
 		_fail("Mouse failed to select adjacent physical target")
 		return
 	if ui.get("move_button").disabled:
 		_fail("Worker allocation button was not enabled after selecting target")
+		return
+	# Zoom is purely visual. It must not change worker state or source.
+	var before_size := camera.size
+	var wheel := InputEventMouseButton.new()
+	wheel.button_index = MOUSE_BUTTON_WHEEL_UP
+	wheel.pressed = true
+	ui.get("view_container").gui_input.emit(wheel)
+	if camera.size >= before_size:
+		_fail("Orthographic tactical zoom did not work")
 		return
 	ui.call("_move_workers")
 	var moved: Dictionary = ui.get("snapshot")
@@ -88,6 +123,9 @@ func _run() -> void:
 	if ui.get("mode") != "strategic":
 		_fail("Cannot return to strategic overview")
 		return
+	if camera.projection != Camera3D.PROJECTION_PERSPECTIVE:
+		_fail("Returning to strategic view did not restore spherical perspective")
+		return
 	print("GA-VS03-GODOT-PASS: 1442 physical tiles, GUI picking, tactical worker allocation 8=5+3, no cities")
 	quit(0)
 
@@ -97,8 +135,8 @@ func _click(ui: Control, cell: Dictionary) -> void:
 	var camera = ui.get("camera") as Camera3D
 	var globe = ui.get("globe") as Node3D
 	var c: Array = cell["center"]
-	var center := globe.to_global(Vector3(
-		float(c[0]), float(c[1]), float(c[2])) * 1.004)
+	var position := Vector3(float(c[0]), float(c[1]), float(c[2]))
+	var center: Vector3 = globe.to_global(ui.call("_present", position))
 	var pixel := camera.unproject_position(center)
 	var relative := Vector2(
 		pixel.x * box.size.x / float(viewport.size.x),
@@ -110,6 +148,36 @@ func _click(ui: Control, cell: Dictionary) -> void:
 		event.position = relative
 		box.gui_input.emit(event)
 	await process_frame
+
+func _hover(ui: Control, cell: Dictionary) -> void:
+	var box = ui.get("view_container") as SubViewportContainer
+	var viewport = ui.get("view") as SubViewport
+	var camera = ui.get("camera") as Camera3D
+	var globe = ui.get("globe") as Node3D
+	var c: Array = cell["center"]
+	var position := Vector3(float(c[0]), float(c[1]), float(c[2]))
+	var pixel := camera.unproject_position(globe.to_global(ui.call("_present", position)))
+	var motion := InputEventMouseMotion.new()
+	motion.position = Vector2(
+		pixel.x * box.size.x / float(viewport.size.x),
+		pixel.y * box.size.y / float(viewport.size.y))
+	box.gui_input.emit(motion)
+	await process_frame
+
+func _has_marker(ui: Control, kind: String, tile_id: int) -> bool:
+	var globe = ui.get("globe") as Node3D
+	for child in globe.get_children():
+		if child.has_meta("ga_highlight") and str(child.get_meta("ga_highlight")) == kind:
+			if int(child.get_meta("ga_tile_id")) == tile_id:
+				return true
+	return false
+
+func _has_kind(ui: Control, kind: String) -> bool:
+	var globe = ui.get("globe") as Node3D
+	for child in globe.get_children():
+		if child.has_meta("ga_highlight") and str(child.get_meta("ga_highlight")) == kind:
+			return true
+	return false
 
 func _fail(reason: String) -> void:
 	push_error("GA-VS03 GODOT FAIL: " + reason)
