@@ -20,6 +20,7 @@ public partial class Main
     private Label? _workerLabStatus;
     private Label? _workerLabHover;
     private Button? _workerMoveButton;
+    private Button? _workerInstallSiteButton;
     private SpinBox? _workerAmount;
     private OptionButton? _workerFromJob;
     private OptionButton? _workerToJob;
@@ -41,7 +42,7 @@ public partial class Main
 
         var warning = new Label
         {
-            Text = "Estado de teste isolado: NÃO altera o WorldState canônico, não cria cidades, não salva e não fecha turnos.",
+            Text = "Lab isolado: implante primeiro um roçado/ponto de coleta GRÁTIS e depois aloque trabalhadores. Sem cidades, sem save, sem turnos canônicos.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         warning.AddThemeColorOverride("font_color", new Color("#e1c883"));
@@ -86,6 +87,18 @@ public partial class Main
         _workerToJob.Select(0);
         jobs.AddChild(_workerFromJob);
         jobs.AddChild(_workerToJob);
+        _workerToJob.ItemSelected += _ =>
+        {
+            if (_workerLab is not null) UpdateWorkerLabHud();
+        };
+
+        _workerInstallSiteButton = new Button
+        {
+            Text = "1. ATIVAR INSTALAÇÃO PRIMITIVA (GRÁTIS)",
+            Disabled = true
+        };
+        _workerInstallSiteButton.Pressed += InstallWorkerLabSite;
+        lab.AddChild(_workerInstallSiteButton);
 
         var quantity = new HBoxContainer();
         quantity.AddChild(new Label { Text = "Transferir:" });
@@ -95,7 +108,7 @@ public partial class Main
 
         _workerMoveButton = new Button
         {
-            Text = "ALOCAR NO TILE FÍSICO",
+            Text = "2. ALOCAR TRABALHADORES NA INSTALAÇÃO",
             Disabled = true
         };
         _workerMoveButton.Pressed += MoveWorkerLabWorkers;
@@ -122,7 +135,8 @@ public partial class Main
             // G(2,0)->G(12,0) used by the isolated VS03/VS04 demos.
             // Explicit instance parameters prevent invalid cross-world IDs.
             _workerLab = new EconomicPhysicalTacticalWorkerSession(
-                20261012UL, new GoldbergParameters(3, 0), new GoldbergParameters(18, 0));
+                20261012UL, new GoldbergParameters(3, 0), new GoldbergParameters(18, 0),
+                requirePrimitiveSites: true);
             _workerOrigin = _workerLab.InitialTile;
             _workerDestination = null;
             var focus = _workerLab.DisplayBucket(_workerLab.InitialTile);
@@ -130,7 +144,7 @@ public partial class Main
             if (!_tacticalPreview.HasVisiblePhysicalTile(_workerLab.InitialTile.FineStrategicCellId.Value))
                 throw new InvalidOperationException("Worker origin is not visible in its physical map.");
             UpdateWorkerLabHud();
-            GD.Print($"GA-VS05-ORIGINAL-UI-LAB-READY fine=18 coarse=3 source={_workerOrigin.Value.FineStrategicCellId.Value} workers={_workerLab.TotalWorkers} canonical_worldstate_untouched=true");
+            GD.Print($"GA-VS06-SITES-LAB-READY fine=18 coarse=3 source={_workerOrigin.Value.FineStrategicCellId.Value} primitive_sites={_workerLab.PrimitiveSites.Count} workers={_workerLab.TotalWorkers} canonical_worldstate_untouched=true");
         }
         catch (Exception ex)
         {
@@ -171,6 +185,23 @@ public partial class Main
         UpdateWorkerLabHud();
     }
 
+    private void InstallWorkerLabSite()
+    {
+        if (_workerLab is null || !_workerDestination.HasValue ||
+            _workerToJob is null || _workerLabStatus is null) return;
+        try
+        {
+            var activity = (EconomicActivityKind)_workerToJob.GetSelectedId();
+            _workerLab.InstallPrimitiveSite(_workerDestination.Value, activity);
+            UpdateWorkerLabHud();
+            GD.Print($"GA-VS06-PRIMITIVE-SITE-ACTIVATED tile={_workerDestination.Value.FineStrategicCellId.Value} job={activity} revision={_workerLab.Revision} workers={_workerLab.TotalWorkers} expense=unmodeled");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or OverflowException)
+        {
+            _workerLabStatus.Text = "INSTALAÇÃO RECUSADA: " + ex.Message;
+        }
+    }
+
     private void MoveWorkerLabWorkers()
     {
         if (_workerLab is null || _workerOrigin is null || _workerDestination is null ||
@@ -185,7 +216,7 @@ public partial class Main
             _workerOrigin = _workerDestination;
             _workerDestination = null;
             UpdateWorkerLabHud();
-            GD.Print($"GA-VS05-ORIGINAL-UI-WORKERS-MOVED revision={_workerLab.Revision} workers={_workerLab.TotalWorkers} occupied={_workerLab.Assignments.Select(x => x.TileId).Distinct().Count()} city_entity=false canonical_worldstate_untouched=true");
+            GD.Print($"GA-VS06-WORKERS-ASSIGNED revision={_workerLab.Revision} workers={_workerLab.TotalWorkers} primitive_sites={_workerLab.PrimitiveSites.Count} occupied={_workerLab.Assignments.Select(x => x.TileId).Distinct().Count()} city_entity=false canonical_worldstate_untouched=true");
         }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or OverflowException)
         {
@@ -210,18 +241,32 @@ public partial class Main
         var demand = flows.Demand.Where(x => x.TileId == origin)
             .Aggregate(0UL, (sum, x) => checked(sum + x.RawQuantity));
         var jobs = string.Join(" | ", local.Select(x => $"{x.Activity}: {x.Workers}"));
+        var targetJob = _workerToJob is null
+            ? EconomicActivityKind.Agriculture
+            : (EconomicActivityKind)_workerToJob.GetSelectedId();
+        var siteAlreadyInstalled = _workerDestination.HasValue &&
+            _workerLab.HasPrimitiveSite(_workerDestination.Value, targetJob);
+        var canInstall = _workerDestination.HasValue &&
+            _workerLab.CanInstallPrimitiveSite(_workerDestination.Value, targetJob);
         var destination = _workerDestination.HasValue
-            ? $"Tile {_workerDestination.Value.FineStrategicCellId.Value} selecionado"
+            ? $"Tile {_workerDestination.Value.FineStrategicCellId.Value}: " +
+                (siteAlreadyInstalled ? "instalação pronta, pode alocar" :
+                 canInstall ? "sem instalação: ATIVAR primeiro (grátis)" :
+                 "terreno sem potencial para esta atividade")
             : "Clique num vizinho contornado em verde-lima";
         _workerLabStatus.Text =
             $"Origem tile {origin.FineStrategicCellId.Value} | {jobs}\n" +
             $"Destino: {destination}\n" +
             $"Trabalhadores globais: {_workerLab.TotalWorkers} | " +
             $"tiles ocupados: {_workerLab.Assignments.Select(x => x.TileId).Distinct().Count()} | " +
-            $"revisão: {_workerLab.Revision}\n" +
+            $"revisão: {_workerLab.Revision} | instalações primitivas: {_workerLab.PrimitiveSites.Count}\n" +
             $"Consumo alimentar na origem (prévia): {demand / 1_000_000.0:F3}\n" +
-            "LAB ISOLADO: ainda sem mercado, estoque ou save.";
+            "Vagas/capacidade e curvas de investimento ainda NÃO modeladas. Sem estoque, mercado ou save.";
+        if (_workerInstallSiteButton is not null)
+            _workerInstallSiteButton.Disabled = !_workerDestination.HasValue ||
+                !canInstall || siteAlreadyInstalled;
         if (_workerMoveButton is not null)
-            _workerMoveButton.Disabled = !_workerDestination.HasValue;
+            _workerMoveButton.Disabled = !_workerDestination.HasValue ||
+                !siteAlreadyInstalled;
     }
 }
