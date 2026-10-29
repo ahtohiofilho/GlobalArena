@@ -44,7 +44,7 @@ public partial class Main
 
         var warning = new Label
         {
-            Text = "Estado de teste isolado: NÃO altera o WorldState canônico, não cria cidades, não salva e não fecha turnos.",
+            Text = "Laboratório offline: produz/consome a cada 6 turnos e salva a sessão própria. Ainda NÃO altera o WorldState canônico; sem mercado, transporte ou cidades.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         warning.AddThemeColorOverride("font_color", new Color("#e1c883"));
