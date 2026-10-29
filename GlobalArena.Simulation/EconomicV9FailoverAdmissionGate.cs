@@ -80,6 +80,57 @@ public sealed class EconomicV9FailoverAdmissionGate
         }
     }
 
+    /// <summary>
+    /// Strict recovery entry path for sites requiring independent,
+    /// cryptographically verified immutable backup evidence. Checks the
+    /// separately witnessed writer epoch, the promoted primary, the signed
+    /// backup receipt and actual archive bytes BEFORE starting local replay.
+    /// The legacy RestoreAfterPromotion remains for sites not yet using this
+    /// opt-in operational policy; production hosts must route exclusively
+    /// through this method when the policy is mandatory.
+    /// </summary>
+    public EconomicCompleteV9DurableSaveHost RestoreAfterPromotionWithVerifiedBackup(
+        string directoryPath, WorldGenerationResult generatedWorld,
+        IEconomicV9ImmutableBackupRecoveryGate independentlyTrustedBackup,
+        WorldStateHash? independentlyTrustedLegacyWorldHash = null,
+        string? independentlyTrustedLegacyEcologicalDigest = null,
+        HistoricalMilitaryMoveAuthorizationSeal? historicalVerifier = null)
+    {
+        ArgumentNullException.ThrowIfNull(independentlyTrustedBackup);
+        if (_witness is not IEconomicV9AcknowledgmentWitness versionedWitness)
+            throw new InvalidOperationException(
+                "Verified backup recovery requires an independently witnessed writer epoch.");
+        var expected = versionedWitness.ReadState(_gameId);
+        var primary = _promotedPrimary.ReadSnapshot();
+        RequireAgreement(primary, expected.LastAcknowledged);
+        if (!independentlyTrustedBackup.VerifyBackup(
+                _gameId, expected.WriterEpoch, expected.LastAcknowledged))
+            throw new InvalidOperationException(
+                "Independent immutable backup verification failed; recovery blocked.");
+
+        if (versionedWitness.ReadState(_gameId) != expected ||
+            _promotedPrimary.ReadSnapshot() != primary)
+            throw new InvalidOperationException(
+                "External authorities changed while verifying immutable backup.");
+
+        var host = RestoreAfterPromotion(directoryPath, generatedWorld,
+            independentlyTrustedLegacyWorldHash,
+            independentlyTrustedLegacyEcologicalDigest, historicalVerifier);
+        try
+        {
+            if (versionedWitness.ReadState(_gameId) != expected ||
+                _promotedPrimary.ReadSnapshot() != primary)
+                throw new InvalidOperationException(
+                    "External authorities changed during backup-gated replay.");
+            return host;
+        }
+        catch
+        {
+            host.Dispose();
+            throw;
+        }
+    }
+
     private static void RequireAgreement(
         EconomicV9ExternalAnchorSnapshot snapshot,
         EconomicV9ExternalAnchor acknowledged)
