@@ -101,13 +101,15 @@ public partial class TacticalContextPreview
                 var innerA = a.Lerp(center, width);
                 var innerB = b.Lerp(center, width);
                 // Same flattened X/Z coordinate system as TacticalContextPreview.
-                // Y remains slightly above all ordinary edges for clarity.
-                AddColored(tool, new Vector3(a.X, 0.012f, a.Y), color);
-                AddColored(tool, new Vector3(b.X, 0.012f, b.Y), color);
-                AddColored(tool, new Vector3(innerB.X, 0.012f, innerB.Y), color);
-                AddColored(tool, new Vector3(a.X, 0.012f, a.Y), color);
-                AddColored(tool, new Vector3(innerB.X, 0.012f, innerB.Y), color);
-                AddColored(tool, new Vector3(innerA.X, 0.012f, innerA.Y), color);
+                // All ribbon vertices remain practically coplanar with terrain (Y=0).
+                // A tiny ordered depth epsilon prevents z-fighting but does
+                // not float/parallax over its own cell at tactical camera pitch.
+                AddColored(tool, new Vector3(a.X, WorkerRibbonSurfaceLift, a.Y), color);
+                AddColored(tool, new Vector3(b.X, WorkerRibbonSurfaceLift, b.Y), color);
+                AddColored(tool, new Vector3(innerB.X, WorkerRibbonSurfaceLift, innerB.Y), color);
+                AddColored(tool, new Vector3(a.X, WorkerRibbonSurfaceLift, a.Y), color);
+                AddColored(tool, new Vector3(innerB.X, WorkerRibbonSurfaceLift, innerB.Y), color);
+                AddColored(tool, new Vector3(innerA.X, WorkerRibbonSurfaceLift, innerA.Y), color);
                 colored += 2;
             }
         }
