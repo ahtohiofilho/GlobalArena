@@ -13,6 +13,9 @@ public sealed class G3J3lSignedOperationalEvidenceTests
         private readonly Func<HttpRequestMessage, HttpResponseMessage> _respond;
         public Handler(Func<HttpRequestMessage, HttpResponseMessage> respond) =>
             _respond = respond;
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(_respond(request));
         protected override HttpResponseMessage Send(
             HttpRequestMessage request, CancellationToken cancellationToken) =>
             _respond(request);
