@@ -1,0 +1,41 @@
+name: GA-VS06 Primitive Infrastructure Before Workforce
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/EconomicPhysicalTacticalWorkerSession.cs'
+      - 'GlobalArena.Tests/GaVs06InfrastructureFirstLabTests.cs'
+      - 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+      - '.github/workflows/ga-vs06-primitive-sites.yml'
+  workflow_dispatch:
+
+jobs:
+  free-sites-first-linux:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Validate primitive site gate, geography, conservation and deterministic replay
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs06' --logger 'console;verbosity=normal'
+      - name: Confirm production Godot CSharp shell builds
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  free-sites-first-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Validate worker and site rules on native Windows
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs06'
+      - name: Confirm original Godot CSharp shell builds on native Windows
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
