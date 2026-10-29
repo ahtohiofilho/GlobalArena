@@ -19,6 +19,9 @@ public sealed class EconomicV9PostgresTrustedAnchorStore :
     private const int MaximumSnapshotBytes = 4096;
     private readonly NpgsqlDataSource _source;
     private readonly string _gameId;
+    private readonly long _writerEpoch;
+
+    public long WriterEpoch => _writerEpoch;
 
     /// <summary>
     /// The supplied datasource belongs to the host and must remain open
@@ -26,7 +29,8 @@ public sealed class EconomicV9PostgresTrustedAnchorStore :
     /// provisioned separately by a trusted administrator.
     /// </summary>
     public EconomicV9PostgresTrustedAnchorStore(
-        NpgsqlDataSource independentlyProtectedDataSource, string gameId)
+        NpgsqlDataSource independentlyProtectedDataSource, string gameId,
+        long writerEpoch = 0)
     {
         _source = independentlyProtectedDataSource ??
             throw new ArgumentNullException(nameof(independentlyProtectedDataSource));
@@ -35,19 +39,27 @@ public sealed class EconomicV9PostgresTrustedAnchorStore :
                 c is not ('-' or '_' or '.' or ':')))
             throw new ArgumentException("Invalid trusted game namespace.",
                 nameof(gameId));
+        if (writerEpoch < 0)
+            throw new ArgumentOutOfRangeException(nameof(writerEpoch));
         _gameId = gameId;
+        _writerEpoch = writerEpoch;
     }
 
     public EconomicV9ExternalAnchorSnapshot ReadSnapshot()
     {
         using var connection = _source.OpenConnection();
         using var command = new NpgsqlCommand(
-            "SELECT public.ga_v9_anchor_read(@game_id) WHERE NOT pg_is_in_recovery()",
+            _writerEpoch == 0
+                ? "SELECT public.ga_v9_anchor_read(@game_id) WHERE NOT pg_is_in_recovery()"
+                : "SELECT public.ga_v9_anchor_read_fenced(@game_id, @writer_epoch) WHERE NOT pg_is_in_recovery()",
             connection);
         command.Parameters.Add(new NpgsqlParameter("game_id", NpgsqlDbType.Text)
         {
             Value = _gameId
         });
+        if (_writerEpoch > 0)
+            command.Parameters.Add(new NpgsqlParameter("writer_epoch",
+                NpgsqlDbType.Bigint) { Value = _writerEpoch });
         var value = command.ExecuteScalar();
         // A streaming standby may have a stale, yet locally consistent,
         // snapshot. It is NOT an authority until it is promoted. PostgreSQL
@@ -100,7 +112,9 @@ public sealed class EconomicV9PostgresTrustedAnchorStore :
             sync.ExecuteNonQuery();
         }
         using var command = new NpgsqlCommand(
-            "SELECT public.ga_v9_anchor_cas(@game_id, @previous_snapshot, @next_snapshot)",
+            _writerEpoch == 0
+                ? "SELECT public.ga_v9_anchor_cas(@game_id, @previous_snapshot, @next_snapshot)"
+                : "SELECT public.ga_v9_anchor_cas_fenced(@game_id, @previous_snapshot, @next_snapshot, @writer_epoch)",
             connection, transaction);
         command.Parameters.Add(new NpgsqlParameter("game_id", NpgsqlDbType.Text)
         {
@@ -115,6 +129,9 @@ public sealed class EconomicV9PostgresTrustedAnchorStore :
         {
             Value = to
         });
+        if (_writerEpoch > 0)
+            command.Parameters.Add(new NpgsqlParameter("writer_epoch",
+                NpgsqlDbType.Bigint) { Value = _writerEpoch });
         var succeeded = command.ExecuteScalar();
         if (succeeded is not true)
         {
