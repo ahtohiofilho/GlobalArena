@@ -148,6 +148,23 @@ public sealed class EconomicPhysicalTacticalOfflineSession
         return _stocks.TryGetValue((tile, commodity), out var value) ? value : 0UL;
     }
 
+    /// <summary>
+    /// A defensive, immutable projection for the canonical WorldState domain.
+    /// VS07's offline journal remains the driver until a subsequent migration
+    /// transfers event, save and transition authority. Do not treat this as
+    /// a second independently mutable workforce.
+    /// </summary>
+    public PhysicalTacticalEconomyRuntimeState BuildPhysicalRuntimeSnapshot() => new(
+        RuntimeWorldBinding.FromGeneratedWorld(Workers.CoarseWorld),
+        _coarse, _fine, MovementTurn, Workers.Revision,
+        Workers.Assignments.Select(x =>
+            new PhysicalWorkerAllocation(x.TileId, x.Activity, x.Workers)),
+        Stocks.Select(x =>
+            new PhysicalCommodityStock(x.TileId, x.Commodity, x.RawQuantity)),
+        _cycles.Select(x =>
+            new PhysicalEconomicCycle(x.MovementTurn, x.ProducedRaw,
+                x.FoodConsumedRaw, x.FoodUnmetRaw)));
+
     public string ExportSaveJson()
     {
         var payload = SnapshotPayload();
