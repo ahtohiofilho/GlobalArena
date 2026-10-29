@@ -26,6 +26,20 @@ O MVP offline requer um ciclo jogável de economia física, transporte
 básico, expansão, conflito mínimo, turnos efetivos e save/load; conteúdo
 histórico posterior e multiplayer não bloqueiam o MVP offline.
 
+**Diretriz econômica restaurada (29/10/2026):** para a
+agricultura rudimentar e a coleta arcaica de madeira e pedra,
+**o trabalhador inicia a produção ao ser alocado em um tile
+físico apto, sem infraestrutura obrigatória**. A indústria
+e a infraestrutura agrícola/mineradora aprimorada surgem
+mais adiante como fontes de capacidade/produtividade
+especializadas, com fórmulas de investimento a definir.
+A decisão vigente está em
+[`GA-ADR-ECON-007`](engineering/GA-ADR-ECON-007-primitive-work-without-infrastructure.md).
+O experimento que exigia ativar instalações primitivas
+(GA-VS06, PR #93) foi **fechado sem merge**. Manter GA-VS05
+(PR #92) como baseline funcional; nenhuma alteração dos
+GPP, nem liberação do MKT-01.
+
 | Marco de produto (sequência, sem prazo inventado) | Marketing acoplado | Regra para disparar |
 |---|---|---|
 | Arquitetura e protótipo neolítico em validação (GA-VS03) | **MKT-00:** pesquisa de mercado, posicionamento e inventário de canais | Pode-se recomendar **agora**, com esforço pequeno; não é lançamento público |

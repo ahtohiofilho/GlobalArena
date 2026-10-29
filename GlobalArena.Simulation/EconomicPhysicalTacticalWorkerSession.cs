@@ -26,6 +26,12 @@ public sealed class EconomicPhysicalTacticalWorkerSession
     public static readonly GoldbergParameters CoarseParameters = new(2, 0);
     public static readonly GoldbergParameters FineParameters = new(12, 0);
 
+    // Instance-scoped topology permits the existing production Godot shell's
+    // G(3,0) -> G(18,0) physical map to share the SAME worker IDs, instead
+    // of silently mixing the G(2,0) -> G(12,0) VS03 test topology.
+    public GoldbergParameters CoarseWorldParameters { get; }
+    public GoldbergParameters FineWorldParameters { get; }
+
     private readonly Dictionary<(PhysicalTacticalTileId Tile, EconomicActivityKind Activity), ulong>
         _workforce = new();
 
@@ -39,15 +45,21 @@ public sealed class EconomicPhysicalTacticalWorkerSession
     public ulong PreviewCount { get; private set; }
     public PhysicalTacticalTileId InitialTile { get; }
 
-    public EconomicPhysicalTacticalWorkerSession(ulong seed = 0UL)
+    public EconomicPhysicalTacticalWorkerSession(ulong seed = 0UL,
+        GoldbergParameters? coarseParameters = null,
+        GoldbergParameters? fineParameters = null)
     {
+        CoarseWorldParameters = coarseParameters ?? CoarseParameters;
+        FineWorldParameters = fineParameters ?? FineParameters;
+        // Verify exact scale compatibility before constructing large worlds.
+        _ = new GoldbergScaledRefinement(CoarseWorldParameters, FineWorldParameters);
         var generator = new DeterministicWorldGenerator();
         CoarseWorld = generator.Generate(new WorldGenerationRequest(
-            new WorldSeed(seed), WorldGenerationVersion.Initial, CoarseParameters));
+            new WorldSeed(seed), WorldGenerationVersion.Initial, CoarseWorldParameters));
         FineWorld = generator.Generate(new WorldGenerationRequest(
-            new WorldSeed(seed), WorldGenerationVersion.Initial, FineParameters));
+            new WorldSeed(seed), WorldGenerationVersion.Initial, FineWorldParameters));
         Incidence = PhysicalTacticalIncidenceMapper.Materialize(
-            new GoldbergScaledRefinement(CoarseParameters, FineParameters));
+            new GoldbergScaledRefinement(CoarseWorldParameters, FineWorldParameters));
 
         if (CoarseWorld.StrategicTopology.Cells.Count != Incidence.CoarseTopology.Cells.Count ||
             FineWorld.StrategicTopology.Cells.Count != Incidence.FineTopology.Cells.Count ||
@@ -102,7 +114,7 @@ public sealed class EconomicPhysicalTacticalWorkerSession
             .Aggregate(0UL, (total, item) => checked(total + item.Value));
 
     public PhysicalTacticalTileId PhysicalId(StrategicCellId fineId) =>
-        new(FineParameters, fineId);
+        new(FineWorldParameters, fineId);
 
     public bool IsWorkableLand(StrategicCellId fineId) =>
         FineWorld.StrategicPhysicalFields.LandWater.GetKind(fineId) ==
@@ -242,7 +254,7 @@ public sealed class EconomicPhysicalTacticalWorkerSession
 
     private void ValidateTile(PhysicalTacticalTileId id)
     {
-        if (!id.IsValid || id.FineGoldbergParameters != FineParameters ||
+        if (!id.IsValid || id.FineGoldbergParameters != FineWorldParameters ||
             id.FineStrategicCellId.Value >
                 (ulong)Incidence.FineTopology.Cells.Count)
             throw new ArgumentException(
