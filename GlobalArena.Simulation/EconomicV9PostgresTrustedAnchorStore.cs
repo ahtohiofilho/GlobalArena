@@ -7,6 +7,8 @@ namespace GlobalArena.Simulation;
 
 /// <summary>
 /// A PostgreSQL-backed, per-game, durable compare-and-swap authority.
+ /// App roles must only have EXECUTE on narrowly scoped SECURITY DEFINER
+ /// functions, never direct UPDATE/DELETE privileges over anchor tables.
 /// PostgreSQL MUST be independent from the GAFULL09 save storage, with a
 /// trusted primary, restricted roles, backups, and rollback protections.
 /// Not a substitute for protection against DB administrator compromise.
@@ -40,7 +42,7 @@ public sealed class EconomicV9PostgresTrustedAnchorStore :
     {
         using var connection = _source.OpenConnection();
         using var command = new NpgsqlCommand(
-            "SELECT snapshot FROM ga_trusted_v9_anchor WHERE game_id = @game_id",
+            "SELECT public.ga_v9_anchor_read(@game_id)",
             connection);
         command.Parameters.Add(new NpgsqlParameter("game_id", NpgsqlDbType.Text)
         {
@@ -61,8 +63,9 @@ public sealed class EconomicV9PostgresTrustedAnchorStore :
         ArgumentNullException.ThrowIfNull(requested);
         if (expected.Prepared is not null || requested.Before != expected.Confirmed)
             return false;
-        // The authoritative update is a SINGLE conditional PostgreSQL UPDATE.
-        // No read-then-write window; concurrent writers cannot both win.
+        // The database function executes ONE conditional row update and
+        // audits a valid transition in the same transaction. No client-side
+        // read-then-write window; concurrent writers cannot both win.
         var after = new EconomicV9ExternalAnchorSnapshot(
             expected.Confirmed, requested);
         return Swap(expected, after);
@@ -94,11 +97,7 @@ public sealed class EconomicV9PostgresTrustedAnchorStore :
             sync.ExecuteNonQuery();
         }
         using var command = new NpgsqlCommand(
-            """
-            UPDATE ga_trusted_v9_anchor
-               SET snapshot = @next_snapshot, revision = revision + 1
-             WHERE game_id = @game_id AND snapshot = @previous_snapshot
-            """,
+            "SELECT public.ga_v9_anchor_cas(@game_id, @previous_snapshot, @next_snapshot)",
             connection, transaction);
         command.Parameters.Add(new NpgsqlParameter("game_id", NpgsqlDbType.Text)
         {
@@ -113,8 +112,8 @@ public sealed class EconomicV9PostgresTrustedAnchorStore :
         {
             Value = to
         });
-        var affected = command.ExecuteNonQuery();
-        if (affected != 1)
+        var succeeded = command.ExecuteScalar();
+        if (succeeded is not true)
         {
             transaction.Rollback();
             return false;
