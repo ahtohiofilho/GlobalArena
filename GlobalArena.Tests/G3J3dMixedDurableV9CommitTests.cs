@@ -451,7 +451,9 @@ public sealed class G3J3dMixedDurableV9CommitTests
                     historicalVerifier: seal,
                     independentlyTrustedJournalRoot: root));
             File.Delete(path);
-            Assert.Throws<FileNotFoundException>(() =>
+            // Missing mixed evidence also leaves a changed v9 world hash:
+            // Restore may reject at the predecessor-world gate first.
+            Assert.Throws<InvalidDataException>(() =>
                 EconomicCompleteV9DurableSaveHost.Restore(
                     folder, generated, accepted,
                     historicalVerifier: seal,
