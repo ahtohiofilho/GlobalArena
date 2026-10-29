@@ -246,7 +246,7 @@ public partial class Main
             File.Move(temp, path, overwrite: true);
             UpdateWorkerLabHud();
             _workerLabStatus.Text += "\nSAVE OFFLINE GRAVADO: ga-vs07-neolithic-offline.json";
-            GD.Print($"GA-VS07-SAVED movement_turn={_offlineLab.MovementTurn} cycles={_offlineLab.EconomicCycles} workers={_workerLab.TotalWorkers}");
+            GD.Print($"GA-VS07-SAVED movement_turn={_offlineLab.MovementTurn} cycles={_offlineLab.EconomicCycles} workers={_offlineLab.Workers.TotalWorkers}");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
