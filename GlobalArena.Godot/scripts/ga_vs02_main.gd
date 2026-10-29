@@ -282,7 +282,7 @@ func _focus_initial_settlement() -> void:
 			selected_cell_id = int(cell["id"])
 			var direction := _vector(cell["center"]).normalized()
 			# Positive Z faces the camera; all later drags rotate the globe.
-			globe.transform.basis = Basis.looking_at(direction, Vector3.UP)
+			globe.quaternion = Quaternion(direction, Vector3.BACK)
 			return
 
 func _on_tile_input(_camera: Node, event: InputEvent, _position: Vector3,
