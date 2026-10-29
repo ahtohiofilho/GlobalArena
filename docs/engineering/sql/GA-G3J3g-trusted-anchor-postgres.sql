@@ -9,6 +9,12 @@ CREATE TABLE IF NOT EXISTS public.ga_trusted_v9_anchor (
     revision bigint NOT NULL DEFAULT 0 CHECK (revision >= 0)
 );
 
+-- G3-J3j: one monotonically increasing per-game writer generation.
+ALTER TABLE public.ga_trusted_v9_anchor
+    ADD COLUMN IF NOT EXISTS writer_epoch bigint NOT NULL DEFAULT 0
+        CHECK (writer_epoch >= 0);
+
+
 CREATE TABLE IF NOT EXISTS public.ga_trusted_v9_anchor_audit (
     audit_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     game_id text NOT NULL,
@@ -52,8 +58,8 @@ $$;
 -- Single-row linearizable CAS: compare the EXACT old serialized state before
 -- replacing it; the row lock/atomic UPDATE serializes competing writers.
 -- Audit insertion belongs to the SAME DB transaction as the state update.
-CREATE OR REPLACE FUNCTION public.ga_v9_anchor_cas(
-    p_game_id text, p_expected text, p_next text)
+CREATE OR REPLACE FUNCTION public.ga_v9_anchor_cas_fenced(
+    p_game_id text, p_expected text, p_next text, p_epoch bigint)
 RETURNS boolean
 LANGUAGE plpgsql
 VOLATILE
@@ -76,7 +82,8 @@ BEGIN
         RAISE EXCEPTION 'Trusted game anchor access denied'
             USING ERRCODE = '42501';
     END IF;
-    IF p_game_id IS NULL OR length(p_game_id) NOT BETWEEN 1 AND 128 OR
+    IF p_epoch IS NULL OR p_epoch < 0 OR
+       p_game_id IS NULL OR length(p_game_id) NOT BETWEEN 1 AND 128 OR
        p_expected IS NULL OR p_next IS NULL OR
        octet_length(p_expected) NOT BETWEEN 1 AND 4096 OR
        octet_length(p_next) NOT BETWEEN 1 AND 4096 OR
@@ -140,7 +147,8 @@ BEGIN
 
     UPDATE public.ga_trusted_v9_anchor
        SET snapshot = p_next, revision = revision + 1
-     WHERE game_id = p_game_id AND snapshot = p_expected;
+     WHERE game_id = p_game_id AND snapshot = p_expected
+       AND writer_epoch = p_epoch;
     GET DIAGNOSTICS changed = ROW_COUNT;
     IF changed != 1 THEN
         RETURN FALSE;
@@ -152,6 +160,44 @@ BEGIN
 END;
 $$;
 
+
+-- G3-J3j: legacy three-parameter CAS can operate ONLY before an epoch
+-- has been claimed. Once an administrator rotates writer_epoch > 0, every
+-- legacy writer is fenced even if it still holds a valid database password.
+CREATE OR REPLACE FUNCTION public.ga_v9_anchor_cas(
+    p_game_id text, p_expected text, p_next text)
+RETURNS boolean
+LANGUAGE sql
+VOLATILE
+SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp
+AS $$
+    SELECT public.ga_v9_anchor_cas_fenced(
+        p_game_id, p_expected, p_next, 0::bigint);
+$$;
+
+-- Fenced readers also fail closed on a stale generation. Do not let an
+-- old process use a new primary's snapshot to resume a previous session.
+CREATE OR REPLACE FUNCTION public.ga_v9_anchor_read_fenced(
+    p_game_id text, p_epoch bigint)
+RETURNS text
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp
+AS $$
+BEGIN
+    IF p_epoch IS NULL OR p_epoch <= 0 OR NOT EXISTS (
+        SELECT 1 FROM public.ga_trusted_v9_anchor
+         WHERE game_id = p_game_id AND writer_epoch = p_epoch
+    ) THEN
+        RAISE EXCEPTION 'Trusted v9 writer epoch is stale or absent'
+            USING ERRCODE = '42501';
+    END IF;
+    RETURN public.ga_v9_anchor_read(p_game_id);
+END;
+$$;
+
 -- SECURITY DEFINER functions are EXECUTE-able by PUBLIC by default.
 -- The administrator MUST grant only these functions to the service role.
 REVOKE ALL ON TABLE public.ga_trusted_v9_anchor FROM PUBLIC;
@@ -159,6 +205,8 @@ REVOKE ALL ON TABLE public.ga_trusted_v9_anchor_audit FROM PUBLIC;
 REVOKE ALL ON TABLE public.ga_trusted_v9_game_principal FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ga_v9_anchor_read(text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ga_v9_anchor_cas(text, text, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ga_v9_anchor_cas_fenced(text, text, text, bigint) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ga_v9_anchor_read_fenced(text, bigint) FROM PUBLIC;
 
 -- Example, after role creation by a separately trusted DBA:
 -- GRANT USAGE ON SCHEMA public TO ga_v9_game_service;
@@ -171,3 +219,8 @@ REVOKE ALL ON FUNCTION public.ga_v9_anchor_cas(text, text, text) FROM PUBLIC;
 -- Do not grant DML on ANY of the three tables to the service.
 -- IMPORTANT: re-apply this migration before starting the game service so
 -- old unrestricted function definitions are replaced with ACL checks.
+
+-- Trusted DBA (not the game service) performs the per-game rotation AFTER
+-- old writers are isolated: UPDATE ... SET writer_epoch = old + 1 WHERE
+-- game_id = ... AND writer_epoch = old; verify exactly one row changed.
+-- Grant both fenced functions ONLY to the game login with ACL membership.
