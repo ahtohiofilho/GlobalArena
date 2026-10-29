@@ -120,8 +120,8 @@ public sealed class EconomicV9PostgresWriterEpochRotation
                 oldWitness.Anchor);
         }
         if (oldWitness.Epoch != oldEpoch ||
-            oldPrimary.Epoch is not (var value) ||
-            (value != oldEpoch && value != newEpoch))
+            (oldPrimary.Epoch != oldEpoch &&
+             oldPrimary.Epoch != newEpoch))
             throw new InvalidOperationException(
                 "Unexpected epoch order; never rotate from a stale authority.");
 
