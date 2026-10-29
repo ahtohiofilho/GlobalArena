@@ -132,7 +132,8 @@ public sealed class G3J3jWitnessFencingIntegrationTests
         Assert.False(active.TryPrepare(
             new EconomicV9ExternalAnchorSnapshot(a1),
             new EconomicV9PreparedExternalAdvance(a1, a2)));
-        Assert.Throws<InvalidOperationException>(() => guarded.ReadSnapshot());
+        Assert.Equal(PostgresErrorCodes.InsufficientPrivilege,
+            Assert.Throws<PostgresException>(() => guarded.ReadSnapshot()).SqlState);
 
         // The newly fenced writer is admitted for exactly the NEW epoch.
         using var restartedWitnessDb = NpgsqlDataSource.Create(
