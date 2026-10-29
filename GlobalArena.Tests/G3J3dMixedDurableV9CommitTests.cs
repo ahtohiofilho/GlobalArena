@@ -584,18 +584,25 @@ public sealed class G3J3dMixedDurableV9CommitTests
         Directory.CreateDirectory(dir);
         try
         {
-            using (var host = EconomicCompleteV9DurableSaveHost.Create(
+            using (EconomicCompleteV9DurableSaveHost.Create(
                 dir, generated, initial))
             {
-                var beforePublication =
-                    EconomicCompleteV9DurableSaveHost.InspectExternalReconciliation(
-                        dir, generated, externalPrepare, historicalVerifier: seal);
-                Assert.Equal(
-                    EconomicV9ExternalReconciliationState.PreparedWithoutLocalPublication,
-                    beforePublication.State);
-                Assert.Throws<InvalidOperationException>(() =>
-                    EconomicCompleteV9DurableSaveHost.RestoreExternallyConfirmed(
-                        dir, generated, externalPrepare, historicalVerifier: seal));
+                // A newly created host holds the exclusive writer lease.
+            }
+            var beforePublication =
+                EconomicCompleteV9DurableSaveHost.InspectExternalReconciliation(
+                    dir, generated, externalPrepare, historicalVerifier: seal);
+            Assert.Equal(
+                EconomicV9ExternalReconciliationState.PreparedWithoutLocalPublication,
+                beforePublication.State);
+            Assert.Throws<InvalidOperationException>(() =>
+                EconomicCompleteV9DurableSaveHost.RestoreExternallyConfirmed(
+                    dir, generated, externalPrepare, historicalVerifier: seal));
+            using (var host = EconomicCompleteV9DurableSaveHost.Restore(
+                dir, generated, before.CheckpointSha256Hex,
+                historicalVerifier: seal,
+                independentlyTrustedJournalRoot: before.JournalSha256Hex))
+            {
                 var candidate = host.CommitMixed(initial.Sha256Hex, Context(),
                     certificate, Demand(), Holds(), seal);
                 Assert.Equal(after.CheckpointSha256Hex,
