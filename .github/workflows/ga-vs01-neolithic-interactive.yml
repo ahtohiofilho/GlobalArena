@@ -1,0 +1,36 @@
+name: GA-VS01 Neolithic Interactive Vertical Slice
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Console/**'
+      - 'GlobalArena.Simulation/**'
+      - 'GlobalArena.Tests/**'
+      - '.github/workflows/ga-vs01-neolithic-interactive.yml'
+  workflow_dispatch:
+
+jobs:
+  playable-neolithic-slice:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Restore solution
+        run: dotnet restore GlobalArena.slnx
+      - name: Verify deterministic settlement and geographic worker economics
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-restore --filter "FullyQualifiedName~Vs01" --logger "console;verbosity=normal"
+      - name: Run actual console demo
+        shell: bash
+        run: |
+          dotnet run --project GlobalArena.Console/GlobalArena.Console.csproj -c Release --no-restore -- demo 0 | tee /tmp/ga-vs01-demo.txt
+          grep -q 'GA-VS01' /tmp/ga-vs01-demo.txt
+          grep -q 'Fundação básica: ponto 2' /tmp/ga-vs01-demo.txt
+          grep -q 'pontos 2' /tmp/ga-vs01-demo.txt
+          grep -q 'Oferta P' /tmp/ga-vs01-demo.txt
+          grep -q 'Demanda P' /tmp/ga-vs01-demo.txt
+          grep -q 'não liquidados' /tmp/ga-vs01-demo.txt
