@@ -217,8 +217,7 @@ public sealed class WorldState
         WarfareRuntimeState warfare)
     {
         ArgumentNullException.ThrowIfNull(
-            warfare,
-            PhysicalEconomy);
+            warfare);
 
         return new WorldState(
             Revision,
@@ -285,8 +284,7 @@ public sealed class WorldState
             population);
 
         ArgumentNullException.ThrowIfNull(
-            warfare,
-            PhysicalEconomy);
+            warfare);
 
         ValidateCrossDomainInvariants(
             worldBinding,
