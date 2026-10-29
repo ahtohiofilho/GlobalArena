@@ -6,7 +6,7 @@ using GlobalArena.World;
 
 namespace GlobalArena.Tests;
 
-public sealed class G3J3dMixedDurableV9CommitTests
+public sealed partial class G3J3dMixedDurableV9CommitTests
 {
     private const ulong D = EconomicTransferPolicy.FixedPointDenominator;
     private static readonly CivilizationId Owner = new(1UL);
