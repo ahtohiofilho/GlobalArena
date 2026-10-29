@@ -20,7 +20,7 @@ public sealed class GaVs01NeolithicInteractionTests
         Assert.Equal(8UL,
             Assert.Single(session.CurrentWorld.Population.PointPopulations).Residents);
         Assert.Equal(3, point.ActivityAllocations.Count);
-        Assert.Equal(1, session.CurrentWorld.Territory.Controls.Count);
+        Assert.Single(session.CurrentWorld.Territory.Controls);
         Assert.NotEmpty(session.AvailableLandNeighbors(point.Id));
         Assert.Equal(0UL, session.CompletedPreviewTurns);
     }
