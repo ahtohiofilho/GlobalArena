@@ -88,7 +88,7 @@ func _run() -> void:
 		_fail("Worker allocation button was not enabled after selecting target")
 		return
 	# Zoom is purely visual. It must not change worker state or source.
-	var before_size := camera.size
+	var before_size: float = camera.size
 	var wheel := InputEventMouseButton.new()
 	wheel.button_index = MOUSE_BUTTON_WHEEL_UP
 	wheel.pressed = true
