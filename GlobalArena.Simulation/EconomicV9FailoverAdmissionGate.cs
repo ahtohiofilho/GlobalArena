@@ -131,6 +131,134 @@ public sealed class EconomicV9FailoverAdmissionGate
         }
     }
 
+    /// <summary>
+    /// Restores the EXACT independently signed/versioned backup, never a
+    /// second download of its archive URL. All bytes are streamed into an
+    /// isolated sibling quarantine. Inventory + replay complete before a
+    /// new destination directory becomes visible. No existing save is
+    /// replaced. A failed post-promotion check leaves the target blocked.
+    /// </summary>
+    public EconomicCompleteV9DurableSaveHost RestoreFromVerifiedVersionedBackup(
+        string newDestinationDirectory, WorldGenerationResult generatedWorld,
+        IEconomicV9VerifiedBackupArchiveSource signedVersionedArchive,
+        WorldStateHash? independentlyTrustedLegacyWorldHash = null,
+        string? independentlyTrustedLegacyEcologicalDigest = null,
+        HistoricalMilitaryMoveAuthorizationSeal? historicalVerifier = null)
+    {
+        ArgumentNullException.ThrowIfNull(generatedWorld);
+        ArgumentNullException.ThrowIfNull(signedVersionedArchive);
+        ArgumentException.ThrowIfNullOrWhiteSpace(newDestinationDirectory);
+        if (_witness is not IEconomicV9AcknowledgmentWitness versionedWitness)
+            throw new InvalidOperationException(
+                "Versioned recovery requires a durable, epoch-aware independent witness.");
+
+        var destination = Path.GetFullPath(newDestinationDirectory);
+        if (Directory.Exists(destination) || File.Exists(destination))
+            throw new IOException(
+                "Versioned recovery must not overwrite or reuse an existing save.");
+        var parent = Path.GetDirectoryName(destination);
+        if (parent is null || !Directory.Exists(parent))
+            throw new DirectoryNotFoundException(
+                "A preprovisioned, access-controlled recovery parent is required.");
+        var expected = versionedWitness.ReadState(_gameId);
+        var primary = _promotedPrimary.ReadSnapshot();
+        RequireAgreement(primary, expected.LastAcknowledged);
+        if (expected.WriterEpoch <= 0)
+            throw new InvalidOperationException(
+                "Independently witnessed writer generation is invalid.");
+
+        var quarantine = Path.Combine(parent,
+            ".ga-j3m-quarantine-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(quarantine);
+        var moved = false;
+        try
+        {
+            var zipPath = Path.Combine(quarantine, "verified-version.zip");
+            using (var downloaded = new FileStream(zipPath,
+                FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            {
+                if (!signedVersionedArchive.TryDownloadVerifiedArchive(
+                        _gameId, expected.WriterEpoch,
+                        expected.LastAcknowledged, downloaded))
+                    throw new InvalidOperationException(
+                        "Versioned immutable backup receipt or archive digest was rejected.");
+                downloaded.Flush(flushToDisk: true);
+            }
+
+            var extracted = Path.Combine(quarantine, "replay");
+            EconomicV9VersionedSaveArchive.ExtractVerifiedArchive(
+                zipPath, extracted);
+            RequireUnchanged(expected, primary, versionedWitness);
+
+            // Full GAFULL09 journal replay in the quarantined directory,
+            // including historical mixed-command authentication.
+            using (var checkedSave = RestoreAfterPromotion(
+                extracted, generatedWorld,
+                independentlyTrustedLegacyWorldHash,
+                independentlyTrustedLegacyEcologicalDigest,
+                historicalVerifier))
+            {
+                if (checkedSave.AcceptedSha256Hex !=
+                        expected.LastAcknowledged.CheckpointSha256Hex ||
+                    checkedSave.AcceptedJournalSha256Hex !=
+                        expected.LastAcknowledged.JournalSha256Hex ||
+                    checkedSave.CommitSequence !=
+                        expected.LastAcknowledged.Sequence ||
+                    checkedSave.LastAppliedTurn !=
+                        expected.LastAcknowledged.Turn)
+                    throw new InvalidDataException(
+                        "Replayed versioned save differs from acknowledged head.");
+            }
+            RequireUnchanged(expected, primary, versionedWitness);
+
+            // Lease from the replay was released. Publishing is a single
+            // same-filesystem directory rename; only an absent target is
+            // eligible. A secure recovery parent must exclude other writers.
+            if (File.Exists(destination) || Directory.Exists(destination))
+                throw new IOException("Another writer claimed the recovery destination.");
+            Directory.Move(extracted, destination);
+            moved = true;
+
+            // Re-acquire the writer lease against the published directory
+            // and revalidate both authorities before handing it to gameplay.
+            var admitted = RestoreAfterPromotion(
+                destination, generatedWorld,
+                independentlyTrustedLegacyWorldHash,
+                independentlyTrustedLegacyEcologicalDigest,
+                historicalVerifier);
+            try
+            {
+                RequireUnchanged(expected, primary, versionedWitness);
+                return admitted;
+            }
+            catch
+            {
+                admitted.Dispose();
+                throw;
+            }
+        }
+        finally
+        {
+            if (Directory.Exists(quarantine))
+                Directory.Delete(quarantine, recursive: true);
+            // If moved is true and admission fails, the new directory is
+            // retained as an UNADMITTED forensic artifact, never replaced
+            // or silently rolled back. The caller must handle that incident.
+            _ = moved;
+        }
+    }
+
+    private void RequireUnchanged(
+        EconomicV9WitnessEpochState expected,
+        EconomicV9ExternalAnchorSnapshot primary,
+        IEconomicV9AcknowledgmentWitness versionedWitness)
+    {
+        if (versionedWitness.ReadState(_gameId) != expected ||
+            _promotedPrimary.ReadSnapshot() != primary)
+            throw new InvalidOperationException(
+                "Primary or independent witness changed during versioned recovery.");
+    }
+
     private static void RequireAgreement(
         EconomicV9ExternalAnchorSnapshot snapshot,
         EconomicV9ExternalAnchor acknowledged)
