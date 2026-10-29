@@ -121,12 +121,44 @@ BEGIN
 END;
 $$;
 
+-- G3-J3k: operator-only CAS rotation also checks the exact acknowledged
+-- anchor. This catches an acknowledgment in flight between preflight and
+-- witness rotation. The old rotate function remains for existing DBA tools
+-- but cannot be executed by application roles.
+CREATE OR REPLACE FUNCTION public.ga_v9_witness_rotate_verified(
+    p_game_id text, p_epoch bigint, p_expected_ack text)
+RETURNS boolean
+LANGUAGE plpgsql VOLATILE SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp
+AS $$
+DECLARE
+    changed integer;
+BEGIN
+    IF p_epoch IS NULL OR p_epoch <= 0 OR
+       p_epoch = 9223372036854775807 OR
+       p_expected_ack IS NULL THEN RETURN FALSE; END IF;
+    UPDATE public.ga_v9_witness
+       SET writer_epoch = writer_epoch + 1, revision = revision + 1
+     WHERE game_id = p_game_id
+       AND writer_epoch = p_epoch
+       AND acknowledged = p_expected_ack;
+    GET DIAGNOSTICS changed = ROW_COUNT;
+    IF changed != 1 THEN RETURN FALSE; END IF;
+    INSERT INTO public.ga_v9_witness_audit(
+        game_id,event_kind,old_epoch,new_epoch,old_ack,new_ack)
+    VALUES (p_game_id,'rotate',p_epoch,p_epoch+1,
+            p_expected_ack,p_expected_ack);
+    RETURN TRUE;
+END;
+$$;
+
 REVOKE ALL ON TABLE public.ga_v9_witness FROM PUBLIC;
 REVOKE ALL ON TABLE public.ga_v9_witness_acl FROM PUBLIC;
 REVOKE ALL ON TABLE public.ga_v9_witness_audit FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ga_v9_witness_read(text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ga_v9_witness_ack(text,bigint,text,text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ga_v9_witness_rotate(text,bigint) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ga_v9_witness_rotate_verified(text,bigint,text) FROM PUBLIC;
 -- The witness game login gets EXECUTE only on read/ack, scoped by ACL.
 -- The rotate function is exclusively for an independent DBA/operator.
 -- Do NOT grant direct SELECT/INSERT/UPDATE/DELETE to game logins.
