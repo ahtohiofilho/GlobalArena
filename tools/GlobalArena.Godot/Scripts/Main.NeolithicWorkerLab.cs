@@ -350,30 +350,4 @@ public partial class Main
             _workerMoveButton.Disabled = !_workerDestination.HasValue;
     }
 
-}: {x.Workers}"));
-        var destination = _workerDestination.HasValue
-            ? $"Tile {_workerDestination.Value.FineStrategicCellId.Value} selecionado"
-            : "Clique num vizinho contornado em verde-lima";
-        var stockFood = _offlineLab?.StockAt(origin, new CommodityId(1U)) ?? 0UL;
-        var stockStone = _offlineLab?.StockAt(origin, new CommodityId(2U)) ?? 0UL;
-        var stockWood = _offlineLab?.StockAt(origin, new CommodityId(3U)) ?? 0UL;
-        var lastCycle = _offlineLab?.Cycles.LastOrDefault();
-        var tickInfo = _offlineLab is null
-            ? "Sessão de turnos não inicializada"
-            : $"Turno de movimento: {_offlineLab.MovementTurn} | ciclos econômicos: {_offlineLab.EconomicCycles} (a cada 6)";
-        _workerLabStatus.Text =
-            $"Origem tile {origin.FineStrategicCellId.Value} | {jobs}\n" +
-            $"Destino: {destination}\n" +
-            $"Trabalhadores globais: {_workerLab.TotalWorkers} | " +
-            $"tiles ocupados: {_workerLab.Assignments.Select(x => x.TileId).Distinct().Count()} | " +
-            $"revisão: {_workerLab.Revision}\n" +
-            $"Consumo alimentar na origem (prévia): {demand / 1_000_000.0:F3}\n" +
-            tickInfo + "\n" +
-            $"Estoque LOCAL: alimento {stockFood / 1_000_000.0:F3} | pedra {stockStone / 1_000_000.0:F3} | madeira {stockWood / 1_000_000.0:F3}\n" +
-            (lastCycle is null ? "Nenhum ciclo econômico liquidado ainda.\n" :
-                $"Último ciclo: produção {lastCycle.ProducedRaw / 1_000_000.0:F3}; consumo alimentar {lastCycle.FoodConsumedRaw / 1_000_000.0:F3}; FALTA {lastCycle.FoodUnmetRaw / 1_000_000.0:F3}\n") +
-            "LAB OFFLINE: produção/consumo locais reais e save próprio; SEM transporte, mercado, fome ou WorldState canônico.";
-        if (_workerMoveButton is not null)
-            _workerMoveButton.Disabled = !_workerDestination.HasValue;
-    }
 }
