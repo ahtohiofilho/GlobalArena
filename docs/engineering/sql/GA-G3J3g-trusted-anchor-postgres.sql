@@ -161,6 +161,32 @@ END;
 $$;
 
 
+-- G3-J3k: ADMINISTRATIVE, expected-state CAS rotation. Fails when any
+-- prepared transition exists. This function is never granted to gameplay
+-- logins: the operator must independently verify physical fencing first.
+CREATE OR REPLACE FUNCTION public.ga_v9_anchor_rotate_verified(
+    p_game_id text, p_epoch bigint, p_expected_snapshot text)
+RETURNS boolean
+LANGUAGE plpgsql VOLATILE SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp
+AS $
+DECLARE
+    changed integer;
+BEGIN
+    IF p_epoch IS NULL OR p_epoch <= 0 OR
+       p_epoch = 9223372036854775807 OR
+       p_expected_snapshot IS NULL THEN RETURN FALSE; END IF;
+    UPDATE public.ga_trusted_v9_anchor
+       SET writer_epoch = writer_epoch + 1
+     WHERE game_id = p_game_id
+       AND writer_epoch = p_epoch
+       AND snapshot = p_expected_snapshot
+       AND snapshot::jsonb->'Prepared' = 'null'::jsonb;
+    GET DIAGNOSTICS changed = ROW_COUNT;
+    RETURN changed = 1;
+END;
+$;
+
 -- G3-J3j: legacy three-parameter CAS can operate ONLY before an epoch
 -- has been claimed. Once an administrator rotates writer_epoch > 0, every
 -- legacy writer is fenced even if it still holds a valid database password.
@@ -207,6 +233,7 @@ REVOKE ALL ON FUNCTION public.ga_v9_anchor_read(text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ga_v9_anchor_cas(text, text, text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ga_v9_anchor_cas_fenced(text, text, text, bigint) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ga_v9_anchor_read_fenced(text, bigint) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ga_v9_anchor_rotate_verified(text,bigint,text) FROM PUBLIC;
 
 -- Example, after role creation by a separately trusted DBA:
 -- GRANT USAGE ON SCHEMA public TO ga_v9_game_service;
