@@ -21,6 +21,11 @@ var destination_fine: int = 0
 var dragging: bool = false
 var drag_distance: float = 0.0
 var camera_distance: float = 3.35
+var hovered_tile: int = 0
+var flat_normal: Vector3 = Vector3.UP
+var flat_east: Vector3 = Vector3.RIGHT
+var flat_north: Vector3 = Vector3.FORWARD
+var rendered_cells: Array = []
 
 var globe: Node3D
 var view_container: SubViewportContainer
@@ -30,6 +35,8 @@ var camera: Camera3D
 var title_label: Label
 var status_label: Label
 var info: RichTextLabel
+var legend: RichTextLabel
+var hover_label: Label
 var open_button: Button
 var overview_button: Button
 var move_button: Button
@@ -136,6 +143,16 @@ func _build_ui() -> void:
 	overview_button.pressed.connect(_open_strategic)
 	content.add_child(overview_button)
 
+	legend = RichTextLabel.new()
+	legend.bbcode_enabled = true
+	legend.fit_content = true
+	legend.scroll_active = false
+	content.add_child(legend)
+
+	hover_label = Label.new()
+	hover_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	content.add_child(hover_label)
+
 	info = RichTextLabel.new()
 	info.bbcode_enabled = true
 	info.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -219,7 +236,117 @@ func _vector(coords: Array) -> Vector3:
 	return Vector3(float(coords[0]), float(coords[1]), float(coords[2]))
 
 func _visible_cells() -> Array:
-	return snapshot.get("coarse", []) if mode == "strategic" else snapshot.get("physical", [])
+	if mode == "strategic":
+		return snapshot.get("coarse", [])
+	# Show a bounded LOCAL tactical patch, including the source and its
+	# neighbors; all identities still refer to the global physical mesh.
+	var selection: Array = []
+	var limit := cos(0.82)
+	for cell in snapshot.get("physical", []):
+		if flat_normal.dot(_vector(cell["center"])) >= limit:
+			selection.append(cell)
+	return selection
+
+func _set_flat_basis() -> void:
+	var anchor: Dictionary = {}
+	for cell in snapshot.get("physical", []):
+		if int(cell["id"]) == source_fine:
+			anchor = cell
+			break
+	if anchor.is_empty():
+		for cell in snapshot.get("coarse", []):
+			if int(cell["id"]) == focus:
+				anchor = cell
+				break
+	if anchor.is_empty():
+		push_error("No canonical tactical focus available")
+		return
+	flat_normal = _vector(anchor["center"]).normalized()
+	var north_reference := Vector3.UP
+	if absf(flat_normal.dot(north_reference)) > 0.95:
+		north_reference = Vector3.FORWARD
+	flat_east = north_reference.cross(flat_normal).normalized()
+	flat_north = flat_normal.cross(flat_east).normalized()
+
+# Same azimuthal-equidistant LOCAL presentation principle as the existing
+# tools/GlobalArena.Godot/Scripts/TacticalContextPreview.cs (Flatten).
+# The fine-tile physical IDs, adjacency, topology and worker state NEVER
+# change with the projection.
+func _flat_point(point: Vector3, elevation: float = 0.0) -> Vector3:
+	var east := point.dot(flat_east)
+	var north := point.dot(flat_north)
+	var depth := clampf(point.dot(flat_normal), -1.0, 1.0)
+	var radial := sqrt(east * east + north * north)
+	var factor := 1.0
+	if radial > 0.000001:
+		factor = atan2(radial, depth) / radial
+	return Vector3(-east * factor, elevation, north * factor)
+
+func _present(point: Vector3, lift: float = 0.0) -> Vector3:
+	if mode == "tactical":
+		return _flat_point(point, lift)
+	return point * (1.004 + lift)
+
+func _highlight_kind(cell: Dictionary) -> String:
+	if mode != "tactical":
+		return ""
+	var id := int(cell["id"])
+	if id == destination_fine:
+		return "destination"
+	if id == source_fine:
+		return "source"
+	if id == selected_fine:
+		return "selected"
+	if _is_adjacent_to_source(id) and bool(cell.get("workable", false)):
+		return "eligible"
+	if id == hovered_tile:
+		return "hover"
+	return ""
+
+func _highlight_color(kind: String) -> Color:
+	match kind:
+		"source": return Color("#29e8ff")
+		"destination": return Color("#ff9d3b")
+		"selected": return Color("#fbe375")
+		"eligible": return Color("#baff6c")
+		"hover": return Color("#ffffff")
+	return Color.TRANSPARENT
+
+# A filled triangular RIBBON rather than Godot's one-pixel line primitive:
+# a source/destination highlight is conspicuous at Windows 1080p and
+# remains attached to the same physical polygon at every zoom.
+func _add_highlight(cell: Dictionary, parent: Node3D) -> void:
+	var kind := _highlight_kind(cell)
+	if kind.is_empty():
+		return
+	var fraction := 0.17 if kind in ["source", "destination"] else 0.11
+	if kind == "eligible" or kind == "hover":
+		fraction = 0.075
+	var boundary: Array = cell["boundary"]
+	var center := _present(_vector(cell["center"]), 0.018)
+	var ribbon := SurfaceTool.new()
+	ribbon.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for index in range(boundary.size()):
+		var outer_a := _present(_vector(boundary[index]), 0.018)
+		var outer_b := _present(_vector(boundary[(index + 1) % boundary.size()]), 0.018)
+		var inner_a := outer_a.lerp(center, fraction)
+		var inner_b := outer_b.lerp(center, fraction)
+		for triangle_vertex in [outer_a, outer_b, inner_b, outer_a, inner_b, inner_a]:
+			ribbon.set_normal(Vector3.UP)
+			ribbon.add_vertex(triangle_vertex)
+	var mesh := ribbon.commit()
+	var mark := MeshInstance3D.new()
+	mark.name = "Highlight_%s_%d" % [kind, int(cell["id"])]
+	mark.set_meta("ga_highlight", kind)
+	mark.set_meta("ga_tile_id", int(cell["id"]))
+	mark.mesh = mesh
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	material.albedo_color = _highlight_color(kind)
+	mark.material_override = material
+	parent.add_child(mark)
+
 
 func _color(cell: Dictionary) -> Color:
 	if mode == "strategic":
@@ -260,18 +387,19 @@ func _is_adjacent_to_source(id: int) -> bool:
 	return false
 
 func _rebuild() -> void:
+	rendered_cells = _visible_cells()
 	for child in globe.get_children():
 		globe.remove_child(child)
 		child.queue_free()
-	for cell in _visible_cells():
+	for cell in rendered_cells:
 		var geometry := SurfaceTool.new()
 		geometry.begin(Mesh.PRIMITIVE_TRIANGLES)
-		var center := _vector(cell["center"]) * 1.004
+		var center := _present(_vector(cell["center"]))
 		var boundary: Array = cell["boundary"]
 		for i in range(boundary.size()):
-			var a := _vector(boundary[i]) * 1.004
-			var b := _vector(boundary[(i + 1) % boundary.size()]) * 1.004
-			var normal := (a - center).cross(b - center).normalized()
+			var a := _present(_vector(boundary[i]))
+			var b := _present(_vector(boundary[(i + 1) % boundary.size()]))
+			var normal := Vector3.UP if mode == "tactical" else (a - center).cross(b - center).normalized()
 			for vertex in [center, a, b]:
 				geometry.set_normal(normal)
 				geometry.add_vertex(vertex)
@@ -288,8 +416,8 @@ func _rebuild() -> void:
 		var outline := SurfaceTool.new()
 		outline.begin(Mesh.PRIMITIVE_LINES)
 		for i in range(boundary.size()):
-			outline.add_vertex(_vector(boundary[i]) * 1.012)
-			outline.add_vertex(_vector(boundary[(i + 1) % boundary.size()]) * 1.012)
+			outline.add_vertex(_present(_vector(boundary[i]), 0.008))
+			outline.add_vertex(_present(_vector(boundary[(i + 1) % boundary.size()]), 0.008))
 		var border := MeshInstance3D.new()
 		border.mesh = outline.commit()
 		var ink := StandardMaterial3D.new()
@@ -297,6 +425,7 @@ func _rebuild() -> void:
 		ink.albedo_color = Color(0.04, 0.08, 0.09)
 		border.material_override = ink
 		globe.add_child(border)
+		_add_highlight(cell, globe)
 
 func _focus_on_cell(cell_id: int) -> void:
 	for cell in _visible_cells():
@@ -304,6 +433,7 @@ func _focus_on_cell(cell_id: int) -> void:
 			var center := _vector(cell["center"])
 			globe.quaternion = Quaternion(center, Vector3.BACK)
 			return
+
 
 func _open_tactical() -> void:
 	mode = "tactical"
@@ -324,50 +454,97 @@ func _open_tactical() -> void:
 					break
 	selected_fine = source_fine
 	destination_fine = 0
-	camera_distance = 2.25
-	camera.position.z = camera_distance
+	hovered_tile = 0
+	_set_flat_basis()
+	globe.quaternion = Quaternion.IDENTITY
+	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	camera.size = 1.35
+	camera.position = Vector3(0.0, 3.0, 0.0)
+	camera.look_at(Vector3.ZERO, Vector3.BACK)
 	_rebuild()
-	_focus_on_cell(source_fine if source_fine > 0 else
-		int(snapshot["physical"][0]["id"]))
 	_update_hud()
 
 func _open_strategic() -> void:
 	mode = "strategic"
+	camera.projection = Camera3D.PROJECTION_PERSPECTIVE
 	camera_distance = 3.35
-	camera.position.z = camera_distance
+	camera.position = Vector3(0, 0, camera_distance)
+	camera.look_at(Vector3.ZERO, Vector3.UP)
+	hovered_tile = 0
 	destination_fine = 0
 	_rebuild()
 	_focus_on_cell(selected_coarse)
 	_update_hud()
 
-func _pick(mouse_position: Vector2) -> void:
+# Return a rendered canonical tile ID at the actual pointer. In the flat
+# tactical chart we use precise 2D polygon hit-testing, not a guessed
+# nearest-center threshold that can choose another cell through an edge.
+func _cell_at(mouse_position: Vector2) -> int:
 	var size := view_container.size
 	if size.x <= 0 or size.y <= 0:
-		return
+		return 0
 	var pixel := Vector2(mouse_position.x * float(view.size.x) / size.x,
 		mouse_position.y * float(view.size.y) / size.y)
-	var ray := camera.project_ray_normal(pixel).normalized()
 	var origin := camera.project_ray_origin(pixel)
+	var ray := camera.project_ray_normal(pixel).normalized()
+	if mode == "tactical":
+		if absf(ray.y) < 0.000001:
+			return 0
+		var t_plane := -origin.y / ray.y
+		if t_plane <= 0.0:
+			return 0
+		var hit := globe.to_local(origin + ray * t_plane)
+		var point := Vector2(hit.x, hit.z)
+		for cell in rendered_cells:
+			var points: Array = []
+			for coords in cell["boundary"]:
+				var p := _flat_point(_vector(coords))
+				points.append(Vector2(p.x, p.z))
+			if _contains_point(point, points):
+				return int(cell["id"])
+		return 0
 	var offset := origin - globe.global_position
 	var b := 2.0 * offset.dot(ray)
 	var c := offset.length_squared() - 1.004 * 1.004
-	var disc := b*b - 4.0*c
+	var disc := b * b - 4.0 * c
 	if disc < 0.0:
-		return
+		return 0
 	var t := (-b - sqrt(disc)) * 0.5
 	if t <= 0.0:
-		return
-	var local := globe.to_local(origin + ray*t).normalized()
+		return 0
+	var local := globe.to_local(origin + ray * t).normalized()
 	var best := -2.0
 	var chosen := 0
-	for cell in _visible_cells():
+	for cell in rendered_cells:
 		var score := local.dot(_vector(cell["center"]))
 		if score > best:
 			best = score
 			chosen = int(cell["id"])
-	if chosen == 0 or (mode == "tactical" and best < 0.985):
+	return chosen
+
+func _contains_point(point: Vector2, vertices: Array) -> bool:
+	var inside := false
+	for i in range(vertices.size()):
+		var a: Vector2 = vertices[i]
+		var b: Vector2 = vertices[(i + 1) % vertices.size()]
+		if (a.y > point.y) != (b.y > point.y):
+			var crossing := (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x
+			if point.x < crossing:
+				inside = not inside
+	return inside
+
+func _pick(mouse_position: Vector2) -> void:
+	var id := _cell_at(mouse_position)
+	if id != 0:
+		_select(id)
+
+func _hover(mouse_position: Vector2) -> void:
+	var candidate := _cell_at(mouse_position) if mode == "tactical" else 0
+	if hovered_tile == candidate:
 		return
-	_select(chosen)
+	hovered_tile = candidate
+	_rebuild()
+	_update_hud()
 
 func _on_globe_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
@@ -381,16 +558,31 @@ func _on_globe_input(event: InputEvent) -> void:
 					_pick(button.position)
 				dragging = false
 		elif button.pressed and button.button_index == MOUSE_BUTTON_WHEEL_UP:
-			camera_distance = maxf(1.55, camera_distance - 0.2)
-			camera.position.z = camera_distance
+			if mode == "tactical":
+				camera.size = maxf(0.55, camera.size - 0.16)
+			else:
+				camera_distance = maxf(1.55, camera_distance - 0.2)
+				camera.position.z = camera_distance
 		elif button.pressed and button.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			camera_distance = minf(6.3, camera_distance + 0.2)
-			camera.position.z = camera_distance
-	elif dragging and event is InputEventMouseMotion:
+			if mode == "tactical":
+				camera.size = minf(2.1, camera.size + 0.16)
+			else:
+				camera_distance = minf(6.3, camera_distance + 0.2)
+				camera.position.z = camera_distance
+	elif event is InputEventMouseMotion:
 		var motion := event as InputEventMouseMotion
-		drag_distance += motion.relative.length()
-		globe.rotate_y(motion.relative.x * 0.005)
-		globe.rotate_object_local(Vector3.RIGHT, motion.relative.y * 0.005)
+		if dragging:
+			drag_distance += motion.relative.length()
+			if mode == "tactical":
+				var delta := camera.size / maxf(1.0, view_container.size.y)
+				# Chart pan; zoom and orientation stay unchanged.
+				camera.position += camera.global_basis.x * (-motion.relative.x * delta)
+				camera.position += camera.global_basis.y * motion.relative.y * delta
+			else:
+				globe.rotate_y(motion.relative.x * 0.005)
+				globe.rotate_object_local(Vector3.RIGHT, motion.relative.y * 0.005)
+		else:
+			_hover(motion.position)
 
 func _select(cell_id: int) -> void:
 	if mode == "strategic":
@@ -419,7 +611,7 @@ func _update_hud() -> void:
 		return
 	title_label.text = "GLOBAL ARENA  |  VS03"
 	status_label.text = "Visão: %s | trabalhadores: %d | tiles táticos ocupados: %d | revisão %d" % [
-		"ESTRATÉGICA" if mode == "strategic" else "TÁTICA",
+		"ESTRATÉGICA" if mode == "strategic" else "TÁTICA PLANA",
 		int(snapshot["totalWorkers"]), int(snapshot["occupiedPhysicalTiles"]),
 		int(snapshot["revision"])]
 	open_button.visible = mode == "strategic"
@@ -430,6 +622,10 @@ func _update_hud() -> void:
 	amount.visible = mode == "tactical"
 	move_button.disabled = destination_fine == 0 or actions.size() >= 64
 	preview_button.disabled = actions.size() >= 64
+	legend.visible = mode == "tactical"
+	hover_label.visible = mode == "tactical"
+	legend.text = "[color=#29e8ff]■[/color] Origem   [color=#ff9d3b]■[/color] Destino   [color=#baff6c]■[/color] Vizinhos válidos   [color=#fbe375]■[/color] Selecionado"
+	hover_label.text = "Sob o cursor: tile %d" % hovered_tile if hovered_tile > 0 else "Sob o cursor: — | roda: zoom | arrastar: mover mapa"
 
 	var line := ""
 	if mode == "strategic":
@@ -443,8 +639,8 @@ func _update_hud() -> void:
 		line += "Os números acima são [b]somatórios derivados[/b] dos tiles táticos, com cada trabalhador contado uma única vez.\n\n"
 		line += "Selecione um setor e clique em [b]Abrir malha tática[/b] para trabalhar diretamente nos tiles físicos."
 	else:
-		line = "[b]Tile físico:[/b] %d • [b]Origem:[/b] %d\n" % [
-			selected_fine, source_fine]
+		line = "[b]Origem:[/b] tile %d   [b]Selecionado:[/b] tile %d\n" % [
+			source_fine, selected_fine]
 		var cell := _physical_by_id(selected_fine)
 		if not cell.is_empty():
 			line += "Bioma: %s | Trabalhadores: %d\n" % [
@@ -469,8 +665,8 @@ func _update_hud() -> void:
 				line += " %s: %.3f\n" % [
 					_job_label(int(item["activity"])), float(item["raw"]) * RATE]
 		line += "\n[b]Destino físico:[/b] %s\n" % (
-			str(destination_fine) if destination_fine != 0 else
-			"clique em um tile verde-oliva adjacente")
+			"tile %d pronto para alocação" % destination_fine if destination_fine != 0 else
+			"escolha um tile contornado em verde-lima")
 		line += "Deslocar alguém para outro tile não funda uma cidade. Apenas altera onde essa pessoa trabalha e consome."
 	info.text = line
 
