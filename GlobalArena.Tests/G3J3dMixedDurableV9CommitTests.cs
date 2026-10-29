@@ -451,7 +451,7 @@ public sealed class G3J3dMixedDurableV9CommitTests
                     historicalVerifier: seal,
                     independentlyTrustedJournalRoot: root));
             File.Delete(path);
-            Assert.Throws<InvalidDataException>(() =>
+            Assert.Throws<FileNotFoundException>(() =>
                 EconomicCompleteV9DurableSaveHost.Restore(
                     folder, generated, accepted,
                     historicalVerifier: seal,
