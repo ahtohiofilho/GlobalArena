@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text;
+using GlobalArena.Kernel;
 using GlobalArena.Runtime;
 using GlobalArena.World;
 
@@ -25,6 +26,7 @@ public sealed class EconomicCompleteV9DurableSaveHost : IDisposable
     private readonly WorldGenerationResult _generated;
     private readonly EconomicCompleteV9SaveBundleArchive _archive;
     private readonly EconomicEcologicalTransitionJournalArchive _journal;
+    private readonly EconomicMixedV9TransitionArchive _mixed;
     private readonly FileStream _lease;
     private readonly EconomicEcologicalTurnCommitResolver _turns = new();
     private EconomicEcologicalCheckpoint _accepted;
@@ -38,6 +40,7 @@ public sealed class EconomicCompleteV9DurableSaveHost : IDisposable
         _generated = generated;
         _archive = archive;
         _journal = new EconomicEcologicalTransitionJournalArchive(archive.DirectoryPath);
+        _mixed = new EconomicMixedV9TransitionArchive(archive.DirectoryPath);
         _lease = lease;
         _accepted = accepted;
         _head = head;
@@ -130,7 +133,9 @@ public sealed class EconomicCompleteV9DurableSaveHost : IDisposable
         string directoryPath, WorldGenerationResult generatedWorld,
         string independentlyTrustedCurrentDigest,
         WorldStateHash? independentlyTrustedLegacyWorldHash = null,
-        string? independentlyTrustedLegacyEcologicalDigest = null)
+        string? independentlyTrustedLegacyEcologicalDigest = null,
+        HistoricalMilitaryMoveAuthorizationSeal? historicalVerifier = null,
+        string? independentlyTrustedJournalRoot = null)
     {
         ArgumentNullException.ThrowIfNull(generatedWorld);
         var trusted = EconomicEcologicalSidecarArchive.NormalizeDigest(
@@ -167,9 +172,12 @@ public sealed class EconomicCompleteV9DurableSaveHost : IDisposable
             if (head.Sequence > 0UL)
             {
                 var previous = archive.Load(generatedWorld, head.Previous);
+                var isMixed = File.Exists(
+                    new EconomicMixedV9TransitionArchive(archive.DirectoryPath)
+                        .RecordPath(head.Current));
                 if (previous.NaturalCapital.LastAppliedTurn == ulong.MaxValue ||
                     previous.NaturalCapital.LastAppliedTurn + 1UL != head.Turn ||
-                    previous.WorldHash != head.WorldHash)
+                    !isMixed && previous.WorldHash != head.WorldHash)
                     throw new InvalidDataException(
                         "Complete-save predecessor is missing or inconsistent.");
             }
@@ -180,7 +188,8 @@ public sealed class EconomicCompleteV9DurableSaveHost : IDisposable
                 generatedWorld, archive,
                 new EconomicEcologicalTransitionJournalArchive(
                     archive.DirectoryPath), trusted, head.Sequence,
-                head.JournalDigest);
+                head.JournalDigest, historicalVerifier,
+                independentlyTrustedJournalRoot);
 
             return new EconomicCompleteV9DurableSaveHost(
                 generatedWorld, archive, lease, checkpoint, head);
@@ -195,6 +204,16 @@ public sealed class EconomicCompleteV9DurableSaveHost : IDisposable
     public string AcceptedSha256Hex
     {
         get { lock (_gate) { EnsureOpen(); return _accepted.Sha256Hex; } }
+    }
+
+    /// <summary>
+    /// Store this journal root independently from the local head when mixed
+    /// commands are enabled. The checkpoint digest alone may not authenticate
+    /// changes to inputs that leave the resulting state unchanged.
+    /// </summary>
+    public string AcceptedJournalSha256Hex
+    {
+        get { lock (_gate) { EnsureOpen(); return _head.JournalDigest; } }
     }
 
     public ulong LastAppliedTurn
@@ -268,6 +287,10 @@ public sealed class EconomicCompleteV9DurableSaveHost : IDisposable
                 proposed.ProposedNext.Sha256Hex != expectedProposedDigest)
                 throw new InvalidOperationException(
                     "Audited turn proposal differs from durable ecological calculation.");
+            if (File.Exists(_mixed.RecordPath(
+                proposed.ProposedNext.Sha256Hex)))
+                throw new InvalidDataException(
+                    "A mixed journal already owns this proposed checkpoint.");
             var recorded = new EconomicEcologicalTransitionJournalRecord(
                 turnOrdinal, _accepted.Sha256Hex,
                 proposed.ProposedNext.Sha256Hex, demand, holds, _head.JournalDigest);
@@ -288,6 +311,72 @@ public sealed class EconomicCompleteV9DurableSaveHost : IDisposable
             _accepted = proposed.ProposedNext;
             _head = next;
             return proposed;
+        }
+    }
+
+    /// <summary>
+    /// ONE owner publishes a mixed military/ecological transition. A
+    /// historical host MAC and trusted turn/seed are verified before any
+    /// publication; the entire GAFULL09 and mixed journal are flushed before
+    /// the SAME head is replaced. The caller must independently trust and
+    /// persist the new journal root; this host is not a distributed commit.
+    /// </summary>
+    public HistoricalMilitaryEcologicalTurnCandidate CommitMixed(
+        string expectedAcceptedDigest, SimulationContext trustedContext,
+        byte[] historicalAuthorizationCertificate,
+        IEnumerable<EconomicDemandProfile> workerDemand,
+        IEnumerable<EconomicMaterialOriginHoldOrder> originHolds,
+        HistoricalMilitaryMoveAuthorizationSeal historicalVerifier)
+    {
+        ArgumentNullException.ThrowIfNull(historicalVerifier);
+        ArgumentNullException.ThrowIfNull(historicalAuthorizationCertificate);
+        ArgumentNullException.ThrowIfNull(workerDemand);
+        ArgumentNullException.ThrowIfNull(originHolds);
+        lock (_gate)
+        {
+            EnsureOpen();
+            _accepted.RequireExpectedDigest(expectedAcceptedDigest);
+            var path = HeadPath(_archive.DirectoryPath);
+            if (ReadHead(path) != _head)
+                throw new InvalidOperationException(
+                    "Durable v9 head was changed before mixed turn acceptance.");
+            if (_accepted.NaturalCapital.LastAppliedTurn == ulong.MaxValue ||
+                trustedContext.Turn.Value !=
+                    _accepted.NaturalCapital.LastAppliedTurn + 1UL)
+                throw new InvalidOperationException(
+                    "Mixed turn must follow the last accepted ecological turn.");
+
+            var demand = workerDemand.ToArray();
+            var holds = originHolds.ToArray();
+            var certificate = (byte[])historicalAuthorizationCertificate.Clone();
+            var candidate = new HistoricalMilitaryEcologicalTurnProjector(
+                _generated, historicalVerifier).Propose(
+                _accepted, expectedAcceptedDigest, trustedContext,
+                certificate, demand, holds);
+            var nextCheckpoint = candidate.EconomicProjection.ProposedNext;
+            var mixed = new EconomicMixedV9TransitionRecord(
+                trustedContext.Turn.Value, trustedContext.Seed.Value,
+                _accepted.Sha256Hex, nextCheckpoint.Sha256Hex,
+                _head.JournalDigest, certificate, demand, holds);
+            if (File.Exists(_journal.RecordPath(nextCheckpoint.Sha256Hex)))
+                throw new InvalidDataException(
+                    "An ecological journal already owns this mixed checkpoint.");
+            var journalDigest = Convert.ToHexString(
+                SHA256.HashData(EconomicMixedV9TransitionCodec.Encode(mixed)));
+            var nextHead = new Head(
+                nextCheckpoint.WorldHash, nextCheckpoint.Sha256Hex,
+                _head.Current, nextCheckpoint.NaturalCapital.LastAppliedTurn,
+                checked(_head.Sequence + 1UL), _head.Migrated,
+                _head.LegacyWorld, _head.LegacyEcology, journalDigest);
+
+            // No accepted mutation until both immutable blobs exist. Crash
+            // before head publication leaves only unaccepted orphan files.
+            _archive.Store(nextCheckpoint);
+            _mixed.Store(mixed);
+            WriteHead(path, nextHead, overwrite: true);
+            _accepted = nextCheckpoint;
+            _head = nextHead;
+            return candidate;
         }
     }
 
