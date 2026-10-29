@@ -380,6 +380,136 @@ public sealed class EconomicCompleteV9DurableSaveHost : IDisposable
         }
     }
 
+    /// <summary>
+    /// G3-J3e recovery preflight. The snapshot MUST originate from an external
+    /// trusted authority. A local head may match either its confirmed anchor
+    /// or the ONE externally prepared successor; a local-only advance is never
+    /// accepted. Full replay is mandatory before reporting a recovery state.
+    /// This method does not mutate either store and NEVER finalizes a prepare.
+    /// </summary>
+    public static EconomicV9ExternalReconciliationAssessment
+        InspectExternalReconciliation(
+            string directoryPath, WorldGenerationResult generatedWorld,
+            EconomicV9ExternalAnchorSnapshot independentlyTrustedSnapshot,
+            WorldStateHash? independentlyTrustedLegacyWorldHash = null,
+            string? independentlyTrustedLegacyEcologicalDigest = null,
+            HistoricalMilitaryMoveAuthorizationSeal? historicalVerifier = null)
+    {
+        ArgumentNullException.ThrowIfNull(generatedWorld);
+        ArgumentNullException.ThrowIfNull(independentlyTrustedSnapshot);
+        var archive = new EconomicCompleteV9SaveBundleArchive(directoryPath);
+        // The local head is only a candidate. Never derive external authority
+        // from it, a journal, a pending blob, or an untrusted caller cache.
+        var observedHead = ReadHead(HeadPath(archive.DirectoryPath));
+        var confirmed = independentlyTrustedSnapshot.Confirmed;
+        var pending = independentlyTrustedSnapshot.Prepared;
+        var matchesConfirmed = observedHead.Current == confirmed.CheckpointSha256Hex &&
+            observedHead.JournalDigest == confirmed.JournalSha256Hex &&
+            observedHead.Sequence == confirmed.Sequence &&
+            observedHead.Turn == confirmed.Turn;
+        var matchesPrepared = pending is not null &&
+            observedHead.Current == pending.After.CheckpointSha256Hex &&
+            observedHead.JournalDigest == pending.After.JournalSha256Hex &&
+            observedHead.Sequence == pending.After.Sequence &&
+            observedHead.Turn == pending.After.Turn;
+        if (!matchesConfirmed && !matchesPrepared)
+            throw new InvalidOperationException(
+                "Local v9 head is neither the externally confirmed anchor nor its authorized prepared successor.");
+
+        var chosen = matchesConfirmed ? confirmed : pending!.After;
+        var state = pending is null
+            ? EconomicV9ExternalReconciliationState.Confirmed
+            : matchesConfirmed
+                ? EconomicV9ExternalReconciliationState.PreparedWithoutLocalPublication
+                : EconomicV9ExternalReconciliationState.LocalPublicationAwaitingExternalConfirmation;
+
+        // Restore acquires the exclusive writer lease and replays the full
+        // anchored chain. Keeping its lease open while examining the head
+        // avoids treating an unverified local candidate as confirmed.
+        using var verified = Restore(directoryPath, generatedWorld,
+            chosen.CheckpointSha256Hex,
+            independentlyTrustedLegacyWorldHash,
+            independentlyTrustedLegacyEcologicalDigest,
+            historicalVerifier, chosen.JournalSha256Hex);
+        if (verified._head != observedHead ||
+            verified._head.JournalDigest != chosen.JournalSha256Hex ||
+            verified._head.Sequence != chosen.Sequence ||
+            verified._head.Turn != chosen.Turn)
+            throw new InvalidDataException(
+                "The v9 head changed during independent anchor verification.");
+
+        if (state ==
+            EconomicV9ExternalReconciliationState.LocalPublicationAwaitingExternalConfirmation)
+        {
+            // Full-chain replay alone is not enough: prove the prepared
+            // successor is directly linked to the trusted confirmed anchor,
+            // including the journal root (which binds no-op input changes).
+            if (observedHead.Previous != confirmed.CheckpointSha256Hex)
+                throw new InvalidDataException(
+                    "Prepared local head does not descend from the independently confirmed checkpoint.");
+            var mixed = new EconomicMixedV9TransitionArchive(archive.DirectoryPath);
+            var ecological = new EconomicEcologicalTransitionJournalArchive(
+                archive.DirectoryPath);
+            var hasMixed = File.Exists(mixed.RecordPath(chosen.CheckpointSha256Hex));
+            var hasEcological = File.Exists(
+                ecological.RecordPath(chosen.CheckpointSha256Hex));
+            if (hasMixed == hasEcological)
+                throw new InvalidDataException(
+                    "Prepared successor must have exactly one recognized journal type.");
+            string precedingCheckpoint;
+            string precedingRoot;
+            ulong journalTurn;
+            if (hasMixed)
+            {
+                var step = mixed.Load(chosen.CheckpointSha256Hex);
+                precedingCheckpoint = step.PreviousCheckpointSha256Hex;
+                precedingRoot = step.PreviousJournalSha256Hex;
+                journalTurn = step.TurnOrdinal;
+            }
+            else
+            {
+                var step = ecological.Load(chosen.CheckpointSha256Hex);
+                precedingCheckpoint = step.PreviousCheckpointSha256Hex;
+                precedingRoot = step.PreviousJournalSha256Hex;
+                journalTurn = step.TurnOrdinal;
+            }
+            if (precedingCheckpoint != confirmed.CheckpointSha256Hex ||
+                precedingRoot != confirmed.JournalSha256Hex ||
+                journalTurn != chosen.Turn)
+                throw new InvalidDataException(
+                    "Prepared successor journal does not link to the trusted confirmed anchor.");
+        }
+
+        return new EconomicV9ExternalReconciliationAssessment(
+            state, chosen, confirmed, pending);
+    }
+
+    /// <summary>
+    /// Safe admission gate. An unsettled external prepare is NEVER treated as
+    /// authorization to resume gameplay; reconcile and finalize/abort it in
+    /// the independently trusted authority first, then fetch a fresh snapshot.
+    /// </summary>
+    public static EconomicCompleteV9DurableSaveHost RestoreExternallyConfirmed(
+        string directoryPath, WorldGenerationResult generatedWorld,
+        EconomicV9ExternalAnchorSnapshot independentlyTrustedSnapshot,
+        WorldStateHash? independentlyTrustedLegacyWorldHash = null,
+        string? independentlyTrustedLegacyEcologicalDigest = null,
+        HistoricalMilitaryMoveAuthorizationSeal? historicalVerifier = null)
+    {
+        var assessment = InspectExternalReconciliation(
+            directoryPath, generatedWorld, independentlyTrustedSnapshot,
+            independentlyTrustedLegacyWorldHash,
+            independentlyTrustedLegacyEcologicalDigest, historicalVerifier);
+        if (assessment.State != EconomicV9ExternalReconciliationState.Confirmed)
+            throw new InvalidOperationException(
+                "Cannot resume v9 gameplay until external prepare is independently settled.");
+        return Restore(directoryPath, generatedWorld,
+            assessment.Confirmed.CheckpointSha256Hex,
+            independentlyTrustedLegacyWorldHash,
+            independentlyTrustedLegacyEcologicalDigest,
+            historicalVerifier, assessment.Confirmed.JournalSha256Hex);
+    }
+
     public void Dispose()
     {
         lock (_gate)
