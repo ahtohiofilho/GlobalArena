@@ -16,10 +16,12 @@ var source_point_id: int = 1
 var selected_cell_id: int = 0
 var target_cell_id: int = 0
 var rotating: bool = false
+var drag_distance: float = 0.0
 var distance: float = 3.5
 
 var globe: Node3D
 var viewport_box: SubViewportContainer
+var scene_view: SubViewport
 var camera: Camera3D
 var details: RichTextLabel
 var status_label: Label
@@ -56,14 +58,13 @@ func _build_layout() -> void:
 	viewport_box.gui_input.connect(_on_globe_drag)
 	square.add_child(viewport_box)
 
-	var world_view := SubViewport.new()
-	world_view.size = Vector2i(760, 760)
-	world_view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	world_view.handle_input_locally = true
-	# SubViewport defaults to physics_object_picking=false. Without this,
-	# the visible StaticBody3D tiles render but receive no mouse input_event.
-	world_view.physics_object_picking = true
-	viewport_box.add_child(world_view)
+	scene_view = SubViewport.new()
+	scene_view.size = Vector2i(760, 760)
+	scene_view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	scene_view.handle_input_locally = true
+	# GUI picking below uses a ray-sphere intersection and the canonical
+	# Goldberg centers. It does not depend on SubViewport 3D picking.
+	viewport_box.add_child(scene_view)
 
 	var environment := WorldEnvironment.new()
 	var env := Environment.new()
@@ -73,22 +74,22 @@ func _build_layout() -> void:
 	env.ambient_light_color = Color(0.63, 0.73, 0.83)
 	env.ambient_light_energy = 0.7
 	environment.environment = env
-	world_view.add_child(environment)
+	scene_view.add_child(environment)
 
 	globe = Node3D.new()
 	globe.name = "CanonicalGlobe"
-	world_view.add_child(globe)
+	scene_view.add_child(globe)
 	camera = Camera3D.new()
 	camera.position = Vector3(0, 0, distance)
 	camera.fov = 48.0
 	camera.current = true
-	world_view.add_child(camera)
+	scene_view.add_child(camera)
 	camera.look_at(Vector3.ZERO, Vector3.UP)
 
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-40, -32, 0)
 	sun.light_energy = 0.95
-	world_view.add_child(sun)
+	scene_view.add_child(sun)
 
 	var sidebar := PanelContainer.new()
 	sidebar.custom_minimum_size = Vector2(365, 0)
@@ -261,7 +262,6 @@ func _rebuild_globe() -> void:
 		var collider := CollisionShape3D.new()
 		collider.shape = mesh.create_trimesh_shape()
 		body.add_child(collider)
-		body.input_event.connect(_on_tile_input.bind(tile_id))
 		globe.add_child(body)
 		cell_bodies[tile_id] = body
 
@@ -288,26 +288,64 @@ func _focus_initial_settlement() -> void:
 			globe.quaternion = Quaternion(direction, Vector3.BACK)
 			return
 
-func _on_tile_input(_camera: Node, event: InputEvent, _position: Vector3,
-		_normal: Vector3, _shape: int, tile_id: int) -> void:
-	if event is InputEventMouseButton:
-		var mouse := event as InputEventMouseButton
-		if mouse.button_index == MOUSE_BUTTON_LEFT and mouse.pressed:
-			_select_cell(tile_id)
+## Coordinate-based picking is independent of Godot physics_object_picking,
+## which is disabled by default for a SubViewport. For canonical Goldberg
+## dual cells, the nearest spherical cell center provides the correct
+## territorial selection after intersecting the visible hemisphere.
+func _pick_cell_at(local_mouse_position: Vector2) -> void:
+	if snapshot.is_empty() or camera == null or globe == null:
+		return
+	var container_size := viewport_box.size
+	if container_size.x <= 0.0 or container_size.y <= 0.0:
+		return
+	var viewport_position := Vector2(
+		local_mouse_position.x * float(scene_view.size.x) / container_size.x,
+		local_mouse_position.y * float(scene_view.size.y) / container_size.y)
+	var ray_origin := camera.project_ray_origin(viewport_position)
+	var ray_direction := camera.project_ray_normal(viewport_position).normalized()
+	# Sphere radius is the same small offset as the canonical surface mesh.
+	var relative := ray_origin - globe.global_position
+	var b := 2.0 * relative.dot(ray_direction)
+	var c := relative.length_squared() - 1.004 * 1.004
+	var discriminant := b * b - 4.0 * c
+	if discriminant < 0.0:
+		return # Click on background, not a territory.
+	var distance_to_surface := (-b - sqrt(discriminant)) * 0.5
+	if distance_to_surface <= 0.0:
+		return
+	var hit_direction := globe.to_local(
+		ray_origin + ray_direction * distance_to_surface).normalized()
+	var best_cell_id := 0
+	var best_score := -2.0
+	for cell in snapshot.get("cells", []):
+		var direction := _vector(cell["center"])
+		var score := hit_direction.dot(direction)
+		if score > best_score:
+			best_score = score
+			best_cell_id = int(cell["id"])
+	if best_cell_id != 0:
+		_select_cell(best_cell_id)
 
 func _on_globe_drag(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var button := event as InputEventMouseButton
 		if button.button_index == MOUSE_BUTTON_LEFT:
-			rotating = button.pressed
+			if button.pressed:
+				rotating = true
+				drag_distance = 0.0
+			else:
+				if rotating and drag_distance < 7.0:
+					_pick_cell_at(button.position)
+				rotating = false
 		elif button.pressed and button.button_index == MOUSE_BUTTON_WHEEL_UP:
 			distance = maxf(2.15, distance - 0.25)
 			camera.position.z = distance
 		elif button.pressed and button.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			distance = minf(6.4, distance + 0.25)
 			camera.position.z = distance
-	if rotating and event is InputEventMouseMotion:
+	elif rotating and event is InputEventMouseMotion:
 		var motion := event as InputEventMouseMotion
+		drag_distance += motion.relative.length()
 		if motion.relative.length() > 1.0:
 			globe.rotate_y(motion.relative.x * 0.005)
 			globe.rotate_object_local(Vector3.RIGHT, motion.relative.y * 0.005)
