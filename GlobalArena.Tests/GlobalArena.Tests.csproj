@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="..\docs\engineering\sql\GA-G3J3g-trusted-anchor-postgres.sql" />
+    <EmbeddedResource Include="..\docs\engineering\sql\GA-G3J3j-independent-witness.sql" />
   </ItemGroup>
 
   <ItemGroup>
