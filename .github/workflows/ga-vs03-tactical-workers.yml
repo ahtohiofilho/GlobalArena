@@ -1,0 +1,79 @@
+name: GA-VS03 Physical Tactical Workforce Gameplay
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Godot/**'
+      - 'GlobalArena.Console/**'
+      - 'GlobalArena.Simulation/EconomicPhysicalTacticalWorkerSession.cs'
+      - 'GlobalArena.Tests/GaVs03PhysicalTacticalWorkerTests.cs'
+      - 'tools/ci/ga-vs03-tactical-workers-smoke.py'
+      - '.github/workflows/ga-vs03-tactical-workers.yml'
+  workflow_dispatch:
+
+jobs:
+  tactical-physical-workers-and-real-godot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build and run physical tile unit tests
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs03' --logger 'console;verbosity=normal'
+      - name: Build actual tactical bridge
+        run: dotnet build GlobalArena.Console/GlobalArena.Console.csproj -c Release
+      - name: Test authoritative physical worker JSON, replay and invalid orders
+        run: python3 tools/ci/ga-vs03-tactical-workers-smoke.py
+      - name: Download pinned Godot 4.4.1 for headless scene test
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 --silent --show-error \
+            https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_linux.x86_64.zip \
+            --output /tmp/ga-godot.zip
+          unzip -q /tmp/ga-godot.zip -d /tmp
+          chmod +x /tmp/Godot_v4.4.1-stable_linux.x86_64
+      - name: Import Godot scene and refuse parse or runtime errors
+        shell: bash
+        run: |
+          set -euo pipefail
+          /tmp/Godot_v4.4.1-stable_linux.x86_64 --headless \
+            --path GlobalArena.Godot --editor --quit 2>&1 | tee /tmp/vs03-import.txt
+          if grep -Ei '^(ERROR:|SCRIPT ERROR:)|Parse Error|Failed to load script' /tmp/vs03-import.txt; then
+            exit 1
+          fi
+      - name: Actual scene mouse selection and worker move in Godot
+        shell: bash
+        run: |
+          set -euo pipefail
+          /tmp/Godot_v4.4.1-stable_linux.x86_64 --headless \
+            --path GlobalArena.Godot \
+            --script res://tests/ga_vs03_scene_smoke.gd 2>&1 | tee /tmp/vs03-scene.txt
+          grep -q 'GA-VS03-GODOT-PASS' /tmp/vs03-scene.txt
+          if grep -Ei '^(ERROR:|SCRIPT ERROR:)|Parse Error|GA-VS03 GODOT FAIL' /tmp/vs03-scene.txt; then
+            exit 1
+          fi
+
+  tactical-csharp-bridge-windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify physical worker tests on Windows
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs03'
+      - name: Compile and replay physical worker C# bridge on Windows
+        run: |
+          dotnet build GlobalArena.Console/GlobalArena.Console.csproj -c Release
+          python tools/ci/ga-vs03-tactical-workers-smoke.py
