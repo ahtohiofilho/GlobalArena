@@ -33,7 +33,7 @@ LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path = pg_catalog, pg_temp
-AS $
+AS $$
 BEGIN
     -- session_user is the authenticated LOGIN, not current_user (the
     -- SECURITY DEFINER schema owner). SET ROLE cannot impersonate a login.
@@ -47,7 +47,7 @@ BEGIN
     RETURN (SELECT snapshot FROM public.ga_trusted_v9_anchor
              WHERE game_id = p_game_id);
 END;
-$;
+$$;
 
 -- Single-row linearizable CAS: compare the EXACT old serialized state before
 -- replacing it; the row lock/atomic UPDATE serializes competing writers.
