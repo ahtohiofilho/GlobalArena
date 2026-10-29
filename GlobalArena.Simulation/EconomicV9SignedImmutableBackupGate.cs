@@ -22,6 +22,17 @@ public interface IEconomicV9ImmutableBackupRecoveryGate
 }
 
 /// <summary>
+/// Streams the EXACT receipt-verified version into a caller-owned quarantine.
+/// A false result leaves destination untrusted; caller MUST discard it.
+/// </summary>
+public interface IEconomicV9VerifiedBackupArchiveSource :
+    IEconomicV9ImmutableBackupRecoveryGate
+{
+    bool TryDownloadVerifiedArchive(string gameId, long writerEpoch,
+        EconomicV9ExternalAnchor independentlyAcknowledged, Stream destination);
+}
+
+/// <summary>
 /// HTTPS client to an independently operated backup attestation service.
 /// Checks pinned ECDSA P-256 signature, game/epoch/anchor, provider-signed
 /// retention assertion, and the actual bytes of a specific archive version.
@@ -29,7 +40,7 @@ public interface IEconomicV9ImmutableBackupRecoveryGate
 /// replacement for full local GAFULL09 journal replay.
 /// </summary>
 public sealed class EconomicV9SignedImmutableBackupGate :
-    IEconomicV9ImmutableBackupRecoveryGate, IDisposable
+    IEconomicV9VerifiedBackupArchiveSource, IDisposable
 {
     private const long MaximumArchiveBytes = 256L * 1024 * 1024;
     private readonly HttpClient _http;
@@ -68,8 +79,17 @@ public sealed class EconomicV9SignedImmutableBackupGate :
     }
 
     public bool VerifyBackup(string gameId, long writerEpoch,
-        EconomicV9ExternalAnchor independentlyAcknowledged)
+        EconomicV9ExternalAnchor independentlyAcknowledged) =>
+        TryDownloadVerifiedArchive(gameId, writerEpoch,
+            independentlyAcknowledged, Stream.Null);
+
+    public bool TryDownloadVerifiedArchive(string gameId, long writerEpoch,
+        EconomicV9ExternalAnchor independentlyAcknowledged, Stream destination)
     {
+        ArgumentNullException.ThrowIfNull(destination);
+        if (!destination.CanWrite)
+            throw new ArgumentException("A writable quarantine stream is required.",
+                nameof(destination));
         if (string.IsNullOrWhiteSpace(gameId) || gameId.Length > 128 ||
             gameId.Any(c => !char.IsAsciiLetterOrDigit(c) &&
                 c is not ('-' or '_' or '.' or ':')) ||
@@ -144,6 +164,9 @@ public sealed class EconomicV9SignedImmutableBackupGate :
                     total > receipt.ArchiveLength)
                     return false;
                 hash.AppendData(buffer, 0, read);
+                // Bytes become trusted ONLY when the final digest and exact
+                // length match the independently signed versioned receipt.
+                destination.Write(buffer, 0, read);
             }
             return total == receipt.ArchiveLength &&
                 Convert.ToHexString(hash.GetHashAndReset()) ==
