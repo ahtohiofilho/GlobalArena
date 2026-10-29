@@ -1,0 +1,41 @@
+name: GA-VS07 Neolithic Physical Stock Turns And Offline Save
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/EconomicPhysicalTacticalOfflineSession.cs'
+      - 'GlobalArena.Tests/GaVs07PhysicalTacticalOfflineLoopTests.cs'
+      - 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+      - '.github/workflows/ga-vs07-physical-stock-offline.yml'
+  workflow_dispatch:
+
+jobs:
+  physical-cycle-and-replay-linux:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Six-turn primitive settlement and save/replay unit tests
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs07' --logger 'console;verbosity=normal'
+      - name: Build ORIGINAL Godot CSharp UI with actual tick and offline saves
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  physical-cycle-and-replay-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Validate primitive physical stock and offline save on native Windows
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs07'
+      - name: Compile ORIGINAL Godot CSharp UI on native Windows
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
