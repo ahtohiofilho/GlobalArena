@@ -8,6 +8,14 @@ namespace GlobalArena.Simulation;
 /// tactical tile allocations. There are no settlement/city entities and no
 /// worker counts attached to coarse strategic regions.
 /// </summary>
+/// <summary>
+/// A free primitive workplace anchored to ONE physical tactical tile.
+/// Its capacity, financial cost and investment/productivity curves are not
+/// yet modeled. A site is a job opportunity, NOT a city.
+/// </summary>
+public sealed record TacticalPrimitiveProductiveSite(
+    PhysicalTacticalTileId TileId, EconomicActivityKind Activity);
+
 public sealed record TacticalWorkerAssignment(
     PhysicalTacticalTileId TileId, EconomicActivityKind Activity, ulong Workers);
 
@@ -35,6 +43,19 @@ public sealed class EconomicPhysicalTacticalWorkerSession
     private readonly Dictionary<(PhysicalTacticalTileId Tile, EconomicActivityKind Activity), ulong>
         _workforce = new();
 
+    private readonly HashSet<TacticalPrimitiveProductiveSite> _primitiveSites = new();
+
+    /// <summary>
+    /// VS06 opt-in gate. Legacy VS03/VS05 sessions preserve their demonstrated
+    /// transfer semantics until they are explicitly migrated.
+    /// </summary>
+    public bool RequirePrimitiveSites { get; }
+
+    public IReadOnlyList<TacticalPrimitiveProductiveSite> PrimitiveSites =>
+        Array.AsReadOnly(_primitiveSites
+            .OrderBy(site => site.TileId.FineStrategicCellId.Value)
+            .ThenBy(site => (byte)site.Activity).ToArray());
+
     private readonly StrategicPrimitiveResourcePotentialFieldSet _geographicPotential;
     private readonly StrategicCellId[] _presentationBuckets;
 
@@ -47,8 +68,10 @@ public sealed class EconomicPhysicalTacticalWorkerSession
 
     public EconomicPhysicalTacticalWorkerSession(ulong seed = 0UL,
         GoldbergParameters? coarseParameters = null,
-        GoldbergParameters? fineParameters = null)
+        GoldbergParameters? fineParameters = null,
+        bool requirePrimitiveSites = false)
     {
+        RequirePrimitiveSites = requirePrimitiveSites;
         CoarseWorldParameters = coarseParameters ?? CoarseParameters;
         FineWorldParameters = fineParameters ?? FineParameters;
         // Verify exact scale compatibility before constructing large worlds.
@@ -98,6 +121,71 @@ public sealed class EconomicPhysicalTacticalWorkerSession
         _workforce.Add((InitialTile, EconomicActivityKind.Agriculture), 4UL);
         _workforce.Add((InitialTile, EconomicActivityKind.Forestry), 2UL);
         _workforce.Add((InitialTile, EconomicActivityKind.Mining), 2UL);
+
+        if (RequirePrimitiveSites)
+        {
+            // The Neolithic starting scenario arrives WITH these three free
+            // primitive opportunities. They precede the starting workforce
+            // logically and do not count as a player action/revision.
+            _primitiveSites.Add(new(InitialTile, EconomicActivityKind.Agriculture));
+            _primitiveSites.Add(new(InitialTile, EconomicActivityKind.Forestry));
+            _primitiveSites.Add(new(InitialTile, EconomicActivityKind.Mining));
+        }
+    }
+
+    /// <summary>
+    /// Geographic admissibility, not a cost/capacity/productivity equation.
+    /// The primitive activity requires workable land and local resource
+    /// potential. Later facility types may implement different constraints.
+    /// </summary>
+    public bool CanInstallPrimitiveSite(
+        PhysicalTacticalTileId tile, EconomicActivityKind activity)
+    {
+        ValidateTile(tile);
+        ValidateJob(activity);
+        if (!IsWorkableLand(tile.FineStrategicCellId)) return false;
+        return activity switch
+        {
+            EconomicActivityKind.Agriculture =>
+                _geographicPotential.Agriculture.GetRawValue(tile.FineStrategicCellId) > 0,
+            EconomicActivityKind.Forestry =>
+                _geographicPotential.WoodGathering.GetRawValue(tile.FineStrategicCellId) > 0,
+            EconomicActivityKind.Mining =>
+                _geographicPotential.SurfaceStone.GetRawValue(tile.FineStrategicCellId) > 0,
+            _ => false
+        };
+    }
+
+    public bool HasPrimitiveSite(
+        PhysicalTacticalTileId tile, EconomicActivityKind activity)
+    {
+        ValidateTile(tile);
+        ValidateJob(activity);
+        return _primitiveSites.Contains(new(tile, activity));
+    }
+
+    /// <summary>
+    /// Explicit free primitive workplace installation; no workers move, no
+    /// production or consumption occurs until people occupy its jobs.
+    /// Future capacity, resource costs and money are deliberately omitted.
+    /// </summary>
+    public void InstallPrimitiveSite(
+        PhysicalTacticalTileId tile, EconomicActivityKind activity)
+    {
+        if (!RequirePrimitiveSites)
+            throw new InvalidOperationException(
+                "Legacy allocation probe does not manage primitive workplaces.");
+        if (!CanInstallPrimitiveSite(tile, activity))
+            throw new InvalidOperationException(
+                "Primitive workplace is incompatible with physical tile potential.");
+        var site = new TacticalPrimitiveProductiveSite(tile, activity);
+        if (_primitiveSites.Contains(site))
+            throw new InvalidOperationException(
+                "A primitive workplace for this activity already exists here.");
+        var nextRevision = checked(Revision + 1UL);
+        if (!_primitiveSites.Add(site))
+            throw new InvalidOperationException("Primitive workplace installation failed.");
+        Revision = nextRevision;
     }
 
     public IReadOnlyList<TacticalWorkerAssignment> Assignments =>
@@ -172,6 +260,12 @@ public sealed class EconomicPhysicalTacticalWorkerSession
         if (!_workforce.TryGetValue(key, out var existing) || existing < amount)
             throw new InvalidOperationException(
                 "Source tactical tile lacks workers with the chosen job.");
+
+        // A worker cannot magically establish a farm or extraction site.
+        // A valid physical workplace must already exist at the destination.
+        if (RequirePrimitiveSites && !HasPrimitiveSite(target, toJob))
+            throw new InvalidOperationException(
+                "Install the primitive productive site before allocating workers.");
 
         var targetKey = (target, toJob);
         _workforce.TryGetValue(targetKey, out var other);
