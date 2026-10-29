@@ -110,17 +110,31 @@ public sealed class EconomicNeolithicInteractionSession
         // still allowing unallocated people to move. This never creates
         // duplicate allocations or more workers than the source owns.
         var remaining = workers;
-        var moving = new List<EconomicActivityWorkforceAllocation>();
-        foreach (var allocation in sourcePoint.ActivityAllocations)
+        var allocations = sourcePoint.ActivityAllocations.ToArray();
+        var distributed = new ulong[allocations.Length];
+        // Round-robin over actual available allocations. A small founding
+        // party can retain diverse production instead of automatically
+        // extracting all farmers before any wood/stone collectors.
+        while (remaining > 0UL)
         {
-            var count = Math.Min(remaining, allocation.Workforce);
-            if (count > 0UL)
-                moving.Add(new EconomicActivityWorkforceAllocation(
-                    allocation.Kind, count));
-            remaining -= count;
-            if (remaining == 0UL)
-                break;
+            var transferred = false;
+            for (var index = 0; index < allocations.Length &&
+                 remaining > 0UL; index++)
+            {
+                if (distributed[index] >= allocations[index].Workforce)
+                    continue;
+                distributed[index]++;
+                remaining--;
+                transferred = true;
+            }
+            if (!transferred)
+                break; // Remainder moves as legitimately unallocated workers.
         }
+        var moving = allocations.Select((row, index) =>
+                (row.Kind, Workers: distributed[index]))
+            .Where(x => x.Workers > 0UL)
+            .Select(x => new EconomicActivityWorkforceAllocation(
+                x.Kind, x.Workers)).ToArray();
 
         var nextPoint = new EconomicPointId(checked(
             CurrentWorld.Economy.EconomicPoints.Max(p => p.Id.Value) + 1UL));
