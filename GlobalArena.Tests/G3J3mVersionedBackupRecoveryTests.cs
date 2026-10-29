@@ -97,9 +97,9 @@ public sealed partial class G3J3dMixedDurableV9CommitTests
                 recovery.RestoreFromVerifiedVersionedBackup(
                     recovered, world, archive));
             Assert.Equal(1, archive.Downloads);
-            Assert.Empty(Directory.EnumerateDirectories(parent)
-                .Where(p => Path.GetFileName(p).StartsWith(
-                    ".ga-j3m-quarantine-", StringComparison.Ordinal)));
+            Assert.DoesNotContain(Directory.EnumerateDirectories(parent),
+                p => Path.GetFileName(p).StartsWith(
+                    ".ga-j3m-quarantine-", StringComparison.Ordinal));
         }
         finally
         {
@@ -173,6 +173,12 @@ public sealed partial class G3J3dMixedDurableV9CommitTests
             using (var file = File.Create(zipPath))
             using (var zip = new ZipArchive(file, ZipArchiveMode.Create))
             {
+                using (var head = zip.CreateEntry(
+                    "full-v9-head.gahead").Open())
+                    head.WriteByte(72);
+                using (var inventory = zip.CreateEntry(
+                    EconomicV9VersionedSaveArchive.InventoryEntry).Open())
+                    inventory.WriteByte(123);
                 using var output = zip.CreateEntry(evilEntry).Open();
                 output.WriteByte(88);
             }
