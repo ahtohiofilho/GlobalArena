@@ -1,5 +1,7 @@
 using System;
+using System.IO;
 using System.Linq;
+using System.Text;
 using GlobalArena.Runtime;
 using GlobalArena.Simulation;
 using GlobalArena.World;
@@ -15,6 +17,7 @@ namespace GlobalArena.Godot;
 public partial class Main
 {
     private EconomicPhysicalTacticalWorkerSession? _workerLab;
+    private EconomicPhysicalTacticalOfflineSession? _offlineLab;
     private PhysicalTacticalTileId? _workerOrigin;
     private PhysicalTacticalTileId? _workerDestination;
     private Label? _workerLabStatus;
@@ -101,6 +104,19 @@ public partial class Main
         _workerMoveButton.Pressed += MoveWorkerLabWorkers;
         lab.AddChild(_workerMoveButton);
 
+        var nextTurn = new Button { Text = "AVANÇAR TURNO DE MOVIMENTO (ECONOMIA A CADA 6)" };
+        nextTurn.Pressed += AdvanceOfflineLabTurn;
+        lab.AddChild(nextTurn);
+
+        var persistence = new HBoxContainer();
+        lab.AddChild(persistence);
+        var save = new Button { Text = "SALVAR PARTIDA OFFLINE", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        save.Pressed += SaveOfflineLab;
+        persistence.AddChild(save);
+        var load = new Button { Text = "REABRIR SAVE", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        load.Pressed += LoadOfflineLab;
+        persistence.AddChild(load);
+
         if (_tacticalPreview is null)
             throw new InvalidOperationException("Tactical renderer must exist before lab HUD setup.");
         _tacticalPreview.WorkerTileHovered += id =>
@@ -121,8 +137,9 @@ public partial class Main
             // The existing production renderer is G(3,0)->G(18,0), not the
             // G(2,0)->G(12,0) used by the isolated VS03/VS04 demos.
             // Explicit instance parameters prevent invalid cross-world IDs.
-            _workerLab = new EconomicPhysicalTacticalWorkerSession(
+            _offlineLab = new EconomicPhysicalTacticalOfflineSession(
                 20261012UL, new GoldbergParameters(3, 0), new GoldbergParameters(18, 0));
+            _workerLab = _offlineLab.Workers;
             _workerOrigin = _workerLab.InitialTile;
             _workerDestination = null;
             var focus = _workerLab.DisplayBucket(_workerLab.InitialTile);
@@ -135,6 +152,7 @@ public partial class Main
         catch (Exception ex)
         {
             _workerLab = null;
+            _offlineLab = null;
             _workerOrigin = null;
             _workerDestination = null;
             _tacticalPreview.ClearWorkerRings();
@@ -173,12 +191,12 @@ public partial class Main
 
     private void MoveWorkerLabWorkers()
     {
-        if (_workerLab is null || _workerOrigin is null || _workerDestination is null ||
+        if (_workerLab is null || _offlineLab is null || _workerOrigin is null || _workerDestination is null ||
             _workerAmount is null || _workerFromJob is null || _workerToJob is null)
             return;
         try
         {
-            _workerLab.MoveWorkers(_workerOrigin.Value, _workerDestination.Value,
+            _offlineLab.MoveWorkers(_workerOrigin.Value, _workerDestination.Value,
                 (EconomicActivityKind)_workerFromJob.GetSelectedId(),
                 (EconomicActivityKind)_workerToJob.GetSelectedId(),
                 checked((ulong)_workerAmount.Value));
@@ -191,6 +209,80 @@ public partial class Main
         {
             if (_workerLabStatus is not null)
                 _workerLabStatus.Text = "TRANSFERÊNCIA RECUSADA (sem alterar o estado): " + ex.Message;
+        }
+    }
+
+    private void AdvanceOfflineLabTurn()
+    {
+        if (_offlineLab is null || _workerLabStatus is null) return;
+        try
+        {
+            var cycle = _offlineLab.AdvanceMovementTurn();
+            UpdateWorkerLabHud();
+            GD.Print(cycle is null
+                ? $"GA-VS07-TICK movement_turn={_offlineLab.MovementTurn} settlement=false"
+                : $"GA-VS07-SETTLED movement_turn={cycle.MovementTurn} produced_raw={cycle.ProducedRaw} food_consumed_raw={cycle.FoodConsumedRaw} food_unmet_raw={cycle.FoodUnmetRaw} stock_locations={_offlineLab.Stocks.Count}");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or OverflowException)
+        {
+            _workerLabStatus.Text = "TURNO RECUSADO: " + ex.Message;
+        }
+    }
+
+    private static string OfflineLabSavePath =>
+        ProjectSettings.GlobalizePath("user://ga-vs07-neolithic-offline.json");
+
+    private void SaveOfflineLab()
+    {
+        if (_offlineLab is null || _workerLabStatus is null) return;
+        try
+        {
+            var content = _offlineLab.ExportSaveJson();
+            // Create the file alongside its destination, then atomically
+            // replace. No canonical WorldState or network operations involved.
+            var path = OfflineLabSavePath;
+            var temp = path + ".tmp";
+            File.WriteAllText(temp, content, Encoding.UTF8);
+            File.Move(temp, path, overwrite: true);
+            UpdateWorkerLabHud();
+            _workerLabStatus.Text += "\nSAVE OFFLINE GRAVADO: ga-vs07-neolithic-offline.json";
+            GD.Print($"GA-VS07-SAVED movement_turn={_offlineLab.MovementTurn} cycles={_offlineLab.EconomicCycles} workers={_offlineLab.Workers.TotalWorkers}");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            _workerLabStatus.Text = "ERRO AO SALVAR: " + ex.Message;
+        }
+    }
+
+    private void LoadOfflineLab()
+    {
+        if (_tacticalPreview is null || _workerLabStatus is null) return;
+        try
+        {
+            var content = File.ReadAllText(OfflineLabSavePath, Encoding.UTF8);
+            var next = EconomicPhysicalTacticalOfflineSession.RestoreSaveJson(content);
+            if (next.Workers.CoarseWorldParameters != new GoldbergParameters(3, 0) ||
+                next.Workers.FineWorldParameters != new GoldbergParameters(18, 0))
+                throw new InvalidOperationException("O save não pertence à malha física G3/G18 do visualizador.");
+            var origin = next.Workers.Assignments.First().TileId;
+            var focus = next.Workers.DisplayBucket(origin);
+            // Validate a fully reconstructed state before replacing the active
+            // lab. Never publish partial data from a corrupt save.
+            _tacticalPreview.Open(focus.Value);
+            if (!_tacticalPreview.HasVisiblePhysicalTile(origin.FineStrategicCellId.Value))
+                throw new InvalidOperationException("O tile de trabalho restaurado não aparece na malha.");
+            _offlineLab = next;
+            _workerLab = next.Workers;
+            _workerOrigin = origin;
+            _workerDestination = null;
+            UpdateWorkerLabHud();
+            _workerLabStatus.Text += "\nSAVE OFFLINE REABERTO E VALIDADO.";
+            GD.Print($"GA-VS07-LOADED movement_turn={_offlineLab.MovementTurn} cycles={_offlineLab.EconomicCycles} workers={_workerLab.TotalWorkers}");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or
+            InvalidOperationException or ArgumentException)
+        {
+            _workerLabStatus.Text = "SAVE NÃO CARREGADO (estado anterior preservado): " + ex.Message;
         }
     }
 
@@ -213,6 +305,13 @@ public partial class Main
         var destination = _workerDestination.HasValue
             ? $"Tile {_workerDestination.Value.FineStrategicCellId.Value} selecionado"
             : "Clique num vizinho contornado em verde-lima";
+        var stockFood = _offlineLab?.StockAt(origin, new CommodityId(1U)) ?? 0UL;
+        var stockStone = _offlineLab?.StockAt(origin, new CommodityId(2U)) ?? 0UL;
+        var stockWood = _offlineLab?.StockAt(origin, new CommodityId(3U)) ?? 0UL;
+        var lastCycle = _offlineLab?.Cycles.LastOrDefault();
+        var tickInfo = _offlineLab is null
+            ? "Sessão de turnos não inicializada"
+            : $"Turno de movimento: {_offlineLab.MovementTurn} | ciclos econômicos: {_offlineLab.EconomicCycles} (a cada 6)";
         _workerLabStatus.Text =
             $"Origem tile {origin.FineStrategicCellId.Value} | {jobs}\n" +
             $"Destino: {destination}\n" +
@@ -220,7 +319,11 @@ public partial class Main
             $"tiles ocupados: {_workerLab.Assignments.Select(x => x.TileId).Distinct().Count()} | " +
             $"revisão: {_workerLab.Revision}\n" +
             $"Consumo alimentar na origem (prévia): {demand / 1_000_000.0:F3}\n" +
-            "LAB ISOLADO: ainda sem mercado, estoque ou save.";
+            tickInfo + "\n" +
+            $"Estoque LOCAL: alimento {stockFood / 1_000_000.0:F3} | pedra {stockStone / 1_000_000.0:F3} | madeira {stockWood / 1_000_000.0:F3}\n" +
+            (lastCycle is null ? "Nenhum ciclo econômico liquidado ainda.\n" :
+                $"Último ciclo: produção {lastCycle.ProducedRaw / 1_000_000.0:F3}; consumo alimentar {lastCycle.FoodConsumedRaw / 1_000_000.0:F3}; FALTA {lastCycle.FoodUnmetRaw / 1_000_000.0:F3}\n") +
+            "LAB OFFLINE: produção/consumo locais reais e save próprio; SEM transporte, mercado, fome ou WorldState canônico.";
         if (_workerMoveButton is not null)
             _workerMoveButton.Disabled = !_workerDestination.HasValue;
     }
