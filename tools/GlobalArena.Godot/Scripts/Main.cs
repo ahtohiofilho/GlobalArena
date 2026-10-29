@@ -95,6 +95,7 @@ public partial class Main : Control
             }
         }
         GD.Print($"GA_UI_TACTICAL_INSPECTOR_R30 selected={(tileId.HasValue ? tileId.Value.ToString() : "none")} source=canonical_read_only");
+        HandleWorkerLabSelection(tileId);
     }
 
     private void SetStrategicCalibrationControlsVisible(bool visible)
@@ -114,6 +115,7 @@ public partial class Main : Control
         try
         {
             _tacticalPreview.Open(_bridgeSelection.Value);
+            if (_workerLab is not null) UpdateWorkerLabHud();
             _strategicGlobe.Visible = false;
             _tacticalPreview.Visible = true;
             if (_strategicHudPanel is not null) _strategicHudPanel.Visible = false;
@@ -301,6 +303,7 @@ public partial class Main : Control
         tacticalHud.AddThemeConstantOverride("separation", 5);
         hud.AddChild(tacticalHud);
         _tacticalPreview.TransferHud(tacticalHud);
+        InitializeWorkerLabControls(tacticalHud);
         _tacticalHudPanel = tacticalHud;
         var strategicHud = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         hud.AddChild(strategicHud);
