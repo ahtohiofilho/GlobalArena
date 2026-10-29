@@ -23,6 +23,12 @@ public sealed class WorldState
 
     public WarfareRuntimeState Warfare { get; }
 
+    /// <summary>
+    /// Optional canonical physical economic slice. Old v8 snapshots keep null,
+    /// retaining the exact legacy hash and semantics.
+    /// </summary>
+    public PhysicalEconomyRuntimeState? PhysicalEconomy { get; }
+
     public static WorldState CreateInitial()
     {
         return new WorldState(
@@ -33,7 +39,8 @@ public sealed class WorldState
             BaselineDiplomacyRuntimeState.Empty,
             EconomyRuntimeState.Empty,
             PopulationRuntimeState.Uninitialized,
-            WarfareRuntimeState.Empty);
+            WarfareRuntimeState.Empty,
+            physicalEconomy: null);
     }
 
     public static WorldState CreateBound(
@@ -48,7 +55,8 @@ public sealed class WorldState
             BaselineDiplomacyRuntimeState.Empty,
             EconomyRuntimeState.Empty,
             PopulationRuntimeState.Uninitialized,
-            WarfareRuntimeState.Empty);
+            WarfareRuntimeState.Empty,
+            physicalEconomy: null);
     }
 
     public WorldState BindToWorld(
@@ -77,7 +85,8 @@ public sealed class WorldState
             Diplomacy,
             Economy,
             Population,
-            Warfare);
+            Warfare,
+            PhysicalEconomy);
     }
 
     public WorldState WithCivilizations(
@@ -94,7 +103,8 @@ public sealed class WorldState
             Diplomacy,
             Economy,
             Population,
-            Warfare);
+            Warfare,
+            PhysicalEconomy);
     }
 
     public WorldState WithTerritory(
@@ -111,7 +121,8 @@ public sealed class WorldState
             Diplomacy,
             Economy,
             Population,
-            Warfare);
+            Warfare,
+            PhysicalEconomy);
     }
 
     public WorldState WithDiplomacy(
@@ -128,7 +139,8 @@ public sealed class WorldState
             diplomacy,
             Economy,
             Population,
-            Warfare);
+            Warfare,
+            PhysicalEconomy);
     }
 
     public WorldState WithEconomy(
@@ -145,7 +157,8 @@ public sealed class WorldState
             Diplomacy,
             economy,
             Population,
-            Warfare);
+            Warfare,
+            PhysicalEconomy);
     }
 
     /// <summary>
@@ -165,7 +178,8 @@ public sealed class WorldState
             Diplomacy,
             Economy,
             population,
-            Warfare);
+            Warfare,
+            PhysicalEconomy);
     }
 
     /// <summary>
@@ -188,7 +202,8 @@ public sealed class WorldState
             Diplomacy,
             economy,
             population,
-            Warfare);
+            Warfare,
+            PhysicalEconomy);
     }
 
     private void RejectPopulationDowngrade(PopulationRuntimeState next)
@@ -212,7 +227,8 @@ public sealed class WorldState
             Diplomacy,
             Economy,
             Population,
-            warfare);
+            warfare,
+            PhysicalEconomy);
     }
 
     public WorldState AdvanceRevision()
@@ -225,7 +241,20 @@ public sealed class WorldState
             Diplomacy,
             Economy,
             Population,
-            Warfare);
+            Warfare,
+            PhysicalEconomy);
+    }
+
+    /// <summary>
+    /// Replace physical workers and stocks atomically. The caller must advance
+    /// the canonical revision only when committing the complete snapshot.
+    /// </summary>
+    public WorldState WithPhysicalEconomy(PhysicalEconomyRuntimeState physicalEconomy)
+    {
+        ArgumentNullException.ThrowIfNull(physicalEconomy);
+        return new WorldState(
+            Revision, WorldBinding, Civilizations, Territory, Diplomacy,
+            Economy, Population, Warfare, physicalEconomy);
     }
 
     private WorldState(
@@ -236,7 +265,8 @@ public sealed class WorldState
         BaselineDiplomacyRuntimeState diplomacy,
         EconomyRuntimeState economy,
         PopulationRuntimeState population,
-        WarfareRuntimeState warfare)
+        WarfareRuntimeState warfare,
+        PhysicalEconomyRuntimeState? physicalEconomy)
     {
         ArgumentNullException.ThrowIfNull(
             civilizations);
@@ -263,7 +293,8 @@ public sealed class WorldState
             diplomacy,
             economy,
             population,
-            warfare);
+            warfare,
+            physicalEconomy);
 
         Revision = revision;
         WorldBinding = worldBinding;
@@ -273,6 +304,7 @@ public sealed class WorldState
         Economy = economy;
         Population = population;
         Warfare = warfare;
+        PhysicalEconomy = physicalEconomy;
     }
 
     private static void ValidateCrossDomainInvariants(
@@ -282,8 +314,19 @@ public sealed class WorldState
         BaselineDiplomacyRuntimeState diplomacy,
         EconomyRuntimeState economy,
         PopulationRuntimeState population,
-        WarfareRuntimeState warfare)
+        WarfareRuntimeState warfare,
+        PhysicalEconomyRuntimeState? physicalEconomy)
     {
+        if (physicalEconomy is not null)
+        {
+            if (worldBinding is null || physicalEconomy.WorldBinding != worldBinding)
+                throw new InvalidOperationException(
+                    "Canonical physical economy must be bound to precisely this generated world.");
+            if (economy.EconomicPoints.Count != 0 || population.IsInitialized)
+                throw new InvalidOperationException(
+                    "Cannot mix physical worker authority with legacy strategic economic points or resident census.");
+        }
+
         var civilizationIds =
             civilizations
                 .Civilizations

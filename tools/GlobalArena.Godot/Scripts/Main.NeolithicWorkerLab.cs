@@ -44,7 +44,7 @@ public partial class Main
 
         var warning = new Label
         {
-            Text = "Laboratório offline: produz/consome a cada 6 turnos e salva a sessão própria. Ainda NÃO altera o WorldState canônico; sem mercado, transporte ou cidades.",
+            Text = "Economia física publicada no WorldState canônico (hash v9); produção/consumo a cada 6 turnos, com save offline próprio. Ainda SEM mercado, transporte ou cidades.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         warning.AddThemeColorOverride("font_color", new Color("#e1c883"));
@@ -128,6 +128,21 @@ public partial class Main
         };
     }
 
+    private void PublishPhysicalEconomyToWorldState()
+    {
+        if (_canonicalSession is null || _offlineLab is null)
+            throw new InvalidOperationException("The bound world or physical session is unavailable.");
+        var staged = PhysicalEconomyWorldStatePublisher.Stage(
+            _canonicalSession.Snapshot, _canonicalSession.GeneratedWorld, _offlineLab);
+        ReceiveAuthoritativeSnapshot(staged);
+        AttachRuntimeState(_canonicalSession.Snapshot);
+        var hash = new CanonicalWorldStateHasher().Compute(_canonicalSession.Snapshot);
+        GD.Print($"GA-VS09-CANONICAL-PHYSICAL-PUBLISHED revision={staged.Revision} " +
+                 $"hash_format={hash.FormatVersion} movement_turn={_offlineLab.MovementTurn} " +
+                 $"economic_cycles={_offlineLab.EconomicCycles} workers={_offlineLab.Workers.TotalWorkers} " +
+                 $"stock_entries={_offlineLab.Stocks.Count} digest={hash.HexDigest} strategic_population_duplicates=false");
+    }
+
     private void StartWorkerLab()
     {
         if (_tacticalPreview is null || _workerLabStatus is null)
@@ -146,8 +161,9 @@ public partial class Main
             _tacticalPreview.Open(focus.Value);
             if (!_tacticalPreview.HasVisiblePhysicalTile(_workerLab.InitialTile.FineStrategicCellId.Value))
                 throw new InvalidOperationException("Worker origin is not visible in its physical map.");
+            PublishPhysicalEconomyToWorldState();
             UpdateWorkerLabHud();
-            GD.Print($"GA-VS05-ORIGINAL-UI-LAB-READY fine=18 coarse=3 source={_workerOrigin.Value.FineStrategicCellId.Value} workers={_workerLab.TotalWorkers} canonical_worldstate_untouched=true");
+            GD.Print($"GA-VS05-ORIGINAL-UI-LAB-READY fine=18 coarse=3 source={_workerOrigin.Value.FineStrategicCellId.Value} workers={_workerLab.TotalWorkers} physical_worldstate_published=true");
         }
         catch (Exception ex)
         {
@@ -202,8 +218,9 @@ public partial class Main
                 checked((ulong)_workerAmount.Value));
             _workerOrigin = _workerDestination;
             _workerDestination = null;
+            PublishPhysicalEconomyToWorldState();
             UpdateWorkerLabHud();
-            GD.Print($"GA-VS05-ORIGINAL-UI-WORKERS-MOVED revision={_workerLab.Revision} workers={_workerLab.TotalWorkers} occupied={_workerLab.Assignments.Select(x => x.TileId).Distinct().Count()} city_entity=false canonical_worldstate_untouched=true");
+            GD.Print($"GA-VS05-ORIGINAL-UI-WORKERS-MOVED revision={_workerLab.Revision} workers={_workerLab.TotalWorkers} occupied={_workerLab.Assignments.Select(x => x.TileId).Distinct().Count()} city_entity=false physical_worldstate_published=true");
         }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or OverflowException)
         {
@@ -218,6 +235,7 @@ public partial class Main
         try
         {
             var cycle = _offlineLab.AdvanceMovementTurn();
+            PublishPhysicalEconomyToWorldState();
             UpdateWorkerLabHud();
             GD.Print(cycle is null
                 ? $"GA-VS07-TICK movement_turn={_offlineLab.MovementTurn} settlement=false"
@@ -275,6 +293,7 @@ public partial class Main
             _workerLab = next.Workers;
             _workerOrigin = origin;
             _workerDestination = null;
+            PublishPhysicalEconomyToWorldState();
             UpdateWorkerLabHud();
             _workerLabStatus.Text += "\nSAVE OFFLINE REABERTO E VALIDADO.";
             GD.Print($"GA-VS07-LOADED movement_turn={_offlineLab.MovementTurn} cycles={_offlineLab.EconomicCycles} workers={_workerLab.TotalWorkers}");
@@ -312,6 +331,11 @@ public partial class Main
         var tickInfo = _offlineLab is null
             ? "Sessão de turnos não inicializada"
             : $"Turno de movimento: {_offlineLab.MovementTurn} | ciclos econômicos: {_offlineLab.EconomicCycles} (a cada 6)";
+        var physicalCanonical = _canonicalSession?.Snapshot.PhysicalEconomy;
+        var canonicalStatus = physicalCanonical is null
+            ? "WorldState físico ainda não publicado"
+            : $"WorldState físico CANÔNICO: revisão {_canonicalSession!.Snapshot.Revision} | " +
+              $"trabalhadores {physicalCanonical.TotalWorkers} | estoque em {physicalCanonical.Stocks.Count} entradas";
         _workerLabStatus.Text =
             $"Origem tile {origin.FineStrategicCellId.Value} | {jobs}\n" +
             $"Destino: {destination}\n" +
@@ -320,10 +344,11 @@ public partial class Main
             $"revisão: {_workerLab.Revision}\n" +
             $"Consumo alimentar na origem (prévia): {demand / 1_000_000.0:F3}\n" +
             tickInfo + "\n" +
+            canonicalStatus + "\n" +
             $"Estoque LOCAL: alimento {stockFood / 1_000_000.0:F3} | pedra {stockStone / 1_000_000.0:F3} | madeira {stockWood / 1_000_000.0:F3}\n" +
             (lastCycle is null ? "Nenhum ciclo econômico liquidado ainda.\n" :
                 $"Último ciclo: produção {lastCycle.ProducedRaw / 1_000_000.0:F3}; consumo alimentar {lastCycle.FoodConsumedRaw / 1_000_000.0:F3}; FALTA {lastCycle.FoodUnmetRaw / 1_000_000.0:F3}\n") +
-            "LAB OFFLINE: produção/consumo locais reais e save próprio; SEM transporte, mercado, fome ou WorldState canônico.";
+            "Economia física no WorldState e hash v9; save offline próprio ainda separado. SEM mercado, transporte ou fome.";
         if (_workerMoveButton is not null)
             _workerMoveButton.Disabled = !_workerDestination.HasValue;
     }
