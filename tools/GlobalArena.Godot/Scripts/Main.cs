@@ -115,7 +115,7 @@ public partial class Main : Control
         try
         {
             _tacticalPreview.Open(_bridgeSelection.Value);
-            if (_workerLab is not null) UpdateWorkerLabHud();
+            if (_canonicalPhysicalLab is not null) UpdateWorkerLabHud();
             _strategicGlobe.Visible = false;
             _tacticalPreview.Visible = true;
             if (_strategicHudPanel is not null) _strategicHudPanel.Visible = false;
