@@ -15,7 +15,8 @@ public sealed class GaVs03PhysicalTacticalWorkerTests
         Assert.Equal(8UL, game.TotalWorkers);
         Assert.Single(game.Assignments.Select(x => x.TileId).Distinct());
         Assert.Equal(8UL, game.WorkersAt(game.InitialTile));
-        Assert.Equal(8UL, game.StrategicDisplayTotals().Values.Sum(x => checked((long)x)));
+        Assert.Equal(8UL, game.StrategicDisplayTotals().Values.Aggregate(
+            0UL, (sum, x) => checked(sum + x)));
         Assert.Single(game.StrategicDisplayTotals());
         Assert.Equal(0UL, game.Revision);
     }
