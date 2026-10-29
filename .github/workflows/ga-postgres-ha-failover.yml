@@ -1,0 +1,29 @@
+name: G3-J3i PostgreSQL HA Failover Lab
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/**'
+      - 'GlobalArena.Tests/**'
+      - 'docs/engineering/sql/GA-G3J3g-trusted-anchor-postgres.sql'
+      - 'tools/ci/ga-postgres-ha-failover.sh'
+      - '.github/workflows/ga-postgres-ha-failover.yml'
+  workflow_dispatch:
+
+jobs:
+  synchronous-primary-promotion:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Restore
+        run: dotnet restore GlobalArena.Tests/GlobalArena.Tests.csproj
+      - name: Real two-node streaming replication, fencing and promotion
+        run: bash tools/ci/ga-postgres-ha-failover.sh
