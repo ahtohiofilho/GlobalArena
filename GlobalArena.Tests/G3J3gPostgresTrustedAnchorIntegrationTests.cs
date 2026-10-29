@@ -188,10 +188,13 @@ public sealed class G3J3gPostgresTrustedAnchorIntegrationTests
     {
         using var source = Provision();
         if (source is null) return;
-        Assert.Throws<InvalidOperationException>(() =>
-            new EconomicV9PostgresTrustedAnchorStore(
-                source, "unprovisioned-" + Guid.NewGuid().ToString("N"))
-                .ReadSnapshot());
+        // G3-J3h denies even reading the existence of a game without an
+        // explicit authenticated-login ACL entry.
+        Assert.Equal(PostgresErrorCodes.InsufficientPrivilege,
+            Assert.Throws<PostgresException>(() =>
+                new EconomicV9PostgresTrustedAnchorStore(
+                    source, "unprovisioned-" + Guid.NewGuid().ToString("N"))
+                    .ReadSnapshot()).SqlState);
         Assert.Throws<ArgumentException>(() =>
             new EconomicV9PostgresTrustedAnchorStore(source, "../escape"));
         var initial = new EconomicV9ExternalAnchorSnapshot(
