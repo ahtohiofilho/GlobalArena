@@ -58,7 +58,10 @@ public sealed class PhysicalTacticalEconomyRuntimeState
         // Refuse non-nested or incompatible Goldberg meshes before reading IDs.
         _ = new GoldbergScaledRefinement(coarseParameters, fineParameters);
 
-        var sortedAllocations = allocations
+        var allocationRows = allocations.ToArray();
+        if (allocationRows.Any(x => x is null))
+            throw new ArgumentException("Physical workforce cannot contain null records.");
+        var sortedAllocations = allocationRows
             .OrderBy(x => x.TileId.IsValid ? x.TileId.FineStrategicCellId.Value : 0UL)
             .ThenBy(x => (byte)x.Activity).ToArray();
         ulong totalWorkers = 0UL;
@@ -74,7 +77,10 @@ public sealed class PhysicalTacticalEconomyRuntimeState
             totalWorkers = checked(totalWorkers + allocation.Workers);
         }
 
-        var sortedStocks = stocks
+        var stockRows = stocks.ToArray();
+        if (stockRows.Any(x => x is null))
+            throw new ArgumentException("Physical stock cannot contain null records.");
+        var sortedStocks = stockRows
             .OrderBy(x => x.TileId.IsValid ? x.TileId.FineStrategicCellId.Value : 0UL)
             .ThenBy(x => x.Commodity.IsValid ? x.Commodity.Value : 0U).ToArray();
         var stockKeys = new HashSet<(PhysicalTacticalTileId, CommodityId)>();
@@ -87,12 +93,13 @@ public sealed class PhysicalTacticalEconomyRuntimeState
         }
 
         var orderedCycles = cycles.ToArray();
+        if (orderedCycles.Any(x => x is null))
+            throw new ArgumentException("Economic cycles cannot contain null records.");
         if ((ulong)orderedCycles.Length != movementTurn / MovementTicksPerEconomicCycle)
             throw new ArgumentException("Economic cycle count disagrees with movement time.");
         for (var i = 0; i < orderedCycles.Length; i++)
         {
-            if (orderedCycles[i] is null ||
-                orderedCycles[i].MovementTurn != checked((ulong)(i + 1) * MovementTicksPerEconomicCycle))
+            if (orderedCycles[i].MovementTurn != checked((ulong)(i + 1) * MovementTicksPerEconomicCycle))
                 throw new ArgumentException("Economic cycles must follow the six-tick cadence.");
         }
 
