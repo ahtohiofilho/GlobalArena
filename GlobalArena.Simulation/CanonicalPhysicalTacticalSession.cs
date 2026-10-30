@@ -225,6 +225,35 @@ public sealed class CanonicalPhysicalTacticalSession
             x => x.TileId == tile && x.Commodity == commodity)?.RawQuantity ?? 0UL;
     }
 
+    /// <summary>
+    /// Preview the next local food-market opportunity using the current physical
+    /// workforce, local food stock and geography. This NEVER commits prices,
+    /// purchases or monetary postings. The reference budget is caller supplied.
+    /// </summary>
+    public EconomicLocalFoodMarketQuote QuoteNextLocalFoodMarket(
+        PhysicalTacticalTileId tile, double referenceBudgetPerWorker)
+    {
+        ValidateTile(tile);
+        var state = State;
+        var workers = WorkersAt(tile);
+        ulong projectedCrop = 0UL;
+        foreach (var allocation in state.Allocations.Where(x =>
+                     x.TileId == tile &&
+                     x.Activity == EconomicActivityKind.Agriculture))
+        {
+            var rate = PrimitiveYield(tile.FineStrategicCellId,
+                EconomicActivityKind.Agriculture);
+            if (rate > 0L)
+                projectedCrop = checked(projectedCrop +
+                    checked(allocation.Workers * (ulong)rate));
+        }
+
+        return new EconomicLocalFoodMarketQuoteResolver().Resolve(
+            tile, state.MovementTurn, workers,
+            StockAt(tile, new CommodityId(1U)), projectedCrop,
+            FoodDemandAt(tile), referenceBudgetPerWorker);
+    }
+
     public StrategicCellId DisplayBucket(PhysicalTacticalTileId tile)
     {
         ValidateTile(tile);
