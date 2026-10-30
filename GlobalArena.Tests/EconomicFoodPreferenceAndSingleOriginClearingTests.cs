@@ -162,6 +162,22 @@ public sealed class EconomicFoodPreferenceAndSingleOriginClearingTests
     }
 
     [Fact]
+    public void OneBuyerCappedAtTotalSupplyStillDeterminesPositiveScarcityPrice()
+    {
+        var buyer = new EconomicSingleVarietyBuyer(Point(2037), 8, 320, 0);
+        var r = Clear(3.546, new[] { buyer });
+        Assert.InRange(r.OriginPrice, 60.44, 60.45);
+        Assert.InRange(r.Sold, 3.546 - 1e-8, 3.546 + 1e-8);
+        Assert.InRange(r.Unsold, 0, 1e-8);
+        Assert.InRange(r.SellerReceipts, 214.32, 214.34);
+        Assert.InRange(r.Buyers[0].MonetaryResidual, 105.65, 105.69);
+        Assert.InRange(Math.Abs(r.Buyers[0].MarginalWillingnessToPay -
+            r.OriginPrice), 0, 1e-7);
+        Assert.InRange(Math.Abs(r.TotalBuyerExpenditure -
+            r.SellerReceipts), 0, 1e-8);
+    }
+
+    [Fact]
     public void GreaterBuyerBudgetsIncreaseTheEndogenousOriginPrice()
     {
         var baseline = Clear();

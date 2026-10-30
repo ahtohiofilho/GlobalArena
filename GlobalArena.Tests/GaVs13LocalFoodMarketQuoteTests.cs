@@ -44,6 +44,38 @@ public sealed class GaVs13LocalFoodMarketQuoteTests
     }
 
     [Fact]
+    public void SingleLocalBuyerWithScarceFoodMustGeneratePositivePriceAndPayment()
+    {
+        // Reproduces the Windows VS13 screenshot: 3.546 units, eight workers,
+        // hypothetical purchasing power 40 each, demand 4 units.
+        // Before the correction, the bisection yielded price=0, sold=3.546,
+        // spending=0 and H=320 because demand was capped at the supply.
+        var game = NewGame();
+        var before = game.Game.Snapshot;
+        var initialHash = game.CurrentHash;
+        var quote = new EconomicLocalFoodMarketQuoteResolver().Resolve(
+            game.InitialTile, 0UL, 8UL, 0UL, 3_546_000UL,
+            4_000_000UL, 40.0);
+
+        Assert.InRange(quote.PricePerWholeFoodUnit, 60.44, 60.45);
+        Assert.InRange(quote.ReferenceSold, 3.546 - 1e-8, 3.546 + 1e-8);
+        Assert.InRange(quote.ReferenceBuyerSpending, 214.32, 214.34);
+        Assert.InRange(quote.ReferenceBudgetResidual, 105.65, 105.69);
+        Assert.InRange(quote.ReferenceUnsold, 0.0, 1e-8);
+        Assert.Equal(quote.ReferenceBuyerSpending, quote.ReferenceSellerReceipts, 8);
+        Assert.InRange(Math.Abs(quote.ReferenceBudgetResidual +
+            quote.ReferenceBuyerSpending - 320.0), 0.0, 1e-8);
+        var ratio = quote.ReferenceBudgetResidual / 16.0;
+        var marginalWtp = ratio * ratio * 2.0 / (1.0 + quote.ReferenceSold / 8.0);
+        Assert.InRange(Math.Abs(marginalWtp - quote.PricePerWholeFoodUnit), 0, 1e-7);
+
+        // The price quote is not the actual settlement.
+        Assert.Same(before, game.Game.Snapshot);
+        Assert.Equal(initialHash, game.CurrentHash);
+        Assert.Empty(game.Events);
+    }
+
+    [Fact]
     public void QuoteDoesNotGrantLocalTransportOrFoodToEmptySupplyTile()
     {
         var session = NewGame();

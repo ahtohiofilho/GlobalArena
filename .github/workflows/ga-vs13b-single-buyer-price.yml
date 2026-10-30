@@ -1,0 +1,41 @@
+name: GA-VS13B Single Buyer Price Correctness
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/EconomicSingleVarietyOriginClearing.cs'
+      - 'GlobalArena.Tests/EconomicFoodPreferenceAndSingleOriginClearingTests.cs'
+      - 'GlobalArena.Tests/GaVs13LocalFoodMarketQuoteTests.cs'
+      - '.github/workflows/ga-vs13b-single-buyer-price.yml'
+  workflow_dispatch:
+
+jobs:
+  price-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Validate base price and local market regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~EconomicFoodPreferenceAndSingleOriginClearingTests|FullyQualifiedName~GaVs13|FullyQualifiedName~EconomicSingleVarietyCornerSupportProbeTests|FullyQualifiedName~GaVs12'
+      - name: Build Godot
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  price-windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Validate base price and local market regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~EconomicFoodPreferenceAndSingleOriginClearingTests|FullyQualifiedName~GaVs13|FullyQualifiedName~EconomicSingleVarietyCornerSupportProbeTests|FullyQualifiedName~GaVs12'
+      - name: Build Windows Godot
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
