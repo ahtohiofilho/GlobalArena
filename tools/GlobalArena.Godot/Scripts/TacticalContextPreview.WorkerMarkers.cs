@@ -20,15 +20,20 @@ public partial class TacticalContextPreview
     private MeshInstance3D? _workerBadges;
     private MeshInstance3D? _workerPaths;
     private TacticalWorkerMarkerProjection? _workerProjection;
+    private ulong? _selectedMarkerTile;
+    private EconomicActivityKind? _selectedMarkerActivity;
     private readonly List<(ulong Tile, EconomicActivityKind Activity,
         Vector2 Center, float Radius)> _workerBadgeHits = new();
 
     /// <summary>Raised only by a click directly on a colored workforce group marker.</summary>
     public event Action<ulong, EconomicActivityKind>? WorkerGroupPicked;
 
-    public void SetWorkerMarkers(TacticalWorkerMarkerProjection? projection)
+    public void SetWorkerMarkers(TacticalWorkerMarkerProjection? projection,
+        ulong? selectedTile, EconomicActivityKind? selectedActivity)
     {
         _workerProjection = projection;
+        _selectedMarkerTile = selectedTile;
+        _selectedMarkerActivity = selectedActivity;
         RefreshWorkerMarkers();
     }
 
@@ -146,8 +151,17 @@ public partial class TacticalContextPreview
                 var angle = -Mathf.Pi / 2f + Mathf.Tau * index / groups.Length;
                 var location = center + new Vector2(Mathf.Cos(angle),
                     Mathf.Sin(angle)) * offsetRadius;
+                // A selected worker group receives its own bright halo,
+                // distinguishing group selection from the whole-tile ring.
+                if (_selectedMarkerTile == id &&
+                    _selectedMarkerActivity == groups[index].Activity)
+                {
+                    AddDisk(badges, location, badgeRadius * 1.63f,
+                        WorkerBadgeSurfaceLift, new Color("#f3f9ff"));
+                    badgeTriangles += 12;
+                }
                 AddDisk(badges, location, badgeRadius * 1.28f,
-                    WorkerBadgeSurfaceLift, new Color("#15212b"));
+                    WorkerBadgeSurfaceLift + 0.000005f, new Color("#15212b"));
                 AddDisk(badges, location, badgeRadius,
                     WorkerBadgeSurfaceLift + 0.00001f,
                     WorkerActivityColor(groups[index].Activity));
