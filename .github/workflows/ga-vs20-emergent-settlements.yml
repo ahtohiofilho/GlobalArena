@@ -1,0 +1,66 @@
+name: GA-VS20 Emergent Physical Settlements
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/EmergentSettlementProjection.cs'
+      - 'GlobalArena.Tests/GaVs20EmergentSettlementTests.cs'
+      - 'tools/GlobalArena.Godot/Scripts/TacticalContextPreview.Settlements.cs'
+      - 'tools/GlobalArena.Godot/Scripts/TacticalContextPreview.cs'
+      - 'tools/GlobalArena.Godot/Scripts/Main.cs'
+      - 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+      - 'tools/launch-vs20.ps1'
+      - '.github/workflows/ga-vs20-emergent-settlements.yml'
+  workflow_dispatch:
+
+jobs:
+  settlement-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Emergent settlement and prior movement/replay tests
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs20|FullyQualifiedName~GaVs19B|FullyQualifiedName~GaVs18|FullyQualifiedName~GaVs17|FullyQualifiedName~GaVs16'
+      - name: Godot renderer Release compile
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  settlement-windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Validate deterministic direct Windows launch
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'tools/launch-vs20.ps1').Path,
+            [ref]$tokens, [ref]$errors)
+          if ($errors.Count) { throw ($errors | ForEach-Object Message | Out-String) }
+          $script = Get-Content 'tools/launch-vs20.ps1' -Raw -Encoding UTF8
+          $main = Get-Content 'tools/GlobalArena.Godot/Scripts/Main.cs' -Raw -Encoding UTF8
+          $lab = Get-Content 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs' -Raw -Encoding UTF8
+          if (-not $script.Contains('feature/ga-vs20-emergent-settlement-sites-20261030') -or
+              -not $script.Contains('& $GodotExe --path $projectDir --verbose') -or
+              -not $script.Contains('-c Debug') -or
+              -not $main.Contains('GA_VS20_RUNTIME_ACTIVE') -or
+              -not $lab.Contains('POVOAMENTOS EMERGENTES | VS20')) {
+            throw 'VS20 direct-run/build marker contract missing.'
+          }
+      - name: Emergent settlement and prior movement/replay tests
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs20|FullyQualifiedName~GaVs19B|FullyQualifiedName~GaVs18|FullyQualifiedName~GaVs17|FullyQualifiedName~GaVs16'
+      - name: Godot Debug launch-target compile
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
+      - name: Godot renderer Release compile
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
