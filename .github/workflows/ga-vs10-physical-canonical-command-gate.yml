@@ -1,0 +1,41 @@
+name: GA-VS10 Physical Canonical Command Gate
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/PhysicalEconomyCanonicalCommandGate.cs'
+      - 'GlobalArena.Tests/GaVs10PhysicalCanonicalCommandGateTests.cs'
+      - 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+      - '.github/workflows/ga-vs10-physical-canonical-command-gate.yml'
+  workflow_dispatch:
+
+jobs:
+  canonical-physical-gate-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Validate VS10 commands and VS07/VS09 regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs10|FullyQualifiedName~GaVs09|FullyQualifiedName~GaVs07'
+      - name: Build Godot main application
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  canonical-physical-gate-windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Validate atomic publish and one settlement per sixth tick
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs10|FullyQualifiedName~GaVs09|FullyQualifiedName~GaVs07'
+      - name: Build Windows Godot CSharp application
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
