@@ -35,6 +35,9 @@ public partial class TacticalContextPreview : SubViewportContainer
     private Label? _selection;
     private Label? _terrainDetails;
     private WorldGenerationV2PhysicalComposition? _terrainReference;
+    private WorldGenerationResult? _legacyEconomicFineWorld;
+    private bool _hasAuthoritativeTacticalGeography;
+    private Button? _terrainButton;
     private bool _showExperimentalTerrain = true;
     private const ulong TerrainExperimentSeed = 20261012UL;
     private ulong? _selectedFineTileId;
@@ -82,6 +85,61 @@ public partial class TacticalContextPreview : SubViewportContainer
     private readonly HashSet<ulong> _renderedPhysicalTileIds = new();
     private readonly SortedDictionary<ulong, (Vector3[] Points, Color Tint, ulong[] Owners, Vector2[] Polygon)> _extendedPhysicalTiles = new();
 
+
+    /// <summary>
+    /// Bind the same exact immutable 01C geography instance used by economic
+    /// settlement. Legacy saves instead display their V1 land classification.
+    /// Changing presentation never changes the saved model or its tile IDs.
+    /// </summary>
+    public void BindEconomicTacticalGeography(WorldGenerationResult fineWorld,
+        WorldGenerationV2PhysicalComposition? canonical01C)
+    {
+        ArgumentNullException.ThrowIfNull(fineWorld);
+        if (fineWorld.Request.StrategicParameters != new GoldbergParameters(18, 0))
+            throw new ArgumentException("Tactical geography must use the physical G(18,0) grid.");
+        if (canonical01C is not null &&
+            canonical01C.Biomes.Count != fineWorld.StrategicTopology.Cells.Count)
+            throw new ArgumentException("Tactical biome IDs do not align with the economic fine grid.");
+        _terrainReference = canonical01C;
+        _legacyEconomicFineWorld = canonical01C is null ? fineWorld : null;
+        _hasAuthoritativeTacticalGeography = true;
+        _showExperimentalTerrain = true;
+        UpdateTerrainButtonLabel();
+    }
+
+    private void UpdateTerrainButtonLabel()
+    {
+        if (_terrainButton is null) return;
+        _terrainButton.Text = !_showExperimentalTerrain ? "TERRAIN: IDS" :
+            _legacyEconomicFineWorld is not null ? "TERRAIN: V1 LEGACY" :
+            _hasAuthoritativeTacticalGeography ? "TERRAIN: 01C CANONICAL" : "TERRAIN: 01C EXP";
+    }
+
+    private Color GeographicTileColor(ulong fineId)
+    {
+        var index = checked((int)fineId - 1);
+        if (_legacyEconomicFineWorld is not null)
+        {
+            var id = new StrategicCellId(fineId);
+            if (_legacyEconomicFineWorld.StrategicPhysicalFields.LandWater.GetKind(id) ==
+                StrategicLandWaterKind.Water) return new Color("#245b86");
+            return _legacyEconomicFineWorld.StrategicBiomes.GetKind(id) switch
+            {
+                StrategicBiomeKind.PolarIce => new Color("#bddae8"),
+                StrategicBiomeKind.Tundra => new Color("#9db7a4"),
+                StrategicBiomeKind.Highland => new Color("#898b66"),
+                StrategicBiomeKind.Wetland => new Color("#5b9a78"),
+                StrategicBiomeKind.Desert => new Color("#d2bd75"),
+                StrategicBiomeKind.Rainforest => new Color("#285d49"),
+                StrategicBiomeKind.Forest => new Color("#336e53"),
+                StrategicBiomeKind.Grassland => new Color("#7bad72"),
+                _ => throw new InvalidOperationException("Unsupported V1 canonical biome.")
+            };
+        }
+        if (_terrainReference is null)
+            throw new InvalidOperationException("Physical terrain reference missing.");
+        return TerrainColor(_terrainReference.Biomes[index].VisibleBiome);
+    }
 
     private static Vector3 ConvertPoint(SphericalPoint3 point) =>
         new((float)point.X, (float)point.Y, (float)point.Z);
@@ -217,9 +275,7 @@ public partial class TacticalContextPreview : SubViewportContainer
             Color tint;
             if (_showExperimentalTerrain)
             {
-                if (_terrainReference is null)
-                    throw new InvalidOperationException("R27 terrain data missing.");
-                tint = TerrainColor(_terrainReference.Biomes[checked((int)id - 1)].VisibleBiome);
+                tint = GeographicTileColor(id);
             }
             else
             {
@@ -413,10 +469,11 @@ public partial class TacticalContextPreview : SubViewportContainer
         var terrainRow = new HBoxContainer();
         controls.AddChild(terrainRow);
         var terrainButton = new Button { Text = "TERRAIN: 01C EXP" };
+        _terrainButton = terrainButton;
         terrainButton.Pressed += () =>
         {
             _showExperimentalTerrain = !_showExperimentalTerrain;
-            terrainButton.Text = _showExperimentalTerrain ? "TERRAIN: 01C EXP" : "TERRAIN: IDS";
+            UpdateTerrainButtonLabel();
             if (_activeFocus != 0) Open(_activeFocus);
             GD.Print($"GA_TACTICAL_EXPERIMENTAL_TERRAIN visible={_showExperimentalTerrain} reference_seed={TerrainExperimentSeed}");
         };
@@ -710,12 +767,20 @@ public partial class TacticalContextPreview : SubViewportContainer
         _selectedFineTileId = matched.Id;
         var shape = matched.Degree == 5 ? "Pentagon" : "Hexagon";
         _selection.Text = $"G(18,0)/{matched.Id} | {shape} | ring {matched.Ring} | strategic {string.Join(",", matched.Owners)} | selected";
-        if (_terrainDetails is not null && _terrainReference is not null && _showExperimentalTerrain)
+        if (_terrainDetails is not null && _legacyEconomicFineWorld is not null && _showExperimentalTerrain)
+        {
+            var id = new StrategicCellId(matched.Id);
+            var isWater = _legacyEconomicFineWorld.StrategicPhysicalFields.LandWater.GetKind(id) ==
+                StrategicLandWaterKind.Water;
+            var biome = _legacyEconomicFineWorld.StrategicBiomes.GetKind(id);
+            _terrainDetails.Text = $"V1 LEGACY | {(isWater ? "WATER" : "LAND")} | biome {biome}";
+        }
+        else if (_terrainDetails is not null && _terrainReference is not null && _showExperimentalTerrain)
         {
             int index = checked((int)matched.Id - 1);
             var biome = _terrainReference.Biomes[index];
             var cover = biome.IsWater ? "WATER" : "LAND";
-            _terrainDetails.Text = $"01C EXP | {cover} | biome {biome.VisibleBiome} | below ice {biome.UnderlyingBiome} | elevation {_terrainReference.Elevation[index]} | moisture {_terrainReference.Moisture[index]}";
+            _terrainDetails.Text = $"{(_hasAuthoritativeTacticalGeography ? "01C CANONICAL" : "01C EXP")} | {cover} | biome {biome.VisibleBiome} | below ice {biome.UnderlyingBiome} | elevation {_terrainReference.Elevation[index]} | moisture {_terrainReference.Moisture[index]}";
         }
         else if (_terrainDetails is not null)
         {
@@ -801,7 +866,8 @@ public partial class TacticalContextPreview : SubViewportContainer
         faceTool.Begin(Mesh.PrimitiveType.Triangles);
         var geometry = fineWorld.StrategicSphericalGeometry;
         // Lazy one-time V2 preview. Worldgen V1 and strategic presentation remain unchanged.
-        if (_showExperimentalTerrain && _terrainReference is null)
+        if (_showExperimentalTerrain && _terrainReference is null &&
+            _legacyEconomicFineWorld is null)
             _terrainReference = WorldGenerationV2PhysicalComposition.Generate(
                 geometry, TerrainExperimentSeed, landTargetPercent: 35);
         if (_terrainReference is not null && _terrainReference.Geometry.Cells.Count != geometry.Cells.Count)
@@ -821,9 +887,7 @@ public partial class TacticalContextPreview : SubViewportContainer
             Color tint;
             if (_showExperimentalTerrain)
             {
-                if (_terrainReference is null)
-                    throw new InvalidOperationException("Experimental terrain reference missing.");
-                tint = TerrainColor(_terrainReference.Biomes[index].VisibleBiome);
+                tint = GeographicTileColor(id.FineStrategicCellId.Value);
             }
             else
             {

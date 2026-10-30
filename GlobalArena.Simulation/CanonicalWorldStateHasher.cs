@@ -12,6 +12,7 @@ public sealed class CanonicalWorldStateHasher
     public const uint FormatVersion = 8U;
     public const uint PhysicalEconomyFormatVersion = 9U;
     public const uint AdaptivePhysicalEconomyFormatVersion = 10U;
+    public const uint Canonical01CPhysicalEconomyFormatVersion = 11U;
 
     private static readonly byte[] Magic =
     {
@@ -305,8 +306,10 @@ public sealed class CanonicalWorldStateHasher
         // Explicit domain separator, tagged fields and the exact legacy
         // digest bind all pre-existing state + topology to the new version.
         hash.AppendData(Magic);
-        var format = physical.CadenceMode == PhysicalEconomicCadenceMode.AdaptiveThirty
-            ? AdaptivePhysicalEconomyFormatVersion : PhysicalEconomyFormatVersion;
+        var format = physical.GeographyMode == PhysicalTacticalGeographyMode.Canonical01C
+            ? Canonical01CPhysicalEconomyFormatVersion
+            : physical.CadenceMode == PhysicalEconomicCadenceMode.AdaptiveThirty
+                ? AdaptivePhysicalEconomyFormatVersion : PhysicalEconomyFormatVersion;
         AppendUInt32(hash, format);
         AppendUInt32(hash, 90U);
         hash.AppendData(Convert.FromHexString(legacy.HexDigest));
@@ -345,11 +348,20 @@ public sealed class CanonicalWorldStateHasher
 
         if (physical.CadenceMode == PhysicalEconomicCadenceMode.AdaptiveThirty)
         {
-            // New ruleset domain separator. The legacy V9 byte sequence must
-            // remain identical for saves made before adaptive timing.
+            // New ruleset domain separator. Legacy V9 bytes stay identical.
             AppendUInt32(hash, 91U);
             AppendUInt32(hash, (uint)physical.CadenceMode);
             AppendUInt64(hash, PhysicalEconomicCadence.AdaptiveWindowTurns);
+        }
+
+        if (physical.GeographyMode == PhysicalTacticalGeographyMode.Canonical01C)
+        {
+            // Binds the fine-grid biome/elevation producer ruleset to the hash.
+            // Legacy V9 and V10 hash bytes and versions are not changed.
+            AppendUInt32(hash, 92U);
+            AppendUInt32(hash, (uint)physical.GeographyMode);
+            AppendUInt32(hash, 1U); // GA-VS12 canonical primitive yield ruleset
+            AppendUInt32(hash, 35U); // experimental 01C land percentile
         }
 
         return new WorldStateHash(

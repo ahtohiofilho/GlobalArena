@@ -1,0 +1,46 @@
+name: GA-VS12 Canonical Tactical Geography Alignment
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/CanonicalTacticalPhysicalGeography.cs'
+      - 'GlobalArena.Simulation/CanonicalPhysicalTacticalSession.cs'
+      - 'GlobalArena.Simulation/CanonicalWorldStateHasher.cs'
+      - 'GlobalArena.Runtime/PhysicalTacticalEconomyRuntimeState.cs'
+      - 'GlobalArena.Tests/GaVs12CanonicalPhysicalGeographyTests.cs'
+      - 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+      - 'tools/GlobalArena.Godot/Scripts/TacticalContextPreview.cs'
+      - 'tools/GlobalArena.Godot/project.godot'
+      - '.github/workflows/ga-vs12-canonical-geography.yml'
+  workflow_dispatch:
+
+jobs:
+  geography-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Validate 01C economic land and V11/V10/V9 replay
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs12|FullyQualifiedName~GaVs11|FullyQualifiedName~GaVs10|FullyQualifiedName~GaVs09|FullyQualifiedName~GaVs07|FullyQualifiedName~CanonicalWorldStateHasherTests'
+      - name: Build original Godot CSharp tactical viewer
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  geography-windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Validate geographic IDs, primitive production and save replay
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs12|FullyQualifiedName~GaVs11|FullyQualifiedName~GaVs10|FullyQualifiedName~GaVs09|FullyQualifiedName~GaVs07|FullyQualifiedName~CanonicalWorldStateHasherTests'
+      - name: Compile aligned Godot tactical viewer on Windows
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
