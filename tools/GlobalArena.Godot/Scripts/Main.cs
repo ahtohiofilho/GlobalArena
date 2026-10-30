@@ -360,7 +360,7 @@ public partial class Main : Control
             // Preserve a small distinction between existing headings and data.
             var heading = label.HasThemeFontSizeOverride("font_size");
             var size = heading
-                ? Math.Min(14, label.GetThemeFontSize("font_size"))
+                ? System.Math.Min(14, label.GetThemeFontSize("font_size"))
                 : 13;
             label.AddThemeFontSizeOverride("font_size", size);
         }
