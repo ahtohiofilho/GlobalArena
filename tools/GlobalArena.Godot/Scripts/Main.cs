@@ -300,10 +300,16 @@ public partial class Main : Control
         hud.AddThemeConstantOverride("separation", 8);
         panelScroll.AddChild(hud);
         var tacticalHud = new VBoxContainer { Visible = false, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        tacticalHud.AddThemeConstantOverride("separation", 5);
+        tacticalHud.AddThemeConstantOverride("separation", 3);
         hud.AddChild(tacticalHud);
         _tacticalPreview.TransferHud(tacticalHud);
         InitializeWorkerLabControls(tacticalHud);
+        // QA density only: typography belongs to the right sidebar, not the map.
+        ApplyCompactTacticalTypography(tacticalHud);
+        ApplyCompactTacticalTypography(inspector);
+        _tacticalBridgeStatus.AddThemeFontSizeOverride("font_size", 13);
+        _returnStrategicContext.AddThemeFontSizeOverride("font_size", 13);
+        _tacticalTileEdges.AddThemeFontSizeOverride("font_size", 13);
         _tacticalHudPanel = tacticalHud;
         var strategicHud = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         hud.AddChild(strategicHud);
@@ -339,6 +345,37 @@ public partial class Main : Control
         root.AddChild(_status);
         GD.Print("GA_UI_FOUNDATION_READY_01 layout=map,sidebar,header,footer");
         GD.Print("GA_UI_FOUNDATION_RESIZE_READY_02 responsive=true");
+    }
+
+    /// <summary>
+    /// Compact the tactical/inspector sidebar for repeatable QA screenshots.
+    /// Presentation-only: does not touch the map viewport, selectors, events,
+    /// worker commands, game state, save format or production UI contract.
+    /// A separate future UI milestone may replace this temporary layout.
+    /// </summary>
+    private static void ApplyCompactTacticalTypography(Node root)
+    {
+        if (root is Label label)
+        {
+            // Preserve a small distinction between existing headings and data.
+            var heading = label.HasThemeFontSizeOverride("font_size");
+            var size = heading
+                ? System.Math.Min(14, label.GetThemeFontSize("font_size"))
+                : 13;
+            label.AddThemeFontSizeOverride("font_size", size);
+        }
+        else if (root is Button button)
+        {
+            button.AddThemeFontSizeOverride("font_size", 13);
+        }
+        else if (root is SpinBox numeric)
+        {
+            // SpinBox renders its digits through an internal LineEdit.
+            numeric.GetLineEdit().AddThemeFontSizeOverride("font_size", 13);
+        }
+
+        foreach (Node child in root.GetChildren())
+            ApplyCompactTacticalTypography(child);
     }
 
     // GA_LAYOUT_DIAGNOSTIC_02: capture geometry once on launch and after resize.
