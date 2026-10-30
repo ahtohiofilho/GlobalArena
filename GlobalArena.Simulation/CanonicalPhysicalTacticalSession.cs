@@ -405,6 +405,53 @@ public sealed class CanonicalPhysicalTacticalSession
     }
 
     /// <summary>
+    /// VS15: adjacent physical move with deterministic two-turn primitive
+    /// travel time. Workers stop producing as soon as the order is issued.
+    /// They provision from the source until arrival, without teleportation.
+    /// </summary>
+    public PhysicalWorkerTransit OrderWorkerTransit(
+        PhysicalTacticalTileId source, PhysicalTacticalTileId target,
+        EconomicActivityKind fromJob, EconomicActivityKind toJob, ulong amount)
+    {
+        if (_movementMode != PhysicalWorkerMovementMode.TimedAdjacent)
+            throw new InvalidOperationException("Timed movement is not enabled in this save.");
+        EnsureJournalCapacity();
+        ValidateTile(source);
+        ValidateTile(target);
+        ValidateJob(fromJob);
+        ValidateJob(toJob);
+        if (source == target || amount == 0UL ||
+            !IsWorkableLand(target.FineStrategicCellId) ||
+            !AdjacentWorkable(source).Contains(target))
+            throw new InvalidOperationException("Timed movement requires an adjacent workable tile.");
+
+        var current = State;
+        var allocations = current.Allocations.ToDictionary(
+            x => (x.TileId, x.Activity), x => x.Workers);
+        var key = (source, fromJob);
+        if (!allocations.TryGetValue(key, out var available) || available < amount)
+            throw new InvalidOperationException("Not enough workers at the physical origin.");
+        if (available == amount) allocations.Remove(key);
+        else allocations[key] = available - amount;
+        var id = checked(current.WorkerRevision + 1UL);
+        const ulong primitiveTravelTurns = 2UL;
+        var order = new PhysicalWorkerTransit(
+            id, source, target, fromJob, toJob, amount,
+            current.MovementTurn, checked(current.MovementTurn + primitiveTravelTurns));
+        var next = new PhysicalTacticalEconomyRuntimeState(
+            current.CoarseWorldBinding, _coarse, _fine, current.MovementTurn, id,
+            allocations.Select(x => new PhysicalWorkerAllocation(
+                x.Key.Item1, x.Key.Item2, x.Value)),
+            current.Stocks, current.Cycles, _cadenceMode, _geographyMode,
+            current.FoodCash, _movementMode, current.Transits.Append(order));
+        if (next.TotalWorkers != current.TotalWorkers)
+            throw new InvalidOperationException("Timed departure did not conserve workers.");
+        Commit(next, "depart", source.FineStrategicCellId.Value,
+            target.FineStrategicCellId.Value, (byte)fromJob, (byte)toJob, amount);
+        return order;
+    }
+
+    /// <summary>
     /// Fixed-six V9 and progressive-thirty V10 settle physical production
     /// and consumption under their versioned rules. No intertile teleportation.
     /// </summary>
