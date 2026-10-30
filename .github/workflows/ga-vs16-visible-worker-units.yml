@@ -1,0 +1,44 @@
+name: GA-VS16 Visible Tactical Worker Units
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/TacticalWorkerMarkerProjection.cs'
+      - 'GlobalArena.Tests/GaVs16TacticalWorkerMarkerProjectionTests.cs'
+      - 'tools/GlobalArena.Godot/Scripts/TacticalContextPreview.WorkerMarkers.cs'
+      - 'tools/GlobalArena.Godot/Scripts/TacticalContextPreview.cs'
+      - 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+      - 'tools/GlobalArena.Godot/project.godot'
+      - '.github/workflows/ga-vs16-visible-worker-units.yml'
+  workflow_dispatch:
+
+jobs:
+  visual-unit-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Projection, V13 movement and persistence regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs16|FullyQualifiedName~GaVs15|FullyQualifiedName~GaVs14|FullyQualifiedName~GaVs13'
+      - name: Build Godot renderer and game
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  visual-unit-windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Projection, V13 movement and persistence regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs16|FullyQualifiedName~GaVs15|FullyQualifiedName~GaVs14|FullyQualifiedName~GaVs13'
+      - name: Build Windows Godot renderer and game
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
