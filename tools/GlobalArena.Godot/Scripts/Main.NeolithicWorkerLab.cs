@@ -39,7 +39,7 @@ public partial class Main
 
         var title = new Label
         {
-            Text = "ATIVIDADES TÁTICAS | LABORATÓRIO VS18",
+            Text = "ATIVIDADES TÁTICAS | LABORATÓRIO VS19B",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         title.AddThemeFontSizeOverride("font_size", 16);
@@ -54,7 +54,7 @@ public partial class Main
         warning.AddThemeColorOverride("font_color", new Color("#e1c883"));
         lab.AddChild(warning);
 
-        var start = new Button { Text = "INICIAR TRABALHO NEOLÍTICO (LAB)" };
+        var start = new Button { Text = "INSPECIONAR POVOAMENTO INICIAL (JÁ EXISTENTE)" };
         start.Pressed += StartWorkerLab;
         lab.AddChild(start);
 
@@ -192,7 +192,8 @@ public partial class Main
                 PhysicalEconomicCadenceMode.AdaptiveThirty,
                 PhysicalTacticalGeographyMode.Canonical01C,
                 PhysicalFoodMarketMode.LocalCashSettlement,
-                PhysicalWorkerMovementMode.TimedAdjacent);
+                PhysicalWorkerMovementMode.TimedAdjacent,
+                PhysicalCivilizationIdentityMode.BornWithPopulation);
             var origin = next.State.Allocations.First().TileId;
             if (!next.IsPhysicalWorkableLand(origin.FineStrategicCellId))
                 throw new InvalidOperationException("Origin is not on canonical 01C workable land.");
@@ -325,6 +326,8 @@ public partial class Main
         }
     }
 
+    private static string BornCivilizationLabSavePath =>
+        ProjectSettings.GlobalizePath("user://ga-vs19b-born-civilization.json");
     private static string TimedLabSavePath =>
         ProjectSettings.GlobalizePath("user://ga-vs15-worker-transit.json");
     private static string CashFoodLabSavePath =>
@@ -344,11 +347,13 @@ public partial class Main
         try
         {
             var content = _canonicalPhysicalLab.ExportSaveJson();
+            var isBorn = _canonicalPhysicalLab.HasInitialCivilization;
             var isTimed = _canonicalPhysicalLab.MovementMode == PhysicalWorkerMovementMode.TimedAdjacent;
             var isCash = _canonicalPhysicalLab.MarketMode == PhysicalFoodMarketMode.LocalCashSettlement;
             var isGeographic = _canonicalPhysicalLab.GeographyMode == PhysicalTacticalGeographyMode.Canonical01C;
             var isAdaptive = _canonicalPhysicalLab.CadenceMode == PhysicalEconomicCadenceMode.AdaptiveThirty;
-            var path = isTimed ? TimedLabSavePath : isCash ? CashFoodLabSavePath : isGeographic ? GeographyLabSavePath :
+            var path = isBorn ? BornCivilizationLabSavePath :
+                isTimed ? TimedLabSavePath : isCash ? CashFoodLabSavePath : isGeographic ? GeographyLabSavePath :
                 isAdaptive ? AdaptiveLabSavePath : CanonicalLabSavePath;
             var temp = path + ".tmp";
             File.WriteAllText(temp, content, Encoding.UTF8);
@@ -384,7 +389,9 @@ public partial class Main
             _workerLabStatus.Text += cameraSaved
                 ? "\nCÂMERA TÁTICA SALVA: posição, zoom e orientação."
                 : "\nATENÇÃO: partida salva, mas a visão tática não pôde ser salva.";
-            _workerLabStatus.Text += isTimed
+            _workerLabStatus.Text += isBorn
+                ? "\nSAVE CIVILIZACIONAL V14 GRAVADO: ga-vs19b-born-civilization.json"
+                : isTimed
                 ? "\nSAVE TEMPORAL V13 GRAVADO: ga-vs15-worker-transit.json"
                 : isCash
                 ? "\nSAVE DE CAIXA V12 GRAVADO: ga-vs14-cash-food.json"
@@ -408,16 +415,18 @@ public partial class Main
         try
         {
             // Never silently downgrade on a damaged newer save.
-            var hasTimed = File.Exists(TimedLabSavePath);
-            var hasCash = !hasTimed && File.Exists(CashFoodLabSavePath);
+            var hasBorn = File.Exists(BornCivilizationLabSavePath);
+            var hasTimed = !hasBorn && File.Exists(TimedLabSavePath);
+            var hasCash = !hasBorn && !hasTimed && File.Exists(CashFoodLabSavePath);
             var hasGeography = !hasTimed && !hasCash && File.Exists(GeographyLabSavePath);
             var hasAdaptive = !hasCash && !hasGeography && File.Exists(AdaptiveLabSavePath);
             var hasCanonical = !hasCash && !hasGeography && !hasAdaptive && File.Exists(CanonicalLabSavePath);
-            var path = hasTimed ? TimedLabSavePath : hasCash ? CashFoodLabSavePath : hasGeography ? GeographyLabSavePath :
+            var path = hasBorn ? BornCivilizationLabSavePath :
+                hasTimed ? TimedLabSavePath : hasCash ? CashFoodLabSavePath : hasGeography ? GeographyLabSavePath :
                 hasAdaptive ? AdaptiveLabSavePath :
                 hasCanonical ? CanonicalLabSavePath : LegacyLabSavePath;
             var content = File.ReadAllText(path, Encoding.UTF8);
-            var restored = hasTimed || hasCash || hasGeography || hasAdaptive || hasCanonical
+            var restored = hasBorn || hasTimed || hasCash || hasGeography || hasAdaptive || hasCanonical
                 ? CanonicalPhysicalTacticalSession.RestoreSaveJson(content)
                 : CanonicalPhysicalTacticalSession.MigrateVs07SaveJson(content);
             if (restored.State.CoarseParameters != new GoldbergParameters(3, 0) ||
@@ -470,7 +479,9 @@ public partial class Main
             _workerLabStatus.Text += cameraRestored
                 ? "\nCÂMERA TÁTICA RESTAURADA: mesma posição e zoom do save."
                 : "\nVisão tática: enquadramento inicial (save antigo ou visão indisponível).";
-            _workerLabStatus.Text += hasTimed
+            _workerLabStatus.Text += hasBorn
+                ? "\nSAVE CIVILIZACIONAL V14 REABERTO E VALIDADO."
+                : hasTimed
                 ? "\nSAVE TEMPORAL V13 REABERTO E VALIDADO."
                 : hasCash
                 ? "\nSAVE DE CAIXA V12 REABERTO E VALIDADO."
@@ -595,7 +606,22 @@ public partial class Main
                 $"ÚLTIMA COMPRA REAL turno {lastPurchase.MovementTurn}: alimento {lastPurchase.FoodRaw / 1_000_000.0:F3}; " +
                 $"pagamento {lastPurchase.PaidMicrocredits / 1_000_000.0:F3}; " +
                 $"preço {lastPurchase.PriceMicrocreditsPerUnit / 1_000_000.0:F4}\n");
+        var civilizationalInfo = _canonicalPhysicalLab.HasInitialCivilization
+            ? CivilizationalEconomicAttributionProjection.FromSession(_canonicalPhysicalLab)
+            : null;
+        var ownershipInfo = civilizationalInfo is null
+            ? "MODO LEGADO V13: associação civilizacional não materializada neste save.\n"
+            : $"CIVILIZAÇÃO {civilizationalInfo.Civilization.Value} | " +
+              $"comunidade: {civilizationalInfo.TotalWorkers} trabalhadores " +
+              $"({civilizationalInfo.WorkersInTransit} em trânsito) | " +
+              $"contas locais: {civilizationalInfo.Accounts.Count} | " +
+              $"estoques de recursos: {civilizationalInfo.Stocks.Count}\n" +
+              $"TITULARES: famílias {civilizationalInfo.HouseholdMoney / 1_000_000.0:F3} " +
+              $"e produtores {civilizationalInfo.ProducerMoney / 1_000_000.0:F3}; " +
+              "ambos da comunidade, NÃO tesouro estatal.\n" +
+              "INSTITUIÇÕES: implícitas. CONTROLE POLÍTICO: não decretado.\n";
         _workerLabStatus.Text =
+            ownershipInfo +
             $"Origem tile {origin.FineStrategicCellId.Value} | {jobs}\n" +
             $"Grupo selecionado: {selectedActivity} | disponíveis: {selectedGroupWorkers} trabalhadores\n" +
             $"Destino: {destination}\n" +
@@ -609,7 +635,7 @@ public partial class Main
                 $"Último ciclo: produção {lastCycle.ProducedRaw / 1_000_000.0:F3}; " +
                 $"consumo alimentar {lastCycle.FoodConsumedRaw / 1_000_000.0:F3}; " +
                 $"FALTA {lastCycle.FoodUnmetRaw / 1_000_000.0:F3}\n") +
-            $"WORLDSTATE CANÔNICO V{(_canonicalPhysicalLab.MovementMode == PhysicalWorkerMovementMode.TimedAdjacent ? "13" : _canonicalPhysicalLab.MarketMode == PhysicalFoodMarketMode.LocalCashSettlement ? "12" : _canonicalPhysicalLab.GeographyMode == PhysicalTacticalGeographyMode.Canonical01C ? "11" : _canonicalPhysicalLab.CadenceMode == PhysicalEconomicCadenceMode.AdaptiveThirty ? "10" : "9")}: " +
+            $"WORLDSTATE CANÔNICO V{(_canonicalPhysicalLab.HasInitialCivilization ? "14" : _canonicalPhysicalLab.MovementMode == PhysicalWorkerMovementMode.TimedAdjacent ? "13" : _canonicalPhysicalLab.MarketMode == PhysicalFoodMarketMode.LocalCashSettlement ? "12" : _canonicalPhysicalLab.GeographyMode == PhysicalTacticalGeographyMode.Canonical01C ? "11" : _canonicalPhysicalLab.CadenceMode == PhysicalEconomicCadenceMode.AdaptiveThirty ? "10" : "9")}: " +
             $"terreno {(_canonicalPhysicalLab.GeographyMode == PhysicalTacticalGeographyMode.Canonical01C ? "01C" : "V1 legado")}; " +
             $"mercado alimentar {(_canonicalPhysicalLab.MarketMode == PhysicalFoodMarketMode.LocalCashSettlement ? "LIQUIDADO À VISTA" : "LEGADO DIRETO")}; " +
             $"deslocamento {(_canonicalPhysicalLab.MovementMode == PhysicalWorkerMovementMode.TimedAdjacent ? "TEMPORAL" : "LEGADO")}; SEM carga comercial.";
