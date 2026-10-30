@@ -108,7 +108,7 @@ public sealed class EmergentSettlementProjection
             .Where(x => !inhabited.Contains(x.Tile))
             .Aggregate(0UL, (sum, x) => checked(
                 checked(sum + x.HouseholdMicrocredits) + x.ProducerMicrocredits)) ?? 0UL;
-        var abandonedStocks = state.Stocks.Count(x => !inhabited.Contains(x.Tile));
+        var abandonedStocks = state.Stocks.Count(x => !inhabited.Contains(x.TileId));
         var activeMoney = sites.Aggregate(0UL,
             (sum, x) => checked(sum + x.TotalLocalMoney));
         if (state.FoodCash is { } ledger &&
