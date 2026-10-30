@@ -54,5 +54,15 @@ jobs:
             $errors | ForEach-Object { Write-Error $_.Message }
             exit 1
           }
-      - name: Build Godot Windows
+          $script = Get-Content -Raw -Encoding UTF8 'tools/launch-vs19b.ps1'
+          $main = Get-Content -Raw -Encoding UTF8 'tools/GlobalArena.Godot/Scripts/Main.cs'
+          if (-not $script.Contains('& dotnet build') -or
+              -not $script.Contains('-c Debug') -or
+              -not $script.Contains('& $GodotExe --path $projectDir --verbose') -or
+              -not $main.Contains('GA_VS19B_RUNTIME_ACTIVE')) {
+            throw "VS19B Windows launch must build Debug and execute the game directly with an identifying runtime log."
+          }
+      - name: Build Godot Windows (Debug launch target)
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
+      - name: Build Godot Windows (Release regression)
         run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
