@@ -15,6 +15,7 @@ public sealed class CanonicalWorldStateHasher
     public const uint Canonical01CPhysicalEconomyFormatVersion = 11U;
     public const uint PhysicalFoodCashFormatVersion = 12U;
     public const uint TimedWorkerTransitFormatVersion = 13U;
+    public const uint FirstPoliticalFoundingFormatVersion = 14U;
 
     private static readonly byte[] Magic =
     {
@@ -308,7 +309,10 @@ public sealed class CanonicalWorldStateHasher
         // Explicit domain separator, tagged fields and the exact legacy
         // digest bind all pre-existing state + topology to the new version.
         hash.AppendData(Magic);
-        var format = physical.MovementMode == PhysicalWorkerMovementMode.TimedAdjacent
+        var format = worldState.Civilizations.Records.Count > 0 &&
+                     physical.MovementMode == PhysicalWorkerMovementMode.TimedAdjacent
+            ? FirstPoliticalFoundingFormatVersion
+            : physical.MovementMode == PhysicalWorkerMovementMode.TimedAdjacent
             ? TimedWorkerTransitFormatVersion
             : physical.FoodCash is not null
             ? PhysicalFoodCashFormatVersion
