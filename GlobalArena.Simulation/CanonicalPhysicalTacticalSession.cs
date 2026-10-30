@@ -493,18 +493,18 @@ public sealed class CanonicalPhysicalTacticalSession
 
                 if (cashAccounts is not null)
                 {
-                    var from = cashAccounts.GetValueOrDefault(order.Source) ??
+                    var originWallet = cashAccounts.GetValueOrDefault(order.Source) ??
                         new PhysicalFoodCashAccount(order.Source, 0UL, 0UL);
                     var to = cashAccounts.GetValueOrDefault(order.Destination) ??
                         new PhysicalFoodCashAccount(order.Destination, 0UL, 0UL);
                     var headcount = anchored[order.Source];
                     if (headcount < order.Workers)
                         throw new InvalidOperationException("Transit source population diverged.");
-                    var travellingCash = (ulong)((UInt128)from.HouseholdMicrocredits *
+                    var travellingCash = (ulong)((UInt128)originWallet.HouseholdMicrocredits *
                         order.Workers / headcount);
-                    cashAccounts[order.Source] = from with
+                    cashAccounts[order.Source] = originWallet with
                     {
-                        HouseholdMicrocredits = from.HouseholdMicrocredits - travellingCash
+                        HouseholdMicrocredits = originWallet.HouseholdMicrocredits - travellingCash
                     };
                     cashAccounts[order.Destination] = to with
                     {
