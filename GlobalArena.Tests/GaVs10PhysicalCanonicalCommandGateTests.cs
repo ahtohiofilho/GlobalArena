@@ -101,7 +101,7 @@ public sealed class GaVs10PhysicalCanonicalCommandGateTests
         Assert.Equal(8UL, game.Snapshot.PhysicalEconomy!.TotalWorkers);
         Assert.Equal(3UL, game.Snapshot.PhysicalEconomy.Workers
             .Where(x => x.TileId == target)
-            .Sum(x => (long)x.Workers) is long total ? (ulong)total : 0UL);
+            .Aggregate(0UL, (total, x) => checked(total + x.Workers)));
         Assert.Equal(1UL, gate.CopyForPresentation().Workers.Revision);
         Assert.Equal(2UL, game.Snapshot.Revision);
     }
