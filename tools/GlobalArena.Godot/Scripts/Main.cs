@@ -91,11 +91,18 @@ public partial class Main : Control
         var sovereignty = _attachedRuntimeState.Territory.TryGetController(
             territory, out var controller)
             ? $"civilização {controller.Value}" : "sem controle político definido";
+        var belonging = row.TotalSixths > 0UL &&
+            _attachedRuntimeState.Civilizations.Records.Count == 1
+            ? $"COMUNIDADE: Civilização {_attachedRuntimeState.Civilizations.Records[0].Id.Value} " +
+              "(pertencimento demográfico)"
+            : "COMUNIDADE: nenhuma presença civilizacional identificada aqui";
         _territorialPresenceSummary.Text =
             $"T{territory.Value} | presença ponderada {row.TotalEquivalent:F2} trabalhadores " +
             $"(ativos {row.WorkingEquivalent:F2}, em trânsito {row.TravellingEquivalent:F2}) | " +
             $"tiles físicos {row.OccupiedPhysicalTiles}\n" +
-            $"SOBERANIA: {sovereignty}. Presença populacional não é conquista.";
+            $"{belonging}\n" +
+            $"AUTORIDADE POLÍTICA FORMAL: {sovereignty}. " +
+            "Povoamento não implica conquista.";
     }
 
     // R30: physical tile facts are read-only display data, never a game order.
