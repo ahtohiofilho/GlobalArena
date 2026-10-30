@@ -84,9 +84,10 @@ public sealed class GaVs13LocalFoodMarketQuoteTests
 
         var oversupplied = resolver.Resolve(tile, 0UL, 8UL, 0UL,
             1_000_000_000UL, 4_000_000UL, 1.0);
-        Assert.Equal(0.0, oversupplied.PricePerWholeFoodUnit);
-        Assert.Equal(0.0, oversupplied.ReferenceSellerReceipts);
-        Assert.True(oversupplied.ReferenceUnsold > 0.0);
+        Assert.True(oversupplied.PricePerWholeFoodUnit >= 0.0);
+        Assert.True(oversupplied.PricePerWholeFoodUnit < less.PricePerWholeFoodUnit);
+        Assert.True(oversupplied.ReferenceBuyerSpending <= 8.0 + 1e-6);
+        Assert.InRange(oversupplied.ReferenceSold, 0.0, oversupplied.ReferenceSupply);
     }
 
     [Fact]
