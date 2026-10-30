@@ -224,6 +224,7 @@ public partial class Main : Control
     public override void _Ready()
     {
         GD.Print("GA_PROD_MAIN_READY_R6");
+        GD.Print("GA_VS19B_RUNTIME_ACTIVE build=born-civilization layout=full-height-square-map title=VS19B");
         // The Godot project name stays VS17 to retain old user:// saves;
         // a visible runtime title identifies the actual branch under test.
         GetWindow().Title = "Global Arena — VS19B | Comunidade desde o início";
