@@ -1,5 +1,6 @@
 using Godot;
 using GlobalArena.Runtime;
+using GlobalArena.Simulation;
 using GlobalArena.World;
 
 namespace GlobalArena.Godot;
@@ -27,6 +28,7 @@ public partial class Main : Control
     private Label? _tacticalTileSummary;
     private Label? _tacticalTileTerrain;
     private Label? _tacticalTileRuntime;
+    private Label? _territorialPresenceSummary;
     private WorldState? _attachedRuntimeState;
     // R38: composition owner, not a second simulation state inside the renderer.
     private CanonicalGameSession? _canonicalSession;
@@ -36,6 +38,7 @@ public partial class Main : Control
     public void AttachRuntimeState(WorldState? state)
     {
         _attachedRuntimeState = state;
+        UpdateTerritorialPresenceSummary();
         if (_tacticalPreview is not null && _tacticalPreview.SelectedCanonicalPhysicalTileId.HasValue)
             OnPhysicalTileInspected(_tacticalPreview.SelectedCanonicalPhysicalTileId,
                 _tacticalTileSummary?.Text ?? "", _tacticalTileTerrain?.Text ?? "");
@@ -58,6 +61,41 @@ public partial class Main : Control
             _tacticalBridgeStatus.Text = selectedId.HasValue
                 ? $"Territory {selectedId.Value} selected | tactical context available"
                 : "Select a canonical territory to enable tactical context";
+        UpdateTerritorialPresenceSummary();
+    }
+
+    /// <summary>
+    /// Presence is demographic and weighted at 1/6 per worker-equivalent.
+    /// It never changes sovereignty. Physical V13 world remains authoritative.
+    /// </summary>
+    private void UpdateTerritorialPresenceSummary()
+    {
+        if (_territorialPresenceSummary is null) return;
+        if (!_bridgeSelection.HasValue)
+        {
+            _territorialPresenceSummary.Text =
+                "PRESENÇA TERRITORIAL | Selecione um território estratégico.";
+            return;
+        }
+        if (_attachedRuntimeState?.PhysicalEconomy is not { } physical ||
+            _tacticalPreview?.CanonicalPhysicalIncidenceMap is not { } incidence)
+        {
+            _territorialPresenceSummary.Text =
+                $"T{_bridgeSelection.Value} | Sem população física inicializada.";
+            return;
+        }
+        var presence = StrategicTerritorialPresenceProjection.FromPhysicalState(
+            physical, incidence);
+        var territory = new StrategicCellId(_bridgeSelection.Value);
+        var row = presence.At(territory);
+        var sovereignty = _attachedRuntimeState.Territory.TryGetController(
+            territory, out var controller)
+            ? $"civilização {controller.Value}" : "sem controle político definido";
+        _territorialPresenceSummary.Text =
+            $"T{territory.Value} | presença ponderada {row.TotalEquivalent:F2} trabalhadores " +
+            $"(ativos {row.WorkingEquivalent:F2}, em trânsito {row.TravellingEquivalent:F2}) | " +
+            $"tiles físicos {row.OccupiedPhysicalTiles}\n" +
+            $"SOBERANIA: {sovereignty}. Presença populacional não é conquista.";
     }
 
     // R30: physical tile facts are read-only display data, never a game order.
@@ -89,7 +127,22 @@ public partial class Main : Control
                         : fact.Controller.HasValue
                             ? $"T{fact.StrategicCellId.Value}: civilization {fact.Controller.Value.Value}"
                             : $"T{fact.StrategicCellId.Value}: no control"));
-                _tacticalTileRuntime.Text = $"RUNTIME | {availability}\n{incidentFacts}";
+                var populationFacts = "";
+                if (inspected.Availability == TacticalRuntimeAvailability.Bound &&
+                    _attachedRuntimeState?.PhysicalEconomy is { } physical)
+                {
+                    var presence = StrategicTerritorialPresenceProjection.FromPhysicalState(
+                        physical, incidence);
+                    populationFacts = "\nPRESENÇA DEMOGRÁFICA PONDERADA: " +
+                        string.Join(" | ", inspected.IncidentControls.Select(fact =>
+                        {
+                            var row = presence.At(fact.StrategicCellId);
+                            return $"T{fact.StrategicCellId.Value}: " +
+                                $"{row.TotalEquivalent:F2} (viajando {row.TravellingEquivalent:F2})";
+                        }));
+                }
+                _tacticalTileRuntime.Text =
+                    $"RUNTIME | {availability}\n{incidentFacts}{populationFacts}";
                 GD.Print($"GA_UI_TACTICAL_RUNTIME_R35 selected={tileId.Value} status={inspected.Availability} " +
                     $"incidence_count={inspected.IncidentControls.Count} revision={(inspected.Revision.HasValue ? inspected.Revision.Value.ToString() : "none")} mutation=false");
             }
@@ -130,6 +183,7 @@ public partial class Main : Control
                 _tacticalTileEdges.Visible = true;
             }
             _tacticalBridgeStatus.Text = $"LOCAL TACTICAL | strategic {_bridgeSelection.Value} and adjacent territories";
+            UpdateTerritorialPresenceSummary();
             GD.Print($"GA_UI_TACTICAL_TRANSITION_OPEN focus={_bridgeSelection.Value}");
         }
         catch (System.Exception exception)
@@ -153,6 +207,7 @@ public partial class Main : Control
         _openTacticalContext.Visible = true;
         _returnStrategicContext.Visible = false;
         if (_tacticalTileEdges is not null) _tacticalTileEdges.Visible = false;
+        UpdateTerritorialPresenceSummary();
         _tacticalBridgeStatus.Text = _bridgeSelection.HasValue
             ? $"Territory {_bridgeSelection.Value} selected | tactical context available"
             : "Select a canonical territory to enable tactical context";
@@ -265,6 +320,13 @@ public partial class Main : Control
         _tacticalBridgeStatus = new Label { Text = "Select a canonical territory to enable tactical context" };
         _tacticalBridgeStatus.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         rightLayout.AddChild(_tacticalBridgeStatus);
+        var territorialPresence = new Label
+        {
+            Text = "PRESENÇA TERRITORIAL | Selecione um território estratégico.",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        rightLayout.AddChild(territorialPresence);
+        _territorialPresenceSummary = territorialPresence;
         // MVP inspection in the existing right column; the tactical viewport stays unchanged.
         var inspector = new VBoxContainer { Visible = false };
         inspector.AddThemeConstantOverride("separation", 5);
@@ -308,6 +370,7 @@ public partial class Main : Control
         ApplyCompactTacticalTypography(tacticalHud);
         ApplyCompactTacticalTypography(inspector);
         _tacticalBridgeStatus.AddThemeFontSizeOverride("font_size", 13);
+        _territorialPresenceSummary.AddThemeFontSizeOverride("font_size", 13);
         _returnStrategicContext.AddThemeFontSizeOverride("font_size", 13);
         _tacticalTileEdges.AddThemeFontSizeOverride("font_size", 13);
         _tacticalHudPanel = tacticalHud;
