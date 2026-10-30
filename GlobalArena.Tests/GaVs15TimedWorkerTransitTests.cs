@@ -58,9 +58,9 @@ public sealed class GaVs15TimedWorkerTransitTests
         Assert.Equal(1_500_000UL, game.FoodDemandAt(destination));
         Assert.Equal(4_000_000UL,
             second.FoodConsumedRaw + second.FoodUnmetRaw);
-        Assert.True(game.State.Allocations.Any(x =>
+        Assert.Contains(game.State.Allocations, x =>
             x.TileId == destination && x.Activity == EconomicActivityKind.Agriculture &&
-            x.Workers == 3UL));
+            x.Workers == 3UL);
         Assert.Equal(initialMoney, TotalMoney(game));
         Assert.Equal(13U, game.CurrentHash.FormatVersion);
     }
