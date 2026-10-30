@@ -27,6 +27,15 @@ public sealed record CanonicalFoodCashSave(
     ulong InitialMoneySupply, CanonicalFoodCashAccountSaveRow[] Accounts,
     CanonicalFoodCashReceiptSaveRow[] Receipts);
 
+/// <summary>Identity of the initial population, not a political act.</summary>
+public sealed record CanonicalInitialCivilizationSaveRow(ulong Identity, ulong PopulationOrigin);
+
+public enum PhysicalCivilizationIdentityMode : byte
+{
+    LegacyUnattributed = 0,
+    BornWithPopulation = 1
+}
+
 public sealed record CanonicalWorkerTransitSaveRow(
     ulong Order, ulong Source, ulong Destination, byte FromJob,
     byte ToJob, ulong Workers, ulong Depart, ulong Arrive);
@@ -43,7 +52,9 @@ public sealed record CanonicalPhysicalSavePayload(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     CanonicalFoodCashSave? FoodCash = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    CanonicalWorkerTransitSaveRow[]? Transits = null);
+    CanonicalWorkerTransitSaveRow[]? Transits = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    CanonicalInitialCivilizationSaveRow? InitialCivilization = null);
 
 public sealed record CanonicalPhysicalSaveEnvelope(
     int Version, string PayloadJson, string PayloadSha256Hex);
@@ -62,6 +73,7 @@ public sealed class CanonicalPhysicalTacticalSession
     public const int GeographyAlignedSaveFormat = 11;
     public const int CashFoodSaveFormat = 12;
     public const int TimedTransitSaveFormat = 13;
+    public const int BornCivilizationSaveFormat = 14;
     public const int MaximumActions = 100_000;
     private const int MaximumSaveBytes = 4_000_000;
     private const ulong FoodDemandRawPerWorker = 500_000UL;
@@ -75,6 +87,7 @@ public sealed class CanonicalPhysicalTacticalSession
     private readonly PhysicalTacticalGeographyMode _geographyMode;
     private readonly PhysicalFoodMarketMode _marketMode;
     private readonly PhysicalWorkerMovementMode _movementMode;
+    private readonly PhysicalCivilizationIdentityMode _civilizationMode;
     private readonly CanonicalTacticalPhysicalGeography? _canonicalGeography;
     private readonly StrategicPrimitiveResourcePotentialFieldSet _potentials;
     private readonly PhysicalTacticalIncidenceMap _incidence;
@@ -112,13 +125,18 @@ public sealed class CanonicalPhysicalTacticalSession
     public IReadOnlyList<CanonicalPhysicalAction> Events =>
         Array.AsReadOnly(_journal.ToArray());
     public WorldStateHash CurrentHash => _hasher.Compute(CheckedSnapshot);
+    public PhysicalCivilizationIdentityMode CivilizationMode => _civilizationMode;
+    public bool HasInitialCivilization =>
+        _civilizationMode == PhysicalCivilizationIdentityMode.BornWithPopulation;
 
     public CanonicalPhysicalTacticalSession(
         CanonicalGameSession game, GoldbergParameters fine,
         PhysicalEconomicCadenceMode cadenceMode = PhysicalEconomicCadenceMode.LegacyFixedSix,
         PhysicalTacticalGeographyMode geographyMode = PhysicalTacticalGeographyMode.LegacyV1,
         PhysicalFoodMarketMode marketMode = PhysicalFoodMarketMode.LegacyDirectConsumption,
-        PhysicalWorkerMovementMode movementMode = PhysicalWorkerMovementMode.LegacyInstant)
+        PhysicalWorkerMovementMode movementMode = PhysicalWorkerMovementMode.LegacyInstant,
+        PhysicalCivilizationIdentityMode civilizationMode =
+            PhysicalCivilizationIdentityMode.LegacyUnattributed)
     {
         Game = game ?? throw new ArgumentNullException(nameof(game));
         var request = Game.GeneratedWorld.Request;
@@ -147,6 +165,12 @@ public sealed class CanonicalPhysicalTacticalSession
              marketMode != PhysicalFoodMarketMode.LocalCashSettlement))
             throw new ArgumentException("Timed movement requires V12 local cash market.");
         _movementMode = movementMode;
+        if (civilizationMode is not (PhysicalCivilizationIdentityMode.LegacyUnattributed
+                or PhysicalCivilizationIdentityMode.BornWithPopulation) ||
+            (civilizationMode == PhysicalCivilizationIdentityMode.BornWithPopulation &&
+             movementMode != PhysicalWorkerMovementMode.TimedAdjacent))
+            throw new ArgumentException("Automatic civilization requires the canonical timed-worker world.");
+        _civilizationMode = civilizationMode;
         _ = new GoldbergScaledRefinement(_coarse, _fine);
         if (Game.Snapshot.WorldBinding !=
             RuntimeWorldBinding.FromGeneratedWorld(Game.GeneratedWorld))
@@ -207,7 +231,20 @@ public sealed class CanonicalPhysicalTacticalSession
                 seeded.WorkerRevision, startingAllocations, seeded.Stocks,
                 seeded.Cycles, _cadenceMode, _geographyMode, initialCash,
                 _movementMode);
+            var initialCiv = _civilizationMode == PhysicalCivilizationIdentityMode.BornWithPopulation
+                ? new CivilizationRuntimeState(new[]
+                  {
+                      new CivilizationRuntimeRecord(
+                          new CivilizationId(1UL),
+                          _incidence.TileIncidences[
+                              checked((int)InitialTile.FineStrategicCellId.Value - 1)]
+                              .IncidentCoarseCellIds[0])
+                  })
+                : CivilizationRuntimeState.Empty;
+            // Identity and the first workers appear in ONE initial snapshot.
+            // No founding event, sovereignty decree or state treasury.
             var next = Game.Snapshot
+                .WithCivilizations(initialCiv)
                 .WithPhysicalEconomy(initialPhysical)
                 .AdvanceRevision();
             Game.AcceptSnapshotIfCurrent(_lastCommittedSnapshot, next);
@@ -234,7 +271,11 @@ public sealed class CanonicalPhysicalTacticalSession
                 throw new InvalidOperationException("Attached physical snapshot has foreign topology.");
             // Creating another wrapper around an already progressed session
             // would lose its event journal and make an unreplayable V9 save.
-            if (Game.Snapshot.Revision != 1UL ||
+            if ((_civilizationMode == PhysicalCivilizationIdentityMode.BornWithPopulation
+                    ? Game.Snapshot.Civilizations.Records.Count != 1
+                    : Game.Snapshot.Civilizations.Records.Count != 0) ||
+                Game.Snapshot.Territory.Controls.Count != 0 ||
+                Game.Snapshot.Revision != 1UL ||
                 State.MovementTurn != 0UL || State.WorkerRevision != 0UL ||
                 State.Stocks.Count != 0 || State.Cycles.Count != 0 ||
                 !State.Allocations.SequenceEqual(expectedAllocations
@@ -254,14 +295,16 @@ public sealed class CanonicalPhysicalTacticalSession
         PhysicalEconomicCadenceMode cadenceMode = PhysicalEconomicCadenceMode.LegacyFixedSix,
         PhysicalTacticalGeographyMode geographyMode = PhysicalTacticalGeographyMode.LegacyV1,
         PhysicalFoodMarketMode marketMode = PhysicalFoodMarketMode.LegacyDirectConsumption,
-        PhysicalWorkerMovementMode movementMode = PhysicalWorkerMovementMode.LegacyInstant)
+        PhysicalWorkerMovementMode movementMode = PhysicalWorkerMovementMode.LegacyInstant,
+        PhysicalCivilizationIdentityMode civilizationMode =
+            PhysicalCivilizationIdentityMode.LegacyUnattributed)
     {
         var coarseParameters = coarse ?? new GoldbergParameters(3, 0);
         var canonical = CanonicalGameSession.Start(new WorldGenerationRequest(
             new WorldSeed(seed), WorldGenerationVersion.Initial, coarseParameters));
         return new CanonicalPhysicalTacticalSession(
             canonical, fine ?? new GoldbergParameters(18, 0), cadenceMode, geographyMode,
-            marketMode, movementMode);
+            marketMode, movementMode, civilizationMode);
     }
 
     public ulong WorkersAt(PhysicalTacticalTileId tile)
@@ -689,7 +732,7 @@ public sealed class CanonicalPhysicalTacticalSession
         {
             envelope = JsonSerializer.Deserialize<CanonicalPhysicalSaveEnvelope>(json)
                 ?? throw new InvalidOperationException("Missing canonical save envelope.");
-            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat or CashFoodSaveFormat or TimedTransitSaveFormat) ||
+            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat or CashFoodSaveFormat or TimedTransitSaveFormat or BornCivilizationSaveFormat) ||
                 string.IsNullOrEmpty(envelope.PayloadJson) ||
                 string.IsNullOrEmpty(envelope.PayloadSha256Hex))
                 throw new InvalidOperationException("Unsupported canonical save envelope.");
@@ -710,7 +753,9 @@ public sealed class CanonicalPhysicalTacticalSession
             payload.Actions is null || payload.Workers is null ||
             payload.Stocks is null || payload.Cycles is null ||
             ((payload.Version >= CashFoodSaveFormat) != (payload.FoodCash is not null)) ||
-            ((payload.Version == TimedTransitSaveFormat) != (payload.Transits is not null)) ||
+            ((payload.Version >= TimedTransitSaveFormat) != (payload.Transits is not null)) ||
+            ((payload.Version == BornCivilizationSaveFormat) !=
+                (payload.InitialCivilization is not null)) ||
             (payload.FoodCash is not null &&
              (payload.FoodCash.Accounts is null || payload.FoodCash.Receipts is null)) ||
             payload.Actions.Length > MaximumActions ||
@@ -726,13 +771,16 @@ public sealed class CanonicalPhysicalTacticalSession
         var marketMode = payload.Version >= CashFoodSaveFormat
             ? PhysicalFoodMarketMode.LocalCashSettlement
             : PhysicalFoodMarketMode.LegacyDirectConsumption;
-        var movementMode = payload.Version == TimedTransitSaveFormat
+        var movementMode = payload.Version >= TimedTransitSaveFormat
             ? PhysicalWorkerMovementMode.TimedAdjacent
             : PhysicalWorkerMovementMode.LegacyInstant;
+        var identityMode = payload.Version == BornCivilizationSaveFormat
+            ? PhysicalCivilizationIdentityMode.BornWithPopulation
+            : PhysicalCivilizationIdentityMode.LegacyUnattributed;
         var game = Start(payload.Seed,
             new GoldbergParameters(payload.CoarseM, payload.CoarseN),
             new GoldbergParameters(payload.FineM, payload.FineN), mode, terrainMode,
-            marketMode, movementMode);
+            marketMode, movementMode, identityMode);
         if (payload.WorldBindingHex != game.Game.Snapshot.WorldBinding!.WorldSignatureSha256Hex ||
             payload.InitialHashHex != game._initialHashHex)
             throw new InvalidOperationException("Canonical save world identity mismatch.");
@@ -823,7 +871,9 @@ public sealed class CanonicalPhysicalTacticalSession
         return game;
     }
 
-    private int CurrentSaveFormat => _movementMode == PhysicalWorkerMovementMode.TimedAdjacent
+    private int CurrentSaveFormat => HasInitialCivilization
+        ? BornCivilizationSaveFormat
+        : _movementMode == PhysicalWorkerMovementMode.TimedAdjacent
         ? TimedTransitSaveFormat
         : _marketMode == PhysicalFoodMarketMode.LocalCashSettlement
         ? CashFoodSaveFormat
@@ -878,6 +928,11 @@ public sealed class CanonicalPhysicalTacticalSession
                     x.Destination.FineStrategicCellId.Value,
                     (byte)x.FromJob, (byte)x.ToJob,
                     x.Workers, x.DepartureTurn, x.ArrivalTurn)).ToArray()
+                : null,
+            HasInitialCivilization
+                ? new CanonicalInitialCivilizationSaveRow(
+                    owned.Civilizations.Records[0].Id.Value,
+                    owned.Civilizations.Records[0].StartCellId!.Value.Value)
                 : null);
     }
 
