@@ -226,10 +226,10 @@ public partial class Main : Control
     public override void _Ready()
     {
         GD.Print("GA_PROD_MAIN_READY_R6");
-        GD.Print("GA_VS20_RUNTIME_ACTIVE branch=emergent-settlements layout=large-map save-v14=unchanged");
+        GD.Print("GA_VS21_RUNTIME_ACTIVE branch=emergent-settlements layout=large-map save-v14=unchanged");
         // The Godot project name stays VS17 to retain old user:// saves;
         // a visible runtime title identifies the actual branch under test.
-        GetWindow().Title = "Global Arena — VS20 | Povoamentos emergentes";
+        GetWindow().Title = "Global Arena — VS21 | Atividades produtivas locais";
         // Prioritize a maximized production window; preserve windowed resizing and avoid headless changes.
         if (DisplayServer.GetName() != "headless")
             DisplayServer.WindowSetMode(DisplayServer.WindowMode.Maximized);
@@ -332,7 +332,7 @@ public partial class Main : Control
         rightMargin.AddChild(rightLayout);
         // A single compact header is enough. Version stays readable even
         // though project.godot retains the stable VS17 save directory.
-        var panelTitle = new Label { Text = "GLOBAL ARENA  |  VS20" };
+        var panelTitle = new Label { Text = "GLOBAL ARENA  |  VS21" };
         panelTitle.AddThemeFontSizeOverride("font_size", 15);
         rightLayout.AddChild(panelTitle);
         _tacticalBridgeStatus = new Label { Text = "Select a canonical territory to enable tactical context" };
