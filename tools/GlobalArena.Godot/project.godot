@@ -10,7 +10,7 @@ config_version=5
 
 [application]
 
-config/name="Global Arena — VS10 Economia Canônica"
+config/name="Global Arena — VS11 Ciclos Econômicos Adaptativos"
 run/main_scene="res://Scenes/Main.tscn"
 config/features=PackedStringArray("4.7", "C#", "GL Compatibility")
 

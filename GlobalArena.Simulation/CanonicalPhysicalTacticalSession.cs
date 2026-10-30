@@ -34,14 +34,16 @@ public sealed record CanonicalPhysicalSaveEnvelope(
     int Version, string PayloadJson, string PayloadSha256Hex);
 
 /// <summary>
-/// GA-VS10: canonical physical workforce, local stocks, and six-movement
-/// cycle are all resolved from immutable WorldState snapshots. The old
+/// GA-VS11: canonical physical workforce, local stocks, and versioned
+/// fixed/adaptive economic cadences resolve from immutable WorldState snapshots. The old
 /// offline session is used only transiently to seed the original eight
 /// workers or to verify an explicitly requested legacy-save migration.
 /// </summary>
 public sealed class CanonicalPhysicalTacticalSession
 {
+    // V9 files retain the historical fixed-six cadence.
     public const int SaveFormat = 9;
+    public const int AdaptiveSaveFormat = 10;
     public const int MaximumActions = 100_000;
     private const int MaximumSaveBytes = 4_000_000;
     private const ulong FoodDemandRawPerWorker = 500_000UL;
@@ -51,6 +53,7 @@ public sealed class CanonicalPhysicalTacticalSession
     private readonly GoldbergParameters _fine;
     private readonly ulong _seed;
     private readonly int _generatorVersion;
+    private readonly PhysicalEconomicCadenceMode _cadenceMode;
     private readonly StrategicPrimitiveResourcePotentialFieldSet _potentials;
     private readonly PhysicalTacticalIncidenceMap _incidence;
     private readonly string _initialHashHex;
@@ -70,6 +73,9 @@ public sealed class CanonicalPhysicalTacticalSession
     }
 
     public CanonicalGameSession Game { get; }
+    public PhysicalEconomicCadenceMode CadenceMode => _cadenceMode;
+    public ulong NextEconomicInterval => PhysicalEconomicCadence.IntervalForTurn(
+        checked(State.MovementTurn + 1UL), _cadenceMode);
     public WorldGenerationResult FineWorld { get; }
     public PhysicalTacticalTileId InitialTile { get; }
     public PhysicalTacticalEconomyRuntimeState State =>
@@ -80,7 +86,8 @@ public sealed class CanonicalPhysicalTacticalSession
     public WorldStateHash CurrentHash => _hasher.Compute(CheckedSnapshot);
 
     public CanonicalPhysicalTacticalSession(
-        CanonicalGameSession game, GoldbergParameters fine)
+        CanonicalGameSession game, GoldbergParameters fine,
+        PhysicalEconomicCadenceMode cadenceMode = PhysicalEconomicCadenceMode.LegacyFixedSix)
     {
         Game = game ?? throw new ArgumentNullException(nameof(game));
         var request = Game.GeneratedWorld.Request;
@@ -88,6 +95,8 @@ public sealed class CanonicalPhysicalTacticalSession
         _generatorVersion = request.Version.Value;
         _coarse = request.StrategicParameters;
         _fine = fine;
+        _ = PhysicalEconomicCadence.IntervalForTurn(1UL, cadenceMode);
+        _cadenceMode = cadenceMode;
         _ = new GoldbergScaledRefinement(_coarse, _fine);
         if (Game.Snapshot.WorldBinding !=
             RuntimeWorldBinding.FromGeneratedWorld(Game.GeneratedWorld))
@@ -115,8 +124,14 @@ public sealed class CanonicalPhysicalTacticalSession
                 throw new InvalidOperationException(
                     "Physical initialization requires a new empty canonical game.");
 
+            var seeded = initial.BuildPhysicalRuntimeSnapshot();
+            var initialPhysical = new PhysicalTacticalEconomyRuntimeState(
+                seeded.CoarseWorldBinding, seeded.CoarseParameters,
+                seeded.FineParameters, seeded.MovementTurn,
+                seeded.WorkerRevision, seeded.Allocations, seeded.Stocks,
+                seeded.Cycles, _cadenceMode);
             var next = Game.Snapshot
-                .WithPhysicalEconomy(initial.BuildPhysicalRuntimeSnapshot())
+                .WithPhysicalEconomy(initialPhysical)
                 .AdvanceRevision();
             Game.AcceptSnapshotIfCurrent(_lastCommittedSnapshot, next);
             _lastCommittedSnapshot = next;
@@ -125,6 +140,7 @@ public sealed class CanonicalPhysicalTacticalSession
         {
             var baseline = initial.BuildPhysicalRuntimeSnapshot();
             if (State.FineParameters != _fine ||
+                State.CadenceMode != _cadenceMode ||
                 State.CoarseParameters != _coarse ||
                 State.CoarseWorldBinding != Game.Snapshot.WorldBinding)
                 throw new InvalidOperationException("Attached physical snapshot has foreign topology.");
@@ -144,13 +160,14 @@ public sealed class CanonicalPhysicalTacticalSession
     public static CanonicalPhysicalTacticalSession Start(
         ulong seed = 20261012UL,
         GoldbergParameters? coarse = null,
-        GoldbergParameters? fine = null)
+        GoldbergParameters? fine = null,
+        PhysicalEconomicCadenceMode cadenceMode = PhysicalEconomicCadenceMode.LegacyFixedSix)
     {
         var coarseParameters = coarse ?? new GoldbergParameters(3, 0);
         var canonical = CanonicalGameSession.Start(new WorldGenerationRequest(
             new WorldSeed(seed), WorldGenerationVersion.Initial, coarseParameters));
         return new CanonicalPhysicalTacticalSession(
-            canonical, fine ?? new GoldbergParameters(18, 0));
+            canonical, fine ?? new GoldbergParameters(18, 0), cadenceMode);
     }
 
     public ulong WorkersAt(PhysicalTacticalTileId tile)
@@ -224,7 +241,7 @@ public sealed class CanonicalPhysicalTacticalSession
             checked(current.WorkerRevision + 1UL),
             nextAllocations.Select(x => new PhysicalWorkerAllocation(
                 x.Key.Item1, x.Key.Item2, x.Value)),
-            current.Stocks, current.Cycles);
+            current.Stocks, current.Cycles, _cadenceMode);
         if (next.TotalWorkers != current.TotalWorkers)
             throw new InvalidOperationException("Worker conservation failed.");
 
@@ -233,8 +250,8 @@ public sealed class CanonicalPhysicalTacticalSession
     }
 
     /// <summary>
-    /// Only every sixth movement tick settles physical production and food
-    /// consumption. No stock crosses a tile boundary without transport.
+    /// Fixed-six V9 and progressive-thirty V10 settle physical production
+    /// and consumption under their versioned rules. No intertile teleportation.
     /// </summary>
     public PhysicalEconomicCycle? AdvanceMovementTurn()
     {
@@ -246,7 +263,8 @@ public sealed class CanonicalPhysicalTacticalSession
             x => (x.TileId, x.Commodity), x => x.RawQuantity);
         var cycles = current.Cycles.ToList();
 
-        if (turn % PhysicalTacticalEconomyRuntimeState.MovementTicksPerEconomicCycle == 0UL)
+        var lastSettlement = cycles.Count == 0 ? 0UL : cycles[^1].MovementTurn;
+        if (PhysicalEconomicCadence.IsSettlementTurn(turn, lastSettlement, _cadenceMode))
         {
             ulong produced = 0UL;
             ulong consumed = 0UL;
@@ -296,7 +314,7 @@ public sealed class CanonicalPhysicalTacticalSession
             current.Allocations,
             stocks.Select(x => new PhysicalCommodityStock(
                 x.Key.Item1, x.Key.Item2, x.Value)),
-            cycles);
+            cycles, _cadenceMode);
         Commit(next, "tick", 0UL, 0UL, 0, 0, 0UL);
         return cycle;
     }
@@ -323,7 +341,8 @@ public sealed class CanonicalPhysicalTacticalSession
         var digest = Convert.ToHexString(
             SHA256.HashData(Encoding.UTF8.GetBytes(payloadJson)));
         var json = JsonSerializer.Serialize(new CanonicalPhysicalSaveEnvelope(
-            SaveFormat, payloadJson, digest));
+            _cadenceMode == PhysicalEconomicCadenceMode.AdaptiveThirty
+                ? AdaptiveSaveFormat : SaveFormat, payloadJson, digest));
         if (Encoding.UTF8.GetByteCount(json) > MaximumSaveBytes)
             throw new InvalidOperationException("Canonical save exceeds size limit.");
         return json;
@@ -341,7 +360,7 @@ public sealed class CanonicalPhysicalTacticalSession
         {
             envelope = JsonSerializer.Deserialize<CanonicalPhysicalSaveEnvelope>(json)
                 ?? throw new InvalidOperationException("Missing canonical save envelope.");
-            if (envelope.Version != SaveFormat ||
+            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat) ||
                 string.IsNullOrEmpty(envelope.PayloadJson) ||
                 string.IsNullOrEmpty(envelope.PayloadSha256Hex))
                 throw new InvalidOperationException("Unsupported canonical save envelope.");
@@ -358,16 +377,19 @@ public sealed class CanonicalPhysicalTacticalSession
             throw new InvalidOperationException("Invalid canonical save encoding.", ex);
         }
 
-        if (payload.Version != SaveFormat ||
+        if (payload.Version != envelope.Version ||
             payload.Actions is null || payload.Workers is null ||
             payload.Stocks is null || payload.Cycles is null ||
             payload.Actions.Length > MaximumActions ||
             payload.GeneratorVersion != WorldGenerationVersion.Initial.Value)
             throw new InvalidOperationException("Unsupported canonical save payload.");
 
+        var mode = payload.Version == AdaptiveSaveFormat
+            ? PhysicalEconomicCadenceMode.AdaptiveThirty
+            : PhysicalEconomicCadenceMode.LegacyFixedSix;
         var game = Start(payload.Seed,
             new GoldbergParameters(payload.CoarseM, payload.CoarseN),
-            new GoldbergParameters(payload.FineM, payload.FineN));
+            new GoldbergParameters(payload.FineM, payload.FineN), mode);
         if (payload.WorldBindingHex != game.Game.Snapshot.WorldBinding!.WorldSignatureSha256Hex ||
             payload.InitialHashHex != game._initialHashHex)
             throw new InvalidOperationException("Canonical save world identity mismatch.");
@@ -456,7 +478,9 @@ public sealed class CanonicalPhysicalTacticalSession
         var owned = CheckedSnapshot;
         var state = State;
         return new CanonicalPhysicalSavePayload(
-            SaveFormat, _seed, _generatorVersion, _coarse.M, _coarse.N, _fine.M, _fine.N,
+            _cadenceMode == PhysicalEconomicCadenceMode.AdaptiveThirty
+                ? AdaptiveSaveFormat : SaveFormat,
+            _seed, _generatorVersion, _coarse.M, _coarse.N, _fine.M, _fine.N,
             owned.WorldBinding!.WorldSignatureSha256Hex, _initialHashHex,
             owned.Revision, state.MovementTurn, state.WorkerRevision,
             CurrentHash.HexDigest, _journal.ToArray(),

@@ -1,0 +1,45 @@
+name: GA-VS11 Adaptive Economic Cadence
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Runtime/PhysicalEconomicCadence.cs'
+      - 'GlobalArena.Runtime/PhysicalTacticalEconomyRuntimeState.cs'
+      - 'GlobalArena.Simulation/CanonicalPhysicalTacticalSession.cs'
+      - 'GlobalArena.Simulation/CanonicalWorldStateHasher.cs'
+      - 'GlobalArena.Tests/GaVs11AdaptiveEconomicCadenceTests.cs'
+      - 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+      - 'tools/GlobalArena.Godot/project.godot'
+      - '.github/workflows/ga-vs11-adaptive-economic-cadence.yml'
+  workflow_dispatch:
+
+jobs:
+  adaptive-economy-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Adaptive cadence, historical V9 preservation and canonical regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs11|FullyQualifiedName~GaVs10|FullyQualifiedName~GaVs09|FullyQualifiedName~GaVs07|FullyQualifiedName~CanonicalWorldStateHasherTests'
+      - name: Build the original Godot CSharp client
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  adaptive-economy-windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Adaptive timing, save/replay V10 and fixed-six V9 regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs11|FullyQualifiedName~GaVs10|FullyQualifiedName~GaVs09|FullyQualifiedName~GaVs07|FullyQualifiedName~CanonicalWorldStateHasherTests'
+      - name: Compile canonical gameplay in Godot Windows
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
