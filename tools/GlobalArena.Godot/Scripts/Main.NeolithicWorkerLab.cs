@@ -18,6 +18,7 @@ public partial class Main
 {
     private EconomicPhysicalTacticalWorkerSession? _workerLab;
     private EconomicPhysicalTacticalOfflineSession? _offlineLab;
+    private PhysicalEconomyCanonicalCommandGate? _physicalGate;
     private PhysicalTacticalTileId? _workerOrigin;
     private PhysicalTacticalTileId? _workerDestination;
     private Label? _workerLabStatus;
@@ -44,7 +45,7 @@ public partial class Main
 
         var warning = new Label
         {
-            Text = "Economia física publicada no WorldState canônico (hash v9); produção/consumo a cada 6 turnos, com save offline próprio. Ainda SEM mercado, transporte ou cidades.",
+            Text = "Ordens físicas validadas e publicadas atomicamente no WorldState (hash v9); ciclo de 6 turnos ainda provisório e save offline separado. SEM mercado, transporte ou cidades.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         warning.AddThemeColorOverride("font_color", new Color("#e1c883"));
@@ -128,19 +129,23 @@ public partial class Main
         };
     }
 
-    private void PublishPhysicalEconomyToWorldState()
+    // The command gate is the sole writer. The local offline model is a
+    // defensive HUD copy, never a second authority.
+    private void RefreshPhysicalLabFromGate(string commandKind)
     {
-        if (_canonicalSession is null || _offlineLab is null)
-            throw new InvalidOperationException("The bound world or physical session is unavailable.");
-        var staged = PhysicalEconomyWorldStatePublisher.Stage(
-            _canonicalSession.Snapshot, _canonicalSession.GeneratedWorld, _offlineLab);
-        ReceiveAuthoritativeSnapshot(staged);
+        if (_canonicalSession is null || _physicalGate is null)
+            throw new InvalidOperationException("The canonical physical command gate is unavailable.");
+        _offlineLab = _physicalGate.CopyForPresentation();
+        _workerLab = _offlineLab.Workers;
         AttachRuntimeState(_canonicalSession.Snapshot);
-        var hash = new CanonicalWorldStateHasher().Compute(_canonicalSession.Snapshot);
-        GD.Print($"GA-VS09-CANONICAL-PHYSICAL-PUBLISHED revision={staged.Revision} " +
-                 $"hash_format={hash.FormatVersion} movement_turn={_offlineLab.MovementTurn} " +
-                 $"economic_cycles={_offlineLab.EconomicCycles} workers={_offlineLab.Workers.TotalWorkers} " +
-                 $"stock_entries={_offlineLab.Stocks.Count} digest={hash.HexDigest} strategic_population_duplicates=false");
+        var state = _canonicalSession.Snapshot;
+        var hash = new CanonicalWorldStateHasher().Compute(state);
+        GD.Print($"GA-VS10-CANONICAL-PHYSICAL-COMMITTED kind={commandKind} " +
+                 $"revision={state.Revision} hash_format={hash.FormatVersion} " +
+                 $"movement_turn={_offlineLab.MovementTurn} economic_cycles={_offlineLab.EconomicCycles} " +
+                 $"workers={_workerLab.TotalWorkers} stock_entries={_offlineLab.Stocks.Count} " +
+                 $"next_sequence={_physicalGate.NextSequence} digest={hash.HexDigest} " +
+                 "offline_model_is_defensive_copy=true");
     }
 
     private void StartWorkerLab()
@@ -152,16 +157,20 @@ public partial class Main
             // The existing production renderer is G(3,0)->G(18,0), not the
             // G(2,0)->G(12,0) used by the isolated VS03/VS04 demos.
             // Explicit instance parameters prevent invalid cross-world IDs.
-            _offlineLab = new EconomicPhysicalTacticalOfflineSession(
+            if (_canonicalSession is null)
+                throw new InvalidOperationException("Canonical game session is unavailable.");
+            var candidate = new EconomicPhysicalTacticalOfflineSession(
                 20261012UL, new GoldbergParameters(3, 0), new GoldbergParameters(18, 0));
-            _workerLab = _offlineLab.Workers;
-            _workerOrigin = _workerLab.InitialTile;
-            _workerDestination = null;
-            var focus = _workerLab.DisplayBucket(_workerLab.InitialTile);
+            var origin = candidate.Workers.InitialTile;
+            var focus = candidate.Workers.DisplayBucket(origin);
             _tacticalPreview.Open(focus.Value);
-            if (!_tacticalPreview.HasVisiblePhysicalTile(_workerLab.InitialTile.FineStrategicCellId.Value))
+            if (!_tacticalPreview.HasVisiblePhysicalTile(origin.FineStrategicCellId.Value))
                 throw new InvalidOperationException("Worker origin is not visible in its physical map.");
-            PublishPhysicalEconomyToWorldState();
+            var gate = new PhysicalEconomyCanonicalCommandGate(_canonicalSession, candidate);
+            _physicalGate = gate;
+            _workerOrigin = origin;
+            _workerDestination = null;
+            RefreshPhysicalLabFromGate("start");
             UpdateWorkerLabHud();
             GD.Print($"GA-VS05-ORIGINAL-UI-LAB-READY fine=18 coarse=3 source={_workerOrigin.Value.FineStrategicCellId.Value} workers={_workerLab.TotalWorkers} physical_worldstate_published=true");
         }
@@ -169,6 +178,7 @@ public partial class Main
         {
             _workerLab = null;
             _offlineLab = null;
+            _physicalGate = null;
             _workerOrigin = null;
             _workerDestination = null;
             _tacticalPreview.ClearWorkerRings();
@@ -207,18 +217,21 @@ public partial class Main
 
     private void MoveWorkerLabWorkers()
     {
-        if (_workerLab is null || _offlineLab is null || _workerOrigin is null || _workerDestination is null ||
+        if (_workerLab is null || _offlineLab is null || _physicalGate is null ||
+            _canonicalSession is null || _workerOrigin is null || _workerDestination is null ||
             _workerAmount is null || _workerFromJob is null || _workerToJob is null)
             return;
         try
         {
-            _offlineLab.MoveWorkers(_workerOrigin.Value, _workerDestination.Value,
+            _physicalGate.MoveWorkers(_physicalGate.NextSequence,
+                _canonicalSession.Snapshot.Revision,
+                _workerOrigin.Value, _workerDestination.Value,
                 (EconomicActivityKind)_workerFromJob.GetSelectedId(),
                 (EconomicActivityKind)_workerToJob.GetSelectedId(),
                 checked((ulong)_workerAmount.Value));
             _workerOrigin = _workerDestination;
             _workerDestination = null;
-            PublishPhysicalEconomyToWorldState();
+            RefreshPhysicalLabFromGate("move");
             UpdateWorkerLabHud();
             GD.Print($"GA-VS05-ORIGINAL-UI-WORKERS-MOVED revision={_workerLab.Revision} workers={_workerLab.TotalWorkers} occupied={_workerLab.Assignments.Select(x => x.TileId).Distinct().Count()} city_entity=false physical_worldstate_published=true");
         }
@@ -231,11 +244,13 @@ public partial class Main
 
     private void AdvanceOfflineLabTurn()
     {
-        if (_offlineLab is null || _workerLabStatus is null) return;
+        if (_physicalGate is null || _canonicalSession is null || _workerLabStatus is null) return;
         try
         {
-            var cycle = _offlineLab.AdvanceMovementTurn();
-            PublishPhysicalEconomyToWorldState();
+            var receipt = _physicalGate.AdvanceMovementTurn(
+                _physicalGate.NextSequence, _canonicalSession.Snapshot.Revision);
+            var cycle = receipt.Settlement;
+            RefreshPhysicalLabFromGate("tick");
             UpdateWorkerLabHud();
             GD.Print(cycle is null
                 ? $"GA-VS07-TICK movement_turn={_offlineLab.MovementTurn} settlement=false"
@@ -255,7 +270,7 @@ public partial class Main
         if (_offlineLab is null || _workerLabStatus is null) return;
         try
         {
-            var content = _offlineLab.ExportSaveJson();
+            var content = _physicalGate!.ExportOfflineSaveJson();
             // Create the file alongside its destination, then atomically
             // replace. No canonical WorldState or network operations involved.
             var path = OfflineLabSavePath;
@@ -289,11 +304,16 @@ public partial class Main
             _tacticalPreview.Open(focus.Value);
             if (!_tacticalPreview.HasVisiblePhysicalTile(origin.FineStrategicCellId.Value))
                 throw new InvalidOperationException("O tile de trabalho restaurado não aparece na malha.");
-            _offlineLab = next;
-            _workerLab = next.Workers;
+            if (_canonicalSession is null)
+                throw new InvalidOperationException("Canonical game session is unavailable.");
+            if (_physicalGate is null)
+                _physicalGate = new PhysicalEconomyCanonicalCommandGate(_canonicalSession, next);
+            else
+                _physicalGate.RestoreOfflineSave(_physicalGate.NextSequence,
+                    _canonicalSession.Snapshot.Revision, content);
             _workerOrigin = origin;
             _workerDestination = null;
-            PublishPhysicalEconomyToWorldState();
+            RefreshPhysicalLabFromGate("restore");
             UpdateWorkerLabHud();
             _workerLabStatus.Text += "\nSAVE OFFLINE REABERTO E VALIDADO.";
             GD.Print($"GA-VS07-LOADED movement_turn={_offlineLab.MovementTurn} cycles={_offlineLab.EconomicCycles} workers={_workerLab.TotalWorkers}");
