@@ -1,9 +1,14 @@
-# GA-VS19B: deterministic Godot Mono editor launch from THIS worktree.
+# GA-VS19B: deterministic DIRECT game launch from THIS worktree.
+# No editor selection or F5 required. Build Debug for Godot Mono runtime.
 # Run from PowerShell with:
 #   powershell -ExecutionPolicy Bypass -File .\tools\launch-vs19b.ps1
 # Optional: -GodotExe "C:\path\to\Godot_v4.7.2-stable_mono_win64.exe"
+# Optional: -Editor opens project editor rather than the game directly.
 [CmdletBinding()]
-param([string]$GodotExe)
+param(
+    [string]$GodotExe,
+    [switch]$Editor
+)
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
@@ -66,13 +71,22 @@ Write-Host "VS19B VERIFIED: $repoRoot" -ForegroundColor Green
 Write-Host "Commit: $head"
 Write-Host "Godot executable: $GodotExe"
 Write-Host "Godot project: $projectDir"
-Write-Host "Building current Godot project..."
-& dotnet build (Join-Path $projectDir 'GlobalArena.Godot.csproj') -c Release
-if ($LASTEXITCODE -ne 0) { throw "Godot C# build failed; editor not opened." }
+Write-Host "Building VS19B Debug (used by Godot F5 and direct game launch)..."
+& dotnet build (Join-Path $projectDir 'GlobalArena.Godot.csproj') -c Debug
+if ($LASTEXITCODE -ne 0) { throw "Godot C# Debug build failed; game not opened." }
 
-Write-Host "Launching this exact VS19B project via --path." -ForegroundColor Green
-Write-Host "Close other Godot editors/game windows before pressing F5."
-Write-Host "Expected new game title: Global Arena - VS19B | Comunidade desde o inicio"
-Start-Process -FilePath $GodotExe -ArgumentList @(
-    '--editor', '--path', ('"' + $projectDir + '"')
-) -WorkingDirectory $projectDir
+Write-Host "Build completed. Checked VS19B source and Git SHA." -ForegroundColor Green
+Write-Host "Starting Godot from this EXACT folder: $projectDir"
+Write-Host "Expected side panel: GLOBAL ARENA | VS19B"
+Write-Host "Expected runtime log: GA_VS19B_RUNTIME_ACTIVE"
+Write-Host "Do not press F5 in any other open Godot editor." -ForegroundColor Yellow
+if ($Editor) {
+    Write-Host "Explicit -Editor option: opening THIS worktree's editor."
+    & $GodotExe --editor --path $projectDir
+} else {
+    Write-Host "Launching VS19B GAME DIRECTLY (no editor, no F5 required)." -ForegroundColor Green
+    & $GodotExe --path $projectDir --verbose
+}
+if ($LASTEXITCODE -ne 0) {
+    throw "Godot exited with code $LASTEXITCODE. See its log above."
+}
