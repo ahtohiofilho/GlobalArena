@@ -1044,6 +1044,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         SelectPhysicalTile(_selectedFineTileId);
         if (_workerSource.HasValue) RefreshWorkerRings();
         RefreshWorkerMarkers();
+        RefreshSettlementHalos();
         GD.Print($"GA_TACTICAL_LOCAL_OPEN focus={focusValue} framing_rings={_ringCount} resident_rings={_residentRingCount} frame_tiles={framingTiles.Count} projection={(_equidistant ? "Equidistant" : "Orthographic")} regions={selectedStrategic.Count} physical_tiles={selectedPhysical.Count} triangles={countTriangles} edges={edgeCount} parameters=G(3,0)>G(18,0) duplicate_ids=0");
         GD.Print($"GA_TACTICAL_TERRITORY_BORDERS_MESH_R1 focus={focusValue} strategic_edges={strategicEdgesRendered} segments={boundarySegments} source=physical_centers surface_epsilon={TerritoryBoundarySurfaceLift:F5} toggle={_showTerritoryBoundaries} movement_unchanged=true");
         GD.Print($"GA_TACTICAL_TERRITORY_SHAPE_ANCHORS_R1 focus={focusValue} anchors=3-2-3 segments={boundarySegments} feature=visual_only highlight=false movement_unchanged=true");
