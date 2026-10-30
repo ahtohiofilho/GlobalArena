@@ -8,7 +8,7 @@ Problemas observados: cabeçalho global com título, slogan e `SYSTEM STATUS` so
 - Remove o **cabeçalho inteiro** da cena, inclusive a apresentação do botão diagnóstico `SYSTEM STATUS`, e remove o **rodapé**; logs Godot continuam sendo a fonte dos diagnósticos.
 - Reduz as margens periféricas (horizontal 20→8, vertical 16→6) e separação entre mapa e painel (12→8).
 - Mantém o **AspectRatioContainer 1:1** sobre a janela quadrada; não planifica a malha nem distorce o terreno. A altura recuperada pelo cabeçalho/rodapé amplia o espaço do globo e do mapa tático.
-- Amplia largura mínima da coluna direita para **530 px** (antes 390). Mantém uma única identidade visual compacta `GLOBAL ARENA | VS19B`, e retira títulos repetidos de seções.
+- Amplia largura mínima da coluna direita para **até 530 px** (antes 390), com ajuste responsivo de 35% do viewport entre 390–530 px em resoluções menores. Mantém uma única identidade visual compacta `GLOBAL ARENA | VS19B`, e retira títulos repetidos de seções.
 - Leva o longo inspetor de tile para **dentro da rolagem tática**. A região fixa conserva apenas título, contexto territorial selecionado, navegação e controle de arestas. O início da região rolável tática prioriza os **comandos do laboratório**, seguido de diagnóstico e controles auxiliares do mapa.
 - O Godot exibe a versão na **barra de título runtime** `Global Arena — VS19B | Comunidade desde o início`, mantendo inalterado o nome do projeto gravado no `project.godot`, para não esconder os saves legados.
 - O botão de inspeção VS19B não funda nada: apenas localiza um povoamento inicial já existente se estiver fora da janela. O jogador poderá conferir isso no título e no HUD sem confundir a branch antiga.
