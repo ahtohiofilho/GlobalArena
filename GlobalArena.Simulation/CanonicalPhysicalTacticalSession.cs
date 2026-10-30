@@ -183,7 +183,9 @@ public sealed class CanonicalPhysicalTacticalSession
             if (Game.Snapshot.Revision != 1UL ||
                 State.MovementTurn != 0UL || State.WorkerRevision != 0UL ||
                 State.Stocks.Count != 0 || State.Cycles.Count != 0 ||
-                !State.Allocations.SequenceEqual(expectedAllocations))
+                !State.Allocations.SequenceEqual(expectedAllocations
+                    .OrderBy(x => x.TileId.FineStrategicCellId.Value)
+                    .ThenBy(x => (byte)x.Activity)))
                 throw new InvalidOperationException(
                     "Existing progressed physical game must be reopened with its canonical event journal.");
         }
