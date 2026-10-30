@@ -138,7 +138,7 @@ public sealed class GaVs17StrategicTerritorialPresenceTests
                 new GoldbergParameters(6, 0)));
         Assert.Throws<ArgumentException>(() =>
             StrategicTerritorialPresenceProjection.FromPhysicalState(game.State, foreign));
-        Assert.Throws<ArgumentException>(() =>
+        Assert.Throws<ArgumentNullException>(() =>
             StrategicTerritorialPresenceProjection.FromPhysicalState(game.State, null!));
     }
 }
