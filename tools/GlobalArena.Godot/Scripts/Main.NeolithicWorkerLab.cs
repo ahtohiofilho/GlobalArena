@@ -23,6 +23,7 @@ public partial class Main
     private Label? _workerLabStatus;
     private Label? _workerLabHover;
     private Label? _workerLabDetails;
+    private Label? _settlementSummary;
     private VBoxContainer? _workerLabAdvancedPanel;
     private Button? _workerMoveButton;
     private SpinBox? _workerAmount;
@@ -41,7 +42,7 @@ public partial class Main
 
         var title = new Label
         {
-            Text = "POVOAMENTO E MOVIMENTAÇÃO | VS19C",
+            Text = "POVOAMENTOS EMERGENTES | VS20",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         title.AddThemeFontSizeOverride("font_size", 16);
@@ -66,6 +67,13 @@ public partial class Main
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         lab.AddChild(_workerLabStatus);
+        _settlementSummary = new Label
+        {
+            Text = "Núcleos habitados: leitura automática do trabalho efetivo.",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        _settlementSummary.AddThemeColorOverride("font_color", new Color("#d9c27d"));
+        lab.AddChild(_settlementSummary);
 
         var jobs = new HBoxContainer();
         lab.AddChild(jobs);
@@ -583,6 +591,8 @@ public partial class Main
             _foodMarketQuoteLabel.Text = "Cotação opcional: refaça após mudanças de estado/tile.";
         }
         var available = _canonicalPhysicalLab.AdjacentWorkable(_workerOrigin.Value);
+        var settlements = EmergentSettlementProjection.FromSession(_canonicalPhysicalLab);
+        _tacticalPreview.SetSettlementSites(settlements);
         _tacticalPreview.SetWorkerMarkers(
             TacticalWorkerMarkerProjection.FromPhysicalState(state),
             _workerOrigin.Value.FineStrategicCellId.Value,
@@ -594,6 +604,26 @@ public partial class Main
             available);
 
         var origin = _workerOrigin.Value;
+        var inhabited = settlements.At(origin);
+        if (_settlementSummary is not null)
+        {
+            var originSite = inhabited is null
+                ? "origem sem residentes ativos"
+                : $"tile {origin.FineStrategicCellId.Value}: {inhabited.Workers} pessoas " +
+                  $"(agricultura {inhabited.AgriculturalWorkers}, madeira {inhabited.ForestryWorkers}, " +
+                  $"pedra {inhabited.MiningWorkers})";
+            _settlementSummary.Text =
+                $"NÚCLEOS HABITADOS {settlements.Sites.Count} | residentes " +
+                $"{settlements.TotalResidentWorkers} | viajando {settlements.TotalTravellers}\n" +
+                originSite +
+                (inhabited is null ? "" :
+                    $"\nCaixa local: famílias {inhabited.HouseholdMicrocredits / 1_000_000.0:F2}, " +
+                    $"produtores {inhabited.ProducerMicrocredits / 1_000_000.0:F2}; " +
+                    $"estoque (alim./pedra/madeira) " +
+                    $"{inhabited.FoodStockRaw / 1_000_000.0:F2}/" +
+                    $"{inhabited.StoneStockRaw / 1_000_000.0:F2}/" +
+                    $"{inhabited.WoodStockRaw / 1_000_000.0:F2}");
+        }
         var local = state.Allocations.Where(x => x.TileId == origin).ToArray();
         var selectedActivity = _workerFromJob is null
             ? EconomicActivityKind.Agriculture
@@ -672,6 +702,10 @@ public partial class Main
                 "(famílias + produtores).");
         if (_workerLabDetails is not null)
             _workerLabDetails.Text =
+            $"POVOAMENTOS DERIVADOS: {settlements.Sites.Count} núcleos; " +
+            $"contas em tiles desabitados {settlements.UninhabitedAccountMoney / 1_000_000.0:F3}; " +
+            $"estoques em tiles desabitados {settlements.UninhabitedStockRecords} registros. " +
+            "Esses bens não desaparecem nem criam cidades.\n" +
             ownershipInfo +
             $"Origem tile {origin.FineStrategicCellId.Value} | {jobs}\n" +
             $"Grupo selecionado: {selectedActivity} | disponíveis: {selectedGroupWorkers} trabalhadores\n" +
