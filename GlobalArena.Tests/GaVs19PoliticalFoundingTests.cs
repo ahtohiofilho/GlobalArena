@@ -99,9 +99,9 @@ public sealed class GaVs19PoliticalFoundingTests
         var initial = game.CurrentHash;
         Assert.Throws<InvalidOperationException>(() =>
             game.FoundFirstCivilization(neighbor, game.DisplayBucket(neighbor)));
-        Assert.Throws<InvalidOperationException>(() =>
+        Assert.Throws<ArgumentException>(() =>
             game.FoundFirstCivilization(origin, new StrategicCellId(
-                game.Game.GeneratedWorld.StrategicTopology.Cells.Count + 1UL)));
+                checked((ulong)game.Game.GeneratedWorld.StrategicTopology.Cells.Count + 1UL))));
         Assert.Equal(initial, game.CurrentHash);
         Assert.Empty(game.Events);
         game.FoundFirstCivilization(origin, territory);
