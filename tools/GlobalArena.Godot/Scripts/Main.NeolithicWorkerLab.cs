@@ -22,6 +22,8 @@ public partial class Main
     private PhysicalTacticalTileId? _workerDestination;
     private Label? _workerLabStatus;
     private Label? _workerLabHover;
+    private Label? _workerLabDetails;
+    private VBoxContainer? _workerLabAdvancedPanel;
     private Button? _workerMoveButton;
     private SpinBox? _workerAmount;
     private OptionButton? _workerFromJob;
@@ -39,7 +41,7 @@ public partial class Main
 
         var title = new Label
         {
-            Text = "ATIVIDADES TÁTICAS | LABORATÓRIO VS19B",
+            Text = "POVOAMENTO E MOVIMENTAÇÃO | VS19C",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         title.AddThemeFontSizeOverride("font_size", 16);
@@ -48,7 +50,7 @@ public partial class Main
 
         var warning = new Label
         {
-            Text = "Escolha os grupos diretamente no mapa. Verde: alimento; marrom: madeira; cinza: pedra; âmbar: trabalhadores viajando.",
+            Text = "Selecione um grupo no mapa e clique em um tile vizinho para deslocar trabalhadores.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         warning.AddThemeColorOverride("font_color", new Color("#e1c883"));
@@ -57,22 +59,6 @@ public partial class Main
         var start = new Button { Text = "INSPECIONAR POVOAMENTO INICIAL (JÁ EXISTENTE)" };
         start.Pressed += StartWorkerLab;
         lab.AddChild(start);
-
-        var legend = new Label
-        {
-            Text = "Ciano: origem | Laranja: destino | Verde: vizinhos válidos",
-            AutowrapMode = TextServer.AutowrapMode.WordSmart
-        };
-        lab.AddChild(legend);
-        var markerLegend = new Label
-        {
-            Text = "GRUPOS NO MAPA: verde agricultura | marrom madeira | cinza pedra | âmbar em trânsito",
-            AutowrapMode = TextServer.AutowrapMode.WordSmart
-        };
-        lab.AddChild(markerLegend);
-
-        _workerLabHover = new Label { Text = "Sob o cursor: —" };
-        lab.AddChild(_workerLabHover);
 
         _workerLabStatus = new Label
         {
@@ -118,27 +104,6 @@ public partial class Main
         nextTurn.Pressed += AdvanceOfflineLabTurn;
         lab.AddChild(nextTurn);
 
-        // First market gate: observed physical food supply and an explicitly
-        // hypothetical per-worker spending budget. No cash ledger yet.
-        var budgetRow = new HBoxContainer();
-        budgetRow.AddChild(new Label { Text = "Orçamento hipotético / trabalhador:" });
-        _referenceFoodBudget = new SpinBox
-        {
-            MinValue = 1, MaxValue = 100000, Step = 1, Value = 40,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill
-        };
-        budgetRow.AddChild(_referenceFoodBudget);
-        lab.AddChild(budgetRow);
-        var quoteButton = new Button { Text = "COTAR MERCADO ALIMENTAR LOCAL (SEM LIQUIDAR)" };
-        quoteButton.Pressed += QuoteLocalFoodMarket;
-        lab.AddChild(quoteButton);
-        _foodMarketQuoteLabel = new Label
-        {
-            Text = "Cotação opcional: não altera preços oficiais, estoques ou dinheiro.",
-            AutowrapMode = TextServer.AutowrapMode.WordSmart
-        };
-        lab.AddChild(_foodMarketQuoteLabel);
-
         var persistence = new HBoxContainer();
         lab.AddChild(persistence);
         var save = new Button { Text = "SALVAR PARTIDA CANÔNICA", SizeFlagsHorizontal = SizeFlags.ExpandFill };
@@ -147,6 +112,65 @@ public partial class Main
         var load = new Button { Text = "REABRIR SAVE", SizeFlagsHorizontal = SizeFlags.ExpandFill };
         load.Pressed += LoadOfflineLab;
         persistence.AddChild(load);
+
+        // VS19C: gameplay controls and save/reopen always precede telemetry.
+        // Optional diagnostics and historical market quotation remain available
+        // by explicit expansion, and start collapsed to maximize useful space.
+        var diagnosticsToggle = new Button
+        {
+            Text = "MOSTRAR DETALHES E FERRAMENTAS DE LABORATÓRIO",
+            ToggleMode = true,
+            ButtonPressed = false
+        };
+        lab.AddChild(diagnosticsToggle);
+        _workerLabAdvancedPanel = new VBoxContainer
+        {
+            Visible = false,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        _workerLabAdvancedPanel.AddThemeConstantOverride("separation", 4);
+        lab.AddChild(_workerLabAdvancedPanel);
+        diagnosticsToggle.Toggled += expanded =>
+        {
+            if (_workerLabAdvancedPanel is not null)
+                _workerLabAdvancedPanel.Visible = expanded;
+            diagnosticsToggle.Text = expanded
+                ? "OCULTAR DETALHES E FERRAMENTAS DE LABORATÓRIO"
+                : "MOSTRAR DETALHES E FERRAMENTAS DE LABORATÓRIO";
+        };
+        _workerLabDetails = new Label
+        {
+            Text = "Detalhes técnicos disponíveis após a inspeção.",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        _workerLabAdvancedPanel.AddChild(_workerLabDetails);
+        var legend = new Label
+        {
+            Text = "Mapa: ciano origem | laranja destino | verde vizinhos | marcadores âmbar em viagem.",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        _workerLabAdvancedPanel.AddChild(legend);
+        _workerLabHover = new Label { Text = "Sob o cursor: —" };
+        _workerLabAdvancedPanel.AddChild(_workerLabHover);
+
+        var budgetRow = new HBoxContainer();
+        budgetRow.AddChild(new Label { Text = "Orçamento hipotético / trabalhador:" });
+        _referenceFoodBudget = new SpinBox
+        {
+            MinValue = 1, MaxValue = 100000, Step = 1, Value = 40,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        budgetRow.AddChild(_referenceFoodBudget);
+        _workerLabAdvancedPanel.AddChild(budgetRow);
+        var quoteButton = new Button { Text = "COTAR MERCADO ALIMENTAR LOCAL (SEM LIQUIDAR)" };
+        quoteButton.Pressed += QuoteLocalFoodMarket;
+        _workerLabAdvancedPanel.AddChild(quoteButton);
+        _foodMarketQuoteLabel = new Label
+        {
+            Text = "Cotação hipotética: não movimenta caixa nem altera o mundo.",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        _workerLabAdvancedPanel.AddChild(_foodMarketQuoteLabel);
 
         if (_tacticalPreview is null)
             throw new InvalidOperationException("Tactical renderer must exist before lab HUD setup.");
@@ -632,6 +656,22 @@ public partial class Main
               "ambos da comunidade, NÃO tesouro estatal.\n" +
               "INSTITUIÇÕES: implícitas. CONTROLE POLÍTICO: não decretado.\n";
         _workerLabStatus.Text =
+            (civilizationalInfo is null
+                ? "LEGADO V13 | população original sem identidade retroativa"
+                : $"CIVILIZAÇÃO {civilizationalInfo.Civilization.Value} | {state.TotalWorkers} trabalhadores") +
+            $" | turno {state.MovementTurn} | ciclos {state.Cycles.Count}\n" +
+            $"Origem {origin.FineStrategicCellId.Value} | {selectedActivity}: {selectedGroupWorkers} disponíveis\n" +
+            $"Destino: {destination}\n" +
+            (state.Transits.Count == 0
+                ? "Viagens: nenhuma em andamento."
+                : string.Join(" | ", state.Transits.Select(x =>
+                    $"Em viagem: {x.Workers} pessoas, chegada no turno {x.ArrivalTurn} " +
+                    $"({x.ArrivalTurn - state.MovementTurn} restantes)"))) +
+            (civilizationalInfo is null ? "" :
+                $"\nDinheiro privado: {civilizationalInfo.TotalMoney / 1_000_000.0:F3} créditos " +
+                "(famílias + produtores).");
+        if (_workerLabDetails is not null)
+            _workerLabDetails.Text =
             ownershipInfo +
             $"Origem tile {origin.FineStrategicCellId.Value} | {jobs}\n" +
             $"Grupo selecionado: {selectedActivity} | disponíveis: {selectedGroupWorkers} trabalhadores\n" +
