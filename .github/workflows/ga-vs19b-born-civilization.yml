@@ -59,8 +59,9 @@ jobs:
           if (-not $script.Contains('& dotnet build') -or
               -not $script.Contains('-c Debug') -or
               -not $script.Contains('& $GodotExe --path $projectDir --verbose') -or
-              -not $main.Contains('GA_VS19B_RUNTIME_ACTIVE')) {
-            throw "VS19B Windows launch must build Debug and execute the game directly with an identifying runtime log."
+              (-not $main.Contains('GA_VS19B_RUNTIME_ACTIVE') -and
+               -not $main.Contains('GA_VS19C_RUNTIME_ACTIVE'))) {
+            throw "VS19B+ Windows launch must build Debug and provide an identifying runtime log."
           }
       - name: Build Godot Windows (Debug launch target)
         run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug

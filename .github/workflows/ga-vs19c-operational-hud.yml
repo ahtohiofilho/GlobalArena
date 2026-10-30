@@ -1,0 +1,71 @@
+name: GA-VS19C Operational Tactical HUD
+
+on:
+  pull_request:
+    paths:
+      - 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+      - 'tools/GlobalArena.Godot/Scripts/Main.cs'
+      - 'tools/launch-vs19c.ps1'
+      - '.github/workflows/ga-vs19c-operational-hud.yml'
+      - 'GlobalArena.Simulation/**'
+      - 'GlobalArena.Tests/**'
+  workflow_dispatch:
+
+jobs:
+  operational-hud-windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Verify direct Windows launcher and priority of gameplay controls
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'tools/launch-vs19c.ps1').Path,
+            [ref]$tokens, [ref]$errors
+          )
+          if ($errors.Count -gt 0) { throw ($errors | ForEach-Object Message | Out-String) }
+          $source = Get-Content -Raw -Encoding UTF8 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+          $launcher = Get-Content -Raw -Encoding UTF8 'tools/launch-vs19c.ps1'
+          $main = Get-Content -Raw -Encoding UTF8 'tools/GlobalArena.Godot/Scripts/Main.cs'
+          if (-not $launcher.Contains('feature/ga-vs19c-command-first-tactical-hud-20261030') -or
+              -not $launcher.Contains('-c Debug') -or
+              -not $launcher.Contains('& $GodotExe --path $projectDir --verbose') -or
+              -not $main.Contains('GA_VS19C_RUNTIME_ACTIVE') -or
+              -not $source.Contains('MOSTRAR DETALHES E FERRAMENTAS DE LABORAT') -or
+              -not $source.Contains('REABRIR SAVE')) {
+            throw 'VS19C operational HUD or direct launcher contract missing.'
+          }
+          $save = $source.IndexOf('Text = "SALVAR PARTIDA CAN')
+          $details = $source.IndexOf('MOSTRAR DETALHES E FERRAMENTAS')
+          if ($save -lt 0 -or $details -le $save) {
+            throw 'Save/reopen must appear before detailed diagnostics.'
+          }
+      - name: V14 replay and timed worker regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs19B|FullyQualifiedName~GaVs18|FullyQualifiedName~GaVs17|FullyQualifiedName~GaVs16|FullyQualifiedName~GaVs15'
+      - name: Compile Godot Windows Debug
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
+      - name: Compile Godot Windows Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  operational-hud-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: V14 replay and timed worker regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs19B|FullyQualifiedName~GaVs18|FullyQualifiedName~GaVs17|FullyQualifiedName~GaVs16|FullyQualifiedName~GaVs15'
+      - name: Compile Godot Linux Debug
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
