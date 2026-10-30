@@ -290,6 +290,19 @@ public partial class Main : Control
         _canonicalSession = CanonicalGameSession.Start(
             new WorldGenerationRequest(new WorldSeed(20261012UL),
                 WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)));
+        // A civilization and its community exist as soon as the world exists;
+        // the UI never requires a declaration, city foundation or a click to
+        // bring the initial population, production and cash into being.
+        _canonicalPhysicalLab = new CanonicalPhysicalTacticalSession(
+            _canonicalSession, new GoldbergParameters(18, 0),
+            PhysicalEconomicCadenceMode.AdaptiveThirty,
+            PhysicalTacticalGeographyMode.Canonical01C,
+            PhysicalFoodMarketMode.LocalCashSettlement,
+            PhysicalWorkerMovementMode.TimedAdjacent,
+            PhysicalCivilizationIdentityMode.BornWithPopulation);
+        _workerOrigin = _canonicalPhysicalLab.InitialTile;
+        _tacticalPreview.BindEconomicTacticalGeography(
+            _canonicalPhysicalLab.FineWorld, _canonicalPhysicalLab.CanonicalTerrain);
         AttachRuntimeState(_canonicalSession.Snapshot);
         if (_canonicalSession.Snapshot.WorldBinding !=
             RuntimeWorldBinding.FromGeneratedWorld(_canonicalSession.GeneratedWorld))
