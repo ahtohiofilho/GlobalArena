@@ -25,6 +25,7 @@ public partial class Main : Control
     private VBoxContainer? _tacticalHudPanel;
     private VBoxContainer? _strategicHudPanel;
     private VBoxContainer? _tacticalInspector;
+    private Button? _tacticalInspectorToggle;
     private Label? _tacticalTileSummary;
     private Label? _tacticalTileTerrain;
     private Label? _tacticalTileRuntime;
@@ -181,7 +182,8 @@ public partial class Main : Control
             if (_strategicHudPanel is not null) _strategicHudPanel.Visible = false;
             if (_tacticalHudPanel is not null) _tacticalHudPanel.Visible = true;
             SetStrategicCalibrationControlsVisible(false);
-            if (_tacticalInspector is not null) _tacticalInspector.Visible = true;
+            if (_tacticalInspector is not null)
+                _tacticalInspector.Visible = _tacticalInspectorToggle?.ButtonPressed ?? false;
             _openTacticalContext.Visible = false;
             _returnStrategicContext.Visible = true;
             if (_tacticalTileEdges is not null)
@@ -224,10 +226,10 @@ public partial class Main : Control
     public override void _Ready()
     {
         GD.Print("GA_PROD_MAIN_READY_R6");
-        GD.Print("GA_VS19B_RUNTIME_ACTIVE build=born-civilization layout=full-height-square-map title=VS19B");
+        GD.Print("GA_VS19C_RUNTIME_ACTIVE branch=command-first-hud layout=large-map;save-v14=unchanged");
         // The Godot project name stays VS17 to retain old user:// saves;
         // a visible runtime title identifies the actual branch under test.
-        GetWindow().Title = "Global Arena — VS19B | Comunidade desde o início";
+        GetWindow().Title = "Global Arena — VS19C | Interface tática organizada";
         // Prioritize a maximized production window; preserve windowed resizing and avoid headless changes.
         if (DisplayServer.GetName() != "headless")
             DisplayServer.WindowSetMode(DisplayServer.WindowMode.Maximized);
@@ -330,7 +332,7 @@ public partial class Main : Control
         rightMargin.AddChild(rightLayout);
         // A single compact header is enough. Version stays readable even
         // though project.godot retains the stable VS17 save directory.
-        var panelTitle = new Label { Text = "GLOBAL ARENA  |  VS19B" };
+        var panelTitle = new Label { Text = "GLOBAL ARENA  |  VS19C" };
         panelTitle.AddThemeFontSizeOverride("font_size", 15);
         rightLayout.AddChild(panelTitle);
         _tacticalBridgeStatus = new Label { Text = "Select a canonical territory to enable tactical context" };
@@ -384,9 +386,20 @@ public partial class Main : Control
         // Player commands come first in the scroll: no excessive
         // diagnostic or map-configuration text before the inspect button.
         InitializeWorkerLabControls(tacticalHud);
-        var detailsHeader = new Label { Text = "DETALHES DO TILE E DA MALHA" };
-        detailsHeader.AddThemeFontSizeOverride("font_size", 14);
-        tacticalHud.AddChild(detailsHeader);
+        _tacticalInspectorToggle = new Button
+        {
+            Text = "MOSTRAR INSPEÇÃO TÉCNICA DO TILE",
+            ToggleMode = true,
+            ButtonPressed = false
+        };
+        tacticalHud.AddChild(_tacticalInspectorToggle);
+        _tacticalInspectorToggle.Toggled += visible =>
+        {
+            inspector.Visible = visible && (_tacticalPreview?.Visible ?? false);
+            _tacticalInspectorToggle.Text = visible
+                ? "OCULTAR INSPEÇÃO TÉCNICA DO TILE"
+                : "MOSTRAR INSPEÇÃO TÉCNICA DO TILE";
+        };
         tacticalHud.AddChild(inspector);
         _tacticalPreview.TransferHud(tacticalHud);
         // QA density only: typography belongs to the right sidebar, not the map.
