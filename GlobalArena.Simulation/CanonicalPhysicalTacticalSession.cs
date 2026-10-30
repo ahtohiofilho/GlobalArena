@@ -449,6 +449,52 @@ public sealed class CanonicalPhysicalTacticalSession
     }
 
     /// <summary>
+    /// VS21: assign a resident to a different productive activity without
+    /// moving across tiles. Work, consumption, and residence remain co-located.
+    /// All private accounts, physical stocks, transits and movement time remain unchanged.
+    /// This is a canonical, replayable labor decision, not a city or institution.
+    /// </summary>
+    public void ReassignWorkers(PhysicalTacticalTileId tile,
+        EconomicActivityKind fromJob, EconomicActivityKind toJob, ulong amount)
+    {
+        EnsureJournalCapacity();
+        ValidateTile(tile);
+        ValidateJob(fromJob);
+        ValidateJob(toJob);
+        if (fromJob == toJob || amount == 0UL ||
+            !IsWorkableLand(tile.FineStrategicCellId))
+            throw new InvalidOperationException("Illegal local worker reallocation.");
+
+        var current = State;
+        var allocations = current.Allocations.ToDictionary(
+            x => (x.TileId, x.Activity), x => x.Workers);
+        var sourceKey = (tile, fromJob);
+        var targetKey = (tile, toJob);
+        if (!allocations.TryGetValue(sourceKey, out var available) ||
+            available < amount)
+            throw new InvalidOperationException("Insufficient resident workers for reallocation.");
+
+        var updatedTarget = checked(allocations.GetValueOrDefault(targetKey) + amount);
+        if (available == amount) allocations.Remove(sourceKey);
+        else allocations[sourceKey] = available - amount;
+        allocations[targetKey] = updatedTarget;
+
+        var next = new PhysicalTacticalEconomyRuntimeState(
+            current.CoarseWorldBinding, _coarse, _fine, current.MovementTurn,
+            checked(current.WorkerRevision + 1UL),
+            allocations.Select(x => new PhysicalWorkerAllocation(
+                x.Key.Item1, x.Key.Item2, x.Value)),
+            current.Stocks, current.Cycles, _cadenceMode, _geographyMode,
+            current.FoodCash, _movementMode, current.Transits);
+        if (next.TotalWorkers != current.TotalWorkers ||
+            next.WorkersInTransit != current.WorkersInTransit)
+            throw new InvalidOperationException("Local reallocation violated worker conservation.");
+
+        Commit(next, "reassign", tile.FineStrategicCellId.Value,
+            tile.FineStrategicCellId.Value, (byte)fromJob, (byte)toJob, amount);
+    }
+
+    /// <summary>
     /// VS15: adjacent physical move with deterministic two-turn primitive
     /// travel time. Workers stop producing as soon as the order is issued.
     /// They provision from the source until arrival, without teleportation.
@@ -797,6 +843,12 @@ public sealed class CanonicalPhysicalTacticalSession
                 game.MoveWorkers(
                     new PhysicalTacticalTileId(game._fine, new StrategicCellId(action.Source)),
                     new PhysicalTacticalTileId(game._fine, new StrategicCellId(action.Destination)),
+                    (EconomicActivityKind)action.FromJob,
+                    (EconomicActivityKind)action.ToJob, action.Workers);
+            else if (action.Kind == "reassign" &&
+                     action.Source == action.Destination)
+                game.ReassignWorkers(
+                    new PhysicalTacticalTileId(game._fine, new StrategicCellId(action.Source)),
                     (EconomicActivityKind)action.FromJob,
                     (EconomicActivityKind)action.ToJob, action.Workers);
             else if (action.Kind == "depart" && 

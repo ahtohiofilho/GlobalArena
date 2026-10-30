@@ -1,0 +1,70 @@
+name: GA-VS21 Local Worker Activity Reallocation
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/CanonicalPhysicalTacticalSession.cs'
+      - 'GlobalArena.Tests/GaVs21LocalWorkerReallocationTests.cs'
+      - 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+      - 'tools/GlobalArena.Godot/Scripts/Main.cs'
+      - 'tools/launch-vs21.ps1'
+      - '.github/workflows/ga-vs21-local-worker-reallocation.yml'
+      - '.github/workflows/ga-vs20-emergent-settlements.yml'
+      - '.github/workflows/ga-vs19b-born-civilization.yml'
+      - '.github/workflows/ga-vs19c-operational-hud.yml'
+  workflow_dispatch:
+
+jobs:
+  local-reassignment-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Reallocation, settlements, V13 and V14 replay
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs21|FullyQualifiedName~GaVs20|FullyQualifiedName~GaVs19B|FullyQualifiedName~GaVs15'
+      - name: Build Godot Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  local-reassignment-windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Verify VS21 exact-worktree direct runner and HUD controls
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'tools/launch-vs21.ps1').Path,
+            [ref]$tokens, [ref]$errors)
+          if ($errors.Count) { throw ($errors | ForEach-Object Message | Out-String) }
+          $runner = Get-Content -Raw -Encoding UTF8 'tools/launch-vs21.ps1'
+          $main = Get-Content -Raw -Encoding UTF8 'tools/GlobalArena.Godot/Scripts/Main.cs'
+          $lab = Get-Content -Raw -Encoding UTF8 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+          $simulation = Get-Content -Raw -Encoding UTF8 'GlobalArena.Simulation/CanonicalPhysicalTacticalSession.cs'
+          if (-not $runner.Contains('feature/ga-vs21-local-worker-reallocation-20261030') -or
+              -not $runner.Contains('-c Debug') -or
+              -not $runner.Contains('& $GodotExe --path $projectDir --verbose') -or
+              -not $main.Contains('GA_VS21_RUNTIME_ACTIVE') -or
+              -not $lab.Contains('MUDAR ATIVIDADE NO TILE (SEM VIAGEM)') -or
+              -not $simulation.Contains('Commit(next, "reassign"') -or
+              -not $simulation.Contains('action.Kind == "reassign"')) {
+            throw 'VS21 canonical reallocation or direct Windows launch contract missing.'
+          }
+      - name: Reallocation, settlements, V13 and V14 replay
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs21|FullyQualifiedName~GaVs20|FullyQualifiedName~GaVs19B|FullyQualifiedName~GaVs15'
+      - name: Build Godot Debug
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
+      - name: Build Godot Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
