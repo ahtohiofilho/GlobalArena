@@ -10,7 +10,7 @@ config_version=5
 
 [application]
 
-config/name="Global Arena — VS17 Presença Territorial Estratégica"
+config/name="Global Arena — VS18 Visão Tática Persistente"
 run/main_scene="res://Scenes/Main.tscn"
 config/features=PackedStringArray("4.7", "C#", "GL Compatibility")
 
