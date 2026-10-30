@@ -13,6 +13,7 @@ public partial class Main : Control
     private Control? _layoutDiagnosticRoot;
     private string _lastLoggedLayoutSignature = "";
     private Label? _tacticalBridgeStatus;
+    private PanelContainer? _worldSidebar;
     private Button? _openTacticalContext;
     // GA-UI-MVP: the globe-only calibration controls live in Main sidebar.
     private readonly System.Collections.Generic.List<Control> _strategicCalibrationGroups = new();
@@ -316,6 +317,7 @@ public partial class Main : Control
             SizeFlagsVertical = SizeFlags.ExpandFill
         };
         content.AddChild(rightPanel);
+        _worldSidebar = rightPanel;
         var rightMargin = new MarginContainer();
         rightMargin.AddThemeConstantOverride("margin_left", 10);
         rightMargin.AddThemeConstantOverride("margin_right", 10);
@@ -473,6 +475,12 @@ public partial class Main : Control
         var view = GetViewport();
         if (view is null) return;
         var current = view.GetVisibleRect().Size;
+        // Widen the sidebar on desktop; shrink its minimum on smaller
+        // windows so the 1:1 tactical map is not clipped horizontally.
+        var sidebarWidth = Mathf.Clamp(current.X * 0.35f, 390f, 530f);
+        if (_worldSidebar is not null &&
+            Mathf.Abs(_worldSidebar.CustomMinimumSize.X - sidebarWidth) > 0.5f)
+            _worldSidebar.CustomMinimumSize = new Vector2(sidebarWidth, 0f);
         var signature = $"{current}/{Size}/{_layoutDiagnosticFrame.Size}/{_layoutDiagnosticRoot.Size}/{DisplayServer.WindowGetSize()}";
         if (signature == _lastLoggedLayoutSignature) return;
         _lastLoggedLayoutSignature = signature;
