@@ -382,12 +382,12 @@ public partial class Main
             _foodMarketQuoteLabel.Text =
                 $"COTAÇÃO HIPOTÉTICA LOCAL | tile {_foodMarketQuoteTile} | " +
                 $"estoque + próxima colheita: {quote.ReferenceSupply:F3} | " +
-                $"necessidade alimentar: {quote.RawFoodNeed / 1_000_000.0:F3}\\n" +
+                $"necessidade alimentar: {quote.RawFoodNeed / 1_000_000.0:F3}\n" +
                 $"preço endógeno: {quote.PricePerWholeFoodUnit:F4} | " +
                 $"venda possível: {quote.ReferenceSold:F3} | " +
-                $"não vendido: {quote.ReferenceUnsold:F3}\\n" +
+                $"não vendido: {quote.ReferenceUnsold:F3}\n" +
                 $"gasto potencial: {quote.ReferenceBuyerSpending:F3} | " +
-                $"H residual: {quote.ReferenceBudgetResidual:F3}\\n" +
+                $"H residual: {quote.ReferenceBudgetResidual:F3}\n" +
                 "APENAS REFERÊNCIA: sem compra efetiva, sem transporte, " +
                 "sem lançamento de receita e sem alteração do WorldState.";
         }
