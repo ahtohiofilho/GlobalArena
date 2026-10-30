@@ -161,7 +161,12 @@ public sealed class EconomicSingleVarietyOriginClearing
                 var mid = lower + (upper - lower) / 2.0;
                 if (mid <= lower || mid >= upper)
                     break; // IEEE-754 adjacent prices; never silently iterate forever.
-                if (TotalDemand(mid) > supply)
+                // Each buyer's quantity is capped to local supply, so with
+                // ONE buyer aggregate demand can equal supply but never
+                // exceed it. Equality is the rationed (scarce) branch: move
+                // the lower price bound upward until demand becomes < supply.
+                // Using '>' here forced the single-buyer price to zero.
+                if (TotalDemand(mid) >= supply)
                     lower = mid;
                 else
                     upper = mid;
