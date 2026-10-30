@@ -686,7 +686,7 @@ public sealed class CanonicalPhysicalTacticalSession
         {
             envelope = JsonSerializer.Deserialize<CanonicalPhysicalSaveEnvelope>(json)
                 ?? throw new InvalidOperationException("Missing canonical save envelope.");
-            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat or CashFoodSaveFormat) ||
+            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat or CashFoodSaveFormat or TimedTransitSaveFormat) ||
                 string.IsNullOrEmpty(envelope.PayloadJson) ||
                 string.IsNullOrEmpty(envelope.PayloadSha256Hex))
                 throw new InvalidOperationException("Unsupported canonical save envelope.");
@@ -706,7 +706,8 @@ public sealed class CanonicalPhysicalTacticalSession
         if (payload.Version != envelope.Version ||
             payload.Actions is null || payload.Workers is null ||
             payload.Stocks is null || payload.Cycles is null ||
-            ((payload.Version == CashFoodSaveFormat) != (payload.FoodCash is not null)) ||
+            ((payload.Version >= CashFoodSaveFormat) != (payload.FoodCash is not null)) ||
+            ((payload.Version == TimedTransitSaveFormat) != (payload.Transits is not null)) ||
             (payload.FoodCash is not null &&
              (payload.FoodCash.Accounts is null || payload.FoodCash.Receipts is null)) ||
             payload.Actions.Length > MaximumActions ||
@@ -719,12 +720,16 @@ public sealed class CanonicalPhysicalTacticalSession
         var terrainMode = payload.Version >= GeographyAlignedSaveFormat
             ? PhysicalTacticalGeographyMode.Canonical01C
             : PhysicalTacticalGeographyMode.LegacyV1;
-        var marketMode = payload.Version == CashFoodSaveFormat
+        var marketMode = payload.Version >= CashFoodSaveFormat
             ? PhysicalFoodMarketMode.LocalCashSettlement
             : PhysicalFoodMarketMode.LegacyDirectConsumption;
+        var movementMode = payload.Version == TimedTransitSaveFormat
+            ? PhysicalWorkerMovementMode.TimedAdjacent
+            : PhysicalWorkerMovementMode.LegacyInstant;
         var game = Start(payload.Seed,
             new GoldbergParameters(payload.CoarseM, payload.CoarseN),
-            new GoldbergParameters(payload.FineM, payload.FineN), mode, terrainMode, marketMode);
+            new GoldbergParameters(payload.FineM, payload.FineN), mode, terrainMode,
+            marketMode, movementMode);
         if (payload.WorldBindingHex != game.Game.Snapshot.WorldBinding!.WorldSignatureSha256Hex ||
             payload.InitialHashHex != game._initialHashHex)
             throw new InvalidOperationException("Canonical save world identity mismatch.");
@@ -739,6 +744,13 @@ public sealed class CanonicalPhysicalTacticalSession
 
             if (action.Kind == "move")
                 game.MoveWorkers(
+                    new PhysicalTacticalTileId(game._fine, new StrategicCellId(action.Source)),
+                    new PhysicalTacticalTileId(game._fine, new StrategicCellId(action.Destination)),
+                    (EconomicActivityKind)action.FromJob,
+                    (EconomicActivityKind)action.ToJob, action.Workers);
+            else if (action.Kind == "depart" && 
+                     game._movementMode == PhysicalWorkerMovementMode.TimedAdjacent)
+                game.OrderWorkerTransit(
                     new PhysicalTacticalTileId(game._fine, new StrategicCellId(action.Source)),
                     new PhysicalTacticalTileId(game._fine, new StrategicCellId(action.Destination)),
                     (EconomicActivityKind)action.FromJob,
@@ -808,7 +820,9 @@ public sealed class CanonicalPhysicalTacticalSession
         return game;
     }
 
-    private int CurrentSaveFormat => _marketMode == PhysicalFoodMarketMode.LocalCashSettlement
+    private int CurrentSaveFormat => _movementMode == PhysicalWorkerMovementMode.TimedAdjacent
+        ? TimedTransitSaveFormat
+        : _marketMode == PhysicalFoodMarketMode.LocalCashSettlement
         ? CashFoodSaveFormat
         : _geographyMode == PhysicalTacticalGeographyMode.Canonical01C
         ? GeographyAlignedSaveFormat
@@ -854,6 +868,13 @@ public sealed class CanonicalPhysicalTacticalSession
                     ledger.Receipts.Select(x => new CanonicalFoodCashReceiptSaveRow(
                         x.MovementTurn, x.Tile.FineStrategicCellId.Value,
                         x.FoodRaw, x.PriceMicrocreditsPerUnit, x.PaidMicrocredits)).ToArray())
+                : null,
+            _movementMode == PhysicalWorkerMovementMode.TimedAdjacent
+                ? state.Transits.Select(x => new CanonicalWorkerTransitSaveRow(
+                    x.OrderId, x.Source.FineStrategicCellId.Value,
+                    x.Destination.FineStrategicCellId.Value,
+                    (byte)x.FromJob, (byte)x.ToJob,
+                    x.Workers, x.DepartureTurn, x.ArrivalTurn)).ToArray()
                 : null);
     }
 
