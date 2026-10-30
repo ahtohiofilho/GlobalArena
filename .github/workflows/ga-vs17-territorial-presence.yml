@@ -1,0 +1,42 @@
+name: GA-VS17 Strategic Territorial Presence
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/StrategicTerritorialPresenceProjection.cs'
+      - 'GlobalArena.Tests/GaVs17StrategicTerritorialPresenceTests.cs'
+      - 'tools/GlobalArena.Godot/Scripts/Main.cs'
+      - 'tools/GlobalArena.Godot/project.godot'
+      - '.github/workflows/ga-vs17-territorial-presence.yml'
+  workflow_dispatch:
+
+jobs:
+  territorial-presence-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Test strategic presence and prior canonical replay
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs17|FullyQualifiedName~GaVs16|FullyQualifiedName~GaVs15|FullyQualifiedName~GaVs14'
+      - name: Build Godot tactical and strategic views
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  territorial-presence-windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Test strategic presence and prior canonical replay
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs17|FullyQualifiedName~GaVs16|FullyQualifiedName~GaVs15|FullyQualifiedName~GaVs14'
+      - name: Build Windows Godot shell
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
