@@ -1,0 +1,41 @@
+name: GA-VS10A Canonical Physical Snapshot Compare-And-Commit
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Runtime/CanonicalGameSession.cs'
+      - 'GlobalArena.Simulation/CanonicalPhysicalTacticalSession.cs'
+      - 'GlobalArena.Tests/GaVs10ACanonicalSnapshotCompareCommitTests.cs'
+      - '.github/workflows/ga-vs10a-snapshot-cas.yml'
+  workflow_dispatch:
+
+jobs:
+  canonical-cas-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Verify canonical revision CAS and VS07/VS09/VS10 regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs10A|FullyQualifiedName~GaVs10|FullyQualifiedName~GaVs09|FullyQualifiedName~GaVs07|FullyQualifiedName~CanonicalWorldStateHasherTests'
+      - name: Compile canonical runtime and original Godot viewer
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  canonical-cas-windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Verify deterministic replay and stale-command protection on Windows
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs10A|FullyQualifiedName~GaVs10|FullyQualifiedName~GaVs09|FullyQualifiedName~GaVs07|FullyQualifiedName~CanonicalWorldStateHasherTests'
+      - name: Compile original Godot CSharp viewer on Windows
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
