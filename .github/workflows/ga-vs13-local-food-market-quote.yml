@@ -1,0 +1,42 @@
+name: GA-VS13 Local Food Market Quote Gate
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/EconomicLocalFoodMarketQuoteResolver.cs'
+      - 'GlobalArena.Simulation/CanonicalPhysicalTacticalSession.cs'
+      - 'GlobalArena.Tests/GaVs13LocalFoodMarketQuoteTests.cs'
+      - 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+      - '.github/workflows/ga-vs13-local-food-market-quote.yml'
+  workflow_dispatch:
+
+jobs:
+  food-market-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Local food prices and prior canonical regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs13|FullyQualifiedName~GaVs12|FullyQualifiedName~GaVs11|FullyQualifiedName~GaVs10|FullyQualifiedName~GaVs09|FullyQualifiedName~GaVs07'
+      - name: Compile original Godot client
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  food-market-windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Quote determinism budget and V11 save/replay regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs13|FullyQualifiedName~GaVs12|FullyQualifiedName~GaVs11|FullyQualifiedName~GaVs10|FullyQualifiedName~GaVs09|FullyQualifiedName~GaVs07'
+      - name: Compile Windows Godot client
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
