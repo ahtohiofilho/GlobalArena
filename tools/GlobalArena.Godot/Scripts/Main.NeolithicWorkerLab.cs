@@ -48,7 +48,7 @@ public partial class Main
 
         var warning = new Label
         {
-            Text = "VS16: símbolos verdes = agricultura, marrons = madeira, cinzas = pedra; clique no símbolo para selecionar o grupo. Trilhas e pontos âmbar mostram viagens por turno. Movimento V13 preservado.",
+            Text = "Escolha os grupos diretamente no mapa. Verde: alimento; marrom: madeira; cinza: pedra; âmbar: trabalhadores viajando.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         warning.AddThemeColorOverride("font_color", new Color("#e1c883"));
@@ -76,7 +76,7 @@ public partial class Main
 
         _workerLabStatus = new Label
         {
-            Text = "Inicie o laboratório para habilitar os trabalhadores na malha física.",
+            Text = "Povoamento já existente: Civilização 1 e oito trabalhadores desde o turno zero.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         lab.AddChild(_workerLabStatus);
