@@ -32,7 +32,7 @@ public sealed class GaVs20EmergentSettlementTests
         Assert.Equal(2UL, first.MiningWorkers);
         Assert.Equal(8UL, projection.TotalResidentWorkers);
         Assert.Equal(0UL, projection.TotalTravellers);
-        Assert.Equal(8_000_000UL, first.FoodDemandRaw);
+        Assert.Equal(4_000_000UL, first.FoodDemandRaw);
         Assert.Equal(320_000_000UL, first.HouseholdMicrocredits);
         Assert.Equal(0UL, first.ProducerMicrocredits);
         Assert.Equal(1UL, first.Community!.Value.Value);
@@ -56,7 +56,7 @@ public sealed class GaVs20EmergentSettlementTests
         Assert.Null(departing.At(destination));
         Assert.Equal(6UL, departing.TotalResidentWorkers);
         Assert.Equal(2UL, departing.TotalTravellers);
-        Assert.Equal(8_000_000UL, departing.At(origin)!.FoodDemandRaw);
+        Assert.Equal(4_000_000UL, departing.At(origin)!.FoodDemandRaw);
         Assert.Empty(game.Game.Snapshot.Territory.Controls);
 
         game.AdvanceMovementTurn();
@@ -83,7 +83,7 @@ public sealed class GaVs20EmergentSettlementTests
         Assert.NotNull(second);
         Assert.Equal(2UL, second.Workers);
         Assert.Equal(2UL, second.ForestryWorkers);
-        Assert.Equal(2_000_000UL, second.FoodDemandRaw);
+        Assert.Equal(1_000_000UL, second.FoodDemandRaw);
         Assert.Equal(1UL, second.Community!.Value.Value);
         Assert.Equal(320_000_000UL,
             landed.Sites.Aggregate(0UL, (sum, site) =>
