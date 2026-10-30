@@ -24,12 +24,14 @@ public sealed record PhysicalEconomicCycle(
 /// </summary>
 public sealed class PhysicalTacticalEconomyRuntimeState
 {
-    public const ulong MovementTicksPerEconomicCycle = 6UL;
+    // Historical constant retained for callers validating legacy V9 replays.
+    public const ulong MovementTicksPerEconomicCycle = PhysicalEconomicCadence.LegacyInterval;
 
     public RuntimeWorldBinding CoarseWorldBinding { get; }
     public GoldbergParameters CoarseParameters { get; }
     public GoldbergParameters FineParameters { get; }
     public ulong MovementTurn { get; }
+    public PhysicalEconomicCadenceMode CadenceMode { get; }
     public ulong WorkerRevision { get; }
     public ulong TotalWorkers { get; }
     public IReadOnlyList<PhysicalWorkerAllocation> Allocations { get; }
@@ -44,7 +46,8 @@ public sealed class PhysicalTacticalEconomyRuntimeState
         ulong workerRevision,
         IEnumerable<PhysicalWorkerAllocation> allocations,
         IEnumerable<PhysicalCommodityStock> stocks,
-        IEnumerable<PhysicalEconomicCycle> cycles)
+        IEnumerable<PhysicalEconomicCycle> cycles,
+        PhysicalEconomicCadenceMode cadenceMode = PhysicalEconomicCadenceMode.LegacyFixedSix)
     {
         ArgumentNullException.ThrowIfNull(coarseWorldBinding);
         ArgumentNullException.ThrowIfNull(allocations);
@@ -95,18 +98,13 @@ public sealed class PhysicalTacticalEconomyRuntimeState
         var orderedCycles = cycles.ToArray();
         if (orderedCycles.Any(x => x is null))
             throw new ArgumentException("Economic cycles cannot contain null records.");
-        if ((ulong)orderedCycles.Length != movementTurn / MovementTicksPerEconomicCycle)
-            throw new ArgumentException("Economic cycle count disagrees with movement time.");
-        for (var i = 0; i < orderedCycles.Length; i++)
-        {
-            if (orderedCycles[i].MovementTurn != checked((ulong)(i + 1) * MovementTicksPerEconomicCycle))
-                throw new ArgumentException("Economic cycles must follow the six-tick cadence.");
-        }
+        PhysicalEconomicCadence.ValidateTimeline(movementTurn, orderedCycles, cadenceMode);
 
         CoarseWorldBinding = coarseWorldBinding;
         CoarseParameters = coarseParameters;
         FineParameters = fineParameters;
         MovementTurn = movementTurn;
+        CadenceMode = cadenceMode;
         WorkerRevision = workerRevision;
         TotalWorkers = totalWorkers;
         Allocations = Array.AsReadOnly(sortedAllocations);
