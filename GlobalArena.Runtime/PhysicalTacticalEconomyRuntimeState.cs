@@ -43,6 +43,10 @@ public sealed class PhysicalTacticalEconomyRuntimeState
     public PhysicalFoodCashMarketState? FoodCash { get; }
     public PhysicalFoodMarketMode MarketMode => FoodCash is null
         ? PhysicalFoodMarketMode.LegacyDirectConsumption : PhysicalFoodMarketMode.LocalCashSettlement;
+    public PhysicalWorkerMovementMode MovementMode { get; }
+    public IReadOnlyList<PhysicalWorkerTransit> Transits { get; }
+    public ulong WorkersInTransit => Transits.Aggregate(0UL,
+        (sum, x) => checked(sum + x.Workers));
     public ulong WorkerRevision { get; }
     public ulong TotalWorkers { get; }
     public IReadOnlyList<PhysicalWorkerAllocation> Allocations { get; }
@@ -60,7 +64,9 @@ public sealed class PhysicalTacticalEconomyRuntimeState
         IEnumerable<PhysicalEconomicCycle> cycles,
         PhysicalEconomicCadenceMode cadenceMode = PhysicalEconomicCadenceMode.LegacyFixedSix,
         PhysicalTacticalGeographyMode geographyMode = PhysicalTacticalGeographyMode.LegacyV1,
-        PhysicalFoodCashMarketState? foodCash = null)
+        PhysicalFoodCashMarketState? foodCash = null,
+        PhysicalWorkerMovementMode movementMode = PhysicalWorkerMovementMode.LegacyInstant,
+        IEnumerable<PhysicalWorkerTransit>? transits = null)
     {
         ArgumentNullException.ThrowIfNull(coarseWorldBinding);
         ArgumentNullException.ThrowIfNull(allocations);
@@ -98,6 +104,37 @@ public sealed class PhysicalTacticalEconomyRuntimeState
             totalWorkers = checked(totalWorkers + allocation.Workers);
         }
 
+        if (movementMode is not (PhysicalWorkerMovementMode.LegacyInstant or
+            PhysicalWorkerMovementMode.TimedAdjacent) ||
+            (movementMode == PhysicalWorkerMovementMode.TimedAdjacent &&
+             (geographyMode != PhysicalTacticalGeographyMode.Canonical01C || foodCash is null)))
+            throw new ArgumentException("Timed transit requires local cash market and canonical 01C terrain.");
+        var orderedTransits = (transits ?? Array.Empty<PhysicalWorkerTransit>()).ToArray();
+        if (movementMode == PhysicalWorkerMovementMode.LegacyInstant &&
+            orderedTransits.Length != 0)
+            throw new ArgumentException("Legacy movement cannot contain worker transits.");
+        orderedTransits = orderedTransits.OrderBy(x => x?.OrderId ?? 0UL).ToArray();
+        var transitIds = new HashSet<ulong>();
+        foreach (var transit in orderedTransits)
+        {
+            if (transit is null || transit.OrderId == 0UL ||
+                transit.OrderId > workerRevision ||
+                !transitIds.Add(transit.OrderId) || transit.Workers == 0UL ||
+                transit.DepartureTurn > movementTurn ||
+                transit.ArrivalTurn <= movementTurn ||
+                transit.ArrivalTurn <= transit.DepartureTurn ||
+                transit.ArrivalTurn - transit.DepartureTurn > 3UL ||
+                transit.Source == transit.Destination ||
+                transit.FromJob is not (EconomicActivityKind.Agriculture or
+                    EconomicActivityKind.Forestry or EconomicActivityKind.Mining) ||
+                transit.ToJob is not (EconomicActivityKind.Agriculture or
+                    EconomicActivityKind.Forestry or EconomicActivityKind.Mining))
+                throw new ArgumentException("Invalid or stale timed worker transit.");
+            ValidateTile(transit.Source, fineParameters);
+            ValidateTile(transit.Destination, fineParameters);
+            totalWorkers = checked(totalWorkers + transit.Workers);
+        }
+
         var stockRows = stocks.ToArray();
         if (stockRows.Any(x => x is null))
             throw new ArgumentException("Physical stock cannot contain null records.");
@@ -129,6 +166,8 @@ public sealed class PhysicalTacticalEconomyRuntimeState
         CadenceMode = cadenceMode;
         GeographyMode = geographyMode;
         FoodCash = foodCash;
+        MovementMode = movementMode;
+        Transits = Array.AsReadOnly(orderedTransits);
         WorkerRevision = workerRevision;
         TotalWorkers = totalWorkers;
         Allocations = Array.AsReadOnly(sortedAllocations);
