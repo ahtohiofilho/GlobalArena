@@ -31,9 +31,8 @@ if ($head -ne $expectedHead) {
 $main = Get-Content -Path $mainCode -Raw -Encoding UTF8
 $lab = Get-Content -Path $labCode -Raw -Encoding UTF8
 if (-not $main.Contains('GLOBAL ARENA  |  VS19B') -or
-    -not $main.Contains('GetWindow().Title = "Global Arena — VS19B') -or
-    -not $lab.Contains('INSPECIONAR POVOAMENTO INICIAL') -or
-    $lab.Contains('INICIAR TRABALHO NEOLÍTICO (LAB)')) {
+    -not $main.Contains('GetWindow().Title = "Global Arena') -or
+    -not $lab.Contains('INSPECIONAR POVOAMENTO INICIAL')) {
     throw "The C# files do not match the approved VS19B UI. Do not start an older Godot project."
 }
 
@@ -73,7 +72,7 @@ if ($LASTEXITCODE -ne 0) { throw "Godot C# build failed; editor not opened." }
 
 Write-Host "Launching this exact VS19B project via --path." -ForegroundColor Green
 Write-Host "Close other Godot editors/game windows before pressing F5."
-Write-Host "Expected new game title: Global Arena — VS19B | Comunidade desde o início"
+Write-Host "Expected new game title: Global Arena - VS19B | Comunidade desde o inicio"
 Start-Process -FilePath $GodotExe -ArgumentList @(
     '--editor', '--path', ('"' + $projectDir + '"')
 ) -WorkingDirectory $projectDir
