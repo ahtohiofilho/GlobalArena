@@ -23,6 +23,7 @@ public partial class Main
     private Label? _workerLabStatus;
     private Label? _workerLabHover;
     private Button? _workerMoveButton;
+    private Button? _foundCivilizationButton;
     private SpinBox? _workerAmount;
     private OptionButton? _workerFromJob;
     private OptionButton? _workerToJob;
@@ -39,7 +40,7 @@ public partial class Main
 
         var title = new Label
         {
-            Text = "ATIVIDADES TÁTICAS | LABORATÓRIO VS18",
+            Text = "ATIVIDADES TÁTICAS | LABORATÓRIO VS19",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         title.AddThemeFontSizeOverride("font_size", 16);
@@ -113,6 +114,14 @@ public partial class Main
         };
         _workerMoveButton.Pressed += MoveWorkerLabWorkers;
         lab.AddChild(_workerMoveButton);
+
+        _foundCivilizationButton = new Button
+        {
+            Text = "FUNDAR PRIMEIRA CIVILIZAÇÃO NO TERRITÓRIO ATUAL",
+            Disabled = true
+        };
+        _foundCivilizationButton.Pressed += FoundFirstPoliticalCivilization;
+        lab.AddChild(_foundCivilizationButton);
 
         var nextTurn = new Button { Text = "AVANÇAR TURNO DE MOVIMENTO (CICLOS ADAPTATIVOS)" };
         nextTurn.Pressed += AdvanceOfflineLabTurn;
@@ -302,6 +311,32 @@ public partial class Main
         }
     }
 
+    private void FoundFirstPoliticalCivilization()
+    {
+        if (_canonicalPhysicalLab is null || _workerOrigin is null ||
+            _workerLabStatus is null || _canonicalSession is null) return;
+        try
+        {
+            var territory = _canonicalPhysicalLab.DisplayBucket(_workerOrigin.Value);
+            _canonicalPhysicalLab.FoundFirstCivilization(_workerOrigin.Value, territory);
+            AttachRuntimeState(_canonicalSession.Snapshot);
+            UpdateWorkerLabHud();
+            _workerLabStatus.Text +=
+                $"\nCIVILIZAÇÃO 1 FUNDADA NO TERRITÓRIO {territory.Value}: " +
+                "controle político inicial constituído explicitamente.";
+            GD.Print($"GA-VS19-FIRST-FOUNDING territory={territory.Value} " +
+                $"tile={_workerOrigin.Value.FineStrategicCellId.Value} " +
+                $"revision={_canonicalSession.Snapshot.Revision} " +
+                $"hash={_canonicalPhysicalLab.CurrentHash.HexDigest}");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException
+            or OverflowException)
+        {
+            _workerLabStatus.Text =
+                "FUNDAÇÃO POLÍTICA RECUSADA (estado preservado): " + ex.Message;
+        }
+    }
+
     private void AdvanceOfflineLabTurn()
     {
         if (_canonicalPhysicalLab is null || _canonicalSession is null ||
@@ -325,6 +360,8 @@ public partial class Main
         }
     }
 
+    private static string PoliticalLabSavePath =>
+        ProjectSettings.GlobalizePath("user://ga-vs19-first-civilization.json");
     private static string TimedLabSavePath =>
         ProjectSettings.GlobalizePath("user://ga-vs15-worker-transit.json");
     private static string CashFoodLabSavePath =>
@@ -344,11 +381,13 @@ public partial class Main
         try
         {
             var content = _canonicalPhysicalLab.ExportSaveJson();
+            var isPolitical = _canonicalPhysicalLab.HasFoundedCivilization;
             var isTimed = _canonicalPhysicalLab.MovementMode == PhysicalWorkerMovementMode.TimedAdjacent;
             var isCash = _canonicalPhysicalLab.MarketMode == PhysicalFoodMarketMode.LocalCashSettlement;
             var isGeographic = _canonicalPhysicalLab.GeographyMode == PhysicalTacticalGeographyMode.Canonical01C;
             var isAdaptive = _canonicalPhysicalLab.CadenceMode == PhysicalEconomicCadenceMode.AdaptiveThirty;
-            var path = isTimed ? TimedLabSavePath : isCash ? CashFoodLabSavePath : isGeographic ? GeographyLabSavePath :
+            var path = isPolitical ? PoliticalLabSavePath : isTimed ? TimedLabSavePath :
+                isCash ? CashFoodLabSavePath : isGeographic ? GeographyLabSavePath :
                 isAdaptive ? AdaptiveLabSavePath : CanonicalLabSavePath;
             var temp = path + ".tmp";
             File.WriteAllText(temp, content, Encoding.UTF8);
@@ -384,7 +423,9 @@ public partial class Main
             _workerLabStatus.Text += cameraSaved
                 ? "\nCÂMERA TÁTICA SALVA: posição, zoom e orientação."
                 : "\nATENÇÃO: partida salva, mas a visão tática não pôde ser salva.";
-            _workerLabStatus.Text += isTimed
+            _workerLabStatus.Text += isPolitical
+                ? "\nSAVE POLÍTICO V14 GRAVADO: ga-vs19-first-civilization.json"
+                : isTimed
                 ? "\nSAVE TEMPORAL V13 GRAVADO: ga-vs15-worker-transit.json"
                 : isCash
                 ? "\nSAVE DE CAIXA V12 GRAVADO: ga-vs14-cash-food.json"
@@ -408,16 +449,18 @@ public partial class Main
         try
         {
             // Never silently downgrade on a damaged newer save.
-            var hasTimed = File.Exists(TimedLabSavePath);
-            var hasCash = !hasTimed && File.Exists(CashFoodLabSavePath);
+            var hasPolitical = File.Exists(PoliticalLabSavePath);
+            var hasTimed = !hasPolitical && File.Exists(TimedLabSavePath);
+            var hasCash = !hasPolitical && !hasTimed && File.Exists(CashFoodLabSavePath);
             var hasGeography = !hasTimed && !hasCash && File.Exists(GeographyLabSavePath);
             var hasAdaptive = !hasCash && !hasGeography && File.Exists(AdaptiveLabSavePath);
             var hasCanonical = !hasCash && !hasGeography && !hasAdaptive && File.Exists(CanonicalLabSavePath);
-            var path = hasTimed ? TimedLabSavePath : hasCash ? CashFoodLabSavePath : hasGeography ? GeographyLabSavePath :
+            var path = hasPolitical ? PoliticalLabSavePath : hasTimed ? TimedLabSavePath :
+                hasCash ? CashFoodLabSavePath : hasGeography ? GeographyLabSavePath :
                 hasAdaptive ? AdaptiveLabSavePath :
                 hasCanonical ? CanonicalLabSavePath : LegacyLabSavePath;
             var content = File.ReadAllText(path, Encoding.UTF8);
-            var restored = hasTimed || hasCash || hasGeography || hasAdaptive || hasCanonical
+            var restored = hasPolitical || hasTimed || hasCash || hasGeography || hasAdaptive || hasCanonical
                 ? CanonicalPhysicalTacticalSession.RestoreSaveJson(content)
                 : CanonicalPhysicalTacticalSession.MigrateVs07SaveJson(content);
             if (restored.State.CoarseParameters != new GoldbergParameters(3, 0) ||
@@ -470,7 +513,9 @@ public partial class Main
             _workerLabStatus.Text += cameraRestored
                 ? "\nCÂMERA TÁTICA RESTAURADA: mesma posição e zoom do save."
                 : "\nVisão tática: enquadramento inicial (save antigo ou visão indisponível).";
-            _workerLabStatus.Text += hasTimed
+            _workerLabStatus.Text += hasPolitical
+                ? "\nSAVE POLÍTICO V14 REABERTO E VALIDADO."
+                : hasTimed
                 ? "\nSAVE TEMPORAL V13 REABERTO E VALIDADO."
                 : hasCash
                 ? "\nSAVE DE CAIXA V12 REABERTO E VALIDADO."
@@ -599,6 +644,10 @@ public partial class Main
             $"Origem tile {origin.FineStrategicCellId.Value} | {jobs}\n" +
             $"Grupo selecionado: {selectedActivity} | disponíveis: {selectedGroupWorkers} trabalhadores\n" +
             $"Destino: {destination}\n" +
+            $"SOBERANIA POLÍTICA: {(_canonicalPhysicalLab.HasFoundedCivilization ?
+                "Civilização 1 fundada; território inicial " +
+                _canonicalPhysicalLab.Game.Snapshot.Civilizations.Records[0].StartCellId!.Value.Value
+                : "nenhuma civilização fundada")}\n" +
             $"Trabalhadores globais: {state.TotalWorkers} | " +
             $"tiles ocupados: {state.Allocations.Select(x => x.TileId).Distinct().Count()} | " +
             $"revisão canônica: {_canonicalPhysicalLab.Game.Snapshot.Revision}\n" +
@@ -609,13 +658,19 @@ public partial class Main
                 $"Último ciclo: produção {lastCycle.ProducedRaw / 1_000_000.0:F3}; " +
                 $"consumo alimentar {lastCycle.FoodConsumedRaw / 1_000_000.0:F3}; " +
                 $"FALTA {lastCycle.FoodUnmetRaw / 1_000_000.0:F3}\n") +
-            $"WORLDSTATE CANÔNICO V{(_canonicalPhysicalLab.MovementMode == PhysicalWorkerMovementMode.TimedAdjacent ? "13" : _canonicalPhysicalLab.MarketMode == PhysicalFoodMarketMode.LocalCashSettlement ? "12" : _canonicalPhysicalLab.GeographyMode == PhysicalTacticalGeographyMode.Canonical01C ? "11" : _canonicalPhysicalLab.CadenceMode == PhysicalEconomicCadenceMode.AdaptiveThirty ? "10" : "9")}: " +
+            $"WORLDSTATE CANÔNICO V{(_canonicalPhysicalLab.HasFoundedCivilization ? "14" : _canonicalPhysicalLab.MovementMode == PhysicalWorkerMovementMode.TimedAdjacent ? "13" : _canonicalPhysicalLab.MarketMode == PhysicalFoodMarketMode.LocalCashSettlement ? "12" : _canonicalPhysicalLab.GeographyMode == PhysicalTacticalGeographyMode.Canonical01C ? "11" : _canonicalPhysicalLab.CadenceMode == PhysicalEconomicCadenceMode.AdaptiveThirty ? "10" : "9")}: " +
             $"terreno {(_canonicalPhysicalLab.GeographyMode == PhysicalTacticalGeographyMode.Canonical01C ? "01C" : "V1 legado")}; " +
             $"mercado alimentar {(_canonicalPhysicalLab.MarketMode == PhysicalFoodMarketMode.LocalCashSettlement ? "LIQUIDADO À VISTA" : "LEGADO DIRETO")}; " +
             $"deslocamento {(_canonicalPhysicalLab.MovementMode == PhysicalWorkerMovementMode.TimedAdjacent ? "TEMPORAL" : "LEGADO")}; SEM carga comercial.";
         if (_workerMoveButton is not null)
             _workerMoveButton.Disabled = !_workerDestination.HasValue ||
                 selectedGroupWorkers == 0UL;
+        if (_foundCivilizationButton is not null)
+            _foundCivilizationButton.Disabled =
+                _canonicalPhysicalLab.HasFoundedCivilization ||
+                _canonicalPhysicalLab.MovementMode != PhysicalWorkerMovementMode.TimedAdjacent ||
+                _canonicalPhysicalLab.WorkersAt(origin) == 0UL ||
+                !_canonicalPhysicalLab.IsPhysicalWorkableLand(origin.FineStrategicCellId);
     }
 
 }
