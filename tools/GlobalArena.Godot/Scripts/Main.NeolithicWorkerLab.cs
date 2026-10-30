@@ -26,6 +26,7 @@ public partial class Main
     private Label? _settlementSummary;
     private VBoxContainer? _workerLabAdvancedPanel;
     private Button? _workerMoveButton;
+    private Button? _workerReassignButton;
     private SpinBox? _workerAmount;
     private OptionButton? _workerFromJob;
     private OptionButton? _workerToJob;
@@ -42,7 +43,7 @@ public partial class Main
 
         var title = new Label
         {
-            Text = "POVOAMENTOS EMERGENTES | VS20",
+            Text = "ATIVIDADES LOCAIS | VS21",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         title.AddThemeFontSizeOverride("font_size", 16);
@@ -91,6 +92,8 @@ public partial class Main
         }
         _workerFromJob.Select(0);
         _workerToJob.Select(0);
+        _workerFromJob.ItemSelected += _ => UpdateWorkerLabHud();
+        _workerToJob.ItemSelected += _ => UpdateWorkerLabHud();
         jobs.AddChild(_workerFromJob);
         jobs.AddChild(_workerToJob);
 
@@ -107,6 +110,13 @@ public partial class Main
         };
         _workerMoveButton.Pressed += MoveWorkerLabWorkers;
         lab.AddChild(_workerMoveButton);
+        _workerReassignButton = new Button
+        {
+            Text = "MUDAR ATIVIDADE NO TILE (SEM VIAGEM)",
+            Disabled = true
+        };
+        _workerReassignButton.Pressed += ReassignWorkerLabWorkers;
+        lab.AddChild(_workerReassignButton);
 
         var nextTurn = new Button { Text = "AVANÇAR TURNO DE MOVIMENTO (CICLOS ADAPTATIVOS)" };
         nextTurn.Pressed += AdvanceOfflineLabTurn;
@@ -343,6 +353,32 @@ public partial class Main
         {
             if (_workerLabStatus is not null)
                 _workerLabStatus.Text = "TRANSFERÊNCIA RECUSADA (estado preservado): " + ex.Message;
+        }
+    }
+
+    private void ReassignWorkerLabWorkers()
+    {
+        if (_canonicalPhysicalLab is null || _canonicalSession is null ||
+            _workerOrigin is null || _workerAmount is null ||
+            _workerFromJob is null || _workerToJob is null)
+            return;
+        try
+        {
+            _canonicalPhysicalLab.ReassignWorkers(_workerOrigin.Value,
+                (EconomicActivityKind)_workerFromJob.GetSelectedId(),
+                (EconomicActivityKind)_workerToJob.GetSelectedId(),
+                checked((ulong)_workerAmount.Value));
+            AttachRuntimeState(_canonicalSession.Snapshot);
+            UpdateWorkerLabHud();
+            GD.Print($"GA_VS21_LOCAL_REASSIGNMENT tile={_workerOrigin.Value.FineStrategicCellId.Value} " +
+                $"total={_canonicalPhysicalLab.State.TotalWorkers} " +
+                $"turn={_canonicalPhysicalLab.State.MovementTurn} " +
+                $"hash={_canonicalPhysicalLab.CurrentHash.HexDigest}");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or OverflowException)
+        {
+            if (_workerLabStatus is not null)
+                _workerLabStatus.Text = "REALOCAÇÃO RECUSADA (estado preservado): " + ex.Message;
         }
     }
 
@@ -727,6 +763,9 @@ public partial class Main
         if (_workerMoveButton is not null)
             _workerMoveButton.Disabled = !_workerDestination.HasValue ||
                 selectedGroupWorkers == 0UL;
+        if (_workerReassignButton is not null && _workerToJob is not null)
+            _workerReassignButton.Disabled = selectedGroupWorkers == 0UL ||
+                selectedActivity == (EconomicActivityKind)_workerToJob.GetSelectedId();
     }
 
 }
