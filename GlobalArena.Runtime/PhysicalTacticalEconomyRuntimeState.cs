@@ -10,6 +10,13 @@ namespace GlobalArena.Runtime;
 public sealed record PhysicalWorkerAllocation(
     PhysicalTacticalTileId TileId, EconomicActivityKind Activity, ulong Workers);
 
+/// <summary>Legacy games retain V1 geography; VS12 uses canonical 01C fine terrain.</summary>
+public enum PhysicalTacticalGeographyMode : byte
+{
+    LegacyV1 = 0,
+    Canonical01C = 1
+}
+
 public sealed record PhysicalCommodityStock(
     PhysicalTacticalTileId TileId, CommodityId Commodity, ulong RawQuantity);
 
@@ -32,6 +39,7 @@ public sealed class PhysicalTacticalEconomyRuntimeState
     public GoldbergParameters FineParameters { get; }
     public ulong MovementTurn { get; }
     public PhysicalEconomicCadenceMode CadenceMode { get; }
+    public PhysicalTacticalGeographyMode GeographyMode { get; }
     public ulong WorkerRevision { get; }
     public ulong TotalWorkers { get; }
     public IReadOnlyList<PhysicalWorkerAllocation> Allocations { get; }
@@ -47,12 +55,18 @@ public sealed class PhysicalTacticalEconomyRuntimeState
         IEnumerable<PhysicalWorkerAllocation> allocations,
         IEnumerable<PhysicalCommodityStock> stocks,
         IEnumerable<PhysicalEconomicCycle> cycles,
-        PhysicalEconomicCadenceMode cadenceMode = PhysicalEconomicCadenceMode.LegacyFixedSix)
+        PhysicalEconomicCadenceMode cadenceMode = PhysicalEconomicCadenceMode.LegacyFixedSix,
+        PhysicalTacticalGeographyMode geographyMode = PhysicalTacticalGeographyMode.LegacyV1)
     {
         ArgumentNullException.ThrowIfNull(coarseWorldBinding);
         ArgumentNullException.ThrowIfNull(allocations);
         ArgumentNullException.ThrowIfNull(stocks);
         ArgumentNullException.ThrowIfNull(cycles);
+        if (geographyMode is not (PhysicalTacticalGeographyMode.LegacyV1 or PhysicalTacticalGeographyMode.Canonical01C))
+            throw new ArgumentOutOfRangeException(nameof(geographyMode));
+        if (geographyMode == PhysicalTacticalGeographyMode.Canonical01C &&
+            cadenceMode != PhysicalEconomicCadenceMode.AdaptiveThirty)
+            throw new ArgumentException("01C physical economy requires adaptive cadence.");
 
         if (!coarseParameters.IsValid || !fineParameters.IsValid ||
             coarseWorldBinding.StrategicCellCount != coarseParameters.StrategicCellCount)
@@ -105,6 +119,7 @@ public sealed class PhysicalTacticalEconomyRuntimeState
         FineParameters = fineParameters;
         MovementTurn = movementTurn;
         CadenceMode = cadenceMode;
+        GeographyMode = geographyMode;
         WorkerRevision = workerRevision;
         TotalWorkers = totalWorkers;
         Allocations = Array.AsReadOnly(sortedAllocations);
