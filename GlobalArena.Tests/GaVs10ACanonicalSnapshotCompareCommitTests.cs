@@ -44,9 +44,7 @@ public sealed class GaVs10ACanonicalSnapshotCompareCommitTests
         Assert.Throws<InvalidOperationException>(() =>
             physical.MoveWorkers(
                 physical.InitialTile,
-                new PhysicalTacticalTileId(
-                    new GoldbergParameters(18, 0),
-                    new StrategicCellId(1UL)),
+                physical.AdjacentWorkable(physical.InitialTile)[0],
                 EconomicActivityKind.Agriculture,
                 EconomicActivityKind.Forestry, 1UL));
         Assert.Throws<InvalidOperationException>(() =>
