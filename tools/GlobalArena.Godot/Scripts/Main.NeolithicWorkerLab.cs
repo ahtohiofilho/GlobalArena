@@ -161,7 +161,9 @@ public partial class Main
         // journal, otherwise the next V9 save could not be replayed.
         if (_canonicalPhysicalLab is not null)
         {
-            _workerOrigin ??= _canonicalPhysicalLab.State.Allocations.First().TileId;
+            _workerOrigin ??= _canonicalPhysicalLab.State.Allocations.FirstOrDefault()?.TileId
+                ?? _canonicalPhysicalLab.State.Transits.FirstOrDefault()?.Source
+                ?? _canonicalPhysicalLab.InitialTile;
             UpdateWorkerLabHud();
             return;
         }
@@ -360,7 +362,9 @@ public partial class Main
                 _canonicalSession is null ||
                 restored.Game.Snapshot.WorldBinding != _canonicalSession.Snapshot.WorldBinding)
                 throw new InvalidOperationException("Save não pertence ao mundo G3/G18 ativo.");
-            var origin = restored.State.Allocations.First().TileId;
+            var origin = restored.State.Allocations.FirstOrDefault()?.TileId
+                ?? restored.State.Transits.FirstOrDefault()?.Source
+                ?? restored.InitialTile;
             var focus = restored.DisplayBucket(origin);
             // Visual and economic data must share the same fine-tile reference.
             // Legacy saves display V1 land instead of mislabeling V1 tiles as 01C.
