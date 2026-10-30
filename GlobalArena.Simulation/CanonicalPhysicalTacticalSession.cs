@@ -55,16 +55,29 @@ public sealed class CanonicalPhysicalTacticalSession
     private readonly PhysicalTacticalIncidenceMap _incidence;
     private readonly string _initialHashHex;
     private readonly CanonicalWorldStateHasher _hasher = new();
+    private WorldState _lastCommittedSnapshot;
+
+    private WorldState CheckedSnapshot
+    {
+        get
+        {
+            var live = Game.Snapshot;
+            if (!ReferenceEquals(live, _lastCommittedSnapshot))
+                throw new InvalidOperationException(
+                    "Canonical physical session lost authority: snapshot was changed externally.");
+            return live;
+        }
+    }
 
     public CanonicalGameSession Game { get; }
     public WorldGenerationResult FineWorld { get; }
     public PhysicalTacticalTileId InitialTile { get; }
     public PhysicalTacticalEconomyRuntimeState State =>
-        Game.Snapshot.PhysicalEconomy ??
+        CheckedSnapshot.PhysicalEconomy ??
         throw new InvalidOperationException("Physical economy has not been initialized.");
     public IReadOnlyList<CanonicalPhysicalAction> Events =>
         Array.AsReadOnly(_journal.ToArray());
-    public WorldStateHash CurrentHash => _hasher.Compute(Game.Snapshot);
+    public WorldStateHash CurrentHash => _hasher.Compute(CheckedSnapshot);
 
     public CanonicalPhysicalTacticalSession(
         CanonicalGameSession game, GoldbergParameters fine)
@@ -79,6 +92,7 @@ public sealed class CanonicalPhysicalTacticalSession
         if (Game.Snapshot.WorldBinding !=
             RuntimeWorldBinding.FromGeneratedWorld(Game.GeneratedWorld))
             throw new InvalidOperationException("Canonical world signature mismatch.");
+        _lastCommittedSnapshot = Game.Snapshot;
 
         // This object is deliberately not retained: it only supplies the
         // validated VS05 initial allocation and exact generated fine world.
@@ -104,7 +118,8 @@ public sealed class CanonicalPhysicalTacticalSession
             var next = Game.Snapshot
                 .WithPhysicalEconomy(initial.BuildPhysicalRuntimeSnapshot())
                 .AdvanceRevision();
-            Game.AcceptSnapshot(next);
+            Game.AcceptSnapshotIfCurrent(_lastCommittedSnapshot, next);
+            _lastCommittedSnapshot = next;
         }
         else
         {
@@ -290,14 +305,15 @@ public sealed class CanonicalPhysicalTacticalSession
         string kind, ulong source, ulong destination, byte fromJob,
         byte toJob, ulong amount)
     {
-        var before = Game.Snapshot;
+        var before = CheckedSnapshot;
         var beforeHash = _hasher.Compute(before);
         var staged = before.WithPhysicalEconomy(next).AdvanceRevision();
         var afterHash = _hasher.Compute(staged);
         var action = new CanonicalPhysicalAction(kind, source, destination,
             fromJob, toJob, amount, before.Revision, beforeHash.HexDigest,
             staged.Revision, afterHash.HexDigest);
-        Game.AcceptSnapshot(staged);
+        Game.AcceptSnapshotIfCurrent(before, staged);
+        _lastCommittedSnapshot = staged;
         _journal.Add(action);
     }
 
@@ -437,11 +453,12 @@ public sealed class CanonicalPhysicalTacticalSession
 
     private CanonicalPhysicalSavePayload BuildPayload()
     {
+        var owned = CheckedSnapshot;
         var state = State;
         return new CanonicalPhysicalSavePayload(
             SaveFormat, _seed, _generatorVersion, _coarse.M, _coarse.N, _fine.M, _fine.N,
-            Game.Snapshot.WorldBinding!.WorldSignatureSha256Hex, _initialHashHex,
-            Game.Snapshot.Revision, state.MovementTurn, state.WorkerRevision,
+            owned.WorldBinding!.WorldSignatureSha256Hex, _initialHashHex,
+            owned.Revision, state.MovementTurn, state.WorkerRevision,
             CurrentHash.HexDigest, _journal.ToArray(),
             state.Allocations.Select(x => new CanonicalPhysicalWorkerSaveRow(
                 x.TileId.FineStrategicCellId.Value, (byte)x.Activity, x.Workers)).ToArray(),
