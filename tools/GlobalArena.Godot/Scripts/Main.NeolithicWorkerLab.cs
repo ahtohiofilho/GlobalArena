@@ -180,6 +180,17 @@ public partial class Main
             _workerOrigin ??= _canonicalPhysicalLab.State.Allocations.FirstOrDefault()?.TileId
                 ?? _canonicalPhysicalLab.State.Transits.FirstOrDefault()?.Source
                 ?? _canonicalPhysicalLab.InitialTile;
+            // "Inspect" is a camera navigation action, never population creation.
+            // Recenter only if the inhabited tile lies outside the current
+            // tactical chart: preserve user pan and zoom when it is already visible.
+            if (!_tacticalPreview.HasVisiblePhysicalTile(
+                    _workerOrigin.Value.FineStrategicCellId.Value))
+            {
+                var focus = _canonicalPhysicalLab.DisplayBucket(_workerOrigin.Value);
+                _tacticalPreview.BindEconomicTacticalGeography(
+                    _canonicalPhysicalLab.FineWorld, _canonicalPhysicalLab.CanonicalTerrain);
+                _tacticalPreview.Open(focus.Value);
+            }
             UpdateWorkerLabHud();
             return;
         }
