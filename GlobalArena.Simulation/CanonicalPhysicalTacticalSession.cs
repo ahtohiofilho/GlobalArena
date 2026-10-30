@@ -470,10 +470,11 @@ public sealed class CanonicalPhysicalTacticalSession
                         // One microcredit per millionth of whole food: the
                         // product of price in microcredits/unit and sold raw
                         // food units is divided by the physical scale.
-                        var paid = (ulong)((UInt128)price * delivered /
-                            PhysicalFoodCashMarketState.MonetaryScale);
-                        if (paid > account.HouseholdMicrocredits)
+                        var rawPayment = (UInt128)price * delivered /
+                            PhysicalFoodCashMarketState.MonetaryScale;
+                        if (rawPayment > account.HouseholdMicrocredits)
                             throw new InvalidOperationException("Food purchase exceeds available household cash.");
+                        var paid = (ulong)rawPayment;
                         if (delivered > 0UL)
                         {
                             cashAccounts[group.Key] = account with
