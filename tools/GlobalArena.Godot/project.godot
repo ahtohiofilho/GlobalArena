@@ -10,7 +10,7 @@ config_version=5
 
 [application]
 
-config/name="Global Arena — VS13 Mercado Alimentar Local"
+config/name="Global Arena — VS14 Mercado Alimentar À Vista"
 run/main_scene="res://Scenes/Main.tscn"
 config/features=PackedStringArray("4.7", "C#", "GL Compatibility")
 

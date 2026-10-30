@@ -40,6 +40,9 @@ public sealed class PhysicalTacticalEconomyRuntimeState
     public ulong MovementTurn { get; }
     public PhysicalEconomicCadenceMode CadenceMode { get; }
     public PhysicalTacticalGeographyMode GeographyMode { get; }
+    public PhysicalFoodCashMarketState? FoodCash { get; }
+    public PhysicalFoodMarketMode MarketMode => FoodCash is null
+        ? PhysicalFoodMarketMode.LegacyDirectConsumption : PhysicalFoodMarketMode.LocalCashSettlement;
     public ulong WorkerRevision { get; }
     public ulong TotalWorkers { get; }
     public IReadOnlyList<PhysicalWorkerAllocation> Allocations { get; }
@@ -56,7 +59,8 @@ public sealed class PhysicalTacticalEconomyRuntimeState
         IEnumerable<PhysicalCommodityStock> stocks,
         IEnumerable<PhysicalEconomicCycle> cycles,
         PhysicalEconomicCadenceMode cadenceMode = PhysicalEconomicCadenceMode.LegacyFixedSix,
-        PhysicalTacticalGeographyMode geographyMode = PhysicalTacticalGeographyMode.LegacyV1)
+        PhysicalTacticalGeographyMode geographyMode = PhysicalTacticalGeographyMode.LegacyV1,
+        PhysicalFoodCashMarketState? foodCash = null)
     {
         ArgumentNullException.ThrowIfNull(coarseWorldBinding);
         ArgumentNullException.ThrowIfNull(allocations);
@@ -113,6 +117,10 @@ public sealed class PhysicalTacticalEconomyRuntimeState
         if (orderedCycles.Any(x => x is null))
             throw new ArgumentException("Economic cycles cannot contain null records.");
         PhysicalEconomicCadence.ValidateTimeline(movementTurn, orderedCycles, cadenceMode);
+        if (foodCash is not null &&
+            (geographyMode != PhysicalTacticalGeographyMode.Canonical01C ||
+             cadenceMode != PhysicalEconomicCadenceMode.AdaptiveThirty))
+            throw new ArgumentException("Cash food settlement requires the canonical 01C geography and adaptive clock.");
 
         CoarseWorldBinding = coarseWorldBinding;
         CoarseParameters = coarseParameters;
@@ -120,6 +128,7 @@ public sealed class PhysicalTacticalEconomyRuntimeState
         MovementTurn = movementTurn;
         CadenceMode = cadenceMode;
         GeographyMode = geographyMode;
+        FoodCash = foodCash;
         WorkerRevision = workerRevision;
         TotalWorkers = totalWorkers;
         Allocations = Array.AsReadOnly(sortedAllocations);

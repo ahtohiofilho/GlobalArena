@@ -13,6 +13,7 @@ public sealed class CanonicalWorldStateHasher
     public const uint PhysicalEconomyFormatVersion = 9U;
     public const uint AdaptivePhysicalEconomyFormatVersion = 10U;
     public const uint Canonical01CPhysicalEconomyFormatVersion = 11U;
+    public const uint PhysicalFoodCashFormatVersion = 12U;
 
     private static readonly byte[] Magic =
     {
@@ -306,7 +307,9 @@ public sealed class CanonicalWorldStateHasher
         // Explicit domain separator, tagged fields and the exact legacy
         // digest bind all pre-existing state + topology to the new version.
         hash.AppendData(Magic);
-        var format = physical.GeographyMode == PhysicalTacticalGeographyMode.Canonical01C
+        var format = physical.FoodCash is not null
+            ? PhysicalFoodCashFormatVersion
+            : physical.GeographyMode == PhysicalTacticalGeographyMode.Canonical01C
             ? Canonical01CPhysicalEconomyFormatVersion
             : physical.CadenceMode == PhysicalEconomicCadenceMode.AdaptiveThirty
                 ? AdaptivePhysicalEconomyFormatVersion : PhysicalEconomyFormatVersion;
@@ -362,6 +365,31 @@ public sealed class CanonicalWorldStateHasher
             AppendUInt32(hash, (uint)physical.GeographyMode);
             AppendUInt32(hash, 1U); // GA-VS12 canonical primitive yield ruleset
             AppendUInt32(hash, 35U); // experimental 01C land percentile
+        }
+
+        if (physical.FoodCash is { } market)
+        {
+            // New version domain: exactly conserved money, exact food, and
+            // full cash settlement log. No modification of the V9-V11 bytes.
+            AppendUInt32(hash, 93U);
+            AppendUInt32(hash, (uint)PhysicalFoodMarketMode.LocalCashSettlement);
+            AppendUInt64(hash, market.InitialMoneySupplyMicrocredits);
+            AppendUInt32(hash, checked((uint)market.Accounts.Count));
+            foreach (var a in market.Accounts)
+            {
+                AppendUInt64(hash, a.Tile.FineStrategicCellId.Value);
+                AppendUInt64(hash, a.HouseholdMicrocredits);
+                AppendUInt64(hash, a.ProducerMicrocredits);
+            }
+            AppendUInt32(hash, checked((uint)market.Receipts.Count));
+            foreach (var a in market.Receipts)
+            {
+                AppendUInt64(hash, a.MovementTurn);
+                AppendUInt64(hash, a.Tile.FineStrategicCellId.Value);
+                AppendUInt64(hash, a.FoodRaw);
+                AppendUInt64(hash, a.PriceMicrocreditsPerUnit);
+                AppendUInt64(hash, a.PaidMicrocredits);
+            }
         }
 
         return new WorldStateHash(
