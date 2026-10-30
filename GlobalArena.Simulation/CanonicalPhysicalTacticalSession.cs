@@ -297,7 +297,8 @@ public sealed class CanonicalPhysicalTacticalSession
     {
         ValidateTile(tile);
         var state = State;
-        var workers = WorkersAt(tile);
+        var workers = State.Transits.Where(x => x.Source == tile)
+            .Aggregate(WorkersAt(tile), (sum, x) => checked(sum + x.Workers));
         ulong projectedCrop = 0UL;
         foreach (var allocation in state.Allocations.Where(x =>
                      x.TileId == tile &&
@@ -631,7 +632,9 @@ public sealed class CanonicalPhysicalTacticalSession
         if (cashAccounts is not null && cashReceipts is not null)
             cash = new PhysicalFoodCashMarketState(
                 current.FoodCash!.InitialMoneySupplyMicrocredits,
-                cashAccounts.Values, cashReceipts, _fine, turn);
+                cashAccounts.Values,
+                cashReceipts.OrderBy(x => x.MovementTurn)
+                    .ThenBy(x => x.Tile.FineStrategicCellId.Value), _fine, turn);
 
         var next = new PhysicalTacticalEconomyRuntimeState(
             current.CoarseWorldBinding, _coarse, _fine, turn, nextWorkerRevision,
