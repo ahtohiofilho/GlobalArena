@@ -180,9 +180,9 @@ public sealed class CanonicalPhysicalTacticalSession
                     initialMoney,
                     startingAllocations.GroupBy(x => x.TileId).Select(g =>
                         new PhysicalFoodCashAccount(g.Key,
-                            checked(g.Sum(x => (long)x.Workers) *
-                                (long)PhysicalFoodCashMarketState.InitialMicrocreditsPerWorker)
-                                is long amount ? (ulong)amount : 0UL, 0UL)),
+                            checked(g.Aggregate(0UL,
+                                (total, x) => checked(total + x.Workers)) *
+                                PhysicalFoodCashMarketState.InitialMicrocreditsPerWorker), 0UL)),
                     Array.Empty<PhysicalFoodCashReceipt>(), _fine, 0UL);
             }
             var initialPhysical = new PhysicalTacticalEconomyRuntimeState(
