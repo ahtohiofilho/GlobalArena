@@ -339,12 +339,37 @@ public sealed class CanonicalPhysicalTacticalSession
         else nextAllocations[sourceKey] = available - amount;
         nextAllocations[targetKey] = targetWorkers;
 
+        PhysicalFoodCashMarketState? nextCash = current.FoodCash;
+        if (current.FoodCash is { } oldCash)
+        {
+            // A move carries a proportionate share of local household cash.
+            // No money is minted or credited from a future economic cycle.
+            var wallets = oldCash.Accounts.ToDictionary(x => x.Tile, x => x);
+            var src = oldCash.At(source);
+            var dst = oldCash.At(target);
+            var totalSourceWorkers = WorkersAt(source);
+            var transferred = (ulong)((UInt128)src.HouseholdMicrocredits *
+                amount / totalSourceWorkers);
+            wallets[source] = src with
+            {
+                HouseholdMicrocredits = src.HouseholdMicrocredits - transferred
+            };
+            wallets[target] = dst with
+            {
+                HouseholdMicrocredits =
+                    checked(dst.HouseholdMicrocredits + transferred)
+            };
+            nextCash = new PhysicalFoodCashMarketState(
+                oldCash.InitialMoneySupplyMicrocredits,
+                wallets.Values, oldCash.Receipts, _fine, current.MovementTurn);
+        }
+
         var next = new PhysicalTacticalEconomyRuntimeState(
             current.CoarseWorldBinding, _coarse, _fine, current.MovementTurn,
             checked(current.WorkerRevision + 1UL),
             nextAllocations.Select(x => new PhysicalWorkerAllocation(
                 x.Key.Item1, x.Key.Item2, x.Value)),
-            current.Stocks, current.Cycles, _cadenceMode, _geographyMode);
+            current.Stocks, current.Cycles, _cadenceMode, _geographyMode, nextCash);
         if (next.TotalWorkers != current.TotalWorkers)
             throw new InvalidOperationException("Worker conservation failed.");
 
@@ -365,6 +390,8 @@ public sealed class CanonicalPhysicalTacticalSession
         var stocks = current.Stocks.ToDictionary(
             x => (x.TileId, x.Commodity), x => x.RawQuantity);
         var cycles = current.Cycles.ToList();
+        var cashAccounts = current.FoodCash?.Accounts.ToDictionary(x => x.Tile, x => x);
+        var cashReceipts = current.FoodCash?.Receipts.ToList();
 
         var lastSettlement = cycles.Count == 0 ? 0UL : cycles[^1].MovementTurn;
         if (PhysicalEconomicCadence.IsSettlementTurn(turn, lastSettlement, _cadenceMode))
@@ -402,7 +429,63 @@ public sealed class CanonicalPhysicalTacticalSession
                     (sum, x) => checked(sum + x.Workers)) * FoodDemandRawPerWorker);
                 var key = (group.Key, new CommodityId(1U));
                 stocks.TryGetValue(key, out var available);
-                var delivered = Math.Min(available, demand);
+                ulong delivered;
+                if (cashAccounts is null || cashReceipts is null)
+                {
+                    // V9/V10/V11: preserve legacy direct-food-consumption bytes.
+                    delivered = Math.Min(available, demand);
+                }
+                else
+                {
+                    // V12: household demand must buy food from the local
+                    // producer. The solver handles price, while all physical
+                    // and monetary postings are committed in integer units.
+                    var account = cashAccounts.GetValueOrDefault(group.Key) ??
+                        new PhysicalFoodCashAccount(group.Key, 0UL, 0UL);
+                    var residents = group.Aggregate(0UL,
+                        (sum, x) => checked(sum + x.Workers));
+                    var budget = account.HouseholdMicrocredits /
+                        (double)PhysicalFoodCashMarketState.MonetaryScale;
+                    delivered = 0UL;
+                    if (available > 0UL && account.HouseholdMicrocredits > 0UL)
+                    {
+                        var quote = new EconomicLocalFoodMarketQuoteResolver().Resolve(
+                            group.Key, turn, residents, available, 0UL,
+                            demand, budget / residents);
+                        var desiredRaw = Math.Floor(quote.ReferenceSold *
+                            PhysicalFoodCashMarketState.MonetaryScale);
+                        if (!double.IsFinite(desiredRaw) || desiredRaw < 0.0 ||
+                            desiredRaw > ulong.MaxValue)
+                            throw new InvalidOperationException(
+                                "Food quote cannot be converted to fixed-point goods.");
+                        delivered = Math.Min(Math.Min((ulong)desiredRaw, available), demand);
+                        var rawPrice = quote.PricePerWholeFoodUnit *
+                            PhysicalFoodCashMarketState.MonetaryScale;
+                        if (!double.IsFinite(rawPrice) || rawPrice < 0.0 ||
+                            rawPrice > ulong.MaxValue)
+                            throw new InvalidOperationException(
+                                "Food price cannot be converted to fixed-point money.");
+                        var price = checked((ulong)Math.Round(rawPrice,
+                            MidpointRounding.ToEven));
+                        // One microcredit per millionth of whole food: the
+                        // product of price in microcredits/unit and sold raw
+                        // food units is divided by the physical scale.
+                        var paid = (ulong)((UInt128)price * delivered /
+                            PhysicalFoodCashMarketState.MonetaryScale);
+                        if (paid > account.HouseholdMicrocredits)
+                            throw new InvalidOperationException("Food purchase exceeds available household cash.");
+                        if (delivered > 0UL)
+                        {
+                            cashAccounts[group.Key] = account with
+                            {
+                                HouseholdMicrocredits = account.HouseholdMicrocredits - paid,
+                                ProducerMicrocredits = checked(account.ProducerMicrocredits + paid)
+                            };
+                            cashReceipts.Add(new PhysicalFoodCashReceipt(
+                                turn, group.Key, delivered, price, paid));
+                        }
+                    }
+                }
                 if (delivered != 0UL) stocks[key] = available - delivered;
                 consumed = checked(consumed + delivered);
                 unmet = checked(unmet + (demand - delivered));
@@ -412,12 +495,18 @@ public sealed class CanonicalPhysicalTacticalSession
             cycles.Add(cycle);
         }
 
+        PhysicalFoodCashMarketState? cash = current.FoodCash;
+        if (cashAccounts is not null && cashReceipts is not null)
+            cash = new PhysicalFoodCashMarketState(
+                current.FoodCash!.InitialMoneySupplyMicrocredits,
+                cashAccounts.Values, cashReceipts, _fine, turn);
+
         var next = new PhysicalTacticalEconomyRuntimeState(
             current.CoarseWorldBinding, _coarse, _fine, turn, current.WorkerRevision,
             current.Allocations,
             stocks.Select(x => new PhysicalCommodityStock(
                 x.Key.Item1, x.Key.Item2, x.Value)),
-            cycles, _cadenceMode, _geographyMode);
+            cycles, _cadenceMode, _geographyMode, cash);
         Commit(next, "tick", 0UL, 0UL, 0, 0, 0UL);
         return cycle;
     }
