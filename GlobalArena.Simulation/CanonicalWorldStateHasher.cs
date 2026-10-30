@@ -11,6 +11,7 @@ public sealed class CanonicalWorldStateHasher
     // v9 commits to the added physical economy without changing old saves.
     public const uint FormatVersion = 8U;
     public const uint PhysicalEconomyFormatVersion = 9U;
+    public const uint AdaptivePhysicalEconomyFormatVersion = 10U;
 
     private static readonly byte[] Magic =
     {
@@ -304,7 +305,9 @@ public sealed class CanonicalWorldStateHasher
         // Explicit domain separator, tagged fields and the exact legacy
         // digest bind all pre-existing state + topology to the new version.
         hash.AppendData(Magic);
-        AppendUInt32(hash, PhysicalEconomyFormatVersion);
+        var format = physical.CadenceMode == PhysicalEconomicCadenceMode.AdaptiveThirty
+            ? AdaptivePhysicalEconomyFormatVersion : PhysicalEconomyFormatVersion;
+        AppendUInt32(hash, format);
         AppendUInt32(hash, 90U);
         hash.AppendData(Convert.FromHexString(legacy.HexDigest));
         AppendUInt32(hash, checked((uint)physical.CoarseParameters.M));
@@ -340,8 +343,17 @@ public sealed class CanonicalWorldStateHasher
             AppendUInt64(hash, cycle.FoodUnmetRaw);
         }
 
+        if (physical.CadenceMode == PhysicalEconomicCadenceMode.AdaptiveThirty)
+        {
+            // New ruleset domain separator. The legacy V9 byte sequence must
+            // remain identical for saves made before adaptive timing.
+            AppendUInt32(hash, 91U);
+            AppendUInt32(hash, (uint)physical.CadenceMode);
+            AppendUInt64(hash, PhysicalEconomicCadence.AdaptiveWindowTurns);
+        }
+
         return new WorldStateHash(
-            PhysicalEconomyFormatVersion,
+            format,
             Convert.ToHexString(hash.GetHashAndReset()));
     }
 
