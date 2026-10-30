@@ -38,10 +38,11 @@ jobs:
           if (-not $launcher.Contains('feature/ga-vs19c-command-first-tactical-hud-20261030') -or
               -not $launcher.Contains('-c Debug') -or
               -not $launcher.Contains('& $GodotExe --path $projectDir --verbose') -or
-              -not $main.Contains('GA_VS19C_RUNTIME_ACTIVE') -or
+              (-not $main.Contains('GA_VS19C_RUNTIME_ACTIVE') -and
+               -not $main.Contains('GA_VS20_RUNTIME_ACTIVE')) -or
               -not $source.Contains('MOSTRAR DETALHES E FERRAMENTAS DE LABORAT') -or
               -not $source.Contains('REABRIR SAVE')) {
-            throw 'VS19C operational HUD or direct launcher contract missing.'
+            throw 'VS19C+ operational HUD or direct launcher contract missing.'
           }
           $save = $source.IndexOf('Text = "SALVAR PARTIDA CAN')
           $details = $source.IndexOf('MOSTRAR DETALHES E FERRAMENTAS')
