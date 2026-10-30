@@ -26,6 +26,10 @@ public partial class Main
     private SpinBox? _workerAmount;
     private OptionButton? _workerFromJob;
     private OptionButton? _workerToJob;
+    private SpinBox? _referenceFoodBudget;
+    private Label? _foodMarketQuoteLabel;
+    private ulong? _foodMarketQuoteRevision;
+    private ulong? _foodMarketQuoteTile;
 
     private void InitializeWorkerLabControls(VBoxContainer tacticalHud)
     {
@@ -107,6 +111,27 @@ public partial class Main
         var nextTurn = new Button { Text = "AVANÇAR TURNO DE MOVIMENTO (CICLOS ADAPTATIVOS)" };
         nextTurn.Pressed += AdvanceOfflineLabTurn;
         lab.AddChild(nextTurn);
+
+        // First market gate: observed physical food supply and an explicitly
+        // hypothetical per-worker spending budget. No cash ledger yet.
+        var budgetRow = new HBoxContainer();
+        budgetRow.AddChild(new Label { Text = "Orçamento hipotético / trabalhador:" });
+        _referenceFoodBudget = new SpinBox
+        {
+            MinValue = 1, MaxValue = 100000, Step = 1, Value = 40,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        budgetRow.AddChild(_referenceFoodBudget);
+        lab.AddChild(budgetRow);
+        var quoteButton = new Button { Text = "COTAR MERCADO ALIMENTAR LOCAL (SEM LIQUIDAR)" };
+        quoteButton.Pressed += QuoteLocalFoodMarket;
+        lab.AddChild(quoteButton);
+        _foodMarketQuoteLabel = new Label
+        {
+            Text = "Cotação opcional: não altera preços oficiais, estoques ou dinheiro.",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        lab.AddChild(_foodMarketQuoteLabel);
 
         var persistence = new HBoxContainer();
         lab.AddChild(persistence);
@@ -343,11 +368,51 @@ public partial class Main
         }
     }
 
+    private void QuoteLocalFoodMarket()
+    {
+        if (_canonicalPhysicalLab is null || _workerOrigin is null ||
+            _referenceFoodBudget is null || _foodMarketQuoteLabel is null)
+            return;
+        try
+        {
+            var quote = _canonicalPhysicalLab.QuoteNextLocalFoodMarket(
+                _workerOrigin.Value, _referenceFoodBudget.Value);
+            _foodMarketQuoteRevision = _canonicalPhysicalLab.Game.Snapshot.Revision;
+            _foodMarketQuoteTile = _workerOrigin.Value.FineStrategicCellId.Value;
+            _foodMarketQuoteLabel.Text =
+                $"COTAÇÃO HIPOTÉTICA LOCAL | tile {_foodMarketQuoteTile} | " +
+                $"estoque + próxima colheita: {quote.ReferenceSupply:F3} | " +
+                $"necessidade alimentar: {quote.RawFoodNeed / 1_000_000.0:F3}\\n" +
+                $"preço endógeno: {quote.PricePerWholeFoodUnit:F4} | " +
+                $"venda possível: {quote.ReferenceSold:F3} | " +
+                $"não vendido: {quote.ReferenceUnsold:F3}\\n" +
+                $"gasto potencial: {quote.ReferenceBuyerSpending:F3} | " +
+                $"H residual: {quote.ReferenceBudgetResidual:F3}\\n" +
+                "APENAS REFERÊNCIA: sem compra efetiva, sem transporte, " +
+                "sem lançamento de receita e sem alteração do WorldState.";
+        }
+        catch (Exception ex) when (ex is ArgumentException or
+            InvalidOperationException or OverflowException)
+        {
+            _foodMarketQuoteRevision = null;
+            _foodMarketQuoteTile = null;
+            _foodMarketQuoteLabel.Text = "COTAÇÃO NÃO DISPONÍVEL: " + ex.Message;
+        }
+    }
+
     private void UpdateWorkerLabHud()
     {
         if (_canonicalPhysicalLab is null || _workerOrigin is null || _tacticalPreview is null ||
             _workerLabStatus is null) return;
         var state = _canonicalPhysicalLab.State;
+        if (_foodMarketQuoteLabel is not null &&
+            (_foodMarketQuoteRevision != _canonicalPhysicalLab.Game.Snapshot.Revision ||
+             _foodMarketQuoteTile != _workerOrigin.Value.FineStrategicCellId.Value))
+        {
+            _foodMarketQuoteRevision = null;
+            _foodMarketQuoteTile = null;
+            _foodMarketQuoteLabel.Text = "Cotação opcional: refaça após mudanças de estado/tile.";
+        }
         var available = _canonicalPhysicalLab.AdjacentWorkable(_workerOrigin.Value);
         _tacticalPreview.SetWorkerRings(
             _workerOrigin.Value.FineStrategicCellId.Value,
