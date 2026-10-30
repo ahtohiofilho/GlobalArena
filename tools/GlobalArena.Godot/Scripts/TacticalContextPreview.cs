@@ -437,6 +437,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         orbitRow.AddThemeConstantOverride("separation", 7);
         controls.AddChild(orbitRow);
         var ringButton = new Button { Text = "FRAME RINGS: 2" };
+        _savedRingButton = ringButton;
         ringButton.Pressed += () =>
         {
             _ringCount = _ringCount == 2 ? 1 : 2;
@@ -445,6 +446,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         };
         primaryRow.AddChild(ringButton);
         var projectionButton = new Button { Text = "PROJECTION: EQUIDISTANT" };
+        _savedProjectionButton = projectionButton;
         projectionButton.Pressed += () =>
         {
             _equidistant = !_equidistant;
@@ -479,6 +481,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         };
         terrainRow.AddChild(terrainButton);
         var framingButton = new Button { Text = "FRAME: COVER (EXP)" };
+        _savedFramingButton = framingButton;
         framingButton.Pressed += () =>
         {
             _coverViewport = !_coverViewport;
