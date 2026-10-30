@@ -1,0 +1,39 @@
+name: GA-UI QA Compact Tactical Sidebar
+
+on:
+  pull_request:
+    paths:
+      - 'tools/GlobalArena.Godot/Scripts/Main.cs'
+      - 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+      - '.github/workflows/ga-ui-qa-compact-sidebar.yml'
+  workflow_dispatch:
+
+jobs:
+  sidebar-density-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Compile Godot tactical HUD and reference market
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+      - name: Verify physical economic and market regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs13|FullyQualifiedName~GaVs12'
+  sidebar-density-windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Compile Godot tactical HUD on Windows
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+      - name: Verify no market or physical state regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs13|FullyQualifiedName~GaVs12'
