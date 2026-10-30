@@ -551,7 +551,7 @@ public sealed class CanonicalPhysicalTacticalSession
         {
             envelope = JsonSerializer.Deserialize<CanonicalPhysicalSaveEnvelope>(json)
                 ?? throw new InvalidOperationException("Missing canonical save envelope.");
-            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat) ||
+            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat or CashFoodSaveFormat) ||
                 string.IsNullOrEmpty(envelope.PayloadJson) ||
                 string.IsNullOrEmpty(envelope.PayloadSha256Hex))
                 throw new InvalidOperationException("Unsupported canonical save envelope.");
@@ -571,6 +571,9 @@ public sealed class CanonicalPhysicalTacticalSession
         if (payload.Version != envelope.Version ||
             payload.Actions is null || payload.Workers is null ||
             payload.Stocks is null || payload.Cycles is null ||
+            ((payload.Version == CashFoodSaveFormat) != (payload.FoodCash is not null)) ||
+            (payload.FoodCash is not null &&
+             (payload.FoodCash.Accounts is null || payload.FoodCash.Receipts is null)) ||
             payload.Actions.Length > MaximumActions ||
             payload.GeneratorVersion != WorldGenerationVersion.Initial.Value)
             throw new InvalidOperationException("Unsupported canonical save payload.");
@@ -578,12 +581,15 @@ public sealed class CanonicalPhysicalTacticalSession
         var mode = payload.Version == SaveFormat
             ? PhysicalEconomicCadenceMode.LegacyFixedSix
             : PhysicalEconomicCadenceMode.AdaptiveThirty;
-        var terrainMode = payload.Version == GeographyAlignedSaveFormat
+        var terrainMode = payload.Version >= GeographyAlignedSaveFormat
             ? PhysicalTacticalGeographyMode.Canonical01C
             : PhysicalTacticalGeographyMode.LegacyV1;
+        var marketMode = payload.Version == CashFoodSaveFormat
+            ? PhysicalFoodMarketMode.LocalCashSettlement
+            : PhysicalFoodMarketMode.LegacyDirectConsumption;
         var game = Start(payload.Seed,
             new GoldbergParameters(payload.CoarseM, payload.CoarseN),
-            new GoldbergParameters(payload.FineM, payload.FineN), mode, terrainMode);
+            new GoldbergParameters(payload.FineM, payload.FineN), mode, terrainMode, marketMode);
         if (payload.WorldBindingHex != game.Game.Snapshot.WorldBinding!.WorldSignatureSha256Hex ||
             payload.InitialHashHex != game._initialHashHex)
             throw new InvalidOperationException("Canonical save world identity mismatch.");
@@ -667,7 +673,9 @@ public sealed class CanonicalPhysicalTacticalSession
         return game;
     }
 
-    private int CurrentSaveFormat => _geographyMode == PhysicalTacticalGeographyMode.Canonical01C
+    private int CurrentSaveFormat => _marketMode == PhysicalFoodMarketMode.LocalCashSettlement
+        ? CashFoodSaveFormat
+        : _geographyMode == PhysicalTacticalGeographyMode.Canonical01C
         ? GeographyAlignedSaveFormat
         : _cadenceMode == PhysicalEconomicCadenceMode.AdaptiveThirty
             ? AdaptiveSaveFormat : SaveFormat;
@@ -701,7 +709,17 @@ public sealed class CanonicalPhysicalTacticalSession
                 x.TileId.FineStrategicCellId.Value, x.Commodity.Value,
                 x.RawQuantity)).ToArray(),
             state.Cycles.Select(x => new CanonicalPhysicalCycleSaveRow(
-                x.MovementTurn, x.ProducedRaw, x.FoodConsumedRaw, x.FoodUnmetRaw)).ToArray());
+                x.MovementTurn, x.ProducedRaw, x.FoodConsumedRaw, x.FoodUnmetRaw)).ToArray(),
+            state.FoodCash is { } ledger
+                ? new CanonicalFoodCashSave(
+                    ledger.InitialMoneySupplyMicrocredits,
+                    ledger.Accounts.Select(x => new CanonicalFoodCashAccountSaveRow(
+                        x.Tile.FineStrategicCellId.Value,
+                        x.HouseholdMicrocredits, x.ProducerMicrocredits)).ToArray(),
+                    ledger.Receipts.Select(x => new CanonicalFoodCashReceiptSaveRow(
+                        x.MovementTurn, x.Tile.FineStrategicCellId.Value,
+                        x.FoodRaw, x.PriceMicrocreditsPerUnit, x.PaidMicrocredits)).ToArray())
+                : null);
     }
 
     private bool IsWorkableLand(StrategicCellId id) =>
