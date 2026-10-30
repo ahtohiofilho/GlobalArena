@@ -44,7 +44,7 @@ public partial class Main
 
         var warning = new Label
         {
-            Text = "Economia física CANÔNICA: primeiros 30 turnos com ciclo 1/1, próximos 30 com 1/2, depois 1/3... Save adaptativo V10; V9 legado preservado.",
+            Text = "Geografia física CANÔNICA 01C: terrenos, trabalhadores e produção na mesma malha. Ciclos econômicos adaptativos 1/1, 1/2, 1/3... Save V11; V9/V10 preservados.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         warning.AddThemeColorOverride("font_color", new Color("#e1c883"));
@@ -146,9 +146,13 @@ public partial class Main
             // No offline worker session survives beyond canonical seeding.
             var next = new CanonicalPhysicalTacticalSession(
                 _canonicalSession, new GoldbergParameters(18, 0),
-                PhysicalEconomicCadenceMode.AdaptiveThirty);
+                PhysicalEconomicCadenceMode.AdaptiveThirty,
+                PhysicalTacticalGeographyMode.Canonical01C);
             var origin = next.State.Allocations.First().TileId;
+            if (!next.IsPhysicalWorkableLand(origin.FineStrategicCellId))
+                throw new InvalidOperationException("Origin is not on canonical 01C workable land.");
             var focus = next.DisplayBucket(origin);
+            _tacticalPreview.BindEconomicTacticalGeography(next.FineWorld, next.CanonicalTerrain);
             _tacticalPreview.Open(focus.Value);
             if (!_tacticalPreview.HasVisiblePhysicalTile(origin.FineStrategicCellId.Value))
                 throw new InvalidOperationException("Canonical worker tile is not visible.");
@@ -249,6 +253,8 @@ public partial class Main
         }
     }
 
+    private static string GeographyLabSavePath =>
+        ProjectSettings.GlobalizePath("user://ga-vs12-geography-physical.json");
     private static string AdaptiveLabSavePath =>
         ProjectSettings.GlobalizePath("user://ga-vs11-adaptive-physical.json");
     private static string CanonicalLabSavePath =>
@@ -262,15 +268,19 @@ public partial class Main
         try
         {
             var content = _canonicalPhysicalLab.ExportSaveJson();
+            var isGeographic = _canonicalPhysicalLab.GeographyMode == PhysicalTacticalGeographyMode.Canonical01C;
             var isAdaptive = _canonicalPhysicalLab.CadenceMode == PhysicalEconomicCadenceMode.AdaptiveThirty;
-            var path = isAdaptive ? AdaptiveLabSavePath : CanonicalLabSavePath;
+            var path = isGeographic ? GeographyLabSavePath :
+                isAdaptive ? AdaptiveLabSavePath : CanonicalLabSavePath;
             var temp = path + ".tmp";
             File.WriteAllText(temp, content, Encoding.UTF8);
             File.Move(temp, path, overwrite: true);
             UpdateWorkerLabHud();
-            _workerLabStatus.Text += isAdaptive
-                ? "\nSAVE ADAPTATIVO V10 GRAVADO: ga-vs11-adaptive-physical.json"
-                : "\nSAVE LEGADO V9 GRAVADO: ga-vs10-canonical-physical.json";
+            _workerLabStatus.Text += isGeographic
+                ? "\nSAVE GEOGRÁFICO V11 GRAVADO: ga-vs12-geography-physical.json"
+                : isAdaptive
+                    ? "\nSAVE ADAPTATIVO V10 GRAVADO: ga-vs11-adaptive-physical.json"
+                    : "\nSAVE LEGADO V9 GRAVADO: ga-vs10-canonical-physical.json";
             GD.Print($"GA-VS10-CANONICAL-SAVED revision={_canonicalPhysicalLab.Game.Snapshot.Revision} " +
                 $"hash={_canonicalPhysicalLab.CurrentHash.HexDigest}");
         }
@@ -286,12 +296,14 @@ public partial class Main
         try
         {
             // Never silently downgrade on a damaged newer save.
-            var hasAdaptive = File.Exists(AdaptiveLabSavePath);
-            var hasCanonical = !hasAdaptive && File.Exists(CanonicalLabSavePath);
-            var path = hasAdaptive ? AdaptiveLabSavePath :
+            var hasGeography = File.Exists(GeographyLabSavePath);
+            var hasAdaptive = !hasGeography && File.Exists(AdaptiveLabSavePath);
+            var hasCanonical = !hasGeography && !hasAdaptive && File.Exists(CanonicalLabSavePath);
+            var path = hasGeography ? GeographyLabSavePath :
+                hasAdaptive ? AdaptiveLabSavePath :
                 hasCanonical ? CanonicalLabSavePath : LegacyLabSavePath;
             var content = File.ReadAllText(path, Encoding.UTF8);
-            var restored = hasAdaptive || hasCanonical
+            var restored = hasGeography || hasAdaptive || hasCanonical
                 ? CanonicalPhysicalTacticalSession.RestoreSaveJson(content)
                 : CanonicalPhysicalTacticalSession.MigrateVs07SaveJson(content);
             if (restored.State.CoarseParameters != new GoldbergParameters(3, 0) ||
@@ -301,7 +313,10 @@ public partial class Main
                 throw new InvalidOperationException("Save não pertence ao mundo G3/G18 ativo.");
             var origin = restored.State.Allocations.First().TileId;
             var focus = restored.DisplayBucket(origin);
-            // Verify presentation before publishing the reconstructed session.
+            // Visual and economic data must share the same fine-tile reference.
+            // Legacy saves display V1 land instead of mislabeling V1 tiles as 01C.
+            _tacticalPreview.BindEconomicTacticalGeography(
+                restored.FineWorld, restored.CanonicalTerrain);
             _tacticalPreview.Open(focus.Value);
             if (!_tacticalPreview.HasVisiblePhysicalTile(origin.FineStrategicCellId.Value))
                 throw new InvalidOperationException("Tile restaurado não aparece na malha.");
@@ -311,11 +326,13 @@ public partial class Main
             _workerDestination = null;
             AttachRuntimeState(_canonicalSession.Snapshot);
             UpdateWorkerLabHud();
-            _workerLabStatus.Text += hasAdaptive
-                ? "\nSAVE ADAPTATIVO V10 REABERTO E VALIDADO."
-                : hasCanonical
-                    ? "\nSAVE LEGADO V9 REABERTO E VALIDADO (RITMO FIXO 1/6)."
-                    : "\nSAVE VS07 MIGRADO EM MEMÓRIA (RITMO FIXO 1/6); SALVE PARA PERSISTIR.";
+            _workerLabStatus.Text += hasGeography
+                ? "\nSAVE GEOGRÁFICO V11 REABERTO E VALIDADO."
+                : hasAdaptive
+                    ? "\nSAVE ADAPTATIVO V10 REABERTO: TERRENO V1 LEGADO."
+                    : hasCanonical
+                        ? "\nSAVE LEGADO V9 REABERTO: TERRENO V1 LEGADO."
+                        : "\nSAVE VS07 MIGRADO EM MEMÓRIA: TERRENO V1 LEGADO.";
             GD.Print($"GA-VS10-CANONICAL-LOADED revision={_canonicalSession.Snapshot.Revision} " +
                 $"hash={restored.CurrentHash.HexDigest} migrated_legacy={!hasCanonical}");
         }
@@ -368,7 +385,8 @@ public partial class Main
                 $"Último ciclo: produção {lastCycle.ProducedRaw / 1_000_000.0:F3}; " +
                 $"consumo alimentar {lastCycle.FoodConsumedRaw / 1_000_000.0:F3}; " +
                 $"FALTA {lastCycle.FoodUnmetRaw / 1_000_000.0:F3}\n") +
-            $"WORLDSTATE CANÔNICO V{(_canonicalPhysicalLab.CadenceMode == PhysicalEconomicCadenceMode.AdaptiveThirty ? "10" : "9")}: produção/consumo locais; SEM transporte, mercado ou fome.";
+            $"WORLDSTATE CANÔNICO V{(_canonicalPhysicalLab.GeographyMode == PhysicalTacticalGeographyMode.Canonical01C ? "11" : _canonicalPhysicalLab.CadenceMode == PhysicalEconomicCadenceMode.AdaptiveThirty ? "10" : "9")}: " +
+            $"terreno {(_canonicalPhysicalLab.GeographyMode == PhysicalTacticalGeographyMode.Canonical01C ? "01C" : "V1 legado")}; produção/consumo locais; SEM mercado ou transporte.";
         if (_workerMoveButton is not null)
             _workerMoveButton.Disabled = !_workerDestination.HasValue;
     }
