@@ -104,7 +104,7 @@ public sealed class GaVs20EmergentSettlementTests
         game.AdvanceMovementTurn();
         var before = EmergentSettlementProjection.FromSession(game);
         Assert.NotEmpty(game.State.Stocks);
-        Assert.Equal(1, before.Sites.Count);
+        Assert.Single(before.Sites);
 
         game.OrderWorkerTransit(origin, target,
             EconomicActivityKind.Agriculture, EconomicActivityKind.Agriculture, 4UL);
