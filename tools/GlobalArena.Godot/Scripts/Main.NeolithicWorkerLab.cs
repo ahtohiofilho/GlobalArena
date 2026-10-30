@@ -34,7 +34,7 @@ public partial class Main
     private void InitializeWorkerLabControls(VBoxContainer tacticalHud)
     {
         var lab = new VBoxContainer();
-        lab.AddThemeConstantOverride("separation", 6);
+        lab.AddThemeConstantOverride("separation", 4);
         tacticalHud.AddChild(lab);
 
         var title = new Label
