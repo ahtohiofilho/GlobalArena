@@ -39,7 +39,7 @@ public partial class Main
 
         var title = new Label
         {
-            Text = "ATIVIDADES TÁTICAS | LABORATÓRIO",
+            Text = "ATIVIDADES TÁTICAS | LABORATÓRIO VS18",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         title.AddThemeFontSizeOverride("font_size", 16);
