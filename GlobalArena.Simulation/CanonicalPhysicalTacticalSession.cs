@@ -466,6 +466,63 @@ public sealed class CanonicalPhysicalTacticalSession
         var cycles = current.Cycles.ToList();
         var cashAccounts = current.FoodCash?.Accounts.ToDictionary(x => x.Tile, x => x);
         var cashReceipts = current.FoodCash?.Receipts.ToList();
+        var activeAllocations = current.Allocations.ToDictionary(
+            x => (x.TileId, x.Activity), x => x.Workers);
+        var pendingTransits = current.Transits.ToList();
+        var nextWorkerRevision = current.WorkerRevision;
+
+        if (_movementMode == PhysicalWorkerMovementMode.TimedAdjacent &&
+            pendingTransits.Any(x => x.ArrivalTurn == turn))
+        {
+            // Reconcile local population anchors, including every pending group.
+            // Household cash follows the arriving group proportionately;
+            // producer receipts already earned stay at their original tile.
+            var anchored = new Dictionary<PhysicalTacticalTileId, ulong>();
+            void AddAnchored(PhysicalTacticalTileId tile, ulong workers) =>
+                anchored[tile] = checked(anchored.GetValueOrDefault(tile) + workers);
+            foreach (var a in current.Allocations) AddAnchored(a.TileId, a.Workers);
+            foreach (var a in pendingTransits) AddAnchored(a.Source, a.Workers);
+
+            foreach (var order in pendingTransits
+                         .Where(x => x.ArrivalTurn == turn).OrderBy(x => x.OrderId))
+            {
+                var key = (order.Destination, order.ToJob);
+                activeAllocations[key] = checked(activeAllocations.GetValueOrDefault(key) +
+                    order.Workers);
+
+                if (cashAccounts is not null)
+                {
+                    var from = cashAccounts.GetValueOrDefault(order.Source) ??
+                        new PhysicalFoodCashAccount(order.Source, 0UL, 0UL);
+                    var to = cashAccounts.GetValueOrDefault(order.Destination) ??
+                        new PhysicalFoodCashAccount(order.Destination, 0UL, 0UL);
+                    var headcount = anchored[order.Source];
+                    if (headcount < order.Workers)
+                        throw new InvalidOperationException("Transit source population diverged.");
+                    var travellingCash = (ulong)((UInt128)from.HouseholdMicrocredits *
+                        order.Workers / headcount);
+                    cashAccounts[order.Source] = from with
+                    {
+                        HouseholdMicrocredits = from.HouseholdMicrocredits - travellingCash
+                    };
+                    cashAccounts[order.Destination] = to with
+                    {
+                        HouseholdMicrocredits = checked(
+                            to.HouseholdMicrocredits + travellingCash)
+                    };
+                }
+                anchored[order.Source] -= order.Workers;
+                nextWorkerRevision = checked(nextWorkerRevision + 1UL);
+            }
+            pendingTransits.RemoveAll(x => x.ArrivalTurn == turn);
+        }
+
+        var effectiveAllocations = activeAllocations.Select(x =>
+            new PhysicalWorkerAllocation(x.Key.Item1, x.Key.Item2, x.Value)).ToArray();
+        // The in-transit population consumes provisions from its departure
+        // tile, but no traveller contributes to production during the journey.
+        var consumers = effectiveAllocations.Concat(pendingTransits.Select(x =>
+            new PhysicalWorkerAllocation(x.Source, x.FromJob, x.Workers)));
 
         var lastSettlement = cycles.Count == 0 ? 0UL : cycles[^1].MovementTurn;
         if (PhysicalEconomicCadence.IsSettlementTurn(turn, lastSettlement, _cadenceMode))
@@ -474,7 +531,7 @@ public sealed class CanonicalPhysicalTacticalSession
             ulong consumed = 0UL;
             ulong unmet = 0UL;
 
-            foreach (var allocation in current.Allocations)
+            foreach (var allocation in effectiveAllocations)
             {
                 var (commodity, rawRate) = allocation.Activity switch
                 {
@@ -497,7 +554,7 @@ public sealed class CanonicalPhysicalTacticalSession
                 produced = checked(produced + output);
             }
 
-            foreach (var group in current.Allocations.GroupBy(x => x.TileId))
+            foreach (var group in consumers.GroupBy(x => x.TileId))
             {
                 var demand = checked(group.Aggregate(0UL,
                     (sum, x) => checked(sum + x.Workers)) * FoodDemandRawPerWorker);
@@ -577,11 +634,14 @@ public sealed class CanonicalPhysicalTacticalSession
                 cashAccounts.Values, cashReceipts, _fine, turn);
 
         var next = new PhysicalTacticalEconomyRuntimeState(
-            current.CoarseWorldBinding, _coarse, _fine, turn, current.WorkerRevision,
-            current.Allocations,
+            current.CoarseWorldBinding, _coarse, _fine, turn, nextWorkerRevision,
+            effectiveAllocations,
             stocks.Select(x => new PhysicalCommodityStock(
                 x.Key.Item1, x.Key.Item2, x.Value)),
-            cycles, _cadenceMode, _geographyMode, cash);
+            cycles, _cadenceMode, _geographyMode, cash,
+            _movementMode, pendingTransits);
+        if (next.TotalWorkers != current.TotalWorkers)
+            throw new InvalidOperationException("Timed arrival did not conserve workers.");
         Commit(next, "tick", 0UL, 0UL, 0, 0, 0UL);
         return cycle;
     }
