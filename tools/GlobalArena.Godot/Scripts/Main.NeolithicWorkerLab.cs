@@ -452,11 +452,11 @@ public partial class Main
         var cashInfo = localLedger is null ? "" :
             $"CAIXA LOCAL V12 | famílias: {localWallet!.HouseholdMicrocredits / 1_000_000.0:F3} | " +
             $"produtores: {localWallet.ProducerMicrocredits / 1_000_000.0:F3} | " +
-            $"emissão inicial total: {localLedger.InitialMoneySupplyMicrocredits / 1_000_000.0:F3}\\n" +
-            (lastPurchase is null ? "Nenhuma compra liquidada neste tile.\\n" :
+            $"emissão inicial total: {localLedger.InitialMoneySupplyMicrocredits / 1_000_000.0:F3}\n" +
+            (lastPurchase is null ? "Nenhuma compra liquidada neste tile.\n" :
                 $"ÚLTIMA COMPRA REAL turno {lastPurchase.MovementTurn}: alimento {lastPurchase.FoodRaw / 1_000_000.0:F3}; " +
                 $"pagamento {lastPurchase.PaidMicrocredits / 1_000_000.0:F3}; " +
-                $"preço {lastPurchase.PriceMicrocreditsPerUnit / 1_000_000.0:F4}\\n");
+                $"preço {lastPurchase.PriceMicrocreditsPerUnit / 1_000_000.0:F4}\n");
         _workerLabStatus.Text =
             $"Origem tile {origin.FineStrategicCellId.Value} | {jobs}\n" +
             $"Destino: {destination}\n" +
