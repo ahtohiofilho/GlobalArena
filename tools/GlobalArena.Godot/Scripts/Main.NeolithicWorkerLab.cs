@@ -479,7 +479,11 @@ public partial class Main
             _foodMarketQuoteLabel.Text = "Cotação opcional: refaça após mudanças de estado/tile.";
         }
         var available = _canonicalPhysicalLab.AdjacentWorkable(_workerOrigin.Value);
-        _tacticalPreview.SetWorkerMarkers(TacticalWorkerMarkerProjection.FromPhysicalState(state));
+        _tacticalPreview.SetWorkerMarkers(
+            TacticalWorkerMarkerProjection.FromPhysicalState(state),
+            _workerOrigin.Value.FineStrategicCellId.Value,
+            _workerFromJob is null ? null :
+                (EconomicActivityKind)_workerFromJob.GetSelectedId());
         _tacticalPreview.SetWorkerRings(
             _workerOrigin.Value.FineStrategicCellId.Value,
             _workerDestination?.FineStrategicCellId.Value,
