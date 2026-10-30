@@ -14,6 +14,7 @@ public sealed class CanonicalWorldStateHasher
     public const uint AdaptivePhysicalEconomyFormatVersion = 10U;
     public const uint Canonical01CPhysicalEconomyFormatVersion = 11U;
     public const uint PhysicalFoodCashFormatVersion = 12U;
+    public const uint TimedWorkerTransitFormatVersion = 13U;
 
     private static readonly byte[] Magic =
     {
@@ -307,7 +308,9 @@ public sealed class CanonicalWorldStateHasher
         // Explicit domain separator, tagged fields and the exact legacy
         // digest bind all pre-existing state + topology to the new version.
         hash.AppendData(Magic);
-        var format = physical.FoodCash is not null
+        var format = physical.MovementMode == PhysicalWorkerMovementMode.TimedAdjacent
+            ? TimedWorkerTransitFormatVersion
+            : physical.FoodCash is not null
             ? PhysicalFoodCashFormatVersion
             : physical.GeographyMode == PhysicalTacticalGeographyMode.Canonical01C
             ? Canonical01CPhysicalEconomyFormatVersion
@@ -392,6 +395,23 @@ public sealed class CanonicalWorldStateHasher
             }
         }
 
+        if (physical.MovementMode == PhysicalWorkerMovementMode.TimedAdjacent)
+        {
+            AppendUInt32(hash, 94U);
+            AppendUInt32(hash, (uint)physical.MovementMode);
+            AppendUInt32(hash, checked((uint)physical.Transits.Count));
+            foreach (var order in physical.Transits)
+            {
+                AppendUInt64(hash, order.OrderId);
+                AppendUInt64(hash, order.Source.FineStrategicCellId.Value);
+                AppendUInt64(hash, order.Destination.FineStrategicCellId.Value);
+                AppendUInt32(hash, (uint)order.FromJob);
+                AppendUInt32(hash, (uint)order.ToJob);
+                AppendUInt64(hash, order.Workers);
+                AppendUInt64(hash, order.DepartureTurn);
+                AppendUInt64(hash, order.ArrivalTurn);
+            }
+        }
         return new WorldStateHash(
             format,
             Convert.ToHexString(hash.GetHashAndReset()));

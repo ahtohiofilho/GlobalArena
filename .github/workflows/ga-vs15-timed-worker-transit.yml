@@ -1,0 +1,45 @@
+name: GA-VS15 Timed Physical Worker Transit
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Runtime/PhysicalWorkerTransit.cs'
+      - 'GlobalArena.Runtime/PhysicalTacticalEconomyRuntimeState.cs'
+      - 'GlobalArena.Simulation/CanonicalPhysicalTacticalSession.cs'
+      - 'GlobalArena.Simulation/CanonicalWorldStateHasher.cs'
+      - 'GlobalArena.Tests/GaVs15TimedWorkerTransitTests.cs'
+      - 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+      - 'tools/GlobalArena.Godot/project.godot'
+      - '.github/workflows/ga-vs15-timed-worker-transit.yml'
+  workflow_dispatch:
+
+jobs:
+  timed-transit-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Test V13 transit and legacy saves
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs15|FullyQualifiedName~GaVs14|FullyQualifiedName~GaVs13|FullyQualifiedName~GaVs12|FullyQualifiedName~GaVs11'
+      - name: Build Godot CSharp
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  timed-transit-windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Test V13 transit cash conservation and replay
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs15|FullyQualifiedName~GaVs14|FullyQualifiedName~GaVs13|FullyQualifiedName~GaVs12|FullyQualifiedName~GaVs11'
+      - name: Build Windows Godot CSharp
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release

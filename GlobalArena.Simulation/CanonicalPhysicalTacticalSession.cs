@@ -27,6 +27,10 @@ public sealed record CanonicalFoodCashSave(
     ulong InitialMoneySupply, CanonicalFoodCashAccountSaveRow[] Accounts,
     CanonicalFoodCashReceiptSaveRow[] Receipts);
 
+public sealed record CanonicalWorkerTransitSaveRow(
+    ulong Order, ulong Source, ulong Destination, byte FromJob,
+    byte ToJob, ulong Workers, ulong Depart, ulong Arrive);
+
 public sealed record CanonicalPhysicalSavePayload(
     int Version, ulong Seed, int GeneratorVersion,
     int CoarseM, int CoarseN, int FineM, int FineN,
@@ -37,7 +41,9 @@ public sealed record CanonicalPhysicalSavePayload(
     CanonicalPhysicalStockSaveRow[] Stocks,
     CanonicalPhysicalCycleSaveRow[] Cycles,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    CanonicalFoodCashSave? FoodCash = null);
+    CanonicalFoodCashSave? FoodCash = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    CanonicalWorkerTransitSaveRow[]? Transits = null);
 
 public sealed record CanonicalPhysicalSaveEnvelope(
     int Version, string PayloadJson, string PayloadSha256Hex);
@@ -55,6 +61,7 @@ public sealed class CanonicalPhysicalTacticalSession
     public const int AdaptiveSaveFormat = 10;
     public const int GeographyAlignedSaveFormat = 11;
     public const int CashFoodSaveFormat = 12;
+    public const int TimedTransitSaveFormat = 13;
     public const int MaximumActions = 100_000;
     private const int MaximumSaveBytes = 4_000_000;
     private const ulong FoodDemandRawPerWorker = 500_000UL;
@@ -67,6 +74,7 @@ public sealed class CanonicalPhysicalTacticalSession
     private readonly PhysicalEconomicCadenceMode _cadenceMode;
     private readonly PhysicalTacticalGeographyMode _geographyMode;
     private readonly PhysicalFoodMarketMode _marketMode;
+    private readonly PhysicalWorkerMovementMode _movementMode;
     private readonly CanonicalTacticalPhysicalGeography? _canonicalGeography;
     private readonly StrategicPrimitiveResourcePotentialFieldSet _potentials;
     private readonly PhysicalTacticalIncidenceMap _incidence;
@@ -90,6 +98,7 @@ public sealed class CanonicalPhysicalTacticalSession
     public PhysicalEconomicCadenceMode CadenceMode => _cadenceMode;
     public PhysicalTacticalGeographyMode GeographyMode => _geographyMode;
     public PhysicalFoodMarketMode MarketMode => _marketMode;
+    public PhysicalWorkerMovementMode MovementMode => _movementMode;
     public PhysicalFoodCashMarketState? FoodCash => State.FoodCash;
     public WorldGenerationV2PhysicalComposition? CanonicalTerrain => _canonicalGeography?.Terrain;
     public bool IsPhysicalWorkableLand(StrategicCellId tile) => IsWorkableLand(tile);
@@ -108,7 +117,8 @@ public sealed class CanonicalPhysicalTacticalSession
         CanonicalGameSession game, GoldbergParameters fine,
         PhysicalEconomicCadenceMode cadenceMode = PhysicalEconomicCadenceMode.LegacyFixedSix,
         PhysicalTacticalGeographyMode geographyMode = PhysicalTacticalGeographyMode.LegacyV1,
-        PhysicalFoodMarketMode marketMode = PhysicalFoodMarketMode.LegacyDirectConsumption)
+        PhysicalFoodMarketMode marketMode = PhysicalFoodMarketMode.LegacyDirectConsumption,
+        PhysicalWorkerMovementMode movementMode = PhysicalWorkerMovementMode.LegacyInstant)
     {
         Game = game ?? throw new ArgumentNullException(nameof(game));
         var request = Game.GeneratedWorld.Request;
@@ -131,6 +141,12 @@ public sealed class CanonicalPhysicalTacticalSession
               cadenceMode != PhysicalEconomicCadenceMode.AdaptiveThirty)))
             throw new ArgumentException("Cash market requires canonical 01C geography and adaptive cadence.");
         _marketMode = marketMode;
+        if (movementMode is not (PhysicalWorkerMovementMode.LegacyInstant or
+            PhysicalWorkerMovementMode.TimedAdjacent) ||
+            (movementMode == PhysicalWorkerMovementMode.TimedAdjacent &&
+             marketMode != PhysicalFoodMarketMode.LocalCashSettlement))
+            throw new ArgumentException("Timed movement requires V12 local cash market.");
+        _movementMode = movementMode;
         _ = new GoldbergScaledRefinement(_coarse, _fine);
         if (Game.Snapshot.WorldBinding !=
             RuntimeWorldBinding.FromGeneratedWorld(Game.GeneratedWorld))
@@ -189,7 +205,8 @@ public sealed class CanonicalPhysicalTacticalSession
                 seeded.CoarseWorldBinding, seeded.CoarseParameters,
                 seeded.FineParameters, seeded.MovementTurn,
                 seeded.WorkerRevision, startingAllocations, seeded.Stocks,
-                seeded.Cycles, _cadenceMode, _geographyMode, initialCash);
+                seeded.Cycles, _cadenceMode, _geographyMode, initialCash,
+                _movementMode);
             var next = Game.Snapshot
                 .WithPhysicalEconomy(initialPhysical)
                 .AdvanceRevision();
@@ -210,6 +227,7 @@ public sealed class CanonicalPhysicalTacticalSession
             if (State.FineParameters != _fine ||
                 State.GeographyMode != _geographyMode ||
                 State.MarketMode != _marketMode ||
+                State.MovementMode != _movementMode ||
                 State.CadenceMode != _cadenceMode ||
                 State.CoarseParameters != _coarse ||
                 State.CoarseWorldBinding != Game.Snapshot.WorldBinding)
@@ -235,13 +253,15 @@ public sealed class CanonicalPhysicalTacticalSession
         GoldbergParameters? fine = null,
         PhysicalEconomicCadenceMode cadenceMode = PhysicalEconomicCadenceMode.LegacyFixedSix,
         PhysicalTacticalGeographyMode geographyMode = PhysicalTacticalGeographyMode.LegacyV1,
-        PhysicalFoodMarketMode marketMode = PhysicalFoodMarketMode.LegacyDirectConsumption)
+        PhysicalFoodMarketMode marketMode = PhysicalFoodMarketMode.LegacyDirectConsumption,
+        PhysicalWorkerMovementMode movementMode = PhysicalWorkerMovementMode.LegacyInstant)
     {
         var coarseParameters = coarse ?? new GoldbergParameters(3, 0);
         var canonical = CanonicalGameSession.Start(new WorldGenerationRequest(
             new WorldSeed(seed), WorldGenerationVersion.Initial, coarseParameters));
         return new CanonicalPhysicalTacticalSession(
-            canonical, fine ?? new GoldbergParameters(18, 0), cadenceMode, geographyMode, marketMode);
+            canonical, fine ?? new GoldbergParameters(18, 0), cadenceMode, geographyMode,
+            marketMode, movementMode);
     }
 
     public ulong WorkersAt(PhysicalTacticalTileId tile)
@@ -251,8 +271,13 @@ public sealed class CanonicalPhysicalTacticalSession
             .Aggregate(0UL, (sum, x) => checked(sum + x.Workers));
     }
 
-    public ulong FoodDemandAt(PhysicalTacticalTileId tile) =>
-        checked(WorkersAt(tile) * FoodDemandRawPerWorker);
+    public ulong FoodDemandAt(PhysicalTacticalTileId tile)
+    {
+        ValidateTile(tile);
+        var provisional = State.Transits.Where(x => x.Source == tile)
+            .Aggregate(WorkersAt(tile), (sum, x) => checked(sum + x.Workers));
+        return checked(provisional * FoodDemandRawPerWorker);
+    }
 
     public ulong StockAt(PhysicalTacticalTileId tile, CommodityId commodity)
     {
@@ -272,7 +297,8 @@ public sealed class CanonicalPhysicalTacticalSession
     {
         ValidateTile(tile);
         var state = State;
-        var workers = WorkersAt(tile);
+        var workers = State.Transits.Where(x => x.Source == tile)
+            .Aggregate(WorkersAt(tile), (sum, x) => checked(sum + x.Workers));
         ulong projectedCrop = 0UL;
         foreach (var allocation in state.Allocations.Where(x =>
                      x.TileId == tile &&
@@ -314,6 +340,8 @@ public sealed class CanonicalPhysicalTacticalSession
         PhysicalTacticalTileId target, EconomicActivityKind fromJob,
         EconomicActivityKind toJob, ulong amount)
     {
+        if (_movementMode == PhysicalWorkerMovementMode.TimedAdjacent)
+            throw new InvalidOperationException("Instant relocation is not available in timed-worker games.");
         EnsureJournalCapacity();
         ValidateTile(source);
         ValidateTile(target);
@@ -378,6 +406,53 @@ public sealed class CanonicalPhysicalTacticalSession
     }
 
     /// <summary>
+    /// VS15: adjacent physical move with deterministic two-turn primitive
+    /// travel time. Workers stop producing as soon as the order is issued.
+    /// They provision from the source until arrival, without teleportation.
+    /// </summary>
+    public PhysicalWorkerTransit OrderWorkerTransit(
+        PhysicalTacticalTileId source, PhysicalTacticalTileId target,
+        EconomicActivityKind fromJob, EconomicActivityKind toJob, ulong amount)
+    {
+        if (_movementMode != PhysicalWorkerMovementMode.TimedAdjacent)
+            throw new InvalidOperationException("Timed movement is not enabled in this save.");
+        EnsureJournalCapacity();
+        ValidateTile(source);
+        ValidateTile(target);
+        ValidateJob(fromJob);
+        ValidateJob(toJob);
+        if (source == target || amount == 0UL ||
+            !IsWorkableLand(target.FineStrategicCellId) ||
+            !AdjacentWorkable(source).Contains(target))
+            throw new InvalidOperationException("Timed movement requires an adjacent workable tile.");
+
+        var current = State;
+        var allocations = current.Allocations.ToDictionary(
+            x => (x.TileId, x.Activity), x => x.Workers);
+        var key = (source, fromJob);
+        if (!allocations.TryGetValue(key, out var available) || available < amount)
+            throw new InvalidOperationException("Not enough workers at the physical origin.");
+        if (available == amount) allocations.Remove(key);
+        else allocations[key] = available - amount;
+        var id = checked(current.WorkerRevision + 1UL);
+        const ulong primitiveTravelTurns = 2UL;
+        var order = new PhysicalWorkerTransit(
+            id, source, target, fromJob, toJob, amount,
+            current.MovementTurn, checked(current.MovementTurn + primitiveTravelTurns));
+        var next = new PhysicalTacticalEconomyRuntimeState(
+            current.CoarseWorldBinding, _coarse, _fine, current.MovementTurn, id,
+            allocations.Select(x => new PhysicalWorkerAllocation(
+                x.Key.Item1, x.Key.Item2, x.Value)),
+            current.Stocks, current.Cycles, _cadenceMode, _geographyMode,
+            current.FoodCash, _movementMode, current.Transits.Append(order));
+        if (next.TotalWorkers != current.TotalWorkers)
+            throw new InvalidOperationException("Timed departure did not conserve workers.");
+        Commit(next, "depart", source.FineStrategicCellId.Value,
+            target.FineStrategicCellId.Value, (byte)fromJob, (byte)toJob, amount);
+        return order;
+    }
+
+    /// <summary>
     /// Fixed-six V9 and progressive-thirty V10 settle physical production
     /// and consumption under their versioned rules. No intertile teleportation.
     /// </summary>
@@ -392,6 +467,63 @@ public sealed class CanonicalPhysicalTacticalSession
         var cycles = current.Cycles.ToList();
         var cashAccounts = current.FoodCash?.Accounts.ToDictionary(x => x.Tile, x => x);
         var cashReceipts = current.FoodCash?.Receipts.ToList();
+        var activeAllocations = current.Allocations.ToDictionary(
+            x => (x.TileId, x.Activity), x => x.Workers);
+        var pendingTransits = current.Transits.ToList();
+        var nextWorkerRevision = current.WorkerRevision;
+
+        if (_movementMode == PhysicalWorkerMovementMode.TimedAdjacent &&
+            pendingTransits.Any(x => x.ArrivalTurn == turn))
+        {
+            // Reconcile local population anchors, including every pending group.
+            // Household cash follows the arriving group proportionately;
+            // producer receipts already earned stay at their original tile.
+            var anchored = new Dictionary<PhysicalTacticalTileId, ulong>();
+            void AddAnchored(PhysicalTacticalTileId tile, ulong workers) =>
+                anchored[tile] = checked(anchored.GetValueOrDefault(tile) + workers);
+            foreach (var a in current.Allocations) AddAnchored(a.TileId, a.Workers);
+            foreach (var a in pendingTransits) AddAnchored(a.Source, a.Workers);
+
+            foreach (var order in pendingTransits
+                         .Where(x => x.ArrivalTurn == turn).OrderBy(x => x.OrderId))
+            {
+                var key = (order.Destination, order.ToJob);
+                activeAllocations[key] = checked(activeAllocations.GetValueOrDefault(key) +
+                    order.Workers);
+
+                if (cashAccounts is not null)
+                {
+                    var originWallet = cashAccounts.GetValueOrDefault(order.Source) ??
+                        new PhysicalFoodCashAccount(order.Source, 0UL, 0UL);
+                    var to = cashAccounts.GetValueOrDefault(order.Destination) ??
+                        new PhysicalFoodCashAccount(order.Destination, 0UL, 0UL);
+                    var headcount = anchored[order.Source];
+                    if (headcount < order.Workers)
+                        throw new InvalidOperationException("Transit source population diverged.");
+                    var travellingCash = (ulong)((UInt128)originWallet.HouseholdMicrocredits *
+                        order.Workers / headcount);
+                    cashAccounts[order.Source] = originWallet with
+                    {
+                        HouseholdMicrocredits = originWallet.HouseholdMicrocredits - travellingCash
+                    };
+                    cashAccounts[order.Destination] = to with
+                    {
+                        HouseholdMicrocredits = checked(
+                            to.HouseholdMicrocredits + travellingCash)
+                    };
+                }
+                anchored[order.Source] -= order.Workers;
+                nextWorkerRevision = checked(nextWorkerRevision + 1UL);
+            }
+            pendingTransits.RemoveAll(x => x.ArrivalTurn == turn);
+        }
+
+        var effectiveAllocations = activeAllocations.Select(x =>
+            new PhysicalWorkerAllocation(x.Key.Item1, x.Key.Item2, x.Value)).ToArray();
+        // The in-transit population consumes provisions from its departure
+        // tile, but no traveller contributes to production during the journey.
+        var consumers = effectiveAllocations.Concat(pendingTransits.Select(x =>
+            new PhysicalWorkerAllocation(x.Source, x.FromJob, x.Workers)));
 
         var lastSettlement = cycles.Count == 0 ? 0UL : cycles[^1].MovementTurn;
         if (PhysicalEconomicCadence.IsSettlementTurn(turn, lastSettlement, _cadenceMode))
@@ -400,7 +532,7 @@ public sealed class CanonicalPhysicalTacticalSession
             ulong consumed = 0UL;
             ulong unmet = 0UL;
 
-            foreach (var allocation in current.Allocations)
+            foreach (var allocation in effectiveAllocations)
             {
                 var (commodity, rawRate) = allocation.Activity switch
                 {
@@ -423,7 +555,7 @@ public sealed class CanonicalPhysicalTacticalSession
                 produced = checked(produced + output);
             }
 
-            foreach (var group in current.Allocations.GroupBy(x => x.TileId))
+            foreach (var group in consumers.GroupBy(x => x.TileId))
             {
                 var demand = checked(group.Aggregate(0UL,
                     (sum, x) => checked(sum + x.Workers)) * FoodDemandRawPerWorker);
@@ -500,14 +632,19 @@ public sealed class CanonicalPhysicalTacticalSession
         if (cashAccounts is not null && cashReceipts is not null)
             cash = new PhysicalFoodCashMarketState(
                 current.FoodCash!.InitialMoneySupplyMicrocredits,
-                cashAccounts.Values, cashReceipts, _fine, turn);
+                cashAccounts.Values,
+                cashReceipts.OrderBy(x => x.MovementTurn)
+                    .ThenBy(x => x.Tile.FineStrategicCellId.Value), _fine, turn);
 
         var next = new PhysicalTacticalEconomyRuntimeState(
-            current.CoarseWorldBinding, _coarse, _fine, turn, current.WorkerRevision,
-            current.Allocations,
+            current.CoarseWorldBinding, _coarse, _fine, turn, nextWorkerRevision,
+            effectiveAllocations,
             stocks.Select(x => new PhysicalCommodityStock(
                 x.Key.Item1, x.Key.Item2, x.Value)),
-            cycles, _cadenceMode, _geographyMode, cash);
+            cycles, _cadenceMode, _geographyMode, cash,
+            _movementMode, pendingTransits);
+        if (next.TotalWorkers != current.TotalWorkers)
+            throw new InvalidOperationException("Timed arrival did not conserve workers.");
         Commit(next, "tick", 0UL, 0UL, 0, 0, 0UL);
         return cycle;
     }
@@ -552,7 +689,7 @@ public sealed class CanonicalPhysicalTacticalSession
         {
             envelope = JsonSerializer.Deserialize<CanonicalPhysicalSaveEnvelope>(json)
                 ?? throw new InvalidOperationException("Missing canonical save envelope.");
-            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat or CashFoodSaveFormat) ||
+            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat or CashFoodSaveFormat or TimedTransitSaveFormat) ||
                 string.IsNullOrEmpty(envelope.PayloadJson) ||
                 string.IsNullOrEmpty(envelope.PayloadSha256Hex))
                 throw new InvalidOperationException("Unsupported canonical save envelope.");
@@ -572,7 +709,8 @@ public sealed class CanonicalPhysicalTacticalSession
         if (payload.Version != envelope.Version ||
             payload.Actions is null || payload.Workers is null ||
             payload.Stocks is null || payload.Cycles is null ||
-            ((payload.Version == CashFoodSaveFormat) != (payload.FoodCash is not null)) ||
+            ((payload.Version >= CashFoodSaveFormat) != (payload.FoodCash is not null)) ||
+            ((payload.Version == TimedTransitSaveFormat) != (payload.Transits is not null)) ||
             (payload.FoodCash is not null &&
              (payload.FoodCash.Accounts is null || payload.FoodCash.Receipts is null)) ||
             payload.Actions.Length > MaximumActions ||
@@ -585,12 +723,16 @@ public sealed class CanonicalPhysicalTacticalSession
         var terrainMode = payload.Version >= GeographyAlignedSaveFormat
             ? PhysicalTacticalGeographyMode.Canonical01C
             : PhysicalTacticalGeographyMode.LegacyV1;
-        var marketMode = payload.Version == CashFoodSaveFormat
+        var marketMode = payload.Version >= CashFoodSaveFormat
             ? PhysicalFoodMarketMode.LocalCashSettlement
             : PhysicalFoodMarketMode.LegacyDirectConsumption;
+        var movementMode = payload.Version == TimedTransitSaveFormat
+            ? PhysicalWorkerMovementMode.TimedAdjacent
+            : PhysicalWorkerMovementMode.LegacyInstant;
         var game = Start(payload.Seed,
             new GoldbergParameters(payload.CoarseM, payload.CoarseN),
-            new GoldbergParameters(payload.FineM, payload.FineN), mode, terrainMode, marketMode);
+            new GoldbergParameters(payload.FineM, payload.FineN), mode, terrainMode,
+            marketMode, movementMode);
         if (payload.WorldBindingHex != game.Game.Snapshot.WorldBinding!.WorldSignatureSha256Hex ||
             payload.InitialHashHex != game._initialHashHex)
             throw new InvalidOperationException("Canonical save world identity mismatch.");
@@ -605,6 +747,13 @@ public sealed class CanonicalPhysicalTacticalSession
 
             if (action.Kind == "move")
                 game.MoveWorkers(
+                    new PhysicalTacticalTileId(game._fine, new StrategicCellId(action.Source)),
+                    new PhysicalTacticalTileId(game._fine, new StrategicCellId(action.Destination)),
+                    (EconomicActivityKind)action.FromJob,
+                    (EconomicActivityKind)action.ToJob, action.Workers);
+            else if (action.Kind == "depart" && 
+                     game._movementMode == PhysicalWorkerMovementMode.TimedAdjacent)
+                game.OrderWorkerTransit(
                     new PhysicalTacticalTileId(game._fine, new StrategicCellId(action.Source)),
                     new PhysicalTacticalTileId(game._fine, new StrategicCellId(action.Destination)),
                     (EconomicActivityKind)action.FromJob,
@@ -674,7 +823,9 @@ public sealed class CanonicalPhysicalTacticalSession
         return game;
     }
 
-    private int CurrentSaveFormat => _marketMode == PhysicalFoodMarketMode.LocalCashSettlement
+    private int CurrentSaveFormat => _movementMode == PhysicalWorkerMovementMode.TimedAdjacent
+        ? TimedTransitSaveFormat
+        : _marketMode == PhysicalFoodMarketMode.LocalCashSettlement
         ? CashFoodSaveFormat
         : _geographyMode == PhysicalTacticalGeographyMode.Canonical01C
         ? GeographyAlignedSaveFormat
@@ -720,6 +871,13 @@ public sealed class CanonicalPhysicalTacticalSession
                     ledger.Receipts.Select(x => new CanonicalFoodCashReceiptSaveRow(
                         x.MovementTurn, x.Tile.FineStrategicCellId.Value,
                         x.FoodRaw, x.PriceMicrocreditsPerUnit, x.PaidMicrocredits)).ToArray())
+                : null,
+            _movementMode == PhysicalWorkerMovementMode.TimedAdjacent
+                ? state.Transits.Select(x => new CanonicalWorkerTransitSaveRow(
+                    x.OrderId, x.Source.FineStrategicCellId.Value,
+                    x.Destination.FineStrategicCellId.Value,
+                    (byte)x.FromJob, (byte)x.ToJob,
+                    x.Workers, x.DepartureTurn, x.ArrivalTurn)).ToArray()
                 : null);
     }
 
