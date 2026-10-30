@@ -24,3 +24,17 @@ Problemas observados: cabeçalho global com título, slogan e `SYSTEM STATUS` so
 Gate automatizado: 21 workflows + compilação Godot Windows/Linux e testes de regressão. QA visual permanece necessário.
 
 Esta alteração é **apenas de apresentação**, empilhada na PR #117 sobre o VS18. PR #116 (botão de fundação) está encerrada sem merge. Não introduzir organização política, conquista nem lógica financeira como parte de um ajuste de UI.
+
+## Bloqueio real de homologação encontrado em 30/10 (09:57)
+
+Nova captura após o iniciador antigo continuou mostrando a janela antiga VS19, mesmo com os arquivos VS19B compilados. O iniciador anterior **apenas abria o editor**, sem garantir que o usuário executaria F5 nessa instância; adicionalmente, compilava somente `Release`, enquanto o Godot Mono costuma executar o assembly `Debug` no fluxo de F5. O exato mecanismo no PC do usuário ainda não está confirmado por logs de processo, mas ambos eram pontos frágeis concretos do procedimento.
+
+A nova versão de `tools/launch-vs19b.ps1`:
+- Verifica worktree, commit remoto e marcadores C# VS19B como antes.
+- Compila **Debug** e interrompe o fluxo se houver erro.
+- Por padrão chama **o jogo diretamente** com o executável Godot Mono e `--path <worktree>/tools/GlobalArena.Godot --verbose`, sem `--editor`, sem seleção de projeto e sem F5. Mantém a saída do Godot no terminal.
+- A execução Godot emite `GA_VS19B_RUNTIME_ACTIVE` a partir de `Main._Ready()` e exibe o painel `GLOBAL ARENA | VS19B`. Esses são critérios de identidade da versão realmente executada.
+- A opção `-Editor` permanece para quem realmente quiser editar a cena, mas não é o caminho padrão de homologação.
+- Windows CI verifica sintaxe PowerShell, contrato de execução direta, compilação **Debug e Release**; Linux CI conserva o gate da simulação.
+
+Não alegar que essa mudança foi visualmente homologada no PC do usuário antes de receber captura da instância lançada diretamente. O título VS17 do `project.godot` continua somente para compatibilidade com os saves `user://`.
