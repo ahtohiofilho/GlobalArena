@@ -48,7 +48,7 @@ public partial class Main
 
         var warning = new Label
         {
-            Text = "VS15: selecione trabalhadores e um vizinho para ordenar viagem de 2 turnos. Em trânsito não produzem; alimento vem da origem. Save V13; V9–V12 preservados.",
+            Text = "VS16: símbolos verdes = agricultura, marrons = madeira, cinzas = pedra; clique no símbolo para selecionar o grupo. Trilhas e pontos âmbar mostram viagens por turno. Movimento V13 preservado.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         warning.AddThemeColorOverride("font_color", new Color("#e1c883"));
@@ -64,6 +64,12 @@ public partial class Main
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         lab.AddChild(legend);
+        var markerLegend = new Label
+        {
+            Text = "GRUPOS NO MAPA: verde agricultura | marrom madeira | cinza pedra | âmbar em trânsito",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        lab.AddChild(markerLegend);
 
         _workerLabHover = new Label { Text = "Sob o cursor: —" };
         lab.AddChild(_workerLabHover);
@@ -151,6 +157,16 @@ public partial class Main
                     ? "Sob o cursor: —"
                     : $"Sob o cursor: tile físico {id.Value}";
         };
+        _tacticalPreview.WorkerGroupPicked += (tile, activity) =>
+        {
+            if (_canonicalPhysicalLab is null || _workerFromJob is null) return;
+            var index = _workerFromJob.GetItemIndex((int)activity);
+            if (index < 0) return;
+            _workerFromJob.Select(index);
+            // Tile selection is already dispatched by the canonical tile picker.
+            // Do not issue an order or mutate the world from the presentation.
+            UpdateWorkerLabHud();
+        };
     }
 
     private void StartWorkerLab()
@@ -223,6 +239,23 @@ public partial class Main
         {
             _workerOrigin = id;
             _workerDestination = null;
+            if (_workerFromJob is not null)
+            {
+                var activeJob = _canonicalPhysicalLab.State.Allocations
+                    .Where(x => x.TileId == id)
+                    .OrderBy(x => (byte)x.Activity)
+                    .FirstOrDefault();
+                if (activeJob is not null)
+                {
+                    var selectedJob = (EconomicActivityKind)_workerFromJob.GetSelectedId();
+                    if (!_canonicalPhysicalLab.State.Allocations.Any(x =>
+                        x.TileId == id && x.Activity == selectedJob))
+                    {
+                        var index = _workerFromJob.GetItemIndex((int)activeJob.Activity);
+                        if (index >= 0) _workerFromJob.Select(index);
+                    }
+                }
+            }
         }
         else if (_canonicalPhysicalLab.AdjacentWorkable(_workerOrigin.Value).Contains(id))
             _workerDestination = id;
@@ -446,6 +479,7 @@ public partial class Main
             _foodMarketQuoteLabel.Text = "Cotação opcional: refaça após mudanças de estado/tile.";
         }
         var available = _canonicalPhysicalLab.AdjacentWorkable(_workerOrigin.Value);
+        _tacticalPreview.SetWorkerMarkers(TacticalWorkerMarkerProjection.FromPhysicalState(state));
         _tacticalPreview.SetWorkerRings(
             _workerOrigin.Value.FineStrategicCellId.Value,
             _workerDestination?.FineStrategicCellId.Value,
@@ -453,6 +487,17 @@ public partial class Main
 
         var origin = _workerOrigin.Value;
         var local = state.Allocations.Where(x => x.TileId == origin).ToArray();
+        var selectedActivity = _workerFromJob is null
+            ? EconomicActivityKind.Agriculture
+            : (EconomicActivityKind)_workerFromJob.GetSelectedId();
+        var selectedGroupWorkers = local.Where(x => x.Activity == selectedActivity)
+            .Aggregate(0UL, (sum, x) => checked(sum + x.Workers));
+        if (_workerAmount is not null)
+        {
+            _workerAmount.MaxValue = Math.Max(1, (double)selectedGroupWorkers);
+            if (_workerAmount.Value > _workerAmount.MaxValue)
+                _workerAmount.Value = _workerAmount.MaxValue;
+        }
         var demand = _canonicalPhysicalLab.FoodDemandAt(origin);
         var jobs = string.Join(" | ", local.Select(x => $"{x.Activity}: {x.Workers}"));
         var destination = _workerDestination.HasValue
@@ -490,6 +535,7 @@ public partial class Main
                 $"preço {lastPurchase.PriceMicrocreditsPerUnit / 1_000_000.0:F4}\n");
         _workerLabStatus.Text =
             $"Origem tile {origin.FineStrategicCellId.Value} | {jobs}\n" +
+            $"Grupo selecionado: {selectedActivity} | disponíveis: {selectedGroupWorkers} trabalhadores\n" +
             $"Destino: {destination}\n" +
             $"Trabalhadores globais: {state.TotalWorkers} | " +
             $"tiles ocupados: {state.Allocations.Select(x => x.TileId).Distinct().Count()} | " +
@@ -506,7 +552,8 @@ public partial class Main
             $"mercado alimentar {(_canonicalPhysicalLab.MarketMode == PhysicalFoodMarketMode.LocalCashSettlement ? "LIQUIDADO À VISTA" : "LEGADO DIRETO")}; " +
             $"deslocamento {(_canonicalPhysicalLab.MovementMode == PhysicalWorkerMovementMode.TimedAdjacent ? "TEMPORAL" : "LEGADO")}; SEM carga comercial.";
         if (_workerMoveButton is not null)
-            _workerMoveButton.Disabled = !_workerDestination.HasValue;
+            _workerMoveButton.Disabled = !_workerDestination.HasValue ||
+                selectedGroupWorkers == 0UL;
     }
 
 }
