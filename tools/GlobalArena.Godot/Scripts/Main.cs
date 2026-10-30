@@ -8,7 +8,6 @@ namespace GlobalArena.Godot;
 // GA-UI-FOUNDATION-01: presentation shell owns layout; GlobePreview owns only globe behavior.
 public partial class Main : Control
 {
-    private Label? _status;
     // GA_LAYOUT_DIAGNOSTIC_02: temporary non-mutating runtime metrics.
     private Control? _layoutDiagnosticFrame;
     private Control? _layoutDiagnosticRoot;
@@ -224,6 +223,9 @@ public partial class Main : Control
     public override void _Ready()
     {
         GD.Print("GA_PROD_MAIN_READY_R6");
+        // The Godot project name stays VS17 to retain old user:// saves;
+        // a visible runtime title identifies the actual branch under test.
+        GetWindow().Title = "Global Arena — VS19B | Comunidade desde o início";
         // Prioritize a maximized production window; preserve windowed resizing and avoid headless changes.
         if (DisplayServer.GetName() != "headless")
             DisplayServer.WindowSetMode(DisplayServer.WindowMode.Maximized);
@@ -233,34 +235,22 @@ public partial class Main : Control
 
         var frame = new MarginContainer();
         frame.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        frame.AddThemeConstantOverride("margin_left", 20);
-        frame.AddThemeConstantOverride("margin_right", 20);
-        frame.AddThemeConstantOverride("margin_top", 16);
-        frame.AddThemeConstantOverride("margin_bottom", 16);
+        frame.AddThemeConstantOverride("margin_left", 8);
+        frame.AddThemeConstantOverride("margin_right", 8);
+        frame.AddThemeConstantOverride("margin_top", 6);
+        frame.AddThemeConstantOverride("margin_bottom", 6);
         AddChild(frame);
 
         _layoutDiagnosticFrame = frame;
         var root = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
         _layoutDiagnosticRoot = root;
-        root.AddThemeConstantOverride("separation", 12);
+        root.AddThemeConstantOverride("separation", 0);
         frame.AddChild(root);
 
-        var header = new HBoxContainer();
-        header.AddThemeConstantOverride("separation", 20);
-        root.AddChild(header);
-        var title = new Label { Text = "GLOBAL ARENA" };
-        title.AddThemeFontSizeOverride("font_size", 28);
-        title.AddThemeColorOverride("font_color", new Color("#d9e9f4"));
-        header.AddChild(title);
-        var subtitle = new Label { Text = "Planetary strategy  |  Production foundation", SizeFlagsHorizontal = SizeFlags.ExpandFill, VerticalAlignment = VerticalAlignment.Center };
-        subtitle.AddThemeColorOverride("font_color", new Color("#7eabc4"));
-        header.AddChild(subtitle);
-        var button = new Button { Text = "SYSTEM STATUS" };
-        button.Pressed += ShowStatus;
-        header.AddChild(button);
-
+        // No full-width title bar or debug footer: both used to steal
+        // vertical space from the square globe/tactical viewport.
         var content = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        content.AddThemeConstantOverride("separation", 12);
+        content.AddThemeConstantOverride("separation", 8);
         root.AddChild(content);
 
         // GA-UI-MVP-SQUARE: the layout column stretches; its map remains 1:1.
@@ -320,23 +310,26 @@ public partial class Main : Control
             "read_only_ui=true source=canonical_generated_world");
         GD.Print("GA_UI_VIEWPORT_READY_02 parent=map-region sizing=expand-fill");
 
-        var rightPanel = new PanelContainer { CustomMinimumSize = new Vector2(390f, 0f), SizeFlagsVertical = SizeFlags.ExpandFill };
+        var rightPanel = new PanelContainer
+        {
+            CustomMinimumSize = new Vector2(530f, 0f),
+            SizeFlagsVertical = SizeFlags.ExpandFill
+        };
         content.AddChild(rightPanel);
         var rightMargin = new MarginContainer();
-        rightMargin.AddThemeConstantOverride("margin_left", 12);
-        rightMargin.AddThemeConstantOverride("margin_right", 12);
-        rightMargin.AddThemeConstantOverride("margin_top", 12);
-        rightMargin.AddThemeConstantOverride("margin_bottom", 12);
+        rightMargin.AddThemeConstantOverride("margin_left", 10);
+        rightMargin.AddThemeConstantOverride("margin_right", 10);
+        rightMargin.AddThemeConstantOverride("margin_top", 8);
+        rightMargin.AddThemeConstantOverride("margin_bottom", 8);
         rightPanel.AddChild(rightMargin);
         var rightLayout = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        rightLayout.AddThemeConstantOverride("separation", 8);
+        rightLayout.AddThemeConstantOverride("separation", 5);
         rightMargin.AddChild(rightLayout);
-        var panelTitle = new Label { Text = "TERRITORY & WORLD" };
-        panelTitle.AddThemeFontSizeOverride("font_size", 17);
+        // A single compact header is enough. Version stays readable even
+        // though project.godot retains the stable VS17 save directory.
+        var panelTitle = new Label { Text = "GLOBAL ARENA  |  VS19B" };
+        panelTitle.AddThemeFontSizeOverride("font_size", 15);
         rightLayout.AddChild(panelTitle);
-        var tacticalBridgeTitle = new Label { Text = "TACTICAL CONTEXT" };
-        tacticalBridgeTitle.AddThemeFontSizeOverride("font_size", 15);
-        rightLayout.AddChild(tacticalBridgeTitle);
         _tacticalBridgeStatus = new Label { Text = "Select a canonical territory to enable tactical context" };
         _tacticalBridgeStatus.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         rightLayout.AddChild(_tacticalBridgeStatus);
@@ -359,7 +352,8 @@ public partial class Main : Control
         inspector.AddChild(inspectorTerrain);
         var inspectorRuntime = new Label { Text = "RUNTIME | Select a physical tile", AutowrapMode = TextServer.AutowrapMode.WordSmart };
         inspector.AddChild(inspectorRuntime);
-        rightLayout.AddChild(inspector);
+        // The tile inspector belongs to the tactical scroll, not the
+        // permanently fixed header that squeezed the player's controls.
         _tacticalInspector = inspector;
         _tacticalTileSummary = inspectorSummary;
         _tacticalTileTerrain = inspectorTerrain;
@@ -384,8 +378,14 @@ public partial class Main : Control
         var tacticalHud = new VBoxContainer { Visible = false, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         tacticalHud.AddThemeConstantOverride("separation", 3);
         hud.AddChild(tacticalHud);
-        _tacticalPreview.TransferHud(tacticalHud);
+        // Player commands come first in the scroll: no excessive
+        // diagnostic or map-configuration text before the inspect button.
         InitializeWorkerLabControls(tacticalHud);
+        var detailsHeader = new Label { Text = "DETALHES DO TILE E DA MALHA" };
+        detailsHeader.AddThemeFontSizeOverride("font_size", 14);
+        tacticalHud.AddChild(detailsHeader);
+        tacticalHud.AddChild(inspector);
+        _tacticalPreview.TransferHud(tacticalHud);
         // QA density only: typography belongs to the right sidebar, not the map.
         ApplyCompactTacticalTypography(tacticalHud);
         ApplyCompactTacticalTypography(inspector);
@@ -423,10 +423,7 @@ public partial class Main : Control
         GD.Print("GA_UI_STRATEGIC_CONTROL_OWNERSHIP_READY_R1 groups=2 controls=3 context=STRATEGIC");
         GD.Print("GA_UI_CALIBRATION_ACCESS_READY_01 fixed-controls=true");
 
-        _status = new Label { Text = "GA-UI-FOUNDATION-01  |  Map and context areas separated" };
-        _status.AddThemeColorOverride("font_color", new Color("#90a9bc"));
-        root.AddChild(_status);
-        GD.Print("GA_UI_FOUNDATION_READY_01 layout=map,sidebar,header,footer");
+        GD.Print("GA_UI_FOUNDATION_READY_01 layout=large_square_map,wide_sidebar,no_header,no_footer");
         GD.Print("GA_UI_FOUNDATION_RESIZE_READY_02 responsive=true");
     }
 
@@ -481,9 +478,4 @@ public partial class Main : Control
         _lastLoggedLayoutSignature = signature;
         GD.Print($"GA_LAYOUT_DIAGNOSTIC_02 viewport={current} main={Size} frame={_layoutDiagnosticFrame.Size} root={_layoutDiagnosticRoot.Size} window={DisplayServer.WindowGetSize()} screen={DisplayServer.ScreenGetSize()}");
     }
-    private void ShowStatus()
-    {
-        if (_status is null) return;
-        _status.Text = $"Godot {Engine.GetVersionInfo()["string"]} | .NET production shell | World assembly referenced";
-    }
-}
+ }
