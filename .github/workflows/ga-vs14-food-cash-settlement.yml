@@ -1,0 +1,45 @@
+name: GA-VS14 Canonical Food Cash Settlement
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Runtime/PhysicalFoodCashMarketState.cs'
+      - 'GlobalArena.Runtime/PhysicalTacticalEconomyRuntimeState.cs'
+      - 'GlobalArena.Simulation/CanonicalPhysicalTacticalSession.cs'
+      - 'GlobalArena.Simulation/CanonicalWorldStateHasher.cs'
+      - 'GlobalArena.Tests/GaVs14PhysicalFoodCashSettlementTests.cs'
+      - 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+      - 'tools/GlobalArena.Godot/project.godot'
+      - '.github/workflows/ga-vs14-food-cash-settlement.yml'
+  workflow_dispatch:
+
+jobs:
+  cash-settle-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Test atomic food cash settlement and legacy V9-V11 regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs14|FullyQualifiedName~GaVs13|FullyQualifiedName~GaVs12|FullyQualifiedName~GaVs11|FullyQualifiedName~GaVs10|FullyQualifiedName~EconomicFoodPreferenceAndSingleOriginClearingTests'
+      - name: Build Godot CSharp client
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  cash-settle-windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Audit money conservation purchase and V12 save replay
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs14|FullyQualifiedName~GaVs13|FullyQualifiedName~GaVs12|FullyQualifiedName~GaVs11|FullyQualifiedName~GaVs10|FullyQualifiedName~EconomicFoodPreferenceAndSingleOriginClearingTests'
+      - name: Build Windows Godot CSharp client
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
