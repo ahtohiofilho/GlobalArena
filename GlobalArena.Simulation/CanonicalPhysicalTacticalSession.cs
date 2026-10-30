@@ -44,6 +44,7 @@ public sealed class CanonicalPhysicalTacticalSession
     // V9 files retain the historical fixed-six cadence.
     public const int SaveFormat = 9;
     public const int AdaptiveSaveFormat = 10;
+    public const int GeographyAlignedSaveFormat = 11;
     public const int MaximumActions = 100_000;
     private const int MaximumSaveBytes = 4_000_000;
     private const ulong FoodDemandRawPerWorker = 500_000UL;
@@ -54,6 +55,8 @@ public sealed class CanonicalPhysicalTacticalSession
     private readonly ulong _seed;
     private readonly int _generatorVersion;
     private readonly PhysicalEconomicCadenceMode _cadenceMode;
+    private readonly PhysicalTacticalGeographyMode _geographyMode;
+    private readonly CanonicalTacticalPhysicalGeography? _canonicalGeography;
     private readonly StrategicPrimitiveResourcePotentialFieldSet _potentials;
     private readonly PhysicalTacticalIncidenceMap _incidence;
     private readonly string _initialHashHex;
@@ -74,6 +77,9 @@ public sealed class CanonicalPhysicalTacticalSession
 
     public CanonicalGameSession Game { get; }
     public PhysicalEconomicCadenceMode CadenceMode => _cadenceMode;
+    public PhysicalTacticalGeographyMode GeographyMode => _geographyMode;
+    public WorldGenerationV2PhysicalComposition? CanonicalTerrain => _canonicalGeography?.Terrain;
+    public bool IsPhysicalWorkableLand(StrategicCellId tile) => IsWorkableLand(tile);
     public ulong NextEconomicInterval => PhysicalEconomicCadence.IntervalForTurn(
         checked(State.MovementTurn + 1UL), _cadenceMode);
     public WorldGenerationResult FineWorld { get; }
@@ -87,7 +93,8 @@ public sealed class CanonicalPhysicalTacticalSession
 
     public CanonicalPhysicalTacticalSession(
         CanonicalGameSession game, GoldbergParameters fine,
-        PhysicalEconomicCadenceMode cadenceMode = PhysicalEconomicCadenceMode.LegacyFixedSix)
+        PhysicalEconomicCadenceMode cadenceMode = PhysicalEconomicCadenceMode.LegacyFixedSix,
+        PhysicalTacticalGeographyMode geographyMode = PhysicalTacticalGeographyMode.LegacyV1)
     {
         Game = game ?? throw new ArgumentNullException(nameof(game));
         var request = Game.GeneratedWorld.Request;
@@ -97,6 +104,12 @@ public sealed class CanonicalPhysicalTacticalSession
         _fine = fine;
         _ = PhysicalEconomicCadence.IntervalForTurn(1UL, cadenceMode);
         _cadenceMode = cadenceMode;
+        if (geographyMode is not (PhysicalTacticalGeographyMode.LegacyV1 or PhysicalTacticalGeographyMode.Canonical01C))
+            throw new ArgumentOutOfRangeException(nameof(geographyMode));
+        if (geographyMode == PhysicalTacticalGeographyMode.Canonical01C &&
+            cadenceMode != PhysicalEconomicCadenceMode.AdaptiveThirty)
+            throw new ArgumentException("01C canonical geography requires adaptive economic cadence.");
+        _geographyMode = geographyMode;
         _ = new GoldbergScaledRefinement(_coarse, _fine);
         if (Game.Snapshot.WorldBinding !=
             RuntimeWorldBinding.FromGeneratedWorld(Game.GeneratedWorld))
@@ -112,7 +125,11 @@ public sealed class CanonicalPhysicalTacticalSession
             throw new InvalidOperationException("Worker seed/topology mismatches canonical world.");
 
         FineWorld = initial.Workers.FineWorld;
-        InitialTile = initial.Workers.InitialTile;
+        _canonicalGeography = _geographyMode == PhysicalTacticalGeographyMode.Canonical01C
+            ? new CanonicalTacticalPhysicalGeography(FineWorld, _seed) : null;
+        InitialTile = _canonicalGeography is null
+            ? initial.Workers.InitialTile
+            : new PhysicalTacticalTileId(_fine, _canonicalGeography.InitialWorkableTile);
         _incidence = initial.Workers.Incidence;
         _potentials = StrategicPrimitiveResourcePotentialFieldSet.Derive(FineWorld);
 
@@ -125,11 +142,19 @@ public sealed class CanonicalPhysicalTacticalSession
                     "Physical initialization requires a new empty canonical game.");
 
             var seeded = initial.BuildPhysicalRuntimeSnapshot();
+            var startingAllocations = _canonicalGeography is null
+                ? seeded.Allocations
+                : new[]
+                {
+                    new PhysicalWorkerAllocation(InitialTile, EconomicActivityKind.Agriculture, 4UL),
+                    new PhysicalWorkerAllocation(InitialTile, EconomicActivityKind.Forestry, 2UL),
+                    new PhysicalWorkerAllocation(InitialTile, EconomicActivityKind.Mining, 2UL)
+                };
             var initialPhysical = new PhysicalTacticalEconomyRuntimeState(
                 seeded.CoarseWorldBinding, seeded.CoarseParameters,
                 seeded.FineParameters, seeded.MovementTurn,
-                seeded.WorkerRevision, seeded.Allocations, seeded.Stocks,
-                seeded.Cycles, _cadenceMode);
+                seeded.WorkerRevision, startingAllocations, seeded.Stocks,
+                seeded.Cycles, _cadenceMode, _geographyMode);
             var next = Game.Snapshot
                 .WithPhysicalEconomy(initialPhysical)
                 .AdvanceRevision();
@@ -139,7 +164,16 @@ public sealed class CanonicalPhysicalTacticalSession
         else
         {
             var baseline = initial.BuildPhysicalRuntimeSnapshot();
+            var expectedAllocations = _canonicalGeography is null
+                ? baseline.Allocations
+                : new[]
+                {
+                    new PhysicalWorkerAllocation(InitialTile, EconomicActivityKind.Agriculture, 4UL),
+                    new PhysicalWorkerAllocation(InitialTile, EconomicActivityKind.Forestry, 2UL),
+                    new PhysicalWorkerAllocation(InitialTile, EconomicActivityKind.Mining, 2UL)
+                };
             if (State.FineParameters != _fine ||
+                State.GeographyMode != _geographyMode ||
                 State.CadenceMode != _cadenceMode ||
                 State.CoarseParameters != _coarse ||
                 State.CoarseWorldBinding != Game.Snapshot.WorldBinding)
@@ -149,7 +183,7 @@ public sealed class CanonicalPhysicalTacticalSession
             if (Game.Snapshot.Revision != 1UL ||
                 State.MovementTurn != 0UL || State.WorkerRevision != 0UL ||
                 State.Stocks.Count != 0 || State.Cycles.Count != 0 ||
-                !State.Allocations.SequenceEqual(baseline.Allocations))
+                !State.Allocations.SequenceEqual(expectedAllocations))
                 throw new InvalidOperationException(
                     "Existing progressed physical game must be reopened with its canonical event journal.");
         }
@@ -161,13 +195,14 @@ public sealed class CanonicalPhysicalTacticalSession
         ulong seed = 20261012UL,
         GoldbergParameters? coarse = null,
         GoldbergParameters? fine = null,
-        PhysicalEconomicCadenceMode cadenceMode = PhysicalEconomicCadenceMode.LegacyFixedSix)
+        PhysicalEconomicCadenceMode cadenceMode = PhysicalEconomicCadenceMode.LegacyFixedSix,
+        PhysicalTacticalGeographyMode geographyMode = PhysicalTacticalGeographyMode.LegacyV1)
     {
         var coarseParameters = coarse ?? new GoldbergParameters(3, 0);
         var canonical = CanonicalGameSession.Start(new WorldGenerationRequest(
             new WorldSeed(seed), WorldGenerationVersion.Initial, coarseParameters));
         return new CanonicalPhysicalTacticalSession(
-            canonical, fine ?? new GoldbergParameters(18, 0), cadenceMode);
+            canonical, fine ?? new GoldbergParameters(18, 0), cadenceMode, geographyMode);
     }
 
     public ulong WorkersAt(PhysicalTacticalTileId tile)
@@ -241,7 +276,7 @@ public sealed class CanonicalPhysicalTacticalSession
             checked(current.WorkerRevision + 1UL),
             nextAllocations.Select(x => new PhysicalWorkerAllocation(
                 x.Key.Item1, x.Key.Item2, x.Value)),
-            current.Stocks, current.Cycles, _cadenceMode);
+            current.Stocks, current.Cycles, _cadenceMode, _geographyMode);
         if (next.TotalWorkers != current.TotalWorkers)
             throw new InvalidOperationException("Worker conservation failed.");
 
@@ -276,13 +311,13 @@ public sealed class CanonicalPhysicalTacticalSession
                 {
                     EconomicActivityKind.Agriculture => (
                         new CommodityId(1U),
-                        _potentials.Agriculture.GetRawValue(allocation.TileId.FineStrategicCellId)),
+                        PrimitiveYield(allocation.TileId.FineStrategicCellId, EconomicActivityKind.Agriculture)),
                     EconomicActivityKind.Forestry => (
                         new CommodityId(3U),
-                        _potentials.WoodGathering.GetRawValue(allocation.TileId.FineStrategicCellId)),
+                        PrimitiveYield(allocation.TileId.FineStrategicCellId, EconomicActivityKind.Forestry)),
                     EconomicActivityKind.Mining => (
                         new CommodityId(2U),
-                        _potentials.SurfaceStone.GetRawValue(allocation.TileId.FineStrategicCellId)),
+                        PrimitiveYield(allocation.TileId.FineStrategicCellId, EconomicActivityKind.Mining)),
                     _ => throw new InvalidOperationException("Unsupported productive activity.")
                 };
                 if (rawRate <= 0L) continue;
@@ -314,7 +349,7 @@ public sealed class CanonicalPhysicalTacticalSession
             current.Allocations,
             stocks.Select(x => new PhysicalCommodityStock(
                 x.Key.Item1, x.Key.Item2, x.Value)),
-            cycles, _cadenceMode);
+            cycles, _cadenceMode, _geographyMode);
         Commit(next, "tick", 0UL, 0UL, 0, 0, 0UL);
         return cycle;
     }
@@ -341,8 +376,7 @@ public sealed class CanonicalPhysicalTacticalSession
         var digest = Convert.ToHexString(
             SHA256.HashData(Encoding.UTF8.GetBytes(payloadJson)));
         var json = JsonSerializer.Serialize(new CanonicalPhysicalSaveEnvelope(
-            _cadenceMode == PhysicalEconomicCadenceMode.AdaptiveThirty
-                ? AdaptiveSaveFormat : SaveFormat, payloadJson, digest));
+            CurrentSaveFormat, payloadJson, digest));
         if (Encoding.UTF8.GetByteCount(json) > MaximumSaveBytes)
             throw new InvalidOperationException("Canonical save exceeds size limit.");
         return json;
@@ -360,7 +394,7 @@ public sealed class CanonicalPhysicalTacticalSession
         {
             envelope = JsonSerializer.Deserialize<CanonicalPhysicalSaveEnvelope>(json)
                 ?? throw new InvalidOperationException("Missing canonical save envelope.");
-            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat) ||
+            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat) ||
                 string.IsNullOrEmpty(envelope.PayloadJson) ||
                 string.IsNullOrEmpty(envelope.PayloadSha256Hex))
                 throw new InvalidOperationException("Unsupported canonical save envelope.");
@@ -384,12 +418,15 @@ public sealed class CanonicalPhysicalTacticalSession
             payload.GeneratorVersion != WorldGenerationVersion.Initial.Value)
             throw new InvalidOperationException("Unsupported canonical save payload.");
 
-        var mode = payload.Version == AdaptiveSaveFormat
-            ? PhysicalEconomicCadenceMode.AdaptiveThirty
-            : PhysicalEconomicCadenceMode.LegacyFixedSix;
+        var mode = payload.Version == SaveFormat
+            ? PhysicalEconomicCadenceMode.LegacyFixedSix
+            : PhysicalEconomicCadenceMode.AdaptiveThirty;
+        var terrainMode = payload.Version == GeographyAlignedSaveFormat
+            ? PhysicalTacticalGeographyMode.Canonical01C
+            : PhysicalTacticalGeographyMode.LegacyV1;
         var game = Start(payload.Seed,
             new GoldbergParameters(payload.CoarseM, payload.CoarseN),
-            new GoldbergParameters(payload.FineM, payload.FineN), mode);
+            new GoldbergParameters(payload.FineM, payload.FineN), mode, terrainMode);
         if (payload.WorldBindingHex != game.Game.Snapshot.WorldBinding!.WorldSignatureSha256Hex ||
             payload.InitialHashHex != game._initialHashHex)
             throw new InvalidOperationException("Canonical save world identity mismatch.");
@@ -473,13 +510,30 @@ public sealed class CanonicalPhysicalTacticalSession
         return game;
     }
 
+    private int CurrentSaveFormat => _geographyMode == PhysicalTacticalGeographyMode.Canonical01C
+        ? GeographyAlignedSaveFormat
+        : _cadenceMode == PhysicalEconomicCadenceMode.AdaptiveThirty
+            ? AdaptiveSaveFormat : SaveFormat;
+
+    private long PrimitiveYield(StrategicCellId tile, EconomicActivityKind activity)
+    {
+        if (_canonicalGeography is not null)
+            return _canonicalGeography.Productivity(tile, activity);
+        return activity switch
+        {
+            EconomicActivityKind.Agriculture => _potentials.Agriculture.GetRawValue(tile),
+            EconomicActivityKind.Forestry => _potentials.WoodGathering.GetRawValue(tile),
+            EconomicActivityKind.Mining => _potentials.SurfaceStone.GetRawValue(tile),
+            _ => throw new ArgumentOutOfRangeException(nameof(activity))
+        };
+    }
+
     private CanonicalPhysicalSavePayload BuildPayload()
     {
         var owned = CheckedSnapshot;
         var state = State;
         return new CanonicalPhysicalSavePayload(
-            _cadenceMode == PhysicalEconomicCadenceMode.AdaptiveThirty
-                ? AdaptiveSaveFormat : SaveFormat,
+            CurrentSaveFormat,
             _seed, _generatorVersion, _coarse.M, _coarse.N, _fine.M, _fine.N,
             owned.WorldBinding!.WorldSignatureSha256Hex, _initialHashHex,
             owned.Revision, state.MovementTurn, state.WorkerRevision,
@@ -494,9 +548,10 @@ public sealed class CanonicalPhysicalTacticalSession
     }
 
     private bool IsWorkableLand(StrategicCellId id) =>
-        FineWorld.StrategicPhysicalFields.LandWater.GetKind(id) ==
+        _canonicalGeography?.IsWorkableLand(id) ??
+        (FineWorld.StrategicPhysicalFields.LandWater.GetKind(id) ==
             StrategicLandWaterKind.Land &&
-        FineWorld.StrategicBiomes.GetKind(id) != StrategicBiomeKind.PolarIce;
+         FineWorld.StrategicBiomes.GetKind(id) != StrategicBiomeKind.PolarIce);
 
     private void ValidateTile(PhysicalTacticalTileId tile)
     {
