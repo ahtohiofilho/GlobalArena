@@ -15,7 +15,7 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $projectDir = Join-Path $repoRoot 'tools\GlobalArena.Godot'
 $mainCode = Join-Path $projectDir 'Scripts\Main.cs'
 $labCode = Join-Path $projectDir 'Scripts\Main.NeolithicWorkerLab.cs'
-$expectedBranch = 'feature/ga-vs19c-born-civilization-20261030'
+$expectedBranch = 'feature/ga-vs19c-command-first-tactical-hud-20261030'
 
 if (-not (Test-Path (Join-Path $projectDir 'project.godot'))) {
     throw "This directory does not contain the GA-VS19C Godot project: $projectDir"
