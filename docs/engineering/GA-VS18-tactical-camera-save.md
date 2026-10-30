@@ -11,7 +11,8 @@
 - Caso o complemento não exista, tenha checksum/versão inválidos, esteja fora de cobertura, seja ilegível ou inválido, **reabrir o save canônico normalmente** com enquadramento padrão; logar a causa. Uma falha ao salvar a câmera não pode fazer o HUD informar falsamente que o mundo não foi salvo.
 - Não armazenar posição visual em `WorldState`, não adicionar componentes econômicos, não atualizar hash físico nem causar comando ou revisão canônica ao girar/arrastar/zoom.
 - Ao restaurar modo de projeção/anel/cover, atualizar também os respectivos botões, evitando divergência entre UI e cena.
-- Um save existente de VS15/VS16/VS17 **sem complemento** permanece reabrível. Saves antigos V9–V12 também podem ganhar complemento, mas não exigem migração.
+- **Preservar `application/config/name` do VS17 neste branch**: Godot usa o nome do projeto para seu diretório padrão `user://` e uma renomeação isolaria o save que o usuário acabou de homologar. O laboratório distingue o novo código pelo título VS18.
+- Um save existente de VS15/VS16/VS17 **sem complemento** permanece reabrível quando estiver disponível no mesmo diretório `user://`. Saves antigos V9–V12 também podem ganhar complemento, mas não exigem migração.
 
 ## Limites
 
