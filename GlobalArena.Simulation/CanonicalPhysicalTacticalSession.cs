@@ -27,6 +27,8 @@ public sealed record CanonicalFoodCashSave(
     ulong InitialMoneySupply, CanonicalFoodCashAccountSaveRow[] Accounts,
     CanonicalFoodCashReceiptSaveRow[] Receipts);
 
+public sealed record CanonicalInitialPoliticalSaveRow(ulong Civilization, ulong Territory);
+
 public sealed record CanonicalWorkerTransitSaveRow(
     ulong Order, ulong Source, ulong Destination, byte FromJob,
     byte ToJob, ulong Workers, ulong Depart, ulong Arrive);
@@ -43,7 +45,9 @@ public sealed record CanonicalPhysicalSavePayload(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     CanonicalFoodCashSave? FoodCash = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    CanonicalWorkerTransitSaveRow[]? Transits = null);
+    CanonicalWorkerTransitSaveRow[]? Transits = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    CanonicalInitialPoliticalSaveRow? Founding = null);
 
 public sealed record CanonicalPhysicalSaveEnvelope(
     int Version, string PayloadJson, string PayloadSha256Hex);
@@ -62,6 +66,7 @@ public sealed class CanonicalPhysicalTacticalSession
     public const int GeographyAlignedSaveFormat = 11;
     public const int CashFoodSaveFormat = 12;
     public const int TimedTransitSaveFormat = 13;
+    public const int PoliticalFoundingSaveFormat = 14;
     public const int MaximumActions = 100_000;
     private const int MaximumSaveBytes = 4_000_000;
     private const ulong FoodDemandRawPerWorker = 500_000UL;
@@ -112,6 +117,7 @@ public sealed class CanonicalPhysicalTacticalSession
     public IReadOnlyList<CanonicalPhysicalAction> Events =>
         Array.AsReadOnly(_journal.ToArray());
     public WorldStateHash CurrentHash => _hasher.Compute(CheckedSnapshot);
+    public bool HasFoundedCivilization => CheckedSnapshot.Civilizations.Records.Count > 0;
 
     public CanonicalPhysicalTacticalSession(
         CanonicalGameSession game, GoldbergParameters fine,
@@ -453,6 +459,57 @@ public sealed class CanonicalPhysicalTacticalSession
     }
 
     /// <summary>
+    /// VS19: the first political foundation is an explicit command. An active
+    /// settlement on a physical land tile is required, but ordinary residence
+    /// or travelling never implies sovereignty. One civilization/one start
+    /// territory only; expansion and conquest belong to later contracts.
+    /// </summary>
+    public void FoundFirstCivilization(
+        PhysicalTacticalTileId foundingTile, StrategicCellId territory)
+    {
+        if (_movementMode != PhysicalWorkerMovementMode.TimedAdjacent)
+            throw new InvalidOperationException("Founding requires the canonical V13 physical game.");
+        EnsureJournalCapacity();
+        ValidateTile(foundingTile);
+        if (!territory.IsValid ||
+            territory.Value > (ulong)_incidence.CoarseTopology.Cells.Count)
+            throw new ArgumentException("Founding requires a valid strategic territory.", nameof(territory));
+        if (!IsWorkableLand(foundingTile.FineStrategicCellId) ||
+            WorkersAt(foundingTile) == 0UL)
+            throw new InvalidOperationException("Founding requires active local workers on workable land.");
+        var incident = _incidence.TileIncidences[
+            checked((int)foundingTile.FineStrategicCellId.Value - 1)].IncidentCoarseCellIds;
+        if (!incident.Contains(territory))
+            throw new InvalidOperationException("Founding tile does not belong to selected territory.");
+        var before = CheckedSnapshot;
+        if (before.Civilizations.Records.Count != 0 || before.Territory.Controls.Count != 0)
+            throw new InvalidOperationException("First civilization has already been founded.");
+
+        var civilization = new CivilizationId(1UL);
+        var roster = new CivilizationRuntimeState(new[]
+        {
+            new CivilizationRuntimeRecord(civilization, territory)
+        });
+        var controllers = new StrategicTerritoryRuntimeState(new[]
+        {
+            new StrategicTerritoryControlEntry(territory, civilization)
+        });
+        var previousHash = _hasher.Compute(before);
+        // Cross-domain validation occurs on each immutable candidate. Publish
+        // roster and sovereign start together through ONE CAS and ONE revision.
+        var staged = before.WithCivilizations(roster).WithTerritory(controllers)
+            .AdvanceRevision();
+        var afterHash = _hasher.Compute(staged);
+        var action = new CanonicalPhysicalAction(
+            "found", foundingTile.FineStrategicCellId.Value, territory.Value,
+            0, 0, 0UL, before.Revision, previousHash.HexDigest,
+            staged.Revision, afterHash.HexDigest);
+        Game.AcceptSnapshotIfCurrent(before, staged);
+        _lastCommittedSnapshot = staged;
+        _journal.Add(action);
+    }
+
+    /// <summary>
     /// Fixed-six V9 and progressive-thirty V10 settle physical production
     /// and consumption under their versioned rules. No intertile teleportation.
     /// </summary>
@@ -689,7 +746,7 @@ public sealed class CanonicalPhysicalTacticalSession
         {
             envelope = JsonSerializer.Deserialize<CanonicalPhysicalSaveEnvelope>(json)
                 ?? throw new InvalidOperationException("Missing canonical save envelope.");
-            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat or CashFoodSaveFormat or TimedTransitSaveFormat) ||
+            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat or CashFoodSaveFormat or TimedTransitSaveFormat or PoliticalFoundingSaveFormat) ||
                 string.IsNullOrEmpty(envelope.PayloadJson) ||
                 string.IsNullOrEmpty(envelope.PayloadSha256Hex))
                 throw new InvalidOperationException("Unsupported canonical save envelope.");
@@ -710,7 +767,8 @@ public sealed class CanonicalPhysicalTacticalSession
             payload.Actions is null || payload.Workers is null ||
             payload.Stocks is null || payload.Cycles is null ||
             ((payload.Version >= CashFoodSaveFormat) != (payload.FoodCash is not null)) ||
-            ((payload.Version == TimedTransitSaveFormat) != (payload.Transits is not null)) ||
+            ((payload.Version >= TimedTransitSaveFormat) != (payload.Transits is not null)) ||
+            ((payload.Version == PoliticalFoundingSaveFormat) != (payload.Founding is not null)) ||
             (payload.FoodCash is not null &&
              (payload.FoodCash.Accounts is null || payload.FoodCash.Receipts is null)) ||
             payload.Actions.Length > MaximumActions ||
@@ -726,7 +784,7 @@ public sealed class CanonicalPhysicalTacticalSession
         var marketMode = payload.Version >= CashFoodSaveFormat
             ? PhysicalFoodMarketMode.LocalCashSettlement
             : PhysicalFoodMarketMode.LegacyDirectConsumption;
-        var movementMode = payload.Version == TimedTransitSaveFormat
+        var movementMode = payload.Version >= TimedTransitSaveFormat
             ? PhysicalWorkerMovementMode.TimedAdjacent
             : PhysicalWorkerMovementMode.LegacyInstant;
         var game = Start(payload.Seed,
@@ -758,6 +816,12 @@ public sealed class CanonicalPhysicalTacticalSession
                     new PhysicalTacticalTileId(game._fine, new StrategicCellId(action.Destination)),
                     (EconomicActivityKind)action.FromJob,
                     (EconomicActivityKind)action.ToJob, action.Workers);
+            else if (action.Kind == "found" &&
+                     game._movementMode == PhysicalWorkerMovementMode.TimedAdjacent &&
+                     action.FromJob == 0 && action.ToJob == 0 && action.Workers == 0UL)
+                game.FoundFirstCivilization(
+                    new PhysicalTacticalTileId(game._fine, new StrategicCellId(action.Source)),
+                    new StrategicCellId(action.Destination));
             else if (action.Kind == "tick" && action.Source == 0UL &&
                      action.Destination == 0UL && action.FromJob == 0 &&
                      action.ToJob == 0 && action.Workers == 0UL)
@@ -823,7 +887,9 @@ public sealed class CanonicalPhysicalTacticalSession
         return game;
     }
 
-    private int CurrentSaveFormat => _movementMode == PhysicalWorkerMovementMode.TimedAdjacent
+    private int CurrentSaveFormat => HasFoundedCivilization
+        ? PoliticalFoundingSaveFormat
+        : _movementMode == PhysicalWorkerMovementMode.TimedAdjacent
         ? TimedTransitSaveFormat
         : _marketMode == PhysicalFoodMarketMode.LocalCashSettlement
         ? CashFoodSaveFormat
@@ -878,6 +944,11 @@ public sealed class CanonicalPhysicalTacticalSession
                     x.Destination.FineStrategicCellId.Value,
                     (byte)x.FromJob, (byte)x.ToJob,
                     x.Workers, x.DepartureTurn, x.ArrivalTurn)).ToArray()
+                : null,
+            HasFoundedCivilization
+                ? new CanonicalInitialPoliticalSaveRow(
+                    owned.Civilizations.Records[0].Id.Value,
+                    owned.Civilizations.Records[0].StartCellId!.Value.Value)
                 : null);
     }
 
