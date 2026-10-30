@@ -116,6 +116,39 @@ public sealed class GaVs15TimedWorkerTransitTests
     }
 
     [Fact]
+    public void EntirePopulationMayTravelWithoutLosingItsSaveOrDuplicatingMoney()
+    {
+        var game = Start();
+        var origin = game.InitialTile;
+        var target = game.AdjacentWorkable(origin)[0];
+        game.OrderWorkerTransit(origin, target,
+            EconomicActivityKind.Agriculture, EconomicActivityKind.Agriculture, 4UL);
+        game.OrderWorkerTransit(origin, target,
+            EconomicActivityKind.Forestry, EconomicActivityKind.Forestry, 2UL);
+        game.OrderWorkerTransit(origin, target,
+            EconomicActivityKind.Mining, EconomicActivityKind.Mining, 2UL);
+
+        Assert.Empty(game.State.Allocations);
+        Assert.Equal(8UL, game.State.TotalWorkers);
+        Assert.Equal(8UL, game.State.WorkersInTransit);
+        Assert.Equal(4_000_000UL, game.FoodDemandAt(origin));
+        var first = Assert.IsType<PhysicalEconomicCycle>(game.AdvanceMovementTurn());
+        Assert.Equal(0UL, first.ProducedRaw);
+        Assert.Equal(0UL, first.FoodConsumedRaw);
+        Assert.Equal(4_000_000UL, first.FoodUnmetRaw);
+        var midSave = game.ExportSaveJson();
+        var reopened = CanonicalPhysicalTacticalSession.RestoreSaveJson(midSave);
+        Assert.Equal(midSave, reopened.ExportSaveJson());
+
+        Assert.Equal(game.AdvanceMovementTurn(), reopened.AdvanceMovementTurn());
+        Assert.Equal(game.CurrentHash, reopened.CurrentHash);
+        Assert.Equal(8UL, reopened.WorkersAt(target));
+        Assert.Equal(0UL, reopened.WorkersAt(origin));
+        Assert.Empty(reopened.State.Transits);
+        Assert.Equal(320_000_000UL, TotalMoney(reopened));
+    }
+
+    [Fact]
     public void ExistingVs14CashSaveKeepsInstantMovementAndVersion12()
     {
         var legacy = CanonicalPhysicalTacticalSession.Start(
