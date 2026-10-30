@@ -8,12 +8,12 @@ namespace GlobalArena.Godot;
 // GA-UI-FOUNDATION-01: presentation shell owns layout; GlobePreview owns only globe behavior.
 public partial class Main : Control
 {
-    private Label? _status;
     // GA_LAYOUT_DIAGNOSTIC_02: temporary non-mutating runtime metrics.
     private Control? _layoutDiagnosticFrame;
     private Control? _layoutDiagnosticRoot;
     private string _lastLoggedLayoutSignature = "";
     private Label? _tacticalBridgeStatus;
+    private PanelContainer? _worldSidebar;
     private Button? _openTacticalContext;
     // GA-UI-MVP: the globe-only calibration controls live in Main sidebar.
     private readonly System.Collections.Generic.List<Control> _strategicCalibrationGroups = new();
@@ -91,11 +91,18 @@ public partial class Main : Control
         var sovereignty = _attachedRuntimeState.Territory.TryGetController(
             territory, out var controller)
             ? $"civilização {controller.Value}" : "sem controle político definido";
+        var belonging = row.TotalSixths > 0UL &&
+            _attachedRuntimeState.Civilizations.Records.Count == 1
+            ? $"COMUNIDADE: Civilização {_attachedRuntimeState.Civilizations.Records[0].Id.Value} " +
+              "(pertencimento demográfico)"
+            : "COMUNIDADE: nenhuma presença civilizacional identificada aqui";
         _territorialPresenceSummary.Text =
             $"T{territory.Value} | presença ponderada {row.TotalEquivalent:F2} trabalhadores " +
             $"(ativos {row.WorkingEquivalent:F2}, em trânsito {row.TravellingEquivalent:F2}) | " +
             $"tiles físicos {row.OccupiedPhysicalTiles}\n" +
-            $"SOBERANIA: {sovereignty}. Presença populacional não é conquista.";
+            $"{belonging}\n" +
+            $"AUTORIDADE POLÍTICA FORMAL: {sovereignty}. " +
+            "Povoamento não implica conquista.";
     }
 
     // R30: physical tile facts are read-only display data, never a game order.
@@ -217,6 +224,10 @@ public partial class Main : Control
     public override void _Ready()
     {
         GD.Print("GA_PROD_MAIN_READY_R6");
+        GD.Print("GA_VS19B_RUNTIME_ACTIVE build=born-civilization layout=full-height-square-map title=VS19B");
+        // The Godot project name stays VS17 to retain old user:// saves;
+        // a visible runtime title identifies the actual branch under test.
+        GetWindow().Title = "Global Arena — VS19B | Comunidade desde o início";
         // Prioritize a maximized production window; preserve windowed resizing and avoid headless changes.
         if (DisplayServer.GetName() != "headless")
             DisplayServer.WindowSetMode(DisplayServer.WindowMode.Maximized);
@@ -226,34 +237,22 @@ public partial class Main : Control
 
         var frame = new MarginContainer();
         frame.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        frame.AddThemeConstantOverride("margin_left", 20);
-        frame.AddThemeConstantOverride("margin_right", 20);
-        frame.AddThemeConstantOverride("margin_top", 16);
-        frame.AddThemeConstantOverride("margin_bottom", 16);
+        frame.AddThemeConstantOverride("margin_left", 8);
+        frame.AddThemeConstantOverride("margin_right", 8);
+        frame.AddThemeConstantOverride("margin_top", 6);
+        frame.AddThemeConstantOverride("margin_bottom", 6);
         AddChild(frame);
 
         _layoutDiagnosticFrame = frame;
         var root = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
         _layoutDiagnosticRoot = root;
-        root.AddThemeConstantOverride("separation", 12);
+        root.AddThemeConstantOverride("separation", 0);
         frame.AddChild(root);
 
-        var header = new HBoxContainer();
-        header.AddThemeConstantOverride("separation", 20);
-        root.AddChild(header);
-        var title = new Label { Text = "GLOBAL ARENA" };
-        title.AddThemeFontSizeOverride("font_size", 28);
-        title.AddThemeColorOverride("font_color", new Color("#d9e9f4"));
-        header.AddChild(title);
-        var subtitle = new Label { Text = "Planetary strategy  |  Production foundation", SizeFlagsHorizontal = SizeFlags.ExpandFill, VerticalAlignment = VerticalAlignment.Center };
-        subtitle.AddThemeColorOverride("font_color", new Color("#7eabc4"));
-        header.AddChild(subtitle);
-        var button = new Button { Text = "SYSTEM STATUS" };
-        button.Pressed += ShowStatus;
-        header.AddChild(button);
-
+        // No full-width title bar or debug footer: both used to steal
+        // vertical space from the square globe/tactical viewport.
         var content = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        content.AddThemeConstantOverride("separation", 12);
+        content.AddThemeConstantOverride("separation", 8);
         root.AddChild(content);
 
         // GA-UI-MVP-SQUARE: the layout column stretches; its map remains 1:1.
@@ -290,6 +289,19 @@ public partial class Main : Control
         _canonicalSession = CanonicalGameSession.Start(
             new WorldGenerationRequest(new WorldSeed(20261012UL),
                 WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)));
+        // A civilization and its community exist as soon as the world exists;
+        // the UI never requires a declaration, city foundation or a click to
+        // bring the initial population, production and cash into being.
+        _canonicalPhysicalLab = new CanonicalPhysicalTacticalSession(
+            _canonicalSession, new GoldbergParameters(18, 0),
+            PhysicalEconomicCadenceMode.AdaptiveThirty,
+            PhysicalTacticalGeographyMode.Canonical01C,
+            PhysicalFoodMarketMode.LocalCashSettlement,
+            PhysicalWorkerMovementMode.TimedAdjacent,
+            PhysicalCivilizationIdentityMode.BornWithPopulation);
+        _workerOrigin = _canonicalPhysicalLab.InitialTile;
+        _tacticalPreview.BindEconomicTacticalGeography(
+            _canonicalPhysicalLab.FineWorld, _canonicalPhysicalLab.CanonicalTerrain);
         AttachRuntimeState(_canonicalSession.Snapshot);
         if (_canonicalSession.Snapshot.WorldBinding !=
             RuntimeWorldBinding.FromGeneratedWorld(_canonicalSession.GeneratedWorld))
@@ -300,23 +312,27 @@ public partial class Main : Control
             "read_only_ui=true source=canonical_generated_world");
         GD.Print("GA_UI_VIEWPORT_READY_02 parent=map-region sizing=expand-fill");
 
-        var rightPanel = new PanelContainer { CustomMinimumSize = new Vector2(390f, 0f), SizeFlagsVertical = SizeFlags.ExpandFill };
+        var rightPanel = new PanelContainer
+        {
+            CustomMinimumSize = new Vector2(530f, 0f),
+            SizeFlagsVertical = SizeFlags.ExpandFill
+        };
         content.AddChild(rightPanel);
+        _worldSidebar = rightPanel;
         var rightMargin = new MarginContainer();
-        rightMargin.AddThemeConstantOverride("margin_left", 12);
-        rightMargin.AddThemeConstantOverride("margin_right", 12);
-        rightMargin.AddThemeConstantOverride("margin_top", 12);
-        rightMargin.AddThemeConstantOverride("margin_bottom", 12);
+        rightMargin.AddThemeConstantOverride("margin_left", 10);
+        rightMargin.AddThemeConstantOverride("margin_right", 10);
+        rightMargin.AddThemeConstantOverride("margin_top", 8);
+        rightMargin.AddThemeConstantOverride("margin_bottom", 8);
         rightPanel.AddChild(rightMargin);
         var rightLayout = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        rightLayout.AddThemeConstantOverride("separation", 8);
+        rightLayout.AddThemeConstantOverride("separation", 5);
         rightMargin.AddChild(rightLayout);
-        var panelTitle = new Label { Text = "TERRITORY & WORLD" };
-        panelTitle.AddThemeFontSizeOverride("font_size", 17);
+        // A single compact header is enough. Version stays readable even
+        // though project.godot retains the stable VS17 save directory.
+        var panelTitle = new Label { Text = "GLOBAL ARENA  |  VS19B" };
+        panelTitle.AddThemeFontSizeOverride("font_size", 15);
         rightLayout.AddChild(panelTitle);
-        var tacticalBridgeTitle = new Label { Text = "TACTICAL CONTEXT" };
-        tacticalBridgeTitle.AddThemeFontSizeOverride("font_size", 15);
-        rightLayout.AddChild(tacticalBridgeTitle);
         _tacticalBridgeStatus = new Label { Text = "Select a canonical territory to enable tactical context" };
         _tacticalBridgeStatus.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         rightLayout.AddChild(_tacticalBridgeStatus);
@@ -339,7 +355,8 @@ public partial class Main : Control
         inspector.AddChild(inspectorTerrain);
         var inspectorRuntime = new Label { Text = "RUNTIME | Select a physical tile", AutowrapMode = TextServer.AutowrapMode.WordSmart };
         inspector.AddChild(inspectorRuntime);
-        rightLayout.AddChild(inspector);
+        // The tile inspector belongs to the tactical scroll, not the
+        // permanently fixed header that squeezed the player's controls.
         _tacticalInspector = inspector;
         _tacticalTileSummary = inspectorSummary;
         _tacticalTileTerrain = inspectorTerrain;
@@ -364,8 +381,14 @@ public partial class Main : Control
         var tacticalHud = new VBoxContainer { Visible = false, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         tacticalHud.AddThemeConstantOverride("separation", 3);
         hud.AddChild(tacticalHud);
-        _tacticalPreview.TransferHud(tacticalHud);
+        // Player commands come first in the scroll: no excessive
+        // diagnostic or map-configuration text before the inspect button.
         InitializeWorkerLabControls(tacticalHud);
+        var detailsHeader = new Label { Text = "DETALHES DO TILE E DA MALHA" };
+        detailsHeader.AddThemeFontSizeOverride("font_size", 14);
+        tacticalHud.AddChild(detailsHeader);
+        tacticalHud.AddChild(inspector);
+        _tacticalPreview.TransferHud(tacticalHud);
         // QA density only: typography belongs to the right sidebar, not the map.
         ApplyCompactTacticalTypography(tacticalHud);
         ApplyCompactTacticalTypography(inspector);
@@ -403,10 +426,7 @@ public partial class Main : Control
         GD.Print("GA_UI_STRATEGIC_CONTROL_OWNERSHIP_READY_R1 groups=2 controls=3 context=STRATEGIC");
         GD.Print("GA_UI_CALIBRATION_ACCESS_READY_01 fixed-controls=true");
 
-        _status = new Label { Text = "GA-UI-FOUNDATION-01  |  Map and context areas separated" };
-        _status.AddThemeColorOverride("font_color", new Color("#90a9bc"));
-        root.AddChild(_status);
-        GD.Print("GA_UI_FOUNDATION_READY_01 layout=map,sidebar,header,footer");
+        GD.Print("GA_UI_FOUNDATION_READY_01 layout=large_square_map,wide_sidebar,no_header,no_footer");
         GD.Print("GA_UI_FOUNDATION_RESIZE_READY_02 responsive=true");
     }
 
@@ -456,14 +476,15 @@ public partial class Main : Control
         var view = GetViewport();
         if (view is null) return;
         var current = view.GetVisibleRect().Size;
+        // Widen the sidebar on desktop; shrink its minimum on smaller
+        // windows so the 1:1 tactical map is not clipped horizontally.
+        var sidebarWidth = Mathf.Clamp(current.X * 0.35f, 390f, 530f);
+        if (_worldSidebar is not null &&
+            Mathf.Abs(_worldSidebar.CustomMinimumSize.X - sidebarWidth) > 0.5f)
+            _worldSidebar.CustomMinimumSize = new Vector2(sidebarWidth, 0f);
         var signature = $"{current}/{Size}/{_layoutDiagnosticFrame.Size}/{_layoutDiagnosticRoot.Size}/{DisplayServer.WindowGetSize()}";
         if (signature == _lastLoggedLayoutSignature) return;
         _lastLoggedLayoutSignature = signature;
         GD.Print($"GA_LAYOUT_DIAGNOSTIC_02 viewport={current} main={Size} frame={_layoutDiagnosticFrame.Size} root={_layoutDiagnosticRoot.Size} window={DisplayServer.WindowGetSize()} screen={DisplayServer.ScreenGetSize()}");
     }
-    private void ShowStatus()
-    {
-        if (_status is null) return;
-        _status.Text = $"Godot {Engine.GetVersionInfo()["string"]} | .NET production shell | World assembly referenced";
-    }
-}
+ }
