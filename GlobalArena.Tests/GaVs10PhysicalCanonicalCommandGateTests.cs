@@ -126,10 +126,10 @@ public sealed class GaVs10PhysicalCanonicalCommandGateTests
         Assert.Throws<InvalidOperationException>(() =>
             gate.RestoreOfflineSave(7UL, 8UL, zeroTurnSave));
 
-        var tick = gate.AdvanceMovementTurn(8UL, 8UL);
-        Assert.Null(tick.Settlement);
-        Assert.Equal(1UL, tick.MovementTurn);
-        Assert.Equal(0UL, tick.EconomicCycles);
+        var resumedTurn = gate.AdvanceMovementTurn(8UL, 8UL);
+        Assert.Null(resumedTurn.Settlement);
+        Assert.Equal(1UL, resumedTurn.MovementTurn);
+        Assert.Equal(0UL, resumedTurn.EconomicCycles);
     }
 
     [Fact]
