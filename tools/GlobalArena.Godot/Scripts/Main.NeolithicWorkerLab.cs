@@ -39,7 +39,7 @@ public partial class Main
 
         var title = new Label
         {
-            Text = "ATIVIDADES TÁTICAS | LABORATÓRIO",
+            Text = "ATIVIDADES TÁTICAS | LABORATÓRIO VS18",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         title.AddThemeFontSizeOverride("font_size", 16);
@@ -353,7 +353,37 @@ public partial class Main
             var temp = path + ".tmp";
             File.WriteAllText(temp, content, Encoding.UTF8);
             File.Move(temp, path, overwrite: true);
+            // Save only viewport/presentation alongside the canonical file.
+            // It is bound to this exact save by SHA-256 and can be discarded
+            // without affecting the V13 replay or physical world hash.
+            var cameraSaved = false;
+            var viewPath = path + ".view.json";
+            try
+            {
+                if (_tacticalPreview is null)
+                    throw new InvalidOperationException("A câmera tática não está inicializada.");
+                var bookmark = _tacticalPreview.CaptureCameraBookmark();
+                var viewContent = TacticalViewSidecarCodec.Create(content, bookmark);
+                File.WriteAllText(viewPath + ".tmp", viewContent, Encoding.UTF8);
+                File.Move(viewPath + ".tmp", viewPath, overwrite: true);
+                cameraSaved = true;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
+                or InvalidOperationException or ArgumentException)
+            {
+                // A stale camera file must never override this newly saved
+                // game, even when the physical state happens not to change.
+                try { if (File.Exists(viewPath)) File.Delete(viewPath); }
+                catch (Exception cleanup) when (cleanup is IOException or UnauthorizedAccessException)
+                {
+                    GD.PushWarning("GA-VS18-VIEW-STALE-CLEANUP: " + cleanup.Message);
+                }
+                GD.PushWarning("GA-VS18-VIEW-SAVE-FAILED: " + ex.Message);
+            }
             UpdateWorkerLabHud();
+            _workerLabStatus.Text += cameraSaved
+                ? "\nCÂMERA TÁTICA SALVA: posição, zoom e orientação."
+                : "\nATENÇÃO: partida salva, mas a visão tática não pôde ser salva.";
             _workerLabStatus.Text += isTimed
                 ? "\nSAVE TEMPORAL V13 GRAVADO: ga-vs15-worker-transit.json"
                 : isCash
@@ -395,6 +425,23 @@ public partial class Main
                 _canonicalSession is null ||
                 restored.Game.Snapshot.WorldBinding != _canonicalSession.Snapshot.WorldBinding)
                 throw new InvalidOperationException("Save não pertence ao mundo G3/G18 ativo.");
+            // Optional companion is read-only and not part of the canonical
+            // payload. Missing, invalid, or wrong-save views default safely.
+            TacticalCameraBookmark? view = null;
+            var viewPath = path + ".view.json";
+            if (File.Exists(viewPath))
+            {
+                try
+                {
+                    var viewContent = File.ReadAllText(viewPath, Encoding.UTF8);
+                    if (!TacticalViewSidecarCodec.TryRestore(content, viewContent, out view))
+                        GD.PushWarning("GA-VS18-VIEW-MISMATCH: ignored invalid or stale camera companion.");
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    GD.PushWarning("GA-VS18-VIEW-READ-FAILED: " + ex.Message);
+                }
+            }
             var origin = restored.State.Allocations.FirstOrDefault()?.TileId
                 ?? restored.State.Transits.FirstOrDefault()?.Source
                 ?? restored.InitialTile;
@@ -404,7 +451,15 @@ public partial class Main
             _tacticalPreview.BindEconomicTacticalGeography(
                 restored.FineWorld, restored.CanonicalTerrain);
             _tacticalPreview.Open(focus.Value);
-            if (!_tacticalPreview.HasVisiblePhysicalTile(origin.FineStrategicCellId.Value))
+            var cameraRestored = view is not null &&
+                _tacticalPreview.TryRestoreCameraBookmark(view);
+            if (!cameraRestored && view is not null)
+                _tacticalPreview.Open(focus.Value);
+            // A saved view may legitimately be centered away from the
+            // workforce origin. Only the default frame requires the
+            // origin tile to appear in the visible physical scope.
+            if (!cameraRestored &&
+                !_tacticalPreview.HasVisiblePhysicalTile(origin.FineStrategicCellId.Value))
                 throw new InvalidOperationException("Tile restaurado não aparece na malha.");
             _canonicalSession = restored.Game;
             _canonicalPhysicalLab = restored;
@@ -412,6 +467,9 @@ public partial class Main
             _workerDestination = null;
             AttachRuntimeState(_canonicalSession.Snapshot);
             UpdateWorkerLabHud();
+            _workerLabStatus.Text += cameraRestored
+                ? "\nCÂMERA TÁTICA RESTAURADA: mesma posição e zoom do save."
+                : "\nVisão tática: enquadramento inicial (save antigo ou visão indisponível).";
             _workerLabStatus.Text += hasTimed
                 ? "\nSAVE TEMPORAL V13 REABERTO E VALIDADO."
                 : hasCash

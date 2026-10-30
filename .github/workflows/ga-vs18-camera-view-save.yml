@@ -1,0 +1,44 @@
+name: GA-VS18 Tactical Camera Save Recovery
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/TacticalViewSidecarCodec.cs'
+      - 'GlobalArena.Tests/GaVs18TacticalViewSidecarTests.cs'
+      - 'tools/GlobalArena.Godot/Scripts/TacticalContextPreview.CameraBookmark.cs'
+      - 'tools/GlobalArena.Godot/Scripts/TacticalContextPreview.cs'
+      - 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+      - 'tools/GlobalArena.Godot/project.godot'
+      - '.github/workflows/ga-vs18-camera-view-save.yml'
+  workflow_dispatch:
+
+jobs:
+  view-recovery-windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Camera restore and prior save regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs18|FullyQualifiedName~GaVs17|FullyQualifiedName~GaVs16|FullyQualifiedName~GaVs15|FullyQualifiedName~GaVs14'
+      - name: Build Godot Windows camera restore
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  view-recovery-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Camera restore and prior save regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs18|FullyQualifiedName~GaVs17|FullyQualifiedName~GaVs16|FullyQualifiedName~GaVs15|FullyQualifiedName~GaVs14'
+      - name: Build Godot Linux camera restore
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
