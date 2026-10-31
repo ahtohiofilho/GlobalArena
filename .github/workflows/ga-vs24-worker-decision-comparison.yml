@@ -60,7 +60,7 @@ jobs:
               -not $runner.Contains('-c Debug') -or
               -not $runner.Contains('& $GodotExe --path $projectDir --verbose') -or
               (-not $main.Contains('GA_VS24_RUNTIME_ACTIVE') -and
-               (-not $main.Contains('GA_VS25_RUNTIME_ACTIVE') -and (-not $main.Contains('GA_VS26_RUNTIME_ACTIVE') -and (-not $main.Contains('GA_VS27_RUNTIME_ACTIVE') -and (-not $main.Contains('GA_VS28_RUNTIME_ACTIVE') -and -not $main.Contains('GA_VS29_RUNTIME_ACTIVE')))))) -or
+               (-not $main.Contains('GA_VS25_RUNTIME_ACTIVE') -and (-not $main.Contains('GA_VS26_RUNTIME_ACTIVE') -and (-not $main.Contains('GA_VS27_RUNTIME_ACTIVE') -and (-not $main.Contains('GA_VS28_RUNTIME_ACTIVE') -and (-not $main.Contains('GA_VS29_RUNTIME_ACTIVE') -and -not $main.Contains('GA_VS30_RUNTIME_ACTIVE'))))))) -or
               -not $lab.Contains('CompareWorkerDecisionWithoutCommitting') -or
               -not $lab.Contains('PhysicalWorkerDecisionProjection.Compare') -or
               -not $lab.Contains('ReassignWorkerLabWorkers') -or
