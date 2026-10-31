@@ -15,7 +15,7 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
 {
     private const ulong Unit = EconomicTransferPolicy.FixedPointDenominator;
 
-    public static int Run(bool livePrimitive = false, bool discoverSites = false)
+    public static int Run(bool livePrimitive = false, bool discoverSites = false, bool discoverFreight = false)
     {
 #if DEBUG
         Console.Error.WriteLine("GA-VS60 benchmark requires Release.");
@@ -24,7 +24,7 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
         try
         {
             CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
-            Console.WriteLine(discoverSites ? "BENCHMARK=GA-VS62-EMERGENT-ECONOMIC-SITES" : livePrimitive ? "BENCHMARK=GA-VS61-LIVE-PRIMITIVE-SESSION" : "BENCHMARK=GA-VS60-BUILT-INSTITUTIONAL-NETWORK");
+            Console.WriteLine(discoverFreight ? "BENCHMARK=GA-VS63-INSTITUTIONALLY-AUTHORIZED-FREIGHT" : discoverSites ? "BENCHMARK=GA-VS62-EMERGENT-ECONOMIC-SITES" : livePrimitive ? "BENCHMARK=GA-VS61-LIVE-PRIMITIVE-SESSION" : "BENCHMARK=GA-VS60-BUILT-INSTITUTIONAL-NETWORK");
             Console.WriteLine($"ENV_OS={RuntimeInformation.OSDescription}");
             Console.WriteLine($"ENV_RUNTIME={RuntimeInformation.FrameworkDescription}");
             Console.WriteLine("WARMUPS=1;SAMPLES=3;PERFORMANCE_THRESHOLDS=none");
@@ -186,7 +186,19 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
                     new CanonicalPrimitiveDemandRate(new CommodityId(8), 125_000),
                     new CanonicalPrimitiveDemandRate(new CommodityId(9), 250_000)
                 }, new FoodTransportCostFraction(1, 1));
+            if (discoverFreight)
+                session.TransportNetwork.SetEntitlement(registry.Entitlements.Single() with {
+                    Source = CanonicalPrimitiveSiteDiscovery.SiteId(from),
+                    Destination = CanonicalPrimitiveSiteDiscovery.SiteId(to),
+                    ServiceId = 77
+                });
             var baselineDiscovery = session.DiscoverPrimitiveEconomicSites(discoveryPolicy);
+            var freightPolicy = new CanonicalEligibleFreightDiscoveryPolicy(
+                food, EconomicActivityKind.Agriculture, pricing,
+                ExperimentalLandInfrastructureKind.StoneRoad,
+                new FoodCommodityCatalog(new[] {
+                    new FoodCommodityDefinition(food, "food", 1)
+                }));
             var hash = session.CurrentHash;
             var save = session.ExportSaveJson();
 
@@ -201,6 +213,23 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
                     var started = Stopwatch.GetTimestamp();
                     for (var i = 0; i < count; i++)
                     {
+                        if (discoverFreight)
+                        {
+                            var sites = session.DiscoverPrimitiveEconomicSites(discoveryPolicy);
+                            var discovered = session.DiscoverEligiblePrimitiveFreight(
+                                sites, freightPolicy, "VS60-BENCH-PURCHASING", 1,
+                                "VS60-BENCH-CALIBRATION", 1, "VS40-NOMINAL");
+                            var right = discovered.Services.Single();
+                            if (right.Offer.ServiceId != 77 ||
+                                discovered.Lanes.Count != 1 ||
+                                discovered.InspectedRegisteredServices != 2 ||
+                                discovered.SourceTreeBuilds != 1 ||
+                                discovered.CanAuthorizeRealSettlement)
+                                throw new InvalidOperationException(
+                                    "Institutional freight offer inventory diverged.");
+                            discovered.RequireCurrent(session);
+                            continue;
+                        }
                         if (discoverSites)
                         {
                             var discovered = session.DiscoverPrimitiveEconomicSites(discoveryPolicy);
@@ -248,13 +277,13 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
                     $"median_ms={times.OrderBy(x => x).ElementAt(1):F3};" +
                     $"median_allocated_bytes={allocations.OrderBy(x => x).ElementAt(1)}");
             }
-            Console.WriteLine(discoverSites ? "RESULT=PASS_GA_VS62_SITE_DISCOVERY" : livePrimitive ? "RESULT=PASS_GA_VS61_LIVE_PRIMITIVE" : "RESULT=PASS_GA_VS60_BUILT_INSTITUTIONAL");
+            Console.WriteLine(discoverFreight ? "RESULT=PASS_GA_VS63_AUTHORIZED_FREIGHT" : discoverSites ? "RESULT=PASS_GA_VS62_SITE_DISCOVERY" : livePrimitive ? "RESULT=PASS_GA_VS61_LIVE_PRIMITIVE" : "RESULT=PASS_GA_VS60_BUILT_INSTITUTIONAL");
             return 0;
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine(ex);
-            Console.WriteLine(discoverSites ? "RESULT=FAIL_GA_VS62_SITE_DISCOVERY" : livePrimitive ? "RESULT=FAIL_GA_VS61_LIVE_PRIMITIVE" : "RESULT=FAIL_GA_VS60_BUILT_INSTITUTIONAL");
+            Console.WriteLine(discoverFreight ? "RESULT=FAIL_GA_VS63_AUTHORIZED_FREIGHT" : discoverSites ? "RESULT=FAIL_GA_VS62_SITE_DISCOVERY" : livePrimitive ? "RESULT=FAIL_GA_VS61_LIVE_PRIMITIVE" : "RESULT=FAIL_GA_VS60_BUILT_INSTITUTIONAL");
             return 1;
         }
 #endif

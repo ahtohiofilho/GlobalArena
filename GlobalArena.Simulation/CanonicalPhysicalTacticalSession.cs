@@ -133,6 +133,14 @@ public sealed class CanonicalPhysicalTacticalSession
     public CanonicalPrimitiveSiteDiscovery DiscoverPrimitiveEconomicSites(
         CanonicalPrimitiveSiteDiscoveryPolicy policy) =>
         CanonicalPrimitiveSiteDiscovery.Create(this, policy);
+    public CanonicalEligibleFreightOfferDiscovery DiscoverEligiblePrimitiveFreight(
+        CanonicalPrimitiveSiteDiscovery sites,
+        CanonicalEligibleFreightDiscoveryPolicy policy,
+        string purchasingPolicyId, ulong purchasingPolicyVersion,
+        string calibrationId, ulong calibrationVersion, string nominalUnitId) =>
+        CanonicalEligibleFreightOfferDiscovery.FromSession(
+            this, sites, policy, purchasingPolicyId, purchasingPolicyVersion,
+            calibrationId, calibrationVersion, nominalUnitId);
 
     private WorldState CheckedSnapshot
     {
