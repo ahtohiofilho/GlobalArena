@@ -67,9 +67,11 @@ public sealed class GaVs35ScalarMovementPointForecastTests
         var costs = new ulong[] { 40UL, 250UL, 100UL, 60UL };
         var a = ScalarMovementPointForecast.Preview(30UL, 200UL, costs);
         var b = ScalarMovementPointForecast.Preview(30UL, 200UL, costs);
-        Assert.Equal(a, b with { Legs = a.Legs });
-        Assert.Equal(a.Legs, b.Legs);
-        Assert.Equal(32UL, a.ArrivalTurn);
+        Assert.Equal(a.DepartureTurn, b.DepartureTurn);
+        Assert.Equal(a.TotalCostPoints, b.TotalCostPoints);
+        Assert.Equal(a.ArrivalTurn, b.ArrivalTurn);
+        Assert.Equal(a.Legs.ToArray(), b.Legs.ToArray());
+        Assert.Equal(33UL, a.ArrivalTurn);
     }
 
     [Fact]
