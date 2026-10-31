@@ -16,6 +16,7 @@ public sealed class CanonicalWorldStateHasher
     public const uint PhysicalFoodCashFormatVersion = 12U;
     public const uint TimedWorkerTransitFormatVersion = 13U;
     public const uint BornCivilizationFormatVersion = 14U;
+    public const uint LongDistanceWorkerFormatVersion = 15U;
 
     private static readonly byte[] Magic =
     {
@@ -309,7 +310,9 @@ public sealed class CanonicalWorldStateHasher
         // Explicit domain separator, tagged fields and the exact legacy
         // digest bind all pre-existing state + topology to the new version.
         hash.AppendData(Magic);
-        var format = worldState.Civilizations.Records.Count == 1 &&
+        var format = physical.RemoteRoutingEnabled
+            ? LongDistanceWorkerFormatVersion
+            : worldState.Civilizations.Records.Count == 1 &&
                      physical.MovementMode == PhysicalWorkerMovementMode.TimedAdjacent
             ? BornCivilizationFormatVersion
             : physical.MovementMode == PhysicalWorkerMovementMode.TimedAdjacent
@@ -414,6 +417,27 @@ public sealed class CanonicalWorldStateHasher
                 AppendUInt64(hash, order.Workers);
                 AppendUInt64(hash, order.DepartureTurn);
                 AppendUInt64(hash, order.ArrivalTurn);
+            }
+        }
+        if (physical.RemoteRoutingEnabled)
+        {
+            AppendUInt32(hash, 95U); // one order for all legs, V15 only
+            AppendUInt32(hash, checked((uint)physical.LongTrips.Count));
+            foreach (var journey in physical.LongTrips)
+            {
+                AppendUInt64(hash, journey.OrderId);
+                AppendUInt64(hash, journey.Source.FineStrategicCellId.Value);
+                AppendUInt64(hash, journey.Destination.FineStrategicCellId.Value);
+                AppendUInt32(hash, (uint)journey.FromJob);
+                AppendUInt32(hash, (uint)journey.ToJob);
+                AppendUInt64(hash, journey.Workers);
+                AppendUInt64(hash, journey.DepartureTurn);
+                AppendUInt64(hash, journey.ArrivalTurn);
+                AppendUInt64(hash, journey.NextLegCompletionTurn);
+                AppendUInt32(hash, checked((uint)journey.CompletedLegs));
+                AppendUInt32(hash, checked((uint)journey.Route.Count));
+                foreach (var tile in journey.Route)
+                    AppendUInt64(hash, tile.FineStrategicCellId.Value);
             }
         }
         return new WorldStateHash(
