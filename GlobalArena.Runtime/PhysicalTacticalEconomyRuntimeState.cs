@@ -45,8 +45,12 @@ public sealed class PhysicalTacticalEconomyRuntimeState
         ? PhysicalFoodMarketMode.LegacyDirectConsumption : PhysicalFoodMarketMode.LocalCashSettlement;
     public PhysicalWorkerMovementMode MovementMode { get; }
     public IReadOnlyList<PhysicalWorkerTransit> Transits { get; }
-    public ulong WorkersInTransit => Transits.Aggregate(0UL,
-        (sum, x) => checked(sum + x.Workers));
+    public IReadOnlyList<PhysicalLongDistanceTransit> LongTrips { get; }
+    // Persist the V15 ruleset even after the final journey has arrived.
+    public bool RemoteRoutingEnabled { get; }
+    public ulong WorkersInTransit => checked(Transits.Aggregate(0UL,
+        (sum, x) => checked(sum + x.Workers)) +
+        LongTrips.Aggregate(0UL, (sum, x) => checked(sum + x.Workers)));
     public ulong WorkerRevision { get; }
     public ulong TotalWorkers { get; }
     public IReadOnlyList<PhysicalWorkerAllocation> Allocations { get; }
@@ -66,7 +70,9 @@ public sealed class PhysicalTacticalEconomyRuntimeState
         PhysicalTacticalGeographyMode geographyMode = PhysicalTacticalGeographyMode.LegacyV1,
         PhysicalFoodCashMarketState? foodCash = null,
         PhysicalWorkerMovementMode movementMode = PhysicalWorkerMovementMode.LegacyInstant,
-        IEnumerable<PhysicalWorkerTransit>? transits = null)
+        IEnumerable<PhysicalWorkerTransit>? transits = null,
+        IEnumerable<PhysicalLongDistanceTransit>? longTrips = null,
+        bool remoteRoutingEnabled = false)
     {
         ArgumentNullException.ThrowIfNull(coarseWorldBinding);
         ArgumentNullException.ThrowIfNull(allocations);
@@ -135,6 +141,44 @@ public sealed class PhysicalTacticalEconomyRuntimeState
             totalWorkers = checked(totalWorkers + transit.Workers);
         }
 
+        var orderedLongTrips = (longTrips ?? Array.Empty<PhysicalLongDistanceTransit>())
+            .OrderBy(x => x?.OrderId ?? 0UL).ToArray();
+        if (orderedLongTrips.Length != 0 && !remoteRoutingEnabled)
+            throw new ArgumentException("Remote journeys require the V15 ruleset.");
+        if (remoteRoutingEnabled && movementMode != PhysicalWorkerMovementMode.TimedAdjacent)
+            throw new ArgumentException("V15 journeys require the canonical timed movement mode.");
+        foreach (var trip in orderedLongTrips)
+        {
+            if (trip is null || trip.OrderId == 0UL ||
+                trip.OrderId > workerRevision || !transitIds.Add(trip.OrderId) ||
+                trip.Workers == 0UL || trip.DepartureTurn > movementTurn ||
+                trip.ArrivalTurn <= movementTurn ||
+                trip.ArrivalTurn <= trip.DepartureTurn ||
+                trip.FromJob is not (EconomicActivityKind.Agriculture or
+                    EconomicActivityKind.Forestry or EconomicActivityKind.Mining) ||
+                trip.ToJob is not (EconomicActivityKind.Agriculture or
+                    EconomicActivityKind.Forestry or EconomicActivityKind.Mining) ||
+                trip.Route is null || trip.Route.Count < 3 ||
+                trip.CompletedLegs < 0 || trip.CompletedLegs >= trip.Route.Count - 1 ||
+                trip.Source != trip.Route[0] ||
+                trip.Destination != trip.Route[^1] ||
+                trip.NextLegCompletionTurn <= movementTurn ||
+                trip.ArrivalTurn != checked(trip.DepartureTurn +
+                    (ulong)(trip.Route.Count - 1) * 2UL) ||
+                trip.NextLegCompletionTurn != checked(trip.DepartureTurn +
+                    ((ulong)trip.CompletedLegs + 1UL) * 2UL))
+                throw new ArgumentException("Invalid long-distance worker itinerary.");
+            ValidateTile(trip.Source, fineParameters);
+            ValidateTile(trip.Destination, fineParameters);
+            for (var i = 0; i < trip.Route.Count; i++)
+            {
+                ValidateTile(trip.Route[i], fineParameters);
+                if (i != 0 && trip.Route[i] == trip.Route[i - 1])
+                    throw new ArgumentException("Journey has a zero-length physical leg.");
+            }
+            totalWorkers = checked(totalWorkers + trip.Workers);
+        }
+
         var stockRows = stocks.ToArray();
         if (stockRows.Any(x => x is null))
             throw new ArgumentException("Physical stock cannot contain null records.");
@@ -168,6 +212,8 @@ public sealed class PhysicalTacticalEconomyRuntimeState
         FoodCash = foodCash;
         MovementMode = movementMode;
         Transits = Array.AsReadOnly(orderedTransits);
+        LongTrips = Array.AsReadOnly(orderedLongTrips);
+        RemoteRoutingEnabled = remoteRoutingEnabled;
         WorkerRevision = workerRevision;
         TotalWorkers = totalWorkers;
         Allocations = Array.AsReadOnly(sortedAllocations);
