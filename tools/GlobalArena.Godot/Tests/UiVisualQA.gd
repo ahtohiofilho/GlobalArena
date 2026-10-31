@@ -140,7 +140,7 @@ func _run() -> void:
     var selected := false
     for offset in [Vector2.ZERO, Vector2(30, 0), Vector2(-30, 0),
             Vector2(0, 30), Vector2(0, -30)]:
-        var at := center + offset
+        var at: Vector2 = center + offset
         var press := InputEventMouseButton.new()
         press.button_index = MOUSE_BUTTON_LEFT
         press.position = at
