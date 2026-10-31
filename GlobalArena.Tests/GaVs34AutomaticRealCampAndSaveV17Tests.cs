@@ -26,6 +26,31 @@ public sealed class GaVs34AutomaticRealCampAndSaveV17Tests
             .OrderBy(x => x.FineStrategicCellId.Value).First();
     }
 
+    // Find a concrete land route where primitive forage is actually viable.
+    // A test that merely returns on an infeasible forecast does not prove
+    // that V17 gathers anything. This makes the scenario mandatory.
+    private static PhysicalTacticalTileId ProductiveCampDestination(
+        CanonicalPhysicalTacticalSession game, ulong foodRaw)
+    {
+        var adjacent = game.AdjacentWorkable(game.InitialTile).ToHashSet();
+        var candidates = adjacent.SelectMany(game.AdjacentWorkable)
+            .Where(x => x != game.InitialTile && !adjacent.Contains(x))
+            .Distinct().OrderBy(x => x.FineStrategicCellId.Value);
+        foreach (var destination in candidates)
+        {
+            var forecast = JourneyProvisioningForecastProjection.PreviewPlanned(
+                game, game.InitialTile, destination,
+                EconomicActivityKind.Agriculture, EconomicActivityKind.Forestry,
+                1UL, foodRaw);
+            if (forecast.CanArriveUnderAssumptions &&
+                forecast.Stops.Count > 0 &&
+                forecast.WaitingMovementTurns is > 0UL and <= 100UL)
+                return destination;
+        }
+        throw new InvalidOperationException(
+            "This test seed has no productive two-leg camp route; V17 positive coverage is mandatory.");
+    }
+
     private static CanonicalPhysicalTacticalSession Supplied()
     {
         var game = Start();
@@ -40,9 +65,10 @@ public sealed class GaVs34AutomaticRealCampAndSaveV17Tests
     }
 
     private static PhysicalLongDistanceTransit Begin(
-        CanonicalPhysicalTacticalSession game, ulong food) =>
+        CanonicalPhysicalTacticalSession game, ulong food,
+        PhysicalTacticalTileId? destination = null) =>
         game.OrderProvisionedLongDistanceTransit(game.InitialTile,
-            Destination(game), EconomicActivityKind.Agriculture,
+            destination ?? Destination(game), EconomicActivityKind.Agriculture,
             EconomicActivityKind.Forestry, 1UL, food, automaticCamps: true);
 
     [Fact]
@@ -82,19 +108,15 @@ public sealed class GaVs34AutomaticRealCampAndSaveV17Tests
         var game = Supplied();
         var startRaw = Math.Min(500_000UL,
             game.StockAt(game.InitialTile, new CommodityId(1U)));
+        var destination = ProductiveCampDestination(game, startRaw);
         var plan = JourneyProvisioningForecastProjection.PreviewPlanned(
-            game, game.InitialTile, Destination(game),
+            game, game.InitialTile, destination,
             EconomicActivityKind.Agriculture, EconomicActivityKind.Forestry,
             1UL, startRaw);
-        var oldSave = game.ExportSaveJson();
-        if (!plan.CanArriveUnderAssumptions)
-        {
-            Assert.Throws<InvalidOperationException>(() => Begin(game, startRaw));
-            Assert.Equal(oldSave, game.ExportSaveJson());
-            return;
-        }
-
-        var trip = Begin(game, startRaw);
+        Assert.True(plan.CanArriveUnderAssumptions);
+        Assert.NotEmpty(plan.Stops);
+        Assert.True(plan.WaitingMovementTurns > 0UL);
+        var trip = Begin(game, startRaw, destination);
         Assert.Equal(17, JsonSerializer.Deserialize<CanonicalPhysicalSaveEnvelope>(
             game.ExportSaveJson())!.Version);
         var initialCash = game.FoodCash!.InitialMoneySupplyMicrocredits;
