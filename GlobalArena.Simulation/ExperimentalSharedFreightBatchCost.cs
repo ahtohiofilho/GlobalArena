@@ -60,6 +60,24 @@ public sealed class ExperimentalSharedFreightOption
     }
 
     /// <summary>
+    /// Explicitly synthetic alternative for reproducible benchmark fixtures.
+    /// Not an attestation of a built, eligible commercial service: real
+    /// candidates must come through FromBuiltOffer and the VS41/VS40 chain.
+    /// </summary>
+    public static ExperimentalSharedFreightOption Synthetic(
+        ulong serviceId, StrategicEconomicRouteKey routeKey,
+        ExperimentalFreightTechnologyPricing trialCalibration,
+        BigInteger geographicBaseNumerator,
+        IEnumerable<ExperimentalSharedFreightCorridorKey> corridors)
+    {
+        ArgumentNullException.ThrowIfNull(trialCalibration);
+        return new ExperimentalSharedFreightOption(
+            serviceId, routeKey,
+            new ExperimentalAggregatedLandFreightCostFunction(
+                trialCalibration, geographicBaseNumerator), corridors);
+    }
+
+    /// <summary>
     /// Turn a VS41/VS40 offer into a physical-resource option ONLY after
     /// checking complete contiguous travel, declared endpoints, operational
     /// constructed assets and CURRENT access. No free service or bridge.
