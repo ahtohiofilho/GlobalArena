@@ -64,7 +64,7 @@ public sealed class ExperimentalAtomicCashSettlementLab
     private readonly ExperimentalCashAuthorizationSnapshot _snapshot;
     private readonly IExperimentalCashSettlementAuthority _authority;
     private Dictionary<ExperimentalCashAuditAccountKey, FoodTransportCostFraction> _accounts;
-    private readonly Dictionary<string, ExperimentalCashSettlementProof> _decisions =
+    private Dictionary<string, ExperimentalCashSettlementProof> _decisions =
         new(StringComparer.Ordinal);
     private ExperimentalCashAuditTransfer[] _journal = [];
     private string? _committedDecision;
@@ -228,13 +228,21 @@ public sealed class ExperimentalAtomicCashSettlementLab
                 closingDigest, committedRevision, audit.Transfers.Count,
                 before, after);
 
-            // The only mutation point, after all checking and allocation.
-            // No await, I/O, callbacks or external state touches after this.
+            // Prepare the decision registry and committed journal BEFORE
+            // publishing any new state. Even failures allocating a dictionary
+            // entry leave the old state and its receipt registry untouched.
+            var preparedDecisions = new Dictionary<string,
+                ExperimentalCashSettlementProof>(_decisions, StringComparer.Ordinal);
+            preparedDecisions.Add(decision.DecisionId, proof);
+            var preparedJournal = audit.Transfers.ToArray();
+
+            // Single publication point under the same lock. No await, I/O,
+            // callback, enumeration or allocation after preparing the state.
             _accounts = prepared;
-            _journal = audit.Transfers.ToArray();
+            _journal = preparedJournal;
+            _decisions = preparedDecisions;
             _version = committedRevision;
             _committedDecision = decision.DecisionId;
-            _decisions.Add(decision.DecisionId, proof);
             return new ExperimentalCashSettlementOutcome(proof, false);
         }
     }
