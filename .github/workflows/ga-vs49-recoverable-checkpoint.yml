@@ -1,0 +1,45 @@
+name: GA-VS49 Recoverable Cash Checkpoint Laboratory
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/ExperimentalRecoverableCashCheckpointSandbox.cs'
+      - 'GlobalArena.Tests/GaVs49RecoverableCashCheckpointTests.cs'
+      - 'GlobalArena.Benchmarks/GaVs49RecoverableCheckpointBenchmarkHarness.cs'
+      - 'GlobalArena.Benchmarks/Program.cs'
+      - 'docs/engineering/GA-VS49-recoverable-cash-checkpoint-lab.md'
+      - '.github/workflows/ga-vs49-recoverable-checkpoint.yml'
+  workflow_dispatch:
+
+jobs:
+  recoverable-checkpoint-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: VS49 disk reopen and VS40-VS48 cash and physical economy contracts
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "FullyQualifiedName~GaVs49|FullyQualifiedName~GaVs48|FullyQualifiedName~GaVs47|FullyQualifiedName~GaVs46|FullyQualifiedName~GaVs45|FullyQualifiedName~GaVs44|FullyQualifiedName~GaVs43|FullyQualifiedName~GaVs42|FullyQualifiedName~GaVs41|FullyQualifiedName~GaVs40"
+      - name: Synthetic durable-checkpoint commit reopen replay benchmark
+        run: dotnet run --project GlobalArena.Benchmarks/GlobalArena.Benchmarks.csproj -c Release -- --vs49-recoverable-checkpoint
+      - name: Godot Mono Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  recoverable-checkpoint-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Full economic, cash, save, hash and tactical regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: Godot Mono Debug
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
