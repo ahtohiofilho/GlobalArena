@@ -89,8 +89,14 @@ public sealed class GaVs34AutomaticRealCampAndSaveV17Tests
         Assert.True(estimate.CanArriveUnderAssumptions);
         Assert.Empty(estimate.Stops);
         var trip = Begin(game, raw);
+        var advancedTicks = 0;
         while (game.State.LongTrips.Any(x => x.OrderId == trip.OrderId))
+        {
             game.AdvanceMovementTurn();
+            advancedTicks++;
+            Assert.True(advancedTicks <= 100,
+                "Food-sufficient expedition did not arrive without camping.");
+        }
         var camp = Assert.Single(game.State.JourneyCampStates!);
         Assert.Equal(0UL, camp.WaitingMovementTurns);
         Assert.Equal(0UL, camp.GatheredFoodRaw);
@@ -165,7 +171,9 @@ public sealed class GaVs34AutomaticRealCampAndSaveV17Tests
             game, game.InitialTile, Destination(game),
             EconomicActivityKind.Agriculture, EconomicActivityKind.Forestry,
             1UL, Math.Min(stock, 2_000_000UL));
-        if (!forecast.CanArriveUnderAssumptions) return;
+        // Do not silently skip the mixed legacy/new-rule invariants.
+        Assert.True(forecast.CanArriveUnderAssumptions,
+            "The mixed V15/V17 scenario must have a feasible physical supply plan.");
         var before = game.FoodDemandAt(game.InitialTile);
         Begin(game, Math.Min(stock, 2_000_000UL));
         Assert.Equal(before - CanonicalPhysicalTacticalSession.FoodDemandRawPerWorker,
