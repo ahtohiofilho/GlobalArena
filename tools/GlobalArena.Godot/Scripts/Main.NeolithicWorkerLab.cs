@@ -44,7 +44,7 @@ public partial class Main
 
         var title = new Label
         {
-            Text = "CICLOS ECONÔMICOS VISÍVEIS | VS22",
+            Text = "RESULTADOS ECONÔMICOS | VS23",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         title.AddThemeFontSizeOverride("font_size", 16);
@@ -122,12 +122,23 @@ public partial class Main
         var nextTurn = new Button { Text = "AVANÇAR TURNO DE MOVIMENTO (CICLOS ADAPTATIVOS)" };
         nextTurn.Pressed += AdvanceOfflineLabTurn;
         lab.AddChild(nextTurn);
+        var economicCycleActions = new HBoxContainer();
+        economicCycleActions.AddThemeConstantOverride("separation", 4);
+        lab.AddChild(economicCycleActions);
         var toNextCycle = new Button
         {
-            Text = "AVANÇAR ATÉ O PRÓXIMO CICLO ECONÔMICO"
+            Text = "AVANÇAR 1 CICLO",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
         };
         toNextCycle.Pressed += AdvanceOfflineLabToNextEconomicCycle;
-        lab.AddChild(toNextCycle);
+        economicCycleActions.AddChild(toNextCycle);
+        var toFiveCycles = new Button
+        {
+            Text = "AVANÇAR 5 CICLOS",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        toFiveCycles.Pressed += AdvanceOfflineLabFiveEconomicCycles;
+        economicCycleActions.AddChild(toFiveCycles);
         _economicCycleSummary = new Label
         {
             Text = "CICLO ECONÔMICO | aguardando inspeção do povoamento.",
@@ -446,6 +457,30 @@ public partial class Main
         }
     }
 
+    private void AdvanceOfflineLabFiveEconomicCycles()
+    {
+        if (_canonicalPhysicalLab is null || _canonicalSession is null ||
+            _workerLabStatus is null) return;
+        try
+        {
+            var completed = PhysicalEconomicCycleProgression.AdvanceBatch(_canonicalPhysicalLab);
+            AttachRuntimeState(_canonicalSession.Snapshot);
+            UpdateWorkerLabHud();
+            GD.Print($"GA_VS23_FIVE_CYCLES_ADVANCED from={completed.StartingMovementTurn} " +
+                $"to={completed.FinalSettlementTurn} steps={completed.MovementTurnsToAdvance} " +
+                $"cycles={completed.EconomicCycles} " +
+                $"hash={_canonicalPhysicalLab.CurrentHash.HexDigest}");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or OverflowException)
+        {
+            // A runtime error does not roll back already committed canonical ticks.
+            AttachRuntimeState(_canonicalSession.Snapshot);
+            UpdateWorkerLabHud();
+            _workerLabStatus.Text += "\nAVANÇO DE CICLOS INTERROMPIDO: " + ex.Message +
+                " (confira o estado efetivamente alcançado).";
+        }
+    }
+
     private static string BornCivilizationLabSavePath =>
         ProjectSettings.GlobalizePath("user://ga-vs19b-born-civilization.json");
     private static string TimedLabSavePath =>
@@ -716,18 +751,30 @@ public partial class Main
         var stockWood = _canonicalPhysicalLab.StockAt(origin, new CommodityId(3U));
         var lastCycle = state.Cycles.LastOrDefault();
         var nextEconomicCycle = PhysicalEconomicCycleProgression.Preview(_canonicalPhysicalLab);
+        var recentCycles = PhysicalEconomicCycleProgression.SummarizeRecent(_canonicalPhysicalLab);
         if (_economicCycleSummary is not null)
         {
             var cyclePulse = lastCycle is null
                 ? "Nenhum ciclo liquidado."
                 : $"Último ciclo, turno {lastCycle.MovementTurn}: " +
-                  $"produção física agregada {lastCycle.ProducedRaw / 1_000_000.0:F2} | " +
+                  $"produção física bruta {lastCycle.ProducedRaw / 1_000_000.0:F2} " +
+                  $"(soma de itens diferentes) | " +
                   $"alimento consumido {lastCycle.FoodConsumedRaw / 1_000_000.0:F2} | " +
                   $"falta de alimento {lastCycle.FoodUnmetRaw / 1_000_000.0:F2}";
+            var demanded = (double)recentCycles.FoodConsumedRaw + recentCycles.FoodUnmetRaw;
+            var service = demanded <= 0.0 ? "sem demanda alimentar" :
+                $"{100.0 * recentCycles.FoodConsumedRaw / demanded:F1}% atendido";
+            var recentPulse = recentCycles.CycleCount == 0
+                ? "Histórico: nenhum ciclo realizado."
+                : $"ÚLTIMOS {recentCycles.CycleCount} CICLOS (turnos " +
+                  $"{recentCycles.FirstSettlementTurn} a {recentCycles.LastSettlementTurn}): " +
+                  $"alimento consumido {recentCycles.FoodConsumedRaw / 1_000_000.0:F2} | " +
+                  $"falta de alimento {recentCycles.FoodUnmetRaw / 1_000_000.0:F2} | " + service;
             _economicCycleSummary.Text =
                 $"CICLOS ECONÔMICOS {state.Cycles.Count} | próximo no turno " +
                 $"{nextEconomicCycle.SettlementTurn} " +
-                $"({nextEconomicCycle.MovementTurnsToAdvance} movimentos)\n" + cyclePulse;
+                $"({nextEconomicCycle.MovementTurnsToAdvance} movimentos)\n" +
+                cyclePulse + "\n" + recentPulse;
         }
         var interval = _canonicalPhysicalLab.NextEconomicInterval;
         var nextTurn = checked(state.MovementTurn + 1UL);
