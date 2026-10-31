@@ -1,0 +1,41 @@
+name: GA-VS38 Shared Physical Land-Edge Facts Cache
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/CanonicalLandEdgeFactsSnapshot.cs'
+      - 'GlobalArena.Tests/GaVs38SharedPhysicalEdgeFactsTests.cs'
+      - 'docs/engineering/GA-VS38-shared-land-edge-facts-cache.md'
+      - '.github/workflows/ga-vs38-shared-land-edge-facts.yml'
+  workflow_dispatch:
+
+jobs:
+  land-facts-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Physical edge facts, terrain and scalar regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "FullyQualifiedName~GaVs38|FullyQualifiedName~GaVs37|FullyQualifiedName~GaVs36|FullyQualifiedName~GaVs35"
+      - name: Godot Mono Release build
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  land-facts-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Complete cross-domain regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: Godot Mono Debug build
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
