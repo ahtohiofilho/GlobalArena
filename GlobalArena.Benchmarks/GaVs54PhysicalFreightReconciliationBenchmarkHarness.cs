@@ -133,7 +133,7 @@ public static class GaVs54PhysicalFreightReconciliationBenchmarkHarness
                     {
                         var result = reconciler.Project(purchasing, flows,
                             catalog, quotes, policy, "VS40-NOMINAL",
-                            selected, congestion);
+                            lanes, selected, congestion);
                         if (result.CanAuthorizeRealSettlement ||
                             !result.AllBuyersCanCoverHypotheticalCharges ||
                             result.Deliveries.Count != 2 ||
