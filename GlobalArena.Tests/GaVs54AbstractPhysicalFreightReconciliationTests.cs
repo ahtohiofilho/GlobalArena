@@ -64,7 +64,8 @@ public sealed class GaVs54AbstractPhysicalFreightReconciliationTests
 
     private sealed class Fixture
     {
-        public CanonicalPhysicalTacticalSession Game { get; } = Game();
+        public CanonicalPhysicalTacticalSession Game { get; } =
+            GaVs54AbstractPhysicalFreightReconciliationTests.Game();
         public EconomicProductionDemandResult Flows { get; }
         public ExperimentalAbstractPurchasingProjection Purchasing { get; }
         public ExperimentalAbstractNominalDeliveredQuote[] Quotes { get; }
