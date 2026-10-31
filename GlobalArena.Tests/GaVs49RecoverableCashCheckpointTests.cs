@@ -301,7 +301,7 @@ public sealed class GaVs49RecoverableCashCheckpointTests
                 ? f.Commit(a)
                 : new Fixture().Commit(b))).ToArray();
         var outcomes = await Task.WhenAll(decisions);
-        Assert.Single(outcomes.Where(x => !x.WasAlreadyCommitted));
+        Assert.Single(outcomes, x => !x.WasAlreadyCommitted);
         Assert.Equal(15, outcomes.Count(x => x.WasAlreadyCommitted));
         Assert.Single(outcomes.Select(x => x.Proof).Distinct());
         Assert.Equal(1UL, new Fixture().Open(files.PathToCheckpoint)
