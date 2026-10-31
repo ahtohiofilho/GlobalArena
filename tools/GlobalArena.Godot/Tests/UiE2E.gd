@@ -62,13 +62,16 @@ func _run() -> void:
     var food := _label(app, "GAQAFoodResult")
     var compare := _button(app, "GAQACompare")
     var diagnose := _button(app, "GAQAFoodDiagnosis")
+    var survey := _button(app, "GAQAAdjacentSurvey")
+    var survey_result := _label(app, "GAQAAdjacentSurveyResult")
     var reassign := _button(app, "GAQAReassign")
     var five := _button(app, "GAQAAdvanceFiveCycles")
     var one := _button(app, "GAQAAdvanceOneCycle")
     var save := _button(app, "GAQASave")
     var load_save := _button(app, "GAQALoad")
     for node in [inspect, source, destination, quantity, status, settlements,
-            cycle_report, preview, food, compare, diagnose, reassign, five,
+            cycle_report, preview, food, compare, diagnose, survey,
+            survey_result, reassign, five,
             one, save, load_save]:
         if not _require(node != null, "expected named production control missing"):
             return
@@ -112,6 +115,19 @@ func _run() -> void:
             "food diagnosis did not use its live Godot button/HUD or changed turn"):
         return
     print("GA_UI_E2E_DIAGNOSIS_READ_ONLY_OK")
+
+    _press(survey)
+    await process_frame
+    if not _require(survey_result.visible and not food.visible and
+            survey_result.text.contains("TILES VIZINHOS VIÁVEIS") and
+            survey_result.text.contains("agricultura") and
+            survey_result.text.contains("madeira") and
+            survey_result.text.contains("pedra") and
+            settlements.text.contains("agricultura 4, madeira 2, pedra 2") and
+            status.text.contains("turno 0"),
+            "VS26 neighbour survey failed to show real yields or mutated live game"):
+        return
+    print("GA_UI_E2E_NEIGHBOUR_SCOUT_READ_ONLY_OK")
 
     _press(reassign)
     await process_frame

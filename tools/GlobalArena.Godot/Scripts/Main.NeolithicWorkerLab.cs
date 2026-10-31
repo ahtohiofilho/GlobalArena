@@ -27,6 +27,7 @@ public partial class Main
     private Label? _economicCycleSummary;
     private Label? _workerDecisionPreview;
     private Label? _foodAvailabilityPreview;
+    private Label? _adjacentSurveyPreview;
     private VBoxContainer? _workerLabAdvancedPanel;
     private Button? _workerMoveButton;
     private Button? _workerReassignButton;
@@ -46,7 +47,7 @@ public partial class Main
 
         var title = new Label
         {
-            Text = "ALIMENTAÇÃO E PRODUÇÃO | VS25",
+            Text = "EXPLORAÇÃO PRODUTIVA | VS26",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         title.AddThemeFontSizeOverride("font_size", 16);
@@ -120,6 +121,21 @@ public partial class Main
         };
         _workerMoveButton.Pressed += MoveWorkerLabWorkers;
         lab.AddChild(_workerMoveButton);
+        var surveyNeighbours = new Button
+        {
+            Name = "GAQAAdjacentSurvey",
+            Text = "EXPLORAR PRODUTIVIDADE DOS TILES VIZINHOS"
+        };
+        surveyNeighbours.Pressed += SurveyAdjacentPhysicalWork;
+        lab.AddChild(surveyNeighbours);
+        _adjacentSurveyPreview = new Label
+        {
+            Name = "GAQAAdjacentSurveyResult",
+            Visible = false,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        _adjacentSurveyPreview.AddThemeColorOverride("font_color", new Color("#b5ddb5"));
+        lab.AddChild(_adjacentSurveyPreview);
         _workerReassignButton = new Button
         {
             Name = "GAQAReassign",
@@ -427,6 +443,64 @@ public partial class Main
         {
             if (_workerLabStatus is not null)
                 _workerLabStatus.Text = "TRANSFERÊNCIA RECUSADA (estado preservado): " + ex.Message;
+        }
+    }
+
+    private void SurveyAdjacentPhysicalWork()
+    {
+        if (_canonicalPhysicalLab is null || _workerOrigin is null ||
+            _workerToJob is null || _adjacentSurveyPreview is null)
+            return;
+        if (_foodAvailabilityPreview is not null)
+            _foodAvailabilityPreview.Visible = false;
+        if (_workerDecisionPreview is not null)
+            _workerDecisionPreview.Visible = false;
+        try
+        {
+            var sourceHash = _canonicalPhysicalLab.CurrentHash;
+            var targetJob = (EconomicActivityKind)_workerToJob.GetSelectedId();
+            var report = PhysicalAdjacentWorkSurveyProjection.Survey(
+                _canonicalPhysicalLab, _workerOrigin.Value, targetJob);
+
+            static string Amount(long raw) =>
+                (raw / 1_000_000.0).ToString("F2");
+            var text = new StringBuilder();
+            text.Append($"TILES VIZINHOS VIÁVEIS | origem " +
+                $"{report.Origin.FineStrategicCellId.Value} | " +
+                $"destino produtivo: {targetJob}\n");
+            text.Append($"Potencial por trabalhador NA ORIGEM: " +
+                $"{Amount(report.CurrentTileYieldRaw)} " +
+                "(unidades físicas/ciclo econômico)\n");
+            foreach (var item in report.Neighbours)
+            {
+                text.Append($"Tile {item.Tile.FineStrategicCellId.Value}: " +
+                    $"agricultura {Amount(item.FoodYieldPerWorkerRaw)}; " +
+                    $"madeira {Amount(item.WoodYieldPerWorkerRaw)}; " +
+                    $"pedra {Amount(item.StoneYieldPerWorkerRaw)}");
+                if (item.ResidentWorkers != 0UL || item.WorkersArriving != 0UL)
+                    text.Append($" | residentes {item.ResidentWorkers}; " +
+                        $"em viagem {item.WorkersArriving}");
+                text.Append('\n');
+            }
+            text.Append("Ordenado pela atividade de destino. Potencial não é " +
+                "produção realizada, receita nem propriedade. " +
+                "Para deslocar, selecione o tile no mapa e use ORDENAR DESLOCAMENTO.");
+            _adjacentSurveyPreview.Text = text.ToString();
+            _adjacentSurveyPreview.Visible = true;
+            if (!_canonicalPhysicalLab.CurrentHash.Equals(sourceHash))
+                throw new InvalidOperationException(
+                    "Physical reconnaissance unexpectedly changed the world.");
+            GD.Print($"GA_VS26_ADJACENT_SURVEY origin=" +
+                $"{report.Origin.FineStrategicCellId.Value} " +
+                $"job={targetJob} neighbours={report.Neighbours.Count} " +
+                $"hash={sourceHash.HexDigest}");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or
+                                   ArgumentException or OverflowException)
+        {
+            _adjacentSurveyPreview.Text =
+                "Exploração indisponível (partida preservada): " + ex.Message;
+            _adjacentSurveyPreview.Visible = true;
         }
     }
 
@@ -856,6 +930,8 @@ public partial class Main
             _workerDecisionPreview.Visible = false; // clear any stale hypothetical
         if (_foodAvailabilityPreview is not null)
             _foodAvailabilityPreview.Visible = false;
+        if (_adjacentSurveyPreview is not null)
+            _adjacentSurveyPreview.Visible = false;
         if (_canonicalPhysicalLab is null || _workerOrigin is null || _tacticalPreview is null ||
             _workerLabStatus is null) return;
         var state = _canonicalPhysicalLab.State;
