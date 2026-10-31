@@ -1569,6 +1569,21 @@ public partial class Main
                     $"chegada no turno {x.ArrivalTurn} " +
                     $"({x.ArrivalTurn - state.MovementTurn} restantes)")))) +
             "";
+        var expeditionFoodInfo = state.TravelFoodLedgers is null ? "" :
+            string.Join("\n", state.LongTrips.Select(trip =>
+            {
+                var foodLot = state.TravelFoodLedgers.FirstOrDefault(
+                    x => x.OrderId == trip.OrderId);
+                if (foodLot is null) return "";
+                var camp = state.JourneyCampStates?.FirstOrDefault(
+                    x => x.OrderId == trip.OrderId);
+                return $"EXPEDIÇÃO {trip.OrderId} | suprimento físico " +
+                    $"{foodLot.FoodRemainingRaw / 1_000_000.0:F3} | " +
+                    $"consumido {foodLot.FoodConsumedRaw / 1_000_000.0:F3} | " +
+                    $"coletado {(camp?.GatheredFoodRaw ?? 0UL) / 1_000_000.0:F3} | " +
+                    $"espera acumulada {camp?.WaitingMovementTurns ?? 0UL} turnos | " +
+                    $"ciclos de coleta {camp?.GatheringEconomicCycles ?? 0UL}.";
+            }).Where(x => x.Length != 0)) + "\n";
         if (_workerLabDetails is not null)
             _workerLabDetails.Text =
             $"POVOAMENTOS DERIVADOS: {settlements.Sites.Count} núcleos; " +
@@ -1576,6 +1591,7 @@ public partial class Main
             $"estoques em tiles desabitados {settlements.UninhabitedStockRecords} registros. " +
             "Esses bens não desaparecem nem criam cidades.\n" +
             ownershipInfo +
+            expeditionFoodInfo +
             $"Origem tile {origin.FineStrategicCellId.Value} | {jobs}\n" +
             $"Grupo selecionado: {selectedActivity} | disponíveis: {selectedGroupWorkers} trabalhadores\n" +
             $"Destino: {destination}\n" +
