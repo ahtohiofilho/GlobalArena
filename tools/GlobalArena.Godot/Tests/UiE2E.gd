@@ -69,6 +69,9 @@ func _run() -> void:
     var remote_target := app.find_child("GAQARemoteDestination", true, false) as SpinBox
     var remote_button := _button(app, "GAQAPreviewRemoteRoute")
     var remote_order := _button(app, "GAQAOrderRemoteJourney")
+    var hypothetical_food := app.find_child("GAQAHypotheticalFood", true, false) as SpinBox
+    var camp_button := _button(app, "GAQAForecastCampStops")
+    var camp_result := _label(app, "GAQACampForecastResult")
     var food_assessment := _button(app, "GAQAAssessJourneyFood")
     var food_assessment_result := _label(app, "GAQAJourneySupplyResult")
     var remote_result := _label(app, "GAQARemoteRouteResult")
@@ -81,7 +84,8 @@ func _run() -> void:
     for node in [inspect, source, destination, quantity, status, settlements,
             cycle_report, preview, food, compare, diagnose, survey,
             survey_result, plan_destination, advanced_toggle, remote_target,
-            remote_button, remote_order, remote_result, food_assessment,
+            remote_button, remote_order, remote_result, hypothetical_food,
+            camp_button, camp_result, food_assessment,
             food_assessment_result, order_move, reassign, five,
             one, save, load_save]:
         if not _require(node != null, "expected named production control missing"):
@@ -306,6 +310,36 @@ func _run() -> void:
             "VS30 food/opportunity planning was not read-only or did not display"):
         return
     print("GA_UI_E2E_SUPPLY_DIAGNOSIS_READ_ONLY_OK")
+
+    # VS32: a hypothetical cargo is NOT taken from the real food stock.
+    # A group with enough assumed food must reach the same physical ETA,
+    # without any mandatory camp or change to existing journal/save.
+    hypothetical_food.value = 25.0
+    _press(camp_button)
+    await process_frame
+    if not _require(camp_result.visible and
+            camp_result.text.contains("SIMULAÇÃO VS32") and
+            camp_result.text.contains("Nenhuma parada") and
+            camp_result.text.contains("Chegada estimada turno " +
+                str(5 + selected_remote_legs * 2)) and
+            camp_result.text.contains("HIPOTÉTICA") and
+            camp_result.text.contains("Sem compra") and
+            status.text.contains("turno 5") and
+            status.text.contains("Viagens: nenhuma em andamento."),
+            "VS32 hypothetical food preview failed or committed a journey"):
+        return
+    print("GA_UI_E2E_VS32_NONBINDING_CAMP_FORECAST_OK")
+
+    hypothetical_food.value = 0.0
+    _press(camp_button)
+    await process_frame
+    if not _require(camp_result.visible and
+            camp_result.text.contains("SIMULAÇÃO VS32") and
+            camp_result.text.contains("HIPOTÉTICA") and
+            status.text.contains("Viagens: nenhuma em andamento."),
+            "VS32 no-cargo scenario modified physical state"):
+        return
+    print("GA_UI_E2E_VS32_ZERO_CARGO_SCENARIO_OK")
 
     _press(remote_order)
     await process_frame
