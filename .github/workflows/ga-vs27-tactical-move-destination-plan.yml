@@ -1,0 +1,81 @@
+name: GA-VS27 Deterministic Tactical Move Destination
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/PhysicalWorkerDestinationPlanner.cs'
+      - 'GlobalArena.Tests/GaVs27TacticalMoveDestinationPlannerTests.cs'
+      - 'tools/GlobalArena.Godot/**'
+      - 'tools/launch-vs27.ps1'
+      - '.github/workflows/ga-vs27-tactical-move-destination-plan.yml'
+      - '.github/workflows/ga-vs26-adjacent-productivity-survey.yml'
+      - '.github/workflows/ga-vs25-food-availability-diagnostics.yml'
+      - '.github/workflows/ga-vs24-worker-decision-comparison.yml'
+      - '.github/workflows/ga-vs23-multicycle-economic-outcomes.yml'
+      - '.github/workflows/ga-vs22-economic-cycle-visibility.yml'
+      - '.github/workflows/ga-vs21-local-worker-reallocation.yml'
+      - '.github/workflows/ga-vs20-emergent-settlements.yml'
+      - '.github/workflows/ga-vs19b-born-civilization.yml'
+      - '.github/workflows/ga-vs19c-operational-hud.yml'
+  workflow_dispatch:
+
+jobs:
+  destination-planner-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Validate canonical destination planning, timed physical transit and previous VS regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs27|FullyQualifiedName~GaVs26|FullyQualifiedName~GaVs25|FullyQualifiedName~GaVs24|FullyQualifiedName~GaVs23|FullyQualifiedName~GaVs22|FullyQualifiedName~GaVs21|FullyQualifiedName~GaVs20'
+      - name: Build Godot Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  destination-planner-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Verify direct launcher and that selection is distinct from an actual move
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'tools/launch-vs27.ps1').Path,
+            [ref]$tokens, [ref]$errors)
+          if ($errors.Count) { throw ($errors | ForEach-Object Message | Out-String) }
+          $runner = Get-Content -Raw -Encoding UTF8 'tools/launch-vs27.ps1'
+          $main = Get-Content -Raw -Encoding UTF8 'tools/GlobalArena.Godot/Scripts/Main.cs'
+          $lab = Get-Content -Raw -Encoding UTF8 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+          $planner = Get-Content -Raw -Encoding UTF8 'GlobalArena.Simulation/PhysicalWorkerDestinationPlanner.cs'
+          $e2e = Get-Content -Raw -Encoding UTF8 'tools/GlobalArena.Godot/Tests/UiE2E.gd'
+          if (-not $runner.Contains('feature/ga-vs27-tactical-move-destination-plan-20261031') -or
+              -not $runner.Contains('-c Debug') -or
+              -not $runner.Contains('& $GodotExe --path $projectDir --verbose') -or
+              -not $main.Contains('GA_VS27_RUNTIME_ACTIVE') -or
+              -not $lab.Contains('GAQAPlanDestination') -or
+              -not $lab.Contains('SelectHighestYieldAdjacentDestination') -or
+              -not $lab.Contains('PhysicalWorkerDestinationPlanner.PreviewHighestYield') -or
+              -not $lab.Contains('GAQAMoveWorkers') -or
+              -not $planner.Contains('PhysicalAdjacentWorkSurveyProjection.Survey') -or
+              -not $e2e.Contains('GA_UI_E2E_DESTINATION_PLANNED_READ_ONLY_OK') -or
+              -not $e2e.Contains('GA_UI_E2E_EXPLICIT_TRANSIT_ORDER_OK') -or
+              -not $e2e.Contains('GA_UI_E2E_TWO_TICK_ARRIVAL_OK')) {
+            throw 'VS27 separation between destination preview and canonical movement is missing.'
+          }
+      - name: Validate canonical destination planning, timed physical transit and previous VS regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs27|FullyQualifiedName~GaVs26|FullyQualifiedName~GaVs25|FullyQualifiedName~GaVs24|FullyQualifiedName~GaVs23|FullyQualifiedName~GaVs22|FullyQualifiedName~GaVs21|FullyQualifiedName~GaVs20'
+      - name: Build Godot Debug
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
+      - name: Build Godot Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
