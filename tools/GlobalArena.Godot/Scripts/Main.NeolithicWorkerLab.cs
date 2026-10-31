@@ -636,16 +636,16 @@ public partial class Main
             _journeySupplyPreview.Text =
                 $"SUPRIMENTOS | {(estimate.IsExistingJourney ? "VIAGEM ATIVA" : "PROPOSTA")} " +
                 $"| {estimate.Travellers} viajantes | " +
-                $"turnos restantes {estimate.RemainingMovementTurns}\\n" +
+                $"turnos restantes {estimate.RemainingMovementTurns}\n" +
                 $"Liquidações econômicas antes da chegada: " +
                 $"{estimate.EconomicSettlementsBeforeArrival} | " +
                 $"demanda alimentar dos viajantes {Units(estimate.TravellersBaselineFoodDemandRaw)} " +
-                $"unidades físicas\\n" +
+                $"unidades físicas\n" +
                 $"Produção não realizada na atividade de origem ({estimate.OriginalActivity}): " +
-                $"{Units(estimate.ForegoneSourceProductionRaw)} unidades da atividade\\n" +
+                $"{Units(estimate.ForegoneSourceProductionRaw)} unidades da atividade\n" +
                 $"Estoque alimentar AGORA na origem: {Units(estimate.ExistingOriginFoodStockRaw)} | " +
                 $"cobertura máxima só com esse estoque: {Units(estimate.StockOnlyUpperBoundRaw)} | " +
-                $"diferença: {Units(estimate.StockOnlyUncoveredRaw)}\\n" +
+                $"diferença: {Units(estimate.StockOnlyUncoveredRaw)}\n" +
                 "DIAGNÓSTICO, NÃO RESERVA: o estoque tem outros consumidores; " +
                 "produção futura e compras podem alterar a disponibilidade. " +
                 "Não há ração portátil, aquisição, cobrança ou movimento criado por esta consulta. " +
