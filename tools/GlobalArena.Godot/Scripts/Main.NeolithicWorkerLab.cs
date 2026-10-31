@@ -362,8 +362,15 @@ public partial class Main
             Name = "GAQAOrderProvisionedJourney",
             Text = "COMPRAR SUPRIMENTOS E ORDENAR VIAGEM (V16)"
         };
-        orderWithFood.Pressed += OrderProvisionedRemotePhysicalJourney;
+        orderWithFood.Pressed += () => OrderProvisionedRemotePhysicalJourney(false);
         _workerLabAdvancedPanel.AddChild(orderWithFood);
+        var orderWithCamps = new Button
+        {
+            Name = "GAQAOrderAutomaticCampJourney",
+            Text = "COMPRAR E VIAJAR COM COLETA AUTOMÁTICA (V17)"
+        };
+        orderWithCamps.Pressed += () => OrderProvisionedRemotePhysicalJourney(true);
+        _workerLabAdvancedPanel.AddChild(orderWithCamps);
         _journeyRealCargoResult = new Label
         {
             Name = "GAQARealTravelFoodResult",
@@ -665,7 +672,7 @@ public partial class Main
         }
     }
 
-    private void OrderProvisionedRemotePhysicalJourney()
+    private void OrderProvisionedRemotePhysicalJourney(bool automaticCamps)
     {
         if (_canonicalPhysicalLab is null || _canonicalSession is null ||
             _workerOrigin is null || _workerFromJob is null || _workerToJob is null ||
@@ -684,20 +691,22 @@ public partial class Main
                 _workerOrigin.Value, destination,
                 (EconomicActivityKind)_workerFromJob.GetSelectedId(),
                 (EconomicActivityKind)_workerToJob.GetSelectedId(),
-                checked((ulong)_workerAmount.Value), raw);
+                checked((ulong)_workerAmount.Value), raw, automaticCamps);
             var lot = _canonicalPhysicalLab.State.TravelFoodLedgers!.Single(
                 x => x.OrderId == trip.OrderId);
             AttachRuntimeState(_canonicalSession.Snapshot);
             UpdateWorkerLabHud();
             _journeyRealCargoResult.Text =
-                $"VIAGEM V16 {trip.OrderId} INICIADA | " +
+                $"VIAGEM {(automaticCamps ? "V17" : "V16")} {trip.OrderId} INICIADA | " +
                 $"alimento adquirido {lot.FoodPurchasedRaw / 1_000_000.0:F3} | " +
                 $"pagamento {lot.PaidMicrocredits / 1_000_000.0:F3} créditos | " +
                 $"chegada prevista turno {trip.ArrivalTurn}. " +
                 "A alimentação agora é debitada do lote físico a cada ciclo. " +
-                "A coleta e os acampamentos da simulação VS32 ainda NÃO são executados.";
+                (automaticCamps
+                    ? "Paradas e coleta reais serão automáticas se os suprimentos não bastarem."
+                    : "A coleta e os acampamentos da simulação VS32 ainda NÃO são executados.");
             _journeyRealCargoResult.Visible = true;
-            GD.Print($"GA_VS33_PHYSICAL_FOOD_ORDER order={trip.OrderId} " +
+            GD.Print($"{(automaticCamps ? "GA_VS34_AUTOMATIC_CAMP_ORDER" : "GA_VS33_PHYSICAL_FOOD_ORDER")} order={trip.OrderId} " +
                 $"food={raw} paid={lot.PaidMicrocredits} " +
                 $"hash={_canonicalPhysicalLab.CurrentHash.HexDigest}");
         }
