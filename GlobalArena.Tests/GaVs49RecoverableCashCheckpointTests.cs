@@ -264,9 +264,9 @@ public sealed class GaVs49RecoverableCashCheckpointTests
         var f = new Fixture();
         f.Commit(f.Create(files.PathToCheckpoint));
         var original = File.ReadAllText(files.PathToCheckpoint, Encoding.UTF8);
-        Assert.Contains("107/1", original);
+        Assert.Contains("123/1", original);
         File.WriteAllText(files.PathToCheckpoint,
-            original.Replace("107/1", "999/1"), Encoding.UTF8);
+            original.Replace("123/1", "999/1"), Encoding.UTF8);
         Assert.Throws<InvalidDataException>(() =>
             new Fixture().Open(files.PathToCheckpoint));
     }
