@@ -1,4 +1,5 @@
 using GlobalArena.Benchmarks;
+if (args.Contains("--vs62-discover-sites")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(discoverSites: true);
 if (args.Contains("--vs61-live-primitive")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(livePrimitive: true);
 if (args.Contains("--vs60-session-preview")) return GaVs60SessionTradePreviewBenchmarkHarness.Run();
 if (args.Contains("--vs59-independent-selection")) return GaVs59IndependentSelectionAuditBenchmarkHarness.Run();

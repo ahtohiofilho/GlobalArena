@@ -167,19 +167,27 @@ public sealed class CanonicalLivePrimitiveTradePreview
 /// </summary>
 internal static class CanonicalLivePrimitiveTradeProjector
 {
-    internal static CanonicalLivePrimitiveTradePreview Create(
-        CanonicalPhysicalTacticalSession session, CanonicalLivePrimitiveTradeScenario scenario)
+    // One canonical physical flow kernel shared by VS61 directed routes and VS62 global discovery.
+    // Demand uses resident workers, not travellers or another population counter.
+    internal static EconomicProductionDemandResult BuildFlows(
+        CanonicalPhysicalTacticalSession session,
+        EconomicPrimitiveCommodityMapping commodities,
+        IReadOnlyList<ExperimentalAbstractBuyerAnchor> buyers,
+        IReadOnlyList<ExperimentalAbstractProducerAnchor> producers,
+        IReadOnlyList<CanonicalPrimitiveDemandRate> demandRates,
+        EmergentSettlementProjection? settlements = null)
     {
         ArgumentNullException.ThrowIfNull(session);
-        ArgumentNullException.ThrowIfNull(scenario);
-        var hash = session.CurrentHash;
-        var revision = session.TransportNetwork.Revision;
-        var places = EmergentSettlementProjection.FromSession(session).Sites
+        ArgumentNullException.ThrowIfNull(commodities);
+        ArgumentNullException.ThrowIfNull(buyers);
+        ArgumentNullException.ThrowIfNull(producers);
+        ArgumentNullException.ThrowIfNull(demandRates);
+        var places = (settlements ?? EmergentSettlementProjection.FromSession(session)).Sites
             .ToDictionary(x => x.Tile);
         var supply = new List<EconomicSupplyFlow>();
         var demand = new List<EconomicDemandFlow>();
 
-        foreach (var producer in scenario.Producers)
+        foreach (var producer in producers)
         {
             if (!places.ContainsKey(producer.Tile))
                 throw new InvalidOperationException("An offered producer is not currently inhabited.");
@@ -189,9 +197,9 @@ internal static class CanonicalLivePrimitiveTradeProjector
             {
                 var commodity = allocation.Activity switch
                 {
-                    EconomicActivityKind.Agriculture => scenario.Commodities.Food,
-                    EconomicActivityKind.Forestry => scenario.Commodities.Wood,
-                    EconomicActivityKind.Mining => scenario.Commodities.Stone,
+                    EconomicActivityKind.Agriculture => commodities.Food,
+                    EconomicActivityKind.Forestry => commodities.Wood,
+                    EconomicActivityKind.Mining => commodities.Stone,
                     _ => throw new InvalidOperationException("Unknown physical activity.")
                 };
                 var rate = session.PrimitiveYieldAt(producer.Tile, allocation.Activity);
@@ -202,16 +210,27 @@ internal static class CanonicalLivePrimitiveTradeProjector
             }
         }
 
-        foreach (var buyer in scenario.Buyers)
+        foreach (var buyer in buyers)
         {
             if (!places.TryGetValue(buyer.Tile, out var site))
                 throw new InvalidOperationException("An offered buyer is not currently inhabited.");
-            foreach (var rate in scenario.DemandRates)
+            foreach (var rate in demandRates)
                 demand.Add(new EconomicDemandFlow(buyer.Buyer, rate.Commodity,
                     checked(site.Workers * (ulong)rate.RawPerResidentWorker)));
         }
 
-        var flows = new EconomicProductionDemandResult(supply, demand);
+        return new EconomicProductionDemandResult(supply, demand);
+    }
+
+    internal static CanonicalLivePrimitiveTradePreview Create(
+        CanonicalPhysicalTacticalSession session, CanonicalLivePrimitiveTradeScenario scenario)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        ArgumentNullException.ThrowIfNull(scenario);
+        var hash = session.CurrentHash;
+        var revision = session.TransportNetwork.Revision;
+        var flows = BuildFlows(session, scenario.Commodities,
+            scenario.Buyers, scenario.Producers, scenario.DemandRates);
         var supplyByKey = flows.SupplyFlows.ToDictionary(x =>
             (x.EconomicPointId, x.CommodityId, x.Activity));
         var demandByKey = flows.DemandFlows.ToDictionary(x =>

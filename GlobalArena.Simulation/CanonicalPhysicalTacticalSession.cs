@@ -130,6 +130,9 @@ public sealed class CanonicalPhysicalTacticalSession
     public CanonicalLivePrimitiveTradePreview PreviewLivePrimitiveTrade(
         CanonicalLivePrimitiveTradeScenario scenario) =>
         CanonicalLivePrimitiveTradeProjector.Create(this, scenario);
+    public CanonicalPrimitiveSiteDiscovery DiscoverPrimitiveEconomicSites(
+        CanonicalPrimitiveSiteDiscoveryPolicy policy) =>
+        CanonicalPrimitiveSiteDiscovery.Create(this, policy);
 
     private WorldState CheckedSnapshot
     {
