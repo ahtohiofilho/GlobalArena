@@ -493,7 +493,7 @@ public partial class Main
                 $"({plan.DestinationJob}) | potencial de origem " +
                 $"{plan.OriginYieldPerWorkerRaw / 1_000_000.0:F2} → " +
                 $"{plan.DestinationYieldPerWorkerRaw / 1_000_000.0:F2} " +
-                $"por trabalhador/ciclo (diferença {delta:+0.00;-0.00;0.00})\\n" +
+                $"por trabalhador/ciclo (diferença {delta:+0.00;-0.00;0.00})\n" +
                 $"Trabalhadores planejados {plan.Workers}; " +
                 $"residentes no destino {plan.DestinationResidents}; " +
                 $"em viagem ao destino {plan.DestinationTravellers}. " +
