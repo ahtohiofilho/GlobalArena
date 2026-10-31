@@ -18,6 +18,20 @@ public interface IScalarPhysicalEdgeCostProvider
 }
 
 /// <summary>
+/// Opt-in permission for an edge in an explicit mobility modality.
+/// Legacy scalar providers implicitly allow all canonical walking edges.
+/// A non-traversable edge is skipped, never charged an infinite price.
+/// </summary>
+public interface IConstrainedScalarPhysicalEdgeCostProvider :
+    IScalarPhysicalEdgeCostProvider
+{
+    bool CanTraverse(
+        CanonicalPhysicalTacticalSession session,
+        PhysicalTacticalTileId from,
+        PhysicalTacticalTileId to);
+}
+
+/// <summary>
 /// A read-only, optional route quote. Availability matches the legacy land
 /// topology, but the preferred path minimizes scalar points instead of hops.
 /// No actual departure, food, cash, population or save changes are made.
@@ -74,6 +88,7 @@ public static class ScalarPhysicalRouteProjection
             (ulong Cost, int Hops, ulong TileId)>();
         queue.Enqueue(origin, (0UL, 0, origin.FineStrategicCellId.Value));
 
+        var overflowed = false;
         while (queue.TryDequeue(out var current, out var priority))
         {
             if (!best.TryGetValue(current, out var known) ||
@@ -85,12 +100,18 @@ public static class ScalarPhysicalRouteProjection
             foreach (var next in session.AdjacentWorkable(current)
                          .OrderBy(x => x.FineStrategicCellId.Value))
             {
+                if (provider is IConstrainedScalarPhysicalEdgeCostProvider access &&
+                    !access.CanTraverse(session, current, next))
+                    continue;
                 var edgeCost = provider.CostPoints(session, current, next);
                 if (edgeCost == 0UL)
                     throw new InvalidOperationException(
                         "A walkable physical edge requires a positive point cost.");
                 if (ulong.MaxValue - known.Cost < edgeCost)
+                {
+                    overflowed = true;
                     continue; // unrepresentable path cannot win the quote
+                }
                 var cost = known.Cost + edgeCost;
                 var hops = checked(known.Hops + 1);
                 if (best.TryGetValue(next, out var old) &&
@@ -108,8 +129,15 @@ public static class ScalarPhysicalRouteProjection
         }
 
         if (!best.ContainsKey(destination))
-            throw new OverflowException(
-                "Every land-connected route exceeds the scalar point range.");
+        {
+            if (overflowed)
+                throw new OverflowException(
+                    "The available scalar corridor exceeds the point range.");
+            return new ScalarPhysicalRoutePreview(
+                PhysicalPrimitiveRouteAvailability.NoCompatibleLandTransportMode,
+                Array.AsReadOnly(Array.Empty<PhysicalTacticalTileId>()),
+                Array.AsReadOnly(Array.Empty<ulong>()), null);
+        }
 
         var reverseTiles = new List<PhysicalTacticalTileId> { destination };
         var reverseCosts = new List<ulong>();
