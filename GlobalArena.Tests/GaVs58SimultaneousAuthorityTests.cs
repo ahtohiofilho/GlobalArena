@@ -43,6 +43,14 @@ public sealed class GaVs58SimultaneousAuthorityTests
             lanes.Reverse(), f.Congestion, proof, f.Anchors, 500_000,
             result.Deliveries, result.EvaluatedConfigurations);
         Assert.Equal(result.Deliveries, independentlyVerified.Deliveries);
+        var scenario = new CanonicalTradeScenario(flows, catalog,
+            purchasing.Buyers.Select(x => new ExperimentalAbstractBuyerAnchor(x.Buyer, x.Tile, x.ProductivityFactor)),
+            purchasing.Producers.Select(x => new ExperimentalAbstractProducerAnchor(x.Producer, x.Tile)),
+            flows.DemandFlows.Select(x => new ExperimentalBuyerCommodityPrice(buyer, x.CommodityId, new FoodTransportCostFraction(1, 1))),
+            new ExperimentalAbstractPurchasingPolicy("VS56-PURCHASING", 1, new FoodTransportCostFraction(5, 1), new FoodTransportCostFraction(5, 8)),
+            quotes, f.Policy, f.Registry().NominalQuoteUnitId, lanes,
+            new[] { f.Evidence(), new ExperimentalBuiltFreightServiceEvidence(offer, option) }, f.Congestion, 500_000);
+        Assert.Equal(result.Deliveries, f.Session.PreviewTrade(scenario).VerifiedSelection.Deliveries);
         var noncanonicalTie = result.Deliveries.Select(x => x with {
             RawQuantity = 1_500_000 - x.RawQuantity }).ToArray();
         Assert.Throws<InvalidOperationException>(() => new CanonicalSimultaneousTransportAuditor().Verify(
