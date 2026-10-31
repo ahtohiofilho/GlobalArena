@@ -570,11 +570,12 @@ public partial class Main
                 PhysicalPrimitiveRouteAvailability.Walkable =>
                     $"ROTA TERRESTRE: {route.MovementLegs} trechos adjacentes | " +
                     $"mínimo estimado {route.PrimitiveTravelTurns} turnos " +
-                    $"| chegada não antes do turno {route.EarliestArrivalTurn}.\\n" +
+                    $"| chegada não antes do turno {route.EarliestArrivalTurn}.\n" +
                     "Caminho: " +
                     string.Join(" → ", route.Tiles.Take(8)
                         .Select(t => t.FineStrategicCellId.Value)) +
-                    (route.Tiles.Count > 9 ? " → ... → " +
+                    (route.Tiles.Count > 8 ?
+                        (route.Tiles.Count > 9 ? " → ... → " : " → ") +
                         route.Destination.FineStrategicCellId.Value : ""),
                 PhysicalPrimitiveRouteAvailability.DestinationNeedsOtherTechnology =>
                     "O tile não comporta trabalho primitivo terrestre neste momento. " +
@@ -588,9 +589,9 @@ public partial class Main
                 $"PLANEJAMENTO GLOBAL | origem " +
                 $"{route.Origin.FineStrategicCellId.Value} → destino " +
                 $"{route.Destination.FineStrategicCellId.Value} " +
-                $"| {route.Workers} trabalhadores\\n" +
+                $"| {route.Workers} trabalhadores\n" +
                 message +
-                "\\nConsulta sem viagem, sem custo monetário inventado e sem " +
+                "\nConsulta sem viagem, sem custo monetário inventado e sem " +
                 "limite fixo de distância. O custo material/logístico futuro " +
                 "será avaliado pelo modal e percurso. NÃO ORDENA DESLOCAMENTO.";
             _remoteRoutePreview.Visible = true;
