@@ -533,7 +533,7 @@ public sealed class CanonicalPhysicalTacticalSession
             current.Stocks, current.Cycles, _cadenceMode, _geographyMode,
             current.FoodCash, _movementMode, current.Transits,
             current.LongTrips, current.RemoteRoutingEnabled,
-            current.TravelFoodLedgers);
+            current.TravelFoodLedgers, current.JourneyCampStates);
         if (next.TotalWorkers != current.TotalWorkers ||
             next.WorkersInTransit != current.WorkersInTransit)
             throw new InvalidOperationException("Local reallocation violated worker conservation.");
