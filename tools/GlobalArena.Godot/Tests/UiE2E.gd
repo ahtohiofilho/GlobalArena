@@ -68,6 +68,7 @@ func _run() -> void:
     var advanced_toggle := _button(app, "GAQAAdvancedToggle")
     var remote_target := app.find_child("GAQARemoteDestination", true, false) as SpinBox
     var remote_button := _button(app, "GAQAPreviewRemoteRoute")
+    var remote_order := _button(app, "GAQAOrderRemoteJourney")
     var remote_result := _label(app, "GAQARemoteRouteResult")
     var order_move := _button(app, "GAQAMoveWorkers")
     var reassign := _button(app, "GAQAReassign")
@@ -78,7 +79,7 @@ func _run() -> void:
     for node in [inspect, source, destination, quantity, status, settlements,
             cycle_report, preview, food, compare, diagnose, survey,
             survey_result, plan_destination, advanced_toggle, remote_target,
-            remote_button, remote_result, order_move, reassign, five,
+            remote_button, remote_order, remote_result, order_move, reassign, five,
             one, save, load_save]:
         if not _require(node != null, "expected named production control missing"):
             return
@@ -249,5 +250,74 @@ func _run() -> void:
             "VS28 arbitrary destination route preview failed or committed an action"):
         return
     print("GA_UI_E2E_REMOTE_ROUTE_READ_ONLY_OK")
+
+    # VS29: choose a genuinely reachable nonadjacent destination. This
+    # scans physical tile IDs around the loaded workforce origin, relying
+    # only on the REAL route-preview button (never a kernel shortcut).
+    var origin_regex := RegEx.new()
+    origin_regex.compile("Origem ([0-9]+)")
+    var origin_match := origin_regex.search(status.text)
+    if not _require(origin_match != null,
+            "initial physical origin missing from canonical HUD"):
+        return
+    var origin_id := int(origin_match.get_string(1))
+    var found_long_route := false
+    for step in range(1, 450):
+        for sign in [-1, 1]:
+            var candidate: int = origin_id + sign * step
+            if candidate < 1 or candidate > int(remote_target.max_value):
+                continue
+            remote_target.value = float(candidate)
+            _press(remote_button)
+            if not remote_result.text.contains("ROTA TERRESTRE:"):
+                continue
+            var count_text := remote_result.text.split("ROTA TERRESTRE: ")[1].split(" ")[0]
+            if int(count_text) >= 2:
+                found_long_route = true
+                break
+        if found_long_route:
+            break
+    if not _require(found_long_route,
+            "could not locate a reachable nonadjacent tile through actual UI"):
+        return
+    await process_frame
+    var selected_remote_tile := int(remote_target.value)
+    if not _require(status.text.contains("turno 5") and
+            status.text.contains("Viagens: nenhuma em andamento."),
+            "VS29 remote reconnaissance changed the timeline"):
+        return
+    print("GA_UI_E2E_REAL_REMOTE_DESTINATION_SELECTED_OK tile=" +
+            str(selected_remote_tile))
+
+    _press(remote_order)
+    await process_frame
+    if not _require(status.text.contains("ORDEM GLOBAL ÚNICA") and
+            status.text.contains("Em viagem longa: 1 pessoas") and
+            status.text.contains("turno 5") and
+            settlements.text.contains("viajando 1"),
+            "VS29 one-order remote travel button failed to commit physical journey"):
+        return
+    print("GA_UI_E2E_LONG_JOURNEY_ISSUED_OK")
+
+    _press(save)
+    await process_frame
+    if not _require(status.text.contains("V15 GRAVADO"),
+            "VS29 canonical long-journey V15 save was not written"):
+        return
+    _press(one)
+    await process_frame
+    if not _require(status.text.contains("turno 6") and
+            status.text.contains("Em viagem longa: 1 pessoas"),
+            "VS29 travellers vanished or teleported after one turn"):
+        return
+    _press(load_save)
+    await process_frame
+    if not _require(status.text.contains("V15 REABERTO") and
+            status.text.contains("turno 5") and
+            status.text.contains("Em viagem longa: 1 pessoas") and
+            settlements.text.contains("viajando 1"),
+            "VS29 V15 replay did not restore ongoing physical journey"):
+        return
+    print("GA_UI_E2E_LONG_JOURNEY_V15_REOPEN_OK")
     print("GA_UI_E2E_PASS main_scene=Main.tscn signals=real godot=4.7.2")
     quit(0)
