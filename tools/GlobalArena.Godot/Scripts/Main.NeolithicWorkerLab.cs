@@ -1538,7 +1538,9 @@ public partial class Main
                     $"{x.TotalLegs} rumo ao tile {x.Destination.FineStrategicCellId.Value}, " +
                     $"chegada no turno {x.ArrivalTurn} " +
                     $"({x.ArrivalTurn - state.MovementTurn} restantes)")))) +
-            "";
+            (state.ExpeditionFood.Count == 0 ? "" : "\nCARGA ALIMENTAR V16 | " +
+                string.Join(" | ", state.ExpeditionFood.Select(x =>
+                    $"ordem {x.OrderId}: {x.RemainingRaw / 1_000_000.0:F3} alimento próprio")));
         if (_workerLabDetails is not null)
             _workerLabDetails.Text =
             $"POVOAMENTOS DERIVADOS: {settlements.Sites.Count} núcleos; " +
