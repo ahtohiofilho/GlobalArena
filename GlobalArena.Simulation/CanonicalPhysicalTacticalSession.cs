@@ -322,6 +322,22 @@ public sealed class CanonicalPhysicalTacticalSession
         return checked(provisional * FoodDemandRawPerWorker);
     }
 
+    /// <summary>
+    /// Read the existing, canonical primitive production rate for one worker
+    /// on a workable physical tile. This does not create a facility, economic
+    /// event, money, production or ownership. The rate is in raw units per
+    /// settlement, before any market or consumption.
+    /// </summary>
+    public long PrimitiveYieldAt(PhysicalTacticalTileId tile,
+        EconomicActivityKind activity)
+    {
+        ValidateTile(tile);
+        ValidateJob(activity);
+        if (!IsWorkableLand(tile.FineStrategicCellId))
+            throw new InvalidOperationException("The selected tile cannot support primitive work.");
+        return PrimitiveYield(tile.FineStrategicCellId, activity);
+    }
+
     public ulong StockAt(PhysicalTacticalTileId tile, CommodityId commodity)
     {
         ValidateTile(tile);
