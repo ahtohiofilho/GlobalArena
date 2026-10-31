@@ -26,6 +26,7 @@ public partial class Main
     private Label? _settlementSummary;
     private Label? _economicCycleSummary;
     private Label? _workerDecisionPreview;
+    private Label? _foodAvailabilityPreview;
     private VBoxContainer? _workerLabAdvancedPanel;
     private Button? _workerMoveButton;
     private Button? _workerReassignButton;
@@ -45,7 +46,7 @@ public partial class Main
 
         var title = new Label
         {
-            Text = "COMPARAR DECISÕES PRODUTIVAS | VS24",
+            Text = "ALIMENTAÇÃO E PRODUÇÃO | VS25",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         title.AddThemeFontSizeOverride("font_size", 16);
@@ -124,12 +125,24 @@ public partial class Main
         };
         _workerReassignButton.Pressed += ReassignWorkerLabWorkers;
         lab.AddChild(_workerReassignButton);
+        // Two read-only decisions share a row, rather than crowding the HUD.
+        var analysisActions = new HBoxContainer();
+        analysisActions.AddThemeConstantOverride("separation", 4);
+        lab.AddChild(analysisActions);
         var compareDecision = new Button
         {
-            Text = "COMPARAR REALOCAÇÃO EM 5 CICLOS (SEM APLICAR)"
+            Text = "COMPARAR (5 CICLOS)",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
         };
         compareDecision.Pressed += CompareWorkerDecisionWithoutCommitting;
-        lab.AddChild(compareDecision);
+        analysisActions.AddChild(compareDecision);
+        var foodDiagnosis = new Button
+        {
+            Text = "DIAGNÓSTICO ALIMENTAR",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        foodDiagnosis.Pressed += DiagnoseNextFoodCycleWithoutCommitting;
+        analysisActions.AddChild(foodDiagnosis);
         _workerDecisionPreview = new Label
         {
             Visible = false,
@@ -137,6 +150,13 @@ public partial class Main
         };
         _workerDecisionPreview.AddThemeColorOverride("font_color", new Color("#e7d8ad"));
         lab.AddChild(_workerDecisionPreview);
+        _foodAvailabilityPreview = new Label
+        {
+            Visible = false,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        _foodAvailabilityPreview.AddThemeColorOverride("font_color", new Color("#e7d8ad"));
+        lab.AddChild(_foodAvailabilityPreview);
 
         var nextTurn = new Button { Text = "AVANÇAR TURNO DE MOVIMENTO (CICLOS ADAPTATIVOS)" };
         nextTurn.Pressed += AdvanceOfflineLabTurn;
@@ -400,12 +420,65 @@ public partial class Main
         }
     }
 
+    private void DiagnoseNextFoodCycleWithoutCommitting()
+    {
+        if (_canonicalPhysicalLab is null || _workerOrigin is null ||
+            _foodAvailabilityPreview is null) return;
+        if (_workerDecisionPreview is not null)
+            _workerDecisionPreview.Visible = false;
+        try
+        {
+            var sourceHash = _canonicalPhysicalLab.CurrentHash;
+            var report = PhysicalFoodAvailabilityProjection.PreviewNextCycle(
+                _canonicalPhysicalLab, _workerOrigin.Value);
+            static string Quant(ulong raw) => (raw / 1_000_000.0).ToString("F2");
+            var physicalLine = report.PhysicalShortageRaw == 0UL
+                ? "nenhuma falta física"
+                : $"falta física {Quant(report.PhysicalShortageRaw)}";
+            var marketLine = report.UnconsumedDespiteSupplyRaw == 0UL
+                ? "nenhuma demanda adicional não atendida"
+                : $"demanda não atendida apesar de oferta {Quant(report.UnconsumedDespiteSupplyRaw)}";
+            _foodAvailabilityPreview.Text =
+                $"OFERTA ALIMENTAR | tile {report.Tile.FineStrategicCellId.Value} " +
+                $"| próximo ciclo no turno {report.SettlementMovementTurn}\n" +
+                $"Estoque inicial {Quant(report.InitialFoodStockRaw)} + " +
+                $"produção {Quant(report.ProducedFoodRaw)} = " +
+                $"disponível {Quant(report.TotalAvailableFoodRaw)}\n" +
+                $"Demanda {Quant(report.FoodDemandRaw)} | " +
+                $"consumo efetivo {Quant(report.ActuallyConsumedRaw)}\n" +
+                $"Não atendido: {physicalLine}; {marketLine}\n" +
+                $"Estoque final {Quant(report.FinalFoodStockRaw)}. " +
+                "A segunda parcela não prova falta de dinheiro; " +
+                "é uma diferença observada na liquidação do mercado. " +
+                "Prévia sem avançar a partida.";
+            _foodAvailabilityPreview.Visible = true;
+            if (!_canonicalPhysicalLab.CurrentHash.Equals(sourceHash))
+                throw new InvalidOperationException(
+                    "Food diagnosis unexpectedly modified the live game.");
+            GD.Print($"GA_VS25_FOOD_AVAILABILITY_PREVIEW tile={report.Tile.FineStrategicCellId.Value} " +
+                $"turn={report.StartingMovementTurn} settled={report.SettlementMovementTurn} " +
+                $"demand={report.FoodDemandRaw} consumed={report.ActuallyConsumedRaw} " +
+                $"shortage={report.PhysicalShortageRaw} " +
+                $"unmatched_supply={report.UnconsumedDespiteSupplyRaw} " +
+                $"hash={sourceHash.HexDigest}");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException or
+                                   ArgumentException or OverflowException)
+        {
+            _foodAvailabilityPreview.Text =
+                "Diagnóstico não disponível (partida preservada): " + ex.Message;
+            _foodAvailabilityPreview.Visible = true;
+        }
+    }
+
     private void CompareWorkerDecisionWithoutCommitting()
     {
         if (_canonicalPhysicalLab is null || _workerOrigin is null ||
             _workerFromJob is null || _workerToJob is null ||
             _workerAmount is null || _workerDecisionPreview is null)
             return;
+        if (_foodAvailabilityPreview is not null)
+            _foodAvailabilityPreview.Visible = false;
         try
         {
             var sourceHash = _canonicalPhysicalLab.CurrentHash;
@@ -771,6 +844,8 @@ public partial class Main
     {
         if (_workerDecisionPreview is not null)
             _workerDecisionPreview.Visible = false; // clear any stale hypothetical
+        if (_foodAvailabilityPreview is not null)
+            _foodAvailabilityPreview.Visible = false;
         if (_canonicalPhysicalLab is null || _workerOrigin is null || _tacticalPreview is null ||
             _workerLabStatus is null) return;
         var state = _canonicalPhysicalLab.State;
