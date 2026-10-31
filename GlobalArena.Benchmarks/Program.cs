@@ -1,6 +1,12 @@
 using GlobalArena.Benchmarks;
 
 if (args.Any(argument =>
+    string.Equals(argument, "--vs49-recoverable-checkpoint", StringComparison.Ordinal)))
+{
+    return GaVs49RecoverableCheckpointBenchmarkHarness.Run();
+}
+
+if (args.Any(argument =>
     string.Equals(argument, "--vs48-atomic-settlement", StringComparison.Ordinal)))
 {
     return GaVs48AtomicSettlementBenchmarkHarness.Run();
