@@ -341,7 +341,24 @@ public sealed class GaVs54AbstractPhysicalFreightReconciliationTests
         var a = f.Run();
         var b = f.Run(deliveries: f.Deliveries.Reverse().ToArray(),
             quotes: f.Quotes.Reverse().ToArray());
-        Assert.Equal(a.Deliveries.ToArray(), b.Deliveries.ToArray());
+        Assert.Equal(a.Deliveries.Count, b.Deliveries.Count);
+        for (var i = 0; i < a.Deliveries.Count; i++)
+        {
+            var x = a.Deliveries[i];
+            var y = b.Deliveries[i];
+            Assert.Equal((x.LotId, x.Source, x.Buyer, x.Commodity,
+                x.ServiceId, x.RawQuantity, x.PhysicalLoadMicrograms),
+                (y.LotId, y.Source, y.Buyer, y.Commodity,
+                y.ServiceId, y.RawQuantity, y.PhysicalLoadMicrograms));
+            Assert.Equal(0, x.NominalUncongestedFreight.CompareTo(
+                y.NominalUncongestedFreight));
+            Assert.Equal(0, x.NominalSharedSaturationFreight.CompareTo(
+                y.NominalSharedSaturationFreight));
+            Assert.Equal(0, x.AbstractPhysicalFreight.CompareTo(
+                y.AbstractPhysicalFreight));
+            Assert.Equal(0, x.AbstractCommodityCharge.CompareTo(
+                y.AbstractCommodityCharge));
+        }
         Equal(10, 1, b.AbstractPhysicalFreight);
         var empty = f.Run(deliveries: []);
         Assert.Empty(empty.Deliveries);
