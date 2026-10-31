@@ -1,0 +1,61 @@
+name: GA-VS32 Optional Camp and Supply Forecast
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/JourneyProvisioningForecastProjection.cs'
+      - 'GlobalArena.Tests/GaVs32TravelProvisioningAndCampForecastTests.cs'
+      - 'tools/GlobalArena.Godot/Tests/UiE2E.gd'
+      - 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+      - '.github/workflows/ga-vs32-travel-provisioning-camp-forecast.yml'
+  workflow_dispatch:
+
+jobs:
+  camp-forecast-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Optional camp forecast and all recent economy/movement regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs32|FullyQualifiedName~GaVs31|FullyQualifiedName~GaVs30|FullyQualifiedName~GaVs29|FullyQualifiedName~GaVs28|FullyQualifiedName~GaVs27|FullyQualifiedName~GaVs26|FullyQualifiedName~GaVs25|FullyQualifiedName~GaVs24|FullyQualifiedName~GaVs23|FullyQualifiedName~GaVs22|FullyQualifiedName~GaVs21|FullyQualifiedName~GaVs20|FullyQualifiedName~GaVs15'
+      - name: Godot Mono Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  camp-forecast-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Verify food-source contract and strict preview-only boundary
+        shell: pwsh
+        run: |
+          $projection = Get-Content -Raw -Encoding UTF8 'GlobalArena.Simulation/JourneyProvisioningForecastProjection.cs'
+          $hud = Get-Content -Raw -Encoding UTF8 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+          $e2e = Get-Content -Raw -Encoding UTF8 'tools/GlobalArena.Godot/Tests/UiE2E.gd'
+          if (-not $projection.Contains('interface ITravelFoodSource') -or
+              -not $projection.Contains('InitialEfficiencyPercent = 75U') -or
+              -not $projection.Contains('JourneyProvisioningForecastProjection') -or
+              -not $projection.Contains('PhysicalEconomicCadence.IsSettlementTurn') -or
+              -not $hud.Contains('GAQAHypotheticalFood') -or
+              -not $hud.Contains('GAQAForecastCampStops') -or
+              -not $hud.Contains('SIMULAÇÃO VS32') -or
+              -not $e2e.Contains('GA_UI_E2E_VS32_NONBINDING_CAMP_FORECAST_OK') -or
+              -not $e2e.Contains('GA_UI_E2E_VS32_ZERO_CARGO_SCENARIO_OK')) {
+            throw 'VS32 must remain a nonbinding optional food provider/camp forecast'
+          }
+      - name: Optional camp forecast and all recent economy/movement regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs32|FullyQualifiedName~GaVs31|FullyQualifiedName~GaVs30|FullyQualifiedName~GaVs29|FullyQualifiedName~GaVs28|FullyQualifiedName~GaVs27|FullyQualifiedName~GaVs26|FullyQualifiedName~GaVs25|FullyQualifiedName~GaVs24|FullyQualifiedName~GaVs23|FullyQualifiedName~GaVs22|FullyQualifiedName~GaVs21|FullyQualifiedName~GaVs20|FullyQualifiedName~GaVs15'
+      - name: Godot Mono Debug
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
+      - name: Godot Mono Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
