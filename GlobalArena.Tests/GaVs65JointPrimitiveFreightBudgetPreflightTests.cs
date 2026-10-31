@@ -101,14 +101,14 @@ public sealed class GaVs65JointPrimitiveFreightBudgetPreflightTests
         Assert.True(forecast.Buyers.CanSettleAtSight);
         Assert.False(forecast.CanAuthorizeRealSettlement);
         Assert.False(forecast.IsCommitted);
-        Assert.Equal(1, forecast.Freight.CorridorLoads.Count);
+        Assert.Single(forecast.Freight.CorridorLoads);
         Assert.Equal(
             raw.Aggregate(BigInteger.Zero, (sum, x) => sum + x.RawQuantity),
             Assert.Single(forecast.Freight.CorridorLoads).Value);
         Assert.Equal(0, forecast.Freight.TotalCost.CompareTo(
             forecast.Buyers.TotalBuyerFreight));
-        var paidBuyer = Assert.Single(forecast.Buyers.Buyers.Where(x =>
-            x.TotalCommitment.Numerator > 0));
+        var paidBuyer = Assert.Single(forecast.Buyers.Buyers, x =>
+            x.TotalCommitment.Numerator > 0);
         Assert.True(paidBuyer.ProtectedResidual.Numerator > 0);
         Assert.True(paidBuyer.RemainingSpendableCash.Numerator >= 0);
         Assert.Equal(sites.BuyerAnchors.Count, forecast.Purchasing.Buyers.Count);
