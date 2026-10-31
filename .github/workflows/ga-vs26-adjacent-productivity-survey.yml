@@ -1,0 +1,78 @@
+name: GA-VS26 Productive Adjacency Reconnaissance
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/CanonicalPhysicalTacticalSession.cs'
+      - 'GlobalArena.Simulation/PhysicalAdjacentWorkSurveyProjection.cs'
+      - 'GlobalArena.Tests/GaVs26AdjacentWorkSurveyTests.cs'
+      - 'tools/GlobalArena.Godot/**'
+      - 'tools/launch-vs26.ps1'
+      - '.github/workflows/ga-vs26-adjacent-productivity-survey.yml'
+      - '.github/workflows/ga-vs25-food-availability-diagnostics.yml'
+      - '.github/workflows/ga-vs24-worker-decision-comparison.yml'
+      - '.github/workflows/ga-vs23-multicycle-economic-outcomes.yml'
+      - '.github/workflows/ga-vs22-economic-cycle-visibility.yml'
+      - '.github/workflows/ga-vs21-local-worker-reallocation.yml'
+      - '.github/workflows/ga-vs20-emergent-settlements.yml'
+      - '.github/workflows/ga-vs19b-born-civilization.yml'
+      - '.github/workflows/ga-vs19c-operational-hud.yml'
+  workflow_dispatch:
+
+jobs:
+  productive-survey-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Read-only productive adjacency and all recent economic regression tests
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs26|FullyQualifiedName~GaVs25|FullyQualifiedName~GaVs24|FullyQualifiedName~GaVs23|FullyQualifiedName~GaVs22|FullyQualifiedName~GaVs21|FullyQualifiedName~GaVs20'
+      - name: Godot Mono Release compile
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  productive-survey-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Verify new Godot scouting controls and Windows direct launcher
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'tools/launch-vs26.ps1').Path,
+            [ref]$tokens, [ref]$errors)
+          if ($errors.Count) { throw ($errors | ForEach-Object Message | Out-String) }
+          $runner = Get-Content -Raw -Encoding UTF8 'tools/launch-vs26.ps1'
+          $main = Get-Content -Raw -Encoding UTF8 'tools/GlobalArena.Godot/Scripts/Main.cs'
+          $lab = Get-Content -Raw -Encoding UTF8 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+          $survey = Get-Content -Raw -Encoding UTF8 'GlobalArena.Simulation/PhysicalAdjacentWorkSurveyProjection.cs'
+          $e2e = Get-Content -Raw -Encoding UTF8 'tools/GlobalArena.Godot/Tests/UiE2E.gd'
+          if (-not $runner.Contains('feature/ga-vs26-adjacent-productivity-survey-20261031') -or
+              -not $runner.Contains('-c Debug') -or
+              -not $runner.Contains('& $GodotExe --path $projectDir --verbose') -or
+              -not $main.Contains('GA_VS26_RUNTIME_ACTIVE') -or
+              -not $lab.Contains('GAQAAdjacentSurvey') -or
+              -not $lab.Contains('SurveyAdjacentPhysicalWork') -or
+              -not $lab.Contains('PhysicalAdjacentWorkSurveyProjection.Survey') -or
+              -not $survey.Contains('PrimitiveYieldAt') -or
+              -not $e2e.Contains('GA_UI_E2E_NEIGHBOUR_SCOUT_READ_ONLY_OK')) {
+            throw 'VS26 canonical tile scouting, Godot real UI or launcher contract missing.'
+          }
+      - name: Read-only productive adjacency and all recent economic regression tests
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs26|FullyQualifiedName~GaVs25|FullyQualifiedName~GaVs24|FullyQualifiedName~GaVs23|FullyQualifiedName~GaVs22|FullyQualifiedName~GaVs21|FullyQualifiedName~GaVs20'
+      - name: Godot Mono Debug compile
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
+      - name: Godot Mono Release compile
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
