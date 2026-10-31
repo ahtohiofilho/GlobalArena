@@ -57,6 +57,18 @@ public sealed class CanonicalPrimitiveFreightPortfolio
         CanonicalPrimitiveJointFreightBudgetPreview.FromPortfolio(
             this, _session, lots, postedPrices, purchasingPolicy, congestionPolicy);
 
+    public CanonicalPrimitiveJointFreightSelection SelectJointFreight(
+        IEnumerable<CanonicalPrimitiveFreightCandidateUse> candidates,
+        IEnumerable<ExperimentalBuyerCommodityPrice> postedPrices,
+        ExperimentalAbstractPurchasingPolicy purchasingPolicy,
+        ExperimentalSharedFreightCongestionPolicy congestionPolicy,
+        ulong rawQuantum, int maximumQuantaPerCandidate = 1,
+        int maximumConfigurations = CanonicalPrimitiveJointFreightSelector.MaximumConfigurations) =>
+        new CanonicalPrimitiveJointFreightSelector().Select(
+            this, _session, candidates, postedPrices,
+            purchasingPolicy, congestionPolicy, rawQuantum,
+            maximumQuantaPerCandidate, maximumConfigurations);
+
     public int RegisteredRightsInspectedPerSlice { get; }
     public int TotalEligibleIntents { get; }
     public int TotalUnreachablePhysicalServices { get; }
