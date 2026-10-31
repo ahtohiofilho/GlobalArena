@@ -15,7 +15,7 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
 {
     private const ulong Unit = EconomicTransferPolicy.FixedPointDenominator;
 
-    public static int Run(bool livePrimitive = false)
+    public static int Run(bool livePrimitive = false, bool discoverSites = false)
     {
 #if DEBUG
         Console.Error.WriteLine("GA-VS60 benchmark requires Release.");
@@ -24,7 +24,7 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
         try
         {
             CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
-            Console.WriteLine(livePrimitive ? "BENCHMARK=GA-VS61-LIVE-PRIMITIVE-SESSION" : "BENCHMARK=GA-VS60-BUILT-INSTITUTIONAL-NETWORK");
+            Console.WriteLine(discoverSites ? "BENCHMARK=GA-VS62-EMERGENT-ECONOMIC-SITES" : livePrimitive ? "BENCHMARK=GA-VS61-LIVE-PRIMITIVE-SESSION" : "BENCHMARK=GA-VS60-BUILT-INSTITUTIONAL-NETWORK");
             Console.WriteLine($"ENV_OS={RuntimeInformation.OSDescription}");
             Console.WriteLine($"ENV_RUNTIME={RuntimeInformation.FrameworkDescription}");
             Console.WriteLine("WARMUPS=1;SAMPLES=3;PERFORMANCE_THRESHOLDS=none");
@@ -177,6 +177,16 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
                 new[] { new CanonicalPrimitiveTradeLane(source, buyer, food,
                     EconomicActivityKind.Agriculture, new[] { option }) },
                 witness.OfferedServices, congestion, Unit / 2);
+            var discoveryPolicy = new CanonicalPrimitiveSiteDiscoveryPolicy(
+                new EconomicPrimitiveCommodityMapping(food,
+                    new CommodityId(8), new CommodityId(9)),
+                new[] {
+                    new CanonicalPrimitiveDemandRate(food,
+                        checked((long)CanonicalPhysicalTacticalSession.FoodDemandRawPerWorker)),
+                    new CanonicalPrimitiveDemandRate(new CommodityId(8), 125_000),
+                    new CanonicalPrimitiveDemandRate(new CommodityId(9), 250_000)
+                }, new FoodTransportCostFraction(1, 1));
+            var baselineDiscovery = session.DiscoverPrimitiveEconomicSites(discoveryPolicy);
             var hash = session.CurrentHash;
             var save = session.ExportSaveJson();
 
@@ -191,6 +201,20 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
                     var started = Stopwatch.GetTimestamp();
                     for (var i = 0; i < count; i++)
                     {
+                        if (discoverSites)
+                        {
+                            var discovered = session.DiscoverPrimitiveEconomicSites(discoveryPolicy);
+                            var delta = discovered.ChangesSince(baselineDiscovery);
+                            if (discovered.CanAuthorizeRealSettlement ||
+                                discovered.Sites.Count != 2 ||
+                                discovered.ResidentWorkers != 8UL ||
+                                discovered.Flows.DemandFlows.Count != 6 ||
+                                delta.Added.Count != 0 || delta.Removed.Count != 0 ||
+                                delta.Updated.Count != 0)
+                                throw new InvalidOperationException(
+                                    "Discovered physical site inventory diverged.");
+                            continue;
+                        }
                         var preview = livePrimitive
                             ? session.PreviewLivePrimitiveTrade(liveScenario).Trade
                             : session.PreviewTrade(scenario);
@@ -224,13 +248,13 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
                     $"median_ms={times.OrderBy(x => x).ElementAt(1):F3};" +
                     $"median_allocated_bytes={allocations.OrderBy(x => x).ElementAt(1)}");
             }
-            Console.WriteLine(livePrimitive ? "RESULT=PASS_GA_VS61_LIVE_PRIMITIVE" : "RESULT=PASS_GA_VS60_BUILT_INSTITUTIONAL");
+            Console.WriteLine(discoverSites ? "RESULT=PASS_GA_VS62_SITE_DISCOVERY" : livePrimitive ? "RESULT=PASS_GA_VS61_LIVE_PRIMITIVE" : "RESULT=PASS_GA_VS60_BUILT_INSTITUTIONAL");
             return 0;
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine(ex);
-            Console.WriteLine(livePrimitive ? "RESULT=FAIL_GA_VS61_LIVE_PRIMITIVE" : "RESULT=FAIL_GA_VS60_BUILT_INSTITUTIONAL");
+            Console.WriteLine(discoverSites ? "RESULT=FAIL_GA_VS62_SITE_DISCOVERY" : livePrimitive ? "RESULT=FAIL_GA_VS61_LIVE_PRIMITIVE" : "RESULT=FAIL_GA_VS60_BUILT_INSTITUTIONAL");
             return 1;
         }
 #endif
