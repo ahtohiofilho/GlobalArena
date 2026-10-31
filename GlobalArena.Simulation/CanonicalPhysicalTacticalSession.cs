@@ -904,9 +904,11 @@ public sealed class CanonicalPhysicalTacticalSession
                     ? x with
                     {
                         CompletedLegs = x.CompletedLegs + 1,
-                        NextLegCompletionTurn = PhysicalMovementTimelines
+                        NextLegCompletionTurn = checked(PhysicalMovementTimelines
                             .ForExistingMode(_movementMode)
-                            .LegCompletionTurn(x.DepartureTurn, x.CompletedLegs + 1)
+                            .LegCompletionTurn(x.DepartureTurn, x.CompletedLegs + 1) +
+                            (campStates?.GetValueOrDefault(x.OrderId)?
+                                .WaitingMovementTurns ?? 0UL))
                     }
                     : x)
                 .ToList();
