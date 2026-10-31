@@ -1,6 +1,18 @@
 using GlobalArena.Benchmarks;
 
 if (args.Length > 0 &&
+    string.Equals(args[0], "--vs51-crash-worker", StringComparison.Ordinal))
+{
+    return GaVs51AbruptCheckpointRecoveryHarness.RunWorker(args);
+}
+
+if (args.Any(argument =>
+    string.Equals(argument, "--vs51-abrupt-recovery", StringComparison.Ordinal)))
+{
+    return GaVs51AbruptCheckpointRecoveryHarness.Run();
+}
+
+if (args.Length > 0 &&
     string.Equals(args[0], "--vs50-gate-worker", StringComparison.Ordinal))
 {
     return GaVs50InterprocessCheckpointBenchmarkHarness.RunWorker(args);
