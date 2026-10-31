@@ -175,7 +175,7 @@ public sealed class GaVs55InstitutionalFreightEntitlementTests
 
         public ExperimentalTransportInstitutionalRegistry Registry(
             IEnumerable<ExperimentalTransportServiceEntitlement>? rights = null,
-            string? hash = null,
+            WorldStateHash? hash = null,
             ulong revision = 7,
             string purchasingId = "VS55-PURCHASING",
             ulong purchasingVersion = 1,
@@ -333,7 +333,10 @@ public sealed class GaVs55InstitutionalFreightEntitlementTests
     {
         var f = new Fixture();
         Assert.Throws<ArgumentException>(() => f.Project(
-            registry: f.Registry(hash: "FOREIGN-WORLD-HASH")));
+            registry: f.Registry(hash: new WorldStateHash(
+                f.Session.CurrentHash.FormatVersion,
+                (f.Session.CurrentHash.HexDigest[0] == 'A' ? "B" : "A") +
+                    f.Session.CurrentHash.HexDigest[1..]))));
         Assert.Throws<ArgumentException>(() => f.Project(
             registry: f.Registry(purchasingId: "OTHER")));
         Assert.Throws<ArgumentException>(() => f.Project(
