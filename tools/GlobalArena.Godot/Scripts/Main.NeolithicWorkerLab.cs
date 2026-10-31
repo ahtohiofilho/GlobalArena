@@ -1253,11 +1253,17 @@ public partial class Main
             $"Turno de movimento: {state.MovementTurn} | ciclos econômicos: {state.Cycles.Count} | ritmo: {cadenceInfo}";
         var transitInfo = state.MovementMode == PhysicalWorkerMovementMode.TimedAdjacent
             ? "EM TRÂNSITO: " + state.WorkersInTransit + " trabalhadores | " +
-              (state.Transits.Count == 0 ? "nenhuma viagem ativa\n" :
-                  string.Join(" | ", state.Transits.Select(x =>
+              (state.Transits.Count == 0 && state.LongTrips.Count == 0
+                  ? "nenhuma viagem ativa\n"
+                  : string.Join(" | ", state.Transits.Select(x =>
                       $"ordem {x.OrderId}: tile {x.Source.FineStrategicCellId.Value} → " +
                       $"{x.Destination.FineStrategicCellId.Value}, {x.Workers} pessoas, " +
-                      $"chegada turno {x.ArrivalTurn} ({x.ArrivalTurn - state.MovementTurn} restantes)")) + "\n")
+                      $"chegada turno {x.ArrivalTurn} ({x.ArrivalTurn - state.MovementTurn} restantes)")
+                      .Concat(state.LongTrips.Select(x =>
+                      $"rota {x.OrderId}: tile {x.Source.FineStrategicCellId.Value} → " +
+                      $"{x.Destination.FineStrategicCellId.Value}, trecho {x.CompletedLegs + 1}/" +
+                      $"{x.TotalLegs}, {x.Workers} pessoas, " +
+                      $"chegada turno {x.ArrivalTurn} ({x.ArrivalTurn - state.MovementTurn} restantes)"))) + "\n")
             : "";
         var localLedger = state.FoodCash;
         var localWallet = localLedger?.At(origin);
@@ -1291,11 +1297,16 @@ public partial class Main
             $" | turno {state.MovementTurn} | ciclos {state.Cycles.Count}\n" +
             $"Origem {origin.FineStrategicCellId.Value} | {selectedActivity}: {selectedGroupWorkers} disponíveis\n" +
             $"Destino: {destination}\n" +
-            (state.Transits.Count == 0
+            (state.Transits.Count == 0 && state.LongTrips.Count == 0
                 ? "Viagens: nenhuma em andamento."
                 : string.Join(" | ", state.Transits.Select(x =>
                     $"Em viagem: {x.Workers} pessoas, chegada no turno {x.ArrivalTurn} " +
-                    $"({x.ArrivalTurn - state.MovementTurn} restantes)"))) +
+                    $"({x.ArrivalTurn - state.MovementTurn} restantes)")
+                    .Concat(state.LongTrips.Select(x =>
+                    $"Em viagem longa: {x.Workers} pessoas, trecho {x.CompletedLegs + 1}/" +
+                    $"{x.TotalLegs} rumo ao tile {x.Destination.FineStrategicCellId.Value}, " +
+                    $"chegada no turno {x.ArrivalTurn} " +
+                    $"({x.ArrivalTurn - state.MovementTurn} restantes)")))) +
             "";
         if (_workerLabDetails is not null)
             _workerLabDetails.Text =
@@ -1317,7 +1328,7 @@ public partial class Main
                 $"Último ciclo: produção {lastCycle.ProducedRaw / 1_000_000.0:F3}; " +
                 $"consumo alimentar {lastCycle.FoodConsumedRaw / 1_000_000.0:F3}; " +
                 $"FALTA {lastCycle.FoodUnmetRaw / 1_000_000.0:F3}\n") +
-            $"WORLDSTATE CANÔNICO V{(_canonicalPhysicalLab.HasInitialCivilization ? "14" : _canonicalPhysicalLab.MovementMode == PhysicalWorkerMovementMode.TimedAdjacent ? "13" : _canonicalPhysicalLab.MarketMode == PhysicalFoodMarketMode.LocalCashSettlement ? "12" : _canonicalPhysicalLab.GeographyMode == PhysicalTacticalGeographyMode.Canonical01C ? "11" : _canonicalPhysicalLab.CadenceMode == PhysicalEconomicCadenceMode.AdaptiveThirty ? "10" : "9")}: " +
+            $"WORLDSTATE CANÔNICO V{(state.RemoteRoutingEnabled ? "15" : _canonicalPhysicalLab.HasInitialCivilization ? "14" : _canonicalPhysicalLab.MovementMode == PhysicalWorkerMovementMode.TimedAdjacent ? "13" : _canonicalPhysicalLab.MarketMode == PhysicalFoodMarketMode.LocalCashSettlement ? "12" : _canonicalPhysicalLab.GeographyMode == PhysicalTacticalGeographyMode.Canonical01C ? "11" : _canonicalPhysicalLab.CadenceMode == PhysicalEconomicCadenceMode.AdaptiveThirty ? "10" : "9")}: " +
             $"terreno {(_canonicalPhysicalLab.GeographyMode == PhysicalTacticalGeographyMode.Canonical01C ? "01C" : "V1 legado")}; " +
             $"mercado alimentar {(_canonicalPhysicalLab.MarketMode == PhysicalFoodMarketMode.LocalCashSettlement ? "LIQUIDADO À VISTA" : "LEGADO DIRETO")}; " +
             $"deslocamento {(_canonicalPhysicalLab.MovementMode == PhysicalWorkerMovementMode.TimedAdjacent ? "TEMPORAL" : "LEGADO")}; SEM carga comercial.";
