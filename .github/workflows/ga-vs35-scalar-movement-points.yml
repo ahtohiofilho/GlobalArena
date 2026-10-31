@@ -1,0 +1,43 @@
+name: GA-VS35 Scalar Movement Points Pure Forecast
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Runtime/ScalarMovementPointForecast.cs'
+      - 'GlobalArena.Tests/GaVs35ScalarMovementPointForecastTests.cs'
+      - 'docs/engineering/GA-VS35-scalar-movement-point-forecast.md'
+      - '.github/workflows/ga-vs35-scalar-movement-points.yml'
+  workflow_dispatch:
+
+jobs:
+  scalar-points-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: GA-VS35 deterministic scalar point forecast tests
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "FullyQualifiedName~GaVs35"
+      - name: Legacy V15 movement and VS34 conservation isolation
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "FullyQualifiedName~GaVs31|FullyQualifiedName~GaVs34"
+      - name: Godot client builds with unchanged travel controls
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  scalar-points-windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: GA-VS35 and legacy travel regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "FullyQualifiedName~GaVs35|FullyQualifiedName~GaVs31|FullyQualifiedName~GaVs34"
+      - name: Godot Debug
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
