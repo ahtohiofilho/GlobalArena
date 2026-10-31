@@ -1,0 +1,48 @@
+name: GA-VS50 Interprocess Checkpoint and Fault Recovery Lab
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/ExperimentalCheckpointProcessGate.cs'
+      - 'GlobalArena.Simulation/ExperimentalRecoverableCashCheckpointSandbox.cs'
+      - 'GlobalArena.Tests/GaVs50CrossProcessCheckpointTests.cs'
+      - 'GlobalArena.Benchmarks/GaVs50InterprocessCheckpointBenchmarkHarness.cs'
+      - 'GlobalArena.Benchmarks/Program.cs'
+      - 'docs/engineering/GA-VS50-interprocess-gate-fault-recovery.md'
+      - '.github/workflows/ga-vs50-interprocess-checkpoint.yml'
+  workflow_dispatch:
+
+jobs:
+  checkpoint-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: VS50 crash boundaries and VS40-VS49 economic regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "FullyQualifiedName~GaVs50|FullyQualifiedName~GaVs49|FullyQualifiedName~GaVs48|FullyQualifiedName~GaVs47|FullyQualifiedName~GaVs46|FullyQualifiedName~GaVs45|FullyQualifiedName~GaVs44|FullyQualifiedName~GaVs43|FullyQualifiedName~GaVs42|FullyQualifiedName~GaVs41|FullyQualifiedName~GaVs40"
+      - name: Actual independent child process lock gate benchmark
+        run: dotnet run --project GlobalArena.Benchmarks/GlobalArena.Benchmarks.csproj -c Release -- --vs50-interprocess-gate
+      - name: Godot Mono Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  checkpoint-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Full saved-world, economy, financial and movement regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: Actual independent child process lock gate benchmark
+        run: dotnet run --project GlobalArena.Benchmarks/GlobalArena.Benchmarks.csproj -c Release -- --vs50-interprocess-gate
+      - name: Godot Mono Debug
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
