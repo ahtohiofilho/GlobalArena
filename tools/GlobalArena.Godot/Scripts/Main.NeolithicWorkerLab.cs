@@ -692,14 +692,7 @@ public partial class Main
             _settlementSummary.Text =
                 $"NÚCLEOS HABITADOS {settlements.Sites.Count} | residentes " +
                 $"{settlements.TotalResidentWorkers} | viajando {settlements.TotalTravellers}\n" +
-                originSite +
-                (inhabited is null ? "" :
-                    $"\nCaixa local: famílias {inhabited.HouseholdMicrocredits / 1_000_000.0:F2}, " +
-                    $"produtores {inhabited.ProducerMicrocredits / 1_000_000.0:F2}; " +
-                    $"estoque (alim./pedra/madeira) " +
-                    $"{inhabited.FoodStockRaw / 1_000_000.0:F2}/" +
-                    $"{inhabited.StoneStockRaw / 1_000_000.0:F2}/" +
-                    $"{inhabited.WoodStockRaw / 1_000_000.0:F2}");
+                originSite;
         }
         var local = state.Allocations.Where(x => x.TileId == origin).ToArray();
         var selectedActivity = _workerFromJob is null
@@ -788,9 +781,7 @@ public partial class Main
                 : string.Join(" | ", state.Transits.Select(x =>
                     $"Em viagem: {x.Workers} pessoas, chegada no turno {x.ArrivalTurn} " +
                     $"({x.ArrivalTurn - state.MovementTurn} restantes)"))) +
-            (civilizationalInfo is null ? "" :
-                $"\nDinheiro privado: {civilizationalInfo.TotalMoney / 1_000_000.0:F3} créditos " +
-                "(famílias + produtores).");
+            "";
         if (_workerLabDetails is not null)
             _workerLabDetails.Text =
             $"POVOAMENTOS DERIVADOS: {settlements.Sites.Count} núcleos; " +
