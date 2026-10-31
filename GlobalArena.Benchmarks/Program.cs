@@ -1,6 +1,12 @@
 using GlobalArena.Benchmarks;
 
 if (args.Any(argument =>
+    string.Equals(argument, "--vs47-audited-selection", StringComparison.Ordinal)))
+{
+    return GaVs47AuditedSelectionBenchmarkHarness.Run();
+}
+
+if (args.Any(argument =>
     string.Equals(argument, "--vs46-independent-cash-audit", StringComparison.Ordinal)))
 {
     return GaVs46IndependentCashAuditBenchmarkHarness.Run();
