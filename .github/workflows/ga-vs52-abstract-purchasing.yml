@@ -1,0 +1,45 @@
+name: GA-VS52 Abstract Purchasing Read-Only Bridge
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/ExperimentalAbstractPurchasingPowerProjector.cs'
+      - 'GlobalArena.Tests/GaVs52AbstractPurchasingProjectionTests.cs'
+      - 'GlobalArena.Benchmarks/GaVs52AbstractPurchasingBenchmarkHarness.cs'
+      - 'GlobalArena.Benchmarks/Program.cs'
+      - 'docs/engineering/GA-VS52-abstract-purchasing-readonly-bridge.md'
+      - '.github/workflows/ga-vs52-abstract-purchasing.yml'
+  workflow_dispatch:
+
+jobs:
+  abstract-purchasing-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: VS52 abstract purchasing and VS40-VS50 economic contracts
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "FullyQualifiedName~GaVs52|FullyQualifiedName~GaVs50|FullyQualifiedName~GaVs49|FullyQualifiedName~GaVs48|FullyQualifiedName~GaVs47|FullyQualifiedName~GaVs46|FullyQualifiedName~GaVs45|FullyQualifiedName~GaVs44|FullyQualifiedName~GaVs43|FullyQualifiedName~GaVs42|FullyQualifiedName~GaVs41|FullyQualifiedName~GaVs40"
+      - name: Abstract purchasing read-only world projection benchmark
+        run: dotnet run --project GlobalArena.Benchmarks/GlobalArena.Benchmarks.csproj -c Release -- --vs52-abstract-purchasing
+      - name: Godot Mono Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  abstract-purchasing-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Full strategic tactical population economic save regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: Godot Mono Debug
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
