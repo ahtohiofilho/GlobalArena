@@ -18,6 +18,7 @@ public sealed class CanonicalWorldStateHasher
     public const uint BornCivilizationFormatVersion = 14U;
     public const uint LongDistanceWorkerFormatVersion = 15U;
     public const uint PhysicalJourneyFoodFormatVersion = 16U;
+    public const uint AutomaticJourneyCampFormatVersion = 17U;
 
     private static readonly byte[] Magic =
     {
@@ -311,7 +312,9 @@ public sealed class CanonicalWorldStateHasher
         // Explicit domain separator, tagged fields and the exact legacy
         // digest bind all pre-existing state + topology to the new version.
         hash.AppendData(Magic);
-        var format = physical.TravelFoodLedgers is not null
+        var format = physical.JourneyCampStates is not null
+            ? AutomaticJourneyCampFormatVersion
+            : physical.TravelFoodLedgers is not null
             ? PhysicalJourneyFoodFormatVersion
             : physical.RemoteRoutingEnabled
             ? LongDistanceWorkerFormatVersion
@@ -460,6 +463,18 @@ public sealed class CanonicalWorldStateHasher
                 AppendUInt64(hash, lot.UnitPriceMicrocredits);
                 AppendUInt64(hash, lot.PaidMicrocredits);
                 AppendUInt32(hash, lot.Arrived ? 1U : 0U);
+            }
+        }
+        if (physical.JourneyCampStates is { } camps)
+        {
+            AppendUInt32(hash, 97U); // V17 automatic camp timeline
+            AppendUInt32(hash, checked((uint)camps.Count));
+            foreach (var camp in camps)
+            {
+                AppendUInt64(hash, camp.OrderId);
+                AppendUInt64(hash, camp.WaitingMovementTurns);
+                AppendUInt64(hash, camp.GatheredFoodRaw);
+                AppendUInt64(hash, camp.GatheringEconomicCycles);
             }
         }
         return new WorldStateHash(
