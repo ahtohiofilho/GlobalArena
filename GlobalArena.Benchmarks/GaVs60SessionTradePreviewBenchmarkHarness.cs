@@ -237,12 +237,14 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
                             var portfolio = session.DiscoverPrimitiveFreightPortfolio(
                                 sites, portfolioProfiles, "VS60-BENCH-PURCHASING", 1,
                                 "VS60-BENCH-CALIBRATION", 1, "VS40-NOMINAL");
-                            if (portfolio.CandidateUses.Count != 2 ||
+                            if (portfolio.CandidateUses.Count != 3 ||
                                 portfolio.SharedServices.Count != 1 ||
                                 portfolio.SharedServices[0].ResourceId != 77 ||
+                                portfolio.SharedServices[0].CompetingUses.Count != 3 ||
                                 portfolio.SharedAssets.Count != 1 ||
                                 portfolio.SharedAssets[0].ResourceId != 31 ||
-                                portfolio.TotalEligibleIntents != 2 ||
+                                portfolio.SharedAssets[0].CompetingUses.Count != 3 ||
+                                portfolio.TotalEligibleIntents != 3 ||
                                 portfolio.CanCombineIndependentTradePreviews ||
                                 portfolio.CanAuthorizeRealSettlement)
                                 throw new InvalidOperationException(
