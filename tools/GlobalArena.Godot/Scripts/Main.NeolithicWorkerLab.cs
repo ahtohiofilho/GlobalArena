@@ -28,6 +28,8 @@ public partial class Main
     private Label? _workerDecisionPreview;
     private Label? _foodAvailabilityPreview;
     private Label? _adjacentSurveyPreview;
+    private SpinBox? _remoteDestinationTileId;
+    private Label? _remoteRoutePreview;
     private VBoxContainer? _workerLabAdvancedPanel;
     private Button? _workerMoveButton;
     private Button? _workerReassignButton;
@@ -47,7 +49,7 @@ public partial class Main
 
         var title = new Label
         {
-            Text = "PLANEJAMENTO TÁTICO | VS27",
+            Text = "PLANEJAMENTO TÁTICO | VS28",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         title.AddThemeFontSizeOverride("font_size", 16);
@@ -56,7 +58,7 @@ public partial class Main
 
         var warning = new Label
         {
-            Text = "Selecione um grupo no mapa e clique em um tile vizinho para deslocar trabalhadores.",
+            Text = "O movimento primitivo atual usa trechos adjacentes; a colonização futura não terá limite artificial de distância.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         warning.AddThemeColorOverride("font_color", new Color("#e1c883"));
@@ -239,6 +241,7 @@ public partial class Main
         // by explicit expansion, and start collapsed to maximize useful space.
         var diagnosticsToggle = new Button
         {
+            Name = "GAQAAdvancedToggle",
             Text = "MOSTRAR DETALHES E FERRAMENTAS DE LABORATÓRIO",
             ToggleMode = true,
             ButtonPressed = false
@@ -259,6 +262,35 @@ public partial class Main
                 ? "OCULTAR DETALHES E FERRAMENTAS DE LABORATÓRIO"
                 : "MOSTRAR DETALHES E FERRAMENTAS DE LABORATÓRIO";
         };
+        // Optional long-distance itinerary (any physical tile ID). It never
+        // changes the existing adjacent move button or issues a move order.
+        var remoteRow = new HBoxContainer();
+        remoteRow.AddThemeConstantOverride("separation", 4);
+        _workerLabAdvancedPanel.AddChild(remoteRow);
+        remoteRow.AddChild(new Label { Text = "Destino global (tile):" });
+        _remoteDestinationTileId = new SpinBox
+        {
+            Name = "GAQARemoteDestination",
+            MinValue = 1, MaxValue = 100000, Step = 1, Value = 1,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        remoteRow.AddChild(_remoteDestinationTileId);
+        var previewRemote = new Button
+        {
+            Name = "GAQAPreviewRemoteRoute",
+            Text = "CALCULAR ROTA A QUALQUER TILE (SEM VIAJAR)"
+        };
+        previewRemote.Pressed += PreviewRemotePhysicalRoute;
+        _workerLabAdvancedPanel.AddChild(previewRemote);
+        _remoteRoutePreview = new Label
+        {
+            Name = "GAQARemoteRouteResult",
+            Visible = false,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        _remoteRoutePreview.AddThemeColorOverride("font_color", new Color("#b5ddb5"));
+        _workerLabAdvancedPanel.AddChild(_remoteRoutePreview);
+
         _workerLabDetails = new Label
         {
             Text = "Detalhes técnicos disponíveis após a inspeção.",
@@ -511,6 +543,72 @@ public partial class Main
             _adjacentSurveyPreview.Text =
                 "Seleção de destino recusada (partida preservada): " + ex.Message;
             _adjacentSurveyPreview.Visible = true;
+        }
+    }
+
+    private void PreviewRemotePhysicalRoute()
+    {
+        if (_canonicalPhysicalLab is null || _workerOrigin is null ||
+            _workerFromJob is null || _workerToJob is null ||
+            _workerAmount is null || _remoteDestinationTileId is null ||
+            _remoteRoutePreview is null) return;
+        try
+        {
+            var sourceHash = _canonicalPhysicalLab.CurrentHash;
+            var targetId = checked((ulong)_remoteDestinationTileId.Value);
+            var target = new PhysicalTacticalTileId(
+                _canonicalPhysicalLab.State.FineParameters,
+                new StrategicCellId(targetId));
+            var route = PhysicalRemoteDestinationRouteProjection.Preview(
+                _canonicalPhysicalLab, _workerOrigin.Value, target,
+                (EconomicActivityKind)_workerFromJob.GetSelectedId(),
+                (EconomicActivityKind)_workerToJob.GetSelectedId(),
+                checked((ulong)_workerAmount.Value));
+
+            var message = route.Availability switch
+            {
+                PhysicalPrimitiveRouteAvailability.Walkable =>
+                    $"ROTA TERRESTRE: {route.MovementLegs} trechos adjacentes | " +
+                    $"mínimo estimado {route.PrimitiveTravelTurns} turnos " +
+                    $"| chegada não antes do turno {route.EarliestArrivalTurn}.\\n" +
+                    "Caminho: " +
+                    string.Join(" → ", route.Tiles.Take(8)
+                        .Select(t => t.FineStrategicCellId.Value)) +
+                    (route.Tiles.Count > 9 ? " → ... → " +
+                        route.Destination.FineStrategicCellId.Value : ""),
+                PhysicalPrimitiveRouteAvailability.DestinationNeedsOtherTechnology =>
+                    "O tile não comporta trabalho primitivo terrestre neste momento. " +
+                    "Outras tecnologias de assentamento/transporte poderão abrir possibilidades.",
+                PhysicalPrimitiveRouteAvailability.NoContinuousLandFootpath =>
+                    "Não há conexão terrestre contínua para caminhada primitiva. " +
+                    "A colonização não está proibida: requer outro modal ou infraestrutura.",
+                _ => "Modal ainda não reconhecido."
+            };
+            _remoteRoutePreview.Text =
+                $"PLANEJAMENTO GLOBAL | origem " +
+                $"{route.Origin.FineStrategicCellId.Value} → destino " +
+                $"{route.Destination.FineStrategicCellId.Value} " +
+                $"| {route.Workers} trabalhadores\\n" +
+                message +
+                "\\nConsulta sem viagem, sem custo monetário inventado e sem " +
+                "limite fixo de distância. O custo material/logístico futuro " +
+                "será avaliado pelo modal e percurso. NÃO ORDENA DESLOCAMENTO.";
+            _remoteRoutePreview.Visible = true;
+            if (!_canonicalPhysicalLab.CurrentHash.Equals(sourceHash))
+                throw new InvalidOperationException(
+                    "Remote route preview unexpectedly changed the world.");
+            GD.Print($"GA_VS28_GLOBAL_ROUTE_PREVIEW origin=" +
+                $"{route.Origin.FineStrategicCellId.Value} " +
+                $"destination={route.Destination.FineStrategicCellId.Value} " +
+                $"legs={route.MovementLegs} status={route.Availability} " +
+                $"hash={sourceHash.HexDigest}");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or
+                                   ArgumentException or OverflowException)
+        {
+            _remoteRoutePreview.Text =
+                "Planejamento indisponível (partida preservada): " + ex.Message;
+            _remoteRoutePreview.Visible = true;
         }
     }
 
@@ -1000,6 +1098,11 @@ public partial class Main
             _foodAvailabilityPreview.Visible = false;
         if (_adjacentSurveyPreview is not null)
             _adjacentSurveyPreview.Visible = false;
+        if (_remoteRoutePreview is not null)
+            _remoteRoutePreview.Visible = false;
+        if (_remoteDestinationTileId is not null)
+            _remoteDestinationTileId.MaxValue =
+                (double)_canonicalPhysicalLab.State.FineParameters.StrategicCellCount;
         if (_canonicalPhysicalLab is null || _workerOrigin is null || _tacticalPreview is null ||
             _workerLabStatus is null) return;
         var state = _canonicalPhysicalLab.State;
