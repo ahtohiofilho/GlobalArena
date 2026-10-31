@@ -125,6 +125,8 @@ public sealed class CanonicalPhysicalTacticalSession
     private CanonicalTransportNetwork? _transportNetwork;
     public CanonicalTransportNetwork TransportNetwork =>
         _transportNetwork ??= new CanonicalTransportNetwork(this);
+    public CanonicalTradePreview PreviewTrade(CanonicalTradeScenario scenario) =>
+        CanonicalTradePreview.Create(this, scenario);
 
     private WorldState CheckedSnapshot
     {

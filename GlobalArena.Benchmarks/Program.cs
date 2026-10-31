@@ -1,4 +1,5 @@
 using GlobalArena.Benchmarks;
+if (args.Contains("--vs60-session-preview")) return GaVs60SessionTradePreviewBenchmarkHarness.Run();
 if (args.Contains("--vs59-independent-selection")) return GaVs59IndependentSelectionAuditBenchmarkHarness.Run();
 if (args.Contains("--vs58-simultaneous-authority")) return GaVs58SimultaneousAuthorityBenchmarkHarness.Run();
 
