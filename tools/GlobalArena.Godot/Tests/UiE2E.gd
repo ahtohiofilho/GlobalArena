@@ -64,6 +64,8 @@ func _run() -> void:
     var diagnose := _button(app, "GAQAFoodDiagnosis")
     var survey := _button(app, "GAQAAdjacentSurvey")
     var survey_result := _label(app, "GAQAAdjacentSurveyResult")
+    var plan_destination := _button(app, "GAQAPlanDestination")
+    var order_move := _button(app, "GAQAMoveWorkers")
     var reassign := _button(app, "GAQAReassign")
     var five := _button(app, "GAQAAdvanceFiveCycles")
     var one := _button(app, "GAQAAdvanceOneCycle")
@@ -71,7 +73,7 @@ func _run() -> void:
     var load_save := _button(app, "GAQALoad")
     for node in [inspect, source, destination, quantity, status, settlements,
             cycle_report, preview, food, compare, diagnose, survey,
-            survey_result, reassign, five,
+            survey_result, plan_destination, order_move, reassign, five,
             one, save, load_save]:
         if not _require(node != null, "expected named production control missing"):
             return
@@ -170,5 +172,56 @@ func _run() -> void:
             "load button did not restore canonical save, worker HUD and cycle summary"):
         return
     print("GA_UI_E2E_SAVE_RESTORE_OK")
+
+    # VS27: the destination is chosen by a real Godot button using the
+    # VS26 geographic survey, but NO workers are moved at this stage.
+    source.select(0)
+    destination.select(2)
+    destination.emit_signal("item_selected", 2)
+    quantity.value = 1.0
+    await process_frame
+    _press(plan_destination)
+    await process_frame
+    if not _require(survey_result.visible and
+            survey_result.text.contains("DESTINO PREPARADO") and
+            survey_result.text.contains("NENHUMA VIAGEM INICIADA") and
+            not order_move.disabled and
+            status.text.contains("turno 5") and
+            settlements.text.contains("agricultura 2, madeira 4, pedra 2") and
+            status.text.contains("Viagens: nenhuma em andamento."),
+            "VS27 destination preparation did not select the real move control or committed travel prematurely"):
+        return
+    print("GA_UI_E2E_DESTINATION_PLANNED_READ_ONLY_OK")
+
+    _press(order_move)
+    await process_frame
+    if not _require(status.text.contains("turno 5") and
+            status.text.contains("Em viagem: 1 pessoas") and
+            settlements.text.contains("viajando 1") and
+            not survey_result.visible,
+            "VS27 explicit movement order failed to create canonical transit"):
+        return
+    print("GA_UI_E2E_EXPLICIT_TRANSIT_ORDER_OK")
+
+    _press(one)
+    _press(one)
+    await process_frame
+    if not _require(status.text.contains("turno 7") and
+            not status.text.contains("Em viagem:") and
+            settlements.text.contains("NÚCLEOS HABITADOS 2") and
+            settlements.text.contains("viajando 0"),
+            "VS27 canonical worker transit failed to arrive after two movement ticks"):
+        return
+    print("GA_UI_E2E_TWO_TICK_ARRIVAL_OK")
+
+    # An old save must still restore the before-travel timeline.
+    _press(load_save)
+    await process_frame
+    if not _require(status.text.contains("turno 5") and
+            status.text.contains("Viagens: nenhuma em andamento.") and
+            settlements.text.contains("agricultura 2, madeira 4, pedra 2"),
+            "VS27 save reload did not undo a later travel order"):
+        return
+    print("GA_UI_E2E_TRAVEL_SAVE_REWIND_OK")
     print("GA_UI_E2E_PASS main_scene=Main.tscn signals=real godot=4.7.2")
     quit(0)
