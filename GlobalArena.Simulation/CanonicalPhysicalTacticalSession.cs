@@ -633,6 +633,117 @@ public sealed class CanonicalPhysicalTacticalSession
     }
 
     /// <summary>
+    /// GA-VS33: purchase exactly the forecast food required to reach a
+    /// nonadjacent destination. The seller owns local stocks; the expedition
+    /// cannot take them without a real, affordable at-sight transaction.
+    /// No provisional camp or unpaid food transfer is hidden in this order.
+    /// </summary>
+    public (PhysicalLongDistanceTransit Journey, ulong FoodRaw, ulong PaidMicrocredits)
+        OrderProvisionedLongDistanceTransit(
+            PhysicalTacticalTileId source, PhysicalTacticalTileId destination,
+            EconomicActivityKind fromJob, EconomicActivityKind toJob, ulong workers)
+    {
+        if (_movementMode != PhysicalWorkerMovementMode.TimedAdjacent ||
+            _marketMode != PhysicalFoodMarketMode.LocalCashSettlement)
+            throw new InvalidOperationException(
+                "Provisioned travel requires the canonical cash market.");
+        EnsureJournalCapacity();
+        var route = PhysicalRemoteDestinationRouteProjection.Preview(
+            this, source, destination, fromJob, toJob, workers);
+        if (!route.HasFootpath || route.MovementLegs < 2UL ||
+            route.EarliestArrivalTurn is null)
+            throw new InvalidOperationException(
+                "Provisioned primitive movement needs a land itinerary of two or more legs.");
+        var current = State;
+        var foodRequired = PhysicalJourneySupplyProjection.PreviewPlanned(
+            this, source, destination, fromJob, toJob, workers)
+            .TravellersBaselineFoodDemandRaw;
+        var foodTile = (source, new CommodityId(1U));
+        var stocks = current.Stocks.ToDictionary(
+            x => (x.TileId, x.Commodity), x => x.RawQuantity);
+        var onSale = stocks.GetValueOrDefault(foodTile);
+        if (onSale < foodRequired)
+            throw new InvalidOperationException(
+                "Producer food stock cannot cover this full expedition purchase.");
+
+        var allocations = current.Allocations.ToDictionary(
+            x => (x.TileId, x.Activity), x => x.Workers);
+        var key = (source, fromJob);
+        if (!allocations.TryGetValue(key, out var available) || available < workers)
+            throw new InvalidOperationException("Insufficient workers at the origin.");
+
+        var ledger = current.FoodCash ??
+            throw new InvalidOperationException("Cash ledger is unavailable.");
+        var wallet = ledger.At(source);
+        var headcount = WorkersAt(source);
+        var buyerBudget = (ulong)((UInt128)wallet.HouseholdMicrocredits *
+            workers / headcount);
+        ulong price = 0UL, paid = 0UL;
+        if (foodRequired != 0UL)
+        {
+            if (buyerBudget == 0UL)
+                throw new InvalidOperationException("Travellers have no budget to buy provisions.");
+            var quote = new EconomicLocalFoodMarketQuoteResolver().Resolve(
+                source, current.MovementTurn, workers, onSale, 0UL,
+                foodRequired,
+                buyerBudget / (double)PhysicalFoodCashMarketState.MonetaryScale / workers);
+            var rawPrice = quote.PricePerWholeFoodUnit *
+                PhysicalFoodCashMarketState.MonetaryScale;
+            if (!double.IsFinite(rawPrice) || rawPrice <= 0.0 ||
+                rawPrice > ulong.MaxValue)
+                throw new InvalidOperationException("No payable market quotation for provisions.");
+            price = checked((ulong)Math.Round(rawPrice, MidpointRounding.ToEven));
+            if (price == 0UL)
+                throw new InvalidOperationException("Provisions require a positive cash price.");
+            paid = checked((ulong)((UInt128)price * foodRequired /
+                PhysicalFoodCashMarketState.MonetaryScale));
+            if (paid == 0UL || paid > buyerBudget)
+                throw new InvalidOperationException(
+                    "Full expedition provisions are not affordable at sight.");
+        }
+        if (available == workers) allocations.Remove(key);
+        else allocations[key] = available - workers;
+        stocks[foodTile] = onSale - foodRequired;
+
+        var id = checked(current.WorkerRevision + 1UL);
+        var journey = new PhysicalLongDistanceTransit(
+            id, source, destination, fromJob, toJob, workers,
+            current.MovementTurn, route.EarliestArrivalTurn.Value,
+            PhysicalMovementTimelines.ExistingPrimitive
+                .LegCompletionTurn(current.MovementTurn, 0), 0,
+            Array.AsReadOnly(route.Tiles.ToArray()));
+        var wallets = ledger.Accounts.ToDictionary(x => x.Tile, x => x);
+        if (paid != 0UL)
+            wallets[source] = wallet with
+            {
+                HouseholdMicrocredits = wallet.HouseholdMicrocredits - paid,
+                ProducerMicrocredits = checked(wallet.ProducerMicrocredits + paid)
+            };
+        var updatedMoney = new PhysicalFoodCashMarketState(
+            ledger.InitialMoneySupplyMicrocredits, wallets.Values,
+            ledger.Receipts, _fine, current.MovementTurn);
+        var purchase = new PhysicalExpeditionFoodPurchase(
+            id, source, foodRequired, price, paid);
+        var parcel = new PhysicalExpeditionFoodParcel(id, foodRequired);
+        var next = new PhysicalTacticalEconomyRuntimeState(
+            current.CoarseWorldBinding, _coarse, _fine, current.MovementTurn, id,
+            allocations.Select(x => new PhysicalWorkerAllocation(
+                x.Key.Item1, x.Key.Item2, x.Value)),
+            stocks.Select(x => new PhysicalCommodityStock(
+                x.Key.Item1, x.Key.Item2, x.Value)),
+            current.Cycles, _cadenceMode, _geographyMode, updatedMoney,
+            _movementMode, current.Transits, current.LongTrips.Append(journey),
+            true, current.ExpeditionFood.Append(parcel),
+            current.ExpeditionPurchases.Append(purchase), true);
+        if (next.TotalWorkers != current.TotalWorkers)
+            throw new InvalidOperationException("Food purchase changed total workforce.");
+        Commit(next, "depart_remote_food", source.FineStrategicCellId.Value,
+            destination.FineStrategicCellId.Value, (byte)fromJob, (byte)toJob,
+            workers, foodRequired);
+        return (journey, foodRequired, paid);
+    }
+
+    /// <summary>
     /// Fixed-six V9 and progressive-thirty V10 settle physical production
     /// and consumption under their versioned rules. No intertile teleportation.
     /// </summary>
