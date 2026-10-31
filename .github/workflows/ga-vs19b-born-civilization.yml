@@ -62,7 +62,8 @@ jobs:
               (-not $main.Contains('GA_VS19B_RUNTIME_ACTIVE') -and
                -not $main.Contains('GA_VS19C_RUNTIME_ACTIVE') -and
                -not $main.Contains('GA_VS20_RUNTIME_ACTIVE') -and
-               -not $main.Contains('GA_VS21_RUNTIME_ACTIVE'))) {
+               -not $main.Contains('GA_VS21_RUNTIME_ACTIVE') -and
+               -not $main.Contains('GA_VS22_RUNTIME_ACTIVE'))) {
             throw "VS19B+ Windows launch must build Debug and provide an identifying runtime log."
           }
       - name: Build Godot Windows (Debug launch target)
