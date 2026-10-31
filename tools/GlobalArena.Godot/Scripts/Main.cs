@@ -253,7 +253,7 @@ public partial class Main : Control
 
         // No full-width title bar or debug footer: both used to steal
         // vertical space from the square globe/tactical viewport.
-        var content = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
+        var content = new HBoxContainer { Name = "GAQAContent", SizeFlagsVertical = SizeFlags.ExpandFill };
         content.AddThemeConstantOverride("separation", 8);
         root.AddChild(content);
 
@@ -261,15 +261,17 @@ public partial class Main : Control
         // AspectRatioContainer defaults to centered FIT, without clipping either viewport.
         var squareMapSlot = new AspectRatioContainer
         {
+            Name = "GAQASquareMapSlot",
             Ratio = 1f,
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill
         };
         content.AddChild(squareMapSlot);
-        var mapRegion = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
+        var mapRegion = new PanelContainer { Name = "GAQAMapRegion", SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
         squareMapSlot.AddChild(mapRegion);
         var globe = new GlobePreview
         {
+            Name = "GAQAStrategicGlobe",
             CustomMinimumSize = new Vector2(360f, 300f),
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill
@@ -279,6 +281,7 @@ public partial class Main : Control
         globe.CanonicalTerritorySelectionChanged += OnCanonicalTerritorySelectionChanged;
         _tacticalPreview = new TacticalContextPreview
         {
+            Name = "GAQATacticalMap",
             Visible = false,
             CustomMinimumSize = new Vector2(360f, 300f),
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
@@ -316,6 +319,7 @@ public partial class Main : Control
 
         var rightPanel = new PanelContainer
         {
+            Name = "GAQARightPanel",
             CustomMinimumSize = new Vector2(530f, 0f),
             SizeFlagsVertical = SizeFlags.ExpandFill
         };
@@ -365,22 +369,22 @@ public partial class Main : Control
         _tacticalTileRuntime = inspectorRuntime;
         GD.Print("GA_UI_TACTICAL_INSPECTOR_READY_R30 sidebar=true simulation_mutation=false");
         GD.Print("GA_UI_TACTICAL_RUNTIME_BRIDGE_READY_R35 state=unattached read_only=true");
-        _openTacticalContext = new Button { Text = "OPEN TACTICAL CONTEXT", Disabled = true };
+        _openTacticalContext = new Button { Name = "GAQAOpenTactical", Text = "OPEN TACTICAL CONTEXT", Disabled = true };
         _openTacticalContext.Pressed += OpenTacticalContext;
         rightLayout.AddChild(_openTacticalContext);
-        _returnStrategicContext = new Button { Text = "RETURN TO STRATEGIC GLOBE", Visible = false };
+        _returnStrategicContext = new Button { Name = "GAQAReturnStrategic", Text = "RETURN TO STRATEGIC GLOBE", Visible = false };
         _returnStrategicContext.Pressed += ReturnStrategicContext;
         rightLayout.AddChild(_returnStrategicContext);
         _tacticalTileEdges = new CheckBox { Text = "TACTICAL TILE EDGES", ButtonPressed = false, Visible = false };
         _tacticalTileEdges.Toggled += enabled => _tacticalPreview?.SetEdgesVisible(enabled);
         rightLayout.AddChild(_tacticalTileEdges);
-        var panelScroll = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        var panelScroll = new ScrollContainer { Name = "GAQACommandScroll", SizeFlagsVertical = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         rightLayout.AddChild(panelScroll);
         // GA_UI_TACTICAL_HUD_SIDEBAR_R1: one scroll region, distinct context-only panels.
         var hud = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         hud.AddThemeConstantOverride("separation", 8);
         panelScroll.AddChild(hud);
-        var tacticalHud = new VBoxContainer { Visible = false, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var tacticalHud = new VBoxContainer { Name = "GAQATacticalHUD", Visible = false, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         tacticalHud.AddThemeConstantOverride("separation", 3);
         hud.AddChild(tacticalHud);
         // Player commands come first in the scroll: no excessive
