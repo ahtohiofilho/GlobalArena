@@ -1,0 +1,45 @@
+name: GA-VS53 Abstract Price Freight Calibration
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/ExperimentalAbstractPriceFreightCalibrator.cs'
+      - 'GlobalArena.Tests/GaVs53AbstractPriceFreightCalibrationTests.cs'
+      - 'GlobalArena.Benchmarks/GaVs53AbstractPriceFreightCalibrationBenchmarkHarness.cs'
+      - 'GlobalArena.Benchmarks/Program.cs'
+      - 'docs/engineering/GA-VS53-abstract-price-freight-calibration.md'
+      - '.github/workflows/ga-vs53-abstract-price-freight-calibration.yml'
+  workflow_dispatch:
+
+jobs:
+  calibration-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: VS53 and VS40-VS52 economic contracts
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "FullyQualifiedName~GaVs53|FullyQualifiedName~GaVs52|FullyQualifiedName~GaVs51|FullyQualifiedName~GaVs50|FullyQualifiedName~GaVs49|FullyQualifiedName~GaVs48|FullyQualifiedName~GaVs47|FullyQualifiedName~GaVs46|FullyQualifiedName~GaVs45|FullyQualifiedName~GaVs44|FullyQualifiedName~GaVs43|FullyQualifiedName~GaVs42|FullyQualifiedName~GaVs41|FullyQualifiedName~GaVs40"
+      - name: Calibrated abstract purchasing and delivered freight benchmark
+        run: dotnet run --project GlobalArena.Benchmarks/GlobalArena.Benchmarks.csproj -c Release -- --vs53-calibration
+      - name: Godot Mono Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  calibration-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Full strategic tactical population economic save regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: Godot Mono Debug
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
