@@ -1,5 +1,17 @@
 using GlobalArena.Benchmarks;
 
+if (args.Length > 0 &&
+    string.Equals(args[0], "--vs50-gate-worker", StringComparison.Ordinal))
+{
+    return GaVs50InterprocessCheckpointBenchmarkHarness.RunWorker(args);
+}
+
+if (args.Any(argument =>
+    string.Equals(argument, "--vs50-interprocess-gate", StringComparison.Ordinal)))
+{
+    return GaVs50InterprocessCheckpointBenchmarkHarness.Run();
+}
+
 if (args.Any(argument =>
     string.Equals(argument, "--vs49-recoverable-checkpoint", StringComparison.Ordinal)))
 {
