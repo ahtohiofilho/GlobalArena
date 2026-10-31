@@ -58,12 +58,14 @@ jobs:
                -not $main.Contains('GA_VS21_RUNTIME_ACTIVE') -and
                -not $main.Contains('GA_VS22_RUNTIME_ACTIVE') -and
                -not $main.Contains('GA_VS23_RUNTIME_ACTIVE') -and
-               -not $main.Contains('GA_VS24_RUNTIME_ACTIVE')) -or
+               -not $main.Contains('GA_VS24_RUNTIME_ACTIVE') -and
+               -not $main.Contains('GA_VS25_RUNTIME_ACTIVE')) -or
               (-not $lab.Contains('POVOAMENTOS EMERGENTES | VS20') -and
                -not $lab.Contains('ATIVIDADES LOCAIS | VS21') -and
                -not $lab.Contains('CICLOS ECONÔMICOS VISÍVEIS | VS22') -and
                -not $lab.Contains('RESULTADOS ECONÔMICOS | VS23') -and
-               -not $lab.Contains('COMPARAR DECISÕES PRODUTIVAS | VS24'))) {
+               -not $lab.Contains('COMPARAR DECISÕES PRODUTIVAS | VS24') -and
+               -not $lab.Contains('ALIMENTAÇÃO E PRODUÇÃO | VS25'))) {
             throw 'VS20 direct-run/build marker contract missing.'
           }
       - name: Emergent settlement and prior movement/replay tests
