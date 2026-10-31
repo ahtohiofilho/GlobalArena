@@ -266,6 +266,9 @@ public sealed class CanonicalPrimitiveJointFreightSelector
             ctx, new(bestLots, bestPreview, bestScore, bestCommitment,
                 evaluated, feasible));
         selection.RequireCurrent(session);
+        // Promotion from candidate to selected preview is gated by an
+        // independent mixed-radix audit, not merely a search receipt.
+        selection.VerifyIndependent();
         return selection;
     }
 }
