@@ -1,0 +1,66 @@
+name: GA-VS31 Canonical Movement Timing Seam
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Runtime/PhysicalMovementTimelines.cs'
+      - 'GlobalArena.Runtime/PhysicalTacticalEconomyRuntimeState.cs'
+      - 'GlobalArena.Simulation/CanonicalPhysicalTacticalSession.cs'
+      - 'GlobalArena.Simulation/PhysicalRemoteDestinationRouteProjection.cs'
+      - 'GlobalArena.Simulation/TacticalWorkerMarkerProjection.cs'
+      - 'GlobalArena.Tests/GaVs31MovementTimingPolicyTests.cs'
+      - 'tools/GlobalArena.Godot/Tests/UiE2E.gd'
+      - '.github/workflows/ga-vs31-movement-timing-policy-seam.yml'
+  workflow_dispatch:
+
+jobs:
+  timing-seam-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Lock old two-turn movement, V14/V15 replay and economic diagnostics
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs31|FullyQualifiedName~GaVs30|FullyQualifiedName~GaVs29|FullyQualifiedName~GaVs28|FullyQualifiedName~GaVs27|FullyQualifiedName~GaVs26|FullyQualifiedName~GaVs25|FullyQualifiedName~GaVs24|FullyQualifiedName~GaVs23|FullyQualifiedName~GaVs22|FullyQualifiedName~GaVs21|FullyQualifiedName~GaVs20|FullyQualifiedName~GaVs15'
+      - name: Build Godot Mono Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  timing-seam-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Check centralized movement schedule and legacy save contract
+        shell: pwsh
+        run: |
+          $policy = Get-Content -Raw -Encoding UTF8 'GlobalArena.Runtime/PhysicalMovementTimelines.cs'
+          $runtime = Get-Content -Raw -Encoding UTF8 'GlobalArena.Runtime/PhysicalTacticalEconomyRuntimeState.cs'
+          $session = Get-Content -Raw -Encoding UTF8 'GlobalArena.Simulation/CanonicalPhysicalTacticalSession.cs'
+          $route = Get-Content -Raw -Encoding UTF8 'GlobalArena.Simulation/PhysicalRemoteDestinationRouteProjection.cs'
+          $markers = Get-Content -Raw -Encoding UTF8 'GlobalArena.Simulation/TacticalWorkerMarkerProjection.cs'
+          $e2e = Get-Content -Raw -Encoding UTF8 'tools/GlobalArena.Godot/Tests/UiE2E.gd'
+          if (-not $policy.Contains('interface IPhysicalMovementTimeline') -or
+              -not $policy.Contains('TurnsPerLeg = 2UL') -or
+              -not $session.Contains('PhysicalMovementTimelines.ForExistingMode') -or
+              -not $runtime.Contains('PhysicalMovementTimelines.ExistingPrimitive') -or
+              -not $route.Contains('PhysicalMovementTimelines.ForExistingMode') -or
+              -not $markers.Contains('PhysicalMovementTimelines.ExistingPrimitive') -or
+              -not $session.Contains('LongDistanceSaveFormat = 15') -or
+              -not $e2e.Contains('GA_UI_E2E_VS31_LEGACY_TIMELINE_OK')) {
+            throw 'GA-VS31 must centralize movement duration without changing legacy save semantics'
+          }
+      - name: Lock old two-turn movement, V14/V15 replay and economic diagnostics
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs31|FullyQualifiedName~GaVs30|FullyQualifiedName~GaVs29|FullyQualifiedName~GaVs28|FullyQualifiedName~GaVs27|FullyQualifiedName~GaVs26|FullyQualifiedName~GaVs25|FullyQualifiedName~GaVs24|FullyQualifiedName~GaVs23|FullyQualifiedName~GaVs22|FullyQualifiedName~GaVs21|FullyQualifiedName~GaVs20|FullyQualifiedName~GaVs15'
+      - name: Build Godot Mono Debug
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
+      - name: Build Godot Mono Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
