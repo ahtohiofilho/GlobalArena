@@ -73,7 +73,11 @@ public sealed record ExperimentalSimultaneousFreightAllocation(
     FoodTransportCostFraction ProducerReservationCost,
     FoodTransportCostFraction SharedFreightCost,
     IReadOnlyList<ExperimentalSimultaneousFreightDecision> Trades,
-    IReadOnlyDictionary<ExperimentalSharedFreightCorridorKey, BigInteger> CorridorLoads);
+    IReadOnlyDictionary<ExperimentalSharedFreightCorridorKey, BigInteger> CorridorLoads)
+{
+    public IReadOnlyList<ExperimentalBuyerCashLedger> CashLedger { get; init; } =
+        Array.Empty<ExperimentalBuyerCashLedger>();
+}
 
 public sealed record ExperimentalSimultaneousFreightComparison(
     ExperimentalSimultaneousFreightAllocation Independent,
@@ -116,7 +120,8 @@ public sealed class ExperimentalSimultaneousFreightReference
         ExperimentalSharedFreightCongestionPolicy corridorPolicy,
         ulong rawQuantityQuantum,
         int maxLocalPasses = 4,
-        int maxExactConfigurations = 0)
+        int maxExactConfigurations = 0,
+        ExperimentalBuyerCashSnapshot? cashSnapshot = null)
     {
         ArgumentNullException.ThrowIfNull(flows);
         ArgumentNullException.ThrowIfNull(catalog);
@@ -165,6 +170,7 @@ public sealed class ExperimentalSimultaneousFreightReference
             supply.Keys.Any(k => !reservationCosts.ContainsKey(k)))
             throw new ArgumentException(
                 "Every declared supply and demand requires a matching reservation or valuation.");
+        cashSnapshot?.ValidateCoverage(flows);
 
         var ordered = lanes.OrderBy(x => x.Supply.CommodityId.Value)
             .ThenBy(x => x.Supply.EconomicPointId.Value)
@@ -216,6 +222,7 @@ public sealed class ExperimentalSimultaneousFreightReference
                 (EconomicPointId, CommodityId, EconomicActivityKind), BigInteger>();
             var usedDemand = new Dictionary<(EconomicPointId, CommodityId), BigInteger>();
             var freightLots = new List<ExperimentalSharedFreightLot>();
+            var cashDeliveries = new List<ExperimentalBuyerCashDelivery>();
             var trades = new List<ExperimentalSimultaneousFreightDecision>();
             var costReserve = new FoodTransportCostFraction(0, 1);
             for (var i = 0; i < rows.Length; i++)
@@ -240,6 +247,10 @@ public sealed class ExperimentalSimultaneousFreightReference
                 var q = (BigInteger)variant.RawQuantity * row.GramsPerFlowUnit;
                 freightLots.Add(new ExperimentalSharedFreightLot(
                     checked((ulong)i + 1UL), q, new[] { option }));
+                if (cashSnapshot is not null)
+                    cashDeliveries.Add(new ExperimentalBuyerCashDelivery(
+                        destination.EconomicPointId, destination.CommodityId,
+                        variant.RawQuantity, q, option));
                 trades.Add(new ExperimentalSimultaneousFreightDecision(
                     origin.EconomicPointId, destination.EconomicPointId,
                     origin.CommodityId, option.ServiceId, variant.RawQuantity));
@@ -267,6 +278,20 @@ public sealed class ExperimentalSimultaneousFreightReference
                     new System.Collections.ObjectModel.ReadOnlyDictionary<
                         ExperimentalSharedFreightCorridorKey, BigInteger>(
                         new Dictionary<ExperimentalSharedFreightCorridorKey, BigInteger>()));
+            IReadOnlyList<ExperimentalBuyerCashLedger> cashLedger =
+                Array.Empty<ExperimentalBuyerCashLedger>();
+            if (cashSnapshot is not null)
+            {
+                var cash = cashSnapshot.Evaluate(
+                    cashDeliveries, freight.CorridorLoads, corridorPolicy);
+                if (!cash.CanSettleAtSight)
+                    return null; // reject the ENTIRE hypothetical allocation, no credit
+                if (cash.TotalBuyerFreight.CompareTo(freight.TotalCost) != 0)
+                    throw new InvalidOperationException(
+                        "Buyer-side freight charges must reconcile to aggregate corridor costs.");
+                cashLedger = cash.Buyers;
+            }
+
             var totalExpense = ExperimentalSharedFreightBatchCost.Add(
                 costReserve, freight.TotalCost);
             var net = new ExperimentalSignedEconomicValue(
@@ -275,7 +300,8 @@ public sealed class ExperimentalSimultaneousFreightReference
                 integratedValue.Denominator * totalExpense.Denominator);
             return new ExperimentalSimultaneousFreightAllocation(
                 net, integratedValue, costReserve, freight.TotalCost,
-                Array.AsReadOnly(trades.ToArray()), freight.CorridorLoads);
+                Array.AsReadOnly(trades.ToArray()), freight.CorridorLoads)
+            { CashLedger = cashLedger };
         }
 
         var baseline = new int[rows.Length];
