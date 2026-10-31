@@ -33,14 +33,24 @@ $expectedHead = $expectedHead.Trim()
 if ($head -ne $expectedHead) {
     throw "This checkout is not the current VS22 branch head. Run git fetch origin then git switch --detach origin/$expectedBranch. Actual: $head Expected: $expectedHead"
 }
-$main = Get-Content -Path $mainCode -Raw -Encoding UTF8
-$lab = Get-Content -Path $labCode -Raw -Encoding UTF8
-if (-not $main.Contains('GLOBAL ARENA  |  VS22') -or
-    -not $main.Contains('GetWindow().Title = "Global Arena') -or
-    -not $lab.Contains('CICLOS ECONÔMICOS VISÍVEIS | VS22') -or
-    -not $lab.Contains('AVANÇAR ATÉ O PRÓXIMO CICLO ECONÔMICO')) {
-    throw "The C# files do not match the approved VS22 UI. Do not start an older Godot project."
+$main = [System.IO.File]::ReadAllText($mainCode, [System.Text.Encoding]::UTF8)
+$lab = [System.IO.File]::ReadAllText($labCode, [System.Text.Encoding]::UTF8)
+# Match stable ASCII runtime/behavior signatures. Visual titles with
+# diacritics are not reliable guards on every Windows PowerShell code page.
+# Report the exact missing signature rather than a generic UI mismatch.
+$signatures = [ordered]@{
+    'VS22 C# runtime marker' = $main.Contains('GA_VS22_RUNTIME_ACTIVE')
+    'VS22 Godot window title' = $main.Contains('GetWindow().Title = "Global Arena') -and $main.Contains('VS22 | Ciclos')
+    'VS22 tactical HUD' = $lab.Contains('CICLOS ECON') -and $lab.Contains('VS22')
+    'VS22 next-cycle command handler' = $lab.Contains('AdvanceOfflineLabToNextEconomicCycle')
+    'VS22 canonical tick composer' = $lab.Contains('PhysicalEconomicCycleProgression.AdvanceToNext')
 }
+foreach ($check in $signatures.GetEnumerator()) {
+    if (-not $check.Value) {
+        throw "VS22 worktree verification failed: $($check.Key) missing. Review checked-out sources before launching."
+    }
+}
+Write-Host 'VS22 runtime and canonical-cycle signatures verified.' -ForegroundColor Green
 
 if (-not $GodotExe) {
     # The current Godot editor/game is the most reliable source for the
