@@ -47,7 +47,7 @@ public partial class Main
 
         var title = new Label
         {
-            Text = "EXPLORAÇÃO PRODUTIVA | VS26",
+            Text = "PLANEJAMENTO TÁTICO | VS27",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         title.AddThemeFontSizeOverride("font_size", 16);
@@ -116,18 +116,31 @@ public partial class Main
 
         _workerMoveButton = new Button
         {
+            Name = "GAQAMoveWorkers",
             Text = "ORDENAR DESLOCAMENTO (2 TURNOS)",
             Disabled = true
         };
         _workerMoveButton.Pressed += MoveWorkerLabWorkers;
         lab.AddChild(_workerMoveButton);
+        var travelPlanning = new HBoxContainer();
+        travelPlanning.AddThemeConstantOverride("separation", 4);
+        lab.AddChild(travelPlanning);
         var surveyNeighbours = new Button
         {
             Name = "GAQAAdjacentSurvey",
-            Text = "EXPLORAR PRODUTIVIDADE DOS TILES VIZINHOS"
+            Text = "EXPLORAR VIZINHOS",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
         };
         surveyNeighbours.Pressed += SurveyAdjacentPhysicalWork;
-        lab.AddChild(surveyNeighbours);
+        travelPlanning.AddChild(surveyNeighbours);
+        var selectHigherYield = new Button
+        {
+            Name = "GAQAPlanDestination",
+            Text = "SELECIONAR MAIOR POTENCIAL",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        selectHigherYield.Pressed += SelectHighestYieldAdjacentDestination;
+        travelPlanning.AddChild(selectHigherYield);
         _adjacentSurveyPreview = new Label
         {
             Name = "GAQAAdjacentSurveyResult",
@@ -443,6 +456,61 @@ public partial class Main
         {
             if (_workerLabStatus is not null)
                 _workerLabStatus.Text = "TRANSFERÊNCIA RECUSADA (estado preservado): " + ex.Message;
+        }
+    }
+
+    /// <summary>
+    /// Set the ordinary destination selection from canonical geographic
+    /// reconnaissance. Selecting does not create a journal action, move a
+    /// worker or advance a turn; the existing move button remains the only
+    /// way to commit a timed transit.
+    /// </summary>
+    private void SelectHighestYieldAdjacentDestination()
+    {
+        if (_canonicalPhysicalLab is null || _workerOrigin is null ||
+            _workerFromJob is null || _workerToJob is null ||
+            _workerAmount is null || _adjacentSurveyPreview is null)
+            return;
+        try
+        {
+            var beforeHash = _canonicalPhysicalLab.CurrentHash;
+            var plan = PhysicalWorkerDestinationPlanner.PreviewHighestYield(
+                _canonicalPhysicalLab, _workerOrigin.Value,
+                (EconomicActivityKind)_workerFromJob.GetSelectedId(),
+                (EconomicActivityKind)_workerToJob.GetSelectedId(),
+                checked((ulong)_workerAmount.Value));
+            // The same destination field and rings are updated by ordinary
+            // mouse selection; no alternative fast-path to OrderWorkerTransit.
+            _workerDestination = plan.Destination;
+            UpdateWorkerLabHud();
+            if (!_canonicalPhysicalLab.CurrentHash.Equals(beforeHash))
+                throw new InvalidOperationException(
+                    "Destination selection unexpectedly changed the real game.");
+            var delta = (plan.DestinationYieldPerWorkerRaw -
+                plan.OriginYieldPerWorkerRaw) / 1_000_000.0;
+            _adjacentSurveyPreview.Text =
+                $"DESTINO PREPARADO: tile {plan.Destination.FineStrategicCellId.Value} " +
+                $"({plan.DestinationJob}) | potencial de origem " +
+                $"{plan.OriginYieldPerWorkerRaw / 1_000_000.0:F2} → " +
+                $"{plan.DestinationYieldPerWorkerRaw / 1_000_000.0:F2} " +
+                $"por trabalhador/ciclo (diferença {delta:+0.00;-0.00;0.00})\\n" +
+                $"Trabalhadores planejados {plan.Workers}; " +
+                $"residentes no destino {plan.DestinationResidents}; " +
+                $"em viagem ao destino {plan.DestinationTravellers}. " +
+                "Maior potencial não garante maior lucro ou melhor estratégia. " +
+                "NENHUMA VIAGEM INICIADA. Para confirmar use ORDENAR DESLOCAMENTO.";
+            _adjacentSurveyPreview.Visible = true;
+            GD.Print($"GA_VS27_DESTINATION_SELECTED origin=" +
+                $"{plan.Origin.FineStrategicCellId.Value} " +
+                $"destination={plan.Destination.FineStrategicCellId.Value} " +
+                $"workers={plan.Workers} hash={beforeHash.HexDigest}");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or
+                                   ArgumentException or OverflowException)
+        {
+            _adjacentSurveyPreview.Text =
+                "Seleção de destino recusada (partida preservada): " + ex.Message;
+            _adjacentSurveyPreview.Visible = true;
         }
     }
 
