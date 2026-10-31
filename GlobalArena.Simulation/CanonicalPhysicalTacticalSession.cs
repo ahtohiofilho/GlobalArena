@@ -142,6 +142,19 @@ public sealed class CanonicalPhysicalTacticalSession
             this, sites, policy, purchasingPolicyId, purchasingPolicyVersion,
             calibrationId, calibrationVersion, nominalUnitId);
 
+    /// <summary>
+    /// Candidate inventory for multiple resources/technologies. Individual
+    /// quotations are competing alternatives, NOT independent settlements.
+    /// </summary>
+    public CanonicalPrimitiveFreightPortfolio DiscoverPrimitiveFreightPortfolio(
+        CanonicalPrimitiveSiteDiscovery sites,
+        IEnumerable<CanonicalEligibleFreightDiscoveryPolicy> profiles,
+        string purchasingPolicyId, ulong purchasingPolicyVersion,
+        string calibrationId, ulong calibrationVersion, string nominalUnitId) =>
+        CanonicalPrimitiveFreightPortfolio.FromSession(
+            this, sites, profiles, purchasingPolicyId, purchasingPolicyVersion,
+            calibrationId, calibrationVersion, nominalUnitId);
+
     private WorldState CheckedSnapshot
     {
         get
