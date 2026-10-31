@@ -1,0 +1,41 @@
+name: GA-VS36 Scalar Physical Route Selection
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/ScalarPhysicalRouteProjection.cs'
+      - 'GlobalArena.Tests/GaVs36ScalarPhysicalRouteTests.cs'
+      - 'docs/engineering/GA-VS36-scalar-physical-route-selection.md'
+      - '.github/workflows/ga-vs36-scalar-route.yml'
+  workflow_dispatch:
+
+jobs:
+  scalar-route-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Variable-cost Goldberg path and old movement behavior
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "FullyQualifiedName~GaVs36|FullyQualifiedName~GaVs35|FullyQualifiedName~GaVs34"
+      - name: Godot Release build
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  scalar-route-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Full simulation and kernel regression on Windows
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: Godot Debug build
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
