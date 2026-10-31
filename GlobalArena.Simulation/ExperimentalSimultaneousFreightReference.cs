@@ -314,12 +314,13 @@ public sealed class ExperimentalSimultaneousFreightReference
             var improved = false;
             for (var i = 0; i < rows.Length; i++)
             {
-                var winningChoice = selected[i];
+                var originalChoice = selected[i];
+                var winningChoice = originalChoice;
                 var winningValue = coordinated.NetEconomicValue;
                 ExperimentalSimultaneousFreightAllocation? winning = null;
                 for (var candidate = 0; candidate < choices[i].Length; candidate++)
                 {
-                    if (candidate == selected[i]) continue;
+                    if (candidate == originalChoice) continue;
                     selected[i] = candidate;
                     var alternative = Evaluate(selected);
                     if (alternative is null ||
