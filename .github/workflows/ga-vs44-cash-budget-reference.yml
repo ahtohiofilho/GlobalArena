@@ -1,0 +1,46 @@
+name: GA-VS44 Cash-Only Buyer Budget Reference
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/ExperimentalBuyerCashBudgetSnapshot.cs'
+      - 'GlobalArena.Simulation/ExperimentalSimultaneousFreightReference.cs'
+      - 'GlobalArena.Tests/GaVs44CashBudgetFeasibilityTests.cs'
+      - 'GlobalArena.Benchmarks/GaVs44CashBudgetBenchmarkHarness.cs'
+      - 'GlobalArena.Benchmarks/Program.cs'
+      - 'docs/engineering/GA-VS44-cash-budget-feasibility.md'
+      - '.github/workflows/ga-vs44-cash-budget-reference.yml'
+  workflow_dispatch:
+
+jobs:
+  cash-budget-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: VS44 cash budget gate and VS43-VS40 freight regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "FullyQualifiedName~GaVs44|FullyQualifiedName~GaVs43|FullyQualifiedName~GaVs42|FullyQualifiedName~GaVs41|FullyQualifiedName~GaVs40"
+      - name: Multi-buyer cash constrained benchmark
+        run: dotnet run --project GlobalArena.Benchmarks/GlobalArena.Benchmarks.csproj -c Release -- --vs44-cash-budget
+      - name: Godot Mono Release build
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  cash-budget-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Complete cash, production, economy, save and movement regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: Godot Mono Debug build
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
