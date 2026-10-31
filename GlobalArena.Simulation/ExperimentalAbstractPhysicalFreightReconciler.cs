@@ -84,6 +84,7 @@ public sealed class ExperimentalAbstractPhysicalFreightReconciler
         IEnumerable<ExperimentalAbstractNominalDeliveredQuote> nominalQuotes,
         ExperimentalAbstractPriceFreightCalibrationPolicy calibrationPolicy,
         string physicalFreightNominalUnitId,
+        IEnumerable<ExperimentalSimultaneousFreightLane> offeredLanes,
         IEnumerable<ExperimentalAbstractPhysicalFreightDelivery> selectedDeliveries,
         ExperimentalSharedFreightCongestionPolicy congestionPolicy)
     {
@@ -92,6 +93,7 @@ public sealed class ExperimentalAbstractPhysicalFreightReconciler
         ArgumentNullException.ThrowIfNull(commodityCatalog);
         ArgumentNullException.ThrowIfNull(nominalQuotes);
         ArgumentNullException.ThrowIfNull(calibrationPolicy);
+        ArgumentNullException.ThrowIfNull(offeredLanes);
         ArgumentNullException.ThrowIfNull(selectedDeliveries);
         ArgumentNullException.ThrowIfNull(congestionPolicy);
 
@@ -123,6 +125,45 @@ public sealed class ExperimentalAbstractPhysicalFreightReconciler
                 "The physical provenance cannot contain duplicate service identities.",
                 nameof(purchasing));
 
+
+
+        // ServiceId alone is not a route/cost commitment: the original VS52
+        // list keeps only economic identity. Require the full caller-supplied
+        // offered service objects from that SAME physical projection context.
+        // Never accept a different pricing/path object with a reused ID.
+        var offered = new Dictionary<(EconomicPointId Source,
+            EconomicPointId Buyer, CommodityId Commodity,
+            EconomicActivityKind Activity, ulong ServiceId),
+            ExperimentalSharedFreightOption>();
+        var offeredCarriers = new HashSet<(EconomicPointId Source,
+            EconomicPointId Destination, ulong ServiceId)>();
+        foreach (var lane in offeredLanes)
+        {
+            if (lane is null || !supply.ContainsKey((
+                    lane.Supply.EconomicPointId, lane.Supply.CommodityId,
+                    lane.Supply.Activity)) ||
+                !demand.ContainsKey((
+                    lane.Demand.EconomicPointId, lane.Demand.CommodityId)))
+                throw new ArgumentException(
+                    "Physical offers must refer to exactly current supply/demand.",
+                    nameof(offeredLanes));
+            foreach (var service in lane.Services)
+            {
+                var key = (lane.Supply.EconomicPointId,
+                    lane.Demand.EconomicPointId, lane.Supply.CommodityId,
+                    lane.Supply.Activity, service.ServiceId);
+                if (!offered.TryAdd(key, service) ||
+                    !offeredCarriers.Add((key.Item1, key.Item2, key.Item5)))
+                    throw new ArgumentException(
+                        "Physical service identities must be uniquely offered.",
+                        nameof(offeredLanes));
+            }
+        }
+        if (!offeredCarriers.SetEquals(knownCarriers))
+            throw new ArgumentException(
+                "Full offered services must match the VS52 unresolved-service identity snapshot.",
+                nameof(offeredLanes));
+
         var quotes = calibration.Quotes.ToDictionary(
             x => (x.Buyer, x.Commodity));
         var batches = new List<ExperimentalSharedFreightLot>();
@@ -145,6 +186,10 @@ public sealed class ExperimentalAbstractPhysicalFreightReconciler
                     shipment.Source, shipment.Buyer, shipment.Service.ServiceId)) ||
                 shipment.Service.RouteKey.SourceEconomicPointId != shipment.Source ||
                 shipment.Service.RouteKey.DestinationEconomicPointId != shipment.Buyer ||
+                !offered.TryGetValue((shipment.Source, shipment.Buyer,
+                    shipment.Commodity, shipment.Activity,
+                    shipment.Service.ServiceId), out var originalService) ||
+                !ReferenceEquals(originalService, shipment.Service) ||
                 !quotes.TryGetValue((shipment.Buyer, shipment.Commodity), out var quote) ||
                 !commodityCatalog.TryGet(shipment.Commodity, out var commodity) ||
                 commodity is null || commodity.GramsPerFlowUnit == 0)
