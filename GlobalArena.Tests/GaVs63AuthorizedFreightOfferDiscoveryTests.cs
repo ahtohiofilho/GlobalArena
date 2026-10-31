@@ -171,6 +171,26 @@ public sealed class GaVs63AuthorizedFreightOfferDiscoveryTests
     }
 
     [Fact]
+    public void UnrelatedConstructedTechnologyDoesNotInvalidateSingleModeRouting()
+    {
+        var (f, previous, _, _) = Prepared();
+        var foreignTechnology = new EconomicTransportBuiltAsset(
+            32, 202, f.Asset.FineGeographicEdgeId!.Value, 7, true);
+        f.Session.TransportNetwork.Construct(
+            foreignTechnology, f.Grant().InfrastructureOwner);
+        Assert.Throws<InvalidOperationException>(() =>
+            previous.RequireCurrent(f.Session));
+        var sites = f.Session.DiscoverPrimitiveEconomicSites(SitePolicy());
+        Assert.Equal(2, f.Session.TransportNetwork.InstalledAssets.Count);
+        var save = f.Session.ExportSaveJson();
+        var discovered = Discover(f.Session, sites);
+        Assert.Single(discovered.Services);
+        Assert.Equal(31UL, Assert.Single(discovered.Services[0].Offer.AssetPath));
+        Assert.Equal(save, f.Session.ExportSaveJson());
+        discovered.RequireCurrent(f.Session);
+    }
+
+    [Fact]
     public void NewWorkerAllocationInvalidatesOfferInventoryAndRecomputesCapacities()
     {
         var (f, sites, source, _) = Prepared();
