@@ -1,0 +1,46 @@
+name: GA-VS47 Audited Cash Selection And Authorization Lab
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/ExperimentalCashAuthorizationSnapshot.cs'
+      - 'GlobalArena.Simulation/ExperimentalAuditedCashCandidateAuthorization.cs'
+      - 'GlobalArena.Tests/GaVs47AuditedCashAuthorizationTests.cs'
+      - 'GlobalArena.Benchmarks/GaVs47AuditedSelectionBenchmarkHarness.cs'
+      - 'GlobalArena.Benchmarks/Program.cs'
+      - 'docs/engineering/GA-VS47-audited-cash-selection-authorization.md'
+      - '.github/workflows/ga-vs47-audited-selection-authorization.yml'
+  workflow_dispatch:
+
+jobs:
+  audited-selection-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: VS47 candidate policy and VS40-VS46 economic regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "FullyQualifiedName~GaVs47|FullyQualifiedName~GaVs46|FullyQualifiedName~GaVs45|FullyQualifiedName~GaVs44|FullyQualifiedName~GaVs43|FullyQualifiedName~GaVs42|FullyQualifiedName~GaVs41|FullyQualifiedName~GaVs40"
+      - name: Audited multi-candidate selection benchmark
+        run: dotnet run --project GlobalArena.Benchmarks/GlobalArena.Benchmarks.csproj -c Release -- --vs47-audited-selection
+      - name: Godot Mono Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  audited-selection-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Full economic, financial, physical, save and tactical regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: Godot Mono Debug
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
