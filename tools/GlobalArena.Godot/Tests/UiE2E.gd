@@ -69,6 +69,8 @@ func _run() -> void:
     var remote_target := app.find_child("GAQARemoteDestination", true, false) as SpinBox
     var remote_button := _button(app, "GAQAPreviewRemoteRoute")
     var remote_order := _button(app, "GAQAOrderRemoteJourney")
+    var food_assessment := _button(app, "GAQAAssessJourneyFood")
+    var food_assessment_result := _label(app, "GAQAJourneySupplyResult")
     var remote_result := _label(app, "GAQARemoteRouteResult")
     var order_move := _button(app, "GAQAMoveWorkers")
     var reassign := _button(app, "GAQAReassign")
@@ -79,7 +81,8 @@ func _run() -> void:
     for node in [inspect, source, destination, quantity, status, settlements,
             cycle_report, preview, food, compare, diagnose, survey,
             survey_result, plan_destination, advanced_toggle, remote_target,
-            remote_button, remote_order, remote_result, order_move, reassign, five,
+            remote_button, remote_order, remote_result, food_assessment,
+            food_assessment_result, order_move, reassign, five,
             one, save, load_save]:
         if not _require(node != null, "expected named production control missing"):
             return
@@ -289,6 +292,19 @@ func _run() -> void:
     print("GA_UI_E2E_REAL_REMOTE_DESTINATION_SELECTED_OK tile=" +
             str(selected_remote_tile))
 
+    _press(food_assessment)
+    await process_frame
+    if not _require(food_assessment_result.visible and
+            food_assessment_result.text.contains("PROPOSTA") and
+            food_assessment_result.text.contains("demanda alimentar dos viajantes") and
+            food_assessment_result.text.contains("Produção não realizada") and
+            food_assessment_result.text.contains("NÃO RESERVA") and
+            status.text.contains("turno 5") and
+            status.text.contains("Viagens: nenhuma em andamento."),
+            "VS30 food/opportunity planning was not read-only or did not display"):
+        return
+    print("GA_UI_E2E_SUPPLY_DIAGNOSIS_READ_ONLY_OK")
+
     _press(remote_order)
     await process_frame
     if not _require(status.text.contains("ORDEM GLOBAL ÚNICA") and
@@ -298,6 +314,17 @@ func _run() -> void:
             "VS29 one-order remote travel button failed to commit physical journey"):
         return
     print("GA_UI_E2E_LONG_JOURNEY_ISSUED_OK")
+
+    _press(food_assessment)
+    await process_frame
+    if not _require(food_assessment_result.visible and
+            food_assessment_result.text.contains("VIAGEM ATIVA") and
+            food_assessment_result.text.contains("demanda alimentar dos viajantes") and
+            status.text.contains("Em viagem longa: 1 pessoas") and
+            settlements.text.contains("viajando 1"),
+            "VS30 active journey nutrition diagnostic modified travelling workforce"):
+        return
+    print("GA_UI_E2E_ACTIVE_SUPPLY_DIAGNOSIS_OK")
 
     _press(save)
     await process_frame
@@ -319,5 +346,15 @@ func _run() -> void:
             "VS29 V15 replay did not restore ongoing physical journey"):
         return
     print("GA_UI_E2E_LONG_JOURNEY_V15_REOPEN_OK")
+
+    _press(food_assessment)
+    await process_frame
+    if not _require(food_assessment_result.visible and
+            food_assessment_result.text.contains("VIAGEM ATIVA") and
+            status.text.contains("turno 5") and
+            status.text.contains("Em viagem longa: 1 pessoas"),
+            "VS30 supply diagnostic failed V15 save/reopen or mutated timeline"):
+        return
+    print("GA_UI_E2E_SUPPLY_DIAGNOSIS_V15_REOPEN_OK")
     print("GA_UI_E2E_PASS main_scene=Main.tscn signals=real godot=4.7.2")
     quit(0)
