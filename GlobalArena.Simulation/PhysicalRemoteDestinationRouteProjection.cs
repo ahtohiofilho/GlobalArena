@@ -77,8 +77,8 @@ public static class PhysicalRemoteDestinationRouteProjection
         if (!session.IsPhysicalWorkableLand(destination.FineStrategicCellId))
             return Unavailable(PhysicalPrimitiveRouteAvailability.DestinationNeedsOtherTechnology);
 
-        // BFS gives the minimum number of primitive walking legs because every
-        // existing adjacent movement takes exactly two turns. Adjacency is
+        // BFS gives the minimum number of primitive walking legs because the
+        // existing movement timeline assigns an identical cost per edge. Adjacency is
         // enumerated in canonical tile-ID order, making equal-length paths
         // fully deterministic across platform and replay.
         var visited = new HashSet<PhysicalTacticalTileId> { origin };
@@ -107,12 +107,13 @@ public static class PhysicalRemoteDestinationRouteProjection
             reverse.Add(previous[reverse[^1]]);
         reverse.Reverse();
         var legs = checked((ulong)reverse.Count - 1UL);
-        const ulong existingPrimitiveTurnsPerLeg = 2UL;
-        var movementTurns = checked(legs * existingPrimitiveTurnsPerLeg);
+        var timeline = PhysicalMovementTimelines.ForExistingMode(session.MovementMode);
+        var arrival = timeline.RouteArrivalTurn(session.State.MovementTurn, legs);
+        var movementTurns = checked(arrival - session.State.MovementTurn);
         return new PhysicalRemoteDestinationRoute(
             origin, destination, fromJob, destinationJob, workers,
             PhysicalPrimitiveRouteAvailability.Walkable,
             Array.AsReadOnly(reverse.ToArray()), legs, movementTurns,
-            checked(session.State.MovementTurn + movementTurns));
+            arrival);
     }
 }
