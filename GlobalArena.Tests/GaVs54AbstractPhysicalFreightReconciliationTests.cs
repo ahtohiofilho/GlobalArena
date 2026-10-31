@@ -69,6 +69,7 @@ public sealed class GaVs54AbstractPhysicalFreightReconciliationTests
         public EconomicProductionDemandResult Flows { get; }
         public ExperimentalAbstractPurchasingProjection Purchasing { get; }
         public ExperimentalAbstractNominalDeliveredQuote[] Quotes { get; }
+        public ExperimentalSimultaneousFreightLane[] Lanes { get; }
         public ExperimentalAbstractPhysicalFreightDelivery[] Deliveries { get; }
 
         public Fixture(bool twoBuyers = false, bool sharedCorridor = true,
@@ -132,6 +133,7 @@ public sealed class GaVs54AbstractPhysicalFreightReconciliationTests
                         new[] { second })
                 };
 
+            Lanes = lanes;
             var buyerAnchors = twoBuyers
                 ? new[] {
                     new ExperimentalAbstractBuyerAnchor(
@@ -181,7 +183,7 @@ public sealed class GaVs54AbstractPhysicalFreightReconciliationTests
             FoodCommodityCatalog? catalog = null) =>
             new ExperimentalAbstractPhysicalFreightReconciler().Project(
                 Purchasing, Flows, catalog ?? Catalog(), quotes ?? Quotes,
-                policy ?? Policy(), freightUnit, deliveries ?? Deliveries, Shared);
+                policy ?? Policy(), freightUnit, Lanes, deliveries ?? Deliveries, Shared);
     }
 
     [Fact]
