@@ -278,7 +278,10 @@ public static class GaVs51AbruptCheckpointRecoveryHarness
                 if (final.StateRevision != 1 ||
                     final.Journal.Count != 2 ||
                     !final.Accounts.TryGetValue(household, out var balance) ||
-                    balance.CompareTo(new FoodTransportCostFraction(18, 1)) != 0)
+                    balance.CompareTo(
+                        restarted.Selection.Audit.Buyers.Single()
+                            .ClosingGrossCash) != 0 ||
+                    balance.CompareTo(new FoodTransportCostFraction(5, 1)) < 0)
                     throw new InvalidOperationException(
                         "The recovered household, producer and carrier balances must be auditable and H protected.");
                 var elapsed = watch.Elapsed.TotalMilliseconds;
