@@ -1,6 +1,12 @@
 using GlobalArena.Benchmarks;
 
 if (args.Any(argument =>
+    string.Equals(argument, "--vs54-physical-freight", StringComparison.Ordinal)))
+{
+    return GaVs54PhysicalFreightReconciliationBenchmarkHarness.Run();
+}
+
+if (args.Any(argument =>
     string.Equals(argument, "--vs53-calibration", StringComparison.Ordinal)))
 {
     return GaVs53AbstractPriceFreightCalibrationBenchmarkHarness.Run();
