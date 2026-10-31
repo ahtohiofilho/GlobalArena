@@ -69,6 +69,7 @@ func _run() -> void:
     var remote_target := app.find_child("GAQARemoteDestination", true, false) as SpinBox
     var remote_button := _button(app, "GAQAPreviewRemoteRoute")
     var remote_order := _button(app, "GAQAOrderRemoteJourney")
+    var paid_remote := _button(app, "GAQAOrderProvisionedJourney")
     var hypothetical_food := app.find_child("GAQAHypotheticalFood", true, false) as SpinBox
     var camp_button := _button(app, "GAQAForecastCampStops")
     var camp_result := _label(app, "GAQACampForecastResult")
@@ -84,7 +85,7 @@ func _run() -> void:
     for node in [inspect, source, destination, quantity, status, settlements,
             cycle_report, preview, food, compare, diagnose, survey,
             survey_result, plan_destination, advanced_toggle, remote_target,
-            remote_button, remote_order, remote_result, hypothetical_food,
+            remote_button, remote_order, paid_remote, remote_result, hypothetical_food,
             camp_button, camp_result, food_assessment,
             food_assessment_result, order_move, reassign, five,
             one, save, load_save]:
@@ -394,5 +395,35 @@ func _run() -> void:
             "VS30 supply diagnostic failed V15 save/reopen or mutated timeline"):
         return
     print("GA_UI_E2E_SUPPLY_DIAGNOSIS_V15_REOPEN_OK")
+
+    # V16 is an EXECUTABLE cash purchase, not the VS32 hypothetical cargo.
+    # This E2E has no guarantee that its small initial society accumulated
+    # enough producer stock. Either explicit, atomic refusal or full paid
+    # departure is permitted; the xUnit economic gate proves the funded case.
+    _press(paid_remote)
+    await process_frame
+    var paid_ok := status.text.contains("V16 COMPRADO E EMBARCADO")
+    var paid_refused := status.text.contains("V16 COMPRA/VIAGEM RECUSADA")
+    if not _require(paid_ok or paid_refused,
+            "VS33 paid departure neither committed nor refused atomically"):
+        return
+    if paid_ok:
+        _press(save)
+        await process_frame
+        if not _require(status.text.contains("SAVE EXPEDIÇÃO V16 GRAVADO"),
+                "VS33 paid trip save V16 failed"):
+            return
+        _press(load_save)
+        await process_frame
+        if not _require(status.text.contains("V16 REABERTO"),
+                "VS33 paid trip V16 replay failed in actual Godot"):
+            return
+        print("GA_UI_E2E_VS33_PAID_DEPARTURE_V16_REOPEN_OK")
+    else:
+        if not _require(status.text.contains("turno 5") and
+                status.text.contains("Em viagem longa: 1 pessoas"),
+                "VS33 refused purchase changed previously restored V15 world"):
+            return
+        print("GA_UI_E2E_VS33_NO_UNPAID_FOOD_OK")
     print("GA_UI_E2E_PASS main_scene=Main.tscn signals=real godot=4.7.2")
     quit(0)
