@@ -444,7 +444,7 @@ public partial class Main
                 "Previsão condicional: nenhuma ação aplicada. Para confirmar, " +
                 "use MUDAR ATIVIDADE NO TILE. Não é uma estimativa de PIB.";
             _workerDecisionPreview.Visible = true;
-            if (_canonicalPhysicalLab.CurrentHash != sourceHash)
+            if (!_canonicalPhysicalLab.CurrentHash.Equals(sourceHash))
                 throw new InvalidOperationException(
                     "Hypothetical preview unexpectedly modified the live game.");
             GD.Print($"GA_VS24_LABOR_DECISION_PREVIEW tile={forecast.Tile.FineStrategicCellId.Value} " +
