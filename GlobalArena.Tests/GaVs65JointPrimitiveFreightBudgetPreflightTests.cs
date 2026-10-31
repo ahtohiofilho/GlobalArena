@@ -200,8 +200,10 @@ public sealed class GaVs65JointPrimitiveFreightBudgetPreflightTests
             "GA-VS56-NOMINAL-LAB");
         var renewed = newPortfolio.PreviewJointBudget(
             ThreeLots(newPortfolio), Prices(newSites), Purchasing(), Congestion());
-        Assert.Equal(old.Buyers.Buyers.Select(x => x.TotalCommitment),
-            renewed.Buyers.Buyers.Select(x => x.TotalCommitment));
+        Assert.Equal(old.Buyers.Buyers.Select(x =>
+            (x.Buyer, x.TotalCommitment.Numerator, x.TotalCommitment.Denominator)),
+            renewed.Buyers.Buyers.Select(x =>
+            (x.Buyer, x.TotalCommitment.Numerator, x.TotalCommitment.Denominator)));
         Assert.Equal(saved, restored.ExportSaveJson());
         f.Session.TransportNetwork.SetAccess(f.Asset.GeographicEdgeId, false);
         Assert.Throws<InvalidOperationException>(() => old.RequireCurrent(f.Session));
@@ -220,9 +222,15 @@ public sealed class GaVs65JointPrimitiveFreightBudgetPreflightTests
             proposals.Reverse(), Prices(sites).Reverse(),
             Purchasing(), Congestion());
         Assert.Equal(first.Lots, second.Lots);
-        Assert.Equal(first.Buyers.Buyers, second.Buyers.Buyers);
-        Assert.Equal(first.Freight.TotalCost, second.Freight.TotalCost);
-        Assert.Equal(first.Freight.CorridorLoads, second.Freight.CorridorLoads);
+        Assert.Equal(first.Buyers.Buyers.Select(x =>
+            (x.Buyer, x.TotalCommitment.Numerator, x.TotalCommitment.Denominator,
+                x.RemainingSpendableCash.Numerator, x.RemainingSpendableCash.Denominator)),
+            second.Buyers.Buyers.Select(x =>
+            (x.Buyer, x.TotalCommitment.Numerator, x.TotalCommitment.Denominator,
+                x.RemainingSpendableCash.Numerator, x.RemainingSpendableCash.Denominator)));
+        Assert.Equal(0, first.Freight.TotalCost.CompareTo(second.Freight.TotalCost));
+        Assert.Equal(first.Freight.CorridorLoads.OrderBy(x => x.Key.ToString()),
+            second.Freight.CorridorLoads.OrderBy(x => x.Key.ToString()));
         first.RequireCurrent(f.Session);
     }
 }
