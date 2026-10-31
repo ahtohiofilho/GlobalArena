@@ -258,14 +258,14 @@ public sealed class GaVs48AtomicCashSettlementTests
     }
 
     [Fact]
-    public void SameDecisionConcurrentRetriesAreSerializedAndIdempotent()
+    public async Task SameDecisionConcurrentRetriesAreSerializedAndIdempotent()
     {
         var f = new Fixture();
         var lab = f.Lab();
         var results = Enumerable.Range(0, 16)
             .Select(_ => Task.Run(() => f.Commit(lab)))
             .ToArray();
-        Task.WaitAll(results);
+        await Task.WhenAll(results);
         Assert.Equal(1, results.Count(x => !x.Result.WasAlreadyCommitted));
         Assert.Equal(15, results.Count(x => x.Result.WasAlreadyCommitted));
         Assert.Equal(1UL, lab.Inspect().StateRevision);
