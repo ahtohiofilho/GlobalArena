@@ -302,7 +302,7 @@ public sealed class GaVs56BuiltNetworkInstitutionalRightsTests
             17, f.Option.RouteKey,
             new ExperimentalFreightTechnologyPricing(
                 101, 7, 56, ExperimentalLandInfrastructureKind.StoneRoad,
-                17, 0, 0, 0, 1_000_000, 1_000, 1_000_000),
+                17, 0, 0, 13, 1_000_000, 1_000, 1_000_000),
             f.Option.Pricing.GeographicBaseNumerator,
             f.Option.Corridors);
         Assert.Throws<InvalidOperationException>(() => f.Run(
