@@ -163,7 +163,15 @@ public static class GaVs49RecoverableCheckpointBenchmarkHarness
                 var elapsed = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
                 var bytes = GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
                 if (committed.WasAlreadyCommitted || !replay.WasAlreadyCommitted ||
-                    committed.Proof != replay.Proof ||
+                    committed.Proof.CommittedBalancesDigest !=
+                        replay.Proof.CommittedBalancesDigest ||
+                    committed.Proof.AuditJournalDigest !=
+                        replay.Proof.AuditJournalDigest ||
+                    committed.Proof.DecisionId != replay.Proof.DecisionId ||
+                    committed.Proof.OpeningMoney.CompareTo(
+                        replay.Proof.OpeningMoney) != 0 ||
+                    committed.Proof.ClosingMoney.CompareTo(
+                        replay.Proof.ClosingMoney) != 0 ||
                     inspected.StateRevision != 1 ||
                     inspected.Journal.Count != count * 2 ||
                     inspected.Accounts.Count != count * 3 ||
