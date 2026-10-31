@@ -24,6 +24,7 @@ public partial class Main
     private Label? _workerLabHover;
     private Label? _workerLabDetails;
     private Label? _settlementSummary;
+    private Label? _economicCycleSummary;
     private VBoxContainer? _workerLabAdvancedPanel;
     private Button? _workerMoveButton;
     private Button? _workerReassignButton;
@@ -43,7 +44,7 @@ public partial class Main
 
         var title = new Label
         {
-            Text = "ATIVIDADES LOCAIS | VS21",
+            Text = "CICLOS ECONÔMICOS VISÍVEIS | VS22",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         title.AddThemeFontSizeOverride("font_size", 16);
@@ -121,6 +122,19 @@ public partial class Main
         var nextTurn = new Button { Text = "AVANÇAR TURNO DE MOVIMENTO (CICLOS ADAPTATIVOS)" };
         nextTurn.Pressed += AdvanceOfflineLabTurn;
         lab.AddChild(nextTurn);
+        var toNextCycle = new Button
+        {
+            Text = "AVANÇAR ATÉ O PRÓXIMO CICLO ECONÔMICO"
+        };
+        toNextCycle.Pressed += AdvanceOfflineLabToNextEconomicCycle;
+        lab.AddChild(toNextCycle);
+        _economicCycleSummary = new Label
+        {
+            Text = "CICLO ECONÔMICO | aguardando inspeção do povoamento.",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        _economicCycleSummary.AddThemeColorOverride("font_color", new Color("#d4e9f3"));
+        lab.AddChild(_economicCycleSummary);
 
         var persistence = new HBoxContainer();
         lab.AddChild(persistence);
@@ -405,6 +419,33 @@ public partial class Main
         }
     }
 
+    private void AdvanceOfflineLabToNextEconomicCycle()
+    {
+        if (_canonicalPhysicalLab is null || _canonicalSession is null ||
+            _workerLabStatus is null) return;
+        try
+        {
+            var plan = PhysicalEconomicCycleProgression.Preview(_canonicalPhysicalLab);
+            var settled = PhysicalEconomicCycleProgression.AdvanceToNext(_canonicalPhysicalLab);
+            AttachRuntimeState(_canonicalSession.Snapshot);
+            UpdateWorkerLabHud();
+            GD.Print($"GA_VS22_ECONOMIC_CYCLE_ADVANCED from={plan.CurrentMovementTurn} " +
+                $"to={settled.MovementTurn} steps={plan.MovementTurnsToAdvance} " +
+                $"cycles={_canonicalPhysicalLab.State.Cycles.Count} " +
+                $"hash={_canonicalPhysicalLab.CurrentHash.HexDigest}");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or OverflowException)
+        {
+            // An underlying single-turn failure may have committed earlier
+            // ticks. Always refresh from the authoritative state, never
+            // imply a rollback of already journaled movement turns.
+            AttachRuntimeState(_canonicalSession.Snapshot);
+            UpdateWorkerLabHud();
+            _workerLabStatus.Text += "\nAVANÇO INTERROMPIDO: " + ex.Message +
+                " (verifique o turno efetivamente alcançado).";
+        }
+    }
+
     private static string BornCivilizationLabSavePath =>
         ProjectSettings.GlobalizePath("user://ga-vs19b-born-civilization.json");
     private static string TimedLabSavePath =>
@@ -681,6 +722,20 @@ public partial class Main
         var stockStone = _canonicalPhysicalLab.StockAt(origin, new CommodityId(2U));
         var stockWood = _canonicalPhysicalLab.StockAt(origin, new CommodityId(3U));
         var lastCycle = state.Cycles.LastOrDefault();
+        var nextEconomicCycle = PhysicalEconomicCycleProgression.Preview(_canonicalPhysicalLab);
+        if (_economicCycleSummary is not null)
+        {
+            var cyclePulse = lastCycle is null
+                ? "Nenhum ciclo liquidado."
+                : $"Último ciclo, turno {lastCycle.MovementTurn}: " +
+                  $"produção física agregada {lastCycle.ProducedRaw / 1_000_000.0:F2} | " +
+                  $"alimento consumido {lastCycle.FoodConsumedRaw / 1_000_000.0:F2} | " +
+                  $"falta de alimento {lastCycle.FoodUnmetRaw / 1_000_000.0:F2}";
+            _economicCycleSummary.Text =
+                $"CICLOS ECONÔMICOS {state.Cycles.Count} | próximo no turno " +
+                $"{nextEconomicCycle.SettlementTurn} " +
+                $"({nextEconomicCycle.MovementTurnsToAdvance} movimentos)\n" + cyclePulse;
+        }
         var interval = _canonicalPhysicalLab.NextEconomicInterval;
         var nextTurn = checked(state.MovementTurn + 1UL);
         var cadenceInfo = _canonicalPhysicalLab.CadenceMode == PhysicalEconomicCadenceMode.AdaptiveThirty
