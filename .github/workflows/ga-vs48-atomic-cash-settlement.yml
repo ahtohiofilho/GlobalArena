@@ -1,0 +1,45 @@
+name: GA-VS48 Atomic and Idempotent Cash Settlement Lab
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/ExperimentalAtomicCashSettlementLab.cs'
+      - 'GlobalArena.Tests/GaVs48AtomicCashSettlementTests.cs'
+      - 'GlobalArena.Benchmarks/GaVs48AtomicSettlementBenchmarkHarness.cs'
+      - 'GlobalArena.Benchmarks/Program.cs'
+      - 'docs/engineering/GA-VS48-atomic-idempotent-cash-settlement-lab.md'
+      - '.github/workflows/ga-vs48-atomic-cash-settlement.yml'
+  workflow_dispatch:
+
+jobs:
+  atomic-settle-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: VS48 atomic/no-credit settlement and VS40-VS47 economic contracts
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "FullyQualifiedName~GaVs48|FullyQualifiedName~GaVs47|FullyQualifiedName~GaVs46|FullyQualifiedName~GaVs45|FullyQualifiedName~GaVs44|FullyQualifiedName~GaVs43|FullyQualifiedName~GaVs42|FullyQualifiedName~GaVs41|FullyQualifiedName~GaVs40"
+      - name: In-memory settlement, replay and conservation benchmark
+        run: dotnet run --project GlobalArena.Benchmarks/GlobalArena.Benchmarks.csproj -c Release -- --vs48-atomic-settlement
+      - name: Godot Mono Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  atomic-settle-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Full saved-world, finance, logistics and tactical regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: Godot Mono Debug
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug

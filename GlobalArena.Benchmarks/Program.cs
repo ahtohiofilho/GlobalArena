@@ -1,6 +1,12 @@
 using GlobalArena.Benchmarks;
 
 if (args.Any(argument =>
+    string.Equals(argument, "--vs48-atomic-settlement", StringComparison.Ordinal)))
+{
+    return GaVs48AtomicSettlementBenchmarkHarness.Run();
+}
+
+if (args.Any(argument =>
     string.Equals(argument, "--vs47-audited-selection", StringComparison.Ordinal)))
 {
     return GaVs47AuditedSelectionBenchmarkHarness.Run();
