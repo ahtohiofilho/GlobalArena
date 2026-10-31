@@ -45,7 +45,7 @@ public sealed class ExperimentalTransportInstitutionalRegistry
 {
     public string RegistryId { get; }
     public ulong RegistryVersion { get; }
-    public string WorldStateHash { get; }
+    public WorldStateHash WorldStateHash { get; }
     public ulong NetworkRevision { get; }
     public string PurchasingPolicyId { get; }
     public ulong PurchasingPolicyVersion { get; }
@@ -56,14 +56,14 @@ public sealed class ExperimentalTransportInstitutionalRegistry
 
     public ExperimentalTransportInstitutionalRegistry(
         string registryId, ulong registryVersion,
-        string worldStateHash, ulong networkRevision,
+        WorldStateHash worldStateHash, ulong networkRevision,
         string purchasingPolicyId, ulong purchasingPolicyVersion,
         string calibrationId, ulong calibrationVersion,
         string nominalQuoteUnitId,
         IEnumerable<ExperimentalTransportServiceEntitlement> entitlements)
     {
         if (string.IsNullOrWhiteSpace(registryId) || registryVersion == 0 ||
-            string.IsNullOrWhiteSpace(worldStateHash) || networkRevision == 0 ||
+            worldStateHash.FormatVersion == 0 || networkRevision == 0 ||
             string.IsNullOrWhiteSpace(purchasingPolicyId) ||
             purchasingPolicyVersion == 0 ||
             string.IsNullOrWhiteSpace(calibrationId) ||
@@ -178,8 +178,7 @@ public sealed class ExperimentalTransportInstitutionalFreightProjector
         ArgumentNullException.ThrowIfNull(authority);
 
         var currentHash = session.CurrentHash;
-        if (!string.Equals(registry.WorldStateHash, currentHash,
-                StringComparison.Ordinal) ||
+        if (registry.WorldStateHash != currentHash ||
             !string.Equals(registry.PurchasingPolicyId,
                 purchasing.PolicyId, StringComparison.Ordinal) ||
             registry.PurchasingPolicyVersion != purchasing.PolicyVersion ||
@@ -335,8 +334,7 @@ public sealed class ExperimentalTransportInstitutionalFreightProjector
             throw new InvalidOperationException(
                 "Institutional freight must conserve the exact VS54 per-buyer charges.");
 
-        if (!string.Equals(session.CurrentHash, currentHash,
-                StringComparison.Ordinal))
+        if (session.CurrentHash != currentHash)
             throw new InvalidOperationException(
                 "Institutional projection observed a changing physical world.");
 
