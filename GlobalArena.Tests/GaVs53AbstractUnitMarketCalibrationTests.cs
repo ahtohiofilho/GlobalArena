@@ -266,7 +266,16 @@ public sealed class GaVs53AbstractUnitMarketCalibrationTests
         var b = f.Preview(prices: f.Prices.Reverse().ToArray(),
             freight: f.Freight.Reverse().ToArray(),
             lanes: f.Lanes.Reverse().ToArray());
-        Assert.Equal(a.DeliveredPrices, b.DeliveredPrices);
+        Assert.Equal(a.DeliveredPrices.Count, b.DeliveredPrices.Count);
+        for (var i = 0; i < a.DeliveredPrices.Count; i++)
+        {
+            Assert.Equal(a.DeliveredPrices[i].Buyer, b.DeliveredPrices[i].Buyer);
+            Assert.Equal(a.DeliveredPrices[i].Commodity, b.DeliveredPrices[i].Commodity);
+            Assert.Equal(a.DeliveredPrices[i].FreightService,
+                b.DeliveredPrices[i].FreightService);
+            Assert.Equal(0, a.DeliveredPrices[i].AbstractDeliveredPerWholeFlowUnit
+                .CompareTo(b.DeliveredPrices[i].AbstractDeliveredPerWholeFlowUnit));
+        }
         Assert.Equal(a.Alpha.ProjectedDemand.Select(x => x.RawQuantity),
             b.Alpha.ProjectedDemand.Select(x => x.RawQuantity));
         Assert.Equal(a.Purchasing.UnresolvedCarriers,
