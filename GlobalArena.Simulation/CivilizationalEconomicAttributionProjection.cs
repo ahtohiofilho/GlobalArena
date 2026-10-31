@@ -72,6 +72,9 @@ public sealed class CivilizationalEconomicAttributionProjection
             .Concat(physical.Transits.Select(x =>
                 new CivilizationalWorkerAttribution(
                     civilization, x.Source, x.FromJob, x.Workers, true)))
+            .Concat(physical.LongTrips.Select(x =>
+                new CivilizationalWorkerAttribution(
+                    civilization, x.Source, x.FromJob, x.Workers, true)))
             .OrderBy(x => x.Tile.FineStrategicCellId.Value)
             .ThenBy(x => (byte)x.Activity).ThenBy(x => x.InTransit).ToArray();
         var accountLedger = physical.FoodCash

@@ -48,6 +48,11 @@ public sealed class TacticalWorkerMarkerProjection
         var journeys = state.Transits.Select(x => new TacticalWorkerTravelMarker(
                 x.OrderId, x.Source, x.Destination, x.Workers, x.DepartureTurn,
                 x.ArrivalTurn, state.MovementTurn))
+            .Concat(state.LongTrips.Select(x => new TacticalWorkerTravelMarker(
+                x.OrderId, x.Route[x.CompletedLegs],
+                x.Route[x.CompletedLegs + 1], x.Workers,
+                x.NextLegCompletionTurn - 2UL, x.NextLegCompletionTurn,
+                state.MovementTurn)))
             .OrderBy(x => x.OrderId).ToArray();
         if (groups.Aggregate(0UL, (sum, x) => checked(sum + x.Workers)) +
             journeys.Aggregate(0UL, (sum, x) => checked(sum + x.Workers))

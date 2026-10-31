@@ -49,7 +49,7 @@ public partial class Main
 
         var title = new Label
         {
-            Text = "PLANEJAMENTO TÁTICO | VS28",
+            Text = "PLANEJAMENTO TÁTICO | VS29",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         title.AddThemeFontSizeOverride("font_size", 16);
@@ -282,6 +282,13 @@ public partial class Main
         };
         previewRemote.Pressed += PreviewRemotePhysicalRoute;
         _workerLabAdvancedPanel.AddChild(previewRemote);
+        var orderRemote = new Button
+        {
+            Name = "GAQAOrderRemoteJourney",
+            Text = "ORDENAR VIAGEM LONGA ATÉ DESTINO FINAL"
+        };
+        orderRemote.Pressed += OrderRemotePhysicalJourney;
+        _workerLabAdvancedPanel.AddChild(orderRemote);
         _remoteRoutePreview = new Label
         {
             Name = "GAQARemoteRouteResult",
@@ -543,6 +550,43 @@ public partial class Main
             _adjacentSurveyPreview.Text =
                 "Seleção de destino recusada (partida preservada): " + ex.Message;
             _adjacentSurveyPreview.Visible = true;
+        }
+    }
+
+    private void OrderRemotePhysicalJourney()
+    {
+        if (_canonicalPhysicalLab is null || _canonicalSession is null ||
+            _workerOrigin is null || _workerFromJob is null ||
+            _workerToJob is null || _workerAmount is null ||
+            _remoteDestinationTileId is null || _workerLabStatus is null)
+            return;
+        try
+        {
+            var target = new PhysicalTacticalTileId(
+                _canonicalPhysicalLab.State.FineParameters,
+                new StrategicCellId(checked((ulong)_remoteDestinationTileId.Value)));
+            var trip = _canonicalPhysicalLab.OrderLongDistanceTransit(
+                _workerOrigin.Value, target,
+                (EconomicActivityKind)_workerFromJob.GetSelectedId(),
+                (EconomicActivityKind)_workerToJob.GetSelectedId(),
+                checked((ulong)_workerAmount.Value));
+            AttachRuntimeState(_canonicalSession.Snapshot);
+            UpdateWorkerLabHud();
+            _workerLabStatus.Text +=
+                $"\nORDEM GLOBAL ÚNICA {trip.OrderId}: " +
+                $"{trip.TotalLegs} trechos, {trip.Workers} trabalhadores; " +
+                $"chegada prevista turno {trip.ArrivalTurn}. " +
+                "Intermediários são passagem, não assentamentos.";
+            GD.Print($"GA_VS29_REMOTE_ORDER origin={trip.Source.FineStrategicCellId.Value} " +
+                $"destination={trip.Destination.FineStrategicCellId.Value} " +
+                $"legs={trip.TotalLegs} arrival={trip.ArrivalTurn} " +
+                $"hash={_canonicalPhysicalLab.CurrentHash.HexDigest}");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or
+                                   ArgumentException or OverflowException)
+        {
+            _workerLabStatus.Text +=
+                "\nORDEM GLOBAL RECUSADA (partida preservada): " + ex.Message;
         }
     }
 
@@ -883,6 +927,8 @@ public partial class Main
         }
     }
 
+    private static string RemoteJourneyLabSavePath =>
+        ProjectSettings.GlobalizePath("user://ga-vs29-remote-journey.json");
     private static string BornCivilizationLabSavePath =>
         ProjectSettings.GlobalizePath("user://ga-vs19b-born-civilization.json");
     private static string TimedLabSavePath =>
@@ -904,12 +950,14 @@ public partial class Main
         try
         {
             var content = _canonicalPhysicalLab.ExportSaveJson();
+            var isRemote = _canonicalPhysicalLab.State.RemoteRoutingEnabled;
             var isBorn = _canonicalPhysicalLab.HasInitialCivilization;
             var isTimed = _canonicalPhysicalLab.MovementMode == PhysicalWorkerMovementMode.TimedAdjacent;
             var isCash = _canonicalPhysicalLab.MarketMode == PhysicalFoodMarketMode.LocalCashSettlement;
             var isGeographic = _canonicalPhysicalLab.GeographyMode == PhysicalTacticalGeographyMode.Canonical01C;
             var isAdaptive = _canonicalPhysicalLab.CadenceMode == PhysicalEconomicCadenceMode.AdaptiveThirty;
-            var path = isBorn ? BornCivilizationLabSavePath :
+            var path = isRemote ? RemoteJourneyLabSavePath :
+                isBorn ? BornCivilizationLabSavePath :
                 isTimed ? TimedLabSavePath : isCash ? CashFoodLabSavePath : isGeographic ? GeographyLabSavePath :
                 isAdaptive ? AdaptiveLabSavePath : CanonicalLabSavePath;
             var temp = path + ".tmp";
@@ -946,7 +994,9 @@ public partial class Main
             _workerLabStatus.Text += cameraSaved
                 ? "\nCÂMERA TÁTICA SALVA: posição, zoom e orientação."
                 : "\nATENÇÃO: partida salva, mas a visão tática não pôde ser salva.";
-            _workerLabStatus.Text += isBorn
+            _workerLabStatus.Text += isRemote
+                ? "\nSAVE MULTITRECHO V15 GRAVADO: ga-vs29-remote-journey.json"
+                : isBorn
                 ? "\nSAVE CIVILIZACIONAL V14 GRAVADO: ga-vs19b-born-civilization.json"
                 : isTimed
                 ? "\nSAVE TEMPORAL V13 GRAVADO: ga-vs15-worker-transit.json"
@@ -972,18 +1022,20 @@ public partial class Main
         try
         {
             // Never silently downgrade on a damaged newer save.
-            var hasBorn = File.Exists(BornCivilizationLabSavePath);
+            var hasRemote = File.Exists(RemoteJourneyLabSavePath);
+            var hasBorn = !hasRemote && File.Exists(BornCivilizationLabSavePath);
             var hasTimed = !hasBorn && File.Exists(TimedLabSavePath);
             var hasCash = !hasBorn && !hasTimed && File.Exists(CashFoodLabSavePath);
             var hasGeography = !hasTimed && !hasCash && File.Exists(GeographyLabSavePath);
             var hasAdaptive = !hasCash && !hasGeography && File.Exists(AdaptiveLabSavePath);
             var hasCanonical = !hasCash && !hasGeography && !hasAdaptive && File.Exists(CanonicalLabSavePath);
-            var path = hasBorn ? BornCivilizationLabSavePath :
+            var path = hasRemote ? RemoteJourneyLabSavePath :
+                hasBorn ? BornCivilizationLabSavePath :
                 hasTimed ? TimedLabSavePath : hasCash ? CashFoodLabSavePath : hasGeography ? GeographyLabSavePath :
                 hasAdaptive ? AdaptiveLabSavePath :
                 hasCanonical ? CanonicalLabSavePath : LegacyLabSavePath;
             var content = File.ReadAllText(path, Encoding.UTF8);
-            var restored = hasBorn || hasTimed || hasCash || hasGeography || hasAdaptive || hasCanonical
+            var restored = hasRemote || hasBorn || hasTimed || hasCash || hasGeography || hasAdaptive || hasCanonical
                 ? CanonicalPhysicalTacticalSession.RestoreSaveJson(content)
                 : CanonicalPhysicalTacticalSession.MigrateVs07SaveJson(content);
             if (restored.State.CoarseParameters != new GoldbergParameters(3, 0) ||
@@ -1010,6 +1062,7 @@ public partial class Main
             }
             var origin = restored.State.Allocations.FirstOrDefault()?.TileId
                 ?? restored.State.Transits.FirstOrDefault()?.Source
+                ?? restored.State.LongTrips.FirstOrDefault()?.Source
                 ?? restored.InitialTile;
             var focus = restored.DisplayBucket(origin);
             // Visual and economic data must share the same fine-tile reference.
@@ -1036,7 +1089,9 @@ public partial class Main
             _workerLabStatus.Text += cameraRestored
                 ? "\nCÂMERA TÁTICA RESTAURADA: mesma posição e zoom do save."
                 : "\nVisão tática: enquadramento inicial (save antigo ou visão indisponível).";
-            _workerLabStatus.Text += hasBorn
+            _workerLabStatus.Text += hasRemote
+                ? "\nSAVE DE VIAGEM MULTITRECHO V15 REABERTO E VALIDADO."
+                : hasBorn
                 ? "\nSAVE CIVILIZACIONAL V14 REABERTO E VALIDADO."
                 : hasTimed
                 ? "\nSAVE TEMPORAL V13 REABERTO E VALIDADO."
@@ -1198,11 +1253,17 @@ public partial class Main
             $"Turno de movimento: {state.MovementTurn} | ciclos econômicos: {state.Cycles.Count} | ritmo: {cadenceInfo}";
         var transitInfo = state.MovementMode == PhysicalWorkerMovementMode.TimedAdjacent
             ? "EM TRÂNSITO: " + state.WorkersInTransit + " trabalhadores | " +
-              (state.Transits.Count == 0 ? "nenhuma viagem ativa\n" :
-                  string.Join(" | ", state.Transits.Select(x =>
+              (state.Transits.Count == 0 && state.LongTrips.Count == 0
+                  ? "nenhuma viagem ativa\n"
+                  : string.Join(" | ", state.Transits.Select(x =>
                       $"ordem {x.OrderId}: tile {x.Source.FineStrategicCellId.Value} → " +
                       $"{x.Destination.FineStrategicCellId.Value}, {x.Workers} pessoas, " +
-                      $"chegada turno {x.ArrivalTurn} ({x.ArrivalTurn - state.MovementTurn} restantes)")) + "\n")
+                      $"chegada turno {x.ArrivalTurn} ({x.ArrivalTurn - state.MovementTurn} restantes)")
+                      .Concat(state.LongTrips.Select(x =>
+                      $"rota {x.OrderId}: tile {x.Source.FineStrategicCellId.Value} → " +
+                      $"{x.Destination.FineStrategicCellId.Value}, trecho {x.CompletedLegs + 1}/" +
+                      $"{x.TotalLegs}, {x.Workers} pessoas, " +
+                      $"chegada turno {x.ArrivalTurn} ({x.ArrivalTurn - state.MovementTurn} restantes)"))) + "\n")
             : "";
         var localLedger = state.FoodCash;
         var localWallet = localLedger?.At(origin);
@@ -1236,11 +1297,16 @@ public partial class Main
             $" | turno {state.MovementTurn} | ciclos {state.Cycles.Count}\n" +
             $"Origem {origin.FineStrategicCellId.Value} | {selectedActivity}: {selectedGroupWorkers} disponíveis\n" +
             $"Destino: {destination}\n" +
-            (state.Transits.Count == 0
+            (state.Transits.Count == 0 && state.LongTrips.Count == 0
                 ? "Viagens: nenhuma em andamento."
                 : string.Join(" | ", state.Transits.Select(x =>
                     $"Em viagem: {x.Workers} pessoas, chegada no turno {x.ArrivalTurn} " +
-                    $"({x.ArrivalTurn - state.MovementTurn} restantes)"))) +
+                    $"({x.ArrivalTurn - state.MovementTurn} restantes)")
+                    .Concat(state.LongTrips.Select(x =>
+                    $"Em viagem longa: {x.Workers} pessoas, trecho {x.CompletedLegs + 1}/" +
+                    $"{x.TotalLegs} rumo ao tile {x.Destination.FineStrategicCellId.Value}, " +
+                    $"chegada no turno {x.ArrivalTurn} " +
+                    $"({x.ArrivalTurn - state.MovementTurn} restantes)")))) +
             "";
         if (_workerLabDetails is not null)
             _workerLabDetails.Text =
@@ -1262,7 +1328,7 @@ public partial class Main
                 $"Último ciclo: produção {lastCycle.ProducedRaw / 1_000_000.0:F3}; " +
                 $"consumo alimentar {lastCycle.FoodConsumedRaw / 1_000_000.0:F3}; " +
                 $"FALTA {lastCycle.FoodUnmetRaw / 1_000_000.0:F3}\n") +
-            $"WORLDSTATE CANÔNICO V{(_canonicalPhysicalLab.HasInitialCivilization ? "14" : _canonicalPhysicalLab.MovementMode == PhysicalWorkerMovementMode.TimedAdjacent ? "13" : _canonicalPhysicalLab.MarketMode == PhysicalFoodMarketMode.LocalCashSettlement ? "12" : _canonicalPhysicalLab.GeographyMode == PhysicalTacticalGeographyMode.Canonical01C ? "11" : _canonicalPhysicalLab.CadenceMode == PhysicalEconomicCadenceMode.AdaptiveThirty ? "10" : "9")}: " +
+            $"WORLDSTATE CANÔNICO V{(state.RemoteRoutingEnabled ? "15" : _canonicalPhysicalLab.HasInitialCivilization ? "14" : _canonicalPhysicalLab.MovementMode == PhysicalWorkerMovementMode.TimedAdjacent ? "13" : _canonicalPhysicalLab.MarketMode == PhysicalFoodMarketMode.LocalCashSettlement ? "12" : _canonicalPhysicalLab.GeographyMode == PhysicalTacticalGeographyMode.Canonical01C ? "11" : _canonicalPhysicalLab.CadenceMode == PhysicalEconomicCadenceMode.AdaptiveThirty ? "10" : "9")}: " +
             $"terreno {(_canonicalPhysicalLab.GeographyMode == PhysicalTacticalGeographyMode.Canonical01C ? "01C" : "V1 legado")}; " +
             $"mercado alimentar {(_canonicalPhysicalLab.MarketMode == PhysicalFoodMarketMode.LocalCashSettlement ? "LIQUIDADO À VISTA" : "LEGADO DIRETO")}; " +
             $"deslocamento {(_canonicalPhysicalLab.MovementMode == PhysicalWorkerMovementMode.TimedAdjacent ? "TEMPORAL" : "LEGADO")}; SEM carga comercial.";
