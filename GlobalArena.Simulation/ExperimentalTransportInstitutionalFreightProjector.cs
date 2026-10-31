@@ -129,7 +129,7 @@ public sealed record ExperimentalTransportInstitutionalAggregate(
 public sealed record ExperimentalTransportInstitutionalProjection(
     string RegistryId,
     ulong RegistryVersion,
-    string WorldStateHash,
+    WorldStateHash WorldStateHash,
     ulong NetworkRevision,
     ExperimentalAbstractPhysicalFreightReconciliation PhysicalReconciliation,
     IReadOnlyList<ExperimentalTransportInstitutionalLot> Lots,
