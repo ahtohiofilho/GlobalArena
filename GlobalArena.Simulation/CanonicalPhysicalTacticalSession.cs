@@ -40,6 +40,11 @@ public sealed record CanonicalWorkerTransitSaveRow(
     ulong Order, ulong Source, ulong Destination, byte FromJob,
     byte ToJob, ulong Workers, ulong Depart, ulong Arrive);
 
+public sealed record CanonicalLongJourneySaveRow(
+    ulong Order, ulong Source, ulong Destination, byte FromJob,
+    byte ToJob, ulong Workers, ulong Depart, ulong Arrive,
+    ulong NextLegCompletion, int CompletedLegs, ulong[] Route);
+
 public sealed record CanonicalPhysicalSavePayload(
     int Version, ulong Seed, int GeneratorVersion,
     int CoarseM, int CoarseN, int FineM, int FineN,
@@ -54,7 +59,9 @@ public sealed record CanonicalPhysicalSavePayload(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     CanonicalWorkerTransitSaveRow[]? Transits = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    CanonicalInitialCivilizationSaveRow? InitialCivilization = null);
+    CanonicalInitialCivilizationSaveRow? InitialCivilization = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    CanonicalLongJourneySaveRow[]? LongTrips = null);
 
 public sealed record CanonicalPhysicalSaveEnvelope(
     int Version, string PayloadJson, string PayloadSha256Hex);
@@ -74,6 +81,7 @@ public sealed class CanonicalPhysicalTacticalSession
     public const int CashFoodSaveFormat = 12;
     public const int TimedTransitSaveFormat = 13;
     public const int BornCivilizationSaveFormat = 14;
+    public const int LongDistanceSaveFormat = 15;
     public const int MaximumActions = 100_000;
     private const int MaximumSaveBytes = 4_000_000;
     private const ulong FoodDemandRawPerWorker = 500_000UL;
@@ -501,7 +509,8 @@ public sealed class CanonicalPhysicalTacticalSession
             allocations.Select(x => new PhysicalWorkerAllocation(
                 x.Key.Item1, x.Key.Item2, x.Value)),
             current.Stocks, current.Cycles, _cadenceMode, _geographyMode,
-            current.FoodCash, _movementMode, current.Transits);
+            current.FoodCash, _movementMode, current.Transits,
+            current.LongTrips, current.RemoteRoutingEnabled);
         if (next.TotalWorkers != current.TotalWorkers ||
             next.WorkersInTransit != current.WorkersInTransit)
             throw new InvalidOperationException("Local reallocation violated worker conservation.");
@@ -549,12 +558,62 @@ public sealed class CanonicalPhysicalTacticalSession
             allocations.Select(x => new PhysicalWorkerAllocation(
                 x.Key.Item1, x.Key.Item2, x.Value)),
             current.Stocks, current.Cycles, _cadenceMode, _geographyMode,
-            current.FoodCash, _movementMode, current.Transits.Append(order));
+            current.FoodCash, _movementMode, current.Transits.Append(order),
+            current.LongTrips, current.RemoteRoutingEnabled);
         if (next.TotalWorkers != current.TotalWorkers)
             throw new InvalidOperationException("Timed departure did not conserve workers.");
         Commit(next, "depart", source.FineStrategicCellId.Value,
             target.FineStrategicCellId.Value, (byte)fromJob, (byte)toJob, amount);
         return order;
+    }
+
+    /// <summary>
+    /// VS29: one canonical order to any destination reachable on foot, with
+    /// its full route embedded immutably in the WorldState. All intervening
+    /// tiles are waypoints only: no new colonies, no resource production and
+    /// no manual order is required for the next leg.
+    /// </summary>
+    public PhysicalLongDistanceTransit OrderLongDistanceTransit(
+        PhysicalTacticalTileId source, PhysicalTacticalTileId destination,
+        EconomicActivityKind fromJob, EconomicActivityKind toJob, ulong amount)
+    {
+        if (_movementMode != PhysicalWorkerMovementMode.TimedAdjacent)
+            throw new InvalidOperationException("Timed physical movement is unavailable.");
+        EnsureJournalCapacity();
+        var plan = PhysicalRemoteDestinationRouteProjection.Preview(
+            this, source, destination, fromJob, toJob, amount);
+        if (!plan.HasFootpath || plan.MovementLegs < 2UL ||
+            plan.PrimitiveTravelTurns is null || plan.EarliestArrivalTurn is null)
+            throw new InvalidOperationException(
+                "Multi-leg primitive journey requires a reachable nonadjacent land destination.");
+
+        var current = State;
+        var allocations = current.Allocations.ToDictionary(
+            x => (x.TileId, x.Activity), x => x.Workers);
+        var key = (source, fromJob);
+        if (!allocations.TryGetValue(key, out var available) || available < amount)
+            throw new InvalidOperationException("Not enough workers at the origin.");
+        if (available == amount) allocations.Remove(key);
+        else allocations[key] = available - amount;
+
+        var id = checked(current.WorkerRevision + 1UL);
+        var journey = new PhysicalLongDistanceTransit(
+            id, source, destination, fromJob, toJob, amount,
+            current.MovementTurn, plan.EarliestArrivalTurn.Value,
+            checked(current.MovementTurn + 2UL), 0,
+            Array.AsReadOnly(plan.Tiles.ToArray()));
+        var next = new PhysicalTacticalEconomyRuntimeState(
+            current.CoarseWorldBinding, _coarse, _fine, current.MovementTurn, id,
+            allocations.Select(x => new PhysicalWorkerAllocation(
+                x.Key.Item1, x.Key.Item2, x.Value)),
+            current.Stocks, current.Cycles, _cadenceMode, _geographyMode,
+            current.FoodCash, _movementMode, current.Transits,
+            current.LongTrips.Append(journey), remoteRoutingEnabled: true);
+        if (next.TotalWorkers != current.TotalWorkers)
+            throw new InvalidOperationException("Remote departure violated workforce conservation.");
+        Commit(next, "depart_remote", source.FineStrategicCellId.Value,
+            destination.FineStrategicCellId.Value, (byte)fromJob, (byte)toJob, amount);
+        return journey;
     }
 
     /// <summary>
@@ -747,7 +806,8 @@ public sealed class CanonicalPhysicalTacticalSession
             stocks.Select(x => new PhysicalCommodityStock(
                 x.Key.Item1, x.Key.Item2, x.Value)),
             cycles, _cadenceMode, _geographyMode, cash,
-            _movementMode, pendingTransits);
+            _movementMode, pendingTransits, pendingLongTrips,
+            current.RemoteRoutingEnabled);
         if (next.TotalWorkers != current.TotalWorkers)
             throw new InvalidOperationException("Timed arrival did not conserve workers.");
         Commit(next, "tick", 0UL, 0UL, 0, 0, 0UL);
@@ -794,7 +854,7 @@ public sealed class CanonicalPhysicalTacticalSession
         {
             envelope = JsonSerializer.Deserialize<CanonicalPhysicalSaveEnvelope>(json)
                 ?? throw new InvalidOperationException("Missing canonical save envelope.");
-            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat or CashFoodSaveFormat or TimedTransitSaveFormat or BornCivilizationSaveFormat) ||
+            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat or CashFoodSaveFormat or TimedTransitSaveFormat or BornCivilizationSaveFormat or LongDistanceSaveFormat) ||
                 string.IsNullOrEmpty(envelope.PayloadJson) ||
                 string.IsNullOrEmpty(envelope.PayloadSha256Hex))
                 throw new InvalidOperationException("Unsupported canonical save envelope.");
@@ -816,8 +876,14 @@ public sealed class CanonicalPhysicalTacticalSession
             payload.Stocks is null || payload.Cycles is null ||
             ((payload.Version >= CashFoodSaveFormat) != (payload.FoodCash is not null)) ||
             ((payload.Version >= TimedTransitSaveFormat) != (payload.Transits is not null)) ||
-            ((payload.Version == BornCivilizationSaveFormat) !=
-                (payload.InitialCivilization is not null)) ||
+            (payload.Version == BornCivilizationSaveFormat &&
+                payload.InitialCivilization is null) ||
+            (payload.Version < BornCivilizationSaveFormat &&
+                payload.InitialCivilization is not null) ||
+            ((payload.Version == LongDistanceSaveFormat) !=
+                (payload.LongTrips is not null)) ||
+            (payload.LongTrips is not null &&
+                payload.LongTrips.Any(x => x is null || x.Route is null)) ||
             (payload.FoodCash is not null &&
              (payload.FoodCash.Accounts is null || payload.FoodCash.Receipts is null)) ||
             payload.Actions.Length > MaximumActions ||
@@ -836,7 +902,8 @@ public sealed class CanonicalPhysicalTacticalSession
         var movementMode = payload.Version >= TimedTransitSaveFormat
             ? PhysicalWorkerMovementMode.TimedAdjacent
             : PhysicalWorkerMovementMode.LegacyInstant;
-        var identityMode = payload.Version == BornCivilizationSaveFormat
+        var identityMode = payload.Version >= BornCivilizationSaveFormat &&
+                           payload.InitialCivilization is not null
             ? PhysicalCivilizationIdentityMode.BornWithPopulation
             : PhysicalCivilizationIdentityMode.LegacyUnattributed;
         var game = Start(payload.Seed,
@@ -870,6 +937,13 @@ public sealed class CanonicalPhysicalTacticalSession
             else if (action.Kind == "depart" && 
                      game._movementMode == PhysicalWorkerMovementMode.TimedAdjacent)
                 game.OrderWorkerTransit(
+                    new PhysicalTacticalTileId(game._fine, new StrategicCellId(action.Source)),
+                    new PhysicalTacticalTileId(game._fine, new StrategicCellId(action.Destination)),
+                    (EconomicActivityKind)action.FromJob,
+                    (EconomicActivityKind)action.ToJob, action.Workers);
+            else if (action.Kind == "depart_remote" &&
+                     game._movementMode == PhysicalWorkerMovementMode.TimedAdjacent)
+                game.OrderLongDistanceTransit(
                     new PhysicalTacticalTileId(game._fine, new StrategicCellId(action.Source)),
                     new PhysicalTacticalTileId(game._fine, new StrategicCellId(action.Destination)),
                     (EconomicActivityKind)action.FromJob,
@@ -939,7 +1013,9 @@ public sealed class CanonicalPhysicalTacticalSession
         return game;
     }
 
-    private int CurrentSaveFormat => HasInitialCivilization
+    private int CurrentSaveFormat => State.RemoteRoutingEnabled
+        ? LongDistanceSaveFormat
+        : HasInitialCivilization
         ? BornCivilizationSaveFormat
         : _movementMode == PhysicalWorkerMovementMode.TimedAdjacent
         ? TimedTransitSaveFormat
@@ -1001,6 +1077,15 @@ public sealed class CanonicalPhysicalTacticalSession
                 ? new CanonicalInitialCivilizationSaveRow(
                     owned.Civilizations.Records[0].Id.Value,
                     owned.Civilizations.Records[0].StartCellId!.Value.Value)
+                : null,
+            state.RemoteRoutingEnabled
+                ? state.LongTrips.Select(x => new CanonicalLongJourneySaveRow(
+                    x.OrderId, x.Source.FineStrategicCellId.Value,
+                    x.Destination.FineStrategicCellId.Value,
+                    (byte)x.FromJob, (byte)x.ToJob, x.Workers,
+                    x.DepartureTurn, x.ArrivalTurn, x.NextLegCompletionTurn,
+                    x.CompletedLegs,
+                    x.Route.Select(t => t.FineStrategicCellId.Value).ToArray())).ToArray()
                 : null);
     }
 
