@@ -1,0 +1,40 @@
+name: GA-VS57 Session Transport Authority Gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  built-rights-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Directed VS40-VS57 economic physical and institutional regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "FullyQualifiedName~GaVs57|FullyQualifiedName~GaVs56|FullyQualifiedName~GaVs55|FullyQualifiedName~GaVs54|FullyQualifiedName~GaVs53|FullyQualifiedName~GaVs52|FullyQualifiedName~GaVs51|FullyQualifiedName~GaVs50|FullyQualifiedName~GaVs49|FullyQualifiedName~GaVs48|FullyQualifiedName~GaVs47|FullyQualifiedName~GaVs46|FullyQualifiedName~GaVs45|FullyQualifiedName~GaVs44|FullyQualifiedName~GaVs43|FullyQualifiedName~GaVs42|FullyQualifiedName~GaVs41|FullyQualifiedName~GaVs40"
+      - name: Built network and rights benchmark
+        run: dotnet run --project GlobalArena.Benchmarks/GlobalArena.Benchmarks.csproj -c Release -- --vs57-session-authority
+      - name: Godot Mono Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  built-rights-windows:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Full tactical population economy recovery regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: Session authority benchmark
+        run: dotnet run --project GlobalArena.Benchmarks/GlobalArena.Benchmarks.csproj -c Release -- --vs57-session-authority
+      - name: Godot Mono Debug
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
