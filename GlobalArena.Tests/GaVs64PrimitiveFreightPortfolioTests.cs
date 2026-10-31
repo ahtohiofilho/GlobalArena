@@ -77,15 +77,15 @@ public sealed class GaVs64PrimitiveFreightPortfolioTests
         });
         Assert.Equal(new[] { Food, Wood, Stone },
             portfolio.Slices.Select(x => x.Policy.Commodity));
-        Assert.Equal(new[] { Food, Wood },
+        Assert.Equal(new[] { Food, Wood, Stone },
             portfolio.CandidateUses.Select(x => x.Commodity));
         var service = Assert.Single(portfolio.SharedServices);
         Assert.Equal(77UL, service.ResourceId);
-        Assert.Equal(new[] { Food, Wood },
+        Assert.Equal(new[] { Food, Wood, Stone },
             service.CompetingUses.Select(x => x.Commodity));
         var asset = Assert.Single(portfolio.SharedAssets);
         Assert.Equal(31UL, asset.ResourceId);
-        Assert.Equal(new[] { Food, Wood },
+        Assert.Equal(new[] { Food, Wood, Stone },
             asset.CompetingUses.Select(x => x.Commodity));
         Assert.All(portfolio.CandidateUses, row => {
             Assert.Equal(77UL, row.ServiceId);
@@ -93,11 +93,11 @@ public sealed class GaVs64PrimitiveFreightPortfolioTests
             Assert.Equal(buyer, row.Buyer);
             Assert.True(row.MaximumRawQuantity > 0);
         });
-        Assert.Empty(portfolio.Slices.Single(x =>
+        Assert.Single(portfolio.Slices.Single(x =>
             x.Policy.Commodity == Stone).Discovery.Services);
         Assert.Equal(2, portfolio.RegisteredRightsInspectedPerSlice);
-        Assert.Equal(2, portfolio.TotalEligibleIntents);
-        Assert.Equal(2, portfolio.TotalSourceTreeBuilds);
+        Assert.Equal(3, portfolio.TotalEligibleIntents);
+        Assert.Equal(3, portfolio.TotalSourceTreeBuilds);
         Assert.Equal(0, portfolio.TotalUnreachablePhysicalServices);
         Assert.True(portfolio.TotalExaminedArcs > 0);
         Assert.False(portfolio.CanAuthorizeRealSettlement);
