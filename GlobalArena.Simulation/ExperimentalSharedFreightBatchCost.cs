@@ -133,7 +133,7 @@ public sealed class ExperimentalSharedFreightOption
                     "Shared freight requires a single versioned technology.");
             mode = asset.TechnologyTypeId;
             catalog = asset.TechnologyCatalogVersion;
-            var edge = topology.Edges[checked((int)asset.GeographicEdgeId.Value - 1UL)];
+            var edge = topology.Edges[checked((int)(asset.GeographicEdgeId.Value - 1UL))];
             var nextId = edge.IncidentCellIds[0] == cursor.FineStrategicCellId
                 ? edge.IncidentCellIds[1]
                 : edge.IncidentCellIds[1] == cursor.FineStrategicCellId
