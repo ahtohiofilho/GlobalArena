@@ -187,6 +187,84 @@ public sealed class GaVs43SimultaneousFreightReferenceTests
     }
 
     [Fact]
+    public void OneProducerCannotSupplyTwoDestinationsBeyondItsOwnPhysicalStock()
+    {
+        var source = new EconomicSupplyFlow(
+            new EconomicPointId(1), FoodId, EconomicActivityKind.Agriculture,
+            Quantum);
+        var d1 = new EconomicDemandFlow(new EconomicPointId(2), FoodId, Quantum);
+        var d2 = new EconomicDemandFlow(new EconomicPointId(3), FoodId, Quantum);
+        var flows = new EconomicProductionDemandResult(
+            new[] { source }, new[] { d1, d2 });
+        var catalog = new FoodCommodityCatalog(new[] {
+            new FoodCommodityDefinition(FoodId, "food", 1) });
+        var value = new[] {
+            new EconomicTurnCommodityValueOffer(d1.EconomicPointId,
+                FoodId, new FlatValue(40)),
+            new EconomicTurnCommodityValueOffer(d2.EconomicPointId,
+                FoodId, new FlatValue(40))
+        };
+        var reserve = new[] { new EconomicTurnSourceReservation(
+            source.EconomicPointId, FoodId, source.Activity, 0) };
+        var candidates = new[] {
+            new ExperimentalSimultaneousFreightLane(source, d1, new[] {
+                Option(source.EconomicPointId, d1.EconomicPointId,
+                    10, 1_000_000, 1) }),
+            new ExperimentalSimultaneousFreightLane(source, d2, new[] {
+                Option(source.EconomicPointId, d2.EconomicPointId,
+                    11, 1_000_000, 2) })
+        };
+        var result = new ExperimentalSimultaneousFreightReference().Compare(
+            flows, catalog, value, reserve, candidates, corridorPolicy: Shared,
+            rawQuantityQuantum: Quantum, maxExactConfigurations: 20);
+        Assert.NotNull(result.Exact);
+        Assert.Single(result.Exact!.Trades);
+        Assert.Equal(Quantum, result.Exact.Trades[0].RawQuantity);
+        Assert.Equal(0, result.Exact.NetEconomicValue.CompareTo(
+            new ExperimentalSignedEconomicValue(29, 1)));
+    }
+
+    private sealed class FallingIntegratedValue : IEconomicTurnCommodityValueCurve
+    {
+        public FoodTransportCostFraction EvaluateMarginalRawUnitValue(
+            ulong alreadyAllocatedRawQuantity)
+        {
+            var remaining = (BigInteger)25 * Quantum -
+                (BigInteger)20 * alreadyAllocatedRawQuantity;
+            return new FoodTransportCostFraction(
+                BigInteger.Max(0, remaining), Quantum);
+        }
+
+        public FoodTransportCostFraction EvaluateIntegratedRawValue(
+            ulong allocatedRawQuantity)
+        {
+            var q = (BigInteger)allocatedRawQuantity;
+            return new FoodTransportCostFraction(
+                25 * q * Quantum - 10 * q * q,
+                (BigInteger)Quantum * Quantum);
+        }
+    }
+
+    [Fact]
+    public void IntegratedDestinationValueIsEvaluatedOnceAcrossCompetingSources()
+    {
+        var input = Inputs();
+        var values = new[] { new EconomicTurnCommodityValueOffer(
+            new EconomicPointId(3), FoodId, new FallingIntegratedValue()) };
+        var result = new ExperimentalSimultaneousFreightReference().Compare(
+            input.Flows, input.Catalog, values, input.Reservations,
+            input.Lanes, new ExperimentalSharedFreightCongestionPolicy(
+                0, 1_000_000), Quantum, maxExactConfigurations: 100);
+        Assert.NotNull(result.Exact);
+        Assert.Single(result.Exact!.Trades);
+        Assert.Equal(Quantum, result.Exact.Trades[0].RawQuantity);
+        Assert.Equal(0, result.Exact.IntegratedBuyerValue.CompareTo(
+            new FoodTransportCostFraction(15, 1)));
+        Assert.Equal(0, result.Exact.NetEconomicValue.CompareTo(
+            new ExperimentalSignedEconomicValue(14, 1)));
+    }
+
+    [Fact]
     public void MissingEconomicInputsAndInvalidLanesFailClosed()
     {
         var input = Inputs();
