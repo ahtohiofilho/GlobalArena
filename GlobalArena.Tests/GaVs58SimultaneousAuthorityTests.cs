@@ -38,6 +38,16 @@ public sealed class GaVs58SimultaneousAuthorityTests
                 quotes, f.Policy, f.Registry().NominalQuoteUnitId, ordered, f.Congestion, proof, f.Anchors, 500_000);
         var result = Select(lanes);
         Assert.Equal(9, result.EvaluatedConfigurations);
+        var independentlyVerified = new CanonicalSimultaneousTransportAuditor().Verify(
+            f.Session, purchasing, flows, catalog, quotes, f.Policy, f.Registry().NominalQuoteUnitId,
+            lanes.Reverse(), f.Congestion, proof, f.Anchors, 500_000,
+            result.Deliveries, result.EvaluatedConfigurations);
+        Assert.Equal(result.Deliveries, independentlyVerified.Deliveries);
+        var noncanonicalTie = result.Deliveries.Select(x => x with {
+            RawQuantity = 1_500_000 - x.RawQuantity }).ToArray();
+        Assert.Throws<InvalidOperationException>(() => new CanonicalSimultaneousTransportAuditor().Verify(
+            f.Session, purchasing, flows, catalog, quotes, f.Policy, f.Registry().NominalQuoteUnitId,
+            lanes, f.Congestion, proof, f.Anchors, 500_000, noncanonicalTie, 9));
         Assert.Equal(2, result.Deliveries.Count);
         Assert.Equal(result.Deliveries, Select(lanes.Reverse().ToArray()).Deliveries);
         var reconciliation = result.Audit.InstitutionalProjection.PhysicalReconciliation;
@@ -69,7 +79,7 @@ public sealed class GaVs58SimultaneousAuthorityTests
         f.Session.TransportNetwork.SetOperational(f.Asset.AssetId, false);
         Assert.Throws<InvalidOperationException>(() => result.RequireCurrent(f.Session));
     }
-    private static CanonicalTransportSelection Run(
+    internal static CanonicalTransportSelection Run(
         GaVs56BuiltNetworkInstitutionalRightsTests.Fixture f,
         ulong quantum = 500_000, int limit = 4096, CanonicalTransportProof? proof = null,
         ExperimentalAbstractNominalDeliveredQuote[]? quotes = null) =>
