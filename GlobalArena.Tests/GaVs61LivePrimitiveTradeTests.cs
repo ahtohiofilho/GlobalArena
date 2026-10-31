@@ -58,8 +58,8 @@ public sealed class GaVs61LivePrimitiveTradeTests
         Assert.True(rate > 0);
 
         var preview = f.Session.PreviewLivePrimitiveTrade(Scenario(f));
-        var physicalSupply = Assert.Single(preview.Flows.SupplyFlows.Where(x =>
-            x.CommodityId == FoodId));
+        var physicalSupply = Assert.Single(preview.Flows.SupplyFlows,
+            x => x.CommodityId == FoodId);
         Assert.Equal(checked(agriculture.Workers * (ulong)rate), physicalSupply.RawQuantity);
         Assert.Equal(source, physicalSupply.EconomicPointId);
         var demand = Assert.Single(preview.Flows.DemandFlows);
