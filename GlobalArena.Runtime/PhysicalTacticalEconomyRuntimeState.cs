@@ -48,6 +48,9 @@ public sealed class PhysicalTacticalEconomyRuntimeState
     public IReadOnlyList<PhysicalLongDistanceTransit> LongTrips { get; }
     // Persist the V15 ruleset even after the final journey has arrived.
     public bool RemoteRoutingEnabled { get; }
+    public bool ExpeditionFoodEnabled { get; }
+    public IReadOnlyList<PhysicalExpeditionFoodParcel> ExpeditionFood { get; }
+    public IReadOnlyList<PhysicalExpeditionFoodPurchase> ExpeditionPurchases { get; }
     public ulong WorkersInTransit => checked(Transits.Aggregate(0UL,
         (sum, x) => checked(sum + x.Workers)) +
         LongTrips.Aggregate(0UL, (sum, x) => checked(sum + x.Workers)));
@@ -72,7 +75,10 @@ public sealed class PhysicalTacticalEconomyRuntimeState
         PhysicalWorkerMovementMode movementMode = PhysicalWorkerMovementMode.LegacyInstant,
         IEnumerable<PhysicalWorkerTransit>? transits = null,
         IEnumerable<PhysicalLongDistanceTransit>? longTrips = null,
-        bool remoteRoutingEnabled = false)
+        bool remoteRoutingEnabled = false,
+        IEnumerable<PhysicalExpeditionFoodParcel>? expeditionFood = null,
+        IEnumerable<PhysicalExpeditionFoodPurchase>? expeditionPurchases = null,
+        bool expeditionFoodEnabled = false)
     {
         ArgumentNullException.ThrowIfNull(coarseWorldBinding);
         ArgumentNullException.ThrowIfNull(allocations);
@@ -180,6 +186,38 @@ public sealed class PhysicalTacticalEconomyRuntimeState
             totalWorkers = checked(totalWorkers + trip.Workers);
         }
 
+        var parcels = (expeditionFood ?? Array.Empty<PhysicalExpeditionFoodParcel>())
+            .OrderBy(x => x?.OrderId ?? 0UL).ToArray();
+        var purchaseRows = (expeditionPurchases ?? Array.Empty<PhysicalExpeditionFoodPurchase>())
+            .OrderBy(x => x?.OrderId ?? 0UL).ToArray();
+        if (!expeditionFoodEnabled &&
+            (parcels.Length != 0 || purchaseRows.Length != 0))
+            throw new ArgumentException("Only V16 can contain expedition food.");
+        if (expeditionFoodEnabled && (!remoteRoutingEnabled ||
+            movementMode != PhysicalWorkerMovementMode.TimedAdjacent))
+            throw new ArgumentException("V16 requires timed canonical remote travel.");
+        var purchasesByOrder = new Dictionary<ulong, PhysicalExpeditionFoodPurchase>();
+        foreach (var purchase in purchaseRows)
+        {
+            if (purchase is null || purchase.OrderId == 0UL ||
+                purchase.OrderId > workerRevision ||
+                !purchasesByOrder.TryAdd(purchase.OrderId, purchase) ||
+                purchase.PriceMicrocreditsPerUnit == 0UL && purchase.PurchasedRaw != 0UL ||
+                purchase.PaidMicrocredits == 0UL && purchase.PurchasedRaw != 0UL)
+                throw new ArgumentException("Invalid, duplicate or free expedition purchase.");
+            ValidateTile(purchase.Source, fineParameters);
+        }
+        var tripsById = orderedLongTrips.ToDictionary(x => x.OrderId);
+        var parcelIds = new HashSet<ulong>();
+        foreach (var parcel in parcels)
+        {
+            if (parcel is null || !parcelIds.Add(parcel.OrderId) ||
+                !tripsById.TryGetValue(parcel.OrderId, out var trip) ||
+                !purchasesByOrder.TryGetValue(parcel.OrderId, out var purchase) ||
+                purchase.Source != trip.Source ||
+                parcel.RemainingRaw > purchase.PurchasedRaw)
+                throw new ArgumentException("Travel food must belong to an active paid itinerary.");
+        }
         var stockRows = stocks.ToArray();
         if (stockRows.Any(x => x is null))
             throw new ArgumentException("Physical stock cannot contain null records.");
@@ -215,6 +253,9 @@ public sealed class PhysicalTacticalEconomyRuntimeState
         Transits = Array.AsReadOnly(orderedTransits);
         LongTrips = Array.AsReadOnly(orderedLongTrips);
         RemoteRoutingEnabled = remoteRoutingEnabled;
+        ExpeditionFoodEnabled = expeditionFoodEnabled;
+        ExpeditionFood = Array.AsReadOnly(parcels);
+        ExpeditionPurchases = Array.AsReadOnly(purchaseRows);
         WorkerRevision = workerRevision;
         TotalWorkers = totalWorkers;
         Allocations = Array.AsReadOnly(sortedAllocations);
