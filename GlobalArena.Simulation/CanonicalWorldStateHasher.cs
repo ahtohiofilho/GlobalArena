@@ -17,6 +17,7 @@ public sealed class CanonicalWorldStateHasher
     public const uint TimedWorkerTransitFormatVersion = 13U;
     public const uint BornCivilizationFormatVersion = 14U;
     public const uint LongDistanceWorkerFormatVersion = 15U;
+    public const uint PhysicalJourneyFoodFormatVersion = 16U;
 
     private static readonly byte[] Magic =
     {
@@ -310,7 +311,9 @@ public sealed class CanonicalWorldStateHasher
         // Explicit domain separator, tagged fields and the exact legacy
         // digest bind all pre-existing state + topology to the new version.
         hash.AppendData(Magic);
-        var format = physical.RemoteRoutingEnabled
+        var format = physical.TravelFoodLedgers is not null
+            ? PhysicalJourneyFoodFormatVersion
+            : physical.RemoteRoutingEnabled
             ? LongDistanceWorkerFormatVersion
             : worldState.Civilizations.Records.Count == 1 &&
                      physical.MovementMode == PhysicalWorkerMovementMode.TimedAdjacent
@@ -438,6 +441,25 @@ public sealed class CanonicalWorldStateHasher
                 AppendUInt32(hash, checked((uint)journey.Route.Count));
                 foreach (var tile in journey.Route)
                     AppendUInt64(hash, tile.FineStrategicCellId.Value);
+            }
+        }
+        if (physical.TravelFoodLedgers is { } provisions)
+        {
+            // V16 only: cash purchase identity and physically conserved
+            // expedition food. Legacy V9-V15 hash bytes remain untouched.
+            AppendUInt32(hash, 96U);
+            AppendUInt32(hash, checked((uint)provisions.Count));
+            foreach (var lot in provisions)
+            {
+                AppendUInt64(hash, lot.OrderId);
+                AppendUInt64(hash, lot.Source.FineStrategicCellId.Value);
+                AppendUInt64(hash, lot.Destination.FineStrategicCellId.Value);
+                AppendUInt64(hash, lot.FoodPurchasedRaw);
+                AppendUInt64(hash, lot.FoodRemainingRaw);
+                AppendUInt64(hash, lot.FoodConsumedRaw);
+                AppendUInt64(hash, lot.UnitPriceMicrocredits);
+                AppendUInt64(hash, lot.PaidMicrocredits);
+                AppendUInt32(hash, lot.Arrived ? 1U : 0U);
             }
         }
         return new WorldStateHash(
