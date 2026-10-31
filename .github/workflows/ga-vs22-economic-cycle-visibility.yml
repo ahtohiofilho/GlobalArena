@@ -1,0 +1,71 @@
+name: GA-VS22 Economic Cycle Visibility
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/PhysicalEconomicCycleProgression.cs'
+      - 'GlobalArena.Tests/GaVs22EconomicCycleProgressionTests.cs'
+      - 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+      - 'tools/GlobalArena.Godot/Scripts/Main.cs'
+      - 'tools/launch-vs22.ps1'
+      - '.github/workflows/ga-vs22-economic-cycle-visibility.yml'
+      - '.github/workflows/ga-vs21-local-worker-reallocation.yml'
+      - '.github/workflows/ga-vs20-emergent-settlements.yml'
+      - '.github/workflows/ga-vs19b-born-civilization.yml'
+      - '.github/workflows/ga-vs19c-operational-hud.yml'
+  workflow_dispatch:
+
+jobs:
+  economic-visibility-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Advance-to-cycle, deterministic replay and earlier gameplay regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs22|FullyQualifiedName~GaVs21|FullyQualifiedName~GaVs20|FullyQualifiedName~GaVs11'
+      - name: Compile Godot Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  economic-visibility-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Verify direct launcher and primary HUD economic action
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'tools/launch-vs22.ps1').Path,
+            [ref]$tokens, [ref]$errors)
+          if ($errors.Count) { throw ($errors | ForEach-Object Message | Out-String) }
+          $runner = Get-Content -Raw -Encoding UTF8 'tools/launch-vs22.ps1'
+          $main = Get-Content -Raw -Encoding UTF8 'tools/GlobalArena.Godot/Scripts/Main.cs'
+          $lab = Get-Content -Raw -Encoding UTF8 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+          $controller = Get-Content -Raw -Encoding UTF8 'GlobalArena.Simulation/PhysicalEconomicCycleProgression.cs'
+          if (-not $runner.Contains('feature/ga-vs22-economic-cycle-visibility-20261031') -or
+              -not $runner.Contains('-c Debug') -or
+              -not $runner.Contains('& $GodotExe --path $projectDir --verbose') -or
+              -not $main.Contains('GA_VS22_RUNTIME_ACTIVE') -or
+              -not $lab.Contains('AVANÇAR ATÉ O PRÓXIMO CICLO ECONÔMICO') -or
+              -not $lab.Contains('falta de alimento') -or
+              -not $controller.Contains('session.AdvanceMovementTurn()')) {
+            throw 'VS22 economic cycle observability or direct Windows launch contract missing.'
+          }
+      - name: Advance-to-cycle, deterministic replay and earlier gameplay regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs22|FullyQualifiedName~GaVs21|FullyQualifiedName~GaVs20|FullyQualifiedName~GaVs11'
+      - name: Compile Godot Debug
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
+      - name: Compile Godot Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
