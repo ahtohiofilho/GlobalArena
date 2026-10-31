@@ -31,6 +31,8 @@ public partial class Main
     private SpinBox? _remoteDestinationTileId;
     private Label? _remoteRoutePreview;
     private Label? _journeySupplyPreview;
+    private SpinBox? _journeyHypotheticalCargo;
+    private Label? _journeyCampForecast;
     private VBoxContainer? _workerLabAdvancedPanel;
     private Button? _workerMoveButton;
     private Button? _workerReassignButton;
@@ -313,6 +315,32 @@ public partial class Main
         };
         _journeySupplyPreview.AddThemeColorOverride("font_color", new Color("#d9d6b5"));
         _workerLabAdvancedPanel.AddChild(_journeySupplyPreview);
+        var provisioningRow = new HBoxContainer();
+        provisioningRow.AddThemeConstantOverride("separation", 4);
+        _workerLabAdvancedPanel.AddChild(provisioningRow);
+        provisioningRow.AddChild(new Label { Text = "Comida hipotética (unidades):" });
+        _journeyHypotheticalCargo = new SpinBox
+        {
+            Name = "GAQAHypotheticalFood",
+            MinValue = 0, MaxValue = 1000000, Step = 0.5, Value = 0,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        provisioningRow.AddChild(_journeyHypotheticalCargo);
+        var campForecastButton = new Button
+        {
+            Name = "GAQAForecastCampStops",
+            Text = "SIMULAR PARADAS E COLETA (SEM ALTERAR PARTIDA)"
+        };
+        campForecastButton.Pressed += ForecastJourneyForagingStops;
+        _workerLabAdvancedPanel.AddChild(campForecastButton);
+        _journeyCampForecast = new Label
+        {
+            Name = "GAQACampForecastResult",
+            Visible = false,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        _journeyCampForecast.AddThemeColorOverride("font_color", new Color("#b5cfdb"));
+        _workerLabAdvancedPanel.AddChild(_journeyCampForecast);
 
         _workerLabDetails = new Label
         {
@@ -603,6 +631,71 @@ public partial class Main
         {
             _workerLabStatus.Text +=
                 "\nORDEM GLOBAL RECUSADA (partida preservada): " + ex.Message;
+        }
+    }
+
+    private void ForecastJourneyForagingStops()
+    {
+        if (_canonicalPhysicalLab is null || _workerOrigin is null ||
+            _workerFromJob is null || _workerToJob is null ||
+            _workerAmount is null || _remoteDestinationTileId is null ||
+            _journeyHypotheticalCargo is null || _journeyCampForecast is null)
+            return;
+        try
+        {
+            var before = _canonicalPhysicalLab.CurrentHash;
+            var target = new PhysicalTacticalTileId(
+                _canonicalPhysicalLab.State.FineParameters,
+                new StrategicCellId(checked((ulong)_remoteDestinationTileId.Value)));
+            var cargo = checked((ulong)Math.Round(
+                _journeyHypotheticalCargo.Value * 1_000_000.0,
+                MidpointRounding.ToEven));
+            var forecast = JourneyProvisioningForecastProjection.PreviewPlanned(
+                _canonicalPhysicalLab, _workerOrigin.Value, target,
+                (EconomicActivityKind)_workerFromJob.GetSelectedId(),
+                (EconomicActivityKind)_workerToJob.GetSelectedId(),
+                checked((ulong)_workerAmount.Value), cargo);
+
+            static string Units(ulong raw) =>
+                (raw / 1_000_000.0).ToString("F3");
+            var details = forecast.Stops.Count == 0
+                ? "Nenhuma parada de coleta necessária nesta hipótese."
+                : string.Join(" | ", forecast.Stops.Select(stop =>
+                    $"tile {stop.Tile.FineStrategicCellId.Value}: " +
+                    $"{stop.EconomicSettlements} ciclos, +" +
+                    $"{Units(stop.FoodGatheredRaw)} alimento bruto"));
+            _journeyCampForecast.Text =
+                $"SIMULAÇÃO VS32 | comida HIPOTÉTICA inicial " +
+                $"{Units(forecast.HypotheticalInitialCargoRaw)} | " +
+                $"{forecast.Workers} viajantes\n" +
+                (forecast.CanArriveUnderAssumptions
+                    ? $"Chegada estimada turno {forecast.ProjectedArrivalMovementTurn}; " +
+                      $"caminhada {forecast.TravelMovementTurns} turnos + " +
+                      $"paradas {forecast.WaitingMovementTurns} turnos; " +
+                      $"carga restante {Units(forecast.RemainingCargoRaw!.Value)}."
+                    : "Sem alimento suficiente nem coleta com excedente no ponto " +
+                      "de parada. Outro suprimento/modal seria necessário.") +
+                $"\nColeta total {Units(forecast.GatheredFoodRaw)}; " +
+                $"consumo {Units(forecast.ConsumedFoodRaw)}. {details}\n" +
+                "75% da produtividade agrícola local é APENAS uma aproximação " +
+                "experimental para coleta primitiva. Sem compra, posse, " +
+                "estoque portátil real, acampamento real ou ordem nova. " +
+                "Viagens V15 continuam com a política alimentar anterior.";
+            _journeyCampForecast.Visible = true;
+            if (!_canonicalPhysicalLab.CurrentHash.Equals(before))
+                throw new InvalidOperationException(
+                    "The camp scenario unexpectedly modified the canonical world.");
+            GD.Print($"GA_VS32_FORAGE_FORECAST_READ_ONLY " +
+                $"destination={target.FineStrategicCellId.Value} " +
+                $"status={forecast.Status} stops={forecast.Stops.Count} " +
+                $"hash={before.HexDigest}");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or
+                                   ArgumentException or OverflowException)
+        {
+            _journeyCampForecast.Text =
+                "SIMULAÇÃO INDISPONÍVEL (partida preservada): " + ex.Message;
+            _journeyCampForecast.Visible = true;
         }
     }
 
@@ -1237,6 +1330,8 @@ public partial class Main
             _remoteRoutePreview.Visible = false;
         if (_journeySupplyPreview is not null)
             _journeySupplyPreview.Visible = false;
+        if (_journeyCampForecast is not null)
+            _journeyCampForecast.Visible = false;
         if (_canonicalPhysicalLab is null || _workerOrigin is null || _tacticalPreview is null ||
             _workerLabStatus is null) return;
         if (_remoteDestinationTileId is not null)
