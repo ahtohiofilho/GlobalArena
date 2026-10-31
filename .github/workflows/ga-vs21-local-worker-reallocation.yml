@@ -57,7 +57,8 @@ jobs:
               -not $runner.Contains('-c Debug') -or
               -not $runner.Contains('& $GodotExe --path $projectDir --verbose') -or
               (-not $main.Contains('GA_VS21_RUNTIME_ACTIVE') -and
-               -not $main.Contains('GA_VS22_RUNTIME_ACTIVE')) -or
+               -not $main.Contains('GA_VS22_RUNTIME_ACTIVE') -and
+               -not $main.Contains('GA_VS23_RUNTIME_ACTIVE')) -or
               -not $lab.Contains('MUDAR ATIVIDADE NO TILE (SEM VIAGEM)') -or
               -not $simulation.Contains('Commit(next, "reassign"') -or
               -not $simulation.Contains('action.Kind == "reassign"')) {
