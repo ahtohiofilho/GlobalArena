@@ -77,6 +77,58 @@ public sealed class GaVs61LivePrimitiveTradeTests
     }
 
     [Fact]
+    public void ThreePrimitiveGoodsUseOneResidentBaseAndActivitySpecificSupply()
+    {
+        var f = GaVs57SessionTransportAuthorityTests.Create();
+        var original = Scenario(f);
+        var buyer = f.Flows.DemandFlows.Single().EconomicPointId;
+        var source = f.Flows.SupplyFlows.Single().EconomicPointId;
+        var buyerTile = f.Anchors[buyer];
+        var sourceTile = f.Anchors[source];
+        var rates = original.DemandRates.Concat(new[] {
+            new CanonicalPrimitiveDemandRate(WoodId, 125_000),
+            new CanonicalPrimitiveDemandRate(StoneId, 250_000)
+        }).ToArray();
+        var prices = original.PostedPrices.Concat(new[] {
+            new ExperimentalBuyerCommodityPrice(buyer, WoodId, new FoodTransportCostFraction(1, 1)),
+            new ExperimentalBuyerCommodityPrice(buyer, StoneId, new FoodTransportCostFraction(1, 1))
+        }).ToArray();
+        var quotes = original.Quotes.Concat(new[] {
+            original.Quotes[0] with { Commodity = WoodId },
+            original.Quotes[0] with { Commodity = StoneId }
+        }).ToArray();
+        var scenario = new CanonicalLivePrimitiveTradeScenario(
+            original.Catalog, original.Commodities, original.Buyers, original.Producers,
+            rates, prices, original.PurchasingPolicy, quotes, original.Calibration,
+            original.PhysicalFreightNominalUnitId, original.Lanes, original.Services,
+            original.Congestion, original.RawQuantum);
+        var save = f.Session.ExportSaveJson();
+        var result = f.Session.PreviewLivePrimitiveTrade(scenario);
+        Assert.Equal(3, result.Flows.DemandFlows.Count);
+        foreach (var rate in rates)
+            Assert.Equal(checked(f.Session.WorkersAt(buyerTile) *
+                (ulong)rate.RawPerResidentWorker),
+                result.Flows.DemandFlows.Single(x => x.CommodityId == rate.Commodity).RawQuantity);
+        foreach (var item in new[] {
+            (EconomicActivityKind.Agriculture, FoodId),
+            (EconomicActivityKind.Forestry, WoodId),
+            (EconomicActivityKind.Mining, StoneId) })
+        {
+            var workers = f.Session.State.Allocations
+                .Where(x => x.TileId == sourceTile && x.Activity == item.Item1)
+                .Aggregate(0UL, (sum, x) => checked(sum + x.Workers));
+            var rate = f.Session.PrimitiveYieldAt(sourceTile, item.Item1);
+            var flows = result.Flows.SupplyFlows.Where(x => x.CommodityId == item.Item2).ToArray();
+            if (rate == 0 || workers == 0) Assert.Empty(flows);
+            else Assert.Equal(checked(workers * (ulong)rate), Assert.Single(flows).RawQuantity);
+        }
+        Assert.Equal(f.Session.WorkersAt(buyerTile),
+            Assert.Single(result.Trade.Purchasing.Buyers).ResidentWorkers);
+        Assert.Equal(save, f.Session.ExportSaveJson());
+        Assert.False(result.CanAuthorizeRealSettlement);
+    }
+
+    [Fact]
     public void ReusedScenarioRecalculatesProductionAfterActivityReassignment()
     {
         var f = GaVs57SessionTransportAuthorityTests.Create();
