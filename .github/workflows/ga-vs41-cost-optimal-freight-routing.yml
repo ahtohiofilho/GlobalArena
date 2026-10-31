@@ -1,0 +1,46 @@
+name: GA-VS41 Cost-Optimal Commercial Freight Routing
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/ExperimentalCostOptimalFreightItineraryDiscovery.cs'
+      - 'GlobalArena.Simulation/ExperimentalGeographicFreightItineraryPricing.cs'
+      - 'GlobalArena.Tests/GaVs41CostOptimalFreightItineraryTests.cs'
+      - 'GlobalArena.Benchmarks/GaVs41FreightRoutingBenchmarkHarness.cs'
+      - 'GlobalArena.Benchmarks/Program.cs'
+      - 'docs/engineering/GA-VS41-cost-optimal-freight-routing.md'
+      - '.github/workflows/ga-vs41-cost-optimal-freight-routing.yml'
+  workflow_dispatch:
+
+jobs:
+  cheapest-freight-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: VS41 cheapest commercial itinerary, VS40 freight contracts and legacy discovery
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "FullyQualifiedName~GaVs41|FullyQualifiedName~GaVs40|FullyQualifiedName~EconomicFineTransportPathCacheTests"
+      - name: Synthetic multi-destination benchmark with full route-signature parity
+        run: dotnet run --project GlobalArena.Benchmarks/GlobalArena.Benchmarks.csproj -c Release -- --vs41-freight-routing
+      - name: Godot Mono Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  cheapest-freight-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Full economic, freight, save, physical-world regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: Godot Mono Debug
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug

@@ -184,9 +184,7 @@ public sealed class ExperimentalGeographicFreightItineraryPricing :
         var resolution = _session.FineWorld.StrategicTopology.Parameters;
         var edges = _session.FineWorld.StrategicTopology.Edges;
         var seen = new HashSet<ulong>();
-        BigInteger distance = 0;
-        BigInteger ascent = 0;
-        BigInteger wetSurface = 0;
+        BigInteger geographicBase = 0;
         foreach (var asset in orderedAssets)
         {
             if (asset is null || !seen.Add(asset.AssetId) ||
@@ -224,10 +222,7 @@ public sealed class ExperimentalGeographicFreightItineraryPricing :
                 throw new InvalidOperationException(
                     "The current network has no suitable built corridor for freight.");
 
-            distance += facts.UnitSphereChordMicroUnits;
-            ascent += BigInteger.Max(0L, facts.SignedElevationDeltaRaw);
-            wetSurface += (BigInteger)facts.AverageMoistureRaw *
-                facts.UnitSphereChordMicroUnits / 1_000_000L;
+            geographicBase += GeographicContribution(facts, pricing);
             current = next;
         }
 
@@ -235,10 +230,27 @@ public sealed class ExperimentalGeographicFreightItineraryPricing :
             throw new InvalidOperationException(
                 "A complete freight price must reach its explicitly declared destination.");
 
-        var geographicBase = distance * pricing.DistanceWeight +
-            ascent * pricing.UphillWeight +
-            wetSurface * pricing.WetSurfaceWeight;
         return new ExperimentalAggregatedLandFreightCostFunction(
             pricing, geographicBase);
+    }
+
+    /// <summary>
+    /// Exactly the same additive edge term that the VS41 cost-optimal
+    /// Dijkstra minimizes. Keep it shared with final full-itinerary pricing:
+    /// any changed rounding here must also affect route selection.
+    /// Fixed operating overhead and saturation are path independent for
+    /// one declared service, technology and ex-ante expected load.
+    /// </summary>
+    internal static BigInteger GeographicContribution(
+        CanonicalDirectedLandEdgeFacts facts,
+        ExperimentalFreightTechnologyPricing pricing)
+    {
+        ArgumentNullException.ThrowIfNull(facts);
+        ArgumentNullException.ThrowIfNull(pricing);
+        var wet = (BigInteger)facts.AverageMoistureRaw *
+            facts.UnitSphereChordMicroUnits / 1_000_000L;
+        return (BigInteger)facts.UnitSphereChordMicroUnits * pricing.DistanceWeight +
+            BigInteger.Max(0L, facts.SignedElevationDeltaRaw) * pricing.UphillWeight +
+            wet * pricing.WetSurfaceWeight;
     }
 }
