@@ -1,5 +1,11 @@
 using GlobalArena.Benchmarks;
 
+if (args.Any(argument =>
+    string.Equals(argument, "--vs52-abstract-purchasing", StringComparison.Ordinal)))
+{
+    return GaVs52AbstractPurchasingBenchmarkHarness.Run();
+}
+
 if (args.Length > 0 &&
     string.Equals(args[0], "--vs51-crash-worker", StringComparison.Ordinal))
 {
