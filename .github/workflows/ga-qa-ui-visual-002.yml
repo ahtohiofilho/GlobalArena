@@ -77,4 +77,5 @@ jobs:
             ${{ github.workspace }}/.ga-ui-visual/*.png
             ${{ runner.temp }}/ga-visual-*.log
           if-no-files-found: ignore
+          include-hidden-files: true
           retention-days: 14
