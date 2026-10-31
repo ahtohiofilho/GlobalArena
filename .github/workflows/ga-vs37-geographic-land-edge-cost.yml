@@ -1,0 +1,41 @@
+name: GA-VS37 Geographic Land Edge Cost Plan A
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/CanonicalGeographicLandEdgeCostProvider.cs'
+      - 'GlobalArena.Tests/GaVs37GeographicLandEdgeCostTests.cs'
+      - 'docs/engineering/GA-VS37-geographic-land-edge-cost-plan-a.md'
+      - '.github/workflows/ga-vs37-geographic-land-edge-cost.yml'
+  workflow_dispatch:
+
+jobs:
+  geographic-edge-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Geography real costs and route regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "FullyQualifiedName~GaVs37|FullyQualifiedName~GaVs36|FullyQualifiedName~GaVs35"
+      - name: Godot Release build
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  geographic-edge-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Full physical simulation regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: Godot Debug build
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
