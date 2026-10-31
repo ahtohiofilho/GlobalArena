@@ -32,6 +32,8 @@ public partial class Main
     private Label? _remoteRoutePreview;
     private Label? _journeySupplyPreview;
     private SpinBox? _journeyHypotheticalCargo;
+    private SpinBox? _journeyRealCargo;
+    private Label? _journeyRealCargoResult;
     private Label? _journeyCampForecast;
     private VBoxContainer? _workerLabAdvancedPanel;
     private Button? _workerMoveButton;
@@ -342,6 +344,35 @@ public partial class Main
         _journeyCampForecast.AddThemeColorOverride("font_color", new Color("#b5cfdb"));
         _workerLabAdvancedPanel.AddChild(_journeyCampForecast);
 
+        // Deliberately separate from the VS32 nonbinding forecast. This
+        // command performs a real local food purchase and creates a V16 order.
+        var realFoodRow = new HBoxContainer();
+        realFoodRow.AddThemeConstantOverride("separation", 4);
+        _workerLabAdvancedPanel.AddChild(realFoodRow);
+        realFoodRow.AddChild(new Label { Text = "COMPRAR comida real (unidades):" });
+        _journeyRealCargo = new SpinBox
+        {
+            Name = "GAQARealTravelFood",
+            MinValue = 0, MaxValue = 1000000, Step = 0.5, Value = 0,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        realFoodRow.AddChild(_journeyRealCargo);
+        var orderWithFood = new Button
+        {
+            Name = "GAQAOrderProvisionedJourney",
+            Text = "COMPRAR SUPRIMENTOS E ORDENAR VIAGEM (V16)"
+        };
+        orderWithFood.Pressed += OrderProvisionedRemotePhysicalJourney;
+        _workerLabAdvancedPanel.AddChild(orderWithFood);
+        _journeyRealCargoResult = new Label
+        {
+            Name = "GAQARealTravelFoodResult",
+            Visible = false,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        _journeyRealCargoResult.AddThemeColorOverride("font_color", new Color("#b5ddb5"));
+        _workerLabAdvancedPanel.AddChild(_journeyRealCargoResult);
+
         _workerLabDetails = new Label
         {
             Text = "Detalhes técnicos disponíveis após a inspeção.",
@@ -631,6 +662,51 @@ public partial class Main
         {
             _workerLabStatus.Text +=
                 "\nORDEM GLOBAL RECUSADA (partida preservada): " + ex.Message;
+        }
+    }
+
+    private void OrderProvisionedRemotePhysicalJourney()
+    {
+        if (_canonicalPhysicalLab is null || _canonicalSession is null ||
+            _workerOrigin is null || _workerFromJob is null || _workerToJob is null ||
+            _workerAmount is null || _remoteDestinationTileId is null ||
+            _journeyRealCargo is null || _journeyRealCargoResult is null)
+            return;
+        try
+        {
+            var destination = new PhysicalTacticalTileId(
+                _canonicalPhysicalLab.State.FineParameters,
+                new StrategicCellId(checked((ulong)_remoteDestinationTileId.Value)));
+            var raw = checked((ulong)Math.Round(
+                _journeyRealCargo.Value * 1_000_000.0,
+                MidpointRounding.ToEven));
+            var trip = _canonicalPhysicalLab.OrderProvisionedLongDistanceTransit(
+                _workerOrigin.Value, destination,
+                (EconomicActivityKind)_workerFromJob.GetSelectedId(),
+                (EconomicActivityKind)_workerToJob.GetSelectedId(),
+                checked((ulong)_workerAmount.Value), raw);
+            var lot = _canonicalPhysicalLab.State.TravelFoodLedgers!.Single(
+                x => x.OrderId == trip.OrderId);
+            AttachRuntimeState(_canonicalSession.Snapshot);
+            UpdateWorkerLabHud();
+            _journeyRealCargoResult.Text =
+                $"VIAGEM V16 {trip.OrderId} INICIADA | " +
+                $"alimento adquirido {lot.FoodPurchasedRaw / 1_000_000.0:F3} | " +
+                $"pagamento {lot.PaidMicrocredits / 1_000_000.0:F3} créditos | " +
+                $"chegada prevista turno {trip.ArrivalTurn}. " +
+                "A alimentação agora é debitada do lote físico a cada ciclo. " +
+                "A coleta e os acampamentos da simulação VS32 ainda NÃO são executados.";
+            _journeyRealCargoResult.Visible = true;
+            GD.Print($"GA_VS33_PHYSICAL_FOOD_ORDER order={trip.OrderId} " +
+                $"food={raw} paid={lot.PaidMicrocredits} " +
+                $"hash={_canonicalPhysicalLab.CurrentHash.HexDigest}");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or
+                                   ArgumentException or OverflowException)
+        {
+            _journeyRealCargoResult.Text =
+                "COMPRA/PARTIDA RECUSADA (nenhum lote criado): " + ex.Message;
+            _journeyRealCargoResult.Visible = true;
         }
     }
 

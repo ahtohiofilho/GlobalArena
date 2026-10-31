@@ -1,0 +1,61 @@
+name: GA-VS33 Physical Expedition Food V16
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Runtime/PhysicalJourneyFoodLedger.cs'
+      - 'GlobalArena.Runtime/PhysicalTacticalEconomyRuntimeState.cs'
+      - 'GlobalArena.Simulation/CanonicalPhysicalTacticalSession.cs'
+      - 'GlobalArena.Simulation/CanonicalWorldStateHasher.cs'
+      - 'GlobalArena.Tests/GaVs33PhysicalJourneyFoodAndSaveV16Tests.cs'
+      - 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+      - '.github/workflows/ga-vs33-physical-expedition-food-v16.yml'
+  workflow_dispatch:
+
+jobs:
+  food-ledger-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: V16 rations and all physical regression tests
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: Godot Mono Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  food-ledger-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Check canonical V16 boundaries and real UI
+        shell: pwsh
+        run: |
+          $state = Get-Content -Raw -Encoding UTF8 'GlobalArena.Runtime/PhysicalTacticalEconomyRuntimeState.cs'
+          $session = Get-Content -Raw -Encoding UTF8 'GlobalArena.Simulation/CanonicalPhysicalTacticalSession.cs'
+          $hash = Get-Content -Raw -Encoding UTF8 'GlobalArena.Simulation/CanonicalWorldStateHasher.cs'
+          $ui = Get-Content -Raw -Encoding UTF8 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+          if (-not $state.Contains('TravelFoodLedgers') -or
+              -not $session.Contains('OrderProvisionedLongDistanceTransit') -or
+              -not $session.Contains('depart_remote_food') -or
+              -not $hash.Contains('PhysicalJourneyFoodFormatVersion = 16U') -or
+              -not $ui.Contains('GAQAOrderProvisionedJourney') -or
+              -not $ui.Contains('GAQAForecastCampStops')) {
+            throw 'VS33 cannot bypass real property, replay or optional VS32 forecast'
+          }
+      - name: V16 rations and all physical regression tests
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: Godot Mono Debug
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
+      - name: Godot Mono Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release

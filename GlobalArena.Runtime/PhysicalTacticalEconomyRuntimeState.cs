@@ -46,6 +46,8 @@ public sealed class PhysicalTacticalEconomyRuntimeState
     public PhysicalWorkerMovementMode MovementMode { get; }
     public IReadOnlyList<PhysicalWorkerTransit> Transits { get; }
     public IReadOnlyList<PhysicalLongDistanceTransit> LongTrips { get; }
+    // Null = historic ruleset; nonnull = V16 physical travel-property regime.
+    public IReadOnlyList<PhysicalJourneyFoodLedger>? TravelFoodLedgers { get; }
     // Persist the V15 ruleset even after the final journey has arrived.
     public bool RemoteRoutingEnabled { get; }
     public ulong WorkersInTransit => checked(Transits.Aggregate(0UL,
@@ -72,7 +74,8 @@ public sealed class PhysicalTacticalEconomyRuntimeState
         PhysicalWorkerMovementMode movementMode = PhysicalWorkerMovementMode.LegacyInstant,
         IEnumerable<PhysicalWorkerTransit>? transits = null,
         IEnumerable<PhysicalLongDistanceTransit>? longTrips = null,
-        bool remoteRoutingEnabled = false)
+        bool remoteRoutingEnabled = false,
+        IEnumerable<PhysicalJourneyFoodLedger>? travelFoodLedgers = null)
     {
         ArgumentNullException.ThrowIfNull(coarseWorldBinding);
         ArgumentNullException.ThrowIfNull(allocations);
@@ -180,6 +183,34 @@ public sealed class PhysicalTacticalEconomyRuntimeState
             totalWorkers = checked(totalWorkers + trip.Workers);
         }
 
+        PhysicalJourneyFoodLedger[]? orderedFoodLedgers = null;
+        if (travelFoodLedgers is not null)
+        {
+            if (!remoteRoutingEnabled || foodCash is null)
+                throw new ArgumentException("V16 food property requires remote routing and a cash market.");
+            orderedFoodLedgers = travelFoodLedgers
+                .OrderBy(x => x?.OrderId ?? 0UL).ToArray();
+            var foodOrderIds = new HashSet<ulong>();
+            foreach (var lot in orderedFoodLedgers)
+            {
+                if (lot is null || lot.OrderId == 0UL ||
+                    lot.OrderId > workerRevision || !foodOrderIds.Add(lot.OrderId) ||
+                    lot.FoodPurchasedRaw == 0UL || lot.UnitPriceMicrocredits == 0UL ||
+                    lot.FoodRemainingRaw > lot.FoodPurchasedRaw ||
+                    lot.FoodConsumedRaw != lot.FoodPurchasedRaw - lot.FoodRemainingRaw ||
+                    lot.PaidMicrocredits != PhysicalJourneyFoodLedger.PurchasePayment(
+                        lot.FoodPurchasedRaw, lot.UnitPriceMicrocredits))
+                    throw new ArgumentException("Travel food ledger violates conservation or purchase identity.");
+                ValidateTile(lot.Source, fineParameters);
+                ValidateTile(lot.Destination, fineParameters);
+                var active = orderedLongTrips.SingleOrDefault(x => x.OrderId == lot.OrderId);
+                if (lot.Arrived == (active is not null) ||
+                    (active is not null &&
+                     (active.Source != lot.Source || active.Destination != lot.Destination)))
+                    throw new ArgumentException("Travel food ownership diverges from the active itinerary.");
+            }
+        }
+
         var stockRows = stocks.ToArray();
         if (stockRows.Any(x => x is null))
             throw new ArgumentException("Physical stock cannot contain null records.");
@@ -214,6 +245,8 @@ public sealed class PhysicalTacticalEconomyRuntimeState
         MovementMode = movementMode;
         Transits = Array.AsReadOnly(orderedTransits);
         LongTrips = Array.AsReadOnly(orderedLongTrips);
+        TravelFoodLedgers = orderedFoodLedgers is null
+            ? null : Array.AsReadOnly(orderedFoodLedgers);
         RemoteRoutingEnabled = remoteRoutingEnabled;
         WorkerRevision = workerRevision;
         TotalWorkers = totalWorkers;
