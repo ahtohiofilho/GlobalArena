@@ -1,0 +1,45 @@
+name: GA-VS46 Independent Cash and Freight Settlement Audit
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/ExperimentalIndependentCashSettlementAuditor.cs'
+      - 'GlobalArena.Tests/GaVs46IndependentCashSettlementAuditTests.cs'
+      - 'GlobalArena.Benchmarks/GaVs46IndependentCashAuditBenchmarkHarness.cs'
+      - 'GlobalArena.Benchmarks/Program.cs'
+      - 'docs/engineering/GA-VS46-independent-cash-freight-audit.md'
+      - '.github/workflows/ga-vs46-independent-cash-audit.yml'
+  workflow_dispatch:
+
+jobs:
+  independent-audit-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Independent cash journal and VS40-VS45 regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "FullyQualifiedName~GaVs46|FullyQualifiedName~GaVs45|FullyQualifiedName~GaVs44|FullyQualifiedName~GaVs43|FullyQualifiedName~GaVs42|FullyQualifiedName~GaVs41|FullyQualifiedName~GaVs40"
+      - name: Reproducible multi-buyer double-entry audit benchmark
+        run: dotnet run --project GlobalArena.Benchmarks/GlobalArena.Benchmarks.csproj -c Release -- --vs46-independent-cash-audit
+      - name: Godot Mono Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  independent-audit-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Full finance, freight, world, save and tactical regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: Godot Mono Debug
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
