@@ -52,6 +52,10 @@ public sealed record CanonicalJourneyFoodSaveRow(
     ulong PurchasedRaw, ulong RemainingRaw, ulong ConsumedRaw,
     ulong PriceMicrocredits, ulong PaidMicrocredits, bool Arrived);
 
+public sealed record CanonicalJourneyCampSaveRow(
+    ulong Order, ulong WaitingTurns, ulong FoodGatheredRaw,
+    ulong GatheringEconomicCycles);
+
 public sealed record CanonicalPhysicalSavePayload(
     int Version, ulong Seed, int GeneratorVersion,
     int CoarseM, int CoarseN, int FineM, int FineN,
@@ -70,7 +74,9 @@ public sealed record CanonicalPhysicalSavePayload(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     CanonicalLongJourneySaveRow[]? LongTrips = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    CanonicalJourneyFoodSaveRow[]? TravelFoodLedgers = null);
+    CanonicalJourneyFoodSaveRow[]? TravelFoodLedgers = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    CanonicalJourneyCampSaveRow[]? JourneyCampStates = null);
 
 public sealed record CanonicalPhysicalSaveEnvelope(
     int Version, string PayloadJson, string PayloadSha256Hex);
@@ -92,6 +98,7 @@ public sealed class CanonicalPhysicalTacticalSession
     public const int BornCivilizationSaveFormat = 14;
     public const int LongDistanceSaveFormat = 15;
     public const int PhysicalTravelFoodSaveFormat = 16;
+    public const int AutomaticCampSaveFormat = 17;
     public const int MaximumActions = 100_000;
     private const int MaximumSaveBytes = 4_000_000;
     public const ulong FoodDemandRawPerWorker = 500_000UL;
@@ -576,7 +583,7 @@ public sealed class CanonicalPhysicalTacticalSession
             current.Stocks, current.Cycles, _cadenceMode, _geographyMode,
             current.FoodCash, _movementMode, current.Transits.Append(order),
             current.LongTrips, current.RemoteRoutingEnabled,
-            current.TravelFoodLedgers);
+            current.TravelFoodLedgers, current.JourneyCampStates);
         if (next.TotalWorkers != current.TotalWorkers)
             throw new InvalidOperationException("Timed departure did not conserve workers.");
         Commit(next, "depart", source.FineStrategicCellId.Value,
@@ -627,7 +634,8 @@ public sealed class CanonicalPhysicalTacticalSession
             current.Stocks, current.Cycles, _cadenceMode, _geographyMode,
             current.FoodCash, _movementMode, current.Transits,
             current.LongTrips.Append(journey), remoteRoutingEnabled: true,
-            travelFoodLedgers: current.TravelFoodLedgers);
+            travelFoodLedgers: current.TravelFoodLedgers,
+            journeyCampStates: current.JourneyCampStates);
         if (next.TotalWorkers != current.TotalWorkers)
             throw new InvalidOperationException("Remote departure violated workforce conservation.");
         Commit(next, "depart_remote", source.FineStrategicCellId.Value,
@@ -644,7 +652,7 @@ public sealed class CanonicalPhysicalTacticalSession
     public PhysicalLongDistanceTransit OrderProvisionedLongDistanceTransit(
         PhysicalTacticalTileId source, PhysicalTacticalTileId destination,
         EconomicActivityKind fromJob, EconomicActivityKind toJob,
-        ulong amount, ulong foodRaw)
+        ulong amount, ulong foodRaw, bool automaticCamps = false)
     {
         if (_movementMode != PhysicalWorkerMovementMode.TimedAdjacent ||
             _marketMode != PhysicalFoodMarketMode.LocalCashSettlement)
@@ -657,6 +665,17 @@ public sealed class CanonicalPhysicalTacticalSession
         if (!plan.HasFootpath || plan.MovementLegs < 2UL ||
             plan.EarliestArrivalTurn is null)
             throw new InvalidOperationException("A provisioned expedition needs a walkable long route.");
+        if (automaticCamps)
+        {
+            // Before acquiring any property, verify that this primitive
+            // forage strategy can complete the requested journey. Other
+            // future supply sources can provide alternative strategies.
+            var preview = JourneyProvisioningForecastProjection.PreviewPlanned(
+                this, source, destination, fromJob, toJob, amount, foodRaw);
+            if (!preview.CanArriveUnderAssumptions)
+                throw new InvalidOperationException(
+                    "Insufficient real food and no productive primitive camp along the route.");
+        }
 
         var current = State;
         var key = (source, fromJob);
@@ -727,10 +746,16 @@ public sealed class CanonicalPhysicalTacticalSession
             _cadenceMode, _geographyMode, cash, _movementMode,
             current.Transits, current.LongTrips.Append(journey), true,
             (current.TravelFoodLedgers ?? Array.Empty<PhysicalJourneyFoodLedger>())
-                .Append(purchased));
+                .Append(purchased),
+            automaticCamps
+                ? (current.JourneyCampStates ??
+                    Array.Empty<PhysicalJourneyCampState>())
+                    .Append(new PhysicalJourneyCampState(orderId, 0UL, 0UL, 0UL))
+                : current.JourneyCampStates);
         if (next.TotalWorkers != current.TotalWorkers)
             throw new InvalidOperationException("Provisioned departure lost workers.");
-        Commit(next, "depart_remote_food", source.FineStrategicCellId.Value,
+        Commit(next, automaticCamps ? "depart_remote_camp" : "depart_remote_food",
+            source.FineStrategicCellId.Value,
             destination.FineStrategicCellId.Value, (byte)fromJob,
             (byte)toJob, amount, foodRaw);
         return journey;
@@ -756,7 +781,61 @@ public sealed class CanonicalPhysicalTacticalSession
         var pendingTransits = current.Transits.ToList();
         var pendingLongTrips = current.LongTrips.ToList();
         var foodLedgers = current.TravelFoodLedgers?.ToDictionary(x => x.OrderId);
+        var campStates = current.JourneyCampStates?.ToDictionary(x => x.OrderId);
         var nextWorkerRevision = current.WorkerRevision;
+        ulong actualCampProduction = 0UL;
+
+        // V17: an automatic camp is evaluated ONLY while still at a waypoint,
+        // before taking the next physical leg. Waiting postpones BOTH the
+        // next leg deadline and final arrival. Each gathering requires an
+        // existing economic settlement; no food arises within a free tick.
+        if (campStates is not null && foodLedgers is not null)
+        {
+            var lastCampSettlement = cycles.Count == 0
+                ? 0UL : cycles[^1].MovementTurn;
+            var campCanGatherThisTurn = PhysicalEconomicCadence.IsSettlementTurn(
+                turn, lastCampSettlement, _cadenceMode);
+            var provider = new PrimitiveForageFoodSource();
+            foreach (var trip in pendingLongTrips.OrderBy(x => x.OrderId).ToArray())
+            {
+                if (!campStates.TryGetValue(trip.OrderId, out var camp))
+                    continue;
+                var lot = foodLedgers[trip.OrderId];
+                if (!PhysicalJourneyAutomaticCampPolicy.NeedsCampBeforeNextLeg(
+                        this, trip, lot))
+                    continue;
+                var shifted = trip with
+                {
+                    ArrivalTurn = checked(trip.ArrivalTurn + 1UL),
+                    NextLegCompletionTurn = checked(trip.NextLegCompletionTurn + 1UL)
+                };
+                pendingLongTrips[pendingLongTrips.FindIndex(
+                    x => x.OrderId == trip.OrderId)] = shifted;
+                var gathering = 0UL;
+                if (campCanGatherThisTurn)
+                {
+                    gathering = checked(
+                        provider.RawFoodPerWorkerPerSettlement(
+                            this, trip.CurrentWaypoint) * trip.Workers);
+                    var need = checked(trip.Workers * FoodDemandRawPerWorker);
+                    if (gathering <= need)
+                        throw new InvalidOperationException(
+                            "An expedition cannot replenish food at this unproductive stop.");
+                    foodLedgers[trip.OrderId] = lot with
+                    {
+                        FoodRemainingRaw = checked(lot.FoodRemainingRaw + gathering)
+                    };
+                    actualCampProduction = checked(actualCampProduction + gathering);
+                }
+                campStates[trip.OrderId] = camp with
+                {
+                    WaitingMovementTurns = checked(camp.WaitingMovementTurns + 1UL),
+                    GatheredFoodRaw = checked(camp.GatheredFoodRaw + gathering),
+                    GatheringEconomicCycles = checked(camp.GatheringEconomicCycles +
+                        (campCanGatherThisTurn ? 1UL : 0UL))
+                };
+            }
+        }
 
         if (_movementMode == PhysicalWorkerMovementMode.TimedAdjacent)
         {
@@ -850,7 +929,7 @@ public sealed class CanonicalPhysicalTacticalSession
         var lastSettlement = cycles.Count == 0 ? 0UL : cycles[^1].MovementTurn;
         if (PhysicalEconomicCadence.IsSettlementTurn(turn, lastSettlement, _cadenceMode))
         {
-            ulong produced = 0UL;
+            ulong produced = actualCampProduction;
             ulong consumed = 0UL;
             ulong unmet = 0UL;
 
@@ -986,7 +1065,8 @@ public sealed class CanonicalPhysicalTacticalSession
                 x.Key.Item1, x.Key.Item2, x.Value)),
             cycles, _cadenceMode, _geographyMode, cash,
             _movementMode, pendingTransits, pendingLongTrips,
-            current.RemoteRoutingEnabled, foodLedgers?.Values);
+            current.RemoteRoutingEnabled, foodLedgers?.Values,
+            campStates?.Values);
         if (next.TotalWorkers != current.TotalWorkers)
             throw new InvalidOperationException("Timed arrival did not conserve workers.");
         Commit(next, "tick", 0UL, 0UL, 0, 0, 0UL);
@@ -1033,7 +1113,7 @@ public sealed class CanonicalPhysicalTacticalSession
         {
             envelope = JsonSerializer.Deserialize<CanonicalPhysicalSaveEnvelope>(json)
                 ?? throw new InvalidOperationException("Missing canonical save envelope.");
-            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat or CashFoodSaveFormat or TimedTransitSaveFormat or BornCivilizationSaveFormat or LongDistanceSaveFormat or PhysicalTravelFoodSaveFormat) ||
+            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat or CashFoodSaveFormat or TimedTransitSaveFormat or BornCivilizationSaveFormat or LongDistanceSaveFormat or PhysicalTravelFoodSaveFormat or AutomaticCampSaveFormat) ||
                 string.IsNullOrEmpty(envelope.PayloadJson) ||
                 string.IsNullOrEmpty(envelope.PayloadSha256Hex))
                 throw new InvalidOperationException("Unsupported canonical save envelope.");
@@ -1061,8 +1141,12 @@ public sealed class CanonicalPhysicalTacticalSession
                 payload.InitialCivilization is not null) ||
             ((payload.Version >= LongDistanceSaveFormat) !=
                 (payload.LongTrips is not null)) ||
-            ((payload.Version == PhysicalTravelFoodSaveFormat) !=
+            ((payload.Version >= PhysicalTravelFoodSaveFormat) !=
                 (payload.TravelFoodLedgers is not null)) ||
+            ((payload.Version == AutomaticCampSaveFormat) !=
+                (payload.JourneyCampStates is not null)) ||
+            (payload.JourneyCampStates is not null &&
+                payload.JourneyCampStates.Any(x => x is null)) ||
             (payload.TravelFoodLedgers is not null &&
                 payload.TravelFoodLedgers.Any(x => x is null)) ||
             (payload.LongTrips is not null &&
@@ -1132,13 +1216,21 @@ public sealed class CanonicalPhysicalTacticalSession
                     (EconomicActivityKind)action.FromJob,
                     (EconomicActivityKind)action.ToJob, action.Workers);
             else if (action.Kind == "depart_remote_food" &&
-                     payload.Version == PhysicalTravelFoodSaveFormat &&
+                     payload.Version >= PhysicalTravelFoodSaveFormat &&
                      game._movementMode == PhysicalWorkerMovementMode.TimedAdjacent)
                 game.OrderProvisionedLongDistanceTransit(
                     new PhysicalTacticalTileId(game._fine, new StrategicCellId(action.Source)),
                     new PhysicalTacticalTileId(game._fine, new StrategicCellId(action.Destination)),
                     (EconomicActivityKind)action.FromJob, (EconomicActivityKind)action.ToJob,
                     action.Workers, action.FoodRaw);
+            else if (action.Kind == "depart_remote_camp" &&
+                     payload.Version == AutomaticCampSaveFormat &&
+                     game._movementMode == PhysicalWorkerMovementMode.TimedAdjacent)
+                game.OrderProvisionedLongDistanceTransit(
+                    new PhysicalTacticalTileId(game._fine, new StrategicCellId(action.Source)),
+                    new PhysicalTacticalTileId(game._fine, new StrategicCellId(action.Destination)),
+                    (EconomicActivityKind)action.FromJob, (EconomicActivityKind)action.ToJob,
+                    action.Workers, action.FoodRaw, automaticCamps: true);
             else if (action.Kind == "tick" && action.Source == 0UL &&
                      action.Destination == 0UL && action.FromJob == 0 &&
                      action.ToJob == 0 && action.Workers == 0UL)
@@ -1204,7 +1296,9 @@ public sealed class CanonicalPhysicalTacticalSession
         return game;
     }
 
-    private int CurrentSaveFormat => State.TravelFoodLedgers is not null
+    private int CurrentSaveFormat => State.JourneyCampStates is not null
+        ? AutomaticCampSaveFormat
+        : State.TravelFoodLedgers is not null
         ? PhysicalTravelFoodSaveFormat
         : State.RemoteRoutingEnabled
         ? LongDistanceSaveFormat
@@ -1284,7 +1378,10 @@ public sealed class CanonicalPhysicalTacticalSession
                 x.OrderId, x.Source.FineStrategicCellId.Value,
                 x.Destination.FineStrategicCellId.Value,
                 x.FoodPurchasedRaw, x.FoodRemainingRaw, x.FoodConsumedRaw,
-                x.UnitPriceMicrocredits, x.PaidMicrocredits, x.Arrived)).ToArray());
+                x.UnitPriceMicrocredits, x.PaidMicrocredits, x.Arrived)).ToArray(),
+            state.JourneyCampStates?.Select(x => new CanonicalJourneyCampSaveRow(
+                x.OrderId, x.WaitingMovementTurns, x.GatheredFoodRaw,
+                x.GatheringEconomicCycles)).ToArray());
     }
 
     private bool IsWorkableLand(StrategicCellId id) =>
