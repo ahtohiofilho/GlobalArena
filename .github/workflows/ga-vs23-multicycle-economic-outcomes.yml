@@ -58,7 +58,8 @@ jobs:
           if (-not $runner.Contains('feature/ga-vs23-multicycle-economic-outcomes-20261031') -or
               -not $runner.Contains('-c Debug') -or
               -not $runner.Contains('& $GodotExe --path $projectDir --verbose') -or
-              -not $main.Contains('GA_VS23_RUNTIME_ACTIVE') -or
+              (-not $main.Contains('GA_VS23_RUNTIME_ACTIVE') -and
+               -not $main.Contains('GA_VS24_RUNTIME_ACTIVE')) -or
               -not $lab.Contains('AdvanceOfflineLabFiveEconomicCycles') -or
               -not $lab.Contains('PhysicalEconomicCycleProgression.SummarizeRecent') -or
               -not $progression.Contains('public static PhysicalEconomicBatchPlan AdvanceBatch') -or

@@ -25,6 +25,7 @@ public partial class Main
     private Label? _workerLabDetails;
     private Label? _settlementSummary;
     private Label? _economicCycleSummary;
+    private Label? _workerDecisionPreview;
     private VBoxContainer? _workerLabAdvancedPanel;
     private Button? _workerMoveButton;
     private Button? _workerReassignButton;
@@ -44,7 +45,7 @@ public partial class Main
 
         var title = new Label
         {
-            Text = "RESULTADOS ECONÔMICOS | VS23",
+            Text = "COMPARAR DECISÕES PRODUTIVAS | VS24",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         title.AddThemeFontSizeOverride("font_size", 16);
@@ -101,6 +102,11 @@ public partial class Main
         var quantity = new HBoxContainer();
         quantity.AddChild(new Label { Text = "Transferir:" });
         _workerAmount = new SpinBox { MinValue = 1, MaxValue = 8, Step = 1, Value = 3 };
+        _workerAmount.ValueChanged += _ =>
+        {
+            if (_workerDecisionPreview is not null)
+                _workerDecisionPreview.Visible = false;
+        };
         quantity.AddChild(_workerAmount);
         lab.AddChild(quantity);
 
@@ -118,6 +124,19 @@ public partial class Main
         };
         _workerReassignButton.Pressed += ReassignWorkerLabWorkers;
         lab.AddChild(_workerReassignButton);
+        var compareDecision = new Button
+        {
+            Text = "COMPARAR REALOCAÇÃO EM 5 CICLOS (SEM APLICAR)"
+        };
+        compareDecision.Pressed += CompareWorkerDecisionWithoutCommitting;
+        lab.AddChild(compareDecision);
+        _workerDecisionPreview = new Label
+        {
+            Visible = false,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        _workerDecisionPreview.AddThemeColorOverride("font_color", new Color("#e7d8ad"));
+        lab.AddChild(_workerDecisionPreview);
 
         var nextTurn = new Button { Text = "AVANÇAR TURNO DE MOVIMENTO (CICLOS ADAPTATIVOS)" };
         nextTurn.Pressed += AdvanceOfflineLabTurn;
@@ -378,6 +397,65 @@ public partial class Main
         {
             if (_workerLabStatus is not null)
                 _workerLabStatus.Text = "TRANSFERÊNCIA RECUSADA (estado preservado): " + ex.Message;
+        }
+    }
+
+    private void CompareWorkerDecisionWithoutCommitting()
+    {
+        if (_canonicalPhysicalLab is null || _workerOrigin is null ||
+            _workerFromJob is null || _workerToJob is null ||
+            _workerAmount is null || _workerDecisionPreview is null)
+            return;
+        try
+        {
+            var sourceHash = _canonicalPhysicalLab.CurrentHash;
+            var from = (EconomicActivityKind)_workerFromJob.GetSelectedId();
+            var to = (EconomicActivityKind)_workerToJob.GetSelectedId();
+            var amount = checked((ulong)_workerAmount.Value);
+            var forecast = PhysicalWorkerDecisionProjection.Compare(
+                _canonicalPhysicalLab, _workerOrigin.Value, from, to, amount);
+
+            static string Quant(ulong raw) => (raw / 1_000_000.0).ToString("F2");
+            static string Service(RecentPhysicalEconomicCycles sample)
+            {
+                var demand = (double)sample.FoodConsumedRaw + sample.FoodUnmetRaw;
+                return demand == 0.0 ? "sem demanda" :
+                    $"{sample.FoodConsumedRaw * 100.0 / demand:F1}% atendido";
+            }
+            var baseLine = forecast.Unchanged;
+            var modified = forecast.Reassigned;
+            _workerDecisionPreview.Text =
+                $"PRÉVIA HIPOTÉTICA | tile {forecast.Tile.FineStrategicCellId.Value} " +
+                $"| turnos {forecast.StartingMovementTurn} a {forecast.ProjectedFinalMovementTurn}\n" +
+                $"Manter: alimento {Quant(baseLine.FoodService.FoodConsumedRaw)}; " +
+                $"falta {Quant(baseLine.FoodService.FoodUnmetRaw)}; " +
+                $"{Service(baseLine.FoodService)}\n" +
+                $"Mudar {amount} trabalhador(es), {from} → {to}: " +
+                $"alimento {Quant(modified.FoodService.FoodConsumedRaw)}; " +
+                $"falta {Quant(modified.FoodService.FoodUnmetRaw)}; " +
+                $"{Service(modified.FoodService)}\n" +
+                $"ESTOQUE LOCAL NO FINAL (alim./madeira/pedra): " +
+                $"manter {Quant(baseLine.LocalFoodStockRaw)}/" +
+                $"{Quant(baseLine.LocalWoodStockRaw)}/" +
+                $"{Quant(baseLine.LocalStoneStockRaw)} | mudar " +
+                $"{Quant(modified.LocalFoodStockRaw)}/" +
+                $"{Quant(modified.LocalWoodStockRaw)}/" +
+                $"{Quant(modified.LocalStoneStockRaw)}\n" +
+                "Previsão condicional: nenhuma ação aplicada. Para confirmar, " +
+                "use MUDAR ATIVIDADE NO TILE. Não é uma estimativa de PIB.";
+            _workerDecisionPreview.Visible = true;
+            if (!_canonicalPhysicalLab.CurrentHash.Equals(sourceHash))
+                throw new InvalidOperationException(
+                    "Hypothetical preview unexpectedly modified the live game.");
+            GD.Print($"GA_VS24_LABOR_DECISION_PREVIEW tile={forecast.Tile.FineStrategicCellId.Value} " +
+                $"turn={forecast.StartingMovementTurn} horizon={forecast.ProjectedFinalMovementTurn} " +
+                $"workers={forecast.Workers} hash={sourceHash.HexDigest}");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or OverflowException)
+        {
+            _workerDecisionPreview.Text =
+                "Prévia não disponível (partida preservada): " + ex.Message;
+            _workerDecisionPreview.Visible = true;
         }
     }
 
@@ -691,6 +769,8 @@ public partial class Main
 
     private void UpdateWorkerLabHud()
     {
+        if (_workerDecisionPreview is not null)
+            _workerDecisionPreview.Visible = false; // clear any stale hypothetical
         if (_canonicalPhysicalLab is null || _workerOrigin is null || _tacticalPreview is null ||
             _workerLabStatus is null) return;
         var state = _canonicalPhysicalLab.State;

@@ -1,0 +1,75 @@
+name: GA-VS24 Read-Only Worker Decision Comparison
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/PhysicalWorkerDecisionProjection.cs'
+      - 'GlobalArena.Tests/GaVs24WorkerDecisionComparisonTests.cs'
+      - 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+      - 'tools/GlobalArena.Godot/Scripts/Main.cs'
+      - 'tools/launch-vs24.ps1'
+      - '.github/workflows/ga-vs24-worker-decision-comparison.yml'
+      - '.github/workflows/ga-vs23-multicycle-economic-outcomes.yml'
+      - '.github/workflows/ga-vs22-economic-cycle-visibility.yml'
+      - '.github/workflows/ga-vs21-local-worker-reallocation.yml'
+      - '.github/workflows/ga-vs20-emergent-settlements.yml'
+      - '.github/workflows/ga-vs19b-born-civilization.yml'
+      - '.github/workflows/ga-vs19c-operational-hud.yml'
+  workflow_dispatch:
+
+jobs:
+  worker-comparison-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Worker scenario comparison and previous economic regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs24|FullyQualifiedName~GaVs23|FullyQualifiedName~GaVs22|FullyQualifiedName~GaVs21|FullyQualifiedName~GaVs20'
+      - name: Godot Release compilation
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  worker-comparison-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Verify Windows launcher and immutable simulation UI contract
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'tools/launch-vs24.ps1').Path,
+            [ref]$tokens, [ref]$errors)
+          if ($errors.Count) { throw ($errors | ForEach-Object Message | Out-String) }
+          $runner = Get-Content -Raw -Encoding UTF8 'tools/launch-vs24.ps1'
+          $main = Get-Content -Raw -Encoding UTF8 'tools/GlobalArena.Godot/Scripts/Main.cs'
+          $lab = Get-Content -Raw -Encoding UTF8 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+          $preview = Get-Content -Raw -Encoding UTF8 'GlobalArena.Simulation/PhysicalWorkerDecisionProjection.cs'
+          if (-not $runner.Contains('feature/ga-vs24-worker-decision-comparison-20261031') -or
+              -not $runner.Contains('-c Debug') -or
+              -not $runner.Contains('& $GodotExe --path $projectDir --verbose') -or
+              -not $main.Contains('GA_VS24_RUNTIME_ACTIVE') -or
+              -not $lab.Contains('CompareWorkerDecisionWithoutCommitting') -or
+              -not $lab.Contains('PhysicalWorkerDecisionProjection.Compare') -or
+              -not $lab.Contains('ReassignWorkerLabWorkers') -or
+              -not $preview.Contains('RestoreSaveJson(sourceSave)') -or
+              -not $preview.Contains('PhysicalEconomicCycleProgression.AdvanceBatch')) {
+            throw 'VS24 canonical read-only scenario or exact-worktree launcher contract missing.'
+          }
+      - name: Worker scenario comparison and previous economic regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs24|FullyQualifiedName~GaVs23|FullyQualifiedName~GaVs22|FullyQualifiedName~GaVs21|FullyQualifiedName~GaVs20'
+      - name: Godot Debug compilation
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
+      - name: Godot Release compilation
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
