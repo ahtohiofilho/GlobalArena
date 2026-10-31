@@ -114,7 +114,7 @@ public sealed class GaVs43SimultaneousFreightReferenceTests
         Assert.NotNull(comparison.Exact);
         Assert.Single(comparison.Exact!.Trades);
         Assert.Equal(Quantum,
-            comparison.Exact.Trades.Sum(x => x.RawQuantity));
+            comparison.Exact.Trades.Aggregate(0UL, (total, trade) => checked(total + trade.RawQuantity)));
         Assert.Equal(0, comparison.Exact.NetEconomicValue.CompareTo(
             new ExperimentalSignedEconomicValue(29, 1)));
         Assert.True(comparison.Coordinated.NetEconomicValue.CompareTo(
@@ -138,7 +138,7 @@ public sealed class GaVs43SimultaneousFreightReferenceTests
         var comparison = Run(input, exact: 100);
         Assert.True(comparison.PossibleConfigurations > 9);
         Assert.NotNull(comparison.Exact);
-        Assert.Equal(2 * Quantum, comparison.Exact!.Trades.Sum(x => x.RawQuantity));
+        Assert.Equal(2 * Quantum, comparison.Exact!.Trades.Aggregate(0UL, (total, trade) => checked(total + trade.RawQuantity)));
         Assert.All(comparison.Exact.Trades,
             x => Assert.True(x.RawQuantity > 0UL));
         Assert.True(comparison.Exact.CorridorLoads.Values.All(x => x > 0));
