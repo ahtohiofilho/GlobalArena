@@ -1,0 +1,72 @@
+name: GA-VS28 Distance-Neutral Colonization Route Preview
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/PhysicalRemoteDestinationRouteProjection.cs'
+      - 'GlobalArena.Tests/GaVs28DistanceNeutralRouteTests.cs'
+      - 'tools/GlobalArena.Godot/**'
+      - 'tools/launch-vs28.ps1'
+      - '.github/workflows/ga-vs28-distance-neutral-colonization-route-preview.yml'
+      - '.github/workflows/ga-vs27-tactical-move-destination-plan.yml'
+  workflow_dispatch:
+
+jobs:
+  global-route-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Verify remote physical paths and the full recent worker movement regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs28|FullyQualifiedName~GaVs27|FullyQualifiedName~GaVs26|FullyQualifiedName~GaVs25|FullyQualifiedName~GaVs24|FullyQualifiedName~GaVs23|FullyQualifiedName~GaVs22|FullyQualifiedName~GaVs21|FullyQualifiedName~GaVs20'
+      - name: Godot .NET Release compilation
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  global-route-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Verify VS28 exact-worktree launcher and any-distance UI contract
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'tools/launch-vs28.ps1').Path,
+            [ref]$tokens, [ref]$errors)
+          if ($errors.Count) { throw ($errors | ForEach-Object Message | Out-String) }
+          $runner = Get-Content -Raw -Encoding UTF8 'tools/launch-vs28.ps1'
+          $main = Get-Content -Raw -Encoding UTF8 'tools/GlobalArena.Godot/Scripts/Main.cs'
+          $lab = Get-Content -Raw -Encoding UTF8 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+          $preview = Get-Content -Raw -Encoding UTF8 'GlobalArena.Simulation/PhysicalRemoteDestinationRouteProjection.cs'
+          $e2e = Get-Content -Raw -Encoding UTF8 'tools/GlobalArena.Godot/Tests/UiE2E.gd'
+          if (-not $runner.Contains('feature/ga-vs28-distance-neutral-colonization-route-preview-20261031') -or
+              -not $runner.Contains('-c Debug') -or
+              -not $runner.Contains('& $GodotExe --path $projectDir --verbose') -or
+              -not $main.Contains('GA_VS28_RUNTIME_ACTIVE') -or
+              -not $lab.Contains('GAQARemoteDestination') -or
+              -not $lab.Contains('PreviewRemotePhysicalRoute') -or
+              -not $lab.Contains('PhysicalRemoteDestinationRouteProjection.Preview') -or
+              -not $lab.Contains('GAQAMoveWorkers') -or
+              -not $preview.Contains('AdjacentWorkable') -or
+              -not $preview.Contains('NoContinuousLandFootpath') -or
+              -not $e2e.Contains('GA_UI_E2E_REMOTE_ROUTE_READ_ONLY_OK')) {
+            throw 'VS28 global route preview or existing canonical adjacent movement contract missing.'
+          }
+      - name: Verify remote physical paths and the full recent worker movement regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs28|FullyQualifiedName~GaVs27|FullyQualifiedName~GaVs26|FullyQualifiedName~GaVs25|FullyQualifiedName~GaVs24|FullyQualifiedName~GaVs23|FullyQualifiedName~GaVs22|FullyQualifiedName~GaVs21|FullyQualifiedName~GaVs20'
+      - name: Godot .NET Debug compilation
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
+      - name: Godot .NET Release compilation
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
