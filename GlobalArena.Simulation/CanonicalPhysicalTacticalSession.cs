@@ -811,29 +811,15 @@ public sealed class CanonicalPhysicalTacticalSession
                 };
                 pendingLongTrips[pendingLongTrips.FindIndex(
                     x => x.OrderId == trip.OrderId)] = shifted;
-                var gathering = 0UL;
-                if (campCanGatherThisTurn)
-                {
-                    gathering = checked(
-                        provider.RawFoodPerWorkerPerSettlement(
-                            this, trip.CurrentWaypoint) * trip.Workers);
-                    var need = checked(trip.Workers * FoodDemandRawPerWorker);
-                    if (gathering <= need)
-                        throw new InvalidOperationException(
-                            "An expedition cannot replenish food at this unproductive stop.");
-                    foodLedgers[trip.OrderId] = lot with
-                    {
-                        FoodRemainingRaw = checked(lot.FoodRemainingRaw + gathering)
-                    };
-                    actualCampProduction = checked(actualCampProduction + gathering);
-                }
-                campStates[trip.OrderId] = camp with
-                {
-                    WaitingMovementTurns = checked(camp.WaitingMovementTurns + 1UL),
-                    GatheredFoodRaw = checked(camp.GatheredFoodRaw + gathering),
-                    GatheringEconomicCycles = checked(camp.GatheringEconomicCycles +
-                        (campCanGatherThisTurn ? 1UL : 0UL))
-                };
+                var perWorker = campCanGatherThisTurn
+                    ? provider.RawFoodPerWorkerPerSettlement(
+                        this, trip.CurrentWaypoint) : 0UL;
+                var settlement = PhysicalJourneyCampFoodAccounting.WaitOneTurn(
+                    lot, camp, trip.Workers, perWorker, campCanGatherThisTurn);
+                foodLedgers[trip.OrderId] = settlement.Food;
+                campStates[trip.OrderId] = settlement.Camp;
+                actualCampProduction = checked(
+                    actualCampProduction + settlement.ProducedRaw);
             }
         }
 
@@ -1035,16 +1021,12 @@ public sealed class CanonicalPhysicalTacticalSession
                     .Where(x => foodLedgers.ContainsKey(x.OrderId))
                     .OrderBy(x => x.OrderId))
                 {
-                    var lot = foodLedgers[trip.OrderId];
-                    var need = checked(trip.Workers * FoodDemandRawPerWorker);
-                    var fed = Math.Min(lot.FoodRemainingRaw, need);
-                    foodLedgers[trip.OrderId] = lot with
-                    {
-                        FoodRemainingRaw = lot.FoodRemainingRaw - fed,
-                        FoodConsumedRaw = checked(lot.FoodConsumedRaw + fed)
-                    };
-                    consumed = checked(consumed + fed);
-                    unmet = checked(unmet + (need - fed));
+                    var settled = PhysicalJourneyCampFoodAccounting
+                        .ConsumeOneEconomicCycle(foodLedgers[trip.OrderId],
+                            trip.Workers);
+                    foodLedgers[trip.OrderId] = settled.Food;
+                    consumed = checked(consumed + settled.ConsumedRaw);
+                    unmet = checked(unmet + settled.UnmetRaw);
                 }
             }
 
