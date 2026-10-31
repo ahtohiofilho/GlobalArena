@@ -1,6 +1,12 @@
 using GlobalArena.Benchmarks;
 
 if (args.Any(argument =>
+    string.Equals(argument, "--vs45-cash-alpha", StringComparison.Ordinal)))
+{
+    return GaVs45CashAlphaBenchmarkHarness.Run();
+}
+
+if (args.Any(argument =>
     string.Equals(argument, "--vs44-cash-budget", StringComparison.Ordinal)))
 {
     return GaVs44CashBudgetBenchmarkHarness.Run();
