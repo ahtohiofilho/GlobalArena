@@ -634,60 +634,89 @@ public sealed class CanonicalPhysicalTacticalSession
         var activeAllocations = current.Allocations.ToDictionary(
             x => (x.TileId, x.Activity), x => x.Workers);
         var pendingTransits = current.Transits.ToList();
+        var pendingLongTrips = current.LongTrips.ToList();
         var nextWorkerRevision = current.WorkerRevision;
 
-        if (_movementMode == PhysicalWorkerMovementMode.TimedAdjacent &&
-            pendingTransits.Any(x => x.ArrivalTurn == turn))
+        if (_movementMode == PhysicalWorkerMovementMode.TimedAdjacent)
         {
-            // Reconcile local population anchors, including every pending group.
-            // Household cash follows the arriving group proportionately;
-            // producer receipts already earned stay at their original tile.
-            var anchored = new Dictionary<PhysicalTacticalTileId, ulong>();
-            void AddAnchored(PhysicalTacticalTileId tile, ulong workers) =>
-                anchored[tile] = checked(anchored.GetValueOrDefault(tile) + workers);
-            foreach (var a in current.Allocations) AddAnchored(a.TileId, a.Workers);
-            foreach (var a in pendingTransits) AddAnchored(a.Source, a.Workers);
-
-            foreach (var order in pendingTransits
-                         .Where(x => x.ArrivalTurn == turn).OrderBy(x => x.OrderId))
+            // All arrivals at this movement turn are settled in canonical
+            // order-ID sequence. Intermediate waypoints are never allocations
+            // and therefore never create population centres or production.
+            var arriving = pendingTransits
+                .Where(x => x.ArrivalTurn == turn)
+                .Select(x => (x.OrderId, x.Source, x.Destination, x.ToJob, x.Workers))
+                .Concat(pendingLongTrips
+                    .Where(x => x.ArrivalTurn == turn)
+                    .Select(x => (x.OrderId, x.Source, x.Destination, x.ToJob, x.Workers)))
+                .OrderBy(x => x.OrderId).ToArray();
+            if (arriving.Length != 0)
             {
-                var key = (order.Destination, order.ToJob);
-                activeAllocations[key] = checked(activeAllocations.GetValueOrDefault(key) +
-                    order.Workers);
+                var anchored = new Dictionary<PhysicalTacticalTileId, ulong>();
+                void AddAnchored(PhysicalTacticalTileId tile, ulong workers) =>
+                    anchored[tile] = checked(anchored.GetValueOrDefault(tile) + workers);
+                foreach (var allocation in current.Allocations)
+                    AddAnchored(allocation.TileId, allocation.Workers);
+                foreach (var order in pendingTransits)
+                    AddAnchored(order.Source, order.Workers);
+                foreach (var order in pendingLongTrips)
+                    AddAnchored(order.Source, order.Workers);
 
-                if (cashAccounts is not null)
+                foreach (var order in arriving)
                 {
-                    var originWallet = cashAccounts.GetValueOrDefault(order.Source) ??
-                        new PhysicalFoodCashAccount(order.Source, 0UL, 0UL);
-                    var to = cashAccounts.GetValueOrDefault(order.Destination) ??
-                        new PhysicalFoodCashAccount(order.Destination, 0UL, 0UL);
-                    var headcount = anchored[order.Source];
-                    if (headcount < order.Workers)
-                        throw new InvalidOperationException("Transit source population diverged.");
-                    var travellingCash = (ulong)((UInt128)originWallet.HouseholdMicrocredits *
-                        order.Workers / headcount);
-                    cashAccounts[order.Source] = originWallet with
+                    var key = (order.Destination, order.ToJob);
+                    activeAllocations[key] = checked(
+                        activeAllocations.GetValueOrDefault(key) + order.Workers);
+                    if (cashAccounts is not null)
                     {
-                        HouseholdMicrocredits = originWallet.HouseholdMicrocredits - travellingCash
-                    };
-                    cashAccounts[order.Destination] = to with
-                    {
-                        HouseholdMicrocredits = checked(
-                            to.HouseholdMicrocredits + travellingCash)
-                    };
+                        var from = cashAccounts.GetValueOrDefault(order.Source) ??
+                            new PhysicalFoodCashAccount(order.Source, 0UL, 0UL);
+                        var destination = cashAccounts.GetValueOrDefault(order.Destination) ??
+                            new PhysicalFoodCashAccount(order.Destination, 0UL, 0UL);
+                        var headcount = anchored[order.Source];
+                        if (headcount < order.Workers)
+                            throw new InvalidOperationException(
+                                "Travellers exceed their originating population.");
+                        var carried = (ulong)((UInt128)from.HouseholdMicrocredits *
+                            order.Workers / headcount);
+                        cashAccounts[order.Source] = from with
+                        {
+                            HouseholdMicrocredits = from.HouseholdMicrocredits - carried
+                        };
+                        cashAccounts[order.Destination] = destination with
+                        {
+                            HouseholdMicrocredits = checked(
+                                destination.HouseholdMicrocredits + carried)
+                        };
+                    }
+                    anchored[order.Source] -= order.Workers;
+                    nextWorkerRevision = checked(nextWorkerRevision + 1UL);
                 }
-                anchored[order.Source] -= order.Workers;
-                nextWorkerRevision = checked(nextWorkerRevision + 1UL);
             }
+
             pendingTransits.RemoveAll(x => x.ArrivalTurn == turn);
+            pendingLongTrips = pendingLongTrips
+                .Where(x => x.ArrivalTurn != turn)
+                .Select(x => x.NextLegCompletionTurn == turn
+                    ? x with
+                    {
+                        CompletedLegs = x.CompletedLegs + 1,
+                        NextLegCompletionTurn = checked(turn + 2UL)
+                    }
+                    : x)
+                .ToList();
         }
 
         var effectiveAllocations = activeAllocations.Select(x =>
             new PhysicalWorkerAllocation(x.Key.Item1, x.Key.Item2, x.Value)).ToArray();
-        // The in-transit population consumes provisions from its departure
-        // tile, but no traveller contributes to production during the journey.
-        var consumers = effectiveAllocations.Concat(pendingTransits.Select(x =>
-            new PhysicalWorkerAllocation(x.Source, x.FromJob, x.Workers)));
+        // V13/V14 and V15 share the original provisioning anchor: while
+        // travelling workers do not produce, their food demand is still
+        // attached to their home tile. A true carried-rations ledger is a
+        // separate policy decision; it is NOT fabricated here.
+        var consumers = effectiveAllocations
+            .Concat(pendingTransits.Select(x =>
+                new PhysicalWorkerAllocation(x.Source, x.FromJob, x.Workers)))
+            .Concat(pendingLongTrips.Select(x =>
+                new PhysicalWorkerAllocation(x.Source, x.FromJob, x.Workers)));
 
         var lastSettlement = cycles.Count == 0 ? 0UL : cycles[^1].MovementTurn;
         if (PhysicalEconomicCadence.IsSettlementTurn(turn, lastSettlement, _cadenceMode))
