@@ -181,7 +181,8 @@ public sealed class GaVs63AuthorizedFreightOfferDiscoveryTests
         Assert.Throws<InvalidOperationException>(() =>
             previous.RequireCurrent(f.Session));
         var sites = f.Session.DiscoverPrimitiveEconomicSites(SitePolicy());
-        Assert.Equal(2, f.Session.TransportNetwork.InstalledAssets.Count);
+        Assert.Equal(new ulong[] { 31UL, 32UL },
+            f.Session.TransportNetwork.InstalledAssets.Select(x => x.AssetId));
         var save = f.Session.ExportSaveJson();
         var discovered = Discover(f.Session, sites);
         Assert.Single(discovered.Services);
