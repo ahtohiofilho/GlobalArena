@@ -43,6 +43,19 @@ public sealed class CanonicalTransportNetwork
     public IReadOnlyList<EconomicTransportBuiltAsset> InstalledAssets =>
         Array.AsReadOnly(_assets.Values.OrderBy(x => x.AssetId).ToArray());
     public StrategicEdgeAccessSnapshot Access => new(_closed);
+    /// <summary>
+    /// Read-only inventory of services *registered* by the session. A
+    /// registration alone is NOT a built route, an operating grant or
+    /// settlement authority. Each candidate must pass Capture/Validate.
+    /// </summary>
+    public IReadOnlyList<ExperimentalTransportServiceEntitlement> RegisteredEntitlements =>
+        Array.AsReadOnly(_rights.Values
+            .OrderBy(x => x.Source.Value)
+            .ThenBy(x => x.Destination.Value)
+            .ThenBy(x => x.ServiceId)
+            .Select(x => x with {
+                RevenueShares = Array.AsReadOnly(x.RevenueShares.ToArray())
+            }).ToArray());
     internal CanonicalTransportCommand[] ExportCommands() => _journal.Select(Clone).ToArray();
     private static CanonicalTransportCommand Clone(CanonicalTransportCommand c) =>
         c with { Shares = c.Shares?.ToArray() };
