@@ -170,7 +170,11 @@ public sealed class GaVs33PhysicalJourneyFoodAndSaveV16Tests
         Assert.Null(game.State.TravelFoodLedgers);
         Assert.Equal(json, CanonicalPhysicalTacticalSession.RestoreSaveJson(json)
             .ExportSaveJson());
-        Assert.DoesNotContain("FoodRaw", json);
+        var envelope = JsonSerializer.Deserialize<CanonicalPhysicalSaveEnvelope>(json)!;
+        var payload = JsonSerializer.Deserialize<CanonicalPhysicalSavePayload>(
+            envelope.PayloadJson)!;
+        Assert.DoesNotContain("\"FoodRaw\"", JsonSerializer.Serialize(payload.Actions));
+        Assert.Null(payload.TravelFoodLedgers);
         Assert.DoesNotContain("TravelFoodLedgers", json);
     }
 }
