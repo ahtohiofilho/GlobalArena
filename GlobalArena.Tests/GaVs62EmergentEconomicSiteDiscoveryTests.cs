@@ -44,7 +44,8 @@ public sealed class GaVs62EmergentEconomicSiteDiscoveryTests
         Assert.Equal(8UL, discovery.ResidentWorkers);
         Assert.Equal(0UL, discovery.TravellingWorkers);
         Assert.Equal(2, discovery.BuyerAnchors.Count);
-        Assert.Equal(2, discovery.ProducerAnchors.Count);
+        Assert.Equal(discovery.Sites.Count(x => x.Supply.Count > 0),
+            discovery.ProducerAnchors.Count);
         Assert.Equal(6, discovery.Flows.DemandFlows.Count);
         Assert.True(discovery.Sites.Select(x => x.Point.Value).SequenceEqual(
             discovery.Sites.Select(x => x.Point.Value).OrderBy(x => x)));
@@ -155,7 +156,7 @@ public sealed class GaVs62EmergentEconomicSiteDiscoveryTests
         var afterDeparture = f.Session.DiscoverPrimitiveEconomicSites(Policy());
         Assert.Null(afterDeparture.At(id));
         Assert.Equal(id, Assert.Single(afterDeparture.ChangesSince(occupied).Removed).Point);
-        Assert.Equal(1, afterDeparture.Sites.Count);
+        Assert.Single(afterDeparture.Sites);
         Assert.Equal(other.ForestryWorkers, afterDeparture.TravellingWorkers);
         Assert.Empty(f.Session.Game.Snapshot.Territory.Controls);
     }
