@@ -35,7 +35,9 @@ internal static class ExperimentalCashAuthorizationDigest
 
     public static string Key(ExperimentalCashAuditAccountKey key) =>
         ((int)key.Role).ToString(CultureInfo.InvariantCulture) + ":" +
-        key.Point.Value + ":" + key.Destination.Value + ":" + key.ServiceId;
+        (key.Point.IsValid ? key.Point.Value : 0UL) + ":" +
+        (key.Destination.IsValid ? key.Destination.Value : 0UL) + ":" +
+        key.ServiceId;
 
     public static string Corridor(ExperimentalSharedFreightCorridorKey key) =>
         key.FineCrossing.ToString() + ":" +
