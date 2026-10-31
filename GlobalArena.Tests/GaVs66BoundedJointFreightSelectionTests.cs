@@ -140,7 +140,8 @@ public sealed class GaVs66BoundedJointFreightSelectionTests
             .Where(x => x.Commodity == Food).Reverse().ToArray();
         Assert.Equal(2, food.Length);
         var result = Select(portfolio, sites, candidates: food,
-            quantum: 100_000, maxQuanta: 1);
+            quantum: food[0].MaximumRawQuantity, maxQuanta: 1,
+            grossPerResident: 1_000_000);
         Assert.Single(result.Lots);
         Assert.Equal(77UL, result.Lots[0].Candidate.ServiceId);
         Assert.Equal(4, result.EvaluatedConfigurations);
