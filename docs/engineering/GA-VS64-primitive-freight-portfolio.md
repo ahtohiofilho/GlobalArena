@@ -25,8 +25,8 @@ mercado integral para todas as tecnologias ao mesmo tempo.
 
 ## Integridade econômica: não duplicar o mesmo frete
 
-Quando alimentos e madeira utilizam o mesmo serviço 77 ou o mesmo
-ativo 31, os dois itens são **usos potenciais concorrentes**.
+Quando alimentos, madeira e pedra utilizam o mesmo serviço 77 ou o
+mesmo ativo 31, os três itens são **usos potenciais concorrentes**.
 `SharedServices` e `SharedAssets` identificam explicitamente
 essas colisões, preservando os respectivos produtos e volumes brutos
 hipotéticos por ciclo. Os números de capacidade em cada linha
@@ -65,8 +65,9 @@ para afirmar autoridade atual.
 ## QA
 
 Testes GA-VS64:
-- Dois recursos que disputam um serviço real e um ativo físico;
-  uma terceira commodity sem produtores não obtém serviço fictício.
+- Três recursos realmente produzidos que disputam um serviço real e
+  um ativo físico; após a realocação, itens sem oferta produtiva
+  desaparecem do portfólio, sem serviço fictício.
 - Reordenação da lista de perfis não altera a saída.
 - Direitos legados sem endpoints vivos não são implicitamente ativados.
 - Duplicações, massa incompatível, mapeamento de tecnologia incorreto
