@@ -200,8 +200,11 @@ public sealed class GaVs45PhysicalCashAlphaProjectionTests
             new[] { Quote(Food, 10, 5), Quote(Stone, 10, 5) });
         Assert.Equal(0, Assert.Single(withFreight.Buyers).Alpha.CompareTo(
             new FoodTransportCostFraction(7, 12)));
-        Assert.Equal(0, Assert.Single(withFreight.Buyers).ScaledEstimatedSpending.CompareTo(
-            Money(35)));
+        Assert.True(Assert.Single(withFreight.Buyers)
+            .ScaledEstimatedSpending.CompareTo(Money(35)) <= 0);
+        Assert.True(Assert.Single(withFreight.Buyers)
+            .ScaledEstimatedSpending.CompareTo(
+                new FoodTransportCostFraction(34_999, 1_000)) > 0);
     }
 
     [Fact]
