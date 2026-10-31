@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Numerics;
+using GlobalArena.Runtime;
 using GlobalArena.World;
 
 namespace GlobalArena.Simulation;
@@ -285,10 +286,10 @@ public sealed class ExperimentalCostOptimalFreightItineraryDiscovery
             if (!trees.TryGetValue(group, out var routes))
             {
                 arcsByTechnology.TryGetValue(type, out var possible);
+                IEnumerable<ExperimentalFreightWeightedArc> possibleArcs =
+                    possible is null ? Array.Empty<ExperimentalFreightWeightedArc>() : possible;
                 routes = ExperimentalFreightWeightedPathfinder.FromSource(
-                    group.Item1, possible ??
-                        Array.Empty<ExperimentalFreightWeightedArc>(),
-                    diagnostics);
+                    group.Item1, possibleArcs, diagnostics);
                 trees.Add(group, routes);
             }
 
