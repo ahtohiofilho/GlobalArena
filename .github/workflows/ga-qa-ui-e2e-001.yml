@@ -15,9 +15,9 @@ jobs:
       contents: read
     env:
       GA_UI_E2E_ISOLATED: '1'
-      XDG_DATA_HOME: ${{ runner.temp }}/ga-ui-e2e/data
-      XDG_CONFIG_HOME: ${{ runner.temp }}/ga-ui-e2e/config
-      XDG_CACHE_HOME: ${{ runner.temp }}/ga-ui-e2e/cache
+      XDG_DATA_HOME: ${{ github.workspace }}/.ga-ui-e2e/data
+      XDG_CONFIG_HOME: ${{ github.workspace }}/.ga-ui-e2e/config
+      XDG_CACHE_HOME: ${{ github.workspace }}/.ga-ui-e2e/cache
       GODOT_PROJECT: ${{ github.workspace }}/tools/GlobalArena.Godot
     steps:
       - uses: actions/checkout@v4
