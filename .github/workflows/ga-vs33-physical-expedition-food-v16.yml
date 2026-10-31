@@ -1,0 +1,64 @@
+name: GA-VS33 Physical Expedition Food V16
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Runtime/PhysicalExpeditionFoodLedger.cs'
+      - 'GlobalArena.Runtime/PhysicalTacticalEconomyRuntimeState.cs'
+      - 'GlobalArena.Simulation/CanonicalPhysicalTacticalSession.cs'
+      - 'GlobalArena.Simulation/CanonicalWorldStateHasher.cs'
+      - 'GlobalArena.Tests/GaVs33OwnedExpeditionFoodTests.cs'
+      - 'tools/GlobalArena.Godot/**'
+      - '.github/workflows/ga-vs33-physical-expedition-food-v16.yml'
+  workflow_dispatch:
+
+jobs:
+  paid-food-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: V16 ownership/cash/food ledger and all recent regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs33|FullyQualifiedName~GaVs32|FullyQualifiedName~GaVs31|FullyQualifiedName~GaVs30|FullyQualifiedName~GaVs29|FullyQualifiedName~GaVs28|FullyQualifiedName~GaVs27|FullyQualifiedName~GaVs26|FullyQualifiedName~GaVs25|FullyQualifiedName~GaVs24|FullyQualifiedName~GaVs23|FullyQualifiedName~GaVs22|FullyQualifiedName~GaVs21|FullyQualifiedName~GaVs20|FullyQualifiedName~GaVs15'
+      - name: Godot Mono Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  paid-food-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Verify V16 ownership and UI semantics
+        shell: pwsh
+        run: |
+          $runtime = Get-Content -Raw -Encoding UTF8 'GlobalArena.Runtime/PhysicalTacticalEconomyRuntimeState.cs'
+          $session = Get-Content -Raw -Encoding UTF8 'GlobalArena.Simulation/CanonicalPhysicalTacticalSession.cs'
+          $hash = Get-Content -Raw -Encoding UTF8 'GlobalArena.Simulation/CanonicalWorldStateHasher.cs'
+          $ui = Get-Content -Raw -Encoding UTF8 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+          $e2e = Get-Content -Raw -Encoding UTF8 'tools/GlobalArena.Godot/Tests/UiE2E.gd'
+          if (-not $runtime.Contains('ExpeditionFoodEnabled') -or
+              -not $session.Contains('OrderProvisionedLongDistanceTransit') -or
+              -not $session.Contains('depart_remote_food') -or
+              -not $session.Contains('ExpeditionFoodSaveFormat = 16') -or
+              -not $hash.Contains('ExpeditionFoodFormatVersion = 16U') -or
+              -not $ui.Contains('GAQAOrderProvisionedJourney') -or
+              -not $ui.Contains('SAVE EXPEDIÇÃO V16 GRAVADO') -or
+              -not $e2e.Contains('GA_UI_E2E_VS33_NO_UNPAID_FOOD_OK')) {
+            throw 'V16 purchase/cargo/single-demand/save gate missing'
+          }
+      - name: V16 ownership/cash/food ledger and all recent regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs33|FullyQualifiedName~GaVs32|FullyQualifiedName~GaVs31|FullyQualifiedName~GaVs30|FullyQualifiedName~GaVs29|FullyQualifiedName~GaVs28|FullyQualifiedName~GaVs27|FullyQualifiedName~GaVs26|FullyQualifiedName~GaVs25|FullyQualifiedName~GaVs24|FullyQualifiedName~GaVs23|FullyQualifiedName~GaVs22|FullyQualifiedName~GaVs21|FullyQualifiedName~GaVs20|FullyQualifiedName~GaVs15'
+      - name: Godot Mono Debug
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
+      - name: Godot Mono Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
