@@ -163,10 +163,11 @@ public sealed class PhysicalTacticalEconomyRuntimeState
                 trip.Source != trip.Route[0] ||
                 trip.Destination != trip.Route[^1] ||
                 trip.NextLegCompletionTurn <= movementTurn ||
-                trip.ArrivalTurn != checked(trip.DepartureTurn +
-                    (ulong)(trip.Route.Count - 1) * 2UL) ||
-                trip.NextLegCompletionTurn != checked(trip.DepartureTurn +
-                    ((ulong)trip.CompletedLegs + 1UL) * 2UL))
+                trip.ArrivalTurn != PhysicalMovementTimelines.ExistingPrimitive
+                    .RouteArrivalTurn(trip.DepartureTurn,
+                        checked((ulong)trip.Route.Count - 1UL)) ||
+                trip.NextLegCompletionTurn != PhysicalMovementTimelines.ExistingPrimitive
+                    .LegCompletionTurn(trip.DepartureTurn, trip.CompletedLegs))
                 throw new ArgumentException("Invalid long-distance worker itinerary.");
             ValidateTile(trip.Source, fineParameters);
             ValidateTile(trip.Destination, fineParameters);
