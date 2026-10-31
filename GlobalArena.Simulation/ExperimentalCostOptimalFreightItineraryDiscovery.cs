@@ -90,7 +90,7 @@ public static class ExperimentalFreightWeightedPathfinder
         };
         var queue = new PriorityQueue<ulong, (BigInteger Cost, int Hops, ulong CellId)>();
         queue.Enqueue(startCellId, (BigInteger.Zero, 0, startCellId));
-        diagnostics?.SourceTreeBuilds++;
+        if (diagnostics is not null) diagnostics.SourceTreeBuilds++;
 
         while (queue.TryDequeue(out var node, out var priority))
         {
