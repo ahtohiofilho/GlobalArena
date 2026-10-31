@@ -84,7 +84,7 @@ public sealed class CanonicalPhysicalTacticalSession
     public const int LongDistanceSaveFormat = 15;
     public const int MaximumActions = 100_000;
     private const int MaximumSaveBytes = 4_000_000;
-    private const ulong FoodDemandRawPerWorker = 500_000UL;
+    public const ulong FoodDemandRawPerWorker = 500_000UL;
 
     private readonly List<CanonicalPhysicalAction> _journal = new();
     private readonly GoldbergParameters _coarse;
