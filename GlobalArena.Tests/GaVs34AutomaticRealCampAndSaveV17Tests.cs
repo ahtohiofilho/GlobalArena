@@ -84,22 +84,17 @@ public sealed class GaVs34AutomaticRealCampAndSaveV17Tests
         var original = PhysicalRemoteDestinationRouteProjection.Preview(
             game, game.InitialTile, Destination(game),
             EconomicActivityKind.Agriculture, EconomicActivityKind.Forestry, 1UL);
-        if (estimate.Stops.Count == 0)
-        {
-            var trip = Begin(game, raw);
-            while (game.State.LongTrips.Any(x => x.OrderId == trip.OrderId))
-                game.AdvanceMovementTurn();
-            var camp = Assert.Single(game.State.JourneyCampStates!);
-            Assert.Equal(0UL, camp.WaitingMovementTurns);
-            Assert.Equal(0UL, camp.GatheredFoodRaw);
-            Assert.Equal(original.EarliestArrivalTurn, game.State.MovementTurn);
-        }
-        else
-        {
-            // If local stock cannot support the full trip, a legitimate camp
-            // remains necessary even when buying all available food.
-            Assert.True(estimate.WaitingMovementTurns > 0UL);
-        }
+        // Mandatory zero-stop coverage: failure here means the test setup
+        // was underfunded; do not treat that as a passing no-camp scenario.
+        Assert.True(estimate.CanArriveUnderAssumptions);
+        Assert.Empty(estimate.Stops);
+        var trip = Begin(game, raw);
+        while (game.State.LongTrips.Any(x => x.OrderId == trip.OrderId))
+            game.AdvanceMovementTurn();
+        var camp = Assert.Single(game.State.JourneyCampStates!);
+        Assert.Equal(0UL, camp.WaitingMovementTurns);
+        Assert.Equal(0UL, camp.GatheredFoodRaw);
+        Assert.Equal(original.EarliestArrivalTurn, game.State.MovementTurn);
     }
 
     [Fact]
