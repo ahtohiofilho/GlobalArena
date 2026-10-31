@@ -61,18 +61,20 @@ public partial class Main
         warning.AddThemeColorOverride("font_color", new Color("#e1c883"));
         lab.AddChild(warning);
 
-        var start = new Button { Text = "INSPECIONAR POVOAMENTO INICIAL (JÁ EXISTENTE)" };
+        var start = new Button { Name = "GAQAInspect", Text = "INSPECIONAR POVOAMENTO INICIAL (JÁ EXISTENTE)" };
         start.Pressed += StartWorkerLab;
         lab.AddChild(start);
 
         _workerLabStatus = new Label
         {
+            Name = "GAQAWorkerStatus",
             Text = "Povoamento já existente: Civilização 1 e oito trabalhadores desde o turno zero.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         lab.AddChild(_workerLabStatus);
         _settlementSummary = new Label
         {
+            Name = "GAQASettlementSummary",
             Text = "Núcleos habitados: leitura automática do trabalho efetivo.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
@@ -81,8 +83,8 @@ public partial class Main
 
         var jobs = new HBoxContainer();
         lab.AddChild(jobs);
-        _workerFromJob = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        _workerToJob = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        _workerFromJob = new OptionButton { Name = "GAQAFromJob", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        _workerToJob = new OptionButton { Name = "GAQAToJob", SizeFlagsHorizontal = SizeFlags.ExpandFill };
         foreach (var (name, id) in new[]
         {
             ("Agricultura", EconomicActivityKind.Agriculture),
@@ -102,7 +104,7 @@ public partial class Main
 
         var quantity = new HBoxContainer();
         quantity.AddChild(new Label { Text = "Transferir:" });
-        _workerAmount = new SpinBox { MinValue = 1, MaxValue = 8, Step = 1, Value = 3 };
+        _workerAmount = new SpinBox { Name = "GAQAWorkerAmount", MinValue = 1, MaxValue = 8, Step = 1, Value = 3 };
         _workerAmount.ValueChanged += _ =>
         {
             if (_workerDecisionPreview is not null)
@@ -120,6 +122,7 @@ public partial class Main
         lab.AddChild(_workerMoveButton);
         _workerReassignButton = new Button
         {
+            Name = "GAQAReassign",
             Text = "MUDAR ATIVIDADE NO TILE (SEM VIAGEM)",
             Disabled = true
         };
@@ -131,6 +134,7 @@ public partial class Main
         lab.AddChild(analysisActions);
         var compareDecision = new Button
         {
+            Name = "GAQACompare",
             Text = "COMPARAR (5 CICLOS)",
             SizeFlagsHorizontal = SizeFlags.ExpandFill
         };
@@ -138,6 +142,7 @@ public partial class Main
         analysisActions.AddChild(compareDecision);
         var foodDiagnosis = new Button
         {
+            Name = "GAQAFoodDiagnosis",
             Text = "DIAGNÓSTICO ALIMENTAR",
             SizeFlagsHorizontal = SizeFlags.ExpandFill
         };
@@ -145,6 +150,7 @@ public partial class Main
         analysisActions.AddChild(foodDiagnosis);
         _workerDecisionPreview = new Label
         {
+            Name = "GAQAComparisonResult",
             Visible = false,
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
@@ -152,6 +158,7 @@ public partial class Main
         lab.AddChild(_workerDecisionPreview);
         _foodAvailabilityPreview = new Label
         {
+            Name = "GAQAFoodResult",
             Visible = false,
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
@@ -166,6 +173,7 @@ public partial class Main
         lab.AddChild(economicCycleActions);
         var toNextCycle = new Button
         {
+            Name = "GAQAAdvanceOneCycle",
             Text = "AVANÇAR 1 CICLO",
             SizeFlagsHorizontal = SizeFlags.ExpandFill
         };
@@ -173,6 +181,7 @@ public partial class Main
         economicCycleActions.AddChild(toNextCycle);
         var toFiveCycles = new Button
         {
+            Name = "GAQAAdvanceFiveCycles",
             Text = "AVANÇAR 5 CICLOS",
             SizeFlagsHorizontal = SizeFlags.ExpandFill
         };
@@ -180,6 +189,7 @@ public partial class Main
         economicCycleActions.AddChild(toFiveCycles);
         _economicCycleSummary = new Label
         {
+            Name = "GAQAEconomicSummary",
             Text = "CICLO ECONÔMICO | aguardando inspeção do povoamento.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
@@ -188,10 +198,10 @@ public partial class Main
 
         var persistence = new HBoxContainer();
         lab.AddChild(persistence);
-        var save = new Button { Text = "SALVAR PARTIDA CANÔNICA", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var save = new Button { Name = "GAQASave", Text = "SALVAR PARTIDA CANÔNICA", SizeFlagsHorizontal = SizeFlags.ExpandFill };
         save.Pressed += SaveOfflineLab;
         persistence.AddChild(save);
-        var load = new Button { Text = "REABRIR SAVE", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var load = new Button { Name = "GAQALoad", Text = "REABRIR SAVE", SizeFlagsHorizontal = SizeFlags.ExpandFill };
         load.Pressed += LoadOfflineLab;
         persistence.AddChild(load);
 
