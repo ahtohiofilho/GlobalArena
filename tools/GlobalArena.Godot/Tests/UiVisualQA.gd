@@ -48,7 +48,8 @@ func _assert_layout(scene: Node, context: String) -> bool:
             context + " sidebar overlaps map viewport: " + str(rect) + " / " + str(right)):
         return false
     if not _require(right.size.x >= 390.0 and right.size.x <= 550.0 and
-            scroll.size.x >= 350.0 and scroll.size.y >= 450.0,
+            scroll.size.x >= 350.0 and
+            scroll.size.y >= maxf(390.0, right.size.y * 0.55),
             context + " usable command sidebar collapsed: " + str(right) + " / " + str(scroll)):
         return false
     print("GA_UI_VISUAL_GEOMETRY_OK context=" + context +
