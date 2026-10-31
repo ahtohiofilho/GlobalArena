@@ -42,6 +42,21 @@ public sealed class CanonicalPrimitiveFreightPortfolio
     public IReadOnlyList<CanonicalPrimitiveFreightCandidateUse> CandidateUses { get; }
     public IReadOnlyList<CanonicalPrimitiveFreightSharedResource> SharedServices { get; }
     public IReadOnlyList<CanonicalPrimitiveFreightSharedResource> SharedAssets { get; }
+    public string PurchasingPolicyId { get; }
+    public ulong PurchasingPolicyVersion { get; }
+    public string CalibrationId { get; }
+    public ulong CalibrationVersion { get; }
+    public string NominalUnitId { get; }
+    internal CanonicalPrimitiveSiteDiscovery CurrentSites => _sites;
+
+    public CanonicalPrimitiveJointFreightBudgetPreview PreviewJointBudget(
+        IEnumerable<CanonicalPrimitiveJointFreightLot> lots,
+        IEnumerable<ExperimentalBuyerCommodityPrice> postedPrices,
+        ExperimentalAbstractPurchasingPolicy purchasingPolicy,
+        ExperimentalSharedFreightCongestionPolicy congestionPolicy) =>
+        CanonicalPrimitiveJointFreightBudgetPreview.FromPortfolio(
+            this, _session, lots, postedPrices, purchasingPolicy, congestionPolicy);
+
     public int RegisteredRightsInspectedPerSlice { get; }
     public int TotalEligibleIntents { get; }
     public int TotalUnreachablePhysicalServices { get; }
@@ -56,8 +71,15 @@ public sealed class CanonicalPrimitiveFreightPortfolio
         CanonicalPrimitiveFreightPortfolioSlice[] slices,
         CanonicalPrimitiveFreightCandidateUse[] uses,
         CanonicalPrimitiveFreightSharedResource[] sharedServices,
-        CanonicalPrimitiveFreightSharedResource[] sharedAssets)
+        CanonicalPrimitiveFreightSharedResource[] sharedAssets,
+        string purchasingPolicyId, ulong purchasingPolicyVersion,
+        string calibrationId, ulong calibrationVersion, string nominalUnitId)
     {
+        PurchasingPolicyId = purchasingPolicyId;
+        PurchasingPolicyVersion = purchasingPolicyVersion;
+        CalibrationId = calibrationId;
+        CalibrationVersion = calibrationVersion;
+        NominalUnitId = nominalUnitId;
         _session = session;
         _sites = sites;
         Slices = Array.AsReadOnly(slices);
@@ -181,7 +203,8 @@ public sealed class CanonicalPrimitiveFreightPortfolio
         var result = new CanonicalPrimitiveFreightPortfolio(
             session, sites, slices.ToArray(), uses.ToArray(),
             FindShared(uses.Select(x => (x.ServiceId, x))),
-            FindShared(assetUses));
+            FindShared(assetUses), purchasingPolicyId, purchasingPolicyVersion,
+            calibrationId, calibrationVersion, nominalUnitId);
         result.RequireCurrent(session);
         return result;
     }

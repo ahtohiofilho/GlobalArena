@@ -1,0 +1,45 @@
+name: GA-VS65 Joint Primitive Freight Budget Preflight Gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+# One VS65 gate per active PR head; cancel only older VS65 gates.
+concurrency:
+  group: ga-vs65-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  joint-freight-budget-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Directed VS40-VS65 physical freight, shared budget and audit regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "FullyQualifiedName~GaVs65|FullyQualifiedName~GaVs64|FullyQualifiedName~GaVs63|FullyQualifiedName~GaVs62|FullyQualifiedName~GaVs61|FullyQualifiedName~GaVs60|FullyQualifiedName~GaVs59|FullyQualifiedName~GaVs58|FullyQualifiedName~GaVs57|FullyQualifiedName~GaVs56|FullyQualifiedName~GaVs55|FullyQualifiedName~GaVs54|FullyQualifiedName~GaVs53|FullyQualifiedName~GaVs52|FullyQualifiedName~GaVs51|FullyQualifiedName~GaVs50|FullyQualifiedName~GaVs49|FullyQualifiedName~GaVs48|FullyQualifiedName~GaVs47|FullyQualifiedName~GaVs46|FullyQualifiedName~GaVs45|FullyQualifiedName~GaVs44|FullyQualifiedName~GaVs43|FullyQualifiedName~GaVs42|FullyQualifiedName~GaVs41|FullyQualifiedName~GaVs40"
+      - name: VS65 joint nominal purchasing and shared corridor benchmark
+        run: dotnet run --project GlobalArena.Benchmarks/GlobalArena.Benchmarks.csproj -c Release -- --vs65-joint-budget
+      - name: Godot Mono Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  joint-freight-budget-windows:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Full canonical population, physical cash and freight regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: VS65 joint nominal purchasing and shared corridor benchmark
+        run: dotnet run --project GlobalArena.Benchmarks/GlobalArena.Benchmarks.csproj -c Release -- --vs65-joint-budget
+      - name: Godot Mono Debug
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
