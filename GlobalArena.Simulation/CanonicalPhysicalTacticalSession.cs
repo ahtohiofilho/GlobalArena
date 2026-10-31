@@ -327,6 +327,8 @@ public sealed class CanonicalPhysicalTacticalSession
         ValidateTile(tile);
         var provisional = State.Transits.Where(x => x.Source == tile)
             .Aggregate(WorkersAt(tile), (sum, x) => checked(sum + x.Workers));
+        provisional = State.LongTrips.Where(x => x.Source == tile)
+            .Aggregate(provisional, (sum, x) => checked(sum + x.Workers));
         return checked(provisional * FoodDemandRawPerWorker);
     }
 
