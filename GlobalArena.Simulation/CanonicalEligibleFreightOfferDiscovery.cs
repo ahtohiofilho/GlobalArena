@@ -180,7 +180,13 @@ public sealed class CanonicalEligibleFreightOfferDiscovery
             return new(session, sites, null, [], [], [],
                 registered.Count, 0, 0, 0, 0L);
         }
-        var assets = session.TransportNetwork.InstalledAssets;
+        // VS39 requires explicit mappings for every asset supplied. Filter
+        // this *single-technology* routing context without mutating or
+        // concealing unrelated constructed assets in the canonical session.
+        var assets = session.TransportNetwork.InstalledAssets
+            .Where(x => x.TechnologyTypeId == policy.Pricing.TechnologyTypeId &&
+                x.TechnologyCatalogVersion == policy.Pricing.TechnologyCatalogVersion)
+            .ToArray();
         var access = session.TransportNetwork.Access;
         var facts = new CanonicalLandEdgeFactsSnapshot(session);
         var mapping = new Dictionary<(ulong TechnologyTypeId, ulong CatalogVersion),
