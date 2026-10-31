@@ -14,7 +14,9 @@ namespace GlobalArena.Simulation;
 public sealed record CanonicalPhysicalAction(
     string Kind, ulong Source, ulong Destination, byte FromJob, byte ToJob,
     ulong Workers, ulong BeforeRevision, string BeforeHashHex,
-    ulong AfterRevision, string AfterHashHex);
+    ulong AfterRevision, string AfterHashHex,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    ulong FoodRaw = 0UL);
 
 public sealed record CanonicalPhysicalWorkerSaveRow(ulong Tile, byte Job, ulong Workers);
 public sealed record CanonicalPhysicalStockSaveRow(ulong Tile, uint Commodity, ulong Raw);
@@ -45,6 +47,10 @@ public sealed record CanonicalLongJourneySaveRow(
     byte ToJob, ulong Workers, ulong Depart, ulong Arrive,
     ulong NextLegCompletion, int CompletedLegs, ulong[] Route);
 
+public sealed record CanonicalExpeditionFoodSaveRow(ulong Order, ulong RemainingRaw);
+public sealed record CanonicalExpeditionPurchaseSaveRow(
+    ulong Order, ulong Source, ulong PurchasedRaw, ulong Price, ulong Paid);
+
 public sealed record CanonicalPhysicalSavePayload(
     int Version, ulong Seed, int GeneratorVersion,
     int CoarseM, int CoarseN, int FineM, int FineN,
@@ -61,7 +67,11 @@ public sealed record CanonicalPhysicalSavePayload(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     CanonicalInitialCivilizationSaveRow? InitialCivilization = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    CanonicalLongJourneySaveRow[]? LongTrips = null);
+    CanonicalLongJourneySaveRow[]? LongTrips = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    CanonicalExpeditionFoodSaveRow[]? ExpeditionFood = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    CanonicalExpeditionPurchaseSaveRow[]? ExpeditionPurchases = null);
 
 public sealed record CanonicalPhysicalSaveEnvelope(
     int Version, string PayloadJson, string PayloadSha256Hex);
@@ -82,6 +92,7 @@ public sealed class CanonicalPhysicalTacticalSession
     public const int TimedTransitSaveFormat = 13;
     public const int BornCivilizationSaveFormat = 14;
     public const int LongDistanceSaveFormat = 15;
+    public const int ExpeditionFoodSaveFormat = 16;
     public const int MaximumActions = 100_000;
     private const int MaximumSaveBytes = 4_000_000;
     public const ulong FoodDemandRawPerWorker = 500_000UL;
@@ -327,7 +338,9 @@ public sealed class CanonicalPhysicalTacticalSession
         ValidateTile(tile);
         var provisional = State.Transits.Where(x => x.Source == tile)
             .Aggregate(WorkersAt(tile), (sum, x) => checked(sum + x.Workers));
-        provisional = State.LongTrips.Where(x => x.Source == tile)
+        var provisioned = State.ExpeditionFood.Select(x => x.OrderId).ToHashSet();
+        provisional = State.LongTrips
+            .Where(x => x.Source == tile && !provisioned.Contains(x.OrderId))
             .Aggregate(provisional, (sum, x) => checked(sum + x.Workers));
         return checked(provisional * FoodDemandRawPerWorker);
     }
@@ -850,7 +863,7 @@ public sealed class CanonicalPhysicalTacticalSession
 
     private void Commit(PhysicalTacticalEconomyRuntimeState next,
         string kind, ulong source, ulong destination, byte fromJob,
-        byte toJob, ulong amount)
+        byte toJob, ulong amount, ulong foodRaw = 0UL)
     {
         var before = CheckedSnapshot;
         var beforeHash = _hasher.Compute(before);
@@ -858,7 +871,7 @@ public sealed class CanonicalPhysicalTacticalSession
         var afterHash = _hasher.Compute(staged);
         var action = new CanonicalPhysicalAction(kind, source, destination,
             fromJob, toJob, amount, before.Revision, beforeHash.HexDigest,
-            staged.Revision, afterHash.HexDigest);
+            staged.Revision, afterHash.HexDigest, foodRaw);
         Game.AcceptSnapshotIfCurrent(before, staged);
         _lastCommittedSnapshot = staged;
         _journal.Add(action);
@@ -888,7 +901,7 @@ public sealed class CanonicalPhysicalTacticalSession
         {
             envelope = JsonSerializer.Deserialize<CanonicalPhysicalSaveEnvelope>(json)
                 ?? throw new InvalidOperationException("Missing canonical save envelope.");
-            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat or CashFoodSaveFormat or TimedTransitSaveFormat or BornCivilizationSaveFormat or LongDistanceSaveFormat) ||
+            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat or CashFoodSaveFormat or TimedTransitSaveFormat or BornCivilizationSaveFormat or LongDistanceSaveFormat or ExpeditionFoodSaveFormat) ||
                 string.IsNullOrEmpty(envelope.PayloadJson) ||
                 string.IsNullOrEmpty(envelope.PayloadSha256Hex))
                 throw new InvalidOperationException("Unsupported canonical save envelope.");
@@ -914,8 +927,15 @@ public sealed class CanonicalPhysicalTacticalSession
                 payload.InitialCivilization is null) ||
             (payload.Version < BornCivilizationSaveFormat &&
                 payload.InitialCivilization is not null) ||
-            ((payload.Version == LongDistanceSaveFormat) !=
+            ((payload.Version >= LongDistanceSaveFormat) !=
                 (payload.LongTrips is not null)) ||
+            ((payload.Version == ExpeditionFoodSaveFormat) !=
+                (payload.ExpeditionFood is not null &&
+                 payload.ExpeditionPurchases is not null)) ||
+            (payload.ExpeditionFood is not null &&
+                payload.ExpeditionFood.Any(x => x is null)) ||
+            (payload.ExpeditionPurchases is not null &&
+                payload.ExpeditionPurchases.Any(x => x is null)) ||
             (payload.LongTrips is not null &&
                 payload.LongTrips.Any(x => x is null || x.Route is null)) ||
             (payload.FoodCash is not null &&
@@ -975,6 +995,18 @@ public sealed class CanonicalPhysicalTacticalSession
                     new PhysicalTacticalTileId(game._fine, new StrategicCellId(action.Destination)),
                     (EconomicActivityKind)action.FromJob,
                     (EconomicActivityKind)action.ToJob, action.Workers);
+            else if (action.Kind == "depart_remote_food" &&
+                     game._movementMode == PhysicalWorkerMovementMode.TimedAdjacent)
+            {
+                var issued = game.OrderProvisionedLongDistanceTransit(
+                    new PhysicalTacticalTileId(game._fine, new StrategicCellId(action.Source)),
+                    new PhysicalTacticalTileId(game._fine, new StrategicCellId(action.Destination)),
+                    (EconomicActivityKind)action.FromJob,
+                    (EconomicActivityKind)action.ToJob, action.Workers);
+                if (issued.FoodRaw != action.FoodRaw)
+                    throw new InvalidOperationException(
+                        "Replayed expedition purchase disagreed on food quantity.");
+            }
             else if (action.Kind == "depart_remote" &&
                      game._movementMode == PhysicalWorkerMovementMode.TimedAdjacent)
                 game.OrderLongDistanceTransit(
@@ -1047,7 +1079,9 @@ public sealed class CanonicalPhysicalTacticalSession
         return game;
     }
 
-    private int CurrentSaveFormat => State.RemoteRoutingEnabled
+    private int CurrentSaveFormat => State.ExpeditionFoodEnabled
+        ? ExpeditionFoodSaveFormat
+        : State.RemoteRoutingEnabled
         ? LongDistanceSaveFormat
         : HasInitialCivilization
         ? BornCivilizationSaveFormat
@@ -1120,6 +1154,15 @@ public sealed class CanonicalPhysicalTacticalSession
                     x.DepartureTurn, x.ArrivalTurn, x.NextLegCompletionTurn,
                     x.CompletedLegs,
                     x.Route.Select(t => t.FineStrategicCellId.Value).ToArray())).ToArray()
+                : null,
+            state.ExpeditionFoodEnabled
+                ? state.ExpeditionFood.Select(x =>
+                    new CanonicalExpeditionFoodSaveRow(x.OrderId, x.RemainingRaw)).ToArray()
+                : null,
+            state.ExpeditionFoodEnabled
+                ? state.ExpeditionPurchases.Select(x => new CanonicalExpeditionPurchaseSaveRow(
+                    x.OrderId, x.Source.FineStrategicCellId.Value,
+                    x.PurchasedRaw, x.PriceMicrocreditsPerUnit, x.PaidMicrocredits)).ToArray()
                 : null);
     }
 
