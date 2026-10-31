@@ -1101,11 +1101,11 @@ public partial class Main
             _adjacentSurveyPreview.Visible = false;
         if (_remoteRoutePreview is not null)
             _remoteRoutePreview.Visible = false;
+        if (_canonicalPhysicalLab is null || _workerOrigin is null || _tacticalPreview is null ||
+            _workerLabStatus is null) return;
         if (_remoteDestinationTileId is not null)
             _remoteDestinationTileId.MaxValue =
                 (double)_canonicalPhysicalLab.State.FineParameters.StrategicCellCount;
-        if (_canonicalPhysicalLab is null || _workerOrigin is null || _tacticalPreview is null ||
-            _workerLabStatus is null) return;
         var state = _canonicalPhysicalLab.State;
         if (_foodMarketQuoteLabel is not null &&
             (_foodMarketQuoteRevision != _canonicalPhysicalLab.Game.Snapshot.Revision ||
