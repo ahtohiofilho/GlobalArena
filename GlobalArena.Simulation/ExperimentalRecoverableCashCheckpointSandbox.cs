@@ -22,14 +22,14 @@ internal sealed record ExperimentalCashCheckpointDocument(
     ExperimentalCashCheckpointProof? Proof, string Checksum);
 
 /// <summary>
-/// GA-VS49: single-process, single-snapshot, isolated disk-checkpoint
+/// GA-VS49/50: same-host cooperative-process, single-snapshot, isolated disk-checkpoint
 /// sandbox. The file is NOT a Global Arena save and the receipt is not a
 /// production payment authorization. A trusted authority and the ORIGINAL
 /// input snapshot/selection are required to reopen and validate a commit.
 ///
 /// Writes are same-directory staged with a flushed temp file and atomic-
 /// replacement attempt. Actual power-loss durability (directory fsync,
-/// filesystem/hardware guarantees), concurrent processes and external
+/// filesystem/hardware guarantees), uncooperative processes and external
 /// effects remain OUT OF SCOPE. A crash may leave an orphan *.stage, which
 /// cannot be interpreted as committed state. On reopen a checkpoint must
 /// match a freshly re-audited VS48 settlement exactly or fail closed.
@@ -51,6 +51,7 @@ public sealed class ExperimentalRecoverableCashCheckpointSandbox
     private readonly ExperimentalCashAuthorizationSnapshot _snapshot;
     private readonly ExperimentalSelectedCashProposal _selected;
     private readonly IExperimentalCashSettlementAuthority _authority;
+    private readonly IExperimentalCheckpointPublicationFault? _fault;
     private readonly Dictionary<ExperimentalCashAuditAccountKey,
         FoodTransportCostFraction> _opening;
 
@@ -59,8 +60,10 @@ public sealed class ExperimentalRecoverableCashCheckpointSandbox
         ExperimentalSelectedCashProposal selected,
         IReadOnlyDictionary<ExperimentalCashAuditAccountKey,
             FoodTransportCostFraction> opening,
-        IExperimentalCashSettlementAuthority authority)
+        IExperimentalCashSettlementAuthority authority,
+        IExperimentalCheckpointPublicationFault? fault)
     {
+        _fault = fault;
         if (string.IsNullOrWhiteSpace(path) ||
             !path.EndsWith(Extension, StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException(
@@ -88,11 +91,13 @@ public sealed class ExperimentalRecoverableCashCheckpointSandbox
         ExperimentalSelectedCashProposal selected,
         IReadOnlyDictionary<ExperimentalCashAuditAccountKey,
             FoodTransportCostFraction> opening,
-        IExperimentalCashSettlementAuthority authority)
+        IExperimentalCashSettlementAuthority authority,
+        IExperimentalCheckpointPublicationFault? fault = null)
     {
         var store = new ExperimentalRecoverableCashCheckpointSandbox(
-            path, snapshot, selected, opening, authority);
+            path, snapshot, selected, opening, authority, fault);
         lock (store._lock)
+        using (ExperimentalCheckpointProcessGate.Acquire(store._path))
         {
             if (File.Exists(store._path))
                 throw new IOException("An existing checkpoint cannot be overwritten.");
@@ -114,12 +119,14 @@ public sealed class ExperimentalRecoverableCashCheckpointSandbox
         IReadOnlyDictionary<ExperimentalCashAuditAccountKey,
             FoodTransportCostFraction> opening,
         IExperimentalCashSettlementAuthority authority,
-        ExperimentalCashAuthorityDecision originalDecision)
+        ExperimentalCashAuthorityDecision originalDecision,
+        IExperimentalCheckpointPublicationFault? fault = null)
     {
         var store = new ExperimentalRecoverableCashCheckpointSandbox(
-            path, snapshot, selected, opening, authority);
+            path, snapshot, selected, opening, authority, fault);
         ArgumentNullException.ThrowIfNull(originalDecision);
         lock (store._lock)
+        using (ExperimentalCheckpointProcessGate.Acquire(store._path))
         {
             _ = store.ReadVerified(originalDecision);
             return store;
@@ -133,6 +140,7 @@ public sealed class ExperimentalRecoverableCashCheckpointSandbox
     {
         ArgumentNullException.ThrowIfNull(decision);
         lock (_lock)
+        using (ExperimentalCheckpointProcessGate.Acquire(_path))
         {
             _snapshot.VerifyCurrent(currentTurn, currentWorldHash,
                 currentNetworkRevision);
@@ -183,6 +191,7 @@ public sealed class ExperimentalRecoverableCashCheckpointSandbox
     {
         ArgumentNullException.ThrowIfNull(trustedDecision);
         lock (_lock)
+        using (ExperimentalCheckpointProcessGate.Acquire(_path))
         {
             var persisted = ReadVerified(trustedDecision);
             if (persisted.StateRevision == 0)
@@ -324,6 +333,9 @@ public sealed class ExperimentalRecoverableCashCheckpointSandbox
                 stream.Flush(flushToDisk: true);
             }
             if (replace)
+                _fault?.OnBoundary(
+                    ExperimentalCheckpointPublicationBoundary.StageFlushedBeforeReplace);
+            if (replace)
             {
                 if (!File.Exists(_path))
                     throw new InvalidOperationException(
@@ -333,6 +345,9 @@ public sealed class ExperimentalRecoverableCashCheckpointSandbox
             else
                 File.Move(stage, _path); // fails if another file already exists
             committed = true;
+            if (replace)
+                _fault?.OnBoundary(
+                    ExperimentalCheckpointPublicationBoundary.FileReplacedBeforeReturn);
         }
         finally
         {
