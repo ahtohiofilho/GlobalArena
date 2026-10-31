@@ -573,7 +573,7 @@ public partial class Main
             AttachRuntimeState(_canonicalSession.Snapshot);
             UpdateWorkerLabHud();
             _workerLabStatus.Text +=
-                $"\\nORDEM GLOBAL ÚNICA {trip.OrderId}: " +
+                $"\nORDEM GLOBAL ÚNICA {trip.OrderId}: " +
                 $"{trip.TotalLegs} trechos, {trip.Workers} trabalhadores; " +
                 $"chegada prevista turno {trip.ArrivalTurn}. " +
                 "Intermediários são passagem, não assentamentos.";
@@ -586,7 +586,7 @@ public partial class Main
                                    ArgumentException or OverflowException)
         {
             _workerLabStatus.Text +=
-                "\\nORDEM GLOBAL RECUSADA (partida preservada): " + ex.Message;
+                "\nORDEM GLOBAL RECUSADA (partida preservada): " + ex.Message;
         }
     }
 
@@ -995,7 +995,7 @@ public partial class Main
                 ? "\nCÂMERA TÁTICA SALVA: posição, zoom e orientação."
                 : "\nATENÇÃO: partida salva, mas a visão tática não pôde ser salva.";
             _workerLabStatus.Text += isRemote
-                ? "\\nSAVE MULTITRECHO V15 GRAVADO: ga-vs29-remote-journey.json"
+                ? "\nSAVE MULTITRECHO V15 GRAVADO: ga-vs29-remote-journey.json"
                 : isBorn
                 ? "\nSAVE CIVILIZACIONAL V14 GRAVADO: ga-vs19b-born-civilization.json"
                 : isTimed
@@ -1090,7 +1090,7 @@ public partial class Main
                 ? "\nCÂMERA TÁTICA RESTAURADA: mesma posição e zoom do save."
                 : "\nVisão tática: enquadramento inicial (save antigo ou visão indisponível).";
             _workerLabStatus.Text += hasRemote
-                ? "\\nSAVE DE VIAGEM MULTITRECHO V15 REABERTO E VALIDADO."
+                ? "\nSAVE DE VIAGEM MULTITRECHO V15 REABERTO E VALIDADO."
                 : hasBorn
                 ? "\nSAVE CIVILIZACIONAL V14 REABERTO E VALIDADO."
                 : hasTimed
