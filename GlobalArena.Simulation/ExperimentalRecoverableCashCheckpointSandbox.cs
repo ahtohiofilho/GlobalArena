@@ -318,7 +318,7 @@ public sealed class ExperimentalRecoverableCashCheckpointSandbox
             {
                 using var writer = new StreamWriter(stream,
                     new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
-                    leaveOpen: true);
+                    bufferSize: 1024, leaveOpen: true);
                 writer.Write(JsonSerializer.Serialize(checkpoint, JsonOptions));
                 writer.Flush();
                 stream.Flush(flushToDisk: true);
