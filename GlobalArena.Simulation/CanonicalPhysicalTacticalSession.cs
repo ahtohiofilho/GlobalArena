@@ -551,10 +551,10 @@ public sealed class CanonicalPhysicalTacticalSession
         if (available == amount) allocations.Remove(key);
         else allocations[key] = available - amount;
         var id = checked(current.WorkerRevision + 1UL);
-        const ulong primitiveTravelTurns = 2UL;
+        var timeline = PhysicalMovementTimelines.ForExistingMode(_movementMode);
         var order = new PhysicalWorkerTransit(
             id, source, target, fromJob, toJob, amount,
-            current.MovementTurn, checked(current.MovementTurn + primitiveTravelTurns));
+            current.MovementTurn, timeline.AdjacentArrivalTurn(current.MovementTurn));
         var next = new PhysicalTacticalEconomyRuntimeState(
             current.CoarseWorldBinding, _coarse, _fine, current.MovementTurn, id,
             allocations.Select(x => new PhysicalWorkerAllocation(
@@ -602,7 +602,8 @@ public sealed class CanonicalPhysicalTacticalSession
         var journey = new PhysicalLongDistanceTransit(
             id, source, destination, fromJob, toJob, amount,
             current.MovementTurn, plan.EarliestArrivalTurn.Value,
-            checked(current.MovementTurn + 2UL), 0,
+            PhysicalMovementTimelines.ForExistingMode(_movementMode)
+                .LegCompletionTurn(current.MovementTurn, 0), 0,
             Array.AsReadOnly(plan.Tiles.ToArray()));
         var next = new PhysicalTacticalEconomyRuntimeState(
             current.CoarseWorldBinding, _coarse, _fine, current.MovementTurn, id,
@@ -702,7 +703,9 @@ public sealed class CanonicalPhysicalTacticalSession
                     ? x with
                     {
                         CompletedLegs = x.CompletedLegs + 1,
-                        NextLegCompletionTurn = checked(turn + 2UL)
+                        NextLegCompletionTurn = PhysicalMovementTimelines
+                            .ForExistingMode(_movementMode)
+                            .LegCompletionTurn(x.DepartureTurn, x.CompletedLegs + 1)
                     }
                     : x)
                 .ToList();

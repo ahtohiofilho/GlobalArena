@@ -265,6 +265,7 @@ func _run() -> void:
         return
     var origin_id := int(origin_match.get_string(1))
     var found_long_route := false
+    var selected_remote_legs: int = 0
     for step in range(1, 450):
         for sign in [-1, 1]:
             var candidate: int = origin_id + sign * step
@@ -276,6 +277,7 @@ func _run() -> void:
                 continue
             var count_text := remote_result.text.split("ROTA TERRESTRE: ")[1].split(" ")[0]
             if int(count_text) >= 2:
+                selected_remote_legs = int(count_text)
                 found_long_route = true
                 break
         if found_long_route:
@@ -308,12 +310,14 @@ func _run() -> void:
     _press(remote_order)
     await process_frame
     if not _require(status.text.contains("ORDEM GLOBAL ÚNICA") and
+            status.text.contains("chegada no turno " + str(5 + selected_remote_legs * 2)) and
             status.text.contains("Em viagem longa: 1 pessoas") and
             status.text.contains("turno 5") and
             settlements.text.contains("viajando 1"),
             "VS29 one-order remote travel button failed to commit physical journey"):
         return
     print("GA_UI_E2E_LONG_JOURNEY_ISSUED_OK")
+    print("GA_UI_E2E_VS31_LEGACY_TIMELINE_OK legs=" + str(selected_remote_legs))
 
     _press(food_assessment)
     await process_frame

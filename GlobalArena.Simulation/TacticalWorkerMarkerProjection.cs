@@ -51,7 +51,8 @@ public sealed class TacticalWorkerMarkerProjection
             .Concat(state.LongTrips.Select(x => new TacticalWorkerTravelMarker(
                 x.OrderId, x.Route[x.CompletedLegs],
                 x.Route[x.CompletedLegs + 1], x.Workers,
-                x.NextLegCompletionTurn - 2UL, x.NextLegCompletionTurn,
+                PhysicalMovementTimelines.ExistingPrimitive.LegStartTurn(
+                    x.DepartureTurn, x.CompletedLegs), x.NextLegCompletionTurn,
                 state.MovementTurn)))
             .OrderBy(x => x.OrderId).ToArray();
         if (groups.Aggregate(0UL, (sum, x) => checked(sum + x.Workers)) +
