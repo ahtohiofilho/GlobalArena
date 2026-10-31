@@ -15,7 +15,7 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
 {
     private const ulong Unit = EconomicTransferPolicy.FixedPointDenominator;
 
-    public static int Run(bool livePrimitive = false, bool discoverSites = false, bool discoverFreight = false)
+    public static int Run(bool livePrimitive = false, bool discoverSites = false, bool discoverFreight = false, bool discoverPortfolio = false)
     {
 #if DEBUG
         Console.Error.WriteLine("GA-VS60 benchmark requires Release.");
@@ -24,7 +24,7 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
         try
         {
             CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
-            Console.WriteLine(discoverFreight ? "BENCHMARK=GA-VS63-INSTITUTIONALLY-AUTHORIZED-FREIGHT" : discoverSites ? "BENCHMARK=GA-VS62-EMERGENT-ECONOMIC-SITES" : livePrimitive ? "BENCHMARK=GA-VS61-LIVE-PRIMITIVE-SESSION" : "BENCHMARK=GA-VS60-BUILT-INSTITUTIONAL-NETWORK");
+            Console.WriteLine(discoverPortfolio ? "BENCHMARK=GA-VS64-PRIMITIVE-FREIGHT-PORTFOLIO" : discoverFreight ? "BENCHMARK=GA-VS63-INSTITUTIONALLY-AUTHORIZED-FREIGHT" : discoverSites ? "BENCHMARK=GA-VS62-EMERGENT-ECONOMIC-SITES" : livePrimitive ? "BENCHMARK=GA-VS61-LIVE-PRIMITIVE-SESSION" : "BENCHMARK=GA-VS60-BUILT-INSTITUTIONAL-NETWORK");
             Console.WriteLine($"ENV_OS={RuntimeInformation.OSDescription}");
             Console.WriteLine($"ENV_RUNTIME={RuntimeInformation.FrameworkDescription}");
             Console.WriteLine("WARMUPS=1;SAMPLES=3;PERFORMANCE_THRESHOLDS=none");
@@ -186,7 +186,10 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
                     new CanonicalPrimitiveDemandRate(new CommodityId(8), 125_000),
                     new CanonicalPrimitiveDemandRate(new CommodityId(9), 250_000)
                 }, new FoodTransportCostFraction(1, 1));
-            if (discoverFreight)
+            if (discoverPortfolio)
+                session.ReassignWorkers(from, EconomicActivityKind.Agriculture,
+                    EconomicActivityKind.Forestry, 1);
+            if (discoverFreight || discoverPortfolio)
                 session.TransportNetwork.SetEntitlement(registry.Entitlements.Single() with {
                     Source = CanonicalPrimitiveSiteDiscovery.SiteId(from),
                     Destination = CanonicalPrimitiveSiteDiscovery.SiteId(to),
@@ -199,6 +202,21 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
                 new FoodCommodityCatalog(new[] {
                     new FoodCommodityDefinition(food, "food", 1)
                 }));
+            var portfolioProfiles = new[] {
+                freightPolicy,
+                new CanonicalEligibleFreightDiscoveryPolicy(
+                    new CommodityId(8), EconomicActivityKind.Forestry, pricing,
+                    ExperimentalLandInfrastructureKind.StoneRoad,
+                    new FoodCommodityCatalog(new[] {
+                        new FoodCommodityDefinition(new CommodityId(8), "wood", 1)
+                    })),
+                new CanonicalEligibleFreightDiscoveryPolicy(
+                    new CommodityId(9), EconomicActivityKind.Mining, pricing,
+                    ExperimentalLandInfrastructureKind.StoneRoad,
+                    new FoodCommodityCatalog(new[] {
+                        new FoodCommodityDefinition(new CommodityId(9), "stone", 1)
+                    }))
+            };
             var hash = session.CurrentHash;
             var save = session.ExportSaveJson();
 
@@ -213,6 +231,25 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
                     var started = Stopwatch.GetTimestamp();
                     for (var i = 0; i < count; i++)
                     {
+                        if (discoverPortfolio)
+                        {
+                            var sites = session.DiscoverPrimitiveEconomicSites(discoveryPolicy);
+                            var portfolio = session.DiscoverPrimitiveFreightPortfolio(
+                                sites, portfolioProfiles, "VS60-BENCH-PURCHASING", 1,
+                                "VS60-BENCH-CALIBRATION", 1, "VS40-NOMINAL");
+                            if (portfolio.CandidateUses.Count != 2 ||
+                                portfolio.SharedServices.Count != 1 ||
+                                portfolio.SharedServices[0].ResourceId != 77 ||
+                                portfolio.SharedAssets.Count != 1 ||
+                                portfolio.SharedAssets[0].ResourceId != 31 ||
+                                portfolio.TotalEligibleIntents != 2 ||
+                                portfolio.CanCombineIndependentTradePreviews ||
+                                portfolio.CanAuthorizeRealSettlement)
+                                throw new InvalidOperationException(
+                                    "Portfolio shared freight conflict diagnostics diverged.");
+                            portfolio.RequireCurrent(session);
+                            continue;
+                        }
                         if (discoverFreight)
                         {
                             var sites = session.DiscoverPrimitiveEconomicSites(discoveryPolicy);
@@ -277,13 +314,13 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
                     $"median_ms={times.OrderBy(x => x).ElementAt(1):F3};" +
                     $"median_allocated_bytes={allocations.OrderBy(x => x).ElementAt(1)}");
             }
-            Console.WriteLine(discoverFreight ? "RESULT=PASS_GA_VS63_AUTHORIZED_FREIGHT" : discoverSites ? "RESULT=PASS_GA_VS62_SITE_DISCOVERY" : livePrimitive ? "RESULT=PASS_GA_VS61_LIVE_PRIMITIVE" : "RESULT=PASS_GA_VS60_BUILT_INSTITUTIONAL");
+            Console.WriteLine(discoverPortfolio ? "RESULT=PASS_GA_VS64_FREIGHT_PORTFOLIO" : discoverFreight ? "RESULT=PASS_GA_VS63_AUTHORIZED_FREIGHT" : discoverSites ? "RESULT=PASS_GA_VS62_SITE_DISCOVERY" : livePrimitive ? "RESULT=PASS_GA_VS61_LIVE_PRIMITIVE" : "RESULT=PASS_GA_VS60_BUILT_INSTITUTIONAL");
             return 0;
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine(ex);
-            Console.WriteLine(discoverFreight ? "RESULT=FAIL_GA_VS63_AUTHORIZED_FREIGHT" : discoverSites ? "RESULT=FAIL_GA_VS62_SITE_DISCOVERY" : livePrimitive ? "RESULT=FAIL_GA_VS61_LIVE_PRIMITIVE" : "RESULT=FAIL_GA_VS60_BUILT_INSTITUTIONAL");
+            Console.WriteLine(discoverPortfolio ? "RESULT=FAIL_GA_VS64_FREIGHT_PORTFOLIO" : discoverFreight ? "RESULT=FAIL_GA_VS63_AUTHORIZED_FREIGHT" : discoverSites ? "RESULT=FAIL_GA_VS62_SITE_DISCOVERY" : livePrimitive ? "RESULT=FAIL_GA_VS61_LIVE_PRIMITIVE" : "RESULT=FAIL_GA_VS60_BUILT_INSTITUTIONAL");
             return 1;
         }
 #endif
