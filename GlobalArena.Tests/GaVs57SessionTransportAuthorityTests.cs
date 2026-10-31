@@ -8,7 +8,7 @@ namespace GlobalArena.Tests;
 
 public sealed class GaVs57SessionTransportAuthorityTests
 {
-    private static GaVs56BuiltNetworkInstitutionalRightsTests.Fixture Create(ulong through = 100)
+    internal static GaVs56BuiltNetworkInstitutionalRightsTests.Fixture Create(ulong through = 100)
     {
         var f = new GaVs56BuiltNetworkInstitutionalRightsTests.Fixture();
         var n = f.Session.TransportNetwork;
@@ -18,7 +18,7 @@ public sealed class GaVs57SessionTransportAuthorityTests
         return f;
     }
 
-    private static CanonicalTransportProof Capture(GaVs56BuiltNetworkInstitutionalRightsTests.Fixture f,
+    internal static CanonicalTransportProof Capture(GaVs56BuiltNetworkInstitutionalRightsTests.Fixture f,
         CanonicalPhysicalTacticalSession? session = null)
     {
         var r = f.Registry();
