@@ -59,13 +59,13 @@ jobs:
                -not $main.Contains('GA_VS22_RUNTIME_ACTIVE') -and
                -not $main.Contains('GA_VS23_RUNTIME_ACTIVE') -and
                -not $main.Contains('GA_VS24_RUNTIME_ACTIVE') -and
-               (-not $main.Contains('GA_VS25_RUNTIME_ACTIVE') -and (-not $main.Contains('GA_VS26_RUNTIME_ACTIVE') -and (-not $main.Contains('GA_VS27_RUNTIME_ACTIVE') -and (-not $main.Contains('GA_VS28_RUNTIME_ACTIVE') -and -not $main.Contains('GA_VS29_RUNTIME_ACTIVE')))))) -or
+               (-not $main.Contains('GA_VS25_RUNTIME_ACTIVE') -and (-not $main.Contains('GA_VS26_RUNTIME_ACTIVE') -and (-not $main.Contains('GA_VS27_RUNTIME_ACTIVE') -and (-not $main.Contains('GA_VS28_RUNTIME_ACTIVE') -and (-not $main.Contains('GA_VS29_RUNTIME_ACTIVE') -and -not $main.Contains('GA_VS30_RUNTIME_ACTIVE'))))))) -or
               (-not $lab.Contains('POVOAMENTOS EMERGENTES | VS20') -and
                -not $lab.Contains('ATIVIDADES LOCAIS | VS21') -and
                -not $lab.Contains('CICLOS ECONÔMICOS VISÍVEIS | VS22') -and
                -not $lab.Contains('RESULTADOS ECONÔMICOS | VS23') -and
                -not $lab.Contains('COMPARAR DECISÕES PRODUTIVAS | VS24') -and
-               (-not $lab.Contains('ALIMENTAÇÃO E PRODUÇÃO | VS25') -and (-not $lab.Contains('EXPLORAÇÃO PRODUTIVA | VS26') -and (-not $lab.Contains('PLANEJAMENTO TÁTICO | VS27') -and (-not $lab.Contains('PLANEJAMENTO TÁTICO | VS28') -and -not $lab.Contains('PLANEJAMENTO TÁTICO | VS29'))))))) {
+               (-not $lab.Contains('ALIMENTAÇÃO E PRODUÇÃO | VS25') -and (-not $lab.Contains('EXPLORAÇÃO PRODUTIVA | VS26') -and (-not $lab.Contains('PLANEJAMENTO TÁTICO | VS27') -and (-not $lab.Contains('PLANEJAMENTO TÁTICO | VS28') -and (-not $lab.Contains('PLANEJAMENTO TÁTICO | VS29') -and -not $lab.Contains('PLANEJAMENTO TÁTICO | VS30')))))))) {
             throw 'VS20 direct-run/build marker contract missing.'
           }
       - name: Emergent settlement and prior movement/replay tests

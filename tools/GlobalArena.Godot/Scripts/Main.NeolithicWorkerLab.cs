@@ -30,6 +30,7 @@ public partial class Main
     private Label? _adjacentSurveyPreview;
     private SpinBox? _remoteDestinationTileId;
     private Label? _remoteRoutePreview;
+    private Label? _journeySupplyPreview;
     private VBoxContainer? _workerLabAdvancedPanel;
     private Button? _workerMoveButton;
     private Button? _workerReassignButton;
@@ -49,7 +50,7 @@ public partial class Main
 
         var title = new Label
         {
-            Text = "PLANEJAMENTO TÁTICO | VS29",
+            Text = "PLANEJAMENTO TÁTICO | VS30",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         title.AddThemeFontSizeOverride("font_size", 16);
@@ -297,6 +298,21 @@ public partial class Main
         };
         _remoteRoutePreview.AddThemeColorOverride("font_color", new Color("#b5ddb5"));
         _workerLabAdvancedPanel.AddChild(_remoteRoutePreview);
+        var assessJourney = new Button
+        {
+            Name = "GAQAAssessJourneyFood",
+            Text = "DIAGNÓSTICO FÍSICO DE SUPRIMENTOS"
+        };
+        assessJourney.Pressed += AssessRemoteJourneySupplies;
+        _workerLabAdvancedPanel.AddChild(assessJourney);
+        _journeySupplyPreview = new Label
+        {
+            Name = "GAQAJourneySupplyResult",
+            Visible = false,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        _journeySupplyPreview.AddThemeColorOverride("font_color", new Color("#d9d6b5"));
+        _workerLabAdvancedPanel.AddChild(_journeySupplyPreview);
 
         _workerLabDetails = new Label
         {
@@ -587,6 +603,69 @@ public partial class Main
         {
             _workerLabStatus.Text +=
                 "\nORDEM GLOBAL RECUSADA (partida preservada): " + ex.Message;
+        }
+    }
+
+    private void AssessRemoteJourneySupplies()
+    {
+        if (_canonicalPhysicalLab is null || _workerOrigin is null ||
+            _workerFromJob is null || _workerToJob is null ||
+            _workerAmount is null || _remoteDestinationTileId is null ||
+            _journeySupplyPreview is null) return;
+        try
+        {
+            var state = _canonicalPhysicalLab.State;
+            var hash = _canonicalPhysicalLab.CurrentHash;
+            var source = _workerOrigin.Value;
+            var destination = new PhysicalTacticalTileId(
+                state.FineParameters,
+                new StrategicCellId(checked((ulong)_remoteDestinationTileId.Value)));
+            var existing = state.LongTrips
+                .Where(x => x.Source == source && x.Destination == destination)
+                .OrderBy(x => x.OrderId).LastOrDefault();
+            var estimate = existing is null
+                ? PhysicalJourneySupplyProjection.PreviewPlanned(
+                    _canonicalPhysicalLab, source, destination,
+                    (EconomicActivityKind)_workerFromJob.GetSelectedId(),
+                    (EconomicActivityKind)_workerToJob.GetSelectedId(),
+                    checked((ulong)_workerAmount.Value))
+                : PhysicalJourneySupplyProjection.PreviewActive(
+                    _canonicalPhysicalLab, existing.OrderId);
+
+            static string Units(ulong raw) => (raw / 1_000_000.0).ToString("F3");
+            _journeySupplyPreview.Text =
+                $"SUPRIMENTOS | {(estimate.IsExistingJourney ? "VIAGEM ATIVA" : "PROPOSTA")} " +
+                $"| {estimate.Travellers} viajantes | " +
+                $"turnos restantes {estimate.RemainingMovementTurns}\n" +
+                $"Liquidações econômicas antes da chegada: " +
+                $"{estimate.EconomicSettlementsBeforeArrival} | " +
+                $"demanda alimentar dos viajantes {Units(estimate.TravellersBaselineFoodDemandRaw)} " +
+                $"unidades físicas\n" +
+                $"Produção não realizada na atividade de origem ({estimate.OriginalActivity}): " +
+                $"{Units(estimate.ForegoneSourceProductionRaw)} unidades da atividade\n" +
+                $"Estoque alimentar AGORA na origem: {Units(estimate.ExistingOriginFoodStockRaw)} | " +
+                $"cobertura máxima só com esse estoque: {Units(estimate.StockOnlyUpperBoundRaw)} | " +
+                $"diferença: {Units(estimate.StockOnlyUncoveredRaw)}\n" +
+                "DIAGNÓSTICO, NÃO RESERVA: o estoque tem outros consumidores; " +
+                "produção futura e compras podem alterar a disponibilidade. " +
+                "Não há ração portátil, aquisição, cobrança ou movimento criado por esta consulta. " +
+                "A demanda durante a viagem já existe na regra V15, NÃO é gasto adicional.";
+            _journeySupplyPreview.Visible = true;
+            if (!_canonicalPhysicalLab.CurrentHash.Equals(hash))
+                throw new InvalidOperationException(
+                    "The travel food diagnostic unexpectedly modified canonical state.");
+            GD.Print($"GA_VS30_JOURNEY_SUPPLY_READ_ONLY " +
+                $"destination={destination.FineStrategicCellId.Value} " +
+                $"cycles={estimate.EconomicSettlementsBeforeArrival} " +
+                $"food={estimate.TravellersBaselineFoodDemandRaw} " +
+                $"hash={hash.HexDigest}");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or
+                                   ArgumentException or OverflowException)
+        {
+            _journeySupplyPreview.Text =
+                "DIAGNÓSTICO INDISPONÍVEL (sem alterações): " + ex.Message;
+            _journeySupplyPreview.Visible = true;
         }
     }
 
@@ -1156,6 +1235,8 @@ public partial class Main
             _adjacentSurveyPreview.Visible = false;
         if (_remoteRoutePreview is not null)
             _remoteRoutePreview.Visible = false;
+        if (_journeySupplyPreview is not null)
+            _journeySupplyPreview.Visible = false;
         if (_canonicalPhysicalLab is null || _workerOrigin is null || _tacticalPreview is null ||
             _workerLabStatus is null) return;
         if (_remoteDestinationTileId is not null)
