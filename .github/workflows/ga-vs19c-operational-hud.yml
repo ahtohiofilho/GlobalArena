@@ -44,7 +44,7 @@ jobs:
                -not $main.Contains('GA_VS22_RUNTIME_ACTIVE') -and
                -not $main.Contains('GA_VS23_RUNTIME_ACTIVE') -and
                -not $main.Contains('GA_VS24_RUNTIME_ACTIVE') -and
-               (-not $main.Contains('GA_VS25_RUNTIME_ACTIVE') -and (-not $main.Contains('GA_VS26_RUNTIME_ACTIVE') -and -not $main.Contains('GA_VS27_RUNTIME_ACTIVE')))) -or
+               (-not $main.Contains('GA_VS25_RUNTIME_ACTIVE') -and (-not $main.Contains('GA_VS26_RUNTIME_ACTIVE') -and (-not $main.Contains('GA_VS27_RUNTIME_ACTIVE') -and -not $main.Contains('GA_VS28_RUNTIME_ACTIVE'))))) -or
               -not $source.Contains('MOSTRAR DETALHES E FERRAMENTAS DE LABORAT') -or
               -not $source.Contains('REABRIR SAVE')) {
             throw 'VS19C+ operational HUD or direct launcher contract missing.'
