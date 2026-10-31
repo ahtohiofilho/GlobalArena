@@ -1,0 +1,45 @@
+name: GA-VS43 Simultaneous Physical-Economic Freight Reference
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/ExperimentalSimultaneousFreightReference.cs'
+      - 'GlobalArena.Tests/GaVs43SimultaneousFreightReferenceTests.cs'
+      - 'GlobalArena.Benchmarks/GaVs43SimultaneousFreightBenchmarkHarness.cs'
+      - 'GlobalArena.Benchmarks/Program.cs'
+      - 'docs/engineering/GA-VS43-simultaneous-endogenous-freight-reference.md'
+      - '.github/workflows/ga-vs43-simultaneous-freight-reference.yml'
+  workflow_dispatch:
+
+jobs:
+  coupled-clearing-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: VS43 combined variable quantities, VS42 corridor sharing and legacy freight regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "FullyQualifiedName~GaVs43|FullyQualifiedName~GaVs42|FullyQualifiedName~GaVs41|FullyQualifiedName~GaVs40"
+      - name: Multi-pole quantity, production and shared freight benchmark
+        run: dotnet run --project GlobalArena.Benchmarks/GlobalArena.Benchmarks.csproj -c Release -- --vs43-simultaneous-freight
+      - name: Godot Mono Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  coupled-clearing-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Full economic, physical, save and tactical regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: Godot Mono Debug
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
