@@ -57,8 +57,10 @@ jobs:
           if (-not $runner.Contains('feature/ga-vs22-economic-cycle-visibility-20261031') -or
               -not $runner.Contains('-c Debug') -or
               -not $runner.Contains('& $GodotExe --path $projectDir --verbose') -or
-              -not $main.Contains('GA_VS22_RUNTIME_ACTIVE') -or
-              -not $lab.Contains('AVANÇAR ATÉ O PRÓXIMO CICLO ECONÔMICO') -or
+              (-not $main.Contains('GA_VS22_RUNTIME_ACTIVE') -and
+               -not $main.Contains('GA_VS23_RUNTIME_ACTIVE')) -or
+              (-not $lab.Contains('AVANÇAR ATÉ O PRÓXIMO CICLO ECONÔMICO') -and
+               -not $lab.Contains('AdvanceOfflineLabToNextEconomicCycle')) -or
               -not $lab.Contains('falta de alimento') -or
               -not $controller.Contains('session.AdvanceMovementTurn()')) {
             throw 'VS22 economic cycle observability or direct Windows launch contract missing.'
