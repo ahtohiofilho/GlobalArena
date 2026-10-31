@@ -1,0 +1,71 @@
+name: GA-VS29 Single-Order Multileg Movement V15
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Runtime/PhysicalLongDistanceTransit.cs'
+      - 'GlobalArena.Runtime/PhysicalTacticalEconomyRuntimeState.cs'
+      - 'GlobalArena.Simulation/CanonicalPhysicalTacticalSession.cs'
+      - 'GlobalArena.Simulation/CanonicalWorldStateHasher.cs'
+      - 'GlobalArena.Simulation/CivilizationalEconomicAttributionProjection.cs'
+      - 'GlobalArena.Simulation/TacticalWorkerMarkerProjection.cs'
+      - 'GlobalArena.Tests/GaVs29OneOrderMultilegJourneyTests.cs'
+      - 'tools/GlobalArena.Godot/**'
+      - 'tools/launch-vs29.ps1'
+      - '.github/workflows/ga-vs29-single-order-multileg-movement.yml'
+  workflow_dispatch:
+
+jobs:
+  multileg-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Long journey and previous worker/economy tests
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs29|FullyQualifiedName~GaVs28|FullyQualifiedName~GaVs27|FullyQualifiedName~GaVs26|FullyQualifiedName~GaVs25|FullyQualifiedName~GaVs24|FullyQualifiedName~GaVs23|FullyQualifiedName~GaVs22|FullyQualifiedName~GaVs21|FullyQualifiedName~GaVs20|FullyQualifiedName~GaVs15'
+      - name: Build Godot Mono Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  multileg-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Parse PowerShell launcher and inspect V15 canonical contracts
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'tools/launch-vs29.ps1').Path, [ref]$tokens, [ref]$errors)
+          if ($errors.Count) { throw ($errors | ForEach-Object Message | Out-String) }
+          $main = Get-Content -Raw -Encoding UTF8 'tools/GlobalArena.Godot/Scripts/Main.cs'
+          $ui = Get-Content -Raw -Encoding UTF8 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+          $kernel = Get-Content -Raw -Encoding UTF8 'GlobalArena.Simulation/CanonicalPhysicalTacticalSession.cs'
+          $hash = Get-Content -Raw -Encoding UTF8 'GlobalArena.Simulation/CanonicalWorldStateHasher.cs'
+          if (-not $main.Contains('GA_VS29_RUNTIME_ACTIVE') -or
+              -not $ui.Contains('OrderRemotePhysicalJourney') -or
+              -not $ui.Contains('GAQAOrderRemoteJourney') -or
+              -not $ui.Contains('SAVE MULTITRECHO V15') -or
+              -not $kernel.Contains('OrderLongDistanceTransit') -or
+              -not $kernel.Contains('depart_remote') -or
+              -not $kernel.Contains('LongDistanceSaveFormat = 15') -or
+              -not $hash.Contains('LongDistanceWorkerFormatVersion = 15U')) {
+            throw 'VS29 nonadjacent journey, immutable replay or Godot integration contract missing.'
+          }
+      - name: Long journey and previous worker/economy tests
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs29|FullyQualifiedName~GaVs28|FullyQualifiedName~GaVs27|FullyQualifiedName~GaVs26|FullyQualifiedName~GaVs25|FullyQualifiedName~GaVs24|FullyQualifiedName~GaVs23|FullyQualifiedName~GaVs22|FullyQualifiedName~GaVs21|FullyQualifiedName~GaVs20|FullyQualifiedName~GaVs15'
+      - name: Build Godot Mono Debug
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
+      - name: Build Godot Mono Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
