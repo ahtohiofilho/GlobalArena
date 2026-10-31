@@ -1,4 +1,5 @@
 using GlobalArena.Benchmarks;
+if (args.Contains("--vs59-independent-selection")) return GaVs59IndependentSelectionAuditBenchmarkHarness.Run();
 if (args.Contains("--vs58-simultaneous-authority")) return GaVs58SimultaneousAuthorityBenchmarkHarness.Run();
 
 if (args.Any(argument => string.Equals(argument, "--vs57-session-authority", StringComparison.Ordinal)))
