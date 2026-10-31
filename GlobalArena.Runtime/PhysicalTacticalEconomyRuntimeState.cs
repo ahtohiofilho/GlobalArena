@@ -203,8 +203,10 @@ public sealed class PhysicalTacticalEconomyRuntimeState
                 if (lot is null || lot.OrderId == 0UL ||
                     lot.OrderId > workerRevision || !foodOrderIds.Add(lot.OrderId) ||
                     lot.FoodPurchasedRaw == 0UL || lot.UnitPriceMicrocredits == 0UL ||
-                    lot.FoodRemainingRaw > lot.FoodPurchasedRaw ||
-                    lot.FoodConsumedRaw != lot.FoodPurchasedRaw - lot.FoodRemainingRaw ||
+                    (UInt128)lot.FoodRemainingRaw + lot.FoodConsumedRaw !=
+                        (UInt128)lot.FoodPurchasedRaw +
+                        (journeyCampStates?.FirstOrDefault(c => c.OrderId == lot.OrderId)?
+                            .GatheredFoodRaw ?? 0UL) ||
                     lot.PaidMicrocredits != PhysicalJourneyFoodLedger.PurchasePayment(
                         lot.FoodPurchasedRaw, lot.UnitPriceMicrocredits))
                     throw new ArgumentException("Travel food ledger violates conservation or purchase identity.");
