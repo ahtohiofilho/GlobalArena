@@ -670,7 +670,7 @@ public sealed class CanonicalPhysicalTacticalSession
                         activeAllocations.GetValueOrDefault(key) + order.Workers);
                     if (cashAccounts is not null)
                     {
-                        var from = cashAccounts.GetValueOrDefault(order.Source) ??
+                        var fromWallet = cashAccounts.GetValueOrDefault(order.Source) ??
                             new PhysicalFoodCashAccount(order.Source, 0UL, 0UL);
                         var destination = cashAccounts.GetValueOrDefault(order.Destination) ??
                             new PhysicalFoodCashAccount(order.Destination, 0UL, 0UL);
@@ -678,11 +678,11 @@ public sealed class CanonicalPhysicalTacticalSession
                         if (headcount < order.Workers)
                             throw new InvalidOperationException(
                                 "Travellers exceed their originating population.");
-                        var carried = (ulong)((UInt128)from.HouseholdMicrocredits *
+                        var carried = (ulong)((UInt128)fromWallet.HouseholdMicrocredits *
                             order.Workers / headcount);
-                        cashAccounts[order.Source] = from with
+                        cashAccounts[order.Source] = fromWallet with
                         {
-                            HouseholdMicrocredits = from.HouseholdMicrocredits - carried
+                            HouseholdMicrocredits = fromWallet.HouseholdMicrocredits - carried
                         };
                         cashAccounts[order.Destination] = destination with
                         {
