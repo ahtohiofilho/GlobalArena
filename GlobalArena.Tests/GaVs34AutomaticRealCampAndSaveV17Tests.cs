@@ -26,10 +26,10 @@ public sealed class GaVs34AutomaticRealCampAndSaveV17Tests
             .OrderBy(x => x.FineStrategicCellId.Value).First();
     }
 
-    // Find a concrete land route where primitive forage is actually viable.
-    // A test that merely returns on an infeasible forecast does not prove
-    // that V17 gathers anything. This makes the scenario mandatory.
-    private static PhysicalTacticalTileId ProductiveCampDestination(
+    // Look for a physically unproductive route. In the canonical 01C
+    // fixture, a 75%-of-crop primitive food quote need not cover a
+    // worker's 0.5-unit demand. A valid refusal must never mint food.
+    private static PhysicalTacticalTileId InsufficientForageDestination(
         CanonicalPhysicalTacticalSession game, ulong foodRaw)
     {
         var adjacent = game.AdjacentWorkable(game.InitialTile).ToHashSet();
@@ -42,13 +42,11 @@ public sealed class GaVs34AutomaticRealCampAndSaveV17Tests
                 game, game.InitialTile, destination,
                 EconomicActivityKind.Agriculture, EconomicActivityKind.Forestry,
                 1UL, foodRaw);
-            if (forecast.CanArriveUnderAssumptions &&
-                forecast.Stops.Count > 0 &&
-                forecast.WaitingMovementTurns is > 0UL and <= 100UL)
+            if (!forecast.CanArriveUnderAssumptions)
                 return destination;
         }
         throw new InvalidOperationException(
-            "This test seed has no productive two-leg camp route; V17 positive coverage is mandatory.");
+            "Expected an unproductive primitive camp route in the fixed geography fixture.");
     }
 
     private static CanonicalPhysicalTacticalSession Supplied()
@@ -104,60 +102,67 @@ public sealed class GaVs34AutomaticRealCampAndSaveV17Tests
     }
 
     [Fact]
-    public void FoodScarcityTriggersRealEconomicTimeOrRefusesUnproductiveStrategy()
+    public void UnproductivePrimitiveCampRefusesDepartureWithoutInventingFoodOrMoney()
     {
         var game = Supplied();
-        var startRaw = Math.Min(500_000UL,
+        var startingFood = Math.Min(500_000UL,
             game.StockAt(game.InitialTile, new CommodityId(1U)));
-        var destination = ProductiveCampDestination(game, startRaw);
-        var plan = JourneyProvisioningForecastProjection.PreviewPlanned(
+        var destination = InsufficientForageDestination(game, startingFood);
+        var forecast = JourneyProvisioningForecastProjection.PreviewPlanned(
             game, game.InitialTile, destination,
             EconomicActivityKind.Agriculture, EconomicActivityKind.Forestry,
-            1UL, startRaw);
-        Assert.True(plan.CanArriveUnderAssumptions);
-        Assert.NotEmpty(plan.Stops);
-        Assert.True(plan.WaitingMovementTurns > 0UL);
-        var trip = Begin(game, startRaw, destination);
-        Assert.Equal(17, JsonSerializer.Deserialize<CanonicalPhysicalSaveEnvelope>(
-            game.ExportSaveJson())!.Version);
-        var initialCash = game.FoodCash!.InitialMoneySupplyMicrocredits;
-        var originalETA = trip.ArrivalTurn;
-        var spentTicks = 0;
-        var previousGather = 0UL;
-        while (game.State.LongTrips.Any(x => x.OrderId == trip.OrderId))
-        {
-            game.AdvanceMovementTurn();
-            spentTicks++;
-            Assert.True(spentTicks < 200, "Automatic camp did not finish its finite plan.");
-            var lot = Assert.Single(game.State.TravelFoodLedgers!);
-            var camp = Assert.Single(game.State.JourneyCampStates!);
-            Assert.Equal((UInt128)lot.FoodPurchasedRaw + camp.GatheredFoodRaw,
-                (UInt128)lot.FoodRemainingRaw + lot.FoodConsumedRaw);
-            Assert.True(camp.GatheredFoodRaw >= previousGather);
-            previousGather = camp.GatheredFoodRaw;
+            1UL, startingFood);
+        Assert.False(forecast.CanArriveUnderAssumptions);
+        Assert.Equal(JourneyProvisioningStatus.InsufficientFoodAndNoProductiveStop,
+            forecast.Status);
+        var before = game.ExportSaveJson();
+        var hash = game.CurrentHash;
+        Assert.Throws<InvalidOperationException>(
+            () => Begin(game, startingFood, destination));
+        Assert.Equal(before, game.ExportSaveJson());
+        Assert.Equal(hash, game.CurrentHash);
+        Assert.Empty(game.State.LongTrips);
+        Assert.Null(game.State.TravelFoodLedgers);
+        Assert.Null(game.State.JourneyCampStates);
+    }
 
-            if (camp.WaitingMovementTurns > 0UL && spentTicks == 1)
-            {
-                var saved = game.ExportSaveJson();
-                var restored = CanonicalPhysicalTacticalSession.RestoreSaveJson(saved);
-                Assert.Equal(saved, restored.ExportSaveJson());
-                Assert.Equal(game.CurrentHash, restored.CurrentHash);
-            }
-        }
-        var lastCamp = Assert.Single(game.State.JourneyCampStates!);
-        var lastLot = Assert.Single(game.State.TravelFoodLedgers!);
-        Assert.True(lastLot.Arrived);
-        Assert.Equal(originalETA + lastCamp.WaitingMovementTurns,
-            game.State.MovementTurn);
-        Assert.Equal(plan.WaitingMovementTurns, lastCamp.WaitingMovementTurns);
-        Assert.Equal(plan.GatheredFoodRaw, lastCamp.GatheredFoodRaw);
-        Assert.True(lastCamp.WaitingMovementTurns > 0UL);
-        Assert.True(lastCamp.GatheringEconomicCycles > 0UL);
-        Assert.Equal(initialCash, game.FoodCash!.InitialMoneySupplyMicrocredits);
-        var json = game.ExportSaveJson();
-        var replayed = CanonicalPhysicalTacticalSession.RestoreSaveJson(json);
-        Assert.Equal(json, replayed.ExportSaveJson());
-        Assert.Equal(game.CurrentHash, replayed.CurrentHash);
+    [Fact]
+    public void ProductiveCampFoodAccountingIsPhysicalConservativeAndCycleBound()
+    {
+        var game = Start();
+        var source = game.InitialTile;
+        var dest = Destination(game);
+        var food = new PhysicalJourneyFoodLedger(
+            1UL, source, dest,
+            500_000UL, 500_000UL, 0UL, 1_000_000UL, 500_000UL, false);
+        var camp = new PhysicalJourneyCampState(1UL, 0UL, 0UL, 0UL);
+        var worldBefore = game.ExportSaveJson();
+
+        var nonSettlement = PhysicalJourneyCampFoodAccounting.WaitOneTurn(
+            food, camp, 1UL, 1_500_000UL, economicSettlement: false);
+        Assert.Equal(0UL, nonSettlement.ProducedRaw);
+        Assert.Equal(food.FoodRemainingRaw, nonSettlement.Food.FoodRemainingRaw);
+        Assert.Equal(1UL, nonSettlement.Camp.WaitingMovementTurns);
+        Assert.Equal(0UL, nonSettlement.Camp.GatheringEconomicCycles);
+
+        var productive = PhysicalJourneyCampFoodAccounting.WaitOneTurn(
+            nonSettlement.Food, nonSettlement.Camp,
+            1UL, 1_500_000UL, economicSettlement: true);
+        Assert.Equal(1_500_000UL, productive.ProducedRaw);
+        Assert.Equal(2UL, productive.Camp.WaitingMovementTurns);
+        Assert.Equal(1UL, productive.Camp.GatheringEconomicCycles);
+        var fed = PhysicalJourneyCampFoodAccounting.ConsumeOneEconomicCycle(
+            productive.Food, 1UL);
+        Assert.Equal(500_000UL, fed.ConsumedRaw);
+        Assert.Equal(0UL, fed.UnmetRaw);
+        Assert.Equal((UInt128)fed.Food.FoodPurchasedRaw +
+            productive.Camp.GatheredFoodRaw,
+            (UInt128)fed.Food.FoodConsumedRaw + fed.Food.FoodRemainingRaw);
+        Assert.Equal(worldBefore, game.ExportSaveJson());
+
+        Assert.Throws<InvalidOperationException>(() =>
+            PhysicalJourneyCampFoodAccounting.WaitOneTurn(
+                food, camp, 1UL, 400_000UL, economicSettlement: true));
     }
 
     [Fact]
