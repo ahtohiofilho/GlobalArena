@@ -1,6 +1,12 @@
 using GlobalArena.Benchmarks;
 
 if (args.Any(argument =>
+    string.Equals(argument, "--vs41-freight-routing", StringComparison.Ordinal)))
+{
+    return GaVs41FreightRoutingBenchmarkHarness.Run();
+}
+
+if (args.Any(argument =>
     string.Equals(argument, "--fine-economic-sequence", StringComparison.Ordinal)))
 {
     return FineEconomicCycleBenchmarkHarness.RunSequence();
