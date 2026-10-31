@@ -236,7 +236,11 @@ public sealed class GaVs62EmergentEconomicSiteDiscoveryTests
             f.Congestion, 500_000);
         Assert.Equal(buyer, Assert.Single(selection.Trade.Purchasing.Buyers).Buyer);
         Assert.Equal(source, Assert.Single(selection.Trade.Purchasing.Producers).Producer);
-        Assert.Equal(checked(f.Session.WorkersAt(f.Anchors[originalSource]) *
+        var agriculturalWorkers = f.Session.State.Allocations
+            .Where(x => x.TileId == f.Anchors[originalSource] &&
+                x.Activity == EconomicActivityKind.Agriculture)
+            .Aggregate(0UL, (sum, x) => checked(sum + x.Workers));
+        Assert.Equal(checked(agriculturalWorkers *
             (ulong)f.Session.PrimitiveYieldAt(f.Anchors[originalSource],
                 EconomicActivityKind.Agriculture)),
             selection.Flows.SupplyFlows.Single(x => x.CommodityId == Food).RawQuantity);
