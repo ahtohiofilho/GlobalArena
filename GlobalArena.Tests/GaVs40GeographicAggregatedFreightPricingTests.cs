@@ -134,7 +134,7 @@ public sealed class GaVs40GeographicAggregatedFreightPricingTests
             cost.GeographicBaseNumerator);
         Assert.Equal(MoneyRuleset, cost.RulesetVersion);
         Assert.True(cost.GeographicBaseNumerator > 0);
-        Assert.Equal(f.Assets.Length, 2);
+        Assert.Equal(2, f.Assets.Length);
     }
 
     [Fact]
