@@ -479,7 +479,10 @@ public sealed class CanonicalPhysicalTacticalSession
             checked(current.WorkerRevision + 1UL),
             nextAllocations.Select(x => new PhysicalWorkerAllocation(
                 x.Key.Item1, x.Key.Item2, x.Value)),
-            current.Stocks, current.Cycles, _cadenceMode, _geographyMode, nextCash);
+            current.Stocks, current.Cycles, _cadenceMode, _geographyMode, nextCash,
+            _movementMode, current.Transits, current.LongTrips,
+            current.RemoteRoutingEnabled, current.ExpeditionFood,
+            current.ExpeditionPurchases, current.ExpeditionFoodEnabled);
         if (next.TotalWorkers != current.TotalWorkers)
             throw new InvalidOperationException("Worker conservation failed.");
 
@@ -525,7 +528,9 @@ public sealed class CanonicalPhysicalTacticalSession
                 x.Key.Item1, x.Key.Item2, x.Value)),
             current.Stocks, current.Cycles, _cadenceMode, _geographyMode,
             current.FoodCash, _movementMode, current.Transits,
-            current.LongTrips, current.RemoteRoutingEnabled);
+            current.LongTrips, current.RemoteRoutingEnabled,
+            current.ExpeditionFood, current.ExpeditionPurchases,
+            current.ExpeditionFoodEnabled);
         if (next.TotalWorkers != current.TotalWorkers ||
             next.WorkersInTransit != current.WorkersInTransit)
             throw new InvalidOperationException("Local reallocation violated worker conservation.");
@@ -574,7 +579,9 @@ public sealed class CanonicalPhysicalTacticalSession
                 x.Key.Item1, x.Key.Item2, x.Value)),
             current.Stocks, current.Cycles, _cadenceMode, _geographyMode,
             current.FoodCash, _movementMode, current.Transits.Append(order),
-            current.LongTrips, current.RemoteRoutingEnabled);
+            current.LongTrips, current.RemoteRoutingEnabled,
+            current.ExpeditionFood, current.ExpeditionPurchases,
+            current.ExpeditionFoodEnabled);
         if (next.TotalWorkers != current.TotalWorkers)
             throw new InvalidOperationException("Timed departure did not conserve workers.");
         Commit(next, "depart", source.FineStrategicCellId.Value,
@@ -624,7 +631,9 @@ public sealed class CanonicalPhysicalTacticalSession
                 x.Key.Item1, x.Key.Item2, x.Value)),
             current.Stocks, current.Cycles, _cadenceMode, _geographyMode,
             current.FoodCash, _movementMode, current.Transits,
-            current.LongTrips.Append(journey), remoteRoutingEnabled: true);
+            current.LongTrips.Append(journey), remoteRoutingEnabled: true,
+            current.ExpeditionFood, current.ExpeditionPurchases,
+            current.ExpeditionFoodEnabled);
         if (next.TotalWorkers != current.TotalWorkers)
             throw new InvalidOperationException("Remote departure violated workforce conservation.");
         Commit(next, "depart_remote", source.FineStrategicCellId.Value,
@@ -762,6 +771,8 @@ public sealed class CanonicalPhysicalTacticalSession
             x => (x.TileId, x.Activity), x => x.Workers);
         var pendingTransits = current.Transits.ToList();
         var pendingLongTrips = current.LongTrips.ToList();
+        var pendingFood = current.ExpeditionFood.ToList();
+        var provisionedOrders = pendingFood.Select(x => x.OrderId).ToHashSet();
         var nextWorkerRevision = current.WorkerRevision;
 
         if (_movementMode == PhysicalWorkerMovementMode.TimedAdjacent)
@@ -820,6 +831,15 @@ public sealed class CanonicalPhysicalTacticalSession
                 }
             }
 
+            foreach (var arrivingTrip in pendingLongTrips.Where(x => x.ArrivalTurn == turn))
+            {
+                var parcel = pendingFood.FirstOrDefault(x => x.OrderId == arrivingTrip.OrderId);
+                if (parcel is not null && parcel.RemainingRaw != 0UL)
+                    throw new InvalidOperationException(
+                        "A provisioned expedition cannot arrive with unassigned food.");
+            }
+            pendingFood.RemoveAll(x => pendingLongTrips.Any(trip =>
+                trip.OrderId == x.OrderId && trip.ArrivalTurn == turn));
             pendingTransits.RemoveAll(x => x.ArrivalTurn == turn);
             pendingLongTrips = pendingLongTrips
                 .Where(x => x.ArrivalTurn != turn)
@@ -844,7 +864,8 @@ public sealed class CanonicalPhysicalTacticalSession
         var consumers = effectiveAllocations
             .Concat(pendingTransits.Select(x =>
                 new PhysicalWorkerAllocation(x.Source, x.FromJob, x.Workers)))
-            .Concat(pendingLongTrips.Select(x =>
+            .Concat(pendingLongTrips.Where(x =>
+                !provisionedOrders.Contains(x.OrderId)).Select(x =>
                 new PhysicalWorkerAllocation(x.Source, x.FromJob, x.Workers)));
 
         var lastSettlement = cycles.Count == 0 ? 0UL : cycles[^1].MovementTurn;
@@ -877,6 +898,23 @@ public sealed class CanonicalPhysicalTacticalSession
                 produced = checked(produced + output);
             }
 
+            // V16 group-owned food is consumed once, directly from its
+            // paid expedition parcel. The same travellers are excluded from
+            // commercial consumers at their source.
+            for (var i = 0; i < pendingFood.Count; i++)
+            {
+                var parcel = pendingFood[i];
+                var trip = pendingLongTrips.Single(x => x.OrderId == parcel.OrderId);
+                var required = checked(trip.Workers * FoodDemandRawPerWorker);
+                if (parcel.RemainingRaw < required)
+                    throw new InvalidOperationException(
+                        "Physical expedition food balance is insufficient.");
+                pendingFood[i] = parcel with
+                {
+                    RemainingRaw = parcel.RemainingRaw - required
+                };
+                consumed = checked(consumed + required);
+            }
             foreach (var group in consumers.GroupBy(x => x.TileId))
             {
                 var demand = checked(group.Aggregate(0UL,
@@ -965,7 +1003,8 @@ public sealed class CanonicalPhysicalTacticalSession
                 x.Key.Item1, x.Key.Item2, x.Value)),
             cycles, _cadenceMode, _geographyMode, cash,
             _movementMode, pendingTransits, pendingLongTrips,
-            current.RemoteRoutingEnabled);
+            current.RemoteRoutingEnabled, pendingFood,
+            current.ExpeditionPurchases, current.ExpeditionFoodEnabled);
         if (next.TotalWorkers != current.TotalWorkers)
             throw new InvalidOperationException("Timed arrival did not conserve workers.");
         Commit(next, "tick", 0UL, 0UL, 0, 0, 0UL);
