@@ -20,3 +20,11 @@ Data: 31/10/2026. Base: GA-VS33/PR #138 (suprimentos físicos V16).
 - CI Windows/Linux roda xUnit completo e compila Godot; testes V17 cobrem ausência de acampamentos quando não são necessários, escassez, coleta real por ciclo, ETA, save/replay, conservação e coexistência legada.
 
 **Marco em draft empilhado sobre PR #138. Não integrar na main antes de todos os gates.**
+
+## Resultado do diagnóstico Windows (31/10/2026)
+
+O gate local GA-VS33/34 no commit `b35a74e3` compilou todos os projetos e o Godot (Release), mas apresentou **7 testes aprovados e 1 falha**. A falha foi no fixture `ProductiveCampDestination`: para a seed `20261012`, não havia rota de dois trechos que demonstrasse a coleta sustentável exigida pelo teste, sob a fonte geográfica default (75% da produtividade agrícola) e demanda real de 0,5 alimento/trabalhador/ciclo.
+
+**Correção sem fabricação de alimentos:** o cenário agora testa o bloqueio atômico quando a fonte não sustenta a expedição, sem compra, sem movimento, sem alteração monetária e sem falsificar o save. A lógica de lançamento V17 continua proibindo partidas que o forecast demonstrou inviáveis. Um teste separado exercita a contabilidade de um acampamento produtivo com rendimento de fixture explícito: só cresce alimento em um ciclo econômico, débito físico ocorre no consumo, espera altera o calendário, a conservação material fecha e produção insuficiente é rejeitada.
+
+**Gate remanescente para aprovação de gameplay positivo:** validar uma **rota realmente produtiva com a fonte default** em cenário geográfico compatível, ou especificar e homologar um novo provedor de coleta (com sua própria calibração determinística, identificado no save/replay). Nenhum dos dois deve ser simulado com comida gratuita; o teste unitário de contabilidade não substitui essa homologação ponta a ponta. A versão V17 segue em draft.
