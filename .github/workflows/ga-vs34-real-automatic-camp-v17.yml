@@ -1,0 +1,63 @@
+name: GA-VS34 Automatic Real Camp and Foraging V17
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Runtime/PhysicalJourneyCampState.cs'
+      - 'GlobalArena.Runtime/PhysicalTacticalEconomyRuntimeState.cs'
+      - 'GlobalArena.Simulation/CanonicalPhysicalTacticalSession.cs'
+      - 'GlobalArena.Simulation/CanonicalWorldStateHasher.cs'
+      - 'GlobalArena.Simulation/PhysicalJourneyAutomaticCampPolicy.cs'
+      - 'GlobalArena.Simulation/PhysicalJourneyCampFoodAccounting.cs'
+      - 'GlobalArena.Tests/GaVs34AutomaticRealCampAndSaveV17Tests.cs'
+      - 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+      - '.github/workflows/ga-vs34-real-automatic-camp-v17.yml'
+  workflow_dispatch:
+
+jobs:
+  real-camp-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Real camp food balance and all physical regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: Godot Mono Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  real-camp-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Verify V17 replay and independent optional V16 policies
+        shell: pwsh
+        run: |
+          $core = Get-Content -Raw -Encoding UTF8 'GlobalArena.Simulation/CanonicalPhysicalTacticalSession.cs'
+          $hash = Get-Content -Raw -Encoding UTF8 'GlobalArena.Simulation/CanonicalWorldStateHasher.cs'
+          $ui = Get-Content -Raw -Encoding UTF8 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
+          if (-not $core.Contains('AutomaticCampSaveFormat = 17') -or
+              -not $core.Contains('depart_remote_camp') -or
+              -not $core.Contains('PhysicalJourneyAutomaticCampPolicy') -or
+              -not $hash.Contains('AutomaticJourneyCampFormatVersion = 17U') -or
+              -not $ui.Contains('GAQAOrderAutomaticCampJourney') -or
+              -not $ui.Contains('GAQAOrderProvisionedJourney') -or
+              -not $ui.Contains('GAQAForecastCampStops')) {
+            throw 'V17 must retain V16 purchase, V15 movement and VS32 preview distinct'
+          }
+      - name: Real camp food balance and all physical regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: Godot Mono Debug
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
+      - name: Godot Mono Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release

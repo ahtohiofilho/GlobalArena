@@ -48,6 +48,8 @@ public sealed class PhysicalTacticalEconomyRuntimeState
     public IReadOnlyList<PhysicalLongDistanceTransit> LongTrips { get; }
     // Null = historic ruleset; nonnull = V16 physical travel-property regime.
     public IReadOnlyList<PhysicalJourneyFoodLedger>? TravelFoodLedgers { get; }
+    // Null means pre-V17 game; nonnull opts in to automatic primitive camping.
+    public IReadOnlyList<PhysicalJourneyCampState>? JourneyCampStates { get; }
     // Persist the V15 ruleset even after the final journey has arrived.
     public bool RemoteRoutingEnabled { get; }
     public ulong WorkersInTransit => checked(Transits.Aggregate(0UL,
@@ -75,7 +77,8 @@ public sealed class PhysicalTacticalEconomyRuntimeState
         IEnumerable<PhysicalWorkerTransit>? transits = null,
         IEnumerable<PhysicalLongDistanceTransit>? longTrips = null,
         bool remoteRoutingEnabled = false,
-        IEnumerable<PhysicalJourneyFoodLedger>? travelFoodLedgers = null)
+        IEnumerable<PhysicalJourneyFoodLedger>? travelFoodLedgers = null,
+        IEnumerable<PhysicalJourneyCampState>? journeyCampStates = null)
     {
         ArgumentNullException.ThrowIfNull(coarseWorldBinding);
         ArgumentNullException.ThrowIfNull(allocations);
@@ -166,11 +169,15 @@ public sealed class PhysicalTacticalEconomyRuntimeState
                 trip.Source != trip.Route[0] ||
                 trip.Destination != trip.Route[^1] ||
                 trip.NextLegCompletionTurn <= movementTurn ||
-                trip.ArrivalTurn != PhysicalMovementTimelines.ExistingPrimitive
+                trip.ArrivalTurn != checked(PhysicalMovementTimelines.ExistingPrimitive
                     .RouteArrivalTurn(trip.DepartureTurn,
-                        checked((ulong)trip.Route.Count - 1UL)) ||
-                trip.NextLegCompletionTurn != PhysicalMovementTimelines.ExistingPrimitive
-                    .LegCompletionTurn(trip.DepartureTurn, trip.CompletedLegs))
+                        checked((ulong)trip.Route.Count - 1UL)) +
+                    (journeyCampStates?.FirstOrDefault(x => x.OrderId == trip.OrderId)?
+                        .WaitingMovementTurns ?? 0UL)) ||
+                trip.NextLegCompletionTurn != checked(PhysicalMovementTimelines.ExistingPrimitive
+                    .LegCompletionTurn(trip.DepartureTurn, trip.CompletedLegs) +
+                    (journeyCampStates?.FirstOrDefault(x => x.OrderId == trip.OrderId)?
+                        .WaitingMovementTurns ?? 0UL)))
                 throw new ArgumentException("Invalid long-distance worker itinerary.");
             ValidateTile(trip.Source, fineParameters);
             ValidateTile(trip.Destination, fineParameters);
@@ -196,8 +203,10 @@ public sealed class PhysicalTacticalEconomyRuntimeState
                 if (lot is null || lot.OrderId == 0UL ||
                     lot.OrderId > workerRevision || !foodOrderIds.Add(lot.OrderId) ||
                     lot.FoodPurchasedRaw == 0UL || lot.UnitPriceMicrocredits == 0UL ||
-                    lot.FoodRemainingRaw > lot.FoodPurchasedRaw ||
-                    lot.FoodConsumedRaw != lot.FoodPurchasedRaw - lot.FoodRemainingRaw ||
+                    (UInt128)lot.FoodRemainingRaw + lot.FoodConsumedRaw !=
+                        (UInt128)lot.FoodPurchasedRaw +
+                        (journeyCampStates?.FirstOrDefault(c => c.OrderId == lot.OrderId)?
+                            .GatheredFoodRaw ?? 0UL) ||
                     lot.PaidMicrocredits != PhysicalJourneyFoodLedger.PurchasePayment(
                         lot.FoodPurchasedRaw, lot.UnitPriceMicrocredits))
                     throw new ArgumentException("Travel food ledger violates conservation or purchase identity.");
@@ -208,6 +217,39 @@ public sealed class PhysicalTacticalEconomyRuntimeState
                     (active is not null &&
                      (active.Source != lot.Source || active.Destination != lot.Destination)))
                     throw new ArgumentException("Travel food ownership diverges from the active itinerary.");
+            }
+        }
+
+        PhysicalJourneyCampState[]? orderedCamps = null;
+        if (journeyCampStates is not null)
+        {
+            if (orderedFoodLedgers is null)
+                throw new ArgumentException("V17 camp state requires V16 owned expedition food.");
+            orderedCamps = journeyCampStates.OrderBy(x => x?.OrderId ?? 0UL).ToArray();
+            var knownCampOrders = new HashSet<ulong>();
+            foreach (var camp in orderedCamps)
+            {
+                if (camp is null || camp.OrderId == 0UL ||
+                    !knownCampOrders.Add(camp.OrderId) ||
+                    camp.GatheringEconomicCycles > camp.WaitingMovementTurns)
+                    throw new ArgumentException("Invalid camp itinerary record.");
+                var lot = orderedFoodLedgers.SingleOrDefault(x => x.OrderId == camp.OrderId);
+                if (lot is null)
+                    throw new ArgumentException("Camp has no legally acquired travel food.");
+                var journey = orderedLongTrips.SingleOrDefault(x => x.OrderId == camp.OrderId);
+                if (journey is not null)
+                {
+                    var movement = PhysicalMovementTimelines.ExistingPrimitive;
+                    if (journey.ArrivalTurn != checked(movement.RouteArrivalTurn(
+                            journey.DepartureTurn, (ulong)journey.TotalLegs) +
+                            camp.WaitingMovementTurns) ||
+                        journey.NextLegCompletionTurn != checked(movement.LegCompletionTurn(
+                            journey.DepartureTurn, journey.CompletedLegs) +
+                            camp.WaitingMovementTurns))
+                        throw new ArgumentException("Camp time was not applied to every remaining movement deadline.");
+                }
+                else if (!lot.Arrived)
+                    throw new ArgumentException("Unfinished camp order lost its travelling group.");
             }
         }
 
@@ -247,6 +289,8 @@ public sealed class PhysicalTacticalEconomyRuntimeState
         LongTrips = Array.AsReadOnly(orderedLongTrips);
         TravelFoodLedgers = orderedFoodLedgers is null
             ? null : Array.AsReadOnly(orderedFoodLedgers);
+        JourneyCampStates = orderedCamps is null
+            ? null : Array.AsReadOnly(orderedCamps);
         RemoteRoutingEnabled = remoteRoutingEnabled;
         WorkerRevision = workerRevision;
         TotalWorkers = totalWorkers;

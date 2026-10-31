@@ -72,6 +72,10 @@ func _run() -> void:
     var hypothetical_food := app.find_child("GAQAHypotheticalFood", true, false) as SpinBox
     var camp_button := _button(app, "GAQAForecastCampStops")
     var camp_result := _label(app, "GAQACampForecastResult")
+    var real_food := app.find_child("GAQARealTravelFood", true, false) as SpinBox
+    var real_food_result := _label(app, "GAQARealTravelFoodResult")
+    var real_order := _button(app, "GAQAOrderProvisionedJourney")
+    var camp_order := _button(app, "GAQAOrderAutomaticCampJourney")
     var food_assessment := _button(app, "GAQAAssessJourneyFood")
     var food_assessment_result := _label(app, "GAQAJourneySupplyResult")
     var remote_result := _label(app, "GAQARemoteRouteResult")
@@ -85,7 +89,8 @@ func _run() -> void:
             cycle_report, preview, food, compare, diagnose, survey,
             survey_result, plan_destination, advanced_toggle, remote_target,
             remote_button, remote_order, remote_result, hypothetical_food,
-            camp_button, camp_result, food_assessment,
+            camp_button, camp_result, real_food, real_food_result,
+            real_order, camp_order, food_assessment,
             food_assessment_result, order_move, reassign, five,
             one, save, load_save]:
         if not _require(node != null, "expected named production control missing"):
@@ -340,6 +345,29 @@ func _run() -> void:
             "VS32 no-cargo scenario modified physical state"):
         return
     print("GA_UI_E2E_VS32_ZERO_CARGO_SCENARIO_OK")
+
+    # VS33/VS34: physical purchase routes are distinct from the nonbinding
+    # forecast, and rejected zero-food purchases cannot create an itinerary.
+    real_food.value = 0.0
+    _press(camp_order)
+    await process_frame
+    if not _require(real_food_result.visible and
+            real_food_result.text.contains("COMPRA/PARTIDA RECUSADA") and
+            status.text.contains("turno 5") and
+            status.text.contains("Viagens: nenhuma em andamento."),
+            "VS34 real-camp purchase should fail atomically with zero food"):
+        return
+    print("GA_UI_E2E_VS34_REAL_CAMP_REJECTION_ATOMIC_OK")
+
+    _press(real_order)
+    await process_frame
+    if not _require(real_food_result.visible and
+            real_food_result.text.contains("COMPRA/PARTIDA RECUSADA") and
+            status.text.contains("turno 5") and
+            status.text.contains("Viagens: nenhuma em andamento."),
+            "VS33 real-food purchase must remain an independent atomic control"):
+        return
+    print("GA_UI_E2E_VS33_REAL_FOOD_REJECTION_ATOMIC_OK")
 
     _press(remote_order)
     await process_frame

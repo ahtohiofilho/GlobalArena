@@ -362,8 +362,15 @@ public partial class Main
             Name = "GAQAOrderProvisionedJourney",
             Text = "COMPRAR SUPRIMENTOS E ORDENAR VIAGEM (V16)"
         };
-        orderWithFood.Pressed += OrderProvisionedRemotePhysicalJourney;
+        orderWithFood.Pressed += () => OrderProvisionedRemotePhysicalJourney(false);
         _workerLabAdvancedPanel.AddChild(orderWithFood);
+        var orderWithCamps = new Button
+        {
+            Name = "GAQAOrderAutomaticCampJourney",
+            Text = "COMPRAR E VIAJAR COM COLETA AUTOMÁTICA (V17)"
+        };
+        orderWithCamps.Pressed += () => OrderProvisionedRemotePhysicalJourney(true);
+        _workerLabAdvancedPanel.AddChild(orderWithCamps);
         _journeyRealCargoResult = new Label
         {
             Name = "GAQARealTravelFoodResult",
@@ -665,7 +672,7 @@ public partial class Main
         }
     }
 
-    private void OrderProvisionedRemotePhysicalJourney()
+    private void OrderProvisionedRemotePhysicalJourney(bool automaticCamps)
     {
         if (_canonicalPhysicalLab is null || _canonicalSession is null ||
             _workerOrigin is null || _workerFromJob is null || _workerToJob is null ||
@@ -684,20 +691,22 @@ public partial class Main
                 _workerOrigin.Value, destination,
                 (EconomicActivityKind)_workerFromJob.GetSelectedId(),
                 (EconomicActivityKind)_workerToJob.GetSelectedId(),
-                checked((ulong)_workerAmount.Value), raw);
+                checked((ulong)_workerAmount.Value), raw, automaticCamps);
             var lot = _canonicalPhysicalLab.State.TravelFoodLedgers!.Single(
                 x => x.OrderId == trip.OrderId);
             AttachRuntimeState(_canonicalSession.Snapshot);
             UpdateWorkerLabHud();
             _journeyRealCargoResult.Text =
-                $"VIAGEM V16 {trip.OrderId} INICIADA | " +
+                $"VIAGEM {(automaticCamps ? "V17" : "V16")} {trip.OrderId} INICIADA | " +
                 $"alimento adquirido {lot.FoodPurchasedRaw / 1_000_000.0:F3} | " +
                 $"pagamento {lot.PaidMicrocredits / 1_000_000.0:F3} créditos | " +
                 $"chegada prevista turno {trip.ArrivalTurn}. " +
                 "A alimentação agora é debitada do lote físico a cada ciclo. " +
-                "A coleta e os acampamentos da simulação VS32 ainda NÃO são executados.";
+                (automaticCamps
+                    ? "Paradas e coleta reais serão automáticas se os suprimentos não bastarem."
+                    : "A coleta e os acampamentos da simulação VS32 ainda NÃO são executados.");
             _journeyRealCargoResult.Visible = true;
-            GD.Print($"GA_VS33_PHYSICAL_FOOD_ORDER order={trip.OrderId} " +
+            GD.Print($"{(automaticCamps ? "GA_VS34_AUTOMATIC_CAMP_ORDER" : "GA_VS33_PHYSICAL_FOOD_ORDER")} order={trip.OrderId} " +
                 $"food={raw} paid={lot.PaidMicrocredits} " +
                 $"hash={_canonicalPhysicalLab.CurrentHash.HexDigest}");
         }
@@ -1560,6 +1569,21 @@ public partial class Main
                     $"chegada no turno {x.ArrivalTurn} " +
                     $"({x.ArrivalTurn - state.MovementTurn} restantes)")))) +
             "";
+        var expeditionFoodInfo = state.TravelFoodLedgers is null ? "" :
+            string.Join("\n", state.LongTrips.Select(trip =>
+            {
+                var foodLot = state.TravelFoodLedgers.FirstOrDefault(
+                    x => x.OrderId == trip.OrderId);
+                if (foodLot is null) return "";
+                var camp = state.JourneyCampStates?.FirstOrDefault(
+                    x => x.OrderId == trip.OrderId);
+                return $"EXPEDIÇÃO {trip.OrderId} | suprimento físico " +
+                    $"{foodLot.FoodRemainingRaw / 1_000_000.0:F3} | " +
+                    $"consumido {foodLot.FoodConsumedRaw / 1_000_000.0:F3} | " +
+                    $"coletado {(camp?.GatheredFoodRaw ?? 0UL) / 1_000_000.0:F3} | " +
+                    $"espera acumulada {camp?.WaitingMovementTurns ?? 0UL} turnos | " +
+                    $"ciclos de coleta {camp?.GatheringEconomicCycles ?? 0UL}.";
+            }).Where(x => x.Length != 0)) + "\n";
         if (_workerLabDetails is not null)
             _workerLabDetails.Text =
             $"POVOAMENTOS DERIVADOS: {settlements.Sites.Count} núcleos; " +
@@ -1567,6 +1591,7 @@ public partial class Main
             $"estoques em tiles desabitados {settlements.UninhabitedStockRecords} registros. " +
             "Esses bens não desaparecem nem criam cidades.\n" +
             ownershipInfo +
+            expeditionFoodInfo +
             $"Origem tile {origin.FineStrategicCellId.Value} | {jobs}\n" +
             $"Grupo selecionado: {selectedActivity} | disponíveis: {selectedGroupWorkers} trabalhadores\n" +
             $"Destino: {destination}\n" +
