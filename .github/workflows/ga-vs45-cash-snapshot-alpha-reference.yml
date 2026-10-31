@@ -1,0 +1,45 @@
+name: GA-VS45 Cash Snapshot and Demand Alpha Reference
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/ExperimentalPhysicalCashAlphaProjection.cs'
+      - 'GlobalArena.Tests/GaVs45PhysicalCashAlphaProjectionTests.cs'
+      - 'GlobalArena.Benchmarks/GaVs45CashAlphaBenchmarkHarness.cs'
+      - 'GlobalArena.Benchmarks/Program.cs'
+      - 'docs/engineering/GA-VS45-cash-snapshot-demand-alpha-reference.md'
+      - '.github/workflows/ga-vs45-cash-snapshot-alpha-reference.yml'
+  workflow_dispatch:
+
+jobs:
+  cash-alpha-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: VS45 real cash bridge and VS44-VS40 economic regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "FullyQualifiedName~GaVs45|FullyQualifiedName~GaVs44|FullyQualifiedName~GaVs43|FullyQualifiedName~GaVs42|FullyQualifiedName~GaVs41|FullyQualifiedName~GaVs40"
+      - name: Deterministic buyer cash-alpha benchmark
+        run: dotnet run --project GlobalArena.Benchmarks/GlobalArena.Benchmarks.csproj -c Release -- --vs45-cash-alpha
+      - name: Godot Mono Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  cash-alpha-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Full V14 finance and physical economy regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: Godot Mono Debug
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
