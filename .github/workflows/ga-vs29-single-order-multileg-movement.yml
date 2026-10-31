@@ -53,7 +53,7 @@ jobs:
           $ui = Get-Content -Raw -Encoding UTF8 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
           $kernel = Get-Content -Raw -Encoding UTF8 'GlobalArena.Simulation/CanonicalPhysicalTacticalSession.cs'
           $hash = Get-Content -Raw -Encoding UTF8 'GlobalArena.Simulation/CanonicalWorldStateHasher.cs'
-          if (-not $main.Contains('GA_VS29_RUNTIME_ACTIVE') -or
+          if ((-not $main.Contains('GA_VS29_RUNTIME_ACTIVE') -and -not $main.Contains('GA_VS30_RUNTIME_ACTIVE')) -or
               -not $ui.Contains('OrderRemotePhysicalJourney') -or
               -not $ui.Contains('GAQAOrderRemoteJourney') -or
               -not $ui.Contains('SAVE MULTITRECHO V15') -or
