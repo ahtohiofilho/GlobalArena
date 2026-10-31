@@ -8,6 +8,7 @@ on:
       - 'GlobalArena.Simulation/CanonicalPhysicalTacticalSession.cs'
       - 'GlobalArena.Simulation/CanonicalWorldStateHasher.cs'
       - 'GlobalArena.Simulation/PhysicalJourneyAutomaticCampPolicy.cs'
+      - 'GlobalArena.Simulation/PhysicalJourneyCampFoodAccounting.cs'
       - 'GlobalArena.Tests/GaVs34AutomaticRealCampAndSaveV17Tests.cs'
       - 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
       - '.github/workflows/ga-vs34-real-automatic-camp-v17.yml'
