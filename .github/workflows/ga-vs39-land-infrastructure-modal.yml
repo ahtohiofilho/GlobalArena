@@ -1,0 +1,43 @@
+name: GA-VS39 Versioned Land Infrastructure and Modal Forecast
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/ExperimentalLandInfrastructureModalProjection.cs'
+      - 'GlobalArena.Simulation/ScalarPhysicalRouteProjection.cs'
+      - 'GlobalArena.Simulation/PhysicalRemoteDestinationRouteProjection.cs'
+      - 'GlobalArena.Tests/GaVs39LandInfrastructureModalForecastTests.cs'
+      - 'docs/engineering/GA-VS39-land-infrastructure-modal-forecast.md'
+      - '.github/workflows/ga-vs39-land-infrastructure-modal.yml'
+  workflow_dispatch:
+
+jobs:
+  land-modal-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Built land modes and historic scalar routes
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "FullyQualifiedName~GaVs39|FullyQualifiedName~GaVs38|FullyQualifiedName~GaVs37|FullyQualifiedName~GaVs36"
+      - name: Godot Release build
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  land-modal-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Full regression with unchanged canonical economy and movement
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: Godot Debug build
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug

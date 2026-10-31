@@ -12,7 +12,10 @@ public enum PhysicalPrimitiveRouteAvailability
 {
     Walkable = 0,
     DestinationNeedsOtherTechnology = 1,
-    NoContinuousLandFootpath = 2
+    NoContinuousLandFootpath = 2,
+    // Optional scalar quote only. No compatible constructed corridor for
+    // this requested modal policy; old walking saves never emit this value.
+    NoCompatibleLandTransportMode = 3
 }
 
 /// <summary>
