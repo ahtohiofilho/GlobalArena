@@ -223,11 +223,20 @@ public sealed class CanonicalPrimitiveJointFreightSelector
             maximumConfigurations);
         var digits = new int[ctx.Candidates.Length];
         var bestLots = Array.Empty<CanonicalPrimitiveJointFreightLot>();
+        var bestDigits = new int[ctx.Candidates.Length];
         CanonicalPrimitiveJointFreightBudgetPreview? bestPreview = null;
         var bestScore = new FoodTransportCostFraction(0, 1);
         var bestCommitment = new FoodTransportCostFraction(0, 1);
         var evaluated = 0;
         var feasible = 0;
+
+        bool PreferEarlierServiceOnExactTie()
+        {
+            for (var i = 0; i < digits.Length; i++)
+                if (digits[i] != bestDigits[i])
+                    return digits[i] > bestDigits[i];
+            return false;
+        }
 
         void Visit(int index)
         {
@@ -253,8 +262,11 @@ public sealed class CanonicalPrimitiveJointFreightSelector
                 : CanonicalPrimitiveJointFreightSearchContext.Commitment(preview);
             if (score.CompareTo(bestScore) > 0 ||
                 (score.CompareTo(bestScore) == 0 &&
-                    cost.CompareTo(bestCommitment) < 0))
+                    (cost.CompareTo(bestCommitment) < 0 ||
+                     (cost.CompareTo(bestCommitment) == 0 &&
+                      PreferEarlierServiceOnExactTie()))))
             {
+                bestDigits = (int[])digits.Clone();
                 bestLots = lots;
                 bestPreview = preview;
                 bestScore = score;
@@ -286,6 +298,7 @@ public sealed class CanonicalPrimitiveJointFreightSelectionAuditor
         var ctx = selection.Context;
         selection.RequireCurrent(ctx.Session);
         var bestLots = Array.Empty<CanonicalPrimitiveJointFreightLot>();
+        var bestDigits = new int[ctx.Candidates.Length];
         var bestScore = new FoodTransportCostFraction(0, 1);
         var bestCost = new FoodTransportCostFraction(0, 1);
         var feasible = 0;
@@ -313,9 +326,21 @@ public sealed class CanonicalPrimitiveJointFreightSelectionAuditor
             var cost = preview is null
                 ? new FoodTransportCostFraction(0, 1)
                 : CanonicalPrimitiveJointFreightSearchContext.Commitment(preview);
+            // Independent canonical tie check: prefer greater quantity at
+            // the earliest candidate/service in sorted order.
+            var preferredTie = false;
+            if (score.CompareTo(bestScore) == 0 && cost.CompareTo(bestCost) == 0)
+                for (var i = 0; i < digits.Length; i++)
+                {
+                    if (digits[i] == bestDigits[i]) continue;
+                    preferredTie = digits[i] > bestDigits[i];
+                    break;
+                }
             if (score.CompareTo(bestScore) > 0 ||
-                (score.CompareTo(bestScore) == 0 && cost.CompareTo(bestCost) < 0))
+                (score.CompareTo(bestScore) == 0 &&
+                    (cost.CompareTo(bestCost) < 0 || preferredTie)))
             {
+                bestDigits = (int[])digits.Clone();
                 bestLots = lots;
                 bestScore = score;
                 bestCost = cost;
