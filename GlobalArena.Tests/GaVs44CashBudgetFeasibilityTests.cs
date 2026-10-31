@@ -166,7 +166,7 @@ public sealed class GaVs44CashBudgetFeasibilityTests
     public void TwoCommoditiesCompeteForTheSameHouseholdCashNotSeparateItemWallets()
     {
         var f = new Fixture(multipleCommodities: true);
-        var one = f.Solve(gross: 22);
+        var one = f.Solve(gross: 20);
         Assert.Single(one.Exact!.Trades);
         Assert.Equal(0, Assert.Single(one.Exact.CashLedger)
             .TotalCommitment.CompareTo(Money(11)));
