@@ -1,0 +1,162 @@
+using System.Text.Json;
+using GlobalArena.Runtime;
+using GlobalArena.Simulation;
+using GlobalArena.World;
+
+namespace GlobalArena.Tests;
+
+public sealed class GaVs34AutomaticRealCampAndSaveV17Tests
+{
+    private static CanonicalPhysicalTacticalSession Start() =>
+        CanonicalPhysicalTacticalSession.Start(
+            20261012UL, new GoldbergParameters(3, 0),
+            new GoldbergParameters(18, 0),
+            PhysicalEconomicCadenceMode.AdaptiveThirty,
+            PhysicalTacticalGeographyMode.Canonical01C,
+            PhysicalFoodMarketMode.LocalCashSettlement,
+            PhysicalWorkerMovementMode.TimedAdjacent,
+            PhysicalCivilizationIdentityMode.BornWithPopulation);
+
+    private static PhysicalTacticalTileId Destination(
+        CanonicalPhysicalTacticalSession game)
+    {
+        var near = game.AdjacentWorkable(game.InitialTile).ToHashSet();
+        return near.SelectMany(game.AdjacentWorkable)
+            .Where(x => x != game.InitialTile && !near.Contains(x))
+            .OrderBy(x => x.FineStrategicCellId.Value).First();
+    }
+
+    private static CanonicalPhysicalTacticalSession Supplied()
+    {
+        var game = Start();
+        game.ReassignWorkers(game.InitialTile, EconomicActivityKind.Forestry,
+            EconomicActivityKind.Agriculture, 2UL);
+        game.ReassignWorkers(game.InitialTile, EconomicActivityKind.Mining,
+            EconomicActivityKind.Agriculture, 2UL);
+        for (var turn = 0; turn < 6; turn++)
+            game.AdvanceMovementTurn();
+        Assert.True(game.StockAt(game.InitialTile, new CommodityId(1U)) > 0UL);
+        return game;
+    }
+
+    private static PhysicalLongDistanceTransit Begin(
+        CanonicalPhysicalTacticalSession game, ulong food) =>
+        game.OrderProvisionedLongDistanceTransit(game.InitialTile,
+            Destination(game), EconomicActivityKind.Agriculture,
+            EconomicActivityKind.Forestry, 1UL, food, automaticCamps: true);
+
+    [Fact]
+    public void SufficientOwnedFoodGoesDirectlyWithoutMandatoryCamp()
+    {
+        var game = Supplied();
+        var raw = Math.Min(3_000_000UL,
+            game.StockAt(game.InitialTile, new CommodityId(1U)));
+        var estimate = JourneyProvisioningForecastProjection.PreviewPlanned(
+            game, game.InitialTile, Destination(game),
+            EconomicActivityKind.Agriculture, EconomicActivityKind.Forestry,
+            1UL, raw);
+        var original = PhysicalRemoteDestinationRouteProjection.Preview(
+            game, game.InitialTile, Destination(game),
+            EconomicActivityKind.Agriculture, EconomicActivityKind.Forestry, 1UL);
+        if (estimate.Stops.Count == 0)
+        {
+            var trip = Begin(game, raw);
+            while (game.State.LongTrips.Any(x => x.OrderId == trip.OrderId))
+                game.AdvanceMovementTurn();
+            var camp = Assert.Single(game.State.JourneyCampStates!);
+            Assert.Equal(0UL, camp.WaitingMovementTurns);
+            Assert.Equal(0UL, camp.GatheredFoodRaw);
+            Assert.Equal(original.EarliestArrivalTurn, game.State.MovementTurn);
+        }
+        else
+        {
+            // If local stock cannot support the full trip, a legitimate camp
+            // remains necessary even when buying all available food.
+            Assert.True(estimate.WaitingMovementTurns > 0UL);
+        }
+    }
+
+    [Fact]
+    public void FoodScarcityTriggersRealEconomicTimeOrRefusesUnproductiveStrategy()
+    {
+        var game = Supplied();
+        var startRaw = Math.Min(500_000UL,
+            game.StockAt(game.InitialTile, new CommodityId(1U)));
+        var plan = JourneyProvisioningForecastProjection.PreviewPlanned(
+            game, game.InitialTile, Destination(game),
+            EconomicActivityKind.Agriculture, EconomicActivityKind.Forestry,
+            1UL, startRaw);
+        var oldSave = game.ExportSaveJson();
+        if (!plan.CanArriveUnderAssumptions)
+        {
+            Assert.Throws<InvalidOperationException>(() => Begin(game, startRaw));
+            Assert.Equal(oldSave, game.ExportSaveJson());
+            return;
+        }
+
+        var trip = Begin(game, startRaw);
+        Assert.Equal(17, JsonSerializer.Deserialize<CanonicalPhysicalSaveEnvelope>(
+            game.ExportSaveJson())!.Version);
+        var initialCash = game.FoodCash!.InitialMoneySupplyMicrocredits;
+        var originalETA = trip.ArrivalTurn;
+        var spentTicks = 0;
+        var previousGather = 0UL;
+        while (game.State.LongTrips.Any(x => x.OrderId == trip.OrderId))
+        {
+            game.AdvanceMovementTurn();
+            spentTicks++;
+            Assert.True(spentTicks < 200, "Automatic camp did not finish its finite plan.");
+            var lot = Assert.Single(game.State.TravelFoodLedgers!);
+            var camp = Assert.Single(game.State.JourneyCampStates!);
+            Assert.Equal((UInt128)lot.FoodPurchasedRaw + camp.GatheredFoodRaw,
+                (UInt128)lot.FoodRemainingRaw + lot.FoodConsumedRaw);
+            Assert.True(camp.GatheredFoodRaw >= previousGather);
+            previousGather = camp.GatheredFoodRaw;
+
+            if (camp.WaitingMovementTurns > 0UL && spentTicks == 1)
+            {
+                var saved = game.ExportSaveJson();
+                var restored = CanonicalPhysicalTacticalSession.RestoreSaveJson(saved);
+                Assert.Equal(saved, restored.ExportSaveJson());
+                Assert.Equal(game.CurrentHash, restored.CurrentHash);
+            }
+        }
+        var lastCamp = Assert.Single(game.State.JourneyCampStates!);
+        var lastLot = Assert.Single(game.State.TravelFoodLedgers!);
+        Assert.True(lastLot.Arrived);
+        Assert.Equal(originalETA + lastCamp.WaitingMovementTurns,
+            game.State.MovementTurn);
+        Assert.Equal(plan.WaitingMovementTurns, lastCamp.WaitingMovementTurns);
+        Assert.Equal(plan.GatheredFoodRaw, lastCamp.GatheredFoodRaw);
+        Assert.True(lastCamp.WaitingMovementTurns > 0UL);
+        Assert.True(lastCamp.GatheringEconomicCycles > 0UL);
+        Assert.Equal(initialCash, game.FoodCash!.InitialMoneySupplyMicrocredits);
+        var json = game.ExportSaveJson();
+        var replayed = CanonicalPhysicalTacticalSession.RestoreSaveJson(json);
+        Assert.Equal(json, replayed.ExportSaveJson());
+        Assert.Equal(game.CurrentHash, replayed.CurrentHash);
+    }
+
+    [Fact]
+    public void MixedManagedAndLegacyTripsPreserveOneDemandAndVersionedSaves()
+    {
+        var game = Supplied();
+        game.OrderLongDistanceTransit(game.InitialTile, Destination(game),
+            EconomicActivityKind.Agriculture, EconomicActivityKind.Forestry, 1UL);
+        var stock = game.StockAt(game.InitialTile, new CommodityId(1U));
+        var forecast = JourneyProvisioningForecastProjection.PreviewPlanned(
+            game, game.InitialTile, Destination(game),
+            EconomicActivityKind.Agriculture, EconomicActivityKind.Forestry,
+            1UL, Math.Min(stock, 2_000_000UL));
+        if (!forecast.CanArriveUnderAssumptions) return;
+        var before = game.FoodDemandAt(game.InitialTile);
+        Begin(game, Math.Min(stock, 2_000_000UL));
+        Assert.Equal(before - CanonicalPhysicalTacticalSession.FoodDemandRawPerWorker,
+            game.FoodDemandAt(game.InitialTile));
+        Assert.Equal(2UL, game.State.WorkersInTransit);
+        Assert.Single(game.State.JourneyCampStates!);
+        var saved = game.ExportSaveJson();
+        Assert.Equal(saved,
+            CanonicalPhysicalTacticalSession.RestoreSaveJson(saved).ExportSaveJson());
+    }
+}
