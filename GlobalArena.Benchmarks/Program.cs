@@ -1,5 +1,10 @@
 using GlobalArena.Benchmarks;
 
+if (args.Any(argument => string.Equals(argument, "--vs57-session-authority", StringComparison.Ordinal)))
+{
+    return GaVs57SessionTransportBenchmarkHarness.Run();
+}
+
 if (args.Any(argument =>
     string.Equals(argument, "--vs56-built-rights", StringComparison.Ordinal)))
 {

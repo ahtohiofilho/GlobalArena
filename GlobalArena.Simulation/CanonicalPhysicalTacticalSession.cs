@@ -76,7 +76,9 @@ public sealed record CanonicalPhysicalSavePayload(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     CanonicalJourneyFoodSaveRow[]? TravelFoodLedgers = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    CanonicalJourneyCampSaveRow[]? JourneyCampStates = null);
+    CanonicalJourneyCampSaveRow[]? JourneyCampStates = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    CanonicalTransportCommand[]? TransportCommands = null);
 
 public sealed record CanonicalPhysicalSaveEnvelope(
     int Version, string PayloadJson, string PayloadSha256Hex);
@@ -99,6 +101,7 @@ public sealed class CanonicalPhysicalTacticalSession
     public const int LongDistanceSaveFormat = 15;
     public const int PhysicalTravelFoodSaveFormat = 16;
     public const int AutomaticCampSaveFormat = 17;
+    public const int TransportAuthorityEnvelopeFormat = 18;
     public const int MaximumActions = 100_000;
     private const int MaximumSaveBytes = 4_000_000;
     public const ulong FoodDemandRawPerWorker = 500_000UL;
@@ -119,6 +122,9 @@ public sealed class CanonicalPhysicalTacticalSession
     private readonly string _initialHashHex;
     private readonly CanonicalWorldStateHasher _hasher = new();
     private WorldState _lastCommittedSnapshot;
+    private CanonicalTransportNetwork? _transportNetwork;
+    public CanonicalTransportNetwork TransportNetwork =>
+        _transportNetwork ??= new CanonicalTransportNetwork(this);
 
     private WorldState CheckedSnapshot
     {
@@ -1079,7 +1085,8 @@ public sealed class CanonicalPhysicalTacticalSession
         var digest = Convert.ToHexString(
             SHA256.HashData(Encoding.UTF8.GetBytes(payloadJson)));
         var json = JsonSerializer.Serialize(new CanonicalPhysicalSaveEnvelope(
-            CurrentSaveFormat, payloadJson, digest));
+            _transportNetwork is { Revision: > 0 } ? TransportAuthorityEnvelopeFormat : CurrentSaveFormat,
+            payloadJson, digest));
         if (Encoding.UTF8.GetByteCount(json) > MaximumSaveBytes)
             throw new InvalidOperationException("Canonical save exceeds size limit.");
         return json;
@@ -1097,7 +1104,7 @@ public sealed class CanonicalPhysicalTacticalSession
         {
             envelope = JsonSerializer.Deserialize<CanonicalPhysicalSaveEnvelope>(json)
                 ?? throw new InvalidOperationException("Missing canonical save envelope.");
-            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat or CashFoodSaveFormat or TimedTransitSaveFormat or BornCivilizationSaveFormat or LongDistanceSaveFormat or PhysicalTravelFoodSaveFormat or AutomaticCampSaveFormat) ||
+            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat or CashFoodSaveFormat or TimedTransitSaveFormat or BornCivilizationSaveFormat or LongDistanceSaveFormat or PhysicalTravelFoodSaveFormat or AutomaticCampSaveFormat or TransportAuthorityEnvelopeFormat) ||
                 string.IsNullOrEmpty(envelope.PayloadJson) ||
                 string.IsNullOrEmpty(envelope.PayloadSha256Hex))
                 throw new InvalidOperationException("Unsupported canonical save envelope.");
@@ -1114,7 +1121,10 @@ public sealed class CanonicalPhysicalTacticalSession
             throw new InvalidOperationException("Invalid canonical save encoding.", ex);
         }
 
-        if (payload.Version != envelope.Version ||
+        if ((envelope.Version == TransportAuthorityEnvelopeFormat
+                ? payload.Version < SaveFormat || payload.Version > AutomaticCampSaveFormat ||
+                  payload.TransportCommands is not { Length: > 0 }
+                : payload.Version != envelope.Version || payload.TransportCommands is not null) ||
             payload.Actions is null || payload.Workers is null ||
             payload.Stocks is null || payload.Cycles is null ||
             ((payload.Version >= CashFoodSaveFormat) != (payload.FoodCash is not null)) ||
@@ -1165,6 +1175,17 @@ public sealed class CanonicalPhysicalTacticalSession
             payload.InitialHashHex != game._initialHashHex)
             throw new InvalidOperationException("Canonical save world identity mismatch.");
 
+        var transportCursor = 0;
+        var transportCommands = payload.TransportCommands ?? Array.Empty<CanonicalTransportCommand>();
+        if (transportCommands.Length > MaximumActions || transportCommands.Any(x => x is null))
+            throw new InvalidOperationException("Invalid transport journal.");
+        void ReplayTransport()
+        {
+            while (transportCursor < transportCommands.Length &&
+                   transportCommands[transportCursor].PhysicalActionCount == game._journal.Count)
+                game.TransportNetwork.Apply(transportCommands[transportCursor++]);
+        }
+        ReplayTransport();
         foreach (var action in payload.Actions)
         {
             if (action is null)
@@ -1224,7 +1245,10 @@ public sealed class CanonicalPhysicalTacticalSession
 
             if (game._journal[^1] != action)
                 throw new InvalidOperationException("Canonical event replay diverged.");
+            ReplayTransport();
         }
+        if (transportCursor != transportCommands.Length)
+            throw new InvalidOperationException("Transport journal physical ordering diverged.");
 
         // Reject even a self-consistently rehashed, fabricated summary:
         // all values must be reproducible from the validated world and orders.
@@ -1365,7 +1389,8 @@ public sealed class CanonicalPhysicalTacticalSession
                 x.UnitPriceMicrocredits, x.PaidMicrocredits, x.Arrived)).ToArray(),
             state.JourneyCampStates?.Select(x => new CanonicalJourneyCampSaveRow(
                 x.OrderId, x.WaitingMovementTurns, x.GatheredFoodRaw,
-                x.GatheringEconomicCycles)).ToArray());
+                x.GatheringEconomicCycles)).ToArray(),
+            _transportNetwork is { Revision: > 0 } network ? network.ExportCommands() : null);
     }
 
     private bool IsWorkableLand(StrategicCellId id) =>

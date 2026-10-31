@@ -21,7 +21,7 @@ public sealed class GaVs56BuiltNetworkInstitutionalRightsTests
 
     private static FoodTransportCostFraction F(long n, long d = 1) => new(n, d);
 
-    private sealed class NetworkAuthority(bool allow) :
+    internal sealed class NetworkAuthority(bool allow) :
         IExperimentalBuiltTransportNetworkAuthority
     {
         public int Calls { get; private set; }
@@ -34,7 +34,7 @@ public sealed class GaVs56BuiltNetworkInstitutionalRightsTests
         }
     }
 
-    private sealed class RegistryAuthority(bool allow) :
+    internal sealed class RegistryAuthority(bool allow) :
         IExperimentalTransportInstitutionalRegistryAuthority
     {
         public int Calls { get; private set; }
@@ -46,7 +46,7 @@ public sealed class GaVs56BuiltNetworkInstitutionalRightsTests
         }
     }
 
-    private sealed class Fixture
+    internal sealed class Fixture
     {
         public CanonicalPhysicalTacticalSession Session { get; } =
             CanonicalPhysicalTacticalSession.Start(
