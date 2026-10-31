@@ -75,3 +75,4 @@ jobs:
         run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
       - name: Build Godot Release
         run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
