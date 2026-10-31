@@ -1,0 +1,41 @@
+name: GA-VS40 Geographic Aggregated Freight Pricing
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/ExperimentalGeographicFreightItineraryPricing.cs'
+      - 'GlobalArena.Tests/GaVs40GeographicAggregatedFreightPricingTests.cs'
+      - 'docs/engineering/GA-VS40-geographic-aggregated-freight-pricing.md'
+      - '.github/workflows/ga-vs40-geographic-freight-pricing.yml'
+  workflow_dispatch:
+
+jobs:
+  geographic-freight-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Geographic freight prices, built-network continuity and legacy freight tests
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "FullyQualifiedName~GaVs40|FullyQualifiedName~GaVs39|FullyQualifiedName~EconomicFineTransportServiceItineraryDiscoveryTests|FullyQualifiedName~EconomicTurnFreightQuoteTests"
+      - name: Godot Mono Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  geographic-freight-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Full economic, physical, movement and save regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: Godot Mono Debug
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
