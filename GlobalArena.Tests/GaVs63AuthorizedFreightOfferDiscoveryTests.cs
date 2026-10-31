@@ -68,8 +68,10 @@ public sealed class GaVs63AuthorizedFreightOfferDiscoveryTests
         Assert.True(found.ExaminedArcs > 0);
         Assert.Equal(0, found.UnreachablePhysicalServices);
         Assert.Equal(77UL, Assert.Single(Assert.Single(found.Lanes).Services).ServiceId);
-        Assert.Equal(sites.At(source)!.Supply.Single(x =>
-            x.CommodityId == Food).RawQuantity, service.MaximumRawQuantity);
+        Assert.Equal(Math.Min(
+            sites.At(source)!.Supply.Single(x => x.CommodityId == Food).RawQuantity,
+            sites.At(buyer)!.Demand.Single(x => x.CommodityId == Food).RawQuantity),
+            service.MaximumRawQuantity);
         Assert.Equal(save, f.Session.ExportSaveJson());
         Assert.Equal(hash, f.Session.CurrentHash);
         Assert.False(found.CanAuthorizeRealSettlement);
@@ -173,16 +175,16 @@ public sealed class GaVs63AuthorizedFreightOfferDiscoveryTests
     {
         var (f, sites, source, _) = Prepared();
         var found = Discover(f.Session, sites);
-        var oldAmount = Assert.Single(found.Services).MaximumRawQuantity;
+        Assert.Single(found.Services);
         var origin = sites.At(source)!.Tile;
+        var agriculturalWorkers = sites.At(source)!.AgriculturalWorkers;
         f.Session.ReassignWorkers(origin, EconomicActivityKind.Agriculture,
-            EconomicActivityKind.Forestry, 1UL);
+            EconomicActivityKind.Forestry, agriculturalWorkers);
         Assert.Throws<InvalidOperationException>(() => found.RequireCurrent(f.Session));
         var fresh = f.Session.DiscoverPrimitiveEconomicSites(SitePolicy());
         var newer = Discover(f.Session, fresh);
-        Assert.Equal(checked(oldAmount -
-            (ulong)f.Session.PrimitiveYieldAt(origin, EconomicActivityKind.Agriculture)),
-            Assert.Single(newer.Services).MaximumRawQuantity);
+        Assert.Empty(newer.Services);
+        Assert.Equal(0, newer.EligibleEconomicIntents);
         Assert.False(newer.CanAuthorizeRealSettlement);
     }
 }
