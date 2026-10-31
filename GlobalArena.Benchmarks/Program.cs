@@ -1,6 +1,12 @@
 using GlobalArena.Benchmarks;
 
 if (args.Any(argument =>
+    string.Equals(argument, "--vs43-simultaneous-freight", StringComparison.Ordinal)))
+{
+    return GaVs43SimultaneousFreightBenchmarkHarness.Run();
+}
+
+if (args.Any(argument =>
     string.Equals(argument, "--vs42-shared-freight", StringComparison.Ordinal)))
 {
     return GaVs42SharedCorridorBenchmarkHarness.Run();
