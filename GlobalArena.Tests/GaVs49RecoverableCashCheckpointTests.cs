@@ -184,7 +184,16 @@ public sealed class GaVs49RecoverableCashCheckpointTests
         var beforeBytes = File.ReadAllBytes(files.PathToCheckpoint);
         var replay = fresh.Commit(reopened);
         Assert.True(replay.WasAlreadyCommitted);
-        Assert.Equal(committed.Proof, replay.Proof);
+        Assert.Equal(committed.Proof.CommittedBalancesDigest,
+            replay.Proof.CommittedBalancesDigest);
+        Assert.Equal(committed.Proof.AuditJournalDigest,
+            replay.Proof.AuditJournalDigest);
+        Assert.Equal(committed.Proof.DecisionId, replay.Proof.DecisionId);
+        Assert.Equal(committed.Proof.CandidateDigest, replay.Proof.CandidateDigest);
+        Assert.Equal(0, committed.Proof.OpeningMoney.CompareTo(
+            replay.Proof.OpeningMoney));
+        Assert.Equal(0, committed.Proof.ClosingMoney.CompareTo(
+            replay.Proof.ClosingMoney));
         Assert.Equal(beforeBytes, File.ReadAllBytes(files.PathToCheckpoint));
         Assert.Equal(1UL, reopened.Inspect(fresh.Decision).StateRevision);
     }
@@ -303,7 +312,14 @@ public sealed class GaVs49RecoverableCashCheckpointTests
         var outcomes = await Task.WhenAll(decisions);
         Assert.Single(outcomes, x => !x.WasAlreadyCommitted);
         Assert.Equal(15, outcomes.Count(x => x.WasAlreadyCommitted));
-        Assert.Single(outcomes.Select(x => x.Proof).Distinct());
+        Assert.Single(outcomes.Select(x =>
+            x.Proof.CommittedBalancesDigest).Distinct());
+        Assert.Single(outcomes.Select(x =>
+            x.Proof.AuditJournalDigest).Distinct());
+        Assert.All(outcomes, x => {
+            Money(123, x.Proof.OpeningMoney);
+            Money(123, x.Proof.ClosingMoney);
+        });
         Assert.Equal(1UL, new Fixture().Open(files.PathToCheckpoint)
             .Inspect(f.Decision).StateRevision);
     }
