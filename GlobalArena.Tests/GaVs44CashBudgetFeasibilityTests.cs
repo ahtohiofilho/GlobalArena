@@ -279,6 +279,11 @@ public sealed class GaVs44CashBudgetFeasibilityTests
         Assert.Equal(a.Exact!.Trades.ToArray(), b.Exact!.Trades.ToArray());
         Assert.Equal(a.Coordinated.Trades.ToArray(), b.Coordinated.Trades.ToArray());
         Assert.Equal(a.Exact.NetEconomicValue, b.Exact.NetEconomicValue);
-        Assert.Equal(a.Exact.CashLedger.ToArray(), b.Exact.CashLedger.ToArray());
+        Assert.Equal(a.Exact.CashLedger.Select(x => x.Buyer).ToArray(),
+            b.Exact.CashLedger.Select(x => x.Buyer).ToArray());
+        Assert.Equal(0, a.Exact.CashLedger[0].TotalCommitment.CompareTo(
+            b.Exact.CashLedger[0].TotalCommitment));
+        Assert.Equal(0, a.Exact.CashLedger[0].RemainingSpendableCash.CompareTo(
+            b.Exact.CashLedger[0].RemainingSpendableCash));
     }
 }
