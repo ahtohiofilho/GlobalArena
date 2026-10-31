@@ -65,6 +65,10 @@ func _run() -> void:
     var survey := _button(app, "GAQAAdjacentSurvey")
     var survey_result := _label(app, "GAQAAdjacentSurveyResult")
     var plan_destination := _button(app, "GAQAPlanDestination")
+    var advanced_toggle := _button(app, "GAQAAdvancedToggle")
+    var remote_target := app.find_child("GAQARemoteDestination", true, false) as SpinBox
+    var remote_button := _button(app, "GAQAPreviewRemoteRoute")
+    var remote_result := _label(app, "GAQARemoteRouteResult")
     var order_move := _button(app, "GAQAMoveWorkers")
     var reassign := _button(app, "GAQAReassign")
     var five := _button(app, "GAQAAdvanceFiveCycles")
@@ -73,7 +77,8 @@ func _run() -> void:
     var load_save := _button(app, "GAQALoad")
     for node in [inspect, source, destination, quantity, status, settlements,
             cycle_report, preview, food, compare, diagnose, survey,
-            survey_result, plan_destination, order_move, reassign, five,
+            survey_result, plan_destination, advanced_toggle, remote_target,
+            remote_button, remote_result, order_move, reassign, five,
             one, save, load_save]:
         if not _require(node != null, "expected named production control missing"):
             return
@@ -223,5 +228,26 @@ func _run() -> void:
             "VS27 save reload did not undo a later travel order"):
         return
     print("GA_UI_E2E_TRAVEL_SAVE_REWIND_OK")
+
+    # VS28: preview of ANY valid physical tile ID, not just neighbours.
+    # Target tile 1 is far from the seeded starting region. A primitive
+    # walking path may be available or may need a different future modal;
+    # neither case is permission to create an instantaneous colony.
+    advanced_toggle.button_pressed = true
+    advanced_toggle.emit_signal("toggled", true)
+    await process_frame
+    remote_target.value = 1.0
+    _press(remote_button)
+    await process_frame
+    if not _require(remote_result.visible and
+            remote_result.text.contains("PLANEJAMENTO GLOBAL") and
+            remote_result.text.contains("destino 1") and
+            remote_result.text.contains("NÃO ORDENA DESLOCAMENTO") and
+            status.text.contains("turno 5") and
+            status.text.contains("Viagens: nenhuma em andamento.") and
+            settlements.text.contains("agricultura 2, madeira 4, pedra 2"),
+            "VS28 arbitrary destination route preview failed or committed an action"):
+        return
+    print("GA_UI_E2E_REMOTE_ROUTE_READ_ONLY_OK")
     print("GA_UI_E2E_PASS main_scene=Main.tscn signals=real godot=4.7.2")
     quit(0)
