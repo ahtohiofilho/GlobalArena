@@ -40,6 +40,8 @@ public sealed class CanonicalPrimitiveSourceReservationDiagnostics
 
     public CanonicalPrimitiveSourceReservationScenario Baseline { get; }
     public CanonicalPrimitiveSourceReservationScenario Regional { get; }
+    public CanonicalPrimitiveRegionalAccessDistribution RegionalFreightAccess =>
+        _local.RegionalFreightAccess;
     public bool CanAuthorizeRealSettlement => false;
     public bool IsCommitted => false;
     public bool IsActualConsumption => false;
