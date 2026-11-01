@@ -252,7 +252,9 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
                             if (compared.Gentle.RawQuantity != raw ||
                                 compared.Steep.RawQuantity != raw ||
                                 compared.UsesExogenousBuyerBudget ||
-                                compared.LimitsConsumptionToPhysicalDemand ||
+                                compared.AddsAnIndependentConsumerDemandCap ||
+                                !compared.UsesLegacyFreightCandidateQuantityBound ||
+                                compared.SupportsUnboundedRemoteConsumption ||
                                 compared.CanCalculateMonetaryNetRevenue ||
                                 compared.IsNominalFreightConvertedIntoPriceIndex ||
                                 compared.CanAuthorizeRealSettlement ||
