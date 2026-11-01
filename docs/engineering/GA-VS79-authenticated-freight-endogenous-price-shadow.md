@@ -12,6 +12,14 @@ A VS78 obteve preços e receitas **relativas** em mercado local a partir de ofer
 - **Frete nominal físico** calculado pelas massas definidas no catálogo e pelo mesmo \`ExperimentalSharedFreightBatchCost.Evaluate\` utilizado no pré-flight VS65, com opção de serviço autenticado, direito/infraestrutura e política de congestionamento existente. O custo é produzido **uma vez para o lote**, não há teletransporte. Preserva o domínio de uma remessa; ainda não modela concorrência entre serviços ou lotes.
 - **Saídas separadas:** índices de preço/receita na origem e no destino, custo nominal do frete, quantidade \`q\`, fontes/destino/serviço e demanda econômica das duas localidades.
 
+## Limitação do inventário legado — CRÍTICA
+
+A autenticação `CanonicalEligibleFreightOfferDiscovery` (VS63/VS64) atualmente computa a quantidade máxima da alternativa como `min(oferta física da fonte, demanda física do comprador)`. Portanto, apesar de a **função de preço VS78** não impor teto de consumo, o **candidato comercial autenticado ainda herda um teto quantitativo do antigo modelo**. A VS79 é estritamente um comparador de lotes dentro daquele subconjunto físico autorizado, **não um mercado remoto com absorção ilimitada**.
+
+Esse comportamento é exposto na API por `UsesLegacyFreightCandidateQuantityBound=true` e `SupportsUnboundedRemoteConsumption=false`; `AddsAnIndependentConsumerDemandCap=false` apenas indica que o comparador não adiciona outra restrição depois da autenticação.
+
+**Gate de arquitetura posterior obrigatório:** separar `autenticação institucional de serviço/rota/capacidade` da antiga `quantidade de demanda física máxima`, mantendo o limite por produção e infraestrutura real. Não contornar o teto criando serviço novo, multiplicando candidatos ou editando o limite sem auditoria. Isso será um incremento próprio antes de alegar consumo remoto ilimitado.
+
 ## Resguardo de coerência dimensional — CRÍTICO
 
 A curva VS78 retorna um **índice relativo adimensional**. O motor de frete retorna custo na **unidade nominal de transporte atualmente calibrada**. Não subtrair \`freteNominal\` diretamente do \`índiceDeReceita\`, nem chamar isso de lucro, receita líquida ou arbitragem ótima. **A conversão econômica entre unidades não foi ratificada nem implementada.**
