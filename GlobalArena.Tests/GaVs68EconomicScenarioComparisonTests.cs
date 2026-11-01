@@ -202,7 +202,7 @@ public sealed class GaVs68EconomicScenarioComparisonTests
             new[] { baseline }, "baseline", 100_000UL));
         Assert.Throws<ArgumentException>(() => portfolio.CompareFreightScenarios(
             portfolio.CandidateUses,
-            new[] { baseline }, "baseline", 100_000UL, 8, 10));
+            new[] { baseline }, "baseline", 100_000UL, 8, 7));
         Assert.Equal(f.Session.CurrentHash, sites.WorldHash);
     }
 
