@@ -3,6 +3,7 @@ if (args.Contains("--vs63-authorized-freight")) return GaVs60SessionTradePreview
 if (args.Contains("--vs64-freight-portfolio")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(discoverPortfolio: true);
 if (args.Contains("--vs65-joint-budget")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(jointBudget: true);
 if (args.Contains("--vs66-joint-selection")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(selectJointFreight: true);
+if (args.Contains("--vs67-components")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(selectComponents: true);
 if (args.Contains("--vs62-discover-sites")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(discoverSites: true);
 if (args.Contains("--vs61-live-primitive")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(livePrimitive: true);
 if (args.Contains("--vs60-session-preview")) return GaVs60SessionTradePreviewBenchmarkHarness.Run();
