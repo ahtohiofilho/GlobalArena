@@ -78,7 +78,7 @@ public sealed class GaVs88ExecutedFoodPriceTrendBridgeTests
         Assert.False(bridge.AuthorizesRealSettlement);
         Assert.Equal(proof.NextRealCompletedEconomicCycleTurn,
             bridge.TargetCycleMovementTurn);
-        Assert.Equal(proof.SourcePriceReceipt.SourceMovementTurn,
+        Assert.Equal(f.Session.State.Cycles[^2].MovementTurn,
             bridge.SourceCycleMovementTurn);
         Assert.Equal(paid.CompletedEconomicCycleMovementTurn,
             bridge.TargetCycleMovementTurn);
