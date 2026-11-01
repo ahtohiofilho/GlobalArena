@@ -47,7 +47,7 @@ public sealed class CanonicalCycleStampedPriceReceipt
         _sourceNetworkRevision = session.TransportNetwork.Revision;
         _sourceWorldHashHex = session.CurrentHash.HexDigest;
         _sourceJournalCount = session.Events.Count;
-        MaximumResponseStepPermille = feedback.MaximumResponseStepPermille;
+        MaximumResponseStepPermille = feedback.ConfiguredResponseStepPermille;
         _nextPolicies = feedback.NextProjection.Policies.ToArray();
         _signals = feedback.Signals.ToArray();
         FrozenNextActivityPolicies = Array.AsReadOnly(_nextPolicies);
