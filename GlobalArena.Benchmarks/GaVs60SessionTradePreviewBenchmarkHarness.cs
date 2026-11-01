@@ -15,7 +15,7 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
 {
     private const ulong Unit = EconomicTransferPolicy.FixedPointDenominator;
 
-    public static int Run(bool livePrimitive = false, bool discoverSites = false, bool discoverFreight = false, bool discoverPortfolio = false, bool jointBudget = false, bool selectJointFreight = false, bool selectComponents = false, bool compareScenarios = false, bool compareLocalPrices = false, bool compareRegionalPurchasing = false, bool diagnoseRegionalAccess = false, bool diagnoseLocalSupply = false, bool diagnoseSourceReservations = false, bool previewJointPhysicalUse = false, bool diagnoseLocalBudgetShadow = false, bool selectIntegratedLocalFreight = false, bool auditExplicitOfferGap = false, bool compareEndogenousRemote = false, bool compareSupplyBoundFreight = false, bool auditSimultaneousFreight = false, bool reconcileRealizedProduction = false, bool projectWorkforceRealization = false, bool respondToFrozenMarketPrice = false, bool witnessRealEconomicCycle = false, bool inspectHistoricPriceSidecar = false, bool observeExecutedCashFoodPrice = false, bool compareExecutedFoodPriceTrends = false, bool calibrateFoodPriceDirections = false, bool auditMultiCycleFoodPriceStability = false)
+    public static int Run(bool livePrimitive = false, bool discoverSites = false, bool discoverFreight = false, bool discoverPortfolio = false, bool jointBudget = false, bool selectJointFreight = false, bool selectComponents = false, bool compareScenarios = false, bool compareLocalPrices = false, bool compareRegionalPurchasing = false, bool diagnoseRegionalAccess = false, bool diagnoseLocalSupply = false, bool diagnoseSourceReservations = false, bool previewJointPhysicalUse = false, bool diagnoseLocalBudgetShadow = false, bool selectIntegratedLocalFreight = false, bool auditExplicitOfferGap = false, bool compareEndogenousRemote = false, bool compareSupplyBoundFreight = false, bool auditSimultaneousFreight = false, bool reconcileRealizedProduction = false, bool projectWorkforceRealization = false, bool respondToFrozenMarketPrice = false, bool witnessRealEconomicCycle = false, bool inspectHistoricPriceSidecar = false, bool observeExecutedCashFoodPrice = false, bool compareExecutedFoodPriceTrends = false, bool calibrateFoodPriceDirections = false, bool auditMultiCycleFoodPriceStability = false, bool gateMultiCycleFoodRobustness = false)
     {
 #if DEBUG
         Console.Error.WriteLine("GA-VS60 benchmark requires Release.");
@@ -24,7 +24,7 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
         try
         {
             CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
-            Console.WriteLine(auditMultiCycleFoodPriceStability ? "BENCHMARK=GA-VS90-MULTICYCLE-FOOD-PRICE-STABILITY" : calibrateFoodPriceDirections ? "BENCHMARK=GA-VS89-FOOD-PRICE-CALIBRATION-MATRIX" : compareExecutedFoodPriceTrends ? "BENCHMARK=GA-VS88-EXECUTED-FOOD-PRICE-TREND" : observeExecutedCashFoodPrice ? "BENCHMARK=GA-VS87-EXECUTED-CASH-FOOD-PRICE" : inspectHistoricPriceSidecar ? "BENCHMARK=GA-VS86-PRICE-HISTORY-SIDECAR" : witnessRealEconomicCycle ? "BENCHMARK=GA-VS85-REAL-ECONOMIC-CYCLE-WITNESS" : respondToFrozenMarketPrice ? "BENCHMARK=GA-VS84-LAGGED-PRODUCTION-RESPONSE" : projectWorkforceRealization ? "BENCHMARK=GA-VS83-WORKFORCE-REALIZATION" : reconcileRealizedProduction ? "BENCHMARK=GA-VS82-REALIZED-PRODUCTION" : auditSimultaneousFreight ? "BENCHMARK=GA-VS81-SIMULTANEOUS-FREIGHT" : compareSupplyBoundFreight ? "BENCHMARK=GA-VS80-SUPPLY-BOUND-FREIGHT" : compareEndogenousRemote ? "BENCHMARK=GA-VS79-ENDOGENOUS-REMOTE-FREIGHT" : auditExplicitOfferGap ? "BENCHMARK=GA-VS77-EXPLICIT-OFFER-GAP" : selectIntegratedLocalFreight ? "BENCHMARK=GA-VS76-INTEGRATED-LOCAL-FREIGHT" : diagnoseLocalBudgetShadow ? "BENCHMARK=GA-VS75-LOCAL-BUDGET-SHADOW" : previewJointPhysicalUse ? "BENCHMARK=GA-VS74-JOINT-PHYSICAL-USE" : diagnoseSourceReservations ? "BENCHMARK=GA-VS73-SOURCE-PHYSICAL-HEADROOM" : diagnoseLocalSupply ? "BENCHMARK=GA-VS72-LOCAL-SUPPLY-POTENTIAL" : diagnoseRegionalAccess ? "BENCHMARK=GA-VS71-REGIONAL-ACCESS-DISTRIBUTION" : compareRegionalPurchasing ? "BENCHMARK=GA-VS70-PHYSICAL-REGIONAL-PURCHASING" : compareLocalPrices ? "BENCHMARK=GA-VS69-LOCAL-BUYER-PRICE-IMPACT" : compareScenarios ? "BENCHMARK=GA-VS68-SHADOW-ECONOMIC-SCENARIOS" : selectComponents ? "BENCHMARK=GA-VS67-INDEPENDENT-FREIGHT-COMPONENTS" : selectJointFreight ? "BENCHMARK=GA-VS66-BOUNDED-JOINT-FREIGHT-SELECTION" : jointBudget ? "BENCHMARK=GA-VS65-JOINT-PRIMITIVE-FREIGHT-BUDGET" : discoverPortfolio ? "BENCHMARK=GA-VS64-PRIMITIVE-FREIGHT-PORTFOLIO" : discoverFreight ? "BENCHMARK=GA-VS63-INSTITUTIONALLY-AUTHORIZED-FREIGHT" : discoverSites ? "BENCHMARK=GA-VS62-EMERGENT-ECONOMIC-SITES" : livePrimitive ? "BENCHMARK=GA-VS61-LIVE-PRIMITIVE-SESSION" : "BENCHMARK=GA-VS60-BUILT-INSTITUTIONAL-NETWORK");
+            Console.WriteLine(gateMultiCycleFoodRobustness ? "BENCHMARK=GA-VS91-MULTICYCLE-FOOD-ROBUSTNESS" : auditMultiCycleFoodPriceStability ? "BENCHMARK=GA-VS90-MULTICYCLE-FOOD-PRICE-STABILITY" : calibrateFoodPriceDirections ? "BENCHMARK=GA-VS89-FOOD-PRICE-CALIBRATION-MATRIX" : compareExecutedFoodPriceTrends ? "BENCHMARK=GA-VS88-EXECUTED-FOOD-PRICE-TREND" : observeExecutedCashFoodPrice ? "BENCHMARK=GA-VS87-EXECUTED-CASH-FOOD-PRICE" : inspectHistoricPriceSidecar ? "BENCHMARK=GA-VS86-PRICE-HISTORY-SIDECAR" : witnessRealEconomicCycle ? "BENCHMARK=GA-VS85-REAL-ECONOMIC-CYCLE-WITNESS" : respondToFrozenMarketPrice ? "BENCHMARK=GA-VS84-LAGGED-PRODUCTION-RESPONSE" : projectWorkforceRealization ? "BENCHMARK=GA-VS83-WORKFORCE-REALIZATION" : reconcileRealizedProduction ? "BENCHMARK=GA-VS82-REALIZED-PRODUCTION" : auditSimultaneousFreight ? "BENCHMARK=GA-VS81-SIMULTANEOUS-FREIGHT" : compareSupplyBoundFreight ? "BENCHMARK=GA-VS80-SUPPLY-BOUND-FREIGHT" : compareEndogenousRemote ? "BENCHMARK=GA-VS79-ENDOGENOUS-REMOTE-FREIGHT" : auditExplicitOfferGap ? "BENCHMARK=GA-VS77-EXPLICIT-OFFER-GAP" : selectIntegratedLocalFreight ? "BENCHMARK=GA-VS76-INTEGRATED-LOCAL-FREIGHT" : diagnoseLocalBudgetShadow ? "BENCHMARK=GA-VS75-LOCAL-BUDGET-SHADOW" : previewJointPhysicalUse ? "BENCHMARK=GA-VS74-JOINT-PHYSICAL-USE" : diagnoseSourceReservations ? "BENCHMARK=GA-VS73-SOURCE-PHYSICAL-HEADROOM" : diagnoseLocalSupply ? "BENCHMARK=GA-VS72-LOCAL-SUPPLY-POTENTIAL" : diagnoseRegionalAccess ? "BENCHMARK=GA-VS71-REGIONAL-ACCESS-DISTRIBUTION" : compareRegionalPurchasing ? "BENCHMARK=GA-VS70-PHYSICAL-REGIONAL-PURCHASING" : compareLocalPrices ? "BENCHMARK=GA-VS69-LOCAL-BUYER-PRICE-IMPACT" : compareScenarios ? "BENCHMARK=GA-VS68-SHADOW-ECONOMIC-SCENARIOS" : selectComponents ? "BENCHMARK=GA-VS67-INDEPENDENT-FREIGHT-COMPONENTS" : selectJointFreight ? "BENCHMARK=GA-VS66-BOUNDED-JOINT-FREIGHT-SELECTION" : jointBudget ? "BENCHMARK=GA-VS65-JOINT-PRIMITIVE-FREIGHT-BUDGET" : discoverPortfolio ? "BENCHMARK=GA-VS64-PRIMITIVE-FREIGHT-PORTFOLIO" : discoverFreight ? "BENCHMARK=GA-VS63-INSTITUTIONALLY-AUTHORIZED-FREIGHT" : discoverSites ? "BENCHMARK=GA-VS62-EMERGENT-ECONOMIC-SITES" : livePrimitive ? "BENCHMARK=GA-VS61-LIVE-PRIMITIVE-SESSION" : "BENCHMARK=GA-VS60-BUILT-INSTITUTIONAL-NETWORK");
             Console.WriteLine($"ENV_OS={RuntimeInformation.OSDescription}");
             Console.WriteLine($"ENV_RUNTIME={RuntimeInformation.FrameworkDescription}");
             Console.WriteLine("WARMUPS=1;SAMPLES=3;PERFORMANCE_THRESHOLDS=none");
@@ -186,10 +186,10 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
                     new CanonicalPrimitiveDemandRate(new CommodityId(8), 125_000),
                     new CanonicalPrimitiveDemandRate(new CommodityId(9), 250_000)
                 }, new FoodTransportCostFraction(1, 1));
-            if (discoverPortfolio || jointBudget || selectJointFreight || selectComponents || compareScenarios || compareLocalPrices || compareRegionalPurchasing || diagnoseRegionalAccess || diagnoseLocalSupply || diagnoseSourceReservations || previewJointPhysicalUse || diagnoseLocalBudgetShadow || selectIntegratedLocalFreight || auditExplicitOfferGap || compareEndogenousRemote || compareSupplyBoundFreight || auditSimultaneousFreight || reconcileRealizedProduction || projectWorkforceRealization || respondToFrozenMarketPrice || witnessRealEconomicCycle || inspectHistoricPriceSidecar || observeExecutedCashFoodPrice || compareExecutedFoodPriceTrends || calibrateFoodPriceDirections || auditMultiCycleFoodPriceStability)
+            if (discoverPortfolio || jointBudget || selectJointFreight || selectComponents || compareScenarios || compareLocalPrices || compareRegionalPurchasing || diagnoseRegionalAccess || diagnoseLocalSupply || diagnoseSourceReservations || previewJointPhysicalUse || diagnoseLocalBudgetShadow || selectIntegratedLocalFreight || auditExplicitOfferGap || compareEndogenousRemote || compareSupplyBoundFreight || auditSimultaneousFreight || reconcileRealizedProduction || projectWorkforceRealization || respondToFrozenMarketPrice || witnessRealEconomicCycle || inspectHistoricPriceSidecar || observeExecutedCashFoodPrice || compareExecutedFoodPriceTrends || calibrateFoodPriceDirections || auditMultiCycleFoodPriceStability || gateMultiCycleFoodRobustness)
                 session.ReassignWorkers(from, EconomicActivityKind.Agriculture,
                     EconomicActivityKind.Forestry, 1);
-            if (discoverFreight || discoverPortfolio || jointBudget || selectJointFreight || selectComponents || compareScenarios || compareLocalPrices || compareRegionalPurchasing || diagnoseRegionalAccess || diagnoseLocalSupply || diagnoseSourceReservations || previewJointPhysicalUse || diagnoseLocalBudgetShadow || selectIntegratedLocalFreight || auditExplicitOfferGap || compareEndogenousRemote || compareSupplyBoundFreight || auditSimultaneousFreight || reconcileRealizedProduction || projectWorkforceRealization || respondToFrozenMarketPrice || witnessRealEconomicCycle || inspectHistoricPriceSidecar || observeExecutedCashFoodPrice || compareExecutedFoodPriceTrends || calibrateFoodPriceDirections || auditMultiCycleFoodPriceStability)
+            if (discoverFreight || discoverPortfolio || jointBudget || selectJointFreight || selectComponents || compareScenarios || compareLocalPrices || compareRegionalPurchasing || diagnoseRegionalAccess || diagnoseLocalSupply || diagnoseSourceReservations || previewJointPhysicalUse || diagnoseLocalBudgetShadow || selectIntegratedLocalFreight || auditExplicitOfferGap || compareEndogenousRemote || compareSupplyBoundFreight || auditSimultaneousFreight || reconcileRealizedProduction || projectWorkforceRealization || respondToFrozenMarketPrice || witnessRealEconomicCycle || inspectHistoricPriceSidecar || observeExecutedCashFoodPrice || compareExecutedFoodPriceTrends || calibrateFoodPriceDirections || auditMultiCycleFoodPriceStability || gateMultiCycleFoodRobustness)
                 session.TransportNetwork.SetEntitlement(registry.Entitlements.Single() with {
                     Source = CanonicalPrimitiveSiteDiscovery.SiteId(from),
                     Destination = CanonicalPrimitiveSiteDiscovery.SiteId(to),
@@ -222,7 +222,7 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
             CanonicalSimultaneousFreightReference? currentFreight85 = null;
             string? sidecar86 = null;
             CanonicalPhysicalTacticalSession? reopened86 = null;
-            if (witnessRealEconomicCycle || inspectHistoricPriceSidecar || observeExecutedCashFoodPrice || compareExecutedFoodPriceTrends || calibrateFoodPriceDirections || auditMultiCycleFoodPriceStability)
+            if (witnessRealEconomicCycle || inspectHistoricPriceSidecar || observeExecutedCashFoodPrice || compareExecutedFoodPriceTrends || calibrateFoodPriceDirections || auditMultiCycleFoodPriceStability || gateMultiCycleFoodRobustness)
             {
                 // End this real economic cycle AFTER the authenticated worker
                 // reassignment; its closing tick is the VS85 freeze boundary.
@@ -262,7 +262,9 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
             CanonicalExecutedLocalFoodPriceWitness? executed88 = null;
             CanonicalExecutedFoodPriceTrendBridge? calibrationTrend89 = null;
             CanonicalFoodPriceCalibrationMatrix? calibrationMatrix90 = null;
-            if (compareExecutedFoodPriceTrends || calibrateFoodPriceDirections || auditMultiCycleFoodPriceStability)
+            CanonicalMultiCycleFoodPriceStabilityReport? robustnessHistory91 = null;
+            CanonicalFoodRobustnessScenario[]? robustnessPolicies91 = null;
+            if (compareExecutedFoodPriceTrends || calibrateFoodPriceDirections || auditMultiCycleFoodPriceStability || gateMultiCycleFoodRobustness)
             {
                 temporalProof88 = receipt85!.ApplyAfterNextSettledCycle(
                     session, currentSites85!, currentFreight85!,
@@ -272,17 +274,35 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
                 var trial88 = CanonicalExecutedFoodPriceTrendBridge
                     .FromConsecutiveSettlements(session, temporalProof88,
                         executed88, 100);
-                if (calibrateFoodPriceDirections || auditMultiCycleFoodPriceStability)
+                if (calibrateFoodPriceDirections || auditMultiCycleFoodPriceStability || gateMultiCycleFoodRobustness)
                 {
                     calibrationTrend89 = trial88;
                     var review89 = CanonicalFoodPriceCalibrationMatrix
                         .FromVerifiedSignals(session, calibrationTrend89,
                             new[] { 25, 50, 100, 150, 250 });
-                    if (auditMultiCycleFoodPriceStability)
+                    if (auditMultiCycleFoodPriceStability || gateMultiCycleFoodRobustness)
                     {
                         calibrationMatrix90 = review89;
                         var preview90 = CanonicalMultiCycleFoodPriceStabilityReport
                             .FromVerifiedMatrix(session, calibrationMatrix90, 3);
+                        if (gateMultiCycleFoodRobustness)
+                        {
+                            robustnessHistory91 = preview90;
+                            robustnessPolicies91 = new[] {
+                            new CanonicalFoodRobustnessScenario("baseline", 100, 0, 1000, 1, 0, 1),
+                            new CanonicalFoodRobustnessScenario("high-coverage", 150, 900, 1000, 1, 0, 1),
+                            new CanonicalFoodRobustnessScenario("strict-volume", 250, 0, 100, 1, 0, 1)
+                        };
+                            var gate91 = CanonicalMultiCycleFoodRobustnessGate
+                                .FromVerifiedHistory(session, robustnessHistory91,
+                                    robustnessPolicies91);
+                            if (gate91.Observations.Count != 3 ||
+                                !gate91.UsesOnlyActuallyExecutedLocalFoodSales ||
+                                gate91.ClaimsMeasuredCausalSupplyOrDemandShock ||
+                                gate91.CanAuthorizeRealProductionOrSettlement)
+                                throw new InvalidOperationException(
+                                    "GA-VS91 initial robustness classification crossed economic authority.");
+                        }
                         if (preview90.Windows.Count != 2 ||
                             preview90.GainSensitivities.Count != 5 ||
                             preview90.ClaimsHistoricalPredictionAccuracy ||
@@ -361,6 +381,23 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
                     var started = Stopwatch.GetTimestamp();
                     for (var i = 0; i < count; i++)
                     {
+                        if (gateMultiCycleFoodRobustness)
+                        {
+                            var gate91 = CanonicalMultiCycleFoodRobustnessGate
+                                .FromVerifiedHistory(session, robustnessHistory91!,
+                                    robustnessPolicies91!);
+                            gate91.VerifyIndependent();
+                            if (gate91.Observations.Count != 3 ||
+                                !gate91.UsesOnlyActuallyExecutedLocalFoodSales ||
+                                gate91.ClaimsMeasuredCausalSupplyOrDemandShock ||
+                                gate91.ClaimsPredictiveAccuracy ||
+                                gate91.PromotesAnyGainAutomatically ||
+                                gate91.CanAuthorizeRealProductionOrSettlement ||
+                                gate91.ChangesWorldOrSave)
+                                throw new InvalidOperationException(
+                                    "GA-VS91 robustness gate must remain a real-food observational report.");
+                            continue;
+                        }
                         if (auditMultiCycleFoodPriceStability)
                         {
                             var report90 = CanonicalMultiCycleFoodPriceStabilityReport
@@ -689,7 +726,7 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
                             compared.RequireCurrent(session);
                             continue;
                         }
-                        if (selectIntegratedLocalFreight || auditExplicitOfferGap || compareEndogenousRemote || compareSupplyBoundFreight || auditSimultaneousFreight || reconcileRealizedProduction || projectWorkforceRealization || respondToFrozenMarketPrice || witnessRealEconomicCycle || inspectHistoricPriceSidecar || observeExecutedCashFoodPrice || compareExecutedFoodPriceTrends || calibrateFoodPriceDirections || auditMultiCycleFoodPriceStability)
+                        if (selectIntegratedLocalFreight || auditExplicitOfferGap || compareEndogenousRemote || compareSupplyBoundFreight || auditSimultaneousFreight || reconcileRealizedProduction || projectWorkforceRealization || respondToFrozenMarketPrice || witnessRealEconomicCycle || inspectHistoricPriceSidecar || observeExecutedCashFoodPrice || compareExecutedFoodPriceTrends || calibrateFoodPriceDirections || auditMultiCycleFoodPriceStability || gateMultiCycleFoodRobustness)
                         {
                             var sites = session.DiscoverPrimitiveEconomicSites(discoveryPolicy);
                             var portfolio = session.DiscoverPrimitiveFreightPortfolio(
@@ -751,7 +788,7 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
                             }
                             continue;
                         }
-                        if (diagnoseRegionalAccess || diagnoseLocalSupply || diagnoseSourceReservations || previewJointPhysicalUse || diagnoseLocalBudgetShadow || selectIntegratedLocalFreight || auditExplicitOfferGap || compareEndogenousRemote || compareSupplyBoundFreight || auditSimultaneousFreight || reconcileRealizedProduction || projectWorkforceRealization || respondToFrozenMarketPrice || witnessRealEconomicCycle || inspectHistoricPriceSidecar || observeExecutedCashFoodPrice || compareExecutedFoodPriceTrends || calibrateFoodPriceDirections || auditMultiCycleFoodPriceStability)
+                        if (diagnoseRegionalAccess || diagnoseLocalSupply || diagnoseSourceReservations || previewJointPhysicalUse || diagnoseLocalBudgetShadow || selectIntegratedLocalFreight || auditExplicitOfferGap || compareEndogenousRemote || compareSupplyBoundFreight || auditSimultaneousFreight || reconcileRealizedProduction || projectWorkforceRealization || respondToFrozenMarketPrice || witnessRealEconomicCycle || inspectHistoricPriceSidecar || observeExecutedCashFoodPrice || compareExecutedFoodPriceTrends || calibrateFoodPriceDirections || auditMultiCycleFoodPriceStability || gateMultiCycleFoodRobustness)
                         {
                             var sites = session.DiscoverPrimitiveEconomicSites(discoveryPolicy);
                             var portfolio = session.DiscoverPrimitiveFreightPortfolio(
@@ -786,7 +823,7 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
                                 throw new InvalidOperationException(
                                     "Regional access diagnostic lost residents, demand or auditable freight.");
                             accessDiagnostics.RequireCurrent(session);
-                            if (diagnoseLocalSupply || diagnoseSourceReservations || previewJointPhysicalUse || diagnoseLocalBudgetShadow || selectIntegratedLocalFreight || auditExplicitOfferGap || compareEndogenousRemote || compareSupplyBoundFreight || auditSimultaneousFreight || reconcileRealizedProduction || projectWorkforceRealization || respondToFrozenMarketPrice || witnessRealEconomicCycle || inspectHistoricPriceSidecar || observeExecutedCashFoodPrice || compareExecutedFoodPriceTrends || calibrateFoodPriceDirections || auditMultiCycleFoodPriceStability)
+                            if (diagnoseLocalSupply || diagnoseSourceReservations || previewJointPhysicalUse || diagnoseLocalBudgetShadow || selectIntegratedLocalFreight || auditExplicitOfferGap || compareEndogenousRemote || compareSupplyBoundFreight || auditSimultaneousFreight || reconcileRealizedProduction || projectWorkforceRealization || respondToFrozenMarketPrice || witnessRealEconomicCycle || inspectHistoricPriceSidecar || observeExecutedCashFoodPrice || compareExecutedFoodPriceTrends || calibrateFoodPriceDirections || auditMultiCycleFoodPriceStability || gateMultiCycleFoodRobustness)
                             {
                                 var local = accessDiagnostics.DiagnoseLocalSupplyPotential();
                                 if (local.Snapshot.Buyers.Count != sites.Sites.Count ||
@@ -796,7 +833,7 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
                                     throw new InvalidOperationException(
                                         "Local physical production opportunity lost demand or became settlement.");
                                 local.VerifyIndependent();
-                                if (diagnoseSourceReservations || previewJointPhysicalUse || diagnoseLocalBudgetShadow || selectIntegratedLocalFreight || auditExplicitOfferGap || compareEndogenousRemote || compareSupplyBoundFreight || auditSimultaneousFreight || reconcileRealizedProduction || projectWorkforceRealization || respondToFrozenMarketPrice || witnessRealEconomicCycle || inspectHistoricPriceSidecar || observeExecutedCashFoodPrice || compareExecutedFoodPriceTrends || calibrateFoodPriceDirections || auditMultiCycleFoodPriceStability)
+                                if (diagnoseSourceReservations || previewJointPhysicalUse || diagnoseLocalBudgetShadow || selectIntegratedLocalFreight || auditExplicitOfferGap || compareEndogenousRemote || compareSupplyBoundFreight || auditSimultaneousFreight || reconcileRealizedProduction || projectWorkforceRealization || respondToFrozenMarketPrice || witnessRealEconomicCycle || inspectHistoricPriceSidecar || observeExecutedCashFoodPrice || compareExecutedFoodPriceTrends || calibrateFoodPriceDirections || auditMultiCycleFoodPriceStability || gateMultiCycleFoodRobustness)
                                 {
                                     var headroom = local.DiagnoseSourceReservations();
                                     if (headroom.Baseline.Sources.Count !=
@@ -809,7 +846,7 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
                                         throw new InvalidOperationException(
                                             "VS73 physical reservation reconciliation failed.");
                                     headroom.VerifyIndependent();
-                                    if (previewJointPhysicalUse || diagnoseLocalBudgetShadow || selectIntegratedLocalFreight || auditExplicitOfferGap || compareEndogenousRemote || compareSupplyBoundFreight || auditSimultaneousFreight || reconcileRealizedProduction || projectWorkforceRealization || respondToFrozenMarketPrice || witnessRealEconomicCycle || inspectHistoricPriceSidecar || observeExecutedCashFoodPrice || compareExecutedFoodPriceTrends || calibrateFoodPriceDirections || auditMultiCycleFoodPriceStability)
+                                    if (previewJointPhysicalUse || diagnoseLocalBudgetShadow || selectIntegratedLocalFreight || auditExplicitOfferGap || compareEndogenousRemote || compareSupplyBoundFreight || auditSimultaneousFreight || reconcileRealizedProduction || projectWorkforceRealization || respondToFrozenMarketPrice || witnessRealEconomicCycle || inspectHistoricPriceSidecar || observeExecutedCashFoodPrice || compareExecutedFoodPriceTrends || calibrateFoodPriceDirections || auditMultiCycleFoodPriceStability || gateMultiCycleFoodRobustness)
                                     {
                                         var trial = headroom.PreviewJointPhysicalUse(
                                             headroom.Baseline.ScenarioId,
@@ -1115,13 +1152,13 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
                     $"median_ms={times.OrderBy(x => x).ElementAt(1):F3};" +
                     $"median_allocated_bytes={allocations.OrderBy(x => x).ElementAt(1)}");
             }
-            Console.WriteLine(auditMultiCycleFoodPriceStability ? "RESULT=PASS_GA_VS90_MULTICYCLE_FOOD_PRICE_STABILITY" : calibrateFoodPriceDirections ? "RESULT=PASS_GA_VS89_FOOD_PRICE_CALIBRATION_MATRIX" : compareExecutedFoodPriceTrends ? "RESULT=PASS_GA_VS88_EXECUTED_FOOD_PRICE_TREND" : observeExecutedCashFoodPrice ? "RESULT=PASS_GA_VS87_EXECUTED_CASH_FOOD_PRICE" : inspectHistoricPriceSidecar ? "RESULT=PASS_GA_VS86_PRICE_HISTORY_SIDECAR" : witnessRealEconomicCycle ? "RESULT=PASS_GA_VS85_REAL_ECONOMIC_CYCLE_WITNESS" : respondToFrozenMarketPrice ? "RESULT=PASS_GA_VS84_LAGGED_PRICE_RESPONSE" : projectWorkforceRealization ? "RESULT=PASS_GA_VS83_WORKFORCE_REALIZATION" : reconcileRealizedProduction ? "RESULT=PASS_GA_VS82_REALIZED_PRODUCTION" : auditSimultaneousFreight ? "RESULT=PASS_GA_VS81_SIMULTANEOUS_FREIGHT" : compareSupplyBoundFreight ? "RESULT=PASS_GA_VS80_SUPPLY_BOUND_FREIGHT" : compareEndogenousRemote ? "RESULT=PASS_GA_VS79_ENDOGENOUS_FREIGHT" : auditExplicitOfferGap ? "RESULT=PASS_GA_VS77_OFFER_GAP" : selectIntegratedLocalFreight ? "RESULT=PASS_GA_VS76_INTEGRATED" : diagnoseLocalBudgetShadow ? "RESULT=PASS_GA_VS75_BUDGET_SHADOW" : previewJointPhysicalUse ? "RESULT=PASS_GA_VS74_JOINT_PHYSICAL" : diagnoseSourceReservations ? "RESULT=PASS_GA_VS73_SOURCE_HEADROOM" : diagnoseLocalSupply ? "RESULT=PASS_GA_VS72_LOCAL_SUPPLY" : diagnoseRegionalAccess ? "RESULT=PASS_GA_VS71_REGIONAL_ACCESS" : compareRegionalPurchasing ? "RESULT=PASS_GA_VS70_REGIONAL_PURCHASING" : compareLocalPrices ? "RESULT=PASS_GA_VS69_LOCAL_PRICES" : compareScenarios ? "RESULT=PASS_GA_VS68_SCENARIOS" : selectComponents ? "RESULT=PASS_GA_VS67_COMPONENTS" : selectJointFreight ? "RESULT=PASS_GA_VS66_JOINT_SELECTION" : jointBudget ? "RESULT=PASS_GA_VS65_JOINT_BUDGET" : discoverPortfolio ? "RESULT=PASS_GA_VS64_FREIGHT_PORTFOLIO" : discoverFreight ? "RESULT=PASS_GA_VS63_AUTHORIZED_FREIGHT" : discoverSites ? "RESULT=PASS_GA_VS62_SITE_DISCOVERY" : livePrimitive ? "RESULT=PASS_GA_VS61_LIVE_PRIMITIVE" : "RESULT=PASS_GA_VS60_BUILT_INSTITUTIONAL");
+            Console.WriteLine(gateMultiCycleFoodRobustness ? "RESULT=PASS_GA_VS91_MULTICYCLE_FOOD_ROBUSTNESS" : auditMultiCycleFoodPriceStability ? "RESULT=PASS_GA_VS90_MULTICYCLE_FOOD_PRICE_STABILITY" : calibrateFoodPriceDirections ? "RESULT=PASS_GA_VS89_FOOD_PRICE_CALIBRATION_MATRIX" : compareExecutedFoodPriceTrends ? "RESULT=PASS_GA_VS88_EXECUTED_FOOD_PRICE_TREND" : observeExecutedCashFoodPrice ? "RESULT=PASS_GA_VS87_EXECUTED_CASH_FOOD_PRICE" : inspectHistoricPriceSidecar ? "RESULT=PASS_GA_VS86_PRICE_HISTORY_SIDECAR" : witnessRealEconomicCycle ? "RESULT=PASS_GA_VS85_REAL_ECONOMIC_CYCLE_WITNESS" : respondToFrozenMarketPrice ? "RESULT=PASS_GA_VS84_LAGGED_PRICE_RESPONSE" : projectWorkforceRealization ? "RESULT=PASS_GA_VS83_WORKFORCE_REALIZATION" : reconcileRealizedProduction ? "RESULT=PASS_GA_VS82_REALIZED_PRODUCTION" : auditSimultaneousFreight ? "RESULT=PASS_GA_VS81_SIMULTANEOUS_FREIGHT" : compareSupplyBoundFreight ? "RESULT=PASS_GA_VS80_SUPPLY_BOUND_FREIGHT" : compareEndogenousRemote ? "RESULT=PASS_GA_VS79_ENDOGENOUS_FREIGHT" : auditExplicitOfferGap ? "RESULT=PASS_GA_VS77_OFFER_GAP" : selectIntegratedLocalFreight ? "RESULT=PASS_GA_VS76_INTEGRATED" : diagnoseLocalBudgetShadow ? "RESULT=PASS_GA_VS75_BUDGET_SHADOW" : previewJointPhysicalUse ? "RESULT=PASS_GA_VS74_JOINT_PHYSICAL" : diagnoseSourceReservations ? "RESULT=PASS_GA_VS73_SOURCE_HEADROOM" : diagnoseLocalSupply ? "RESULT=PASS_GA_VS72_LOCAL_SUPPLY" : diagnoseRegionalAccess ? "RESULT=PASS_GA_VS71_REGIONAL_ACCESS" : compareRegionalPurchasing ? "RESULT=PASS_GA_VS70_REGIONAL_PURCHASING" : compareLocalPrices ? "RESULT=PASS_GA_VS69_LOCAL_PRICES" : compareScenarios ? "RESULT=PASS_GA_VS68_SCENARIOS" : selectComponents ? "RESULT=PASS_GA_VS67_COMPONENTS" : selectJointFreight ? "RESULT=PASS_GA_VS66_JOINT_SELECTION" : jointBudget ? "RESULT=PASS_GA_VS65_JOINT_BUDGET" : discoverPortfolio ? "RESULT=PASS_GA_VS64_FREIGHT_PORTFOLIO" : discoverFreight ? "RESULT=PASS_GA_VS63_AUTHORIZED_FREIGHT" : discoverSites ? "RESULT=PASS_GA_VS62_SITE_DISCOVERY" : livePrimitive ? "RESULT=PASS_GA_VS61_LIVE_PRIMITIVE" : "RESULT=PASS_GA_VS60_BUILT_INSTITUTIONAL");
             return 0;
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine(ex);
-            Console.WriteLine(auditMultiCycleFoodPriceStability ? "RESULT=FAIL_GA_VS90_MULTICYCLE_FOOD_PRICE_STABILITY" : calibrateFoodPriceDirections ? "RESULT=FAIL_GA_VS89_FOOD_PRICE_CALIBRATION_MATRIX" : compareExecutedFoodPriceTrends ? "RESULT=FAIL_GA_VS88_EXECUTED_FOOD_PRICE_TREND" : observeExecutedCashFoodPrice ? "RESULT=FAIL_GA_VS87_EXECUTED_CASH_FOOD_PRICE" : inspectHistoricPriceSidecar ? "RESULT=FAIL_GA_VS86_PRICE_HISTORY_SIDECAR" : witnessRealEconomicCycle ? "RESULT=FAIL_GA_VS85_REAL_ECONOMIC_CYCLE_WITNESS" : respondToFrozenMarketPrice ? "RESULT=FAIL_GA_VS84_LAGGED_PRICE_RESPONSE" : projectWorkforceRealization ? "RESULT=FAIL_GA_VS83_WORKFORCE_REALIZATION" : reconcileRealizedProduction ? "RESULT=FAIL_GA_VS82_REALIZED_PRODUCTION" : auditSimultaneousFreight ? "RESULT=FAIL_GA_VS81_SIMULTANEOUS_FREIGHT" : compareSupplyBoundFreight ? "RESULT=FAIL_GA_VS80_SUPPLY_BOUND_FREIGHT" : compareEndogenousRemote ? "RESULT=FAIL_GA_VS79_ENDOGENOUS_FREIGHT" : auditExplicitOfferGap ? "RESULT=FAIL_GA_VS77_OFFER_GAP" : selectIntegratedLocalFreight ? "RESULT=FAIL_GA_VS76_INTEGRATED" : diagnoseLocalBudgetShadow ? "RESULT=FAIL_GA_VS75_BUDGET_SHADOW" : previewJointPhysicalUse ? "RESULT=FAIL_GA_VS74_JOINT_PHYSICAL" : diagnoseSourceReservations ? "RESULT=FAIL_GA_VS73_SOURCE_HEADROOM" : diagnoseLocalSupply ? "RESULT=FAIL_GA_VS72_LOCAL_SUPPLY" : diagnoseRegionalAccess ? "RESULT=FAIL_GA_VS71_REGIONAL_ACCESS" : compareRegionalPurchasing ? "RESULT=FAIL_GA_VS70_REGIONAL_PURCHASING" : compareLocalPrices ? "RESULT=FAIL_GA_VS69_LOCAL_PRICES" : compareScenarios ? "RESULT=FAIL_GA_VS68_SCENARIOS" : selectComponents ? "RESULT=FAIL_GA_VS67_COMPONENTS" : selectJointFreight ? "RESULT=FAIL_GA_VS66_JOINT_SELECTION" : jointBudget ? "RESULT=FAIL_GA_VS65_JOINT_BUDGET" : discoverPortfolio ? "RESULT=FAIL_GA_VS64_FREIGHT_PORTFOLIO" : discoverFreight ? "RESULT=FAIL_GA_VS63_AUTHORIZED_FREIGHT" : discoverSites ? "RESULT=FAIL_GA_VS62_SITE_DISCOVERY" : livePrimitive ? "RESULT=FAIL_GA_VS61_LIVE_PRIMITIVE" : "RESULT=FAIL_GA_VS60_BUILT_INSTITUTIONAL");
+            Console.WriteLine(gateMultiCycleFoodRobustness ? "RESULT=FAIL_GA_VS91_MULTICYCLE_FOOD_ROBUSTNESS" : auditMultiCycleFoodPriceStability ? "RESULT=FAIL_GA_VS90_MULTICYCLE_FOOD_PRICE_STABILITY" : calibrateFoodPriceDirections ? "RESULT=FAIL_GA_VS89_FOOD_PRICE_CALIBRATION_MATRIX" : compareExecutedFoodPriceTrends ? "RESULT=FAIL_GA_VS88_EXECUTED_FOOD_PRICE_TREND" : observeExecutedCashFoodPrice ? "RESULT=FAIL_GA_VS87_EXECUTED_CASH_FOOD_PRICE" : inspectHistoricPriceSidecar ? "RESULT=FAIL_GA_VS86_PRICE_HISTORY_SIDECAR" : witnessRealEconomicCycle ? "RESULT=FAIL_GA_VS85_REAL_ECONOMIC_CYCLE_WITNESS" : respondToFrozenMarketPrice ? "RESULT=FAIL_GA_VS84_LAGGED_PRICE_RESPONSE" : projectWorkforceRealization ? "RESULT=FAIL_GA_VS83_WORKFORCE_REALIZATION" : reconcileRealizedProduction ? "RESULT=FAIL_GA_VS82_REALIZED_PRODUCTION" : auditSimultaneousFreight ? "RESULT=FAIL_GA_VS81_SIMULTANEOUS_FREIGHT" : compareSupplyBoundFreight ? "RESULT=FAIL_GA_VS80_SUPPLY_BOUND_FREIGHT" : compareEndogenousRemote ? "RESULT=FAIL_GA_VS79_ENDOGENOUS_FREIGHT" : auditExplicitOfferGap ? "RESULT=FAIL_GA_VS77_OFFER_GAP" : selectIntegratedLocalFreight ? "RESULT=FAIL_GA_VS76_INTEGRATED" : diagnoseLocalBudgetShadow ? "RESULT=FAIL_GA_VS75_BUDGET_SHADOW" : previewJointPhysicalUse ? "RESULT=FAIL_GA_VS74_JOINT_PHYSICAL" : diagnoseSourceReservations ? "RESULT=FAIL_GA_VS73_SOURCE_HEADROOM" : diagnoseLocalSupply ? "RESULT=FAIL_GA_VS72_LOCAL_SUPPLY" : diagnoseRegionalAccess ? "RESULT=FAIL_GA_VS71_REGIONAL_ACCESS" : compareRegionalPurchasing ? "RESULT=FAIL_GA_VS70_REGIONAL_PURCHASING" : compareLocalPrices ? "RESULT=FAIL_GA_VS69_LOCAL_PRICES" : compareScenarios ? "RESULT=FAIL_GA_VS68_SCENARIOS" : selectComponents ? "RESULT=FAIL_GA_VS67_COMPONENTS" : selectJointFreight ? "RESULT=FAIL_GA_VS66_JOINT_SELECTION" : jointBudget ? "RESULT=FAIL_GA_VS65_JOINT_BUDGET" : discoverPortfolio ? "RESULT=FAIL_GA_VS64_FREIGHT_PORTFOLIO" : discoverFreight ? "RESULT=FAIL_GA_VS63_AUTHORIZED_FREIGHT" : discoverSites ? "RESULT=FAIL_GA_VS62_SITE_DISCOVERY" : livePrimitive ? "RESULT=FAIL_GA_VS61_LIVE_PRIMITIVE" : "RESULT=FAIL_GA_VS60_BUILT_INSTITUTIONAL");
             return 1;
         }
 #endif
