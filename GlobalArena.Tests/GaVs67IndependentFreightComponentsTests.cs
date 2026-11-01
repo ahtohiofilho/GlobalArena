@@ -81,18 +81,19 @@ public sealed class GaVs67IndependentFreightComponentsTests
         var f = GaVs57SessionTransportAuthorityTests.Create();
         var source = f.Session.InitialTile;
         var buyerA = f.Anchors[f.Flows.DemandFlows.Single().EconomicPointId];
-        var buyerB = f.Session.AdjacentWorkable(source)
-            .First(x => x != buyerA);
+        // Buyer A also supplies wood to buyer B: the seller's separate
+        // production does not mint extra abstract purchasing power.
+        // Keep one of A's two existing forestry workers producing locally.
+        var buyerB = f.Session.AdjacentWorkable(buyerA)
+            .First(x => x != source);
 
-        f.Session.OrderWorkerTransit(source, buyerB,
-            EconomicActivityKind.Agriculture, EconomicActivityKind.Mining, 2);
+        f.Session.OrderWorkerTransit(buyerA, buyerB,
+            EconomicActivityKind.Forestry, EconomicActivityKind.Mining, 1);
         f.Session.AdvanceMovementTurn();
         f.Session.AdvanceMovementTurn();
-        f.Session.ReassignWorkers(source,
-            EconomicActivityKind.Agriculture, EconomicActivityKind.Forestry, 1);
 
         var edge = f.Session.FineWorld.StrategicTopology.Edges.First(x =>
-            x.IncidentCellIds.Contains(source.FineStrategicCellId) &&
+            x.IncidentCellIds.Contains(buyerA.FineStrategicCellId) &&
             x.IncidentCellIds.Contains(buyerB.FineStrategicCellId));
         var secondAsset = new EconomicTransportBuiltAsset(
             32, 101, new PhysicalTacticalEdgeId(
@@ -108,7 +109,7 @@ public sealed class GaVs67IndependentFreightComponentsTests
             ServiceId = 77
         });
         f.Session.TransportNetwork.SetEntitlement(template with {
-            Source = CanonicalPrimitiveSiteDiscovery.SiteId(source),
+            Source = CanonicalPrimitiveSiteDiscovery.SiteId(buyerA),
             Destination = CanonicalPrimitiveSiteDiscovery.SiteId(buyerB),
             ServiceId = 78
         });
