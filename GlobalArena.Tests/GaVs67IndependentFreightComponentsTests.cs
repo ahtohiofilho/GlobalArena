@@ -46,7 +46,7 @@ public sealed class GaVs67IndependentFreightComponentsTests
                 x.EconomicPointId, x.CommodityId, new FoodTransportCostFraction(1, 1)))
             .ToArray();
 
-    private static (GaVs56BuiltNetworkInstitutionalRightsTests.Fixture Fixture,
+    internal static (GaVs56BuiltNetworkInstitutionalRightsTests.Fixture Fixture,
         CanonicalPrimitiveSiteDiscovery Sites,
         CanonicalPrimitiveFreightPortfolio Portfolio) SharedBuyer()
     {
@@ -72,7 +72,7 @@ public sealed class GaVs67IndependentFreightComponentsTests
         return (f, sites, portfolio);
     }
 
-    private static (GaVs56BuiltNetworkInstitutionalRightsTests.Fixture Fixture,
+    internal static (GaVs56BuiltNetworkInstitutionalRightsTests.Fixture Fixture,
         CanonicalPrimitiveSiteDiscovery Sites,
         CanonicalPrimitiveFreightPortfolio Portfolio,
         CanonicalPrimitiveFreightCandidateUse FoodUse,
