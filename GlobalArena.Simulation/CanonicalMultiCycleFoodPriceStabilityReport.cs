@@ -173,7 +173,7 @@ public sealed class CanonicalMultiCycleFoodPriceStabilityReport
         {
             var observed = groups.GetValueOrDefault(c.MovementTurn) ??
                 Array.Empty<PhysicalFoodCashReceipt>();
-            var map = new Dictionary<ulong, (ulong, ulong, ulong)>();
+            var map = new Dictionary<ulong, (ulong Food, ulong Price, ulong Paid)>();
             BigInteger consumed = BigInteger.Zero;
             foreach (var receipt in observed)
             {
