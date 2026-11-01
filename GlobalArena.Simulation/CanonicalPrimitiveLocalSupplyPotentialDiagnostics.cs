@@ -48,6 +48,17 @@ public sealed class CanonicalPrimitiveLocalSupplyPotentialDiagnostics
     public bool IsCommitted => false;
     public bool IsActualConsumption => false;
 
+    /// <summary>
+    /// VS73 conditional, read-only source headroom given each already-selected
+    /// VS71 freight hypothesis; does not order exports before residents.
+    /// </summary>
+    public CanonicalPrimitiveSourceReservationDiagnostics DiagnoseSourceReservations()
+    {
+        VerifyIndependent();
+        return CanonicalPrimitiveSourceReservationDiagnostics.FromLocal(
+            _session, _sites, this);
+    }
+
     private CanonicalPrimitiveLocalSupplyPotentialDiagnostics(
         CanonicalPhysicalTacticalSession session,
         CanonicalPrimitiveSiteDiscovery sites,
