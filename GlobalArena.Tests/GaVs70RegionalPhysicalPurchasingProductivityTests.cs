@@ -62,8 +62,12 @@ public sealed class GaVs70RegionalPhysicalPurchasingProductivityTests
                 var denominator =
                     (BigInteger)referenceByFlow[(flow.CommodityId, flow.Activity)] *
                     site.ResidentWorkers;
-                computed = ExperimentalSharedFreightBatchCost.Add(
-                    computed, new FoodTransportCostFraction(flow.RawQuantity, denominator));
+                var additional = new FoodTransportCostFraction(
+                    flow.RawQuantity, denominator);
+                computed = new FoodTransportCostFraction(
+                    computed.Numerator * additional.Denominator +
+                    additional.Numerator * computed.Denominator,
+                    computed.Denominator * additional.Denominator);
             }
             Assert.Equal(0,
                 buyer.ReferenceNormalizedOutputPerResident.CompareTo(computed));
