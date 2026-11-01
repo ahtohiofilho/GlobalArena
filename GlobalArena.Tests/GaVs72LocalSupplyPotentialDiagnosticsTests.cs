@@ -148,9 +148,10 @@ public sealed class GaVs72LocalSupplyPotentialDiagnosticsTests
         var report = Diagnose(portfolio, sites);
         var snapshot = report.Snapshot;
         Assert.Equal(sites.Sites.Count, snapshot.Buyers.Count);
-        Assert.True(report.RegionalFreightAccess.Baseline.Buyers
-            .SelectMany(x => x.Commodities).Any(
-                x => x.AuthorizedFreightOffers > 0));
+        Assert.Contains(
+            report.RegionalFreightAccess.Baseline.Buyers
+                .SelectMany(x => x.Commodities),
+            x => x.AuthorizedFreightOffers > 0);
         Assert.All(snapshot.Buyers.SelectMany(x => x.Commodities), x =>
         {
             Assert.True(x.MaximumHypotheticalLocalUseRaw <=
