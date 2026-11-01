@@ -123,7 +123,7 @@ public sealed class GaVs92ExecutedFoodSampleAuditTests
             narrow, 0, Scenario(tiles: 2));
         Assert.Equal(CanonicalFoodSampleDiagnostic.InsufficientMatchedTileDiversity,
             one.Diagnostic);
-        Assert.Equal(1, one.PairedWindows);
+        Assert.Equal(2, one.PairedWindows);
     }
 
     [Fact]
