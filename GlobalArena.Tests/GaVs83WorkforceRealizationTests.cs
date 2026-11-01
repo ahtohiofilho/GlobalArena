@@ -125,9 +125,9 @@ public sealed class GaVs83WorkforceRealizationTests
         var produced = offer.SourcePotentialRaw / 2UL;
         Assert.True(produced > 1);
         Assert.Throws<ArgumentException>(() => Project(
-            f, sites, proof, activityRates, new(offer, produced + 1UL)));
+            f, sites, proof, activityRates, new CanonicalSimultaneousFreightLot(offer, produced + 1UL)));
         var a = Project(f, sites, proof,
-            activityRates, new(offer, produced));
+            activityRates, new CanonicalSimultaneousFreightLot(offer, produced));
         Assert.Equal(new BigInteger(produced), Assert.Single(
             a.Allocation!.RemoteMarkets).TotalHypotheticalDeliveredRaw);
         Assert.False(a.CapsTradeByBuyerDemand);
@@ -149,13 +149,13 @@ public sealed class GaVs83WorkforceRealizationTests
         Assert.Throws<ArgumentException>(() => Project(f, sites, proof,
             policies.Take(1)));
         var fake = new CanonicalWorkforceActivityRealizationPolicy(
-            (EconomicActivityKind)999, 1000, 0);
+            (EconomicActivityKind)255, 1000, 0);
         Assert.Throws<ArgumentException>(() => Project(f, sites, proof,
             policies.Concat([fake])));
         var empty = Project(f, sites, proof, Rates(sites, 0));
         var food = proof.Offers.Single(x => x.Commodity == new CommodityId(7));
         Assert.Throws<ArgumentException>(() => Project(f, sites, proof,
-            Rates(sites, 0), new(food, 1UL)));
+            Rates(sites, 0), new CanonicalSimultaneousFreightLot(food, 1UL)));
         empty.VerifyIndependent();
     }
 
@@ -171,9 +171,9 @@ public sealed class GaVs83WorkforceRealizationTests
         var wq = wood.SourcePotentialRaw * 8UL / 10UL / 4UL;
         Assert.True(fq > 0 && wq > 0);
         var a = Project(f, sites, proof, rates,
-            new(food, fq), new(wood, wq));
+            new CanonicalSimultaneousFreightLot(food, fq), new CanonicalSimultaneousFreightLot(wood, wq));
         var b = Project(f, sites, proof, rates.Reverse(),
-            new(wood, wq), new(food, fq));
+            new CanonicalSimultaneousFreightLot(wood, wq), new CanonicalSimultaneousFreightLot(food, fq));
         Assert.Equal(a.Sources, b.Sources);
         Assert.Equal(a.Allocation!.Sources, b.Allocation!.Sources);
         Assert.Equal(a.Allocation.LocalMarkets, b.Allocation.LocalMarkets);
