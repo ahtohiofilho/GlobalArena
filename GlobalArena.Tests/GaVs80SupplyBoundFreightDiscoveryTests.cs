@@ -9,8 +9,33 @@ public sealed class GaVs80SupplyBoundFreightDiscoveryTests
     private static (
         GaVs56BuiltNetworkInstitutionalRightsTests.Fixture Fixture,
         CanonicalPrimitiveSiteDiscovery Sites,
-        CanonicalPrimitiveFreightPortfolio Portfolio) Build() =>
-        GaVs67IndependentFreightComponentsTests.SharedBuyer();
+        CanonicalPrimitiveFreightPortfolio Portfolio) Build()
+    {
+        // Real settlement, real rights and real production from the certified
+        // VS67 fixture. Only the *nonmonetary per-resident demand intensity*
+        // is lowered in this adversarial scenario, so supply > demand.
+        // Neither a fictional buyer nor cash/credit is introduced.
+        var (fixture, _, originalPortfolio) =
+            GaVs67IndependentFreightComponentsTests.SharedBuyer();
+        var food = new CommodityId(7);
+        var wood = new CommodityId(8);
+        var stone = new CommodityId(9);
+        var sitePolicy = new CanonicalPrimitiveSiteDiscoveryPolicy(
+            new EconomicPrimitiveCommodityMapping(food, wood, stone),
+            new[] {
+                new CanonicalPrimitiveDemandRate(food, 1L),
+                new CanonicalPrimitiveDemandRate(wood, 125_000L),
+                new CanonicalPrimitiveDemandRate(stone, 250_000L)
+            }, new FoodTransportCostFraction(1, 1));
+        var sites = fixture.Session.DiscoverPrimitiveEconomicSites(sitePolicy);
+        var portfolio = fixture.Session.DiscoverPrimitiveFreightPortfolio(
+            sites, originalPortfolio.Slices.Select(x => x.Policy).ToArray(),
+            originalPortfolio.PurchasingPolicyId,
+            originalPortfolio.PurchasingPolicyVersion,
+            originalPortfolio.CalibrationId, originalPortfolio.CalibrationVersion,
+            originalPortfolio.NominalUnitId);
+        return (fixture, sites, portfolio);
+    }
 
     private static ExperimentalSharedFreightCongestionPolicy Congestion() =>
         new(1, 1_000_000);
