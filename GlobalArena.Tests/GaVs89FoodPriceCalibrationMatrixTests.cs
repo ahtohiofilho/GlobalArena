@@ -19,7 +19,7 @@ public sealed class GaVs89FoodPriceCalibrationMatrixTests
             new CanonicalPrimitiveDemandRate(new CommodityId(9), 250_000)
         }, new FoodTransportCostFraction(1, 1));
 
-    private static (
+    internal static (
         GaVs56BuiltNetworkInstitutionalRightsTests.Fixture Fixture,
         CanonicalExecutedFoodPriceTrendBridge Trend,
         CanonicalFoodPriceCalibrationMatrix Matrix) Build(
