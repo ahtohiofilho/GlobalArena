@@ -7,6 +7,7 @@ if (args.Contains("--vs67-components")) return GaVs60SessionTradePreviewBenchmar
 if (args.Contains("--vs68-scenarios")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(compareScenarios: true);
 if (args.Contains("--vs69-local-prices")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(compareLocalPrices: true);
 if (args.Contains("--vs70-regional-purchasing")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(compareRegionalPurchasing: true);
+if (args.Contains("--vs86-price-history-sidecar")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(inspectHistoricPriceSidecar: true);
 if (args.Contains("--vs85-real-economic-cycle-witness")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(witnessRealEconomicCycle: true);
 if (args.Contains("--vs84-lagged-production-response")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(respondToFrozenMarketPrice: true);
 if (args.Contains("--vs83-workforce-realization")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(projectWorkforceRealization: true);
