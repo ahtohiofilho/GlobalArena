@@ -191,9 +191,11 @@ public sealed class GaVs81SimultaneousAuthenticatedFreightTests
         Assert.Equal(a.Markets, b.Markets);
         Assert.Equal(0, a.TotalAuthenticatedNominalFreightCost.CompareTo(
             b.TotalAuthenticatedNominalFreightCost));
-        Assert.Equal(a.CorridorLoads.OrderBy(x => x.Key.FineCrossing.Value)
-            .Select(x => x.Value), b.CorridorLoads.OrderBy(x => x.Key.FineCrossing.Value)
-            .Select(x => x.Value));
+        Assert.Equal(a.CorridorLoads.Count, b.CorridorLoads.Count);
+        Assert.All(a.CorridorLoads, x => {
+            Assert.True(b.CorridorLoads.TryGetValue(x.Key, out var other));
+            Assert.Equal(x.Value, other);
+        });
         a.VerifyIndependent();
         b.VerifyIndependent();
     }
