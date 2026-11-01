@@ -47,6 +47,20 @@ public sealed class CanonicalPrimitiveSourceReservationDiagnostics
     public bool IsActualConsumption => false;
     public bool IsPersistentReservation => false;
 
+    /// <summary>
+    /// VS74: check an explicitly proposed local-use vector against ONE
+    /// already-audited VS71 freight scenario. No local cash affordability,
+    /// settlement or priority policy is implied.
+    /// </summary>
+    public CanonicalPrimitiveJointPhysicalUsePreview PreviewJointPhysicalUse(
+        string scenarioId,
+        IEnumerable<CanonicalPrimitiveLocalUseProposal> proposedLocalUses)
+    {
+        VerifyIndependent();
+        return CanonicalPrimitiveJointPhysicalUsePreview.FromSourceAudit(
+            _session, _sites, this, scenarioId, proposedLocalUses);
+    }
+
     private CanonicalPrimitiveSourceReservationDiagnostics(
         CanonicalPhysicalTacticalSession session,
         CanonicalPrimitiveSiteDiscovery sites,
