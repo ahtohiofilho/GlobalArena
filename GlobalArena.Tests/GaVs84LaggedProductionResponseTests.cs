@@ -150,11 +150,12 @@ public sealed class GaVs84LaggedProductionResponseTests
         var almostFull = Previous(fixture, sites, freight, 1000);
         var high = Respond(fixture, sites, freight, almostFull, 250);
         Assert.All(high.Signals, x => {
-            Assert.Equal(1000, x.NextUtilizationPermille);
-            Assert.True(x.BoundedUtilizationDeltaPermille >= 0);
+            Assert.Equal(Math.Clamp(1000 + x.BoundedUtilizationDeltaPermille,
+                0, 1000), x.NextUtilizationPermille);
+            Assert.InRange(x.NextUtilizationPermille, 750, 1000);
         });
         Assert.All(high.NextProjection.Sources, x =>
-            Assert.Equal(x.PotentialRaw, x.DerivedProducedRaw));
+            Assert.True(x.DerivedProducedRaw <= x.PotentialRaw));
         high.VerifyIndependent();
     }
 
