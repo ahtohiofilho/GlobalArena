@@ -6,7 +6,7 @@ namespace GlobalArena.Tests;
 
 public sealed class GaVs90MultiCycleFoodPriceStabilityTests
 {
-    private static (
+    internal static (
         GaVs56BuiltNetworkInstitutionalRightsTests.Fixture Fixture,
         CanonicalFoodPriceCalibrationMatrix Matrix,
         CanonicalMultiCycleFoodPriceStabilityReport Report) Build(int count = 3)
