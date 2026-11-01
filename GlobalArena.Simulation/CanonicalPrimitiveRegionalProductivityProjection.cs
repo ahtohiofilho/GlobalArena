@@ -53,6 +53,16 @@ public sealed class CanonicalPrimitiveRegionalProductivityProjection
         _sites.RequireCurrent(session);
     }
 
+    internal void RequireSites(
+        CanonicalPhysicalTacticalSession session,
+        CanonicalPrimitiveSiteDiscovery sites)
+    {
+        RequireCurrent(session);
+        if (!ReferenceEquals(_sites, sites))
+            throw new InvalidOperationException(
+                "Regional productivity must originate from this exact physical economic site inventory.");
+    }
+
     public ExperimentalAbstractPurchasingPolicy ApplyTo(
         ExperimentalAbstractPurchasingPolicy referencePolicy)
     {
