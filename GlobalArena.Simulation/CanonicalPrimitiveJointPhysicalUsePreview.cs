@@ -57,6 +57,18 @@ public sealed class CanonicalPrimitiveJointPhysicalUsePreview
     public bool IsCommitted => false;
     public bool IsPersistentReservation => false;
 
+    /// <summary>
+    /// VS75 compares two local-cash accounting hypotheses and observes
+    /// coverage without selecting a monetary or social-market policy.
+    /// </summary>
+    public CanonicalPrimitiveLocalBudgetShadowDiagnostics
+        DiagnoseLocalBudgetHypotheses()
+    {
+        VerifyIndependent();
+        return CanonicalPrimitiveLocalBudgetShadowDiagnostics.FromTrial(
+            _session, this, _sourceAudit);
+    }
+
     private CanonicalPrimitiveJointPhysicalUsePreview(
         CanonicalPhysicalTacticalSession session,
         CanonicalPrimitiveSiteDiscovery sites,
