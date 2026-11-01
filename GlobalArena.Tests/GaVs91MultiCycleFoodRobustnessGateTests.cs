@@ -21,7 +21,7 @@ public sealed class GaVs91MultiCycleFoodRobustnessGateTests
         new(sourceTurn, targetTurn, sourceFood, targetFood, common,
             sourceWeightedPrice, targetWeightedPrice, tiles);
 
-    private static (
+    internal static (
         GaVs56BuiltNetworkInstitutionalRightsTests.Fixture Fixture,
         CanonicalMultiCycleFoodPriceStabilityReport History,
         CanonicalMultiCycleFoodRobustnessGate Gate) Build()
