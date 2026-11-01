@@ -21,24 +21,25 @@ public sealed class GaVs92ExecutedFoodSampleAuditTests
 
     private static (
         GaVs56BuiltNetworkInstitutionalRightsTests.Fixture Fixture,
+        CanonicalMultiCycleFoodPriceStabilityReport History,
         CanonicalMultiCycleFoodRobustnessGate Gate91,
         CanonicalExecutedFoodSampleAudit Audit) Build()
     {
-        var (f, _, g) = GaVs91MultiCycleFoodRobustnessGateTests.Build();
+        var (f, history, g) = GaVs91MultiCycleFoodRobustnessGateTests.Build();
         var audit = CanonicalExecutedFoodSampleAudit.FromVerifiedRobustness(
             f.Session, g, new[] {
                 Scenario(),
                 Scenario("min-two-tiles", tiles: 2),
                 Scenario("max-half-concentration", maxLargest: 500)
             });
-        return (f, g, audit);
+        return (f, history, g, audit);
     }
 
     [Fact]
     public void CanonicalThreeCycleFoodSampleIsAuditedFromRealPaidTilesOnly()
     {
-        var (f, gate, audit) = Build();
-        var historic = gate.SourceHistory.Windows;
+        var (f, history, gate, audit) = Build();
+        var historic = history.Windows;
         Assert.Equal(2, audit.Windows.Count);
         Assert.Equal(3, audit.Assessments.Count);
         Assert.True(audit.MeasuresOnlyExecutedLocalFoodSample);
@@ -73,7 +74,7 @@ public sealed class GaVs92ExecutedFoodSampleAuditTests
     [Fact]
     public void TileConcentrationIsCalculatedFromPaidFoodAndMatchedPhysicalQuantity()
     {
-        var (f, gate, audit) = Build();
+        var (f, _, gate, audit) = Build();
         var receipts = f.Session.State.FoodCash!.Receipts;
         foreach (var w in audit.Windows)
         {
@@ -116,7 +117,7 @@ public sealed class GaVs92ExecutedFoodSampleAuditTests
             none.Diagnostic);
         var narrow = new[] {
             Window(1, 2, 1, 1, 1, 100, 100, 100, 100),
-            Window(2, 3)
+            Window(2, 3, 1, 1, 1, 100, 100, 100, 100)
         };
         var one = CanonicalExecutedFoodSampleAudit.EvaluateHypotheticalCriteria(
             narrow, 0, Scenario(tiles: 2));
@@ -192,7 +193,7 @@ public sealed class GaVs92ExecutedFoodSampleAuditTests
     [Fact]
     public void InvalidThresholdsImpossibleSharesAndDuplicatePoliciesAreRejected()
     {
-        var (f, gate, _) = Build();
+        var (f, _, gate, _) = Build();
         var malformed = new[] {
             Scenario(name: ""),
             Scenario(name: "bad space"),
@@ -232,7 +233,7 @@ public sealed class GaVs92ExecutedFoodSampleAuditTests
     [Fact]
     public void RestoredSaveAndNewTickCannotReuseLiveRepresentationProof()
     {
-        var (f, gate, audit) = Build();
+        var (f, _, gate, audit) = Build();
         var restored = CanonicalPhysicalTacticalSession.RestoreSaveJson(
             f.Session.ExportSaveJson());
         Assert.Throws<InvalidOperationException>(() =>
@@ -250,7 +251,7 @@ public sealed class GaVs92ExecutedFoodSampleAuditTests
     [Fact]
     public void NetworkRevisionInvalidatesSampleWithoutChangingWorldSave()
     {
-        var (f, gate, audit) = Build();
+        var (f, _, gate, audit) = Build();
         f.Session.TransportNetwork.SetAccess(f.Asset.GeographicEdgeId, true);
         Assert.Throws<InvalidOperationException>(() =>
             audit.RequireCurrent(f.Session));
@@ -259,7 +260,7 @@ public sealed class GaVs92ExecutedFoodSampleAuditTests
     [Fact]
     public void RepeatedAuditReconstructsSamePaidFoodRowsWithoutMutation()
     {
-        var (f, gate, audit) = Build();
+        var (f, _, gate, audit) = Build();
         var save = f.Session.ExportSaveJson();
         var hash = f.Session.CurrentHash;
         for (var i = 0; i < 3; i++)
