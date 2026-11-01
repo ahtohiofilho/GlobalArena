@@ -143,7 +143,7 @@ public sealed class CanonicalEndogenousLocalPriceComparison
     /// budget, and is unbounded as quantity grows when demandPressure > 0.
     /// Both alternatives are experimental and use no monetary source inputs.
     /// </summary>
-    internal static (CanonicalEndogenousPriceIndex Last,
+    public static (CanonicalEndogenousPriceIndex Last,
         CanonicalEndogenousPriceIndex Average,
         CanonicalEndogenousPriceIndex Revenue)
         Calculate(BigInteger offered, BigInteger demandPressure, int sensitivity)
