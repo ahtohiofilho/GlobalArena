@@ -241,7 +241,7 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
                                 new ExperimentalBuyerCommodityPrice(
                                     x.EconomicPointId, x.CommodityId,
                                     new FoodTransportCostFraction(1, 1))).ToArray();
-                            var buyer = portfolio.CandidateUses[0].Buyer;
+                            var localBuyer = portfolio.CandidateUses[0].Buyer;
                             var compared = portfolio.CompareLocalizedBuyerPrices(
                                 portfolio.CandidateUses, prices,
                                 new ExperimentalAbstractPurchasingPolicy(
@@ -250,10 +250,10 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
                                     new FoodTransportCostFraction(5, 8)),
                                 congestion, new[] {
                                     new CanonicalPrimitiveLocalPriceShock(
-                                        "food-expensive", buyer, food,
+                                        "food-expensive", localBuyer, food,
                                         new FoodTransportCostFraction(1_000_000, 1)),
                                     new CanonicalPrimitiveLocalPriceShock(
-                                        "wood-expensive", buyer, new CommodityId(8),
+                                        "wood-expensive", localBuyer, new CommodityId(8),
                                         new FoodTransportCostFraction(1_000_000, 1))
                                 }, 100_000UL);
                             if (compared.Impacts.Count != 2 ||
