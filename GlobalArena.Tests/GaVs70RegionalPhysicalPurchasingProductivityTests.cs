@@ -28,14 +28,41 @@ public sealed class GaVs70RegionalPhysicalPurchasingProductivityTests
                 new FoodTransportCostFraction(1, 1))).ToArray();
 
     private static CanonicalPrimitiveProductivityReference[] References(
-        CanonicalPrimitiveSiteDiscovery sites) =>
-        sites.Flows.SupplyFlows.Select(x =>
-            new CanonicalPrimitiveProductivityReference(
-                x.CommodityId, x.Activity,
-                x.CommodityId == Food ? 1_000_000UL :
-                x.CommodityId == Wood ? 100_000UL : 50_000UL))
+        CanonicalPrimitiveSiteDiscovery sites)
+    {
+        var inhabited = sites.Sites.ToDictionary(x => x.Point);
+        var yields = sites.Flows.SupplyFlows.Select(x =>
+        {
+            var site = inhabited[x.EconomicPointId];
+            var workers = x.Activity switch {
+                EconomicActivityKind.Agriculture => site.AgriculturalWorkers,
+                EconomicActivityKind.Forestry => site.ForestryWorkers,
+                EconomicActivityKind.Mining => site.MiningWorkers,
+                _ => throw new InvalidOperationException("Unknown productive activity.")
+            };
+            if (workers == 0UL)
+                throw new InvalidOperationException(
+                    "Observed physical production has no productive workers.");
+            return (Flow: x, PerWorker: x.RawQuantity / workers);
+        }).ToArray();
+        // Deliberately opposite, *observed-yield-relative* reference
+        // calibrations make this test probe different regional factors.
+        // Unlike fixed arbitrary 1M / 50k references, these remain meaningful
+        // even when the canonical physical worldgen changes its yield scale.
+        var minFoodYield = yields.Where(x => x.Flow.CommodityId == Food)
+            .Min(x => x.PerWorker);
+        var maxStoneYield = yields.Where(x => x.Flow.CommodityId == Stone)
+            .Max(x => x.PerWorker);
+        var foodReference = Math.Max(1UL, minFoodYield / 2UL);
+        var stoneReference = (ulong)BigInteger.Min(
+            (BigInteger)maxStoneYield * 8, ulong.MaxValue);
+        return yields.Select(x => new CanonicalPrimitiveProductivityReference(
+                x.Flow.CommodityId, x.Flow.Activity,
+                x.Flow.CommodityId == Food ? foodReference :
+                x.Flow.CommodityId == Wood ? 100_000UL : stoneReference))
             .DistinctBy(x => (x.Commodity, x.Activity))
             .ToArray();
+    }
 
     [Fact]
     public void ProductivityIsPhysicalPerResidentAndComparableOnlyAfterCommodityNormalization()
