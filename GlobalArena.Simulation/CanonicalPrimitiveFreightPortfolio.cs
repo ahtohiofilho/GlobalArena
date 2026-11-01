@@ -127,8 +127,8 @@ public sealed class CanonicalPrimitiveFreightPortfolio
     {
         ArgumentNullException.ThrowIfNull(baselinePolicy);
         ArgumentNullException.ThrowIfNull(region);
-        region.RequireCurrent(_session);
         RequireCurrent(_session);
+        region.RequireSites(_session, _sites);
         var prices = postedPrices.ToArray();
         var calibrated = region.ApplyTo(baselinePolicy);
         return CompareFreightScenarios(candidates, new[] {
@@ -139,6 +139,20 @@ public sealed class CanonicalPrimitiveFreightPortfolio
         }, "baseline", rawQuantum, maximumQuantaPerCandidate,
             maximumConfigurationsPerComponent);
     }
+
+    public CanonicalPrimitiveRegionalAccessDistribution DiagnoseRegionalFreightAccess(
+        IEnumerable<CanonicalPrimitiveFreightCandidateUse> candidates,
+        IEnumerable<ExperimentalBuyerCommodityPrice> postedPrices,
+        ExperimentalAbstractPurchasingPolicy baselinePolicy,
+        ExperimentalSharedFreightCongestionPolicy congestionPolicy,
+        CanonicalPrimitiveRegionalProductivityProjection region,
+        ulong rawQuantum, int maximumQuantaPerCandidate = 1,
+        int maximumConfigurationsPerComponent =
+            CanonicalPrimitiveJointFreightSelector.MaximumConfigurations) =>
+        CanonicalPrimitiveRegionalAccessDistribution.FromPortfolio(
+            this, _session, candidates, postedPrices, baselinePolicy,
+            congestionPolicy, region, rawQuantum, maximumQuantaPerCandidate,
+            maximumConfigurationsPerComponent);
 
     public int RegisteredRightsInspectedPerSlice { get; }
     public int TotalEligibleIntents { get; }

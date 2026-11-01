@@ -27,7 +27,7 @@ public sealed class GaVs70RegionalPhysicalPurchasingProductivityTests
                 x.EconomicPointId, x.CommodityId,
                 new FoodTransportCostFraction(1, 1))).ToArray();
 
-    private static CanonicalPrimitiveProductivityReference[] References(
+    internal static CanonicalPrimitiveProductivityReference[] References(
         CanonicalPrimitiveSiteDiscovery sites)
     {
         var inhabited = sites.Sites.ToDictionary(x => x.Point);
