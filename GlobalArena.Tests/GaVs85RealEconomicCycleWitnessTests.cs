@@ -24,8 +24,12 @@ public sealed class GaVs85RealEconomicCycleWitnessTests
         CanonicalPrimitiveFreightPortfolio Portfolio,
         CanonicalCycleStampedPriceReceipt Receipt) Capture()
     {
-        var (f, sites, portfolio) =
+        var (f, _, portfolio) =
             GaVs67IndependentFreightComponentsTests.SharedBuyer();
+        // SharedBuyer reassigned a worker in the same movement turn as
+        // settlement; seal a NEW actual cycle-closing tick before freezing.
+        Assert.NotNull(f.Session.AdvanceMovementTurn());
+        var sites = f.Session.DiscoverPrimitiveEconomicSites(Policy());
         var priorFreight = Freight(f.Session, sites, portfolio);
         var rates = sites.Flows.SupplyFlows
             .Where(x => x.RawQuantity > 0)
@@ -60,6 +64,30 @@ public sealed class GaVs85RealEconomicCycleWitnessTests
     {
         var sites = f.Session.DiscoverPrimitiveEconomicSites(Policy());
         return (sites, Freight(f.Session, sites, portfolio));
+    }
+
+    [Fact]
+    public void SameTurnWorkerActionAfterSettlementCannotMasqueradeAsCycleClosingTick()
+    {
+        var (f, sites, portfolio) =
+            GaVs67IndependentFreightComponentsTests.SharedBuyer();
+        var priorFreight = Freight(f.Session, sites, portfolio);
+        var policies = sites.Flows.SupplyFlows
+            .Where(x => x.RawQuantity > 0)
+            .Select(x => x.Activity).Distinct()
+            .Select(x => new CanonicalWorkforceActivityRealizationPolicy(
+                x, 500, 0)).ToArray();
+        var old = CanonicalWorkforceRealizationProjection.FromSites(
+            f.Session, sites, priorFreight, policies,
+            Array.Empty<CanonicalSimultaneousFreightLot>(), Congestion());
+        var feedback = CanonicalLaggedProductionResponse.FromFrozenProjection(
+            f.Session, sites, priorFreight, old, 100,
+            Array.Empty<CanonicalSimultaneousFreightLot>(), Congestion());
+        Assert.Equal(f.Session.State.MovementTurn,
+            f.Session.State.Cycles[^1].MovementTurn);
+        Assert.Equal("reassign", f.Session.Events[^1].Kind);
+        Assert.Throws<InvalidOperationException>(() =>
+            CanonicalCycleStampedPriceReceipt.Capture(f.Session, feedback));
     }
 
     [Fact]
