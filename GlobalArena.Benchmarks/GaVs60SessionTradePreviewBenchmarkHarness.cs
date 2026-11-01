@@ -222,6 +222,11 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
             CanonicalSimultaneousFreightReference? currentFreight85 = null;
             if (witnessRealEconomicCycle)
             {
+                // End this real economic cycle AFTER the authenticated worker
+                // reassignment; its closing tick is the VS85 freeze boundary.
+                if (session.AdvanceMovementTurn() is null)
+                    throw new InvalidOperationException(
+                        "GA-VS85 requires a cycle-closing physical tick before freezing the quote.");
                 var sourceSites85 = session.DiscoverPrimitiveEconomicSites(discoveryPolicy);
                 var sourceFreight85 = CanonicalSimultaneousFreightReference.FromSites(
                     session, sourceSites85, portfolioProfiles,
