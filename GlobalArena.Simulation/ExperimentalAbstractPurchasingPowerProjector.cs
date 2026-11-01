@@ -32,12 +32,15 @@ public sealed class ExperimentalAbstractPurchasingPolicy
     public ulong Version { get; }
     public FoodTransportCostFraction BasePurchasingUnitsPerResident { get; }
     public FoodTransportCostFraction ProtectedInvisibleUnitsPerResident { get; }
+    public CanonicalPrimitiveRegionalProductivityProjection? RegionalProductivity { get; }
 
     public ExperimentalAbstractPurchasingPolicy(
         string policyId, ulong version,
         FoodTransportCostFraction basePurchasingUnitsPerResident,
-        FoodTransportCostFraction protectedInvisibleUnitsPerResident)
+        FoodTransportCostFraction protectedInvisibleUnitsPerResident,
+        CanonicalPrimitiveRegionalProductivityProjection? regionalProductivity = null)
     {
+        RegionalProductivity = regionalProductivity;
         if (string.IsNullOrWhiteSpace(policyId) || version == 0)
             throw new ArgumentException("Abstract purchasing policy needs a stable ID/version.");
         BasePurchasingUnitsPerResident =
@@ -172,6 +175,14 @@ public sealed class ExperimentalAbstractPurchasingPowerProjector
             }
         }
 
+        policy.RegionalProductivity?.RequireCurrent(session);
+        var regional = policy.RegionalProductivity?.Buyers.ToDictionary(x => x.Buyer);
+        if (regional is not null &&
+            !regional.Keys.ToHashSet().SetEquals(buyers.Select(x => x.Buyer)))
+            throw new ArgumentException(
+                "Regional productivity must cover all resident buyers in this physical snapshot.",
+                nameof(policy));
+
         var budgetRows = new List<ExperimentalAbstractBuyerProjection>();
         var budgets = new List<ExperimentalBuyerCashBudget>();
         var total = ExperimentalCashMoney.Zero;
@@ -182,9 +193,18 @@ public sealed class ExperimentalAbstractPurchasingPowerProjector
             covered = checked(covered + workers);
             var baseUnits = ExperimentalCashMoney.Multiply(
                 policy.BasePurchasingUnitsPerResident, new BigInteger(workers), 1);
+            var localFactor = regional is null
+                ? new FoodTransportCostFraction(1, 1)
+                : regional[anchor.Buyer].PurchasingProductivityFactor;
+            if (regional is not null && regional[anchor.Buyer].Tile != anchor.Tile)
+                throw new ArgumentException(
+                    "Regional calibration maps the buyer to a different physical tile.",
+                    nameof(policy));
+            var factor = new FoodTransportCostFraction(
+                anchor.PurchasingProductivityFactor.Numerator * localFactor.Numerator,
+                anchor.PurchasingProductivityFactor.Denominator * localFactor.Denominator);
             var gross = ExperimentalCashMoney.Multiply(baseUnits,
-                anchor.PurchasingProductivityFactor.Numerator,
-                anchor.PurchasingProductivityFactor.Denominator);
+                factor.Numerator, factor.Denominator);
             var protectedH = ExperimentalCashMoney.Multiply(
                 policy.ProtectedInvisibleUnitsPerResident,
                 new BigInteger(workers), 1);
@@ -193,7 +213,7 @@ public sealed class ExperimentalAbstractPurchasingPowerProjector
             budgets.Add(temporary);
             budgetRows.Add(new ExperimentalAbstractBuyerProjection(
                 anchor.Buyer, anchor.Tile, workers,
-                anchor.PurchasingProductivityFactor, temporary));
+                factor, temporary));
             total = ExperimentalCashMoney.Add(total, gross);
         }
 
