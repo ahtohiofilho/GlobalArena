@@ -48,15 +48,7 @@ public sealed class GaVs56BuiltNetworkInstitutionalRightsTests
 
     internal sealed class Fixture
     {
-        public CanonicalPhysicalTacticalSession Session { get; } =
-            CanonicalPhysicalTacticalSession.Start(
-                20261012UL, new GoldbergParameters(3, 0),
-                new GoldbergParameters(18, 0),
-                PhysicalEconomicCadenceMode.AdaptiveThirty,
-                PhysicalTacticalGeographyMode.Canonical01C,
-                PhysicalFoodMarketMode.LocalCashSettlement,
-                PhysicalWorkerMovementMode.TimedAdjacent,
-                PhysicalCivilizationIdentityMode.BornWithPopulation);
+        public CanonicalPhysicalTacticalSession Session { get; }
 
         public EconomicTransportBuiltAsset Asset { get; }
         public ExperimentalSharedFreightOption Option { get; }
@@ -74,8 +66,16 @@ public sealed class GaVs56BuiltNetworkInstitutionalRightsTests
         public StrategicEdgeAccessSnapshot Access { get; } =
             StrategicEdgeAccessSnapshot.AllOpen;
 
-        public Fixture()
+        public Fixture(ulong seed = 20261012UL)
         {
+            Session = CanonicalPhysicalTacticalSession.Start(
+                seed, new GoldbergParameters(3, 0),
+                new GoldbergParameters(18, 0),
+                PhysicalEconomicCadenceMode.AdaptiveThirty,
+                PhysicalTacticalGeographyMode.Canonical01C,
+                PhysicalFoodMarketMode.LocalCashSettlement,
+                PhysicalWorkerMovementMode.TimedAdjacent,
+                PhysicalCivilizationIdentityMode.BornWithPopulation);
             var sourceTile = Session.InitialTile;
             var buyerTile = Session.AdjacentWorkable(sourceTile)[0];
             Session.OrderWorkerTransit(sourceTile, buyerTile,
