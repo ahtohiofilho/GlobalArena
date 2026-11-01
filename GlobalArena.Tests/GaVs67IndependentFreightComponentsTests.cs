@@ -141,7 +141,9 @@ public sealed class GaVs67IndependentFreightComponentsTests
     {
         var (f, sites, portfolio, food, wood) = TwoDisjointRoads();
         var before = f.Session.ExportSaveJson();
-        var result = Select(portfolio, sites, new[] { wood, food });
+        var quantum = Math.Min(food.MaximumRawQuantity, wood.MaximumRawQuantity) / 8UL;
+        Assert.True(quantum > 0UL);
+        var result = Select(portfolio, sites, new[] { wood, food }, quantum: quantum);
         Assert.Equal(2, result.IndependentComponentCount);
         Assert.Equal(81, result.PossibleGlobalConfigurations);
         Assert.Equal(18, result.EvaluatedComponentConfigurations);
@@ -163,7 +165,7 @@ public sealed class GaVs67IndependentFreightComponentsTests
 
         Assert.Throws<ArgumentException>(() => portfolio.SelectJointFreight(
             new[] { food, wood }, Prices(sites), Purchasing(), Congestion(),
-            10_000UL, 8, 10));
+            quantum, 8, 10));
     }
 
     [Fact]
@@ -220,7 +222,10 @@ public sealed class GaVs67IndependentFreightComponentsTests
     public void ForgedCandidatesIncompletePricesAndLiveNetworkChangesFailClosed()
     {
         var (f, sites, portfolio, food, wood) = TwoDisjointRoads();
-        var selected = Select(portfolio, sites, new[] { food, wood });
+        var quantum = Math.Min(food.MaximumRawQuantity, wood.MaximumRawQuantity) / 8UL;
+        Assert.True(quantum > 0UL);
+        var selected = Select(portfolio, sites, new[] { food, wood },
+            quantum: quantum);
         var prices = Prices(sites);
         Assert.Throws<ArgumentException>(() =>
             portfolio.SelectIndependentFreightComponents(
@@ -237,7 +242,7 @@ public sealed class GaVs67IndependentFreightComponentsTests
         Assert.Throws<ArgumentException>(() =>
             portfolio.SelectIndependentFreightComponents(
                 new[] { food, wood }, prices, Purchasing(),
-                Congestion(), 10_000, 8, 8));
+                Congestion(), quantum, 8, 8));
         var save = f.Session.ExportSaveJson();
         var restored = CanonicalPhysicalTacticalSession.RestoreSaveJson(save);
         Assert.Throws<InvalidOperationException>(() =>
