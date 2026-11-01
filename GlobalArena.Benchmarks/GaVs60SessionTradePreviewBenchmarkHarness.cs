@@ -238,11 +238,11 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
                                 sites, portfolioProfiles, "VS60-BENCH-PURCHASING", 1,
                                 "VS60-BENCH-CALIBRATION", 1, "VS40-NOMINAL");
                             var freight = portfolio.CandidateUses.First();
-                            var source = sites.At(freight.Source)!;
-                            var supply = source.Supply.Single(x =>
+                            var localSite = sites.At(freight.Source)!;
+                            var supply = localSite.Supply.Single(x =>
                                 x.CommodityId == freight.Commodity &&
                                 x.Activity == freight.Activity);
-                            var demand = source.Demand.Single(x =>
+                            var demand = localSite.Demand.Single(x =>
                                 x.CommodityId == freight.Commodity);
                             var quantum = Math.Min(100_000UL, Math.Min(
                                 freight.MaximumRawQuantity,
