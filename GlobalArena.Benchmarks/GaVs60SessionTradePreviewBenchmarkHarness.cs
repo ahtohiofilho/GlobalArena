@@ -234,30 +234,30 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
                         if (compareSupplyBoundFreight)
                         {
                             var supplySites = session.DiscoverPrimitiveEconomicSites(discoveryPolicy);
-                            var proof = CanonicalSupplyBoundFreightReference.FromSites(
+                            var supplyBoundReference = CanonicalSupplyBoundFreightReference.FromSites(
                                 session, supplySites, portfolioProfiles[0],
                                 "VS60-BENCH-PURCHASING", 1,
                                 "VS60-BENCH-CALIBRATION", 1, "VS40-NOMINAL");
-                            if (proof.Services.Count == 0 ||
-                                proof.UsesExogenousMoneyBudget ||
-                                proof.CapsQuantityByBuyerDemand ||
-                                !proof.UsesRealInstitutionalProof ||
-                                !proof.EnforcesSourcePhysicalQuantity ||
-                                proof.ProvesHardVehicleThroughput ||
-                                proof.ComputesNetMonetaryRevenue ||
-                                proof.CanAuthorizeRealSettlement)
+                            if (supplyBoundReference.Services.Count == 0 ||
+                                supplyBoundReference.UsesExogenousMoneyBudget ||
+                                supplyBoundReference.CapsQuantityByBuyerDemand ||
+                                !supplyBoundReference.UsesRealInstitutionalProof ||
+                                !supplyBoundReference.EnforcesSourcePhysicalQuantity ||
+                                supplyBoundReference.ProvesHardVehicleThroughput ||
+                                supplyBoundReference.ComputesNetMonetaryRevenue ||
+                                supplyBoundReference.CanAuthorizeRealSettlement)
                                 throw new InvalidOperationException(
                                     "GA-VS80 supply-only authenticated freight reference violated scope.");
-                            var row = proof.Services.First();
-                            var trial = proof.PreviewOneLot(
+                            var row = supplyBoundReference.Services.First();
+                            var trial = supplyBoundReference.PreviewOneLot(
                                 row.ServiceId, row.NewSupplyBoundRaw, congestion);
                             if (trial.RawQuantity != row.SourcePhysicalSupplyRaw ||
                                 trial.BuyerDemandPriceSignalRaw != row.BuyerDemandPriceSignalRaw ||
                                 trial.AuthenticatedNominalFreightCost.Numerator < 0)
                                 throw new InvalidOperationException(
                                     "GA-VS80 physical envelope or nominal authenticated freight diverged.");
-                            proof.VerifyIndependent();
-                            proof.RequireCurrent(session);
+                            supplyBoundReference.VerifyIndependent();
+                            supplyBoundReference.RequireCurrent(session);
                             continue;
                         }
                         if (compareEndogenousRemote)
