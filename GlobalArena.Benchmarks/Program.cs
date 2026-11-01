@@ -7,6 +7,7 @@ if (args.Contains("--vs67-components")) return GaVs60SessionTradePreviewBenchmar
 if (args.Contains("--vs68-scenarios")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(compareScenarios: true);
 if (args.Contains("--vs69-local-prices")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(compareLocalPrices: true);
 if (args.Contains("--vs70-regional-purchasing")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(compareRegionalPurchasing: true);
+if (args.Contains("--vs74-joint-physical")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(previewJointPhysicalUse: true);
 if (args.Contains("--vs73-source-headroom")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(diagnoseSourceReservations: true);
 if (args.Contains("--vs72-local-supply")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(diagnoseLocalSupply: true);
 if (args.Contains("--vs71-regional-access")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(diagnoseRegionalAccess: true);
