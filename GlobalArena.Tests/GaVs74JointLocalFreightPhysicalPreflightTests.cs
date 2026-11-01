@@ -146,6 +146,42 @@ public sealed class GaVs74JointLocalFreightPhysicalPreflightTests
     }
 
     [Fact]
+    public void LocalTrialCannotReuseUnitsAlreadyAssignedToSelectedExports()
+    {
+        var (fixture, sites, portfolio) =
+            GaVs67IndependentFreightComponentsTests.SharedBuyer();
+        var audit = Diagnose(portfolio, sites);
+        var lots = audit.RegionalFreightAccess.Comparison.Baseline
+            .Selection.Lots;
+        Assert.NotEmpty(lots);
+        var exported = lots[0].Candidate;
+        var supplyFlow = Assert.Single(sites.At(exported.Source)!.Supply,
+            x => x.CommodityId == exported.Commodity &&
+                x.Activity == exported.Activity);
+        var totalExported = lots.Where(x =>
+                x.Candidate.Source == exported.Source &&
+                x.Candidate.Commodity == exported.Commodity &&
+                x.Candidate.Activity == exported.Activity)
+            .Aggregate(0UL, (sum, x) => checked(sum + x.RawQuantity));
+        Assert.True(totalExported > 0UL);
+        Assert.True(totalExported <= supplyFlow.RawQuantity);
+        var proposedLocalRaw = checked(supplyFlow.RawQuantity -
+            totalExported + 1UL);
+        var rejected = new CanonicalPrimitiveLocalUseProposal(
+            exported.Source, exported.Commodity,
+            exported.Activity, proposedLocalRaw);
+        Assert.Throws<ArgumentException>(() =>
+            audit.PreviewJointPhysicalUse(audit.Baseline.ScenarioId, [rejected]));
+        // A failed hypothesis never mutates world, budgets or planned freight.
+        Assert.Equal(fixture.Session.CurrentHash, sites.WorldHash);
+        Assert.Equal(totalExported, lots.Where(x =>
+                x.Candidate.Source == exported.Source &&
+                x.Candidate.Commodity == exported.Commodity &&
+                x.Candidate.Activity == exported.Activity)
+            .Aggregate(0UL, (sum, x) => checked(sum + x.RawQuantity)));
+    }
+
+    [Fact]
     public void ProposedLocalUseIsCopiedAndDeterministicUnderInputReordering()
     {
         var (fixture, sites, portfolio) =
