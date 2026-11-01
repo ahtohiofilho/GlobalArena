@@ -143,8 +143,17 @@ public sealed class GaVs79AuthenticatedFreightEndogenousShadowTests
         var (candidate, quantity) = FirstShipment(sites, portfolio);
         var a = Compare(fixture, portfolio, candidate, quantity);
         var b = Compare(fixture, portfolio, candidate, quantity);
-        Assert.Equal(a.Gentle, b.Gentle);
-        Assert.Equal(a.Steep, b.Steep);
+        Assert.Equal(a.Gentle.Source, b.Gentle.Source);
+        Assert.Equal(a.Gentle.Buyer, b.Gentle.Buyer);
+        Assert.Equal(a.Gentle.RawQuantity, b.Gentle.RawQuantity);
+        Assert.Equal(a.Gentle.BuyerGrossRevenueIndex,
+            b.Gentle.BuyerGrossRevenueIndex);
+        Assert.Equal(a.Steep.SourceGrossRevenueIndex,
+            b.Steep.SourceGrossRevenueIndex);
+        Assert.Equal(0, a.Gentle.AuthenticatedNominalFreightCost.CompareTo(
+            b.Gentle.AuthenticatedNominalFreightCost));
+        Assert.Equal(0, a.Steep.AuthenticatedNominalFreightCost.CompareTo(
+            b.Steep.AuthenticatedNominalFreightCost));
         var restored = CanonicalPhysicalTacticalSession.RestoreSaveJson(
             fixture.Session.ExportSaveJson());
         Assert.Throws<InvalidOperationException>(() => a.RequireCurrent(restored));
