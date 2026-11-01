@@ -137,7 +137,7 @@ public sealed class GaVs74JointLocalFreightPhysicalPreflightTests
             "unverified-new-market", [proposal]));
         var unknown = new CanonicalPrimitiveLocalUseProposal(
             proposal.Point, proposal.Commodity,
-            (EconomicActivityKind)int.MaxValue, 1UL);
+            (EconomicActivityKind)100, 1UL);
         Assert.Throws<ArgumentException>(() => audit.PreviewJointPhysicalUse(
             audit.Baseline.ScenarioId, [unknown]));
         Assert.Throws<ArgumentException>(() => audit.PreviewJointPhysicalUse(
