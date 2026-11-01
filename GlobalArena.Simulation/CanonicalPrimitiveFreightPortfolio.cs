@@ -108,6 +108,38 @@ public sealed class CanonicalPrimitiveFreightPortfolio
             purchasingPolicy, congestionPolicy, shocks, rawQuantum,
             maximumQuantaPerCandidate, maximumConfigurationsPerComponent);
 
+    public CanonicalPrimitiveRegionalProductivityProjection CalibrateRegionalPurchasing(
+        IEnumerable<CanonicalPrimitiveProductivityReference> references,
+        FoodTransportCostFraction minimumFactor,
+        FoodTransportCostFraction maximumFactor) =>
+        CanonicalPrimitiveRegionalProductivityProjection.FromSites(
+            _session, _sites, references, minimumFactor, maximumFactor);
+
+    public CanonicalPrimitiveFreightScenarioComparison CompareRegionalPurchasing(
+        IEnumerable<CanonicalPrimitiveFreightCandidateUse> candidates,
+        IEnumerable<ExperimentalBuyerCommodityPrice> postedPrices,
+        ExperimentalAbstractPurchasingPolicy baselinePolicy,
+        ExperimentalSharedFreightCongestionPolicy congestionPolicy,
+        CanonicalPrimitiveRegionalProductivityProjection region,
+        ulong rawQuantum, int maximumQuantaPerCandidate = 1,
+        int maximumConfigurationsPerComponent =
+            CanonicalPrimitiveJointFreightSelector.MaximumConfigurations)
+    {
+        ArgumentNullException.ThrowIfNull(baselinePolicy);
+        ArgumentNullException.ThrowIfNull(region);
+        region.RequireCurrent(_session);
+        RequireCurrent(_session);
+        var prices = postedPrices.ToArray();
+        var calibrated = region.ApplyTo(baselinePolicy);
+        return CompareFreightScenarios(candidates, new[] {
+            new CanonicalPrimitiveFreightScenario(
+                "baseline", prices, baselinePolicy, congestionPolicy),
+            new CanonicalPrimitiveFreightScenario(
+                "regional-productivity", prices, calibrated, congestionPolicy)
+        }, "baseline", rawQuantum, maximumQuantaPerCandidate,
+            maximumConfigurationsPerComponent);
+    }
+
     public int RegisteredRightsInspectedPerSlice { get; }
     public int TotalEligibleIntents { get; }
     public int TotalUnreachablePhysicalServices { get; }
