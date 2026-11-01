@@ -63,6 +63,9 @@ public sealed class CanonicalEligibleFreightOfferDiscovery
     public int SourceTreeBuilds { get; }
     public long ExaminedArcs { get; }
     public bool CanAuthorizeRealSettlement => false;
+    // VS80 distinguishes historical buyer-quantity capped discovery from
+    // authenticated supply-bound physical freight. Neither clears a market.
+    public bool UsesBuyerDemandQuantityCap { get; }
 
     internal CanonicalEligibleFreightOfferDiscovery(
         CanonicalPhysicalTacticalSession session,
@@ -71,11 +74,13 @@ public sealed class CanonicalEligibleFreightOfferDiscovery
         CanonicalEligibleFreightService[] services,
         CanonicalPrimitiveTradeLane[] lanes,
         ExperimentalBuiltFreightServiceEvidence[] evidence,
-        int registered, int intents, int unreachable, int sourceTrees, long examinedArcs)
+        int registered, int intents, int unreachable, int sourceTrees, long examinedArcs,
+        bool usesBuyerDemandQuantityCap)
     {
         _session = session;
         _sites = sites;
         _proof = proof;
+        UsesBuyerDemandQuantityCap = usesBuyerDemandQuantityCap;
         Services = Array.AsReadOnly(services);
         Lanes = Array.AsReadOnly(lanes);
         _evidence = Array.AsReadOnly(evidence);
@@ -131,7 +136,35 @@ public sealed class CanonicalEligibleFreightOfferDiscovery
         CanonicalPrimitiveSiteDiscovery sites,
         CanonicalEligibleFreightDiscoveryPolicy policy,
         string purchasingPolicyId, ulong purchasingPolicyVersion,
-        string calibrationId, ulong calibrationVersion, string nominalUnitId)
+        string calibrationId, ulong calibrationVersion, string nominalUnitId) =>
+        FromSessionCore(session, sites, policy, purchasingPolicyId,
+            purchasingPolicyVersion, calibrationId, calibrationVersion,
+            nominalUnitId, capByBuyerDemandQuantity: true);
+
+    /// <summary>
+    /// VS80: identical physical route, entitlement, asset and proof pipeline,
+    /// but with the real source supply as the quantity envelope. The buyer
+    /// must still be a live, inhabited commodity-demand anchor; their demand
+    /// magnitude informs VALUE, not physical throughput. This is NOT an
+    /// unconditional carrier capacity certificate or market settlement.
+    /// </summary>
+    internal static CanonicalEligibleFreightOfferDiscovery FromSessionSupplyBound(
+        CanonicalPhysicalTacticalSession session,
+        CanonicalPrimitiveSiteDiscovery sites,
+        CanonicalEligibleFreightDiscoveryPolicy policy,
+        string purchasingPolicyId, ulong purchasingPolicyVersion,
+        string calibrationId, ulong calibrationVersion, string nominalUnitId) =>
+        FromSessionCore(session, sites, policy, purchasingPolicyId,
+            purchasingPolicyVersion, calibrationId, calibrationVersion,
+            nominalUnitId, capByBuyerDemandQuantity: false);
+
+    private static CanonicalEligibleFreightOfferDiscovery FromSessionCore(
+        CanonicalPhysicalTacticalSession session,
+        CanonicalPrimitiveSiteDiscovery sites,
+        CanonicalEligibleFreightDiscoveryPolicy policy,
+        string purchasingPolicyId, ulong purchasingPolicyVersion,
+        string calibrationId, ulong calibrationVersion, string nominalUnitId,
+        bool capByBuyerDemandQuantity)
     {
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(sites);
@@ -163,7 +196,11 @@ public sealed class CanonicalEligibleFreightOfferDiscovery
                 !demand.TryGetValue(right.Destination, out var buyer) ||
                 right.Source == right.Destination)
                 continue;
-            var max = Math.Min(source.RawQuantity, buyer.RawQuantity);
+            // Old VS63: min(supply, demand). VS80: supply only, preserving
+            // the SAME recorded service, route, grants and physics proof.
+            var max = capByBuyerDemandQuantity
+                ? Math.Min(source.RawQuantity, buyer.RawQuantity)
+                : source.RawQuantity;
             if (max == 0) continue;
             // RawQuantity (1e6 units/whole) * grams/whole gives micrograms.
             // The itinerary cost estimate remains explicitly hypothetical.
@@ -178,7 +215,7 @@ public sealed class CanonicalEligibleFreightOfferDiscovery
         {
             sites.RequireCurrent(session);
             return new(session, sites, null, [], [], [],
-                registered.Count, 0, 0, 0, 0L);
+                registered.Count, 0, 0, 0, 0L, capByBuyerDemandQuantity);
         }
         // VS39 requires explicit mappings for every asset supplied. Filter
         // this *single-technology* routing context without mutating or
@@ -234,7 +271,7 @@ public sealed class CanonicalEligibleFreightOfferDiscovery
             session, sites, proof, accepted.ToArray(), lanes,
             evidence.ToArray(), registered.Count, intents.Count,
             diagnostics.UnreachableServices, diagnostics.SourceTreeBuilds,
-            diagnostics.ExaminedArcs);
+            diagnostics.ExaminedArcs, capByBuyerDemandQuantity);
         result.RequireCurrent(session);
         return result;
     }
