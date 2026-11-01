@@ -21,6 +21,11 @@ public sealed class CanonicalCycleStampedPriceReceipt
     public ulong SourceMovementTurn { get; }
     public ulong SourceCompletedEconomicCycleTurn { get; }
     public string SourceWorldHashHex => _sourceWorldHashHex;
+    public int SourceJournalCount => _sourceJournalCount;
+    public int SourceEconomicCycleCount => _sourceCycleCount;
+    public ulong SourceWorkerRevision => _sourceWorkerRevision;
+    public ulong SourceNetworkRevision => _sourceNetworkRevision;
+    public int MaximumResponseStepPermille { get; }
     public IReadOnlyList<CanonicalWorkforceActivityRealizationPolicy> FrozenNextActivityPolicies { get; }
     public IReadOnlyList<CanonicalLaggedProductionActivitySignal> HypotheticalPriorLocalPriceSignals { get; }
     public bool HasGenuineCompletedSourceCycle => true;
@@ -42,6 +47,7 @@ public sealed class CanonicalCycleStampedPriceReceipt
         _sourceNetworkRevision = session.TransportNetwork.Revision;
         _sourceWorldHashHex = session.CurrentHash.HexDigest;
         _sourceJournalCount = session.Events.Count;
+        MaximumResponseStepPermille = feedback.MaximumResponseStepPermille;
         _nextPolicies = feedback.NextProjection.Policies.ToArray();
         _signals = feedback.Signals.ToArray();
         FrozenNextActivityPolicies = Array.AsReadOnly(_nextPolicies);
@@ -171,6 +177,7 @@ public sealed class CanonicalCycleStampedProductionProjection
     private readonly ExperimentalSharedFreightCongestionPolicy _congestion;
     private readonly string _resultWorldHashHex;
 
+    internal CanonicalCycleStampedPriceReceipt SourcePriceReceipt => _receipt;
     public CanonicalWorkforceRealizationProjection HypotheticalNextProduction { get; }
     public ulong NextRealCompletedEconomicCycleTurn { get; }
     public string NextRealCompletedEconomicCycleWorldHashHex => _resultWorldHashHex;
