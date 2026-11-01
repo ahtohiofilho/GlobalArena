@@ -98,13 +98,8 @@ public sealed class CanonicalExecutedFoodPriceTrendBridge
         cycleProof.VerifyIndependent();
         currentExecuted.RequireCurrent(session);
         currentExecuted.VerifyIndependent();
-        if (!currentExecuted.HasEvidenceOfRealCashFoodPurchase ||
-            !currentExecuted.IsFromCanonicalFoodCashState &&
-                currentExecuted.ExecutedReceipts.Count != 0)
-        {
-            // An empty set is possible and supported below. No fabricated
-            // executed unit price can be used for a feedback suggestion.
-        }
+        // No receipts is a valid zero-observation case: never make up a
+        // price or use hypothetical VS78 indices to fill this gap.
 
         var previous = cycleProof.SourcePriceReceipt;
         var currentState = session.State;
