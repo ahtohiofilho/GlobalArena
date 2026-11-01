@@ -250,22 +250,22 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
                                 new ExperimentalBuyerCommodityPrice(
                                     x.EconomicPointId, x.CommodityId,
                                     new FoodTransportCostFraction(1, 1)));
-                            var result = portfolio.CompareRegionalPurchasing(
+                            var regionalComparison = portfolio.CompareRegionalPurchasing(
                                 portfolio.CandidateUses, prices,
                                 new ExperimentalAbstractPurchasingPolicy(
                                     "VS60-BENCH-PURCHASING", 1,
                                     new FoodTransportCostFraction(5000, 1),
                                     new FoodTransportCostFraction(5, 8)),
                                 congestion, regional, 100_000UL);
-                            if (result.Outcomes.Count != 2 ||
-                                result.Baseline.Selection.Lots.Count != 3 ||
-                                result.Outcomes.Single(x =>
+                            if (regionalComparison.Outcomes.Count != 2 ||
+                                regionalComparison.Baseline.Selection.Lots.Count != 3 ||
+                                regionalComparison.Outcomes.Single(x =>
                                     x.Scenario.ScenarioId == "regional-productivity")
                                     .Selection.Lots.Count != 3 ||
-                                result.CanAuthorizeRealSettlement)
+                                regionalComparison.CanAuthorizeRealSettlement)
                                 throw new InvalidOperationException(
                                     "Physical regional purchasing projection diverged.");
-                            result.RequireCurrent(session);
+                            regionalComparison.RequireCurrent(session);
                             continue;
                         }
                         if (compareLocalPrices)
