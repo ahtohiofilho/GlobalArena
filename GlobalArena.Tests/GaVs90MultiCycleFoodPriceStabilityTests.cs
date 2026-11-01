@@ -112,7 +112,7 @@ public sealed class GaVs90MultiCycleFoodPriceStabilityTests
                     : null).ToArray();
             Assert.Equal(signals.Count(x => x.HasValue),
                 row.ComparableWindowCount);
-            Assert.Equal(signals.Count(x => x is { Value: not 0 }),
+            Assert.Equal(signals.Count(x => x.HasValue && x.Value != 0),
                 row.NonzeroWindowCount);
             Assert.Equal(
                 CanonicalMultiCycleFoodPriceStabilityReport
@@ -130,19 +130,21 @@ public sealed class GaVs90MultiCycleFoodPriceStabilityTests
         }
     }
 
-    [Theory]
-    [InlineData(new int?[] { 2, -2, 4 }, 2)]
-    [InlineData(new int?[] { 2, null, -1 }, 0)]
-    [InlineData(new int?[] { 2, 0, -1 }, 0)]
-    [InlineData(new int?[] { 0, 5, -7, 0, -1, 4 }, 2)]
-    [InlineData(new int?[] { null, null, 0 }, 0)]
-    [InlineData(new int?[] { -3, -4, -5 }, 0)]
-    public void ReversalsAreOnlyAdjacentNonzeroActuallyComparableWindows(
-        int?[] windowDeltas, int expected)
+    [Fact]
+    public void ReversalsAreOnlyAdjacentNonzeroActuallyComparableWindows()
     {
-        Assert.Equal(expected,
-            CanonicalMultiCycleFoodPriceStabilityReport
-                .CountNonzeroAdjacentReversals(windowDeltas));
+        var examples = new (int?[] Deltas, int Expected)[]
+        {
+            (new int?[] { 2, -2, 4 }, 2),
+            (new int?[] { 2, null, -1 }, 0),
+            (new int?[] { 2, 0, -1 }, 0),
+            (new int?[] { 0, 5, -7, 0, -1, 4 }, 2),
+            (new int?[] { null, null, 0 }, 0),
+            (new int?[] { -3, -4, -5 }, 0)
+        };
+        foreach (var (deltas, expected) in examples)
+            Assert.Equal(expected, CanonicalMultiCycleFoodPriceStabilityReport
+                .CountNonzeroAdjacentReversals(deltas));
     }
 
     [Theory]
