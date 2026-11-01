@@ -7,6 +7,7 @@ if (args.Contains("--vs67-components")) return GaVs60SessionTradePreviewBenchmar
 if (args.Contains("--vs68-scenarios")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(compareScenarios: true);
 if (args.Contains("--vs69-local-prices")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(compareLocalPrices: true);
 if (args.Contains("--vs70-regional-purchasing")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(compareRegionalPurchasing: true);
+if (args.Contains("--vs83-workforce-realization")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(projectWorkforceRealization: true);
 if (args.Contains("--vs82-realized-production")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(reconcileRealizedProduction: true);
 if (args.Contains("--vs81-simultaneous-freight")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(auditSimultaneousFreight: true);
 if (args.Contains("--vs80-supply-bound-freight")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(compareSupplyBoundFreight: true);
