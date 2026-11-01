@@ -10,7 +10,7 @@ A VS85 distingue rigorosamente essas duas coisas: **tempo realmente avançou no 
 
 ## Protocolo (sem mudanças no formato dos saves)
 
-1. Na sessão atual, depois de um **ciclo econômico realmente concluído** (último \`PhysicalEconomicCycle.MovementTurn == State.MovementTurn\`), construir um \`CanonicalLaggedProductionResponse\` auditado (VS84) a partir de trabalhadores, preços locais hipotéticos e serviços autênticos.
+1. Na sessão atual, **imediatamente após o tick que efetivamente concluiu um ciclo econômico**, sem reatribuição física posterior no mesmo turno (último \`PhysicalEconomicCycle.MovementTurn == State.MovementTurn\`), construir um \`CanonicalLaggedProductionResponse\` auditado (VS84) a partir de trabalhadores, preços locais hipotéticos e serviços autênticos.
 2. \`CanonicalCycleStampedPriceReceipt.Capture(session,feedback)\` recusa turnos sem fechamento econômico e captura em memória o hash do estado, o turno do ciclo, o índice do ciclo, as revisões de trabalhadores/rede, o número de eventos físicos, os sinais de preço e as **taxas subsequentes** por atividade já calculadas.
 3. **O chamador**, não o recibo, executa \`session.AdvanceMovementTurn()\` quantas vezes forem necessárias para o próximo ciclo. Isso é o movimento/ciclo efetivo do motor, com sua contabilidade legada própria.
 4. \`ApplyAfterNextSettledCycle\` exige que a **mesma instância de sessão** tenha agora o **próximo** ciclo econômico completo e seja o turno corrente, com \`Cycles.Count = initialCount+1\`. Requer hash diferente, exatamente a quantidade de \`tick\` no diário correspondente à diferença de turnos e cadeia de \`BeforeHashHex/AfterHashHex\` a partir do hash congelado. Não atravessar mutações de trabalhadores, atos não-tick, alterações de rede ou mudança de sessão/saves.
@@ -29,7 +29,7 @@ A VS85 distingue rigorosamente essas duas coisas: **tempo realmente avançou no 
 
 ## QA
 
-Seis testes: ciclo anterior autêntico vs mesmo turno; avanço real e novo ciclo com hash/journal encadeados; invalidação após ciclo extra; proibição de restauração/save; intervenção de trabalhadores; limite de carga remota; determinismo/replay e ausência de mutação na avaliação. Benchmark 8/32/128 usa **um avanço de ciclo econômico real durante a preparação**, depois mede repetidamente a aplicação read-only na mesma sessão já avançada. Gate 51 workflows, Linux VS40–85 e Windows full suite; benchmark Godot Mono Release/Debug. Homologação só após todos \`success\` no HEAD atual.
+Sete testes: ciclo anterior autêntico vs mesmo turno; rejeição do recibo pós-reatribuição dentro do mesmo turno; avanço real e novo ciclo com hash/journal encadeados; invalidação após ciclo extra; proibição de restauração/save; intervenção de trabalhadores; limite de carga remota; determinismo/replay e ausência de mutação na avaliação. Benchmark 8/32/128 usa **um avanço de ciclo econômico real durante a preparação**, depois mede repetidamente a aplicação read-only na mesma sessão já avançada. Gate 51 workflows, Linux VS40–85 e Windows full suite; benchmark Godot Mono Release/Debug. Homologação só após todos \`success\` no HEAD atual.
 
 ## Próxima fase
 
