@@ -127,8 +127,8 @@ public sealed class CanonicalPrimitiveFreightPortfolio
     {
         ArgumentNullException.ThrowIfNull(baselinePolicy);
         ArgumentNullException.ThrowIfNull(region);
-        region.RequireCurrent(_session);
         RequireCurrent(_session);
+        region.RequireSites(_session, _sites);
         var prices = postedPrices.ToArray();
         var calibrated = region.ApplyTo(baselinePolicy);
         return CompareFreightScenarios(candidates, new[] {
