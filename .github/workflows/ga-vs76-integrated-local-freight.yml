@@ -1,0 +1,44 @@
+name: GA-VS76 Integrated Local Freight Reference Gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ga-vs76-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  integrated-reference-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: GA-VS40 to GA-VS76 directed economic regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "FullyQualifiedName~GaVs76|FullyQualifiedName~GaVs75|FullyQualifiedName~GaVs74|FullyQualifiedName~GaVs73|FullyQualifiedName~GaVs72|FullyQualifiedName~GaVs71|FullyQualifiedName~GaVs70|FullyQualifiedName~GaVs69|FullyQualifiedName~GaVs68|FullyQualifiedName~GaVs67|FullyQualifiedName~GaVs66|FullyQualifiedName~GaVs65|FullyQualifiedName~GaVs64|FullyQualifiedName~GaVs63|FullyQualifiedName~GaVs62|FullyQualifiedName~GaVs61|FullyQualifiedName~GaVs60|FullyQualifiedName~GaVs59|FullyQualifiedName~GaVs58|FullyQualifiedName~GaVs57|FullyQualifiedName~GaVs56|FullyQualifiedName~GaVs55|FullyQualifiedName~GaVs54|FullyQualifiedName~GaVs53|FullyQualifiedName~GaVs52|FullyQualifiedName~GaVs51|FullyQualifiedName~GaVs50|FullyQualifiedName~GaVs49|FullyQualifiedName~GaVs48|FullyQualifiedName~GaVs47|FullyQualifiedName~GaVs46|FullyQualifiedName~GaVs45|FullyQualifiedName~GaVs44|FullyQualifiedName~GaVs43|FullyQualifiedName~GaVs42|FullyQualifiedName~GaVs41|FullyQualifiedName~GaVs40"
+      - name: Integrated local freight 8 32 128
+        run: dotnet run --project GlobalArena.Benchmarks/GlobalArena.Benchmarks.csproj -c Release -- --vs76-integrated-local-freight
+      - name: Godot Mono Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  integrated-reference-windows:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Full project regression suite
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: Integrated local freight 8 32 128
+        run: dotnet run --project GlobalArena.Benchmarks/GlobalArena.Benchmarks.csproj -c Release -- --vs76-integrated-local-freight
+      - name: Godot Mono Debug
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug

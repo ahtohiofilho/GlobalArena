@@ -69,6 +69,24 @@ public sealed class CanonicalPrimitiveFreightPortfolio
             purchasingPolicy, congestionPolicy, rawQuantum,
             maximumQuantaPerCandidate, maximumConfigurations);
 
+    /// <summary>
+    /// VS76 read-only integrated local/freight reference. Does not modify
+    /// the historically freight-only VS66/VS67 contracts or select a real sale.
+    /// </summary>
+    public CanonicalPrimitiveIntegratedSelection SelectJointLocalFreight(
+        IEnumerable<CanonicalPrimitiveLocalUseProposal> localCandidates,
+        IEnumerable<CanonicalPrimitiveFreightCandidateUse> freightCandidates,
+        IEnumerable<ExperimentalBuyerCommodityPrice> postedPrices,
+        ExperimentalAbstractPurchasingPolicy purchasingPolicy,
+        ExperimentalSharedFreightCongestionPolicy congestionPolicy,
+        ulong rawQuantum, int maximumQuantaPerCandidate = 1,
+        int maximumConfigurations =
+            CanonicalPrimitiveJointFreightSelector.MaximumConfigurations) =>
+        new CanonicalPrimitiveIntegratedSelector().Select(
+            this, _session, localCandidates, freightCandidates,
+            postedPrices, purchasingPolicy, congestionPolicy, rawQuantum,
+            maximumQuantaPerCandidate, maximumConfigurations);
+
     public CanonicalPrimitiveFreightComponentSelection SelectIndependentFreightComponents(
         IEnumerable<CanonicalPrimitiveFreightCandidateUse> candidates,
         IEnumerable<ExperimentalBuyerCommodityPrice> postedPrices,
