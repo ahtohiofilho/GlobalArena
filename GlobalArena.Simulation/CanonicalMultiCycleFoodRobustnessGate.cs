@@ -67,6 +67,7 @@ public sealed class CanonicalMultiCycleFoodRobustnessGate
     private readonly CanonicalFoodRobustnessObservation[] _observations;
     private readonly string _worldHashHex;
 
+    internal CanonicalMultiCycleFoodPriceStabilityReport SourceHistory => _history;
     public IReadOnlyList<CanonicalFoodRobustnessScenario> Scenarios { get; }
     public IReadOnlyList<CanonicalFoodRobustnessObservation> Observations { get; }
     public bool UsesOnlyActuallyExecutedLocalFoodSales => true;
