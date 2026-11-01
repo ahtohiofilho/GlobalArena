@@ -174,7 +174,7 @@ public sealed class GaVs74JointLocalFreightPhysicalPreflightTests
     [Fact]
     public void FreightOnlyVs73ReceiptDoesNotImplyLocalEconomicAffordability()
     {
-        var (_, sites, portfolio) =
+        var (_, sites, portfolio, _, _) =
             GaVs67IndependentFreightComponentsTests.TwoDisjointRoads();
         var audit = Diagnose(portfolio, sites);
         var receipt = audit.PreviewJointPhysicalUse(
