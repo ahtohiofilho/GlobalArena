@@ -40,6 +40,7 @@ public sealed class CanonicalLaggedProductionResponse
     private readonly ExperimentalSharedFreightCongestionPolicy _congestion;
     private readonly int _step;
 
+    public int MaximumResponseStepPermille => _step;
     public IReadOnlyList<CanonicalLaggedProductionActivitySignal> Signals { get; }
     public CanonicalWorkforceRealizationProjection NextProjection { get; }
     public ulong SourceMovementTurn => _sites.MovementTurn;
