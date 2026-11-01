@@ -54,9 +54,12 @@ public sealed class GaVs81SimultaneousAuthenticatedFreightTests
         Assert.Equal(2, combined.Markets.Count);
         Assert.Single(combined.CorridorLoads);
         Assert.Equal(new BigInteger(q * 2), combined.CorridorLoads.Single().Value);
-        var standalone = ExperimentalSharedFreightBatchCost.Add(
-            aloneFood.TotalAuthenticatedNominalFreightCost,
-            aloneWood.TotalAuthenticatedNominalFreightCost);
+        var foodCost = aloneFood.TotalAuthenticatedNominalFreightCost;
+        var woodCost = aloneWood.TotalAuthenticatedNominalFreightCost;
+        var standalone = new FoodTransportCostFraction(
+            foodCost.Numerator * woodCost.Denominator +
+                woodCost.Numerator * foodCost.Denominator,
+            foodCost.Denominator * woodCost.Denominator);
         Assert.True(combined.TotalAuthenticatedNominalFreightCost.CompareTo(
             standalone) > 0);
         Assert.False(combined.UsesExogenousMonetaryBudget);
