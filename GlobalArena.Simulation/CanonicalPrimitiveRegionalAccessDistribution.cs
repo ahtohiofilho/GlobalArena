@@ -209,7 +209,7 @@ public sealed class CanonicalPrimitiveRegionalAccessDistribution
             totalGross.CompareTo(projection.TotalTemporaryPurchasingUnits) != 0 ||
             totalCommitment.CompareTo(outcome.Selection.TotalBuyerCommitment) != 0 ||
             planned.Keys.Any(x => !_sites.Flows.DemandFlows.Any(
-                d => d.EconomicPointId == x.Buyer && d.CommodityId == x.CommodityId)))
+                d => d.EconomicPointId == x.Buyer && d.CommodityId == x.Commodity)))
             throw new InvalidOperationException(
                 "Regional access distribution fails exact resident, demand or budget reconciliation.");
 
