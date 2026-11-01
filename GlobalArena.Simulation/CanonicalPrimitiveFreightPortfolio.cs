@@ -69,6 +69,19 @@ public sealed class CanonicalPrimitiveFreightPortfolio
             purchasingPolicy, congestionPolicy, rawQuantum,
             maximumQuantaPerCandidate, maximumConfigurations);
 
+    public CanonicalPrimitiveFreightComponentSelection SelectIndependentFreightComponents(
+        IEnumerable<CanonicalPrimitiveFreightCandidateUse> candidates,
+        IEnumerable<ExperimentalBuyerCommodityPrice> postedPrices,
+        ExperimentalAbstractPurchasingPolicy purchasingPolicy,
+        ExperimentalSharedFreightCongestionPolicy congestionPolicy,
+        ulong rawQuantum, int maximumQuantaPerCandidate = 1,
+        int maximumConfigurationsPerComponent =
+            CanonicalPrimitiveJointFreightSelector.MaximumConfigurations) =>
+        new CanonicalPrimitiveFreightComponentSelector().Select(
+            this, _session, candidates, postedPrices,
+            purchasingPolicy, congestionPolicy, rawQuantum,
+            maximumQuantaPerCandidate, maximumConfigurationsPerComponent);
+
     public int RegisteredRightsInspectedPerSlice { get; }
     public int TotalEligibleIntents { get; }
     public int TotalUnreachablePhysicalServices { get; }
