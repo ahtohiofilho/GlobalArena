@@ -197,19 +197,26 @@ public sealed class GaVs85RealEconomicCycleWitnessTests
             Array.Empty<CanonicalSimultaneousFreightLot>(), Congestion());
         var candidate = freight.Offers.Single(x =>
             x.Commodity == new CommodityId(7));
-        var produced = trial.HypotheticalNextProduction.Sources.Single(x =>
+        var source = trial.HypotheticalNextProduction.Sources.Single(x =>
             x.Source == candidate.Source && x.Commodity == candidate.Commodity &&
-            x.Activity == candidate.Activity).DerivedProducedRaw;
-        Assert.True(candidate.SourcePotentialRaw > produced);
+            x.Activity == candidate.Activity);
+        var shippable = checked(source.DerivedProducedRaw -
+            source.DeliberatelyRetainedRaw);
+        Assert.True(candidate.SourcePotentialRaw > source.DerivedProducedRaw);
+        Assert.True(source.DeliberatelyRetainedRaw > 0UL);
+        Assert.True(shippable > 0UL);
+        // Deliberately retained units are part of physically produced output,
+        // but they are NOT available to freight. The rejecting quantity
+        // must exceed the produced-minus-retained pool, not just potential.
         Assert.Throws<ArgumentException>(() =>
             receipt.ApplyAfterNextSettledCycle(f.Session, sites, freight,
                 new [] { new CanonicalSimultaneousFreightLot(
-                    candidate, produced + 1UL) }, Congestion()));
+                    candidate, shippable + 1UL) }, Congestion()));
         var accepted = receipt.ApplyAfterNextSettledCycle(f.Session,
             sites, freight,
-            new [] { new CanonicalSimultaneousFreightLot(candidate, produced) },
+            new [] { new CanonicalSimultaneousFreightLot(candidate, shippable) },
             Congestion());
-        Assert.Equal(new BigInteger(produced), Assert.Single(
+        Assert.Equal(new BigInteger(shippable), Assert.Single(
             accepted.HypotheticalNextProduction.Allocation!.RemoteMarkets)
             .TotalHypotheticalDeliveredRaw);
         accepted.VerifyIndependent();
