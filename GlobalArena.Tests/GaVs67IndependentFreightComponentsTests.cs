@@ -78,38 +78,65 @@ public sealed class GaVs67IndependentFreightComponentsTests
         CanonicalPrimitiveFreightCandidateUse FoodUse,
         CanonicalPrimitiveFreightCandidateUse WoodUse) TwoDisjointRoads()
     {
-        var f = GaVs57SessionTransportAuthorityTests.Create();
+        // The original tiny two-tile island has only one land crossing.
+        // Discover a reproducible seed with at least TWO independent
+        // adjacent workable crossings from the initial settled source.
+        GaVs56BuiltNetworkInstitutionalRightsTests.Fixture? f = null;
+        for (ulong seed = 20261012UL; seed < 20261076UL; seed++)
+        {
+            var probe = CanonicalPhysicalTacticalSession.Start(
+                seed, new GoldbergParameters(3, 0),
+                new GoldbergParameters(18, 0),
+                PhysicalEconomicCadenceMode.AdaptiveThirty,
+                PhysicalTacticalGeographyMode.Canonical01C,
+                PhysicalFoodMarketMode.LocalCashSettlement,
+                PhysicalWorkerMovementMode.TimedAdjacent,
+                PhysicalCivilizationIdentityMode.BornWithPopulation);
+            if (probe.AdjacentWorkable(probe.InitialTile).Count < 2)
+                continue;
+            f = new GaVs56BuiltNetworkInstitutionalRightsTests.Fixture(seed);
+            break;
+        }
+        if (f is null)
+            throw new InvalidOperationException(
+                "No physical two-road land fixture was found in deterministic seed range.");
         var source = f.Session.InitialTile;
         var buyerA = f.Anchors[f.Flows.DemandFlows.Single().EconomicPointId];
-        // Buyer A also supplies wood to buyer B: the seller's separate
-        // production does not mint extra abstract purchasing power.
-        // Keep one of A's two existing forestry workers producing locally.
-        var buyerB = f.Session.AdjacentWorkable(buyerA)
-            .First(x => x != source);
+        var buyerB = f.Session.AdjacentWorkable(source)
+            .First(x => x != buyerA);
 
-        f.Session.OrderWorkerTransit(buyerA, buyerB,
-            EconomicActivityKind.Forestry, EconomicActivityKind.Mining, 1);
+        var network = f.Session.TransportNetwork;
+        network.Construct(f.Asset, f.Grant().InfrastructureOwner);
+        network.SetEntitlement(f.Registry().Entitlements.Single());
+        network.IssueGrant(f.Grant(from: 3, through: 100));
+
+        // Four initial agricultural workers, two forestry and two mining.
+        // The fixture moved two agricultural workers to buyer A; a second
+        // mining resident can travel from the source to buyer B. Both
+        // producers at the source remain active, with different activities.
+        f.Session.OrderWorkerTransit(source, buyerB,
+            EconomicActivityKind.Mining, EconomicActivityKind.Mining, 1);
         f.Session.AdvanceMovementTurn();
         f.Session.AdvanceMovementTurn();
 
         var edge = f.Session.FineWorld.StrategicTopology.Edges.First(x =>
-            x.IncidentCellIds.Contains(buyerA.FineStrategicCellId) &&
+            x.IncidentCellIds.Contains(source.FineStrategicCellId) &&
             x.IncidentCellIds.Contains(buyerB.FineStrategicCellId));
         var secondAsset = new EconomicTransportBuiltAsset(
             32, 101, new PhysicalTacticalEdgeId(
                 source.FineGoldbergParameters, edge.Id), 7, true);
-        f.Session.TransportNetwork.Construct(secondAsset, f.Grant().InfrastructureOwner);
-        f.Session.TransportNetwork.IssueGrant(
+        network.Construct(secondAsset, f.Grant().InfrastructureOwner);
+        network.IssueGrant(
             f.Grant(assetId: 32, id: "GRANT-ROAD-32", from: 3, through: 100));
 
         var template = f.Registry().Entitlements.Single();
-        f.Session.TransportNetwork.SetEntitlement(template with {
+        network.SetEntitlement(template with {
             Source = CanonicalPrimitiveSiteDiscovery.SiteId(source),
             Destination = CanonicalPrimitiveSiteDiscovery.SiteId(buyerA),
             ServiceId = 77
         });
-        f.Session.TransportNetwork.SetEntitlement(template with {
-            Source = CanonicalPrimitiveSiteDiscovery.SiteId(buyerA),
+        network.SetEntitlement(template with {
+            Source = CanonicalPrimitiveSiteDiscovery.SiteId(source),
             Destination = CanonicalPrimitiveSiteDiscovery.SiteId(buyerB),
             ServiceId = 78
         });
