@@ -140,6 +140,20 @@ public sealed class CanonicalPrimitiveFreightPortfolio
             maximumConfigurationsPerComponent);
     }
 
+    public CanonicalPrimitiveRegionalAccessDistribution DiagnoseRegionalFreightAccess(
+        IEnumerable<CanonicalPrimitiveFreightCandidateUse> candidates,
+        IEnumerable<ExperimentalBuyerCommodityPrice> postedPrices,
+        ExperimentalAbstractPurchasingPolicy baselinePolicy,
+        ExperimentalSharedFreightCongestionPolicy congestionPolicy,
+        CanonicalPrimitiveRegionalProductivityProjection region,
+        ulong rawQuantum, int maximumQuantaPerCandidate = 1,
+        int maximumConfigurationsPerComponent =
+            CanonicalPrimitiveJointFreightSelector.MaximumConfigurations) =>
+        CanonicalPrimitiveRegionalAccessDistribution.FromPortfolio(
+            this, _session, candidates, postedPrices, baselinePolicy,
+            congestionPolicy, region, rawQuantum, maximumQuantaPerCandidate,
+            maximumConfigurationsPerComponent);
+
     public int RegisteredRightsInspectedPerSlice { get; }
     public int TotalEligibleIntents { get; }
     public int TotalUnreachablePhysicalServices { get; }
