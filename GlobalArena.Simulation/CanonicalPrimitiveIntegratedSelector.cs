@@ -297,6 +297,20 @@ public sealed class CanonicalPrimitiveIntegratedSelection
         FeasibleConfigurations = feasible;
     }
 
+    /// <summary>
+    /// VS77 read-only reconciliation between EXPLICIT hypothetical offers,
+    /// the selected VS76 deliveries and still-unserved physical demand.
+    /// Does not adjust prices, pretend to settle, or allocate extra goods.
+    /// </summary>
+    public CanonicalPrimitiveOfferAbsorptionDiagnostics
+        DiagnoseExplicitOfferAbsorption(
+            IEnumerable<CanonicalPrimitiveExplicitSourceOffer> offers)
+    {
+        VerifyIndependent();
+        return CanonicalPrimitiveOfferAbsorptionDiagnostics.FromSelection(
+            _context.Session, _context.Portfolio, this, offers);
+    }
+
     public void RequireCurrent(CanonicalPhysicalTacticalSession session)
     {
         if (!ReferenceEquals(session, _context.Session))
