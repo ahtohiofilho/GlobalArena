@@ -57,10 +57,13 @@ public sealed class CanonicalCycleStampedPriceReceipt
         feedback.RequireCurrent(session);
         feedback.VerifyIndependent();
         var state = session.State;
+        var events = session.Events;
         if (state.Cycles.Count == 0 ||
-            state.Cycles[^1].MovementTurn != state.MovementTurn)
+            state.Cycles[^1].MovementTurn != state.MovementTurn ||
+            events.Count == 0 || events[^1].Kind != "tick" ||
+            events[^1].AfterHashHex != session.CurrentHash.HexDigest)
             throw new InvalidOperationException(
-                "VS85 source must be the actual final state of a completed economic cycle, never an arbitrary movement turn.");
+                "VS85 source must be the canonical tick that actually closed the economic cycle, without an intervening physical reallocation.");
         var receipt = new CanonicalCycleStampedPriceReceipt(session, feedback);
         receipt.RequireExactlyNextSettledCycleIsNotYetAvailable(session);
         return receipt;
