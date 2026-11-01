@@ -94,6 +94,20 @@ public sealed class CanonicalPrimitiveFreightPortfolio
             rawQuantum, maximumQuantaPerCandidate,
             maximumConfigurationsPerComponent);
 
+    public CanonicalPrimitiveLocalPriceComparison CompareLocalizedBuyerPrices(
+        IEnumerable<CanonicalPrimitiveFreightCandidateUse> candidates,
+        IEnumerable<ExperimentalBuyerCommodityPrice> baselinePrices,
+        ExperimentalAbstractPurchasingPolicy purchasingPolicy,
+        ExperimentalSharedFreightCongestionPolicy congestionPolicy,
+        IEnumerable<CanonicalPrimitiveLocalPriceShock> shocks,
+        ulong rawQuantum, int maximumQuantaPerCandidate = 1,
+        int maximumConfigurationsPerComponent =
+            CanonicalPrimitiveJointFreightSelector.MaximumConfigurations) =>
+        CanonicalPrimitiveLocalPriceComparison.FromPortfolio(
+            this, _session, candidates, baselinePrices,
+            purchasingPolicy, congestionPolicy, shocks, rawQuantum,
+            maximumQuantaPerCandidate, maximumConfigurationsPerComponent);
+
     public int RegisteredRightsInspectedPerSlice { get; }
     public int TotalEligibleIntents { get; }
     public int TotalUnreachablePhysicalServices { get; }
