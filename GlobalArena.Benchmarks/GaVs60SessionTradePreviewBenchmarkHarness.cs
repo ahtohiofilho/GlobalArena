@@ -274,10 +274,10 @@ public static class GaVs60SessionTradePreviewBenchmarkHarness
                             selection.RequireCurrent(session);
                             if (auditExplicitOfferGap)
                             {
-                                var offer = new CanonicalPrimitiveExplicitSourceOffer(
+                                var declaredSourceOffer = new CanonicalPrimitiveExplicitSourceOffer(
                                     freight.Source, freight.Commodity, freight.Activity,
                                     supply.RawQuantity);
-                                var receipt = selection.DiagnoseExplicitOfferAbsorption([offer]);
+                                var receipt = selection.DiagnoseExplicitOfferAbsorption([declaredSourceOffer]);
                                 var row = receipt.Snapshot.Sources.Single(x =>
                                     x.Source == freight.Source &&
                                     x.Commodity == freight.Commodity &&
