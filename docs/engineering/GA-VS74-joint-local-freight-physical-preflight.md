@@ -48,7 +48,7 @@ Validações: \`RequireCurrent()\` rejeita outro objeto de sessão, restore, mud
 
 ## QA e desempenho
 
-Seis testes: recibo vazio preserva exatamente o frete original; local elegível com frete economicamente inviável; rejeição de violação de capacidade/demanda e entradas falsas; determinismo/imutabilidade; múltiplos corredores; invalidação de recibos após restauração ou atualização de rede.
+Sete testes: recibo vazio preserva exatamente o frete original; local elegível com frete economicamente inviável; rejeição de violação de capacidade/demanda e entradas falsas; proibição explícita de reutilizar oferta já atribuída a exportação selecionada; determinismo/imutabilidade; múltiplos corredores; invalidação de recibos após restauração ou atualização de rede.
 
 Benchmark \`--vs74-joint-physical\` repete 8/32/128 consultas de preflight **vazio** sobre uma malha pequena e fixa, com verificação completa, sem alegar performance em mapas grandes. O teste de uso local positivo é coberto pela suíte xUnit.
 
