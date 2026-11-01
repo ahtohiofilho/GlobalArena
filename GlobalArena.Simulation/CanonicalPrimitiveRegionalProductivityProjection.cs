@@ -1,5 +1,6 @@
 using System.Numerics;
 using GlobalArena.Runtime;
+using GlobalArena.World;
 
 namespace GlobalArena.Simulation;
 
