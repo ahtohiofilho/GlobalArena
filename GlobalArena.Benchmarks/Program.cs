@@ -7,6 +7,7 @@ if (args.Contains("--vs67-components")) return GaVs60SessionTradePreviewBenchmar
 if (args.Contains("--vs68-scenarios")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(compareScenarios: true);
 if (args.Contains("--vs69-local-prices")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(compareLocalPrices: true);
 if (args.Contains("--vs70-regional-purchasing")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(compareRegionalPurchasing: true);
+if (args.Contains("--vs90-multicycle-food-price-stability")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(auditMultiCycleFoodPriceStability: true);
 if (args.Contains("--vs89-food-price-calibration-matrix")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(calibrateFoodPriceDirections: true);
 if (args.Contains("--vs88-executed-food-price-trend")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(compareExecutedFoodPriceTrends: true);
 if (args.Contains("--vs87-executed-cash-food-price")) return GaVs60SessionTradePreviewBenchmarkHarness.Run(observeExecutedCashFoodPrice: true);
