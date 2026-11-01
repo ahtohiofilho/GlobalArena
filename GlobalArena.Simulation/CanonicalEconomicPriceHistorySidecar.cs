@@ -84,7 +84,7 @@ public static class CanonicalEconomicPriceHistorySidecar
 
     private static BigInteger ParseNonNegative(string value, bool positive)
     {
-        if (string.IsNullOrWhiteSpace(value) || value.Length > 100 ||
+        if (string.IsNullOrWhiteSpace(value) || value.Length > 4096 ||
             !BigInteger.TryParse(value, NumberStyles.None,
                 CultureInfo.InvariantCulture, out var parsed) ||
             parsed < 0 || (positive && parsed == 0) ||
