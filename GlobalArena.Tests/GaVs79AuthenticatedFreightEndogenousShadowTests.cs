@@ -66,7 +66,9 @@ public sealed class GaVs79AuthenticatedFreightEndogenousShadowTests
         Assert.Equal(0, observation.Gentle.AuthenticatedNominalFreightCost
             .CompareTo(observation.Steep.AuthenticatedNominalFreightCost));
         Assert.False(observation.UsesExogenousBuyerBudget);
-        Assert.False(observation.LimitsConsumptionToPhysicalDemand);
+        Assert.False(observation.AddsAnIndependentConsumerDemandCap);
+        Assert.True(observation.UsesLegacyFreightCandidateQuantityBound);
+        Assert.False(observation.SupportsUnboundedRemoteConsumption);
         Assert.False(observation.CanCalculateMonetaryNetRevenue);
         Assert.False(observation.IsNominalFreightConvertedIntoPriceIndex);
         Assert.False(observation.CanAuthorizeRealSettlement);
@@ -77,7 +79,7 @@ public sealed class GaVs79AuthenticatedFreightEndogenousShadowTests
     }
 
     [Fact]
-    public void RemoteQuantityIsNotCappedByBasePhysicalDemand()
+    public void RemoteQuantityRespectsLegacyAuthenticatedCapWithoutSecondDemandCheck()
     {
         var (fixture, sites, portfolio) = Build();
         var (candidate, _) = FirstShipment(sites, portfolio);
@@ -85,11 +87,15 @@ public sealed class GaVs79AuthenticatedFreightEndogenousShadowTests
             x.EconomicPointId == candidate.Source &&
             x.CommodityId == candidate.Commodity &&
             x.Activity == candidate.Activity).RawQuantity;
+        // The authenticated VS64 candidate itself inherits the old finite
+        // buyer-demand cap. This reference cannot authorize larger remote lots.
         var currentDemand = sites.Flows.DemandFlows.Single(x =>
             x.EconomicPointId == candidate.Buyer &&
             x.CommodityId == candidate.Commodity).RawQuantity;
         var quantity = Math.Min(candidate.MaximumRawQuantity, actualPhysicalSupply);
         var result = Compare(fixture, portfolio, candidate, quantity);
+        Assert.True(result.UsesLegacyFreightCandidateQuantityBound);
+        Assert.False(result.SupportsUnboundedRemoteConsumption);
         Assert.Equal(quantity, result.Gentle.RawQuantity);
         Assert.Equal(new BigInteger(currentDemand),
             result.Gentle.BuyerDemandPressure);
