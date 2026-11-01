@@ -36,6 +36,9 @@ public sealed class CanonicalExecutedFoodPriceTrendBridge
     private readonly string _worldHashHex;
     private readonly int _maximumAdvisoryStepPermille;
 
+    internal CanonicalCycleStampedProductionProjection SourceCycleProof => _cycleProof;
+    internal CanonicalExecutedLocalFoodPriceWitness TargetExecutedWitness => _currentExecuted;
+
     public ulong SourceCycleMovementTurn { get; }
     public ulong TargetCycleMovementTurn { get; }
     public IReadOnlyList<CanonicalExecutedFoodPriceMatchedTile> MatchedTiles { get; }
