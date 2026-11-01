@@ -77,6 +77,17 @@ public sealed class CanonicalPrimitiveRegionalAccessDistribution
     public bool CanAuthorizeRealSettlement => false;
     public bool IsCommitted => false;
 
+    /// <summary>
+    /// VS72 read-only local-production possibility, juxtaposed with but never
+    /// added to baseline/regional planned freight or treated as consumption.
+    /// </summary>
+    public CanonicalPrimitiveLocalSupplyPotentialDiagnostics DiagnoseLocalSupplyPotential()
+    {
+        VerifyIndependent();
+        return CanonicalPrimitiveLocalSupplyPotentialDiagnostics.FromAccess(
+            _session, _sites, this);
+    }
+
     private CanonicalPrimitiveRegionalAccessDistribution(
         CanonicalPrimitiveFreightPortfolio portfolio,
         CanonicalPhysicalTacticalSession session,
