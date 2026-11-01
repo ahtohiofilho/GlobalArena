@@ -39,7 +39,12 @@ public sealed class CanonicalEndogenousFreightPriceComparison
     public bool IsNominalFreightConvertedIntoPriceIndex => false;
     public bool CanCalculateMonetaryNetRevenue => false;
     public bool UsesExogenousBuyerBudget => false;
-    public bool LimitsConsumptionToPhysicalDemand => false;
+    // The price function adds no demand-as-volume cap, but the VS63/64
+    // authenticated candidate inherited a finite MIN(source, buyer demand)
+    // capacity. This comparison must NOT pretend remote demand is unbounded.
+    public bool AddsAnIndependentConsumerDemandCap => false;
+    public bool UsesLegacyFreightCandidateQuantityBound => true;
+    public bool SupportsUnboundedRemoteConsumption => false;
     public bool IsDispatchOrSettlement => false;
     public bool HasCommittedPhysicalInventory => false;
     public bool CanAuthorizeRealSettlement => false;
