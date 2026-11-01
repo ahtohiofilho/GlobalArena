@@ -133,9 +133,9 @@ public sealed class CanonicalLaggedProductionResponse
             x => x.RawQuantity);
         var oldFlows = prior.Sources.ToDictionary(
             x => (x.Source, x.Commodity, x.Activity), x => x);
-        if (oldFlows.Count != flows.Count ||
+        if (oldFlows.Count != flows.Count(x => x.Value > 0) ||
             oldFlows.Any(x => !flows.TryGetValue(x.Key, out var available) ||
-                available != x.Value.PotentialRaw))
+                available != x.Value.PotentialRaw || available == 0))
             throw new InvalidOperationException(
                 "Frozen workforce quotation does not belong to the current real physical production and worker assignment.");
 
