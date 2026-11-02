@@ -62,6 +62,7 @@ public sealed class CanonicalPrimitiveCommodityExecutionBoundary
     private readonly CanonicalCommodityExecutionEvidenceRow[] _rows;
     private readonly string _worldHashHex;
 
+    internal CanonicalPrimitiveSiteDiscovery SourceSites => _sites;
     public IReadOnlyList<CanonicalCommodityExecutionEvidenceRow> Commodities { get; }
     public ulong CompletedEconomicCycleMovementTurn { get; }
     public ulong PhysicalResidentWorkers { get; }
