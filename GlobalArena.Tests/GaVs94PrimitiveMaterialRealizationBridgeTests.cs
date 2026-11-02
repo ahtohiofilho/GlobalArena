@@ -98,10 +98,10 @@ public sealed class GaVs94PrimitiveMaterialRealizationBridgeTests
         Assert.True(bridge.Commodities.Aggregate(BigInteger.Zero,
             (sum, x) => sum + x.HypotheticallyProducedRaw) > 0);
         Assert.All(trial.Sources, allocation => {
-            var row = Assert.Single(bridge.Sources.Where(x =>
+            var row = Assert.Single(bridge.Sources, x =>
                 x.Source == allocation.Source &&
                 x.Commodity == allocation.Commodity &&
-                x.Activity == allocation.Activity));
+                x.Activity == allocation.Activity);
             Assert.Equal(new BigInteger(allocation.HypotheticallyProducedRaw),
                 row.HypotheticallyProducedRaw);
             Assert.Equal(new BigInteger(allocation.PotentialNotExtractedRaw),
