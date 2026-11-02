@@ -1144,9 +1144,13 @@ public sealed class CanonicalPhysicalTacticalSession
             before.WorldBinding is null || before.PhysicalEconomy is null)
             throw new InvalidOperationException(
                 "Treasury reservation requires an unreserved, bound physical snapshot.");
+        // The canonical session requires EVERY WorldState mutation to
+        // advance its revision. This administrative reservation is therefore
+        // a revisioned but NON-ECONOMIC transition, reconstructed at exactly
+        // the saved action boundary during V20 replay.
         var next = before.WithTreasuryReservation(
             CanonicalTreasuryReservationRuntimeState.CreateDormant(
-                before.WorldBinding));
+                before.WorldBinding)).AdvanceRevision();
         Game.AcceptSnapshotIfCurrent(before, next);
         _lastCommittedSnapshot = next;
         _treasuryActivationActionCount = _journal.Count;
