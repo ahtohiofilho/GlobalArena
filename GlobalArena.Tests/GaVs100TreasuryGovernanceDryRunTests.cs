@@ -252,8 +252,9 @@ public sealed class GaVs100TreasuryGovernanceDryRunTests
             });
         var another = GaVs100TreasuryDryRunFixture.Preview(d, proposal: reordered);
         Assert.Equal(old.ProposalFingerprintHex, another.ProposalFingerprintHex);
-        Assert.Same(old.StageInLaboratory(),
-            another.StageInLaboratory(old.StageInLaboratory()));
+        var firstJournal = old.StageInLaboratory();
+        Assert.Same(firstJournal,
+            another.StageInLaboratory(firstJournal));
     }
 
     [Fact]
