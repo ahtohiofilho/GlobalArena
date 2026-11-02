@@ -19,6 +19,8 @@ public sealed class CanonicalWorldStateHasher
     public const uint LongDistanceWorkerFormatVersion = 15U;
     public const uint PhysicalJourneyFoodFormatVersion = 16U;
     public const uint AutomaticJourneyCampFormatVersion = 17U;
+    // Opt-in treasury reserve: never changes hashes of worlds without it.
+    public const uint DormantTreasuryReservationHashFormatVersion = 19U;
 
     private static readonly byte[] Magic =
     {
@@ -31,9 +33,27 @@ public sealed class CanonicalWorldStateHasher
     public WorldStateHash Compute(WorldState worldState)
     {
         ArgumentNullException.ThrowIfNull(worldState);
-        return worldState.PhysicalEconomy is null
+        var baseline = worldState.PhysicalEconomy is null
             ? ComputeLegacyV8(worldState)
             : ComputePhysicalV9(worldState);
+        var reservation = worldState.TreasuryReservation;
+        if (reservation is null) return baseline;
+        if (worldState.PhysicalEconomy is null || worldState.WorldBinding is null)
+            throw new InvalidOperationException(
+                "VS101 treasury reservation requires a bound physical world.");
+        reservation.RequireWorld(worldState.WorldBinding);
+        using var h = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        h.AppendData(Magic);
+        AppendUInt32(h, DormantTreasuryReservationHashFormatVersion);
+        AppendUInt32(h, 101U); // dedicated field tag
+        h.AppendData(Convert.FromHexString(baseline.HexDigest));
+        h.AppendData(Convert.FromHexString(reservation.WorldSignatureSha256Hex));
+        AppendUInt32(h, reservation.Version);
+        AppendUInt64(h, reservation.SpendableBalanceMinorUnits);
+        AppendUInt32(h, checked((uint)reservation.MonetaryReceiptCount));
+        return new WorldStateHash(
+            DormantTreasuryReservationHashFormatVersion,
+            Convert.ToHexString(h.GetHashAndReset()));
     }
 
     private static WorldStateHash ComputeLegacyV8(WorldState worldState)

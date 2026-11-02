@@ -25,6 +25,9 @@ public sealed class WorldState
 
     public PhysicalTacticalEconomyRuntimeState? PhysicalEconomy { get; }
 
+    /// <summary>Optional dormant VS101 treasury reservation; absent in all old saves.</summary>
+    public CanonicalTreasuryReservationRuntimeState? TreasuryReservation { get; }
+
     public static WorldState CreateInitial()
     {
         return new WorldState(
@@ -80,7 +83,8 @@ public sealed class WorldState
             Economy,
             Population,
             Warfare,
-            PhysicalEconomy);
+            PhysicalEconomy,
+            TreasuryReservation);
     }
 
     public WorldState WithCivilizations(
@@ -98,7 +102,8 @@ public sealed class WorldState
             Economy,
             Population,
             Warfare,
-            PhysicalEconomy);
+            PhysicalEconomy,
+            TreasuryReservation);
     }
 
     public WorldState WithTerritory(
@@ -116,7 +121,8 @@ public sealed class WorldState
             Economy,
             Population,
             Warfare,
-            PhysicalEconomy);
+            PhysicalEconomy,
+            TreasuryReservation);
     }
 
     public WorldState WithDiplomacy(
@@ -134,7 +140,8 @@ public sealed class WorldState
             Economy,
             Population,
             Warfare,
-            PhysicalEconomy);
+            PhysicalEconomy,
+            TreasuryReservation);
     }
 
     public WorldState WithEconomy(
@@ -152,7 +159,8 @@ public sealed class WorldState
             economy,
             Population,
             Warfare,
-            PhysicalEconomy);
+            PhysicalEconomy,
+            TreasuryReservation);
     }
 
     /// <summary>
@@ -173,7 +181,8 @@ public sealed class WorldState
             Economy,
             population,
             Warfare,
-            PhysicalEconomy);
+            PhysicalEconomy,
+            TreasuryReservation);
     }
 
     /// <summary>
@@ -197,7 +206,8 @@ public sealed class WorldState
             economy,
             population,
             Warfare,
-            PhysicalEconomy);
+            PhysicalEconomy,
+            TreasuryReservation);
     }
 
     /// <summary>
@@ -218,7 +228,32 @@ public sealed class WorldState
             Economy,
             Population,
             Warfare,
-            physicalEconomy);
+            physicalEconomy,
+            TreasuryReservation);
+    }
+
+    /// <summary>
+    /// Opt-in dormant treasury position in the canonical physical snapshot.
+    /// No balances or receipt entries are permitted. Legacy world snapshots
+    /// never gain the reservation implicitly.
+    /// </summary>
+    public WorldState WithTreasuryReservation(
+        CanonicalTreasuryReservationRuntimeState reservation)
+    {
+        ArgumentNullException.ThrowIfNull(reservation);
+        if (WorldBinding is null || PhysicalEconomy is null)
+            throw new InvalidOperationException(
+                "Treasury reservation requires a bound physical world.");
+        reservation.RequireWorld(WorldBinding);
+        if (TreasuryReservation is not null)
+        {
+            if (TreasuryReservation == reservation) return this;
+            throw new InvalidOperationException(
+                "Canonical treasury reservation cannot be silently replaced.");
+        }
+        return new WorldState(Revision, WorldBinding, Civilizations,
+            Territory, Diplomacy, Economy, Population, Warfare,
+            PhysicalEconomy, reservation);
     }
 
     private void RejectPopulationDowngrade(PopulationRuntimeState next)
@@ -243,7 +278,8 @@ public sealed class WorldState
             Economy,
             Population,
             warfare,
-            PhysicalEconomy);
+            PhysicalEconomy,
+            TreasuryReservation);
     }
 
     public WorldState AdvanceRevision()
@@ -257,7 +293,8 @@ public sealed class WorldState
             Economy,
             Population,
             Warfare,
-            PhysicalEconomy);
+            PhysicalEconomy,
+            TreasuryReservation);
     }
 
     private WorldState(
@@ -269,7 +306,8 @@ public sealed class WorldState
         EconomyRuntimeState economy,
         PopulationRuntimeState population,
         WarfareRuntimeState warfare,
-        PhysicalTacticalEconomyRuntimeState? physicalEconomy = null)
+        PhysicalTacticalEconomyRuntimeState? physicalEconomy = null,
+        CanonicalTreasuryReservationRuntimeState? treasuryReservation = null)
     {
         ArgumentNullException.ThrowIfNull(
             civilizations);
@@ -297,7 +335,8 @@ public sealed class WorldState
             economy,
             population,
             warfare,
-            physicalEconomy);
+            physicalEconomy,
+            treasuryReservation);
 
         Revision = revision;
         WorldBinding = worldBinding;
@@ -308,6 +347,7 @@ public sealed class WorldState
         Population = population;
         Warfare = warfare;
         PhysicalEconomy = physicalEconomy;
+        TreasuryReservation = treasuryReservation;
     }
 
     private static void ValidateCrossDomainInvariants(
@@ -318,8 +358,16 @@ public sealed class WorldState
         EconomyRuntimeState economy,
         PopulationRuntimeState population,
         WarfareRuntimeState warfare,
-        PhysicalTacticalEconomyRuntimeState? physicalEconomy = null)
+        PhysicalTacticalEconomyRuntimeState? physicalEconomy = null,
+        CanonicalTreasuryReservationRuntimeState? treasuryReservation = null)
     {
+        if (treasuryReservation is not null)
+        {
+            if (worldBinding is null || physicalEconomy is null)
+                throw new InvalidOperationException(
+                    "An active treasury-reservation domain requires bound physical world state.");
+            treasuryReservation.RequireWorld(worldBinding);
+        }
         if (physicalEconomy is not null)
         {
             if (worldBinding is null ||
