@@ -19,7 +19,7 @@ public sealed class GaVs92ExecutedFoodSampleAuditTests
         new(sourceTurn, targetTurn, sourceTiles, targetTiles, matchedTiles,
             sourceFood, targetFood, matchedFood, largest);
 
-    private static (
+    internal static (
         GaVs56BuiltNetworkInstitutionalRightsTests.Fixture Fixture,
         CanonicalMultiCycleFoodPriceStabilityReport History,
         CanonicalMultiCycleFoodRobustnessGate Gate91,
