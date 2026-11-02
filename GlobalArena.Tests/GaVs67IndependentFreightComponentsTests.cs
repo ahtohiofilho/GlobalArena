@@ -32,6 +32,12 @@ public sealed class GaVs67IndependentFreightComponentsTests
             1, 0, 0, 0, 1_000_000, 1_000, 1_000_000),
         ExperimentalLandInfrastructureKind.StoneRoad, Catalog());
 
+    internal static CanonicalEligibleFreightDiscoveryPolicy[] PrimitiveFreightPolicies() => new[] {
+        Freight(Food, EconomicActivityKind.Agriculture),
+        Freight(Wood, EconomicActivityKind.Forestry),
+        Freight(Stone, EconomicActivityKind.Mining)
+    };
+
     private static ExperimentalAbstractPurchasingPolicy Purchasing() => new(
         "VS56-PURCHASING", 1, new FoodTransportCostFraction(5000, 1),
         new FoodTransportCostFraction(5, 8));

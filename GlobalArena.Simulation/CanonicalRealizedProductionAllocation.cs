@@ -49,6 +49,7 @@ public sealed class CanonicalRealizedProductionAllocation
     private readonly CanonicalRealizedProductionDeclaration[] _declarations;
     private readonly CanonicalSimultaneousFreightLot[] _lots;
     private readonly ExperimentalSharedFreightCongestionPolicy _congestion;
+    internal CanonicalPrimitiveSiteDiscovery SourceSites => _sites;
     public IReadOnlyList<CanonicalRealizedProductionDeclaration> Declarations { get; }
     public IReadOnlyList<CanonicalRealizedProductionBalance> Sources { get; }
     public IReadOnlyList<CanonicalRealizedLocalPriceMarket> LocalMarkets { get; }
