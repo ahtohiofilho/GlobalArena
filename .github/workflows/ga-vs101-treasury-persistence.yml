@@ -1,0 +1,62 @@
+name: GA-VS101 Dormant Treasury Persistence Gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ga-vs101-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  treasury-persistence-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify exact HEAD checkout (no synthetic PR merge)
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          echo "GA_CHECKOUT_SHA=$EXPECTED_SHA"
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: GA-VS40 to GA-VS101 directed economic regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "FullyQualifiedName~GaVs101DormantTreasuryPersistenceTests|FullyQualifiedName~GaVs100TreasuryGovernanceDryRunTests|FullyQualifiedName~GaVs99AbstractCurrencyCalibrationTests|FullyQualifiedName~GaVs98AbstractInstitutionalRevenueTests|FullyQualifiedName~GaVs97RegionalConcentrationTests|FullyQualifiedName~GaVs96SimultaneousMarketAbsorptionTests|FullyQualifiedName~GaVs95PhysicalDispositionTrialTests|FullyQualifiedName~GaVs94|FullyQualifiedName~GaVs93|FullyQualifiedName~GaVs92|FullyQualifiedName~GaVs91|FullyQualifiedName~GaVs90|FullyQualifiedName~GaVs89|FullyQualifiedName~GaVs88|FullyQualifiedName~GaVs87|FullyQualifiedName~GaVs86|FullyQualifiedName~GaVs85|FullyQualifiedName~GaVs84|FullyQualifiedName~GaVs83|FullyQualifiedName~GaVs82|FullyQualifiedName~GaVs81|FullyQualifiedName~GaVs80|FullyQualifiedName~GaVs79|FullyQualifiedName~GaVs78|FullyQualifiedName~GaVs77|FullyQualifiedName~GaVs76|FullyQualifiedName~GaVs75|FullyQualifiedName~GaVs74|FullyQualifiedName~GaVs73|FullyQualifiedName~GaVs72|FullyQualifiedName~GaVs71|FullyQualifiedName~GaVs70|FullyQualifiedName~GaVs69|FullyQualifiedName~GaVs68|FullyQualifiedName~GaVs67|FullyQualifiedName~GaVs66|FullyQualifiedName~GaVs65|FullyQualifiedName~GaVs64|FullyQualifiedName~GaVs63|FullyQualifiedName~GaVs62|FullyQualifiedName~GaVs61|FullyQualifiedName~GaVs60|FullyQualifiedName~GaVs59|FullyQualifiedName~GaVs58|FullyQualifiedName~GaVs57|FullyQualifiedName~GaVs56|FullyQualifiedName~GaVs55|FullyQualifiedName~GaVs54|FullyQualifiedName~GaVs53|FullyQualifiedName~GaVs52|FullyQualifiedName~GaVs51|FullyQualifiedName~GaVs50|FullyQualifiedName~GaVs49|FullyQualifiedName~GaVs48|FullyQualifiedName~GaVs47|FullyQualifiedName~GaVs46|FullyQualifiedName~GaVs45|FullyQualifiedName~GaVs44|FullyQualifiedName~GaVs43|FullyQualifiedName~GaVs42|FullyQualifiedName~GaVs41|FullyQualifiedName~GaVs40"
+      - name: VS101 dormant treasury persistence benchmark 8 32 128
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "FullyQualifiedName~GaVs101DormantTreasuryPersistenceBenchmarkTests" --logger "console;verbosity=normal"
+      - name: Godot Mono Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  treasury-persistence-windows:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify exact HEAD checkout (no synthetic PR merge)
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          echo "GA_CHECKOUT_SHA=$EXPECTED_SHA"
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Full project regression suite
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: VS101 dormant treasury persistence benchmark 8 32 128
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "FullyQualifiedName~GaVs101DormantTreasuryPersistenceBenchmarkTests" --logger "console;verbosity=normal"
+      - name: Godot Mono Debug
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
