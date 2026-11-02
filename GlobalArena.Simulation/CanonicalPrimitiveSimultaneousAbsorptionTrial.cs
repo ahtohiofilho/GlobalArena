@@ -98,6 +98,15 @@ public sealed class CanonicalPrimitiveSimultaneousAbsorptionTrial
         RequireCurrent(_session);
     }
 
+    internal void RequireSameDisposition(
+        CanonicalPrimitivePhysicalDispositionTrial disposition)
+    {
+        if (!ReferenceEquals(_disposition95, disposition))
+            throw new InvalidOperationException(
+                "Abstract revenue must reference the exact VS96-certified VS95 disposition.");
+        RequireCurrent(_session);
+    }
+
     public void RequireCurrent(CanonicalPhysicalTacticalSession session)
     {
         if (!ReferenceEquals(_session, session))
