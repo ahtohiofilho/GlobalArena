@@ -36,7 +36,8 @@ public sealed record CanonicalCommodityExecutionEvidenceRow(
         EvidenceKind ==
             CanonicalCommodityExecutionEvidenceKind.ExecutedLocalCashFoodWithPaidPrice;
     public bool HasProofOfActualExecutedSales =>
-        ActualLocalPurchasedRaw is > 0;
+        ActualLocalPurchasedRaw.HasValue &&
+        ActualLocalPurchasedRaw.Value > BigInteger.Zero;
     public bool IsExecutedCashEvidenceUnavailable =>
         ActualLocalPurchasedRaw is null;
 }
