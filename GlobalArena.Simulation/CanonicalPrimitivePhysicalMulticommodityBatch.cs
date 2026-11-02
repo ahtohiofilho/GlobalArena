@@ -116,6 +116,7 @@ public sealed class CanonicalPrimitivePhysicalMulticommodityBatch
     {
         sites.RequireCurrent(session);
         evidence.RequireCurrent(session);
+        evidence.RequireCertifiedSiteDiscovery(sites);
         evidence.VerifyIndependent();
 
         var mapped = evidence.Commodities.ToDictionary(x => x.Activity);
