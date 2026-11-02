@@ -220,6 +220,19 @@ public sealed class CanonicalPrimitiveCommodityExecutionBoundary
         _sample92.RequireCurrent(session);
     }
 
+    /// <summary>
+    /// A VS94 physical batch must reuse the exact canonical site discovery
+    /// certified by this witness, not a lookalike policy from the same world.
+    /// </summary>
+    internal void RequireCertifiedSiteDiscovery(
+        CanonicalPrimitiveSiteDiscovery sites)
+    {
+        if (!ReferenceEquals(_sites, sites))
+            throw new InvalidOperationException(
+                "VS93 evidence does not certify this specific primitive-site discovery.");
+        RequireCurrent(_session);
+    }
+
     public void VerifyIndependent()
     {
         RequireCurrent(_session);
