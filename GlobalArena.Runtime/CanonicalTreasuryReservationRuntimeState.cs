@@ -27,7 +27,7 @@ public sealed record CanonicalTreasuryReservationRuntimeState
         WorldSignatureSha256Hex = worldSignatureSha256Hex;
     }
 
-    internal static bool IsCanonicalDigest(string? hex) =>
+    public static bool IsCanonicalDigest(string? hex) =>
         hex is { Length: 64 } &&
         hex.All(c => (c >= '0' && c <= '9') ||
             (c >= 'A' && c <= 'F'));
