@@ -16,7 +16,7 @@ public sealed class GaVs93PrimitiveCommodityExecutionBoundaryTests
             new CanonicalPrimitiveDemandRate(new CommodityId(9), 250_000)
         }, new FoodTransportCostFraction(1, 1));
 
-    private static (
+    internal static (
         GaVs56BuiltNetworkInstitutionalRightsTests.Fixture Fixture,
         CanonicalPrimitiveSiteDiscovery Sites,
         CanonicalExecutedFoodSampleAudit Audit92,
