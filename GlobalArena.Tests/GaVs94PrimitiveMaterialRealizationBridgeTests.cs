@@ -93,10 +93,10 @@ public sealed class GaVs94PrimitiveMaterialRealizationBridgeTests
     public void TrialDoesNotEquateWorkerPotentialWithHypotheticallyExtractedOutput()
     {
         var (f, sites, boundary, freight, trial, bridge) = Build();
-        Assert.True(bridge.Commodities.Sum(x =>
-            x.PotentialNotExtractedRaw) > 0);
-        Assert.True(bridge.Commodities.Sum(x =>
-            x.HypotheticallyProducedRaw) > 0);
+        Assert.True(bridge.Commodities.Aggregate(BigInteger.Zero,
+            (sum, x) => sum + x.PotentialNotExtractedRaw) > 0);
+        Assert.True(bridge.Commodities.Aggregate(BigInteger.Zero,
+            (sum, x) => sum + x.HypotheticallyProducedRaw) > 0);
         Assert.All(trial.Sources, allocation => {
             var row = Assert.Single(bridge.Sources.Where(x =>
                 x.Source == allocation.Source &&
