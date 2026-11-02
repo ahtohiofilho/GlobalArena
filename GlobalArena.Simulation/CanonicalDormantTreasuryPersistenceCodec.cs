@@ -121,7 +121,7 @@ public static class CanonicalDormantTreasuryPersistenceCodec
 
         var hasher = new CanonicalWorldStateHasher();
         var beforeHash = hasher.Compute(baseline);
-        if (!CanonicalTreasuryReservationRuntimeState.IsCanonicalDigest(
+        if (!CanonicalTreasuryReservationRuntimeState.IsCanonicalWorldSignature(
                 payload.WorldSignatureSha256Hex) ||
             !CanonicalTreasuryReservationRuntimeState.IsCanonicalDigest(
                 payload.BaselineWorldHashHex) ||
