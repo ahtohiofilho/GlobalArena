@@ -56,6 +56,16 @@ public sealed record CanonicalJourneyCampSaveRow(
     ulong Order, ulong WaitingTurns, ulong FoodGatheredRaw,
     ulong GatheringEconomicCycles);
 
+/// <summary>
+/// VS102 dormant treasury checkpoint within the full canonical session save.
+/// Activation is an explicitly witnessed change in hash domain, NOT a
+/// production event, a tax, a coin issue, or a money transfer.
+/// </summary>
+public sealed record CanonicalDormantTreasuryIntegratedSaveRow(
+    uint SchemaVersion, string WorldSignatureSha256Hex,
+    ulong SpendableBalanceMinorUnits, int MonetaryReceiptCount,
+    int ActivatedAfterActionCount);
+
 public sealed record CanonicalPhysicalSavePayload(
     int Version, ulong Seed, int GeneratorVersion,
     int CoarseM, int CoarseN, int FineM, int FineN,
@@ -78,7 +88,9 @@ public sealed record CanonicalPhysicalSavePayload(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     CanonicalJourneyCampSaveRow[]? JourneyCampStates = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    CanonicalTransportCommand[]? TransportCommands = null);
+    CanonicalTransportCommand[]? TransportCommands = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    CanonicalDormantTreasuryIntegratedSaveRow? TreasuryReservation = null);
 
 public sealed record CanonicalPhysicalSaveEnvelope(
     int Version, string PayloadJson, string PayloadSha256Hex);
@@ -102,11 +114,15 @@ public sealed class CanonicalPhysicalTacticalSession
     public const int PhysicalTravelFoodSaveFormat = 16;
     public const int AutomaticCampSaveFormat = 17;
     public const int TransportAuthorityEnvelopeFormat = 18;
+    public const int IntegratedDormantTreasuryEnvelopeFormat = 20;
     public const int MaximumActions = 100_000;
     private const int MaximumSaveBytes = 4_000_000;
     public const ulong FoodDemandRawPerWorker = 500_000UL;
 
     private readonly List<CanonicalPhysicalAction> _journal = new();
+    // A V20 save replays the historical events before changing to hash v19.
+    // The index is NEVER inferred from physical turn or cash balance.
+    private int? _treasuryActivationActionCount;
     private readonly GoldbergParameters _coarse;
     private readonly GoldbergParameters _fine;
     private readonly ulong _seed;
@@ -1108,13 +1124,44 @@ public sealed class CanonicalPhysicalTacticalSession
         _journal.Add(action);
     }
 
+    /// <summary>
+    /// Explicitly reserve a ZERO-BALANCE future state treasury at the CURRENT
+    /// action boundary. Existing action hashes remain byte-for-byte original.
+    /// Later actions are authenticated by the opt-in v19 state hash.
+    /// This is NOT settlement, emission, taxation or a financial event.
+    /// </summary>
+    public void EnableDormantTreasuryReservation()
+    {
+        var before = CheckedSnapshot;
+        if (before.TreasuryReservation is not null)
+        {
+            if (!_treasuryActivationActionCount.HasValue)
+                throw new InvalidOperationException(
+                    "A treasury reservation is missing its canonical activation boundary.");
+            return;
+        }
+        if (_treasuryActivationActionCount.HasValue ||
+            before.WorldBinding is null || before.PhysicalEconomy is null)
+            throw new InvalidOperationException(
+                "Treasury reservation requires an unreserved, bound physical snapshot.");
+        var next = before.WithTreasuryReservation(
+            CanonicalTreasuryReservationRuntimeState.CreateDormant(
+                before.WorldBinding));
+        Game.AcceptSnapshotIfCurrent(before, next);
+        _lastCommittedSnapshot = next;
+        _treasuryActivationActionCount = _journal.Count;
+    }
+
     public string ExportSaveJson()
     {
         var payloadJson = JsonSerializer.Serialize(BuildPayload());
         var digest = Convert.ToHexString(
             SHA256.HashData(Encoding.UTF8.GetBytes(payloadJson)));
         var json = JsonSerializer.Serialize(new CanonicalPhysicalSaveEnvelope(
-            _transportNetwork is { Revision: > 0 } ? TransportAuthorityEnvelopeFormat : CurrentSaveFormat,
+            _treasuryActivationActionCount.HasValue
+                ? IntegratedDormantTreasuryEnvelopeFormat
+                : _transportNetwork is { Revision: > 0 }
+                ? TransportAuthorityEnvelopeFormat : CurrentSaveFormat,
             payloadJson, digest));
         if (Encoding.UTF8.GetByteCount(json) > MaximumSaveBytes)
             throw new InvalidOperationException("Canonical save exceeds size limit.");
@@ -1133,7 +1180,7 @@ public sealed class CanonicalPhysicalTacticalSession
         {
             envelope = JsonSerializer.Deserialize<CanonicalPhysicalSaveEnvelope>(json)
                 ?? throw new InvalidOperationException("Missing canonical save envelope.");
-            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat or CashFoodSaveFormat or TimedTransitSaveFormat or BornCivilizationSaveFormat or LongDistanceSaveFormat or PhysicalTravelFoodSaveFormat or AutomaticCampSaveFormat or TransportAuthorityEnvelopeFormat) ||
+            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat or CashFoodSaveFormat or TimedTransitSaveFormat or BornCivilizationSaveFormat or LongDistanceSaveFormat or PhysicalTravelFoodSaveFormat or AutomaticCampSaveFormat or TransportAuthorityEnvelopeFormat or IntegratedDormantTreasuryEnvelopeFormat) ||
                 string.IsNullOrEmpty(envelope.PayloadJson) ||
                 string.IsNullOrEmpty(envelope.PayloadSha256Hex))
                 throw new InvalidOperationException("Unsupported canonical save envelope.");
@@ -1150,10 +1197,25 @@ public sealed class CanonicalPhysicalTacticalSession
             throw new InvalidOperationException("Invalid canonical save encoding.", ex);
         }
 
+        var integratedTreasury =
+            envelope.Version == IntegratedDormantTreasuryEnvelopeFormat;
         if ((envelope.Version == TransportAuthorityEnvelopeFormat
                 ? payload.Version < SaveFormat || payload.Version > AutomaticCampSaveFormat ||
                   payload.TransportCommands is not { Length: > 0 }
-                : payload.Version != envelope.Version || payload.TransportCommands is not null) ||
+                : integratedTreasury
+                ? payload.Version < SaveFormat ||
+                  payload.Version > AutomaticCampSaveFormat ||
+                  payload.TransportCommands is { Length: 0 }
+                : payload.Version != envelope.Version ||
+                  payload.TransportCommands is not null) ||
+            (integratedTreasury != (payload.TreasuryReservation is not null)) ||
+            (integratedTreasury &&
+             (payload.TreasuryReservation!.ActivatedAfterActionCount < 0 ||
+              payload.TreasuryReservation.ActivatedAfterActionCount > payload.Actions.Length ||
+              payload.TreasuryReservation.SchemaVersion !=
+                  CanonicalTreasuryReservationRuntimeState.SchemaVersion ||
+              payload.TreasuryReservation.SpendableBalanceMinorUnits != 0UL ||
+              payload.TreasuryReservation.MonetaryReceiptCount != 0)) ||
             payload.Actions is null || payload.Workers is null ||
             payload.Stocks is null || payload.Cycles is null ||
             ((payload.Version >= CashFoodSaveFormat) != (payload.FoodCash is not null)) ||
@@ -1204,6 +1266,26 @@ public sealed class CanonicalPhysicalTacticalSession
             payload.InitialHashHex != game._initialHashHex)
             throw new InvalidOperationException("Canonical save world identity mismatch.");
 
+        if (integratedTreasury)
+        {
+            // Validate identity and the immutable dormant-only schema before
+            // replaying ANY action or transport command.
+            var saved = payload.TreasuryReservation!;
+            CanonicalTreasuryReservationRuntimeState.RestoreDormant(
+                game.Game.Snapshot.WorldBinding!,
+                saved.SchemaVersion, saved.WorldSignatureSha256Hex,
+                saved.SpendableBalanceMinorUnits, saved.MonetaryReceiptCount);
+        }
+
+        void ReplayTreasuryActivation()
+        {
+            if (integratedTreasury &&
+                !game._treasuryActivationActionCount.HasValue &&
+                game._journal.Count ==
+                    payload.TreasuryReservation!.ActivatedAfterActionCount)
+                game.EnableDormantTreasuryReservation();
+        }
+
         var transportCursor = 0;
         var transportCommands = payload.TransportCommands ?? Array.Empty<CanonicalTransportCommand>();
         if (transportCommands.Length > MaximumActions || transportCommands.Any(x => x is null))
@@ -1215,8 +1297,10 @@ public sealed class CanonicalPhysicalTacticalSession
                 game.TransportNetwork.Apply(transportCommands[transportCursor++]);
         }
         ReplayTransport();
+        ReplayTreasuryActivation();
         foreach (var action in payload.Actions)
         {
+            ReplayTreasuryActivation();
             if (action is null)
                 throw new InvalidOperationException("Null canonical action.");
             if (game.Game.Snapshot.Revision != action.BeforeRevision ||
@@ -1276,6 +1360,7 @@ public sealed class CanonicalPhysicalTacticalSession
                 throw new InvalidOperationException("Canonical event replay diverged.");
             ReplayTransport();
         }
+        ReplayTreasuryActivation();
         if (transportCursor != transportCommands.Length)
             throw new InvalidOperationException("Transport journal physical ordering diverged.");
 
@@ -1419,7 +1504,15 @@ public sealed class CanonicalPhysicalTacticalSession
             state.JourneyCampStates?.Select(x => new CanonicalJourneyCampSaveRow(
                 x.OrderId, x.WaitingMovementTurns, x.GatheredFoodRaw,
                 x.GatheringEconomicCycles)).ToArray(),
-            _transportNetwork is { Revision: > 0 } network ? network.ExportCommands() : null);
+            _transportNetwork is { Revision: > 0 } network ? network.ExportCommands() : null,
+            _treasuryActivationActionCount is int activatedAfter
+                ? new CanonicalDormantTreasuryIntegratedSaveRow(
+                    CanonicalTreasuryReservationRuntimeState.SchemaVersion,
+                    owned.TreasuryReservation!.WorldSignatureSha256Hex,
+                    owned.TreasuryReservation.SpendableBalanceMinorUnits,
+                    owned.TreasuryReservation.MonetaryReceiptCount,
+                    activatedAfter)
+                : null);
     }
 
     private bool IsWorkableLand(StrategicCellId id) =>
