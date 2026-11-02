@@ -1210,7 +1210,8 @@ public sealed class CanonicalPhysicalTacticalSession
                   payload.TransportCommands is not null) ||
             (integratedTreasury != (payload.TreasuryReservation is not null)) ||
             (integratedTreasury &&
-             (payload.TreasuryReservation!.ActivatedAfterActionCount < 0 ||
+             (payload.Actions is null ||
+              payload.TreasuryReservation!.ActivatedAfterActionCount < 0 ||
               payload.TreasuryReservation.ActivatedAfterActionCount > payload.Actions.Length ||
               payload.TreasuryReservation.SchemaVersion !=
                   CanonicalTreasuryReservationRuntimeState.SchemaVersion ||
