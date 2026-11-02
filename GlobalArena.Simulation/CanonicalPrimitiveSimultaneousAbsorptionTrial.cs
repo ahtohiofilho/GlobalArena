@@ -90,6 +90,14 @@ public sealed class CanonicalPrimitiveSimultaneousAbsorptionTrial
         Commodities = Array.AsReadOnly(_commodities);
     }
 
+    internal void RequireSameSites(CanonicalPrimitiveSiteDiscovery sites)
+    {
+        if (!ReferenceEquals(_sites, sites))
+            throw new InvalidOperationException(
+                "VS97 must use the precise certified VS96 site discovery.");
+        RequireCurrent(_session);
+    }
+
     public void RequireCurrent(CanonicalPhysicalTacticalSession session)
     {
         if (!ReferenceEquals(_session, session))
