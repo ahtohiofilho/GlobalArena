@@ -192,6 +192,16 @@ public sealed class GaVs94PhysicalMulticommodityBatchTests
     }
 
     [Fact]
+    public void DifferentLiveSiteDiscoveryCannotBorrowVs93CertifiedEvidence()
+    {
+        var (f, _, evidence, _) = Build();
+        var substitute = f.Session.DiscoverPrimitiveEconomicSites(Policy());
+        Assert.Throws<InvalidOperationException>(() =>
+            CanonicalPrimitivePhysicalMulticommodityBatch
+                .FromCertifiedEvidence(f.Session, substitute, evidence, Rates()));
+    }
+
+    [Fact]
     public void MultipleRateScenariosNeverMutateSaveOrChangeActualCashProof()
     {
         var (f, sites, evidence, reference) = Build();
