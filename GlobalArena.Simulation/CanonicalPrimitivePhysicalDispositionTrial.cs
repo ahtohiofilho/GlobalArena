@@ -106,6 +106,13 @@ public sealed class CanonicalPrimitivePhysicalDispositionTrial
         InstitutionalFreightPreflight = computed.FreightAudit;
     }
 
+    internal void RequireSameSites(CanonicalPrimitiveSiteDiscovery sites)
+    {
+        if (!ReferenceEquals(_sites, sites))
+            throw new InvalidOperationException("VS95 trial requires its original live site discovery.");
+        RequireCurrent(_session);
+    }
+
     public void RequireCurrent(CanonicalPhysicalTacticalSession session)
     {
         if (!ReferenceEquals(_session, session))
