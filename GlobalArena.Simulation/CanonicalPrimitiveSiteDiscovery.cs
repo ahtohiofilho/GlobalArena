@@ -92,6 +92,7 @@ public sealed class CanonicalPrimitiveSiteDiscovery
     public ulong TravellingWorkers { get; }
     public IReadOnlyList<CanonicalPrimitiveEconomicSite> Sites { get; }
     public EconomicProductionDemandResult Flows { get; }
+    internal EconomicPrimitiveCommodityMapping CommodityMapping => _policy.Commodities;
     public IReadOnlyList<ExperimentalAbstractBuyerAnchor> BuyerAnchors { get; }
     public IReadOnlyList<ExperimentalAbstractProducerAnchor> ProducerAnchors { get; }
     public bool CanAuthorizeRealSettlement => false;
