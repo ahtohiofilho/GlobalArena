@@ -213,8 +213,9 @@ public sealed class GaVs102IntegratedTreasurySaveTests
                 CanonicalPhysicalTacticalSession.RestoreSaveJson(
                     GaVs102IntegratedTreasurySaveFixture.RewritePayload(
                         json, corrupt)));
-        Assert.Equal(original,
-            GaVs102IntegratedTreasurySaveFixture.Payload(json));
+        Assert.Equal(JsonSerializer.Serialize(original),
+            JsonSerializer.Serialize(
+                GaVs102IntegratedTreasurySaveFixture.Payload(json)));
     }
 
     [Fact]
