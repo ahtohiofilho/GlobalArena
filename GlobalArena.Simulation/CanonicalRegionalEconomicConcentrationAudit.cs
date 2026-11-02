@@ -123,6 +123,15 @@ public sealed class CanonicalRegionalEconomicConcentrationAudit
         Commodities = Array.AsReadOnly(_commodities);
     }
 
+    internal void RequireSameAbsorption(
+        CanonicalPrimitiveSimultaneousAbsorptionTrial absorption)
+    {
+        if (!ReferenceEquals(_absorption96, absorption))
+            throw new InvalidOperationException(
+                "Abstract revenue must match the VS97-certified VS96 absorption.");
+        RequireCurrent(_session);
+    }
+
     public void RequireCurrent(CanonicalPhysicalTacticalSession session)
     {
         if (!ReferenceEquals(_session, session))
