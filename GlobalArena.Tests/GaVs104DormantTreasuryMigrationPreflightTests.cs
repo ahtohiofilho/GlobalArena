@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using GlobalArena.Runtime;
 using GlobalArena.Simulation;
 
 namespace GlobalArena.Tests;
