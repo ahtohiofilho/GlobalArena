@@ -25,10 +25,12 @@ public sealed class GaVs102IntegratedTreasurySaveBenchmarkTests
         var source = GaVs102IntegratedTreasurySaveFixture.OpenLegacy();
         var legacy = source.ExportSaveJson();
         var previousActions = source.Events.ToArray();
-        var legacyCash = source.FoodCash!.Accounts.ToArray();
         source.EnableDormantTreasuryReservation();
         source.AdvanceMovementTurn();
         var complete = source.ExportSaveJson();
+        // Movement legitimately settles the historical food market. Compare
+        // restored accounts with the exact V20 snapshot, not the pre-turn state.
+        var savedFoodCashAccounts = source.FoodCash!.Accounts.ToArray();
         var currentHash = source.CurrentHash;
         var measured = new double[3];
 
@@ -46,7 +48,7 @@ public sealed class GaVs102IntegratedTreasurySaveBenchmarkTests
                     .TreasuryReservation!.SpendableBalanceMinorUnits);
                 Assert.Equal(0, restored.Game.Snapshot.TreasuryReservation
                     .MonetaryReceiptCount);
-                Assert.Equal(legacyCash, restored.FoodCash!.Accounts);
+                Assert.Equal(savedFoodCashAccounts, restored.FoodCash!.Accounts);
             }
             var elapsed = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
             if (sample >= 0) measured[sample] = elapsed;
@@ -57,7 +59,7 @@ public sealed class GaVs102IntegratedTreasurySaveBenchmarkTests
             $"historical_actions={previousActions.Length};" +
             $"median_ms={measured[1]:F3};" +
             "RESULT=PASS_GA_VS102_INTEGRATED_TREASURY_SAVE");
-        Assert.Equal(legacyCash, source.FoodCash.Accounts);
+        Assert.Equal(savedFoodCashAccounts, source.FoodCash.Accounts);
         Assert.Equal(currentHash, source.CurrentHash);
         Assert.Equal(legacy, CanonicalPhysicalTacticalSession
             .RestoreSaveJson(legacy).ExportSaveJson());
