@@ -45,6 +45,8 @@ public partial class Main
     private Label? _foodMarketQuoteLabel;
     private ulong? _foodMarketQuoteRevision;
     private ulong? _foodMarketQuoteTile;
+    private Button? _treasuryReservationButton;
+    private Label? _treasuryReservationStatus;
 
     private void InitializeWorkerLabControls(VBoxContainer tacticalHud)
     {
@@ -413,6 +415,7 @@ public partial class Main
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         _workerLabAdvancedPanel.AddChild(_foodMarketQuoteLabel);
+        InitializeTreasuryReservationControls(_workerLabAdvancedPanel);
 
         if (_tacticalPreview is null)
             throw new InvalidOperationException("Tactical renderer must exist before lab HUD setup.");
@@ -433,6 +436,111 @@ public partial class Main
             // Do not issue an order or mutate the world from the presentation.
             UpdateWorkerLabHud();
         };
+    }
+
+    private void InitializeTreasuryReservationControls(VBoxContainer advancedPanel)
+    {
+        var title = new Label
+        {
+            Text = "TESOURARIA ESTATAL FUTURA | RESERVA INSTITUCIONAL",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        title.AddThemeColorOverride("font_color", new Color("#d4e9f3"));
+        advancedPanel.AddChild(title);
+
+        _treasuryReservationStatus = new Label
+        {
+            Name = "GAQATreasuryStatus",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        advancedPanel.AddChild(_treasuryReservationStatus);
+
+        _treasuryReservationButton = new Button
+        {
+            Name = "GAQATreasuryReserve",
+            Text = "REGISTRAR RESERVA INSTITUCIONAL VAZIA",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        _treasuryReservationButton.Pressed += RegisterDormantTreasuryReservation;
+        advancedPanel.AddChild(_treasuryReservationButton);
+
+        UpdateTreasuryReservationHud();
+    }
+
+    private void UpdateTreasuryReservationHud()
+    {
+        if (_treasuryReservationStatus is null ||
+            _treasuryReservationButton is null)
+            return;
+
+        if (_canonicalPhysicalLab is null)
+        {
+            _treasuryReservationStatus.Text =
+                "TESOURARIA FUTURA: runtime canônico não conectado.";
+            _treasuryReservationButton.Disabled = true;
+            return;
+        }
+
+        var reservation = _canonicalPhysicalLab.Game.Snapshot.TreasuryReservation;
+        if (reservation is null)
+        {
+            _treasuryReservationStatus.Text =
+                "RESERVA NÃO REGISTRADA. Nenhuma moeda ou recibo foi criado. " +
+                "O registro é uma transição administrativa explícita, sem evento econômico.";
+            _treasuryReservationButton.Text =
+                "REGISTRAR RESERVA INSTITUCIONAL VAZIA";
+            _treasuryReservationButton.Disabled = false;
+            return;
+        }
+
+        _treasuryReservationStatus.Text =
+            $"RESERVA DORMENTE V{reservation.Version} | " +
+            $"SALDO GASTÁVEL: {reservation.SpendableBalanceMinorUnits} | " +
+            $"RECIBOS: {reservation.MonetaryReceiptCount}\n" +
+            "SEM EMISSÃO, ARRECADAÇÃO, TRIBUTO, TRANSFERÊNCIA, DÉBITO OU SETTLE. " +
+            "Sem caixa populacional. O mercado alimentar V12 é legado de compatibilidade, " +
+            "não a origem monetária do Estado.";
+        _treasuryReservationButton.Text = "RESERVA VAZIA JÁ REGISTRADA";
+        _treasuryReservationButton.Disabled = true;
+    }
+
+    private void RegisterDormantTreasuryReservation()
+    {
+        if (_canonicalPhysicalLab is null || _workerLabStatus is null)
+            return;
+
+        try
+        {
+            var before = _canonicalPhysicalLab.Game.Snapshot;
+            if (before.TreasuryReservation is not null)
+            {
+                UpdateTreasuryReservationHud();
+                return;
+            }
+
+            var actionCount = _canonicalPhysicalLab.Events.Count;
+            _canonicalPhysicalLab.EnableDormantTreasuryReservation();
+            var after = _canonicalPhysicalLab.Game.Snapshot;
+            if (after.Revision != checked(before.Revision + 1UL) ||
+                _canonicalPhysicalLab.Events.Count != actionCount)
+                throw new InvalidOperationException(
+                    "A reserva deveria avançar uma revisão sem criar ação econômica.");
+
+            AttachRuntimeState(after);
+            UpdateWorkerLabHud();
+            _workerLabStatus.Text +=
+                "\nRESERVA INSTITUCIONAL VAZIA REGISTRADA: sem evento econômico.";
+            GD.Print(
+                $"GA_VS103_TREASURY_RESERVATION_REGISTERED revision_before={before.Revision} " +
+                $"revision_after={after.Revision} action_count={actionCount} " +
+                "balance=0 receipts=0 issuance=false settlement=false");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or OverflowException)
+        {
+            _workerLabStatus.Text =
+                "RESERVA NÃO REGISTRADA: " + ex.Message;
+            UpdateTreasuryReservationHud();
+        }
     }
 
     private void StartWorkerLab()
@@ -1184,6 +1292,8 @@ public partial class Main
         }
     }
 
+    private static string TreasuryLabSavePath =>
+        ProjectSettings.GlobalizePath("user://ga-vs20-dormant-treasury.json");
     private static string RemoteJourneyLabSavePath =>
         ProjectSettings.GlobalizePath("user://ga-vs29-remote-journey.json");
     private static string BornCivilizationLabSavePath =>
@@ -1213,7 +1323,9 @@ public partial class Main
             var isCash = _canonicalPhysicalLab.MarketMode == PhysicalFoodMarketMode.LocalCashSettlement;
             var isGeographic = _canonicalPhysicalLab.GeographyMode == PhysicalTacticalGeographyMode.Canonical01C;
             var isAdaptive = _canonicalPhysicalLab.CadenceMode == PhysicalEconomicCadenceMode.AdaptiveThirty;
-            var path = isRemote ? RemoteJourneyLabSavePath :
+            var hasTreasury = _canonicalPhysicalLab.Game.Snapshot.TreasuryReservation is not null;
+            var path = hasTreasury ? TreasuryLabSavePath :
+                isRemote ? RemoteJourneyLabSavePath :
                 isBorn ? BornCivilizationLabSavePath :
                 isTimed ? TimedLabSavePath : isCash ? CashFoodLabSavePath : isGeographic ? GeographyLabSavePath :
                 isAdaptive ? AdaptiveLabSavePath : CanonicalLabSavePath;
@@ -1251,7 +1363,9 @@ public partial class Main
             _workerLabStatus.Text += cameraSaved
                 ? "\nCÂMERA TÁTICA SALVA: posição, zoom e orientação."
                 : "\nATENÇÃO: partida salva, mas a visão tática não pôde ser salva.";
-            _workerLabStatus.Text += isRemote
+            _workerLabStatus.Text += hasTreasury
+                ? "\nSAVE INTEGRADO V20 GRAVADO: ga-vs20-dormant-treasury.json"
+                : isRemote
                 ? "\nSAVE MULTITRECHO V15 GRAVADO: ga-vs29-remote-journey.json"
                 : isBorn
                 ? "\nSAVE CIVILIZACIONAL V14 GRAVADO: ga-vs19b-born-civilization.json"
@@ -1279,20 +1393,22 @@ public partial class Main
         try
         {
             // Never silently downgrade on a damaged newer save.
-            var hasRemote = File.Exists(RemoteJourneyLabSavePath);
-            var hasBorn = !hasRemote && File.Exists(BornCivilizationLabSavePath);
-            var hasTimed = !hasBorn && File.Exists(TimedLabSavePath);
-            var hasCash = !hasBorn && !hasTimed && File.Exists(CashFoodLabSavePath);
-            var hasGeography = !hasTimed && !hasCash && File.Exists(GeographyLabSavePath);
-            var hasAdaptive = !hasCash && !hasGeography && File.Exists(AdaptiveLabSavePath);
-            var hasCanonical = !hasCash && !hasGeography && !hasAdaptive && File.Exists(CanonicalLabSavePath);
-            var path = hasRemote ? RemoteJourneyLabSavePath :
+            var hasTreasury = File.Exists(TreasuryLabSavePath);
+            var hasRemote = !hasTreasury && File.Exists(RemoteJourneyLabSavePath);
+            var hasBorn = !hasTreasury && !hasRemote && File.Exists(BornCivilizationLabSavePath);
+            var hasTimed = !hasTreasury && !hasBorn && File.Exists(TimedLabSavePath);
+            var hasCash = !hasTreasury && !hasBorn && !hasTimed && File.Exists(CashFoodLabSavePath);
+            var hasGeography = !hasTreasury && !hasTimed && !hasCash && File.Exists(GeographyLabSavePath);
+            var hasAdaptive = !hasTreasury && !hasCash && !hasGeography && File.Exists(AdaptiveLabSavePath);
+            var hasCanonical = !hasTreasury && !hasCash && !hasGeography && !hasAdaptive && File.Exists(CanonicalLabSavePath);
+            var path = hasTreasury ? TreasuryLabSavePath :
+                hasRemote ? RemoteJourneyLabSavePath :
                 hasBorn ? BornCivilizationLabSavePath :
                 hasTimed ? TimedLabSavePath : hasCash ? CashFoodLabSavePath : hasGeography ? GeographyLabSavePath :
                 hasAdaptive ? AdaptiveLabSavePath :
                 hasCanonical ? CanonicalLabSavePath : LegacyLabSavePath;
             var content = File.ReadAllText(path, Encoding.UTF8);
-            var restored = hasRemote || hasBorn || hasTimed || hasCash || hasGeography || hasAdaptive || hasCanonical
+            var restored = hasTreasury || hasRemote || hasBorn || hasTimed || hasCash || hasGeography || hasAdaptive || hasCanonical
                 ? CanonicalPhysicalTacticalSession.RestoreSaveJson(content)
                 : CanonicalPhysicalTacticalSession.MigrateVs07SaveJson(content);
             if (restored.State.CoarseParameters != new GoldbergParameters(3, 0) ||
@@ -1346,7 +1462,9 @@ public partial class Main
             _workerLabStatus.Text += cameraRestored
                 ? "\nCÂMERA TÁTICA RESTAURADA: mesma posição e zoom do save."
                 : "\nVisão tática: enquadramento inicial (save antigo ou visão indisponível).";
-            _workerLabStatus.Text += hasRemote
+            _workerLabStatus.Text += hasTreasury
+                ? "\nSAVE INTEGRADO V20 REABERTO E VALIDADO: reserva dormente restaurada."
+                : hasRemote
                 ? "\nSAVE DE VIAGEM MULTITRECHO V15 REABERTO E VALIDADO."
                 : hasBorn
                 ? "\nSAVE CIVILIZACIONAL V14 REABERTO E VALIDADO."
@@ -1362,7 +1480,8 @@ public partial class Main
                         ? "\nSAVE LEGADO V9 REABERTO: TERRENO V1 LEGADO."
                         : "\nSAVE VS07 MIGRADO EM MEMÓRIA: TERRENO V1 LEGADO.";
             GD.Print($"GA-VS10-CANONICAL-LOADED revision={_canonicalSession.Snapshot.Revision} " +
-                $"hash={restored.CurrentHash.HexDigest} migrated_legacy={!hasCanonical}");
+                $"hash={restored.CurrentHash.HexDigest} migrated_legacy=" +
+                $"{!hasTreasury && !hasRemote && !hasBorn && !hasTimed && !hasCash && !hasGeography && !hasAdaptive && !hasCanonical}");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or
             InvalidOperationException or ArgumentException or OverflowException)
@@ -1423,6 +1542,7 @@ public partial class Main
             _remoteDestinationTileId.MaxValue =
                 (double)_canonicalPhysicalLab.State.FineParameters.StrategicCellCount;
         var state = _canonicalPhysicalLab.State;
+        UpdateTreasuryReservationHud();
         if (_foodMarketQuoteLabel is not null &&
             (_foodMarketQuoteRevision != _canonicalPhysicalLab.Game.Snapshot.Revision ||
              _foodMarketQuoteTile != _workerOrigin.Value.FineStrategicCellId.Value))

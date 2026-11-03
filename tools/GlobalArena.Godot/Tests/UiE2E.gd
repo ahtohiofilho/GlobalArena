@@ -85,6 +85,8 @@ func _run() -> void:
     var one := _button(app, "GAQAAdvanceOneCycle")
     var save := _button(app, "GAQASave")
     var load_save := _button(app, "GAQALoad")
+    var treasury_status := _label(app, "GAQATreasuryStatus")
+    var treasury_reserve := _button(app, "GAQATreasuryReserve")
     for node in [inspect, source, destination, quantity, status, settlements,
             cycle_report, preview, food, compare, diagnose, survey,
             survey_result, plan_destination, advanced_toggle, remote_target,
@@ -92,7 +94,7 @@ func _run() -> void:
             camp_button, camp_result, real_food, real_food_result,
             real_order, camp_order, food_assessment,
             food_assessment_result, order_move, reassign, five,
-            one, save, load_save]:
+            one, save, load_save, treasury_status, treasury_reserve]:
         if not _require(node != null, "expected named production control missing"):
             return
 
@@ -100,8 +102,10 @@ func _run() -> void:
     await process_frame
     if not _require(status.text.contains("turno 0") and
             status.text.contains("ciclos 0") and
-            settlements.text.contains("agricultura 4, madeira 2, pedra 2"),
-            "inspect button failed to initialize and render initial workers"):
+            settlements.text.contains("agricultura 4, madeira 2, pedra 2") and
+            treasury_status.text.contains("RESERVA NÃO REGISTRADA") and
+            not treasury_reserve.disabled,
+            "initial HUD or explicit dormant-treasury preflight is incorrect"):
         return
     print("GA_UI_E2E_INSPECTION_OK")
 
@@ -249,6 +253,47 @@ func _run() -> void:
     advanced_toggle.button_pressed = true
     advanced_toggle.emit_signal("toggled", true)
     await process_frame
+
+    # VS103: the player explicitly registers only the empty dormant reservation.
+    # This advances one canonical revision, adds no economic action, and issues
+    # no money. The V20 save must outrank the still-present V14 compatibility file.
+    if not _require(treasury_status.text.contains("RESERVA NÃO REGISTRADA") and
+            not treasury_reserve.disabled,
+            "VS103 reservation control should be available before explicit registration"):
+        return
+    _press(treasury_reserve)
+    await process_frame
+    if not _require(treasury_status.text.contains("RESERVA DORMENTE V1") and
+            treasury_status.text.contains("SALDO GASTÁVEL: 0") and
+            treasury_status.text.contains("RECIBOS: 0") and
+            treasury_status.text.contains("SEM EMISSÃO") and
+            treasury_reserve.disabled and status.text.contains("turno 5"),
+            "VS103 reservation action created money, an event, or failed to update the HUD"):
+        return
+    print("GA_UI_E2E_DORMANT_TREASURY_REGISTERED_OK")
+
+    _press(save)
+    await process_frame
+    if not _require(status.text.contains("SAVE INTEGRADO V20 GRAVADO"),
+            "VS103 client did not save the explicit dormant reservation as V20"):
+        return
+    _press(one)
+    await process_frame
+    if not _require(status.text.contains("turno 6"),
+            "VS103 post-save movement did not advance before restore"):
+        return
+    _press(load_save)
+    await process_frame
+    if not _require(status.text.contains("SAVE INTEGRADO V20 REABERTO") and
+            status.text.contains("turno 5") and
+            treasury_status.text.contains("RESERVA DORMENTE V1") and
+            treasury_status.text.contains("SALDO GASTÁVEL: 0") and
+            treasury_status.text.contains("RECIBOS: 0") and
+            treasury_reserve.disabled,
+            "VS103 V20 restore failed to prioritize and reconstruct the dormant reservation"):
+        return
+    print("GA_UI_E2E_DORMANT_TREASURY_V20_SAVE_RESTORE_OK")
+
     remote_target.value = 1.0
     _press(remote_button)
     await process_frame
@@ -394,8 +439,8 @@ func _run() -> void:
 
     _press(save)
     await process_frame
-    if not _require(status.text.contains("V15 GRAVADO"),
-            "VS29 canonical long-journey V15 save was not written"):
+    if not _require(status.text.contains("SAVE INTEGRADO V20 GRAVADO"),
+            "VS29 canonical long-journey was not written to the active V20 envelope"):
         return
     _press(one)
     await process_frame
@@ -405,13 +450,13 @@ func _run() -> void:
         return
     _press(load_save)
     await process_frame
-    if not _require(status.text.contains("V15 REABERTO") and
+    if not _require(status.text.contains("SAVE INTEGRADO V20 REABERTO") and
             status.text.contains("turno 5") and
             status.text.contains("Em viagem longa: 1 pessoas") and
             settlements.text.contains("viajando 1"),
             "VS29 V15 replay did not restore ongoing physical journey"):
         return
-    print("GA_UI_E2E_LONG_JOURNEY_V15_REOPEN_OK")
+    print("GA_UI_E2E_LONG_JOURNEY_V20_REOPEN_OK")
 
     _press(food_assessment)
     await process_frame
@@ -419,8 +464,8 @@ func _run() -> void:
             food_assessment_result.text.contains("VIAGEM ATIVA") and
             status.text.contains("turno 5") and
             status.text.contains("Em viagem longa: 1 pessoas"),
-            "VS30 supply diagnostic failed V15 save/reopen or mutated timeline"):
+            "VS30 supply diagnostic failed V20 save/reopen or mutated timeline"):
         return
-    print("GA_UI_E2E_SUPPLY_DIAGNOSIS_V15_REOPEN_OK")
+    print("GA_UI_E2E_SUPPLY_DIAGNOSIS_V20_REOPEN_OK")
     print("GA_UI_E2E_PASS main_scene=Main.tscn signals=real godot=4.7.2")
     quit(0)
