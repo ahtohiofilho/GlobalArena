@@ -1,5 +1,7 @@
 name: GA-VS29 Single-Order Multileg Movement V15
 
+# VS103 CI continuity: exercise V15 physical-journey regression contracts
+# on each PR update, even when the active Godot save envelope is V20.
 on:
   pull_request:
     paths:
