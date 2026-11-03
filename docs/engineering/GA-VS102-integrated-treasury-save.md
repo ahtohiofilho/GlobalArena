@@ -44,7 +44,7 @@ A propriedade `WorldState.TreasuryReservation` v19 e o codec de segmento VS101 c
 
 ## Plano de QA
 
-**Testes** `GaVs102IntegratedTreasurySaveTests`: (i) save legado inalterado; (ii) ativação após ações históricas; (iii) ativação antes da primeira ação; (iv) novos turnos pós-ativação e pós-restore; (v) migração explícita de save antigo; (vi) corrupção com checksum refeito (créditos, recibos, schema, mundo, N deslocado, ausência de reserva, hash final falso), (vii) tentativa de contrabando de reserva em versão antiga, (viii) transporte institucional preservado, (ix) imutabilidade de contas financeiras legadas.
+**Testes** `GaVs102IntegratedTreasurySaveTests`: (i) save legado inalterado; (ii) ativação após ações históricas; (iii) ativação antes da primeira ação; (iv) novos turnos pós-ativação e pós-restore; (v) migração explícita de save antigo; (vi) corrupção com checksum refeito (créditos, recibos, schema, mundo, N deslocado, ausência de reserva, hash final falso), (vii) tentativa de contrabando de reserva em versão antiga, (viii) transporte institucional preservado, (ix) consistência das contas legadas de alimentos no mesmo snapshot V20 entre save/restore. O benchmark captura essas contas **depois** do turno que altera legitimamente o mercado legado; não presume que o módulo histórico seja imutável entre turnos.
 
 **Benchmark** `GaVs102IntegratedTreasurySaveBenchmarkTests`: 8/32/128 restaurações do save V20 **inteiro**, incluindo replay de ações reais, uma amostra aquecida e três medidas, sem limiar artificial de CPU. Pode ser mais lento que o segmento da VS101, pois é um replay de sessão completa.
 
