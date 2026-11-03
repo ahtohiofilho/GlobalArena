@@ -439,8 +439,8 @@ func _run() -> void:
 
     _press(save)
     await process_frame
-    if not _require(status.text.contains("V15 GRAVADO"),
-            "VS29 canonical long-journey V15 save was not written"):
+    if not _require(status.text.contains("SAVE INTEGRADO V20 GRAVADO"),
+            "VS29 canonical long-journey was not written to the active V20 envelope"):
         return
     _press(one)
     await process_frame
@@ -450,13 +450,13 @@ func _run() -> void:
         return
     _press(load_save)
     await process_frame
-    if not _require(status.text.contains("V15 REABERTO") and
+    if not _require(status.text.contains("SAVE INTEGRADO V20 REABERTO") and
             status.text.contains("turno 5") and
             status.text.contains("Em viagem longa: 1 pessoas") and
             settlements.text.contains("viajando 1"),
             "VS29 V15 replay did not restore ongoing physical journey"):
         return
-    print("GA_UI_E2E_LONG_JOURNEY_V15_REOPEN_OK")
+    print("GA_UI_E2E_LONG_JOURNEY_V20_REOPEN_OK")
 
     _press(food_assessment)
     await process_frame
@@ -464,8 +464,8 @@ func _run() -> void:
             food_assessment_result.text.contains("VIAGEM ATIVA") and
             status.text.contains("turno 5") and
             status.text.contains("Em viagem longa: 1 pessoas"),
-            "VS30 supply diagnostic failed V15 save/reopen or mutated timeline"):
+            "VS30 supply diagnostic failed V20 save/reopen or mutated timeline"):
         return
-    print("GA_UI_E2E_SUPPLY_DIAGNOSIS_V15_REOPEN_OK")
+    print("GA_UI_E2E_SUPPLY_DIAGNOSIS_V20_REOPEN_OK")
     print("GA_UI_E2E_PASS main_scene=Main.tscn signals=real godot=4.7.2")
     quit(0)
