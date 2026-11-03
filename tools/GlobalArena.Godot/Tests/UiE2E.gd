@@ -87,6 +87,8 @@ func _run() -> void:
     var load_save := _button(app, "GAQALoad")
     var treasury_status := _label(app, "GAQATreasuryStatus")
     var treasury_reserve := _button(app, "GAQATreasuryReserve")
+    var treasury_migration_inspect := _button(app, "GAQATreasuryMigrationInspect")
+    var treasury_migration_status := _label(app, "GAQATreasuryMigrationStatus")
     for node in [inspect, source, destination, quantity, status, settlements,
             cycle_report, preview, food, compare, diagnose, survey,
             survey_result, plan_destination, advanced_toggle, remote_target,
@@ -94,7 +96,8 @@ func _run() -> void:
             camp_button, camp_result, real_food, real_food_result,
             real_order, camp_order, food_assessment,
             food_assessment_result, order_move, reassign, five,
-            one, save, load_save, treasury_status, treasury_reserve]:
+            one, save, load_save, treasury_status, treasury_reserve,
+            treasury_migration_inspect, treasury_migration_status]:
         if not _require(node != null, "expected named production control missing"):
             return
 
@@ -261,6 +264,32 @@ func _run() -> void:
             not treasury_reserve.disabled,
             "VS103 reservation control should be available before explicit registration"):
         return
+    # VS105: inspect the V14 file on disk before the player's treasury action.
+    # The live session is at movement turn 5 and MUST stay unreserved.
+    var legacy_preflight_path := ProjectSettings.globalize_path(
+            "user://ga-vs19b-born-civilization.json")
+    var legacy_before_preflight := FileAccess.get_file_as_string(
+            legacy_preflight_path)
+    if not _require(not legacy_before_preflight.is_empty(),
+            "VS105 sandbox V14 save must exist for the UI migration test"):
+        return
+    _press(treasury_migration_inspect)
+    await process_frame
+    if not _require(treasury_migration_status.text.contains(
+                    "SAVE V14 COMPATÍVEL COM V20") and
+            treasury_migration_status.text.contains("SOMENTE LEITURA") == false and
+            treasury_migration_status.text.contains("nenhum arquivo gravado") and
+            treasury_migration_status.text.contains(
+                    "Registro da reserva exige ação explícita") and
+            not treasury_reserve.disabled and
+            treasury_status.text.contains("RESERVA NÃO REGISTRADA") and
+            status.text.contains("turno 5") and
+            FileAccess.get_file_as_string(legacy_preflight_path) ==
+                    legacy_before_preflight,
+            "VS105 V14 preflight changed the save/world or failed to diagnose it"):
+        return
+    print("GA_UI_E2E_VS105_LEGACY_MIGRATION_READ_ONLY_OK")
+
     _press(treasury_reserve)
     await process_frame
     if not _require(treasury_status.text.contains("RESERVA DORMENTE V1") and
@@ -293,6 +322,29 @@ func _run() -> void:
             "VS103 V20 restore failed to prioritize and reconstruct the dormant reservation"):
         return
     print("GA_UI_E2E_DORMANT_TREASURY_V20_SAVE_RESTORE_OK")
+
+    # VS105: after explicit registration, the exact V20 save is inspected
+    # without a second activation, overwriting it, or changing the live turn.
+    var v20_preflight_path := ProjectSettings.globalize_path(
+            "user://ga-vs20-dormant-treasury.json")
+    var v20_before_preflight := FileAccess.get_file_as_string(v20_preflight_path)
+    _press(treasury_migration_inspect)
+    await process_frame
+    if not _require(not v20_before_preflight.is_empty() and
+            treasury_migration_status.text.contains(
+                    "V20 EXISTENTE: RESERVA DORMENTE JÁ REGISTRADA") and
+            treasury_migration_status.text.contains(
+                    "Sem nova ativação") and
+            treasury_migration_status.text.contains("nenhum arquivo gravado") and
+            treasury_reserve.disabled and
+            treasury_status.text.contains("SALDO GASTÁVEL: 0") and
+            treasury_status.text.contains("RECIBOS: 0") and
+            status.text.contains("turno 5") and
+            FileAccess.get_file_as_string(v20_preflight_path) ==
+                    v20_before_preflight,
+            "VS105 V20 inspection mutated save, game, or institutional reserve"):
+        return
+    print("GA_UI_E2E_VS105_V20_MIGRATION_READ_ONLY_OK")
 
     remote_target.value = 1.0
     _press(remote_button)
