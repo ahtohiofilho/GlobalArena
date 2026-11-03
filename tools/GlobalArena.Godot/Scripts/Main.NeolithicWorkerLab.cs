@@ -416,6 +416,7 @@ public partial class Main
         };
         _workerLabAdvancedPanel.AddChild(_foodMarketQuoteLabel);
         InitializeTreasuryReservationControls(_workerLabAdvancedPanel);
+        InitializeTreasuryMigrationPreflightControls(_workerLabAdvancedPanel);
 
         if (_tacticalPreview is null)
             throw new InvalidOperationException("Tactical renderer must exist before lab HUD setup.");
@@ -1332,6 +1333,7 @@ public partial class Main
             var temp = path + ".tmp";
             File.WriteAllText(temp, content, Encoding.UTF8);
             File.Move(temp, path, overwrite: true);
+            InvalidateTreasuryMigrationPreflight();
             // Save only viewport/presentation alongside the canonical file.
             // It is bound to this exact save by SHA-256 and can be discarded
             // without affecting the V13 replay or physical world hash.
@@ -1401,12 +1403,7 @@ public partial class Main
             var hasGeography = !hasTreasury && !hasTimed && !hasCash && File.Exists(GeographyLabSavePath);
             var hasAdaptive = !hasTreasury && !hasCash && !hasGeography && File.Exists(AdaptiveLabSavePath);
             var hasCanonical = !hasTreasury && !hasCash && !hasGeography && !hasAdaptive && File.Exists(CanonicalLabSavePath);
-            var path = hasTreasury ? TreasuryLabSavePath :
-                hasRemote ? RemoteJourneyLabSavePath :
-                hasBorn ? BornCivilizationLabSavePath :
-                hasTimed ? TimedLabSavePath : hasCash ? CashFoodLabSavePath : hasGeography ? GeographyLabSavePath :
-                hasAdaptive ? AdaptiveLabSavePath :
-                hasCanonical ? CanonicalLabSavePath : LegacyLabSavePath;
+            var path = PreferredLabSavePath();
             var content = File.ReadAllText(path, Encoding.UTF8);
             var restored = hasTreasury || hasRemote || hasBorn || hasTimed || hasCash || hasGeography || hasAdaptive || hasCanonical
                 ? CanonicalPhysicalTacticalSession.RestoreSaveJson(content)
@@ -1458,6 +1455,7 @@ public partial class Main
             _workerOrigin = origin;
             _workerDestination = null;
             AttachRuntimeState(_canonicalSession.Snapshot);
+            InvalidateTreasuryMigrationPreflight();
             UpdateWorkerLabHud();
             _workerLabStatus.Text += cameraRestored
                 ? "\nCÂMERA TÁTICA RESTAURADA: mesma posição e zoom do save."
@@ -1543,6 +1541,7 @@ public partial class Main
                 (double)_canonicalPhysicalLab.State.FineParameters.StrategicCellCount;
         var state = _canonicalPhysicalLab.State;
         UpdateTreasuryReservationHud();
+        UpdateTreasuryMigrationPreflightFreshness();
         if (_foodMarketQuoteLabel is not null &&
             (_foodMarketQuoteRevision != _canonicalPhysicalLab.Game.Snapshot.Revision ||
              _foodMarketQuoteTile != _workerOrigin.Value.FineStrategicCellId.Value))
