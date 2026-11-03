@@ -1,0 +1,67 @@
+name: GA-VS104 Read-Only Dormant Treasury Migration Preflight Gate
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/CanonicalDormantTreasuryMigrationPreflight.cs'
+      - 'GlobalArena.Simulation/CanonicalPhysicalTacticalSession.cs'
+      - 'GlobalArena.Runtime/CanonicalTreasuryReservationRuntimeState.cs'
+      - 'GlobalArena.Tests/GaVs104DormantTreasuryMigrationPreflightTests.cs'
+      - 'GlobalArena.Tests/GaVs102IntegratedTreasurySaveTests.cs'
+      - '.github/workflows/ga-vs104-dormant-treasury-migration-preflight.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ga-vs104-treasury-migration-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  migration-preflight-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify exact PR HEAD checkout
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          echo "GA_VS104_CHECKOUT_SHA=$EXPECTED_SHA"
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Read-only migration preflight and V20 persistence regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "FullyQualifiedName~GaVs104|FullyQualifiedName~GaVs102|FullyQualifiedName~GaVs101"
+      - name: Godot Mono Release compile
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+
+  migration-preflight-windows:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify exact PR HEAD checkout
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          echo "GA_VS104_CHECKOUT_SHA=$EXPECTED_SHA"
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Read-only migration preflight and V20 persistence regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "FullyQualifiedName~GaVs104|FullyQualifiedName~GaVs102|FullyQualifiedName~GaVs101"
+      - name: Godot Mono Debug compile
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
+      - name: Godot Mono Release compile
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
