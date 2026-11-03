@@ -50,6 +50,10 @@ jobs:
           $lab = Get-Content -Raw -Encoding UTF8 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
           $projection = Get-Content -Raw -Encoding UTF8 'GlobalArena.Simulation/PhysicalJourneySupplyProjection.cs'
           $e2e = Get-Content -Raw -Encoding UTF8 'tools/GlobalArena.Godot/Tests/UiE2E.gd'
+          # VS103 upgrades the active UI save/reopen path to V20 while preserving
+          # legacy V15 compatibility. Either witnessed E2E contract is valid.
+          $saveReopenWitness = $e2e.Contains('GA_UI_E2E_SUPPLY_DIAGNOSIS_V15_REOPEN_OK') -or
+                               $e2e.Contains('GA_UI_E2E_SUPPLY_DIAGNOSIS_V20_REOPEN_OK')
           if (-not $main.Contains('GA_VS30_RUNTIME_ACTIVE') -or
               -not $lab.Contains('GAQAAssessJourneyFood') -or
               -not $lab.Contains('GAQAJourneySupplyResult') -or
@@ -57,7 +61,7 @@ jobs:
               -not $projection.Contains('PhysicalEconomicCadence.IsSettlementTurn') -or
               -not $e2e.Contains('GA_UI_E2E_SUPPLY_DIAGNOSIS_READ_ONLY_OK') -or
               -not $e2e.Contains('GA_UI_E2E_ACTIVE_SUPPLY_DIAGNOSIS_OK') -or
-              -not $e2e.Contains('GA_UI_E2E_SUPPLY_DIAGNOSIS_V15_REOPEN_OK')) {
+              -not $saveReopenWitness) {
             throw 'VS30 canonical food and source opportunity diagnostic or E2E missing.'
           }
       - name: Supply, V15 route and economic regression tests
