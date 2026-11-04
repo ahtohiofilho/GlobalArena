@@ -36,6 +36,39 @@ public readonly record struct PhysicalOffer
 public delegate decimal PopulationPriceFunction(decimal offerPerResident);
 
 /// <summary>
+/// Dimensionless relative purchasing capacity. All initial civilizations
+/// share neutral 1. The future derived index depends on real previous-cycle
+/// productivity, nutrition and development, NOT a money balance or demand
+/// quantity. No calibration or persistence is chosen by this value type.
+/// </summary>
+public readonly record struct AbstractPurchasingPowerIndex
+{
+    public decimal RelativeCapacity { get; }
+    private AbstractPurchasingPowerIndex(decimal relativeCapacity) =>
+        RelativeCapacity = relativeCapacity;
+
+    public static AbstractPurchasingPowerIndex Neutral => new(1m);
+
+    public static AbstractPurchasingPowerIndex FromRelativeCapacity(decimal relativeCapacity)
+    {
+        if (relativeCapacity < 0m)
+            throw new ArgumentOutOfRangeException(nameof(relativeCapacity),
+                "Abstract purchasing power cannot be negative.");
+        return new(relativeCapacity);
+    }
+}
+
+/// <summary>
+/// A deliberately UNCALIBRATED two-input price function. The purchasing
+/// power index changes the price, never the supply/population ratio.
+/// A game's chosen policy must remain deterministic and normalize its neutral
+/// buying-power path to the original f(x). No function is prescribed here.
+/// </summary>
+public delegate decimal PurchasingPowerPriceFunction(
+    decimal offerPerResident, decimal relativePurchasingPower);
+
+
+/// <summary>
 /// The user's market-price algebra, not a receipt or a cash ledger:
 /// D = Population, x = Offered/D, price = f(x), reference revenue = price*D.
 /// Physical sale, consumption, nutrition and transport are different stages.
@@ -84,8 +117,44 @@ public static class PopulationPriceKernel
             throw new ArgumentOutOfRangeException(nameof(priceFunction),
                 "A price curve cannot publish negative prices.");
 
-        // This value is the explicitly requested R = p * D, not a proof that
-        // goods were shipped/consumed, nor an increase in anyone's balance.
+        return CreateQuote(population, offered, x, price);
+    }
+
+    /// <summary>
+    /// Same strict D = P and x = S/P; purchasing power enters ONLY as a
+    /// second input to a caller-defined price function. This is a read-only
+    /// market quote, not a cash debit, physical intake or transfer.
+    /// </summary>
+    public static PopulationPriceQuote Quote(
+        ulong population,
+        PhysicalOffer physical,
+        AbstractPurchasingPowerIndex purchasingPower,
+        PurchasingPowerPriceFunction priceFunction)
+    {
+        ArgumentNullException.ThrowIfNull(priceFunction);
+        if (population == 0UL)
+            throw new ArgumentOutOfRangeException(nameof(population),
+                "No resident market exists without people.");
+
+        var offered = physical.Offered;
+        if (offered < 0m)
+            throw new ArgumentOutOfRangeException(nameof(physical),
+                "Physical market offer cannot be negative.");
+
+        if (offered == 0m)
+            return new(population, 0m, 0m, 0m, 0m, false);
+
+        var x = offered / population;
+        var price = priceFunction(x, purchasingPower.RelativeCapacity);
+        return CreateQuote(population, offered, x, price);
+    }
+
+    private static PopulationPriceQuote CreateQuote(
+        ulong population, decimal offered, decimal x, decimal price)
+    {
+        if (price < 0m)
+            throw new ArgumentOutOfRangeException(nameof(price),
+                "A price curve cannot publish negative prices.");
         var revenueReference = checked(price * population);
         return new(population, offered, x, price, revenueReference, true);
     }

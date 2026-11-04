@@ -114,6 +114,60 @@ public sealed class GaVs110PopulationPriceRebaseTests
     }
 
     [Fact]
+    public void PurchasingPowerChangesPriceButNeverThePopulationDemandOrSupplyRatio()
+    {
+        // Fixture ONLY: power enters multiplicatively; no production
+        // coefficient or universal policy is ratified by this test.
+        static decimal IllustrativePrice(decimal x, decimal m) =>
+            ExamplePrice(x) * m;
+
+        var supply = PhysicalOffer.FromAvailable(24m);
+        var baseline = PopulationPriceKernel.Quote(
+            8UL, supply, AbstractPurchasingPowerIndex.Neutral, IllustrativePrice);
+        var weak = PopulationPriceKernel.Quote(
+            8UL, supply,
+            AbstractPurchasingPowerIndex.FromRelativeCapacity(0.8m),
+            IllustrativePrice);
+        var strong = PopulationPriceKernel.Quote(
+            8UL, supply,
+            AbstractPurchasingPowerIndex.FromRelativeCapacity(1.3m),
+            IllustrativePrice);
+        var oldPriceOnly = PopulationPriceKernel.Quote(
+            8UL, supply, ExamplePrice);
+
+        Assert.Equal(oldPriceOnly, baseline);
+        Assert.Equal(8UL, weak.Population);
+        Assert.Equal(8UL, strong.Population);
+        Assert.Equal(24m, weak.Offered);
+        Assert.Equal(24m, strong.Offered);
+        Assert.Equal(3m, baseline.OfferPerResident);
+        Assert.Equal(3m, weak.OfferPerResident);
+        Assert.Equal(3m, strong.OfferPerResident);
+        Assert.True(weak.Price < baseline.Price);
+        Assert.True(strong.Price > baseline.Price);
+        Assert.Equal(weak.Price * 8m, weak.ReferenceRevenue);
+        Assert.Equal(strong.Price * 8m, strong.ReferenceRevenue);
+    }
+
+    [Fact]
+    public void PurchasingPowerDoesNotBehaveAsPurchasingBudgetOrFoodCeiling()
+    {
+        var index = AbstractPurchasingPowerIndex.FromRelativeCapacity(0.5m);
+        var excess = PopulationPriceKernel.Quote(
+            4UL, PhysicalOffer.FromAvailable(4000m), index,
+            (x, buyingPower) => buyingPower / (1m + x));
+        Assert.True(excess.HasOffer);
+        Assert.Equal(4UL, excess.Population);
+        Assert.Equal(4000m, excess.Offered);
+        Assert.Equal(1000m, excess.OfferPerResident);
+        Assert.Equal(excess.Price * 4m, excess.ReferenceRevenue);
+        Assert.False(excess.IsExecutedSettlement);
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            AbstractPurchasingPowerIndex.FromRelativeCapacity(-0.1m));
+        Assert.Equal(1m, AbstractPurchasingPowerIndex.Neutral.RelativeCapacity);
+    }
+
+    [Fact]
     public void CleanKernelHasNoDependenciesOnLegacySimulationOrCashLedgers()
     {
         var references = typeof(PopulationPriceKernel).Assembly

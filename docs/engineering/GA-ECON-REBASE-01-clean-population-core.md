@@ -5,6 +5,44 @@ isso seja necessário, sem arrastar o desvio de demanda escalar e pagamentos
 fictícios. Este incremento cria um **núcleo novo e independente**; NÃO
 destrói o jogo, não faz migração e não promove preço executável.
 
+## Poder de compra abstrato — decisão preservada
+
+Em 25/10 e 30/10/2026, definiu-se que civilizações começam com igual
+capacidade por pessoa, que depois evolui por produtividade efetiva,
+nutrição, tecnologia, bem-estar, infraestrutura e acesso a mercados.
+Esta capacidade é **índice adimensional** `M`; inicialmente `M=1`
+em todas as civilizações. Ela **não** multiplica a população ou a demanda.
+
+```text
+D = P                     (sempre, inclusive após desenvolver a civilização)
+x = S/P                   (não depende de M)
+p = f(x, M)               (M altera APENAS a valorização)
+R_referência = p * P       (sem transferir dinheiro, sem limitar consumo)
+```
+
+- `AbstractPurchasingPowerIndex.Neutral` equivale à referência inicial 1.
+- `PopulationPriceKernel.Quote(P,S,M,f)` recebe `f(x,M)` do ruleset,
+  sem impor a forma do efeito, pesos ou coeficientes. A sobrecarga
+  anterior `Quote(P,S,f)` continua válida e economicamente idêntica
+  ao caso neutro quando o ruleset preserva a normalização.
+- Valores posteriores de `M` serão derivados de **estado econômico
+  autenticado do ciclo anterior** (evitando recursão preço→receita→
+  poder→preço no mesmo ciclo). A fórmula, parâmetros e teto/piso de M
+  permanecem **não ratificados**.
+- `M` pertence ao poder de compra dos compradores no mercado, não ao
+  produtor individual. Mercados multi-civilização exigem futura regra
+  explícita de agregação; nenhuma ponderação arbitrária é criada agora.
+- Variáveis que já alteram `S` (como tecnologia/produtividade) não
+  devem ser automaticamente reaplicadas como multiplicador em `M`
+  sem testar dupla contagem.
+- H e orçamento doméstico, compras pagas, dinheiro fictício, piso
+  arbitrário de preços e meta alimentar `D×taxa` ficam **fora** do novo núcleo.
+
+A curva ilustrativa de testes usa `f(x,M)=M×f(x)` APENAS PARA PROVAR
+separação e monotonicidade. O jogo não adotou essa função nem um
+multiplicador universal. O novo modelo permanece compatível com
+`D=P`; não existe motivo para tornar M permanentemente fixo.
+
 ## Contrato mínimo vinculante
 
 A demanda econômica basal é **a população real** do mercado:
