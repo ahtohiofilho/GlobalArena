@@ -2,6 +2,7 @@ name: GA-VS98 Abstract Monetary Origin Institutional Preflight Gate
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
   workflow_dispatch:
 
 concurrency:
@@ -10,6 +11,7 @@ concurrency:
 
 jobs:
   abstract-revenue-linux:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -36,6 +38,7 @@ jobs:
         run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
 
   abstract-revenue-windows:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: windows-latest
     timeout-minutes: 45
     permissions:

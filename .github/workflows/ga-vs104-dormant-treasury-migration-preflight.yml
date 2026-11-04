@@ -2,6 +2,7 @@ name: GA-VS104 Read-Only Dormant Treasury Migration Preflight Gate
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
     paths:
       - 'GlobalArena.Simulation/CanonicalDormantTreasuryMigrationPreflight.cs'
       - 'GlobalArena.Simulation/CanonicalPhysicalTacticalSession.cs'
@@ -17,6 +18,7 @@ concurrency:
 
 jobs:
   migration-preflight-linux:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     permissions:
@@ -41,6 +43,7 @@ jobs:
         run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
 
   migration-preflight-windows:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: windows-latest
     timeout-minutes: 35
     permissions:

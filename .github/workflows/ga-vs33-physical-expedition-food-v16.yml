@@ -2,6 +2,7 @@ name: GA-VS33 Physical Expedition Food V16
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
     paths:
       - 'GlobalArena.Runtime/PhysicalJourneyFoodLedger.cs'
       - 'GlobalArena.Runtime/PhysicalTacticalEconomyRuntimeState.cs'
@@ -14,6 +15,7 @@ on:
 
 jobs:
   food-ledger-linux:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -29,6 +31,7 @@ jobs:
         run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
 
   food-ledger-windows:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: windows-latest
     timeout-minutes: 30
     permissions:

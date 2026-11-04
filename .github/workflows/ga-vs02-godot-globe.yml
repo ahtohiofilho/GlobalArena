@@ -2,6 +2,7 @@ name: GA-VS02 Godot Globe And CSharp Gameplay Bridge
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
     paths:
       - 'GlobalArena.Godot/**'
       - 'GlobalArena.Console/**'
@@ -12,6 +13,7 @@ on:
 
 jobs:
   real-godot-scene-and-csharp-bridge:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -57,6 +59,7 @@ jobs:
           fi
 
   csharp-bridge-windows:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: windows-latest
     timeout-minutes: 15
     permissions:

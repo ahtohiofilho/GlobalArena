@@ -1,0 +1,83 @@
+name: GA-CI FAST Incremental Quality Gate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+concurrency:
+  group: ga-ci-fast-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  scope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    outputs:
+      needs_build: ${{ steps.scope.outputs.needs_build }}
+      needs_ui: ${{ steps.scope.outputs.needs_ui }}
+      test_filter: ${{ steps.scope.outputs.test_filter }}
+      changed_count: ${{ steps.scope.outputs.changed_count }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: Audit all existing VS regression gates and ordinary E2E
+        run: python3 tools/ci/ga_ci_lanes.py audit
+      - name: Classify exact PR change scope
+        id: scope
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$HEAD_SHA"
+          python3 tools/ci/ga_ci_lanes.py scope --base "$BASE_SHA" --head "$HEAD_SHA"
+      - name: Explain fast validation boundaries
+        run: |
+          echo 'Ordinary PR: this audit and targeted compilation/tests.'
+          echo 'UI changes: ordinary real Godot E2E remains enabled.'
+          echo 'Full checkpoint: ga-ci-full label enables historical jobs.'
+          echo 'Skipped historical jobs NEVER prove full-suite success.'
+
+  fast-linux:
+    needs: scope
+    if: needs.scope.outputs.needs_build == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Godot .NET client Release build
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+      - name: Targeted economic, movement and population regression
+        env:
+          GA_TEST_FILTER: ${{ needs.scope.outputs.test_filter }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "$GA_TEST_FILTER"
+
+  fast-windows:
+    needs: scope
+    if: needs.scope.outputs.needs_ui == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Godot .NET client Windows Debug build
+        shell: pwsh
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug

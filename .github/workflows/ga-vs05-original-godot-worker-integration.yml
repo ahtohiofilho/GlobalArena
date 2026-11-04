@@ -2,6 +2,7 @@ name: GA-VS05 Original Godot Physical Workforce Integration
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
     paths:
       - 'tools/GlobalArena.Godot/**'
       - 'GlobalArena.Simulation/EconomicPhysicalTacticalWorkerSession.cs'
@@ -11,6 +12,7 @@ on:
 
 jobs:
   original-godot-build-linux:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     permissions:
@@ -26,6 +28,7 @@ jobs:
         run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
 
   original-godot-build-windows:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: windows-latest
     timeout-minutes: 25
     permissions:

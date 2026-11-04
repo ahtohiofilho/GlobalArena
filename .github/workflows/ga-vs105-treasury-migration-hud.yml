@@ -2,6 +2,7 @@ name: GA-VS105 Godot Read-Only Treasury Migration HUD Gate
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
     paths:
       - 'tools/GlobalArena.Godot/**'
       - 'GlobalArena.Simulation/CanonicalDormantTreasuryMigrationPreflight.cs'
@@ -15,6 +16,7 @@ concurrency:
 
 jobs:
   godot-headless-vs105-linux:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     permissions:
@@ -85,6 +87,7 @@ jobs:
           retention-days: 14
 
   godot-windows-compile:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: windows-latest
     timeout-minutes: 30
     permissions:

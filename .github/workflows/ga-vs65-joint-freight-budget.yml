@@ -2,6 +2,7 @@ name: GA-VS65 Joint Primitive Freight Budget Preflight Gate
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
   workflow_dispatch:
 
 # One VS65 gate per active PR head; cancel only older VS65 gates.
@@ -11,6 +12,7 @@ concurrency:
 
 jobs:
   joint-freight-budget-linux:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     permissions:
@@ -28,6 +30,7 @@ jobs:
         run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
 
   joint-freight-budget-windows:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: windows-latest
     timeout-minutes: 35
     permissions:

@@ -2,6 +2,7 @@ name: GA-VS22 Economic Cycle Visibility
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
     paths:
       - 'GlobalArena.Simulation/PhysicalEconomicCycleProgression.cs'
       - 'GlobalArena.Tests/GaVs22EconomicCycleProgressionTests.cs'
@@ -17,6 +18,7 @@ on:
 
 jobs:
   economic-visibility-linux:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -32,6 +34,7 @@ jobs:
         run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
 
   economic-visibility-windows:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: windows-latest
     timeout-minutes: 30
     permissions:

@@ -2,6 +2,7 @@ name: GA-VS49 Recoverable Cash Checkpoint Laboratory
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
     paths:
       - 'GlobalArena.Simulation/ExperimentalRecoverableCashCheckpointSandbox.cs'
       - 'GlobalArena.Tests/GaVs49RecoverableCashCheckpointTests.cs'
@@ -13,6 +14,7 @@ on:
 
 jobs:
   recoverable-checkpoint-linux:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -30,6 +32,7 @@ jobs:
         run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
 
   recoverable-checkpoint-windows:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: windows-latest
     timeout-minutes: 30
     permissions:

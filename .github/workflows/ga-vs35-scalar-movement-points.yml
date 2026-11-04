@@ -2,6 +2,7 @@ name: GA-VS35 Scalar Movement Points Pure Forecast
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
     paths:
       - 'GlobalArena.Runtime/ScalarMovementPointForecast.cs'
       - 'GlobalArena.Tests/GaVs35ScalarMovementPointForecastTests.cs'
@@ -11,6 +12,7 @@ on:
 
 jobs:
   scalar-points-linux:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     permissions:
@@ -28,6 +30,7 @@ jobs:
         run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
 
   scalar-points-windows:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: windows-latest
     timeout-minutes: 25
     permissions:
