@@ -152,8 +152,8 @@ public sealed class GaVs17StrategicTerritorialPresenceTests
 
         var inTransit = StrategicTerritorialPresenceProjection.FromPhysicalState(game.State, incidence);
         Assert.Equal(8UL, inTransit.TotalWorkers);
-        Assert.Equal(48UL, inTransit.Territories.Sum(x => x.TotalSixths));
-        Assert.Equal(18UL, inTransit.Territories.Sum(x => x.InTransitSixths));
+        Assert.Equal(48UL, inTransit.Territories.Aggregate(0UL, (sum, x) => checked(sum + x.TotalSixths)));
+        Assert.Equal(18UL, inTransit.Territories.Aggregate(0UL, (sum, x) => checked(sum + x.InTransitSixths)));
         Assert.Equal(original.Territories.Select(x => (x.Territory, x.TotalSixths)),
             inTransit.Territories.Select(x => (x.Territory, x.TotalSixths)));
         Assert.Empty(game.Game.Snapshot.Territory.Controls);
@@ -163,7 +163,7 @@ public sealed class GaVs17StrategicTerritorialPresenceTests
             var save = game.ExportSaveJson();
             var hash = game.CurrentHash;
             var view = StrategicTerritorialPresenceProjection.FromPhysicalState(game.State, incidence);
-            Assert.Equal(48UL, view.Territories.Sum(x => x.TotalSixths));
+            Assert.Equal(48UL, view.Territories.Aggregate(0UL, (sum, x) => checked(sum + x.TotalSixths)));
             Assert.Equal(hash, game.CurrentHash);
             Assert.Equal(save, game.ExportSaveJson());
             var reopened = CanonicalPhysicalTacticalSession.RestoreSaveJson(save);
@@ -174,8 +174,8 @@ public sealed class GaVs17StrategicTerritorialPresenceTests
         }
 
         var arrived = StrategicTerritorialPresenceProjection.FromPhysicalState(game.State, incidence);
-        Assert.Equal(48UL, arrived.Territories.Sum(x => x.TotalSixths));
-        Assert.Equal(0UL, arrived.Territories.Sum(x => x.InTransitSixths));
+        Assert.Equal(48UL, arrived.Territories.Aggregate(0UL, (sum, x) => checked(sum + x.TotalSixths)));
+        Assert.Equal(0UL, arrived.Territories.Aggregate(0UL, (sum, x) => checked(sum + x.InTransitSixths)));
         Assert.Equal(8UL, arrived.TotalWorkers);
         Assert.Empty(game.State.LongTrips);
         Assert.Empty(game.State.Transits);
