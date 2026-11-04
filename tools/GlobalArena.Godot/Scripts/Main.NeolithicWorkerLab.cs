@@ -811,6 +811,14 @@ public partial class Main
         catch (Exception ex) when (ex is InvalidOperationException or
                                    ArgumentException or OverflowException)
         {
+            // The status remains player-facing. Keep an actionable reason
+            // in CI/runtime evidence when the real Godot command is rejected.
+            GD.Print("GA_VS106_REMOTE_ORDER_REJECTED type=" + ex.GetType().Name +
+                " reason=" + ex.Message +
+                " source_activity=" + _workerFromJob?.GetSelectedId() +
+                " target_activity=" + _workerToJob?.GetSelectedId() +
+                " workers=" + _workerAmount?.Value +
+                " tile=" + _remoteDestinationTileId?.Value);
             _workerLabStatus.Text +=
                 "\nORDEM GLOBAL RECUSADA (partida preservada): " + ex.Message;
         }
