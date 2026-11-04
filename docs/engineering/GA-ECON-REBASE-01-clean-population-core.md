@@ -1,152 +1,108 @@
-# GLOBAL ARENA — ECON-REBASE-01: recuperação da arquitetura econômica
+# GA-ECON-REBASE-01 R2 — Motor econômico novo, sem herdar quotas artificiais
 
-**Decisão de produto, 04/11/2026:** recomeçar a arquitetura econômica caso
-isso seja necessário, sem arrastar o desvio de demanda escalar e pagamentos
-fictícios. Este incremento cria um **núcleo novo e independente**; NÃO
-destrói o jogo, não faz migração e não promove preço executável.
+**Status:** núcleo experimental isolado, com testes de contrato. Não substitui
+ainda a liquidação e os ciclos executados no Godot. Base da PR: VS107, não
+VS108/VS109. Toda mudança no antigo motor deve ser versionada.
 
-## Poder de compra abstrato — decisão preservada
-
-Em 25/10 e 30/10/2026, definiu-se que civilizações começam com igual
-capacidade por pessoa, que depois evolui por produtividade efetiva,
-nutrição, tecnologia, bem-estar, infraestrutura e acesso a mercados.
-Esta capacidade é **índice adimensional** `M`; inicialmente `M=1`
-em todas as civilizações. Ela **não** multiplica a população ou a demanda.
+## Invariantes de produto — 04/11/2026
 
 ```text
-D = P                     (sempre, inclusive após desenvolver a civilização)
-x = S/P                   (não depende de M)
-p = f(x, M)               (M altera APENAS a valorização)
-R_referência = p * P       (sem transferir dinheiro, sem limitar consumo)
+P = número de pessoas reais no mercado comprador
+N = índice adimensional de poder de compra relativo (neutro inicial 1)
+D = P * N                        (pressão de demanda econômica efetiva)
+S = produto fisicamente oferecido, após retenção deliberada
+x = S / D                        (escassez relativa)
+p = f(x)                         (curva escolhida por mercadoria/ruleset)
+R_ref = p * D                    (receita econômica de referência)
 ```
 
-- `AbstractPurchasingPowerIndex.Neutral` equivale à referência inicial 1.
-- `PopulationPriceKernel.Quote(P,S,M,f)` recebe `f(x,M)` do ruleset,
-  sem impor a forma do efeito, pesos ou coeficientes. A sobrecarga
-  anterior `Quote(P,S,f)` continua válida e economicamente idêntica
-  ao caso neutro quando o ruleset preserva a normalização.
-- Valores posteriores de `M` serão derivados de **estado econômico
-  autenticado do ciclo anterior** (evitando recursão preço→receita→
-  poder→preço no mesmo ciclo). A fórmula, parâmetros e teto/piso de M
-  permanecem **não ratificados**.
-- `M` pertence ao poder de compra dos compradores no mercado, não ao
-  produtor individual. Mercados multi-civilização exigem futura regra
-  explícita de agregação; nenhuma ponderação arbitrária é criada agora.
-- Variáveis que já alteram `S` (como tecnologia/produtividade) não
-  devem ser automaticamente reaplicadas como multiplicador em `M`
-  sem testar dupla contagem.
-- H e orçamento doméstico, compras pagas, dinheiro fictício, piso
-  arbitrário de preços e meta alimentar `D×taxa` ficam **fora** do novo núcleo.
+Não canonizar `D = P × quantidade_necessária_por_pessoa`. Não criar
+`500_000`, `0,5`, créditos individuais ou teto de consumo. `D` é uma
+pressão econômica e **não** uma quantidade física consumida. A oferta
+pode ultrapassar `D` livremente; `D` nunca limita produção, absorção,
+estoque voluntário ou alimentação.
 
-A curva ilustrativa de testes usa `f(x,M)=M×f(x)` APENAS PARA PROVAR
-separação e monotonicidade. O jogo não adotou essa função nem um
-multiplicador universal. O novo modelo permanece compatível com
-`D=P`; não existe motivo para tornar M permanentemente fixo.
+A versão R1 usava `p=f(x,M)` com `x=S/P`. A R2 **substitui** essa
+posição: o índice `N` entra na demanda efetiva, antes de avaliar a
+função univariada de preço. Não existe uma camada de multiplicação
+adicional sobre o preço ou uma segunda entrada oculta na função.
 
-## Contrato mínimo vinculante
+`R_ref=p*D` segue o cálculo solicitado para a curva econômica:
+**não** comprova sozinho pagamento, propriedade, frete, recebimento
+fiscal, volume vendido ou consumo nutricional. Nenhuma monetização ou
+transferência é criada neste primeiro núcleo.
 
-A demanda econômica basal é **a população real** do mercado:
+## Poder de compra: preservar a intenção original
 
-```text
-D = P                       (pessoas residentes do mercado)
-S = oferta física do bem    (mesma unidade física daquele bem)
-x = S / D
-preço = f(x, modificadores explícitos futuros)
-receita de referência = preço × D
-```
+As civilizações iniciam com `N=1`. Ao longo do jogo, seu poder
+de compra pode aumentar ou diminuir conforme **capacidade econômica
+real**, nutrição, produtividade, organização, tecnologia e acesso.
+Esses fatores são possíveis fontes de evidência, **não pesos já
+aprovados nem multiplicadores aplicados duas vezes**.
 
-O ponto `x=1` é a referência de equilíbrio. A lei `f` é passada pelo
-chamador e **não foi escolhida** neste incremento. Pode ser racional;
-a forma e os coeficientes devem ser calibrados separadamente, sem
-atribuir um "valor necessário por pessoa" ou impor limite de consumo.
-Uma **função ilustrativa nos testes** não vira lei do jogo.
+Para não produzir inflação circular:
 
-**Nota sobre receita:** o produto `p × P` é a receita de referência
-solicitada para o modelo de preço. Ele **não é comprovante de mercadorias
-entregues, tributo, crédito, saldo, dinheiro criado ou lucro liquidado**.
-A contabilidade de entrega física e as regras de liquidação, quando
-existirem, precisam demonstrar conservação separadamente. Sem oferta
-positiva, não existe cotação executada nem receita imputada.
+- Calcular `N` a partir de dados reais do **ciclo anterior**, não de
+  preços/receitas do mesmo mercado que se está calculando.
+- Não usar receita **nominal** do ciclo passado isoladamente para
+  recalcular `N` sem separar variações de preços de capacidade real.
+- Não somar alimento, madeira e pedra em unidades físicas diretamente;
+  diferentes mercadorias exigem uma comparação de valores homogênea
+  antes da agregação.
+- Não inventar taxa universal, piso/teto arbitrário, saldo familiar,
+  crédito, orçamento `B=40`, regra de conversão, renda ou estoque
+  de alimentos fictício.
+- Não duplicar a produtividade como ganho de oferta `S` e um bônus
+  extra ao `N` sem justificativa econômica independente.
+- Para múltiplas populações compradoras/mercados externos, definir
+  agregação explicitamente antes de integrar frete ou preço remoto.
 
-A população é contagem de pessoas, não taxa de mercadoria por pessoa.
-Não existem `500_000`, `0,5`, demanda basal em unidades do produto,
-`B=40`, saldo familiar, carteira, crédito ou multiplicador `D=P*k`
-no novo motor.
+**O cálculo de N a partir do estado ainda não está implementado.** A
+API aceita o valor **normalizado de fonte autenticável no futuro** e
+verifica que ele é positivo. Isso é uma fronteira intencional de
+implementação, não uma regra de atualização escondida.
 
-## Núcleo isolado
+## Implementação
 
-`GlobalArena.Economy` é uma biblioteca .NET 10 pura, sem referências a
-`GlobalArena.Simulation`, `GlobalArena.Runtime`, `GlobalArena.World`,
-`GlobalArena.Kernel` ou ao Godot. Até que o novo motor esteja pronto, o
-Godot e os saves históricos **continuam no caminho antigo, sem alterações**.
+`GlobalArena.Economy` é novo assembly .NET 10 isolado, sem
+dependência de Simulation/Runtime/Kernel/World/Godot:
+- `PhysicalOffer`: S = disponível - retenção explícita;
+- `AbstractPurchasingPowerIndex`: valor relativo positivo; neutro 1;
+- `PopulationPriceKernel.Quote(P, S, N, f)`: cálculo `O(1)`
+  aritmético `decimal`, com uma invocação de `f(x)`;
+- `PopulationPriceQuote`: P, N, D, S, x, p, R_ref, flag de oferta.
+- `Quote(P,S,f)` preservado como atalho neutro N=1.
 
-`PhysicalOffer.FromAvailable(available, retained)` apenas subtrai
-retenção física deliberada. `PopulationPriceKernel.Quote(P, S, f)` faz
-uma divisão e uma avaliação de função por mercado/produto: execução
-assintótica **O(1)**, sem integração discreta por cada unidade produzida,
-sem simulação de compradores individuais, sem grafo de transporte e sem
-alocações obrigatórias internas. Uma contagem grande de mercados e
-performance final requerem benchmarks em mundos densos; O(1) não prova FPS.
+Nenhuma curva `f` foi escolhida para o jogo. A função `2/(1+x)`
+existe **somente nos testes de comportamento**, não em regras de
+produção. O ponto `x=1` é uma normalização de referência a ser
+calibrada para cada mercadoria, sem impor quantidade de consumo.
+Complexidade desta operação isolada é O(1), mas isso não certifica
+desempenho global do jogo ou de frete.
 
-## O que reaproveitar e o que não promover automaticamente
+## Áreas a preservar vs. reconstruir
 
-**Preservar e aproveitar por contrato:** geometria esférica Goldberg,
-geração e biomas, tiles e fronteiras, movimentação e tempos de viagem,
-caminhos e custos físicos de transporte, posse/conservação material,
-Godot, UI tática, saves imutáveis, CI e testes de determinismo.
+**Preservar:** mundo esférico Goldberg, malha/terrenos, renderização,
+UI tática, trabalhadores, movimento, caminhos, frete e custos físicos,
+registro de ações e hashes; verificar conservação e determinismo.
 
-**Isolar como LEGADO / NÃO CONFERIR AUTORIDADE ECONÔMICA NOVA:**
-`CanonicalPhysicalTacticalSession` V9–V20 no regime cash-food,
-`FoodDemandRawPerWorker`, `FoodDemandAt`, `FoodUnmetRaw`,
-`PhysicalFoodAvailabilityProjection` VS25,
-`EconomicResidentDemandProfile.RawDemandRatePerResident`,
-`EconomicDemandProfile.RawDemandRatePerWorker`,
-as hipóteses de orçamento/alpha/B/H e seus testes históricos.
-VS78/82/84/87–92 podem ter matemática/auditorias úteis, mas **não
-são especificações do novo mercado**, nem invariantes de receita.
-VS108/109 ficam como trabalhos históricos enquanto essa arquitetura
-reorientada é homologada; não devem ser promovidas como motor novo.
+**Não importar como regras novas:** `FoodDemandRawPerWorker`,
+`FoodUnmetRaw`, quotas VS25, perfis de demanda em quantidade por
+trabalhador, preços cash-food V12, envelopes B/H e diagnósticos de
+faltas artificiais. Esses campos permanecem no legado para replay,
+não para governar o núcleo novo.
 
-**Ainda pendente, sem suposições:** escolha da curva `f(x)` e
-modificadores de preço, como reconciliar receita de referência com
-comércio físico (incluindo o caso de oferta quase zero), direitos e frete,
-alocação de destino, estoque deliberado e reservas, consumo físico
-efetivo, nutrição por quantidade/diversidade, atraso nutricional na
-produtividade, tributação, persistência versionada e benchmark real.
+**Futuros incrementos, após confirmação do contrato de preços:**
+derivação temporal auditável de N, calibração da curva f por bem,
+adaptação à oferta física real, transporte sem teletransporte, absorção
+efetiva, nutrição e produtividade com defasagem, receitas/transações
+separadas, persistência versionada e benchmarks em mundo denso.
 
-O modelo de nutrição é independente do cálculo de preço. Nenhum
-percentual de "demanda atendida" pode ser inferido de `P` e `S`.
+## Critérios de aceitação e segurança
 
-## Plano seguro de substituição
-
-1. **ECON-REBASE-01 (esta PR):** estabelecer novo núcleo autocontido
-   `D=P`, `x=S/P`, `p=f(x)`, `R=p×P`; teste sem qualquer
-   multiplicador de demanda, prova de independência dos assemblies.
-2. **ECON-REBASE-02:** especificar e calibrar `f`, eventuais modificadores
-   e unidades por mercadoria; registrar interpretação exata da receita,
-   sem remendar o V12 antigo.
-3. **ECON-REBASE-03:** ligar a entrada ao snapshot físico real;
-   conservar produção/retensão/movimentação/destino, sem compradores ou
-   inventários virtuais; testes determinísticos e benchmark em mapas grandes.
-4. **ECON-REBASE-04:** consumo físico e nutrição com efeitos em produtividade
-   no ciclo seguinte, em versão de estado nova, sem teto `D`.
-5. **Troca controlada:** só depois de validar gameplay, migrar
-   explicitamente saves ou manter o leitor antigo isolado. Não
-   reeditar o passado nem exigir compatibilidade econômica com as
-   saídas de um modelo rejeitado.
-
-## Política de aceitação
-
-O CI FAST deve compilar **`GlobalArena.Economy`** via referência
-do projeto de testes e passar `GaVs110PopulationPriceRebaseTests`.
-A suíte histórica verifica que a física antiga não foi acidentalmente
-alterada, mas **não pode exigir que o novo mercado replique seus
-preços/consumos**. A PR permanece Draft, sem merge em main, sem
-alteração do jogo ativo.
-
-**Precedência:** decisão expressa de 04/11/2026 substitui os trechos
-da ADR-ECON-007 R2 que permitiam escalar a demanda por taxas por
-residente ou integrar receita marginal sobre toda a oferta. Mantêm-se
-as partes compatíveis: formação endógena de preços, absorção sem
-quota de demanda, retenção deliberada, custos físicos e ausência de
-orçamentos monetários exógenos.
+A suíte `GaVs110PopulationPriceRebaseTests` valida P, N, D, x,
+R_ref, neutralidade, monotonicidade condicional à curva de exemplo,
+independência do volume físico consumido, retenção e falhas de domínio.
+Godot e replay legados permanecem intactos. Fast CI compila a nova
+biblioteca e tests; checkpoint completo é outra trilha. Não alterar
+o status Draft nem executar merge automaticamente.
