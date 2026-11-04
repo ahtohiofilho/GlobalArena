@@ -39,12 +39,6 @@ jobs:
               -not $launcher.Contains('-c Debug') -or
               -not $launcher.Contains('& $GodotExe --path $projectDir --verbose') -or
               -not ($main -match 'GA_VS(19C|20|21|22|23|24|25|26|27|28|29|30)_RUNTIME_ACTIVE|GA_VS106_TACTICAL_FIRST_UI') -or
-              -not $main.Contains('GA_VS20_RUNTIME_ACTIVE') -and
-               -not $main.Contains('GA_VS21_RUNTIME_ACTIVE') -and
-               -not $main.Contains('GA_VS22_RUNTIME_ACTIVE') -and
-               -not $main.Contains('GA_VS23_RUNTIME_ACTIVE') -and
-               -not $main.Contains('GA_VS24_RUNTIME_ACTIVE') -and
-               (-not $main.Contains('GA_VS25_RUNTIME_ACTIVE') -and (-not $main.Contains('GA_VS26_RUNTIME_ACTIVE') -and (-not $main.Contains('GA_VS27_RUNTIME_ACTIVE') -and (-not $main.Contains('GA_VS28_RUNTIME_ACTIVE') -and (-not $main.Contains('GA_VS29_RUNTIME_ACTIVE') -and -not $main.Contains('GA_VS30_RUNTIME_ACTIVE'))))))) -or
               -not $source.Contains('MOSTRAR DETALHES E FERRAMENTAS DE LABORAT') -or
               -not $source.Contains('REABRIR SAVE')) {
             throw 'VS19C+ operational HUD or direct launcher contract missing.'
