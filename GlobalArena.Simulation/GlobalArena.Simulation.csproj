@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\GlobalArena.Economy\GlobalArena.Economy.csproj" />
     <ProjectReference Include="..\GlobalArena.Kernel\GlobalArena.Kernel.csproj" />
     <ProjectReference Include="..\GlobalArena.World\GlobalArena.World.csproj" />
     <ProjectReference Include="..\GlobalArena.Runtime\GlobalArena.Runtime.csproj" />
