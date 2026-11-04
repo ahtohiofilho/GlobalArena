@@ -2,6 +2,7 @@ name: GA-VS34 Automatic Real Camp and Foraging V17
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
     paths:
       - 'GlobalArena.Runtime/PhysicalJourneyCampState.cs'
       - 'GlobalArena.Runtime/PhysicalTacticalEconomyRuntimeState.cs'
@@ -16,6 +17,7 @@ on:
 
 jobs:
   real-camp-linux:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -31,6 +33,7 @@ jobs:
         run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
 
   real-camp-windows:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: windows-latest
     timeout-minutes: 30
     permissions:
