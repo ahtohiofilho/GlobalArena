@@ -96,6 +96,11 @@ public sealed class StrategicTerritorialPresenceProjection
         // While en route, retain strategic anchor at the departure tile until
         // arrival. No anticipatory control or presence at the destination.
         foreach (var transit in physical.Transits) Add(transit.Source, transit.Workers, true);
+        // A multi-leg journey is also a population-in-transit account. Its
+        // people remain anchored to the departure incidence until arrival;
+        // omitting it falsely reports missing residents once the tactical
+        // screen displays territorial presence during a real remote order.
+        foreach (var journey in physical.LongTrips) Add(journey.Source, journey.Workers, true);
 
         var entries = presence.OrderBy(x => x.Key.Value)
             .Select(x => new StrategicTerritorialPresenceEntry(
