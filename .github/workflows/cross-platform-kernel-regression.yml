@@ -32,9 +32,10 @@ jobs:
   validate:
     name: Validate kernel on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    # The complete Windows regression suite can pass after ~12m40s; allow
-    # restore/build and evidence upload without an artificial gate cancellation.
-    timeout-minutes: 25
+    # macOS Intel regression exceeded 25 minutes after successful restore/build;
+    # preserve 25 minutes for Linux/Windows, allow up to 60 on Intel macOS.
+    # A timeout does NOT count as successful testing; evidence remains required.
+    timeout-minutes: ${{ matrix.os == 'macos-15-intel' && 60 || 25 }}
     strategy:
       fail-fast: false
       matrix:
