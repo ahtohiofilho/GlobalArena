@@ -50,6 +50,8 @@ public partial class Main
     private Label? _sessionPulse;
     private Label? _localEconomyPulse;
     private Label? _workerTransitPulse;
+    private Label? _settledFoodCoverageLabel;
+    private ProgressBar? _settledFoodCoverageBar;
 
     private void InitializeWorkerLabControls(VBoxContainer tacticalHud)
     {
@@ -86,6 +88,31 @@ public partial class Main
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         overview.AddChild(_localEconomyPulse);
+
+        // Canonical last-settled economic outcome. A compact global indicator
+        // explicitly distinguishes actual consumption from local stock and
+        // a hypothetical next-cycle diagnosis. It is never a financial gauge.
+        _settledFoodCoverageLabel = new Label
+        {
+            Name = "GAQALastSettledFoodCoverage",
+            Text = "ÚLTIMO CICLO GLOBAL | NENHUM CICLO LIQUIDADO",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        overview.AddChild(_settledFoodCoverageLabel);
+        _settledFoodCoverageBar = new ProgressBar
+        {
+            Name = "GAQASettledFoodCoverageBar",
+            MinValue = 0.0,
+            MaxValue = 100.0,
+            Value = 0.0,
+            ShowPercentage = false,
+            Visible = false,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            CustomMinimumSize = new Vector2(0f, 8f),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
+        };
+        overview.AddChild(_settledFoodCoverageBar);
+
         _workerTransitPulse = new Label
         {
             Name = "GAQAWorkerTransitPulse",
@@ -1662,6 +1689,35 @@ public partial class Main
                 $"DESLOCAMENTOS | {state.WorkersInTransit} pessoas em trânsito · " +
                 $"{state.Transits.Count + state.LongTrips.Count} viagens ativas";
         var lastCycle = state.Cycles.LastOrDefault();
+        if (_settledFoodCoverageLabel is not null && _settledFoodCoverageBar is not null)
+        {
+            if (lastCycle is null)
+            {
+                _settledFoodCoverageLabel.Text =
+                    "ÚLTIMO CICLO GLOBAL | NENHUM CICLO LIQUIDADO";
+                _settledFoodCoverageBar.Value = 0.0;
+                _settledFoodCoverageBar.Visible = false;
+            }
+            else
+            {
+                // These are executed aggregate food outcomes (not a forecast).
+                // Other commodities are never added to the food denominator.
+                var foodDemand = (double)lastCycle.FoodConsumedRaw + lastCycle.FoodUnmetRaw;
+                var coverage = foodDemand > 0.0
+                    ? 100.0 * lastCycle.FoodConsumedRaw / foodDemand
+                    : 0.0;
+                _settledFoodCoverageLabel.Text =
+                    $"ÚLTIMO CICLO GLOBAL | TURNO {lastCycle.MovementTurn}\n" +
+                    $"ALIMENTO CONSUMIDO {lastCycle.FoodConsumedRaw / 1_000_000.0:F2} · " +
+                    $"DEMANDA NÃO ATENDIDA {lastCycle.FoodUnmetRaw / 1_000_000.0:F2}" +
+                    (foodDemand > 0.0 ? $" · {coverage:F1}% ATENDIDO" : " · SEM DEMANDA");
+                _settledFoodCoverageLabel.AddThemeColorOverride("font_color",
+                    lastCycle.FoodUnmetRaw > 0UL
+                        ? new Color("#e1c883") : new Color("#c4dfd3"));
+                _settledFoodCoverageBar.Visible = foodDemand > 0.0;
+                _settledFoodCoverageBar.Value = coverage;
+            }
+        }
         var nextEconomicCycle = PhysicalEconomicCycleProgression.Preview(_canonicalPhysicalLab);
         var recentCycles = PhysicalEconomicCycleProgression.SummarizeRecent(_canonicalPhysicalLab);
         if (_sessionPulse is not null)
