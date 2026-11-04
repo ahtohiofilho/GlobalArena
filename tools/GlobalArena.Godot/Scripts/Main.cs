@@ -226,10 +226,10 @@ public partial class Main : Control
     public override void _Ready()
     {
         GD.Print("GA_PROD_MAIN_READY_R6");
-        GD.Print("GA_VS30_RUNTIME_ACTIVE branch=long-journey-supply-cost-diagnostics layout=large-map save-v14=unchanged");
+        GD.Print("GA_VS106_TACTICAL_FIRST_UI source=canonical_gameplay spherical_tactical=true strategic=auxiliary");
         // The Godot project name stays VS17 to retain old user:// saves;
         // a visible runtime title identifies the actual branch under test.
-        GetWindow().Title = "Global Arena — VS30 | Suprimentos de viagem";
+        GetWindow().Title = "Global Arena — VS106 | Controle tático";
         // Prioritize a maximized production window; preserve windowed resizing and avoid headless changes.
         if (DisplayServer.GetName() != "headless")
             DisplayServer.WindowSetMode(DisplayServer.WindowMode.Maximized);
@@ -320,24 +320,24 @@ public partial class Main : Control
         var rightPanel = new PanelContainer
         {
             Name = "GAQARightPanel",
-            CustomMinimumSize = new Vector2(530f, 0f),
+            CustomMinimumSize = new Vector2(460f, 0f),
             SizeFlagsVertical = SizeFlags.ExpandFill
         };
         content.AddChild(rightPanel);
         _worldSidebar = rightPanel;
         var rightMargin = new MarginContainer();
-        rightMargin.AddThemeConstantOverride("margin_left", 10);
-        rightMargin.AddThemeConstantOverride("margin_right", 10);
-        rightMargin.AddThemeConstantOverride("margin_top", 8);
-        rightMargin.AddThemeConstantOverride("margin_bottom", 8);
+        rightMargin.AddThemeConstantOverride("margin_left", 7);
+        rightMargin.AddThemeConstantOverride("margin_right", 7);
+        rightMargin.AddThemeConstantOverride("margin_top", 5);
+        rightMargin.AddThemeConstantOverride("margin_bottom", 5);
         rightPanel.AddChild(rightMargin);
         var rightLayout = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        rightLayout.AddThemeConstantOverride("separation", 5);
+        rightLayout.AddThemeConstantOverride("separation", 3);
         rightMargin.AddChild(rightLayout);
         // A single compact header is enough. Version stays readable even
         // though project.godot retains the stable VS17 save directory.
-        var panelTitle = new Label { Text = "GLOBAL ARENA  |  VS30" };
-        panelTitle.AddThemeFontSizeOverride("font_size", 15);
+        var panelTitle = new Label { Text = "GLOBAL ARENA  |  TÁTICO" };
+        panelTitle.AddThemeFontSizeOverride("font_size", 12);
         rightLayout.AddChild(panelTitle);
         _tacticalBridgeStatus = new Label { Text = "Select a canonical territory to enable tactical context" };
         _tacticalBridgeStatus.AutowrapMode = TextServer.AutowrapMode.WordSmart;
@@ -369,10 +369,10 @@ public partial class Main : Control
         _tacticalTileRuntime = inspectorRuntime;
         GD.Print("GA_UI_TACTICAL_INSPECTOR_READY_R30 sidebar=true simulation_mutation=false");
         GD.Print("GA_UI_TACTICAL_RUNTIME_BRIDGE_READY_R35 state=unattached read_only=true");
-        _openTacticalContext = new Button { Name = "GAQAOpenTactical", Text = "OPEN TACTICAL CONTEXT", Disabled = true };
+        _openTacticalContext = new Button { Name = "GAQAOpenTactical", Text = "VOLTAR AO MAPA TÁTICO", Disabled = true };
         _openTacticalContext.Pressed += OpenTacticalContext;
         rightLayout.AddChild(_openTacticalContext);
-        _returnStrategicContext = new Button { Name = "GAQAReturnStrategic", Text = "RETURN TO STRATEGIC GLOBE", Visible = false };
+        _returnStrategicContext = new Button { Name = "GAQAReturnStrategic", Text = "VISÃO GLOBAL · GLOBO ESFÉRICO", Visible = false };
         _returnStrategicContext.Pressed += ReturnStrategicContext;
         rightLayout.AddChild(_returnStrategicContext);
         _tacticalTileEdges = new CheckBox { Text = "TACTICAL TILE EDGES", ButtonPressed = false, Visible = false };
@@ -409,10 +409,10 @@ public partial class Main : Control
         // QA density only: typography belongs to the right sidebar, not the map.
         ApplyCompactTacticalTypography(tacticalHud);
         ApplyCompactTacticalTypography(inspector);
-        _tacticalBridgeStatus.AddThemeFontSizeOverride("font_size", 13);
-        _territorialPresenceSummary.AddThemeFontSizeOverride("font_size", 13);
-        _returnStrategicContext.AddThemeFontSizeOverride("font_size", 13);
-        _tacticalTileEdges.AddThemeFontSizeOverride("font_size", 13);
+        _tacticalBridgeStatus.AddThemeFontSizeOverride("font_size", 11);
+        _territorialPresenceSummary.AddThemeFontSizeOverride("font_size", 11);
+        _returnStrategicContext.AddThemeFontSizeOverride("font_size", 12);
+        _tacticalTileEdges.AddThemeFontSizeOverride("font_size", 12);
         _tacticalHudPanel = tacticalHud;
         var strategicHud = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         hud.AddChild(strategicHud);
@@ -443,6 +443,21 @@ public partial class Main : Control
         GD.Print("GA_UI_STRATEGIC_CONTROL_OWNERSHIP_READY_R1 groups=2 controls=3 context=STRATEGIC");
         GD.Print("GA_UI_CALIBRATION_ACCESS_READY_01 fixed-controls=true");
 
+        // VS106: the actual inhabited physical tile, not a synthetic map
+        // cursor or a strategic selection, determines the first view.
+        // The globe stays available as an explicit, reversible global lens.
+        if (_canonicalPhysicalLab is null || !_workerOrigin.HasValue)
+            throw new System.InvalidOperationException("Canonical initial tactical origin is unavailable.");
+        var initialFocus = _canonicalPhysicalLab.DisplayBucket(_workerOrigin.Value);
+        _bridgeSelection = initialFocus.Value;
+        OpenTacticalContext();
+        if (!_tacticalPreview!.Visible ||
+            !_tacticalPreview.HasVisiblePhysicalTile(_workerOrigin.Value.FineStrategicCellId.Value))
+            throw new System.InvalidOperationException(
+                "VS106 tactile-first entry does not present the inhabited physical tile.");
+        GD.Print($"GA_VS106_TACTICAL_FIRST_READY fine_tile={_workerOrigin.Value.FineStrategicCellId.Value} " +
+            $"focus={initialFocus.Value} strategic_auxiliary=true");
+
         GD.Print("GA_UI_FOUNDATION_READY_01 layout=large_square_map,wide_sidebar,no_header,no_footer");
         GD.Print("GA_UI_FOUNDATION_RESIZE_READY_02 responsive=true");
     }
@@ -460,18 +475,18 @@ public partial class Main : Control
             // Preserve a small distinction between existing headings and data.
             var heading = label.HasThemeFontSizeOverride("font_size");
             var size = heading
-                ? System.Math.Min(14, label.GetThemeFontSize("font_size"))
-                : 13;
+                ? System.Math.Min(12, label.GetThemeFontSize("font_size"))
+                : 11;
             label.AddThemeFontSizeOverride("font_size", size);
         }
         else if (root is Button button)
         {
-            button.AddThemeFontSizeOverride("font_size", 13);
+            button.AddThemeFontSizeOverride("font_size", 12);
         }
         else if (root is SpinBox numeric)
         {
             // SpinBox renders its digits through an internal LineEdit.
-            numeric.GetLineEdit().AddThemeFontSizeOverride("font_size", 13);
+            numeric.GetLineEdit().AddThemeFontSizeOverride("font_size", 12);
         }
 
         foreach (Node child in root.GetChildren())
@@ -495,7 +510,7 @@ public partial class Main : Control
         var current = view.GetVisibleRect().Size;
         // Widen the sidebar on desktop; shrink its minimum on smaller
         // windows so the 1:1 tactical map is not clipped horizontally.
-        var sidebarWidth = Mathf.Clamp(current.X * 0.35f, 390f, 530f);
+        var sidebarWidth = Mathf.Clamp(current.X * 0.34f, 390f, 530f);
         if (_worldSidebar is not null &&
             Mathf.Abs(_worldSidebar.CustomMinimumSize.X - sidebarWidth) > 0.5f)
             _worldSidebar.CustomMinimumSize = new Vector2(sidebarWidth, 0f);

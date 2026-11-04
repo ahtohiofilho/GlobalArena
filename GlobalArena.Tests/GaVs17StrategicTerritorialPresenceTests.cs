@@ -129,6 +129,59 @@ public sealed class GaVs17StrategicTerritorialPresenceTests
         Assert.Empty(game.Game.Snapshot.Territory.Controls);
     }
 
+
+    [Fact]
+    public void LongDistanceAndAdjacentTravellersPreserveTerritorialSixthsAcrossReplayAndArrival()
+    {
+        var game = Start();
+        var incidence = Incidence();
+        var source = game.InitialTile;
+        var adjacent = game.AdjacentWorkable(source);
+        var neighbours = adjacent.ToHashSet();
+        var destination = adjacent.SelectMany(game.AdjacentWorkable)
+            .Where(x => x != source && !neighbours.Contains(x))
+            .OrderBy(x => x.FineStrategicCellId.Value)
+            .First();
+        var original = StrategicTerritorialPresenceProjection.FromPhysicalState(game.State, incidence);
+
+        var longTrip = game.OrderLongDistanceTransit(source, destination,
+            EconomicActivityKind.Agriculture, EconomicActivityKind.Forestry, 2UL);
+        Assert.True(longTrip.TotalLegs >= 2);
+        game.OrderWorkerTransit(source, adjacent[0],
+            EconomicActivityKind.Mining, EconomicActivityKind.Mining, 1UL);
+
+        var inTransit = StrategicTerritorialPresenceProjection.FromPhysicalState(game.State, incidence);
+        Assert.Equal(8UL, inTransit.TotalWorkers);
+        Assert.Equal(48UL, inTransit.Territories.Aggregate(0UL, (sum, x) => checked(sum + x.TotalSixths)));
+        Assert.Equal(18UL, inTransit.Territories.Aggregate(0UL, (sum, x) => checked(sum + x.InTransitSixths)));
+        Assert.Equal(original.Territories.Select(x => (x.Territory, x.TotalSixths)),
+            inTransit.Territories.Select(x => (x.Territory, x.TotalSixths)));
+        Assert.Empty(game.Game.Snapshot.Territory.Controls);
+
+        while (game.State.MovementTurn < longTrip.ArrivalTurn)
+        {
+            var save = game.ExportSaveJson();
+            var hash = game.CurrentHash;
+            var view = StrategicTerritorialPresenceProjection.FromPhysicalState(game.State, incidence);
+            Assert.Equal(48UL, view.Territories.Aggregate(0UL, (sum, x) => checked(sum + x.TotalSixths)));
+            Assert.Equal(hash, game.CurrentHash);
+            Assert.Equal(save, game.ExportSaveJson());
+            var reopened = CanonicalPhysicalTacticalSession.RestoreSaveJson(save);
+            Assert.Equal(hash, reopened.CurrentHash);
+            Assert.Equal(view.Territories,
+                StrategicTerritorialPresenceProjection.FromPhysicalState(reopened.State, incidence).Territories);
+            game.AdvanceMovementTurn();
+        }
+
+        var arrived = StrategicTerritorialPresenceProjection.FromPhysicalState(game.State, incidence);
+        Assert.Equal(48UL, arrived.Territories.Aggregate(0UL, (sum, x) => checked(sum + x.TotalSixths)));
+        Assert.Equal(0UL, arrived.Territories.Aggregate(0UL, (sum, x) => checked(sum + x.InTransitSixths)));
+        Assert.Equal(8UL, arrived.TotalWorkers);
+        Assert.Empty(game.State.LongTrips);
+        Assert.Empty(game.State.Transits);
+        Assert.Empty(game.Game.Snapshot.Territory.Controls);
+    }
+
     [Fact]
     public void RejectsForeignStrategicIncidenceInsteadOfGuessingPopulationOwnership()
     {

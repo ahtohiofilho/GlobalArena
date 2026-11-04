@@ -116,27 +116,54 @@ func _run() -> void:
     await process_frame
     await process_frame
 
-    if not _assert_layout(app, "strategic"):
-        return
-    if not await _capture(output_dir.path_join("01-strategic.png"), "strategic"):
-        return
-
     var globe := _node(app, "GAQAStrategicGlobe")
     var open_tactical := _node(app, "GAQAOpenTactical") as Button
     var tactical := _node(app, "GAQATacticalMap")
     var tactical_hud := _node(app, "GAQATacticalHUD")
     var return_strategic := _node(app, "GAQAReturnStrategic") as Button
+    var inspect := _node(app, "GAQAInspect") as Button
+    var cycle := _node(app, "GAQASessionPulse") as Label
+    var local := _node(app, "GAQALocalEconomyPulse") as Label
+    var journeys := _node(app, "GAQAWorkerTransitPulse") as Label
+    var advanced := _node(app, "GAQAAdvancedToggle") as Button
     if not _require(globe != null and open_tactical != null and tactical != null and
-            tactical_hud != null and return_strategic != null,
-            "missing real Godot map context controls"):
-        return
-    if not _require(open_tactical.disabled and globe.visible and not tactical.visible,
-            "unexpected strategic initial state"):
+            tactical_hud != null and return_strategic != null and inspect != null and
+            cycle != null and local != null and journeys != null and advanced != null,
+            "missing real Godot map navigation or dense information controls"):
         return
 
-    # Inject actual Godot mouse-button events through the root Viewport.
-    # A raycast in GlobePreview._GuiInput must select a territory, thus
-    # enabling the *real* OPEN TACTICAL CONTEXT button.
+    # VS106: the inhabited spherical tactical chart is the actual start
+    # screen. The global Goldberg globe remains an available second lens.
+    if not _require(tactical.visible and tactical_hud.visible and
+            not globe.visible and return_strategic.visible and
+            inspect.is_visible_in_tree() and not advanced.button_pressed and
+            cycle.text.contains("TURNO 0") and
+            cycle.text.contains("PRÓX. CICLO") and
+            local.text.contains("PESSOAS 8") and
+            local.text.contains("ESTOQUES") and
+            journeys.text.contains("0 pessoas em trânsito"),
+            "VS106 tactical-first or canonical sidebar did not initialize"):
+        return
+    print("GA_UI_VISUAL_VS106_TACTICAL_FIRST_OK")
+    if not _assert_layout(app, "tactical-initial"):
+        return
+    if not await _capture(output_dir.path_join("02-tactical.png"), "tactical-initial"):
+        return
+
+    return_strategic.emit_signal("pressed")
+    await process_frame
+    await process_frame
+    if not _require(globe.visible and not tactical.visible and not tactical_hud.visible and
+            open_tactical.visible and not return_strategic.visible,
+            "auxiliary global globe did not open"):
+        return
+    if not _assert_layout(app, "strategic-auxiliary"):
+        return
+    if not await _capture(output_dir.path_join("01-strategic.png"), "strategic-auxiliary"):
+        return
+
+    # Retain the real spherical globe picker and reversible return path.
+    # Use actual Godot mouse-button events, not a manual selected-id stub.
     var center := globe.get_global_rect().get_center()
     var selected := false
     for offset in [Vector2.ZERO, Vector2(30, 0), Vector2(-30, 0),
@@ -159,7 +186,7 @@ func _run() -> void:
             selected = true
             break
     if not _require(selected,
-            "mouse-input territory picker failed to enable OPEN TACTICAL"):
+            "mouse-input territory picker failed to enable tactical return"):
         return
     print("GA_UI_VISUAL_GLOBE_PICK_OK")
 
@@ -170,27 +197,16 @@ func _run() -> void:
             not globe.visible and return_strategic.visible,
             "real tactical-context button did not switch map/HUD visibility"):
         return
-    if not _assert_layout(app, "tactical"):
-        return
-    var inspect := _node(app, "GAQAInspect") as Button
-    if not _require(inspect != null and inspect.is_visible_in_tree(),
-            "tactical player commands are not visible"):
+    if not _assert_layout(app, "returned-tactical"):
         return
     inspect.emit_signal("pressed")
     await process_frame
     var summary := _node(app, "GAQASettlementSummary") as Label
-    if not _require(summary != null and summary.text.contains("agricultura 4"),
-            "tactical population inspection failed after navigation"):
+    if not _require(summary != null and summary.text.contains("agricultura 4") and
+            cycle.text.contains("TURNO 0") and local.text.contains("PESSOAS 8"),
+            "canonical tactical summary lost after spherical navigation"):
         return
-    if not await _capture(output_dir.path_join("02-tactical.png"), "tactical"):
+    if not await _capture(output_dir.path_join("03-tactical-return.png"), "returned-tactical"):
         return
-
-    return_strategic.emit_signal("pressed")
-    await process_frame
-    if not _require(globe.visible and not tactical.visible and not tactical_hud.visible,
-            "return navigation did not restore strategic view"):
-        return
-    if not _assert_layout(app, "returned-strategic"):
-        return
-    print("GA_UI_VISUAL_PASS resolution=1600x900 scenes=strategic,tactical screenshots=2")
+    print("GA_UI_VISUAL_PASS resolution=1600x900 scenes=tactical,strategic,tactical screenshots=3")
     quit(0)

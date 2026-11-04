@@ -1,0 +1,106 @@
+name: GA-VS106 Tactical-First Dense Gameplay HUD Gate
+
+on:
+  pull_request:
+    paths:
+      - 'tools/GlobalArena.Godot/**'
+      - '.github/workflows/ga-vs106-tactical-first-hud.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ga-vs106-tactical-first-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tactical-hud-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      GA_UI_E2E_ISOLATED: '1'
+      XDG_DATA_HOME: ${{ github.workspace }}/.ga-ui-e2e/data
+      XDG_CONFIG_HOME: ${{ github.workspace }}/.ga-ui-e2e/config
+      XDG_CACHE_HOME: ${{ github.workspace }}/.ga-ui-e2e/cache
+      GODOT_PROJECT: ${{ github.workspace }}/tools/GlobalArena.Godot
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify exact VS106 SHA
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Compile actual Godot Mono UI
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
+      - name: Physical worker and economic cadence regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "FullyQualifiedName~GaVs10|FullyQualifiedName~GaVs15|FullyQualifiedName~GaVs102|FullyQualifiedName~GaVs104"
+      - name: Download pinned Godot 4.7.2 Mono binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/godot-dotnet" "$XDG_DATA_HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME"
+          archive="$RUNNER_TEMP/godot-mono-4.7.2.zip"
+          curl -fL --retry 4 --retry-delay 3 -o "$archive" \
+            "https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_mono_linux_x86_64.zip"
+          echo "129f82db7bafd54ae14bb5bb284041c73860e8c7a009a3a026ca5e946cbff247  $archive" | sha256sum -c -
+          unzip -q "$archive" -d "$RUNNER_TEMP/godot-dotnet"
+          godot="$(find "$RUNNER_TEMP/godot-dotnet" -type f -name 'Godot_v4.7.2-stable_mono_linux.x86_64' -print -quit)"
+          test -n "$godot"
+          chmod +x "$godot"
+          echo "GODOT_BIN=$godot" >> "$GITHUB_ENV"
+      - name: Import actual game resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 150s "$GODOT_BIN" --headless --editor --path "$GODOT_PROJECT" --import --quit 2>&1 | tee "$RUNNER_TEMP/ga-vs106-import.log"
+      - name: Real SceneTree tactical-first and economic pulse proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 180s "$GODOT_BIN" --headless --path "$GODOT_PROJECT" --script res://Tests/UiE2E.gd 2>&1 | tee "$RUNNER_TEMP/ga-vs106-runtime.log"
+          grep -q '^GA_UI_E2E_VS106_TACTICAL_FIRST_PULSE_OK$' "$RUNNER_TEMP/ga-vs106-runtime.log"
+          grep -q '^GA_UI_E2E_VS106_CYCLE_PULSE_OK$' "$RUNNER_TEMP/ga-vs106-runtime.log"
+          grep -q '^GA_UI_E2E_PASS ' "$RUNNER_TEMP/ga-vs106-runtime.log"
+          if grep -q 'GA_UI_E2E_FAIL\|SCRIPT ERROR\|Unhandled exception' "$RUNNER_TEMP/ga-vs106-runtime.log"; then
+            exit 1
+          fi
+      - name: Preserve real runtime evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-vs106-linux-runtime
+          path: ${{ runner.temp }}/ga-vs106-*.log
+          if-no-files-found: ignore
+          retention-days: 14
+
+  tactical-hud-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify exact VS106 SHA
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Godot Mono Windows Debug
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
+      - name: Godot Mono Windows Release
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
+      - name: Physical worker and economic cadence regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "FullyQualifiedName~GaVs10|FullyQualifiedName~GaVs15|FullyQualifiedName~GaVs102|FullyQualifiedName~GaVs104"

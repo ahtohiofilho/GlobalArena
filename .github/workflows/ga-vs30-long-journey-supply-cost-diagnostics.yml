@@ -54,7 +54,7 @@ jobs:
           # legacy V15 compatibility. Either witnessed E2E contract is valid.
           $saveReopenWitness = $e2e.Contains('GA_UI_E2E_SUPPLY_DIAGNOSIS_V15_REOPEN_OK') -or
                                $e2e.Contains('GA_UI_E2E_SUPPLY_DIAGNOSIS_V20_REOPEN_OK')
-          if (-not $main.Contains('GA_VS30_RUNTIME_ACTIVE') -or
+          if (-not ($main -match 'GA_VS30_RUNTIME_ACTIVE|GA_VS106_TACTICAL_FIRST_UI') -or
               -not $lab.Contains('GAQAAssessJourneyFood') -or
               -not $lab.Contains('GAQAJourneySupplyResult') -or
               -not $projection.Contains('FoodDemandRawPerWorker') -or

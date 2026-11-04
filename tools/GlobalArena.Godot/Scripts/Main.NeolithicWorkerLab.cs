@@ -47,6 +47,9 @@ public partial class Main
     private ulong? _foodMarketQuoteTile;
     private Button? _treasuryReservationButton;
     private Label? _treasuryReservationStatus;
+    private Label? _sessionPulse;
+    private Label? _localEconomyPulse;
+    private Label? _workerTransitPulse;
 
     private void InitializeWorkerLabControls(VBoxContainer tacticalHud)
     {
@@ -56,12 +59,40 @@ public partial class Main
 
         var title = new Label
         {
-            Text = "PLANEJAMENTO TÁTICO | VS30",
+            Text = "POVOAMENTO · CONTROLE TÁTICO ESFÉRICO",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         title.AddThemeFontSizeOverride("font_size", 16);
         title.AddThemeColorOverride("font_color", new Color("#d4e9f3"));
         lab.AddChild(title);
+
+        // Compact, canonical data-first overview; no synthetic budgets, cash
+        // or institutional revenue is presented as active gameplay.
+        var overview = new VBoxContainer { Name = "GAQACompactOverview" };
+        overview.AddThemeConstantOverride("separation", 2);
+        lab.AddChild(overview);
+        _sessionPulse = new Label
+        {
+            Name = "GAQASessionPulse",
+            Text = "TURNO 0 | CICLO 0 | PRÓXIMO CICLO: aguardando sessão",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        _sessionPulse.AddThemeColorOverride("font_color", new Color("#d4e9f3"));
+        overview.AddChild(_sessionPulse);
+        _localEconomyPulse = new Label
+        {
+            Name = "GAQALocalEconomyPulse",
+            Text = "TILE INICIAL | pessoas, produção e estoque: aguardando",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        overview.AddChild(_localEconomyPulse);
+        _workerTransitPulse = new Label
+        {
+            Name = "GAQAWorkerTransitPulse",
+            Text = "DESLOCAMENTOS | aguardando",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        overview.AddChild(_workerTransitPulse);
 
         var warning = new Label
         {
@@ -71,7 +102,7 @@ public partial class Main
         warning.AddThemeColorOverride("font_color", new Color("#e1c883"));
         lab.AddChild(warning);
 
-        var start = new Button { Name = "GAQAInspect", Text = "INSPECIONAR POVOAMENTO INICIAL (JÁ EXISTENTE)" };
+        var start = new Button { Name = "GAQAInspect", Text = "CENTRALIZAR POVOAMENTO" };
         start.Pressed += StartWorkerLab;
         lab.AddChild(start);
 
@@ -259,8 +290,12 @@ public partial class Main
             Visible = false,
             SizeFlagsHorizontal = SizeFlags.ExpandFill
         };
-        _workerLabAdvancedPanel.AddThemeConstantOverride("separation", 4);
+        _workerLabAdvancedPanel.AddThemeConstantOverride("separation", 3);
         lab.AddChild(_workerLabAdvancedPanel);
+        // Keep diagnostics in the optional workspace, while the initial
+        // tactical cockpit displays comparable canonical metrics.
+        warning.Reparent(_workerLabAdvancedPanel);
+        _economicCycleSummary?.Reparent(_workerLabAdvancedPanel);
         diagnosticsToggle.Toggled += expanded =>
         {
             if (_workerLabAdvancedPanel is not null)
@@ -776,6 +811,14 @@ public partial class Main
         catch (Exception ex) when (ex is InvalidOperationException or
                                    ArgumentException or OverflowException)
         {
+            // The status remains player-facing. Keep an actionable reason
+            // in CI/runtime evidence when the real Godot command is rejected.
+            GD.Print("GA_VS106_REMOTE_ORDER_REJECTED type=" + ex.GetType().Name +
+                " reason=" + ex.Message +
+                " source_activity=" + _workerFromJob?.GetSelectedId() +
+                " target_activity=" + _workerToJob?.GetSelectedId() +
+                " workers=" + _workerAmount?.Value +
+                " tile=" + _remoteDestinationTileId?.Value);
             _workerLabStatus.Text +=
                 "\nORDEM GLOBAL RECUSADA (partida preservada): " + ex.Message;
         }
@@ -1597,9 +1640,36 @@ public partial class Main
         var stockFood = _canonicalPhysicalLab.StockAt(origin, new CommodityId(1U));
         var stockStone = _canonicalPhysicalLab.StockAt(origin, new CommodityId(2U));
         var stockWood = _canonicalPhysicalLab.StockAt(origin, new CommodityId(3U));
+        if (_localEconomyPulse is not null)
+        {
+            var farmers = local.Where(x => x.Activity == EconomicActivityKind.Agriculture)
+                .Aggregate(0UL, (sum, x) => checked(sum + x.Workers));
+            var foresters = local.Where(x => x.Activity == EconomicActivityKind.Forestry)
+                .Aggregate(0UL, (sum, x) => checked(sum + x.Workers));
+            var miners = local.Where(x => x.Activity == EconomicActivityKind.Mining)
+                .Aggregate(0UL, (sum, x) => checked(sum + x.Workers));
+            _localEconomyPulse.Text =
+                $"TILE {origin.FineStrategicCellId.Value} | " +
+                $"PESSOAS {farmers + foresters + miners} " +
+                $"(AG {farmers} · MAD {foresters} · PED {miners})\n" +
+                $"ESTOQUES | ALIM {stockFood / 1_000_000.0:F2} · " +
+                $"MAD {stockWood / 1_000_000.0:F2} · " +
+                $"PED {stockStone / 1_000_000.0:F2} | " +
+                $"DEMANDA ALIM (prévia) {demand / 1_000_000.0:F2}";
+        }
+        if (_workerTransitPulse is not null)
+            _workerTransitPulse.Text =
+                $"DESLOCAMENTOS | {state.WorkersInTransit} pessoas em trânsito · " +
+                $"{state.Transits.Count + state.LongTrips.Count} viagens ativas";
         var lastCycle = state.Cycles.LastOrDefault();
         var nextEconomicCycle = PhysicalEconomicCycleProgression.Preview(_canonicalPhysicalLab);
         var recentCycles = PhysicalEconomicCycleProgression.SummarizeRecent(_canonicalPhysicalLab);
+        if (_sessionPulse is not null)
+            _sessionPulse.Text =
+                $"TURNO {state.MovementTurn} | CICLOS {state.Cycles.Count} | " +
+                $"PRÓX. CICLO {nextEconomicCycle.SettlementTurn} " +
+                $"(+{nextEconomicCycle.MovementTurnsToAdvance} movimentos) | " +
+                $"RITMO 1/{_canonicalPhysicalLab.NextEconomicInterval}";
         if (_economicCycleSummary is not null)
         {
             var cyclePulse = lastCycle is null
