@@ -58,9 +58,9 @@ jobs:
           if (-not $runner.Contains('feature/ga-vs23-multicycle-economic-outcomes-20261031') -or
               -not $runner.Contains('-c Debug') -or
               -not $runner.Contains('& $GodotExe --path $projectDir --verbose') -or
-              (-not $main.Contains('GA_VS23_RUNTIME_ACTIVE') -and
-               -not $main.Contains('GA_VS24_RUNTIME_ACTIVE') -and
-               (-not $main.Contains('GA_VS25_RUNTIME_ACTIVE') -and (-not $main.Contains('GA_VS26_RUNTIME_ACTIVE') -and (-not $main.Contains('GA_VS27_RUNTIME_ACTIVE') -and (-not $main.Contains('GA_VS28_RUNTIME_ACTIVE') -and (-not $main.Contains('GA_VS29_RUNTIME_ACTIVE') -and -not $main.Contains('GA_VS30_RUNTIME_ACTIVE'))))))) -or
+              # Legacy VS23..VS30 and the current VS106 tactical-first shell
+              # share the same canonical five-cycle contract; UI text may evolve.
+              -not ($main -match 'GA_VS(23|24|25|26|27|28|29|30)_RUNTIME_ACTIVE|GA_VS106_TACTICAL_FIRST_UI') -or
               -not $lab.Contains('AdvanceOfflineLabFiveEconomicCycles') -or
               -not $lab.Contains('PhysicalEconomicCycleProgression.SummarizeRecent') -or
               -not $progression.Contains('public static PhysicalEconomicBatchPlan AdvanceBatch') -or
