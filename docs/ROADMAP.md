@@ -73,6 +73,93 @@ e **MKT-01–07 continuam condicionais**. Nenhuma campanha ou gasto
 
 ---
 
+## Checkpoint transversal UX-VIS-01 — evidência visual progressiva (04/11/2026)
+
+**Natureza:** complemento operacional ao roadmap existente, **sem criar novo
+milestone, substituir M4/M5, interromper o caminho crítico, alterar os
+1.000 GPP ou reclassificar progresso histórico**. O primeiro recorte
+previsto é a próxima evolução da UI tática; a numeração VS seguirá o
+planejamento técnico aprovado, sem fixar uma sequência artificial de PRs.
+
+**Objetivo:** tornar visualmente verificáveis as mecânicas já implementadas,
+de modo que a experiência acompanhe o kernel, sem dois extremos:
+(1) teste manual obrigatório a cada commit; (2) uma revelação tardia de
+interface inteiramente pronta sem oportunidades de ajuste.
+
+### Princípios de produto e hierarquia de navegação
+
+- **Tático esférico como espaço principal de jogo:** povoamentos,
+  trabalho, movimentação, recursos, transporte e consequências
+  territoriais acontecem nos tiles físicos táticos. A tela de jogo
+  prioriza esse contexto e a leitura das ações sobre ele. Preservar
+  continuidade esférica e seleção vinculada aos IDs físicos canônicos;
+  não substituir o tático por uma planificação funcional separada.
+- **Estratégico subordinado, não descartado:** o globo estratégico é
+  uma visão global auxiliar de navegação, síntese e orientação, com
+  acesso claro a partir do tático, mas não um segundo eixo concorrente
+  da UI. **A esfericidade é identidade do produto**, tanto no globo
+  quanto na experiência tática, e deve permanecer visualmente evidente.
+  Ao alternar escalas, preservar orientação, foco e continuidade.
+- **Densidade de Grand Strategy:** abandonar o aspecto de arcade e
+  favorecer tabelas compactas, linhas informativas, colunas alinhadas,
+  valores comparáveis e hierarquia tipográfica discreta. Reduzir a
+  tipografia excessivamente grande e o espaço vazio; prever escala de
+  interface/acessibilidade e conferir legibilidade nas resoluções
+  usadas pelo jogador. Evitar trocar legibilidade por mera compressão.
+  A coluna lateral deve **mostrar mais informação útil ao mesmo tempo**,
+  sem perder os comandos prioritários ou exigir rolagem constante.
+- **Dados reais e contextualizados:** exibir estado e resultados
+  observáveis do motor (tile selecionado, população produtora /
+  consumidora, atividade, produção, demanda, estoques, deslocamento,
+  cadência e, quando existirem, fluxos comerciais e conflitos). Cada
+  indicador deve identificar se é valor executado, prévia ou diagnóstico.
+  Não fabricar saldos, preços, lucros, caixa familiar ou estatísticas
+  que a simulação ainda não entrega.
+- **Ferramentas de engenharia não são gameplay:** logs, migrações,
+  diagnósticos e parâmetros técnicos ficam acessíveis em uma área
+  secundária recolhida. Não ocupar a leitura principal do mundo.
+
+### Operação incremental, sem burocracia de revisão humana
+
+1. **Ao integrar uma família de mecânicas com manifestação visível**,
+   entregar junto ao incremento um pequeno reflexo no HUD/mapa:
+   indicador, marcação, mudança contextual, estado antes/depois ou
+   consequência navegável. Não esperar um grande redesenho final.
+2. **QA contínuo automatizado:** manter testes de contratos e ações
+   reais no Godot; para alterações de apresentação relevantes,
+   anexar capturas comparáveis da cena em ambiente controlado
+   (resolução, câmera, save e seleção de referência) e checagens de
+   geometria/overflow onde viáveis. CI verde não equivale a aprovação
+   de legibilidade, elegância ou usabilidade humana.
+3. **Revisão humana por amostragem significativa:** apresentar
+   checkpoints visuais curtos quando se acumular uma mudança
+   perceptível de navegação, densidade, controle, mapa ou mecânica.
+   O proprietário avalia o resultado quando houver uma decisão
+   genuína de UX, **não a cada VS, workflow ou mudança de código**.
+   Feedback entra no incremento seguinte; não bloquear automaticamente
+   o restante do roadmap por ausência de inspeção manual de rotina.
+4. **Checkpoint de consolidação UX-VIS-01:** produzir uma versão
+   executável no Windows em worktree isolado, com tático esférico
+   prioritário, globo global auxiliar e coluna lateral mais densa,
+   alimentada por dados canônicos. Oferecer uma comparação breve
+   antes/depois e roteiro de inspeção opcional (selecionar tile,
+   realocar trabalhadores, avançar ciclos, observar efeitos e
+   abrir/reabrir save). Recolher avaliação humana dirigida antes
+   de congelar uma reformulação estrutural do layout.
+5. **Critério de acompanhamento:** registrar, por mecanismo já
+   implementado, se há feedback visual real, se ele é compreensível,
+   e o que falta expor. Priorizar lacunas de informação e regressões
+   visuais acima de polimento decorativo; manter rollback dos
+   incrementos em branches/PRs Draft até sua homologação.
+
+**Limites:** UX-VIS-01 não adiciona orçamento GPP, não antecipa o
+gate público MKT-01, não redefine a V1 Definition of Done, não
+proclama a interface aprovada e não interrompe a economia física.
+É um checkpoint de produto integrado ao caminho atual, cujo resultado
+é amadurecimento visível gradual — e não um novo subsistema paralelo.
+
+---
+
 # 1. Objetivo
 
 Este documento mantém o Global Arena inteiro em uma única escala de evolução.
