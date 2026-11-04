@@ -58,7 +58,12 @@ while($true){
     $skip=@($runs|Where-Object{$_.status -eq 'completed' -and $_.conclusion -eq 'skipped'})
     $active=@($runs|Where-Object{$_.status -ne 'completed'})
     Write-Host ('[{0}] Total {1} | SUCCESS {2} | SKIPPED {3} | FALHAS {4} | ATIVOS {5}' -f (Get-Date -Format 'HH:mm:ss'),$runs.Count,$pass.Count,$skip.Count,$fail.Count,$active.Count)
-    if($fast.Count -ne 1){if($fast.Count -gt 1){throw 'FAST duplicado'};Start-Sleep -Seconds $IntervaloSegundos;continue}
+    if($fast.Count -ne 1){
+        if($fast.Count -gt 1){throw 'FAST duplicado'}
+        if((Get-Date) -gt $begin.AddMinutes($LimiteMinutos)){throw 'FAST nao apareceu antes do tempo limite'}
+        Start-Sleep -Seconds $IntervaloSegundos
+        continue
+    }
     if($fast[0].status -eq 'completed' -and $fast[0].conclusion -ne 'success'){
         throw "FAST falhou: $($fast[0].html_url)"
     }
