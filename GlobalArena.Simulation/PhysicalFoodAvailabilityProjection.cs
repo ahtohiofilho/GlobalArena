@@ -4,10 +4,11 @@ using GlobalArena.World;
 namespace GlobalArena.Simulation;
 
 /// <summary>
-/// VS25: local physical food balance for the NEXT real economic settlement.
-/// The two unmet-demand components are disjoint, additive, and observational:
-/// physical shortage versus unfulfilled demand despite available local food.
-/// The latter is not automatically attributed to a single monetary cause.
+/// VS25 historical V9-V20 quota reconciliation for the NEXT settlement.
+/// FoodDemandRaw, PhysicalShortageRaw and UnconsumedDespiteSupplyRaw are old
+/// quota-accounting fields, NOT real economic demand as a consumption ceiling,
+/// hunger or nutrition/efficiency measurements. Keep their names for V9-V20
+/// callers and tests; a future unbounded intake policy is a separate ruleset.
 /// </summary>
 public sealed record PhysicalFoodAvailabilityForecast(
     PhysicalTacticalTileId Tile,
@@ -62,7 +63,7 @@ public static class PhysicalFoodAvailabilityProjection
                 "Local food balance would require negative production.");
         if (consumed > demand)
             throw new InvalidOperationException(
-                "Local food consumed exceeds actual population demand.");
+                "Legacy food consumed exceeds its V9-V20 intake quota.");
         var physicallyCoverable = Math.Min(physicalAvailable, demand);
         if (consumed > physicallyCoverable)
             throw new InvalidOperationException(
