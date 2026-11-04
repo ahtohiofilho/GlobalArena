@@ -62,7 +62,8 @@ jobs:
             "$GODOT_BIN" --rendering-method gl_compatibility \
             --resolution 1600x900 --path "$GODOT_PROJECT" \
             --script res://Tests/UiVisualQA.gd 2>&1 | tee "$RUNNER_TEMP/ga-visual-runtime.log"
-          grep -q '^GA_UI_VISUAL_VS106_TACTICAL_FIRST_OK
+          grep -q '^GA_UI_VISUAL_VS106_TACTICAL_FIRST_OK$' "$RUNNER_TEMP/ga-visual-runtime.log"
+          grep -q '^GA_UI_VISUAL_VS108_SETTLED_FOOD_OK$' "$RUNNER_TEMP/ga-visual-runtime.log"
           grep -q '^GA_UI_VISUAL_GLOBE_PICK_OK' "$RUNNER_TEMP/ga-visual-runtime.log"
           grep -q '^GA_UI_VISUAL_PASS ' "$RUNNER_TEMP/ga-visual-runtime.log"
           if grep -q 'GA_UI_VISUAL_FAIL\|SCRIPT ERROR\|Unhandled exception' "$RUNNER_TEMP/ga-visual-runtime.log"; then
@@ -73,49 +74,6 @@ jobs:
           test -s "$GA_UI_VISUAL_ARTIFACT_DIR/02-tactical.png"
           test -s "$GA_UI_VISUAL_ARTIFACT_DIR/03-tactical-return.png"
           test -s "$GA_UI_VISUAL_ARTIFACT_DIR/04-tactical-settled.png"
-      - name: Publish actual screenshots and logs, including when a visual gate fails
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ga-qa-visual-002-screenshots
-          path: |
-            ${{ github.workspace }}/.ga-ui-visual/*.png
-            ${{ runner.temp }}/ga-visual-*.log
-          if-no-files-found: ignore
-          include-hidden-files: true
-          retention-days: 14
- "$RUNNER_TEMP/ga-visual-runtime.log"
-          grep -q '^GA_UI_VISUAL_VS108_SETTLED_FOOD_OK
-          grep -q '^GA_UI_VISUAL_GLOBE_PICK_OK' "$RUNNER_TEMP/ga-visual-runtime.log"
-          grep -q '^GA_UI_VISUAL_PASS ' "$RUNNER_TEMP/ga-visual-runtime.log"
-          if grep -q 'GA_UI_VISUAL_FAIL\|SCRIPT ERROR\|Unhandled exception' "$RUNNER_TEMP/ga-visual-runtime.log"; then
-            echo "Rendered UI reported a runtime failure."
-            exit 1
-          fi
-          test -s "$GA_UI_VISUAL_ARTIFACT_DIR/01-strategic.png"
-          test -s "$GA_UI_VISUAL_ARTIFACT_DIR/02-tactical.png"
-          test -s "$GA_UI_VISUAL_ARTIFACT_DIR/03-tactical-return.png"
-      - name: Publish actual screenshots and logs, including when a visual gate fails
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ga-qa-visual-002-screenshots
-          path: |
-            ${{ github.workspace }}/.ga-ui-visual/*.png
-            ${{ runner.temp }}/ga-visual-*.log
-          if-no-files-found: ignore
-          include-hidden-files: true
-          retention-days: 14
- "$RUNNER_TEMP/ga-visual-runtime.log"
-          grep -q '^GA_UI_VISUAL_GLOBE_PICK_OK' "$RUNNER_TEMP/ga-visual-runtime.log"
-          grep -q '^GA_UI_VISUAL_PASS ' "$RUNNER_TEMP/ga-visual-runtime.log"
-          if grep -q 'GA_UI_VISUAL_FAIL\|SCRIPT ERROR\|Unhandled exception' "$RUNNER_TEMP/ga-visual-runtime.log"; then
-            echo "Rendered UI reported a runtime failure."
-            exit 1
-          fi
-          test -s "$GA_UI_VISUAL_ARTIFACT_DIR/01-strategic.png"
-          test -s "$GA_UI_VISUAL_ARTIFACT_DIR/02-tactical.png"
-          test -s "$GA_UI_VISUAL_ARTIFACT_DIR/03-tactical-return.png"
       - name: Publish actual screenshots and logs, including when a visual gate fails
         if: always()
         uses: actions/upload-artifact@v4
