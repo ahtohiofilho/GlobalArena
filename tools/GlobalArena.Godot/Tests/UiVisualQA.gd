@@ -125,14 +125,13 @@ func _run() -> void:
     var cycle := _node(app, "GAQASessionPulse") as Label
     var local := _node(app, "GAQALocalEconomyPulse") as Label
     var journeys := _node(app, "GAQAWorkerTransitPulse") as Label
-    var food_coverage := _node(app, "GAQALastSettledFoodCoverage") as Label
-    var food_coverage_bar := _node(app, "GAQASettledFoodCoverageBar") as ProgressBar
+    var food_consumption := _node(app, "GAQALastSettledFoodConsumption") as Label
     var next_cycle := _node(app, "GAQAAdvanceOneCycle") as Button
     var advanced := _node(app, "GAQAAdvancedToggle") as Button
     if not _require(globe != null and open_tactical != null and tactical != null and
             tactical_hud != null and return_strategic != null and inspect != null and
             cycle != null and local != null and journeys != null and advanced != null and
-            food_coverage != null and food_coverage_bar != null and next_cycle != null,
+            food_consumption != null and next_cycle != null,
             "missing real Godot map navigation or dense information controls"):
         return
 
@@ -146,8 +145,7 @@ func _run() -> void:
             local.text.contains("PESSOAS 8") and
             local.text.contains("ESTOQUES") and
             journeys.text.contains("0 pessoas em trânsito") and
-            food_coverage.text.contains("NENHUM CICLO LIQUIDADO") and
-            not food_coverage_bar.visible,
+            food_consumption.text.contains("NENHUM CICLO LIQUIDADO"),
             "VS106 tactical-first or canonical sidebar did not initialize"):
         return
     print("GA_UI_VISUAL_VS106_TACTICAL_FIRST_OK")
@@ -221,12 +219,12 @@ func _run() -> void:
     await process_frame
     await process_frame
     if not _require(cycle.text.contains("TURNO 1") and
-            food_coverage.text.contains("ÚLTIMO CICLO GLOBAL") and
-            food_coverage.text.contains("TURNO 1") and
-            food_coverage.text.contains("ALIMENTO CONSUMIDO") and
-            food_coverage.text.contains("DEMANDA NÃO ATENDIDA") and
-            food_coverage_bar.value >= 0.0 and food_coverage_bar.value <= 100.0 and
-            (food_coverage_bar.visible or food_coverage.text.contains("SEM DEMANDA")),
+            food_consumption.text.contains("ÚLTIMO CICLO GLOBAL") and
+            food_consumption.text.contains("TURNO 1") and
+            food_consumption.text.contains("CONSUMO FÍSICO DE ALIMENTO") and
+            food_consumption.text.contains("NUTRIÇÃO/EFICIÊNCIA AINDA NÃO APURADAS") and
+            not food_consumption.text.contains("DEMANDA NÃO ATENDIDA") and
+            not food_consumption.text.contains("% ATENDIDO"),
             "VS108 real economic cycle did not update the compact food-service evidence"):
         return
     print("GA_UI_VISUAL_VS108_SETTLED_FOOD_OK")
