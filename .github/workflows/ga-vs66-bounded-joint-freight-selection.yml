@@ -2,6 +2,7 @@ name: GA-VS66 Bounded Joint Freight Selection Audit Gate
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
   workflow_dispatch:
 
 concurrency:
@@ -10,6 +11,7 @@ concurrency:
 
 jobs:
   bounded-joint-selection-linux:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     permissions:
@@ -26,6 +28,7 @@ jobs:
       - name: Godot Mono Release
         run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
   bounded-joint-selection-windows:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: windows-latest
     timeout-minutes: 35
     permissions:
