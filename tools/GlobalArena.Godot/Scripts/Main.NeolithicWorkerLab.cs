@@ -50,6 +50,7 @@ public partial class Main
     private Label? _sessionPulse;
     private Label? _localEconomyPulse;
     private Label? _workerTransitPulse;
+    private Label? _lastSettledFoodConsumption;
 
     private void InitializeWorkerLabControls(VBoxContainer tacticalHud)
     {
@@ -86,6 +87,18 @@ public partial class Main
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         overview.AddChild(_localEconomyPulse);
+
+        // The canonical cycle records actual food consumption. It is not
+        // evidence of nutrition, a scalar demand cap, or percentage served.
+        // The historical FoodUnmetRaw save field is deliberately not a HUD KPI.
+        _lastSettledFoodConsumption = new Label
+        {
+            Name = "GAQALastSettledFoodConsumption",
+            Text = "ÚLTIMO CICLO GLOBAL | NENHUM CICLO LIQUIDADO",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        overview.AddChild(_lastSettledFoodConsumption);
+
         _workerTransitPulse = new Label
         {
             Name = "GAQAWorkerTransitPulse",
@@ -1136,24 +1149,19 @@ public partial class Main
             var report = PhysicalFoodAvailabilityProjection.PreviewNextCycle(
                 _canonicalPhysicalLab, _workerOrigin.Value);
             static string Quant(ulong raw) => (raw / 1_000_000.0).ToString("F2");
-            var physicalLine = report.PhysicalShortageRaw == 0UL
-                ? "nenhuma falta física"
-                : $"falta física {Quant(report.PhysicalShortageRaw)}";
-            var marketLine = report.UnconsumedDespiteSupplyRaw == 0UL
-                ? "nenhuma demanda adicional não atendida"
-                : $"demanda não atendida apesar de oferta {Quant(report.UnconsumedDespiteSupplyRaw)}";
+            // VS25 still returns legacy scalar fields for compatibility,
+            // but neither these fields nor their differences measure hunger.
             _foodAvailabilityPreview.Text =
-                $"OFERTA ALIMENTAR | tile {report.Tile.FineStrategicCellId.Value} " +
+                $"FLUXO FÍSICO ALIMENTAR (PRÉVIA) | tile {report.Tile.FineStrategicCellId.Value} " +
                 $"| próximo ciclo no turno {report.SettlementMovementTurn}\n" +
                 $"Estoque inicial {Quant(report.InitialFoodStockRaw)} + " +
                 $"produção {Quant(report.ProducedFoodRaw)} = " +
                 $"disponível {Quant(report.TotalAvailableFoodRaw)}\n" +
-                $"Demanda {Quant(report.FoodDemandRaw)} | " +
-                $"consumo efetivo {Quant(report.ActuallyConsumedRaw)}\n" +
-                $"Não atendido: {physicalLine}; {marketLine}\n" +
-                $"Estoque final {Quant(report.FinalFoodStockRaw)}. " +
-                "A segunda parcela não prova falta de dinheiro; " +
-                "é uma diferença observada na liquidação do mercado. " +
+                $"Consumo registrado na simulação {Quant(report.ActuallyConsumedRaw)} | " +
+                $"estoque final {Quant(report.FinalFoodStockRaw)}\n" +
+                "NUTRIÇÃO/EFICIÊNCIA: não avaliadas nesta prévia. " +
+                "Referências de demanda servem à formação de preços e à nutrição, " +
+                "não constituem um teto de consumo ou déficit escalar. " +
                 "Prévia sem avançar a partida.";
             _foodAvailabilityPreview.Visible = true;
             if (!_canonicalPhysicalLab.CurrentHash.Equals(sourceHash))
@@ -1193,24 +1201,14 @@ public partial class Main
                 _canonicalPhysicalLab, _workerOrigin.Value, from, to, amount);
 
             static string Quant(ulong raw) => (raw / 1_000_000.0).ToString("F2");
-            static string Service(RecentPhysicalEconomicCycles sample)
-            {
-                var demand = (double)sample.FoodConsumedRaw + sample.FoodUnmetRaw;
-                return demand == 0.0 ? "sem demanda" :
-                    $"{sample.FoodConsumedRaw * 100.0 / demand:F1}% atendido";
-            }
             var baseLine = forecast.Unchanged;
             var modified = forecast.Reassigned;
             _workerDecisionPreview.Text =
                 $"PRÉVIA HIPOTÉTICA | tile {forecast.Tile.FineStrategicCellId.Value} " +
                 $"| turnos {forecast.StartingMovementTurn} a {forecast.ProjectedFinalMovementTurn}\n" +
-                $"Manter: alimento {Quant(baseLine.FoodService.FoodConsumedRaw)}; " +
-                $"falta {Quant(baseLine.FoodService.FoodUnmetRaw)}; " +
-                $"{Service(baseLine.FoodService)}\n" +
+                $"Manter: consumo alimentar observado {Quant(baseLine.FoodService.FoodConsumedRaw)}\n" +
                 $"Mudar {amount} trabalhador(es), {from} → {to}: " +
-                $"alimento {Quant(modified.FoodService.FoodConsumedRaw)}; " +
-                $"falta {Quant(modified.FoodService.FoodUnmetRaw)}; " +
-                $"{Service(modified.FoodService)}\n" +
+                $"consumo alimentar observado {Quant(modified.FoodService.FoodConsumedRaw)}\n" +
                 $"ESTOQUE LOCAL NO FINAL (alim./madeira/pedra): " +
                 $"manter {Quant(baseLine.LocalFoodStockRaw)}/" +
                 $"{Quant(baseLine.LocalWoodStockRaw)}/" +
@@ -1632,7 +1630,6 @@ public partial class Main
             if (_workerAmount.Value > _workerAmount.MaxValue)
                 _workerAmount.Value = _workerAmount.MaxValue;
         }
-        var demand = _canonicalPhysicalLab.FoodDemandAt(origin);
         var jobs = string.Join(" | ", local.Select(x => $"{x.Activity}: {x.Workers}"));
         var destination = _workerDestination.HasValue
             ? $"Tile {_workerDestination.Value.FineStrategicCellId.Value} selecionado"
@@ -1654,14 +1651,21 @@ public partial class Main
                 $"(AG {farmers} · MAD {foresters} · PED {miners})\n" +
                 $"ESTOQUES | ALIM {stockFood / 1_000_000.0:F2} · " +
                 $"MAD {stockWood / 1_000_000.0:F2} · " +
-                $"PED {stockStone / 1_000_000.0:F2} | " +
-                $"DEMANDA ALIM (prévia) {demand / 1_000_000.0:F2}";
+                $"PED {stockStone / 1_000_000.0:F2}";
         }
         if (_workerTransitPulse is not null)
             _workerTransitPulse.Text =
                 $"DESLOCAMENTOS | {state.WorkersInTransit} pessoas em trânsito · " +
                 $"{state.Transits.Count + state.LongTrips.Count} viagens ativas";
         var lastCycle = state.Cycles.LastOrDefault();
+        if (_lastSettledFoodConsumption is not null)
+        {
+            _lastSettledFoodConsumption.Text = lastCycle is null
+                ? "ÚLTIMO CICLO GLOBAL | NENHUM CICLO LIQUIDADO"
+                : $"ÚLTIMO CICLO GLOBAL | TURNO {lastCycle.MovementTurn}\n" +
+                  $"CONSUMO FÍSICO DE ALIMENTO {lastCycle.FoodConsumedRaw / 1_000_000.0:F2} · " +
+                  "NUTRIÇÃO/EFICIÊNCIA AINDA NÃO APURADAS";
+        }
         var nextEconomicCycle = PhysicalEconomicCycleProgression.Preview(_canonicalPhysicalLab);
         var recentCycles = PhysicalEconomicCycleProgression.SummarizeRecent(_canonicalPhysicalLab);
         if (_sessionPulse is not null)
@@ -1675,19 +1679,13 @@ public partial class Main
             var cyclePulse = lastCycle is null
                 ? "Nenhum ciclo liquidado."
                 : $"Último ciclo, turno {lastCycle.MovementTurn}: " +
-                  $"produção física bruta {lastCycle.ProducedRaw / 1_000_000.0:F2} " +
-                  $"(soma de itens diferentes) | " +
-                  $"alimento consumido {lastCycle.FoodConsumedRaw / 1_000_000.0:F2} | " +
-                  $"falta de alimento {lastCycle.FoodUnmetRaw / 1_000_000.0:F2}";
-            var demanded = (double)recentCycles.FoodConsumedRaw + recentCycles.FoodUnmetRaw;
-            var service = demanded <= 0.0 ? "sem demanda alimentar" :
-                $"{100.0 * recentCycles.FoodConsumedRaw / demanded:F1}% atendido";
+                  $"consumo físico alimentar {lastCycle.FoodConsumedRaw / 1_000_000.0:F2}";
             var recentPulse = recentCycles.CycleCount == 0
                 ? "Histórico: nenhum ciclo realizado."
                 : $"ÚLTIMOS {recentCycles.CycleCount} CICLOS (turnos " +
                   $"{recentCycles.FirstSettlementTurn} a {recentCycles.LastSettlementTurn}): " +
-                  $"alimento consumido {recentCycles.FoodConsumedRaw / 1_000_000.0:F2} | " +
-                  $"falta de alimento {recentCycles.FoodUnmetRaw / 1_000_000.0:F2} | " + service;
+                  $"consumo físico alimentar {recentCycles.FoodConsumedRaw / 1_000_000.0:F2}. " +
+                  "Nutrição e eficiência ainda não apuradas.";
             _economicCycleSummary.Text =
                 $"CICLOS ECONÔMICOS {state.Cycles.Count} | próximo no turno " +
                 $"{nextEconomicCycle.SettlementTurn} " +
@@ -1787,13 +1785,13 @@ public partial class Main
             $"Trabalhadores globais: {state.TotalWorkers} | " +
             $"tiles ocupados: {state.Allocations.Select(x => x.TileId).Distinct().Count()} | " +
             $"revisão canônica: {_canonicalPhysicalLab.Game.Snapshot.Revision}\n" +
-            $"Consumo alimentar na origem (prévia): {demand / 1_000_000.0:F3}\n" +
+            "REFERÊNCIA DE DEMANDA: componente de preço/nutrição, não teto de consumo.\n" +
             tickInfo + "\n" + transitInfo + cashInfo +
             $"Estoque LOCAL: alimento {stockFood / 1_000_000.0:F3} | pedra {stockStone / 1_000_000.0:F3} | madeira {stockWood / 1_000_000.0:F3}\n" +
             (lastCycle is null ? "Nenhum ciclo econômico liquidado ainda.\n" :
-                $"Último ciclo: produção {lastCycle.ProducedRaw / 1_000_000.0:F3}; " +
-                $"consumo alimentar {lastCycle.FoodConsumedRaw / 1_000_000.0:F3}; " +
-                $"FALTA {lastCycle.FoodUnmetRaw / 1_000_000.0:F3}\n") +
+                $"Último ciclo: consumo alimentar registrado " +
+                $"{lastCycle.FoodConsumedRaw / 1_000_000.0:F3}; " +
+                "sem avaliação nutricional neste HUD.\n") +
             $"WORLDSTATE CANÔNICO V{(state.RemoteRoutingEnabled ? "15" : _canonicalPhysicalLab.HasInitialCivilization ? "14" : _canonicalPhysicalLab.MovementMode == PhysicalWorkerMovementMode.TimedAdjacent ? "13" : _canonicalPhysicalLab.MarketMode == PhysicalFoodMarketMode.LocalCashSettlement ? "12" : _canonicalPhysicalLab.GeographyMode == PhysicalTacticalGeographyMode.Canonical01C ? "11" : _canonicalPhysicalLab.CadenceMode == PhysicalEconomicCadenceMode.AdaptiveThirty ? "10" : "9")}: " +
             $"terreno {(_canonicalPhysicalLab.GeographyMode == PhysicalTacticalGeographyMode.Canonical01C ? "01C" : "V1 legado")}; " +
             $"mercado alimentar {(_canonicalPhysicalLab.MarketMode == PhysicalFoodMarketMode.LocalCashSettlement ? "LIQUIDADO À VISTA" : "LEGADO DIRETO")}; " +

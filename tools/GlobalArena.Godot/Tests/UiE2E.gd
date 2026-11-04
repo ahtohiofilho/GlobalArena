@@ -57,6 +57,7 @@ func _run() -> void:
     var session_pulse := _label(app, "GAQASessionPulse")
     var local_pulse := _label(app, "GAQALocalEconomyPulse")
     var transit_pulse := _label(app, "GAQAWorkerTransitPulse")
+    var food_consumption := _label(app, "GAQALastSettledFoodConsumption")
     var inspect := _button(app, "GAQAInspect")
     var source := app.find_child("GAQAFromJob", true, false) as OptionButton
     var destination := app.find_child("GAQAToJob", true, false) as OptionButton
@@ -96,7 +97,8 @@ func _run() -> void:
     var treasury_migration_inspect := _button(app, "GAQATreasuryMigrationInspect")
     var treasury_migration_status := _label(app, "GAQATreasuryMigrationStatus")
     for node in [tactical_map, globe_map, globe_button, session_pulse,
-            local_pulse, transit_pulse, inspect, source, destination,
+            local_pulse, transit_pulse, food_consumption,
+            inspect, source, destination,
             quantity, status, settlements,
             cycle_report, preview, food, compare, diagnose, survey,
             survey_result, plan_destination, advanced_toggle, remote_target,
@@ -119,8 +121,9 @@ func _run() -> void:
             local_pulse.text.contains("MAD 2") and
             local_pulse.text.contains("PED 2") and
             local_pulse.text.contains("ESTOQUES") and
-            transit_pulse.text.contains("0 pessoas em trânsito"),
-            "VS106 tactical-first dashboard lacks real local economic state"):
+            transit_pulse.text.contains("0 pessoas em trânsito") and
+            food_consumption.text.contains("NENHUM CICLO LIQUIDADO"),
+            "VS108 must not invent consumption or nutrition before the first cycle"):
         return
     print("GA_UI_E2E_VS106_TACTICAL_FIRST_PULSE_OK")
 
@@ -160,7 +163,8 @@ func _run() -> void:
     await process_frame
     if not _require(food.visible and not preview.visible and
             food.text.contains("Estoque inicial") and
-            food.text.contains("falta física") and
+            food.text.contains("NUTRIÇÃO/EFICIÊNCIA: não avaliadas") and
+            food.text.contains("Consumo registrado") and
             status.text.contains("turno 0"),
             "food diagnosis did not use its live Godot button/HUD or changed turn"):
         return
@@ -200,6 +204,16 @@ func _run() -> void:
             local_pulse.text.contains("PESSOAS 8"),
             "VS106 compact pulse not updated after real economic cycles"):
         return
+    if not _require(food_consumption.text.contains("ÚLTIMO CICLO GLOBAL") and
+            food_consumption.text.contains("TURNO 5") and
+            food_consumption.text.contains("CONSUMO FÍSICO DE ALIMENTO") and
+            food_consumption.text.contains("NUTRIÇÃO/EFICIÊNCIA AINDA NÃO APURADAS") and
+            not food_consumption.text.contains("DEMANDA NÃO ATENDIDA") and
+            not food_consumption.text.contains("% ATENDIDO"),
+            "VS108 must show recorded consumption, never a scalar demand deficit"):
+        return
+    var consumption_at_save := food_consumption.text
+    print("GA_UI_E2E_VS108_REAL_CONSUMPTION_OK")
     print("GA_UI_E2E_VS106_CYCLE_PULSE_OK")
     print("GA_UI_E2E_FIVE_CYCLES_OK")
 
@@ -212,8 +226,9 @@ func _run() -> void:
     _press(one)
     await process_frame
     if not _require(status.text.contains("turno 6") and
-            status.text.contains("ciclos 6"),
-            "one-cycle Godot button did not advance after saving"):
+            status.text.contains("ciclos 6") and
+            food_consumption.text.contains("TURNO 6"),
+            "one-cycle Godot button did not advance or refresh executed food service"):
         return
 
     _press(load_save)
@@ -222,8 +237,9 @@ func _run() -> void:
             status.text.contains("turno 5") and
             status.text.contains("ciclos 5") and
             settlements.text.contains("agricultura 2, madeira 4, pedra 2") and
-            cycle_report.text.contains("ÚLTIMOS 5 CICLOS"),
-            "load button did not restore canonical save, worker HUD and cycle summary"):
+            cycle_report.text.contains("ÚLTIMOS 5 CICLOS") and
+            food_consumption.text == consumption_at_save,
+            "save/reopen did not restore the same canonical food-service evidence"):
         return
     print("GA_UI_E2E_SAVE_RESTORE_OK")
 
