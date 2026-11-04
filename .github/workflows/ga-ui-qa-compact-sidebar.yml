@@ -2,6 +2,7 @@ name: GA-UI QA Compact Tactical Sidebar
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
     paths:
       - 'tools/GlobalArena.Godot/Scripts/Main.cs'
       - 'tools/GlobalArena.Godot/Scripts/Main.NeolithicWorkerLab.cs'
@@ -10,6 +11,7 @@ on:
 
 jobs:
   sidebar-density-linux:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -24,6 +26,7 @@ jobs:
       - name: Verify physical economic and market regressions
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~GaVs13|FullyQualifiedName~GaVs12'
   sidebar-density-windows:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: windows-latest
     timeout-minutes: 20
     permissions:

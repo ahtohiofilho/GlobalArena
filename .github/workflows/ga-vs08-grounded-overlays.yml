@@ -2,6 +2,7 @@ name: GA-VS08 Grounded Tactical Contours
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
     paths:
       - 'tools/GlobalArena.Godot/Scripts/TacticalContextPreview.cs'
       - 'tools/GlobalArena.Godot/Scripts/TacticalContextPreview.WorkerRings.cs'
@@ -13,6 +14,7 @@ on:
 
 jobs:
   grounded-overlays-linux:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     permissions:
@@ -33,6 +35,7 @@ jobs:
         run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
 
   grounded-overlays-windows:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: windows-latest
     timeout-minutes: 25
     permissions:

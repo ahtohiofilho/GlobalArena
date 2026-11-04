@@ -2,6 +2,7 @@ name: GA-QA-VISUAL-002 Real Godot Screenshot & Geometry
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
     paths:
       - 'tools/GlobalArena.Godot/**'
       - '.github/workflows/ga-qa-ui-visual-002.yml'
@@ -9,6 +10,7 @@ on:
 
 jobs:
   rendered-ui-geometry:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:

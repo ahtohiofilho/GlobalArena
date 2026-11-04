@@ -2,6 +2,7 @@ name: GA-VS01 Neolithic Interactive Vertical Slice
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
     paths:
       - 'GlobalArena.Console/**'
       - 'GlobalArena.Simulation/**'
@@ -11,6 +12,7 @@ on:
 
 jobs:
   playable-neolithic-slice:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:

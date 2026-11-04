@@ -2,6 +2,7 @@ name: GA-VS07 Neolithic Physical Stock Turns And Offline Save
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
     paths:
       - 'GlobalArena.Simulation/EconomicPhysicalTacticalOfflineSession.cs'
       - 'GlobalArena.Tests/GaVs07PhysicalTacticalOfflineLoopTests.cs'
@@ -11,6 +12,7 @@ on:
 
 jobs:
   physical-cycle-and-replay-linux:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -26,6 +28,7 @@ jobs:
         run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
 
   physical-cycle-and-replay-windows:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: windows-latest
     permissions:
       contents: read
