@@ -32,16 +32,20 @@ jobs:
   validate:
     name: Validate kernel on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    # macOS Intel regression exceeded 25 minutes after successful restore/build;
+    # preserve 25 minutes for Linux/Windows, allow up to 60 on Intel macOS.
+    # A timeout does NOT count as successful testing; evidence remains required.
+    timeout-minutes: ${{ matrix.os == 'macos-15-intel' && 60 || 25 }}
     strategy:
       fail-fast: false
       matrix:
         os:
           - ubuntu-latest
           - windows-latest
-          # VS104: pinned to a supported stable macOS image after macos-latest
-          # jobs were cancelled twice before runner allocation (runner_id=0).
-          - macos-15
+          # Temporary Intel x64 contingency: macos-15 arm64 runners were
+          # unavailable due to hosted-runner capacity (runner_id=0).
+          # macOS ARM64 coverage remains pending and must be restored later.
+          - macos-15-intel
 
     steps:
       - name: Checkout

@@ -35,9 +35,10 @@ jobs:
         os:
           - ubuntu-latest
           - windows-latest
-          # VS104: pinned to a supported stable macOS image after macos-latest
-          # jobs were cancelled twice before runner allocation (runner_id=0).
-          - macos-15
+          # Temporary Intel x64 contingency: macos-15 arm64 runners were
+          # unavailable due to hosted-runner capacity (runner_id=0).
+          # macOS ARM64 coverage remains pending and must be restored later.
+          - macos-15-intel
 
     steps:
       - name: Checkout
