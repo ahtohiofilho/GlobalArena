@@ -51,6 +51,12 @@ func _run() -> void:
     await process_frame
     await process_frame
 
+    var tactical_map := app.find_child("GAQATacticalMap", true, false) as Control
+    var globe_map := app.find_child("GAQAStrategicGlobe", true, false) as Control
+    var globe_button := _button(app, "GAQAReturnStrategic")
+    var session_pulse := _label(app, "GAQASessionPulse")
+    var local_pulse := _label(app, "GAQALocalEconomyPulse")
+    var transit_pulse := _label(app, "GAQAWorkerTransitPulse")
     var inspect := _button(app, "GAQAInspect")
     var source := app.find_child("GAQAFromJob", true, false) as OptionButton
     var destination := app.find_child("GAQAToJob", true, false) as OptionButton
@@ -89,7 +95,9 @@ func _run() -> void:
     var treasury_reserve := _button(app, "GAQATreasuryReserve")
     var treasury_migration_inspect := _button(app, "GAQATreasuryMigrationInspect")
     var treasury_migration_status := _label(app, "GAQATreasuryMigrationStatus")
-    for node in [inspect, source, destination, quantity, status, settlements,
+    for node in [tactical_map, globe_map, globe_button, session_pulse,
+            local_pulse, transit_pulse, inspect, source, destination,
+            quantity, status, settlements,
             cycle_report, preview, food, compare, diagnose, survey,
             survey_result, plan_destination, advanced_toggle, remote_target,
             remote_button, remote_order, remote_result, hypothetical_food,
@@ -100,6 +108,21 @@ func _run() -> void:
             treasury_migration_inspect, treasury_migration_status]:
         if not _require(node != null, "expected named production control missing"):
             return
+
+    # VS106: assert a tactical-first startup and a compact, real data pulse.
+    if not _require(tactical_map.visible and not globe_map.visible and
+            globe_button.visible and
+            session_pulse.text.contains("TURNO 0") and
+            session_pulse.text.contains("PRÓX. CICLO") and
+            local_pulse.text.contains("PESSOAS 8") and
+            local_pulse.text.contains("AG 4") and
+            local_pulse.text.contains("MAD 2") and
+            local_pulse.text.contains("PED 2") and
+            local_pulse.text.contains("ESTOQUES") and
+            transit_pulse.text.contains("0 pessoas em trânsito"),
+            "VS106 tactical-first dashboard lacks real local economic state"):
+        return
+    print("GA_UI_E2E_VS106_TACTICAL_FIRST_PULSE_OK")
 
     _press(inspect)
     await process_frame
@@ -172,6 +195,12 @@ func _run() -> void:
             cycle_report.text.contains("ÚLTIMOS 5 CICLOS"),
             "five-cycle Godot button failed to advance and refresh the HUD"):
         return
+    if not _require(session_pulse.text.contains("TURNO 5") and
+            session_pulse.text.contains("CICLOS 5") and
+            local_pulse.text.contains("PESSOAS 8"),
+            "VS106 compact pulse not updated after real economic cycles"):
+        return
+    print("GA_UI_E2E_VS106_CYCLE_PULSE_OK")
     print("GA_UI_E2E_FIVE_CYCLES_OK")
 
     _press(save)
