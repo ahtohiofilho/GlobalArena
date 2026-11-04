@@ -84,7 +84,7 @@ def scope(base: str, head: str) -> None:
         raise RuntimeError("Empty PR diff: cannot infer fast validation scope")
     prefixes = (
         "GlobalArena.Kernel/", "GlobalArena.World/", "GlobalArena.Runtime/",
-        "GlobalArena.Simulation/", "GlobalArena.Tests/",
+        "GlobalArena.Simulation/", "GlobalArena.Economy/", "GlobalArena.Tests/",
         "GlobalArena.Console/", "GlobalArena.Benchmarks/",
         "GlobalArena.Godot/", "tools/GlobalArena.Godot/"
     )
