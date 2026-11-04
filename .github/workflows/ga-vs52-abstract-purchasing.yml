@@ -2,6 +2,7 @@ name: GA-VS52 Abstract Purchasing Read-Only Bridge
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
     paths:
       - 'GlobalArena.Simulation/ExperimentalAbstractPurchasingPowerProjector.cs'
       - 'GlobalArena.Tests/GaVs52AbstractPurchasingProjectionTests.cs'
@@ -13,6 +14,7 @@ on:
 
 jobs:
   abstract-purchasing-linux:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -30,6 +32,7 @@ jobs:
         run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
 
   abstract-purchasing-windows:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: windows-latest
     timeout-minutes: 30
     permissions:
