@@ -100,3 +100,15 @@ sem preservar compatibilidade com métricas legadas.
 
 **Governança:** PR Draft empilhada; sem merge ou
 alteração destrutiva no motor físico/visão Godot.
+
+## Correção de infraestrutura do gate (04/11)
+
+O primeiro HEAD `c38d39957c67dfed4c5bf02c29899c489416a0b0` teve
+`Cross-Platform Kernel Regression Validation` com conclusão global
+`cancelled` porque o job Windows excedeu o limite de **15 minutos**
+durante a finalização. Os logs registram **2465/2465 testes aprovados**
+no Windows e o artefato `kernel-regression-windows-latest`
+enviado com êxito, mas o status global não pode ser declarado `success`.
+A PR eleva exclusivamente o tempo máximo do workflow para **25 minutos**,
+sem alterar testes, filtros, preços, demanda, consumo ou gameplay.
+A validação formal deve se referir ao novo HEAD, não ao cancelado.
