@@ -6,6 +6,9 @@ namespace GlobalArena.Simulation;
 /// <summary>
 /// Quote-only, local one-commodity market; quantity and money are expressed
 /// in whole reference units, never as canonical financial balances.
+/// RawFoodNeed is a historical field name for a quotation reference: it is
+/// NOT an intake limit, a biological nutritional need or an allocation target.
+/// The legacy solver quotes from physical supply, buyers and reference budget.
 /// This is an economically meaningful reference for a future cash-only
 /// settlement gate, not an invented purchase, wage or income stream.
 /// </summary>
