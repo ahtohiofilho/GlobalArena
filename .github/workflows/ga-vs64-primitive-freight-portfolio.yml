@@ -2,6 +2,7 @@ name: GA-VS64 Bounded Primitive Freight Portfolio Gate
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
   workflow_dispatch:
 
 # Only the most recent VS64 head needs a VS64-specific validation.
@@ -12,6 +13,7 @@ concurrency:
 
 jobs:
   primitive-freight-portfolio-linux:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     permissions:
@@ -29,6 +31,7 @@ jobs:
         run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
 
   primitive-freight-portfolio-windows:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: windows-latest
     timeout-minutes: 35
     permissions:
