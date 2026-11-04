@@ -2,6 +2,7 @@ name: GA-VS23 Five-Cycle Offline Economic Outcomes
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
     paths:
       - 'GlobalArena.Simulation/PhysicalEconomicCycleProgression.cs'
       - 'GlobalArena.Tests/GaVs23MulticycleEconomicOutcomesTests.cs'
@@ -18,6 +19,7 @@ on:
 
 jobs:
   five-cycle-linux:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -33,6 +35,7 @@ jobs:
         run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
 
   five-cycle-windows:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: windows-latest
     timeout-minutes: 30
     permissions:

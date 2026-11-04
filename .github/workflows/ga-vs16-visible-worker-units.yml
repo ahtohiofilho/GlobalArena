@@ -2,6 +2,7 @@ name: GA-VS16 Visible Tactical Worker Units
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
     paths:
       - 'GlobalArena.Simulation/TacticalWorkerMarkerProjection.cs'
       - 'GlobalArena.Tests/GaVs16TacticalWorkerMarkerProjectionTests.cs'
@@ -14,6 +15,7 @@ on:
 
 jobs:
   visual-unit-linux:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     permissions:
@@ -29,6 +31,7 @@ jobs:
         run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
 
   visual-unit-windows:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: windows-latest
     timeout-minutes: 25
     permissions:

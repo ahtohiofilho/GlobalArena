@@ -2,6 +2,7 @@ name: GA-VS14 Canonical Food Cash Settlement
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
     paths:
       - 'GlobalArena.Runtime/PhysicalFoodCashMarketState.cs'
       - 'GlobalArena.Runtime/PhysicalTacticalEconomyRuntimeState.cs'
@@ -15,6 +16,7 @@ on:
 
 jobs:
   cash-settle-linux:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     permissions:
@@ -30,6 +32,7 @@ jobs:
         run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
 
   cash-settle-windows:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ga-ci-full') }}
     runs-on: windows-latest
     timeout-minutes: 25
     permissions:
