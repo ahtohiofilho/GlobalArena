@@ -56,8 +56,8 @@ jobs:
           if (-not $runner.Contains('feature/ga-vs21-local-worker-reallocation-20261030') -or
               -not $runner.Contains('-c Debug') -or
               -not $runner.Contains('& $GodotExe --path $projectDir --verbose') -or
-              (-not $main.Contains('GA_VS21_RUNTIME_ACTIVE') -and
-               -not $main.Contains('GA_VS22_RUNTIME_ACTIVE') -and
+              -not ($main -match 'GA_VS(21|22|23|24|25|26|27|28|29|30)_RUNTIME_ACTIVE|GA_VS106_TACTICAL_FIRST_UI') -or
+              -not $main.Contains('GA_VS22_RUNTIME_ACTIVE') -and
                -not $main.Contains('GA_VS23_RUNTIME_ACTIVE') -and
                -not $main.Contains('GA_VS24_RUNTIME_ACTIVE') -and
                (-not $main.Contains('GA_VS25_RUNTIME_ACTIVE') -and (-not $main.Contains('GA_VS26_RUNTIME_ACTIVE') -and (-not $main.Contains('GA_VS27_RUNTIME_ACTIVE') -and (-not $main.Contains('GA_VS28_RUNTIME_ACTIVE') -and (-not $main.Contains('GA_VS29_RUNTIME_ACTIVE') -and -not $main.Contains('GA_VS30_RUNTIME_ACTIVE'))))))) -or

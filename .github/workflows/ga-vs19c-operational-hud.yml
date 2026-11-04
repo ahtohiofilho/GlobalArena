@@ -38,8 +38,8 @@ jobs:
           if (-not $launcher.Contains('feature/ga-vs19c-command-first-tactical-hud-20261030') -or
               -not $launcher.Contains('-c Debug') -or
               -not $launcher.Contains('& $GodotExe --path $projectDir --verbose') -or
-              (-not $main.Contains('GA_VS19C_RUNTIME_ACTIVE') -and
-               -not $main.Contains('GA_VS20_RUNTIME_ACTIVE') -and
+              -not ($main -match 'GA_VS(19C|20|21|22|23|24|25|26|27|28|29|30)_RUNTIME_ACTIVE|GA_VS106_TACTICAL_FIRST_UI') -or
+              -not $main.Contains('GA_VS20_RUNTIME_ACTIVE') -and
                -not $main.Contains('GA_VS21_RUNTIME_ACTIVE') -and
                -not $main.Contains('GA_VS22_RUNTIME_ACTIVE') -and
                -not $main.Contains('GA_VS23_RUNTIME_ACTIVE') -and
