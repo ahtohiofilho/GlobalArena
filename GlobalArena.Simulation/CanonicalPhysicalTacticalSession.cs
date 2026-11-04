@@ -117,7 +117,10 @@ public sealed class CanonicalPhysicalTacticalSession
     public const int IntegratedDormantTreasuryEnvelopeFormat = 20;
     public const int MaximumActions = 100_000;
     private const int MaximumSaveBytes = 4_000_000;
-    public const ulong FoodDemandRawPerWorker = 500_000UL;
+    // Historical V9-V20 compatibility alias. This is the OLD consumption
+    // quota, NOT an economic price optimum or a nutritional requirement.
+    public const ulong FoodDemandRawPerWorker =
+        LegacyPhysicalFoodIntakeTarget.RawPerResident;
 
     private readonly List<CanonicalPhysicalAction> _journal = new();
     // A V20 save replays the historical events before changing to hash v19.
@@ -390,18 +393,43 @@ public sealed class CanonicalPhysicalTacticalSession
             .Aggregate(0UL, (sum, x) => checked(sum + x.Workers));
     }
 
-    public ulong FoodDemandAt(PhysicalTacticalTileId tile)
+    private ulong HistoricalLocalFoodResidentsAt(PhysicalTacticalTileId tile)
     {
         ValidateTile(tile);
-        var provisional = State.Transits.Where(x => x.Source == tile)
+        var residents = State.Transits.Where(x => x.Source == tile)
             .Aggregate(WorkersAt(tile), (sum, x) => checked(sum + x.Workers));
-        // V16 travellers eat from their own acquired cargo, not the origin
-        // market. Legacy V15 travellers still consume at their home tile.
-        provisional = State.LongTrips.Where(x => x.Source == tile &&
+        // V16 travellers have purchased rations; pre-V16 travellers retain
+        // the historical origin-market identity. Do not invent new consumers.
+        return State.LongTrips.Where(x => x.Source == tile &&
             State.TravelFoodLedgers?.Any(lot => lot.OrderId == x.OrderId) != true)
-            .Aggregate(provisional, (sum, x) => checked(sum + x.Workers));
-        return checked(provisional * FoodDemandRawPerWorker);
+            .Aggregate(residents, (sum, x) => checked(sum + x.Workers));
     }
+
+    /// <summary>
+    /// Price-pressure REFERENCE for the historical local food market.
+    /// It is a market signal, not a committed food purchase or consumption cap.
+    /// Future price calibration may change it without changing a diet target.
+    /// </summary>
+    public PhysicalFoodPricePressureReference FoodPriceReferenceAt(
+        PhysicalTacticalTileId tile) =>
+        PhysicalFoodPricePressureReference.FromResidents(
+            HistoricalLocalFoodResidentsAt(tile),
+            PhysicalFoodPricePressureReference.LegacyRawPerResident);
+
+    /// <summary>
+    /// V9-V20 legacy consumption-quota read model, retained strictly for
+    /// replay, physical food previews and byte-identical old saves.
+    /// Never infer nutrition, hunger or the price optimum from this value.
+    /// </summary>
+    public LegacyPhysicalFoodIntakeTarget LegacyFoodIntakeTargetAt(
+        PhysicalTacticalTileId tile) =>
+        LegacyPhysicalFoodIntakeTarget.FromResidents(
+            HistoricalLocalFoodResidentsAt(tile));
+
+    // Compatibility for historical VS25 and older callers. Do not reuse this
+    // name in new pricing, nutrition or productivity implementations.
+    public ulong FoodDemandAt(PhysicalTacticalTileId tile) =>
+        LegacyFoodIntakeTargetAt(tile).RawQuota;
 
     /// <summary>
     /// Read the existing, canonical primitive production rate for one worker
@@ -454,7 +482,7 @@ public sealed class CanonicalPhysicalTacticalSession
         return new EconomicLocalFoodMarketQuoteResolver().Resolve(
             tile, state.MovementTurn, workers,
             StockAt(tile, new CommodityId(1U)), projectedCrop,
-            FoodDemandAt(tile), referenceBudgetPerWorker);
+            FoodPriceReferenceAt(tile).RawPressure, referenceBudgetPerWorker);
     }
 
     public StrategicCellId DisplayBucket(PhysicalTacticalTileId tile)
@@ -745,14 +773,16 @@ public sealed class CanonicalPhysicalTacticalSession
         if (account.HouseholdMicrocredits == 0UL)
             throw new InvalidOperationException("No available household money for supplies.");
 
-        var localBuyers = FoodDemandAt(source) / FoodDemandRawPerWorker;
+        var priceReference = FoodPriceReferenceAt(source);
+        var localBuyers = priceReference.RawPressure /
+            PhysicalFoodPricePressureReference.LegacyRawPerResident;
         if (localBuyers == 0UL)
             throw new InvalidOperationException("Supply purchase requires an existing local household.");
         var budgetPerBuyer = (account.HouseholdMicrocredits /
             (double)PhysicalFoodCashMarketState.MonetaryScale) / localBuyers;
         var quote = new EconomicLocalFoodMarketQuoteResolver().Resolve(
             source, current.MovementTurn, localBuyers,
-            existingFood, 0UL, checked(FoodDemandAt(source) + foodRaw),
+            existingFood, 0UL, checked(priceReference.RawPressure + foodRaw),
             budgetPerBuyer);
         var quotedMicrocredits = quote.PricePerWholeFoodUnit *
             PhysicalFoodCashMarketState.MonetaryScale;
@@ -997,15 +1027,21 @@ public sealed class CanonicalPhysicalTacticalSession
 
             foreach (var group in consumers.GroupBy(x => x.TileId))
             {
-                var demand = checked(group.Aggregate(0UL,
-                    (sum, x) => checked(sum + x.Workers)) * FoodDemandRawPerWorker);
+                var residents = group.Aggregate(0UL,
+                    (sum, x) => checked(sum + x.Workers));
+                // Deliberately distinct typed contracts. Price pressure
+                // can be recalibrated independently; ONLY the explicitly
+                // versioned legacy intake rule limits V9-V20 consumption.
+                var priceReference = PhysicalFoodPricePressureReference.FromResidents(
+                    residents, PhysicalFoodPricePressureReference.LegacyRawPerResident);
+                var legacyIntake = LegacyPhysicalFoodIntakeTarget.FromResidents(residents);
                 var key = (group.Key, new CommodityId(1U));
                 stocks.TryGetValue(key, out var available);
                 ulong delivered;
                 if (cashAccounts is null || cashReceipts is null)
                 {
                     // V9/V10/V11: preserve legacy direct-food-consumption bytes.
-                    delivered = Math.Min(available, demand);
+                    delivered = legacyIntake.DeliverDirect(available);
                 }
                 else
                 {
@@ -1014,8 +1050,6 @@ public sealed class CanonicalPhysicalTacticalSession
                     // and monetary postings are committed in integer units.
                     var account = cashAccounts.GetValueOrDefault(group.Key) ??
                         new PhysicalFoodCashAccount(group.Key, 0UL, 0UL);
-                    var residents = group.Aggregate(0UL,
-                        (sum, x) => checked(sum + x.Workers));
                     var budget = account.HouseholdMicrocredits /
                         (double)PhysicalFoodCashMarketState.MonetaryScale;
                     delivered = 0UL;
@@ -1023,14 +1057,15 @@ public sealed class CanonicalPhysicalTacticalSession
                     {
                         var quote = new EconomicLocalFoodMarketQuoteResolver().Resolve(
                             group.Key, turn, residents, available, 0UL,
-                            demand, budget / residents);
+                            priceReference.RawPressure, budget / residents);
                         var desiredRaw = Math.Floor(quote.ReferenceSold *
                             PhysicalFoodCashMarketState.MonetaryScale);
                         if (!double.IsFinite(desiredRaw) || desiredRaw < 0.0 ||
                             desiredRaw > ulong.MaxValue)
                             throw new InvalidOperationException(
                                 "Food quote cannot be converted to fixed-point goods.");
-                        delivered = Math.Min(Math.Min((ulong)desiredRaw, available), demand);
+                        delivered = legacyIntake.LimitLegacyQuotedPurchase(
+                            (ulong)desiredRaw, available);
                         var rawPrice = quote.PricePerWholeFoodUnit *
                             PhysicalFoodCashMarketState.MonetaryScale;
                         if (!double.IsFinite(rawPrice) || rawPrice < 0.0 ||
@@ -1061,7 +1096,9 @@ public sealed class CanonicalPhysicalTacticalSession
                 }
                 if (delivered != 0UL) stocks[key] = available - delivered;
                 consumed = checked(consumed + delivered);
-                unmet = checked(unmet + (demand - delivered));
+                // Historical save/ledger field only; NOT a new nutrition
+                // or unserved economic-demand metric.
+                unmet = checked(unmet + legacyIntake.LegacyResidual(delivered));
             }
 
             // V16: physically consume the crew's own inventory only at real
