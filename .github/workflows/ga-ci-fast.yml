@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 jobs:
-  fast-scope-and-audit:
+  scope:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     outputs:
@@ -45,8 +45,8 @@ jobs:
           echo 'Skipped historical jobs NEVER prove full-suite success.'
 
   fast-linux:
-    needs: fast-scope-and-audit
-    if: needs.fast-scope-and-audit.outputs.needs_build == 'true'
+    needs: scope
+    if: needs.scope.outputs.needs_build == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -60,15 +60,15 @@ jobs:
         run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
       - name: Targeted economic, movement and population regression
         env:
-          GA_TEST_FILTER: ${{ needs.fast-scope-and-audit.outputs.test_filter }}
+          GA_TEST_FILTER: ${{ needs.scope.outputs.test_filter }}
         shell: bash
         run: |
           set -euo pipefail
           dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter "$GA_TEST_FILTER"
 
   fast-windows:
-    needs: fast-scope-and-audit
-    if: needs.fast-scope-and-audit.outputs.needs_ui == 'true'
+    needs: scope
+    if: needs.scope.outputs.needs_ui == 'true'
     runs-on: windows-latest
     timeout-minutes: 25
     steps:
