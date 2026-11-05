@@ -181,17 +181,30 @@ public partial class TacticalContextPreview
             ? _settlementProjection?.Sites.FirstOrDefault(x =>
                 x.Tile.FineStrategicCellId.Value == hoveredTile.Value)
             : null;
-        if (site is null)
+        var worksite = hoveredTile.HasValue
+            ? _worksiteMapProjection?.At(hoveredTile.Value)
+            : null;
+        if (site is null && worksite is null)
         {
             _settlementHoverPanel.Visible = false;
             return;
         }
-        _settlementHoverText.Text =
-            $"ASSENTAMENTO · TILE {hoveredTile!.Value}\n" +
-            $"Pessoas: {site.Workers}\n" +
-            $"Agricultura: {site.AgriculturalWorkers}\n" +
-            $"Madeira: {site.ForestryWorkers}\n" +
-            $"Pedra: {site.MiningWorkers}";
+        var residents = site is null
+            ? $"INFRAESTRUTURA · TILE {hoveredTile!.Value}\nSem residentes atuais"
+            : $"ASSENTAMENTO · TILE {hoveredTile!.Value}\n" +
+              $"Pessoas: {site.Workers}\n" +
+              $"Agricultura: {site.AgriculturalWorkers}\n" +
+              $"Madeira: {site.ForestryWorkers}\n" +
+              $"Pedra: {site.MiningWorkers}";
+        var worksiteText = worksite is null ? "" :
+            $"\nOBRAS {worksite.BuildingFacilities} " +
+            $"(trabalhadores {worksite.ReservedConstructionWorkers})" +
+            $"\nCONCLUÍDAS {worksite.CompletedFacilities} " +
+            $"| OPERANDO {worksite.OperatingFacilities}" +
+            $" (operadores {worksite.OperatingWorkers})" +
+            (worksite.UnusedMaterialFrames == 0 ? "" :
+                $"\nMONTAGENS prontas {worksite.UnusedMaterialFrames}");
+        _settlementHoverText.Text = residents + worksiteText;
         var x = Mathf.Clamp(cursor.X + 16f, 0f,
             Mathf.Max(0f, Size.X - 188f));
         var y = Mathf.Clamp(cursor.Y + 16f, 0f,

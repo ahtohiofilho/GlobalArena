@@ -1611,6 +1611,8 @@ public partial class Main
         var available = _canonicalPhysicalLab.AdjacentWorkable(_workerOrigin.Value);
         var settlements = EmergentSettlementProjection.FromSession(_canonicalPhysicalLab);
         _tacticalPreview.SetSettlementSites(settlements);
+        _tacticalPreview.SetWorksiteMapMarkers(
+            CanonicalTacticalWorksiteMapProjection.FromSession(_canonicalPhysicalLab));
         _tacticalPreview.SetWorkerMarkers(
             TacticalWorkerMarkerProjection.FromPhysicalState(state),
             _workerOrigin.Value.FineStrategicCellId.Value,

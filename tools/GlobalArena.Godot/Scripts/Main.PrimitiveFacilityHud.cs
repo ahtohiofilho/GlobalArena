@@ -53,6 +53,15 @@ public partial class Main
         };
         title.AddThemeColorOverride("font_color", new Color("#d4e9f3"));
         root.AddChild(title);
+        var legend = new Label
+        {
+            Name = "GAWorksiteMapLegend",
+            Text = "NO MAPA · ocre: materiais | âmbar: obra | " +
+                   "cinza: concluída | verde: operando",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        legend.AddThemeColorOverride("font_color", new Color("#b9c5c7"));
+        root.AddChild(legend);
 
         _worksiteDetails = new Label
         {
