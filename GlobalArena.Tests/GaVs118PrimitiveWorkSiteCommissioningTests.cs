@@ -114,6 +114,7 @@ public sealed class GaVs118PrimitiveWorkSiteCommissioningTests
         Assert.True(registered.IsRegisteredForExistingPrimitiveWork);
         Assert.False(registered.IsDedicatedConstructionLaborAuthenticated);
         Assert.False(registered.IsCanonicalWorldAsset);
+        Assert.False(registered.AreCommissioningParametersHashedIntoWorldState);
         Assert.False(registered.AuthorizesAdditionalProductivity);
         Assert.False(registered.CreatesTradeableManufacturedGood);
         Assert.False(registered.CanAuthorizeRealPurchasingPower);
@@ -278,7 +279,7 @@ public sealed class GaVs118PrimitiveWorkSiteCommissioningTests
     }
 
     [Fact]
-    public void ChangedCommissioningProofIsRejectedEvenWithRehashedSaveEnvelope()
+    public void InvalidCommissioningEvidenceIsRejectedButValidRehashedRoleIsNotAuthenticated()
     {
         var game = Prepared(out var frame);
         CompleteOneMoreRealCycle(game);
@@ -292,8 +293,26 @@ public sealed class GaVs118PrimitiveWorkSiteCommissioningTests
                 (byte)EconomicActivityKind.Mining };
             return payload with { Actions = actions };
         });
+        // Both forestry and mining physically produced at this tile.
+        // Rewriting an unhashed sidecar role to another semantically valid
+        // role, then recomputing the unkeyed save checksum, is NOT rejected
+        // by the WorldState hash. Do not claim cryptographic authentication.
+        var alteredValidRole = CanonicalPhysicalTacticalSession.RestoreSaveJson(changed);
+        Assert.Equal(EconomicActivityKind.Mining,
+            Assert.Single(alteredValidRole.CommissionedPrimitiveWorkSites).Activity);
+        Assert.Equal(game.CurrentHash, alteredValidRole.CurrentHash);
+        Assert.False(alteredValidRole.CommissionedPrimitiveWorkSites[0]
+            .AreCommissioningParametersHashedIntoWorldState);
+
+        var invalidRole = Alter(save, payload =>
+        {
+            var actions = payload.Actions.ToArray();
+            actions[^1] = actions[^1] with { CommissionActivity =
+                (byte)EconomicActivityKind.TradeLogistics };
+            return payload with { Actions = actions };
+        });
         Assert.ThrowsAny<Exception>(() =>
-            CanonicalPhysicalTacticalSession.RestoreSaveJson(changed));
+            CanonicalPhysicalTacticalSession.RestoreSaveJson(invalidRole));
 
         var withoutAuthorization = Alter(save, p => p,
             CanonicalPhysicalTacticalSession.MaterialAssemblyEnvelopeFormat);

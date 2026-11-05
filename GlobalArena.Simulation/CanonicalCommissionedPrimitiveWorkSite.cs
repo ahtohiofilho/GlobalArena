@@ -26,6 +26,9 @@ public sealed class CanonicalCommissionedPrimitiveWorkSite
     public bool IsRegisteredForExistingPrimitiveWork => true;
     public bool IsDedicatedConstructionLaborAuthenticated => false;
     public bool IsCanonicalWorldAsset => false;
+    // WorldState hashes the revised snapshot, NOT this sidecar's work role.
+    // Rehashed valid alternative journal metadata is not cryptographically bound.
+    public bool AreCommissioningParametersHashedIntoWorldState => false;
     public bool AuthorizesAdditionalProductivity => false;
     public bool CreatesTradeableManufacturedGood => false;
     public bool CanAuthorizeRealPurchasingPower => false;
