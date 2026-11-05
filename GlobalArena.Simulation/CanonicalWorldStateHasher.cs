@@ -24,6 +24,9 @@ public sealed class CanonicalWorldStateHasher
     // v27 opt-in canonical physical facility hash (with or without treasury).
     // Existing worlds with no facility retain their exact v8-v19 digests.
     public const uint PrimitiveFacilityHashFormatVersion = 27U;
+    // Opt-in operators at an already authenticated physical work shelter.
+    // Zero operators retain the byte-exact existing v27 hash.
+    public const uint FacilityAssistedWorkHashFormatVersion = 29U;
 
     private static readonly byte[] Magic =
     {
@@ -85,9 +88,25 @@ public sealed class CanonicalWorldStateHasher
             AppendUInt64(assets, site.StartedMovementTurn);
             AppendUInt64(assets, site.CompletedMovementTurn);
         }
-        return new WorldStateHash(
+        var facilityDigest = new WorldStateHash(
             PrimitiveFacilityHashFormatVersion,
             Convert.ToHexString(assets.GetHashAndReset()));
+        if (!facilities.Any(x => x.OperatingWorkers > 0UL))
+            return facilityDigest;
+        using var assigned = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        assigned.AppendData(Magic);
+        AppendUInt32(assigned, FacilityAssistedWorkHashFormatVersion);
+        AppendUInt32(assigned, 103U);
+        assigned.AppendData(Convert.FromHexString(facilityDigest.HexDigest));
+        AppendUInt32(assigned, checked((uint)facilities.Count));
+        foreach (var facility in facilities)
+        {
+            AppendUInt32(assigned, checked((uint)facility.AssemblyActionOrdinal));
+            AppendUInt64(assigned, facility.OperatingWorkers);
+        }
+        return new WorldStateHash(
+            FacilityAssistedWorkHashFormatVersion,
+            Convert.ToHexString(assigned.GetHashAndReset()));
     }
 
     private static WorldStateHash ComputeLegacyV8(WorldState worldState)

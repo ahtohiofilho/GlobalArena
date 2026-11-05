@@ -44,7 +44,9 @@ public sealed record CanonicalPhysicalCycleSaveRow(
     ulong MovementTurn, ulong ProducedRaw, ulong FoodConsumedRaw, ulong FoodUnmetRaw);
 public sealed record CanonicalPrimitiveFacilitySaveRow(
     int AssemblyOrdinal, ulong Tile, byte Activity, byte Kind,
-    ulong CommittedWorkers, ulong StartedTurn, ulong CompletedTurn);
+    ulong CommittedWorkers, ulong StartedTurn, ulong CompletedTurn,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    ulong OperatingWorkers = 0UL);
 
 public sealed record CanonicalFoodCashAccountSaveRow(ulong Tile, ulong Household, ulong Producer);
 public sealed record CanonicalFoodCashReceiptSaveRow(ulong Turn, ulong Tile, ulong FoodRaw, ulong Price, ulong Paid);
@@ -155,6 +157,9 @@ public sealed class CanonicalPhysicalTacticalSession
     // v27/v28 canonical physical construction and persistent installation.
     public const int PrimitiveFacilityEnvelopeFormat = 27;
     public const int PrimitiveFacilityWithTreasuryEnvelopeFormat = 28;
+    // 29/30: explicit operation of completed shelter by real workers.
+    public const int FacilityAssistedWorkEnvelopeFormat = 29;
+    public const int FacilityAssistedWorkWithTreasuryEnvelopeFormat = 30;
     public const int MaximumActions = 100_000;
     private const int MaximumSaveBytes = 4_000_000;
     public const ulong FoodDemandRawPerWorker = 500_000UL;
@@ -162,6 +167,7 @@ public sealed class CanonicalPhysicalTacticalSession
     private readonly List<CanonicalPhysicalAction> _journal = new();
     // Deterministically reconstructed by action replay; no new save/hash fields.
     private CanonicalExecutedPhysicalCycleProvenance? _latestExecutedCycleProvenance;
+    private CanonicalFacilityAssistedWorkWitness? _latestAssistedWorkWitness;
     private CanonicalPhysicalLotLineageTracker _materialLots = null!;
     private CanonicalPhysicalLotCycleWitness? _latestPhysicalLotWitness;
     private readonly List<CanonicalExecutedMaterialDisposition>
@@ -337,6 +343,17 @@ public sealed class CanonicalPhysicalTacticalSession
         receipt.VerifyIndependent();
         return receipt;
     }
+    public CanonicalFacilityAssistedWorkWitness
+        CaptureLatestFacilityAssistedWorkWitness()
+    {
+        var witness = _latestAssistedWorkWitness ??
+            throw new InvalidOperationException(
+                "No completed economic cycle has facility work evidence.");
+        witness.RequireCurrent(this);
+        witness.VerifyIndependent();
+        return witness;
+    }
+
     public WorldStateHash CurrentHash => _hasher.Compute(CheckedSnapshot);
     public PhysicalCivilizationIdentityMode CivilizationMode => _civilizationMode;
     public bool HasInitialCivilization =>
@@ -1241,6 +1258,55 @@ public sealed class CanonicalPhysicalTacticalSession
     }
 
     /// <summary>
+    /// Allocate EXISTING local workers to an already finished physical
+    /// work shelter. This only selects an auditable production channel.
+    /// It never generates an extra unit or a coefficient increase.
+    /// Setting operators to zero suspends assistance without demolishing it.
+    /// </summary>
+    public PhysicalPrimitiveFacility StaffPrimitiveFacility(
+        PhysicalTacticalTileId tile, int assemblyActionOrdinal,
+        EconomicActivityKind activity, ulong operators)
+    {
+        EnsureJournalCapacity();
+        ValidateTile(tile);
+        ValidateJob(activity);
+        var current = State;
+        var facility = current.PrimitiveFacilities.FirstOrDefault(x =>
+            x.AssemblyActionOrdinal == assemblyActionOrdinal &&
+            x.Tile == tile && x.Activity == activity);
+        if (facility is null || !facility.IsOperational)
+            throw new InvalidOperationException(
+                "Only a completed physical shelter may receive production operators.");
+        if (operators > facility.CommittedWorkers ||
+            operators == facility.OperatingWorkers)
+            throw new InvalidOperationException(
+                "Facility operator assignment is unchanged or exceeds actual physical capacity.");
+        var allocated = current.Allocations.FirstOrDefault(x =>
+            x.TileId == tile && x.Activity == activity)?.Workers ?? 0UL;
+        if (operators > allocated)
+            throw new InvalidOperationException(
+                "Facility operation requires real workers assigned to the same tile and activity.");
+        var next = new PhysicalTacticalEconomyRuntimeState(
+            current.CoarseWorldBinding, _coarse, _fine,
+            current.MovementTurn, current.WorkerRevision,
+            current.Allocations, current.Stocks, current.Cycles,
+            _cadenceMode, _geographyMode, current.FoodCash,
+            _movementMode, current.Transits, current.LongTrips,
+            current.RemoteRoutingEnabled, current.TravelFoodLedgers,
+            current.JourneyCampStates,
+            current.PrimitiveFacilities.Select(x =>
+                x.AssemblyActionOrdinal == assemblyActionOrdinal
+                    ? x with { OperatingWorkers = operators } : x));
+        Commit(next, "staff_primitive_facility",
+            tile.FineStrategicCellId.Value, tile.FineStrategicCellId.Value,
+            0, 0, operators,
+            facilityAssemblyOrdinal: assemblyActionOrdinal,
+            facilityActivity: (byte)activity);
+        return next.PrimitiveFacilities.Single(x =>
+            x.AssemblyActionOrdinal == assemblyActionOrdinal);
+    }
+
+    /// <summary>
     /// Fixed-six V9 and progressive-thirty V10 settle physical production
     /// and consumption under their versioned rules. No intertile teleportation.
     /// </summary>
@@ -1265,6 +1331,7 @@ public sealed class CanonicalPhysicalTacticalSession
         ulong actualCampProduction = 0UL;
         var executedSources = new List<CanonicalExecutedPhysicalProductionRow>();
         var executedUses = new List<CanonicalExecutedPhysicalFinalUseRow>();
+        var assistedOutputs = new List<CanonicalFacilityAssistedWorkRow>();
 
         // V17: an automatic camp is evaluated ONLY while still at a waypoint,
         // before taking the next physical leg. Waiting postpones BOTH the
@@ -1431,6 +1498,27 @@ public sealed class CanonicalPhysicalTacticalSession
                     .Aggregate(0UL, (sum, x) => checked(sum + x.CommittedWorkers));
                 var effectiveWorkers = checked(allocation.Workers - reserved);
                 var output = checked(effectiveWorkers * (ulong)rawRate);
+                // Work-shelter operators are an exact subset of active
+                // productive workers, not a second workforce. Account for
+                // their executed throughput without adding stock twice.
+                var operating = current.PrimitiveFacilities.FirstOrDefault(x =>
+                    x.IsOperational && x.OperatingWorkers > 0UL &&
+                    x.Tile == allocation.TileId &&
+                    x.Activity == allocation.Activity);
+                if (operating is not null)
+                {
+                    var assisted = checked(operating.OperatingWorkers *
+                        (ulong)rawRate);
+                    if (assisted > output)
+                        throw new InvalidOperationException(
+                            "Assisted throughput exceeds existing real production.");
+                    if (assisted > 0UL)
+                        assistedOutputs.Add(new CanonicalFacilityAssistedWorkRow(
+                            operating.AssemblyActionOrdinal,
+                            allocation.TileId.FineStrategicCellId.Value,
+                            allocation.Activity, commodity.Value,
+                            operating.OperatingWorkers, assisted));
+                }
                 var key = (allocation.TileId, commodity);
                 stocks.TryGetValue(key, out var existing);
                 stocks[key] = checked(existing + output);
@@ -1592,6 +1680,8 @@ public sealed class CanonicalPhysicalTacticalSession
             _latestPhysicalLotWitness = new CanonicalPhysicalLotCycleWitness(
                 this, _latestExecutedCycleProvenance,
                 _materialLots, cycleAttributions!);
+            _latestAssistedWorkWitness = new CanonicalFacilityAssistedWorkWitness(
+                this, _latestExecutedCycleProvenance, assistedOutputs);
         }
         return cycle;
     }
@@ -1659,7 +1749,11 @@ public sealed class CanonicalPhysicalTacticalSession
         var digest = Convert.ToHexString(
             SHA256.HashData(Encoding.UTF8.GetBytes(payloadJson)));
         var json = JsonSerializer.Serialize(new CanonicalPhysicalSaveEnvelope(
-            State.PrimitiveFacilities.Count != 0
+            _journal.Any(x => x.Kind == "staff_primitive_facility")
+                ? (_treasuryActivationActionCount.HasValue
+                    ? FacilityAssistedWorkWithTreasuryEnvelopeFormat
+                    : FacilityAssistedWorkEnvelopeFormat)
+                : State.PrimitiveFacilities.Count != 0
                 ? (_treasuryActivationActionCount.HasValue
                     ? PrimitiveFacilityWithTreasuryEnvelopeFormat
                     : PrimitiveFacilityEnvelopeFormat)
@@ -1697,7 +1791,7 @@ public sealed class CanonicalPhysicalTacticalSession
         {
             envelope = JsonSerializer.Deserialize<CanonicalPhysicalSaveEnvelope>(json)
                 ?? throw new InvalidOperationException("Missing canonical save envelope.");
-            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat or CashFoodSaveFormat or TimedTransitSaveFormat or BornCivilizationSaveFormat or LongDistanceSaveFormat or PhysicalTravelFoodSaveFormat or AutomaticCampSaveFormat or TransportAuthorityEnvelopeFormat or IntegratedDormantTreasuryEnvelopeFormat or MaterialDispositionEnvelopeFormat or MaterialWithTreasuryEnvelopeFormat or MaterialAssemblyEnvelopeFormat or MaterialAssemblyWithTreasuryEnvelopeFormat or PrimitiveWorkSiteEnvelopeFormat or PrimitiveWorkSiteWithTreasuryEnvelopeFormat or PrimitiveFacilityEnvelopeFormat or PrimitiveFacilityWithTreasuryEnvelopeFormat) ||
+            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat or CashFoodSaveFormat or TimedTransitSaveFormat or BornCivilizationSaveFormat or LongDistanceSaveFormat or PhysicalTravelFoodSaveFormat or AutomaticCampSaveFormat or TransportAuthorityEnvelopeFormat or IntegratedDormantTreasuryEnvelopeFormat or MaterialDispositionEnvelopeFormat or MaterialWithTreasuryEnvelopeFormat or MaterialAssemblyEnvelopeFormat or MaterialAssemblyWithTreasuryEnvelopeFormat or PrimitiveWorkSiteEnvelopeFormat or PrimitiveWorkSiteWithTreasuryEnvelopeFormat or PrimitiveFacilityEnvelopeFormat or PrimitiveFacilityWithTreasuryEnvelopeFormat or FacilityAssistedWorkEnvelopeFormat or FacilityAssistedWorkWithTreasuryEnvelopeFormat) ||
                 string.IsNullOrEmpty(envelope.PayloadJson) ||
                 string.IsNullOrEmpty(envelope.PayloadSha256Hex))
                 throw new InvalidOperationException("Unsupported canonical save envelope.");
@@ -1719,22 +1813,32 @@ public sealed class CanonicalPhysicalTacticalSession
             MaterialWithTreasuryEnvelopeFormat or
             MaterialAssemblyWithTreasuryEnvelopeFormat or
             PrimitiveWorkSiteWithTreasuryEnvelopeFormat or
-            PrimitiveFacilityWithTreasuryEnvelopeFormat;
+            PrimitiveFacilityWithTreasuryEnvelopeFormat or
+            FacilityAssistedWorkWithTreasuryEnvelopeFormat;
+        var staffedEnvelope = envelope.Version is
+            FacilityAssistedWorkEnvelopeFormat or
+            FacilityAssistedWorkWithTreasuryEnvelopeFormat;
         var facilityEnvelope = envelope.Version is
             PrimitiveFacilityEnvelopeFormat or
-            PrimitiveFacilityWithTreasuryEnvelopeFormat;
+            PrimitiveFacilityWithTreasuryEnvelopeFormat or
+            FacilityAssistedWorkEnvelopeFormat or
+            FacilityAssistedWorkWithTreasuryEnvelopeFormat;
         var commissioningEnvelope = envelope.Version is
             PrimitiveWorkSiteEnvelopeFormat or
             PrimitiveWorkSiteWithTreasuryEnvelopeFormat or
             PrimitiveFacilityEnvelopeFormat or
-            PrimitiveFacilityWithTreasuryEnvelopeFormat;
+            PrimitiveFacilityWithTreasuryEnvelopeFormat or
+            FacilityAssistedWorkEnvelopeFormat or
+            FacilityAssistedWorkWithTreasuryEnvelopeFormat;
         var assemblyEnvelope = envelope.Version is
             MaterialAssemblyEnvelopeFormat or
             MaterialAssemblyWithTreasuryEnvelopeFormat or
             PrimitiveWorkSiteEnvelopeFormat or
             PrimitiveWorkSiteWithTreasuryEnvelopeFormat or
             PrimitiveFacilityEnvelopeFormat or
-            PrimitiveFacilityWithTreasuryEnvelopeFormat;
+            PrimitiveFacilityWithTreasuryEnvelopeFormat or
+            FacilityAssistedWorkEnvelopeFormat or
+            FacilityAssistedWorkWithTreasuryEnvelopeFormat;
         var materialEnvelope = envelope.Version is
             MaterialDispositionEnvelopeFormat or
             MaterialWithTreasuryEnvelopeFormat or
@@ -1743,7 +1847,9 @@ public sealed class CanonicalPhysicalTacticalSession
             PrimitiveWorkSiteEnvelopeFormat or
             PrimitiveWorkSiteWithTreasuryEnvelopeFormat or
             PrimitiveFacilityEnvelopeFormat or
-            PrimitiveFacilityWithTreasuryEnvelopeFormat;
+            PrimitiveFacilityWithTreasuryEnvelopeFormat or
+            FacilityAssistedWorkEnvelopeFormat or
+            FacilityAssistedWorkWithTreasuryEnvelopeFormat;
         if ((envelope.Version == TransportAuthorityEnvelopeFormat
                 ? payload.Version < SaveFormat || payload.Version > AutomaticCampSaveFormat ||
                   payload.TransportCommands is not { Length: > 0 }
@@ -1763,6 +1869,8 @@ public sealed class CanonicalPhysicalTacticalSession
                 payload.Actions?.Any(a => a?.Kind == "commission_primitive") != true) ||
             (facilityEnvelope != (payload.Actions?.Any(
                 a => a?.Kind == "start_primitive_facility") == true)) ||
+            (staffedEnvelope != (payload.Actions?.Any(
+                a => a?.Kind == "staff_primitive_facility") == true)) ||
             (facilityEnvelope != (payload.PrimitiveFacilities is { Length: > 0 })) ||
             (payload.PrimitiveFacilities?.Any(x => x is null) == true) ||
             (integratedTreasury != (payload.TreasuryReservation is not null)) ||
@@ -1968,6 +2076,23 @@ public sealed class CanonicalPhysicalTacticalSession
                     action.FacilityAssemblyOrdinal,
                     (EconomicActivityKind)action.FacilityActivity,
                     action.Workers);
+            else if (action.Kind == "staff_primitive_facility" &&
+                     staffedEnvelope &&
+                     action.Source == action.Destination &&
+                     action.Source != 0UL && action.FromJob == 0 &&
+                     action.ToJob == 0 && action.FoodRaw == 0UL &&
+                     action.MaterialCommodity == 0U &&
+                     action.MaterialUseKind == 0 && action.MaterialRaw == 0UL &&
+                     action.AssemblyKind == 0 && action.AssemblyWoodRaw == 0UL &&
+                     action.AssemblyStoneRaw == 0UL &&
+                     action.CommissionAssemblyOrdinal == 0 &&
+                     action.CommissionActivity == 0)
+                game.StaffPrimitiveFacility(
+                    new PhysicalTacticalTileId(game._fine,
+                        new StrategicCellId(action.Source)),
+                    action.FacilityAssemblyOrdinal,
+                    (EconomicActivityKind)action.FacilityActivity,
+                    action.Workers);
             else
                 throw new InvalidOperationException("Unsupported canonical action.");
 
@@ -2136,7 +2261,7 @@ public sealed class CanonicalPhysicalTacticalSession
                         x.Tile.FineStrategicCellId.Value,
                         (byte)x.Activity, (byte)x.Kind,
                         x.CommittedWorkers, x.StartedMovementTurn,
-                        x.CompletedMovementTurn)).ToArray());
+                        x.CompletedMovementTurn, x.OperatingWorkers)).ToArray());
     }
 
     private bool IsWorkableLand(StrategicCellId id) =>

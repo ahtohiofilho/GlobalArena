@@ -25,10 +25,16 @@ public sealed record PhysicalPrimitiveFacility(
     PhysicalPrimitiveFacilityKind Kind,
     ulong CommittedWorkers,
     ulong StartedMovementTurn,
-    ulong CompletedMovementTurn)
+    ulong CompletedMovementTurn,
+    ulong OperatingWorkers = 0UL)
 {
     public bool IsOperational => CompletedMovementTurn != 0UL;
     public ulong ReservedWorkers => IsOperational ? 0UL : CommittedWorkers;
+    /// <summary>
+    /// Opt-in operators drawn from the EXISTING tile/job allocation.
+    /// OperatingWorkers is not an extra population or a new yield multiplier.
+    /// </summary>
+    public bool HasAssistedWorkOperators => IsOperational && OperatingWorkers > 0UL;
     public bool AuthorizesProductivityBonus => false;
     public bool AuthorizesNewTradeableGood => false;
     public bool CanAuthorizeRealPurchasingPower => false;

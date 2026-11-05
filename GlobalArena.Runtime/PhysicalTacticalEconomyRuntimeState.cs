@@ -286,6 +286,8 @@ public sealed class PhysicalTacticalEconomyRuntimeState
             if (facility is null || facility.AssemblyActionOrdinal <= 0 ||
                 facility.Kind != PhysicalPrimitiveFacilityKind.WorkShelter ||
                 facility.CommittedWorkers == 0UL ||
+                facility.OperatingWorkers > facility.CommittedWorkers ||
+                (!facility.IsOperational && facility.OperatingWorkers != 0UL) ||
                 facility.Activity is not (EconomicActivityKind.Agriculture or
                     EconomicActivityKind.Forestry or EconomicActivityKind.Mining) ||
                 facility.StartedMovementTurn > movementTurn ||
@@ -296,12 +298,12 @@ public sealed class PhysicalTacticalEconomyRuntimeState
                 !seenWorkRoles.Add((facility.Tile, facility.Activity)))
                 throw new ArgumentException("Invalid or duplicate canonical primitive facility.");
             ValidateTile(facility.Tile, fineParameters);
-            if (!facility.IsOperational)
-            {
-                var key = (facility.Tile, facility.Activity);
+            var key = (facility.Tile, facility.Activity);
+            var unavailable = facility.IsOperational
+                ? facility.OperatingWorkers : facility.CommittedWorkers;
+            if (unavailable > 0UL)
                 reservations[key] = checked(
-                    reservations.GetValueOrDefault(key) + facility.CommittedWorkers);
-            }
+                    reservations.GetValueOrDefault(key) + unavailable);
         }
         foreach (var reservation in reservations)
         {
@@ -310,7 +312,7 @@ public sealed class PhysicalTacticalEconomyRuntimeState
                     x.Activity == reservation.Key.Item2)?.Workers ?? 0UL;
             if (workers < reservation.Value)
                 throw new InvalidOperationException(
-                    "Construction workers are reserved exclusively from actual allocated labor.");
+                    "Facility operators and construction workers must be real allocated labor.");
         }
 
         var orderedCycles = cycles.ToArray();
