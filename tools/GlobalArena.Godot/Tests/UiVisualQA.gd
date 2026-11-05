@@ -6,7 +6,8 @@ extends SceneTree
 const CAPTURE_WIDTH := 1600
 const CAPTURE_HEIGHT := 900
 const MIN_MAP_EDGE := 520.0
-const MAP_SQUARE_TOLERANCE := 4.0
+const MIN_LANDSCAPE_RATIO := 1.15
+const MAX_UNUSED_MAP_SIDEBAR_GAP := 15.0
 
 
 func _initialize() -> void:
@@ -30,8 +31,7 @@ func _assert_layout(scene: Node, context: String) -> bool:
     var map := _node(scene, "GAQAMapRegion")
     var panel := _node(scene, "GAQARightPanel")
     var scroller := _node(scene, "GAQACommandScroll")
-    var slot := _node(scene, "GAQASquareMapSlot")
-    if not _require(map != null and panel != null and scroller != null and slot != null,
+    if not _require(map != null and panel != null and scroller != null,
             context + " missing a semantic layout node"):
         return false
     var rect := map.get_global_rect()
@@ -41,19 +41,27 @@ func _assert_layout(scene: Node, context: String) -> bool:
             rect.size.y >= MIN_MAP_EDGE,
             context + " map viewport unexpectedly small: " + str(rect)):
         return false
-    if not _require(absf(rect.size.x - rect.size.y) <= MAP_SQUARE_TOLERANCE,
-            context + " map viewport is no longer square: " + str(rect)):
+    # Approved player direction (2026-11-05): occupy the horizontal area
+    # naturally instead of fitting a centered 1:1 AspectRatioContainer.
+    if not _require(rect.size.x >= rect.size.y * MIN_LANDSCAPE_RATIO,
+            context + " tactical/strategic viewport is not landscape: " + str(rect)):
+        return false
+    if not _require(right.position.x - rect.end.x <= MAX_UNUSED_MAP_SIDEBAR_GAP,
+            context + " unused horizontal space remains between viewport and sidebar: " +
+            str(rect) + " / " + str(right)):
         return false
     if not _require(rect.end.x + 2.0 <= right.position.x,
             context + " sidebar overlaps map viewport: " + str(rect) + " / " + str(right)):
         return false
-    if not _require(right.size.x >= 390.0 and right.size.x <= 550.0 and
-            scroll.size.x >= 350.0 and
+    if not _require(right.size.x >= 350.0 and right.size.x <= 465.0 and
+            scroll.size.x >= 315.0 and
             scroll.size.y >= maxf(390.0, right.size.y * 0.55),
             context + " usable command sidebar collapsed: " + str(right) + " / " + str(scroll)):
         return false
     print("GA_UI_VISUAL_GEOMETRY_OK context=" + context +
-        " map=" + str(rect.size) + " right=" + str(right.size) +
+        " map=" + str(rect.size) + " ratio=" +
+        str(rect.size.x / maxf(rect.size.y, 1.0)) +
+        " right=" + str(right.size) +
         " scroll=" + str(scroll.size))
     return true
 

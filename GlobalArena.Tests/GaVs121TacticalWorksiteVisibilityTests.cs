@@ -72,12 +72,18 @@ public sealed class GaVs121TacticalWorksiteVisibilityTests
         var assembled = View(game);
         Assert.Equal(PrimitiveWorksiteStage.AssemblyReady, assembled.Stage);
         Assert.Equal(frame, assembled.AvailableAssemblyOrdinal);
+        Assert.Equal(1UL, assembled.IncorporatedWoodRaw);
+        Assert.Equal(1UL, assembled.IncorporatedStoneRaw);
         Assert.True(assembled.MayStartConstruction);
         Assert.False(assembled.HasWorldFacility);
 
+        var inventoryAfterMount = game.State.Stocks.ToArray();
         game.StartPrimitiveFacility(game.InitialTile, frame,
             EconomicActivityKind.Forestry, 1UL);
+        Assert.Equal(inventoryAfterMount, game.State.Stocks.ToArray());
         var building = View(game);
+        Assert.Equal(1UL, building.IncorporatedWoodRaw);
+        Assert.Equal(1UL, building.IncorporatedStoneRaw);
         Assert.Equal(PrimitiveWorksiteStage.UnderConstruction, building.Stage);
         Assert.Equal(1UL, building.ConstructionWorkers);
         Assert.Equal(1, building.TotalBuildingFacilities);

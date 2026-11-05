@@ -202,10 +202,14 @@ public partial class Main
 
         _worksiteDetails.Text =
             $"Pessoas {v.ResidentWorkers} · nesta atividade {v.ActivityWorkers}. " +
-            $"Estoque: madeira {WorksiteRaw(v.LocalWoodRaw)} / " +
+            $"ESTOQUE ATUAL: madeira {WorksiteRaw(v.LocalWoodRaw)} / " +
             $"pedra {WorksiteRaw(v.LocalStoneRaw)}.\n" +
-            "1 · Incorporar materiais existentes → 2 · reservar trabalhadores " +
-            "por 1 ciclo → 3 · operar abrigo concluído.\n" +
+            (v.IncorporatedWoodRaw > 0UL && v.IncorporatedStoneRaw > 0UL
+                ? $"JÁ INCORPORADO: madeira {WorksiteRaw(v.IncorporatedWoodRaw)} / " +
+                  $"pedra {WorksiteRaw(v.IncorporatedStoneRaw)} " +
+                  "(descontado em MONTAR; CONSTRUIR não desconta novamente).\n"
+                : "MONTAR desconta madeira/pedra; CONSTRUIR reserva pessoas, não materiais.\n") +
+            "1 · Montar → 2 · Construir (1 ciclo) → 3 · Operar.\n" +
             (v.HasFreshAssistedOutput
                 ? $"ÚLTIMO CICLO EXECUTADO, turno {v.LastCycleMovementTurn}: " +
                   $"produção atribuída ao abrigo {WorksiteRaw(v.LastAssistedProducedRaw)} " +

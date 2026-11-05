@@ -229,7 +229,7 @@ public partial class Main : Control
         GD.Print("GA_VS106_TACTICAL_FIRST_UI source=canonical_gameplay spherical_tactical=true strategic=auxiliary");
         // The Godot project name stays VS17 to retain old user:// saves;
         // a visible runtime title identifies the actual branch under test.
-        GetWindow().Title = "Global Arena — VS106 | Controle tático";
+        GetWindow().Title = "Global Arena — Controle tático (DEBUG)";
         // Prioritize a maximized production window; preserve windowed resizing and avoid headless changes.
         if (DisplayServer.GetName() != "headless")
             DisplayServer.WindowSetMode(DisplayServer.WindowMode.Maximized);
@@ -251,24 +251,25 @@ public partial class Main : Control
         root.AddThemeConstantOverride("separation", 0);
         frame.AddChild(root);
 
-        // No full-width title bar or debug footer: both used to steal
-        // vertical space from the square globe/tactical viewport.
+        // No full-width title bar or debug footer: keep the tactical
+        // viewport wide and fully available for the spherical map.
         var content = new HBoxContainer { Name = "GAQAContent", SizeFlagsVertical = SizeFlags.ExpandFill };
         content.AddThemeConstantOverride("separation", 8);
         root.AddChild(content);
 
-        // GA-UI-MVP-SQUARE: the layout column stretches; its map remains 1:1.
-        // AspectRatioContainer defaults to centered FIT, without clipping either viewport.
-        var squareMapSlot = new AspectRatioContainer
+        // GA-UI-WIDE-01: player-selected horizontal tactical viewport.
+        // Do NOT constrain the map to a 1:1 AspectRatioContainer: it wasted
+        // horizontal space at desktop resolutions and squeezed the side panel.
+        // The globe and physical tactical map share this flexible region.
+        // SubViewportContainer.Stretch handles resize without changing any
+        // canonical tile coordinates or camera/save state.
+        var mapRegion = new PanelContainer
         {
-            Name = "GAQASquareMapSlot",
-            Ratio = 1f,
+            Name = "GAQAMapRegion",
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill
         };
-        content.AddChild(squareMapSlot);
-        var mapRegion = new PanelContainer { Name = "GAQAMapRegion", SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
-        squareMapSlot.AddChild(mapRegion);
+        content.AddChild(mapRegion);
         var globe = new GlobePreview
         {
             Name = "GAQAStrategicGlobe",
@@ -320,7 +321,7 @@ public partial class Main : Control
         var rightPanel = new PanelContainer
         {
             Name = "GAQARightPanel",
-            CustomMinimumSize = new Vector2(460f, 0f),
+            CustomMinimumSize = new Vector2(420f, 0f),
             SizeFlagsVertical = SizeFlags.ExpandFill
         };
         content.AddChild(rightPanel);
@@ -458,7 +459,8 @@ public partial class Main : Control
         GD.Print($"GA_VS106_TACTICAL_FIRST_READY fine_tile={_workerOrigin.Value.FineStrategicCellId.Value} " +
             $"focus={initialFocus.Value} strategic_auxiliary=true");
 
-        GD.Print("GA_UI_FOUNDATION_READY_01 layout=large_square_map,wide_sidebar,no_header,no_footer");
+        GD.Print("GA_UI_FOUNDATION_READY_01 layout=wide_rectangular_map,scroll_sidebar,no_header,no_footer");
+        GD.Print("GA_UI_WIDE_VIEWPORT_01 aspect=flexible landscape_preferred square_constraint=false");
         GD.Print("GA_UI_FOUNDATION_RESIZE_READY_02 responsive=true");
     }
 
@@ -508,15 +510,17 @@ public partial class Main : Control
         var view = GetViewport();
         if (view is null) return;
         var current = view.GetVisibleRect().Size;
-        // Widen the sidebar on desktop; shrink its minimum on smaller
-        // windows so the 1:1 tactical map is not clipped horizontally.
-        var sidebarWidth = Mathf.Clamp(current.X * 0.34f, 390f, 530f);
+        // GA-UI-WIDE-01: give most horizontal screen real estate to the
+        // actual map, while keeping a readable scrollable command sidebar.
+        // At 1600x900 the ratio is approximately 1.3:1, not forced to 1:1.
+        // On smaller screens the panel contracts rather than clipping tiles.
+        var sidebarWidth = Mathf.Clamp(current.X * 0.27f, 350f, 455f);
         if (_worldSidebar is not null &&
             Mathf.Abs(_worldSidebar.CustomMinimumSize.X - sidebarWidth) > 0.5f)
             _worldSidebar.CustomMinimumSize = new Vector2(sidebarWidth, 0f);
         var signature = $"{current}/{Size}/{_layoutDiagnosticFrame.Size}/{_layoutDiagnosticRoot.Size}/{DisplayServer.WindowGetSize()}";
         if (signature == _lastLoggedLayoutSignature) return;
         _lastLoggedLayoutSignature = signature;
-        GD.Print($"GA_LAYOUT_DIAGNOSTIC_02 viewport={current} main={Size} frame={_layoutDiagnosticFrame.Size} root={_layoutDiagnosticRoot.Size} window={DisplayServer.WindowGetSize()} screen={DisplayServer.ScreenGetSize()}");
+        GD.Print($"GA_LAYOUT_DIAGNOSTIC_02 viewport={current} main={Size} frame={_layoutDiagnosticFrame.Size} root={_layoutDiagnosticRoot.Size} window={DisplayServer.WindowGetSize()} screen={DisplayServer.ScreenGetSize()} wide_map=true");
     }
  }
