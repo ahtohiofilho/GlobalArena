@@ -116,6 +116,21 @@ internal sealed class CanonicalPhysicalLotLineageTracker
         return taken;
     }
 
+    /// <summary>
+    /// Executed local use of physical wood or stone. FIFO attribution is
+    /// deterministic; only the stock debit and classified use are canonical.
+    /// </summary>
+    internal IReadOnlyList<CanonicalPhysicalLotHolding> ConsumeLocalMaterial(
+        ulong fineTile, uint commodity, ulong raw)
+    {
+        if (commodity is not (2U or 3U))
+            throw new ArgumentOutOfRangeException(nameof(commodity),
+                "Only actual stone and wood stock can be disposed here.");
+        return Array.AsReadOnly(Take(
+            CanonicalPhysicalLotCustodyKind.LocalStock,
+            fineTile, commodity, raw).ToArray());
+    }
+
     internal void TransferProvisionedFood(ulong sourceFineTile,
         ulong journeyOrderId, ulong physicalFoodRaw)
     {
