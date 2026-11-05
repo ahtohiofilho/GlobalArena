@@ -22,7 +22,13 @@ public sealed record CanonicalPhysicalAction(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     byte MaterialUseKind = 0,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    ulong MaterialRaw = 0UL);
+    ulong MaterialRaw = 0UL,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    byte AssemblyKind = 0,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    ulong AssemblyWoodRaw = 0UL,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    ulong AssemblyStoneRaw = 0UL);
 
 public sealed record CanonicalPhysicalWorkerSaveRow(ulong Tile, byte Job, ulong Workers);
 public sealed record CanonicalPhysicalStockSaveRow(ulong Tile, uint Commodity, ulong Raw);
@@ -125,6 +131,10 @@ public sealed class CanonicalPhysicalTacticalSession
     // Existing saves (9..20) remain byte-for-byte unchanged when unused.
     public const int MaterialDispositionEnvelopeFormat = 21;
     public const int MaterialWithTreasuryEnvelopeFormat = 22;
+    // 23 = executed material assembly; 24 = assembly + dormant treasury.
+    // Assembly can coexist with legacy material_use in both formats.
+    public const int MaterialAssemblyEnvelopeFormat = 23;
+    public const int MaterialAssemblyWithTreasuryEnvelopeFormat = 24;
     public const int MaximumActions = 100_000;
     private const int MaximumSaveBytes = 4_000_000;
     public const ulong FoodDemandRawPerWorker = 500_000UL;
@@ -136,6 +146,8 @@ public sealed class CanonicalPhysicalTacticalSession
     private CanonicalPhysicalLotCycleWitness? _latestPhysicalLotWitness;
     private readonly List<CanonicalExecutedMaterialDisposition>
         _materialDispositions = new();
+    private readonly List<CanonicalExecutedPrimitiveAssembly>
+        _materialAssemblies = new();
     internal CanonicalPhysicalLotLineageTracker MaterialLotTracker => _materialLots;
     // A V20 save replays the historical events before changing to hash v19.
     // The index is NEVER inferred from physical turn or cash balance.
@@ -225,6 +237,15 @@ public sealed class CanonicalPhysicalTacticalSession
     public IReadOnlyList<CanonicalExecutedMaterialDisposition>
         ExecutedMaterialDispositions =>
         Array.AsReadOnly(_materialDispositions.ToArray());
+
+    /// <summary>
+    /// Real dual-material assemblies replayed from explicit journal events.
+    /// They contain incorporated physical inputs but are not commissioned
+    /// infrastructure or additional final economic production.
+    /// </summary>
+    public IReadOnlyList<CanonicalExecutedPrimitiveAssembly>
+        ExecutedPrimitiveAssemblies =>
+        Array.AsReadOnly(_materialAssemblies.ToArray());
 
     /// <summary>
     /// Genuine per-source output and physical destination-use observations
@@ -938,6 +959,73 @@ public sealed class CanonicalPhysicalTacticalSession
     }
 
     /// <summary>
+    /// Assemble one uncommissioned composite from real wood and stone held
+    /// at the SAME inhabited tile. Input amounts are explicit, not a
+    /// fabricated recipe yield. No productivity, sales or extra commodity.
+    /// One canonical action debits both inputs atomically; its incorporated
+    /// material frame is reconstructed from the authenticated journal.
+    /// </summary>
+    public CanonicalExecutedPrimitiveAssembly AssemblePrimitiveMaterialFrame(
+        PhysicalTacticalTileId tile, CanonicalPrimitiveAssemblyKind kind,
+        ulong woodRaw, ulong stoneRaw)
+    {
+        EnsureJournalCapacity();
+        ValidateTile(tile);
+        if (kind != CanonicalPrimitiveAssemblyKind.UncommissionedMaterialFrame ||
+            woodRaw == 0UL || stoneRaw == 0UL)
+            throw new ArgumentException(
+                "A physical frame requires a supported kind and positive wood/stone inputs.");
+        if (WorkersAt(tile) == 0UL)
+            throw new InvalidOperationException(
+                "A physical assembly must be performed at an inhabited work site.");
+
+        var current = State;
+        var wood = new CommodityId(3U);
+        var stone = new CommodityId(2U);
+        if (StockAt(tile, wood) < woodRaw ||
+            StockAt(tile, stone) < stoneRaw)
+            throw new InvalidOperationException(
+                "The frame cannot incorporate material absent from local physical stock.");
+
+        var next = new PhysicalTacticalEconomyRuntimeState(
+            current.CoarseWorldBinding, _coarse, _fine,
+            current.MovementTurn, current.WorkerRevision,
+            current.Allocations,
+            current.Stocks.Select(x =>
+                x.TileId == tile && x.Commodity == wood
+                    ? x with { RawQuantity = x.RawQuantity - woodRaw }
+                    : x.TileId == tile && x.Commodity == stone
+                    ? x with { RawQuantity = x.RawQuantity - stoneRaw }
+                    : x),
+            current.Cycles, _cadenceMode, _geographyMode,
+            current.FoodCash, _movementMode, current.Transits,
+            current.LongTrips, current.RemoteRoutingEnabled,
+            current.TravelFoodLedgers, current.JourneyCampStates);
+
+        var staged = _materialLots.Clone();
+        var attributedWood = staged.ConsumeLocalMaterial(
+            tile.FineStrategicCellId.Value, wood.Value, woodRaw);
+        var attributedStone = staged.ConsumeLocalMaterial(
+            tile.FineStrategicCellId.Value, stone.Value, stoneRaw);
+        staged.VerifyInventories(next);
+
+        Commit(next, "assemble_primitive", tile.FineStrategicCellId.Value,
+            tile.FineStrategicCellId.Value, 0, 0, 0UL,
+            assemblyKind: (byte)kind, assemblyWoodRaw: woodRaw,
+            assemblyStoneRaw: stoneRaw);
+        _materialLots = staged;
+
+        var action = _journal[^1];
+        var result = new CanonicalExecutedPrimitiveAssembly(
+            _journal.Count, tile.FineStrategicCellId.Value,
+            current.MovementTurn, kind, woodRaw, stoneRaw,
+            action.BeforeHashHex, action.AfterHashHex,
+            attributedWood, attributedStone);
+        _materialAssemblies.Add(result);
+        return result;
+    }
+
+    /// <summary>
     /// Fixed-six V9 and progressive-thirty V10 settle physical production
     /// and consumption under their versioned rules. No intertile teleportation.
     /// </summary>
@@ -1281,7 +1369,8 @@ public sealed class CanonicalPhysicalTacticalSession
         string kind, ulong source, ulong destination, byte fromJob,
         byte toJob, ulong amount, ulong foodRaw = 0UL,
         uint materialCommodity = 0U, byte materialUseKind = 0,
-        ulong materialRaw = 0UL)
+        ulong materialRaw = 0UL, byte assemblyKind = 0,
+        ulong assemblyWoodRaw = 0UL, ulong assemblyStoneRaw = 0UL)
     {
         var before = CheckedSnapshot;
         var beforeHash = _hasher.Compute(before);
@@ -1290,7 +1379,8 @@ public sealed class CanonicalPhysicalTacticalSession
         var action = new CanonicalPhysicalAction(kind, source, destination,
             fromJob, toJob, amount, before.Revision, beforeHash.HexDigest,
             staged.Revision, afterHash.HexDigest, foodRaw,
-            materialCommodity, materialUseKind, materialRaw);
+            materialCommodity, materialUseKind, materialRaw,
+            assemblyKind, assemblyWoodRaw, assemblyStoneRaw);
         Game.AcceptSnapshotIfCurrent(before, staged);
         _lastCommittedSnapshot = staged;
         _journal.Add(action);
@@ -1334,7 +1424,11 @@ public sealed class CanonicalPhysicalTacticalSession
         var digest = Convert.ToHexString(
             SHA256.HashData(Encoding.UTF8.GetBytes(payloadJson)));
         var json = JsonSerializer.Serialize(new CanonicalPhysicalSaveEnvelope(
-            _materialDispositions.Count != 0
+            _materialAssemblies.Count != 0
+                ? (_treasuryActivationActionCount.HasValue
+                    ? MaterialAssemblyWithTreasuryEnvelopeFormat
+                    : MaterialAssemblyEnvelopeFormat)
+                : _materialDispositions.Count != 0
                 ? (_treasuryActivationActionCount.HasValue
                     ? MaterialWithTreasuryEnvelopeFormat
                     : MaterialDispositionEnvelopeFormat)
@@ -1360,7 +1454,7 @@ public sealed class CanonicalPhysicalTacticalSession
         {
             envelope = JsonSerializer.Deserialize<CanonicalPhysicalSaveEnvelope>(json)
                 ?? throw new InvalidOperationException("Missing canonical save envelope.");
-            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat or CashFoodSaveFormat or TimedTransitSaveFormat or BornCivilizationSaveFormat or LongDistanceSaveFormat or PhysicalTravelFoodSaveFormat or AutomaticCampSaveFormat or TransportAuthorityEnvelopeFormat or IntegratedDormantTreasuryEnvelopeFormat or MaterialDispositionEnvelopeFormat or MaterialWithTreasuryEnvelopeFormat) ||
+            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat or CashFoodSaveFormat or TimedTransitSaveFormat or BornCivilizationSaveFormat or LongDistanceSaveFormat or PhysicalTravelFoodSaveFormat or AutomaticCampSaveFormat or TransportAuthorityEnvelopeFormat or IntegratedDormantTreasuryEnvelopeFormat or MaterialDispositionEnvelopeFormat or MaterialWithTreasuryEnvelopeFormat or MaterialAssemblyEnvelopeFormat or MaterialAssemblyWithTreasuryEnvelopeFormat) ||
                 string.IsNullOrEmpty(envelope.PayloadJson) ||
                 string.IsNullOrEmpty(envelope.PayloadSha256Hex))
                 throw new InvalidOperationException("Unsupported canonical save envelope.");
@@ -1379,10 +1473,16 @@ public sealed class CanonicalPhysicalTacticalSession
 
         var integratedTreasury = envelope.Version is
             IntegratedDormantTreasuryEnvelopeFormat or
-            MaterialWithTreasuryEnvelopeFormat;
+            MaterialWithTreasuryEnvelopeFormat or
+            MaterialAssemblyWithTreasuryEnvelopeFormat;
+        var assemblyEnvelope = envelope.Version is
+            MaterialAssemblyEnvelopeFormat or
+            MaterialAssemblyWithTreasuryEnvelopeFormat;
         var materialEnvelope = envelope.Version is
             MaterialDispositionEnvelopeFormat or
-            MaterialWithTreasuryEnvelopeFormat;
+            MaterialWithTreasuryEnvelopeFormat or
+            MaterialAssemblyEnvelopeFormat or
+            MaterialAssemblyWithTreasuryEnvelopeFormat;
         if ((envelope.Version == TransportAuthorityEnvelopeFormat
                 ? payload.Version < SaveFormat || payload.Version > AutomaticCampSaveFormat ||
                   payload.TransportCommands is not { Length: > 0 }
@@ -1393,7 +1493,9 @@ public sealed class CanonicalPhysicalTacticalSession
                 : payload.Version != envelope.Version ||
                   payload.TransportCommands is not null) ||
             (materialEnvelope != (payload.Actions?.Any(
-                a => a?.Kind == "material_use") == true)) ||
+                a => a?.Kind is "material_use" or "assemble_primitive") == true)) ||
+            (assemblyEnvelope != (payload.Actions?.Any(
+                a => a?.Kind == "assemble_primitive") == true)) ||
             (integratedTreasury != (payload.TreasuryReservation is not null)) ||
             (integratedTreasury &&
              (payload.Actions is null ||
@@ -1551,6 +1653,17 @@ public sealed class CanonicalPhysicalTacticalSession
                     new CommodityId(action.MaterialCommodity),
                     (CanonicalMaterialDispositionKind)action.MaterialUseKind,
                     action.MaterialRaw);
+            else if (action.Kind == "assemble_primitive" && assemblyEnvelope &&
+                     action.Source == action.Destination &&
+                     action.Source != 0UL && action.FromJob == 0 &&
+                     action.ToJob == 0 && action.Workers == 0UL &&
+                     action.FoodRaw == 0UL && action.MaterialCommodity == 0U &&
+                     action.MaterialUseKind == 0 && action.MaterialRaw == 0UL)
+                game.AssemblePrimitiveMaterialFrame(
+                    new PhysicalTacticalTileId(game._fine,
+                        new StrategicCellId(action.Source)),
+                    (CanonicalPrimitiveAssemblyKind)action.AssemblyKind,
+                    action.AssemblyWoodRaw, action.AssemblyStoneRaw);
             else
                 throw new InvalidOperationException("Unsupported canonical action.");
 
