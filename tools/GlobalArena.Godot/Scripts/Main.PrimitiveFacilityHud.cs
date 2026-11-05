@@ -7,12 +7,16 @@ using Godot;
 namespace GlobalArena.Godot;
 
 /// <summary>
-/// GA-ECON-REBASE-12: the first user-visible end-to-end worksite cockpit.
-/// Commands use ONLY the live canonical session. The tactical map stays
-/// full-size; this compact panel lives in the existing scrolling sidebar.
+/// GA-ECON-CORRECTION-01: legacy WorkShelter is a LABORATORY FIXTURE,
+/// not a player-approved economic building. Keep its historic canonical
+/// data, save/replay and QA harness, but reveal these commands only when
+/// the player explicitly expands the diagnostic panel. Never describe
+/// the prototype as a production improvement in normal gameplay.
 /// </summary>
 public partial class Main
 {
+    private VBoxContainer? _worksiteCockpit;
+    private CheckBox? _worksiteMapDebugToggle;
     private Label? _worksitePulse;
     private Label? _worksiteDetails;
     private SpinBox? _worksiteWood;
@@ -36,28 +40,41 @@ public partial class Main
         _worksitePulse = new Label
         {
             Name = "GAWorksitePulse",
-            Text = "OBRAS | trabalho primitivo sem infraestrutura obrigatória",
+            Text = "LAB · estruturas experimentais sem função econômica aprovada",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         _worksitePulse.AddThemeColorOverride("font_color", new Color("#d9c27d"));
         overview.AddChild(_worksitePulse);
 
         var root = new VBoxContainer { Name = "GAWorksiteCockpit" };
+        _worksiteCockpit = root;
         root.AddThemeConstantOverride("separation", 3);
         lab.AddChild(root);
         var title = new Label
         {
             Name = "GAWorksiteTitle",
-            Text = "CONSTRUÇÃO E PRODUÇÃO · TILE SELECIONADO",
+            Text = "LABORATÓRIO · CONSTRUÇÃO EXPERIMENTAL",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         title.AddThemeColorOverride("font_color", new Color("#d4e9f3"));
         root.AddChild(title);
+        var experimentalWarning = new Label
+        {
+            Name = "GAWorksitePrototypeWarning",
+            Text = "WorkShelter é um objeto técnico de teste, NÃO uma " +
+                   "construção aprovada para a jogabilidade. Consome materiais " +
+                   "e trabalho, mas não oferece ganho econômico. Não o utilize " +
+                   "como instalação produtiva real.",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        experimentalWarning.AddThemeColorOverride("font_color",
+            new Color("#e5b47a"));
+        root.AddChild(experimentalWarning);
         var legend = new Label
         {
             Name = "GAWorksiteMapLegend",
-            Text = "NO MAPA · ocre: materiais | âmbar: obra | " +
-                   "cinza: concluída | verde: operando",
+            Text = "DEBUG VISUAL (opcional): ocre = materiais | âmbar = obra | " +
+                   "cinza = concluída | verde = operadores de teste",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         legend.AddThemeColorOverride("font_color", new Color("#b9c5c7"));
@@ -112,7 +129,7 @@ public partial class Main
         _worksiteAssemble = new Button
         {
             Name = "GAWorksiteAssemble",
-            Text = "1 · MONTAR",
+            Text = "LAB 1 · MONTAR",
             SizeFlagsHorizontal = SizeFlags.ExpandFill
         };
         _worksiteAssemble.Pressed += AssembleWorksiteFromLocalMaterials;
@@ -120,7 +137,7 @@ public partial class Main
         _worksiteBuild = new Button
         {
             Name = "GAWorksiteBuild",
-            Text = "2 · CONSTRUIR",
+            Text = "LAB 2 · CONSTRUIR",
             SizeFlagsHorizontal = SizeFlags.ExpandFill
         };
         _worksiteBuild.Pressed += StartWorksiteConstruction;
@@ -132,7 +149,7 @@ public partial class Main
         _worksiteOperate = new Button
         {
             Name = "GAWorksiteOperate",
-            Text = "3 · OPERAR",
+            Text = "LAB 3 · OPERAR",
             SizeFlagsHorizontal = SizeFlags.ExpandFill
         };
         _worksiteOperate.Pressed += OperateCompletedWorksite;
@@ -169,7 +186,7 @@ public partial class Main
 
         if (!TryGetSelectedWorksite(out var selected) || selected is null)
         {
-            _worksitePulse.Text = "OBRAS | aguardando sessão e tile ocupado";
+            _worksitePulse.Text = "LAB · aguardando tile e dados de teste";
             _worksiteAssemble.Disabled = true;
             _worksiteBuild.Disabled = true;
             _worksiteOperate.Disabled = true;
@@ -198,14 +215,14 @@ public partial class Main
                 $"EM CONSTRUÇÃO: {v.ConstructionWorkers} pessoa(s) " +
                 "sem produção normal até o próximo ciclo econômico",
             PrimitiveWorksiteStage.BuiltUnstaffed =>
-                $"ABRIGO CONCLUÍDO no turno {v.CompletedTurn}: operação parada",
+                $"PROTÓTIPO CONCLUÍDO no turno {v.CompletedTurn}: sem função econômica",
             PrimitiveWorksiteStage.Operating =>
-                $"ABRIGO OPERANDO: {v.OperatingWorkers} trabalhador(es) real(is)",
+                $"PROTÓTIPO OPERADO: {v.OperatingWorkers} trabalhador(es) real(is), sem bônus",
             _ => "Status indisponível"
         };
 
         _worksitePulse.Text =
-            $"INSTALAÇÕES {v.TotalWorldFacilities} | EM OBRA " +
+            $"LAB (NÃO É JOGABILIDADE) | PROTÓTIPOS {v.TotalWorldFacilities} | EM OBRA " +
             $"{v.TotalBuildingFacilities} | OPERANDO {v.TotalOperatingFacilities}\n" +
             $"TILE {v.Tile.FineStrategicCellId.Value} · {v.Activity}: {stage}";
 
@@ -218,14 +235,16 @@ public partial class Main
                   $"pedra {WorksiteRaw(v.IncorporatedStoneRaw)} " +
                   "(descontado em MONTAR; CONSTRUIR não desconta novamente).\n"
                 : "MONTAR desconta madeira/pedra; CONSTRUIR reserva pessoas, não materiais.\n") +
-            "1 · Montar → 2 · Construir (1 ciclo) → 3 · Operar.\n" +
+            "TESTE: montar → construir (1 ciclo) → operar. " +
+            "Não é uma receita de construção aprovada.\n" +
             (v.HasFreshAssistedOutput
                 ? $"ÚLTIMO CICLO EXECUTADO, turno {v.LastCycleMovementTurn}: " +
                   $"produção atribuída ao abrigo {WorksiteRaw(v.LastAssistedProducedRaw)} " +
                   "(já incluída na produção total)."
                 : $"Último ciclo global: turno {v.LastCycleMovementTurn}; " +
                   "produção assistida ainda não comprovada neste fechamento.") +
-            "\nSEM bônus de produtividade ou dinheiro novo.";
+            "\nPROTÓTIPO SEM VALOR ECONÔMICO: não há bônus, " +
+            "edifício aprovado ou dinheiro novo.";
 
         var woodRaw = RawFromWorksiteInput(_worksiteWood);
         var stoneRaw = RawFromWorksiteInput(_worksiteStone);
@@ -248,6 +267,11 @@ public partial class Main
             CanonicalPrimitiveWorksiteTileView> operation,
         string success)
     {
+        // Even a programmatically emitted button press must not perform
+        // prototype construction while the diagnostic UI is collapsed.
+        if (_workerLabAdvancedPanel is null ||
+            !_workerLabAdvancedPanel.Visible)
+            return;
         if (_canonicalPhysicalLab is null || _canonicalSession is null ||
             _worksiteDetails is null ||
             !TryGetSelectedWorksite(out var view) || view is null) return;

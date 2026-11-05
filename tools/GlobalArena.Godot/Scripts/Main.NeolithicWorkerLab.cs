@@ -265,8 +265,9 @@ public partial class Main
         _economicCycleSummary.AddThemeColorOverride("font_color", new Color("#d4e9f3"));
         lab.AddChild(_economicCycleSummary);
 
-        // The full physical worksite lifecycle is visible in the existing
-        // compact scrolling tactical sidebar, without shrinking the map.
+        // Legacy WorkShelter fixture is preserved for save/replay and
+        // economic integrity tests, but is NEVER a default gameplay command.
+        // Its controls will be moved under the collapsed diagnostic panel.
         InitializePrimitiveFacilityHud(overview, lab);
 
         var persistence = new HBoxContainer();
@@ -300,10 +301,20 @@ public partial class Main
         // tactical cockpit displays comparable canonical metrics.
         warning.Reparent(_workerLabAdvancedPanel);
         _economicCycleSummary?.Reparent(_workerLabAdvancedPanel);
+        _worksitePulse?.Reparent(_workerLabAdvancedPanel);
+        _worksiteCockpit?.Reparent(_workerLabAdvancedPanel);
         diagnosticsToggle.Toggled += expanded =>
         {
             if (_workerLabAdvancedPanel is not null)
                 _workerLabAdvancedPanel.Visible = expanded;
+            if (!expanded)
+            {
+                // Never leave a prototype building displayed as an ordinary
+                // live-production facility after closing technical diagnostics.
+                if (_worksiteMapDebugToggle is not null)
+                    _worksiteMapDebugToggle.ButtonPressed = false;
+                _tacticalPreview?.SetExperimentalWorksiteVisualsVisible(false);
+            }
             diagnosticsToggle.Text = expanded
                 ? "OCULTAR DETALHES E FERRAMENTAS DE LABORATÓRIO"
                 : "MOSTRAR DETALHES E FERRAMENTAS DE LABORATÓRIO";
@@ -444,6 +455,15 @@ public partial class Main
         workerBadgeDebug.Toggled += enabled =>
             _tacticalPreview?.SetLegacyWorkerBadgesVisible(enabled);
         _workerLabAdvancedPanel.AddChild(workerBadgeDebug);
+        _worksiteMapDebugToggle = new CheckBox
+        {
+            Name = "GAWorksiteExperimentalOverlayToggle",
+            Text = "LAB: mostrar protótipos WorkShelter no mapa (sem utilidade econômica)",
+            ButtonPressed = false
+        };
+        _worksiteMapDebugToggle.Toggled += enabled =>
+            _tacticalPreview?.SetExperimentalWorksiteVisualsVisible(enabled);
+        _workerLabAdvancedPanel.AddChild(_worksiteMapDebugToggle);
         _workerLabHover = new Label { Text = "Sob o cursor: —" };
         _workerLabAdvancedPanel.AddChild(_workerLabHover);
 
