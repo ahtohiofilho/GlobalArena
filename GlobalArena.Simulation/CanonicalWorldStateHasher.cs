@@ -21,6 +21,9 @@ public sealed class CanonicalWorldStateHasher
     public const uint AutomaticJourneyCampFormatVersion = 17U;
     // Opt-in treasury reserve: never changes hashes of worlds without it.
     public const uint DormantTreasuryReservationHashFormatVersion = 19U;
+    // v27 opt-in canonical physical facility hash (with or without treasury).
+    // Existing worlds with no facility retain their exact v8-v19 digests.
+    public const uint PrimitiveFacilityHashFormatVersion = 27U;
 
     private static readonly byte[] Magic =
     {
@@ -36,24 +39,55 @@ public sealed class CanonicalWorldStateHasher
         var baseline = worldState.PhysicalEconomy is null
             ? ComputeLegacyV8(worldState)
             : ComputePhysicalV9(worldState);
+
         var reservation = worldState.TreasuryReservation;
-        if (reservation is null) return baseline;
-        if (worldState.PhysicalEconomy is null || worldState.WorldBinding is null)
-            throw new InvalidOperationException(
-                "VS101 treasury reservation requires a bound physical world.");
-        reservation.RequireWorld(worldState.WorldBinding);
-        using var h = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        h.AppendData(Magic);
-        AppendUInt32(h, DormantTreasuryReservationHashFormatVersion);
-        AppendUInt32(h, 101U); // dedicated field tag
-        h.AppendData(Convert.FromHexString(baseline.HexDigest));
-        h.AppendData(Convert.FromHexString(reservation.WorldSignatureSha256Hex));
-        AppendUInt32(h, reservation.Version);
-        AppendUInt64(h, reservation.SpendableBalanceMinorUnits);
-        AppendUInt32(h, checked((uint)reservation.MonetaryReceiptCount));
+        if (reservation is not null)
+        {
+            if (worldState.PhysicalEconomy is null || worldState.WorldBinding is null)
+                throw new InvalidOperationException(
+                    "VS101 treasury reservation requires a bound physical world.");
+            reservation.RequireWorld(worldState.WorldBinding);
+            using var treasury = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+            treasury.AppendData(Magic);
+            AppendUInt32(treasury, DormantTreasuryReservationHashFormatVersion);
+            AppendUInt32(treasury, 101U);
+            treasury.AppendData(Convert.FromHexString(baseline.HexDigest));
+            treasury.AppendData(Convert.FromHexString(reservation.WorldSignatureSha256Hex));
+            AppendUInt32(treasury, reservation.Version);
+            AppendUInt64(treasury, reservation.SpendableBalanceMinorUnits);
+            AppendUInt32(treasury, checked((uint)reservation.MonetaryReceiptCount));
+            baseline = new WorldStateHash(
+                DormantTreasuryReservationHashFormatVersion,
+                Convert.ToHexString(treasury.GetHashAndReset()));
+        }
+
+        var facilities = worldState.PhysicalEconomy?.PrimitiveFacilities;
+        if (facilities is null || facilities.Count == 0)
+            return baseline;
+
+        // A new, separate hash domain authenticates each installed physical
+        // work shelter and its reserved/completed labor time. The previous
+        // world and optional treasury digest are bound without altering
+        // historic hash formats or save files.
+        using var assets = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        assets.AppendData(Magic);
+        AppendUInt32(assets, PrimitiveFacilityHashFormatVersion);
+        AppendUInt32(assets, 102U);
+        assets.AppendData(Convert.FromHexString(baseline.HexDigest));
+        AppendUInt32(assets, checked((uint)facilities.Count));
+        foreach (var site in facilities)
+        {
+            AppendUInt32(assets, checked((uint)site.AssemblyActionOrdinal));
+            AppendUInt64(assets, site.Tile.FineStrategicCellId.Value);
+            AppendUInt32(assets, (uint)site.Activity);
+            AppendUInt32(assets, (uint)site.Kind);
+            AppendUInt64(assets, site.CommittedWorkers);
+            AppendUInt64(assets, site.StartedMovementTurn);
+            AppendUInt64(assets, site.CompletedMovementTurn);
+        }
         return new WorldStateHash(
-            DormantTreasuryReservationHashFormatVersion,
-            Convert.ToHexString(h.GetHashAndReset()));
+            PrimitiveFacilityHashFormatVersion,
+            Convert.ToHexString(assets.GetHashAndReset()));
     }
 
     private static WorldStateHash ComputeLegacyV8(WorldState worldState)

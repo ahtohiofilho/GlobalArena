@@ -61,6 +61,12 @@ public sealed class PhysicalTacticalEconomyRuntimeState
     public IReadOnlyList<PhysicalCommodityStock> Stocks { get; }
     public IReadOnlyList<PhysicalEconomicCycle> Cycles { get; }
 
+    /// <summary>
+    /// Optional canonical built-asset domain. Empty in all historical
+    /// worlds; presence opts into hash v27 without altering legacy bytes.
+    /// </summary>
+    public IReadOnlyList<PhysicalPrimitiveFacility> PrimitiveFacilities { get; }
+
     public PhysicalTacticalEconomyRuntimeState(
         RuntimeWorldBinding coarseWorldBinding,
         GoldbergParameters coarseParameters,
@@ -78,7 +84,8 @@ public sealed class PhysicalTacticalEconomyRuntimeState
         IEnumerable<PhysicalLongDistanceTransit>? longTrips = null,
         bool remoteRoutingEnabled = false,
         IEnumerable<PhysicalJourneyFoodLedger>? travelFoodLedgers = null,
-        IEnumerable<PhysicalJourneyCampState>? journeyCampStates = null)
+        IEnumerable<PhysicalJourneyCampState>? journeyCampStates = null,
+        IEnumerable<PhysicalPrimitiveFacility>? primitiveFacilities = null)
     {
         ArgumentNullException.ThrowIfNull(coarseWorldBinding);
         ArgumentNullException.ThrowIfNull(allocations);
@@ -268,6 +275,44 @@ public sealed class PhysicalTacticalEconomyRuntimeState
                 throw new ArgumentException("Invalid or duplicate physical commodity stock.");
         }
 
+        var facilities = (primitiveFacilities ??
+            Array.Empty<PhysicalPrimitiveFacility>())
+            .OrderBy(x => x?.AssemblyActionOrdinal ?? 0).ToArray();
+        var seenAssemblies = new HashSet<int>();
+        var seenWorkRoles = new HashSet<(PhysicalTacticalTileId, EconomicActivityKind)>();
+        var reservations = new Dictionary<(PhysicalTacticalTileId, EconomicActivityKind), ulong>();
+        foreach (var facility in facilities)
+        {
+            if (facility is null || facility.AssemblyActionOrdinal <= 0 ||
+                facility.Kind != PhysicalPrimitiveFacilityKind.WorkShelter ||
+                facility.CommittedWorkers == 0UL ||
+                facility.Activity is not (EconomicActivityKind.Agriculture or
+                    EconomicActivityKind.Forestry or EconomicActivityKind.Mining) ||
+                facility.StartedMovementTurn > movementTurn ||
+                (facility.IsOperational &&
+                    (facility.CompletedMovementTurn <= facility.StartedMovementTurn ||
+                     facility.CompletedMovementTurn > movementTurn)) ||
+                !seenAssemblies.Add(facility.AssemblyActionOrdinal) ||
+                !seenWorkRoles.Add((facility.Tile, facility.Activity)))
+                throw new ArgumentException("Invalid or duplicate canonical primitive facility.");
+            ValidateTile(facility.Tile, fineParameters);
+            if (!facility.IsOperational)
+            {
+                var key = (facility.Tile, facility.Activity);
+                reservations[key] = checked(
+                    reservations.GetValueOrDefault(key) + facility.CommittedWorkers);
+            }
+        }
+        foreach (var reservation in reservations)
+        {
+            var workers = sortedAllocations
+                .FirstOrDefault(x => x.TileId == reservation.Key.Item1 &&
+                    x.Activity == reservation.Key.Item2)?.Workers ?? 0UL;
+            if (workers < reservation.Value)
+                throw new InvalidOperationException(
+                    "Construction workers are reserved exclusively from actual allocated labor.");
+        }
+
         var orderedCycles = cycles.ToArray();
         if (orderedCycles.Any(x => x is null))
             throw new ArgumentException("Economic cycles cannot contain null records.");
@@ -297,6 +342,7 @@ public sealed class PhysicalTacticalEconomyRuntimeState
         Allocations = Array.AsReadOnly(sortedAllocations);
         Stocks = Array.AsReadOnly(sortedStocks);
         Cycles = Array.AsReadOnly(orderedCycles);
+        PrimitiveFacilities = Array.AsReadOnly(facilities);
     }
 
     private static void ValidateTile(PhysicalTacticalTileId tile, GoldbergParameters fine)

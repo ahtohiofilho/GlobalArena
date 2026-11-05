@@ -32,12 +32,19 @@ public sealed record CanonicalPhysicalAction(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     int CommissionAssemblyOrdinal = 0,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    byte CommissionActivity = 0);
+    byte CommissionActivity = 0,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    int FacilityAssemblyOrdinal = 0,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    byte FacilityActivity = 0);
 
 public sealed record CanonicalPhysicalWorkerSaveRow(ulong Tile, byte Job, ulong Workers);
 public sealed record CanonicalPhysicalStockSaveRow(ulong Tile, uint Commodity, ulong Raw);
 public sealed record CanonicalPhysicalCycleSaveRow(
     ulong MovementTurn, ulong ProducedRaw, ulong FoodConsumedRaw, ulong FoodUnmetRaw);
+public sealed record CanonicalPrimitiveFacilitySaveRow(
+    int AssemblyOrdinal, ulong Tile, byte Activity, byte Kind,
+    ulong CommittedWorkers, ulong StartedTurn, ulong CompletedTurn);
 
 public sealed record CanonicalFoodCashAccountSaveRow(ulong Tile, ulong Household, ulong Producer);
 public sealed record CanonicalFoodCashReceiptSaveRow(ulong Turn, ulong Tile, ulong FoodRaw, ulong Price, ulong Paid);
@@ -106,7 +113,9 @@ public sealed record CanonicalPhysicalSavePayload(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     CanonicalTransportCommand[]? TransportCommands = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    CanonicalDormantTreasuryIntegratedSaveRow? TreasuryReservation = null);
+    CanonicalDormantTreasuryIntegratedSaveRow? TreasuryReservation = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    CanonicalPrimitiveFacilitySaveRow[]? PrimitiveFacilities = null);
 
 public sealed record CanonicalPhysicalSaveEnvelope(
     int Version, string PayloadJson, string PayloadSha256Hex);
@@ -143,6 +152,9 @@ public sealed class CanonicalPhysicalTacticalSession
     // 26 = same with dormant integrated treasury, regardless of activation order.
     public const int PrimitiveWorkSiteEnvelopeFormat = 25;
     public const int PrimitiveWorkSiteWithTreasuryEnvelopeFormat = 26;
+    // v27/v28 canonical physical construction and persistent installation.
+    public const int PrimitiveFacilityEnvelopeFormat = 27;
+    public const int PrimitiveFacilityWithTreasuryEnvelopeFormat = 28;
     public const int MaximumActions = 100_000;
     private const int MaximumSaveBytes = 4_000_000;
     public const ulong FoodDemandRawPerWorker = 500_000UL;
@@ -265,6 +277,23 @@ public sealed class CanonicalPhysicalTacticalSession
     public IReadOnlyList<CanonicalCommissionedPrimitiveWorkSite>
         CommissionedPrimitiveWorkSites =>
         Array.AsReadOnly(_commissionedPrimitiveSites.ToArray());
+
+    public IReadOnlyList<PhysicalPrimitiveFacility> PrimitiveFacilities =>
+        State.PrimitiveFacilities;
+
+    /// <summary>
+    /// Committed labor is still local population and food demand, but is
+    /// unavailable to productive work until the next economic settlement.
+    /// </summary>
+    public ulong ConstructionWorkersAt(PhysicalTacticalTileId tile,
+        EconomicActivityKind activity)
+    {
+        ValidateTile(tile);
+        ValidateJob(activity);
+        return State.PrimitiveFacilities
+            .Where(x => x.Tile == tile && x.Activity == activity)
+            .Aggregate(0UL, (sum, x) => checked(sum + x.ReservedWorkers));
+    }
 
     public bool IsCommissionedWorkSiteCurrentlyStaffed(
         CanonicalCommissionedPrimitiveWorkSite site)
@@ -559,7 +588,9 @@ public sealed class CanonicalPhysicalTacticalSession
                 EconomicActivityKind.Agriculture);
             if (rate > 0L)
                 projectedCrop = checked(projectedCrop +
-                    checked(allocation.Workers * (ulong)rate));
+                    checked((allocation.Workers -
+                        ConstructionWorkersAt(tile, allocation.Activity)) *
+                        (ulong)rate));
         }
 
         return new EconomicLocalFoodMarketQuoteResolver().Resolve(
@@ -648,7 +679,8 @@ public sealed class CanonicalPhysicalTacticalSession
             checked(current.WorkerRevision + 1UL),
             nextAllocations.Select(x => new PhysicalWorkerAllocation(
                 x.Key.Item1, x.Key.Item2, x.Value)),
-            current.Stocks, current.Cycles, _cadenceMode, _geographyMode, nextCash);
+            current.Stocks, current.Cycles, _cadenceMode, _geographyMode, nextCash,
+            primitiveFacilities: current.PrimitiveFacilities);
         if (next.TotalWorkers != current.TotalWorkers)
             throw new InvalidOperationException("Worker conservation failed.");
 
@@ -695,7 +727,8 @@ public sealed class CanonicalPhysicalTacticalSession
             current.Stocks, current.Cycles, _cadenceMode, _geographyMode,
             current.FoodCash, _movementMode, current.Transits,
             current.LongTrips, current.RemoteRoutingEnabled,
-            current.TravelFoodLedgers, current.JourneyCampStates);
+            current.TravelFoodLedgers, current.JourneyCampStates,
+            current.PrimitiveFacilities);
         if (next.TotalWorkers != current.TotalWorkers ||
             next.WorkersInTransit != current.WorkersInTransit)
             throw new InvalidOperationException("Local reallocation violated worker conservation.");
@@ -745,7 +778,8 @@ public sealed class CanonicalPhysicalTacticalSession
             current.Stocks, current.Cycles, _cadenceMode, _geographyMode,
             current.FoodCash, _movementMode, current.Transits.Append(order),
             current.LongTrips, current.RemoteRoutingEnabled,
-            current.TravelFoodLedgers, current.JourneyCampStates);
+            current.TravelFoodLedgers, current.JourneyCampStates,
+            current.PrimitiveFacilities);
         if (next.TotalWorkers != current.TotalWorkers)
             throw new InvalidOperationException("Timed departure did not conserve workers.");
         Commit(next, "depart", source.FineStrategicCellId.Value,
@@ -797,7 +831,8 @@ public sealed class CanonicalPhysicalTacticalSession
             current.FoodCash, _movementMode, current.Transits,
             current.LongTrips.Append(journey), remoteRoutingEnabled: true,
             travelFoodLedgers: current.TravelFoodLedgers,
-            journeyCampStates: current.JourneyCampStates);
+            journeyCampStates: current.JourneyCampStates,
+            primitiveFacilities: current.PrimitiveFacilities);
         if (next.TotalWorkers != current.TotalWorkers)
             throw new InvalidOperationException("Remote departure violated workforce conservation.");
         Commit(next, "depart_remote", source.FineStrategicCellId.Value,
@@ -913,7 +948,8 @@ public sealed class CanonicalPhysicalTacticalSession
                 ? (current.JourneyCampStates ??
                     Array.Empty<PhysicalJourneyCampState>())
                     .Append(new PhysicalJourneyCampState(orderId, 0UL, 0UL, 0UL))
-                : current.JourneyCampStates);
+                : current.JourneyCampStates,
+            current.PrimitiveFacilities);
         if (next.TotalWorkers != current.TotalWorkers)
             throw new InvalidOperationException("Provisioned departure lost workers.");
         // Transfer custody rather than fabricating an additional food lot.
@@ -967,7 +1003,8 @@ public sealed class CanonicalPhysicalTacticalSession
             current.Cycles, _cadenceMode, _geographyMode,
             current.FoodCash, _movementMode, current.Transits,
             current.LongTrips, current.RemoteRoutingEnabled,
-            current.TravelFoodLedgers, current.JourneyCampStates);
+            current.TravelFoodLedgers, current.JourneyCampStates,
+            current.PrimitiveFacilities);
 
         // Pre-commit physical conservation; no partially applied debit.
         var stagedLots = _materialLots.Clone();
@@ -1030,7 +1067,8 @@ public sealed class CanonicalPhysicalTacticalSession
             current.Cycles, _cadenceMode, _geographyMode,
             current.FoodCash, _movementMode, current.Transits,
             current.LongTrips, current.RemoteRoutingEnabled,
-            current.TravelFoodLedgers, current.JourneyCampStates);
+            current.TravelFoodLedgers, current.JourneyCampStates,
+            current.PrimitiveFacilities);
 
         var staged = _materialLots.Clone();
         var attributedWood = staged.ConsumeLocalMaterial(
@@ -1142,6 +1180,64 @@ public sealed class CanonicalPhysicalTacticalSession
             eventRow.BeforeHashHex, eventRow.AfterHashHex);
         _commissionedPrimitiveSites.Add(result);
         return result;
+    }
+
+    /// <summary>
+    /// Begin a physically persistent work shelter using an ALREADY debited
+    /// wood/stone assembly. A real worker reservation prevents normal output
+    /// for one subsequent economic close; the structure then becomes active
+    /// without adding worker headcount or uncalibrated production bonuses.
+    /// </summary>
+    public PhysicalPrimitiveFacility StartPrimitiveFacility(
+        PhysicalTacticalTileId tile, int assemblyActionOrdinal,
+        EconomicActivityKind activity, ulong committedWorkers)
+    {
+        EnsureJournalCapacity();
+        ValidateTile(tile);
+        ValidateJob(activity);
+        if (committedWorkers == 0UL || assemblyActionOrdinal <= 0)
+            throw new ArgumentOutOfRangeException(nameof(committedWorkers));
+
+        var frame = _materialAssemblies.FirstOrDefault(x =>
+            x.ActionOrdinal == assemblyActionOrdinal &&
+            x.FineTile == tile.FineStrategicCellId.Value);
+        if (frame is null)
+            throw new InvalidOperationException(
+                "A work shelter needs actual physically incorporated wood and stone.");
+        var current = State;
+        if (current.PrimitiveFacilities.Any(x =>
+            x.AssemblyActionOrdinal == assemblyActionOrdinal ||
+            (x.Tile == tile && x.Activity == activity)))
+            throw new InvalidOperationException(
+                "Physical assembly and tile work role cannot be commissioned twice.");
+
+        var allocated = current.Allocations.FirstOrDefault(x =>
+            x.TileId == tile && x.Activity == activity)?.Workers ?? 0UL;
+        var reserved = ConstructionWorkersAt(tile, activity);
+        if (allocated < reserved ||
+            allocated - reserved < committedWorkers)
+            throw new InvalidOperationException(
+                "No exclusive resident workers remain for physical construction.");
+
+        var facility = new PhysicalPrimitiveFacility(
+            assemblyActionOrdinal, tile, activity,
+            PhysicalPrimitiveFacilityKind.WorkShelter,
+            committedWorkers, current.MovementTurn, 0UL);
+        var next = new PhysicalTacticalEconomyRuntimeState(
+            current.CoarseWorldBinding, _coarse, _fine,
+            current.MovementTurn, current.WorkerRevision,
+            current.Allocations, current.Stocks, current.Cycles,
+            _cadenceMode, _geographyMode, current.FoodCash,
+            _movementMode, current.Transits, current.LongTrips,
+            current.RemoteRoutingEnabled, current.TravelFoodLedgers,
+            current.JourneyCampStates,
+            current.PrimitiveFacilities.Append(facility));
+        Commit(next, "start_primitive_facility",
+            tile.FineStrategicCellId.Value, tile.FineStrategicCellId.Value,
+            0, 0, committedWorkers,
+            facilityAssemblyOrdinal: assemblyActionOrdinal,
+            facilityActivity: (byte)activity);
+        return facility;
     }
 
     /// <summary>
@@ -1327,7 +1423,14 @@ public sealed class CanonicalPhysicalTacticalSession
                     _ => throw new InvalidOperationException("Unsupported productive activity.")
                 };
                 if (rawRate <= 0L) continue;
-                var output = checked(allocation.Workers * (ulong)rawRate);
+                // A construction crew still consumes food as residents but
+                // cannot produce its normal goods in the same economic cycle.
+                var reserved = current.PrimitiveFacilities
+                    .Where(x => !x.IsOperational &&
+                        x.Tile == allocation.TileId && x.Activity == allocation.Activity)
+                    .Aggregate(0UL, (sum, x) => checked(sum + x.CommittedWorkers));
+                var effectiveWorkers = checked(allocation.Workers - reserved);
+                var output = checked(effectiveWorkers * (ulong)rawRate);
                 var key = (allocation.TileId, commodity);
                 stocks.TryGetValue(key, out var existing);
                 stocks[key] = checked(existing + output);
@@ -1448,6 +1551,15 @@ public sealed class CanonicalPhysicalTacticalSession
                 cashReceipts.OrderBy(x => x.MovementTurn)
                     .ThenBy(x => x.Tile.FineStrategicCellId.Value), _fine, turn);
 
+        // Complete the project only at a REAL later economic settlement.
+        // Workers produced no goods during the construction settlement and
+        // resume their original activity from the following cycle.
+        var nextFacilities = current.PrimitiveFacilities.Select(x =>
+            cycle is not null && !x.IsOperational &&
+            x.StartedMovementTurn < turn
+                ? x with { CompletedMovementTurn = turn }
+                : x).ToArray();
+
         var next = new PhysicalTacticalEconomyRuntimeState(
             current.CoarseWorldBinding, _coarse, _fine, turn, nextWorkerRevision,
             effectiveAllocations,
@@ -1456,7 +1568,7 @@ public sealed class CanonicalPhysicalTacticalSession
             cycles, _cadenceMode, _geographyMode, cash,
             _movementMode, pendingTransits, pendingLongTrips,
             current.RemoteRoutingEnabled, foodLedgers?.Values,
-            campStates?.Values);
+            campStates?.Values, nextFacilities);
         if (next.TotalWorkers != current.TotalWorkers)
             throw new InvalidOperationException("Timed arrival did not conserve workers.");
         CanonicalPhysicalLotLineageTracker? stagedCycleLots = null;
@@ -1490,7 +1602,8 @@ public sealed class CanonicalPhysicalTacticalSession
         uint materialCommodity = 0U, byte materialUseKind = 0,
         ulong materialRaw = 0UL, byte assemblyKind = 0,
         ulong assemblyWoodRaw = 0UL, ulong assemblyStoneRaw = 0UL,
-        int commissionAssemblyOrdinal = 0, byte commissionActivity = 0)
+        int commissionAssemblyOrdinal = 0, byte commissionActivity = 0,
+        int facilityAssemblyOrdinal = 0, byte facilityActivity = 0)
     {
         var before = CheckedSnapshot;
         var beforeHash = _hasher.Compute(before);
@@ -1501,7 +1614,8 @@ public sealed class CanonicalPhysicalTacticalSession
             staged.Revision, afterHash.HexDigest, foodRaw,
             materialCommodity, materialUseKind, materialRaw,
             assemblyKind, assemblyWoodRaw, assemblyStoneRaw,
-            commissionAssemblyOrdinal, commissionActivity);
+            commissionAssemblyOrdinal, commissionActivity,
+            facilityAssemblyOrdinal, facilityActivity);
         Game.AcceptSnapshotIfCurrent(before, staged);
         _lastCommittedSnapshot = staged;
         _journal.Add(action);
@@ -1545,7 +1659,11 @@ public sealed class CanonicalPhysicalTacticalSession
         var digest = Convert.ToHexString(
             SHA256.HashData(Encoding.UTF8.GetBytes(payloadJson)));
         var json = JsonSerializer.Serialize(new CanonicalPhysicalSaveEnvelope(
-            _commissionedPrimitiveSites.Count != 0
+            State.PrimitiveFacilities.Count != 0
+                ? (_treasuryActivationActionCount.HasValue
+                    ? PrimitiveFacilityWithTreasuryEnvelopeFormat
+                    : PrimitiveFacilityEnvelopeFormat)
+                : _commissionedPrimitiveSites.Count != 0
                 ? (_treasuryActivationActionCount.HasValue
                     ? PrimitiveWorkSiteWithTreasuryEnvelopeFormat
                     : PrimitiveWorkSiteEnvelopeFormat)
@@ -1579,7 +1697,7 @@ public sealed class CanonicalPhysicalTacticalSession
         {
             envelope = JsonSerializer.Deserialize<CanonicalPhysicalSaveEnvelope>(json)
                 ?? throw new InvalidOperationException("Missing canonical save envelope.");
-            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat or CashFoodSaveFormat or TimedTransitSaveFormat or BornCivilizationSaveFormat or LongDistanceSaveFormat or PhysicalTravelFoodSaveFormat or AutomaticCampSaveFormat or TransportAuthorityEnvelopeFormat or IntegratedDormantTreasuryEnvelopeFormat or MaterialDispositionEnvelopeFormat or MaterialWithTreasuryEnvelopeFormat or MaterialAssemblyEnvelopeFormat or MaterialAssemblyWithTreasuryEnvelopeFormat or PrimitiveWorkSiteEnvelopeFormat or PrimitiveWorkSiteWithTreasuryEnvelopeFormat) ||
+            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat or CashFoodSaveFormat or TimedTransitSaveFormat or BornCivilizationSaveFormat or LongDistanceSaveFormat or PhysicalTravelFoodSaveFormat or AutomaticCampSaveFormat or TransportAuthorityEnvelopeFormat or IntegratedDormantTreasuryEnvelopeFormat or MaterialDispositionEnvelopeFormat or MaterialWithTreasuryEnvelopeFormat or MaterialAssemblyEnvelopeFormat or MaterialAssemblyWithTreasuryEnvelopeFormat or PrimitiveWorkSiteEnvelopeFormat or PrimitiveWorkSiteWithTreasuryEnvelopeFormat or PrimitiveFacilityEnvelopeFormat or PrimitiveFacilityWithTreasuryEnvelopeFormat) ||
                 string.IsNullOrEmpty(envelope.PayloadJson) ||
                 string.IsNullOrEmpty(envelope.PayloadSha256Hex))
                 throw new InvalidOperationException("Unsupported canonical save envelope.");
@@ -1600,22 +1718,32 @@ public sealed class CanonicalPhysicalTacticalSession
             IntegratedDormantTreasuryEnvelopeFormat or
             MaterialWithTreasuryEnvelopeFormat or
             MaterialAssemblyWithTreasuryEnvelopeFormat or
-            PrimitiveWorkSiteWithTreasuryEnvelopeFormat;
+            PrimitiveWorkSiteWithTreasuryEnvelopeFormat or
+            PrimitiveFacilityWithTreasuryEnvelopeFormat;
+        var facilityEnvelope = envelope.Version is
+            PrimitiveFacilityEnvelopeFormat or
+            PrimitiveFacilityWithTreasuryEnvelopeFormat;
         var commissioningEnvelope = envelope.Version is
             PrimitiveWorkSiteEnvelopeFormat or
-            PrimitiveWorkSiteWithTreasuryEnvelopeFormat;
+            PrimitiveWorkSiteWithTreasuryEnvelopeFormat or
+            PrimitiveFacilityEnvelopeFormat or
+            PrimitiveFacilityWithTreasuryEnvelopeFormat;
         var assemblyEnvelope = envelope.Version is
             MaterialAssemblyEnvelopeFormat or
             MaterialAssemblyWithTreasuryEnvelopeFormat or
             PrimitiveWorkSiteEnvelopeFormat or
-            PrimitiveWorkSiteWithTreasuryEnvelopeFormat;
+            PrimitiveWorkSiteWithTreasuryEnvelopeFormat or
+            PrimitiveFacilityEnvelopeFormat or
+            PrimitiveFacilityWithTreasuryEnvelopeFormat;
         var materialEnvelope = envelope.Version is
             MaterialDispositionEnvelopeFormat or
             MaterialWithTreasuryEnvelopeFormat or
             MaterialAssemblyEnvelopeFormat or
             MaterialAssemblyWithTreasuryEnvelopeFormat or
             PrimitiveWorkSiteEnvelopeFormat or
-            PrimitiveWorkSiteWithTreasuryEnvelopeFormat;
+            PrimitiveWorkSiteWithTreasuryEnvelopeFormat or
+            PrimitiveFacilityEnvelopeFormat or
+            PrimitiveFacilityWithTreasuryEnvelopeFormat;
         if ((envelope.Version == TransportAuthorityEnvelopeFormat
                 ? payload.Version < SaveFormat || payload.Version > AutomaticCampSaveFormat ||
                   payload.TransportCommands is not { Length: > 0 }
@@ -1629,8 +1757,14 @@ public sealed class CanonicalPhysicalTacticalSession
                 a => a?.Kind is "material_use" or "assemble_primitive") == true)) ||
             (assemblyEnvelope != (payload.Actions?.Any(
                 a => a?.Kind == "assemble_primitive") == true)) ||
-            (commissioningEnvelope != (payload.Actions?.Any(
-                a => a?.Kind == "commission_primitive") == true)) ||
+            (!commissioningEnvelope && payload.Actions?.Any(
+                a => a?.Kind == "commission_primitive") == true) ||
+            (commissioningEnvelope && !facilityEnvelope &&
+                payload.Actions?.Any(a => a?.Kind == "commission_primitive") != true) ||
+            (facilityEnvelope != (payload.Actions?.Any(
+                a => a?.Kind == "start_primitive_facility") == true)) ||
+            (facilityEnvelope != (payload.PrimitiveFacilities is { Length: > 0 })) ||
+            (payload.PrimitiveFacilities?.Any(x => x is null) == true) ||
             (integratedTreasury != (payload.TreasuryReservation is not null)) ||
             (integratedTreasury &&
              (payload.Actions is null ||
@@ -1809,12 +1943,31 @@ public sealed class CanonicalPhysicalTacticalSession
                      action.FoodRaw == 0UL && action.MaterialCommodity == 0U &&
                      action.MaterialUseKind == 0 && action.MaterialRaw == 0UL &&
                      action.AssemblyKind == 0 && action.AssemblyWoodRaw == 0UL &&
-                     action.AssemblyStoneRaw == 0UL)
+                     action.AssemblyStoneRaw == 0UL &&
+                     action.FacilityAssemblyOrdinal == 0 &&
+                     action.FacilityActivity == 0)
                 game.CommissionPrimitiveWorkSite(
                     new PhysicalTacticalTileId(game._fine,
                         new StrategicCellId(action.Source)),
                     action.CommissionAssemblyOrdinal,
                     (EconomicActivityKind)action.CommissionActivity);
+            else if (action.Kind == "start_primitive_facility" &&
+                     facilityEnvelope &&
+                     action.Source == action.Destination &&
+                     action.Source != 0UL && action.FromJob == 0 &&
+                     action.ToJob == 0 && action.Workers > 0UL &&
+                     action.FoodRaw == 0UL && action.MaterialCommodity == 0U &&
+                     action.MaterialUseKind == 0 && action.MaterialRaw == 0UL &&
+                     action.AssemblyKind == 0 && action.AssemblyWoodRaw == 0UL &&
+                     action.AssemblyStoneRaw == 0UL &&
+                     action.CommissionAssemblyOrdinal == 0 &&
+                     action.CommissionActivity == 0)
+                game.StartPrimitiveFacility(
+                    new PhysicalTacticalTileId(game._fine,
+                        new StrategicCellId(action.Source)),
+                    action.FacilityAssemblyOrdinal,
+                    (EconomicActivityKind)action.FacilityActivity,
+                    action.Workers);
             else
                 throw new InvalidOperationException("Unsupported canonical action.");
 
@@ -1974,7 +2127,16 @@ public sealed class CanonicalPhysicalTacticalSession
                     owned.TreasuryReservation.SpendableBalanceMinorUnits,
                     owned.TreasuryReservation.MonetaryReceiptCount,
                     activatedAfter)
-                : null);
+                : null,
+            state.PrimitiveFacilities.Count == 0
+                ? null
+                : state.PrimitiveFacilities.Select(x =>
+                    new CanonicalPrimitiveFacilitySaveRow(
+                        x.AssemblyActionOrdinal,
+                        x.Tile.FineStrategicCellId.Value,
+                        (byte)x.Activity, (byte)x.Kind,
+                        x.CommittedWorkers, x.StartedMovementTurn,
+                        x.CompletedMovementTurn)).ToArray());
     }
 
     private bool IsWorkableLand(StrategicCellId id) =>
