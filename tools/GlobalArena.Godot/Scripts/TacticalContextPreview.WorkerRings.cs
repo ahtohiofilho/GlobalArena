@@ -127,7 +127,7 @@ public partial class TacticalContextPreview
     // source or destination. A planar hit-test respects camera pan/yaw/zoom.
     private void HoverPhysicalWorkerTile(Vector2 cursor)
     {
-        if (_workerSource is null || _camera is null) return;
+        if (_camera is null) return;
         var origin = _camera.ProjectRayOrigin(cursor);
         var direction = _camera.ProjectRayNormal(cursor);
         if (Math.Abs(direction.Y) < 1e-6f) return;
@@ -144,6 +144,9 @@ public partial class TacticalContextPreview
                     break;
                 }
         }
+        // Always refresh the compact population/activity tooltip on mouse
+        // movement, even when the cursor stays over the same occupied tile.
+        UpdateSettlementHover(next, cursor);
         if (_workerHovered == next) return;
         _workerHovered = next;
         WorkerTileHovered?.Invoke(next);

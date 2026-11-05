@@ -153,6 +153,32 @@ func _run() -> void:
             "VS106 tactical-first or canonical sidebar did not initialize"):
         return
     print("GA_UI_VISUAL_VS106_TACTICAL_FIRST_OK")
+    # GA-UI-SETTLEMENT-GLYPH-01: settled population is pictured as
+    # camera-oblique roof geometry, not three permanently visible job dots.
+    # MeshInstance3D is Node3D, not Control: find via the Node tree.
+    var housing := app.find_child("GASettlementBuiltForms", true, false) as MeshInstance3D
+    var worker_badges := app.find_child("GA_VS16_WorkerGroupMarkers", true, false) as MeshInstance3D
+    var settlement_hover := _node(app, "GASettlementHover")
+    var worker_group_debug := _node(app, "GASettlementLegacyGroupDebug") as CheckBox
+    if not _require(housing != null and housing.visible and
+            housing.mesh != null and housing.mesh.get_surface_count() > 0 and
+            worker_badges != null and not worker_badges.visible and
+            settlement_hover != null and worker_group_debug != null and
+            not worker_group_debug.button_pressed,
+            "settlement built-form marker or hidden legacy job circles missing"):
+        return
+    worker_group_debug.button_pressed = true
+    await process_frame
+    if not _require(worker_badges.visible and
+            worker_badges.mesh != null,
+            "legacy workforce circles diagnostic fallback unavailable"):
+        return
+    worker_group_debug.button_pressed = false
+    await process_frame
+    if not _require(not worker_badges.visible and housing.visible,
+            "normal unified settlement glyph did not replace debug circles"):
+        return
+    print("GA_UI_VISUAL_SETTLEMENT_GLYPH_OK 3d_pitched_roof=true debug_fallback=true")
     if not _assert_layout(app, "tactical-initial"):
         return
     if not await _capture(output_dir.path_join("02-tactical.png"), "tactical-initial"):
@@ -216,5 +242,9 @@ func _run() -> void:
         return
     if not await _capture(output_dir.path_join("03-tactical-return.png"), "returned-tactical"):
         return
-    print("GA_UI_VISUAL_PASS resolution=1600x900 scenes=tactical,strategic,tactical screenshots=3")
+    if not _require(housing.visible and housing.mesh != null and
+            not worker_badges.visible,
+            "settlement glyph disappeared after tactical/strategic round trip"):
+        return
+    print("GA_UI_VISUAL_PASS resolution=1600x900 scenes=tactical,strategic,tactical screenshots=3 settlement_glyphs=true")
     quit(0)

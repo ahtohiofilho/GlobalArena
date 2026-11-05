@@ -499,6 +499,9 @@ public partial class TacticalContextPreview : SubViewportContainer
         };
         terrainRow.AddChild(bordersToggle);
         AddChild(controls);
+        // Compact non-interactive hover card for actual inhabitants. The
+        // cursor ray still selects the canonical physical tile beneath it.
+        InitializeSettlementHover();
         GD.Print("GA_TACTICAL_LOCAL_VIEW_READY orthographic_camera=true pitch_from_horizontal_deg=45 equidistant_default=true framing_rings_default=2 resident_rings_default=3 zoom_ratio_to_ring2_cover=0.55 framing_cover_experimental_default=true");
         GD.Print("GA_TACTICAL_CAMERA_STATE_READY_R13 rotation_preserves_zoom=true probe_is_non_mutating=true");
         GD.Print("GA_TACTICAL_PAN_ANCHOR_READY_R15 cursor_follows_drag=true axis_independent=true yaw_aware=true");
