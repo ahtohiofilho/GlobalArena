@@ -120,6 +120,8 @@ public sealed class CanonicalPhysicalTacticalSession
     public const ulong FoodDemandRawPerWorker = 500_000UL;
 
     private readonly List<CanonicalPhysicalAction> _journal = new();
+    // Deterministically reconstructed by action replay; no new save/hash fields.
+    private CanonicalExecutedPhysicalCycleProvenance? _latestExecutedCycleProvenance;
     // A V20 save replays the historical events before changing to hash v19.
     // The index is NEVER inferred from physical turn or cash balance.
     private int? _treasuryActivationActionCount;
@@ -200,6 +202,23 @@ public sealed class CanonicalPhysicalTacticalSession
         throw new InvalidOperationException("Physical economy has not been initialized.");
     public IReadOnlyList<CanonicalPhysicalAction> Events =>
         Array.AsReadOnly(_journal.ToArray());
+
+    /// <summary>
+    /// Genuine per-source output and physical destination-use observations
+    /// from the most recent ACTUALLY executed economic closing tick only.
+    /// A save replay reconstructs this evidence by re-executing the ticks.
+    /// Inventory vintage is not known and N is not authorized here.
+    /// </summary>
+    public CanonicalExecutedPhysicalCycleProvenance
+        CaptureLatestExecutedPhysicalCycleProvenance()
+    {
+        var receipt = _latestExecutedCycleProvenance ??
+            throw new InvalidOperationException(
+                "No actual completed economic cycle provenance has been recorded.");
+        receipt.RequireCurrent(this);
+        receipt.VerifyIndependent();
+        return receipt;
+    }
     public WorldStateHash CurrentHash => _hasher.Compute(CheckedSnapshot);
     public PhysicalCivilizationIdentityMode CivilizationMode => _civilizationMode;
     public bool HasInitialCivilization =>
@@ -835,6 +854,8 @@ public sealed class CanonicalPhysicalTacticalSession
         var campStates = current.JourneyCampStates?.ToDictionary(x => x.OrderId);
         var nextWorkerRevision = current.WorkerRevision;
         ulong actualCampProduction = 0UL;
+        var executedSources = new List<CanonicalExecutedPhysicalProductionRow>();
+        var executedUses = new List<CanonicalExecutedPhysicalFinalUseRow>();
 
         // V17: an automatic camp is evaluated ONLY while still at a waypoint,
         // before taking the next physical leg. Waiting postpones BOTH the
@@ -871,6 +892,11 @@ public sealed class CanonicalPhysicalTacticalSession
                 campStates[trip.OrderId] = settlement.Camp;
                 actualCampProduction = checked(
                     actualCampProduction + settlement.ProducedRaw);
+                if (settlement.ProducedRaw > 0UL)
+                    executedSources.Add(new(
+                        trip.CurrentWaypoint.FineStrategicCellId.Value,
+                        1U, CanonicalPhysicalProductionChannel.ExpeditionCamp,
+                        null, trip.OrderId, settlement.ProducedRaw));
             }
         }
 
@@ -993,6 +1019,12 @@ public sealed class CanonicalPhysicalTacticalSession
                 stocks.TryGetValue(key, out var existing);
                 stocks[key] = checked(existing + output);
                 produced = checked(produced + output);
+                if (output > 0UL)
+                    executedSources.Add(new(
+                        allocation.TileId.FineStrategicCellId.Value,
+                        commodity.Value,
+                        CanonicalPhysicalProductionChannel.AssignedWorker,
+                        allocation.Activity, 0UL, output));
             }
 
             foreach (var group in consumers.GroupBy(x => x.TileId))
@@ -1061,6 +1093,11 @@ public sealed class CanonicalPhysicalTacticalSession
                 }
                 if (delivered != 0UL) stocks[key] = available - delivered;
                 consumed = checked(consumed + delivered);
+                if (delivered > 0UL)
+                    executedUses.Add(new(
+                        group.Key.FineStrategicCellId.Value, 1U,
+                        CanonicalPhysicalFinalUseChannel.ResidentLocal,
+                        0UL, delivered));
                 unmet = checked(unmet + (demand - delivered));
             }
 
@@ -1077,6 +1114,11 @@ public sealed class CanonicalPhysicalTacticalSession
                             trip.Workers);
                     foodLedgers[trip.OrderId] = settled.Food;
                     consumed = checked(consumed + settled.ConsumedRaw);
+                    if (settled.ConsumedRaw > 0UL)
+                        executedUses.Add(new(
+                            trip.CurrentWaypoint.FineStrategicCellId.Value, 1U,
+                            CanonicalPhysicalFinalUseChannel.ExpeditionRations,
+                            trip.OrderId, settled.ConsumedRaw));
                     unmet = checked(unmet + settled.UnmetRaw);
                 }
             }
@@ -1105,6 +1147,11 @@ public sealed class CanonicalPhysicalTacticalSession
         if (next.TotalWorkers != current.TotalWorkers)
             throw new InvalidOperationException("Timed arrival did not conserve workers.");
         Commit(next, "tick", 0UL, 0UL, 0, 0, 0UL);
+        if (cycle is not null)
+            _latestExecutedCycleProvenance =
+                CanonicalExecutedPhysicalCycleProvenance.FromExecutedClosingTick(
+                    this, cycle, current.Stocks, next.Stocks,
+                    executedSources, executedUses);
         return cycle;
     }
 
