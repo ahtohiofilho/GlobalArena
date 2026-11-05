@@ -1,7 +1,7 @@
 # GA-NUTR-ARCH-01 — Arquitetura nutricional candidata, isolada do motor
 
 **Data:** 2026-11-05
-**Base empilhada:** PR #264 — GA-ECON-CORRECTION-01, HEAD inicial 8757a0ee794a0fd33155e74fcdb2a720fa0d3d9d9.
+**Base empilhada:** PR #264 — GA-ECON-CORRECTION-01, HEAD inicial 8757a0ee794a0fd33155e74fcdb2a720fa0d3d9d.
 **Estado:** experimento matemático + testes, em PR Draft, sem efeito econômico ativo.
 
 ## 1. Decisões preservadas
