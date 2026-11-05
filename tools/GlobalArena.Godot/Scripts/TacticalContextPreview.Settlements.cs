@@ -181,7 +181,9 @@ public partial class TacticalContextPreview
             ? _settlementProjection?.Sites.FirstOrDefault(x =>
                 x.Tile.FineStrategicCellId.Value == hoveredTile.Value)
             : null;
-        var worksite = hoveredTile.HasValue
+        // WorkShelter is an unapproved laboratory fixture. Its real saved
+        // data must not look like gameplay industry in the normal hover.
+        var worksite = _showExperimentalWorksiteVisuals && hoveredTile.HasValue
             ? _worksiteMapProjection?.At(hoveredTile.Value)
             : null;
         if (site is null && worksite is null)
@@ -197,7 +199,7 @@ public partial class TacticalContextPreview
               $"Madeira: {site.ForestryWorkers}\n" +
               $"Pedra: {site.MiningWorkers}";
         var worksiteText = worksite is null ? "" :
-            $"\nOBRAS {worksite.BuildingFacilities} " +
+            $"\nLAB (protótipos, NÃO instalações aprovadas) | OBRAS {worksite.BuildingFacilities} " +
             $"(trabalhadores {worksite.ReservedConstructionWorkers})" +
             $"\nCONCLUÍDAS {worksite.CompletedFacilities} " +
             $"| OPERANDO {worksite.OperatingFacilities}" +

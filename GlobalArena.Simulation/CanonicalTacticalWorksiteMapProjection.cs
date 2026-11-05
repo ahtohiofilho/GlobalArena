@@ -4,8 +4,9 @@ using GlobalArena.World;
 namespace GlobalArena.Simulation;
 
 /// <summary>
-/// A visible stage of actual material and physical facility records.
-/// These are NOT city tiers, production recipes, grants or economic orders.
+/// Debug-only lifecycle of historical WorkShelter fixture saves.
+/// This is NOT an approved real-production building, city tier or order.
+
 /// </summary>
 public enum TacticalWorksiteMapStage : byte
 {
@@ -16,8 +17,9 @@ public enum TacticalWorksiteMapStage : byte
 }
 
 /// <summary>
-/// Exactly one aggregated UI marker per tile with real physical input/asset
-/// evidence. Counts and labor are never generated from illustrative houses.
+/// One aggregated LABORATORY marker per tile with historical material and
+/// worker evidence. Real save/replay state does not authorize player-facing
+/// buildings or manufacturing advantages.
 /// </summary>
 public sealed record CanonicalTacticalWorksiteMapTile(
     ulong FineTile,
@@ -30,6 +32,7 @@ public sealed record CanonicalTacticalWorksiteMapTile(
     ulong OperatingWorkers)
 {
     public bool IsOnlyPresentation => true;
+    public bool IsApprovedGameplayFacility => false;
     public bool IsProductivityBonus => false;
     public bool GeneratesPeopleOrResources => false;
 }
@@ -41,6 +44,7 @@ public sealed class CanonicalTacticalWorksiteMapProjection
     public ulong MovementTurn { get; }
     public int PhysicalFacilityCount { get; }
     public bool MutatesCanonicalWorld => false;
+    public bool ContainsApprovedGameplayFacilities => false;
 
     private CanonicalTacticalWorksiteMapProjection(
         CanonicalTacticalWorksiteMapTile[] tiles,

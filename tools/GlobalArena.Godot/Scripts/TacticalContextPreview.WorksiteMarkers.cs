@@ -6,15 +6,29 @@ using Godot;
 namespace GlobalArena.Godot;
 
 /// <summary>
-/// GA-UI-PRODUCTION-STATES-01: purely visual worksite-stage silhouettes.
-/// Nothing here invents facilities, camps, production, employment or money.
-/// A single overlay per tile summarizes all actual canonical worksite assets.
+/// GA-ECON-CORRECTION-01: experimental legacy WorkShelter silhouettes.
+/// They summarize genuine old save state, but WorkShelter is NOT an approved
+/// gameplay construction or productive facility. Hide this presentation by
+/// default and require an explicit diagnostic opt-in.
 /// </summary>
 public partial class TacticalContextPreview
 {
     private const float WorksiteMarkerGround = 0.00081f;
     private MeshInstance3D? _worksiteStageMesh;
     private CanonicalTacticalWorksiteMapProjection? _worksiteMapProjection;
+    private bool _showExperimentalWorksiteVisuals;
+
+    public bool ExperimentalWorksiteVisualsVisible =>
+        _showExperimentalWorksiteVisuals;
+
+    public void SetExperimentalWorksiteVisualsVisible(bool enabled)
+    {
+        if (_showExperimentalWorksiteVisuals == enabled)
+            return;
+        _showExperimentalWorksiteVisuals = enabled;
+        RefreshWorksiteMapMarkers();
+        UpdateSettlementHover(_hoveredSettlementTile, GetLocalMousePosition());
+    }
 
     public void SetWorksiteMapMarkers(CanonicalTacticalWorksiteMapProjection? projection)
     {
@@ -50,8 +64,9 @@ public partial class TacticalContextPreview
         SurfaceTool tool, Vector2 tileCenter, float inradius,
         TacticalWorksiteMapStage stage)
     {
-        // Beside, never on top of, the two-house settlement glyph. A worksite
-        // remains visible even if its resident workers leave the tile.
+        // Lab-only illustrative WorkShelter; no approved gameplay building.
+        // Preserve the previously rendered evidence, but only under debug.
+        // The settlement still reflects residents, not invented buildings.
         var r = inradius;
         var center = tileCenter + new Vector2(r * 0.48f, -r * 0.23f);
         var width = r * 0.22f;
@@ -143,7 +158,8 @@ public partial class TacticalContextPreview
         var previous = _worksiteStageMesh.Mesh;
         _worksiteStageMesh.Mesh = null;
         previous?.Dispose();
-        if (_worksiteMapProjection is null || _polygons.Count == 0 ||
+        if (!_showExperimentalWorksiteVisuals ||
+            _worksiteMapProjection is null || _polygons.Count == 0 ||
             _worksiteMapProjection.Tiles.Count == 0)
         {
             _worksiteStageMesh.Visible = false;

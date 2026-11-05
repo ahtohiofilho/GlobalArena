@@ -1,11 +1,16 @@
+using System.Text.Json.Serialization;
 using GlobalArena.World;
 
 namespace GlobalArena.Runtime;
 
 /// <summary>
-/// Canonical MVP: one primitive shelter/worksite frame using a previously
-/// executed and physically debited wood/stone assembly. No fixed conversion
-/// recipe, extra production, cash, city or ownership is created here.
+/// Legacy laboratory-only fixture, introduced to verify physical material
+/// incorporation, dedicated labor, elapsed economic time and hashed save
+/// replay. WorkShelter was NOT approved as a real production building.
+///
+/// IMPORTANT: keep enum values and serialized record fields unchanged for
+/// historic v27-v30 saves. Future approved facility types must be defined
+/// by their real function/materials, not by this generic test artifact.
 /// </summary>
 public enum PhysicalPrimitiveFacilityKind : byte
 {
@@ -28,6 +33,14 @@ public sealed record PhysicalPrimitiveFacility(
     ulong CompletedMovementTurn,
     ulong OperatingWorkers = 0UL)
 {
+    /// <summary>
+    /// Product boundary: this archived, hash-authenticated lab fixture is
+    /// not an authorized player-facing economic building. Derived property
+    /// only: no new fields in the canonical save or world hash.
+    /// </summary>
+    [JsonIgnore]
+    public bool IsApprovedGameplayFacility => false;
+
     public bool IsOperational => CompletedMovementTurn != 0UL;
     public ulong ReservedWorkers => IsOperational ? 0UL : CommittedWorkers;
     /// <summary>

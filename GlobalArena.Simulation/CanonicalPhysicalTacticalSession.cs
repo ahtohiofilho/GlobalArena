@@ -1049,6 +1049,9 @@ public sealed class CanonicalPhysicalTacticalSession
     /// One canonical action debits both inputs atomically; its incorporated
     /// material frame is reconstructed from the authenticated journal.
     /// </summary>
+    // LABORATORY FIXTURE: this fixed wood/stone frame is not a universal
+    // building recipe. A future approved facility must define its own real
+    // physical inputs, technology and productive function.
     public CanonicalExecutedPrimitiveAssembly AssemblePrimitiveMaterialFrame(
         PhysicalTacticalTileId tile, CanonicalPrimitiveAssemblyKind kind,
         ulong woodRaw, ulong stoneRaw)
@@ -1200,10 +1203,11 @@ public sealed class CanonicalPhysicalTacticalSession
     }
 
     /// <summary>
-    /// Begin a physically persistent work shelter using an ALREADY debited
-    /// wood/stone assembly. A real worker reservation prevents normal output
-    /// for one subsequent economic close; the structure then becomes active
-    /// without adding worker headcount or uncalibrated production bonuses.
+    /// LABORATORY-ONLY legacy WorkShelter fixture. It was invented to test
+    /// persistent physical construction and is NOT an approved game building.
+    /// Uses an already debited wood/stone frame and genuine worker time;
+    /// retains its historic events/hashes/saves to avoid data loss. No uplift
+    /// or authorized output is introduced by this prototype.
     /// </summary>
     public PhysicalPrimitiveFacility StartPrimitiveFacility(
         PhysicalTacticalTileId tile, int assemblyActionOrdinal,
@@ -1258,8 +1262,9 @@ public sealed class CanonicalPhysicalTacticalSession
     }
 
     /// <summary>
-    /// Allocate EXISTING local workers to an already finished physical
-    /// work shelter. This only selects an auditable production channel.
+    /// LABORATORY-ONLY: staff an existing legacy WorkShelter test fixture
+    /// with real people to verify provenance without manufacturing output.
+    /// This is NOT an approved economic operation or production building.
     /// It never generates an extra unit or a coefficient increase.
     /// Setting operators to zero suspends assistance without demolishing it.
     /// </summary>

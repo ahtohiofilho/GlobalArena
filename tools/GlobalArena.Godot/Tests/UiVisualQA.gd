@@ -187,6 +187,45 @@ func _run() -> void:
             "a production facility was painted without physical construction evidence"):
         return
     print("GA_UI_VISUAL_WORKSITE_OVERLAY_READY no_phantom_facility=true")
+    # GA-ECON-CORRECTION-01: the generic WorkShelter was invented as a test
+    # fixture, not approved for gameplay. Neither its button row nor its
+    # overlay may appear in ordinary tactical mode.
+    var lab_cockpit := _node(app, "GAWorksiteCockpit")
+    var lab_pulse := _node(app, "GAWorksitePulse")
+    var lab_warning := _node(app, "GAWorksitePrototypeWarning") as Label
+    var lab_title := _node(app, "GAWorksiteTitle") as Label
+    var lab_toggle := _node(app, "GAWorksiteExperimentalOverlayToggle") as CheckBox
+    if not _require(lab_cockpit != null and lab_pulse != null and
+            lab_warning != null and lab_title != null and
+            lab_toggle != null and not lab_cockpit.is_visible_in_tree() and
+            not lab_pulse.is_visible_in_tree() and
+            not lab_toggle.button_pressed and not worksite_map.visible,
+            "unapproved WorkShelter lab leaked into default gameplay UI"):
+        return
+    advanced.button_pressed = true
+    await process_frame
+    if not _require(lab_cockpit.is_visible_in_tree() and
+            lab_pulse.is_visible_in_tree() and
+            lab_title.text.contains("LABORATÓRIO") and
+            lab_warning.text.contains("NÃO uma") and
+            lab_toggle.is_visible_in_tree(),
+            "experimental fixture is not explicitly marked and gated"):
+        return
+    lab_toggle.button_pressed = true
+    await process_frame
+    if not _require(not worksite_map.visible,
+            "debug toggle rendered worksite without real material evidence"):
+        return
+    # Closing the diagnostics must forcibly restore normal presentation.
+    advanced.button_pressed = false
+    await process_frame
+    if not _require(not lab_toggle.button_pressed and
+            not lab_cockpit.is_visible_in_tree() and
+            not lab_pulse.is_visible_in_tree() and
+            not worksite_map.visible,
+            "closing lab left experimental economic asset visible"):
+        return
+    print("GA_ECON_LAB_BOUNDARY_OK default_hidden=true opt_in_only=true save_compatible=true")
     if not _assert_layout(app, "tactical-initial"):
         return
     if not await _capture(output_dir.path_join("02-tactical.png"), "tactical-initial"):
