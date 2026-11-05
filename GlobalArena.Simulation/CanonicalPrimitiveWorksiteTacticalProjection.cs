@@ -41,7 +41,9 @@ public sealed record CanonicalPrimitiveWorksiteTileView(
     ulong LastCycleMovementTurn,
     ulong LastCycleGlobalProductionRaw,
     bool HasFreshAssistedOutput,
-    ulong LastAssistedProducedRaw)
+    ulong LastAssistedProducedRaw,
+    ulong IncorporatedWoodRaw = 0UL,
+    ulong IncorporatedStoneRaw = 0UL)
 {
     public bool HasWorldFacility => FacilityAssemblyOrdinal > 0;
     public bool MayStartConstruction =>
@@ -77,6 +79,15 @@ public static class CanonicalPrimitiveWorksiteTacticalProjection
             .OrderBy(x => x.ActionOrdinal)
             .FirstOrDefault();
 
+        // Physical input was debited at MONTAR, not at CONSTRUIR.
+        // Display the exact frame evidence to distinguish incorporated
+        // material from the local stock still available for other uses.
+        var frameOrdinal = site?.AssemblyActionOrdinal ??
+            readyFrame?.ActionOrdinal ?? 0;
+        var consumedFrame = frameOrdinal == 0
+            ? null
+            : session.ExecutedPrimitiveAssemblies.FirstOrDefault(x =>
+                x.ActionOrdinal == frameOrdinal);
         var wood = session.StockAt(tile, new CommodityId(3U));
         var stone = session.StockAt(tile, new CommodityId(2U));
         var food = session.StockAt(tile, new CommodityId(1U));
@@ -131,7 +142,9 @@ public static class CanonicalPrimitiveWorksiteTacticalProjection
                 x.IsOperational && x.OperatingWorkers > 0UL),
             state.MovementTurn, checked((ulong)state.Cycles.Count),
             lastCycle?.MovementTurn ?? 0UL,
-            lastCycle?.ProducedRaw ?? 0UL, fresh, assisted);
+            lastCycle?.ProducedRaw ?? 0UL, fresh, assisted,
+            consumedFrame?.IncorporatedWoodRaw ?? 0UL,
+            consumedFrame?.IncorporatedStoneRaw ?? 0UL);
 
         if (!before.Equals(session.CurrentHash))
             throw new InvalidOperationException(
