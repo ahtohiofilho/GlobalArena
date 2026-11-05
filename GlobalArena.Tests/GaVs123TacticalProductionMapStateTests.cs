@@ -162,13 +162,30 @@ public sealed class GaVs123TacticalProductionMapStateTests
     [Fact]
     public void RealPeopleMovementDoesNotConvertAProductionAssetIntoACity()
     {
-        var game = Start();
-        CloseCycle(game);
+        // Timed travel is a V13 feature and REQUIRES V12 cash settlement,
+        // canonical 01C terrain and adaptive economic cadence. The default
+        // Start() fixture deliberately uses the legacy instantaneous mode.
+        // This scenario must opt in rather than weakening movement gates.
+        var game = CanonicalPhysicalTacticalSession.Start(
+            20261012UL, new GoldbergParameters(3, 0),
+            new GoldbergParameters(18, 0),
+            PhysicalEconomicCadenceMode.AdaptiveThirty,
+            PhysicalTacticalGeographyMode.Canonical01C,
+            PhysicalFoodMarketMode.LocalCashSettlement,
+            PhysicalWorkerMovementMode.TimedAdjacent);
+        Assert.Equal(PhysicalWorkerMovementMode.TimedAdjacent, game.MovementMode);
+        // In the opening epoch adaptive cadence closes on EVERY turn;
+        // real production first supplies the physical construction inputs.
+        for (var i = 0; i < 6; i++)
+            Assert.NotNull(game.AdvanceMovementTurn());
         var first = game.AssemblePrimitiveMaterialFrame(game.InitialTile,
             CanonicalPrimitiveAssemblyKind.UncommissionedMaterialFrame,1UL,1UL);
         game.StartPrimitiveFacility(game.InitialTile,first.ActionOrdinal,
             EconomicActivityKind.Forestry,1UL);
-        CloseCycle(game);
+        // Construction finishes at the next genuinely executed economic
+        // settlement, not at an arbitrary or forced movement tick.
+        Assert.NotNull(game.AdvanceMovementTurn());
+        Assert.True(Assert.Single(game.PrimitiveFacilities).IsOperational);
         var before = Projection(game);
         var icon = Assert.Single(before.Tiles);
         var from = game.InitialTile;
