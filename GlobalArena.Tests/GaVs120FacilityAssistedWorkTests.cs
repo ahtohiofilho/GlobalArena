@@ -147,9 +147,9 @@ public sealed class GaVs120FacilityAssistedWorkTests
         Assert.Equal((ulong)rate, witness.TotalAssistedProducedRaw);
 
         var real = staffed.CaptureLatestExecutedPhysicalCycleProvenance();
-        var allForestry = Assert.Single(real.Production.Where(x =>
+        var allForestry = Assert.Single(real.Production, x =>
             x.SourceFineTile == row.FineTile &&
-            x.Activity == EconomicActivityKind.Forestry));
+            x.Activity == EconomicActivityKind.Forestry);
         Assert.True(row.AssistedProducedRaw <= allForestry.ProducedRaw);
         Assert.Equal(allForestry.ProducedRaw,
             (allForestry.ProducedRaw - row.AssistedProducedRaw)
