@@ -265,6 +265,10 @@ public partial class Main
         _economicCycleSummary.AddThemeColorOverride("font_color", new Color("#d4e9f3"));
         lab.AddChild(_economicCycleSummary);
 
+        // The full physical worksite lifecycle is visible in the existing
+        // compact scrolling tactical sidebar, without shrinking the map.
+        InitializePrimitiveFacilityHud(overview, lab);
+
         var persistence = new HBoxContainer();
         lab.AddChild(persistence);
         var save = new Button { Name = "GAQASave", Text = "SALVAR PARTIDA CANÔNICA", SizeFlagsHorizontal = SizeFlags.ExpandFill };
@@ -1798,6 +1802,8 @@ public partial class Main
             $"terreno {(_canonicalPhysicalLab.GeographyMode == PhysicalTacticalGeographyMode.Canonical01C ? "01C" : "V1 legado")}; " +
             $"mercado alimentar {(_canonicalPhysicalLab.MarketMode == PhysicalFoodMarketMode.LocalCashSettlement ? "LIQUIDADO À VISTA" : "LEGADO DIRETO")}; " +
             $"deslocamento {(_canonicalPhysicalLab.MovementMode == PhysicalWorkerMovementMode.TimedAdjacent ? "TEMPORAL" : "LEGADO")}; SEM carga comercial.";
+        UpdatePrimitiveFacilityHud();
+
         if (_workerMoveButton is not null)
             _workerMoveButton.Disabled = !_workerDestination.HasValue ||
                 selectedGroupWorkers == 0UL;
