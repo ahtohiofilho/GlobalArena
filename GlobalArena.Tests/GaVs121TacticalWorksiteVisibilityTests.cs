@@ -133,8 +133,8 @@ public sealed class GaVs121TacticalWorksiteVisibilityTests
             realized.LastAssistedProducedRaw);
         Assert.True(realized.LastAssistedProducedRaw <=
             realized.LastCycleGlobalProductionRaw);
-        Assert.Equal(game.CurrentHash.FormatVersion,
-            CanonicalWorldStateHasher.FacilityAssistedWorkHashFormatVersion);
+        Assert.Equal(CanonicalWorldStateHasher.FacilityAssistedWorkHashFormatVersion,
+            game.CurrentHash.FormatVersion);
         Assert.False(realized.CreatesAdditionalProduction);
 
         // A new explicit staffing action advances the canonical journal and
