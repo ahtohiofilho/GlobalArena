@@ -122,6 +122,9 @@ public sealed class CanonicalPhysicalTacticalSession
     private readonly List<CanonicalPhysicalAction> _journal = new();
     // Deterministically reconstructed by action replay; no new save/hash fields.
     private CanonicalExecutedPhysicalCycleProvenance? _latestExecutedCycleProvenance;
+    private CanonicalPhysicalLotLineageTracker _materialLots = null!;
+    private CanonicalPhysicalLotCycleWitness? _latestPhysicalLotWitness;
+    internal CanonicalPhysicalLotLineageTracker MaterialLotTracker => _materialLots;
     // A V20 save replays the historical events before changing to hash v19.
     // The index is NEVER inferred from physical turn or cash balance.
     private int? _treasuryActivationActionCount;
@@ -209,6 +212,21 @@ public sealed class CanonicalPhysicalTacticalSession
     /// A save replay reconstructs this evidence by re-executing the ticks.
     /// Inventory vintage is not known and N is not authorized here.
     /// </summary>
+    /// <summary>
+    /// Most recently completed cycle's replay-deterministic, FIFO-attributed
+    /// physical stock lots. Attribution is NOT authenticated lot identity and
+    /// can never by itself authorize N.
+    /// </summary>
+    public CanonicalPhysicalLotCycleWitness CaptureLatestPhysicalLotWitness()
+    {
+        var witness = _latestPhysicalLotWitness ??
+            throw new InvalidOperationException(
+                "No completed canonical cycle has a physical lot attribution.");
+        witness.RequireCurrent(this);
+        witness.VerifyIndependent();
+        return witness;
+    }
+
     public CanonicalExecutedPhysicalCycleProvenance
         CaptureLatestExecutedPhysicalCycleProvenance()
     {
@@ -381,6 +399,9 @@ public sealed class CanonicalPhysicalTacticalSession
         }
 
         _initialHashHex = _hasher.Compute(Game.Snapshot).HexDigest;
+        // Bootstrapped stock, if any, starts with UNKNOWN physical origin.
+        // All later lots arise only from real executed canonical actions.
+        _materialLots = CanonicalPhysicalLotLineageTracker.FromInitialState(State);
     }
 
     public static CanonicalPhysicalTacticalSession Start(
@@ -824,10 +845,17 @@ public sealed class CanonicalPhysicalTacticalSession
                 : current.JourneyCampStates);
         if (next.TotalWorkers != current.TotalWorkers)
             throw new InvalidOperationException("Provisioned departure lost workers.");
+        // Transfer custody rather than fabricating an additional food lot.
+        // Validate the sidecar against the physical next state BEFORE commit.
+        var stagedLots = _materialLots.Clone();
+        stagedLots.TransferProvisionedFood(
+            source.FineStrategicCellId.Value, orderId, foodRaw);
+        stagedLots.VerifyInventories(next);
         Commit(next, automaticCamps ? "depart_remote_camp" : "depart_remote_food",
             source.FineStrategicCellId.Value,
             destination.FineStrategicCellId.Value, (byte)fromJob,
             (byte)toJob, amount, foodRaw);
+        _materialLots = stagedLots;
         return journey;
     }
 
@@ -1146,12 +1174,28 @@ public sealed class CanonicalPhysicalTacticalSession
             campStates?.Values);
         if (next.TotalWorkers != current.TotalWorkers)
             throw new InvalidOperationException("Timed arrival did not conserve workers.");
+        CanonicalPhysicalLotLineageTracker? stagedCycleLots = null;
+        IReadOnlyList<CanonicalPhysicalLotConsumption>? cycleAttributions = null;
+        if (cycle is not null)
+        {
+            stagedCycleLots = _materialLots.Clone();
+            cycleAttributions = stagedCycleLots.RecordClosingCycle(
+                checked((ulong)next.Cycles.Count), turn,
+                executedSources, executedUses, next);
+        }
+
         Commit(next, "tick", 0UL, 0UL, 0, 0, 0UL);
         if (cycle is not null)
+        {
+            _materialLots = stagedCycleLots!;
             _latestExecutedCycleProvenance =
                 CanonicalExecutedPhysicalCycleProvenance.FromExecutedClosingTick(
                     this, cycle, current.Stocks, next.Stocks,
                     executedSources, executedUses);
+            _latestPhysicalLotWitness = new CanonicalPhysicalLotCycleWitness(
+                this, _latestExecutedCycleProvenance,
+                _materialLots, cycleAttributions!);
+        }
         return cycle;
     }
 
