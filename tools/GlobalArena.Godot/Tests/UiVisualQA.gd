@@ -179,6 +179,14 @@ func _run() -> void:
             "normal unified settlement glyph did not replace debug circles"):
         return
     print("GA_UI_VISUAL_SETTLEMENT_GLYPH_OK 3d_pitched_roof=true debug_fallback=true")
+    # No construction has occurred in the initially selected physical world.
+    # The new production marker layer must exist but must NOT manufacture
+    # a shed or an active worksite for the population-only settlement.
+    var worksite_map := app.find_child("GAWorksiteProgressMarkers", true, false) as MeshInstance3D
+    if not _require(worksite_map != null and not worksite_map.visible,
+            "a production facility was painted without physical construction evidence"):
+        return
+    print("GA_UI_VISUAL_WORKSITE_OVERLAY_READY no_phantom_facility=true")
     if not _assert_layout(app, "tactical-initial"):
         return
     if not await _capture(output_dir.path_join("02-tactical.png"), "tactical-initial"):
