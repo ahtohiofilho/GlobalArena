@@ -429,10 +429,21 @@ public partial class Main
         _workerLabAdvancedPanel.AddChild(_workerLabDetails);
         var legend = new Label
         {
-            Text = "Mapa: ciano origem | laranja destino | verde vizinhos | marcadores âmbar em viagem.",
+            Text = "Mapa: assentamentos = casas | ciano origem | laranja destino | verde vizinhos | âmbar em viagem.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         _workerLabAdvancedPanel.AddChild(legend);
+        // Diagnostic fallback only. The normal view renders ONE inhabited
+        // place, irrespective of job mix or the settlement's eventual scale.
+        var workerBadgeDebug = new CheckBox
+        {
+            Name = "GASettlementLegacyGroupDebug",
+            Text = "DEBUG: mostrar antigas bolinhas por ocupação",
+            ButtonPressed = false
+        };
+        workerBadgeDebug.Toggled += enabled =>
+            _tacticalPreview?.SetLegacyWorkerBadgesVisible(enabled);
+        _workerLabAdvancedPanel.AddChild(workerBadgeDebug);
         _workerLabHover = new Label { Text = "Sob o cursor: —" };
         _workerLabAdvancedPanel.AddChild(_workerLabHover);
 

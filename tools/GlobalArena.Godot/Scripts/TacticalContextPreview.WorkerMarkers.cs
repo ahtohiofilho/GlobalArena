@@ -9,9 +9,10 @@ using Godot;
 namespace GlobalArena.Godot;
 
 /// <summary>
-/// GA-VS16: selectable workforce-group markers and turn-progress route markers.
-/// All geometry uses the EXISTING physical tactical polygons and terrain plane.
-/// No worker entities or movement state are invented by this view.
+/// Worker-group circles remain a debug fallback; in normal gameplay
+/// unified inhabited-settlement glyphs replace them. Journey route markers
+/// stay visible and keep their distinct temporary-travel semantics.
+/// Tile picking and the canonical worker projection are unchanged.
 /// </summary>
 public partial class TacticalContextPreview
 {
@@ -22,6 +23,16 @@ public partial class TacticalContextPreview
     private TacticalWorkerMarkerProjection? _workerProjection;
     private ulong? _selectedMarkerTile;
     private EconomicActivityKind? _selectedMarkerActivity;
+    private bool _showLegacyWorkerBadges;
+
+    public bool LegacyWorkerBadgesVisible => _showLegacyWorkerBadges;
+
+    public void SetLegacyWorkerBadgesVisible(bool enabled)
+    {
+        if (_showLegacyWorkerBadges == enabled) return;
+        _showLegacyWorkerBadges = enabled;
+        RefreshWorkerMarkers();
+    }
     private readonly List<(ulong Tile, EconomicActivityKind Activity,
         Vector2 Center, float Radius)> _workerBadgeHits = new();
 
@@ -136,6 +147,11 @@ public partial class TacticalContextPreview
         var badgeTriangles = 0;
         var pathTriangles = 0;
 
+        // All resident groups remain in the canonical model but should
+        // not generate three permanent dots in the normal tactical view.
+        // The optional diagnostic can still inspect the old fine-grained
+        // group badges and their direct click targeting.
+        if (_showLegacyWorkerBadges)
         foreach (var tileGroups in _workerProjection.Groups.GroupBy(x => x.Tile))
         {
             var id = tileGroups.Key.FineStrategicCellId.Value;
@@ -206,6 +222,7 @@ public partial class TacticalContextPreview
     /// <summary>Called from the existing map hit-test after tile inspection.</summary>
     private void PickWorkerGroupMarker(ulong tileId, Vector2 localPoint)
     {
+        if (!_showLegacyWorkerBadges) return;
         foreach (var marker in _workerBadgeHits)
         {
             if (marker.Tile != tileId ||
