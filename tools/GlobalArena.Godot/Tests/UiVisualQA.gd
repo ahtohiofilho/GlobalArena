@@ -155,8 +155,9 @@ func _run() -> void:
     print("GA_UI_VISUAL_VS106_TACTICAL_FIRST_OK")
     # GA-UI-SETTLEMENT-GLYPH-01: settled population is pictured as
     # camera-oblique roof geometry, not three permanently visible job dots.
-    var housing := _node(app, "GASettlementBuiltForms") as MeshInstance3D
-    var worker_badges := _node(app, "GA_VS16_WorkerGroupMarkers") as MeshInstance3D
+    # MeshInstance3D is Node3D, not Control: find via the Node tree.
+    var housing := app.find_child("GASettlementBuiltForms", true, false) as MeshInstance3D
+    var worker_badges := app.find_child("GA_VS16_WorkerGroupMarkers", true, false) as MeshInstance3D
     var settlement_hover := _node(app, "GASettlementHover")
     var worker_group_debug := _node(app, "GASettlementLegacyGroupDebug") as CheckBox
     if not _require(housing != null and housing.visible and
