@@ -136,7 +136,7 @@ public sealed class GaEconMarketDefault01kTests
         Assert.Equal(new BigInteger(3), current.TotalPendingOfferRaw);
         Assert.Equal(new BigInteger(3), current.TotalReturnedFromRecipientRaw);
         Assert.Equal(BigInteger.Zero, current.TotalTransferredToRecipientRaw);
-        Assert.Equal(BigInteger(6), current.TotalHistoricallyOfferedRaw);
+        Assert.Equal(new BigInteger(6), current.TotalHistoricallyOfferedRaw);
         Assert.False(current.ProvesCompletedMarketSales);
         var save = game.ExportSaveJson();
         var restored = CanonicalPhysicalTacticalSession.RestoreSaveJson(save);
