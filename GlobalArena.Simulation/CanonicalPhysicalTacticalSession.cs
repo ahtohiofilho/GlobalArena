@@ -2153,9 +2153,9 @@ public sealed partial class CanonicalPhysicalTacticalSession
                      action.Source != 0UL &&
                      action.Workers > 0UL &&
                      action.FromJob == 0 &&
-                     action.ToJob is (byte)EconomicActivityKind.Agriculture or
-                         (byte)EconomicActivityKind.Forestry or
-                         (byte)EconomicActivityKind.Mining &&
+                     (action.ToJob == (byte)EconomicActivityKind.Agriculture ||
+                      action.ToJob == (byte)EconomicActivityKind.Forestry ||
+                      action.ToJob == (byte)EconomicActivityKind.Mining) &&
                      action.FoodRaw == 0UL &&
                      action.CommitmentOrdinal > 0 &&
                      action.CommitmentKind == (byte)CanonicalPhysicalCommitmentKind.MarketOffer &&
