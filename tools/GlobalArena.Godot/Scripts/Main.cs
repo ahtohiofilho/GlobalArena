@@ -354,6 +354,7 @@ public partial class Main : Control
         rightLayout.AddChild(_tacticalBridgeStatus);
         var territorialPresence = new Label
         {
+            Name = "GAQATerritorialPresenceSummary",
             Text = "PRESENÇA TERRITORIAL | Selecione um território estratégico.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
@@ -385,7 +386,13 @@ public partial class Main : Control
         _returnStrategicContext = new Button { Name = "GAQAReturnStrategic", Text = "VISÃO GLOBAL · MALHA TÁTICA", Visible = false };
         _returnStrategicContext.Pressed += ReturnStrategicContext;
         rightLayout.AddChild(_returnStrategicContext);
-        _tacticalTileEdges = new CheckBox { Text = "TACTICAL TILE EDGES", ButtonPressed = false, Visible = false };
+        _tacticalTileEdges = new CheckBox
+        {
+            Name = "GAQATacticalTileEdges",
+            Text = "TACTICAL TILE EDGES",
+            ButtonPressed = false,
+            Visible = false
+        };
         _tacticalTileEdges.Toggled += enabled => _tacticalPreview?.SetEdgesVisible(enabled);
         rightLayout.AddChild(_tacticalTileEdges);
         var panelScroll = new ScrollContainer { Name = "GAQACommandScroll", SizeFlagsVertical = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
