@@ -116,7 +116,7 @@ public partial class Main
         // An input field, dropdown or popup owns its own keystrokes.
         // Avoid changing the planet while editing a worker quantity.
         if (GetViewport().GuiGetFocusOwner() is LineEdit or TextEdit or
-            SpinBox or OptionButton or PopupMenu ||
+            SpinBox or OptionButton ||
             _physicalLayerMenu?.GetPopup().Visible == true)
             return;
 
