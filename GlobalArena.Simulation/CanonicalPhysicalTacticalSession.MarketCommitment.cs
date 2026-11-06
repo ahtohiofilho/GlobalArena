@@ -82,8 +82,8 @@ public sealed partial class CanonicalPhysicalTacticalSession
                 x.Kind == "release_physical_stock" &&
                 x.CommitmentOrdinal == record.ActionOrdinal);
             var uses = _journal.Count(x =>
-                x.Kind is "use_committed_material" or
-                    "use_committed_material_for_workers" &&
+                (x.Kind is "use_committed_material" or
+                    "use_committed_material_for_workers") &&
                 x.CommitmentOrdinal == record.ActionOrdinal);
             if (record.Released && record.Consumed ||
                 releases != (record.Released ? 1 : 0) ||
