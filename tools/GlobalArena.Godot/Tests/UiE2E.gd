@@ -149,6 +149,15 @@ func _run() -> void:
     if not _require(found_hd and found_next_seed and found_stats,
             "old HD and world stats tools were not preserved in the technical panel"):
         return
+    var world_stats_button := _button(app, "GAQAWorldStatsButton")
+    var world_stats_scroll := app.find_child(
+            "GAQAWorldStatsScroll", true, false) as ScrollContainer
+    if not _require(world_stats_button != null and world_stats_scroll != null
+            and strat_tech_panel.is_ancestor_of(world_stats_button)
+            and strat_tech_panel.is_ancestor_of(world_stats_scroll)
+            and not world_stats_scroll.visible,
+            "actual world stats action was not retained under the QA workspace"):
+        return
 
     tact_tech_toggle.button_pressed = true
     await process_frame
@@ -174,6 +183,18 @@ func _run() -> void:
     if not _require(strat_tech_panel.visible and
             territorial_readout.is_visible_in_tree(),
             "global QA fold did not expose the preserved territory readout"):
+        return
+    _press(world_stats_button)
+    await process_frame
+    if not _require(world_stats_scroll.visible and
+            world_stats_button.text == "HIDE STATS",
+            "original world statistics handler no longer opens its data"):
+        return
+    _press(world_stats_button)
+    await process_frame
+    if not _require(not world_stats_scroll.visible and
+            world_stats_button.text == "WORLD STATS",
+            "original world statistics handler no longer closes its data"):
         return
     strat_tech_toggle.button_pressed = false
     await process_frame
