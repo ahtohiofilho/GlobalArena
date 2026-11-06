@@ -146,8 +146,10 @@ public sealed class CanonicalStagedLocalMaterialUseBatch
             before.TotalEligibleAwaitingDestinationRaw - result.TotalUsedRaw !=
                 after.TotalEligibleAwaitingDestinationRaw ||
             before.TotalDeliberatelyRetainedRaw != after.TotalDeliberatelyRetainedRaw ||
-            before.Markets.Sum(x => x.UncommittedFreeRaw) !=
-                after.Markets.Sum(x => x.UncommittedFreeRaw))
+            before.Markets.Aggregate(BigInteger.Zero,
+                (total, x) => total + x.UncommittedFreeRaw) !=
+                after.Markets.Aggregate(BigInteger.Zero,
+                (total, x) => total + x.UncommittedFreeRaw))
             throw new InvalidOperationException(
                 "Staged local uses did not conserve source custody, " +
                 "executed physical volume and pending quantities.");
