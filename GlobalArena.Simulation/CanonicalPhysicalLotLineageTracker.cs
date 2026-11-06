@@ -19,7 +19,8 @@ public enum CanonicalPhysicalLotCustodyKind : byte
     LocalStock = 1,
     ExpeditionCargo = 2,
     MarketCommitment = 3,
-    DeliberateRetention = 4
+    DeliberateRetention = 4,
+    LocalRecipientCustody = 5
 }
 
 /// <summary>
@@ -225,6 +226,36 @@ internal sealed class CanonicalPhysicalLotLineageTracker
         return Array.AsReadOnly(consumed.ToArray());
     }
 
+    /// <summary>
+    /// A non-consuming, same-tile move of an ENTIRE physically committed
+    /// market lot into an identified workgroup recipient custody. This has
+    /// no implicit sale, legal title, price, food use or monetary payment.
+    /// </summary>
+    internal IReadOnlyList<CanonicalPhysicalLotHolding> TransferMarketCommitmentToRecipient(
+        int commitmentOrdinal, uint commodity, ulong raw)
+    {
+        if (commitmentOrdinal <= 0 || commodity is not (2U or 3U) || raw == 0UL)
+            throw new ArgumentOutOfRangeException(nameof(commitmentOrdinal));
+        var moved = Take(CanonicalPhysicalLotCustodyKind.MarketCommitment,
+            (ulong)commitmentOrdinal, commodity, raw);
+        if (_holdings.Any(x => x.Custody ==
+            CanonicalPhysicalLotCustodyKind.MarketCommitment &&
+            x.CustodyId == (ulong)commitmentOrdinal))
+            throw new InvalidOperationException(
+                "A local recipient handoff must transfer the whole market lot.");
+        if (_holdings.Any(x => x.Custody ==
+            CanonicalPhysicalLotCustodyKind.LocalRecipientCustody &&
+            x.CustodyId == (ulong)commitmentOrdinal))
+            throw new InvalidOperationException(
+                "Recipient custody already exists for this offer.");
+        _holdings.AddRange(moved.Select(x => x with
+        {
+            Custody = CanonicalPhysicalLotCustodyKind.LocalRecipientCustody,
+            CustodyId = (ulong)commitmentOrdinal
+        }));
+        return Array.AsReadOnly(moved.ToArray());
+    }
+
     private void RecordExecutedProduction(
         ulong cycleOrdinal, ulong movementTurn,
         CanonicalExecutedPhysicalProductionRow row)
@@ -288,7 +319,8 @@ internal sealed class CanonicalPhysicalLotLineageTracker
                 CanonicalPhysicalLotCustodyKind.LocalStock or
                 CanonicalPhysicalLotCustodyKind.ExpeditionCargo or
                 CanonicalPhysicalLotCustodyKind.MarketCommitment or
-                CanonicalPhysicalLotCustodyKind.DeliberateRetention)))
+                CanonicalPhysicalLotCustodyKind.DeliberateRetention or
+                CanonicalPhysicalLotCustodyKind.LocalRecipientCustody)))
             throw new InvalidOperationException("Invalid physical lot record.");
 
         var local = _holdings
