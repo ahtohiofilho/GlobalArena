@@ -403,7 +403,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         _terrainDetails = new Label
         {
             Position = new Vector2(12f, 64f),
-            Text = "01C EXPERIMENT | tactical terrain only; strategic globe still V1",
+            Text = "01C EXPERIMENT | terreno físico; globo global usa a malha tática",
             MouseFilter = MouseFilterEnum.Ignore
         };
         _terrainDetails.AddThemeColorOverride("font_color", new Color("#f1d7a3"));
@@ -724,7 +724,7 @@ public partial class TacticalContextPreview : SubViewportContainer
             _selection.Text = "Wheel: zoom | Drag: pan | Click: inspect tile";
             if (_terrainDetails is not null)
                 _terrainDetails.Text = _showExperimentalTerrain
-                    ? "01C EXPERIMENT | tactical terrain only; strategic globe still V1"
+                    ? "01C EXPERIMENT | terreno físico; globo global usa a malha tática"
                     : "DIAGNOSTIC COLORS | not a terrain classification";
             PhysicalTileInspected?.Invoke(null, _selection.Text, _terrainDetails?.Text ?? "");
             return;
@@ -1027,7 +1027,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         GD.Print($"GA_TACTICAL_LOCAL_OPEN focus={focusValue} framing_rings={_ringCount} resident_rings={_residentRingCount} frame_tiles={framingTiles.Count} projection={(_equidistant ? "Equidistant" : "Orthographic")} regions={selectedStrategic.Count} physical_tiles={selectedPhysical.Count} triangles={countTriangles} edges={edgeCount} parameters=G(3,0)>G(18,0) duplicate_ids=0");
         GD.Print($"GA_TACTICAL_TERRITORY_BORDERS_MESH_R1 focus={focusValue} strategic_edges={strategicEdgesRendered} segments={boundarySegments} source=physical_centers surface_epsilon={TerritoryBoundarySurfaceLift:F5} toggle={_showTerritoryBoundaries} movement_unchanged=true");
         GD.Print($"GA_TACTICAL_TERRITORY_SHAPE_ANCHORS_R1 focus={focusValue} anchors=3-2-3 segments={boundarySegments} feature=visual_only highlight=false movement_unchanged=true");
-        GD.Print($"GA_TACTICAL_TERRAIN_01C focus={focusValue} visible={_showExperimentalTerrain} seed={TerrainExperimentSeed} land_target=35 physical_reference_cached={_terrainReference is not null} strategic_globe_v1_unchanged=true");
+        GD.Print($"GA_TACTICAL_TERRAIN_01C focus={focusValue} visible={_showExperimentalTerrain} seed={TerrainExperimentSeed} land_target=35 physical_reference_cached={_terrainReference is not null} global_physical_globe_grid=G18");
     }
 
     private static bool Contains(Vector2 p, Vector2[] vertices)
