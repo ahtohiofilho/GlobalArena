@@ -142,7 +142,7 @@ public sealed class GaEconAbstractSupply01Tests
             retention: checked((ulong)gross.ActuallyProducedRaw));
 
         Assert.Equal(gross.ActuallyProducedRaw, reduced.ActuallyProducedRaw);
-        Assert.Equal(new BigInteger(retained), reduced.CandidateRetentionRaw);
+        Assert.Equal(retained, reduced.CandidateRetentionRaw);
         Assert.Equal(gross.ActuallyProducedRaw - retained,
             reduced.CandidateOfferedRaw);
         Assert.True(reduced.CandidateQuote.Offered <
