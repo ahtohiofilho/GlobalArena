@@ -15,14 +15,16 @@ public enum CanonicalMarketCustodyDisposition : byte
     ExecutedLocalMaterialUse = 3,
     ExecutedLocalWorkforceMaterialUse = 4,
     ExplicitRetention = 5,
-    ReleasedRetention = 6
+    ReleasedRetention = 6,
+    TransferredToRealLocalRecipient = 7
 }
 
 public sealed record CanonicalMarketCustodyDispositionReceipt(
     int CommitmentActionOrdinal, ulong FineTile, uint Commodity,
     ulong QuantityRaw, CanonicalMarketCustodyDisposition Disposition,
     int? PhysicalUseActionOrdinal, EconomicActivityKind? BeneficiaryActivity,
-    ulong BeneficiaryWorkers)
+    ulong BeneficiaryWorkers,
+    int? PhysicalTransferActionOrdinal = null)
 {
     public bool ProvesExecutedCommercialSale => false;
     public bool ProvesRealPhysicalMaterialSink =>
@@ -38,7 +40,8 @@ public sealed record CanonicalMarketPhysicalCoverageRow(
     BigInteger ExecutedLocalMaterialRaw,
     BigInteger OfWhichRealWorkforceRaw,
     BigInteger UncommittedFreeRaw,
-    BigInteger ExplicitRetentionRaw)
+    BigInteger ExplicitRetentionRaw,
+    BigInteger TransferredToRecipientRaw = default)
 {
     /// <summary>
     /// Goods awaiting any authenticated economic destination, including
@@ -75,6 +78,7 @@ public sealed class CanonicalMarketExecutedPhysicalCoverage
     public BigInteger TotalPendingOfferRaw { get; }
     public BigInteger TotalExecutedPhysicalMaterialRaw { get; }
     public BigInteger TotalRealWorkforceMaterialRaw { get; }
+    public BigInteger TotalTransferredToRecipientRaw { get; }
     public BigInteger TotalEligibleAwaitingDestinationRaw { get; }
     public BigInteger TotalDeliberatelyRetainedRaw { get; }
 
@@ -102,6 +106,8 @@ public sealed class CanonicalMarketExecutedPhysicalCoverage
             BigInteger.Zero, (sum, x) => sum + x.ExecutedLocalMaterialRaw);
         TotalRealWorkforceMaterialRaw = _rows.Aggregate(
             BigInteger.Zero, (sum, x) => sum + x.OfWhichRealWorkforceRaw);
+        TotalTransferredToRecipientRaw = _rows.Aggregate(
+            BigInteger.Zero, (sum, x) => sum + x.TransferredToRecipientRaw);
         TotalEligibleAwaitingDestinationRaw = _rows.Aggregate(
             BigInteger.Zero, (sum, x) => sum + x.EligibleAwaitingDestinationRaw);
         TotalDeliberatelyRetainedRaw = _rows.Aggregate(
@@ -127,6 +133,9 @@ public sealed class CanonicalMarketExecutedPhysicalCoverage
         var uses = session.ExecutedCommittedMaterialUses;
         var useByCommit = uses.ToDictionary(x =>
             x.SourceCommitmentActionOrdinal);
+        var transfers = session.ExecutedLocalRecipientCustodyTransfers;
+        var transferByCommit = transfers.ToDictionary(x =>
+            x.SourceCommitmentActionOrdinal);
         if (uses.Select(x => x.ActionOrdinal).Distinct().Count() != uses.Count ||
             useByCommit.Count != uses.Count)
             throw new InvalidOperationException(
@@ -134,15 +143,19 @@ public sealed class CanonicalMarketExecutedPhysicalCoverage
 
         var receiptRows = new List<CanonicalMarketCustodyDispositionReceipt>();
         var seenUses = new HashSet<int>();
+        var seenTransfers = new HashSet<int>();
         foreach (var offer in witness.Commitments.OrderBy(x => x.ActionOrdinal))
         {
-            if (offer.Released && offer.Consumed)
+            if ((offer.Released ? 1 : 0) + (offer.Consumed ? 1 : 0) +
+                (offer.Transferred ? 1 : 0) > 1)
                 throw new InvalidOperationException(
                     "A single custody lock cannot be both used and released.");
             useByCommit.TryGetValue(offer.ActionOrdinal, out var used);
+            transferByCommit.TryGetValue(offer.ActionOrdinal, out var transferred);
             if (offer.Consumed != (used is not null) ||
                 (offer.Consumed &&
-                    offer.Kind != CanonicalPhysicalCommitmentKind.MarketOffer))
+                    offer.Kind != CanonicalPhysicalCommitmentKind.MarketOffer) ||
+                offer.Transferred != (transferred is not null))
                 throw new InvalidOperationException(
                     "An executed sink must match one consumed market offer.");
 
@@ -162,12 +175,26 @@ public sealed class CanonicalMarketExecutedPhysicalCoverage
                         "Market physical sink is not backed by unique real material provenance.");
             }
 
+            if (transferred is not null &&
+                (!seenTransfers.Add(transferred.ActionOrdinal) ||
+                 transferred.SourceCommitmentActionOrdinal != offer.ActionOrdinal ||
+                 transferred.RawQuantity != offer.RawQuantity ||
+                 transferred.Commodity != offer.Commodity ||
+                 transferred.FineTile != offer.FineTile ||
+                 !transferred.ProvesPhysicalCustodyHandoff ||
+                 transferred.ProvesExecutedCommercialSale ||
+                 transferred.AuthorizesPriceOrRevenuePosting))
+                throw new InvalidOperationException(
+                    "Actual local recipient custody must match a unique source commitment.");
+
             var status = offer.Kind switch
             {
                 CanonicalPhysicalCommitmentKind.DeliberateRetention when offer.Released =>
                     CanonicalMarketCustodyDisposition.ReleasedRetention,
                 CanonicalPhysicalCommitmentKind.DeliberateRetention =>
                     CanonicalMarketCustodyDisposition.ExplicitRetention,
+                CanonicalPhysicalCommitmentKind.MarketOffer when offer.Transferred =>
+                    CanonicalMarketCustodyDisposition.TransferredToRealLocalRecipient,
                 CanonicalPhysicalCommitmentKind.MarketOffer when offer.Released =>
                     CanonicalMarketCustodyDisposition.ReturnedToFreeStock,
                 CanonicalPhysicalCommitmentKind.MarketOffer when used is not null &&
@@ -184,9 +211,12 @@ public sealed class CanonicalMarketExecutedPhysicalCoverage
             receiptRows.Add(new CanonicalMarketCustodyDispositionReceipt(
                 offer.ActionOrdinal, offer.FineTile, offer.Commodity,
                 offer.RawQuantity, status, used?.ActionOrdinal,
-                used?.BeneficiaryActivity, used?.BeneficiaryWorkers ?? 0UL));
+                used?.BeneficiaryActivity ?? transferred?.RecipientActivity,
+                used?.BeneficiaryWorkers ?? transferred?.RecipientWorkers ?? 0UL,
+                transferred?.ActionOrdinal));
         }
-        if (seenUses.Count != uses.Count)
+        if (seenUses.Count != uses.Count ||
+            seenTransfers.Count != transfers.Count)
             throw new InvalidOperationException(
                 "Orphan executed physical material use without a commitment.");
 
@@ -210,9 +240,12 @@ public sealed class CanonicalMarketExecutedPhysicalCoverage
                 CanonicalMarketCustodyDisposition.PendingOffer,
                 CanonicalMarketCustodyDisposition.ReturnedToFreeStock,
                 CanonicalMarketCustodyDisposition.ExecutedLocalMaterialUse,
-                CanonicalMarketCustodyDisposition.ExecutedLocalWorkforceMaterialUse);
+                CanonicalMarketCustodyDisposition.ExecutedLocalWorkforceMaterialUse,
+                CanonicalMarketCustodyDisposition.TransferredToRealLocalRecipient);
             var pending = Sum(CanonicalMarketCustodyDisposition.PendingOffer);
             var released = Sum(CanonicalMarketCustodyDisposition.ReturnedToFreeStock);
+            var transferred = Sum(
+                CanonicalMarketCustodyDisposition.TransferredToRealLocalRecipient);
             var used = Sum(
                 CanonicalMarketCustodyDisposition.ExecutedLocalMaterialUse,
                 CanonicalMarketCustodyDisposition.ExecutedLocalWorkforceMaterialUse);
@@ -220,7 +253,7 @@ public sealed class CanonicalMarketExecutedPhysicalCoverage
                 CanonicalMarketCustodyDisposition.ExecutedLocalWorkforceMaterialUse);
             var retention = Sum(CanonicalMarketCustodyDisposition.ExplicitRetention);
             var stock = pool.ForTileCommodity(key.FineTile, key.Commodity);
-            if (gross != pending + released + used ||
+            if (gross != pending + released + used + transferred ||
                 pending != stock.AlreadyCommittedOfferRaw ||
                 retention != stock.DeliberatelyRetainedRaw ||
                 workforce > used)
@@ -229,7 +262,8 @@ public sealed class CanonicalMarketExecutedPhysicalCoverage
 
             rows.Add(new CanonicalMarketPhysicalCoverageRow(
                 key.FineTile, key.Commodity, gross, pending, released,
-                used, workforce, stock.UncommittedLocalRaw, retention));
+                used, workforce, stock.UncommittedLocalRaw, retention,
+                transferred));
         }
 
         if (rows.Aggregate(BigInteger.Zero,
@@ -273,6 +307,8 @@ public sealed class CanonicalMarketExecutedPhysicalCoverage
                 (sum, x) => sum + x.OfWhichRealWorkforceRaw) ||
             TotalEligibleAwaitingDestinationRaw != rows.Aggregate(BigInteger.Zero,
                 (sum, x) => sum + x.EligibleAwaitingDestinationRaw) ||
+            TotalTransferredToRecipientRaw != rows.Aggregate(BigInteger.Zero,
+                (sum, x) => sum + x.TransferredToRecipientRaw) ||
             TotalDeliberatelyRetainedRaw != rows.Aggregate(BigInteger.Zero,
                 (sum, x) => sum + x.ExplicitRetentionRaw))
             throw new InvalidOperationException(
