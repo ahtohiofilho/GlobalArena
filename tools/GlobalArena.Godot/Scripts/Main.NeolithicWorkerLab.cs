@@ -1550,6 +1550,8 @@ public partial class Main
             // Legacy saves display V1 land instead of mislabeling V1 tiles as 01C.
             _tacticalPreview.BindEconomicTacticalGeography(
                 restored.FineWorld, restored.CanonicalTerrain);
+            _strategicGlobe?.BindCanonicalTacticalSurface(
+                restored.FineWorld, restored.CanonicalTerrain);
             _tacticalPreview.Open(focus.Value);
             var cameraRestored = view is not null &&
                 _tacticalPreview.TryRestoreCameraBookmark(view);
@@ -1706,7 +1708,7 @@ public partial class Main
         var jobs = string.Join(" | ", local.Select(x => $"{x.Activity}: {x.Workers}"));
         var destination = _workerDestination.HasValue
             ? $"Tile {_workerDestination.Value.FineStrategicCellId.Value} selecionado"
-            : "Clique num vizinho contornado em verde-lima";
+            : "Clique em um tile adjacente para escolher o destino";
         var stockFood = _canonicalPhysicalLab.StockAt(origin, new CommodityId(1U));
         var stockStone = _canonicalPhysicalLab.StockAt(origin, new CommodityId(2U));
         var stockWood = _canonicalPhysicalLab.StockAt(origin, new CommodityId(3U));
