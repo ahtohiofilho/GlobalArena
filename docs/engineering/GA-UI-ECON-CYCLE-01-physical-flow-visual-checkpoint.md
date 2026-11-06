@@ -35,7 +35,7 @@ Abrir a cena `Main` na branch deste PR por worktree isolada, **compilando Debug*
 5. Expandir `ABRIR OPERAÇÕES FÍSICAS (LAB)`, selecionar madeira, `RESERVAR OFERTA`: diminuição do estoque livre e aumento do compromisso sem pagamento.
 6. Selecionar um grupo real de trabalhadores e `UTILIZAR NO GRUPO`: desaparece o compromisso, aparece `USO LOCAL` com pessoas/atividade; confirmar que nenhuma venda/receita é anunciada.
 7. Em outro material, `RETER MATERIAL`, depois `LIBERAR RESERVA`: o estoque livre retorna exatamente ao ponto anterior.
-8. Salvar e reabrir: mesma custódia, dados, tile selecionado e resumo de ações executadas (sem vendas fictícias). 
+8. Salvar e reabrir: mesma custódia e dados canônicos; reinspecionar o tile para confirmar o histórico material (sem exigir que o bookmark visual seja persistido). 
 9. Alternar seleção de tiles e expansão do painel: sem deslocar câmera tática, trocar elementos econômicos de um tile com outro ou reabrir laboratórios antigos automaticamente.
 10. Inspecionar resoluções menor/maior, rolagem e botões, verificando ausência de sobreposição com o viewport.
 
