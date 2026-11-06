@@ -141,18 +141,31 @@ public sealed class GaEconMarketDefault01cTests
                 session, multi, offer.ActionOrdinal,
                 CanonicalMaterialDispositionKind.FinalPhysicalUse));
 
-        // This gateway deliberately excludes aggregate-food nutritional use:
-        // the six-food ledger and calibrated consumption semantics are absent.
+        // Explicitly produce a positive food remainder in a separate
+        // session. The six-food ledger remains absent, so the material-use
+        // gateway must not turn aggregate food into certified intake.
+        var foodGame = CanonicalPhysicalTacticalSession.Start();
+        var foodTile = foodGame.InitialTile;
+        foodGame.ReassignWorkers(foodTile, EconomicActivityKind.Forestry,
+            EconomicActivityKind.Agriculture, 2UL);
+        foodGame.ReassignWorkers(foodTile, EconomicActivityKind.Mining,
+            EconomicActivityKind.Agriculture, 2UL);
+        for (var i = 0; i < 6; i++) foodGame.AdvanceMovementTurn();
+        Assert.True(foodGame.StockAt(foodTile, new CommodityId(1U)) > 0UL);
+        var foodOrigin = foodTile.FineStrategicCellId.Value;
         var food = CanonicalLocalMarketDestinationPreflight.FromCurrent(
-            session, new[]
+            foodGame, new[]
             {
-                new CanonicalLocalMarketDestinationCandidate(origin, origin, 1U,
-                    1UL, CanonicalLocalMarketUsePurpose.ResidentFoodUse)
+                new CanonicalLocalMarketDestinationCandidate(foodOrigin,
+                    foodOrigin, 1U, 1UL,
+                    CanonicalLocalMarketUsePurpose.ResidentFoodUse)
             });
+        var beforeFood = foodGame.ExportSaveJson();
         Assert.Throws<InvalidOperationException>(() =>
             CanonicalLocalMarketMaterialDestinationExecutor.Execute(
-                session, food, offer.ActionOrdinal,
+                foodGame, food, offer.ActionOrdinal,
                 CanonicalMaterialDispositionKind.FinalPhysicalUse));
+        Assert.Equal(beforeFood, foodGame.ExportSaveJson());
 
         var before = session.CurrentHash;
         var save = session.ExportSaveJson();
