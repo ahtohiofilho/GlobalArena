@@ -245,9 +245,9 @@ public partial class Main
         var cycle = report.ClosedEconomicCycles == 0
             ? "CICLO: ainda não houve fechamento econômico."
             : $"CICLO GLOBAL {report.ClosedEconomicCycles} (turno {report.LastClosedCycleTurn}) " +
-              $"· produzido {report.LastGlobalProducedRaw / 1_000_000.0:F2} (itens somados) " +
-              $"· alimento consumido {report.LastGlobalFoodConsumedRaw / 1_000_000.0:F2} " +
-              $"· falta {report.LastGlobalFoodUnmetRaw / 1_000_000.0:F2}";
+              $"· produção física {report.LastGlobalProducedRaw / 1_000_000.0:F2} (itens somados) " +
+              $"· ingestão física {report.LastGlobalFoodConsumedRaw / 1_000_000.0:F2} " +
+              "· NUTRIÇÃO: indisponível (alimento agregado)";
         var lastUse = report.LastExecutedLocalUse;
         var destination = lastUse is null ? "USO: nenhum material comprometido aplicado."
             : $"USO LOCAL: {CommodityTitle(lastUse.Commodity)} " +
@@ -259,14 +259,15 @@ public partial class Main
               " · sem venda.";
         _physicalFlowSummary.Text =
             $"TILE {report.FineTile} · {report.ResidentPeople} pessoas\n" +
-            $"LIVRE: alim. {FlowQuantity(report.FreeFoodRaw)} · " +
+             $"LIVRE (não vendido): alim. {FlowQuantity(report.FreeFoodRaw)} · " +
             $"mad. {FlowQuantity(report.FreeWoodRaw)} · " +
             $"ped. {FlowQuantity(report.FreeStoneRaw)}\n" +
             $"VINCULADO: ofertas {report.ActiveMarketOffers} " +
             $"({FlowQuantity(report.CommittedMarketRaw)}) · " +
             $"retenções {report.ActiveRetentions} " +
             $"({FlowQuantity(report.DeliberatelyRetainedRaw)})\n" +
-            destination + "\n" + cycle;
+            destination + "\n" + cycle + "\n" +
+            "OFERTA AUTOMÁTICA: não executada neste modo histórico.";
 
         if (_physicalFlowCommitment is not null)
         {
