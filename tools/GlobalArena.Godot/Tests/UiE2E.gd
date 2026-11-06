@@ -315,6 +315,91 @@ func _run() -> void:
         return
     print("GA_UI_E2E_PHYSICAL_LAYERS_01_BIOMES_RELIEF_BOTH_SCALES_OK")
 
+    # GA-ECON-MARKET-DEFAULT-01F: actual Godot signals start/advance/save/
+    # reload a sandbox copied from the initial game, without touching the
+    # playable game or its normal save. It must live only inside BOTH QA folds.
+    var offer_start := _button(app, "GAQAOfferSandboxStart")
+    var offer_turn := _button(app, "GAQAOfferSandboxTurn")
+    var offer_save := _button(app, "GAQAOfferSandboxSave")
+    var offer_load := _button(app, "GAQAOfferSandboxLoad")
+    var offer_status := _label(app, "GAQAOfferSandboxStatus")
+    if not _require(offer_start != null and offer_turn != null and
+            offer_save != null and offer_load != null and
+            offer_status != null and
+            tact_tech_panel.is_ancestor_of(offer_start) and
+            tact_tech_panel.is_ancestor_of(offer_status) and
+            not offer_start.is_visible_in_tree() and
+            offer_turn.disabled and offer_save.disabled and
+            session_pulse.text.contains("TURNO 0"),
+            "automatic market sandbox was not safely hidden or disabled"):
+        return
+
+    tact_tech_toggle.button_pressed = true
+    advanced_toggle.button_pressed = true
+    advanced_toggle.emit_signal("toggled", true)
+    await process_frame
+    if not _require(offer_start.is_visible_in_tree() and
+            offer_status.text.contains("MODO INATIVO"),
+            "sandbox must be opt-in via original technical QA controls"):
+        return
+
+    _press(offer_start)
+    await process_frame
+    if not _require(not offer_turn.disabled and not offer_save.disabled and
+            offer_status.text.contains("LAB ISOLADO") and
+            offer_status.text.contains("TURNO 0") and
+            session_pulse.text.contains("TURNO 0"),
+            "opt-in failed or silently advanced the playable game"):
+        return
+
+    _press(offer_turn)
+    await process_frame
+    if not _require(offer_status.text.contains("TURNO 1") and
+            offer_status.text.contains("CICLOS 1") and
+            offer_status.text.contains("CICLO FECHADO") and
+            offer_status.text.contains("novas ofertas") and
+            offer_status.text.contains("NÃO vendas") and
+            session_pulse.text.contains("TURNO 0"),
+            "sandbox cycle did not commit real offer custody or changed main session"):
+        return
+
+    _press(offer_save)
+    await process_frame
+    var experimental_path := ProjectSettings.globalize_path(
+            "user://ga-econ-market-default-01f-experimental.json")
+    var experimental_bytes := FileAccess.get_file_as_string(experimental_path)
+    if not _require(offer_status.text.contains("SAVE EXPERIMENTAL GRAVADO") and
+            experimental_bytes.contains("GA-ECON-MARKET-DEFAULT-01E-CUSTODY-V1"),
+            "experimental save did not persist explicit ruleset identity"):
+        return
+
+    _press(offer_turn)
+    await process_frame
+    if not _require(offer_status.text.contains("TURNO 2") and
+            session_pulse.text.contains("TURNO 0"),
+            "second sandbox cycle moved the production game"):
+        return
+    _press(offer_load)
+    await process_frame
+    if not _require(offer_status.text.contains("TURNO 1") and
+            offer_status.text.contains("SAVE EXPERIMENTAL REABERTO") and
+            session_pulse.text.contains("TURNO 0") and
+            FileAccess.get_file_as_string(experimental_path) ==
+                    experimental_bytes,
+            "sandbox reload changed game state or corrupted separate save"):
+        return
+
+    advanced_toggle.button_pressed = false
+    advanced_toggle.emit_signal("toggled", false)
+    tact_tech_toggle.button_pressed = false
+    await process_frame
+    if not _require(not offer_start.is_visible_in_tree() and
+            not tact_tech_panel.visible and
+            session_pulse.text.contains("TURNO 0"),
+            "sandbox left QA controls open or modified main timeline"):
+        return
+    print("GA_UI_E2E_MARKET_DEFAULT_01F_ISOLATED_GODOT_SAVE_REPLAY_OK")
+
     _press(inspect)
     await process_frame
     if not _require(status.text.contains("turno 0") and
