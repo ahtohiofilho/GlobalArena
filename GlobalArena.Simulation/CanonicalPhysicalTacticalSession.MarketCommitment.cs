@@ -18,6 +18,13 @@ public sealed partial class CanonicalPhysicalTacticalSession
     private readonly List<CanonicalExecutedCommittedMaterialUse>
         _executedCommittedMaterialUses = new();
 
+    private readonly List<CanonicalExecutedLocalRecipientCustodyTransfer>
+        _executedLocalRecipientCustodyTransfers = new();
+
+    public IReadOnlyList<CanonicalExecutedLocalRecipientCustodyTransfer>
+        ExecutedLocalRecipientCustodyTransfers =>
+        Array.AsReadOnly(_executedLocalRecipientCustodyTransfers.ToArray());
+
     public IReadOnlyList<CanonicalExecutedCommittedMaterialUse>
         ExecutedCommittedMaterialUses =>
         Array.AsReadOnly(_executedCommittedMaterialUses.ToArray());
@@ -85,10 +92,16 @@ public sealed partial class CanonicalPhysicalTacticalSession
                 (x.Kind is "use_committed_material" or
                     "use_committed_material_for_workers") &&
                 x.CommitmentOrdinal == record.ActionOrdinal);
-            if (record.Released && record.Consumed ||
+            var transfers = _journal.Count(x =>
+                x.Kind == "transfer_market_offer_local_recipient" &&
+                x.CommitmentOrdinal == record.ActionOrdinal);
+            if ((record.Released ? 1 : 0) +
+                    (record.Consumed ? 1 : 0) +
+                    (record.Transferred ? 1 : 0) > 1 ||
                 releases != (record.Released ? 1 : 0) ||
                 uses != (record.Consumed ? 1 : 0) ||
-                (record.Consumed &&
+                transfers != (record.Transferred ? 1 : 0) ||
+                ((record.Consumed || record.Transferred) &&
                  record.Kind != CanonicalPhysicalCommitmentKind.MarketOffer))
                 throw new InvalidOperationException(
                     "Closing market custody disagrees with journal release/use receipts.");
@@ -96,15 +109,18 @@ public sealed partial class CanonicalPhysicalTacticalSession
 
         var holdings = _materialLots.Snapshot().Where(x =>
             x.Custody is CanonicalPhysicalLotCustodyKind.MarketCommitment or
-                CanonicalPhysicalLotCustodyKind.DeliberateRetention)
+                CanonicalPhysicalLotCustodyKind.DeliberateRetention or
+                CanonicalPhysicalLotCustodyKind.LocalRecipientCustody)
             .GroupBy(x => (x.Custody, x.CustodyId, x.Commodity))
             .ToDictionary(g => g.Key,
                 g => g.Aggregate(BigInteger.Zero,
                     (sum, x) => sum + x.RawQuantity));
         var commitments = _physicalStockCommitments
-            .Where(x => x.IsLive)
+            .Where(x => x.IsLive || x.Transferred)
             .ToDictionary(
-                x => (Custody: CommitmentCustody(x.Kind),
+                x => (Custody: x.Transferred
+                          ? CanonicalPhysicalLotCustodyKind.LocalRecipientCustody
+                          : CommitmentCustody(x.Kind),
                       CustodyId: (ulong)x.ActionOrdinal,
                       x.Commodity),
                 x => new BigInteger(x.RawQuantity));
@@ -120,9 +136,43 @@ public sealed partial class CanonicalPhysicalTacticalSession
             _physicalStockCommitments.Count ||
             _journal.Count(x => x.Kind is
                 "use_committed_material" or "use_committed_material_for_workers") !=
-            _executedCommittedMaterialUses.Count)
+            _executedCommittedMaterialUses.Count ||
+            _journal.Count(x => x.Kind ==
+                "transfer_market_offer_local_recipient") !=
+                _executedLocalRecipientCustodyTransfers.Count)
             throw new InvalidOperationException(
                 "Orphaned or missing physical commitment / use receipt.");
+
+        foreach (var handoff in _executedLocalRecipientCustodyTransfers)
+        {
+            if (handoff.ActionOrdinal <= 0 ||
+                handoff.ActionOrdinal > _journal.Count)
+                throw new InvalidOperationException(
+                    "Invalid local recipient custody handoff action ordinal.");
+            var action = _journal[handoff.ActionOrdinal - 1];
+            var source = _physicalStockCommitments.SingleOrDefault(x =>
+                x.ActionOrdinal == handoff.SourceCommitmentActionOrdinal);
+            if (action.Kind != "transfer_market_offer_local_recipient" ||
+                action.Source != handoff.FineTile ||
+                action.Destination != handoff.FineTile ||
+                action.FromJob != 0 ||
+                action.ToJob != (byte)handoff.RecipientActivity ||
+                action.Workers != handoff.RecipientWorkers ||
+                action.CommitmentOrdinal != handoff.SourceCommitmentActionOrdinal ||
+                action.CommitmentCommodity != handoff.Commodity ||
+                action.CommitmentRaw != handoff.RawQuantity ||
+                action.CommitmentKind !=
+                    (byte)CanonicalPhysicalCommitmentKind.MarketOffer ||
+                action.BeforeHashHex != handoff.BeforeWorldHashHex ||
+                action.AfterHashHex != handoff.AfterWorldHashHex ||
+                source is null || !source.Transferred ||
+                source.Kind != CanonicalPhysicalCommitmentKind.MarketOffer ||
+                source.FineTile != handoff.FineTile ||
+                source.Commodity != handoff.Commodity ||
+                source.RawQuantity != handoff.RawQuantity)
+                throw new InvalidOperationException(
+                    "Recipient custody must match exactly one canonical journal action.");
+        }
 
         foreach (var executed in _executedCommittedMaterialUses)
         {
@@ -306,6 +356,63 @@ public sealed partial class CanonicalPhysicalTacticalSession
         _executedCommittedMaterialUses.Add(executed);
         VerifyPhysicalStockCommitments();
         return executed;
+    }
+
+    /// <summary>
+    /// Move the entire live offer into exclusive, physically conserved
+    /// custody of a real local productive workgroup. No legal ownership,
+    /// sale, payment, remote delivery or consumption is inferred.
+    /// </summary>
+    public CanonicalExecutedLocalRecipientCustodyTransfer
+        TransferMarketOfferToLocalRecipient(
+            int commitmentActionOrdinal,
+            EconomicActivityKind recipientActivity)
+    {
+        EnsureJournalCapacity();
+        ValidateJob(recipientActivity);
+        VerifyPhysicalStockCommitments();
+        var index = _physicalStockCommitments.FindIndex(x =>
+            x.ActionOrdinal == commitmentActionOrdinal);
+        if (index < 0 || !_physicalStockCommitments[index].IsLive ||
+            _physicalStockCommitments[index].Kind !=
+                CanonicalPhysicalCommitmentKind.MarketOffer)
+            throw new InvalidOperationException(
+                "Only a live market offer can enter recipient custody.");
+        var source = _physicalStockCommitments[index];
+        if (source.Commodity is not (2U or 3U))
+            throw new InvalidOperationException(
+                "Aggregate legacy food lacks real typed consumption and recipient custody.");
+        var tile = new PhysicalTacticalTileId(
+            _fine, new StrategicCellId(source.FineTile));
+        ValidateTile(tile);
+        var workers = State.Allocations.FirstOrDefault(x =>
+            x.TileId == tile && x.Activity == recipientActivity)?.Workers ?? 0UL;
+        if (workers == 0UL)
+            throw new InvalidOperationException(
+                "The receiving group must have real local assigned workers.");
+
+        var staged = _materialLots.Clone();
+        var attribution = staged.TransferMarketCommitmentToRecipient(
+            source.ActionOrdinal, source.Commodity, source.RawQuantity);
+        staged.VerifyInventories(State);
+        Commit(State, "transfer_market_offer_local_recipient",
+            source.FineTile, source.FineTile, 0,
+            (byte)recipientActivity, workers,
+            commitmentCommodity: source.Commodity,
+            commitmentRaw: source.RawQuantity,
+            commitmentKind: (byte)source.Kind,
+            commitmentOrdinal: source.ActionOrdinal);
+        _materialLots = staged;
+        _physicalStockCommitments[index] = source with { Transferred = true };
+        var action = _journal[^1];
+        var receipt = new CanonicalExecutedLocalRecipientCustodyTransfer(
+            _journal.Count, source.ActionOrdinal, State.MovementTurn,
+            source.FineTile, source.Commodity, source.RawQuantity,
+            recipientActivity, workers, action.BeforeHashHex,
+            action.AfterHashHex, attribution);
+        _executedLocalRecipientCustodyTransfers.Add(receipt);
+        VerifyPhysicalStockCommitments();
+        return receipt;
     }
 
     /// <summary>
