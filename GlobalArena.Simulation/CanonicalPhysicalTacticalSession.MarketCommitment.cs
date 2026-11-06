@@ -21,6 +21,13 @@ public sealed partial class CanonicalPhysicalTacticalSession
     private readonly List<CanonicalExecutedLocalRecipientCustodyTransfer>
         _executedLocalRecipientCustodyTransfers = new();
 
+    private readonly List<CanonicalExecutedLocalRecipientCustodyDisposition>
+        _executedLocalRecipientCustodyDispositions = new();
+
+    public IReadOnlyList<CanonicalExecutedLocalRecipientCustodyDisposition>
+        ExecutedLocalRecipientCustodyDispositions =>
+        Array.AsReadOnly(_executedLocalRecipientCustodyDispositions.ToArray());
+
     public IReadOnlyList<CanonicalExecutedLocalRecipientCustodyTransfer>
         ExecutedLocalRecipientCustodyTransfers =>
         Array.AsReadOnly(_executedLocalRecipientCustodyTransfers.ToArray());
@@ -107,6 +114,57 @@ public sealed partial class CanonicalPhysicalTacticalSession
                     "Closing market custody disagrees with journal release/use receipts.");
         }
 
+        var closures = _executedLocalRecipientCustodyDispositions;
+        if (closures.Select(x => x.SourceCommitmentActionOrdinal)
+            .Distinct().Count() != closures.Count ||
+            _journal.Count(x => x.Kind is
+                "return_local_recipient_custody" or
+                "use_local_recipient_material") != closures.Count)
+            throw new InvalidOperationException(
+                "Recipient custody must have at most one authenticated final disposition.");
+
+        foreach (var closure in closures)
+        {
+            if (closure.ActionOrdinal <= closure.OriginalTransferActionOrdinal ||
+                closure.ActionOrdinal > _journal.Count ||
+                closure.SourceCommitmentActionOrdinal <= 0)
+                throw new InvalidOperationException(
+                    "Invalid recipient custody closure position.");
+            var origin = _physicalStockCommitments.SingleOrDefault(x =>
+                x.ActionOrdinal == closure.SourceCommitmentActionOrdinal);
+            var transfer = _executedLocalRecipientCustodyTransfers.SingleOrDefault(x =>
+                x.ActionOrdinal == closure.OriginalTransferActionOrdinal);
+            var action = _journal[closure.ActionOrdinal - 1];
+            var isUse = closure.ProvesExecutedMaterialUse;
+            if (origin is null || transfer is null ||
+                !origin.Transferred ||
+                closure.SourceCommitmentActionOrdinal !=
+                    transfer.SourceCommitmentActionOrdinal ||
+                closure.FineTile != origin.FineTile ||
+                closure.Commodity != origin.Commodity ||
+                closure.RawQuantity != origin.RawQuantity ||
+                closure.OriginalRecipientActivity != transfer.RecipientActivity ||
+                action.Kind != (isUse
+                    ? "use_local_recipient_material"
+                    : "return_local_recipient_custody") ||
+                action.Source != closure.FineTile ||
+                action.Destination != closure.FineTile ||
+                action.CommitmentOrdinal != origin.ActionOrdinal ||
+                action.CommitmentCommodity != origin.Commodity ||
+                action.CommitmentRaw != origin.RawQuantity ||
+                action.CommitmentKind != (byte)origin.Kind ||
+                action.MaterialUseKind != (isUse
+                    ? (byte)closure.MaterialUseKind!.Value : (byte)0) ||
+                action.FromJob != 0 ||
+                action.ToJob != (isUse
+                    ? (byte)closure.OriginalRecipientActivity : (byte)0) ||
+                action.Workers != closure.ActiveBeneficiaryWorkers ||
+                action.BeforeHashHex != closure.BeforeWorldHashHex ||
+                action.AfterHashHex != closure.AfterWorldHashHex)
+                throw new InvalidOperationException(
+                    "Recipient material disposition is not authenticated by its unique canonical action.");
+        }
+
         var holdings = _materialLots.Snapshot().Where(x =>
             x.Custody is CanonicalPhysicalLotCustodyKind.MarketCommitment or
                 CanonicalPhysicalLotCustodyKind.DeliberateRetention or
@@ -116,7 +174,9 @@ public sealed partial class CanonicalPhysicalTacticalSession
                 g => g.Aggregate(BigInteger.Zero,
                     (sum, x) => sum + x.RawQuantity));
         var commitments = _physicalStockCommitments
-            .Where(x => x.IsLive || x.Transferred)
+            .Where(x => x.IsLive ||
+                (x.Transferred && !closures.Any(d =>
+                    d.SourceCommitmentActionOrdinal == x.ActionOrdinal)))
             .ToDictionary(
                 x => (Custody: x.Transferred
                           ? CanonicalPhysicalLotCustodyKind.LocalRecipientCustody
@@ -411,6 +471,135 @@ public sealed partial class CanonicalPhysicalTacticalSession
             recipientActivity, workers, action.BeforeHashHex,
             action.AfterHashHex, attribution);
         _executedLocalRecipientCustodyTransfers.Add(receipt);
+        VerifyPhysicalStockCommitments();
+        return receipt;
+    }
+
+    /// <summary>
+    /// Return the exact unused local recipient custody to the original free
+    /// stock tile. Does not annul the historical recipient handoff receipt;
+    /// the old offer cannot become live again by this operation.
+    /// </summary>
+    public CanonicalExecutedLocalRecipientCustodyDisposition
+        ReturnLocalRecipientCustody(int commitmentActionOrdinal) =>
+        CloseLocalRecipientCustody(
+            commitmentActionOrdinal,
+            CanonicalLocalRecipientCustodyDispositionKind.ReturnToLocalFreeStock,
+            null);
+
+    /// <summary>
+    /// Execute an actual workforce material sink from an existing recipient
+    /// custody, without returning it to the market or crediting currency.
+    /// </summary>
+    public CanonicalExecutedLocalRecipientCustodyDisposition
+        UseLocalRecipientMaterial(int commitmentActionOrdinal,
+            CanonicalMaterialDispositionKind materialUseKind) =>
+        CloseLocalRecipientCustody(
+            commitmentActionOrdinal,
+            CanonicalLocalRecipientCustodyDispositionKind.ExecuteWorkforceMaterialUse,
+            materialUseKind);
+
+    private CanonicalExecutedLocalRecipientCustodyDisposition
+        CloseLocalRecipientCustody(
+            int commitmentActionOrdinal,
+            CanonicalLocalRecipientCustodyDispositionKind kind,
+            CanonicalMaterialDispositionKind? materialUseKind)
+    {
+        EnsureJournalCapacity();
+        VerifyPhysicalStockCommitments();
+        if (kind is not (
+                CanonicalLocalRecipientCustodyDispositionKind.ReturnToLocalFreeStock or
+                CanonicalLocalRecipientCustodyDispositionKind.ExecuteWorkforceMaterialUse) ||
+            (kind == CanonicalLocalRecipientCustodyDispositionKind.ReturnToLocalFreeStock
+                ? materialUseKind.HasValue
+                : materialUseKind is not (
+                    CanonicalMaterialDispositionKind.FinalPhysicalUse or
+                    CanonicalMaterialDispositionKind.IntermediateInputUse)))
+            throw new ArgumentOutOfRangeException(nameof(kind));
+
+        var source = _physicalStockCommitments.SingleOrDefault(x =>
+            x.ActionOrdinal == commitmentActionOrdinal);
+        var handoff = _executedLocalRecipientCustodyTransfers.SingleOrDefault(x =>
+            x.SourceCommitmentActionOrdinal == commitmentActionOrdinal);
+        if (source is null || !source.Transferred ||
+            source.Commodity is not (2U or 3U) ||
+            handoff is null ||
+            _executedLocalRecipientCustodyDispositions.Any(x =>
+                x.SourceCommitmentActionOrdinal == commitmentActionOrdinal))
+            throw new InvalidOperationException(
+                "Only an unclosed physically transferred recipient custody can be returned or used.");
+
+        var tile = new PhysicalTacticalTileId(
+            _fine, new StrategicCellId(source.FineTile));
+        ValidateTile(tile);
+        var current = State;
+        ulong workers = 0UL;
+        if (kind ==
+            CanonicalLocalRecipientCustodyDispositionKind.ExecuteWorkforceMaterialUse)
+        {
+            workers = current.Allocations.FirstOrDefault(x =>
+                x.TileId == tile &&
+                x.Activity == handoff.RecipientActivity)?.Workers ?? 0UL;
+            if (workers == 0UL)
+                throw new InvalidOperationException(
+                    "The original recipient productive group must have real local workers at physical use.");
+        }
+
+        var staged = _materialLots.Clone();
+        var isUse = kind ==
+            CanonicalLocalRecipientCustodyDispositionKind.ExecuteWorkforceMaterialUse;
+        var attribution = isUse
+            ? staged.ConsumeLocalRecipientMaterial(
+                source.ActionOrdinal, source.Commodity, source.RawQuantity)
+            : staged.ReturnLocalRecipientMaterial(
+                source.ActionOrdinal, source.FineTile,
+                source.Commodity, source.RawQuantity);
+
+        var next = current;
+        if (!isUse)
+        {
+            var commodity = new CommodityId(source.Commodity);
+            if (!current.Stocks.Any(x =>
+                x.TileId == tile && x.Commodity == commodity))
+                throw new InvalidOperationException(
+                    "Recipient custody cannot be returned without the original stock identity.");
+            next = new PhysicalTacticalEconomyRuntimeState(
+                current.CoarseWorldBinding, _coarse, _fine,
+                current.MovementTurn, current.WorkerRevision,
+                current.Allocations,
+                current.Stocks.Select(x =>
+                    x.TileId == tile && x.Commodity == commodity
+                        ? x with
+                        {
+                            RawQuantity = checked(
+                                x.RawQuantity + source.RawQuantity)
+                        }
+                        : x),
+                current.Cycles, _cadenceMode, _geographyMode,
+                current.FoodCash, _movementMode, current.Transits,
+                current.LongTrips, current.RemoteRoutingEnabled,
+                current.TravelFoodLedgers, current.JourneyCampStates,
+                current.PrimitiveFacilities);
+        }
+        staged.VerifyInventories(next);
+        Commit(next, isUse ? "use_local_recipient_material" :
+            "return_local_recipient_custody",
+            source.FineTile, source.FineTile,
+            0, isUse ? (byte)handoff.RecipientActivity : (byte)0, workers,
+            materialUseKind: isUse ? (byte)materialUseKind!.Value : (byte)0,
+            commitmentCommodity: source.Commodity,
+            commitmentRaw: source.RawQuantity,
+            commitmentKind: (byte)source.Kind,
+            commitmentOrdinal: source.ActionOrdinal);
+        _materialLots = staged;
+        var action = _journal[^1];
+        var receipt = new CanonicalExecutedLocalRecipientCustodyDisposition(
+            _journal.Count, source.ActionOrdinal, handoff.ActionOrdinal,
+            State.MovementTurn, source.FineTile, source.Commodity,
+            source.RawQuantity, kind, handoff.RecipientActivity,
+            workers, materialUseKind, action.BeforeHashHex,
+            action.AfterHashHex, attribution);
+        _executedLocalRecipientCustodyDispositions.Add(receipt);
         VerifyPhysicalStockCommitments();
         return receipt;
     }
