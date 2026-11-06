@@ -1907,7 +1907,7 @@ public sealed partial class CanonicalPhysicalTacticalSession
         if ((envelope.Version == TransportAuthorityEnvelopeFormat
                 ? payload.Version < SaveFormat || payload.Version > AutomaticCampSaveFormat ||
                   payload.TransportCommands is not { Length: > 0 }
-                : integratedTreasury || materialEnvelope
+                : integratedTreasury || materialEnvelope || stockCommitmentEnvelope
                 ? payload.Version < SaveFormat ||
                   payload.Version > AutomaticCampSaveFormat ||
                   payload.TransportCommands is { Length: 0 }
