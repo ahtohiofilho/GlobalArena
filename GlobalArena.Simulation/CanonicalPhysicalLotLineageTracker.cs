@@ -17,7 +17,9 @@ public enum CanonicalPhysicalLotOriginKind : byte
 public enum CanonicalPhysicalLotCustodyKind : byte
 {
     LocalStock = 1,
-    ExpeditionCargo = 2
+    ExpeditionCargo = 2,
+    MarketCommitment = 3,
+    DeliberateRetention = 4
 }
 
 /// <summary>
@@ -149,6 +151,58 @@ internal sealed class CanonicalPhysicalLotLineageTracker
         }));
     }
 
+    /// <summary>
+    /// Transfer real local stock into a distinct custody ledger at its
+    /// canonical action ordinal. No quantity is created or consumed.
+    /// </summary>
+    internal void CommitLocalStock(ulong fineTile, uint commodity,
+        ulong raw, int ordinal, CanonicalPhysicalCommitmentKind kind)
+    {
+        if (ordinal <= 0 ||
+            kind is not (CanonicalPhysicalCommitmentKind.MarketOffer or
+                CanonicalPhysicalCommitmentKind.DeliberateRetention))
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        var custody = kind == CanonicalPhysicalCommitmentKind.MarketOffer
+            ? CanonicalPhysicalLotCustodyKind.MarketCommitment
+            : CanonicalPhysicalLotCustodyKind.DeliberateRetention;
+        if (_holdings.Any(x => x.Custody == custody &&
+            x.CustodyId == (ulong)ordinal))
+            throw new InvalidOperationException("Duplicate physical commitment custody.");
+        var moved = Take(CanonicalPhysicalLotCustodyKind.LocalStock,
+            fineTile, commodity, raw);
+        _holdings.AddRange(moved.Select(x => x with
+        {
+            Custody = custody,
+            CustodyId = (ulong)ordinal
+        }));
+    }
+
+    /// <summary>Release the identical preserved lots to local stock.</summary>
+    internal void ReleaseCommittedStock(ulong fineTile, uint commodity,
+        ulong raw, int ordinal, CanonicalPhysicalCommitmentKind kind)
+    {
+        if (ordinal <= 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        var custody = kind switch
+        {
+            CanonicalPhysicalCommitmentKind.MarketOffer =>
+                CanonicalPhysicalLotCustodyKind.MarketCommitment,
+            CanonicalPhysicalCommitmentKind.DeliberateRetention =>
+                CanonicalPhysicalLotCustodyKind.DeliberateRetention,
+            _ => throw new ArgumentOutOfRangeException(nameof(kind))
+        };
+        var moved = Take(custody, (ulong)ordinal, commodity, raw);
+        if (_holdings.Any(x => x.Custody == custody &&
+            x.CustodyId == (ulong)ordinal))
+            throw new InvalidOperationException(
+                "Released stock commitment still owns physical cargo.");
+        _holdings.AddRange(moved.Select(x => x with
+        {
+            Custody = CanonicalPhysicalLotCustodyKind.LocalStock,
+            CustodyId = fineTile
+        }));
+    }
+
     private void RecordExecutedProduction(
         ulong cycleOrdinal, ulong movementTurn,
         CanonicalExecutedPhysicalProductionRow row)
@@ -207,7 +261,12 @@ internal sealed class CanonicalPhysicalLotLineageTracker
             x.OriginKind is not (
                 CanonicalPhysicalLotOriginKind.UnattributedOpeningStock or
                 CanonicalPhysicalLotOriginKind.ExecutedWorkerProduction or
-                CanonicalPhysicalLotOriginKind.ExecutedExpeditionForage)))
+                CanonicalPhysicalLotOriginKind.ExecutedExpeditionForage) ||
+            x.Custody is not (
+                CanonicalPhysicalLotCustodyKind.LocalStock or
+                CanonicalPhysicalLotCustodyKind.ExpeditionCargo or
+                CanonicalPhysicalLotCustodyKind.MarketCommitment or
+                CanonicalPhysicalLotCustodyKind.DeliberateRetention)))
             throw new InvalidOperationException("Invalid physical lot record.");
 
         var local = _holdings
