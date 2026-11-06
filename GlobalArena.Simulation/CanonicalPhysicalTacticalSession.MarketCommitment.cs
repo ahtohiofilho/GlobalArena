@@ -531,13 +531,23 @@ public sealed partial class CanonicalPhysicalTacticalSession
             throw new InvalidOperationException(
                 "Only an unclosed physically transferred recipient custody can be returned or used.");
 
+        var title = _registeredLocalSimulatedEconomicTitles.SingleOrDefault(x =>
+            x.Evidence.SourceCommitmentActionOrdinal == commitmentActionOrdinal);
+        var reversed = title is not null &&
+            _reversedLocalSimulatedEconomicTitles.Any(x =>
+                x.Evidence.OriginalTitleActionOrdinal == title.ActionOrdinal);
         if (kind ==
                 CanonicalLocalRecipientCustodyDispositionKind.ReturnToLocalFreeStock &&
-            _registeredLocalSimulatedEconomicTitles.Any(x =>
-                x.Evidence.SourceCommitmentActionOrdinal ==
-                    commitmentActionOrdinal))
+            title is not null && !reversed)
             throw new InvalidOperationException(
-                "A game-registered economic title cannot be returned to the former free-stock custodian without a separate title reversal.");
+                "An active in-game title must be explicitly reversed before " +
+                "physical custody can return to the former owner's free stock.");
+        if (kind ==
+                CanonicalLocalRecipientCustodyDispositionKind.ExecuteWorkforceMaterialUse &&
+            reversed)
+            throw new InvalidOperationException(
+                "The prior recipient cannot use material after economic title " +
+                "has been explicitly reversed; return the physical custody instead.");
 
         var tile = new PhysicalTacticalTileId(
             _fine, new StrategicCellId(source.FineTile));
