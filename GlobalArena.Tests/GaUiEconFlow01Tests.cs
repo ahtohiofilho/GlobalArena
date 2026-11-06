@@ -147,7 +147,7 @@ public sealed class GaUiEconFlow01Tests
         Assert.Equal(BigInteger.Zero, remote.CommittedMarketRaw);
         Assert.Empty(remote.ActiveLocalCommitments);
         Assert.Equal(0, remote.ExecutedLocalMaterialUses);
-        Assert.Throws<ArgumentException>(() =>
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
             CanonicalTacticalPhysicalFlowProjection.Read(session,
                 new PhysicalTacticalTileId(new GoldbergParameters(3, 0),
                     source.FineStrategicCellId)));
