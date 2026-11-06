@@ -16,6 +16,11 @@ public sealed class CanonicalExecutedCommittedMaterialUse
     public uint Commodity { get; }
     public CanonicalMaterialDispositionKind Kind { get; }
     public ulong UsedRaw { get; }
+    public EconomicActivityKind? BeneficiaryActivity { get; }
+    public ulong BeneficiaryWorkers { get; }
+    public bool ProvesLocalWorkforceGroup => BeneficiaryActivity.HasValue && BeneficiaryWorkers > 0UL;
+    public bool ProvesNamedIndividualOrLegalBuyer => false;
+    public bool ProvesRemoteDelivery => false;
     public string BeforeWorldHashHex { get; }
     public string AfterWorldHashHex { get; }
     public IReadOnlyList<CanonicalPhysicalLotHolding> SourceAttributions { get; }
@@ -32,7 +37,9 @@ public sealed class CanonicalExecutedCommittedMaterialUse
         ulong movementTurn, ulong fineTile, uint commodity,
         CanonicalMaterialDispositionKind kind, ulong usedRaw,
         string beforeHash, string afterHash,
-        IReadOnlyList<CanonicalPhysicalLotHolding> sourceAttributions)
+        IReadOnlyList<CanonicalPhysicalLotHolding> sourceAttributions,
+        EconomicActivityKind? beneficiaryActivity = null,
+        ulong beneficiaryWorkers = 0UL)
     {
         if (actionOrdinal <= sourceCommitmentActionOrdinal ||
             sourceCommitmentActionOrdinal <= 0 || fineTile == 0UL ||
@@ -43,6 +50,11 @@ public sealed class CanonicalExecutedCommittedMaterialUse
             string.IsNullOrEmpty(afterHash) ||
             sourceAttributions is null ||
             sourceAttributions.Count == 0 ||
+            (beneficiaryActivity is null
+                ? beneficiaryWorkers != 0UL
+                : beneficiaryActivity is not (EconomicActivityKind.Agriculture or
+                    EconomicActivityKind.Forestry or EconomicActivityKind.Mining) ||
+                  beneficiaryWorkers == 0UL) ||
             sourceAttributions.Aggregate(0UL, (sum, x) =>
                 checked(sum + x.RawQuantity)) != usedRaw)
             throw new InvalidOperationException(
@@ -55,6 +67,8 @@ public sealed class CanonicalExecutedCommittedMaterialUse
         Commodity = commodity;
         Kind = kind;
         UsedRaw = usedRaw;
+        BeneficiaryActivity = beneficiaryActivity;
+        BeneficiaryWorkers = beneficiaryWorkers;
         BeforeWorldHashHex = beforeHash;
         AfterWorldHashHex = afterHash;
         SourceAttributions = Array.AsReadOnly(sourceAttributions.ToArray());

@@ -182,6 +182,9 @@ public sealed partial class CanonicalPhysicalTacticalSession
     // 33/34 are the first physically executed same-tile sinks from market custody.
     public const int ExecutedMarketMaterialUseEnvelopeFormat = 33;
     public const int ExecutedMarketMaterialUseWithTreasuryEnvelopeFormat = 34;
+    // 35/36: exactly located, real workforce beneficiary of local material use.
+    public const int ExecutedWorkforceMaterialUseEnvelopeFormat = 35;
+    public const int ExecutedWorkforceMaterialUseWithTreasuryEnvelopeFormat = 36;
     public const int MaximumActions = 100_000;
     private const int MaximumSaveBytes = 4_000_000;
     public const ulong FoodDemandRawPerWorker = 500_000UL;
@@ -1781,7 +1784,11 @@ public sealed partial class CanonicalPhysicalTacticalSession
         var digest = Convert.ToHexString(
             SHA256.HashData(Encoding.UTF8.GetBytes(payloadJson)));
         var json = JsonSerializer.Serialize(new CanonicalPhysicalSaveEnvelope(
-            _journal.Any(x => x.Kind == "use_committed_material")
+            _journal.Any(x => x.Kind == "use_committed_material_for_workers")
+                ? (_treasuryActivationActionCount.HasValue
+                    ? ExecutedWorkforceMaterialUseWithTreasuryEnvelopeFormat
+                    : ExecutedWorkforceMaterialUseEnvelopeFormat)
+                : _journal.Any(x => x.Kind == "use_committed_material")
                 ? (_treasuryActivationActionCount.HasValue
                     ? ExecutedMarketMaterialUseWithTreasuryEnvelopeFormat
                     : ExecutedMarketMaterialUseEnvelopeFormat)
@@ -1834,7 +1841,8 @@ public sealed partial class CanonicalPhysicalTacticalSession
                 ?? throw new InvalidOperationException("Missing canonical save envelope.");
             if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat or CashFoodSaveFormat or TimedTransitSaveFormat or BornCivilizationSaveFormat or LongDistanceSaveFormat or PhysicalTravelFoodSaveFormat or AutomaticCampSaveFormat or TransportAuthorityEnvelopeFormat or IntegratedDormantTreasuryEnvelopeFormat or MaterialDispositionEnvelopeFormat or MaterialWithTreasuryEnvelopeFormat or MaterialAssemblyEnvelopeFormat or MaterialAssemblyWithTreasuryEnvelopeFormat or PrimitiveWorkSiteEnvelopeFormat or PrimitiveWorkSiteWithTreasuryEnvelopeFormat or PrimitiveFacilityEnvelopeFormat or PrimitiveFacilityWithTreasuryEnvelopeFormat or FacilityAssistedWorkEnvelopeFormat or FacilityAssistedWorkWithTreasuryEnvelopeFormat or
                 MarketStockCommitmentEnvelopeFormat or MarketStockCommitmentWithTreasuryEnvelopeFormat or
-                ExecutedMarketMaterialUseEnvelopeFormat or ExecutedMarketMaterialUseWithTreasuryEnvelopeFormat) ||
+                ExecutedMarketMaterialUseEnvelopeFormat or ExecutedMarketMaterialUseWithTreasuryEnvelopeFormat or
+                ExecutedWorkforceMaterialUseEnvelopeFormat or ExecutedWorkforceMaterialUseWithTreasuryEnvelopeFormat) ||
                 string.IsNullOrEmpty(envelope.PayloadJson) ||
                 string.IsNullOrEmpty(envelope.PayloadSha256Hex))
                 throw new InvalidOperationException("Unsupported canonical save envelope.");
@@ -1851,14 +1859,21 @@ public sealed partial class CanonicalPhysicalTacticalSession
             throw new InvalidOperationException("Invalid canonical save encoding.", ex);
         }
 
+        var workforceUseEnvelope = envelope.Version is
+            ExecutedWorkforceMaterialUseEnvelopeFormat or
+            ExecutedWorkforceMaterialUseWithTreasuryEnvelopeFormat;
         var marketUseEnvelope = envelope.Version is
             ExecutedMarketMaterialUseEnvelopeFormat or
-            ExecutedMarketMaterialUseWithTreasuryEnvelopeFormat;
+            ExecutedMarketMaterialUseWithTreasuryEnvelopeFormat or
+            ExecutedWorkforceMaterialUseEnvelopeFormat or
+            ExecutedWorkforceMaterialUseWithTreasuryEnvelopeFormat;
         var stockCommitmentEnvelope = envelope.Version is
             MarketStockCommitmentEnvelopeFormat or
             MarketStockCommitmentWithTreasuryEnvelopeFormat or
             ExecutedMarketMaterialUseEnvelopeFormat or
-            ExecutedMarketMaterialUseWithTreasuryEnvelopeFormat;
+            ExecutedMarketMaterialUseWithTreasuryEnvelopeFormat or
+            ExecutedWorkforceMaterialUseEnvelopeFormat or
+            ExecutedWorkforceMaterialUseWithTreasuryEnvelopeFormat;
         var hasMaterialActions = payload.Actions?.Any(a =>
             a?.Kind is "material_use" or "assemble_primitive") == true;
         var hasAssemblyActions = payload.Actions?.Any(a =>
@@ -1872,7 +1887,10 @@ public sealed partial class CanonicalPhysicalTacticalSession
         var hasStockCommitmentActions = payload.Actions?.Any(a =>
             a?.Kind is "commit_physical_stock" or "release_physical_stock") == true;
         var hasMarketUseActions = payload.Actions?.Any(a =>
-            a?.Kind == "use_committed_material") == true;
+            a?.Kind is "use_committed_material" or
+                "use_committed_material_for_workers") == true;
+        var hasWorkforceUseActions = payload.Actions?.Any(a =>
+            a?.Kind == "use_committed_material_for_workers") == true;
         var integratedTreasury = envelope.Version is
             IntegratedDormantTreasuryEnvelopeFormat or
             MaterialWithTreasuryEnvelopeFormat or
@@ -1881,7 +1899,8 @@ public sealed partial class CanonicalPhysicalTacticalSession
             PrimitiveFacilityWithTreasuryEnvelopeFormat or
             FacilityAssistedWorkWithTreasuryEnvelopeFormat or
             MarketStockCommitmentWithTreasuryEnvelopeFormat or
-            ExecutedMarketMaterialUseWithTreasuryEnvelopeFormat;
+            ExecutedMarketMaterialUseWithTreasuryEnvelopeFormat or
+            ExecutedWorkforceMaterialUseWithTreasuryEnvelopeFormat;
         var staffedEnvelope = envelope.Version is
             FacilityAssistedWorkEnvelopeFormat or
             FacilityAssistedWorkWithTreasuryEnvelopeFormat ||
@@ -1933,6 +1952,7 @@ public sealed partial class CanonicalPhysicalTacticalSession
                   payload.TransportCommands is not null) ||
             (stockCommitmentEnvelope != hasStockCommitmentActions) ||
             (marketUseEnvelope != hasMarketUseActions) ||
+            (workforceUseEnvelope != hasWorkforceUseActions) ||
             (!marketUseEnvelope &&
                 payload.PhysicalCommitments?.Any(x => x.Consumed) == true) ||
             (stockCommitmentEnvelope != (payload.PhysicalCommitments is not null)) ||
@@ -2126,6 +2146,25 @@ public sealed partial class CanonicalPhysicalTacticalSession
                      action.AssemblyKind == 0)
                 game.UseCommittedLocalMaterial(
                     action.CommitmentOrdinal,
+                    (CanonicalMaterialDispositionKind)action.MaterialUseKind);
+            else if (action.Kind == "use_committed_material_for_workers" &&
+                     workforceUseEnvelope &&
+                     action.Source == action.Destination &&
+                     action.Source != 0UL &&
+                     action.Workers > 0UL &&
+                     action.FromJob == 0 &&
+                     (action.ToJob == (byte)EconomicActivityKind.Agriculture ||
+                      action.ToJob == (byte)EconomicActivityKind.Forestry ||
+                      action.ToJob == (byte)EconomicActivityKind.Mining) &&
+                     action.FoodRaw == 0UL &&
+                     action.CommitmentOrdinal > 0 &&
+                     action.CommitmentKind == (byte)CanonicalPhysicalCommitmentKind.MarketOffer &&
+                     action.MaterialCommodity == 0U &&
+                     action.MaterialRaw == 0UL &&
+                     action.AssemblyKind == 0)
+                game.UseCommittedLocalMaterialForWorkforce(
+                    action.CommitmentOrdinal,
+                    (EconomicActivityKind)action.ToJob,
                     (CanonicalMaterialDispositionKind)action.MaterialUseKind);
             else if (action.Kind == "tick" && action.Source == 0UL &&
                      action.Destination == 0UL && action.FromJob == 0 &&
