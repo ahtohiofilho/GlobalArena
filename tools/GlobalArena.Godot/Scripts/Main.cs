@@ -415,7 +415,9 @@ public partial class Main : Control
                 : "MOSTRAR INSPEÇÃO TÉCNICA DO TILE";
         };
         tacticalHud.AddChild(inspector);
-        _tacticalPreview.TransferHud(tacticalHud);
+        // Reuse all existing signals, but put diagnostics behind a single
+        // context-only fold. No toolbar is added to the map viewport.
+        ConfigureTacticalTechnicalWorkspace(tacticalHud);
         // QA density only: typography belongs to the right sidebar, not the map.
         ApplyCompactTacticalTypography(tacticalHud);
         ApplyCompactTacticalTypography(inspector);
@@ -428,30 +430,11 @@ public partial class Main : Control
         hud.AddChild(strategicHud);
         globe.TransferHud(strategicHud);
         _strategicHudPanel = strategicHud;
-        // Keep the calibration buttons visible even when the context scrolls.
-        foreach (var child in strategicHud.GetChildren())
-        {
-            if (child is HBoxContainer row)
-            {
-                bool calibrationRow = false;
-                foreach (var entry in row.GetChildren())
-                    if (entry is Button control && control.Text.StartsWith("LAND ")) calibrationRow = true;
-                if (calibrationRow)
-                {
-                    row.Reparent(rightLayout);
-                    _strategicCalibrationGroups.Add(row);
-                }
-            }
-            else if (child is Button next && next.Text == "NEXT SEED")
-            {
-                next.Reparent(rightLayout);
-                _strategicCalibrationGroups.Add(next);
-            }
-        }
-        if (_strategicCalibrationGroups.Count != 2)
-            throw new System.InvalidOperationException("Expected LAND +/- row and NEXT SEED control.");
+        // Two focus labels remain visible; all other global diagnostic
+        // buttons, legends and legacy HD calibration go into QA disclosure.
+        ConfigureStrategicTechnicalWorkspace(strategicHud);
         GD.Print("GA_UI_STRATEGIC_CONTROL_OWNERSHIP_READY_R1 groups=2 controls=3 context=STRATEGIC");
-        GD.Print("GA_UI_CALIBRATION_ACCESS_READY_01 fixed-controls=true");
+        GD.Print("GA_UI_CALIBRATION_ACCESS_READY_01 fixed-controls=false folded_qa=true");
 
         // VS106: the actual inhabited physical tile, not a synthetic map
         // cursor or a strategic selection, determines the first view.
