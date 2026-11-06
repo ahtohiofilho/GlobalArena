@@ -44,7 +44,9 @@ public sealed record CanonicalPhysicalAction(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     byte CommitmentKind = 0,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    int CommitmentOrdinal = 0);
+    int CommitmentOrdinal = 0,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    CanonicalLocalSimulatedEconomicTitleEvidence? TitleEvidence = null);
 
 public sealed record CanonicalPhysicalWorkerSaveRow(ulong Tile, byte Job, ulong Workers);
 public sealed record CanonicalPhysicalStockSaveRow(ulong Tile, uint Commodity, ulong Raw);
@@ -192,6 +194,9 @@ public sealed partial class CanonicalPhysicalTacticalSession
     // 39/40: actual recipient-custody return/use after versioned 37/38 handoff.
     public const int RecipientCustodyDispositionEnvelopeFormat = 39;
     public const int RecipientCustodyDispositionWithTreasuryEnvelopeFormat = 40;
+    // V41/42: canonical in-game title, not money or legal title.
+    public const int SimulatedEconomicTitleEnvelopeFormat = 41;
+    public const int SimulatedEconomicTitleWithTreasuryEnvelopeFormat = 42;
     public const int MaximumActions = 100_000;
     private const int MaximumSaveBytes = 4_000_000;
     public const ulong FoodDemandRawPerWorker = 500_000UL;
@@ -1732,7 +1737,8 @@ public sealed partial class CanonicalPhysicalTacticalSession
         int commissionAssemblyOrdinal = 0, byte commissionActivity = 0,
         int facilityAssemblyOrdinal = 0, byte facilityActivity = 0,
         uint commitmentCommodity = 0U, ulong commitmentRaw = 0UL,
-        byte commitmentKind = 0, int commitmentOrdinal = 0)
+        byte commitmentKind = 0, int commitmentOrdinal = 0,
+        CanonicalLocalSimulatedEconomicTitleEvidence? titleEvidence = null)
     {
         var before = CheckedSnapshot;
         var beforeHash = _hasher.Compute(before);
@@ -1746,7 +1752,7 @@ public sealed partial class CanonicalPhysicalTacticalSession
             commissionAssemblyOrdinal, commissionActivity,
             facilityAssemblyOrdinal, facilityActivity,
             commitmentCommodity, commitmentRaw,
-            commitmentKind, commitmentOrdinal);
+            commitmentKind, commitmentOrdinal, titleEvidence);
         Game.AcceptSnapshotIfCurrent(before, staged);
         _lastCommittedSnapshot = staged;
         _journal.Add(action);
@@ -1791,7 +1797,11 @@ public sealed partial class CanonicalPhysicalTacticalSession
         var digest = Convert.ToHexString(
             SHA256.HashData(Encoding.UTF8.GetBytes(payloadJson)));
         var json = JsonSerializer.Serialize(new CanonicalPhysicalSaveEnvelope(
-            _journal.Any(x => x.Kind is
+            _journal.Any(x => x.Kind == "register_local_economic_title")
+                ? (_treasuryActivationActionCount.HasValue
+                    ? SimulatedEconomicTitleWithTreasuryEnvelopeFormat
+                    : SimulatedEconomicTitleEnvelopeFormat)
+                : _journal.Any(x => x.Kind is
                 "return_local_recipient_custody" or
                 "use_local_recipient_material")
                 ? (_treasuryActivationActionCount.HasValue
@@ -1862,7 +1872,8 @@ public sealed partial class CanonicalPhysicalTacticalSession
                 ExecutedMarketMaterialUseEnvelopeFormat or ExecutedMarketMaterialUseWithTreasuryEnvelopeFormat or
                 ExecutedWorkforceMaterialUseEnvelopeFormat or ExecutedWorkforceMaterialUseWithTreasuryEnvelopeFormat or
                  LocalRecipientCustodyEnvelopeFormat or LocalRecipientCustodyWithTreasuryEnvelopeFormat or
-                 RecipientCustodyDispositionEnvelopeFormat or RecipientCustodyDispositionWithTreasuryEnvelopeFormat) ||
+                 RecipientCustodyDispositionEnvelopeFormat or RecipientCustodyDispositionWithTreasuryEnvelopeFormat or
+                 SimulatedEconomicTitleEnvelopeFormat or SimulatedEconomicTitleWithTreasuryEnvelopeFormat) ||
                 string.IsNullOrEmpty(envelope.PayloadJson) ||
                 string.IsNullOrEmpty(envelope.PayloadSha256Hex))
                 throw new InvalidOperationException("Unsupported canonical save envelope.");
@@ -1879,17 +1890,25 @@ public sealed partial class CanonicalPhysicalTacticalSession
             throw new InvalidOperationException("Invalid canonical save encoding.", ex);
         }
 
-        var recipientDispositionEnvelope = envelope.Version is
-            RecipientCustodyDispositionEnvelopeFormat or
-            RecipientCustodyDispositionWithTreasuryEnvelopeFormat;
+        var titleEnvelope = envelope.Version is
+            SimulatedEconomicTitleEnvelopeFormat or
+            SimulatedEconomicTitleWithTreasuryEnvelopeFormat;
+        var hasTitleActions = payload.Actions?.Any(a =>
+            a?.Kind == "register_local_economic_title") == true;
         var hasRecipientDispositionActions = payload.Actions?.Any(a =>
             a?.Kind is "return_local_recipient_custody" or
                 "use_local_recipient_material") == true;
+        var recipientDispositionEnvelope = envelope.Version is
+            RecipientCustodyDispositionEnvelopeFormat or
+            RecipientCustodyDispositionWithTreasuryEnvelopeFormat ||
+            (titleEnvelope && hasRecipientDispositionActions);
         var recipientTransferEnvelope = envelope.Version is
             LocalRecipientCustodyEnvelopeFormat or
             LocalRecipientCustodyWithTreasuryEnvelopeFormat or
             RecipientCustodyDispositionEnvelopeFormat or
-            RecipientCustodyDispositionWithTreasuryEnvelopeFormat;
+            RecipientCustodyDispositionWithTreasuryEnvelopeFormat or
+            SimulatedEconomicTitleEnvelopeFormat or
+            SimulatedEconomicTitleWithTreasuryEnvelopeFormat;
         var hasRecipientTransferActions = payload.Actions?.Any(a =>
             a?.Kind == "transfer_market_offer_local_recipient") == true;
         var hasMarketUseActions = payload.Actions?.Any(a =>
@@ -1917,7 +1936,9 @@ public sealed partial class CanonicalPhysicalTacticalSession
             LocalRecipientCustodyEnvelopeFormat or
             LocalRecipientCustodyWithTreasuryEnvelopeFormat or
             RecipientCustodyDispositionEnvelopeFormat or
-            RecipientCustodyDispositionWithTreasuryEnvelopeFormat;
+            RecipientCustodyDispositionWithTreasuryEnvelopeFormat or
+            SimulatedEconomicTitleEnvelopeFormat or
+            SimulatedEconomicTitleWithTreasuryEnvelopeFormat;
         var hasMaterialActions = payload.Actions?.Any(a =>
             a?.Kind is "material_use" or "assemble_primitive") == true;
         var hasAssemblyActions = payload.Actions?.Any(a =>
@@ -1931,6 +1952,7 @@ public sealed partial class CanonicalPhysicalTacticalSession
         var hasStockCommitmentActions = payload.Actions?.Any(a =>
             a?.Kind is "commit_physical_stock" or "release_physical_stock") == true;
         var integratedTreasury = envelope.Version is
+            SimulatedEconomicTitleWithTreasuryEnvelopeFormat or
             RecipientCustodyDispositionWithTreasuryEnvelopeFormat or
             LocalRecipientCustodyWithTreasuryEnvelopeFormat or
             IntegratedDormantTreasuryEnvelopeFormat or
@@ -1991,6 +2013,7 @@ public sealed partial class CanonicalPhysicalTacticalSession
                   payload.TransportCommands is { Length: 0 }
                 : payload.Version != envelope.Version ||
                   payload.TransportCommands is not null) ||
+            (titleEnvelope != hasTitleActions) ||
             (recipientDispositionEnvelope != hasRecipientDispositionActions) ||
             (recipientTransferEnvelope != hasRecipientTransferActions) ||
             (stockCommitmentEnvelope != hasStockCommitmentActions) ||
@@ -2106,6 +2129,11 @@ public sealed partial class CanonicalPhysicalTacticalSession
         foreach (var action in payload.Actions)
         {
             ReplayTreasuryActivation();
+            if (action is not null &&
+                action.Kind != "register_local_economic_title" &&
+                action.TitleEvidence is not null)
+                throw new InvalidOperationException(
+                    "Only the canonical registered-title action may carry institutional title evidence.");
             if (action is null)
                 throw new InvalidOperationException("Null canonical action.");
             if (game.Game.Snapshot.Revision != action.BeforeRevision ||
@@ -2196,6 +2224,26 @@ public sealed partial class CanonicalPhysicalTacticalSession
                      action.FoodRaw == 0UL)
                 game.TransferMarketOfferToLocalRecipient(
                     action.CommitmentOrdinal, (EconomicActivityKind)action.ToJob);
+            else if (action.Kind == "register_local_economic_title" &&
+                     titleEnvelope &&
+                     action.TitleEvidence is { } title &&
+                     action.Source == title.FineTile &&
+                     action.Destination == title.FineTile &&
+                     action.Source != 0UL &&
+                     action.FromJob == 0 &&
+                     action.ToJob == 0 &&
+                     action.Workers == 0UL &&
+                     action.FoodRaw == 0UL &&
+                     action.MaterialCommodity == 0U &&
+                     action.MaterialUseKind == 0 &&
+                     action.MaterialRaw == 0UL &&
+                     action.CommitmentOrdinal ==
+                         title.SourceCommitmentActionOrdinal &&
+                     action.CommitmentKind ==
+                         (byte)CanonicalPhysicalCommitmentKind.MarketOffer &&
+                     action.CommitmentCommodity == title.Commodity &&
+                     action.CommitmentRaw == title.RawQuantity)
+                game.ReplayLocalSimulatedEconomicTitle(title);
             else if (action.Kind == "return_local_recipient_custody" &&
                      recipientDispositionEnvelope &&
                      action.Source == action.Destination &&

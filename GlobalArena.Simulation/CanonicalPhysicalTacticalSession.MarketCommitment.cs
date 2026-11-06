@@ -234,6 +234,8 @@ public sealed partial class CanonicalPhysicalTacticalSession
                     "Recipient custody must match exactly one canonical journal action.");
         }
 
+        VerifyRegisteredLocalSimulatedEconomicTitles();
+
         foreach (var executed in _executedCommittedMaterialUses)
         {
             if (executed.ActionOrdinal < 1 ||
@@ -528,6 +530,14 @@ public sealed partial class CanonicalPhysicalTacticalSession
                 x.SourceCommitmentActionOrdinal == commitmentActionOrdinal))
             throw new InvalidOperationException(
                 "Only an unclosed physically transferred recipient custody can be returned or used.");
+
+        if (kind ==
+                CanonicalLocalRecipientCustodyDispositionKind.ReturnToLocalFreeStock &&
+            _registeredLocalSimulatedEconomicTitles.Any(x =>
+                x.Evidence.SourceCommitmentActionOrdinal ==
+                    commitmentActionOrdinal))
+            throw new InvalidOperationException(
+                "A game-registered economic title cannot be returned to the former free-stock custodian without a separate title reversal.");
 
         var tile = new PhysicalTacticalTileId(
             _fine, new StrategicCellId(source.FineTile));
