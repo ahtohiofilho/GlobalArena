@@ -379,7 +379,7 @@ public partial class Main : Control
         _openTacticalContext = new Button { Name = "GAQAOpenTactical", Text = "VOLTAR AO MAPA TÁTICO", Disabled = true };
         _openTacticalContext.Pressed += OpenTacticalContext;
         rightLayout.AddChild(_openTacticalContext);
-        _returnStrategicContext = new Button { Name = "GAQAReturnStrategic", Text = "VISÃO GLOBAL · GLOBO ESFÉRICO", Visible = false };
+        _returnStrategicContext = new Button { Name = "GAQAReturnStrategic", Text = "VISÃO GLOBAL · MALHA TÁTICA", Visible = false };
         _returnStrategicContext.Pressed += ReturnStrategicContext;
         rightLayout.AddChild(_returnStrategicContext);
         _tacticalTileEdges = new CheckBox { Text = "TACTICAL TILE EDGES", ButtonPressed = false, Visible = false };
