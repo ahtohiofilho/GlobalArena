@@ -523,6 +523,10 @@ public partial class GlobePreview : SubViewportContainer
             GetViewport().SetInputAsHandled();
             return;
         }
+        // Legacy strategic color layers are not game-world layers after
+        // binding the actual tactical polyhedron. Keep camera/selection
+        // shortcuts, but do not silently repaint real physical terrain.
+        if (_canonicalTacticalSurface is not null) return;
         var targetMode = key.Keycode switch
         {
             Key.Key1 => 0,
