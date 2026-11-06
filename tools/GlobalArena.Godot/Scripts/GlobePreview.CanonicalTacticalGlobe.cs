@@ -15,6 +15,36 @@ public partial class GlobePreview
 {
     private MeshInstance3D? _canonicalTacticalSurface;
     private int _canonicalTacticalCellCount;
+    private WorldGenerationResult? _canonicalPhysicalWorld;
+    private WorldGenerationV2PhysicalComposition? _canonicalPhysicalTerrain;
+    private CanonicalPhysicalVisualLayer _physicalVisualLayer =
+        CanonicalPhysicalVisualLayer.Biomes;
+
+    public CanonicalPhysicalVisualLayer PhysicalVisualLayer => _physicalVisualLayer;
+
+    /// <summary>Switch only the paint. Preserve camera and real G18 picking.</summary>
+    public void SetPhysicalVisualLayer(CanonicalPhysicalVisualLayer layer)
+    {
+        if (layer is not (CanonicalPhysicalVisualLayer.Biomes or
+            CanonicalPhysicalVisualLayer.Relief))
+            throw new ArgumentOutOfRangeException(nameof(layer));
+        if (_physicalVisualLayer == layer) return;
+        _physicalVisualLayer = layer;
+        if (_canonicalPhysicalWorld is null) return;
+
+        var oldPicked = _pickedLabel?.Text;
+        var oldDetails = _detailsLabel?.Text;
+        BindCanonicalTacticalSurface(
+            _canonicalPhysicalWorld, _canonicalPhysicalTerrain);
+        if (_selectedCellId.HasValue)
+        {
+            if (_pickedLabel is not null) _pickedLabel.Text = oldPicked ?? "";
+            if (_detailsLabel is not null) _detailsLabel.Text = oldDetails ?? "";
+        }
+        GD.Print($"GA_UI_PHYSICAL_LAYER_GLOBE switched={layer} " +
+            $"tiles={_canonicalTacticalCellCount} camera_preserved=true " +
+            "canonical_state_unchanged=true");
+    }
 
     public bool HasBoundCanonicalTacticalSurface =>
         _canonicalTacticalSurface?.Mesh is not null;
@@ -45,6 +75,18 @@ public partial class GlobePreview
             throw new InvalidOperationException(
                 "The strategic camera and mesh must be initialized before binding actual tactical terrain.");
 
+        _canonicalPhysicalWorld = physicalWorld;
+        _canonicalPhysicalTerrain = canonicalTerrain;
+        var minElevation = long.MaxValue;
+        var maxElevation = long.MinValue;
+        if (canonicalTerrain is not null)
+        {
+            foreach (var value in canonicalTerrain.Elevation)
+            {
+                if (value < minElevation) minElevation = value;
+                if (value > maxElevation) maxElevation = value;
+            }
+        }
         var builder = new SurfaceTool();
         builder.Begin(Mesh.PrimitiveType.Triangles);
         var triangles = 0;
@@ -61,13 +103,17 @@ public partial class GlobePreview
             if (canonicalTerrain is not null)
             {
                 var physicalBiome = canonicalTerrain.Biomes[index];
-                tint = CanonicalPhysicalTerrainPalette.FromVisibleBiome(
-                    physicalBiome.VisibleBiome);
+                tint = CanonicalPhysicalTerrainPalette.FromCanonicalCell(
+                    canonicalTerrain, index, _physicalVisualLayer,
+                    minElevation, maxElevation);
                 if (!physicalBiome.IsWater) land++;
             }
             else
             {
                 var id = new StrategicCellId(cell.CellId.Value);
+                // Historical V1 saves do not have a calibrated 01C
+                // sea-level datum. Keep verified V1 biomes rather than
+                // invent a numerical relief map from unrelated samples.
                 tint = CanonicalPhysicalTerrainPalette.FromLegacyWorld(
                     physicalWorld, id);
                 if (physicalWorld.StrategicPhysicalFields.LandWater.GetKind(id) !=
@@ -125,13 +171,15 @@ public partial class GlobePreview
         if (_pickedLabel is not null)
             _pickedLabel.Text = "G(18,0) | malha tática global";
         if (_detailsLabel is not null)
-            _detailsLabel.Text =
-                "Terreno físico canônico | clique para escolher uma região";
+            _detailsLabel.Text = _physicalVisualLayer ==
+                CanonicalPhysicalVisualLayer.Relief && canonicalTerrain is not null
+                ? "Relevo físico 01C | clique para escolher uma região"
+                : "Terreno físico canônico | clique para escolher uma região";
 
         GD.Print($"GA_UI_GLOBAL_PHYSICAL_GLOBE_R1 bound=true grid=G(18,0) " +
             $"tiles={_canonicalTacticalCellCount} triangles={triangles} " +
             $"land={land} canonical01C={canonicalTerrain is not null} " +
-            "palette=shared_with_tactical overlays=false " +
+            $"layer={_physicalVisualLayer} palette=shared_with_tactical overlays=false " +
             "strategic_selection=preserved mutation=false");
     }
 }

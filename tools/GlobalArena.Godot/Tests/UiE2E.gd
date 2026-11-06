@@ -157,6 +157,66 @@ func _run() -> void:
         return
     print("GA_UI_E2E_CANONICAL_G18_GLOBE_DEFAULT_OVERLAYS_OFF_OK")
 
+    # GA-UI-LAYERS-01: one corner discovery menu toggles two physically
+    # coherent layers; switching either scale must change the vertex colors
+    # without changing the visible map meshes, border policy or worker rings.
+    var layers_menu := app.find_child(
+            "GAQAPhysicalLayersMenu", true, false) as MenuButton
+    var local_surface := app.find_child(
+            "GA_CanonicalTacticalTerrainSurface", true, false) as MeshInstance3D
+    if not _require(layers_menu != null and local_surface != null
+            and layers_menu.text.contains("BIOMAS"),
+            "default biome layer discovery menu is missing"):
+        return
+    var local_biome_mesh := local_surface.mesh as ArrayMesh
+    if not _require(local_biome_mesh != null,
+            "canonical tactical layer is not built"):
+        return
+    var biome_globe_colors = real_mesh.surface_get_arrays(0)[Mesh.ARRAY_COLOR]
+    var biome_local_colors = local_biome_mesh.surface_get_arrays(0)[Mesh.ARRAY_COLOR]
+    var original_globe_vertices := real_mesh.surface_get_array_len(0)
+    var original_local_vertices := local_biome_mesh.surface_get_array_len(0)
+
+    layers_menu.get_popup().id_pressed.emit(1)
+    await process_frame
+    var relief_globe_mesh := global_physical_globe.mesh as ArrayMesh
+    var relief_local_mesh := local_surface.mesh as ArrayMesh
+    if not _require(relief_globe_mesh != null and relief_local_mesh != null and
+            layers_menu.text.contains("RELEVO") and
+            relief_globe_mesh.surface_get_array_len(0) == original_globe_vertices and
+            relief_local_mesh.surface_get_array_len(0) == original_local_vertices,
+            "physical relief display lost canonical globe/tactical geometry"):
+        return
+    var relief_globe_colors = relief_globe_mesh.surface_get_arrays(0)[Mesh.ARRAY_COLOR]
+    var relief_local_colors = relief_local_mesh.surface_get_arrays(0)[Mesh.ARRAY_COLOR]
+    var globe_changed := false
+    var local_changed := false
+    for i in range(min(256, biome_globe_colors.size())):
+        if biome_globe_colors[i] != relief_globe_colors[i]:
+            globe_changed = true
+            break
+    for i in range(min(256, biome_local_colors.size())):
+        if biome_local_colors[i] != relief_local_colors[i]:
+            local_changed = true
+            break
+    if not _require(globe_changed and local_changed and
+            not boundaries.visible and not border_toggle.button_pressed,
+            "biomes to relief failed to recolor both real meshes or changed overlays"):
+        return
+
+    layers_menu.get_popup().id_pressed.emit(0)
+    await process_frame
+    var restored_globe_colors = (
+            (global_physical_globe.mesh as ArrayMesh).surface_get_arrays(0)[Mesh.ARRAY_COLOR])
+    var restored_local_colors = (
+            (local_surface.mesh as ArrayMesh).surface_get_arrays(0)[Mesh.ARRAY_COLOR])
+    if not _require(layers_menu.text.contains("BIOMAS") and
+            restored_globe_colors[0] == biome_globe_colors[0] and
+            restored_local_colors[0] == biome_local_colors[0],
+            "returning to biome display did not restore original physical colors"):
+        return
+    print("GA_UI_E2E_PHYSICAL_LAYERS_01_BIOMES_RELIEF_BOTH_SCALES_OK")
+
     _press(inspect)
     await process_frame
     if not _require(status.text.contains("turno 0") and
