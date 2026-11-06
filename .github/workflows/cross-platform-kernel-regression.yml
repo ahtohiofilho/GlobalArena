@@ -13,16 +13,10 @@ on:
       - "GlobalArena.Tests/**"
       - "Directory.Build.props"
       - "GlobalArena.slnx"
+  # Ordinary PRs use FAST. Full lanes are checkpoint-only.
+  # Add ga-ci-checkpoint for cross-platform review, ga-ci-full before merge.
   pull_request:
-    paths:
-      - ".github/workflows/cross-platform-kernel-regression.yml"
-      - "GlobalArena.Kernel/**"
-      - "GlobalArena.World/**"
-      - "GlobalArena.Runtime/**"
-      - "GlobalArena.Simulation/**"
-      - "GlobalArena.Tests/**"
-      - "Directory.Build.props"
-      - "GlobalArena.slnx"
+    types: [opened, synchronize, reopened, labeled]
   workflow_dispatch:
 
 permissions:
@@ -30,6 +24,11 @@ permissions:
 
 jobs:
   validate:
+    # A skipped checkpoint is NOT evidence of a successful full regression.
+    if: >-
+      github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'ga-ci-checkpoint') ||
+      contains(github.event.pull_request.labels.*.name, 'ga-ci-full')
     name: Validate kernel on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     # macOS Intel regression exceeded 25 minutes after successful restore/build;
