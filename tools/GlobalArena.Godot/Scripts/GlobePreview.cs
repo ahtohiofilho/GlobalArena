@@ -377,6 +377,7 @@ public partial class GlobePreview : SubViewportContainer
         overviewLabel.AddThemeConstantOverride("shadow_offset_y", 1);
         var overviewScroll = new ScrollContainer
         {
+            Name = "GAQAWorldStatsScroll",
             Position = new Vector2(12f, 118f),
             Size = new Vector2(520f, 240f),
             Visible = false,
@@ -389,6 +390,7 @@ public partial class GlobePreview : SubViewportContainer
         _worldStatsScroll = overviewScroll;
         var overviewButton = new Button
         {
+            Name = "GAQAWorldStatsButton",
             Text = "WORLD STATS",
             Position = new Vector2(365f, 44f),
             CustomMinimumSize = new Vector2(174f, 32f),
@@ -481,6 +483,10 @@ public partial class GlobePreview : SubViewportContainer
     }
 
     // Accessible keyboard shortcuts: digits 1-5 choose a layer; Escape clears a selection.
+    // Main owns sidebar visibility: keyboard diagnostics must never run
+    // invisibly behind a collapsed workspace.
+    public event Action? TechnicalDetailsShortcutRequested;
+
     public override void _UnhandledKeyInput(InputEvent @event)
     {
         if (@event is not InputEventKey key || !key.Pressed || key.Echo) return;
@@ -495,12 +501,14 @@ public partial class GlobePreview : SubViewportContainer
         }
         if (key.Keycode == Key.S && _worldStatsButton is not null)
         {
+            TechnicalDetailsShortcutRequested?.Invoke();
             _worldStatsButton.EmitSignal(BaseButton.SignalName.Pressed);
             GetViewport().SetInputAsHandled();
             return;
         }
         if (key.Keycode == Key.L)
         {
+            TechnicalDetailsShortcutRequested?.Invoke();
             ToggleMapLegend();
             GetViewport().SetInputAsHandled();
             return;

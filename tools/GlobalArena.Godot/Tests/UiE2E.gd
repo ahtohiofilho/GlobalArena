@@ -109,6 +109,104 @@ func _run() -> void:
         if not _require(node != null, "expected named production control missing"):
             return
 
+    # GA-UI-TECHNICAL-01: all historical QA tools remain wired and
+    # discoverable, but do not consume the default tactical/global sidebar.
+    var tact_tech_toggle := _button(app, "GAQATacticalTechnicalToggle")
+    var tact_tech_panel := app.find_child(
+            "GAQATacticalTechnicalPanel", true, false) as VBoxContainer
+    var strat_tech_toggle := _button(app, "GAQAStrategicTechnicalToggle")
+    var strat_tech_panel := app.find_child(
+            "GAQAStrategicTechnicalPanel", true, false) as VBoxContainer
+    var tactical_edges := app.find_child(
+            "GAQATacticalTileEdges", true, false) as CheckBox
+    var territorial_readout := _label(app, "GAQATerritorialPresenceSummary")
+    if not _require(tact_tech_toggle != null and tact_tech_panel != null
+            and strat_tech_toggle != null and strat_tech_panel != null
+            and tactical_edges != null and territorial_readout != null,
+            "contextual technical workspace controls missing"):
+        return
+    if not _require(not tact_tech_panel.visible and
+            not strat_tech_panel.visible and
+            not tact_tech_toggle.button_pressed and
+            not strat_tech_toggle.button_pressed and
+            tact_tech_panel.is_ancestor_of(tactical_edges) and
+            tact_tech_panel.is_ancestor_of(advanced_toggle) and
+            strat_tech_panel.is_ancestor_of(territorial_readout) and
+            not tactical_edges.is_visible_in_tree(),
+            "technical diagnostics are not collapsed or moved out of the permanent HUD"):
+        return
+
+    var found_hd := false
+    var found_next_seed := false
+    var found_stats := false
+    for child in strat_tech_panel.get_children():
+        if child is Label and child.text.contains("HD CALIBRATION"):
+            found_hd = true
+        if child is Button and child.text == "NEXT SEED":
+            found_next_seed = true
+        if child is Button and child.text == "WORLD STATS":
+            found_stats = true
+    if not _require(found_hd and found_next_seed and found_stats,
+            "old HD and world stats tools were not preserved in the technical panel"):
+        return
+    var world_stats_button := _button(app, "GAQAWorldStatsButton")
+    var world_stats_scroll := app.find_child(
+            "GAQAWorldStatsScroll", true, false) as ScrollContainer
+    if not _require(world_stats_button != null and world_stats_scroll != null
+            and strat_tech_panel.is_ancestor_of(world_stats_button)
+            and strat_tech_panel.is_ancestor_of(world_stats_scroll)
+            and not world_stats_scroll.visible,
+            "actual world stats action was not retained under the QA workspace"):
+        return
+
+    tact_tech_toggle.button_pressed = true
+    await process_frame
+    if not _require(tact_tech_panel.visible and
+            tactical_edges.is_visible_in_tree(),
+            "tactical QA disclosure did not restore the existing controls"):
+        return
+    tact_tech_toggle.button_pressed = false
+    await process_frame
+    if not _require(not tact_tech_panel.visible and
+            not tactical_edges.is_visible_in_tree(),
+            "closing tactical QA did not restore the clean map UI"):
+        return
+
+    _press(globe_button)
+    await process_frame
+    if not _require(globe_map.visible and not tactical_map.visible and
+            not strat_tech_panel.visible,
+            "global lens did not retain its folded diagnostic panel"):
+        return
+    strat_tech_toggle.button_pressed = true
+    await process_frame
+    if not _require(strat_tech_panel.visible and
+            territorial_readout.is_visible_in_tree(),
+            "global QA fold did not expose the preserved territory readout"):
+        return
+    _press(world_stats_button)
+    await process_frame
+    if not _require(world_stats_scroll.visible and
+            world_stats_button.text == "HIDE STATS",
+            "original world statistics handler no longer opens its data"):
+        return
+    _press(world_stats_button)
+    await process_frame
+    if not _require(not world_stats_scroll.visible and
+            world_stats_button.text == "WORLD STATS",
+            "original world statistics handler no longer closes its data"):
+        return
+    strat_tech_toggle.button_pressed = false
+    await process_frame
+    _press(_button(app, "GAQAOpenTactical"))
+    await process_frame
+    if not _require(tactical_map.visible and not globe_map.visible and
+            not tact_tech_panel.visible and
+            session_pulse.text.contains("TURNO 0"),
+            "QA disclosure/navigation changed canonical turn or map context"):
+        return
+    print("GA_UI_E2E_TECHNICAL_01_FOLDED_CONTEXT_AND_HANDLERS_OK")
+
     # VS106: assert a tactical-first startup and a compact, real data pulse.
     if not _require(tactical_map.visible and not globe_map.visible and
             globe_button.visible and
