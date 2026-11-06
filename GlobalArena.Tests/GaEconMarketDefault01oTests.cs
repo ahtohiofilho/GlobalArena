@@ -305,7 +305,6 @@ public sealed class GaEconMarketDefault01oTests
         Assert.Equal(reversed,
             CanonicalPhysicalTacticalSession.RestoreSaveJson(
                 reversed).ExportSaveJson());
-        Assert.Equal(original, original);
     }
 
     [Fact]
