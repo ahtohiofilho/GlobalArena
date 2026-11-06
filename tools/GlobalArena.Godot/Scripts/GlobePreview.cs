@@ -481,6 +481,10 @@ public partial class GlobePreview : SubViewportContainer
     }
 
     // Accessible keyboard shortcuts: digits 1-5 choose a layer; Escape clears a selection.
+    // Main owns sidebar visibility: keyboard diagnostics must never run
+    // invisibly behind a collapsed workspace.
+    public event Action? TechnicalDetailsShortcutRequested;
+
     public override void _UnhandledKeyInput(InputEvent @event)
     {
         if (@event is not InputEventKey key || !key.Pressed || key.Echo) return;
@@ -495,12 +499,14 @@ public partial class GlobePreview : SubViewportContainer
         }
         if (key.Keycode == Key.S && _worldStatsButton is not null)
         {
+            TechnicalDetailsShortcutRequested?.Invoke();
             _worldStatsButton.EmitSignal(BaseButton.SignalName.Pressed);
             GetViewport().SetInputAsHandled();
             return;
         }
         if (key.Keycode == Key.L)
         {
+            TechnicalDetailsShortcutRequested?.Invoke();
             ToggleMapLegend();
             GetViewport().SetInputAsHandled();
             return;
