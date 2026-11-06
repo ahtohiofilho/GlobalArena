@@ -131,7 +131,9 @@ public sealed record CanonicalPhysicalSavePayload(
 
 public sealed record CanonicalPhysicalStockCommitmentSaveRow(
     int ActionOrdinal, ulong Tile, uint Commodity, byte Kind,
-    ulong RawQuantity, bool Released);
+    ulong RawQuantity, bool Released,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    bool Consumed = false);
 
 public sealed record CanonicalPhysicalSaveEnvelope(
     int Version, string PayloadJson, string PayloadSha256Hex);
@@ -177,6 +179,9 @@ public sealed partial class CanonicalPhysicalTacticalSession
     // 31/32 = explicit physically escrowed market/retention commitments.
     public const int MarketStockCommitmentEnvelopeFormat = 31;
     public const int MarketStockCommitmentWithTreasuryEnvelopeFormat = 32;
+    // 33/34 are the first physically executed same-tile sinks from market custody.
+    public const int ExecutedMarketMaterialUseEnvelopeFormat = 33;
+    public const int ExecutedMarketMaterialUseWithTreasuryEnvelopeFormat = 34;
     public const int MaximumActions = 100_000;
     private const int MaximumSaveBytes = 4_000_000;
     public const ulong FoodDemandRawPerWorker = 500_000UL;
@@ -1776,8 +1781,12 @@ public sealed partial class CanonicalPhysicalTacticalSession
         var digest = Convert.ToHexString(
             SHA256.HashData(Encoding.UTF8.GetBytes(payloadJson)));
         var json = JsonSerializer.Serialize(new CanonicalPhysicalSaveEnvelope(
-            _journal.Any(x => x.Kind is
-                "commit_physical_stock" or "release_physical_stock")
+            _journal.Any(x => x.Kind == "use_committed_material")
+                ? (_treasuryActivationActionCount.HasValue
+                    ? ExecutedMarketMaterialUseWithTreasuryEnvelopeFormat
+                    : ExecutedMarketMaterialUseEnvelopeFormat)
+                : _journal.Any(x => x.Kind is
+                    "commit_physical_stock" or "release_physical_stock")
                 ? (_treasuryActivationActionCount.HasValue
                     ? MarketStockCommitmentWithTreasuryEnvelopeFormat
                     : MarketStockCommitmentEnvelopeFormat)
@@ -1824,7 +1833,8 @@ public sealed partial class CanonicalPhysicalTacticalSession
             envelope = JsonSerializer.Deserialize<CanonicalPhysicalSaveEnvelope>(json)
                 ?? throw new InvalidOperationException("Missing canonical save envelope.");
             if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat or CashFoodSaveFormat or TimedTransitSaveFormat or BornCivilizationSaveFormat or LongDistanceSaveFormat or PhysicalTravelFoodSaveFormat or AutomaticCampSaveFormat or TransportAuthorityEnvelopeFormat or IntegratedDormantTreasuryEnvelopeFormat or MaterialDispositionEnvelopeFormat or MaterialWithTreasuryEnvelopeFormat or MaterialAssemblyEnvelopeFormat or MaterialAssemblyWithTreasuryEnvelopeFormat or PrimitiveWorkSiteEnvelopeFormat or PrimitiveWorkSiteWithTreasuryEnvelopeFormat or PrimitiveFacilityEnvelopeFormat or PrimitiveFacilityWithTreasuryEnvelopeFormat or FacilityAssistedWorkEnvelopeFormat or FacilityAssistedWorkWithTreasuryEnvelopeFormat or
-                MarketStockCommitmentEnvelopeFormat or MarketStockCommitmentWithTreasuryEnvelopeFormat) ||
+                MarketStockCommitmentEnvelopeFormat or MarketStockCommitmentWithTreasuryEnvelopeFormat or
+                ExecutedMarketMaterialUseEnvelopeFormat or ExecutedMarketMaterialUseWithTreasuryEnvelopeFormat) ||
                 string.IsNullOrEmpty(envelope.PayloadJson) ||
                 string.IsNullOrEmpty(envelope.PayloadSha256Hex))
                 throw new InvalidOperationException("Unsupported canonical save envelope.");
@@ -1841,9 +1851,14 @@ public sealed partial class CanonicalPhysicalTacticalSession
             throw new InvalidOperationException("Invalid canonical save encoding.", ex);
         }
 
+        var marketUseEnvelope = envelope.Version is
+            ExecutedMarketMaterialUseEnvelopeFormat or
+            ExecutedMarketMaterialUseWithTreasuryEnvelopeFormat;
         var stockCommitmentEnvelope = envelope.Version is
             MarketStockCommitmentEnvelopeFormat or
-            MarketStockCommitmentWithTreasuryEnvelopeFormat;
+            MarketStockCommitmentWithTreasuryEnvelopeFormat or
+            ExecutedMarketMaterialUseEnvelopeFormat or
+            ExecutedMarketMaterialUseWithTreasuryEnvelopeFormat;
         var hasMaterialActions = payload.Actions?.Any(a =>
             a?.Kind is "material_use" or "assemble_primitive") == true;
         var hasAssemblyActions = payload.Actions?.Any(a =>
@@ -1856,6 +1871,8 @@ public sealed partial class CanonicalPhysicalTacticalSession
             a?.Kind == "staff_primitive_facility") == true;
         var hasStockCommitmentActions = payload.Actions?.Any(a =>
             a?.Kind is "commit_physical_stock" or "release_physical_stock") == true;
+        var hasMarketUseActions = payload.Actions?.Any(a =>
+            a?.Kind == "use_committed_material") == true;
         var integratedTreasury = envelope.Version is
             IntegratedDormantTreasuryEnvelopeFormat or
             MaterialWithTreasuryEnvelopeFormat or
@@ -1863,7 +1880,8 @@ public sealed partial class CanonicalPhysicalTacticalSession
             PrimitiveWorkSiteWithTreasuryEnvelopeFormat or
             PrimitiveFacilityWithTreasuryEnvelopeFormat or
             FacilityAssistedWorkWithTreasuryEnvelopeFormat or
-            MarketStockCommitmentWithTreasuryEnvelopeFormat;
+            MarketStockCommitmentWithTreasuryEnvelopeFormat or
+            ExecutedMarketMaterialUseWithTreasuryEnvelopeFormat;
         var staffedEnvelope = envelope.Version is
             FacilityAssistedWorkEnvelopeFormat or
             FacilityAssistedWorkWithTreasuryEnvelopeFormat ||
@@ -1914,6 +1932,9 @@ public sealed partial class CanonicalPhysicalTacticalSession
                 : payload.Version != envelope.Version ||
                   payload.TransportCommands is not null) ||
             (stockCommitmentEnvelope != hasStockCommitmentActions) ||
+            (marketUseEnvelope != hasMarketUseActions) ||
+            (!marketUseEnvelope &&
+                payload.PhysicalCommitments?.Any(x => x.Consumed) == true) ||
             (stockCommitmentEnvelope != (payload.PhysicalCommitments is not null)) ||
             (payload.PhysicalCommitments?.Any(x => x is null) == true) ||
             (materialEnvelope != hasMaterialActions) ||
@@ -2092,6 +2113,20 @@ public sealed partial class CanonicalPhysicalTacticalSession
                      action.CommitmentOrdinal > 0)
                 game.ReleasePhysicalStockCommitment(
                     action.CommitmentOrdinal);
+            else if (action.Kind == "use_committed_material" &&
+                     marketUseEnvelope &&
+                     action.Source == action.Destination &&
+                     action.Source != 0UL &&
+                     action.Workers == 0UL && action.FromJob == 0 &&
+                     action.ToJob == 0 && action.FoodRaw == 0UL &&
+                     action.CommitmentOrdinal > 0 &&
+                     action.CommitmentKind == (byte)CanonicalPhysicalCommitmentKind.MarketOffer &&
+                     action.MaterialCommodity == 0U &&
+                     action.MaterialRaw == 0UL &&
+                     action.AssemblyKind == 0)
+                game.UseCommittedLocalMaterial(
+                    action.CommitmentOrdinal,
+                    (CanonicalMaterialDispositionKind)action.MaterialUseKind);
             else if (action.Kind == "tick" && action.Source == 0UL &&
                      action.Destination == 0UL && action.FromJob == 0 &&
                      action.ToJob == 0 && action.Workers == 0UL)
@@ -2344,7 +2379,8 @@ public sealed partial class CanonicalPhysicalTacticalSession
                 ? _physicalStockCommitments.Select(x =>
                     new CanonicalPhysicalStockCommitmentSaveRow(
                         x.ActionOrdinal, x.FineTile, x.Commodity,
-                        (byte)x.Kind, x.RawQuantity, x.Released)).ToArray()
+                        (byte)x.Kind, x.RawQuantity, x.Released,
+                        x.Consumed)).ToArray()
                 : null);
     }
 
