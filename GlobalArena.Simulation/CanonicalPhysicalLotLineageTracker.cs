@@ -256,6 +256,54 @@ internal sealed class CanonicalPhysicalLotLineageTracker
         return Array.AsReadOnly(moved.ToArray());
     }
 
+    /// <summary>
+    /// Return exactly the received custody to free stock on its original
+    /// tile. The canonical state also credits that free stock: these are
+    /// the very same lots, not newly manufactured stock.
+    /// </summary>
+    internal IReadOnlyList<CanonicalPhysicalLotHolding>
+        ReturnLocalRecipientMaterial(int commitmentOrdinal,
+            ulong tile, uint commodity, ulong raw)
+    {
+        if (commitmentOrdinal <= 0 || tile == 0UL ||
+            commodity is not (2U or 3U) || raw == 0UL)
+            throw new ArgumentOutOfRangeException(nameof(commitmentOrdinal));
+        var moved = Take(CanonicalPhysicalLotCustodyKind.LocalRecipientCustody,
+            (ulong)commitmentOrdinal, commodity, raw);
+        if (_holdings.Any(x => x.Custody ==
+            CanonicalPhysicalLotCustodyKind.LocalRecipientCustody &&
+            x.CustodyId == (ulong)commitmentOrdinal))
+            throw new InvalidOperationException(
+                "Returning recipient custody must release the entire transferred lot.");
+        _holdings.AddRange(moved.Select(x => x with
+        {
+            Custody = CanonicalPhysicalLotCustodyKind.LocalStock,
+            CustodyId = tile
+        }));
+        return Array.AsReadOnly(moved.ToArray());
+    }
+
+    /// <summary>
+    /// Physically consume the entire received wood/stone lot, with original
+    /// provenance, by a real local productive group. Not a commercial sale.
+    /// </summary>
+    internal IReadOnlyList<CanonicalPhysicalLotHolding>
+        ConsumeLocalRecipientMaterial(int commitmentOrdinal,
+            uint commodity, ulong raw)
+    {
+        if (commitmentOrdinal <= 0 ||
+            commodity is not (2U or 3U) || raw == 0UL)
+            throw new ArgumentOutOfRangeException(nameof(commitmentOrdinal));
+        var used = Take(CanonicalPhysicalLotCustodyKind.LocalRecipientCustody,
+            (ulong)commitmentOrdinal, commodity, raw);
+        if (_holdings.Any(x => x.Custody ==
+            CanonicalPhysicalLotCustodyKind.LocalRecipientCustody &&
+            x.CustodyId == (ulong)commitmentOrdinal))
+            throw new InvalidOperationException(
+                "Consuming recipient custody must use the entire transferred lot.");
+        return Array.AsReadOnly(used.ToArray());
+    }
+
     private void RecordExecutedProduction(
         ulong cycleOrdinal, ulong movementTurn,
         CanonicalExecutedPhysicalProductionRow row)
