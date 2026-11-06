@@ -377,6 +377,7 @@ public partial class GlobePreview : SubViewportContainer
         overviewLabel.AddThemeConstantOverride("shadow_offset_y", 1);
         var overviewScroll = new ScrollContainer
         {
+            Name = "GAQAWorldStatsScroll",
             Position = new Vector2(12f, 118f),
             Size = new Vector2(520f, 240f),
             Visible = false,
@@ -389,6 +390,7 @@ public partial class GlobePreview : SubViewportContainer
         _worldStatsScroll = overviewScroll;
         var overviewButton = new Button
         {
+            Name = "GAQAWorldStatsButton",
             Text = "WORLD STATS",
             Position = new Vector2(365f, 44f),
             CustomMinimumSize = new Vector2(174f, 32f),
