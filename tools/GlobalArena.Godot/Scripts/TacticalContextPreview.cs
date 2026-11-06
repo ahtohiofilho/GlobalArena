@@ -27,7 +27,7 @@ public partial class TacticalContextPreview : SubViewportContainer
     private MeshInstance3D? _edges;
     private MeshInstance3D? _territoryBoundaries;
     private IReadOnlyList<PhysicalTacticalTerritoryBoundaryPath>? _cachedBoundaryPaths;
-    private bool _showTerritoryBoundaries = true;
+    private bool _showTerritoryBoundaries = false; // User default: strategic lines are opt-in diagnostics.
     private MeshInstance3D? _selectedTileOutline;
     private Label? _information;
     private VBoxContainer? _hudControls;
@@ -119,23 +119,8 @@ public partial class TacticalContextPreview : SubViewportContainer
     {
         var index = checked((int)fineId - 1);
         if (_legacyEconomicFineWorld is not null)
-        {
-            var id = new StrategicCellId(fineId);
-            if (_legacyEconomicFineWorld.StrategicPhysicalFields.LandWater.GetKind(id) ==
-                StrategicLandWaterKind.Water) return new Color("#245b86");
-            return _legacyEconomicFineWorld.StrategicBiomes.GetKind(id) switch
-            {
-                StrategicBiomeKind.PolarIce => new Color("#bddae8"),
-                StrategicBiomeKind.Tundra => new Color("#9db7a4"),
-                StrategicBiomeKind.Highland => new Color("#898b66"),
-                StrategicBiomeKind.Wetland => new Color("#5b9a78"),
-                StrategicBiomeKind.Desert => new Color("#d2bd75"),
-                StrategicBiomeKind.Rainforest => new Color("#285d49"),
-                StrategicBiomeKind.Forest => new Color("#336e53"),
-                StrategicBiomeKind.Grassland => new Color("#7bad72"),
-                _ => throw new InvalidOperationException("Unsupported V1 canonical biome.")
-            };
-        }
+            return CanonicalPhysicalTerrainPalette.FromLegacyWorld(
+                _legacyEconomicFineWorld, new StrategicCellId(fineId));
         if (_terrainReference is null)
             throw new InvalidOperationException("Physical terrain reference missing.");
         return TerrainColor(_terrainReference.Biomes[index].VisibleBiome);
@@ -371,7 +356,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         _world.AddChild(_surface);
         _edges = new MeshInstance3D { Visible = false };
         _world.AddChild(_edges);
-        _territoryBoundaries = new MeshInstance3D();
+        _territoryBoundaries = new MeshInstance3D { Visible = false };
         _world.AddChild(_territoryBoundaries);
         _extensionSurface = new MeshInstance3D();
         _world.AddChild(_extensionSurface);
@@ -490,7 +475,7 @@ public partial class TacticalContextPreview : SubViewportContainer
             GD.Print($"GA_TACTICAL_FRAME_TOGGLE cover={_coverViewport} focus={_activeFocus}");
         };
         terrainRow.AddChild(framingButton);
-        var bordersToggle = new CheckBox { Text = "TERRITORY LIMITS", ButtonPressed = true };
+        var bordersToggle = new CheckBox { Text = "TERRITORY LIMITS", ButtonPressed = false };
         bordersToggle.Toggled += visible =>
         {
             _showTerritoryBoundaries = visible;
@@ -545,18 +530,8 @@ public partial class TacticalContextPreview : SubViewportContainer
     // Experimental V2 physical classification sampled from ONE canonical G(18,0)
     // spherical geometry. These colors never alter V1 simulation, strategic tiles,
     // ownership, topological incidences or movement costs.
-    private static Color TerrainColor(ExperimentalProceduralBiomeClassifier.Biome biome) => biome switch
-    {
-        ExperimentalProceduralBiomeClassifier.Biome.Ocean => new Color("#245b86"),
-        ExperimentalProceduralBiomeClassifier.Biome.Desert => new Color("#d2bd75"),
-        ExperimentalProceduralBiomeClassifier.Biome.Steppe => new Color("#a4a16b"),
-        ExperimentalProceduralBiomeClassifier.Biome.Prairie => new Color("#7bad72"),
-        ExperimentalProceduralBiomeClassifier.Biome.Forest => new Color("#336e53"),
-        ExperimentalProceduralBiomeClassifier.Biome.Hills => new Color("#898b66"),
-        ExperimentalProceduralBiomeClassifier.Biome.Mountains => new Color("#777f8a"),
-        ExperimentalProceduralBiomeClassifier.Biome.Ice => new Color("#bddae8"),
-        _ => throw new ArgumentOutOfRangeException(nameof(biome))
-    };
+    private static Color TerrainColor(ExperimentalProceduralBiomeClassifier.Biome biome) =>
+        CanonicalPhysicalTerrainPalette.FromVisibleBiome(biome);
 
     private Vector3 Flatten(SphericalPoint3 point, float lift = 0f)
     {
