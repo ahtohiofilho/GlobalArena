@@ -1,5 +1,7 @@
 # GA-VS11 — Ritmo de ciclos econômicos adaptativo por faixa temporal
 
+> **STATUS HISTORICO — REVISAO POSTERIOR (31/10/2026, reafirmada 06/11/2026):** A politica por faixas de 30 turnos foi implementada e deve ser preservada para saves V10 e replays antigos, mas **nao e mais a diretriz-alvo de produto**. O desenho posterior vincula cadencia economica a mobilidade fisica/tecnologia (nao ao numero absoluto de turnos); a formula definitiva e sua ativacao permanecem pendentes de aprovacao/versionamento. Consultar `docs/engineering/GA-CANON-DIRECTIVES-01-authoritative-product-policy.md`, diretiva `GA-DIR-CADENCE-MOBILITY`. As expressoes "regra canônica" abaixo referem-se apenas ao CONTRATO HISTORICO VS11.
+
 Data: 29/10/2026. Implementação empilhada sobre VS10A/PR #100. Sem merge na main.
 
 ## Motivação e decisão
