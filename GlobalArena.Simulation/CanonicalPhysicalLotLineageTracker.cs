@@ -203,6 +203,28 @@ internal sealed class CanonicalPhysicalLotLineageTracker
         }));
     }
 
+    /// <summary>
+    /// Actually use the whole, previously committed local MARKET custody
+    /// for a specified physical wood/stone use. There is no buyer payment
+    /// and no material return to free stock.
+    /// </summary>
+    internal IReadOnlyList<CanonicalPhysicalLotHolding>
+        ConsumeCommittedMarketMaterial(int actionOrdinal, uint commodity,
+            ulong raw)
+    {
+        if (actionOrdinal <= 0 || commodity is not (2U or 3U))
+            throw new ArgumentOutOfRangeException(nameof(commodity));
+        var consumed = Take(
+            CanonicalPhysicalLotCustodyKind.MarketCommitment,
+            (ulong)actionOrdinal, commodity, raw);
+        if (_holdings.Any(x =>
+            x.Custody == CanonicalPhysicalLotCustodyKind.MarketCommitment &&
+            x.CustodyId == (ulong)actionOrdinal))
+            throw new InvalidOperationException(
+                "A complete local physical disposition left orphaned market cargo.");
+        return Array.AsReadOnly(consumed.ToArray());
+    }
+
     private void RecordExecutedProduction(
         ulong cycleOrdinal, ulong movementTurn,
         CanonicalExecutedPhysicalProductionRow row)
