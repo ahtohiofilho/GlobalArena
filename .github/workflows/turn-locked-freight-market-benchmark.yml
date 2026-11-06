@@ -1,26 +1,10 @@
 name: Turn-Locked Freight Market Reference Benchmark
 
 on:
+  # Ordinary PRs use FAST. Full lanes are checkpoint-only.
+  # Add ga-ci-checkpoint for cross-platform review, ga-ci-full before merge.
   pull_request:
-    paths:
-      - ".github/workflows/turn-locked-freight-market-benchmark.yml"
-      - "GlobalArena.Benchmarks/**"
-      - "GlobalArena.Simulation/**"
-      - "GlobalArena.Runtime/**"
-      - "GlobalArena.World/**"
-      - "GlobalArena.Kernel/**"
-      - "Directory.Build.props"
-      - "GlobalArena.slnx"
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/turn-locked-freight-market-benchmark.yml"
-      - "GlobalArena.Benchmarks/**"
-      - "GlobalArena.Simulation/**"
-      - "GlobalArena.Runtime/**"
-      - "GlobalArena.World/**"
-      - "GlobalArena.Kernel/**"
+    types: [opened, synchronize, reopened, labeled]
   workflow_dispatch:
 
 permissions:
@@ -28,6 +12,11 @@ permissions:
 
 jobs:
   measure:
+    # A skipped checkpoint is NOT evidence of a successful full regression.
+    if: >-
+      github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'ga-ci-checkpoint') ||
+      contains(github.event.pull_request.labels.*.name, 'ga-ci-full')
     name: Reference benchmark on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15

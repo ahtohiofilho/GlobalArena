@@ -17,6 +17,27 @@ GUARD = "contains(github.event.pull_request.labels.*.name, 'ga-ci-full')"
 ROOT = Path(__file__).resolve().parents[2]
 BASELINE = ("GaVs17", "GaVs23", "GaVs29")
 MINIMUM_HISTORICAL = 109
+CHECKPOINT = "contains(github.event.pull_request.labels.*.name, 'ga-ci-checkpoint')"
+CHECKPOINT_WORKFLOWS = (
+    "cross-platform-kernel-regression.yml",
+    "cross-platform-state-hash.yml",
+    "turn-locked-freight-market-benchmark.yml",
+)
+TEST_CLASS = re.compile(
+    r"(?m)^\s*(?:(?:public|internal|private|protected|sealed|partial|static|abstract)\s+)*"
+    r"class\s+([A-Za-z_][A-Za-z_0-9]*)\b"
+)
+TEST_MARKER = re.compile(r"(?m)^\s*\[(?:Fact|Theory|SkippableFact|SkippableTheory)(?:\(|\])")
+
+
+def changed_test_classes(source: str) -> set[str]:
+    """Selected tests come from actual C# test types, never a GaVs filename prefix."""
+    if not TEST_MARKER.search(source):
+        return set()
+    types = set(TEST_CLASS.findall(source))
+    if not types:
+        raise RuntimeError("Changed C# test methods lack a discoverable class")
+    return types
 
 
 def historical_files() -> list[Path]:
@@ -71,7 +92,20 @@ def audit() -> None:
     e2e = ROOT / ".github" / "workflows" / "ga-qa-ui-e2e-001.yml"
     if not e2e.is_file() or GUARD in e2e.read_text(encoding="utf-8"):
         raise RuntimeError("Real Godot UI E2E must remain automatically enabled")
-    print(f"GA_CI_VS107_GATES_AUDITED workflows={len(files)} guarded_jobs={jobs}")
+    folder = ROOT / ".github" / "workflows"
+    # The full platform suites are triggered by labels, dispatch or main,
+    # never by an ordinary PR. A skipped run is NOT full checkpoint evidence.
+    for name in CHECKPOINT_WORKFLOWS:
+        checkpoint = folder / name
+        if not checkpoint.is_file():
+            raise RuntimeError(f"Missing checkpoint workflow: {name}")
+        content = checkpoint.read_text(encoding="utf-8")
+        if ("  workflow_dispatch:" not in content or
+                "    types: [opened, synchronize, reopened, labeled]" not in content or
+                CHECKPOINT not in content or GUARD not in content or
+                "github.event_name != 'pull_request'" not in content):
+            raise RuntimeError(f"Unsafe checkpoint policy: {name}")
+    print(f"GA_CI_VS107_GATES_AUDITED workflows={len(files)} guarded_jobs={jobs} checkpoints={len(CHECKPOINT_WORKFLOWS)}")
 
 
 def scope(base: str, head: str) -> None:
@@ -89,7 +123,10 @@ def scope(base: str, head: str) -> None:
         "GlobalArena.Godot/", "tools/GlobalArena.Godot/"
     )
     root_files = {"Directory.Build.props", "GlobalArena.slnx"}
-    code = any(p.startswith(prefixes) or p in root_files for p in changed)
+    ci_paths = {"tools/ci/ga_ci_lanes.py", "tools/ci/test_ga_ci_lanes.py",
+                ".github/workflows/ga-ci-fast.yml"}
+    code = any(p.startswith(prefixes) or p in root_files or p in ci_paths
+               for p in changed)
     ui = any(
         p.startswith(("GlobalArena.Godot/", "tools/GlobalArena.Godot/"))
         or p in root_files
@@ -97,10 +134,12 @@ def scope(base: str, head: str) -> None:
     )
     selected = set(BASELINE)
     for path in changed:
-        if path.startswith("GlobalArena.Tests/"):
-            match = re.search(r"GaVs\d+[A-Za-z0-9]*", Path(path).stem)
-            if match:
-                selected.add(match.group(0))
+        if path.startswith("GlobalArena.Tests/") and path.endswith(".cs"):
+            changed_file = ROOT / path
+            if not changed_file.is_file():
+                raise RuntimeError(f"Changed test source is missing: {path}")
+            selected.update(changed_test_classes(
+                changed_file.read_text(encoding="utf-8")))
     test_filter = "|".join(
         "FullyQualifiedName~" + name for name in sorted(selected)
     )

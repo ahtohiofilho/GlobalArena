@@ -25,6 +25,8 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
+      - name: Self-test changed C# test class discovery
+        run: python3 -m unittest discover -s tools/ci -p 'test_ga_ci_lanes.py' -v
       - name: Audit all existing VS regression gates and ordinary E2E
         run: python3 tools/ci/ga_ci_lanes.py audit
       - name: Classify exact PR change scope
@@ -42,7 +44,10 @@ jobs:
           echo 'Ordinary PR: this audit and targeted compilation/tests.'
           echo 'UI changes: ordinary real Godot E2E remains enabled.'
           echo 'Full checkpoint: ga-ci-full label enables historical jobs.'
-          echo 'Skipped historical jobs NEVER prove full-suite success.'
+          echo 'Cross-platform checkpoint: ga-ci-checkpoint (kernel, hash, benchmark).'
+          echo 'Release-level historical suite: ga-ci-full (all guarded VS gates).'
+          echo 'Skipped full-workflow jobs NEVER prove full-suite success.'
+          echo 'No merge until FULL validation for exact latest HEAD.'
 
   fast-linux:
     needs: scope

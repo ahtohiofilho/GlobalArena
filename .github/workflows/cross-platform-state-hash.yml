@@ -11,14 +11,10 @@ on:
       - "GlobalArena.Simulation/WorldStateHash.cs"
       - "GlobalArena.Simulation/IWorldStateHasher.cs"
       - "GlobalArena.Tests/CanonicalWorldStateHasherTests.cs"
+  # Ordinary PRs use FAST. Full lanes are checkpoint-only.
+  # Add ga-ci-checkpoint for cross-platform review, ga-ci-full before merge.
   pull_request:
-    paths:
-      - ".github/workflows/cross-platform-state-hash.yml"
-      - "GlobalArena.Runtime/**"
-      - "GlobalArena.Simulation/CanonicalWorldStateHasher.cs"
-      - "GlobalArena.Simulation/WorldStateHash.cs"
-      - "GlobalArena.Simulation/IWorldStateHasher.cs"
-      - "GlobalArena.Tests/**"
+    types: [opened, synchronize, reopened, labeled]
   workflow_dispatch:
 
 permissions:
@@ -26,6 +22,11 @@ permissions:
 
 jobs:
   validate:
+    # A skipped checkpoint is NOT evidence of a successful full regression.
+    if: >-
+      github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'ga-ci-checkpoint') ||
+      contains(github.event.pull_request.labels.*.name, 'ga-ci-full')
     name: Validate on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
