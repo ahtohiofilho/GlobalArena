@@ -124,6 +124,39 @@ func _run() -> void:
         return
     print("GA_UI_E2E_VS106_TACTICAL_FIRST_PULSE_OK")
 
+    # GA-UI-VISUAL-02: the strategic lens must display the exact G18
+    # physical polyhedron, not the old G3 diagnostic political colors.
+    # Hidden borders and no fluorescent neighbor rings are default UI
+    # policy; neither changes the canonical movement graph.
+    var global_physical_globe := app.find_child(
+            "GA_CanonicalPhysicalTacticalGlobe", true, false) as MeshInstance3D
+    var boundaries := app.find_child(
+            "GA_TacticalTerritoryBoundaries", true, false) as MeshInstance3D
+    var border_toggle := app.find_child(
+            "GA_TerritoryBoundariesToggle", true, false) as CheckBox
+    var worker_rings := app.find_child(
+            "GA_VS05_PhysicalWorkerRings", true, false) as MeshInstance3D
+    if not _require(global_physical_globe != null and boundaries != null
+            and border_toggle != null and worker_rings != null,
+            "canonical tactical globe or optional-overlay control is missing"):
+        return
+    var real_mesh := global_physical_globe.mesh as ArrayMesh
+    var worker_mesh := worker_rings.mesh as ArrayMesh
+    if not _require(global_physical_globe.visible and real_mesh != null
+            and real_mesh.get_surface_count() == 1
+            and real_mesh.surface_get_array_len(0) == 58320,
+            "global globe does not show all 3242 canonical G18 polygons"):
+        return
+    if not _require(not boundaries.visible and
+            not border_toggle.button_pressed,
+            "strategic territory boundary overlay must begin disabled"):
+        return
+    if not _require(worker_mesh != null and
+            worker_mesh.surface_get_array_len(0) <= 36,
+            "neighbour rings still occupy the tactical map by default"):
+        return
+    print("GA_UI_E2E_CANONICAL_G18_GLOBE_DEFAULT_OVERLAYS_OFF_OK")
+
     _press(inspect)
     await process_frame
     if not _require(status.text.contains("turno 0") and
