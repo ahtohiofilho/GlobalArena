@@ -180,4 +180,48 @@ public sealed class GaUiEconFlow01Tests
             after.LastExecutedLocalUse.BeneficiaryWorkers);
         Assert.True(after.AuthenticatesExecutedLocalMaterialUse);
     }
+
+    [Fact]
+    public void DefaultMarketIntentCandidateExcludesOnlyDeliberateRetention()
+    {
+        var session = Closed();
+        var tile = session.InitialTile;
+        var wood = session.StockAt(tile, new CommodityId(3U));
+        var stone = session.StockAt(tile, new CommodityId(2U));
+        Assert.True(wood > 0UL);
+        Assert.True(stone > 0UL);
+        var before = Read(session);
+        Assert.Equal(new BigInteger(wood), before.PotentialMarketRaw(3U));
+        Assert.Equal(new BigInteger(stone), before.PotentialMarketRaw(2U));
+        Assert.False(before.ProvesAutomaticMarketSale);
+        Assert.False(before.ProvesNutritionalEfficiency);
+
+        var stockHash = session.CurrentHash;
+        var stockSave = session.ExportSaveJson();
+        _ = before.PotentialMarketRaw(1U);
+        Assert.Equal(stockHash, session.CurrentHash);
+        Assert.Equal(stockSave, session.ExportSaveJson());
+
+        var offer = session.CommitPhysicalStock(tile, new CommodityId(3U),
+            CanonicalPhysicalCommitmentKind.MarketOffer, wood);
+        var retain = session.CommitPhysicalStock(tile, new CommodityId(2U),
+            CanonicalPhysicalCommitmentKind.DeliberateRetention, stone);
+        var staged = Read(session);
+        Assert.Equal(BigInteger.Zero, staged.FreeWoodRaw);
+        Assert.Equal(BigInteger.Zero, staged.FreeStoneRaw);
+        Assert.Equal(new BigInteger(wood), staged.PotentialMarketRaw(3U));
+        Assert.Equal(BigInteger.Zero, staged.PotentialMarketRaw(2U));
+        Assert.False(staged.ProvesCommercialSaleOrMarketRevenue);
+        Assert.False(staged.ProvesAutomaticMarketSale);
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            staged.PotentialMarketRaw(999U));
+
+        session.ReleasePhysicalStockCommitment(retain.ActionOrdinal);
+        var returned = Read(session);
+        Assert.Equal(new BigInteger(stone), returned.PotentialMarketRaw(2U));
+        Assert.Equal(new BigInteger(wood), returned.PotentialMarketRaw(3U));
+        Assert.False(returned.ProvesAutomaticMarketSale);
+        Assert.Contains(returned.ActiveLocalCommitments, x =>
+            x.ActionOrdinal == offer.ActionOrdinal);
+    }
 }

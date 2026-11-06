@@ -392,6 +392,18 @@ func _run() -> void:
             "VS106 compact pulse not updated after real economic cycles"):
         return
     print("GA_UI_E2E_VS106_CYCLE_PULSE_OK")
+    # GA-ECON-CONVERGENCE-01: preserve legacy cycle/save semantics, but never
+    # present a fixed-food-quota remainder as nutritional efficiency or
+    # call an unexecuted market candidate an automatic sale.
+    var physical_flow := _label(app, "GAPhysicalFlowSummary")
+    if not _require(physical_flow != null and
+            physical_flow.text.contains("LIVRE (não vendido)") and
+            physical_flow.text.contains("NUTRIÇÃO: indisponível") and
+            physical_flow.text.contains("OFERTA AUTOMÁTICA: não executada") and
+            not physical_flow.text.contains("· falta "),
+            "convergence UI misrepresents legacy food quota or unsold stock"):
+        return
+    print("GA_UI_E2E_ECON_CONVERGENCE_01_TRUTHFUL_BOUNDARY_OK")
     print("GA_UI_E2E_FIVE_CYCLES_OK")
 
     _press(save)
