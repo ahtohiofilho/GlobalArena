@@ -150,6 +150,19 @@ public sealed class CanonicalLocalMarketDestinationPreflight
         return new(session, candidates);
     }
 
+    /// <summary>
+    /// Before physical execution, reject a different session even if both
+    /// currently have identical hashes and event counts.
+    /// </summary>
+    public void RequireCurrent(CanonicalPhysicalTacticalSession session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        if (!ReferenceEquals(_source, session))
+            throw new InvalidOperationException(
+                "Market destination proposal belongs to another game session.");
+        VerifyCurrent();
+    }
+
     public void VerifyCurrent()
     {
         if (_source.CurrentHash.HexDigest != _sourceHash ||
