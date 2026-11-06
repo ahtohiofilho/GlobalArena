@@ -399,7 +399,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         _world = new Node3D();
         _innerViewport.AddChild(_world);
 
-        _surface = new MeshInstance3D();
+        _surface = new MeshInstance3D { Name = "GA_CanonicalTacticalTerrainSurface" };
         _world.AddChild(_surface);
         _edges = new MeshInstance3D { Visible = false };
         _world.AddChild(_edges);
