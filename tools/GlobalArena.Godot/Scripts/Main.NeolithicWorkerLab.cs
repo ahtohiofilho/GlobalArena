@@ -520,6 +520,9 @@ public partial class Main
         _workerLabAdvancedPanel.AddChild(_foodMarketQuoteLabel);
         InitializeTreasuryReservationControls(_workerLabAdvancedPanel);
         InitializeTreasuryMigrationPreflightControls(_workerLabAdvancedPanel);
+        // GA-ECON-MARKET-DEFAULT-01F: explicitly experimental, behind the
+        // already folded QA workspace; never alters playable economy/save.
+        InitializeAutomaticOfferSandboxControls(_workerLabAdvancedPanel);
 
         if (_tacticalPreview is null)
             throw new InvalidOperationException("Tactical renderer must exist before lab HUD setup.");
