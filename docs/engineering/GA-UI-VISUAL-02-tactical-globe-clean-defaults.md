@@ -42,3 +42,8 @@ Gate de compilação: Godot Release no Linux, Debug no Windows e inicialização
 5. **Save e retorno:** abrir um save sem composição 01C mostra V1 coerentemente, e retornar a uma partida 01C restaura o globo físico sem cores fictícias.
 
 **Critério de parada:** não avançar para frete remoto antes da avaliação visual das novas telas. Um PASS no CI não substitui a homologação pelo usuário.
+
+## Direção transversal de UI — registro posterior
+
+A proposta de interação **mapa protagonista, atalhos de alto ROI, menus para descoberta e painel direito para decisões detalhadas** foi consolidada em [GA-UI-DIRECTION-01 — Mapa, teclado e interface contextual](GA-UI-DIRECTION-01-map-first-keyboard-contextual.md). A nota **não aprova antecipadamente** atalhos, ícones nos cantos ou o layout final: todos dependem de teste visual e decisão explícita. Preservar os defaults homologados nesta nota (hover branco, vizinhos sem anéis, fronteiras desligadas, globo com geografia física G18).
+
