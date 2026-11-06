@@ -20,9 +20,10 @@ public enum CanonicalPhysicalCommitmentKind : byte
 public sealed record CanonicalPhysicalStockCommitment(
     int ActionOrdinal, ulong FineTile, uint Commodity,
     CanonicalPhysicalCommitmentKind Kind, ulong RawQuantity,
-    bool Released, bool Consumed = false)
+    bool Released, bool Consumed = false, bool Transferred = false)
 {
-    public bool IsLive => !Released && !Consumed;
+    public bool IsLive => !Released && !Consumed && !Transferred;
+    public bool HasExecutedRecipientCustodyTransfer => Transferred;
     public bool HasExecutedPhysicalUse => Consumed;
     public bool CanReturnToFreeStock => IsLive;
     public bool IsExecutedSale => false;
