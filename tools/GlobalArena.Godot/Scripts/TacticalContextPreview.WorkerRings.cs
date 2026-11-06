@@ -17,6 +17,8 @@ public partial class TacticalContextPreview
     private ulong? _workerSource;
     private ulong? _workerDestination;
     private ulong? _workerHovered;
+    // Eligibility is retained for canonical input validation, not drawn as
+    // bright neighboring-tile rings. Spatial adjacency is already visible.
     private HashSet<ulong> _workerEligible = new();
     public event Action<ulong?>? WorkerTileHovered;
 
@@ -79,10 +81,6 @@ public partial class TacticalContextPreview
             else if (_workerDestination == polygon.Id)
             {
                 color = new Color("#ff9d3b"); width = 0.18f;
-            }
-            else if (_workerEligible.Contains(polygon.Id))
-            {
-                color = new Color("#baff6c"); width = 0.075f;
             }
             else if (_workerHovered == polygon.Id)
             {
