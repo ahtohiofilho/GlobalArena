@@ -36,7 +36,15 @@ public sealed record CanonicalPhysicalAction(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     int FacilityAssemblyOrdinal = 0,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    byte FacilityActivity = 0);
+    byte FacilityActivity = 0,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    uint CommitmentCommodity = 0U,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    ulong CommitmentRaw = 0UL,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    byte CommitmentKind = 0,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    int CommitmentOrdinal = 0);
 
 public sealed record CanonicalPhysicalWorkerSaveRow(ulong Tile, byte Job, ulong Workers);
 public sealed record CanonicalPhysicalStockSaveRow(ulong Tile, uint Commodity, ulong Raw);
@@ -117,7 +125,13 @@ public sealed record CanonicalPhysicalSavePayload(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     CanonicalDormantTreasuryIntegratedSaveRow? TreasuryReservation = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    CanonicalPrimitiveFacilitySaveRow[]? PrimitiveFacilities = null);
+    CanonicalPrimitiveFacilitySaveRow[]? PrimitiveFacilities = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    CanonicalPhysicalStockCommitmentSaveRow[]? PhysicalCommitments = null);
+
+public sealed record CanonicalPhysicalStockCommitmentSaveRow(
+    int ActionOrdinal, ulong Tile, uint Commodity, byte Kind,
+    ulong RawQuantity, bool Released);
 
 public sealed record CanonicalPhysicalSaveEnvelope(
     int Version, string PayloadJson, string PayloadSha256Hex);
@@ -128,7 +142,7 @@ public sealed record CanonicalPhysicalSaveEnvelope(
 /// offline session is used only transiently to seed the original eight
 /// workers or to verify an explicitly requested legacy-save migration.
 /// </summary>
-public sealed class CanonicalPhysicalTacticalSession
+public sealed partial class CanonicalPhysicalTacticalSession
 {
     // V9 files retain the historical fixed-six cadence.
     public const int SaveFormat = 9;
@@ -160,6 +174,9 @@ public sealed class CanonicalPhysicalTacticalSession
     // 29/30: explicit operation of completed shelter by real workers.
     public const int FacilityAssistedWorkEnvelopeFormat = 29;
     public const int FacilityAssistedWorkWithTreasuryEnvelopeFormat = 30;
+    // 31/32 = explicit physically escrowed market/retention commitments.
+    public const int MarketStockCommitmentEnvelopeFormat = 31;
+    public const int MarketStockCommitmentWithTreasuryEnvelopeFormat = 32;
     public const int MaximumActions = 100_000;
     private const int MaximumSaveBytes = 4_000_000;
     public const ulong FoodDemandRawPerWorker = 500_000UL;
@@ -1698,7 +1715,9 @@ public sealed class CanonicalPhysicalTacticalSession
         ulong materialRaw = 0UL, byte assemblyKind = 0,
         ulong assemblyWoodRaw = 0UL, ulong assemblyStoneRaw = 0UL,
         int commissionAssemblyOrdinal = 0, byte commissionActivity = 0,
-        int facilityAssemblyOrdinal = 0, byte facilityActivity = 0)
+        int facilityAssemblyOrdinal = 0, byte facilityActivity = 0,
+        uint commitmentCommodity = 0U, ulong commitmentRaw = 0UL,
+        byte commitmentKind = 0, int commitmentOrdinal = 0)
     {
         var before = CheckedSnapshot;
         var beforeHash = _hasher.Compute(before);
@@ -1710,7 +1729,9 @@ public sealed class CanonicalPhysicalTacticalSession
             materialCommodity, materialUseKind, materialRaw,
             assemblyKind, assemblyWoodRaw, assemblyStoneRaw,
             commissionAssemblyOrdinal, commissionActivity,
-            facilityAssemblyOrdinal, facilityActivity);
+            facilityAssemblyOrdinal, facilityActivity,
+            commitmentCommodity, commitmentRaw,
+            commitmentKind, commitmentOrdinal);
         Game.AcceptSnapshotIfCurrent(before, staged);
         _lastCommittedSnapshot = staged;
         _journal.Add(action);
@@ -1750,11 +1771,17 @@ public sealed class CanonicalPhysicalTacticalSession
 
     public string ExportSaveJson()
     {
+        VerifyPhysicalStockCommitments();
         var payloadJson = JsonSerializer.Serialize(BuildPayload());
         var digest = Convert.ToHexString(
             SHA256.HashData(Encoding.UTF8.GetBytes(payloadJson)));
         var json = JsonSerializer.Serialize(new CanonicalPhysicalSaveEnvelope(
-            _journal.Any(x => x.Kind == "staff_primitive_facility")
+            _journal.Any(x => x.Kind is
+                "commit_physical_stock" or "release_physical_stock")
+                ? (_treasuryActivationActionCount.HasValue
+                    ? MarketStockCommitmentWithTreasuryEnvelopeFormat
+                    : MarketStockCommitmentEnvelopeFormat)
+                : _journal.Any(x => x.Kind == "staff_primitive_facility")
                 ? (_treasuryActivationActionCount.HasValue
                     ? FacilityAssistedWorkWithTreasuryEnvelopeFormat
                     : FacilityAssistedWorkEnvelopeFormat)
@@ -1796,7 +1823,8 @@ public sealed class CanonicalPhysicalTacticalSession
         {
             envelope = JsonSerializer.Deserialize<CanonicalPhysicalSaveEnvelope>(json)
                 ?? throw new InvalidOperationException("Missing canonical save envelope.");
-            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat or CashFoodSaveFormat or TimedTransitSaveFormat or BornCivilizationSaveFormat or LongDistanceSaveFormat or PhysicalTravelFoodSaveFormat or AutomaticCampSaveFormat or TransportAuthorityEnvelopeFormat or IntegratedDormantTreasuryEnvelopeFormat or MaterialDispositionEnvelopeFormat or MaterialWithTreasuryEnvelopeFormat or MaterialAssemblyEnvelopeFormat or MaterialAssemblyWithTreasuryEnvelopeFormat or PrimitiveWorkSiteEnvelopeFormat or PrimitiveWorkSiteWithTreasuryEnvelopeFormat or PrimitiveFacilityEnvelopeFormat or PrimitiveFacilityWithTreasuryEnvelopeFormat or FacilityAssistedWorkEnvelopeFormat or FacilityAssistedWorkWithTreasuryEnvelopeFormat) ||
+            if (envelope.Version is not (SaveFormat or AdaptiveSaveFormat or GeographyAlignedSaveFormat or CashFoodSaveFormat or TimedTransitSaveFormat or BornCivilizationSaveFormat or LongDistanceSaveFormat or PhysicalTravelFoodSaveFormat or AutomaticCampSaveFormat or TransportAuthorityEnvelopeFormat or IntegratedDormantTreasuryEnvelopeFormat or MaterialDispositionEnvelopeFormat or MaterialWithTreasuryEnvelopeFormat or MaterialAssemblyEnvelopeFormat or MaterialAssemblyWithTreasuryEnvelopeFormat or PrimitiveWorkSiteEnvelopeFormat or PrimitiveWorkSiteWithTreasuryEnvelopeFormat or PrimitiveFacilityEnvelopeFormat or PrimitiveFacilityWithTreasuryEnvelopeFormat or FacilityAssistedWorkEnvelopeFormat or FacilityAssistedWorkWithTreasuryEnvelopeFormat or
+                MarketStockCommitmentEnvelopeFormat or MarketStockCommitmentWithTreasuryEnvelopeFormat) ||
                 string.IsNullOrEmpty(envelope.PayloadJson) ||
                 string.IsNullOrEmpty(envelope.PayloadSha256Hex))
                 throw new InvalidOperationException("Unsupported canonical save envelope.");
@@ -1813,28 +1841,47 @@ public sealed class CanonicalPhysicalTacticalSession
             throw new InvalidOperationException("Invalid canonical save encoding.", ex);
         }
 
+        var stockCommitmentEnvelope = envelope.Version is
+            MarketStockCommitmentEnvelopeFormat or
+            MarketStockCommitmentWithTreasuryEnvelopeFormat;
+        var hasMaterialActions = payload.Actions?.Any(a =>
+            a?.Kind is "material_use" or "assemble_primitive") == true;
+        var hasAssemblyActions = payload.Actions?.Any(a =>
+            a?.Kind == "assemble_primitive") == true;
+        var hasCommissionActions = payload.Actions?.Any(a =>
+            a?.Kind == "commission_primitive") == true;
+        var hasFacilityActions = payload.Actions?.Any(a =>
+            a?.Kind == "start_primitive_facility") == true;
+        var hasStaffActions = payload.Actions?.Any(a =>
+            a?.Kind == "staff_primitive_facility") == true;
+        var hasStockCommitmentActions = payload.Actions?.Any(a =>
+            a?.Kind is "commit_physical_stock" or "release_physical_stock") == true;
         var integratedTreasury = envelope.Version is
             IntegratedDormantTreasuryEnvelopeFormat or
             MaterialWithTreasuryEnvelopeFormat or
             MaterialAssemblyWithTreasuryEnvelopeFormat or
             PrimitiveWorkSiteWithTreasuryEnvelopeFormat or
             PrimitiveFacilityWithTreasuryEnvelopeFormat or
-            FacilityAssistedWorkWithTreasuryEnvelopeFormat;
+            FacilityAssistedWorkWithTreasuryEnvelopeFormat or
+            MarketStockCommitmentWithTreasuryEnvelopeFormat;
         var staffedEnvelope = envelope.Version is
             FacilityAssistedWorkEnvelopeFormat or
-            FacilityAssistedWorkWithTreasuryEnvelopeFormat;
+            FacilityAssistedWorkWithTreasuryEnvelopeFormat ||
+            (stockCommitmentEnvelope && hasStaffActions);
         var facilityEnvelope = envelope.Version is
             PrimitiveFacilityEnvelopeFormat or
             PrimitiveFacilityWithTreasuryEnvelopeFormat or
             FacilityAssistedWorkEnvelopeFormat or
-            FacilityAssistedWorkWithTreasuryEnvelopeFormat;
+            FacilityAssistedWorkWithTreasuryEnvelopeFormat ||
+            (stockCommitmentEnvelope && hasFacilityActions);
         var commissioningEnvelope = envelope.Version is
             PrimitiveWorkSiteEnvelopeFormat or
             PrimitiveWorkSiteWithTreasuryEnvelopeFormat or
             PrimitiveFacilityEnvelopeFormat or
             PrimitiveFacilityWithTreasuryEnvelopeFormat or
             FacilityAssistedWorkEnvelopeFormat or
-            FacilityAssistedWorkWithTreasuryEnvelopeFormat;
+            FacilityAssistedWorkWithTreasuryEnvelopeFormat ||
+            (stockCommitmentEnvelope && hasCommissionActions);
         var assemblyEnvelope = envelope.Version is
             MaterialAssemblyEnvelopeFormat or
             MaterialAssemblyWithTreasuryEnvelopeFormat or
@@ -1843,7 +1890,8 @@ public sealed class CanonicalPhysicalTacticalSession
             PrimitiveFacilityEnvelopeFormat or
             PrimitiveFacilityWithTreasuryEnvelopeFormat or
             FacilityAssistedWorkEnvelopeFormat or
-            FacilityAssistedWorkWithTreasuryEnvelopeFormat;
+            FacilityAssistedWorkWithTreasuryEnvelopeFormat ||
+            (stockCommitmentEnvelope && hasAssemblyActions);
         var materialEnvelope = envelope.Version is
             MaterialDispositionEnvelopeFormat or
             MaterialWithTreasuryEnvelopeFormat or
@@ -1854,7 +1902,8 @@ public sealed class CanonicalPhysicalTacticalSession
             PrimitiveFacilityEnvelopeFormat or
             PrimitiveFacilityWithTreasuryEnvelopeFormat or
             FacilityAssistedWorkEnvelopeFormat or
-            FacilityAssistedWorkWithTreasuryEnvelopeFormat;
+            FacilityAssistedWorkWithTreasuryEnvelopeFormat ||
+            (stockCommitmentEnvelope && hasMaterialActions);
         if ((envelope.Version == TransportAuthorityEnvelopeFormat
                 ? payload.Version < SaveFormat || payload.Version > AutomaticCampSaveFormat ||
                   payload.TransportCommands is not { Length: > 0 }
@@ -1864,10 +1913,11 @@ public sealed class CanonicalPhysicalTacticalSession
                   payload.TransportCommands is { Length: 0 }
                 : payload.Version != envelope.Version ||
                   payload.TransportCommands is not null) ||
-            (materialEnvelope != (payload.Actions?.Any(
-                a => a?.Kind is "material_use" or "assemble_primitive") == true)) ||
-            (assemblyEnvelope != (payload.Actions?.Any(
-                a => a?.Kind == "assemble_primitive") == true)) ||
+            (stockCommitmentEnvelope != hasStockCommitmentActions) ||
+            (stockCommitmentEnvelope != (payload.PhysicalCommitments is not null)) ||
+            (payload.PhysicalCommitments?.Any(x => x is null) == true) ||
+            (materialEnvelope != hasMaterialActions) ||
+            (assemblyEnvelope != hasAssemblyActions) ||
             (!commissioningEnvelope && payload.Actions?.Any(
                 a => a?.Kind == "commission_primitive") == true) ||
             (commissioningEnvelope && !facilityEnvelope &&
@@ -2020,6 +2070,28 @@ public sealed class CanonicalPhysicalTacticalSession
                     new PhysicalTacticalTileId(game._fine, new StrategicCellId(action.Destination)),
                     (EconomicActivityKind)action.FromJob, (EconomicActivityKind)action.ToJob,
                     action.Workers, action.FoodRaw, automaticCamps: true);
+            else if (action.Kind == "commit_physical_stock" &&
+                     stockCommitmentEnvelope &&
+                     action.Source == action.Destination &&
+                     action.Source != 0UL &&
+                     action.Workers == 0UL && action.FromJob == 0 &&
+                     action.ToJob == 0 && action.FoodRaw == 0UL &&
+                     action.CommitmentOrdinal == 0)
+                game.CommitPhysicalStock(
+                    new PhysicalTacticalTileId(game._fine,
+                        new StrategicCellId(action.Source)),
+                    new CommodityId(action.CommitmentCommodity),
+                    (CanonicalPhysicalCommitmentKind)action.CommitmentKind,
+                    action.CommitmentRaw);
+            else if (action.Kind == "release_physical_stock" &&
+                     stockCommitmentEnvelope &&
+                     action.Source == action.Destination &&
+                     action.Source != 0UL &&
+                     action.Workers == 0UL && action.FromJob == 0 &&
+                     action.ToJob == 0 && action.FoodRaw == 0UL &&
+                     action.CommitmentOrdinal > 0)
+                game.ReleasePhysicalStockCommitment(
+                    action.CommitmentOrdinal);
             else if (action.Kind == "tick" && action.Source == 0UL &&
                      action.Destination == 0UL && action.FromJob == 0 &&
                      action.ToJob == 0 && action.Workers == 0UL)
@@ -2109,6 +2181,7 @@ public sealed class CanonicalPhysicalTacticalSession
         if (transportCursor != transportCommands.Length)
             throw new InvalidOperationException("Transport journal physical ordering diverged.");
 
+        game.VerifyPhysicalStockCommitments();
         // Reject even a self-consistently rehashed, fabricated summary:
         // all values must be reproducible from the validated world and orders.
         if (JsonSerializer.Serialize(payload) !=
@@ -2266,7 +2339,13 @@ public sealed class CanonicalPhysicalTacticalSession
                         x.Tile.FineStrategicCellId.Value,
                         (byte)x.Activity, (byte)x.Kind,
                         x.CommittedWorkers, x.StartedMovementTurn,
-                        x.CompletedMovementTurn, x.OperatingWorkers)).ToArray());
+                        x.CompletedMovementTurn, x.OperatingWorkers)).ToArray(),
+            _journal.Any(x => x.Kind == "commit_physical_stock")
+                ? _physicalStockCommitments.Select(x =>
+                    new CanonicalPhysicalStockCommitmentSaveRow(
+                        x.ActionOrdinal, x.FineTile, x.Commodity,
+                        (byte)x.Kind, x.RawQuantity, x.Released)).ToArray()
+                : null);
     }
 
     private bool IsWorkableLand(StrategicCellId id) =>
