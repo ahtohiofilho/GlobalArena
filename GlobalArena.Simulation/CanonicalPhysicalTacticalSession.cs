@@ -189,6 +189,9 @@ public sealed partial class CanonicalPhysicalTacticalSession
     public const int ExecutedWorkforceMaterialUseWithTreasuryEnvelopeFormat = 36;
     public const int LocalRecipientCustodyEnvelopeFormat = 37;
     public const int LocalRecipientCustodyWithTreasuryEnvelopeFormat = 38;
+    // 39/40: actual recipient-custody return/use after versioned 37/38 handoff.
+    public const int RecipientCustodyDispositionEnvelopeFormat = 39;
+    public const int RecipientCustodyDispositionWithTreasuryEnvelopeFormat = 40;
     public const int MaximumActions = 100_000;
     private const int MaximumSaveBytes = 4_000_000;
     public const ulong FoodDemandRawPerWorker = 500_000UL;
@@ -1788,8 +1791,14 @@ public sealed partial class CanonicalPhysicalTacticalSession
         var digest = Convert.ToHexString(
             SHA256.HashData(Encoding.UTF8.GetBytes(payloadJson)));
         var json = JsonSerializer.Serialize(new CanonicalPhysicalSaveEnvelope(
-            _journal.Any(x => x.Kind ==
-                "transfer_market_offer_local_recipient")
+            _journal.Any(x => x.Kind is
+                "return_local_recipient_custody" or
+                "use_local_recipient_material")
+                ? (_treasuryActivationActionCount.HasValue
+                    ? RecipientCustodyDispositionWithTreasuryEnvelopeFormat
+                    : RecipientCustodyDispositionEnvelopeFormat)
+                : _journal.Any(x => x.Kind ==
+                    "transfer_market_offer_local_recipient")
                 ? (_treasuryActivationActionCount.HasValue
                     ? LocalRecipientCustodyWithTreasuryEnvelopeFormat
                     : LocalRecipientCustodyEnvelopeFormat)
@@ -1852,7 +1861,8 @@ public sealed partial class CanonicalPhysicalTacticalSession
                 MarketStockCommitmentEnvelopeFormat or MarketStockCommitmentWithTreasuryEnvelopeFormat or
                 ExecutedMarketMaterialUseEnvelopeFormat or ExecutedMarketMaterialUseWithTreasuryEnvelopeFormat or
                 ExecutedWorkforceMaterialUseEnvelopeFormat or ExecutedWorkforceMaterialUseWithTreasuryEnvelopeFormat or
-                 LocalRecipientCustodyEnvelopeFormat or LocalRecipientCustodyWithTreasuryEnvelopeFormat) ||
+                 LocalRecipientCustodyEnvelopeFormat or LocalRecipientCustodyWithTreasuryEnvelopeFormat or
+                 RecipientCustodyDispositionEnvelopeFormat or RecipientCustodyDispositionWithTreasuryEnvelopeFormat) ||
                 string.IsNullOrEmpty(envelope.PayloadJson) ||
                 string.IsNullOrEmpty(envelope.PayloadSha256Hex))
                 throw new InvalidOperationException("Unsupported canonical save envelope.");
@@ -1869,9 +1879,17 @@ public sealed partial class CanonicalPhysicalTacticalSession
             throw new InvalidOperationException("Invalid canonical save encoding.", ex);
         }
 
+        var recipientDispositionEnvelope = envelope.Version is
+            RecipientCustodyDispositionEnvelopeFormat or
+            RecipientCustodyDispositionWithTreasuryEnvelopeFormat;
+        var hasRecipientDispositionActions = payload.Actions?.Any(a =>
+            a?.Kind is "return_local_recipient_custody" or
+                "use_local_recipient_material") == true;
         var recipientTransferEnvelope = envelope.Version is
             LocalRecipientCustodyEnvelopeFormat or
-            LocalRecipientCustodyWithTreasuryEnvelopeFormat;
+            LocalRecipientCustodyWithTreasuryEnvelopeFormat or
+            RecipientCustodyDispositionEnvelopeFormat or
+            RecipientCustodyDispositionWithTreasuryEnvelopeFormat;
         var hasRecipientTransferActions = payload.Actions?.Any(a =>
             a?.Kind == "transfer_market_offer_local_recipient") == true;
         var hasMarketUseActions = payload.Actions?.Any(a =>
@@ -1897,7 +1915,9 @@ public sealed partial class CanonicalPhysicalTacticalSession
             ExecutedWorkforceMaterialUseEnvelopeFormat or
             ExecutedWorkforceMaterialUseWithTreasuryEnvelopeFormat or
             LocalRecipientCustodyEnvelopeFormat or
-            LocalRecipientCustodyWithTreasuryEnvelopeFormat;
+            LocalRecipientCustodyWithTreasuryEnvelopeFormat or
+            RecipientCustodyDispositionEnvelopeFormat or
+            RecipientCustodyDispositionWithTreasuryEnvelopeFormat;
         var hasMaterialActions = payload.Actions?.Any(a =>
             a?.Kind is "material_use" or "assemble_primitive") == true;
         var hasAssemblyActions = payload.Actions?.Any(a =>
@@ -1911,6 +1931,7 @@ public sealed partial class CanonicalPhysicalTacticalSession
         var hasStockCommitmentActions = payload.Actions?.Any(a =>
             a?.Kind is "commit_physical_stock" or "release_physical_stock") == true;
         var integratedTreasury = envelope.Version is
+            RecipientCustodyDispositionWithTreasuryEnvelopeFormat or
             LocalRecipientCustodyWithTreasuryEnvelopeFormat or
             IntegratedDormantTreasuryEnvelopeFormat or
             MaterialWithTreasuryEnvelopeFormat or
@@ -1970,6 +1991,7 @@ public sealed partial class CanonicalPhysicalTacticalSession
                   payload.TransportCommands is { Length: 0 }
                 : payload.Version != envelope.Version ||
                   payload.TransportCommands is not null) ||
+            (recipientDispositionEnvelope != hasRecipientDispositionActions) ||
             (recipientTransferEnvelope != hasRecipientTransferActions) ||
             (stockCommitmentEnvelope != hasStockCommitmentActions) ||
             (marketUseEnvelope != hasMarketUseActions) ||
@@ -2174,6 +2196,46 @@ public sealed partial class CanonicalPhysicalTacticalSession
                      action.FoodRaw == 0UL)
                 game.TransferMarketOfferToLocalRecipient(
                     action.CommitmentOrdinal, (EconomicActivityKind)action.ToJob);
+            else if (action.Kind == "return_local_recipient_custody" &&
+                     recipientDispositionEnvelope &&
+                     action.Source == action.Destination &&
+                     action.Source != 0UL &&
+                     action.CommitmentOrdinal > 0 &&
+                     action.CommitmentKind ==
+                         (byte)CanonicalPhysicalCommitmentKind.MarketOffer &&
+                     action.CommitmentCommodity is 2U or 3U &&
+                     action.CommitmentRaw > 0UL &&
+                     action.Workers == 0UL &&
+                     action.FromJob == 0 &&
+                     action.ToJob == 0 &&
+                     action.MaterialCommodity == 0U &&
+                     action.MaterialRaw == 0UL &&
+                     action.MaterialUseKind == 0 &&
+                     action.FoodRaw == 0UL)
+                game.ReturnLocalRecipientCustody(action.CommitmentOrdinal);
+            else if (action.Kind == "use_local_recipient_material" &&
+                     recipientDispositionEnvelope &&
+                     action.Source == action.Destination &&
+                     action.Source != 0UL &&
+                     action.CommitmentOrdinal > 0 &&
+                     action.CommitmentKind ==
+                         (byte)CanonicalPhysicalCommitmentKind.MarketOffer &&
+                     action.CommitmentCommodity is 2U or 3U &&
+                     action.CommitmentRaw > 0UL &&
+                     action.Workers > 0UL &&
+                     action.FromJob == 0 &&
+                     (action.ToJob == (byte)EconomicActivityKind.Agriculture ||
+                      action.ToJob == (byte)EconomicActivityKind.Forestry ||
+                      action.ToJob == (byte)EconomicActivityKind.Mining) &&
+                     action.MaterialCommodity == 0U &&
+                     action.MaterialRaw == 0UL &&
+                     action.MaterialUseKind is
+                         (byte)CanonicalMaterialDispositionKind.FinalPhysicalUse or
+                         (byte)CanonicalMaterialDispositionKind.IntermediateInputUse &&
+                     action.FoodRaw == 0UL)
+                game.UseLocalRecipientMaterial(
+                    action.CommitmentOrdinal,
+                    (CanonicalMaterialDispositionKind)action.MaterialUseKind);
             else if (action.Kind == "use_committed_material" &&
                      marketUseEnvelope &&
                      action.Source == action.Destination &&
