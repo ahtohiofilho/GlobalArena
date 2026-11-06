@@ -72,9 +72,9 @@ public sealed class GaEconMarketDefault01AAdmissionTests
         var escrow = session.CommitPhysicalStock(tile, woodId,
             CanonicalPhysicalCommitmentKind.MarketOffer, partial);
         var reserved = CanonicalDefaultMarketAdmissionPlan.Capture(session);
-        var woodRow = Assert.Single(reserved.Rows.Where(x =>
+        var woodRow = Assert.Single(reserved.Rows, x =>
             x.FineTile == tile.FineStrategicCellId.Value &&
-            x.Commodity == 3U));
+            x.Commodity == 3U);
         Assert.Equal(new BigInteger(wood - partial), woodRow.FreeLocalRaw);
         Assert.Equal(new BigInteger(partial), woodRow.ExistingMarketCommitmentRaw);
         Assert.Equal(new BigInteger(wood), woodRow.EligibleForMarketRaw);
@@ -85,9 +85,9 @@ public sealed class GaEconMarketDefault01AAdmissionTests
         Assert.Equal(BigInteger.Zero, retained.EligibleAt(
             tile.FineStrategicCellId.Value, 2U));
         Assert.Equal(new BigInteger(stone),
-            Assert.Single(retained.Rows.Where(x =>
+            Assert.Single(retained.Rows, x =>
                 x.FineTile == tile.FineStrategicCellId.Value &&
-                x.Commodity == 2U)).DeliberatelyRetainedRaw);
+                x.Commodity == 2U).DeliberatelyRetainedRaw);
         Assert.Equal(new BigInteger(wood), retained.EligibleAt(
             tile.FineStrategicCellId.Value, 3U));
         Assert.False(retained.ProvesActualSaleOrRevenue);
