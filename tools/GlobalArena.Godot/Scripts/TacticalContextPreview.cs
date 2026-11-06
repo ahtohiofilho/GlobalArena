@@ -37,6 +37,48 @@ public partial class TacticalContextPreview : SubViewportContainer
     private WorldGenerationV2PhysicalComposition? _terrainReference;
     private WorldGenerationResult? _legacyEconomicFineWorld;
     private bool _hasAuthoritativeTacticalGeography;
+    private CanonicalPhysicalVisualLayer _physicalVisualLayer =
+        CanonicalPhysicalVisualLayer.Biomes;
+    private long _terrainMinimumElevation;
+    private long _terrainMaximumElevation;
+
+    public CanonicalPhysicalVisualLayer PhysicalVisualLayer => _physicalVisualLayer;
+
+    /// <summary>
+    /// Change only physical terrain colors, not the tactical map selection,
+    /// camera, worker orders, world hash or frame/edge overlay preferences.
+    /// </summary>
+    public void SetPhysicalVisualLayer(CanonicalPhysicalVisualLayer layer)
+    {
+        if (layer is not (CanonicalPhysicalVisualLayer.Biomes or
+            CanonicalPhysicalVisualLayer.Relief))
+            throw new ArgumentOutOfRangeException(nameof(layer));
+        if (_physicalVisualLayer == layer && _showExperimentalTerrain) return;
+        _physicalVisualLayer = layer;
+        _showExperimentalTerrain = true;
+        UpdateTerrainButtonLabel();
+        if (_activeFocus == 0UL || _camera is null) return;
+        var cameraTransform = _camera.Transform;
+        var cameraSize = _camera.Size;
+        Open(_activeFocus);
+        _camera.Transform = cameraTransform;
+        _camera.Size = cameraSize;
+        GD.Print($"GA_UI_PHYSICAL_LAYER_TACTICAL switched={layer} " +
+            $"focus={_activeFocus} camera_preserved=true canonical_state_unchanged=true");
+    }
+
+    private void UpdatePhysicalElevationRange()
+    {
+        if (_terrainReference is null) return;
+        long low = long.MaxValue, high = long.MinValue;
+        foreach (var elevation in _terrainReference.Elevation)
+        {
+            if (elevation < low) low = elevation;
+            if (elevation > high) high = elevation;
+        }
+        _terrainMinimumElevation = low;
+        _terrainMaximumElevation = high;
+    }
     private Button? _terrainButton;
     private bool _showExperimentalTerrain = true;
     private const ulong TerrainExperimentSeed = 20261012UL;
@@ -101,6 +143,7 @@ public partial class TacticalContextPreview : SubViewportContainer
             canonical01C.Biomes.Count != fineWorld.StrategicTopology.Cells.Count)
             throw new ArgumentException("Tactical biome IDs do not align with the economic fine grid.");
         _terrainReference = canonical01C;
+        UpdatePhysicalElevationRange();
         _legacyEconomicFineWorld = canonical01C is null ? fineWorld : null;
         _hasAuthoritativeTacticalGeography = true;
         _showExperimentalTerrain = true;
@@ -111,6 +154,8 @@ public partial class TacticalContextPreview : SubViewportContainer
     {
         if (_terrainButton is null) return;
         _terrainButton.Text = !_showExperimentalTerrain ? "TERRAIN: IDS" :
+            _physicalVisualLayer == CanonicalPhysicalVisualLayer.Relief &&
+                _terrainReference is not null ? "TERRAIN: RELEVO 01C" :
             _legacyEconomicFineWorld is not null ? "TERRAIN: V1 LEGACY" :
             _hasAuthoritativeTacticalGeography ? "TERRAIN: 01C CANONICAL" : "TERRAIN: 01C EXP";
     }
@@ -123,7 +168,9 @@ public partial class TacticalContextPreview : SubViewportContainer
                 _legacyEconomicFineWorld, new StrategicCellId(fineId));
         if (_terrainReference is null)
             throw new InvalidOperationException("Physical terrain reference missing.");
-        return TerrainColor(_terrainReference.Biomes[index].VisibleBiome);
+        return CanonicalPhysicalTerrainPalette.FromCanonicalCell(
+            _terrainReference, index, _physicalVisualLayer,
+            _terrainMinimumElevation, _terrainMaximumElevation);
     }
 
     private static Vector3 ConvertPoint(SphericalPoint3 point) =>
@@ -858,8 +905,11 @@ public partial class TacticalContextPreview : SubViewportContainer
         // Lazy one-time V2 preview. Worldgen V1 and strategic presentation remain unchanged.
         if (_showExperimentalTerrain && _terrainReference is null &&
             _legacyEconomicFineWorld is null)
+        {
             _terrainReference = WorldGenerationV2PhysicalComposition.Generate(
                 geometry, TerrainExperimentSeed, landTargetPercent: 35);
+            UpdatePhysicalElevationRange();
+        }
         if (_terrainReference is not null && _terrainReference.Geometry.Cells.Count != geometry.Cells.Count)
             throw new InvalidOperationException("Experimental physical terrain geometry count changed.");
         var countTriangles = 0;
