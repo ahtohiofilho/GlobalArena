@@ -286,9 +286,11 @@ public sealed class GaEconMarketDefault01pTests
         Assert.Equal(new BigInteger(2), reference.TotalCurrentlyTitledRaw);
         Assert.Equal(new BigInteger(2), reference.TotalPhysicallyUsedByRecipientRaw);
         Assert.Equal(BigInteger.Zero, reference.TotalStillInRecipientCustodyRaw);
-        Assert.Equal(new BigInteger(4), reference.Markets.Single(x =>
-            x.Commodity == 3U).NeutralDemandPressureRaw /
-            reference.Markets.Single(x => x.Commodity == 3U).RealResidents * 2);
+        Assert.Equal(
+            new BigInteger(reference.Markets.Single(x =>
+                x.Commodity == 3U).RealResidents) * 2,
+            reference.Markets.Single(x =>
+                x.Commodity == 3U).NeutralDemandPressureRaw);
         Assert.False(reference.ProvesAnExecutedCommercialSale);
         Assert.False(reference.PostsProducerRevenueOrStateTaxes);
         reference.VerifyIndependent();
