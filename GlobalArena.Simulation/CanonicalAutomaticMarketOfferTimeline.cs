@@ -124,6 +124,21 @@ public sealed class CanonicalAutomaticMarketOfferTimeline
         return result;
     }
 
+    /// <summary>
+    /// Explicit material-use authorization inside the opted-in laboratory.
+    /// Not automatic absorption: unmatched offers remain physically pending.
+    /// The prepared batch is detached from the timeline's adopted clone.
+    /// </summary>
+    public CanonicalStagedLocalMaterialUseBatch ApplyExplicitLocalMaterialUses(
+        IEnumerable<CanonicalLocalWorkforceMaterialUseOrder> instructions)
+    {
+        var batch = CanonicalStagedLocalMaterialUseBatch.Prepare(
+            _current, instructions);
+        var verified = CloneValidated(batch.PreparedSession);
+        _current = verified;
+        return batch;
+    }
+
     private static string HashSave(string json) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(json)));
 
