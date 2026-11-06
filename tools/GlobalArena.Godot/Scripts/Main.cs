@@ -191,8 +191,10 @@ public partial class Main : Control
                 _tacticalTileEdges.ButtonPressed = false;
                 _tacticalTileEdges.Visible = true;
             }
-            _tacticalBridgeStatus.Text = $"LOCAL TACTICAL | strategic {_bridgeSelection.Value} and adjacent territories";
+            _tacticalBridgeStatus.Text = $"TÁTICO LOCAL | região {_bridgeSelection.Value}";
             UpdateTerritorialPresenceSummary();
+            if (_territorialPresenceSummary is not null)
+                _territorialPresenceSummary.Visible = false;
             GD.Print($"GA_UI_TACTICAL_TRANSITION_OPEN focus={_bridgeSelection.Value}");
         }
         catch (System.Exception exception)
@@ -217,6 +219,8 @@ public partial class Main : Control
         _returnStrategicContext.Visible = false;
         if (_tacticalTileEdges is not null) _tacticalTileEdges.Visible = false;
         UpdateTerritorialPresenceSummary();
+        if (_territorialPresenceSummary is not null)
+            _territorialPresenceSummary.Visible = true;
         _tacticalBridgeStatus.Text = _bridgeSelection.HasValue
             ? $"Territory {_bridgeSelection.Value} selected | tactical context available"
             : "Select a canonical territory to enable tactical context";
@@ -229,7 +233,7 @@ public partial class Main : Control
         GD.Print("GA_VS106_TACTICAL_FIRST_UI source=canonical_gameplay spherical_tactical=true strategic=auxiliary");
         // The Godot project name stays VS17 to retain old user:// saves;
         // a visible runtime title identifies the actual branch under test.
-        GetWindow().Title = "Global Arena — Controle tático (DEBUG)";
+        GetWindow().Title = "Global Arena — Controle tático";
         // Prioritize a maximized production window; preserve windowed resizing and avoid headless changes.
         if (DisplayServer.GetName() != "headless")
             DisplayServer.WindowSetMode(DisplayServer.WindowMode.Maximized);
@@ -308,6 +312,8 @@ public partial class Main : Control
         _workerOrigin = _canonicalPhysicalLab.InitialTile;
         _tacticalPreview.BindEconomicTacticalGeography(
             _canonicalPhysicalLab.FineWorld, _canonicalPhysicalLab.CanonicalTerrain);
+        _strategicGlobe.BindCanonicalTacticalSurface(
+            _canonicalPhysicalLab.FineWorld, _canonicalPhysicalLab.CanonicalTerrain);
         AttachRuntimeState(_canonicalSession.Snapshot);
         if (_canonicalSession.Snapshot.WorldBinding !=
             RuntimeWorldBinding.FromGeneratedWorld(_canonicalSession.GeneratedWorld))
@@ -373,7 +379,7 @@ public partial class Main : Control
         _openTacticalContext = new Button { Name = "GAQAOpenTactical", Text = "VOLTAR AO MAPA TÁTICO", Disabled = true };
         _openTacticalContext.Pressed += OpenTacticalContext;
         rightLayout.AddChild(_openTacticalContext);
-        _returnStrategicContext = new Button { Name = "GAQAReturnStrategic", Text = "VISÃO GLOBAL · GLOBO ESFÉRICO", Visible = false };
+        _returnStrategicContext = new Button { Name = "GAQAReturnStrategic", Text = "VISÃO GLOBAL · MALHA TÁTICA", Visible = false };
         _returnStrategicContext.Pressed += ReturnStrategicContext;
         rightLayout.AddChild(_returnStrategicContext);
         _tacticalTileEdges = new CheckBox { Text = "TACTICAL TILE EDGES", ButtonPressed = false, Visible = false };

@@ -27,7 +27,7 @@ public partial class TacticalContextPreview : SubViewportContainer
     private MeshInstance3D? _edges;
     private MeshInstance3D? _territoryBoundaries;
     private IReadOnlyList<PhysicalTacticalTerritoryBoundaryPath>? _cachedBoundaryPaths;
-    private bool _showTerritoryBoundaries = true;
+    private bool _showTerritoryBoundaries = false; // User default: strategic lines are opt-in diagnostics.
     private MeshInstance3D? _selectedTileOutline;
     private Label? _information;
     private VBoxContainer? _hudControls;
@@ -119,23 +119,8 @@ public partial class TacticalContextPreview : SubViewportContainer
     {
         var index = checked((int)fineId - 1);
         if (_legacyEconomicFineWorld is not null)
-        {
-            var id = new StrategicCellId(fineId);
-            if (_legacyEconomicFineWorld.StrategicPhysicalFields.LandWater.GetKind(id) ==
-                StrategicLandWaterKind.Water) return new Color("#245b86");
-            return _legacyEconomicFineWorld.StrategicBiomes.GetKind(id) switch
-            {
-                StrategicBiomeKind.PolarIce => new Color("#bddae8"),
-                StrategicBiomeKind.Tundra => new Color("#9db7a4"),
-                StrategicBiomeKind.Highland => new Color("#898b66"),
-                StrategicBiomeKind.Wetland => new Color("#5b9a78"),
-                StrategicBiomeKind.Desert => new Color("#d2bd75"),
-                StrategicBiomeKind.Rainforest => new Color("#285d49"),
-                StrategicBiomeKind.Forest => new Color("#336e53"),
-                StrategicBiomeKind.Grassland => new Color("#7bad72"),
-                _ => throw new InvalidOperationException("Unsupported V1 canonical biome.")
-            };
-        }
+            return CanonicalPhysicalTerrainPalette.FromLegacyWorld(
+                _legacyEconomicFineWorld, new StrategicCellId(fineId));
         if (_terrainReference is null)
             throw new InvalidOperationException("Physical terrain reference missing.");
         return TerrainColor(_terrainReference.Biomes[index].VisibleBiome);
@@ -371,7 +356,11 @@ public partial class TacticalContextPreview : SubViewportContainer
         _world.AddChild(_surface);
         _edges = new MeshInstance3D { Visible = false };
         _world.AddChild(_edges);
-        _territoryBoundaries = new MeshInstance3D();
+        _territoryBoundaries = new MeshInstance3D
+        {
+            Name = "GA_TacticalTerritoryBoundaries",
+            Visible = false
+        };
         _world.AddChild(_territoryBoundaries);
         _extensionSurface = new MeshInstance3D();
         _world.AddChild(_extensionSurface);
@@ -418,7 +407,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         _terrainDetails = new Label
         {
             Position = new Vector2(12f, 64f),
-            Text = "01C EXPERIMENT | tactical terrain only; strategic globe still V1",
+            Text = "01C EXPERIMENT | terreno físico; globo global usa a malha tática",
             MouseFilter = MouseFilterEnum.Ignore
         };
         _terrainDetails.AddThemeColorOverride("font_color", new Color("#f1d7a3"));
@@ -490,7 +479,12 @@ public partial class TacticalContextPreview : SubViewportContainer
             GD.Print($"GA_TACTICAL_FRAME_TOGGLE cover={_coverViewport} focus={_activeFocus}");
         };
         terrainRow.AddChild(framingButton);
-        var bordersToggle = new CheckBox { Text = "TERRITORY LIMITS", ButtonPressed = true };
+        var bordersToggle = new CheckBox
+        {
+            Name = "GA_TerritoryBoundariesToggle",
+            Text = "TERRITORY LIMITS",
+            ButtonPressed = false
+        };
         bordersToggle.Toggled += visible =>
         {
             _showTerritoryBoundaries = visible;
@@ -545,18 +539,8 @@ public partial class TacticalContextPreview : SubViewportContainer
     // Experimental V2 physical classification sampled from ONE canonical G(18,0)
     // spherical geometry. These colors never alter V1 simulation, strategic tiles,
     // ownership, topological incidences or movement costs.
-    private static Color TerrainColor(ExperimentalProceduralBiomeClassifier.Biome biome) => biome switch
-    {
-        ExperimentalProceduralBiomeClassifier.Biome.Ocean => new Color("#245b86"),
-        ExperimentalProceduralBiomeClassifier.Biome.Desert => new Color("#d2bd75"),
-        ExperimentalProceduralBiomeClassifier.Biome.Steppe => new Color("#a4a16b"),
-        ExperimentalProceduralBiomeClassifier.Biome.Prairie => new Color("#7bad72"),
-        ExperimentalProceduralBiomeClassifier.Biome.Forest => new Color("#336e53"),
-        ExperimentalProceduralBiomeClassifier.Biome.Hills => new Color("#898b66"),
-        ExperimentalProceduralBiomeClassifier.Biome.Mountains => new Color("#777f8a"),
-        ExperimentalProceduralBiomeClassifier.Biome.Ice => new Color("#bddae8"),
-        _ => throw new ArgumentOutOfRangeException(nameof(biome))
-    };
+    private static Color TerrainColor(ExperimentalProceduralBiomeClassifier.Biome biome) =>
+        CanonicalPhysicalTerrainPalette.FromVisibleBiome(biome);
 
     private Vector3 Flatten(SphericalPoint3 point, float lift = 0f)
     {
@@ -749,7 +733,7 @@ public partial class TacticalContextPreview : SubViewportContainer
             _selection.Text = "Wheel: zoom | Drag: pan | Click: inspect tile";
             if (_terrainDetails is not null)
                 _terrainDetails.Text = _showExperimentalTerrain
-                    ? "01C EXPERIMENT | tactical terrain only; strategic globe still V1"
+                    ? "01C EXPERIMENT | terreno físico; globo global usa a malha tática"
                     : "DIAGNOSTIC COLORS | not a terrain classification";
             PhysicalTileInspected?.Invoke(null, _selection.Text, _terrainDetails?.Text ?? "");
             return;
@@ -1052,7 +1036,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         GD.Print($"GA_TACTICAL_LOCAL_OPEN focus={focusValue} framing_rings={_ringCount} resident_rings={_residentRingCount} frame_tiles={framingTiles.Count} projection={(_equidistant ? "Equidistant" : "Orthographic")} regions={selectedStrategic.Count} physical_tiles={selectedPhysical.Count} triangles={countTriangles} edges={edgeCount} parameters=G(3,0)>G(18,0) duplicate_ids=0");
         GD.Print($"GA_TACTICAL_TERRITORY_BORDERS_MESH_R1 focus={focusValue} strategic_edges={strategicEdgesRendered} segments={boundarySegments} source=physical_centers surface_epsilon={TerritoryBoundarySurfaceLift:F5} toggle={_showTerritoryBoundaries} movement_unchanged=true");
         GD.Print($"GA_TACTICAL_TERRITORY_SHAPE_ANCHORS_R1 focus={focusValue} anchors=3-2-3 segments={boundarySegments} feature=visual_only highlight=false movement_unchanged=true");
-        GD.Print($"GA_TACTICAL_TERRAIN_01C focus={focusValue} visible={_showExperimentalTerrain} seed={TerrainExperimentSeed} land_target=35 physical_reference_cached={_terrainReference is not null} strategic_globe_v1_unchanged=true");
+        GD.Print($"GA_TACTICAL_TERRAIN_01C focus={focusValue} visible={_showExperimentalTerrain} seed={TerrainExperimentSeed} land_target=35 physical_reference_cached={_terrainReference is not null} global_physical_globe_grid=G18");
     }
 
     private static bool Contains(Vector2 p, Vector2[] vertices)

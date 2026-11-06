@@ -523,6 +523,10 @@ public partial class GlobePreview : SubViewportContainer
             GetViewport().SetInputAsHandled();
             return;
         }
+        // Legacy strategic color layers are not game-world layers after
+        // binding the actual tactical polyhedron. Keep camera/selection
+        // shortcuts, but do not silently repaint real physical terrain.
+        if (_canonicalTacticalSurface is not null) return;
         var targetMode = key.Keycode switch
         {
             Key.Key1 => 0,
@@ -603,7 +607,10 @@ public partial class GlobePreview : SubViewportContainer
             nearest = distance;
             hitId = triangle.Id;
         }
-        _pickedLabel.Text = hitId.HasValue ? $"Territory ID: {hitId.Value}" : "Territory: none";
+        _pickedLabel.Text = _canonicalTacticalSurface is not null
+            ? hitId.HasValue ? $"Região estratégica {hitId.Value} · foco tático"
+                : "G(18,0) | malha tática global"
+            : hitId.HasValue ? $"Territory ID: {hitId.Value}" : "Territory: none";
         if (hitId != _selectedCellId)
         {
             _selectedCellId = hitId;
@@ -612,7 +619,12 @@ public partial class GlobePreview : SubViewportContainer
         }
         if (_detailsLabel is not null)
         {
-            if (hitId.HasValue && _cellDegree.TryGetValue(hitId.Value, out var degree))
+            if (_canonicalTacticalSurface is not null)
+                _detailsLabel.Text = hitId.HasValue
+                    ? $"Foco estratégico {hitId.Value} | terreno físico G(18,0)\n" +
+                      "Cores do mesmo mapa da visão tática; sem fronteiras por padrão."
+                    : "Clique numa região para abrir o mapa tático local.";
+            else if (hitId.HasValue && _cellDegree.TryGetValue(hitId.Value, out var degree))
                 _detailsLabel.Text = $"Canonical cell {hitId.Value}  |  {(degree == 5 ? "Pentagon" : "Hexagon")}  |  {degree} sides"
                     + (_worldFacts.TryGetValue(hitId.Value, out var facts)
                         ? $"\nBiome: {facts.Biome}  |  Habitability: {FormatIndex(facts.Habitability)}"
@@ -630,9 +642,13 @@ public partial class GlobePreview : SubViewportContainer
         _selectedCellId = null;
         CanonicalTerritorySelectionChanged?.Invoke(null);
         if (_pickedLabel is not null)
-            _pickedLabel.Text = "Territory: none  |  Left click to inspect";
+            _pickedLabel.Text = _canonicalTacticalSurface is not null
+                ? "G(18,0) | malha tática global"
+                : "Territory: none  |  Left click to inspect";
         if (_detailsLabel is not null)
-            _detailsLabel.Text = "Select a territory to view its canonical identity";
+            _detailsLabel.Text = _canonicalTacticalSurface is not null
+                ? "Clique numa região para abrir o mapa tático local."
+                : "Select a territory to view its canonical identity";
         RefreshSelectionColors();
         GD.Print("GA_PROD_SELECTION_CLEARED_12");
     }
@@ -774,6 +790,15 @@ public partial class GlobePreview : SubViewportContainer
     private void RefreshSelectionColors()
     {
         if (_surfaceInstance is null) return;
+        // The real tactical globe must remain authoritative even if legacy
+        // color/relief shortcuts are activated in a saved production session.
+        if (_canonicalTacticalSurface is not null)
+        {
+            _surfaceInstance.Visible = false;
+            if (_highResSurface is not null) _highResSurface.Visible = false;
+            _canonicalTacticalSurface.Visible = true;
+            return;
+        }
         bool fineView = _mapMode == 6 || _mapMode == 7 || _mapMode == 8 || _mapMode == 9 || _mapMode == 10;
         _surfaceInstance.Visible = !fineView;
         if (_highResSurface is not null) _highResSurface.Visible = fineView;
