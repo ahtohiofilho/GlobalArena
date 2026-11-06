@@ -54,7 +54,12 @@ public sealed class CanonicalLocalMarketDestinationPreflight
         _sourceHash = session.CurrentHash.HexDigest;
         _sourceEvents = session.Events.Count;
         _pool = CanonicalDefaultMarketPoolPreflight.FromCurrent(session);
-        _candidates = candidates
+        var submitted = candidates.ToArray();
+        if (submitted.Any(x => x is null))
+            throw new ArgumentException(
+                "Destination candidates cannot contain null rows.",
+                nameof(candidates));
+        _candidates = submitted
             .OrderBy(x => x.SourceFineTile)
             .ThenBy(x => x.Commodity)
             .ThenBy(x => x.DestinationFineTile)
