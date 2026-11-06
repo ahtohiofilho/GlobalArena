@@ -14,6 +14,7 @@ public partial class Main
 {
     private VBoxContainer? _strategicTechnicalPanel;
     private VBoxContainer? _tacticalTechnicalPanel;
+    private Button? _strategicTechnicalToggle;
 
     private static (Button Toggle, VBoxContainer Panel) CreateTechnicalFold(
         VBoxContainer host, string contextName)
@@ -71,8 +72,15 @@ public partial class Main
             throw new InvalidOperationException(
                 "Unexpected global globe HUD structure: refusing unsafe QA reparenting.");
 
-        var (_, panel) = CreateTechnicalFold(strategicHud, "Strategic");
+        var (toggle, panel) = CreateTechnicalFold(strategicHud, "Strategic");
         _strategicTechnicalPanel = panel;
+        _strategicTechnicalToggle = toggle;
+        if (_strategicGlobe is not null)
+            _strategicGlobe.TechnicalDetailsShortcutRequested += () =>
+            {
+                if (_strategicGlobe.Visible && _strategicTechnicalToggle is not null)
+                    _strategicTechnicalToggle.ButtonPressed = true;
+            };
         foreach (var node in transferred.Skip(2))
             node.Reparent(panel);
 
