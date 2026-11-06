@@ -314,6 +314,9 @@ public partial class Main : Control
             _canonicalPhysicalLab.FineWorld, _canonicalPhysicalLab.CanonicalTerrain);
         _strategicGlobe.BindCanonicalTacticalSurface(
             _canonicalPhysicalLab.FineWorld, _canonicalPhysicalLab.CanonicalTerrain);
+        // One experimental, discoverable layer control in the largely free
+        // top-right map corner. Keys work without this menu being open.
+        InitializePhysicalLayersMenu(mapRegion);
         AttachRuntimeState(_canonicalSession.Snapshot);
         if (_canonicalSession.Snapshot.WorldBinding !=
             RuntimeWorldBinding.FromGeneratedWorld(_canonicalSession.GeneratedWorld))
