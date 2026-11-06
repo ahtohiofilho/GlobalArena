@@ -15,6 +15,13 @@ public sealed partial class CanonicalPhysicalTacticalSession
     private readonly List<CanonicalPhysicalStockCommitment>
         _physicalStockCommitments = new();
 
+    private readonly List<CanonicalExecutedCommittedMaterialUse>
+        _executedCommittedMaterialUses = new();
+
+    public IReadOnlyList<CanonicalExecutedCommittedMaterialUse>
+        ExecutedCommittedMaterialUses =>
+        Array.AsReadOnly(_executedCommittedMaterialUses.ToArray());
+
     public IReadOnlyList<CanonicalPhysicalStockCommitment>
         PhysicalStockCommitments =>
         Array.AsReadOnly(_physicalStockCommitments.ToArray());
@@ -74,9 +81,16 @@ public sealed partial class CanonicalPhysicalTacticalSession
             var releases = _journal.Count(x =>
                 x.Kind == "release_physical_stock" &&
                 x.CommitmentOrdinal == record.ActionOrdinal);
-            if (releases != (record.Released ? 1 : 0))
+            var uses = _journal.Count(x =>
+                x.Kind == "use_committed_material" &&
+                x.CommitmentOrdinal == record.ActionOrdinal);
+            if (record.Released && record.Consumed ||
+                releases != (record.Released ? 1 : 0) ||
+                uses != (record.Consumed ? 1 : 0) ||
+                (record.Consumed &&
+                 record.Kind != CanonicalPhysicalCommitmentKind.MarketOffer))
                 throw new InvalidOperationException(
-                    "Stock release status differs from canonical journal.");
+                    "Closing market custody disagrees with journal release/use receipts.");
         }
 
         var holdings = _materialLots.Snapshot().Where(x =>
@@ -102,9 +116,39 @@ public sealed partial class CanonicalPhysicalTacticalSession
                 "Market and retained custody must equal journal-backed physical commitments.");
 
         if (_journal.Count(x => x.Kind == "commit_physical_stock") !=
-            _physicalStockCommitments.Count)
+            _physicalStockCommitments.Count ||
+            _journal.Count(x => x.Kind == "use_committed_material") !=
+            _executedCommittedMaterialUses.Count)
             throw new InvalidOperationException(
-                "Orphaned or missing physical commitment receipt.");
+                "Orphaned or missing physical commitment / use receipt.");
+
+        foreach (var executed in _executedCommittedMaterialUses)
+        {
+            if (executed.ActionOrdinal < 1 ||
+                executed.ActionOrdinal > _journal.Count)
+                throw new InvalidOperationException("Invalid executed material-use action ordinal.");
+            var action = _journal[executed.ActionOrdinal - 1];
+            if (action.Kind != "use_committed_material" ||
+                action.CommitmentOrdinal != executed.SourceCommitmentActionOrdinal ||
+                action.CommitmentCommodity != executed.Commodity ||
+                action.CommitmentRaw != executed.UsedRaw ||
+                action.MaterialUseKind != (byte)executed.Kind ||
+                action.Source != executed.FineTile ||
+                action.Destination != executed.FineTile ||
+                action.BeforeHashHex != executed.BeforeWorldHashHex ||
+                action.AfterHashHex != executed.AfterWorldHashHex)
+                throw new InvalidOperationException(
+                    "Executed material use is not tied to its exact journal action.");
+            var origin = _physicalStockCommitments.SingleOrDefault(x =>
+                x.ActionOrdinal == executed.SourceCommitmentActionOrdinal);
+            if (origin is null || !origin.Consumed ||
+                origin.FineTile != executed.FineTile ||
+                origin.Commodity != executed.Commodity ||
+                origin.RawQuantity != executed.UsedRaw ||
+                origin.Kind != CanonicalPhysicalCommitmentKind.MarketOffer)
+                throw new InvalidOperationException(
+                    "Executed material destination lacks the authentic consumed market commitment.");
+        }
     }
 
     /// <summary>
@@ -167,6 +211,63 @@ public sealed partial class CanonicalPhysicalTacticalSession
     }
 
     /// <summary>
+    /// Execute the whole committed MARKET quantity as an actual, classified
+    /// local wood/stone physical use. No buyer, transport, monetary settlement
+    /// or produced finished product is inferred. Retention cannot be consumed
+    /// through this market-only path.
+    /// </summary>
+    public CanonicalExecutedCommittedMaterialUse UseCommittedLocalMaterial(
+        int commitmentActionOrdinal, CanonicalMaterialDispositionKind kind)
+    {
+        EnsureJournalCapacity();
+        VerifyPhysicalStockCommitments();
+        if (kind is not (CanonicalMaterialDispositionKind.FinalPhysicalUse or
+            CanonicalMaterialDispositionKind.IntermediateInputUse))
+            throw new ArgumentOutOfRangeException(nameof(kind));
+        var index = _physicalStockCommitments.FindIndex(x =>
+            x.ActionOrdinal == commitmentActionOrdinal);
+        if (index < 0 || !_physicalStockCommitments[index].IsLive ||
+            _physicalStockCommitments[index].Kind !=
+                CanonicalPhysicalCommitmentKind.MarketOffer)
+            throw new InvalidOperationException(
+                "Only an active market commitment may be physically used.");
+        var source = _physicalStockCommitments[index];
+        if (source.Commodity is not (2U or 3U))
+            throw new InvalidOperationException(
+                "Food has its own real nutritional consumption path; this use only accepts wood and stone.");
+        var tile = new PhysicalTacticalTileId(
+            _fine, new StrategicCellId(source.FineTile));
+        ValidateTile(tile);
+        if (WorkersAt(tile) == 0UL)
+            throw new InvalidOperationException(
+                "Executed local material use requires a physically inhabited site.");
+        var staged = _materialLots.Clone();
+        var attributions = staged.ConsumeCommittedMarketMaterial(
+            source.ActionOrdinal, source.Commodity, source.RawQuantity);
+        staged.VerifyInventories(State);
+        // The actual stock debit happened at the earlier commitment.
+        // This execution removes the reserved custody, not another copy
+        // of the local stock. The canonical action still advances the hash.
+        Commit(State, "use_committed_material",
+            source.FineTile, source.FineTile, 0, 0, 0UL,
+            materialUseKind: (byte)kind,
+            commitmentCommodity: source.Commodity,
+            commitmentRaw: source.RawQuantity,
+            commitmentKind: (byte)source.Kind,
+            commitmentOrdinal: source.ActionOrdinal);
+        _materialLots = staged;
+        _physicalStockCommitments[index] = source with { Consumed = true };
+        var action = _journal[^1];
+        var executed = new CanonicalExecutedCommittedMaterialUse(
+            _journal.Count, source.ActionOrdinal, State.MovementTurn,
+            source.FineTile, source.Commodity, kind, source.RawQuantity,
+            action.BeforeHashHex, action.AfterHashHex, attributions);
+        _executedCommittedMaterialUses.Add(executed);
+        VerifyPhysicalStockCommitments();
+        return executed;
+    }
+
+    /// <summary>
     /// Cancel a prior commitment atomically. Returns exactly its original
     /// physical quantity and attributed lots to the same local stock tile.
     /// A cancelled record remains in the audit journal forever.
@@ -178,7 +279,7 @@ public sealed partial class CanonicalPhysicalTacticalSession
         VerifyPhysicalStockCommitments();
         var index = _physicalStockCommitments.FindIndex(
             x => x.ActionOrdinal == commitmentActionOrdinal);
-        if (index < 0 || _physicalStockCommitments[index].Released)
+        if (index < 0 || !_physicalStockCommitments[index].IsLive)
             throw new InvalidOperationException(
                 "Only one outstanding canonical physical commitment may be released.");
         var row = _physicalStockCommitments[index];
