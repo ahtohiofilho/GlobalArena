@@ -92,6 +92,7 @@ def audit() -> None:
     e2e = ROOT / ".github" / "workflows" / "ga-qa-ui-e2e-001.yml"
     if not e2e.is_file() or GUARD in e2e.read_text(encoding="utf-8"):
         raise RuntimeError("Real Godot UI E2E must remain automatically enabled")
+    folder = ROOT / ".github" / "workflows"
     # The full platform suites are triggered by labels, dispatch or main,
     # never by an ordinary PR. A skipped run is NOT full checkpoint evidence.
     for name in CHECKPOINT_WORKFLOWS:
