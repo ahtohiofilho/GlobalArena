@@ -60,3 +60,18 @@ Se a área técnica continuar visualmente ruidosa ou as informações importante
 ## Situação da diretriz
 
 Este incremento testa a hipótese de **painel direito focado em decisões e ferramentas técnicas sob demanda**. A quantidade e posição futura de ícones, a personalização de atalhos e a disposição final do painel continuam abertas à avaliação de ROI. Não presumir aprovação completa da UI com o resultado dos testes automatizados.
+
+## Registro de validação visual — 06/11/2026
+
+**Evidência:** duas capturas de execução Windows Godot Debug compartilhadas pelo usuário na revisão do PR #278, uma na visão tática e outra na visão global.
+
+**Aceite visual das telas principais:**
+- **Tático: aprovado.** Viewport amplo, globo/tile físicos, hover branco, `CAMADAS · BIOMAS`, resumo econômico, ação de ciclo e save no painel principal. Inspeção de tile, projeção e calibração experimental deixaram de ficar permanentemente visíveis; o novo botão de ferramentas técnicas está recolhido.
+- **Global: aprovado.** O poliedro físico G(18,0) com biomas permanece íntegro; `WORLD STATS`, `HD CALIBRATION`, comandos de alteração experimental e outros diagnósticos deixaram de ocupar a vista inicial. O acesso `FERRAMENTAS TÉCNICAS (QA)` está visível e recolhido.
+- **Preservação do fluxo:** o modo Biomas/Relevo e o hover branco já haviam sido aceitos nos checkpoints visuais anteriores. O E2E deste PR passou nos testes de abrir/recolher ferramentas e de conservar os handlers, mas o **uso manual dos controles técnicos expandidos** ainda não foi conferido em captura.
+
+**Débito visual não bloqueante:** há repetição entre `Região estratégica 49 · foco tático` e `Foco estratégico 49 | terreno físico G(18,0)`. Reavaliar na próxima rodada de hierarquia do painel direito, sem tocar no mapa aprovado. O botão `CAMADAS` sobre terreno claro pode ganhar uma superfície de contraste compacta, condicionado a teste visual.
+
+**Novo gate prioritário:** retornar à visão tática e executar `AVANÇAR 1 CICLO`, comprovando na UI mudança real de turno/ciclo, produção física, consumo alimentar e estoque livre por tile. Não avançar para frete comercial antes de avaliar esse percurso. Evitar interpretar a telemetria global como oferta local ou inferir venda a partir de uso material. Caso a tela mostre valores incoerentes, corrigir interface/projeção no mesmo checkpoint.
+
+**Estado do PR:** visual principal aprovado nas duas escalas; validação manual detalhada das ferramentas técnicas e do ciclo econômico permanece aberta. PR segue Draft; FAST/E2E já aprovados no HEAD anterior. Este registro é documentação, não alteração do executável.
