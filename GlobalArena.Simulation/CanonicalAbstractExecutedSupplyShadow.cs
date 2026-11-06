@@ -12,7 +12,7 @@ namespace GlobalArena.Simulation;
 public readonly record struct CanonicalAbstractSupplySource(
     ulong SourceFineTile, uint Commodity,
     CanonicalPhysicalProductionChannel Channel,
-    ulong JourneyOrderId, ulong ProducedRaw);
+    EconomicActivityKind? Activity, ulong JourneyOrderId, ulong ProducedRaw);
 
 /// <summary>
 /// GA-ECON-ABSTRACT-SUPPLY-01: a read-only candidate market quote grounded in
@@ -70,9 +70,9 @@ public sealed class CanonicalAbstractExecutedSupplyShadow
             .Where(x => x.Commodity == commodity)
             .Select(x => new CanonicalAbstractSupplySource(
                 x.SourceFineTile, x.Commodity, x.Channel,
-                x.JourneyOrderId, x.ProducedRaw))
+                x.Activity, x.JourneyOrderId, x.ProducedRaw))
             .OrderBy(x => x.SourceFineTile)
-            .ThenBy(x => x.Channel)
+            .ThenBy(x => x.Channel).ThenBy(x => x.Activity)
             .ThenBy(x => x.JourneyOrderId)
             .ToArray();
         ExecutedProductionSources = Array.AsReadOnly(_sources);
@@ -145,15 +145,16 @@ public sealed class CanonicalAbstractExecutedSupplyShadow
             .Where(x => x.Commodity == Commodity)
             .Select(x => new CanonicalAbstractSupplySource(
                 x.SourceFineTile, x.Commodity, x.Channel,
-                x.JourneyOrderId, x.ProducedRaw))
-            .OrderBy(x => x.SourceFineTile).ThenBy(x => x.Channel)
+                x.Activity, x.JourneyOrderId, x.ProducedRaw))
+            .OrderBy(x => x.SourceFineTile).ThenBy(x => x.Channel).ThenBy(x => x.Activity)
             .ThenBy(x => x.JourneyOrderId).ToArray();
 
         if (!_sources.SequenceEqual(sources) ||
             _sources.Aggregate(BigInteger.Zero, (sum, x) =>
                 sum + x.ProducedRaw) != ActuallyProducedRaw ||
             CandidateOfferedRaw < 0 ||
-            (decimal)CandidateOfferedRaw / RawUnitsPerEconomicUnit !=
+            ((decimal)ActuallyProducedRaw / RawUnitsPerEconomicUnit -
+                (decimal)CandidateRetentionRaw / RawUnitsPerEconomicUnit) !=
                 CandidateQuote.Offered ||
             CandidateQuote.Population != RealPopulation ||
             CandidateQuote.EffectiveDemand !=
