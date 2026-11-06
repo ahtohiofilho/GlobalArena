@@ -82,7 +82,8 @@ public sealed partial class CanonicalPhysicalTacticalSession
                 x.Kind == "release_physical_stock" &&
                 x.CommitmentOrdinal == record.ActionOrdinal);
             var uses = _journal.Count(x =>
-                x.Kind == "use_committed_material" &&
+                x.Kind is "use_committed_material" or
+                    "use_committed_material_for_workers" &&
                 x.CommitmentOrdinal == record.ActionOrdinal);
             if (record.Released && record.Consumed ||
                 releases != (record.Released ? 1 : 0) ||
@@ -117,7 +118,8 @@ public sealed partial class CanonicalPhysicalTacticalSession
 
         if (_journal.Count(x => x.Kind == "commit_physical_stock") !=
             _physicalStockCommitments.Count ||
-            _journal.Count(x => x.Kind == "use_committed_material") !=
+            _journal.Count(x => x.Kind is
+                "use_committed_material" or "use_committed_material_for_workers") !=
             _executedCommittedMaterialUses.Count)
             throw new InvalidOperationException(
                 "Orphaned or missing physical commitment / use receipt.");
@@ -128,7 +130,14 @@ public sealed partial class CanonicalPhysicalTacticalSession
                 executed.ActionOrdinal > _journal.Count)
                 throw new InvalidOperationException("Invalid executed material-use action ordinal.");
             var action = _journal[executed.ActionOrdinal - 1];
-            if (action.Kind != "use_committed_material" ||
+            var workforce = executed.ProvesLocalWorkforceGroup;
+            if (action.Kind != (workforce
+                    ? "use_committed_material_for_workers"
+                    : "use_committed_material") ||
+                action.ToJob != (workforce
+                    ? (byte)executed.BeneficiaryActivity!.Value : (byte)0) ||
+                action.Workers != executed.BeneficiaryWorkers ||
+                action.FromJob != 0 ||
                 action.CommitmentOrdinal != executed.SourceCommitmentActionOrdinal ||
                 action.CommitmentCommodity != executed.Commodity ||
                 action.CommitmentRaw != executed.UsedRaw ||
@@ -217,7 +226,27 @@ public sealed partial class CanonicalPhysicalTacticalSession
     /// through this market-only path.
     /// </summary>
     public CanonicalExecutedCommittedMaterialUse UseCommittedLocalMaterial(
-        int commitmentActionOrdinal, CanonicalMaterialDispositionKind kind)
+        int commitmentActionOrdinal, CanonicalMaterialDispositionKind kind) =>
+        UseCommittedLocalMaterialCore(commitmentActionOrdinal, kind, null);
+
+    /// <summary>
+    /// Execute the SAME real material sink with a directly authenticated
+    /// local workgroup (tile + activity + people assigned at the action).
+    /// This is not a named person, a legal buyer or a market payment.
+    /// Remote recipients must use a separate physical transport contract.
+    /// </summary>
+    public CanonicalExecutedCommittedMaterialUse UseCommittedLocalMaterialForWorkforce(
+        int commitmentActionOrdinal, EconomicActivityKind beneficiaryActivity,
+        CanonicalMaterialDispositionKind kind)
+    {
+        ValidateJob(beneficiaryActivity);
+        return UseCommittedLocalMaterialCore(
+            commitmentActionOrdinal, kind, beneficiaryActivity);
+    }
+
+    private CanonicalExecutedCommittedMaterialUse UseCommittedLocalMaterialCore(
+        int commitmentActionOrdinal, CanonicalMaterialDispositionKind kind,
+        EconomicActivityKind? beneficiaryActivity)
     {
         EnsureJournalCapacity();
         VerifyPhysicalStockCommitments();
@@ -241,6 +270,13 @@ public sealed partial class CanonicalPhysicalTacticalSession
         if (WorkersAt(tile) == 0UL)
             throw new InvalidOperationException(
                 "Executed local material use requires a physically inhabited site.");
+        var beneficiaryWorkers = beneficiaryActivity is EconomicActivityKind activity
+            ? State.Allocations.FirstOrDefault(x =>
+                x.TileId == tile && x.Activity == activity)?.Workers ?? 0UL
+            : 0UL;
+        if (beneficiaryActivity.HasValue && beneficiaryWorkers == 0UL)
+            throw new InvalidOperationException(
+                "No active real workers with that activity are present at the committed material's tile.");
         var staged = _materialLots.Clone();
         var attributions = staged.ConsumeCommittedMarketMaterial(
             source.ActionOrdinal, source.Commodity, source.RawQuantity);
@@ -248,8 +284,12 @@ public sealed partial class CanonicalPhysicalTacticalSession
         // The actual stock debit happened at the earlier commitment.
         // This execution removes the reserved custody, not another copy
         // of the local stock. The canonical action still advances the hash.
-        Commit(State, "use_committed_material",
-            source.FineTile, source.FineTile, 0, 0, 0UL,
+        Commit(State, beneficiaryActivity.HasValue
+                ? "use_committed_material_for_workers"
+                : "use_committed_material",
+            source.FineTile, source.FineTile, 0,
+            beneficiaryActivity.HasValue ? (byte)beneficiaryActivity.Value : (byte)0,
+            beneficiaryWorkers,
             materialUseKind: (byte)kind,
             commitmentCommodity: source.Commodity,
             commitmentRaw: source.RawQuantity,
@@ -261,7 +301,8 @@ public sealed partial class CanonicalPhysicalTacticalSession
         var executed = new CanonicalExecutedCommittedMaterialUse(
             _journal.Count, source.ActionOrdinal, State.MovementTurn,
             source.FineTile, source.Commodity, kind, source.RawQuantity,
-            action.BeforeHashHex, action.AfterHashHex, attributions);
+            action.BeforeHashHex, action.AfterHashHex, attributions,
+            beneficiaryActivity, beneficiaryWorkers);
         _executedCommittedMaterialUses.Add(executed);
         VerifyPhysicalStockCommitments();
         return executed;
