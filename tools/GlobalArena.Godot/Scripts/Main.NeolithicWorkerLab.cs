@@ -94,6 +94,10 @@ public partial class Main
         };
         overview.AddChild(_workerTransitPulse);
 
+        // UI checkpoint: the first real material cycle belongs in the
+        // right rail, not over the spherical tactical viewport.
+        InitializePhysicalFlowHud(lab);
+
         var warning = new Label
         {
             Text = "O movimento primitivo atual usa trechos adjacentes; a colonização futura não terá limite artificial de distância.",
@@ -122,8 +126,37 @@ public partial class Main
         _settlementSummary.AddThemeColorOverride("font_color", new Color("#d9c27d"));
         lab.AddChild(_settlementSummary);
 
+        // Move ancillary workforce commands behind an intentional foldout.
+        // Preserve every old action and saved-event behavior; simply remove
+        // the always-open wall of controls that squeezed the tactical cockpit.
+        var workerOperationsToggle = new Button
+        {
+            Name = "GAQAWorkerOperationsToggle",
+            Text = "ABRIR TRABALHO E MOVIMENTAÇÃO",
+            ToggleMode = true,
+            ButtonPressed = false
+        };
+        lab.AddChild(workerOperationsToggle);
+        var workerOperationsPanel = new VBoxContainer
+        {
+            Name = "GAQAWorkerOperationsPanel",
+            Visible = false,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        workerOperationsPanel.AddThemeConstantOverride("separation", 4);
+        lab.AddChild(workerOperationsPanel);
+        workerOperationsToggle.Toggled += expanded =>
+        {
+            workerOperationsPanel.Visible = expanded;
+            workerOperationsToggle.Text = expanded
+                ? "FECHAR TRABALHO E MOVIMENTAÇÃO"
+                : "ABRIR TRABALHO E MOVIMENTAÇÃO";
+        };
+        _localEconomyPulse.Reparent(workerOperationsPanel);
+        _settlementSummary.Reparent(workerOperationsPanel);
+
         var jobs = new HBoxContainer();
-        lab.AddChild(jobs);
+        workerOperationsPanel.AddChild(jobs);
         _workerFromJob = new OptionButton { Name = "GAQAFromJob", SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _workerToJob = new OptionButton { Name = "GAQAToJob", SizeFlagsHorizontal = SizeFlags.ExpandFill };
         foreach (var (name, id) in new[]
@@ -152,7 +185,7 @@ public partial class Main
                 _workerDecisionPreview.Visible = false;
         };
         quantity.AddChild(_workerAmount);
-        lab.AddChild(quantity);
+        workerOperationsPanel.AddChild(quantity);
 
         _workerMoveButton = new Button
         {
@@ -161,10 +194,10 @@ public partial class Main
             Disabled = true
         };
         _workerMoveButton.Pressed += MoveWorkerLabWorkers;
-        lab.AddChild(_workerMoveButton);
+        workerOperationsPanel.AddChild(_workerMoveButton);
         var travelPlanning = new HBoxContainer();
         travelPlanning.AddThemeConstantOverride("separation", 4);
-        lab.AddChild(travelPlanning);
+        workerOperationsPanel.AddChild(travelPlanning);
         var surveyNeighbours = new Button
         {
             Name = "GAQAAdjacentSurvey",
@@ -188,7 +221,7 @@ public partial class Main
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         _adjacentSurveyPreview.AddThemeColorOverride("font_color", new Color("#b5ddb5"));
-        lab.AddChild(_adjacentSurveyPreview);
+        workerOperationsPanel.AddChild(_adjacentSurveyPreview);
         _workerReassignButton = new Button
         {
             Name = "GAQAReassign",
@@ -196,11 +229,11 @@ public partial class Main
             Disabled = true
         };
         _workerReassignButton.Pressed += ReassignWorkerLabWorkers;
-        lab.AddChild(_workerReassignButton);
+        workerOperationsPanel.AddChild(_workerReassignButton);
         // Two read-only decisions share a row, rather than crowding the HUD.
         var analysisActions = new HBoxContainer();
         analysisActions.AddThemeConstantOverride("separation", 4);
-        lab.AddChild(analysisActions);
+        workerOperationsPanel.AddChild(analysisActions);
         var compareDecision = new Button
         {
             Name = "GAQACompare",
@@ -224,7 +257,7 @@ public partial class Main
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         _workerDecisionPreview.AddThemeColorOverride("font_color", new Color("#e7d8ad"));
-        lab.AddChild(_workerDecisionPreview);
+        workerOperationsPanel.AddChild(_workerDecisionPreview);
         _foodAvailabilityPreview = new Label
         {
             Name = "GAQAFoodResult",
@@ -232,7 +265,7 @@ public partial class Main
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         _foodAvailabilityPreview.AddThemeColorOverride("font_color", new Color("#e7d8ad"));
-        lab.AddChild(_foodAvailabilityPreview);
+        workerOperationsPanel.AddChild(_foodAvailabilityPreview);
 
         var nextTurn = new Button { Text = "AVANÇAR TURNO DE MOVIMENTO (CICLOS ADAPTATIVOS)" };
         nextTurn.Pressed += AdvanceOfflineLabTurn;
@@ -1836,6 +1869,7 @@ public partial class Main
             $"mercado alimentar {(_canonicalPhysicalLab.MarketMode == PhysicalFoodMarketMode.LocalCashSettlement ? "LIQUIDADO À VISTA" : "LEGADO DIRETO")}; " +
             $"deslocamento {(_canonicalPhysicalLab.MovementMode == PhysicalWorkerMovementMode.TimedAdjacent ? "TEMPORAL" : "LEGADO")}; SEM carga comercial.";
         UpdatePrimitiveFacilityHud();
+        UpdatePhysicalFlowHud();
 
         if (_workerMoveButton is not null)
             _workerMoveButton.Disabled = !_workerDestination.HasValue ||
