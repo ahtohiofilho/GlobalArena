@@ -26,6 +26,34 @@ public sealed record CanonicalTacticalPhysicalFlowReport(
     public bool ProvesCommercialSaleOrMarketRevenue => false;
     public bool UsesLegacyCashBalancesAsPowerN => false;
     public bool ModifiesCanonicalSimulation => false;
+    // The existing aggregate-food ledger cannot attest six-variety nutrition.
+    public bool ProvesNutritionalEfficiency => false;
+    // Default admission is a product policy, NOT an executed sale in V9-V34.
+    public bool ProvesAutomaticMarketSale => false;
+
+    /// <summary>
+    /// GA-ECON-CONVERGENCE-01: read-only candidate pool for the target
+    /// offer-by-default policy. Includes uncommitted physical local stock and
+    /// material already escrowed for an explicit market offer; deliberately
+    /// retained material and expedition cargo are excluded. This is NOT an
+    /// actual market offer, commercial sale, transfer or revenue receipt.
+    /// </summary>
+    public BigInteger PotentialMarketRaw(uint commodity)
+    {
+        var free = commodity switch
+        {
+            1U => FreeFoodRaw,
+            2U => FreeStoneRaw,
+            3U => FreeWoodRaw,
+            _ => throw new ArgumentOutOfRangeException(nameof(commodity),
+                "Only physically tracked local commodities can be projected.")
+        };
+        var offeredCustody = ActiveLocalCommitments
+            .Where(x => x.Kind == CanonicalPhysicalCommitmentKind.MarketOffer &&
+                x.Commodity == commodity)
+            .Aggregate(BigInteger.Zero, (sum, row) => sum + row.RawQuantity);
+        return free + offeredCustody;
+    }
 }
 
 /// <summary>
