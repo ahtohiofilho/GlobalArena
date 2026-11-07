@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 1.1  
+**Versão conceitual:** 1.2  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -376,35 +376,73 @@ A produção tem dois estágios lógicos distintos:
 
 **Invariante financeiro desejável:** quando uma venda monetária for liquidada entre contas representadas, o valor pago pelo comprador e recebido pelo vendedor deverá reconciliar, salvo transferências monetárias adicionais explícitas; a diferença de atratividade induzida por impedância física não é pagamento invisível a transportador.
 
-### F-024 — Impedância física de transporte e cobrança por infraestrutura de terceiros [PROPOSTO]
+### F-024 — Infraestrutura abstrata e tarifação por nível [RATIFICADO NO NÍVEL DE PRINCÍPIO; FUNÇÃO EM ABERTO]
 
-**Esclarecimento ratificado:** o **custo físico de escoamento** é uma grandeza de impedância/deslocamento/logística, que condiciona a formação de preço e a alocação via mercado, **sem ser despesa de caixa nem receita financeira de transportador**. Não canonizar "pontos de movimento" como unidade definitiva.
+Toda aresta conserva condições naturais de transporte. A infraestrutura de transporte **não é tipificada** em estrada de pedra, rodovia, ferrovia ou categorias tecnológicas semelhantes. É uma **melhoria abstrata de eficiência** vinculada ao **investimento financeiro nela incorporado**, com evolução não linear e **retornos marginais decrescentes** nos níveis superiores.
 
-**Hipótese de infraestrutura a validar:**
-1. Uma aresta possui impedância física natural \`c0\`; uma infraestrutura de transporte reduz esse custo para \`cI\`, com \`cI ≤ c0\` nos casos de melhoria.
-2. A redução \`Δc = max(0, c0 - cI)\` beneficia qualquer usuário admitido, seja titular ou não, pois a **impedância física real** passa a ser \`cI\`.
-3. O **titular** da infraestrutura está **isento de cobrança monetária pelo uso da infraestrutura própria**, sem escapar da impedância física residual.
-4. Um **não titular** pode arcar com uma **tarifa monetária de acesso**, atribuída a vendedor ou comprador segundo contrato futuro, e calculada com base no ganho físico \`Δc\` e na utilização; essa tarifa é **separada** do custo físico \`cI\`.
-5. Exemplos ilustrativos: \`c0=1.000\`, \`cI=200\`, economia de \`800\` unidades físicas; a tarifa monetária usa alguma função \`T = F(Δc, volume, condições de mercado, direitos)\`. **Não** converter 800 diretamente em 800 unidades de dinheiro.
-6. Em rota com múltiplas arestas ou titulares, o cálculo deve ser local/atribuível, evitando cobrança duplicada e sem usar "melhoria anterior" como referência móvel sem decisão específica.
+**Princípios ratificados:**
+1. O investimento efetivo em uma aresta determina sua evolução de nível/qualidade conforme uma função matemática (não necessariamente patamares inteiros).
+2. A melhoria reduz a **impedância física** de transporte, e sua eficiência sob utilização deve também considerar a **saturação dependente da carga de mercadorias**.
+3. A impedância física é grandeza **não monetária**; altera o escoamento e a precificação espacial, mas **não é um débito financeiro nem receita de transportador**.
+4. O titular e os não titulares usufruem da **mesma melhoria física**; o titular não paga tarifa pelo uso da infraestrutura própria, e o uso por não titular pode gerar **tarifa monetária associada ao nível** e ao volume físico-equivalente efetivamente escoado.
+5. A tarifa é separada da impedância logística; **não cobrar duas vezes** pela mesma rubrica nem converter automaticamente pontos de impedância em moeda.
+6. Infraestrutura é economicamente construída com **dinheiro** (F-021), sem estoques de materiais específicos; eventuais exigências de trabalho/tempo para sua execução continuam a ser modeladas pelo orçamento universal de ação, conforme decisão posterior.
 
-**Cautelas fundamentais:**
-- A **tarifa é efetiva saída de caixa** para a parte designada; sua contrapartida (receita do titular, conta institucional ou sumidouro explícito) está **EM ABERTO**. Não presumir que o custo físico resulte em pagamento.
-- Se a cobrança for do **vendedor**, uma alternativa de liquidação é receita líquida = receita bruta de venda menos tarifa. Se for do **comprador**, não debitá-la novamente ao vendedor. A titularidade do vendedor/comprador e critérios de responsabilização ainda exigem definição.
-- Water-filling deve ser sensível ao custo **efetivo** que afeta a decisão de rota/preço, mas **não descontar a mesma tarifa duas vezes** (uma na valoração líquida, outra como gasto financeiro).
-- A cobrança não deve, por padrão, tornar toda melhoria infrutífera ao usuário; eventual vinculação da tarifa ao valor econômico da economia física, teto percentual de benefício, competição entre rotas e cenários de acesso devem ser estudados.
-- A expressão "titular" precisa identificar quem possui direito sobre qual **segmento de infraestrutura**, especialmente em rotas com múltiplos proprietários, e não inferir automaticamente propriedade total da rota.
+**Não ratificados:** escala e equação de nível, limites, degradação, parâmetros, função de tarifa, quem paga (vendedor/comprador), quem recebe (titular ou outro agente), compartilhamento de titularidade, regulação tarifária e função de saturação.
 
-**Status:** proposta de incentivo e monetização de infraestrutura, **não** ratificação de função de tarifa, recebedor, payer, conversão unidade física/moeda ou regra de rateio.
+### F-025 — Investimento, eficiência e capacidade logística [RATIFICADO O DESENHO ABSTRATO; FÓRMULAS PROPOSTAS]
 
-### Experimento recomendado para próxima deliberação [ABERTO]
+O estado econômico relevante de cada infraestrutura deve representar **capital efetivamente investido**, e não o saldo de caixa do titular. Para reduzir estado redundante, pode-se derivar **nível, eficiência e capacidade logística** desse capital e das propriedades físicas da aresta.
 
-Dois produtores de carvão, um titular e outro não titular de uma infraestrutura, acessam um mercado remoto. Calcular, sob a mesma curva de demanda, a receita bruta que resulta do escoamento com \`c0=1.000\` e com \`cI=200\` (valores exemplificativos), depois adicionar **somente ao não titular** uma tarifa explícita baseada no benefício físico, verificando se:
-- ambos se beneficiam do mercado mais acessível;
-- a tarifa corresponde a uma movimentação financeira identificável e jamais ao custo físico do transporte;
-- a rota, o preço e a receita não recebem dois descontos para o mesmo fenômeno;
-- titularidade, capacidade e melhorias de arestas não criam dinheiro ou receita duplicados;
-- o resultado segue relevante em diferentes eras sem inventários físicos de mercadorias.
+**Candidato matemático para nível contínuo [PROPOSTO]:**
+
+\`L(I) = log₂(1 + I/I₀)\`, com \`I ≥ 0\`, \`I₀ > 0\`. A forma inversa é \`I(L)=I₀(2^L−1)\`: cada unidade adicional de nível exige mais capital que a anterior. Exemplo exclusivamente ilustrativo, \`I₀=100\`: \`I=0,100,300,700,1500\` produzem \`L=0,1,2,3,4\`. **Não canonizar números.**
+
+**Duas consequências diferentes do nível [PROPOSTAS]:**
+- **Eficiência em fluxo livre:** \`c_livre(L) = c_min + (c_natural-c_min)/(1+αL)\`, \`0 < c_min ≤ c_natural\`, \`α>0\`. A infraestrutura reduz a impedância básica sem eliminá-la.
+- **Capacidade de referência:** \`K(L)=K_natural(1+βL)\`, \`K_natural>0\`, \`β≥0\`. Mais investimento permite sustentar maior carga logística antes de sobrecarga severa.
+
+As equações são **candidatos simples de retornos decrescentes**, não funções canonizadas nem indicação de que devam existir estados persistentes separados para nível e capacidade. A eficiência e a capacidade precisam ser distinguíveis **conceitualmente**, pois o investimento pode afetar uma, outra ou ambas; a intensidade de cada efeito é questão de calibração.
+
+### F-026 — Carga logística equivalente por mercadoria [RATIFICADO COMO DISTINÇÃO CONCEITUAL; COEFICIENTES ABERTOS]
+
+A **quantidade econômica** de uma mercadoria não é o seu preço, nem representa automaticamente uma unidade física homogênea de uso de transporte. Cada tipo \`r\` dispõe de um **coeficiente de exigência logística** \`a_r ≥ 0\`, por unidade de sua quantidade econômica, que aproxima massa/volume/espaço/manuseio relevantes; não depende automaticamente do valor monetário de mercado.
+
+Para o fluxo de uma aresta, a carga equivalente é:
+
+\`B_e = Σ_r (a_r × q_{e,r})\`
+
+Onde \`q_{e,r}\` é a quantidade abstratamente escoada do produto \`r\` pela aresta \`e\` no ciclo/intervalo considerado. Para cálculo de saturação, somar contribuições de **todas as origens e destinos** e, salvo contrato futuro de capacidade direcional separada, de ambos os sentidos.
+
+**Exemplo ilustrativo:** uma unidade econômica de pedra com \`a_pedra=10\` exige carga equivalente 10; uma unidade econômica de diamante com \`a_diamante=0,1\` exige carga equivalente 0,1. Embora ambas produzam quantidade nominal \`q=1\`, suas exigências sobre a mesma aresta diferem 100 vezes. **Unidades e índices 10/0,1 não canonizados.**
+
+**Regra de modelagem:** os coeficientes referem-se a **unidades de quantidade econômica definidas para cada mercadoria**, e precisam manter dimensionalidade coerente. Não permitir que a mera reescala numérica de \`q_r\` altere congestionamento ou tarifas: uma troca de unidade precisa ajustar simultaneamente \`a_r\`.
+
+**Não exigir inventário físico ou simulação de carga**: os fluxos são temporários e calculados para o mercado, e o peso logístico aproxima apenas a pressão sobre a rede.
+
+### F-027 — Saturação e tarifas associadas ao nível [ABERTO; candidatos para experimento]
+
+**Índice de ocupação logística:** \`ρ_e = B_e/K(L_e)\`. É adimensional e avalia pressão de fluxo relativamente à infraestrutura daquele nível. O termo "capacidade" é **referência de congestionamento**, não limite absoluto de passagem, salvo regra futura.
+
+**Função de sobrecarga candidata [PROPOSTA]:**
+
+\`c_efetivo,e = c_livre(L_e) × [1 + γ (ρ_e)^p]\`
+
+Com \`γ≥0\`, \`p>1\` em exemplo. A penalização aumenta mais rapidamente em altos volumes. Sob essa escolha \`K\` não é um limite rígido; a carga maior eleva impedância e reduz competitividade. Um limite duro requer decisão independente. Exigir crescimento monótono do custo com \`B\` e não usar preço da mercadoria para calcular \`ρ\`.
+
+**Função de tarifa candidata [PROPOSTA]:**
+
+\`τ(L) = τ_max × L/(L+ℓ)\`, com \`τ_max≥0\`, \`ℓ>0\`; tarifa monetária por unidade equivalente logística, nula em \`L=0\`, positiva e limitada quando \`L>0\`. Uma operação por não titular pagaria \`T_e = q_{e,r} × a_r × τ(L_e)\` na aresta \`e\`. Para vários trechos, somar **somente** tarifas incidentes em trechos utilizados e alheios, sem cobrar o titular pelos próprios trechos. Nenhum parâmetro numérico ou fórmula é ratificado.
+
+**Observações de integridade:**
+1. O **custo de impedância** \`c_efetivo\` afeta acesso/precificação e não gera fluxo financeiro; \`T_e\` é transferência/despesa monetária efetiva a reconciliar.
+2. A tarifa não deve ser cobrada duas vezes no market clearing e no lançamento financeiro. O mercado compara alternativas pelo resultado líquido *esperado*, e a liquidação depois aplica o débito/crédito **uma única vez**.
+3. Rotas com mais de uma aresta acumulam contribuições físicas e, onde houver titulares distintos, tarifas distintas; não cobrar novamente a mesma passagem por mudança de classificação de rota.
+4. A função de tarifa deve ser confrontada com rotas alternativas e incentivos de investimento. Não presumir que maior tarifa gere maior receita líquida: pode provocar desvio de fluxo.
+5. A escolha de rotas/volumes no water-filling altera \`B_e\` e, portanto, \`ρ_e\` e \`c_efetivo,e\`, que podem alterar novamente as rotas. **Há acoplamento endógeno entre alocação e congestionamento.** Uma implementação futura precisará de resolução convergente, determinística ou equivalente; não assumir que uma passagem isolada do algoritmo seja matematicamente suficiente.
+6. Se a tarifa depender do nível, um índice comum por item simplifica o processamento; atenção à distinção entre **quantidade comercial**, **carga logística** e **valor monetário**.
+
+**Próximo experimento recomendado:** duas arestas alternativas, produtores de pedra/diamante com quantidades iguais \`q=1\`, pesos logísticos diferentes, investimento acumulado crescente, titular e não titular. Testar sensibilidade de nível, impedância em vazio, congestionamento com fluxo agregado, tarifa por carga, desvio de rota, resultado monetário da venda, inexistência de criação automática de dinheiro e independência da ordem de cálculo. Definir janela/ciclo da carga de modo compatível com o mercado, sem confundi-la com o deslocamento temporal de trabalhadores.
 
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
@@ -443,3 +481,4 @@ Dois produtores de carvão, um titular e outro não titular de uma infraestrutur
 - **2026-11-07 — sétima deliberação:** F-019 ratificada como arbitragem física local apenas diante de conflitos reais, sem política automática de repartição; F-020 aberta à época, sob o modelo físico de mercadorias.
 - **2026-11-07 — oitava deliberação:** F-021 ratificada (economia monetária abstrata, produção convertida em dinheiro, sem estoques ou logística de mercadorias; infraestrutura com componente monetário em vez de madeira/pedra/alimentos). F-022 aberta para contabilidade da emissão/transferência, consumo e contratação de obras; F-020 sobre mercadorias perde prioridade como hipótese histórica.
 - **2026-11-07 — esclarecimento subsequente:** F-023 ratificada no nível de desenho: produção de quantidade diferenciada por mercadoria, escoamento abstrato via water-filling e preço determinado por mercado; sem estoque persistente. O custo físico de transporte forma preço, mas não é fluxo de caixa. F-024 proposta: infraestrutura reduz impedância para todos, titular não paga uso próprio e não titular pode pagar tarifa ligada à economia física; fórmula, pagador/recebedor e liquidação ainda abertos. A F-021 foi revisada para remover interpretação incorreta de emissão monetária direta por trabalho.
+- **2026-11-07 — nona deliberação:** F-024 especifica infraestrutura abstrata, não tipificada, baseada em investimento com retornos decrescentes e tarifa por nível/carga; F-025 documenta função candidata de nível contínuo e diferencia eficiência de capacidade; F-026 ratifica necessidade de índices logísticos por mercadoria distintos de quantidade e valor; F-027 abre funções de saturação e tarifa e o acoplamento endógeno ao water-filling. Nenhuma equação ou parâmetro foi ratificado.
