@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 0.7  
+**Versão conceitual:** 0.8  
 **Situação:** deliberação em andamento; núcleo explicitamente ratificado nesta conversa  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -293,23 +293,44 @@ Exemplo exclusivamente didático: disponibilidade temporal \`T=1\`, deslocamento
 
 **Limites do escopo:** esta decisão não define a ordem global dos trabalhadores, o modelo de concorrência, a escolha de comandos, a existência de ação instantânea, o consumo de demanda, nem a forma exata de particionar intervalos dentro do período.
 
-### F-018 — Arbitragem entre trabalhadores em tempo compartilhado [ABERTO; prioridade seguinte]
+### F-018 — Tempo lógico global e causalidade física [RATIFICADO COMO PRINCÍPIO]
 
-O sistema não pode concluir de F-017 que "executar todas as ações do trabalhador A e depois todas as do B" seria automaticamente justo ou fisicamente coerente. Dois agentes podem disputar a mesma oportunidade de produção, material, trecho de transporte, obra ou disponibilidade de recurso. A ordem pode alterar o resultado.
+Todos os agentes físicos compartilham uma mesma **referência de tempo lógico**. A ordem usada pelo processador para executar operações não pode, por si só, modificar a cronologia nem o resultado físico do mundo.
 
-**Cenário de risco:** o trabalhador A gasta \`0,4\` chegando a um nó e passa a produzir; o trabalhador B já se encontra nele. Processar todo A antes de B pode dar a A acesso retroativo a recursos que B poderia ter utilizado durante os mesmos intervalos de tempo.
+**Invariantes ratificados:**
+1. Toda ação ocupa um intervalo lógico compatível com a posição física e com o orçamento temporal único do trabalhador (F-013/F-017).
+2. Uma ação somente pode depender de materiais e efeitos já existentes ou disponíveis no instante lógico em que eles forem usados; não há utilização retroativa nem acesso antecipado.
+3. A ordenação de processamento interno **não** constitui uma regra canônica de prioridade entre trabalhadores.
+4. Se o motor trocar a ordem interna de processamento preservando os mesmos comandos, condições e eventos lógicos, não poderá alterar os efeitos materiais por esse único motivo.
+5. A reconstituição determinística de um mesmo histórico deve reproduzir os mesmos estados e transições; concorrência e empates devem ser resolvidos por contratos explícitos, não pelo acaso da execução.
+6. Não exigir microturnos fixos: a implementação pode otimizar cálculos locais e resolver transições relevantes, desde que preserve causalidade e conservação.
 
-**Diretriz proposta, não ratificada:** um período tem uma referência temporal comum aos agentes, mesmo que o motor execute computacionalmente eventos em ordem determinística. Identificar pontos onde as condições físicas mudam (chegadas, conclusões, disponibilizações, esgotamentos) e resolver a concorrência apenas quando necessário. Não presumir que o motor precise simular cada fração de segundo nem percorrer todos os trabalhadores em microticks.
+**Limites da aprovação:** não foram ratificados o algoritmo específico de arbitragem, preferências de acesso, direitos sobre materiais, divisão proporcional, prioridades, modelo de eventos, representação do tempo interno, nem distribuição de recursos indivisíveis. A realização de eventos exatamente simultâneos ainda precisa de uma regra explícita. Ser temporalmente coerente **não implica** distribuir recursos igualmente nem garantir qualquer direito de acesso.
 
-**Alternativas a comparar:**
-- A. Ordem inteira por trabalhador (simples, mas forte viés potencial de prioridade).
-- B. Subetapas globais fixas (regras simples, mas granularidade arbitrária e custo elevado).
-- C. Eventos temporalmente posicionados e arbitragem local para conflitos efetivos (potencialmente eficiente, mas exige um contrato mínimo de prioridade/empate).
-- D. Resolução agregada local para produções contínuas e uso de eventos apenas em transições discretas (pode reduzir custo, a testar).
+### F-019 — Arbitragem local de recursos escassos [ABERTO; experimento mínimo]
 
-**Testes antes de ratificar:** dois trabalhadores e uma única árvore/obra/aresta; mesma ordem de comandos com IDs permutados; replay determinístico; conservação de materiais; ausência de tempo duplicado; respeito à causalidade temporal; escalabilidade de um Goldberg gigante.
+Objetivo: descobrir a regra **menos complexa** que preserve F-018 quando diferentes trabalhadores acessam o mesmo material, oportunidade produtiva, obra ou aresta.
 
-**Não decidido:** duração numérica do período, resolução de empates, prioridade de ordens, acesso concorrente, instantaneidade de eventos, subdivisão de ações, tempo em viagem. Este tópico não pode forçar exceções implícitas na fórmula da F-011.
+**Experimento ilustrativo:**
+- Um nó tem uma reserva acessível de **1 unidade divisível de madeira**, sem regeneração no intervalo estudado.
+- Trabalhador B encontra-se no nó e começa a extrair em \`t=0\`.
+- Trabalhador A chega ao nó em \`t=0,4\` e começa a extrair nesse instante.
+- Ambos têm acesso legítimo equivalente; cada um consegue extrair no máximo \`1 unidade de madeira / unidade de tempo\` quando há madeira disponível.
+- B obtém \`0,4\` antes da chegada de A; restam \`0,6\` unidades.
+- Se permitirmos extração **simultânea proporcional às taxas efetivas de extração**, ambos extraem \`0,3\` unidades entre \`t=0,4\` e \`t=0,7\`; a reserva se esgota em \`t=0,7\`.
+- Resultado sob essa hipótese: **B = 0,7**; **A = 0,3**; estoque restante = **0**. A mesma regra deve produzir esse resultado tanto processando A antes de B quanto B antes de A.
+
+**Status: hipótese de concorrência**, não ratificação de rateio nem regra geral de propriedade. O exemplo exige material divisível, direitos equivalentes e ausência de interferência física/capacidade compartilhada adicional. Se os trabalhadores não puderem operar simultaneamente, se houver diferenças físicas ou se um terceiro detiver os direitos, **a hipótese não se aplica automaticamente**.
+
+**Opções para investigação:**
+- **O-1 — Divisível e acesso equivalente:** dividir a disponibilidade por taxas de uso físicas efetivas, somente na janela de concorrência; evitar prioridades dependentes do loop de execução.
+- **O-2 — Recurso indivisível:** identificar momento de aquisição e definir conflito simultâneo com um desempate determinístico, explícito e auditável; não inventar um rateio material inexistente.
+- **O-3 — Acesso desigual/autoridade:** condicionar participantes elegíveis antes de arbitrar, sem pressupor que a primeira execução do software constitua legitimidade.
+- **O-4 — Capacidade do nó/aresta:** antes de adotar qualquer fórmula de saturação, verificar se as capacidades físicas relevantes do espaço bastam para representar concorrência sem um teto produtivo independente.
+
+**Critérios de validação futura:** conservação estrita do recurso; não extração sem presença física; respeito a instantes de chegada; invariância à permutação de processamento; determinismo/replay; ausência de consumo duplo; complexidade de atualização local em grafos grandes; resultado de empate estável e justificado.
+
+**Decisão ainda necessária:** a regra geral de participação e arbitragem de operações simultâneas, incluindo critérios para materiais indivisíveis e direitos desiguais. Não confundir **equidade como política econômica** com **causalidade como regra física**.
 
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
@@ -343,4 +364,5 @@ O sistema não pode concluir de F-017 que "executar todas as ações do trabalha
 - **2026-11-07 — proposta F-012:** trabalhador como agente físico com uma capacidade universal de ação e um vetor de demanda; distinção entre demanda e consumo efetivo; nenhuma regra nova ratificada.
 - **2026-11-07 — terceira deliberação:** F-012 aprovada no nível estrutural (agente = localização + ação + demanda) e F-013 aprovada como diretriz (orçamento único de tempo para ações). F-014 permanece aberta, assim como a dinâmica de produção F-011.
 - **2026-11-07 — quarta deliberação:** F-015 ratificada (progresso temporal preservado entre turnos, sem aplicação antecipada ou duplicada de efeitos), F-016 aberta (representação física do progresso e disponibilidade de resultados).
-- **2026-11-07 — quinta deliberação:** F-017 ratificada (ações distintas sequenciais no mesmo período, limitadas ao tempo disponível); F-018 aberta (arbitragem e causalidade temporal entre diferentes trabalhadores).
+- **2026-11-07 — quinta deliberação:** F-017 ratificada (ações distintas sequenciais no mesmo período, limitadas ao tempo disponível); F-018 aberta à época.
+- **2026-11-07 — sexta deliberação:** F-018 ratificada no nível de princípio (tempo lógico global, causalidade e independência da ordem interna de processamento); F-019 aberta para arbitragens locais de recursos escassos. O rateio proporcional e os valores do experimento não são regras ratificadas.
