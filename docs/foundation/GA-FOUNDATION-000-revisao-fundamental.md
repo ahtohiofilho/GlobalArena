@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 3.3  
+**Versão conceitual:** 3.4  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -442,7 +442,7 @@ Há três grandezas conceitualmente distintas: **quantidade comercial**, **carga
 
 Com \`γ≥0\`, \`p>1\` em exemplo. A penalização aumenta mais rapidamente em altos volumes. Sob essa escolha \`K\` não é um limite rígido; a carga maior eleva impedância e reduz competitividade. Um limite duro requer decisão independente. Exigir crescimento monótono do custo com \`B\` e não usar preço da mercadoria para calcular \`ρ\`.
 
-**Função de tarifa candidata [PROPOSTA]:**
+**Função nominal de tarifa histórica candidata [NÃO RATIFICADA; CONTRASTAR COM F-060]:**
 
 \`τ(L) = τ_max × L/(L+ℓ)\`, com \`τ_max≥0\`, \`ℓ>0\`; tarifa monetária por unidade equivalente logística, nula em \`L=0\`, positiva e limitada quando \`L>0\`. Uma operação por não titular pagaria \`T_e = q_{e,r} × a_r × τ(L_e)\` na aresta \`e\`. Para vários trechos, somar **somente** tarifas incidentes em trechos utilizados e alheios, sem cobrar o titular pelos próprios trechos. Nenhum parâmetro numérico ou fórmula é ratificado.
 
@@ -930,7 +930,7 @@ Depois realizar water-filling de toda oferta com essas impedâncias congeladas, 
 3. **O trabalhador não possui carteira monetária**, não recebe salário em moeda automaticamente pela produção e não pode ser o destinatário de receita por vender. Seu peso de demanda \`k_w\` e sua eficiência F-037/F-038 não são dinheiro individual.
 4. **A localidade/nó não possui tesouro próprio por padrão.** Um nó pode produzir, abrigar trabalhadores, demandar e ter estrutura física sem possuir caixa ou apropriar-se da receita; seu eventual vínculo administrativo com uma civilização não substitui o identificador econômico da atividade.
 5. Obras em arestas F-034/F-035/F-037 são executadas fisicamente pelos trabalhadores autorizados, mas o **pagamento é realizado pelo tesouro da civilização investidora**: debitar \`M_c\` e incorporar capital na aresta na mesma operação; não debitar do trabalhador nem de um "tesouro do nó".
-6. Eventuais **tarifas monetárias de terceiros** deverão usar contas das civilizações pagadoras/recebedoras ou outra entidade explicitamente autorizada por decisão futura. Não presumir que o trabalhador pague tarifa nem que a propriedade da aresta coincida com o território de origem.
+6. Eventuais **tarifas monetárias de terceiros** deverão usar contas das civilizações pagadoras/recebedoras ou outra entidade explicitamente autorizada por decisão futura. Não presumir que o trabalhador pague tarifa nem que a propriedade da aresta coincida com o território de origem. **Por F-059, quando a tarifa existir, ela influencia o clearing antes de qualquer desempate técnico; F-060 estuda a alternativa de cobrá-la como parte da própria receita comercial, sem desembolso antecipado.**
 7. A venda de mercadorias para o setor consumidor **implícito e sem carteira** (F-046) é entrada aberta de moeda no subconjunto modelado. **Transações financeiras entre civilizações representadas** precisam de contrapartidas coerentes; circulação monetária fora desse subconjunto não será simulada.
 8. Não criar tributação automática sobre receita já recebida integralmente pelo tesouro da própria civilização: isso seria transferir dinheiro da civilização para ela mesma. Eventuais impostos entre agentes distintos, setor externo ou outras instituições precisam de definição posterior.
 9. Saldo da civilização pode financiar atos enquanto houver dinheiro; dinheiro de compras de consumidores não é limitado por um saldo modelado. **Não confundir** abertura do lado comprador com caixa ilimitado do tesouro da civilização.
@@ -1236,15 +1236,16 @@ Solução por bisseção: q_remoto≈0,5881293258; q_local≈9,4118706742; imped
 
 **Conclusão:** viabilidade demonstrada do equilíbrio simultâneo para pequena rede multicommodity com conservação e atribuição monetária civilizacional. **Não** demonstradas unicidade de todos os fluxos, robustez do passo numérico, precisão bit-a-bit entre plataformas, escalabilidade nem efeitos tarifários. Não transformar estes resultados experimentais em contratos do jogo sem deliberação.
 
-### F-059 — Desempate determinístico e robustez numérica do mercado [PRÓXIMO GATE; NÃO RATIFICADO]
+### F-059 — Tarifas dentro do equilíbrio; desempate somente após distinguir resultados econômicos [RATIFICADO NO PRINCÍPIO; POLÍTICA SECUNDÁRIA ABERTA]
 
 **Problema extraído da F-058:** a rede pode ter a mesma solução econômica agregada (preços por destino/produto, cargas por aresta, receitas brutas por civilização), mas múltiplas decomposições válidas de fluxo por mercadoria/civilização/corredor. Sem regra canônica, replays podem divergir em fluxos por titular e eventuais tarifas financeiras futuras.
 
-**Proposta prioritária:** distinguir:
-1. **Equilíbrio primário de mercado**, que determina Q[n,i], B[e], preços P[n,i] e créditos brutos das civilizações no mesmo estado lógico.
-2. **Seleção canônica de uma decomposição de fluxo** dentre as soluções igualmente válidas ao equilíbrio primário, por **critério secundário explícito, simétrico e independente de ordem**, sem modificar quantidade vendida, preço nem carga total quando essas grandezas já estiverem fixas.
+**Princípio ratificado com esta deliberação:** distinguir:
+1. **Equilíbrio econômico primário completo:** além de Q[n,i], B[e], preços P[n,i] e créditos brutos das civilizações, incluir **tarifas monetárias efetivas por trecho/titular quando houver cobrança** e suas consequências sobre atratividade e receitas líquidas. A tarifa monetária é incentivo econômico real, não desempate técnico.
+2. **Seleção canônica secundária:** somente entre soluções **realmente equivalentes inclusive para os saldos/transferências das civilizações**, selecionar decomposição de fluxo por regra explícita, simétrica e independente da ordem de processamento; não alterar Q, B, preço, receita líquida ou tarifa de civilização por uma conveniência numérica.
+3. **Empate físico, diferença financeira:** não é empate econômico. Se a regra primária ainda admitir várias soluções com pagamentos monetários diferentes, **é necessário um critério econômico adicional a deliberar**, e não um desempate técnico silencioso. Não presumir que uma escolha tecnicamente neutra exista automaticamente.
 
-**Candidatos de desempate (não ratificados):**
+**Candidatos para o desempate secundário, SOMENTE quando a contabilidade também coincide [NÃO RATIFICADOS]:**
 - **Distribuição proporcional neutra** das parcelas de civilizações/mercadorias entre corredores equivalentes, condicionada às demandas, ofertas, cargas por aresta e restrições de conservação. Evitar índice livre de favoritismo por civilização/item.
 - **Projeção de norma mínima/critério convexamente regularizado**, aplicado somente ao conjunto de decomposições já equilibradas e equivalentes, com identidades estáveis; não adicionar penalidade arbitrária ao próprio preço ou à impedância do equilíbrio primário.
 - **Identificadores estáveis como último desempate**, após fixar as quantidades econômicas, jamais substituir critérios físicos/econômicos por ordem de enumeração em caso de diferenças reais.
@@ -1253,7 +1254,59 @@ Solução por bisseção: q_remoto≈0,5881293258; q_local≈9,4118706742; imped
 
 **Solver [EM ABERTO]:** avaliar passos adaptativos, busca de linha, métodos VI robustos e inicializações viáveis; medir gap de equilíbrio e conservação, não só diferença entre iterações. O teste F-058 mostrou instabilidade de passo fixo e variação entre decomposições. Tolerâncias para números muito pequenos não devem apagar mercados efetivos por regra econômica implícita.
 
-**Próximo experimento proposto:** repetir o mesmo diamante com propriedade das rotas pertencendo a civilizações diferentes e tarifa monetária por carga **hipotética**, sem canonizar fórmula de tarifa; comparar impacto das diferentes decomposições equilibradas sobre contas civilizacionais. Usar resultado para decidir se o desempate é apenas técnico ou tem impacto financeiro/estratégico que exija integrar tarifação ao equilíbrio.
+**Experimento F-060 documentado:** no diamante F-058, manter as mesmas quantidades/preços/cargas e atribuir o corredor superior à Alfa; hipoteticamente, aplicar taxa de 10% da receita das **vendas da Beta que utilizam aquele corredor**. As duas decomposições antes consideradas equivalentes pela logística produzem cobranças diferentes (≈0,05389 contra ≈0,06989). Isso demonstra por que cobrança não pode ser adicionada depois do desempate. **A partir do momento em que a tarifa entra no equilíbrio, as antigas decomposições sem tarifa deixam de ser candidatas presumidamente equilibradas; o experimento ex post serve para demonstrar o erro, não para calcular o novo equilíbrio tarifado.**
+
+**Status:** a inclusão das tarifas reais no equilíbrio primário e a proibição de desempates técnicos que redistribuam moeda foram **RATIFICADAS**. A fórmula tarifária, a política de desempate genuinamente neutra e o solver robusto seguem em aberto.
+
+
+### F-060 — Tarifas proporcionais à receita comercial: teste e fechamento financeiro [PROPOSTO; NÃO RATIFICADO]
+
+**Motivação:** F-041 obriga venda de **toda** a produção; F-043 fixa \`P=√(D/Q)\` e \`P→0\` para Q muito maior que D. Uma tarifa **nominal fixa por unidade**, mesmo que logisticamente coerente e cobrada por titular de aresta externa, pode superar o preço unitário e forçar **receita líquida negativa**. Isso entraria em conflito operacional com tesouros finitos das civilizações e o compromisso de venda integral, sobretudo em mercados distantes com acesso somente por infraestrutura alheia. Não resolver criando compradores com carteiras nem descartando quantidades.
+
+**Alternativa prioritária em estudo [não ratificada]:** calcular o encargo tarifário **como fração da receita bruta efetivamente produzida pela venda**, proporcional ao volume e ao preço do item no mercado de destino, em vez de um valor monetário absoluto que independa do preço.
+
+Para cada aresta e com titular civilizacional \`owner(e)\` e melhoria/investimento \`I_e\`, definir um peso tarifário **adimensional, universal entre mercadorias**, \`w_e=φ(I_e)≥0\`, com \`φ(0)=0\` como candidato mínimo; função φ e sua calibração não aprovadas. Uma aresta não pertencente a uma civilização ou uma aresta da própria civilização vendedora **não é tarifada** nessa venda. Para caminho r de produção da civilização c:
+
+\`W_{c,r}=Σ_{e∈r, owner(e)≠c e titular definido} w_e\`.
+
+Para uma venda de quantidade \`q\` no mercado \`n\` do item \`i\`, com preço final \`P_{n,i}\`, estabelecer (apenas candidato):
+
+\`V_bruta=q×P_{n,i}\`;
+
+\`V_liquida_produtora=V_bruta/(1+W_{c,r})\`;
+
+\`T_{e←c,r}=V_bruta×w_e/(1+W_{c,r})\`, para cada e alheia com tarifa; se e da própria civilização, \`T_e=0\`.
+
+**Identidade financeira exata:** \`V_liquida_produtora + Σ_e T_{e←c,r} = V_bruta\`. Não há dinheiro inventado entre contas representadas: a receita comercial bruta entra do **setor consumidor externo/implícito F-046** e é repartida contabilmente entre a **civilização produtora** e os **titulares das arestas de terceiros**. Não criar carteira de trabalhador ou consumidor.
+
+**Atratividade logística com tarifa [CANDIDATA]:**
+\`A_{c,r,n,i} = [P_{n,i}/(1+W_{c,r})]/[1+L_r]\`,
+\`G_{c,r,n,i}=(1+L_r)(1+W_{c,r})√(Q_{n,i}/D_{n,i})\`.
+Esta forma preserva F-056 quando todas as tarifas são zero; não converte pontos de impedância em moeda. O fator \`1+W\` é **proposta de desenho de cobrança comercial**, independente do fator logístico \`1+L\`. Se uma rota própria e outra externa possuem as mesmas condições físicas, o proprietário do próprio trecho não paga tarifa e pode preferi-la por esse motivo. A carga comercial e a forma de propriedade do trecho são consideradas simultaneamente no clearing F-049.
+
+**Teste dimensional/numérico de transação única:** com \`q=5\` unidades vendidas a \`P=1,4\`, \`V_bruta=7\` moedas. Se o trajeto atravessa uma única aresta alheia com \`w_e=0,25\`, então \`W=0,25\`, a civilização produtora recebe \`V_liquida=7/1,25=5,6\` moedas, e a proprietária recebe \`T=7×0,25/1,25=1,4\`. O exemplo corresponde a **20% de receita bruta** de tarifa, não a 25%, porque \`w\` é intensidade adimensional anterior à conversão \`w/(1+w)\`; não confundir os dois números. Se \`P\` diminuir sem mudar a rota nem a propriedade, o valor nominal de ambos cai proporcionalmente; a receita líquida de venda permanece **não negativa** para \`q,P≥0\` e \`W\` finito.
+
+**Teste de preferência por rota:** para o mesmo destino/preço P, comparar corredor externo \`L_externo=0,5,W_externo=0,25\` com corredor próprio \`L_proprio=1,W_proprio=0\`. Seus divisores de atratividade são \`(1+0,5)(1+0,25)=1,875\` e \`(1+1)(1+0)=2\`. Logo o corredor externo continua mais atrativo, apesar de sua tarifa, devido à vantagem física. Se a intensidade da tarifa subir para \`W_externo=0,5\`, o divisor externo passa a \`2,25\` e a própria infraestrutura fica mais atraente, ceteris paribus. Na rede completa, o congestionamento resultante de cada escolha também realimenta L e precisa de equilíbrio simultâneo.
+
+**Demonstração ex post de desempate não neutro (F-058; não é solução de rede com tarifas):**
+- Considere a solução anterior sem tarifas com Alfa produzindo madeira e Beta pedra. Preço de exportação de ambos ≈\`0,80785233\`.
+- Faça o corredor superior pertencer à civilização Alfa, cobrando hipoteticamente **10% da receita da Beta** que percorre esse corredor. O corredor inferior é não tarifado; a Alfa não paga tarifa na sua própria aresta.
+- Em uma decomposição com \`q_Beta,superior≈0,66707616\`, o valor devido de Beta→Alfa é \`≈0,05388990\`.
+- Outra decomposição, igualmente equilibrada em preços/cargas quando não existe tarifa, pode usar \`q_Beta,superior≈0,8650803\`, elevando a transferência para \`≈0,069886\`, apesar de os preços finais, cargas físicas e receitas **brutas** continuarem iguais. Diferença ≈\`0,015996\` de moeda entre tesouros determinada apenas pela decomposição.
+- **A comparação só serve para provar que as duas soluções SEM tarifa não são financeiramente equivalentes quando se aplica tarifa depois.** Se incluirmos a cobrança corretamente no equilíbrio desde o princípio, é necessário **recalcular a alocação**. Não tratar tais decomposições anteriores como dois equilíbrios do novo sistema com tarifa.
+
+**Por que F-060 não fica automaticamente ratificada por F-059:**
+1. A F-024 ratifica apenas a possibilidade de tarifa monetária de não titular; **não** decidiu ainda a fórmula, sua natureza proporcional ou a titularidade compartilhada.
+2. Uma cobrança proporcional ao valor de mercado permite tarifas monetárias elevadas em bens de maior preço ainda que tenham carga física igual: isso pode ou não ser desejado. O peso tarifário \`w_e\` é universal, mas o montante monetário acompanha o preço do produto. É escolha econômica, não exigência física.
+3. Mesmo com \`V_liquida≥0\`, um proprietário de gargalo indispensável pode capturar parcela muito alta de receitas se \`W\` crescer muito, criando incentivos monopolistas. Não definir teto arbitrário antes de discutir investimento, tarifação e incentivos.
+4. Várias arestas de terceiros no mesmo trajeto devem cobrar **uma única repartição do valor da venda** conforme a identidade acima; não tributar repetidamente a receita já reduzida em sequência dependente da ordem dos trechos.
+5. Quando a mesma civilização possui várias arestas, créditos são agregados ao seu tesouro, mas uma venda da própria civilização permanece livre de cobrança em qualquer dessas arestas.
+6. A decisão de onde reside a titularidade de uma aresta e como investimentos de outra civilização afetam sua propriedade precisa de deliberação específica.
+7. Caso o jogo futuramente inclua seguros, contratos, preferências de produtos ou outras rubricas, não adotar novas contas por inferência; preservar escopo monetário simples do jogo.
+
+**Gates próximos recomendados:** (a) definir se tarifas devem ser percentuais sobre receita comercial ou nominais por carga, considerando **venda universal e receitas não negativas**; (b) somente se a primeira alternativa for selecionada, estudar a função \`φ(I)\` por capital incorporado, ownership, investimento por terceiros e eventuais limites; (c) executar um equilíbrio simultâneo **já com tarifas dentro do índice** em rede 2×2 e comparar com o laboratório ex post de F-058; (d) definir desempate secundário neutro para soluções realmente indistinguíveis inclusive em pagamentos.
+
+**Status:** contrato F-059 de inclusão monetária antes do desempate está ratificado; as fórmulas F-060 e os parâmetros são **apenas candidatos** e não autorizam alterar o código econômico nem registrar tarifas com essa fórmula sem decisão.
 
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
@@ -1337,3 +1390,5 @@ Solução por bisseção: q_remoto≈0,5881293258; q_local≈9,4118706742; imped
 - **2026-11-07 — ratificação de fluxos e mercado local; estudo do solver:** F-055 e F-056 foram aprovadas: fluxos comerciais transitórios em arcos por civilização/item, conservação nodal, e atratividade A=P/(1+L) com mercado local L=0 (normalização da impedância pendente). F-050 e F-053 passam a estudos históricos da hipótese P/L sem correção local. F-057 propõe contrato de desigualdade variacional e verificação por gap de equilíbrio, evitando a atualização gulosa oscilatória; caso escalar local/remoto resolvido por bisseção com q_remoto≈0,5881293 de 10, congestionamento ilustrativo p=4. Solver e normalização continuam não ratificados.
 
 - **2026-11-07 — F-057 aprovada como contrato, F-058 laboratório e F-059 gate:** conservação da produção, clearing simultâneo, determinismo e gap de equilíbrio passam a contrato canônico, mas algoritmo/tolerâncias em aberto. F-058 executou protótipo Python/SciPy extragradiente em diamante A-B-C-D com duas civilizações e duas mercadorias, 20 unidades vendidas, cargas 1,33415/0,79494 em corredores, Q 6,93545/3,06455 por mercado/item, receita 6,20007 para cada civilização e gap ≈5,63e-10. O teste detectou **não convergência** com passo 0,04 a partir de início extremo superior e **não unicidade da decomposição** por produto/rota apesar dos mesmos resultados agregados. F-059 abre desempate canônico com relevância para futuras tarifas e métodos numéricos robustos. Nenhuma homologação de benchmark Goldberg ou solver de produção foi declarada.
+
+- **2026-11-07 — F-059 ratificada e alternativa de tarifa F-060 estudada:** tarifas monetárias, quando existirem, integram o equilíbrio comercial ANTES do desempate; decomposições que alterem transferências entre tesouros não são empates meramente técnicos. F-060 documenta risco de tarifas nominais fixas por carga sob P=√(D/Q) e venda integral; propõe rateio da receita bruta V entre produtora e proprietários de arestas externas por pesos tarifários w_e≥0, com V_liquida=V/(1+Σw) e tarifa_e=V w_e/(1+Σw), garantindo parcelas não negativas e soma exatamente V. Para o diamante F-058, duas decomposições fisicamente equivalentes gerariam tarifas Beta→Alfa ≈0,05389 e ≈0,06989 se tarifa de 10% fosse adicionada APÓS o equilíbrio, exemplificando erro financeiro. Natureza/função das tarifas e regra final de desempate NÃO ratificadas.
