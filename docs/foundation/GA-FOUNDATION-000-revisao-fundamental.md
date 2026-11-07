@@ -1,9 +1,9 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 0.1  
+**Versão conceitual:** 0.2  
 **Situação:** deliberação em andamento; núcleo explicitamente ratificado nesta conversa  
-**Escopo:** desenho do jogo desde os primeiros princípios, sem refatoração de código nesta entrega
+**Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
 > **Regra editorial:** este texto distingue rigorosamente o que foi decidido daquilo que ainda está sendo discutido. Nenhuma hipótese, exemplo ou equação ilustrativa pode ser implementada como regra canônica sem ratificação explícita.
 
@@ -13,7 +13,9 @@ Reconstruir e avaliar a lógica do Global Arena a partir de uma base mínima, id
 
 **Critérios de avaliação:** simplicidade conceitual, coerência física, extensibilidade entre eras, baixo acoplamento, custo computacional proporcional ao benefício e possibilidade de testar as regras isoladamente.
 
-Este documento abre uma **frente conceitual paralela**. Não implica migração, revogação global dos ADRs anteriores, alteração de saves, mudanças de interface, nem autorização para implementar ou promover código. Quando houver conflito com um ADR existente, registrar o conflito e submeter a decisão de migração.
+Esta documentação define uma **nova versão do Global Arena**, desde o marco zero. O desenho é **autônomo**: comportamento existente, convenções, decisões e limitações técnicas do Global Arena anterior **não são insumos obrigatórios, nem precedentes normativos**. A arquitetura nova é o critério de aprovação. O repositório atual é apenas o local de registro nesta fase, não uma dependência de implementação.
+
+Esta entrega apenas documenta decisões. Não modifica, migra, revoga ou homologa os módulos do jogo anterior; os sistemas existentes podem continuar a funcionar na sua própria linha de evolução. Uma decisão futura e explícita definirá como, quando e onde implementar a nova versão.
 
 ## 2. Léxico de decisões
 
@@ -74,6 +76,24 @@ Nós, arestas e trabalhadores possuem **capacidades naturais de base**, sem exig
 
 Priorizar regras fundamentais que possam valer do Neolítico às eras futuras. Transformações tecnológicas devem, sempre que viável, modificar parâmetros/capacidades em vez de criar subsistemas substitutos.
 
+### F-009 — Capacidade universal de trabalho [RATIFICADO]
+
+Cada trabalhador tem **um orçamento único de capacidade de trabalho por período**, que pode ser aplicado a atividades como produção, construção e deslocamento. As diferentes atividades disputam essa **mesma capacidade**, em vez de possuírem orçamentos independentes que permitam executar simultaneamente trabalho duplicado.
+
+**Invariante:** a soma da capacidade efetivamente comprometida ou consumida por um trabalhador em um período não pode exceder o orçamento desse trabalhador nesse período. O tratamento de tarefas contínuas entre períodos deverá preservar essa contabilidade.
+
+**Ainda não decidido:** escala e unidade de capacidade, duração do período, custos específicos por atividade, frações de trabalho, retomada de tarefas, modificadores e duração do movimento. Ratificar F-009 **não** ratifica uma fórmula de produção ou uma economia numérica.
+
+### F-010 — Independência conceitual e código descartável [RATIFICADO]
+
+A nova versão será **projetada como um jogo novo**. Nada no código, modelo de dados, subsistemas, APIs, testes, UI, saves, parâmetros ou ADRs do Global Arena anterior limita o que pode ser decidido na nova arquitetura.
+
+O código anterior só poderá ser reaproveitado **depois** de fechar as regras pertinentes da nova versão, e apenas se uma análise demonstrar que esse código executa exatamente o contrato novo, sem trazer implicitamente premissas legadas. O reaproveitamento deve servir para acelerar a implementação; **não é um requisito de produto**.
+
+Para componentes incompatíveis, a diretriz é **descartar/substituir**, mesmo que isso implique retrabalho. Não é objetivo preservar compatibilidade de saves, protocolos, fórmulas, estruturas de dados ou fluxos internos anteriores, salvo se a nova arquitetura vier a exigir expressamente algum deles por mérito próprio.
+
+**Proibição de contaminação:** não inferir nenhuma regra nova a partir de comportamento existente, nomes de classes, interfaces, testes históricos, economia anterior ou caminhos de implementação. Comparações com o legado são permitidas **na fase de implementação e auditoria de reaproveitamento**, não como condicionantes da formulação conceitual.
+
 ## 4. Contratos mínimos — sem fechar cálculos
 
 ### Nó
@@ -86,7 +106,7 @@ Conecta dois nós com possibilidade lógica de deslocamento nos dois sentidos; p
 
 ### Trabalhador
 
-Unidade identificável, com capacidade de trabalho e posição física singular. **[ABERTO]**: se capacidade é uma grandeza universal consumida em tarefas diferentes; escala temporal; especialização; composição da unidade; execução parcial de ações.
+Unidade identificável, com capacidade física e posição singular. A capacidade de trabalho **é uma grandeza universal disputada entre atividades [RATIFICADO F-009]**. **[ABERTO]**: escala temporal e quantidade por período; especialização; composição da unidade; execução parcial de ações; contabilidade do trânsito.
 
 ### Recurso
 
@@ -102,7 +122,7 @@ Modifica capacidades de nós ou arestas. **[ABERTO]**: construção, materiais, 
 2. **Não criar estado redundante.** Cada variável permanente precisa representar uma propriedade independente e demonstravelmente necessária.
 3. **Não inferir subsistemas por antecipação.** Mercado, moeda, poder de compra, impostos, civilizações, governo, população, logística industrial, tecnologia e guerra não são parte do núcleo ratificado.
 4. **Não confundir potencial e produção efetiva**, nem produção e estoque; definir relações apenas quando necessário.
-5. **Não herdar automaticamente ADRs legados.** Avaliar compatibilidade; divergências precisam de decisão explícita antes de implementação.
+5. **Legado não orienta a formulação.** Não consultar ADRs ou código antigo como fonte de regras para esta versão; reuso posterior depende de auditoria contra o contrato independente.
 6. **Testar incrementos de complexidade** em cenários mínimos antes de ampliar o grafo.
 
 ## 6. Sequência de validação conceitual
@@ -115,26 +135,41 @@ Modifica capacidades de nós ou arestas. **[ABERTO]**: construção, materiais, 
 
 ## 7. Próxima decisão em pauta: sem ratificação
 
-**F-009 — Modelo de capacidade de trabalho [ABERTO]**
+**F-011 — Conversão de trabalho em produção [ABERTO]**
 
-Alternativas a confrontar:
-- **A. Orçamento universal de trabalho por unidade e período:** produção, construção e deslocamento concorrem pela mesma capacidade, com custos específicos por atividade.
-- **B. Uma atividade exclusiva por período:** simplifica a resolução inicial, mas limita a representação de ações parciais e de deslocamentos incompletos.
-- **C. Capacidades independentes por atividade:** facilita bônus especializados, porém multiplica estados e risco de dupla contagem.
+Partindo de um único trabalhador em um nó e de um único recurso, determinar **qual é a menor relação necessária** entre trabalho aplicado, potencial físico do nó e produção efetiva. São hipóteses a confrontar:
+- **A. Conversão proporcional simples:** produto do trabalho efetivo por um rendimento físico local, sem variável de teto adicional no primeiro experimento.
+- **B. Conversão limitada por capacidade:** rendimento proporcional até uma saturação física explícita.
+- **C. Outra lei derivada de variáveis físicas essenciais:** apenas se A e B falharem nos cenários mínimos.
 
-**Hipótese recomendada para investigação (não ratificada):** começar testando o orçamento universal e verificar se seu custo de execução/calibração compensa a coerência entre eras. Nenhuma unidade de medida, valor padrão, duração do período ou regra de fracionamento foi aprovada.
+Não presumir que o potencial físico seja simultaneamente produtividade, volume de reserva, capacidade máxima e taxa de regeneração; são conceitos diferentes, e só deverão virar estados distintos se demonstrada sua necessidade.
 
-## 8. Relação com o código e documentos anteriores
+**Nenhuma equação, estoque, propriedade do recurso ou tipo de saturação está ratificado.**
 
-Este é um documento **de revisão fundacional**, não uma declaração de que o kernel atual já satisfaz F-001 a F-008. As implementações existentes e seus ADRs continuam descrevendo o comportamento hoje codificado, até migração explicitamente aprovada e homologada. Novas propostas devem referenciar este documento e indicar conformidade, conflito ou ponto ainda aberto.
+## 8. Governança da nova versão e critérios de reaproveitamento
 
-**Gate documental mínimo para futuras implementações deste novo desenho:**
+**A fonte de verdade do novo desenho** é a sequência de decisões ratificadas nesta documentação. As decisões do jogo antigo **não exercem autoridade sobre ela**; tampouco foram revogadas para a versão antiga.
+
+**Portão 1 — Formulação autônoma:** redigir leis, estados, casos-limite e invariantes sem consultar limitações ou soluções do código existente; não conservar subsistemas por inércia.
+
+**Portão 2 — Validação conceitual:** confrontar cada lei com experimentos mínimos, contradições, custos de complexidade e coerência entre eras.
+
+**Portão 3 — Contratos de implementação:** somente após ratificação, especificar interfaces mínimas e testes para a nova arquitetura, sem compatibilidade obrigatória com versões anteriores.
+
+**Portão 4 — Triagem de legado:** comparar cada componente existente contra os contratos novos; classificar como reutilizável sem alteração, adaptável sem comprometer o contrato ou descartável. A facilidade de reaproveitar não justifica alterar uma lei já aprovada.
+
+**Portão 5 — Implementação independente:** integrar somente partes aprovadas. Quando incompatíveis, substituir integralmente; não criar adaptadores permanentes, camadas de tradução ou estados duplicados apenas para preservar o passado.
+
+**Gate documental mínimo para mudanças nesta nova versão:**
 - citar os IDs F-* efetivamente aplicáveis;
-- listar todas as novas premissas propostas;
-- demonstrar por testes os invariantes afetados;
-- não transformar hipóteses [PROPOSTO] ou [ABERTO] em contratos silenciosamente;
-- registrar quais ADRs antigos permanecem compatíveis e quais exigiriam substituição.
+- listar novas premissas para ratificação;
+- demonstrar os invariantes afetados nos cenários mínimos;
+- não converter pontos [PROPOSTO]/[ABERTO] em regra silenciosamente;
+- distinguir a nova especificação de qualquer código legado citado como candidato de reaproveitamento.
+
+**Observação de versionamento:** o apelido da nova versão, a estratégia de branches/repositórios e a data de migração ainda são questões operacionais abertas. Nenhum merge, descarte físico de código ou nova linha executável foi autorizado por este documento.
 
 ## 9. Histórico
 
-- **2026-11-07 — abertura:** base geométrica/topológica, nó físico-produtivo, três recursos, capacidade natural e duas infraestruturas; ratificação explícita do **Modelo A — Trabalhador físico**. F-009 permanece aberta.
+- **2026-11-07 — abertura:** base geométrica/topológica, nó físico-produtivo, três recursos, capacidade natural e duas infraestruturas; ratificação explícita do **Modelo A — Trabalhador físico**.
+- **2026-11-07 — segunda deliberação:** F-009 ratificada (capacidade universal de trabalho); F-010 ratificada (nova versão de desenho autônomo e descarte de código incompatível sem restrição de retrabalho); F-011 aberta (lei de produção).
