@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 0.6  
+**Versão conceitual:** 0.7  
 **Situação:** deliberação em andamento; núcleo explicitamente ratificado nesta conversa  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -260,7 +260,7 @@ Uma ação pode exigir mais tempo do que resta disponível ao trabalhador em um 
 
 **Crucial:** o contrato temporal é comum, mas **resultados não são obrigatoriamente graduais nem intercambiáveis**. Uma extração poderá disponibilizar produção incremental, uma obra poderá necessitar de marcos de conclusão e uma viagem só colocará o trabalhador no nó de destino quando efetivamente chegar. Essas políticas de disponibilização são específicas e permanecem abertas.
 
-**Deliberações não tomadas por F-015:** autorizar fracionamento arbitrário de atividades distintas num mesmo período, ação simultânea, divisão de trabalhadores, desperdício de tempo na troca de tarefa, efeitos da interrupção, definição de materiais obrigatórios, limites exatos de produção, custos temporais, cronograma de consumo, formas de progressão das atividades e regras de concorrência sobre o mesmo nó/aresta.
+**Deliberações não tomadas por F-015:** ação simultânea para um mesmo trabalhador, divisão de trabalhadores, desperdício de tempo na troca de tarefa, efeitos da interrupção, definição de materiais obrigatórios, limites exatos de produção, custos temporais, cronograma de consumo, formas de progressão das atividades e regras de concorrência sobre o mesmo nó/aresta. A possibilidade de ações **sequenciais** distintas no mesmo período foi ratificada posteriormente em F-017.
 
 ### F-016 — Unidade de progresso físico e disponibilização do resultado [ABERTO]
 
@@ -268,13 +268,48 @@ A próxima investigação separa **trabalho temporal realizado**, **progresso f�
 
 **Três cenários mínimos:**
 
-- **Deslocamento:** travessia que demanda, por hipótese de cálculo, 1,4 unidades de tempo e trabalhador com 1 unidade disponível por turno. Primeiro turno investe 1 em progresso na aresta; segundo investe 0,4 e efetiva chegada. Restam 0,6 unidades de tempo no segundo turno **somente se** for ratificado que ações diferentes podem compartilhar o turno.
+- **Deslocamento:** travessia que demanda, por hipótese de cálculo, 1,4 unidades de tempo e trabalhador com 1 unidade disponível por turno. Primeiro turno investe 1 em progresso na aresta; segundo investe 0,4 e efetiva chegada. Restam 0,6 unidades de tempo no segundo turno, que **podem** ser usadas em outra ação sequencial, conforme F-017, desde que satisfeitas suas condições.
 - **Construção:** progresso da obra pode ser preservado fisicamente enquanto a capacidade da infraestrutura só fica operacional ao concluir marcos definidos. Nenhuma porcentagem universal de operacionalidade é presumida.
 - **Produção:** tempo de extração pode resultar em material já disponível, ou precisar alcançar um lote mínimo; a regra depende do processo físico e **não** se deduz da existência de tempo acumulado.
 
 **Pergunta de arquitetura:** há necessidade de um objeto genérico permanente de "ação em andamento" em todos os casos, ou basta persistir os estados físicos mínimos de trabalhador, aresta, obra e recurso? Preferência preliminar pela segunda opção, desde que interrupções/retomadas e determinismo sejam verificáveis.
 
 A unidade de tempo adotada internamente, os números ilustrativos e as fórmulas de progresso **não** foram ratificados.
+
+
+### F-017 — Múltiplas ações sequenciais por trabalhador no mesmo período [RATIFICADO]
+
+Um trabalhador pode executar **mais de uma atividade distinta, em sequência**, durante o mesmo período, desde que a soma dos intervalos temporais efetivamente consumidos não ultrapasse seu orçamento temporal disponível (F-009/F-013). Não há desperdício automático de saldo temporal apenas pelo término de uma tarefa anterior. A aplicação de cada ação deve respeitar a localização e o estado **resultantes da ação precedente**.
+
+Invariantes:
+1. Para um trabalhador, intervalos de ações distintas não se sobrepõem; não há simultaneidade de duas atividades deliberadas da mesma unidade.
+2. Uma atividade só usa recursos/infraestrutura que estejam acessíveis e válidos **quando começar a ser executada**; concluir uma travessia é necessário antes de produzir no destino.
+3. Tempo não utilizado permanece disponível até o encerramento do período; **não se presume transferência de saldo para o período seguinte**.
+4. Resultado de ação anterior pode fundamentar uma ação posterior **apenas quando o resultado já estiver fisicamente disponível** conforme F-016.
+5. A continuidade de tarefa entre períodos (F-015) e a possibilidade de alternar tarefas no mesmo período (F-017) são princípios distintos.
+6. Não adicionar automaticamente tarifas de troca de atividade ou custos de ativação. Só introduzir se forem necessários e fisicamente justificados por regra posterior.
+
+Exemplo exclusivamente didático: disponibilidade temporal \`T=1\`, deslocamento de \`0,4\` e produção de \`0,6\` no destino, se houver chegada e condições físicas para produzir. O orçamento termina em zero. Esses valores não são parâmetros aprovados.
+
+**Limites do escopo:** esta decisão não define a ordem global dos trabalhadores, o modelo de concorrência, a escolha de comandos, a existência de ação instantânea, o consumo de demanda, nem a forma exata de particionar intervalos dentro do período.
+
+### F-018 — Arbitragem entre trabalhadores em tempo compartilhado [ABERTO; prioridade seguinte]
+
+O sistema não pode concluir de F-017 que "executar todas as ações do trabalhador A e depois todas as do B" seria automaticamente justo ou fisicamente coerente. Dois agentes podem disputar a mesma oportunidade de produção, material, trecho de transporte, obra ou disponibilidade de recurso. A ordem pode alterar o resultado.
+
+**Cenário de risco:** o trabalhador A gasta \`0,4\` chegando a um nó e passa a produzir; o trabalhador B já se encontra nele. Processar todo A antes de B pode dar a A acesso retroativo a recursos que B poderia ter utilizado durante os mesmos intervalos de tempo.
+
+**Diretriz proposta, não ratificada:** um período tem uma referência temporal comum aos agentes, mesmo que o motor execute computacionalmente eventos em ordem determinística. Identificar pontos onde as condições físicas mudam (chegadas, conclusões, disponibilizações, esgotamentos) e resolver a concorrência apenas quando necessário. Não presumir que o motor precise simular cada fração de segundo nem percorrer todos os trabalhadores em microticks.
+
+**Alternativas a comparar:**
+- A. Ordem inteira por trabalhador (simples, mas forte viés potencial de prioridade).
+- B. Subetapas globais fixas (regras simples, mas granularidade arbitrária e custo elevado).
+- C. Eventos temporalmente posicionados e arbitragem local para conflitos efetivos (potencialmente eficiente, mas exige um contrato mínimo de prioridade/empate).
+- D. Resolução agregada local para produções contínuas e uso de eventos apenas em transições discretas (pode reduzir custo, a testar).
+
+**Testes antes de ratificar:** dois trabalhadores e uma única árvore/obra/aresta; mesma ordem de comandos com IDs permutados; replay determinístico; conservação de materiais; ausência de tempo duplicado; respeito à causalidade temporal; escalabilidade de um Goldberg gigante.
+
+**Não decidido:** duração numérica do período, resolução de empates, prioridade de ordens, acesso concorrente, instantaneidade de eventos, subdivisão de ações, tempo em viagem. Este tópico não pode forçar exceções implícitas na fórmula da F-011.
 
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
@@ -308,3 +343,4 @@ A unidade de tempo adotada internamente, os números ilustrativos e as fórmulas
 - **2026-11-07 — proposta F-012:** trabalhador como agente físico com uma capacidade universal de ação e um vetor de demanda; distinção entre demanda e consumo efetivo; nenhuma regra nova ratificada.
 - **2026-11-07 — terceira deliberação:** F-012 aprovada no nível estrutural (agente = localização + ação + demanda) e F-013 aprovada como diretriz (orçamento único de tempo para ações). F-014 permanece aberta, assim como a dinâmica de produção F-011.
 - **2026-11-07 — quarta deliberação:** F-015 ratificada (progresso temporal preservado entre turnos, sem aplicação antecipada ou duplicada de efeitos), F-016 aberta (representação física do progresso e disponibilidade de resultados).
+- **2026-11-07 — quinta deliberação:** F-017 ratificada (ações distintas sequenciais no mesmo período, limitadas ao tempo disponível); F-018 aberta (arbitragem e causalidade temporal entre diferentes trabalhadores).
