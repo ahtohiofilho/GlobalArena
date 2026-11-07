@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 3.10  
+**Versão conceitual:** 3.11  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -1466,9 +1466,9 @@ o fluxo de B permanece inteiramente local, pois sua alternativa de exportar cust
 **Encaminhamento de design:** o MVP não precisa de votação para novos investidores (F-066). Prosseguir com **intensidade tarifária automática** F-061 apenas se ela produzir comportamento de mercado defensável; a cobrança proporcional F-060 já é canônica. A questão ainda mais fundamental é se o sistema **permite que o pedágio anule parte do benefício físico** de uma melhoria para terceiros (trade-off econômico legítimo), ou se deseja exigir monotonicidade de atratividade em TODAS as rotas, algo que a candidata multiplicativa \`(1+L)(1+W)\` não garante para distâncias arbitrárias. Essa escolha permanece **EM ABERTO**, não requer criar UI ou quórum.
 
 
-### F-068 — Teste de invariância geométrica da tarifa e hipótese de normalização por trajeto [TESTADO; FÓRMULA NOVA NÃO RATIFICADA]
+### F-068 — Estudo histórico de tarifa por rota [HIPÓTESE DE INTENSIDADE NÃO LOCAL DESCARTADA NO DESENHO; TESTE DE SUBDIVISÃO VÁLIDO]
 
-**Diretriz de produto aprovada na continuidade:** melhorar uma aresta deve reduzir sua **impedância física** conforme o capital; **não exigir compensação econômica artificial** que faça todas as civilizações melhorarem a própria receita ou atratividade comercial após toda obra. Preço concorrencial, pedágio e mudanças de fluxo podem afetar terceiros favorável ou desfavoravelmente. Esta diretriz não aprova qualquer função tarifária numérica.
+**Retificação conceitual superveniente F-070:** no modelo abstrato, **não existe infraestrutura ou empreendimento chamado trajeto** com uma origem/fim qualitativamente próprios. Existem apenas **arestas físicas** (capital, copropriedade, natureza, eficiência e embargo possíveis) e **caminhos matemáticos transitórios** que ligam ofertas a mercados durante o clearing. Portanto, a sugestão de determinar a tarifa própria de uma aresta usando o denominador \`1+L₀,r\` **NÃO deve ser adotada como regra de intensidade**, porque condiciona a remuneração de um investimento local a toda a sequência de arestas visitadas. O teste original de subdivisão permanece válido; a fórmula por rota abaixo é guardada como experimento histórico rejeitado, não candidato a executar.\n\n**Diretriz de produto aprovada na continuidade:** melhorar uma aresta deve reduzir sua **impedância física** conforme o capital; **não exigir compensação econômica artificial** que faça todas as civilizações melhorarem a própria receita ou atratividade comercial após toda obra. Preço concorrencial, pedágio e mudanças de fluxo podem afetar terceiros favorável ou desfavoravelmente. Esta diretriz não aprova qualquer função tarifária numérica.
 
 **Defeito de granularidade descoberto na candidata local da F-061:** a tarifa de uma rota não deveria aumentar somente porque **o MESMO corredor físico** foi subdividido em mais arestas equivalentes na representação geométrica, mantendo os mesmos custos físicos totais e melhorias totais.
 
@@ -1510,7 +1510,7 @@ Na candidata, a melhoria **nunca piora** a atratividade de uma rota em fluxo liv
 
 **Ponto estratégico a decidir:** vale a pena adotar **tarifa por trajeto**, que é matematicamente consistente com a subdivisão equivalente, ou preservar tarifa local por aresta e aceitar/compor sua dependência da granularidade? Não introduzir \`w_{e|r}\` no kernel antes de deliberação sobre custo/complexidade e calibração de Lref.
 
-**Situação:** estudo F-068 comprovou o defeito de subdivisão da candidata F-061 e uma alternativa sem novos coeficientes. **Não foi ratificada nenhuma fórmula numérica de intensidade tarifária**, nem a regra de escolha de rota com tarifa; continuam canônicos apenas rateio proporcional F-060, copropriedade F-062 e ingresso livre F-066.
+**Situação superveniente:** comprovado defeito de subdivisão da candidata F-061. **A fórmula que atribui a cada aresta um peso dependente do trajeto inteiro é descartada por incompatibilidade com a unidade econômica local da infraestrutura.** Ainda não foi ratificada fórmula numérica alternativa; F-070 estuda função estritamente local/aditiva. Mantêm-se F-060/F-062/F-066. A referência a caminho em F-060 é um **instrumento matemático transitório da venda**, não autorização para criar uma classe/empresa/infraestrutura 'trajeto'; F-071 detalha a necessidade mínima de atribuição financeira por destino.
 
 ### F-069 — Oráculo de rotas para impedância e tarifa não aditivas [RISCO DE IMPLEMENTAÇÃO IDENTIFICADO; SOLVER ABERTO]
 
@@ -1521,6 +1521,39 @@ O contrato F-057 propõe um oráculo de caminhos mínimos para verificar o equil
 **Consequências práticas:** avaliar oráculo de rótulos múltiplos/Pareto para o problema do menor \`(1+L)(1+W)\`, geração seletiva de caminhos com certificação de gap F-057, ou forma alternativa de atratividade que preserve o rateio monetário F-060 sem perder aditividade da escolha de rotas. **Não** ratificar uma abordagem que precise enumerar todos os caminhos simples num grafo Goldberg grande. Medir memória e convergência antes de escolher.
 
 **Observação:** o rateio de receita F-060 continua consistente independentemente do índice particular de escolha de rota. Revisar a regra de atratividade com tarifa NÃO revoga a contabilidade proporcional. Separar essa decisão da função física de congestionamento F-031, ainda proposta.
+
+
+### F-070 — Tarifa local e aditividade sob subdivisão fisicamente equivalente [PRINCÍPIO DE LOCALIDADE CONFIRMADO; FÓRMULA NÃO RATIFICADA]
+
+**Reorientação após crítica conceitual do usuário:** **não há "trajeto" como entidade econômico-física**, concessionária, instalação, segmento qualitativo com começo/fim ou unidade de propriedade. As **arestas** são as únicas unidades de investimento e copropriedade logística. Um caminho origem→mercado pode existir durante o cálculo de fluxos e preços, mas é **instrumento matemático** e pode ser desfeito/agregado por F-055. A intensidade tarifária de cada aresta precisa ser derivada exclusivamente das propriedades daquela aresta, não da soma natural de toda uma viagem. A hipótese \`w_{e|r}=Δ_e/(1+L₀,r)\` da F-068 fica descartada como regra de intensidade.
+
+**Requisitos da futura φ_e:**
+1. \`w_e\` deve ser **local à aresta e**: depender de sua geometria/condições naturais e do capital incorporado \`I_e=Σ_c H[e,c]\`, sem demandar origem da mercadoria, mercado de destino ou quilômetros percorridos fora da aresta; mesma φ para todos os produtos.
+2. \`w_e≥0\`, preferivelmente \`w_e=0\` no estado natural não melhorado; ganhos físicos representam efeitos do capital, não tarifas monetárias automáticas de praias naturais.
+3. Deve respeitar, tanto quanto a física permitir, **aditividade sob subdivisão homogênea fisicamente equivalente**. Diferentes arestas reais do Goldberg continuam independentes, mas refinar a representação de um mesmo corredor sem alterar sua física não deveria gerar arbitrariamente mais tarifa.
+4. Participações \`s[e,c]\` e isenção da própria quota seguem F-060/F-062; a soma de pesos aplicáveis à venda pode usar o percurso **computacional**, sem que esse percurso defina os próprios pesos \`w_e\`.
+5. O pedágio pode reduzir a atratividade comercial de uma melhoria para não proprietários: não impor ganho monetário universal, conforme orientação aprovada no avanço F-068.
+
+**Candidata minimalista sem nova normalização local [NÃO RATIFICADA]:**
+Se o custo físico da aresta já estiver normalizado adimensionalmente segundo F-056, definir
+\`w_e = c_natural_livre,e − c_melhorado_livre,e(I_e) ≥ 0\`.
+Este \`w_e\` é a **redução de impedância de livre fluxo na própria aresta**, não a diferença entre custos congestionados do período nem pagamento fixo em moeda. \`w_e\` é adimensional, consistente com o rateio F-060. Se uma aresta homogênea de custo 2→1 for substituída por duas homogêneas de 1→0,5, antes e depois o peso total é \`W=1\`, e a tarifa efetiva num percurso integralmente alheio é \`W/(1+W)=50%\` nos dois casos, sem diferença devida à subdivisão. **O percentual elevado é um efeito de calibração a examinar, não taxa aprovada.**
+
+**Limites dessa candidata:** (i) depende materialmente da escala física de normalização \`Lref\` de F-056; (ii) pode crescer muito em arestas/rotas longas, com retenção tarifária perto de 100% mesmo sem déficit contábil; (iii) reconhecer somente redução de impedância em vazio pode deixar sem remuneração um investimento que melhora apenas \`K_e\` (capacidade sob congestionamento); (iv) \`(1+L_r)(1+W_r)\` permanece custo **não aditivo** no conjunto de rotas (F-069), problema do solver ainda em aberto. Não canonizar a função até resolver esses limites.
+
+**Status:** princípio **localidade da infraestrutura** reafirmado; fórmula baseada no trajeto todo (F-068) **rejeitada no desenho**. Candidata local \`w_e=Δc_e\` é apenas uma prova de conceito de subdivisão, não nova lei tarifária. Uma alternativa por densidade geodésica pode ser examinada futuramente sem introduzir uma unidade "trajeto", mas não é necessária à presente decisão.
+
+### F-071 — Atribuição de valor comercial a fluxos transitórios [LACUNA MATEMÁTICA IDENTIFICADA; IMPLEMENTAÇÃO EM ABERTO]
+
+**Problema distinto de propriedade:** F-055 guarda fluxo econômico transitório por \`aresta×civilização×mercadoria\` e absorção de mercado por \`nó×civilização×mercadoria\`. F-060 reparte receita bruta \`q×P_destino\` entre produtor e coproprietários das arestas que aquela venda utilizou. Como \`P_destino\` **difere entre mercados**, a soma de volumes atravessados numa aresta **não determina sozinha** a receita tarifária sobre a qual o peso \`w_e\` incide.
+
+**Contraexemplo de informação insuficiente:** uma civilização comercializa 1 unidade num mercado X pagando P_X=2 e 1 num mercado Y pagando P_Y=1, e uma aresta melhorada possui fluxo \`f_e=1\` dessa civilização/mercadoria. Se o fluxo de valor 2 atravessou a aresta, a base tarifável é 2; se atravessou a unidade de valor 1, a base é 1. O agregado \`f_e=1\`, preços finais e vendas nos mercados são insuficientes para distinguir as duas situações. Isso vale mesmo que \`w_e\` dependa **somente** do investimento local.
+
+**Consequência:** não confundir (a) ausência de um **trajeto como estado/entidade econômica permanente** com (b) necessidade de atribuir fluxo a mercados ou de decompor **transitoriamente** caminhos durante o clearing. O contrato F-060 pode permanecer matematicamente definido por distribuições comerciais de origem/destino/caminho sem materializar todas as rotas simples do grafo. A F-055 continua válida como **representação física agregada principal**, mas o contrato mínimo de liquidação financeira precisa de informação/algoritmo adicional para atribuir o valor das vendas aos titulares.
+
+**Possibilidades técnicas em aberto:** manter etiquetas transitórias de destino/preço para o valor transportado; obter decomposição de fluxo gerada sob demanda para rateio; formular uma liquidação equivalente por arcos e conservação monetária se demonstrada a equivalência a F-060. Não instalar entidade persistente "trajeto", não abrir conta de trabalhador ou do consumidor e não inventar tarifa de acordo com origem/destino para calibrar a própria aresta.
+
+**Gate necessário:** formular solução com (i) conservação comercial e monetária, (ii) preços por mercado de destino, (iii) tarifa de cotitulares F-060, (iv) ausência de dupla cobrança, (v) determinismo em fluxos equivalentes e (vi) custo compatível com grafos Goldberg grandes. Até lá, não alegar que o agregado \`f[e,c,i]\` basta para liquidar F-060 sem ambiguidade.
 
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
@@ -1618,3 +1651,5 @@ O contrato F-057 propõe um oráculo de caminhos mínimos para verificar o equil
 - **2026-11-07 — laboratório tarifário F-067 após ingresso livre F-066:** teste analítico de dois produtores/civilizações e mercados X/Y ligados por uma aresta, D_X=1,D_Y=4, A produz 8, B produz 2. Com custos ilustrativos c=c_livre[1+(q/5)^4], após melhoria c_livre 0,5, copropriedade A 75%, B 25%, peso candidato w=1/3, o clearing tem exportação de A ≈3,60430, preço único por mercado, tarifas B≈0,23423, receitas líquidas A≈4,90738 e B≈1,92389, conservação integral 10/10 e contabilização exata. Antes de obra/tarifa, B obtinha ≈2,28257; a queda demonstra que mesmo cotitular recebendo tarifa positiva pode perder receita por concorrência de produção no mercado consumidor. φ(I), fator tarifário de atratividade e solver multi-commodity continuam NÃO RATIFICADOS; nenhum ROI financeiro validado.
 
 - **2026-11-07 — estudos F-068/F-069 de robustez tarifária e solver:** ratificada orientação de não impor benefício comercial universal de todo investimento (a melhoria física segue obrigatória). A antiga intensidade local F-061 w=1/(1+c_livre)−1/(1+c_natural) mostrou **não invariância por subdivisão física equivalente**: corredor 2→1 em uma aresta paga 14,29%, dividido em duas arestas equivalentes paga 25% sem mudança física. F-068 propõe peso de cada aresta por rota w[e|r]=(c_natural,e−c_livre,e)/(1+L_natural,r), preservando a soma por subdivisão, mas adicionando dependência do trajeto inteiro; em corredor natural 12→11 de trecho melhorado 2→1, novo divisor comercial≈12,923 vs antigo 14 e antes 13. F-069 demonstra que índice de atratividade multiplicativo (1+L)(1+W) não é custo escalar aditivo em arestas, exigindo oráculo mais elaborado ou revisão do índice. F-061/068/069 seguem não ratificadas em fórmula/algoritmo.
+
+- **2026-11-07 — crítica à entidade 'trajeto' e correção F-068/F-070/F-071:** usuário identificou corretamente que a abstração não tem entidade qualitativa 'trajeto'; existe aresta local e, no clearing, caminho matemático temporário entre oferta e destino. F-068 passa a teste histórico: a intensidade \`w_{e|r}=Δ_e/(1+L₀,r)\` é descartada por depender de toda a rota para remunerar uma aresta. F-070 reafirma intensidade tarifária **local** e apresenta w_e=c_natural,e−c_livre,e somente como hipótese aditiva sob subdivisão equivalente (corredor 2→1 numa aresta ou duas 1→0,5 mantém W=1, tarifa efetiva 50% ilustrativa). F-071 alerta que F-055 arcos agregados por civilização/item não determinam sozinhos base tarifária por preço de destino: exige atribuição de valor por mercado ou decomposição transitória de fluxos para liquidar F-060, sem entidade persistente trajeto. φ e liquidação algorítmica seguem em aberto.
