@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 2.6  
+**Versão conceitual:** 2.7  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -359,13 +359,15 @@ A concorrência é resolvida **no local e no intervalo temporal em que realmente
 
 **Governança:** não reusar, de forma automática, o water-filling ou as fórmulas do código anterior; reavaliar princípios e só então auditar o reuso (F-010).
 
-### F-022 — Financiamento e liquidação monetária [ABERTO]
+### F-022 — Escopo financeiro: compradores abstratos e tesouros representados [REDEFINIDO POR F-046]
 
-A venda de mercadorias geradas em quantidades abstratas produz receita monetária, mas ainda precisamos definir **quem paga, qual orçamento financia a demanda e como se liquidam as transações**. Não inferir criação automática de moeda por produção.
+**Decisão superveniente e ratificada F-046:** compradores/trabalhadores **NÃO** possuem carteira, caixa individual de consumo, saldo a conferir, orçamento de compra finito nem obrigação de pagar mediante débito de um tesouro de destino. Seu poder de compra é **indeterminado e exógeno** ao subconjunto de itens que o jogo modela. As compras desses itens representam realocação de gastos dentro de uma economia mais ampla, com outras mercadorias/serviços **invisíveis**. Não criar "compensação financeira por ciclo" ou "banco comprador institucional" para substituir as carteiras que foram expressamente descartadas.
 
-**Alternativas em aberto:** transferência com compradores/contas efetivas; mercado abstrato com balanço agregado e fontes/sumidouros explícitos; arquitetura híbrida com demanda calibrada, desde que não haja dupla contagem de poder de compra.
+O mercado abstrato absorve **toda a produção** por função de preço (F-041/F-043), e a receita nominal é **creditada diretamente ao titular econômico do produtor** conforme o resultado da venda. Assim, o setor monetário explicitamente representado é **aberto**: não é obrigatório reconciliar receita de vendas com pagamentos de contas que **não existem** no modelo. Essa entrada representa o setor consumidor externo/implícito, não desconto em uma conta fictícia nem emissão monetária por ação de trabalho.
 
-**Decisões pendentes:** caixa por trabalhador/nó/instituição, liquidação dos gastos de consumo, origem e destino do dinheiro, preço final pago, mecanismo de pagamento coerente com a absorção integral obrigatória da produção em F-041, financiamento de infraestrutura e possíveis impostos. Quando um custo apenas **condiciona preço**, não lançar simultaneamente despesa de caixa não especificada.
+**Contabilidade que de fato existe:** tesouro de produtores/nós/instituições (identidade ainda por fechar), receita efetiva das vendas, despesas monetárias do titular (investimento F-035, eventuais tarifas de arestas de terceiros e impostos depois ratificados), transferências reais **entre contas representadas** e capital monetário incorporado às infraestruturas. Quando duas contas reais do modelo interagirem, débitos/créditos devem reconciliar. A circulação de moeda total, impostos e outros fluxos da economia invisível **não** precisa ser simulada.
+
+**Ainda em aberto:** identidade/titularidade do tesouro produtor, apropriação da receita, tratamento de impostos, investimento em infraestrutura de terceiros e sua contrapartida, tarifas financeiras e eventual balanço macroeconômico opcional. **Não** reabrir a exigência de carteiras dos consumidores sem decisão explícita do usuário.
 
 ### F-023 — Mercado espacial: quantidade, preço e water-filling [RATIFICADO NO NÍVEL DE DESENHO]
 
@@ -378,9 +380,9 @@ A produção tem dois estágios lógicos distintos:
 
 **Separação obrigatória:** quantidade produzida \`q_prod\`; quantidade efetivamente alocada/vendida \`q_venda\`; preço de transação \`p\`; receita bruta \`Σ(q_venda × p)\`; receita líquida após **despesas monetárias explícitas**. O custo físico de transporte influencia competitividade e preço, **não se transforma automaticamente em débito ou crédito de dinheiro**.
 
-**Ainda abertos:** função exata de market clearing/water-filling, forma dos preços marginais, financiamento e liquidação de **toda a produção vendida por determinação de F-041**, escala de cálculo, agregação de demanda de trabalhadores, eventuais restrições físicas de capacidade em rotas e relação com consumo. A venda integral já foi deliberada; **a fonte financeira do pagamento** continua F-022.
+**Ainda abertos:** função exata de market clearing/water-filling, forma dos preços marginais, integração das impedâncias da rede e cálculo das tarifas, escala de cálculo, agregação da demanda de trabalhadores, eventuais restrições de capacidade de rota e relação com consumo. **F-046 resolve o escopo dos compradores:** vendas universais são liquidadas economicamente contra o setor consumidor implícito, sem carteira compradora nem restrição financeira adicional.
 
-**Invariante financeiro desejável:** quando uma venda monetária for liquidada entre contas representadas, o valor pago pelo comprador e recebido pelo vendedor deverá reconciliar, salvo transferências monetárias adicionais explícitas; a diferença de atratividade induzida por impedância física não é pagamento invisível a transportador.
+**Invariante financeiro superveniente:** a receita de venda entra no tesouro do titular produtor a partir da contraparte consumidora **externa ao perímetro modelado** (F-046), sem lançamento de débito em comprador individual. **Somente transferências entre contas monetárias realmente representadas** exigem contrapartidas espelhadas. A impedância física de transporte não é pagamento a transportador.
 
 ### F-024 — Infraestrutura abstrata e tarifação por nível [RATIFICADO NO NÍVEL DE PRINCÍPIO; FUNÇÃO EM ABERTO]
 
@@ -778,13 +780,13 @@ A antiga interpretação documentada de que uma produção de 10 poderia vender 
 2. Definir demanda **de referência** por mercado \`n\` e item \`i\`: \`D_{n,i}=Σ_{w∈n} k_w\`, com \`k_w=1\` inicialmente, salvo regra futura de qualificação. Uma mercadoria distinta usa a mesma base 1 por trabalhador; nenhuma escala específica é arbitrariamente atribuída por item.
 3. Alocar **a totalidade** da oferta via water-filling entre destinos com demanda de referência positiva e rotas válidas. Para cada mercado: \`Q_{n,i}=Σ_o q_{o→n,i}\`, e \`x_{n,i}=Q_{n,i}/D_{n,i}\`. O preço depende da oferta **agregada de todos os produtores** daquele item no mesmo mercado, não apenas de uma origem isolada.
 4. Exigir \`Σ_n q_{o→n,i}=Q_{o,i}\` para cada origem e item. \`D\` não é limite superior de absorção; \`Q>D\` é sobreoferta com queda de preço. Não carregar saldo excedente.
-5. Calcular receita pela quantidade integral vendida no preço do mercado: \`Receita_{o,i}=Σ_n q_{o→n,i} P_{n,i}\`. Tratar pagamentos, tarifas e origem do poder de compra separadamente conforme F-022 (aberto). **Não tratar receita potencial como caixa efetivamente conciliado antes de estabelecer contrapartida monetária**.
-6. Atribuir ao mercado consumidor quantidades efetivamente liquidadas uma só vez: \`A_{n,i}=Q_{n,i}\` se suas vendas estiverem reconciliadas financeiramente, sem duplicar mercadorias ao atravessar arestas. O indicador material proposto F-038 usa \`c_{n,i}=A_{n,i}/N_n\` para \`N_n>0\` e observa período/ciclo anterior, sem estoque físico.
+5. Calcular receita pela quantidade integral vendida no preço do mercado: \`Receita_{o,i}=Σ_n q_{o→n,i} P_{n,i}\`. Tratar pagamentos, tarifas e origem do poder de compra separadamente conforme F-022 (aberto). **Após F-046, registrar receita de vendas como entrada legítima ao tesouro representado sem carteira compradora**; tarifas e impostos reais seguem regras próprias.
+6. Atribuir ao mercado consumidor quantidades efetivamente compradas uma só vez: \`A_{n,i}=Q_{n,i}\`; não há carteira compradora a reconciliar (F-046), e a mesma mercadoria não pode ser duplicada ao atravessar arestas. O indicador material proposto F-038 usa \`c_{n,i}=A_{n,i}/N_n\` para \`N_n>0\` e observa período/ciclo anterior, sem estoque físico.
 7. O clearing deve ser determinístico quando o preço depende endogenamente do \`Q_{n,i}\` que o water-filling está alocando.
 
 **Teste mínimo:** produzir 10 unidades, ter dois mercados com demandas de referência 3 e 2. Se as rotas forem válidas, o motor atribui **todas as 10** às localidades, em alguma divisão não negativa somando 10. As unidades acima de \`D\` recebem preços menores, jamais deixam de ser vendidas. Dois produtores abastecendo o mesmo mercado compartilham a mesma base de preço calculada com \`Q\` agregado.
 
-**Ressalvas:** nenhum mercado economicamente acessível com \`D>0\` torna impossível calcular \`x=Q/D\` e precisa de regra de borda explícita; não criar comprador fictício silenciosamente. **Vendas universais e saldos compradores finitos insuficientes não coexistem automaticamente:** o contrato monetário F-022 deverá financiar/reconciliar toda receita sem emissão disfarçada nem compras negativas. A moeda não surge da equação de preço.
+**Ressalvas:** nenhum mercado economicamente acessível com \`D>0\` torna impossível calcular \`x=Q/D\` e precisa de regra de borda explícita. A capacidade de compra é **indeterminada** e não limitada por saldo simulado, por F-046. Não criar carteiras compradores, empréstimos, contabilidade de consumo ou restrições financeiras artificiais para essa compra.
 
 ### F-041 — Venda universal, demanda de referência unitária e preço por mercado [RATIFICADO]
 
@@ -796,7 +798,7 @@ A antiga interpretação documentada de que uma produção de 10 poderia vender 
 
 **Curva histórica informada pelo usuário, não ratificada:** \`P(x)=x^{-1/2}\` para \`0<x<1\`, \`P(1)=1\`, \`P(x)=x^{-2}\` para \`x>1\`. Seu objetivo: receita não decrescente ao aumentar a oferta, mas com ganho marginal decrescente, e penalidade por escassez relativa. **Inconsistência descoberta:** quando \`Q>D\`, \`R=Q(D/Q)^2=D²/Q\`, portanto a receita **cai** com o crescimento de Q. O ramo x^-2 deve ser substituído por outra lei antes de adoção.
 
-**Bordas não fechadas:** nenhuma localidade acessível com \`D>0\`; financiamento de receitas com compradores de saldos limitados; a natureza de comércio abstrato versus compra/consumo materialmente produtivo. Esses pontos não anulam o compromisso de venda total: são requisitos de arquitetura a resolver.
+**Bordas não fechadas:** nenhuma localidade acessível com \`D>0\`; a natureza de absorção econômica abstrata versus consumo material produtivo. **F-046 exclui a hipótese de saldos financeiros limitados de compradores**. Nenhum desses pontos permite reabrir venda parcial.
 
 ### F-042 — Estudo histórico da função racional [SUBSTITUÍDA COMO CANDIDATA PRINCIPAL POR F-043; NÃO RATIFICADA]
 
@@ -816,7 +818,7 @@ Ambos os ramos têm preço e primeira derivada coincidentes no ponto de encontro
 
 **Implicação do water-filling:** maximizar \`Σ_n R(Q_n,D_n)\` sujeito a \`Σ Q_n=Q_prod\` usa **receita marginal** \`∂R/∂Q\` na escolha dos destinos; não confundir preço médio de liquidação \`P=R/Q\` com receita marginal. Se o water-filling adotará a ótica de agentes formadores de preço ou de preços tomados, e como combina impedância física (não monetária) com receita e tarifas (monetárias), está em aberto.
 
-**Financeiro:** oferta sempre vendida não significa caixa automaticamente criado para pagamento. F-022 precisa determinar conta/sujeito do poder de compra e a contrapartida real das receitas, compatível com total absorção comercial e sem inventar compradores financiados silenciosamente.
+**Financeiro [SUPERADO POR F-046]:** os compradores não têm contas representadas nem limites de caixa. A receita de venda é gerada pelo mecanismo de mercado e creditada ao titular produtor; não se simula débito de consumidor nem se cria comprador institucional fictício. Contas reais dos titulares ainda registram investimentos, tarifas e transferências.
 
 
 ### F-043 — Curva única de preço por oferta/demanda [RATIFICADO]
@@ -839,7 +841,7 @@ Ambos os ramos têm preço e primeira derivada coincidentes no ponto de encontro
 7. Demanda inicial \`D_{n,i}=Σ_{w∈n}1\`, corrigível futuramente por \`k_w\`; \`D\` é referência, não teto, e **toda a produção é vendida** (F-041), com nenhuma quantidade em estoque (F-039).
 8. Esta equação é universal entre produtos; nenhum expoente ou preço-base arbitrário por mercadoria.
 
-**Preço e renda no mesmo destino:** se o mercado n receber \`q_1\` e \`q_2\` de dois produtores para o mesmo produto i, \`Q=q_1+q_2\`; ambos recebem o mesmo \`P=√(D/Q)\` por unidade, mas a atribuição de custos/tarifas por rota pode afetar a **receita líquida** de forma diferente. Não inferir receita paga sem contrapartida financeira definida em F-022.
+**Preço e renda no mesmo destino:** se o mercado n receber \`q_1\` e \`q_2\` de dois produtores para o mesmo produto i, \`Q=q_1+q_2\`; ambos recebem o mesmo \`P=√(D/Q)\` por unidade, mas a atribuição de custos/tarifas por rota pode afetar a **receita líquida** de forma diferente. Por F-046, a venda gera receita efetiva ao titular representado, com contraparte no setor consumidor implícito, **sem saldo financeiro individual de comprador**.
 
 **F-042 permanece como registro de alternativas matemáticas superadas:** a racional \`2/(1+x)\` é válida, mas foi preterida por \`x^{-1/2}\` por simplicidade e ausência de limite assintótico da receita.
 
@@ -858,20 +860,64 @@ A condição de primeira ordem é igualdade de receita marginal:
 
 **Nota de governança:** a identidade matemática fica demonstrada **sob o objetivo declarado de maximizar receitas agregadas e sem impedâncias assimétricas**. Não canoniza automaticamente o mesmo critério de maximização para produtores independentes, tarifas de terceiros, mercado com oferta por muitas origens ou water-filling em rede. A igualdade \`R'=P/2\` implica que **nesse caso simples** igualar preços ou receitas marginais gera a mesma alocação, mas isso deixa de resolver isoladamente o problema quando outros custos e incentivos são introduzidos.
 
-### F-045 — Financiamento da venda universal e impedância logística no clearing [ABERTO; PRÓXIMO GATE]
+### F-045 — Estudo de fechamento monetário entre compradores [SUPERADO PELA F-046]
 
-**Conflito estrutural a resolver sem esconder premissas:** F-041 exige \`Q_vendido=Q_produzido\`, F-043 fixa \`R=√(QD)\` e F-022 ainda não define **quem paga**. Se a soma dos saldos finitos dos compradores num ciclo for \`M\` e a fórmula produzir receita agregada \`R_T>M\`, **não é possível** transferir esse total dos compradores aos vendedores sem outra fonte/recirculação monetária ou sem mudar a regra do preço, da compra ou do orçamento. Não é correto afirmar que a própria fórmula monetária cria dinheiro ou que demanda 1 é necessariamente uma moeda disponível.
+O raciocínio anterior exigia conciliar a receita de vendas de F-043 com carteiras finitas dos consumidores, criando falsa incompatibilidade com venda integral F-041. **Essa exigência era importada da versão antiga e foi rejeitada expressamente.**
 
-**Teste de contradição:** no caso F-044 de \`Q=10\`, \`D_T=5\`, a receita bruta é \`√50≈7,071\`. Com dinheiro total dos compradores \`M=5\` e sem outro financiamento, faltam \`2,071\` para liquidar as compras integralmente. **Não resolver** descartando 2,071 de itens ou presumindo caixa ilimitado; isso violaria as decisões canônicas e a contabilidade.
+**Decisão superveniente:** os compradores **não têm carteira no jogo**, logo a comparação "compras de 7,071 com saldo comprador de 5" **não se aplica**. Não criar comprador institucional, orçamento de consumo, banco, crédito, compensação entre carteiras invisíveis ou dinheiro de comprador simulado apenas para reconciliar contas que deliberadamente não são modeladas.
 
-**Alternativas para futura deliberação, nenhuma ratificada:**
-- **Mercado com contraparte monetária explícita** capaz de liquidar vendas obrigatórias, com origem/emissão/resgate de moeda **claros e auditáveis**, sem fingir que créditos surgiram de transferência privada inexistente.
-- **Sistema fechado de contas com recirculação** e regra de liquidez/preço capaz de conciliar desembolsos dos compradores com as receitas. Só é compatível com F-043 se demonstrado que há caixa/fluxo suficiente em todos os estados permitidos; um multiplicador global de preço para caber no orçamento altera a normalização \`P(1)=1\`.
-- **Poder de compra abstrato institucional** não limitado à carteira de cada trabalhador, mas com origem, capacidade e liquidação explícitas; não confundir peso de demanda, orçamento e dinheiro do tesouro local.
+**Permanece legítima** a necessidade de registrar recebimentos e pagamentos **de agentes efetivamente representados** (tesouros de produtores/instituições, investimentos, tarifas, impostos futuros). A contabilização das receitas oriundas de compras de consumo pertence ao **setor externo/implícito**, que é uma fronteira de modelagem, não um banco ou carteira oculta.
 
-**Outro ponto aberto:** F-031 estabelece uma **impedância logística não monetária** e F-043 estabelece um preço monetário. Para combinar numa escolha de rota via water-filling, precisa existir um mecanismo dimensionalmente coerente: uma função de acessibilidade/preço líquido, uma convenção de comparação, ou um critério de otimização com variáveis compatíveis. **Não** subtrair diretamente "pontos de impedância" de "moedas" nem lançar tarifa financeira invisível por conta de geometria. A receita marginal \`R'\` e a impedância logística \`C(B)\` (interpretada em F-032 como impedância **marginal** de admitir carga) são grandezas diferentes; cada uma precisa de significado preciso na distribuição de fluxos. Não confundir \`C(B)\` com a derivada \`C'(B)\`.
+O outro problema identificado na versão anterior — a dependência dos fluxos na impedância e vice-versa — continua sendo relevante e foi reaberto como F-047.
 
-**Próxima decisão sugerida:** o mercado abstrato deve ser o **comprador institucional de última instância** com financiamento explícito, ou os trabalhadores/localidades devem usar **apenas poder de compra contabilizado previamente**, exigindo reavaliação das condições para garantir venda universal em todo cenário? A pergunta é arquitetural, não mera calibração de parâmetro.
+### F-046 — Economia consumidora aberta, sem carteiras de compradores [RATIFICADO]
+
+**Princípio canônico:**
+1. **Nenhuma carteira, orçamento de compras, saldo comprador, limite de pagamento ou verificação de caixa** para os trabalhadores/localidades na função de consumidores. Os compradores **compram e pronto**, em quantidades definidas pelo mercado e pela referência de demanda \`D=Σ k_w\`, não por caixa disponível.
+2. Os produtos nomeados no jogo são um subconjunto de uma **economia abstrata mais ampla**, com outros bens e serviços **invisíveis**. A despesa com as mercadorias modeladas pode crescer ou diminuir à custa de gastos invisíveis, cujo volume/valor não será simulado. **Poder de compra consumidor é indeterminado.**
+3. **Toda a produção vendida** no preço canônico \`P=√(D/Q)\` gera receita nominal efetiva creditada ao **tesouro titular do produtor**, sem débito em conta de comprador representado.
+4. Uma economia financeira **aberta e parcial** não precisa preservar quantidade de moeda no submodelo visível. A entrada de dinheiro por vendas é **receita de transação com setor consumidor implícito**, não dinheiro material emitido diretamente por trabalhadores nem um débito em "tesouro consumidor" inventado.
+5. Os saldos financeiros **que o jogo representa** continuam reais: compras de infraestrutura F-035 exigem caixa, tarifas alheias e impostos futuros podem transferir recursos e o dinheiro de um tesouro não pode ser gasto duas vezes. Somente interações entre contas explicitamente simuladas devem ter débitos/créditos espelhados.
+6. Não reaproveitar exigências, controles ou invariantes legados de "financiar a demanda com a carteira do consumidor", "pagar a venda com orçamento predeterminado" ou "aumentar demanda para guardar mercadorias". A F-022 é reinterpretada restritivamente.
+7. Para consumo material F-038/F-040, o atendimento \`A_{n,i}=Q_{n,i}\` consiste na **quantidade comercialmente absorvida** naquele mercado, sem comprovante de saldo consumidor, estoque ou entrega individual.
+8. A possibilidade futura de mercados diferentes terem padrões de consumo e produtividade não implica que o trabalhador receba dinheiro para gastar nem que sua demanda seja uma carteira.
+
+**Testes de regressão conceitual:**
+- Oferta Q=10 e demanda D=5 ⇒ P=√(5/10), receita ≈7,071, creditada ao titular sem necessidade de demonstrar saldo comprador ≥7,071.
+- Um trabalhador comprar economicamente mais que sua unidade-base de demanda não cria estoque, limite financeiro ou dívida.
+- A entrada de receita em um tesouro não permite que ele **gaste duas vezes** o saldo em investimento ou tarifa.
+- Duas contas reais trocando uma tarifa mantêm transferências financeiras reconciliadas; o setor consumidor externo **não** é uma conta real adicional.
+
+**Questões ainda abertas:** apropriação de receitas por nó ou instituição, propriedade e aplicação de tributos, tarifas, escala nominal da moeda, como o consumo por mercadoria contribui para desenvolvimento F-038. **Não reabrir carteiras compradoras para resolver essas pendências.**
+
+### F-047 — Expectativa fixa de carga por ciclo versus equilíbrio endógeno [HIPÓTESE EM ANÁLISE; NÃO RATIFICADO]
+
+**Problema real:** em F-031, a impedância de uma aresta depende de \`B_e\`, mas o \`B_e\` agregado depende da alocação do water-filling, que por sua vez utiliza a impedância. \`B → C(B) → distribuição → B\` é **acoplamento simultâneo**, não impossibilidade lógica. Pode-se encontrar equilíbrio endógeno resolvendo a rede, mas em mapas grandes pode ser custoso; as escolhas de normalização e objetivo matemático continuam em aberto.
+
+**Método de expectativa trazido pelo usuário, como proposta de implementação para avaliar:** estimar a **taxa de carga equivalente** \`B̂_{e,t}\` **antes** do ciclo \`t\`, usando informação de ciclos anteriores, e fixar o custo de impedância unitário **para todo o ciclo**:
+\`C_{e,t}^{fixo} = C_{livre,e}(I_{e,t}^{snapshot}) × [1+(B̂_{e,t}/K_e(I_{e,t}^{snapshot}))^p]\`.
+
+Depois realizar water-filling de toda oferta com essas impedâncias congeladas, sem recalcular o custo unitário de cada aresta quando cada parcela do fluxo é alocada; obter a carga **efetiva** \`B_{e,t}\` resultante; atualizar a expectativa para o **próximo** ciclo, por regra ainda não ratificada. Exemplo mínimo candidato: \`B̂_{e,t+1}=B_{e,t}\`. Para evitar distorção se a duração dos ciclos econômicos variar, **todas essas quantidades são taxas por unidade de tempo de referência**, nunca totais brutos sem normalização.
+
+**História operacional:** um porto implicitamente representado pela aresta terra↔mar pode ter volume esperado quase constante. O custo unitário de utilização durante um ciclo deriva dessa expectativa (ex.: tráfego normalmente com cargueiros cheios), e uma mudança real de carga afeta o custo **no ciclo posterior**. Isto **não** exige modelar cargueiros/contêineres individualmente e é coerente com F-033/F-034.
+
+**Vantagens:** preço/impedância de uso da infraestrutura **único por aresta e ciclo**; nenhuma dependência operacional imediata de \`B_e\` no próprio market clearing; resultado independe da ordem de iteração das transações; redução de custo de solução. **Não elimina** a dependência do preço de mercado \`P_{n,i}=√(D/Q)\` em relação ao \`Q\` agregado que o water-filling está determinando, mas esta dependência é monotônica/concava para D>0 e pode ser resolvida como problema de alocação.
+
+**Riscos que impedem ratificação imediata:**
+1. **Oscilação entre rotas:** se duas arestas paralelas têm custo natural igual, p alto e total Q=2 com capacidades K=1, uma rota que levou todo Q no ciclo anterior teria \`C=17 C_livre\`, a outra vazia \`C=C_livre\`; no próximo ciclo, todo fluxo pode mudar de lado e repetir inversamente indefinidamente, se não houver divisão de caminhos equivalentes ou regra estável. O próprio congelamento não garante convergência temporal.
+2. **Primeiro ciclo:** como inicializar expectativas de carga de arestas nunca utilizadas, principalmente mar aberto, sem supor fluxo positivo exógeno injustificado? Inicializar pela carga anterior zero é simples, mas pode produzir choque de congestionamento no ciclo seguinte.
+3. **Infraestrutura melhorada durante um ciclo:** F-035 garante benefício contínuo desde a incorporação de capital no instante lógico de construção. Se o mercado roda em ciclos discretos, usar estado logístico do início do ciclo para **aquele clearing** e novas melhorias no próximo clearing; isso não significa negar efeitos físicos imediatos no movimento dos trabalhadores dentro do turno.
+4. **Tarifas monetárias** por trecho podem permanecer vinculadas ao nível da infraestrutura e à utilização **efetivamente vendida** do ciclo, sem congelar o montante total devido ao titular. Não confundir preço de impedância não monetário com tarifa financeira.
+5. **Water-filling ainda precisa resolver preços endógenos da oferta agregada**, mesmo se as impedâncias são fixas por ciclo; não presumir que um único passe guloso por produtor seja o ótimo.
+6. **Sem estoque e com venda integral:** congestionamento alto não permite descartar produção; a alocação precisa entregar todos os fluxos mesmo se só existem rotas muito caras. Rotas fisicamente intransitáveis versus inviabilidade de custo são casos distintos.
+
+**Experimento comparativo recomendado antes de escolher método:**
+- Rede com uma rota curta costeira limitada e rota alternativa longa, oferta fixa e demanda com curva F-043;
+- congestionamento crescente (F-031) com custos endógenos versus custos congelados por expectativa \`B̂\`;
+- choque súbito de produção, abertura/melhoria de infraestrutura e alternância de destinos;
+- condições de simetria de rotas e surgimento de ciclos de oscilação (em particular com p=4);
+- medir estabilidade, preços únicos por mercado/ciclo, qualidade da alocação e custo computacional em mapas Goldberg grandes.
+**Governança:** a existência do acoplamento é constatada; o uso de expectativa congelada e a fórmula de atualização **ainda não foram ratificados**. Não introduzir coeficiente de suavização arbitrário nem subsistema de contratos marítimos antes dos testes.
 
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
@@ -939,3 +985,5 @@ A condição de primeira ordem é igualdade de receita marginal:
 - **2026-11-07 — correção do princípio de absorção e matemática de preços:** F-041 ratificada: toda a produção encontra mercado, venda 100%, demanda de referência 1 por trabalhador/produto (k futuro). F-039/F-040 corrigidas: nada de inventário ou parte não vendida. Identificada falha da função x^-2 quando oferta supera demanda: R=D²/Q decresce, contrariando objetivo. F-042 propõe P=2/(1+x) para receita total sempre crescente e ganho marginal decrescente, ainda não ratificada; financiamento F-022 pendente.
 
 - **2026-11-07 — função única de preço aprovada e primeiro teste de clearing:** F-043 ratifica P=(Q/D)^(-1/2), R=√(QD), R'=P/2 e R''<0 para toda mercadoria/mercado; F-042 racional vira alternativa histórica. F-044 verifica alocação proporcional à demanda sob acesso igual e objetivo de maximizar receita agregada. F-045 abre a incompatibilidade potencial entre venda universal, receita calculada e saldos compradores finitos; impedância não monetária não pode ser subtraída arbitrariamente da receita monetária.
+
+- **2026-11-07 — correção do perímetro financeiro e estudo da expectativa de infraestrutura:** F-046 ratificada: compradores não têm carteira, caixa nem restrição orçamentária; o poder de compra consumidor é indeterminado e pode realocar gastos em bens invisíveis. Toda venda gera receita ao tesouro produtor; a moeda do setor visível é aberta. F-022/F-023/F-040/F-043/F-045 revistas para não exigir conciliação de contas compradoras inexistentes. F-047 avalia congelar impedância por aresta durante o ciclo econômico usando volume esperado, com atualização entre ciclos, comparando a equilíbrio endógeno; alerta para oscilação temporal de rotas e necessidade de teste antes de ratificar.
