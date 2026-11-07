@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 0.8  
+**Versão conceitual:** 0.9  
 **Situação:** deliberação em andamento; núcleo explicitamente ratificado nesta conversa  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -307,30 +307,35 @@ Todos os agentes físicos compartilham uma mesma **referência de tempo lógico*
 
 **Limites da aprovação:** não foram ratificados o algoritmo específico de arbitragem, preferências de acesso, direitos sobre materiais, divisão proporcional, prioridades, modelo de eventos, representação do tempo interno, nem distribuição de recursos indivisíveis. A realização de eventos exatamente simultâneos ainda precisa de uma regra explícita. Ser temporalmente coerente **não implica** distribuir recursos igualmente nem garantir qualquer direito de acesso.
 
-### F-019 — Arbitragem local de recursos escassos [ABERTO; experimento mínimo]
+### F-019 — Arbitragem local de concorrência física [RATIFICADO COMO PRINCÍPIO]
 
-Objetivo: descobrir a regra **menos complexa** que preserve F-018 quando diferentes trabalhadores acessam o mesmo material, oportunidade produtiva, obra ou aresta.
+A concorrência é resolvida **no local e no intervalo temporal em que realmente ocorre**, somente quando duas ou mais ações válidas dependem da **mesma disponibilidade física limitada** (material, oportunidade de atuação, capacidade da infraestrutura ou passagem). Não se presume disputa quando as ações são independentes.
 
-**Experimento ilustrativo:**
-- Um nó tem uma reserva acessível de **1 unidade divisível de madeira**, sem regeneração no intervalo estudado.
-- Trabalhador B encontra-se no nó e começa a extrair em \`t=0\`.
-- Trabalhador A chega ao nó em \`t=0,4\` e começa a extrair nesse instante.
-- Ambos têm acesso legítimo equivalente; cada um consegue extrair no máximo \`1 unidade de madeira / unidade de tempo\` quando há madeira disponível.
-- B obtém \`0,4\` antes da chegada de A; restam \`0,6\` unidades.
-- Se permitirmos extração **simultânea proporcional às taxas efetivas de extração**, ambos extraem \`0,3\` unidades entre \`t=0,4\` e \`t=0,7\`; a reserva se esgota em \`t=0,7\`.
-- Resultado sob essa hipótese: **B = 0,7**; **A = 0,3**; estoque restante = **0**. A mesma regra deve produzir esse resultado tanto processando A antes de B quanto B antes de A.
+**Contrato conceitual mínimo:**
+1. **Determinar a elegibilidade física e os direitos de acesso aplicáveis** no instante lógico da ação. A existência de capacidade física não cria automaticamente direito de uso.
+2. **Verificar se há concorrência real:** participantes válidos, períodos sobrepostos e demanda total de uso superior à disponibilidade compartilhada. Se não há conflito, resolver diretamente.
+3. **Arbitrar apenas o bem/capacidade realmente disputado:** a resolução precisa conservar quantidades materiais, respeitar a cronologia e não duplicar tempo de ação ou produção.
+4. **Aplicar resultados causais aos participantes**, registrando o que foi realmente utilizado, o que permaneceu disponível e o tempo efetivamente empregado; trabalho impedido por indisponibilidade não é consumido automaticamente.
+5. **Preservar o determinismo sem atribuir precedência ao loop interno do motor.** Empates e conflitos exatos de simultaneidade exigem uma política explícita posteriormente ratificada.
 
-**Status: hipótese de concorrência**, não ratificação de rateio nem regra geral de propriedade. O exemplo exige material divisível, direitos equivalentes e ausência de interferência física/capacidade compartilhada adicional. Se os trabalhadores não puderem operar simultaneamente, se houver diferenças físicas ou se um terceiro detiver os direitos, **a hipótese não se aplica automaticamente**.
+**O que esta decisão não canoniza:** rateio proporcional, fila primeiro a chegar/primeiro a ser servido, desempate por ID, prioridades econômicas, mercado, propriedade específica, capacidade nominal por tile, granularidade numérica, custo por tentativa frustrada ou obrigação de microturnos globais. Essas são questões distintas.
 
-**Opções para investigação:**
-- **O-1 — Divisível e acesso equivalente:** dividir a disponibilidade por taxas de uso físicas efetivas, somente na janela de concorrência; evitar prioridades dependentes do loop de execução.
-- **O-2 — Recurso indivisível:** identificar momento de aquisição e definir conflito simultâneo com um desempate determinístico, explícito e auditável; não inventar um rateio material inexistente.
-- **O-3 — Acesso desigual/autoridade:** condicionar participantes elegíveis antes de arbitrar, sem pressupor que a primeira execução do software constitua legitimidade.
-- **O-4 — Capacidade do nó/aresta:** antes de adotar qualquer fórmula de saturação, verificar se as capacidades físicas relevantes do espaço bastam para representar concorrência sem um teto produtivo independente.
+**Interpretação física:** o recurso pode ser uma quantidade divisível; ou uma unidade indivisível; ou uma capacidade de acesso, na qual só uma quantidade limitada de agentes pode trabalhar ou atravessar simultaneamente. O núcleo da arbitragem é comum, mas as consequências físicas podem diferir.
 
-**Critérios de validação futura:** conservação estrita do recurso; não extração sem presença física; respeito a instantes de chegada; invariância à permutação de processamento; determinismo/replay; ausência de consumo duplo; complexidade de atualização local em grafos grandes; resultado de empate estável e justificado.
+### F-020 — Modalidades mínimas de arbitragem local [ABERTO; dois experimentos]
 
-**Decisão ainda necessária:** a regra geral de participação e arbitragem de operações simultâneas, incluindo critérios para materiais indivisíveis e direitos desiguais. Não confundir **equidade como política econômica** com **causalidade como regra física**.
+**Cenário A — Material divisível:** nó com 1 unidade de madeira acessível, sem regeneração no intervalo; B começa em \`t=0\`, A chega em \`t=0,4\`; cada um consegue extrair 1 unidade por unidade de tempo; ambos têm igual direito, operam simultaneamente e não interferem em capacidade operacional. Sob a hipótese de divisão por **taxa efetiva de extração**, B extrai 0,4 até a chegada de A e depois ambos extraem 0,3, com esgotamento em \`t=0,7\`; totais finais B=0,7, A=0,3, reserva=0. A permutação da ordem computacional deve preservar esses resultados. **Números e rateio são ilustrativos.**
+
+**Cenário B — Recurso indivisível:** dois trabalhadores tentam ocupar o mesmo posto operacional, ou obter um único item que não pode ser dividido, **no mesmo instante lógico**. Nenhuma decisão temporal anterior determina sozinho o vencedor. O contrato futuro deve definir prioridade/empate legítimos, deterministicamente e sem duplicar a unidade. Repartição proporcional de material indivisível é inválida.
+
+**Hipóteses a avaliar separadamente:**
+- **Divisível:** participação proporcional às taxas físicas efetivas, com limites individuais e materiais disponíveis, *apenas* se os participantes forem igualmente elegíveis e puderem agir em paralelo. Caso contrário, regras de acesso/capacidade têm precedência.
+- **Indivisível:** uma decisão discreta de concessão por oportunidade, com política de resolução de empate explícita. Não eleger IDs de agentes ou ordem de chegada em empate exato como princípio automático.
+- **Capacidade compartilhada:** quando a limitação é operacional (posto, espaço, vazão de aresta), não a confundir com estoque de material. A infraestrutura pode modificar a capacidade sem alterar o algoritmo de autorização de acesso.
+
+**Testes de aceitação antes de ratificação:** invariância à permutação de processamento; conservação de quantidade e acesso exclusivo de unidade indivisível; respeito aos instantes de chegada; saldo de tempo do agente após esgotamento ou bloqueio; concorrência repetida sem duplicar posse; resultados estáveis com mudanças na escala de discretização; execução local eficiente em grafos grandes.
+
+**Próxima decisão prioritária:** escolher se a modalidade proporcional por taxa física é a norma-padrão *somente* para recursos genuinamente divisíveis, de acesso equivalente, com ações paralelas possíveis; e decidir como modelar um recurso indivisível sem arbitrar por mero ID. Nenhum destes métodos está ratificado.
 
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
@@ -365,4 +370,5 @@ Objetivo: descobrir a regra **menos complexa** que preserve F-018 quando diferen
 - **2026-11-07 — terceira deliberação:** F-012 aprovada no nível estrutural (agente = localização + ação + demanda) e F-013 aprovada como diretriz (orçamento único de tempo para ações). F-014 permanece aberta, assim como a dinâmica de produção F-011.
 - **2026-11-07 — quarta deliberação:** F-015 ratificada (progresso temporal preservado entre turnos, sem aplicação antecipada ou duplicada de efeitos), F-016 aberta (representação física do progresso e disponibilidade de resultados).
 - **2026-11-07 — quinta deliberação:** F-017 ratificada (ações distintas sequenciais no mesmo período, limitadas ao tempo disponível); F-018 aberta à época.
-- **2026-11-07 — sexta deliberação:** F-018 ratificada no nível de princípio (tempo lógico global, causalidade e independência da ordem interna de processamento); F-019 aberta para arbitragens locais de recursos escassos. O rateio proporcional e os valores do experimento não são regras ratificadas.
+- **2026-11-07 — sexta deliberação:** F-018 ratificada no nível de princípio (tempo lógico global, causalidade e independência da ordem interna de processamento); F-019 aberta à época.
+- **2026-11-07 — sétima deliberação:** F-019 ratificada como arbitragem física local apenas diante de conflitos reais, sem política automática de repartição; F-020 aberta para modalidades divisíveis e indivisíveis, com experimentos e requisitos de teste.
