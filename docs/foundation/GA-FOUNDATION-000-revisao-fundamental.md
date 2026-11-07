@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 1.8  
+**Versão conceitual:** 1.9  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -610,39 +610,33 @@ A diferença **não é arredondamento**, mas definição de qual grandeza a fun�
 **Status:** experimento numérico realizado e interpretado. F-030 ratificada; funções convexas F-031, integral marginal de impedância, solução do water-filling e níveis/valores de investimento permanecem **ABERTOS**.
 
 
-### F-033 — Arestas terra/terra, terra/mar e mar/mar [PROPOSTO; NÃO RATIFICADO]
+### F-033 — Três ambientes de aresta sem modais explícitos [RATIFICADO O PRINCÍPIO DE EMBARCAÇÕES IMPLÍCITAS; DEMAIS DETALHES ABERTOS]
 
-**Pergunta de desenho:** as três combinações de ambientes precisam de mecânicas próprias ou das mesmas equações com parâmetros naturais diferentes?
+**Princípio de simplificação ratificado:** o transporte marítimo não precisa de uma camada separada de embarcações, frota, habilitação naval ou veículos como entidades. **A infraestrutura da aresta de contato terra↔mar (a "infraestrutura portuária" abstrata) já representa implicitamente a disponibilidade, adequação e capacidade operacional dos meios de transporte marítimo necessários ao escoamento ou deslocamento.** O nível natural/investido da aresta determina sua eficiência e capacidade. Não adicionar uma verificação redundante de "possui navio" ou "tecnologia naval X" para permitir o uso de uma rota que a própria infraestrutura torna utilizável.
 
-**Diretriz recomendada:** **uma única função universal** de impedância/capacidade/saturação para arestas e operações logísticas de nós (F-030/F-031), com **duas diferenças qualitativas mínimas** decorrentes da natureza do meio: (a) elegibilidade/capacidade de atravessar o meio aquático para agentes físicos, e (b) **operação de interface** quando o fluxo econômico muda de meio terrestre para marítimo ou vice-versa. Evitar três fórmulas de custos independentes.
+**Uma única equação de capacidade/impedância/saturação** permanece candidata para as arestas terra↔terra, terra↔mar e mar↔mar, usando diferenças **naturais** de ambiente, distância, geometria e capital investido (F-007, F-024/F-025, F-030/F-031). **Não** criar classes de estrada, porto, navio, ferrovia etc. A classificação natural terra/mar é obtida dos nós adjacentes, sem requisito de três algoritmos.
 
-| Conexão geométrica | Contexto físico natural | Operações qualitativas candidatas | Cálculo quantitativo |
-| --- | --- | --- | --- |
-| Terra↔terra | Solo/relevo/distância, infraestrutura natural transitável | Circulação terrestre; não impõe mudança de meio | Mesma função \`C(B,I)\` aplicada a atributos naturais e investimento |
-| Terra↔mar | Contato costeiro entre meios, condições de embarque/desembarque | Transição modal; custo e capacidade **do processamento da interface**, não de um tipo obrigatório de porto | Mesma função para aresta/operacão efetiva de nó, com capacidades naturais limitadas e investimento |
-| Mar↔mar | Circulação em ambiente aquático, distância e outras condições naturais | Requer habilitação adequada de navegação para movimento físico; mercadorias continuam em fluxo comercial abstrato | Mesma função \`C(B,I)\` e atributos naturais pertinentes, **sem** cobrar descarga entre todos os nós marítimos |
+| Aresta | Sentido da infraestrutura natural e investida |
+| --- | --- |
+| Terra↔terra | Capacidade de circulação no terreno |
+| Terra↔mar | Capacidade abstrata de **transferência entre meios**, incluindo implicitamente embarque/desembarque e adequação das embarcações, **sem objeto porto/embarcação separado** |
+| Mar↔mar | Capacidade de circulação pelo ambiente marítimo; a impedância de cada trecho continua contando, mesmo quando a interface costeira é excelente |
 
-**Fonte da classificação:** derivar as três combinações do atributo natural já conhecido dos nós (terrestre/aquático). Não persistir rótulos de "estrada"/"porto"/"ferrovia" como categorias de infraestrutura; não inferir que o jogador possa atravessar mar a pé apenas por sua impedância numérica ser pequena.
+**Contrato de rota preferencial [PROPOSTO]:** custo de escoamento = soma das impedâncias marginais das **arestas efetivamente utilizadas**, incluindo as duas arestas de interface terra↔mar em uma travessia origem-terra → mar → destino-terra. **Não somar um segundo custo de embarque/desembarque em nó para a mesma transferência**, nem cobrar custo de "porto" em cada nó de mar aberto. Preservar a opção de operações logísticas em nós **somente quando constituam outra operação física distinta**, para não contradizer F-030.
 
-**Interface terra/mar:** aplicar a operação de transferência (embarque/desembarque, transbordo ou equivalente econômico) **uma vez por mudança real de meio**, não a cada tile ou aresta marítima. Para evitar duplicar capacidade ao haver várias arestas costeiras no mesmo nó, **preferir representar uma capacidade compartilhada de interface associada ao nó costeiro**; a aresta terra-mar estabelece conectividade, enquanto o nó é responsável pelo esforço de processamento logístico. A distribuição espacial de capacidade ao refinar a malha deve respeitar extensão física de costa/oportunidade e não criar artificialmente mais portos por existir mais tiles. A escolha exata nó versus aresta como portador dessa propriedade ainda **não está ratificada**.
+**Viabilidade em vez de exceção tecnológica:** a viabilidade econômica de uma rota marítima emerge do custo, capacidade e saturação **de todos os seus trechos**, inclusive ambas as interfaces costeiras e o próprio mar aberto. Um ótimo acesso costeiro **não torna a travessia oceânica automaticamente barata**: o restante da rota ainda participa do cálculo. Uma passagem com capacidade natural baixa pode ser possível em pequena escala mas impraticável para fluxo elevado, sem exigir um bloqueio arbitrário de tecnologia. A elegibilidade física de ações de trabalhadores depende da própria capacidade de trânsito nas arestas e do consumo de tempo universal, sem teletransporte; a forma exata de representar deslocamento sobre mar permanece em estudo.
 
-**Elegibilidade versus custo:** movimento de trabalhador é uma ação física, sujeita à posição no grafo. Entrar e atravessar meio aquático exige uma capacidade de navegação que poderá ser abstrata e baseada em tecnologia; não é necessário criar navios como unidades de mercadoria. O **escoamento comercial por water-filling** também pode necessitar elegibilidade marítima para que a rota exista economicamente em determinada era, mas **não movimenta** os trabalhadores para cumprir o fluxo de comércio. Não presumir que \`K>0\` sempre implique permissão de navegação em qualquer época. A forma da habilitação tecnológica permanece **ABERTA**.
+**Contagem por resolução do grafo [ABERTO]:** várias arestas terra↔mar adjacentes a um único nó podem representar **trechos costeiros fisicamente distintos** e não devem obrigatoriamente compartilhar uma capacidade única do nó. Contudo, a divisão de uma mesma linha costeira em mais tiles **não pode multiplicar artificialmente a capacidade natural**. Proposta: derivar capacidade natural da geometria efetiva do contato/costa (p.ex. extensão física do segmento de contato e propriedades naturais), de modo que a soma de capacidades seja aproximadamente conservada sob refinamento. Investimento em arestas específicas também precisa respeitar escala/área de contato. A regra geométrica ainda não foi ratificada.
 
-**Nó de interface e arestas em conjunto:** custo espacial de uma rota candidata:
-\`C_rota = Σ_{e∈rota} C_e + Σ_{interfícies n efetivamente utilizadas} C_n^{transição}\`,
-sem penalidade logística extra por mera passagem por tile terrestre ou marítimo. As contribuições naturais do nó litorâneo podem ser baixíssimas em capacidade, produzindo saturação explosiva para grandes fluxos (caso da praia de F-030/F-032), mas melhorias financeiras modificam a mesma capacidade sem um objeto "porto" distinto.
+**Casos para homologação:** 
+1. Caminho terra→mar→mar→terra: contar exatamente as duas arestas de interface e as arestas marítimas percorridas, **sem** módulo de navios e **sem** tarifa/custo adicional de descarga em nós.
+2. Interface costeira muito desenvolvida + mar aberto naturalmente dificultoso: a rota continua onerosa, não vira travessia gratuita.
+3. Interface costeira natural de baixa capacidade: admite pequeno fluxo, mas congestionamento convexo inviabiliza economicamente excesso elevado.
+4. Dois pontos de contato na mesma costa e refinamento da malha: não criar capacidade ou produtividade ex nihilo ao aumentar número de arestas.
+5. Worker atravessando mar: progresso temporal localizado e determinístico; a travessia não pode acontecer por teletransporte ou capacidade do trabalhador usada duas vezes.
+6. Water-filling sem mercadorias físicas: os fluxos são abstrações econômicas, não navios operacionais, mas precisam respeitar a impedância da rede.
 
-**Atenção — investimento em mar aberto:** a infraestrutura é abstrata, mas permitir que qualquer investidor compre melhorias e titularidade de toda aresta mar↔mar pode gerar incentivos de apropriação de oceanos sem contrapartida física inteligível. **Não** proibir esse investimento automaticamente nem canonizar sua elegibilidade. Testar como tecnologia, condição física, propriedade e projetos de rota marítima devem afetar investimentos em mar aberto **antes** de tratar o mar como uma malha de estradas privadas.
-
-**Testes mínimos antes de ratificar:**
-1. Caminho terra→mar→mar→terra; registrar duas operações de transição e nenhum pedágio/custo de descarga nos tiles intermediários do mar.
-2. Duas arestas costeiras adjacentes ao mesmo nó; a capacidade de transferência não pode ser multiplicada indevidamente por permitir escolha de outra aresta.
-3. Refinar uma costa em mais tiles mantendo a mesma extensão física; custo/capacidade total não deve crescer artificialmente só pela resolução da malha.
-4. Uma praia natural admite pouco fluxo e congestiona sob carga elevada; um litoral favorável e/ou investido recebe mais pela mesma fórmula, sem classe "porto".
-5. A impossibilidade física/tecnológica de navegação não pode ser vencida apenas escolhendo o menor custo escalar.
-6. Rota com transporte comercial abstrato marítimo não teletransporta o trabalhador e não cria inventário de mercadorias.
-
-**Estado:** F-001/F-007/F-030 ratificam a base física/natural. As regras de interface e elegibilidade marítima propostas aqui **não** estão ratificadas. F-031 (saturação convexa) e F-032 (custo marginal) também permanecem em validação.
+**Ainda aberto:** função exata das capacidades naturais por ambiente; modelagem geométrica costeira; decisão sobre investimentos/titularidade de arestas em mar aberto; limite real de atravessabilidade quando \`K=0\`; saturação convexa F-031; clearing marginal F-032. **Não** concluir que uma costa desenvolvida torne todo oceano navegável com custo desprezível, ou que o modelo exija três tipos de infraestrutura.
 
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
@@ -694,3 +688,5 @@ sem penalidade logística extra por mera passagem por tile terrestre ou marítim
 - **2026-11-07 — experimento do gargalo natural:** F-032 documenta duas rotas com uma praia natural de capacidade baixa e um acesso alternativo, testando fluxo de 6 unidades, função convexa p=4 e níveis de investimento. Detectada ambiguidade crítica entre interpretar C(B) como impedância marginal (water-filling iguala C) e como custo médio (ótimo requer C+B C'); recomendado testar a interpretação marginal e integral de esforço H(B)=∫C(z)dz, sem ratificação prematura.
 
 - **2026-11-07 — estudo de três tipos naturais de conexão:** F-033 proposta: mesma equação para terra↔terra, terra↔mar e mar↔mar, com elegibilidade de navegação e transferência de meio como possíveis distinções qualitativas mínimas. Evitar contagem de custo/capacidade por tile da costa ou por tile oceânico e evitar investimentos/privatização involuntários em mar aberto. Nenhuma regra adicional ratificada.
+
+- **2026-11-07 — simplificação das travessias marítimas:** F-033 reformulada por decisão de eliminar embarcações/tecnologia naval como controles separados: a aresta terra↔mar representa implicitamente meios de embarque, desembarque e transporte necessários. A rota usa as mesmas equações de todas as arestas, sem custo de transição duplicado nos nós. Permanecem abertos geometria/capacidade costeira e a atribuição de investimentos em mar aberto.
