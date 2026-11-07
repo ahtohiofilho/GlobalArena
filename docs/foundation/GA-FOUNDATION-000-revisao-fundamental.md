@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 3.0  
+**Versão conceitual:** 3.1  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -1016,11 +1016,11 @@ receita bruta total \`q_A P_A + q_B P_B≈6,9183462475\` a ser creditada ao teso
 
 **Status:** regra \`P/L\` e seu equilíbrio simultâneo são uma **candidata que combina F-043 e F-049 sem nova variável monetária**. Resultados dos exemplos foram demonstrados; **nenhum destes resultados ratifica a regra de mercado, o objetivo agregado, a função específica de saturação ou o solver**.
 
-### F-051 — Gate de validação do clearing multi-civilização [EXPERIMENTO CONCLUÍDO; ESCOLHA INSTITUCIONAL NÃO RATIFICADA]
+### F-051 — Gate de validação do clearing multi-civilização [ALTERNATIVA A RATIFICADA PELA F-054; ESTUDO HISTÓRICO]
 
 **Próximo contrato a decidir:** qual é o agente/critério de escolha do water-filling quando várias civilizações concorrem pelos mesmos destinos e o preço é compartilhado?
 
-**Alternativa A [mais simples]:** alocador global determinístico orientado por \`P/L\` ou \`R'/L\`, conservando 100% da oferta por civilização e atribuindo receita nominal de cada parte ao respectivo tesouro. Essa regra não promete maximização da receita individual de cada civilização, mas facilita a resolução agregada e a unicidade por critério canônico.
+**Alternativa A [RATIFICADA COMO ARQUITETURA DE MERCADO EM F-054]:** alocador global determinístico, conservando 100% da oferta por civilização e atribuindo a receita nominal de cada parte ao seu tesouro. **A fórmula matemática particular P/L ou R'/L permanece proposta em F-050/F-053**, não é canonizada pela escolha do alocador global.
 
 **Alternativa B [mais estratégica]:** cada civilização atua como ofertante que procura maximizar sua própria receita pela participação \`q_{c,n}\` e depende dos demais no mesmo mercado, possivelmente produzindo um equilíbrio competitivo/Nash diferente; maior custo de cálculo e possibilidade de desigualdade entre civilizações com quotas distintas.
 
@@ -1076,7 +1076,23 @@ A grandeza \`D_n/L_n²\` funciona como **demanda ponderada por acessibilidade**,
 
 **Cautelas:** em grafos multiorigem, multimercado, multiproduto e com arestas compartilhadas, \`G_r\` pode não ser gradiente de um único potencial convexo. A existência de uma equação contínua de equilíbrio **não garante unicidade de fluxos por rota**, solução rápida, nem convergência de iterações simplistas. Os fluxos equivalentes podem exigir desempate determinístico; soma de cargas/preços pode ser única mesmo quando a decomposição de rotas não é. Benchmark numérico e teste de degenerescência são gates necessários.
 
-**Próxima decisão de produto:** ratificar ou rejeitar a **alocação automática global orientada à competitividade logística**, sem ordens de venda individuais por civilização. Caso ratificada, especificar a interface mínima do solver e desenhar benchmark de grafo; caso contrária, reexaminar a função objetiva de cada civilização e o papel econômico da impedância física.
+**Decisão superveniente F-054:** a alocação global automática foi ratificada, sem ordens individuais de venda. Permanecem a validar o índice P/L, o mercado local de distância zero e o contrato operacional do solver (F-055).
+
+
+### F-054 — Mercado global automático, sem escolha individual de destinos [RATIFICADO]
+
+**Decisão aceita pelo usuário:** a economia utiliza um **único alocador comercial global e determinístico**, não um mercado em que cada civilização dá ordens de venda por unidade ou escolhe compradores individuais. O controle do jogador é estratégico: **produção, trabalhadores, localização e infraestrutura**. O mercado determina os destinos comerciais, respeitando a demanda, a acessibilidade e o equilíbrio simultâneo.
+
+**Invariantes:**
+1. **100% da oferta** de cada civilização e mercadoria participa do mercado e é vendida, sem estoque, perda ou teto de demanda de referência (F-041).
+2. Preço de cada produto em cada destino depende da **oferta agregada de todas as civilizações**; a receita de cada parcela é creditada **somente ao tesouro da civilização produtora** (F-043/F-048).
+3. O mercado comprador não possui carteira nem orçamento de consumo que limite compras; o setor consumidor é abstrato (F-046).
+4. A rede logística e os preços devem ser resolvidos pelo **equilíbrio simultâneo**; a carga de congestionamento inclui fluxos compartilhados de todas as civilizações e itens (F-049).
+5. Não exigir que cada civilização maximize sua receita bruta por manipulação dos destinos: o alocador global é uma **regra do sistema**, não um equilíbrio estratégico de comerciantes autônomos.
+6. Reprodutibilidade determinística em estados equivalentes, sem dependência da ordem de iteração ou do número de threads.
+7. **Ratificada a escolha institucional; NÃO ratificados por consequência** o índice específico de atratividade P/L de F-050, a extensão G=L/P de F-053, o expoente de congestionamento p ou o algoritmo numérico.
+
+**Racional de design:** foco nas decisões estratégicas, sem micromanagement de carga, mercado ou preços; favorecer especialização emergente e um motor único.
 
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
@@ -1152,3 +1168,5 @@ A grandeza \`D_n/L_n²\` funciona como **demanda ponderada por acessibilidade**,
 - **2026-11-07 — proposta F-050 de integração preço/impedância:** testada atratividade A=P/L, com L=Σ C_e e P=√(D/Q), sem subtrair moeda de pontos logísticos nem reintroduzir carteiras. Sem congestionamento: D_A=4,D_B=1,Q=10,L_A=1,L_B=2 ⇒ q_A≈9,4118,q_B≈0,5882; com C_A=1+(q_A/5)^4 e C_B=2[1+(q_B/10)^4] ⇒ q_A≈6,12565 e q_B≈3,87435. Modelo em estudo, não ratificado. F-051 abre a distinção entre alocação global de mercados e maximização da receita de cada civilização, assim como risco de fluxos mínimos para todos os mercados devido a P→∞ quando Q→0.
 
 - **2026-11-07 — laboratório 2 civilizações/2 mercados e reformulação numérica:** F-052 registra dois experimentos com receitas dos tesouros separadas e gargalos compartilhados. No acesso simétrico com produção 6+4, demanda 4+1 e congestionamento convexo, o clearing candidato P/L alocou ≈6,247/3,753 por mercado; o desempate proporcional produziu receitas ≈4,162/2,774. No acesso assimétrico, origens se especializaram com receitas ≈4,899/2, mas uma civilização teria incentivo a alterar rotas se buscasse somente receita monetária bruta. F-053 propõe minimizar G=L/P=L√(Q/D), evitando a singularidade explícita de P em Q→0, e demonstra solução analítica Q_n∝D_n/L_n² sem congestionamento. F-050/051/053 e decisão de alocador global continuam EM ABERTO.
+
+- **2026-11-07 — alocador global ratificado:** F-054 fecha a escolha por um mercado comercial automático global, com receitas de vendas creditadas exclusivamente às civilizações responsáveis, sem carteiras dos consumidores nem ordens de venda individuais. O critério particular P/L, o solver e sua forma de representação da rede ainda dependem de validação, especialmente para mercados no mesmo nó da produção.
