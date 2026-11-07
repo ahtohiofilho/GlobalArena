@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 3.14  
+**Versão conceitual:** 3.15  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -1731,9 +1731,11 @@ Definições:
 
 **Status:** a invariância de obra e de esforço físico como critério de modelagem é ratificada; **nenhuma fórmula numérica de capital por comprimento e nem U(I) foi aprovada automaticamente**.
 
-### F-078 — Calibração da velocidade física basal e da geografia [PRÓXIMO GATE; EM ABERTO]
+### F-078 — Referência terrestre geodésica e escala angular da impedância [RATIFICADA A FORMA; VALOR NUMÉRICO ABERTO]
 
 **Bloqueio remanescente:** a referência dimensional T0 foi escolhida em F-076, mas para transformar a distância geodésica em \`c_natural,e\` é necessário especificar o sistema métrico físico do planeta, a velocidade de transporte natural de referência e a forma de tratar ambientes terrestre, aquático e interface sem criar veículos/portos persistentes. Essa escolha afeta a precificação espacial e φ(I), logo precisa derivar de uma experiência de movimento consistente, não apenas de um percentual de pedágio.
+
+**Fechamento estrutural superveniente [RATIFICADO NO DESENHO]:** para o terreno terrestre neutro de referência, fixar uma velocidade física natural de referência \`v0>0\` como GRANDEZA global, ainda sem número, e definir \`d_e=R θ_e\` pela geometria geodésica (R raio físico comum da esfera e θ distância angular na superfície canônica). A impedância é \`c_nat,e=R θ_e/(v0 T0)=κ θ_e\`, com \`κ=R/(v0 T0)>0\` turnos equivalentes por radiano. As quantidades R e v0 só entram na economia pela razão κ (salvo quando outras grandezas físicas absolutas forem incorporadas). O raio, as unidades físicas e **o número de κ NÃO foram escolhidos**; o tamanho médio de tile não é unidade válida. O indicador v0 é uma referência logística de terreno neutro, não velocidade real obrigatória de trabalhador, cavalo ou veículo implícito. A F-079 apresenta testes de relevo e mar, sem fixar m(s), velocidade aquática, penalidades e outras calibrações.
 
 **Direção de teste sugerida:**
 1. Definir uma **distância física global** derivada do raio do planeta e distância de grande círculo entre nós/contato geométrico, sem fazê-la depender do número de células/tile.
@@ -1742,7 +1744,60 @@ Definições:
 4. Testar invariância de refinamento, taxas de congestionamento em carga-equivalente por T0, condições de capacidade natural baixa em costa, e a função candidata de investimento \`U(I/I0,e)\` com capital de referência extensivo.
 5. Com escala física e movimentos documentados, retestar tarifa F-073, preços por mercado e incentivo aos investimentos; só depois canonizar φ(I), expoente p ou solver de produção.
 
-**Ainda abertos:** raio/unidade métrica do planeta, velocidade de referência, fatores físicos de ambiente e declividade, escala de capital por extensão/esforço, capacidade natural costeira, curva p e pesos de pedágio. Não declarar calibração fechada ou impedância plenamente determinada antes desses valores.
+**Status superveniente:** estabelecida a forma geométrica terrestre neutra \`c_nat=κ θ\` com **um só grau de liberdade global κ para raio/velocidade relativa ao turno**, não fixados numericamente; F-079 preserva integral do esforço local para relevo/mar e trata costa sem duplicação de instalações. Seguem abertos o valor de κ, velocidade marinha relativa, fatores de terreno/declividade além da geometria, escala monetária de obra por extensão, capacidade natural costeira, curva p e pesos de pedágio. Não declarar calibração fechada ou impedância plenamente determinada antes desses valores.
+
+
+### F-079 — Testes de relevo, água, costa e invariância de refinamento [EXECUTADOS; LEIS ADICIONAIS DE VELOCIDADE ABERTAS]
+
+**Objetivo:** homologar estruturalmente o referencial terrestre neutro geodésico F-078 e avaliar aplicação em território real heterogêneo e interfaces terra↔mar F-033/F-034, sem criar "trajeto" econômico, porto no nó, frota persistida ou coeficiente particular por produto.
+
+**Forma neutra e identificabilidade:** no mundo esférico geodésico, \`d=R θ\`. Para um trecho de terra neutra e plana em regime de fluxo livre, \`c_nat=R θ/(v0 T0)=κ θ\`, com \`κ=R/(v0 T0)\`. Um ajuste \`R→aR, v0→av0\` deixa κ inalterado e, portanto, deixa o clearing econômico inalterado, se todas as alturas/comprimentos e taxas físicas relevantes forem igualmente reescalados. **A malha de Goldberg não fornece sozinha o valor numérico de κ**; isto é uma escolha física/de cadência que precisará de um cenário de mobilidade do jogo, não do pedágio desejado.
+
+**Testes de mercado local versus remoto [sem taxa nem congestionamento; apenas escala κ]:** Q total 10, demanda local D_L=4, demanda remota D_R=1, separação angular θ=0,2 rad. Uma rota remota terrestre neutra custa \`L=κ θ\`. Em equilíbrio F-056/F-072, \`Q_R=10 [D_R/(1+L)^2]/[D_L+D_R/(1+L)^2]\`.
+
+| κ (turnos/rad) ilustrativo | L remoto | Q remoto | Q local |
+| ---: | ---: | ---: | ---: |
+| 1 | 0,2 | 1,47928994 | 8,52071006 |
+| 6 | 1,2 | 0,49115914 | 9,50884086 |
+| 24 | 4,8 | 0,07376807 | 9,92623193 |
+| 100 | 20 | 0,00566572 | 9,99433428 |
+
+**Conclusão:** valores distintos de κ representam economias espaciais materialmente distintas, mesmo com o mesmo mapa e sem tarifas. **Nenhum valor da tabela é canônico**; não ajustar κ para obter taxa de tarifa, resultado comercial pretendido ou comprimento médio de aresta. O cenário serve para mostrar que um valor real precisa de calibração de gameplay fundamentada em deslocamento físico.
+
+**Relevo contínuo [base geométrica, não modelo completo de montanhismo]:** se \`s=Rθ\` mede arco sobre a esfera de raio R e \`h(s)\` é altitude acima da esfera base, então o comprimento superficial 3D diferencial é
+\`dℓ_3D = sqrt((1+h/R)^2 + (dh/ds)^2) ds\`.
+Em relevo pequeno em relação ao raio, aproximar \`dℓ_3D ≈ sqrt(1+g(s)^2)ds\`, \`g=dh/ds\` inclinação. Um modelo de custo neutro geométrico é \`dτ=dℓ_3D/v0\`, com \`c_nat=(1/T0)∫dτ\`. Isso conta a extensão inclinada real, mas **NÃO modela automaticamente fadiga de subida, tração ou descida, talude intransponível ou sentido diferente de circulação**. São fatores físicos subsequentes, não já calibrados.
+
+**Exemplo de relevo e heterogeneidade:** dois subtrechos de mesma distância horizontal, um plano g=0 e outro g=1 (100% de declive, somente exemplo matemático). Custo geométrico real proporcional à média \`(1+sqrt(2))/2≈1,20710678\`; aproximar toda a ligação por declividade média g=0,5 resultaria \`sqrt(1+0,5²)≈1,11803399\`, subestimando tempo em ≈7,38%. Logo **integrar lentidão e inclinação por subtrechos físicos**, não calcular o tempo pela velocidade média aritmética nem pela declividade média numa aresta heterogênea. Não inserir automaticamente penalidade por subida/descida idêntica à penalidade geométrica.
+
+**Meios de transporte e costa:** para um ponto local s de cada aresta, velocidade física equivalente de livre circulação pode ser \`v_nat(s)=v0×σ(s)\`, em que \`σ_terra_neutra=1\`, e \`σ_mar>0\` denota **razão marítima a calibrar**. Em presença de fator físico de superfície \`m(s)≥1\` (rugosidade/atrito quando houver definição física), forma de trabalho:
+\`τ_e=∫_e [m(s)/σ(s)] dℓ_3D(s)/v0 + τ_interface,e\`.
+Na água, dℓ_3D considera a superfície navegável, não relevo do fundo do mar. \`m(s)\` e \`σ(s)\` não possuem números canônicos nem coeficientes por produto. O único valor de referência fixo é \`σ_terra_neutra=1\`.
+
+**Interface costa-mar F-033:** o meio muda qualitativamente **na fronteira física terra/água**, não porque existe um "trajeto" com começo/fim. A própria aresta que atravessa essa fronteira representa a infraestrutura de transferência, inclusive embarcações implícitas. A dificuldade natural pode se manifestar como capacidade costeira K_natural baixa e saturação, sem custo fixo adicional em nó. **\`τ_interface,e=0\` é hipótese mínima inicial para evitar duplicar taxas sem evidência física**; se houver tempo efetivo de transbordo futuro, deve corresponder a uma mudança física de meio contada UMA vez por travessia relevante e mantida invariante sob subdivisão, nunca por nó de água ou aresta curta criada artificialmente. Não ratificar τ_interface positivo nem tecnologia ou objeto porto.
+
+**Teste numérico de soma em terreno misto [HIPOTÉTICO]:** fixar κ=10 turnos/rad, três subtrechos de θ=0,08 rad cada: (i) terra plana neutra, custo 0,8; (ii) terra inclinada g=1 com velocidade intrínseca constante e comprimento 3D \`sqrt(2)\` vezes o arco, custo ≈1,13137085; (iii) água plana com velocidade equivalente \`σ_mar=2\`, custo 0,4. Total \`C≈2,33137085\`. Quer a aresta física seja representada como um segmento com integral por regiões, quer como três segmentos refinados, a soma é idêntica; tratar toda a aresta como terra plana daria 2,4 e estaria fisicamente incorreto. Os parâmetros κ=10, g=1, σ_mar=2 são apenas laboratório, não velocidades/terreno aprovados.
+
+**Invariantes de QA necessários:**
+1. O arco total é soma das subdivisões sobre a MESMA geodésica, sem recalcular velocidade com base na quantidade de nós; afastamento do arco pode alterar trajeto físico legitimamente.
+2. Homogeneidade: custo natural proporcional ao comprimento geodésico e custo melhorado proporcional se a intensidade de investimento/capital por comprimento for igual.
+3. Heterogeneidade: integral de tempo preservada quando se troca uma aresta com perfis contínuos por subarestas equivalentes sem novos mercados ou geografia.
+4. Capacidade logística em série: \`K_e\` mede carga por T0, NÃO deve ser artificialmente dividida em dois quando se divide comprimento pela metade; a mesma carga atravessa as partes em sequência.
+5. Contato mar-terra: refinamento sem mudança física real não pode criar várias operações costeiras ou mais capacidade de desembarque.
+6. Caminho matemático da venda não é objeto de mapa nem unidade de propriedade: o custo soma arestas, tarifas locais F-070 e preço de destino F-071 são tratados independentemente.
+7. Direção: custo geométrico de um arco é simétrico ao inverter sua orientação; qualquer diferença subida/descida, corrente ou vento exigirá contrato físico adicional. Não inferir simetria definitiva para toda circulação.
+
+**Resultado:** referência terrestre neutra geodésica validada como estrutura, sem calibração numérica. Integral física continua compatível com F-076/F-077 e não requer tráfego real de mercadorias. As fórmulas geométricas de superfície são candidatas de base; fatores naturais adicionais de solo, declividade/energia, ambiente marinho, interface e velocidades permanecem EM ABERTO. Nenhuma nova fórmula φ(I) tarifária, p ou solver foi ratificada.
+
+### F-080 — Próximo gate: calibração de uma velocidade global sem depender do Goldberg [EM ABERTO]
+
+**Questão não resolvida pela geometria:** a economia só enxerga \`κ=R/(v0 T0)\` para terreno neutro, não R e v0 isoladamente. O valor de κ precisa ser ancorado a um **experimento de mobilidade física do jogo** (p.ex. deslocamento de uma unidade de referência por uma distância geodésica angular fixa ao longo de n turnos) e à experiência temporal pretendida; **não** ao tamanho médio de aresta, número de vértices, percentuais-alvo de pedágio ou receitas de civilizações.
+
+**Proposta de procedimento:** selecionar uma separação angular fixa na superfície independente de resolução; comparar (i) tempo de travessia física do trabalhador de referência neutro em vários avanços de turnos, (ii) impedância logística natural equivalente no mesmo trecho, sem exigir identidade futura de velocidades de todos os modais; (iii) distribuição de mercados local/remoto decorrente da F-056/F-072; (iv) alcance de interações entre áreas do mapa com o mesmo número absoluto de turnos. A velocidade de trabalhadores continua potencialmente distinta da velocidade natural logística, mas usar uma só **referência de ordem de grandeza física** reduz parâmetros que não têm significado próprio.
+
+**Evitar:** declarar que a velocidade de trabalhador real é igual à do comércio abstrato, ou que um trabalhador se desloca um tile por turno (parâmetro vinculado à resolução e anterior ao novo projeto). O valor concreto de R, v0, κ, σ_mar, função de solo/relevo e raio do planeta ainda depende do ritmo de jogo.
+
+**Escolha futura:** fixar κ a partir de um teste de gameplay/escala geográfica e só depois encerrar a normalização tarifária F-073. O F-071 requer solução transitória para liquidar tarifas por preço de destino, independentemente do valor κ, e pode ser trabalhado em paralelo.
 
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
@@ -1848,3 +1903,5 @@ Definições:
 - **2026-11-07 — índice aditivo F-072 ratificado, teste F-074 e gate F-075:** ratificada atratividade comercial com tarifa A=P/(1+L+W), custo de aresta g=C+w(1-s), permanecendo rateio monetário F-060 separado (V/(1+W)). F-074 executou bisseção em duas civilizações, mercados D_X=1/D_Y=4, produção A=8/B=2, função natural de congestionamento ilustrativa p=4 e melhoria U(I)=1+log2(1+I/I0), copropriedade A75/B25. Para k=0,1,3,7,15, exportação A≈2,7700,3,7441,4,2102,4,4496,4,5951 e tarifa B≈0,0,5459,0,6250,0,6628,0,6852. Com física fixa, aumentar w de 3 para 6 reduz tarifa B≈0,9837→0,7367; w=12 elimina exportação e renda tarifária, mas toda produção segue vendida localmente. Mesmo ganho proporcional físico com escala de custo λ=0,5,1,2 altera tarifa efetiva de proprietário externo único ≈29,75%,45,85%,62,88%. F-075 indica que fechar Lref física e C_e vem antes de canonizar φ(I); F-071, solver robusto e benchmark Goldberg ainda abertos. Nenhuma nova regra de tamanho de pedágio, teto ou algoritmo foi ratificada silenciosamente.
 
 - **2026-11-07 — F-076/F-077 referencial físico e invariância de investimento:** escolhida a referência dimensional de impedância por **um turno completo de ação do trabalhador padrão (T0)**; c_nat,e=τ_nat,e/T0 e τ_nat,e como tempo equivalente de circulação derivado da geometria/ambiente (cargas ainda são fluxos comerciais abstratos, NÃO viagens reais de mercadorias). Velocidade natural física e escala do planeta seguem abertas. Taxa logística de congestionamento deve usar B_e=F_e/Δt_turnos e capacidade K_e em unidades-equivalentes por turno, evitando confundir quantidade por ciclo com taxa temporal. Teste homogêneo ℓ=120 e v_nat=40/turno produz custo 3, subdividido em 60+60 mantém 3. Identificado erro de investimento de referência I0 fixo por aresta: obra I=120/I0=120 reduz custo 3→1,5, mas divisão em duas metades I=60, I0=120 cada reduz só a ≈1,892789; se I0 acompanha extensão (I0=60 por metade), custo melhorado retorna a 1,5 com capital total idêntico. F-077 ratifica apenas invariância/escala extensiva da obra; fórmula exata κ_ref e U(I) não fechadas. F-078 propõe fechar geometria e velocidade basal antes de tarifa φ(I), curva p, solver e pagamentos F-071.
+
+- **2026-11-07 — F-078/F-079 velocidade geodésica e relevo/água:** F-078 estruturada no referencial terrestre neutro c_nat,e=κ θ_e com κ=R/(v0 T0) e θ angular. Os parâmetros R e v0 só entram no clearing pelo quociente κ (com restante físico proporcional), portanto um número para a velocidade NÃO é derivável da malha de Goldberg. Simulações de mercado local D=4/remoto D=1, oferta 10 e θ=0,2 rad mostraram Q_remoto≈1,4793 para κ=1; ≈0,4912 para κ=6; ≈0,07377 para κ=24, sem tarifas. F-079 testa conservação de geodésicas, integral de lentidão com relevo contínuo e mudança local terra/mar; três regiões θ=0,08 rad cada e parâmetros ilustrativos κ=10, declive g=1, velocidade marinha σ=2 dão custos 0,8+1,13137+0,4≈2,33137 invariantes à subdivisão física. Não criar objetos trajeto, navio/porto nem custo duplicado de transição costeira. Valores de κ, σ_mar, penalidades energéticas de aclive, raio/unidade, custo físico de interface, investimento κ_ref, congestionamento p e φ tarifário continuam sem calibração. F-080 propõe escolher κ por experiência de mobilidade física geográfica do jogo e não por tamanho médio de aresta ou pedágio-alvo.
