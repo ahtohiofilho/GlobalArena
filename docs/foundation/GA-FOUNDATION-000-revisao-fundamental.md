@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 3.6  
+**Versão conceitual:** 3.7  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -1365,9 +1365,9 @@ Para aresta e e civilização c, persistir capital incorporado \`I[e,c]≥0\`; c
 
 **Exemplo (parâmetros ilustrativos):** capital A=1 e B=3, s_A=25%, s_B=75%, peso w_e=0,25. Venda da própria B usando essa aresta: peso externo \`0,25×0,25=0,0625\`; B recebe \`V/1,0625≈94,1176%\` e A recebe \`5,8824%\`. Venda de terceira civilização C: W=0,25; C recebe 80%, A recebe 5%, B recebe 15%. Nenhum trabalhador possui tesouro de receita; o mercado comprador continua sem carteira.
 
-**Sem inferir governo político da copropriedade:** participações monetárias não concedem automaticamente veto, controle militar, domínio territorial ou capacidade de suspender tráfego. A aprovação expressa da possibilidade de **embargo dirigido a civilização específica** é registrada em F-063, mas seu exercício, quórum e autoridade diplomática estão em estudo. Não criar poder automático de veto de um cotitular com participação ínfima.
+**Governo societário superveniente F-064 [RATIFICADO NO PRINCÍPIO]:** as participações econômicas também **ponderam o voto coletivo dos coproprietários** sobre matérias submetidas à governança da aresta, inclusive embargo comercial F-063 e entrada de novas civilizações na sociedade; possuir quota não significa veto individual. A F-064 deixa quóruns, autoridade de iniciativa, rito e eventual proteção de coproprietário-alvo em aberto. O direito patrimonial é distinto de controle militar/territorial.
 
-**Abertos:** eventual compra/cessão/confisco/transferência de quota; morte ou incorporação de civilização; investimentos durante conflito; autorização de terceiros para trabalho na aresta; dois investidores simultâneos e arbitragem determinística; função w_e ligada à infraestrutura, normalização da impedância e aplicação de embargo. A copropriedade econômica capital-proporcional não resolve nenhuma dessas questões automaticamente.
+**Abertos:** método de precificação e execução de compra/cessão de quota (preferência proporcional F-064 já ratificada), confisco/transferência coercitiva; morte ou incorporação de civilização; investimentos durante conflito; autorização de terceiros para trabalho na aresta; dois investidores simultâneos e arbitragem determinística; função w_e ligada à infraestrutura, normalização da impedância e aplicação de embargo. A copropriedade econômica capital-proporcional não resolve nenhuma dessas questões automaticamente.
 
 ### F-063 — Embargo comercial seletivo numa aresta compartilhada [CAPACIDADE RATIFICADA; GOVERNO E EXECUÇÃO ABERTOS]
 
@@ -1378,15 +1378,60 @@ Para aresta e e civilização c, persistir capital incorporado \`I[e,c]≥0\`; c
 2. Embargo comercial sobre aresta e contra civilização c define restrição de elegibilidade de **fluxos abstratos comerciais atribuídos a c**. Durante o ciclo de embargo, o water-filling F-049/F-054/F-057 não pode usar essa aresta para produtos de c, mas pode utilizá-la para outras civilizações elegíveis. A distinção é por civilização da **produção**, não carteira do comprador (inexistente).
 3. O clearing global é recalculado simultaneamente com o novo conjunto de caminhos elegíveis, sem congelar preços nem congestionamento. A produção de c precisa continuar **100% comercializada**, usando mercado local e outras rotas permitidas, sempre que existirem.
 4. Embargo não apaga quota de capital nem automaticamente confisca direito de receita tarifária sobre fluxos de outras civilizações. Bloqueio militar, deslocamento físico de trabalhadores, imigração, confisco e embargo de importação são decisões independentes; a aprovação presente abrange **capacidade de embargo comercial**, não essas extensões.
-5. Aresta compartilhada pode impor ou revogar embargo apenas por **autoridade/governança explicitamente deliberada**; nenhum cotitular recebe automaticamente veto unilateral por participação mínima. Não presumir maioria simples, unanimidade, quórum numérico nem poder territorial sem aprovação.
+5. **Decisão superveniente F-064:** um embargo proposto à deliberação dos coproprietários utiliza **votos ponderados pelas participações vigentes no capital da aresta**, inclusive eventual alteração/revogação, sem veto individual automático do minoritário. **Quórum, maioria exigida, poder de iniciativa, procedimento e possibilidade de embargo contra o próprio coproprietário permanecem em aberto.** Votação societária não implica automaticamente controle territorial ou militar.
 6. **Conflito com venda universal:** se o embargo retirar todos os mercados alcançáveis com D>0 de uma produção positiva, o contrato de F-041 deixa de ser solucionável sem regra adicional. Não resolver descartando estoque, inventando consumidor, quebrando embargo ou reduzindo a venda a menos de 100%. Bloqueios que provoquem isolamento total exigem uma **política de contingência deliberada** antes de sua habilitação na implementação.
 7. Embargo é uma política por identidade de **aresta e civilização-alvo**, com vigência/ciclo lógico definido; matriz densa de todas as civilizações×arestas não é exigida. Uma representação esparsa de alvos ativos é opção futura, não estrutura ratificada. Restrição em ambos os sentidos é comportamento candidato, mas direcionalidade e embargo de importação não foram definidos.
 
 **Laboratório conceitual mínimo:** aresta melhorada com titulares A=60%, B=30%, C=10%. Caso uma autoridade competente decida embargar D, fluxos comerciais de D ficam inelegíveis nessa aresta; A/B/C e outros não embargados continuam elegíveis, congestionamento é recalculado, quotas de investimento permanecem 60/30/10. A mera participação de C=10% NÃO demonstra poder de C para embargar D sozinha.
 
-**Gates obrigatórios:** determinar poder de embargo (votação ponderada por quotas, diplomacia territorial ou contrato), eventual embargo de coproprietário, se embargo é bidirecional, efeitos sobre direitos de tarifa, como evitar isolamento total incompatível com venda universal, duração/revogação, desempates de votação e replay determinístico; não inferir decisões militares.
+**Gates obrigatórios:** pesos de votação por participação foram ratificados em F-064. Falta estabelecer quórum/maioria, iniciativa, eventual embargo de coproprietário, bidirecionalidade, efeitos sobre direitos de tarifa, isolamento total incompatível com venda universal, duração/revogação, desempates de votação e replay determinístico; não inferir decisões militares.
 
-**Status:** coexistência de copropriedade com capacidade de embargo seletivo **RATIFICADA**; mecânica de decisão, quórum, ciclo, alvo efetivo no trânsito, contingência e governo diplomático seguem **ABERTOS**. Não implementar bloqueio imediato no kernel com premissas inventadas.
+**Status:** coexistência de copropriedade com embargo seletivo **RATIFICADA**; **peso dos votos por participação de capital também RATIFICADO por F-064**, sem maioria ou quórum já definidos. Ciclo, alvo efetivo no trânsito, contingência e demais dimensões da governança seguem **ABERTOS**. Não implementar bloqueio imediato no kernel com premissas inventadas.
+
+### F-064 — Governança por voto ponderado, admissão de sócios e preferência de compra [RATIFICADO NO PRINCÍPIO; RITO ABERTO]
+
+**Decisões expressamente aprovadas pelo usuário:**
+1. **Votação ponderada pela participação econômica** da civilização na aresta, calculada pelas quotas F-062, para deliberações societárias aplicáveis, em especial a **possibilidade de embargo dirigido F-063**. O peso do voto de uma civilização c na aresta e é \`v[e,c]=s[e,c]\` entre titulares elegíveis; não atribuir automaticamente um voto igual a cada civilização nem voto a trabalhador/nó.
+2. **Admissão de nova civilização como sócia exige votação ponderada dos sócios existentes** antes de adquirir quota ou incorporar seu primeiro capital numa aresta já compartilhada. O percentual necessário de aprovação e o processo ainda serão especificados; não presumir maioria simples de >50%, 2/3, unanimidade nem veto de cotitular minoritário.
+3. **Direito de preferência de compra na saída de um sócio**, exercível pelas civilizações que já são cotitulares, **na proporção relativa das participações preexistentes dos remanescentes**. O vendedor não participa da distribuição de preferência correspondente à própria quota posta à venda. A preferência é um direito de oferta/compra, não obrigação de dispender caixa.
+4. **A comercialização de participação patrimonial não retira capital físico incorporado.** A civilização compradora paga o preço da transação com seu tesouro real ao tesouro vendedor, sem comprador abstrato, emissão fictícia ou crédito automático. Transfere-se a titularidade de uma fração do capital econômico da aresta, mantendo o mesmo investimento total e as características físicas de infraestrutura.
+5. **Uma venda ao não sócio só poderá resultar em ingresso se respeitar a preferência dos sócios existentes e a aprovação de admissão ponderada.** A existência do direito de preferência não equivale a venda compulsória; preço, prazo, eventual remanescente sem interessados e direitos de saída precisam de contrato futuro.
+6. **Não extrapolar** voto ponderado societário para soberania militar, território, guerra, circulação de trabalhadores ou decisões do Estado sem aprovação própria. **Embargo de cotitular**, conflito de interesses, regras de impedimento de voto, quórum, iniciativa, vigência, duração, desempates e ônus de contestação não estão ratificados.
+
+**Exemplo exato de preferência relativa:** aresta A=60%, B=30%, C=10%, e C deseja vender integralmente 10 pontos percentuais. A e B têm quotas relativas entre os remanescentes de \`60/(60+30)=2/3\` e \`30/(60+30)=1/3\`. Caso ambos exerçam toda a preferência, A adquire \`10×2/3=6,666666...\` pontos; B adquire \`10×1/3=3,333333...\`; resultado A=66,666666...%, B=33,333333...%, C=0%. Se alguém não exercer, a redistribuição da parcela não aceita entre interessados permanece aberta; não atribuir automaticamente toda a participação a ninguém sem caixa real e transação válida.
+
+**Distinção fundamental entre capital e titularidade de capital [não criar duplicação de estado]:**
+- \`K_e\` (ou \`I_e\`) é capital **físico-econômico efetivamente incorporado** à aresta e determina as melhorias de infraestrutura. Não muda quando se vende uma quota.
+- \`H[e,c]\` é o **capital incorporado atribuído como direito patrimonial atual** à civilização c, de modo que \`Σ_c H[e,c]=I_e\` e \`s[e,c]=H[e,c]/I_e\` quando I_e>0.
+- Quando c executa novo investimento de valor ΔI: \`I_e+=ΔI\` e \`H[e,c]+=ΔI\`, após trabalho/debito válidos F-035.
+- Quando c transfere uma participação correspondente a ΔH para j: \`H[e,c]-=ΔH\`, \`H[e,j]+=ΔH\`, **I_e não se altera**, nem custo livre, capacidade, congestionamento ou trabalho executado. O caixa movimenta o **preço negociado da quota**, não o valor nominal ΔH automaticamente.
+- Para minimizar estados, a expressão histórica \`I[e,c]\` de F-062 pode ser entendida como **H[e,c] — capital titularizado atualmente**, enquanto o registro de quem **originalmente financiou** cada incremento fica no journal auditável; não persistir dois mapas equivalentes de quotas. Somente um agregado \`I_e=Σ H\` é necessário para a física e receitas atuais, mas um journal pode guardar proveniência para replay.
+
+**Caso especial: primeira fundação:** aresta natural com \`I_e=0\` não possui sócios capazes de votar. O primeiro investimento válido pode criar a primeira quota econômica do seu investidor **sem votação inexistente**. Isso **não** concede monopólio exclusivo nem impede entrada futura de outras civilizações conforme voto ponderado. O direito de investir na aresta do ponto de vista territorial/diplomático ainda pode depender de regra futura, mas não se inventa eleitor ausente.
+
+**Gates futuros deliberadamente adiados:**
+- quóruns, maioria de aprovação de embargo/entrada/cessão, iniciativa e calendário;
+- processo de preferência, preço/avaliação, desistência, liquidez e venda parcial;
+- como tratar saída de último sócio, comprador externo rejeitado, exercício insuficiente da preferência e conflitos de interesses;
+- se nova contribuição de capital por sócio **já existente** precisa de aprovação ou de direito de acompanhamento dos demais, por causa da diluição (F-065);
+- titularidade societária durante conquista/cessão, limites de embargo sobre coproprietário e condição de isolamento comercial completo;
+- deterministicidade do journal e como congelar composição societária/votos enquanto uma proposta está sendo votada.
+
+**Governança:** ratificadas somente votação **proporcional**, necessidade de **aprovação de ingresso** e **preferência proporcional dos remanescentes na saída**. Não atribuir como ratificados limites de maioria, regras de alienação ou novas classes de ações.
+
+### F-065 — Diluição pelo aporte de sócio existente e possíveis direitos de acompanhamento [ABERTO; PRÓXIMO PONTO SOCIETÁRIO, MAS SEM PRESSA DE FECHAR]
+
+**Efeito algébrico inevitável:** como votos seguem quotas atuais \`s[e,c]=H[e,c]/I_e\`, uma civilização que já é coproprietária e incorpora novo capital à aresta aumenta simultaneamente (i) capacidade/eficiência física, (ii) sua participação na renda tarifária e (iii) seu peso de voto em futuras deliberações. Isso é matematicamente coerente com F-062/F-064, mas pode permitir que um coproprietário mude controle deliberativo por novos aportes sem admissão de um sócio novo.
+
+**Cenário ilustrativo:** aresta com capital total 100, A detém 60 e B 40. B incorpora mais 200 com dinheiro/tempo físico válidos: capital físico passa a 300; H_A permanece 60 (20%); H_B passa de 40 para 240 (80%). B ganha maioria qualificada de fato mesmo sem entrada de outra civilização. **Nenhuma regra foi aprovada para impedir ou sujeitar essa diluição a deliberação**, e não se devem inventar quórum ou teto de investimento.
+
+**Alternativas futuras, não ratificadas:**
+- aporte livre pelo sócio atual e diluição automática conforme novo capital, preservando a regra econômica mais simples;
+- direito proporcional de co-investimento dos coproprietários antes de um aporte que altere o controle, para permitir manter quotas, condicionado a caixa/trabalhadores reais;
+- deliberação ponderada prévia para certos aumentos de capital, sem restringir pequenos trabalhos de manutenção/progresso contínuo.
+
+**Orientação:** não tomar decisões societárias detalhadas antes de definir a prioridade de gameplay e custos de micromanagement. O investimento contínuo F-035 permanece ratificado; a política de admissão de **novos** sócios F-064 não implica automaticamente proibir novos aportes de sócios já existentes. O ponto pode ser retomado depois de fechar a fórmula tarifária F-061 e validar equilibro simultâneo com tarifas.
+
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
 
@@ -1475,3 +1520,5 @@ Para aresta e e civilização c, persistir capital incorporado \`I[e,c]≥0\`; c
 - **2026-11-07 — tarifação proporcional ratificada, função de intensidade e direitos estudados:** F-060 ratificada no princípio de cobrança proporcional à receita da venda e no rateio V_produtora=V/(1+Σw), V_titular_e=Vw_e/(1+Σw), sem débito em carteira compradora; fórmula w(I) ainda aberta. F-061 confrontou a candidata direta w=1−1/U, que pode tornar uma rota menos atraente já no primeiro investimento, e propôs w=1/(1+c_livre)−1/(1+c_natural). Em aresta única, acesso de não titulares melhora ao mesmo tempo que cresce receita tarifária; em rotas longas o produto (1+L)(1+W) ainda pode piorar o acesso após uma melhoria (exemplo 13→14), com implicações para a fórmula de atratividade. F-062 abre a deliberação de titularidade e direito de investimento (primeiro investidor, copropriedade por capital ou autoridade territorial). Nenhum peso de tarifa ou regime de propriedade foi ratificado.
 
 - **2026-11-07 — copropriedade proporcional e possibilidade de embargo seletivo:** F-062 ratificada: capital incorporado por civilização I[e,c] determina quota s[e,c]=I[e,c]/ΣI, e tarifas proporcionais F-060 são recebidas por outras coproprietárias segundo w_e s[e,j], sem cobrar a quota do próprio vendedor. A infraestrutura é fisicamente compartilhada, sem monopólio do primeiro investidor. F-063 ratifica a **capacidade futura de embargo comercial contra civilização específica em aresta compartilhada**, sem confundir quotas econômicas com voto de bloqueio; autoridade, quórum, direcionalidade, duração, embargo de coproprietários e caso sem mercado acessível D>0 (contradição com venda universal) permanecem abertos. Nenhuma modificação no código ou merge.
+
+- **2026-11-07 — deliberação societária ponderada e preferência na saída:** F-064 RATIFICA votação por quotas de capital, aprovação ponderada dos sócios existentes para admissão de nova civilização investidora e preferência proporcional de compra para cotitulares remanescentes quando alguém deixa a sociedade. Exemplo A=60%, B=30%, C=10% saindo: A tem preferência por 6,6667 pontos e B por 3,3333 pontos, sujeitos a caixa/aceite e negociação. A venda de participação apenas transfere capital titularizado H[e,c], sem retirar ou recriar capital físico I_e; preço da quota é pagamento real entre tesouros, distinto de I. Fundação da aresta natural sem sócios não requer voto inexistente. F-063 recebe voto societário proporcional, mas maiorias, quóruns e veto a embargado seguem abertos. F-065 documenta diluição por novo aporte de cotitular existente e deixa direitos de acompanhamento/voto de aumento de capital em aberto para não antecipar complexidade diplomática.
