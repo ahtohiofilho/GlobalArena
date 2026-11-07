@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 3.9  
+**Versão conceitual:** 3.10  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -1355,6 +1355,8 @@ Com \`I/I₀=0\`, \`q_remoto≈0,27027\`, receita tarifária 0. Com \`I/I₀=1\`
 
 **Riscos que permanecem:** grande quantidade de arestas de terceiros na mesma rota pode reduzir muito a fração de receita do produtor mesmo com pesos individuais limitados; diferenças no crescimento de capacidade K e impedância livre podem alterar o fluxo real; congestionamento endógeno e tarifas têm de ser resolvidos conjuntamente; não há ainda prova genérica de equilíbrio único, custo computacional ou incentivos não exploratórios. **A candidata de w não está ratificada** e não deve entrar no kernel até fechar propriedade e normalização de impedância.
 
+**Análise superveniente F-068 (problema de subdivisão):** a fórmula local candidata w_e=1/(1+c_e)−1/(1+c₀,e) NÃO é invariável à subdivisão de um mesmo corredor físico em mais arestas: a receita tarifária muda ainda que os custos totais permaneçam iguais. F-068 apresenta um peso por aresta normalizado pela **rota natural inteira**. Isso não revoga os exemplos anteriores, mas impede canonizar a fórmula local sem corrigir a dependência da representação geométrica.
+
 ### F-062 — Copropriedade por capital efetivamente incorporado em arestas [RATIFICADO; QUESTÕES DIPLOMÁTICAS ABERTAS]
 
 **Atualização superveniente F-066 [RATIFICADA]:** a copropriedade surge automaticamente pelo investimento efetivo de **qualquer civilização fisicamente elegível e financeiramente habilitada**, sem voto, consentimento do sócio atual ou autorização do jogador. O capital originalmente incorporado por cada titular permanece, com diluição apenas percentual. O exercício de direitos societários complexos fica adiado, sem limitar este ingresso livre.
@@ -1464,6 +1466,63 @@ o fluxo de B permanece inteiramente local, pois sua alternativa de exportar cust
 **Encaminhamento de design:** o MVP não precisa de votação para novos investidores (F-066). Prosseguir com **intensidade tarifária automática** F-061 apenas se ela produzir comportamento de mercado defensável; a cobrança proporcional F-060 já é canônica. A questão ainda mais fundamental é se o sistema **permite que o pedágio anule parte do benefício físico** de uma melhoria para terceiros (trade-off econômico legítimo), ou se deseja exigir monotonicidade de atratividade em TODAS as rotas, algo que a candidata multiplicativa \`(1+L)(1+W)\` não garante para distâncias arbitrárias. Essa escolha permanece **EM ABERTO**, não requer criar UI ou quórum.
 
 
+### F-068 — Teste de invariância geométrica da tarifa e hipótese de normalização por trajeto [TESTADO; FÓRMULA NOVA NÃO RATIFICADA]
+
+**Diretriz de produto aprovada na continuidade:** melhorar uma aresta deve reduzir sua **impedância física** conforme o capital; **não exigir compensação econômica artificial** que faça todas as civilizações melhorarem a própria receita ou atratividade comercial após toda obra. Preço concorrencial, pedágio e mudanças de fluxo podem afetar terceiros favorável ou desfavoravelmente. Esta diretriz não aprova qualquer função tarifária numérica.
+
+**Defeito de granularidade descoberto na candidata local da F-061:** a tarifa de uma rota não deveria aumentar somente porque **o MESMO corredor físico** foi subdividido em mais arestas equivalentes na representação geométrica, mantendo os mesmos custos físicos totais e melhorias totais.
+
+Cenário sem congestionamento, rota inteiramente alheia:
+- **Uma aresta:** impedância natural normalizada \`c₀=2\` e melhorada \`c=1\`. Pela F-061, \`w=1/(1+1)−1/(1+2)=1/6≈0,1666667\`; participação tarifária efetiva \`w/(1+w)=1/7≈14,2857%\`.
+- **Duas arestas fisicamente equivalentes:** cada uma tem \`c₀=1\` e \`c=0,5\`, mantendo a mesma soma de impedância 2→1. Cada \`w_e=1/(1+0,5)−1/(1+1)=1/6\`, total \`W=1/3\`; a participação cobrada pela mesma venda passa a \`W/(1+W)=25%\`.
+- Resultado: **duplicação de cobrança por subdivisão sem melhoria física adicional**. Mesmo com rateio contábil F-060 correto, a política tarifária fica dependente do detalhe da malha. Esta propriedade deve ser **testada e discutida como gate de robustez**, em especial por haver diferentes resoluções geométricas/Goldberg. Não assumir que duas arestas geograficamente diferentes sejam sempre equivalentes; o gate só compara subdivisões **fisicamente equivalentes**.
+
+**Nova hipótese de laboratório, compatível com o rateio proporcional F-060 mas NÃO com a exigência opcional de que w_e seja exclusivamente uma função local de I_e:**
+
+Para uma rota r, definir
+\`L₀,r = Σ_{e∈r} c₀,e\`: impedância NATURAL livre, antes de quaisquer melhorias, já adimensional na escala global F-056;
+\`Δ_e = c₀,e − c_livre,e(I_e) ≥ 0\`: ganho físico de impedância livre na aresta e.
+
+Peso comercial da aresta e **nesta rota r**:
+\`w_{e|r}=Δ_e/(1+L₀,r)\`.
+Para produtor da civilização c e quotas F-062:
+\`W_{c,r}=Σ_{e∈r} Σ_{j≠c} s[e,j] w_{e|r}
+ = [Σ_{e∈r} (1−s[e,c])Δ_e]/(1+L₀,r)\`.
+A receita de uma venda V e a tarifa por cotitular j da aresta e continuam conforme F-060, agora com pesos \`s[e,j]w_{e|r}\`: produtora \`V/(1+W_{c,r})\`, titular j≠c recebe \`V s[e,j]w_{e|r}/(1+W_{c,r})\`. A soma é exatamente V e nenhuma conta adicional é criada.
+
+**Propriedades demonstradas na hipótese:**
+1. **Sem investimento:** \`c_livre=c₀\` ⇒ todos os Δ=0 ⇒ W=0; isenção da própria quota e copropriedade automática F-062/F-066 permanecem.
+2. **Invariância por subdivisão física equivalente:** com custo natural total L₀ e ganho total Δ fixos, \`Σ_e w_{e|r}=Δ/(1+L₀)\` não muda ao subdividir a mesma rota em segmentos equivalentes (e mantendo as quotas proporcionalmente). No exemplo 2→1, tanto uma aresta quanto duas equivalentes produzem W=1/3, tarifa efetiva 25%.
+3. **Não há parâmetro tarifário por item, civilização ou aresta:** pesos derivam do ganho normalizado pelas mesmas unidades físicas de F-056; o denominador \`1+L₀,r\` é a hipótese universal a examinar, não uma lei derivada de axiomas obrigatórios.
+4. **Limite natural do total da rota:** como \`0≤Δ_total≤L₀\` e \`0≤1−s≤1\`, \`0≤W_{c,r}≤L₀/(1+L₀)<1\`. Então a parcela agregada da venda transferida a titulares externos é \`W/(1+W)<50%\` **no modelo candidato**, qualquer que seja o número de arestas. Não inventar teto explícito separado; também não declarar esse limite já canonizado.
+5. **A fórmula depende do trajeto total, não só da aresta:** o peso associado a um mesmo investimento varia conforme o restante da rota. Isso evita o erro de subdivisão, mas torna a tarifa de um trecho dependente da jornada em que é utilizado, exigindo que a liquidação conheça a decomposição de fluxo por rota, ainda que o estado permanente continue em arestas. **Pode contrariar a simplicidade desejada da tarifa por aresta**; avaliar esse trade-off antes de ratificar.
+6. **Não há garantia de melhora econômica quando existe congestionamento e múltiplos mercados:** a comparação analítica abaixo considera trajetos em fluxo livre, sem congestionamento; no equilíbrio endógeno, preços e fluxo mudam, e receita líquida do investidor/terceiro não tem monotonicidade global garantida.
+
+**Comparação de trajetória longa, sem congestionamento (todos os trechos tarifáveis pertencem a terceiros):**
+- Trechos não modificados com impedância natural 10; trecho investido melhora de \`c₀=2\` para \`c=1\`. Original \`L₀=12\`; depois \`L=11\`; divisor comercial originalmente \`(1+L₀)=13\`.
+- **Antiga candidata local F-061:** \`w=1/6\` no trecho melhorado, divisor \`(1+11)(1+1/6)=14\`. A rota fica menos atraente para não proprietário.
+- **Nova candidata normalizada por trajeto:** \`W=(2−1)/(1+12)=1/13\`; divisor \`(1+11)(1+1/13)=168/13≈12,9230769\`, ligeiramente abaixo de 13.
+- A tarifa nominal efetiva da nova candidata é \`(1/13)/(1+1/13)=1/14≈7,142857%\`. Quanto maior for o restante da rota natural, menor o peso que essa melhoria isolada assume na receita percentual da venda.
+
+**Prova parcial (fluxo livre, percurso inteiramente de terceiros):** se \`A=1+L₀>0\`, \`δ=L₀−L≥0\` e \`W=δ/A\`, então
+\`(1+L)(1+W)=(A−δ)(1+δ/A)=A−δ²/A≤A\`.
+Na candidata, a melhoria **nunca piora** a atratividade de uma rota em fluxo livre comparada com sua própria condição natural, mas o benefício inicial pode ser de segunda ordem. Com coproprietários próprios, W é menor e o divisor é menor ou igual ao caso todo-terceiro. **Isto NÃO ratifica a exigência de melhora comercial universal**: congestionamento, precificação por volume e comparação contra outras rotas podem tornar o resultado final desfavorável.
+
+**Ponto estratégico a decidir:** vale a pena adotar **tarifa por trajeto**, que é matematicamente consistente com a subdivisão equivalente, ou preservar tarifa local por aresta e aceitar/compor sua dependência da granularidade? Não introduzir \`w_{e|r}\` no kernel antes de deliberação sobre custo/complexidade e calibração de Lref.
+
+**Situação:** estudo F-068 comprovou o defeito de subdivisão da candidata F-061 e uma alternativa sem novos coeficientes. **Não foi ratificada nenhuma fórmula numérica de intensidade tarifária**, nem a regra de escolha de rota com tarifa; continuam canônicos apenas rateio proporcional F-060, copropriedade F-062 e ingresso livre F-066.
+
+### F-069 — Oráculo de rotas para impedância e tarifa não aditivas [RISCO DE IMPLEMENTAÇÃO IDENTIFICADO; SOLVER ABERTO]
+
+O contrato F-057 propõe um oráculo de caminhos mínimos para verificar o equilíbrio sem enumerar todos os caminhos. Porém, com **atratividade tarifada multiplicativa candidata** \`A=P/[(1+L_r)(1+W_r)]\`, os fatores \`L_r=Σc_e(B_e)\` e \`W_r=Σw_e\` são individualmente agregáveis por aresta, mas **seu produto não é uma soma de custos de aresta**. Em F-068, o denominador de W ainda depende do total natural do percurso \`L₀,r\`. Logo um algoritmo que usa apenas Dijkstra com peso escalar \`c_e+w_e\`, ou busca o caminho fisicamente mais curto sem considerar tarifa, **não prova que encontrou a alternativa comercial de melhor atratividade**.
+
+**Contraexemplo de perda de princípio de otimalidade:** dois prefixos até o mesmo nó intermediário, A com \`L_A=1,W_A=0,4\` e B com \`L_B=2,W_B=0,1\`. Antes de continuar, o divisor A é \`(1+1)(1+0,4)=2,8\`, e o de B \`(1+2)(1+0,1)=3,3\` (A melhor). Prolongar ambos pelo **mesmo** segmento \`c=10,w=0\` produz divisor de A \`(1+11)(1+0,4)=16,8\` e de B \`(1+12)(1+0,1)=14,3\` (B melhor). Assim, descartar B por ser pior no prefixo levaria à escolha errada na rota final. Os números são ilustrações de W≥0 da regra multiplicativa e não dependem de uma função particular φ(I).
+
+**Consequências práticas:** avaliar oráculo de rótulos múltiplos/Pareto para o problema do menor \`(1+L)(1+W)\`, geração seletiva de caminhos com certificação de gap F-057, ou forma alternativa de atratividade que preserve o rateio monetário F-060 sem perder aditividade da escolha de rotas. **Não** ratificar uma abordagem que precise enumerar todos os caminhos simples num grafo Goldberg grande. Medir memória e convergência antes de escolher.
+
+**Observação:** o rateio de receita F-060 continua consistente independentemente do índice particular de escolha de rota. Revisar a regra de atratividade com tarifa NÃO revoga a contabilidade proporcional. Separar essa decisão da função física de congestionamento F-031, ainda proposta.
+
+
 ## 8. Governança da nova versão e critérios de reaproveitamento
 
 **A fonte de verdade do novo desenho** é a sequência de decisões ratificadas nesta documentação. As decisões do jogo antigo **não exercem autoridade sobre ela**; tampouco foram revogadas para a versão antiga.
@@ -1557,3 +1616,5 @@ o fluxo de B permanece inteiramente local, pois sua alternativa de exportar cust
 - **2026-11-07 — F-066 simplificação do MVP:** revogada a aprovação por voto para ingresso de qualquer nova civilização (antiga F-064). Qualquer civilização fisicamente elegível e com tesouro suficiente investe, incorpora capital e recebe automaticamente quota de copropriedade, diluindo percentualmente cotitulares já presentes, sem apagar suas participações nominais. Votos, operações de compra/venda e preferência de aquisição e embargo ativo ficam adiados como extensão futura. Não criar aprovação societária na interface. Próximo foco técnico: F-061 e equilíbrio com tarifas.
 
 - **2026-11-07 — laboratório tarifário F-067 após ingresso livre F-066:** teste analítico de dois produtores/civilizações e mercados X/Y ligados por uma aresta, D_X=1,D_Y=4, A produz 8, B produz 2. Com custos ilustrativos c=c_livre[1+(q/5)^4], após melhoria c_livre 0,5, copropriedade A 75%, B 25%, peso candidato w=1/3, o clearing tem exportação de A ≈3,60430, preço único por mercado, tarifas B≈0,23423, receitas líquidas A≈4,90738 e B≈1,92389, conservação integral 10/10 e contabilização exata. Antes de obra/tarifa, B obtinha ≈2,28257; a queda demonstra que mesmo cotitular recebendo tarifa positiva pode perder receita por concorrência de produção no mercado consumidor. φ(I), fator tarifário de atratividade e solver multi-commodity continuam NÃO RATIFICADOS; nenhum ROI financeiro validado.
+
+- **2026-11-07 — estudos F-068/F-069 de robustez tarifária e solver:** ratificada orientação de não impor benefício comercial universal de todo investimento (a melhoria física segue obrigatória). A antiga intensidade local F-061 w=1/(1+c_livre)−1/(1+c_natural) mostrou **não invariância por subdivisão física equivalente**: corredor 2→1 em uma aresta paga 14,29%, dividido em duas arestas equivalentes paga 25% sem mudança física. F-068 propõe peso de cada aresta por rota w[e|r]=(c_natural,e−c_livre,e)/(1+L_natural,r), preservando a soma por subdivisão, mas adicionando dependência do trajeto inteiro; em corredor natural 12→11 de trecho melhorado 2→1, novo divisor comercial≈12,923 vs antigo 14 e antes 13. F-069 demonstra que índice de atratividade multiplicativo (1+L)(1+W) não é custo escalar aditivo em arestas, exigindo oráculo mais elaborado ou revisão do índice. F-061/068/069 seguem não ratificadas em fórmula/algoritmo.
