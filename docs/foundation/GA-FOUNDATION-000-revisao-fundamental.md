@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 2.1  
+**Versão conceitual:** 2.2  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -675,13 +675,15 @@ A diferença **não é arredondamento**, mas definição de qual grandeza a fun�
 7. Não criar etapas discretas de "porto/estrada/ferrovia pronta" nem estados duplicados \`percentual_de_obra\`/ \`investimento_prometido\` que substituam a propriedade \`I_e\`.
 8. A titularidade da aresta e a **proveniência da conta pagadora** não são definidas pela equação de melhoria. Quem pode investir em infraestrutura de terceiros, adquirir direitos/titularidade ou participar de receitas de tarifa permanece **EM ABERTO**; pagamento por terceiro não transfere propriedade automaticamente.
 
-**Candidato operacional mínimo [PROPOSTO, não canonizado]:**
+**F-037 (ratificado):** a taxa **de referência** do trabalhador padrão passa a ser \`R₀=1 unidade monetária por turno completo\`. A fórmula operacional abaixo continua sendo candidata, mas agora deverá respeitar essa normalização, e sua generalização futura por eficiência individual. **Não** pressupor que todas as eras/trabalhadores tenham produtividade 1 para sempre, ou que esse número canonize o preço de produtos e o valor de I₀.
+
+**Candidato operacional mínimo [PROPOSTO quanto à forma]:**
 \`ΔI_e = min(R_w × Δt_efetivo, M_disponível, max(0,I_alvo−I_e))\`.
-\`R_w\` tem dimensão moeda/tempo e representa **taxa de incorporação por trabalho** para o trabalhador \`w\`; \`M_disponível\` é saldo financeiro efetivamente utilizável, \`Δt_efetivo\` o tempo aplicado e \`I_alvo\` a meta opcional. O caso sem meta deve usar apenas os limites financeiro e temporal. Não fixar valores, variação por trabalhador, parâmetros por tipo de aresta ou uma relação arbitrária entre produtividade e moeda. Atenção: se a ação ficar limitada por dinheiro/meta antes do fim do tempo inicialmente oferecido, **apenas o tempo correspondente ao valor realmente incorporado deve ser comprometido**, sob uma taxa constante; o restante pode ser reaproveitado em outra ação válida (F-017).
+\`R_w\` tem dimensão moeda/tempo e representa taxa de incorporação por trabalho para trabalhador \`w\`; a normalização atual é \`R_w=R₀=1 moeda/turno\`. \`M_disponível\` é saldo financeiro efetivamente utilizável, \`Δt_efetivo\` é o tempo em unidades de turno e \`I_alvo\` é meta opcional. O caso sem meta usa limites financeiro e temporal. A fonte econômica futura de diferenças entre trabalhadores é tratada em F-037, sem valores arbitrários por profissional. Atenção: se a ação ficar limitada por dinheiro/meta antes do fim do tempo inicialmente oferecido, **apenas o tempo correspondente ao valor realmente incorporado deve ser comprometido**, sob uma taxa constante; o restante pode ser reaproveitado em outra ação válida (F-017).
 
 **Nota financeira:** a transferência "dinheiro da conta → capital incorporado" **não significa necessariamente que dinheiro deixe de existir macroeconomicamente**. Seu tratamento de contrapartidas, política monetária e titularidade requer o contrato F-022; esta decisão exige apenas evitar dupla despesa e reconhecer capital incorporado. Não lançar simultaneamente um segundo custo material abstrato para a mesma parcela.
 
-**Exemplo de teste (valores ilustrativos):** \`R=10\` moeda/tempo; uma autorização de investimento até \`I_alvo=100\`; em \`Δt=3\` com saldo suficiente, incorporar 30; noutros 3, mais 30; ao parar, \`I_e=60\` já proporciona melhoria; o restante 40 **não foi desembolsado**. Os números não são parâmetros canônicos.
+**Exemplo de teste com a taxa-base F-037:** \`R₀=1\` moeda/turno; meta ilustrativa de capital total \`I_alvo=10\`. Trabalhando 3 turnos com saldo suficiente, incorpora 3; noutros 3, mais 3; ao parar, \`I_e=6\` já proporciona melhoria. Os 4 restantes **não foram desembolsados**. Somente a taxa-base 1 está ratificada; meta 10 é ilustrativa.
 
 ### F-036 — Concor­rência de trabalhadores e liquidação de investimento contínuo [ABERTO; PRÓXIMO GATE]
 
@@ -694,9 +696,36 @@ A diferença **não é arredondamento**, mas definição de qual grandeza a fun�
 - Não criar penalização por excesso de construtores, limite de quantidade de trabalhadores ou novo índice de construção **sem demonstração de gargalo físico real**.
 - No mercado econômico periódico, os benefícios da infraestrutura são lidos por um **snapshot causal** de capital incorporado, sem aplicação retroativa, não pela ordenação de tarefas do processador.
 
-**Exemplo de aceitação:** aresta \`AB\`, dois trabalhadores em A e B com capacidade de incorporar 10 moeda/tempo cada, mas caixa compartilhado de 15. Após uma janela comum de tempo com trabalho máximo pretendido de 20, a soma \`Σ ΔI_w\` deve ser **no máximo 15**; o débito da conta é igual à soma incorporada, \`I_AB\` cresce exatamente por essa soma e cada trabalhador só gasta tempo proporcional ao que executou segundo a regra futura. Empate e redistribuição do saldo são questões explícitas, não escolha por ordem da lista de trabalhadores.
+**Exemplo de aceitação com R₀=1:** aresta \`AB\`, dois trabalhadores de referência em A e B, capazes de incorporar 1 moeda/turno cada, mas caixa compartilhado de 1,5. Após uma janela comum de 1 turno com trabalho pretendido equivalente a 2 unidades monetárias, \`Σ ΔI_w ≤ 1,5\`; o débito da conta é igual à incorporação, \`I_AB\` cresce exatamente por essa soma e cada trabalhador só gasta tempo efetivamente utilizado. Repartição proporcional de 0,75 moeda e 0,75 turno por trabalhador é **candidato ilustrativo** em caso de igual prioridade/taxa, não política de arbitragem ratificada. Empate e redistribuição do saldo não podem depender da ordem da lista.
 
-**Em aberto:** regra para repartição de saldo comum, taxa universal ou específica de execução, se produtividade de trabalhador afeta \`R_w\`, eventual gargalo construtivo físico, momento da cobrança e liquidação detalhada, e compatibilização com investimentos simultâneos de vários titulares. Não ratificar fórmula de concorrência a partir deste cenário isolado.
+**Em aberto:** regra para repartição de saldo comum, forma de atualizar \`R_w\` quando desenvolvimento/educação mudarem, eventual gargalo construtivo físico, instante da liquidação e compatibilização com investimentos simultâneos de vários titulares. **A taxa-base universal de referência 1/turno foi ratificada em F-037**; diferenças futuras de eficiência estão previstas, mas sem fórmula. Não ratificar fórmula de concorrência a partir deste cenário isolado.
+
+
+### F-037 — Taxa-base de construção e futuras diferenças de eficiência socioeconômica [RATIFICADO O PRINCÍPIO; MODIFICADORES ABERTOS]
+
+**Valor canônico inicial:** para trabalhador padrão, **um turno completo de trabalho de melhoria de aresta incorpora até 1 unidade monetária de capital**, desde que a quantia esteja disponível e realmente seja debitada. Tempo parcial é proporcional: \`Δt=0,25 turno\` oferece capacidade de execução de até \`0,25 moeda\` por trabalhador de referência. A base não é um prêmio monetário ao trabalhador, nem emissão de dinheiro; é **taxa de execução de investimento financiado**.
+
+\`R₀=1 moeda/turno\`, com \`R_w=R₀\` para todos os trabalhadores na primeira versão, até posterior introdução de diferenças fundadas.
+
+**Diretriz ratificada para evolução:** futuramente, a eficiência \`E_w\` diferenciará trabalhadores a partir de **(i) grau de desenvolvimento econômico do local de pertencimento do trabalhador** e, caso venham a existir, **(ii) educação e outros fatores sociais**. O desenvolvimento econômico do local de pertencimento também deverá influenciar o **peso desse trabalhador na demanda econômica**. Não há necessidade de implementar um sistema educacional agora.
+
+**Fórmula de extensão apenas ilustrativa [PROPOSTA]:** \`R_w=R₀×E_w\`, com \`E_w=1\` atualmente; uma demanda econômica de trabalhador poderá usar, de forma separada, uma função \`D_w = D_base × G(desenvolvimento_local, ...)\`. **Não ratificar** a forma de \`E_w\`, \`G\`, sua igualdade entre si, normalização, índices, coeficientes, limites, elasticidades ou atualizações. A existência de correlação com o desenvolvimento não obriga que produtividade e demanda cresçam na mesma proporção.
+
+**"Local de pertencimento" não é sinônimo automático de local físico de trabalho.** O trabalhador pode se deslocar e atuar em outra região; sua referência de desenvolvimento econômico precisa ser identificada por regra de afiliação/migração própria, ainda em aberto. Não recalcular seu potencial apenas por trocar de tile, salvo decisão posterior.
+
+**Contabilidade de tempo:** o "turno" é a unidade de referência de \`R₀\`, não uma exigência de consumir blocos indivisíveis de tempo. F-013/F-015/F-017 seguem permitindo frações temporais e atividades sequenciais. Se restarem apenas 0,2 turno de ação, a capacidade-base máxima correspondente é 0,2 moeda, condicionada a caixa e elegibilidade.
+
+**Guardrails de implementação:**
+1. Não confundir dinheiro/turno incorporável em infraestrutura com a **receita** de produção de mercadorias: esta surge posteriormente de quantidade, demanda, escoamento e preço de mercado (F-023). Nenhum trabalhador cria 1 moeda por turno só por construir.
+2. O parâmetro de escala da função de nível \`I₀\` não foi fixado por esta deliberação. A escolha \`R₀=1\` não implica um número canônico de turnos para atingir qualquer nível de infraestrutura.
+3. A exigência de caixa e não duplicação de tempo/dinheiro/capital de F-035 permanece obrigatória.
+4. Quando futuramente o desenvolvimento local afetar **eficiência construtiva e peso da demanda**, testar retroalimentação, estabilidade de poder de compra e não criação de saldos sem contrapartida (F-022). Não derivar o desenvolvimento de uma conta que dependa circularmente dele sem regra causal.
+5. Se \`E_w\` variar durante o turno/ciclo, definir o instante de referência e garantir determinismo de F-018; não ler taxas inconsistentes em diferentes ordens de processamento.
+6. Uma unidade monetária é **unidade de conta nominal do modelo**; calibração de preços e valores monetários entre eras é assunto posterior. Evitar índices artificiais de eficiência por item, modal ou infraestrutura.
+
+**Exemplo inicial de homologação:** um trabalhador com 1 turno e 2 moedas disponíveis aplica 1 turno → debita e incorpora 1; meio turno → incorpora 0,5; com 0,3 moeda disponível e 1 turno, incorpora no máximo 0,3 e libera o tempo restante, se nenhuma outra restrição atuar. Produção econômica e peso de demanda permanecem processos separados.
+
+**Status:** norma inicial \`R₀=1\` e fontes futuras de diferenciação ratificadas; fórmulas de eficiência/demanda, índice local, educação, migração e tempo de atualização **não ratificados**. A arbitragem entre construtores permanece F-036 [ABERTO].
 
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
@@ -754,3 +783,5 @@ A diferença **não é arredondamento**, mas definição de qual grandeza a fun�
 - **2026-11-07 — investimento individual por aresta:** F-034 ratificada: toda infraestrutura logística melhorável pertence à aresta, não ao nó; investir numa ligação não melhora outras mesmo se compartilham extremo. Trabalhador pode construir a partir de qualquer nó extremo, nunca enquanto em trânsito; execução respeita orçamento temporal e progresso físico. Hipóteses anteriores de infraestrutura portuária em nó foram explicitamente superadas. Categoria de investimento produtivo no nó (F-006) não foi redefinida nesta deliberação.
 
 - **2026-11-07 — décima primeira deliberação:** F-035 ratificada como melhoria contínua por trabalho e desembolso monetário efetivos, sem marcos de obra concluída; capital incorporado é progresso persistente, e efeitos entram em vigor no tempo lógico correto. F-036 aberta para múltiplos trabalhadores/contas concorrentes e taxa de execução; fórmula de taxa e critérios de empate ainda não ratificados.
+
+- **2026-11-07 — taxa-base de execução de infraestrutura:** F-037 ratificada com 1 unidade monetária de capital incorporável por turno completo de trabalhador padrão, com frações temporais e condicionada a caixa. Diferenciação futura pela economia do local de pertencimento (também afeta demanda) e, se houver, educação/fatores sociais; sem definir multiplicadores ou sistema educacional agora. F-036 concorrência segue aberta.
