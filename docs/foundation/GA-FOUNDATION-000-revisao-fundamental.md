@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 0.4  
+**Versão conceitual:** 0.5  
 **Situação:** deliberação em andamento; núcleo explicitamente ratificado nesta conversa  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -135,7 +135,7 @@ Modifica capacidades de nós ou arestas. **[ABERTO]**: construção, materiais, 
 
 ## 7. Próxima decisão em pauta: sem ratificação
 
-**F-011 — Conversão de trabalho em produção [ABERTO; experimento inicial elaborado]**
+**F-011 — Conversão de trabalho em produção [ABERTO; hipótese histórica temporariamente subordinada a F-012/F-013]**
 
 ### Problema
 
@@ -181,39 +181,63 @@ Este candidato não exige uma função de retornos decrescentes arbitrária: o r
 **Status:** a equação limitada por oportunidades é uma **recomendação para testar**, não uma lei ratificada. A forma exata de derivar \`A\` e \`Y\` ainda precisa ser demonstrada, e a dinâmica dos materiais permanece aberta.
 
 
-## 7A. Proposta de síntese — agente físico, ação e demanda [PROPOSTO, NÃO RATIFICADO]
+## 7A. Síntese conceitual: agente físico e orçamento de tempo
 
-### F-012 — Trabalhador como agente físico de ação e demanda [PROPOSTO]
+### F-012 — Trabalhador como agente físico de ação e demanda [RATIFICADO NO NÍVEL DE PRINCÍPIO]
 
-Proposta formulada em 2026-11-07: a unidade básica do jogo é um **trabalhador fisicamente localizado**, abstrato, descrito no mínimo por:
+O trabalhador é a unidade fundamental de dinâmica, abstrata e fisicamente localizada. Possui:
 
-1. **Localização física** no grafo (nó ou trânsito por aresta) — já ratificada por F-005.
-2. **Capacidade de ação** por intervalo, aplicada a produção, construção e deslocamento — proposta de nome e generalização da capacidade universal de *trabalho* já ratificada em F-009. **Não criar dois orçamentos independentes** de ação e trabalho.
-3. **Demanda por itens**, um vetor de necessidades/consumo cuja regra de formação, periodicidade, possibilidade de substituição, localização do atendimento e consequência de insuficiência ainda **não foram ratificadas**.
+1. **Localização física** singular no grafo, em nó ou durante travessia de aresta (F-005).
+2. **Capacidade de ação** compartilhada entre produção, construção e deslocamento (F-009).
+3. **Demanda de itens** que poderá originar consumo efetivo, conforme regras ainda a definir.
 
-A unidade não exige que um trabalhador corresponda a uma pessoa, família ou profissão. Sua natureza demográfica é uma decisão posterior. Demanda **não é o mesmo que consumo efetivo**: necessidade/solicitação, disponibilidade/acesso físico e consumo ocorrido são etapas conceitualmente distintas. Também não pressupõe preços, mercado, caixa, propriedade ou compra automática.
+A presença da demanda é ratificada; **sua composição, geração, periodicidade, prioridade, substituibilidade, satisfação e consequências de não atendimento permanecem em aberto**. Não confundir demanda com consumo material efetuado, compra, transferência de titularidade ou existência de estoque. A unidade não corresponde obrigatoriamente a um ser humano individual.
 
-Os **nós** fornecem propriedades físicas, oportunidades de atividade e eventuais materiais presentes; as **arestas** oferecem caminhos e condições de travessia; **infraestruturas** modificam capacidades locais. A interação entre agentes, recursos físicos, ações e consumo forma o núcleo candidato a sustentar economia, logística e infraestrutura.
+Nó e aresta oferecem o contexto físico que condiciona as ações; a infraestrutura modifica características desses elementos. O modelo não pressupõe mercado, moeda, governo ou preços nesta camada.
 
-**Proposta de norma operacional:** cada ação aloca uma parcela de uma capacidade comum do agente e produz uma mudança física de estado segundo a atividade e o local. O mesmo orçamento não pode ser duplicado em duas ações. A demanda poderá requerer itens durante o período, inclusive em trânsito, mas como a distribuição e a periodicidade ainda são abertas, não se presume consumo automático nem acesso a estoques de outros trabalhadores.
+### F-013 — Capacidade universal de ação expressa em tempo [RATIFICADO COMO DIRETRIZ CONCEITUAL]
 
-**Riscos e questões para decisão:**
-- A capacidade de ação precisa de **uma escala comum**; a unidade mais parcimoniosa pode ser fração de período/tempo disponível, convertida por rendimentos de atividade no nó ou custo de deslocamento na aresta. Isto é uma hipótese, não unidade ratificada.
-- Demanda é independente da tarefa executada? Os itens e quantidades podem variar por atividade, situação, tecnologia e era; ainda não decidido.
-- O que ocorre com demanda não satisfeita? Não introduzir penalidades numéricas, fome automática, mortalidade ou queda de produtividade sem deliberação.
-- O agente consome de estoque próprio, do nó, de um grupo, de um mercado ou por regra de acesso? **Aberto**.
-- O núcleo proposto não elimina decisões posteriores sobre titularidade, cooperação, conflitos, instituições e objetivos. É substrato, não descrição completa do jogo.
+A capacidade universal F-009 é reinterpretada como **tempo disponível para realizar ações**. Não existem saldos separados de pontos de produção, construção ou movimento.
 
-### Ordem de discussão recomendada
+Para cada trabalhador e período, sob qualquer unidade temporal posteriormente escolhida:
 
-Antes de ratificar as fórmulas candidatas em F-011, avaliar a abstração F-012; depois discutir:
+- tempo usado em ações não pode exceder o tempo disponível;
+- uma ação em andamento ocupa uma parcela desse mesmo orçamento;
+- produzir, construir e deslocar-se são diferentes **resultados de aplicar tempo a processos com precondições e rendimentos físicos próprios**, e não moedas de ação desconexas;
+- a execução de uma atividade deve respeitar a localização física do trabalhador e as propriedades dos nós/arestas;
+- o tempo é recurso da unidade para **ações deliberadas**; a mera passagem de tempo e fenômenos passivos não são automaticamente tarefas que consumam esse orçamento.
 
-1. Se a capacidade universal deve ser expressa como **tempo de ação**, sem pontuações arbitrárias por atividade.
-2. Se demanda é um vetor do agente com necessidades básicas independentes das tarefas e necessidades adicionais por atividade.
-3. Como os itens disponíveis fisicamente alcançam um agente que demanda consumo, **sem** supor mercado ou moeda.
-4. Só então derivar regras locais de produção, saturação, extração e renovação, para não construir tetos que possam resultar de restrições físicas mais fundamentais.
+A decisão sobre **quantum de tempo do turno, fracionamento, simultaneidade, tarefas em andamento, interrupções, acumulação e regra de processamento** permanece em aberto. Exemplo "1 unidade por turno" é apenas normalização ilustrativa, não valor fixado.
 
-**Governança:** F-009 continua ratificada quanto à unicidade da capacidade; F-012 não está ratificada e não substitui automaticamente sua redação. F-011 continua aberta, inclusive quanto à necessidade de \`A(v,r)\`. Nenhum parâmetro de consumo ou regra de alocação foi aprovado.
+A intensidade ou produtividade de uma ação pode depender da tecnologia, ferramentas, condições físicas e outros modificadores futuros, mas sem alterar o conceito de orçamento temporal único. Não se presume que todas as ações tenham a mesma eficiência ou requerimentos materiais.
+
+### F-014 — Demanda, satisfação e consumo físico [ABERTO]
+
+Para cada tipo de item, distinguir explicitamente:
+
+1. necessidade/demanda do agente;
+2. existência física e acesso ao item;
+3. transferência ou disponibilidade para o agente (se for exigida pelas futuras regras);
+4. consumo físico efetivamente registrado;
+5. necessidade não atendida, caso exista.
+
+Demanda **não produz bens**, **não efetiva transações automaticamente** e **não implica gasto de tempo de ação**. Um trabalhador poderá ter demanda mesmo quando parado ou em deslocamento, mas ritmo/quantidade/consequências permanecem abertos.
+
+Hipótese para teste (não ratificada): separar **demanda basal associada ao transcurso do tempo** de **demanda adicional associada a atividades**. As duas devem referir-se às mesmas mercadorias físicas e não podem duplicar consumo da mesma necessidade.
+
+### Experimentos do orçamento universal [PROPOSTOS]
+
+- **Trabalhador imóvel:** orçamento temporal disponível, demanda pode existir, nenhuma ação produtiva; verificar separação entre inatividade e consumo.
+- **Trabalhador em produção:** tempo aplicado em nó gera produção conforme uma relação ainda não ratificada e disponibilidade física.
+- **Trabalhador em construção:** tempo aplicado e materiais eventualmente necessários produzem progresso persistente de obra; material não pode ser inventado.
+- **Trabalhador em deslocamento:** tempo investido numa aresta gera progresso de travessia; enquanto a posição física estiver em trânsito, não atribuir produção indevida a nó de origem ou destino.
+- **Trabalhador misto:** se ações parciais forem permitidas, a soma dos tempos utilizados não excede o orçamento. Nenhuma permissão para fracionamento foi ratificada ainda.
+
+### Revisão de prioridade da F-011
+
+A formulação anterior \`Q=R×min(W,A)\` e a alternativa de saturação suave seguem como **hipóteses de pesquisa, não como bases da nova versão**. Antes de fixar \`A\`, \`R\` ou qualquer curva, investigar o processo geral **ação no espaço → transformação física de estado**, com restrições do recurso. Essa ordem evita construir a arquitetura em torno de um teto inventado.
+
+**Próxima pauta sugerida:** estabelecer o contrato universal mínimo de **ação** (precondição física, tempo empregado, materiais usados, efeitos físicos e persistência de progresso) e só depois discutir funções particulares de produção, construção e deslocamento. Nenhum esquema de dados ou API está decidido.
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
 
@@ -244,3 +268,4 @@ Antes de ratificar as fórmulas candidatas em F-011, avaliar a abstração F-012
 - **2026-11-07 — segunda deliberação:** F-009 ratificada (capacidade universal de trabalho); F-010 ratificada (nova versão de desenho autônomo e descarte de código incompatível sem restrição de retrabalho); F-011 aberta (lei de produção).
 - **2026-11-07 — estudo F-011:** examinada a validade local da produção linear e formulado candidato de saturação por oportunidades físicas, sem ratificação de fórmula nem parâmetros.
 - **2026-11-07 — proposta F-012:** trabalhador como agente físico com uma capacidade universal de ação e um vetor de demanda; distinção entre demanda e consumo efetivo; nenhuma regra nova ratificada.
+- **2026-11-07 — terceira deliberação:** F-012 aprovada no nível estrutural (agente = localização + ação + demanda) e F-013 aprovada como diretriz (orçamento único de tempo para ações). F-014 permanece aberta, assim como a dinâmica de produção F-011.
