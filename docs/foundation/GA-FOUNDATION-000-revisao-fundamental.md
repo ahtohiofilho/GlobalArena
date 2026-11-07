@@ -1,13 +1,13 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 1.0  
+**Versão conceitual:** 1.1  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
 > **Regra editorial:** este texto distingue rigorosamente o que foi decidido daquilo que ainda está sendo discutido. Nenhuma hipótese, exemplo ou equação ilustrativa pode ser implementada como regra canônica sem ratificação explícita.
 >
-> **Precedência conceitual:** a decisão posterior **F-021 — economia monetária abstrata, sem estoques de mercadorias produzidas** substitui as hipóteses anteriores que pressupunham produção, retenção, transporte, compras ou consumo de madeira/pedra/alimentos como lotes físicos. Os experimentos antigos são mantidos somente como histórico exploratório, não como obrigações de implementar.
+> **Precedência conceitual:** F-021 remove os **estoques persistentes, a logística executada de mercadorias e o consumo item-a-item**, mas é esclarecida por **F-023**: as mercadorias continuam existindo como **quantidades setoriais de oferta/demanda**, negociadas e monetizadas por mercado espacial com escoamento abstrato. F-024 propõe separar impedância física e tarifas de infraestrutura. Os experimentos materiais anteriores são históricos, não requisitos de implementação.
 
 ## 1. Objetivo
 
@@ -42,7 +42,7 @@ Cada nó possui parâmetros físicos que determinam o **potencial produtivo** de
 
 ### F-003 — Recursos iniciais [RATIFICADO]
 
-O escopo inicial de **atividades/setores produtivos** pode distinguir madeira, pedra e alimentos, mantendo a heterogeneidade física dos nós. **Após F-021, essas categorias não representam obrigatoriamente itens físicos produzidos**: os resultados econômicos são monetizados sem estoques de mercadorias. Fica aberto se essas três categorias serão preservadas como setores com funções de rendimento e demanda diferenciadas ou reduzidas a um indicador econômico agregado por nó.
+O escopo inicial inclui **madeira, pedra e alimentos como mercadorias/setores economicamente distintos**: cada um pode ter quantidades produzidas, oferta, demanda, preço de mercado e escoamento espacial, porém **sem estoque persistente, carga material ou transporte executado no mapa** (F-021/F-023). O carvão é outro exemplo ilustrativo, não ampliação obrigatória do catálogo inicial. O valor econômico vem do **mercado**, não só de tempo e produtividade do nó.
 
 ### F-004 — Trabalhador como unidade básica [RATIFICADO]
 
@@ -215,25 +215,25 @@ A intensidade ou produtividade de uma ação pode depender da tecnologia, ferram
 
 ### F-014 — Demanda e consumo abstratos [RATIFICADA A ABSTRAÇÃO; REGRAS EM ABERTO]
 
-Após F-021, a demanda do trabalhador representa **necessidades econômicas a serem atendidas por valor monetário**, em vez de uma obrigação de obter, armazenar, transportar e gastar unidades físicas de madeira, pedra ou alimentos.
+Após F-021/F-023, a demanda do trabalhador poderá manter **composição por mercadoria** (madeira, pedra, alimentos etc.) e contribuir para **curvas monetárias de demanda/valoração do mercado espacial**, sem exigir estoque, entrega individual ou consumo material executado. A liquidação econômica precisa ser distinta do consumo item-a-item.
 
 **Estão ratificados somente a existência de demanda e o abandono de estoques/fluxos físicos de mercadorias como mecanismo necessário de satisfação.**
 
-**Continuam abertos:** formação e periodicidade da demanda, condições de atendimento (caixa do agente, de grupo, de território ou outro), relação com produtividade/bem-estar, orçamento e sua procedência, preço/custo, demanda setorial ou agregada, insuficiência e eventual gasto adicional por atividade.
+**Continuam abertos:** formação e periodicidade da demanda, composição setorial, preço/curva de valor, condições de atendimento (caixa do agente, de grupo, de território ou outro), orçamento e sua procedência, relação com produtividade/bem-estar, insuficiência e eventual gasto adicional por atividade. Dinheiro fungível não implica apagar preferências ou demandas diferenciadas entre mercadorias.
 
 **Invariante desejável:** distinguir necessidade econômica calculada, despesa efetivamente liquidada e resultado de atendimento; demanda não equivale por si só a pagamento, nem autoriza gerar moeda em duplicidade. Essa norma de liquidação precisa ser concluída em F-022.
 
 ### Experimentos do orçamento universal [REINTERPRETADOS POR F-021]
 
 - **Trabalhador imóvel:** tempo de ação não utilizado; demanda monetária pode existir sem produção.
-- **Trabalhador em produção:** aplica tempo no nó; potencial físico e infraestrutura geram valor econômico convertido em dinheiro sem estoque de mercadoria produzida.
+- **Trabalhador em produção:** aplica tempo no nó e gera **quantidade ofertável por mercadoria**; escoamento abstrato e mercado espacial precificam a produção; a venda gera receita, sem estoque persistente.
 - **Trabalhador em construção:** aplica tempo caso a obra necessite execução física; os demais insumos econômicos são **somente monetários**, nunca materiais retirados de estoques do jogo.
 - **Trabalhador em deslocamento:** aplica tempo nas arestas, preserva progresso físico; não transporta carga de mercadorias como exigência econômica canônica.
 - **Trabalhador misto:** pode alternar tarefas sequencialmente no mesmo turno (F-017), sem duplicar tempo.
 
 ### Revisão de prioridade da F-011
 
-A formulação anterior \`Q=R×min(W,A)\` (Q como volume de mercadoria) e a alternativa de saturação suave são **hipóteses históricas superadas para o fluxo econômico de mercadorias**, conforme F-021. Pode-se reexaminar limitações do rendimento **monetário** por condições físicas, sem reproduzir estoques físicos. Antes de fixar \`A\`, \`R\` ou qualquer curva, investigar o processo geral **ação no espaço → transformação física de estado**, com restrições do recurso. Essa ordem evita construir a arquitetura em torno de um teto inventado.
+A formulação anterior \`Q=R×min(W,A)\` (Q como quantidade por mercadoria) e a alternativa de saturação suave permanecem **hipóteses não ratificadas de produção quantitativa**, sem implicar estoques físicos. F-023 esclarece que **Q tem significado antes da monetização**; o rendimento monetário é calculado posteriormente, pelo escoamento e preço de mercado. Antes de fixar \`A\`, \`R\` ou qualquer curva, investigar o processo geral **ação no espaço → transformação física de estado**, com restrições do recurso. Essa ordem evita construir a arquitetura em torno de um teto inventado.
 
 **A pauta do contrato temporal geral é contemplada por F-015.** A forma de representar o progresso físico e de disponibilizar resultados continua aberta em F-016; nenhum esquema de dados ou API está decidido.
 
@@ -336,44 +336,75 @@ A concorrência é resolvida **no local e no intervalo temporal em que realmente
 **Próxima decisão prioritária:** escolher se a modalidade proporcional por taxa física é a norma-padrão *somente* para recursos genuinamente divisíveis, de acesso equivalente, com ações paralelas possíveis; e decidir como modelar um recurso indivisível sem arbitrar por mero ID. Nenhum destes métodos está ratificado.
 
 
-### F-021 — Economia monetária abstrata sem estoque de mercadorias [RATIFICADO]
+### F-021 — Abstração de estoque, consumo e construção [RATIFICADO; ESCLARECIDO POR F-023]
 
-**Decisão:** retirar do novo núcleo econômico a representação operacional de madeira, pedra, alimentos e de outros produtos como itens físicos produzidos, acumulados, transportados, negociados, consumidos ou incorporados diretamente como materiais de obra. O mundo mantém propriedades físicas, mas os **resultados produtivos são convertidos em dinheiro sem acumulação de mercadorias**.
+**Decisão:** manter o mundo, os trabalhadores e suas ações físicas, mas **não manter estoques operacionais persistentes de mercadorias produzidas, nem executar cargas, entregas individuais e insumos específicos de materiais de obra**. O resultado financeiro da atividade produtiva é dinheiro **recebido após a valoração/venda de quantidades setoriais**, não emissão direta por tempo de trabalho.
 
-**Contratos conceituais ratificados:**
-1. O **trabalhador** segue fisicamente localizado e dispõe de tempo de ação (F-005, F-009, F-013, F-017).
-2. O **nó** mantém propriedades físicas que condicionam diferentes potenciais de rendimento econômico; infraestrutura do nó pode modificar esse rendimento.
-3. A produção ocorre como **aplicação de tempo em uma atividade no nó**, cujo resultado econômico é monetizado, sem estoque material de saída. Nenhuma venda individual, comprador físico, frete ou lote de mercadoria é necessário para sua disponibilização econômica.
-4. A **demanda/consumo** do agente passa a ser representada abstratamente em valor/custo monetário, não por retirada obrigatória de mercadorias físicas no mapa. A satisfação dessa demanda ainda requer contrato.
-5. A **infraestrutura dos nós e das arestas** tem **custo financeiro em dinheiro em vez de materiais específicos**. O trabalho e tempo necessários para construir, se houverem, são tratados por F-013/F-015/F-017; *não* pressupor por esta decisão que pagar dinheiro conclua instantaneamente uma obra.
-6. As **arestas** seguem relevantes ao deslocamento físico de trabalhadores e futuras unidades. O transporte de cargas econômicas de madeira, pedra e alimentos não é mais premissa.
-7. A manutenção de classificações produtivas (como madeira, pedra, alimentos) pode servir a potenciais geográficos, políticas, custos e dinâmica econômica diferenciada, **sem transformá-las em itens materializados**. A necessidade e a formulação de setores separados permanecem abertas.
+**Contratos ratificados:**
+1. O trabalhador permanece fisicamente localizado e aplica orçamento temporal universal às atividades.
+2. O nó possui potenciais físicos para quantidades produzíveis de mercadorias **distintas** (madeira, pedra, alimentos; carvão somente como exemplo).
+3. A produção apura uma **quantidade por mercadoria e ciclo**. A quantidade participa de escoamento/precificação abstratos (F-023) e não entra em inventário de mercadorias persistente.
+4. O dinheiro é a **receita da venda no mercado**, dependente do preço de mercado e volume vendido. Não igualar quantidade produzida, valor potencial e receita realizada.
+5. A demanda/consumo pode ser representada economicamente por mercadoria/setor, mas não exige retirada de lotes físicos no mapa.
+6. Infraestrutura de nós/arestas custa **dinheiro em lugar de madeira, pedra ou outros insumos específicos**; o componente temporal de construção permanece sujeito a F-013/F-015 e à definição posterior de conclusão.
+7. Arestas continuam representando deslocamento físico de agentes, além de uma **rede abstrata de custo de escoamento comercial**. O escoamento de mercadorias pode ser calculado sem simular cargas/veículos.
 
-**Escopo do descarte conceitual:** deixam de ser requisitos da nova versão o journal de lotes físicos de mercadorias, armazenamento local desses itens, titularidades sobre lotes, rotas comerciais de cargas, equações de extração/consumo de reservas de mercadorias e requerimentos materiais específicos para construção. Trata-se de **descarte do desenho futuro**, não remoção ou refatoração automática do código antigo.
+**Fora do novo núcleo operacional:** estoques físicos permanentes por produto, lotes individuais, custódia de cargas, entrega comercial individualizada, cadeia de materiais obrigatórios para obras. **Dentro do modelo econômico:** quantidades setoriais transitórias por ciclo, oferta/demanda, preços, receita, rotas abstratas e custos físicos de acesso aos mercados.
 
-**Invariantes que permanecem:** contabilidade do tempo de ação, posicionamento, cronologia, concorrência física real por espaço/oportunidades/capacidade de transporte de agentes, persistência de progresso, integridade de resultados e determinismo. F-019 ainda se aplica a **capacidades físicas de uso**, não exige escassez/partilha de estoque de madeira/pedra/alimentos. Os cenários materiais de F-020 deixam de ser parte obrigatória do núcleo novo.
+**Governança:** não reusar, de forma automática, o water-filling ou as fórmulas do código anterior; reavaliar princípios e só então auditar o reuso (F-010).
 
-**Advertência de contabilidade:** "converter produção diretamente em dinheiro" **não define quem paga, de onde surge o saldo nem se a receita é emissão, transferência ou crédito em mercado agregado**. Essa questão não pode ser resolvida por conveniência implícita. Também não se presume que todo tempo aplicado gere dinheiro ilimitado, que consumo seja um pagamento automático sem fonte ou que toda opção de atividade seja economicamente equivalente.
+### F-022 — Financiamento e liquidação monetária [ABERTO]
 
-### F-022 — Regra mínima de receita, gasto e construção [ABERTO; principal próxima decisão]
+A venda de mercadorias geradas em quantidades abstratas produz receita monetária, mas ainda precisamos definir **quem paga, qual orçamento financia a demanda e como se liquidam as transações**. Não inferir criação automática de moeda por produção.
 
-Questão central: como conciliar receita monetária automática por produção, demandas monetárias dos agentes e despesas de infraestrutura sem criar recursos financeiros involuntariamente ou permitir ciclos ilimitados de enriquecimento?
+**Alternativas em aberto:** transferência com compradores/contas efetivas; mercado abstrato com balanço agregado e fontes/sumidouros explícitos; arquitetura híbrida com demanda calibrada, desde que não haja dupla contagem de poder de compra.
 
-**Alternativas para a origem da receita** (nenhuma ratificada):
-- **A — Transferência de poder de compra:** receitas produtivas são pagas por orçamento/demanda monetária de agentes ou coletividades, com restrição explícita de capacidade financeira. Requer especificar quem paga e em que condições a receita é realizável.
-- **B — Crédito monetário abstrato gerado pelo sistema:** a produção acrescenta dinheiro segundo uma função de valor; consumo e investimentos podem atuar como saídas de moeda, com regra explícita de emissão, destruição e estabilidade. Menos dependência de contrapartes, mas política macroeconômica passa a ser parte da lei do jogo.
-- **C — Mercado agregado híbrido:** produção recebe valor por uma função global/local de demanda e oferta, com contas ou limites agregados, sem itens físicos ou decisões individuais de compra. Exige evitar dupla contagem de receitas, preços e poder de compra.
+**Decisões pendentes:** caixa por trabalhador/nó/instituição, liquidação dos gastos de consumo, origem e destino do dinheiro, preço final pago, tratamento de não venda quando demanda/orçamento insuficiente, financiamento de infraestrutura e possíveis impostos. Quando um custo apenas **condiciona preço**, não lançar simultaneamente despesa de caixa não especificada.
 
-**Premissas adicionais ainda abertas:**
-1. Dinheiro reside no trabalhador, no nó, na instituição, em agregados ou em combinação? Não criar caixas simultâneos com a mesma receita.
-2. Se uma atividade física gera receita imediata, qual o significado de "consumo" e qual saldo efetivamente paga a demanda?
-3. Construir significa **trabalho temporal + pagamento em dinheiro** (leitura mais consistente de F-013 e F-021) ou **conversão instantânea de dinheiro em infraestrutura**, abolindo a construção como ação? A segunda alternativa exige revisão expressa de sua aplicação.
-4. Se todos os setores produzem o mesmo dinheiro fungível sem nenhuma diferenciação de demanda/preço, produzir o setor de maior rendimento pode dominar todas as escolhas, tornando as outras especializações inúteis. Setores distintos só devem ser mantidos se alterarem decisões, dinâmica territorial ou acesso a tecnologias.
-5. A escassez física pode restringir **oportunidades de atividade e rendimento** sem exigir um inventário material. O objetivo é manter consequências da geografia sem recuperar micromanagement logístico.
+### F-023 — Mercado espacial: quantidade, preço e water-filling [RATIFICADO NO NÍVEL DE DESENHO]
 
-**Experimento mínimo próximo:** dois nós com potenciais diferentes, um trabalhador e uma necessidade monetária basal. Comparar uma regra de renda/consumo/investimento que mantenha contabilidade e gere decisões significativas sem carregar itens físicos. Verificar fontes/sumidouros monetários, impossibilidade de arbitragem circular gratuita e efeito real da infraestrutura sobre renda e deslocamento.
+A produção tem dois estágios lógicos distintos:
 
-**Não ratificado:** modelo de emissão, mercado, orçamento, tributos, inflação, preços, custos de obra, exigência temporal exata de construção, setores econômicos, reposição monetária e benefícios de consumo.
+1. **Produção quantitativa no nó:** tempo de ação, capacidade natural, propriedades físicas, tecnologia e infraestrutura produtiva determinam a quantidade ofertável de uma mercadoria num ciclo. A fórmula exata de quantidade permanece F-011 [ABERTO].
+2. **Escoamento e venda abstratos:** oferta por origem/mercadoria é alocada a destinos de demanda mediante um mecanismo **do tipo water-filling**, que considera curvas de valor/preço de mercado e **impedância física de transporte** das rotas; a receita resulta de quantidades efetivamente vendidas a preços de mercado, não de um fator monetário fixo de produtividade.
+
+**Sem transporte de mercadorias em tempo real:** as rotas são usadas para precificação/alocação de **fluxos contábeis transitórios por ciclo**, não para movimentar cargas individualizadas no mapa nem acumular produtos não vendidos em estoques persistentes.
+
+**Separação obrigatória:** quantidade produzida \`q_prod\`; quantidade efetivamente alocada/vendida \`q_venda\`; preço de transação \`p\`; receita bruta \`Σ(q_venda × p)\`; receita líquida após **despesas monetárias explícitas**. O custo físico de transporte influencia competitividade e preço, **não se transforma automaticamente em débito ou crédito de dinheiro**.
+
+**Ainda abertos:** função exata de market clearing/water-filling, forma dos preços marginais, orçamento dos compradores, escoamento total versus oferta não absorvida, escala de cálculo, agregação de demanda de trabalhadores, eventuais restrições de capacidade em rotas e relação com consumo. Não assumir que toda a produção encontre comprador com pagamento garantido, salvo se deliberado.
+
+**Invariante financeiro desejável:** quando uma venda monetária for liquidada entre contas representadas, o valor pago pelo comprador e recebido pelo vendedor deverá reconciliar, salvo transferências monetárias adicionais explícitas; a diferença de atratividade induzida por impedância física não é pagamento invisível a transportador.
+
+### F-024 — Impedância física de transporte e cobrança por infraestrutura de terceiros [PROPOSTO]
+
+**Esclarecimento ratificado:** o **custo físico de escoamento** é uma grandeza de impedância/deslocamento/logística, que condiciona a formação de preço e a alocação via mercado, **sem ser despesa de caixa nem receita financeira de transportador**. Não canonizar "pontos de movimento" como unidade definitiva.
+
+**Hipótese de infraestrutura a validar:**
+1. Uma aresta possui impedância física natural \`c0\`; uma infraestrutura de transporte reduz esse custo para \`cI\`, com \`cI ≤ c0\` nos casos de melhoria.
+2. A redução \`Δc = max(0, c0 - cI)\` beneficia qualquer usuário admitido, seja titular ou não, pois a **impedância física real** passa a ser \`cI\`.
+3. O **titular** da infraestrutura está **isento de cobrança monetária pelo uso da infraestrutura própria**, sem escapar da impedância física residual.
+4. Um **não titular** pode arcar com uma **tarifa monetária de acesso**, atribuída a vendedor ou comprador segundo contrato futuro, e calculada com base no ganho físico \`Δc\` e na utilização; essa tarifa é **separada** do custo físico \`cI\`.
+5. Exemplos ilustrativos: \`c0=1.000\`, \`cI=200\`, economia de \`800\` unidades físicas; a tarifa monetária usa alguma função \`T = F(Δc, volume, condições de mercado, direitos)\`. **Não** converter 800 diretamente em 800 unidades de dinheiro.
+6. Em rota com múltiplas arestas ou titulares, o cálculo deve ser local/atribuível, evitando cobrança duplicada e sem usar "melhoria anterior" como referência móvel sem decisão específica.
+
+**Cautelas fundamentais:**
+- A **tarifa é efetiva saída de caixa** para a parte designada; sua contrapartida (receita do titular, conta institucional ou sumidouro explícito) está **EM ABERTO**. Não presumir que o custo físico resulte em pagamento.
+- Se a cobrança for do **vendedor**, uma alternativa de liquidação é receita líquida = receita bruta de venda menos tarifa. Se for do **comprador**, não debitá-la novamente ao vendedor. A titularidade do vendedor/comprador e critérios de responsabilização ainda exigem definição.
+- Water-filling deve ser sensível ao custo **efetivo** que afeta a decisão de rota/preço, mas **não descontar a mesma tarifa duas vezes** (uma na valoração líquida, outra como gasto financeiro).
+- A cobrança não deve, por padrão, tornar toda melhoria infrutífera ao usuário; eventual vinculação da tarifa ao valor econômico da economia física, teto percentual de benefício, competição entre rotas e cenários de acesso devem ser estudados.
+- A expressão "titular" precisa identificar quem possui direito sobre qual **segmento de infraestrutura**, especialmente em rotas com múltiplos proprietários, e não inferir automaticamente propriedade total da rota.
+
+**Status:** proposta de incentivo e monetização de infraestrutura, **não** ratificação de função de tarifa, recebedor, payer, conversão unidade física/moeda ou regra de rateio.
+
+### Experimento recomendado para próxima deliberação [ABERTO]
+
+Dois produtores de carvão, um titular e outro não titular de uma infraestrutura, acessam um mercado remoto. Calcular, sob a mesma curva de demanda, a receita bruta que resulta do escoamento com \`c0=1.000\` e com \`cI=200\` (valores exemplificativos), depois adicionar **somente ao não titular** uma tarifa explícita baseada no benefício físico, verificando se:
+- ambos se beneficiam do mercado mais acessível;
+- a tarifa corresponde a uma movimentação financeira identificável e jamais ao custo físico do transporte;
+- a rota, o preço e a receita não recebem dois descontos para o mesmo fenômeno;
+- titularidade, capacidade e melhorias de arestas não criam dinheiro ou receita duplicados;
+- o resultado segue relevante em diferentes eras sem inventários físicos de mercadorias.
 
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
@@ -411,3 +442,4 @@ Questão central: como conciliar receita monetária automática por produção, 
 - **2026-11-07 — sexta deliberação:** F-018 ratificada no nível de princípio (tempo lógico global, causalidade e independência da ordem interna de processamento); F-019 aberta à época.
 - **2026-11-07 — sétima deliberação:** F-019 ratificada como arbitragem física local apenas diante de conflitos reais, sem política automática de repartição; F-020 aberta à época, sob o modelo físico de mercadorias.
 - **2026-11-07 — oitava deliberação:** F-021 ratificada (economia monetária abstrata, produção convertida em dinheiro, sem estoques ou logística de mercadorias; infraestrutura com componente monetário em vez de madeira/pedra/alimentos). F-022 aberta para contabilidade da emissão/transferência, consumo e contratação de obras; F-020 sobre mercadorias perde prioridade como hipótese histórica.
+- **2026-11-07 — esclarecimento subsequente:** F-023 ratificada no nível de desenho: produção de quantidade diferenciada por mercadoria, escoamento abstrato via water-filling e preço determinado por mercado; sem estoque persistente. O custo físico de transporte forma preço, mas não é fluxo de caixa. F-024 proposta: infraestrutura reduz impedância para todos, titular não paga uso próprio e não titular pode pagar tarifa ligada à economia física; fórmula, pagador/recebedor e liquidação ainda abertos. A F-021 foi revisada para remover interpretação incorreta de emissão monetária direta por trabalho.
