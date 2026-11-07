@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 0.3  
+**Versão conceitual:** 0.4  
 **Situação:** deliberação em andamento; núcleo explicitamente ratificado nesta conversa  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -180,6 +180,41 @@ Este candidato não exige uma função de retornos decrescentes arbitrária: o r
 
 **Status:** a equação limitada por oportunidades é uma **recomendação para testar**, não uma lei ratificada. A forma exata de derivar \`A\` e \`Y\` ainda precisa ser demonstrada, e a dinâmica dos materiais permanece aberta.
 
+
+## 7A. Proposta de síntese — agente físico, ação e demanda [PROPOSTO, NÃO RATIFICADO]
+
+### F-012 — Trabalhador como agente físico de ação e demanda [PROPOSTO]
+
+Proposta formulada em 2026-11-07: a unidade básica do jogo é um **trabalhador fisicamente localizado**, abstrato, descrito no mínimo por:
+
+1. **Localização física** no grafo (nó ou trânsito por aresta) — já ratificada por F-005.
+2. **Capacidade de ação** por intervalo, aplicada a produção, construção e deslocamento — proposta de nome e generalização da capacidade universal de *trabalho* já ratificada em F-009. **Não criar dois orçamentos independentes** de ação e trabalho.
+3. **Demanda por itens**, um vetor de necessidades/consumo cuja regra de formação, periodicidade, possibilidade de substituição, localização do atendimento e consequência de insuficiência ainda **não foram ratificadas**.
+
+A unidade não exige que um trabalhador corresponda a uma pessoa, família ou profissão. Sua natureza demográfica é uma decisão posterior. Demanda **não é o mesmo que consumo efetivo**: necessidade/solicitação, disponibilidade/acesso físico e consumo ocorrido são etapas conceitualmente distintas. Também não pressupõe preços, mercado, caixa, propriedade ou compra automática.
+
+Os **nós** fornecem propriedades físicas, oportunidades de atividade e eventuais materiais presentes; as **arestas** oferecem caminhos e condições de travessia; **infraestruturas** modificam capacidades locais. A interação entre agentes, recursos físicos, ações e consumo forma o núcleo candidato a sustentar economia, logística e infraestrutura.
+
+**Proposta de norma operacional:** cada ação aloca uma parcela de uma capacidade comum do agente e produz uma mudança física de estado segundo a atividade e o local. O mesmo orçamento não pode ser duplicado em duas ações. A demanda poderá requerer itens durante o período, inclusive em trânsito, mas como a distribuição e a periodicidade ainda são abertas, não se presume consumo automático nem acesso a estoques de outros trabalhadores.
+
+**Riscos e questões para decisão:**
+- A capacidade de ação precisa de **uma escala comum**; a unidade mais parcimoniosa pode ser fração de período/tempo disponível, convertida por rendimentos de atividade no nó ou custo de deslocamento na aresta. Isto é uma hipótese, não unidade ratificada.
+- Demanda é independente da tarefa executada? Os itens e quantidades podem variar por atividade, situação, tecnologia e era; ainda não decidido.
+- O que ocorre com demanda não satisfeita? Não introduzir penalidades numéricas, fome automática, mortalidade ou queda de produtividade sem deliberação.
+- O agente consome de estoque próprio, do nó, de um grupo, de um mercado ou por regra de acesso? **Aberto**.
+- O núcleo proposto não elimina decisões posteriores sobre titularidade, cooperação, conflitos, instituições e objetivos. É substrato, não descrição completa do jogo.
+
+### Ordem de discussão recomendada
+
+Antes de ratificar as fórmulas candidatas em F-011, avaliar a abstração F-012; depois discutir:
+
+1. Se a capacidade universal deve ser expressa como **tempo de ação**, sem pontuações arbitrárias por atividade.
+2. Se demanda é um vetor do agente com necessidades básicas independentes das tarefas e necessidades adicionais por atividade.
+3. Como os itens disponíveis fisicamente alcançam um agente que demanda consumo, **sem** supor mercado ou moeda.
+4. Só então derivar regras locais de produção, saturação, extração e renovação, para não construir tetos que possam resultar de restrições físicas mais fundamentais.
+
+**Governança:** F-009 continua ratificada quanto à unicidade da capacidade; F-012 não está ratificada e não substitui automaticamente sua redação. F-011 continua aberta, inclusive quanto à necessidade de \`A(v,r)\`. Nenhum parâmetro de consumo ou regra de alocação foi aprovado.
+
 ## 8. Governança da nova versão e critérios de reaproveitamento
 
 **A fonte de verdade do novo desenho** é a sequência de decisões ratificadas nesta documentação. As decisões do jogo antigo **não exercem autoridade sobre ela**; tampouco foram revogadas para a versão antiga.
@@ -208,3 +243,4 @@ Este candidato não exige uma função de retornos decrescentes arbitrária: o r
 - **2026-11-07 — abertura:** base geométrica/topológica, nó físico-produtivo, três recursos, capacidade natural e duas infraestruturas; ratificação explícita do **Modelo A — Trabalhador físico**.
 - **2026-11-07 — segunda deliberação:** F-009 ratificada (capacidade universal de trabalho); F-010 ratificada (nova versão de desenho autônomo e descarte de código incompatível sem restrição de retrabalho); F-011 aberta (lei de produção).
 - **2026-11-07 — estudo F-011:** examinada a validade local da produção linear e formulado candidato de saturação por oportunidades físicas, sem ratificação de fórmula nem parâmetros.
+- **2026-11-07 — proposta F-012:** trabalhador como agente físico com uma capacidade universal de ação e um vetor de demanda; distinção entre demanda e consumo efetivo; nenhuma regra nova ratificada.
