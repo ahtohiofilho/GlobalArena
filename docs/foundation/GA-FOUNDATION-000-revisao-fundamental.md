@@ -1820,6 +1820,67 @@ Na água, dℓ_3D considera a superfície navegável, não relevo do fundo do ma
 **Escolha futura:** fixar κ a partir de um teste de gameplay/escala geográfica e só depois encerrar a normalização tarifária F-073. O F-071 requer solução transitória para liquidar tarifas por preço de destino, independentemente do valor κ, e pode ser trabalhado em paralelo.
 
 
+### F-081 — Grafo unitário como referência operacional; Goldberg como topologia e apresentação [RATIFICADO]
+
+**Decisão expressa do usuário:** todos os nós e arestas obedecem às mesmas leis lógicas; cada aresta do grafo vale EXATAMENTE uma unidade de distância lógica. O Goldberg fornece as conexões coerentes com a superfície esférica e as posições de apresentação; diferenças de comprimento aparente, corda ou arco geodésico não entram no custo de circulação, tempo de obra nem distância econômica.
+
+**Contrato:** para cada aresta e=(u,v), d_e=1. A distância não ponderada d_G(a,b) é o menor número inteiro de arestas para conectar a e b no grafo (BFS para todos os arcos elegíveis), não a distância euclidiana nem geodésica. Arestas distintas têm exatamente o mesmo d_e, mas podem ter diferentes impedâncias, capacidades, investimentos, tipos de ambiente e coproprietários. O grafo é a fonte da verdade; a esfera não é só decoração porque a topologia esférica determina quais adjacências existem.
+
+**Igualdade estrutural NÃO significa homogeneidade natural:** nós têm as mesmas regras, mas diferentes potenciais produtivos, alturas, biomas e recursos. A malha geodésica pode produzir pontos de valência cinco e seis; grau do nó não deve conferir custo especial automático, nem se pode exigir grau seis em toda a esfera. As arestas podem atravessar solo diferente, encostas e interfaces terra-mar, ainda com distância lógica 1.
+
+**Distâncias e caminhos:** distância d_G conta o mínimo de saltos, independentemente do terreno. O trajeto matemático preferido para circulação e comércio usa SOMA DE CUSTOS LOCAIS POR ARESTA, que podem distinguir um percurso de três saltos fáceis de outro de dois saltos difíceis. Não criar entidade persistente chamada "trajeto"; só as arestas possuem infraestrutura e copropriedade (F-034/F-062).
+
+**Densidade e visualização:** aumentar apenas LOD do viewer, subdividir triângulos visuais, suavizar relevo renderizado ou modificar zoom NÃO cria nós/arestas econômicas nem altera a física do grafo, seu hash ou o cálculo econômico. Já gerar OUTRO grafo com MAIS NÓS/ARESTAS LÓGICOS modifica legitimamente distância em saltos e custos, tornando-o um mundo maior/diferente. Não exigir que grafos de densidades lógicas diferentes produzam os mesmos custos de viagem/mercado.
+
+**Superveniência:** a dependência operacional de R/v0/T0, κ=turnos/radiano, diferença geodésica de arcos, integral de comprimento renderizado e investimento proporcional à extensão métrica dos trechos, exploradas nas F-076..F-080, é SUPERADA. Os experimentos anteriores ficam preservados como histórico, sem autoridade operacional. O tempo padrão de F-013/F-015 segue válido para ações e duração de ciclo, mas NÃO é a unidade espacial de distância.
+
+**QA:** toda aresta lógica d=1; d_G inteiro calculado da adjacência; distância simétrica em grafo bidirecional sem restrição direcional; mesmos custos neutros por aresta; diferença de grau 5/6 não altera d_e; mudança apenas visual sem alteração econômica; geração de mais nós lógicos muda legitimamente o número de saltos.
+
+### F-082 — Normalização de impedância, movimento e capital por aresta lógica [RATIFICADO NO PRINCÍPIO; FUNÇÕES FÍSICAS EM ABERTO]
+
+**Convenção operacional da economia:** uma aresta de terra natural NEUTRA, em fluxo livre e com investimento zero, tem impedância de referência adimensional C^0_neutra=1. Outras arestas têm impedância natural local derivada de terreno/relevo/ambiente, porém NÃO por tamanho do arco geométrico. Fatores físicos e seus valores continuam abertos; m_e=1 para terreno neutro é a normalização, não regra obrigatória para todos os solos. Investimento reduz impedância física e/ou aumenta capacidade segundo os contratos F-024/F-031 ainda sujeitos a função/calibração.
+
+**Separação crucial:**
+- Distância lógica d_e=1 é invariante, independentemente de terreno, quantidade comercial, investimento ou vista do planeta.
+- Impedância comercial C_e(B_e,I_e) é escalar adimensional, não monetário, que pode variar por aresta/carga. L é a soma dos C_e dos arcos usados transitoriamente pelo clearing.
+- O tempo REAL de deslocamento de um trabalhador por aresta depende de sua eficiência e das condições locais, debita orçamento temporal F-013/F-015 e não é automaticamente igual a C_e turnos. Não fixar agora quantos saltos um trabalhador percorre por turno.
+- A taxa de congestionamento conserva base temporal: volume comercial abstrato por período dividido pela duração em turnos; K_e usa o mesmo denominador de tempo. A mudança de duração de ciclo não deve inventar saturação extra.
+- Capital I_e=sum_c H[e,c], incorporado de fato à própria aresta por trabalho e tesouro, gera direitos proporcionais F-062/F-066. Referência I0 UNIVERSAL por aresta neutra é novamente uma candidata admissível. Investimento não precisa escalar em metros/raio geodésico; dificuldades reais de obra por terreno/ambiente podem ser derivadas de propriedades locais, não de diferenças visuais de comprimento.
+
+**Competitividade ratificada F-056/F-072:** A=P/(1+L+W), L=sum C_e, W=sum w_e(1-s_e,c). O índice soma a impedância não financeira e o peso tarifário adimensional; o rateio de dinheiro continua F-060, sem transformar L em moeda. O w_e é função LOCAL de estado da aresta e permanece NÃO RATIFICADO em F-073. Mercado no nó de origem tem L=W=0.
+
+**Água e relevo:** terra-terra, terra-mar e mar-mar têm distância lógica 1. A interface costeira continua como atributo/investimento de SUA aresta, e não porto no nó ou navio como unidade; parâmetros naturais de capacidade e impedância podem variar por ambiente. Altura, declividade e relevo podem ser atributos locais canônicos do mundo lógico; diferenças métricas do viewport não devem mudar o resultado. Regras direcionais de subida/descida e intensidade de fatores continuam abertas.
+
+**Escala de mapas:** um mundo de mais nós lógicos pode ter naturalmente mais saltos e custo maior entre regiões visuais similares. Isso é decisão deliberada de tamanho de mundo, não erro de normalização. A apresentação em mais polígonos não é mudança de mundo se o grafo permanecer o mesmo.
+
+**QA mínimo:** duas arestas neutras sem obra C=1 cada; três saltos neutros L=3; custo físico montanhoso maior que neutro por causa do terreno, não pela geometria renderizada; obra em uma aresta não modifica automaticamente outras; copropriedade por capital continua válida; ausência de custo extra por nó de transbordo; fluxos conservados em todas as resoluções visuais.
+
+### F-083 — Laboratório de caminho lógico mínimo versus escolha econômica ponderada [VALIDADO; PARÂMETROS EXEMPLIFICATIVOS]
+
+**Grafo pequeno:** os nós A,B,C,E,D têm dois caminhos de A para D: A-B-D com duas arestas e A-C-E-D com três. Todas têm distância lógica por aresta 1. Assim, d_G(A,D)=2.
+
+**Estado inicial:** as duas arestas A-B e B-D atravessam terreno difícil e recebem C=2 cada (hipotético); custo L_curto=4. As três outras arestas são naturais neutras com C=1 cada; L_longo=3. Sem pedágios W=0, o caminho de TRÊS saltos é economicamente preferido para o mesmo destino/preço, apesar da distância lógica mínima de dois saltos.
+
+**Depois de obra:** suponha que os dois trechos difíceis sejam melhorados para C=0,6 por aresta. L_curto=1,2. Para uma produtora A hipotética com 25% de quota em cada uma e w_e=0,3 EXPERIMENTAL, as quotas externas somam W=2×0,3×0,75=0,45; então custo comercial L+W=1,65, abaixo de L_longo+W_longo=3. O caminho de duas arestas volta a ser o preferido. As obras NÃO mudam as distâncias d_e nem exigem nova entidade de itinerário. Nenhum coeficiente w=0,3 foi aprovado como regra de pedágio.
+
+**Cheque de mercado sem congestionamento, oferta única 10, demanda local 4 e remota 1:** com acesso remoto de custo 3, equilíbrio F-056/F-072 produz Q_remoto=10/[4(1+3)^2+1]=10/65≈0,153846. Depois da melhoria com custo remoto 1,65, Q_remoto=10/[4(1+1,65)^2+1]≈0,343761. O mercado local absorve o resto e 100% da produção é vendido em ambos os casos. O resultado não é um teste de rede simultânea com congestão.
+
+**Conservação financeira:** para venda individual ilustrativa de receita bruta V=10 com W=0,45, o produtor recebe V/(1+W)≈6,896552; os titulares das duas arestas recebem ao todo V×0,45/(1+W)≈3,103448. Soma exatamente V. O custo físico L=1,2 NÃO é débito financeiro.
+
+**Conclusão:** BFS mede saltos mínimos; Dijkstra sobre C_e+w_e(1-s_e,c) mede menor custo comercial por snapshot de preços/cargas. Distância não é impedância. Não deriva automaticamente preço por mercado, convergência de clearing F-049/F-057, atribuição financeira por destino F-071 ou efeito econômico de um mundo Goldberg completo.
+
+### F-084 — Próximos gates sobre arestas unitárias [EM ABERTO]
+
+1. Definir moduladores NATURAIS locais de impedância e capacidade por terreno, relevo e interface costeira, sem comprimento geodésico nem tipos fixos de estrada/porto.
+2. Calibrar o movimento físico de referência em saltos por turno, sem igualar automaticamente ao custo econômico por aresta nem importar o protótipo anterior.
+3. Testar F-073 novamente sobre C^0_neutra=1, investimento I0 neutro por aresta, referência natural de capacidade e congestionamento p. Percentuais de tarifa continuam por avaliar, sem teto arbitrário.
+4. Executar testes F-071 de atribuição transitória de preço de venda por destino ao fluxo que atravessou uma aresta, sem objeto permanente trajeto; conciliar receitas F-060.
+5. Determinar o solver global com carga/preço/rateio endógenos, gaps, desempate com efeito financeiro F-059 e benchmark Goldberg.
+6. Garantir isolamento entre LOD visual e topologia econômica, permitindo mundos LOGICAMENTE mais densos como cenários genuinamente diferentes.
+
+**Status:** nenhum valor de fator de terreno, curva C_e, tempo de trabalhador por salto, I0, w_e, p ou método de clearing foi ratificado por estas observações. A lei canônica é o grafo unitário e sua separação entre distância, impedância, tempo e receita.
+
+
 ## 8. Governança da nova versão e critérios de reaproveitamento
 
 **A fonte de verdade do novo desenho** é a sequência de decisões ratificadas nesta documentação. As decisões do jogo antigo **não exercem autoridade sobre ela**; tampouco foram revogadas para a versão antiga.
@@ -1925,3 +1986,5 @@ Na água, dℓ_3D considera a superfície navegável, não relevo do fundo do ma
 - **2026-11-07 — F-076/F-077 referencial físico e invariância de investimento:** escolhida a referência dimensional de impedância por **um turno completo de ação do trabalhador padrão (T0)**; c_nat,e=τ_nat,e/T0 e τ_nat,e como tempo equivalente de circulação derivado da geometria/ambiente (cargas ainda são fluxos comerciais abstratos, NÃO viagens reais de mercadorias). Velocidade natural física e escala do planeta seguem abertas. Taxa logística de congestionamento deve usar B_e=F_e/Δt_turnos e capacidade K_e em unidades-equivalentes por turno, evitando confundir quantidade por ciclo com taxa temporal. Teste homogêneo ℓ=120 e v_nat=40/turno produz custo 3, subdividido em 60+60 mantém 3. Identificado erro de investimento de referência I0 fixo por aresta: obra I=120/I0=120 reduz custo 3→1,5, mas divisão em duas metades I=60, I0=120 cada reduz só a ≈1,892789; se I0 acompanha extensão (I0=60 por metade), custo melhorado retorna a 1,5 com capital total idêntico. F-077 ratifica apenas invariância/escala extensiva da obra; fórmula exata κ_ref e U(I) não fechadas. F-078 propõe fechar geometria e velocidade basal antes de tarifa φ(I), curva p, solver e pagamentos F-071.
 
 - **2026-11-07 — F-078/F-079 velocidade geodésica e relevo/água:** F-078 estruturada no referencial terrestre neutro c_nat,e=κ θ_e com κ=R/(v0 T0) e θ angular. Os parâmetros R e v0 só entram no clearing pelo quociente κ (com restante físico proporcional), portanto um número para a velocidade NÃO é derivável da malha de Goldberg. Simulações de mercado local D=4/remoto D=1, oferta 10 e θ=0,2 rad mostraram Q_remoto≈1,4793 para κ=1; ≈0,4912 para κ=6; ≈0,07377 para κ=24, sem tarifas. F-079 testa conservação de geodésicas, integral de lentidão com relevo contínuo e mudança local terra/mar; três regiões θ=0,08 rad cada e parâmetros ilustrativos κ=10, declive g=1, velocidade marinha σ=2 dão custos 0,8+1,13137+0,4≈2,33137 invariantes à subdivisão física. Não criar objetos trajeto, navio/porto nem custo duplicado de transição costeira. Valores de κ, σ_mar, penalidades energéticas de aclive, raio/unidade, custo físico de interface, investimento κ_ref, congestionamento p e φ tarifário continuam sem calibração. F-080 propõe escolher κ por experiência de mobilidade física geográfica do jogo e não por tamanho médio de aresta ou pedágio-alvo.
+
+- **2026-11-07 — F-081/F-082 grafo unitário aprovado, F-083 laboratório:** cada aresta tem distância lógica d=1 e o Goldberg fornece topologia/apresentação, não quilometragem econômica. F-076..F-080 geodésicas, κ=R/(v0T0) e I0 dependente da extensão estão expressamente SUPERADAS. Impedância comercial de aresta terrestre neutra em fluxo livre tem referência C=1; terreno/relevo/água, capacidade, investimento e tarifas permanecem locais e sujeitos a futuras funções. Capital de referência uniforme por aresta neutra torna-se hipótese válida. Distância mínima por BFS difere de menor custo comercial por Dijkstra; exemplo A-B-D 2 saltos difíceis L=4 versus A-C-E-D 3 saltos neutros L=3; obra no caminho curto diminui L para 1,2, acrescida de W hipotético=0,45, escolhendo curto de custo 1,65. Mundo com mais nós lógicos é diferente; alterar só LOD visual mantém a economia. F-084 abre calibração de dificuldade local, tempo por salto, tarifa F-073 e solver F-071, sem código ou merge.
