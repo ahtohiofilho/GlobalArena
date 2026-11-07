@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 3.15  
+**Versão conceitual:** 3.16  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -30,11 +30,11 @@ Uma decisão nova exige: identificação, enunciado, motivação, consequências
 
 ## 3. Princípios fundacionais ratificados
 
-### F-001 — Mundo geométrico e lógico [RATIFICADO]
+### F-001 — Mundo geométrico e lógico [RATIFICADO; GRAFO UNITÁRIO F-081]
 
 O mundo tem uma superfície baseada em um poliedro de Goldberg de grande dimensão e uma estrutura lógica representável por **grafo bidirecional**, com nós e arestas. A geometria e a topologia lógica são conceitos distinguíveis.
 
-**Não decidido:** correspondência exata entre face/vértice/célula Goldberg e entidade lógica do grafo; custo direcional idêntico nos dois sentidos; unidades métricas.
+**Atualização F-081:** o grafo lógico passa a ser a referência operacional, com comprimento lógico 1 para toda aresta. O Goldberg estabelece a conectividade do mundo esférico e sua apresentação. O comprimento geodésico de cada ligação NÃO determina distância, impedância, trabalho ou investimento. Os nós seguem a mesma lei, mas podem ter distintos recursos, propriedades e número de vizinhos. A escolha da realização visual de vértices/faces/células permanece técnica.
 
 ### F-002 — Nó físico-produtivo [RATIFICADO]
 
@@ -399,6 +399,8 @@ Toda aresta conserva condições naturais de transporte. A infraestrutura de tra
 **Ainda não ratificados:** escala/equação física de nível, limites, degradação e função que converte capital em **peso proporcional da tarifa**. A **copropriedade por quotas de capital incorporado foi ratificada em F-062**; a autoridade político-diplomática para embargo segue F-063 [ABERTO]. **F-060 resolve a natureza percentual e o rateio:** o encargo recai sobre a parcela comercial da civilização produtora, sem carteira compradora, e a parte tarifária é destinada ao tesouro do titular da aresta, quando este for definido. A tarifa não é impedância física.
 
 ### F-025 — Investimento, eficiência e capacidade logística [RATIFICADO O DESENHO ABSTRATO; FÓRMULAS PROPOSTAS]
+
+**Retificação F-081:** a referência I0 de capital por aresta neutra pode ser UNIFORME no grafo lógico, não proporcional a comprimento em quilômetros; a hipótese extensiva F-077 foi revogada. Diferenças de obra por terreno são possíveis, mas precisam de fundamento próprio. A função logarítmica continua candidata.
 
 O estado econômico relevante de cada infraestrutura deve representar **capital efetivamente investido**, e não o saldo de caixa do titular. Para reduzir estado redundante, pode-se derivar **nível, eficiência e capacidade logística** desse capital e das propriedades físicas da aresta.
 
@@ -1135,6 +1137,8 @@ O balanço global preserva a venda integral por civilização/mercadoria: Σ_n a
 
 ### F-056 — Acessibilidade logística com mercado local e distância zero [RATIFICADO NA FORMA; NORMALIZAÇÃO EM ABERTO]
 
+**Retificação F-081/F-082:** o custo natural de uma aresta terrestre neutra em livre fluxo é referenciado a 1, em unidade adimensional do grafo. A forma A=P/(1+L) permanece aprovada; o 1 do denominador é regularizador de acesso e NÃO um salto cobrado na origem. Não usar quilômetros, arcos nem turno geodésico para formar L.
+
 **Defeito identificado na candidata F-050:** P/L só faz sentido se L>0. Comércio no próprio nó usa rota de zero aresta, L=0; então P/L é singular. Se a alternativa G=L/P for usada literalmente, G=0 para toda quantidade local, o que artificialmente favorece venda local infinita.
 
 **Forma ratificada:** definir impedância logística **adimensional e normalizada** L≥0 em unidade física comum e adotar
@@ -1527,6 +1531,8 @@ O contrato F-057 propõe um oráculo de caminhos mínimos para verificar o equil
 
 ### F-070 — Tarifa local e aditividade sob subdivisão fisicamente equivalente [PRINCÍPIO DE LOCALIDADE CONFIRMADO; FÓRMULA NÃO RATIFICADA]
 
+**Retificação F-081:** invariância de subdivisão de arestas LÓGICAS deixa de ser requisito. Refinamento apenas visual não modifica arestas. Se o grafo possuir mais arestas de fato, é um mundo logicamente maior, cujo custo/comércio pode mudar. Preserva-se a tarifa local e o rateio F-060.
+
 **Reorientação após crítica conceitual do usuário:** **não há "trajeto" como entidade econômico-física**, concessionária, instalação, segmento qualitativo com começo/fim ou unidade de propriedade. As **arestas** são as únicas unidades de investimento e copropriedade logística. Um caminho origem→mercado pode existir durante o cálculo de fluxos e preços, mas é **instrumento matemático** e pode ser desfeito/agregado por F-055. A intensidade tarifária de cada aresta precisa ser derivada exclusivamente das propriedades daquela aresta, não da soma natural de toda uma viagem. A hipótese \`w_{e|r}=Δ_e/(1+L₀,r)\` da F-068 fica descartada como regra de intensidade.
 
 **Requisitos da futura φ_e:**
@@ -1593,6 +1599,8 @@ g_{e,c} = C_e(B_e,I_e) + w_e(1-s[e,c]), com g≥0.
 **Status RATIFICADO:** a escolha comercial inicial usa A=P/(1+L+W) com custo por aresta g[e,c]=C[e]+w[e](1-s[e,c]), mantidas separadas a impedância física e a repartição monetária real F-060. A busca por menor caminho escalar pode apoiar o oráculo de equilíbrio, mas Dijkstra não é solver completo, nem prova unicidade/convergência. Intensidade tarifária, escala física, função de congestionamento, desempates financeiros e implementação permanecem em aberto.
 
 ### F-073 — Peso tarifário local de ganho físico na carga natural de referência [PROPOSTO; NÃO RATIFICADO]
+
+**Retificação F-081:** a candidata de intensidade tarifária deverá usar apenas impedâncias/capacidades de arestas lógicas unitárias, não comprimento geodésico. A referência neutra de livre fluxo C=1 resolve a escolha da unidade de distância, mas NÃO ratifica uma porcentagem monetária de tarifa nem a curva de capacidade.
 
 **Motivação:** F-070 propôs w_e=c_natural,e−c_livre,e como peso totalmente local e aditivo sob subdivisão equivalente. Porém, com índice aditivo F-072, w=Δc neutraliza exatamente a melhoria física em livre fluxo para não cotitulares (c_livre+w=c_natural); e se um investimento elevar apenas a capacidade K sem alterar c_livre, Δc=0 e não produz tarifa de retorno, ainda que a obra tenha utilidade para o comércio.
 
@@ -1666,6 +1674,8 @@ Assim, tarifa percentual crescente não implica renda tarifária crescente; o fl
 
 ### F-075 — Referência física de impedância e atribuição contábil [REFERÊNCIA TEMPORAL DEFINIDA POR F-076; CALIBRAÇÃO E LIQUIDAÇÃO ABERTAS]
 
+**SUPERADA NA NORMALIZAÇÃO ESPACIAL POR F-081/F-082:** a referência agora é a aresta lógica unitária; a exigência antiga de determinar L pela distância geodésica/tempo de viagem não vale. Continua aberta a atribuição de preços monetários por destino a fluxos F-071.
+
 **Risco:** a forma 1+L+W ratificada é adimensional, mas depende da normalização natural Lref que ainda não foi definida. Alterá-la modifica tanto a distribuição dos mercados quanto a renda tarifária dos cotitulares; logo o peso F-073 não pode ser considerado intrinsecamente calibrado sem fixar a física.
 
 **Proposta de sequência:**
@@ -1679,6 +1689,8 @@ Assim, tarifa percentual crescente não implica renda tarifária crescente; o fl
 
 
 ### F-076 — Unidade de impedância equivalente a tempo físico de referência [RATIFICADO NO REFERENCIAL DIMENSIONAL; VELOCIDADES EM ABERTO]
+
+**SUPERADA PARA IMPEDÂNCIA POR F-081/F-082:** T0 permanece orçamento temporal universal para trabalhadores e janela de taxa de carga, mas não define mais a unidade espacial de C. O cálculo geodésico de tempo equivalente apresentado abaixo é HISTÓRICO e não deve ser implementado.
 
 **Decisão de desenho na continuidade:** utilizar o **tempo de ação de um turno completo do trabalhador padrão** como referência universal dimensional para os custos físicos da rede. A F-013/F-015 já ratificou tempo universal aplicado a produzir, construir e mover; F-037 fixou 1 unidade de capital por turno completo de trabalho padrão para construção. Isso não escolhe sozinho velocidade por terreno/água.
 
@@ -1705,6 +1717,8 @@ Definições:
 **Status:** RATIFICADO o **referencial dimensional de uma unidade de tempo de ação por turno padrão** e a derivação de impedância de transporte como tempo equivalente geográfico/T0, sem custo comercial monetário implícito. Distâncias físicas concretas, velocidade referencial, parâmetros naturais, p e curva de congestão ainda abertos. Não reivindicar calibração monetária resolvida pela escolha da unidade.
 
 ### F-077 — Capital de referência extensivo e invariância de refinamento da malha [PRINCÍPIO DE COERÊNCIA GEOMÉTRICA RATIFICADO; FUNÇÃO DO NÍVEL ABERTA]
+
+**SUPERADA POR F-081/F-082:** a exigência de I0 por extensão geodésica foi REVOGADA. Todas as arestas lógicas têm distância 1, e uma obra em aresta neutra pode ter referência de capital uniforme. Refinamento do LOD visual não altera investimento; subdividir o GRAFO cria um mundo diferente.
 
 **Problema descoberto:** escolher uma unidade temporal universal preserva \`Σ c_natural,e\` ao subdividir uma aresta equivalente, mas **não garante que uma obra real equivalente conserve sua eficiência e custo monetário**. A candidata de melhoria F-025 \`U=1+log2(1+I/I0)\` com **I0 fixo POR ARESTA** produz menos eficiência ao repartir o investimento de uma mesma obra em duas arestas menores, mesmo quando a geografia e dinheiro total não mudam.
 
@@ -1733,6 +1747,8 @@ Definições:
 
 ### F-078 — Referência terrestre geodésica e escala angular da impedância [RATIFICADA A FORMA; VALOR NUMÉRICO ABERTO]
 
+**SUPERADA POR F-081/F-082:** c=κθ e a escala R/(v0 T0) deixam de ser leis operacionais. O Goldberg é fonte de conectividade e apresentação, não de comprimento das arestas. Este capítulo é preservado somente como registro histórico.
+
 **Bloqueio remanescente:** a referência dimensional T0 foi escolhida em F-076, mas para transformar a distância geodésica em \`c_natural,e\` é necessário especificar o sistema métrico físico do planeta, a velocidade de transporte natural de referência e a forma de tratar ambientes terrestre, aquático e interface sem criar veículos/portos persistentes. Essa escolha afeta a precificação espacial e φ(I), logo precisa derivar de uma experiência de movimento consistente, não apenas de um percentual de pedágio.
 
 **Fechamento estrutural superveniente [RATIFICADO NO DESENHO]:** para o terreno terrestre neutro de referência, fixar uma velocidade física natural de referência \`v0>0\` como GRANDEZA global, ainda sem número, e definir \`d_e=R θ_e\` pela geometria geodésica (R raio físico comum da esfera e θ distância angular na superfície canônica). A impedância é \`c_nat,e=R θ_e/(v0 T0)=κ θ_e\`, com \`κ=R/(v0 T0)>0\` turnos equivalentes por radiano. As quantidades R e v0 só entram na economia pela razão κ (salvo quando outras grandezas físicas absolutas forem incorporadas). O raio, as unidades físicas e **o número de κ NÃO foram escolhidos**; o tamanho médio de tile não é unidade válida. O indicador v0 é uma referência logística de terreno neutro, não velocidade real obrigatória de trabalhador, cavalo ou veículo implícito. A F-079 apresenta testes de relevo e mar, sem fixar m(s), velocidade aquática, penalidades e outras calibrações.
@@ -1748,6 +1764,8 @@ Definições:
 
 
 ### F-079 — Testes de relevo, água, costa e invariância de refinamento [EXECUTADOS; LEIS ADICIONAIS DE VELOCIDADE ABERTAS]
+
+**SUPERADA COMO MODELAGEM DE DISTÂNCIA POR F-081/F-082:** os testes geodésicos abaixo não calibram o novo motor. Relevo/terreno/ambiente continuam condicionantes locais de impedância por aresta lógica; sem quilometragem, custos de interfaces duplicados ou porto no nó.
 
 **Objetivo:** homologar estruturalmente o referencial terrestre neutro geodésico F-078 e avaliar aplicação em território real heterogêneo e interfaces terra↔mar F-033/F-034, sem criar "trajeto" econômico, porto no nó, frota persistida ou coeficiente particular por produto.
 
@@ -1790,6 +1808,8 @@ Na água, dℓ_3D considera a superfície navegável, não relevo do fundo do ma
 **Resultado:** referência terrestre neutra geodésica validada como estrutura, sem calibração numérica. Integral física continua compatível com F-076/F-077 e não requer tráfego real de mercadorias. As fórmulas geométricas de superfície são candidatas de base; fatores naturais adicionais de solo, declividade/energia, ambiente marinho, interface e velocidades permanecem EM ABERTO. Nenhuma nova fórmula φ(I) tarifária, p ou solver foi ratificada.
 
 ### F-080 — Próximo gate: calibração de uma velocidade global sem depender do Goldberg [EM ABERTO]
+
+**SUPERADA POR F-081/F-082:** não calibrar economia em turnos/radiano ou velocidade por quilômetros. A cadência de movimento dos trabalhadores passa a ser avaliada em saltos lógicos por turno, separadamente do custo econômico por aresta.
 
 **Questão não resolvida pela geometria:** a economia só enxerga \`κ=R/(v0 T0)\` para terreno neutro, não R e v0 isoladamente. O valor de κ precisa ser ancorado a um **experimento de mobilidade física do jogo** (p.ex. deslocamento de uma unidade de referência por uma distância geodésica angular fixa ao longo de n turnos) e à experiência temporal pretendida; **não** ao tamanho médio de aresta, número de vértices, percentuais-alvo de pedágio ou receitas de civilizações.
 
