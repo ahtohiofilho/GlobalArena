@@ -852,7 +852,7 @@ A condição de primeira ordem é igualdade de receita marginal:
 \`Q_n = Q_T × D_n/(Σ_j D_j)\`.
 
 **Consequências exatas:**
-- Com \`D_T=Σ_j D_j\`, todos os mercados ativos terminam com \`Q_n/D_n=Q_T/D_T\), logo **preço unitário igual** \`P_n=√(D_T/Q_T)\`.
+- Com \`D_T=Σ_j D_j\`, todos os mercados ativos terminam com \`Q_n/D_n=Q_T/D_T\`, logo **preço unitário igual** \`P_n=√(D_T/Q_T)\`.
 - Receita total \`R_T=√(Q_T D_T)\` em ausência de diferenças espaciais; nenhuma oferta é retida.
 - Exemplo: \`D_A=4\`, \`D_B=1\`, \`Q_T=10\` ⇒ \`Q_A=8\`, \`Q_B=2\`, \`P_A=P_B=1/√2≈0,70710678\`, \`R_A≈5,65685\`, \`R_B≈1,41421\`, \`R_T≈7,07107\`.
 
@@ -869,7 +869,7 @@ A condição de primeira ordem é igualdade de receita marginal:
 - **Sistema fechado de contas com recirculação** e regra de liquidez/preço capaz de conciliar desembolsos dos compradores com as receitas. Só é compatível com F-043 se demonstrado que há caixa/fluxo suficiente em todos os estados permitidos; um multiplicador global de preço para caber no orçamento altera a normalização \`P(1)=1\`.
 - **Poder de compra abstrato institucional** não limitado à carteira de cada trabalhador, mas com origem, capacidade e liquidação explícitas; não confundir peso de demanda, orçamento e dinheiro do tesouro local.
 
-**Outro ponto aberto:** F-031 estabelece uma **impedância logística não monetária** e F-043 estabelece um preço monetário. Para combinar numa escolha de rota via water-filling, precisa existir um mecanismo dimensionalmente coerente: uma função de acessibilidade/preço líquido, uma convenção de comparação, ou um critério de otimização com variáveis compatíveis. **Não** subtrair diretamente "pontos de impedância" de "moedas" nem lançar tarifa financeira invisível por conta de geometria. A receita marginal \`R'\` e a impedância marginal \`C'\` são grandezas diferentes; cada uma precisa de significado preciso na distribuição de fluxos.
+**Outro ponto aberto:** F-031 estabelece uma **impedância logística não monetária** e F-043 estabelece um preço monetário. Para combinar numa escolha de rota via water-filling, precisa existir um mecanismo dimensionalmente coerente: uma função de acessibilidade/preço líquido, uma convenção de comparação, ou um critério de otimização com variáveis compatíveis. **Não** subtrair diretamente "pontos de impedância" de "moedas" nem lançar tarifa financeira invisível por conta de geometria. A receita marginal \`R'\` e a impedância logística \`C(B)\` (interpretada em F-032 como impedância **marginal** de admitir carga) são grandezas diferentes; cada uma precisa de significado preciso na distribuição de fluxos. Não confundir \`C(B)\` com a derivada \`C'(B)\`.
 
 **Próxima decisão sugerida:** o mercado abstrato deve ser o **comprador institucional de última instância** com financiamento explícito, ou os trabalhadores/localidades devem usar **apenas poder de compra contabilizado previamente**, exigindo reavaliação das condições para garantir venda universal em todo cenário? A pergunta é arquitetural, não mera calibração de parâmetro.
 
