@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 3.2  
+**Versão conceitual:** 3.3  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -1151,9 +1151,9 @@ A unidade adimensional 1 é o **nível-base universal da atenuação de acessibi
 **Status e próximo gate:** o usuário ratificou F-055 e F-056. A forma A=P/(1+L), e sua transformação exata G=(1+L)/P, substituem a hipótese P/L **como regra de atratividade do modelo inicial**; a forma final de C_e, a unidade natural de normalização de L, o algoritmo numérico e a robustez do equilíbrio permanecem abertas. F-057 organiza o contrato de equilíbrio e os critérios de validação do solver.
 
 
-### F-057 — Contrato do equilíbrio simultâneo e critérios de aceite do solver [PROPOSTO; NÃO RATIFICADO]
+### F-057 — Contrato do equilíbrio simultâneo e critérios de aceite do solver [RATIFICADO NO CONTRATO; MÉTODO NUMÉRICO ABERTO]
 
-**Contexto:** F-049 já ratificou o **equilíbrio simultâneo**; F-054, o alocador global; F-055, os fluxos transitórios por aresta; F-056, a forma de acessibilidade **A=P/(1+L)** com L≥0 adimensional e mercado local L=0; F-043, o preço de mercado **P=√(D/Q)**. A escolha do algoritmo numérico e dos testes de robustez ainda precisa ser documentada sem mudar essas leis.
+**Contexto [RATIFICADO]:** F-049 já ratificou o **equilíbrio simultâneo**; F-054, o alocador global; F-055, fluxos transitórios por aresta; F-056, atratividade **A=P/(1+L)** com L≥0 adimensional e mercado local L=0; F-043, preço **P=√(D/Q)**. **Este contrato de equilíbrio com conservação de oferta, avaliação simultânea e determinismo foi aceito pelo usuário; o algoritmo de cálculo, parâmetros numéricos e limites de convergência ainda não estão ratificados.**
 
 **Formulação matemática de referência (pode utilizar caminhos como variáveis matemáticas sem materializar todos os caminhos em execução):**
 - Para cada origem o, civilização c, mercadoria i, com oferta s[o,c,i]≥0, escolher fluxos não negativos x[o,c,i,r] sobre caminhos simples r elegíveis até destinos n(r), incluindo o **caminho vazio** quando a venda é no mesmo nó.
@@ -1193,7 +1193,67 @@ Solução por bisseção: q_remoto≈0,5881293258; q_local≈9,4118706742; imped
 
 **Teste de robustez a realizar:** três ou mais nós com rotas paralelas e ciclos potenciais; produção de duas civilizações sobre a mesma aresta; produtos distintos competindo por capacidade; venda local; rotas de impedância nula ou intransitável; permutações de enumeração; grandes mapas Goldberg; preço/fluxo muito pequenos; condição de D=0; gargalo costeiro forte; remuneração por civilização distinta; benchmark de tempo e memória. Não afirmar esses testes já executados — apenas a bisseção do caso escalar acima foi verificada.
 
-**Status:** a arquitetura de mercado e a fórmula de atratividade são **ratificadas em F-054/F-055/F-056**. A VI, o oráculo, o gap como gate numérico, os critérios de desempate e a estratégia iterativa são **propostas a homologar** antes de implementar. Não canonizar a variante de congestionamento com p=4 como parte deste teste.
+**Status superveniente [RATIFICADO NO CONTRATO]:** a condição de equilíbrio com **conservação por origem/civilização/mercadoria**, avaliação conjunta de preços/congestionamento, restrições de não-negatividade, **gap de equilíbrio como critério de homologação** e determinismo foi aceita. A desigualdade variacional é **formulação matemática de referência do contrato** enquanto se testa sua aplicabilidade em redes gerais; não constitui prova de unicidade nem de que uma implementação particular convergirá. **Oráculo, iteração amortecida, passo, tolerâncias, desempates, solver final e p=4 continuam abertos**. F-058 fornece evidência de laboratório e revela não unicidade de decomposição de rota.
+
+
+### F-058 — Ensaio executado: rede diamante com duas civilizações, dois itens e dois caminhos [TESTE NUMÉRICO DE LABORATÓRIO; RESULTADOS VERIFICADOS]
+
+**Objetivo:** confrontar F-057/F-056/F-055/F-049 em um exemplo de rede, incluindo venda local, rotas paralelas, congestionamento em ambos os sentidos, dois produtos distintos e tesouros de duas civilizações, sem introduzir carteira de compradores, estoque, transferência física de cargas ou coeficiente logístico por item. **Este é um experimento numérico isolado em Python/SciPy, NÃO uma implementação do kernel do jogo nem benchmark de mapas grandes.**
+
+**Rede:** nós A, B, C, D. Corredores A–B–C (superior) e A–D–C (inferior); civilização Alfa produz em A, civilização Beta em C; os próprios nós A e C também são mercados. Em cada um dos dois mercados, \`D_madeira=D_pedra=2\`. Demanda é referência de preço, sem orçamento de comprador.
+
+**Ofertas por ciclo (normalização de tempo e produtos somente para este ensaio):**
+- Alfa em A: 8 de madeira e 2 de pedra.
+- Beta em C: 2 de madeira e 8 de pedra.
+- Total por produto: **10 unidades**, total econômico abstrato **20 unidades**. Fluxo de ambas as direções ocupa capacidade da aresta.
+
+**Impedância de arestas [p=4 E COEFICIENTES ESTRITAMENTE ILUSTRATIVOS]:**
+- \`C_AB(B)=C_BC(B)=0,17×[1+(B/1,6)^4]\`.
+- \`C_AD(B)=C_DC(B)=0,25×[1+(B/2,6)^4]\`.
+- \`L_r=Σ_e C_e(B_e)\` já tomado na unidade de referência \`Lref=1\` **apenas neste experimento**, e a atratividade canônica F-056 usa \`A=P/(1+L_r)\`; cada origem dispõe de venda local com L=0, remoto pelo corredor superior ou inferior.
+- Preço \`P_{n,i}=√(D_{n,i}/Q_{n,i})\` e \`G=(1+L)√(Q/D)\`.
+
+**Protótipo exploratório:** algoritmo **extragradiente projetado** em blocos de simplex de três alternativas por civilização/mercadoria: local, corredor superior, inferior. Cada iteração avalia simultaneamente as cargas de todas as arestas/itens/civilizações, depois modifica vetores de fluxo mantendo a oferta de cada fonte exatamente constante. O protótipo não foi integrado ao código do GA nem demonstra desempenho aceitável em produção.
+
+**Resultado convergente (precisão exibida, não parâmetros canônicos):**
+- Alfa madeira: 6,93545479 local; 0,66707616 via superior; 0,39746905 via inferior; Alfa pedra: 2 local.
+- Beta madeira: 2 local; Beta pedra: 6,93545479 local; 0,66707616 via superior (sentido oposto); 0,39746905 via inferior (sentido oposto).
+- Carga nas arestas AB e BC: \`B≈1,33415232\` por aresta, somando madeira+pedra/sentidos opostos. Carga nas arestas AD e DC: \`B≈0,79493810\` por aresta.
+- Impedância unitária final \`C_e≈0,25218464\` em **cada** aresta de ambas as alternativas; custo do corredor superior \`L≈0,50436928\`, inferior \`L≈0,50436928\`. Embora as capacidades e custos naturais difiram, o congestionamento simultâneo iguala as impedâncias finais das alternativas efetivamente utilizadas.
+- Mercado A: madeira \`Q≈6,93545479\` (P≈0,53700401); pedra \`Q≈3,06454521\` (P≈0,80785233).
+- Mercado C: madeira \`Q≈3,06454521\` (P≈0,80785233); pedra \`Q≈6,93545479\` (P≈0,53700401).
+- **Receita da civilização Alfa ≈6,20006699 moedas; Beta ≈6,20006699**; receita total ≈12,40013398. Trabalhadores não recebem moeda e consumidores não são debitados.
+- Conservação por fonte: exatamente \`8,2,2,8\` (até arredondamento computacional de ponto flutuante); por item: exatamente 10+10; no mercado Q=Σ civilizações; diferença entre impedâncias dos corredores cerca de \`2×10⁻¹¹\`.
+- Gap total da condição de F-057 **≈5,63×10⁻¹⁰**, e máximo desvio de G entre alternativas efetivamente utilizadas **≈3,83×10⁻¹¹**.
+
+**Testes de partida e estabilidade:**
+- Começando com tudo vendido localmente, protótipo com passo \`α=0,04\` atingiu gap menor que \`10⁻⁹\` em ~2500 iterações; começando com todo fluxo na rota inferior, resultado agregado equivalente em ~2500 iterações.
+- Começando com tudo na rota superior e mesmo passo \`α=0,04\`, **NÃO CONVERGIU** em 15 mil iterações (gap ~8,85×10² naquele ensaio). Diminuindo passo para \`α=0,01\`, convergiu com gap menor que \`10⁻⁹\` em ~10.300 iterações.
+- Portanto **o método iterativo simples é sensível ao passo e à condição inicial**; a convergência num caso favorável não autoriza canonizar passo fixo nem considerar o algoritmo robusto.
+- Com inicialização aleatória, o protótipo convergiu ao **mesmo preço, Q por mercado, carga B por aresta e receita de cada civilização**, mas com **decomposição diferente dos fluxos madeira/pedra pelos corredores**: por exemplo, madeira superior \`≈0,469072\` versus \`≈0,667076\` no resultado acima, compensada por maior fluxo de pedra no mesmo corredor, mantendo cargas agregadas. Isso é **não unicidade de decomposição de mercadoria/rota** apesar de resultados agregados praticamente iguais.
+
+**Consequência arquitetural de alto impacto:** se tarifas monetárias e propriedades de arestas forem depois implementadas, duas soluções com idênticos preços/cargas/receitas brutas podem gerar **receitas tarifárias e custos líquidos diferentes conforme qual civilização/mercadoria percorreu a rota**. Portanto o solver precisa de **desempate canônico economicamente neutro e determinístico**, não apenas equivalência de cargas agregadas. Esse desempate não foi ratificado. Não permitir que ordem de iteração, semente aleatória ou detalhe de precisão altere indevidamente tarifas de civilizações.
+
+**Conclusão:** viabilidade demonstrada do equilíbrio simultâneo para pequena rede multicommodity com conservação e atribuição monetária civilizacional. **Não** demonstradas unicidade de todos os fluxos, robustez do passo numérico, precisão bit-a-bit entre plataformas, escalabilidade nem efeitos tarifários. Não transformar estes resultados experimentais em contratos do jogo sem deliberação.
+
+### F-059 — Desempate determinístico e robustez numérica do mercado [PRÓXIMO GATE; NÃO RATIFICADO]
+
+**Problema extraído da F-058:** a rede pode ter a mesma solução econômica agregada (preços por destino/produto, cargas por aresta, receitas brutas por civilização), mas múltiplas decomposições válidas de fluxo por mercadoria/civilização/corredor. Sem regra canônica, replays podem divergir em fluxos por titular e eventuais tarifas financeiras futuras.
+
+**Proposta prioritária:** distinguir:
+1. **Equilíbrio primário de mercado**, que determina Q[n,i], B[e], preços P[n,i] e créditos brutos das civilizações no mesmo estado lógico.
+2. **Seleção canônica de uma decomposição de fluxo** dentre as soluções igualmente válidas ao equilíbrio primário, por **critério secundário explícito, simétrico e independente de ordem**, sem modificar quantidade vendida, preço nem carga total quando essas grandezas já estiverem fixas.
+
+**Candidatos de desempate (não ratificados):**
+- **Distribuição proporcional neutra** das parcelas de civilizações/mercadorias entre corredores equivalentes, condicionada às demandas, ofertas, cargas por aresta e restrições de conservação. Evitar índice livre de favoritismo por civilização/item.
+- **Projeção de norma mínima/critério convexamente regularizado**, aplicado somente ao conjunto de decomposições já equilibradas e equivalentes, com identidades estáveis; não adicionar penalidade arbitrária ao próprio preço ou à impedância do equilíbrio primário.
+- **Identificadores estáveis como último desempate**, após fixar as quantidades econômicas, jamais substituir critérios físicos/econômicos por ordem de enumeração em caso de diferenças reais.
+
+**Ressalvas:** nem toda diferença de fluxos é empate: se a titularidade e a tarifa monetária de arestas alterarem efetivamente decisões de transporte, a tarifa precisa integrar o contrato econômico antes da seleção canônica; não minimizar artificialmente tarifas por desempate. Se duas rotas têm carga agregada equivalente mas pertencem a civilizações diferentes, testar se critério secundário pode deslocar caixa sem justificativa de gameplay. Também não se pode presumir que exista um único equilíbrio primário para redes arbitrárias.
+
+**Solver [EM ABERTO]:** avaliar passos adaptativos, busca de linha, métodos VI robustos e inicializações viáveis; medir gap de equilíbrio e conservação, não só diferença entre iterações. O teste F-058 mostrou instabilidade de passo fixo e variação entre decomposições. Tolerâncias para números muito pequenos não devem apagar mercados efetivos por regra econômica implícita.
+
+**Próximo experimento proposto:** repetir o mesmo diamante com propriedade das rotas pertencendo a civilizações diferentes e tarifa monetária por carga **hipotética**, sem canonizar fórmula de tarifa; comparar impacto das diferentes decomposições equilibradas sobre contas civilizacionais. Usar resultado para decidir se o desempate é apenas técnico ou tem impacto financeiro/estratégico que exija integrar tarifação ao equilíbrio.
 
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
@@ -1275,3 +1335,5 @@ Solução por bisseção: q_remoto≈0,5881293258; q_local≈9,4118706742; imped
 - **2026-11-07 — estudo de escalabilidade por arcos e venda local:** F-055 propõe fluxo transitório em arestas por civilização/mercadoria, conservação nodal e agregação de congestionamento em ambos os sentidos, evitando enumerar todas as rotas. F-056 identifica a singularidade P/L no mercado do próprio nó (L=0) e propõe testar a atenuação P/(1+L), com referência comum e sem tarifa, porto ou custo de nó; ambos permanecem não ratificados.
 
 - **2026-11-07 — ratificação de fluxos e mercado local; estudo do solver:** F-055 e F-056 foram aprovadas: fluxos comerciais transitórios em arcos por civilização/item, conservação nodal, e atratividade A=P/(1+L) com mercado local L=0 (normalização da impedância pendente). F-050 e F-053 passam a estudos históricos da hipótese P/L sem correção local. F-057 propõe contrato de desigualdade variacional e verificação por gap de equilíbrio, evitando a atualização gulosa oscilatória; caso escalar local/remoto resolvido por bisseção com q_remoto≈0,5881293 de 10, congestionamento ilustrativo p=4. Solver e normalização continuam não ratificados.
+
+- **2026-11-07 — F-057 aprovada como contrato, F-058 laboratório e F-059 gate:** conservação da produção, clearing simultâneo, determinismo e gap de equilíbrio passam a contrato canônico, mas algoritmo/tolerâncias em aberto. F-058 executou protótipo Python/SciPy extragradiente em diamante A-B-C-D com duas civilizações e duas mercadorias, 20 unidades vendidas, cargas 1,33415/0,79494 em corredores, Q 6,93545/3,06455 por mercado/item, receita 6,20007 para cada civilização e gap ≈5,63e-10. O teste detectou **não convergência** com passo 0,04 a partir de início extremo superior e **não unicidade da decomposição** por produto/rota apesar dos mesmos resultados agregados. F-059 abre desempate canônico com relevância para futuras tarifas e métodos numéricos robustos. Nenhuma homologação de benchmark Goldberg ou solver de produção foi declarada.
