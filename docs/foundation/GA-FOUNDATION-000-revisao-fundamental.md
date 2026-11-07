@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 1.5  
+**Versão conceitual:** 1.6  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -73,6 +73,8 @@ Não se presumem edifícios específicos, níveis, custos, receitas ou regras de
 Nós, arestas e trabalhadores possuem **capacidades naturais de base**, sem exigir infraestrutura construída para entrar na dinâmica. A infraestrutura é um modificador de capacidades, não uma licença para que a mecânica exista.
 
 **Interpretação restritiva:** capacidade natural não significa que todo nó produza todo recurso; o potencial de um recurso em certo nó pode ser zero. Não se fixam valores positivos universais, velocidade ou produtividade.
+
+**Esclarecimento F-030 (ratificado):** o nó/aresta natural **já é infraestrutura funcional** no sentido operacional; a melhoria construída por investimento modifica essa mesma infraestrutura, e o estado `investimento=0` deve entrar integralmente nas equações. A naturalidade não implica capacidade ilimitada, gratuidade física, circulação garantida ou cobrança financeira.
 
 ### F-008 — Neutralidade de era [RATIFICADO como objetivo de design]
 
@@ -458,7 +460,7 @@ Proposta de segundo coeficiente \`s_r\` por produto (segurança, fragilidade, pe
 A dimensão adicional só poderá ser reaberta mediante nova deliberação, após amadurecimento do jogo e demonstração de ganho material de gameplay frente à complexidade. **Rejeição nesta versão inicial não significa proibição permanente de evolução futura.**
 
 
-### F-029 — Saturação logística mínima e investimento compartilhado [PROPOSTO; NÃO RATIFICADO]
+### F-029 — Saturação linear exploratória e investimento compartilhado [HIPÓTESE SUPERADA PELA PREFERÊNCIA EXPRESSA EM F-031; NÃO RATIFICADO]
 
 **Objetivo:** testar a regra de saturação mais simples compatível com F-024–F-028, sem coeficientes por mercadoria, sem categorias de infraestrutura e sem restrições de fluxo rígidas arbitrárias.
 
@@ -505,7 +507,59 @@ Números escolhidos apenas para examinar monotonicidade. Não representam a econ
 
 **Limitações expressas da proposta:** uma penalidade linear em \`B/K\` pode ser suave demais sob uso extremo; \`U(I)\` igual para ganho de eficiência e de capacidade pode ser restritivo; \`C_livre→0\` somente no limite \`I→∞\`, mas talvez deva haver piso físico em eras futuras; arestas inicialmente intransitáveis não se resolvem com \`K_natural=0\` nesta fórmula e exigem estudo à parte. Não introduzir pisos ou multiplicadores por cautela sem evidência de necessidade.
 
-**Status [PROPOSTO]:** nenhum parâmetro, fórmula de congestionamento, ligação \`U(I)\` ou algoritmo de equilíbrio foi ratificado. F-024–F-026 permanecem como princípios; F-027 conserva alternativas históricas de saturação/tributação. A tarifa monetária é **um mecanismo distinto**, não incluído na equação \`C\`.
+**Status [HISTÓRICO]:** a penalização linear foi julgada inadequada para capacidade natural muito pequena (ex.: descarga de cargueiro em praia); F-031 propõe saturação convexa. A hipótese de investimento contínuo e os critérios matemáticos seguem úteis para exame, mas não foram canonizados. A tarifa monetária é **um mecanismo distinto**, não incluído na equação \`C\`.
+
+
+### F-030 — Infraestrutura natural é parte integral da infraestrutura total [RATIFICADO]
+
+**Princípio:** os **nós (tiles) e arestas do grafo nu já constituem infraestrutura funcional natural**. Não existe uma camada de transporte sem infraestrutura, seguida por outra camada que só apareça depois da construção. Há **uma única capacidade operacional total**, com atributos naturais e modificações decorrentes de capital incorporado.
+
+Consequências ratificadas:
+1. **Investimento zero é um estado normal de infraestrutura**, não ausência automática de circulação ou de serviço. Os atributos naturais determinam impedância de fluxo livre, capacidade de referência, oportunidades físicas e limites de operação mesmo sem obras.
+2. **Infraestrutura natural é limitada**: uma praia pode suportar pequena descarga abstrata de mercadorias, enquanto um nó com investimento elevado pode sustentar escoamento muito maior. A penalidade por grande sobrecarga deve tornar fluxos excessivos fortemente pouco competitivos, sem exigir tipos de porto/estrada.
+3. A mesma arquitetura de infraestrutura abstrata e saturação precisa ser aplicável, **onde houver operação logística relevante**, a nós e arestas. A capacidade do nó de carga/descarga/transbordo não se reduz à capacidade da aresta adjacente.
+4. Melhoria construída não cria outro mecanismo de transporte; apenas altera parâmetros/capacidades da infraestrutura natural subjacente. Não introduzir tipologia fixa (praia, porto, rodovia, ferrovia) como classe de infraestrutura: tais nomes são exemplos físicos ou descrições de contexto.
+5. Mesmo quando nenhuma melhoria pertence a um investidor, o **custo físico** natural de uso continua participando do water-filling. **Cobrança monetária por infraestrutura natural não é inferida** dessa dificuldade física. Eventual tarifa sobre investimento alheio segue contrato específico F-024/F-027.
+6. Não atribuir automaticamente a uma única capacidade de nó a soma de produção agrícola, indústria e carga/descarga sem base física. A mesma entidade espacial pode ter diferentes **oportunidades de ação**, sem exigir categorias de infraestrutura construídas.
+
+**Contrato de custo de rota candidato [PROPOSTO]:**
+\`C_rota = Σ_{arestas e percorridas} C_e + Σ_{nós n com operação logística efetiva} C_n\`.
+
+A operação em nó representa carga/descarga/transbordo ou outra transição que efetivamente exige processamento; **não** somar uma penalidade de manuseio por cada tile de mero trânsito, sob risco de alterar artificialmente o custo quando a malha Goldberg for refinada. Definir as operações relevantes e como agregar capacidade/direção em cada nó continua em aberto.
+
+**Caso-limite:** \`K_natural>0\` para operações naturalmente possíveis, mesmo que muito restritas. Um elemento realmente intransitável, com \`K_natural=0\`, não pode ser inserido diretamente numa expressão que divide por \`K\`; a possibilidade de habilitá-lo via investimento/tecnologia é decisão posterior.
+
+### F-031 — Saturação convexa de capacidade natural e melhorada [PROPOSTO; CRESCIMENTO FORTE É REQUISITO]
+
+**Requisito vindo do usuário:** a penalidade logística precisa **crescer fortemente quando a carga supera a capacidade de referência**, especialmente na infraestrutura natural de capacidade pequena. A lei linear \`1+ρ\` de F-029 não satisfaz bem o exemplo da praia frente a um cargueiro.
+
+**Candidato mínimo**, com mesma regra para **nó e aresta**, e para **todas as mercadorias**:
+
+\`ρ_x = B_x/K_x(I_x)\`
+
+\`C_x(B_x,I_x) = C_livre,x(I_x) × [1 + (ρ_x)^p]\`, com \`p>1\`, para \`x\` um nó/aresta com operação logística, \`B_x≥0\`, \`K_x(I_x)>0\`.
+
+\`B_x\` é taxa de carga equivalente na mesma janela temporal usada para \`K_x\`; \`C_livre,x\` inclui a impedância física natural ajustada pelo investimento. O expoente **global** \`p\` é o único controle adicional de convexidade; **não** atribuir \`p\` por produto, nó ou tipo de instalação sem decisão ulterior.
+
+**Exemplo de forma (não ratificada):** \`p=4\`. Multiplicadores da impedância livre:
+- \`ρ=0\` → 1; \`0,5\` → 1,0625; \`1\` → 2;
+- \`ρ=1,5\` → 6,0625; \`2\` → 17; \`3\` → 82.
+
+A curva é contínua e finita para toda carga finita, mas cresce intensamente após \`B≈K\`. Não confundir **congestionamento extremamente alto** com uma **proibição absoluta de fluxo**; um limite duro/assíntota finita precisaria ser aprovado expressamente. Comparar futuramente \`p=3\`, \`p=4\` e \`p=5\` apenas por comportamento agregado, sem ajustar coeficientes item a item.
+
+**Integração conceitual com F-025/F-029 [PROPOSTA, NÃO RATIFICADA]:**
+\`U_x(I)=1+log₂(1+I_x/I₀)\`,
+\`C_livre,x(I)=C_natural,x/U_x(I)\`,
+\`K_x(I)=K_natural,x U_x(I)\`.
+Portanto \`C_x = [C_natural,x/U_x]×[1+(B_x/(K_natural,x U_x))^p]\`.
+
+O estado natural \`I_x=0\` implica \`U_x=1\`; as condições físicas naturais entram **integralmente** na equação. Para \`K_natural,x\` muito pequeno, a sobrecarga pode ficar extremamente cara até mesmo com fluxo comercial moderado. A capacidade cresce com investimento sem criar uma categoria artificial de instalação. **Não canonizar essas funções nem o expoente nesta fase.**
+
+**Teste da praia [PROPOSTO]:** comparar um nó litorâneo com capacidade natural pequena e um nó natural semelhante com capital incorporado, para **um mesmo fluxo de desembarque**; agregar as arestas adjacentes e eventuais operações dos nós como custos físicos separados e localmente determinados. Confirmar que praia pode atender baixo fluxo, mas sofre penalidade explosiva com volume muito alto; que um porto conceitual emerge apenas do investimento, sem classe "porto"; e que os fluxos comercialmente atribuídos ao nó/aresta não superam fisicamente uma restrição que seria de outra ordem. O termo "cargueiro" é **analogia**, não autorização para simular veículos ou cargas individuais.
+
+**Riscos em aberto:** congestão convexa no water-filling pode exigir cálculo de equilíbrio mais cuidadoso; uma rota com alto custo marginal ainda pode receber pequeno fluxo; congestionamento extremo pode causar números muito grandes — exigir aritmética numérica estável; cálculo de nós deve contabilizar apenas operações reais e evitar dupla contagem por passo de grafo; geometria/topologia não podem atribuir capacidade natural infinita.
+
+**Governança:** F-030 é ratificada como concretização de F-007. F-031 documenta a exigência de penalidade fortemente convexa e a função \`1+ρ^p\` como **candidata**, sem canonizar \`p=4\`, a fórmula de investimento, quaisquer capacidades naturais ou a regra de tarifa.
 
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
@@ -551,3 +605,5 @@ Números escolhidos apenas para examinar monotonicidade. Não representam a econ
 - **2026-11-07 — décima deliberação:** adotada filosofia de uma única dimensão logística, sem índices de proteção/segurança por mercadoria e sem coeficientes de balanceamento item a item. F-028 rejeitada para a fase inicial. F-026 restringe fatores `a_r` a conversões justificáveis ou normalização unitária; fórmulas e calibração continuam abertas.
 
 - **2026-11-07 — estudo de saturação mínima:** F-029 proposta com impedância linear na taxa `B/K`, multiplicador de investimento `U=1+log₂(1+I/I₀)`, eficiência e capacidade derivadas do mesmo nível e exemplo de rotas concorrentes. Fórmulas, parâmetros e convergência não ratificados. Foi ressaltada a necessidade de normalizar fluxo por duração do ciclo econômico.
+
+- **2026-11-07 — revisão da saturação pela infraestrutura natural:** F-030 ratificada: nós e arestas naturais já são infraestrutura funcional e entram em todos os cálculos, inclusive quando investimento=0; necessidade de modelar capacidade dos nós para carga/descarga, não só arestas. F-031 propõe penalização convexa `1+ρ^p`, com expoente global e teste da praia/cargueiro; versão linear F-029 deixa de ser candidata principal. Fórmulas e p não ratificados.
