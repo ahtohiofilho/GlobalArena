@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 2.2  
+**Versão conceitual:** 2.3  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -728,6 +728,41 @@ A diferença **não é arredondamento**, mas definição de qual grandeza a fun�
 **Status:** norma inicial \`R₀=1\` e fontes futuras de diferenciação ratificadas; fórmulas de eficiência/demanda, índice local, educação, migração e tempo de atualização **não ratificados**. A arbitragem entre construtores permanece F-036 [ABERTO].
 
 
+### F-038 — Eficiência derivada de consumo real per trabalhador e diversidade endógena [PROPOSTO; NÃO RATIFICADO]
+
+**Questão:** como substituir o "grau de desenvolvimento econômico do local de pertencimento" de F-037 por uma medida endógena de desenvolvimento material que não recompense simplesmente maior receita, acúmulo de dinheiro ou aumento declarado de demanda?
+
+**Proposta preferida:** o desenvolvimento material da localidade \`n\` deve refletir **quantidades de mercadorias efetivamente adquiridas/atendidas pela economia local** por unidade de trabalhador pertencente a ela, com **utilidade marginal decrescente por produto**, de modo que a variedade contribua **sem prêmio adicional e arbitrário por tipo de mercadoria**.
+
+**Separações fundamentais:**
+1. \`demanda declarada/estimada\` ≠ \`venda efetiva\` ≠ \`consumo atendido e liquidado\`. Só quantidades atribuídas de modo válido ao atendimento da localidade, sustentadas por fluxo de mercado e pagamento segundo F-022/F-023, podem influenciar o indicador. **Aumento unilateral da demanda não pode elevar eficiência por si mesmo.**
+2. A variável é **per trabalhador/unidade de pertencimento**, não consumo agregado bruto da localidade; não premiar um território simplesmente por conter mais trabalhadores. A métrica de população quando o trabalhador for agregado está aberta.
+3. O benefício de variedade deve emergir **de retornos decrescentes do consumo repetido**, e não de índices especiais de segurança, raridade, preferência ou valor monetário arbitrariamente atribuído a cada mercadoria.
+4. Consumo material é econômico/contábil, **sem estoque físico persistente**: em cada ciclo, atribuir quantitativamente o fluxo de mercadorias efetivamente vendido a demandas atendidas em destinos, sem duplicar o mesmo fluxo de comércio como consumo de mais de uma localidade.
+5. O **preço de mercado** determina quanto deve ser pago, mas não é medida direta de consumo real. Uma alta nominal de preços sem aumento das quantidades atendidas não pode elevar automaticamente a eficiência.
+6. A afiliação de pertencimento de cada trabalhador a uma localidade continua uma regra separada (F-037); migrar ou transitar não deve retroativamente reatribuir consumo de ciclos anteriores.
+
+**Candidato matemático [ILUSTRATIVO, NÃO RATIFICADO]:**
+\`S_n(t) = Σ_{i∈I(t)} ln(1 + c_{n,i}(t))\`,
+onde \`c_{n,i}(t)\` é **quantidade efetivamente atendida por trabalhador da localidade**, normalizada em unidade de consumo economicamente comparável para mercadoria \`i\`. \`S_n\` é adimensional. A concavidade do log favorece, para uma quantidade total normalizada fixa, repartição entre mercadorias distintas em vez de concentração extrema num único produto; não exige bônus explícito por variedade.
+
+**Caveat estrutural não resolvido:** normalizar mercadorias diversas é necessário. Uma unidade de pedra e uma de diamante não têm automaticamente o mesmo benefício de bem-estar; não inventar pesos por item para forçar resultados. Adicionalmente, simplesmente **dividir um item em duas categorias artificiais pode elevar \`S_n\`**, portanto a ontologia de itens e sua estabilidade importam. Categorias precisam ter significado real e não podem ser multiplicadas só para explorar o índice. Essa objeção pode justificar fórmula alternativa sem catálogo arbitrário de itens.
+
+**Aplicação temporal proposta:** eficiência construtiva no período/ciclo seguinte depende do consumo **realizado e liquidado no ciclo anterior**, \`R_w(t+1)=R₀×E(S_{origem(w)}(t))\`, com \`E\` inicialmente igual a 1 para todos até ratificação de fórmula. Uma demanda futura \`D_w(t+1)=G(S_{origem(w)}(t),...)\` pode usar a mesma referência \`S\` mas **não precisa** ter a mesma forma, magnitude ou elasticidade da eficiência. Usar resultado passado (ou média histórica, se comprovadamente necessária) evita causalidade instantânea circular, mas **não garante estabilidade econômica por si só**.
+
+**Critérios de integridade antes de ratificar:**
+- A demanda ampliada por \`G\` não é orçamento automático; o clearing e a liquidação precisam de fontes de pagamento verificáveis (F-022). Não aceitar ciclo "declaro demanda maior → aumenta produtividade/caixa → compro mais" sem produção real e financiamento.
+- \`E(S)\` deve ter retornos decrescentes/limitações economicamente justificáveis; medir crescimento de longo prazo e estabilidade, sem declarar teto arbitrário por prudência. Decisões sobre função, limites e escalas em aberto.
+- Maior consumo financiado por transferências legítimas pode elevar bem-estar e eficiência mesmo sem maior produção local; isso pode ser desejável para localidades comerciais. Não confundir localização do produtor com localidade da demanda atendida.
+- Educação e sistemas sociais futuros devem entrar como modificadores adicionais só se houver ganho de gameplay demonstrado; não duplicar o mesmo consumo sob nomes diferentes.
+- Uma mesma mercadoria não pode contar duas vezes como consumo ao percorrer vários trechos de uma rota abstrata water-filling.
+- A métrica de referência \`R₀=1 moeda/turno\` (F-037) **não muda** enquanto esta proposta estiver aberta.
+
+**Alternativas de comparação:** receita local per trabalhador (ignora consumo); riqueza/caixa (pode não atender necessidades); gasto nominal (sensível a inflação/preço); satisfação efetiva relativa a necessidades (mais direta, mas exige regra não arbitrária de necessidade por produto). Nenhuma foi aprovada como indicador canônico.
+
+**Status:** ideia exploratória do usuário avaliada; F-038 **não ratificada**, sem nova equação de eficiência implantada. O próximo gate deve validar a definição de "consumo efetivamente atendido" com orçamento, mercado, demanda e unidades consistentes; depois decidir se uma medida concava de diversidade é necessária.
+
+
 ## 8. Governança da nova versão e critérios de reaproveitamento
 
 **A fonte de verdade do novo desenho** é a sequência de decisões ratificadas nesta documentação. As decisões do jogo antigo **não exercem autoridade sobre ela**; tampouco foram revogadas para a versão antiga.
@@ -785,3 +820,5 @@ A diferença **não é arredondamento**, mas definição de qual grandeza a fun�
 - **2026-11-07 — décima primeira deliberação:** F-035 ratificada como melhoria contínua por trabalho e desembolso monetário efetivos, sem marcos de obra concluída; capital incorporado é progresso persistente, e efeitos entram em vigor no tempo lógico correto. F-036 aberta para múltiplos trabalhadores/contas concorrentes e taxa de execução; fórmula de taxa e critérios de empate ainda não ratificados.
 
 - **2026-11-07 — taxa-base de execução de infraestrutura:** F-037 ratificada com 1 unidade monetária de capital incorporável por turno completo de trabalhador padrão, com frações temporais e condicionada a caixa. Diferenciação futura pela economia do local de pertencimento (também afeta demanda) e, se houver, educação/fatores sociais; sem definir multiplicadores ou sistema educacional agora. F-036 concorrência segue aberta.
+
+- **2026-11-07 — estudo de desenvolvimento e produtividade por consumo:** F-038 proposta como alternativa ao desenvolvimento medido por renda: consumo real efetivamente atendido por trabalhador pertencente à localidade, com variedade emergindo de utilidade marginal decrescente, sem pesos arbitrários por item. Discussão de normalização, categorias e circularidade da demanda; F-037 permanece ratificada e F-038 aberta.
