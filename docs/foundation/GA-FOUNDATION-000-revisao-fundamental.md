@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 0.2  
+**Versão conceitual:** 0.3  
 **Situação:** deliberação em andamento; núcleo explicitamente ratificado nesta conversa  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -135,16 +135,50 @@ Modifica capacidades de nós ou arestas. **[ABERTO]**: construção, materiais, 
 
 ## 7. Próxima decisão em pauta: sem ratificação
 
-**F-011 — Conversão de trabalho em produção [ABERTO]**
+**F-011 — Conversão de trabalho em produção [ABERTO; experimento inicial elaborado]**
 
-Partindo de um único trabalhador em um nó e de um único recurso, determinar **qual é a menor relação necessária** entre trabalho aplicado, potencial físico do nó e produção efetiva. São hipóteses a confrontar:
-- **A. Conversão proporcional simples:** produto do trabalho efetivo por um rendimento físico local, sem variável de teto adicional no primeiro experimento.
-- **B. Conversão limitada por capacidade:** rendimento proporcional até uma saturação física explícita.
-- **C. Outra lei derivada de variáveis físicas essenciais:** apenas se A e B falharem nos cenários mínimos.
+### Problema
 
-Não presumir que o potencial físico seja simultaneamente produtividade, volume de reserva, capacidade máxima e taxa de regeneração; são conceitos diferentes, e só deverão virar estados distintos se demonstrada sua necessidade.
+Uma função puramente proporcional \`Q = W × R\`, onde \`W\` é trabalho e \`R\` rendimento físico, é adequada **enquanto há oportunidades de produção não disputadas**. Não é justificativa suficiente para extrapolar a produção linearmente quando dezenas de unidades exploram um único nó.
 
-**Nenhuma equação, estoque, propriedade do recurso ou tipo de saturação está ratificado.**
+Separar três questões:
+1. **Rendimento:** quanto material uma unidade de trabalho consegue gerar nas condições físicas e técnicas locais?
+2. **Acesso:** quanto trabalho total pode ser absorvido naquele recurso/nó por período, dado o espaço e as oportunidades físicas de operação?
+3. **Disponibilidade material:** quanto material pode efetivamente ser retirado ou renovado? Este conceito não se confunde com acesso e será tratado separadamente, porque madeira, pedra e alimentos não têm obrigatoriamente a mesma dinâmica de reserva/regeneração.
+
+### Candidato preferencial para o primeiro experimento [PROPOSTO]
+
+\`\`\`text
+E(v,r) = min(W(v,r), A(v,r))
+Q(v,r) = E(v,r) × Y(v,r)
+\`\`\`
+
+- \`W(v,r)\`: trabalho total direcionado ao recurso \`r\` no nó \`v\`, proveniente de unidades **fisicamente presentes** e de seus orçamentos universais de trabalho F-009.
+- \`A(v,r)\`: quantidade de trabalho que as oportunidades físicas **acessíveis** conseguem absorver naquele período, calculada a partir das propriedades do nó (e dos modificadores aplicáveis). **Não** é uma tabela de limite arbitrário de produção nem um novo estoque autônomo.
+- \`Y(v,r)\`: rendimento por unidade de trabalho efetivamente aplicada, calculado a partir das propriedades físicas relevantes e, no futuro, dos efeitos de tecnologia/infraestrutura.
+- \`Q(v,r)\`: resultado potencial do processo **antes** de qualquer regra de disponibilidade de material que venha a ser ratificada.
+
+Este candidato não exige uma função de retornos decrescentes arbitrária: o retorno marginal é constante até a ocupação das oportunidades físicas e passa a zero depois dela. Essa mudança abrupta é uma simplificação consciente, a comparar com os benefícios de uma curva suave. Trabalhadores em excesso **não são automaticamente consumidos ou perdidos**; podem ser destinados a outras atividades, caso as regras de alocação permitam.
+
+**Exemplo puramente ilustrativo**, não calibrado: \`Y=3 unidades por trabalho\`, \`A=10 unidades de trabalho por período\`. Para \`W=1, 5, 10, 20, 100\`, a produção potencial seria \`3, 15, 30, 30, 30\`. Os números não se tornam canônicos.
+
+### Alternativas não ratificadas
+
+- **Linear irrestrita:** menos parâmetros, mas permite exploração ilimitada do mesmo espaço se não houver outra restrição física; útil como caso-limite local, não necessariamente como regra geral.
+- **Saturação suave racional:** \`Q = Y W / (1+W/A)\` ou forma equivalente. Melhor transição marginal, mas adiciona interpretação/calibração de parâmetros e pode produzir um rendimento inferior a \`Y\` mesmo para um trabalhador isolado. Não adotar só por elegância matemática.
+- **Disponibilidade física + produção:** a futura regra de estoque/acesso poderá limitar \`Q\` adicionalmente, mas não substitui a questão de quantos trabalhadores operam com eficiência em um espaço.
+
+### Critérios obrigatórios antes de ratificar
+
+1. \`W=0 → Q=0\`; rendimento físico nulo para o recurso implica \`Q=0\`.
+2. Nenhum trabalhador remoto produz sem deslocamento no grafo.
+3. Acrescentar trabalho não pode reduzir a produção total por mero efeito de parametrização.
+4. Trabalho não aplicado ao processo não pode ser cobrado como consumido inadvertidamente.
+5. Não duplicar a mesma superfície/operação quando dois recursos concorrem pelo mesmo espaço físico — concorrência entre recursos **ainda em aberto**.
+6. Reserva, regeneração, extração e armazenamento são decisões **posteriores e distintas**; não converter potencial em material físico infinito.
+7. Dar preferência a parâmetros **derivados de atributos físicos do nó**, e não a estados novos e numericamente ajustados sem significado.
+
+**Status:** a equação limitada por oportunidades é uma **recomendação para testar**, não uma lei ratificada. A forma exata de derivar \`A\` e \`Y\` ainda precisa ser demonstrada, e a dinâmica dos materiais permanece aberta.
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
 
@@ -173,3 +207,4 @@ Não presumir que o potencial físico seja simultaneamente produtividade, volume
 
 - **2026-11-07 — abertura:** base geométrica/topológica, nó físico-produtivo, três recursos, capacidade natural e duas infraestruturas; ratificação explícita do **Modelo A — Trabalhador físico**.
 - **2026-11-07 — segunda deliberação:** F-009 ratificada (capacidade universal de trabalho); F-010 ratificada (nova versão de desenho autônomo e descarte de código incompatível sem restrição de retrabalho); F-011 aberta (lei de produção).
+- **2026-11-07 — estudo F-011:** examinada a validade local da produção linear e formulado candidato de saturação por oportunidades físicas, sem ratificação de fórmula nem parâmetros.
