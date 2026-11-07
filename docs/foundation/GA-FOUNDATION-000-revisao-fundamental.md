@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 2.8  
+**Versão conceitual:** 2.9  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -970,6 +970,63 @@ Depois realizar water-filling de toda oferta com essas impedâncias congeladas, 
 **Status:** método de equilíbrio simultâneo e fallback condicionado a desempenho **ratificados**; fórmula de saturação \`p\`, construção exata do potencial conjunto, algoritmo numérico, tolerâncias, desempate, distribuição por propriedade de arestas e tarifas seguem **EM ABERTO**.
 
 
+### F-050 — Atratividade logística adimensional baseada na razão preço/impedância [PROPOSTO; NÃO RATIFICADO]
+
+**Problema de integração:** a receita monetária do produto vendido no mercado \`n\` segue \`P_{n,i}=√(D_{n,i}/Q_{n,i})\`, com \`R_{n,i}=√(D_{n,i} Q_{n,i})\` por F-043. A impedância \`C_e(B_e,I_e)\` de F-031/F-049 é **não monetária**, física/logística. Não se pode subtrair diretamente custo físico de receita em moeda, mas o water-filling precisa preferir mercados suficientemente valiosos e rotas fisicamente acessíveis.
+
+**Candidata simples de índice de atratividade de cada rota \`r\` até destino \`n\` para mercadoria \`i\`:**
+
+\`L_r(B,I)=Σ_{e∈r}C_e(B_e,I_e)\`, com \`L_r>0\` e a mesma unidade física normalizada para todas as arestas.
+
+\`A_{r,i}=P_{n,i}(Q_{n,i})/L_r(B,I)\`.
+
+Como \`R'_{n,i}=P_{n,i}/2\` para a curva canônica, usar \`A^{marg}_{r,i}=R'_{n,i}/L_r\` é **equivalente na classificação de rotas** (multiplicador positivo global \`1/2\`); há uma **mesma unidade de preço por mercado**, mas **várias atratividades relativas conforme a rota**.
+
+**Interpretação:** não é um pagamento monetário \`P-L\` nem uma despesa lançada ao tesouro. O preço \`P\` continua sendo recebido pela civilização produtora por unidade vendida, e \`L_r\` representa resistência relativa de acesso. Multiplicar **todas** as impedâncias por uma mesma constante positiva não muda a ordenação das atratividades; não se introduz parâmetro de conversão de "pontos físicos" em moeda. A escolha de dividir pelo custo é, contudo, **hipótese econômica de comportamento do mercado**, não resultado matemático obrigatório de F-043/F-049.
+
+**Candidato de condição de equilíbrio:** para cada origem, mercadoria e regime de propriedade/civilização, todas as rotas/destinos usados devem apresentar o mesmo valor máximo de \`A^{marg}\` entre as alternativas economicamente elegíveis, respeitando a conservação de **100% da produção**. Fluxos, \`Q_{n,i}\`, \`B_e\` e \`C_e\` precisam ser resolvidos **simultaneamente**, conforme F-049. Impedância de rota é soma das **impedâncias marginais** na interpretação de F-032, não custo médio monetário, e suas taxas de carga precisam usar janela temporal consistente.
+
+**Laboratório analítico sem congestionamento [PROPOSTO]:** uma origem produz \`Q_T=10\` de uma mercadoria; mercados A e B têm \`D_A=4,D_B=1\`; impedâncias fixas \`L_A=1,L_B=2\`. Igualdade de \`P_A/L_A=P_B/L_B\`, com \`Q_A+Q_B=10\`, implica:
+\`Q_A/Q_B=(D_A/L_A²)/(D_B/L_B²)=16\`,
+\`Q_A=160/17≈9,4117647\`, \`Q_B=10/17≈0,5882353\`,
+\`P_A≈0,6519202\`, \`P_B≈1,3038405\`, \`A_A=A_B≈0,6519202\`.
+Com \`L_A=L_B\`, recupera F-044 \`Q_A=8,Q_B=2\` com preço igual.
+
+**Laboratório simultâneo com congestionamento (todos os coeficientes a seguir são ilustrativos, não ratificados):**
+\`C_A(q_A)=1+(q_A/5)^4\`,
+\`C_B(q_B)=2×[1+(q_B/10)^4]\`,
+\`D_A=4,D_B=1,Q_T=10\`; resolver
+\`√(4/q_A)/C_A(q_A)=√(1/q_B)/C_B(q_B)\` e \`q_A+q_B=10\`.
+Resultado aproximado de bisseção:
+\`q_A≈6,1256452346\`, \`q_B≈3,8743547654\`,
+\`C_A≈3,2528244306\`, \`C_B≈2,0450637717\`,
+\`P_A≈0,8080794734\`, \`P_B≈0,5080428074\`,
+\`P_A/C_A≈P_B/C_B≈0,2484239438\`;
+receita bruta total \`q_A P_A + q_B P_B≈6,9183462475\` a ser creditada ao tesouro da civilização originadora, antes de eventuais tarifas monetárias explícitas.
+
+**Propriedade desejável:** ao aumentar volume na rota inicialmente mais barata, a própria impedância sobe e torna outras alternativas relativamente mais interessantes. A distribuição é calculada com cargas finais, **sem congelar custos defasados**.
+
+**Riscos/limites críticos antes de ratificar:**
+1. **Global versus individual:** maximizar \`Σ_n R_n(Q_n,D_n)\` para todo o mercado não é, necessariamente, o mesmo problema que cada civilização/produtor maximizar sua receita. Para um produtor \`c\` com parcela \`q_{c,n}\` no destino e \`Q_n=Σ_c q_{c,n}\`, sua derivada própria de receita é \`∂[q_{c,n}P_n(Q_n)]/∂q_{c,n}=P_n(Q_n)×[1-q_{c,n}/(2Q_n)]\` se as demais quantidades estiverem fixas, e não \`P_n/2\` exceto quando ele é único vendedor. A regra de competitividade e o estatuto de cada civilização precisam ser estabelecidos conscientemente; **a F-048 preserva crédito integral às civilizações pela quantidade que realmente venderem, e não resolve sozinha o objetivo do allocator**.
+2. **Cauda infinita de destinos:** quando \`Q_{n,i}→0^+\`, \`P_{n,i}→+∞\`, logo \`A_{r,i}→+∞\` em qualquer rota de impedância positiva finita. Em modelos contínuos com oferta distribuível infinitesimalmente, todo mercado conectado com \`D>0\` tende a receber **alguma parcela positiva**; isso pode gerar elevada densidade de destinos/rotas num grafo Goldberg muito grande. Nenhum limiar arbitrário foi aprovado para eliminar essa cauda.
+3. **Não garantia de potencial global simples:** \`P_n/L_r\` não é automaticamente a derivada de um potencial de otimização convexo em redes multiorigem/multimercado com congestionamento compartilhado. É possível formular condições de equilíbrio como sistema ou desigualdade variacional, mas prova de existência/unicidade, convergência, estabilidade, simetria e desempate determinístico precisa ser feita antes de afirmar que o solver está definido.
+4. **Comparabilidade logística:** a razão presume \`L_r>0\` e uma impedância física comum, derivada de propriedades naturais/geométricas e investimento. Multiplicar todas as impedâncias pelo mesmo fator não muda a divisão; fatores individuais por item são rejeitados F-028. A função e unidade exatas de \`C_e\` seguem F-031 [PROPOSTO].
+5. **Tarifas reais:** tarifa de infraestrutura de terceiro é dinheiro e deve ser contabilizada no tesouro civilizacional, não confundida com \`L_r\`. Como tarifa afeta escolha do produtor e liquidação, a versão completa do índice com tarifas ainda não está definida; não cobrar a mesma tarifa duas vezes.
+6. **Algoritmo:** igualdade de atratividade fornece condição candidata de ótimo local/interior, mas não define sozinho solver de rede. Comparar métodos de solução simultânea, reprodutibilidade de estado e comportamento numérico com \`Q\` muito pequeno.
+
+**Status:** regra \`P/L\` e seu equilíbrio simultâneo são uma **candidata que combina F-043 e F-049 sem nova variável monetária**. Resultados dos exemplos foram demonstrados; **nenhum destes resultados ratifica a regra de mercado, o objetivo agregado, a função específica de saturação ou o solver**.
+
+### F-051 — Gate de validação do clearing multi-civilização [PROPOSTO; NÃO RATIFICADO]
+
+**Próximo contrato a decidir:** qual é o agente/critério de escolha do water-filling quando várias civilizações concorrem pelos mesmos destinos e o preço é compartilhado?
+
+**Alternativa A [mais simples]:** alocador global determinístico orientado por \`P/L\` ou \`R'/L\`, conservando 100% da oferta por civilização e atribuindo receita nominal de cada parte ao respectivo tesouro. Essa regra não promete maximização da receita individual de cada civilização, mas facilita a resolução agregada e a unicidade por critério canônico.
+
+**Alternativa B [mais estratégica]:** cada civilização atua como ofertante que procura maximizar sua própria receita pela participação \`q_{c,n}\` e depende dos demais no mesmo mercado, possivelmente produzindo um equilíbrio competitivo/Nash diferente; maior custo de cálculo e possibilidade de desigualdade entre civilizações com quotas distintas.
+
+**Antes da escolha:** executar experimento com 2 civilizações, 2 origens, 2 destinos, infraestrutura compartilhada, preços comuns por mercado, volumes comerciais obrigatoriamente vendidos, sem carteiras dos compradores, receitas separadas e congestionamento endógeno. Medir eficiência, equidade entre origens, estabilidade e custo computacional. Determinar convenção para limites \`Q→0\` e mercados acessíveis.
+
+
 ## 8. Governança da nova versão e critérios de reaproveitamento
 
 **A fonte de verdade do novo desenho** é a sequência de decisões ratificadas nesta documentação. As decisões do jogo antigo **não exercem autoridade sobre ela**; tampouco foram revogadas para a versão antiga.
@@ -1039,3 +1096,5 @@ Depois realizar water-filling de toda oferta com essas impedâncias congeladas, 
 - **2026-11-07 — correção do perímetro financeiro e estudo da expectativa de infraestrutura:** F-046 ratificada: compradores não têm carteira, caixa nem restrição orçamentária; o poder de compra consumidor é indeterminado e pode realocar gastos em bens invisíveis. Toda venda gera receita ao tesouro produtor; a moeda do setor visível é aberta. F-022/F-023/F-040/F-043/F-045 revistas para não exigir conciliação de contas compradoras inexistentes. F-047 avalia congelar impedância por aresta durante o ciclo econômico usando volume esperado, com atualização entre ciclos, comparando a equilíbrio endógeno; alerta para oscilação temporal de rotas e necessidade de teste antes de ratificar.
 
 - **2026-11-07 — tesouro civilizacional e clearing simultâneo:** F-048 ratificada: a receita das vendas pertence à civilização produtora, não ao trabalhador nem ao nó; investimento logístico é pago pelo tesouro da civilização, mantendo trabalhadores apenas como agentes físicos. F-049 ratificada: resolver simultaneamente carga por aresta, congestionamento e alocação por destino/item no ciclo; expectativa fixa defasada fica somente como alternativa futura se desempenho exigir. F-047 marcada como hipótese histórica superada. Formulação exata do solver, escala da impedância e tarifa permanecem abertas.
+
+- **2026-11-07 — proposta F-050 de integração preço/impedância:** testada atratividade A=P/L, com L=Σ C_e e P=√(D/Q), sem subtrair moeda de pontos logísticos nem reintroduzir carteiras. Sem congestionamento: D_A=4,D_B=1,Q=10,L_A=1,L_B=2 ⇒ q_A≈9,4118,q_B≈0,5882; com C_A=1+(q_A/5)^4 e C_B=2[1+(q_B/10)^4] ⇒ q_A≈6,12565 e q_B≈3,87435. Modelo em estudo, não ratificado. F-051 abre a distinção entre alocação global de mercados e maximização da receita de cada civilização, assim como risco de fluxos mínimos para todos os mercados devido a P→∞ quando Q→0.
