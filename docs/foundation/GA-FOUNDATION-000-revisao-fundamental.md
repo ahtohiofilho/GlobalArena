@@ -1095,6 +1095,62 @@ A grandeza \`D_n/L_n²\` funciona como **demanda ponderada por acessibilidade**,
 **Racional de design:** foco nas decisões estratégicas, sem micromanagement de carga, mercado ou preços; favorecer especialização emergente e um motor único.
 
 
+### F-055 — Mercado espacial como fluxo transitório em arestas, sem enumerar rotas [PROPOSTO; NÃO RATIFICADO]
+
+**Problema:** a função de preço P=√(D/Q) e a atratividade candidata P/L podem levar uma parcela positiva, ainda que minúscula, a todo mercado acessível que tenha D>0. Armazenar antecipadamente todas as rotas origem-destino ou todos os caminhos do grafo é incompatível com um mapa Goldberg de grande escala. Um limite arbitrário de distância, número de compradores ou quantidade mínima alteraria a lei econômica.
+
+**Proposta de estado econômico transitório no ciclo:**
+- s[n,c,i] = produção/injeção do item i no nó n, atribuída à civilização c;
+- a[n,c,i] = quantidade do item i vendida no mercado n e atribuída à civilização c;
+- f[u→v,c,i] ≥ 0 = fluxo comercial abstrato nos arcos orientados da aresta u--v, mantido somente durante o cálculo econômico. O mesmo registro de aresta não é um estoque, veículo ou carga material persistente.
+
+**Conservação por nó, civilização e mercadoria:**
+
+s[n,c,i] + Σ entradas f[u→n,c,i] = a[n,c,i] + Σ saídas f[n→v,c,i].
+
+O balanço global preserva a venda integral por civilização/mercadoria: Σ_n a[n,c,i] = Σ_n s[n,c,i]. A produção pode ser vendida localmente sem percorrer uma aresta.
+
+**Agregação que respeita os contratos já aprovados:**
+- Quantidade final no mercado: Q[n,i] = Σ_c a[n,c,i].
+- Preço por mercado: P[n,i] = √(D[n,i]/Q[n,i]), quando Q>0 e D>0, F-043.
+- Receita creditada à civilização: Receita[c] = Σ_n,i a[n,c,i] × P[n,i], F-048.
+- Carga da aresta não orientada e={u,v}: B[e] = Σ_c,i pesoLogistico[i] × (f[u→v,c,i] + f[v→u,c,i]) / intervaloReferencia.
+  Somar as duas direções, em vez de cancelar fluxos opostos. A conversão pesoLogistico permanece exclusivamente dimensional (F-026), não índice comercial arbitrário; onde unidades já forem normalizadas, usar 1.
+
+**Simplificação:** não precisamos distinguir origem A e origem B após a mistura dos fluxos se as duas produções são do MESMO item e da MESMA civilização: o tesouro credor é o mesmo, e a carga física agregada por aresta também. Mas civilizações diferentes exigem canais contábeis separados, pois seus tesouros são diferentes.
+
+**Estratégia operacional candidata:**
+1. Resolver o equilíbrio simultâneo diretamente sobre conservação em nós, absorções em mercados e cargas dos arcos, utilizando caminhos candidatos descobertos sob demanda por busca de menor impedância, em vez de enumerar todas as rotas simples antecipadamente.
+2. Preservar fluxos em sentidos opostos quando forem economicamente necessários, mas evitar circulação artificial e loops improdutivos se elevarem impedância sem aumentar consumo ou receita.
+3. Não afirmar que a solução será barata ou esparsa apenas porque a representação usa arcos. Existem potencialmente muitos mercados com fluxo positivo (cauda da curva), e o custo de um solver multimercadoria/multicivilização pode ser alto; medir com benchmarks.
+4. Para cada ciclo, as variáveis são transitórias; apenas saldos dos tesouros, capital de infraestrutura, estado físico dos trabalhadores e demais estados canônicos devem persistir. Resultados de preço, receita e consumo podem ser agregados por ciclo para histórico sem estoque.
+5. Como as rotas podem dividir arestas, a carga B[e] precisa ser resolvida com todos os produtos/civilizações no mesmo instante lógico, não por produtor sequencial.
+6. A mesma entrada deve gerar exatamente o mesmo resultado, independente da ordem de civilizações, nós, arcos e threads; definir precisão, critérios de desempate e comportamento para Q≈0 em gate posterior.
+
+**Ensaio de conservação:** civilização A produz 6 unidades de madeira, B produz 4; ambas utilizam a mesma aresta até um mercado com D=5. Então Q=10, P=√(5/10)≈0,70710678; carga equivalente na aresta =10 por intervalo de referência, receita A≈4,24264 e receita B≈2,82843. Trabalhadores e compradores não recebem moeda. Um fluxo oposto real de outra civilização também ocuparia capacidade e entraria como soma em B, não como desconto.
+
+**Ponto de atenção: mercado local:** F-050/F-053 usam L=Σ_e C_e. Quando produção e mercado estão no mesmo nó, a rota vazia tem L=0; o critério P/L fica indefinido, e G=L/P faria todo tráfego local possuir impedância comercial zero, dominando os demais destinos mesmo quando a oferta local está saturada. **Não inserir custo logístico de nó ou porto por conveniência** (F-034). F-056 deve avaliar uma regra universal de acessibilidade que admita L=0 sem preferência infinita.
+
+**Status:** a representação por fluxos de arcos e preservação de identidade da civilização são candidatas de implementação, não contrato ratificado. A conservação e a atribuição da receita já decorrem de F-041/F-048; prova de equivalência com o clearing de rotas, solver e desempenho ainda pendentes.
+
+### F-056 — Acessibilidade logística com mercado local e distância zero [PROPOSTO; NÃO RATIFICADO]
+
+**Defeito identificado na candidata F-050:** P/L só faz sentido se L>0. Comércio no próprio nó usa rota de zero aresta, L=0; então P/L é singular. Se a alternativa G=L/P for usada literalmente, G=0 para toda quantidade local, o que artificialmente favorece venda local infinita.
+
+**Alternativa mínima para teste:** definir uma impedância de transporte normalizada não negativa L≥0, e adotar
+A = P/(1+L)
+ou, numericamente de forma equivalente,
+G = (1+L)/P = (1+L)√(Q/D).
+
+A unidade adimensional 1 é o nível-base de comparação do fator de acessibilidade (não uma cobrança, nem uma instalação de nó). O efeito de L=0 é A=P, não uma preferência infinita. Não acrescentar coeficiente ajustável por produto; **a normalização de L precisa ser explicitada a partir das próprias unidades físicas** para que o 1 não seja um parâmetro livre escondido.
+
+**Checagem demonstrativa sem congestionamento:** dois mercados D_A=4, D_B=1, impedâncias L_A=0 (local) e L_B=2 (remoto), oferta total Q=10. A igualdade de atratividade P_A/(1+0)=P_B/(1+2) produz razões Q_A:Q_B = (4/1²):(1/3²)=36:1, isto é, Q_A=360/37≈9,72973, Q_B=10/37≈0,27027. O mercado remoto não é descartado; também não existe prioridade matemática absoluta para o mercado local. Em cenário equivalente à F-044, se L_A=L_B=0, a distribuição continua proporcional à demanda (8 e 2).
+
+**Alternativa aberta:** utilizar outra forma universal de atenuação de acesso derivada diretamente da geometria ou do tempo real de transporte. Não inventar custos fixos em nós, veículos, porto ou tarifa financeira para contornar L=0.
+
+**Próximo gate de decisão:** decidir se toda venda realizada no próprio nó deve possuir atratividade comercial finita, usando uma normalização uniforme como 1+L; verificar efeitos em rotas longas e muito próximas, e se isso mantém o significado físico da impedância. Só depois canonizar F-050/F-053 e escolher solver.
+
+
 ## 8. Governança da nova versão e critérios de reaproveitamento
 
 **A fonte de verdade do novo desenho** é a sequência de decisões ratificadas nesta documentação. As decisões do jogo antigo **não exercem autoridade sobre ela**; tampouco foram revogadas para a versão antiga.
@@ -1170,3 +1226,5 @@ A grandeza \`D_n/L_n²\` funciona como **demanda ponderada por acessibilidade**,
 - **2026-11-07 — laboratório 2 civilizações/2 mercados e reformulação numérica:** F-052 registra dois experimentos com receitas dos tesouros separadas e gargalos compartilhados. No acesso simétrico com produção 6+4, demanda 4+1 e congestionamento convexo, o clearing candidato P/L alocou ≈6,247/3,753 por mercado; o desempate proporcional produziu receitas ≈4,162/2,774. No acesso assimétrico, origens se especializaram com receitas ≈4,899/2, mas uma civilização teria incentivo a alterar rotas se buscasse somente receita monetária bruta. F-053 propõe minimizar G=L/P=L√(Q/D), evitando a singularidade explícita de P em Q→0, e demonstra solução analítica Q_n∝D_n/L_n² sem congestionamento. F-050/051/053 e decisão de alocador global continuam EM ABERTO.
 
 - **2026-11-07 — alocador global ratificado:** F-054 fecha a escolha por um mercado comercial automático global, com receitas de vendas creditadas exclusivamente às civilizações responsáveis, sem carteiras dos consumidores nem ordens de venda individuais. O critério particular P/L, o solver e sua forma de representação da rede ainda dependem de validação, especialmente para mercados no mesmo nó da produção.
+
+- **2026-11-07 — estudo de escalabilidade por arcos e venda local:** F-055 propõe fluxo transitório em arestas por civilização/mercadoria, conservação nodal e agregação de congestionamento em ambos os sentidos, evitando enumerar todas as rotas. F-056 identifica a singularidade P/L no mercado do próprio nó (L=0) e propõe testar a atenuação P/(1+L), com referência comum e sem tarifa, porto ou custo de nó; ambos permanecem não ratificados.
