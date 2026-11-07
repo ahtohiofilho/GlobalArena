@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 2.3  
+**Versão conceitual:** 2.4  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -227,6 +227,8 @@ Após F-021/F-023, a demanda do trabalhador poderá manter **composição por me
 
 **Invariante desejável:** distinguir necessidade econômica calculada, despesa efetivamente liquidada e resultado de atendimento; demanda não equivale por si só a pagamento, nem autoriza gerar moeda em duplicidade. Essa norma de liquidação precisa ser concluída em F-022.
 
+**Clarificação F-039 [RATIFICADO]:** a nova arquitetura **não** forma estoques de mercadorias. Não há justificativa para inserir demanda artificial de retenção, compra fictícia ou absorção inventada como mecanismo de armazenagem. Demanda representa interesse econômico efetivo; mudanças genuínas por população, condições materiais ou políticas financiadas podem ser estudadas, mas não são dispositivos para esconder produtos que deixaram de ser vendidos.
+
 ### Experimentos do orçamento universal [REINTERPRETADOS POR F-021]
 
 - **Trabalhador imóvel:** tempo de ação não utilizado; demanda monetária pode existir sem produção.
@@ -353,7 +355,7 @@ A concorrência é resolvida **no local e no intervalo temporal em que realmente
 6. Infraestrutura de nós/arestas custa **dinheiro em lugar de madeira, pedra ou outros insumos específicos**; o componente temporal de construção permanece sujeito a F-013/F-015 e à definição posterior de conclusão.
 7. Arestas continuam representando deslocamento físico de agentes, além de uma **rede abstrata de custo de escoamento comercial**. O escoamento de mercadorias pode ser calculado sem simular cargas/veículos.
 
-**Fora do novo núcleo operacional:** estoques físicos permanentes por produto, lotes individuais, custódia de cargas, entrega comercial individualizada, cadeia de materiais obrigatórios para obras. **Dentro do modelo econômico:** quantidades setoriais transitórias por ciclo, oferta/demanda, preços, receita, rotas abstratas e custos físicos de acesso aos mercados.
+**Fora do novo núcleo operacional:** estoques físicos permanentes por produto, lotes individuais, custódia de cargas, entrega comercial individualizada, cadeia de materiais obrigatórios para obras. **Também está descartado expressamente (F-039) o artifício legado de aumentar artificialmente a demanda para simular retenção ou formação de estoques invisíveis.** **Dentro do modelo econômico:** quantidades setoriais transitórias por ciclo, oferta/demanda genuína, preços, receita, rotas abstratas e custos físicos de acesso aos mercados. Quantidade produzida sem comprador não vira saldo armazenável do ciclo seguinte nem receita automática.
 
 **Governança:** não reusar, de forma automática, o water-filling ou as fórmulas do código anterior; reavaliar princípios e só então auditar o reuso (F-010).
 
@@ -728,7 +730,7 @@ A diferença **não é arredondamento**, mas definição de qual grandeza a fun�
 **Status:** norma inicial \`R₀=1\` e fontes futuras de diferenciação ratificadas; fórmulas de eficiência/demanda, índice local, educação, migração e tempo de atualização **não ratificados**. A arbitragem entre construtores permanece F-036 [ABERTO].
 
 
-### F-038 — Eficiência derivada de consumo real per trabalhador e diversidade endógena [PROPOSTO; NÃO RATIFICADO]
+### F-038 — Eficiência derivada de consumo real por trabalhador e diversidade endógena [RATIFICADO NO PRINCÍPIO; EQUAÇÃO ABERTA]
 
 **Questão:** como substituir o "grau de desenvolvimento econômico do local de pertencimento" de F-037 por uma medida endógena de desenvolvimento material que não recompense simplesmente maior receita, acúmulo de dinheiro ou aumento declarado de demanda?
 
@@ -760,7 +762,53 @@ onde \`c_{n,i}(t)\` é **quantidade efetivamente atendida por trabalhador da loc
 
 **Alternativas de comparação:** receita local per trabalhador (ignora consumo); riqueza/caixa (pode não atender necessidades); gasto nominal (sensível a inflação/preço); satisfação efetiva relativa a necessidades (mais direta, mas exige regra não arbitrária de necessidade por produto). Nenhuma foi aprovada como indicador canônico.
 
-**Status:** ideia exploratória do usuário avaliada; F-038 **não ratificada**, sem nova equação de eficiência implantada. O próximo gate deve validar a definição de "consumo efetivamente atendido" com orçamento, mercado, demanda e unidades consistentes; depois decidir se uma medida concava de diversidade é necessária.
+**Status [RATIFICADO NO PRINCÍPIO]:** a medida de desenvolvimento material deverá, preferencialmente, emergir do **consumo efetivamente atendido por trabalhador na localidade de pertencimento**, considerando quantidade e diversidade sem bônus arbitrários por item. A fórmula de utilidade `Σ ln(1+c)`, normalização, contribuição de mercadorias materialmente diferentes, função de produtividade/demanda e atualização temporal **permanecem PROPOSTAS/ABERTAS**, não decisões canônicas. F-039 remove expressamente o antigo mecanismo de demanda artificial de retenção. F-040 propõe contrato de atribuição por ciclo e controles contra dupla contagem.
+
+
+### F-039 — Sem estoques e sem demanda artificial de retenção [RATIFICADO]
+
+**Decisão expressa:** nesta nova versão, a infraestrutura e as mercadorias são tratadas de maneira **abstrata no fluxo econômico**, sem estoque operacional persistente por produto, sem retenção física econômica entre ciclos e **sem o artifício da versão antiga de elevar artificialmente demanda para simular estoque no ponto de origem**.
+
+Consequências:
+1. **Não existirão** ações de "aumentar demanda para guardar mercadorias", compras fictícias de si mesmo para converter caixa em estoque, saldos virtuais escondidos por produto, nem garantia de absorção total da oferta.
+2. A **demanda genuína** é formada pelas necessidades/interesses econômicos dos trabalhadores/localidades e regras efetivas do mercado; pode mudar endogenamente com população, desenvolvimento e condições do jogo. Isso **não equivale** ao antigo ajuste artificial de retenção.
+3. Para mercadoria \`i\` no ciclo \`t\`: \`0 ≤ q_vendida(i,t) ≤ q_produzida(i,t)\`. O excedente \`q_produzida−q_vendida\` **não gera receita e não é transferido a estoque persistente** no ciclo seguinte. Seu destino abstrato não exige simular perda física, armazenamento ou descarte material.
+4. A construção de infraestrutura consome **dinheiro incorporado mediante trabalho**, não mercadorias ocultas (F-021/F-035/F-037); essa separação remove o motivo de manipular demanda para reter materiais.
+5. O indicador de desenvolvimento de F-038 observa **atendimento real**, jamais quantidade apenas ofertada, desejada ou contabilizada em trânsito.
+6. A regra proíbe **demanda fictícia para estocagem**, não necessariamente toda intervenção futura sobre demanda por política econômica real, desde que a intervenção tenha causa verificável e financiamento coerente com F-022.
+
+**Nota de migração:** qualquer mecanismo do legado que reconheça estoque, retenção, demanda artificial, compra interna automática para estocagem ou mercadoria não vendida carregada para o próximo período é **incompatível com este núcleo**, ainda que exista código pronto.
+
+### F-040 — Atribuição de consumo efetivamente atendido por ciclo [CONTRATO CANDIDATO; NÃO RATIFICADO]
+
+**Finalidade:** fornecer à F-038 uma entrada observável e não manipulável, preservando a distinção entre produção, oferta, venda e absorção econômica; sem inventar inventário físico nem decidir prematuramente o proprietário de cada conta.
+
+**Pipeline por ciclo econômico \`t\` [PROPOSTO]:**
+1. Apurar \`Q^{prod}_{o,i,t}\` produzido na origem \`o\`, para cada mercadoria \`i\`, a partir da ação dos trabalhadores.
+2. Construir demandas genuínas \`D_{n,i,t}\` dos trabalhadores/localidades de destino \`n\`, definidas **antes** do resultado do mercado no mesmo ciclo (origem e parametrização em aberto).
+3. Aplicar water-filling sobre oferta, curvas marginais de preço, fluxo logístico e impedância para propor alocações \`q_{o→n,i,t}\` e preços de transação.
+4. Só confirmar alocações **financeiramente cobertas/liquidadas** pelas contas/obrigações reais do mecanismo monetário que vier a ser ratificado em F-022. Não transformar diferença de impedância física em recibo/pagamento fictício.
+5. Apurar consumo econômico atendido da localidade de destino pela soma de mercadorias vendidas e atribuídas uma vez: \`A_{n,i,t} = Σ_o q^{liquidada}_{o→n,i,t}\`. Esse \`A\` é **registro transitório agregado de atendimento econômico**, não estoque persistente no tile.
+6. A entrada do indicador material seria \`c_{n,i,t}=A_{n,i,t}/N_{n,t}\` para \`N_{n,t}>0\`, com \`N\` representando quantidade de unidades de trabalhador pertencentes à localidade (o denominador e tratamento de unidades agregadas permanecem abertos). Para \`N=0\`, não definir média per capita artificialmente.
+7. A capacidade/eficiência e demanda associadas a \`A_{n,i,t}\` seriam revistas **no próximo período lógico/ciclo**, conforme F-038/F-018, sem circularidade de atualização dentro do mesmo market clearing.
+
+**Invariantes candidatos para testes:**
+- \`Σ_{o,n} q^{liquidada}_{o→n,i,t} ≤ Σ_o Q^{prod}_{o,i,t}\`, sem transporte contabilizado duas vezes por atravessar muitas arestas;
+- \`Σ_n A_{n,i,t}=Σ_{o,n} q^{liquidada}_{o→n,i,t}\` para o produto e ciclo; mercadoria comprada é atribuída a um destino econômico único, sem stock balance positivo;
+- \`A=0\` onde nenhuma compra válida foi liquidada, mesmo que a demanda fosse alta;
+- sem caixa/financiamento suficiente, uma alocação não pode virar consumo atendido e receita simultaneamente por decreto; F-022 permanece pendente;
+- produtos não vendidos não chegam ao ciclo seguinte como saldos de mercadorias, mas o capital financeiro e investimentos já incorporados persistem;
+- compras de trabalhadores residentes/afiliados contam para localidade de pertencimento **sem teletransporte do trabalhador**;
+- demanda genuína ampliada por consumo anterior **não** libera poder de compra novo automaticamente;
+- alteração apenas nominal do preço, sem mais quantidades materialmente atendidas, não implica aumento automático do indicador material.
+
+**Ponto conceitual delicado:** \`A_{n,i,t}\` representa **absorção econômica final abstrata**, não ingestão alimentar. Madeira e pedra também podem ser comercializadas e absorvidas economicamente, mas seu benefício direto para desenvolvimento humano não é automaticamente igual ao dos alimentos. **Não** impor pesos arbitrários por mercadoria para resolver isso; a fórmula de consumo/desenvolvimento segue aberta. Tampouco contar como "consumo atendido" uma compra meramente intermediária que gera nova venda no mesmo ciclo sem uso final, a menos que essa contabilidade seja explicitamente modelada.
+
+**Mini-homologação [PROPOSTA]:** origem produz 10 unidades de madeira; destinos A e B demandam 6 e 5, porém a combinação de curvas/preços/financiamento permite vender 4 a A e 3 a B. Apurar \`A_A=4\`, \`A_B=3\`, \`q_vendida=7\`, \`q_não_vendida=3\`; não criar 3 unidades de estoque e não elevar artificialmente a demanda para absorvê-las. Se o comprador de B não financiar suas 3 unidades, o resultado precisa ser recalculado/liquidado para não declarar atendimento fictício (mecânica F-022 ainda aberta).
+
+**Próximo gate:** decidir a **fonte e o sujeito do poder de compra** — trabalhador individual, conta da localidade, instituição ou combinação simples — e a liquidação monetária necessária para que \`q^{liquidada}\` seja realidade econômica. Também definir como as curvas de demanda genuína são determinadas sem presets arbitrários por mercadoria.
+
+**Status:** sem fórmula monetária, sem meta de venda, sem algoritmo fechado e sem criação automática de caixa. O modelo de atribuição é um **contrato candidato**, não uma regra financeira canônica.
 
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
@@ -822,3 +870,5 @@ onde \`c_{n,i}(t)\` é **quantidade efetivamente atendida por trabalhador da loc
 - **2026-11-07 — taxa-base de execução de infraestrutura:** F-037 ratificada com 1 unidade monetária de capital incorporável por turno completo de trabalhador padrão, com frações temporais e condicionada a caixa. Diferenciação futura pela economia do local de pertencimento (também afeta demanda) e, se houver, educação/fatores sociais; sem definir multiplicadores ou sistema educacional agora. F-036 concorrência segue aberta.
 
 - **2026-11-07 — estudo de desenvolvimento e produtividade por consumo:** F-038 proposta como alternativa ao desenvolvimento medido por renda: consumo real efetivamente atendido por trabalhador pertencente à localidade, com variedade emergindo de utilidade marginal decrescente, sem pesos arbitrários por item. Discussão de normalização, categorias e circularidade da demanda; F-037 permanece ratificada e F-038 aberta.
+
+- **2026-11-07 — ratificação de F-038 e exclusão de demanda artificial:** F-038 aprovada no princípio de desenvolvimento pelo consumo real atendido por trabalhador com diversidade endógena, sem fixar `Σ ln(1+c)` nem outros pesos; F-039 ratificada: sem estoques e sem demanda artificial para retenção, sem venda garantida do excedente. F-040 propõe registrar atendimento por produto/localidade a partir de vendas realmente liquidadas, sem dupla contagem, pendente de decisão do sujeito/financiamento da compra F-022.
