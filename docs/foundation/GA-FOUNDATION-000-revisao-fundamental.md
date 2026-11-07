@@ -225,7 +225,7 @@ Após F-021/F-023, a demanda do trabalhador poderá manter **composição por me
 
 **Continuam abertos:** atualização do fator `k`, fórmula final de preço, condições de pagamento (caixa do agente, grupo, território ou outro), orçamento e sua procedência, relação com produtividade/bem-estar e eventual gasto adicional por atividade. **F-041 ratifica 1 unidade de demanda de referência por trabalhador e produto e venda universal; não é teto de quantidades compráveis**. Dinheiro fungível não implica apagar preferências ou demandas diferenciadas entre mercadorias.
 
-**Invariante desejável:** distinguir necessidade econômica calculada, despesa efetivamente liquidada e resultado de atendimento; demanda não equivale por si só a pagamento, nem autoriza gerar moeda em duplicidade. Essa norma de liquidação precisa ser concluída em F-022.
+**Invariante superveniente F-046:** distinguir demanda de referência, quantidade efetivamente absorvida pelo mercado e receita de venda creditada ao titular. Demanda não é carteira nem desembolso de comprador representado. **Não exigir registro de despesa individual do consumidor** como condição para atendimento; o setor comprador é externo ao perímetro contábil do jogo.
 
 **Clarificação F-039/F-041 [RATIFICADO]:** sem estoques e sem demanda artificial de retenção. **Toda produção é vendida** pelo water-filling; demanda é o valor de referência no denominador da curva de preços, não uma quota máxima. A base inicial é **1 por trabalhador e produto**, com futuro modificador `k`; `Q>D` reduz o preço, mas não impede a venda.
 
@@ -739,7 +739,7 @@ A diferença **não é arredondamento**, mas definição de qual grandeza a fun�
 **Proposta preferida:** o desenvolvimento material da localidade \`n\` deve refletir **quantidades de mercadorias efetivamente adquiridas/atendidas pela economia local** por unidade de trabalhador pertencente a ela, com **utilidade marginal decrescente por produto**, de modo que a variedade contribua **sem prêmio adicional e arbitrário por tipo de mercadoria**.
 
 **Separações fundamentais:**
-1. \`demanda declarada/estimada\` ≠ \`venda efetiva\` ≠ \`consumo atendido e liquidado\`. Só quantidades atribuídas de modo válido ao atendimento da localidade, sustentadas por fluxo de mercado e pagamento segundo F-022/F-023, podem influenciar o indicador. **Aumento unilateral da demanda não pode elevar eficiência por si mesmo.**
+1. \`demanda de referência\` ≠ \`venda efetiva\` ≠ \`consumo atribuído\`. Só quantidades realmente absorvidas pelo mercado na localidade (F-041/F-043/F-046), **sem carteira individual de comprador**, podem influenciar o indicador. **Aumento de demanda não equivale, por si só, a consumo atendido.**
 2. A variável é **per trabalhador/unidade de pertencimento**, não consumo agregado bruto da localidade; não premiar um território simplesmente por conter mais trabalhadores. A métrica de população quando o trabalhador for agregado está aberta.
 3. O benefício de variedade deve emergir **de retornos decrescentes do consumo repetido**, e não de índices especiais de segurança, raridade, preferência ou valor monetário arbitrariamente atribuído a cada mercadoria.
 4. Consumo material é econômico/contábil, **sem estoque físico persistente**: em cada ciclo, atribuir quantitativamente o fluxo de mercadorias efetivamente vendido a demandas atendidas em destinos, sem duplicar o mesmo fluxo de comércio como consumo de mais de uma localidade.
