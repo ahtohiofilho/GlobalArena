@@ -143,7 +143,7 @@ public sealed class GaEconMarketDefault01qTests
             accepted.Evidence.RegisteredTitleActionOrdinal);
         Assert.Equal(title.AfterWorldHashHex,
             accepted.Evidence.OriginalTitleAfterWorldHashHex);
-        Assert.Equal(oldHash, accepted.Evidence.PriceReferenceWorldHashHex);
+        Assert.Equal(oldHash.HexDigest, accepted.Evidence.PriceReferenceWorldHashHex);
         Assert.Equal(4UL, accepted.Evidence.MaterialRawQuantity);
         Assert.Equal(row.RealResidents, accepted.Evidence.RealLocalResidents);
         Assert.Equal(row.CurrentlyTitledRaw.ToString(CultureInfo.InvariantCulture),
