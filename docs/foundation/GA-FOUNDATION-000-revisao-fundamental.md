@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 2.9  
+**Versão conceitual:** 3.0  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -1016,7 +1016,7 @@ receita bruta total \`q_A P_A + q_B P_B≈6,9183462475\` a ser creditada ao teso
 
 **Status:** regra \`P/L\` e seu equilíbrio simultâneo são uma **candidata que combina F-043 e F-049 sem nova variável monetária**. Resultados dos exemplos foram demonstrados; **nenhum destes resultados ratifica a regra de mercado, o objetivo agregado, a função específica de saturação ou o solver**.
 
-### F-051 — Gate de validação do clearing multi-civilização [PROPOSTO; NÃO RATIFICADO]
+### F-051 — Gate de validação do clearing multi-civilização [EXPERIMENTO CONCLUÍDO; ESCOLHA INSTITUCIONAL NÃO RATIFICADA]
 
 **Próximo contrato a decidir:** qual é o agente/critério de escolha do water-filling quando várias civilizações concorrem pelos mesmos destinos e o preço é compartilhado?
 
@@ -1024,7 +1024,59 @@ receita bruta total \`q_A P_A + q_B P_B≈6,9183462475\` a ser creditada ao teso
 
 **Alternativa B [mais estratégica]:** cada civilização atua como ofertante que procura maximizar sua própria receita pela participação \`q_{c,n}\` e depende dos demais no mesmo mercado, possivelmente produzindo um equilíbrio competitivo/Nash diferente; maior custo de cálculo e possibilidade de desigualdade entre civilizações com quotas distintas.
 
-**Antes da escolha:** executar experimento com 2 civilizações, 2 origens, 2 destinos, infraestrutura compartilhada, preços comuns por mercado, volumes comerciais obrigatoriamente vendidos, sem carteiras dos compradores, receitas separadas e congestionamento endógeno. Medir eficiência, equidade entre origens, estabilidade e custo computacional. Determinar convenção para limites \`Q→0\` e mercados acessíveis.
+**Experimento F-052 realizado:** duas civilizações, duas origens, dois destinos, infraestrutura compartilhada, preços comuns, venda integral sem carteira, créditos separados e congestionamento endógeno. Confirmou solução global coerente, mas **divergência entre critério de atratividade logística e maximização unilateral de receita monetária**. Eficiência computacional em mapas maiores, convenções de \`Q→0\` e regra de desempate continuam pendentes.
+
+
+### F-052 — Laboratório 2 civilizações × 2 mercados: alocação global versus interesse monetário individual [VALIDADO EM CENÁRIOS; CONCLUSÃO DE DESIGN AINDA PROPOSTA]
+
+**Escopo:** não alterar as decisões ratificadas F-041 (100% vendido), F-043 (preço \`√(D/Q)\`), F-046 (compradores sem carteira), F-048 (tesouro por civilização) e F-049 (equilíbrio simultâneo). Testar F-050 (\`A=P/L\`, ainda proposta) sob duas civilizações com origens distintas e mesmas duas arestas de gargalo que alimentam os mercados.
+
+**Dados laboratoriais (não canônicos):**
+- civilização \`C₁\` produz \`Q₁=6\`; civilização \`C₂\` produz \`Q₂=4\`; total 10 de uma mercadoria;
+- mercados \`X\` e \`Y\` têm \`D_X=4\` e \`D_Y=1\`, de modo que \`P_X=√(4/Q_X)\`, \`P_Y=√(1/Q_Y)\`;
+- gargalo compartilhado final para X: \`C_X(Q_X)=1+(Q_X/5)^4\`; gargalo compartilhado final para Y: \`C_Y(Q_Y)=2×[1+(Q_Y/10)^4]\`. Expoente 4 e capacidades são **apenas ensaio** da F-031;
+- as duas origens possuem acesso físico independente às arestas de gargalo; os fluxos das duas civilizações **se somam no mesmo congestionamento dos trechos finais**, mas as receitas são creditadas separadamente. Não introduzir custo separado por item.
+
+**Cenário A — acessos iniciais simétricos:** cada origem adiciona impedância 0,5 até o tronco de ambas as rotas, isto é, \`L_X=0,5+C_X(Q_X)\` e \`L_Y=0,5+C_Y(Q_Y)\`.
+Equilíbrio \`P_X/L_X=P_Y/L_Y\`, \`Q_X+Q_Y=10\`:
+- \`Q_X≈6,2471005034\`; \`Q_Y≈3,7528994966\`;
+- \`P_X≈0,8001856324\`; \`P_Y≈0,5161982560\`;
+- \`L_X≈3,9368789382\`; \`L_Y≈2,5396732457\`; ambas atratividades \`A≈0,2032538071\`.
+- Como as duas civilizações têm acesso equivalente, uma regra de desempate **proposta, não ratificada**, é fracionar cada destino na proporção das respectivas ofertas \`6:4\`:
+  - \`C₁:\` vende \`3,7482603\` a X e \`2,2517397\` a Y; recebe \`R₁≈4,1616481452\`;
+  - \`C₂:\` vende \`2,4988402\` a X e \`1,5011598\` a Y; recebe \`R₂≈2,7744320968\`;
+  - \`R_total≈6,9360802421\`. Não houve moeda recebida por trabalhadores, carteira compradora ou mercadoria sem venda.
+- **Comparação estratégica:** se \`C₁\` pudesse escolher seus destinos visando **somente receita monetária bruta** com o fluxo de C₂ fixo, sua melhor resposta deslocaria \`q_{1,X}\` de \`3,7483\` para ≈\`4,9134\`, elevando sua receita de ≈\`4,1616\` para ≈\`4,2849\`; no caso de C₂, melhor resposta unilateral \`q_{2,X}≈3,5597\` em vez de \`2,4988\`, elevando ≈\`2,7744→2,9019\`. Logo **a alocação P/L não é o equilíbrio de civilizações que maximizam receitas brutas individualmente e ignoram logística**.
+
+**Cenário B — vantagens geográficas assimétricas:** C₁ tem abordagem logística 0,3 até X e 1 até Y; C₂, inversamente, 1 até X e 0,3 até Y. Cada abordagem distinta se conecta ao **mesmo gargalo final por mercado**, logo as arestas congestionadas têm as cargas agregadas das duas civilizações.
+- Solução de equilíbrio de atratividade F-050: C₁ envia 6 para X; C₂ envia 4 para Y. \`Q_X=6\`, \`Q_Y=4\`.
+- \`P_X≈0,8164965809\`, \`P_Y=0,5\`, \`C_X=3,0736\`, \`C_Y=2,0512\`.
+- C₁: \`A_{1,X}=0,81649658/(3,0736+0,3)≈0,2420253\`, acima de \`A_{1,Y}=0,5/(2,0512+1)≈0,1638700\`. C₂: \`A_{2,Y}=0,5/(2,0512+0,3)≈0,2126574\`, acima de \`A_{2,X}=0,81649658/(3,0736+1)≈0,2004361\`.
+- Receita nominal: \`R₁=6 P_X≈4,898979486\`; \`R₂=4 P_Y=2\`; \`R_total≈6,898979486\`.
+- **Incentivo divergente:** se C₂ redirecionar 1 de suas 4 unidades de Y para X, mantendo C₁ fixa, sua receita **bruta** subiria de 2 para aproximadamente \`√(4/7)+3×√(1/3)≈2,487979754\`, apesar de alterar os congestionamentos e violar a escolha por atratividade. **A receita bruta não internaliza a impedância física como despesa**: uma civilização que controle destinos por lucro nominal pode preferir uma solução diferente daquela atribuída pelo mercado automático. Isso não prova que a mudança fosse ótima ao considerar impedância, nem determina equilíbrio estratégico completo.
+
+**Conclusão demonstrada:** \`P/L\` pode distribuir integralmente a produção de **várias civilizações** em rotas compartilhadas usando preços finais comuns e congestionamento simultâneo; o crédito monetário continua civilizacional. Mas **não** é equivalente a permitir que cada civilização controle unilateralmente destinos e maximize sua receita bruta \`Σ q_{c,n}P_n\`. Propor **alocação de mercado global automática** como representação da economia abstrata, com jogadores influenciando **produção, localização, trabalhadores e infraestrutura**, em vez de manipular a escolha de compradores para cada unidade. Essa recomendação de controle do jogador **ainda requer ratificação**.
+
+**Escala/robustez:** nenhum benchmark em grafos Goldberg grandes foi realizado neste experimento; logo não afirmar custo operacional validado. Exigir resultado reprodutível com permutações de ordem de produtores e concorrência multi-item antes da implementação.
+
+### F-053 — Critério generalizado estável para resolver F-050 e cauda de mercados [PROPOSTO; NÃO RATIFICADO]
+
+**Transformação exatamente equivalente de ranking:** se \`A_r=P_n/L_r\` (F-050) e \`P_n=√(D_n/Q_n)\` (F-043), com \`Q_n>0,D_n>0,L_r>0\`, então **maximizar** \`A_r\` é equivalente a **minimizar**
+\`G_r=L_r/P_n=L_r×√(Q_n/D_n)\`.
+
+\`G\` é uma **impedância generalizada relativa ao preço**; não é um custo monetário descontado da receita. É formalmente definida em \`Q_n=0,D_n>0\` por extensão contínua \`G_r=0\` se a impedância da rota permanecer finita. Evita representar infinito do preço para mercado sem fluxo em solver numérico; não significa que exista venda com preço zero ou receita criada sem quantidade.
+
+**Equilíbrio tipo Wardrop [CANDIDATO]:** para cada origem/civilização/mercadoria, todas as rotas utilizadas minimizam \`G_r(f)\`; rotas viáveis não utilizadas possuem \`G_r(f)\` maior ou igual ao mínimo. As cargas por aresta, os volumes de cada mercado e os preços devem ser avaliados em \`f\` simultâneo. É uma definição de **equilíbrio de uso de rede com agentes infinitesimais**, não maximização privada de lucros de produtores finitos; sua validade estratégica precisa de aprovação.
+
+**Caso sem congestionamento, uma única origem com rotas de impedância fixa:** igualar \`P_n/L_n\` e impor \`Σ_nQ_n=Q_T\` produz uma **solução analítica**:
+\`Q_n=Q_T×(D_n/L_n²)/(Σ_j D_j/L_j²)\`.
+A grandeza \`D_n/L_n²\` funciona como **demanda ponderada por acessibilidade**, derivada da equação canônica de preço e da hipótese P/L, **sem novos índices por item**. Em rotas equivalentes (\`L_n=L\`), recupera-se F-044 \`Q_n∝D_n\`. Em acessos desiguais, \`D_X=4,D_Y=1,L_X=1,L_Y=2,Q_T=10\` ⇒ \`Q_X=160/17≈9,41176\`, \`Q_Y=10/17≈0,58824\`. Essa expressão é **apenas** válida com \`L_n\` fixo; no equilíbrio F-049 com congestionamento endógeno, \`L_n(f)\` deve ser resolvida simultaneamente, não congelada na solução analítica.
+
+**Consequência da curva:** para qualquer mercado \`D_n>0\` e rota com \`0<L_n<∞\`, a solução analítica dá \`Q_n>0\`. Assim, uma economia com milhares de mercados conectados pode alocar frações **muito pequenas** a todos eles (cauda longa), mesmo os extremamente distantes. Isso é um **risco de escalabilidade e interpretação geográfica**, não uma autorização para suprimir rotas por tolerância arbitrária. Não confundir mercado geograficamente inacessível com mercado apenas caro.
+
+**Cautelas:** em grafos multiorigem, multimercado, multiproduto e com arestas compartilhadas, \`G_r\` pode não ser gradiente de um único potencial convexo. A existência de uma equação contínua de equilíbrio **não garante unicidade de fluxos por rota**, solução rápida, nem convergência de iterações simplistas. Os fluxos equivalentes podem exigir desempate determinístico; soma de cargas/preços pode ser única mesmo quando a decomposição de rotas não é. Benchmark numérico e teste de degenerescência são gates necessários.
+
+**Próxima decisão de produto:** ratificar ou rejeitar a **alocação automática global orientada à competitividade logística**, sem ordens de venda individuais por civilização. Caso ratificada, especificar a interface mínima do solver e desenhar benchmark de grafo; caso contrária, reexaminar a função objetiva de cada civilização e o papel econômico da impedância física.
 
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
@@ -1098,3 +1150,5 @@ receita bruta total \`q_A P_A + q_B P_B≈6,9183462475\` a ser creditada ao teso
 - **2026-11-07 — tesouro civilizacional e clearing simultâneo:** F-048 ratificada: a receita das vendas pertence à civilização produtora, não ao trabalhador nem ao nó; investimento logístico é pago pelo tesouro da civilização, mantendo trabalhadores apenas como agentes físicos. F-049 ratificada: resolver simultaneamente carga por aresta, congestionamento e alocação por destino/item no ciclo; expectativa fixa defasada fica somente como alternativa futura se desempenho exigir. F-047 marcada como hipótese histórica superada. Formulação exata do solver, escala da impedância e tarifa permanecem abertas.
 
 - **2026-11-07 — proposta F-050 de integração preço/impedância:** testada atratividade A=P/L, com L=Σ C_e e P=√(D/Q), sem subtrair moeda de pontos logísticos nem reintroduzir carteiras. Sem congestionamento: D_A=4,D_B=1,Q=10,L_A=1,L_B=2 ⇒ q_A≈9,4118,q_B≈0,5882; com C_A=1+(q_A/5)^4 e C_B=2[1+(q_B/10)^4] ⇒ q_A≈6,12565 e q_B≈3,87435. Modelo em estudo, não ratificado. F-051 abre a distinção entre alocação global de mercados e maximização da receita de cada civilização, assim como risco de fluxos mínimos para todos os mercados devido a P→∞ quando Q→0.
+
+- **2026-11-07 — laboratório 2 civilizações/2 mercados e reformulação numérica:** F-052 registra dois experimentos com receitas dos tesouros separadas e gargalos compartilhados. No acesso simétrico com produção 6+4, demanda 4+1 e congestionamento convexo, o clearing candidato P/L alocou ≈6,247/3,753 por mercado; o desempate proporcional produziu receitas ≈4,162/2,774. No acesso assimétrico, origens se especializaram com receitas ≈4,899/2, mas uma civilização teria incentivo a alterar rotas se buscasse somente receita monetária bruta. F-053 propõe minimizar G=L/P=L√(Q/D), evitando a singularidade explícita de P em Q→0, e demonstra solução analítica Q_n∝D_n/L_n² sem congestionamento. F-050/051/053 e decisão de alocador global continuam EM ABERTO.
