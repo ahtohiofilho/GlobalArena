@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 1.3  
+**Versão conceitual:** 1.4  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -404,21 +404,25 @@ O estado econômico relevante de cada infraestrutura deve representar **capital 
 
 As equações são **candidatos simples de retornos decrescentes**, não funções canonizadas nem indicação de que devam existir estados persistentes separados para nível e capacidade. A eficiência e a capacidade precisam ser distinguíveis **conceitualmente**, pois o investimento pode afetar uma, outra ou ambas; a intensidade de cada efeito é questão de calibração.
 
-### F-026 — Carga logística equivalente por mercadoria [RATIFICADO COMO DISTINÇÃO CONCEITUAL; COEFICIENTES ABERTOS]
+### F-026 — Quantidade comercial, carga logística e valor de mercado [RATIFICADO COMO DISTINÇÃO; CALIBRAÇÃO ABERTA]
 
-A **quantidade econômica** de uma mercadoria não é o seu preço, nem representa automaticamente uma unidade física homogênea de uso de transporte. Cada tipo \`r\` dispõe de um **coeficiente de exigência logística** \`a_r ≥ 0\`, por unidade de sua quantidade econômica, que aproxima massa/volume/espaço/manuseio relevantes; não depende automaticamente do valor monetário de mercado.
+Há três grandezas conceitualmente distintas: **quantidade comercial**, **carga logística equivalente** e **valor monetário**. A saturação física da infraestrutura não depende diretamente do preço de mercado das mercadorias.
 
-Para o fluxo de uma aresta, a carga equivalente é:
+**Uma única equação logística permanece em estudo:**
 
 \`B_e = Σ_r (a_r × q_{e,r})\`
 
-Onde \`q_{e,r}\` é a quantidade abstratamente escoada do produto \`r\` pela aresta \`e\` no ciclo/intervalo considerado. Para cálculo de saturação, somar contribuições de **todas as origens e destinos** e, salvo contrato futuro de capacidade direcional separada, de ambos os sentidos.
+\`B_e\` é carga equivalente sobre a aresta; \`q_{e,r}\` é quantidade comercial do produto \`r\` escoada por ela; \`a_r\` é **somente um fator de conversão entre unidade comercial e unidade logística**, e **não** um parâmetro livre a ser inventado para equilibrar itens.
 
-**Exemplo ilustrativo:** uma unidade econômica de pedra com \`a_pedra=10\` exige carga equivalente 10; uma unidade econômica de diamante com \`a_diamante=0,1\` exige carga equivalente 0,1. Embora ambas produzam quantidade nominal \`q=1\`, suas exigências sobre a mesma aresta diferem 100 vezes. **Unidades e índices 10/0,1 não canonizados.**
+**Restrição de filosofia RATIFICADA:** proibir índices arbitrários escolhidos item a item para simular segurança, raridade, prestígio, perecibilidade ou diferenças de jogabilidade. **Não exigir coeficiente específico por item** enquanto não houver critério físico homogêneo e justificável para determiná-lo.
 
-**Regra de modelagem:** os coeficientes referem-se a **unidades de quantidade econômica definidas para cada mercadoria**, e precisam manter dimensionalidade coerente. Não permitir que a mera reescala numérica de \`q_r\` altere congestionamento ou tarifas: uma troca de unidade precisa ajustar simultaneamente \`a_r\`.
+**Caminho inicial mínimo [PROPOSTO]:** escolher uma **unidade comercial já normalizada em equivalentes logísticos**, de modo que \`a_r=1\` para todos os produtos e \`B_e=Σ_r q_{e,r}\`. Se a produção do item usa unidades econômicas diferentes entre mercadorias, a comparação de \`1\` unidade de pedra e \`1\` de diamante não pode ser interpretada como igualdade física sem normalização; ajustar as **definições de unidades** a um padrão objetivo, não inventar penalidades especiais.
 
-**Não exigir inventário físico ou simulação de carga**: os fluxos são temporários e calculados para o mercado, e o peso logístico aproxima apenas a pressão sobre a rede.
+**Alternativa futura não ratificada:** se o jogo passar a possuir metadados fisicamente definidos e coerentes (p.ex. massa ou volume representativos), \`a_r\` poderá ser **derivado** deles e não calibrado livremente. A forma específica de derivação permanece aberta.
+
+**Princípios que ficam:** manter uma única infraestrutura abstrata, um só cálculo de carga e uma mesma função de saturação para todos os itens. Não adicionar índices ou subsistemas de risco, segurança, escolta, seguro etc. O preço de mercado permanece separado e é determinado pelo mecanismo de mercado.
+
+**Nota dimensional:** a operação de trocar a unidade de \`q_r\` deve preservar \`B_e\` mediante normalização equivalente. A ausência de metadados físicos não autoriza fingir que valores econômicos e volumes físicos são equivalentes.
 
 ### F-027 — Saturação e tarifas associadas ao nível [ABERTO; candidatos para experimento]
 
@@ -440,40 +444,18 @@ Com \`γ≥0\`, \`p>1\` em exemplo. A penalização aumenta mais rapidamente em 
 3. Rotas com mais de uma aresta acumulam contribuições físicas e, onde houver titulares distintos, tarifas distintas; não cobrar novamente a mesma passagem por mudança de classificação de rota.
 4. A função de tarifa deve ser confrontada com rotas alternativas e incentivos de investimento. Não presumir que maior tarifa gere maior receita líquida: pode provocar desvio de fluxo.
 5. A escolha de rotas/volumes no water-filling altera \`B_e\` e, portanto, \`ρ_e\` e \`c_efetivo,e\`, que podem alterar novamente as rotas. **Há acoplamento endógeno entre alocação e congestionamento.** Uma implementação futura precisará de resolução convergente, determinística ou equivalente; não assumir que uma passagem isolada do algoritmo seja matematicamente suficiente.
-6. A ponderação física de carga e a exigência de proteção/confiabilidade **não** precisam compartilhar o mesmo coeficiente; ver proposta F-028. Distinguir **quantidade comercial**, **carga logística**, **risco comercial** e **valor monetário**. Nenhuma tarifa monetária adicional por proteção está autorizada automaticamente.
+6. O modelo é **unidimensional**: uma carga logística equivalente compartilhada determina saturação e, se ratificada, a base física para tarifação. Não criar custo ou índice de risco/proteção por produto (F-028 rejeitada). Separar quantidade comercial, carga equivalente e valor monetário.
 
 **Próximo experimento recomendado:** duas arestas alternativas, produtores de pedra/diamante com quantidades iguais \`q=1\`, pesos logísticos diferentes, investimento acumulado crescente, titular e não titular. Testar sensibilidade de nível, impedância em vazio, congestionamento com fluxo agregado, tarifa por carga, desvio de rota, resultado monetário da venda, inexistência de criação automática de dinheiro e independência da ordem de cálculo. Definir janela/ciclo da carga de modo compatível com o mercado, sem confundi-la com o deslocamento temporal de trabalhadores.
 
 
-### F-028 — Impedância logística com carga física e exigência de proteção [PROPOSTO; NÃO RATIFICADO]
+### F-028 — Índice específico de proteção/risco por mercadoria [REJEITADO PARA O NÚCLEO INICIAL]
 
-**Problema:** uma unidade econômica de pedra pode exigir muito espaço/massa/capacidade e pouca segurança; uma unidade econômica de diamante pode exigir quase nenhuma capacidade física mas enfrentar elevada necessidade de proteção. Não supor que os dois ônus sejam automaticamente equivalentes, e não criar funções por mercadoria ou infraestrutura especializada por tipo de produto.
+Proposta de segundo coeficiente \`s_r\` por produto (segurança, fragilidade, perecibilidade), com termo adicional \`s_r R(L)\` na impedância. **Não aprovada:** exigiria arbitragem/calibração específica por item e romperia a prioridade de simplicidade e parâmetros justificáveis fisicamente.
 
-**Arquitetura recomendada para teste:** usar **a mesma equação geral** para todas as mercadorias, com **dois coeficientes independentes por item**, mantendo uma única infraestrutura abstrata \`L_e\`.
+**Decisão expressa:** prosseguir com **uma única equação de carga/saturação**, a mesma para todos os itens, sem coeficientes arbitrários de risco. Diferenças econômicas entre mercadorias continuam no **preço, na quantidade e na demanda**, calculados pelo mercado, e não em uma simulação de escolta ou segurança.
 
-1. \`a_i\`: **carga física equivalente por unidade econômica**, já definida em F-026. Somente essa grandeza entra, por padrão, no cálculo da **saturação física** \`B_e = Σ_i a_i q_{e,i}\`.
-2. \`s_i\`: **exigência especial de proteção/confiabilidade por unidade econômica**, abstrata e não monetária; engloba segurança contra perdas/roubos e, quando pertinente, perecibilidade, fragilidade e sensibilidade ao ambiente, sem criar subsistemas por categoria. \`s_i\` não precisa ser igual ou proporcional a \`a_i\`.
-
-**Função generalizada candidata de impedância comercial por unidade da mercadoria:**
-
-\`D_{e,i} = a_i × C_e(L_e, ρ_e) + s_i × R_e(L_e)\`
-
-Onde \`C_e\` traduz eficiência/congestionamento da infraestrutura, \`R_e\` representa exposição/dificuldade de proteção na aresta e ambas são normalizadas para a **mesma unidade de impedância comercial**. O nível \`L_e\` pode melhorar ambas as dimensões, cada qual com parâmetros distintos, **sem criar um tipo de infraestrutura separado ou estado de segurança obrigatoriamente persistido**.
-
-**Função residual simples para investigar:** \`R_e(L)=R_{0,e}/(1+δL)\`, com \`δ ≥ 0\`. \`R_{0,e}\` pode depender da condição natural do lugar; não canonizar parâmetros nem obrigar a inclusão de risco geográfico adicional agora.
-
-**Exemplo meramente ilustrativo:** \`a_pedra=10, s_pedra=0,1\`; \`a_diamante=0,1, s_diamante=10\`; ambas com \`q=1\`. A pedra ocupa 100 vezes mais carga equivalente, enquanto o diamante tem 100 vezes mais exigência especial. Os efeitos podem se compensar na **impedância comercial generalizada**, conforme \`C\` e \`R\`; **não** se compensam fisicamente na capacidade/saturação.
-
-**Separações fundamentais:**
-- **Congestionamento** é efeito coletivo de uma capacidade física compartilhada: \`ρ_e = (Σ_i a_i q_{e,i})/K(L_e)\`.
-- **Segurança/fragilidade** é penalidade de escoamento **por mercadoria** e pode afetar sua atratividade/preço de mercado sem aumentar automaticamente o congestionamento.
-- Nenhuma dessas penalidades é uma **transferência monetária** para alguém. A tarifa por infraestrutura alheia permanece um lançamento financeiro explícito e distinto, ainda proposto em F-027.
-- Valor monetário corrente **não substitui** carga física; vincular \`s_i\` automaticamente ao preço de mercado traria realimentação endógena e só deve ocorrer por decisão posterior.
-- O segundo coeficiente \`s_i\` é um requisito de **complexidade mínima suficiente**, não uma exigência de modelar guardas, veículos, roubos, perdas individuais ou seguros.
-
-**Questões abertas antes de ratificação:** se uma única dimensão especial de proteção/confiabilidade tem ROI suficiente; se a infraestrutura abstrata deve melhorar segurança automaticamente; como normalizar \`C\` e \`R\`; como o water-filling compara impedância, valor marginal e tarifa; se taxas do titular consideram apenas carga física ou também benefício de confiabilidade; se atributos especiais podem saturar capacidade no futuro (não presumir).
-
-**Experimentos de aceitação:** pedra/diamante com igual quantidade, preços distintos e perfis inversos; infraestrutura inicial e investimento crescente; uma e várias arestas com níveis diferentes; pouca/muita carga física; mudança de unidade econômica; determinismo de escoamento e nenhum duplo desconto por tarifa. Comparar a variante de um índice único contra dois índices antes de promover o segundo à condição de lei.
+A dimensão adicional só poderá ser reaberta mediante nova deliberação, após amadurecimento do jogo e demonstração de ganho material de gameplay frente à complexidade. **Rejeição nesta versão inicial não significa proibição permanente de evolução futura.**
 
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
@@ -512,6 +494,8 @@ Onde \`C_e\` traduz eficiência/congestionamento da infraestrutura, \`R_e\` repr
 - **2026-11-07 — sétima deliberação:** F-019 ratificada como arbitragem física local apenas diante de conflitos reais, sem política automática de repartição; F-020 aberta à época, sob o modelo físico de mercadorias.
 - **2026-11-07 — oitava deliberação:** F-021 ratificada (economia monetária abstrata, produção convertida em dinheiro, sem estoques ou logística de mercadorias; infraestrutura com componente monetário em vez de madeira/pedra/alimentos). F-022 aberta para contabilidade da emissão/transferência, consumo e contratação de obras; F-020 sobre mercadorias perde prioridade como hipótese histórica.
 - **2026-11-07 — esclarecimento subsequente:** F-023 ratificada no nível de desenho: produção de quantidade diferenciada por mercadoria, escoamento abstrato via water-filling e preço determinado por mercado; sem estoque persistente. O custo físico de transporte forma preço, mas não é fluxo de caixa. F-024 proposta: infraestrutura reduz impedância para todos, titular não paga uso próprio e não titular pode pagar tarifa ligada à economia física; fórmula, pagador/recebedor e liquidação ainda abertos. A F-021 foi revisada para remover interpretação incorreta de emissão monetária direta por trabalho.
-- **2026-11-07 — nona deliberação:** F-024 especifica infraestrutura abstrata, não tipificada, baseada em investimento com retornos decrescentes e tarifa por nível/carga; F-025 documenta função candidata de nível contínuo e diferencia eficiência de capacidade; F-026 ratifica necessidade de índices logísticos por mercadoria distintos de quantidade e valor; F-027 abre funções de saturação e tarifa e o acoplamento endógeno ao water-filling. Nenhuma equação ou parâmetro foi ratificado.
+- **2026-11-07 — nona deliberação:** F-024 especifica infraestrutura abstrata baseada em investimento com retornos decrescentes; F-025 documenta nível contínuo e distingue eficiência/capacidade; F-026 distingue carga logística de quantidade e preço (não impõe coeficientes individuais arbitrários); F-027 mantém funções de saturação e tarifa abertas. Nenhuma equação ou parâmetro foi ratificado.
 
-- **2026-11-07 — estudo da exigência especial por mercadoria:** F-028 proposta para separar carga física e exigência de segurança/proteção sob uma equação universal, sem novas infraestruturas e sem custo de caixa implícito. Não ratificada.
+- **2026-11-07 — estudo da exigência especial por mercadoria:** F-028 propôs separar carga física e exigência de proteção; rejeitada expressamente pelo usuário para o núcleo inicial por exigir índices específicos arbitrários. Preservada uma única equação logística.
+
+- **2026-11-07 — décima deliberação:** adotada filosofia de uma única dimensão logística, sem índices de proteção/segurança por mercadoria e sem coeficientes de balanceamento item a item. F-028 rejeitada para a fase inicial. F-026 restringe fatores `a_r` a conversões justificáveis ou normalização unitária; fórmulas e calibração continuam abertas.
