@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 2.5  
+**Versão conceitual:** 2.6  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -798,9 +798,9 @@ A antiga interpretação documentada de que uma produção de 10 poderia vender 
 
 **Bordas não fechadas:** nenhuma localidade acessível com \`D>0\`; financiamento de receitas com compradores de saldos limitados; a natureza de comércio abstrato versus compra/consumo materialmente produtivo. Esses pontos não anulam o compromisso de venda total: são requisitos de arquitetura a resolver.
 
-### F-042 — Função de preço contínua e receita marginal positiva decrescente [PROPOSTO, NÃO RATIFICADO]
+### F-042 — Estudo histórico da função racional [SUBSTITUÍDA COMO CANDIDATA PRINCIPAL POR F-043; NÃO RATIFICADA]
 
-**Candidata principal: função racional única, sem parâmetros livres adicionais:**
+**Alternativa histórica (não selecionada): função racional única, sem parâmetros livres adicionais:**
 \`P(x)=2/(1+x)\`, para \`x≥0\` e \`D>0\`.
 \`R(Q,D)=Q P(Q/D)=2DQ/(D+Q)\`.
 
@@ -817,6 +817,61 @@ Ambos os ramos têm preço e primeira derivada coincidentes no ponto de encontro
 **Implicação do water-filling:** maximizar \`Σ_n R(Q_n,D_n)\` sujeito a \`Σ Q_n=Q_prod\` usa **receita marginal** \`∂R/∂Q\` na escolha dos destinos; não confundir preço médio de liquidação \`P=R/Q\` com receita marginal. Se o water-filling adotará a ótica de agentes formadores de preço ou de preços tomados, e como combina impedância física (não monetária) com receita e tarifas (monetárias), está em aberto.
 
 **Financeiro:** oferta sempre vendida não significa caixa automaticamente criado para pagamento. F-022 precisa determinar conta/sujeito do poder de compra e a contrapartida real das receitas, compatível com total absorção comercial e sem inventar compradores financiados silenciosamente.
+
+
+### F-043 — Curva única de preço por oferta/demanda [RATIFICADO]
+
+**Decisão aprovada:** para toda mercadoria \`i\` e mercado de destino \`n\`, usar a **mesma equação única de preço** \`P(x)=x^{-1/2}\` em ambos os regimes de escassez (\`x<1\`) e de excesso de oferta (\`x>1\`). \`x=Q_{n,i}/D_{n,i}\`, \`Q_{n,i}>0\`, \`D_{n,i}>0\`.
+
+**Equações canônicas:**
+- \`P_{n,i}=√(D_{n,i}/Q_{n,i})\`, preço unitário de **liquidação** naquele mercado;
+- \`R_{n,i}=Q_{n,i} P_{n,i}=√(Q_{n,i} D_{n,i})\`, receita bruta de toda a quantidade daquele item vendida naquele mercado, antes de tarifas monetárias adicionais;
+- \`R'_{n,i}(Q)=0,5√(D_{n,i}/Q)\`, receita **marginal** de acrescentar pequena quantidade ao mercado, a demanda fixa;
+- \`R''_{n,i}(Q)=-√D_{n,i}/(4Q^{3/2})<0\`, retornos marginais decrescentes.
+
+**Invariantes:**
+1. \`P(1)=1\`, \`R(D,D)=D\`; \`Q=D\` é referência de preço, **não máximo da receita**.
+2. \`R'>0\` em \`Q>0, D>0\` e \`R''<0\`. Toda oferta vendida acrescenta receita positiva, mas menor nas unidades seguintes.
+3. Não existe **teto fixo de receita total** imposto pela curva. Para \`Q→∞\` a demanda fixa, \`R→∞\` lentamente como \`√Q\`, enquanto \`P→0\`.
+4. \`R'=P/2\` exatamente. Não confundir **preço médio final por unidade** com **receita marginal** de alterar a oferta agregada e, portanto, o preço de TODAS as unidades liquidadas no mercado.
+5. O preço depende de \`Q\` agregado **de todas as origens** que vendem o mesmo produto no mesmo mercado, não é recalculado isoladamente para cada produtor.
+6. Para \`Q=0\`, registrar \`R=0\` e **não cotar preço de transação**: \`P\` diverge na expressão original. Para \`D=0\`, preço não tem definição econômica; **não** criar mercado fictício sem regra específica (questão de borda de F-041/F-022).
+7. Demanda inicial \`D_{n,i}=Σ_{w∈n}1\`, corrigível futuramente por \`k_w\`; \`D\` é referência, não teto, e **toda a produção é vendida** (F-041), com nenhuma quantidade em estoque (F-039).
+8. Esta equação é universal entre produtos; nenhum expoente ou preço-base arbitrário por mercadoria.
+
+**Preço e renda no mesmo destino:** se o mercado n receber \`q_1\` e \`q_2\` de dois produtores para o mesmo produto i, \`Q=q_1+q_2\`; ambos recebem o mesmo \`P=√(D/Q)\` por unidade, mas a atribuição de custos/tarifas por rota pode afetar a **receita líquida** de forma diferente. Não inferir receita paga sem contrapartida financeira definida em F-022.
+
+**F-042 permanece como registro de alternativas matemáticas superadas:** a racional \`2/(1+x)\` é válida, mas foi preterida por \`x^{-1/2}\` por simplicidade e ausência de limite assintótico da receita.
+
+### F-044 — Water-filling sem custos espaciais: distribuição proporcional à demanda [RESULTADO MATEMÁTICO VERIFICADO; ESCOPO RESTRITO]
+
+**Problema de teste:** um único produto, oferta total \`Q_T>0\`, mercados consumidores \`n=1...m\` com demandas positivas \`D_n>0\`, todas as rotas com **condições de acesso idênticas e sem tarifas**, e mesmo tratamento financeiro. Alocar integralmente \`Q_T\` maximizando a **soma das receitas brutas** \`Σ_n √(D_n Q_n)\`, sujeito a \`Σ_n Q_n=Q_T\`, \`Q_n≥0\`.
+
+A condição de primeira ordem é igualdade de receita marginal:
+\`R'_n=0,5√(D_n/Q_n)=λ\`. Portanto \`Q_n/D_n\` é constante e a solução é:
+\`Q_n = Q_T × D_n/(Σ_j D_j)\`.
+
+**Consequências exatas:**
+- Com \`D_T=Σ_j D_j\`, todos os mercados ativos terminam com \`Q_n/D_n=Q_T/D_T\), logo **preço unitário igual** \`P_n=√(D_T/Q_T)\`.
+- Receita total \`R_T=√(Q_T D_T)\` em ausência de diferenças espaciais; nenhuma oferta é retida.
+- Exemplo: \`D_A=4\`, \`D_B=1\`, \`Q_T=10\` ⇒ \`Q_A=8\`, \`Q_B=2\`, \`P_A=P_B=1/√2≈0,70710678\`, \`R_A≈5,65685\`, \`R_B≈1,41421\`, \`R_T≈7,07107\`.
+
+**Nota de governança:** a identidade matemática fica demonstrada **sob o objetivo declarado de maximizar receitas agregadas e sem impedâncias assimétricas**. Não canoniza automaticamente o mesmo critério de maximização para produtores independentes, tarifas de terceiros, mercado com oferta por muitas origens ou water-filling em rede. A igualdade \`R'=P/2\` implica que **nesse caso simples** igualar preços ou receitas marginais gera a mesma alocação, mas isso deixa de resolver isoladamente o problema quando outros custos e incentivos são introduzidos.
+
+### F-045 — Financiamento da venda universal e impedância logística no clearing [ABERTO; PRÓXIMO GATE]
+
+**Conflito estrutural a resolver sem esconder premissas:** F-041 exige \`Q_vendido=Q_produzido\`, F-043 fixa \`R=√(QD)\` e F-022 ainda não define **quem paga**. Se a soma dos saldos finitos dos compradores num ciclo for \`M\` e a fórmula produzir receita agregada \`R_T>M\`, **não é possível** transferir esse total dos compradores aos vendedores sem outra fonte/recirculação monetária ou sem mudar a regra do preço, da compra ou do orçamento. Não é correto afirmar que a própria fórmula monetária cria dinheiro ou que demanda 1 é necessariamente uma moeda disponível.
+
+**Teste de contradição:** no caso F-044 de \`Q=10\`, \`D_T=5\`, a receita bruta é \`√50≈7,071\`. Com dinheiro total dos compradores \`M=5\` e sem outro financiamento, faltam \`2,071\` para liquidar as compras integralmente. **Não resolver** descartando 2,071 de itens ou presumindo caixa ilimitado; isso violaria as decisões canônicas e a contabilidade.
+
+**Alternativas para futura deliberação, nenhuma ratificada:**
+- **Mercado com contraparte monetária explícita** capaz de liquidar vendas obrigatórias, com origem/emissão/resgate de moeda **claros e auditáveis**, sem fingir que créditos surgiram de transferência privada inexistente.
+- **Sistema fechado de contas com recirculação** e regra de liquidez/preço capaz de conciliar desembolsos dos compradores com as receitas. Só é compatível com F-043 se demonstrado que há caixa/fluxo suficiente em todos os estados permitidos; um multiplicador global de preço para caber no orçamento altera a normalização \`P(1)=1\`.
+- **Poder de compra abstrato institucional** não limitado à carteira de cada trabalhador, mas com origem, capacidade e liquidação explícitas; não confundir peso de demanda, orçamento e dinheiro do tesouro local.
+
+**Outro ponto aberto:** F-031 estabelece uma **impedância logística não monetária** e F-043 estabelece um preço monetário. Para combinar numa escolha de rota via water-filling, precisa existir um mecanismo dimensionalmente coerente: uma função de acessibilidade/preço líquido, uma convenção de comparação, ou um critério de otimização com variáveis compatíveis. **Não** subtrair diretamente "pontos de impedância" de "moedas" nem lançar tarifa financeira invisível por conta de geometria. A receita marginal \`R'\` e a impedância marginal \`C'\` são grandezas diferentes; cada uma precisa de significado preciso na distribuição de fluxos.
+
+**Próxima decisão sugerida:** o mercado abstrato deve ser o **comprador institucional de última instância** com financiamento explícito, ou os trabalhadores/localidades devem usar **apenas poder de compra contabilizado previamente**, exigindo reavaliação das condições para garantir venda universal em todo cenário? A pergunta é arquitetural, não mera calibração de parâmetro.
 
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
@@ -882,3 +937,5 @@ Ambos os ramos têm preço e primeira derivada coincidentes no ponto de encontro
 - **2026-11-07 — ratificação de F-038 e exclusão de demanda artificial:** F-038 aprovada no princípio de desenvolvimento pelo consumo real atendido por trabalhador com diversidade endógena, sem fixar `Σ ln(1+c)` nem outros pesos; F-039 ratificada: sem estoques e sem demanda artificial para retenção, sem venda garantida do excedente. F-040 propõe registrar atendimento por produto/localidade a partir de vendas realmente liquidadas, sem dupla contagem, pendente de decisão do sujeito/financiamento da compra F-022.
 
 - **2026-11-07 — correção do princípio de absorção e matemática de preços:** F-041 ratificada: toda a produção encontra mercado, venda 100%, demanda de referência 1 por trabalhador/produto (k futuro). F-039/F-040 corrigidas: nada de inventário ou parte não vendida. Identificada falha da função x^-2 quando oferta supera demanda: R=D²/Q decresce, contrariando objetivo. F-042 propõe P=2/(1+x) para receita total sempre crescente e ganho marginal decrescente, ainda não ratificada; financiamento F-022 pendente.
+
+- **2026-11-07 — função única de preço aprovada e primeiro teste de clearing:** F-043 ratifica P=(Q/D)^(-1/2), R=√(QD), R'=P/2 e R''<0 para toda mercadoria/mercado; F-042 racional vira alternativa histórica. F-044 verifica alocação proporcional à demanda sob acesso igual e objetivo de maximizar receita agregada. F-045 abre a incompatibilidade potencial entre venda universal, receita calculada e saldos compradores finitos; impedância não monetária não pode ser subtraída arbitrariamente da receita monetária.
