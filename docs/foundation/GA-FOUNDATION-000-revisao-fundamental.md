@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 2.7  
+**Versão conceitual:** 2.8  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -365,9 +365,9 @@ A concorrência é resolvida **no local e no intervalo temporal em que realmente
 
 O mercado abstrato absorve **toda a produção** por função de preço (F-041/F-043), e a receita nominal é **creditada diretamente ao titular econômico do produtor** conforme o resultado da venda. Assim, o setor monetário explicitamente representado é **aberto**: não é obrigatório reconciliar receita de vendas com pagamentos de contas que **não existem** no modelo. Essa entrada representa o setor consumidor externo/implícito, não desconto em uma conta fictícia nem emissão monetária por ação de trabalho.
 
-**Contabilidade que de fato existe:** tesouro de produtores/nós/instituições (identidade ainda por fechar), receita efetiva das vendas, despesas monetárias do titular (investimento F-035, eventuais tarifas de arestas de terceiros e impostos depois ratificados), transferências reais **entre contas representadas** e capital monetário incorporado às infraestruturas. Quando duas contas reais do modelo interagirem, débitos/créditos devem reconciliar. A circulação de moeda total, impostos e outros fluxos da economia invisível **não** precisa ser simulada.
+**Contabilidade que de fato existe [F-048]:** **tesouro da civilização**, que recebe a receita da produção realizada pelos seus trabalhadores/agentes produtivos, remunera investimentos de infraestrutura e registra eventuais transferências financeiras entre civilizações (tarifas e outras rubricas ainda abertas), além do capital incorporado às arestas. **Não existem carteira monetária do trabalhador nem tesouro monetário por nó por padrão.** Quando duas contas reais do modelo interagirem, débitos/créditos devem reconciliar. A circulação de moeda total, impostos e outros fluxos da economia invisível **não** precisa ser simulada.
 
-**Ainda em aberto:** identidade/titularidade do tesouro produtor, apropriação da receita, tratamento de impostos, investimento em infraestrutura de terceiros e sua contrapartida, tarifas financeiras e eventual balanço macroeconômico opcional. **Não** reabrir a exigência de carteiras dos consumidores sem decisão explícita do usuário.
+**Ainda em aberto:** atribuição da produção à civilização quando houver situações de várias civilizações no mesmo nó, tratamento de impostos (especialmente se a receita já entra diretamente no tesouro público), investimento em infraestrutura de terceiros e sua contrapartida, tarifas financeiras e eventual balanço macroeconômico opcional. **A identidade da entidade recebedora da receita comercial é a civilização — F-048 ratificada.** **Não** reabrir a exigência de carteiras dos consumidores sem decisão explícita do usuário.
 
 ### F-023 — Mercado espacial: quantidade, preço e water-filling [RATIFICADO NO NÍVEL DE DESENHO]
 
@@ -677,7 +677,7 @@ A diferença **não é arredondamento**, mas definição de qual grandeza a fun�
 5. A melhoria fica disponível **a partir do instante lógico de incorporação**, sem aplicação retroativa a comércio, deslocamento ou eventos físicos anteriores. Um mercado avaliado por ciclos utiliza o estado válido para o instante/janela do seu cálculo, sem permitir que a ordem interna de processamento gere preços diferentes (F-018).
 6. Se o saldo monetário ou o tempo se esgotar antes de atingir a meta, o progresso é **parcial** e limitado ao que foi efetivamente coberto. Não aceitar dinheiro negativo nem consumo de tempo não aplicado como obra efetivamente executada.
 7. Não criar etapas discretas de "porto/estrada/ferrovia pronta" nem estados duplicados \`percentual_de_obra\`/ \`investimento_prometido\` que substituam a propriedade \`I_e\`.
-8. A titularidade da aresta e a **proveniência da conta pagadora** não são definidas pela equação de melhoria. Quem pode investir em infraestrutura de terceiros, adquirir direitos/titularidade ou participar de receitas de tarifa permanece **EM ABERTO**; pagamento por terceiro não transfere propriedade automaticamente.
+8. A titularidade da aresta permanece distinta da condição física do trabalhador; após F-048, **a civilização investidora utiliza seu próprio tesouro** para financiar o trabalho, e o trabalhador não paga a obra. Quem pode investir em infraestrutura de terceiros, adquirir direitos/titularidade ou participar de receitas de tarifa permanece **EM ABERTO**; pagamento por terceiro não transfere propriedade automaticamente.
 
 **F-037 (ratificado):** a taxa **de referência** do trabalhador padrão passa a ser \`R₀=1 unidade monetária por turno completo\`. A fórmula operacional abaixo continua sendo candidata, mas agora deverá respeitar essa normalização, e sua generalização futura por eficiência individual. **Não** pressupor que todas as eras/trabalhadores tenham produtividade 1 para sempre, ou que esse número canonize o preço de produtos e o valor de I₀.
 
@@ -780,7 +780,7 @@ A antiga interpretação documentada de que uma produção de 10 poderia vender 
 2. Definir demanda **de referência** por mercado \`n\` e item \`i\`: \`D_{n,i}=Σ_{w∈n} k_w\`, com \`k_w=1\` inicialmente, salvo regra futura de qualificação. Uma mercadoria distinta usa a mesma base 1 por trabalhador; nenhuma escala específica é arbitrariamente atribuída por item.
 3. Alocar **a totalidade** da oferta via water-filling entre destinos com demanda de referência positiva e rotas válidas. Para cada mercado: \`Q_{n,i}=Σ_o q_{o→n,i}\`, e \`x_{n,i}=Q_{n,i}/D_{n,i}\`. O preço depende da oferta **agregada de todos os produtores** daquele item no mesmo mercado, não apenas de uma origem isolada.
 4. Exigir \`Σ_n q_{o→n,i}=Q_{o,i}\` para cada origem e item. \`D\` não é limite superior de absorção; \`Q>D\` é sobreoferta com queda de preço. Não carregar saldo excedente.
-5. Calcular receita pela quantidade integral vendida no preço do mercado: \`Receita_{o,i}=Σ_n q_{o→n,i} P_{n,i}\`. Tratar pagamentos, tarifas e origem do poder de compra separadamente conforme F-022 (aberto). **Após F-046, registrar receita de vendas como entrada legítima ao tesouro representado sem carteira compradora**; tarifas e impostos reais seguem regras próprias.
+5. Calcular receita pela quantidade integral vendida no preço do mercado: \`Receita_{o,i}=Σ_n q_{o→n,i} P_{n,i}\`. O saldo é creditado **à civilização responsável por cada origem/atividade produtiva (F-048)**, não ao trabalhador nem ao nó. F-046 mantém compradores sem carteira; tarifas e impostos, caso existam, possuem lançamentos separados e regras próprias.
 6. Atribuir ao mercado consumidor quantidades efetivamente compradas uma só vez: \`A_{n,i}=Q_{n,i}\`; não há carteira compradora a reconciliar (F-046), e a mesma mercadoria não pode ser duplicada ao atravessar arestas. O indicador material proposto F-038 usa \`c_{n,i}=A_{n,i}/N_n\` para \`N_n>0\` e observa período/ciclo anterior, sem estoque físico.
 7. O clearing deve ser determinístico quando o preço depende endogenamente do \`Q_{n,i}\` que o water-filling está alocando.
 
@@ -841,7 +841,7 @@ Ambos os ramos têm preço e primeira derivada coincidentes no ponto de encontro
 7. Demanda inicial \`D_{n,i}=Σ_{w∈n}1\`, corrigível futuramente por \`k_w\`; \`D\` é referência, não teto, e **toda a produção é vendida** (F-041), com nenhuma quantidade em estoque (F-039).
 8. Esta equação é universal entre produtos; nenhum expoente ou preço-base arbitrário por mercadoria.
 
-**Preço e renda no mesmo destino:** se o mercado n receber \`q_1\` e \`q_2\` de dois produtores para o mesmo produto i, \`Q=q_1+q_2\`; ambos recebem o mesmo \`P=√(D/Q)\` por unidade, mas a atribuição de custos/tarifas por rota pode afetar a **receita líquida** de forma diferente. Por F-046, a venda gera receita efetiva ao titular representado, com contraparte no setor consumidor implícito, **sem saldo financeiro individual de comprador**.
+**Preço e renda no mesmo destino:** se o mercado n receber \`q_1\` e \`q_2\` de duas atividades produtivas para o mesmo produto i, \`Q=q_1+q_2\`; a **civilização responsável por cada atividade** recebe \`q_j P\` por sua parte, com o mesmo preço unitário de mercado. Custos e tarifas de rota podem afetar a **receita líquida de cada civilização** de modo diferente. Por F-046, a venda gera receita efetiva ao titular representado, com contraparte no setor consumidor implícito, **sem saldo financeiro individual de comprador**.
 
 **F-042 permanece como registro de alternativas matemáticas superadas:** a racional \`2/(1+x)\` é válida, mas foi preterida por \`x^{-1/2}\` por simplicidade e ausência de limite assintótico da receita.
 
@@ -875,7 +875,7 @@ O outro problema identificado na versão anterior — a dependência dos fluxos 
 **Princípio canônico:**
 1. **Nenhuma carteira, orçamento de compras, saldo comprador, limite de pagamento ou verificação de caixa** para os trabalhadores/localidades na função de consumidores. Os compradores **compram e pronto**, em quantidades definidas pelo mercado e pela referência de demanda \`D=Σ k_w\`, não por caixa disponível.
 2. Os produtos nomeados no jogo são um subconjunto de uma **economia abstrata mais ampla**, com outros bens e serviços **invisíveis**. A despesa com as mercadorias modeladas pode crescer ou diminuir à custa de gastos invisíveis, cujo volume/valor não será simulado. **Poder de compra consumidor é indeterminado.**
-3. **Toda a produção vendida** no preço canônico \`P=√(D/Q)\` gera receita nominal efetiva creditada ao **tesouro titular do produtor**, sem débito em conta de comprador representado.
+3. **Toda a produção vendida** no preço canônico \`P=√(D/Q)\` gera receita nominal efetiva creditada ao **tesouro da civilização responsável pela atividade produtiva**, sem débito em conta de comprador representado (F-048).
 4. Uma economia financeira **aberta e parcial** não precisa preservar quantidade de moeda no submodelo visível. A entrada de dinheiro por vendas é **receita de transação com setor consumidor implícito**, não dinheiro material emitido diretamente por trabalhadores nem um débito em "tesouro consumidor" inventado.
 5. Os saldos financeiros **que o jogo representa** continuam reais: compras de infraestrutura F-035 exigem caixa, tarifas alheias e impostos futuros podem transferir recursos e o dinheiro de um tesouro não pode ser gasto duas vezes. Somente interações entre contas explicitamente simuladas devem ter débitos/créditos espelhados.
 6. Não reaproveitar exigências, controles ou invariantes legados de "financiar a demanda com a carteira do consumidor", "pagar a venda com orçamento predeterminado" ou "aumentar demanda para guardar mercadorias". A F-022 é reinterpretada restritivamente.
@@ -883,12 +883,12 @@ O outro problema identificado na versão anterior — a dependência dos fluxos 
 8. A possibilidade futura de mercados diferentes terem padrões de consumo e produtividade não implica que o trabalhador receba dinheiro para gastar nem que sua demanda seja uma carteira.
 
 **Testes de regressão conceitual:**
-- Oferta Q=10 e demanda D=5 ⇒ P=√(5/10), receita ≈7,071, creditada ao titular sem necessidade de demonstrar saldo comprador ≥7,071.
+- Oferta Q=10 e demanda D=5 ⇒ P=√(5/10), receita ≈7,071, creditada à civilização produtora sem necessidade de demonstrar saldo comprador ≥7,071.
 - Um trabalhador comprar economicamente mais que sua unidade-base de demanda não cria estoque, limite financeiro ou dívida.
 - A entrada de receita em um tesouro não permite que ele **gaste duas vezes** o saldo em investimento ou tarifa.
 - Duas contas reais trocando uma tarifa mantêm transferências financeiras reconciliadas; o setor consumidor externo **não** é uma conta real adicional.
 
-**Questões ainda abertas:** apropriação de receitas por nó ou instituição, propriedade e aplicação de tributos, tarifas, escala nominal da moeda, como o consumo por mercadoria contribui para desenvolvimento F-038. **Não reabrir carteiras compradoras para resolver essas pendências.**
+**Questões ainda abertas:** critérios de vinculação de operações produtivas a civilizações quando há ocupações compartilhadas, propriedade e aplicação de tributos, tarifas, escala nominal da moeda, como o consumo por mercadoria contribui para desenvolvimento F-038. **A receita não pertence ao trabalhador nem ao nó: F-048 resolveu isso.** **Não reabrir carteiras compradoras para resolver essas pendências.**
 
 ### F-047 — Expectativa fixa de carga por ciclo versus equilíbrio endógeno [HIPÓTESE EM ANÁLISE; NÃO RATIFICADO]
 
@@ -917,7 +917,57 @@ Depois realizar water-filling de toda oferta com essas impedâncias congeladas, 
 - choque súbito de produção, abertura/melhoria de infraestrutura e alternância de destinos;
 - condições de simetria de rotas e surgimento de ciclos de oscilação (em particular com p=4);
 - medir estabilidade, preços únicos por mercado/ciclo, qualidade da alocação e custo computacional em mapas Goldberg grandes.
-**Governança:** a existência do acoplamento é constatada; o uso de expectativa congelada e a fórmula de atualização **ainda não foram ratificados**. Não introduzir coeficiente de suavização arbitrário nem subsistema de contratos marítimos antes dos testes.
+**Governança [DECISÃO SUPERVENIENTE F-049]:** o usuário escolheu expressamente **equilíbrio simultâneo para a implementação inicial**, revogando a consideração da expectativa congelada como estratégia principal. A expectativa por ciclo permanece **fallback documentado**, acionável apenas após evidências de custo/desempenho que justifiquem nova decisão. Não introduzir coeficiente de suavização arbitrário nem contratos marítimos. F-049 ratifica o *método simultâneo*, não o expoente p nem uma função específica de otimização.
+
+
+### F-048 — Tesouro e receita da civilização, nunca do trabalhador [RATIFICADO]
+
+**Princípio explícito:** **quem recebe o dinheiro pela venda de produção é a CIVILIZAÇÃO responsável pela produção**, não o trabalhador nem o nó onde se produziu. O trabalhador continua sendo o agente físico que aplica tempo e produz quantidade; o nó continua fornecendo território/recursos naturais/mercado, sem possuir necessariamente saldo em moeda.
+
+**Contrato:**
+1. Uma atividade produtiva gera quantidade física/econômica de mercadoria \`Q_{o,i,c}\` vinculada à civilização \`c\`, cuja atribuição de comando/pertencimento exige um identificador explícito, inclusive quando trabalhadores de várias civilizações estiverem no mesmo nó.
+2. O clearing de mercado F-041/F-043 atribui venda total e preço por item/destino; para a parcela oriunda da civilização \`c\`: \`ReceitaBruta_c=Σ_{o,n,i}q_{o→n,i,c}×P_{n,i}\`. Creditar o resultado **somente ao tesouro \`M_c\` da civilização \`c\`**, uma vez por operação.
+3. **O trabalhador não possui carteira monetária**, não recebe salário em moeda automaticamente pela produção e não pode ser o destinatário de receita por vender. Seu peso de demanda \`k_w\` e sua eficiência F-037/F-038 não são dinheiro individual.
+4. **A localidade/nó não possui tesouro próprio por padrão.** Um nó pode produzir, abrigar trabalhadores, demandar e ter estrutura física sem possuir caixa ou apropriar-se da receita; seu eventual vínculo administrativo com uma civilização não substitui o identificador econômico da atividade.
+5. Obras em arestas F-034/F-035/F-037 são executadas fisicamente pelos trabalhadores autorizados, mas o **pagamento é realizado pelo tesouro da civilização investidora**: debitar \`M_c\` e incorporar capital na aresta na mesma operação; não debitar do trabalhador nem de um "tesouro do nó".
+6. Eventuais **tarifas monetárias de terceiros** deverão usar contas das civilizações pagadoras/recebedoras ou outra entidade explicitamente autorizada por decisão futura. Não presumir que o trabalhador pague tarifa nem que a propriedade da aresta coincida com o território de origem.
+7. A venda de mercadorias para o setor consumidor **implícito e sem carteira** (F-046) é entrada aberta de moeda no subconjunto modelado. **Transações financeiras entre civilizações representadas** precisam de contrapartidas coerentes; circulação monetária fora desse subconjunto não será simulada.
+8. Não criar tributação automática sobre receita já recebida integralmente pelo tesouro da própria civilização: isso seria transferir dinheiro da civilização para ela mesma. Eventuais impostos entre agentes distintos, setor externo ou outras instituições precisam de definição posterior.
+9. Saldo da civilização pode financiar atos enquanto houver dinheiro; dinheiro de compras de consumidores não é limitado por um saldo modelado. **Não confundir** abertura do lado comprador com caixa ilimitado do tesouro da civilização.
+
+**Casos de teste:** dois trabalhadores da mesma civilização produzem em nós diferentes e suas receitas somam no **mesmo tesouro**; trabalhadores de civilizações distintas no mesmo nó mantêm créditos separados; produção zero não cria receita; construir duas arestas com mesmo tesouro não gasta o saldo duas vezes; um trabalhador de outra civilização não redireciona automaticamente receita por estar fisicamente no mesmo local.
+
+**Pendências:** quem autoriza mão de obra de uma civilização a trabalhar para outra, quem recebe a receita dessa ação contratada, se existe titularidade compartilhada de infraestrutura, tributação externa/institucional e relação entre afiliação de desenvolvimento F-037 e titularidade de produção. **A regra de destinatário final da moeda é canônica: civilização.**
+
+### F-049 — Equilíbrio simultâneo para congestionamento e water-filling [RATIFICADO NO MÉTODO; EQUAÇÕES E SOLVER ABERTOS]
+
+**Escolha explícita:** o primeiro algoritmo de mercado deverá **resolver o equilíbrio simultâneo** entre volumes logísticos e impedâncias, **sem congelar impedância pelo volume esperado do ciclo anterior**. Se os testes de escalabilidade demonstrarem custo computacional excessivo, a estratégia poderá ser revista mediante nova deliberação.
+
+**Dependência resolvida conjuntamente dentro do ciclo econômico \`t\`:**
+- Arestas e investimentos são fixados no **estado físico/logístico pertinente à janela de clearing**; \`I_e(t)\` fornece \`K_e(I_e)\` e impedância livre.
+- Os fluxos de **todas as mercadorias e civilizações** que atravessam a aresta determinam sua carga equivalente conjunta \`B_e=Σ_iΣ_{rotas\ que\ usam\ e} a_i q_{rota,i}\` (normalizada pela mesma unidade de tempo de referência da capacidade), mantendo F-026 sem índices arbitrários de produto.
+- O congestionamento \`C_e(B_e,I_e)\` depende da carga **efetiva simultânea**; \`C_e\` influencia as escolhas de rota e as próprias cargas. O equilíbrio satisfaz o sistema de relações de forma conjunta.
+- O preço \`P_{n,i}=√(D_{n,i}/Q_{n,i})\` depende da quantidade **totalmente atribuída** ao destino para aquele item, que também deve ser decidida no mesmo clearing; F-043 mantém a regra canônica de preço por mercado.
+- A soma dos fluxos distribuídos para cada origem/mercadoria/civilização **é exatamente a quantidade produzida**: não formar estoque nem descartar oferta F-039/F-041.
+- Só **depois** de resolver o estado estável é que se apuram vendas e créditos monetários **no tesouro da civilização produtora**, além de tarifas entre civilizações conforme contratos futuros.
+- O resultado da solução deve ser **determinístico para o mesmo estado de entrada**, inclusive quando houver soluções equivalentes; desempates não podem depender da ordem dos trabalhadores, nós, arestas ou threads.
+
+**Distinção matemática importante:**
+- Um **equilíbrio de rotas com origem/destino fixos** e impedâncias crescentes \`C_e(B_e)\` pode, se \`C_e\` for admitida como *impedância marginal*, ser formulado pela minimização da soma de primitivas \`Σ_e ∫₀^{B_e} C_e(z)dz\` sob conservação de fluxos. A integral é um **potencial matemático da rede**, NÃO um pagamento financeiro e NÃO exige congelar custos.
+- Entre **mercados de destino diferentes**, é necessário combinar esse princípio com a atratividade comercial e a receita marginal \`R'_{n,i}=P_{n,i}/2\`. Como receita monetária e impedância física não monetária são grandezas distintas, a função global exata de objetivo/equilíbrio **ainda precisa ser definida dimensionalmente**. Não somar/subtrair pontos físicos e dinheiro sem regra/normalização canônica.
+- Equilíbrio simultâneo não significa atualizar preços e custos após cada fração de venda, nem fixar os valores com base em expectativa do ciclo anterior: ambos são obtidos como **resultado agregado simultâneo** do cálculo.
+- **Não prometer unicidade matemática absoluta** antes da análise de convexidade, mercados acessíveis, conectividade, produtos compartilhando arestas e possíveis múltiplas rotas equivalentes. Exigir um resultado canônico reproduzível.
+- Obras F-035 podem melhorar a aresta ao longo do tempo; um clearing referente a uma janela temporal precisa usar snapshot causal coerente e não antecipar obra futura, sem apagar benefícios imediatos aplicáveis aos deslocamentos físicos dos trabalhadores.
+
+**Plano de validação prioritário:**
+1. Duas rotas paralelas idênticas, mesma origem/destino e carga total 2, capacidade natural 1 cada, com convexidade \`p>1\`: equilíbrio simétrico deve distribuir carga **1+1** e não alternar integralmente A→B→A entre ciclos, nos limites do caso de teste.
+2. Uma rota curta costeira congestionável e alternativa longa; adicionar investimento apenas numa aresta e comprovar realocação, receita e conservação de toda a oferta.
+3. Dois destinos com \`D_A=4\` e \`D_B=1\`, total \`Q=10\`; sem assimetrias logísticas, recuperar \`Q_A=8\`, \`Q_B=2\` do teste F-044.
+4. Dois itens diferentes compartilhando uma aresta estreita, e duas civilizações produzindo em origens distintas; verificar que congestionamento agrega todos os fluxos, mas crédito da venda **separa os tesouros**.
+5. Verificar invariância à ordem de execução, reprodutibilidade por replay, comportamento para \`Q=0\`, \`D=0\`, arestas intransitáveis, e desempenho em grafos Goldberg crescentes.
+6. Caso haja gargalo computacional real, comparar solver simultâneo com opção de custos defasados **sem alterar nenhuma regra econômica ratificada**; a troca exige nova deliberação.
+
+**Status:** método de equilíbrio simultâneo e fallback condicionado a desempenho **ratificados**; fórmula de saturação \`p\`, construção exata do potencial conjunto, algoritmo numérico, tolerâncias, desempate, distribuição por propriedade de arestas e tarifas seguem **EM ABERTO**.
 
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
@@ -987,3 +1037,5 @@ Depois realizar water-filling de toda oferta com essas impedâncias congeladas, 
 - **2026-11-07 — função única de preço aprovada e primeiro teste de clearing:** F-043 ratifica P=(Q/D)^(-1/2), R=√(QD), R'=P/2 e R''<0 para toda mercadoria/mercado; F-042 racional vira alternativa histórica. F-044 verifica alocação proporcional à demanda sob acesso igual e objetivo de maximizar receita agregada. F-045 abre a incompatibilidade potencial entre venda universal, receita calculada e saldos compradores finitos; impedância não monetária não pode ser subtraída arbitrariamente da receita monetária.
 
 - **2026-11-07 — correção do perímetro financeiro e estudo da expectativa de infraestrutura:** F-046 ratificada: compradores não têm carteira, caixa nem restrição orçamentária; o poder de compra consumidor é indeterminado e pode realocar gastos em bens invisíveis. Toda venda gera receita ao tesouro produtor; a moeda do setor visível é aberta. F-022/F-023/F-040/F-043/F-045 revistas para não exigir conciliação de contas compradoras inexistentes. F-047 avalia congelar impedância por aresta durante o ciclo econômico usando volume esperado, com atualização entre ciclos, comparando a equilíbrio endógeno; alerta para oscilação temporal de rotas e necessidade de teste antes de ratificar.
+
+- **2026-11-07 — tesouro civilizacional e clearing simultâneo:** F-048 ratificada: a receita das vendas pertence à civilização produtora, não ao trabalhador nem ao nó; investimento logístico é pago pelo tesouro da civilização, mantendo trabalhadores apenas como agentes físicos. F-049 ratificada: resolver simultaneamente carga por aresta, congestionamento e alocação por destino/item no ciclo; expectativa fixa defasada fica somente como alternativa futura se desempenho exigir. F-047 marcada como hipótese histórica superada. Formulação exata do solver, escala da impedância e tarifa permanecem abertas.
