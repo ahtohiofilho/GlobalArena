@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 3.12  
+**Versão conceitual:** 3.13  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -1560,11 +1560,11 @@ Este \`w_e\` é a **redução de impedância de livre fluxo na própria aresta**
 **Gate necessário:** formular solução com (i) conservação comercial e monetária, (ii) preços por mercado de destino, (iii) tarifa de cotitulares F-060, (iv) ausência de dupla cobrança, (v) determinismo em fluxos equivalentes e (vi) custo compatível com grafos Goldberg grandes. Até lá, não alegar que o agregado \`f[e,c,i]\` basta para liquidar F-060 sem ambiguidade.
 
 
-### F-072 — Índice comercial aditivo e oráculo de menores caminhos [PROPOSTO; NÃO RATIFICADO]
+### F-072 — Índice comercial aditivo e oráculo de menores caminhos [RATIFICADO NA REGRA DE COMPETITIVIDADE; SOLVER EM ABERTO]
 
 **Motivação:** F-056 ratificou, sem tarifa, A=P/(1+L), em que L é soma de impedâncias físicas normalizadas nas arestas. F-060 ratificou o **rateio monetário proporcional** entre produtora e cotitulares; a multiplicação de fatores de atratividade P/[(1+L)(1+W)] era apenas candidata. O estudo F-069 demonstrou que seu produto não obedece a menor caminho escalar simples, pois um prefixo aparentemente melhor pode ficar pior após extensão igual. F-070 descartou atribuir peso tarifário local usando a impedância natural da rota inteira.
 
-**Nova candidata de escolha comercial, mantendo os contratos ratificados de propriedade e liquidação:**
+**Decisão superveniente RATIFICADA como regra inicial de escolha comercial, sem alterar propriedade ou liquidação:**
 
 A_{c,r,n,i} = P_{n,i} / (1+L_r+W_{c,r})
 
@@ -1586,11 +1586,11 @@ g_{e,c} = C_e(B_e,I_e) + w_e(1-s[e,c]), com g≥0.
 6. Para cada origem/civilização/item, o gap de equilíbrio F-057 pode ser avaliado usando busca de menores caminhos para custos por aresta g_{e,c}, acrescida da comparação de destinos por G. Isso remove um gargalo de oráculo do índice multiplicativo, mas não prova convergência/ unicidade da distribuição conjunta de destinos, fluxos de commodities e pagamentos de tarifas.
 7. Se duas rotas ao mesmo destino possuírem L+W idêntico, mas diferentes repartições W, **não são automaticamente equivalentes para os tesouros**. F-059 exige regra de seleção econômica explícita antes de aplicar desempate meramente técnico. Dijkstra pode identificar uma candidata de menor custo, mas não resolve sozinho este empate financeiro; não escolher a primeira aresta enumerada.
 
-**Laboratório numérico F-067 reavaliado com nova hipótese de acessibilidade:** mesma rede de dois mercados X/Y, duas civilizações A/B, oferta A=8, B=2, D_X=1, D_Y=4, uma aresta com c_livre=0,5 e congestionamento ilustrativo c(x)=0,5[1+(x/5)^4], quotas A=75% e B=25%, peso tarifário hipotético w=1/3. O vendedor A paga apenas W_A=w×0,25=1/12. Com fórmula MULTIPLICATIVA experimental anterior, exportação A→Y≈3,60430132, tarifa para B≈0,23423241; créditos líquidos A≈4,90738113 e B≈1,92389214. Com fórmula ADITIVA candidata, condição de equilíbrio é sqrt(8−x)=(1+c(x)+W_A)sqrt((2+x)/4) e sua raiz numérica é x≈3,70743429, tarifa da B≈0,23874795; créditos líquidos A≈4,93682616, B≈1,91307206, 10/10 unidades vendidas. A diferença na alocação é mudança real de regra de mercado, não mera otimização do solver. **O critério aditivo precisa de ratificação explícita antes de substituir o índice tarifado experimental**.
+**Laboratório numérico F-067 reavaliado com nova hipótese de acessibilidade:** mesma rede de dois mercados X/Y, duas civilizações A/B, oferta A=8, B=2, D_X=1, D_Y=4, uma aresta com c_livre=0,5 e congestionamento ilustrativo c(x)=0,5[1+(x/5)^4], quotas A=75% e B=25%, peso tarifário hipotético w=1/3. O vendedor A paga apenas W_A=w×0,25=1/12. Com fórmula MULTIPLICATIVA experimental anterior, exportação A→Y≈3,60430132, tarifa para B≈0,23423241; créditos líquidos A≈4,90738113 e B≈1,92389214. Com fórmula ADITIVA candidata, condição de equilíbrio é sqrt(8−x)=(1+c(x)+W_A)sqrt((2+x)/4) e sua raiz numérica é x≈3,70743429, tarifa da B≈0,23874795; créditos líquidos A≈4,93682616, B≈1,91307206, 10/10 unidades vendidas. A diferença na alocação é mudança real de regra de mercado, não mera otimização do solver. **O critério aditivo foi ratificado depois como regra inicial; a comparação numérica continua sendo laboratório, não validação do solver em produção**.
 
 **Ponto de atenção:** um índice aditivo torna o ganho de acessibilidade física comercialmente comparável a uma intensidade tarifária adimensional. Essa hipótese precisa ser validada em situações de congestionamento alto, mercado local e arestas de diferentes comprimentos, sem supor uma equivalência monetária C↔w; o fator de escala natural F-056 é pendência ainda aberta.
 
-**Status:** candidato com grande ROI de implementação pelo uso de oráculos de caminhos mínimos escalares, sem novos estados persistentes. **NÃO RATIFICADO**, distinto dos contratos F-056 (sem tarifa) e F-060 (rateio financeiro), já RATIFICADOS.
+**Status RATIFICADO:** a escolha comercial inicial usa A=P/(1+L+W) com custo por aresta g[e,c]=C[e]+w[e](1-s[e,c]), mantidas separadas a impedância física e a repartição monetária real F-060. A busca por menor caminho escalar pode apoiar o oráculo de equilíbrio, mas Dijkstra não é solver completo, nem prova unicidade/convergência. Intensidade tarifária, escala física, função de congestionamento, desempates financeiros e implementação permanecem em aberto.
 
 ### F-073 — Peso tarifário local de ganho físico na carga natural de referência [PROPOSTO; NÃO RATIFICADO]
 
@@ -1627,6 +1627,55 @@ g_{e,c} = C_e(B_e,I_e) + w_e(1-s[e,c]), com g≥0.
 **Diferença em relação ao estado do ciclo:** w_e é função da infraestrutura incorporada, naturalidade e capacidade da ARESTA. Não depende da origem/destino do comprador, do preço de mercado, do restante das arestas percorridas ou da carga corrente; evita um laço tarifário extra de atualização dentro do solver. Pagamentos nominais continuam proporcionais ao preço da venda, F-060.
 
 **Status:** fórmula proposta para ensaio, **não RATIFICADA**. Antes de escolher, validar uma mesma geografia com múltiplas arestas, duas civilizações em copropriedade e um produto com preços distintos por destino; comparar volume, tarifas, receita líquida, custo de implementação, dependência da normalização e sensibilidade ao expoente p.
+
+
+### F-074 — Laboratório de intensidade tarifária F-073: investimentos, escala, congestionamento e receita [TESTADO; PESO NÃO RATIFICADO]
+
+**Escopo do teste:** validação matemática isolada por Python/SciPy usando bisseção escalar; não integra o kernel do Global Arena, não mede mapas Goldberg, memória nem convergência de redes multicommodity. Ratificação atual: índice comercial ADITIVO A=P/(1+L+W) F-072, preço P=√(D/Q), venda universal F-041, repartição monetária proporcional F-060, copropriedade F-062/F-066. F-073, lei de congestionamento e normalização de L ainda são candidatos.
+
+**Cenário:** mercado X com demanda D_X=1 e civilização A produzindo 8 unidades; mercado Y com D_Y=4 e civilização B produzindo 2. Ambos comercializam localmente; A pode exportar parte para Y pela única aresta e B vende suas 2 unidades localmente nos equilíbrios testados. Estado melhorado da aresta tem quotas A=75%, B=25%, sendo W_A=w/4. Sem melhoria a aresta não cobra tarifa.
+
+**Física somente experimental:** k=I/I0, U(k)=1+log2(1+k), c_livre=1/U, K=5U, C(B,k)=(1/U)[1+(B/(5U))^4], p=4 e Lref=1 apenas para o ensaio. F-073 define c0=C(5,0)=2 e cI=C(5,k); ganho Δ=max(0,2-cI); intensidade w=Δ/(1+Δ/2). A igualdade de atratividade entre venda local e exportada de A é sqrt(8-x)=[1+C(x,k)+w/4]sqrt((2+x)/4). Resolver x por bisseção e validar alternativa não utilizada de B.
+
+| k=I/I0 | U | w | Tarifa efetiva se vendedor não possui nenhuma quota | A exporta para Y | Tarifa recebida por B | Crédito líquido de A | Crédito líquido de B |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 | 1,000 | 0 | 0% | 2,770035 | 0 | 4,823526 | 1,831467 |
+| 0,1 | 1,1375 | 0,459043 | 31,46% | 2,873700 | 0,268011 | 4,599529 | 2,079896 |
+| 1 | 2,000 | 0,846847 | 45,85% | 3,744081 | 0,545897 | 4,641479 | 2,214871 |
+| 3 | 3,000 | 0,907865 | 47,59% | 4,210220 | 0,625043 | 4,700639 | 2,230159 |
+| 7 | 4,000 | 0,933055 | 48,27% | 4,449648 | 0,662795 | 4,725633 | 2,237836 |
+| 15 | 5,000 | 0,947280 | 48,65% | 4,595102 | 0,685214 | 4,738633 | 2,242790 |
+
+**Conservação e equilíbrio:** em todos os cenários A vende exatamente 8 unidades e B exatamente 2 (10/10), preços finais baseados no volume agregado por mercado, venda local sem aresta, taxa incidente somente sobre quota da outra civilização, pagamento total por venda igual a receita bruta, sem carteira consumidora. As igualdades interiores da equação escalar foram resolvidas por bisseção com erro numérico desprezível. **A NÃO recebe aumento garantido de receita comercial após sua participação em infraestrutura melhorar**: para k=0,1 e k=1 seus créditos ficam abaixo da receita inicial, enquanto o titular B recebe tarifa positiva. Não confundir receita comercial por ciclo com ROI de investimento; o I0 monetário e horizonte de amortização não foram definidos, nem custo do investimento debitado nesta tabela.
+
+**Sensibilidade p com k=1 e mesma normalização:** p=2 produz w≈0,8148, tarifa efetiva de vendedor totalmente externo≈44,90% e crédito tarifário B≈0,5160; p=3 produz w≈0,8364, taxa≈45,54%, tarifa B≈0,5367; p=4 produz w≈0,84685, taxa≈45,85%, tarifa B≈0,5459; p=5 produz w≈0,8520, taxa≈46,00%, tarifa B≈0,5500. Estes percentuais altos não são calibração ratificada.
+
+**ALERTA PRINCIPAL — normalização física F-056 ainda aberta:** para a mesma proporção de redução física de impedância e a mesma fração de copropriedade, multiplicar TODOS os custos de referência c0 e cI por λ multiplica w de F-073 também por λ. Na situação k=1, p=4, uma aresta inteiramente alheia teria taxa w/(1+w) ≈29,75% se λ=0,5, 45,85% se λ=1 e 62,88% se λ=2. A unidade Lref determina o tamanho efetivo do pedágio e influencia também a competitividade física via 1+L; **não escolher Lref apenas para produzir uma tarifa-alvo**, pois mudaria simultaneamente a geografia econômica.
+
+**Curva de arrecadação por peso de tarifa com FÍSICA CONGELADA (c_livre=0,5, K=10, p=4, participação B=25%, somente w muda):**
+- w≈0,84685: A exporta≈3,7441, B arrecada≈0,5459;
+- w=1,5: A exporta≈3,3064, B arrecada≈0,7829;
+- w=3: A exporta≈2,4101, B arrecada≈0,9837;
+- w=6: A exporta≈1,0768, B arrecada≈0,7367;
+- w=12: A não exporta, B arrecada zero. A vende todas as 8 unidades em X; B vende todas as 2 em Y, sem estoque e com demanda positiva.
+Assim, tarifa percentual crescente não implica renda tarifária crescente; o fluxo comercial desvia endogenamente para mercados alternativos.
+
+**Subdivisão homogênea equivalente:** se a mesma aresta de impedância c0,cI for subdividida em n pedaços com mesma propriedade relativa, cada segmento tem c0/n e cI/n, com capacidade de fluxo em série mantida; a função F-073 é homogênea de grau um, logo cada peso w/n e a soma sobre n arestas é igual ao peso original. O custo físico agregado L também se preserva. Não aplicar a garantia a nova geografia, novos mercados ou outras quotas proprietárias.
+
+**Decisão técnica:** F-073 apresenta critérios matemáticos bons (localidade, continuidade, peso não negativo, aditividade sob subdivisão, remuneração de eficiência e de capacidade); **ainda assim NÃO RATIFICAR φ(I)** até fixar Lref e a física de congestionamento. Os altos percentuais ilustrativos e ausência de garantia de ROI exigem calibração física e testes adicionais; não inventar tetos arbitrários. O contrato de rateio F-060 e o índice aditivo F-072 estão ratificados.
+
+### F-075 — Próximo gate: referência física de impedância e atribuição contábil [ABERTO]
+
+**Risco:** a forma 1+L+W ratificada é adimensional, mas depende da normalização natural Lref que ainda não foi definida. Alterá-la modifica tanto a distribuição dos mercados quanto a renda tarifária dos cotitulares; logo o peso F-073 não pode ser considerado intrinsecamente calibrado sem fixar a física.
+
+**Proposta de sequência:**
+1. Definir a impedância natural de cada aresta a partir da distância geodésica, características contínuas do terreno/declividade e possível tempo/ação natural de transporte. Escolher referência de L baseada em evento físico comum ou unidade de tempo/velocidade, **não** no comprimento médio de uma aresta que muda com a resolução Goldberg nem em percentual-alvo de pedágio.
+2. Garantir que subdivisão puramente geométrica sem alterar a física preserve soma de impedância; capacidade em trechos sucessivos deve usar referência coerente à mesma passagem. Não criar unidade qualitativa de 'trajeto'.
+3. Com a unidade física definida, estudar a curva de congestionamento C_e(B,I), o expoente universal p, a referência de capacidade K, o fator de melhoria U(I) e novamente F-073; só então decidir se o peso automático gera tarifas e incentivos coerentes.
+4. Resolver a pendência F-071: fluxos agregados por aresta/civilização/produto não identificam o mercado de destino e seu preço unitário, logo precisam de informação de destino/valor **transitória**, sem estado permanente de caminhos e sem duplicar cobranças.
+5. Homologar gap de equilíbrio F-057, conservação integral, créditos de coproprietários e determinismo em redes com múltiplos destinos, preços diferentes, fluxos opostos e várias civilizações. Medir escalabilidade Goldberg antes do solver de produção.
+
+**Não ratificados:** valor exato de Lref, função física de congestionamento, expoente p, φ(I), algoritmo numérico e mecanismo de atribuição monetária por destino. Manter separação entre os contratos já aprovados e hipóteses de laboratório.
 
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
@@ -1728,3 +1777,5 @@ g_{e,c} = C_e(B_e,I_e) + w_e(1-s[e,c]), com g≥0.
 - **2026-11-07 — crítica à entidade 'trajeto' e correção F-068/F-070/F-071:** usuário identificou corretamente que a abstração não tem entidade qualitativa 'trajeto'; existe aresta local e, no clearing, caminho matemático temporário entre oferta e destino. F-068 passa a teste histórico: a intensidade \`w_{e|r}=Δ_e/(1+L₀,r)\` é descartada por depender de toda a rota para remunerar uma aresta. F-070 reafirma intensidade tarifária **local** e apresenta w_e=c_natural,e−c_livre,e somente como hipótese aditiva sob subdivisão equivalente (corredor 2→1 numa aresta ou duas 1→0,5 mantém W=1, tarifa efetiva 50% ilustrativa). F-071 alerta que F-055 arcos agregados por civilização/item não determinam sozinhos base tarifária por preço de destino: exige atribuição de valor por mercado ou decomposição transitória de fluxos para liquidar F-060, sem entidade persistente trajeto. φ e liquidação algorítmica seguem em aberto.
 
 - **2026-11-07 — F-072/F-073 análise de custo aditivo e peso local:** para superar custo de rotas não aditivo de F-069, F-072 propõe atratividade A=P/(1+L+W), com g[e,c]=C_e(B,I)+w_e(1−s[e,c]) e oráculo de menor caminho Dijkstra por civilização e snapshot simultâneo, preservando repartição monetária F-060 inalterada. Reavaliação escalar F-067 sob w=1/3 e A 75%/B 25%: exportação A≈3,70743, tarifa B≈0,23875, crédito líquido A≈4,93683, B≈1,91307; proposta não canonizada. F-073 identifica que w_e=Δc_livre cancela exatamente ganho físico livre no índice aditivo para não titulares e ignora investimento só em capacidade. Propõe peso por ganho físico avaliado na própria capacidade natural da aresta: c0=C_nat(Knat), cI=C_melhorada(Knat), Δ=max(0,c0−cI), w=Δ/(1+Δ/c0), com exemplos para melhorias livres/capacidade e invariância por subdivisão equivalente. Formas C_e/p, peso w, índice tarifado e estratégia de liquidação por destino ainda não ratificados; evitar implementar como lei sem decisão.
+
+- **2026-11-07 — índice aditivo F-072 ratificado, teste F-074 e gate F-075:** ratificada atratividade comercial com tarifa A=P/(1+L+W), custo de aresta g=C+w(1-s), permanecendo rateio monetário F-060 separado (V/(1+W)). F-074 executou bisseção em duas civilizações, mercados D_X=1/D_Y=4, produção A=8/B=2, função natural de congestionamento ilustrativa p=4 e melhoria U(I)=1+log2(1+I/I0), copropriedade A75/B25. Para k=0,1,3,7,15, exportação A≈2,7700,3,7441,4,2102,4,4496,4,5951 e tarifa B≈0,0,5459,0,6250,0,6628,0,6852. Com física fixa, aumentar w de 3 para 6 reduz tarifa B≈0,9837→0,7367; w=12 elimina exportação e renda tarifária, mas toda produção segue vendida localmente. Mesmo ganho proporcional físico com escala de custo λ=0,5,1,2 altera tarifa efetiva de proprietário externo único ≈29,75%,45,85%,62,88%. F-075 indica que fechar Lref física e C_e vem antes de canonizar φ(I); F-071, solver robusto e benchmark Goldberg ainda abertos. Nenhuma nova regra de tamanho de pedágio, teto ou algoritmo foi ratificada silenciosamente.
