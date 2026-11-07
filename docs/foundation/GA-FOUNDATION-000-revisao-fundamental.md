@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 1.4  
+**Versão conceitual:** 1.5  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -458,6 +458,56 @@ Proposta de segundo coeficiente \`s_r\` por produto (segurança, fragilidade, pe
 A dimensão adicional só poderá ser reaberta mediante nova deliberação, após amadurecimento do jogo e demonstração de ganho material de gameplay frente à complexidade. **Rejeição nesta versão inicial não significa proibição permanente de evolução futura.**
 
 
+### F-029 — Saturação logística mínima e investimento compartilhado [PROPOSTO; NÃO RATIFICADO]
+
+**Objetivo:** testar a regra de saturação mais simples compatível com F-024–F-028, sem coeficientes por mercadoria, sem categorias de infraestrutura e sem restrições de fluxo rígidas arbitrárias.
+
+**Proposta de impedância por aresta:**
+
+\`C_e(B,L) = C_livre,e(L) × [1 + B_e/K_e(L)]\`.
+
+\`C_e\` representa impedância física/mercadológica **não monetária** da rota. \`B_e\` é **taxa de carga logística equivalente** na mesma janela temporal de \`K_e\`; \`K_e(L)>0\` é a carga de referência em que a impedância dobra relativamente à condição de fluxo livre. Não é um teto rígido: \`B>K\` é possível, mas menos competitivo. Para um mercado processado por ciclos de duração \`Δt\`, usar \`B_e = Σ_r q_{e,r}/Δt\` **após normalização em unidades logísticas comuns**, ou manter numerador e denominador na mesma janela; nunca comparar um fluxo acumulado de seis turnos com capacidade por turno. O ciclo de mercado não precisa equivaler a um turno de trabalho.
+
+**Proposta de investimento e melhoria única por nível:**
+
+\`U_e(I_e) = 1 + log₂(1 + I_e/I₀)\`,
+
+\`C_livre,e(I_e) = C_natural,e / U_e(I_e)\`,
+
+\`K_e(I_e) = K_natural,e × U_e(I_e)\`,
+
+\`C_e(B_e,I_e) = [C_natural,e/U_e(I_e)] × [1 + B_e/(K_natural,e × U_e(I_e))]\`.
+
+Onde \`I_e≥0\` é capital incorporado à infraestrutura, \`I₀>0\` é escala **global de investimento**, \`C_natural,e>0\` é impedância natural de aresta transitável e \`K_natural,e>0\` sua capacidade de referência natural. As propriedades naturais podem depender de geometria/terreno, mas a origem e normalização ainda precisam ser validadas. No núcleo inicial, **não** acrescentar parâmetros independentes \`α\`, \`β\`, \`γ\` e \`p\`. A evolução de eficiência e capacidade é acoplada intencionalmente pelo mesmo multiplicador \`U\`, por parcimônia; verificar se isso limita excessivamente o jogo antes de permitir desacoplamento.
+
+**Critérios matemáticos desejáveis:**
+1. \`B=0\` implica \`C=C_livre\`; \`I=0\` implica \`U=1\`, preservando estado natural; a impedância permanece positiva para investimento finito.
+2. Para \`I\` fixo e aresta transitável, \`C\` cresce linearmente com \`B\`; não há aumento de saturação sem carga.
+3. Para \`B\` fixo, investir mais reduz \`C\` e aumenta \`K\`, com retornos marginais decrescentes no multiplicador de nível.
+4. **Não há descontinuidade ou bloqueio** em \`B=K\`. Isto representa congestionamento suave, não limite rígido.
+5. \`C\` e \`K\` não são estados persistidos separadamente se derivados de \`I\` e atributos naturais.
+6. A taxa de carga usa uma unidade logística comum: produtos diferentes **não** recebem penalidades artificiais, risco, escolta ou proteção por mercadoria (F-026/F-028).
+
+**Exemplo apenas ilustrativo:** \`I₀=100\`, \`C_natural=10\`, \`K_natural=5\`, fluxo \`B=10\` por unidade de tempo de referência:
+
+| Capital \`I\` | \`U\` | \`K\` | \`C_livre\` | \`C(B=10,I)\` |
+| ---: | ---: | ---: | ---: | ---: |
+| 0 | 1 | 5 | 10 | 30 |
+| 100 | 2 | 10 | 5 | 10 |
+| 300 | 3 | 15 | 3,33 | 5,56 |
+| 700 | 4 | 20 | 2,50 | 3,75 |
+
+Números escolhidos apenas para examinar monotonicidade. Não representam a economia já calibrada, os valores reais de investimento ou qualquer limite recomendado. Investimento necessário para \`U\` crescer uma unidade aumenta exponencialmente.
+
+**Teste de rotas concorrentes [PROPOSTO]:** oferta logística total de \`12\` unidades por intervalo, duas rotas alternativas sem tarifas. Na faixa utilizada, \`C_A(x)=4+x\` e \`C_B(y)=6+y/2\`, com \`x+y=12\`. A alocação de custos iguais seria \`x=16/3≈5,33\`, \`y=20/3≈6,67\`, ambas com impedância \`28/3≈9,33\`. Um *water-filling* espacial com custos dependentes de fluxo **não** pode atribuir todas as unidades à rota inicialmente mais barata; precisa considerar a elevação endógena de impedância. A propriedade de solução/única alocação deve ser demonstrada para o modelo de mercado completo, com demanda e tarifas.
+
+**Questão técnica prioritária:** a carga depende da distribuição do mercado, enquanto a distribuição depende das impedâncias calculadas com a carga. Uma função crescente, contínua e simples facilita procurar equilíbrio determinístico, **mas não demonstra por si só convergência** do algoritmo completo. É necessário testar água/mercado com dois caminhos paralelos, múltiplos produtores, mudanças de preço marginal, ciclos temporais diferentes e caminhos com tarifas de terceiros (registradas em dinheiro, separadamente).
+
+**Limitações expressas da proposta:** uma penalidade linear em \`B/K\` pode ser suave demais sob uso extremo; \`U(I)\` igual para ganho de eficiência e de capacidade pode ser restritivo; \`C_livre→0\` somente no limite \`I→∞\`, mas talvez deva haver piso físico em eras futuras; arestas inicialmente intransitáveis não se resolvem com \`K_natural=0\` nesta fórmula e exigem estudo à parte. Não introduzir pisos ou multiplicadores por cautela sem evidência de necessidade.
+
+**Status [PROPOSTO]:** nenhum parâmetro, fórmula de congestionamento, ligação \`U(I)\` ou algoritmo de equilíbrio foi ratificado. F-024–F-026 permanecem como princípios; F-027 conserva alternativas históricas de saturação/tributação. A tarifa monetária é **um mecanismo distinto**, não incluído na equação \`C\`.
+
+
 ## 8. Governança da nova versão e critérios de reaproveitamento
 
 **A fonte de verdade do novo desenho** é a sequência de decisões ratificadas nesta documentação. As decisões do jogo antigo **não exercem autoridade sobre ela**; tampouco foram revogadas para a versão antiga.
@@ -499,3 +549,5 @@ A dimensão adicional só poderá ser reaberta mediante nova deliberação, apó
 - **2026-11-07 — estudo da exigência especial por mercadoria:** F-028 propôs separar carga física e exigência de proteção; rejeitada expressamente pelo usuário para o núcleo inicial por exigir índices específicos arbitrários. Preservada uma única equação logística.
 
 - **2026-11-07 — décima deliberação:** adotada filosofia de uma única dimensão logística, sem índices de proteção/segurança por mercadoria e sem coeficientes de balanceamento item a item. F-028 rejeitada para a fase inicial. F-026 restringe fatores `a_r` a conversões justificáveis ou normalização unitária; fórmulas e calibração continuam abertas.
+
+- **2026-11-07 — estudo de saturação mínima:** F-029 proposta com impedância linear na taxa `B/K`, multiplicador de investimento `U=1+log₂(1+I/I₀)`, eficiência e capacidade derivadas do mesmo nível e exemplo de rotas concorrentes. Fórmulas, parâmetros e convergência não ratificados. Foi ressaltada a necessidade de normalizar fluxo por duração do ciclo econômico.
