@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 1.9  
+**Versão conceitual:** 2.0  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -67,6 +67,8 @@ Há duas categorias fundamentais de infraestrutura:
 - **infraestrutura de aresta:** relacionada à circulação e ao transporte.
 
 Não se presumem edifícios específicos, níveis, custos, receitas ou regras de manutenção. Por F-021, construção de infraestrutura não exige diretamente madeira, pedra ou alimentos: seus insumos econômicos são monetários, além do trabalho que vier a ser requerido para executar a ação.
+
+**Delimitação superveniente F-034:** toda **infraestrutura logística/transporte passível de investimento** pertence **exclusivamente a uma aresta individual**, não aos nós. Os nós seguem como locais de produção e podem possuir potenciais naturais ou, se deliberado futuramente, modificadores produtivos: esta decisão de logística **não** revoga automaticamente a categoria produtiva de nó de F-006. Novos investimentos produtivos em nós não estão sendo definidos agora.
 
 ### F-007 — Capacidade natural pré-infraestrutura [RATIFICADO]
 
@@ -516,8 +518,8 @@ Números escolhidos apenas para examinar monotonicidade. Não representam a econ
 
 Consequências ratificadas:
 1. **Investimento zero é um estado normal de infraestrutura**, não ausência automática de circulação ou de serviço. Os atributos naturais determinam impedância de fluxo livre, capacidade de referência, oportunidades físicas e limites de operação mesmo sem obras.
-2. **Infraestrutura natural é limitada**: uma praia pode suportar pequena descarga abstrata de mercadorias, enquanto um nó com investimento elevado pode sustentar escoamento muito maior. A penalidade por grande sobrecarga deve tornar fluxos excessivos fortemente pouco competitivos, sem exigir tipos de porto/estrada.
-3. A mesma arquitetura de infraestrutura abstrata e saturação precisa ser aplicável, **onde houver operação logística relevante**, a nós e arestas. A capacidade do nó de carga/descarga/transbordo não se reduz à capacidade da aresta adjacente.
+2. **Infraestrutura natural é limitada**: uma aresta costeira natural pode suportar pequena operação abstrata de desembarque, enquanto essa **mesma aresta** após investimento pode sustentar fluxo muito maior. A penalidade por sobrecarga deve tornar fluxos excessivos fortemente pouco competitivos, sem criar categorias de porto/estrada. O exemplo histórico de investimento no nó foi substituído por F-034.
+3. **[Superado por F-033/F-034 quanto à logística de interface]** A hipótese inicial admitia capacidade adicional de carga/descarga no nó. A decisão posterior estabelece que a **capacidade de interface terra↔mar e todo investimento logístico residem na própria aresta** de contato, sem duplicar operações/capacidades no nó.
 4. Melhoria construída não cria outro mecanismo de transporte; apenas altera parâmetros/capacidades da infraestrutura natural subjacente. Não introduzir tipologia fixa (praia, porto, rodovia, ferrovia) como classe de infraestrutura: tais nomes são exemplos físicos ou descrições de contexto.
 5. Mesmo quando nenhuma melhoria pertence a um investidor, o **custo físico** natural de uso continua participando do water-filling. **Cobrança monetária por infraestrutura natural não é inferida** dessa dificuldade física. Eventual tarifa sobre investimento alheio segue contrato específico F-024/F-027.
 6. Não atribuir automaticamente a uma única capacidade de nó a soma de produção agrícola, indústria e carga/descarga sem base física. A mesma entidade espacial pode ter diferentes **oportunidades de ação**, sem exigir categorias de infraestrutura construídas.
@@ -525,7 +527,7 @@ Consequências ratificadas:
 **Contrato de custo de rota candidato [PROPOSTO]:**
 \`C_rota = Σ_{arestas e percorridas} C_e + Σ_{nós n com operação logística efetiva} C_n\`.
 
-A operação em nó representa carga/descarga/transbordo ou outra transição que efetivamente exige processamento; **não** somar uma penalidade de manuseio por cada tile de mero trânsito, sob risco de alterar artificialmente o custo quando a malha Goldberg for refinada. Definir as operações relevantes e como agregar capacidade/direção em cada nó continua em aberto.
+**[Hipótese histórica de F-030, substituída para logística de interface por F-034.]** O custo de embarque/desembarque deixa de ser uma segunda parcela de nó: pertence à **aresta terra↔mar**. Não somar duas vezes a mesma operação. Os potenciais produtivos naturais dos nós continuam pertinentes à produção, e não implicam um investimento logístico no nó.
 
 **Caso-limite:** \`K_natural>0\` para operações naturalmente possíveis, mesmo que muito restritas. Um elemento realmente intransitável, com \`K_natural=0\`, não pode ser inserido diretamente numa expressão que divide por \`K\`; a possibilidade de habilitá-lo via investimento/tecnologia é decisão posterior.
 
@@ -626,7 +628,7 @@ A diferença **não é arredondamento**, mas definição de qual grandeza a fun�
 
 **Viabilidade em vez de exceção tecnológica:** a viabilidade econômica de uma rota marítima emerge do custo, capacidade e saturação **de todos os seus trechos**, inclusive ambas as interfaces costeiras e o próprio mar aberto. Um ótimo acesso costeiro **não torna a travessia oceânica automaticamente barata**: o restante da rota ainda participa do cálculo. Uma passagem com capacidade natural baixa pode ser possível em pequena escala mas impraticável para fluxo elevado, sem exigir um bloqueio arbitrário de tecnologia. A elegibilidade física de ações de trabalhadores depende da própria capacidade de trânsito nas arestas e do consumo de tempo universal, sem teletransporte; a forma exata de representar deslocamento sobre mar permanece em estudo.
 
-**Contagem por resolução do grafo [ABERTO]:** várias arestas terra↔mar adjacentes a um único nó podem representar **trechos costeiros fisicamente distintos** e não devem obrigatoriamente compartilhar uma capacidade única do nó. Contudo, a divisão de uma mesma linha costeira em mais tiles **não pode multiplicar artificialmente a capacidade natural**. Proposta: derivar capacidade natural da geometria efetiva do contato/costa (p.ex. extensão física do segmento de contato e propriedades naturais), de modo que a soma de capacidades seja aproximadamente conservada sob refinamento. Investimento em arestas específicas também precisa respeitar escala/área de contato. A regra geométrica ainda não foi ratificada.
+**Unicidade de cada aresta [RATIFICADO POR F-034]:** arestas distintas terra↔mar são unidades próprias de investimento e de capacidade, mesmo quando compartilham o mesmo nó costeiro. Investir em uma **não** eleva a qualidade ou capacidade das outras. Não criar pool de capacidade/porto compartilhado no nó. Atribuição de capacidade natural a cada contato continua baseada nas propriedades do trecho individual; eventuais comparações de mapas em resoluções distintas são questão futura de calibração geométrica, não razão para agregar os investimentos de arestas diferentes.
 
 **Casos para homologação:** 
 1. Caminho terra→mar→mar→terra: contar exatamente as duas arestas de interface e as arestas marítimas percorridas, **sem** módulo de navios e **sem** tarifa/custo adicional de descarga em nós.
@@ -637,6 +639,26 @@ A diferença **não é arredondamento**, mas definição de qual grandeza a fun�
 6. Water-filling sem mercadorias físicas: os fluxos são abstrações econômicas, não navios operacionais, mas precisam respeitar a impedância da rede.
 
 **Ainda aberto:** função exata das capacidades naturais por ambiente; modelagem geométrica costeira; decisão sobre investimentos/titularidade de arestas em mar aberto; limite real de atravessabilidade quando \`K=0\`; saturação convexa F-031; clearing marginal F-032. **Não** concluir que uma costa desenvolvida torne todo oceano navegável com custo desprezível, ou que o modelo exija três tipos de infraestrutura.
+
+
+### F-034 — Investimento logístico exclusivo por aresta e trabalho nos nós extremos [RATIFICADO]
+
+**Decisão superveniente às hipóteses de interfaces em nós das F-030/F-033:**
+
+1. **Toda infraestrutura logística melhorável por investimento pertence a uma aresta identificada individualmente**, nunca ao nó. Cada aresta possui seus próprios parâmetros naturais, capital incorporado, capacidade, impedância e regime de titularidade. A existência de duas arestas com um nó em comum **não** cria compartilhamento automático de investimento, capacidade, melhoria ou receita.
+2. As arestas terra↔terra, terra↔mar e mar↔mar obedecem à **mesma regra estrutural** de investimento na própria aresta. A infraestrutura terra↔mar representa implicitamente a interface de embarque/desembarque e os meios aquáticos pertinentes, sem custo duplicado de porto no nó.
+3. **Para executar uma ação de melhoria/construção numa aresta \`e=(u,v)\`, o trabalhador deve estar fisicamente no nó \`u\` OU no nó \`v\` no instante lógico de trabalho.** Nenhum canteiro, objeto separado ou colocação do trabalhador na posição geométrica interior da aresta é exigido.
+4. O trabalhador continua sendo agente físico de nó ou **em trânsito através de uma aresta** (F-005): o deslocamento parte de um nó e chega a outro, consome tempo e pode manter progresso no interior da travessia. **Estar em trânsito não equivale a estar em um nó extremo para construir.**
+5. O mesmo trabalhador não pode construir a partir dos dois extremos simultaneamente nem aplicar sua parcela temporal a outra ação no mesmo instante (F-009/F-013/F-015/F-017). A obra deve se referir à **identidade da aresta-alvo**, não apenas aos seus dois extremos para evitar confusões quando houver arestas paralelas futuras.
+6. O tempo de trabalho efetivo, a validação do caixa monetário e a persistência de progresso seguem os contratos gerais F-013/F-015; **o momento de compromisso financeiro e a relação exata entre investimento monetário, tempo de construção e disponibilidade de capacidade melhorada continuam abertos**. Não lançar capital duas vezes nem ativar benefício de obra ainda não concluída.
+7. A escolha de qualquer extremo é simétrica para a **elegibilidade de trabalho**, salvo restrições físicas que já impeçam o trabalhador de estar naquele nó; não acrescentar privilégios de terra/mar ou tecnologia de embarcação por exceção.
+8. As **capacidades produtivas naturais dos nós** (F-002/F-007) permanecem válidas. **Escopo explícito desta ratificação: infraestrutura de transporte/logística.** A existência, posição e financiamento de eventuais melhoramentos produtivos não logísticos do nó constituem outra decisão; F-006 não é abolida silenciosamente.
+
+**Exemplo mínimo:** arestas \`AB\`, \`AC\` e \`AD\` compartilham nó \`A\`. O trabalhador presente em \`A\` pode investir/trabalhar **em uma aresta-alvo por vez**, respeitando seu orçamento de tempo. Investimento em \`AB\` muda \`AB\`, não \`AC\` ou \`AD\`. Um trabalhador presente em \`B\` também pode executar obra em \`AB\`. Se estiver em trânsito entre A e B, não pode iniciar obra de extremidade até chegar.
+
+**Contratos de teste necessários:** investimentos em arestas adjacentes sem vazamento de estado; trabalho de ambos os extremos da mesma aresta com resultados equivalentes; trabalhador em trânsito inelegível; persistência de obra por múltiplos turnos; não duplicar custo/benefício; rota comercial passando por duas interfaces de costa; titulares distintos em arestas contíguas; nenhuma variação em capacidade de nós por investimento exclusivamente logístico.
+
+**Observação de escala espacial:** identidade única de aresta não é, sozinha, uma garantia de equivalência entre mapas Goldberg de diferentes resoluções. Parâmetros físicos naturais podem ser ajustados à escala geométrica em futura homologação, **sem** invalidar unicidade da aresta ou compartilhar seus investimentos com vizinhas. Não criar normalização global artificial como condição para esta ratificação.
 
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
@@ -690,3 +712,5 @@ A diferença **não é arredondamento**, mas definição de qual grandeza a fun�
 - **2026-11-07 — estudo de três tipos naturais de conexão:** F-033 proposta: mesma equação para terra↔terra, terra↔mar e mar↔mar, com elegibilidade de navegação e transferência de meio como possíveis distinções qualitativas mínimas. Evitar contagem de custo/capacidade por tile da costa ou por tile oceânico e evitar investimentos/privatização involuntários em mar aberto. Nenhuma regra adicional ratificada.
 
 - **2026-11-07 — simplificação das travessias marítimas:** F-033 reformulada por decisão de eliminar embarcações/tecnologia naval como controles separados: a aresta terra↔mar representa implicitamente meios de embarque, desembarque e transporte necessários. A rota usa as mesmas equações de todas as arestas, sem custo de transição duplicado nos nós. Permanecem abertos geometria/capacidade costeira e a atribuição de investimentos em mar aberto.
+
+- **2026-11-07 — investimento individual por aresta:** F-034 ratificada: toda infraestrutura logística melhorável pertence à aresta, não ao nó; investir numa ligação não melhora outras mesmo se compartilham extremo. Trabalhador pode construir a partir de qualquer nó extremo, nunca enquanto em trânsito; execução respeita orçamento temporal e progresso físico. Hipóteses anteriores de infraestrutura portuária em nó foram explicitamente superadas. Categoria de investimento produtivo no nó (F-006) não foi redefinida nesta deliberação.
