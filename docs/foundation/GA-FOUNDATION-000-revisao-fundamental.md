@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 3.13  
+**Versão conceitual:** 3.14  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -1664,7 +1664,7 @@ Assim, tarifa percentual crescente não implica renda tarifária crescente; o fl
 
 **Decisão técnica:** F-073 apresenta critérios matemáticos bons (localidade, continuidade, peso não negativo, aditividade sob subdivisão, remuneração de eficiência e de capacidade); **ainda assim NÃO RATIFICAR φ(I)** até fixar Lref e a física de congestionamento. Os altos percentuais ilustrativos e ausência de garantia de ROI exigem calibração física e testes adicionais; não inventar tetos arbitrários. O contrato de rateio F-060 e o índice aditivo F-072 estão ratificados.
 
-### F-075 — Próximo gate: referência física de impedância e atribuição contábil [ABERTO]
+### F-075 — Referência física de impedância e atribuição contábil [REFERÊNCIA TEMPORAL DEFINIDA POR F-076; CALIBRAÇÃO E LIQUIDAÇÃO ABERTAS]
 
 **Risco:** a forma 1+L+W ratificada é adimensional, mas depende da normalização natural Lref que ainda não foi definida. Alterá-la modifica tanto a distribuição dos mercados quanto a renda tarifária dos cotitulares; logo o peso F-073 não pode ser considerado intrinsecamente calibrado sem fixar a física.
 
@@ -1675,7 +1675,74 @@ Assim, tarifa percentual crescente não implica renda tarifária crescente; o fl
 4. Resolver a pendência F-071: fluxos agregados por aresta/civilização/produto não identificam o mercado de destino e seu preço unitário, logo precisam de informação de destino/valor **transitória**, sem estado permanente de caminhos e sem duplicar cobranças.
 5. Homologar gap de equilíbrio F-057, conservação integral, créditos de coproprietários e determinismo em redes com múltiplos destinos, preços diferentes, fluxos opostos e várias civilizações. Medir escalabilidade Goldberg antes do solver de produção.
 
-**Não ratificados:** valor exato de Lref, função física de congestionamento, expoente p, φ(I), algoritmo numérico e mecanismo de atribuição monetária por destino. Manter separação entre os contratos já aprovados e hipóteses de laboratório.
+**Atualização superveniente F-076/F-077:** a unidade dimensional de referência passa a ser **um turno completo do orçamento temporal de ação de um trabalhador padrão**, representado por T0. O custo livre da aresta deve expressar tempo equivalente de transporte, normalizado por T0, **sem presumir tempo de viagem real das mercadorias**. Isto define o significado da unidade, mas a função de velocidade natural, condições ambientais e parâmetros da infraestrutura continuam por calibrar; não anunciar que os valores numéricos de L estão fechados. F-077 adiciona a necessidade de capital de referência **extensivo** com comprimento ou esforço de obra para evitar que refinamento da malha mude a eficiência da mesma obra. O valor numérico de velocidade física de referência, φ(I), congestão/p/K e mecanismo de liquidação monetária F-071 continuam abertos.
+
+
+### F-076 — Unidade de impedância equivalente a tempo físico de referência [RATIFICADO NO REFERENCIAL DIMENSIONAL; VELOCIDADES EM ABERTO]
+
+**Decisão de desenho na continuidade:** utilizar o **tempo de ação de um turno completo do trabalhador padrão** como referência universal dimensional para os custos físicos da rede. A F-013/F-015 já ratificou tempo universal aplicado a produzir, construir e mover; F-037 fixou 1 unidade de capital por turno completo de trabalho padrão para construção. Isso não escolhe sozinho velocidade por terreno/água.
+
+Definições:
+- \`T0>0\` = tempo de ação de **um turno completo de referência**, fixo como unidade interna do modelo; não depender de resolução Goldberg, era histórica, quantidade de nós, renda comercial, preço/tarifa ou cadência específica do clearing.
+- \`ℓ_e\` = extensão geodésica física da aresta e, na superfície canônica do planeta, independentemente de como a geometria seja renderizada.
+- \`τ^natural_e\` = **tempo equivalente de transporte natural** do trecho, calculado segundo sua física geográfica e ambiente, incluindo interface terra↔mar quando aplicável. Não é uma viagem física de carga persistente nem um custo em moeda.
+- \`c^natural_e=τ^natural_e/T0\` = impedância natural adimensional, não negativa.
+- \`c^free_e(I_e)=τ^free_e(I_e)/T0\`, em que τ^free_e é o tempo equivalente em livre fluxo após investimento; congestão acrescenta penalização no próprio ciclo conforme curva futura F-031.
+
+**Ponte geométrica candidata, a ser calibrada:** para um trecho homogêneo com velocidade equivalente natural de referência v_nat,e>0, \`τ^natural_e=ℓ_e/v_nat,e\`. Para terreno heterogêneo, aplicar **integral do tempo local**, \`τ^natural_e=∫_e ds/v_nat(s)\`, em vez de multiplicar distância total por uma velocidade aritmética média. As velocidades e qualquer função de declividade, ambiente marítimo ou transferência costeira exigem definição física futura. Em interfaces terra-mar, não replicar um custo fixo de embarque a cada subdivisão geométrica; qualquer esforço de transferência deve corresponder a **evento físico de mudança de meio** modelado na própria aresta de interface, sem criar nó de porto ou percurso com identidade própria (F-033/F-034).
+
+**Compatibilidade econômica:**
+1. A função comercial RATIFICADA F-056/F-072 usa \`A=P/(1+L+W)\` quando há tarifa, com \`L_r=Σ_e C_e(B_e,I_e)\` em unidades de tempo equivalente/T0, e \`W_r\` adimensional. O número 1 é **um turno de referência de impedância** na função de acesso, não 1 moeda nem cobrança física de um nó.
+2. Trabalhadores movimentam-se fisicamente com progresso temporal próprio F-005/F-015. O tempo equivalente de transporte para o comércio abstrato **não é, por si só, o tempo real gasto por determinado trabalhador, cavalo ou embarcação**, e mercadorias não se deslocam persistentemente. As leis podem compartilhar geometria e fatores naturais, mas não presumir identidade de velocidades de modais futuros.
+3. A referência T0 é **constante**; novas tecnologias melhoram τ^free_e ou K_e mas não alteram retroativamente T0, impedindo mudanças fictícias na geografia econômica por avanço de época.
+4. Taxa logística: se um ciclo econômico cobre Δt_turnos turnos de referência e trafega comercialmente F_e unidades-equivalentes, \`B_e=F_e/Δt_turnos\` é **carga por turno de referência**. A capacidade \`K_e\` deve ser expressa na mesma taxa de carga-equivalente por turno. O fator de saturação usa \`ρ_e=B_e/K_e\` adimensional e independe da duração arbitrária de um ciclo; mudanças reais de produção por unidade de tempo podem, legitimamente, alterar o fluxo.
+5. A constante de velocidade \`v_nat,e\`, inclusive uma velocidade basal global de referência se adotada, **NÃO está fixada numericamente**. A escolha de T0 resolve a **unidade dimensional**, não determina sozinha a escala numérica de L nem a porcentagem de tarifa da F-073. Não escolher velocidade para forçar pedágio conveniente ou destinação específica da produção.
+
+**Teste escalar simples com números ilustrativos, não parâmetros do jogo:** aresta homogênea de 120 unidades de extensão geodésica, velocidade equivalente natural 40 unidades/turno, T0=1 turno ⇒ τ=3 turnos e c_natural=3. Divisão em duas metades com 60 de comprimento e mesmo v produz c_1=c_2=1,5, soma 3. A divisão não cria custo, tempo, moeda nem capilaridade comercial fictícia. Com heterogeneidade, usar soma das integrais de lentidão local; a média aritmética das velocidades não é substituta da integral.
+
+**Observações de calibração/risco:** o planeta novo não tem ainda raio físico e velocidade basal fixados; F-001 deixa unidades geográficas abertas. Portanto a igualdade \`τ_e=ℓ_e/v\` não determina números definitivos. A escolha de velocidade de referência e propriedades naturais por aresta deve ser feita antes de canonizar φ(I), p e custos físicos do motor. Não atrelar parâmetros a tamanho médio do tile.
+
+**Status:** RATIFICADO o **referencial dimensional de uma unidade de tempo de ação por turno padrão** e a derivação de impedância de transporte como tempo equivalente geográfico/T0, sem custo comercial monetário implícito. Distâncias físicas concretas, velocidade referencial, parâmetros naturais, p e curva de congestão ainda abertos. Não reivindicar calibração monetária resolvida pela escolha da unidade.
+
+### F-077 — Capital de referência extensivo e invariância de refinamento da malha [PRINCÍPIO DE COERÊNCIA GEOMÉTRICA RATIFICADO; FUNÇÃO DO NÍVEL ABERTA]
+
+**Problema descoberto:** escolher uma unidade temporal universal preserva \`Σ c_natural,e\` ao subdividir uma aresta equivalente, mas **não garante que uma obra real equivalente conserve sua eficiência e custo monetário**. A candidata de melhoria F-025 \`U=1+log2(1+I/I0)\` com **I0 fixo POR ARESTA** produz menos eficiência ao repartir o investimento de uma mesma obra em duas arestas menores, mesmo quando a geografia e dinheiro total não mudam.
+
+**Diretriz:** quando uma infraestrutura homogênea for dividida geometricamente em segmentos equivalentes, seu trabalho, capital real, grau de melhoria por extensão, capacidade de passagem em série e somatório de impedâncias devem ser preservados. O parâmetro de referência de investimento não pode ser um valor fixo por identificador de aresta. Ele deve depender da extensão/esforço físico de melhoria da aresta (ou variável extensiva equivalente), sem criar um \"trajeto\" como propriedade ou objeto independente.
+
+**Candidato de escala:** para uma aresta homogênea com extensão ℓ_e, \`I0,e=κ_ref×ℓ_e\`, com \`κ_ref\` tendo dimensão monetária/ comprimento físico natural. Alternativamente, função positiva \`I0,e=κ_ref×M_e\` se \`M_e\` representar esforço/custo de obra físico local adequadamente extensivo por geografia, como obras em litoral/declividade. **A forma específica κ_ref, M_e, técnicas de mudança de meio e a curva U(I) NÃO estão ratificadas.** A propriedade invariável requerida é \`I_e/I0,e\` para uma melhoria uniforme de uma mesma infraestrutura.
+
+**Teste de subdivisão, números exclusivamente ilustrativos:**
+- Uma aresta de ℓ=120, com velocidade natural de referência 40 unidades/turno ⇒ \`c_nat=3\`. Aporta-se capital I=120 com \`I0=120\`, então \`U=1+log2(2)=2\`; \`c_free=3/2=1,5\`.
+- Dividir em duas arestas físicas homogêneas de ℓ=60 e aporte I=60 em cada, mas erroneamente manter \`I0=120\` por identificador: cada \`U=1+log2(1+60/120)=1,5849625\`; cada c_free≈0,9463946, soma ≈1,8927893. **O mesmo dinheiro passou a comprar melhoria inferior apenas pela subdivisão geométrica.**
+- Corrigir \`I0\` para 60 em cada metade na hipótese proporcional à extensão: \`I/I0=1\`, cada U=2, cada c_free=1,5/2=0,75, soma 1,5. Recupera exatamente a impedância livre original e preserva o capital total investido.
+
+**Capacidade em série e comércio:** se a subdivisão é somente representação da mesma passagem física, o volume de referência \`K_e\` deve permanecer coerente na série (não dividir automaticamente K ao meio nem somar capacidade de trechos em série). A passagem de F_e mercadorias atravessando duas metades **não** deve transformar o fluxo equivalente em 2F_e fisicamente: cada aresta tem ocupação F_e, mas a capacidade de escoar o mesmo corredor em série continua limitada pelo trecho; custos temporais somam. A melhoria física de capacidade da nova representação deve seguir a mesma intensidade de investimento por extensão.
+
+**Regra de QA futuro:** comparar a mesma geometria natural representada como um segmento e como n segmentos de mesma seção física, mantendo custo físico agregado, custo de obra, capital, quotas de copropriedade, cobertura temporal e taxas de carga. Exigir:
+- \`Σ_e c_nat,e\` igual;
+- \`Σ_e c_free,e(I)\` igual em investimento uniforme equivalente;
+- somatório monetário do capital aplicado igual, sem trabalho duplicado;
+- preço/comércio e custo generalizado de rota em igualdade de demanda/origem/destino;
+- \`Σ_e w_e\` e receitas tarifárias iguais **somente depois** de selecionar fórmula φ e preservar as quotas de sócios em todas as subdivisões;
+- nenhum mercado, costa, capacidade paralela ou travessia adicional gerados pelo mero refinamento.
+
+**Ressalva:** dividir uma aresta numa geografia real alterando nós produtores/mercados, número de interfaces terra-mar, caminhos alternativos ou seções de passagem **não** é refinamento fisicamente equivalente; essas diferenças podem legitimamente alterar o sistema. A curva de nível, o κ_ref e parâmetros costeiros permanecem propostos.
+
+**Status:** a invariância de obra e de esforço físico como critério de modelagem é ratificada; **nenhuma fórmula numérica de capital por comprimento e nem U(I) foi aprovada automaticamente**.
+
+### F-078 — Calibração da velocidade física basal e da geografia [PRÓXIMO GATE; EM ABERTO]
+
+**Bloqueio remanescente:** a referência dimensional T0 foi escolhida em F-076, mas para transformar a distância geodésica em \`c_natural,e\` é necessário especificar o sistema métrico físico do planeta, a velocidade de transporte natural de referência e a forma de tratar ambientes terrestre, aquático e interface sem criar veículos/portos persistentes. Essa escolha afeta a precificação espacial e φ(I), logo precisa derivar de uma experiência de movimento consistente, não apenas de um percentual de pedágio.
+
+**Direção de teste sugerida:**
+1. Definir uma **distância física global** derivada do raio do planeta e distância de grande círculo entre nós/contato geométrico, sem fazê-la depender do número de células/tile.
+2. Definir um regime de movimento natural de referência para terreno neutro expresso em distância por tempo universal T0, sem impor automaticamente o mesmo regime a trabalhadores reais nem a transporte marítimo implícito.
+3. Expressar impedância de cada aresta como integral da lentidão local por distância, acrescentando eventuais custos físicos de interface na aresta correspondentes a uma transição real, sem multiplicar custos costeiros por subdivisão artificial.
+4. Testar invariância de refinamento, taxas de congestionamento em carga-equivalente por T0, condições de capacidade natural baixa em costa, e a função candidata de investimento \`U(I/I0,e)\` com capital de referência extensivo.
+5. Com escala física e movimentos documentados, retestar tarifa F-073, preços por mercado e incentivo aos investimentos; só depois canonizar φ(I), expoente p ou solver de produção.
+
+**Ainda abertos:** raio/unidade métrica do planeta, velocidade de referência, fatores físicos de ambiente e declividade, escala de capital por extensão/esforço, capacidade natural costeira, curva p e pesos de pedágio. Não declarar calibração fechada ou impedância plenamente determinada antes desses valores.
 
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
@@ -1779,3 +1846,5 @@ Assim, tarifa percentual crescente não implica renda tarifária crescente; o fl
 - **2026-11-07 — F-072/F-073 análise de custo aditivo e peso local:** para superar custo de rotas não aditivo de F-069, F-072 propõe atratividade A=P/(1+L+W), com g[e,c]=C_e(B,I)+w_e(1−s[e,c]) e oráculo de menor caminho Dijkstra por civilização e snapshot simultâneo, preservando repartição monetária F-060 inalterada. Reavaliação escalar F-067 sob w=1/3 e A 75%/B 25%: exportação A≈3,70743, tarifa B≈0,23875, crédito líquido A≈4,93683, B≈1,91307; proposta não canonizada. F-073 identifica que w_e=Δc_livre cancela exatamente ganho físico livre no índice aditivo para não titulares e ignora investimento só em capacidade. Propõe peso por ganho físico avaliado na própria capacidade natural da aresta: c0=C_nat(Knat), cI=C_melhorada(Knat), Δ=max(0,c0−cI), w=Δ/(1+Δ/c0), com exemplos para melhorias livres/capacidade e invariância por subdivisão equivalente. Formas C_e/p, peso w, índice tarifado e estratégia de liquidação por destino ainda não ratificados; evitar implementar como lei sem decisão.
 
 - **2026-11-07 — índice aditivo F-072 ratificado, teste F-074 e gate F-075:** ratificada atratividade comercial com tarifa A=P/(1+L+W), custo de aresta g=C+w(1-s), permanecendo rateio monetário F-060 separado (V/(1+W)). F-074 executou bisseção em duas civilizações, mercados D_X=1/D_Y=4, produção A=8/B=2, função natural de congestionamento ilustrativa p=4 e melhoria U(I)=1+log2(1+I/I0), copropriedade A75/B25. Para k=0,1,3,7,15, exportação A≈2,7700,3,7441,4,2102,4,4496,4,5951 e tarifa B≈0,0,5459,0,6250,0,6628,0,6852. Com física fixa, aumentar w de 3 para 6 reduz tarifa B≈0,9837→0,7367; w=12 elimina exportação e renda tarifária, mas toda produção segue vendida localmente. Mesmo ganho proporcional físico com escala de custo λ=0,5,1,2 altera tarifa efetiva de proprietário externo único ≈29,75%,45,85%,62,88%. F-075 indica que fechar Lref física e C_e vem antes de canonizar φ(I); F-071, solver robusto e benchmark Goldberg ainda abertos. Nenhuma nova regra de tamanho de pedágio, teto ou algoritmo foi ratificada silenciosamente.
+
+- **2026-11-07 — F-076/F-077 referencial físico e invariância de investimento:** escolhida a referência dimensional de impedância por **um turno completo de ação do trabalhador padrão (T0)**; c_nat,e=τ_nat,e/T0 e τ_nat,e como tempo equivalente de circulação derivado da geometria/ambiente (cargas ainda são fluxos comerciais abstratos, NÃO viagens reais de mercadorias). Velocidade natural física e escala do planeta seguem abertas. Taxa logística de congestionamento deve usar B_e=F_e/Δt_turnos e capacidade K_e em unidades-equivalentes por turno, evitando confundir quantidade por ciclo com taxa temporal. Teste homogêneo ℓ=120 e v_nat=40/turno produz custo 3, subdividido em 60+60 mantém 3. Identificado erro de investimento de referência I0 fixo por aresta: obra I=120/I0=120 reduz custo 3→1,5, mas divisão em duas metades I=60, I0=120 cada reduz só a ≈1,892789; se I0 acompanha extensão (I0=60 por metade), custo melhorado retorna a 1,5 com capital total idêntico. F-077 ratifica apenas invariância/escala extensiva da obra; fórmula exata κ_ref e U(I) não fechadas. F-078 propõe fechar geometria e velocidade basal antes de tarifa φ(I), curva p, solver e pagamentos F-071.
