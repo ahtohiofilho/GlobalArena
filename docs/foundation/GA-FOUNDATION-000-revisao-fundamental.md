@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 3.1  
+**Versão conceitual:** 3.2  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -970,9 +970,9 @@ Depois realizar water-filling de toda oferta com essas impedâncias congeladas, 
 **Status:** método de equilíbrio simultâneo e fallback condicionado a desempenho **ratificados**; fórmula de saturação \`p\`, construção exata do potencial conjunto, algoritmo numérico, tolerâncias, desempate, distribuição por propriedade de arestas e tarifas seguem **EM ABERTO**.
 
 
-### F-050 — Atratividade logística adimensional baseada na razão preço/impedância [PROPOSTO; NÃO RATIFICADO]
+### F-050 — Experimento histórico de atratividade P/L [SUBSTITUÍDO POR F-056]
 
-**Problema de integração:** a receita monetária do produto vendido no mercado \`n\` segue \`P_{n,i}=√(D_{n,i}/Q_{n,i})\`, com \`R_{n,i}=√(D_{n,i} Q_{n,i})\` por F-043. A impedância \`C_e(B_e,I_e)\` de F-031/F-049 é **não monetária**, física/logística. Não se pode subtrair diretamente custo físico de receita em moeda, mas o water-filling precisa preferir mercados suficientemente valiosos e rotas fisicamente acessíveis.
+**Problema de integração [ESTUDO HISTÓRICO ANTERIOR À F-056]:** a receita monetária do produto vendido no mercado \`n\` segue \`P_{n,i}=√(D_{n,i}/Q_{n,i})\`, com \`R_{n,i}=√(D_{n,i} Q_{n,i})\` por F-043. A impedância \`C_e(B_e,I_e)\` de F-031/F-049 é **não monetária**, física/logística. Não se pode subtrair diretamente custo físico de receita em moeda, mas o water-filling precisa preferir mercados suficientemente valiosos e rotas fisicamente acessíveis.
 
 **Candidata simples de índice de atratividade de cada rota \`r\` até destino \`n\` para mercadoria \`i\`:**
 
@@ -1059,7 +1059,7 @@ Equilíbrio \`P_X/L_X=P_Y/L_Y\`, \`Q_X+Q_Y=10\`:
 
 **Escala/robustez:** nenhum benchmark em grafos Goldberg grandes foi realizado neste experimento; logo não afirmar custo operacional validado. Exigir resultado reprodutível com permutações de ordem de produtores e concorrência multi-item antes da implementação.
 
-### F-053 — Critério generalizado estável para resolver F-050 e cauda de mercados [PROPOSTO; NÃO RATIFICADO]
+### F-053 — Estudo histórico G=L/P [ATUALIZADO PELA F-056]
 
 **Transformação exatamente equivalente de ranking:** se \`A_r=P_n/L_r\` (F-050) e \`P_n=√(D_n/Q_n)\` (F-043), com \`Q_n>0,D_n>0,L_r>0\`, então **maximizar** \`A_r\` é equivalente a **minimizar**
 \`G_r=L_r/P_n=L_r×√(Q_n/D_n)\`.
@@ -1076,7 +1076,7 @@ A grandeza \`D_n/L_n²\` funciona como **demanda ponderada por acessibilidade**,
 
 **Cautelas:** em grafos multiorigem, multimercado, multiproduto e com arestas compartilhadas, \`G_r\` pode não ser gradiente de um único potencial convexo. A existência de uma equação contínua de equilíbrio **não garante unicidade de fluxos por rota**, solução rápida, nem convergência de iterações simplistas. Os fluxos equivalentes podem exigir desempate determinístico; soma de cargas/preços pode ser única mesmo quando a decomposição de rotas não é. Benchmark numérico e teste de degenerescência são gates necessários.
 
-**Decisão superveniente F-054:** a alocação global automática foi ratificada, sem ordens individuais de venda. Permanecem a validar o índice P/L, o mercado local de distância zero e o contrato operacional do solver (F-055).
+**Decisões supervenientes:** F-054 ratificou alocação automática global e F-055/F-056 ratificaram fluxos por aresta e A=P/(1+L), inclusive mercado local. O solver simultâneo e a normalização física seguem abertos (F-057).
 
 
 ### F-054 — Mercado global automático, sem escolha individual de destinos [RATIFICADO]
@@ -1090,12 +1090,12 @@ A grandeza \`D_n/L_n²\` funciona como **demanda ponderada por acessibilidade**,
 4. A rede logística e os preços devem ser resolvidos pelo **equilíbrio simultâneo**; a carga de congestionamento inclui fluxos compartilhados de todas as civilizações e itens (F-049).
 5. Não exigir que cada civilização maximize sua receita bruta por manipulação dos destinos: o alocador global é uma **regra do sistema**, não um equilíbrio estratégico de comerciantes autônomos.
 6. Reprodutibilidade determinística em estados equivalentes, sem dependência da ordem de iteração ou do número de threads.
-7. **Ratificada a escolha institucional; NÃO ratificados por consequência** o índice específico de atratividade P/L de F-050, a extensão G=L/P de F-053, o expoente de congestionamento p ou o algoritmo numérico.
+7. F-054 ratificou apenas o alocador global; **F-056 superveniente** ratificou a forma de atratividade A=P/(1+L), com L físico adimensional. Continuam não ratificados o expoente de congestionamento p, a escala física exata de L e o algoritmo numérico.
 
 **Racional de design:** foco nas decisões estratégicas, sem micromanagement de carga, mercado ou preços; favorecer especialização emergente e um motor único.
 
 
-### F-055 — Mercado espacial como fluxo transitório em arestas, sem enumerar rotas [PROPOSTO; NÃO RATIFICADO]
+### F-055 — Mercado espacial como fluxo transitório em arestas, sem enumerar rotas [RATIFICADO NO PRINCÍPIO; SOLVER ABERTO]
 
 **Problema:** a função de preço P=√(D/Q) e a atratividade candidata P/L podem levar uma parcela positiva, ainda que minúscula, a todo mercado acessível que tenha D>0. Armazenar antecipadamente todas as rotas origem-destino ou todos os caminhos do grafo é incompatível com um mapa Goldberg de grande escala. Um limite arbitrário de distância, número de compradores ou quantidade mínima alteraria a lei econômica.
 
@@ -1131,24 +1131,69 @@ O balanço global preserva a venda integral por civilização/mercadoria: Σ_n a
 
 **Ponto de atenção: mercado local:** F-050/F-053 usam L=Σ_e C_e. Quando produção e mercado estão no mesmo nó, a rota vazia tem L=0; o critério P/L fica indefinido, e G=L/P faria todo tráfego local possuir impedância comercial zero, dominando os demais destinos mesmo quando a oferta local está saturada. **Não inserir custo logístico de nó ou porto por conveniência** (F-034). F-056 deve avaliar uma regra universal de acessibilidade que admita L=0 sem preferência infinita.
 
-**Status:** a representação por fluxos de arcos e preservação de identidade da civilização são candidatas de implementação, não contrato ratificado. A conservação e a atribuição da receita já decorrem de F-041/F-048; prova de equivalência com o clearing de rotas, solver e desempenho ainda pendentes.
+**Status [RATIFICADO]:** o estado comercial transitório em **arcos/arestas**, com conservação em cada nó por civilização e item, agregação de carga nos dois sentidos e ausência de enumeração prévia de todas as rotas é canônico. F-057 mantém abertas a escolha do solver, as tolerâncias, os benchmarks e a demonstração de convergência; o comércio no mesmo nó é permitido sem percorrer arestas (F-056).
 
-### F-056 — Acessibilidade logística com mercado local e distância zero [PROPOSTO; NÃO RATIFICADO]
+### F-056 — Acessibilidade logística com mercado local e distância zero [RATIFICADO NA FORMA; NORMALIZAÇÃO EM ABERTO]
 
 **Defeito identificado na candidata F-050:** P/L só faz sentido se L>0. Comércio no próprio nó usa rota de zero aresta, L=0; então P/L é singular. Se a alternativa G=L/P for usada literalmente, G=0 para toda quantidade local, o que artificialmente favorece venda local infinita.
 
-**Alternativa mínima para teste:** definir uma impedância de transporte normalizada não negativa L≥0, e adotar
+**Forma ratificada:** definir impedância logística **adimensional e normalizada** L≥0 em unidade física comum e adotar
 A = P/(1+L)
 ou, numericamente de forma equivalente,
 G = (1+L)/P = (1+L)√(Q/D).
 
-A unidade adimensional 1 é o nível-base de comparação do fator de acessibilidade (não uma cobrança, nem uma instalação de nó). O efeito de L=0 é A=P, não uma preferência infinita. Não acrescentar coeficiente ajustável por produto; **a normalização de L precisa ser explicitada a partir das próprias unidades físicas** para que o 1 não seja um parâmetro livre escondido.
+A unidade adimensional 1 é o **nível-base universal da atenuação de acessibilidade**, não pagamento, instalação logística ou custo fixo em nó; no próprio nó L=0 e A=P, finita quando há venda Q>0. **Fica ratificada a forma A=P/(1+L), não uma calibração física específica do que vale uma unidade de L**. O critério de normalização precisa ser documentado a partir de propriedades geográficas/tempo/transportes já modelados, sem parâmetros livres por mercadoria ou civilização.
 
 **Checagem demonstrativa sem congestionamento:** dois mercados D_A=4, D_B=1, impedâncias L_A=0 (local) e L_B=2 (remoto), oferta total Q=10. A igualdade de atratividade P_A/(1+0)=P_B/(1+2) produz razões Q_A:Q_B = (4/1²):(1/3²)=36:1, isto é, Q_A=360/37≈9,72973, Q_B=10/37≈0,27027. O mercado remoto não é descartado; também não existe prioridade matemática absoluta para o mercado local. Em cenário equivalente à F-044, se L_A=L_B=0, a distribuição continua proporcional à demanda (8 e 2).
 
 **Alternativa aberta:** utilizar outra forma universal de atenuação de acesso derivada diretamente da geometria ou do tempo real de transporte. Não inventar custos fixos em nós, veículos, porto ou tarifa financeira para contornar L=0.
 
-**Próximo gate de decisão:** decidir se toda venda realizada no próprio nó deve possuir atratividade comercial finita, usando uma normalização uniforme como 1+L; verificar efeitos em rotas longas e muito próximas, e se isso mantém o significado físico da impedância. Só depois canonizar F-050/F-053 e escolher solver.
+**Status e próximo gate:** o usuário ratificou F-055 e F-056. A forma A=P/(1+L), e sua transformação exata G=(1+L)/P, substituem a hipótese P/L **como regra de atratividade do modelo inicial**; a forma final de C_e, a unidade natural de normalização de L, o algoritmo numérico e a robustez do equilíbrio permanecem abertas. F-057 organiza o contrato de equilíbrio e os critérios de validação do solver.
+
+
+### F-057 — Contrato do equilíbrio simultâneo e critérios de aceite do solver [PROPOSTO; NÃO RATIFICADO]
+
+**Contexto:** F-049 já ratificou o **equilíbrio simultâneo**; F-054, o alocador global; F-055, os fluxos transitórios por aresta; F-056, a forma de acessibilidade **A=P/(1+L)** com L≥0 adimensional e mercado local L=0; F-043, o preço de mercado **P=√(D/Q)**. A escolha do algoritmo numérico e dos testes de robustez ainda precisa ser documentada sem mudar essas leis.
+
+**Formulação matemática de referência (pode utilizar caminhos como variáveis matemáticas sem materializar todos os caminhos em execução):**
+- Para cada origem o, civilização c, mercadoria i, com oferta s[o,c,i]≥0, escolher fluxos não negativos x[o,c,i,r] sobre caminhos simples r elegíveis até destinos n(r), incluindo o **caminho vazio** quando a venda é no mesmo nó.
+- Conservação exata de oferta: Σ_r x[o,c,i,r] = s[o,c,i]. Em execução, F-055 permite representar a solução por f[arco,c,i] e a[n,c,i], sem uma tabela persistente de todos os caminhos.
+- Quantidade em cada mercado/mercadoria: Q[n,i] = Σ_{o,c,r:n(r)=n} x[o,c,i,r]. Os pesos de demanda D[n,i]>0 representam presença consumidora, **sem carteira ou orçamento individual**.
+- Carga simultânea de cada aresta e (contando ambos os sentidos): B[e] = Σ_{o,c,i,r:e∈r} aLog[i] x[o,c,i,r]/Tref. O custo C[e](B[e],I[e]) é a impedância **candidata de congestionamento F-031** no estado do clearing; o valor p segue aberto.
+- Impedância acumulada do caminho: L[r] = Σ_{e∈r} C[e](B[e],I[e]) / Lref, onde Lref é **uma referência física universal de normalização a ser definida**, não uma tarifa e nem índice livre por produto. O caminho local vazio produz L=0.
+- Preço monetário por destino/item: P[n,i] = √(D[n,i]/Q[n,i]) quando Q>0; nenhuma cotação de preço de transação para Q=0. Crédito final: Receita[c] = Σ_{n,i} a[n,c,i] P[n,i] ao **tesouro da civilização** (F-048).
+- Critério de atratividade equivalente ao da F-056 para cada caminho r: A[r] = P[n(r),i]/(1+L[r]), ou a expressão numérica inversa
+  G[r] = (1+L[r])√(Q[n(r),i]/D[n(r),i]).
+  G é **índice relativo de escolha**, não cobrança monetária. Para Q=0 e D>0, a extensão contínua fixa G=0 se L é finito; evitar calcular P=∞.
+
+**Condição candidata de equilíbrio de uso da rede:** em cada conjunto de origem o, civilização c e mercadoria i, caminhos usados com x>0 têm G[r] no menor nível alcançável entre caminhos válidos; caminhos não usados têm G[r] não inferior. Todos Q, B, C, L e G são avaliados **no mesmo vetor final de fluxos**, sem custo congelado da rodada anterior e sem fixar preço por ordem de chegada de lotes.
+
+A condição pode ser escrita como **desigualdade variacional**, com conjunto factível de fluxos positivos que conservam cada oferta: encontrar x* tal que Σ_r G_r(x*) [y_r − x*_r]≥0 para todo vetor factível y. Essa é uma **formulação matemática candidata da regra F-056**, não prova de que ela coincide com uma função objetivo de maximização de receita global. Com número finito de nós, destinos e caminhos simples, contínuos e custos finitos, existência de ao menos uma solução é plausível pelos teoremas usuais para desigualdades variacionais; **unicidade e convergência numérica NÃO são garantidas** sem hipóteses adicionais. Estruturas com nenhuma demanda acessível, arestas intransitáveis ou custo não finito exigem contrato de entrada antes da aplicação.
+
+**Critério de aceite computável (gap de equilíbrio, não apenas diferença entre iterações):**
+Para cada fonte o,c,i, seja m[o,c,i]=min_{r viável} G_r(x*) sobre destinos elegíveis. Definir
+Gap(x*) = Σ_{o,c,i,r} x[o,c,i,r] G_r(x*) − Σ_{o,c,i} s[o,c,i] m[o,c,i].
+Este valor é ≥0 em condições exatas e vale **zero se e somente se** todo fluxo efetivo utiliza alternativas de custo generalizado mínimo, sujeito à conservação e ausência de ciclos artificiais. O teste deve usar referência final e incluir todos os mercados conectados, não só a lista de caminhos materializados no solver. A implementação por arcos pode obter m com um **oráculo de caminho mínimo** com pesos de aresta C[e] do estado final, seguido da penalidade final sqrt(Q[n,i]/D[n,i]); sem enumerar todas as rotas.
+
+**Estratégia de implementação sugerida [PROPOSTA, NÃO GARANTIA DE CONVERGÊNCIA]:**
+1. Snapshot causal e imutável de nós, arestas, capital/condições naturais, trabalhadores/demandas e produção do ciclo.
+2. Construir uma solução **factível** (conservar toda oferta por civilização e produto, mesmo quando os custos ainda estão longe do equilíbrio). Se nenhuma demanda positiva for acessível para um componente com produção positiva, lançar falha explícita de pré-condição, **não perder oferta** nem inventar consumidor.
+3. Agregar fluxos efetivos em arcos por civilização/item; recalcular B, C, Q e G para o **mesmo** estado provisório, com todos os itens compartilhando carga.
+4. Para cada origem e mercadoria, consultar um **oráculo de menores caminhos em arestas** até mercados acessíveis para identificar alternativas mais atraentes, em vez de enumerar todos os caminhos simples.
+5. Atualizar a distribuição de forma **amortecida e conservativa** (combinação convexa de soluções factíveis), avaliando o Gap do estado final. **Não** adotar atualização ingênua do tipo "mover toda a produção para a melhor rota" a cada passo; pode oscilar. Passo fixo, método de amortecimento, critérios de linha de busca e solver exato de VI precisam de benchmark antes de ratificação.
+6. Parar quando houver **conservação de volume, gap de equilíbrio dentro da precisão homologada, receitas corretas, ausência de fluxos circulares artificiais e determinismo**. A tolerância numérica não deve ser usada como raio econômico de exclusão de mercados: não declarar parcelas positivas como zero por regra de gameplay arbitrária.
+7. Se não houver convergência, expor falha de solver e diagnóstico, sem aceitar silenciosamente resultado não equilibrado. A alternativa de expectativa congelada de F-047 só pode ser adotada após decisão específica motivada por custo/desempenho.
+
+**Experimento mínimo (um nó produtor local e mercado remoto):** Q=10 de um item; demanda D_local=4 e D_remoto=1; venda local com L=0; aresta única até remoto com **custo ilustrativo** C_remote(q)=1+(q/5)^4, tomada já na unidade de referência Lref=1 para esse ensaio, p=4 não ratificado. O equilíbrio exige
+sqrt((10−q)/4) = [1+C_remote(q)] sqrt(q/1),
+com q=quantidade comercializada remotamente.
+Solução por bisseção: q_remoto≈0,5881293258; q_local≈9,4118706742; impedância remota≈1,0001914306; preço local≈0,6519165705; preço remoto≈1,3039579378; receita bruta total≈6,90265035497, integralmente creditada à civilização produtora. O caso comercial local **não força fluxo integral local**, e nenhum estoque é gerado.
+
+**Por que não basta uma passagem gulosa:** começando com todo Q=10 no mercado local, a opção remota inicialmente vazia tem G_remoto=0 (extensão contínua), enquanto G_local=√(10/4)≈1,5811; transferir **tudo** ao remoto faz G_local=0 e G_remoto muito alto, gerando ida e volta se o solver escolher a melhor opção e transferir todo o lote. Isso não contradiz o equilíbrio simultâneo; exige algoritmo de aproximação com verificação de gap, não simples troca de caminho por período.
+
+**Teste de robustez a realizar:** três ou mais nós com rotas paralelas e ciclos potenciais; produção de duas civilizações sobre a mesma aresta; produtos distintos competindo por capacidade; venda local; rotas de impedância nula ou intransitável; permutações de enumeração; grandes mapas Goldberg; preço/fluxo muito pequenos; condição de D=0; gargalo costeiro forte; remuneração por civilização distinta; benchmark de tempo e memória. Não afirmar esses testes já executados — apenas a bisseção do caso escalar acima foi verificada.
+
+**Status:** a arquitetura de mercado e a fórmula de atratividade são **ratificadas em F-054/F-055/F-056**. A VI, o oráculo, o gap como gate numérico, os critérios de desempate e a estratégia iterativa são **propostas a homologar** antes de implementar. Não canonizar a variante de congestionamento com p=4 como parte deste teste.
 
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
@@ -1228,3 +1273,5 @@ A unidade adimensional 1 é o nível-base de comparação do fator de acessibili
 - **2026-11-07 — alocador global ratificado:** F-054 fecha a escolha por um mercado comercial automático global, com receitas de vendas creditadas exclusivamente às civilizações responsáveis, sem carteiras dos consumidores nem ordens de venda individuais. O critério particular P/L, o solver e sua forma de representação da rede ainda dependem de validação, especialmente para mercados no mesmo nó da produção.
 
 - **2026-11-07 — estudo de escalabilidade por arcos e venda local:** F-055 propõe fluxo transitório em arestas por civilização/mercadoria, conservação nodal e agregação de congestionamento em ambos os sentidos, evitando enumerar todas as rotas. F-056 identifica a singularidade P/L no mercado do próprio nó (L=0) e propõe testar a atenuação P/(1+L), com referência comum e sem tarifa, porto ou custo de nó; ambos permanecem não ratificados.
+
+- **2026-11-07 — ratificação de fluxos e mercado local; estudo do solver:** F-055 e F-056 foram aprovadas: fluxos comerciais transitórios em arcos por civilização/item, conservação nodal, e atratividade A=P/(1+L) com mercado local L=0 (normalização da impedância pendente). F-050 e F-053 passam a estudos históricos da hipótese P/L sem correção local. F-057 propõe contrato de desigualdade variacional e verificação por gap de equilíbrio, evitando a atualização gulosa oscilatória; caso escalar local/remoto resolvido por bisseção com q_remoto≈0,5881293 de 10, congestionamento ilustrativo p=4. Solver e normalização continuam não ratificados.
