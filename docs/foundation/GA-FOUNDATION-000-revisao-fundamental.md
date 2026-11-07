@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 1.6  
+**Versão conceitual:** 1.7  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -562,6 +562,54 @@ O estado natural \`I_x=0\` implica \`U_x=1\`; as condições físicas naturais e
 **Governança:** F-030 é ratificada como concretização de F-007. F-031 documenta a exigência de penalidade fortemente convexa e a função \`1+ρ^p\` como **candidata**, sem canonizar \`p=4\`, a fórmula de investimento, quaisquer capacidades naturais ou a regra de tarifa.
 
 
+### F-032 — Teste de water-filling com gargalo natural e rota alternativa [EXPERIMENTO; NÃO RATIFICADO]
+
+**Objetivo:** testar a F-030 (nó natural como infraestrutura), a forma convexa F-031, o ganho do investimento e a natureza do \`C(B)\` usado pelo mercado. O experimento separa fluxo logístico abstrato de cobrança monetária. Não requer simulação de cargueiro ou estoque de carvão/pedra.
+
+**Cenário controlado:** um mercado recebe exatamente \`Q=6\` unidades equivalentes **por intervalo de referência**, com demanda suficiente, sem variação de preços nem tarifas neste teste isolado. Há duas rotas alternativas:
+
+- **A — curta, descarregando em praia natural de baixa capacidade:** contribuição fixa das arestas = 2; nó de descarga com impedância natural livre = 1 e capacidade natural \`K_A=1\`. Ao investir \`I\` nesse nó, usar provisoriamente \`U(I)=1+log₂(1+I/100)\`, impedância livre do nó \`1/U\` e capacidade de descarga \`K_A=U\`; assim:
+  \`C_A(x;I)=2+(1/U)×[1+(x/U)^4]\`.
+- **B — rota mais longa e descarga naturalmente favorecida, sem novo investimento:** contribuição fixa das arestas = 7; nó de descarga com impedância natural livre = 1 e capacidade de referência = 10; assim:
+  \`C_B(y)=8+(y/10)^4\`.
+- \`x+y=6\`, com \`x,y≥0\`, e fluxo de uma mesma unidade logística normalizada.
+- As operações de descarga entram no custo **uma vez por passagem relevante**; não somar custos de nós que apenas são transitados.
+
+**Interpretação A — impedância \`C\` como grandeza marginal de admissão da próxima fração de fluxo [PROPOSTA PREFERIDA]:** no equilíbrio de rotas utilizadas, \`C_A(x)=C_B(y)\`, com rota não utilizada tendo custo inicial ≥ custo da rota utilizada. Resultado aproximado:
+
+| Capital incorporado na praia | \`U\` | Fluxo A \`x\` | Fluxo B \`y\` | Impedância nas rotas utilizadas |
+| ---: | ---: | ---: | ---: | ---: |
+| 0 | 1 | 1,4984 | 4,5016 | 8,0411 |
+| 100 | 2 | 3,6428 | 2,3572 | 8,0031 |
+| 300 | 3 | 6,0000 | 0 | 7,6667 em A |
+| 700 | 4 | 6,0000 | 0 | 3,5156 em A |
+
+Se as seis unidades fossem enviadas **sem investimento somente por A**, sua impedância marginal final seria \`C_A(6;0)=1299\`, enquanto a rota B oferece alternativa de menor custo; por isso a praia absorve somente pequena fração na alocação. Com investimento suficiente, a praia recebe todo o fluxo, sem criar categoria "porto". **Estes números são de laboratório**, não parâmetros canônicos.
+
+**Atenção — custo marginal versus custo médio [CRÍTICO]:** a tabela pressupõe que \`C_e(B)\` seja a **impedância incremental/marginal** de adicionar uma unidade infinitesimal de carga. Se, em vez disso, o sistema interpretar \`C_e(B)\` como custo médio aplicado retroativamente a **todas as unidades**, uma otimização do ônus total \`xC_A(x)+yC_B(y)\` exige igualar as derivadas \`C+xC'\`, **não** apenas \`C\`; neste exemplo o resultado muda substancialmente:
+
+| Capital I | Fluxo A pela igualdade de C (marginal interpretado) | Fluxo A minimizando xC(x)+yC(y) (C médio) |
+| ---: | ---: | ---: |
+| 0 | 1,4984 | 1,0151 |
+| 100 | 3,6428 | 2,4446 |
+| 300 | 6,0000 | 4,0750 |
+| 700 | 6,0000 | 5,8580 |
+
+A diferença **não é arredondamento**, mas definição de qual grandeza a função representa. A **recomendação conceitual ainda não ratificada** é interpretar \`C(B)\` como **impedância marginal** de acrescer fluxo no mercado abstrato, e, quando for necessário expressar esforço físico agregado, calcular a primitiva/integral \`H(B)=∫₀^B C(z)dz\`, em vez de \`B×C(B)\`. Para rotas paralelas, minimizar \`H_A(x)+H_B(y)\` produz exatamente a condição \`C_A(x)=C_B(y)\`, com a propriedade de solução única sob funções marginais contínuas e estritamente crescentes. Não transformar \`H\` em conta monetária de transportador.
+
+**Por que essa escolha é economicamente relevante:** um water-filling que aloca incrementos de fluxo conforme a oportunidade marginal precisa usar custos marginais e preços marginais compatíveis. Se a função de receita de mercado usa outra convenção, é necessário reconciliar as definições antes de canonizar algoritmo; não misturar a leitura marginal na escolha de rotas com cobrança média retroativa na liquidação.
+
+**Riscos/portões para a próxima decisão:**
+1. Testar integração real das curvas de preço/demanda: aqui o preço foi mantido constante, o que não valida o clearing completo.
+2. A tarifa monetária de terceiros deve influenciar a escolha líquida, mas permanecer **transferência financeira contabilizada uma vez**, não integrar indevidamente \`C(B)\` como impedância física.
+3. Testar vários nós de operação e arestas de uma rota para evitar que custos de descarga/transbordo sejam contados duas vezes.
+4. Confirmar que a carga é uma **taxa por unidade de tempo econômico**, coerente com os períodos em F-029/F-031.
+5. A soma de contribuições de várias origens e itens, em rede compartilhada, exige cálculo de congestionamento com fluxo agregado, não impedância recalculada isoladamente por vendedor.
+6. O caso \`x=6\` para A em \`I=300\` é válido nesta convenção marginal e ausência de tarifa; **não** representa garantia universal de que investimentos concentrem 100% da oferta em qualquer mercado.
+
+**Status:** experimento numérico realizado e interpretado. F-030 ratificada; funções convexas F-031, integral marginal de impedância, solução do water-filling e níveis/valores de investimento permanecem **ABERTOS**.
+
+
 ## 8. Governança da nova versão e critérios de reaproveitamento
 
 **A fonte de verdade do novo desenho** é a sequência de decisões ratificadas nesta documentação. As decisões do jogo antigo **não exercem autoridade sobre ela**; tampouco foram revogadas para a versão antiga.
@@ -607,3 +655,5 @@ O estado natural \`I_x=0\` implica \`U_x=1\`; as condições físicas naturais e
 - **2026-11-07 — estudo de saturação mínima:** F-029 proposta com impedância linear na taxa `B/K`, multiplicador de investimento `U=1+log₂(1+I/I₀)`, eficiência e capacidade derivadas do mesmo nível e exemplo de rotas concorrentes. Fórmulas, parâmetros e convergência não ratificados. Foi ressaltada a necessidade de normalizar fluxo por duração do ciclo econômico.
 
 - **2026-11-07 — revisão da saturação pela infraestrutura natural:** F-030 ratificada: nós e arestas naturais já são infraestrutura funcional e entram em todos os cálculos, inclusive quando investimento=0; necessidade de modelar capacidade dos nós para carga/descarga, não só arestas. F-031 propõe penalização convexa `1+ρ^p`, com expoente global e teste da praia/cargueiro; versão linear F-029 deixa de ser candidata principal. Fórmulas e p não ratificados.
+
+- **2026-11-07 — experimento do gargalo natural:** F-032 documenta duas rotas com uma praia natural de capacidade baixa e um acesso alternativo, testando fluxo de 6 unidades, função convexa p=4 e níveis de investimento. Detectada ambiguidade crítica entre interpretar C(B) como impedância marginal (water-filling iguala C) e como custo médio (ótimo requer C+B C'); recomendado testar a interpretação marginal e integral de esforço H(B)=∫C(z)dz, sem ratificação prematura.
