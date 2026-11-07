@@ -213,6 +213,8 @@ public sealed partial class CanonicalPhysicalTacticalSession
             _reversedLocalSimulatedEconomicTitles.Any(x =>
                 x.Evidence.OriginalTitleActionOrdinal == title.ActionOrdinal ||
                 x.Evidence.ReversalAgreementId == e.ReversalAgreementId) ||
+            _recordedLocalCommercialTerms.Any(x =>
+                x.Evidence.RegisteredTitleActionOrdinal == title.ActionOrdinal) ||
             _executedLocalRecipientCustodyDispositions.Any(x =>
                 x.SourceCommitmentActionOrdinal == first.SourceCommitmentActionOrdinal))
             throw new InvalidOperationException(
@@ -413,5 +415,6 @@ public sealed partial class CanonicalPhysicalTacticalSession
                     "In-game title diverged from the historical physical custody and approval identity.");
         }
         VerifyReversedLocalSimulatedEconomicTitles();
+        VerifyRecordedLocalCommercialTerms();
     }
 }
