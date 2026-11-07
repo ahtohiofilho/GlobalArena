@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 3.4  
+**Versão conceitual:** 3.5  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -396,7 +396,7 @@ Toda aresta conserva condições naturais de transporte. A infraestrutura de tra
 5. A tarifa é separada da impedância logística; **não cobrar duas vezes** pela mesma rubrica nem converter automaticamente pontos de impedância em moeda.
 6. Infraestrutura é economicamente construída com **dinheiro** (F-021), sem estoques de materiais específicos; eventuais exigências de trabalho/tempo para sua execução continuam a ser modeladas pelo orçamento universal de ação, conforme decisão posterior.
 
-**Não ratificados:** escala e equação de nível, limites, degradação, parâmetros, função de tarifa, quem paga (vendedor/comprador), quem recebe (titular ou outro agente), compartilhamento de titularidade, regulação tarifária e função de saturação.
+**Ainda não ratificados:** escala/equação física de nível, limites, degradação, função que converte capital em **peso proporcional da tarifa** e regra de titularidade/copropriedade. **F-060 resolve a natureza percentual e o rateio:** o encargo recai sobre a parcela comercial da civilização produtora, sem carteira compradora, e a parte tarifária é destinada ao tesouro do titular da aresta, quando este for definido. A tarifa não é impedância física.
 
 ### F-025 — Investimento, eficiência e capacidade logística [RATIFICADO O DESENHO ABSTRATO; FÓRMULAS PROPOSTAS]
 
@@ -926,11 +926,11 @@ Depois realizar water-filling de toda oferta com essas impedâncias congeladas, 
 
 **Contrato:**
 1. Uma atividade produtiva gera quantidade física/econômica de mercadoria \`Q_{o,i,c}\` vinculada à civilização \`c\`, cuja atribuição de comando/pertencimento exige um identificador explícito, inclusive quando trabalhadores de várias civilizações estiverem no mesmo nó.
-2. O clearing de mercado F-041/F-043 atribui venda total e preço por item/destino; para a parcela oriunda da civilização \`c\`: \`ReceitaBruta_c=Σ_{o,n,i}q_{o→n,i,c}×P_{n,i}\`. Creditar o resultado **somente ao tesouro \`M_c\` da civilização \`c\`**, uma vez por operação.
+2. O clearing de mercado F-041/F-043 atribui venda total e preço por item/destino; para a parcela oriunda da civilização \`c\`: \`ReceitaBruta_c=Σ_{o,n,i}q_{o→n,i,c}×P_{n,i}\`. **A titularidade dessa receita produtiva pertence à civilização \`c\`, jamais ao trabalhador/nó; após F-060, o caixa creditado a ela é a parcela LÍQUIDA de eventuais tarifas proporcionais de arestas alheias**, enquanto as demais parcelas são creditadas diretamente aos respectivos tesouros proprietários. Sem tarifas, líquido=bruto. Não creditar o bruto à civilização e depois novamente o rateio, nem cobrar duas vezes.
 3. **O trabalhador não possui carteira monetária**, não recebe salário em moeda automaticamente pela produção e não pode ser o destinatário de receita por vender. Seu peso de demanda \`k_w\` e sua eficiência F-037/F-038 não são dinheiro individual.
 4. **A localidade/nó não possui tesouro próprio por padrão.** Um nó pode produzir, abrigar trabalhadores, demandar e ter estrutura física sem possuir caixa ou apropriar-se da receita; seu eventual vínculo administrativo com uma civilização não substitui o identificador econômico da atividade.
 5. Obras em arestas F-034/F-035/F-037 são executadas fisicamente pelos trabalhadores autorizados, mas o **pagamento é realizado pelo tesouro da civilização investidora**: debitar \`M_c\` e incorporar capital na aresta na mesma operação; não debitar do trabalhador nem de um "tesouro do nó".
-6. Eventuais **tarifas monetárias de terceiros** deverão usar contas das civilizações pagadoras/recebedoras ou outra entidade explicitamente autorizada por decisão futura. Não presumir que o trabalhador pague tarifa nem que a propriedade da aresta coincida com o território de origem. **Por F-059, quando a tarifa existir, ela influencia o clearing antes de qualquer desempate técnico; F-060 estuda a alternativa de cobrá-la como parte da própria receita comercial, sem desembolso antecipado.**
+6. Eventuais **tarifas monetárias de terceiros** deverão usar contas das civilizações pagadoras/recebedoras ou outra entidade explicitamente autorizada por decisão futura. Não presumir que o trabalhador pague tarifa nem que a propriedade da aresta coincida com o território de origem. **Por F-059, quando a tarifa existir, ela influencia o clearing antes de qualquer desempate técnico; F-060 RATIFICOU sua natureza proporcional à receita comercial e o rateio único, sem desembolso antecipado.**
 7. A venda de mercadorias para o setor consumidor **implícito e sem carteira** (F-046) é entrada aberta de moeda no subconjunto modelado. **Transações financeiras entre civilizações representadas** precisam de contrapartidas coerentes; circulação monetária fora desse subconjunto não será simulada.
 8. Não criar tributação automática sobre receita já recebida integralmente pelo tesouro da própria civilização: isso seria transferir dinheiro da civilização para ela mesma. Eventuais impostos entre agentes distintos, setor externo ou outras instituições precisam de definição posterior.
 9. Saldo da civilização pode financiar atos enquanto houver dinheiro; dinheiro de compras de consumidores não é limitado por um saldo modelado. **Não confundir** abertura do lado comprador com caixa ilimitado do tesouro da civilização.
@@ -1259,11 +1259,11 @@ Solução por bisseção: q_remoto≈0,5881293258; q_local≈9,4118706742; imped
 **Status:** a inclusão das tarifas reais no equilíbrio primário e a proibição de desempates técnicos que redistribuam moeda foram **RATIFICADAS**. A fórmula tarifária, a política de desempate genuinamente neutra e o solver robusto seguem em aberto.
 
 
-### F-060 — Tarifas proporcionais à receita comercial: teste e fechamento financeiro [PROPOSTO; NÃO RATIFICADO]
+### F-060 — Tarifas proporcionais à receita comercial e repartição contábil [RATIFICADO O PRINCÍPIO E O RATEIO; PESOS E PROPRIEDADE ABERTOS]
 
 **Motivação:** F-041 obriga venda de **toda** a produção; F-043 fixa \`P=√(D/Q)\` e \`P→0\` para Q muito maior que D. Uma tarifa **nominal fixa por unidade**, mesmo que logisticamente coerente e cobrada por titular de aresta externa, pode superar o preço unitário e forçar **receita líquida negativa**. Isso entraria em conflito operacional com tesouros finitos das civilizações e o compromisso de venda integral, sobretudo em mercados distantes com acesso somente por infraestrutura alheia. Não resolver criando compradores com carteiras nem descartando quantidades.
 
-**Alternativa prioritária em estudo [não ratificada]:** calcular o encargo tarifário **como fração da receita bruta efetivamente produzida pela venda**, proporcional ao volume e ao preço do item no mercado de destino, em vez de um valor monetário absoluto que independa do preço.
+**Decisão superveniente e ratificada:** calcular o encargo tarifário **como fração da receita bruta efetivamente produzida pela venda**, proporcional ao volume e ao preço do item no mercado de destino, em vez de um valor monetário absoluto que independa do preço. **A estrutura de rateio conjunto descrita a seguir fica adotada como contrato inicial**, mantendo a forma específica dos pesos \`w_e=φ(I_e)\`, sua normalização/limites e a titularidade das arestas EM ABERTO. Não inferir tarifas positivas em arestas sem titularidade ou sem melhoria enquanto esses contratos não forem definidos.
 
 Para cada aresta e com titular civilizacional \`owner(e)\` e melhoria/investimento \`I_e\`, definir um peso tarifário **adimensional, universal entre mercadorias**, \`w_e=φ(I_e)≥0\`, com \`φ(0)=0\` como candidato mínimo; função φ e sua calibração não aprovadas. Uma aresta não pertencente a uma civilização ou uma aresta da própria civilização vendedora **não é tarifada** nessa venda. Para caminho r de produção da civilização c:
 
@@ -1279,7 +1279,7 @@ Para uma venda de quantidade \`q\` no mercado \`n\` do item \`i\`, com preço fi
 
 **Identidade financeira exata:** \`V_liquida_produtora + Σ_e T_{e←c,r} = V_bruta\`. Não há dinheiro inventado entre contas representadas: a receita comercial bruta entra do **setor consumidor externo/implícito F-046** e é repartida contabilmente entre a **civilização produtora** e os **titulares das arestas de terceiros**. Não criar carteira de trabalhador ou consumidor.
 
-**Atratividade logística com tarifa [CANDIDATA]:**
+**Atratividade logística com tarifa [CANDIDATA, NÃO CONFUNDIR COM A RATIFICAÇÃO DO RATEIO]:**
 \`A_{c,r,n,i} = [P_{n,i}/(1+W_{c,r})]/[1+L_r]\`,
 \`G_{c,r,n,i}=(1+L_r)(1+W_{c,r})√(Q_{n,i}/D_{n,i})\`.
 Esta forma preserva F-056 quando todas as tarifas são zero; não converte pontos de impedância em moeda. O fator \`1+W\` é **proposta de desenho de cobrança comercial**, independente do fator logístico \`1+L\`. Se uma rota própria e outra externa possuem as mesmas condições físicas, o proprietário do próprio trecho não paga tarifa e pode preferi-la por esse motivo. A carga comercial e a forma de propriedade do trecho são consideradas simultaneamente no clearing F-049.
@@ -1295,8 +1295,8 @@ Esta forma preserva F-056 quando todas as tarifas são zero; não converte ponto
 - Outra decomposição, igualmente equilibrada em preços/cargas quando não existe tarifa, pode usar \`q_Beta,superior≈0,8650803\`, elevando a transferência para \`≈0,069886\`, apesar de os preços finais, cargas físicas e receitas **brutas** continuarem iguais. Diferença ≈\`0,015996\` de moeda entre tesouros determinada apenas pela decomposição.
 - **A comparação só serve para provar que as duas soluções SEM tarifa não são financeiramente equivalentes quando se aplica tarifa depois.** Se incluirmos a cobrança corretamente no equilíbrio desde o princípio, é necessário **recalcular a alocação**. Não tratar tais decomposições anteriores como dois equilíbrios do novo sistema com tarifa.
 
-**Por que F-060 não fica automaticamente ratificada por F-059:**
-1. A F-024 ratifica apenas a possibilidade de tarifa monetária de não titular; **não** decidiu ainda a fórmula, sua natureza proporcional ou a titularidade compartilhada.
+**Questões que a ratificação de F-060 NÃO encerra:**
+1. A F-024 permitia tarifa sobre uso alheio; **a natureza proporcional foi agora ratificada em F-060**, mas a origem dos direitos tarifários, a função de intensidade e a titularidade compartilhada não foram fechadas.
 2. Uma cobrança proporcional ao valor de mercado permite tarifas monetárias elevadas em bens de maior preço ainda que tenham carga física igual: isso pode ou não ser desejado. O peso tarifário \`w_e\` é universal, mas o montante monetário acompanha o preço do produto. É escolha econômica, não exigência física.
 3. Mesmo com \`V_liquida≥0\`, um proprietário de gargalo indispensável pode capturar parcela muito alta de receitas se \`W\` crescer muito, criando incentivos monopolistas. Não definir teto arbitrário antes de discutir investimento, tarifação e incentivos.
 4. Várias arestas de terceiros no mesmo trajeto devem cobrar **uma única repartição do valor da venda** conforme a identidade acima; não tributar repetidamente a receita já reduzida em sequência dependente da ordem dos trechos.
@@ -1304,9 +1304,73 @@ Esta forma preserva F-056 quando todas as tarifas são zero; não converte ponto
 6. A decisão de onde reside a titularidade de uma aresta e como investimentos de outra civilização afetam sua propriedade precisa de deliberação específica.
 7. Caso o jogo futuramente inclua seguros, contratos, preferências de produtos ou outras rubricas, não adotar novas contas por inferência; preservar escopo monetário simples do jogo.
 
-**Gates próximos recomendados:** (a) definir se tarifas devem ser percentuais sobre receita comercial ou nominais por carga, considerando **venda universal e receitas não negativas**; (b) somente se a primeira alternativa for selecionada, estudar a função \`φ(I)\` por capital incorporado, ownership, investimento por terceiros e eventuais limites; (c) executar um equilíbrio simultâneo **já com tarifas dentro do índice** em rede 2×2 e comparar com o laboratório ex post de F-058; (d) definir desempate secundário neutro para soluções realmente indistinguíveis inclusive em pagamentos.
+**Gates próximos recomendados:** (a) analisar a função \`φ(I)\` e os incentivos de investimento/propriedade sem novos parâmetros arbitrários (F-061); (b) decidir direitos sobre arestas sem titular, investimento de terceiros, titularidade e eventual copropriedade (F-062); (c) executar equilíbrio simultâneo **com tarifa realmente endógena dentro do índice** em rede 2×2; (d) determinar desempate secundário neutro somente entre soluções equivalentes inclusive em pagamentos.
 
-**Status:** contrato F-059 de inclusão monetária antes do desempate está ratificado; as fórmulas F-060 e os parâmetros são **apenas candidatos** e não autorizam alterar o código econômico nem registrar tarifas com essa fórmula sem decisão.
+**Status:** contrato F-059 de incluir tarifas antes do desempate ratificado; **F-060 ratificada na proporcionalidade e na regra de rateio \`V/(1+Σw)\`, \`Vw_e/(1+Σw)\`**; a atratividade tarifada multiplicativa, a determinação de \`w_e\`, propriedade e solver final ainda requerem validação. Não introduzir tarifas arbitrárias antes da titularidade. O preço de mercado \`P\` permanece o mesmo para todos os vendedores do item/destino; o rateio altera somente a **distribuição monetária da receita bruta**.
+
+
+### F-061 — Intensidade de tarifa vinculada ao ganho físico de acessibilidade [TESTE EXPLORATÓRIO; FÓRMULA NÃO RATIFICADA]
+
+**Objetivo:** encontrar \`w_e=φ(I_e)\` não negativo, universal para produtos, contínuo no investimento e sem percentuais arbitrários por item/aresta, preservando a tarifação proporcional ratificada em F-060. Uma tarifa é percentual monetário derivado do valor da venda; **não se confunde com o custo físico da aresta**. O investimento logístico físico é financiado pelo tesouro da civilização investidora com trabalho F-035/F-048.
+
+**Funções físicas de referência, já propostas mas não canônicas em F-025/F-031:**
+\`U(I)=1+log₂(1+I/I₀)\`,
+\`C_livre,e(I)=C_natural,e/U(I)\`,
+\`K_e(I)=K_natural,e U(I)\`.
+Usar \`c₀=C_natural,e/Lref\` e \`c(I)=C_livre,e(I)/Lref\` **adimensionais**. \`Lref\` é a referência física comum de F-056 e segue EM ABERTO; \`I₀\` também não está calibrado.
+
+**Hipótese ingênua analisada e preterida:** \`w=1−1/U\` (fração de redução da impedância em fluxo livre). Com \`c₀=1\`, apenas **uma** aresta de terceiro e \`U=1,01\`:
+- Antes: divisor da atratividade \`(1+c₀)(1+w)=2\`.
+- Depois: \`c=1/1,01≈0,990099\`, \`w≈0,009901\`, divisor \`(1+c)(1+w)≈2,009803\`.
+Assim, **pequena melhoria de infraestrutura torna a rota comercialmente pior imediatamente para terceiros**, porque tarifa cresce mais que o benefício físico. Isso não viola melhoria física F-024, mas revela incentivo questionável na regra de intensidade tarifária. Não canonizar \`w=1−1/U\` sem fundamento.
+
+**Candidata preferida de laboratório: intensidade baseada no ganho de acessibilidade em fluxo livre:**
+\`w_e = 1/(1+c_e(I_e)) − 1/(1+c_{0,e})\`.
+Supor \`0≤c_e(I_e)≤c_{0,e}<∞\`. Essa função tem:
+- \`I=0 ⇒ c=c₀ ⇒ w=0\`, sem tarifa sobre infraestrutura natural ainda não melhorada;
+- melhorias físicas que reduzem \`c\` aumentam \`w\`, sem variável de preço de produto e sem coeficiente tarifário adicional;
+- \`0≤w_e<1\` quando \`c₀\` finito e \`c≥0\`, daí a **participação tarifária efetiva de uma única aresta** \`w/(1+w)<50%\` (limite matemático da candidata, **NÃO um teto já ratificado**);
+- o cálculo usa impedância **livre**, e não a carga B efetiva do ciclo, para evitar realimentação adicional de nível de tarifa pelo próprio congestionamento; o efeito do congestionamento sobre distribuição, preço e receita efetiva continua endógeno.
+
+**Amostra numérica com \`c₀=2\` e \`U=1+log₂(1+I/I₀)\`; números ilustrativos:**
+
+| \`I/I₀\` | U | c livre | w | Percentual efetivo numa aresta \`w/(1+w)\` | Divisor do acesso terceirizado \`(1+c)(1+w)\` |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 | 1 | 2,000000 | 0 | 0% | 3,000000 |
+| 1 | 2 | 1,000000 | 0,166667 | 14,2857% | 2,333333 |
+| 3 | 3 | 0,666667 | 0,266667 | 21,0526% | 2,111111 |
+| 7 | 4 | 0,500000 | 0,333333 | 25,0000% | 2,000000 |
+| 15 | 5 | 0,400000 | 0,380952 | 27,5862% | 1,933333 |
+
+**Propriedade analítica no caso isolado de UMA aresta (sem outros segmentos):**
+\`(1+c)(1+w)=(1+c)×[1+1/(1+c)−1/(1+c₀)]=1+(1+c)×c₀/(1+c₀)\`, que **diminui conforme c diminui**. Assim, nessa hipótese, o acesso comercial do não proprietário MELHORA monotonicamente enquanto o titular captura uma parcela percentual da venda. A taxa efetiva também cresce com a redução de c.
+
+**Limite importante em rotas com múltiplas arestas (ainda não resolvido):**
+A regra de atratividade tarifada candidata F-060 multiplica \`(1+L_r)(1+W_r)\`. Uma elevação local \`w_e>0\` incide sobre o fator de **toda a rota**, ao passo que a melhoria física reduz somente \`c_e\`. Portanto, **nenhuma função estritamente positiva local \`w_e(c_e)\` pode garantir que melhorar a aresta aumente a atratividade líquida para terceiros em TODAS as rotas arbitrariamente longas** sob esse produto de fatores, pois as demais impedâncias podem ser grandes. Contraexemplo exato com \`c₀=2\`, \`c=1\`, \`w=1/6\`, \`L_{outros}=10\`, nenhuma outra tarifa:
+- antes do investimento, divisor \`(1+10+2)(1+0)=13\`;
+- depois, divisor \`(1+10+1)(1+1/6)=14\`; piora da atratividade apesar da melhoria física.
+Isso é um potencial **efeito econômico do pedágio**, não perda de eficiência física. Se desejarmos futuramente a propriedade adicional "todo investimento melhora também a atratividade comercial para todo não titular", será necessário rever a fórmula global de atratividade/repasse, não apenas ajustar o parâmetro de \`w_e\`.
+
+**Teste simples de equilíbrio com concorrência entre mercado local e remoto (apenas fórmula F-060 CANDIDATA para atratividade):** um produtor de 10 unidades, D_local=4 com rota local L=0 e D_remoto=1 alcançado por uma aresta de outra civilização; impedância da aresta em fluxo livre c₀=2, sem congestionamento neste laboratório. Em cada investimento I, \`H=(1+c(I))(1+w(I))\`; a solução exata do equilíbrio é
+\`q_remoto=Q×[D_remoto/H²]/[D_local + D_remoto/H²]\`.
+Com \`I/I₀=0\`, \`q_remoto≈0,27027\`, receita tarifária 0. Com \`I/I₀=1\`, \`q_remoto≈0,43902\`, tarifa nominal ao titular ≈\`0,09466\` moeda/ciclo; com \`I/I₀=7\`, \`q_remoto≈0,58824\`, tarifa ≈\`0,19174\` moeda/ciclo. O proprietário ganha receita tarifária e o acesso remoto cresce, mas **a receita líquida da civilização produtora pode cair** (de ≈6,75838 a ≈6,71094 no último caso). A rentabilidade do investimento exige comparar receitas incrementais acumuladas por vários ciclos com o capital incorporado; **não** presumir ROI positivo imediato.
+
+**Riscos que permanecem:** grande quantidade de arestas de terceiros na mesma rota pode reduzir muito a fração de receita do produtor mesmo com pesos individuais limitados; diferenças no crescimento de capacidade K e impedância livre podem alterar o fluxo real; congestionamento endógeno e tarifas têm de ser resolvidos conjuntamente; não há ainda prova genérica de equilíbrio único, custo computacional ou incentivos não exploratórios. **A candidata de w não está ratificada** e não deve entrar no kernel até fechar propriedade e normalização de impedância.
+
+### F-062 — Origem e manutenção de direitos tarifários sobre arestas [PRÓXIMA DECISÃO; NÃO RATIFICADO]
+
+**Dependência necessária:** F-024 ratificou melhoria física única por aresta e cobrança de não titulares; F-034 ratificou trabalho na aresta a partir de qualquer extremo; F-035 capital incorporado continuamente com desembolso da civilização investidora; F-048 receita e tesouro civis; F-060 ratificou rateio proporcional da venda. **Falta definir quem é dono da aresta, como nasce esse direito, quem pode investir numa aresta alheia e quem recebe as tarifas de melhorias financiadas por terceiros.**
+
+**Alternativas para deliberação:**
+- **A — Primeiro investimento atribui titularidade exclusiva a uma civilização:** aresta natural sem titular começa aberta; a primeira civilização a incorporar capital recebe o direito de cobrança. Investimento posterior por terceiros fica vedado ou sujeito a autorização específica. Vantagem: estado simples (um titular, um montante de I, um peso w). Risco: corrida artificial por controle de arestas e impossibilidade de investimentos cooperativos.
+- **B — Titularidade acompanha contribuições de capital por civilização:** cada aresta teria participações proporcionais à incorporação efetiva de capital ao longo de sua história. Titulares compartilham receita tarifária e usufruem da mesma eficiência física; contratos de investimento por terceiros são mais naturais. Risco: exige livro de contribuições e arbitragem determinística, adiciona custo de memória em grandes grafos, altera a regra de "titular não paga tarifa" em copropriedade.
+- **C — Titularidade decorre de controle/autoridade territorial, investimento físico não a altera automaticamente:** permite que uma civilização invista em infraestrutura que outra controla sem comprar direitos automaticamente; requer regra de controle e eventual negociação de investimento. Risco: financiamento alheio pode beneficiar fiscalmente só o detentor do controle, sem retorno tarifário para quem financiou.
+
+**Critério de decisão recomendado:** começar com propriedade e receitas de titularidade **claras e simples**, sem pressupor classes de estradas, tarifas a trabalhadores, contratos complexos ou controle territorial não definido; evitar permitir que alguém financie inadvertidamente um investimento que só gere tarifa a outra civilização. A questão central é quem pode iniciar/incorporar capital em uma aresta natural e como a relação de propriedade se altera.
+
+**Situações de QA obrigatórias:** estado inicial natural I=0; duas civilizações investindo simultaneamente em uma aresta; trabalho num extremo por civilização distinta da titular; anexação/conquista ou mudança de território; financiamento de infraestrutura alheia; fiscalização da tarifa por titular; queda de titular/cessão de propriedade; soma de participações; determinismo de arbitragem e replays.
+
+**Status:** alternativas A/B/C apresentadas para decisão. Nenhuma política de nascimento, divisão ou transferência de propriedade foi aprovada. Não supor que passar trabalhador por uma aresta confira propriedade, nem que aumentar o capital automaticamente transfira domínio territorial.
 
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
@@ -1392,3 +1456,5 @@ Esta forma preserva F-056 quando todas as tarifas são zero; não converte ponto
 - **2026-11-07 — F-057 aprovada como contrato, F-058 laboratório e F-059 gate:** conservação da produção, clearing simultâneo, determinismo e gap de equilíbrio passam a contrato canônico, mas algoritmo/tolerâncias em aberto. F-058 executou protótipo Python/SciPy extragradiente em diamante A-B-C-D com duas civilizações e duas mercadorias, 20 unidades vendidas, cargas 1,33415/0,79494 em corredores, Q 6,93545/3,06455 por mercado/item, receita 6,20007 para cada civilização e gap ≈5,63e-10. O teste detectou **não convergência** com passo 0,04 a partir de início extremo superior e **não unicidade da decomposição** por produto/rota apesar dos mesmos resultados agregados. F-059 abre desempate canônico com relevância para futuras tarifas e métodos numéricos robustos. Nenhuma homologação de benchmark Goldberg ou solver de produção foi declarada.
 
 - **2026-11-07 — F-059 ratificada e alternativa de tarifa F-060 estudada:** tarifas monetárias, quando existirem, integram o equilíbrio comercial ANTES do desempate; decomposições que alterem transferências entre tesouros não são empates meramente técnicos. F-060 documenta risco de tarifas nominais fixas por carga sob P=√(D/Q) e venda integral; propõe rateio da receita bruta V entre produtora e proprietários de arestas externas por pesos tarifários w_e≥0, com V_liquida=V/(1+Σw) e tarifa_e=V w_e/(1+Σw), garantindo parcelas não negativas e soma exatamente V. Para o diamante F-058, duas decomposições fisicamente equivalentes gerariam tarifas Beta→Alfa ≈0,05389 e ≈0,06989 se tarifa de 10% fosse adicionada APÓS o equilíbrio, exemplificando erro financeiro. Natureza/função das tarifas e regra final de desempate NÃO ratificadas.
+
+- **2026-11-07 — tarifação proporcional ratificada, função de intensidade e direitos estudados:** F-060 ratificada no princípio de cobrança proporcional à receita da venda e no rateio V_produtora=V/(1+Σw), V_titular_e=Vw_e/(1+Σw), sem débito em carteira compradora; fórmula w(I) ainda aberta. F-061 confrontou a candidata direta w=1−1/U, que pode tornar uma rota menos atraente já no primeiro investimento, e propôs w=1/(1+c_livre)−1/(1+c_natural). Em aresta única, acesso de não titulares melhora ao mesmo tempo que cresce receita tarifária; em rotas longas o produto (1+L)(1+W) ainda pode piorar o acesso após uma melhoria (exemplo 13→14), com implicações para a fórmula de atratividade. F-062 abre a deliberação de titularidade e direito de investimento (primeiro investidor, copropriedade por capital ou autoridade territorial). Nenhum peso de tarifa ou regime de propriedade foi ratificado.
