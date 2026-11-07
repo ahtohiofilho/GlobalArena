@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 0.5  
+**Versão conceitual:** 0.6  
 **Situação:** deliberação em andamento; núcleo explicitamente ratificado nesta conversa  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -207,7 +207,7 @@ Para cada trabalhador e período, sob qualquer unidade temporal posteriormente e
 - a execução de uma atividade deve respeitar a localização física do trabalhador e as propriedades dos nós/arestas;
 - o tempo é recurso da unidade para **ações deliberadas**; a mera passagem de tempo e fenômenos passivos não são automaticamente tarefas que consumam esse orçamento.
 
-A decisão sobre **quantum de tempo do turno, fracionamento, simultaneidade, tarefas em andamento, interrupções, acumulação e regra de processamento** permanece em aberto. Exemplo "1 unidade por turno" é apenas normalização ilustrativa, não valor fixado.
+A decisão sobre **quantum de tempo do turno, fracionamento entre tarefas distintas, simultaneidade, interrupções e regra detalhada de processamento** permanece em aberto. A continuidade de tarefas incompletas entre períodos foi ratificada em F-015. Exemplo "1 unidade por turno" é apenas normalização ilustrativa, não valor fixado.
 
 A intensidade ou produtividade de uma ação pode depender da tecnologia, ferramentas, condições físicas e outros modificadores futuros, mas sem alterar o conceito de orçamento temporal único. Não se presume que todas as ações tenham a mesma eficiência ou requerimentos materiais.
 
@@ -237,7 +237,45 @@ Hipótese para teste (não ratificada): separar **demanda basal associada ao tra
 
 A formulação anterior \`Q=R×min(W,A)\` e a alternativa de saturação suave seguem como **hipóteses de pesquisa, não como bases da nova versão**. Antes de fixar \`A\`, \`R\` ou qualquer curva, investigar o processo geral **ação no espaço → transformação física de estado**, com restrições do recurso. Essa ordem evita construir a arquitetura em torno de um teto inventado.
 
-**Próxima pauta sugerida:** estabelecer o contrato universal mínimo de **ação** (precondição física, tempo empregado, materiais usados, efeitos físicos e persistência de progresso) e só depois discutir funções particulares de produção, construção e deslocamento. Nenhum esquema de dados ou API está decidido.
+**A pauta do contrato temporal geral é contemplada por F-015.** A forma de representar o progresso físico e de disponibilizar resultados continua aberta em F-016; nenhum esquema de dados ou API está decidido.
+
+### F-015 — Progresso temporal universal das ações [RATIFICADO COMO PRINCÍPIO]
+
+Uma ação pode exigir mais tempo do que resta disponível ao trabalhador em um único turno/período. Nesse caso, **não é cancelada nem completada artificialmente**: a porção de ação efetivamente executada produz progresso, e o progresso necessário para continuar depois é preservado.
+
+**Contrato lógico mínimo:**
+1. **Verificar contexto:** identidade e localização do trabalhador, condições físicas de nó/aresta e demais pré-condições da atividade.
+2. **Comprometer tempo:** aplicar apenas uma parcela não negativa do orçamento temporal ainda disponível da unidade.
+3. **Aplicar efeito:** atualizar o estado físico correspondente ao tempo realmente executado, sob a regra específica da atividade e restrições de disponibilidade.
+4. **Persistir o que importa:** registrar efeitos já realizados e somente o progresso incompleto necessário à continuação.
+5. **Concluir quando cabível:** tornar disponível o efeito que dependa de um marco de conclusão; não antecipar esse efeito apenas porque houve progresso.
+
+**Invariantes:**
+- Uma mesma parcela de tempo não pode ser usada em duas ações.
+- A soma do tempo comprometido não pode exceder o orçamento do período.
+- Uma tarefa não recebe progresso sem aplicação válida de tempo, salvo regras explícitas posteriores de processos passivos.
+- Efeitos físicos e insumos já consumidos não podem ser aplicados de novo ao retomar a ação.
+- A continuidade não exige que uma atividade seja artificialmente concluída ou reiniciada a cada turno.
+- Persistência não significa criar um contador universal redundante: sempre que possível, progresso é **o próprio estado físico relevante** (posição na aresta, avanço material da obra, quantidade efetivamente extraída).
+
+**Crucial:** o contrato temporal é comum, mas **resultados não são obrigatoriamente graduais nem intercambiáveis**. Uma extração poderá disponibilizar produção incremental, uma obra poderá necessitar de marcos de conclusão e uma viagem só colocará o trabalhador no nó de destino quando efetivamente chegar. Essas políticas de disponibilização são específicas e permanecem abertas.
+
+**Deliberações não tomadas por F-015:** autorizar fracionamento arbitrário de atividades distintas num mesmo período, ação simultânea, divisão de trabalhadores, desperdício de tempo na troca de tarefa, efeitos da interrupção, definição de materiais obrigatórios, limites exatos de produção, custos temporais, cronograma de consumo, formas de progressão das atividades e regras de concorrência sobre o mesmo nó/aresta.
+
+### F-016 — Unidade de progresso físico e disponibilização do resultado [ABERTO]
+
+A próxima investigação separa **trabalho temporal realizado**, **progresso físico existente** e **resultado utilizável**.
+
+**Três cenários mínimos:**
+
+- **Deslocamento:** travessia que demanda, por hipótese de cálculo, 1,4 unidades de tempo e trabalhador com 1 unidade disponível por turno. Primeiro turno investe 1 em progresso na aresta; segundo investe 0,4 e efetiva chegada. Restam 0,6 unidades de tempo no segundo turno **somente se** for ratificado que ações diferentes podem compartilhar o turno.
+- **Construção:** progresso da obra pode ser preservado fisicamente enquanto a capacidade da infraestrutura só fica operacional ao concluir marcos definidos. Nenhuma porcentagem universal de operacionalidade é presumida.
+- **Produção:** tempo de extração pode resultar em material já disponível, ou precisar alcançar um lote mínimo; a regra depende do processo físico e **não** se deduz da existência de tempo acumulado.
+
+**Pergunta de arquitetura:** há necessidade de um objeto genérico permanente de "ação em andamento" em todos os casos, ou basta persistir os estados físicos mínimos de trabalhador, aresta, obra e recurso? Preferência preliminar pela segunda opção, desde que interrupções/retomadas e determinismo sejam verificáveis.
+
+A unidade de tempo adotada internamente, os números ilustrativos e as fórmulas de progresso **não** foram ratificados.
+
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
 
@@ -269,3 +307,4 @@ A formulação anterior \`Q=R×min(W,A)\` e a alternativa de saturação suave s
 - **2026-11-07 — estudo F-011:** examinada a validade local da produção linear e formulado candidato de saturação por oportunidades físicas, sem ratificação de fórmula nem parâmetros.
 - **2026-11-07 — proposta F-012:** trabalhador como agente físico com uma capacidade universal de ação e um vetor de demanda; distinção entre demanda e consumo efetivo; nenhuma regra nova ratificada.
 - **2026-11-07 — terceira deliberação:** F-012 aprovada no nível estrutural (agente = localização + ação + demanda) e F-013 aprovada como diretriz (orçamento único de tempo para ações). F-014 permanece aberta, assim como a dinâmica de produção F-011.
+- **2026-11-07 — quarta deliberação:** F-015 ratificada (progresso temporal preservado entre turnos, sem aplicação antecipada ou duplicada de efeitos), F-016 aberta (representação física do progresso e disponibilidade de resultados).
