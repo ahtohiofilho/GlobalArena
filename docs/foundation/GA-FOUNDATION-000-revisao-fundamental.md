@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 2.0  
+**Versão conceitual:** 2.1  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -650,7 +650,7 @@ A diferença **não é arredondamento**, mas definição de qual grandeza a fun�
 3. **Para executar uma ação de melhoria/construção numa aresta \`e=(u,v)\`, o trabalhador deve estar fisicamente no nó \`u\` OU no nó \`v\` no instante lógico de trabalho.** Nenhum canteiro, objeto separado ou colocação do trabalhador na posição geométrica interior da aresta é exigido.
 4. O trabalhador continua sendo agente físico de nó ou **em trânsito através de uma aresta** (F-005): o deslocamento parte de um nó e chega a outro, consome tempo e pode manter progresso no interior da travessia. **Estar em trânsito não equivale a estar em um nó extremo para construir.**
 5. O mesmo trabalhador não pode construir a partir dos dois extremos simultaneamente nem aplicar sua parcela temporal a outra ação no mesmo instante (F-009/F-013/F-015/F-017). A obra deve se referir à **identidade da aresta-alvo**, não apenas aos seus dois extremos para evitar confusões quando houver arestas paralelas futuras.
-6. O tempo de trabalho efetivo, a validação do caixa monetário e a persistência de progresso seguem os contratos gerais F-013/F-015; **o momento de compromisso financeiro e a relação exata entre investimento monetário, tempo de construção e disponibilidade de capacidade melhorada continuam abertos**. Não lançar capital duas vezes nem ativar benefício de obra ainda não concluída.
+6. O tempo de trabalho efetivo, a validação do caixa monetário e a persistência de progresso seguem os contratos gerais F-013/F-015. **F-035 ratifica a incorporação contínua de capital, pagamento à medida do trabalho executado e benefício progressivo**, sem marco artificial de conclusão. Taxa monetária de incorporação por tempo e conflitos de múltiplos trabalhadores continuam em estudo. Não lançar capital duas vezes.
 7. A escolha de qualquer extremo é simétrica para a **elegibilidade de trabalho**, salvo restrições físicas que já impeçam o trabalhador de estar naquele nó; não acrescentar privilégios de terra/mar ou tecnologia de embarcação por exceção.
 8. As **capacidades produtivas naturais dos nós** (F-002/F-007) permanecem válidas. **Escopo explícito desta ratificação: infraestrutura de transporte/logística.** A existência, posição e financiamento de eventuais melhoramentos produtivos não logísticos do nó constituem outra decisão; F-006 não é abolida silenciosamente.
 
@@ -659,6 +659,44 @@ A diferença **não é arredondamento**, mas definição de qual grandeza a fun�
 **Contratos de teste necessários:** investimentos em arestas adjacentes sem vazamento de estado; trabalho de ambos os extremos da mesma aresta com resultados equivalentes; trabalhador em trânsito inelegível; persistência de obra por múltiplos turnos; não duplicar custo/benefício; rota comercial passando por duas interfaces de costa; titulares distintos em arestas contíguas; nenhuma variação em capacidade de nós por investimento exclusivamente logístico.
 
 **Observação de escala espacial:** identidade única de aresta não é, sozinha, uma garantia de equivalência entre mapas Goldberg de diferentes resoluções. Parâmetros físicos naturais podem ser ajustados à escala geométrica em futura homologação, **sem** invalidar unicidade da aresta ou compartilhar seus investimentos com vizinhas. Não criar normalização global artificial como condição para esta ratificação.
+
+
+### F-035 — Incorporação contínua de investimento mediante trabalho [RATIFICADO NO NÍVEL DE PRINCÍPIO]
+
+**Decisão:** a infraestrutura logística da aresta **evolui continuamente**, sem etapas artificiais de obra pronta/não pronta. Seu progresso utilizável é representado pelo **capital monetário efetivamente incorporado àquela aresta**. Trabalho executado e pagamento correspondente são condições simultâneas da incorporação. A cada incremento válido de capital, a mesma função de nível/eficiência/capacidade já aprovada em princípio é reavaliada com o novo capital, sem esperar a conclusão de um projeto inteiro.
+
+**Contrato fundamental:**
+1. Um trabalhador presente em qualquer nó extremo \`u\` ou \`v\` da aresta \`e=(u,v)\` pode aplicar **tempo de ação** à sua melhoria (F-034), respeitando seu orçamento universal F-013/F-015/F-017.
+2. Um compromisso de investimento, meta \`I_alvo\` ou ordem de obra representa uma **autorização/teto** de incorporação, não um desembolso imediato. A meta é opcional e não cria nova infraestrutura ou estado de "obra incompleta" como requisito do motor.
+3. Somente o trabalho **efetivamente realizado e financeiramente coberto** autoriza incorporar \`ΔI_e≥0\`. O saldo da conta pagadora diminui exatamente pela incorporação realizada; o capital efetivo da aresta cresce exatamente na mesma quantia. Não debitar o valor total da intenção antes da execução nem adicionar capital antes da liquidação.
+4. O valor \`I_e\` já incorporado é **o próprio progresso persistido e aproveitável**. Se a ação for interrompida, faltar dinheiro ou o trabalhador se deslocar, a aresta mantém a melhoria. Outro trabalhador elegível pode continuar na mesma aresta, respeitando o mesmo contrato.
+5. A melhoria fica disponível **a partir do instante lógico de incorporação**, sem aplicação retroativa a comércio, deslocamento ou eventos físicos anteriores. Um mercado avaliado por ciclos utiliza o estado válido para o instante/janela do seu cálculo, sem permitir que a ordem interna de processamento gere preços diferentes (F-018).
+6. Se o saldo monetário ou o tempo se esgotar antes de atingir a meta, o progresso é **parcial** e limitado ao que foi efetivamente coberto. Não aceitar dinheiro negativo nem consumo de tempo não aplicado como obra efetivamente executada.
+7. Não criar etapas discretas de "porto/estrada/ferrovia pronta" nem estados duplicados \`percentual_de_obra\`/ \`investimento_prometido\` que substituam a propriedade \`I_e\`.
+8. A titularidade da aresta e a **proveniência da conta pagadora** não são definidas pela equação de melhoria. Quem pode investir em infraestrutura de terceiros, adquirir direitos/titularidade ou participar de receitas de tarifa permanece **EM ABERTO**; pagamento por terceiro não transfere propriedade automaticamente.
+
+**Candidato operacional mínimo [PROPOSTO, não canonizado]:**
+\`ΔI_e = min(R_w × Δt_efetivo, M_disponível, max(0,I_alvo−I_e))\`.
+\`R_w\` tem dimensão moeda/tempo e representa **taxa de incorporação por trabalho** para o trabalhador \`w\`; \`M_disponível\` é saldo financeiro efetivamente utilizável, \`Δt_efetivo\` o tempo aplicado e \`I_alvo\` a meta opcional. O caso sem meta deve usar apenas os limites financeiro e temporal. Não fixar valores, variação por trabalhador, parâmetros por tipo de aresta ou uma relação arbitrária entre produtividade e moeda. Atenção: se a ação ficar limitada por dinheiro/meta antes do fim do tempo inicialmente oferecido, **apenas o tempo correspondente ao valor realmente incorporado deve ser comprometido**, sob uma taxa constante; o restante pode ser reaproveitado em outra ação válida (F-017).
+
+**Nota financeira:** a transferência "dinheiro da conta → capital incorporado" **não significa necessariamente que dinheiro deixe de existir macroeconomicamente**. Seu tratamento de contrapartidas, política monetária e titularidade requer o contrato F-022; esta decisão exige apenas evitar dupla despesa e reconhecer capital incorporado. Não lançar simultaneamente um segundo custo material abstrato para a mesma parcela.
+
+**Exemplo de teste (valores ilustrativos):** \`R=10\` moeda/tempo; uma autorização de investimento até \`I_alvo=100\`; em \`Δt=3\` com saldo suficiente, incorporar 30; noutros 3, mais 30; ao parar, \`I_e=60\` já proporciona melhoria; o restante 40 **não foi desembolsado**. Os números não são parâmetros canônicos.
+
+### F-036 — Concor­rência de trabalhadores e liquidação de investimento contínuo [ABERTO; PRÓXIMO GATE]
+
+**Questão de escala:** dois ou mais trabalhadores posicionados em extremos iguais ou opostos podem agir sobre a mesma aresta ou financiar a partir da mesma conta enquanto compartilham o tempo lógico. A continuidade de F-035 **não** determina automaticamente a regra de execução concorrente, a fonte do dinheiro ou eventual saturação física do trabalho de construção.
+
+**Proposta de simplicidade para teste:**
+- As contribuições efetivamente financiadas de cada trabalhador somam no **mesmo capital \`I_e\`**; não existe uma "obra de cada trabalhador" persistida como infraestrutura separada.
+- O **tempo de cada agente** é debitado uma vez; o **dinheiro de cada conta** só pode ser reservado/comprometido uma vez, mesmo quando vários trabalhadores investem simultaneamente.
+- Em caso de **mesma conta insuficiente**, arbitrar saldo compartilhado de forma determinística no mesmo instante lógico, sem depender da ordem de iteração interna (F-018/F-019).
+- Não criar penalização por excesso de construtores, limite de quantidade de trabalhadores ou novo índice de construção **sem demonstração de gargalo físico real**.
+- No mercado econômico periódico, os benefícios da infraestrutura são lidos por um **snapshot causal** de capital incorporado, sem aplicação retroativa, não pela ordenação de tarefas do processador.
+
+**Exemplo de aceitação:** aresta \`AB\`, dois trabalhadores em A e B com capacidade de incorporar 10 moeda/tempo cada, mas caixa compartilhado de 15. Após uma janela comum de tempo com trabalho máximo pretendido de 20, a soma \`Σ ΔI_w\` deve ser **no máximo 15**; o débito da conta é igual à soma incorporada, \`I_AB\` cresce exatamente por essa soma e cada trabalhador só gasta tempo proporcional ao que executou segundo a regra futura. Empate e redistribuição do saldo são questões explícitas, não escolha por ordem da lista de trabalhadores.
+
+**Em aberto:** regra para repartição de saldo comum, taxa universal ou específica de execução, se produtividade de trabalhador afeta \`R_w\`, eventual gargalo construtivo físico, momento da cobrança e liquidação detalhada, e compatibilização com investimentos simultâneos de vários titulares. Não ratificar fórmula de concorrência a partir deste cenário isolado.
 
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
@@ -714,3 +752,5 @@ A diferença **não é arredondamento**, mas definição de qual grandeza a fun�
 - **2026-11-07 — simplificação das travessias marítimas:** F-033 reformulada por decisão de eliminar embarcações/tecnologia naval como controles separados: a aresta terra↔mar representa implicitamente meios de embarque, desembarque e transporte necessários. A rota usa as mesmas equações de todas as arestas, sem custo de transição duplicado nos nós. Permanecem abertos geometria/capacidade costeira e a atribuição de investimentos em mar aberto.
 
 - **2026-11-07 — investimento individual por aresta:** F-034 ratificada: toda infraestrutura logística melhorável pertence à aresta, não ao nó; investir numa ligação não melhora outras mesmo se compartilham extremo. Trabalhador pode construir a partir de qualquer nó extremo, nunca enquanto em trânsito; execução respeita orçamento temporal e progresso físico. Hipóteses anteriores de infraestrutura portuária em nó foram explicitamente superadas. Categoria de investimento produtivo no nó (F-006) não foi redefinida nesta deliberação.
+
+- **2026-11-07 — décima primeira deliberação:** F-035 ratificada como melhoria contínua por trabalho e desembolso monetário efetivos, sem marcos de obra concluída; capital incorporado é progresso persistente, e efeitos entram em vigor no tempo lógico correto. F-036 aberta para múltiplos trabalhadores/contas concorrentes e taxa de execução; fórmula de taxa e critérios de empate ainda não ratificados.
