@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 2.4  
+**Versão conceitual:** 2.5  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -223,11 +223,11 @@ Após F-021/F-023, a demanda do trabalhador poderá manter **composição por me
 
 **Estão ratificados somente a existência de demanda e o abandono de estoques/fluxos físicos de mercadorias como mecanismo necessário de satisfação.**
 
-**Continuam abertos:** formação e periodicidade da demanda, composição setorial, preço/curva de valor, condições de atendimento (caixa do agente, de grupo, de território ou outro), orçamento e sua procedência, relação com produtividade/bem-estar, insuficiência e eventual gasto adicional por atividade. Dinheiro fungível não implica apagar preferências ou demandas diferenciadas entre mercadorias.
+**Continuam abertos:** atualização do fator `k`, fórmula final de preço, condições de pagamento (caixa do agente, grupo, território ou outro), orçamento e sua procedência, relação com produtividade/bem-estar e eventual gasto adicional por atividade. **F-041 ratifica 1 unidade de demanda de referência por trabalhador e produto e venda universal; não é teto de quantidades compráveis**. Dinheiro fungível não implica apagar preferências ou demandas diferenciadas entre mercadorias.
 
 **Invariante desejável:** distinguir necessidade econômica calculada, despesa efetivamente liquidada e resultado de atendimento; demanda não equivale por si só a pagamento, nem autoriza gerar moeda em duplicidade. Essa norma de liquidação precisa ser concluída em F-022.
 
-**Clarificação F-039 [RATIFICADO]:** a nova arquitetura **não** forma estoques de mercadorias. Não há justificativa para inserir demanda artificial de retenção, compra fictícia ou absorção inventada como mecanismo de armazenagem. Demanda representa interesse econômico efetivo; mudanças genuínas por população, condições materiais ou políticas financiadas podem ser estudadas, mas não são dispositivos para esconder produtos que deixaram de ser vendidos.
+**Clarificação F-039/F-041 [RATIFICADO]:** sem estoques e sem demanda artificial de retenção. **Toda produção é vendida** pelo water-filling; demanda é o valor de referência no denominador da curva de preços, não uma quota máxima. A base inicial é **1 por trabalhador e produto**, com futuro modificador `k`; `Q>D` reduz o preço, mas não impede a venda.
 
 ### Experimentos do orçamento universal [REINTERPRETADOS POR F-021]
 
@@ -355,7 +355,7 @@ A concorrência é resolvida **no local e no intervalo temporal em que realmente
 6. Infraestrutura de nós/arestas custa **dinheiro em lugar de madeira, pedra ou outros insumos específicos**; o componente temporal de construção permanece sujeito a F-013/F-015 e à definição posterior de conclusão.
 7. Arestas continuam representando deslocamento físico de agentes, além de uma **rede abstrata de custo de escoamento comercial**. O escoamento de mercadorias pode ser calculado sem simular cargas/veículos.
 
-**Fora do novo núcleo operacional:** estoques físicos permanentes por produto, lotes individuais, custódia de cargas, entrega comercial individualizada, cadeia de materiais obrigatórios para obras. **Também está descartado expressamente (F-039) o artifício legado de aumentar artificialmente a demanda para simular retenção ou formação de estoques invisíveis.** **Dentro do modelo econômico:** quantidades setoriais transitórias por ciclo, oferta/demanda genuína, preços, receita, rotas abstratas e custos físicos de acesso aos mercados. Quantidade produzida sem comprador não vira saldo armazenável do ciclo seguinte nem receita automática.
+**Fora do novo núcleo operacional:** estoques físicos permanentes por produto, lotes individuais, custódia de cargas, entrega comercial individualizada, cadeia de materiais obrigatórios para obras. **Também está descartado expressamente (F-039) o artifício legado de aumentar artificialmente a demanda para simular retenção ou formação de estoques invisíveis.** **Dentro do modelo econômico:** quantidades setoriais transitórias por ciclo, oferta/demanda genuína, preços, receita, rotas abstratas e custos físicos de acesso aos mercados. **F-041 corrige esta hipótese**: toda quantidade produzida será alocada a mercados e vendida; preço, não redução da quantidade negociada, responde à oferta relativa. Não há estoque entre ciclos.
 
 **Governança:** não reusar, de forma automática, o water-filling ou as fórmulas do código anterior; reavaliar princípios e só então auditar o reuso (F-010).
 
@@ -365,7 +365,7 @@ A venda de mercadorias geradas em quantidades abstratas produz receita monetári
 
 **Alternativas em aberto:** transferência com compradores/contas efetivas; mercado abstrato com balanço agregado e fontes/sumidouros explícitos; arquitetura híbrida com demanda calibrada, desde que não haja dupla contagem de poder de compra.
 
-**Decisões pendentes:** caixa por trabalhador/nó/instituição, liquidação dos gastos de consumo, origem e destino do dinheiro, preço final pago, tratamento de não venda quando demanda/orçamento insuficiente, financiamento de infraestrutura e possíveis impostos. Quando um custo apenas **condiciona preço**, não lançar simultaneamente despesa de caixa não especificada.
+**Decisões pendentes:** caixa por trabalhador/nó/instituição, liquidação dos gastos de consumo, origem e destino do dinheiro, preço final pago, mecanismo de pagamento coerente com a absorção integral obrigatória da produção em F-041, financiamento de infraestrutura e possíveis impostos. Quando um custo apenas **condiciona preço**, não lançar simultaneamente despesa de caixa não especificada.
 
 ### F-023 — Mercado espacial: quantidade, preço e water-filling [RATIFICADO NO NÍVEL DE DESENHO]
 
@@ -378,7 +378,7 @@ A produção tem dois estágios lógicos distintos:
 
 **Separação obrigatória:** quantidade produzida \`q_prod\`; quantidade efetivamente alocada/vendida \`q_venda\`; preço de transação \`p\`; receita bruta \`Σ(q_venda × p)\`; receita líquida após **despesas monetárias explícitas**. O custo físico de transporte influencia competitividade e preço, **não se transforma automaticamente em débito ou crédito de dinheiro**.
 
-**Ainda abertos:** função exata de market clearing/water-filling, forma dos preços marginais, orçamento dos compradores, escoamento total versus oferta não absorvida, escala de cálculo, agregação de demanda de trabalhadores, eventuais restrições de capacidade em rotas e relação com consumo. Não assumir que toda a produção encontre comprador com pagamento garantido, salvo se deliberado.
+**Ainda abertos:** função exata de market clearing/water-filling, forma dos preços marginais, financiamento e liquidação de **toda a produção vendida por determinação de F-041**, escala de cálculo, agregação de demanda de trabalhadores, eventuais restrições físicas de capacidade em rotas e relação com consumo. A venda integral já foi deliberada; **a fonte financeira do pagamento** continua F-022.
 
 **Invariante financeiro desejável:** quando uma venda monetária for liquidada entre contas representadas, o valor pago pelo comprador e recebido pelo vendedor deverá reconciliar, salvo transferências monetárias adicionais explícitas; a diferença de atratividade induzida por impedância física não é pagamento invisível a transportador.
 
@@ -765,50 +765,58 @@ onde \`c_{n,i}(t)\` é **quantidade efetivamente atendida por trabalhador da loc
 **Status [RATIFICADO NO PRINCÍPIO]:** a medida de desenvolvimento material deverá, preferencialmente, emergir do **consumo efetivamente atendido por trabalhador na localidade de pertencimento**, considerando quantidade e diversidade sem bônus arbitrários por item. A fórmula de utilidade `Σ ln(1+c)`, normalização, contribuição de mercadorias materialmente diferentes, função de produtividade/demanda e atualização temporal **permanecem PROPOSTAS/ABERTAS**, não decisões canônicas. F-039 remove expressamente o antigo mecanismo de demanda artificial de retenção. F-040 propõe contrato de atribuição por ciclo e controles contra dupla contagem.
 
 
-### F-039 — Sem estoques e sem demanda artificial de retenção [RATIFICADO]
+### F-039 — Sem estoques e sem demanda artificial de retenção [RATIFICADO; CORRIGIDO POR F-041]
 
-**Decisão expressa:** nesta nova versão, a infraestrutura e as mercadorias são tratadas de maneira **abstrata no fluxo econômico**, sem estoque operacional persistente por produto, sem retenção física econômica entre ciclos e **sem o artifício da versão antiga de elevar artificialmente demanda para simular estoque no ponto de origem**.
+**Decisão:** não há estoque persistente de mercadorias, reserva material, compra fictícia para retenção nem mecanismo artificial de elevar demanda para estocar no produtor. **F-041 explicita que toda a quantidade produzida deve ser vendida**: a curva de preço absorve excesso de oferta, sem descarte de produtos.
 
-Consequências:
-1. **Não existirão** ações de "aumentar demanda para guardar mercadorias", compras fictícias de si mesmo para converter caixa em estoque, saldos virtuais escondidos por produto, nem garantia de absorção total da oferta.
-2. A **demanda genuína** é formada pelas necessidades/interesses econômicos dos trabalhadores/localidades e regras efetivas do mercado; pode mudar endogenamente com população, desenvolvimento e condições do jogo. Isso **não equivale** ao antigo ajuste artificial de retenção.
-3. Para mercadoria \`i\` no ciclo \`t\`: \`0 ≤ q_vendida(i,t) ≤ q_produzida(i,t)\`. O excedente \`q_produzida−q_vendida\` **não gera receita e não é transferido a estoque persistente** no ciclo seguinte. Seu destino abstrato não exige simular perda física, armazenamento ou descarte material.
-4. A construção de infraestrutura consome **dinheiro incorporado mediante trabalho**, não mercadorias ocultas (F-021/F-035/F-037); essa separação remove o motivo de manipular demanda para reter materiais.
-5. O indicador de desenvolvimento de F-038 observa **atendimento real**, jamais quantidade apenas ofertada, desejada ou contabilizada em trânsito.
-6. A regra proíbe **demanda fictícia para estocagem**, não necessariamente toda intervenção futura sobre demanda por política econômica real, desde que a intervenção tenha causa verificável e financiamento coerente com F-022.
+A antiga interpretação documentada de que uma produção de 10 poderia vender só 7 e deixar 3 sem venda **foi expressamente revogada pelo usuário**. O correto é \`Q_vendida=Q_produzida\`, distribuída entre mercados válidos, sem inventário entre ciclos.
 
-**Nota de migração:** qualquer mecanismo do legado que reconheça estoque, retenção, demanda artificial, compra interna automática para estocagem ou mercadoria não vendida carregada para o próximo período é **incompatível com este núcleo**, ainda que exista código pronto.
+### F-040 — Atribuição do consumo após venda universal [CONTRATO PROPOSTO; REVISADO POR F-041]
 
-### F-040 — Atribuição de consumo efetivamente atendido por ciclo [CONTRATO CANDIDATO; NÃO RATIFICADO]
+**Pipeline candidato:**
+1. Apurar quantidades \`Q_{o,i}\` efetivamente produzidas por origem \`o\`, mercadoria \`i\`, no ciclo.
+2. Definir demanda **de referência** por mercado \`n\` e item \`i\`: \`D_{n,i}=Σ_{w∈n} k_w\`, com \`k_w=1\` inicialmente, salvo regra futura de qualificação. Uma mercadoria distinta usa a mesma base 1 por trabalhador; nenhuma escala específica é arbitrariamente atribuída por item.
+3. Alocar **a totalidade** da oferta via water-filling entre destinos com demanda de referência positiva e rotas válidas. Para cada mercado: \`Q_{n,i}=Σ_o q_{o→n,i}\`, e \`x_{n,i}=Q_{n,i}/D_{n,i}\`. O preço depende da oferta **agregada de todos os produtores** daquele item no mesmo mercado, não apenas de uma origem isolada.
+4. Exigir \`Σ_n q_{o→n,i}=Q_{o,i}\` para cada origem e item. \`D\` não é limite superior de absorção; \`Q>D\` é sobreoferta com queda de preço. Não carregar saldo excedente.
+5. Calcular receita pela quantidade integral vendida no preço do mercado: \`Receita_{o,i}=Σ_n q_{o→n,i} P_{n,i}\`. Tratar pagamentos, tarifas e origem do poder de compra separadamente conforme F-022 (aberto). **Não tratar receita potencial como caixa efetivamente conciliado antes de estabelecer contrapartida monetária**.
+6. Atribuir ao mercado consumidor quantidades efetivamente liquidadas uma só vez: \`A_{n,i}=Q_{n,i}\` se suas vendas estiverem reconciliadas financeiramente, sem duplicar mercadorias ao atravessar arestas. O indicador material proposto F-038 usa \`c_{n,i}=A_{n,i}/N_n\` para \`N_n>0\` e observa período/ciclo anterior, sem estoque físico.
+7. O clearing deve ser determinístico quando o preço depende endogenamente do \`Q_{n,i}\` que o water-filling está alocando.
 
-**Finalidade:** fornecer à F-038 uma entrada observável e não manipulável, preservando a distinção entre produção, oferta, venda e absorção econômica; sem inventar inventário físico nem decidir prematuramente o proprietário de cada conta.
+**Teste mínimo:** produzir 10 unidades, ter dois mercados com demandas de referência 3 e 2. Se as rotas forem válidas, o motor atribui **todas as 10** às localidades, em alguma divisão não negativa somando 10. As unidades acima de \`D\` recebem preços menores, jamais deixam de ser vendidas. Dois produtores abastecendo o mesmo mercado compartilham a mesma base de preço calculada com \`Q\` agregado.
 
-**Pipeline por ciclo econômico \`t\` [PROPOSTO]:**
-1. Apurar \`Q^{prod}_{o,i,t}\` produzido na origem \`o\`, para cada mercadoria \`i\`, a partir da ação dos trabalhadores.
-2. Construir demandas genuínas \`D_{n,i,t}\` dos trabalhadores/localidades de destino \`n\`, definidas **antes** do resultado do mercado no mesmo ciclo (origem e parametrização em aberto).
-3. Aplicar water-filling sobre oferta, curvas marginais de preço, fluxo logístico e impedância para propor alocações \`q_{o→n,i,t}\` e preços de transação.
-4. Só confirmar alocações **financeiramente cobertas/liquidadas** pelas contas/obrigações reais do mecanismo monetário que vier a ser ratificado em F-022. Não transformar diferença de impedância física em recibo/pagamento fictício.
-5. Apurar consumo econômico atendido da localidade de destino pela soma de mercadorias vendidas e atribuídas uma vez: \`A_{n,i,t} = Σ_o q^{liquidada}_{o→n,i,t}\`. Esse \`A\` é **registro transitório agregado de atendimento econômico**, não estoque persistente no tile.
-6. A entrada do indicador material seria \`c_{n,i,t}=A_{n,i,t}/N_{n,t}\` para \`N_{n,t}>0\`, com \`N\` representando quantidade de unidades de trabalhador pertencentes à localidade (o denominador e tratamento de unidades agregadas permanecem abertos). Para \`N=0\`, não definir média per capita artificialmente.
-7. A capacidade/eficiência e demanda associadas a \`A_{n,i,t}\` seriam revistas **no próximo período lógico/ciclo**, conforme F-038/F-018, sem circularidade de atualização dentro do mesmo market clearing.
+**Ressalvas:** nenhum mercado economicamente acessível com \`D>0\` torna impossível calcular \`x=Q/D\` e precisa de regra de borda explícita; não criar comprador fictício silenciosamente. **Vendas universais e saldos compradores finitos insuficientes não coexistem automaticamente:** o contrato monetário F-022 deverá financiar/reconciliar toda receita sem emissão disfarçada nem compras negativas. A moeda não surge da equação de preço.
 
-**Invariantes candidatos para testes:**
-- \`Σ_{o,n} q^{liquidada}_{o→n,i,t} ≤ Σ_o Q^{prod}_{o,i,t}\`, sem transporte contabilizado duas vezes por atravessar muitas arestas;
-- \`Σ_n A_{n,i,t}=Σ_{o,n} q^{liquidada}_{o→n,i,t}\` para o produto e ciclo; mercadoria comprada é atribuída a um destino econômico único, sem stock balance positivo;
-- \`A=0\` onde nenhuma compra válida foi liquidada, mesmo que a demanda fosse alta;
-- sem caixa/financiamento suficiente, uma alocação não pode virar consumo atendido e receita simultaneamente por decreto; F-022 permanece pendente;
-- produtos não vendidos não chegam ao ciclo seguinte como saldos de mercadorias, mas o capital financeiro e investimentos já incorporados persistem;
-- compras de trabalhadores residentes/afiliados contam para localidade de pertencimento **sem teletransporte do trabalhador**;
-- demanda genuína ampliada por consumo anterior **não** libera poder de compra novo automaticamente;
-- alteração apenas nominal do preço, sem mais quantidades materialmente atendidas, não implica aumento automático do indicador material.
+### F-041 — Venda universal, demanda de referência unitária e preço por mercado [RATIFICADO]
 
-**Ponto conceitual delicado:** \`A_{n,i,t}\` representa **absorção econômica final abstrata**, não ingestão alimentar. Madeira e pedra também podem ser comercializadas e absorvidas economicamente, mas seu benefício direto para desenvolvimento humano não é automaticamente igual ao dos alimentos. **Não** impor pesos arbitrários por mercadoria para resolver isso; a fórmula de consumo/desenvolvimento segue aberta. Tampouco contar como "consumo atendido" uma compra meramente intermediária que gera nova venda no mesmo ciclo sem uso final, a menos que essa contabilidade seja explicitamente modelada.
+**Requisitos canônicos enunciados pelo usuário:**
+- **Toda a produção de cada mercadoria é escoada e comercializada**, sem saldo não vendido e sem formação de estoque. \`Σ_n Q_{n,i}=Σ_o Q_{o,i}\`.
+- **Demanda-base = 1 por trabalhador e por mercadoria** em cada ciclo. O trabalhador possui futuro modificador de qualificação \`k_w\` relacionado aos parâmetros socioeconômicos da F-037/F-038; inicialmente \`k_w=1\`. \`D_{n,i}=Σ_{w∈n} k_w\`. As regras de afiliação e atualização de \`k\` estão abertas.
+- \`x=Q_{n,i}/D_{n,i}\` mede oferta relativa à **demanda de referência**. D não impõe teto de compras; excesso de oferta reduz preço. Preços são determinados **para cada item em cada mercado**, segundo \`Q\` agregado após resolver a alocação water-filling, que pode exigir solução simultânea de preço e fluxos.
+- Receita bruta é **preço final × quantidade integralmente vendida** em cada mercado. Sem alteração fictícia de demanda para criar estoques.
 
-**Mini-homologação [PROPOSTA]:** origem produz 10 unidades de madeira; destinos A e B demandam 6 e 5, porém a combinação de curvas/preços/financiamento permite vender 4 a A e 3 a B. Apurar \`A_A=4\`, \`A_B=3\`, \`q_vendida=7\`, \`q_não_vendida=3\`; não criar 3 unidades de estoque e não elevar artificialmente a demanda para absorvê-las. Se o comprador de B não financiar suas 3 unidades, o resultado precisa ser recalculado/liquidado para não declarar atendimento fictício (mecânica F-022 ainda aberta).
+**Curva histórica informada pelo usuário, não ratificada:** \`P(x)=x^{-1/2}\` para \`0<x<1\`, \`P(1)=1\`, \`P(x)=x^{-2}\` para \`x>1\`. Seu objetivo: receita não decrescente ao aumentar a oferta, mas com ganho marginal decrescente, e penalidade por escassez relativa. **Inconsistência descoberta:** quando \`Q>D\`, \`R=Q(D/Q)^2=D²/Q\`, portanto a receita **cai** com o crescimento de Q. O ramo x^-2 deve ser substituído por outra lei antes de adoção.
 
-**Próximo gate:** decidir a **fonte e o sujeito do poder de compra** — trabalhador individual, conta da localidade, instituição ou combinação simples — e a liquidação monetária necessária para que \`q^{liquidada}\` seja realidade econômica. Também definir como as curvas de demanda genuína são determinadas sem presets arbitrários por mercadoria.
+**Bordas não fechadas:** nenhuma localidade acessível com \`D>0\`; financiamento de receitas com compradores de saldos limitados; a natureza de comércio abstrato versus compra/consumo materialmente produtivo. Esses pontos não anulam o compromisso de venda total: são requisitos de arquitetura a resolver.
 
-**Status:** sem fórmula monetária, sem meta de venda, sem algoritmo fechado e sem criação automática de caixa. O modelo de atribuição é um **contrato candidato**, não uma regra financeira canônica.
+### F-042 — Função de preço contínua e receita marginal positiva decrescente [PROPOSTO, NÃO RATIFICADO]
+
+**Candidata principal: função racional única, sem parâmetros livres adicionais:**
+\`P(x)=2/(1+x)\`, para \`x≥0\` e \`D>0\`.
+\`R(Q,D)=Q P(Q/D)=2DQ/(D+Q)\`.
+
+**Verificações:**
+- \`P(1)=1\`; \`R(D,D)=D\`. O ponto Q=D é normalização de preço, **não** máximo de receita.
+- \`∂R/∂Q=2D²/(D+Q)²>0\` e \`∂²R/∂Q²=-4D²/(D+Q)^3<0\`: receita sempre aumenta e tem ganho marginal estritamente decrescente com demanda fixa.
+- \`P\` cai suavemente de \`P(0)=2\` até zero assintótico, e \`R\` se aproxima de \`2D\` quando a oferta se torna muito alta. A saturação de receita é **característica desta proposta**, não um teto canônico.
+- Com \`D=1\`: \`Q=0,25 → P=1,6, R=0,4\`; \`Q=0,5 → P=1,3333, R=0,6667\`; \`Q=1 → P=1, R=1\`; \`Q=2 → P=0,6667, R=1,3333\`; \`Q=4 → P=0,4, R=1,6\`; \`Q=10 → P=0,1818, R=1,8182\`.
+
+**Alternativa se for prioritário preservar a escassez da curva histórica:**
+\`P(x)=x^{-1/2}\` para \`0<x≤1\`; \`P(x)=2/(1+x)\` para \`x≥1\`.
+Ambos os ramos têm preço e primeira derivada coincidentes no ponto de encontro \`x=1\`, receita total crescente e ganhos marginais decrescentes. Porém usa dois ramos e preço ilimitado para \`Q→0\`, enquanto a racional única não tem essa singularidade. Nenhuma foi aprovada.
+
+**Implicação do water-filling:** maximizar \`Σ_n R(Q_n,D_n)\` sujeito a \`Σ Q_n=Q_prod\` usa **receita marginal** \`∂R/∂Q\` na escolha dos destinos; não confundir preço médio de liquidação \`P=R/Q\` com receita marginal. Se o water-filling adotará a ótica de agentes formadores de preço ou de preços tomados, e como combina impedância física (não monetária) com receita e tarifas (monetárias), está em aberto.
+
+**Financeiro:** oferta sempre vendida não significa caixa automaticamente criado para pagamento. F-022 precisa determinar conta/sujeito do poder de compra e a contrapartida real das receitas, compatível com total absorção comercial e sem inventar compradores financiados silenciosamente.
 
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
@@ -872,3 +880,5 @@ Consequências:
 - **2026-11-07 — estudo de desenvolvimento e produtividade por consumo:** F-038 proposta como alternativa ao desenvolvimento medido por renda: consumo real efetivamente atendido por trabalhador pertencente à localidade, com variedade emergindo de utilidade marginal decrescente, sem pesos arbitrários por item. Discussão de normalização, categorias e circularidade da demanda; F-037 permanece ratificada e F-038 aberta.
 
 - **2026-11-07 — ratificação de F-038 e exclusão de demanda artificial:** F-038 aprovada no princípio de desenvolvimento pelo consumo real atendido por trabalhador com diversidade endógena, sem fixar `Σ ln(1+c)` nem outros pesos; F-039 ratificada: sem estoques e sem demanda artificial para retenção, sem venda garantida do excedente. F-040 propõe registrar atendimento por produto/localidade a partir de vendas realmente liquidadas, sem dupla contagem, pendente de decisão do sujeito/financiamento da compra F-022.
+
+- **2026-11-07 — correção do princípio de absorção e matemática de preços:** F-041 ratificada: toda a produção encontra mercado, venda 100%, demanda de referência 1 por trabalhador/produto (k futuro). F-039/F-040 corrigidas: nada de inventário ou parte não vendida. Identificada falha da função x^-2 quando oferta supera demanda: R=D²/Q decresce, contrariando objetivo. F-042 propõe P=2/(1+x) para receita total sempre crescente e ganho marginal decrescente, ainda não ratificada; financiamento F-022 pendente.
