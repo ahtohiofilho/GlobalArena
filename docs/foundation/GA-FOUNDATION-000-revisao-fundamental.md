@@ -1113,7 +1113,7 @@ O balanço global preserva a venda integral por civilização/mercadoria: Σ_n a
 **Agregação que respeita os contratos já aprovados:**
 - Quantidade final no mercado: Q[n,i] = Σ_c a[n,c,i].
 - Preço por mercado: P[n,i] = √(D[n,i]/Q[n,i]), quando Q>0 e D>0, F-043.
-- Receita creditada à civilização: Receita[c] = Σ_n,i a[n,c,i] × P[n,i], F-048.
+- Receita comercial **bruta atribuída** à civilização: ReceitaBruta[c] = Σ_n,i a[n,c,i] × P[n,i], F-048; **o crédito líquido efetivo ao tesouro desconta a repartição proporcional entre cotitulares das arestas F-060/F-062**. Não creditar bruto e depois creditar novamente a mesma parcela.
 - Carga da aresta não orientada e={u,v}: B[e] = Σ_c,i pesoLogistico[i] × (f[u→v,c,i] + f[v→u,c,i]) / intervaloReferencia.
   Somar as duas direções, em vez de cancelar fluxos opostos. A conversão pesoLogistico permanece exclusivamente dimensional (F-026), não índice comercial arbitrário; onde unidades já forem normalizadas, usar 1.
 
@@ -1259,15 +1259,15 @@ Solução por bisseção: q_remoto≈0,5881293258; q_local≈9,4118706742; imped
 **Status:** a inclusão das tarifas reais no equilíbrio primário e a proibição de desempates técnicos que redistribuam moeda foram **RATIFICADAS**. A fórmula tarifária, a política de desempate genuinamente neutra e o solver robusto seguem em aberto.
 
 
-### F-060 — Tarifas proporcionais à receita comercial e repartição contábil [RATIFICADO O PRINCÍPIO E O RATEIO; PESOS E PROPRIEDADE ABERTOS]
+### F-060 — Tarifas proporcionais à receita comercial e repartição contábil [RATIFICADO O RATEIO; PESOS ABERTOS; COPROPRIEDADE F-062]
 
 **Motivação:** F-041 obriga venda de **toda** a produção; F-043 fixa \`P=√(D/Q)\` e \`P→0\` para Q muito maior que D. Uma tarifa **nominal fixa por unidade**, mesmo que logisticamente coerente e cobrada por titular de aresta externa, pode superar o preço unitário e forçar **receita líquida negativa**. Isso entraria em conflito operacional com tesouros finitos das civilizações e o compromisso de venda integral, sobretudo em mercados distantes com acesso somente por infraestrutura alheia. Não resolver criando compradores com carteiras nem descartando quantidades.
 
-**Decisão superveniente e ratificada:** calcular o encargo tarifário **como fração da receita bruta efetivamente produzida pela venda**, proporcional ao volume e ao preço do item no mercado de destino, em vez de um valor monetário absoluto que independa do preço. **A estrutura de rateio conjunto descrita a seguir fica adotada como contrato inicial**, mantendo a forma específica dos pesos \`w_e=φ(I_e)\`, sua normalização/limites e a titularidade das arestas EM ABERTO. Não inferir tarifas positivas em arestas sem titularidade ou sem melhoria enquanto esses contratos não forem definidos.
+**Decisão superveniente e ratificada:** calcular o encargo tarifário **como fração da receita bruta efetivamente produzida pela venda**, proporcional ao volume e ao preço do item no mercado de destino, em vez de um valor monetário absoluto que independa do preço. **A estrutura de rateio conjunto descrita a seguir fica adotada como contrato inicial**, mantendo **a função específica dos pesos \`w_e=φ(I_e)\` e sua normalização/limites EM ABERTO (F-061)**. A copropriedade econômica foi fechada em F-062, enquanto autoridade diplomática e embargos permanecem F-063. Não inferir tarifa positiva em aresta sem capital incorporado nem função φ validada.
 
 **Generalização superveniente de F-062 [RATIFICADA]:** cada aresta e pode ter vários titulares econômicos. Capital \`I[e,c]\` define quota \`s[e,c]=I[e,c]/Σ_j I[e,j]\` quando o denominador é positivo; w_e=φ(I_e) continua variável de intensidade **ABERTA**. O vendedor c deve somente participações alheias: \`W[c,r]=Σ_{e∈r}Σ_{j≠c}w_e s[e,j]\`. Uma aresta não melhorada com capital total zero não cobra tarifa. A forma histórica de titular único corresponde ao caso s=1 para somente uma civilização.
 
-Para uma venda de quantidade \`q\` no mercado \`n\` do item \`i\`, com preço final \`P_{n,i}\`, estabelecer (apenas candidato):
+Para uma venda de quantidade \`q\` no mercado \`n\` do item \`i\`, com preço final \`P_{n,i}\`, o **rateio financeiro aprovado** é:
 
 \`V_bruta=q×P_{n,i}\`;
 
