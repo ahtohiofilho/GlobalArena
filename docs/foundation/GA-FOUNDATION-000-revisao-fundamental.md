@@ -1,7 +1,7 @@
 # GA-FOUNDATION-000 — Revisão fundamental do Global Arena
 
 **Data de abertura:** 2026-11-07  
-**Versão conceitual:** 3.8  
+**Versão conceitual:** 3.9  
 **Situação:** deliberação em andamento; F-021 altera a arquitetura econômica anteriormente explorada  
 **Escopo:** formulação de uma **nova versão conceitual autônoma** do jogo, sem dependência do kernel anterior; sem refatoração de código nesta entrega
 
@@ -1361,7 +1361,7 @@ Com \`I/I₀=0\`, \`q_remoto≈0,27027\`, receita tarifária 0. Com \`I/I₀=1\`
 
 **Decisão expressa:** a titularidade econômica das melhorias logísticas em cada aresta é **compartilhada em proporção ao capital efetivamente incorporado por cada civilização**; a primeira investidora não captura um monopólio exclusivo permanente e a titularidade econômica não decorre automaticamente do controle territorial.
 
-Para aresta e e civilização c, persistir **capital titularizado atual** \`H[e,c]≥0\` (historicamente escrito \`I[e,c]\` nas seções anteriores); capital físico total \`I_e=Σ_c H[e,c]\`. Se \`I_e>0\`, participação \`s[e,c]=H[e,c]/I_e\`; se \`I_e=0\`, não existem quotas definidas nem receita tarifária pela melhoria natural. **F-064 permite transferência de H entre civilizações por compra e venda sem modificar I_e, e mantém a origem de financiamento no journal auditável, sem novo estado redundante.** Cada parcela de capital exige trabalho efetivo de um trabalhador elegível e débito simultâneo do **tesouro da civilização investidora**, F-035/F-048. O investimento de outra civilização melhora a mesma aresta física e altera as participações por nova soma, sem apagar capital anterior e sem exigir etapas fixas de construção.
+Para aresta e e civilização c, persistir **capital titularizado atual** \`H[e,c]≥0\` (historicamente escrito \`I[e,c]\` nas seções anteriores); capital físico total \`I_e=Σ_c H[e,c]\`. Se \`I_e>0\`, participação \`s[e,c]=H[e,c]/I_e\`; se \`I_e=0\`, não existem quotas definidas nem receita tarifária pela melhoria natural. **Transferência voluntária de H por compra e venda está ADIADA pela F-066; permanece apenas uma possibilidade futura que, se implementada, não deverá modificar I_e. O journal guarda proveniência de financiamento sem estado redundante.** Cada parcela de capital exige trabalho efetivo de um trabalhador elegível e débito simultâneo do **tesouro da civilização investidora**, F-035/F-048. O investimento de outra civilização melhora a mesma aresta física e altera as participações por nova soma, sem apagar capital anterior e sem exigir etapas fixas de construção.
 
 **Receita tarifária em copropriedade (extensão de F-060):** a civilização vendedora c fica isenta **apenas da sua própria participação** no peso tarifário da aresta e. Para j≠c que possui quota, peso devido ao cotitular j = \`w_e s[e,j]\`, onde w_e≥0 é a intensidade total da aresta e sua forma exata segue F-061 [ABERTA]. Em rota r, \`W[c,r]=Σ_{e∈r}Σ_{j≠c}w_e s[e,j]\`; receita líquida do vendedor da venda V = \`V/(1+W[c,r])\`; cotitular j da aresta e recebe \`V w_e s[e,j]/(1+W[c,r])\`. Soma dos recebimentos = V; o vendedor não paga sua própria quota. Se o vendedor detiver 100% da aresta, sua tarifa é zero; se não tiver participação, paga a soma das quotas dos demais. Uma aresta não melhorada com capital zero não gera tarifa por titularidade.
 
@@ -1388,7 +1388,7 @@ Para aresta e e civilização c, persistir **capital titularizado atual** \`H[e,
 
 **Laboratório conceitual mínimo:** aresta melhorada com titulares A=60%, B=30%, C=10%. Caso uma autoridade competente decida embargar D, fluxos comerciais de D ficam inelegíveis nessa aresta; A/B/C e outros não embargados continuam elegíveis, congestionamento é recalculado, quotas de investimento permanecem 60/30/10. A mera participação de C=10% NÃO demonstra poder de C para embargar D sozinha.
 
-**Gates obrigatórios:** pesos de votação por participação foram ratificados em F-064. Falta estabelecer quórum/maioria, iniciativa, eventual embargo de coproprietário, bidirecionalidade, efeitos sobre direitos de tarifa, isolamento total incompatível com venda universal, duração/revogação, desempates de votação e replay determinístico; não inferir decisões militares.
+**Gates futuros (NÃO ativos no MVP por F-066):** votação por participação, quórum/maioria, iniciativa, embargo de coproprietário, bidirecionalidade, direitos tarifários, isolamento total incompatível com venda universal, duração/revogação, desempates e replay determinístico; não inferir decisões militares.
 
 **Status:** coexistência de copropriedade com embargo seletivo **RATIFICADA**; **peso dos votos por participação de capital RATIFICADO pela F-064**, inclusive no exame de embargo. Quórum/maioria, iniciativa, elegibilidade de coproprietário embargado, vigência, contingência e outros procedimentos continuam **ABERTOS**. A entrada de um novo sócio depende igualmente de votação ponderada dos sócios existentes. Não implementar bloqueio imediato no kernel com premissas inventadas.
 
@@ -1432,6 +1432,37 @@ Direitos de acompanhamento de novos aportes, antidiluição, veto e outras regra
 **QA:** primeiro investidor numa aresta natural; ingresso da terceira civilização sem consulta; aportes simultâneos; ausência de tempo de trabalho; tesouro insuficiente; conservação \`I_e=Σ H[e,c]\`; resultado determinístico; ausência de UI e transações societárias; repartição de tarifa por quota sem voto.
 
 **Status:** RATIFICADO ingresso livre e diluição automática no MVP. Votos, preferência de compra, embargo efetivo e transferências de participações ficam adiados. Próxima prioridade: F-061 (regra automática da intensidade de tarifa) e clearing com tarifa real incluída no equilíbrio.
+
+### F-067 — Teste de equilíbrio simultâneo com tarifa, copropriedade e ingresso livre [LABORATÓRIO CONCLUÍDO; φ E SOLVER NÃO RATIFICADOS]
+
+**Objetivo:** após a F-066 eliminar aprovações societárias, testar se o mercado pode operar automaticamente quando uma aresta compartilhada melhora e cobra participação tarifária de outra civilização. Utiliza F-043 (preço por mercado), F-048 (tesouros civilizacionais), F-049 (equilíbrio simultâneo), F-056 (atratividade física), F-060/F-062 (rateio proporcional e copropriedade), F-066 (investimento aberto). O índice **multiplicativo** de atratividade com tarifa e a função φ seguem **CANDIDATOS**, não decisões fechadas.
+
+**Cenário reproduzível:** origem e mercado X têm civilização A produzindo 8 unidades de UM produto; origem e mercado Y têm civilização B produzindo 2 do mesmo produto. Demandas de referência: \`D_X=1\`, \`D_Y=4\`. Os dois mercados são ligados por **uma aresta**, ambas as civilizações podem vender localmente com L=0 ou atravessar a aresta. O fluxo contrário de B não é vantajoso nos equilíbrios encontrados. Intervalo de carga e referência de L tomados como 1 apenas no ensaio.
+
+**Física de ensaio, NÃO ratificada:** impedância por fluxo \`c(q)=c_livre×[1+(q/5)^4]\`, q=volume total efetivamente transportado, expoente p=4 e K=5 ilustrativos. Uma situação natural inicial tem \`c_livre=2\`, capital não atribuído e tarifa w=0. Uma situação posterior à obra tem \`c_livre=0,5\`, propriedade de A=75% e B=25%, peso tarifário de aresta \`w=1/(1+0,5)−1/(1+2)=1/3\` (candidata F-061). A identidade da civilização que fez os aportes prévios importa às quotas, não exige autorização política F-066. Comparar também a melhoria física sem tarifa para isolar seus efeitos.
+
+**Regra candidata aplicada:** a civilização A, ao exportar para Y, paga somente a quota de B, peso efetivo de percurso \`W_A=w×s_B\`; B, se exportasse, pagaria \`W_B=w×s_A\`. Para uma exportação x de A e nenhuma exportação de B, os mercados têm \`Q_X=8−x\`, \`Q_Y=2+x\`; preços \`P_X=√(1/Q_X)\`, \`P_Y=√(4/Q_Y)\`. A condição interior de atratividade se torna
+\`sqrt(8−x) = [1+c(x)](1+W_A)sqrt((2+x)/4)\`;
+o fluxo de B permanece inteiramente local, pois sua alternativa de exportar custa estritamente mais no estado final. Resolve-se a equação escalar por **bisseção**, sem solver completo de grafos.
+
+**Resultados numéricos (arredondados):**
+
+| Situação | A exporta para Y | Impedância efetiva na aresta | Receita líquida A | Receita líquida B | Tarifa B recebida | Soma de tesouros |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Natural: c_livre=2, w=0 | 1,07095250 | 2,00420950 | 3,85456855 | 2,28256651 | 0 | 6,13713507 |
+| Melhorada: c_livre=0,5, w=0 | 3,86650765 | 0,67879916 | 5,22580608 | 1,65146803 | 0 | 6,87727411 |
+| Melhorada + tarifa: c_livre=0,5, w=1/3, A 75%/B 25% | 3,60430132 | 0,63501262 | 4,90738113 | 1,92389214 | 0,23423241 | 6,83127328 |
+
+**Contabilidade do terceiro caso:** \`W_A=1/3×1/4=1/12\`; preço em Y \`P_Y≈0,84482986\`; A exporta \`x≈3,60430132\` e vende localmente \`8−x≈4,39569868\`; B vende localmente 2. Valor bruto da exportação de A \`xP_Y≈3,04502139\`; sua parcela líquida exportadora \`3,04502139/(13/12)≈2,81078898\` e tarifa da B \`≈0,23423241\`. Incluindo a venda local, A recebe \`≈4,90738113\`; B recebe \`2P_Y≈1,68965973\` mais tarifa \`≈0,23423241\`, total \`≈1,92389214\`. Toda a produção A=8 e B=2 foi vendida, sem débito a consumidores e sem criação de dinheiro entre tesouros; receitas líquidas somam o valor bruto dos mercados.
+
+**Descoberta econômica relevante:** **uma civilização pode ser cotitular de uma aresta melhorada, receber tarifa maior que zero, e mesmo assim ter receita líquida total menor** após a melhoria. Neste exemplo B cai de ≈2,28257 para ≈1,92389 moedas por ciclo, embora receba ≈0,23423 de tarifa. A melhoria torna Y acessível à grande oferta de A; o preço de mercado Y cai, diminuindo a receita de produção própria de B. A infraestrutura beneficia A (e pode beneficiar desenvolvimento material em Y), mas **retorno tarifário positivo não garante aumento de lucro/receita total de cada cotitular**. Não criar artificialmente compensação ou preço mínimo.
+
+**Atenção ao valor de investimento e ROI:** os cenários são comparações de equilíbrio de mercado, não balanço de retorno ao capital. Não foi debitado no ensaio o valor de construção que gerou c_livre=0,5; a função que relaciona capital, eficiência e intensidade ainda não foi fixada. Não afirmar lucro líquido do investimento, payback ou retorno positivo/negativo definitivo sem custo e horizonte de ciclos.
+
+**Invariantes verificadas no laboratório:** conservação de oferta 8+2=10, preço único por mercado/item, venda local sem aresta, congestionamento com carga final, propriedade parcial, isenção da própria quota tarifária, divisão monetária exata, ausência de conta compradora, gap da igualdade interior ≈0 por bisseção, não atratividade da exportação de B. **Não foi testada robustez de solver multi-origem/multi-produto com tarifas, determinismo bit a bit entre plataformas ou escalabilidade Goldberg.**
+
+**Encaminhamento de design:** o MVP não precisa de votação para novos investidores (F-066). Prosseguir com **intensidade tarifária automática** F-061 apenas se ela produzir comportamento de mercado defensável; a cobrança proporcional F-060 já é canônica. A questão ainda mais fundamental é se o sistema **permite que o pedágio anule parte do benefício físico** de uma melhoria para terceiros (trade-off econômico legítimo), ou se deseja exigir monotonicidade de atratividade em TODAS as rotas, algo que a candidata multiplicativa \`(1+L)(1+W)\` não garante para distâncias arbitrárias. Essa escolha permanece **EM ABERTO**, não requer criar UI ou quórum.
+
 
 ## 8. Governança da nova versão e critérios de reaproveitamento
 
@@ -1524,3 +1555,5 @@ Direitos de acompanhamento de novos aportes, antidiluição, veto e outras regra
 - **2026-11-07 — deliberação societária ponderada e preferência na saída:** F-064 RATIFICA votação por quotas de capital, aprovação ponderada dos sócios existentes para admissão de nova civilização investidora e preferência proporcional de compra para cotitulares remanescentes quando alguém deixa a sociedade. Exemplo A=60%, B=30%, C=10% saindo: A tem preferência por 6,6667 pontos e B por 3,3333 pontos, sujeitos a caixa/aceite e negociação. A venda de participação apenas transfere capital titularizado H[e,c], sem retirar ou recriar capital físico I_e; preço da quota é pagamento real entre tesouros, distinto de I. Fundação da aresta natural sem sócios não requer voto inexistente. F-063 recebe voto societário proporcional, mas maiorias, quóruns e veto a embargado seguem abertos. F-065 documenta diluição por novo aporte de cotitular existente e deixa direitos de acompanhamento/voto de aumento de capital em aberto para não antecipar complexidade diplomática.
 
 - **2026-11-07 — F-066 simplificação do MVP:** revogada a aprovação por voto para ingresso de qualquer nova civilização (antiga F-064). Qualquer civilização fisicamente elegível e com tesouro suficiente investe, incorpora capital e recebe automaticamente quota de copropriedade, diluindo percentualmente cotitulares já presentes, sem apagar suas participações nominais. Votos, operações de compra/venda e preferência de aquisição e embargo ativo ficam adiados como extensão futura. Não criar aprovação societária na interface. Próximo foco técnico: F-061 e equilíbrio com tarifas.
+
+- **2026-11-07 — laboratório tarifário F-067 após ingresso livre F-066:** teste analítico de dois produtores/civilizações e mercados X/Y ligados por uma aresta, D_X=1,D_Y=4, A produz 8, B produz 2. Com custos ilustrativos c=c_livre[1+(q/5)^4], após melhoria c_livre 0,5, copropriedade A 75%, B 25%, peso candidato w=1/3, o clearing tem exportação de A ≈3,60430, preço único por mercado, tarifas B≈0,23423, receitas líquidas A≈4,90738 e B≈1,92389, conservação integral 10/10 e contabilização exata. Antes de obra/tarifa, B obtinha ≈2,28257; a queda demonstra que mesmo cotitular recebendo tarifa positiva pode perder receita por concorrência de produção no mercado consumidor. φ(I), fator tarifário de atratividade e solver multi-commodity continuam NÃO RATIFICADOS; nenhum ROI financeiro validado.
