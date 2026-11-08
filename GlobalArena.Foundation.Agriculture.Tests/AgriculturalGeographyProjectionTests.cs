@@ -149,7 +149,7 @@ public sealed class AgriculturalGeographyProjectionTests
             new[] { 0, 2, 4, 6 }, new[] { 2, 1, 0, 2, 0, 1 }));
         Assert.Throws<ArgumentException>(() => new AgriculturalLogicalGeography(
             new[] { nodes.GetNode(0), nodes.GetNode(1), nodes.GetNode(2) },
-            new[] { 0, 1, 3, 4 }, new[] { 1, 0, 2, 1 }));
+            new[] { 0, 1, 2, 3 }, new[] { 1, 2, 1 }));
         Assert.Throws<ArgumentException>(() => new AgriculturalLogicalGeography(
             new[] { nodes.GetNode(0), nodes.GetNode(1), nodes.GetNode(2) },
             new[] { 0, 2, 4 }, new[] { 1, 2, 0, 2, 0, 1 }));
