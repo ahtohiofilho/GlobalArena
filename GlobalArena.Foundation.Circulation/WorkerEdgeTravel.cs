@@ -64,6 +64,6 @@ public static class WorkerEdgeTravel
         // efficiency. No floating point or geodesic distance in the kernel.
         var numerator = (Int128)effort * Scale;
         var duration = (numerator + workerEfficiencyRaw - 1) / workerEfficiencyRaw;
-        return checked((long)Int128.Max(1, duration));
+        return checked((long)(duration < 1 ? 1 : duration));
     }
 }
