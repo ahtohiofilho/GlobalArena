@@ -159,6 +159,52 @@ public sealed class AgriculturalGeographyProjectionTests
         Assert.Throws<ArgumentException>(() => result.CopyScores(0, new int[5]));
     }
 
+    [Fact]
+    public void TwoDimensionalClimateGradientProducesSixDistinctCropRegions()
+    {
+        // Synthetic LAB climate, not a replacement for canonical worldgen.
+        // A regular 13x13 logical lattice tests geographic differentiation
+        // without assigning any biome labels or arbitrary crop availability.
+        const int size = 13;
+        const int n = size * size;
+        var nodes = new AgriculturalGeographicNode[n];
+        var offsets = new int[n + 1];
+        var adjacent = new List<int>(4 * n);
+        for (int row = 0; row < size; row++)
+        {
+            for (int col = 0; col < size; col++)
+            {
+                int i = row * size + col;
+                nodes[i] = new AgriculturalGeographicNode(
+                    10_000 + i, 0,
+                    -1_000_000 + row * 2_000_000 / (size - 1),
+                    col * 1_000_000 / (size - 1), true);
+                offsets[i] = adjacent.Count;
+                if (row > 0) adjacent.Add(i - size);
+                if (col > 0) adjacent.Add(i - 1);
+                if (col + 1 < size) adjacent.Add(i + 1);
+                if (row + 1 < size) adjacent.Add(i + size);
+            }
+        }
+        offsets[n] = adjacent.Count;
+        var projected = AgriculturalGeographyProjection.Build(
+            new AgriculturalLogicalGeography(nodes, offsets, adjacent));
+        var counts = new Dictionary<CropId, int>();
+        for (int i = 0; i < n; i++)
+        {
+            CropId leading = projected.GetLeadingCrop(i)!.Value;
+            counts.TryGetValue(leading, out int count);
+            counts[leading] = count + 1;
+        }
+        Assert.Equal(6, counts.Count);
+        Assert.Equal(20, counts[CropId.Maize]);
+        Assert.Equal(33, counts[CropId.Sorghum]);
+        Assert.Equal(22, counts[CropId.Wheat]);
+        Assert.Equal(26, counts[CropId.Rice]);
+        Assert.Equal(30, counts[CropId.Soybean]);
+        Assert.Equal(38, counts[CropId.Barley]);
+    }
+
     private static AgriculturalLogicalGeography CreateThreeNodeGeography()
     {
         return new AgriculturalLogicalGeography(
