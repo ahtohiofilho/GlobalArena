@@ -71,8 +71,8 @@ public static class EdgeInvestmentLaboratory
 
         var fractionalLevelRaw = (long)((x - lower) * Scale / lower);
         long factorRaw = checked(Scale + (long)level * Scale + fractionalLevelRaw);
-        long freeFlow = checked((long)Int128.Max(1,
-            (Int128)natural.ImpedanceRaw * Scale / factorRaw));
+        var freeFlowValue = (Int128)natural.ImpedanceRaw * Scale / factorRaw;
+        long freeFlow = checked((long)(freeFlowValue < 1 ? 1 : freeFlowValue));
         long capacity = checked((long)((Int128)natural.NaturalCapacityRateRaw * factorRaw / Scale));
 
         if (capacity <= 0)
