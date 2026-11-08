@@ -165,7 +165,7 @@ public static class DestinationRevenueLaboratory
         long previous = -1;
         foreach (var holding in holdings)
         {
-            if (holding.CivilizationId < 0 || holding.CapitalRawInvalid())
+            if (holding.CivilizationId < 0 || holding.IncorporatedCapitalRaw < 0)
                 throw new ArgumentException("Invalid owner civilization or incorporated capital.");
             if (holding.CivilizationId == previous)
                 throw new ArgumentException("Repeated owner on one edge.");
@@ -313,7 +313,7 @@ public static class DestinationRevenueLaboratory
         return new TransientSaleRevenue(
             sale.FlowId, sale.OriginNodeId, sale.DestinationNodeId,
             sale.CommodityId, sale.SellerCivilizationId, sale.SoldQuantityRaw,
-            priceRaw, grossRaw, totalExternalWeight, amounts[0], ownerCredits);
+            priceRaw, grossRaw, totalExternalWeight, amounts[0], ownerCredits.ToArray());
     }
 
     private static void AddCredit(SortedDictionary<long, long> credits, long id, long value)
@@ -343,10 +343,4 @@ public static class DestinationRevenueLaboratory
         EdgeCapitalHolding[] Holdings);
     private readonly record struct RevenueShare(
         long EdgeId, long CivilizationId, long WeightRaw);
-}
-
-internal static class CapitalValidationExtensions
-{
-    public static bool CapitalRawInvalid(this EdgeCapitalHolding owner)
-        => owner.IncorporatedCapitalRaw < 0;
 }
