@@ -256,7 +256,7 @@ public sealed class EdgeInvestmentLaboratoryTests
             if (pass == 0) checksumA = checksum;
             else checksumB = checksum;
         }
-        Assert.Equal(REFERENCE_CHECKSUM, checksumA);
+        Assert.Equal(174_010_393_153L, checksumA);
         Assert.Equal(checksumA, checksumB);
     }
 
