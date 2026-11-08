@@ -258,6 +258,6 @@ public sealed class WorkerEdgeTravelTests
             long efficiency = 300_000 + (i * 131_071L % 2_700_001);
             checksum = checked(checksum + Duration(edge, efficiency) * (i % 5 + 1));
         }
-        Assert.Equal(REFERENCE_CHECKSUM, checksum);
+        Assert.Equal(17_521_078_817L, checksum);
     }
 }
