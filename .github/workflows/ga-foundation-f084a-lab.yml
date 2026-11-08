@@ -1,4 +1,4 @@
-name: GA Foundation F084A Natural Edge Lab
+name: GA Foundation F084A-B Circulation Lab
 
 on:
   pull_request:
@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   deterministic-tests:
-    name: Natural unit-edge tests
+    name: Circulation fixed-point tests
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -25,16 +25,16 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-      - name: Test F-084A independently
+      - name: Test F-084A/B independently
         run: dotnet test GlobalArena.Foundation.Circulation.Tests/GlobalArena.Foundation.Circulation.Tests.csproj -c Release --nologo
 
   benchmark:
-    name: Reference evaluator benchmark
+    name: Circulation reference benchmark
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-      - name: Execute F-084A baseline benchmark
+      - name: Execute circulation benchmark
         run: dotnet run --project GlobalArena.Foundation.Circulation.Benchmark/GlobalArena.Foundation.Circulation.Benchmark.csproj -c Release
