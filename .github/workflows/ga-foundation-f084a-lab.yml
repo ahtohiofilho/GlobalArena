@@ -1,4 +1,4 @@
-name: GA Foundation F084A-B Circulation Lab
+name: GA Foundation F084A-D Circulation Lab
 
 on:
   pull_request:
@@ -25,7 +25,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-      - name: Test F-084A/B independently
+      - name: Test F-084A-D independently
         run: dotnet test GlobalArena.Foundation.Circulation.Tests/GlobalArena.Foundation.Circulation.Tests.csproj -c Release --nologo
 
   benchmark:
