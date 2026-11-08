@@ -35,3 +35,5 @@ foreach (int count in new[] { 10_000, 100_000 })
         Console.WriteLine($"{count},{repetition},{watch.Elapsed.TotalMilliseconds:F3},{checksum}");
     }
 }
+
+WorkerMovementBenchmark.Run();
