@@ -1,0 +1,40 @@
+name: GA Foundation Agriculture Lab
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Foundation.Agriculture/**'
+      - 'GlobalArena.Foundation.Agriculture.Tests/**'
+      - 'GlobalArena.Foundation.Agriculture.Benchmark/**'
+      - '.github/workflows/ga-foundation-agriculture-lab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-tests:
+    name: Agriculture fixed-point tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Test isolated foundation agriculture
+        run: dotnet test GlobalArena.Foundation.Agriculture.Tests/GlobalArena.Foundation.Agriculture.Tests.csproj -c Release --nologo
+
+  performance-observation:
+    name: Agriculture reference benchmark (non-gating timing)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Execute fixed-point throughput reference
+        run: dotnet run --project GlobalArena.Foundation.Agriculture.Benchmark/GlobalArena.Foundation.Agriculture.Benchmark.csproj -c Release
