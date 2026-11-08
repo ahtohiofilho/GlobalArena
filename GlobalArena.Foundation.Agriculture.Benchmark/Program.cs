@@ -7,13 +7,13 @@ const int repeat = 3;
 int[] nodeCounts = { 10_000, 100_000 };
 Console.WriteLine("Global Arena - Foundation Agriculture Lab Benchmark");
 Console.WriteLine("nodes,crops,repeat,elapsed_ms,weighted_checksum");
+Span<int> values = stackalloc int[CropCatalog.Count];
 
 foreach (int nodes in nodeCounts)
 {
     for (int iteration = 1; iteration <= repeat; iteration++)
     {
         long checksum = 0;
-        Span<int> values = stackalloc int[CropCatalog.Count];
         var watch = Stopwatch.StartNew();
         for (int i = 0; i < nodes; i++)
         {
