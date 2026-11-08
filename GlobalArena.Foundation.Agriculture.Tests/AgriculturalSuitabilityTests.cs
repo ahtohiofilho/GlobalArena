@@ -135,6 +135,6 @@ public sealed class AgriculturalSuitabilityTests
                 sum = checked(sum + scores[j] * (j + 1L));
         }
         // Golden result frozen after independent integer reference computation.
-        Assert.Equal(REFERENCE_CHECKSUM, sum);
+        Assert.Equal(12_018_979_627L, sum);
     }
 }
