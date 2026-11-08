@@ -1,0 +1,40 @@
+name: GA Foundation F084A Natural Edge Lab
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Foundation.Circulation/**'
+      - 'GlobalArena.Foundation.Circulation.Tests/**'
+      - 'GlobalArena.Foundation.Circulation.Benchmark/**'
+      - '.github/workflows/ga-foundation-f084a-lab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-tests:
+    name: Natural unit-edge tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Test F-084A independently
+        run: dotnet test GlobalArena.Foundation.Circulation.Tests/GlobalArena.Foundation.Circulation.Tests.csproj -c Release --nologo
+
+  benchmark:
+    name: Reference evaluator benchmark
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Execute F-084A baseline benchmark
+        run: dotnet run --project GlobalArena.Foundation.Circulation.Benchmark/GlobalArena.Foundation.Circulation.Benchmark.csproj -c Release
