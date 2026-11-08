@@ -38,16 +38,15 @@ internal static class EdgeTariffReferenceBenchmark
                 for (int repetition = 1; repetition <= 3; repetition++)
                 {
                     long checksum = 0;
+                    var ownership = new long[2];
                     var time = Stopwatch.StartNew();
                     for (int i = 0; i < count; i++)
                     {
                         var tariff = EdgeTariffReferenceLaboratory.Evaluate(
                             natural[i], invested[i], exponent);
                         long sellerCapital = i % 3 == 0 ? invested[i].TotalInvestedCapitalRaw : 0;
-                        var ownership = new long[] {
-                            sellerCapital,
-                            invested[i].TotalInvestedCapitalRaw - sellerCapital
-                        };
+                        ownership[0] = sellerCapital;
+                        ownership[1] = invested[i].TotalInvestedCapitalRaw - sellerCapital;
                         var external = EdgeTariffOwnershipLaboratory.ExternalWeightRaw(
                             tariff, ownership, 0);
                         checksum = checked(checksum
