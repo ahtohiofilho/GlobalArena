@@ -30,3 +30,5 @@ foreach (int nodes in nodeCounts)
         Console.WriteLine($"{nodes},{CropCatalog.Count},{iteration},{watch.Elapsed.TotalMilliseconds:F3},{checksum}");
     }
 }
+
+GeographyProjectionBenchmark.Run();
