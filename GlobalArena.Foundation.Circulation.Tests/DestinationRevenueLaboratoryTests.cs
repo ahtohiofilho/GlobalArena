@@ -127,7 +127,7 @@ public sealed class DestinationRevenueLaboratoryTests
     {
         var projection = DestinationRevenueLaboratory.Settle(
             new[] { Market(20) },
-            new[] { External(1, 20, S, seller: 2, Edge(40, 2)) });
+            new[] { External(1, 20, S, 2, Edge(40, 2)) });
         var result = Assert.Single(projection.Sales);
         Assert.Equal(0, result.ExternalWeightRaw);
         Assert.Empty(result.ExternalOwnerCredits);
@@ -239,7 +239,9 @@ public sealed class DestinationRevenueLaboratoryTests
             .Where(x=>x.OwnerCivilizationId == 2).Sum(x=>x.CreditRaw);
         var civilizationTwo = projection.CivilizationCredits.Single(x=>x.CivilizationId == 2).CreditRaw;
         Assert.True(totalOwners > 0);
-        Assert.Equal(totalOwners + 2*S, civilizationTwo);
+        long localGross = projection.Sales.Where(x=>x.SellerCivilizationId == 2)
+            .Sum(x=>x.GrossRevenueRaw);
+        Assert.Equal(totalOwners + localGross, civilizationTwo);
         Assert.Equal(projection.TotalGrossRaw, projection.TotalCreditsRaw);
     }
 
