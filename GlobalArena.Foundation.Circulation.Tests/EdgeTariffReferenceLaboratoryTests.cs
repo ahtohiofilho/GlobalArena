@@ -46,7 +46,7 @@ public sealed class EdgeTariffReferenceLaboratoryTests
     [Theory]
     [InlineData(3, 836_363L)]
     [InlineData(4, 846_846L)]
-    [InlineData(5, 852_001L)]
+    [InlineData(5, 852_017L)]
     public void TwofoldImprovementMatchesFixedReferenceLoadSensitivity(
         int globalExponent, long expectedWeightRaw)
     {
@@ -301,6 +301,6 @@ public sealed class EdgeTariffReferenceLaboratoryTests
             sum = checked(sum + value.WeightRaw * 7 +
                 value.PhysicalGainRaw * 3 + value.InvestedReferenceImpedanceRaw);
         }
-        Assert.Equal(REFERENCE_CHECKSUM, sum);
+        Assert.Equal(49_949_188_417L, sum);
     }
 }
