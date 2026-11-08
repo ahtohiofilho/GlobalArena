@@ -37,3 +37,5 @@ foreach (int count in new[] { 10_000, 100_000 })
 }
 
 WorkerMovementBenchmark.Run();
+
+EdgeInvestmentBenchmark.Run();
