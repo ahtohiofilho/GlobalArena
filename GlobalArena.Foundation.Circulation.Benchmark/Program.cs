@@ -43,3 +43,5 @@ EdgeInvestmentBenchmark.Run();
 EdgeCongestionBenchmark.Run();
 
 EdgeTariffReferenceBenchmark.Run();
+
+DestinationRevenueBenchmark.Run();
