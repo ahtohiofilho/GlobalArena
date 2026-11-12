@@ -1,0 +1,22 @@
+{
+  "files": {
+    "CI-WORKFLOW-ga-gate09-r20-bounded.yml": "8751ff0fd7ccbf17ff7afdb09ad0835eadd73ce483c15d5a66b9d2a9b0959c95",
+    "README.md": "69819ebdec7d98c8cc789192e8fcb2ccb7324069ac38c2e80eabdd35cd988f3e",
+    "baseline-provenance.json": "510645bf31ee67b7de80b01a8343bfe8a9a0bab508e09c520fe397773a1cf8d4",
+    "baseline/audit_r13.py": "b255000a4acad4f87ec3974bc52836d6ec100894342dc22835b9425a6479d301",
+    "baseline/benchmark_r13.py": "5fd412060ec3ecf0ab650a2d9acfa9b7f16913be74303bb2a86eb0ac5ecffa35",
+    "baseline/benchmark_r14.py": "21f5827c2c164ad415b5e803f23c1be848bbc7c217b28f9508521306a78faf30",
+    "baseline/certificate_r2.py": "35188a34610a934bb73bd00f18e823b6a65910b5225b9a953b568a9688cf9fde",
+    "baseline/clearing_r5.py": "61279ad6fe0bed2a76f00f62b15d91dd89ed59e4c98282ae07291ea45b7d8caa",
+    "baseline/finance_fixed.py": "e99c8b03f1d7892ce6887fe25460800585d7570f45044794686cb128fd24b0a7",
+    "baseline/gate09.py": "ef18fc26929cefe3370d9b022e7dc09afffc7453fc7be096c872b4e66ccd41f8",
+    "baseline/goldberg_r8.py": "32bae8b5e77c649519f3d73dae16917c2152c6ba5a54d58be86ac4b48a5f69d4",
+    "baseline/multimarket_r13.py": "6165cf0f7b3a03d473ad014361be990f572193f1147bbefdd903eb8362e05256",
+    "baseline/multimarket_r14.py": "1c25aa729e9248b8326a00b6ad20fe068aa31490babfb94942ee089c197619f9",
+    "baseline/oracle_cache_r14.py": "aaaf335399b64ecda823e067273c104f993b968283b2012bf0ec5c995276032c",
+    "ci/run_r20.py": "8cecbc0866d5b8da3dd4d3d007b9a1dfa5bb8388aebe3df53a9c071e22246180",
+    "tests/test_r20_contract.py": "7d3ef75162c41d7692f031ecf964f2fb74246a13b9b7fb6c1be8ceba657ed14c"
+  },
+  "gate": "GA-GATE09-R20",
+  "scope": "PYTHON_BOUNDED_SYNTHETIC_MULTIGOOD_F072_F084F"
+}
