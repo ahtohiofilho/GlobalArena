@@ -38,6 +38,11 @@ class Contract(unittest.TestCase):
           'src/GA.Gate09.R19.CacheParity/Program.cs':'ff1b3d325554d0a59c9b0a57250c02dca6f85b3882a63eac21796702e959c467',
           'src/GA.Gate09.R19.RatioWitness/Program.cs':'716c02962a417a3bfa9e86f44c6298bf2dea854dff5d4cc35c28647fe6917acb',
         }
-        for p,h in expected.items():self.assertEqual(h,hashlib.sha256((ROOT/p).read_bytes()).hexdigest(),p)
+        # Git checks out source files with LF; the approved REV4 artifact used CRLF.
+        # Reconstruct REV4's line endings strictly for its provenance digest.
+        for p,h in expected.items():
+            raw = (ROOT/p).read_bytes()
+            crlf = raw.replace(b'\r\n', b'\n').replace(b'\n', b'\r\n')
+            self.assertEqual(h, hashlib.sha256(crlf).hexdigest(), p)
 
 if __name__=='__main__':unittest.main()
