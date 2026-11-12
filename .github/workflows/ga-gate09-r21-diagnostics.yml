@@ -13,8 +13,8 @@ permissions:
 
 jobs:
   diagnostics:
-    name: R21 diagnostics / \${{ matrix.os }}
-    runs-on: \${{ matrix.os }}
+    name: R21 diagnostics / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -29,12 +29,12 @@ jobs:
       - name: Upstream integrity and diagnostic contracts
         run: python -m unittest discover -s experiments/gate09/r21/tests -p 'test_*.py' -v
       - name: Generate R21 gap, load, price and audit trajectories
-        run: python experiments/gate09/r21/ci/run_r21.py --profile ci --output '\${{ runner.temp }}'
+        run: python experiments/gate09/r21/ci/run_r21.py --profile ci --output '${{ runner.temp }}'
       - name: Publish evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ga-gate09-r21-\${{ matrix.os }}
-          path: \${{ runner.temp }}/GA-Gate09-R21-Evidencias-*.zip
+          name: ga-gate09-r21-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-R21-Evidencias-*.zip
           if-no-files-found: warn
           retention-days: 14
