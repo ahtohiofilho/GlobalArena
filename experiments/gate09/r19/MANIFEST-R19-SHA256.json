@@ -1,0 +1,26 @@
+{
+  "gate": "GA-Gate09-R19",
+  "scope": "EXPERIMENTAL_STANDALONE",
+  "originalR18ZipSha256": "2e88d96542c179de12101ba56ea22b617f369c18948ec16569b47e0f95ce588e",
+  "baselineR18ZipSha256": "2e88d96542c179de12101ba56ea22b617f369c18948ec16569b47e0f95ce588e",
+  "approvalEvidence": "GA-Gate09-R18-REV4-Evidencias-20261112-160717.zip",
+  "files": {
+    "CI-WORKFLOW-ga-gate09-r19-parity.yml": "8dea60ccfc5ed8030c789bcc9ad16e1d3d46a865625d595855eaed04f24a96b2",
+    "R19-DECISAO.md": "ef78f2c8667f0f28824fbc84a913af62bb44d0419f308f9f138a8baa6db2c1a6",
+    "README.md": "8e71f0b5ea9bad9279db067c842ae16c71ac0833d9a492d038cfdf783efe9bf5",
+    "bench/GA.Gate09.R19.Benchmark/GA.Gate09.R19.Benchmark.csproj": "16fe98577d153e5f72bbbca328d2e9ead942ef161e1c35068c5b5f957d819e27",
+    "bench/GA.Gate09.R19.Benchmark/Program.cs": "0a79eda8abc6d00e89fe29a60da69876824649d2e9aa7a610376392482e0ec56",
+    "ci/run_r19.py": "a4d7b3354fcf2a8bb00aafb39b723572455d8718d5348137d62410bbfc2dde0f",
+    "src/ExactRatioBinary64.cs": "87f06b771c749ea2587de46e78c7c0ea3a16eebe0811a54e14df184271e2d464",
+    "src/GA.Gate09.R19.CacheParity/GA.Gate09.R19.CacheParity.csproj": "8795a1269684a295f0d00ba89e7d4f99ff96ac3528d629b010dfa64761a34bf9",
+    "src/GA.Gate09.R19.CacheParity/Program.cs": "fb732a9f3b73a14c6df96053bb421be7587eb15783f1a48826f73d39f552d310",
+    "src/GA.Gate09.R19.RatioWitness/GA.Gate09.R19.RatioWitness.csproj": "8795a1269684a295f0d00ba89e7d4f99ff96ac3528d629b010dfa64761a34bf9",
+    "src/GA.Gate09.R19.RatioWitness/Program.cs": "42a0202b1777bd64f20a56216d40ab0ebc19938e1e87349343f664e1eb0ae80a",
+    "tests/test_r19_contract.py": "d61588e4806ead5db0dc95784810b1741c5324683e98c5ef5c3d434671217981",
+    "vectors/expected-r18.json": "b323dde52c217ef9a9a42272a35770533ef03a64b00828c698c82ea672794ab2",
+    "vectors/input-r18.json": "33f1cfe753d24e0a767c8ef224e3e5d5d2322e7528341a67ab6df0bfaad0185f",
+    "vectors/ratio-expected.json": "b51a637e78b79ae52437f00b492b3c5b3a28dd4f9ebdf416e58f1a844aa6264e",
+    "vectors/ratio-input.json": "a98f06c791e2b78d48b2664b13027f16850e859656ceaaaf3c0060875c4aa97c"
+  },
+  "executorRevision": "FIX1"
+}
