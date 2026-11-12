@@ -128,6 +128,7 @@ def run_trajectory(cfg, policy, steps, audit_every=16):
     sustained = 0
     first_stable_step = None
     prior_delta = None
+    prior_alpha = None
 
     for step in range(steps + 1):
         if step % audit_every == 0 or step == steps:
@@ -154,6 +155,7 @@ def run_trajectory(cfg, policy, steps, audit_every=16):
             first_stable_step = step
         rows.append({
             "step": step,
+            "alpha_used": prior_alpha,
             "relative_gap": current["relative_gap"],
             "max_group_gap": current["max_group_gap"],
             "tie_groups": len(current["tie_groups"]),
@@ -176,7 +178,7 @@ def run_trajectory(cfg, policy, steps, audit_every=16):
         trial_evaluations += n_evaluations
         uphill_forced += int(forced)
         flows, current = next_flows, next_eval
-        rows[-1]["alpha_next"] = alpha
+        prior_alpha = alpha
 
     gaps = [r["relative_gap"] for r in rows]
     max_gaps = [r["max_group_gap"] for r in rows]
