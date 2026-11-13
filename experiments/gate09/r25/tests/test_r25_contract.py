@@ -40,11 +40,14 @@ class TestR25ElasticTrust(unittest.TestCase):
     def test_feasibility_expansion_never_fabricates_convergence(self):
         bank = [
             {"alpha": 0.25, "volatility": 0.16, "merit": 0.6,
-             "global_ratio": 0.6, "group_ratio": 0.6},
+             "global_ratio": 0.6, "group_ratio": 0.6,
+             "observation": {"relative_gap": 0.6, "max_group_gap": 0.6}},
             {"alpha": 0.125, "volatility": 0.12, "merit": 0.8,
-             "global_ratio": 0.8, "group_ratio": 0.8},
+             "global_ratio": 0.8, "group_ratio": 0.8,
+             "observation": {"relative_gap": 0.8, "max_group_gap": 0.8}},
             {"alpha": 0.0625, "volatility": 0.08, "merit": 0.9,
-             "global_ratio": 0.9, "group_ratio": 0.9},
+             "global_ratio": 0.9, "group_ratio": 0.9,
+             "observation": {"relative_gap": 0.9, "max_group_gap": 0.9}},
         ]
         selected, decision = R.pick_candidate(bank, 0.05, "elastic_feasible")
         self.assertTrue(decision["expanded_for_feasibility"])
@@ -55,11 +58,14 @@ class TestR25ElasticTrust(unittest.TestCase):
     def test_opportunity_expansion_is_recorded_and_costed(self):
         bank = [
             {"alpha": 0.25, "volatility": 0.12, "merit": 0.7,
-             "global_ratio": 0.7, "group_ratio": 0.7},
+             "global_ratio": 0.7, "group_ratio": 0.7,
+             "observation": {"relative_gap": 0.7, "max_group_gap": 0.7}},
             {"alpha": 0.125, "volatility": 0.03, "merit": 1.05,
-             "global_ratio": 1.05, "group_ratio": 1.05},
+             "global_ratio": 1.05, "group_ratio": 1.05,
+             "observation": {"relative_gap": 1.05, "max_group_gap": 1.05}},
             {"alpha": 0.0625, "volatility": 0.01, "merit": 1.10,
-             "global_ratio": 1.10, "group_ratio": 1.10},
+             "global_ratio": 1.10, "group_ratio": 1.10,
+             "observation": {"relative_gap": 1.10, "max_group_gap": 1.10}},
         ]
         selected, decision = R.pick_candidate(bank, 0.05, "elastic_opportunity")
         self.assertTrue(decision["expanded_for_opportunity"])
