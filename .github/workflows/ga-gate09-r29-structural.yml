@@ -1,0 +1,40 @@
+name: GA Gate09 R29 Structural Instability Audit
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/gate09/r29/**'
+      - 'docs/ga-gate09-r29-structural-instability-draft.md'
+      - '.github/workflows/ga-gate09-r29-structural.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  structural-audit:
+    name: R29 structural diagnostics / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify route-cycle definitions, financial replay and immutable references
+        run: python -m unittest discover -s experiments/gate09/r29/tests -p 'test_*.py' -v
+      - name: Audit best-response switching, congestion and charged counterfactuals
+        run: python experiments/gate09/r29/ci/run_r29.py --profile ci --output '${{ runner.temp }}'
+      - name: Upload per-step evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-r29-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-R29-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
