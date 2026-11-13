@@ -1,0 +1,40 @@
+name: GA Gate09 R27 Warm-Start Candidate Search
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/gate09/r27/**'
+      - 'docs/ga-gate09-r27-warmstart-candidate-order-draft.md'
+      - '.github/workflows/ga-gate09-r27-warmstart.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostics:
+    name: R27 repricing and oracle work / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify immutable economics, fresh repricing and budget limits
+        run: python -m unittest discover -s experiments/gate09/r27/tests -p 'test_*.py' -v
+      - name: Compare warm selection with unchanged R21 and R26 controls
+        run: python experiments/gate09/r27/ci/run_r27.py --profile ci --output '${{ runner.temp }}'
+      - name: Archive JSON and ZIP audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-r27-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-R27-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
