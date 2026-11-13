@@ -83,7 +83,7 @@ class R28GuardedSearchContracts(unittest.TestCase):
         for method in R.POLICIES:
             with self.subTest(method=method):
                 proposed, priced, delta, info = R.choose_guarded(
-                    net, flows, obs, settings, method, 1, 6)
+                    net, flows, obs, settings, method, 1, len(R.candidate_order(method, 1)))
                 self.assertEqual(_flow_checksum(flows), before)
                 self.assertTrue(math.isfinite(priced["relative_gap"]))
                 self.assertTrue(1 <= info["candidate_count"] <= 6)
