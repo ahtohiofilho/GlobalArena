@@ -23,7 +23,7 @@ R22_PATH = Path(__file__).resolve().parents[2] / "r22" / "ci"
 sys.path[:0] = [str(R21_PATH), str(R22_PATH)]
 import run_r21 as R21
 import run_r22 as R22
-from clearing_r5 import ClearingSettings, _change_metrics, _flow_checksum
+from clearing_r5 import ClearingSettings, _change_metrics, _flow_checksum, _mix
 from multimarket_r13 import construct_scenario
 from oracle_cache_r14 import evaluate_r14
 
@@ -58,16 +58,8 @@ def choose_trust(net, flows, obs, settings, policy, radius):
         raise ValueError("Invalid numerical trust radius")
     trials = []
     for alpha in CANDIDATE_ALPHAS:
-        candidate, successor, chosen, count, forced = R21.choose_step(
-            net, flows, obs, settings,
-            {1/4:"fixed_1_4", 1/8:"fixed_1_8",
-             1/16:"fixed_1_16"}.get(alpha, "fixed_1_16"),
-            1,
-        ) if alpha in (1/4, 1/8, 1/16) else (None, None, None, None, None)
-        if candidate is None:
-            from clearing_r5 import _mix
-            candidate = _mix(flows, net, obs["target"], alpha)
-            successor = evaluate_r14(net, candidate, settings, ())
+        candidate = _mix(flows, net, obs["target"], alpha)
+        successor = evaluate_r14(net, candidate, settings, ())
         movement = _change_metrics(net, flows, candidate)
         volatility = max(movement["max_relative_price_change"],
                          movement["max_relative_load_change"],
