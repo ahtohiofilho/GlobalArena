@@ -1,0 +1,40 @@
+name: GA Gate09 R22 Residual Attribution
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/gate09/r22/**'
+      - '.github/workflows/ga-gate09-r22-residual.yml'
+      - 'docs/ga-gate09-r22-residual-gap-diagnostic-draft.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: R22 gap attribution / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify upstream and diagnostic invariants
+        run: python -m unittest discover -s experiments/gate09/r22/tests -p 'test_*.py' -v
+      - name: Generate residual attribution and joint-stability evidence
+        run: python experiments/gate09/r22/ci/run_r22.py --profile ci --output '${{ runner.temp }}'
+      - name: Upload R22 audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-r22-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-R22-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
