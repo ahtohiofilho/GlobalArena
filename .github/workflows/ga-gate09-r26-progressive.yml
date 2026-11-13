@@ -1,0 +1,40 @@
+name: GA Gate09 R26 Progressive Oracle Search
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/gate09/r26/**'
+      - '.github/workflows/ga-gate09-r26-progressive.yml'
+      - 'docs/ga-gate09-r26-progressive-search-draft.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  progressive:
+    name: R26 progressive search / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate oracle provenance and progressive cost contracts
+        run: python -m unittest discover -s experiments/gate09/r26/tests -p 'test_*.py' -v
+      - name: Compare bounded sequential search with unchanged R21/R25 references
+        run: python experiments/gate09/r26/ci/run_r26.py --profile ci --output '${{ runner.temp }}'
+      - name: Publish R26 diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-r26-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-R26-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
