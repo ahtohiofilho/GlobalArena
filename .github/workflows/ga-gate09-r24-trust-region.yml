@@ -1,0 +1,40 @@
+name: GA Gate09 R24 Bounded Trust Region
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/gate09/r24/**'
+      - '.github/workflows/ga-gate09-r24-trust-region.yml'
+      - 'docs/ga-gate09-r24-trust-region-draft.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  trust-region:
+    name: R24 adaptive search / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify upstream parity and trust-region contracts
+        run: python -m unittest discover -s experiments/gate09/r24/tests -p 'test_*.py' -v
+      - name: Audit bounded work, regret, and five numerical gates
+        run: python experiments/gate09/r24/ci/run_r24.py --profile ci --output '${{ runner.temp }}'
+      - name: Archive diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-r24-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-R24-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
