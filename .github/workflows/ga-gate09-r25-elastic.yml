@@ -1,0 +1,40 @@
+name: GA Gate09 R25 Elastic Radius Diagnostics
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/gate09/r25/**'
+      - '.github/workflows/ga-gate09-r25-elastic.yml'
+      - 'docs/ga-gate09-r25-elastic-radius-draft.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  elasticity:
+    name: R25 numerical elasticity / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Contracts, fiscal parity, cost budgets
+        run: python -m unittest discover -s experiments/gate09/r25/tests -p 'test_*.py' -v
+      - name: Compare adaptive radius and reference solvers
+        run: python experiments/gate09/r25/ci/run_r25.py --profile ci --output '${{ runner.temp }}'
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-r25-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-R25-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
