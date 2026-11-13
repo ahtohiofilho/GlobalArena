@@ -303,7 +303,7 @@ def exercise(profile):
         for policy in POLICIES:
             result = run_case(R21.CASES[case_name], policy, steps)
             policies.append(result)
-            print("[{}:{}] gap {:.7g} / max {:.7g}, priceΔ {:.5g}, loadΔ {:.5g}, "
+            print("[{}:{}] gap {:.7g} / max {:.7g}, priceChange {:.5g}, loadChange {:.5g}, "
                   "stable={}, top3={:.1%}, proposals={}+{}".format(
                   case_name, policy, result["final_gap"],
                   result["final_max_group_gap"],
