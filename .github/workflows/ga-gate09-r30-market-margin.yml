@@ -1,0 +1,40 @@
+name: GA Gate09 R30 Market Margins And Route Witness
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/gate09/r30/**'
+      - 'docs/ga-gate09-r30-market-margin-route-witness-draft.md'
+      - '.github/workflows/ga-gate09-r30-market-margin.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ranking-audit:
+    name: R30 frozen market ranking / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check R14 winner parity, F059 tie flags and historical replay
+        run: python -m unittest discover -s experiments/gate09/r30/tests -p 'test_*.py' -v
+      - name: Audit market runner-up margins, route witnesses and R29 trajectories
+        run: python experiments/gate09/r30/ci/run_r30.py --profile ci --output '${{ runner.temp }}'
+      - name: Publish experimental JSON and ZIP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-r30-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-R30-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
