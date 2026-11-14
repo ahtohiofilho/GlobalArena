@@ -1,0 +1,40 @@
+name: GA Gate09 R33 Exogenous Fixture Robustness
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/gate09/r33/**'
+      - 'docs/ga-gate09-r33-fixture-robustness-draft.md'
+      - '.github/workflows/ga-gate09-r33-fixture-robustness.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fixture-matrix:
+    name: R33 demand supply capacity robustness / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate frozen economy and eight fixture isolation contracts
+        run: python -m unittest discover -s experiments/gate09/r33/tests -p 'test_*.py' -v
+      - name: Compare 48 frozen-score sensitivity trajectories
+        run: python experiments/gate09/r33/ci/run_r33.py --profile ci --output '${{ runner.temp }}'
+      - name: Archive costed multi-fixture JSON and ZIP evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-r33-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-R33-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
