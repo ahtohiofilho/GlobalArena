@@ -239,15 +239,16 @@ def counterfactual_market_margin(net, flows, observed, settings, every_step):
     """New independent R14 repricing per alpha; return GROUP margin evidence."""
     sha = _flow_checksum(flows)
     result = []
+    base_margin = market_alternatives(net, observed, settings.exponent)
+    extra_scans = base_margin["extra_shortest_path_scans"]
     for alpha in PROBE_ALPHAS:
         proposed = _mix(flows, net, observed["target"], alpha)
         future = evaluate_r14(net, proposed, settings, ())
         margin = market_alternatives(net, future, settings.exponent,
                                      old_targets=observed["target"])
         structural = transition_attribution(
-            net, observed, future,
-            market_alternatives(net, observed, settings.exponent),
-            margin)
+            net, observed, future, base_margin, margin)
+        extra_scans += margin["extra_shortest_path_scans"]
         result.append({
             "alpha": alpha,
             "flow_sha256": _flow_checksum(proposed),
@@ -270,6 +271,7 @@ def counterfactual_market_margin(net, flows, observed, settings, every_step):
     return {
         "step": every_step, "source_flow_sha256": sha,
         "extra_r14_probe_evaluations": len(result),
+        "extra_shortest_path_scans": extra_scans,
         "probes": result,
     }
 
@@ -378,6 +380,7 @@ def run_case(cfg, policy, steps, audit_every=16, probe_every=24):
             probe = counterfactual_market_margin(net, flows, obs, settings, step)
             probes.append(probe)
             probes_used += probe["extra_r14_probe_evaluations"]
+            shortest_path_scans += probe["extra_shortest_path_scans"]
         if step == steps:
             break
         proposed, next_obs, change, calls, alpha = R29.step_forward(
