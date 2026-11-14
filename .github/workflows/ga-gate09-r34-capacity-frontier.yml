@@ -1,0 +1,40 @@
+name: GA Gate09 R34 Capacity Sensitivity Frontier
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/gate09/r34/**'
+      - 'docs/ga-gate09-r34-capacity-frontier-draft.md'
+      - '.github/workflows/ga-gate09-r34-capacity-frontier.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capacity-frontier:
+    name: R34 capacity-factor sweep / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify immutable economics, exact graph scaling and sampled brackets
+        run: python -m unittest discover -s experiments/gate09/r34/tests -p 'test_*.py' -v
+      - name: Analyze 120 capacity-sensitivity trajectories with frozen F072
+        run: python experiments/gate09/r34/ci/run_r34.py --profile ci --output '${{ runner.temp }}'
+      - name: Upload capacity frontier JSON and ZIP evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-r34-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-R34-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
