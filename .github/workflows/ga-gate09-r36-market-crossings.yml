@@ -1,0 +1,40 @@
+name: GA Gate09 R36 Actual Market Crossing Brackets
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/gate09/r36/**'
+      - 'docs/ga-gate09-r36-actual-market-crossing-brackets-draft.md'
+      - '.github/workflows/ga-gate09-r36-market-crossings.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  market-crossing-brackets:
+    name: R36 real winner sign brackets / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test exact F072 path replay, bisection and F059 tie boundaries
+        run: python -m unittest discover -s experiments/gate09/r36/tests -p 'test_*.py' -v
+      - name: Reprice actual market-switch brackets in 24 frozen trajectories
+        run: python experiments/gate09/r36/ci/run_r36.py --profile ci --output '${{ runner.temp }}'
+      - name: Upload full market-pair and financial witness evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-r36-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-R36-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
