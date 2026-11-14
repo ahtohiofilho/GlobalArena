@@ -157,13 +157,13 @@ def pair_decomposition(net, before, after, before_cache, after_cache,
     }
 
 
-def transition_crossings(net, before, after):
+def transition_crossings(net, before, after, exponent=4):
     old_target = before["target"]
     new_target = after["target"]
     if set(old_target) != set(new_target):
         raise AssertionError("Producer set changed")
-    cache_before = FrozenRouteCache(net, before["loads"], 4)
-    cache_after = FrozenRouteCache(net, after["loads"], 4)
+    cache_before = FrozenRouteCache(net, before["loads"], exponent)
+    cache_after = FrozenRouteCache(net, after["loads"], exponent)
     records = []
     same_destination_route_switches = 0
     for gid in sorted(old_target):
@@ -340,13 +340,15 @@ def run_case(cfg, policy, steps, audit_every=16, probe_steps=DEFAULT_PROBE_STEPS
             R21.frozen_check(net, flows, obs)
             audited = R21.settlement_check(net, flows)
             audits.append({"step": step, **audited})
-        R30.market_alternatives(net, obs, settings.exponent)
+        margin_witness = R30.market_alternatives(net, obs, settings.exponent)
+        margin_scans += margin_witness["extra_shortest_path_scans"]
         if obs["reachable_unpriced"] or any(
             not math.isfinite(p) or p <= 0 for p in obs["prices"].values()):
             raise AssertionError("A market lacks a positive finite price")
 
-        crossings = (transition_crossings(net, old_obs, obs)
-                     if old_obs is not None else None)
+        crossings = (transition_crossings(
+            net, old_obs, obs, settings.exponent)
+            if old_obs is not None else None)
         margin_scans += 0 if crossings is None else crossings[
             "extra_shortest_path_scans"]
         is_stable = R24.numerical_pass(obs, current_delta)
@@ -367,6 +369,9 @@ def run_case(cfg, policy, steps, audit_every=16, probe_steps=DEFAULT_PROBE_STEPS
             "quantity_change": None if current_delta is None else
                 current_delta["max_relative_quantity_change"],
             "crossings": crossings,
+            "market_margin_exact_ties": margin_witness["exact_r14_tie_groups"],
+            "market_margin_diagnostic_near_ties": margin_witness[
+                "market_gap_below_diagnostic_1e4"],
             "numerical_five_thresholds_met": is_stable,
             "consecutive_numerical_rechecks": stable_streak,
             "proposal_oracles_used": proposal_oracles,
