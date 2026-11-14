@@ -1,0 +1,40 @@
+name: GA Gate09 R35 Conservative Local Price And Congestion Derivatives
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/gate09/r35/**'
+      - 'docs/ga-gate09-r35-local-feedback-derivatives-draft.md'
+      - '.github/workflows/ga-gate09-r35-local-derivatives.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  local-derivatives:
+    name: R35 conservative flow finite differences / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test frozen economic invariants and directional derivative contracts
+        run: python -m unittest discover -s experiments/gate09/r35/tests -p 'test_*.py' -v
+      - name: Run price quantity and load capacity sensitivity matrix
+        run: python experiments/gate09/r35/ci/run_r35.py --profile ci --output '${{ runner.temp }}'
+      - name: Archive per-direction finite differences and financial proofs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-r35-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-R35-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
