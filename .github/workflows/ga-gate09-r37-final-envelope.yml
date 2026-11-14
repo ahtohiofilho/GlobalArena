@@ -1,0 +1,40 @@
+name: GA Gate09 R37 Closing Full Envelope And Solver Decision
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/gate09/r37/**'
+      - 'docs/ga-gate09-r37-closure-and-solver-decision-draft.md'
+      - '.github/workflows/ga-gate09-r37-final-envelope.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  closure-bridge:
+    name: R37 full market ranking closure / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate ranking envelope and explicit R38 solver decision
+        run: python -m unittest discover -s experiments/gate09/r37/tests -p 'test_*.py' -v
+      - name: Replay bounded 24 market-envelope trajectories and close diagnostic phase
+        run: python experiments/gate09/r37/ci/run_r37.py --profile ci --output '${{ runner.temp }}'
+      - name: Archive closure decision and all economic witness evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-r37-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-R37-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
