@@ -434,6 +434,7 @@ def run_case(cfg, regime, factor, policy, steps, audit_every=8):
         "elapsed_ms_observational": round((perf_counter()-t0)*1000,3),
         "scope_selected_high_regret_groups_not_global": True,
         "economic_equilibrium_proven": False,
+        "global_equilibrium_proven": False,
         "financial_F059_ratified": False,
         "causality_proven": False,
         "production_approved": False,
