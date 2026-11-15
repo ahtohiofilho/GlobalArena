@@ -779,7 +779,14 @@ public partial class GlobePreview : SubViewportContainer
         if (_highResSurface is not null) _highResSurface.Visible = fineView;
         if (fineView)
         {
-            _selectedCellId = null;
+            // HD is an experimental fine grid, NOT a canonical strategic
+            // territory. Notify the right-panel inspector before clearing it;
+            // otherwise it would display workers for a no-longer-selected tile.
+            if (_selectedCellId.HasValue)
+            {
+                _selectedCellId = null;
+                CanonicalTerritorySelectionChanged?.Invoke(null);
+            }
             if (_pickedLabel is not null) _pickedLabel.Text = "HD experimental relief | picking disabled";
             if (_detailsLabel is not null) _detailsLabel.Text = $"{10 * _fineFrequency * _fineFrequency + 2} fine-grid samples | not canonical territory";
             return;
