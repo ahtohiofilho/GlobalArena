@@ -12,7 +12,8 @@ if (args.Length != 1 ||
      args[0] != "--foundation-calibration-ab" &&
      args[0] != "--foundation-goldberg" &&
      args[0] != "--foundation-worker-journal" &&
-     args[0] != "--foundation-local-game"))
+     args[0] != "--foundation-local-game" &&
+     args[0] != "--foundation-batched-turn"))
 {
     Console.WriteLine("Global Arena — executable foundation preview");
     Console.WriteLine("Run: dotnet run --project GlobalArena.Console -- --foundation-slice");
@@ -20,6 +21,58 @@ if (args.Length != 1 ||
     Console.WriteLine("Goldberg: dotnet run --project GlobalArena.Console -- --foundation-goldberg");
     Console.WriteLine("Authority: dotnet run --project GlobalArena.Console -- --foundation-worker-journal");
     Console.WriteLine("Local game: dotnet run --project GlobalArena.Console -- --foundation-local-game");
+    Console.WriteLine("Batch turn: dotnet run --project GlobalArena.Console -- --foundation-batched-turn");
+    return;
+}
+
+// One closed turn with two independently queued worker orders, followed by
+// an empty turn and a mixed activity/movement batch. Identical host to Godot.
+if (args[0] == "--foundation-batched-turn")
+{
+    var host = FoundationLocalGameHost.CreateLocalPreview(
+        new WorldGenerationRequest(new WorldSeed(20261012UL),
+            WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)));
+    var graph = host.Session.GeneratedWorld.StrategicSurfaceGraph;
+    var source = host.ControllableWorkers.Single(w => w.Id.Value == 1UL).CellId;
+    var next = graph.GetCellId(graph.GetNeighborIndexes(
+        graph.GetNodeIndex(source))[0]);
+    var before = host.StateHash;
+    var original = host.Snapshot;
+    host.QueueMove(new PhysicalWorkerId(2UL), next);
+    host.QueueMove(new PhysicalWorkerId(1UL), next);
+    if (host.PendingOrderCount != 2 || !ReferenceEquals(original, host.Snapshot) ||
+        before != host.StateHash)
+        throw new InvalidOperationException("Queue changed a canonical worker state.");
+    var first = host.EndTurn();
+    if (first.Turn.Value != 1UL || first.ExecutedEvents != 2 ||
+        host.NextTurn.Value != 2UL || host.Snapshot.Revision != 2UL ||
+        host.PendingOrderCount != 0 || !first.ReplayMatched)
+        throw new InvalidOperationException("Multi-worker first turn was not atomic.");
+    Console.WriteLine($"GA_FOUNDATION_BATCHED_TURN_V1 turn={first.Turn.Value} " +
+        $"events={first.ExecutedEvents} revision={first.ResultingRevision} " +
+        $"workers={host.Snapshot.Workers.Workers.Count} " +
+        $"queued_after_commit={host.PendingOrderCount} replay_match={first.ReplayMatched} " +
+        $"hash={first.ResultingHash.HexDigest}");
+
+    var idle = host.EndTurn();
+    if (idle.Turn.Value != 2UL || idle.ExecutedEvents != 0 ||
+        host.Snapshot.Revision != 2UL || !idle.ReplayMatched)
+        throw new InvalidOperationException("Empty turn invented an event.");
+    Console.WriteLine($"  idle_turn={idle.Turn.Value} events={idle.ExecutedEvents} " +
+        $"revision={idle.ResultingRevision} replay_match={idle.ReplayMatched}");
+
+    host.QueueActivity(new PhysicalWorkerId(1UL), PhysicalWorkerActivity.Producing);
+    host.QueueMove(new PhysicalWorkerId(2UL), source);
+    var third = host.EndTurn();
+    if (third.Turn.Value != 3UL || third.ExecutedEvents != 2 ||
+        host.NextTurn.Value != 4UL || host.Snapshot.Revision != 4UL ||
+        !third.ReplayMatched)
+        throw new InvalidOperationException("Mixed activity/move turn was not committed.");
+    Console.WriteLine($"  mixed_turn={third.Turn.Value} events={third.ExecutedEvents} " +
+        $"revision={third.ResultingRevision} replay_match={third.ReplayMatched} " +
+        $"hash={third.ResultingHash.HexDigest}");
+    Console.WriteLine("  authority=worldstate_v9 batches=3 executed_events=4 " +
+        "elapsed_game_turns=3 no_production_settlement=true certified_F072=false");
     return;
 }
 
