@@ -645,6 +645,17 @@ public partial class Main : Control
         root.AddChild(_status);
         GD.Print("GA_UI_FOUNDATION_READY_01 layout=map,sidebar,header,footer");
         GD.Print("GA_UI_FOUNDATION_RESIZE_READY_02 responsive=true");
+
+        // Only the explicit CI environment starts the real Godot runtime E2E.
+        // Normal game processes NEVER execute smoke hooks or auto-quit.
+        if (System.Environment.GetEnvironmentVariable("GA_FOUNDATION_GODOT_SMOKE") == "1")
+        {
+            _ = new FoundationGodotRuntimeSmoke(
+                this, globe, _localFoundation!,
+                _localWorkerSelector!, _localMoveButton!, _localProduceButton!,
+                _strategicWorkerSummary!, _localTurnLabel!, _localOrderStatus!)
+                .RunAsync();
+        }
     }
 
     // GA_LAYOUT_DIAGNOSTIC_02: capture geometry once on launch and after resize.
