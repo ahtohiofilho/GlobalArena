@@ -23,6 +23,8 @@ public sealed class WorldState
 
     public WarfareRuntimeState Warfare { get; }
 
+    public PhysicalWorkerRuntimeState Workers { get; }
+
     public static WorldState CreateInitial()
     {
         return new WorldState(
@@ -33,7 +35,8 @@ public sealed class WorldState
             BaselineDiplomacyRuntimeState.Empty,
             EconomyRuntimeState.Empty,
             PopulationRuntimeState.Uninitialized,
-            WarfareRuntimeState.Empty);
+            WarfareRuntimeState.Empty,
+            PhysicalWorkerRuntimeState.Uninitialized);
     }
 
     public static WorldState CreateBound(
@@ -48,7 +51,8 @@ public sealed class WorldState
             BaselineDiplomacyRuntimeState.Empty,
             EconomyRuntimeState.Empty,
             PopulationRuntimeState.Uninitialized,
-            WarfareRuntimeState.Empty);
+            WarfareRuntimeState.Empty,
+            PhysicalWorkerRuntimeState.Uninitialized);
     }
 
     public WorldState BindToWorld(
@@ -77,7 +81,8 @@ public sealed class WorldState
             Diplomacy,
             Economy,
             Population,
-            Warfare);
+            Warfare,
+            Workers);
     }
 
     public WorldState WithCivilizations(
@@ -94,7 +99,8 @@ public sealed class WorldState
             Diplomacy,
             Economy,
             Population,
-            Warfare);
+            Warfare,
+            Workers);
     }
 
     public WorldState WithTerritory(
@@ -111,7 +117,8 @@ public sealed class WorldState
             Diplomacy,
             Economy,
             Population,
-            Warfare);
+            Warfare,
+            Workers);
     }
 
     public WorldState WithDiplomacy(
@@ -128,7 +135,8 @@ public sealed class WorldState
             diplomacy,
             Economy,
             Population,
-            Warfare);
+            Warfare,
+            Workers);
     }
 
     public WorldState WithEconomy(
@@ -145,7 +153,8 @@ public sealed class WorldState
             Diplomacy,
             economy,
             Population,
-            Warfare);
+            Warfare,
+            Workers);
     }
 
     /// <summary>
@@ -165,7 +174,8 @@ public sealed class WorldState
             Diplomacy,
             Economy,
             population,
-            Warfare);
+            Warfare,
+            Workers);
     }
 
     /// <summary>
@@ -188,7 +198,8 @@ public sealed class WorldState
             Diplomacy,
             economy,
             population,
-            Warfare);
+            Warfare,
+            Workers);
     }
 
     private void RejectPopulationDowngrade(PopulationRuntimeState next)
@@ -215,6 +226,26 @@ public sealed class WorldState
             warfare);
     }
 
+    /// <summary>
+    /// Explicitly replaces the canonical individual physical-worker census.
+    /// The legacy aggregate population/economic point fields stay untouched.
+    /// Initialization is a world-materialization operation; movement after
+    /// setup must use the journaled authoritative movement turn phase.
+    /// </summary>
+    public WorldState WithWorkers(PhysicalWorkerRuntimeState workers)
+    {
+        ArgumentNullException.ThrowIfNull(workers);
+        if (WorldBinding is null && workers.IsInitialized)
+            throw new InvalidOperationException(
+                "Authoritative worker placement requires a bound generated world.");
+        if (Workers.IsInitialized && !workers.IsInitialized)
+            throw new InvalidOperationException(
+                "An initialized worker census cannot silently become absent.");
+        return new WorldState(
+            Revision, WorldBinding, Civilizations, Territory, Diplomacy,
+            Economy, Population, Warfare, workers);
+    }
+
     public WorldState AdvanceRevision()
     {
         return new WorldState(
@@ -225,7 +256,8 @@ public sealed class WorldState
             Diplomacy,
             Economy,
             Population,
-            Warfare);
+            Warfare,
+            Workers);
     }
 
     private WorldState(
@@ -236,7 +268,8 @@ public sealed class WorldState
         BaselineDiplomacyRuntimeState diplomacy,
         EconomyRuntimeState economy,
         PopulationRuntimeState population,
-        WarfareRuntimeState warfare)
+        WarfareRuntimeState warfare,
+        PhysicalWorkerRuntimeState? workers = null)
     {
         ArgumentNullException.ThrowIfNull(
             civilizations);
@@ -256,6 +289,8 @@ public sealed class WorldState
         ArgumentNullException.ThrowIfNull(
             warfare);
 
+        var workerState = workers ?? PhysicalWorkerRuntimeState.Uninitialized;
+
         ValidateCrossDomainInvariants(
             worldBinding,
             civilizations,
@@ -263,7 +298,8 @@ public sealed class WorldState
             diplomacy,
             economy,
             population,
-            warfare);
+            warfare,
+            workerState);
 
         Revision = revision;
         WorldBinding = worldBinding;
@@ -273,6 +309,7 @@ public sealed class WorldState
         Economy = economy;
         Population = population;
         Warfare = warfare;
+        Workers = workerState;
     }
 
     private static void ValidateCrossDomainInvariants(
@@ -282,7 +319,8 @@ public sealed class WorldState
         BaselineDiplomacyRuntimeState diplomacy,
         EconomyRuntimeState economy,
         PopulationRuntimeState population,
-        WarfareRuntimeState warfare)
+        WarfareRuntimeState warfare,
+        PhysicalWorkerRuntimeState workers)
     {
         var civilizationIds =
             civilizations
@@ -385,6 +423,27 @@ public sealed class WorldState
         {
             throw new InvalidOperationException(
                 "An uninitialized population census cannot contain resident records.");
+        }
+
+        if (workers.IsInitialized)
+        {
+            if (worldBinding is null)
+                throw new InvalidOperationException(
+                    "Authoritative physical workers need a world binding.");
+            foreach (var worker in workers.Workers)
+            {
+                if (!civilizationIds.Contains(worker.Owner))
+                    throw new InvalidOperationException(
+                        $"Physical worker {worker.Id.Value} references an unknown civilization.");
+                if (!worldBinding.Contains(worker.CellId))
+                    throw new InvalidOperationException(
+                        $"Physical worker {worker.Id.Value} is located outside the Goldberg world.");
+            }
+        }
+        else if (workers.Workers.Count != 0)
+        {
+            throw new InvalidOperationException(
+                "An uninitialized physical worker census cannot contain records.");
         }
 
         foreach (var unit in
