@@ -348,6 +348,33 @@ def _merit(r):
     return math.fsum(v*v for v in r)/2
 
 
+def _feasible_projected_step(layout,z,direction,alpha):
+    """Project real proposed masses into EACH physical producer simplex.
+
+    This changes only the *algorithmic Newton search direction*, not
+    H, the score, the price or game demand. An unconstrained LM step
+    pointing outward at a zero-mass route must not block every alpha.
+    """
+    proposal=list(z)
+    for gid in layout.groups:
+        indices=[k for k,i in enumerate(layout.independent)
+                 if layout.cols[i].group_id==gid]
+        for k in indices:
+            proposal[k]=max(0.,z[k]+alpha*direction[k])
+        total=math.fsum(proposal[k] for k in indices)
+        ceiling=layout.net.groups[gid].supply
+        if total>ceiling:
+            # Redistribute proposed real mass on the simplex boundary;
+            # the anchor gets the exactly conserved remainder.
+            scale=ceiling/total
+            for k in indices:
+                proposal[k]*=scale
+        mu_idx=layout.mu_index[gid]
+        proposal[mu_idx]=z[mu_idx]+alpha*direction[mu_idx]
+    layout.decode(proposal)
+    return proposal
+
+
 def _inner_solve(layout,z,work,trace):
     """Regularized NCP root in an ACTIVE route set, with hard work ceiling."""
     original=list(z)
@@ -359,8 +386,8 @@ def _inner_solve(layout,z,work,trace):
                 break
             m=_merit(r)
             success=False
-            for k_lm in range(6):
-                lam=10.**(-7+k_lm)
+            for k_lm in range(9):
+                lam=10.**(-7+1.5*k_lm)
                 A,b=_normal_equations(J,r,lam)
                 try:
                     direction=_solve_linear(A,b)
@@ -368,7 +395,8 @@ def _inner_solve(layout,z,work,trace):
                     continue
                 for line in range(work.limits.max_backtrack):
                     alpha=2.**(-line)
-                    trial=[a+alpha*d for a,d in zip(z,direction)]
+                    trial=_feasible_projected_step(
+                        layout,z,direction,alpha)
                     try:
                         layout.decode(trial)
                     except ValueError:
