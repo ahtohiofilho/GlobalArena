@@ -63,3 +63,28 @@ Gerar JSON e ZIP com status por estágio, budgets, gaps apenas quando certificad
 ## Decisão pendente
 
 **NO_GO_FOR_PRODUCTION_ADR054_PENDING_DUAL_OS_CERTIFICATION.** O resultado da primeira CI determinará se o laboratório 192 nós é candidato a promoção experimental ou requer diagnóstico de orçamento/escalabilidade. Não tocar no PR #342 nem na branch main.
+
+---
+
+## Resultado da primeira certificação e promoção a regressão obrigatória
+
+Após a falha exclusivamente de pré-validação na primeira CI (o budget inicialmente declarado excedia os tetos herdados do ADR-047), os limites foram corrigidos para **60.000 Krylov** e **250.000 produtos SPD**, antes da primeira tentativa efetiva de solver. Nenhuma fórmula econômica ou tolerância F-072 foi alterada.
+
+**[CI #43719293076](https://github.com/ahtohiofilho/GlobalArena/actions/runs/43719293076): SUCCESS**, 17/17 testes de contrato em **Windows e Ubuntu**, no mesmo HEAD `55bf8781877192bc0fc3e1da0f096ad827fad196`. Certificado **original independente ADR-042/F-072**:
+
+| Indicador | Windows 48 | Windows 96 | **Windows 192** | Ubuntu 48 | Ubuntu 96 | **Ubuntu 192** |
+|---|---:|---:|---:|---:|---:|---:|
+| F-072 independente | PASS | PASS | **PASS** | PASS | PASS | **PASS** |
+| Gap global F-072 | 5,1637e−12 | 2,1373e−14 | **2,2062e−14** | 5,1637e−12 | 2,1373e−14 | **2,2062e−14** |
+| Gap pior grupo | 1,1755e−11 | 8,9589e−14 | **1,2920e−13** | 1,1755e−11 | 8,9589e−14 | **1,2920e−13** |
+| H (incluindo rejeições) | 30 | 32 | **32** | 30 | 32 | **32** |
+| Produtos Krylov | 344 | 445 | **389** | 344 | 445 | **389** |
+| Scans de caminho | 60 | 120 | **240** | 60 | 120 | **240** |
+| Tempo solver Python, segundos | 13,94 | 28,06 | **56,25** | 15,14 | 31,67 | **62,71** |
+
+Artefatos ZIP/JSON: Windows ID **14163931387**; Ubuntu ID **14163449014**.
+Gaps e contadores idênticos nesta fixture, sem alegar determinismo universal. O tempo aproximadamente dobrou de 96 para 192 nós, mas a população também dobrou e não há demonstração de custo assintótico nem benchmark em C#.
+
+**Promoção subsequente:** como houve PASS original independente nas duas plataformas, a classificação de 192 nós passa a **regressão obrigatória** em commit posterior. A nova CI somente fica verde se **48, 96 e 192 nós** tiverem certificados F-072 originais. Um NO-GO em 192 gera status `NO_GO_MANDATORY_ADR054_192_F072_REGRESSION` com código diferente de zero e gaps finais nulos. Foram adicionados testes negativos de ausência de certificação, de execução e integridade do gate. É necessária reexecução da CI no HEAD da promoção; sucesso anterior não se transfere automaticamente.
+
+**Decisão de governança:** `GO_ADR054_192_F072_CERTIFIED_LAB_ONLY` condicionado à regressão final; **NO_GO_FOR_PRODUCTION**, **NO_GO_FOR_CLAIMING_2048_NODE_F072_EQUILIBRIUM**. F-059 e scheduler C#/Godot permanecem pendentes. PR Draft sem merge, empilhado sobre PR #342.
