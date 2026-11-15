@@ -205,6 +205,29 @@ class ADR052CommercialGovernanceContracts(unittest.TestCase):
         else:
             self.assertIsNone(out["final_flow_sha256"])
 
+    def test_independent_2048_worker_F072_is_now_mandatory(self):
+        self.assertEqual(
+            A.classify_regression("ci",True,True,False),
+            "NO_GO_MANDATORY_2048_WORKER_F072_REGRESSION")
+
+    def test_full_worker_spatial_and_commercial_success(self):
+        self.assertEqual(
+            A.classify_regression("ci",True,True,True),
+            "PASS_ADR052_WORKER_SPATIAL_AND_PILOT_F072")
+
+    def test_spatial_8192_conservation_is_mandatory(self):
+        self.assertEqual(
+            A.classify_regression("ci",True,False,True),
+            "NO_GO_MANDATORY_SMALL_F072_OR_SPATIAL_WORKER_LEDGER")
+
+    def test_missing_pilot_certificate_never_defaults_to_green(self):
+        with self.assertRaises(ValueError):
+            A.classify_regression("ci",True,True,None)
+        with self.assertRaises(ValueError):
+            A.classify_regression("ci",True,True,1)
+        with self.assertRaises(ValueError):
+            A.classify_regression("unknown",True,True,True)
+
     def test_nonrepresentative_coverage_is_acknowledged(self):
         self.assertLess(512,5762)
         self.assertGreater(8192,5762)
