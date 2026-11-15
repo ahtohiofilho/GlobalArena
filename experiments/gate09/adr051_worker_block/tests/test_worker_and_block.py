@@ -245,6 +245,27 @@ class ADR051WorkerDemandAndChunkedMCP(unittest.TestCase):
         self.assertFalse(S.R49.CASES is None)
         self.assertNotEqual(240,10)
 
+    def test_worker_fixture_no_go_blocks_smoke_regression(self):
+        self.assertEqual(
+            S.gate_status("smoke",False,False),
+            "NO_GO_MANDATORY_WORKER_COUPLED_F072")
+
+    def test_240_group_no_go_blocks_ci_even_when_worker_passes(self):
+        self.assertEqual(
+            S.gate_status("ci",True,False),
+            "NO_GO_MANDATORY_240_GROUP_F072_REGRESSION")
+
+    def test_both_independent_F072_certificates_required_for_ci_green(self):
+        self.assertEqual(
+            S.gate_status("ci",True,True),
+            "PASS_ADR051_WORKER_AND_INDEPENDENT_F072")
+
+    def test_unregistered_gate_and_implicit_non_boolean_status_rejected(self):
+        with self.assertRaises(ValueError):
+            S.gate_status("unspecified",True,True)
+        with self.assertRaises(ValueError):
+            S.gate_status("ci",1,True)
+
     def test_our_bounded_runner_does_not_claim_game_integration(self):
         self.assertEqual(S.SCHEMA,
             "GA_GATE09_ADR051_WORKER_TIME_DEMAND_AND_CHUNKED_SPD_MCP_V1")
