@@ -47,7 +47,7 @@ SEED_TARGETS_PER_PRODUCER=2
 
 @dataclass(frozen=True)
 class Limits(R46.Limits):
-    max_block_coefficients:int=40000
+    max_block_coefficients:int=16000
 
     def __post_init__(self):
         super().__post_init__()
@@ -564,7 +564,7 @@ def exercise(profile):
             max_original_certificates=4,max_columns=440,
             max_generations=5,max_newton_steps=65,
             max_backtrack=10,max_krylov_products=14000,
-            max_cg_iterations=130,max_block_coefficients=40000)
+            max_cg_iterations=130,max_block_coefficients=16000)
         row=_run("2562_nodes_original_48_groups_24_markets",
                  net,flows,limit)
         row["large_world_descriptor"]=meta
