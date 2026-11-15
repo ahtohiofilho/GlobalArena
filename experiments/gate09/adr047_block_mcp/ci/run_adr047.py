@@ -633,10 +633,21 @@ def main():
     }
     try:
         report.update(exercise(a.profile))
-        report["status"]=(
-            "PASS_CONTROLLED_BLOCK_MCP_AND_BOUNDED_SCALE_AUDIT" if
-            report["controlled_multigroup_gate_pass"] else
-            "NO_GO_BLOCK_MCP_CONTROLLED_CASES")
+        controlled=report["controlled_multigroup_gate_pass"]
+        large_required=(args.profile=="extended")
+        large_passed=report["full_F072_static_pass_2562_nodes"]
+        # Extended CI is now a REAL commercial regression gate at 2,562
+        # nodes, not a green job that can mask large-world NO-GO.
+        if controlled and (not large_required or large_passed):
+            report["status"]=(
+                "PASS_EXTENDED_2562_INDEPENDENT_F072_CERTIFICATION"
+                if large_required else
+                "PASS_CONTROLLED_BLOCK_MCP_AND_BOUNDED_SCALE_AUDIT")
+        else:
+            report["status"]=(
+                "NO_GO_EXTENDED_2562_ORIGINAL_F072_GATE"
+                if large_required and not large_passed else
+                "NO_GO_BLOCK_MCP_CONTROLLED_CASES")
     except Exception as error:
         report["error"]=repr(error)
         report["traceback"]=traceback.format_exc()
@@ -651,7 +662,7 @@ def main():
         z.write(json_path,json_path.name)
     print("[ADR047] STATUS:",report["status"],flush=True)
     print("[ADR047] EVIDENCE:",archive,flush=True)
-    return 0 if report["status"]=="PASS_CONTROLLED_BLOCK_MCP_AND_BOUNDED_SCALE_AUDIT" else 1
+    return 0 if report["status"].startswith("PASS_") else 1
 
 
 if __name__=="__main__":
