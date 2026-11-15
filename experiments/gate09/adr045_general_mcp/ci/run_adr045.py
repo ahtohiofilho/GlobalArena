@@ -197,10 +197,11 @@ class Layout:
         if self.unknowns!=self.ncols:
             raise AssertionError("Wrong simplex NCP dimension")
 
-    def initial(self,flows,costs):
+    def initial(self,flows):
+        # Multipliers start at zero; the first paid H evaluation provides
+        # the true market-specific minimum for each producer.
         z=[flows.get(self.cols[i],0.) for i in self.independent]
-        for gid in self.groups:
-            z.append(min(costs[i] for i in self.by[gid]))
+        z.extend(0. for _ in self.groups)
         return z
 
     def decode(self,z):
@@ -507,7 +508,7 @@ def solve_mcp(net,initial_flows,limits=None,settings=None):
                 if any(q.get(m,0.)<=0 for m in net.markets if m not in unreachable):
                     raise ValueError("Cannot initialize differentiable VI interior")
                 layout=Layout(net,cols,current)
-                z0=layout.initial(current,[])
+                z0=layout.initial(current)
                 # Explicitly initialize each group's multiplier from the
                 # actual current H of its lowest priced active route.
                 z0[layout.mu_offset:]=[0.]*len(layout.groups)
@@ -537,7 +538,8 @@ def solve_mcp(net,initial_flows,limits=None,settings=None):
                     current={**candidate,**{c:0. for c in missed}}
                     generations.append(generation)
                     continue
-                if any(qval<=0 for m,qval in net.snapshots(candidate)[1].items()
+                final_q=net.snapshots(candidate)[1]
+                if any(final_q.get(m,0.)<=0 for m in net.markets
                        if m not in unreachable):
                     generation["certification"]="BLOCKED_Q_ZERO"
                     generations.append(generation)
