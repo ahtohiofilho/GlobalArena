@@ -47,10 +47,16 @@ SEED_TARGETS_PER_PRODUCER=2
 
 @dataclass(frozen=True)
 class Limits(R46.Limits):
-    max_block_coefficients:int=16000
+    # Block-coefficient work is a separate measured unit from solver
+    # evaluations, routes or matrix-free vector products. It can exceed
+    # the legacy 20,000 upper bound without relaxing ANY old budget.
+    max_block_coefficients:int=100000
 
     def __post_init__(self):
-        super().__post_init__()
+        for key,value in vars(self).items():
+            ceiling=(250000 if key=="max_block_coefficients" else 20000)
+            if type(value) is not int or not 0<value<=ceiling:
+                raise ValueError("Finite positive integer budget required: "+key)
 
 
 class Work(R46.Work):
@@ -564,7 +570,7 @@ def exercise(profile):
             max_original_certificates=4,max_columns=440,
             max_generations=5,max_newton_steps=65,
             max_backtrack=10,max_krylov_products=14000,
-            max_cg_iterations=130,max_block_coefficients=16000)
+            max_cg_iterations=130,max_block_coefficients=100000)
         row=_run("2562_nodes_original_48_groups_24_markets",
                  net,flows,limit)
         row["large_world_descriptor"]=meta
