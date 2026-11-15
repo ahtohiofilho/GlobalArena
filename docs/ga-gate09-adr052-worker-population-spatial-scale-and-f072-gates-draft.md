@@ -53,3 +53,30 @@ A CI poderá passar na fase exploratória do pilot mesmo se seu F072 receber NO-
 GitHub Actions mede tempos Python dos runners, NÃO a performance real do motor C# e NÃO a carga simultânea da UI, guerra, diplomacia ou logística. O solver ainda não pode interromper e retomar uma VI em meio a ciclo econômico com snapshot certificado. Antes de GO de produto são necessários: benchmark C# com reserva de CPU, população espacial mais representativa e mercados abrangentes, agrupamento econômico que preserve tesouro e autonomia local, passos de viagem subturno e replay cross-OS.
 
 **Governança:** PR Draft stacked sobre #340. Sem merge nem código autoritativo. F059 financeiro segue não ratificado. Não alterar a fórmula quartica sem decisão de produto.
+
+
+
+---
+
+## Primeira homologação e promoção à regressão obrigatória — 15/11/2026
+
+**[GitHub Actions #43715476618](https://github.com/ahtohiofilho/GlobalArena/actions/runs/43715476618): SUCCESS Windows e Ubuntu**, commit inicial \`8a7191925bbdd0b9225ab8a6b1f2cbb5e610ac36\`; 26/26 testes por plataforma e três experimentos com as classificações de escopo esperadas.
+
+| Gate | Windows | Ubuntu |
+|---|---:|---:|
+| 162 nós, 128 trabalhadores, certificado original F072 | **PASS** | **PASS** |
+| 5.762 nós, 2.048 trabalhadores, certificado original F072 | **PASS** | **PASS** |
+| 5.762 nós, 8.192 trabalhadores, conservação/ledger espacial | **PASS** | **PASS** |
+| 8.192 trabalhadores / 4.096 mercados, F072 comercial COMPLETO | **NÃO EXECUTADO** | **NÃO EXECUTADO** |
+| GAP global final F072 piloto 2.048 | 5,163731446e-12 | 5,163731446e-12 |
+| GAP pior grupo final F072 piloto 2.048 | 1,175502157e-11 | 1,175502157e-11 |
+| Tempo piloto solver Python no GitHub Actions | 18,864 s | 18,546 s |
+| Construção do ledger de 8.192 trabalhadores | 607,6 ms | 578,3 ms |
+
+A população grande foi gerada a partir de trabalhadores efetivos de diferentes atividades, com trilhas legítimas, demanda temporal conservada, 512 nós produtores, 2.048 nós com demanda, 1.024 grupos agregados e 4.096 mercados. A execução de 8.192 trabalhadores confirma a infraestrutura de dados e oferta/demanda, MAS **não soluciona 4.096 mercados**. Não confundir uma semente de mercado positivo com equilíbrio.
+
+**Evidências ZIP:** \`ga-gate09-adr052-windows-latest\` ID **14162590721**; \`ga-gate09-adr052-ubuntu-latest\` ID **14162895124**.
+
+**Mudança de governança após homologação inicial:** como o piloto de 2.048 trabalhadores recebeu certificado original F072 em ambos os sistemas, o runner foi promovido a exigir tanto o certificado F072 da fixture unitária quanto o **certificado F072 do piloto** e o ledger físico de 8.192 trabalhadores. Caso qualquer um falhe, deve retornar código diferente de zero. A suíte cresceu de 26 para **30 testes**, incluindo cenários negativos de regressão. A CI dessa atualização precisa ser reexecutada para comprovar o bloqueio.
+
+**Decisão técnica:** GO para o laboratório de demanda física em milhares de trabalhadores e para o equilíbrio do piloto concentrado de 2.048 trabalhadores/48 nós demandantes; não há GO econômico para 8.192 trabalhadores/4.096 mercados. O próximo gate deverá aumentar progressivamente o número de nós com demanda efetivamente equilibrada, medir variação de memória/CPU em C# e considerar estrutura esparsa ou ciclos cooperativos, sem relaxar F072 nem o congestionamento quartico. F059 ainda não ratificado.
