@@ -634,7 +634,7 @@ def main():
     try:
         report.update(exercise(a.profile))
         controlled=report["controlled_multigroup_gate_pass"]
-        large_required=(args.profile=="extended")
+        large_required=(a.profile=="extended")
         large_passed=report["full_F072_static_pass_2562_nodes"]
         # Extended CI is now a REAL commercial regression gate at 2,562
         # nodes, not a green job that can mask large-world NO-GO.
