@@ -1,0 +1,41 @@
+name: GA Gate09 ADR047 Producer Block NCP and Restricted Columns
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/gate09/adr047_block_mcp/**'
+      - 'docs/ga-gate09-adr047-producer-block-mcp-and-restricted-columns-draft.md'
+      - '.github/workflows/ga-gate09-adr047-block-mcp.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  block-mcp:
+    name: ADR047 producer blocks and 2562-node work audit / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify exact block JtJ, Cholesky, physical conservation and full F072 audits
+        run: python -m unittest discover -s experiments/gate09/adr047_block_mcp/tests -p 'test_*.py' -v
+      - name: Run controls and separately budgeted 2562-node extended route-generation trial
+        run: python experiments/gate09/adr047_block_mcp/ci/run_adr047.py --profile extended --output '${{ runner.temp }}'
+      - name: Upload complete commercial GO and NO-GO evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-adr047-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-ADR047-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
