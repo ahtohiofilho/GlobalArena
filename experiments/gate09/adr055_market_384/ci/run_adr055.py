@@ -2,8 +2,8 @@
 """Global Arena ADR055 — 384 demand nodes (768 markets), fixed 4096 workers.
 
 LAB ONLY. Original 48, 96 and 192 node F072 independently certified
-regressions are mandatory. The 384-node equilibrium is a budget-bounded
-EXPLORATORY trial. Original price sqrt(D/Q), quartic congestion, seller
+regressions are mandatory. The 384-node equilibrium is now MANDATORY after independent
+certification on Ubuntu and Windows. Original price sqrt(D/Q), quartic congestion, seller
 tariffs, R13/R14 separation and original F072 certification stay frozen.
 Native process-level CPU and peak RSS are observations, NOT game SLAs.
 """
@@ -25,7 +25,7 @@ sys.path.insert(0, str(GATE09 / "adr054_market_192" / "ci"))
 import run_adr054 as R54
 from clearing_r5 import _flow_checksum
 
-SCHEMA = "GA_GATE09_ADR055_WORKER_384_FIXED_POPULATION_F072_AND_NATIVE_METRICS_V1"
+SCHEMA = "GA_GATE09_ADR055_WORKER_384_MANDATORY_F072_WITH_NATIVE_METRICS_V2"
 CANDIDATE = "candidate_384_demand_nodes_fixed_4096_workers"
 REFERENCE = (R54.REFERENCE[0], R54.REFERENCE[1], R54.CANDIDATE)
 SPATIAL_ONLY = R54.SPATIAL_ONLY
@@ -260,12 +260,13 @@ def classify(profile, entries):
             or row["F072_certificate_original_only"] !=
                 "PASS_STATIC_F072_FIRST_ORDER_ONLY"):
             return "NO_GO_UNVERIFIED_384_F072_CLAIM", False
-        return "PASS_EXPLORATORY_ADR055_384_ORIGINAL_F072_CERTIFIED", True
+        return "PASS_ADR055_384_ORIGINAL_F072_CERTIFIED_MANDATORY", True
     if (row["original_F072_global_FINAL_if_pass"] is not None
         or row["original_F072_worst_group_FINAL_if_pass"] is not None):
         return "NO_GO_UNCERTIFIED_384_FINAL_DISCLOSURE", False
-    # Mandatory regressions remain green but candidate does NOT get F072 approval.
-    return "NO_GO_EXPLORATORY_ADR055_384_F072_NOT_CERTIFIED", True
+    # Following dual-OS independent original F072 PASS, 384 is mandatory.
+    # An uncertified 384 result must fail CI; never publish final flows/gaps.
+    return "NO_GO_MANDATORY_ADR055_384_F072_REGRESSION", False
 
 
 def exercise(profile):
@@ -309,7 +310,7 @@ def exercise(profile):
         "status": status,
         "profile": profile,
         "mandatory_regressions_and_contracts_passed": accepted,
-        "candidate_384_exploratory_F072_certified":
+        "candidate_384_mandatory_F072_certified":
             rows[3]["F072_independent_certified"] if profile == "ci" else None,
         "stages": rows,
         "fixed_population_for_192_vs_384": True,
