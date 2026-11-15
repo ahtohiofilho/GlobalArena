@@ -34,10 +34,38 @@ A implementação experimental faz substituição temporária das classes de tra
 
 ## Gates
 
-Os 23 testes cobrem demanda total no ciclo, rateio por tile, não produtores, P subconjunto D, adjacência, ausência de teletransporte, mercado positivo, oferta integral, matriz principal JtJ exata, fatoração SPD, economia original e trabalho numérico contabilizado.
+Os 27 testes cobrem demanda total no ciclo, rateio por tile, não produtores, P subconjunto D, adjacência, ausência de teletransporte, mercado positivo, oferta integral, matriz principal JtJ exata, fatoração SPD, economia original e trabalho numérico contabilizado.
 
 Perfil smoke: mundo worker-coupled 42 nós e um controle de dois produtores no núcleo antigo e novo. Perfil ci: também mede a fixture R13 2.562 nós, 240 grupos e 120 mercados. Usa os mesmos valores numéricos de limites do ADR-050: H 980, scans 6500, certificados 6, colunas 1600, gerações 6, Newton 185, Krylov 58000, CG por direção 180, produtos dos blocos 248000, com unidade do último limite explicitamente alterada para produtos triangulares.
 
 **PASS econômico somente após ADR-042 independente:** P=sqrt(D/Q), custo físico c_free*(1+(B/K)^4), tarifas originais por vendedor, todas as rotas separadas, R13/R14, F084F, venda integral, GAP global e pior grupo <=1e-4. NO-GO gera relatório mas não publica fluxo final. CI verde dos testes de integridade não equivale a certificado comercial do mundo 240/120.
 
 F059 financeiro continua não ratificado. Nenhuma fonte R13/R20–R50, C#/Godot ou main alterada. O ciclo econômico cooperativo, a reserva efetiva de CPU e a aplicação da demanda temporal no motor ainda não estão implementados. PR Draft sobre #339, sem merge.
+
+
+
+---
+
+## Homologação ADR-051 e proteção de regressão — 15/11/2026
+
+**[GitHub Actions #43712915937](https://github.com/ahtohiofilho/GlobalArena/actions/runs/43712915937): SUCCESS** Ubuntu/Windows, 23/23 testes antes da promoção formal das novas verificações de regressão, e dois cenários com PASS do certificador econômico original ADR-042/F072 em cada sistema.
+
+| Cenário sintético R13 2.562 nós / 240 grupos / 120 mercados | Windows | Ubuntu |
+|---|---:|---:|
+| GAP global F072 final | 3,99289941e-9 | 4,31117097e-9 |
+| GAP pior grupo F072 final | 7,21790091e-7 | 6,25067617e-7 |
+| Resultado original ADR042 | PASS | PASS |
+| Produtos triangulares SPD realmente calculados | 152.634 | 153.468 |
+| Cobrança quadrada antiga contrafactual | 365.667 | 367.929 |
+| Produtos Krylov Jv/Jtv | 51.339 | 52.250 |
+| Tempo Python | 184,91 s | 227,44 s |
+
+**Fixture worker-coupled:** dez trabalhadores físicos, seis produzindo e quatro em atividades não produtivas; três nós com produção e quatro demandantes, dois itens de teste, itinerários válidos e distribuição temporal conservadora da demanda. O solver encontrou equilíbrio original ADR-042 com PASS em ~52 ms Windows e ~46 ms Ubuntu.
+
+**Interpretação:** o NO-GO no cenário 240/120 do ADR-050 foi superado por um método diferente de precondicionamento, com contabilização mais fiel dos produtos SPD. Isso NÃO é aceleração comparável em orçamento igual, pois os contadores medem unidades diferentes; o método poderá demandar mais produtos Krylov. Tampouco é prova de convergência geral.
+
+**Regressão agora obrigatória:** a partir da primeira homologação, se o cenário trabalhador-coupled ou o cenário R13 240/120 deixar de passar pelo certificado original F072, o runner retornará código de erro. As novas verificações aumentam a suíte para 27 testes, e o novo commit deve ter CI própria antes de ser declarado homologado.
+
+**Limite de representatividade:** o mundo de 240 grupos ainda utiliza demanda sintética do R13, não a demanda gerada por trabalhadores; a fixture real worker-coupled ainda é pequena. Precisamos unir as duas escalas e definir rateio contínuo de tempo em arestas, persistência de ciclos, determinismo e orçamento real de CPU em C#. Nenhuma alteração do congestionamento quartico é necessária por estes resultados.
+
+Artefatos iniciais: Windows ID 14161238220 e Ubuntu ID 14161073508. F059 permanece sem ratificação e o PR Draft não foi mergeado.
