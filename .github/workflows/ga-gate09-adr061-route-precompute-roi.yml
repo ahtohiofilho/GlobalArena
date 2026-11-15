@@ -1,0 +1,111 @@
+name: GA Gate09 ADR061 R13 Route Weight Precompute ONE ROI Gate
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/gate09/adr061_route_precompute/**'
+      - 'docs/ga-gate09-adr061-one-shot-route-roi-draft.md'
+      - '.github/workflows/ga-gate09-adr061-route-precompute-roi.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    name: ADR061 exact original R13 routes and F072 negative gates / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Exact Goldberg shortest paths, original post-F072, and explicit CPU ROI contracts
+        run: python -m unittest discover -s experiments/gate09/adr061_route_precompute/tests -p 'test_*.py' -v
+
+  original-versus-precompute:
+    name: ADR061 actual original F072 ${{ matrix.fixture }} nodes ${{ matrix.policy }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        fixture: ['192', '384']
+        policy: ['baseline', 'precompute']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: One-shot R13 weight reuse vs untouched original solver, followed by completely unpatched independent F072
+        run: python -u experiments/gate09/adr061_route_precompute/ci/run_adr061.py --fixture ${{ matrix.fixture }} --policy ${{ matrix.policy }} --output '${{ runner.temp }}'
+      - name: Preserve full original F072 and CPU/RSS evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-adr061-${{ matrix.fixture }}-${{ matrix.os }}-${{ matrix.policy }}
+          path: ${{ runner.temp }}/GA-Gate09-ADR061-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
+
+  same-head-roi:
+    name: ADR061 exact final F072 parity and indicative CPU ROI ${{ matrix.fixture }} / ${{ matrix.os }}
+    needs: [original-versus-precompute]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        fixture: ['192', '384']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download baseline and candidate evidence on same HEAD and OS
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ga-gate09-adr061-${{ matrix.fixture }}-${{ matrix.os }}-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/adr061-input
+      - name: Fail if original independent F072 or final allocations drift; NO_GO if CPU ROI insufficient
+        run: python -u experiments/gate09/adr061_route_precompute/ci/compare_adr061.py --fixture ${{ matrix.fixture }} --directory '${{ runner.temp }}/adr061-input' --output '${{ runner.temp }}'
+      - name: Preserve numeric parity and single-shot ROI status
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-adr061-comparison-${{ matrix.fixture }}-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-ADR061-COMPARISON-*.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  untouched-original-F072-regressions:
+    name: ADR055 untouched mandatory original F072 48 96 192 384 / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Revalidate untouched mandatory original F072 economic stages
+        run: python -u experiments/gate09/adr055_market_384/ci/run_adr055.py --profile ci --output '${{ runner.temp }}'
+      - name: Preserve untouched original independent F072 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-adr061-original-F072-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-ADR055-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
