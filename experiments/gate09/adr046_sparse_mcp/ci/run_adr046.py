@@ -555,7 +555,8 @@ def exercise(profile):
             limits=Limits(max_h_evaluations=1200,max_route_scans=680,
                           max_columns=400,max_newton_steps=70,
                           max_krylov_products=18000,max_cg_iterations=180)
-        for dense in ((False,True) if label=="two_group_nonoptimal"
+        for dense in ((False,True) if label in (
+            "two_group_nonoptimal","42_original","162_heterogeneous_K02")
                       else (False,)):
             row=_run(label,net,flows,limits,dense)
             rows.append(row)
@@ -586,6 +587,31 @@ def exercise(profile):
                   row["work"]["matrixfree_Jv_and_Jtv_products"],
                   row["work"]["separate_shortest_path_scans"],
                   row["last_solver_trace_record"]),flush=True)
+    comparisons=[]
+    for label in ("two_group_nonoptimal","42_original",
+                  "162_heterogeneous_K02"):
+        pair=[x for x in rows if x["fixture"]==label]
+        if len(pair)==2:
+            fast=next(x for x in pair if x["algorithm"]==METHOD)
+            dense=next(x for x in pair if x["algorithm"]!=METHOD)
+            ratio=(dense["wall_ms"]/fast["wall_ms"]
+                   if fast["wall_ms"]>0 else None)
+            comparisons.append({
+                "fixture":label,"same_original_F072_formula":True,
+                "both_commercially_certified":bool(
+                    fast["candidate_valid_independent_certificate"] and
+                    dense["candidate_valid_independent_certificate"]),
+                "dense_wall_ms_python":dense["wall_ms"],
+                "matrixfree_wall_ms_python":fast["wall_ms"],
+                "speed_ratio_dense_over_matrixfree":ratio,
+                "not_a_CSharp_or_consumer_hardware_benchmark":True,
+            })
+            print("[ADR046:COMPARE:{}] dense_ms={} sparse_ms={} "
+                  "dense_over_sparse={:.5g} both_certified={}".format(
+                      label,dense["wall_ms"],fast["wall_ms"],
+                      ratio if ratio is not None else float("nan"),
+                      comparisons[-1]["both_commercially_certified"]),
+                  flush=True)
     expected={x["fixture"] for x in rows if x["fixture"] in (
         "two_group_nonoptimal","two_group_alternative_routes")}
     required={x["fixture"] for x in rows
@@ -595,6 +621,7 @@ def exercise(profile):
               x["candidate_valid_independent_certificate"]}
     return {
         "cases":rows,
+        "dense_vs_matrixfree_same_runner_comparisons":comparisons,
         "profile":profile,
         "controlled_cases_all_pass":required==expected and len(required)==2,
         "original_dense_F072_economics_unchanged":True,
