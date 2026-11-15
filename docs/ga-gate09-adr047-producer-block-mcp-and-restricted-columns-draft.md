@@ -87,7 +87,7 @@ equivale ao número de agentes econômicos do jogo.
 | Backtracking por tentativa LM | 10 |
 | Produtos Jv/Jtv | 14.000 |
 | Iterações CG por direção | 130 |
-| Coeficientes dos blocos | 40.000 |
+| Coeficientes dos blocos | 100.000 |
 
 O orçamento é mais restritivo em produtos Krylov que
 o último ADR046 (20.000), mas difere em outros limites.
@@ -113,3 +113,23 @@ de engenharia considerará precondicionamento
 por mercadorias/mercados, gestão dinâmica de
 suportes e fatoração esparsa, conforme dados.
 Nenhum merge nem alteração econômica automática.
+
+## Controle de mudança dos orçamentos — 15/11/2026
+
+Na primeira CI de código executável #43677047122, a algebra e 22/22
+contratos passaram em cada plataforma, mas a fixture 2.562 nós
+recebeu NO-GO ao esgotar exatamente o limite de **16.000
+coeficientes de blocos** herdado do intervalo valido de limites.
+O snapshot provisório auditado pelo ADR-042 teve gap global
+0,0006040743891 e pior grupo 0,0520573199053 — nenhum dos dois
+atingiu a tolerancia economica 0,0001. O algoritmo não retornou
+fluxo final aprovado e os controles de 42 e 162 nós passaram.
+
+**A segunda execução preserva os demais tetos** de 430 H,
+900 scans, 65 Newton, 14.000 produtos Krylov, 130 CG por
+solucao e 440 colunas, mas eleva o limite de **coeficientes
+de blocos para 100.000**, contabilizado como trabalho acumulado.
+Esse teto tem unidade DIFERENTE e não altera a faixa dos
+limites originais de avaliacoes/oraculos. São dois ensaios
+com orçamento declarado e separado, não uma comparacao
+com budget idêntico. O novo resultado deverá constar no PR.
