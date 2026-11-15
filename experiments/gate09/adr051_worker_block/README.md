@@ -22,6 +22,11 @@ Python 3.12 stdlib, repo root:
     python experiments/gate09/adr051_worker_block/ci/run_adr051.py --profile smoke --output .
     python experiments/gate09/adr051_worker_block/ci/run_adr051.py --profile ci --output .
 
+CI REQUIRES independent original F072 certificates for both the
+worker-coupled fixture and the 240-group/120-market R13 experiment.
+A failure on either now returns nonzero, so a green contract job cannot
+mask commercial NO-GO. The first dual-OS audit actually passed both.
+
 CI compares an ADR047 baseline of two producers to the new subblock
 solver and audits the existing maximum-density R13 2,562-node
 240-group/120-market fixture under bounded work. The latter may be
