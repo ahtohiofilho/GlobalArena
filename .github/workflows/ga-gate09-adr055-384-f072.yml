@@ -1,4 +1,4 @@
-name: GA Gate09 ADR055 Fixed 4096 Worker 384 Demand Node F072 Trial
+name: GA Gate09 ADR055 Fixed 4096 Worker 384 Demand Node F072 Mandatory Regression
 
 on:
   pull_request:
@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   worker-384-f072:
-    name: ADR055 F072 48 96 192 mandatory and 384 exploratory / ${{ matrix.os }}
+    name: ADR055 mandatory original F072 48 96 192 and 384 / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 35
     strategy:
@@ -29,7 +29,7 @@ jobs:
           python-version: '3.12'
       - name: Physical workers, original F072 negative regression and native metrics contracts
         run: python -m unittest discover -s experiments/gate09/adr055_market_384/tests -p 'test_*.py' -v
-      - name: Mandatory original 48 96 192 F072 plus bounded 384 demand-node independent trial
+      - name: Mandatory original 48 96 192 and 384 F072 independent regressions
         run: python -u experiments/gate09/adr055_market_384/ci/run_adr055.py --profile ci --output '${{ runner.temp }}'
       - name: Upload explicit PASS and NO-GO JSON ZIP evidence
         if: always()
