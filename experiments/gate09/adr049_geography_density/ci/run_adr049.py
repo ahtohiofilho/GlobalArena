@@ -198,6 +198,8 @@ def classify(profile,rows):
 
 
 def run(profile):
+    if profile not in PROFILES:
+        raise ValueError("Unregistered geography/density profile")
     if ADR48.ADR42.R21.validate_manifest()!=16:
         raise AssertionError("Immutable R20 baseline SHA16 files drifted")
     rows=[]
