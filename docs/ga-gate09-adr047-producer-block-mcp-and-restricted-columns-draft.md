@@ -171,3 +171,58 @@ teto anterior, e os três ensaios permanecem com evidência própria.
 Se o mundo ainda receber NO-GO, o ADR-047 será encerrado com essa
 limitação operacional, em vez de reabrir indefinidamente ajustes
 do orçamento ou modificar o congestionamento sem decisão de produto.
+
+
+---
+
+## Homologação do perfil ampliado e decisão de escalabilidade
+
+**CI #43677467605, execução anterior ao fechamento do gate obrigatório:**
+22/22 testes por plataforma; 5/5 cenários do laboratório com aprovação
+econômica ORIGINAL ADR-042 em Windows e Ubuntu, inclusive o
+Goldberg de **2.562 nós, 7.680 arestas, 48 produtores, 24 mercados**.
+
+| Métrica final 2.562 nós | Ubuntu | Windows |
+|---|---:|---:|
+| GAP F072 global | 3,37076824e-9 | 4,08059174e-9 |
+| GAP F072 do pior grupo | 2,57314092e-7 | 3,11493063e-7 |
+| Avaliações H (incluindo rejeições) | 256 | 256 |
+| Passos Newton aceitos | 117 | 117 |
+| Produtos Krylov Jv/Jtv | 16.993 | 16.845 |
+| Scans de caminhos | 480 | 480 |
+| Pico de colunas ativas | 140 | 140 |
+| Novas rotas forçadas por separação global | 10 | 10 |
+| Tempo do Python no runner | 42,70 s | 45,13 s |
+
+Todos os GAPs ficaram abaixo de 1e-4 e passaram pela reavaliação
+independente R13/R14, pela separação original de rotas e pelo F084F.
+A raiz do NCP não é o critério econômico substituto: somente o
+certificador ADR-042 tem autoridade para declarar PASS de snapshot.
+
+**Histórico das três configurações explicitamente separadas:**
+(1) NO-GO em 16 mil coeficientes de blocos;
+(2) NO-GO em 65 passos Newton, com estado provisório
+global 0,000604 e pior grupo 0,0521;
+(3) PASS em 2.562 nós com perfil extended, limites
+mais amplos, 117 Newton e 16.993/16.845 produtos Krylov.
+Não apresentar a comparação como speedup sob budgets idênticos.
+
+**Regressão bloqueada:** a versão fechada do runner estabelece
+PASS obrigatório do mundo 2.562 nós no perfil extended. Caso
+o certificado ADR042 rejeite esse mundo em revisão futura,
+a etapa de CI deve retornar status NO-GO e código diferente de zero.
+
+**Limitações de produto:** 2.562 nós ainda representam
+somente 48 grupos produtores e 24 mercados, não milhares de
+agentes e mercados. Os tempos são observações de Python
+em runners GitHub Actions, não benchmarks C# dos jogadores.
+O Windows e o Ubuntu apresentam pequenas diferenças nos últimos
+dígitos e nos produtos Krylov; determinismo bit a bit não foi
+homologado. A economia é certificada em ambas as plataformas.
+
+**Decisão:** GO experimental para preservar o quartico e
+estender a análise a maior densidade de agentes e mapas mais
+amplos. NO-GO para integração autoritativa C#/Godot ou política
+F059. A futura periodicidade de cálculo econômico deve
+reservar capacidade de CPU para guerra, política e demais
+camadas, desacoplando o solver da taxa de quadros Godot.
