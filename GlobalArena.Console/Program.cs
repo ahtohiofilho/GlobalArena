@@ -11,13 +11,63 @@ if (args.Length != 1 ||
     (args[0] != "--foundation-slice" &&
      args[0] != "--foundation-calibration-ab" &&
      args[0] != "--foundation-goldberg" &&
-     args[0] != "--foundation-worker-journal"))
+     args[0] != "--foundation-worker-journal" &&
+     args[0] != "--foundation-local-game"))
 {
     Console.WriteLine("Global Arena — executable foundation preview");
     Console.WriteLine("Run: dotnet run --project GlobalArena.Console -- --foundation-slice");
     Console.WriteLine("A/B: dotnet run --project GlobalArena.Console -- --foundation-calibration-ab");
     Console.WriteLine("Goldberg: dotnet run --project GlobalArena.Console -- --foundation-goldberg");
     Console.WriteLine("Authority: dotnet run --project GlobalArena.Console -- --foundation-worker-journal");
+    Console.WriteLine("Local game: dotnet run --project GlobalArena.Console -- --foundation-local-game");
+    return;
+}
+
+// Same gameplay host that the Godot Main uses: explicit small local scenario,
+// live canonical workers and journaled G/P-style commands. No financial
+// settlement, combat, AI, simultaneous multiplayer or price certification.
+if (args[0] == "--foundation-local-game")
+{
+    var local = FoundationLocalGameHost.CreateLocalPreview(
+        new WorldGenerationRequest(new WorldSeed(20261012UL),
+            WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)));
+    var graph = local.Session.GeneratedWorld.StrategicSurfaceGraph;
+    var worker = local.ControllableWorkers.Single(w => w.Id.Value == 1UL);
+    var initialCell = worker.CellId;
+    var nextCell = graph.GetCellId(
+        graph.GetNeighborIndexes(graph.GetNodeIndex(initialCell))[0]);
+    var initialHash = local.StateHash;
+    Console.WriteLine($"GA_FOUNDATION_LOCAL_GAME_V1 nodes={graph.NodeCount} " +
+        $"edges={local.Session.GeneratedWorld.StrategicTopology.Edges.Count} " +
+        $"workers={local.Snapshot.Workers.Workers.Count} " +
+        $"player_civ={local.PlayerCivilization.Value} " +
+        $"initial_hash_v={initialHash.FormatVersion} " +
+        "preview_scenario=true final_world_population_policy=false");
+    var move = local.MoveWorker(worker.Id, nextCell);
+    var produce = local.ChangeWorkerActivity(worker.Id,
+        PhysicalWorkerActivity.Producing);
+    var returnHome = local.MoveWorker(worker.Id, initialCell);
+    foreach (var receipt in new[] { move, produce, returnHome })
+    {
+        if (!receipt.ReplayMatched || receipt.ExecutedEvents != 1 ||
+            receipt.ResultingHash.FormatVersion != 9U)
+            throw new InvalidOperationException("Local gameplay journal failed.");
+        Console.WriteLine($"  local_turn={receipt.Turn.Value} " +
+            $"worker={receipt.WorkerId.Value} from={receipt.Source.Value} " +
+            $"to={receipt.Destination.Value} activity={receipt.Activity} " +
+            $"revision={receipt.ResultingRevision} replay_match={receipt.ReplayMatched} " +
+            $"state_hash={receipt.ResultingHash.HexDigest}");
+    }
+    if (local.NextTurn != new TurnNumber(4UL) ||
+        local.Snapshot.Workers.Workers.Count != 6 ||
+        local.Snapshot.Workers.Workers.Single(w => w.Id == worker.Id)
+            .CellId != initialCell ||
+        local.StateHash == initialHash)
+        throw new InvalidOperationException(
+            "Local gameplay state failed to commit three distinct turns.");
+    Console.WriteLine("  authority=worldstate_v9 ui_intent=worker_order " +
+        "financial_settlement=NOT_IMPLEMENTED " +
+        "combat=NOT_IMPLEMENTED certified_F072=false");
     return;
 }
 
