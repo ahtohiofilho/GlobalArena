@@ -285,6 +285,24 @@ def exercise(profile):
     }
 
 
+def classify_gate(profile,samples):
+    """One previously certified density becomes a strict CI regression.
+
+    Do NOT label exploratory 144/48 results PASS unless their own ADR042
+    F072 original certificate passed. The CI mandatory gate is 96/32.
+    """
+    if profile not in PROFILES:
+        raise ValueError("Unregistered profile")
+    statuses={s["fixture"]:bool(s["static_original_F072_go"])
+              for s in samples}
+    required=("density_2562_96_32",) if profile in ("ci","extended") else ()
+    if any(not statuses.get(k,False) for k in required):
+        return "NO_GO_MANDATORY_96_PRODUCER_F072_REGRESSION",False
+    if all(statuses.values()) and len(samples)==len(PROFILES[profile]):
+        return "PASS_ALL_DENSITY_F072_INDEPENDENTLY_CERTIFIED",True
+    return "NO_GO_EXPLORATORY_DENSITY_OR_GEOGRAPHY_WITH_CONTRACT_PASS",True
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--profile",choices=tuple(PROFILES),default="ci")
@@ -305,10 +323,8 @@ def main():
         report.update(exercise(a.profile))
         # CI itself tests integrity. Density GO is a SEPARATE classification,
         # visible in the same output; no silent F072 PASS for a NO-GO case.
-        report["status"]=(
-            "PASS_ALL_DENSITY_F072_INDEPENDENTLY_CERTIFIED"
-            if report["all_density_fixtures_independently_F072_certified"]
-            else "NO_GO_DENSITY_SCALE_BUT_CONTRACT_VERIFIED")
+        report["status"],report["mandatory_regression_gate_pass"]=(
+            classify_gate(a.profile,report["samples"]))
     except Exception as error:
         report["status"]="FAILED_BENCHMARK_CONTRACT"
         report["error"]=repr(error)
@@ -323,7 +339,8 @@ def main():
         z.write(path,path.name)
     print("[ADR048] STATUS:",report["status"],flush=True)
     print("[ADR048] EVIDENCE:",archive,flush=True)
-    return 1 if report["status"]=="FAILED_BENCHMARK_CONTRACT" else 0
+    return 0 if (report["status"]!="FAILED_BENCHMARK_CONTRACT" and
+                 report.get("mandatory_regression_gate_pass",False)) else 1
 
 
 if __name__=="__main__":
