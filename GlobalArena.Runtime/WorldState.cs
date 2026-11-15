@@ -223,7 +223,8 @@ public sealed class WorldState
             Diplomacy,
             Economy,
             Population,
-            warfare);
+            warfare,
+            Workers);
     }
 
     /// <summary>
