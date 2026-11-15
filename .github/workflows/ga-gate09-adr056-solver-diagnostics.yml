@@ -1,0 +1,78 @@
+name: GA Gate09 ADR056 Frozen F072 CPU Hotspots and Heap Diagnostics
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/gate09/adr056_solver_diagnostics/**'
+      - 'docs/ga-gate09-adr056-solver-diagnostics-draft.md'
+      - '.github/workflows/ga-gate09-adr056-solver-diagnostics.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    name: ADR056 original economy and profiling-honesty contracts / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test original F072 identities and CPU/heap evidence semantics
+        run: python -m unittest discover -s experiments/gate09/adr056_solver_diagnostics/tests -p 'test_*.py' -v
+
+  mandatory-regressions:
+    name: ADR055 original mandatory 48 96 192 384 F072 / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Original mandatory independent F072 on four certified populations
+        run: python -u experiments/gate09/adr055_market_384/ci/run_adr055.py --profile ci --output '${{ runner.temp }}'
+      - name: Preserve original regression evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-adr056-regression-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-ADR055-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
+
+  profile:
+    name: ADR056 isolated ${{ matrix.fixture }} demand nodes Python CPU and RSS / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        fixture: ['192', '384']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Certified F072 untouched cProfile plus construction-only tracemalloc
+        run: python -u experiments/gate09/adr056_solver_diagnostics/ci/run_adr056.py --fixture ${{ matrix.fixture }} --output '${{ runner.temp }}'
+      - name: Preserve isolated CPU and heap trace evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-adr056-profile-${{ matrix.fixture }}-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-ADR056-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
