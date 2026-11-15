@@ -191,13 +191,13 @@ public sealed class PhysicalWorkerTradeCycle
             nextWorkers[order.WorkerId] = worker;
         }
 
-        var demand = new Dictionary<(int, int), double>();
+        var demand = new Dictionary<(int Tile, int Commodity), double>();
         var production = new Dictionary<FoundationProducerKey, double>();
         foreach (var worker in nextWorkers.Values)
         {
             foreach (var (commodity, perWorker) in _demandPerWorker)
             {
-                var key = (worker.Tile, commodity);
+                var key = (Tile: worker.Tile, Commodity: commodity);
                 demand[key] = demand.GetValueOrDefault(key) +
                     perWorker * worker.DemandMultiplier;
             }
@@ -379,7 +379,7 @@ public sealed class PhysicalWorkerTradeCycle
 
     private FoundationSnapshot Evaluate(
         Dictionary<FoundationTradeKey, double> allocations,
-        Dictionary<(int, int), double> demand)
+        Dictionary<(int Tile, int Commodity), double> demand)
     {
         var load = new Dictionary<int, double>();
         var delivered = new Dictionary<(int, int), double>();
