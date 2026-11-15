@@ -43,9 +43,9 @@ LIMITS_192 = R53.R52.ADR51.R47.Limits(
     max_generations=6,
     max_newton_steps=185,
     max_backtrack=12,
-    max_krylov_products=70000,
+    max_krylov_products=60000,
     max_cg_iterations=210,
-    max_block_coefficients=320000,
+    max_block_coefficients=250000,
 )
 
 
