@@ -274,4 +274,143 @@ public sealed class FoundationPhysicalTradeCycleTests
         Assert.Empty(tick.Prices);
         Assert.Single(tick.Demand);
     }
+
+    [Fact]
+    public void InitialCalibrationDoesNotAdvanceTheChronologicalTurnOrAlterWorkers()
+    {
+        var world = World(passes: 128);
+        var workers = world.Workers.ToArray();
+        Assert.Equal(0, world.CurrentTurn);
+        Assert.False(world.InitialMarketCalibrated);
+
+        var calibration = world.CalibrateInitialMarket();
+
+        Assert.Equal(0, world.CurrentTurn);
+        Assert.True(world.InitialMarketCalibrated);
+        Assert.Equal(workers, world.Workers);
+        Assert.Equal(5d, calibration.TotalProduction);
+        Assert.Equal(5d, calibration.TotalDelivered, 9);
+        Assert.InRange(calibration.AdjustmentPasses, 0, 128);
+        Assert.True(double.IsFinite(calibration.MaxRelativeOpportunity));
+
+        var real = world.Advance();
+        Assert.Equal(1, real.Turn);
+        Assert.Equal(1, world.CurrentTurn);
+        Assert.Equal(workers, real.Workers);
+        Assert.Equal(5d, real.TotalProduction);
+        Assert.Equal(5d, real.TotalDelivered, 9);
+        Assert.Equal(6d, real.Demand.Values.Sum(), 9);
+        Assert.False(real.CertifiedGlobalEquilibrium);
+        Assert.False(real.FinancialSettlementImplemented);
+    }
+
+    [Fact]
+    public void OneFakePassThenOneRealPassMatchesTwoIdenticalMarketSolves()
+    {
+        // The control runs the exact same no-order market equation twice,
+        // but chronological turn 2 must NOT be confused with a valid game
+        // turn 1. This checks trade/price/load warm-start parity.
+        var control = World(passes: 128);
+        var first = control.Advance();
+        var second = control.Advance();
+
+        var candidate = World(passes: 128);
+        var fake = candidate.CalibrateInitialMarket();
+        var actual = candidate.Advance();
+
+        Assert.Equal(1, actual.Turn);
+        Assert.Equal(2, second.Turn);
+        Assert.Equal(first.MaxRelativeOpportunity, fake.MaxRelativeOpportunity, 12);
+        Assert.Equal(second.MaxRelativeOpportunity, actual.MaxRelativeOpportunity, 12);
+        Assert.Equal(second.TotalProduction, actual.TotalProduction);
+        Assert.Equal(second.TotalDelivered, actual.TotalDelivered);
+        Assert.Equal(second.Prices.OrderBy(x => x.Key.Tile)
+                .ThenBy(x => x.Key.Commodity).ToArray(),
+            actual.Prices.OrderBy(x => x.Key.Tile)
+                .ThenBy(x => x.Key.Commodity).ToArray());
+        Assert.Equal(second.EdgeLoads.OrderBy(x => x.Key).ToArray(),
+            actual.EdgeLoads.OrderBy(x => x.Key).ToArray());
+        Assert.Equal(second.Trades.Select(t =>
+                (t.Origin, t.Destination, t.Commodity, t.Seller, t.Quantity,
+                 Path: string.Join(",", t.EdgeIds))).ToArray(),
+            actual.Trades.Select(t =>
+                (t.Origin, t.Destination, t.Commodity, t.Seller, t.Quantity,
+                 Path: string.Join(",", t.EdgeIds))).ToArray());
+    }
+
+    [Fact]
+    public void ColdStartAndCalibratedTurnUseIdenticalPhysicalPopulationAndProduction()
+    {
+        var cold = World(passes: 128).Advance();
+        var warmWorld = World(passes: 128);
+        warmWorld.CalibrateInitialMarket();
+        var warm = warmWorld.Advance();
+
+        Assert.Equal(cold.Workers, warm.Workers);
+        Assert.Equal(cold.Demand.OrderBy(x => x.Key.Tile)
+            .ThenBy(x => x.Key.Commodity).ToArray(),
+            warm.Demand.OrderBy(x => x.Key.Tile)
+            .ThenBy(x => x.Key.Commodity).ToArray());
+        Assert.Equal(cold.TotalProduction, warm.TotalProduction);
+        Assert.Equal(cold.TotalDelivered, warm.TotalDelivered, 9);
+        Assert.Equal(1, cold.Turn);
+        Assert.Equal(1, warm.Turn);
+        // No assumption that additional passes always reduce regret.
+        Assert.True(double.IsFinite(warm.MaxRelativeOpportunity));
+    }
+
+    [Fact]
+    public void CalibrationIsRejectedTwiceAndAfterARealTurn()
+    {
+        var world = World();
+        world.CalibrateInitialMarket();
+        Assert.Throws<InvalidOperationException>(() => world.CalibrateInitialMarket());
+        Assert.Equal(0, world.CurrentTurn);
+        world.Advance();
+        Assert.Throws<InvalidOperationException>(() => world.CalibrateInitialMarket());
+        Assert.Equal(1, world.CurrentTurn);
+
+        var uncalibrated = World();
+        uncalibrated.Advance();
+        Assert.Throws<InvalidOperationException>(() => uncalibrated.CalibrateInitialMarket());
+    }
+
+    [Fact]
+    public void CalibratedMarketStillMovesDemandOnceOnFirstRealMove()
+    {
+        var world = World();
+        world.CalibrateInitialMarket();
+        var real = world.Advance(new[]
+        {
+            new FoundationWorkerOrder(3, NextTile: 2)
+        });
+        Assert.Equal(1, real.Turn);
+        Assert.Equal(5d, real.TotalProduction);
+        Assert.Equal(5d, real.TotalDelivered, 9);
+        Assert.Equal(6d, real.Demand.Values.Sum(), 9);
+        Assert.Equal(3d, real.Demand[(2, 0)]);
+        Assert.False(real.Demand.ContainsKey((1, 0)));
+        Assert.Equal(FoundationWorkerActivity.Traveling,
+            real.Workers.Single(w => w.Id == 3).Activity);
+    }
+
+    [Fact]
+    public void CalibrationOfAnIdleEconomyDoesNotInventPricedMarketOrProduction()
+    {
+        var world = new PhysicalWorkerTradeCycle(
+            new[] { new FoundationEdge(1, 0, 1, .5d, 1d) },
+            new[] { new FoundationWorker(1, 0, 0, 0, 2d,
+                FoundationWorkerActivity.Military) },
+            new Dictionary<int, double> { [0] = 1d });
+        var fake = world.CalibrateInitialMarket();
+        Assert.Equal(0d, fake.TotalProduction);
+        Assert.Equal(0d, fake.TotalDelivered);
+        Assert.Equal(0, fake.PricedMarketCount);
+        Assert.Equal(0, world.CurrentTurn);
+        var real = world.Advance();
+        Assert.Single(real.Demand);
+        Assert.Empty(real.Prices);
+        Assert.Empty(real.Trades);
+        Assert.Equal(1, real.Turn);
+    }
 }
