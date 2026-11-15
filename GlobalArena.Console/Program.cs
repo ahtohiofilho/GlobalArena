@@ -2,18 +2,113 @@ using System.Globalization;
 using GlobalArena.Simulation.Foundation;
 using GlobalArena.Runtime;
 using GlobalArena.World;
+using GlobalArena.Kernel;
+using GlobalArena.Simulation;
 
 // A real executable headless slice of the redesigned foundation. The legacy
 // M4 simulator and Godot UI remain untouched, and this is not authoritative.
 if (args.Length != 1 ||
     (args[0] != "--foundation-slice" &&
      args[0] != "--foundation-calibration-ab" &&
-     args[0] != "--foundation-goldberg"))
+     args[0] != "--foundation-goldberg" &&
+     args[0] != "--foundation-worker-journal"))
 {
     Console.WriteLine("Global Arena — executable foundation preview");
     Console.WriteLine("Run: dotnet run --project GlobalArena.Console -- --foundation-slice");
     Console.WriteLine("A/B: dotnet run --project GlobalArena.Console -- --foundation-calibration-ab");
     Console.WriteLine("Goldberg: dotnet run --project GlobalArena.Console -- --foundation-goldberg");
+    Console.WriteLine("Authority: dotnet run --project GlobalArena.Console -- --foundation-worker-journal");
+    return;
+}
+
+// Authoritative worker lifecycle: v9 physical census, real Goldberg move,
+// domain event, turn commit, replay SHA256 equality and read-only economy.
+if (args[0] == "--foundation-worker-journal")
+{
+    var canonical = CanonicalGameSession.Start(new WorldGenerationRequest(
+        new WorldSeed(20261115UL), WorldGenerationVersion.Initial,
+        new GoldbergParameters(3, 0)));
+    var graph = canonical.GeneratedWorld.StrategicSurfaceGraph;
+    var start = graph.GetCellId(0);
+    var neighbor = graph.GetCellId(graph.GetNeighborIndexes(0)[0]);
+    var remote = graph.GetCellId(graph.NodeCount / 2);
+
+    canonical.AcceptSnapshot(canonical.Snapshot
+        .WithCivilizations(new CivilizationRuntimeState(new[]
+        {
+            new CivilizationId(1UL), new CivilizationId(2UL)
+        }))
+        .WithWorkers(new PhysicalWorkerRuntimeState(new[]
+        {
+            new PhysicalWorkerRuntimeRecord(new PhysicalWorkerId(1UL),
+                new CivilizationId(1UL), start, new CommodityId(1U),
+                2_000_000UL, PhysicalWorkerActivity.Producing),
+            new PhysicalWorkerRuntimeRecord(new PhysicalWorkerId(2UL),
+                new CivilizationId(2UL), remote, new CommodityId(2U),
+                2_000_000UL, PhysicalWorkerActivity.Producing),
+            new PhysicalWorkerRuntimeRecord(new PhysicalWorkerId(3UL),
+                new CivilizationId(1UL), neighbor, new CommodityId(1U),
+                0UL, PhysicalWorkerActivity.Military)
+        })));
+    var before = canonical.Snapshot;
+    var hasher = new CanonicalWorldStateHasher();
+    var hashBefore = hasher.Compute(before);
+    if (hashBefore.FormatVersion != 9U)
+        throw new InvalidOperationException("Worker-initialized state must use v9 hash.");
+
+    var turn = new TurnNumber(1UL);
+    var context = new SimulationContext(turn, new SimulationSeed(712UL));
+    var movement = new PhysicalWorkerMoveCommand(
+        new CommandId(turn, 1UL), new CivilizationId(1UL),
+        new PhysicalWorkerId(1UL), neighbor);
+    var phase = new PhysicalWorkerMovementTurnPhase(canonical.GeneratedWorld);
+    var gate = new AuthoritativeTurnCommitGate(canonical,
+        new TurnPolicyResolutionGate(new ManualReadyTurnPolicy(),
+            new PhasedTurnResolutionEngine(new ITurnResolutionPhase[] { phase })),
+        firstTurn: turn, rulesetVersion: 1U);
+    var committed = gate.ResolveAndCommit(new TurnPolicyResolutionGateInput(
+        new TurnPolicyInput(turn, true, false),
+        new TurnResolutionInput(before,
+            new ISimulationCommand[] { movement }, context)));
+    if (!committed.WasResolved ||
+        committed.ResolutionResult is not { } result)
+        throw new InvalidOperationException("Canonical movement turn was not committed.");
+
+    var replayed = new SimulationEventLogReplayer(
+        new PhysicalWorkerMoveEventExecutor(canonical.GeneratedWorld))
+        .Replay(new SimulationReplayInput(before, result.EventLog, context));
+    var finalHash = hasher.Compute(canonical.Snapshot);
+    if (hasher.Compute(replayed) != finalHash ||
+        finalHash.FormatVersion != 9U ||
+        canonical.Snapshot.Revision != 1UL ||
+        canonical.Snapshot.Workers.Workers.Single(w => w.Id.Value == 1UL)
+            .CellId != neighbor ||
+        gate.NextTurn != new TurnNumber(2UL))
+        throw new InvalidOperationException(
+            "Canonical physical-worker movement journal or replay drift.");
+
+    var economy = GoldbergFoundationSession.FromAuthoritativeWorkers(
+        canonical, new Dictionary<int, double> { [1] = 1d, [2] = 0.5d },
+        maximumAdjustmentPasses: 5);
+    var preview = economy.Advance();
+    if (preview.TotalProduction != 2d ||
+        Math.Abs(preview.TotalDelivered - 2d) > 1e-9 ||
+        economy.InspectTile(neighbor).Workers.Count != 2)
+        throw new InvalidOperationException(
+            "Read-only economic preview disagrees with canonical worker census.");
+
+    Console.WriteLine($"GA_FOUNDATION_WORKER_AUTHORITY_V9 nodes={graph.NodeCount} " +
+        $"edges={canonical.GeneratedWorld.StrategicTopology.Edges.Count} " +
+        $"before_revision={before.Revision} after_revision={canonical.Snapshot.Revision} " +
+        $"events={result.EventLog.Entries.Count} replay_hash_match=true " +
+        $"hash_version={finalHash.FormatVersion}");
+    Console.WriteLine($"  worker=1 from={start.Value} to={neighbor.Value} " +
+        $"activity={canonical.Snapshot.Workers.Workers.Single(w => w.Id.Value == 1).Activity} " +
+        $"remaining_workers={canonical.Snapshot.Workers.Workers.Count}");
+    Console.WriteLine($"  preview_production={F(preview.TotalProduction)} " +
+        $"preview_delivered={F(preview.TotalDelivered)} " +
+        $"preview_opportunity_gap={F(preview.MaxRelativeOpportunity)} " +
+        "preview_authoritative=false certified_F072=false");
     return;
 }
 
