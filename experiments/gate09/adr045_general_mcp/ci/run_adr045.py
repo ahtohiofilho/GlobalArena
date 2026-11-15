@@ -102,10 +102,12 @@ class Work:
         }
 
 
-def _route_candidates(net,flows,settings,work):
+def _route_candidates(net,flows,settings,work,unreachable=None):
     """Globally cheapest physical route for EACH compatible reachable market."""
     loads,quantities,_=net.snapshots(flows)
-    _,_,unreachable=_reachable(net,settings.exponent)
+    if unreachable is None:
+        _,_,unreachable=_reachable(net,settings.exponent)
+        work.charge("route_scans",len(net.groups))
     cache=FrozenRouteCache(net,loads,settings.exponent)
     candidates={}
     for gid,g in sorted(net.groups.items()):
@@ -132,7 +134,7 @@ def _build_active(net,flows,candidates,work):
     return cols
 
 
-def _cover_empty_markets(net,flows,columns,work):
+def _cover_empty_markets(net,flows,columns,work,unreachable=None):
     """Reallocate REAL existing output, never create funds/D/stock or price floor.
 
     Numerical feasibility seed only: it does NOT affect the F072 rules and
@@ -140,7 +142,9 @@ def _cover_empty_markets(net,flows,columns,work):
     """
     out={c:float(flows.get(c,0.)) for c in columns}
     _,q,_=net.snapshots(out)
-    reachable,_,unreachable=_reachable(net,4)
+    if unreachable is None:
+        _,_,unreachable=_reachable(net,4)
+        work.charge("route_scans",len(net.groups))
     empties=[m for m in sorted(net.markets)
              if m not in unreachable and q.get(m,0.)<=0]
     for market in empties:
@@ -171,8 +175,12 @@ class Layout:
     A deterministic ANCHOR column absorbs residual real supply exactly;
     no trial state can create/destroy physical production.
     """
-    def __init__(self,net,columns,flows):
+    def __init__(self,net,columns,flows,unreachable=None):
         self.net=net
+        # Structural graph reachability is independent of market loads.
+        # The production solver passes a precomputed, charged snapshot.
+        self.unreachable=tuple(unreachable) if unreachable is not None else (
+            _reachable(net,4)[2])
         self.groups=tuple(sorted(net.groups))
         self.cols=tuple(sorted(columns))
         by={gid:[] for gid in self.groups}
@@ -237,7 +245,7 @@ def _ncp_eval(layout,z,epsilon,work,need_jacobian):
     x,mu=layout.lift(z)
     flows={c:v for c,v in zip(layout.cols,x)}
     loads,q,_=net.snapshots(flows)
-    _,_,unreachable=_reachable(net,4)
+    unreachable=layout.unreachable
     if any(q.get(m,0.)<=0 for m in net.markets if m not in unreachable):
         raise ValueError("Cannot differentiate H at uncovered reachable Q=0")
     edge_cost={}
@@ -440,14 +448,15 @@ def _inner_solve(layout,z,work,trace):
               else "NO_GO_NCP_RESIDUAL_TOO_LARGE")
 
 
-def _global_separate(net,flows,columns,settings,work):
+def _global_separate(net,flows,columns,settings,work,unreachable=None):
     """Check a restricted solution against all reachable destinations/routes.
 
     Tests the frozen minimum H for all active funded routes vs EVERY
     cheapest route to each compatible reachable market; never relies
     only on a restricted NCP.
     """
-    candidate,unreachable=_route_candidates(net,flows,settings,work)
+    candidate,unreachable=_route_candidates(
+        net,flows,settings,work,unreachable)
     active=set(columns)
     loads,q,_=net.snapshots(flows)
     cache=FrozenRouteCache(net,loads,settings.exponent)
@@ -514,6 +523,7 @@ def solve_mcp(net,initial_flows,limits=None,settings=None):
         # simply to satisfy a numerical iteration quota.
         _,q,_=net.snapshots(initial_flows)
         _,_,unreachable=_reachable(net,settings.exponent)
+        work.charge("route_scans",len(net.groups))
         priced=all(q.get(m,0.)>0 for m in net.markets if m not in unreachable)
         if priced:
             pre=_certify(net,initial_flows,settings,work)
@@ -529,15 +539,15 @@ def solve_mcp(net,initial_flows,limits=None,settings=None):
             current=dict(initial_flows)
             for gen in range(limits.max_generations):
                 viable,unreachable=_route_candidates(
-                    net,current,settings,work)
+                    net,current,settings,work,unreachable)
                 cols=_build_active(net,current,viable,work)
-                current=_cover_empty_markets(net,current,cols,work)
+                current=_cover_empty_markets(net,current,cols,work,unreachable)
                 loads,q,_=net.snapshots(current)
                 # The only mandatory positivity is in the physical
                 # candidate for numerical derivative; no fake prices.
                 if any(q.get(m,0.)<=0 for m in net.markets if m not in unreachable):
                     raise ValueError("Cannot initialize differentiable VI interior")
-                layout=Layout(net,cols,current)
+                layout=Layout(net,cols,current,unreachable)
                 z0=layout.initial(current)
                 # Explicitly initialize each group's multiplier from the
                 # actual current H of its lowest priced active route.
@@ -550,7 +560,7 @@ def solve_mcp(net,initial_flows,limits=None,settings=None):
                 state,inner_status=_inner_solve(layout,z0,work,trace)
                 candidate=layout.flows(state)
                 missed,sep=_global_separate(
-                    net,candidate,cols,settings,work)
+                    net,candidate,cols,settings,work,unreachable)
                 generation={
                     "generation":gen+1,
                     "active_columns":len(cols),
