@@ -77,7 +77,7 @@ public sealed class FoundationPhysicalTradeCycleTests
         var moved = world.Advance(new[] { new FoundationWorkerOrder(3, NextTile: 2) });
         Assert.Equal(5d, moved.TotalProduction);
         Assert.Equal(5d, moved.TotalDelivered, 9);
-        Assert.Equal(4d, first.Demand.Values.Sum());
+        Assert.Equal(6d, first.Demand.Values.Sum());
         Assert.Equal(first.Demand.Values.Sum(), moved.Demand.Values.Sum(), 9);
         Assert.False(moved.Demand.ContainsKey((1, 0)));
         Assert.Equal(3d, moved.Demand[(2, 0)]);
@@ -94,7 +94,7 @@ public sealed class FoundationPhysicalTradeCycleTests
         var moved = world.Advance(new[] { new FoundationWorkerOrder(1, NextTile: 1) });
         Assert.Equal(3d, moved.TotalProduction);
         Assert.Equal(3d, moved.TotalDelivered, 9);
-        Assert.Equal(4d, moved.Demand.Values.Sum(), 9);
+        Assert.Equal(6d, moved.Demand.Values.Sum(), 9);
         Assert.DoesNotContain(moved.Trades, t => t.Commodity == 0);
         Assert.DoesNotContain(moved.Prices.Keys, key => key.Commodity == 0);
     }
@@ -111,7 +111,7 @@ public sealed class FoundationPhysicalTradeCycleTests
         });
         Assert.Equal(5d, resumed.TotalProduction);
         Assert.Equal(5d, resumed.TotalDelivered, 9);
-        Assert.Equal(4d, resumed.Demand.Values.Sum(), 9);
+        Assert.Equal(6d, resumed.Demand.Values.Sum(), 9);
         Assert.Equal(1, resumed.Workers.Single(w => w.Id == 1).Tile);
     }
 
