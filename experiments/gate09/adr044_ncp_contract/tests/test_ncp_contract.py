@@ -174,7 +174,7 @@ class ADR044MCPNCPContractTests(unittest.TestCase):
         r=R.complementarity_contract(net,flows)
         self.assertEqual(r["group_count"],len(net.groups))
         self.assertEqual(r["unpriced_reachable_markets"],[])
-        self.assertEqual(r["economic_F072_certification"]["R13_checks"],1)
+        self.assertEqual(r["economic_F072_certification"]["independent_R13_checks"],1)
         self.assertFalse(r["no_flow_update"] is False)
 
     def test_R34_stress_snapshot_contract_without_solving(self):
