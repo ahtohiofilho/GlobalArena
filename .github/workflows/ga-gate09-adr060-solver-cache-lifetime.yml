@@ -1,0 +1,111 @@
+name: GA Gate09 ADR060 Actual Original F072 Solver Cache Lifetime
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/gate09/adr060_solver_cache_lifetime/**'
+      - 'docs/ga-gate09-adr060-solver-cache-lifetime-draft.md'
+      - '.github/workflows/ga-gate09-adr060-solver-cache-lifetime.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    name: ADR060 original cache tracking and independent F072 gate tests / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Original cache factory weakref liveness and compare negative contracts
+        run: python -m unittest discover -s experiments/gate09/adr060_solver_cache_lifetime/tests -p 'test_*.py' -v
+
+  actual-original-F072-probe:
+    name: ADR060 original solver ${{ matrix.fixture }} nodes ${{ matrix.policy }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        fixture: ['192', '384']
+        policy: ['baseline', 'gc_before_cache']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Original independent F072 full equilibrium with original R45 cache constructor observed
+        run: python -u experiments/gate09/adr060_solver_cache_lifetime/ci/run_adr060.py --fixture ${{ matrix.fixture }} --policy ${{ matrix.policy }} --output '${{ runner.temp }}'
+      - name: Preserve independently certified original solver/cache liveness evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-adr060-${{ matrix.fixture }}-${{ matrix.os }}-${{ matrix.policy }}
+          path: ${{ runner.temp }}/GA-Gate09-ADR060-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
+
+  compare-original-solver:
+    name: ADR060 exact independent F072 allocation/work and cache lifetime comparison ${{ matrix.fixture }} / ${{ matrix.os }}
+    needs: [actual-original-F072-probe]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        fixture: ['192', '384']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download both original solver policy evidence ZIPs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ga-gate09-adr060-${{ matrix.fixture }}-${{ matrix.os }}-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/adr060-input
+      - name: Fail closed if original F072 final allocation, gaps, numeric work or cache epochs drift
+        run: python -u experiments/gate09/adr060_solver_cache_lifetime/ci/compare_adr060.py --fixture ${{ matrix.fixture }} --directory '${{ runner.temp }}/adr060-input' --output '${{ runner.temp }}'
+      - name: Preserve exact-F072 comparison evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-adr060-comparison-${{ matrix.fixture }}-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-ADR060-COMPARISON-*.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  original-F072-mandatory-regressions:
+    name: ADR055 original mandatory F072 48 96 192 384 / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Revalidate untouched 48 96 192 384 original independent F072 economic references
+        run: python -u experiments/gate09/adr055_market_384/ci/run_adr055.py --profile ci --output '${{ runner.temp }}'
+      - name: Preserve mandatory original F072 reference evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-adr060-original-F072-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-ADR055-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
