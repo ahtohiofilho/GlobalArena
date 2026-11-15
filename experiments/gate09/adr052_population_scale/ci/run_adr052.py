@@ -63,6 +63,10 @@ def population_report(name,attempt_F072=False):
     workers=metadata.pop("source_workers")
     if len(workers)!=metadata["workers"]:
         raise AssertionError("Worker ledger count drift")
+    metadata["physical_production_nodes"]=sorted(
+        metadata["physical_production_nodes"])
+    metadata["physical_demand_nodes"]=sorted(
+        metadata["physical_demand_nodes"])
     result={
         "scenario":name,
         "construction_wall_ms_python":build_ms,
