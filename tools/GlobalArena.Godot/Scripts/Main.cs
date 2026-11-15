@@ -28,6 +28,10 @@ public partial class Main : Control
     private Label? _tacticalTileTerrain;
     private Label? _tacticalTileRuntime;
     private WorldState? _attachedRuntimeState;
+    // New-foundation strategic worker inspection: canonical v9 WorldState only.
+    private VBoxContainer? _strategicWorkerInspector;
+    private Label? _strategicWorkerSummary;
+    private Label? _strategicWorkerDetails;
     // R38: composition owner, not a second simulation state inside the renderer.
     private CanonicalGameSession? _canonicalSession;
 
@@ -36,6 +40,7 @@ public partial class Main : Control
     public void AttachRuntimeState(WorldState? state)
     {
         _attachedRuntimeState = state;
+        RefreshStrategicWorkerInspector();
         if (_tacticalPreview is not null && _tacticalPreview.SelectedCanonicalPhysicalTileId.HasValue)
             OnPhysicalTileInspected(_tacticalPreview.SelectedCanonicalPhysicalTileId,
                 _tacticalTileSummary?.Text ?? "", _tacticalTileTerrain?.Text ?? "");
@@ -47,17 +52,97 @@ public partial class Main : Control
         if (_canonicalSession is null)
             throw new System.InvalidOperationException("Canonical session is not initialized.");
         _canonicalSession.AcceptSnapshot(next);
+        // Preserve Main's single presentation ingress even if no frame has
+        // elapsed between a valid external commit and the selected tile refresh.
+        AttachRuntimeState(_canonicalSession.Snapshot);
     }
     private ulong? _bridgeSelection;
 
     private void OnCanonicalTerritorySelectionChanged(ulong? selectedId)
     {
         _bridgeSelection = selectedId;
+        RefreshStrategicWorkerInspector();
         if (_openTacticalContext is not null) _openTacticalContext.Disabled = !selectedId.HasValue;
         if (_tacticalBridgeStatus is not null)
             _tacticalBridgeStatus.Text = selectedId.HasValue
                 ? $"Territory {selectedId.Value} selected | tactical context available"
                 : "Select a canonical territory to enable tactical context";
+    }
+
+    // Only reads individual workers from the SAME canonical Goldberg identity as
+    // the strategic globe. Tactical fine-cell IDs are deliberately excluded.
+    // No producer/census is synthesized just to populate the screen.
+    private void RefreshStrategicWorkerInspector()
+    {
+        if (_strategicWorkerSummary is null || _strategicWorkerDetails is null)
+            return;
+        if (!_bridgeSelection.HasValue || _canonicalSession is null)
+        {
+            _strategicWorkerSummary.Text =
+                "Select a strategic territory on the globe";
+            _strategicWorkerDetails.Text =
+                "Physical workers will appear when an authoritative census is available";
+            return;
+        }
+
+        var inspection = StrategicPhysicalWorkerInspector.Read(
+            _canonicalSession.GeneratedWorld,
+            new StrategicCellId(_bridgeSelection.Value),
+            _attachedRuntimeState);
+        var availability = inspection.Availability;
+        if (availability != StrategicWorkerRuntimeAvailability.Bound)
+        {
+            _strategicWorkerSummary.Text =
+                $"TILE {inspection.CellId.Value} | workers unavailable";
+            _strategicWorkerDetails.Text = availability switch
+            {
+                StrategicWorkerRuntimeAvailability.NoRuntimeState =>
+                    "Waiting for an authoritative game snapshot",
+                StrategicWorkerRuntimeAvailability.UnboundWorld =>
+                    "Runtime snapshot has no world binding",
+                StrategicWorkerRuntimeAvailability.WorldMismatch =>
+                    "Runtime belongs to a different Goldberg world",
+                StrategicWorkerRuntimeAvailability.CensusUninitialized =>
+                    "Physical worker census not initialized in this game",
+                _ => "Worker census unavailable"
+            };
+            return;
+        }
+
+        _strategicWorkerSummary.Text =
+            $"TILE {inspection.CellId.Value} | revision {inspection.Revision} | " +
+            $"{inspection.DemandingWorkerCount} workers";
+        if (inspection.Workers.Count == 0)
+        {
+            _strategicWorkerDetails.Text =
+                "No physical workers in this territory";
+            return;
+        }
+
+        const int maximumVisibleWorkers = 8;
+        var lines = new System.Collections.Generic.List<string>
+        {
+            $"Producing {inspection.ProducingWorkerCount} | " +
+            $"Traveling {inspection.TravelingWorkerCount} | " +
+            $"Military {inspection.MilitaryWorkerCount}",
+            "Each worker generates demand at this tile"
+        };
+        foreach (var worker in inspection.Workers.Take(maximumVisibleWorkers))
+        {
+            var output = (worker.OutputMicroPerTurn / 1_000_000m)
+                .ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+            var multiplier = (worker.DemandMultiplierMicro / 1_000_000m)
+                .ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+            lines.Add($"#{worker.Id.Value}  Civ {worker.Owner.Value} | " +
+                $"{worker.Activity} | Item {worker.Commodity.Value} | " +
+                $"Capacity {output}/turn | Demand x{multiplier}");
+        }
+        if (inspection.Workers.Count > maximumVisibleWorkers)
+            lines.Add($"+{inspection.Workers.Count - maximumVisibleWorkers} more workers");
+        _strategicWorkerDetails.Text = string.Join("\n", lines);
+        GD.Print($"GA_UI_STRATEGIC_WORKERS_R1 tile={inspection.CellId.Value} " +
+            $"revision={inspection.Revision} workers={inspection.DemandingWorkerCount} " +
+            "source=authoritative_worldstate_v9 read_only=true");
     }
 
     // R30: physical tile facts are read-only display data, never a game order.
@@ -304,6 +389,33 @@ public partial class Main : Control
         _tacticalHudPanel = tacticalHud;
         var strategicHud = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         hud.AddChild(strategicHud);
+
+        // Worker facts live in the existing right sidebar, never as labels
+        // floating over the globe. The sole input is Main's accepted snapshot.
+        var workerInspector = new VBoxContainer();
+        workerInspector.AddThemeConstantOverride("separation", 5);
+        strategicHud.AddChild(workerInspector);
+        var workerTitle = new Label { Text = "PHYSICAL WORKERS | STRATEGIC TILE" };
+        workerTitle.AddThemeFontSizeOverride("font_size", 15);
+        workerInspector.AddChild(workerTitle);
+        var workerSummary = new Label
+        {
+            Text = "Select a strategic territory on the globe",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        workerInspector.AddChild(workerSummary);
+        var workerDetails = new Label
+        {
+            Text = "Physical workers will appear when an authoritative census is available",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        workerInspector.AddChild(workerDetails);
+        _strategicWorkerInspector = workerInspector;
+        _strategicWorkerSummary = workerSummary;
+        _strategicWorkerDetails = workerDetails;
+        RefreshStrategicWorkerInspector();
+        GD.Print("GA_UI_STRATEGIC_WORKER_INSPECTOR_R1 ready=true source=worldstate_v9 demo_workers=false");
+
         globe.TransferHud(strategicHud);
         _strategicHudPanel = strategicHud;
         // Keep the calibration buttons visible even when the context scrolls.
