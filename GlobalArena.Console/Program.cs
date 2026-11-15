@@ -27,7 +27,7 @@ var world = new PhysicalWorkerTradeCycle(
         new FoundationWorker(5, 1, 0, 1, 1d, FoundationWorkerActivity.Traveling)
     },
     new Dictionary<int, double> { [0] = 1d, [1] = 1d },
-    maximumAdjustmentPasses: 8,
+    maximumAdjustmentPasses: 128,
     relativeOpportunityTolerance: 0.001d);
 
 Show(world.Advance());
