@@ -1,0 +1,78 @@
+name: GA Gate09 ADR057 Original Frozen Route Cache Diagnostics
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/gate09/adr057_route_cache/**'
+      - 'docs/ga-gate09-adr057-route-cache-draft.md'
+      - '.github/workflows/ga-gate09-adr057-route-cache.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    name: ADR057 route-cache contracts / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Frozen route-cache metrics and physical worker contracts
+        run: python -m unittest discover -s experiments/gate09/adr057_route_cache/tests -p 'test_*.py' -v
+
+  route-cache-probe:
+    name: ADR057 isolated frozen cache first/repeated ${{ matrix.fixture }} nodes / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        fixture: ['192', '384']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Route-cache first/repeated phase original unchanged
+        run: python -u experiments/gate09/adr057_route_cache/ci/run_adr057.py --fixture ${{ matrix.fixture }} --output '${{ runner.temp }}'
+      - name: Preserve diagnostic JSON/ZIP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-adr057-cache-${{ matrix.fixture }}-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-ADR057-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
+
+  original-F072-regressions:
+    name: ADR055 original F072 mandatory 48 96 192 384 / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Four mandatory independently certified original F072 equilibria
+        run: python -u experiments/gate09/adr055_market_384/ci/run_adr055.py --profile ci --output '${{ runner.temp }}'
+      - name: Preserve original F072 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-adr057-f072-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-ADR055-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
