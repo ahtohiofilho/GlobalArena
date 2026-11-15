@@ -740,6 +740,7 @@ public partial class Main : Control
             _ = new FoundationGodotRuntimeSmoke(
                 this, globe, _localFoundation!,
                 _localWorkerSelector!, _localMoveButton!, _localProduceButton!,
+                _localEndTurnButton!, _localCancelQueuedButton!, _localPendingLabel!,
                 _strategicWorkerSummary!, _localTurnLabel!, _localOrderStatus!)
                 .RunAsync();
         }
