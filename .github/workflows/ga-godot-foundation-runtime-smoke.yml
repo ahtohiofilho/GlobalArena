@@ -1,0 +1,75 @@
+name: GA Foundation Godot 4.7.2 .NET Runtime Scene Smoke
+
+on:
+  pull_request:
+    paths:
+      - 'tools/GlobalArena.Godot/**'
+      - 'GlobalArena.Runtime/**'
+      - 'GlobalArena.Simulation/Foundation/**'
+      - 'docs/ga-foundation-godot-runtime-smoke.md'
+      - '.github/workflows/ga-godot-foundation-runtime-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  godot-runtime-smoke:
+    name: Actual Godot Mono 4.7.2 scene + GUI events + journal replay / Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      GA_FOUNDATION_GODOT_SMOKE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Compile the real Godot CSharp client with gameplay domain
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
+      - name: Obtain official Godot 4.7.2-stable .NET Linux runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/ga-godot"
+          curl -fSL --retry 4 --retry-delay 3 --connect-timeout 20 \
+            "https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_mono_linux_x86_64.zip" \
+            -o "$RUNNER_TEMP/ga-godot/runtime.zip"
+          unzip -q "$RUNNER_TEMP/ga-godot/runtime.zip" -d "$RUNNER_TEMP/ga-godot/bin"
+          GODOT_BIN="$(find "$RUNNER_TEMP/ga-godot/bin" -type f -name 'Godot_v4.7.2-stable_mono_linux*' | head -n 1)"
+          test -n "$GODOT_BIN"
+          chmod +x "$GODOT_BIN"
+          echo "GODOT_BIN=$GODOT_BIN" >> "$GITHUB_ENV"
+          "$GODOT_BIN" --headless --version | tee "$RUNNER_TEMP/ga-godot/version.log"
+          grep -q '4.7.2' "$RUNNER_TEMP/ga-godot/version.log"
+      - name: Import real Godot project resources and Mono assemblies
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 120s "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --editor --import --quit \
+            2>&1 | tee "$RUNNER_TEMP/ga-godot/import.log"
+      - name: Run actual Main.tscn and Godot GUI callbacks under headless runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 120s "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --quit-after 900 \
+            2>&1 | tee "$RUNNER_TEMP/ga-godot/smoke.log"
+          grep -q 'GA_GODOT_FOUNDATION_SMOKE_PASS' "$RUNNER_TEMP/ga-godot/smoke.log"
+          grep -q 'GA_GODOT_RUNTIME_SMOKE_STEP move=PASS' "$RUNNER_TEMP/ga-godot/smoke.log"
+          grep -q 'GA_GODOT_RUNTIME_SMOKE_STEP production=PASS' "$RUNNER_TEMP/ga-godot/smoke.log"
+          grep -q 'GA_GODOT_RUNTIME_SMOKE_STEP keyboard_g=PASS' "$RUNNER_TEMP/ga-godot/smoke.log"
+          if grep -E 'GA_GODOT_FOUNDATION_SMOKE_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/smoke.log"; then
+            echo "Actual Godot runtime has errors" >&2
+            exit 1
+          fi
+      - name: Keep actual runtime evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-godot-472-mono-scene-smoke
+          path: |
+            ${{ runner.temp }}/ga-godot/version.log
+            ${{ runner.temp }}/ga-godot/import.log
+            ${{ runner.temp }}/ga-godot/smoke.log
+          retention-days: 14
