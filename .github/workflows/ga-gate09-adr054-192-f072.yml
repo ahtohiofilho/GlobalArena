@@ -1,0 +1,41 @@
+name: GA Gate09 ADR054 Original F072 192 Worker-Demand Node Trial
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/gate09/adr054_market_192/**'
+      - 'docs/ga-gate09-adr054-worker-demand-192-draft.md'
+      - '.github/workflows/ga-gate09-adr054-192-f072.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  worker-192-original-F072:
+    name: ADR054 48 and 96 regressions plus 192 bounded experiment / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout F072 and physically sourced worker lab
+        uses: actions/checkout@v4
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: ADR054 negative gates and worker-node physical contracts
+        run: python -m unittest discover -s experiments/gate09/adr054_market_192/tests -p 'test_*.py' -v
+      - name: Mandatory original 48 and 96 F072 plus bounded 192 F072 with explicit NO-GO
+        run: python -u experiments/gate09/adr054_market_192/ci/run_adr054.py --profile ci --output '${{ runner.temp }}'
+      - name: Upload PASS or NO-GO evidence even after failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-adr054-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-ADR054-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
