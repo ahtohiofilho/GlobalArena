@@ -1,0 +1,111 @@
+name: GA Gate09 ADR059 Original Frozen Route Cache Epoch Policy Comparison
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/gate09/adr059_epoch_cache/**'
+      - 'docs/ga-gate09-adr059-epoch-cache-policy-draft.md'
+      - '.github/workflows/ga-gate09-adr059-epoch-cache-policy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    name: ADR059 epoch invalidation negative contracts / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Original economy, stale epochs and release-before-build contract tests
+        run: python -m unittest discover -s experiments/gate09/adr059_epoch_cache/tests -p 'test_*.py' -v
+
+  cache-policy-probe:
+    name: ADR059 ${{ matrix.fixture }} demand nodes ${{ matrix.policy }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        fixture: ['192', '384']
+        policy: ['overlap', 'release_first']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compare original frozen A/B route caches under selected lab-only ownership policy
+        run: python -u experiments/gate09/adr059_epoch_cache/ci/run_adr059.py --fixture ${{ matrix.fixture }} --policy ${{ matrix.policy }} --output '${{ runner.temp }}'
+      - name: Preserve original cache policy JSON/ZIP evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-adr059-${{ matrix.fixture }}-${{ matrix.os }}-${{ matrix.policy }}
+          path: ${{ runner.temp }}/GA-Gate09-ADR059-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
+
+  same-head-compare:
+    name: ADR059 compare original routes, weights and peak heap ${{ matrix.fixture }} / ${{ matrix.os }}
+    needs: [cache-policy-probe]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        fixture: ['192', '384']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download both policy archives for same fixture and platform
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ga-gate09-adr059-${{ matrix.fixture }}-${{ matrix.os }}-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/adr059-input
+      - name: Fail closed on route/weight drift and report measured memory difference
+        run: python -u experiments/gate09/adr059_epoch_cache/ci/compare_adr059.py --fixture ${{ matrix.fixture }} --directory '${{ runner.temp }}/adr059-input' --output '${{ runner.temp }}'
+      - name: Preserve cross-policy same-HEAD comparison
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-adr059-comparison-${{ matrix.fixture }}-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-ADR059-COMPARISON-*.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  original-F072-regressions:
+    name: ADR055 original mandatory F072 48 96 192 384 / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Unchanged independent original F072 certificates for four mandatory worker populations
+        run: python -u experiments/gate09/adr055_market_384/ci/run_adr055.py --profile ci --output '${{ runner.temp }}'
+      - name: Preserve independent original F072 evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-adr059-original-F072-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-ADR055-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
