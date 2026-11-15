@@ -381,7 +381,7 @@ def _inner_solve(layout,z,work,trace):
                         work.nonfinite_q_trials_rejected+=1
                         work.candidates_rejected+=1
                         continue
-                    if _merit(trial_r)<m-1e-15*max(1.,m):
+                    if _merit(trial_r)<m-max(1e-28,1e-8*m):
                         work.charge("newton_steps")
                         z=trial
                         trace.append({
