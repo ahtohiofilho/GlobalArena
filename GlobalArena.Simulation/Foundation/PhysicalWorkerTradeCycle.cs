@@ -64,6 +64,17 @@ public sealed class FoundationTurn
     }
 }
 
+/// <summary>
+/// Report from a single pre-turn market initialization. No authoritative turn,
+/// production, worker action or financial settlement was committed.
+/// </summary>
+public sealed record FoundationInitialCalibration(
+    double TotalProduction,
+    double TotalDelivered,
+    int AdjustmentPasses,
+    double MaxRelativeOpportunity,
+    int PricedMarketCount);
+
 internal readonly record struct FoundationProducerKey(int Tile, int Commodity, int Seller);
 internal readonly record struct FoundationTradeKey(
     FoundationProducerKey Producer, int Destination, string Route);
@@ -93,6 +104,7 @@ public sealed class PhysicalWorkerTradeCycle
     private Dictionary<FoundationTradeKey, double> _allocations = new();
     private HashSet<(int Tile, int Commodity)> _previousMarkets = new();
     private int _turn;
+    private bool _initialMarketCalibrated;
 
     public int MaximumAdjustmentPasses { get; }
     public double RelativeOpportunityTolerance { get; }
@@ -100,6 +112,29 @@ public sealed class PhysicalWorkerTradeCycle
     public double ResponseScale { get; }
     public IReadOnlyList<FoundationWorker> Workers =>
         Array.AsReadOnly(_workers.Values.ToArray());
+    public int CurrentTurn => _turn;
+    public bool InitialMarketCalibrated => _initialMarketCalibrated;
+
+    /// <summary>
+    /// Exactly one optional, reversible-in-time economic preview before turn 1.
+    /// It seeds trade flows and prices for the next REAL economic resolution,
+    /// without consuming a turn, moving workers, creating goods or settling money.
+    /// Its numerical accuracy is NOT asserted: compare with uncalibrated cold
+    /// start before making it a default gameplay policy.
+    /// </summary>
+    public FoundationInitialCalibration CalibrateInitialMarket()
+    {
+        if (_turn != 0 || _initialMarketCalibrated)
+            throw new InvalidOperationException(
+                "Pre-turn calibration can be executed only once, before turn one.");
+        var preview = ResolveEconomicCycle(orders: null, calibrationOnly: true);
+        _initialMarketCalibrated = true;
+        return new FoundationInitialCalibration(
+            preview.TotalProduction, preview.TotalDelivered,
+            preview.AdjustmentPasses, preview.MaxRelativeOpportunity,
+            preview.Prices.Count);
+    }
+
 
     public PhysicalWorkerTradeCycle(
         IEnumerable<FoundationEdge> edges,
@@ -166,7 +201,11 @@ public sealed class PhysicalWorkerTradeCycle
             });
     }
 
-    public FoundationTurn Advance(IEnumerable<FoundationWorkerOrder>? orders = null)
+    public FoundationTurn Advance(IEnumerable<FoundationWorkerOrder>? orders = null) =>
+        ResolveEconomicCycle(orders, calibrationOnly: false);
+
+    private FoundationTurn ResolveEconomicCycle(
+        IEnumerable<FoundationWorkerOrder>? orders, bool calibrationOnly)
     {
         // Validate the entire movement/activity batch BEFORE altering this state.
         var nextWorkers = new SortedDictionary<int, FoundationWorker>(_workers);
@@ -342,11 +381,16 @@ public sealed class PhysicalWorkerTradeCycle
                 x.Value, Array.AsReadOnly(Decode(x.Key.Route))))
             .ToArray();
 
-        // Commit only after constructing a consistent complete economic turn.
+        // Commit only the market's initial *reference* during calibration.
+        // The provisional economic activity does not create a time step,
+        // change workers or settle even a cent in the authoritative game.
         _allocations = next;
-        _workers = nextWorkers;
         _previousMarkets = pricedMarkets;
-        _turn++;
+        if (!calibrationOnly)
+        {
+            _workers = nextWorkers;
+            _turn++;
+        }
         return new FoundationTurn(_turn, nextWorkers.Values.ToArray(), ordered,
             demand, final.Delivered, final.Prices, final.Loads,
             production.Values.Sum(), regret, passes);
