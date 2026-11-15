@@ -21,14 +21,14 @@ generations=6, Newton=185, backtracking=12, Krylov=60000,
 CG per direction=210, SPD triangular products=250000.
 These are algorithmic work units, not millisecond SLAs or game scheduler.
 
-A successful CI requires F-072 original certified PASS on **48 and 96**
-nodes and valid spatial ledgers. The 192-node solver may fail its bounded
-experiment without making the previous regressions disappear: the result
-will be labelled **NO_GO_EXPLORATORY_ADR054_192_F072_NOT_CERTIFIED**,
-with no final uncertified allocations or final F-072 gaps.
-A real certificate on 192 nodes is **PASS_EXPLORATORY** (not production
-approval), requiring both OS to pass at the same HEAD before any later
-commit can promote the new gate to mandatory regression.
+After first dual-OS independent F-072 certification on 192 nodes in
+CI #43719293076, the 192-node certificate became a **MANDATORY**
+regression in a later commit. A successful CI now requires original
+F-072 certification on **all 48, 96 AND 192 demand-node scenarios**,
+plus valid worker spatial ledgers. Failure to certify 192 nodes is
+**NO_GO_MANDATORY_ADR054_192_F072_REGRESSION**, causing a nonzero CI exit.
+No uncertified final allocations or final F-072 gaps may be published.
+PASS is lab-only, never authorization for C#/Godot production.
 
 Reproduce from repository root with Python 3.12 standard library:
 
@@ -42,3 +42,10 @@ See docs/ga-gate09-adr054-worker-demand-192-draft.md for matrix, freeze,
 budget, acceptance criteria, and next decision. PR Draft stacked on #342.
 No original source, main, R13/R20–R53, C#/Godot, F-072, F-084F or F-059
 is modified.
+
+Initial trial in Ubuntu and Windows: original global gap 2.206208795713443e-14,
+worst-group gap 1.292014372667089e-13, 32 H, 389 Krylov, 240 scans;
+Python solver 62.71 s Ubuntu / 56.25 s Windows. Both OS PASS on identical
+HEAD after a preflight-only budget correction to respect inherited R47 hard
+ceilings (Krylov 60,000; SPD triangular products 250,000). Final promotion
+must be reverified in CI at the promoted HEAD.
