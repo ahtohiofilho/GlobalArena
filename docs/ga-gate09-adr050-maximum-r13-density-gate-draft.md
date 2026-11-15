@@ -44,3 +44,41 @@ Tempos de GitHub Actions Python NÃO são benchmark do C# ou SLA para computador
 Após este gate, a priorização deve favorecer um gerador trabalhador–demanda espacialmente consistente e benchmarks em densidade física real de milhares de agentes. A curva quartica só poderá ser reconsiderada com evidência e decisão explícita do usuário.
 
 **PR Draft empilhado sobre #338. Não altera R13/R20–R49, F072/F084F, F059, motor C#/Godot ou main. Sem merge.**
+
+
+---
+
+## Homologação da execução — NO-GO de densidade, 15/11/2026
+
+**[GitHub Actions #43710660812](https://github.com/ahtohiofilho/GlobalArena/actions/runs/43710660812): FAILURE ESPERADO PELO GATE**, nos dois sistemas, porque nenhuma execução encontrou um equilíbrio certificado pelo ADR-042 para a configuração de 240 grupos e 120 mercados. Isso é diferente de falha de testes de integridade: **17/17 testes Ubuntu e 17/17 testes Windows passaram**.
+
+| Métrica original do laboratório | Ubuntu | Windows |
+|---|---:|---:|
+| Nós Goldberg / arestas | 2.562 / 7.680 | 2.562 / 7.680 |
+| Grupos sintéticos / mercados (nó,produto) | 240 / 120 | 240 / 120 |
+| Status do solver | NO_GO_PREDECLARED_WORK_BUDGET | NO_GO_PREDECLARED_WORK_BUDGET |
+| Certificado comercial F-072 | **NÃO** | **NÃO** |
+| GAP F-072 final global | **não disponível** | **não disponível** |
+| GAP F-072 final pior grupo | **não disponível** | **não disponível** |
+| Pico de colunas ativas | 806 | 808 |
+| Avaliações H, inclusive rejeições | 234 | 233 |
+| Produtos Krylov Jv/Jtv | 32.586 | 32.418 |
+| Coeficientes de blocos contabilizados | **247.989 / 248.000** | **247.998 / 248.000** |
+| Scans de caminhos | 1.920 | 1.920 |
+| Tempo do solver no runner Python | 300,71 segundos | 218,43 segundos |
+| Testes independentes de integridade | 17/17 PASS | 17/17 PASS |
+
+ZIPs/JSON de auditoria preservados: ga-gate09-adr050-maximum-density-ubuntu-latest ID 14159944775 e ga-gate09-adr050-maximum-density-windows-latest ID 14159908258.
+
+O gatilho da parada foi o teto de **coeficientes usados nos blocos por produtor**, não o limite de Krylov 58.000, não a precisão econômica 1e-4 e não falta de validade de cenário. Como o orçamento terminou antes de um estado final certificado, é INCORRETO apresentar o último GAP de um snapshot anterior como erro da solução, ou declarar o equilíbrio inexistente.
+
+**Parecer:** NO-GO para o cenário sintético 240/120 **dentro desse orçamento**, e GO para manter a infraestrutura experimental com diagnóstico correto e invariantes preservados. NÃO modificar a lei do congestionamento, preço ou F-059; não aumentar retrospectivamente limites nesta mesma medição.
+
+### Próximo investimento recomendado
+
+1. Reduzir custo do pré-condicionador de produtor com reuso de fatores válidos por linearização, ou testar blocos estruturados por mercado e mercadoria, mantendo produtos Jv/Jtv e auditoria global; comparar o consumo de coeficientes e produtos Krylov antes de simplesmente elevar tetos.
+2. Definir gerador de cenários com **trabalhadores físicos**, atividades gerando oferta e TODOS os trabalhadores gerando demanda. No trânsito, ratear demanda pelo tempo de permanência por tile sem duplicação; confirmar invariante físico nós produtores subconjunto de nós demandantes, sem confundir grupos por produto com pontos físicos.
+3. Validar processo econômico por ciclos com orçamento compartilhado entre economia e demais camadas. Ainda NÃO há agendador cooperativo em C#/Godot, nem tempos do jogo medidos.
+4. Após melhorias, repetir cenário sintético 240/120 com novo orçamento PR/ADR explicitamente separado e verificar se o mesmo modelo F-072 original passa.
+
+**Governança:** PR Draft #339 sobre #338, sem merge. Somente workflow e documento novos. Não houve alteração ao solucionador, gerador R13, F-072/F-084F/F-059, C#/Godot ou main. A CI permanece vermelha PROPOSITALMENTE enquanto o critério comercial independente não for satisfeito.
