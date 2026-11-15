@@ -598,7 +598,7 @@ public partial class GlobePreview : SubViewportContainer
     /// </summary>
     internal bool TryClickCanonicalCellForRuntimeSmoke(ulong target)
     {
-        if (Environment.GetEnvironmentVariable("GA_FOUNDATION_GODOT_SMOKE") != "1")
+        if (System.Environment.GetEnvironmentVariable("GA_FOUNDATION_GODOT_SMOKE") != "1")
             throw new InvalidOperationException(
                 "Automated map picking is only available in the explicit Godot smoke process.");
         if (_planet is null || _camera is null || _mapMode != 0)
