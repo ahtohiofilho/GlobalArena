@@ -1,0 +1,78 @@
+name: GA Gate09 ADR058 Frozen Cache Across Changing Physical Loads
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/gate09/adr058_cache_lifecycle/**'
+      - 'docs/ga-gate09-adr058-cache-lifecycle-draft.md'
+      - '.github/workflows/ga-gate09-adr058-cache-snapshots.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    name: ADR058 two physical snapshots contract tests / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Changed-load cache invalidation, physical workers and memory semantics
+        run: python -m unittest discover -s experiments/gate09/adr058_cache_lifecycle/tests -p 'test_*.py' -v
+
+  two-snapshot-cache:
+    name: ADR058 isolated ${{ matrix.fixture }} node two-snapshot cache / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        fixture: ['192', '384']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Rebuild original worker-ledger two valid loads and two distinct frozen caches
+        run: python -u experiments/gate09/adr058_cache_lifecycle/ci/run_adr058.py --fixture ${{ matrix.fixture }} --output '${{ runner.temp }}'
+      - name: Upload explicit cache lifetime and memory evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-adr058-cache-${{ matrix.fixture }}-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-ADR058-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
+
+  original-F072-regressions:
+    name: ADR055 original mandatory F072 48 96 192 384 / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Independent original F072 certificates for four mandatory economic regimes
+        run: python -u experiments/gate09/adr055_market_384/ci/run_adr055.py --profile ci --output '${{ runner.temp }}'
+      - name: Preserve mandatory original F072 evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-adr058-F072-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-ADR055-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
