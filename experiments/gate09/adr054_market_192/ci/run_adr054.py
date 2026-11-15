@@ -2,8 +2,8 @@
 """Global Arena Gate09 ADR054 — independently certify 192 worker demand nodes.
 
 LAB ONLY. The original 48 and 96 demand node F072 equilibria are mandatory
-regressions. The 192 node / 384 market F072 trial is exploratory until independently
-certified on both CI operating systems and promoted in a separate commit.
+regressions. The 192 node / 384 market F072 gate is a MANDATORY regression after
+independent certification on both CI operating systems.
 No game runtime integration, economic rule changes, or financial F059 approval.
 """
 from __future__ import annotations
@@ -24,7 +24,7 @@ sys.path.insert(0, str(GATE09 / "adr053_market_coverage" / "ci"))
 import run_adr053 as R53
 from clearing_r5 import _flow_checksum
 
-SCHEMA = "GA_GATE09_ADR054_WORKER_192_INDEPENDENT_F072_EXPERIMENT_V1"
+SCHEMA = "GA_GATE09_ADR054_WORKER_192_MANDATORY_F072_REGRESSION_V2"
 CANDIDATE = "spatial_192_demand_nodes"
 REFERENCE = ("baseline_48_demand_nodes", "candidate_96_demand_nodes")
 SPATIAL_ONLY = "spatial_2048_demand_nodes"
@@ -162,13 +162,13 @@ def classify(profile, rows):
             or candidate["F072_certificate_original_only"]
                     != "PASS_STATIC_F072_FIRST_ORDER_ONLY"):
             return "NO_GO_UNVERIFIED_192_ORIGINAL_F072_CLAIM", False
-        return "PASS_EXPLORATORY_ADR054_192_ORIGINAL_F072_CERTIFIED", True
+        return "PASS_ADR054_192_ORIGINAL_F072_CERTIFIED_MANDATORY", True
     if (candidate["original_F072_global_FINAL_if_pass"] is not None
         or candidate["original_F072_worst_group_FINAL_if_pass"] is not None):
         return "NO_GO_UNCERTIFIED_192_FINAL_RESULT_LEAK", False
-    # Not an economic approval; CI can stay green ONLY if mandatory
-    # 48/96 F072 regressions and worker spatial invariants passed.
-    return "NO_GO_EXPLORATORY_ADR054_192_F072_NOT_CERTIFIED", True
+    # After independent PASS on both OS, 192 F072 is now a mandatory
+    # regression. NO-GO must make CI red, preserving auditable evidence.
+    return "NO_GO_MANDATORY_ADR054_192_F072_REGRESSION", False
 
 
 def exercise(profile):
@@ -200,7 +200,7 @@ def exercise(profile):
         "profile": profile,
         "status": status,
         "mandatory_regressions_and_contracts_passed": mandatory,
-        "candidate_192_F072_exploratory_certified":
+        "candidate_192_F072_mandatory_certified":
             rows[2]["F072_independent_certified"] if profile == "ci" else None,
         "stages": rows,
         "workers_sole_source_of_market_demands": True,
@@ -242,7 +242,7 @@ def main():
         zipout.write(output, output.name)
     print("[ADR054] STATUS:", report["status"], flush=True)
     print("[ADR054] EVIDENCE:", archive, flush=True)
-    # Exploratory NO-GO does not hide a mandatory-regression failure.
+    # Any uncertified 48/96/192 F072 regression returns nonzero CI status.
     return 0 if report.get("mandatory_regressions_and_contracts_passed") else 1
 
 
