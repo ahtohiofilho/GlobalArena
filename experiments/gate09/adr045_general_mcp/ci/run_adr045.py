@@ -363,10 +363,12 @@ def _feasible_projected_step(layout,z,direction,alpha):
             proposal[k]=max(0.,z[k]+alpha*direction[k])
         total=math.fsum(proposal[k] for k in indices)
         ceiling=layout.net.groups[gid].supply
-        if total>ceiling:
+        if total>=ceiling:
+            # Reserve a roundoff-scale positive anchor so the decoded
+            # simplex never crosses zero through floating summation.
             # Redistribute proposed real mass on the simplex boundary;
             # the anchor gets the exactly conserved remainder.
-            scale=ceiling/total
+            scale=(ceiling*(1-1e-12))/total
             for k in indices:
                 proposal[k]*=scale
         mu_idx=layout.mu_index[gid]
@@ -395,9 +397,9 @@ def _inner_solve(layout,z,work,trace):
                     continue
                 for line in range(work.limits.max_backtrack):
                     alpha=2.**(-line)
-                    trial=_feasible_projected_step(
-                        layout,z,direction,alpha)
                     try:
+                        trial=_feasible_projected_step(
+                            layout,z,direction,alpha)
                         layout.decode(trial)
                     except ValueError:
                         work.candidates_rejected+=1
