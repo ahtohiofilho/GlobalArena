@@ -126,6 +126,27 @@ def population_report(name,attempt_F072=False):
     return result
 
 
+def classify_regression(profile,small,spatial,pilot):
+    """Original F072 pilot was certified in BOTH OS; now strict CI gate.
+
+    Spatial 8,192-worker ledger always remains separate from solver F072,
+    but its physical conservation and node coverage are mandatory.
+    """
+    if profile not in ("smoke","ci"):
+        raise ValueError("Unregistered worker population profile")
+    if any(type(x) is not bool for x in (small,spatial)):
+        raise ValueError("Worker physical and small F072 flags must be booleans")
+    if profile=="ci" and type(pilot) is not bool:
+        raise ValueError("Pilot commercial original F072 must be explicit")
+    if not small or not spatial:
+        return "NO_GO_MANDATORY_SMALL_F072_OR_SPATIAL_WORKER_LEDGER"
+    if profile=="ci" and not pilot:
+        return "NO_GO_MANDATORY_2048_WORKER_F072_REGRESSION"
+    return ("PASS_ADR052_WORKER_SPATIAL_AND_PILOT_F072"
+            if profile=="ci"
+            else "PASS_ADR052_SMALL_WORKER_F072_CONTRACT")
+
+
 def execute(profile):
     if profile not in ("smoke","ci"):
         raise ValueError("Unknown experiment profile")
@@ -165,14 +186,7 @@ def execute(profile):
               not rows[1]["commercial_certificate_attempted"]))
     pilot=(None if profile=="smoke" else
            rows[2]["original_F072_independent_pass"])
-    status=(
-        "NO_GO_MANDATORY_SMALL_WORKER_F072_OR_SPATIAL_LEDGER"
-        if not (small and spatial) else
-        "PASS_ADR052_WORKER_SPATIAL_AND_PILOT_F072"
-        if pilot is True else
-        "PASS_ADR052_LEDGER_WITH_PILOT_ECONOMIC_NO_GO"
-        if pilot is False else
-        "PASS_ADR052_SMALL_WORKER_F072_CONTRACT")
+    status=classify_regression(profile,bool(small),bool(spatial),pilot)
     return {
         "schema":SCHEMA,
         "status":status,
@@ -222,10 +236,9 @@ def main():
         z.write(path,path.name)
     print("[ADR052] STATUS:",report["status"],flush=True)
     print("[ADR052] EVIDENCE:",archive,flush=True)
-    # The pilot 2048 F072 is exploratory; an explicit failed mandatory
-    # small-worker certificate / 8192 spatial ledger blocks this CI.
-    return 1 if report["status"].startswith((
-        "FAILED_","NO_GO_MANDATORY_")) else 0
+    # Original independent F072 is mandatory for BOTH the small fixture
+    # and the 2,048-worker economic pilot; spatial ledger remains mandatory.
+    return 0 if report["status"].startswith("PASS_") else 1
 
 
 if __name__=="__main__":
