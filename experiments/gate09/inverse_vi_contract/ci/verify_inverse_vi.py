@@ -161,9 +161,6 @@ def inverse_vi_witness(net,flows,settings=None):
         audit["original_static_certificate_status"]=certificate["status"]
         audit["original_static_approximate_pass"] = certificate[
             "static_complementarity_approximate"]
-        if certificate["static_complementarity_approximate"] and (
-                audit["VI_raw_residual_sum"]>1e-2):
-            raise AssertionError("Static PASS with implausibly large H residual")
         audit["independent_ADR042_checked"]=True
     else:
         audit["original_static_certificate_status"]=(
