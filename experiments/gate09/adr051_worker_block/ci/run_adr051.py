@@ -309,6 +309,19 @@ def exercise(profile):
     return result
 
 
+def gate_status(profile,worker_certified,max_density_certified=False):
+    """Mandatory F072 gates: never permit green CI on the new baselines."""
+    if profile not in ("smoke","ci"):
+        raise ValueError("Unknown controlled gate profile")
+    if type(worker_certified) is not bool or type(max_density_certified) is not bool:
+        raise ValueError("Original F072 gate must be explicit booleans")
+    if not worker_certified:
+        return "NO_GO_MANDATORY_WORKER_COUPLED_F072"
+    if profile=="ci" and not max_density_certified:
+        return "NO_GO_MANDATORY_240_GROUP_F072_REGRESSION"
+    return "PASS_ADR051_WORKER_AND_INDEPENDENT_F072"
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--profile",choices=("smoke","ci"),default="ci")
@@ -325,11 +338,12 @@ def main():
     }
     try:
         report.update(exercise(a.profile))
-        if a.profile=="ci" and not report.get(
-            "max_density_240_group_independently_certified",False):
-            report["status"]="NO_GO_MAX_DENSITY_WITH_VALID_LAB_CONTRACT"
-        else:
-            report["status"]="PASS_ADR051_WORKER_AND_INDEPENDENT_F072"
+        report["status"]=gate_status(
+            a.profile,
+            bool(report["worker_timeline_experiment"][
+                "independent_F072_certified"]),
+            bool(report.get(
+                "max_density_240_group_independently_certified",False)))
     except Exception as err:
         report["status"]="FAILED_LAB_CONTRACT"
         report["error"]=repr(err)
@@ -346,7 +360,7 @@ def main():
     print("[ADR051] EVIDENCE:",archive,flush=True)
     # Independent static economic 240/120 pass remains explicitly
     # separate; the first gate is correctness of new algebra and workers.
-    return 1 if report["status"]=="FAILED_LAB_CONTRACT" else 0
+    return 0 if report["status"].startswith("PASS_") else 1
 
 
 if __name__=="__main__":
