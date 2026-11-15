@@ -87,7 +87,7 @@ class OriginalEquivalence(unittest.TestCase):
 
     def test_noncertified_original_F072_rejected(self):
         self.records["precompute"]["original_static_F072_certificate"]="NOT_CERTIFIED"
-        with self.assertRaisesRegex(AssertionError, "original"):
+        with self.assertRaisesRegex(AssertionError, "ORIGINAL"):
             C.compare(self.records,"384")
 
     def test_unpatched_original_post_certificate_required(self):
