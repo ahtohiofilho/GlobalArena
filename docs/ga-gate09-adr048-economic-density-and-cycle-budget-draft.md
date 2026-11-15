@@ -84,3 +84,39 @@ A interface gráfica Godot deve permanecer independente desse trabalho; a CPU re
 ## Governança
 
 O PR não modifica R13, ADR-042/043/044/045/046/047, regras F072/F084F, tarifação, F059, C#/Godot ou main. Permanece em Draft e empilhado sobre #336. Nenhum merge é autorizado por uma CI verde.
+
+
+---
+
+## Revisão do gate após homologação do primeiro piloto
+
+A primeira CI funcional **#43683873416** validou 17/17 contratos
+em cada plataforma e obteve certificado original F072 no mundo de
+2.562 nós com **96 produtores e 32 mercados**.
+
+| Métrica | Ubuntu | Windows |
+|---|---:|---:|
+| GAP F072 global | 9,401210819e−11 | 9,401490571e−11 |
+| GAP F072 pior produtor | 1,678909235e−8 | 1,678914224e−8 |
+| Pico de colunas | 284 | 284 |
+| Avaliações H | 200 | 200 |
+| Produtos Krylov | 20.617 | 20.719 |
+| Coeficientes de blocos acumulados | 64.686 | 63.972 |
+| Varreduras de rotas | 960 | 960 |
+| Wall Python no runner | 55,22 s | 67,51 s |
+
+**Decisão após a evidência:** 96/32 vira REGRESSÃO
+ECONÔMICA OBRIGATÓRIA. Perfil ci ou extended retorna
+código de erro se a auditoria independente ADR042
+deixar de aprová-lo, mesmo que testes unitários passem.
+
+O perfil **extended**, a partir daqui, verifica 96/32
+NOVAMENTE e inclui a densidade de **144 produtores/
+48 mercados** sobre a MESMA topologia de 2.562 nós.
+A segunda densidade é exploração com status econômico
+separado, jamais confundida com o gate obrigatório.
+Se 144/48 falhar, a CI do contrato poderá ficar verde
+mas o relatório registrará NO_GO_EXPLORATORY_DENSITY;
+isso significa NO-GO de escala, não homologação de
+144 agentes. Os exemplos de orçamento de CPU por
+ciclo permanecem APENAS hipóteses de sensibilidade.
