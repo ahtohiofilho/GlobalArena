@@ -25,8 +25,10 @@ it is NOT a commercial equilibrium.
 
 IMPORTANT distinction:
 * Unit: independent original F072 commercial certificate mandatory.
-* Pilot: original F072 certificate attempted on real worker-coupled
-  population, but experimental NO-GO remains visible if it cannot pass.
+* Pilot: after the initial successful Windows/Ubuntu F072 original
+  certification, it is a MANDATORY commercial regression. CI must fail
+  if the independent ADR042 certificate no longer approves the
+  2,048-worker F072 equilibrium.
 * Spatial: 8,192 workers across 2,048 demand nodes is a construction
   / replay / conservation / cost-scale gate ONLY. We do NOT claim
   commercial equilibrium at 4,096 markets because we do NOT solve it.
