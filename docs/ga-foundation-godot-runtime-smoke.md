@@ -29,6 +29,8 @@ Workflow `.github/workflows/ga-godot-foundation-runtime-smoke.yml`:
 - Importar recursos do projeto Godot com `--headless --editor --import --quit`;
 - Executar a **cena real** com `--headless --path tools/GlobalArena.Godot`, variável opt-in, timeout, checagem de markers de cada etapa e código de saída;
 - Guardar logs de versão/importação/teste como artefatos de CI.
+- Executar **uma segunda passagem em servidor gráfico virtual Xvfb com Mesa/OpenGL**, usando o binário Godot Mono real e o mesmo roteiro de seleção e comandos. Capturar três PNGs de **1280x720 pixels**: no início, depois do primeiro movimento e depois do atalho G. Conferir tamanho, formato PNG, existência dos arquivos e diversidade de pixels amostrados (evitando framebuffer vazio/monocromático).
+- Anexar as três imagens reais ao artefato `ga-godot-472-mono-scene-smoke`, juntamente com logs da execução gráfica e headless. A janela gráfica é virtual: testar existência de renderização não equivale a validar ergonomia, legibilidade ou ausência de sobreposição.
 
 O workflow adicional não toca no benchmark econômico nem substitui o pipeline de compilação/regressão Windows+Ubuntu do PR #356. Em Linux headless, matemática de seleção, GUI callbacks e turnos são exercitados; **a aparência real da janela não é inspecionada nem comparada por pixels**. Não declarar homologação de diagrama, scroll, legibilidade, sobreposições ou clique físico de mouse de desktop sem executar visualmente a interface.
 
