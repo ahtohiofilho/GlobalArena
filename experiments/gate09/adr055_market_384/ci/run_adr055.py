@@ -29,7 +29,7 @@ SCHEMA = "GA_GATE09_ADR055_WORKER_384_FIXED_POPULATION_F072_AND_NATIVE_METRICS_V
 CANDIDATE = "candidate_384_demand_nodes_fixed_4096_workers"
 REFERENCE = (R54.REFERENCE[0], R54.REFERENCE[1], R54.CANDIDATE)
 SPATIAL_ONLY = R54.SPATIAL_ONLY
-CONFIG_384 = R54.R53.R52.PopulationConfig(24, 96, 4096)
+CONFIG_384 = R54.R53.PopulationConfig(24, 96, 4096)
 STAGES = {
     "smoke": tuple((n, True) for n in REFERENCE),
     "ci": tuple((n, True) for n in REFERENCE) +
