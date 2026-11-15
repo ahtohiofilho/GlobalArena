@@ -1,0 +1,41 @@
+name: GA Gate09 ADR048 Economic Density and Cycle Budget
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/gate09/adr048_density_budget/**'
+      - 'docs/ga-gate09-adr048-economic-density-and-cycle-budget-draft.md'
+      - '.github/workflows/ga-gate09-adr048-density-budget.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dense-world:
+    name: ADR048 R13 96-producer density and cycle-reserve audit / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 22
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 20 original F072 density and ex-post cycle budget contracts
+        run: python -m unittest discover -s experiments/gate09/adr048_density_budget/tests -p 'test_*.py' -v
+      - name: Mandatory 96-group regression and exploratory 144-group F072 scale
+        run: python -u experiments/gate09/adr048_density_budget/ci/run_adr048.py --profile extended --output '${{ runner.temp }}'
+      - name: Preserve independent F072 GO and NO-GO evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-adr048-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-ADR048-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
