@@ -12,6 +12,9 @@ import run_adr057 as A
 
 
 class FakeCache:
+    def __init__(self, *args):
+        pass
+
     def paths(self, origin, seller):
         return ({origin: 0.0}, {origin: ()}, {origin: 1})
 
