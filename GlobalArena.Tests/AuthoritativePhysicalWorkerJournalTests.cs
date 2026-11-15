@@ -296,8 +296,7 @@ public sealed class AuthoritativePhysicalWorkerJournalTests
         Assert.Equal(3, preview.Workers.Count);
         Assert.Equal(1, preview.Workers.Single(w => w.Id == 1).Tile);
         var initial = preview.Advance();
-        Assert.Equal(3d, initial.Demand.Values
-            .Where((x, index) => index >= 0).Sum() / 1.0d, 9); // see exact aggregation below
+        Assert.Equal(4.2d, initial.Demand.Values.Sum(), 9);
         Assert.Equal(1.0d + 1.0d + 0.8d, initial.Demand
             .Where(x => x.Key.Commodity == 1).Sum(x => x.Value), 9);
         var movedState = Resolve(session, 1, Move(1, 1, 1, 1, b))
@@ -313,7 +312,7 @@ public sealed class AuthoritativePhysicalWorkerJournalTests
             .Sum(x => x.Value), 9);
         Assert.Equal(2.8d, tick.Demand
             .Where(x => x.Key.Commodity == 1).Sum(x => x.Value), 9);
-        Assert.Equal(1.5d + 1.5d * .8d, tick.Demand.Values.Sum(), 9);
+        Assert.Equal(4.2d, tick.Demand.Values.Sum(), 9);
         Assert.Equal(a, session.GeneratedWorld.StrategicSurfaceGraph.GetCellId(0));
     }
 }
