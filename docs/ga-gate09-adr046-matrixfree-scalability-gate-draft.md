@@ -183,3 +183,22 @@ ADR-042 independente for atingido com custo
 estabelecido; caso contrário, NO-GO operacional
 de escala, com próxima intervenção dirigida
 ao gargalo observado, SEM reduzir exponente.
+
+
+---
+
+## Resultado de homologação de escalabilidade — ensaios 1 e 2
+
+**Primeiro ensaio (CI #43675037690):** os 20 testes passaram em Windows e Ubuntu; os cenários 42 e 162 nós foram certificados pela economia F-072 original. O mundo de 2.562 nós, 48 produtores e 24 mercados recebeu `NO_GO_PREDECLARED_BUDGET`: foram consumidos os 32 passos Newton permitidos; 33 soluções CG atingiram o teto de 100 iterações. Cerca de 6.633 produtos Krylov foram utilizados. A última auditoria comercial disponível foi a do estado INICIAL (gap ~0,534), e NÃO de uma solução final.
+
+**Segundo ensaio (CI #43675304934):** pré-condicionador Jacobi EXATO de JᵀJ por incidências rota/aresta/mercado, conferido com o Jacobi denso original, sem montar o Jacobiano N×N. Os 21 testes passaram por plataforma. O orçamento foi ampliado APÓS observar o primeiro fracasso: 480 avaliações H, 850 scans, 80 passos Newton, 20.000 produtos Krylov, 500 colunas, 170 CG por direção. Isso é um NOVO ensaio explicitamente separado, não comparação de orçamento idêntico com o primeiro.
+
+No segundo ensaio, 2.562 nós continuou `NO_GO_PREDECLARED_BUDGET`: os 20.000 produtos Krylov foram consumidos; no Ubuntu, 56 passos Newton foram aceitos, 245 avaliações H foram cobradas e 48 direções CG esgotaram o limite interno de 170. O gap 0,534 ainda é o último certificado do ESTADO INICIAL, não uma medição de candidato final.
+
+**Paridade:** Windows e Ubuntu aprovaram os mesmos testes e cenários comerciais, mas os últimos dígitos e o número de passos internos do solver em cenários estressados não foram bit a bit iguais. Não afirmar replay numérico idêntico entre plataformas: isso exigirá gate específico antes do kernel do jogo.
+
+**Estrutura de memória:** deixou-se de alocar, na maior fixture testada, aproximadamente 86 mil entradas lógicas de Jacobiano denso. Houve cerca de 6,5 mil incidências rota-aresta ativas. São contagens estruturais, não uma medida de RAM em MB. A qualidade do pré-condicionador, não apenas a memória, continua sendo um gargalo relevante.
+
+**Decisão:** a otimização matrix-free demonstra paridade matemática e aprovação original F-072 nos casos controlados de 42/162 nós. O caso 2.562 nós é NO-GO operacional mesmo com orçamento aumentado, e não autoriza jogar mais recursos indefinidamente no CG. Próxima intervenção técnica deverá explorar pré-condicionamento em blocos, estrutura de mercado/rota e política de expansão de colunas. NÃO reduzir preventivamente o expoente quartico, demanda ou preços.
+
+**Separação de camadas:** a periodicidade econômica independente dos quadros Godot e o orçamento de CPU para outras camadas do jogo são diretrizes de projeto, ainda não implementadas neste PR. Os tempos em GitHub Actions Python não predizem o tempo de execução C# em computadores de jogadores.
