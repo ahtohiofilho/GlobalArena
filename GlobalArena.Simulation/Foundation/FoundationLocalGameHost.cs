@@ -20,6 +20,44 @@ public sealed record FoundationLocalTurnReceipt(
     int ExecutedEvents);
 
 /// <summary>
+/// Pending UI intent; NOT an event, commerce, real worker motion or a snapshot.
+/// A worker can have only one effective order per turn. Editing a pending
+/// order replaces that worker's previous intent without changing WorldState.
+/// </summary>
+public sealed record FoundationQueuedWorkerOrder(
+    PhysicalWorkerId WorkerId,
+    StrategicCellId Source,
+    StrategicCellId Destination,
+    PhysicalWorkerActivity NextActivity,
+    bool IsMovement);
+
+/// <summary>
+/// One authoritative publication after all worker orders for this turn.
+/// Revision is event-count based, NOT a claim that there was only one event.
+/// The journal is replayed from the pre-turn WorldState and compared by hash.
+/// </summary>
+public sealed class FoundationBatchTurnReceipt
+{
+    public TurnNumber Turn { get; }
+    public ulong ResultingRevision { get; }
+    public WorldStateHash ResultingHash { get; }
+    public bool ReplayMatched { get; }
+    public IReadOnlyList<FoundationLocalTurnReceipt> WorkerEvents { get; }
+    public int ExecutedEvents => WorkerEvents.Count;
+
+    internal FoundationBatchTurnReceipt(
+        TurnNumber turn, ulong revision, WorldStateHash stateHash,
+        FoundationLocalTurnReceipt[] events)
+    {
+        Turn = turn;
+        ResultingRevision = revision;
+        ResultingHash = stateHash;
+        ReplayMatched = true;
+        WorkerEvents = Array.AsReadOnly(events);
+    }
+}
+
+/// <summary>
 /// Small *gameplay owner* for the new physical-worker foundation. Owns real
 /// CanonicalGameSession / PhasedTurnResolutionEngine / journal / commit gate.
 /// Godot only sends intention (worker ID, target cell, activity) and reads
@@ -31,6 +69,8 @@ public sealed class FoundationLocalGameHost
     private readonly AuthoritativeTurnCommitGate _publisher;
     private readonly PhysicalWorkerMoveEventExecutor _eventExecutor;
     private readonly CanonicalWorldStateHasher _hasher = new();
+    private readonly SortedDictionary<ulong, FoundationQueuedWorkerOrder> _pending = new();
+    private WorldState _lastPublishedSnapshot;
 
     public CanonicalGameSession Session => _session;
     public CivilizationId PlayerCivilization { get; }
@@ -38,6 +78,9 @@ public sealed class FoundationLocalGameHost
     public WorldState Snapshot => _session.Snapshot;
     public WorldStateHash StateHash => _hasher.Compute(Snapshot);
     public bool IsPreviewScenario { get; }
+    public IReadOnlyList<FoundationQueuedWorkerOrder> PendingOrders =>
+        Array.AsReadOnly(_pending.Values.ToArray());
+    public int PendingOrderCount => _pending.Count;
     public IReadOnlyList<PhysicalWorkerRuntimeRecord> ControllableWorkers =>
         Array.AsReadOnly(Snapshot.Workers.Workers
             .Where(worker => worker.Owner == PlayerCivilization)
@@ -48,6 +91,7 @@ public sealed class FoundationLocalGameHost
         bool previewScenario)
     {
         _session = session;
+        _lastPublishedSnapshot = session.Snapshot;
         PlayerCivilization = playerCivilization;
         IsPreviewScenario = previewScenario;
         _eventExecutor = new PhysicalWorkerMoveEventExecutor(session.GeneratedWorld);
@@ -195,6 +239,140 @@ public sealed class FoundationLocalGameHost
     }
 
     /// <summary>
+    /// Stages a worker move without advancing time or touching authoritative
+    /// data. Replacing one worker's pending order is allowed; competing workers
+    /// may converge on the same node (combat/capacity policies are NOT here).
+    /// </summary>
+    public FoundationQueuedWorkerOrder QueueMove(
+        PhysicalWorkerId workerId, StrategicCellId destination)
+    {
+        CheckAuthoritativeOwner();
+        if (!CanMove(workerId, destination))
+            throw new InvalidOperationException(
+                "Worker is foreign, does not exist, or destination is not an adjacent Goldberg tile.");
+        var worker = ControllableWorkers.Single(w => w.Id == workerId);
+        var planned = new FoundationQueuedWorkerOrder(
+            workerId, worker.CellId, destination,
+            PhysicalWorkerActivity.Traveling, IsMovement: true);
+        _pending[workerId.Value] = planned;
+        return planned;
+    }
+
+    public FoundationQueuedWorkerOrder QueueActivity(
+        PhysicalWorkerId workerId, PhysicalWorkerActivity activity)
+    {
+        CheckAuthoritativeOwner();
+        if (!CanChangeActivity(workerId, activity))
+            throw new InvalidOperationException(
+                "Worker is foreign, absent, or its activity cannot be changed.");
+        var worker = ControllableWorkers.Single(w => w.Id == workerId);
+        var planned = new FoundationQueuedWorkerOrder(
+            workerId, worker.CellId, worker.CellId,
+            activity, IsMovement: false);
+        _pending[workerId.Value] = planned;
+        return planned;
+    }
+
+    public bool CancelQueuedOrder(PhysicalWorkerId workerId)
+    {
+        CheckAuthoritativeOwner();
+        return workerId.IsValid && _pending.Remove(workerId.Value);
+    }
+
+    public void ClearQueuedOrders()
+    {
+        CheckAuthoritativeOwner();
+        _pending.Clear();
+    }
+
+    /// <summary>
+    /// Close ONE turn, regardless of the number of physical worker orders.
+    /// All commands receive the same turn ID; worker identity fixes their
+    /// canonical order and independent command sequence numbers. The resolver
+    /// stages complete effects privately; a malformed command never partially
+    /// publishes. After successful commit the entire journal is replayed.
+    ///
+    /// An empty turn is valid: it changes NextTurn, but must not invent
+    /// events, movement, production or a new worker-state revision.
+    /// </summary>
+    public FoundationBatchTurnReceipt EndTurn()
+    {
+        CheckAuthoritativeOwner();
+        var original = Snapshot;
+        var context = new SimulationContext(
+            _publisher.NextTurn, new SimulationSeed(712UL));
+        var commands = _pending.Values
+            .Select((order, index) => (ISimulationCommand)
+                new PhysicalWorkerMoveCommand(
+                    new CommandId(context.Turn, checked((ulong)index + 1UL)),
+                    PlayerCivilization, order.WorkerId,
+                    order.Destination, order.NextActivity))
+            .ToArray();
+        var gate = _publisher.ResolveAndCommit(
+            new TurnPolicyResolutionGateInput(
+                new TurnPolicyInput(context.Turn, true, false),
+                new TurnResolutionInput(original, commands, context)));
+        if (!gate.WasResolved || gate.ResolutionResult is not { } result)
+            throw new InvalidOperationException("Foundation turn was not closed.");
+
+        var events = result.Events
+            .Select(ev => ev as PhysicalWorkerMovedEvent ??
+                throw new InvalidOperationException(
+                    "Unrecognized authoritative worker event."))
+            .ToArray();
+        if (events.Length != commands.Length ||
+            result.EventLog.Entries.Count != events.Length ||
+            result.EventLog.Entries.Any(x => !x.WasExecuted))
+            throw new InvalidOperationException(
+                "Committed turn journal does not match queued worker orders.");
+
+        var replayed = new SimulationEventLogReplayer(_eventExecutor)
+            .Replay(new SimulationReplayInput(original, result.EventLog, context));
+        var hash = _hasher.Compute(Snapshot);
+        if (_hasher.Compute(replayed) != hash)
+            throw new InvalidOperationException(
+                "Committed worker batch diverges from deterministic journal replay.");
+
+        var receipts = events.Select(ev => new FoundationLocalTurnReceipt(
+            context.Turn, ev.WorkerId, ev.Source, ev.Destination,
+            ev.NextActivity, Snapshot.Revision, hash,
+            ReplayMatched: true, ExecutedEvents: events.Length)).ToArray();
+
+        _pending.Clear();
+        _lastPublishedSnapshot = Snapshot;
+        return new FoundationBatchTurnReceipt(
+            context.Turn, Snapshot.Revision, hash, receipts);
+    }
+
+    private void CheckAuthoritativeOwner()
+    {
+        if (!ReferenceEquals(_lastPublishedSnapshot, _session.Snapshot))
+            throw new InvalidOperationException(
+                "Canonical snapshot changed outside the local turn owner; pending orders require explicit reconciliation.");
+    }
+
+    /// <summary>
+    /// Legacy convenience APIs retained for the existing single-order tests,
+    /// console and non-UI callers. New Godot gameplay uses Queue* + EndTurn.
+    /// A queued batch must NEVER be silently committed by a legacy click.
+    /// </summary>
+    private FoundationLocalTurnReceipt CommitSingle(
+        PhysicalWorkerId workerId, StrategicCellId destination,
+        PhysicalWorkerActivity? nextActivity)
+    {
+        CheckAuthoritativeOwner();
+        if (_pending.Count != 0)
+            throw new InvalidOperationException(
+                "Cannot bypass a pending multi-worker turn using the legacy single-order command.");
+        if (nextActivity.HasValue)
+            QueueActivity(workerId, nextActivity.Value);
+        else
+            QueueMove(workerId, destination);
+        var result = EndTurn();
+        return result.WorkerEvents.Single();
+    }
+
+    /// <summary>
     /// A click is a complete locally closed turn in this preliminary sandbox.
     /// There is no cross-player simultaneous scheduling or economic turn here.
     /// </summary>
@@ -204,7 +382,7 @@ public sealed class FoundationLocalGameHost
         if (!CanMove(workerId, destination))
             throw new InvalidOperationException(
                 "Worker is not controlled by this player or target is not adjacent.");
-        return Commit(workerId, destination, nextActivity: null);
+        return CommitSingle(workerId, destination, nextActivity: null);
     }
 
     public FoundationLocalTurnReceipt ChangeWorkerActivity(
@@ -214,42 +392,7 @@ public sealed class FoundationLocalGameHost
             throw new InvalidOperationException(
                 "Worker activity change is invalid for this player's unit.");
         var worker = ControllableWorkers.Single(w => w.Id == workerId);
-        return Commit(workerId, worker.CellId, activity);
+        return CommitSingle(workerId, worker.CellId, activity);
     }
 
-    private FoundationLocalTurnReceipt Commit(
-        PhysicalWorkerId workerId, StrategicCellId destination,
-        PhysicalWorkerActivity? nextActivity)
-    {
-        var initial = Snapshot;
-        var context = new SimulationContext(
-            _publisher.NextTurn, new SimulationSeed(712UL));
-        var command = new PhysicalWorkerMoveCommand(
-            new CommandId(context.Turn, 1UL),
-            PlayerCivilization, workerId, destination, nextActivity);
-        var resolution = _publisher.ResolveAndCommit(
-            new TurnPolicyResolutionGateInput(
-                new TurnPolicyInput(context.Turn, true, false),
-                new TurnResolutionInput(initial,
-                    new ISimulationCommand[] { command }, context)));
-        if (!resolution.WasResolved ||
-            resolution.ResolutionResult is not { } resolved)
-            throw new InvalidOperationException(
-                "Local physical-worker turn was not committed.");
-        var ev = resolved.Events.Single() as PhysicalWorkerMovedEvent
-            ?? throw new InvalidOperationException(
-                "Local physical-worker turn did not produce its journal event.");
-
-        // Defense-in-depth; journal replay must reconstruct the committed hash.
-        var replayed = new SimulationEventLogReplayer(_eventExecutor)
-            .Replay(new SimulationReplayInput(initial, resolved.EventLog, context));
-        var resultHash = _hasher.Compute(Snapshot);
-        if (_hasher.Compute(replayed) != resultHash)
-            throw new InvalidOperationException(
-                "Committed worker state diverges from journal replay.");
-        return new FoundationLocalTurnReceipt(
-            context.Turn, workerId, ev.Source, ev.Destination,
-            ev.NextActivity, Snapshot.Revision, resultHash,
-            ReplayMatched: true, resolved.EventLog.Entries.Count);
-    }
 }
