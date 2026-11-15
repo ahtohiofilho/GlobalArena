@@ -3,14 +3,56 @@ using GlobalArena.Simulation.Foundation;
 
 // A real executable headless slice of the redesigned foundation. The legacy
 // M4 simulator and Godot UI remain untouched, and this is not authoritative.
-if (args.Length != 1 || args[0] != "--foundation-slice")
+if (args.Length != 1 ||
+    (args[0] != "--foundation-slice" &&
+     args[0] != "--foundation-calibration-ab"))
 {
     Console.WriteLine("Global Arena — executable foundation preview");
     Console.WriteLine("Run: dotnet run --project GlobalArena.Console -- --foundation-slice");
+    Console.WriteLine("A/B: dotnet run --project GlobalArena.Console -- --foundation-calibration-ab");
     return;
 }
 
-var world = new PhysicalWorkerTradeCycle(
+// A single controlled experiment, identical inputs and solver budget.
+// "Fake" calibration creates ONLY the reference trade allocation; it never
+// publishes a game turn. Its result is not assumed to be more accurate.
+if (args[0] == "--foundation-calibration-ab")
+{
+    var control = CreateWorld();
+    var controlTurn = control.Advance();
+
+    var candidate = CreateWorld();
+    var preview = candidate.CalibrateInitialMarket();
+    if (candidate.CurrentTurn != 0)
+        throw new InvalidOperationException("Calibration incorrectly advanced time.");
+    var candidateTurn = candidate.Advance();
+
+    if (controlTurn.Turn != 1 || candidateTurn.Turn != 1 ||
+        Math.Abs(controlTurn.TotalProduction - candidateTurn.TotalProduction) > 1e-10 ||
+        Math.Abs(controlTurn.TotalDelivered - candidateTurn.TotalDelivered) > 1e-10 ||
+        !controlTurn.Workers.SequenceEqual(candidateTurn.Workers) ||
+        !controlTurn.Demand.OrderBy(x => x.Key.Tile).ThenBy(x => x.Key.Commodity)
+            .SequenceEqual(candidateTurn.Demand.OrderBy(x => x.Key.Tile)
+                .ThenBy(x => x.Key.Commodity)))
+        throw new InvalidOperationException("Calibration changed physical turn invariants.");
+
+    Console.WriteLine("GA_FOUNDATION_CALIBRATION_AB_V1 same_workers=true " +
+        "same_demand=true same_production=true same_time=true");
+    Console.WriteLine($"  cold_turn=1 passes={controlTurn.AdjustmentPasses} " +
+        $"opportunity_gap={F(controlTurn.MaxRelativeOpportunity)}");
+    Console.WriteLine($"  fake_turn=0 passes={preview.AdjustmentPasses} " +
+        $"opportunity_gap={F(preview.MaxRelativeOpportunity)}");
+    Console.WriteLine($"  calibrated_real_turn=1 passes={candidateTurn.AdjustmentPasses} " +
+        $"opportunity_gap={F(candidateTurn.MaxRelativeOpportunity)}");
+    Console.WriteLine($"  delta_gap={F(candidateTurn.MaxRelativeOpportunity -
+        controlTurn.MaxRelativeOpportunity)} " +
+        "certified_F072=false production_adoption=false");
+    return;
+}
+
+var world = CreateWorld();
+
+static PhysicalWorkerTradeCycle CreateWorld() => new(
     new[]
     {
         new FoundationEdge(1, 0, 1, 0.40d, 2.0d, OwnerCivilization: 1,
