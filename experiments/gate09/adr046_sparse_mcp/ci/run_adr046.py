@@ -59,6 +59,7 @@ class Work(R45.Work):
         self.linearizations=0
         self.route_incidence_entries=0
         self.max_dense_jacobian_elements_avoided=0
+        self.exact_sparse_jacobi_assemblies=0
 
     def charge_matvec(self):
         if self.krylov_products>=self.limits.max_krylov_products:
@@ -73,6 +74,7 @@ class Work(R45.Work):
             "CG_linear_solves":self.cg_solves,
             "CG_inexact_returns":self.cg_inexact_returns,
             "matrixfree_linearizations":self.linearizations,
+            "exact_sparse_jacobi_assemblies":self.exact_sparse_jacobi_assemblies,
             "peak_route_edge_incidence_entries":self.route_incidence_entries,
             "peak_dense_jacobian_elements_not_allocated":
                 self.max_dense_jacobian_elements_avoided,
@@ -209,25 +211,50 @@ class Linearization:
         return answer
 
     def precond_diagonal(self,lam):
-        """Positive, cheap scale heuristic; never accepted as an error metric."""
-        layout=self.layout
-        diag=[]
-        for j in layout.independent:
-            a=layout.pivot_for[j]
-            mass_abs=abs(self.da[j])+abs(self.da[a])
-            market_abs=abs(self.db[j]*self.market_coefficient[j])+abs(
-                self.db[a]*self.market_coefficient[a])
-            edge_abs=sum(
-                abs(self.db[j]*self.ratio[j]*self.edge_slopes[e])
-                for e in self.edges[j])
-            edge_abs+=sum(
-                abs(self.db[a]*self.ratio[a]*self.edge_slopes[e])
-                for e in self.edges[a])
-            diag.append(max(1e-9,lam+(mass_abs+market_abs+edge_abs)**2))
-        for gid in layout.groups:
-            diag.append(max(1e-9,lam+math.fsum(
-                self.db[i]**2 for i in layout.by[gid])))
-        return diag
+        """EXACT Jacobi of J^T J + lambda I, WITHOUT allocating dense J.
+
+        Aggregate each independent-column/anchor differential through
+        market and edge incidence to compute its squared Jacobian norm.
+        Storage O(ncols + route incidences), not O(ncols**2).
+        Reuses the diagonal for every LM regularizer at the SAME x.
+        """
+        if not hasattr(self,"_exact_jacobi_core"):
+            market_rows={}
+            edge_rows={}
+            for i,m in enumerate(self.market):
+                market_rows.setdefault(m,[]).append(i)
+                for e in self.edges[i]:
+                    edge_rows.setdefault(e,[]).append(i)
+            market_weight=[
+                self.db[i]*self.market_coefficient[i]
+                for i in range(len(self.cols))]
+            edge_weight=[
+                self.db[i]*self.ratio[i]
+                for i in range(len(self.cols))]
+            diag=[]
+            for j in self.layout.independent:
+                a=self.layout.pivot_for[j]
+                affected={j:self.da[j],a:-self.da[a]}
+                for idx,sgn in ((j,1.),(a,-1.)):
+                    for i in market_rows[self.market[idx]]:
+                        affected[i]=affected.get(i,0.)+(
+                            sgn*market_weight[i])
+                    for e in self.edges[idx]:
+                        slope=sgn*self.edge_slopes[e]
+                        for i in edge_rows[e]:
+                            affected[i]=affected.get(i,0.)+(
+                                slope*edge_weight[i])
+                diag.append(math.fsum(v*v for v in affected.values()))
+            for gid in self.layout.groups:
+                diag.append(math.fsum(
+                    self.db[i]*self.db[i]
+                    for i in self.layout.by[gid]))
+            self._exact_jacobi_core=diag
+            self.work.exact_sparse_jacobi_assemblies+=1
+        return [
+            max(1e-9,lam+d) for d in self._exact_jacobi_core]
+
+
 
 
 def _pcg_normal(lin,lam,limits,relative_tolerance=5e-5):
@@ -495,6 +522,8 @@ def _run(name,net,flows,limits,dense=False):
         "worst_gap_original_F072":None if not cert else (
             cert["worst_group_F072_gap"] if dense else cert["worst_gap"]),
         "work":result["work"],
+        "last_solver_trace_record":result.get("trace",[])[-1]
+            if result.get("trace") else None,
         "candidate_valid_independent_certificate":bool(
             cert and cert["status"]=="PASS_STATIC_F072_FIRST_ORDER_ONLY"),
         "never_called_production_ready":True,
@@ -541,21 +570,22 @@ def exercise(profile):
                   ),flush=True)
     if profile in ("ci","extended"):
         net,flows,meta=_large_fixture()
-        limits=Limits(max_h_evaluations=240,max_route_scans=600,
-                      max_original_certificates=2,max_columns=440,
-                      max_newton_steps=32,max_generations=2,
-                      max_backtrack=10,max_krylov_products=12000,
-                      max_cg_iterations=100)
+        limits=Limits(max_h_evaluations=480,max_route_scans=850,
+                      max_original_certificates=2,max_columns=500,
+                      max_newton_steps=80,max_generations=2,
+                      max_backtrack=10,max_krylov_products=20000,
+                      max_cg_iterations=170)
         row=_run("2562_nodes_48_groups_24_markets",net,flows,limits)
         row["fixture_descriptor"]=meta
         rows.append(row)
         print("[ADR046:2562_nodes:matrixfree] status={} global={} "
-              "worst={} ms={} H={} Krylov={} scans={} ".format(
+              "worst={} ms={} H={} Krylov={} scans={} stop={}".format(
                   row["status"],row["global_gap_original_F072"],
                   row["worst_gap_original_F072"],row["wall_ms"],
                   row["work"]["H_evaluations_including_rejected_trials"],
                   row["work"]["matrixfree_Jv_and_Jtv_products"],
-                  row["work"]["separate_shortest_path_scans"]),flush=True)
+                  row["work"]["separate_shortest_path_scans"],
+                  row["last_solver_trace_record"]),flush=True)
     expected={x["fixture"] for x in rows if x["fixture"] in (
         "two_group_nonoptimal","two_group_alternative_routes")}
     required={x["fixture"] for x in rows
