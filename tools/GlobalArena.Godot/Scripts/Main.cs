@@ -39,6 +39,9 @@ public partial class Main : Control
     private OptionButton? _localWorkerSelector;
     private Button? _localMoveButton;
     private Button? _localProduceButton;
+    private Button? _localEndTurnButton;
+    private Button? _localCancelQueuedButton;
+    private Label? _localPendingLabel;
     private Label? _localTurnLabel;
     private Label? _localOrderStatus;
     private ulong? _selectedLocalWorkerId;
@@ -161,7 +164,8 @@ public partial class Main : Control
     {
         if (_localFoundation is null || _localWorkerSelector is null ||
             _localMoveButton is null || _localProduceButton is null ||
-            _localTurnLabel is null)
+            _localEndTurnButton is null || _localCancelQueuedButton is null ||
+            _localPendingLabel is null || _localTurnLabel is null)
             return;
 
         var workers = _localFoundation.ControllableWorkers;
@@ -171,8 +175,11 @@ public partial class Main : Control
         for (int index = 0; index < workers.Count; index++)
         {
             var worker = workers[index];
+            var queued = _localFoundation.PendingOrders.FirstOrDefault(
+                order => order.WorkerId == worker.Id);
             _localWorkerSelector.AddItem(
-                $"#{worker.Id.Value} | T{worker.CellId.Value} | {worker.Activity}");
+                $"#{worker.Id.Value} | T{worker.CellId.Value} | {worker.Activity}" +
+                (queued is null ? "" : " | QUEUED"));
             if (rememberedId == worker.Id.Value)
                 selectedIndex = index;
         }
@@ -191,6 +198,17 @@ public partial class Main : Control
         _localTurnLabel.Text =
             $"LOCAL FOUNDATION PREVIEW | turn {_localFoundation.NextTurn.Value} | " +
             $"rev {_localFoundation.Snapshot.Revision} | Civ {_localFoundation.PlayerCivilization.Value}";
+        var pending = _localFoundation.PendingOrders;
+        _localPendingLabel.Text = pending.Count == 0
+            ? "No orders queued; end turn to advance the game clock"
+            : $"{pending.Count} queued: " + string.Join(", ",
+                pending.Select(order => $"#{order.WorkerId.Value} " +
+                    (order.IsMovement
+                        ? $"T{order.Source.Value}→T{order.Destination.Value}"
+                        : $"{order.NextActivity} at T{order.Source.Value}")));
+        _localEndTurnButton.Disabled = false; // an empty turn is a valid decision
+        _localCancelQueuedButton.Disabled = !_selectedLocalWorkerId.HasValue ||
+            !pending.Any(order => order.WorkerId.Value == _selectedLocalWorkerId.Value);
         _localWorkerSelector.Disabled = workers.Count == 0;
         var chosen = workers.FirstOrDefault(
             worker => worker.Id.Value == _selectedLocalWorkerId);
@@ -221,19 +239,16 @@ public partial class Main : Control
             return;
         try
         {
-            // This is a *request* to the gameplay domain, not UI mutation.
-            var receipt = _localFoundation.MoveWorker(
+            // Queue an intention; the authoritative snapshot remains untouched.
+            var plan = _localFoundation.QueueMove(
                 new PhysicalWorkerId(_selectedLocalWorkerId.Value),
                 new StrategicCellId(_bridgeSelection.Value));
-            AttachRuntimeState(_localFoundation.Snapshot);
             _localOrderStatus.Text =
-                $"Turn {receipt.Turn.Value} committed: #{receipt.WorkerId.Value} " +
-                $"T{receipt.Source.Value} -> T{receipt.Destination.Value} | " +
-                $"replay verified | v{receipt.ResultingHash.FormatVersion}";
-            GD.Print($"GA_UI_FOUNDATION_MOVE_R1 turn={receipt.Turn.Value} " +
-                $"worker={receipt.WorkerId.Value} from={receipt.Source.Value} " +
-                $"to={receipt.Destination.Value} revision={receipt.ResultingRevision} " +
-                "journal_replayed=true authoritative=true");
+                $"Worker #{plan.WorkerId.Value} move queued: T{plan.Source.Value} " +
+                $"to T{plan.Destination.Value}. Press E to close the turn.";
+            GD.Print($"GA_UI_FOUNDATION_QUEUED_MOVE_R1 turn={_localFoundation.NextTurn.Value} " +
+                $"worker={plan.WorkerId.Value} destination={plan.Destination.Value} " +
+                $"queued={_localFoundation.PendingOrderCount} authoritative_mutation=false");
         }
         catch (System.Exception error)
         {
@@ -250,16 +265,15 @@ public partial class Main : Control
             return;
         try
         {
-            var receipt = _localFoundation.ChangeWorkerActivity(
+            var plan = _localFoundation.QueueActivity(
                 new PhysicalWorkerId(_selectedLocalWorkerId.Value),
                 PhysicalWorkerActivity.Producing);
-            AttachRuntimeState(_localFoundation.Snapshot);
             _localOrderStatus.Text =
-                $"Turn {receipt.Turn.Value} committed: #{receipt.WorkerId.Value} " +
-                $"started production at T{receipt.Destination.Value} | replay verified";
-            GD.Print($"GA_UI_FOUNDATION_PRODUCTION_R1 turn={receipt.Turn.Value} " +
-                $"worker={receipt.WorkerId.Value} tile={receipt.Destination.Value} " +
-                "journal_replayed=true authoritative=true");
+                $"Worker #{plan.WorkerId.Value} production queued at " +
+                $"T{plan.Source.Value}. Press E to close the turn.";
+            GD.Print($"GA_UI_FOUNDATION_QUEUED_PRODUCTION_R1 " +
+                $"turn={_localFoundation.NextTurn.Value} worker={plan.WorkerId.Value} " +
+                $"queued={_localFoundation.PendingOrderCount} authoritative_mutation=false");
         }
         catch (System.Exception error)
         {
@@ -269,9 +283,51 @@ public partial class Main : Control
         RefreshLocalWorkerOrderControls();
     }
 
-    // Keyboard-first: G orders a selected worker to the selected adjacent
-    // canonical tile; P starts production. Do not hijack the existing M
-    // strategic/tactical view shortcut or numbered map-layer shortcuts.
+    private void OnLocalCancelQueuedRequested()
+    {
+        if (_localFoundation is null || !_selectedLocalWorkerId.HasValue ||
+            _localOrderStatus is null)
+            return;
+        try
+        {
+            var id = new PhysicalWorkerId(_selectedLocalWorkerId.Value);
+            if (_localFoundation.CancelQueuedOrder(id))
+                _localOrderStatus.Text =
+                    $"Queued order for #{id.Value} cancelled; no game state changed";
+        }
+        catch (System.Exception error)
+        {
+            _localOrderStatus.Text = $"Cancel rejected: {error.Message}";
+        }
+        RefreshLocalWorkerOrderControls();
+    }
+
+    private void OnLocalTurnEndRequested()
+    {
+        if (_localFoundation is null || _localOrderStatus is null)
+            return;
+        try
+        {
+            var receipt = _localFoundation.EndTurn();
+            AttachRuntimeState(_localFoundation.Snapshot);
+            _localOrderStatus.Text =
+                $"Turn {receipt.Turn.Value} closed: {receipt.ExecutedEvents} worker " +
+                $"orders | journal replay verified | hash v{receipt.ResultingHash.FormatVersion}";
+            GD.Print($"GA_UI_FOUNDATION_BATCH_COMMIT_R1 turn={receipt.Turn.Value} " +
+                $"events={receipt.ExecutedEvents} revision={receipt.ResultingRevision} " +
+                $"journal_replayed={receipt.ReplayMatched.ToString().ToLowerInvariant()} " +
+                $"authoritative=true");
+        }
+        catch (System.Exception error)
+        {
+            _localOrderStatus.Text = $"End turn rejected: {error.Message}";
+            GD.Print($"GA_UI_FOUNDATION_BATCH_REJECTED_R1 {error.Message}");
+        }
+        RefreshLocalWorkerOrderControls();
+    }
+
+    // Keyboard-first: G queues a move, P queues work, X cancels a queued
+    // order, E resolves the full batch. M remains strategic/tactical mode.
     public override void _UnhandledKeyInput(InputEvent @event)
     {
         if (@event is not InputEventKey key || !key.Pressed || key.Echo ||
@@ -286,6 +342,18 @@ public partial class Main : Control
             _localProduceButton?.Disabled == false)
         {
             OnLocalWorkerProduceRequested();
+            GetViewport().SetInputAsHandled();
+        }
+        else if (key.Keycode == Key.X &&
+            _localCancelQueuedButton?.Disabled == false)
+        {
+            OnLocalCancelQueuedRequested();
+            GetViewport().SetInputAsHandled();
+        }
+        else if (key.Keycode == Key.E &&
+            _localEndTurnButton?.Disabled == false)
+        {
+            OnLocalTurnEndRequested();
             GetViewport().SetInputAsHandled();
         }
     }
@@ -590,21 +658,40 @@ public partial class Main : Control
         orderSection.AddChild(_localWorkerSelector);
         _localMoveButton = new Button
         {
-            Text = "G | MOVE WORKER TO SELECTED ADJACENT TILE",
+            Text = "G | QUEUE MOVE TO SELECTED ADJACENT TILE",
             Disabled = true
         };
         _localMoveButton.Pressed += OnLocalWorkerMoveRequested;
         orderSection.AddChild(_localMoveButton);
         _localProduceButton = new Button
         {
-            Text = "P | START PRODUCTION AT CURRENT TILE",
+            Text = "P | QUEUE START PRODUCTION",
             Disabled = true
         };
         _localProduceButton.Pressed += OnLocalWorkerProduceRequested;
         orderSection.AddChild(_localProduceButton);
+        _localPendingLabel = new Label
+        {
+            Text = "No orders queued",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        orderSection.AddChild(_localPendingLabel);
+        _localCancelQueuedButton = new Button
+        {
+            Text = "X | CANCEL SELECTED WORKER ORDER",
+            Disabled = true
+        };
+        _localCancelQueuedButton.Pressed += OnLocalCancelQueuedRequested;
+        orderSection.AddChild(_localCancelQueuedButton);
+        _localEndTurnButton = new Button
+        {
+            Text = "E | END TURN — RESOLVE ALL QUEUED ORDERS"
+        };
+        _localEndTurnButton.Pressed += OnLocalTurnEndRequested;
+        orderSection.AddChild(_localEndTurnButton);
         _localOrderStatus = new Label
         {
-            Text = "Choose your worker; click an adjacent territory as destination",
+            Text = "Select a worker and tile, queue orders, then press E to end turn",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         orderSection.AddChild(_localOrderStatus);
