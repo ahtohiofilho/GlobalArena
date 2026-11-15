@@ -28,8 +28,8 @@ jobs:
           python-version: '3.12'
       - name: Test analytic derivatives, physical conservation, global routes and F072 safety
         run: python -m unittest discover -s experiments/gate09/adr045_general_mcp/tests -p 'test_*.py' -v
-      - name: Execute bounded multigroup MCP including 42-node scenarios
-        run: python experiments/gate09/adr045_general_mcp/ci/run_adr045.py --profile ci --output '${{ runner.temp }}'
+      - name: Execute multigroup MCP 42-node and exploratory 162-node under fixed budgets
+        run: python experiments/gate09/adr045_general_mcp/ci/run_adr045.py --profile extended --output '${{ runner.temp }}'
       - name: Archive all PASS and NO-GO evidence
         if: always()
         uses: actions/upload-artifact@v4
