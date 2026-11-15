@@ -590,6 +590,75 @@ public partial class GlobePreview : SubViewportContainer
         }
     }
 
+    /// <summary>
+    /// Runtime E2E only. Selects an ACTUAL Goldberg cell through the existing
+    /// GuiInput -> PickTerritory ray intersection, not by emitting a fake
+    /// territory event. Reorients the presentation-only planet for repeatable
+    /// visibility on virtual/headless CI. Unavailable outside explicit smoke.
+    /// </summary>
+    internal bool TryClickCanonicalCellForRuntimeSmoke(ulong target)
+    {
+        if (Environment.GetEnvironmentVariable("GA_FOUNDATION_GODOT_SMOKE") != "1")
+            throw new InvalidOperationException(
+                "Automated map picking is only available in the explicit Godot smoke process.");
+        if (_planet is null || _camera is null || _mapMode != 0)
+            return false;
+        var faces = _pickTriangles.Where(t => t.Id == target).ToArray();
+        if (faces.Length == 0)
+            return false;
+        var targetCenter = faces[0].A;
+        var cameraDirection = (_camera.GlobalPosition - _planet.GlobalPosition).Normalized();
+        // This is camera framing for a simulated click, not an economic rule.
+        _planet.Quaternion = new Quaternion(targetCenter.Normalized(), cameraDirection);
+        var transform = _planet.GlobalTransform;
+
+        foreach (var face in faces)
+        {
+            var worldPoint = transform *
+                (face.A * 0.70f + face.B * 0.15f + face.C * 0.15f);
+            if (_camera.IsPositionBehind(worldPoint))
+                continue;
+            var pixel = _camera.UnprojectPosition(worldPoint);
+            var bounds = _camera.GetViewport().GetVisibleRect().Size;
+            if (pixel.X < 0f || pixel.Y < 0f ||
+                pixel.X >= bounds.X || pixel.Y >= bounds.Y)
+                continue;
+
+            // Verify genuine ray-pick hit BEFORE delivering a mouse click.
+            var rayOrigin = _camera.ProjectRayOrigin(pixel);
+            var rayDirection = _camera.ProjectRayNormal(pixel).Normalized();
+            var nearest = float.PositiveInfinity;
+            ulong? hit = null;
+            foreach (var triangle in _pickTriangles)
+            {
+                if (!RayTriangle(rayOrigin, rayDirection,
+                    transform * triangle.A, transform * triangle.B,
+                    transform * triangle.C, out var distance) ||
+                    distance >= nearest)
+                    continue;
+                nearest = distance;
+                hit = triangle.Id;
+            }
+            if (hit != target)
+                continue;
+
+            _GuiInput(new InputEventMouseButton
+            {
+                ButtonIndex = MouseButton.Left, Pressed = true,
+                Position = pixel
+            });
+            _GuiInput(new InputEventMouseButton
+            {
+                ButtonIndex = MouseButton.Left, Pressed = false,
+                Position = pixel
+            });
+            GD.Print($"GA_GODOT_SMOKE_RAY_CLICK target={target} picked={_selectedCellId} " +
+                $"pixel={pixel} viewport={bounds}");
+            return _selectedCellId == target;
+        }
+        return false;
+    }
+
     private void PickTerritory(Vector2 localPoint)
     {
         if (_planet is null || _camera is null || _pickedLabel is null) return;
