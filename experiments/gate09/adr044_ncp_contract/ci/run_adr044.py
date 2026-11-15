@@ -236,11 +236,12 @@ def bracketed_two_market_reference(net,initial_flows,
         if f>0:right=mid
         else:left=mid
     if x is None:
-        mid=(left+right)/2
-        x=mid
-        fx=_two_branch_original_costs(net,gid,paths,mid)
-        used+=1
-        if used>max_evaluations:raise AssertionError("Root budget exceeded")
+        # No free 65th evaluation when the 64-call budget is exhausted.
+        # The last paid midpoint is the only candidate that can be used.
+        if not trace:
+            raise AssertionError("Bracketing made no priced midpoint")
+        x=trace[-1]["left_mass"]
+        fx=trace[-1]["H_left_minus_H_right"]
     if abs(fx)>root_cost_tolerance:
         status="NO_GO_TOY_BUDGET_OR_PRECISION"
         final_certificate=None
