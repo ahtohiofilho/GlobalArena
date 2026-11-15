@@ -83,7 +83,7 @@ public sealed class FoundationBatchedTurnTests
         Assert.NotSame(original, world.Snapshot);
         Assert.Equal(6, world.Snapshot.Workers.Workers.Count);
         Assert.Equal(2, world.Snapshot.Workers.Workers.Count(w =>
-            w.Id.Value is 1UL or 2UL &&
+            (w.Id.Value is 1UL or 2UL) &&
             w.CellId == tile &&
             w.Activity == PhysicalWorkerActivity.Traveling));
         Assert.Equal(1UL, original.Workers.Workers.First().CellId.Value);
@@ -285,7 +285,7 @@ public sealed class FoundationBatchedTurnTests
         Assert.Equal(1UL, receipt.Turn.Value);
         Assert.Equal(2UL, receipt.ResultingRevision);
         Assert.NotEqual(firstHash, receipt.ResultingHash);
-        Assert.Equal(1, world.NextTurn.Value - receipt.Turn.Value);
+        Assert.Equal(1UL, world.NextTurn.Value - receipt.Turn.Value);
         Assert.Equal(6, initial.Workers.Workers.Count);
         Assert.Equal(6, world.Snapshot.Workers.Workers.Count);
         // Revisions count executed events. Turn numbers count closed batches.
