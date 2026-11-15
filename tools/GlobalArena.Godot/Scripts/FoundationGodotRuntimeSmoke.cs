@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.IO;
 using System.Threading.Tasks;
 using Godot;
 using GlobalArena.Runtime;
@@ -50,6 +51,7 @@ internal sealed class FoundationGodotRuntimeSmoke
             for (var frame = 0; frame < 6; frame++)
                 await _main.ToSignal(_main.GetTree(), SceneTree.SignalName.ProcessFrame);
 
+            await CaptureRenderedViewIfRequested("01_startup");
             Must(_game.Snapshot.Workers.IsInitialized, "census is not authoritative");
             Must(_game.Snapshot.Workers.Workers.Count == 6, "initial workers != 6");
             Must(_game.Snapshot.Revision == 0UL, "revision at startup != 0");
@@ -88,6 +90,7 @@ internal sealed class FoundationGodotRuntimeSmoke
                 "button commit did not report journal replay");
             Must(_move.Disabled, "same destination should disable no-op move");
             Must(!_produce.Disabled, "producer should be able to resume work");
+            await CaptureRenderedViewIfRequested("02_after_move");
             GD.Print($"GA_GODOT_RUNTIME_SMOKE_STEP move=PASS " +
                 $"revision={_game.Snapshot.Revision} worker=1 target={neighbor.Value}");
 
@@ -118,6 +121,7 @@ internal sealed class FoundationGodotRuntimeSmoke
                 "committed worker hash changed format");
             Must(_turn.Text.Contains("turn 4", StringComparison.Ordinal),
                 "turn sidebar was not refreshed after keyboard commit");
+            await CaptureRenderedViewIfRequested("03_after_shortcut");
             GD.Print("GA_GODOT_RUNTIME_SMOKE_STEP keyboard_g=PASS revision=3");
 
             // Exercise rejection via the UI: selecting the SAME tile disables
@@ -138,6 +142,46 @@ internal sealed class FoundationGodotRuntimeSmoke
             GD.PrintErr("GA_GODOT_FOUNDATION_SMOKE_FAIL " + error);
             _main.GetTree().Quit(82);
         }
+    }
+
+    // Optional graphical-Xvfb evidence. The ordinary --headless smoke never
+    // reads render targets and remains a separate independent gate.
+    private async Task CaptureRenderedViewIfRequested(string stage)
+    {
+        var directory = System.Environment.GetEnvironmentVariable(
+            "GA_FOUNDATION_GODOT_SCREENSHOT_DIR");
+        if (string.IsNullOrWhiteSpace(directory))
+            return;
+        Directory.CreateDirectory(directory);
+        for (var frame = 0; frame < 4; frame++)
+            await _main.ToSignal(_main.GetTree(), SceneTree.SignalName.ProcessFrame);
+        var viewport = _main.GetViewport();
+        var texture = viewport.GetTexture();
+        Must(texture is not null, "graphical viewport has no texture");
+        var picture = texture!.GetImage();
+        Must(picture is not null && !picture.IsEmpty(),
+            "graphical engine produced no actual frame image");
+        Must(picture!.GetWidth() >= 640 && picture.GetHeight() >= 480,
+            "graphical frame is smaller than a normal playable window");
+        // This detects missing renderer output, a solid framebuffer or blank
+        // screenshot without claiming that typographic layout was inspected.
+        var palette = new System.Collections.Generic.HashSet<string>();
+        for (var y = 0; y < picture.GetHeight(); y += Math.Max(1, picture.GetHeight() / 16))
+        {
+            for (var x = 0; x < picture.GetWidth(); x += Math.Max(1, picture.GetWidth() / 16))
+            {
+                var sample = picture.GetPixel(x, y);
+                palette.Add($"{(int)(sample.R * 255)}:" +
+                    $"{(int)(sample.G * 255)}:{(int)(sample.B * 255)}");
+            }
+        }
+        Must(palette.Count >= 5, "graphical screenshot is blank or nearly uniform");
+        var file = Path.Combine(directory, stage + ".png");
+        var saved = picture.SavePng(file);
+        Must(saved == Error.Ok, "unable to save Godot-rendered PNG");
+        GD.Print($"GA_GODOT_RENDER_FRAME_PASS stage={stage} " +
+            $"dimensions={picture.GetWidth()}x{picture.GetHeight()} " +
+            $"sample_colors={palette.Count} file={file}");
     }
 
     private static void Must(bool condition, string explanation)
