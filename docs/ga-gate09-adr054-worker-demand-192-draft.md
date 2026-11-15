@@ -36,9 +36,9 @@ Tentar certificar, pelo mesmo algoritmo e **sem relaxar as regras**, o equilíbr
 | Gerações globais | 6 |
 | Passos Newton | 185 |
 | Passos backtracking | 12 |
-| Produtos Krylov Jv/Jtv | 70.000 |
+| Produtos Krylov Jv/Jtv | 60.000 |
 | Iterações CG por direção | 210 |
-| Produtos triangulares dos blocos SPD | 320.000 |
+| Produtos triangulares dos blocos SPD | 250.000 |
 
 São limites de trabalho do experimento, **não milissegundos nem um orçamento de CPU para turnos do jogo**. Limites de 48 e 96 nós continuam exatamente os do ADR-053. O timeout CI de 30 minutos por sistema é uma proteção operacional externa, não prova de desempenho em produção. Não expandir silenciosamente o budget depois de observar falha: documentar nova tentativa e novo orçamento em commit distinto.
 
