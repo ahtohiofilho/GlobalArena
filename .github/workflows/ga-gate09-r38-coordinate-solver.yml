@@ -1,0 +1,40 @@
+name: GA Gate09 R38 Numerical Coordinate Solver Candidate
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/gate09/r38/**'
+      - 'docs/ga-gate09-r38-coordinate-solver-trial-draft.md'
+      - '.github/workflows/ga-gate09-r38-coordinate-solver.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  candidate-comparison:
+    name: R38 matched-oracle numerical candidate / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate new coordinate solver, original policy parity and financial safety
+        run: python -m unittest discover -s experiments/gate09/r38/tests -p 'test_*.py' -v
+      - name: Compare four solution methods under equal hard R14 oracle ceilings
+        run: python experiments/gate09/r38/ci/run_r38.py --profile ci --output '${{ runner.temp }}'
+      - name: Archive full solver trial and explicit GO-NO-GO decision
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-r38-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-R38-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
