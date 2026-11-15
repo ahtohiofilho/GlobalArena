@@ -1,0 +1,41 @@
+name: GA Gate09 ADR049 Geography F072 and Economic Density
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/gate09/adr049_geography_density/**'
+      - 'docs/ga-gate09-adr049-geography-and-economic-density-scale-draft.md'
+      - '.github/workflows/ga-gate09-adr049-geography-density.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  geography-f072:
+    name: ADR049 5762 nodes 144 producers full F072 / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 24
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 17 original economics geography and density contracts
+        run: python -m unittest discover -s experiments/gate09/adr049_geography_density/tests -p 'test_*.py' -v
+      - name: MANDATORY original F072 certificate 5762 nodes 144 groups 48 markets
+        run: python -u experiments/gate09/adr049_geography_density/ci/run_adr049.py --profile geography --output '${{ runner.temp }}'
+      - name: Upload complete original economic GO or NO-GO evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-adr049-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-ADR049-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
