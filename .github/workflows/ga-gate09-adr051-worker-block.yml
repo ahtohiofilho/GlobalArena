@@ -1,0 +1,41 @@
+name: GA Gate09 ADR051 Worker Travel Demand and SPD Subblocks
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/gate09/adr051_worker_block/**'
+      - 'docs/ga-gate09-adr051-worker-time-demand-and-bounded-subblocks-draft.md'
+      - '.github/workflows/ga-gate09-adr051-worker-block.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  worker-and-block-contract:
+    name: ADR051 worker-coupled F072 and bounded SPD subblocks / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout original R13 R20–R50 unchanged
+        uses: actions/checkout@v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 27 worker timeline, sparse SPD and mandatory F072 regression tests
+        run: python -m unittest discover -s experiments/gate09/adr051_worker_block/tests -p 'test_*.py' -v
+      - name: Run worker-linked demand fixture and 240-group dense R13 experiment
+        run: python -u experiments/gate09/adr051_worker_block/ci/run_adr051.py --profile ci --output '${{ runner.temp }}'
+      - name: Save commercial GO and NO-GO including full work ledger
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-adr051-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-ADR051-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
