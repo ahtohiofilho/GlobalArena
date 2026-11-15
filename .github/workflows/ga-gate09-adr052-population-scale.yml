@@ -27,7 +27,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: 26 worker-source, time-conservation, Goldberg aggregation contracts
+      - name: 30 worker, replay, aggregation and mandatory F072 regression contracts
         run: python -m unittest discover -s experiments/gate09/adr052_population_scale/tests -p 'test_*.py' -v
       - name: Run 8192-worker spatial physical ledger and bounded 2048-worker F072 pilot
         run: python -u experiments/gate09/adr052_population_scale/ci/run_adr052.py --profile ci --output '${{ runner.temp }}'
