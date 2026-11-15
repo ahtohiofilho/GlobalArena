@@ -27,7 +27,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: 25 original F072 and worker-market spatial coverage contracts
+      - name: 28 original F072, worker coverage and mandatory 96-node regression contracts
         run: python -m unittest discover -s experiments/gate09/adr053_market_coverage/tests -p 'test_*.py' -v
       - name: Mandatory 48-node F072 baseline plus bounded 96-node F072 trial and 192 2048-node ledgers
         run: python -u experiments/gate09/adr053_market_coverage/ci/run_adr053.py --profile ci --output '${{ runner.temp }}'
