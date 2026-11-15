@@ -8,8 +8,9 @@ Four fixed scenarios on the same 5,762 Goldberg nodes:
 
 - 2,048 workers / 48 demand nodes / 96 markets — mandatory original
   ADR042 F072 regression established by ADR052.
-- SAME 2,048 workers / 96 demand nodes / 192 markets — new bounded
-  exploratory original F072 equilibrium trial (PASS or explicit NO-GO).
+- SAME 2,048 workers / 96 demand nodes / 192 markets — first
+  original F072 certificate PASS on BOTH OS and now a MANDATORY
+  regression; NO-GO returns a nonzero CI exit code.
 - 4,096 workers / 192 demand nodes / 384 markets — only ledger and
   physically funded positive market initial states, NOT equilibrium.
 - 8,192 workers / 2,048 demand nodes / 4,096 markets — only spatial
@@ -30,9 +31,14 @@ Reproduce from repository root (Python 3.12 standard library):
     python -m unittest discover -s experiments/gate09/adr053_market_coverage/tests -p 'test_*.py' -v
     python experiments/gate09/adr053_market_coverage/ci/run_adr053.py --profile ci --output .
 
-A green CI means all mandatory 48-node commercial and 96/192/2048
-spatial accounting gates passed; only the separate F072 certificate
-fields say whether the NEW 96-node case achieved equilibrium.
+A green CI now REQUIRES independent original F072 commercial PASS
+for BOTH 48 and 96 demand-node economies, PLUS 96/192/2048-node
+physical spatial accounting. The 192-node and 2048-node spatial probes
+have NOT been solved by F072 and cannot be called equilibria.
+
+The first CI #43717015857 independently certified 96 nodes on Ubuntu
+and Windows, motivating the separate mandatory regression update.
+The suite includes 28 contract tests, including negative regression cases.
 
 No C#/Godot production integration, no periodic execution scheduler,
 no official F059 financial tie policy. Draft PR stacked on #341.
