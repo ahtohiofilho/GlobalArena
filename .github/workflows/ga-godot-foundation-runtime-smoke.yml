@@ -56,6 +56,7 @@ jobs:
           timeout 120s "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --quit-after 900 \
             2>&1 | tee "$RUNNER_TEMP/ga-godot/smoke.log"
           grep -q 'GA_GODOT_FOUNDATION_SMOKE_PASS' "$RUNNER_TEMP/ga-godot/smoke.log"
+          grep -q 'GA_GODOT_RUNTIME_SMOKE_STEP batch_queued=PASS' "$RUNNER_TEMP/ga-godot/smoke.log"
           grep -q 'GA_GODOT_RUNTIME_SMOKE_STEP move=PASS' "$RUNNER_TEMP/ga-godot/smoke.log"
           grep -q 'GA_GODOT_RUNTIME_SMOKE_STEP production=PASS' "$RUNNER_TEMP/ga-godot/smoke.log"
           grep -q 'GA_GODOT_RUNTIME_SMOKE_STEP keyboard_g=PASS' "$RUNNER_TEMP/ga-godot/smoke.log"
@@ -79,11 +80,13 @@ jobs:
             2>&1 | tee "$RUNNER_TEMP/ga-godot/graphical-smoke.log"
           grep -q 'GA_GODOT_FOUNDATION_SMOKE_PASS' "$RUNNER_TEMP/ga-godot/graphical-smoke.log"
           grep -q 'GA_GODOT_RENDER_FRAME_PASS stage=01_startup' "$RUNNER_TEMP/ga-godot/graphical-smoke.log"
-          grep -q 'GA_GODOT_RENDER_FRAME_PASS stage=02_after_move' "$RUNNER_TEMP/ga-godot/graphical-smoke.log"
-          grep -q 'GA_GODOT_RENDER_FRAME_PASS stage=03_after_shortcut' "$RUNNER_TEMP/ga-godot/graphical-smoke.log"
+          grep -q 'GA_GODOT_RENDER_FRAME_PASS stage=02_queued' "$RUNNER_TEMP/ga-godot/graphical-smoke.log"
+          grep -q 'GA_GODOT_RENDER_FRAME_PASS stage=03_after_batch_move' "$RUNNER_TEMP/ga-godot/graphical-smoke.log"
+          grep -q 'GA_GODOT_RENDER_FRAME_PASS stage=04_after_shortcut' "$RUNNER_TEMP/ga-godot/graphical-smoke.log"
           test -s "$GA_FOUNDATION_GODOT_SCREENSHOT_DIR/01_startup.png"
-          test -s "$GA_FOUNDATION_GODOT_SCREENSHOT_DIR/02_after_move.png"
-          test -s "$GA_FOUNDATION_GODOT_SCREENSHOT_DIR/03_after_shortcut.png"
+          test -s "$GA_FOUNDATION_GODOT_SCREENSHOT_DIR/02_queued.png"
+          test -s "$GA_FOUNDATION_GODOT_SCREENSHOT_DIR/03_after_batch_move.png"
+          test -s "$GA_FOUNDATION_GODOT_SCREENSHOT_DIR/04_after_shortcut.png"
       - name: Keep actual runtime evidence
         if: always()
         uses: actions/upload-artifact@v4
