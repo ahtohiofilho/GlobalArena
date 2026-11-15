@@ -13,6 +13,76 @@ Os experimentos anteriores demonstraram equilíbrio estático original em:
 
 A próxima variável é o **número de nós**, mantendo a densidade comercial de 144/48 e o **mesmo orçamento de trabalho do ADR-048**. O resultado permite separar crescimento geográfico de densidade.
 
+## Ressalva estrutural do domínio — trabalhador gera oferta E demanda
+
+**Esclarecimento aprovado pelo usuário em 15/11/2026.** O
+trabalhador é a unidade física econômica do Global Arena.
+Sua atividade produtiva pode gerar OFERTA, mas o próprio
+trabalhador gera DEMANDA mesmo quando estiver construindo,
+em deslocamento, alocado a atividade militar, ou ocioso.
+A localização econômica da demanda segue o local da atividade;
+quando em trânsito, a referência atual é o último local de
+atividade, sem atribuir automaticamente mercado a cada
+nó do percurso.
+
+Definindo apenas conjuntos de **nós físicos distintos**:
+
+- \`P\`: nós em que algum trabalhador produz oferta;
+- \`D\`: nós onde a demanda de trabalhadores/atividades é registrada;
+- como o trabalhador que produz também demanda no local da
+  atividade, **\`P ⊆ D\` e \`|P| ≤ |D|\`**.
+
+A presença de trabalhadores não produtivos NÃO implica
+necessariamente \`|P| < |D|\`: eles podem permanecer em nós
+que já registram demanda. A desigualdade de cardinalidade
+não substitui a demanda quantitativa nem suas ponderações
+por trabalhador/atividade.
+
+**Não comparar objetos de dimensões diferentes:**
+\`Group\` do R13 é um grupo produtor de UM produto,
+\`Market\` do R13 é um par (nó, produto) com demanda sintética,
+enquanto \`P\` e \`D\` acima são conjuntos de NÓS físicos.
+Múltiplos grupos produtores podem ocupar um mesmo nó,
+e um nó pode conter demanda de vários produtos. Portanto
+os valores **144 grupos produtores e 48 mercados (nó,produto)**
+do laboratório não são uma violação aritmética de
+\`|P| ≤ |D|\`, mas também NÃO validam a topologia de
+trabalho/consumo do jogo.
+
+Na implementação observada, o gerador R13 sintetiza
+\`groups\` e \`markets\` em laços independentes e cria
+demanda por produto sem derivá-la da população de
+trabalhadores. Isso é um **recorte artificial de
+benchmark**, suficiente para verificar a formulação
+F-072 e custo dos algoritmos, mas não uma prova de
+representatividade da economia final.
+
+**Gate necessário ANTES de afirmar escala realista:**
+
+1. Criar fixture vinculada a trabalhadores físicos,
+   cuja alocação por nó/atividade determine
+   simultaneamente a oferta (quando produtiva) e
+   a demanda (mesmo quando não produtiva).
+2. Testar o invariante espacial \`P ⊆ D\` em cada
+   snapshot econômico, sem confundir grupos e
+   pares (nó,mercadoria).
+3. Preservar demanda positiva por item segundo o
+   contrato por atividade, com multiplicadores de
+   demanda por trabalhador, sem piso artificial
+   fixo de compradores e sem duplicar consumo.
+4. Testar situações com trabalhadores produtivos
+   e não produtivos, inclusive deslocamento, e
+   concentração de vários trabalhadores em um nó.
+5. Só então dimensionar o solver com milhares
+   de trabalhadores, lugares de atividade e
+   mercados efetivamente demandantes; confirmar
+   todos os certificados F-072 originais.
+
+Essa exigência orienta as próximas provas de escala:
+**NÃO** altera retrospectivamente o PASS matemático
+de 5.762 nós no R13, nem muda preço, congestionamento,
+tarifas, F-084F, F-059, C#/Godot ou a CI atual.
+
 ## Matriz e limites prévios
 
 | Perfil | Goldberg | Nós | Arestas | Produtores | Mercados | Opções grupo×mercado |
