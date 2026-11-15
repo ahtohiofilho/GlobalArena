@@ -182,7 +182,7 @@ class ADR053PopulationCoverageContracts(unittest.TestCase):
         self.assertEqual(A.classify("ci",rows),
             ("NO_GO_MANDATORY_48_DEMAND_NODE_F072_REGRESSION",False))
 
-    def test_exploratory_96_no_go_never_appears_as_pass(self):
+    def test_mandatory_96_no_go_blocks_ci_after_initial_dual_os_pass(self):
         rows=[
             proxy("baseline_48_demand_nodes",True),
             proxy("candidate_96_demand_nodes",False),
@@ -190,7 +190,7 @@ class ADR053PopulationCoverageContracts(unittest.TestCase):
             proxy("spatial_2048_demand_nodes"),
         ]
         self.assertEqual(A.classify("ci",rows),
-            ("NO_GO_EXPLORATORY_96_DEMAND_NODE_F072_WITH_VALID_LEDGER",True))
+            ("NO_GO_MANDATORY_96_DEMAND_NODE_F072_REGRESSION",False))
 
     def test_original_F072_pass_for_96_is_independent(self):
         rows=[
@@ -202,6 +202,34 @@ class ADR053PopulationCoverageContracts(unittest.TestCase):
         self.assertEqual(A.classify("ci",rows),
                          ("PASS_ADR053_96_DEMAND_NODE_ORIGINAL_F072_CERTIFIED",
                           True))
+
+    def test_96_no_go_never_publishes_a_certified_final_F072_result(self):
+        rows=[
+            proxy("baseline_48_demand_nodes",True),
+            proxy("candidate_96_demand_nodes",False),
+            proxy("spatial_192_demand_nodes"),
+            proxy("spatial_2048_demand_nodes"),
+        ]
+        status,accepted=A.classify("ci",rows)
+        self.assertFalse(accepted)
+        self.assertTrue(status.startswith("NO_GO_MANDATORY_96_"))
+
+    def test_missing_candidate_F072_certificate_flag_rejected(self):
+        rows=[
+            proxy("baseline_48_demand_nodes",True),
+            proxy("candidate_96_demand_nodes",False),
+            proxy("spatial_192_demand_nodes"),
+            proxy("spatial_2048_demand_nodes"),
+        ]
+        rows[1]["F072_independent_certified"]=None
+        with self.assertRaises(ValueError):
+            A.classify("ci",rows)
+
+    def test_smoke_reference_gate_independent_of_96_trial(self):
+        rows=[proxy("baseline_48_demand_nodes",True)]
+        self.assertEqual(
+            A.classify("smoke",rows),
+            ("PASS_ADR053_MANDATORY_48_NODE_F072_REFERENCE",True))
 
     def test_unverified_192_node_ledger_never_passes_ci(self):
         rows=[
