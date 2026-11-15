@@ -107,7 +107,7 @@ class ADR056DiagnosticContracts(unittest.TestCase):
         r = valid_row("384")
         r["original_F072_worst_group_FINAL_if_pass"] = 1e-2
         with patch.object(A.R55, "solve_candidate", return_value=r):
-            with self.assertRaisesRegex(AssertionError, "Mandatory original F072"):
+            with self.assertRaisesRegex(AssertionError, "Uncertified original F072 final gaps leaked"):
                 A.solve_profiled("384", probe())
 
     def test_producer_no_longer_demanding_is_rejected(self):
