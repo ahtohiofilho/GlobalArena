@@ -63,6 +63,47 @@ public sealed class GoldbergFoundationSession
     public FoundationTurn? LastEconomicTurn { get; private set; }
     public bool InitialMarketCalibrated => _cycle.InitialMarketCalibrated;
 
+    /// <summary>
+    /// Read workers ONLY from the canonical WorldState v9 census and project
+    /// them into the existing experimental clearing engine. The projection is
+    /// temporary/read-only; monetary settlement and F072 remain unapproved.
+    /// Rebuild this adapter after each authoritative turn commit; an attempt
+    /// to reuse a stale one is rejected by VerifyCanonicalSnapshotUnchanged.
+    /// </summary>
+    public static GoldbergFoundationSession FromAuthoritativeWorkers(
+        CanonicalGameSession canonicalSession,
+        IReadOnlyDictionary<int, double> demandPerWorker,
+        double freeTransportCost = 0.4d,
+        double throughputScale = 2d,
+        int maximumAdjustmentPasses = 8,
+        double relativeOpportunityTolerance = 0.001d)
+    {
+        ArgumentNullException.ThrowIfNull(canonicalSession);
+        if (!canonicalSession.Snapshot.Workers.IsInitialized)
+            throw new InvalidOperationException(
+                "Cannot project physical workers before canonical census initialization.");
+        var workers = canonicalSession.Snapshot.Workers.Workers
+            .Select(item => new FoundationWorker(
+                checked((int)item.Id.Value),
+                checked((int)item.Owner.Value),
+                checked((int)item.CellId.Value),
+                checked((int)item.Commodity.Value),
+                item.OutputMicroPerTurn / 1_000_000d,
+                item.Activity switch
+                {
+                    PhysicalWorkerActivity.Producing => FoundationWorkerActivity.Producing,
+                    PhysicalWorkerActivity.Traveling => FoundationWorkerActivity.Traveling,
+                    PhysicalWorkerActivity.Military => FoundationWorkerActivity.Military,
+                    PhysicalWorkerActivity.Other => FoundationWorkerActivity.Other,
+                    _ => throw new InvalidOperationException("Unknown canonical worker activity.")
+                },
+                item.DemandMultiplierMicro / 1_000_000d))
+            .ToArray();
+        return new GoldbergFoundationSession(canonicalSession, workers,
+            demandPerWorker, freeTransportCost, throughputScale,
+            maximumAdjustmentPasses, relativeOpportunityTolerance);
+    }
+
     public GoldbergFoundationSession(
         CanonicalGameSession canonicalSession,
         IEnumerable<FoundationWorker> workers,
