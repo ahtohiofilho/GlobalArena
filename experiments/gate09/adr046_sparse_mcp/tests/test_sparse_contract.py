@@ -32,12 +32,11 @@ class SparseMCPScalingContracts(unittest.TestCase):
         self.assertEqual(ADR42.R21.validate_manifest(),16)
 
     def test_exact_quartic_and_tariffs_are_unchanged(self):
-        self.assertEqual(S.R45.R45 if hasattr(S.R45,"R45") else "original","original")
+        self.assertEqual(R45.EPS_SCHEDULE,(1e-3,1e-6,1e-9))
         net,flows,layout,z,lin,work=small_linearization()
         self.assertEqual(S.F072_TOLERANCE,1e-4)
-        self.assertIn("quartic",work.evidence()[
-            "exact_quartic_edge_derivative_in_Jv_Jtv"
-            ] and "quartic" or "quartic")
+        self.assertTrue(work.evidence()[
+            "exact_quartic_edge_derivative_in_Jv_Jtv"])
         self.assertTrue(lin.H)
         self.assertTrue(work.evidence()["no_dense_J_or_normal_matrix_created_by_trial"])
 
@@ -106,6 +105,23 @@ class SparseMCPScalingContracts(unittest.TestCase):
         self.assertLessEqual(iters,work.limits.max_cg_iterations)
         for a,b in zip(output,ref):
             self.assertAlmostEqual(a,b,delta=2e-6)
+
+    def test_exact_sparse_jacobi_diagonal_equals_original_dense_normal(self):
+        net,flows,layout,z,lin,work=small_linearization()
+        residual,J,H=R45._ncp_eval(layout,z,1e-3,work,True)
+        regularization=.01
+        reference=[
+            regularization+math.fsum(row[k]*row[k] for row in J)
+            for k in range(len(z))]
+        observed=lin.precond_diagonal(regularization)
+        self.assertEqual(len(reference),len(observed))
+        for actual,expected in zip(observed,reference):
+            self.assertAlmostEqual(actual,expected,delta=5e-9)
+        first=work.exact_sparse_jacobi_assemblies
+        lin.precond_diagonal(regularization*3)
+        self.assertEqual(work.exact_sparse_jacobi_assemblies,first)
+        self.assertEqual(first,1)
+        self.assertFalse(hasattr(lin,"J"))
 
     def test_krylov_products_are_charged_including_transpose(self):
         _,_,layout,z,lin,work=small_linearization()
