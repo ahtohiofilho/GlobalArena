@@ -90,13 +90,13 @@ def static_certificate(net,flows,settings=None,tolerance=TOLERANCE):
     loads,quantities,prices=net.snapshots(flows)
     reachable,_,unreachable=_reachable(net,settings.exponent)
     unpriced=tuple(sorted(
-        key for key in reachable
+        key for key in reachable if key not in unreachable
         if not (quantities.get(key,0.)>0 and math.isfinite(prices[key]))))
     common={
         "schema":SCHEMA,
         "flow_sha256":initial_hash,
         "market_count":len(net.markets),
-        "reachable_market_count":len(reachable),
+        "reachable_market_count":len(reachable)-len(unreachable),
         "structurally_unreachable_markets":[list(k) for k in unreachable],
         "unpriced_reachable_markets":[list(k) for k in unpriced],
         "supply_conserved":True,
