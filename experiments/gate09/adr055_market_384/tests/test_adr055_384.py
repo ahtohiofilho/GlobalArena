@@ -115,14 +115,14 @@ class ADR055Contracts(unittest.TestCase):
         with self.assertRaises(ValueError):
             A.classify("ci", r)
 
-    def test_384_without_original_certificate_is_honest_no_go(self):
+    def test_384_certificate_is_now_mandatory_and_blocks_ci(self):
         self.assertEqual(A.classify("ci", stages()),
-                         ("NO_GO_EXPLORATORY_ADR055_384_F072_NOT_CERTIFIED", True))
+                         ("NO_GO_MANDATORY_ADR055_384_F072_REGRESSION", False))
 
-    def test_independent_original_384_certificate_is_experimental_only(self):
+    def test_independent_original_384_certificate_is_mandatory(self):
         self.assertEqual(
             A.classify("ci", stages(pass_384=True)),
-            ("PASS_EXPLORATORY_ADR055_384_ORIGINAL_F072_CERTIFIED", True))
+            ("PASS_ADR055_384_ORIGINAL_F072_CERTIFIED_MANDATORY", True))
 
     def test_fake_original_certificate_or_gap_rejected(self):
         r = stages(pass_384=True)
@@ -178,6 +178,23 @@ class ADR055Contracts(unittest.TestCase):
             A.classify("ci", list(reversed(stages())))
         with self.assertRaises(ValueError):
             A.classify("unknown", stages())
+
+    def test_384_must_actually_run_solver_even_if_cert_flag_is_true(self):
+        r = stages(pass_384=True)
+        r[3]["F072_attempted"] = False
+        self.assertEqual(A.classify("ci", r)[1], False)
+
+    def test_384_no_go_cannot_be_reclassified_by_positive_seed(self):
+        r = stages()
+        r[3]["solver_status"] = "POSITIVE_SEED_ONLY"
+        self.assertEqual(A.classify("ci", r),
+                         ("NO_GO_MANDATORY_ADR055_384_F072_REGRESSION", False))
+
+    def test_384_reference_original_tolerance_stays_unchanged(self):
+        r = stages(pass_384=True)
+        r[3]["original_F072_worst_group_FINAL_if_pass"] = A.TOL * 1.01
+        self.assertEqual(A.classify("ci", r),
+                         ("NO_GO_UNVERIFIED_384_F072_CLAIM", False))
 
     def test_cpu_and_process_memory_are_observations_not_game_sla(self):
         with patch.object(A, "peak_process_rss_bytes",
