@@ -54,7 +54,8 @@ class Limits(R46.Limits):
 
     def __post_init__(self):
         for key,value in vars(self).items():
-            ceiling=(250000 if key=="max_block_coefficients" else 20000)
+            ceiling=(250000 if key=="max_block_coefficients" else
+                     60000 if key=="max_krylov_products" else 20000)
             if type(value) is not int or not 0<value<=ceiling:
                 raise ValueError("Finite positive integer budget required: "+key)
 
@@ -565,12 +566,23 @@ def exercise(profile):
         net,flows,meta=R46._large_fixture()
         # Same world R46 previously failed, but richer work budget:
         # less than R46 20,000 J products, explicit fixed budget now 14k.
-        limit=Limits(
-            max_h_evaluations=430,max_route_scans=900,
-            max_original_certificates=4,max_columns=440,
-            max_generations=5,max_newton_steps=65,
-            max_backtrack=10,max_krylov_products=14000,
-            max_cg_iterations=130,max_block_coefficients=100000)
+        if profile=="extended":
+            # Separate operational stress envelope. Predeclared after the
+            # 65/65 Newton NO-GO of the initial 100k-block experiment.
+            # Only the numerical work limits change, NOT F072 economics.
+            limit=Limits(
+                max_h_evaluations=650,max_route_scans=1200,
+                max_original_certificates=6,max_columns=500,
+                max_generations=5,max_newton_steps=165,
+                max_backtrack=10,max_krylov_products=36000,
+                max_cg_iterations=130,max_block_coefficients=180000)
+        else:
+            limit=Limits(
+                max_h_evaluations=430,max_route_scans=900,
+                max_original_certificates=4,max_columns=440,
+                max_generations=5,max_newton_steps=65,
+                max_backtrack=10,max_krylov_products=14000,
+                max_cg_iterations=130,max_block_coefficients=100000)
         row=_run("2562_nodes_original_48_groups_24_markets",
                  net,flows,limit)
         row["large_world_descriptor"]=meta
