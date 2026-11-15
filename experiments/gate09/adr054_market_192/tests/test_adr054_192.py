@@ -56,8 +56,8 @@ class ADR054ScaleContracts(unittest.TestCase):
         self.assertEqual(b.max_h_evaluations, 1100)
         self.assertEqual(b.max_route_scans, 3100)
         self.assertEqual(b.max_columns, 1500)
-        self.assertEqual(b.max_krylov_products, 70000)
-        self.assertEqual(b.max_block_coefficients, 320000)
+        self.assertEqual(b.max_krylov_products, 60000)
+        self.assertEqual(b.max_block_coefficients, 250000)
         self.assertIs(A.registered_budget(A.REFERENCE[0]),
                       A.R53.registered_budget(A.REFERENCE[0]))
         self.assertIs(A.registered_budget(A.REFERENCE[1]),
