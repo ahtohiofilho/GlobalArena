@@ -133,3 +133,41 @@ Esse teto tem unidade DIFERENTE e não altera a faixa dos
 limites originais de avaliacoes/oraculos. São dois ensaios
 com orçamento declarado e separado, não uma comparacao
 com budget idêntico. O novo resultado deverá constar no PR.
+
+
+## Terceiro orçamento, separado: concluir o núcleo antes da separação de rotas
+
+A CI #43677242113 aprovou novamente os 22 contratos em cada plataforma.
+Com 100.000 coeficientes de bloco permitidos, a fixture 2.562 nós
+atingiu **65/65 atualizações Newton**, antes de chegar ao fim das
+66 atualizações máximas previstas na passagem das três temperaturas
+de suavização. A última avaliação econômica do estado PROVISÓRIO teve
+GAP global 0,0006040739899 e pior grupo 0,05205732750.
+Nem mesmo uma aproximação de 0,0001 foi satisfeita pelo pior grupo.
+
+Em vez de trocar congestionamento ou esconder o NO-GO, o perfil
+**extended** executa a mesma formulação, rotas, H e aceitação F072
+em um envelope de trabalho adicional predeclarado:
+
+| Limite do ensaio extended | Teto |
+|---|---:|
+| H completas | 650 |
+| Scans de caminhos | 1.200 |
+| Certificações ADR-042 | 6 |
+| Colunas ativas | 500 |
+| Gerações globais | 5 |
+| Newton aceitos | 165 |
+| Backtracking | 10 |
+| Produtos Krylov Jv/Jtv | 36.000 |
+| CG por direção | 130 |
+| Coeficientes de blocos acumulados | 180.000 |
+
+Esse terceiro ensaio não é comparável aos dois anteriores sob
+orçamento idêntico. O objetivo limitado é permitir chegar à etapa
+de separação global, contabilizar rotas omitidas e observar se os
+desvios comerciais são corrigidos. O perfil ci mantém a tabela de
+teto anterior, e os três ensaios permanecem com evidência própria.
+
+Se o mundo ainda receber NO-GO, o ADR-047 será encerrado com essa
+limitação operacional, em vez de reabrir indefinidamente ajustes
+do orçamento ou modificar o congestionamento sem decisão de produto.
