@@ -13,6 +13,8 @@ public partial class GlobePreview : SubViewportContainer
     private Camera3D? _camera;
     private bool _dragging;
     private readonly System.Collections.Generic.List<(ulong Id, Vector3 A, Vector3 B, Vector3 C)> _pickTriangles = new();
+    // Canonical sphere used for territory picking. Never an economic game owner.
+    public WorldGenerationResult? PresentedCanonicalWorld { get; private set; }
     private Label? _pickedLabel;
     private MeshInstance3D? _surfaceInstance;
     private MeshInstance3D? _highResSurface; // Experimental G(12,0), never canonical ownership
@@ -68,6 +70,7 @@ public partial class GlobePreview : SubViewportContainer
             WorldGenerationVersion.Initial,
             new GoldbergParameters(3, 0));
         var generation = new DeterministicWorldGenerator().Generate(request);
+        PresentedCanonicalWorld = generation;
         var geometry = generation.StrategicSphericalGeometry;
         var topology = generation.StrategicTopology;
         if (geometry.Cells.Count != topology.Cells.Count ||

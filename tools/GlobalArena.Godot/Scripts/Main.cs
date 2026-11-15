@@ -1,6 +1,7 @@
 using Godot;
 using GlobalArena.Runtime;
 using GlobalArena.World;
+using GlobalArena.Simulation.Foundation;
 
 namespace GlobalArena.Godot;
 
@@ -32,6 +33,15 @@ public partial class Main : Control
     private VBoxContainer? _strategicWorkerInspector;
     private Label? _strategicWorkerSummary;
     private Label? _strategicWorkerDetails;
+    // The game host alone owns the canonical session and movement/turn rules.
+    // Main only holds presentation selection and submits a typed order intention.
+    private FoundationLocalGameHost? _localFoundation;
+    private OptionButton? _localWorkerSelector;
+    private Button? _localMoveButton;
+    private Button? _localProduceButton;
+    private Label? _localTurnLabel;
+    private Label? _localOrderStatus;
+    private ulong? _selectedLocalWorkerId;
     // R38: composition owner, not a second simulation state inside the renderer.
     private CanonicalGameSession? _canonicalSession;
 
@@ -41,6 +51,7 @@ public partial class Main : Control
     {
         _attachedRuntimeState = state;
         RefreshStrategicWorkerInspector();
+        RefreshLocalWorkerOrderControls();
         if (_tacticalPreview is not null && _tacticalPreview.SelectedCanonicalPhysicalTileId.HasValue)
             OnPhysicalTileInspected(_tacticalPreview.SelectedCanonicalPhysicalTileId,
                 _tacticalTileSummary?.Text ?? "", _tacticalTileTerrain?.Text ?? "");
@@ -62,6 +73,7 @@ public partial class Main : Control
     {
         _bridgeSelection = selectedId;
         RefreshStrategicWorkerInspector();
+        RefreshLocalWorkerOrderControls();
         if (_openTacticalContext is not null) _openTacticalContext.Disabled = !selectedId.HasValue;
         if (_tacticalBridgeStatus is not null)
             _tacticalBridgeStatus.Text = selectedId.HasValue
@@ -143,6 +155,139 @@ public partial class Main : Control
         GD.Print($"GA_UI_STRATEGIC_WORKERS_R1 tile={inspection.CellId.Value} " +
             $"revision={inspection.Revision} workers={inspection.DemandingWorkerCount} " +
             "source=authoritative_worldstate_v9 read_only=true");
+    }
+
+    private void RefreshLocalWorkerOrderControls()
+    {
+        if (_localFoundation is null || _localWorkerSelector is null ||
+            _localMoveButton is null || _localProduceButton is null ||
+            _localTurnLabel is null)
+            return;
+
+        var workers = _localFoundation.ControllableWorkers;
+        var rememberedId = _selectedLocalWorkerId;
+        _localWorkerSelector.Clear();
+        int selectedIndex = -1;
+        for (int index = 0; index < workers.Count; index++)
+        {
+            var worker = workers[index];
+            _localWorkerSelector.AddItem(
+                $"#{worker.Id.Value} | T{worker.CellId.Value} | {worker.Activity}");
+            if (rememberedId == worker.Id.Value)
+                selectedIndex = index;
+        }
+        if (selectedIndex < 0 && workers.Count > 0)
+            selectedIndex = 0;
+        if (selectedIndex >= 0)
+        {
+            _localWorkerSelector.Select(selectedIndex);
+            _selectedLocalWorkerId = workers[selectedIndex].Id.Value;
+        }
+        else
+        {
+            _selectedLocalWorkerId = null;
+        }
+
+        _localTurnLabel.Text =
+            $"LOCAL FOUNDATION PREVIEW | turn {_localFoundation.NextTurn.Value} | " +
+            $"rev {_localFoundation.Snapshot.Revision} | Civ {_localFoundation.PlayerCivilization.Value}";
+        _localWorkerSelector.Disabled = workers.Count == 0;
+        var chosen = workers.FirstOrDefault(
+            worker => worker.Id.Value == _selectedLocalWorkerId);
+        _localMoveButton.Disabled = chosen is null ||
+            !_bridgeSelection.HasValue ||
+            !_localFoundation.CanMove(chosen.Id,
+                new StrategicCellId(_bridgeSelection.Value));
+        _localProduceButton.Disabled = chosen is null ||
+            !_localFoundation.CanChangeActivity(
+                chosen.Id, PhysicalWorkerActivity.Producing);
+    }
+
+    private void OnLocalWorkerSelected(long optionIndex)
+    {
+        if (_localFoundation is null)
+            return;
+        var workers = _localFoundation.ControllableWorkers;
+        var index = checked((int)optionIndex);
+        _selectedLocalWorkerId = index >= 0 && index < workers.Count
+            ? workers[index].Id.Value : null;
+        RefreshLocalWorkerOrderControls();
+    }
+
+    private void OnLocalWorkerMoveRequested()
+    {
+        if (_localFoundation is null || !_selectedLocalWorkerId.HasValue ||
+            !_bridgeSelection.HasValue || _localOrderStatus is null)
+            return;
+        try
+        {
+            // This is a *request* to the gameplay domain, not UI mutation.
+            var receipt = _localFoundation.MoveWorker(
+                new PhysicalWorkerId(_selectedLocalWorkerId.Value),
+                new StrategicCellId(_bridgeSelection.Value));
+            AttachRuntimeState(_localFoundation.Snapshot);
+            _localOrderStatus.Text =
+                $"Turn {receipt.Turn.Value} committed: #{receipt.WorkerId.Value} " +
+                $"T{receipt.Source.Value} -> T{receipt.Destination.Value} | " +
+                $"replay verified | v{receipt.ResultingHash.FormatVersion}";
+            GD.Print($"GA_UI_FOUNDATION_MOVE_R1 turn={receipt.Turn.Value} " +
+                $"worker={receipt.WorkerId.Value} from={receipt.Source.Value} " +
+                $"to={receipt.Destination.Value} revision={receipt.ResultingRevision} " +
+                "journal_replayed=true authoritative=true");
+        }
+        catch (System.Exception error)
+        {
+            _localOrderStatus.Text = $"Move rejected: {error.Message}";
+            GD.Print($"GA_UI_FOUNDATION_MOVE_REJECTED_R1 {error.Message}");
+        }
+        RefreshLocalWorkerOrderControls();
+    }
+
+    private void OnLocalWorkerProduceRequested()
+    {
+        if (_localFoundation is null || !_selectedLocalWorkerId.HasValue ||
+            _localOrderStatus is null)
+            return;
+        try
+        {
+            var receipt = _localFoundation.ChangeWorkerActivity(
+                new PhysicalWorkerId(_selectedLocalWorkerId.Value),
+                PhysicalWorkerActivity.Producing);
+            AttachRuntimeState(_localFoundation.Snapshot);
+            _localOrderStatus.Text =
+                $"Turn {receipt.Turn.Value} committed: #{receipt.WorkerId.Value} " +
+                $"started production at T{receipt.Destination.Value} | replay verified";
+            GD.Print($"GA_UI_FOUNDATION_PRODUCTION_R1 turn={receipt.Turn.Value} " +
+                $"worker={receipt.WorkerId.Value} tile={receipt.Destination.Value} " +
+                "journal_replayed=true authoritative=true");
+        }
+        catch (System.Exception error)
+        {
+            _localOrderStatus.Text = $"Activity rejected: {error.Message}";
+            GD.Print($"GA_UI_FOUNDATION_ACTIVITY_REJECTED_R1 {error.Message}");
+        }
+        RefreshLocalWorkerOrderControls();
+    }
+
+    // Keyboard-first: G orders a selected worker to the selected adjacent
+    // canonical tile; P starts production. Do not hijack the existing M
+    // strategic/tactical view shortcut or numbered map-layer shortcuts.
+    public override void _UnhandledKeyInput(InputEvent @event)
+    {
+        if (@event is not InputEventKey key || !key.Pressed || key.Echo ||
+            _strategicHudPanel?.Visible != true)
+            return;
+        if (key.Keycode == Key.G && _localMoveButton?.Disabled == false)
+        {
+            OnLocalWorkerMoveRequested();
+            GetViewport().SetInputAsHandled();
+        }
+        else if (key.Keycode == Key.P &&
+            _localProduceButton?.Disabled == false)
+        {
+            OnLocalWorkerProduceRequested();
+            GetViewport().SetInputAsHandled();
+        }
     }
 
     // R30: physical tile facts are read-only display data, never a game order.
@@ -313,11 +458,18 @@ public partial class Main : Control
         };
         mapRegion.AddChild(_tacticalPreview);
         _tacticalPreview.PhysicalTileInspected += OnPhysicalTileInspected;
-        // R38: the session owns a real canonical bound WorldState. Zero controllers
-        // means "no control", not invented gameplay. Worldgen 01C stays experimental.
-        _canonicalSession = CanonicalGameSession.Start(
+        // The Foundation gameplay host materializes a *labeled local preview*
+        // scenario. Main/Godot never creates, moves or settles workers directly.
+        // This is NOT a claim of final world-population generation.
+        _localFoundation = FoundationLocalGameHost.CreateLocalPreview(
             new WorldGenerationRequest(new WorldSeed(20261012UL),
                 WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)));
+        _canonicalSession = _localFoundation.Session;
+        if (globe.PresentedCanonicalWorld is null ||
+            RuntimeWorldBinding.FromGeneratedWorld(globe.PresentedCanonicalWorld) !=
+            RuntimeWorldBinding.FromGeneratedWorld(_canonicalSession.GeneratedWorld))
+            throw new System.InvalidOperationException(
+                "Displayed Goldberg globe and local gameplay world do not match.");
         AttachRuntimeState(_canonicalSession.Snapshot);
         if (_canonicalSession.Snapshot.WorldBinding !=
             RuntimeWorldBinding.FromGeneratedWorld(_canonicalSession.GeneratedWorld))
@@ -414,7 +566,52 @@ public partial class Main : Control
         _strategicWorkerSummary = workerSummary;
         _strategicWorkerDetails = workerDetails;
         RefreshStrategicWorkerInspector();
-        GD.Print("GA_UI_STRATEGIC_WORKER_INSPECTOR_R1 ready=true source=worldstate_v9 demo_workers=false");
+
+        // Compact strategic controls: player selects a physical worker here,
+        // selects a destination directly on the map, then submits one intent.
+        var orderSection = new VBoxContainer();
+        orderSection.AddThemeConstantOverride("separation", 4);
+        strategicHud.AddChild(orderSection);
+        var orderTitle = new Label { Text = "LOCAL FOUNDATION | WORKER ORDERS" };
+        orderTitle.AddThemeFontSizeOverride("font_size", 15);
+        orderSection.AddChild(orderTitle);
+        _localTurnLabel = new Label
+        {
+            Text = "Local foundation scenario",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        orderSection.AddChild(_localTurnLabel);
+        _localWorkerSelector = new OptionButton
+        {
+            CustomMinimumSize = new Vector2(0f, 32f),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        _localWorkerSelector.ItemSelected += OnLocalWorkerSelected;
+        orderSection.AddChild(_localWorkerSelector);
+        _localMoveButton = new Button
+        {
+            Text = "G | MOVE WORKER TO SELECTED ADJACENT TILE",
+            Disabled = true
+        };
+        _localMoveButton.Pressed += OnLocalWorkerMoveRequested;
+        orderSection.AddChild(_localMoveButton);
+        _localProduceButton = new Button
+        {
+            Text = "P | START PRODUCTION AT CURRENT TILE",
+            Disabled = true
+        };
+        _localProduceButton.Pressed += OnLocalWorkerProduceRequested;
+        orderSection.AddChild(_localProduceButton);
+        _localOrderStatus = new Label
+        {
+            Text = "Choose your worker; click an adjacent territory as destination",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        orderSection.AddChild(_localOrderStatus);
+        RefreshLocalWorkerOrderControls();
+        GD.Print("GA_UI_FOUNDATION_LOCAL_GAME_R1 workers_initial=" +
+            _localFoundation!.Snapshot.Workers.Workers.Count +
+            " authority=domain_host orders=journaled preview_scenario=true");
 
         globe.TransferHud(strategicHud);
         _strategicHudPanel = strategicHud;
