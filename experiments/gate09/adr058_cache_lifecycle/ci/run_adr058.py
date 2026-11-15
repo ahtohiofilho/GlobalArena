@@ -77,7 +77,8 @@ def physical_pair(net, original):
         and isfinite(prices_b[k]) for k in qa):
         raise AssertionError("Changed worker flows left unpriced market")
     changed_edges = sum(
-        loads_a[eid] != loads_b[eid] for eid in net.edges)
+        loads_a.get(eid, 0.0) != loads_b.get(eid, 0.0)
+        for eid in net.edges)
     if changed_edges <= 0:
         raise AssertionError("Flow changes did not alter edge loads")
     return updated, loads_a, loads_b, {
