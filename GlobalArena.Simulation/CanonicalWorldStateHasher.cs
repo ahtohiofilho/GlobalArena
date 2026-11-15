@@ -7,7 +7,9 @@ namespace GlobalArena.Simulation;
 public sealed class CanonicalWorldStateHasher
     : IWorldStateHasher
 {
+    // Legacy v8 hashes are byte-for-byte unchanged until worker census is initialized.
     public const uint FormatVersion = 8U;
+    public const uint PhysicalWorkerFormatVersion = 9U;
 
     private static readonly byte[] Magic =
     {
@@ -23,6 +25,9 @@ public sealed class CanonicalWorldStateHasher
         ArgumentNullException.ThrowIfNull(
             worldState);
 
+        var version = worldState.Workers.IsInitialized
+            ? PhysicalWorkerFormatVersion : FormatVersion;
+
         using var hash =
             IncrementalHash.CreateHash(
                 HashAlgorithmName.SHA256);
@@ -32,11 +37,11 @@ public sealed class CanonicalWorldStateHasher
 
         AppendUInt32(
             hash,
-            FormatVersion);
+            version);
 
         AppendUInt32(
             hash,
-            8U);
+            version == PhysicalWorkerFormatVersion ? 9U : 8U);
 
         if (worldState.WorldBinding is null)
         {
@@ -278,11 +283,30 @@ public sealed class CanonicalWorldStateHasher
                 unit.StrategicCellId.Value);
         }
 
+        // New section is present ONLY in initialized individual-worker states.
+        // Legacy absent-worker states retain exactly the original v8 bytes.
+        if (worldState.Workers.IsInitialized)
+        {
+            AppendUInt32(hash, 35U);
+            AppendUInt32(hash, 1U);
+            AppendUInt32(hash, checked((uint)worldState.Workers.Workers.Count));
+            foreach (var worker in worldState.Workers.Workers)
+            {
+                AppendUInt64(hash, worker.Id.Value);
+                AppendUInt64(hash, worker.Owner.Value);
+                AppendUInt64(hash, worker.CellId.Value);
+                AppendUInt32(hash, worker.Commodity.Value);
+                AppendUInt64(hash, worker.OutputMicroPerTurn);
+                AppendUInt32(hash, (uint)worker.Activity);
+                AppendUInt32(hash, worker.DemandMultiplierMicro);
+            }
+        }
+
         var digest =
             hash.GetHashAndReset();
 
         return new WorldStateHash(
-            FormatVersion,
+            version,
             Convert.ToHexString(
                 digest));
     }
