@@ -1,15 +1,78 @@
 using System.Globalization;
 using GlobalArena.Simulation.Foundation;
+using GlobalArena.Runtime;
+using GlobalArena.World;
 
 // A real executable headless slice of the redesigned foundation. The legacy
 // M4 simulator and Godot UI remain untouched, and this is not authoritative.
 if (args.Length != 1 ||
     (args[0] != "--foundation-slice" &&
-     args[0] != "--foundation-calibration-ab"))
+     args[0] != "--foundation-calibration-ab" &&
+     args[0] != "--foundation-goldberg"))
 {
     Console.WriteLine("Global Arena — executable foundation preview");
     Console.WriteLine("Run: dotnet run --project GlobalArena.Console -- --foundation-slice");
     Console.WriteLine("A/B: dotnet run --project GlobalArena.Console -- --foundation-calibration-ab");
+    Console.WriteLine("Goldberg: dotnet run --project GlobalArena.Console -- --foundation-goldberg");
+    return;
+}
+
+// First actual generated-world integration: use EXISTING canonical sphere nodes,
+// edges and world binding with actual physical workers and movement orders.
+// The prototype deliberately does not publish into authoritative WorldState.
+if (args[0] == "--foundation-goldberg")
+{
+    var canonical = CanonicalGameSession.Start(new WorldGenerationRequest(
+        new WorldSeed(20261115UL), WorldGenerationVersion.Initial,
+        new GoldbergParameters(3, 0)));
+    var graph = canonical.GeneratedWorld.StrategicSurfaceGraph;
+    var c0 = checked((int)graph.GetCellId(0).Value);
+    var c1Index = graph.GetNeighborIndexes(0)[0];
+    var c1 = checked((int)graph.GetCellId(c1Index).Value);
+    var c2Index = graph.GetNeighborIndexes(c1Index)
+        .First(index => index != 0);
+    var c2 = checked((int)graph.GetCellId(c2Index).Value);
+    var remote = checked((int)graph.GetCellId(graph.NodeCount / 2).Value);
+
+    var economy = new GoldbergFoundationSession(canonical,
+        new[]
+        {
+            new FoundationWorker(1, 1, c0, 0, 2d,
+                FoundationWorkerActivity.Producing),
+            new FoundationWorker(2, 2, remote, 1, 2d,
+                FoundationWorkerActivity.Producing),
+            new FoundationWorker(3, 1, c1, 0, 0d,
+                FoundationWorkerActivity.Military),
+            new FoundationWorker(4, 2, c2, 1, 1d,
+                FoundationWorkerActivity.Producing),
+            new FoundationWorker(5, 1, c0, 1, 1d,
+                FoundationWorkerActivity.Traveling),
+            new FoundationWorker(6, 2, remote, 0, 1d,
+                FoundationWorkerActivity.Producing)
+        },
+        new Dictionary<int, double> { [0] = 1d, [1] = 0.7d },
+        maximumAdjustmentPasses: 8);
+
+    Console.WriteLine($"GA_FOUNDATION_GOLDBERG_V1 " +
+        $"nodes={economy.WorldNodeCount} edges={economy.WorldEdgeCount} " +
+        $"world_sha256={economy.WorldBinding.WorldSignatureSha256Hex} " +
+        "all_tiles_same_laws=true authoritative=false");
+    ShowGoldberg(economy.Advance());
+    ShowGoldberg(economy.Advance(new[]
+    {
+        new FoundationWorkerOrder(5, NextTile: c1)
+    }));
+    ShowGoldberg(economy.Advance(new[]
+    {
+        new FoundationWorkerOrder(5, NextActivity: FoundationWorkerActivity.Producing)
+    }));
+    var inspected = economy.InspectTile(new StrategicCellId(checked((ulong)c1)));
+    Console.WriteLine($"  selected_canonical_tile={inspected.CellId.Value} " +
+        $"workers={inspected.Workers.Count} " +
+        $"demanded_commodities={inspected.Demand.Count} " +
+        $"priced_commodities={inspected.Prices.Count}");
+    Console.WriteLine("  worldstate=UNCHANGED financial_settlement=NOT_IMPLEMENTED " +
+        "battles=NOT_IMPLEMENTED certified_F072=false");
     return;
 }
 
@@ -81,6 +144,21 @@ Show(world.Advance(new[]
 {
     new FoundationWorkerOrder(5, NextActivity: FoundationWorkerActivity.Producing)
 }));
+
+static void ShowGoldberg(FoundationTurn turn)
+{
+    var allDemandTiles = turn.Demand.Keys.Select(x => x.Tile).Distinct().Count();
+    var producingTiles = turn.Workers
+        .Where(x => x.Activity == FoundationWorkerActivity.Producing &&
+            x.OutputPerTurn > 0d)
+        .Select(x => x.Tile).Distinct().Count();
+    Console.WriteLine($"  goldberg_turn={turn.Turn} " +
+        $"workers={turn.Workers.Count} producing_tiles={producingTiles} " +
+        $"demand_tiles={allDemandTiles} " +
+        $"produced={F(turn.TotalProduction)} delivered={F(turn.TotalDelivered)} " +
+        $"trades={turn.Trades.Count} loaded_edges={turn.EdgeLoads.Count} " +
+        $"passes={turn.AdjustmentPasses} opportunity_gap={F(turn.MaxRelativeOpportunity)}");
+}
 
 static void Show(FoundationTurn turn)
 {
