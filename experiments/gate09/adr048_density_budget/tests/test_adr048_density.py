@@ -173,6 +173,39 @@ class ADR048EconomicDensityAndCycleReserve(unittest.TestCase):
             with self.assertRaises(AssertionError):
                 R.run_fixture("baseline_2562_48_24")
 
+    def test_mandatory_96_regression_has_failing_process_status(self):
+        samples=[
+            {"fixture":"density_2562_96_32",
+             "static_original_F072_go":False},
+            {"fixture":"density_2562_144_48",
+             "static_original_F072_go":True},
+        ]
+        name,passed=R.classify_gate("extended",samples)
+        self.assertEqual(name,"NO_GO_MANDATORY_96_PRODUCER_F072_REGRESSION")
+        self.assertFalse(passed)
+
+    def test_exploratory_144_no_go_is_never_labeled_success(self):
+        samples=[
+            {"fixture":"density_2562_96_32",
+             "static_original_F072_go":True},
+            {"fixture":"density_2562_144_48",
+             "static_original_F072_go":False},
+        ]
+        name,passed=R.classify_gate("extended",samples)
+        self.assertEqual(
+            name,"NO_GO_EXPLORATORY_DENSITY_OR_GEOGRAPHY_WITH_CONTRACT_PASS")
+        self.assertTrue(passed)
+
+    def test_full_extended_pass_needs_both_F072_certificates(self):
+        samples=[
+            {"fixture":"density_2562_96_32",
+             "static_original_F072_go":True},
+            {"fixture":"density_2562_144_48",
+             "static_original_F072_go":True},
+        ]
+        self.assertEqual(R.classify_gate("extended",samples),
+                         ("PASS_ALL_DENSITY_F072_INDEPENDENTLY_CERTIFIED",True))
+
     def test_potentially_slow_Python_is_not_claimed_real_game_budget(self):
         b=R.CycleReservation(120000,30000)
         result=R.model_cycle_reservation(True,89999,b)
