@@ -205,11 +205,12 @@ def classify(profile,entries):
         or entries[3]["demand_nodes"]!=2048
         or entries[2]["F072_attempted"] or entries[3]["F072_attempted"]):
         return "NO_GO_MANDATORY_PHYSICAL_DEMAND_COVERAGE",False
-    return (
-        ("PASS_ADR053_96_DEMAND_NODE_ORIGINAL_F072_CERTIFIED",True)
-        if candidate else
-        ("NO_GO_EXPLORATORY_96_DEMAND_NODE_F072_WITH_VALID_LEDGER",True)
-    )
+    # The first independent CI certified 96 demand nodes on BOTH OS.
+    # Promote this new commercial equilibrium to a mandatory regression.
+    # An uncertified candidate may never leave the gate green.
+    if not candidate:
+        return "NO_GO_MANDATORY_96_DEMAND_NODE_F072_REGRESSION",False
+    return "PASS_ADR053_96_DEMAND_NODE_ORIGINAL_F072_CERTIFIED",True
 
 
 def exercise(profile):
