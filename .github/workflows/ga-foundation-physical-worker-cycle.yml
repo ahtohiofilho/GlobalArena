@@ -1,0 +1,39 @@
+name: GA Foundation Physical Worker Economic Turn — CSharp Vertical Slice
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/Foundation/**'
+      - 'GlobalArena.Tests/FoundationPhysicalTradeCycleTests.cs'
+      - 'GlobalArena.Console/Program.cs'
+      - 'docs/ga-foundation-first-playable-cycle.md'
+      - '.github/workflows/ga-foundation-physical-worker-cycle.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  foundation-slice:
+    name: New foundation CSharp economic cycle + executable console / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Restore current real .NET 10 projects
+        run: dotnet restore GlobalArena.Tests/GlobalArena.Tests.csproj
+      - name: Compile all canonical simulation plus new foundation code
+        run: dotnet build GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-restore
+      - name: Real CSharp physical worker market and movement contracts
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter FullyQualifiedName~FoundationPhysicalTradeCycleTests --logger 'console;verbosity=normal'
+      - name: Real executable three-turn gameplay kernel preview
+        run: dotnet run --project GlobalArena.Console/GlobalArena.Console.csproj -c Release -- --foundation-slice
+      - name: Preserve historical CSharp runtime tests without modifying them
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --logger 'console;verbosity=minimal'
