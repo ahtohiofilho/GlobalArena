@@ -704,13 +704,17 @@ def exercise(profile):
                 ADR42.R21.CASES["small"],"heterogeneous_D_and_supply",.2)[:2]),
         ])
     if profile=="extended":
-        suites.append(("r34_162_original",*ADR42.R34.capacity_fixture(
-            ADR42.R21.CASES["medium"],"original",1.)[:2]))
+        suites.extend([
+            ("r34_162_original",*ADR42.R34.capacity_fixture(
+                ADR42.R21.CASES["medium"],"original",1.)[:2]),
+            ("r34_162_heterogeneous_K02",*ADR42.R34.capacity_fixture(
+                ADR42.R21.CASES["medium"],"heterogeneous_D_and_supply",.2)[:2]),
+        ])
     rows=[]
     for label,net,flows in suites:
         limit=(Limits(max_h_evaluations=1200,max_newton_steps=60)
                if not label.startswith("r34_162") else
-               Limits(max_h_evaluations=700,max_newton_steps=24,
+               Limits(max_h_evaluations=700,max_newton_steps=48,
                       max_columns=320))
         result=solve_mcp(net,flows,limits=limit)
         rows.append({"fixture":label,"result":result})
