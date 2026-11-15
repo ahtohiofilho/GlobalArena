@@ -17,8 +17,8 @@ a 192-node market with C#/Godot, and is not a production game benchmark.
 
 The ADR-054 first-trial budget is **fixed before** the run:
 H=1100, shortest-path scans=3100, certificates=7, active columns=1500,
-generations=6, Newton=185, backtracking=12, Krylov=70000,
-CG per direction=210, SPD triangular products=320000.
+generations=6, Newton=185, backtracking=12, Krylov=60000,
+CG per direction=210, SPD triangular products=250000.
 These are algorithmic work units, not millisecond SLAs or game scheduler.
 
 A successful CI requires F-072 original certified PASS on **48 and 96**
