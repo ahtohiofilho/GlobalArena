@@ -1,0 +1,41 @@
+name: GA Gate09 ADR046 Matrix-Free Sparse MCP Scaling
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/gate09/adr046_sparse_mcp/**'
+      - 'docs/ga-gate09-adr046-matrixfree-scalability-gate-draft.md'
+      - '.github/workflows/ga-gate09-adr046-matrixfree.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sparse-versus-dense:
+    name: ADR046 sparse Jacobian and 2562-node audit / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Mathematical parity with original dense analytic Jacobian
+        run: python -m unittest discover -s experiments/gate09/adr046_sparse_mcp/tests -p 'test_*.py' -v
+      - name: Bounded 2-group 42 162 and 2562-node sparse audit
+        run: python experiments/gate09/adr046_sparse_mcp/ci/run_adr046.py --profile ci --output '${{ runner.temp }}'
+      - name: Upload original F072 and sparse work ledgers
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-gate09-adr046-${{ matrix.os }}
+          path: ${{ runner.temp }}/GA-Gate09-ADR046-Evidencias-*.zip
+          if-no-files-found: warn
+          retention-days: 14
