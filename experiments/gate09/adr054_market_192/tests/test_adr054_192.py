@@ -73,15 +73,15 @@ class ADR054ScaleContracts(unittest.TestCase):
         self.assertEqual(A.classify("ci", r),
                          ("NO_GO_MANDATORY_96_F072_REGRESSION", False))
 
-    def test_no_go_192_is_explicit_but_not_a_false_failed_regression(self):
+    def test_no_go_192_is_mandatory_and_blocks_ci(self):
         self.assertEqual(
             A.classify("ci", rows()),
-            ("NO_GO_EXPLORATORY_ADR054_192_F072_NOT_CERTIFIED", True))
+            ("NO_GO_MANDATORY_ADR054_192_F072_REGRESSION", False))
 
     def test_original_independent_192_certificate_required(self):
         self.assertEqual(
             A.classify("ci", rows(cert_192=True)),
-            ("PASS_EXPLORATORY_ADR054_192_ORIGINAL_F072_CERTIFIED", True))
+            ("PASS_ADR054_192_ORIGINAL_F072_CERTIFIED_MANDATORY", True))
 
     def test_self_asserted_pass_without_valid_global_gap_rejected(self):
         r = rows(cert_192=True)
@@ -149,6 +149,23 @@ class ADR054ScaleContracts(unittest.TestCase):
         self.assertFalse(r["F072_independent_certified"])
         self.assertIsNone(r["original_F072_global_FINAL_if_pass"])
         self.assertTrue(r["production_nodes_subset_demand_nodes"])
+
+    def test_missing_192_certificate_boolean_is_rejected(self):
+        r = rows()
+        r[2]["F072_independent_certified"] = None
+        with self.assertRaises(ValueError):
+            A.classify("ci", r)
+
+    def test_unattempted_192_cannot_pass(self):
+        r = rows(cert_192=True)
+        r[2]["F072_attempted"] = False
+        self.assertFalse(A.classify("ci", r)[1])
+
+    def test_192_regression_does_not_change_required_48_96_order(self):
+        self.assertEqual(tuple(n for n, _ in A.STAGES["ci"])[:2],
+                         A.REFERENCE)
+        self.assertEqual(A.STAGES["ci"][2], (A.CANDIDATE, True))
+        self.assertEqual(A.STAGES["ci"][3], (A.SPATIAL_ONLY, False))
 
     def test_original_quartic_and_f059_not_ratified(self):
         self.assertFalse(getattr(A, "F059_ratified", False))
