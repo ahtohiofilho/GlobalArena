@@ -20,10 +20,26 @@ trabalhador é a unidade física econômica do Global Arena.
 Sua atividade produtiva pode gerar OFERTA, mas o próprio
 trabalhador gera DEMANDA mesmo quando estiver construindo,
 em deslocamento, alocado a atividade militar, ou ocioso.
-A localização econômica da demanda segue o local da atividade;
-quando em trânsito, a referência atual é o último local de
-atividade, sem atribuir automaticamente mercado a cada
-nó do percurso.
+A localização econômica da demanda acompanha a presença do
+trabalhador. No deslocamento, a demanda do ciclo é distribuída
+proporcionalmente ao tempo efetivo de permanência em cada tile
+atravessado, conforme a nova diretriz conceitual aprovada em
+15/11/2026. A antiga regra provisória de atribuir toda a demanda
+em trânsito ao último local de atividade fica SUBSTITUÍDA.
+
+Para cada trabalhador w e ciclo de duração T, se t(w,n) for o
+tempo de permanência atribuído ao nó n, a participação na demanda
+do nó será t(w,n)/T, com soma_n t(w,n)=T e soma_n t(w,n)/T=1.
+Assim, deslocar-se NÃO multiplica demanda total, e a parcela
+da demanda recebida por cada tile deriva da presença física
+no período. A regra de fronteira para instantes sobre arestas,
+travessia exata, partidas e chegadas é um detalhe de execução
+pendente de especificação e testes determinísticos.
+
+Trata-se de CONTRATO CONCEITUAL PARA O FUTURO MOTOR DE TRABALHADORES,
+não de código implantado: o laboratório R13 atual ainda gera
+demanda sintética independente dos trabalhadores, e o C#/Godot
+não calcula essa distribuição temporal.
 
 Definindo apenas conjuntos de **nós físicos distintos**:
 
@@ -70,9 +86,11 @@ representatividade da economia final.
    contrato por atividade, com multiplicadores de
    demanda por trabalhador, sem piso artificial
    fixo de compradores e sem duplicar consumo.
-4. Testar situações com trabalhadores produtivos
-   e não produtivos, inclusive deslocamento, e
-   concentração de vários trabalhadores em um nó.
+4. Testar situações com trabalhadores produtivos e não produtivos,
+   inclusive deslocamento com demanda proporcional ao tempo de
+   permanência no tile, ausência de duplicação entre tiles,
+   mudança de atividade, e concentração de vários trabalhadores
+   em um mesmo nó.
 5. Só então dimensionar o solver com milhares
    de trabalhadores, lugares de atividade e
    mercados efetivamente demandantes; confirmar
