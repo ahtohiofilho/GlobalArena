@@ -17,7 +17,8 @@ public readonly record struct GaWorkerRosterRow(
     string Activity,
     ulong CommodityId,
     ulong OutputMicroPerTurn,
-    long DemandMultiplierMicro);
+    long DemandMultiplierMicro,
+    ulong? FineTileId = null);
 
 public partial class GaOperationalRoster : VBoxContainer
 {
@@ -31,7 +32,7 @@ public partial class GaOperationalRoster : VBoxContainer
 
     public ulong? SelectedWorkerId => _selectedId;
     public int DisplayedWorkerCount => _rowButtons.Count;
-    public bool HasAuthoritativeFinePositions => false; // v9; intentionally unavailable
+    public bool HasAuthoritativeFinePositions { get; private set; }
 
     public override void _Ready()
     {
@@ -81,6 +82,10 @@ public partial class GaOperationalRoster : VBoxContainer
         }
         _rowButtons.Clear();
         _selectedId = null;
+        HasAuthoritativeFinePositions = workers.Count > 0 &&
+            workers.All(w => w.FineTileId.HasValue && w.FineTileId.Value != 0UL);
+        if (workers.Any(w => w.FineTileId.HasValue) && !HasAuthoritativeFinePositions)
+            throw new InvalidOperationException("Mixed fine/strategic worker location roster.");
         _heading.Text = $"LOCAL WORKFORCE  /  {workers.Count} INDIVIDUALS  /  REV {revision}";
 
         foreach (var worker in workers)
@@ -91,11 +96,15 @@ public partial class GaOperationalRoster : VBoxContainer
             var button = new Button
             {
                 Name = $"GANextWorkerRow_{id}",
-                Text = $"#{id}   {worker.Activity}    ·    Region T{worker.CoarseRegionId}",
+                Text = worker.FineTileId.HasValue
+                    ? $"#{id}   {worker.Activity}   ·   G(18,0)/{worker.FineTileId.Value}"
+                    : $"#{id}   {worker.Activity}    ·    Region T{worker.CoarseRegionId}",
                 Alignment = HorizontalAlignment.Left,
                 CustomMinimumSize = new Vector2(0f, 27f),
-                TooltipText = $"Worker #{id} · G(3,0) region T{worker.CoarseRegionId} · " +
-                    "Exact tactical cell is not stored in journal v9"
+                TooltipText = worker.FineTileId.HasValue
+                    ? $"Worker #{id} · canonical G(18,0)/{worker.FineTileId.Value}"
+                    : $"Worker #{id} · G(3,0) region T{worker.CoarseRegionId} · " +
+                      "Exact tactical cell is not stored in journal v9"
             };
             button.Pressed += () => WorkerSelected?.Invoke(id);
             _rows.AddChild(button);
@@ -128,6 +137,9 @@ public partial class GaOperationalRoster : VBoxContainer
         _details.Text = $"SELECTED  #{selected.WorkerId}  ·  {selected.Activity}\n" +
             $"Item {selected.CommodityId}   |   Capacity {output}/turn   |   Demand ×{demand}\n" +
             $"Known region: G(3,0) T{selected.CoarseRegionId}\n" +
-            "Exact tactical G(18,0) tile: unavailable (v9). Movement locked.";
+            (selected.FineTileId.HasValue
+                ? $"Exact tactical G(18,0) tile: {selected.FineTileId.Value} (v10).\n" +
+                  "Click an adjacent hex, then G to queue a real fine-edge move."
+                : "Exact tactical G(18,0) tile: unavailable (v9). Movement locked.");
     }
 }
