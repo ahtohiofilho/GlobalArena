@@ -259,9 +259,11 @@ public sealed class WorldState
     /// </summary>
     public WorldState DeployTacticalWorkers(
         PhysicalWorkerRuntimeState tacticalWorkers,
+        WorldGenerationResult generatedWorld,
         PhysicalTacticalIncidenceMap incidence)
     {
         ArgumentNullException.ThrowIfNull(tacticalWorkers);
+        ArgumentNullException.ThrowIfNull(generatedWorld);
         ArgumentNullException.ThrowIfNull(incidence);
         if (WorldBinding is null || !Workers.IsInitialized ||
             Workers.HasAuthoritativeTacticalLocations ||
@@ -269,10 +271,13 @@ public sealed class WorldState
             !tacticalWorkers.HasAuthoritativeTacticalLocations)
             throw new InvalidOperationException(
                 "Tactical deployment requires a bound v9 census and explicit complete v10 data.");
-        if (incidence.CoarseTopology.Cells.Count !=
-            checked((int)WorldBinding.StrategicCellCount))
+        if (WorldBinding != RuntimeWorldBinding.FromGeneratedWorld(generatedWorld) ||
+            incidence.Refinement.CoarseParameters !=
+                generatedWorld.Request.StrategicParameters ||
+            incidence.CoarseTopology.Cells.Count !=
+                checked((int)WorldBinding.StrategicCellCount))
             throw new InvalidOperationException(
-                "Tactical topology does not match the bound world's coarse cell count.");
+                "Tactical topology does not match this exact bound generated world.");
         if (Workers.Workers.Count != tacticalWorkers.Workers.Count)
             throw new InvalidOperationException("Tactical deployment cannot add or remove workers.");
 
