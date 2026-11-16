@@ -18,6 +18,9 @@ public partial class TacticalContextPreview : SubViewportContainer
     private MeshInstance3D? _territoryBoundaries;
     private IReadOnlyList<PhysicalTacticalTerritoryBoundaryPath>? _cachedBoundaryPaths;
     private bool _showTerritoryBoundaries = false;
+    // All tactical edge/selection geometry is coplanar with its color mesh.
+    // The old 0.006f raised mesh caused visible parallax at the 45-degree camera.
+    private const float TacticalSurfacePlaneY = 0f;
     private MeshInstance3D? _selectedTileOutline;
     private Label? _information;
     private VBoxContainer? _hudControls;
@@ -237,8 +240,8 @@ public partial class TacticalContextPreview : SubViewportContainer
                     AddColored(faces, entry.Points[0], entry.Tint);
                     AddColored(faces, entry.Points[j], entry.Tint);
                     AddColored(faces, entry.Points[next], entry.Tint);
-                    AddColored(lines, entry.Points[j] + Vector3.Up * 0.006f, lineColor);
-                    AddColored(lines, entry.Points[next] + Vector3.Up * 0.006f, lineColor);
+                    AddColored(lines, entry.Points[j], lineColor);
+                    AddColored(lines, entry.Points[next], lineColor);
                 }
             }
             var faceMesh = faces.Commit();
@@ -312,13 +315,13 @@ public partial class TacticalContextPreview : SubViewportContainer
         _extensionEdges = new MeshInstance3D { Visible = false };
         _world.AddChild(_extensionEdges);
         _surface.MaterialOverride = MakeMaterial();
-        _edges.MaterialOverride = MakeMaterial();
-        _territoryBoundaries.MaterialOverride = MakeMaterial();
+        _edges.MaterialOverride = MakeCoplanarOverlayMaterial();
+        _territoryBoundaries.MaterialOverride = MakeCoplanarOverlayMaterial();
         _extensionSurface.MaterialOverride = _surface.MaterialOverride;
         _extensionEdges.MaterialOverride = _edges.MaterialOverride;
         // Presentation-only selection overlay. Never creates or replaces a physical tile ID.
         _selectedTileOutline = new MeshInstance3D { Visible = false };
-        _selectedTileOutline.MaterialOverride = MakeMaterial();
+        _selectedTileOutline.MaterialOverride = MakeCoplanarOverlayMaterial();
         _world.AddChild(_selectedTileOutline);
 
         _camera = new Camera3D
@@ -467,6 +470,19 @@ public partial class TacticalContextPreview : SubViewportContainer
         VertexColorUseAsAlbedo = true,
         ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
         CullMode = BaseMaterial3D.CullModeEnum.Disabled
+    };
+
+    // Coplanar lines are drawn in the transparent pass with depth-test
+    // disabled so their vertices can occupy *exactly* the surface plane.
+    // This avoids both 3D lift/parallax and coplanar z-fighting.
+    private static StandardMaterial3D MakeCoplanarOverlayMaterial() => new()
+    {
+        VertexColorUseAsAlbedo = true,
+        ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+        CullMode = BaseMaterial3D.CullModeEnum.Disabled,
+        Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+        NoDepthTest = true,
+        RenderPriority = 1
     };
 
     // Experimental V2 physical classification sampled from ONE canonical G(18,0)
@@ -651,6 +667,26 @@ public partial class TacticalContextPreview : SubViewportContainer
         tool.AddVertex(point);
     }
 
+    // Actual Godot mesh contract for the visual smoke: every displayed
+    // tactical-grid endpoint must be a vertex of the SAME surface mesh,
+    // at identical X/Y/Z. No separately projected or lifted overlay.
+    public bool HasSurfaceAlignedTacticalGrid()
+    {
+        if (_surface?.Mesh is not ArrayMesh faceMesh ||
+            _edges?.Mesh is not ArrayMesh edgeMesh ||
+            faceMesh.GetSurfaceCount() == 0 || edgeMesh.GetSurfaceCount() == 0)
+            return false;
+        var facePositions = faceMesh.SurfaceGetArrays(0)
+            [(int)Mesh.ArrayType.Vertex].AsVector3Array();
+        var linePositions = edgeMesh.SurfaceGetArrays(0)
+            [(int)Mesh.ArrayType.Vertex].AsVector3Array();
+        if (facePositions.Length == 0 || linePositions.Length == 0)
+            return false;
+        var canonicalGeometry = new HashSet<Vector3>(facePositions);
+        return linePositions.All(vertex =>
+            vertex.Y == TacticalSurfacePlaneY && canonicalGeometry.Contains(vertex));
+    }
+
     public void SetEdgesVisible(bool visible)
     {
         if (_edges is not null) _edges.Visible = visible;
@@ -689,8 +725,8 @@ public partial class TacticalContextPreview : SubViewportContainer
         {
             var a = matched.Polygon[i];
             var b = matched.Polygon[(i + 1) % matched.Polygon.Length];
-            AddColored(outline, new Vector3(a.X, 0.0003f, a.Y), tint);
-            AddColored(outline, new Vector3(b.X, 0.0003f, b.Y), tint);
+            AddColored(outline, new Vector3(a.X, TacticalSurfacePlaneY, a.Y), tint);
+            AddColored(outline, new Vector3(b.X, TacticalSurfacePlaneY, b.Y), tint);
         }
         var mesh = outline.Commit();
         outline.Dispose();
@@ -862,8 +898,8 @@ public partial class TacticalContextPreview : SubViewportContainer
         foreach (var edge in physical.FineTopology.Edges)
         {
             if (!edge.IncidentCellIds.Any(selectedPhysical.Contains)) continue;
-            var first = Flatten(geometry.GetVertex(edge.IncidentVertexIds[0]).Position, 0.006f);
-            var second = Flatten(geometry.GetVertex(edge.IncidentVertexIds[1]).Position, 0.006f);
+            var first = Flatten(geometry.GetVertex(edge.IncidentVertexIds[0]).Position);
+            var second = Flatten(geometry.GetVertex(edge.IncidentVertexIds[1]).Position);
             AddColored(lineTool, first, lineColor);
             AddColored(lineTool, second, lineColor);
             edgeCount++;
@@ -882,7 +918,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         var boundaryTint = new Color("#84969a");
         int strategicEdgesRendered = 0;
         int boundarySegments = 0;
-        const float surfaceEpsilon = 0.00035f;
+        const float surfaceEpsilon = TacticalSurfacePlaneY;
         foreach (var path in boundaryPaths)
         {
             var coarseEdge = physical.CoarseTopology.Edges[checked((int)path.StrategicEdgeId.Value - 1)];
@@ -966,7 +1002,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         // A tile outside the new region is deselected rather than inventing an alias.
         SelectPhysicalTile(_selectedFineTileId);
         GD.Print($"GA_TACTICAL_LOCAL_OPEN focus={focusValue} framing_rings={_ringCount} resident_rings={_residentRingCount} frame_tiles={framingTiles.Count} projection={(_equidistant ? "Equidistant" : "Orthographic")} regions={selectedStrategic.Count} physical_tiles={selectedPhysical.Count} triangles={countTriangles} edges={edgeCount} parameters=G(3,0)>G(18,0) duplicate_ids=0");
-        GD.Print($"GA_TACTICAL_TERRITORY_BORDERS_MESH_R1 focus={focusValue} strategic_edges={strategicEdgesRendered} segments={boundarySegments} source=physical_centers surface_epsilon=0.00035 toggle={_showTerritoryBoundaries} movement_unchanged=true");
+        GD.Print($"GA_TACTICAL_TERRITORY_BORDERS_MESH_R1 focus={focusValue} strategic_edges={strategicEdgesRendered} segments={boundarySegments} source=physical_centers surface_epsilon=0 toggle={_showTerritoryBoundaries} movement_unchanged=true");
         GD.Print($"GA_TACTICAL_TERRITORY_SHAPE_ANCHORS_R1 focus={focusValue} anchors=3-2-3 segments={boundarySegments} feature=visual_only highlight=false movement_unchanged=true");
         GD.Print($"GA_TACTICAL_TERRAIN_01C focus={focusValue} visible={_showExperimentalTerrain} seed={TerrainExperimentSeed} land_target=35 physical_reference_cached={_terrainReference is not null} strategic_globe_v1_unchanged=true");
     }

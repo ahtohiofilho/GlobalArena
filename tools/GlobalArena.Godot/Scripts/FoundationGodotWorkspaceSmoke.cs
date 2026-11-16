@@ -68,6 +68,13 @@ internal sealed class FoundationGodotWorkspaceSmoke
                 "the local player did not enter the tactical viewport");
             Must(tactical!.CanonicalPhysicalIncidenceMap is not null,
                 "no canonical G(18,0) physical incidence was opened");
+            // Enable tile edges as in the user's visual report and assert
+            // against actual Godot vertex arrays, not a screenshot impression.
+            Must(tactical.HasSurfaceAlignedTacticalGrid(),
+                "tactical grid vertices drift from the physical tile surface");
+            tactical.SetEdgesVisible(true);
+            GD.Print("GA_NEXT_TACTICAL_GRID_SURFACE_PASS shared_vertices=true " +
+                "height_offset=0 camera_parallax=false");
             Must(globe is not null && !globe.Visible,
                 "planet was shown permanently instead of as a window");
             Must(!planet.Visible && !operations.Visible,
