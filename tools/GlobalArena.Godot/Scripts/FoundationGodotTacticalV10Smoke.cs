@@ -56,6 +56,37 @@ public sealed class FoundationGodotTacticalV10Smoke
     {
         Must(_tactical.TryGetRenderedFineTilePixel(tile, out var pixel),
             $"Fine tile {tile.FineStrategicCellId.Value} is not visible to click");
+        await ClickPoint(pixel);
+        Must(_tactical.SelectedCanonicalPhysicalTileId ==
+                tile.FineStrategicCellId.Value,
+            $"Actual Godot pointer did not select fine tile {tile.FineStrategicCellId.Value}");
+    }
+
+    private async Task HoverBadge(ulong workerId)
+    {
+        Must(_tactical.TryGetWorkerBadgePixel(workerId, out var pixel),
+            $"Individual worker #{workerId} badge is not visible");
+        var point = _tactical.GlobalPosition + pixel;
+        _main.GetViewport().PushInput(new InputEventMouseMotion
+        {
+            Position = point, GlobalPosition = point,
+            Relative = Vector2.Zero, ButtonMask = (MouseButtonMask)0
+        }, inLocalCoords: true);
+        await Frames();
+        Must(_tactical.HoveredWorkerBadgeId == workerId &&
+            _tactical.IsWorkerHoverVisible,
+            $"Hover did not show true individual worker #{workerId} details");
+    }
+
+    private async Task ClickBadge(ulong workerId)
+    {
+        Must(_tactical.TryGetWorkerBadgePixel(workerId, out var pixel),
+            $"Individual worker #{workerId} badge is not visible to click");
+        await ClickPoint(pixel);
+    }
+
+    private async Task ClickPoint(Vector2 pixel)
+    {
         var point = _tactical.GlobalPosition + pixel;
         var viewport = _main.GetViewport();
         viewport.PushInput(new InputEventMouseMotion
@@ -78,9 +109,6 @@ public sealed class FoundationGodotTacticalV10Smoke
             ButtonMask = (MouseButtonMask)0
         }, inLocalCoords: true);
         await Frames();
-        Must(_tactical.SelectedCanonicalPhysicalTileId ==
-                tile.FineStrategicCellId.Value,
-            $"Actual Godot pointer did not select fine tile {tile.FineStrategicCellId.Value}");
     }
 
     private async Task Capture(string stage)
@@ -141,7 +169,10 @@ public sealed class FoundationGodotTacticalV10Smoke
                 "Worker #2 marker missing or aliased");
 
             var before = _host.StateHash;
-            await ClickTile(b.TacticalTileId!.Value);
+            await HoverBadge(2UL);
+            Must(_host.StateHash == before,
+                "Worker badge hover mutated canonical v10 state");
+            await ClickBadge(2UL);
             Must(_main.SelectedTacticalWorkerId == 2UL &&
                  _host.StateHash == before,
                 "Clicking worker #2 must select its actual identity without mutation");
@@ -156,7 +187,7 @@ public sealed class FoundationGodotTacticalV10Smoke
                 "Dock displays a strategic alias or a guessed fine tile");
             await Capture("01_worker_roster");
 
-            await ClickTile(source);
+            await ClickBadge(1UL);
             Must(_main.SelectedTacticalWorkerId == 1UL,
                 "Clicking own worker #1 did not change active selection");
 
@@ -234,6 +265,9 @@ public sealed class FoundationGodotTacticalV10Smoke
             await KeyPress(Key.Escape);
             Must(!planet!.Visible && operations!.Visible,
                 "Esc did not close the floating window before the dock");
+            GD.Print("GA_NEXT_WORKER_BADGE_VS16_PASS " +
+                "surface=coplanar camera_pitch=preserved " +
+                "hover=worker2 individual_click=true state_mutation=false");
             GD.Print("GA_NEXT_TACTICAL_V10_E2E_PASS " +
                 "markers=authoritative_fine map_selection=true " +
                 "G=adjacent_queue X=cancel P=production E=collective " +
