@@ -169,7 +169,9 @@ public sealed class PhysicalTacticalWorkerMoveEventExecutor : ISimulationEventEx
                 ev.Destination, ev.ResultingPresentationRegion, ev.NextActivity)
             : w).ToArray();
         return state.WithWorkers(new PhysicalWorkerRuntimeState(
-            newWorkers, tacticalLocationsAuthoritative: true)).AdvanceRevision();
+            newWorkers, tacticalLocationsAuthoritative: true,
+            occupationsAuthoritative: state.Workers.HasAuthoritativeOccupations))
+            .AdvanceRevision();
     }
 }
 
