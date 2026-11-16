@@ -274,7 +274,7 @@ internal sealed class FoundationGodotWorkspaceSmoke
         global::Godot.Input.ParseInputEvent(new InputEventMouseMotion
         {
             Position = from, GlobalPosition = from,
-            Relative = Vector2.Zero, ButtonMask = MouseButtonMask.None
+            Relative = Vector2.Zero, ButtonMask = (MouseButtonMask)0
         });
         await WaitFrame();
         global::Godot.Input.ParseInputEvent(new InputEventMouseButton
@@ -294,7 +294,7 @@ internal sealed class FoundationGodotWorkspaceSmoke
         {
             ButtonIndex = MouseButton.Left, Pressed = false,
             Position = to, GlobalPosition = to,
-            ButtonMask = MouseButtonMask.None
+            ButtonMask = (MouseButtonMask)0
         });
         await WaitFrame();
     }
