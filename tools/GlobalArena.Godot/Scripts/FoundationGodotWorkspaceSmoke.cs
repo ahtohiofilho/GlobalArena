@@ -106,7 +106,7 @@ internal sealed class FoundationGodotWorkspaceSmoke
     // framebuffer, not a synthetic mock. Headless test skips this explicitly.
     private async Task CaptureRenderedViewIfRequested(string stage)
     {
-        var directory = Environment.GetEnvironmentVariable("GA_NEXT_WORKSPACE_SCREENSHOT_DIR");
+        var directory = System.Environment.GetEnvironmentVariable("GA_NEXT_WORKSPACE_SCREENSHOT_DIR");
         if (string.IsNullOrWhiteSpace(directory)) return;
         Directory.CreateDirectory(directory);
         for (var i = 0; i < 4; i++)
