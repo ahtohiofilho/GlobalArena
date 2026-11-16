@@ -143,6 +143,29 @@ public static class GaVisualFoundation
         row.AddChild(exit);
     }
 
+    /// <summary>Compact reusable, read-only data tile; caller supplies
+    /// an authoritative value and refreshes its label after each commit.</summary>
+    public static PanelContainer CreateMetric(
+        string caption, string initialValue, out Label value)
+    {
+        var card = new PanelContainer
+        {
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
+        };
+        card.AddThemeStyleboxOverride("panel",
+            SurfaceBox(Raised, AccentDim, radius: 4, borderWidth: 1,
+                innerPadding: 7));
+        var stack = new VBoxContainer();
+        stack.AddThemeConstantOverride("separation", 2);
+        card.AddChild(stack);
+        stack.AddChild(Caption(caption));
+        value = new Label { Text = initialValue };
+        value.AddThemeFontSizeOverride("font_size", 18);
+        value.AddThemeColorOverride("font_color", Text);
+        stack.AddChild(value);
+        return card;
+    }
+
     public static void StylePrimaryAction(Button button)
     {
         button.AddThemeStyleboxOverride("normal",
