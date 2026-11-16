@@ -532,6 +532,7 @@ public partial class Main : Control
         };
         header.AddChild(_compactTurnPulse);
         var quickEnd = new Button { Text = "E | END TURN" };
+        GaVisualFoundation.StylePrimaryAction(quickEnd);
         quickEnd.Pressed += OnLocalTurnEndRequested;
         header.AddChild(quickEnd);
 
@@ -551,18 +552,13 @@ public partial class Main : Control
             OffsetLeft = -460f, OffsetRight = -16f
         };
         operations.AddChild(operationsPanel);
+        operationsPanel.AddThemeStyleboxOverride("panel", GaVisualFoundation.WindowSurface());
         var operationsColumn = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
         operationsPanel.AddChild(operationsColumn);
-        var operationsTitle = new HBoxContainer();
-        operationsColumn.AddChild(operationsTitle);
-        operationsTitle.AddChild(new Label
-        {
-            Text = "OPERATIONS | TACTICAL WORKSPACE",
-            SizeFlagsHorizontal = SizeFlags.ExpandFill
-        });
-        var closeOperations = new Button { Text = "X" };
-        closeOperations.Pressed += () => operations.Visible = false;
-        operationsTitle.AddChild(closeOperations);
+        GaVisualFoundation.AddWindowHeader(
+            operationsColumn, "GA / COMMAND DESK", "Operational workspace",
+            "People · orders · administrative intelligence",
+            () => operations.Visible = false);
         rightPanel.Reparent(operationsColumn);
         rightPanel.CustomMinimumSize = Vector2.Zero;
         rightPanel.SizeFlagsVertical = SizeFlags.ExpandFill;
@@ -578,7 +574,7 @@ public partial class Main : Control
         planet.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         var veil = new ColorRect
         {
-            Color = new Color(0f, 0f, 0f, 0.63f),
+            Color = new Color("#04121ce8"),
             MouseFilter = MouseFilterEnum.Stop
         };
         planet.AddChild(veil);
@@ -590,18 +586,13 @@ public partial class Main : Control
             AnchorTop = 0.07f, AnchorBottom = 0.92f
         };
         planet.AddChild(planetPanel);
+        planetPanel.AddThemeStyleboxOverride("panel", GaVisualFoundation.WindowSurface());
         var planetColumn = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
         planetPanel.AddChild(planetColumn);
-        var planetTitle = new HBoxContainer();
-        planetColumn.AddChild(planetTitle);
-        planetTitle.AddChild(new Label
-        {
-            Text = "PLANETARY MAP | select a region to navigate",
-            SizeFlagsHorizontal = SizeFlags.ExpandFill
-        });
-        var closePlanet = new Button { Text = "X / ESC" };
-        closePlanet.Pressed += ClosePlanetWindow;
-        planetTitle.AddChild(closePlanet);
+        GaVisualFoundation.AddWindowHeader(
+            planetColumn, "GA / PLANETARY ATLAS", "Strategic navigation",
+            "Select a region · return to tactical operations",
+            ClosePlanetWindow);
         var planetSlot = new AspectRatioContainer
         {
             Ratio = 1f,
@@ -645,33 +636,42 @@ public partial class Main : Control
     public override void _Ready()
     {
         GD.Print("GA_PROD_MAIN_READY_R6");
+        // Centralized production-oriented styling; Godot Theme is the owner
+        // of interactive states rather than per-screen debug colors.
+        Theme = GaVisualFoundation.BuildTheme();
         // Prioritize a maximized production window; preserve windowed resizing and avoid headless changes.
         if (DisplayServer.GetName() != "headless")
             DisplayServer.WindowSetMode(DisplayServer.WindowMode.Maximized);
-        var backdrop = new ColorRect { Color = new Color("#0a1725"), MouseFilter = MouseFilterEnum.Ignore };
+        var backdrop = new ColorRect { Color = GaVisualFoundation.Background, MouseFilter = MouseFilterEnum.Ignore };
         backdrop.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(backdrop);
 
         var frame = new MarginContainer();
         frame.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        frame.AddThemeConstantOverride("margin_left", 20);
-        frame.AddThemeConstantOverride("margin_right", 20);
-        frame.AddThemeConstantOverride("margin_top", 16);
-        frame.AddThemeConstantOverride("margin_bottom", 16);
+        frame.AddThemeConstantOverride("margin_left", 12);
+        frame.AddThemeConstantOverride("margin_right", 12);
+        frame.AddThemeConstantOverride("margin_top", 8);
+        frame.AddThemeConstantOverride("margin_bottom", 8);
         AddChild(frame);
 
         _layoutDiagnosticFrame = frame;
         var root = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
         _layoutDiagnosticRoot = root;
-        root.AddThemeConstantOverride("separation", 12);
+        root.AddThemeConstantOverride("separation", 7);
         frame.AddChild(root);
 
         var header = new HBoxContainer();
-        header.AddThemeConstantOverride("separation", 20);
+        header.AddThemeConstantOverride("separation", 10);
+        header.AddChild(new ColorRect
+        {
+            Color = GaVisualFoundation.Accent,
+            CustomMinimumSize = new Vector2(3, 32),
+            MouseFilter = MouseFilterEnum.Ignore
+        });
         root.AddChild(header);
         var title = new Label { Text = "GLOBAL ARENA" };
-        title.AddThemeFontSizeOverride("font_size", 28);
-        title.AddThemeColorOverride("font_color", new Color("#d9e9f4"));
+        title.AddThemeFontSizeOverride("font_size", 22);
+        title.AddThemeColorOverride("font_color", GaVisualFoundation.Text);
         header.AddChild(title);
         var subtitle = new Label { Text = "Planetary strategy  |  Production foundation", SizeFlagsHorizontal = SizeFlags.ExpandFill, VerticalAlignment = VerticalAlignment.Center };
         subtitle.AddThemeColorOverride("font_color", new Color("#7eabc4"));
@@ -681,20 +681,21 @@ public partial class Main : Control
         header.AddChild(button);
 
         var content = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        content.AddThemeConstantOverride("separation", 12);
+        content.AddThemeConstantOverride("separation", 0);
         root.AddChild(content);
 
-        // GA-UI-MVP-SQUARE: the layout column stretches; its map remains 1:1.
-        // AspectRatioContainer defaults to centered FIT, without clipping either viewport.
-        var squareMapSlot = new AspectRatioContainer
+        // Production-ready shell: the TACTICAL viewport owns the full
+        // available landscape rectangle, never an AspectRatioContainer 1:1.
+        // The spherical planetary globe can keep a square framing inside
+        // its separate modal; that does not constrain the main gameplay.
+        var mapRegion = new PanelContainer
         {
-            Ratio = 1f,
+            Name = "GANextWideTacticalCanvas",
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill
         };
-        content.AddChild(squareMapSlot);
-        var mapRegion = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
-        squareMapSlot.AddChild(mapRegion);
+        mapRegion.AddThemeStyleboxOverride("panel", GaVisualFoundation.MapFrame());
+        content.AddChild(mapRegion);
         var globe = new GlobePreview
         {
             Name = "GANextPlanetGlobe",
@@ -932,7 +933,8 @@ public partial class Main : Control
         GD.Print("GA_UI_CALIBRATION_ACCESS_READY_01 fixed-controls=true");
 
         _status = new Label { Text = "GA-UI-FOUNDATION-01  |  Map and context areas separated" };
-        _status.AddThemeColorOverride("font_color", new Color("#90a9bc"));
+        _status.AddThemeColorOverride("font_color", GaVisualFoundation.Muted);
+        _status.AddThemeFontSizeOverride("font_size", 11);
         root.AddChild(_status);
         GD.Print("GA_UI_FOUNDATION_READY_01 layout=map,sidebar,header,footer");
         GD.Print("GA_UI_FOUNDATION_RESIZE_READY_02 responsive=true");
@@ -968,7 +970,9 @@ public partial class Main : Control
                        "E still closes the human + AI turn; G/P/X moves are not offered here.",
                 AutowrapMode = TextServer.AutowrapMode.WordSmart
             });
-            _status!.Text = "GA-NEXT TACTICAL WORKSPACE | M planet | TAB panels | E turn";
+            _status!.Text = "GA-NEXT / VISUAL FOUNDATION 01    •    M planetary atlas    •    TAB operations    •    E collective turn";
+            GD.Print("GA_VISUAL_FOUNDATION_01_READY tactical_rectangular=true theme_tokens=true " +
+                "windows=chrome native_windows=false game_authority=untouched");
             RefreshLocalWorkerOrderControls();
             GD.Print($"GA_NEXT_TACTICAL_ENTRY_PASS local_civ={_localFoundation.PlayerCivilization.Value} " +
                 $"worker={first.Id.Value} coarse_preview_focus={first.CellId.Value} " +
