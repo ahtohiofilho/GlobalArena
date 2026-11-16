@@ -147,7 +147,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
                 worker.TacticalTileId.Value.FineGoldbergParameters !=
                     incidence.Refinement.FineParameters))
             throw new InvalidOperationException(
-                "Tactical collective host requires authoritative v10 workers " +
+                "Tactical collective host requires authoritative v10/v11 workers " +
                 "in the exact fine topology of the bound generated world.");
 
         _participants = Snapshot.Civilizations.Civilizations
@@ -345,9 +345,11 @@ public sealed class FoundationTacticalHumanAiTurnHost
             .Replay(new SimulationReplayInput(
                 before, resolved.EventLog, context));
         var hash = _hasher.Compute(Snapshot);
-        if (hash.FormatVersion != 10U || _hasher.Compute(replay) != hash)
+        if (hash.FormatVersion != _hasher.Compute(before).FormatVersion ||
+            (hash.FormatVersion != 10U && hash.FormatVersion != 11U) ||
+            _hasher.Compute(replay) != hash)
             throw new InvalidOperationException(
-                "Tactical collective journal replay does not match v10 authority.");
+                "Tactical collective journal replay does not match v10/v11 authority.");
         var receipt = new FoundationTacticalCollectiveReceipt(
             turn, hash, Snapshot.Revision, events);
         foreach (var plan in _plans.Values) plan.Clear();

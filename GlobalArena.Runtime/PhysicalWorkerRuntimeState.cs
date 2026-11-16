@@ -30,6 +30,20 @@ public enum PhysicalWorkerActivity : uint
 }
 
 /// <summary>
+/// v11 physical-worker productive occupation (WHAT the individual works on).
+/// Distinct from Producing/Traveling/Military (WHAT the individual is doing).
+/// These roles are not derived from CommodityId or from the legacy economic
+/// point TradeLogistics enum. Unassigned is explicit for non-producers.
+/// </summary>
+public enum PhysicalWorkerOccupation : uint
+{
+    Unassigned = 0,
+    Agriculture = 1,
+    Forestry = 2,
+    Mining = 3
+}
+
+/// <summary>
 /// All accounting quantities are integer micro-units (1e6); authoritative
 /// worker facts never contain doubles. Multipliers apply to demand exactly
 /// once at the worker's current physical cell, even during travel/military.
@@ -48,16 +62,25 @@ public sealed record PhysicalWorkerRuntimeRecord
     // a coarse compatibility/presentation region when this is present.
     public PhysicalTacticalTileId? TacticalTileId { get; }
 
+    // v11 opt-in. Null = schema v8/v9/v10 with no occupation assigned,
+    // NOT an actual occupation of Unassigned.
+    public PhysicalWorkerOccupation? Occupation { get; }
+
     public PhysicalWorkerRuntimeRecord(
         PhysicalWorkerId id, CivilizationId owner, StrategicCellId cellId,
         CommodityId commodity, ulong outputMicroPerTurn,
         PhysicalWorkerActivity activity, uint demandMultiplierMicro = 1_000_000U,
-        PhysicalTacticalTileId? tacticalTileId = null)
+        PhysicalTacticalTileId? tacticalTileId = null,
+        PhysicalWorkerOccupation? occupation = null)
     {
         if (!id.IsValid || !owner.IsValid || !cellId.IsValid ||
             !commodity.IsValid || !Enum.IsDefined(activity) ||
             demandMultiplierMicro == 0U ||
-            (tacticalTileId.HasValue && !tacticalTileId.Value.IsValid))
+            (tacticalTileId.HasValue && !tacticalTileId.Value.IsValid) ||
+            (occupation.HasValue && (!tacticalTileId.HasValue ||
+                !Enum.IsDefined(occupation.Value) ||
+                (activity == PhysicalWorkerActivity.Producing &&
+                 occupation.Value == PhysicalWorkerOccupation.Unassigned))))
             throw new ArgumentException("Invalid physical worker identity, location or policy.");
 
         Id = id;
@@ -68,6 +91,7 @@ public sealed record PhysicalWorkerRuntimeRecord
         Activity = activity;
         DemandMultiplierMicro = demandMultiplierMicro;
         TacticalTileId = tacticalTileId;
+        Occupation = occupation;
     }
 
     public PhysicalWorkerRuntimeRecord WithLocationAndActivity(
@@ -77,7 +101,7 @@ public sealed record PhysicalWorkerRuntimeRecord
             throw new InvalidOperationException(
                 "v10 physical workers cannot move via v9 coarse Goldberg cells.");
         return new(Id, Owner, cell, Commodity, OutputMicroPerTurn,
-            activity, DemandMultiplierMicro);
+            activity, DemandMultiplierMicro, occupation: Occupation);
     }
 
     public PhysicalWorkerRuntimeRecord WithTacticalLocationAndActivity(
@@ -90,7 +114,7 @@ public sealed record PhysicalWorkerRuntimeRecord
             throw new InvalidOperationException(
                 "Tactical movement requires an existing compatible v10 position.");
         return new(Id, Owner, presentationRegion, Commodity, OutputMicroPerTurn,
-            activity, DemandMultiplierMicro, destination);
+            activity, DemandMultiplierMicro, destination, Occupation);
     }
 }
 
@@ -106,19 +130,22 @@ public sealed class PhysicalWorkerRuntimeState
     public static PhysicalWorkerRuntimeState Uninitialized => Missing;
     public bool IsInitialized { get; }
     public bool HasAuthoritativeTacticalLocations { get; }
+    public bool HasAuthoritativeOccupations { get; }
     public IReadOnlyList<PhysicalWorkerRuntimeRecord> Workers { get; }
 
     public PhysicalWorkerRuntimeState(
         IEnumerable<PhysicalWorkerRuntimeRecord> workers,
-        bool tacticalLocationsAuthoritative = false)
+        bool tacticalLocationsAuthoritative = false,
+        bool occupationsAuthoritative = false)
         : this(true, (workers ?? throw new ArgumentNullException(nameof(workers))).ToArray(),
-            tacticalLocationsAuthoritative)
+            tacticalLocationsAuthoritative, occupationsAuthoritative)
     {
     }
 
     private PhysicalWorkerRuntimeState(
         bool initialized, PhysicalWorkerRuntimeRecord[] workers,
-        bool tacticalLocationsAuthoritative = false)
+        bool tacticalLocationsAuthoritative = false,
+        bool occupationsAuthoritative = false)
     {
         if (!initialized && workers.Length != 0)
             throw new InvalidOperationException("Missing worker census must be empty.");
@@ -130,6 +157,13 @@ public sealed class PhysicalWorkerRuntimeState
         if (workers.Any(x => x.TacticalTileId.HasValue != tacticalLocationsAuthoritative))
             throw new ArgumentException(
                 "Tactical worker positions must be complete and explicitly opted into v10.");
+        if (occupationsAuthoritative && !tacticalLocationsAuthoritative)
+            throw new ArgumentException(
+                "Productive occupations require authoritative physical tactical tiles.");
+        if (workers.Any(x => x.Occupation.HasValue != occupationsAuthoritative))
+            throw new ArgumentException(
+                "Worker occupations must be homogeneous and explicitly opted into v11.");
+
         if (tacticalLocationsAuthoritative && workers.Length > 0)
         {
             var parameters = workers[0].TacticalTileId!.Value.FineGoldbergParameters;
@@ -148,6 +182,7 @@ public sealed class PhysicalWorkerRuntimeState
 
         IsInitialized = initialized;
         HasAuthoritativeTacticalLocations = tacticalLocationsAuthoritative;
+        HasAuthoritativeOccupations = occupationsAuthoritative;
         Workers = Array.AsReadOnly(sorted);
     }
 }

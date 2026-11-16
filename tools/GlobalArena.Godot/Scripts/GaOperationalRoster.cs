@@ -18,7 +18,8 @@ public readonly record struct GaWorkerRosterRow(
     ulong CommodityId,
     ulong OutputMicroPerTurn,
     long DemandMultiplierMicro,
-    ulong? FineTileId = null);
+    ulong? FineTileId = null,
+    string? OccupationName = null);
 
 public partial class GaOperationalRoster : VBoxContainer
 {
@@ -97,7 +98,9 @@ public partial class GaOperationalRoster : VBoxContainer
             {
                 Name = $"GANextWorkerRow_{id}",
                 Text = worker.FineTileId.HasValue
-                    ? $"#{id}   {worker.Activity}   ·   G(18,0)/{worker.FineTileId.Value}"
+                    ? worker.OccupationName is not null
+                        ? $"#{id}  {worker.OccupationName} · {worker.Activity} · T{worker.FineTileId.Value}"
+                        : $"#{id}   {worker.Activity}   ·   G(18,0)/{worker.FineTileId.Value}"
                     : $"#{id}   {worker.Activity}    ·    Region T{worker.CoarseRegionId}",
                 Alignment = HorizontalAlignment.Left,
                 CustomMinimumSize = new Vector2(0f, 27f),
@@ -135,10 +138,13 @@ public partial class GaOperationalRoster : VBoxContainer
         var demand = (selected.DemandMultiplierMicro / 1_000_000m)
             .ToString("0.###", CultureInfo.InvariantCulture);
         _details.Text = $"SELECTED  #{selected.WorkerId}  ·  {selected.Activity}\n" +
+            (selected.OccupationName is not null
+                ? $"Atividade econômica: {selected.OccupationName}\n" : "") +
             $"Item {selected.CommodityId}   |   Capacity {output}/turn   |   Demand ×{demand}\n" +
             $"Known region: G(3,0) T{selected.CoarseRegionId}\n" +
             (selected.FineTileId.HasValue
-                ? $"Exact tactical G(18,0) tile: {selected.FineTileId.Value} (v10).\n" +
+                ? $"Exact tactical G(18,0) tile: {selected.FineTileId.Value} " +
+                  $"(v{(selected.OccupationName is null ? 10 : 11)}).\n" +
                   "Click an adjacent hex, then G to queue a real fine-edge move."
                 : "Exact tactical G(18,0) tile: unavailable (v9). Movement locked.");
     }

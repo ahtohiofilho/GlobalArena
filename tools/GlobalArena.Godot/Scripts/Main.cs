@@ -326,11 +326,11 @@ public partial class Main : Control
             !pendingOrders.Any(order => order.WorkerId == chosen.Id);
         _localEndTurnButton.Disabled = false;
         _localTurnLabel.Text =
-            $"TACTICAL HUMAN + AI v10 | turn {host.NextTurn.Value} | " +
+            $"TACTICAL HUMAN + AI v{host.StateHash.FormatVersion} | turn {host.NextTurn.Value} | " +
             $"rev {host.Snapshot.Revision} | Human Civ {_humanCivilization.Value}";
         if (_compactTurnPulse is not null)
             _compactTurnPulse.Text =
-                $"TURN {host.NextTurn.Value} | REV {host.Snapshot.Revision} | Human + IA v10";
+                $"TURN {host.NextTurn.Value} | REV {host.Snapshot.Revision} | Human + IA v{host.StateHash.FormatVersion}";
         if (_metricTurn is not null)
             _metricTurn.Text = host.NextTurn.Value.ToString();
         if (_metricHumanWorkers is not null)
@@ -352,7 +352,17 @@ public partial class Main : Control
                 worker.Id.Value, worker.CellId.Value,
                 worker.Activity.ToString(), worker.Commodity.Value,
                 worker.OutputMicroPerTurn, worker.DemandMultiplierMicro,
-                worker.TacticalTileId!.Value.FineStrategicCellId.Value)).ToArray(),
+                worker.TacticalTileId!.Value.FineStrategicCellId.Value,
+                worker.Occupation switch
+                {
+                    PhysicalWorkerOccupation.Agriculture => "Agricultura",
+                    PhysicalWorkerOccupation.Forestry => "Extração vegetal",
+                    PhysicalWorkerOccupation.Mining => "Mineração",
+                    PhysicalWorkerOccupation.Unassigned => "Não atribuída",
+                    null => null,
+                    _ => throw new System.InvalidOperationException(
+                        "Invalid productive worker occupation")
+                })).ToArray(),
             _selectedLocalWorkerId, host.Snapshot.Revision);
         _tacticalPreview?.PresentAuthoritativeWorkers(
             host.Snapshot.Workers, _selectedLocalWorkerId);
@@ -1322,12 +1332,20 @@ public partial class Main : Control
             // fine v10 demo with a real collective human+AI host.
             bool legacyWorkspaceSmoke = System.Environment.GetEnvironmentVariable(
                 "GA_NEXT_WORKSPACE_SMOKE") == "1";
+            // Keep the v10 graphical E2E as a standalone compatibility
+            // fixture; ordinary play and the new v11 E2E opt into an
+            // explicit, six-worker occupation migration.
+            bool legacyV10Smoke = System.Environment.GetEnvironmentVariable(
+                "GA_NEXT_TACTICAL_V10_SMOKE") == "1";
             if (!legacyWorkspaceSmoke)
             {
-                _tacticalHost = FoundationTacticalDemoScenario
-                    .CreateLocalHumanAiPreview(new WorldGenerationRequest(
-                        new WorldSeed(20261012UL), WorldGenerationVersion.Initial,
-                        new GoldbergParameters(3, 0)));
+                var request = new WorldGenerationRequest(
+                    new WorldSeed(20261012UL), WorldGenerationVersion.Initial,
+                    new GoldbergParameters(3, 0));
+                _tacticalHost = legacyV10Smoke
+                    ? FoundationTacticalDemoScenario.CreateLocalHumanAiPreview(request)
+                    : FoundationTacticalDemoScenario
+                        .CreateLocalHumanAiOccupationPreview(request);
                 _canonicalSession = _tacticalHost.Session;
                 AttachRuntimeState(_tacticalHost.Snapshot);
             }
@@ -1374,12 +1392,12 @@ public partial class Main : Control
                     "Click your worker, click an adjacent G(18,0) tile, then G. " +
                     "P resumes production; E closes human + AI together.";
                 GD.Print("GA_NEXT_FINE_VISUAL_BRIDGE_READY " +
-                    "world=v10 worker_ids=6 physical_tiles=G(18,0) " +
+                    $"world=v{_tacticalHost.StateHash.FormatVersion} worker_ids=6 physical_tiles=G(18,0) " +
                     "inputs=G/P/X/E gameplay_economy=not_active");
             }
             _status!.Text = _tacticalHost is null
                 ? "GA-NEXT / WORKFORCE 01  •  TAB personnel  •  M planetary atlas  •  E collective turn"
-                : "GA-NEXT / TACTICAL V10  •  G step  •  P produce  •  X cancel  •  E collective";
+                : $"GA-NEXT / TACTICAL V{_tacticalHost.StateHash.FormatVersion}  •  G step  •  P produce  •  X cancel  •  E collective";
             GD.Print("GA_VISUAL_FOUNDATION_01_READY tactical_rectangular=true theme_tokens=true " +
                 "windows=chrome native_windows=false game_authority=untouched");
             RefreshLocalWorkerOrderControls();
@@ -1389,10 +1407,14 @@ public partial class Main : Control
                 "tactical_visible=true");
             if (legacyWorkspaceSmoke)
                 _ = new FoundationGodotWorkspaceSmoke(this, _localFoundation!).RunAsync();
-            if (System.Environment.GetEnvironmentVariable(
-                "GA_NEXT_TACTICAL_V10_SMOKE") == "1" && _tacticalHost is not null)
+            if (legacyV10Smoke && _tacticalHost is not null)
                 _ = new FoundationGodotTacticalV10Smoke(
                     this, _tacticalHost, _tacticalPreview!).RunAsync();
+            else if (System.Environment.GetEnvironmentVariable(
+                "GA_NEXT_TACTICAL_V11_SMOKE") == "1" && _tacticalHost is not null)
+                _ = new FoundationGodotTacticalV10Smoke(
+                    this, _tacticalHost, _tacticalPreview!,
+                    expectedFormatVersion: 11U).RunAsync();
         }
 
         // Only the explicit CI environment starts the historical E2E.

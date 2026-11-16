@@ -246,6 +246,10 @@ public sealed class WorldState
             workers.HasAuthoritativeTacticalLocations)
             throw new InvalidOperationException(
                 "Changing worker location schema requires explicit tactical deployment.");
+        if (Workers.HasAuthoritativeOccupations !=
+            workers.HasAuthoritativeOccupations)
+            throw new InvalidOperationException(
+                "Changing worker occupation schema requires explicit full-census classification.");
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
             Economy, Population, Warfare, workers);
@@ -306,6 +310,48 @@ public sealed class WorldState
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
             Economy, Population, Warfare, tacticalWorkers);
+    }
+
+    /// <summary>
+    /// Explicit v10->v11 all-worker productive classification. Does not
+    /// invent workforce, output, production, demand, commodity or positions.
+    /// Classification may only occur at a schema migration boundary,
+    /// never implicitly from a commodity or a rendering component.
+    /// </summary>
+    public WorldState ClassifyTacticalWorkerOccupations(
+        IReadOnlyDictionary<PhysicalWorkerId, PhysicalWorkerOccupation> assignments)
+    {
+        ArgumentNullException.ThrowIfNull(assignments);
+        if (WorldBinding is null || !Workers.IsInitialized ||
+            !Workers.HasAuthoritativeTacticalLocations ||
+            Workers.HasAuthoritativeOccupations)
+            throw new InvalidOperationException(
+                "Occupation deployment requires an already-bound v10 fine worker census.");
+        if (Workers.Workers.Count != assignments.Count ||
+            Workers.Workers.Any(worker => !assignments.ContainsKey(worker.Id)) ||
+            assignments.Keys.Any(id => !id.IsValid))
+            throw new InvalidOperationException(
+                "Every canonical physical worker needs exactly one occupation assignment.");
+
+        var recategorized = new PhysicalWorkerRuntimeState(
+            Workers.Workers.Select(worker =>
+            {
+                var occupation = assignments[worker.Id];
+                if (!Enum.IsDefined(occupation) ||
+                    (worker.Activity == PhysicalWorkerActivity.Producing &&
+                        occupation == PhysicalWorkerOccupation.Unassigned))
+                    throw new InvalidOperationException(
+                        "Invalid or missing productive occupation for active worker.");
+                return new PhysicalWorkerRuntimeRecord(
+                    worker.Id, worker.Owner, worker.CellId,
+                    worker.Commodity, worker.OutputMicroPerTurn,
+                    worker.Activity, worker.DemandMultiplierMicro,
+                    worker.TacticalTileId, occupation);
+            }), tacticalLocationsAuthoritative: true,
+            occupationsAuthoritative: true);
+        return new WorldState(
+            Revision, WorldBinding, Civilizations, Territory, Diplomacy,
+            Economy, Population, Warfare, recategorized);
     }
 
     public WorldState AdvanceRevision()

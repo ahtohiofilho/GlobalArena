@@ -53,7 +53,20 @@ public static class FoundationTacticalInitialDeployment
 public static class FoundationTacticalDemoScenario
 {
     public static FoundationTacticalHumanAiTurnHost CreateLocalHumanAiPreview(
-        WorldGenerationRequest request)
+        WorldGenerationRequest request) =>
+        CreatePreviewCore(request, classifyOccupations: false);
+
+    /// <summary>
+    /// v11 demonstration only: explicit occupational assignments for the
+    /// six EXISTING people. This does not imply that CommodityId 1/2 maps
+    /// uniquely to farming/forestry/mining or that terrain has been zoned.
+    /// </summary>
+    public static FoundationTacticalHumanAiTurnHost
+        CreateLocalHumanAiOccupationPreview(WorldGenerationRequest request) =>
+        CreatePreviewCore(request, classifyOccupations: true);
+
+    private static FoundationTacticalHumanAiTurnHost CreatePreviewCore(
+        WorldGenerationRequest request, bool classifyOccupations)
     {
         ArgumentNullException.ThrowIfNull(request);
         // This foundation scenario already has six individually identified
@@ -88,6 +101,22 @@ public static class FoundationTacticalDemoScenario
             selected.Add(worker.Id, regionTiles.Dequeue());
         }
         FoundationTacticalInitialDeployment.Deploy(session, map, selected);
+        if (classifyOccupations)
+        {
+            // These are scenario-authored roles, not rules inferred from
+            // item IDs or from the old EconomicPoint activity model.
+            var roles = new Dictionary<PhysicalWorkerId, PhysicalWorkerOccupation>
+            {
+                [new PhysicalWorkerId(1UL)] = PhysicalWorkerOccupation.Agriculture,
+                [new PhysicalWorkerId(2UL)] = PhysicalWorkerOccupation.Forestry,
+                [new PhysicalWorkerId(3UL)] = PhysicalWorkerOccupation.Unassigned,
+                [new PhysicalWorkerId(4UL)] = PhysicalWorkerOccupation.Mining,
+                [new PhysicalWorkerId(5UL)] = PhysicalWorkerOccupation.Agriculture,
+                [new PhysicalWorkerId(6UL)] = PhysicalWorkerOccupation.Unassigned
+            };
+            session.AcceptSnapshot(session.Snapshot
+                .ClassifyTacticalWorkerOccupations(roles));
+        }
         return new FoundationTacticalHumanAiTurnHost(
             session, map, new[] { v9.PlayerCivilization },
             new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy>

@@ -16,14 +16,19 @@ public sealed class FoundationGodotTacticalV10Smoke
     private readonly FoundationTacticalHumanAiTurnHost _host;
     private readonly TacticalContextPreview _tactical;
     private static readonly CivilizationId Human = new(1UL);
+    private readonly uint _expectedFormatVersion;
 
     public FoundationGodotTacticalV10Smoke(Main main,
         FoundationTacticalHumanAiTurnHost host,
-        TacticalContextPreview tactical)
+        TacticalContextPreview tactical,
+        uint expectedFormatVersion = 10U)
     {
         _main = main;
         _host = host;
         _tactical = tactical;
+        if (expectedFormatVersion != 10U && expectedFormatVersion != 11U)
+            throw new ArgumentException("Unknown canonical tactical worker smoke version.");
+        _expectedFormatVersion = expectedFormatVersion;
     }
 
     private static void Must(bool condition, string message)
@@ -114,7 +119,9 @@ public sealed class FoundationGodotTacticalV10Smoke
     private async Task Capture(string stage)
     {
         var dir = System.Environment.GetEnvironmentVariable(
-            "GA_NEXT_TACTICAL_V10_SCREENSHOT_DIR");
+            _expectedFormatVersion == 11U
+                ? "GA_NEXT_TACTICAL_V11_SCREENSHOT_DIR"
+                : "GA_NEXT_TACTICAL_V10_SCREENSHOT_DIR");
         if (string.IsNullOrWhiteSpace(dir)) return;
         Directory.CreateDirectory(dir);
         await Frames();
@@ -125,8 +132,8 @@ public sealed class FoundationGodotTacticalV10Smoke
         var file = Path.Combine(dir!, stage + ".png");
         var result = image.SavePng(file);
         Must(result == Error.Ok && new FileInfo(file).Length > 1500,
-            "Could not write real v10 tactical screenshot");
-        GD.Print($"GA_NEXT_V10_RENDER_FRAME_PASS stage={stage} " +
+            "Could not write real fine tactical screenshot");
+        GD.Print($"GA_NEXT_V{_expectedFormatVersion}_RENDER_FRAME_PASS stage={stage} " +
             $"width={image.GetWidth()} height={image.GetHeight()}");
     }
 
@@ -144,10 +151,10 @@ public sealed class FoundationGodotTacticalV10Smoke
             Must(roster is not null && operations is not null && planet is not null,
                 "v10 UI missing operational dock or atlas");
             Must(_main.ActiveTacticalHost == _host &&
-                 _host.StateHash.FormatVersion == 10U &&
+                 _host.StateHash.FormatVersion == _expectedFormatVersion &&
                  _host.Snapshot.Workers.Workers.Count == 6 &&
                  _host.Snapshot.Workers.HasAuthoritativeTacticalLocations,
-                "Godot is not attached to authoritative v10 physical workers");
+                "Godot is not attached to expected-format authoritative fine workers");
             Must(_tactical.CanonicalPhysicalIncidenceMap is not null &&
                  _tactical.VisibleWorkerMarkerCount >= 2,
                 "Real tactical viewport has no individually identified v10 markers");
@@ -169,7 +176,23 @@ public sealed class FoundationGodotTacticalV10Smoke
                 "Worker #2 marker missing or aliased");
 
             var before = _host.StateHash;
+            if (_expectedFormatVersion == 11U)
+            {
+                Must(_host.Snapshot.Workers.HasAuthoritativeOccupations &&
+                    a.Occupation == PhysicalWorkerOccupation.Agriculture &&
+                    b.Occupation == PhysicalWorkerOccupation.Forestry &&
+                    _host.Snapshot.Workers.Workers.Single(w => w.Id.Value == 4UL)
+                        .Occupation == PhysicalWorkerOccupation.Mining,
+                    "v11 worker occupation census does not contain all three original roles");
+                Must(_tactical.RenderedWorkerBadgeFill(1UL) == new Color("#61d98b") &&
+                    _tactical.RenderedWorkerBadgeFill(2UL) == new Color("#b88656"),
+                    "Agriculture/forestry badges do not use the verified VS16 colors");
+            }
             await HoverBadge(2UL);
+            if (_expectedFormatVersion == 11U)
+                Must(_tactical.HoveredWorkerBadgeDescription?.Contains(
+                    "Extração vegetal") == true,
+                    "v11 hover must describe a real productive occupation");
             Must(_host.StateHash == before,
                 "Worker badge hover mutated canonical v10 state");
             await ClickBadge(2UL);
@@ -183,7 +206,7 @@ public sealed class FoundationGodotTacticalV10Smoke
             var details = roster!.FindChild(
                 "GANextWorkerDetails", true, false) as Label;
             Must(details?.Text.Contains(
-                $"Exact tactical G(18,0) tile: {secondTile} (v10)") == true,
+                $"Exact tactical G(18,0) tile: {secondTile} (v{_expectedFormatVersion})") == true,
                 "Dock displays a strategic alias or a guessed fine tile");
             await Capture("01_worker_roster");
 
@@ -225,7 +248,7 @@ public sealed class FoundationGodotTacticalV10Smoke
             Must(_host.PendingOrderCount == 0 &&
                  _host.NextTurn.Value == 2UL &&
                  _host.Snapshot.Revision == 2UL &&
-                 _host.StateHash.FormatVersion == 10U,
+                 _host.StateHash.FormatVersion == _expectedFormatVersion,
                 "E did not publish a single real v10 human + AI collective turn");
             Must(_host.Snapshot.Workers.Workers.Single(w =>
                     w.Id.Value == 1UL).TacticalTileId == destination &&
@@ -259,6 +282,32 @@ public sealed class FoundationGodotTacticalV10Smoke
                 "Second v10 collective turn changed physical tile or did not resume work");
             await Capture("04_after_production");
 
+            if (_expectedFormatVersion == 11U)
+            {
+                // Mine workers live on the opposite side of this test
+                // planet. Change only the VIEW focus to verify the actual
+                // mining badge instead of inventing a third local worker.
+                var miner = _host.Snapshot.Workers.Workers.Single(
+                    w => w.Id.Value == 4UL);
+                var minedHash = _host.StateHash;
+                _tactical.Open(miner.CellId.Value);
+                _tactical.PresentAuthoritativeWorkers(
+                    _host.Snapshot.Workers, _main.SelectedTacticalWorkerId);
+                await Frames();
+                Must(_tactical.RenderedWorkerBadgeFill(4UL) ==
+                    new Color("#c4c7d4"),
+                    "Mining badge does not retain historical VS16 silver");
+                await HoverBadge(4UL);
+                Must(_tactical.HoveredWorkerBadgeDescription?.Contains(
+                    "Mineração") == true &&
+                    _host.StateHash == minedHash,
+                    "Mining hover should only change presentation");
+                await Capture("05_mining_opponent");
+                GD.Print("GA_NEXT_V11_WORKER_OCCUPATIONS_PASS " +
+                    "agriculture=green forestry=brown mining=silver " +
+                    "roles=canonical_individual immutable=true");
+            }
+
             await KeyPress(Key.M);
             Must(planet!.Visible && operations!.Visible,
                 "Planet atlas should float independent of the tactical dock");
@@ -268,16 +317,16 @@ public sealed class FoundationGodotTacticalV10Smoke
             GD.Print("GA_NEXT_WORKER_BADGE_VS16_PASS " +
                 "surface=coplanar camera_pitch=preserved " +
                 "hover=worker2 individual_click=true state_mutation=false");
-            GD.Print("GA_NEXT_TACTICAL_V10_E2E_PASS " +
+            GD.Print($"GA_NEXT_TACTICAL_V{_expectedFormatVersion}_E2E_PASS " +
                 "markers=authoritative_fine map_selection=true " +
                 "G=adjacent_queue X=cancel P=production E=collective " +
-                "human_ai=atomic replay=v10 worker_count=6 " +
+                $"human_ai=atomic replay=v{_expectedFormatVersion} worker_count=6 " +
                 "atlas=dock_independent");
             _main.GetTree().Quit(0);
         }
         catch (Exception ex)
         {
-            GD.PrintErr("GA_NEXT_TACTICAL_V10_FAIL " + ex);
+            GD.PrintErr($"GA_NEXT_TACTICAL_V{_expectedFormatVersion}_FAIL " + ex);
             _main.GetTree().Quit(87);
         }
     }
