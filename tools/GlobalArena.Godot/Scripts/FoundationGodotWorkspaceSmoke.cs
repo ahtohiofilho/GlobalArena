@@ -126,6 +126,9 @@ internal sealed class FoundationGodotWorkspaceSmoke
             var beforeMove = atlas.Position;
             var dragFrom = titleBar!.GlobalPosition + new Vector2(
                 titleBar.Size.X * 0.6f, 12f);
+            GD.Print($"GA_FLOATING_E2E_GEOMETRY atlas_pos={atlas.Position} " +
+                $"atlas_size={atlas.Size} viewport={planet.Size} " +
+                $"title_rect={titleBar.GetGlobalRect()} drag_from={dragFrom}");
             await DragPointer(dragFrom, dragFrom + new Vector2(42f, 22f));
             Must((atlas.Position - beforeMove).Length() > 8f,
                 "real pointer drag did not move the planetary window");
