@@ -16,7 +16,7 @@ public readonly record struct GaWorkerRosterRow(
     ulong CoarseRegionId,
     string Activity,
     ulong CommodityId,
-    long OutputMicroPerTurn,
+    ulong OutputMicroPerTurn,
     long DemandMultiplierMicro);
 
 public partial class GaOperationalRoster : VBoxContainer
