@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.IO;
 using System.Threading.Tasks;
 using Godot;
 using GlobalArena.Runtime;
@@ -51,11 +52,13 @@ internal sealed class FoundationGodotWorkspaceSmoke
                  _game.Snapshot.Revision == 0UL,
                 "tactical startup changed gameplay state");
             var hash = _game.StateHash;
+            await CaptureRenderedViewIfRequested("01_tactical_start");
 
             Press(Key.M);
             Must(planet.Visible && globe!.Visible && tactical.Visible,
                 "M did not open a floating planetary navigation window");
             Must(_game.StateHash == hash, "M mutated the authoritative hash");
+            await CaptureRenderedViewIfRequested("02_planet_map");
             Press(Key.M);
             Must(!planet.Visible && !globe!.Visible && tactical.Visible,
                 "M did not restore the uninterrupted tactical viewport");
@@ -63,6 +66,7 @@ internal sealed class FoundationGodotWorkspaceSmoke
             Press(Key.Tab);
             Must(operations.Visible && !planet.Visible,
                 "TAB did not reveal the operational panel as a window");
+            await CaptureRenderedViewIfRequested("03_operations_panel");
             Press(Key.Escape);
             Must(!operations.Visible && tactical.Visible,
                 "ESC did not close the contextual window");
@@ -84,6 +88,7 @@ internal sealed class FoundationGodotWorkspaceSmoke
                 "E did not close the existing authoritative human/AI turn");
             Must(_game.LastTurnReceipt is { ReplayMatched: true },
                 "tactical-first turn did not replay identically");
+            await CaptureRenderedViewIfRequested("04_after_ai_turn");
             GD.Print("GA_NEXT_TACTICAL_WORKSPACE_PASS " +
                 "entry=tactical planet=M panels=TAB close=ESC " +
                 "g_tactical_locked=true human_ai_turn=true " +
@@ -95,6 +100,35 @@ internal sealed class FoundationGodotWorkspaceSmoke
             GD.PrintErr("GA_NEXT_TACTICAL_WORKSPACE_FAIL " + error);
             _main.GetTree().Quit(83);
         }
+    }
+
+    // Linux Xvfb/GL graphical gate: images come from the actual Godot
+    // framebuffer, not a synthetic mock. Headless test skips this explicitly.
+    private async Task CaptureRenderedViewIfRequested(string stage)
+    {
+        var directory = Environment.GetEnvironmentVariable("GA_NEXT_WORKSPACE_SCREENSHOT_DIR");
+        if (string.IsNullOrWhiteSpace(directory)) return;
+        Directory.CreateDirectory(directory);
+        for (var i = 0; i < 4; i++)
+            await _main.ToSignal(_main.GetTree(), SceneTree.SignalName.ProcessFrame);
+        var frame = _main.GetViewport().GetTexture().GetImage();
+        Must(frame is not null && !frame.IsEmpty(),
+            "no Godot framebuffer for tactical workspace");
+        Must(frame!.GetWidth() >= 640 && frame.GetHeight() >= 480,
+            "unexpected tactical frame size");
+        var palette = new System.Collections.Generic.HashSet<string>();
+        for (var y = 0; y < frame.GetHeight(); y += Math.Max(1, frame.GetHeight() / 16))
+            for (var x = 0; x < frame.GetWidth(); x += Math.Max(1, frame.GetWidth() / 16))
+            {
+                var sample = frame.GetPixel(x, y);
+                palette.Add($"{(int)(sample.R * 255)}:{(int)(sample.G * 255)}:" +
+                    $"{(int)(sample.B * 255)}");
+            }
+        Must(palette.Count >= 5, "tactical frame is blank or nearly uniform");
+        var filename = Path.Combine(directory, stage + ".png");
+        Must(frame.SavePng(filename) == Error.Ok, "Godot PNG write failed");
+        GD.Print($"GA_NEXT_RENDER_FRAME_PASS stage={stage} " +
+            $"dimensions={frame.GetWidth()}x{frame.GetHeight()} palette={palette.Count}");
     }
 
     private void Press(Key code)
