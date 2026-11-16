@@ -141,7 +141,7 @@ internal sealed class FoundationGodotRuntimeSmoke
             Must(_game.LastAiEventCount == 1, "AI did not join the first collective turn");
             Must(_game.LastTurnReceipt is { ExecutedEvents: 3 },
                 "collective journal must contain exactly two human and one AI event");
-            Must(_game.LastTurnReceipt.Events.Count(ev => ev.Issuer.Value == 2UL) == 1,
+            Must(_game.LastTurnReceipt!.Events.Count(ev => ev.Issuer.Value == 2UL) == 1,
                 "AI participation missing from authoritative receipt");
             Must(_game.Snapshot.Workers.Workers.Single(w => w.Id.Value == 4UL)
                 .Activity == PhysicalWorkerActivity.Producing,
