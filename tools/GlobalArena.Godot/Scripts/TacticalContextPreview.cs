@@ -240,8 +240,8 @@ public partial class TacticalContextPreview : SubViewportContainer
                     AddColored(faces, entry.Points[0], entry.Tint);
                     AddColored(faces, entry.Points[j], entry.Tint);
                     AddColored(faces, entry.Points[next], entry.Tint);
-                    AddColored(lines, entry.Points[j] with { Y = TacticalSurfacePlaneY }, lineColor);
-                    AddColored(lines, entry.Points[next] with { Y = TacticalSurfacePlaneY }, lineColor);
+                    AddColored(lines, entry.Points[j], lineColor);
+                    AddColored(lines, entry.Points[next], lineColor);
                 }
             }
             var faceMesh = faces.Commit();
