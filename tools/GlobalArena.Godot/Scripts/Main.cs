@@ -692,6 +692,11 @@ public partial class Main : Control
             ToggleWorkspaceWindow();
         }
         else if (key.Keycode == Key.Escape &&
+            _tacticalPreview?.DismissTileHoverMenu() == true)
+        {
+            // Experimental hierarchy closes before any permanent dock.
+        }
+        else if (key.Keycode == Key.Escape &&
             (_planetWindow.Visible || _workspaceWindow.Visible))
         {
             // Escape dismisses the upper floating atlas first, leaving
@@ -1416,6 +1421,8 @@ public partial class Main : Control
                 "GA_NEXT_TACTICAL_V11_SMOKE") == "1";
             bool concentratedSmoke = System.Environment.GetEnvironmentVariable(
                 "GA_NEXT_CONCENTRATED_WORKFORCE_SMOKE") == "1";
+            bool tileHoverHypothesisSmoke = System.Environment.GetEnvironmentVariable(
+                "GA_NEXT_TILE_HOVER_HYPOTHESIS_SMOKE") == "1";
             if (!legacyWorkspaceSmoke)
             {
                 var request = new WorldGenerationRequest(
@@ -1466,6 +1473,8 @@ public partial class Main : Control
             {
                 _tacticalPreview!.PresentAuthoritativeWorkers(
                     _tacticalHost.Snapshot.Workers, first.Id.Value);
+                if (!legacyV10Smoke && !legacyV11Smoke && !concentratedSmoke)
+                    _tacticalPreview.EnableTileHoverHypothesis(_humanCivilization);
                 _localMoveButton!.Text = "G | MOVE ONE FINE EDGE";
                 _localProduceButton!.Text = "P | RESUME PRODUCTION";
                 _localCancelQueuedButton!.Text = "X | CANCEL ORDER";
@@ -1498,6 +1507,9 @@ public partial class Main : Control
                     expectedFormatVersion: 11U).RunAsync();
             else if (concentratedSmoke && _tacticalHost is not null)
                 _ = new FoundationGodotConcentratedWorkforceSmoke(
+                    this, _tacticalHost, _tacticalPreview!).RunAsync();
+            else if (tileHoverHypothesisSmoke && _tacticalHost is not null)
+                _ = new FoundationGodotTileHoverHypothesisSmoke(
                     this, _tacticalHost, _tacticalPreview!).RunAsync();
         }
 
