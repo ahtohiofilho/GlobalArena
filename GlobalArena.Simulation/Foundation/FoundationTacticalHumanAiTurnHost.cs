@@ -1,0 +1,442 @@
+using GlobalArena.Kernel;
+using GlobalArena.Runtime;
+using GlobalArena.World;
+
+namespace GlobalArena.Simulation.Foundation;
+
+/// <summary>
+/// Typed pending tactical intent, private to its issuer until an all-ready
+/// collective publication. A fine tile is not a coarse strategic ID.
+/// </summary>
+public sealed record FoundationTacticalWorkerOrder(
+    CivilizationId Issuer, PhysicalWorkerId WorkerId,
+    PhysicalTacticalTileId Source, PhysicalTacticalTileId Destination,
+    PhysicalWorkerActivity Activity, bool IsMovement);
+
+public sealed record FoundationTacticalAiDecision(
+    PhysicalWorkerId WorkerId, PhysicalTacticalTileId Destination,
+    PhysicalWorkerActivity Activity, bool IsMovement);
+
+public interface IFoundationTacticalAiTurnPolicy
+{
+    IReadOnlyList<FoundationTacticalAiDecision> Plan(
+        CivilizationId civilization, WorldState snapshot,
+        PhysicalTacticalIncidenceMap incidence, TurnNumber turn);
+}
+
+/// <summary>
+/// An AI without a gameplay policy may simply hold. It generates no phantom
+/// movement, extra worker or economic demand.
+/// </summary>
+public sealed class FoundationTacticalAiHoldPolicy : IFoundationTacticalAiTurnPolicy
+{
+    public IReadOnlyList<FoundationTacticalAiDecision> Plan(
+        CivilizationId civilization, WorldState snapshot,
+        PhysicalTacticalIncidenceMap incidence, TurnNumber turn) =>
+        Array.Empty<FoundationTacticalAiDecision>();
+}
+
+/// <summary>
+/// Minimal observable AI policy: existing productive capacity may resume
+/// production at the very same *fine* tile after a travel phase.
+/// </summary>
+public sealed class FoundationTacticalAiResumeProductionPolicy
+    : IFoundationTacticalAiTurnPolicy
+{
+    public IReadOnlyList<FoundationTacticalAiDecision> Plan(
+        CivilizationId civilization, WorldState snapshot,
+        PhysicalTacticalIncidenceMap incidence, TurnNumber turn)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        ArgumentNullException.ThrowIfNull(incidence);
+        return Array.AsReadOnly(snapshot.Workers.Workers
+            .Where(worker => worker.Owner == civilization &&
+                worker.Activity == PhysicalWorkerActivity.Traveling &&
+                worker.OutputMicroPerTurn > 0UL &&
+                worker.TacticalTileId.HasValue)
+            .OrderBy(worker => worker.Id.Value)
+            .Select(worker => new FoundationTacticalAiDecision(
+                worker.Id, worker.TacticalTileId!.Value,
+                PhysicalWorkerActivity.Producing, IsMovement: false))
+            .ToArray());
+    }
+}
+
+/// <summary>One committed v10 collective turn, with canonical replay equality
+/// and actual qualified fine edge receipts. Revisions count events.</summary>
+public sealed class FoundationTacticalCollectiveReceipt
+{
+    public TurnNumber Turn { get; }
+    public WorldStateHash Hash { get; }
+    public ulong Revision { get; }
+    public IReadOnlyList<PhysicalTacticalWorkerMovedEvent> Events { get; }
+    public int ExecutedEvents => Events.Count;
+    public bool ReplayMatched { get; }
+
+    internal FoundationTacticalCollectiveReceipt(
+        TurnNumber turn, WorldStateHash hash, ulong revision,
+        PhysicalTacticalWorkerMovedEvent[] events)
+    {
+        Turn = turn;
+        Hash = hash;
+        Revision = revision;
+        Events = Array.AsReadOnly(events);
+        ReplayMatched = true;
+    }
+}
+
+/// <summary>
+/// Opt-in HUMAN+AI host over the *real* v10 fine-worker authority.
+/// A single private plan is built per civilization, AI is evaluated once
+/// while its participant is unready, and nothing is published before
+/// EVERY participant is ready. The v9 host and its hashes remain untouched.
+///
+/// This is neither a transport/economic solver nor network multiplayer.
+/// It rejects state divergence, foreign worker orders, tactical teleports,
+/// and duplicate worker orders before invoking the canonical commit gate.
+/// </summary>
+public sealed class FoundationTacticalHumanAiTurnHost
+{
+    private readonly CanonicalGameSession _session;
+    private readonly PhysicalTacticalIncidenceMap _incidence;
+    private readonly PhysicalTacticalWorkerMoveEventExecutor _executor;
+    private readonly AuthoritativeTurnCommitGate _publisher;
+    private readonly CanonicalWorldStateHasher _hasher = new();
+    private readonly HashSet<CivilizationId> _humans;
+    private readonly IReadOnlyDictionary<CivilizationId,
+        IFoundationTacticalAiTurnPolicy> _ai;
+    private readonly CivilizationId[] _participants;
+    private readonly Dictionary<CivilizationId,
+        SortedDictionary<ulong, FoundationTacticalWorkerOrder>> _plans;
+    private readonly HashSet<CivilizationId> _ready = new();
+    private WorldState _knownSnapshot;
+
+    public CanonicalGameSession Session => _session;
+    public WorldState Snapshot => _session.Snapshot;
+    public WorldStateHash StateHash => _hasher.Compute(Snapshot);
+    public TurnNumber NextTurn => _publisher.NextTurn;
+    public PhysicalTacticalIncidenceMap Incidence => _incidence;
+    public IReadOnlyList<CivilizationId> HumanCivilizations =>
+        Array.AsReadOnly(_participants.Where(_humans.Contains).ToArray());
+    public IReadOnlyList<CivilizationId> AiCivilizations =>
+        Array.AsReadOnly(_participants.Where(_ai.ContainsKey).ToArray());
+    public IReadOnlyList<CivilizationId> ReadyCivilizations =>
+        Array.AsReadOnly(_participants.Where(_ready.Contains).ToArray());
+    public int PendingOrderCount => _plans.Values.Sum(plan => plan.Count);
+    public bool AllRequiredReady => _participants.All(_ready.Contains);
+
+    public FoundationTacticalHumanAiTurnHost(
+        CanonicalGameSession session, PhysicalTacticalIncidenceMap incidence,
+        IEnumerable<CivilizationId> humanCivilizations,
+        IReadOnlyDictionary<CivilizationId, IFoundationTacticalAiTurnPolicy>
+            aiPolicies)
+    {
+        _session = session ?? throw new ArgumentNullException(nameof(session));
+        _incidence = incidence ?? throw new ArgumentNullException(nameof(incidence));
+        ArgumentNullException.ThrowIfNull(humanCivilizations);
+        ArgumentNullException.ThrowIfNull(aiPolicies);
+
+        if (!Snapshot.Workers.IsInitialized ||
+            !Snapshot.Workers.HasAuthoritativeTacticalLocations ||
+            Snapshot.WorldBinding !=
+                RuntimeWorldBinding.FromGeneratedWorld(session.GeneratedWorld) ||
+            incidence.Refinement.CoarseParameters !=
+                session.GeneratedWorld.Request.StrategicParameters ||
+            Snapshot.Workers.Workers.Any(worker =>
+                !worker.TacticalTileId.HasValue ||
+                worker.TacticalTileId.Value.FineGoldbergParameters !=
+                    incidence.Refinement.FineParameters))
+            throw new InvalidOperationException(
+                "Tactical collective host requires authoritative v10 workers " +
+                "in the exact fine topology of the bound generated world.");
+
+        _participants = Snapshot.Civilizations.Civilizations
+            .OrderBy(civilization => civilization.Value).ToArray();
+        if (_participants.Length == 0)
+            throw new InvalidOperationException(
+                "Collective turns require at least one civilization.");
+        var humanArray = humanCivilizations.ToArray();
+        if (humanArray.Any(civ => !civ.IsValid) ||
+            humanArray.Distinct().Count() != humanArray.Length ||
+            aiPolicies.Any(item => !item.Key.IsValid || item.Value is null))
+            throw new ArgumentException("Invalid duplicate human or AI roles.");
+
+        var roles = humanArray.Concat(aiPolicies.Keys).ToArray();
+        if (roles.Length != _participants.Length ||
+            roles.Distinct().Count() != roles.Length ||
+            !_participants.ToHashSet().SetEquals(roles))
+            throw new ArgumentException(
+                "Every registered civilization needs exactly one human or AI role.");
+
+        _humans = humanArray.ToHashSet();
+        _ai = new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy>(
+            aiPolicies);
+        _plans = _participants.ToDictionary(civ => civ,
+            _ => new SortedDictionary<ulong, FoundationTacticalWorkerOrder>());
+        _knownSnapshot = Snapshot;
+        _executor = new PhysicalTacticalWorkerMoveEventExecutor(
+            session.GeneratedWorld, incidence);
+        var engine = new PhasedTurnResolutionEngine(
+            new ITurnResolutionPhase[]
+            {
+                new PhysicalTacticalWorkerMovementTurnPhase(
+                    session.GeneratedWorld, incidence)
+            });
+        _publisher = new AuthoritativeTurnCommitGate(
+            session, new TurnPolicyResolutionGate(
+                new ManualReadyTurnPolicy(), engine),
+            new TurnNumber(1UL), rulesetVersion: 2U);
+    }
+
+    public IReadOnlyList<FoundationTacticalWorkerOrder> GetHumanOrders(
+        CivilizationId requester)
+    {
+        RequireHuman(requester);
+        return Array.AsReadOnly(_plans[requester].Values.ToArray());
+    }
+
+    public void QueueHumanMove(CivilizationId human, PhysicalWorkerId id,
+        PhysicalTacticalTileId destination)
+    {
+        RequireHuman(human);
+        QueueMove(human, id, destination);
+    }
+
+    public void QueueHumanActivity(CivilizationId human, PhysicalWorkerId id,
+        PhysicalWorkerActivity activity)
+    {
+        RequireHuman(human);
+        QueueActivity(human, id, activity);
+    }
+
+    public bool CancelHumanOrder(CivilizationId human, PhysicalWorkerId id)
+    {
+        RequireHuman(human);
+        CheckWritable(human);
+        return id.IsValid && _plans[human].Remove(id.Value);
+    }
+
+    public void SetHumanReady(CivilizationId human)
+    {
+        RequireHuman(human);
+        CheckWritable(human);
+        _ready.Add(human);
+    }
+
+    public void ReopenHuman(CivilizationId human)
+    {
+        RequireHuman(human);
+        CheckSnapshot();
+        _ready.Remove(human);
+    }
+
+    /// <summary>AI policies are invoked at most once per ready turn. Validate
+    /// the entire plan before queuing anything and rollback staged proposals
+    /// if a later queue operation rejects them.</summary>
+    public void PrepareAiCivilizations()
+    {
+        CheckSnapshot();
+        foreach (var civ in _participants.Where(_ai.ContainsKey))
+        {
+            if (_ready.Contains(civ)) continue;
+            var before = Snapshot;
+            var proposed = _ai[civ].Plan(
+                civ, before, _incidence, NextTurn)
+                ?? throw new InvalidOperationException("AI returned a null plan.");
+            if (!ReferenceEquals(before, Snapshot))
+                throw new InvalidOperationException(
+                    "AI mutated canonical WorldState while planning.");
+            var decisions = proposed.ToArray();
+            var seen = new HashSet<PhysicalWorkerId>();
+            foreach (var decision in decisions)
+            {
+                if (decision is null || !decision.WorkerId.IsValid ||
+                    !decision.Destination.IsValid ||
+                    !Enum.IsDefined(decision.Activity) ||
+                    !seen.Add(decision.WorkerId))
+                    throw new InvalidOperationException(
+                        "AI supplied an invalid or duplicate fine worker order.");
+                ValidateOrder(civ, decision.WorkerId,
+                    decision.Destination, decision.Activity, decision.IsMovement);
+            }
+
+            var queued = new List<ulong>();
+            try
+            {
+                foreach (var decision in decisions)
+                {
+                    if (decision.IsMovement)
+                        QueueMove(civ, decision.WorkerId, decision.Destination);
+                    else
+                        QueueActivity(civ, decision.WorkerId, decision.Activity);
+                    queued.Add(decision.WorkerId.Value);
+                }
+                _ready.Add(civ);
+            }
+            catch
+            {
+                foreach (var id in queued)
+                    _plans[civ].Remove(id);
+                throw;
+            }
+        }
+    }
+
+    public FoundationTacticalCollectiveReceipt? TryCloseTurn()
+    {
+        CheckSnapshot();
+        PrepareAiCivilizations();
+        return AllRequiredReady ? CloseReadyTurn() : null;
+    }
+
+    private FoundationTacticalCollectiveReceipt CloseReadyTurn()
+    {
+        CheckSnapshot();
+        if (!AllRequiredReady)
+            throw new InvalidOperationException(
+                "Cannot publish before all civilizations are ready.");
+
+        var before = Snapshot;
+        var turn = NextTurn;
+        var orders = _plans.Values.SelectMany(plan => plan.Values)
+            .OrderBy(order => order.WorkerId.Value).ToArray();
+        if (orders.Select(order => order.WorkerId).Distinct().Count() != orders.Length)
+            throw new InvalidOperationException("Duplicate inter-civilization worker order.");
+
+        // A stale plan or forged origin must never be committed. Orders are
+        // revalidated against the same immutable turn-start snapshot.
+        foreach (var order in orders)
+        {
+            var worker = ValidateOrder(
+                order.Issuer, order.WorkerId, order.Destination,
+                order.Activity, order.IsMovement);
+            if (worker.TacticalTileId != order.Source)
+                throw new InvalidOperationException(
+                    "Pending tactical source no longer matches canonical worker.");
+        }
+
+        var commands = orders.Select((order, index) =>
+            (ISimulationCommand)new PhysicalTacticalWorkerMoveCommand(
+                new CommandId(turn, checked((ulong)index + 1UL)),
+                order.Issuer, order.WorkerId, order.Destination,
+                order.Activity)).ToArray();
+        var context = new SimulationContext(turn, new SimulationSeed(712UL));
+        var committed = _publisher.ResolveAndCommit(
+            new TurnPolicyResolutionGateInput(
+                new TurnPolicyInput(turn, allRequiredParticipantsReady: true,
+                    externalDeadlineReached: false),
+                new TurnResolutionInput(before, commands, context)));
+        if (!committed.WasResolved ||
+            committed.ResolutionResult is not { } resolved)
+            throw new InvalidOperationException(
+                "Canonical tactical turn gate failed to commit.");
+        var events = resolved.Events.Select(ev =>
+            ev as PhysicalTacticalWorkerMovedEvent ??
+                throw new InvalidOperationException(
+                    "Unexpected event in v10 tactical journal."))
+            .ToArray();
+        if (events.Length != commands.Length ||
+            resolved.EventLog.Entries.Count != events.Length ||
+            resolved.EventLog.Entries.Any(entry => !entry.WasExecuted))
+            throw new InvalidOperationException(
+                "v10 committed event log differs from submitted worker orders.");
+
+        var replay = new SimulationEventLogReplayer(_executor)
+            .Replay(new SimulationReplayInput(
+                before, resolved.EventLog, context));
+        var hash = _hasher.Compute(Snapshot);
+        if (hash.FormatVersion != 10U || _hasher.Compute(replay) != hash)
+            throw new InvalidOperationException(
+                "Tactical collective journal replay does not match v10 authority.");
+        var receipt = new FoundationTacticalCollectiveReceipt(
+            turn, hash, Snapshot.Revision, events);
+        foreach (var plan in _plans.Values) plan.Clear();
+        _ready.Clear();
+        _knownSnapshot = Snapshot;
+        return receipt;
+    }
+
+    private void QueueMove(CivilizationId issuer, PhysicalWorkerId id,
+        PhysicalTacticalTileId destination)
+    {
+        CheckWritable(issuer);
+        var worker = RequireOwnedWorker(issuer, id);
+        ValidateOrder(issuer, id, destination,
+            PhysicalWorkerActivity.Traveling, movement: true);
+        _plans[issuer][id.Value] = new FoundationTacticalWorkerOrder(
+            issuer, id, worker.TacticalTileId!.Value, destination,
+            PhysicalWorkerActivity.Traveling, IsMovement: true);
+    }
+
+    private void QueueActivity(CivilizationId issuer, PhysicalWorkerId id,
+        PhysicalWorkerActivity activity)
+    {
+        CheckWritable(issuer);
+        var worker = RequireOwnedWorker(issuer, id);
+        var source = worker.TacticalTileId!.Value;
+        ValidateOrder(issuer, id, source, activity, movement: false);
+        _plans[issuer][id.Value] = new FoundationTacticalWorkerOrder(
+            issuer, id, source, source, activity, IsMovement: false);
+    }
+
+    private PhysicalWorkerRuntimeRecord ValidateOrder(
+        CivilizationId issuer, PhysicalWorkerId workerId,
+        PhysicalTacticalTileId destination, PhysicalWorkerActivity activity,
+        bool movement)
+    {
+        var worker = RequireOwnedWorker(issuer, workerId);
+        if (!destination.IsValid || !Enum.IsDefined(activity))
+            throw new InvalidOperationException("Invalid fine destination or worker activity.");
+        var source = worker.TacticalTileId ??
+            throw new InvalidOperationException("Worker has no fine position.");
+        PhysicalTacticalEdgeId? edge;
+        try { edge = _executor.CheckEdge(source, destination); }
+        catch (ArgumentException ex)
+        { throw new InvalidOperationException("Foreign fine topology.", ex); }
+        if (movement)
+        {
+            if (edge is null || activity != PhysicalWorkerActivity.Traveling)
+                throw new InvalidOperationException(
+                    "Tactical move must cross one real fine edge and enter Traveling.");
+        }
+        else if (edge.HasValue || activity == worker.Activity ||
+                 (activity == PhysicalWorkerActivity.Producing &&
+                    worker.OutputMicroPerTurn == 0UL))
+            throw new InvalidOperationException("Invalid in-place worker activity change.");
+        return worker;
+    }
+
+    private PhysicalWorkerRuntimeRecord RequireOwnedWorker(
+        CivilizationId issuer, PhysicalWorkerId workerId)
+    {
+        if (!workerId.IsValid)
+            throw new InvalidOperationException("Invalid worker identity.");
+        var worker = Snapshot.Workers.Workers.FirstOrDefault(w => w.Id == workerId);
+        if (worker is null || worker.Owner != issuer)
+            throw new InvalidOperationException(
+                "Civilization cannot order a non-owned worker.");
+        return worker;
+    }
+
+    private void RequireHuman(CivilizationId requester)
+    {
+        if (!requester.IsValid || !_humans.Contains(requester))
+            throw new InvalidOperationException(
+                "Only the explicit human player can issue manual worker orders.");
+    }
+
+    private void CheckWritable(CivilizationId issuer)
+    {
+        CheckSnapshot();
+        if (!_plans.ContainsKey(issuer) || _ready.Contains(issuer))
+            throw new InvalidOperationException(
+                "Unrecognized or already-ready civilization may not change plans.");
+    }
+
+    private void CheckSnapshot()
+    {
+        if (!ReferenceEquals(_knownSnapshot, Snapshot))
+            throw new InvalidOperationException(
+                "A foreign authority changed WorldState during the collective plan.");
+    }
+}

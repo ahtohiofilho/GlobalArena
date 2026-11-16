@@ -12,6 +12,7 @@ on:
       - 'GlobalArena.Tests/GoldbergFoundationSessionTests.cs'
       - 'GlobalArena.Tests/AuthoritativePhysicalWorkerJournalTests.cs'
       - 'GlobalArena.Tests/AuthoritativeTacticalWorkerV10Tests.cs'
+      - 'GlobalArena.Tests/FoundationTacticalHumanAiV10Tests.cs'
       - 'GlobalArena.Tests/StrategicPhysicalWorkerInspectorTests.cs'
       - 'GlobalArena.Tests/FoundationLocalGameHostTests.cs'
       - 'GlobalArena.Tests/FoundationBatchedTurnTests.cs'
@@ -60,6 +61,8 @@ jobs:
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalTradeCycleTests|FullyQualifiedName~GoldbergFoundationSessionTests|FullyQualifiedName~AuthoritativePhysicalWorkerJournalTests|FullyQualifiedName~StrategicPhysicalWorkerInspectorTests|FullyQualifiedName~FoundationLocalGameHostTests|FullyQualifiedName~FoundationBatchedTurnTests|FullyQualifiedName~FoundationCollectiveTurnCoordinatorTests|FullyQualifiedName~FoundationHumanAiTurnHostTests|FullyQualifiedName~FoundationHumanAiLocalPreviewTests' --logger 'console;verbosity=normal'
       - name: Canonical fine G(18,0) worker v10 movement and replay tests
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~AuthoritativeTacticalWorkerV10Tests' --logger 'console;verbosity=normal'
+      - name: Real tactical G(18,0) Human+AI all-ready collective gameplay
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationTacticalHumanAiV10Tests' --logger 'console;verbosity=normal'
       - name: Real executable three-turn gameplay kernel preview
         run: dotnet run --project GlobalArena.Console/GlobalArena.Console.csproj -c Release -- --foundation-slice
       - name: A/B same physical world cold start vs zero-time initial calibration
