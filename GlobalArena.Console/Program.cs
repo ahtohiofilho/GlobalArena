@@ -13,7 +13,8 @@ if (args.Length != 1 ||
      args[0] != "--foundation-goldberg" &&
      args[0] != "--foundation-worker-journal" &&
      args[0] != "--foundation-local-game" &&
-     args[0] != "--foundation-batched-turn"))
+     args[0] != "--foundation-batched-turn" &&
+     args[0] != "--foundation-collective-turn"))
 {
     Console.WriteLine("Global Arena — executable foundation preview");
     Console.WriteLine("Run: dotnet run --project GlobalArena.Console -- --foundation-slice");
@@ -22,6 +23,77 @@ if (args.Length != 1 ||
     Console.WriteLine("Authority: dotnet run --project GlobalArena.Console -- --foundation-worker-journal");
     Console.WriteLine("Local game: dotnet run --project GlobalArena.Console -- --foundation-local-game");
     Console.WriteLine("Batch turn: dotnet run --project GlobalArena.Console -- --foundation-batched-turn");
+    Console.WriteLine("Collective turn: dotnet run --project GlobalArena.Console -- --foundation-collective-turn");
+    return;
+}
+
+// Two different civilizations deliberately plan on the SAME canonical world.
+// No client can close this collective turn until every required owner is
+// ready; the session then receives one journaled and replay-verified snapshot.
+if (args[0] == "--foundation-collective-turn")
+{
+    var start = FoundationLocalGameHost.CreateLocalPreview(
+        new WorldGenerationRequest(new WorldSeed(20261012UL),
+            WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)));
+    var collective = new FoundationCollectiveTurnCoordinator(start.Session);
+    var graph = collective.Session.GeneratedWorld.StrategicSurfaceGraph;
+    var first = collective.Snapshot.Workers.Workers.Single(w => w.Id.Value == 1UL);
+    var fourth = collective.Snapshot.Workers.Workers.Single(w => w.Id.Value == 4UL);
+    var firstNeighbor = graph.GetCellId(graph.GetNeighborIndexes(
+        graph.GetNodeIndex(first.CellId))[0]);
+    var fourthNeighbor = graph.GetCellId(graph.GetNeighborIndexes(
+        graph.GetNodeIndex(fourth.CellId))[0]);
+    var initialSnapshot = collective.Snapshot;
+    var initialHash = collective.StateHash;
+
+    collective.QueueMove(new CivilizationId(2UL), fourth.Id, fourthNeighbor);
+    collective.QueueMove(new CivilizationId(1UL), first.Id, firstNeighbor);
+    collective.SetReady(new CivilizationId(2UL));
+    if (collective.TryCloseReadyTurn() is not null ||
+        !ReferenceEquals(initialSnapshot, collective.Snapshot) ||
+        collective.StateHash != initialHash ||
+        collective.NextTurn.Value != 1UL)
+        throw new InvalidOperationException(
+            "A single ready civilization incorrectly advanced collective time.");
+
+    collective.SetReady(new CivilizationId(1UL));
+    var closed = collective.CloseReadyTurn();
+    if (closed.Turn.Value != 1UL ||
+        closed.ExecutedEvents != 2 || closed.Revision != 2UL ||
+        !closed.ReplayMatched ||
+        collective.NextTurn.Value != 2UL ||
+        collective.Snapshot.Workers.Workers.Count != 6 ||
+        collective.PendingOrderCount != 0 ||
+        collective.ReadyCivilizations.Count != 0)
+        throw new InvalidOperationException(
+            "Two-civilization collective journal or resolution failed.");
+
+    Console.WriteLine($"GA_FOUNDATION_COLLECTIVE_V1 " +
+        $"participants={collective.Participants.Count} " +
+        $"world_nodes={graph.NodeCount} " +
+        $"turn={closed.Turn.Value} events={closed.ExecutedEvents} " +
+        $"revision={closed.Revision} workers={collective.Snapshot.Workers.Workers.Count} " +
+        $"replay_match={closed.ReplayMatched} hash_v={closed.Hash.FormatVersion} " +
+        $"state_hash={closed.Hash.HexDigest}");
+    foreach (var ev in closed.Events)
+        Console.WriteLine($"  civ={ev.Issuer.Value} worker={ev.WorkerId.Value} " +
+            $"from={ev.Source.Value} to={ev.Destination.Value} " +
+            $"activity={ev.Activity} edge={ev.TraversedEdge?.Value}");
+
+    collective.SetReady(new CivilizationId(1UL));
+    if (collective.TryCloseReadyTurn() is not null)
+        throw new InvalidOperationException("Unready civilization was skipped.");
+    collective.SetReady(new CivilizationId(2UL));
+    var idle = collective.CloseReadyTurn();
+    if (idle.ExecutedEvents != 0 || idle.Turn.Value != 2UL ||
+        idle.Revision != closed.Revision ||
+        collective.NextTurn.Value != 3UL)
+        throw new InvalidOperationException("Empty collective turn changed workers.");
+    Console.WriteLine($"  idle_collective_turn={idle.Turn.Value} " +
+        $"events={idle.ExecutedEvents} revision={idle.Revision} replay_match={idle.ReplayMatched}");
+    Console.WriteLine("  authority=worldstate_v9 synchronized_civ_readiness=true " +
+        "single_publication_per_turn=true multiplayer_network=false " +
+        "combat=false economic_settlement=false certified_F072=false");
     return;
 }
 
