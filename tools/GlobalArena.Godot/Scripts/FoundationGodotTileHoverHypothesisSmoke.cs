@@ -148,7 +148,7 @@ public sealed class FoundationGodotTileHoverHypothesisSmoke
                 PhysicalWorkerOccupation.Agriculture);
             Must(agriculturalRect.HasValue,
                 "Agriculture row not visible for hierarchical hover.");
-            await MouseAt(agriculturalRect.Value.GetCenter());
+            await MouseAt(agriculturalRect.GetValueOrDefault().GetCenter());
             Must(_map.TileHoverExpandedOccupation ==
                     PhysicalWorkerOccupation.Agriculture &&
                  _map.TileHoverListedWorkerIds.SequenceEqual(new ulong[] {1UL, 4UL}) &&
@@ -159,7 +159,7 @@ public sealed class FoundationGodotTileHoverHypothesisSmoke
             var forestryRect = _map.TileHoverActivityRowRect(
                 PhysicalWorkerOccupation.Forestry);
             Must(forestryRect.HasValue, "Forestry row disappeared.");
-            await MouseAt(forestryRect.Value.GetCenter());
+            await MouseAt(forestryRect.GetValueOrDefault().GetCenter());
             Must(_map.TileHoverExpandedOccupation ==
                     PhysicalWorkerOccupation.Forestry &&
                  _map.TileHoverListedWorkerIds.SequenceEqual(new ulong[] {2UL, 5UL}),
@@ -167,10 +167,10 @@ public sealed class FoundationGodotTileHoverHypothesisSmoke
             agriculturalRect = _map.TileHoverActivityRowRect(
                 PhysicalWorkerOccupation.Agriculture);
             Must(agriculturalRect.HasValue, "Agriculture row disappeared.");
-            await MouseAt(agriculturalRect.Value.GetCenter());
+            await MouseAt(agriculturalRect.GetValueOrDefault().GetCenter());
             var workerRow = _map.TileHoverWorkerRowRect(4UL);
             Must(workerRow.HasValue, "Individual worker #4 button is absent.");
-            await MouseAt(workerRow.Value.GetCenter(), click: true);
+            await MouseAt(workerRow.GetValueOrDefault().GetCenter(), click: true);
             Must(_main.SelectedTacticalWorkerId == 4UL &&
                  _map.IsTileHoverMenuVisible &&
                  _map.IsTileHoverMenuPinned &&
