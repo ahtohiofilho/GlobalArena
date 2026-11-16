@@ -53,6 +53,9 @@ public partial class GaFloatingWindow : PanelContainer
             var title = _titleBar is not null &&
                 headerRect.HasPoint(point) &&
                 point.X < headerRect.End.X - 43f;
+            if (System.Environment.GetEnvironmentVariable("GA_NEXT_WORKSPACE_SMOKE") == "1")
+                GD.Print($"GA_FLOATING_INPUT press={point} header={headerRect} " +
+                    $"grip={_resizeGrip?.GetGlobalRect()} title={title} resize={resize}");
             if (!resize && !title) return;
 
             _dragging = title && !resize;
@@ -68,6 +71,8 @@ public partial class GaFloatingWindow : PanelContainer
             (!_dragging && !_resizing))
             return;
         var delta = move.Position - _pointerOrigin;
+        if (System.Environment.GetEnvironmentVariable("GA_NEXT_WORKSPACE_SMOKE") == "1")
+            GD.Print($"GA_FLOATING_MOTION delta={delta} dragging={_dragging} resizing={_resizing}");
         if (GetParent() is not Control bounds) return;
         if (_resizing)
         {
