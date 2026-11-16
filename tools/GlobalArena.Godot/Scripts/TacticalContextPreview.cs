@@ -61,6 +61,11 @@ public partial class TacticalContextPreview : SubViewportContainer
     public PhysicalTacticalIncidenceMap? CanonicalPhysicalIncidenceMap => _cachedPhysicalMap;
     public WorldGenerationResult? PresentedCoarseWorld { get; private set; }
     public ulong? SelectedCanonicalPhysicalTileId => _selectedFineTileId;
+    // Presentation-only inspection to prove dock reflow cannot teleport the
+    // camera or silently mutate orthographic zoom.
+    public (Vector3 Target, float Zoom, float YawDegrees) TacticalCameraState =>
+        (_cameraTarget, _camera?.Size ?? 0f, _yawDegrees);
+    public Vector2I RenderViewportSize => _innerViewport?.Size ?? Vector2I.Zero;
     private readonly Dictionary<ulong, PhysicalTacticalResidentTransferPlan> _preparedTransfers = new();
     private readonly Dictionary<ulong, SphericalPoint3[]> _preparedCanonicalTileGeometry = new();
     // R25: pan intent is advisory; it selects existing canonical prefetch plans only.
