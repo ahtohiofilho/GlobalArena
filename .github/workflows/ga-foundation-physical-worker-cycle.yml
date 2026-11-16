@@ -75,18 +75,20 @@ jobs:
         run: dotnet run --project GlobalArena.Console/GlobalArena.Console.csproj -c Release -- --foundation-human-ai-turn
       - name: Compile the actual Godot .NET production client
         run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
-      - name: Validate automatic PR364 PowerShell launcher syntax (Windows)
+      - name: Validate automatic PR364 and PR365 PowerShell launcher syntax (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $path = (Resolve-Path 'tools/GlobalArena.Godot/Launchers/GA-Next-PR364-Abrir-Visual.ps1').Path
-          $tokens = $null
-          $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile($path, [ref]$tokens, [ref]$errors) | Out-Null
-          if ($errors.Count -gt 0) {
-            $errors | ForEach-Object { Write-Error $_.ToString() }
-            exit 1
+          foreach ($name in @('GA-Next-PR364-Abrir-Visual.ps1', 'GA-Next-PR365-Abrir-Visual.ps1')) {
+            $path = (Resolve-Path ("tools/GlobalArena.Godot/Launchers/" + $name)).Path
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($path, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error $_.ToString() }
+              exit 1
+            }
+            Write-Host "GA_NEXT_LAUNCHER_SYNTAX_PASS $name"
           }
-          Write-Host 'GA_NEXT_PR364_LAUNCHER_SYNTAX_PASS'
       - name: Preserve historical CSharp runtime tests without modifying them
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --logger 'console;verbosity=minimal'
