@@ -12,6 +12,8 @@ public partial class GaFloatingWindow : PanelContainer
 {
     private bool _dragging;
     private bool _resizing;
+    private Control? _titleBar;
+    private Control? _resizeGrip;
     private Vector2 _pointerOrigin;
     private Vector2 _windowOrigin;
     private Vector2 _sizeOrigin;
@@ -19,50 +21,52 @@ public partial class GaFloatingWindow : PanelContainer
 
     public void AttachTitleBar(Control titleBar)
     {
+        _titleBar = titleBar;
         titleBar.MouseFilter = MouseFilterEnum.Stop;
-        titleBar.GuiInput += @event => BeginPointerOperation(@event, resize: false);
     }
 
     public void AttachResizeGrip(Control grip)
     {
+        _resizeGrip = grip;
         grip.MouseFilter = MouseFilterEnum.Stop;
-        grip.GuiInput += @event => BeginPointerOperation(@event, resize: true);
     }
 
-    private void BeginPointerOperation(InputEvent @event, bool resize)
-    {
-        if (@event is not InputEventMouseButton mouse ||
-            mouse.ButtonIndex != MouseButton.Left)
-            return;
-        if (mouse.Pressed)
-        {
-            _dragging = !resize;
-            _resizing = resize;
-            _pointerOrigin = GetViewport().GetMousePosition();
-            _windowOrigin = Position;
-            _sizeOrigin = Size;
-        }
-        else
-        {
-            _dragging = false;
-            _resizing = false;
-        }
-        GetViewport().SetInputAsHandled();
-    }
-
+    // _Input runs BEFORE GUI focus routing. A Label, Button or focusable
+    // Control nested in the title bar must never swallow our mouse-down.
     public override void _Input(InputEvent @event)
     {
-        if (!Visible || (!_dragging && !_resizing)) return;
+        if (!IsVisibleInTree()) return;
         if (@event is InputEventMouseButton mouse &&
-            mouse.ButtonIndex == MouseButton.Left && !mouse.Pressed)
+            mouse.ButtonIndex == MouseButton.Left)
         {
-            _dragging = false;
-            _resizing = false;
+            if (!mouse.Pressed)
+            {
+                _dragging = false;
+                _resizing = false;
+                return;
+            }
+
+            var point = mouse.Position;
+            var resize = _resizeGrip?.GetGlobalRect().HasPoint(point) == true;
+            // Do not steal a click on the rightmost close button.
+            var headerRect = _titleBar?.GetGlobalRect() ?? new Rect2();
+            var title = _titleBar is not null &&
+                headerRect.HasPoint(point) &&
+                point.X < headerRect.End.X - 43f;
+            if (!resize && !title) return;
+
+            _dragging = title && !resize;
+            _resizing = resize;
+            _pointerOrigin = point;
+            _windowOrigin = Position;
+            _sizeOrigin = Size;
             GetViewport().SetInputAsHandled();
             return;
         }
 
-        if (@event is not InputEventMouseMotion move) return;
+        if (@event is not InputEventMouseMotion move ||
+            (!_dragging && !_resizing))
+            return;
         var delta = move.Position - _pointerOrigin;
         if (GetParent() is not Control bounds) return;
         if (_resizing)
@@ -79,8 +83,8 @@ public partial class GaFloatingWindow : PanelContainer
         }
         else
         {
-            var limitX = Mathf.Max(0f, bounds.Size.X - Size.X - 8f);
-            var limitY = Mathf.Max(0f, bounds.Size.Y - Size.Y - 8f);
+            var limitX = Mathf.Max(8f, bounds.Size.X - Size.X - 8f);
+            var limitY = Mathf.Max(8f, bounds.Size.Y - Size.Y - 8f);
             Position = new Vector2(
                 Mathf.Clamp(_windowOrigin.X + delta.X, 8f, limitX),
                 Mathf.Clamp(_windowOrigin.Y + delta.Y, 8f, limitY));
