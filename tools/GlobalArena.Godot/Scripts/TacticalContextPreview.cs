@@ -1127,7 +1127,10 @@ public partial class TacticalContextPreview : SubViewportContainer
         }
         if (@event is InputEventMouseMotion hoverMotion && !_pressed)
         {
-            HoverWorkerBadge(hoverMotion.Position);
+            if (_tileHoverHypothesis)
+                HandleTileHoverMotion(hoverMotion.Position);
+            else
+                HoverWorkerBadge(hoverMotion.Position);
             return;
         }
         if (@event is InputEventMouseMotion motion && _pressed)
