@@ -144,7 +144,7 @@ internal sealed class FoundationGodotWorkspaceSmoke
                 "drag/resize allowed the planetary atlas outside the viewport");
             Must(_game.StateHash == hash && tactical.TacticalCameraState == initialCamera,
                 "secondary window pointer interaction changed gameplay or map focus");
-            GD.Print("GA_NEXT_FLOATING_WINDOW_PASS pointer=godot_parsed " +
+            GD.Print("GA_NEXT_FLOATING_WINDOW_PASS pointer=godot_viewport_pipeline " +
                 "drag=true resize=true bounded=true map_camera_stable=true");
 
             await Press(Key.Escape);
@@ -274,31 +274,31 @@ internal sealed class FoundationGodotWorkspaceSmoke
 
     private async Task DragPointer(Vector2 from, Vector2 to)
     {
-        global::Godot.Input.ParseInputEvent(new InputEventMouseMotion
+        _main.GetViewport().PushInput(new InputEventMouseMotion
         {
             Position = from, GlobalPosition = from,
             Relative = Vector2.Zero, ButtonMask = (MouseButtonMask)0
-        });
+        }, inLocalCoords: true);
         await WaitFrame();
-        global::Godot.Input.ParseInputEvent(new InputEventMouseButton
+        _main.GetViewport().PushInput(new InputEventMouseButton
         {
             ButtonIndex = MouseButton.Left, Pressed = true,
             Position = from, GlobalPosition = from,
             ButtonMask = MouseButtonMask.Left
-        });
+        }, inLocalCoords: true);
         await WaitFrame();
-        global::Godot.Input.ParseInputEvent(new InputEventMouseMotion
+        _main.GetViewport().PushInput(new InputEventMouseMotion
         {
             Position = to, GlobalPosition = to,
             Relative = to - from, ButtonMask = MouseButtonMask.Left
-        });
+        }, inLocalCoords: true);
         await WaitFrame();
-        global::Godot.Input.ParseInputEvent(new InputEventMouseButton
+        _main.GetViewport().PushInput(new InputEventMouseButton
         {
             ButtonIndex = MouseButton.Left, Pressed = false,
             Position = to, GlobalPosition = to,
             ButtonMask = (MouseButtonMask)0
-        });
+        }, inLocalCoords: true);
         await WaitFrame();
     }
 
