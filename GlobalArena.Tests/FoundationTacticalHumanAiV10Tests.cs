@@ -90,8 +90,8 @@ public sealed class FoundationTacticalHumanAiV10Tests
         var hash = host.StateHash;
         host.PrepareAiCivilizations();
         Assert.Equal(new ulong[] { 2UL }, host.ReadyCivilizations.Select(x => x.Value));
-        Assert.Single(host.Snapshot.Workers.Workers.Where(w =>
-            w.Id.Value == 4UL && w.Activity == PhysicalWorkerActivity.Traveling));
+        Assert.Single(host.Snapshot.Workers.Workers, w =>
+            w.Id.Value == 4UL && w.Activity == PhysicalWorkerActivity.Traveling);
         Assert.Null(host.TryCloseTurn());
         Assert.Same(before, host.Snapshot);
         Assert.Equal(hash, host.StateHash);
