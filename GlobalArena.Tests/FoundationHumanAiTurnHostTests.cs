@@ -339,8 +339,8 @@ public sealed class FoundationHumanAiTurnHostTests
         a.SetHumanReady(Human);
         var left = a.TryCloseTurn();
 
-        b.SetHumanReady(Human);
         b.QueueHumanMove(Human, new PhysicalWorkerId(1UL), Neighbor(b, 1UL));
+        b.SetHumanReady(Human);
         var right = b.TryCloseTurn();
         Assert.NotNull(left);
         Assert.NotNull(right);
