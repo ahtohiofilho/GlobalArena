@@ -1085,6 +1085,12 @@ public partial class TacticalContextPreview : SubViewportContainer
         if (_camera is null) return;
         if (@event is InputEventMouseButton button)
         {
+            // A camera interaction must dismiss the transient inspector;
+            // selected worker, selected tile and authority stay untouched.
+            if (button.Pressed && (button.ButtonIndex == MouseButton.WheelUp ||
+                    button.ButtonIndex == MouseButton.WheelDown ||
+                    button.ButtonIndex == MouseButton.Left))
+                HoverWorkerBadge(null);
             if (button.ButtonIndex == MouseButton.WheelUp && button.Pressed)
             {
                 _camera.Size = Mathf.Clamp(_camera.Size * 0.88f,
