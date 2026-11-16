@@ -228,9 +228,11 @@ public sealed class FoundationTacticalHumanAiV10Tests
         var good = new FakePolicy((_, state, _, _) =>
         {
             var worker = state.Workers.Workers.Single(w => w.Id.Value == 4UL);
-            return new[] { new FoundationTacticalAiDecision(
-                worker.Id, worker.TacticalTileId!.Value,
-                PhysicalWorkerActivity.Producing, false) };
+            return worker.Activity == PhysicalWorkerActivity.Traveling
+                ? new[] { new FoundationTacticalAiDecision(
+                    worker.Id, worker.TacticalTileId!.Value,
+                    PhysicalWorkerActivity.Producing, false) }
+                : Array.Empty<FoundationTacticalAiDecision>();
         });
         var proper = new FoundationTacticalHumanAiTurnHost(
             session, map, new[] { Human },
