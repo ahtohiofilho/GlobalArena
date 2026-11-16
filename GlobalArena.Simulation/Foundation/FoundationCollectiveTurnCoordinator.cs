@@ -88,6 +88,7 @@ public sealed class FoundationCollectiveTurnCoordinator
         _session = session ?? throw new ArgumentNullException(nameof(session));
         _knownSnapshot = session.Snapshot;
         if (!session.Snapshot.Workers.IsInitialized ||
+            session.Snapshot.Workers.HasAuthoritativeTacticalLocations ||
             session.Snapshot.WorldBinding !=
                 RuntimeWorldBinding.FromGeneratedWorld(session.GeneratedWorld))
             throw new InvalidOperationException(
