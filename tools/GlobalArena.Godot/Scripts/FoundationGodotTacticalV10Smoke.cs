@@ -116,6 +116,45 @@ public sealed class FoundationGodotTacticalV10Smoke
         await Frames();
     }
 
+    private void VerifyInspector(ulong workerId)
+    {
+        var individual = _host.Snapshot.Workers.Workers.Single(
+            worker => worker.Id.Value == workerId);
+        var description = _tactical.WorkerInspectorDescription;
+        var bounds = _tactical.WorkerInspectorBounds;
+        var extent = _tactical.Size;
+        Must(_tactical.IsWorkerInspectorVisible && description is not null,
+            "Hover did not present non-modal contextual worker inspector");
+        Must(description!.Contains($"TRABALHADOR #{workerId}") &&
+             description.Contains($"CIV. {individual.Owner.Value}") &&
+             description.Contains($"G(18,0)/{individual.TacticalTileId!.Value.FineStrategicCellId.Value}") &&
+             description.Contains($"Região T{individual.CellId.Value}") &&
+             description.Contains($"ITEM {individual.Commodity.Value}") &&
+             description.Contains("Capacidade ") &&
+             description.Contains("DEMANDA ×") &&
+             description.Contains("SITUAÇÃO"),
+            "Inspector is missing one or more canonical individual facts");
+        Must(bounds.Position.X >= 7f && bounds.Position.Y >= 7f &&
+             bounds.End.X <= extent.X - 7f && bounds.End.Y <= extent.Y - 7f,
+            "Inspector overflows the real tactical viewport bounds");
+        foreach (var viewport in new[] {
+                     new Vector2(360f, 300f),
+                     new Vector2(1280f, 720f) })
+            foreach (var corner in new[] {
+                         Vector2.Zero,
+                         new Vector2(viewport.X, 0f),
+                         new Vector2(0f, viewport.Y),
+                         viewport })
+            {
+                var position = TacticalContextPreview.PlaceWorkerInspector(
+                    corner, new Vector2(286f, 171f), viewport);
+                Must(position.X >= 7f && position.Y >= 7f &&
+                     position.X + 286f <= viewport.X - 7f &&
+                     position.Y + 171f <= viewport.Y - 7f,
+                    "Viewport-edge worker inspector placement regression");
+            }
+    }
+
     private async Task Capture(string stage)
     {
         var dir = System.Environment.GetEnvironmentVariable(
@@ -189,13 +228,18 @@ public sealed class FoundationGodotTacticalV10Smoke
                     "Agriculture/forestry badges do not use the verified VS16 colors");
             }
             await HoverBadge(2UL);
+            VerifyInspector(2UL);
+            var hoverCamera = _tactical.TacticalCameraState;
             if (_expectedFormatVersion == 11U)
                 Must(_tactical.HoveredWorkerBadgeDescription?.Contains(
                     "Extração vegetal") == true,
                     "v11 hover must describe a real productive occupation");
-            Must(_host.StateHash == before,
-                "Worker badge hover mutated canonical v10 state");
+            Must(_host.StateHash == before &&
+                 _tactical.TacticalCameraState == hoverCamera,
+                "Worker inspector hover must not mutate world hash or camera");
             await ClickBadge(2UL);
+            Must(!_tactical.IsWorkerInspectorVisible,
+                "Click must dismiss transient inspection without blocking selection");
             Must(_main.SelectedTacticalWorkerId == 2UL &&
                  _host.StateHash == before,
                 "Clicking worker #2 must select its actual identity without mutation");
@@ -298,6 +342,7 @@ public sealed class FoundationGodotTacticalV10Smoke
                     new Color("#c4c7d4"),
                     "Mining badge does not retain historical VS16 silver");
                 await HoverBadge(4UL);
+                VerifyInspector(4UL);
                 Must(_tactical.HoveredWorkerBadgeDescription?.Contains(
                     "Mineração") == true &&
                     _host.StateHash == minedHash,
@@ -314,6 +359,10 @@ public sealed class FoundationGodotTacticalV10Smoke
             await KeyPress(Key.Escape);
             Must(!planet!.Visible && operations!.Visible,
                 "Esc did not close the floating window before the dock");
+            GD.Print($"GA_NEXT_WORKER_INSPECTOR_PASS version={_expectedFormatVersion} " +
+                "context=individual activity=canonical capacity=micro " +
+                "mouse=transparent viewport_clamped=true camera_preserved=true " +
+                "worldstate_unchanged=true");
             GD.Print("GA_NEXT_WORKER_BADGE_VS16_PASS " +
                 "surface=coplanar camera_pitch=preserved " +
                 "hover=worker2 individual_click=true state_mutation=false");
