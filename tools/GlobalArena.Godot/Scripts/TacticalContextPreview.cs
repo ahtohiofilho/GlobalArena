@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using GlobalArena.World;
+using GlobalArena.Runtime;
 using Godot;
 
 namespace GlobalArena.Godot;
@@ -33,7 +34,116 @@ public partial class TacticalContextPreview : SubViewportContainer
     private ulong? _selectedFineTileId;
     // R30: presentation-only notification to the existing right sidebar.
     public event Action<ulong?, string, string>? PhysicalTileInspected;
+    // A click is distinguishable from read-only programmatic tile inspection.
+    public event Action<PhysicalTacticalTileId>? CanonicalPhysicalTileClicked;
     private readonly List<(ulong Id, Vector2[] Polygon, ulong[] Owners, int Degree, int Ring)> _polygons = new();
+    private readonly Dictionary<ulong, Vector3> _tileCenters = new();
+    private Node3D? _workerGlyphRoot;
+    private IReadOnlyList<PhysicalWorkerRuntimeRecord> _displayWorkers =
+        Array.Empty<PhysicalWorkerRuntimeRecord>();
+    private readonly Dictionary<ulong, (ulong FineTileId, Vector3 Center)> _workerGlyphPositions = new();
+    private ulong? _selectedWorkerGlyphId;
+    public int VisibleWorkerMarkerCount => _workerGlyphPositions.Count;
+    public IReadOnlyList<ulong> VisibleWorkerMarkerIds =>
+        Array.AsReadOnly(_workerGlyphPositions.Keys.OrderBy(x => x).ToArray());
+    // The same camera projection used for click hit-testing; enables
+    // test-driven actual GUI mouse events on a visible canonical fine tile.
+    public bool TryGetRenderedFineTilePixel(PhysicalTacticalTileId tile,
+        out Vector2 pixel)
+    {
+        pixel = Vector2.Zero;
+        if (_camera is null || !tile.IsValid ||
+            _cachedPhysicalMap?.Refinement.FineParameters !=
+                tile.FineGoldbergParameters ||
+            !_tileCenters.TryGetValue(tile.FineStrategicCellId.Value, out var center))
+            return false;
+        pixel = _camera.UnprojectPosition(center);
+        return pixel.X >= 0f && pixel.Y >= 0f &&
+            pixel.X < Size.X && pixel.Y < Size.Y;
+    }
+
+    public bool TryGetWorkerMarkerPosition(ulong workerId,
+        out ulong fineTileId, out Vector3 position)
+    {
+        if (_workerGlyphPositions.TryGetValue(workerId, out var marker))
+        {
+            fineTileId = marker.FineTileId;
+            position = marker.Center;
+            return true;
+        }
+        fineTileId = 0UL;
+        position = Vector3.Zero;
+        return false;
+    }
+
+    // Markers are purely presentation of v10 typed physical worker positions.
+    // v9 must NEVER fall back to coarse IDs or guess G(18,0) positions.
+    public void PresentAuthoritativeWorkers(
+        PhysicalWorkerRuntimeState census, ulong? selectedWorkerId)
+    {
+        ArgumentNullException.ThrowIfNull(census);
+        if (!census.IsInitialized ||
+            !census.HasAuthoritativeTacticalLocations ||
+            census.Workers.Any(worker =>
+                worker.TacticalTileId?.FineGoldbergParameters !=
+                    new GoldbergParameters(18, 0)))
+            throw new InvalidOperationException(
+                "Tactical worker markers require a complete canonical G(18,0) census.");
+        _displayWorkers = census.Workers.ToArray();
+        _selectedWorkerGlyphId = selectedWorkerId;
+        RebuildWorkerMarkers();
+    }
+
+    private void RebuildWorkerMarkers()
+    {
+        if (_workerGlyphRoot is null) return;
+        foreach (var child in _workerGlyphRoot.GetChildren())
+        {
+            _workerGlyphRoot.RemoveChild(child);
+            child.QueueFree();
+        }
+        _workerGlyphPositions.Clear();
+        foreach (var worker in _displayWorkers.OrderBy(w => w.Id.Value))
+        {
+            var fine = worker.TacticalTileId!.Value;
+            var tileId = fine.FineStrategicCellId.Value;
+            if (!_tileCenters.TryGetValue(tileId, out var center))
+                continue; // worker outside resident render range; never teleport
+            var polygon = _polygons.First(polygon => polygon.Id == tileId).Polygon;
+            var radius = polygon.Min(point =>
+                new Vector2(center.X, center.Z).DistanceTo(point)) * 0.27f;
+            radius = Mathf.Clamp(radius, 0.006f, 0.025f);
+            var selected = worker.Id.Value == _selectedWorkerGlyphId;
+            var glyph = new MeshInstance3D
+            {
+                Name = $"GAWorker_{worker.Id.Value}",
+                Mesh = new SphereMesh
+                {
+                    Radius = selected ? radius * 1.30f : radius,
+                    Height = selected ? radius * 2.60f : radius * 2f,
+                    RadialSegments = 12,
+                    Rings = 6
+                },
+                MaterialOverride = new StandardMaterial3D
+                {
+                    ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+                    AlbedoColor = selected ? new Color("#f7f4c4") :
+                        worker.Owner.Value == 1UL
+                            ? new Color("#46ded1") : new Color("#ffb36b")
+                },
+                Position = new Vector3(
+                    center.X, radius * (selected ? 1.30f : 1.0f), center.Z)
+            };
+            _workerGlyphRoot.AddChild(glyph);
+            if (!_workerGlyphPositions.TryAdd(worker.Id.Value,
+                    (tileId, center)))
+                throw new InvalidOperationException(
+                    "Duplicate individual worker marker identity.");
+        }
+        GD.Print($"GA_NEXT_FINE_WORKER_GLYPHS count={_workerGlyphPositions.Count} " +
+            $"census={_displayWorkers.Count} focused={_activeFocus} " +
+            "source=authoritative_v10 units_not_coarse=true");
+    }
     // Framing geometry and resident geometry have separate scopes.
     private readonly List<Vector2[]> _framingPolygons = new();
     private const float InitialZoomToRing2Cover = 0.95f;
@@ -328,6 +438,8 @@ public partial class TacticalContextPreview : SubViewportContainer
         _selectedTileOutline = new MeshInstance3D { Visible = false };
         _selectedTileOutline.MaterialOverride = MakeCoplanarOverlayMaterial();
         _world.AddChild(_selectedTileOutline);
+        _workerGlyphRoot = new Node3D { Name = "GANextCanonicalWorkerMarkers" };
+        _world.AddChild(_workerGlyphRoot);
 
         _camera = new Camera3D
         {
@@ -825,6 +937,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         if (selectedPhysical.Count != physicalTiles.Count)
             throw new InvalidOperationException("Duplicated physical tile identity.");
         _polygons.Clear();
+        _tileCenters.Clear();
         _framingPolygons.Clear();
         float lowX = float.MaxValue, highX = float.MinValue;
         float lowZ = float.MaxValue, highZ = float.MinValue;
@@ -862,6 +975,7 @@ public partial class TacticalContextPreview : SubViewportContainer
                 tint = Color.FromHsv(((int)owners[0].Value % 11) / 11f, 0.27f, 0.70f);
             }
             var center = Flatten(cell.Center);
+            _tileCenters.Add(id.FineStrategicCellId.Value, center);
             var polygon = new Vector2[cell.BoundaryVertexIds.Count];
             for (int k = 0; k < cell.BoundaryVertexIds.Count; k++)
             {
@@ -1003,6 +1117,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         PrepareAdjacentCanonicalData(physical, focus, geometry, physicalTiles);
         // Constrain the on-map status to concise navigation data. Full diagnostics stay in GD.Print.
         _information.Text = $"TACTICAL | territory {focusValue} | G(18,0) | {(_equidistant ? "EQUIDISTANT" : "DIRECT")} | frame {_ringCount}";
+        RebuildWorkerMarkers();
         // Recompute the presentation-only selection outline after a ring or projection change.
         // A tile outside the new region is deselected rather than inventing an alias.
         SelectPhysicalTile(_selectedFineTileId);
@@ -1040,6 +1155,11 @@ public partial class TacticalContextPreview : SubViewportContainer
         {
             if (!Contains(point, item.Polygon)) continue;
             SelectPhysicalTile(item.Id);
+            if (_cachedPhysicalMap is not null)
+                CanonicalPhysicalTileClicked?.Invoke(
+                    new PhysicalTacticalTileId(
+                        _cachedPhysicalMap.Refinement.FineParameters,
+                        new StrategicCellId(item.Id)));
             GD.Print($"GA_TACTICAL_LOCAL_PICK fine_cell={item.Id} parameters=G(18,0) degree={item.Degree} ring={item.Ring} strategic_incidence={string.Join("-", item.Owners)} highlight=true");
             return;
         }

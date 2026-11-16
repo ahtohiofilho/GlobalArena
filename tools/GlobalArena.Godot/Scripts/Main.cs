@@ -36,6 +36,12 @@ public partial class Main : Control
     // The game host alone owns the canonical session and movement/turn rules.
     // Main only holds presentation selection and submits a typed order intention.
     private FoundationHumanAiLocalPreview? _localFoundation;
+    // The ordinary visual checkpoint now uses the fully journaled v10 fine
+    // collective host. Legacy v9 Godot smokes stay on their old host.
+    private FoundationTacticalHumanAiTurnHost? _tacticalHost;
+    private readonly CivilizationId _humanCivilization = new(1UL);
+    public FoundationTacticalHumanAiTurnHost? ActiveTacticalHost => _tacticalHost;
+    public ulong? SelectedTacticalWorkerId => _tacticalHost is null ? null : _selectedLocalWorkerId;
     private OptionButton? _localWorkerSelector;
     private Button? _localMoveButton;
     private Button? _localProduceButton;
@@ -179,6 +185,11 @@ public partial class Main : Control
 
     private void RefreshLocalWorkerOrderControls()
     {
+        if (_tacticalHost is not null)
+        {
+            RefreshFineTacticalWorkerControls();
+            return;
+        }
         if (_localFoundation is null || _localWorkerSelector is null ||
             _localMoveButton is null || _localProduceButton is null ||
             _localEndTurnButton is null || _localCancelQueuedButton is null ||
@@ -264,8 +275,202 @@ public partial class Main : Control
             _selectedLocalWorkerId, _localFoundation.Snapshot.Revision);
     }
 
+    private void RefreshFineTacticalWorkerControls()
+    {
+        var host = _tacticalHost;
+        if (host is null || _localWorkerSelector is null ||
+            _localMoveButton is null || _localProduceButton is null ||
+            _localEndTurnButton is null || _localCancelQueuedButton is null ||
+            _localPendingLabel is null || _localTurnLabel is null ||
+            _localAiStatus is null) return;
+
+        var workers = host.Snapshot.Workers.Workers
+            .Where(worker => worker.Owner == _humanCivilization)
+            .OrderBy(worker => worker.Id.Value).ToArray();
+        if (!workers.Any(worker => worker.Id.Value == _selectedLocalWorkerId))
+            _selectedLocalWorkerId = workers.FirstOrDefault()?.Id.Value;
+        _localWorkerSelector.Clear();
+        for (var i = 0; i < workers.Length; i++)
+        {
+            var worker = workers[i];
+            var tile = worker.TacticalTileId!.Value.FineStrategicCellId.Value;
+            var pending = host.GetHumanOrders(_humanCivilization)
+                .Any(order => order.WorkerId == worker.Id);
+            _localWorkerSelector.AddItem(
+                $"#{worker.Id.Value} | G(18,0)/{tile} | {worker.Activity}" +
+                (pending ? " | QUEUED" : ""));
+            if (_selectedLocalWorkerId == worker.Id.Value)
+                _localWorkerSelector.Select(i);
+        }
+        _localWorkerSelector.Disabled = workers.Length == 0;
+        var chosen = workers.FirstOrDefault(
+            worker => worker.Id.Value == _selectedLocalWorkerId);
+        var ready = host.ReadyCivilizations.Contains(_humanCivilization);
+        var pendingOrders = host.GetHumanOrders(_humanCivilization);
+        var selectedTile = _tacticalPreview?.SelectedCanonicalPhysicalTileId;
+        PhysicalTacticalTileId? destination = selectedTile.HasValue
+            ? new PhysicalTacticalTileId(
+                host.Incidence.Refinement.FineParameters,
+                new StrategicCellId(selectedTile.Value))
+            : null;
+        bool adjacent = chosen is not null && destination.HasValue &&
+            host.Incidence.FineTopology.Cells[
+                checked((int)chosen.TacticalTileId!.Value
+                    .FineStrategicCellId.Value - 1)]
+                .AdjacentCellIds.Contains(destination.Value.FineStrategicCellId);
+        _localMoveButton.Disabled = ready || !adjacent;
+        _localProduceButton.Disabled = ready || chosen is null ||
+            chosen.Activity == PhysicalWorkerActivity.Producing ||
+            chosen.OutputMicroPerTurn == 0UL;
+        _localCancelQueuedButton.Disabled = ready || chosen is null ||
+            !pendingOrders.Any(order => order.WorkerId == chosen.Id);
+        _localEndTurnButton.Disabled = false;
+        _localTurnLabel.Text =
+            $"TACTICAL HUMAN + AI v10 | turn {host.NextTurn.Value} | " +
+            $"rev {host.Snapshot.Revision} | Human Civ {_humanCivilization.Value}";
+        if (_compactTurnPulse is not null)
+            _compactTurnPulse.Text =
+                $"TURN {host.NextTurn.Value} | REV {host.Snapshot.Revision} | Human + IA v10";
+        if (_metricTurn is not null)
+            _metricTurn.Text = host.NextTurn.Value.ToString();
+        if (_metricHumanWorkers is not null)
+            _metricHumanWorkers.Text = workers.Length.ToString();
+        if (_metricAiCivilizations is not null)
+            _metricAiCivilizations.Text = host.AiCivilizations.Count.ToString();
+        _localAiStatus.Text =
+            $"AI CIVILIZATIONS | {host.AiCivilizations.Count} opponent | " +
+            $"{host.AiCivilizations.Count(civ => host.ReadyCivilizations.Contains(civ))} ready";
+        _localPendingLabel.Text = pendingOrders.Count == 0
+            ? "No human orders queued; E closes the collective turn"
+            : string.Join(", ", pendingOrders.Select(order =>
+                $"#{order.WorkerId.Value} " +
+                (order.IsMovement
+                    ? $"G(18,0)/{order.Source.FineStrategicCellId.Value}→{order.Destination.FineStrategicCellId.Value}"
+                    : $"{order.Activity} at {order.Source.FineStrategicCellId.Value}")));
+        _operationalRoster?.Refresh(workers.Select(worker =>
+            new GaWorkerRosterRow(
+                worker.Id.Value, worker.CellId.Value,
+                worker.Activity.ToString(), worker.Commodity.Value,
+                worker.OutputMicroPerTurn, worker.DemandMultiplierMicro,
+                worker.TacticalTileId!.Value.FineStrategicCellId.Value)).ToArray(),
+            _selectedLocalWorkerId, host.Snapshot.Revision);
+        _tacticalPreview?.PresentAuthoritativeWorkers(
+            host.Snapshot.Workers, _selectedLocalWorkerId);
+    }
+
+    private void QueueFineWorkerMove()
+    {
+        if (_tacticalHost is null || !_selectedLocalWorkerId.HasValue ||
+            !_tacticalPreview!.SelectedCanonicalPhysicalTileId.HasValue ||
+            _localOrderStatus is null) return;
+        try
+        {
+            var target = new PhysicalTacticalTileId(
+                _tacticalHost.Incidence.Refinement.FineParameters,
+                new StrategicCellId(
+                    _tacticalPreview.SelectedCanonicalPhysicalTileId.Value));
+            _tacticalHost.QueueHumanMove(
+                _humanCivilization,
+                new PhysicalWorkerId(_selectedLocalWorkerId.Value), target);
+            _localOrderStatus.Text =
+                $"Worker #{_selectedLocalWorkerId.Value}: physical step queued " +
+                $"toward G(18,0)/{target.FineStrategicCellId.Value}. E to commit.";
+            GD.Print($"GA_NEXT_FINE_MOVE_QUEUED worker={_selectedLocalWorkerId.Value} " +
+                $"destination={target.FineStrategicCellId.Value} " +
+                $"pending={_tacticalHost.PendingOrderCount} mutation=false");
+        }
+        catch (System.Exception e)
+        {
+            _localOrderStatus.Text = $"Fine move rejected: {e.Message}";
+            GD.Print($"GA_NEXT_FINE_MOVE_REJECTED {e.Message}");
+        }
+        RefreshFineTacticalWorkerControls();
+    }
+
+    private void QueueFineWorkerProduction()
+    {
+        if (_tacticalHost is null || !_selectedLocalWorkerId.HasValue ||
+            _localOrderStatus is null) return;
+        try
+        {
+            _tacticalHost.QueueHumanActivity(
+                _humanCivilization, new PhysicalWorkerId(_selectedLocalWorkerId.Value),
+                PhysicalWorkerActivity.Producing);
+            _localOrderStatus.Text =
+                $"Worker #{_selectedLocalWorkerId.Value}: production restart queued.";
+            GD.Print($"GA_NEXT_FINE_PRODUCTION_QUEUED worker={_selectedLocalWorkerId.Value} " +
+                "mutation=false");
+        }
+        catch (System.Exception e)
+        {
+            _localOrderStatus.Text = $"Activity rejected: {e.Message}";
+        }
+        RefreshFineTacticalWorkerControls();
+    }
+
+    private void CancelFineWorkerOrder()
+    {
+        if (_tacticalHost is null || !_selectedLocalWorkerId.HasValue ||
+            _localOrderStatus is null) return;
+        try
+        {
+            if (_tacticalHost.CancelHumanOrder(
+                    _humanCivilization,
+                    new PhysicalWorkerId(_selectedLocalWorkerId.Value)))
+                _localOrderStatus.Text =
+                    $"Worker #{_selectedLocalWorkerId.Value}: pending order cancelled.";
+        }
+        catch (System.Exception e)
+        {
+            _localOrderStatus.Text = $"Cancellation rejected: {e.Message}";
+        }
+        RefreshFineTacticalWorkerControls();
+    }
+
+    private void EndFineCollectiveTurn()
+    {
+        if (_tacticalHost is null || _localOrderStatus is null) return;
+        try
+        {
+            var host = _tacticalHost;
+            if (!host.ReadyCivilizations.Contains(_humanCivilization))
+                host.SetHumanReady(_humanCivilization);
+            var receipt = host.TryCloseTurn() ??
+                throw new System.InvalidOperationException(
+                    "Collective turn not closed: all participants not ready.");
+            AttachRuntimeState(host.Snapshot);
+            var humanCount = receipt.Events.Count(x => x.Issuer == _humanCivilization);
+            var aiCount = receipt.ExecutedEvents - humanCount;
+            _localOrderStatus.Text =
+                $"Turn {receipt.Turn.Value}: Human {humanCount} + AI {aiCount} " +
+                $"actions | journal replay OK | hash v{receipt.Hash.FormatVersion}";
+            GD.Print($"GA_NEXT_FINE_HUMAN_AI_COMMIT turn={receipt.Turn.Value} " +
+                $"human={humanCount} ai={aiCount} " +
+                $"rev={receipt.Revision} replay={receipt.ReplayMatched} " +
+                $"hash_v={receipt.Hash.FormatVersion}");
+        }
+        catch (System.Exception e)
+        {
+            _localOrderStatus.Text = $"Collective turn rejected: {e.Message}";
+            GD.PrintErr($"GA_NEXT_FINE_HUMAN_AI_REJECTED {e}");
+        }
+        RefreshFineTacticalWorkerControls();
+    }
+
     private void OnLocalWorkerSelected(long optionIndex)
     {
+        if (_tacticalHost is not null)
+        {
+            var fineWorkers = _tacticalHost.Snapshot.Workers.Workers
+                .Where(w => w.Owner == _humanCivilization).ToArray();
+            var chosenIndex = checked((int)optionIndex);
+            if (chosenIndex >= 0 && chosenIndex < fineWorkers.Length)
+            {
+                _selectedLocalWorkerId = fineWorkers[chosenIndex].Id.Value;
+                RefreshFineTacticalWorkerControls();
+            }
+            return;
+        }
         if (_localFoundation is null)
             return;
         var workers = _localFoundation.ControllableWorkers;
@@ -277,6 +482,16 @@ public partial class Main : Control
 
     private void OnOperationalWorkerSelected(ulong id)
     {
+        if (_tacticalHost is not null)
+        {
+            if (!_tacticalHost.Snapshot.Workers.Workers.Any(w =>
+                w.Id.Value == id && w.Owner == _humanCivilization))
+                return;
+            _selectedLocalWorkerId = id;
+            RefreshFineTacticalWorkerControls();
+            GD.Print($"GA_NEXT_FINE_WORKER_SELECTED worker={id} source=canonical_v10 mutation=false");
+            return;
+        }
         if (_localFoundation is null ||
             !_localFoundation.ControllableWorkers.Any(worker => worker.Id.Value == id))
             return;
@@ -290,6 +505,11 @@ public partial class Main : Control
 
     private void OnLocalWorkerMoveRequested()
     {
+        if (_tacticalHost is not null)
+        {
+            QueueFineWorkerMove();
+            return;
+        }
         if (_localFoundation is null || !_selectedLocalWorkerId.HasValue ||
             !_bridgeSelection.HasValue || _localOrderStatus is null)
             return;
@@ -316,6 +536,11 @@ public partial class Main : Control
 
     private void OnLocalWorkerProduceRequested()
     {
+        if (_tacticalHost is not null)
+        {
+            QueueFineWorkerProduction();
+            return;
+        }
         if (_localFoundation is null || !_selectedLocalWorkerId.HasValue ||
             _localOrderStatus is null)
             return;
@@ -341,6 +566,11 @@ public partial class Main : Control
 
     private void OnLocalCancelQueuedRequested()
     {
+        if (_tacticalHost is not null)
+        {
+            CancelFineWorkerOrder();
+            return;
+        }
         if (_localFoundation is null || !_selectedLocalWorkerId.HasValue ||
             _localOrderStatus is null)
             return;
@@ -360,6 +590,11 @@ public partial class Main : Control
 
     private void OnLocalTurnEndRequested()
     {
+        if (_tacticalHost is not null)
+        {
+            EndFineCollectiveTurn();
+            return;
+        }
         if (_localFoundation is null || _localOrderStatus is null)
             return;
         try
@@ -415,6 +650,14 @@ public partial class Main : Control
             if (_planetWindow.Visible) ClosePlanetWindow();
             else SetOperationalDockVisible(false);
         }
+        else if (!_planetWindow.Visible &&
+                 key.Keycode is Key.G or Key.P or Key.X &&
+                 _tacticalHost is not null)
+        {
+            if (key.Keycode == Key.G) OnLocalWorkerMoveRequested();
+            else if (key.Keycode == Key.P) OnLocalWorkerProduceRequested();
+            else OnLocalCancelQueuedRequested();
+        }
         else if (key.Keycode == Key.E &&
             !_planetWindow.Visible && _localEndTurnButton?.Disabled == false)
         {
@@ -462,6 +705,24 @@ public partial class Main : Control
             OnLocalTurnEndRequested();
             GetViewport().SetInputAsHandled();
         }
+    }
+
+    private void OnTacticalPhysicalTileClicked(PhysicalTacticalTileId tile)
+    {
+        if (_tacticalHost is null) return;
+        // A player may click their own physical worker to select it.
+        // Clicking an empty/AI-occupied tile instead chooses a destination,
+        // never transfers ownership or changes authoritative state.
+        var own = _tacticalHost.Snapshot.Workers.Workers
+            .Where(w => w.Owner == _humanCivilization &&
+                w.TacticalTileId == tile)
+            .OrderBy(w => w.Id.Value).FirstOrDefault();
+        if (own is not null)
+            _selectedLocalWorkerId = own.Id.Value;
+        RefreshFineTacticalWorkerControls();
+        GD.Print($"GA_NEXT_FINE_TILE_CLICK tile={tile.FineStrategicCellId.Value} " +
+            $"worker={(_selectedLocalWorkerId?.ToString() ?? "none")} " +
+            "authoritative_mutation=false");
     }
 
     // R30: physical tile facts are read-only display data, never a game order.
@@ -811,6 +1072,7 @@ public partial class Main : Control
         };
         mapRegion.AddChild(_tacticalPreview);
         _tacticalPreview.PhysicalTileInspected += OnPhysicalTileInspected;
+        _tacticalPreview.CanonicalPhysicalTileClicked += OnTacticalPhysicalTileClicked;
         // The Foundation gameplay host materializes a *labeled local preview*
         // scenario. Main/Godot never creates, moves or settles workers directly.
         // This is NOT a claim of final world-population generation.
@@ -1040,10 +1302,27 @@ public partial class Main : Control
             "GA_FOUNDATION_GODOT_SMOKE") == "1";
         if (!legacySmoke)
         {
+            // Preserve old v9 fullscreen/shortcut smoke without changing
+            // its journal or assertions. Ordinary play uses the explicit
+            // fine v10 demo with a real collective human+AI host.
+            bool legacyWorkspaceSmoke = System.Environment.GetEnvironmentVariable(
+                "GA_NEXT_WORKSPACE_SMOKE") == "1";
+            if (!legacyWorkspaceSmoke)
+            {
+                _tacticalHost = FoundationTacticalDemoScenario
+                    .CreateLocalHumanAiPreview(new WorldGenerationRequest(
+                        new WorldSeed(20261012UL), WorldGenerationVersion.Initial,
+                        new GoldbergParameters(3, 0)));
+                _canonicalSession = _tacticalHost.Session;
+                AttachRuntimeState(_tacticalHost.Snapshot);
+            }
             // The old v9 record locates workers on G(3,0). This is a
             // PRESENTATION REGION ANCHOR, not a fabricated G(18,0) worker tile.
             // Tactical movement remains locked until the typed-v10 migration.
-            var first = _localFoundation!.ControllableWorkers.FirstOrDefault();
+            var first = _tacticalHost is null
+                ? _localFoundation!.ControllableWorkers.FirstOrDefault()
+                : _tacticalHost.Snapshot.Workers.Workers.FirstOrDefault(
+                    w => w.Owner == _humanCivilization);
             if (first is null)
                 throw new System.InvalidOperationException(
                     "No local physical worker available for tactical entry.");
@@ -1055,25 +1334,50 @@ public partial class Main : Control
             // secondary information, not beside all keyboard-first controls.
             subtitle.Visible = false;
             _returnStrategicContext!.Text = "M | OPEN PLANETARY MAP";
-            _localMoveButton!.Visible = false;
-            _localProduceButton!.Visible = false;
-            _localCancelQueuedButton!.Visible = false;
-            _localWorkerSelector!.Visible = false;
-            orderSection.AddChild(new Label
+            if (_tacticalHost is null)
             {
-                Text = "Tactical worker orders: pending authoritative physical-tile migration. " +
-                       "E still closes the human + AI turn; G/P/X moves are not offered here.",
-                AutowrapMode = TextServer.AutowrapMode.WordSmart
-            });
-            _status!.Text = "GA-NEXT / WORKFORCE 01  •  TAB personnel  •  M planetary atlas  •  E collective turn";
+                // Legacy v9-only workspace E2E, intentionally locked.
+                _localMoveButton!.Visible = false;
+                _localProduceButton!.Visible = false;
+                _localCancelQueuedButton!.Visible = false;
+                _localWorkerSelector!.Visible = false;
+                orderSection.AddChild(new Label
+                {
+                    Text = "Tactical worker orders: pending authoritative physical-tile migration. " +
+                           "E still closes the human + AI turn; G/P/X moves are not offered here.",
+                    AutowrapMode = TextServer.AutowrapMode.WordSmart
+                });
+            }
+            else
+            {
+                _tacticalPreview!.PresentAuthoritativeWorkers(
+                    _tacticalHost.Snapshot.Workers, first.Id.Value);
+                _localMoveButton!.Text = "G | MOVE ONE FINE EDGE";
+                _localProduceButton!.Text = "P | RESUME PRODUCTION";
+                _localCancelQueuedButton!.Text = "X | CANCEL ORDER";
+                _localOrderStatus!.Text =
+                    "Click your worker, click an adjacent G(18,0) tile, then G. " +
+                    "P resumes production; E closes human + AI together.";
+                GD.Print("GA_NEXT_FINE_VISUAL_BRIDGE_READY " +
+                    "world=v10 worker_ids=6 physical_tiles=G(18,0) " +
+                    "inputs=G/P/X/E gameplay_economy=not_active");
+            }
+            _status!.Text = _tacticalHost is null
+                ? "GA-NEXT / WORKFORCE 01  •  TAB personnel  •  M planetary atlas  •  E collective turn"
+                : "GA-NEXT / TACTICAL V10  •  G step  •  P produce  •  X cancel  •  E collective";
             GD.Print("GA_VISUAL_FOUNDATION_01_READY tactical_rectangular=true theme_tokens=true " +
                 "windows=chrome native_windows=false game_authority=untouched");
             RefreshLocalWorkerOrderControls();
-            GD.Print($"GA_NEXT_TACTICAL_ENTRY_PASS local_civ={_localFoundation.PlayerCivilization.Value} " +
+            GD.Print($"GA_NEXT_TACTICAL_ENTRY_PASS local_civ={_humanCivilization.Value} " +
                 $"worker={first.Id.Value} coarse_preview_focus={first.CellId.Value} " +
-                "physical_worker_location_authoritative=false tactical_visible=true");
-            if (System.Environment.GetEnvironmentVariable("GA_NEXT_WORKSPACE_SMOKE") == "1")
-                _ = new FoundationGodotWorkspaceSmoke(this, _localFoundation).RunAsync();
+                $"physical_worker_location_authoritative={(_tacticalHost is not null).ToString().ToLowerInvariant()} " +
+                "tactical_visible=true");
+            if (legacyWorkspaceSmoke)
+                _ = new FoundationGodotWorkspaceSmoke(this, _localFoundation!).RunAsync();
+            if (System.Environment.GetEnvironmentVariable(
+                "GA_NEXT_TACTICAL_V10_SMOKE") == "1" && _tacticalHost is not null)
+                _ = new FoundationGodotTacticalV10Smoke(
+                    this, _tacticalHost, _tacticalPreview!).RunAsync();
         }
 
         // Only the explicit CI environment starts the historical E2E.

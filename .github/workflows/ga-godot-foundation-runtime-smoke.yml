@@ -84,6 +84,18 @@ jobs:
             echo "Tactical workspace smoke encountered errors" >&2
             exit 1
           fi
+      - name: Run Godot v10 canonical worker markers and fine Human+AI E2E headless
+        shell: bash
+        run: |
+          set -euo pipefail
+          GA_FOUNDATION_GODOT_SMOKE=0 GA_NEXT_WORKSPACE_SMOKE=0 GA_NEXT_TACTICAL_V10_SMOKE=1 \
+            timeout 120s "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --quit-after 900 \
+            2>&1 | tee "$RUNNER_TEMP/ga-godot/tactical-v10.log"
+          grep -q 'GA_NEXT_TACTICAL_V10_E2E_PASS' "$RUNNER_TEMP/ga-godot/tactical-v10.log"
+          grep -q 'GA_NEXT_FINE_HUMAN_AI_COMMIT turn=1' "$RUNNER_TEMP/ga-godot/tactical-v10.log"
+          if grep -E 'GA_NEXT_TACTICAL_V10_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/tactical-v10.log"; then
+            exit 1
+          fi
       - name: Install virtual display and software OpenGL for a real rendered frame
         run: |
           sudo apt-get update -qq
@@ -131,6 +143,24 @@ jobs:
             grep -q "GA_NEXT_RENDER_FRAME_PASS stage=$stage" "$RUNNER_TEMP/ga-godot/workspace-graphical.log"
             test -s "$GA_NEXT_WORKSPACE_SCREENSHOT_DIR/$stage.png"
           done
+      - name: Render real v10 worker markers, orders and collective turn under Xvfb
+        shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          GA_FOUNDATION_GODOT_SMOKE: '0'
+          GA_NEXT_WORKSPACE_SMOKE: '0'
+          GA_NEXT_TACTICAL_V10_SMOKE: '1'
+          GA_NEXT_TACTICAL_V10_SCREENSHOT_DIR: ${{ runner.temp }}/ga-godot/tactical-v10
+        run: |
+          set -euo pipefail
+          xvfb-run -a -s "-screen 0 1600x1000x24" \
+            timeout 120s "$GODOT_BIN" --path tools/GlobalArena.Godot --quit-after 900 \
+            2>&1 | tee "$RUNNER_TEMP/ga-godot/tactical-v10-graphical.log"
+          grep -q 'GA_NEXT_TACTICAL_V10_E2E_PASS' "$RUNNER_TEMP/ga-godot/tactical-v10-graphical.log"
+          for stage in 01_worker_roster 02_order_queued 03_after_collective_turn 04_after_production; do
+            grep -q "GA_NEXT_V10_RENDER_FRAME_PASS stage=$stage" "$RUNNER_TEMP/ga-godot/tactical-v10-graphical.log"
+            test -s "$GA_NEXT_TACTICAL_V10_SCREENSHOT_DIR/$stage.png"
+          done
       - name: Keep actual runtime evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -141,6 +171,9 @@ jobs:
             ${{ runner.temp }}/ga-godot/import.log
             ${{ runner.temp }}/ga-godot/smoke.log
             ${{ runner.temp }}/ga-godot/tactical-workspace.log
+            ${{ runner.temp }}/ga-godot/tactical-v10.log
+            ${{ runner.temp }}/ga-godot/tactical-v10-graphical.log
+            ${{ runner.temp }}/ga-godot/tactical-v10/*.png
             ${{ runner.temp }}/ga-godot/graphical-smoke.log
             ${{ runner.temp }}/ga-godot/workspace-graphical.log
             ${{ runner.temp }}/ga-godot/workspace/*.png
