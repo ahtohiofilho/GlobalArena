@@ -17,7 +17,7 @@ public partial class TacticalContextPreview : SubViewportContainer
     private MeshInstance3D? _edges;
     private MeshInstance3D? _territoryBoundaries;
     private IReadOnlyList<PhysicalTacticalTerritoryBoundaryPath>? _cachedBoundaryPaths;
-    private bool _showTerritoryBoundaries = true;
+    private bool _showTerritoryBoundaries = false;
     private MeshInstance3D? _selectedTileOutline;
     private Label? _information;
     private VBoxContainer? _hudControls;
@@ -420,7 +420,7 @@ public partial class TacticalContextPreview : SubViewportContainer
             GD.Print($"GA_TACTICAL_FRAME_TOGGLE cover={_coverViewport} focus={_activeFocus}");
         };
         terrainRow.AddChild(framingButton);
-        var bordersToggle = new CheckBox { Text = "TERRITORY LIMITS", ButtonPressed = true };
+        var bordersToggle = new CheckBox { Text = "TERRITORY LIMITS", ButtonPressed = false };
         bordersToggle.Toggled += visible =>
         {
             _showTerritoryBoundaries = visible;
