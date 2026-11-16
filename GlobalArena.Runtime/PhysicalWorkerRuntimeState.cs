@@ -44,14 +44,20 @@ public sealed record PhysicalWorkerRuntimeRecord
     public PhysicalWorkerActivity Activity { get; }
     public uint DemandMultiplierMicro { get; }
 
+    // v10 opt-in: typed G(18,0) physical tile. The v9 CellId remains only
+    // a coarse compatibility/presentation region when this is present.
+    public PhysicalTacticalTileId? TacticalTileId { get; }
+
     public PhysicalWorkerRuntimeRecord(
         PhysicalWorkerId id, CivilizationId owner, StrategicCellId cellId,
         CommodityId commodity, ulong outputMicroPerTurn,
-        PhysicalWorkerActivity activity, uint demandMultiplierMicro = 1_000_000U)
+        PhysicalWorkerActivity activity, uint demandMultiplierMicro = 1_000_000U,
+        PhysicalTacticalTileId? tacticalTileId = null)
     {
         if (!id.IsValid || !owner.IsValid || !cellId.IsValid ||
             !commodity.IsValid || !Enum.IsDefined(activity) ||
-            demandMultiplierMicro == 0U)
+            demandMultiplierMicro == 0U ||
+            (tacticalTileId.HasValue && !tacticalTileId.Value.IsValid))
             throw new ArgumentException("Invalid physical worker identity, location or policy.");
 
         Id = id;
@@ -61,12 +67,31 @@ public sealed record PhysicalWorkerRuntimeRecord
         OutputMicroPerTurn = outputMicroPerTurn;
         Activity = activity;
         DemandMultiplierMicro = demandMultiplierMicro;
+        TacticalTileId = tacticalTileId;
     }
 
     public PhysicalWorkerRuntimeRecord WithLocationAndActivity(
-        StrategicCellId cell, PhysicalWorkerActivity activity) =>
-        new(Id, Owner, cell, Commodity, OutputMicroPerTurn,
+        StrategicCellId cell, PhysicalWorkerActivity activity)
+    {
+        if (TacticalTileId.HasValue)
+            throw new InvalidOperationException(
+                "v10 physical workers cannot move via v9 coarse Goldberg cells.");
+        return new(Id, Owner, cell, Commodity, OutputMicroPerTurn,
             activity, DemandMultiplierMicro);
+    }
+
+    public PhysicalWorkerRuntimeRecord WithTacticalLocationAndActivity(
+        PhysicalTacticalTileId destination, StrategicCellId presentationRegion,
+        PhysicalWorkerActivity activity)
+    {
+        if (!TacticalTileId.HasValue || !destination.IsValid ||
+            destination.FineGoldbergParameters !=
+                TacticalTileId.Value.FineGoldbergParameters)
+            throw new InvalidOperationException(
+                "Tactical movement requires an existing compatible v10 position.");
+        return new(Id, Owner, presentationRegion, Commodity, OutputMicroPerTurn,
+            activity, DemandMultiplierMicro, destination);
+    }
 }
 
 /// <summary>
@@ -80,21 +105,39 @@ public sealed class PhysicalWorkerRuntimeState
 
     public static PhysicalWorkerRuntimeState Uninitialized => Missing;
     public bool IsInitialized { get; }
+    public bool HasAuthoritativeTacticalLocations { get; }
     public IReadOnlyList<PhysicalWorkerRuntimeRecord> Workers { get; }
 
     public PhysicalWorkerRuntimeState(
-        IEnumerable<PhysicalWorkerRuntimeRecord> workers)
-        : this(true, (workers ?? throw new ArgumentNullException(nameof(workers))).ToArray())
+        IEnumerable<PhysicalWorkerRuntimeRecord> workers,
+        bool tacticalLocationsAuthoritative = false)
+        : this(true, (workers ?? throw new ArgumentNullException(nameof(workers))).ToArray(),
+            tacticalLocationsAuthoritative)
     {
     }
 
     private PhysicalWorkerRuntimeState(
-        bool initialized, PhysicalWorkerRuntimeRecord[] workers)
+        bool initialized, PhysicalWorkerRuntimeRecord[] workers,
+        bool tacticalLocationsAuthoritative = false)
     {
         if (!initialized && workers.Length != 0)
             throw new InvalidOperationException("Missing worker census must be empty.");
         if (workers.Any(x => x is null))
             throw new ArgumentException("Worker census cannot contain null records.");
+
+        // The census is homogeneous by schema: never mix v9 coarse workers
+        // and v10 fine workers within one authoritative snapshot.
+        if (workers.Any(x => x.TacticalTileId.HasValue != tacticalLocationsAuthoritative))
+            throw new ArgumentException(
+                "Tactical worker positions must be complete and explicitly opted into v10.");
+        if (tacticalLocationsAuthoritative && workers.Length > 0)
+        {
+            var parameters = workers[0].TacticalTileId!.Value.FineGoldbergParameters;
+            if (workers.Any(x =>
+                x.TacticalTileId!.Value.FineGoldbergParameters != parameters))
+                throw new ArgumentException(
+                    "All tactical worker positions must use one fine topology.");
+        }
 
         var sorted = workers.OrderBy(x => x.Id.Value).ToArray();
         for (var index = 1; index < sorted.Length; index++)
@@ -104,6 +147,7 @@ public sealed class PhysicalWorkerRuntimeState
         }
 
         IsInitialized = initialized;
+        HasAuthoritativeTacticalLocations = tacticalLocationsAuthoritative;
         Workers = Array.AsReadOnly(sorted);
     }
 }
