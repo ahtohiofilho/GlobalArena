@@ -11,7 +11,8 @@ namespace GlobalArena.Simulation.Foundation;
 public sealed record FoundationTacticalWorkerOrder(
     CivilizationId Issuer, PhysicalWorkerId WorkerId,
     PhysicalTacticalTileId Source, PhysicalTacticalTileId Destination,
-    PhysicalWorkerActivity Activity, bool IsMovement);
+    PhysicalWorkerActivity Activity, bool IsMovement,
+    PhysicalWorkerOccupation? NextOccupation = null);
 
 public sealed record FoundationTacticalAiDecision(
     PhysicalWorkerId WorkerId, PhysicalTacticalTileId Destination,
@@ -209,6 +210,18 @@ public sealed class FoundationTacticalHumanAiTurnHost
         QueueActivity(human, id, activity);
     }
 
+    /// <summary>
+    /// Queues a single human worker's productive reassignment at the SAME
+    /// physical tile. Replaces its pending move/activity order for this
+    /// collective turn; no color, worker state or market fact changes yet.
+    /// </summary>
+    public void QueueHumanOccupation(CivilizationId human,
+        PhysicalWorkerId id, PhysicalWorkerOccupation occupation)
+    {
+        RequireHuman(human);
+        QueueOccupation(human, id, occupation);
+    }
+
     public bool CancelHumanOrder(CivilizationId human, PhysicalWorkerId id)
     {
         RequireHuman(human);
@@ -309,7 +322,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
         {
             var worker = ValidateOrder(
                 order.Issuer, order.WorkerId, order.Destination,
-                order.Activity, order.IsMovement);
+                order.Activity, order.IsMovement, order.NextOccupation);
             if (worker.TacticalTileId != order.Source)
                 throw new InvalidOperationException(
                     "Pending tactical source no longer matches canonical worker.");
@@ -319,7 +332,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
             (ISimulationCommand)new PhysicalTacticalWorkerMoveCommand(
                 new CommandId(turn, checked((ulong)index + 1UL)),
                 order.Issuer, order.WorkerId, order.Destination,
-                order.Activity)).ToArray();
+                order.Activity, order.NextOccupation)).ToArray();
         var context = new SimulationContext(turn, new SimulationSeed(712UL));
         var committed = _publisher.ResolveAndCommit(
             new TurnPolicyResolutionGateInput(
@@ -381,10 +394,23 @@ public sealed class FoundationTacticalHumanAiTurnHost
             issuer, id, source, source, activity, IsMovement: false);
     }
 
+    private void QueueOccupation(CivilizationId issuer,
+        PhysicalWorkerId id, PhysicalWorkerOccupation occupation)
+    {
+        CheckWritable(issuer);
+        var worker = RequireOwnedWorker(issuer, id);
+        var tile = worker.TacticalTileId!.Value;
+        ValidateOrder(issuer, id, tile, worker.Activity,
+            movement: false, nextOccupation: occupation);
+        _plans[issuer][id.Value] = new FoundationTacticalWorkerOrder(
+            issuer, id, tile, tile, worker.Activity,
+            IsMovement: false, NextOccupation: occupation);
+    }
+
     private PhysicalWorkerRuntimeRecord ValidateOrder(
         CivilizationId issuer, PhysicalWorkerId workerId,
         PhysicalTacticalTileId destination, PhysicalWorkerActivity activity,
-        bool movement)
+        bool movement, PhysicalWorkerOccupation? nextOccupation = null)
     {
         var worker = RequireOwnedWorker(issuer, workerId);
         if (!destination.IsValid || !Enum.IsDefined(activity))
@@ -395,6 +421,20 @@ public sealed class FoundationTacticalHumanAiTurnHost
         try { edge = _executor.CheckEdge(source, destination); }
         catch (ArgumentException ex)
         { throw new InvalidOperationException("Foreign fine topology.", ex); }
+        if (nextOccupation.HasValue)
+        {
+            if (!Snapshot.Workers.HasAuthoritativeOccupations ||
+                !worker.Occupation.HasValue ||
+                (nextOccupation.Value != PhysicalWorkerOccupation.Agriculture &&
+                 nextOccupation.Value != PhysicalWorkerOccupation.Forestry &&
+                 nextOccupation.Value != PhysicalWorkerOccupation.Mining) ||
+                worker.Occupation.Value == nextOccupation.Value ||
+                movement || edge.HasValue || activity != worker.Activity)
+                throw new InvalidOperationException(
+                    "Reallocation requires an existing owned v11 worker and " +
+                    "a different productive occupation at the same fine tile.");
+            return worker;
+        }
         if (movement)
         {
             if (edge is null || activity != PhysicalWorkerActivity.Traveling)
