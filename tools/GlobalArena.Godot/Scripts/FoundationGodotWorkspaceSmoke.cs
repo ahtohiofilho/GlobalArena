@@ -40,6 +40,10 @@ internal sealed class FoundationGodotWorkspaceSmoke
                 as GlobePreview;
             var planet = _main.GetNode<Control>("GANextPlanetWindow");
             var operations = _main.GetNode<Control>("GANextOperationsWindow");
+            var panelsButton = _main.FindChild(
+                "GANextPanelsButton", recursive: true, owned: false) as Button;
+            Must(panelsButton is not null,
+                "panels toggle button missing from tactical header");
             var canvas = _main.FindChild(
                 "GANextWideTacticalCanvas", recursive: true, owned: false)
                 as PanelContainer;
@@ -74,31 +78,50 @@ internal sealed class FoundationGodotWorkspaceSmoke
             var hash = _game.StateHash;
             await CaptureRenderedViewIfRequested("01_tactical_start");
 
-            Press(Key.M);
+            // Drive Godot's input pipeline, NOT a direct _UnhandledKeyInput
+            // method call. Tab is normally consumed by focus_next and Esc by
+            // ui_cancel; the old test bypassed that engine-level behavior.
+            panelsButton!.GrabFocus();
+            await _main.ToSignal(_main.GetTree(), SceneTree.SignalName.ProcessFrame);
+            Must(panelsButton.HasFocus(),
+                "unable to place native Godot keyboard focus on controls");
+            await Press(Key.M);
             Must(planet.Visible && globe!.Visible && tactical.Visible,
                 "M did not open a floating planetary navigation window");
             Must(_game.StateHash == hash, "M mutated the authoritative hash");
             await CaptureRenderedViewIfRequested("02_planet_map");
-            Press(Key.M);
+
+            await Press(Key.Escape);
+            Must(!planet.Visible && !globe!.Visible && tactical.Visible,
+                "ESC was consumed before closing the planetary window");
+            await Press(Key.M);
+            Must(planet.Visible, "M did not reopen planet after ESC");
+            await Press(Key.M);
             Must(!planet.Visible && !globe!.Visible && tactical.Visible,
                 "M did not restore the uninterrupted tactical viewport");
 
-            Press(Key.Tab);
+            panelsButton.GrabFocus();
+            await _main.ToSignal(_main.GetTree(), SceneTree.SignalName.ProcessFrame);
+            await Press(Key.Tab);
             Must(operations.Visible && !planet.Visible,
-                "TAB did not reveal the operational panel as a window");
+                "TAB was consumed by focus navigation before toggling panels");
             await CaptureRenderedViewIfRequested("03_operations_panel");
-            Press(Key.Escape);
+            await Press(Key.Escape);
             Must(!operations.Visible && tactical.Visible,
-                "ESC did not close the contextual window");
+                "ESC was consumed before closing the operations window");
+            await Press(Key.Tab);
+            Must(operations.Visible, "TAB did not reopen operations");
+            await Press(Key.Tab);
+            Must(!operations.Visible, "TAB did not close operations");
 
             // G cannot submit an old strategic destination while in tactical
             // mode. No claim of authoritative physical-tile movement is made.
-            Press(Key.G);
+            await Press(Key.G);
             Must(_game.PendingOrderCount == 0 &&
                  _game.Snapshot.Revision == 0UL && _game.StateHash == hash,
                 "tactical G illegally queued a coarse Goldberg worker order");
 
-            Press(Key.E);
+            await Press(Key.E);
             Must(_game.NextTurn.Value == 2UL &&
                  _game.Snapshot.Revision == 1UL &&
                  _game.LastAiEventCount == 1 &&
@@ -109,6 +132,9 @@ internal sealed class FoundationGodotWorkspaceSmoke
             Must(_game.LastTurnReceipt is { ReplayMatched: true },
                 "tactical-first turn did not replay identically");
             await CaptureRenderedViewIfRequested("04_after_ai_turn");
+            GD.Print("GA_NEXT_SHORTCUT_ROUTING_PASS " +
+                "input_pipeline=godot_parsed tab=focus_safe escape=both_windows " +
+                "M=reentrant TAB=reentrant E=authoritative committed_once=true");
             GD.Print("GA_NEXT_TACTICAL_WORKSPACE_PASS " +
                 "entry=tactical planet=M panels=TAB close=ESC " +
                 "g_tactical_locked=true human_ai_turn=true " +
@@ -151,12 +177,20 @@ internal sealed class FoundationGodotWorkspaceSmoke
             $"dimensions={frame.GetWidth()}x{frame.GetHeight()} palette={palette.Count}");
     }
 
-    private void Press(Key code)
+    private async Task Press(Key code)
     {
-        _main._UnhandledKeyInput(new InputEventKey
+        // The real SceneTree receives these events exactly like user input,
+        // allowing focus navigation/accept_event to affect the outcome.
+        Godot.Input.ParseInputEvent(new InputEventKey
         {
             Keycode = code, Pressed = true, Echo = false
         });
+        await _main.ToSignal(_main.GetTree(), SceneTree.SignalName.ProcessFrame);
+        Godot.Input.ParseInputEvent(new InputEventKey
+        {
+            Keycode = code, Pressed = false, Echo = false
+        });
+        await _main.ToSignal(_main.GetTree(), SceneTree.SignalName.ProcessFrame);
     }
 
     private static void Must(bool condition, string message)
