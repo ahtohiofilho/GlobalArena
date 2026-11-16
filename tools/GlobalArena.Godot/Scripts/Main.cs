@@ -52,6 +52,7 @@ public partial class Main : Control
     private Control? _planetWindow;
     private Control? _workspaceWindow;
     private Label? _compactTurnPulse;
+    private GaFloatingWindow? _atlasFloatingWindow;
     private Label? _metricTurn;
     private Label? _metricHumanWorkers;
     private Label? _metricAiCivilizations;
@@ -602,35 +603,36 @@ public partial class Main : Control
         rightPanel.SizeFlagsVertical = SizeFlags.ExpandFill;
         _workspaceWindow = operations;
 
+        // Secondary planetary atlas is a bounded, movable and resizable
+        // internal window. Outside the atlas, the tactical map still gets
+        // pointer events (unlike the old screen-sized modal veil).
         var planet = new Control
         {
             Name = "GANextPlanetWindow",
             Visible = false,
-            MouseFilter = MouseFilterEnum.Stop
+            MouseFilter = MouseFilterEnum.Ignore
         };
         AddChild(planet);
         planet.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        var veil = new ColorRect
+        var planetPanel = new GaFloatingWindow
         {
-            Color = new Color("#04121ce8"),
+            Name = "GANextPlanetPanel",
+            Position = new Vector2(190f, 75f),
+            Size = new Vector2(740f, 550f),
+            MinimumFloatingSize = new Vector2(440f, 360f),
             MouseFilter = MouseFilterEnum.Stop
         };
-        planet.AddChild(veil);
-        veil.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        var planetPanel = new PanelContainer
-        {
-            Name = "GANextPlanetPanel", MouseFilter = MouseFilterEnum.Stop,
-            AnchorLeft = 0.14f, AnchorRight = 0.86f,
-            AnchorTop = 0.07f, AnchorBottom = 0.92f
-        };
         planet.AddChild(planetPanel);
+        planetPanel.ClampIntoParent();
+        _atlasFloatingWindow = planetPanel;
         planetPanel.AddThemeStyleboxOverride("panel", GaVisualFoundation.WindowSurface());
         var planetColumn = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
         planetPanel.AddChild(planetColumn);
-        GaVisualFoundation.AddWindowHeader(
+        var planetTitle = GaVisualFoundation.AddWindowHeader(
             planetColumn, "GA / PLANETARY ATLAS", "Strategic navigation",
-            "Select a region · return to tactical operations",
+            "Drag title to move · resize from lower-right corner",
             ClosePlanetWindow);
+        planetPanel.AttachTitleBar(planetTitle);
         var planetSlot = new AspectRatioContainer
         {
             Ratio = 1f,
@@ -638,11 +640,26 @@ public partial class Main : Control
             SizeFlagsVertical = SizeFlags.ExpandFill
         };
         planetColumn.AddChild(planetSlot);
+        var gripRow = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+        planetColumn.AddChild(gripRow);
+        gripRow.AddChild(GaVisualFoundation.Caption("M / ATLAS  •  navigation only"));
+        var gripSpacer = new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        gripRow.AddChild(gripSpacer);
+        var grip = new Button
+        {
+            Name = "GANextPlanetResizeGrip",
+            Text = "◢",
+            TooltipText = "Drag to resize planetary window",
+            CustomMinimumSize = new Vector2(30f, 25f)
+        };
+        gripRow.AddChild(grip);
+        planetPanel.AttachResizeGrip(grip);
         globe.Reparent(planetSlot);
         globe.Visible = false;
         _planetWindow = planet;
         GD.Print("GA_NEXT_TACTICAL_WORKSPACE_WINDOWS_READY " +
-            "planet=M dock=TAB close=ESC native_windows=false simulation_mutation=false");
+            "planet=M movable_resizable=true dock=TAB close=ESC " +
+            "native_windows=false simulation_mutation=false");
     }
 
     private void ClosePlanetWindow()
@@ -657,6 +674,7 @@ public partial class Main : Control
         if (_planetWindow is null || _strategicGlobe is null) return;
         var open = !_planetWindow.Visible;
         // A secondary atlas does not hide the dock or resize its viewport.
+        if (open) _atlasFloatingWindow?.ClampIntoParent();
         _planetWindow.Visible = open;
         _strategicGlobe.Visible = open;
         GD.Print($"GA_NEXT_PLANET_WINDOW visible={open.ToString().ToLowerInvariant()} " +
@@ -716,7 +734,7 @@ public partial class Main : Control
         });
         root.AddChild(header);
         var title = new Label { Text = "GLOBAL ARENA" };
-        title.AddThemeFontSizeOverride("font_size", 22);
+        title.AddThemeFontSizeOverride("font_size", GaVisualFoundation.ApplicationFontSize);
         title.AddThemeColorOverride("font_color", GaVisualFoundation.Text);
         header.AddChild(title);
         var subtitle = new Label { Text = "Planetary strategy  |  Production foundation", SizeFlagsHorizontal = SizeFlags.ExpandFill, VerticalAlignment = VerticalAlignment.Center };
@@ -1016,7 +1034,7 @@ public partial class Main : Control
                        "E still closes the human + AI turn; G/P/X moves are not offered here.",
                 AutowrapMode = TextServer.AutowrapMode.WordSmart
             });
-            _status!.Text = "GA-NEXT / VISUAL FOUNDATION 01    •    M planetary atlas    •    TAB operations    •    E collective turn";
+            _status!.Text = "GA-NEXT / LAYOUT 02  •  TAB dock  •  M floating atlas  •  E collective turn";
             GD.Print("GA_VISUAL_FOUNDATION_01_READY tactical_rectangular=true theme_tokens=true " +
                 "windows=chrome native_windows=false game_authority=untouched");
             RefreshLocalWorkerOrderControls();
