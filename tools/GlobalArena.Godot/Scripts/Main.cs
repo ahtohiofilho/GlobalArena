@@ -35,7 +35,7 @@ public partial class Main : Control
     private Label? _strategicWorkerDetails;
     // The game host alone owns the canonical session and movement/turn rules.
     // Main only holds presentation selection and submits a typed order intention.
-    private FoundationLocalGameHost? _localFoundation;
+    private FoundationHumanAiLocalPreview? _localFoundation;
     private OptionButton? _localWorkerSelector;
     private Button? _localMoveButton;
     private Button? _localProduceButton;
@@ -43,6 +43,7 @@ public partial class Main : Control
     private Button? _localCancelQueuedButton;
     private Label? _localPendingLabel;
     private Label? _localTurnLabel;
+    private Label? _localAiStatus;
     private Label? _localOrderStatus;
     private ulong? _selectedLocalWorkerId;
     // R38: composition owner, not a second simulation state inside the renderer.
@@ -165,7 +166,8 @@ public partial class Main : Control
         if (_localFoundation is null || _localWorkerSelector is null ||
             _localMoveButton is null || _localProduceButton is null ||
             _localEndTurnButton is null || _localCancelQueuedButton is null ||
-            _localPendingLabel is null || _localTurnLabel is null)
+            _localPendingLabel is null || _localTurnLabel is null ||
+            _localAiStatus is null)
             return;
 
         var workers = _localFoundation.ControllableWorkers;
@@ -196,8 +198,16 @@ public partial class Main : Control
         }
 
         _localTurnLabel.Text =
-            $"LOCAL FOUNDATION PREVIEW | turn {_localFoundation.NextTurn.Value} | " +
-            $"rev {_localFoundation.Snapshot.Revision} | Civ {_localFoundation.PlayerCivilization.Value}";
+            $"LOCAL HUMAN + AI PREVIEW | turn {_localFoundation.NextTurn.Value} | " +
+            $"rev {_localFoundation.Snapshot.Revision} | Human Civ {_localFoundation.PlayerCivilization.Value}";
+        if (_localAiStatus is not null)
+        {
+            var ready = _localFoundation.ReadyCivilizations;
+            var aiCount = _localFoundation.AiCivilizations.Count;
+            var readyCount = _localFoundation.AiCivilizations.Count(ready.Contains);
+            _localAiStatus.Text = $"AI CIVILIZATIONS | {aiCount} opponent | " +
+                $"{readyCount} ready this turn | last AI actions {_localFoundation.LastAiEventCount}";
+        }
         var pending = _localFoundation.PendingOrders;
         _localPendingLabel.Text = pending.Count == 0
             ? "No orders queued; end turn to advance the game clock"
@@ -310,13 +320,18 @@ public partial class Main : Control
         {
             var receipt = _localFoundation.EndTurn();
             AttachRuntimeState(_localFoundation.Snapshot);
+            var aiEvents = _localFoundation.LastAiEventCount;
+            var humanEvents = receipt.ExecutedEvents - aiEvents;
             _localOrderStatus.Text =
-                $"Turn {receipt.Turn.Value} closed: {receipt.ExecutedEvents} worker " +
-                $"orders | journal replay verified | hash v{receipt.ResultingHash.FormatVersion}";
+                $"Turn {receipt.Turn.Value} closed: Human {humanEvents} + AI {aiEvents} " +
+                $"worker actions | journal replay verified | hash v{receipt.Hash.FormatVersion}";
             GD.Print($"GA_UI_FOUNDATION_BATCH_COMMIT_R1 turn={receipt.Turn.Value} " +
-                $"events={receipt.ExecutedEvents} revision={receipt.ResultingRevision} " +
+                $"events={receipt.ExecutedEvents} revision={receipt.Revision} " +
                 $"journal_replayed={receipt.ReplayMatched.ToString().ToLowerInvariant()} " +
                 $"authoritative=true");
+            GD.Print($"GA_UI_FOUNDATION_HUMAN_AI_COMMIT_R1 turn={receipt.Turn.Value} " +
+                $"human_events={humanEvents} ai_events={aiEvents} " +
+                $"ready_all=true revision={receipt.Revision} hash_v={receipt.Hash.FormatVersion}");
         }
         catch (System.Exception error)
         {
@@ -529,7 +544,7 @@ public partial class Main : Control
         // The Foundation gameplay host materializes a *labeled local preview*
         // scenario. Main/Godot never creates, moves or settles workers directly.
         // This is NOT a claim of final world-population generation.
-        _localFoundation = FoundationLocalGameHost.CreateLocalPreview(
+        _localFoundation = FoundationHumanAiLocalPreview.CreateLocalPreview(
             new WorldGenerationRequest(new WorldSeed(20261012UL),
                 WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)));
         _canonicalSession = _localFoundation.Session;
@@ -649,6 +664,12 @@ public partial class Main : Control
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         orderSection.AddChild(_localTurnLabel);
+        _localAiStatus = new Label
+        {
+            Text = "AI CIVILIZATIONS | waiting for the next collective turn",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        orderSection.AddChild(_localAiStatus);
         _localWorkerSelector = new OptionButton
         {
             CustomMinimumSize = new Vector2(0f, 32f),
@@ -685,7 +706,7 @@ public partial class Main : Control
         orderSection.AddChild(_localCancelQueuedButton);
         _localEndTurnButton = new Button
         {
-            Text = "E | END TURN — RESOLVE ALL QUEUED ORDERS"
+            Text = "E | END TURN — HUMAN + AI TOGETHER"
         };
         _localEndTurnButton.Pressed += OnLocalTurnEndRequested;
         orderSection.AddChild(_localEndTurnButton);
@@ -699,6 +720,9 @@ public partial class Main : Control
         GD.Print("GA_UI_FOUNDATION_LOCAL_GAME_R1 workers_initial=" +
             _localFoundation!.Snapshot.Workers.Workers.Count +
             " authority=domain_host orders=journaled preview_scenario=true");
+        GD.Print("GA_UI_FOUNDATION_HUMAN_AI_READY_R1 " +
+            "human_civ=1 ai_civ=2 ai_policy=resume_existing_production " +
+            "all_ready_gate=true preview_scenario=true");
 
         globe.TransferHud(strategicHud);
         _strategicHudPanel = strategicHud;
@@ -741,7 +765,7 @@ public partial class Main : Control
                 this, globe, _localFoundation!,
                 _localWorkerSelector!, _localMoveButton!, _localProduceButton!,
                 _localEndTurnButton!, _localCancelQueuedButton!, _localPendingLabel!,
-                _strategicWorkerSummary!, _localTurnLabel!, _localOrderStatus!)
+                _strategicWorkerSummary!, _localTurnLabel!, _localAiStatus!, _localOrderStatus!)
                 .RunAsync();
         }
     }
