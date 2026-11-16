@@ -52,6 +52,9 @@ public partial class Main : Control
     private Control? _planetWindow;
     private Control? _workspaceWindow;
     private Label? _compactTurnPulse;
+    private Label? _metricTurn;
+    private Label? _metricHumanWorkers;
+    private Label? _metricAiCivilizations;
 
     // R35: only an external gameplay owner may supply a real runtime snapshot.
     // Never create a demonstration WorldState inside the UI.
@@ -213,6 +216,12 @@ public partial class Main : Control
             $"rev {_localFoundation.Snapshot.Revision} | Human Civ {_localFoundation.PlayerCivilization.Value}";
         if (_compactTurnPulse is not null)
             _compactTurnPulse.Text = $"TURN {_localFoundation.NextTurn.Value} | REV {_localFoundation.Snapshot.Revision} | Human + IA";
+        if (_metricTurn is not null)
+            _metricTurn.Text = _localFoundation.NextTurn.Value.ToString();
+        if (_metricHumanWorkers is not null)
+            _metricHumanWorkers.Text = _localFoundation.ControllableWorkers.Count.ToString();
+        if (_metricAiCivilizations is not null)
+            _metricAiCivilizations.Text = _localFoundation.AiCivilizations.Count.ToString();
         if (_localAiStatus is not null)
         {
             var ready = _localFoundation.ReadyCivilizations;
@@ -559,6 +568,17 @@ public partial class Main : Control
             operationsColumn, "GA / COMMAND DESK", "Operational workspace",
             "People · orders · administrative intelligence",
             () => operations.Visible = false);
+        var metrics = new HBoxContainer();
+        metrics.AddThemeConstantOverride("separation", 6);
+        operationsColumn.AddChild(metrics);
+        metrics.AddChild(GaVisualFoundation.CreateMetric(
+            "TURN", _localFoundation!.NextTurn.Value.ToString(), out _metricTurn));
+        metrics.AddChild(GaVisualFoundation.CreateMetric(
+            "HUMAN", _localFoundation.ControllableWorkers.Count.ToString(),
+            out _metricHumanWorkers));
+        metrics.AddChild(GaVisualFoundation.CreateMetric(
+            "AI", _localFoundation.AiCivilizations.Count.ToString(),
+            out _metricAiCivilizations));
         rightPanel.Reparent(operationsColumn);
         rightPanel.CustomMinimumSize = Vector2.Zero;
         rightPanel.SizeFlagsVertical = SizeFlags.ExpandFill;
