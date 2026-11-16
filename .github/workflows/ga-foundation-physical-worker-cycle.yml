@@ -75,11 +75,11 @@ jobs:
         run: dotnet run --project GlobalArena.Console/GlobalArena.Console.csproj -c Release -- --foundation-human-ai-turn
       - name: Compile the actual Godot .NET production client
         run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
-      - name: Validate automatic PR364 and PR365 PowerShell launcher syntax (Windows)
+      - name: Validate automatic PR364/PR365/PR366 launchers syntax (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          foreach ($name in @('GA-Next-PR364-Abrir-Visual.ps1', 'GA-Next-PR365-Abrir-Visual.ps1')) {
+          foreach ($name in @('GA-Next-PR364-Abrir-Visual.ps1', 'GA-Next-PR365-Abrir-Visual.ps1', 'GA-Next-PR366-Abrir-Visual.ps1')) {
             $path = (Resolve-Path ("tools/GlobalArena.Godot/Launchers/" + $name)).Path
             $tokens = $null
             $errors = $null
