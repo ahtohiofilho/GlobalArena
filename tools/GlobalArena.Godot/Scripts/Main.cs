@@ -765,7 +765,7 @@ public partial class Main : Control
                 this, globe, _localFoundation!,
                 _localWorkerSelector!, _localMoveButton!, _localProduceButton!,
                 _localEndTurnButton!, _localCancelQueuedButton!, _localPendingLabel!,
-                _strategicWorkerSummary!, _localTurnLabel!, _localOrderStatus!)
+                _strategicWorkerSummary!, _localTurnLabel!, _localAiStatus!, _localOrderStatus!)
                 .RunAsync();
         }
     }
