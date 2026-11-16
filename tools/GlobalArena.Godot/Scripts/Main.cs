@@ -386,8 +386,10 @@ public partial class Main : Control
         else if (key.Keycode == Key.Escape &&
             (_planetWindow.Visible || _workspaceWindow.Visible))
         {
-            ClosePlanetWindow();
-            _workspaceWindow.Visible = false;
+            // Escape dismisses the upper floating atlas first, leaving
+            // the operational dock stable underneath.
+            if (_planetWindow.Visible) ClosePlanetWindow();
+            else SetOperationalDockVisible(false);
         }
         else if (key.Keycode == Key.E &&
             !_planetWindow.Visible && _localEndTurnButton?.Disabled == false)
@@ -538,7 +540,7 @@ public partial class Main : Control
     // A local Control-based window, not a second OS window or a game-state owner.
     // The same GlobePreview instance is reparented; it never regenerates a world.
     private void CreateTacticalWorkspaceWindows(GlobePreview globe,
-        PanelContainer rightPanel, HBoxContainer header)
+        PanelContainer rightPanel, HBoxContainer header, HBoxContainer content)
     {
         var openPlanet = new Button { Name = "GANextPlanetButton", Text = "M | PLANET" };
         openPlanet.Pressed += TogglePlanetWindow;
@@ -557,20 +559,24 @@ public partial class Main : Control
         quickEnd.Pressed += OnLocalTurnEndRequested;
         header.AddChild(quickEnd);
 
-        var operations = new Control
+        // TAB is a real HBox sibling of the map, not an overlay. Hiding
+        // this container returns the entire width to the tactical viewport.
+        var operations = new MarginContainer
         {
             Name = "GANextOperationsWindow",
             Visible = false,
-            MouseFilter = MouseFilterEnum.Ignore
+            CustomMinimumSize = new Vector2(394f, 0f),
+            SizeFlagsHorizontal = SizeFlags.ShrinkEnd,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            MouseFilter = MouseFilterEnum.Stop
         };
-        AddChild(operations);
-        operations.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        content.AddChild(operations);
         var operationsPanel = new PanelContainer
         {
-            Name = "GANextOperationsPanel", MouseFilter = MouseFilterEnum.Stop,
-            AnchorLeft = 1f, AnchorRight = 1f,
-            AnchorTop = 0.08f, AnchorBottom = 0.93f,
-            OffsetLeft = -460f, OffsetRight = -16f
+            Name = "GANextOperationsPanel",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            MouseFilter = MouseFilterEnum.Stop
         };
         operations.AddChild(operationsPanel);
         operationsPanel.AddThemeStyleboxOverride("panel", GaVisualFoundation.WindowSurface());
@@ -579,7 +585,7 @@ public partial class Main : Control
         GaVisualFoundation.AddWindowHeader(
             operationsColumn, "GA / COMMAND DESK", "Operational workspace",
             "People · orders · administrative intelligence",
-            () => operations.Visible = false);
+            () => SetOperationalDockVisible(false));
         var metrics = new HBoxContainer();
         metrics.AddThemeConstantOverride("separation", 6);
         operationsColumn.AddChild(metrics);
@@ -636,7 +642,7 @@ public partial class Main : Control
         globe.Visible = false;
         _planetWindow = planet;
         GD.Print("GA_NEXT_TACTICAL_WORKSPACE_WINDOWS_READY " +
-            "planet=M panels=TAB close=ESC native_windows=false simulation_mutation=false");
+            "planet=M dock=TAB close=ESC native_windows=false simulation_mutation=false");
     }
 
     private void ClosePlanetWindow()
@@ -650,19 +656,27 @@ public partial class Main : Control
     {
         if (_planetWindow is null || _strategicGlobe is null) return;
         var open = !_planetWindow.Visible;
-        if (_workspaceWindow is not null) _workspaceWindow.Visible = false;
+        // A secondary atlas does not hide the dock or resize its viewport.
         _planetWindow.Visible = open;
         _strategicGlobe.Visible = open;
         GD.Print($"GA_NEXT_PLANET_WINDOW visible={open.ToString().ToLowerInvariant()} " +
             "navigation_only=true worker_move=false");
     }
 
+    private void SetOperationalDockVisible(bool visible)
+    {
+        if (_workspaceWindow is null) return;
+        _workspaceWindow.Visible = visible;
+        // Godot's HBoxContainer will reclaim/release width without modifying
+        // the tactical camera target, yaw or orthographic zoom.
+        GD.Print($"GA_NEXT_OPERATIONS_DOCK visible={visible.ToString().ToLowerInvariant()} " +
+            "map_reflow=true camera_state_preserved=true");
+    }
+
     private void ToggleWorkspaceWindow()
     {
         if (_workspaceWindow is null) return;
-        ClosePlanetWindow();
-        _workspaceWindow.Visible = !_workspaceWindow.Visible;
-        GD.Print($"GA_NEXT_OPERATIONS_WINDOW visible={_workspaceWindow.Visible.ToString().ToLowerInvariant()}");
+        SetOperationalDockVisible(!_workspaceWindow.Visible);
     }
 
     public override void _Ready()
@@ -713,7 +727,7 @@ public partial class Main : Control
         header.AddChild(button);
 
         var content = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        content.AddThemeConstantOverride("separation", 0);
+        content.AddThemeConstantOverride("separation", 8);
         root.AddChild(content);
 
         // Production-ready shell: the TACTICAL viewport owns the full
@@ -987,7 +1001,7 @@ public partial class Main : Control
             _bridgeSelection = first.CellId.Value;
             _openTacticalContext!.Disabled = false;
             OpenTacticalContext();
-            CreateTacticalWorkspaceWindows(globe, rightPanel, header);
+            CreateTacticalWorkspaceWindows(globe, rightPanel, header, content);
             // Keep the 1280x720 header usable: the long subtitle belongs in
             // secondary information, not beside all keyboard-first controls.
             subtitle.Visible = false;
