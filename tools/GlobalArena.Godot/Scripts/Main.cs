@@ -48,6 +48,10 @@ public partial class Main : Control
     private ulong? _selectedLocalWorkerId;
     // R38: composition owner, not a second simulation state inside the renderer.
     private CanonicalGameSession? _canonicalSession;
+    // GA-NEXT TACTICAL-WORKSPACE-01: view-only windows, no worker-location aliasing.
+    private Control? _planetWindow;
+    private Control? _workspaceWindow;
+    private Label? _compactTurnPulse;
 
     // R35: only an external gameplay owner may supply a real runtime snapshot.
     // Never create a demonstration WorldState inside the UI.
@@ -83,6 +87,13 @@ public partial class Main : Control
             _tacticalBridgeStatus.Text = selectedId.HasValue
                 ? $"Territory {selectedId.Value} selected | tactical context available"
                 : "Select a canonical territory to enable tactical context";
+        // The strategic globe is now a navigation window. A click returns to
+        // the tactical neighborhood without issuing a worker movement order.
+        if (selectedId.HasValue && _planetWindow?.Visible == true)
+        {
+            ClosePlanetWindow();
+            OpenTacticalContext();
+        }
     }
 
     // Only reads individual workers from the SAME canonical Goldberg identity as
@@ -200,6 +211,8 @@ public partial class Main : Control
         _localTurnLabel.Text =
             $"LOCAL HUMAN + AI PREVIEW | turn {_localFoundation.NextTurn.Value} | " +
             $"rev {_localFoundation.Snapshot.Revision} | Human Civ {_localFoundation.PlayerCivilization.Value}";
+        if (_compactTurnPulse is not null)
+            _compactTurnPulse.Text = $"TURN {_localFoundation.NextTurn.Value} | REV {_localFoundation.Snapshot.Revision} | Human + IA";
         if (_localAiStatus is not null)
         {
             var ready = _localFoundation.ReadyCivilizations;
@@ -345,9 +358,40 @@ public partial class Main : Control
     // order, E resolves the full batch. M remains strategic/tactical mode.
     public override void _UnhandledKeyInput(InputEvent @event)
     {
-        if (@event is not InputEventKey key || !key.Pressed || key.Echo ||
-            _strategicHudPanel?.Visible != true)
+        if (@event is not InputEventKey key || !key.Pressed || key.Echo)
             return;
+        if (key.Keycode == Key.M && _planetWindow is not null)
+        {
+            TogglePlanetWindow();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+        if (key.Keycode == Key.Tab && _workspaceWindow is not null)
+        {
+            ToggleWorkspaceWindow();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+        if (key.Keycode == Key.Escape && (_planetWindow?.Visible == true ||
+            _workspaceWindow?.Visible == true))
+        {
+            ClosePlanetWindow();
+            if (_workspaceWindow is not null) _workspaceWindow.Visible = false;
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+        // E remains available on the tactical viewport. Only the domain
+        // closes the turn; no strategic destination can be queued here.
+        if (key.Keycode == Key.E && _planetWindow?.Visible != true &&
+            _localEndTurnButton?.Disabled == false)
+        {
+            OnLocalTurnEndRequested();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+        // The old G/P/X bridge remains exclusively in the historical
+        // Godot smoke until authoritative G(18,0) worker locations ship.
+        if (_strategicHudPanel?.Visible != true) return;
         if (key.Keycode == Key.G && _localMoveButton?.Disabled == false)
         {
             OnLocalWorkerMoveRequested();
@@ -470,6 +514,134 @@ public partial class Main : Control
         GD.Print("GA_UI_TACTICAL_TRANSITION_RETURN globe_state_preserved=true");
     }
 
+    // A local Control-based window, not a second OS window or a game-state owner.
+    // The same GlobePreview instance is reparented; it never regenerates a world.
+    private void CreateTacticalWorkspaceWindows(GlobePreview globe,
+        PanelContainer rightPanel, HBoxContainer header)
+    {
+        var openPlanet = new Button { Text = "M | PLANET" };
+        openPlanet.Pressed += TogglePlanetWindow;
+        header.AddChild(openPlanet);
+        var openWorkspace = new Button { Text = "TAB | PANELS" };
+        openWorkspace.Pressed += ToggleWorkspaceWindow;
+        header.AddChild(openWorkspace);
+        _compactTurnPulse = new Label
+        {
+            Text = "TURN 1 | REV 0 | Human + IA",
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        header.AddChild(_compactTurnPulse);
+        var quickEnd = new Button { Text = "E | END TURN" };
+        quickEnd.Pressed += OnLocalTurnEndRequested;
+        header.AddChild(quickEnd);
+
+        var operations = new Control
+        {
+            Name = "GANextOperationsWindow",
+            Visible = false,
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        AddChild(operations);
+        operations.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        var operationsPanel = new PanelContainer
+        {
+            Name = "GANextOperationsPanel", MouseFilter = MouseFilterEnum.Stop,
+            AnchorLeft = 1f, AnchorRight = 1f,
+            AnchorTop = 0.08f, AnchorBottom = 0.93f,
+            OffsetLeft = -460f, OffsetRight = -16f
+        };
+        operations.AddChild(operationsPanel);
+        var operationsColumn = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
+        operationsPanel.AddChild(operationsColumn);
+        var operationsTitle = new HBoxContainer();
+        operationsColumn.AddChild(operationsTitle);
+        operationsTitle.AddChild(new Label
+        {
+            Text = "OPERATIONS | TACTICAL WORKSPACE",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        });
+        var closeOperations = new Button { Text = "X" };
+        closeOperations.Pressed += () => operations.Visible = false;
+        operationsTitle.AddChild(closeOperations);
+        rightPanel.Reparent(operationsColumn);
+        rightPanel.CustomMinimumSize = Vector2.Zero;
+        rightPanel.SizeFlagsVertical = SizeFlags.ExpandFill;
+        _workspaceWindow = operations;
+
+        var planet = new Control
+        {
+            Name = "GANextPlanetWindow",
+            Visible = false,
+            MouseFilter = MouseFilterEnum.Stop
+        };
+        AddChild(planet);
+        planet.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        var veil = new ColorRect
+        {
+            Color = new Color(0f, 0f, 0f, 0.63f),
+            MouseFilter = MouseFilterEnum.Stop
+        };
+        planet.AddChild(veil);
+        veil.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        var planetPanel = new PanelContainer
+        {
+            Name = "GANextPlanetPanel", MouseFilter = MouseFilterEnum.Stop,
+            AnchorLeft = 0.14f, AnchorRight = 0.86f,
+            AnchorTop = 0.07f, AnchorBottom = 0.92f
+        };
+        planet.AddChild(planetPanel);
+        var planetColumn = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
+        planetPanel.AddChild(planetColumn);
+        var planetTitle = new HBoxContainer();
+        planetColumn.AddChild(planetTitle);
+        planetTitle.AddChild(new Label
+        {
+            Text = "PLANETARY MAP | select a region to navigate",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        });
+        var closePlanet = new Button { Text = "X / ESC" };
+        closePlanet.Pressed += ClosePlanetWindow;
+        planetTitle.AddChild(closePlanet);
+        var planetSlot = new AspectRatioContainer
+        {
+            Ratio = 1f,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill
+        };
+        planetColumn.AddChild(planetSlot);
+        globe.Reparent(planetSlot);
+        globe.Visible = false;
+        _planetWindow = planet;
+        GD.Print("GA_NEXT_TACTICAL_WORKSPACE_WINDOWS_READY " +
+            "planet=M panels=TAB close=ESC native_windows=false simulation_mutation=false");
+    }
+
+    private void ClosePlanetWindow()
+    {
+        if (_planetWindow is null) return;
+        _planetWindow.Visible = false;
+        if (_strategicGlobe is not null) _strategicGlobe.Visible = false;
+    }
+
+    private void TogglePlanetWindow()
+    {
+        if (_planetWindow is null || _strategicGlobe is null) return;
+        var open = !_planetWindow.Visible;
+        if (_workspaceWindow is not null) _workspaceWindow.Visible = false;
+        _planetWindow.Visible = open;
+        _strategicGlobe.Visible = open;
+        GD.Print($"GA_NEXT_PLANET_WINDOW visible={open.ToString().ToLowerInvariant()} " +
+            "navigation_only=true worker_move=false");
+    }
+
+    private void ToggleWorkspaceWindow()
+    {
+        if (_workspaceWindow is null) return;
+        ClosePlanetWindow();
+        _workspaceWindow.Visible = !_workspaceWindow.Visible;
+        GD.Print($"GA_NEXT_OPERATIONS_WINDOW visible={_workspaceWindow.Visible.ToString().ToLowerInvariant()}");
+    }
+
     public override void _Ready()
     {
         GD.Print("GA_PROD_MAIN_READY_R6");
@@ -525,6 +697,7 @@ public partial class Main : Control
         squareMapSlot.AddChild(mapRegion);
         var globe = new GlobePreview
         {
+            Name = "GANextPlanetGlobe",
             CustomMinimumSize = new Vector2(360f, 300f),
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill
@@ -534,6 +707,7 @@ public partial class Main : Control
         globe.CanonicalTerritorySelectionChanged += OnCanonicalTerritorySelectionChanged;
         _tacticalPreview = new TacticalContextPreview
         {
+            Name = "GANextTacticalViewport",
             Visible = false,
             CustomMinimumSize = new Vector2(360f, 300f),
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
@@ -606,7 +780,11 @@ public partial class Main : Control
         _openTacticalContext.Pressed += OpenTacticalContext;
         rightLayout.AddChild(_openTacticalContext);
         _returnStrategicContext = new Button { Text = "RETURN TO STRATEGIC GLOBE", Visible = false };
-        _returnStrategicContext.Pressed += ReturnStrategicContext;
+        _returnStrategicContext.Pressed += () =>
+        {
+            if (_planetWindow is null) ReturnStrategicContext();
+            else TogglePlanetWindow();
+        };
         rightLayout.AddChild(_returnStrategicContext);
         _tacticalTileEdges = new CheckBox { Text = "TACTICAL TILE EDGES", ButtonPressed = false, Visible = false };
         _tacticalTileEdges.Toggled += enabled => _tacticalPreview?.SetEdgesVisible(enabled);
@@ -654,7 +832,9 @@ public partial class Main : Control
         // selects a destination directly on the map, then submits one intent.
         var orderSection = new VBoxContainer();
         orderSection.AddThemeConstantOverride("separation", 4);
-        strategicHud.AddChild(orderSection);
+        // Turn status is shared across both views. Strategic G/P/X orders are
+        // retained as a historical fixture, not advertised as tactical moves.
+        hud.AddChild(orderSection);
         var orderTitle = new Label { Text = "LOCAL FOUNDATION | WORKER ORDERS" };
         orderTitle.AddThemeFontSizeOverride("font_size", 15);
         orderSection.AddChild(orderTitle);
@@ -757,9 +937,48 @@ public partial class Main : Control
         GD.Print("GA_UI_FOUNDATION_READY_01 layout=map,sidebar,header,footer");
         GD.Print("GA_UI_FOUNDATION_RESIZE_READY_02 responsive=true");
 
-        // Only the explicit CI environment starts the real Godot runtime E2E.
-        // Normal game processes NEVER execute smoke hooks or auto-quit.
-        if (System.Environment.GetEnvironmentVariable("GA_FOUNDATION_GODOT_SMOKE") == "1")
+        // Preserve PR #361 historical strategic-order E2E as an independent
+        // regression fixture. Ordinary play opens the tactical viewport first.
+        bool legacySmoke = System.Environment.GetEnvironmentVariable(
+            "GA_FOUNDATION_GODOT_SMOKE") == "1";
+        if (!legacySmoke)
+        {
+            // The old v9 record locates workers on G(3,0). This is a
+            // PRESENTATION REGION ANCHOR, not a fabricated G(18,0) worker tile.
+            // Tactical movement remains locked until the typed-v10 migration.
+            var first = _localFoundation!.ControllableWorkers.FirstOrDefault();
+            if (first is null)
+                throw new System.InvalidOperationException(
+                    "No local physical worker available for tactical entry.");
+            _bridgeSelection = first.CellId.Value;
+            _openTacticalContext!.Disabled = false;
+            OpenTacticalContext();
+            CreateTacticalWorkspaceWindows(globe, rightPanel, header);
+            // Keep the 1280x720 header usable: the long subtitle belongs in
+            // secondary information, not beside all keyboard-first controls.
+            subtitle.Visible = false;
+            _returnStrategicContext!.Text = "M | OPEN PLANETARY MAP";
+            _localMoveButton!.Visible = false;
+            _localProduceButton!.Visible = false;
+            _localCancelQueuedButton!.Visible = false;
+            _localWorkerSelector!.Visible = false;
+            orderSection.AddChild(new Label
+            {
+                Text = "Tactical worker orders: pending authoritative physical-tile migration. " +
+                       "E still closes the human + AI turn; G/P/X moves are not offered here.",
+                AutowrapMode = TextServer.AutowrapMode.WordSmart
+            });
+            _status!.Text = "GA-NEXT TACTICAL WORKSPACE | M planet | TAB panels | E turn";
+            RefreshLocalWorkerOrderControls();
+            GD.Print($"GA_NEXT_TACTICAL_ENTRY_PASS local_civ={_localFoundation.PlayerCivilization.Value} " +
+                $"worker={first.Id.Value} coarse_preview_focus={first.CellId.Value} " +
+                "physical_worker_location_authoritative=false tactical_visible=true");
+            if (System.Environment.GetEnvironmentVariable("GA_NEXT_WORKSPACE_SMOKE") == "1")
+                _ = new FoundationGodotWorkspaceSmoke(this, _localFoundation).RunAsync();
+        }
+
+        // Only the explicit CI environment starts the historical E2E.
+        if (legacySmoke)
         {
             _ = new FoundationGodotRuntimeSmoke(
                 this, globe, _localFoundation!,
