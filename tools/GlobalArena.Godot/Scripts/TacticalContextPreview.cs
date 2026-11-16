@@ -667,6 +667,26 @@ public partial class TacticalContextPreview : SubViewportContainer
         tool.AddVertex(point);
     }
 
+    // Actual Godot mesh contract for the visual smoke: every displayed
+    // tactical-grid endpoint must be a vertex of the SAME surface mesh,
+    // at identical X/Y/Z. No separately projected or lifted overlay.
+    public bool HasSurfaceAlignedTacticalGrid()
+    {
+        if (_surface?.Mesh is not ArrayMesh faceMesh ||
+            _edges?.Mesh is not ArrayMesh edgeMesh ||
+            faceMesh.GetSurfaceCount() == 0 || edgeMesh.GetSurfaceCount() == 0)
+            return false;
+        var facePositions = faceMesh.SurfaceGetArrays(0)
+            [(int)Mesh.ArrayType.Vertex].AsVector3Array();
+        var linePositions = edgeMesh.SurfaceGetArrays(0)
+            [(int)Mesh.ArrayType.Vertex].AsVector3Array();
+        if (facePositions.Length == 0 || linePositions.Length == 0)
+            return false;
+        var canonicalGeometry = new HashSet<Vector3>(facePositions);
+        return linePositions.All(vertex =>
+            vertex.Y == TacticalSurfacePlaneY && canonicalGeometry.Contains(vertex));
+    }
+
     public void SetEdgesVisible(bool visible)
     {
         if (_edges is not null) _edges.Visible = visible;
