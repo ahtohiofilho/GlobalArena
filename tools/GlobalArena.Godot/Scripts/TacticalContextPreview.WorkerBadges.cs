@@ -10,11 +10,12 @@ namespace GlobalArena.Godot;
 /// <summary>
 /// GA-NEXT Workforce Visual 03: restores the actual GA-VS16 badge language
 /// (coplanar filled disks, ink rims, selection halo, spatial group layout).
-/// The old economic activity grouping MUST NOT be resurrected as fake data:
-/// v10 currently stores individual identity, commodity and Producing/Traveling
-/// /Military, not Forestry/Mining/Agriculture allocations. Here every badge
-/// corresponds to exactly one canonical individual; when three share a tile
-/// they appear in the three-slot VS16 formation. No additional worker exists.
+/// An individual occupies exactly one canonical fine tile and is rendered
+/// exactly once. v10 retains status colors; explicit v11 occupations use
+/// the historically grounded Agriculture/Forestry/Mining colors. Traveling
+/// is shown by a subtle amber rim without removing the occupation's fill.
+/// Three workers sharing one tile appear in the three-slot VS16 formation.
+/// Never invent empty activity groups or alter the canonical worker census.
 /// </summary>
 public partial class TacticalContextPreview
 {
@@ -40,6 +41,17 @@ public partial class TacticalContextPreview
         Array.AsReadOnly(_workerGlyphPositions.Keys.OrderBy(x => x).ToArray());
     public ulong? HoveredWorkerBadgeId => _hoveredBadgeId;
     public bool IsWorkerHoverVisible => _workerBadgeTooltip?.Visible ?? false;
+    public string? HoveredWorkerBadgeDescription =>
+        _workerBadgeTooltip?.Visible == true ? _workerBadgeTooltip.Text : null;
+
+    public Color? RenderedWorkerBadgeFill(ulong workerId)
+    {
+        var worker = _displayWorkers.FirstOrDefault(w => w.Id.Value == workerId);
+        return worker is not null &&
+            _workerGlyphPositions.ContainsKey(workerId)
+            ? WorkerStatusColor(worker) : null;
+    }
+
 
     private void InitializeWorkerBadges()
     {
@@ -120,8 +132,28 @@ public partial class TacticalContextPreview
         RebuildWorkerMarkers();
     }
 
-    private static Color WorkerStatusColor(PhysicalWorkerRuntimeRecord worker) =>
-        worker.Activity switch
+    private static string WorkerOccupationLabel(PhysicalWorkerOccupation occupation) =>
+        occupation switch
+        {
+            PhysicalWorkerOccupation.Agriculture => "Agricultura",
+            PhysicalWorkerOccupation.Forestry => "Extração vegetal",
+            PhysicalWorkerOccupation.Mining => "Mineração",
+            PhysicalWorkerOccupation.Unassigned => "Sem profissão produtiva",
+            _ => throw new InvalidOperationException("Unknown physical occupation.")
+        };
+
+    private static Color WorkerStatusColor(PhysicalWorkerRuntimeRecord worker)
+    {
+        if (worker.Occupation.HasValue)
+            return worker.Occupation.Value switch
+            {
+                PhysicalWorkerOccupation.Agriculture => new Color("#61d98b"),
+                PhysicalWorkerOccupation.Forestry => new Color("#b88656"),
+                PhysicalWorkerOccupation.Mining => new Color("#c4c7d4"),
+                PhysicalWorkerOccupation.Unassigned => new Color("#7b91aa"),
+                _ => throw new InvalidOperationException("Invalid v11 occupation.")
+            };
+        return worker.Activity switch
         {
             PhysicalWorkerActivity.Producing => new Color("#61d98b"),
             PhysicalWorkerActivity.Traveling => new Color("#dfaf60"),
@@ -129,6 +161,7 @@ public partial class TacticalContextPreview
             PhysicalWorkerActivity.Other => new Color("#b8a9d9"),
             _ => throw new InvalidOperationException("Unknown canonical worker activity.")
         };
+    }
 
     private static void AddBadgeDisk(
         SurfaceTool surface, Vector2 center, float radius, Color color)
@@ -191,6 +224,15 @@ public partial class TacticalContextPreview
                             ? new Color("#ffffff") : new Color("#f3f9ff"));
                     diskCount++;
                 }
+                if (worker.Occupation.HasValue &&
+                    worker.Activity == PhysicalWorkerActivity.Traveling)
+                {
+                    // Ring identifies transient motion; inner fill continues
+                    // to represent the same physical person's occupation.
+                    AddBadgeDisk(surface, location, radius * 1.46f,
+                        new Color("#dfaf60"));
+                    diskCount++;
+                }
                 AddBadgeDisk(surface, location,
                     radius * 1.28f, new Color("#15212b"));
                 AddBadgeDisk(surface, location,
@@ -221,7 +263,8 @@ public partial class TacticalContextPreview
         }
         GD.Print($"GA_NEXT_FINE_WORKER_GLYPHS count={_workerGlyphPositions.Count} " +
             $"census={_displayWorkers.Count} focused={_activeFocus} " +
-            "source=authoritative_v10 units_not_coarse=true badges=vs16_coplanar");
+            "source=authoritative_fine units_not_coarse=true badges=vs16_coplanar " +
+            $"occupations_v11={_displayWorkers.All(w => w.Occupation.HasValue)}");
     }
 
     private ulong? BadgeAt(ulong tileId, Vector2 point)
@@ -279,8 +322,12 @@ public partial class TacticalContextPreview
             {
                 var worker = _displayWorkers.First(w => w.Id.Value == next.Value);
                 var address = worker.TacticalTileId!.Value.FineStrategicCellId.Value;
+                var occupation = worker.Occupation.HasValue
+                    ? WorkerOccupationLabel(worker.Occupation.Value)
+                    : "Ocupação não registrada (v10)";
                 _workerBadgeTooltip.Text =
-                    $"#{worker.Id.Value}  ·  {worker.Activity}  ·  Item {worker.Commodity.Value}  ·  G(18,0)/{address}";
+                    $"#{worker.Id.Value}  ·  {occupation}  ·  {worker.Activity}  ·  " +
+                    $"Item {worker.Commodity.Value}  ·  G(18,0)/{address}";
                 // Position in the tactical viewport itself, not in the
                 // global screen or the movable Tab/atlas windows.
                 _workerBadgeTooltip.Position = new Vector2(
