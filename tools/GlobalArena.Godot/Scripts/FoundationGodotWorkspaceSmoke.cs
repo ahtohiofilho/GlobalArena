@@ -40,6 +40,26 @@ internal sealed class FoundationGodotWorkspaceSmoke
                 as GlobePreview;
             var planet = _main.GetNode<Control>("GANextPlanetWindow");
             var operations = _main.GetNode<Control>("GANextOperationsWindow");
+            var canvas = _main.FindChild(
+                "GANextWideTacticalCanvas", recursive: true, owned: false)
+                as PanelContainer;
+            var atlasPanel = _main.GetNode<Control>(
+                "GANextPlanetWindow/GANextPlanetPanel");
+            var operationsPanel = _main.GetNode<Control>(
+                "GANextOperationsWindow/GANextOperationsPanel");
+            Must(_main.Theme is not null, "GA design system Theme missing");
+            Must(canvas is not null && canvas.Size.X > canvas.Size.Y * 1.18f,
+                "tactical viewport is constrained to an obsolete 1:1 square");
+            Must(tactical is not null && tactical.Size.X > tactical.Size.Y * 1.18f,
+                "tactical surface did not inherit landscape viewport size");
+            Must(canvas!.GetThemeStylebox("panel") is StyleBoxFlat,
+                "map framing must use centralized visual foundation style");
+            Must(((PanelContainer)atlasPanel).GetThemeStylebox("panel") is StyleBoxFlat,
+                "planet window missing shared design-system frame");
+            Must(((PanelContainer)operationsPanel).GetThemeStylebox("panel") is StyleBoxFlat,
+                "operations window missing shared design-system frame");
+            GD.Print($"GA_VISUAL_FOUNDATION_01_GATE rectangle={canvas.Size.X:F0}x{canvas.Size.Y:F0} " +
+                "theme=true windows=2 production_style=true");
             Must(tactical is not null && tactical.Visible,
                 "the local player did not enter the tactical viewport");
             Must(tactical!.CanonicalPhysicalIncidenceMap is not null,
