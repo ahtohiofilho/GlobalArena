@@ -237,6 +237,7 @@ public sealed class FoundationGodotTacticalV10Smoke
             Must(_host.StateHash == before &&
                  _tactical.TacticalCameraState == hoverCamera,
                 "Worker inspector hover must not mutate world hash or camera");
+            await Capture("00_hover_worker");
             await ClickBadge(2UL);
             Must(!_tactical.IsWorkerInspectorVisible,
                 "Click must dismiss transient inspection without blocking selection");
