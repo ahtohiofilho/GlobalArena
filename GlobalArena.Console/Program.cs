@@ -14,7 +14,8 @@ if (args.Length != 1 ||
      args[0] != "--foundation-worker-journal" &&
      args[0] != "--foundation-local-game" &&
      args[0] != "--foundation-batched-turn" &&
-     args[0] != "--foundation-collective-turn"))
+     args[0] != "--foundation-collective-turn" &&
+     args[0] != "--foundation-human-ai-turn"))
 {
     Console.WriteLine("Global Arena — executable foundation preview");
     Console.WriteLine("Run: dotnet run --project GlobalArena.Console -- --foundation-slice");
@@ -24,6 +25,89 @@ if (args.Length != 1 ||
     Console.WriteLine("Local game: dotnet run --project GlobalArena.Console -- --foundation-local-game");
     Console.WriteLine("Batch turn: dotnet run --project GlobalArena.Console -- --foundation-batched-turn");
     Console.WriteLine("Collective turn: dotnet run --project GlobalArena.Console -- --foundation-collective-turn");
+    Console.WriteLine("Human + AI turn: dotnet run --project GlobalArena.Console -- --foundation-human-ai-turn");
+    return;
+}
+
+// Real Goldberg single-computer Human + AI demonstration. Civilization #2
+// has a worker already traveling in the INITIALIZED scenario; a deliberately
+// narrow AI policy resumes production at that same node. This is NOT an
+// autonomous geopolitical or economic strategy.
+if (args[0] == "--foundation-human-ai-turn")
+{
+    var local = FoundationLocalGameHost.CreateLocalPreview(
+        new WorldGenerationRequest(new WorldSeed(20261012UL),
+            WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)));
+    var canonical = local.Session;
+    var census = new PhysicalWorkerRuntimeState(
+        canonical.Snapshot.Workers.Workers.Select(worker =>
+            worker.Id.Value == 4UL
+                ? worker.WithLocationAndActivity(worker.CellId,
+                    PhysicalWorkerActivity.Traveling)
+                : worker));
+    canonical.AcceptSnapshot(canonical.Snapshot.WithWorkers(census));
+
+    var human = new CivilizationId(1UL);
+    var ai = new CivilizationId(2UL);
+    var game = new FoundationHumanAiTurnHost(
+        canonical, new[] { human },
+        new Dictionary<CivilizationId, IFoundationAiTurnPolicy>
+        {
+            [ai] = new FoundationAiResumeProductionPolicy()
+        });
+    var graph = game.Session.GeneratedWorld.StrategicSurfaceGraph;
+    var worker = game.Snapshot.Workers.Workers.Single(w => w.Id.Value == 1UL);
+    var target = graph.GetCellId(graph.GetNeighborIndexes(
+        graph.GetNodeIndex(worker.CellId))[0]);
+    var before = game.Snapshot;
+    var oldHash = game.StateHash;
+    game.QueueHumanMove(human, worker.Id, target);
+    if (game.TryCloseTurn() is not null ||
+        game.Snapshot.Revision != 0UL ||
+        !ReferenceEquals(before, game.Snapshot) ||
+        oldHash != game.StateHash)
+        throw new InvalidOperationException(
+            "AI readiness bypassed human turn decision or changed authority.");
+    game.SetHumanReady(human);
+    var closed = game.TryCloseTurn();
+    if (closed is null || closed.ExecutedEvents != 2 ||
+        closed.Events[0].Issuer != human ||
+        closed.Events[1].Issuer != ai ||
+        closed.Turn.Value != 1UL ||
+        closed.Revision != 2UL ||
+        game.NextTurn.Value != 2UL ||
+        game.Snapshot.Workers.Workers.Count != 6 ||
+        game.Snapshot.Workers.Workers.Single(w => w.Id.Value == 4UL)
+            .Activity != PhysicalWorkerActivity.Producing ||
+        !closed.ReplayMatched ||
+        closed.Hash.FormatVersion != 9U)
+        throw new InvalidOperationException(
+            "Human+AI collective turn did not commit both worker activities.");
+
+    Console.WriteLine($"GA_FOUNDATION_HUMAN_AI_V1 " +
+        $"humans={game.HumanCivilizations.Count} ais={game.AiCivilizations.Count} " +
+        $"turn={closed.Turn.Value} events={closed.ExecutedEvents} " +
+        $"revision={closed.Revision} workers={game.Snapshot.Workers.Workers.Count} " +
+        $"replay_match={closed.ReplayMatched} hash_v={closed.Hash.FormatVersion} " +
+        $"state_hash={closed.Hash.HexDigest}");
+    foreach (var action in closed.Events)
+        Console.WriteLine($"  civ={action.Issuer.Value} worker={action.WorkerId.Value} " +
+            $"from={action.Source.Value} to={action.Destination.Value} " +
+            $"activity={action.Activity} edge={action.TraversedEdge?.Value}");
+
+    game.SetHumanReady(human);
+    var empty = game.TryCloseTurn();
+    if (empty is null || empty.ExecutedEvents != 0 ||
+        empty.Revision != closed.Revision ||
+        game.NextTurn.Value != 3UL)
+        throw new InvalidOperationException(
+            "Human+AI empty turn incorrectly created worker events.");
+    Console.WriteLine($"  empty_turn={empty.Turn.Value} " +
+        $"events={empty.ExecutedEvents} revision={empty.Revision} " +
+        $"replay_match={empty.ReplayMatched}");
+    Console.WriteLine("  ai_policy=resume_existing_production " +
+        "human_ready_required=true multiplayer=false combat=false " +
+        "economic_settlement=false certified_F072=false");
     return;
 }
 
