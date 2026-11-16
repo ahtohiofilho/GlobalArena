@@ -205,7 +205,7 @@ public partial class TacticalContextPreview
             w.TacticalTileId == worker.TacticalTileId);
         _workerInspectorHeading.Text = $"TRABALHADOR #{worker.Id.Value}";
         _workerInspectorOccupation.Text =
-            $"{occupation.ToUpperInvariant()}  /  CIV. {worker.Owner.Value}";
+            $"{occupation}  /  CIV. {worker.Owner.Value}";
         _workerInspectorRoleAccent.Color = WorkerStatusColor(worker);
         _workerInspectorStatus.Text =
             $"SITUAÇÃO    {WorkerOperationalStatus(worker.Activity)}";
