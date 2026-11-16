@@ -82,6 +82,9 @@ public sealed class GoldbergFoundationSession
         if (!canonicalSession.Snapshot.Workers.IsInitialized)
             throw new InvalidOperationException(
                 "Cannot project physical workers before canonical census initialization.");
+        if (canonicalSession.Snapshot.Workers.HasAuthoritativeTacticalLocations)
+            throw new InvalidOperationException(
+                "v10 fine workers cannot be projected into a coarse-market preview.");
         var workers = canonicalSession.Snapshot.Workers.Workers
             .Select(item => new FoundationWorker(
                 checked((int)item.Id.Value),
