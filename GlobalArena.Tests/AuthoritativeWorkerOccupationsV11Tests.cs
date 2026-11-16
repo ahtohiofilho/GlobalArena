@@ -124,10 +124,10 @@ public sealed class AuthoritativeWorkerOccupationsV11Tests
         Assert.Equal(11U, hash.Compute(modified).FormatVersion);
         Assert.NotEqual(hash.Compute(demo), hash.Compute(modified));
         Assert.Equal(demo.Revision, modified.Revision);
-        Assert.Equal(demo.Workers.Workers.Sum(x => x.OutputMicroPerTurn),
-            modified.Workers.Workers.Sum(x => x.OutputMicroPerTurn));
-        Assert.Equal(demo.Workers.Workers.Sum(x => x.DemandMultiplierMicro),
-            modified.Workers.Workers.Sum(x => x.DemandMultiplierMicro));
+        Assert.Equal(demo.Workers.Workers.Aggregate(0UL, (total, w) => checked(total + w.OutputMicroPerTurn)),
+            modified.Workers.Workers.Aggregate(0UL, (total, w) => checked(total + w.OutputMicroPerTurn)));
+        Assert.Equal(demo.Workers.Workers.Aggregate(0UL, (total, w) => checked(total + w.DemandMultiplierMicro)),
+            modified.Workers.Workers.Aggregate(0UL, (total, w) => checked(total + w.DemandMultiplierMicro)));
     }
 
     [Fact]
