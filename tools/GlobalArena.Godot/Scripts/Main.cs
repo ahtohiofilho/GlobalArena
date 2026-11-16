@@ -41,6 +41,7 @@ public partial class Main : Control
     private FoundationTacticalHumanAiTurnHost? _tacticalHost;
     private readonly CivilizationId _humanCivilization = new(1UL);
     public FoundationTacticalHumanAiTurnHost? ActiveTacticalHost => _tacticalHost;
+    public ulong? SelectedTacticalWorkerId => _tacticalHost is null ? null : _selectedLocalWorkerId;
     private OptionButton? _localWorkerSelector;
     private Button? _localMoveButton;
     private Button? _localProduceButton;
