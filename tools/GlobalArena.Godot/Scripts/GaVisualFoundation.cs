@@ -97,7 +97,7 @@ public static class GaVisualFoundation
 
     public static Label Caption(string caption)
     {
-        var label = new Label { Text = caption };
+        var label = new Label { Text = caption, MouseFilter = Control.MouseFilterEnum.Ignore };
         label.AddThemeFontSizeOverride("font_size", CaptionFontSize);
         label.AddThemeColorOverride("font_color", Accent);
         return label;
@@ -107,7 +107,11 @@ public static class GaVisualFoundation
         VBoxContainer parent, string eyebrow, string title,
         string detail, System.Action close)
     {
-        var frame = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Stop };
+        var frame = new PanelContainer
+        {
+            Name = "GAWindowDragHandle",
+            MouseFilter = Control.MouseFilterEnum.Stop
+        };
         frame.AddThemeStyleboxOverride("panel",
             SurfaceBox(Header, AccentDim, radius: 5, borderWidth: 1,
                 innerPadding: 7));
