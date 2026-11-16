@@ -66,6 +66,9 @@ public sealed class PhysicalWorkerMoveEventExecutor : ISimulationEventExecutor
         if (!worldState.Workers.IsInitialized)
             throw new InvalidOperationException(
                 "Cannot move physical workers before the authoritative census is initialized.");
+        if (worldState.Workers.HasAuthoritativeTacticalLocations)
+            throw new InvalidOperationException(
+                "v9 strategic worker events cannot operate on v10 tactical positions.");
         if (move.Id.Turn != context.Turn)
             throw new InvalidOperationException("Worker move event has incorrect turn identity.");
 
@@ -129,6 +132,7 @@ public sealed class PhysicalWorkerMovementTurnPhase : ITurnResolutionPhase
                 Array.Empty<ISimulationEvent>(),
                 new SimulationEventLog(Array.Empty<SimulationEventLogEntry>()));
         if (!stagedState.Workers.IsInitialized ||
+            stagedState.Workers.HasAuthoritativeTacticalLocations ||
             stagedState.WorldBinding != _binding)
             throw new InvalidOperationException(
                 "Worker phase requires an initialized census bound to the same world.");
