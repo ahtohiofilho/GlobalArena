@@ -21,7 +21,6 @@ public partial class TacticalContextPreview
 {
     private const float WorkerBadgePlaneY = 0f; // no physical elevation or parallax
     private MeshInstance3D? _workerBadgeMesh;
-    private Label? _workerBadgeTooltip;
     private IReadOnlyList<PhysicalWorkerRuntimeRecord> _displayWorkers =
         Array.Empty<PhysicalWorkerRuntimeRecord>();
     private readonly Dictionary<ulong, (ulong FineTileId, Vector3 Center)>
@@ -40,9 +39,8 @@ public partial class TacticalContextPreview
     public IReadOnlyList<ulong> VisibleWorkerMarkerIds =>
         Array.AsReadOnly(_workerGlyphPositions.Keys.OrderBy(x => x).ToArray());
     public ulong? HoveredWorkerBadgeId => _hoveredBadgeId;
-    public bool IsWorkerHoverVisible => _workerBadgeTooltip?.Visible ?? false;
-    public string? HoveredWorkerBadgeDescription =>
-        _workerBadgeTooltip?.Visible == true ? _workerBadgeTooltip.Text : null;
+    public bool IsWorkerHoverVisible => IsWorkerInspectorVisible;
+    public string? HoveredWorkerBadgeDescription => WorkerInspectorDescription;
 
     public Color? RenderedWorkerBadgeFill(ulong workerId)
     {
@@ -62,16 +60,7 @@ public partial class TacticalContextPreview
             MaterialOverride = MakeCoplanarOverlayMaterial()
         };
         _world.AddChild(_workerBadgeMesh);
-        _workerBadgeTooltip = new Label
-        {
-            Name = "GANextWorkerBadgeTooltip",
-            Visible = false,
-            MouseFilter = MouseFilterEnum.Ignore
-        };
-        _workerBadgeTooltip.AddThemeColorOverride(
-            "font_color", new Color("#fff6d2"));
-        _workerBadgeTooltip.AddThemeFontSizeOverride("font_size", 12);
-        AddChild(_workerBadgeTooltip);
+        InitializeWorkerInspector();
         MouseExited += () => HoverWorkerBadge(null);
     }
 
@@ -130,6 +119,7 @@ public partial class TacticalContextPreview
         _displayWorkers = census.Workers.ToArray();
         _selectedWorkerGlyphId = selectedWorkerId;
         RebuildWorkerMarkers();
+        RefreshWorkerInspectorFromCensus();
     }
 
     private static string WorkerOccupationLabel(PhysicalWorkerOccupation occupation) =>
@@ -258,8 +248,7 @@ public partial class TacticalContextPreview
             !_workerGlyphPositions.ContainsKey(_hoveredBadgeId.Value))
         {
             _hoveredBadgeId = null;
-            if (_workerBadgeTooltip is not null)
-                _workerBadgeTooltip.Visible = false;
+            HideWorkerInspector();
         }
         GD.Print($"GA_NEXT_FINE_WORKER_GLYPHS count={_workerGlyphPositions.Count} " +
             $"census={_displayWorkers.Count} focused={_activeFocus} " +
@@ -315,32 +304,20 @@ public partial class TacticalContextPreview
             TryBadgePlanePoint(localPixel.Value, out var point, out var tileId))
             next = BadgeAt(tileId, point);
 
-        if (_workerBadgeTooltip is not null)
+        if (next.HasValue && localPixel.HasValue)
         {
-            _workerBadgeTooltip.Visible = next.HasValue;
-            if (next.HasValue && localPixel.HasValue)
-            {
-                var worker = _displayWorkers.First(w => w.Id.Value == next.Value);
-                var address = worker.TacticalTileId!.Value.FineStrategicCellId.Value;
-                var occupation = worker.Occupation.HasValue
-                    ? WorkerOccupationLabel(worker.Occupation.Value)
-                    : "Ocupação não registrada (v10)";
-                _workerBadgeTooltip.Text =
-                    $"#{worker.Id.Value}  ·  {occupation}  ·  {worker.Activity}  ·  " +
-                    $"Item {worker.Commodity.Value}  ·  G(18,0)/{address}";
-                // Position in the tactical viewport itself, not in the
-                // global screen or the movable Tab/atlas windows.
-                _workerBadgeTooltip.Position = new Vector2(
-                    Mathf.Clamp(localPixel.Value.X + 13f, 0f,
-                        Mathf.Max(0f, Size.X - 270f)),
-                    Mathf.Clamp(localPixel.Value.Y + 10f, 0f,
-                        Mathf.Max(0f, Size.Y - 24f)));
-            }
+            // Read the canonical record every time; the card always follows
+            // the real individual instead of caching a stale label.
+            var worker = _displayWorkers.First(w => w.Id.Value == next.Value);
+            ShowWorkerInspector(worker, localPixel.Value);
         }
+        else
+            HideWorkerInspector();
+
         if (next == _hoveredBadgeId) return;
         _hoveredBadgeId = next;
         RebuildWorkerMarkers(); // hover halo only; no state or camera change
         GD.Print($"GA_NEXT_WORKER_BADGE_HOVER worker={(next?.ToString() ?? "none")} " +
-            "mutation=false selection_unchanged=true");
+            "mutation=false selection_unchanged=true inspector=non_modal");
     }
 }
