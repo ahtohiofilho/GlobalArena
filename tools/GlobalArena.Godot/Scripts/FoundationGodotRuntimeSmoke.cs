@@ -19,7 +19,7 @@ internal sealed class FoundationGodotRuntimeSmoke
 {
     private readonly Main _main;
     private readonly GlobePreview _globe;
-    private readonly FoundationLocalGameHost _game;
+    private readonly FoundationHumanAiLocalPreview _game;
     private readonly OptionButton _workers;
     private readonly Button _move;
     private readonly Button _produce;
@@ -28,13 +28,14 @@ internal sealed class FoundationGodotRuntimeSmoke
     private readonly Label _pending;
     private readonly Label _summary;
     private readonly Label _turn;
+    private readonly Label _aiStatus;
     private readonly Label _status;
 
     public FoundationGodotRuntimeSmoke(
-        Main main, GlobePreview globe, FoundationLocalGameHost game,
+        Main main, GlobePreview globe, FoundationHumanAiLocalPreview game,
         OptionButton workers, Button move, Button produce,
         Button endTurn, Button cancel, Label pending,
-        Label summary, Label turn, Label status)
+        Label summary, Label turn, Label aiStatus, Label status)
     {
         _main = main;
         _globe = globe;
@@ -47,6 +48,7 @@ internal sealed class FoundationGodotRuntimeSmoke
         _pending = pending;
         _summary = summary;
         _turn = turn;
+        _aiStatus = aiStatus;
         _status = status;
     }
 
@@ -67,6 +69,13 @@ internal sealed class FoundationGodotRuntimeSmoke
             Must(_move.Disabled, "move button enabled without destination");
             Must(!_endTurn.Disabled, "empty turn cannot be closed");
             Must(_game.PendingOrderCount == 0, "game started with pending commands");
+            Must(_game.AiCivilizations.Count == 1, "AI opponent is missing");
+            Must(_aiStatus.Text.Contains("1 opponent", StringComparison.Ordinal),
+                "Godot did not expose AI participation status");
+            Must(_game.Snapshot.Workers.Workers.Single(w => w.Id.Value == 4UL)
+                .Activity == PhysicalWorkerActivity.Traveling,
+                "real AI preview worker should start Traveling");
+            Must(_game.LastTurnReceipt is null, "preview contains a phantom completed turn");
             Must(_pending.Text.Contains("No orders queued", StringComparison.Ordinal),
                 "initial pending label incorrect");
 
@@ -126,9 +135,19 @@ internal sealed class FoundationGodotRuntimeSmoke
             // ONE Godot button press resolves both commands in ONE turn.
             _endTurn.EmitSignal(BaseButton.SignalName.Pressed);
             Must(_game.PendingOrderCount == 0, "end turn left stale intentions");
-            Must(_game.NextTurn.Value == 2UL, "two commands consumed two turns");
-            Must(_game.Snapshot.Revision == 2UL,
-                "two executed worker events did not produce two revisions");
+            Must(_game.NextTurn.Value == 2UL, "human and AI commands consumed separate turns");
+            Must(_game.Snapshot.Revision == 3UL,
+                "two human moves + one AI action should create 3 revisions");
+            Must(_game.LastAiEventCount == 1, "AI did not join the first collective turn");
+            Must(_game.LastTurnReceipt is { ExecutedEvents: 3 },
+                "collective journal must contain exactly two human and one AI event");
+            Must(_game.LastTurnReceipt.Events.Count(ev => ev.Issuer.Value == 2UL) == 1,
+                "AI participation missing from authoritative receipt");
+            Must(_game.Snapshot.Workers.Workers.Single(w => w.Id.Value == 4UL)
+                .Activity == PhysicalWorkerActivity.Producing,
+                "AI worker did not resume production on its existing tile");
+            Must(_aiStatus.Text.Contains("last AI actions 1", StringComparison.Ordinal),
+                "AI result was not refreshed in the sidebar");
             Must(_game.Snapshot.Workers.Workers.Single(w => w.Id.Value == 1UL)
                 .CellId == neighbor, "worker #1 not moved");
             Must(_game.Snapshot.Workers.Workers.Single(w => w.Id.Value == 2UL)
@@ -137,14 +156,16 @@ internal sealed class FoundationGodotRuntimeSmoke
                 w.Id.Value is 1UL or 2UL).All(w =>
                 w.Activity == PhysicalWorkerActivity.Traveling),
                 "move did not stop production for traveling workers");
-            Must(_status.Text.Contains("2 worker orders", StringComparison.Ordinal)
+            Must(_status.Text.Contains("Human 2 + AI 1", StringComparison.Ordinal)
                 && _status.Text.Contains("journal replay verified", StringComparison.Ordinal),
                 "one-turn batch/journal confirmation absent from GUI");
             Must(_move.Disabled, "same-tile movement should be disabled after commit");
             Must(_workers.ItemCount == 3, "foreign workers leaked into controls");
             await CaptureRenderedViewIfRequested("03_after_batch_move");
             GD.Print("GA_GODOT_RUNTIME_SMOKE_STEP move=PASS " +
-                "turn=1 workers=2 revision=2 replay=true");
+                "turn=1 human_workers=2 ai_actions=1 revision=3 replay=true");
+            GD.Print("GA_GODOT_HUMAN_AI_E2E_STEP ready_and_commit=PASS " +
+                "turn=1 human_events=2 ai_events=1 same_turn=true");
 
             // Separate turn: actual Godot production button queues work for
             // worker #1; closing the turn applies it.
@@ -153,10 +174,11 @@ internal sealed class FoundationGodotRuntimeSmoke
             Must(!_produce.Disabled, "traveling producer cannot queue production");
             _produce.EmitSignal(BaseButton.SignalName.Pressed);
             Must(_game.PendingOrderCount == 1 &&
-                _game.Snapshot.Revision == 2UL, "production queue mutated snapshot");
+                _game.Snapshot.Revision == 3UL, "production queue mutated snapshot");
             _endTurn.EmitSignal(BaseButton.SignalName.Pressed);
-            Must(_game.Snapshot.Revision == 3UL &&
+            Must(_game.Snapshot.Revision == 4UL &&
                 _game.NextTurn.Value == 3UL, "production turn did not close correctly");
+            Must(_game.LastAiEventCount == 0, "already producing AI moved again on turn 2");
             Must(_game.Snapshot.Workers.Workers.Single(w => w.Id.Value == 1UL)
                 .Activity == PhysicalWorkerActivity.Producing,
                 "Godot P button did not resume production");
@@ -165,7 +187,7 @@ internal sealed class FoundationGodotRuntimeSmoke
                 "other worker activity was corrupted");
             Must(_produce.Disabled, "already producing should disable duplicate order");
             GD.Print("GA_GODOT_RUNTIME_SMOKE_STEP production=PASS " +
-                "turn=2 revision=3 replay=true");
+                "turn=2 revision=4 replay=true");
 
             // Keyboard-first G queues the last move, E closes this third turn.
             Must(_globe.TryClickCanonicalCellForRuntimeSmoke(origin.Value),
@@ -175,14 +197,14 @@ internal sealed class FoundationGodotRuntimeSmoke
             {
                 Keycode = Key.G, Pressed = true, Echo = false
             });
-            Must(_game.PendingOrderCount == 1 && _game.Snapshot.Revision == 3UL,
+            Must(_game.PendingOrderCount == 1 && _game.Snapshot.Revision == 4UL,
                 "G key bypassed pending-intent boundary");
             _main._UnhandledKeyInput(new InputEventKey
             {
                 Keycode = Key.E, Pressed = true, Echo = false
             });
             Must(_game.PendingOrderCount == 0, "E did not close pending turn");
-            Must(_game.NextTurn.Value == 4UL && _game.Snapshot.Revision == 4UL,
+            Must(_game.NextTurn.Value == 4UL && _game.Snapshot.Revision == 5UL,
                 "G/E consumed the wrong turn or event revisions");
             Must(_game.Snapshot.Workers.Workers.Single(w => w.Id.Value == 1UL)
                 .CellId == origin, "keyboard move did not return worker home");
@@ -197,11 +219,15 @@ internal sealed class FoundationGodotRuntimeSmoke
                 "keyboard turn replay confirmation missing");
             await CaptureRenderedViewIfRequested("04_after_shortcut");
             GD.Print("GA_GODOT_RUNTIME_SMOKE_STEP keyboard_g=PASS " +
-                "turn=3 revision=4 replay=true");
+                "turn=3 revision=5 replay=true");
+            GD.Print("GA_GODOT_HUMAN_AI_E2E_PASS " +
+                "human=1 ai=1 human_ready_required=true " +
+                "first_turn_ai_events=1 total_turns=3 total_events=5 " +
+                "hash=v9 journal_replay=true");
 
             GD.Print("GA_GODOT_FOUNDATION_SMOKE_PASS " +
                 "engine=4.7.2.net scene=Main.tscn " +
-                "world_nodes=92 workers=6 turns=3 events=4 " +
+                "world_nodes=92 workers=6 turns=3 events=5 " +
                 "queue=true cancel=true batch_workers=2 " +
                 "ray_picker=true buttons=true keyboard_g=true keyboard_e=true " +
                 "commit=true journal_replay=true hash=v9");
