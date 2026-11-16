@@ -181,12 +181,12 @@ internal sealed class FoundationGodotWorkspaceSmoke
     {
         // The real SceneTree receives these events exactly like user input,
         // allowing focus navigation/accept_event to affect the outcome.
-        Godot.Input.ParseInputEvent(new InputEventKey
+        global::Godot.Input.ParseInputEvent(new InputEventKey
         {
             Keycode = code, Pressed = true, Echo = false
         });
         await _main.ToSignal(_main.GetTree(), SceneTree.SignalName.ProcessFrame);
-        Godot.Input.ParseInputEvent(new InputEventKey
+        global::Godot.Input.ParseInputEvent(new InputEventKey
         {
             Keycode = code, Pressed = false, Echo = false
         });
