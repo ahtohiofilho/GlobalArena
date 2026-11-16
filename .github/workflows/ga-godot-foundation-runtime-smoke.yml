@@ -75,6 +75,7 @@ jobs:
             2>&1 | tee "$RUNNER_TEMP/ga-godot/tactical-workspace.log"
           grep -q 'GA_NEXT_TACTICAL_ENTRY_PASS' "$RUNNER_TEMP/ga-godot/tactical-workspace.log"
           grep -q 'GA_NEXT_TACTICAL_WORKSPACE_PASS' "$RUNNER_TEMP/ga-godot/tactical-workspace.log"
+          grep -q 'GA_NEXT_SHORTCUT_ROUTING_PASS' "$RUNNER_TEMP/ga-godot/tactical-workspace.log"
           if grep -E 'GA_NEXT_TACTICAL_WORKSPACE_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/tactical-workspace.log"; then
             echo "Tactical workspace smoke encountered errors" >&2
             exit 1
@@ -117,6 +118,7 @@ jobs:
             timeout 120s "$GODOT_BIN" --path tools/GlobalArena.Godot --quit-after 900 \
             2>&1 | tee "$RUNNER_TEMP/ga-godot/workspace-graphical.log"
           grep -q 'GA_NEXT_TACTICAL_WORKSPACE_PASS' "$RUNNER_TEMP/ga-godot/workspace-graphical.log"
+          grep -q 'GA_NEXT_SHORTCUT_ROUTING_PASS' "$RUNNER_TEMP/ga-godot/workspace-graphical.log"
           for stage in 01_tactical_start 02_planet_map 03_operations_panel 04_after_ai_turn; do
             grep -q "GA_NEXT_RENDER_FRAME_PASS stage=$stage" "$RUNNER_TEMP/ga-godot/workspace-graphical.log"
             test -s "$GA_NEXT_WORKSPACE_SCREENSHOT_DIR/$stage.png"
