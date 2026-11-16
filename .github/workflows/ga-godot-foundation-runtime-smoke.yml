@@ -92,6 +92,7 @@ jobs:
             timeout 120s "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --quit-after 900 \
             2>&1 | tee "$RUNNER_TEMP/ga-godot/tactical-v10.log"
           grep -q 'GA_NEXT_TACTICAL_V10_E2E_PASS' "$RUNNER_TEMP/ga-godot/tactical-v10.log"
+          grep -q 'GA_NEXT_WORKER_INSPECTOR_PASS version=10' "$RUNNER_TEMP/ga-godot/tactical-v10.log"
           grep -q 'GA_NEXT_WORKER_BADGE_VS16_PASS' "$RUNNER_TEMP/ga-godot/tactical-v10.log"
           grep -q 'GA_NEXT_FINE_HUMAN_AI_COMMIT turn=1' "$RUNNER_TEMP/ga-godot/tactical-v10.log"
           if grep -E 'GA_NEXT_TACTICAL_V10_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/tactical-v10.log"; then
@@ -105,6 +106,7 @@ jobs:
             timeout 120s "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --quit-after 900 \
             2>&1 | tee "$RUNNER_TEMP/ga-godot/tactical-v11.log"
           grep -q 'GA_NEXT_TACTICAL_V11_E2E_PASS' "$RUNNER_TEMP/ga-godot/tactical-v11.log"
+          grep -q 'GA_NEXT_WORKER_INSPECTOR_PASS version=11' "$RUNNER_TEMP/ga-godot/tactical-v11.log"
           grep -q 'GA_NEXT_V11_WORKER_OCCUPATIONS_PASS' "$RUNNER_TEMP/ga-godot/tactical-v11.log"
           grep -q 'GA_NEXT_FINE_HUMAN_AI_COMMIT turn=1' "$RUNNER_TEMP/ga-godot/tactical-v11.log"
           if grep -E 'GA_NEXT_TACTICAL_V11_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/tactical-v11.log"; then
@@ -171,8 +173,9 @@ jobs:
             timeout 120s "$GODOT_BIN" --path tools/GlobalArena.Godot --quit-after 900 \
             2>&1 | tee "$RUNNER_TEMP/ga-godot/tactical-v10-graphical.log"
           grep -q 'GA_NEXT_TACTICAL_V10_E2E_PASS' "$RUNNER_TEMP/ga-godot/tactical-v10-graphical.log"
+          grep -q 'GA_NEXT_WORKER_INSPECTOR_PASS version=10' "$RUNNER_TEMP/ga-godot/tactical-v10-graphical.log"
           grep -q 'GA_NEXT_WORKER_BADGE_VS16_PASS' "$RUNNER_TEMP/ga-godot/tactical-v10-graphical.log"
-          for stage in 01_worker_roster 02_order_queued 03_after_collective_turn 04_after_production; do
+          for stage in 00_hover_worker 01_worker_roster 02_order_queued 03_after_collective_turn 04_after_production; do
             grep -q "GA_NEXT_V10_RENDER_FRAME_PASS stage=$stage" "$RUNNER_TEMP/ga-godot/tactical-v10-graphical.log"
             test -s "$GA_NEXT_TACTICAL_V10_SCREENSHOT_DIR/$stage.png"
           done
@@ -190,8 +193,9 @@ jobs:
             timeout 120s "$GODOT_BIN" --path tools/GlobalArena.Godot --quit-after 900 \
             2>&1 | tee "$RUNNER_TEMP/ga-godot/tactical-v11-graphical.log"
           grep -q 'GA_NEXT_TACTICAL_V11_E2E_PASS' "$RUNNER_TEMP/ga-godot/tactical-v11-graphical.log"
+          grep -q 'GA_NEXT_WORKER_INSPECTOR_PASS version=11' "$RUNNER_TEMP/ga-godot/tactical-v11-graphical.log"
           grep -q 'GA_NEXT_V11_WORKER_OCCUPATIONS_PASS' "$RUNNER_TEMP/ga-godot/tactical-v11-graphical.log"
-          for stage in 01_worker_roster 02_order_queued 03_after_collective_turn 04_after_production 05_mining_opponent; do
+          for stage in 00_hover_worker 01_worker_roster 02_order_queued 03_after_collective_turn 04_after_production 05_mining_opponent; do
             grep -q "GA_NEXT_V11_RENDER_FRAME_PASS stage=$stage" "$RUNNER_TEMP/ga-godot/tactical-v11-graphical.log"
             test -s "$GA_NEXT_TACTICAL_V11_SCREENSHOT_DIR/$stage.png"
           done
