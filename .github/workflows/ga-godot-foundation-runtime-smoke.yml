@@ -56,6 +56,8 @@ jobs:
           timeout 120s "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --quit-after 900 \
             2>&1 | tee "$RUNNER_TEMP/ga-godot/smoke.log"
           grep -q 'GA_GODOT_FOUNDATION_SMOKE_PASS' "$RUNNER_TEMP/ga-godot/smoke.log"
+          grep -q 'GA_GODOT_HUMAN_AI_E2E_PASS' "$RUNNER_TEMP/ga-godot/smoke.log"
+          grep -q 'GA_GODOT_HUMAN_AI_E2E_STEP ready_and_commit=PASS' "$RUNNER_TEMP/ga-godot/smoke.log"
           grep -q 'GA_GODOT_RUNTIME_SMOKE_STEP batch_queued=PASS' "$RUNNER_TEMP/ga-godot/smoke.log"
           grep -q 'GA_GODOT_RUNTIME_SMOKE_STEP move=PASS' "$RUNNER_TEMP/ga-godot/smoke.log"
           grep -q 'GA_GODOT_RUNTIME_SMOKE_STEP production=PASS' "$RUNNER_TEMP/ga-godot/smoke.log"
@@ -79,6 +81,8 @@ jobs:
             timeout 120s "$GODOT_BIN" --path tools/GlobalArena.Godot --quit-after 900 \
             2>&1 | tee "$RUNNER_TEMP/ga-godot/graphical-smoke.log"
           grep -q 'GA_GODOT_FOUNDATION_SMOKE_PASS' "$RUNNER_TEMP/ga-godot/graphical-smoke.log"
+          grep -q 'GA_GODOT_HUMAN_AI_E2E_PASS' "$RUNNER_TEMP/ga-godot/graphical-smoke.log"
+          grep -q 'GA_GODOT_HUMAN_AI_E2E_STEP ready_and_commit=PASS' "$RUNNER_TEMP/ga-godot/graphical-smoke.log"
           grep -q 'GA_GODOT_RENDER_FRAME_PASS stage=01_startup' "$RUNNER_TEMP/ga-godot/graphical-smoke.log"
           grep -q 'GA_GODOT_RENDER_FRAME_PASS stage=02_queued' "$RUNNER_TEMP/ga-godot/graphical-smoke.log"
           grep -q 'GA_GODOT_RENDER_FRAME_PASS stage=03_after_batch_move' "$RUNNER_TEMP/ga-godot/graphical-smoke.log"
