@@ -97,6 +97,19 @@ jobs:
           if grep -E 'GA_NEXT_TACTICAL_V10_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/tactical-v10.log"; then
             exit 1
           fi
+      - name: Run Godot v11 authoritative three-occupation badge E2E headless
+        shell: bash
+        run: |
+          set -euo pipefail
+          GA_FOUNDATION_GODOT_SMOKE=0 GA_NEXT_WORKSPACE_SMOKE=0 GA_NEXT_TACTICAL_V11_SMOKE=1 \
+            timeout 120s "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --quit-after 900 \
+            2>&1 | tee "$RUNNER_TEMP/ga-godot/tactical-v11.log"
+          grep -q 'GA_NEXT_TACTICAL_V11_E2E_PASS' "$RUNNER_TEMP/ga-godot/tactical-v11.log"
+          grep -q 'GA_NEXT_V11_WORKER_OCCUPATIONS_PASS' "$RUNNER_TEMP/ga-godot/tactical-v11.log"
+          grep -q 'GA_NEXT_FINE_HUMAN_AI_COMMIT turn=1' "$RUNNER_TEMP/ga-godot/tactical-v11.log"
+          if grep -E 'GA_NEXT_TACTICAL_V11_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/tactical-v11.log"; then
+            exit 1
+          fi
       - name: Install virtual display and software OpenGL for a real rendered frame
         run: |
           sudo apt-get update -qq
@@ -163,6 +176,25 @@ jobs:
             grep -q "GA_NEXT_V10_RENDER_FRAME_PASS stage=$stage" "$RUNNER_TEMP/ga-godot/tactical-v10-graphical.log"
             test -s "$GA_NEXT_TACTICAL_V10_SCREENSHOT_DIR/$stage.png"
           done
+      - name: Render actual v11 agricultural forest and mining workforce under Xvfb
+        shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          GA_FOUNDATION_GODOT_SMOKE: '0'
+          GA_NEXT_WORKSPACE_SMOKE: '0'
+          GA_NEXT_TACTICAL_V11_SMOKE: '1'
+          GA_NEXT_TACTICAL_V11_SCREENSHOT_DIR: ${{ runner.temp }}/ga-godot/tactical-v11
+        run: |
+          set -euo pipefail
+          xvfb-run -a -s "-screen 0 1600x1000x24" \
+            timeout 120s "$GODOT_BIN" --path tools/GlobalArena.Godot --quit-after 900 \
+            2>&1 | tee "$RUNNER_TEMP/ga-godot/tactical-v11-graphical.log"
+          grep -q 'GA_NEXT_TACTICAL_V11_E2E_PASS' "$RUNNER_TEMP/ga-godot/tactical-v11-graphical.log"
+          grep -q 'GA_NEXT_V11_WORKER_OCCUPATIONS_PASS' "$RUNNER_TEMP/ga-godot/tactical-v11-graphical.log"
+          for stage in 01_worker_roster 02_order_queued 03_after_collective_turn 04_after_production 05_mining_opponent; do
+            grep -q "GA_NEXT_V11_RENDER_FRAME_PASS stage=$stage" "$RUNNER_TEMP/ga-godot/tactical-v11-graphical.log"
+            test -s "$GA_NEXT_TACTICAL_V11_SCREENSHOT_DIR/$stage.png"
+          done
       - name: Keep actual runtime evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -176,6 +208,9 @@ jobs:
             ${{ runner.temp }}/ga-godot/tactical-v10.log
             ${{ runner.temp }}/ga-godot/tactical-v10-graphical.log
             ${{ runner.temp }}/ga-godot/tactical-v10/*.png
+            ${{ runner.temp }}/ga-godot/tactical-v11.log
+            ${{ runner.temp }}/ga-godot/tactical-v11-graphical.log
+            ${{ runner.temp }}/ga-godot/tactical-v11/*.png
             ${{ runner.temp }}/ga-godot/graphical-smoke.log
             ${{ runner.temp }}/ga-godot/workspace-graphical.log
             ${{ runner.temp }}/ga-godot/workspace/*.png
