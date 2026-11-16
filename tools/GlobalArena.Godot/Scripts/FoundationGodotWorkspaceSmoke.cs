@@ -51,6 +51,15 @@ internal sealed class FoundationGodotWorkspaceSmoke
                 "GANextPlanetWindow/GANextPlanetPanel");
             var operationsPanel = _main.GetNode<Control>(
                 "GANextOperationsWindow/GANextOperationsPanel");
+            var atlas = atlasPanel as GaFloatingWindow;
+            Must(atlas is not null,
+                "planetary atlas must be a reusable floating window");
+            Must(atlas!.FindChild("GANextPlanetResizeGrip",
+                    recursive: true, owned: false) is Button,
+                "planetary atlas missing resize grip");
+            Must(atlas.FindChild("GAWindowDragHandle",
+                    recursive: true, owned: false) is Control,
+                "planetary atlas missing move bar");
             Must(_main.Theme is not null, "GA design system Theme missing");
             Must(canvas is not null && canvas.Size.X > canvas.Size.Y * 1.18f,
                 "tactical viewport is constrained to an obsolete 1:1 square");
@@ -83,6 +92,11 @@ internal sealed class FoundationGodotWorkspaceSmoke
                  _game.Snapshot.Revision == 0UL,
                 "tactical startup changed gameplay state");
             var hash = _game.StateHash;
+            var fullMapWidth = canvas.Size.X;
+            var initialCamera = tactical.TacticalCameraState;
+            var initialRenderSize = tactical.RenderViewportSize;
+            Must(operations.GetParent() == canvas.GetParent(),
+                "operational dock must be a direct layout sibling of the map");
             await CaptureRenderedViewIfRequested("01_tactical_start");
 
             // Drive Godot's input pipeline, NOT a direct _UnhandledKeyInput
@@ -112,14 +126,44 @@ internal sealed class FoundationGodotWorkspaceSmoke
             await Press(Key.Tab);
             Must(operations.Visible && !planet.Visible,
                 "TAB was consumed by focus navigation before toggling panels");
+            await WaitFrame();
+            var dockedMapWidth = canvas.Size.X;
+            Must(dockedMapWidth < fullMapWidth - 280f,
+                "TAB did not reserve actual width in the main map layout");
+            Must(canvas.Size.X >= 360f && tactical.Size.X >= 360f,
+                "TAB squeezed the tactical canvas below its minimum width");
+            Must(operations.GlobalPosition.X >= canvas.GlobalPosition.X +
+                     canvas.Size.X - 2f,
+                "operational dock overlays rather than follows the map");
+            Must(tactical.TacticalCameraState == initialCamera,
+                "dock reflow changed geographical camera focus, yaw or zoom");
+            Must(tactical.RenderViewportSize.X < initialRenderSize.X,
+                "tactical SubViewport did not shrink with the available map width");
+            Must(_game.StateHash == hash, "TAB dock changed authoritative state");
+            GD.Print($"GA_NEXT_LAYOUT_REFLOW_PASS map_full={fullMapWidth:F0} " +
+                $"map_docked={dockedMapWidth:F0} " +
+                "camera_target_zoom_yaw_preserved=true geometry_reflow=true");
             await CaptureRenderedViewIfRequested("03_operations_panel");
+            await Press(Key.M);
+            Must(operations.Visible && planet.Visible,
+                "opening a secondary window must not hide the operational dock");
+            await Press(Key.Escape);
+            Must(!planet.Visible && operations.Visible,
+                "ESC must close floating window before operational dock");
             await Press(Key.Escape);
             Must(!operations.Visible && tactical.Visible,
-                "ESC was consumed before closing the operations window");
+                "ESC was consumed before closing the operational dock");
+            await WaitFrame();
+            Must(Mathf.Abs(canvas.Size.X - fullMapWidth) < 3f &&
+                 tactical.TacticalCameraState == initialCamera,
+                "closing the dock did not restore map width/camera state");
             await Press(Key.Tab);
-            Must(operations.Visible, "TAB did not reopen operations");
+            Must(operations.Visible, "TAB did not reopen operational dock");
             await Press(Key.Tab);
-            Must(!operations.Visible, "TAB did not close operations");
+            Must(!operations.Visible, "TAB did not close operational dock");
+            await WaitFrame();
+            Must(Mathf.Abs(canvas.Size.X - fullMapWidth) < 3f,
+                "TAB did not restore all available canvas width");
 
             // G cannot submit an old strategic destination while in tactical
             // mode. No claim of authoritative physical-tile movement is made.
@@ -139,6 +183,9 @@ internal sealed class FoundationGodotWorkspaceSmoke
             Must(_game.LastTurnReceipt is { ReplayMatched: true },
                 "tactical-first turn did not replay identically");
             await CaptureRenderedViewIfRequested("04_after_ai_turn");
+            GD.Print("GA_NEXT_LAYOUT_DOCK_E2E_PASS " +
+                "tab_reserves_width=true focus_preserved=true " +
+                "atlas_independent=true esc_floating_first=true");
             GD.Print("GA_NEXT_SHORTCUT_ROUTING_PASS " +
                 "input_pipeline=godot_parsed tab=focus_safe escape=both_windows " +
                 "M=reentrant TAB=reentrant E=authoritative committed_once=true");
@@ -182,6 +229,12 @@ internal sealed class FoundationGodotWorkspaceSmoke
         Must(frame.SavePng(filename) == Error.Ok, "Godot PNG write failed");
         GD.Print($"GA_NEXT_RENDER_FRAME_PASS stage={stage} " +
             $"dimensions={frame.GetWidth()}x{frame.GetHeight()} palette={palette.Count}");
+    }
+
+    private async Task WaitFrame()
+    {
+        for (var i = 0; i < 3; i++)
+            await _main.ToSignal(_main.GetTree(), SceneTree.SignalName.ProcessFrame);
     }
 
     private async Task Press(Key code)
