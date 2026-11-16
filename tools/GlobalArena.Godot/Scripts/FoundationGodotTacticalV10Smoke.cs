@@ -85,7 +85,7 @@ public sealed class FoundationGodotTacticalV10Smoke
 
     private async Task Capture(string stage)
     {
-        var dir = Environment.GetEnvironmentVariable(
+        var dir = System.Environment.GetEnvironmentVariable(
             "GA_NEXT_TACTICAL_V10_SCREENSHOT_DIR");
         if (string.IsNullOrWhiteSpace(dir)) return;
         Directory.CreateDirectory(dir);
@@ -141,15 +141,15 @@ public sealed class FoundationGodotTacticalV10Smoke
                 "Worker #2 marker missing or aliased");
 
             var before = _host.StateHash;
-            await ClickTile(b.TacticalTileId.Value);
+            await ClickTile(b.TacticalTileId!.Value);
             Must(_main.SelectedTacticalWorkerId == 2UL &&
                  _host.StateHash == before,
                 "Clicking worker #2 must select its actual identity without mutation");
             await KeyPress(Key.Tab);
-            Must(operations.Visible && roster!.HasAuthoritativeFinePositions &&
+            Must(operations!.Visible && roster!.HasAuthoritativeFinePositions &&
                 roster.SelectedWorkerId == 2UL,
                 "Operational dock is not displaying the true v10 selected worker");
-            var details = roster.FindChild(
+            var details = roster!.FindChild(
                 "GANextWorkerDetails", true, false) as Label;
             Must(details?.Text.Contains(
                 $"Exact tactical G(18,0) tile: {secondTile} (v10)") == true,
@@ -229,10 +229,10 @@ public sealed class FoundationGodotTacticalV10Smoke
             await Capture("04_after_production");
 
             await KeyPress(Key.M);
-            Must(planet.Visible && operations.Visible,
+            Must(planet!.Visible && operations!.Visible,
                 "Planet atlas should float independent of the tactical dock");
             await KeyPress(Key.Escape);
-            Must(!planet.Visible && operations.Visible,
+            Must(!planet!.Visible && operations!.Visible,
                 "Esc did not close the floating window before the dock");
             GD.Print("GA_NEXT_TACTICAL_V10_E2E_PASS " +
                 "markers=authoritative_fine map_selection=true " +
