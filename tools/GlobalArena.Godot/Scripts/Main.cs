@@ -56,6 +56,7 @@ public partial class Main : Control
     private Label? _metricTurn;
     private Label? _metricHumanWorkers;
     private Label? _metricAiCivilizations;
+    private GaOperationalRoster? _operationalRoster;
 
     // R35: only an external gameplay owner may supply a real runtime snapshot.
     // Never create a demonstration WorldState inside the UI.
@@ -252,6 +253,15 @@ public partial class Main : Control
         _localProduceButton.Disabled = chosen is null ||
             !_localFoundation.CanChangeActivity(
                 chosen.Id, PhysicalWorkerActivity.Producing);
+
+        // These are the actual, individually identified v9 census workers,
+        // not approximate markers and not pseudo-positions on G(18,0).
+        _operationalRoster?.Refresh(workers.Select(worker =>
+            new GaWorkerRosterRow(
+                worker.Id.Value, worker.CellId.Value, worker.Activity.ToString(),
+                worker.Commodity.Value, worker.OutputMicroPerTurn,
+                worker.DemandMultiplierMicro)).ToArray(),
+            _selectedLocalWorkerId, _localFoundation.Snapshot.Revision);
     }
 
     private void OnLocalWorkerSelected(long optionIndex)
@@ -263,6 +273,19 @@ public partial class Main : Control
         _selectedLocalWorkerId = index >= 0 && index < workers.Count
             ? workers[index].Id.Value : null;
         RefreshLocalWorkerOrderControls();
+    }
+
+    private void OnOperationalWorkerSelected(ulong id)
+    {
+        if (_localFoundation is null ||
+            !_localFoundation.ControllableWorkers.Any(worker => worker.Id.Value == id))
+            return;
+        // Selection only; this cannot queue a strategic destination or
+        // impersonate a canonical physical tactical tile.
+        _selectedLocalWorkerId = id;
+        RefreshLocalWorkerOrderControls();
+        GD.Print($"GA_NEXT_ROSTER_SELECTED worker={id} " +
+            "source=canonical_v9 fine_location=false mutation=false");
     }
 
     private void OnLocalWorkerMoveRequested()
@@ -598,6 +621,14 @@ public partial class Main : Control
         metrics.AddChild(GaVisualFoundation.CreateMetric(
             "AI", _localFoundation.AiCivilizations.Count.ToString(),
             out _metricAiCivilizations));
+        var roster = new GaOperationalRoster
+        {
+            Name = "GANextOperationalRoster",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        roster.WorkerSelected += OnOperationalWorkerSelected;
+        operationsColumn.AddChild(roster);
+        _operationalRoster = roster;
         rightPanel.Reparent(operationsColumn);
         rightPanel.CustomMinimumSize = Vector2.Zero;
         rightPanel.SizeFlagsVertical = SizeFlags.ExpandFill;
@@ -1034,7 +1065,7 @@ public partial class Main : Control
                        "E still closes the human + AI turn; G/P/X moves are not offered here.",
                 AutowrapMode = TextServer.AutowrapMode.WordSmart
             });
-            _status!.Text = "GA-NEXT / LAYOUT 02  •  TAB dock  •  M floating atlas  •  E collective turn";
+            _status!.Text = "GA-NEXT / WORKFORCE 01  •  TAB personnel  •  M planetary atlas  •  E collective turn";
             GD.Print("GA_VISUAL_FOUNDATION_01_READY tactical_rectangular=true theme_tokens=true " +
                 "windows=chrome native_windows=false game_authority=untouched");
             RefreshLocalWorkerOrderControls();

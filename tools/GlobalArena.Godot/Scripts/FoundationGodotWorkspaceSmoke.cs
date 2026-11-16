@@ -55,6 +55,10 @@ internal sealed class FoundationGodotWorkspaceSmoke
             var operationsPanel = operations!.FindChild(
                 "GANextOperationsPanel", recursive: true, owned: false) as Control;
             Must(operationsPanel is not null, "operations dock panel missing");
+            var roster = _main.FindChild(
+                "GANextOperationalRoster", recursive: true, owned: false)
+                as GaOperationalRoster;
+            Must(roster is not null, "canonical individual worker roster missing");
             var atlas = atlasPanel as GaFloatingWindow;
             Must(atlas is not null,
                 "planetary atlas must be a reusable floating window");
@@ -101,6 +105,27 @@ internal sealed class FoundationGodotWorkspaceSmoke
             var initialRenderSize = tactical.RenderViewportSize;
             Must(operations.GetParent() == canvas.GetParent(),
                 "operational dock must be a direct layout sibling of the map");
+            Must(roster!.DisplayedWorkerCount == _game.ControllableWorkers.Count &&
+                roster.DisplayedWorkerCount == 3,
+                "roster did not enumerate the exact authoritative human census");
+            Must(!roster.HasAuthoritativeFinePositions,
+                "v9 has no authoritative tactical worker location to draw");
+            var selectedOtherId = _game.ControllableWorkers[1].Id.Value;
+            var otherRow = roster.FindChild(
+                $"GANextWorkerRow_{selectedOtherId}",
+                recursive: true, owned: false) as Button;
+            Must(otherRow is not null, "worker #2 identity row missing");
+            otherRow!.EmitSignal(Button.SignalName.Pressed);
+            Must(roster.SelectedWorkerId == selectedOtherId &&
+                _game.StateHash == hash && _game.PendingOrderCount == 0,
+                "individual worker selection unexpectedly changed gameplay");
+            var chosenDetail = roster.FindChild(
+                "GANextWorkerDetails", recursive: true, owned: false) as Label;
+            Must(chosenDetail?.Text.Contains("Exact tactical G(18,0) tile: unavailable (v9)")
+                == true, "roster fabricated a fine worker location");
+            GD.Print($"GA_NEXT_WORKFORCE_ROSTER_PASS count={roster.DisplayedWorkerCount} " +
+                $"selected={roster.SelectedWorkerId} authoritative_ids=true " +
+                "physical_tile_unavailable=true queued_orders=0 state_mutation=false");
             await CaptureRenderedViewIfRequested("01_tactical_start");
 
             // Drive Godot's input pipeline, NOT a direct _UnhandledKeyInput
@@ -217,6 +242,12 @@ internal sealed class FoundationGodotWorkspaceSmoke
                 "E did not close the existing authoritative human/AI turn");
             Must(_game.LastTurnReceipt is { ReplayMatched: true },
                 "tactical-first turn did not replay identically");
+            Must(roster.SelectedWorkerId == selectedOtherId &&
+                 roster.DisplayedWorkerCount == _game.ControllableWorkers.Count,
+                "roster selection/identity changed after human+AI commit");
+            var heading = roster.FindChild("GANextRosterScroll", true, false);
+            Must(heading is not null && _game.Snapshot.Revision == 1UL,
+                "roster refresh after v9 commit unavailable");
             await CaptureRenderedViewIfRequested("04_after_ai_turn");
             GD.Print("GA_NEXT_LAYOUT_DOCK_E2E_PASS " +
                 "tab_reserves_width=true focus_preserved=true " +
