@@ -66,6 +66,19 @@ jobs:
             echo "Actual Godot runtime has errors" >&2
             exit 1
           fi
+      - name: Run separate tactical-first workspace Main.tscn smoke (M / TAB / ESC / E)
+        shell: bash
+        run: |
+          set -euo pipefail
+          GA_FOUNDATION_GODOT_SMOKE=0 GA_NEXT_WORKSPACE_SMOKE=1 \
+            timeout 120s "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --quit-after 900 \
+            2>&1 | tee "$RUNNER_TEMP/ga-godot/tactical-workspace.log"
+          grep -q 'GA_NEXT_TACTICAL_ENTRY_PASS' "$RUNNER_TEMP/ga-godot/tactical-workspace.log"
+          grep -q 'GA_NEXT_TACTICAL_WORKSPACE_PASS' "$RUNNER_TEMP/ga-godot/tactical-workspace.log"
+          if grep -E 'GA_NEXT_TACTICAL_WORKSPACE_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/tactical-workspace.log"; then
+            echo "Tactical workspace smoke encountered errors" >&2
+            exit 1
+          fi
       - name: Install virtual display and software OpenGL for a real rendered frame
         run: |
           sudo apt-get update -qq
@@ -100,6 +113,7 @@ jobs:
             ${{ runner.temp }}/ga-godot/version.log
             ${{ runner.temp }}/ga-godot/import.log
             ${{ runner.temp }}/ga-godot/smoke.log
+            ${{ runner.temp }}/ga-godot/tactical-workspace.log
             ${{ runner.temp }}/ga-godot/graphical-smoke.log
             ${{ runner.temp }}/ga-godot/screenshots/*.png
           retention-days: 14
