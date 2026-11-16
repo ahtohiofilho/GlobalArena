@@ -11,6 +11,7 @@ public sealed class CanonicalWorldStateHasher
     public const uint FormatVersion = 8U;
     public const uint PhysicalWorkerFormatVersion = 9U;
     public const uint TacticalWorkerFormatVersion = 10U;
+    public const uint OccupiedTacticalWorkerFormatVersion = 11U;
 
     private static readonly byte[] Magic =
     {
@@ -27,8 +28,10 @@ public sealed class CanonicalWorldStateHasher
             worldState);
 
         var version = worldState.Workers.IsInitialized
-            ? worldState.Workers.HasAuthoritativeTacticalLocations
-                ? TacticalWorkerFormatVersion : PhysicalWorkerFormatVersion
+            ? worldState.Workers.HasAuthoritativeOccupations
+                ? OccupiedTacticalWorkerFormatVersion
+                : worldState.Workers.HasAuthoritativeTacticalLocations
+                    ? TacticalWorkerFormatVersion : PhysicalWorkerFormatVersion
             : FormatVersion;
 
         using var hash =
@@ -304,7 +307,7 @@ public sealed class CanonicalWorldStateHasher
                 AppendUInt32(hash, worker.DemandMultiplierMicro);
                 // v10 extends each canonical worker with QUALIFIED fine
                 // geometry identity. v8/v9 byte streams are unchanged.
-                if (version == TacticalWorkerFormatVersion)
+                if (version >= TacticalWorkerFormatVersion)
                 {
                     var tile = worker.TacticalTileId ??
                         throw new InvalidOperationException(
@@ -313,6 +316,13 @@ public sealed class CanonicalWorldStateHasher
                     AppendUInt32(hash, checked((uint)tile.FineGoldbergParameters.N));
                     AppendUInt64(hash, tile.FineStrategicCellId.Value);
                 }
+                // v11 explicitly adds a productive occupation code per
+                // individual AFTER the v10 qualified fine geometry.
+                // All old v8/v9/v10 byte streams remain unchanged.
+                if (version == OccupiedTacticalWorkerFormatVersion)
+                    AppendUInt32(hash, (uint)(worker.Occupation ??
+                        throw new InvalidOperationException(
+                            "v11 worker has no authoritative productive occupation.")));
             }
         }
 
