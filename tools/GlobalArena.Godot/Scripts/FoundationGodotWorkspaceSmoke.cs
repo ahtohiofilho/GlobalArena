@@ -73,7 +73,7 @@ internal sealed class FoundationGodotWorkspaceSmoke
                 "map framing must use centralized visual foundation style");
             Must(((PanelContainer)atlasPanel).GetThemeStylebox("panel") is StyleBoxFlat,
                 "planet window missing shared design-system frame");
-            Must(((PanelContainer)operationsPanel).GetThemeStylebox("panel") is StyleBoxFlat,
+            Must(((PanelContainer)operationsPanel!).GetThemeStylebox("panel") is StyleBoxFlat,
                 "operations window missing shared design-system frame");
             GD.Print($"GA_VISUAL_FOUNDATION_01_GATE rectangle={canvas.Size.X:F0}x{canvas.Size.Y:F0} " +
                 "theme=true windows=2 production_style=true");
