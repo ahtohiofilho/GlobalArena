@@ -954,6 +954,10 @@ public partial class Main : Control
             _openTacticalContext!.Disabled = false;
             OpenTacticalContext();
             CreateTacticalWorkspaceWindows(globe, rightPanel, header);
+            // Keep the 1280x720 header usable: the long subtitle belongs in
+            // secondary information, not beside all keyboard-first controls.
+            subtitle.Visible = false;
+            _returnStrategicContext!.Text = "M | OPEN PLANETARY MAP";
             _localMoveButton!.Visible = false;
             _localProduceButton!.Visible = false;
             _localCancelQueuedButton!.Visible = false;
