@@ -95,7 +95,7 @@ public partial class TacticalContextPreview
             Name = "GANextExperimentalTileHover",
             Visible = false,
             MouseFilter = MouseFilterEnum.Stop,
-            CustomMinimumSize = new Vector2(302f, 0f),
+            CustomMinimumSize = new Vector2(302f, 246f),
             ZIndex = 19
         };
         card.AddThemeStyleboxOverride("panel", GaVisualFoundation.WindowSurface());
@@ -198,6 +198,7 @@ public partial class TacticalContextPreview
         hint.AddThemeColorOverride("font_color", GaVisualFoundation.Accent);
         hint.AddThemeFontSizeOverride("font_size", 10);
         root.AddChild(hint);
+        card.Resized += PositionTileHoverMenu;
         card.MouseExited += () =>
         {
             if (!_tileHoverPinned) HideTileHoverMenu();
