@@ -363,41 +363,53 @@ public partial class Main : Control
         RefreshLocalWorkerOrderControls();
     }
 
-    // Keyboard-first: G queues a move, P queues work, X cancels a queued
-    // order, E resolves the full batch. M remains strategic/tactical mode.
+    // UI-wide shortcuts MUST run before Godot's Control keyboard focus
+    // navigation: Tab is ui_focus_next and Escape is ui_cancel. Both can be
+    // consumed before _UnhandledKeyInput. Keep this handler presentation-
+    // only; only E delegates to the existing authoritative turn host.
+    public override void _Input(InputEvent @event)
+    {
+        if (@event is not InputEventKey key || !key.Pressed || key.Echo ||
+            key.AltPressed || key.CtrlPressed || key.MetaPressed ||
+            key.ShiftPressed || _workspaceWindow is null ||
+            _planetWindow is null)
+            return;
+
+        if (key.Keycode == Key.M)
+        {
+            TogglePlanetWindow();
+        }
+        else if (key.Keycode == Key.Tab)
+        {
+            ToggleWorkspaceWindow();
+        }
+        else if (key.Keycode == Key.Escape &&
+            (_planetWindow.Visible || _workspaceWindow.Visible))
+        {
+            ClosePlanetWindow();
+            _workspaceWindow.Visible = false;
+        }
+        else if (key.Keycode == Key.E &&
+            !_planetWindow.Visible && _localEndTurnButton?.Disabled == false)
+        {
+            OnLocalTurnEndRequested();
+        }
+        else
+        {
+            return;
+        }
+
+        GetViewport().SetInputAsHandled();
+    }
+
+    // Historical foundation G/P/X/E fixture remains in _UnhandledKeyInput
+    // for the PR #361 regression scene, which has no tactical windows.
     public override void _UnhandledKeyInput(InputEvent @event)
     {
         if (@event is not InputEventKey key || !key.Pressed || key.Echo)
             return;
-        if (key.Keycode == Key.M && _planetWindow is not null)
-        {
-            TogglePlanetWindow();
-            GetViewport().SetInputAsHandled();
-            return;
-        }
-        if (key.Keycode == Key.Tab && _workspaceWindow is not null)
-        {
-            ToggleWorkspaceWindow();
-            GetViewport().SetInputAsHandled();
-            return;
-        }
-        if (key.Keycode == Key.Escape && (_planetWindow?.Visible == true ||
-            _workspaceWindow?.Visible == true))
-        {
-            ClosePlanetWindow();
-            if (_workspaceWindow is not null) _workspaceWindow.Visible = false;
-            GetViewport().SetInputAsHandled();
-            return;
-        }
-        // E remains available on the tactical viewport. Only the domain
-        // closes the turn; no strategic destination can be queued here.
-        if (key.Keycode == Key.E && _planetWindow?.Visible != true &&
-            _localEndTurnButton?.Disabled == false)
-        {
-            OnLocalTurnEndRequested();
-            GetViewport().SetInputAsHandled();
-            return;
-        }
+        // Normal tactical play routes these through _Input, never twice.
+        if (_workspaceWindow is not null) return;
         // The old G/P/X bridge remains exclusively in the historical
         // Godot smoke until authoritative G(18,0) worker locations ship.
         if (_strategicHudPanel?.Visible != true) return;
@@ -528,10 +540,10 @@ public partial class Main : Control
     private void CreateTacticalWorkspaceWindows(GlobePreview globe,
         PanelContainer rightPanel, HBoxContainer header)
     {
-        var openPlanet = new Button { Text = "M | PLANET" };
+        var openPlanet = new Button { Name = "GANextPlanetButton", Text = "M | PLANET" };
         openPlanet.Pressed += TogglePlanetWindow;
         header.AddChild(openPlanet);
-        var openWorkspace = new Button { Text = "TAB | PANELS" };
+        var openWorkspace = new Button { Name = "GANextPanelsButton", Text = "TAB | PANELS" };
         openWorkspace.Pressed += ToggleWorkspaceWindow;
         header.AddChild(openWorkspace);
         _compactTurnPulse = new Label
@@ -540,7 +552,7 @@ public partial class Main : Control
             VerticalAlignment = VerticalAlignment.Center
         };
         header.AddChild(_compactTurnPulse);
-        var quickEnd = new Button { Text = "E | END TURN" };
+        var quickEnd = new Button { Name = "GANextEndTurnButton", Text = "E | END TURN" };
         GaVisualFoundation.StylePrimaryAction(quickEnd);
         quickEnd.Pressed += OnLocalTurnEndRequested;
         header.AddChild(quickEnd);
