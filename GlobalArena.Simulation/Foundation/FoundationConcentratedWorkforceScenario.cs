@@ -58,7 +58,7 @@ public static class FoundationConcentratedWorkforceScenario
             {
                 var id = new PhysicalWorkerId(
                     checked((ulong)(civIndex * workersPerCivilization + i + 1)));
-                var role = i % 3 switch
+                var role = (i % 3) switch
                 {
                     0 => PhysicalWorkerOccupation.Agriculture,
                     1 => PhysicalWorkerOccupation.Forestry,
