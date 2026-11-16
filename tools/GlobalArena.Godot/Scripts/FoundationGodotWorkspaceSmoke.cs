@@ -115,6 +115,34 @@ internal sealed class FoundationGodotWorkspaceSmoke
                 "M did not open a floating planetary navigation window");
             Must(_game.StateHash == hash, "M mutated the authoritative hash");
             await CaptureRenderedViewIfRequested("02_planet_map");
+            // Input.ParseInputEvent exercises actual Godot title-bar hit
+            // testing and the resize grip, not window-private state setters.
+            var titleBar = atlas.FindChild(
+                "GAWindowDragHandle", recursive: true, owned: false) as Control;
+            var grip = atlas.FindChild(
+                "GANextPlanetResizeGrip", recursive: true, owned: false) as Control;
+            Must(titleBar is not null && grip is not null,
+                "floating atlas lacks drag or resize controls");
+            var beforeMove = atlas.Position;
+            var dragFrom = titleBar!.GlobalPosition + new Vector2(
+                titleBar.Size.X * 0.6f, 12f);
+            await DragPointer(dragFrom, dragFrom + new Vector2(42f, 22f));
+            Must((atlas.Position - beforeMove).Length() > 8f,
+                "real pointer drag did not move the planetary window");
+            var beforeResize = atlas.Size;
+            var resizeFrom = grip!.GlobalPosition + grip.Size * 0.5f;
+            await DragPointer(resizeFrom, resizeFrom + new Vector2(40f, 32f));
+            Must(atlas.Size.X > beforeResize.X + 8f ||
+                 atlas.Size.Y > beforeResize.Y + 8f,
+                "real pointer resize did not change planetary window bounds");
+            Must(atlas.Position.X >= 0f && atlas.Position.Y >= 0f &&
+                 atlas.Position.X + atlas.Size.X <= planet.Size.X + 1f &&
+                 atlas.Position.Y + atlas.Size.Y <= planet.Size.Y + 1f,
+                "drag/resize allowed the planetary atlas outside the viewport");
+            Must(_game.StateHash == hash && tactical.TacticalCameraState == initialCamera,
+                "secondary window pointer interaction changed gameplay or map focus");
+            GD.Print("GA_NEXT_FLOATING_WINDOW_PASS pointer=godot_parsed " +
+                "drag=true resize=true bounded=true map_camera_stable=true");
 
             await Press(Key.Escape);
             Must(!planet.Visible && !globe!.Visible && tactical.Visible,
@@ -239,6 +267,36 @@ internal sealed class FoundationGodotWorkspaceSmoke
     {
         for (var i = 0; i < 3; i++)
             await _main.ToSignal(_main.GetTree(), SceneTree.SignalName.ProcessFrame);
+    }
+
+    private async Task DragPointer(Vector2 from, Vector2 to)
+    {
+        global::Godot.Input.ParseInputEvent(new InputEventMouseMotion
+        {
+            Position = from, GlobalPosition = from,
+            Relative = Vector2.Zero, ButtonMask = MouseButtonMask.None
+        });
+        await WaitFrame();
+        global::Godot.Input.ParseInputEvent(new InputEventMouseButton
+        {
+            ButtonIndex = MouseButton.Left, Pressed = true,
+            Position = from, GlobalPosition = from,
+            ButtonMask = MouseButtonMask.Left
+        });
+        await WaitFrame();
+        global::Godot.Input.ParseInputEvent(new InputEventMouseMotion
+        {
+            Position = to, GlobalPosition = to,
+            Relative = to - from, ButtonMask = MouseButtonMask.Left
+        });
+        await WaitFrame();
+        global::Godot.Input.ParseInputEvent(new InputEventMouseButton
+        {
+            ButtonIndex = MouseButton.Left, Pressed = false,
+            Position = to, GlobalPosition = to,
+            ButtonMask = MouseButtonMask.None
+        });
+        await WaitFrame();
     }
 
     private async Task Press(Key code)
