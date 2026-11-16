@@ -46,6 +46,22 @@ public partial class TacticalContextPreview : SubViewportContainer
     public int VisibleWorkerMarkerCount => _workerGlyphPositions.Count;
     public IReadOnlyList<ulong> VisibleWorkerMarkerIds =>
         Array.AsReadOnly(_workerGlyphPositions.Keys.OrderBy(x => x).ToArray());
+    // The same camera projection used for click hit-testing; enables
+    // test-driven actual GUI mouse events on a visible canonical fine tile.
+    public bool TryGetRenderedFineTilePixel(PhysicalTacticalTileId tile,
+        out Vector2 pixel)
+    {
+        pixel = Vector2.Zero;
+        if (_camera is null || !tile.IsValid ||
+            _cachedPhysicalMap?.Refinement.FineParameters !=
+                tile.FineGoldbergParameters ||
+            !_tileCenters.TryGetValue(tile.FineStrategicCellId.Value, out var center))
+            return false;
+        pixel = _camera.UnprojectPosition(center);
+        return pixel.X >= 0f && pixel.Y >= 0f &&
+            pixel.X < Size.X && pixel.Y < Size.Y;
+    }
+
     public bool TryGetWorkerMarkerPosition(ulong workerId,
         out ulong fineTileId, out Vector3 position)
     {
