@@ -4,9 +4,9 @@
 param([string]$RepoPath = (Join-Path $env:USERPROFILE 'source\repos\GlobalArena'))
 $ErrorActionPreference = 'Stop'
 $ExpectedMainBlob = '8522aba12d1658c26328ac2545d56b0e11fdb7d0'
-$ExpectedSmokeBlob = '9a3489aa8e020408bf9824d574af563f6357c107'
+$ExpectedSmokeBlob = '27487b2061f64a5b7cf2e10447c1a8893121cf99'
 $ExpectedTacticalBlob = 'c07a8f8ad089deb76884fb15ae83f24a095d8e83'
-$ExpectedFloatingBlob = 'f8ee47ddf7002a88d4e67066a855606ea4a985a2'
+$ExpectedFloatingBlob = 'f52954fea971aa4faedf0f8074189ebe3bcfa088'
 $ExpectedThemeBlob = '1f2f441d132146641b445b46943e7f568478de59'
 $PullRef = 'refs/pull/366/head'
 $OfficialUrl = 'https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_mono_win64.zip'
