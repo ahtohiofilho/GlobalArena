@@ -81,8 +81,8 @@ public sealed class FoundationCollectiveTurnCoordinatorTests
         Assert.Equal(2, host.PendingOrderCount);
         Assert.Equal(0UL, host.Snapshot.Revision);
         Assert.Same(initial, host.Snapshot);
-        Assert.Equal(1, host.GetOwnOrders(Civ(1)).Count);
-        Assert.Equal(1, host.GetOwnOrders(Civ(2)).Count);
+        Assert.Single(host.GetOwnOrders(Civ(1)));
+        Assert.Single(host.GetOwnOrders(Civ(2)));
 
         host.SetReady(Civ(2));
         Assert.Null(host.TryCloseReadyTurn());
@@ -153,7 +153,7 @@ public sealed class FoundationCollectiveTurnCoordinatorTests
         Assert.Throws<InvalidOperationException>(() =>
             host.CancelOwnOrder(Civ(1), Worker(1)));
         Assert.Equal(1, host.PendingOrderCount);
-        Assert.True(host.ReadyCivilizations.Contains(Civ(1)));
+        Assert.Contains(Civ(1), host.ReadyCivilizations);
 
         host.Reopen(Civ(1));
         Assert.Empty(host.ReadyCivilizations);
