@@ -39,7 +39,10 @@ internal sealed class FoundationGodotWorkspaceSmoke
                 "GANextPlanetGlobe", recursive: true, owned: false)
                 as GlobePreview;
             var planet = _main.GetNode<Control>("GANextPlanetWindow");
-            var operations = _main.GetNode<Control>("GANextOperationsWindow");
+            var operations = _main.FindChild(
+                "GANextOperationsWindow", recursive: true, owned: false) as Control;
+            Must(operations is not null,
+                "operational dock missing from responsive HBox layout");
             var panelsButton = _main.FindChild(
                 "GANextPanelsButton", recursive: true, owned: false) as Button;
             Must(panelsButton is not null,
@@ -49,8 +52,9 @@ internal sealed class FoundationGodotWorkspaceSmoke
                 as PanelContainer;
             var atlasPanel = _main.GetNode<Control>(
                 "GANextPlanetWindow/GANextPlanetPanel");
-            var operationsPanel = _main.GetNode<Control>(
-                "GANextOperationsWindow/GANextOperationsPanel");
+            var operationsPanel = operations!.FindChild(
+                "GANextOperationsPanel", recursive: true, owned: false) as Control;
+            Must(operationsPanel is not null, "operations dock panel missing");
             var atlas = atlasPanel as GaFloatingWindow;
             Must(atlas is not null,
                 "planetary atlas must be a reusable floating window");
