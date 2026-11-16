@@ -104,6 +104,25 @@ public sealed record PhysicalWorkerRuntimeRecord
             activity, DemandMultiplierMicro, occupation: Occupation);
     }
 
+    /// <summary>
+    /// Authorized v11 in-place assignment, not an implicit reclassification
+    /// of earlier workers or a change to output, demand, item, or location.
+    /// Only use from an accepted, replayed tactical occupational event.
+    /// </summary>
+    public PhysicalWorkerRuntimeRecord WithTacticalOccupation(
+        PhysicalWorkerOccupation nextOccupation)
+    {
+        if (!TacticalTileId.HasValue || !Occupation.HasValue ||
+            !Enum.IsDefined(nextOccupation) ||
+            nextOccupation == Occupation.Value ||
+            (Activity == PhysicalWorkerActivity.Producing &&
+             nextOccupation == PhysicalWorkerOccupation.Unassigned))
+            throw new InvalidOperationException(
+                "Occupation assignment needs a different valid v11 productive role.");
+        return new(Id, Owner, CellId, Commodity, OutputMicroPerTurn,
+            Activity, DemandMultiplierMicro, TacticalTileId, nextOccupation);
+    }
+
     public PhysicalWorkerRuntimeRecord WithTacticalLocationAndActivity(
         PhysicalTacticalTileId destination, StrategicCellId presentationRegion,
         PhysicalWorkerActivity activity)

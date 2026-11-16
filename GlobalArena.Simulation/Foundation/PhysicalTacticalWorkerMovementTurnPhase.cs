@@ -13,20 +13,28 @@ public sealed record PhysicalTacticalWorkerMoveCommand : ISimulationCommand
     public PhysicalWorkerId WorkerId { get; }
     public PhysicalTacticalTileId Destination { get; }
     public PhysicalWorkerActivity? NextActivity { get; }
+    // Optional v11 in-place occupational reassignment; null preserves
+    // the v10/v11 existing move/activity event semantics.
+    public PhysicalWorkerOccupation? NextOccupation { get; }
 
     public PhysicalTacticalWorkerMoveCommand(
         CommandId id, CivilizationId issuer, PhysicalWorkerId workerId,
-        PhysicalTacticalTileId destination, PhysicalWorkerActivity? nextActivity = null)
+        PhysicalTacticalTileId destination, PhysicalWorkerActivity? nextActivity = null,
+        PhysicalWorkerOccupation? nextOccupation = null)
     {
         if (id.Turn.Value == 0UL || id.Sequence == 0UL ||
             !issuer.IsValid || !workerId.IsValid || !destination.IsValid ||
-            (nextActivity.HasValue && !Enum.IsDefined(nextActivity.Value)))
+            (nextActivity.HasValue && !Enum.IsDefined(nextActivity.Value)) ||
+            (nextOccupation.HasValue &&
+                (!Enum.IsDefined(nextOccupation.Value) ||
+                 nextOccupation.Value == PhysicalWorkerOccupation.Unassigned)))
             throw new ArgumentException("Invalid v10 physical tactical worker order.");
         Id = id;
         Issuer = issuer;
         WorkerId = workerId;
         Destination = destination;
         NextActivity = nextActivity;
+        NextOccupation = nextOccupation;
     }
 }
 
@@ -42,13 +50,15 @@ public sealed record PhysicalTacticalWorkerMovedEvent : ISimulationEvent
     public PhysicalTacticalEdgeId? TraversedEdge { get; }
     public StrategicCellId ResultingPresentationRegion { get; }
     public PhysicalWorkerActivity NextActivity { get; }
+    public PhysicalWorkerOccupation? NextOccupation { get; }
 
     public PhysicalTacticalWorkerMovedEvent(
         EventId id, CivilizationId issuer, PhysicalWorkerId workerId,
         PhysicalTacticalTileId source, PhysicalTacticalTileId destination,
         PhysicalTacticalEdgeId? traversedEdge,
         StrategicCellId resultingPresentationRegion,
-        PhysicalWorkerActivity nextActivity)
+        PhysicalWorkerActivity nextActivity,
+        PhysicalWorkerOccupation? nextOccupation = null)
     {
         if (id.OriginKind != EventOriginKind.Command ||
             id.Turn.Value == 0UL || id.Sequence == 0UL ||
@@ -56,6 +66,10 @@ public sealed record PhysicalTacticalWorkerMovedEvent : ISimulationEvent
             !workerId.IsValid || !source.IsValid || !destination.IsValid ||
             source.FineGoldbergParameters != destination.FineGoldbergParameters ||
             !resultingPresentationRegion.IsValid || !Enum.IsDefined(nextActivity) ||
+            (nextOccupation.HasValue &&
+                (!Enum.IsDefined(nextOccupation.Value) ||
+                 nextOccupation.Value == PhysicalWorkerOccupation.Unassigned ||
+                 source != destination)) ||
             (source == destination && traversedEdge.HasValue) ||
             (source != destination &&
                 (!traversedEdge.HasValue || !traversedEdge.Value.IsValid ||
@@ -70,6 +84,7 @@ public sealed record PhysicalTacticalWorkerMovedEvent : ISimulationEvent
         TraversedEdge = traversedEdge;
         ResultingPresentationRegion = resultingPresentationRegion;
         NextActivity = nextActivity;
+        NextOccupation = nextOccupation;
     }
 }
 
@@ -157,17 +172,30 @@ public sealed class PhysicalTacticalWorkerMoveEventExecutor : ISimulationEventEx
         if (worker.Owner != ev.Issuer || worker.TacticalTileId != ev.Source)
             throw new InvalidOperationException(
                 "Stale or foreign tactical worker origin.");
-        if (edge is null && ev.NextActivity == worker.Activity)
+        if (ev.NextOccupation.HasValue &&
+            (!state.Workers.HasAuthoritativeOccupations ||
+             !worker.Occupation.HasValue ||
+             ev.NextOccupation.Value == worker.Occupation.Value ||
+             ev.NextActivity != worker.Activity || edge.HasValue))
+            throw new InvalidOperationException(
+                "Invalid, unchanged or nonlocal v11 occupational journal event.");
+        if (edge is null && ev.NextActivity == worker.Activity &&
+            !ev.NextOccupation.HasValue)
             throw new InvalidOperationException("No-op tactical event rejected.");
         if (ev.ResultingPresentationRegion !=
             PresentationRegion(ev.Destination, worker.CellId))
             throw new InvalidOperationException(
                 "Forged coarse presentation region on fine worker event.");
 
-        var newWorkers = state.Workers.Workers.Select(w => w.Id == ev.WorkerId
-            ? w.WithTacticalLocationAndActivity(
-                ev.Destination, ev.ResultingPresentationRegion, ev.NextActivity)
-            : w).ToArray();
+        var newWorkers = state.Workers.Workers.Select(w =>
+        {
+            if (w.Id != ev.WorkerId) return w;
+            var updated = w.WithTacticalLocationAndActivity(
+                ev.Destination, ev.ResultingPresentationRegion, ev.NextActivity);
+            return ev.NextOccupation.HasValue
+                ? updated.WithTacticalOccupation(ev.NextOccupation.Value)
+                : updated;
+        }).ToArray();
         return state.WithWorkers(new PhysicalWorkerRuntimeState(
             newWorkers, tacticalLocationsAuthoritative: true,
             occupationsAuthoritative: state.Workers.HasAuthoritativeOccupations))
@@ -220,13 +248,22 @@ public sealed class PhysicalTacticalWorkerMovementTurnPhase : ITurnResolutionPha
             var edge = _executor.CheckEdge(from, command.Destination);
             var activity = command.NextActivity ??
                 (edge.HasValue ? PhysicalWorkerActivity.Traveling : worker.Activity);
-            if (edge is null && activity == worker.Activity)
+            if (command.NextOccupation.HasValue &&
+                (!staged.Workers.HasAuthoritativeOccupations ||
+                 !worker.Occupation.HasValue ||
+                 command.NextOccupation.Value == worker.Occupation.Value ||
+                 edge.HasValue || activity != worker.Activity))
+                throw new InvalidOperationException(
+                    "Invalid nonlocal or no-op v11 occupation order.");
+            if (edge is null && activity == worker.Activity &&
+                !command.NextOccupation.HasValue)
                 throw new InvalidOperationException("No-op tactical order.");
             var presentation = _executor.PresentationRegion(
                 command.Destination, worker.CellId);
             var ev = new PhysicalTacticalWorkerMovedEvent(
                 new EventId(command.Id, 1UL), command.Issuer, command.WorkerId,
-                from, command.Destination, edge, presentation, activity);
+                from, command.Destination, edge, presentation, activity,
+                command.NextOccupation);
             staged = _executor.Execute(staged, ev, planningInput.Context);
             events.Add(ev);
             entries.Add(new SimulationEventLogEntry(
