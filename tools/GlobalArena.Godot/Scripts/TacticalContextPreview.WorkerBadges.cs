@@ -2,58 +2,82 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using GlobalArena.Runtime;
+using GlobalArena.Simulation.Foundation;
 using GlobalArena.World;
 using Godot;
 
 namespace GlobalArena.Godot;
 
 /// <summary>
-/// GA-NEXT Workforce Visual 03: restores the actual GA-VS16 badge language
-/// (coplanar filled disks, ink rims, selection halo, spatial group layout).
-/// An individual occupies exactly one canonical fine tile and is rendered
-/// exactly once. v10 retains status colors; explicit v11 occupations use
-/// the historically grounded Agriculture/Forestry/Mining colors. Traveling
-/// is shown by a subtle amber rim without removing the occupation's fill.
-/// Three workers sharing one tile appear in the three-slot VS16 formation.
-/// Never invent empty activity groups or alter the canonical worker census.
+/// Coplanar VS16 workforce circles, grouped ONLY by actual people with the
+/// same fine tile, civilization and canonical productive occupation.
+/// Every person remains independently journaled; clicking a group cycles
+/// its individual IDs. No dummy circles or counterfeit market activities.
 /// </summary>
 public partial class TacticalContextPreview
 {
-    private const float WorkerBadgePlaneY = 0f; // no physical elevation or parallax
+    private const float WorkerBadgePlaneY = 0f;
     private MeshInstance3D? _workerBadgeMesh;
     private IReadOnlyList<PhysicalWorkerRuntimeRecord> _displayWorkers =
         Array.Empty<PhysicalWorkerRuntimeRecord>();
     private readonly Dictionary<ulong, (ulong FineTileId, Vector3 Center)>
         _workerGlyphPositions = new();
     private readonly Dictionary<ulong, Vector2> _badgeCenters = new();
-    private readonly List<(ulong WorkerId, ulong TileId, Vector2 Center, float Radius)>
-        _badgeHits = new();
+    private readonly List<(FoundationWorkforceActivityGroup Group,
+        Vector2 Center, float Radius)> _badgeHits = new();
+    private readonly Dictionary<(ulong Tile, ulong Owner, bool HasRole, ulong RoleOrId), ulong>
+        _lastClickedGroupMember = new();
     private ulong? _selectedWorkerGlyphId;
     private ulong? _hoveredBadgeId;
 
-    /// <summary>Distinguish a click directly on an individual badge from a
-    /// generic click on a polygon. The event is not a gameplay command.</summary>
     public event Action<ulong>? CanonicalWorkerBadgeClicked;
 
+    // Preserve the previous API: the count below is of REAL individuals,
+    // not rendered circles. Group count is a separate visual statistic.
     public int VisibleWorkerMarkerCount => _workerGlyphPositions.Count;
+    public int VisibleActivityGroupCount => _badgeHits.Count;
+    public int TotalVisibleGroupMembers => _badgeHits.Sum(hit => hit.Group.Count);
     public IReadOnlyList<ulong> VisibleWorkerMarkerIds =>
         Array.AsReadOnly(_workerGlyphPositions.Keys.OrderBy(x => x).ToArray());
     public ulong? HoveredWorkerBadgeId => _hoveredBadgeId;
     public bool IsWorkerHoverVisible => IsWorkerInspectorVisible;
     public string? HoveredWorkerBadgeDescription => WorkerInspectorDescription;
+    public int ActivityGroupMemberCount(ulong tile, ulong owner,
+        PhysicalWorkerOccupation occupation) =>
+        _badgeHits.Where(hit =>
+            hit.Group.Tile.FineStrategicCellId.Value == tile &&
+            hit.Group.Owner.Value == owner &&
+            hit.Group.Occupation == occupation).Sum(hit => hit.Group.Count);
+
+    public bool TryGetActivityGroupPixel(ulong tile, ulong owner,
+        PhysicalWorkerOccupation occupation, out Vector2 pixel)
+    {
+        pixel = Vector2.Zero;
+        if (_camera is null) return false;
+        foreach (var hit in _badgeHits)
+            if (hit.Group.Tile.FineStrategicCellId.Value == tile &&
+                hit.Group.Owner.Value == owner &&
+                hit.Group.Occupation == occupation)
+            {
+                pixel = _camera.UnprojectPosition(new Vector3(
+                    hit.Center.X, WorkerBadgePlaneY, hit.Center.Y));
+                return pixel.X >= 0f && pixel.Y >= 0f &&
+                    pixel.X < Size.X && pixel.Y < Size.Y;
+            }
+        return false;
+    }
 
     public Color? RenderedWorkerBadgeFill(ulong workerId)
     {
         var worker = _displayWorkers.FirstOrDefault(w => w.Id.Value == workerId);
-        return worker is not null &&
-            _workerGlyphPositions.ContainsKey(workerId)
+        return worker is not null && _workerGlyphPositions.ContainsKey(workerId)
             ? WorkerStatusColor(worker) : null;
     }
 
-
     private void InitializeWorkerBadges()
     {
-        if (_world is null) throw new InvalidOperationException("Tactical world unavailable.");
+        if (_world is null) throw new InvalidOperationException(
+            "Tactical world unavailable.");
         _workerBadgeMesh = new MeshInstance3D
         {
             Name = "GANextCanonicalWorkerBadges",
@@ -64,8 +88,8 @@ public partial class TacticalContextPreview
         MouseExited += () => HoverWorkerBadge(null);
     }
 
-    public bool TryGetRenderedFineTilePixel(PhysicalTacticalTileId tile,
-        out Vector2 pixel)
+    public bool TryGetRenderedFineTilePixel(
+        PhysicalTacticalTileId tile, out Vector2 pixel)
     {
         pixel = Vector2.Zero;
         if (_camera is null || !tile.IsValid ||
@@ -92,15 +116,15 @@ public partial class TacticalContextPreview
         return false;
     }
 
-    // A badge may be displaced from its tile center when multiple workers
-    // coexist. This is the correct center for individual badge selection.
+    // Multiple workers in one group intentionally share the same badge
+    // screen coordinates. Repeated clicks on it select them in ID order.
     public bool TryGetWorkerBadgePixel(ulong workerId, out Vector2 pixel)
     {
         pixel = Vector2.Zero;
         if (_camera is null || !_badgeCenters.TryGetValue(workerId, out var center))
             return false;
-        pixel = _camera.UnprojectPosition(
-            new Vector3(center.X, WorkerBadgePlaneY, center.Y));
+        pixel = _camera.UnprojectPosition(new Vector3(
+            center.X, WorkerBadgePlaneY, center.Y));
         return pixel.X >= 0f && pixel.Y >= 0f &&
             pixel.X < Size.X && pixel.Y < Size.Y;
     }
@@ -109,13 +133,12 @@ public partial class TacticalContextPreview
         PhysicalWorkerRuntimeState census, ulong? selectedWorkerId)
     {
         ArgumentNullException.ThrowIfNull(census);
-        if (!census.IsInitialized ||
-            !census.HasAuthoritativeTacticalLocations ||
+        if (!census.IsInitialized || !census.HasAuthoritativeTacticalLocations ||
             census.Workers.Any(worker =>
                 worker.TacticalTileId?.FineGoldbergParameters !=
                     new GoldbergParameters(18, 0)))
             throw new InvalidOperationException(
-                "Tactical worker badges require a complete canonical G(18,0) census.");
+                "Worker activity markers require actual G(18,0) individuals.");
         _displayWorkers = census.Workers.ToArray();
         _selectedWorkerGlyphId = selectedWorkerId;
         RebuildWorkerMarkers();
@@ -141,7 +164,7 @@ public partial class TacticalContextPreview
                 PhysicalWorkerOccupation.Forestry => new Color("#b88656"),
                 PhysicalWorkerOccupation.Mining => new Color("#c4c7d4"),
                 PhysicalWorkerOccupation.Unassigned => new Color("#7b91aa"),
-                _ => throw new InvalidOperationException("Invalid v11 occupation.")
+                _ => throw new InvalidOperationException("Unknown v11 occupation.")
             };
         return worker.Activity switch
         {
@@ -149,12 +172,12 @@ public partial class TacticalContextPreview
             PhysicalWorkerActivity.Traveling => new Color("#dfaf60"),
             PhysicalWorkerActivity.Military => new Color("#a8b8c7"),
             PhysicalWorkerActivity.Other => new Color("#b8a9d9"),
-            _ => throw new InvalidOperationException("Unknown canonical worker activity.")
+            _ => throw new InvalidOperationException("Unknown worker status.")
         };
     }
 
-    private static void AddBadgeDisk(
-        SurfaceTool surface, Vector2 center, float radius, Color color)
+    private static void AddBadgeDisk(SurfaceTool surface,
+        Vector2 center, float radius, Color color)
     {
         const int segments = 16;
         for (var i = 0; i < segments; i++)
@@ -166,6 +189,53 @@ public partial class TacticalContextPreview
             AddColored(surface, new Vector3(center.X, WorkerBadgePlaneY, center.Y), color);
             AddColored(surface, new Vector3(pa.X, WorkerBadgePlaneY, pa.Y), color);
             AddColored(surface, new Vector3(pb.X, WorkerBadgePlaneY, pb.Y), color);
+        }
+    }
+
+    // Draw exact counts as coplanar seven-segment digits. No floating Label3D
+    // or additional 2D screen-space layer that drifts at oblique camera angles.
+    private static void AddCountSegment(
+        SurfaceTool surface, Vector2 from, Vector2 to, float thickness)
+    {
+        var tangent = (to - from).Normalized();
+        var n = new Vector2(-tangent.Y, tangent.X) * thickness * 0.5f;
+        foreach (var v in new[] { from-n, to-n, to+n, from-n, to+n, from+n })
+            AddColored(surface, new Vector3(v.X, WorkerBadgePlaneY, v.Y),
+                new Color("#13222c"));
+    }
+
+    private static void AddBadgeCount(
+        SurfaceTool surface, Vector2 center, float radius, int count)
+    {
+        var digits = count.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var width = radius * (digits.Length > 2 ? .40f : .57f);
+        var height = radius * 1.02f;
+        var gap = radius * .14f;
+        var thickness = radius * .12f;
+        var left = center.X - (digits.Length * width +
+            (digits.Length - 1) * gap) / 2f;
+        var top = center.Y - height / 2f;
+        var masks = new[] {
+            0b0111111, 0b0000110, 0b1011011, 0b1001111, 0b1100110,
+            0b1101101, 0b1111101, 0b0000111, 0b1111111, 0b1101111
+        };
+        for (var i = 0; i < digits.Length; i++)
+        {
+            var mask = masks[digits[i] - '0'];
+            var x = left + i * (width + gap);
+            var tl = new Vector2(x, top);
+            var tr = new Vector2(x + width, top);
+            var ml = tl + new Vector2(0f, height / 2f);
+            var mr = tr + new Vector2(0f, height / 2f);
+            var bl = tl + new Vector2(0f, height);
+            var br = tr + new Vector2(0f, height);
+            if ((mask & 1) != 0) AddCountSegment(surface, tl, tr, thickness);
+            if ((mask & 2) != 0) AddCountSegment(surface, tr, mr, thickness);
+            if ((mask & 4) != 0) AddCountSegment(surface, mr, br, thickness);
+            if ((mask & 8) != 0) AddCountSegment(surface, bl, br, thickness);
+            if ((mask & 16) != 0) AddCountSegment(surface, ml, bl, thickness);
+            if ((mask & 32) != 0) AddCountSegment(surface, tl, ml, thickness);
+            if ((mask & 64) != 0) AddCountSegment(surface, ml, mr, thickness);
         }
     }
 
@@ -181,67 +251,74 @@ public partial class TacticalContextPreview
 
         var surface = new SurfaceTool();
         surface.Begin(Mesh.PrimitiveType.Triangles);
-        var diskCount = 0;
-        foreach (var group in _displayWorkers
-            .GroupBy(w => w.TacticalTileId!.Value.FineStrategicCellId.Value)
-            .OrderBy(g => g.Key))
+        int diskCount = 0;
+        var census = new PhysicalWorkerRuntimeState(_displayWorkers,
+            tacticalLocationsAuthoritative: true,
+            occupationsAuthoritative: _displayWorkers.Count > 0 &&
+                _displayWorkers.All(w => w.Occupation.HasValue));
+        var projected = FoundationWorkforceActivityGroups.Project(census);
+        foreach (var tileGroups in projected.GroupBy(
+            group => group.Tile.FineStrategicCellId.Value).OrderBy(g => g.Key))
         {
-            if (!_tileCenters.TryGetValue(group.Key, out var center))
-                continue; // never move an offscreen worker to a guessed tile
-            var polygon = _polygons.First(item => item.Id == group.Key).Polygon;
+            if (!_tileCenters.TryGetValue(tileGroups.Key, out var center))
+                continue;
+            var polygon = _polygons.First(x => x.Id == tileGroups.Key).Polygon;
             var center2 = new Vector2(center.X, center.Z);
-            var cellRadius = polygon.Min(point => point.DistanceTo(center2));
-            var workers = group.OrderBy(w => w.Id.Value).ToArray();
-            // Exact GA-VS16 geometry: 16% of inradius, 37% ring offset.
-            // One individual gets the center; two or more get separated
-            // badge centers with the first at the north position.
-            var radius = cellRadius * 0.16f;
-            var offsetRadius = workers.Length == 1 ? 0f :
-                cellRadius * 0.37f;
-            for (var i = 0; i < workers.Length; i++)
+            var inradius = polygon.Min(p => p.DistanceTo(center2));
+            var groups = tileGroups.OrderBy(g => g.Owner.Value)
+                .ThenBy(g => g.Occupation.HasValue
+                    ? (int)g.Occupation.Value : int.MaxValue)
+                .ThenBy(g => g.FirstWorkerId).ToArray();
+            var radius = inradius * (groups.Length > 5 ? .12f : .16f);
+            var offset = groups.Length == 1 ? 0f :
+                inradius * (groups.Length > 5 ? .46f : .37f);
+            for (var i = 0; i < groups.Length; i++)
             {
-                var worker = workers[i];
-                var angle = -Mathf.Pi / 2f +
-                    Mathf.Tau * i / workers.Length;
-                var location = center2 + new Vector2(Mathf.Cos(angle),
-                    Mathf.Sin(angle)) * offsetRadius;
-                var selected = worker.Id.Value == _selectedWorkerGlyphId;
-                var hovered = worker.Id.Value == _hoveredBadgeId;
+                var group = groups[i];
+                var angle = -Mathf.Pi / 2f + Mathf.Tau * i / groups.Length;
+                var position = center2 + new Vector2(
+                    Mathf.Cos(angle), Mathf.Sin(angle)) * offset;
+                var selected = group.Members.Any(w =>
+                    w.Id.Value == _selectedWorkerGlyphId);
+                var hovered = group.Members.Any(w =>
+                    w.Id.Value == _hoveredBadgeId);
                 if (selected || hovered)
                 {
-                    AddBadgeDisk(surface, location,
-                        radius * 1.63f, hovered
-                            ? new Color("#ffffff") : new Color("#f3f9ff"));
+                    AddBadgeDisk(surface, position, radius * 1.63f,
+                        hovered ? new Color("#ffffff") : new Color("#f3f9ff"));
                     diskCount++;
                 }
-                if (worker.Occupation.HasValue &&
-                    worker.Activity == PhysicalWorkerActivity.Traveling)
+                if (group.Members.Any(w =>
+                    w.Activity == PhysicalWorkerActivity.Traveling))
                 {
-                    // Ring identifies transient motion; inner fill continues
-                    // to represent the same physical person's occupation.
-                    AddBadgeDisk(surface, location, radius * 1.46f,
+                    AddBadgeDisk(surface, position, radius * 1.46f,
                         new Color("#dfaf60"));
                     diskCount++;
                 }
-                AddBadgeDisk(surface, location,
-                    radius * 1.28f, new Color("#15212b"));
-                AddBadgeDisk(surface, location,
-                    radius, WorkerStatusColor(worker));
+                AddBadgeDisk(surface, position, radius * 1.28f,
+                    new Color("#15212b"));
+                AddBadgeDisk(surface, position, radius,
+                    WorkerStatusColor(group.Members[0]));
                 diskCount += 2;
-                _badgeHits.Add((worker.Id.Value, group.Key,
-                    location, radius * 1.70f));
-                _badgeCenters.Add(worker.Id.Value, location);
-                if (!_workerGlyphPositions.TryAdd(worker.Id.Value,
-                        (group.Key, center)))
-                    throw new InvalidOperationException(
-                        "Duplicate canonical individual worker badge.");
+                if (group.Count > 1)
+                {
+                    AddBadgeCount(surface, position, radius, group.Count);
+                    diskCount++;
+                }
+                _badgeHits.Add((group, position, radius * 1.70f));
+                foreach (var worker in group.Members)
+                {
+                    _badgeCenters.Add(worker.Id.Value, position);
+                    if (!_workerGlyphPositions.TryAdd(worker.Id.Value,
+                            (tileGroups.Key, center)))
+                        throw new InvalidOperationException(
+                            "Canonical worker duplicated in group rendering.");
+                }
             }
         }
         if (diskCount > 0)
-        {
             _workerBadgeMesh.Mesh = surface.Commit() ??
-                throw new InvalidOperationException("Worker badge mesh missing.");
-        }
+                throw new InvalidOperationException("Workforce group mesh missing.");
         surface.Dispose();
         _workerBadgeMesh.Visible = diskCount > 0;
         if (_hoveredBadgeId.HasValue &&
@@ -251,20 +328,26 @@ public partial class TacticalContextPreview
             HideWorkerInspector();
         }
         GD.Print($"GA_NEXT_FINE_WORKER_GLYPHS count={_workerGlyphPositions.Count} " +
-            $"census={_displayWorkers.Count} focused={_activeFocus} " +
-            "source=authoritative_fine units_not_coarse=true badges=vs16_coplanar " +
-            $"occupations_v11={_displayWorkers.All(w => w.Occupation.HasValue)}");
+            $"groups={_badgeHits.Count} census={_displayWorkers.Count} " +
+            $"focused={_activeFocus} source=authoritative_fine " +
+            "aggregation=tile_owner_occupation no_phantom_workers=true");
     }
 
-    private ulong? BadgeAt(ulong tileId, Vector2 point)
+    private FoundationWorkforceActivityGroup? BadgeAt(ulong tileId, Vector2 point)
     {
-        foreach (var badge in _badgeHits)
-            if (badge.TileId == tileId &&
-                badge.Center.DistanceSquaredTo(point) <=
-                    badge.Radius * badge.Radius)
-                return badge.WorkerId;
+        foreach (var hit in _badgeHits)
+            if (hit.Group.Tile.FineStrategicCellId.Value == tileId &&
+                hit.Center.DistanceSquaredTo(point) <=
+                    hit.Radius * hit.Radius)
+                return hit.Group;
         return null;
     }
+
+    private static (ulong Tile, ulong Owner, bool HasRole, ulong RoleOrId)
+        GroupClickKey(FoundationWorkforceActivityGroup group) =>
+        (group.Tile.FineStrategicCellId.Value, group.Owner.Value,
+            group.Occupation.HasValue, group.Occupation.HasValue
+                ? (ulong)group.Occupation.Value : group.FirstWorkerId);
 
     private bool TryBadgePlanePoint(Vector2 pixel,
         out Vector2 point, out ulong tile)
@@ -290,34 +373,48 @@ public partial class TacticalContextPreview
 
     private void PickWorkerBadge(ulong tileId, Vector2 planePoint)
     {
-        var id = BadgeAt(tileId, planePoint);
-        if (!id.HasValue) return;
-        CanonicalWorkerBadgeClicked?.Invoke(id.Value);
-        GD.Print($"GA_NEXT_WORKER_BADGE_PICK worker={id.Value} tile={tileId} " +
-            "source=canonical_v10 selection_only=true");
+        var group = BadgeAt(tileId, planePoint);
+        if (group is null) return;
+        var key = GroupClickKey(group);
+        int index = 0;
+        if (_lastClickedGroupMember.TryGetValue(key, out var prior))
+        {
+            var previous = Array.FindIndex(group.Members.ToArray(),
+                member => member.Id.Value == prior);
+            if (previous >= 0) index = (previous + 1) % group.Count;
+        }
+        var workerId = group.Members[index].Id.Value;
+        _lastClickedGroupMember[key] = workerId;
+        CanonicalWorkerBadgeClicked?.Invoke(workerId);
+        GD.Print($"GA_NEXT_WORKFORCE_GROUP_CLICK group_count={group.Count} " +
+            $"role={(group.Occupation?.ToString() ?? "v10_individual")} " +
+            $"selected_worker={workerId} tile={tileId} " +
+            "source=canonical_worker selection_only=true");
     }
 
     private void HoverWorkerBadge(Vector2? localPixel)
     {
-        ulong? next = null;
+        FoundationWorkforceActivityGroup? group = null;
         if (localPixel.HasValue &&
             TryBadgePlanePoint(localPixel.Value, out var point, out var tileId))
-            next = BadgeAt(tileId, point);
+            group = BadgeAt(tileId, point);
 
-        if (next.HasValue && localPixel.HasValue)
+        ulong? next = null;
+        if (group is not null && localPixel.HasValue)
         {
-            // Read the canonical record every time; the card always follows
-            // the real individual instead of caching a stale label.
-            var worker = _displayWorkers.First(w => w.Id.Value == next.Value);
-            ShowWorkerInspector(worker, localPixel.Value);
+            var worker = group.Members.FirstOrDefault(w =>
+                w.Id.Value == _selectedWorkerGlyphId) ?? group.Members[0];
+            next = worker.Id.Value;
+            ShowWorkerInspector(worker, localPixel.Value, group.Members);
         }
         else
             HideWorkerInspector();
 
         if (next == _hoveredBadgeId) return;
         _hoveredBadgeId = next;
-        RebuildWorkerMarkers(); // hover halo only; no state or camera change
+        RebuildWorkerMarkers();
         GD.Print($"GA_NEXT_WORKER_BADGE_HOVER worker={(next?.ToString() ?? "none")} " +
-            "mutation=false selection_unchanged=true inspector=non_modal");
+            $"group_count={group?.Count ?? 0} mutation=false " +
+            "selection_unchanged=true inspector=non_modal");
     }
 }
