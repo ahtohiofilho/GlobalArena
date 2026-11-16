@@ -14,7 +14,7 @@ namespace GlobalArena.Godot;
 public partial class TacticalContextPreview
 {
     private const float WorkerInspectorWidth = 286f;
-    private const float WorkerInspectorHeight = 171f;
+    private const float WorkerInspectorHeight = 190f;
     private const float WorkerInspectorInset = 8f;
     private PanelContainer? _workerInspectorCard;
     private Label? _workerInspectorHeading;
@@ -23,6 +23,7 @@ public partial class TacticalContextPreview
     private Label? _workerInspectorLocation;
     private Label? _workerInspectorCapacity;
     private Label? _workerInspectorDemand;
+    private Label? _workerInspectorGroup;
     private ColorRect? _workerInspectorRoleAccent;
     private Vector2? _lastInspectorCursor;
 
@@ -34,7 +35,7 @@ public partial class TacticalContextPreview
         ? string.Join(" | ", _workerInspectorHeading?.Text,
             _workerInspectorOccupation?.Text, _workerInspectorStatus?.Text,
             _workerInspectorLocation?.Text, _workerInspectorCapacity?.Text,
-            _workerInspectorDemand?.Text)
+            _workerInspectorDemand?.Text, _workerInspectorGroup?.Text)
         : null;
 
     private static Label InspectorLabel(string name, int fontSize, Color color)
@@ -132,8 +133,11 @@ public partial class TacticalContextPreview
         stack.AddChild(_workerInspectorLocation);
         stack.AddChild(_workerInspectorCapacity);
         stack.AddChild(_workerInspectorDemand);
+        _workerInspectorGroup = InspectorLabel(
+            "WorkerActivityGroupLine", 10, GaVisualFoundation.Accent);
+        stack.AddChild(_workerInspectorGroup);
         var hint = InspectorLabel("WorkerHoverHint", 10, GaVisualFoundation.Accent);
-        hint.Text = "CLIQUE NO MARCADOR PARA SELECIONAR";
+        hint.Text = "CLIQUE PARA ESCOLHER / REPITA PARA ALTERNAR";
         stack.AddChild(hint);
 
         AddChild(card);
@@ -187,12 +191,14 @@ public partial class TacticalContextPreview
         };
 
     private void ShowWorkerInspector(
-        PhysicalWorkerRuntimeRecord worker, Vector2 localPointer)
+        PhysicalWorkerRuntimeRecord worker, Vector2 localPointer,
+        IReadOnlyList<PhysicalWorkerRuntimeRecord>? displayedGroup = null)
     {
         if (_workerInspectorCard is null || _workerInspectorHeading is null ||
             _workerInspectorOccupation is null || _workerInspectorStatus is null ||
             _workerInspectorLocation is null || _workerInspectorCapacity is null ||
-            _workerInspectorDemand is null || _workerInspectorRoleAccent is null)
+            _workerInspectorDemand is null || _workerInspectorRoleAccent is null ||
+            _workerInspectorGroup is null)
             return;
 
         var occupation = worker.Occupation.HasValue
@@ -203,7 +209,18 @@ public partial class TacticalContextPreview
         var demand = worker.DemandMultiplierMicro / 1_000_000m;
         var occupants = _displayWorkers.Count(w =>
             w.TacticalTileId == worker.TacticalTileId);
-        _workerInspectorHeading.Text = $"TRABALHADOR #{worker.Id.Value}";
+        var group = displayedGroup ?? new[] { worker };
+        if (group.Any(w => w.TacticalTileId != worker.TacticalTileId ||
+            w.Owner != worker.Owner || w.Occupation != worker.Occupation))
+            throw new InvalidOperationException(
+                "The displayed occupation group contains unrelated workers.");
+        var groupCapacity = group.Sum(w => (decimal)w.OutputMicroPerTurn) /
+            1_000_000m;
+        var groupDemand = group.Sum(w => (decimal)w.DemandMultiplierMicro) /
+            1_000_000m;
+        _workerInspectorHeading.Text = group.Count > 1
+            ? $"TRABALHADOR #{worker.Id.Value} · GRUPO ×{group.Count}"
+            : $"TRABALHADOR #{worker.Id.Value}";
         _workerInspectorOccupation.Text =
             $"{occupation}  /  CIV. {worker.Owner.Value}";
         _workerInspectorRoleAccent.Color = WorkerStatusColor(worker);
@@ -215,6 +232,9 @@ public partial class TacticalContextPreview
             $"ITEM {worker.Commodity.Value}   ·   Capacidade {unitCapacity.ToString("0.###", CultureInfo.InvariantCulture)}/turno";
         _workerInspectorDemand.Text =
             $"DEMANDA ×{demand.ToString("0.###", CultureInfo.InvariantCulture)}   ·   {occupants} pessoa(s) no tile";
+        _workerInspectorGroup.Text = group.Count > 1
+            ? $"GRUPO ×{group.Count}  ·  Cap. {groupCapacity.ToString("0.###", CultureInfo.InvariantCulture)}  ·  Dem. ×{groupDemand.ToString("0.###", CultureInfo.InvariantCulture)}"
+            : "1 trabalhador nesta atividade";
         _lastInspectorCursor = localPointer;
         _workerInspectorCard.Visible = true;
         RepositionWorkerInspector();
@@ -238,6 +258,8 @@ public partial class TacticalContextPreview
             HideWorkerInspector();
             return;
         }
-        ShowWorkerInspector(worker, _lastInspectorCursor.Value);
+        var group = _badgeHits.FirstOrDefault(hit =>
+            hit.Group.Members.Any(w => w.Id == worker.Id)).Group;
+        ShowWorkerInspector(worker, _lastInspectorCursor.Value, group?.Members);
     }
 }
