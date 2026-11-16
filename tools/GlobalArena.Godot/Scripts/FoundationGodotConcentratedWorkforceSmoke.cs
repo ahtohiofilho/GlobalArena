@@ -238,6 +238,64 @@ public sealed class FoundationGodotConcentratedWorkforceSmoke
                     .TacticalTileId == adjacent,
                 "Second turn production changed worker location or duplicated work.");
             await Capture("03_after_production");
+
+            // Real in-place occupational reallocation after the prior
+            // movement: the capital still has farmer #4 alone, while
+            // worker #1 is producing on the adjacent real physical tile.
+            // Select #4 from the existing capital agriculture badge, then
+            // A/V/N orders affect only that individual's occupational fact.
+            await SelectGroup(home, PhysicalWorkerOccupation.Agriculture);
+            Must(_main.SelectedTacticalWorkerId == 4UL,
+                "Capital agriculture badge must select the remaining farmer #4.");
+            var beforeReassign = _host.StateHash;
+            var farmerFour = _host.Snapshot.Workers.Workers.Single(
+                w => w.Id.Value == 4UL);
+            var priorOutput = farmerFour.OutputMicroPerTurn;
+            var priorDemand = farmerFour.DemandMultiplierMicro;
+            await KeyPress(Key.N);
+            Must(_host.PendingOrderCount == 1 &&
+                 _host.StateHash == beforeReassign &&
+                 _host.Snapshot.Workers.Workers.Single(w =>
+                    w.Id.Value == 4UL).Occupation == PhysicalWorkerOccupation.Agriculture &&
+                 _map.ActivityGroupMemberCount(home.FineStrategicCellId.Value,
+                    _human.Value, PhysicalWorkerOccupation.Agriculture) == 1,
+                "N must only queue role change, without recoloring a group before E.");
+            await KeyPress(Key.X);
+            Must(_host.PendingOrderCount == 0 &&
+                 _host.StateHash == beforeReassign,
+                "X must cancel the individual occupational reassignment intent.");
+            await KeyPress(Key.N);
+            await KeyPress(Key.E);
+            Must(_host.PendingOrderCount == 0 &&
+                 _host.NextTurn.Value == 4UL &&
+                 _host.Snapshot.Revision == 4UL &&
+                 _host.StateHash.FormatVersion == 11U &&
+                 _host.StateHash != beforeReassign &&
+                 _host.Snapshot.Workers.Workers.Count == 12,
+                "E must journal and replay one occupational reassignment only.");
+            var reassigned = _host.Snapshot.Workers.Workers.Single(
+                w => w.Id.Value == 4UL);
+            Must(reassigned.Occupation == PhysicalWorkerOccupation.Mining &&
+                 reassigned.TacticalTileId == home &&
+                 reassigned.Activity == farmerFour.Activity &&
+                 reassigned.OutputMicroPerTurn == priorOutput &&
+                 reassigned.DemandMultiplierMicro == priorDemand &&
+                 reassigned.Commodity == farmerFour.Commodity &&
+                 reassigned.Owner == farmerFour.Owner &&
+                 _map.VisibleActivityGroupCount == 3 &&
+                 _map.ActivityGroupMemberCount(home.FineStrategicCellId.Value,
+                    _human.Value, PhysicalWorkerOccupation.Agriculture) == 0 &&
+                 _map.ActivityGroupMemberCount(home.FineStrategicCellId.Value,
+                    _human.Value, PhysicalWorkerOccupation.Mining) == 3 &&
+                 _map.ActivityGroupMemberCount(adjacent.FineStrategicCellId.Value,
+                    _human.Value, PhysicalWorkerOccupation.Agriculture) == 1,
+                "One reassignment should merge mining 2→3, remove empty farm " +
+                "badge and preserve all independent worker economics.");
+            await Capture("04_after_reassignment");
+            GD.Print("GA_NEXT_OCCUPATION_TURN_E2E_PASS " +
+                "human_worker=4 agriculture=1_to_0 mining=2_to_3 " +
+                "capital_groups=3_to_2 individual=unchanged_location " +
+                "pending_X_E=true hash_v11=true");
             GD.Print("GA_NEXT_CONCENTRATED_WORKFORCE_E2E_PASS " +
                 "workers_per_civ=6 all_start_same_tile=true " +
                 "groups=3 individual_selection_cycle=1_4_1 " +
