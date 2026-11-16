@@ -274,6 +274,188 @@ public partial class Main : Control
             _selectedLocalWorkerId, _localFoundation.Snapshot.Revision);
     }
 
+    private void RefreshFineTacticalWorkerControls()
+    {
+        var host = _tacticalHost;
+        if (host is null || _localWorkerSelector is null ||
+            _localMoveButton is null || _localProduceButton is null ||
+            _localEndTurnButton is null || _localCancelQueuedButton is null ||
+            _localPendingLabel is null || _localTurnLabel is null ||
+            _localAiStatus is null) return;
+
+        var workers = host.Snapshot.Workers.Workers
+            .Where(worker => worker.Owner == _humanCivilization)
+            .OrderBy(worker => worker.Id.Value).ToArray();
+        if (!workers.Any(worker => worker.Id.Value == _selectedLocalWorkerId))
+            _selectedLocalWorkerId = workers.FirstOrDefault()?.Id.Value;
+        _localWorkerSelector.Clear();
+        for (var i = 0; i < workers.Length; i++)
+        {
+            var worker = workers[i];
+            var tile = worker.TacticalTileId!.Value.FineStrategicCellId.Value;
+            var pending = host.GetHumanOrders(_humanCivilization)
+                .Any(order => order.WorkerId == worker.Id);
+            _localWorkerSelector.AddItem(
+                $"#{worker.Id.Value} | G(18,0)/{tile} | {worker.Activity}" +
+                (pending ? " | QUEUED" : ""));
+            if (_selectedLocalWorkerId == worker.Id.Value)
+                _localWorkerSelector.Select(i);
+        }
+        _localWorkerSelector.Disabled = workers.Length == 0;
+        var chosen = workers.FirstOrDefault(
+            worker => worker.Id.Value == _selectedLocalWorkerId);
+        var ready = host.ReadyCivilizations.Contains(_humanCivilization);
+        var pendingOrders = host.GetHumanOrders(_humanCivilization);
+        var selectedTile = _tacticalPreview?.SelectedCanonicalPhysicalTileId;
+        PhysicalTacticalTileId? destination = selectedTile.HasValue
+            ? new PhysicalTacticalTileId(
+                host.Incidence.Refinement.FineParameters,
+                new StrategicCellId(selectedTile.Value))
+            : null;
+        bool adjacent = chosen is not null && destination.HasValue &&
+            host.Incidence.FineTopology.Cells[
+                checked((int)chosen.TacticalTileId!.Value
+                    .FineStrategicCellId.Value - 1)]
+                .AdjacentCellIds.Contains(destination.Value.FineStrategicCellId);
+        _localMoveButton.Disabled = ready || !adjacent;
+        _localProduceButton.Disabled = ready || chosen is null ||
+            chosen.Activity == PhysicalWorkerActivity.Producing ||
+            chosen.OutputMicroPerTurn == 0UL;
+        _localCancelQueuedButton.Disabled = ready || chosen is null ||
+            !pendingOrders.Any(order => order.WorkerId == chosen.Id);
+        _localEndTurnButton.Disabled = false;
+        _localTurnLabel.Text =
+            $"TACTICAL HUMAN + AI v10 | turn {host.NextTurn.Value} | " +
+            $"rev {host.Snapshot.Revision} | Human Civ {_humanCivilization.Value}";
+        if (_compactTurnPulse is not null)
+            _compactTurnPulse.Text =
+                $"TURN {host.NextTurn.Value} | REV {host.Snapshot.Revision} | Human + IA v10";
+        if (_metricTurn is not null)
+            _metricTurn.Text = host.NextTurn.Value.ToString();
+        if (_metricHumanWorkers is not null)
+            _metricHumanWorkers.Text = workers.Length.ToString();
+        if (_metricAiCivilizations is not null)
+            _metricAiCivilizations.Text = host.AiCivilizations.Count.ToString();
+        _localAiStatus.Text =
+            $"AI CIVILIZATIONS | {host.AiCivilizations.Count} opponent | " +
+            $"{host.AiCivilizations.Count(civ => host.ReadyCivilizations.Contains(civ))} ready";
+        _localPendingLabel.Text = pendingOrders.Count == 0
+            ? "No human orders queued; E closes the collective turn"
+            : string.Join(", ", pendingOrders.Select(order =>
+                $"#{order.WorkerId.Value} " +
+                (order.IsMovement
+                    ? $"G(18,0)/{order.Source.FineStrategicCellId.Value}→{order.Destination.FineStrategicCellId.Value}"
+                    : $"{order.Activity} at {order.Source.FineStrategicCellId.Value}")));
+        _operationalRoster?.Refresh(workers.Select(worker =>
+            new GaWorkerRosterRow(
+                worker.Id.Value, worker.CellId.Value,
+                worker.Activity.ToString(), worker.Commodity.Value,
+                worker.OutputMicroPerTurn, worker.DemandMultiplierMicro,
+                worker.TacticalTileId!.Value.FineStrategicCellId.Value)).ToArray(),
+            _selectedLocalWorkerId, host.Snapshot.Revision);
+        _tacticalPreview?.PresentAuthoritativeWorkers(
+            host.Snapshot.Workers, _selectedLocalWorkerId);
+    }
+
+    private void QueueFineWorkerMove()
+    {
+        if (_tacticalHost is null || !_selectedLocalWorkerId.HasValue ||
+            !_tacticalPreview!.SelectedCanonicalPhysicalTileId.HasValue ||
+            _localOrderStatus is null) return;
+        try
+        {
+            var target = new PhysicalTacticalTileId(
+                _tacticalHost.Incidence.Refinement.FineParameters,
+                new StrategicCellId(
+                    _tacticalPreview.SelectedCanonicalPhysicalTileId.Value));
+            _tacticalHost.QueueHumanMove(
+                _humanCivilization,
+                new PhysicalWorkerId(_selectedLocalWorkerId.Value), target);
+            _localOrderStatus.Text =
+                $"Worker #{_selectedLocalWorkerId.Value}: physical step queued " +
+                $"toward G(18,0)/{target.FineStrategicCellId.Value}. E to commit.";
+            GD.Print($"GA_NEXT_FINE_MOVE_QUEUED worker={_selectedLocalWorkerId.Value} " +
+                $"destination={target.FineStrategicCellId.Value} " +
+                $"pending={_tacticalHost.PendingOrderCount} mutation=false");
+        }
+        catch (System.Exception e)
+        {
+            _localOrderStatus.Text = $"Fine move rejected: {e.Message}";
+            GD.Print($"GA_NEXT_FINE_MOVE_REJECTED {e.Message}");
+        }
+        RefreshFineTacticalWorkerControls();
+    }
+
+    private void QueueFineWorkerProduction()
+    {
+        if (_tacticalHost is null || !_selectedLocalWorkerId.HasValue ||
+            _localOrderStatus is null) return;
+        try
+        {
+            _tacticalHost.QueueHumanActivity(
+                _humanCivilization, new PhysicalWorkerId(_selectedLocalWorkerId.Value),
+                PhysicalWorkerActivity.Producing);
+            _localOrderStatus.Text =
+                $"Worker #{_selectedLocalWorkerId.Value}: production restart queued.";
+            GD.Print($"GA_NEXT_FINE_PRODUCTION_QUEUED worker={_selectedLocalWorkerId.Value} " +
+                "mutation=false");
+        }
+        catch (System.Exception e)
+        {
+            _localOrderStatus.Text = $"Activity rejected: {e.Message}";
+        }
+        RefreshFineTacticalWorkerControls();
+    }
+
+    private void CancelFineWorkerOrder()
+    {
+        if (_tacticalHost is null || !_selectedLocalWorkerId.HasValue ||
+            _localOrderStatus is null) return;
+        try
+        {
+            if (_tacticalHost.CancelHumanOrder(
+                    _humanCivilization,
+                    new PhysicalWorkerId(_selectedLocalWorkerId.Value)))
+                _localOrderStatus.Text =
+                    $"Worker #{_selectedLocalWorkerId.Value}: pending order cancelled.";
+        }
+        catch (System.Exception e)
+        {
+            _localOrderStatus.Text = $"Cancellation rejected: {e.Message}";
+        }
+        RefreshFineTacticalWorkerControls();
+    }
+
+    private void EndFineCollectiveTurn()
+    {
+        if (_tacticalHost is null || _localOrderStatus is null) return;
+        try
+        {
+            var host = _tacticalHost;
+            if (!host.ReadyCivilizations.Contains(_humanCivilization))
+                host.SetHumanReady(_humanCivilization);
+            var receipt = host.TryCloseTurn() ??
+                throw new System.InvalidOperationException(
+                    "Collective turn not closed: all participants not ready.");
+            AttachRuntimeState(host.Snapshot);
+            var humanCount = receipt.Events.Count(x => x.Issuer == _humanCivilization);
+            var aiCount = receipt.ExecutedEvents - humanCount;
+            _localOrderStatus.Text =
+                $"Turn {receipt.Turn.Value}: Human {humanCount} + AI {aiCount} " +
+                $"actions | journal replay OK | hash v{receipt.Hash.FormatVersion}";
+            GD.Print($"GA_NEXT_FINE_HUMAN_AI_COMMIT turn={receipt.Turn.Value} " +
+                $"human={humanCount} ai={aiCount} " +
+                $"rev={receipt.Revision} replay={receipt.ReplayMatched} " +
+                $"hash_v={receipt.Hash.FormatVersion}");
+        }
+        catch (System.Exception e)
+        {
+            _localOrderStatus.Text = $"Collective turn rejected: {e.Message}";
+            GD.PrintErr($"GA_NEXT_FINE_HUMAN_AI_REJECTED {e}");
+        }
+        RefreshFineTacticalWorkerControls();
+    }
+
     private void OnLocalWorkerSelected(long optionIndex)
     {
         if (_tacticalHost is not null)
