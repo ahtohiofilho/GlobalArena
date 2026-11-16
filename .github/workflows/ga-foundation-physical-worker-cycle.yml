@@ -15,6 +15,7 @@ on:
       - 'GlobalArena.Tests/FoundationTacticalHumanAiV10Tests.cs'
       - 'GlobalArena.Tests/AuthoritativeWorkerOccupationsV11Tests.cs'
       - 'GlobalArena.Tests/FoundationConcentratedWorkforceTests.cs'
+      - 'GlobalArena.Tests/FoundationTacticalOccupationOrdersTests.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationConcentratedWorkforceScenario.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationWorkforceActivityGroups.cs'
       - 'GlobalArena.Tests/StrategicPhysicalWorkerInspectorTests.cs'
@@ -69,6 +70,8 @@ jobs:
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationTacticalHumanAiV10Tests' --logger 'console;verbosity=normal'
       - name: Canonical v11 physical productive occupations with real human-AI replay
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~AuthoritativeWorkerOccupationsV11Tests' --logger 'console;verbosity=normal'
+      - name: Individual occupation reassignment with canonical v11 journal replay
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationTacticalOccupationOrdersTests' --logger 'console;verbosity=normal'
       - name: Concentrated capital workforce with 3 6 and 12 people per civ
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationConcentratedWorkforceTests' --logger 'console;verbosity=normal'
       - name: Real executable three-turn gameplay kernel preview
