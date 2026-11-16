@@ -1337,6 +1337,10 @@ public partial class Main : Control
             // explicit, six-worker occupation migration.
             bool legacyV10Smoke = System.Environment.GetEnvironmentVariable(
                 "GA_NEXT_TACTICAL_V10_SMOKE") == "1";
+            bool legacyV11Smoke = System.Environment.GetEnvironmentVariable(
+                "GA_NEXT_TACTICAL_V11_SMOKE") == "1";
+            bool concentratedSmoke = System.Environment.GetEnvironmentVariable(
+                "GA_NEXT_CONCENTRATED_WORKFORCE_SMOKE") == "1";
             if (!legacyWorkspaceSmoke)
             {
                 var request = new WorldGenerationRequest(
@@ -1344,8 +1348,10 @@ public partial class Main : Control
                     new GoldbergParameters(3, 0));
                 _tacticalHost = legacyV10Smoke
                     ? FoundationTacticalDemoScenario.CreateLocalHumanAiPreview(request)
-                    : FoundationTacticalDemoScenario
-                        .CreateLocalHumanAiOccupationPreview(request);
+                    : legacyV11Smoke
+                        ? FoundationTacticalDemoScenario
+                            .CreateLocalHumanAiOccupationPreview(request)
+                        : FoundationConcentratedWorkforceScenario.CreatePreview(request);
                 _canonicalSession = _tacticalHost.Session;
                 AttachRuntimeState(_tacticalHost.Snapshot);
             }
@@ -1392,7 +1398,7 @@ public partial class Main : Control
                     "Click your worker, click an adjacent G(18,0) tile, then G. " +
                     "P resumes production; E closes human + AI together.";
                 GD.Print("GA_NEXT_FINE_VISUAL_BRIDGE_READY " +
-                    $"world=v{_tacticalHost.StateHash.FormatVersion} worker_ids=6 physical_tiles=G(18,0) " +
+                    $"world=v{_tacticalHost.StateHash.FormatVersion} worker_ids={_tacticalHost.Snapshot.Workers.Workers.Count} physical_tiles=G(18,0) " +
                     "inputs=G/P/X/E gameplay_economy=not_active");
             }
             _status!.Text = _tacticalHost is null
@@ -1410,11 +1416,13 @@ public partial class Main : Control
             if (legacyV10Smoke && _tacticalHost is not null)
                 _ = new FoundationGodotTacticalV10Smoke(
                     this, _tacticalHost, _tacticalPreview!).RunAsync();
-            else if (System.Environment.GetEnvironmentVariable(
-                "GA_NEXT_TACTICAL_V11_SMOKE") == "1" && _tacticalHost is not null)
+            else if (legacyV11Smoke && _tacticalHost is not null)
                 _ = new FoundationGodotTacticalV10Smoke(
                     this, _tacticalHost, _tacticalPreview!,
                     expectedFormatVersion: 11U).RunAsync();
+            else if (concentratedSmoke && _tacticalHost is not null)
+                _ = new FoundationGodotConcentratedWorkforceSmoke(
+                    this, _tacticalHost, _tacticalPreview!).RunAsync();
         }
 
         // Only the explicit CI environment starts the historical E2E.
