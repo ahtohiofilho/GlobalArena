@@ -15,6 +15,7 @@ on:
       - 'GlobalArena.Tests/FoundationLocalGameHostTests.cs'
       - 'GlobalArena.Tests/FoundationBatchedTurnTests.cs'
       - 'GlobalArena.Tests/FoundationCollectiveTurnCoordinatorTests.cs'
+      - 'GlobalArena.Tests/FoundationHumanAiTurnHostTests.cs'
       - 'tools/GlobalArena.Godot/Scripts/Main.cs'
       - 'tools/GlobalArena.Godot/Scripts/GlobePreview.cs'
       - 'tools/GlobalArena.Godot/GlobalArena.Godot.csproj'
@@ -26,6 +27,7 @@ on:
       - 'docs/ga-foundation-local-game-orders.md'
       - 'docs/ga-foundation-batched-turns.md'
       - 'docs/ga-foundation-collective-turns.md'
+      - 'docs/ga-foundation-human-ai-turn-policy.md'
       - '.github/workflows/ga-foundation-physical-worker-cycle.yml'
   workflow_dispatch:
 
@@ -51,7 +53,7 @@ jobs:
       - name: Compile all canonical simulation plus new foundation code
         run: dotnet build GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-restore
       - name: Real CSharp physical worker market and movement contracts
-        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalTradeCycleTests|FullyQualifiedName~GoldbergFoundationSessionTests|FullyQualifiedName~AuthoritativePhysicalWorkerJournalTests|FullyQualifiedName~StrategicPhysicalWorkerInspectorTests|FullyQualifiedName~FoundationLocalGameHostTests|FullyQualifiedName~FoundationBatchedTurnTests|FullyQualifiedName~FoundationCollectiveTurnCoordinatorTests' --logger 'console;verbosity=normal'
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalTradeCycleTests|FullyQualifiedName~GoldbergFoundationSessionTests|FullyQualifiedName~AuthoritativePhysicalWorkerJournalTests|FullyQualifiedName~StrategicPhysicalWorkerInspectorTests|FullyQualifiedName~FoundationLocalGameHostTests|FullyQualifiedName~FoundationBatchedTurnTests|FullyQualifiedName~FoundationCollectiveTurnCoordinatorTests|FullyQualifiedName~FoundationHumanAiTurnHostTests' --logger 'console;verbosity=normal'
       - name: Real executable three-turn gameplay kernel preview
         run: dotnet run --project GlobalArena.Console/GlobalArena.Console.csproj -c Release -- --foundation-slice
       - name: A/B same physical world cold start vs zero-time initial calibration
@@ -66,6 +68,8 @@ jobs:
         run: dotnet run --project GlobalArena.Console/GlobalArena.Console.csproj -c Release -- --foundation-batched-turn
       - name: Two civilizations all-ready collective worker turn with v9 replay
         run: dotnet run --project GlobalArena.Console/GlobalArena.Console.csproj -c Release -- --foundation-collective-turn
+      - name: Human plus deterministic AI participant, shared ready gate and v9 journal replay
+        run: dotnet run --project GlobalArena.Console/GlobalArena.Console.csproj -c Release -- --foundation-human-ai-turn
       - name: Compile the actual Godot .NET production client
         run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Release
       - name: Preserve historical CSharp runtime tests without modifying them
