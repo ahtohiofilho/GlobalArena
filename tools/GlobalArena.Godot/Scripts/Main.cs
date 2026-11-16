@@ -707,6 +707,20 @@ public partial class Main : Control
         }
     }
 
+    // Hit-test on the badge itself takes precedence over tile-level first-ID
+    // selection when several independent workers share the same physical tile.
+    private void OnCanonicalWorkerBadgeClicked(ulong id)
+    {
+        if (_tacticalHost is null ||
+            !_tacticalHost.Snapshot.Workers.Workers.Any(w =>
+                w.Id.Value == id && w.Owner == _humanCivilization))
+            return;
+        _selectedLocalWorkerId = id;
+        RefreshFineTacticalWorkerControls();
+        GD.Print($"GA_NEXT_WORKER_BADGE_SELECTED worker={id} " +
+            "source=canonical_v10 no_order=true state_unchanged=true");
+    }
+
     private void OnTacticalPhysicalTileClicked(PhysicalTacticalTileId tile)
     {
         if (_tacticalHost is null) return;
@@ -1073,6 +1087,7 @@ public partial class Main : Control
         mapRegion.AddChild(_tacticalPreview);
         _tacticalPreview.PhysicalTileInspected += OnPhysicalTileInspected;
         _tacticalPreview.CanonicalPhysicalTileClicked += OnTacticalPhysicalTileClicked;
+        _tacticalPreview.CanonicalWorkerBadgeClicked += OnCanonicalWorkerBadgeClicked;
         // The Foundation gameplay host materializes a *labeled local preview*
         // scenario. Main/Godot never creates, moves or settles workers directly.
         // This is NOT a claim of final world-population generation.
