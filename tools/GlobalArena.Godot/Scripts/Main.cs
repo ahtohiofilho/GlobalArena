@@ -45,6 +45,9 @@ public partial class Main : Control
     private OptionButton? _localWorkerSelector;
     private Button? _localMoveButton;
     private Button? _localProduceButton;
+    private Button? _localAgricultureButton;
+    private Button? _localForestryButton;
+    private Button? _localMiningButton;
     private Button? _localEndTurnButton;
     private Button? _localCancelQueuedButton;
     private Label? _localPendingLabel;
@@ -324,6 +327,17 @@ public partial class Main : Control
             chosen.OutputMicroPerTurn == 0UL;
         _localCancelQueuedButton.Disabled = ready || chosen is null ||
             !pendingOrders.Any(order => order.WorkerId == chosen.Id);
+        var hasOccupations = host.Snapshot.Workers.HasAuthoritativeOccupations;
+        foreach (var (button, role) in new[] {
+            (_localAgricultureButton, PhysicalWorkerOccupation.Agriculture),
+            (_localForestryButton, PhysicalWorkerOccupation.Forestry),
+            (_localMiningButton, PhysicalWorkerOccupation.Mining) })
+            if (button is not null)
+            {
+                button.Visible = hasOccupations;
+                button.Disabled = ready || chosen is null ||
+                    !hasOccupations || chosen.Occupation == role;
+            }
         _localEndTurnButton.Disabled = false;
         _localTurnLabel.Text =
             $"TACTICAL HUMAN + AI v{host.StateHash.FormatVersion} | turn {host.NextTurn.Value} | " +
@@ -344,9 +358,11 @@ public partial class Main : Control
             ? "No human orders queued; E closes the collective turn"
             : string.Join(", ", pendingOrders.Select(order =>
                 $"#{order.WorkerId.Value} " +
-                (order.IsMovement
-                    ? $"G(18,0)/{order.Source.FineStrategicCellId.Value}→{order.Destination.FineStrategicCellId.Value}"
-                    : $"{order.Activity} at {order.Source.FineStrategicCellId.Value}")));
+                (order.NextOccupation.HasValue
+                    ? $"profissão → {order.NextOccupation.Value} no tile {order.Source.FineStrategicCellId.Value}"
+                    : order.IsMovement
+                        ? $"G(18,0)/{order.Source.FineStrategicCellId.Value}→{order.Destination.FineStrategicCellId.Value}"
+                        : $"{order.Activity} at {order.Source.FineStrategicCellId.Value}")));
         _operationalRoster?.Refresh(workers.Select(worker =>
             new GaWorkerRosterRow(
                 worker.Id.Value, worker.CellId.Value,
@@ -414,6 +430,29 @@ public partial class Main : Control
         catch (System.Exception e)
         {
             _localOrderStatus.Text = $"Activity rejected: {e.Message}";
+        }
+        RefreshFineTacticalWorkerControls();
+    }
+
+    private void QueueFineWorkerOccupation(PhysicalWorkerOccupation occupation)
+    {
+        if (_tacticalHost is null || !_selectedLocalWorkerId.HasValue ||
+            _localOrderStatus is null) return;
+        try
+        {
+            _tacticalHost.QueueHumanOccupation(_humanCivilization,
+                new PhysicalWorkerId(_selectedLocalWorkerId.Value), occupation);
+            _localOrderStatus.Text =
+                $"Worker #{_selectedLocalWorkerId.Value}: {occupation} " +
+                "queued at the current fine tile. Press E to apply.";
+            GD.Print($"GA_NEXT_OCCUPATION_QUEUED worker={_selectedLocalWorkerId.Value} " +
+                $"occupation={occupation} pending={_tacticalHost.PendingOrderCount} " +
+                "world_mutation=false");
+        }
+        catch (System.Exception e)
+        {
+            _localOrderStatus.Text = $"Occupation reassignment rejected: {e.Message}";
+            GD.Print($"GA_NEXT_OCCUPATION_REJECTED {e.Message}");
         }
         RefreshFineTacticalWorkerControls();
     }
@@ -667,6 +706,18 @@ public partial class Main : Control
             if (key.Keycode == Key.G) OnLocalWorkerMoveRequested();
             else if (key.Keycode == Key.P) OnLocalWorkerProduceRequested();
             else OnLocalCancelQueuedRequested();
+        }
+        else if (!_planetWindow.Visible &&
+                 _tacticalHost?.Snapshot.Workers.HasAuthoritativeOccupations == true &&
+                 key.Keycode is Key.A or Key.V or Key.N)
+        {
+            QueueFineWorkerOccupation(key.Keycode switch
+            {
+                Key.A => PhysicalWorkerOccupation.Agriculture,
+                Key.V => PhysicalWorkerOccupation.Forestry,
+                Key.N => PhysicalWorkerOccupation.Mining,
+                _ => throw new System.InvalidOperationException("Unknown occupation shortcut")
+            });
         }
         else if (key.Keycode == Key.E &&
             !_planetWindow.Visible && _localEndTurnButton?.Disabled == false)
@@ -1254,6 +1305,30 @@ public partial class Main : Control
         };
         _localProduceButton.Pressed += OnLocalWorkerProduceRequested;
         orderSection.AddChild(_localProduceButton);
+        var occupationRow = new HBoxContainer();
+        occupationRow.AddThemeConstantOverride("separation", 4);
+        orderSection.AddChild(occupationRow);
+        _localAgricultureButton = new Button {
+            Text = "A | AGRI", SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            Visible = false, Disabled = true
+        };
+        _localAgricultureButton.Pressed += () =>
+            QueueFineWorkerOccupation(PhysicalWorkerOccupation.Agriculture);
+        occupationRow.AddChild(_localAgricultureButton);
+        _localForestryButton = new Button {
+            Text = "V | VEGETAL", SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            Visible = false, Disabled = true
+        };
+        _localForestryButton.Pressed += () =>
+            QueueFineWorkerOccupation(PhysicalWorkerOccupation.Forestry);
+        occupationRow.AddChild(_localForestryButton);
+        _localMiningButton = new Button {
+            Text = "N | MINERAL", SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            Visible = false, Disabled = true
+        };
+        _localMiningButton.Pressed += () =>
+            QueueFineWorkerOccupation(PhysicalWorkerOccupation.Mining);
+        occupationRow.AddChild(_localMiningButton);
         _localPendingLabel = new Label
         {
             Text = "No orders queued",
@@ -1396,7 +1471,8 @@ public partial class Main : Control
                 _localCancelQueuedButton!.Text = "X | CANCEL ORDER";
                 _localOrderStatus!.Text =
                     "Click your worker, click an adjacent G(18,0) tile, then G. " +
-                    "P resumes production; E closes human + AI together.";
+                    "P resumes production; A/V/N reassign an individual to " +
+                    "Agriculture/Vegetal/Mining; E commits human + AI together.";
                 GD.Print("GA_NEXT_FINE_VISUAL_BRIDGE_READY " +
                     $"world=v{_tacticalHost.StateHash.FormatVersion} worker_ids={_tacticalHost.Snapshot.Workers.Workers.Count} physical_tiles=G(18,0) " +
                     "inputs=G/P/X/E gameplay_economy=not_active");
