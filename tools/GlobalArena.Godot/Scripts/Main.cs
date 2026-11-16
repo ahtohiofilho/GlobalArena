@@ -461,12 +461,12 @@ public partial class Main : Control
     {
         if (_tacticalHost is not null)
         {
-            var workers = _tacticalHost.Snapshot.Workers.Workers
+            var fineWorkers = _tacticalHost.Snapshot.Workers.Workers
                 .Where(w => w.Owner == _humanCivilization).ToArray();
-            var index = checked((int)optionIndex);
-            if (index >= 0 && index < workers.Length)
+            var chosenIndex = checked((int)optionIndex);
+            if (chosenIndex >= 0 && chosenIndex < fineWorkers.Length)
             {
-                _selectedLocalWorkerId = workers[index].Id.Value;
+                _selectedLocalWorkerId = fineWorkers[chosenIndex].Id.Value;
                 RefreshFineTacticalWorkerControls();
             }
             return;
