@@ -242,9 +242,65 @@ public sealed class WorldState
         if (Workers.IsInitialized && !workers.IsInitialized)
             throw new InvalidOperationException(
                 "An initialized worker census cannot silently become absent.");
+        if (Workers.HasAuthoritativeTacticalLocations !=
+            workers.HasAuthoritativeTacticalLocations)
+            throw new InvalidOperationException(
+                "Changing worker location schema requires explicit tactical deployment.");
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
             Economy, Population, Warfare, workers);
+    }
+
+    /// <summary>
+    /// Explicit, world-bound v9 -> v10 deployment. Every submitted
+    /// worker already has an individually chosen *real* fine cell whose
+    /// incidence includes its previous coarse region. This API does not
+    /// guess worker locations or silently migrate save files.
+    /// </summary>
+    public WorldState DeployTacticalWorkers(
+        PhysicalWorkerRuntimeState tacticalWorkers,
+        PhysicalTacticalIncidenceMap incidence)
+    {
+        ArgumentNullException.ThrowIfNull(tacticalWorkers);
+        ArgumentNullException.ThrowIfNull(incidence);
+        if (WorldBinding is null || !Workers.IsInitialized ||
+            Workers.HasAuthoritativeTacticalLocations ||
+            !tacticalWorkers.IsInitialized ||
+            !tacticalWorkers.HasAuthoritativeTacticalLocations)
+            throw new InvalidOperationException(
+                "Tactical deployment requires a bound v9 census and explicit complete v10 data.");
+        if (incidence.CoarseTopology.Cells.Count !=
+            checked((int)WorldBinding.StrategicCellCount))
+            throw new InvalidOperationException(
+                "Tactical topology does not match the bound world's coarse cell count.");
+        if (Workers.Workers.Count != tacticalWorkers.Workers.Count)
+            throw new InvalidOperationException("Tactical deployment cannot add or remove workers.");
+
+        for (var i = 0; i < Workers.Workers.Count; i++)
+        {
+            var original = Workers.Workers[i];
+            var updated = tacticalWorkers.Workers[i];
+            if (original.Id != updated.Id || original.Owner != updated.Owner ||
+                original.CellId != updated.CellId ||
+                original.Activity != updated.Activity ||
+                original.Commodity != updated.Commodity ||
+                original.OutputMicroPerTurn != updated.OutputMicroPerTurn ||
+                original.DemandMultiplierMicro != updated.DemandMultiplierMicro)
+                throw new InvalidOperationException(
+                    "Tactical deployment may only add fine locations, not rewrite worker facts.");
+            var tile = updated.TacticalTileId!.Value;
+            if (tile.FineGoldbergParameters != incidence.Refinement.FineParameters)
+                throw new InvalidOperationException(
+                    "Tactical worker position belongs to a different refinement.");
+            var entry = incidence.TileIncidences[
+                checked((int)tile.FineStrategicCellId.Value - 1)];
+            if (!entry.IncidentCoarseCellIds.Contains(original.CellId))
+                throw new InvalidOperationException(
+                    "Worker's fine position is not incident to its prior coarse region.");
+        }
+        return new WorldState(
+            Revision, WorldBinding, Civilizations, Territory, Diplomacy,
+            Economy, Population, Warfare, tacticalWorkers);
     }
 
     public WorldState AdvanceRevision()
@@ -439,6 +495,15 @@ public sealed class WorldState
                 if (!worldBinding.Contains(worker.CellId))
                     throw new InvalidOperationException(
                         $"Physical worker {worker.Id.Value} is located outside the Goldberg world.");
+                if (workers.HasAuthoritativeTacticalLocations)
+                {
+                    var fine = worker.TacticalTileId!.Value;
+                    if (!fine.IsValid ||
+                        fine.FineGoldbergParameters.StrategicCellCount !=
+                        checked((worldBinding.StrategicCellCount - 2UL) * 36UL + 2UL))
+                        throw new InvalidOperationException(
+                            "v10 worker position must use a scale-six physical Goldberg topology.");
+                }
             }
         }
         else if (workers.Workers.Count != 0)
