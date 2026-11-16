@@ -10,6 +10,7 @@ public sealed class CanonicalWorldStateHasher
     // Legacy v8 hashes are byte-for-byte unchanged until worker census is initialized.
     public const uint FormatVersion = 8U;
     public const uint PhysicalWorkerFormatVersion = 9U;
+    public const uint TacticalWorkerFormatVersion = 10U;
 
     private static readonly byte[] Magic =
     {
@@ -26,7 +27,9 @@ public sealed class CanonicalWorldStateHasher
             worldState);
 
         var version = worldState.Workers.IsInitialized
-            ? PhysicalWorkerFormatVersion : FormatVersion;
+            ? worldState.Workers.HasAuthoritativeTacticalLocations
+                ? TacticalWorkerFormatVersion : PhysicalWorkerFormatVersion
+            : FormatVersion;
 
         using var hash =
             IncrementalHash.CreateHash(
@@ -41,7 +44,7 @@ public sealed class CanonicalWorldStateHasher
 
         AppendUInt32(
             hash,
-            version == PhysicalWorkerFormatVersion ? 9U : 8U);
+            version);
 
         if (worldState.WorldBinding is null)
         {
@@ -299,6 +302,17 @@ public sealed class CanonicalWorldStateHasher
                 AppendUInt64(hash, worker.OutputMicroPerTurn);
                 AppendUInt32(hash, (uint)worker.Activity);
                 AppendUInt32(hash, worker.DemandMultiplierMicro);
+                // v10 extends each canonical worker with QUALIFIED fine
+                // geometry identity. v8/v9 byte streams are unchanged.
+                if (version == TacticalWorkerFormatVersion)
+                {
+                    var tile = worker.TacticalTileId ??
+                        throw new InvalidOperationException(
+                            "v10 worker census lacks an authoritative fine tile.");
+                    AppendUInt32(hash, checked((uint)tile.FineGoldbergParameters.M));
+                    AppendUInt32(hash, checked((uint)tile.FineGoldbergParameters.N));
+                    AppendUInt64(hash, tile.FineStrategicCellId.Value);
+                }
             }
         }
 
