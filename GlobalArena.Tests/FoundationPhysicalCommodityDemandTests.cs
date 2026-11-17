@@ -163,14 +163,14 @@ public sealed class FoundationPhysicalCommodityDemandTests
         var result = FoundationPhysicalCommodityDemandProjector.Project(census, Policy());
         Assert.Equal(4, result.DistinctWorkers);
         Assert.Empty(result.SupplyLots);
-        Assert.Equal(22_000_000UL, result.TotalCommodityDemandMicro);
+        Assert.Equal(23_000_000UL, result.TotalCommodityDemandMicro);
         Assert.Equal(0UL, result.TotalActiveCapacityMicroPerTurn);
         var first = Assert.Single(result.DemandByCivilization, line =>
             line.Commodity == ItemOne);
         var second = Assert.Single(result.DemandByCivilization, line =>
             line.Commodity == ItemTwo);
         Assert.Equal(14_000_000UL, first.DemandMicro); // 4 + 5 + 3 + 2
-        Assert.Equal(8_000_000UL, second.DemandMicro); // 2 + 4 + 1 + 2 = 9? See below
+        Assert.Equal(9_000_000UL, second.DemandMicro); // 2 + 4 + 1 + 2
     }
 
     [Fact]
