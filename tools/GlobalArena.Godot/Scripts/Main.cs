@@ -382,6 +382,10 @@ public partial class Main : Control
             _selectedLocalWorkerId, host.Snapshot.Revision);
         _tacticalPreview?.PresentAuthoritativeWorkers(
             host.Snapshot.Workers, _selectedLocalWorkerId);
+        _tacticalPreview?.PresentPendingWorkerBoardOrders(
+            pendingOrders.Where(order => order.NextOccupation.HasValue)
+                .Select(order => (order.WorkerId.Value, order.NextOccupation!.Value)),
+            !ready);
     }
 
     private void QueueFineWorkerMove()
@@ -432,6 +436,20 @@ public partial class Main : Control
             _localOrderStatus.Text = $"Activity rejected: {e.Message}";
         }
         RefreshFineTacticalWorkerControls();
+    }
+
+    private void OnWorkerBoardOccupationRequested(
+        ulong workerId, PhysicalWorkerOccupation occupation)
+    {
+        if (_tacticalHost is null ||
+            !_tacticalHost.Snapshot.Workers.Workers.Any(worker =>
+                worker.Id.Value == workerId && worker.Owner == _humanCivilization))
+        {
+            GD.PrintErr($"GA_NEXT_WORKER_BOARD_REJECT_NOT_OWNER worker={workerId}");
+            return;
+        }
+        OnCanonicalWorkerBadgeClicked(workerId);
+        QueueFineWorkerOccupation(occupation);
     }
 
     private void QueueFineWorkerOccupation(PhysicalWorkerOccupation occupation)
@@ -1154,6 +1172,7 @@ public partial class Main : Control
         _tacticalPreview.PhysicalTileInspected += OnPhysicalTileInspected;
         _tacticalPreview.CanonicalPhysicalTileClicked += OnTacticalPhysicalTileClicked;
         _tacticalPreview.CanonicalWorkerBadgeClicked += OnCanonicalWorkerBadgeClicked;
+        _tacticalPreview.WorkerBoardOccupationRequested += OnWorkerBoardOccupationRequested;
         // The Foundation gameplay host materializes a *labeled local preview*
         // scenario. Main/Godot never creates, moves or settles workers directly.
         // This is NOT a claim of final world-population generation.
@@ -1423,6 +1442,8 @@ public partial class Main : Control
                 "GA_NEXT_CONCENTRATED_WORKFORCE_SMOKE") == "1";
             bool tileClickMenuSmoke = System.Environment.GetEnvironmentVariable(
                 "GA_NEXT_TILE_CLICK_MENU_SMOKE") == "1";
+            bool workerBoardSmoke = System.Environment.GetEnvironmentVariable(
+                "GA_NEXT_WORKER_BOARD_SMOKE") == "1";
             if (!legacyWorkspaceSmoke)
             {
                 var request = new WorldGenerationRequest(
@@ -1510,6 +1531,9 @@ public partial class Main : Control
                     this, _tacticalHost, _tacticalPreview!).RunAsync();
             else if (tileClickMenuSmoke && _tacticalHost is not null)
                 _ = new FoundationGodotTileClickMenuSmoke(
+                    this, _tacticalHost, _tacticalPreview!).RunAsync();
+            else if (workerBoardSmoke && _tacticalHost is not null)
+                _ = new FoundationGodotWorkerBoardSmoke(
                     this, _tacticalHost, _tacticalPreview!).RunAsync();
         }
 
