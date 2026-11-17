@@ -243,27 +243,6 @@ public static class FoundationPhysicalMarginalMarketDistributor
         ArgumentNullException.ThrowIfNull(demandPolicy);
         ArgumentNullException.ThrowIfNull(conversionPolicy);
         ArgumentNullException.ThrowIfNull(quotes);
-        var (market, quoteMap) = ValidateMarketAndQuotes(
-            census, demandPolicy, conversionPolicy, quotes);
-
-        return (market, quoteMap);
-    }
-
-    public static FoundationPhysicalMarginalMarketDistributionPlan Distribute(
-        PhysicalWorkerRuntimeState census,
-        PhysicalTacticalIncidenceMap incidence,
-        FoundationActivityCommodityDemandPolicy demandPolicy,
-        FoundationCommodityCargoConversionPolicy conversionPolicy,
-        IEnumerable<FoundationCommodityMarketPlanningQuote> quotes,
-        IEnumerable<FoundationPhysicalRoutingEdgeCost> edgeCosts)
-    {
-        ArgumentNullException.ThrowIfNull(census);
-        ArgumentNullException.ThrowIfNull(incidence);
-        ArgumentNullException.ThrowIfNull(demandPolicy);
-        ArgumentNullException.ThrowIfNull(conversionPolicy);
-        ArgumentNullException.ThrowIfNull(quotes);
-        ArgumentNullException.ThrowIfNull(edgeCosts);
-
         var market = FoundationPhysicalCommodityDemandProjector.Project(
             census, demandPolicy);
         if (!market.Commodities.SequenceEqual(conversionPolicy.Commodities))
@@ -292,6 +271,27 @@ public static class FoundationPhysicalMarginalMarketDistributor
             throw new ArgumentException(
                 "Every real physical demand line needs a scaling quote.",
                 nameof(quotes));
+
+        return (market, quoteMap);
+    }
+
+    public static FoundationPhysicalMarginalMarketDistributionPlan Distribute(
+        PhysicalWorkerRuntimeState census,
+        PhysicalTacticalIncidenceMap incidence,
+        FoundationActivityCommodityDemandPolicy demandPolicy,
+        FoundationCommodityCargoConversionPolicy conversionPolicy,
+        IEnumerable<FoundationCommodityMarketPlanningQuote> quotes,
+        IEnumerable<FoundationPhysicalRoutingEdgeCost> edgeCosts)
+    {
+        ArgumentNullException.ThrowIfNull(census);
+        ArgumentNullException.ThrowIfNull(incidence);
+        ArgumentNullException.ThrowIfNull(demandPolicy);
+        ArgumentNullException.ThrowIfNull(conversionPolicy);
+        ArgumentNullException.ThrowIfNull(quotes);
+        ArgumentNullException.ThrowIfNull(edgeCosts);
+
+        var (market, quoteMap) = ValidateMarketAndQuotes(
+            census, demandPolicy, conversionPolicy, quotes);
 
         var (graph, ownership) =
             FoundationPhysicalTradeRouteCandidatePlanner.BuildGraph(
