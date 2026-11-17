@@ -14,6 +14,13 @@ public sealed record FoundationTacticalWorkerOrder(
     PhysicalWorkerActivity Activity, bool IsMovement,
     PhysicalWorkerOccupation? NextOccupation = null);
 
+/// <summary>
+/// An explicit per-worker occupational choice in an atomic local batch.
+/// These are requests; they are not a new physical census or market event.
+/// </summary>
+public sealed record FoundationTacticalOccupationChange(
+    PhysicalWorkerId WorkerId, PhysicalWorkerOccupation Occupation);
+
 public sealed record FoundationTacticalAiDecision(
     PhysicalWorkerId WorkerId, PhysicalTacticalTileId Destination,
     PhysicalWorkerActivity Activity, bool IsMovement);
@@ -222,6 +229,53 @@ public sealed class FoundationTacticalHumanAiTurnHost
         QueueOccupation(human, id, occupation);
     }
 
+    /// <summary>
+    /// Validates the ENTIRE occupational batch against the same turn-start
+    /// authoritative census before touching the participant's pending orders.
+    /// Existing pending orders for mentioned workers are replaced only after
+    /// validation succeeds; other workers' intentions remain unchanged.
+    /// One physical person contributes at most one command to the turn.
+    /// This is an application operation, not a second simulation phase.
+    /// </summary>
+    public int QueueHumanOccupationBatch(CivilizationId human,
+        IReadOnlyList<FoundationTacticalOccupationChange> changes)
+    {
+        RequireHuman(human);
+        ArgumentNullException.ThrowIfNull(changes);
+        CheckWritable(human);
+        if (changes.Count == 0)
+            throw new ArgumentException("Occupation batch must contain at least one worker.",
+                nameof(changes));
+
+        // Build an index once: unlike validating N singles using a linear
+        // worker lookup each, this keeps large workforces O(workers + K log K).
+        var owned = Snapshot.Workers.Workers
+            .Where(worker => worker.Owner == human)
+            .ToDictionary(worker => worker.Id.Value);
+        var staged = new SortedDictionary<ulong, FoundationTacticalWorkerOrder>();
+        foreach (var change in changes)
+        {
+            if (change is null || !change.WorkerId.IsValid ||
+                !owned.TryGetValue(change.WorkerId.Value, out var worker))
+                throw new InvalidOperationException(
+                    "Batch contains a missing, invalid or non-owned physical worker.");
+            if (staged.ContainsKey(change.WorkerId.Value))
+                throw new InvalidOperationException(
+                    "A physical worker cannot appear twice in the same batch.");
+            ValidateOccupationTarget(worker, change.Occupation);
+            var source = worker.TacticalTileId ??
+                throw new InvalidOperationException("Worker has no fine position.");
+            staged.Add(change.WorkerId.Value, new FoundationTacticalWorkerOrder(
+                human, worker.Id, source, source, worker.Activity,
+                IsMovement: false, NextOccupation: change.Occupation));
+        }
+
+        // No mutations, including pre-existing queued moves, occur above.
+        foreach (var (workerId, order) in staged)
+            _plans[human][workerId] = order;
+        return staged.Count;
+    }
+
     public bool CancelHumanOrder(CivilizationId human, PhysicalWorkerId id)
     {
         RequireHuman(human);
@@ -407,6 +461,20 @@ public sealed class FoundationTacticalHumanAiTurnHost
             IsMovement: false, NextOccupation: occupation);
     }
 
+    private void ValidateOccupationTarget(
+        PhysicalWorkerRuntimeRecord worker, PhysicalWorkerOccupation occupation)
+    {
+        if (!Snapshot.Workers.HasAuthoritativeOccupations ||
+            !worker.Occupation.HasValue ||
+            (occupation != PhysicalWorkerOccupation.Agriculture &&
+             occupation != PhysicalWorkerOccupation.Forestry &&
+             occupation != PhysicalWorkerOccupation.Mining) ||
+            worker.Occupation.Value == occupation)
+            throw new InvalidOperationException(
+                "Reallocation requires an existing owned v11 worker and " +
+                "a different productive occupation at the same fine tile.");
+    }
+
     private PhysicalWorkerRuntimeRecord ValidateOrder(
         CivilizationId issuer, PhysicalWorkerId workerId,
         PhysicalTacticalTileId destination, PhysicalWorkerActivity activity,
@@ -423,13 +491,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
         { throw new InvalidOperationException("Foreign fine topology.", ex); }
         if (nextOccupation.HasValue)
         {
-            if (!Snapshot.Workers.HasAuthoritativeOccupations ||
-                !worker.Occupation.HasValue ||
-                (nextOccupation.Value != PhysicalWorkerOccupation.Agriculture &&
-                 nextOccupation.Value != PhysicalWorkerOccupation.Forestry &&
-                 nextOccupation.Value != PhysicalWorkerOccupation.Mining) ||
-                worker.Occupation.Value == nextOccupation.Value ||
-                movement || edge.HasValue || activity != worker.Activity)
+            ValidateOccupationTarget(worker, nextOccupation.Value);
+            if (movement || edge.HasValue || activity != worker.Activity)
                 throw new InvalidOperationException(
                     "Reallocation requires an existing owned v11 worker and " +
                     "a different productive occupation at the same fine tile.");
