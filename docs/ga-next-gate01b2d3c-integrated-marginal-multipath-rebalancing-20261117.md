@@ -46,7 +46,7 @@ A nova suíte FoundationPhysicalMarginalPathRebalancerTests verifica:
 - Falha fechada quando um único passe não basta para estabilizar a nova distribuição.
 - Vendas locais com catálogo completo e nenhuma estrada artificial; hash, censo e ausência de ciclo fechado preservados.
 - Integração opcional à realimentação de preços de frete do PR #395 sem regressão do modo antigo.
-- **Rede Goldberg conectada de 112 tiles físicos, 8 produtores e 96 consumidores não produtores: 104 mercados em tiles distintos**. Percursos compartilham arestas do componente conectado; medição de duração e passes como diagnóstico, sem SLA arbitrário em runners GitHub. Isso não prova ainda escala de milhares de produtores e mercados.
+- **Rede Goldberg conectada de 112 tiles físicos, 8 produtores de 8 mercadorias de fixture distintas e 96 consumidores não produtores: 104 pontos de mercado em tiles distintos (832 linhas positivas de demanda por mercadoria)**. A separação por produto isola este benchmark do problema de convergência do coordenador anterior com vários produtores do MESMO item, enquanto as oito cargas continuam concorrendo pelas MESMAS arestas e capacidades físicas. Percursos compartilham arestas do componente conectado; medição de duração e passes como diagnóstico, sem SLA arbitrário em runners GitHub. Isso não prova ainda escala de milhares de produtores e mercados.
 
 Testes C# Windows/Ubuntu, regressões Godot Mono 4.7.2, kernel/hash multiplataforma e benchmark histórico são obrigatórios.
 
