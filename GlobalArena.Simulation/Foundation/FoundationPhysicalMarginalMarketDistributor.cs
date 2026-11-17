@@ -300,7 +300,8 @@ public static class FoundationPhysicalMarginalMarketDistributor
         var routes = new Dictionary<
             (PhysicalTacticalTileId Tile, CivilizationId Seller),
             FoundationPhysicalTradeRouteCandidatePlanner.RouteTree>();
-        var delivered = lines.Keys.ToDictionary(key => key, _ => 0UL);
+        var delivered = market.DemandByCivilization.ToDictionary(
+            line => (line.Tile, line.Owner, line.Commodity), _ => 0UL);
         var candidates = new List<FoundationPhysicalCommodityDeliveryCandidate>();
 
         foreach (var lot in market.SupplyLots)
