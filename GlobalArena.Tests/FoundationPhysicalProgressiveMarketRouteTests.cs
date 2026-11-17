@@ -492,4 +492,194 @@ public sealed class FoundationPhysicalProgressiveMarketRouteTests
             rerouted.SeedKind);
         ReplayToStability(rerouted);
     }
+
+    [Fact]
+    public void ExactSingleLocalMarketSkipsOnlyIdenticalGlobalRerouting()
+    {
+        // One real producer also generates its ONE real consumption market.
+        // The output is wholly sold locally, regardless of edge congestion.
+        // This is a deterministic nontrivial flow solve whose complete
+        // candidate, baseline route and totals match the audited incumbent.
+        var two = TwoRealMarkets(100_000_000UL);
+        var oneWorker = new PhysicalWorkerRuntimeState(
+            two.Workers.Workers.Take(1),
+            tacticalLocationsAuthoritative: true,
+            occupationsAuthoritative: true);
+        var oneQuotes = FoundationPhysicalCommodityDemandProjector
+            .Project(oneWorker, two.Demand).DemandByCivilization.Select(
+                line => new FoundationCommodityMarketPlanningQuote(
+                    line.Tile, line.Owner, line.Commodity, 100_000_000UL))
+            .ToArray();
+        Assert.Single(oneQuotes);
+        var scenario = two with { Workers = oneWorker, Quotes = oneQuotes };
+        var initialHash = scenario.Host.StateHash;
+        var snapshot = scenario.Host.Snapshot;
+        var initial = Begin(scenario, BigInteger.Zero);
+        Assert.Equal(0, initial.IdenticalMarketRouteElisions);
+
+        var reference = FoundationPhysicalProgressiveMarketRouteCoordinator
+            .AdvanceWithOriginalMarketRoutingForTests(initial, 1);
+        var optimized = FoundationPhysicalProgressiveMarketRouteCoordinator
+            .Advance(initial, 1);
+        Assert.Equal(1, optimized.IdenticalMarketRouteElisions);
+        Assert.Equal(0, reference.IdenticalMarketRouteElisions);
+        Assert.Same(initial.BestAuditedCandidate,
+            optimized.BestAuditedCandidate);
+        Assert.Equal(reference.BestPotentialScaled, optimized.BestPotentialScaled);
+        Assert.Equal(reference.AcceptedPotentialHistoryScaled,
+            optimized.AcceptedPotentialHistoryScaled);
+        Assert.Equal(reference.ProposalsEvaluated, optimized.ProposalsEvaluated);
+        Assert.Equal(reference.RejectedProposals, optimized.RejectedProposals);
+        Assert.Equal(reference.NextProposalIndex, optimized.NextProposalIndex);
+        Assert.Equal(reference.CompletedPasses, optimized.CompletedPasses);
+        Assert.Equal(reference.StableUnderDeclaredGainFloor,
+            optimized.StableUnderDeclaredGainFloor);
+        Assert.Equal(reference.BestAuditedCandidate.FinalIntegratedFreightCost,
+            optimized.BestAuditedCandidate.FinalIntegratedFreightCost);
+        Assert.Equal(reference.BestAuditedCandidate.AllocationAudit
+            .TotalAllocatedGoodsMicro,
+            optimized.BestAuditedCandidate.AllocationAudit
+                .TotalAllocatedGoodsMicro);
+        Assert.Equal(1_000_000UL,
+            optimized.BestAuditedCandidate.AllocationAudit
+                .TotalAvailableGoodsMicro);
+        Assert.Equal(initialHash, scenario.Host.StateHash);
+        Assert.Same(snapshot, scenario.Host.Snapshot);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            scenario.Host.GetLastClosedEconomicTradeView(Red).Availability);
+
+        // The route-only block is still counted as a rejection, and the
+        // complete economic pass converges with the reference.
+        var referenceComplete =
+            FoundationPhysicalProgressiveMarketRouteCoordinator
+                .AdvanceWithOriginalMarketRoutingForTests(reference, 1);
+        var optimizedComplete =
+            FoundationPhysicalProgressiveMarketRouteCoordinator
+                .Advance(optimized, 1);
+        Assert.Equal(referenceComplete.BestPotentialScaled,
+            optimizedComplete.BestPotentialScaled);
+        Assert.Equal(referenceComplete.CompletedPasses,
+            optimizedComplete.CompletedPasses);
+        Assert.Equal(referenceComplete.StableUnderDeclaredGainFloor,
+            optimizedComplete.StableUnderDeclaredGainFloor);
+        Assert.Equal(referenceComplete.RejectedProposals,
+            optimizedComplete.RejectedProposals);
+
+        // Same buyer identities, but a new quote is a new economic epoch:
+        // the diagnostic must reset, not claim prior search convergence.
+        var newQuotes = oneQuotes.Select(q =>
+            new FoundationCommodityMarketPlanningQuote(
+                q.BuyerTile, q.Buyer, q.Commodity,
+                checked(q.QuoteMicroPerWholeCommodityUnit + 1UL))).ToArray();
+        var repriced = Begin(scenario, BigInteger.Zero,
+            previous: optimizedComplete, quotes: newQuotes);
+        Assert.Equal(FoundationPhysicalProgressiveSeedKind.AuditedQuoteRevaluation,
+            repriced.SeedKind);
+        Assert.Equal(0, repriced.IdenticalMarketRouteElisions);
+        Assert.False(repriced.StableUnderDeclaredGainFloor);
+        var postQuote = FoundationPhysicalProgressiveMarketRouteCoordinator
+            .Advance(repriced, 1);
+        var referencePostQuote =
+            FoundationPhysicalProgressiveMarketRouteCoordinator
+                .AdvanceWithOriginalMarketRoutingForTests(repriced, 1);
+        Assert.Equal(1, postQuote.IdenticalMarketRouteElisions);
+        Assert.Equal(referencePostQuote.BestPotentialScaled,
+            postQuote.BestPotentialScaled);
+        Assert.Equal(referencePostQuote.RejectedProposals,
+            postQuote.RejectedProposals);
+    }
+
+    [Fact]
+    public void GlobalMarketEarlyDiscardPreservesFullA_BOnTwoMarketsAndRoadRebase()
+    {
+        var scenario = TwoRealMarkets(100_000UL);
+        var hash = scenario.Host.StateHash;
+        var snapshot = scenario.Host.Snapshot;
+        var initial = Begin(scenario, BigInteger.Zero);
+
+        void CompareContinuation(
+            FoundationPhysicalProgressiveMarketRouteState start)
+        {
+            var original = start;
+            var optimized = start;
+            for (int i = 0; i < 64 && !original.StableUnderDeclaredGainFloor; i++)
+            {
+                original = FoundationPhysicalProgressiveMarketRouteCoordinator
+                    .AdvanceWithOriginalMarketRoutingForTests(original, 1);
+                optimized = FoundationPhysicalProgressiveMarketRouteCoordinator
+                    .Advance(optimized, 1);
+                Assert.Equal(original.BestPotentialScaled,
+                    optimized.BestPotentialScaled);
+                Assert.Equal(original.AcceptedPotentialHistoryScaled,
+                    optimized.AcceptedPotentialHistoryScaled);
+                Assert.Equal(original.ProposalsEvaluated,
+                    optimized.ProposalsEvaluated);
+                Assert.Equal(original.AcceptedMarketProposals,
+                    optimized.AcceptedMarketProposals);
+                Assert.Equal(original.AcceptedRouteProposals,
+                    optimized.AcceptedRouteProposals);
+                Assert.Equal(original.RejectedProposals,
+                    optimized.RejectedProposals);
+                Assert.Equal(original.NextProposalIndex,
+                    optimized.NextProposalIndex);
+                Assert.Equal(original.CompletedPasses,
+                    optimized.CompletedPasses);
+                Assert.Equal(original.StableUnderDeclaredGainFloor,
+                    optimized.StableUnderDeclaredGainFloor);
+                Assert.Equal(original.BestAuditedCandidate.Parts.Select(p =>
+                        (p.ParentDeliveryOrdinal, p.Delivery.GoodsMicro,
+                            p.Delivery.Buyer,
+                            Route: string.Join(",", p.Delivery.RouteTiles
+                                .Select(t => t.FineStrategicCellId.Value)))),
+                    optimized.BestAuditedCandidate.Parts.Select(p =>
+                        (p.ParentDeliveryOrdinal, p.Delivery.GoodsMicro,
+                            p.Delivery.Buyer,
+                            Route: string.Join(",", p.Delivery.RouteTiles
+                                .Select(t => t.FineStrategicCellId.Value)))));
+                Assert.Equal(original.BestAuditedCandidate.FinalIntegratedFreightCost,
+                    optimized.BestAuditedCandidate.FinalIntegratedFreightCost);
+                Assert.Equal(original.BestAuditedCandidate.AllocationAudit
+                    .TotalAllocatedGoodsMicro,
+                    optimized.BestAuditedCandidate.AllocationAudit
+                        .TotalAllocatedGoodsMicro);
+            }
+            Assert.True(original.StableUnderDeclaredGainFloor);
+            Assert.True(optimized.StableUnderDeclaredGainFloor);
+            Assert.Equal(hash, scenario.Host.StateHash);
+            Assert.Same(snapshot, scenario.Host.Snapshot);
+        }
+
+        CompareContinuation(initial);
+        CompareContinuation(Begin(scenario, BigInteger.One << 512));
+        var repriceQuotes = scenario.Quotes.Select(q =>
+            new FoundationCommodityMarketPlanningQuote(
+                q.BuyerTile, q.Buyer, q.Commodity,
+                checked(q.QuoteMicroPerWholeCommodityUnit + 250UL))).ToArray();
+        var quoted = Begin(scenario, BigInteger.Zero,
+            previous: initial, quotes: repriceQuotes);
+        CompareContinuation(quoted);
+
+        var newRoads = scenario.Roads.Select(road => road with
+        {
+            PhysicalCostMicroPerWholeCargoUnit =
+                checked(road.PhysicalCostMicroPerWholeCargoUnit + 25_000UL),
+            ExternalTariffMicroPerWholeCargoUnit = 17_000UL,
+            OwnershipKind = FoundationInfrastructureOwnershipKind.Owned,
+            InfrastructureOwner = Blue
+        }).ToArray();
+        var newScales = scenario.Scales.Select(scale => scale with
+        {
+            CargoMicroAtReferenceLoad =
+                checked(scale.CargoMicroAtReferenceLoad + 25_000UL)
+        }).ToArray();
+        var changedRoad = FoundationPhysicalProgressiveMarketRouteCoordinator
+            .BeginOrResume(scenario.Workers, scenario.Host.Incidence,
+                scenario.Demand, scenario.Cargo, repriceQuotes, newRoads,
+                newScales, 8, 256, 4, 16, BigInteger.Zero,
+                previous: quoted);
+        Assert.Equal(
+            FoundationPhysicalProgressiveSeedKind.ReauditedFixedMarketRouting,
+            changedRoad.SeedKind);
+        CompareContinuation(changedRoad);
+    }
 }
