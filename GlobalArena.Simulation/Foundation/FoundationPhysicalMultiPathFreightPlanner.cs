@@ -140,7 +140,7 @@ public static class FoundationPhysicalMultiPathFreightPlanner
         return tree;
     }
 
-    private static FoundationPhysicalMultiPathCandidatePlan Split(
+    internal static FoundationPhysicalMultiPathCandidatePlan Split(
         PhysicalWorkerRuntimeState census,
         PhysicalTacticalIncidenceMap incidence,
         FoundationActivityCommodityDemandPolicy demandPolicy,
