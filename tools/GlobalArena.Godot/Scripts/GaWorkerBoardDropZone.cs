@@ -1,6 +1,6 @@
 using System;
 using System.Globalization;
-using GlobalArena.Simulation.Foundation;
+using GlobalArena.Runtime;
 using Godot;
 
 namespace GlobalArena.Godot;
