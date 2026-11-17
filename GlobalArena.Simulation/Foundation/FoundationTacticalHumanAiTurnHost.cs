@@ -278,6 +278,30 @@ public sealed class FoundationTacticalHumanAiTurnHost
             maxProducerPasses, maxBatchesPerDelivery);
     }
 
+    /// <summary>
+    /// Internal-only coupled multi-market/multi-path cargo feedback for
+    /// the last confirmed physical worker census. Candidate plans do not
+    /// publish economic cycles, prices, toll collection or treasure events.
+    /// </summary>
+    internal FoundationPhysicalCoupledMultiPathFeedbackPlan
+        CoordinateCoupledMultiPathMarketCandidates(
+            FoundationActivityCommodityDemandPolicy demandPolicy,
+            FoundationCommodityCargoConversionPolicy conversionPolicy,
+            IEnumerable<FoundationCommodityMarketPlanningQuote> quotes,
+            IEnumerable<FoundationPhysicalRoutingEdgeCost> freeFlowEdgeCosts,
+            IEnumerable<FoundationPhysicalEdgeCarryingScale> carryingScales,
+            int maxProducerPasses,
+            int maxBatchesPerDelivery,
+            int maxFeedbackIterations)
+    {
+        CheckSnapshot();
+        return FoundationPhysicalCoupledMultiPathMarketFeedback.Coordinate(
+            Snapshot.Workers, Incidence, demandPolicy, conversionPolicy,
+            quotes, freeFlowEdgeCosts, carryingScales,
+            maxProducerPasses, maxBatchesPerDelivery,
+            maxFeedbackIterations);
+    }
+
     public bool AllRequiredReady => _participants.All(_ready.Contains);
 
     public FoundationTacticalHumanAiTurnHost(
