@@ -12,13 +12,13 @@ Este gate acrescenta a primeira política **conjunta** opt-in para reexaminar ta
 
 A comparação compartilhada tem a mesma unidade inteira de 64 bits fracionários do benefício integrado de #397/#398:
 
-`J = sum_j [ 2 × quote_j × sqrt(demand_j × Q_j) ] - ( F_integrated_freight × 2^64 )`.
+`J_scaled = sum_j MarketBenefitScaled(quote_j,D_j,Q_j) − ( F_integrated_freight × 1_000_000 × 2^64 )`.
 
 A função `F_integrated_freight` do #396/#400 soma, para cada uma e apenas uma vez, a carga em cada aresta física comum, independentemente da direção, mercadoria ou civilização:
 
 `F = sum_e freeRate_e × [load_e + ceil(load_e^5 / reference_e^4)] + sum_{non-owner crossings} externalTariff_e × cargo_e`.
 
-`MarketBenefitScaled` usa `BigInteger` e raiz quadrada inteira de 64 bits fracionários. A função de frete também é inteira `BigInteger`. O termo físico é multiplicado por `2^64` apenas para comparação na mesma escala; nenhum benefício ou custo é convertido em receita monetária realizada ou carteira de comprador.
+`MarketBenefitScaled` usa `BigInteger` e raiz quadrada inteira de 64 bits fracionários. A função de frete também é inteira `BigInteger`. **Correção de unidade identificada pela CI:** `MarketBenefitScaled` inclui o fator inteiro `Micro = 1_000_000` herdado da comparação marginal, enquanto `IntegratedPhysicalCost` soma `cargoMicro × rateMicro`. Assim, o custo auditado deve ser multiplicado por **`1_000_000 × 2^64`**, não apenas `2^64`, para comparar ambos no mesmo domínio. Essa normalização é matemática, não um novo frete nem dinheiro liquidado. Um teste unitário independente protege a igualdade de escalas.
 
 Um movimento só é aceito se `J_new > J_previous`. Igualdade, perda ou empate são descartados na íntegra, mantendo todos os lotes, mercados e rotas do último plano aceito. Isso demonstra estrita monotonicidade **dos estados aceitos** e impede ciclos exatos de soluções aceitas. Não demonstra que não existam ótimos melhores fora do conjunto de propostas.
 
