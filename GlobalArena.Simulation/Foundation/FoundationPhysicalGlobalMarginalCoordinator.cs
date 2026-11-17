@@ -60,6 +60,34 @@ public sealed class FoundationPhysicalGlobalMarginalCoordinationPlan
 }
 
 /// <summary>
+/// An explicit, inspectable failure to certify the opted-in global-seller
+/// candidate policy within the declared full-pass budget. A partial
+/// allocation is deliberately NOT returned, audited as a settled trade,
+/// published to the last economic cycle or exposed to the Godot client.
+/// </summary>
+public sealed class FoundationPhysicalGlobalMarginalBudgetExceededException
+    : InvalidOperationException
+{
+    public int PassBudget { get; }
+    public IReadOnlyList<ulong> LastPassMovesMicro { get; }
+    public int RejectedNonImprovingProposals { get; }
+    public BigInteger AcceptedPotentialGainScaled { get; }
+
+    internal FoundationPhysicalGlobalMarginalBudgetExceededException(
+        int budget, ulong[] recentMoves, int rejected, BigInteger gain)
+        : base("The opted-in same-commodity seller policy did NOT stabilize " +
+            "within the explicit pass budget. Last pass movements (goods " +
+            "micro-units): " + string.Join(",", recentMoves) +
+            ". No economic settlement or candidate trade was published.")
+    {
+        PassBudget = budget;
+        LastPassMovesMicro = Array.AsReadOnly(recentMoves);
+        RejectedNonImprovingProposals = rejected;
+        AcceptedPotentialGainScaled = gain;
+    }
+}
+
+/// <summary>
 /// Cyclic coordinate rebalancing of ALL real productive lots against shared
 /// physical market deliveries. Each producer can revise a previous choice
 /// after other producers have delivered, using marginal P0*sqrt(D/Q) and its
@@ -285,10 +313,19 @@ public static class FoundationPhysicalGlobalMarginalCoordinator
             }
         }
         if (!fixedPoint)
+        {
+            if (acceptOnlyStrictIntegratedGain ||
+                preferIncumbentThresholdTies)
+                throw new FoundationPhysicalGlobalMarginalBudgetExceededException(
+                    maxPasses, movementByPass
+                        .Skip(Math.Max(0, movementByPass.Count - 12))
+                        .ToArray(), rejectedNonImproving,
+                    acceptedPotentialGain);
             throw new InvalidOperationException(
                 "The global marginal candidate planner has not reached a " +
                 "stable full-pass fixed point inside its explicit pass budget. " +
                 "Do not publish unstable candidate deliveries as a settled market.");
+        }
 
         var finalCandidates = new List<FoundationPhysicalCommodityDeliveryCandidate>();
         foreach (var source in sources)
