@@ -30,7 +30,7 @@ Isso produz um invariante forte: **cada resposta efetivamente aceita aumenta est
 
 `FoundationPhysicalGlobalMarginalCoordinationPlan` passa a expor `StrictIntegratedPotentialAcceptance`, `RejectedNonImprovingSellerProposals` e `AcceptedPotentialGainScaled`. A segunda opção também é propagada ao host, ao divisor multipath e ao coordenador de mercados/rotas. Ambas as opções são **false por padrão**, sem modificar resultados anteriores.
 
-O cenário original de uma mercadoria em 104 mercados continua obrigatório. **Só a CI poderá confirmar** se o novo mecanismo consegue estabilizá-lo no orçamento explícito de 256 passagens. O teste do potencial verifica que o benefício é crescente e possui ganho marginal decrescente.
+O cenário original de uma mercadoria em 104 mercados continua obrigatório. A CI de diagnóstico confirmou que **mesmo a incumbência somada à aceitação de ganho estrito NÃO estabilizou o caso em 256 passagens**. Isso não autoriza elevar indefinidamente o orçamento nem publicar uma solução provisória. O gate passa a exigir **falha fechada com diagnóstico de movimentos das últimas passagens** no cenário difícil, enquanto um cenário menor com dois vendedores do mesmo item valida o mecanismo de aceitação e conservação.
 
 ## Integração e observabilidade
 
@@ -42,11 +42,12 @@ O modo opt-in é aceito no host autoritativo interno e propagado pela API do div
 
 `FoundationPhysicalSameCommodityConvergenceTests` valida:
 - Reproduzir a falha fechada do modo histórico com `maxPasses=32` no cenário adversarial.
-- Testar o modo opt-in sob **orçamento explicitamente maior** (`maxPasses=256`), com exigência de estabilidade terminal real, oito lotes físicos, 104 mercados, rotas Goldberg reais, 100% das oito unidades produzidas conservadas e todas as cargas por aresta auditadas.
+- Testar o modo opt-in no mesmo cenário adversarial com `maxPasses=256`: **deve rejeitar sem divulgar candidato ou ciclo** e devolver diagnóstico estruturado das últimas 12 passagens, de propostas rejeitadas e do ganho integrado efetivamente aceito. O problema de convergência em escala continua explicitamente ABERTO.
+- Verificar um cenário MENOR com dois produtores do mesmo grão em tiles adjacentes e capacidade real de 100% da oferta, em que o modo de ganho estrito consegue uma passagem terminal estável.
 - Verificar que inversão de cotações não altera os resultados e não modifica snapshot/hash do host.
 - Verificar que orçamento de uma passagem não pode ser apresentado como estabilizado, mesmo com preferência por incumbência.
 
-**Ressalva científica:** preferência por incumbência em empate de valor marginal discretizado **não comprova** máximo global, nem elimina possíveis ciclos adversariais quando preços relativos deixam de estar empatados. Este gate deve ser considerado **bem-sucedido somente se a CI confirmar o cenário com a mesma mercadoria**; caso não estabilize, manter o resultado de falha e avaliar uma solução de fluxo convexo multi-produtor/global no gate seguinte. Registrar precisamente o número de passagens e os movimentos, sem inventar resultados.
+**Ressalva científica:** o caso de oito produtores e 104 mercados da mesma mercadoria continua SEM CONVERGÊNCIA CERTIFICADA após 256 passagens. Este gate mede, diagnostica e recusa o cenário difícil, e valida a política opcional apenas onde ela efetivamente estabiliza. **Não** declarar problema resolvido. O próximo gate deve investigar um solucionador de fluxo global com utilidade côncava e custo de transporte por produtor (ou uma abordagem equivalente com prova de viabilidade), e medir desempenho para milhares de produtores e mercados. A remuneração/fluxo real seguirá bloqueada até a liquidação efetiva.
 
 O PR não confirma preços monetários, cobrança efetiva de tarifas, impostos, tesouros, investimentos, journal econômico ou publicação de último ciclo. `GetLastClosedEconomicTradeView` permanece `NoClosedCycle`, sem overlay Godot. O benchmark com 104 mercados **não** prova escalabilidade para dezenas de milhares de produtores em rede densa.
 
