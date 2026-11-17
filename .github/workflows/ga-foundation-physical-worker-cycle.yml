@@ -24,6 +24,7 @@ on:
       - 'GlobalArena.Tests/FoundationPhysicalDeliveryAllocationAuditTests.cs'
       - 'GlobalArena.Tests/FoundationPhysicalTradeRouteCandidatePlannerTests.cs'
       - 'GlobalArena.Tests/FoundationPhysicalMarginalMarketDistributorTests.cs'
+      - 'GlobalArena.Tests/FoundationPhysicalGlobalMarginalCoordinatorTests.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationConcentratedWorkforceScenario.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationWorkforceActivityGroups.cs'
       - 'GlobalArena.Tests/StrategicPhysicalWorkerInspectorTests.cs'
@@ -96,6 +97,8 @@ jobs:
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalTradeRouteCandidatePlannerTests' --logger 'console;verbosity=normal'
       - name: Physical marginal sqrt demand multi-buyer water-filling and exact split conservation
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalMarginalMarketDistributorTests' --logger 'console;verbosity=normal'
+      - name: Coordinated physical marginal global producer rebalancing with exact conservation
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalGlobalMarginalCoordinatorTests' --logger 'console;verbosity=normal'
       - name: Concentrated capital workforce with 3 6 and 12 people per civ
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationConcentratedWorkforceTests' --logger 'console;verbosity=normal'
       - name: Real executable three-turn gameplay kernel preview
