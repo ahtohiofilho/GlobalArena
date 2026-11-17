@@ -288,10 +288,10 @@ public sealed class FoundationPhysicalGlobalConcaveFlowTests
             Assert.Equal(reference.SegmentationUnderstatementScaled,
                 optimized.SegmentationUnderstatementScaled);
             Assert.Equal(reference.MarketTotals.Select(m =>
-                    (m.Tile, m.Owner, m.Commodity, m.DemandMicro,
+                    (m.Tile, m.Buyer, m.Commodity, m.DemandMicro,
                         m.AllocatedGoodsMicro)),
                 optimized.MarketTotals.Select(m =>
-                    (m.Tile, m.Owner, m.Commodity, m.DemandMicro,
+                    (m.Tile, m.Buyer, m.Commodity, m.DemandMicro,
                         m.AllocatedGoodsMicro)));
             Assert.Equal(reference.Candidates.Select(d =>
                     (d.DeliveryOrdinal, d.Seller, d.SourceOccupation,
