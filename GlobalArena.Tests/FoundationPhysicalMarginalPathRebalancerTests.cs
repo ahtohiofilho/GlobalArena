@@ -391,11 +391,18 @@ public sealed class FoundationPhysicalMarginalPathRebalancerTests
         Assert.True(edges.Length > physicalCells);
         var sources = component.Take(sourceCount).ToArray();
         var buyers = component.Skip(physicalCells - buyerCount).ToArray();
+        // Isolate the NEW freight optimization from the unrelated global
+        // multi-producer price fixed-point stress: each real producing
+        // worker owns a distinct policy commodity, while ALL 104 physical
+        // locations demand ALL eight commodities. Their routes still
+        // compete for the same shared edge-cargo carrying scales.
+        var goods = Enumerable.Range(1, sourceCount).Select(i =>
+            new CommodityId(checked((uint)i))).ToArray();
         var workers = new List<PhysicalWorkerRuntimeRecord>();
         for (int i = 0; i < sourceCount; i++)
             workers.Add(new PhysicalWorkerRuntimeRecord(
                 new PhysicalWorkerId((ulong)(i + 1)),
-                Red, Coarse(map, sources[i]), One, 1_000_000UL,
+                Red, Coarse(map, sources[i]), goods[i], 1_000_000UL,
                 PhysicalWorkerActivity.Producing, 1_000_000U,
                 Tile(map, sources[i]), PhysicalWorkerOccupation.Agriculture));
         for (int i = 0; i < buyerCount; i++)
@@ -407,7 +414,7 @@ public sealed class FoundationPhysicalMarginalPathRebalancerTests
         var census = new PhysicalWorkerRuntimeState(workers,
             tacticalLocationsAuthoritative: true,
             occupationsAuthoritative: true);
-        var policy = Demand(One);
+        var policy = Demand(goods);
         var quote = FoundationPhysicalCommodityDemandProjector.Project(
             census, policy).DemandByCivilization.Select(line =>
             new FoundationCommodityMarketPlanningQuote(
@@ -422,10 +429,10 @@ public sealed class FoundationPhysicalMarginalPathRebalancerTests
 
         var timer = Stopwatch.StartNew();
         var seedPlan = FoundationPhysicalMultiPathFreightPlanner.Plan(
-            census, map, policy, Cargo(One), quote, roads, capacities,
-            maxProducerPasses: 32, maxBatchesPerDelivery: 2);
+            census, map, policy, Cargo(goods), quote, roads, capacities,
+            maxProducerPasses: 8, maxBatchesPerDelivery: 2);
         var final = FoundationPhysicalMarginalPathRebalancer.Rebalance(
-            census, map, policy, Cargo(One),
+            census, map, policy, Cargo(goods),
             seedPlan, roads, capacities,
             maxImprovementPasses: 24, maxFragmentsPerPart: 1);
         timer.Stop();
@@ -433,14 +440,18 @@ public sealed class FoundationPhysicalMarginalPathRebalancerTests
         _output.WriteLine(
             $"Connected marginal freight: fineCells={physicalCells}, " +
             $"roads={roads.Length}, workers={workers.Count}, " +
-            $"realMarkets={seedPlan.MarketAllocation.MarketTotals.Count}, " +
+            $"demandLines={seedPlan.MarketAllocation.MarketTotals.Count}, " +
+            $"physicalMarketTiles={seedPlan.MarketAllocation.MarketTotals.Select(x => x.Tile).Distinct().Count()}, " +
             $"producerLots={seedPlan.MarketAllocation.ProductiveLotCount}, " +
             $"fragments={final.PhysicalFragments}, moves={final.ReassignedFragments}, " +
             $"passes={final.ImprovementPasses}, elapsedMs={timer.ElapsedMilliseconds}");
         Assert.Equal(sourceCount,
             final.Freight.MarketAllocation.ProductiveLotCount);
-        Assert.Equal(sourceCount + buyerCount,
+        Assert.Equal((sourceCount + buyerCount) * sourceCount,
             final.Freight.MarketAllocation.MarketTotals.Count);
+        Assert.Equal(sourceCount + buyerCount,
+            final.Freight.MarketAllocation.MarketTotals
+                .Select(x => x.Tile).Distinct().Count());
         Assert.True(final.StableUnderFullMarginalPass);
         Assert.True(final.FinalIntegratedCost <=
             final.InitialIntegratedCost);
