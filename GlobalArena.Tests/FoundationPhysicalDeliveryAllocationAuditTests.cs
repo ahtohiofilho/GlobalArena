@@ -133,9 +133,10 @@ public sealed class FoundationPhysicalDeliveryAllocationAuditTests
         var local = AllLocal(host.GetCommodityMarketInputs(policy));
         var first = local[0];
         Assert.Equal(Red, first.Seller);
-        var buyerTile = Assert.Single(host.GetCommodityMarketInputs(policy)
-            .DemandByCivilization.Where(line =>
-                line.Owner == Blue && line.Commodity == first.Commodity)).Tile;
+        var buyerTile = Assert.Single(
+            host.GetCommodityMarketInputs(policy).DemandByCivilization,
+            line => line.Owner == Blue &&
+                line.Commodity == first.Commodity).Tile;
         var path = ShortestPath(
             host.Incidence, first.SourceTile, buyerTile);
         Assert.True(path.Length > 1);
