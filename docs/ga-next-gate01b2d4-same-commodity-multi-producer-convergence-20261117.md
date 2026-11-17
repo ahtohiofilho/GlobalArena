@@ -18,6 +18,20 @@ A intervenção acontece em `FoundationPhysicalMarginalMarketDistributor.Distrib
 
 A capacidade restante de cada mercado/limiar é recalculada **após** reservar incumbentes, evitando contar a mesma capacidade duas vezes. Cada produtor conserva sua produção integral, sem demanda inventada, sem limite de compras, sem produzir saldo financeiro.
 
+## Complemento: aceitar somente ganhos integrados estritos
+
+A primeira rodada de CI confirmou que **preservar parcelas empatadas isoladamente ainda não alcançou estabilidade em 256 passagens** no cenário de oito produtores. Em vez de aceitar uma falsa convergência ou aumentar ilimitadamente o orçamento, este PR oferece uma **segunda opção independente**: `acceptOnlyStrictIntegratedGain: true`.
+
+A função de preço marginal escolhida para os candidatos é `P0 × sqrt(D/Q)`. Uma função de benefício cuja derivada é essa taxa é `U(Q) = 2 × P0 × sqrt(D×Q)`. A cada proposta de redistribuição integral de UM vendedor, o núcleo compara a **variação total** dos benefícios integrados de todos os mercados afetados menos o frete físico e tarifa por unidade logística. Apenas propostas com **ganho estritamente positivo** são aceitas. Um movimento de ganho zero ou negativo é rejeitado por inteiro; o total de mercadoria física e a situação dos demais produtores permanecem intactos.
+
+A comparação usa apenas aritmética inteira `BigInteger` com uma implementação de raiz quadrada inteira por Newton e **64 bits binários fracionários** na comparação. Não utiliza `double`, `float` ou limiar epsilon configurável. O benefício é um **potencial determinístico para ordenar decisões de planejamento**, não dinheiro recebido. A taxa de preço, a demanda por trabalhador, o custo de frete e a política tarifária continuam explicitamente fornecidos.
+
+Isso produz um invariante forte: **cada resposta efetivamente aceita aumenta estritamente o potencial do conjunto dos mercados** sob o preço e frete do planejamento. O gate encerra apenas após uma passagem completa em que nenhuma proposta tem ganho estrito a ser aceito. **Não é a mesma certificação** que encontrar um ponto fixo bruto do water-filling: propostas idempotentes ou sem ganho continuam sendo calculadas, mas são descartadas, e o resultado é um **ponto estável da política de aceitação monotônica**, não ótimo global nem equilíbrio simultâneo comprovado.
+
+`FoundationPhysicalGlobalMarginalCoordinationPlan` passa a expor `StrictIntegratedPotentialAcceptance`, `RejectedNonImprovingSellerProposals` e `AcceptedPotentialGainScaled`. A segunda opção também é propagada ao host, ao divisor multipath e ao coordenador de mercados/rotas. Ambas as opções são **false por padrão**, sem modificar resultados anteriores.
+
+O cenário original de uma mercadoria em 104 mercados continua obrigatório. **Só a CI poderá confirmar** se o novo mecanismo consegue estabilizá-lo no orçamento explícito de 256 passagens. O teste do potencial verifica que o benefício é crescente e possui ganho marginal decrescente.
+
 ## Integração e observabilidade
 
 `FoundationPhysicalGlobalMarginalCoordinationPlan` expõe `PreferIncumbentThresholdTies` e `MovedGoodsByPass` (movimento da produção física já alocada, em micro-unidades por passagem, incluindo 0 na passagem terminal). O retorno só existe **após uma passagem completa com zero movimento**; orçamento insuficiente ainda falha fechado, não é tratado como ciclo comercial liquidado.
