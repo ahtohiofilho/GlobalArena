@@ -213,7 +213,17 @@ public sealed class FoundationPhysicalSameCommodityConvergenceTests
             maxPasses: 8, preferIncumbentThresholdTies: true);
         Assert.False(original.PreferIncumbentThresholdTies);
         Assert.True(first.PreferIncumbentThresholdTies);
-        Assert.Equal(first.Candidates.ToArray(), second.Candidates.ToArray());
+        Assert.Equal(
+            first.Candidates.Select(x => (
+                x.DeliveryOrdinal, x.Seller, x.Buyer, x.Commodity,
+                x.GoodsMicro, x.SourceTile, x.BuyerTile,
+                Route: string.Join(",", x.RouteTiles.Select(tile =>
+                    tile.FineStrategicCellId.Value)))),
+            second.Candidates.Select(x => (
+                x.DeliveryOrdinal, x.Seller, x.Buyer, x.Commodity,
+                x.GoodsMicro, x.SourceTile, x.BuyerTile,
+                Route: string.Join(",", x.RouteTiles.Select(tile =>
+                    tile.FineStrategicCellId.Value)))));
         Assert.Equal(first.MovedGoodsByPass.ToArray(),
             second.MovedGoodsByPass.ToArray());
         Assert.Equal(11_000_000UL,
