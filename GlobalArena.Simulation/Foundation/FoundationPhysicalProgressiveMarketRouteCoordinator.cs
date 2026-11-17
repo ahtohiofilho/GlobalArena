@@ -47,6 +47,12 @@ public sealed class FoundationPhysicalProgressiveMarketRouteState
     public int AcceptedMarketProposals { get; }
     public int AcceptedRouteProposals { get; }
     public int RejectedProposals { get; }
+    /// <summary>
+    /// Number of market proposals whose exactly identical, already audited
+    /// physical candidate made a second deterministic reroute unnecessary.
+    /// Diagnostic only: these proposals still count as rejected.
+    /// </summary>
+    public int IdenticalMarketRouteElisions { get; }
     public int CompletedPasses { get; }
     public int NextProposalIndex { get; }
     public bool ImprovedInCurrentPass { get; }
@@ -70,7 +76,8 @@ public sealed class FoundationPhysicalProgressiveMarketRouteState
         bool improvedInPass, bool stable,
         BigInteger[] acceptedHistory,
         FoundationPhysicalProgressiveSeedKind seedKind =
-            FoundationPhysicalProgressiveSeedKind.FullGlobalSolve)
+            FoundationPhysicalProgressiveSeedKind.FullGlobalSolve,
+        int identicalMarketRouteElisions = 0)
     {
         SeedKind = seedKind;
         Census = census;
@@ -91,6 +98,7 @@ public sealed class FoundationPhysicalProgressiveMarketRouteState
         AcceptedMarketProposals = acceptedMarkets;
         AcceptedRouteProposals = acceptedRoutes;
         RejectedProposals = rejected;
+        IdenticalMarketRouteElisions = identicalMarketRouteElisions;
         CompletedPasses = completedPasses;
         NextProposalIndex = nextProposalIndex;
         ImprovedInCurrentPass = improvedInPass;
@@ -118,6 +126,46 @@ public sealed class FoundationPhysicalProgressiveMarketRouteState
 /// </summary>
 public static class FoundationPhysicalProgressiveMarketRouteCoordinator
 {
+    /// <summary>
+    /// Strong identity proof for the whole fixed-routing input, including
+    /// original one-path routes (used by the fallback baseline), not just
+    /// final buyer totals. This is deliberately conservative. Comparing
+    /// only buyer totals would be unsound because alternate source routes
+    /// can change both the baseline objective and the chosen fallback.
+    /// </summary>
+    internal static bool IsSameRoutedMarketInput(
+        FoundationPhysicalGlobalConcaveFlowPlan proposed,
+        FoundationPhysicalGlobalConcaveFlowPlan prior)
+    {
+        if (proposed.Candidates.Count != prior.Candidates.Count ||
+            proposed.MarketTotals.Count != prior.MarketTotals.Count ||
+            proposed.ProductiveLotCount != prior.ProductiveLotCount ||
+            proposed.RealMarketCount != prior.RealMarketCount ||
+            !proposed.MarketTotals.SequenceEqual(prior.MarketTotals) ||
+            proposed.AllocationAudit.TotalAvailableGoodsMicro !=
+                prior.AllocationAudit.TotalAvailableGoodsMicro ||
+            proposed.AllocationAudit.TotalAllocatedGoodsMicro !=
+                prior.AllocationAudit.TotalAllocatedGoodsMicro)
+            return false;
+
+        for (int i = 0; i < proposed.Candidates.Count; i++)
+        {
+            var a = proposed.Candidates[i];
+            var b = prior.Candidates[i];
+            if (a.DeliveryOrdinal != b.DeliveryOrdinal ||
+                a.Seller != b.Seller ||
+                a.SourceOccupation != b.SourceOccupation ||
+                a.SourceTile != b.SourceTile ||
+                a.Buyer != b.Buyer ||
+                a.BuyerTile != b.BuyerTile ||
+                a.Commodity != b.Commodity ||
+                a.GoodsMicro != b.GoodsMicro ||
+                !a.RouteTiles.SequenceEqual(b.RouteTiles))
+                return false;
+        }
+        return true;
+    }
+
     public static FoundationPhysicalProgressiveMarketRouteState BeginOrResume(
         PhysicalWorkerRuntimeState census,
         PhysicalTacticalIncidenceMap incidence,
@@ -296,7 +344,18 @@ public static class FoundationPhysicalProgressiveMarketRouteCoordinator
         FoundationPhysicalProgressiveMarketRouteState state,
         int maxProposalEvaluations) =>
         AdvanceCore(state, maxProposalEvaluations,
-            elideIdenticalFixedMarketRouting: true);
+            elideIdenticalFixedMarketRouting: true,
+            elideIdenticalGlobalMarketRerouting: true);
+
+    // Gate 01B.2D-17 oracle: still performs the original global proposal
+    // rerouting, while retaining the Gate 16 route-only optimization.
+    internal static FoundationPhysicalProgressiveMarketRouteState
+        AdvanceWithOriginalMarketRoutingForTests(
+            FoundationPhysicalProgressiveMarketRouteState state,
+            int maxProposalEvaluations) =>
+        AdvanceCore(state, maxProposalEvaluations,
+            elideIdenticalFixedMarketRouting: true,
+            elideIdenticalGlobalMarketRerouting: false);
 
     /// <summary>
     /// A/B oracle for tests only. Executes the original physical route
@@ -307,12 +366,14 @@ public static class FoundationPhysicalProgressiveMarketRouteCoordinator
             FoundationPhysicalProgressiveMarketRouteState state,
             int maxProposalEvaluations) =>
         AdvanceCore(state, maxProposalEvaluations,
-            elideIdenticalFixedMarketRouting: false);
+            elideIdenticalFixedMarketRouting: false,
+            elideIdenticalGlobalMarketRerouting: false);
 
     private static FoundationPhysicalProgressiveMarketRouteState AdvanceCore(
         FoundationPhysicalProgressiveMarketRouteState state,
         int maxProposalEvaluations,
-        bool elideIdenticalFixedMarketRouting)
+        bool elideIdenticalFixedMarketRouting,
+        bool elideIdenticalGlobalMarketRerouting)
     {
         ArgumentNullException.ThrowIfNull(state);
         if (maxProposalEvaluations < 1)
@@ -327,6 +388,7 @@ public static class FoundationPhysicalProgressiveMarketRouteCoordinator
         int acceptedMarket = state.AcceptedMarketProposals;
         int acceptedRoutes = state.AcceptedRouteProposals;
         int rejected = state.RejectedProposals;
+        int matchingMarkets = state.IdenticalMarketRouteElisions;
         int completePasses = state.CompletedPasses;
         int nextBlock = state.NextProposalIndex;
         bool improved = state.ImprovedInCurrentPass;
@@ -358,12 +420,28 @@ public static class FoundationPhysicalProgressiveMarketRouteCoordinator
                         state.DemandPolicy, state.ConversionPolicy,
                         state.FrozenQuotes, congestedRoads,
                         state.SegmentsPerMarket, state.MaxAugmentations);
-                proposed = FoundationPhysicalGlobalConcaveMultiPathPlanner
-                    .RouteFixedMarket(state.Census, state.Incidence,
-                        state.DemandPolicy, state.ConversionPolicy,
-                        global, state.FrozenRoads, state.FrozenScales,
-                        state.MaxRouteBatchesPerParent,
-                        state.MaxTotalRouteBatches);
+                // RouteFixedMarket is a deterministic function of the
+                // ordered candidate deliveries (including baseline paths),
+                // real market totals and the frozen physical environment.
+                // The incumbent has already passed that exact calculation
+                // and independent audit. Only identical input can reuse it.
+                if (elideIdenticalGlobalMarketRerouting &&
+                    IsSameRoutedMarketInput(
+                        global, incumbent.MarketAllocation))
+                {
+                    proposed = incumbent;
+                    reusedAuditedFixedRoute = true;
+                    matchingMarkets = checked(matchingMarkets + 1);
+                }
+                else
+                {
+                    proposed = FoundationPhysicalGlobalConcaveMultiPathPlanner
+                        .RouteFixedMarket(state.Census, state.Incidence,
+                            state.DemandPolicy, state.ConversionPolicy,
+                            global, state.FrozenRoads, state.FrozenScales,
+                            state.MaxRouteBatchesPerParent,
+                            state.MaxTotalRouteBatches);
+                }
             }
             else if (nextBlock == 1)
             {
@@ -451,6 +529,6 @@ public static class FoundationPhysicalProgressiveMarketRouteCoordinator
             state.MaxTotalRouteBatches, state.MinimumAcceptedGainScaled,
             incumbent, score, attempts, acceptedMarket, acceptedRoutes,
             rejected, completePasses, nextBlock, improved, stable,
-            history.ToArray(), state.SeedKind);
+            history.ToArray(), state.SeedKind, matchingMarkets);
     }
 }
