@@ -225,8 +225,8 @@ internal sealed class FoundationGodotWorkspaceSmoke
                 "Operations dock has no full-height scroll, bottom order feedback or pinned E.");
             Must(bodyScroll!.IsAncestorOf(roster!) &&
                  bodyScroll.IsAncestorOf(feedback!) &&
-                 body.GetParent() == bodyScroll &&
-                 roster.GetParent() == body,
+                 body!.GetParent() == bodyScroll &&
+                 roster!.GetParent() == body,
                 "Roster, tile details and orders must share the same outer scrolling body.");
             Must(bodyScroll.Size.Y > 110f &&
                  bodyScroll.GetGlobalRect().End.Y <=
