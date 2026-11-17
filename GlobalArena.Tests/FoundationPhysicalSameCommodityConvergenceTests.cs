@@ -143,7 +143,8 @@ public sealed class FoundationPhysicalSameCommodityConvergenceTests
         var plan = FoundationPhysicalGlobalMarginalCoordinator.Coordinate(
             stress.Workers, stress.Host.Incidence, Demand(), Cargo(),
             stress.Quotes, stress.Roads, maxPasses: 256,
-            preferIncumbentThresholdTies: true);
+            preferIncumbentThresholdTies: true,
+            acceptOnlyStrictIntegratedGain: true);
         timer.Stop();
 
         _output.WriteLine(
@@ -151,9 +152,13 @@ public sealed class FoundationPhysicalSameCommodityConvergenceTests
             $"realBuyerMarkets={plan.MarketTotals.Count}, " +
             $"physicalRoads={stress.Roads.Length}, " +
             $"passes={plan.Passes}, movedGoodsMicro={plan.TotalReallocatedGoodsMicro}, " +
+            $"rejectedNonImproving={plan.RejectedNonImprovingSellerProposals}, " +
+            $"acceptedPotential={plan.AcceptedPotentialGainScaled}, " +
             $"milliseconds={timer.ElapsedMilliseconds}");
         Assert.True(plan.StableUnderOneFullCanonicalPass);
         Assert.True(plan.PreferIncumbentThresholdTies);
+        Assert.True(plan.StrictIntegratedPotentialAcceptance);
+        Assert.True(plan.AcceptedPotentialGainScaled >= 0);
         Assert.Equal(8, plan.ProductiveLotCount);
         Assert.Equal(104, plan.MarketTotals.Count);
         Assert.InRange(plan.Passes, 1, 256);
@@ -206,13 +211,16 @@ public sealed class FoundationPhysicalSameCommodityConvergenceTests
         var first = host.CoordinateGlobalMarginalMarketCandidates(
             policy, cargo, quote,
             Array.Empty<FoundationPhysicalRoutingEdgeCost>(),
-            maxPasses: 8, preferIncumbentThresholdTies: true);
+            maxPasses: 8, preferIncumbentThresholdTies: true,
+            acceptOnlyStrictIntegratedGain: true);
         var second = host.CoordinateGlobalMarginalMarketCandidates(
             policy, cargo, quote.Reverse(),
             Array.Empty<FoundationPhysicalRoutingEdgeCost>(),
-            maxPasses: 8, preferIncumbentThresholdTies: true);
+            maxPasses: 8, preferIncumbentThresholdTies: true,
+            acceptOnlyStrictIntegratedGain: true);
         Assert.False(original.PreferIncumbentThresholdTies);
         Assert.True(first.PreferIncumbentThresholdTies);
+        Assert.True(first.StrictIntegratedPotentialAcceptance);
         Assert.Equal(
             first.Candidates.Select(x => (
                 x.DeliveryOrdinal, x.Seller, x.Buyer, x.Commodity,
@@ -240,6 +248,7 @@ public sealed class FoundationPhysicalSameCommodityConvergenceTests
             FoundationPhysicalGlobalMarginalCoordinator.Coordinate(
                 stress.Workers, stress.Host.Incidence, Demand(), Cargo(),
                 stress.Quotes, stress.Roads, maxPasses: 1,
-                preferIncumbentThresholdTies: true));
+                preferIncumbentThresholdTies: true,
+                acceptOnlyStrictIntegratedGain: true));
     }
 }
