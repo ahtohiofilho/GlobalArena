@@ -261,13 +261,19 @@ internal sealed class FoundationGodotWorkspaceSmoke
             var nativeWindow = _main.GetWindow();
             var originalWindowSize = nativeWindow.Size;
             var originalWindowMode = nativeWindow.Mode;
-            var compactHeight = Math.Min(originalWindowSize.Y - 80, 560);
-            Must(compactHeight >= 480,
-                "Workspace smoke requires a viewport at least 560px tall.");
+            var originalRootHeight = _main.Size.Y;
+            // Headless display servers can expose a different native window
+            // size from the Godot logical viewport (content scale). Always
+            // shrink the available native height, without assuming 720 px.
+            var compactHeight = Math.Min(Math.Max(originalWindowSize.Y - 80, 400), 560);
+            Must(compactHeight < originalWindowSize.Y,
+                "Workspace smoke needs a smaller native window size.");
+            GD.Print($"GA_NEXT_DOCK_RESIZE_PRE native={originalWindowSize} " +
+                $"logical_height={originalRootHeight:F0} target_native_height={compactHeight}");
             nativeWindow.Mode = Window.ModeEnum.Windowed;
             nativeWindow.Size = new Vector2I(originalWindowSize.X, compactHeight);
             for (int frame = 0; frame < 6; frame++) await WaitFrame();
-            Must(_main.Size.Y <= compactHeight + 2f &&
+            Must(_main.Size.Y < originalRootHeight - 20f &&
                  operations.Visible && bodyScroll.Size.Y > 100f &&
                  operations.GetGlobalRect().End.Y <=
                     _main.GetGlobalRect().End.Y + 2f &&
