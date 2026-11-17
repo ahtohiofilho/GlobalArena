@@ -258,6 +258,16 @@ internal sealed class FoundationGodotWorkspaceSmoke
 
             // Also test a real smaller native viewport, not only scrolling a
             // large, fixed-size dock in the default screenshot.
+            if (DisplayServer.GetName() == "headless")
+            {
+                // Headless Godot has no native window-manager resize contract.
+                // Its bounded-scroll check above still runs; the actual
+                // compact-window gate runs with a real Xvfb display below.
+                GD.Print("GA_NEXT_OPERATIONS_DOCK_COMPACT_SKIP_HEADLESS " +
+                    "reason=native_window_unavailable full_scroll_tested=true");
+            }
+            else
+            {
             var nativeWindow = _main.GetWindow();
             var originalWindowSize = nativeWindow.Size;
             var originalWindowMode = nativeWindow.Mode;
@@ -295,6 +305,7 @@ internal sealed class FoundationGodotWorkspaceSmoke
             nativeWindow.Size = originalWindowSize;
             nativeWindow.Mode = originalWindowMode;
             for (int frame = 0; frame < 6; frame++) await WaitFrame();
+            }
             bodyScroll.ScrollVertical = 0;
             await WaitFrame();
             await Press(Key.M);
