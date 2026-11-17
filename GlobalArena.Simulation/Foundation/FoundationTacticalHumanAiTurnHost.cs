@@ -234,6 +234,28 @@ public sealed class FoundationTacticalHumanAiTurnHost
             quotes, edgeCosts, maxPasses);
     }
 
+    /// <summary>
+    /// INTERNAL CANDIDATE ONLY: reprice physical freight from the actual
+    /// aggregate cargo of repeated, fully audited candidate allocations.
+    /// Neither worker turns nor economic/financial cycles are committed.
+    /// </summary>
+    internal FoundationPhysicalEndogenousCongestionPlan
+        CoordinateCongestedMarketCandidates(
+            FoundationActivityCommodityDemandPolicy demandPolicy,
+            FoundationCommodityCargoConversionPolicy conversionPolicy,
+            IEnumerable<FoundationCommodityMarketPlanningQuote> quotes,
+            IEnumerable<FoundationPhysicalRoutingEdgeCost> freeFlowEdgeCosts,
+            IEnumerable<FoundationPhysicalEdgeCarryingScale> carryingScales,
+            int maxProducerPasses,
+            int maxCongestionIterations)
+    {
+        CheckSnapshot();
+        return FoundationPhysicalEndogenousCongestionFeedback.Coordinate(
+            Snapshot.Workers, Incidence, demandPolicy, conversionPolicy,
+            quotes, freeFlowEdgeCosts, carryingScales,
+            maxProducerPasses, maxCongestionIterations);
+    }
+
     public bool AllRequiredReady => _participants.All(_ready.Contains);
 
     public FoundationTacticalHumanAiTurnHost(
