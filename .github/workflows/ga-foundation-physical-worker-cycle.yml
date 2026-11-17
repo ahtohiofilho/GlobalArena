@@ -21,6 +21,7 @@ on:
       - 'GlobalArena.Tests/FoundationPhysicalCommodityDemandTests.cs'
       - 'GlobalArena.Tests/FoundationPhysicalTradeEdgeLoadAuditTests.cs'
       - 'GlobalArena.Tests/FoundationLastClosedEconomicTradePublicationTests.cs'
+      - 'GlobalArena.Tests/FoundationPhysicalDeliveryAllocationAuditTests.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationConcentratedWorkforceScenario.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationWorkforceActivityGroups.cs'
       - 'GlobalArena.Tests/StrategicPhysicalWorkerInspectorTests.cs'
@@ -87,6 +88,8 @@ jobs:
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalTradeEdgeLoadAuditTests' --logger 'console;verbosity=normal'
       - name: Closed economic trade read boundary — no phantom cycles and per-civ privacy
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationLastClosedEconomicTradePublicationTests' --logger 'console;verbosity=normal'
+      - name: Real v11 producer-to-buyer physical delivery reconciliation with exact freight conversion
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalDeliveryAllocationAuditTests' --logger 'console;verbosity=normal'
       - name: Concentrated capital workforce with 3 6 and 12 people per civ
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationConcentratedWorkforceTests' --logger 'console;verbosity=normal'
       - name: Real executable three-turn gameplay kernel preview
