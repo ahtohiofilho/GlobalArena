@@ -125,17 +125,17 @@ jobs:
           grep -q 'GA_NEXT_WORKFORCE_AGGREGATION_HOVER_PASS' "$RUNNER_TEMP/ga-godot/concentrated-workforce.log"
           grep -q 'GA_NEXT_CONCENTRATED_WORKFORCE_COMMIT_PASS' "$RUNNER_TEMP/ga-godot/concentrated-workforce.log"
           if grep -E 'GA_NEXT_CONCENTRATED_WORKFORCE_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/concentrated-workforce.log"; then exit 1; fi
-      - name: Experiment — actual Godot inhabited tile → occupation → individual E2E headless
+      - name: Regression — click-only inhabited tile → role → worker; mouse motion does nothing
         shell: bash
         run: |
           set -euo pipefail
           GA_FOUNDATION_GODOT_SMOKE=0 GA_NEXT_WORKSPACE_SMOKE=0 \
-            GA_NEXT_TILE_HOVER_HYPOTHESIS_SMOKE=1 \
+            GA_NEXT_TILE_CLICK_MENU_SMOKE=1 \
             timeout 120s "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --quit-after 900 \
-            2>&1 | tee "$RUNNER_TEMP/ga-godot/tile-hover-hypothesis.log"
-          grep -q 'GA_NEXT_TILE_HOVER_HYPOTHESIS_E2E_PASS' "$RUNNER_TEMP/ga-godot/tile-hover-hypothesis.log"
-          grep -q 'GA_NEXT_TILE_HOVER_HIERARCHY_INPUT_PASS' "$RUNNER_TEMP/ga-godot/tile-hover-hypothesis.log"
-          if grep -E 'GA_NEXT_TILE_HOVER_HYPOTHESIS_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/tile-hover-hypothesis.log"; then exit 1; fi
+            2>&1 | tee "$RUNNER_TEMP/ga-godot/tile-click-menu.log"
+          grep -q 'GA_NEXT_TILE_CLICK_HYPOTHESIS_E2E_PASS' "$RUNNER_TEMP/ga-godot/tile-click-menu.log"
+          grep -q 'GA_NEXT_TILE_CLICK_HIERARCHY_INPUT_PASS' "$RUNNER_TEMP/ga-godot/tile-click-menu.log"
+          if grep -E 'GA_NEXT_TILE_CLICK_HYPOTHESIS_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/tile-click-menu.log"; then exit 1; fi
       - name: Install virtual display and software OpenGL for a real rendered frame
         run: |
           sudo apt-get update -qq
@@ -243,23 +243,23 @@ jobs:
             grep -q "GA_NEXT_CONCENTRATED_FRAME_PASS stage=$stage" "$RUNNER_TEMP/ga-godot/concentrated-workforce-graphical.log"
             test -s "$GA_NEXT_CONCENTRATED_SCREENSHOT_DIR/$stage.png"
           done
-      - name: Experiment — screenshot real three-activity hierarchical hover under oblique camera
+      - name: Regression — screenshot real persistent click-only activity menu
         shell: bash
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
           GA_FOUNDATION_GODOT_SMOKE: '0'
           GA_NEXT_WORKSPACE_SMOKE: '0'
-          GA_NEXT_TILE_HOVER_HYPOTHESIS_SMOKE: '1'
-          GA_NEXT_TILE_HOVER_SCREENSHOT_DIR: ${{ runner.temp }}/ga-godot/tile-hover-hypothesis
+          GA_NEXT_TILE_CLICK_MENU_SMOKE: '1'
+          GA_NEXT_TILE_CLICK_SCREENSHOT_DIR: ${{ runner.temp }}/ga-godot/tile-click-menu
         run: |
           set -euo pipefail
           xvfb-run -a -s "-screen 0 1600x1000x24" \
             timeout 120s "$GODOT_BIN" --path tools/GlobalArena.Godot --quit-after 900 \
-            2>&1 | tee "$RUNNER_TEMP/ga-godot/tile-hover-hypothesis-graphical.log"
-          grep -q 'GA_NEXT_TILE_HOVER_HYPOTHESIS_E2E_PASS' "$RUNNER_TEMP/ga-godot/tile-hover-hypothesis-graphical.log"
+            2>&1 | tee "$RUNNER_TEMP/ga-godot/tile-click-menu-graphical.log"
+          grep -q 'GA_NEXT_TILE_CLICK_HYPOTHESIS_E2E_PASS' "$RUNNER_TEMP/ga-godot/tile-click-menu-graphical.log"
           for stage in 01_tile_three_roles 02_agriculture_individuals 03_individual_selected 04_after_reallocation; do
-            grep -q "GA_NEXT_TILE_HOVER_FRAME_PASS stage=$stage" "$RUNNER_TEMP/ga-godot/tile-hover-hypothesis-graphical.log"
-            test -s "$GA_NEXT_TILE_HOVER_SCREENSHOT_DIR/$stage.png"
+            grep -q "GA_NEXT_TILE_CLICK_FRAME_PASS stage=$stage" "$RUNNER_TEMP/ga-godot/tile-click-menu-graphical.log"
+            test -s "$GA_NEXT_TILE_CLICK_SCREENSHOT_DIR/$stage.png"
           done
       - name: Keep actual runtime evidence
         if: always()
@@ -280,9 +280,9 @@ jobs:
             ${{ runner.temp }}/ga-godot/concentrated-workforce.log
             ${{ runner.temp }}/ga-godot/concentrated-workforce-graphical.log
             ${{ runner.temp }}/ga-godot/concentrated-workforce/*.png
-            ${{ runner.temp }}/ga-godot/tile-hover-hypothesis.log
-            ${{ runner.temp }}/ga-godot/tile-hover-hypothesis-graphical.log
-            ${{ runner.temp }}/ga-godot/tile-hover-hypothesis/*.png
+            ${{ runner.temp }}/ga-godot/tile-click-menu.log
+            ${{ runner.temp }}/ga-godot/tile-click-menu-graphical.log
+            ${{ runner.temp }}/ga-godot/tile-click-menu/*.png
             ${{ runner.temp }}/ga-godot/graphical-smoke.log
             ${{ runner.temp }}/ga-godot/workspace-graphical.log
             ${{ runner.temp }}/ga-godot/workspace/*.png

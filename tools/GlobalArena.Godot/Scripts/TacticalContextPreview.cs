@@ -1056,11 +1056,17 @@ public partial class TacticalContextPreview : SubViewportContainer
             // The dedicated badge hit-test can select the second/third
             // individual on this same tile AFTER the tile-level callback.
             PickWorkerBadge(item.Id, point);
+            // A deliberate click (not mouse movement) opens the persistent
+            // inhabited-tile menu. Empty tiles close it and still remain
+            // available as ordinary fine movement destinations.
+            if (_tileClickHypothesis)
+                OpenTileClickMenu(item.Id, localPoint);
             GD.Print($"GA_TACTICAL_LOCAL_PICK fine_cell={item.Id} parameters=G(18,0) degree={item.Degree} ring={item.Ring} strategic_incidence={string.Join("-", item.Owners)} highlight=true");
             return;
         }
         SelectPhysicalTile(null);
         HoverWorkerBadge(null);
+        if (_tileClickHypothesis) HideTileClickMenu();
         _selection.Text = "No physical tile under cursor";
     }
 
@@ -1127,9 +1133,9 @@ public partial class TacticalContextPreview : SubViewportContainer
         }
         if (@event is InputEventMouseMotion hoverMotion && !_pressed)
         {
-            if (_tileHoverHypothesis)
-                HandleTileHoverMotion(hoverMotion.Position);
-            else
+            // Click-only prototype: no tooltip/menus or role expansion by
+            // hovering, even above an existing coplanar worker marker.
+            if (!_tileClickHypothesis)
                 HoverWorkerBadge(hoverMotion.Position);
             return;
         }
