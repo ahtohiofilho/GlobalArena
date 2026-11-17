@@ -38,13 +38,16 @@ Orçamentos de segmentos, aumentos de fluxo **por passagem** e iterações de fe
 
 ## Critérios de validação
 
-- **Stress completo** com os mesmos oito produtores, 104 mercados e 112 tiles: conservar a produção e verificar cada taxa contra a função de congestionamento e sua carga auditada; exigir pelo menos duas passagens quando a rede recebeu frete.
+- **Stress adversarial completo** com oito produtores, 104 mercados e 112 tiles: comprovar **oscilação real de vetores de taxas físicas** no operador de uma única rota por entrega. O cenário é registrado como **falha fechada**, sem relatório de equilíbrio falso, não como sucesso de convergência.
+- **Corredor conectado reduzido**, com produtor, comprador remoto, duas linhas reais de demanda e uma aresta: exige duas passagens completas e confirma conservação física, frete auditado e igualdade exata entre taxa usada e taxa calculada.
 - **Teste de orçamento de uma passagem** no mesmo stress: recusa explícita de possível solução provisória; `NoClosedCycle` e `StateHash` intocados.
 - **Política de capacidade incompleta**: rejeição antes da primeira resolução.
 - **Três resoluções de segmentação**: quantificar custos/erro observado sem enunciar prova de ótimo contínuo.
 - **CI** C# Windows/Ubuntu, Godot Mono, StateHash, kernel e benchmark de frete histórico; aprovação formal só com provas verificadas.
 
 ## Restrições e próximos riscos
+
+**Resultado adversarial observado na primeira CI:** a mesma rede compartilhada de oito produtores e 104 mercados oscilou entre vetores de taxas ao integrar custos quarticos, embora o solucionador global funcione com taxas fixas. Este resultado confirma a necessidade de um gate posterior com repartição de rotas, movimentação estritamente vantajosa e/ou outro método verificável. NÃO declarar convergência global acoplada neste cenário. O teste foi alterado para exigir a falha segura, enquanto o corredor reduzido exige um ponto fixo positivo.
 
 **Não há novo solucionador multipath neste gate**: o caminho por entrega ainda é a rota física mais barata para o vendedor dadas as taxas atuais. O equilíbrio encontrado (se houver) é apenas ponto fixo desse operador: **não é** ótimo global das rotas com congestionamento, nem Wardrop, nem ótimo da utilidade contínua. O congestionamento quartico é realimentado entre soluções globais; pode produzir ciclos, que devem ser rejeitados, não mascarados.
 
