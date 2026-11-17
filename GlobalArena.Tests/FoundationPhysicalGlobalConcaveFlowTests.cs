@@ -328,6 +328,45 @@ public sealed class FoundationPhysicalGlobalConcaveFlowTests
     }
 
     [Fact]
+    public void ReusedResidualQueueMatchesReferenceOnConstrainedSellerReassignment()
+    {
+        var buyers = new[]
+        {
+            new FoundationPhysicalConcaveCommodityFlow.Market(
+                1_000_000UL, 1_000_000UL),
+            new FoundationPhysicalConcaveCommodityFlow.Market(
+                1_000_000UL, 1_000_000UL)
+        };
+        var sellers = new[]
+        {
+            new FoundationPhysicalConcaveCommodityFlow.Seller(
+                3UL, new BigInteger?[]
+                    { BigInteger.Zero, BigInteger.Zero }),
+            new FoundationPhysicalConcaveCommodityFlow.Seller(
+                3UL, new BigInteger?[] { BigInteger.Zero, null })
+        };
+        var reference = FoundationPhysicalConcaveCommodityFlow.Solve(
+            sellers, buyers, 1UL, 3, 32,
+            reuseSearchWorkspace: false);
+        var reused = FoundationPhysicalConcaveCommodityFlow.Solve(
+            sellers, buyers, 1UL, 3, 32,
+            reuseSearchWorkspace: true);
+        Assert.Equal(reference.Augmentations, reused.Augmentations);
+        Assert.Equal(reference.MarketQuanta, reused.MarketQuanta);
+        for (int i = 0; i < sellers.Length; i++)
+            Assert.Equal(reference.AllocationQuanta[i],
+                reused.AllocationQuanta[i]);
+        Assert.Equal(reference.IntegratedNetPotentialScaled,
+            reused.IntegratedNetPotentialScaled);
+        Assert.Equal(reference.SegmentedNetPotentialScaled,
+            reused.SegmentedNetPotentialScaled);
+        Assert.Equal(new ulong[] { 0UL, 3UL },
+            reused.AllocationQuanta[0]);
+        Assert.Equal(new ulong[] { 3UL, 0UL },
+            reused.AllocationQuanta[1]);
+    }
+
+    [Fact]
     public void ResidualWorkspaceAndReferenceFailClosedOnIdenticalAugmentationBudget()
     {
         var sellers = new[]
