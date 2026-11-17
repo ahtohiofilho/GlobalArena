@@ -185,7 +185,8 @@ public sealed class FoundationPhysicalMarginalMarketDistributorTests
         Assert.InRange(red.AllocatedGoodsMicro, 499_990UL, 500_010UL);
         Assert.InRange(blue.AllocatedGoodsMicro, 1_499_990UL, 1_500_010UL);
         Assert.Equal(2_000_000UL,
-            result.MarketTotals.Sum(x => x.AllocatedGoodsMicro));
+            result.MarketTotals.Aggregate(0UL, (sum, line) =>
+                checked(sum + line.AllocatedGoodsMicro)));
         Assert.Equal(0UL, result.AllocationAudit.Freight.TotalEdgeTraversalCargoMicro);
     }
 
