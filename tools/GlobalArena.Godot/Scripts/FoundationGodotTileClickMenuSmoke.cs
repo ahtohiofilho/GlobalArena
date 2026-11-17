@@ -6,17 +6,17 @@ using GlobalArena.World;
 namespace GlobalArena.Godot;
 
 /// <summary>
-/// Real GUI event test for an experimental tile→three jobs→individual menu.
+/// Real GUI event test for an experimental click-only tile→three jobs→individual menu.
 /// It is intentionally distinct from the existing concentrated-workforce
 /// smoke: no legacy mouse semantics or hashes are rewritten.
 /// </summary>
-public sealed class FoundationGodotTileClickHypothesisSmoke
+public sealed class FoundationGodotTileClickMenuSmoke
 {
     private readonly Main _main;
     private readonly FoundationTacticalHumanAiTurnHost _host;
     private readonly TacticalContextPreview _map;
 
-    public FoundationGodotTileClickHypothesisSmoke(
+    public FoundationGodotTileClickMenuSmoke(
         Main main, FoundationTacticalHumanAiTurnHost host,
         TacticalContextPreview map)
     {
@@ -160,7 +160,7 @@ public sealed class FoundationGodotTileClickHypothesisSmoke
             var agriculturalRect = _map.TileClickActivityRowRect(
                 PhysicalWorkerOccupation.Agriculture);
             Must(agriculturalRect.HasValue,
-                "Agriculture row not visible for hierarchical hover.");
+                "Agriculture row not visible for click-only menu.");
             await MouseAt(agriculturalRect.GetValueOrDefault().GetCenter());
             Must(_map.TileClickExpandedOccupation is null &&
                  _map.IsTileClickMenuVisible,
@@ -246,7 +246,7 @@ public sealed class FoundationGodotTileClickHypothesisSmoke
                  _main.SelectedTacticalWorkerId == 4UL,
                 "Esc must close just the transient menu, preserving selection.");
             GD.Print("GA_NEXT_TILE_CLICK_HYPOTHESIS_E2E_PASS " +
-                "tile_hover=true role_hover=true worker_click=true " +
+                "tile_click=true role_click=true worker_click=true " +
                 "persistent_click=true no_hover=true X_cancel=true E_commit=true dynamic_counts=true " +
                 "escape=true people=12 replay=v11");
             _main.GetTree().Quit(0);
