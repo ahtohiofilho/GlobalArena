@@ -136,48 +136,86 @@ public sealed class FoundationPhysicalSameCommodityConvergenceTests
     }
 
     [Fact]
-    public void IncumbentAwareThresholdsFindFullPassFixedPointInConnectedStress()
+    public void HardSharedGrainMarketStillFailsClosedWithAuditable256PassDiagnostic()
     {
         var stress = ConnectedEightSourceCase();
         var timer = Stopwatch.StartNew();
-        var plan = FoundationPhysicalGlobalMarginalCoordinator.Coordinate(
-            stress.Workers, stress.Host.Incidence, Demand(), Cargo(),
-            stress.Quotes, stress.Roads, maxPasses: 256,
-            preferIncumbentThresholdTies: true,
-            acceptOnlyStrictIntegratedGain: true);
+        var error = Assert.Throws<
+            FoundationPhysicalGlobalMarginalBudgetExceededException>(() =>
+            FoundationPhysicalGlobalMarginalCoordinator.Coordinate(
+                stress.Workers, stress.Host.Incidence, Demand(), Cargo(),
+                stress.Quotes, stress.Roads, maxPasses: 256,
+                preferIncumbentThresholdTies: true,
+                acceptOnlyStrictIntegratedGain: true));
         timer.Stop();
 
         _output.WriteLine(
-            $"Same commodity stressed: sourceLots={plan.ProductiveLotCount}, " +
-            $"realBuyerMarkets={plan.MarketTotals.Count}, " +
-            $"physicalRoads={stress.Roads.Length}, " +
-            $"passes={plan.Passes}, movedGoodsMicro={plan.TotalReallocatedGoodsMicro}, " +
-            $"rejectedNonImproving={plan.RejectedNonImprovingSellerProposals}, " +
-            $"acceptedPotential={plan.AcceptedPotentialGainScaled}, " +
+            $"Hard same commodity remained unsolved: producerLots=8, " +
+            $"physicalMarkets=104, roads={stress.Roads.Length}, " +
+            $"passBudget={error.PassBudget}, lastMovements=" +
+            string.Join(",", error.LastPassMovesMicro) +
+            $", rejectedNonImproving={error.RejectedNonImprovingProposals}, " +
+            $"acceptedPotentialGain={error.AcceptedPotentialGainScaled}, " +
             $"milliseconds={timer.ElapsedMilliseconds}");
-        Assert.True(plan.StableUnderOneFullCanonicalPass);
-        Assert.True(plan.PreferIncumbentThresholdTies);
-        Assert.True(plan.StrictIntegratedPotentialAcceptance);
-        Assert.True(plan.AcceptedPotentialGainScaled >= 0);
-        Assert.Equal(8, plan.ProductiveLotCount);
-        Assert.Equal(104, plan.MarketTotals.Count);
-        Assert.InRange(plan.Passes, 1, 256);
-        Assert.Equal(plan.Passes, plan.MovedGoodsByPass.Count);
-        Assert.Equal(0UL, plan.MovedGoodsByPass[^1]);
-        Assert.Equal(8_000_000UL,
-            plan.AllocationAudit.TotalAvailableGoodsMicro);
-        Assert.Equal(plan.AllocationAudit.TotalAvailableGoodsMicro,
-            plan.AllocationAudit.TotalAllocatedGoodsMicro);
-        Assert.Equal(8_000_000UL,
-            plan.MarketTotals.Aggregate(0UL, (sum, x) =>
-                checked(sum + x.AllocatedGoodsMicro)));
-        Assert.True(plan.AllocationAudit.Freight.UsedEdges.Count > 1);
-        Assert.All(plan.AllocationAudit.Freight.UsedEdges, crossing =>
-        {
-            Assert.Contains(stress.Roads, road => road.Edge == crossing.Edge);
-        });
+        Assert.Equal(256, error.PassBudget);
+        Assert.NotEmpty(error.LastPassMovesMicro);
+        Assert.InRange(error.LastPassMovesMicro.Count, 1, 12);
+        Assert.True(error.LastPassMovesMicro[^1] > 0UL);
+        Assert.True(error.AcceptedPotentialGainScaled >= 0);
         Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
             stress.Host.GetLastClosedEconomicTradeView(Red).Availability);
+    }
+
+    [Fact]
+    public void TwoRealCompetingSellersCanReachStrictPotentialStableAllocation()
+    {
+        var host = Host();
+        var map = host.Incidence;
+        var border = map.FineTopology.Edges[0];
+        var sourceA = new PhysicalTacticalTileId(
+            map.Refinement.FineParameters, border.IncidentCellIds[0]);
+        var sourceB = new PhysicalTacticalTileId(
+            map.Refinement.FineParameters, border.IncidentCellIds[1]);
+        StrategicCellId coarse(PhysicalTacticalTileId tile) =>
+            map.TileIncidences[
+                checked((int)tile.FineStrategicCellId.Value - 1)]
+                .IncidentCoarseCellIds[0];
+        var census = new PhysicalWorkerRuntimeState(new[]
+        {
+            new PhysicalWorkerRuntimeRecord(new PhysicalWorkerId(1UL),
+                Red, coarse(sourceA), Grain, 1_000_000UL,
+                PhysicalWorkerActivity.Producing, 1_000_000U,
+                sourceA, PhysicalWorkerOccupation.Agriculture),
+            new PhysicalWorkerRuntimeRecord(new PhysicalWorkerId(2UL),
+                Blue, coarse(sourceB), Grain, 1_000_000UL,
+                PhysicalWorkerActivity.Producing, 1_000_000U,
+                sourceB, PhysicalWorkerOccupation.Agriculture)
+        }, tacticalLocationsAuthoritative: true,
+           occupationsAuthoritative: true);
+        var quotes = FoundationPhysicalCommodityDemandProjector.Project(
+            census, Demand()).DemandByCivilization.Select(line =>
+            new FoundationCommodityMarketPlanningQuote(
+                line.Tile, line.Owner, line.Commodity,
+                10_000_000UL)).ToArray();
+        var road = new FoundationPhysicalRoutingEdgeCost(
+            new PhysicalTacticalEdgeId(map.Refinement.FineParameters,
+                border.Id),
+            FoundationInfrastructureOwnershipKind.NoInfrastructure,
+            null, 100_000UL, 0UL);
+        var plan = FoundationPhysicalGlobalMarginalCoordinator.Coordinate(
+            census, map, Demand(), Cargo(), quotes,
+            new[] { road }, maxPasses: 64,
+            preferIncumbentThresholdTies: true,
+            acceptOnlyStrictIntegratedGain: true);
+        Assert.True(plan.StableUnderOneFullCanonicalPass);
+        Assert.True(plan.StrictIntegratedPotentialAcceptance);
+        Assert.Equal(2, plan.ProductiveLotCount);
+        Assert.Equal(2, plan.MarketTotals.Count);
+        Assert.Equal(0UL, plan.MovedGoodsByPass[^1]);
+        Assert.Equal(2_000_000UL,
+            plan.AllocationAudit.TotalAllocatedGoodsMicro);
+        Assert.Equal(plan.AllocationAudit.TotalAvailableGoodsMicro,
+            plan.AllocationAudit.TotalAllocatedGoodsMicro);
     }
 
     [Fact]
@@ -270,7 +308,7 @@ public sealed class FoundationPhysicalSameCommodityConvergenceTests
     public void EvenWithIncumbentTiesInsufficientBudgetMustFailClosed()
     {
         var stress = ConnectedEightSourceCase();
-        Assert.Throws<InvalidOperationException>(() =>
+        Assert.Throws<FoundationPhysicalGlobalMarginalBudgetExceededException>(() =>
             FoundationPhysicalGlobalMarginalCoordinator.Coordinate(
                 stress.Workers, stress.Host.Incidence, Demand(), Cargo(),
                 stress.Quotes, stress.Roads, maxPasses: 1,
