@@ -227,12 +227,14 @@ public sealed class FoundationTacticalHumanAiTurnHost
             IEnumerable<FoundationCommodityMarketPlanningQuote> quotes,
             IEnumerable<FoundationPhysicalRoutingEdgeCost> edgeCosts,
             int maxPasses,
-            bool preferIncumbentThresholdTies = false)
+            bool preferIncumbentThresholdTies = false,
+            bool acceptOnlyStrictIntegratedGain = false)
     {
         CheckSnapshot();
         return FoundationPhysicalGlobalMarginalCoordinator.Coordinate(
             Snapshot.Workers, Incidence, demandPolicy, conversionPolicy,
-            quotes, edgeCosts, maxPasses, preferIncumbentThresholdTies);
+            quotes, edgeCosts, maxPasses, preferIncumbentThresholdTies,
+            acceptOnlyStrictIntegratedGain);
     }
 
     /// <summary>
@@ -271,14 +273,15 @@ public sealed class FoundationTacticalHumanAiTurnHost
         IEnumerable<FoundationPhysicalEdgeCarryingScale> carryingScales,
         int maxProducerPasses,
         int maxBatchesPerDelivery,
-        bool preferIncumbentThresholdTies = false)
+        bool preferIncumbentThresholdTies = false,
+        bool acceptOnlyStrictIntegratedGain = false)
     {
         CheckSnapshot();
         return FoundationPhysicalMultiPathFreightPlanner.Plan(
             Snapshot.Workers, Incidence, demandPolicy, conversionPolicy,
             quotes, freeFlowEdgeCosts, carryingScales,
             maxProducerPasses, maxBatchesPerDelivery,
-            preferIncumbentThresholdTies);
+            preferIncumbentThresholdTies, acceptOnlyStrictIntegratedGain);
     }
 
     /// <summary>
@@ -298,7 +301,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
             int maxFeedbackIterations,
             int maxMarginalPathPasses = 0,
             int maxFragmentsPerPathPart = 1,
-            bool preferIncumbentThresholdTies = false)
+            bool preferIncumbentThresholdTies = false,
+            bool acceptOnlyStrictIntegratedGain = false)
     {
         CheckSnapshot();
         return FoundationPhysicalCoupledMultiPathMarketFeedback.Coordinate(
@@ -306,7 +310,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
             quotes, freeFlowEdgeCosts, carryingScales,
             maxProducerPasses, maxBatchesPerDelivery,
             maxFeedbackIterations, maxMarginalPathPasses,
-            maxFragmentsPerPathPart, preferIncumbentThresholdTies);
+            maxFragmentsPerPathPart, preferIncumbentThresholdTies,
+            acceptOnlyStrictIntegratedGain);
     }
 
     public bool AllRequiredReady => _participants.All(_ready.Contains);
