@@ -96,7 +96,8 @@ public static class FoundationPhysicalMarginalMarketDistributor
     }
 
     internal static ulong[] DistributeOneLot(
-        IReadOnlyList<Buyer> buyers, ulong quantityMicro)
+        IReadOnlyList<Buyer> buyers, ulong quantityMicro,
+        IReadOnlyList<ulong>? incumbentQuanta = null)
     {
         if (buyers.Count == 0)
             throw new InvalidOperationException(
@@ -104,6 +105,11 @@ public static class FoundationPhysicalMarginalMarketDistributor
 
         // All destinations of this commodity use the SAME exact cargo
         // representability quantum, determined by its explicit conversion.
+        if (incumbentQuanta is not null &&
+            incumbentQuanta.Count != buyers.Count)
+            throw new ArgumentException(
+                "Every real eligible buyer needs an incumbent quota.",
+                nameof(incumbentQuanta));
         ulong quantum = buyers[0].CargoQuantum;
         if (quantityMicro % quantum != 0UL)
             throw new InvalidOperationException(
@@ -168,13 +174,34 @@ public static class FoundationPhysicalMarginalMarketDistributor
             throw new InvalidOperationException(
                 "Marginal allocation cannot distribute the full real production.");
 
-        // At the discrete threshold, use deterministic proportional division
-        // rather than dumping an entire same-price plateau into the first
-        // buyer. Final <N residual quanta use canonical buyer order.
+        // A multi-seller response can optionally preserve the seller's
+        // previous holdings ONLY within the EXACT threshold plateau. This
+        // prevents unnecessary cross-producer churn caused by canonical
+        // proportional tie-breaking; it never overrides a quantity forced
+        // by the higher marginal threshold or invents new demand.
+        // The historical single-pass solver passes null and is unchanged.
+        if (incumbentQuanta is not null)
+        {
+            for (int i = 0; i < allocations.Length && remaining > 0UL; i++)
+            {
+                ulong keep = incumbentQuanta[i] > allocations[i]
+                    ? Math.Min(capacities[i],
+                        incumbentQuanta[i] - allocations[i])
+                    : 0UL;
+                keep = Math.Min(keep, remaining);
+                allocations[i] = checked(allocations[i] + keep);
+                capacities[i] -= keep;
+                totalCapacity -= keep;
+                remaining -= keep;
+            }
+        }
+
+        // Remaining exact-threshold quanta use proportional division and
+        // canonical tail; only a marginal PRICE TIE is resolved differently.
         ulong assigned = 0UL;
         for (int i = 0; i < allocations.Length; i++)
         {
-            ulong share = checked((ulong)(
+            ulong share = remaining == 0UL ? 0UL : checked((ulong)(
                 (new BigInteger(remaining) * capacities[i]) / totalCapacity));
             allocations[i] = checked(allocations[i] + share);
             capacities[i] -= share;

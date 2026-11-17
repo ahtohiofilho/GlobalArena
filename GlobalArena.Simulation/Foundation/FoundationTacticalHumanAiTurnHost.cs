@@ -226,12 +226,15 @@ public sealed class FoundationTacticalHumanAiTurnHost
             FoundationCommodityCargoConversionPolicy conversionPolicy,
             IEnumerable<FoundationCommodityMarketPlanningQuote> quotes,
             IEnumerable<FoundationPhysicalRoutingEdgeCost> edgeCosts,
-            int maxPasses)
+            int maxPasses,
+            bool preferIncumbentThresholdTies = false,
+            bool acceptOnlyStrictIntegratedGain = false)
     {
         CheckSnapshot();
         return FoundationPhysicalGlobalMarginalCoordinator.Coordinate(
             Snapshot.Workers, Incidence, demandPolicy, conversionPolicy,
-            quotes, edgeCosts, maxPasses);
+            quotes, edgeCosts, maxPasses, preferIncumbentThresholdTies,
+            acceptOnlyStrictIntegratedGain);
     }
 
     /// <summary>
@@ -269,13 +272,16 @@ public sealed class FoundationTacticalHumanAiTurnHost
         IEnumerable<FoundationPhysicalRoutingEdgeCost> freeFlowEdgeCosts,
         IEnumerable<FoundationPhysicalEdgeCarryingScale> carryingScales,
         int maxProducerPasses,
-        int maxBatchesPerDelivery)
+        int maxBatchesPerDelivery,
+        bool preferIncumbentThresholdTies = false,
+        bool acceptOnlyStrictIntegratedGain = false)
     {
         CheckSnapshot();
         return FoundationPhysicalMultiPathFreightPlanner.Plan(
             Snapshot.Workers, Incidence, demandPolicy, conversionPolicy,
             quotes, freeFlowEdgeCosts, carryingScales,
-            maxProducerPasses, maxBatchesPerDelivery);
+            maxProducerPasses, maxBatchesPerDelivery,
+            preferIncumbentThresholdTies, acceptOnlyStrictIntegratedGain);
     }
 
     /// <summary>
@@ -294,7 +300,9 @@ public sealed class FoundationTacticalHumanAiTurnHost
             int maxBatchesPerDelivery,
             int maxFeedbackIterations,
             int maxMarginalPathPasses = 0,
-            int maxFragmentsPerPathPart = 1)
+            int maxFragmentsPerPathPart = 1,
+            bool preferIncumbentThresholdTies = false,
+            bool acceptOnlyStrictIntegratedGain = false)
     {
         CheckSnapshot();
         return FoundationPhysicalCoupledMultiPathMarketFeedback.Coordinate(
@@ -302,7 +310,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
             quotes, freeFlowEdgeCosts, carryingScales,
             maxProducerPasses, maxBatchesPerDelivery,
             maxFeedbackIterations, maxMarginalPathPasses,
-            maxFragmentsPerPathPart);
+            maxFragmentsPerPathPart, preferIncumbentThresholdTies,
+            acceptOnlyStrictIntegratedGain);
     }
 
     public bool AllRequiredReady => _participants.All(_ready.Contains);

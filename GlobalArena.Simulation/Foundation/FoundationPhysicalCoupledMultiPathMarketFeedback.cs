@@ -63,7 +63,9 @@ public static class FoundationPhysicalCoupledMultiPathMarketFeedback
         int maxBatchesPerDelivery,
         int maxFeedbackIterations,
         int maxMarginalPathPasses = 0,
-        int maxFragmentsPerPathPart = 1)
+        int maxFragmentsPerPathPart = 1,
+        bool preferIncumbentThresholdTies = false,
+        bool acceptOnlyStrictIntegratedGain = false)
     {
         ArgumentNullException.ThrowIfNull(census);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -105,7 +107,8 @@ public static class FoundationPhysicalCoupledMultiPathMarketFeedback
         {
             var markets = FoundationPhysicalGlobalMarginalCoordinator.Coordinate(
                 census, incidence, demandPolicy, conversionPolicy,
-                quoteList, current, maxProducerPasses);
+                quoteList, current, maxProducerPasses,
+                preferIncumbentThresholdTies, acceptOnlyStrictIntegratedGain);
             // Keep market quantities exactly as selected with 'current'
             // costs; use BASE costs to construct the multi-path routes
             // without accidentally applying the congestion penalty twice.

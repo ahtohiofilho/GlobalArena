@@ -348,7 +348,9 @@ public static class FoundationPhysicalMultiPathFreightPlanner
         IEnumerable<FoundationPhysicalRoutingEdgeCost> freeFlowEdgeCosts,
         IEnumerable<FoundationPhysicalEdgeCarryingScale> carryingScales,
         int maxProducerPasses,
-        int maxBatchesPerDelivery)
+        int maxBatchesPerDelivery,
+        bool preferIncumbentThresholdTies = false,
+        bool acceptOnlyStrictIntegratedGain = false)
     {
         ArgumentNullException.ThrowIfNull(census);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -367,7 +369,8 @@ public static class FoundationPhysicalMultiPathFreightPlanner
         var scales = carryingScales.ToArray();
         var market = FoundationPhysicalGlobalMarginalCoordinator.Coordinate(
             census, incidence, demandPolicy, conversionPolicy,
-            quoteList, edges, maxProducerPasses);
+            quoteList, edges, maxProducerPasses,
+            preferIncumbentThresholdTies, acceptOnlyStrictIntegratedGain);
         return Split(census, incidence, demandPolicy, conversionPolicy,
             market, edges, scales, maxBatchesPerDelivery);
     }

@@ -18,13 +18,30 @@ public sealed class FoundationPhysicalGlobalMarginalCoordinationPlan
     public int Passes { get; }
     public ulong TotalReallocatedGoodsMicro { get; }
     public bool StableUnderOneFullCanonicalPass { get; }
+    public bool PreferIncumbentThresholdTies { get; }
+    /// <summary>
+    /// Physical goods micro-units moved away from old buyer quotas by pass,
+    /// including a terminal zero on successful convergence. Read-only
+    /// diagnostics; never an economic trade receipt or settled delivery.
+    /// </summary>
+    public IReadOnlyList<ulong> MovedGoodsByPass { get; }
+    public bool StrictIntegratedPotentialAcceptance { get; }
+    public int RejectedNonImprovingSellerProposals { get; }
+    /// <summary>
+    /// Positive accepted increases of the fixed-point integer integrated
+    /// utility comparison objective. NOT micro-money collected or a receipt.
+    /// </summary>
+    public BigInteger AcceptedPotentialGainScaled { get; }
 
     internal FoundationPhysicalGlobalMarginalCoordinationPlan(
         FoundationPhysicalCommodityDeliveryCandidate[] candidates,
         FoundationPhysicalMarketAllocationTotal[] initial,
         FoundationPhysicalMarketAllocationTotal[] final,
         FoundationPhysicalDeliveryAllocationAudit audit,
-        int lotCount, int passes, ulong totalMoved)
+        int lotCount, int passes, ulong totalMoved,
+        bool preferIncumbentTies, ulong[] movementByPass,
+        bool strictPotentialAcceptance, int rejectedProposals,
+        BigInteger acceptedGainScaled)
     {
         Candidates = Array.AsReadOnly(candidates);
         InitialMarketTotals = Array.AsReadOnly(initial);
@@ -34,6 +51,39 @@ public sealed class FoundationPhysicalGlobalMarginalCoordinationPlan
         Passes = passes;
         TotalReallocatedGoodsMicro = totalMoved;
         StableUnderOneFullCanonicalPass = true;
+        PreferIncumbentThresholdTies = preferIncumbentTies;
+        MovedGoodsByPass = Array.AsReadOnly(movementByPass);
+        StrictIntegratedPotentialAcceptance = strictPotentialAcceptance;
+        RejectedNonImprovingSellerProposals = rejectedProposals;
+        AcceptedPotentialGainScaled = acceptedGainScaled;
+    }
+}
+
+/// <summary>
+/// An explicit, inspectable failure to certify the opted-in global-seller
+/// candidate policy within the declared full-pass budget. A partial
+/// allocation is deliberately NOT returned, audited as a settled trade,
+/// published to the last economic cycle or exposed to the Godot client.
+/// </summary>
+public sealed class FoundationPhysicalGlobalMarginalBudgetExceededException
+    : InvalidOperationException
+{
+    public int PassBudget { get; }
+    public IReadOnlyList<ulong> LastPassMovesMicro { get; }
+    public int RejectedNonImprovingProposals { get; }
+    public BigInteger AcceptedPotentialGainScaled { get; }
+
+    internal FoundationPhysicalGlobalMarginalBudgetExceededException(
+        int budget, ulong[] recentMoves, int rejected, BigInteger gain)
+        : base("The opted-in same-commodity seller policy did NOT stabilize " +
+            "within the explicit pass budget. Last pass movements (goods " +
+            "micro-units): " + string.Join(",", recentMoves) +
+            ". No economic settlement or candidate trade was published.")
+    {
+        PassBudget = budget;
+        LastPassMovesMicro = Array.AsReadOnly(recentMoves);
+        RejectedNonImprovingProposals = rejected;
+        AcceptedPotentialGainScaled = gain;
     }
 }
 
@@ -78,7 +128,9 @@ public static class FoundationPhysicalGlobalMarginalCoordinator
         FoundationCommodityCargoConversionPolicy conversionPolicy,
         IEnumerable<FoundationCommodityMarketPlanningQuote> quotes,
         IEnumerable<FoundationPhysicalRoutingEdgeCost> edgeCosts,
-        int maxPasses)
+        int maxPasses,
+        bool preferIncumbentThresholdTies = false,
+        bool acceptOnlyStrictIntegratedGain = false)
     {
         ArgumentNullException.ThrowIfNull(census);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -187,6 +239,9 @@ public static class FoundationPhysicalGlobalMarginalCoordinator
 
         int passes = 0;
         ulong movedGoods = 0UL;
+        var movementByPass = new List<ulong>(Math.Min(maxPasses, 1024));
+        int rejectedNonImproving = 0;
+        BigInteger acceptedPotentialGain = BigInteger.Zero;
         bool fixedPoint = false;
         for (int pass = 0; pass < maxPasses; pass++)
         {
@@ -215,7 +270,23 @@ public static class FoundationPhysicalGlobalMarginalCoordinator
 
                 var proposed =
                     FoundationPhysicalMarginalMarketDistributor.DistributeOneLot(
-                        opponents, source.Lot.CapacityMicroPerTurn);
+                        opponents, source.Lot.CapacityMicroPerTurn,
+                        preferIncumbentThresholdTies
+                            ? source.GoodsQuanta : null);
+                if (acceptOnlyStrictIntegratedGain &&
+                    !proposed.SequenceEqual(source.GoodsQuanta))
+                {
+                    var gain = FoundationPhysicalMarginalIntegratedUtility
+                        .ProposalGain(source.Buyers, source.GoodsQuanta,
+                            proposed, source.CargoQuantum, global);
+                    if (gain <= BigInteger.Zero)
+                    {
+                        rejectedNonImproving =
+                            checked(rejectedNonImproving + 1);
+                        continue;
+                    }
+                    acceptedPotentialGain += gain;
+                }
                 for (int i = 0; i < proposed.Length; i++)
                 {
                     var oldQuanta = source.GoodsQuanta[i];
@@ -234,6 +305,7 @@ public static class FoundationPhysicalGlobalMarginalCoordinator
                 }
             }
             movedGoods = checked(movedGoods + passMoved);
+            movementByPass.Add(passMoved);
             if (passMoved == 0UL)
             {
                 fixedPoint = true;
@@ -241,10 +313,19 @@ public static class FoundationPhysicalGlobalMarginalCoordinator
             }
         }
         if (!fixedPoint)
+        {
+            if (acceptOnlyStrictIntegratedGain ||
+                preferIncumbentThresholdTies)
+                throw new FoundationPhysicalGlobalMarginalBudgetExceededException(
+                    maxPasses, movementByPass
+                        .Skip(Math.Max(0, movementByPass.Count - 12))
+                        .ToArray(), rejectedNonImproving,
+                    acceptedPotentialGain);
             throw new InvalidOperationException(
                 "The global marginal candidate planner has not reached a " +
                 "stable full-pass fixed point inside its explicit pass budget. " +
                 "Do not publish unstable candidate deliveries as a settled market.");
+        }
 
         var finalCandidates = new List<FoundationPhysicalCommodityDeliveryCandidate>();
         foreach (var source in sources)
@@ -286,6 +367,9 @@ public static class FoundationPhysicalGlobalMarginalCoordinator
 
         return new FoundationPhysicalGlobalMarginalCoordinationPlan(
             finalCandidates.ToArray(), starting, final,
-            audit, sources.Count, passes, movedGoods);
+            audit, sources.Count, passes, movedGoods,
+            preferIncumbentThresholdTies, movementByPass.ToArray(),
+            acceptOnlyStrictIntegratedGain, rejectedNonImproving,
+            acceptedPotentialGain);
     }
 }
