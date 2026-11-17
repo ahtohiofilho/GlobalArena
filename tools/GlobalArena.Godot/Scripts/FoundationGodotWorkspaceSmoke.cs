@@ -220,11 +220,10 @@ internal sealed class FoundationGodotWorkspaceSmoke
             Must(bodyScroll is not null && body is not null &&
                  feedback is not null && quickEnd is not null,
                 "Operations dock has no full-height scroll, bottom order feedback or pinned E.");
-            Must(roster.IsAncestorOf(bodyScroll!) == false &&
-                 bodyScroll.IsAncestorOf(roster) &&
+            Must(bodyScroll!.IsAncestorOf(roster!) &&
                  bodyScroll.IsAncestorOf(feedback!) &&
-                 bodyScroll.GetParent() == body.GetParent() &&
-                 body.GetParent() == bodyScroll,
+                 body.GetParent() == bodyScroll &&
+                 roster.GetParent() == body,
                 "Roster, tile details and orders must share the same outer scrolling body.");
             Must(bodyScroll.Size.Y > 110f &&
                  bodyScroll.GetGlobalRect().End.Y <=
@@ -258,12 +257,15 @@ internal sealed class FoundationGodotWorkspaceSmoke
             // large, fixed-size dock in the default screenshot.
             var nativeWindow = _main.GetWindow();
             var originalWindowSize = nativeWindow.Size;
+            var originalWindowMode = nativeWindow.Mode;
             var compactHeight = Math.Min(originalWindowSize.Y - 80, 560);
             Must(compactHeight >= 480,
                 "Workspace smoke requires a viewport at least 560px tall.");
+            nativeWindow.Mode = Window.ModeEnum.Windowed;
             nativeWindow.Size = new Vector2I(originalWindowSize.X, compactHeight);
             for (int frame = 0; frame < 6; frame++) await WaitFrame();
-            Must(operations.Visible && bodyScroll.Size.Y > 100f &&
+            Must(_main.Size.Y <= compactHeight + 2f &&
+                 operations.Visible && bodyScroll.Size.Y > 100f &&
                  operations.GetGlobalRect().End.Y <=
                     _main.GetGlobalRect().End.Y + 2f &&
                  bodyScroll.GetVScrollBar().MaxValue >
@@ -282,6 +284,7 @@ internal sealed class FoundationGodotWorkspaceSmoke
                 $"height={compactHeight} bounded=true bottom_accessible=true");
             await CaptureRenderedViewIfRequested("03_operations_compact");
             nativeWindow.Size = originalWindowSize;
+            nativeWindow.Mode = originalWindowMode;
             for (int frame = 0; frame < 6; frame++) await WaitFrame();
             bodyScroll.ScrollVertical = 0;
             await WaitFrame();
