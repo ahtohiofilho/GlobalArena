@@ -68,7 +68,24 @@ public static class FoundationPhysicalGlobalConcaveFlowPlanner
         IEnumerable<FoundationCommodityMarketPlanningQuote> quotes,
         IEnumerable<FoundationPhysicalRoutingEdgeCost> edgeCosts,
         int segmentsPerAverageMarket = 16,
-        int maxFlowAugmentations = 10000)
+        int maxFlowAugmentations = 10000) =>
+        CoordinateWithSearchWorkspace(census, incidence, demandPolicy,
+            conversionPolicy, quotes, edgeCosts, segmentsPerAverageMarket,
+            maxFlowAugmentations, reuseSearchWorkspace: true);
+
+    // Research-only reference mode. The public API always takes the reused
+    // workspace path; tests can compare the exact same real worker market
+    // with the previous allocation-per-augmentation implementation.
+    internal static FoundationPhysicalGlobalConcaveFlowPlan CoordinateWithSearchWorkspace(
+        PhysicalWorkerRuntimeState census,
+        PhysicalTacticalIncidenceMap incidence,
+        FoundationActivityCommodityDemandPolicy demandPolicy,
+        FoundationCommodityCargoConversionPolicy conversionPolicy,
+        IEnumerable<FoundationCommodityMarketPlanningQuote> quotes,
+        IEnumerable<FoundationPhysicalRoutingEdgeCost> edgeCosts,
+        int segmentsPerAverageMarket,
+        int maxFlowAugmentations,
+        bool reuseSearchWorkspace)
     {
         ArgumentNullException.ThrowIfNull(census);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -185,7 +202,8 @@ public static class FoundationPhysicalGlobalConcaveFlowPlanner
                 throw new InvalidOperationException(
                     "Global concave-flow planning exhausted its total budget.");
             var flow = FoundationPhysicalConcaveCommodityFlow.Solve(
-                sources, buyers, quantum, segmentsPerAverageMarket, remaining);
+                sources, buyers, quantum, segmentsPerAverageMarket, remaining,
+                reuseSearchWorkspace);
             augmentations = checked(augmentations + flow.Augmentations);
             piecewisePotential += flow.SegmentedNetPotentialScaled;
             integratedPotential += flow.IntegratedNetPotentialScaled;
