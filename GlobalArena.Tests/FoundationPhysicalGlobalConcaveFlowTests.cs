@@ -246,6 +246,112 @@ public sealed class FoundationPhysicalGlobalConcaveFlowTests
     }
 
     [Fact]
+    public void ReusedResidualWorkspaceMatchesOriginalWorkerBackedGoldbergFlowBitForBit()
+    {
+        var stress = EightCompetingSellersInConnectedGoldbergMarkets();
+        var snapshot = stress.Host.Snapshot;
+        var stateHash = stress.Host.StateHash;
+        foreach (int segments in new[] { 2, 4, 8 })
+        {
+            long baselineBefore = GC.GetAllocatedBytesForCurrentThread();
+            var baselineClock = Stopwatch.StartNew();
+            var reference =
+                FoundationPhysicalGlobalConcaveFlowPlanner
+                    .CoordinateWithSearchWorkspace(
+                        stress.Workers, stress.Host.Incidence,
+                        Demand(), Cargo(), stress.Quotes, stress.Roads,
+                        segments, 8192, reuseSearchWorkspace: false);
+            baselineClock.Stop();
+            long baselineBytes = GC.GetAllocatedBytesForCurrentThread() -
+                baselineBefore;
+
+            long reusedBefore = GC.GetAllocatedBytesForCurrentThread();
+            var reusedClock = Stopwatch.StartNew();
+            var optimized =
+                FoundationPhysicalGlobalConcaveFlowPlanner
+                    .CoordinateWithSearchWorkspace(
+                        stress.Workers, stress.Host.Incidence,
+                        Demand(), Cargo(), stress.Quotes, stress.Roads,
+                        segments, 8192, reuseSearchWorkspace: true);
+            reusedClock.Stop();
+            long reusedBytes = GC.GetAllocatedBytesForCurrentThread() -
+                reusedBefore;
+
+            Assert.Equal(reference.ProductiveLotCount,
+                optimized.ProductiveLotCount);
+            Assert.Equal(reference.RealMarketCount, optimized.RealMarketCount);
+            Assert.Equal(reference.FlowAugmentations, optimized.FlowAugmentations);
+            Assert.Equal(reference.SegmentedNetPotentialScaled,
+                optimized.SegmentedNetPotentialScaled);
+            Assert.Equal(reference.IntegratedNetPotentialScaled,
+                optimized.IntegratedNetPotentialScaled);
+            Assert.Equal(reference.SegmentationUnderstatementScaled,
+                optimized.SegmentationUnderstatementScaled);
+            Assert.Equal(reference.MarketTotals.Select(m =>
+                    (m.Tile, m.Owner, m.Commodity, m.DemandMicro,
+                        m.AllocatedGoodsMicro)),
+                optimized.MarketTotals.Select(m =>
+                    (m.Tile, m.Owner, m.Commodity, m.DemandMicro,
+                        m.AllocatedGoodsMicro)));
+            Assert.Equal(reference.Candidates.Select(d =>
+                    (d.DeliveryOrdinal, d.Seller, d.SourceOccupation,
+                        d.SourceTile, d.Buyer, d.BuyerTile, d.Commodity,
+                        d.GoodsMicro, Route: string.Join(",", d.RouteTiles
+                            .Select(t => t.FineStrategicCellId.Value)))),
+                optimized.Candidates.Select(d =>
+                    (d.DeliveryOrdinal, d.Seller, d.SourceOccupation,
+                        d.SourceTile, d.Buyer, d.BuyerTile, d.Commodity,
+                        d.GoodsMicro, Route: string.Join(",", d.RouteTiles
+                            .Select(t => t.FineStrategicCellId.Value)))));
+            Assert.Equal(reference.AllocationAudit.TotalAvailableGoodsMicro,
+                optimized.AllocationAudit.TotalAvailableGoodsMicro);
+            Assert.Equal(reference.AllocationAudit.TotalAllocatedGoodsMicro,
+                optimized.AllocationAudit.TotalAllocatedGoodsMicro);
+            Assert.Equal(reference.AllocationAudit.Freight
+                    .TotalEdgeTraversalCargoMicro,
+                optimized.AllocationAudit.Freight
+                    .TotalEdgeTraversalCargoMicro);
+            Assert.Equal(8_000_000UL,
+                optimized.AllocationAudit.TotalAllocatedGoodsMicro);
+            Assert.Equal(stateHash, stress.Host.StateHash);
+            Assert.Same(snapshot, stress.Host.Snapshot);
+            Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+                stress.Host.GetLastClosedEconomicTradeView(Red).Availability);
+            _output.WriteLine(
+                $"GA_NEXT_RESIDUAL_WORKSPACE segments={segments} " +
+                $"referenceMs={baselineClock.ElapsedMilliseconds} " +
+                $"reuseMs={reusedClock.ElapsedMilliseconds} " +
+                $"referenceManagedAllocatedBytes={baselineBytes} " +
+                $"reuseManagedAllocatedBytes={reusedBytes} " +
+                $"augmentations={optimized.FlowAugmentations}; EXACT");
+        }
+    }
+
+    [Fact]
+    public void ResidualWorkspaceAndReferenceFailClosedOnIdenticalAugmentationBudget()
+    {
+        var sellers = new[]
+        {
+            new FoundationPhysicalConcaveCommodityFlow.Seller(
+                100UL, new BigInteger?[] { BigInteger.Zero }),
+        };
+        var markets = new[]
+        {
+            new FoundationPhysicalConcaveCommodityFlow.Market(
+                1_000_000UL, 1_000_000UL)
+        };
+        foreach (bool reuse in new[] { false, true })
+        {
+            var exception = Assert.Throws<InvalidOperationException>(() =>
+                FoundationPhysicalConcaveCommodityFlow.Solve(
+                    sellers, markets, goodsQuantum: 1UL,
+                    segmentsPerAverageMarket: 5, maxAugmentations: 1,
+                    reuseSearchWorkspace: reuse));
+            Assert.Contains("augmentation budget", exception.Message);
+        }
+    }
+
+    [Fact]
     public void SameCommodityPrecisionSweepReportsSegmentedUnderstatementWithoutClaimingExactOptimum()
     {
         var stress = EightCompetingSellersInConnectedGoldbergMarkets();
