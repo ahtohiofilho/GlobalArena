@@ -72,6 +72,110 @@ internal static class FoundationPhysicalConcaveCommodityFlow
         }
     }
 
+    /// <summary>
+    /// At most ONE live entry per residual vertex, with exact priority
+    /// (distance, vertex id). Replaces duplicates and stale BCL entries
+    /// with an in-place decrease-key operation. Comparisons refer to the
+    /// same BigInteger distances used by Dijkstra, without rounding.
+    /// Strictly improving relaxations preserve the legacy predecessor tie
+    /// order. Reused only within one Solve call (never across turns).
+    /// </summary>
+    private sealed class IndexedResidualMinHeap
+    {
+        private readonly int[] _nodes;
+        private readonly int[] _position;
+        private readonly BigInteger?[] _distance;
+        private int _count;
+
+        internal IndexedResidualMinHeap(
+            int vertices, BigInteger?[] distance)
+        {
+            _nodes = new int[vertices];
+            _position = new int[vertices];
+            _distance = distance;
+            Array.Fill(_position, -1);
+        }
+
+        internal void Reset()
+        {
+            _count = 0;
+            Array.Fill(_position, -1);
+        }
+
+        private bool Less(int left, int right)
+        {
+            int comparison = _distance[left]!.Value.CompareTo(
+                _distance[right]!.Value);
+            return comparison < 0 || comparison == 0 && left < right;
+        }
+
+        private void Swap(int a, int b)
+        {
+            int first = _nodes[a], second = _nodes[b];
+            _nodes[a] = second;
+            _nodes[b] = first;
+            _position[first] = b;
+            _position[second] = a;
+        }
+
+        internal void InsertOrDecrease(int node)
+        {
+            int index = _position[node];
+            if (index < 0)
+            {
+                if (_count == _nodes.Length)
+                    throw new InvalidOperationException(
+                        "Indexed residual heap exceeded physical graph vertices.");
+                index = _count++;
+                _nodes[index] = node;
+                _position[node] = index;
+            }
+            // All calls follow a STRICT decrease of this node's exact
+            // distance (or first discovery). It can only move toward root.
+            while (index > 0)
+            {
+                int parent = (index - 1) / 2;
+                if (!Less(_nodes[index], _nodes[parent]))
+                    break;
+                Swap(index, parent);
+                index = parent;
+            }
+        }
+
+        internal bool TryPop(out int node)
+        {
+            if (_count == 0)
+            {
+                node = 0;
+                return false;
+            }
+            node = _nodes[0];
+            _position[node] = -1;
+            --_count;
+            if (_count == 0)
+                return true;
+
+            int moved = _nodes[_count];
+            _nodes[0] = moved;
+            _position[moved] = 0;
+            int index = 0;
+            while (true)
+            {
+                int left = index * 2 + 1;
+                if (left >= _count)
+                    break;
+                int right = left + 1;
+                int better = right < _count &&
+                    Less(_nodes[right], _nodes[left]) ? right : left;
+                if (!Less(_nodes[better], _nodes[index]))
+                    break;
+                Swap(index, better);
+                index = better;
+            }
+            return true;
+        }
+    }
+
     private sealed class MarketSegments
     {
         private readonly Network _network;
@@ -130,7 +234,8 @@ internal static class FoundationPhysicalConcaveCommodityFlow
         IReadOnlyList<Market> markets, ulong goodsQuantum,
         int segmentsPerAverageMarket, int maxAugmentations,
         bool reuseSearchWorkspace = true,
-        FoundationPhysicalGlobalFlowCostProfile? profile = null)
+        FoundationPhysicalGlobalFlowCostProfile? profile = null,
+        bool useIndexedHeap = true)
     {
         var setupStart = profile?.Start() ?? default;
         ArgumentNullException.ThrowIfNull(sellers);
@@ -240,7 +345,13 @@ internal static class FoundationPhysicalConcaveCommodityFlow
         int[]? retainedPreviousEdge = reuseSearchWorkspace
             ? new int[sink + 1] : null;
         PriorityQueue<int, (BigInteger Distance, int Node)>? retainedQueue =
-            reuseSearchWorkspace ? new() : null;
+            reuseSearchWorkspace && !useIndexedHeap ? new() : null;
+        // The optimized queue MUST use the retained distance array. The
+        // legacy scratch opt-out remains independent for reference tests.
+        BigInteger?[]? indexedDistance = useIndexedHeap
+            ? retainedDistance ?? new BigInteger?[sink + 1] : null;
+        IndexedResidualMinHeap? indexedQueue = useIndexedHeap
+            ? new IndexedResidualMinHeap(sink + 1, indexedDistance!) : null;
 
         profile?.End("residual-network-setup", setupStart);
         var searchStart = profile?.Start() ?? default;
@@ -254,30 +365,53 @@ internal static class FoundationPhysicalConcaveCommodityFlow
                     "Global segmented concave flow exceeded its explicit " +
                     "augmentation budget; no partial market candidate is returned.");
 
-            var distance = retainedDistance ?? new BigInteger?[sink + 1];
+            var distance = indexedDistance ?? retainedDistance ??
+                new BigInteger?[sink + 1];
             var previousNode = retainedPreviousNode ??
                 Enumerable.Repeat(-1, sink + 1).ToArray();
             var previousEdge = retainedPreviousEdge ?? new int[sink + 1];
-            var queue = retainedQueue ??
+            var queue = useIndexedHeap ? null : retainedQueue ??
                 new PriorityQueue<int, (BigInteger Distance, int Node)>();
-            if (reuseSearchWorkspace)
+            if (reuseSearchWorkspace || useIndexedHeap)
             {
-                // Explicit reset is necessary: stale reachable nodes,
-                // predecessor ties or residual queue entries must not alter
-                // the deterministic shortest augmenting path.
+                // A new augmentation MUST begin without the previous
+                // distances, predecessor ties or queue state.
                 Array.Clear(distance);
-                Array.Fill(previousNode, -1);
-                Array.Clear(previousEdge);
-                queue.Clear();
+                if (reuseSearchWorkspace)
+                {
+                    Array.Fill(previousNode, -1);
+                    Array.Clear(previousEdge);
+                }
+                if (useIndexedHeap)
+                    indexedQueue!.Reset();
+                else
+                    queue!.Clear();
             }
             distance[source] = BigInteger.Zero;
-            queue.Enqueue(source, (BigInteger.Zero, source));
+            if (useIndexedHeap)
+                indexedQueue!.InsertOrDecrease(source);
+            else
+                queue!.Enqueue(source, (BigInteger.Zero, source));
 
-            while (queue.TryDequeue(out var at, out var priority))
+            while (true)
             {
-                if (!distance[at].HasValue ||
-                    priority.Distance != distance[at]!.Value)
-                    continue;
+                int at;
+                BigInteger settledDistance;
+                if (useIndexedHeap)
+                {
+                    if (!indexedQueue!.TryPop(out at))
+                        break;
+                    settledDistance = distance[at]!.Value;
+                }
+                else
+                {
+                    if (!queue!.TryDequeue(out at, out var priority))
+                        break;
+                    if (!distance[at].HasValue ||
+                        priority.Distance != distance[at]!.Value)
+                        continue;
+                    settledDistance = priority.Distance;
+                }
                 var edges = network.Links[at];
                 for (int e = 0; e < edges.Count; e++)
                 {
@@ -288,14 +422,17 @@ internal static class FoundationPhysicalConcaveCommodityFlow
                     if (reduced.Sign < 0)
                         throw new InvalidOperationException(
                             "Residual reduced-cost invariant violated.");
-                    var candidate = priority.Distance + reduced;
+                    var candidate = settledDistance + reduced;
                     if (distance[edge.To].HasValue &&
                         candidate >= distance[edge.To]!.Value)
                         continue;
                     distance[edge.To] = candidate;
                     previousNode[edge.To] = at;
                     previousEdge[edge.To] = e;
-                    queue.Enqueue(edge.To, (candidate, edge.To));
+                    if (useIndexedHeap)
+                        indexedQueue!.InsertOrDecrease(edge.To);
+                    else
+                        queue!.Enqueue(edge.To, (candidate, edge.To));
                 }
             }
 

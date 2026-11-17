@@ -859,6 +859,163 @@ public sealed class FoundationPhysicalJointAdversarialMarketRouteTests
     }
 
 
+
+    [Fact]
+    public void IndexedResidualHeapPreservesExactFourScaleGoldbergGlobalMarkets()
+    {
+        // The original .NET PriorityQueue with stale entries is the oracle.
+        // The new indexed queue changes ONLY data-structure mechanics:
+        // strict relaxations, (BigInteger distance, node) order, route
+        // owner costs, residual updates and budgets must match bit-for-bit.
+        var sizes = new[]
+        {
+            (Tiles: 112, Frequency: 3, Sellers: 8, Markets: 104),
+            (Tiles: 208, Frequency: 5, Sellers: 16, Markets: 192),
+            (Tiles: 320, Frequency: 6, Sellers: 24, Markets: 288),
+            (Tiles: 416, Frequency: 7, Sellers: 32, Markets: 384)
+        };
+        foreach (var size in sizes)
+        {
+            var scenario = EightCompetingSellersInConnectedGoldbergMarkets(
+                edgeReferenceCargoMicro: 100_000_000UL,
+                worldFrequency: size.Frequency, tileCount: size.Tiles,
+                sellerCount: size.Sellers, marketCount: size.Markets);
+            var originalHash = scenario.Host.StateHash;
+            var originalSnapshot = scenario.Host.Snapshot;
+            var policy = Demand();
+            var cargo = Cargo();
+
+            (FoundationPhysicalGlobalConcaveFlowPlan Plan,
+                double ElapsedMs, long AllocatedBytes,
+                double SearchMs, long SearchBytes) Measure(
+                bool indexed)
+            {
+                var profile = new FoundationPhysicalGlobalFlowCostProfile();
+                long before = GC.GetAllocatedBytesForCurrentThread();
+                long stamp = Stopwatch.GetTimestamp();
+                var result = FoundationPhysicalGlobalConcaveFlowPlanner
+                    .CoordinateWithSearchWorkspace(
+                        scenario.Workers, scenario.Host.Incidence,
+                        policy, cargo, scenario.Quotes, scenario.Roads,
+                        segmentsPerAverageMarket: 4,
+                        maxFlowAugmentations: 8192,
+                        reuseSearchWorkspace: true,
+                        profile: profile,
+                        useIndexedHeap: indexed);
+                double elapsed = Stopwatch.GetElapsedTime(stamp)
+                    .TotalMilliseconds;
+                long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+                var search = Assert.Single(profile.Stages, s =>
+                    s.Phase == "residual-augmenting-search");
+                Assert.True(double.IsFinite(elapsed) && elapsed >= 0);
+                Assert.True(allocated >= 0);
+                return (result, elapsed, allocated,
+                    search.ElapsedMilliseconds,
+                    search.AllocatedBytesCurrentThread);
+            }
+
+            var original = Measure(indexed: false);
+            var optimized = Measure(indexed: true);
+            var a = original.Plan;
+            var b = optimized.Plan;
+            Assert.Equal(a.ProductiveLotCount, b.ProductiveLotCount);
+            Assert.Equal(a.RealMarketCount, b.RealMarketCount);
+            Assert.Equal(a.FlowAugmentations, b.FlowAugmentations);
+            Assert.Equal(a.SegmentsPerAverageMarket,
+                b.SegmentsPerAverageMarket);
+            Assert.Equal(a.SegmentedNetPotentialScaled,
+                b.SegmentedNetPotentialScaled);
+            Assert.Equal(a.IntegratedNetPotentialScaled,
+                b.IntegratedNetPotentialScaled);
+            Assert.Equal(a.SegmentationUnderstatementScaled,
+                b.SegmentationUnderstatementScaled);
+            Assert.Equal(a.MarketTotals, b.MarketTotals);
+            Assert.Equal(a.Candidates.Select(x => (
+                    x.DeliveryOrdinal, x.Seller, x.SourceOccupation,
+                    x.SourceTile, x.Buyer, x.BuyerTile, x.Commodity,
+                    x.GoodsMicro, Route: string.Join(",",
+                        x.RouteTiles.Select(t => t.FineStrategicCellId.Value)))),
+                b.Candidates.Select(x => (
+                    x.DeliveryOrdinal, x.Seller, x.SourceOccupation,
+                    x.SourceTile, x.Buyer, x.BuyerTile, x.Commodity,
+                    x.GoodsMicro, Route: string.Join(",",
+                        x.RouteTiles.Select(t => t.FineStrategicCellId.Value)))));
+            Assert.Equal(a.AllocationAudit.DeliveryCount,
+                b.AllocationAudit.DeliveryCount);
+            Assert.Equal(a.AllocationAudit.TotalAvailableGoodsMicro,
+                b.AllocationAudit.TotalAvailableGoodsMicro);
+            Assert.Equal(a.AllocationAudit.TotalAllocatedGoodsMicro,
+                b.AllocationAudit.TotalAllocatedGoodsMicro);
+            Assert.Equal(a.AllocationAudit.Freight.TotalDeliveredCargoMicro,
+                b.AllocationAudit.Freight.TotalDeliveredCargoMicro);
+            Assert.Equal(a.AllocationAudit.Freight.TotalEdgeTraversalCargoMicro,
+                b.AllocationAudit.Freight.TotalEdgeTraversalCargoMicro);
+            Assert.Equal(a.AllocationAudit.Freight.UsedEdges.Select(e =>
+                    (e.Edge, e.TotalCargoMicro)),
+                b.AllocationAudit.Freight.UsedEdges.Select(e =>
+                    (e.Edge, e.TotalCargoMicro)));
+            Assert.Equal(checked((ulong)size.Sellers * 1_000_000UL),
+                b.AllocationAudit.TotalAvailableGoodsMicro);
+            Assert.Equal(b.AllocationAudit.TotalAvailableGoodsMicro,
+                b.AllocationAudit.TotalAllocatedGoodsMicro);
+            Assert.Equal(originalHash, scenario.Host.StateHash);
+            Assert.Same(originalSnapshot, scenario.Host.Snapshot);
+            Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+                scenario.Host.GetLastClosedEconomicTradeView(Red).Availability);
+            Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+                scenario.Host.GetLastClosedEconomicTradeView(Blue).Availability);
+
+            var report = new
+            {
+                Schema = "ga-next.indexed-residual-heap-ab.v1",
+                Scenario = $"{size.Sellers}-sellers-{size.Markets}-markets",
+                TileCount = size.Tiles,
+                SellerCount = size.Sellers,
+                MarketCount = size.Markets,
+                PhysicalEdgeCount = scenario.Roads.Length,
+                SellerMarketPairsUpperBound =
+                    checked((long)size.Sellers * size.Markets),
+                SegmentsPerAverageMarket = 4,
+                FlowAugmentations = b.FlowAugmentations,
+                TotalAvailableGoodsMicro =
+                    b.AllocationAudit.TotalAvailableGoodsMicro,
+                TotalAllocatedGoodsMicro =
+                    b.AllocationAudit.TotalAllocatedGoodsMicro,
+                ExactlyEquivalent = true,
+                StateHashUnchanged = true,
+                NoClosedCycle = true,
+                EconomicallySettled = false,
+                OriginalResidualSearchMilliseconds = original.SearchMs,
+                IndexedResidualSearchMilliseconds = optimized.SearchMs,
+                OriginalResidualSearchAllocatedBytes = original.SearchBytes,
+                IndexedResidualSearchAllocatedBytes = optimized.SearchBytes,
+                OriginalCompleteFlowMilliseconds = original.ElapsedMs,
+                IndexedCompleteFlowMilliseconds = optimized.ElapsedMs,
+                OriginalCompleteFlowAllocatedBytes = original.AllocatedBytes,
+                IndexedCompleteFlowAllocatedBytes = optimized.AllocatedBytes
+            };
+            _output.WriteLine(
+                $"GA_NEXT_INDEXED_RESIDUAL_AB tiles={size.Tiles} " +
+                $"sellers={size.Sellers} markets={size.Markets} " +
+                $"augmentations={b.FlowAugmentations} " +
+                $"originalSearchMs={original.SearchMs:F3} " +
+                $"indexedSearchMs={optimized.SearchMs:F3} " +
+                $"originalSearchBytes={original.SearchBytes} " +
+                $"indexedSearchBytes={optimized.SearchBytes}; EXACT");
+            var dir = Environment.GetEnvironmentVariable(
+                "GA_INDEXED_HEAP_AB_REPORT_DIR");
+            if (!string.IsNullOrWhiteSpace(dir))
+            {
+                Directory.CreateDirectory(dir);
+                File.WriteAllText(
+                    Path.Combine(dir, $"indexed-heap-{size.Tiles}.json"),
+                    JsonSerializer.Serialize(report,
+                        new JsonSerializerOptions { WriteIndented = true }));
+            }
+        }
+    }
+
+
     [Fact]
     public void ProgressiveOneProposalBudgetReplaysEightSellers104MarketsLikeFullJointSearch()
     {
