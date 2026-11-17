@@ -40,6 +40,7 @@ on:
       - 'scripts/GA-Next-Residual-Workspace-AB-Report.ps1'
       - 'scripts/GA-Next-Progressive-Cost-Report.ps1'
       - 'scripts/GA-Next-Route-Elision-AB-Report.ps1'
+      - 'scripts/GA-Next-Identical-Market-AB-Report.ps1'
       - 'GlobalArena.Simulation/Foundation/FoundationConcentratedWorkforceScenario.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationWorkforceActivityGroups.cs'
       - 'GlobalArena.Tests/StrategicPhysicalWorkerInspectorTests.cs'
@@ -169,6 +170,22 @@ jobs:
         with:
           name: ga-next-route-elision-ab-${{ matrix.os }}
           path: ${{ runner.temp }}/ga-next-route-elision-ab/route-elision-104.json
+          if-no-files-found: error
+      - name: Exact A/B global market candidate early discard and 104 worker market fallback
+        env:
+          GA_IDENTICAL_MARKET_REPORT_DIR: ${{ runner.temp }}/ga-next-identical-market-ab
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~ExactSingleLocalMarketSkipsOnlyIdenticalGlobalRerouting|FullyQualifiedName~GlobalMarketEarlyDiscardPreservesFullA_BOnTwoMarketsAndRoadRebase|FullyQualifiedName~GlobalMarketIdenticalInputGuardKeepsGoldberg104A_BExact' --logger 'console;verbosity=normal'
+      - name: Publish exact A/B global market early discard report
+        shell: pwsh
+        env:
+          GA_IDENTICAL_MARKET_REPORT_DIR: ${{ runner.temp }}/ga-next-identical-market-ab
+        run: |
+          & ./scripts/GA-Next-Identical-Market-AB-Report.ps1 -ReportDirectory $env:GA_IDENTICAL_MARKET_REPORT_DIR
+      - name: Archive global market early discard A/B
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-next-identical-market-ab-${{ matrix.os }}
+          path: ${{ runner.temp }}/ga-next-identical-market-ab/identical-market-104.json
           if-no-files-found: error
       - name: Joint global market and multipath integrated potential — monotone worker-backed search
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalJointMarketRoutePotentialTests' --logger 'console;verbosity=normal'
