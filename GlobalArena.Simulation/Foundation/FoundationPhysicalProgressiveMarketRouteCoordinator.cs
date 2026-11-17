@@ -5,6 +5,17 @@ using GlobalArena.World;
 namespace GlobalArena.Simulation.Foundation;
 
 /// <summary>
+/// How the CURRENT economic-input epoch obtained its initial audited
+/// candidate. This is provenance, not an optimization/convergence claim.
+/// </summary>
+public enum FoundationPhysicalProgressiveSeedKind
+{
+    FullGlobalSolve = 0,
+    AuditedQuoteRevaluation = 1,
+    ReauditedFixedMarketRouting = 2
+}
+
+/// <summary>
 /// Immutable, uncommitted continuation of the two-block market/route search.
 /// The best candidate is ALWAYS fully audited and conserves real worker
 /// production, but is NOT a settled market or a proof of exact equilibrium.
@@ -24,6 +35,12 @@ public sealed class FoundationPhysicalProgressiveMarketRouteState
     internal int MaxTotalRouteBatches { get; }
 
     public FoundationPhysicalGlobalConcaveMultiPathPlan BestAuditedCandidate { get; }
+    /// <summary>
+    /// Rebased plans retain historical segmented market metadata. Only
+    /// BestPotentialScaled is current-epoch economic potential; a warm seed
+    /// is NOT a newly optimized global market flow at changed quotes.
+    /// </summary>
+    public FoundationPhysicalProgressiveSeedKind SeedKind { get; }
     public BigInteger BestPotentialScaled { get; }
     public BigInteger MinimumAcceptedGainScaled { get; }
     public int ProposalsEvaluated { get; }
@@ -51,8 +68,11 @@ public sealed class FoundationPhysicalProgressiveMarketRouteState
         int acceptedMarkets, int acceptedRoutes, int rejected,
         int completedPasses, int nextProposalIndex,
         bool improvedInPass, bool stable,
-        BigInteger[] acceptedHistory)
+        BigInteger[] acceptedHistory,
+        FoundationPhysicalProgressiveSeedKind seedKind =
+            FoundationPhysicalProgressiveSeedKind.FullGlobalSolve)
     {
+        SeedKind = seedKind;
         Census = census;
         Incidence = incidence;
         DemandPolicy = demandPolicy;
@@ -87,11 +107,14 @@ public sealed class FoundationPhysicalProgressiveMarketRouteState
 /// flow and physical routing calculation. All arithmetic and audits remain
 /// exact, while the search can stop and continue between planning invocations.
 /// 
-/// New snapshots must pass BeginOrResume: the previous state is reused ONLY
-/// if immutable input objects and all frozen economic parameters still agree.
-/// Changes to workers, quotes, costs, policies, or topology require a fresh
-/// full audited baseline. A future gate can add a rigorously validated
-/// cross-world warm start; this one must never reuse stale deliveries.
+/// New snapshots must pass BeginOrResume. Identical input resumes exactly.
+/// Changed quotes with unchanged demand-market identities can reuse a fully
+/// REAUDITED fixed physical candidate; changed edge rates/scales on the same
+/// physical network reroute fixed quantities under the NEW road ownership and
+/// congestion before starting the new epoch. Neither path runs global flow.
+/// Changed workers, topology, policies, market identities, or network edge
+/// sets force a fresh full global solve. A warm start is NOT a cross-epoch
+/// convergence certificate and NEVER publishes economic settlement.
 /// </summary>
 public static class FoundationPhysicalProgressiveMarketRouteCoordinator
 {
@@ -133,7 +156,10 @@ public static class FoundationPhysicalProgressiveMarketRouteCoordinator
             x => x?.Edge.FineStrategicEdgeId.Value ?? 0UL).ToArray();
         var scales = carryingScales.ToArray();
 
-        if (previous is not null &&
+        // Only a truly immutable worker/topology/policy snapshot may seed
+        // this new epoch. Workers are physical individuals, not counts:
+        // even one changed worker object forces a full new market solve.
+        bool samePhysicalInputs = previous is not null &&
             ReferenceEquals(previous.Census, census) &&
             ReferenceEquals(previous.Incidence, incidence) &&
             ReferenceEquals(previous.DemandPolicy, demandPolicy) &&
@@ -142,15 +168,64 @@ public static class FoundationPhysicalProgressiveMarketRouteCoordinator
             previous.MaxAugmentations == maxFlowAugmentationsPerProposal &&
             previous.MaxRouteBatchesPerParent == maxRouteBatchesPerParent &&
             previous.MaxTotalRouteBatches == maxTotalRouteBatches &&
-            previous.MinimumAcceptedGainScaled == minimumAcceptedGainScaled &&
-            previous.FrozenQuotes.SequenceEqual(quoteList) &&
-            previous.FrozenRoads.SequenceEqual(roads) &&
-            previous.FrozenScales.SequenceEqual(scales))
+            previous.MinimumAcceptedGainScaled == minimumAcceptedGainScaled;
+
+        // Repricing may change marginal utility but MUST NOT silently add,
+        // remove, replace or reorder any real worker-backed demand market.
+        bool sameMarkets = samePhysicalInputs &&
+            previous!.FrozenQuotes.Length == quoteList.Length &&
+            previous.FrozenQuotes.Zip(quoteList).All(pair =>
+                pair.First is not null && pair.Second is not null &&
+                pair.First.BuyerTile == pair.Second.BuyerTile &&
+                pair.First.Buyer == pair.Second.Buyer &&
+                pair.First.Commodity == pair.Second.Commodity);
+
+        bool sameRoads = sameMarkets &&
+            previous!.FrozenRoads.SequenceEqual(roads);
+        bool sameScales = sameMarkets &&
+            previous!.FrozenScales.SequenceEqual(scales);
+        if (sameMarkets && sameRoads && sameScales &&
+            previous!.FrozenQuotes.SequenceEqual(quoteList))
+            return previous; // Same epoch: retain the unfinished block.
+
+        FoundationPhysicalGlobalConcaveMultiPathPlan? warm = null;
+        var seedKind = FoundationPhysicalProgressiveSeedKind.FullGlobalSolve;
+        if (sameMarkets && sameRoads && sameScales)
         {
-            return previous;
+            // Prices/quotes changed, but workers, destinations, physical
+            // network, tariffs and congestion scales are literally unchanged.
+            // Reaudit the former best candidate, then value its SAME
+            // quantities and freight under the new exact market quotes.
+            // Do not preserve previous potential history or stability flag.
+            warm = previous!.BestAuditedCandidate;
+            ReauditUnchangedPhysicalCandidate(
+                census, incidence, demandPolicy, conversionPolicy,
+                roads, warm);
+            seedKind = FoundationPhysicalProgressiveSeedKind
+                .AuditedQuoteRevaluation;
+        }
+        else if (sameMarkets && previous!.FrozenRoads.Length == roads.Length &&
+            previous.FrozenRoads.Zip(roads).All(pair =>
+                pair.First is not null && pair.Second is not null &&
+                pair.First.Edge == pair.Second.Edge))
+        {
+            // Same connected physical edge set, but rates/ownership/tariffs
+            // or cargo scales changed. Recalculate ALL routes, quartic costs,
+            // ownership charges and freight audit under the NEW inputs while
+            // preserving previously allocated buyer goods. No global solve.
+            // If the old fixed-market response is infeasible, fail closed:
+            // never return shipments with an unaudited network.
+            warm = FoundationPhysicalGlobalConcaveMultiPathPlanner
+                .RouteFixedMarket(census, incidence, demandPolicy,
+                    conversionPolicy,
+                    previous.BestAuditedCandidate.MarketAllocation,
+                    roads, scales, maxRouteBatchesPerParent,
+                    maxTotalRouteBatches);
+            seedKind = FoundationPhysicalProgressiveSeedKind
+                .ReauditedFixedMarketRouting;
         }
 
-        var initial = FoundationPhysicalGlobalConcaveMultiPathPlanner.Plan(
+        var initial = warm ?? FoundationPhysicalGlobalConcaveMultiPathPlanner.Plan(
             census, incidence, demandPolicy, conversionPolicy, quoteList,
             roads, scales, segmentsPerAverageMarket,
             maxFlowAugmentationsPerProposal, maxRouteBatchesPerParent,
@@ -167,7 +242,42 @@ public static class FoundationPhysicalProgressiveMarketRouteCoordinator
             maxFlowAugmentationsPerProposal, maxRouteBatchesPerParent,
             maxTotalRouteBatches, minimumAcceptedGainScaled, initial,
             potential, 0, 0, 0, 0, 0, 0, false, false,
-            new[] { potential });
+            new[] { potential }, seedKind);
+    }
+
+    private static void ReauditUnchangedPhysicalCandidate(
+        PhysicalWorkerRuntimeState census,
+        PhysicalTacticalIncidenceMap incidence,
+        FoundationActivityCommodityDemandPolicy demandPolicy,
+        FoundationCommodityCargoConversionPolicy conversionPolicy,
+        IReadOnlyList<FoundationPhysicalRoutingEdgeCost> roads,
+        FoundationPhysicalGlobalConcaveMultiPathPlan candidate)
+    {
+        var (_, owners) =
+            FoundationPhysicalTradeRouteCandidatePlanner.BuildGraph(
+                incidence, roads);
+        var audited = FoundationPhysicalDeliveryAllocationAuditor.Audit(
+            census, incidence, demandPolicy, conversionPolicy,
+            candidate.Parts.Select(part => part.Delivery), owners);
+        if (audited.TotalAvailableGoodsMicro !=
+                candidate.AllocationAudit.TotalAvailableGoodsMicro ||
+            audited.TotalAllocatedGoodsMicro !=
+                candidate.AllocationAudit.TotalAllocatedGoodsMicro ||
+            audited.TotalAvailableGoodsMicro !=
+                audited.TotalAllocatedGoodsMicro ||
+            audited.Freight.TotalEdgeTraversalCargoMicro !=
+                candidate.AllocationAudit.Freight.TotalEdgeTraversalCargoMicro)
+            throw new InvalidOperationException(
+                "Quote-only rebase failed independent physical conservation.");
+
+        var loaded = audited.Freight.UsedEdges.ToDictionary(
+            edge => edge.Edge, edge => edge.TotalCargoMicro);
+        if (candidate.ProjectedEdges.Count != roads.Count ||
+            candidate.ProjectedEdges.Any(edge =>
+                !owners.ContainsKey(edge.Edge) ||
+                loaded.GetValueOrDefault(edge.Edge) != edge.CargoMicro))
+            throw new InvalidOperationException(
+                "Quote-only rebase mismatched the independently audited freight.");
     }
 
     public static FoundationPhysicalProgressiveMarketRouteState Advance(
@@ -291,6 +401,6 @@ public static class FoundationPhysicalProgressiveMarketRouteCoordinator
             state.MaxTotalRouteBatches, state.MinimumAcceptedGainScaled,
             incumbent, score, attempts, acceptedMarket, acceptedRoutes,
             rejected, completePasses, nextBlock, improved, stable,
-            history.ToArray());
+            history.ToArray(), state.SeedKind);
     }
 }
