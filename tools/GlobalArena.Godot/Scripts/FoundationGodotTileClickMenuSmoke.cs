@@ -145,7 +145,7 @@ public sealed class FoundationGodotTileClickMenuSmoke
                  _map.RenderedWorkerCivilizationColor(1UL) ==
                      GaCivilizationVisualIdentity.ColorFor(1UL) &&
                  ownerStripe?.Color == GaCivilizationVisualIdentity.ColorFor(1UL) &&
-                 title.Text.Contains("RED"),
+                 title?.Text.Contains("RED") == true,
                 "Worker count orientation / owner marker and city identity must agree.");
             foreach (var role in new[] {
                 PhysicalWorkerOccupation.Agriculture,
