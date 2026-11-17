@@ -39,6 +39,7 @@ on:
       - 'scripts/GA-Next-Joint-Stage-Profiling-Report.ps1'
       - 'scripts/GA-Next-Residual-Workspace-AB-Report.ps1'
       - 'scripts/GA-Next-Progressive-Cost-Report.ps1'
+      - 'scripts/GA-Next-Route-Elision-AB-Report.ps1'
       - 'GlobalArena.Simulation/Foundation/FoundationConcentratedWorkforceScenario.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationWorkforceActivityGroups.cs'
       - 'GlobalArena.Tests/StrategicPhysicalWorkerInspectorTests.cs'
@@ -152,6 +153,22 @@ jobs:
         with:
           name: ga-next-progressive-cost-${{ matrix.os }}
           path: ${{ runner.temp }}/ga-next-progressive-cost/progressive-cost-104.json
+          if-no-files-found: error
+      - name: Exact A/B duplication-elision of route-only proposal on 104 worker markets
+        env:
+          GA_ROUTE_ELISION_AB_REPORT_DIR: ${{ runner.temp }}/ga-next-route-elision-ab
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~DuplicateRouteElisionMatchesOriginalAcrossColdQuoteRoadAndGainFloor|FullyQualifiedName~DuplicateGoldbergRouteProposalMatchesReferenceAndAvoidsRecalculation' --logger 'console;verbosity=normal'
+      - name: Validate and publish exact A/B route-only optimization profile
+        shell: pwsh
+        env:
+          GA_ROUTE_ELISION_AB_REPORT_DIR: ${{ runner.temp }}/ga-next-route-elision-ab
+        run: |
+          & ./scripts/GA-Next-Route-Elision-AB-Report.ps1 -ReportDirectory $env:GA_ROUTE_ELISION_AB_REPORT_DIR
+      - name: Preserve route-elision A/B audit artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-next-route-elision-ab-${{ matrix.os }}
+          path: ${{ runner.temp }}/ga-next-route-elision-ab/route-elision-104.json
           if-no-files-found: error
       - name: Joint global market and multipath integrated potential — monotone worker-backed search
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalJointMarketRoutePotentialTests' --logger 'console;verbosity=normal'
