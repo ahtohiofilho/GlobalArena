@@ -35,6 +35,12 @@ Um segundo teste exige a mesma realocação de produtor através das **arestas r
 
 O teste registra tempo de relógio `Stopwatch` e `GC.GetAllocatedBytesForCurrentThread` para referência e modo novo, em cada resolução. **Não há assert sobre melhora de tempo ou bytes**: essas medições variam com o JIT, GC, thread e carga do runner. Só a **equivalência exata** é obrigatória; qualquer divergência invalida o incremento.
 
+## Evidência estruturada de eficiência
+
+Como o log padrão do xUnit pode omitir os contadores escritos em `ITestOutputHelper`, o cenário A/B grava, **somente após todas as comparações de exatidão terem passado**, `segments-2.json`, `segments-4.json` e `segments-8.json` quando `GA_RESIDUAL_WORKSPACE_REPORT_DIR` estiver definida pela CI. Não exporta rotas nem detalhes de trabalhadores: apenas segmentação, número de mercados/produtores, oferta e alocação total, aumentos de fluxo, tempos e bytes acumulados por thread de cada modo, equivalência verdadeira e não liquidação.
+
+O script PowerShell `scripts/GA-Next-Residual-Workspace-AB-Report.ps1` valida **os três** arquivos e impede sucesso silencioso em caso de evidência ausente, ausência de conservação, orçamento inconsistente ou flag falsa de igualdade. Publica tabela de referência/novo, com a diferença percentual de bytes no `GITHUB_STEP_SUMMARY` em Windows e Ubuntu. Se a diferença for negativa, será registrada como regressão observada; não é ocultada nem automaticamente chamada de sucesso de performance. Nenhum teste aplica limite arbitrário de tempo/bytes, pois o runner e o aquecimento do JIT variam.
+
 ## Limites, riscos e governança
 
 Esta é uma otimização de **alocações de buffers do Dijkstra residual**, não uma promessa de reduzir integralmente os gigabytes cumulativos observados no #404. Outras fontes relevantes permanecem: grafo físico, busca de caminhos por parcela multipath, custo quartico BigInteger e avaliação integrada de mercado. A sequência de benchmark mostrará se o efeito tem magnitude suficiente para continuar neste componente ou se devemos migrar o foco.
