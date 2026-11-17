@@ -151,6 +151,44 @@ public static class FoundationPhysicalGlobalConcaveMultiPathPlanner
             throw new ArgumentOutOfRangeException(
                 "Explicit positive flow and routing budgets are required.");
 
+        var roads = freeFlowEdgeCosts.ToArray();
+        var scales = carryingScales.ToArray();
+        var market = FoundationPhysicalGlobalConcaveFlowPlanner.Coordinate(
+            census, incidence, demandPolicy, conversionPolicy,
+            quotes.ToArray(), roads, segmentsPerAverageMarket,
+            maxFlowAugmentations);
+        return RouteFixedMarket(census, incidence, demandPolicy,
+            conversionPolicy, market, roads, scales,
+            maxRouteBatchesPerParent, maxTotalRouteBatches);
+    }
+
+    /// <summary>
+    /// Opt-in routing step for an already globally allocated, uncommitted
+    /// market response. The entire response is reaudited against the current
+    /// worker census and its physical edges; no market is silently changed.
+    /// </summary>
+    internal static FoundationPhysicalGlobalConcaveMultiPathPlan RouteFixedMarket(
+        PhysicalWorkerRuntimeState census,
+        PhysicalTacticalIncidenceMap incidence,
+        FoundationActivityCommodityDemandPolicy demandPolicy,
+        FoundationCommodityCargoConversionPolicy conversionPolicy,
+        FoundationPhysicalGlobalConcaveFlowPlan market,
+        IEnumerable<FoundationPhysicalRoutingEdgeCost> freeFlowEdgeCosts,
+        IEnumerable<FoundationPhysicalEdgeCarryingScale> carryingScales,
+        int maxRouteBatchesPerParent,
+        int maxTotalRouteBatches)
+    {
+        ArgumentNullException.ThrowIfNull(census);
+        ArgumentNullException.ThrowIfNull(incidence);
+        ArgumentNullException.ThrowIfNull(demandPolicy);
+        ArgumentNullException.ThrowIfNull(conversionPolicy);
+        ArgumentNullException.ThrowIfNull(market);
+        ArgumentNullException.ThrowIfNull(freeFlowEdgeCosts);
+        ArgumentNullException.ThrowIfNull(carryingScales);
+        if (maxRouteBatchesPerParent < 1 || maxTotalRouteBatches < 1)
+            throw new ArgumentOutOfRangeException(
+                "Routing batch budgets must be positive.");
+
         var roads = freeFlowEdgeCosts.OrderBy(
             road => road?.Edge.FineStrategicEdgeId.Value ?? 0UL).ToArray();
         var (graph, owners) =
@@ -183,9 +221,6 @@ public static class FoundationPhysicalGlobalConcaveMultiPathPlanner
                 "Carrying scales must cover ALL and ONLY declared roads.",
                 nameof(carryingScales));
 
-        var market = FoundationPhysicalGlobalConcaveFlowPlanner.Coordinate(
-            census, incidence, demandPolicy, conversionPolicy,
-            quotes.ToArray(), roads, segmentsPerAverageMarket, maxFlowAugmentations);
         var parents = market.Candidates.OrderBy(p => p.DeliveryOrdinal).ToArray();
 
         var baseline = FoundationPhysicalDeliveryAllocationAuditor.Audit(
