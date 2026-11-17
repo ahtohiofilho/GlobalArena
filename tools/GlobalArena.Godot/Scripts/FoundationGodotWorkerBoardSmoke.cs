@@ -127,7 +127,7 @@ public sealed class FoundationGodotWorkerBoardSmoke
                      _map.WorkerBoardProjectedCount(role) == 2,
                     "Board must contain exactly two real people in each role.");
             var allChips = _map.FindChildren(
-                "WorkerBoardChip_*", nameof(GaWorkerBoardDragChip), true, false);
+                "WorkerBoardChip_*", "", true, false);
             Must(allChips.Count == 6 &&
                  allChips.Cast<GaWorkerBoardDragChip>()
                      .Select(chip => chip.WorkerId).Distinct().Count() == 6,
