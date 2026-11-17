@@ -241,6 +241,32 @@ public sealed class FoundationPhysicalSameCommodityConvergenceTests
     }
 
     [Fact]
+    public void IntegratedUtilityUsesExactIntegerSquareRootAndDiminishingReturns()
+    {
+        Assert.Equal(0, FoundationPhysicalMarginalIntegratedUtility
+            .IntegerSqrt(0));
+        Assert.Equal(3, FoundationPhysicalMarginalIntegratedUtility
+            .IntegerSqrt(15));
+        Assert.Equal(4, FoundationPhysicalMarginalIntegratedUtility
+            .IntegerSqrt(16));
+        Assert.Equal(4, FoundationPhysicalMarginalIntegratedUtility
+            .IntegerSqrt(17));
+        var first = FoundationPhysicalMarginalIntegratedUtility
+            .MarketBenefitScaled(1_000_000UL, 1_000_000UL, 1_000_000UL);
+        var second = FoundationPhysicalMarginalIntegratedUtility
+            .MarketBenefitScaled(1_000_000UL, 1_000_000UL, 2_000_000UL);
+        var third = FoundationPhysicalMarginalIntegratedUtility
+            .MarketBenefitScaled(1_000_000UL, 1_000_000UL, 3_000_000UL);
+        Assert.True(first > 0);
+        Assert.True(second > first);
+        Assert.True(third > second);
+        Assert.True(first > second - first);
+        Assert.True(second - first > third - second);
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            FoundationPhysicalMarginalIntegratedUtility.IntegerSqrt(-1));
+    }
+
+    [Fact]
     public void EvenWithIncumbentTiesInsufficientBudgetMustFailClosed()
     {
         var stress = ConnectedEightSourceCase();
