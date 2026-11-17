@@ -131,6 +131,13 @@ public sealed class FoundationTacticalHumanAiTurnHost
     public IReadOnlyList<CivilizationId> ReadyCivilizations =>
         Array.AsReadOnly(_participants.Where(_ready.Contains).ToArray());
     public int PendingOrderCount => _plans.Values.Sum(plan => plan.Count);
+    /// <summary>
+    /// Read-only v11 inputs for a future physical market, derived only from
+    /// the last COMMITTED worker census. Pending orders cannot change them.
+    /// No economic settlement or extra WorldState publication occurs here.
+    /// </summary>
+    public FoundationPhysicalWorkforceEconomicInputs GetPhysicalEconomicInputs() =>
+        FoundationPhysicalWorkforceEconomicProjector.Project(Snapshot.Workers);
     public bool AllRequiredReady => _participants.All(_ready.Contains);
 
     public FoundationTacticalHumanAiTurnHost(
