@@ -129,7 +129,8 @@ public static class FoundationPhysicalGlobalConcaveFlowPlanner
         int maxFlowAugmentations,
         bool reuseSearchWorkspace,
         bool useSequentialSeedReference = false,
-        FoundationPhysicalGlobalFlowCostProfile? profile = null)
+        FoundationPhysicalGlobalFlowCostProfile? profile = null,
+        bool useIndexedHeap = true)
     {
         ArgumentNullException.ThrowIfNull(census);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -270,7 +271,7 @@ public static class FoundationPhysicalGlobalConcaveFlowPlanner
                     "Global concave-flow planning exhausted its total budget.");
             var flow = FoundationPhysicalConcaveCommodityFlow.Solve(
                 sources, buyers, quantum, segmentsPerAverageMarket, remaining,
-                reuseSearchWorkspace, profile);
+                reuseSearchWorkspace, profile, useIndexedHeap);
             augmentations = checked(augmentations + flow.Augmentations);
             piecewisePotential += flow.SegmentedNetPotentialScaled;
             integratedPotential += flow.IntegratedNetPotentialScaled;
