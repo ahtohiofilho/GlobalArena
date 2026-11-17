@@ -292,14 +292,17 @@ public sealed class FoundationTacticalHumanAiTurnHost
             IEnumerable<FoundationPhysicalEdgeCarryingScale> carryingScales,
             int maxProducerPasses,
             int maxBatchesPerDelivery,
-            int maxFeedbackIterations)
+            int maxFeedbackIterations,
+            int maxMarginalPathPasses = 0,
+            int maxFragmentsPerPathPart = 1)
     {
         CheckSnapshot();
         return FoundationPhysicalCoupledMultiPathMarketFeedback.Coordinate(
             Snapshot.Workers, Incidence, demandPolicy, conversionPolicy,
             quotes, freeFlowEdgeCosts, carryingScales,
             maxProducerPasses, maxBatchesPerDelivery,
-            maxFeedbackIterations);
+            maxFeedbackIterations, maxMarginalPathPasses,
+            maxFragmentsPerPathPart);
     }
 
     public bool AllRequiredReady => _participants.All(_ready.Contains);
