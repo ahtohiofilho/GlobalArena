@@ -980,17 +980,44 @@ public partial class Main : Control
         metrics.AddChild(GaVisualFoundation.CreateMetric(
             "AI", _localFoundation.AiCivilizations.Count.ToString(),
             out _metricAiCivilizations));
+        // Keep compact command header and turn metrics accessible while the
+        // ENTIRE body scrolls. Previously only an inner sub-section of the
+        // reparented sidebar could scroll, clipping lower worker commands.
+        // ScrollContainer supplies a bounded viewport rather than asking the
+        // VBox parent for the full height of every detail and order control.
+        var operationsScroll = new ScrollContainer
+        {
+            Name = "GANextOperationsBodyScroll",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
+            MouseFilter = MouseFilterEnum.Stop,
+            ClipContents = true
+        };
+        operationsColumn.AddChild(operationsScroll);
+        var operationsBody = new VBoxContainer
+        {
+            Name = "GANextOperationsBody",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            MouseFilter = MouseFilterEnum.Pass
+        };
+        operationsBody.AddThemeConstantOverride("separation", 8);
+        operationsScroll.AddChild(operationsBody);
         var roster = new GaOperationalRoster
         {
             Name = "GANextOperationalRoster",
             SizeFlagsHorizontal = SizeFlags.ExpandFill
         };
         roster.WorkerSelected += OnOperationalWorkerSelected;
-        operationsColumn.AddChild(roster);
+        operationsBody.AddChild(roster);
         _operationalRoster = roster;
-        rightPanel.Reparent(operationsColumn);
+        // The existing region/worker/order controls keep their original
+        // event callbacks and remain below the roster in one scroll flow.
+        rightPanel.Reparent(operationsBody);
         rightPanel.CustomMinimumSize = Vector2.Zero;
-        rightPanel.SizeFlagsVertical = SizeFlags.ExpandFill;
+        rightPanel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        rightPanel.SizeFlagsVertical = SizeFlags.ShrinkBegin;
         _workspaceWindow = operations;
 
         // Secondary planetary atlas is a bounded, movable and resizable
@@ -1206,11 +1233,11 @@ public partial class Main : Control
         var rightLayout = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
         rightLayout.AddThemeConstantOverride("separation", 8);
         rightMargin.AddChild(rightLayout);
-        var panelTitle = new Label { Text = "TERRITORY & WORLD" };
-        panelTitle.AddThemeFontSizeOverride("font_size", 17);
+        var panelTitle = new Label { Text = "TILE & TERRITORY" };
+        panelTitle.AddThemeFontSizeOverride("font_size", 14);
         rightLayout.AddChild(panelTitle);
-        var tacticalBridgeTitle = new Label { Text = "TACTICAL CONTEXT" };
-        tacticalBridgeTitle.AddThemeFontSizeOverride("font_size", 15);
+        var tacticalBridgeTitle = new Label { Text = "SELECTED TILE" };
+        tacticalBridgeTitle.AddThemeFontSizeOverride("font_size", 13);
         rightLayout.AddChild(tacticalBridgeTitle);
         _tacticalBridgeStatus = new Label { Text = "Select a canonical territory to enable tactical context" };
         _tacticalBridgeStatus.AutowrapMode = TextServer.AutowrapMode.WordSmart;
@@ -1247,12 +1274,18 @@ public partial class Main : Control
         _tacticalTileEdges = new CheckBox { Text = "TACTICAL TILE EDGES", ButtonPressed = false, Visible = false };
         _tacticalTileEdges.Toggled += enabled => _tacticalPreview?.SetEdgesVisible(enabled);
         rightLayout.AddChild(_tacticalTileEdges);
-        var panelScroll = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
-        rightLayout.AddChild(panelScroll);
-        // GA_UI_TACTICAL_HUD_SIDEBAR_R1: one scroll region, distinct context-only panels.
+        // All sidebar details now belong to the single bounded outer dock
+        // scroll region; this VBox must NOT create a nested vertical viewport.
+        var detailSections = new VBoxContainer
+        {
+            Name = "GANextOperationsDetailSections",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        rightLayout.AddChild(detailSections);
+        // Tactical/strategic readouts still switch by context, not by hover.
         var hud = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         hud.AddThemeConstantOverride("separation", 8);
-        panelScroll.AddChild(hud);
+        detailSections.AddChild(hud);
         var tacticalHud = new VBoxContainer { Visible = false, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         tacticalHud.AddThemeConstantOverride("separation", 5);
         hud.AddChild(tacticalHud);
@@ -1293,8 +1326,8 @@ public partial class Main : Control
         // Turn status is shared across both views. Strategic G/P/X orders are
         // retained as a historical fixture, not advertised as tactical moves.
         hud.AddChild(orderSection);
-        var orderTitle = new Label { Text = "LOCAL FOUNDATION | WORKER ORDERS" };
-        orderTitle.AddThemeFontSizeOverride("font_size", 15);
+        var orderTitle = new Label { Text = "WORKER ORDERS" };
+        orderTitle.AddThemeFontSizeOverride("font_size", 13);
         orderSection.AddChild(orderTitle);
         _localTurnLabel = new Label
         {
@@ -1374,6 +1407,7 @@ public partial class Main : Control
         orderSection.AddChild(_localEndTurnButton);
         _localOrderStatus = new Label
         {
+            Name = "GANextOrderFeedback",
             Text = "Select a worker and tile, queue orders, then press E to end turn",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };

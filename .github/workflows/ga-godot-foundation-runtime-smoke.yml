@@ -78,6 +78,8 @@ jobs:
           grep -q 'GA_NEXT_SHORTCUT_ROUTING_PASS' "$RUNNER_TEMP/ga-godot/tactical-workspace.log"
           grep -q 'GA_NEXT_TACTICAL_GRID_SURFACE_PASS' "$RUNNER_TEMP/ga-godot/tactical-workspace.log"
           grep -q 'GA_NEXT_LAYOUT_DOCK_E2E_PASS' "$RUNNER_TEMP/ga-godot/tactical-workspace.log"
+          grep -q 'GA_NEXT_OPERATIONS_DOCK_SCROLL_PASS' "$RUNNER_TEMP/ga-godot/tactical-workspace.log"
+          grep -q 'GA_NEXT_OPERATIONS_DOCK_COMPACT_SKIP_HEADLESS' "$RUNNER_TEMP/ga-godot/tactical-workspace.log"
           grep -q 'GA_NEXT_FLOATING_WINDOW_PASS' "$RUNNER_TEMP/ga-godot/tactical-workspace.log"
           grep -q 'GA_NEXT_WORKFORCE_ROSTER_PASS' "$RUNNER_TEMP/ga-godot/tactical-workspace.log"
           if grep -E 'GA_NEXT_TACTICAL_WORKSPACE_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/tactical-workspace.log"; then
@@ -192,9 +194,11 @@ jobs:
           grep -q 'GA_NEXT_SHORTCUT_ROUTING_PASS' "$RUNNER_TEMP/ga-godot/workspace-graphical.log"
           grep -q 'GA_NEXT_TACTICAL_GRID_SURFACE_PASS' "$RUNNER_TEMP/ga-godot/workspace-graphical.log"
           grep -q 'GA_NEXT_LAYOUT_DOCK_E2E_PASS' "$RUNNER_TEMP/ga-godot/workspace-graphical.log"
+          grep -q 'GA_NEXT_OPERATIONS_DOCK_SCROLL_PASS' "$RUNNER_TEMP/ga-godot/workspace-graphical.log"
+          grep -q 'GA_NEXT_OPERATIONS_DOCK_COMPACT_PASS' "$RUNNER_TEMP/ga-godot/workspace-graphical.log"
           grep -q 'GA_NEXT_FLOATING_WINDOW_PASS' "$RUNNER_TEMP/ga-godot/workspace-graphical.log"
           grep -q 'GA_NEXT_WORKFORCE_ROSTER_PASS' "$RUNNER_TEMP/ga-godot/workspace-graphical.log"
-          for stage in 01_tactical_start 02_planet_map 03_operations_panel 04_after_ai_turn; do
+          for stage in 01_tactical_start 02_planet_map 03_operations_panel 03_operations_bottom 03_operations_compact 04_after_ai_turn; do
             grep -q "GA_NEXT_RENDER_FRAME_PASS stage=$stage" "$RUNNER_TEMP/ga-godot/workspace-graphical.log"
             test -s "$GA_NEXT_WORKSPACE_SCREENSHOT_DIR/$stage.png"
           done
