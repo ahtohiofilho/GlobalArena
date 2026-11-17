@@ -36,6 +36,7 @@ on:
       - 'GlobalArena.Tests/FoundationPhysicalJointAdversarialMarketRouteTests.cs'
       - 'scripts/GA-Next-Joint-Stress-Report.ps1'
       - 'scripts/GA-Next-Joint-Stage-Profiling-Report.ps1'
+      - 'scripts/GA-Next-Residual-Workspace-AB-Report.ps1'
       - 'GlobalArena.Simulation/Foundation/FoundationConcentratedWorkforceScenario.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationWorkforceActivityGroups.cs'
       - 'GlobalArena.Tests/StrategicPhysicalWorkerInspectorTests.cs'
@@ -123,7 +124,15 @@ jobs:
       - name: Same-commodity global seller convergence on 112 connected physical tiles and 104 real markets
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalSameCommodityConvergenceTests' --logger 'console;verbosity=normal'
       - name: Global same-commodity concave flow — exact conserved supplies, 104 Goldberg markets and deterministic residual routes
+        env:
+          GA_RESIDUAL_WORKSPACE_REPORT_DIR: ${{ runner.temp }}/ga-next-residual-workspace
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalGlobalConcaveFlowTests' --logger 'console;verbosity=normal'
+      - name: Report exact residual workspace A/B managed allocations and timings
+        shell: pwsh
+        env:
+          GA_RESIDUAL_WORKSPACE_REPORT_DIR: ${{ runner.temp }}/ga-next-residual-workspace
+        run: |
+          & ./scripts/GA-Next-Residual-Workspace-AB-Report.ps1 -ReportDirectory $env:GA_RESIDUAL_WORKSPACE_REPORT_DIR
       - name: Joint global market and multipath integrated potential — monotone worker-backed search
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalJointMarketRoutePotentialTests' --logger 'console;verbosity=normal'
       - name: Joint global Goldberg stress — 8/104 baseline, severe load, and larger 16/192 markets
