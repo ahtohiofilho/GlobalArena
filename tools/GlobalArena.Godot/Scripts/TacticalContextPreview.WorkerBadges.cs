@@ -143,7 +143,7 @@ public partial class TacticalContextPreview
         _selectedWorkerGlyphId = selectedWorkerId;
         RebuildWorkerMarkers();
         RefreshWorkerInspectorFromCensus();
-        RefreshTileHoverMenuAfterSnapshot();
+        RefreshTileClickMenuAfterSnapshot();
     }
 
     private static string WorkerOccupationLabel(PhysicalWorkerOccupation occupation) =>
