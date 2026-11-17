@@ -78,7 +78,7 @@ public sealed class FoundationGodotWorkerBoardSmoke
 
     private async Task Capture(string name)
     {
-        var dir = Environment.GetEnvironmentVariable(
+        var dir = System.Environment.GetEnvironmentVariable(
             "GA_NEXT_WORKER_BOARD_SCREENSHOT_DIR");
         if (string.IsNullOrWhiteSpace(dir)) return;
         Directory.CreateDirectory(dir);
@@ -138,7 +138,7 @@ public sealed class FoundationGodotWorkerBoardSmoke
 
             var chipRect = _map.WorkerBoardChipRect(4UL);
             Must(chipRect.HasValue, "Worker #4 chip not visible.");
-            await Click(chipRect.Value.GetCenter());
+            await Click(chipRect.GetValueOrDefault().GetCenter());
             Must(_map.WorkerBoardSelectedId == 4UL &&
                  _main.SelectedTacticalWorkerId == 4UL &&
                  _host.StateHash == hash,
@@ -159,7 +159,7 @@ public sealed class FoundationGodotWorkerBoardSmoke
                  !mining._CanDropData(Vector2.Zero,
                      Variant.From("GA-NEXT-WORKER:999:1:999")),
                 "Drag identity/owner/tile acceptance must be scoped to this board.");
-            mining._DropData(Vector2.Zero, payload);
+            mining!._DropData(Vector2.Zero, payload);
             await Frames();
             Must(_host.PendingOrderCount == 1 &&
                  _host.StateHash == hash &&
@@ -183,7 +183,7 @@ public sealed class FoundationGodotWorkerBoardSmoke
             var transferRect = _map.WorkerBoardTransferRect(
                 PhysicalWorkerOccupation.Mining);
             Must(transferRect.HasValue, "Click/keyboard role alternative disappeared.");
-            await Click(transferRect.Value.GetCenter());
+            await Click(transferRect.GetValueOrDefault().GetCenter());
             Must(_host.PendingOrderCount == 1 &&
                  _host.StateHash == hash,
                 "ASSIGN SELECTED must use the same host queue as drop and keyboard N.");
