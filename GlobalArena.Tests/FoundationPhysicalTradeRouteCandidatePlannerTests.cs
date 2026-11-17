@@ -197,11 +197,12 @@ public sealed class FoundationPhysicalTradeRouteCandidatePlannerTests
         var host = Start();
         var demand = Demand(One, Two);
         var markets = host.GetCommodityMarketInputs(demand);
-        var redLot = Assert.Single(markets.SupplyLots, lot =>
-            lot.Owner == Red && lot.Commodity == One);
+        var redLots = markets.SupplyLots.Where(lot =>
+            lot.Owner == Red && lot.Commodity == One).ToArray();
+        Assert.Equal(3, redLots.Length);
         var blueBuyer = Assert.Single(markets.DemandByCivilization, line =>
             line.Owner == Blue && line.Commodity == One);
-        var path = Path(host.Incidence, redLot.Tile, blueBuyer.Tile);
+        var path = Path(host.Incidence, redLots[0].Tile, blueBuyer.Tile);
         Assert.True(path.Length > 1);
         var quote = Quotes(markets, line =>
             line.Owner == Blue && line.Commodity == One
@@ -210,18 +211,23 @@ public sealed class FoundationPhysicalTradeRouteCandidatePlannerTests
             physical: 1_000_000UL, toll: 500_000UL, owner: Blue);
         var result = host.PlanTradeCandidates(
             demand, Cargo(One, Two), quote, costs);
-        var selected = Assert.Single(result.Choices, choice =>
+        var selected = result.Choices.Where(choice =>
             choice.Candidate.Seller == Red &&
-            choice.Candidate.Commodity == One);
-        Assert.Equal(Blue, selected.Candidate.Buyer);
-        Assert.Equal(path, selected.Candidate.RouteTiles);
+            choice.Candidate.Commodity == One).ToArray();
+        Assert.Equal(redLots.Length, selected.Length);
+        Assert.All(selected, choice =>
+        {
+            Assert.Equal(Blue, choice.Candidate.Buyer);
+            Assert.Equal(path, choice.Candidate.RouteTiles);
+            Assert.Equal((ulong)(path.Length - 1) * 500_000UL,
+                choice.ExternalTariffCostMicro);
+            Assert.Equal((ulong)(path.Length - 1) * 1_000_000UL,
+                choice.PhysicalFreightCostMicro);
+        });
         Assert.Equal((ulong)(path.Length - 1) *
-            redLot.CapacityMicroPerTurn,
+            redLots.Aggregate(0UL, (sum, lot) =>
+                checked(sum + lot.CapacityMicroPerTurn)),
             result.AllocationAudit.Freight.TotalEdgeTraversalCargoMicro);
-        Assert.Equal((ulong)(path.Length - 1) * 500_000UL,
-            selected.ExternalTariffCostMicro);
-        Assert.Equal((ulong)(path.Length - 1) * 1_000_000UL,
-            selected.PhysicalFreightCostMicro);
         Assert.Equal(result.AllocationAudit.TotalAvailableGoodsMicro,
             result.AllocationAudit.TotalAllocatedGoodsMicro);
         Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
