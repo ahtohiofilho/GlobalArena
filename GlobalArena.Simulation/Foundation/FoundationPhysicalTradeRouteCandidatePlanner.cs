@@ -69,11 +69,11 @@ public sealed class FoundationPhysicalTradeRouteCandidatePlan
 /// </summary>
 public static class FoundationPhysicalTradeRouteCandidatePlanner
 {
-    private sealed record GraphEdge(
+    internal sealed record GraphEdge(
         ulong Other, PhysicalTacticalEdgeId Edge, ulong PhysicalRate,
         ulong ExternalTariffRate, CivilizationId? InfrastructureOwner);
 
-    private sealed class RouteTree
+    internal sealed class RouteTree
     {
         internal readonly ulong[] TotalRate;
         internal readonly ulong[] PhysicalRate;
@@ -104,7 +104,7 @@ public static class FoundationPhysicalTradeRouteCandidatePlanner
         return (ulong)scaled;
     }
 
-    private static RouteTree RouteFrom(
+    internal static RouteTree RouteFrom(
         ulong from, CivilizationId seller,
         IReadOnlyDictionary<ulong, List<GraphEdge>> graph, int count)
     {
@@ -156,7 +156,7 @@ public static class FoundationPhysicalTradeRouteCandidatePlanner
         return tree;
     }
 
-    private static PhysicalTacticalTileId[] Reconstruct(
+    internal static PhysicalTacticalTileId[] Reconstruct(
         PhysicalTacticalTileId source, PhysicalTacticalTileId destination,
         RouteTree tree)
     {
@@ -178,51 +178,17 @@ public static class FoundationPhysicalTradeRouteCandidatePlanner
             "Routing tree contains a missing or cyclic physical predecessor.");
     }
 
-    public static FoundationPhysicalTradeRouteCandidatePlan Plan(
-        PhysicalWorkerRuntimeState census,
+    /// <summary>
+    /// Shared canonical route graph for provisional buyer selection and
+    /// subsequent marginal allocation. No omitted edge becomes a free road.
+    /// </summary>
+    internal static (Dictionary<ulong, List<GraphEdge>> Graph,
+        List<FoundationTransportEdgeOwnershipEvidence> Ownership) BuildGraph(
         PhysicalTacticalIncidenceMap incidence,
-        FoundationActivityCommodityDemandPolicy demandPolicy,
-        FoundationCommodityCargoConversionPolicy conversionPolicy,
-        IEnumerable<FoundationCommodityMarketPlanningQuote> quotes,
         IEnumerable<FoundationPhysicalRoutingEdgeCost> edgeCosts)
     {
-        ArgumentNullException.ThrowIfNull(census);
         ArgumentNullException.ThrowIfNull(incidence);
-        ArgumentNullException.ThrowIfNull(demandPolicy);
-        ArgumentNullException.ThrowIfNull(conversionPolicy);
-        ArgumentNullException.ThrowIfNull(quotes);
         ArgumentNullException.ThrowIfNull(edgeCosts);
-
-        var market = FoundationPhysicalCommodityDemandProjector.Project(
-            census, demandPolicy);
-        if (!market.Commodities.SequenceEqual(conversionPolicy.Commodities))
-            throw new ArgumentException(
-                "Planning requires identical demand and cargo commodity catalogues.",
-                nameof(conversionPolicy));
-
-        var actualMarkets = market.DemandByCivilization.ToDictionary(
-            x => (x.Tile, x.Owner, x.Commodity));
-        var quoteByKey = new Dictionary<
-            (PhysicalTacticalTileId Tile, CivilizationId Owner,
-             CommodityId Commodity), FoundationCommodityMarketPlanningQuote>();
-        foreach (var quote in quotes)
-        {
-            if (quote is null || quote.QuoteMicroPerWholeCommodityUnit == 0UL ||
-                !quote.BuyerTile.IsValid || !quote.Buyer.IsValid ||
-                !quote.Commodity.IsValid)
-                throw new ArgumentException("Planning quotes must be positive " +
-                    "and identify a real fine-tile market.", nameof(quotes));
-            var key = (quote.BuyerTile, quote.Buyer, quote.Commodity);
-            if (!actualMarkets.ContainsKey(key) || !quoteByKey.TryAdd(key, quote))
-                throw new ArgumentException(
-                    "Duplicate quote or quote without a real physical buyer.",
-                    nameof(quotes));
-        }
-        if (quoteByKey.Count != actualMarkets.Count)
-            throw new ArgumentException(
-                "Every positive-demand market needs its own explicit quote, " +
-                "with no default market value.", nameof(quotes));
-
         var fine = incidence.Refinement.FineParameters;
         int count = incidence.FineTopology.Cells.Count;
         var graph = new Dictionary<ulong, List<GraphEdge>>();
@@ -274,6 +240,58 @@ public static class FoundationPhysicalTradeRouteCandidatePlanner
                     a.Edge.FineStrategicEdgeId.Value.CompareTo(
                         b.Edge.FineStrategicEdgeId.Value);
             });
+
+        return (graph, ownership);
+    }
+
+    public static FoundationPhysicalTradeRouteCandidatePlan Plan(
+        PhysicalWorkerRuntimeState census,
+        PhysicalTacticalIncidenceMap incidence,
+        FoundationActivityCommodityDemandPolicy demandPolicy,
+        FoundationCommodityCargoConversionPolicy conversionPolicy,
+        IEnumerable<FoundationCommodityMarketPlanningQuote> quotes,
+        IEnumerable<FoundationPhysicalRoutingEdgeCost> edgeCosts)
+    {
+        ArgumentNullException.ThrowIfNull(census);
+        ArgumentNullException.ThrowIfNull(incidence);
+        ArgumentNullException.ThrowIfNull(demandPolicy);
+        ArgumentNullException.ThrowIfNull(conversionPolicy);
+        ArgumentNullException.ThrowIfNull(quotes);
+        ArgumentNullException.ThrowIfNull(edgeCosts);
+
+        var market = FoundationPhysicalCommodityDemandProjector.Project(
+            census, demandPolicy);
+        if (!market.Commodities.SequenceEqual(conversionPolicy.Commodities))
+            throw new ArgumentException(
+                "Planning requires identical demand and cargo commodity catalogues.",
+                nameof(conversionPolicy));
+
+        var actualMarkets = market.DemandByCivilization.ToDictionary(
+            x => (x.Tile, x.Owner, x.Commodity));
+        var quoteByKey = new Dictionary<
+            (PhysicalTacticalTileId Tile, CivilizationId Owner,
+             CommodityId Commodity), FoundationCommodityMarketPlanningQuote>();
+        foreach (var quote in quotes)
+        {
+            if (quote is null || quote.QuoteMicroPerWholeCommodityUnit == 0UL ||
+                !quote.BuyerTile.IsValid || !quote.Buyer.IsValid ||
+                !quote.Commodity.IsValid)
+                throw new ArgumentException("Planning quotes must be positive " +
+                    "and identify a real fine-tile market.", nameof(quotes));
+            var key = (quote.BuyerTile, quote.Buyer, quote.Commodity);
+            if (!actualMarkets.ContainsKey(key) || !quoteByKey.TryAdd(key, quote))
+                throw new ArgumentException(
+                    "Duplicate quote or quote without a real physical buyer.",
+                    nameof(quotes));
+        }
+        if (quoteByKey.Count != actualMarkets.Count)
+            throw new ArgumentException(
+                "Every positive-demand market needs its own explicit quote, " +
+                "with no default market value.", nameof(quotes));
+
+        var fine = incidence.Refinement.FineParameters;
+        int count = incidence.FineTopology.Cells.Count;
+        var (graph, ownership) = BuildGraph(incidence, edgeCosts);
 
         var quotesByCommodity = quoteByKey.Values
             .GroupBy(x => x.Commodity)

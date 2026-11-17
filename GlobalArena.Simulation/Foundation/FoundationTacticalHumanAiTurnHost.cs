@@ -196,6 +196,24 @@ public sealed class FoundationTacticalHumanAiTurnHost
             quotes, edgeCosts);
     }
 
+    /// <summary>
+    /// Trusted read-only progressive multi-buyer planning, derived only
+    /// from the confirmed v11 census. No financial settlement, inventory,
+    /// price publication or last-closed-cycle artifact is produced here.
+    /// </summary>
+    internal FoundationPhysicalMarginalMarketDistributionPlan
+        DistributeMarginalMarketCandidates(
+            FoundationActivityCommodityDemandPolicy demandPolicy,
+            FoundationCommodityCargoConversionPolicy conversionPolicy,
+            IEnumerable<FoundationCommodityMarketPlanningQuote> quotes,
+            IEnumerable<FoundationPhysicalRoutingEdgeCost> edgeCosts)
+    {
+        CheckSnapshot();
+        return FoundationPhysicalMarginalMarketDistributor.Distribute(
+            Snapshot.Workers, Incidence, demandPolicy, conversionPolicy,
+            quotes, edgeCosts);
+    }
+
     public bool AllRequiredReady => _participants.All(_ready.Contains);
 
     public FoundationTacticalHumanAiTurnHost(
