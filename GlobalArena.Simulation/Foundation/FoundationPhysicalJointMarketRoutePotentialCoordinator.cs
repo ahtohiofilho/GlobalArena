@@ -81,6 +81,7 @@ public sealed class FoundationPhysicalJointMarketRouteBudgetException
 public static class FoundationPhysicalJointMarketRoutePotentialCoordinator
 {
     private const int FractionalBits = 64;
+    private const ulong Micro = FoundationPhysicalMarginalMarketDistributor.Micro;
 
     internal static BigInteger IntegratedNetPotentialScaled(
         FoundationPhysicalGlobalConcaveMultiPathPlan plan,
@@ -106,7 +107,13 @@ public static class FoundationPhysicalJointMarketRoutePotentialCoordinator
                 .MarketBenefitScaled(quote, market.DemandMicro,
                     market.AllocatedGoodsMicro);
         }
-        return benefit - (plan.FinalIntegratedFreightCost <<
+        // MarketBenefitScaled includes the existing 1e6 comparison factor.
+        // The fixed-cost producer planner subtracts cargoPerWhole * rate
+        // per goods-micro, whereas the integrated freight audit sums
+        // actual cargoMicro * rate. Multiply that physical potential by
+        // Micro so BOTH terms share the same legacy canonical units.
+        // This is not money charged or settled.
+        return benefit - ((plan.FinalIntegratedFreightCost * Micro) <<
             FractionalBits);
     }
 
