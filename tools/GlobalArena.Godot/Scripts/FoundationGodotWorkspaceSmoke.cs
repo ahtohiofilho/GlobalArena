@@ -204,6 +204,87 @@ internal sealed class FoundationGodotWorkspaceSmoke
                 $"map_docked={dockedMapWidth:F0} " +
                 "camera_target_zoom_yaw_preserved=true geometry_reflow=true");
             await CaptureRenderedViewIfRequested("03_operations_panel");
+
+            // Regression #381: the roster, selected tile, worker orders and
+            // feedback must share ONE bounded outer scroll viewport. Merely
+            // scrolling the old inner HUD leaves lower controls unreachable.
+            var bodyScroll = operations.FindChild(
+                "GANextOperationsBodyScroll", recursive: true, owned: false)
+                as ScrollContainer;
+            var body = operations.FindChild(
+                "GANextOperationsBody", recursive: true, owned: false) as Control;
+            var feedback = operations.FindChild(
+                "GANextOrderFeedback", recursive: true, owned: false) as Label;
+            var quickEnd = _main.FindChild(
+                "GANextEndTurnButton", recursive: true, owned: false) as Button;
+            Must(bodyScroll is not null && body is not null &&
+                 feedback is not null && quickEnd is not null,
+                "Operations dock has no full-height scroll, bottom order feedback or pinned E.");
+            Must(roster.IsAncestorOf(bodyScroll!) == false &&
+                 bodyScroll.IsAncestorOf(roster) &&
+                 bodyScroll.IsAncestorOf(feedback!) &&
+                 bodyScroll.GetParent() == body.GetParent() &&
+                 body.GetParent() == bodyScroll,
+                "Roster, tile details and orders must share the same outer scrolling body.");
+            Must(bodyScroll.Size.Y > 110f &&
+                 bodyScroll.GetGlobalRect().End.Y <=
+                    operations.GetGlobalRect().End.Y + 2f &&
+                 operations.GetGlobalRect().End.Y <=
+                    _main.GetGlobalRect().End.Y + 2f &&
+                 bodyScroll.GetVScrollBar().MaxValue >
+                    bodyScroll.GetVScrollBar().Page + 30f,
+                "Dock is not height-bounded or its content does not scroll.");
+            var beforeScrollHash = _game.StateHash;
+            bodyScroll.ScrollVertical = (int)Math.Ceiling(
+                bodyScroll.GetVScrollBar().MaxValue);
+            for (int frame = 0; frame < 5; frame++) await WaitFrame();
+            var scrollRect = bodyScroll.GetGlobalRect();
+            var feedbackRect = feedback!.GetGlobalRect();
+            Must(feedbackRect.Position.Y >= scrollRect.Position.Y - 2f &&
+                 feedbackRect.End.Y <= scrollRect.End.Y + 2f,
+                "The last worker-order feedback is clipped even at the end of the scroll.");
+            Must(quickEnd!.IsVisibleInTree() &&
+                 quickEnd.GetGlobalRect().End.Y <
+                    bodyScroll.GetGlobalRect().Position.Y + 2f &&
+                 beforeScrollHash == _game.StateHash &&
+                 tactical.TacticalCameraState == initialCamera,
+                "Scrolling hid the pinned E action or modified gameplay/camera.");
+            GD.Print("GA_NEXT_OPERATIONS_DOCK_SCROLL_PASS " +
+                "one_bounded_body=true roster_tile_orders=true bottom_accessible=true " +
+                "end_turn_pinned=true hash_unchanged=true");
+            await CaptureRenderedViewIfRequested("03_operations_bottom");
+
+            // Also test a real smaller native viewport, not only scrolling a
+            // large, fixed-size dock in the default screenshot.
+            var nativeWindow = _main.GetWindow();
+            var originalWindowSize = nativeWindow.Size;
+            var compactHeight = Math.Min(originalWindowSize.Y - 80, 560);
+            Must(compactHeight >= 480,
+                "Workspace smoke requires a viewport at least 560px tall.");
+            nativeWindow.Size = new Vector2I(originalWindowSize.X, compactHeight);
+            for (int frame = 0; frame < 6; frame++) await WaitFrame();
+            Must(operations.Visible && bodyScroll.Size.Y > 100f &&
+                 operations.GetGlobalRect().End.Y <=
+                    _main.GetGlobalRect().End.Y + 2f &&
+                 bodyScroll.GetVScrollBar().MaxValue >
+                    bodyScroll.GetVScrollBar().Page,
+                "The operational panel overflowed a reduced-height window.");
+            bodyScroll.ScrollVertical = (int)Math.Ceiling(
+                bodyScroll.GetVScrollBar().MaxValue);
+            for (int frame = 0; frame < 5; frame++) await WaitFrame();
+            scrollRect = bodyScroll.GetGlobalRect();
+            feedbackRect = feedback.GetGlobalRect();
+            Must(feedbackRect.Position.Y >= scrollRect.Position.Y - 2f &&
+                 feedbackRect.End.Y <= scrollRect.End.Y + 2f &&
+                 _game.StateHash == hash,
+                "The bottom of the order panel cannot be reached in a compact window.");
+            GD.Print("GA_NEXT_OPERATIONS_DOCK_COMPACT_PASS " +
+                $"height={compactHeight} bounded=true bottom_accessible=true");
+            await CaptureRenderedViewIfRequested("03_operations_compact");
+            nativeWindow.Size = originalWindowSize;
+            for (int frame = 0; frame < 6; frame++) await WaitFrame();
+            bodyScroll.ScrollVertical = 0;
+            await WaitFrame();
             await Press(Key.M);
             Must(operations.Visible && planet.Visible,
                 "opening a secondary window must not hide the operational dock");
