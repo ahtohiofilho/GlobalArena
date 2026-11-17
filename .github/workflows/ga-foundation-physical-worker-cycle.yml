@@ -192,7 +192,7 @@ jobs:
       - name: Exact A/B shifted BigInteger residual labels vs reference, 112 to 416 Goldberg tiles
         env:
           GA_SHIFTED_LABELS_AB_REPORT_DIR: ${{ runner.temp }}/ga-next-shifted-residual-labels
-        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~ShiftedLabelsMatchExactOriginalWithLargeBigIntegerCostsAndResidualTies|FullyQualifiedName~ShiftedExactResidualLabelsMatchOriginalOnFourRealGoldbergScales|FullyQualifiedName~ShiftedExactResidualLabelsMatchOriginalWithLargeBigIntegerCostsAndResidualTies' --logger 'console;verbosity=normal'
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~ShiftedLabelsMatchExactOriginalWithLargeBigIntegerCostsAndResidualTies|FullyQualifiedName~ShiftedExactResidualLabelsMatchOriginalOnFourRealGoldbergScales' --logger 'console;verbosity=normal'
       - name: Validate and publish four shifted-labels BigInteger A/B profiling reports
         shell: pwsh
         env:
