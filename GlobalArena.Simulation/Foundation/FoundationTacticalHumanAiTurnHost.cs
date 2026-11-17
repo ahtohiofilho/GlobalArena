@@ -247,13 +247,14 @@ public sealed class FoundationTacticalHumanAiTurnHost
             IEnumerable<FoundationPhysicalRoutingEdgeCost> freeFlowEdgeCosts,
             IEnumerable<FoundationPhysicalEdgeCarryingScale> carryingScales,
             int maxProducerPasses,
-            int maxCongestionIterations)
+            int maxCongestionIterations,
+            FoundationPhysicalCongestionRelaxationPolicy? relaxation = null)
     {
         CheckSnapshot();
         return FoundationPhysicalEndogenousCongestionFeedback.Coordinate(
             Snapshot.Workers, Incidence, demandPolicy, conversionPolicy,
             quotes, freeFlowEdgeCosts, carryingScales,
-            maxProducerPasses, maxCongestionIterations);
+            maxProducerPasses, maxCongestionIterations, relaxation);
     }
 
     public bool AllRequiredReady => _participants.All(_ready.Contains);
