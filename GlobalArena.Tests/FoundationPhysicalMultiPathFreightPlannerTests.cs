@@ -208,7 +208,9 @@ public sealed class FoundationPhysicalMultiPathFreightPlannerTests
     {
         var host = Host();
         var census = host.Snapshot.Workers;
-        var demand = Demand(One);
+        // The live 12-worker scenario produces BOTH placeholder goods:
+        // a planning catalog must cover the full real productive census.
+        var demand = Demand(One, Two);
         var quotes = FoundationPhysicalCommodityDemandProjector
             .Project(census, demand).DemandByCivilization.Select(line =>
                 new FoundationCommodityMarketPlanningQuote(
@@ -216,7 +218,7 @@ public sealed class FoundationPhysicalMultiPathFreightPlannerTests
         var hash = host.StateHash;
         var snapshot = host.Snapshot;
         var result = host.PlanMultiPathTradeCandidates(
-            demand, Cargo(One), quotes,
+            demand, Cargo(One, Two), quotes,
             Array.Empty<FoundationPhysicalRoutingEdgeCost>(),
             Array.Empty<FoundationPhysicalEdgeCarryingScale>(),
             maxProducerPasses: 8, maxBatchesPerDelivery: 16);
