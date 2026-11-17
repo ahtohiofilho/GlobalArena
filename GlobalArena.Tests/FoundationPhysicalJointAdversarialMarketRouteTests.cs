@@ -666,4 +666,84 @@ public sealed class FoundationPhysicalJointAdversarialMarketRouteTests
         }
     }
 
+
+    [Fact]
+    public void ProgressiveOneProposalBudgetReplaysEightSellers104MarketsLikeFullJointSearch()
+    {
+        var scenario = EightCompetingSellersInConnectedGoldbergMarkets(
+            edgeReferenceCargoMicro: 100_000_000UL);
+        var policy = Demand();
+        var cargo = Cargo();
+        var hash = scenario.Host.StateHash;
+        var snapshot = scenario.Host.Snapshot;
+        var full = FoundationPhysicalJointMarketRoutePotentialCoordinator
+            .Coordinate(scenario.Workers, scenario.Host.Incidence, policy,
+                cargo, scenario.Quotes, scenario.Roads, scenario.Scales,
+                segmentsPerAverageMarket: 4,
+                maxFlowAugmentationsPerProposal: 4096,
+                maxRouteBatchesPerParent: 2,
+                maxTotalRouteBatches: 4096,
+                maxCompletePasses: 12);
+        var clock = Stopwatch.StartNew();
+        var state = FoundationPhysicalProgressiveMarketRouteCoordinator
+            .BeginOrResume(scenario.Workers, scenario.Host.Incidence,
+                policy, cargo, scenario.Quotes, scenario.Roads, scenario.Scales,
+                segmentsPerAverageMarket: 4,
+                maxFlowAugmentationsPerProposal: 4096,
+                maxRouteBatchesPerParent: 2,
+                maxTotalRouteBatches: 4096,
+                minimumAcceptedGainScaled: BigInteger.Zero);
+        int calls = 0;
+        while (!state.StableUnderDeclaredGainFloor && calls < 24)
+        {
+            var resumed = FoundationPhysicalProgressiveMarketRouteCoordinator
+                .BeginOrResume(scenario.Workers, scenario.Host.Incidence,
+                    policy, cargo, scenario.Quotes, scenario.Roads,
+                    scenario.Scales, 4, 4096, 2, 4096,
+                    BigInteger.Zero, previous: state);
+            Assert.Same(state, resumed);
+            state = FoundationPhysicalProgressiveMarketRouteCoordinator
+                .Advance(resumed, maxProposalEvaluations: 1);
+            calls++;
+        }
+        clock.Stop();
+        Assert.True(state.StableUnderDeclaredGainFloor);
+        Assert.Equal(calls, state.ProposalsEvaluated);
+        Assert.Equal(full.CompletePasses, state.CompletedPasses);
+        Assert.Equal(full.AcceptedMarketRouteProposals,
+            state.AcceptedMarketProposals);
+        Assert.Equal(full.AcceptedRouteOnlyProposals,
+            state.AcceptedRouteProposals);
+        Assert.Equal(full.RejectedNonImprovingProposals,
+            state.RejectedProposals);
+        Assert.Equal(full.FinalIntegratedNetPotentialScaled,
+            state.BestPotentialScaled);
+        Assert.Equal(full.AcceptedPotentialHistoryScaled,
+            state.AcceptedPotentialHistoryScaled);
+        Assert.Equal(8_000_000UL,
+            state.BestAuditedCandidate.AllocationAudit.TotalAllocatedGoodsMicro);
+        Assert.Equal(full.Allocation.Parts.Select(p =>
+                (p.ParentDeliveryOrdinal, p.Delivery.Buyer,
+                    p.Delivery.GoodsMicro, Route: string.Join(",",
+                        p.Delivery.RouteTiles.Select(t =>
+                            t.FineStrategicCellId.Value)))),
+            state.BestAuditedCandidate.Parts.Select(p =>
+                (p.ParentDeliveryOrdinal, p.Delivery.Buyer,
+                    p.Delivery.GoodsMicro, Route: string.Join(",",
+                        p.Delivery.RouteTiles.Select(t =>
+                            t.FineStrategicCellId.Value)))));
+        Assert.Equal(hash, scenario.Host.StateHash);
+        Assert.Same(snapshot, scenario.Host.Snapshot);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            scenario.Host.GetLastClosedEconomicTradeView(Red).Availability);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            scenario.Host.GetLastClosedEconomicTradeView(Blue).Availability);
+        _output.WriteLine(
+            $"PROGRESSIVE_EIGHT_SELLERS_104_MARKETS " +
+            $"proposalCalls={calls}, completePasses={state.CompletedPasses}, " +
+            $"accepted={state.AcceptedMarketProposals +
+                state.AcceptedRouteProposals}, elapsedMs={clock.ElapsedMilliseconds}, " +
+            $"potential={state.BestPotentialScaled}; exactReplay=true");
+    }
+
 }
