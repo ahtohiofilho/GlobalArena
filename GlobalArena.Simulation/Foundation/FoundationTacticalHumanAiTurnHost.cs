@@ -179,6 +179,23 @@ public sealed class FoundationTacticalHumanAiTurnHost
             candidates, ownership);
     }
 
+    /// <summary>
+    /// Trusted server-side route/market candidate planning against the
+    /// committed census. External quotes and freight costs MUST be supplied.
+    /// Never a client-visible price, real trade, or economic-cycle closure.
+    /// </summary>
+    internal FoundationPhysicalTradeRouteCandidatePlan PlanTradeCandidates(
+        FoundationActivityCommodityDemandPolicy demandPolicy,
+        FoundationCommodityCargoConversionPolicy conversionPolicy,
+        IEnumerable<FoundationCommodityMarketPlanningQuote> quotes,
+        IEnumerable<FoundationPhysicalRoutingEdgeCost> edgeCosts)
+    {
+        CheckSnapshot();
+        return FoundationPhysicalTradeRouteCandidatePlanner.Plan(
+            Snapshot.Workers, Incidence, demandPolicy, conversionPolicy,
+            quotes, edgeCosts);
+    }
+
     public bool AllRequiredReady => _participants.All(_ready.Contains);
 
     public FoundationTacticalHumanAiTurnHost(
