@@ -44,6 +44,7 @@ on:
       - 'scripts/GA-Next-Global-Seed-Elision-AB-Report.ps1'
       - 'scripts/GA-Next-Global-Internal-Scaling-Report.ps1'
       - 'scripts/GA-Next-Indexed-Residual-Heap-AB-Report.ps1'
+      - 'scripts/GA-Next-Shifted-Residual-Labels-AB-Report.ps1'
       - 'GlobalArena.Simulation/Foundation/FoundationConcentratedWorkforceScenario.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationWorkforceActivityGroups.cs'
       - 'GlobalArena.Tests/StrategicPhysicalWorkerInspectorTests.cs'
@@ -187,6 +188,22 @@ jobs:
         with:
           name: ga-next-indexed-residual-heap-${{ matrix.os }}
           path: ${{ runner.temp }}/ga-next-indexed-residual-heap/indexed-heap-*.json
+          if-no-files-found: error
+      - name: Exact A/B shifted BigInteger residual labels vs reference, 112 to 416 Goldberg tiles
+        env:
+          GA_SHIFTED_LABELS_AB_REPORT_DIR: ${{ runner.temp }}/ga-next-shifted-residual-labels
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~ShiftedLabelsMatchExactOriginalWithLargeBigIntegerCostsAndResidualTies|FullyQualifiedName~ShiftedExactResidualLabelsMatchOriginalOnFourRealGoldbergScales' --logger 'console;verbosity=normal'
+      - name: Validate and publish four shifted-labels BigInteger A/B profiling reports
+        shell: pwsh
+        env:
+          GA_SHIFTED_LABELS_AB_REPORT_DIR: ${{ runner.temp }}/ga-next-shifted-residual-labels
+        run: |
+          & ./scripts/GA-Next-Shifted-Residual-Labels-AB-Report.ps1 -ReportDirectory $env:GA_SHIFTED_LABELS_AB_REPORT_DIR
+      - name: Archive exact shifted-labels residual A/B evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-next-shifted-residual-labels-${{ matrix.os }}
+          path: ${{ runner.temp }}/ga-next-shifted-residual-labels/shifted-labels-*.json
           if-no-files-found: error
       - name: Progressive market route anytime proposals — exact bounded continuation and 104 real markets
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalProgressiveMarketRouteTests|FullyQualifiedName~ProgressiveOneProposalBudgetReplaysEightSellers104MarketsLikeFullJointSearch|FullyQualifiedName~ProgressiveRepriceOf104RealMarketsRetainsAuditedFreightAndRebasesOneProposal' --logger 'console;verbosity=normal'

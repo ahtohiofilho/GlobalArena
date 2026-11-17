@@ -235,7 +235,8 @@ internal static class FoundationPhysicalConcaveCommodityFlow
         int segmentsPerAverageMarket, int maxAugmentations,
         bool reuseSearchWorkspace = true,
         FoundationPhysicalGlobalFlowCostProfile? profile = null,
-        bool useIndexedHeap = true)
+        bool useIndexedHeap = true,
+        bool useShiftedLabels = true)
     {
         var setupStart = profile?.Start() ?? default;
         ArgumentNullException.ThrowIfNull(sellers);
@@ -353,6 +354,15 @@ internal static class FoundationPhysicalConcaveCommodityFlow
         IndexedResidualMinHeap? indexedQueue = useIndexedHeap
             ? new IndexedResidualMinHeap(sink + 1, indexedDistance!) : null;
 
+        // Exact dual label: shifted[v] = reducedDistance[v] + potential[v].
+        // A discarded relaxation needs only two BigInteger additions and
+        // one exact comparison. Convert back to the SAME reduced key only
+        // when a candidate strictly improves that vertex. No fixed-width
+        // conversion, rounding or approximate numeric comparison is used.
+        // The retained array is local to this Solve, not shared by players.
+        BigInteger?[]? shifted = useShiftedLabels
+            ? new BigInteger?[sink + 1] : null;
+
         profile?.End("residual-network-setup", setupStart);
         var searchStart = profile?.Start() ?? default;
         ulong shipped = 0UL;
@@ -388,6 +398,11 @@ internal static class FoundationPhysicalConcaveCommodityFlow
                     queue!.Clear();
             }
             distance[source] = BigInteger.Zero;
+            if (useShiftedLabels)
+            {
+                Array.Clear(shifted!);
+                shifted![source] = potential[source];
+            }
             if (useIndexedHeap)
                 indexedQueue!.InsertOrDecrease(source);
             else
@@ -417,15 +432,44 @@ internal static class FoundationPhysicalConcaveCommodityFlow
                 {
                     var edge = edges[e];
                     if (edge.Remaining == 0UL) continue;
-                    var reduced = edge.Cost + potential[at] -
-                        potential[edge.To];
-                    if (reduced.Sign < 0)
-                        throw new InvalidOperationException(
-                            "Residual reduced-cost invariant violated.");
-                    var candidate = settledDistance + reduced;
-                    if (distance[edge.To].HasValue &&
-                        candidate >= distance[edge.To]!.Value)
-                        continue;
+                    BigInteger candidate;
+                    if (useShiftedLabels)
+                    {
+                        // reducedCost=cost+potential[from]-potential[to]
+                        // must remain nonnegative on every traversed arc.
+                        // Comparing BEFORE subtracting avoids allocating
+                        // an intermediate reduced-cost BigInteger.
+                        BigInteger upper = potential[at] + edge.Cost;
+                        if (upper < potential[edge.To])
+                            throw new InvalidOperationException(
+                                "Residual reduced-cost invariant violated.");
+
+                        // All candidates for the SAME destination differ
+                        // only by a constant potential[to]. Compare exact
+                        // shifted labels BEFORE computing a reduced queue
+                        // key. Rejected edges need no subtraction at all.
+                        BigInteger shiftedCandidate =
+                            shifted![at]!.Value + edge.Cost;
+                        if (shifted[edge.To].HasValue &&
+                            shiftedCandidate >= shifted[edge.To]!.Value)
+                            continue;
+                        shifted[edge.To] = shiftedCandidate;
+                        candidate = shiftedCandidate - potential[edge.To];
+                    }
+                    else
+                    {
+                        // Original exact BigInteger expression is retained
+                        // as an independent reference for strict A/B tests.
+                        var reduced = edge.Cost + potential[at] -
+                            potential[edge.To];
+                        if (reduced.Sign < 0)
+                            throw new InvalidOperationException(
+                                "Residual reduced-cost invariant violated.");
+                        candidate = settledDistance + reduced;
+                        if (distance[edge.To].HasValue &&
+                            candidate >= distance[edge.To]!.Value)
+                            continue;
+                    }
                     distance[edge.To] = candidate;
                     previousNode[edge.To] = at;
                     previousEdge[edge.To] = e;

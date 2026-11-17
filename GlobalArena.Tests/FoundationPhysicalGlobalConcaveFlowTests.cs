@@ -134,6 +134,94 @@ public sealed class FoundationPhysicalGlobalConcaveFlowTests
         }
     }
 
+
+    [Fact]
+    public void ShiftedLabelsMatchExactOriginalWithLargeBigIntegerCostsAndResidualTies()
+    {
+        // Costs much larger than Int128 prevent any accidental narrowing.
+        // Shared zero-cost ties and asymmetric reachability can exercise
+        // reverse residual arcs and canonical (distance, node) order.
+        BigInteger huge = (BigInteger.One << 240) + 37;
+        var sellers = new[]
+        {
+            new FoundationPhysicalConcaveCommodityFlow.Seller(4UL,
+                new BigInteger?[] { huge, huge + 1, huge }),
+            new FoundationPhysicalConcaveCommodityFlow.Seller(3UL,
+                new BigInteger?[] { huge, null, huge }),
+            new FoundationPhysicalConcaveCommodityFlow.Seller(2UL,
+                new BigInteger?[] { null, huge, huge + 2 })
+        };
+        var markets = new[]
+        {
+            new FoundationPhysicalConcaveCommodityFlow.Market(
+                1_000_000UL, 1_000_000UL),
+            new FoundationPhysicalConcaveCommodityFlow.Market(
+                1_000_000UL, 1_000_000UL),
+            new FoundationPhysicalConcaveCommodityFlow.Market(
+                1_000_000UL, 1_000_000UL)
+        };
+        foreach (bool indexed in new[] { false, true })
+        foreach (bool reuse in new[] { false, true })
+        foreach (int segments in new[] { 1, 3, 9 })
+        {
+            var old = FoundationPhysicalConcaveCommodityFlow.Solve(
+                sellers, markets, goodsQuantum: 1UL,
+                segmentsPerAverageMarket: segments,
+                maxAugmentations: 256,
+                reuseSearchWorkspace: reuse,
+                useIndexedHeap: indexed,
+                useShiftedLabels: false);
+            var shifted = FoundationPhysicalConcaveCommodityFlow.Solve(
+                sellers, markets, goodsQuantum: 1UL,
+                segmentsPerAverageMarket: segments,
+                maxAugmentations: 256,
+                reuseSearchWorkspace: reuse,
+                useIndexedHeap: indexed,
+                useShiftedLabels: true);
+            Assert.Equal(old.Augmentations, shifted.Augmentations);
+            Assert.Equal(old.MarketQuanta, shifted.MarketQuanta);
+            Assert.Equal(old.SegmentedNetPotentialScaled,
+                shifted.SegmentedNetPotentialScaled);
+            Assert.Equal(old.IntegratedNetPotentialScaled,
+                shifted.IntegratedNetPotentialScaled);
+            for (int i = 0; i < sellers.Length; i++)
+                Assert.Equal(old.AllocationQuanta[i],
+                    shifted.AllocationQuanta[i]);
+            Assert.Equal(9UL, shifted.MarketQuanta.Aggregate(0UL,
+                (sum, n) => checked(sum + n)));
+        }
+
+        var oneMarket = new[]
+        {
+            new FoundationPhysicalConcaveCommodityFlow.Market(
+                1_000_000UL, 1_000_000UL)
+        };
+        var oneSeller = new[]
+        {
+            new FoundationPhysicalConcaveCommodityFlow.Seller(
+                100UL, new BigInteger?[] { huge })
+        };
+        foreach (bool shifted in new[] { false, true })
+        foreach (bool indexed in new[] { false, true })
+        {
+            var error = Assert.Throws<InvalidOperationException>(() =>
+                FoundationPhysicalConcaveCommodityFlow.Solve(
+                    oneSeller, oneMarket, 1UL, 5, 1,
+                    reuseSearchWorkspace: true,
+                    useIndexedHeap: indexed,
+                    useShiftedLabels: shifted));
+            Assert.Contains("augmentation budget", error.Message);
+            Assert.Throws<InvalidOperationException>(() =>
+                FoundationPhysicalConcaveCommodityFlow.Solve(
+                    new[] { new FoundationPhysicalConcaveCommodityFlow.Seller(
+                        1UL, new BigInteger?[] { null }) },
+                    oneMarket, 1UL, 1, 16,
+                    reuseSearchWorkspace: true,
+                    useIndexedHeap: indexed,
+                    useShiftedLabels: shifted));
+        }
+    }
+
     [Fact]
     public void SingleMarketWholeSegmentsHaveExactIntegratedPotential()
     {
