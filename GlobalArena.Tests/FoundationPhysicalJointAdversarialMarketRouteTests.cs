@@ -746,4 +746,71 @@ public sealed class FoundationPhysicalJointAdversarialMarketRouteTests
             $"potential={state.BestPotentialScaled}; exactReplay=true");
     }
 
+
+    [Fact]
+    public void ProgressiveRepriceOf104RealMarketsRetainsAuditedFreightAndRebasesOneProposal()
+    {
+        var scenario = EightCompetingSellersInConnectedGoldbergMarkets(
+            edgeReferenceCargoMicro: 100_000_000UL);
+        var policy = Demand();
+        var cargo = Cargo();
+        var originalHash = scenario.Host.StateHash;
+        var snapshot = scenario.Host.Snapshot;
+        var before = FoundationPhysicalProgressiveMarketRouteCoordinator
+            .BeginOrResume(scenario.Workers, scenario.Host.Incidence,
+                policy, cargo, scenario.Quotes, scenario.Roads,
+                scenario.Scales, 4, 4096, 2, 4096, BigInteger.Zero);
+        before = FoundationPhysicalProgressiveMarketRouteCoordinator
+            .Advance(before, maxProposalEvaluations: 1);
+        var repricedQuotes = scenario.Quotes.Select((quote, index) =>
+            index == 0
+                ? new FoundationCommodityMarketPlanningQuote(
+                    quote.BuyerTile, quote.Buyer, quote.Commodity,
+                    checked(quote.QuoteMicroPerWholeCommodityUnit +
+                        50_000UL))
+                : quote).ToArray();
+        var warm = FoundationPhysicalProgressiveMarketRouteCoordinator
+            .BeginOrResume(scenario.Workers, scenario.Host.Incidence,
+                policy, cargo, repricedQuotes, scenario.Roads,
+                scenario.Scales, 4, 4096, 2, 4096, BigInteger.Zero,
+                previous: before);
+        Assert.Equal(
+            FoundationPhysicalProgressiveSeedKind.AuditedQuoteRevaluation,
+            warm.SeedKind);
+        Assert.Same(before.BestAuditedCandidate,
+            warm.BestAuditedCandidate);
+        Assert.Equal(8_000_000UL,
+            warm.BestAuditedCandidate.AllocationAudit.TotalAllocatedGoodsMicro);
+        Assert.Equal(warm.BestAuditedCandidate.AllocationAudit
+            .TotalAvailableGoodsMicro,
+            warm.BestAuditedCandidate.AllocationAudit.TotalAllocatedGoodsMicro);
+        Assert.Equal(warm.BestPotentialScaled,
+            FoundationPhysicalJointMarketRoutePotentialCoordinator
+                .IntegratedNetPotentialScaled(
+                    warm.BestAuditedCandidate, repricedQuotes));
+        Assert.Single(warm.AcceptedPotentialHistoryScaled);
+        Assert.Equal(0, warm.ProposalsEvaluated);
+        Assert.Equal(0, warm.CompletedPasses);
+        Assert.False(warm.StableUnderDeclaredGainFloor);
+        var next = FoundationPhysicalProgressiveMarketRouteCoordinator
+            .Advance(warm, maxProposalEvaluations: 1);
+        Assert.True(next.BestPotentialScaled >= warm.BestPotentialScaled);
+        Assert.Equal(1, next.ProposalsEvaluated);
+        Assert.Equal(next.BestAuditedCandidate.AllocationAudit
+            .TotalAvailableGoodsMicro,
+            next.BestAuditedCandidate.AllocationAudit.TotalAllocatedGoodsMicro);
+        Assert.Equal(originalHash, scenario.Host.StateHash);
+        Assert.Same(snapshot, scenario.Host.Snapshot);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            scenario.Host.GetLastClosedEconomicTradeView(Red).Availability);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            scenario.Host.GetLastClosedEconomicTradeView(Blue).Availability);
+        _output.WriteLine(
+            $"GA_NEXT_WARM_REPRICE_104 markets={scenario.MarketCount} " +
+            $"sellers={scenario.SellerCount} goods=8000000 " +
+            $"warm=AuditedQuoteRevaluation accepted=" +
+            $"{next.AcceptedMarketProposals + next.AcceptedRouteProposals} " +
+            $"NoClosedCycle");
+    }
+
 }
