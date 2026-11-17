@@ -139,6 +139,14 @@ public sealed class FoundationGodotTileClickMenuSmoke
                 "CityClickPopulation", true, false) as Label;
             Must(card is not null && title?.Text.Contains("6 TRABALHADORES") == true,
                 "Tile click overview does not show the real population.");
+            var ownerStripe = _map.FindChild(
+                "CityClickCivilizationIdentityStripe", true, false) as ColorRect;
+            Must(_map.AreWorkerCountDigitsScreenUpright() &&
+                 _map.RenderedWorkerCivilizationColor(1UL) ==
+                     GaCivilizationVisualIdentity.ColorFor(1UL) &&
+                 ownerStripe?.Color == GaCivilizationVisualIdentity.ColorFor(1UL) &&
+                 title.Text.Contains("RED"),
+                "Worker count orientation / owner marker and city identity must agree.");
             foreach (var role in new[] {
                 PhysicalWorkerOccupation.Agriculture,
                 PhysicalWorkerOccupation.Forestry,
