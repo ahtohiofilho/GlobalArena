@@ -188,7 +188,9 @@ internal static class FoundationPhysicalConcaveCommodityFlow
                 if (!cost.HasValue) continue;
                 allocations[i, j] = network.Add(sellerStart + i,
                     marketStart + j, seller.SupplyQuanta, cost.Value);
-                if (!cheapest[j].HasValue || cost.Value < cheapest[j].Value)
+                var currentCheapest = cheapest[j];
+                if (!currentCheapest.HasValue ||
+                    cost.Value < currentCheapest.Value)
                     cheapest[j] = cost.Value;
             }
         }
@@ -209,10 +211,11 @@ internal static class FoundationPhysicalConcaveCommodityFlow
         BigInteger? sinkDistance = null;
         for (int j = 0; j < marketCount; j++)
         {
-            if (!cheapest[j].HasValue) continue;
-            potential[marketStart + j] = cheapest[j].Value;
+            var cheapestRoute = cheapest[j];
+            if (!cheapestRoute.HasValue) continue;
+            potential[marketStart + j] = cheapestRoute.Value;
             var first = segments[j]!.Latest!;
-            var viaMarket = cheapest[j].Value + first.Cost;
+            var viaMarket = cheapestRoute.Value + first.Cost;
             if (!sinkDistance.HasValue || viaMarket < sinkDistance.Value)
                 sinkDistance = viaMarket;
         }
