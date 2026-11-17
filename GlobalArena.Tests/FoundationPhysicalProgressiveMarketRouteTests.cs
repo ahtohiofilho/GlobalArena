@@ -245,6 +245,7 @@ public sealed class FoundationPhysicalProgressiveMarketRouteTests
             PhysicalCostMicroPerWholeCargoUnit =
                 checked(road.PhysicalCostMicroPerWholeCargoUnit + 25_000UL),
             ExternalTariffMicroPerWholeCargoUnit = 17_000UL,
+            OwnershipKind = FoundationInfrastructureOwnershipKind.Owned,
             InfrastructureOwner = Blue
         }).ToArray();
         var revisedScales = scenario.Scales.Select(scale => scale with
