@@ -905,8 +905,8 @@ public sealed class FoundationPhysicalJointAdversarialMarketRouteTests
                 double elapsed = Stopwatch.GetElapsedTime(stamp)
                     .TotalMilliseconds;
                 long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-                var search = Assert.Single(profile.Stages.Where(s =>
-                    s.Phase == "residual-augmenting-search"));
+                var search = Assert.Single(profile.Stages, s =>
+                    s.Phase == "residual-augmenting-search");
                 Assert.True(double.IsFinite(elapsed) && elapsed >= 0);
                 Assert.True(allocated >= 0);
                 return (result, elapsed, allocated,
