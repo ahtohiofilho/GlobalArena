@@ -201,7 +201,7 @@ public static class FoundationPhysicalMarginalMarketDistributor
         ulong assigned = 0UL;
         for (int i = 0; i < allocations.Length; i++)
         {
-            ulong share = checked((ulong)(
+            ulong share = remaining == 0UL ? 0UL : checked((ulong)(
                 (new BigInteger(remaining) * capacities[i]) / totalCapacity));
             allocations[i] = checked(allocations[i] + share);
             capacities[i] -= share;
