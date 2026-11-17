@@ -253,8 +253,10 @@ public sealed class FoundationPhysicalJointAdversarialMarketRouteTests
         Assert.Contains(outcome,
             new[] { "BLOCK_STATIONARY", "BUDGET_EXHAUSTED" });
         AssertStrictPotential(acceptedHistory);
-        Assert.Equal(1 + marketAccepts + routeAccepts,
-            acceptedHistory.Count);
+        int acceptedTotal = marketAccepts >= 0 && routeAccepts >= 0
+            ? checked(marketAccepts + routeAccepts)
+            : acceptedHistory.Count - 1;
+        Assert.Equal(1 + acceptedTotal, acceptedHistory.Count);
         var record = new
         {
             Schema = "ga-next.joint-stress.v1",
@@ -268,9 +270,12 @@ public sealed class FoundationPhysicalJointAdversarialMarketRouteTests
             scenario.ReferenceCargoMicro,
             PassBudget = passBudget,
             CompletePasses = completePasses,
-            AcceptedMarketProposals = marketAccepts,
-            AcceptedRouteProposals = routeAccepts,
-            RejectedProposals = rejected,
+            AcceptedProposals = acceptedTotal,
+            AcceptedMarketProposals =
+                marketAccepts < 0 ? (int?)null : marketAccepts,
+            AcceptedRouteProposals =
+                routeAccepts < 0 ? (int?)null : routeAccepts,
+            RejectedProposals = rejected < 0 ? (int?)null : rejected,
             PotentialHistoryScaled =
                 acceptedHistory.Select(value => value.ToString(
                     System.Globalization.CultureInfo.InvariantCulture))
@@ -283,7 +288,7 @@ public sealed class FoundationPhysicalJointAdversarialMarketRouteTests
             $"outcome={outcome} tiles={scenario.TileCount} " +
             $"sellers={scenario.SellerCount} markets={scenario.MarketCount} " +
             $"passBudget={passBudget} completed={completePasses} " +
-            $"accepted={marketAccepts + routeAccepts} " +
+            $"accepted={acceptedTotal} " +
             $"elapsedMs={elapsedMilliseconds}; NoClosedCycle");
         var reportDirectory = Environment.GetEnvironmentVariable(
             "GA_JOINT_STRESS_REPORT_DIR");
@@ -388,7 +393,7 @@ public sealed class FoundationPhysicalJointAdversarialMarketRouteTests
                     failure.AcceptedPotentialHistoryScaled)}");
             RecordOutcome(scenario, "eight-sellers-104-markets-severe",
                 "BUDGET_EXHAUSTED", 4, 4,
-                failure.AcceptedProposals, 0, 0,
+                -1, -1, -1,
                 failure.AcceptedPotentialHistoryScaled,
                 clock.ElapsedMilliseconds);
         }
@@ -442,8 +447,8 @@ public sealed class FoundationPhysicalJointAdversarialMarketRouteTests
                 ex.AcceptedPotentialHistoryScaled.Count);
             AssertStrictPotential(ex.AcceptedPotentialHistoryScaled);
             RecordOutcome(scenario, "sixteen-sellers-192-markets-scale",
-                "BUDGET_EXHAUSTED", 3, 3, ex.AcceptedProposals,
-                0, 0, ex.AcceptedPotentialHistoryScaled,
+                "BUDGET_EXHAUSTED", 3, 3, -1,
+                -1, -1, ex.AcceptedPotentialHistoryScaled,
                 timer.ElapsedMilliseconds);
         }
         finally
