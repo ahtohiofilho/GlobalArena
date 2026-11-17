@@ -1,8 +1,50 @@
+using System.Diagnostics;
 using System.Numerics;
 using GlobalArena.Runtime;
 using GlobalArena.World;
 
 namespace GlobalArena.Simulation.Foundation;
+
+/// <summary>
+/// Internal opt-in diagnostic, never consumed by prices, routes, freight,
+/// budgets or gameplay. The hot production path passes null and does not
+/// read a clock or allocation counter. Repeated commodities sum by phase.
+/// </summary>
+internal sealed class FoundationPhysicalGlobalFlowCostProfile
+{
+    internal readonly record struct Marker(long Ticks, long Bytes);
+
+    internal sealed record Stage(
+        string Phase,
+        double ElapsedMilliseconds,
+        long AllocatedBytesCurrentThread,
+        int Samples);
+
+    private readonly Dictionary<string, Stage> _stages = new();
+
+    internal Marker Start() => new(
+        Stopwatch.GetTimestamp(), GC.GetAllocatedBytesForCurrentThread());
+
+    internal void End(string phase, Marker marker)
+    {
+        long endTicks = Stopwatch.GetTimestamp();
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - marker.Bytes;
+        double elapsed = Stopwatch.GetElapsedTime(
+            marker.Ticks, endTicks).TotalMilliseconds;
+        if (allocated < 0L || !double.IsFinite(elapsed) || elapsed < 0)
+            throw new InvalidOperationException(
+                "Global flow diagnostic recorded an invalid counter.");
+        if (_stages.TryGetValue(phase, out var prior))
+            _stages[phase] = new Stage(phase,
+                prior.ElapsedMilliseconds + elapsed,
+                checked(prior.AllocatedBytesCurrentThread + allocated),
+                checked(prior.Samples + 1));
+        else
+            _stages.Add(phase, new Stage(phase, elapsed, allocated, 1));
+    }
+
+    internal IReadOnlyList<Stage> Stages => _stages.Values.ToArray();
+}
 
 /// <summary>
 /// Read-only physical candidates from an OPT-IN globally coupled,
@@ -86,7 +128,8 @@ public static class FoundationPhysicalGlobalConcaveFlowPlanner
         int segmentsPerAverageMarket,
         int maxFlowAugmentations,
         bool reuseSearchWorkspace,
-        bool useSequentialSeedReference = false)
+        bool useSequentialSeedReference = false,
+        FoundationPhysicalGlobalFlowCostProfile? profile = null)
     {
         ArgumentNullException.ThrowIfNull(census);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -103,6 +146,7 @@ public static class FoundationPhysicalGlobalConcaveFlowPlanner
         // It never constrained this global solver. Reuse the exact complete
         // worker/quote preflight instead and keep the original slow seed
         // as an independently executable A/B oracle.
+        var preflightStart = profile?.Start() ?? default;
         var quoteList = quotes.ToArray();
         var costList = edgeCosts.ToArray();
         FoundationPhysicalCommodityMarketInputs inputs;
@@ -125,9 +169,12 @@ public static class FoundationPhysicalGlobalConcaveFlowPlanner
                     .ValidateMarketAndQuotes(
                         census, demandPolicy, conversionPolicy, quoteList);
         }
+        profile?.End("worker-market-preflight", preflightStart);
+        var graphStart = profile?.Start() ?? default;
         var (graph, ownership) =
             FoundationPhysicalTradeRouteCandidatePlanner.BuildGraph(
                 incidence, costList);
+        profile?.End("physical-graph-build", graphStart);
         int fineCount = incidence.FineTopology.Cells.Count;
 
         var routesBySource = new Dictionary<
@@ -180,7 +227,10 @@ public static class FoundationPhysicalGlobalConcaveFlowPlanner
                         .QuoteMicroPerWholeCommodityUnit,
                     line.DemandMicro)).ToArray();
 
+            var pathsStart = profile?.Start() ?? default;
             var trees = commodityLots.Select(Routes).ToArray();
+            profile?.End("source-shortest-paths", pathsStart);
+            var arcStart = profile?.Start() ?? default;
             var sources = new List<FoundationPhysicalConcaveCommodityFlow.Seller>();
             for (int i = 0; i < commodityLots.Length; i++)
             {
@@ -213,17 +263,19 @@ public static class FoundationPhysicalGlobalConcaveFlowPlanner
                     lot.CapacityMicroPerTurn / quantum, costs));
             }
 
+            profile?.End("seller-market-arc-build", arcStart);
             int remaining = maxFlowAugmentations - augmentations;
             if (remaining < 1)
                 throw new InvalidOperationException(
                     "Global concave-flow planning exhausted its total budget.");
             var flow = FoundationPhysicalConcaveCommodityFlow.Solve(
                 sources, buyers, quantum, segmentsPerAverageMarket, remaining,
-                reuseSearchWorkspace);
+                reuseSearchWorkspace, profile);
             augmentations = checked(augmentations + flow.Augmentations);
             piecewisePotential += flow.SegmentedNetPotentialScaled;
             integratedPotential += flow.IntegratedNetPotentialScaled;
 
+            var materializationStart = profile?.Start() ?? default;
             for (int j = 0; j < commodityMarkets.Length; j++)
             {
                 var line = commodityMarkets[j];
@@ -247,8 +299,10 @@ public static class FoundationPhysicalGlobalConcaveFlowPlanner
                         checked(quantity * quantum), Array.AsReadOnly(route)));
                 }
             }
+            profile?.End("delivery-route-materialization", materializationStart);
         }
 
+        var auditStart = profile?.Start() ?? default;
         // All shipment edges, cargo and goods per producer and all ownership
         // are checked again by the authoritative physical candidate auditor.
         var audit = FoundationPhysicalDeliveryAllocationAuditor.Audit(
@@ -263,6 +317,7 @@ public static class FoundationPhysicalGlobalConcaveFlowPlanner
             audit.TotalAllocatedGoodsMicro)
             throw new InvalidOperationException(
                 "Global concave-flow buyer totals do not reconcile to the physical auditor.");
+        profile?.End("independent-final-physical-audit", auditStart);
         return new FoundationPhysicalGlobalConcaveFlowPlan(
             candidates.ToArray(), totals, audit,
             lots.Length, demand.Length, augmentations,
