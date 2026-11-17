@@ -138,6 +138,19 @@ jobs:
           grep -q 'GA_NEXT_TILE_CLICK_HYPOTHESIS_E2E_PASS' "$RUNNER_TEMP/ga-godot/tile-click-menu.log"
           grep -q 'GA_NEXT_TILE_CLICK_HIERARCHY_INPUT_PASS' "$RUNNER_TEMP/ga-godot/tile-click-menu.log"
           if grep -E 'GA_NEXT_TILE_CLICK_HYPOTHESIS_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/tile-click-menu.log"; then exit 1; fi
+      - name: Native worker board: three role slots, drag callback, pending, X and E headless
+        shell: bash
+        run: |
+          set -euo pipefail
+          GA_FOUNDATION_GODOT_SMOKE=0 GA_NEXT_WORKSPACE_SMOKE=0 \
+            GA_NEXT_WORKER_BOARD_SMOKE=1 \
+            timeout 120s "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --quit-after 900 \
+            2>&1 | tee "$RUNNER_TEMP/ga-godot/worker-board.log"
+          grep -q 'GA_NEXT_WORKER_BOARD_SLOTS_PASS' "$RUNNER_TEMP/ga-godot/worker-board.log"
+          grep -q 'GA_NEXT_WORKER_BOARD_PENDING_PASS' "$RUNNER_TEMP/ga-godot/worker-board.log"
+          grep -q 'GA_NEXT_WORKER_BOARD_COMMIT_PASS' "$RUNNER_TEMP/ga-godot/worker-board.log"
+          grep -q 'GA_NEXT_WORKER_BOARD_E2E_PASS' "$RUNNER_TEMP/ga-godot/worker-board.log"
+          if grep -E 'GA_NEXT_WORKER_BOARD_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/worker-board.log"; then exit 1; fi
       - name: Install virtual display and software OpenGL for a real rendered frame
         run: |
           sudo apt-get update -qq
@@ -265,6 +278,24 @@ jobs:
             grep -q "GA_NEXT_TILE_CLICK_FRAME_PASS stage=$stage" "$RUNNER_TEMP/ga-godot/tile-click-menu-graphical.log"
             test -s "$GA_NEXT_TILE_CLICK_SCREENSHOT_DIR/$stage.png"
           done
+      - name: Capture real worker board slots and pending visual over Xvfb
+        shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          GA_FOUNDATION_GODOT_SMOKE: '0'
+          GA_NEXT_WORKSPACE_SMOKE: '0'
+          GA_NEXT_WORKER_BOARD_SMOKE: '1'
+          GA_NEXT_WORKER_BOARD_SCREENSHOT_DIR: ${{ runner.temp }}/ga-godot/worker-board
+        run: |
+          set -euo pipefail
+          xvfb-run -a -s "-screen 0 1600x1000x24" \
+            timeout 120s "$GODOT_BIN" --path tools/GlobalArena.Godot --quit-after 900 \
+            2>&1 | tee "$RUNNER_TEMP/ga-godot/worker-board-graphical.log"
+          grep -q 'GA_NEXT_WORKER_BOARD_E2E_PASS' "$RUNNER_TEMP/ga-godot/worker-board-graphical.log"
+          for stage in 01_worker_board 02_worker_selected 03_pending_intent 04_after_turn; do
+            grep -q "GA_NEXT_WORKER_BOARD_FRAME_PASS stage=$stage" "$RUNNER_TEMP/ga-godot/worker-board-graphical.log"
+            test -s "$GA_NEXT_WORKER_BOARD_SCREENSHOT_DIR/$stage.png"
+          done
       - name: Keep actual runtime evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -287,6 +318,9 @@ jobs:
             ${{ runner.temp }}/ga-godot/tile-click-menu.log
             ${{ runner.temp }}/ga-godot/tile-click-menu-graphical.log
             ${{ runner.temp }}/ga-godot/tile-click-menu/*.png
+            ${{ runner.temp }}/ga-godot/worker-board.log
+            ${{ runner.temp }}/ga-godot/worker-board-graphical.log
+            ${{ runner.temp }}/ga-godot/worker-board/*.png
             ${{ runner.temp }}/ga-godot/graphical-smoke.log
             ${{ runner.temp }}/ga-godot/workspace-graphical.log
             ${{ runner.temp }}/ga-godot/workspace/*.png
