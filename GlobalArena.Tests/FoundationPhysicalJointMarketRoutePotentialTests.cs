@@ -176,6 +176,14 @@ public sealed class FoundationPhysicalJointMarketRoutePotentialTests
                     maxCompletePasses: 1));
         Assert.Equal(1, failure.CompletePassBudget);
         Assert.True(failure.AcceptedProposals > 0);
+        Assert.Equal(failure.AcceptedProposals + 1,
+            failure.AcceptedPotentialHistoryScaled.Count);
+        foreach (var (before, after) in
+            failure.AcceptedPotentialHistoryScaled.Zip(
+                failure.AcceptedPotentialHistoryScaled.Skip(1)))
+            Assert.True(after > before,
+                "Even failed closed budgets must retain only strictly " +
+                "increasing potential-score diagnostics.");
         Assert.Equal(hash, scenario.Host.StateHash);
         Assert.Same(snapshot, scenario.Host.Snapshot);
         Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
