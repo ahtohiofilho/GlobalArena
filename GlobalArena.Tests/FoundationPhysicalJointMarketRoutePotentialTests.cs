@@ -124,7 +124,7 @@ public sealed class FoundationPhysicalJointMarketRoutePotentialTests
     [Fact]
     public void CongestedMarketCanMoveDestinationQuantaOnlyOnStrictJointGain()
     {
-        var scenario = AdjacentBuyerCase(200_000UL);
+        var scenario = AdjacentBuyerCase(100_000UL);
         var hash = scenario.Host.StateHash;
         var snapshot = scenario.Host.Snapshot;
         var result = FoundationPhysicalJointMarketRoutePotentialCoordinator
@@ -161,7 +161,7 @@ public sealed class FoundationPhysicalJointMarketRoutePotentialTests
     [Fact]
     public void OnePassBudgetDoesNotConcealAcceptedButUnstableMarketResponse()
     {
-        var scenario = AdjacentBuyerCase(200_000UL);
+        var scenario = AdjacentBuyerCase(100_000UL);
         var hash = scenario.Host.StateHash;
         var snapshot = scenario.Host.Snapshot;
         var failure = Assert.Throws<
@@ -185,7 +185,7 @@ public sealed class FoundationPhysicalJointMarketRoutePotentialTests
     [Fact]
     public void JointMarketRouteRejectsInvalidBudgetBeforeBuildingCandidate()
     {
-        var scenario = AdjacentBuyerCase(200_000UL);
+        var scenario = AdjacentBuyerCase(100_000UL);
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             FoundationPhysicalJointMarketRoutePotentialCoordinator.Coordinate(
                 scenario.Workers, scenario.Host.Incidence, Demand(), Cargo(),
