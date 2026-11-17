@@ -534,7 +534,7 @@ public sealed class FoundationPhysicalGlobalConcaveFlowTests
             stress.Workers, stress.Host.Incidence, Demand(), Cargo(),
             stress.Quotes, stress.Roads, scales,
             segmentsPerAverageMarket: 4, maxFlowAugmentations: 4096,
-            maxRouteBatchesPerParent: 2, maxTotalRouteBatches: 1024);
+            maxRouteBatchesPerParent: 2, maxTotalRouteBatches: 4096);
         watch.Stop();
         _output.WriteLine(
             $"globalMultipath sellers={plan.MarketAllocation.ProductiveLotCount}, " +
