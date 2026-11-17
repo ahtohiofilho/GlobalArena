@@ -222,6 +222,33 @@ public static class FoundationPhysicalMarginalMarketDistributor
         return allocations;
     }
 
+    /// <summary>
+    /// The shared complete real-worker and quote preflight. It intentionally
+    /// does NOT solve the sequential marginal market; a global flow optimizer
+    /// only needs these validated inputs, not an unused provisional allocation.
+    /// Both planners must reject phantom or duplicated demand identities.
+    /// Physical reachability, exact cargo granularity and all shipments are
+    /// independently verified by their routing solver and final auditor.
+    /// </summary>
+    internal static (FoundationPhysicalCommodityMarketInputs Market,
+        Dictionary<(PhysicalTacticalTileId Tile, CivilizationId Owner,
+            CommodityId Commodity), FoundationCommodityMarketPlanningQuote> Quotes)
+        ValidateMarketAndQuotes(
+            PhysicalWorkerRuntimeState census,
+            FoundationActivityCommodityDemandPolicy demandPolicy,
+            FoundationCommodityCargoConversionPolicy conversionPolicy,
+            IEnumerable<FoundationCommodityMarketPlanningQuote> quotes)
+    {
+        ArgumentNullException.ThrowIfNull(census);
+        ArgumentNullException.ThrowIfNull(demandPolicy);
+        ArgumentNullException.ThrowIfNull(conversionPolicy);
+        ArgumentNullException.ThrowIfNull(quotes);
+        var (market, quoteMap) = ValidateMarketAndQuotes(
+            census, demandPolicy, conversionPolicy, quotes);
+
+        return (market, quoteMap);
+    }
+
     public static FoundationPhysicalMarginalMarketDistributionPlan Distribute(
         PhysicalWorkerRuntimeState census,
         PhysicalTacticalIncidenceMap incidence,
