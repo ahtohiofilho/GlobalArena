@@ -15,14 +15,19 @@ public sealed class FoundationPhysicalCoupledMultiPathFeedbackPlan
     public IReadOnlyList<FoundationPhysicalRoutingEdgeCost> ConsistentEdgeCosts { get; }
     public int FeedbackIterations { get; }
     public bool ExactCostAndLoadAgreement { get; }
+    /// <summary>Optional strict integrated-cost rerouting evidence.
+    /// Null means the historical #395 multi-path behavior was preserved.</summary>
+    public FoundationPhysicalMarginalPathRebalancingPlan? PathOptimization { get; }
 
     internal FoundationPhysicalCoupledMultiPathFeedbackPlan(
         FoundationPhysicalMultiPathCandidatePlan freight,
-        FoundationPhysicalRoutingEdgeCost[] costs, int iterations)
+        FoundationPhysicalRoutingEdgeCost[] costs, int iterations,
+        FoundationPhysicalMarginalPathRebalancingPlan? pathOptimization)
     {
         Freight = freight;
         ConsistentEdgeCosts = Array.AsReadOnly(costs);
         FeedbackIterations = iterations;
+        PathOptimization = pathOptimization;
         ExactCostAndLoadAgreement = true;
     }
 }
@@ -56,7 +61,9 @@ public static class FoundationPhysicalCoupledMultiPathMarketFeedback
         IEnumerable<FoundationPhysicalEdgeCarryingScale> carryingScales,
         int maxProducerPasses,
         int maxBatchesPerDelivery,
-        int maxFeedbackIterations)
+        int maxFeedbackIterations,
+        int maxMarginalPathPasses = 0,
+        int maxFragmentsPerPathPart = 1)
     {
         ArgumentNullException.ThrowIfNull(census);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -71,6 +78,10 @@ public static class FoundationPhysicalCoupledMultiPathMarketFeedback
             throw new ArgumentOutOfRangeException(nameof(maxBatchesPerDelivery));
         if (maxFeedbackIterations < 1)
             throw new ArgumentOutOfRangeException(nameof(maxFeedbackIterations));
+        if (maxMarginalPathPasses < 0)
+            throw new ArgumentOutOfRangeException(nameof(maxMarginalPathPasses));
+        if (maxFragmentsPerPathPart < 1)
+            throw new ArgumentOutOfRangeException(nameof(maxFragmentsPerPathPart));
 
         var quoteList = quotes.ToArray();
         var roads = freeFlowEdgeCosts.OrderBy(
@@ -101,6 +112,18 @@ public static class FoundationPhysicalCoupledMultiPathMarketFeedback
             var freight = FoundationPhysicalMultiPathFreightPlanner.Split(
                 census, incidence, demandPolicy, conversionPolicy,
                 markets, roads, scales, maxBatchesPerDelivery);
+            // Gate 01B.2D-3C is explicitly opt-in to preserve #395
+            // behavior, while enabling strict integrated-cost improvements
+            // without inventing deliveries, buyers or physical crossings.
+            FoundationPhysicalMarginalPathRebalancingPlan? pathOptimization = null;
+            if (maxMarginalPathPasses > 0)
+            {
+                pathOptimization = FoundationPhysicalMarginalPathRebalancer.Rebalance(
+                    census, incidence, demandPolicy, conversionPolicy,
+                    freight, roads, scales, maxMarginalPathPasses,
+                    maxFragmentsPerPathPart);
+                freight = pathOptimization.Freight;
+            }
             if (freight.AllocationAudit.TotalAllocatedGoodsMicro !=
                     markets.AllocationAudit.TotalAllocatedGoodsMicro ||
                 freight.AllocationAudit.TotalAvailableGoodsMicro !=
@@ -144,7 +167,7 @@ public static class FoundationPhysicalCoupledMultiPathMarketFeedback
 
             if (unchanged)
                 return new FoundationPhysicalCoupledMultiPathFeedbackPlan(
-                    freight, next, pass);
+                    freight, next, pass, pathOptimization);
             if (!observed.Add(Signature(next)))
                 throw new InvalidOperationException(
                     "Multi-path market/freight congestion feedback oscillated. " +
