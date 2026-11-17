@@ -18,6 +18,7 @@ on:
       - 'GlobalArena.Tests/FoundationTacticalOccupationOrdersTests.cs'
       - 'GlobalArena.Tests/FoundationTacticalOccupationBatchTests.cs'
       - 'GlobalArena.Tests/FoundationPhysicalWorkforceEconomicInputsTests.cs'
+      - 'GlobalArena.Tests/FoundationPhysicalCommodityDemandTests.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationConcentratedWorkforceScenario.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationWorkforceActivityGroups.cs'
       - 'GlobalArena.Tests/StrategicPhysicalWorkerInspectorTests.cs'
@@ -78,6 +79,8 @@ jobs:
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationTacticalOccupationBatchTests' --logger 'console;verbosity=normal'
       - name: Physical v11 workforce demand sites and active capacity — 10k worker validation
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalWorkforceEconomicInputsTests' --logger 'console;verbosity=normal'
+      - name: Commodity-specific demand by explicit worker activity with no invented policy
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalCommodityDemandTests' --logger 'console;verbosity=normal'
       - name: Concentrated capital workforce with 3 6 and 12 people per civ
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationConcentratedWorkforceTests' --logger 'console;verbosity=normal'
       - name: Real executable three-turn gameplay kernel preview

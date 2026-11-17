@@ -138,6 +138,15 @@ public sealed class FoundationTacticalHumanAiTurnHost
     /// </summary>
     public FoundationPhysicalWorkforceEconomicInputs GetPhysicalEconomicInputs() =>
         FoundationPhysicalWorkforceEconomicProjector.Project(Snapshot.Workers);
+
+    /// <summary>
+    /// Read-only activity-profile demand per commodity from the committed v11
+    /// census and a COMPLETE caller-supplied policy. There is intentionally no
+    /// default commodity list or demand preference inside the host.
+    /// </summary>
+    public FoundationPhysicalCommodityMarketInputs GetCommodityMarketInputs(
+        FoundationActivityCommodityDemandPolicy policy) =>
+        FoundationPhysicalCommodityDemandProjector.Project(Snapshot.Workers, policy);
     public bool AllRequiredReady => _participants.All(_ready.Contains);
 
     public FoundationTacticalHumanAiTurnHost(
