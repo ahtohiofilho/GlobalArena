@@ -93,8 +93,8 @@ public sealed class FoundationPhysicalWorkforceEconomicInputsTests
         Assert.Equal(12_000_000UL, actual.TotalDemandMultiplierMicro);
         Assert.Equal(11_000_000UL, actual.TotalActiveCapacityMicroPerTurn);
         Assert.Equal(3, actual.DemandSites.Count); // two capitals and one arrival tile
-        var arrival = Assert.Single(actual.DemandSites.Where(site =>
-            site.Owner == Human && site.Tile == destination));
+        var arrival = Assert.Single(actual.DemandSites, site =>
+            site.Owner == Human && site.Tile == destination);
         Assert.Equal(1, arrival.WorkerCount);
         Assert.Equal(1, arrival.TravelingWorkers);
         Assert.Equal(1_000_000UL, arrival.DemandMultiplierMicro);
