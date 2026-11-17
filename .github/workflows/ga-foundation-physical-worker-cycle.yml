@@ -25,6 +25,7 @@ on:
       - 'GlobalArena.Tests/FoundationPhysicalTradeRouteCandidatePlannerTests.cs'
       - 'GlobalArena.Tests/FoundationPhysicalMarginalMarketDistributorTests.cs'
       - 'GlobalArena.Tests/FoundationPhysicalGlobalMarginalCoordinatorTests.cs'
+      - 'GlobalArena.Tests/FoundationPhysicalEndogenousCongestionFeedbackTests.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationConcentratedWorkforceScenario.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationWorkforceActivityGroups.cs'
       - 'GlobalArena.Tests/StrategicPhysicalWorkerInspectorTests.cs'
@@ -99,6 +100,8 @@ jobs:
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalMarginalMarketDistributorTests' --logger 'console;verbosity=normal'
       - name: Coordinated physical marginal global producer rebalancing with exact conservation
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalGlobalMarginalCoordinatorTests' --logger 'console;verbosity=normal'
+      - name: Endogenous physical edge congestion — shared cargo scale and bounded cost-volume feedback
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalEndogenousCongestionFeedbackTests' --logger 'console;verbosity=normal'
       - name: Concentrated capital workforce with 3 6 and 12 people per civ
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationConcentratedWorkforceTests' --logger 'console;verbosity=normal'
       - name: Real executable three-turn gameplay kernel preview
