@@ -257,6 +257,27 @@ public sealed class FoundationTacticalHumanAiTurnHost
             maxProducerPasses, maxCongestionIterations, relaxation);
     }
 
+    /// <summary>
+    /// Trusted candidate-only route splitting for the committed worker
+    /// snapshot. A child route is a real audited crossing; neither this nor
+    /// the price planner can publish a closed economic settlement.
+    /// </summary>
+    internal FoundationPhysicalMultiPathCandidatePlan PlanMultiPathTradeCandidates(
+        FoundationActivityCommodityDemandPolicy demandPolicy,
+        FoundationCommodityCargoConversionPolicy conversionPolicy,
+        IEnumerable<FoundationCommodityMarketPlanningQuote> quotes,
+        IEnumerable<FoundationPhysicalRoutingEdgeCost> freeFlowEdgeCosts,
+        IEnumerable<FoundationPhysicalEdgeCarryingScale> carryingScales,
+        int maxProducerPasses,
+        int maxBatchesPerDelivery)
+    {
+        CheckSnapshot();
+        return FoundationPhysicalMultiPathFreightPlanner.Plan(
+            Snapshot.Workers, Incidence, demandPolicy, conversionPolicy,
+            quotes, freeFlowEdgeCosts, carryingScales,
+            maxProducerPasses, maxBatchesPerDelivery);
+    }
+
     public bool AllRequiredReady => _participants.All(_ready.Contains);
 
     public FoundationTacticalHumanAiTurnHost(
