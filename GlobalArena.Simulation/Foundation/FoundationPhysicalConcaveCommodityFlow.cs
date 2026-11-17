@@ -129,8 +129,10 @@ internal static class FoundationPhysicalConcaveCommodityFlow
     internal static Result Solve(IReadOnlyList<Seller> sellers,
         IReadOnlyList<Market> markets, ulong goodsQuantum,
         int segmentsPerAverageMarket, int maxAugmentations,
-        bool reuseSearchWorkspace = true)
+        bool reuseSearchWorkspace = true,
+        FoundationPhysicalGlobalFlowCostProfile? profile = null)
     {
+        var setupStart = profile?.Start() ?? default;
         ArgumentNullException.ThrowIfNull(sellers);
         ArgumentNullException.ThrowIfNull(markets);
         if (sellers.Count == 0 || markets.Count == 0 ||
@@ -240,6 +242,8 @@ internal static class FoundationPhysicalConcaveCommodityFlow
         PriorityQueue<int, (BigInteger Distance, int Node)>? retainedQueue =
             reuseSearchWorkspace ? new() : null;
 
+        profile?.End("residual-network-setup", setupStart);
+        var searchStart = profile?.Start() ?? default;
         ulong shipped = 0UL;
         int augmentations = 0;
         BigInteger minimumCost = BigInteger.Zero;
@@ -328,6 +332,8 @@ internal static class FoundationPhysicalConcaveCommodityFlow
                 segment?.ActivateIfNeeded();
         }
 
+        profile?.End("residual-augmenting-search", searchStart);
+        var reconciliationStart = profile?.Start() ?? default;
         var matrix = new ulong[sellerCount][];
         var marketTotals = new ulong[marketCount];
         BigInteger transport = BigInteger.Zero;
@@ -366,6 +372,7 @@ internal static class FoundationPhysicalConcaveCommodityFlow
             throw new InvalidOperationException(
                 "The declared piecewise chord must understate exact integrated utility.");
 
+        profile?.End("residual-conservation-and-utility", reconciliationStart);
         return new Result(matrix, marketTotals, augmentations,
             segmented, integrated);
     }

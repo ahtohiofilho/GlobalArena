@@ -667,6 +667,198 @@ public sealed class FoundationPhysicalJointAdversarialMarketRouteTests
     }
 
 
+
+    [Fact]
+    public void InternalResidualAndPreparationCostsScaleAcrossFourGoldbergMarketSizes()
+    {
+        // More real buyers and suppliers, never synthetic demand or inventory.
+        // Profile is opt-in, does not change graph, prices or optimality policy.
+        // This probe isolates the GLOBAL market solver only; it does not
+        // assert that a full joint economic cycle scales with the same factor.
+        var sizes = new[]
+        {
+            (Tiles: 112, Frequency: 3, Sellers: 8, Markets: 104),
+            (Tiles: 208, Frequency: 5, Sellers: 16, Markets: 192),
+            (Tiles: 320, Frequency: 6, Sellers: 24, Markets: 288),
+            (Tiles: 416, Frequency: 7, Sellers: 32, Markets: 384)
+        };
+        var phaseNames = new[]
+        {
+            "worker-market-preflight",
+            "physical-graph-build",
+            "source-shortest-paths",
+            "seller-market-arc-build",
+            "residual-network-setup",
+            "residual-augmenting-search",
+            "residual-conservation-and-utility",
+            "delivery-route-materialization",
+            "independent-final-physical-audit"
+        };
+        foreach (var size in sizes)
+        {
+            var scenario = EightCompetingSellersInConnectedGoldbergMarkets(
+                edgeReferenceCargoMicro: 100_000_000UL,
+                worldFrequency: size.Frequency, tileCount: size.Tiles,
+                sellerCount: size.Sellers, marketCount: size.Markets);
+            var beforeHash = scenario.Host.StateHash;
+            var beforeSnapshot = scenario.Host.Snapshot;
+            var demand = Demand();
+            var cargo = Cargo();
+            var profile = new FoundationPhysicalGlobalFlowCostProfile();
+
+            long profiledBeforeBytes = GC.GetAllocatedBytesForCurrentThread();
+            long profiledStarted = Stopwatch.GetTimestamp();
+            var profiled = FoundationPhysicalGlobalConcaveFlowPlanner
+                .CoordinateWithSearchWorkspace(
+                    scenario.Workers, scenario.Host.Incidence, demand,
+                    cargo, scenario.Quotes, scenario.Roads,
+                    segmentsPerAverageMarket: 4,
+                    maxFlowAugmentations: 8192,
+                    reuseSearchWorkspace: true,
+                    profile: profile);
+            double profiledElapsed = Stopwatch.GetElapsedTime(
+                profiledStarted).TotalMilliseconds;
+            long profiledAllocated =
+                GC.GetAllocatedBytesForCurrentThread() - profiledBeforeBytes;
+
+            long referenceBeforeBytes =
+                GC.GetAllocatedBytesForCurrentThread();
+            long referenceStarted = Stopwatch.GetTimestamp();
+            var reference = FoundationPhysicalGlobalConcaveFlowPlanner
+                .CoordinateWithSearchWorkspace(
+                    scenario.Workers, scenario.Host.Incidence, demand,
+                    cargo, scenario.Quotes, scenario.Roads,
+                    segmentsPerAverageMarket: 4,
+                    maxFlowAugmentations: 8192,
+                    reuseSearchWorkspace: true);
+            double referenceElapsed = Stopwatch.GetElapsedTime(
+                referenceStarted).TotalMilliseconds;
+            long referenceAllocated =
+                GC.GetAllocatedBytesForCurrentThread() - referenceBeforeBytes;
+
+            // Profiling alone must never change a single delivery, its path,
+            // the exact integer market objective or the residual iteration
+            // count. No economic cycle is created by either execution.
+            Assert.Equal(reference.ProductiveLotCount,
+                profiled.ProductiveLotCount);
+            Assert.Equal(reference.RealMarketCount, profiled.RealMarketCount);
+            Assert.Equal(reference.FlowAugmentations,
+                profiled.FlowAugmentations);
+            Assert.Equal(reference.SegmentedNetPotentialScaled,
+                profiled.SegmentedNetPotentialScaled);
+            Assert.Equal(reference.IntegratedNetPotentialScaled,
+                profiled.IntegratedNetPotentialScaled);
+            Assert.Equal(reference.MarketTotals, profiled.MarketTotals);
+            Assert.Equal(reference.Candidates.Select(d =>
+                    (d.DeliveryOrdinal, d.Seller, d.SourceOccupation,
+                        d.SourceTile, d.Buyer, d.BuyerTile, d.Commodity,
+                        d.GoodsMicro, Route: string.Join(",",
+                            d.RouteTiles.Select(
+                                t => t.FineStrategicCellId.Value)))),
+                profiled.Candidates.Select(d =>
+                    (d.DeliveryOrdinal, d.Seller, d.SourceOccupation,
+                        d.SourceTile, d.Buyer, d.BuyerTile, d.Commodity,
+                        d.GoodsMicro, Route: string.Join(",",
+                            d.RouteTiles.Select(
+                                t => t.FineStrategicCellId.Value)))));
+            Assert.Equal(reference.AllocationAudit.TotalAllocatedGoodsMicro,
+                profiled.AllocationAudit.TotalAllocatedGoodsMicro);
+            Assert.Equal(reference.AllocationAudit.Freight
+                    .TotalEdgeTraversalCargoMicro,
+                profiled.AllocationAudit.Freight
+                    .TotalEdgeTraversalCargoMicro);
+            Assert.Equal(reference.AllocationAudit.Freight.UsedEdges.Select(e =>
+                    (e.Edge, e.TotalCargoMicro)),
+                profiled.AllocationAudit.Freight.UsedEdges.Select(e =>
+                    (e.Edge, e.TotalCargoMicro)));
+            Assert.Equal(checked((ulong)size.Sellers * 1_000_000UL),
+                profiled.AllocationAudit.TotalAvailableGoodsMicro);
+            Assert.Equal(profiled.AllocationAudit.TotalAvailableGoodsMicro,
+                profiled.AllocationAudit.TotalAllocatedGoodsMicro);
+            Assert.Equal(size.Markets, profiled.RealMarketCount);
+            Assert.Equal(size.Sellers, profiled.ProductiveLotCount);
+            Assert.InRange(profiled.FlowAugmentations, 1, 8192);
+            Assert.Equal(beforeHash, scenario.Host.StateHash);
+            Assert.Same(beforeSnapshot, scenario.Host.Snapshot);
+            Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+                scenario.Host.GetLastClosedEconomicTradeView(Red).Availability);
+            Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+                scenario.Host.GetLastClosedEconomicTradeView(Blue).Availability);
+
+            var stages = profile.Stages;
+            Assert.Equal(phaseNames.Length, stages.Count);
+            Assert.Equal(phaseNames.OrderBy(p => p),
+                stages.Select(p => p.Phase).OrderBy(p => p));
+            foreach (var stage in stages)
+            {
+                Assert.Equal(1, stage.Samples);
+                Assert.True(double.IsFinite(stage.ElapsedMilliseconds) &&
+                    stage.ElapsedMilliseconds >= 0);
+                Assert.True(stage.AllocatedBytesCurrentThread >= 0);
+            }
+            Assert.True(double.IsFinite(profiledElapsed) &&
+                profiledElapsed >= 0);
+            Assert.True(double.IsFinite(referenceElapsed) &&
+                referenceElapsed >= 0);
+            Assert.True(profiledAllocated >= 0);
+            Assert.True(referenceAllocated >= 0);
+            // Non-overlapping phase clocks are incomplete by design:
+            // total includes orchestration, LINQ/market indexing and
+            // profiling overhead. Do not equate their sum to CPU utilization.
+
+            var report = new
+            {
+                Schema = "ga-next.global-flow-internal-scaling.v1",
+                Scenario = $"{size.Sellers}-sellers-{size.Markets}-markets",
+                TileCount = size.Tiles,
+                SellerCount = size.Sellers,
+                MarketCount = size.Markets,
+                PhysicalEdgeCount = scenario.Roads.Length,
+                SellerMarketPairsUpperBound =
+                    checked((long)size.Sellers * size.Markets),
+                SegmentsPerAverageMarket = 4,
+                FlowAugmentations = profiled.FlowAugmentations,
+                TotalAvailableGoodsMicro =
+                    profiled.AllocationAudit.TotalAvailableGoodsMicro,
+                TotalAllocatedGoodsMicro =
+                    profiled.AllocationAudit.TotalAllocatedGoodsMicro,
+                ExactlyEquivalentWithoutProfiler = true,
+                StateHashUnchanged = scenario.Host.StateHash == beforeHash,
+                NoClosedCycle = true,
+                EconomicallySettled = false,
+                TimingKind = "Stopwatch.wall-clock.single-observation",
+                AllocationKind = "GC.GetAllocatedBytesForCurrentThread.cumulative",
+                ProfiledElapsedMilliseconds = profiledElapsed,
+                UnprofiledElapsedMilliseconds = referenceElapsed,
+                ProfiledAllocatedBytesCurrentThread = profiledAllocated,
+                UnprofiledAllocatedBytesCurrentThread = referenceAllocated,
+                Stages = stages
+            };
+            _output.WriteLine(
+                $"GA_NEXT_GLOBAL_INTERNAL_SCALE tiles={size.Tiles} " +
+                $"markets={size.Markets} sellers={size.Sellers} " +
+                $"pairs={report.SellerMarketPairsUpperBound} " +
+                $"augments={profiled.FlowAugmentations} " +
+                $"profiledMs={profiledElapsed:F3} " +
+                $"unprofiledMs={referenceElapsed:F3} " +
+                $"residualMs={stages.Single(s =>
+                    s.Phase == "residual-augmenting-search")
+                    .ElapsedMilliseconds:F3}; EXACT NoClosedCycle");
+            var directory = Environment.GetEnvironmentVariable(
+                "GA_GLOBAL_FLOW_INTERNAL_REPORT_DIR");
+            if (!string.IsNullOrWhiteSpace(directory))
+            {
+                Directory.CreateDirectory(directory);
+                File.WriteAllText(
+                    Path.Combine(directory,
+                        $"global-flow-internals-{size.Tiles}.json"),
+                    JsonSerializer.Serialize(report,
+                        new JsonSerializerOptions { WriteIndented = true }));
+            }
+        }
+    }
+
+
     [Fact]
     public void ProgressiveOneProposalBudgetReplaysEightSellers104MarketsLikeFullJointSearch()
     {
