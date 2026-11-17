@@ -47,15 +47,27 @@ public sealed class FoundationPhysicalJointMarketRouteBudgetException
 {
     public int CompletePassBudget { get; }
     public int AcceptedProposals { get; }
+    /// <summary>
+    /// Immutable diagnostic scores of accepted improvements only. These
+    /// contain no worker locations, shipments, plan or settled sales.
+    /// </summary>
+    public IReadOnlyList<BigInteger> AcceptedPotentialHistoryScaled { get; }
 
     internal FoundationPhysicalJointMarketRouteBudgetException(
-        int budget, int accepted)
+        int budget, int accepted, BigInteger[] acceptedPotentialHistory)
         : base("Joint market/route improvement did not complete a " +
             "non-improving full block pass within the declared pass budget; " +
             "no partial candidate or settled economic cycle was returned.")
     {
         CompletePassBudget = budget;
         AcceptedProposals = accepted;
+        ArgumentNullException.ThrowIfNull(acceptedPotentialHistory);
+        if (acceptedPotentialHistory.Length != checked(accepted + 1))
+            throw new InvalidOperationException(
+                "Budget diagnostic must contain the initial potential and " +
+                "each accepted strict improvement only.");
+        AcceptedPotentialHistoryScaled =
+            Array.AsReadOnly((BigInteger[])acceptedPotentialHistory.Clone());
     }
 }
 
@@ -242,6 +254,7 @@ public static class FoundationPhysicalJointMarketRoutePotentialCoordinator
         }
 
         throw new FoundationPhysicalJointMarketRouteBudgetException(
-            maxCompletePasses, checked(acceptedMarket + acceptedRoutes));
+            maxCompletePasses, checked(acceptedMarket + acceptedRoutes),
+            history.ToArray());
     }
 }
