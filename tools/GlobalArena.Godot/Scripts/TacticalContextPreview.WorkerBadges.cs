@@ -67,6 +67,13 @@ public partial class TacticalContextPreview
         return false;
     }
 
+    public Color? RenderedWorkerCivilizationColor(ulong workerId)
+    {
+        var worker = _displayWorkers.FirstOrDefault(w => w.Id.Value == workerId);
+        return worker is not null && _workerGlyphPositions.ContainsKey(workerId)
+            ? GaCivilizationVisualIdentity.ColorFor(worker.Owner.Value) : null;
+    }
+
     public Color? RenderedWorkerBadgeFill(ulong workerId)
     {
         var worker = _displayWorkers.FirstOrDefault(w => w.Id.Value == workerId);
@@ -317,14 +324,20 @@ public partial class TacticalContextPreview
                     w.Id.Value == _hoveredBadgeId);
                 if (selected || hovered)
                 {
-                    AddBadgeDisk(surface, position, radius * 1.63f,
+                    AddBadgeDisk(surface, position, radius * 1.70f,
                         hovered ? new Color("#ffffff") : new Color("#f3f9ff"));
                     diskCount++;
                 }
+                // Two independent channels: the OUTER rim identifies
+                // civilization; the INNER disk identifies occupation.
+                // Selection/Travel state overlays remain distinct.
+                AddBadgeDisk(surface, position, radius * 1.56f,
+                    GaCivilizationVisualIdentity.ColorFor(group.Owner.Value));
+                diskCount++;
                 if (group.Members.Any(w =>
                     w.Activity == PhysicalWorkerActivity.Traveling))
                 {
-                    AddBadgeDisk(surface, position, radius * 1.46f,
+                    AddBadgeDisk(surface, position, radius * 1.42f,
                         new Color("#dfaf60"));
                     diskCount++;
                 }
