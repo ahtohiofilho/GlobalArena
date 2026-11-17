@@ -253,7 +253,10 @@ public sealed class FoundationPhysicalDeliveryAllocationAuditTests
         var committed = AllLocal(host.GetCommodityMarketInputs(demand));
         var updated = host.AuditDeliveryCandidates(demand, freight, committed,
             Array.Empty<FoundationTransportEdgeOwnershipEvidence>());
-        Assert.Equal(11_000_000UL, updated.TotalAvailableGoodsMicro);
+        // The AI's initially traveling worker resumes production on the
+        // confirmed collective turn, so capacity grows from 11 to 12.
+        // This MUST be counted by the new committed economic census.
+        Assert.Equal(12_000_000UL, updated.TotalAvailableGoodsMicro);
         Assert.Equal(updated.TotalAvailableGoodsMicro,
             updated.TotalAllocatedGoodsMicro);
         Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
