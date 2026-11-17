@@ -271,6 +271,7 @@ internal sealed class FoundationGodotWorkspaceSmoke
             var nativeWindow = _main.GetWindow();
             var originalWindowSize = nativeWindow.Size;
             var originalWindowMode = nativeWindow.Mode;
+            var originalContentSize = nativeWindow.ContentScaleSize;
             var originalRootHeight = _main.Size.Y;
             // Headless display servers can expose a different native window
             // size from the Godot logical viewport (content scale). Always
@@ -281,6 +282,12 @@ internal sealed class FoundationGodotWorkspaceSmoke
             GD.Print($"GA_NEXT_DOCK_RESIZE_PRE native={originalWindowSize} " +
                 $"logical_height={originalRootHeight:F0} target_native_height={compactHeight}");
             nativeWindow.Mode = Window.ModeEnum.Windowed;
+            // Project uses canvas_items stretch and retains its 1280x720
+            // logical base on native resize. For the compact *layout* gate,
+            // also lower the content base height. The production default is
+            // restored immediately after the test; no setting is persisted.
+            nativeWindow.ContentScaleSize = new Vector2I(
+                originalContentSize.X, compactHeight);
             nativeWindow.Size = new Vector2I(originalWindowSize.X, compactHeight);
             for (int frame = 0; frame < 6; frame++) await WaitFrame();
             Must(_main.Size.Y < originalRootHeight - 20f &&
@@ -302,6 +309,7 @@ internal sealed class FoundationGodotWorkspaceSmoke
             GD.Print("GA_NEXT_OPERATIONS_DOCK_COMPACT_PASS " +
                 $"height={compactHeight} bounded=true bottom_accessible=true");
             await CaptureRenderedViewIfRequested("03_operations_compact");
+            nativeWindow.ContentScaleSize = originalContentSize;
             nativeWindow.Size = originalWindowSize;
             nativeWindow.Mode = originalWindowMode;
             for (int frame = 0; frame < 6; frame++) await WaitFrame();
