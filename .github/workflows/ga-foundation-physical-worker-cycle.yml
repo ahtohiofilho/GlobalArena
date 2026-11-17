@@ -38,6 +38,7 @@ on:
       - 'scripts/GA-Next-Joint-Stress-Report.ps1'
       - 'scripts/GA-Next-Joint-Stage-Profiling-Report.ps1'
       - 'scripts/GA-Next-Residual-Workspace-AB-Report.ps1'
+      - 'scripts/GA-Next-Progressive-Cost-Report.ps1'
       - 'GlobalArena.Simulation/Foundation/FoundationConcentratedWorkforceScenario.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationWorkforceActivityGroups.cs'
       - 'GlobalArena.Tests/StrategicPhysicalWorkerInspectorTests.cs'
@@ -136,6 +137,22 @@ jobs:
           & ./scripts/GA-Next-Residual-Workspace-AB-Report.ps1 -ReportDirectory $env:GA_RESIDUAL_WORKSPACE_REPORT_DIR
       - name: Progressive market route anytime proposals — exact bounded continuation and 104 real markets
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalProgressiveMarketRouteTests|FullyQualifiedName~ProgressiveOneProposalBudgetReplaysEightSellers104MarketsLikeFullJointSearch|FullyQualifiedName~ProgressiveRepriceOf104RealMarketsRetainsAuditedFreightAndRebasesOneProposal' --logger 'console;verbosity=normal'
+      - name: Measure progressive market and freight proposal cost on 104 real markets
+        env:
+          GA_PROGRESSIVE_COST_REPORT_DIR: ${{ runner.temp }}/ga-next-progressive-cost
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~ProgressiveCostProfileSeparatesProposalsWarmRebasesAndColdSolves' --logger 'console;verbosity=normal'
+      - name: Validate and publish progressive economics cost report (no timing SLA)
+        shell: pwsh
+        env:
+          GA_PROGRESSIVE_COST_REPORT_DIR: ${{ runner.temp }}/ga-next-progressive-cost
+        run: |
+          & ./scripts/GA-Next-Progressive-Cost-Report.ps1 -ReportDirectory $env:GA_PROGRESSIVE_COST_REPORT_DIR
+      - name: Preserve progressive cost measurements for audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-next-progressive-cost-${{ matrix.os }}
+          path: ${{ runner.temp }}/ga-next-progressive-cost/progressive-cost-104.json
+          if-no-files-found: error
       - name: Joint global market and multipath integrated potential — monotone worker-backed search
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalJointMarketRoutePotentialTests' --logger 'console;verbosity=normal'
       - name: Joint global Goldberg stress — 8/104 baseline, severe load, and larger 16/192 markets

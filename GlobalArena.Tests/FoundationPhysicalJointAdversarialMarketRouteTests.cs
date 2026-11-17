@@ -813,4 +813,197 @@ public sealed class FoundationPhysicalJointAdversarialMarketRouteTests
             $"NoClosedCycle");
     }
 
+
+    private sealed record ProgressiveCostObservation(
+        string Phase,
+        double ElapsedMilliseconds,
+        long AllocatedBytesCurrentThread,
+        string SeedKind,
+        int ProposalsEvaluated,
+        string PotentialScaled,
+        string AcceptedGainScaled,
+        bool PhysicalConservationPassed);
+
+    [Fact]
+    public void ProgressiveCostProfileSeparatesProposalsWarmRebasesAndColdSolves()
+    {
+        // Measurement-only gate. Every phase uses the SAME worker-backed
+        // Goldberg world; no scheduler, economy or routing code is changed.
+        // Timings are single-run wall-clock observations, not CPU-time SLAs.
+        var scenario = EightCompetingSellersInConnectedGoldbergMarkets(
+            edgeReferenceCargoMicro: 100_000_000UL);
+        var policy = Demand();
+        var cargo = Cargo();
+        var initialHash = scenario.Host.StateHash;
+        var initialSnapshot = scenario.Host.Snapshot;
+        var samples = new List<ProgressiveCostObservation>();
+        var inspected = new List<FoundationPhysicalProgressiveMarketRouteState>();
+
+        FoundationPhysicalProgressiveMarketRouteState Measure(
+            string phase,
+            Func<FoundationPhysicalProgressiveMarketRouteState> operation,
+            FoundationPhysicalProgressiveMarketRouteState? sameEpochPrior = null)
+        {
+            long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+            long started = Stopwatch.GetTimestamp();
+            var result = operation();
+            double elapsedMilliseconds =
+                Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+            long allocatedBytes =
+                GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
+            bool conserved = result.BestAuditedCandidate.AllocationAudit
+                    .TotalAvailableGoodsMicro == 8_000_000UL &&
+                result.BestAuditedCandidate.AllocationAudit
+                    .TotalAllocatedGoodsMicro == 8_000_000UL;
+            Assert.True(conserved, $"Physical worker goods lost in {phase}");
+            Assert.True(allocatedBytes >= 0, $"Invalid allocation in {phase}");
+            Assert.True(elapsedMilliseconds >= 0 && double.IsFinite(
+                elapsedMilliseconds), $"Invalid time in {phase}");
+            string gain = sameEpochPrior is null
+                ? "not-comparable-across-epochs"
+                : (result.BestPotentialScaled -
+                    sameEpochPrior.BestPotentialScaled).ToString(
+                    System.Globalization.CultureInfo.InvariantCulture);
+            if (sameEpochPrior is not null)
+                Assert.True(result.BestPotentialScaled >=
+                    sameEpochPrior.BestPotentialScaled);
+            samples.Add(new ProgressiveCostObservation(
+                phase, elapsedMilliseconds, allocatedBytes,
+                result.SeedKind.ToString(), result.ProposalsEvaluated,
+                result.BestPotentialScaled.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture),
+                gain, conserved));
+            inspected.Add(result);
+            return result;
+        }
+
+        FoundationPhysicalProgressiveMarketRouteState Begin(
+            FoundationCommodityMarketPlanningQuote[] quotes,
+            FoundationPhysicalRoutingEdgeCost[] roads,
+            FoundationPhysicalEdgeCarryingScale[] scales,
+            FoundationPhysicalProgressiveMarketRouteState? previous = null) =>
+            FoundationPhysicalProgressiveMarketRouteCoordinator.BeginOrResume(
+                scenario.Workers, scenario.Host.Incidence, policy, cargo,
+                quotes, roads, scales,
+                segmentsPerAverageMarket: 4,
+                maxFlowAugmentationsPerProposal: 4096,
+                maxRouteBatchesPerParent: 2,
+                maxTotalRouteBatches: 4096,
+                minimumAcceptedGainScaled: BigInteger.Zero,
+                previous: previous);
+
+        var coldInitial = Measure("initial-cold-solve", () =>
+            Begin(scenario.Quotes, scenario.Roads, scenario.Scales));
+        var firstMarket = Measure("market-proposal", () =>
+            FoundationPhysicalProgressiveMarketRouteCoordinator.Advance(
+                coldInitial, 1), coldInitial);
+        Assert.Equal(1, firstMarket.NextProposalIndex);
+        var firstRoute = Measure("route-proposal", () =>
+            FoundationPhysicalProgressiveMarketRouteCoordinator.Advance(
+                firstMarket, 1), firstMarket);
+        Assert.Equal(0, firstRoute.NextProposalIndex);
+
+        var changedQuotes = scenario.Quotes.Select((q, index) =>
+            index == 0
+                ? new FoundationCommodityMarketPlanningQuote(
+                    q.BuyerTile, q.Buyer, q.Commodity,
+                    checked(q.QuoteMicroPerWholeCommodityUnit + 50_000UL))
+                : q).ToArray();
+        var quoteWarm = Measure("quote-warm-rebase", () =>
+            Begin(changedQuotes, scenario.Roads, scenario.Scales, firstRoute));
+        var quoteCold = Measure("quote-cold-solve", () =>
+            Begin(changedQuotes, scenario.Roads, scenario.Scales));
+        Assert.Equal(FoundationPhysicalProgressiveSeedKind.AuditedQuoteRevaluation,
+            quoteWarm.SeedKind);
+        Assert.Same(firstRoute.BestAuditedCandidate,
+            quoteWarm.BestAuditedCandidate);
+        Assert.Equal(0, quoteWarm.ProposalsEvaluated);
+        var quoteProposal = Measure("post-quote-market-proposal", () =>
+            FoundationPhysicalProgressiveMarketRouteCoordinator.Advance(
+                quoteWarm, 1), quoteWarm);
+
+        var changedRoads = scenario.Roads.Select(road => road with
+        {
+            PhysicalCostMicroPerWholeCargoUnit =
+                checked(road.PhysicalCostMicroPerWholeCargoUnit + 25_000UL),
+            ExternalTariffMicroPerWholeCargoUnit = 17_000UL,
+            OwnershipKind = FoundationInfrastructureOwnershipKind.Owned,
+            InfrastructureOwner = Blue
+        }).ToArray();
+        var changedScales = scenario.Scales.Select(scale => scale with
+        {
+            CargoMicroAtReferenceLoad =
+                checked(scale.CargoMicroAtReferenceLoad + 25_000UL)
+        }).ToArray();
+        var roadWarm = Measure("road-warm-reroute", () =>
+            Begin(changedQuotes, changedRoads, changedScales, quoteProposal));
+        var roadCold = Measure("road-cold-solve", () =>
+            Begin(changedQuotes, changedRoads, changedScales));
+        Assert.Equal(FoundationPhysicalProgressiveSeedKind.ReauditedFixedMarketRouting,
+            roadWarm.SeedKind);
+        Assert.Same(quoteProposal.BestAuditedCandidate.MarketAllocation,
+            roadWarm.BestAuditedCandidate.MarketAllocation);
+        Assert.Equal(0, roadWarm.ProposalsEvaluated);
+        var roadProposal = Measure("post-road-market-proposal", () =>
+            FoundationPhysicalProgressiveMarketRouteCoordinator.Advance(
+                roadWarm, 1), roadWarm);
+
+        // A warm seed is an audited feasible incumbent, NOT an assertion of
+        // identical optimum, allocation or utility versus the cold solve.
+        Assert.Equal(9, samples.Count);
+        Assert.Equal(9, inspected.Count);
+        Assert.Equal(initialHash, scenario.Host.StateHash);
+        Assert.Same(initialSnapshot, scenario.Host.Snapshot);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            scenario.Host.GetLastClosedEconomicTradeView(Red).Availability);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            scenario.Host.GetLastClosedEconomicTradeView(Blue).Availability);
+        Assert.True(roadProposal.BestPotentialScaled >=
+            roadWarm.BestPotentialScaled);
+        Assert.True(quoteCold.BestAuditedCandidate.AllocationAudit
+            .TotalAvailableGoodsMicro == quoteWarm.BestAuditedCandidate
+            .AllocationAudit.TotalAllocatedGoodsMicro);
+        Assert.True(roadCold.BestAuditedCandidate.AllocationAudit
+            .TotalAvailableGoodsMicro == roadWarm.BestAuditedCandidate
+            .AllocationAudit.TotalAllocatedGoodsMicro);
+
+        var report = new
+        {
+            Schema = "ga-next.progressive-cost-profile.v1",
+            Scenario = "eight-real-sellers-104-worker-markets-connected-Goldberg",
+            TileCount = scenario.TileCount,
+            SellerCount = scenario.SellerCount,
+            MarketCount = scenario.MarketCount,
+            TotalAvailableGoodsMicro = 8_000_000UL,
+            TotalAllocatedGoodsMicro = 8_000_000UL,
+            StateHashUnchanged = scenario.Host.StateHash == initialHash,
+            NoClosedCycle = true,
+            EconomicallySettled = false,
+            QuoteWarmCandidateReused = ReferenceEquals(
+                quoteWarm.BestAuditedCandidate, firstRoute.BestAuditedCandidate),
+            RoadWarmMarketAllocationReused = ReferenceEquals(
+                roadWarm.BestAuditedCandidate.MarketAllocation,
+                quoteProposal.BestAuditedCandidate.MarketAllocation),
+            TimingKind = "Stopwatch.wall-clock.single-observation",
+            AllocationKind = "GC.GetAllocatedBytesForCurrentThread.cumulative",
+            Samples = samples
+        };
+        var directory = Environment.GetEnvironmentVariable(
+            "GA_PROGRESSIVE_COST_REPORT_DIR");
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+            File.WriteAllText(
+                Path.Combine(directory, "progressive-cost-104.json"),
+                JsonSerializer.Serialize(report,
+                    new JsonSerializerOptions { WriteIndented = true }));
+        }
+        foreach (var sample in samples)
+            _output.WriteLine(
+                $"GA-NEXT PROGRESSIVE COST phase={sample.Phase} " +
+                $"elapsedMs={sample.ElapsedMilliseconds:F3} " +
+                $"allocatedBytes={sample.AllocatedBytesCurrentThread} " +
+                $"gainScaled={sample.AcceptedGainScaled} " +
+                $"conserved={sample.PhysicalConservationPassed}");
+    }
 }
