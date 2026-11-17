@@ -152,6 +152,11 @@ public static class FoundationPhysicalProgressiveMarketRouteCoordinator
         // Freeze enumerables once; no hidden change to policy/market prices
         // is allowed between proposals of the SAME search continuation.
         var quoteList = quotes.ToArray();
+        if (quoteList.Any(quote => quote is null ||
+            quote.QuoteMicroPerWholeCommodityUnit == 0UL))
+            throw new ArgumentException(
+                "All real demand markets require positive, explicit quotes.",
+                nameof(quotes));
         var roads = freeFlowEdgeCosts.OrderBy(
             x => x?.Edge.FineStrategicEdgeId.Value ?? 0UL).ToArray();
         var scales = carryingScales.ToArray();
@@ -272,9 +277,10 @@ public static class FoundationPhysicalProgressiveMarketRouteCoordinator
 
         var loaded = audited.Freight.UsedEdges.ToDictionary(
             edge => edge.Edge, edge => edge.TotalCargoMicro);
+        var auditedOwnerEdges = owners.Select(owner => owner.Edge).ToHashSet();
         if (candidate.ProjectedEdges.Count != roads.Count ||
             candidate.ProjectedEdges.Any(edge =>
-                !owners.ContainsKey(edge.Edge) ||
+                !auditedOwnerEdges.Contains(edge.Edge) ||
                 loaded.GetValueOrDefault(edge.Edge) != edge.CargoMicro))
             throw new InvalidOperationException(
                 "Quote-only rebase mismatched the independently audited freight.");
