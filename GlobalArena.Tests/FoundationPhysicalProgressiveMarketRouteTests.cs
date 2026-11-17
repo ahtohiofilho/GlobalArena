@@ -180,7 +180,7 @@ public sealed class FoundationPhysicalProgressiveMarketRouteTests
     }
 
     [Fact]
-    public void ChangedQuoteAndChangedCensusSafelyRestartInsteadOfUsingStaleRoutes()
+    public void ChangedQuoteRevaluesAuditedIncumbentWhileChangedCensusForcesFullSolve()
     {
         var scenario = TwoRealMarkets(100_000UL);
         var initial = Begin(scenario, BigInteger.Zero);
@@ -195,6 +195,16 @@ public sealed class FoundationPhysicalProgressiveMarketRouteTests
         var repriced = Begin(scenario, BigInteger.Zero,
             previous: advanced, quotes: prices);
         Assert.NotSame(advanced, repriced);
+        Assert.Equal(
+            FoundationPhysicalProgressiveSeedKind.AuditedQuoteRevaluation,
+            repriced.SeedKind);
+        Assert.Same(advanced.BestAuditedCandidate,
+            repriced.BestAuditedCandidate);
+        Assert.Equal(
+            FoundationPhysicalJointMarketRoutePotentialCoordinator
+                .IntegratedNetPotentialScaled(
+                    advanced.BestAuditedCandidate, prices),
+            repriced.BestPotentialScaled);
         Assert.Equal(0, repriced.ProposalsEvaluated);
         Assert.Equal(0, repriced.CompletedPasses);
         Assert.False(repriced.StableUnderDeclaredGainFloor);
@@ -217,7 +227,135 @@ public sealed class FoundationPhysicalProgressiveMarketRouteTests
                 scenario.Scales, 8, 256, 4, 16,
                 BigInteger.Zero, previous: repriced);
         Assert.NotSame(repriced, restarted);
+        Assert.Equal(FoundationPhysicalProgressiveSeedKind.FullGlobalSolve,
+            restarted.SeedKind);
         Assert.Equal(0, restarted.ProposalsEvaluated);
+    }
+
+    [Fact]
+    public void RoadAndCarryingScaleChangesReauditAndRerouteCurrentBuyerQuantities()
+    {
+        var scenario = TwoRealMarkets(100_000UL);
+        var hostHash = scenario.Host.StateHash;
+        var before = Begin(scenario, BigInteger.Zero);
+        var advanced = FoundationPhysicalProgressiveMarketRouteCoordinator
+            .Advance(before, maxProposalEvaluations: 1);
+        var revisedRoads = scenario.Roads.Select(road => road with
+        {
+            PhysicalCostMicroPerWholeCargoUnit =
+                checked(road.PhysicalCostMicroPerWholeCargoUnit + 25_000UL),
+            ExternalTariffMicroPerWholeCargoUnit = 17_000UL,
+            InfrastructureOwner = Blue
+        }).ToArray();
+        var revisedScales = scenario.Scales.Select(scale => scale with
+        {
+            CargoMicroAtReferenceLoad =
+                checked(scale.CargoMicroAtReferenceLoad + 25_000UL)
+        }).ToArray();
+
+        var rebased = FoundationPhysicalProgressiveMarketRouteCoordinator
+            .BeginOrResume(scenario.Workers, scenario.Host.Incidence,
+                scenario.Demand, scenario.Cargo, scenario.Quotes,
+                revisedRoads, revisedScales, 8, 256, 4, 16,
+                BigInteger.Zero, previous: advanced);
+        Assert.Equal(
+            FoundationPhysicalProgressiveSeedKind.ReauditedFixedMarketRouting,
+            rebased.SeedKind);
+        Assert.NotSame(advanced.BestAuditedCandidate,
+            rebased.BestAuditedCandidate);
+        Assert.Same(advanced.BestAuditedCandidate.MarketAllocation,
+            rebased.BestAuditedCandidate.MarketAllocation);
+        Assert.Equal(0, rebased.ProposalsEvaluated);
+        Assert.Single(rebased.AcceptedPotentialHistoryScaled);
+        Assert.False(rebased.StableUnderDeclaredGainFloor);
+        Assert.Equal(1_000_000UL,
+            rebased.BestAuditedCandidate.AllocationAudit
+                .TotalAllocatedGoodsMicro);
+        Assert.Equal(rebased.BestAuditedCandidate.AllocationAudit
+                .TotalAvailableGoodsMicro,
+            rebased.BestAuditedCandidate.AllocationAudit
+                .TotalAllocatedGoodsMicro);
+        Assert.Equal(revisedScales[0].CargoMicroAtReferenceLoad,
+            rebased.BestAuditedCandidate.ProjectedEdges[0]
+                .CargoMicroAtReferenceLoad);
+        Assert.Equal(revisedRoads[0].PhysicalCostMicroPerWholeCargoUnit,
+            rebased.BestAuditedCandidate.ProjectedEdges[0]
+                .FreePhysicalCostMicroPerWholeCargoUnit);
+        Assert.Equal(rebased.BestPotentialScaled,
+            FoundationPhysicalJointMarketRoutePotentialCoordinator
+                .IntegratedNetPotentialScaled(
+                    rebased.BestAuditedCandidate, scenario.Quotes));
+        Assert.Same(rebased,
+            FoundationPhysicalProgressiveMarketRouteCoordinator
+                .BeginOrResume(scenario.Workers, scenario.Host.Incidence,
+                    scenario.Demand, scenario.Cargo, scenario.Quotes,
+                    revisedRoads, revisedScales, 8, 256, 4, 16,
+                    BigInteger.Zero, previous: rebased));
+
+        var next = FoundationPhysicalProgressiveMarketRouteCoordinator
+            .Advance(rebased, maxProposalEvaluations: 1);
+        Assert.True(next.BestPotentialScaled >= rebased.BestPotentialScaled);
+        Assert.Equal(1, next.ProposalsEvaluated);
+        Assert.Equal(hostHash, scenario.Host.StateHash);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            scenario.Host.GetLastClosedEconomicTradeView(Red).Availability);
+    }
+
+    [Fact]
+    public void ChangedDemandIdentityPreventsWarmStartAndRebuildsRealGlobalMarkets()
+    {
+        var scenario = TwoRealMarkets(100_000UL);
+        var original = Begin(scenario, BigInteger.Zero);
+        var changedOrder = scenario.Quotes.Reverse().ToArray();
+        var reset = Begin(scenario, BigInteger.Zero,
+            previous: original, quotes: changedOrder);
+        Assert.NotSame(original, reset);
+        Assert.Equal(FoundationPhysicalProgressiveSeedKind.FullGlobalSolve,
+            reset.SeedKind);
+        Assert.NotSame(original.BestAuditedCandidate,
+            reset.BestAuditedCandidate);
+        Assert.Equal(0, reset.ProposalsEvaluated);
+        Assert.Equal(reset.BestAuditedCandidate.AllocationAudit
+            .TotalAvailableGoodsMicro,
+            reset.BestAuditedCandidate.AllocationAudit.TotalAllocatedGoodsMicro);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            scenario.Host.GetLastClosedEconomicTradeView(Red).Availability);
+    }
+
+    [Fact]
+    public void RepricedWarmSeedAlwaysResetsCrossEpochPotentialHistoryAndBudget()
+    {
+        var scenario = TwoRealMarkets(100_000UL);
+        var state = Begin(scenario, BigInteger.Zero);
+        state = FoundationPhysicalProgressiveMarketRouteCoordinator
+            .Advance(state, maxProposalEvaluations: 2);
+        Assert.True(state.ProposalsEvaluated > 0);
+        var quote = scenario.Quotes[0];
+        var revised = scenario.Quotes.ToArray();
+        revised[0] = new FoundationCommodityMarketPlanningQuote(
+            quote.BuyerTile, quote.Buyer, quote.Commodity,
+            checked(quote.QuoteMicroPerWholeCommodityUnit + 5_000UL));
+        var nextEpoch = Begin(scenario, BigInteger.Zero,
+            previous: state, quotes: revised);
+        Assert.Equal(
+            FoundationPhysicalProgressiveSeedKind.AuditedQuoteRevaluation,
+            nextEpoch.SeedKind);
+        Assert.Same(state.BestAuditedCandidate,
+            nextEpoch.BestAuditedCandidate);
+        Assert.Equal(0, nextEpoch.ProposalsEvaluated);
+        Assert.Equal(0, nextEpoch.AcceptedMarketProposals +
+            nextEpoch.AcceptedRouteProposals);
+        Assert.Single(nextEpoch.AcceptedPotentialHistoryScaled);
+        Assert.Equal(nextEpoch.BestPotentialScaled,
+            nextEpoch.AcceptedPotentialHistoryScaled[0]);
+        Assert.False(nextEpoch.StableUnderDeclaredGainFloor);
+        Assert.Equal(0, nextEpoch.CompletedPasses);
+        Assert.Equal(0, nextEpoch.NextProposalIndex);
+        Assert.Equal(nextEpoch.BestAuditedCandidate.AllocationAudit
+            .TotalAvailableGoodsMicro,
+            nextEpoch.BestAuditedCandidate.AllocationAudit.TotalAllocatedGoodsMicro);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            scenario.Host.GetLastClosedEconomicTradeView(Blue).Availability);
     }
 
     [Fact]
