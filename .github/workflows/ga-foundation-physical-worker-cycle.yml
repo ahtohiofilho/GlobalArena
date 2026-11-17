@@ -41,6 +41,7 @@ on:
       - 'scripts/GA-Next-Progressive-Cost-Report.ps1'
       - 'scripts/GA-Next-Route-Elision-AB-Report.ps1'
       - 'scripts/GA-Next-Identical-Market-AB-Report.ps1'
+      - 'scripts/GA-Next-Global-Seed-Elision-AB-Report.ps1'
       - 'GlobalArena.Simulation/Foundation/FoundationConcentratedWorkforceScenario.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationWorkforceActivityGroups.cs'
       - 'GlobalArena.Tests/StrategicPhysicalWorkerInspectorTests.cs'
@@ -137,6 +138,22 @@ jobs:
           GA_RESIDUAL_WORKSPACE_REPORT_DIR: ${{ runner.temp }}/ga-next-residual-workspace
         run: |
           & ./scripts/GA-Next-Residual-Workspace-AB-Report.ps1 -ReportDirectory $env:GA_RESIDUAL_WORKSPACE_REPORT_DIR
+      - name: Exact A/B unused sequential market seed, 8 sellers and 104 worker markets
+        env:
+          GA_SEED_ELISION_AB_REPORT_DIR: ${{ runner.temp }}/ga-next-global-seed-elision
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~UnusedSequentialSeedElisionMatchesFullReferenceOn104GoldbergMarkets|FullyQualifiedName~GlobalSeedPreflightAndReferenceRejectInvalidMarketsAndRoads' --logger 'console;verbosity=normal'
+      - name: Validate and publish complete global-market seed-elision A/B evidence
+        shell: pwsh
+        env:
+          GA_SEED_ELISION_AB_REPORT_DIR: ${{ runner.temp }}/ga-next-global-seed-elision
+        run: |
+          & ./scripts/GA-Next-Global-Seed-Elision-AB-Report.ps1 -ReportDirectory $env:GA_SEED_ELISION_AB_REPORT_DIR
+      - name: Archive complete global-market seed-elision A/B artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-next-global-seed-elision-${{ matrix.os }}
+          path: ${{ runner.temp }}/ga-next-global-seed-elision/seed-elision-segments-*.json
+          if-no-files-found: error
       - name: Progressive market route anytime proposals — exact bounded continuation and 104 real markets
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalProgressiveMarketRouteTests|FullyQualifiedName~ProgressiveOneProposalBudgetReplaysEightSellers104MarketsLikeFullJointSearch|FullyQualifiedName~ProgressiveRepriceOf104RealMarketsRetainsAuditedFreightAndRebasesOneProposal' --logger 'console;verbosity=normal'
       - name: Measure progressive market and freight proposal cost on 104 real markets

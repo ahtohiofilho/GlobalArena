@@ -222,21 +222,27 @@ public static class FoundationPhysicalMarginalMarketDistributor
         return allocations;
     }
 
-    public static FoundationPhysicalMarginalMarketDistributionPlan Distribute(
-        PhysicalWorkerRuntimeState census,
-        PhysicalTacticalIncidenceMap incidence,
-        FoundationActivityCommodityDemandPolicy demandPolicy,
-        FoundationCommodityCargoConversionPolicy conversionPolicy,
-        IEnumerable<FoundationCommodityMarketPlanningQuote> quotes,
-        IEnumerable<FoundationPhysicalRoutingEdgeCost> edgeCosts)
+    /// <summary>
+    /// The shared complete real-worker and quote preflight. It intentionally
+    /// does NOT solve the sequential marginal market; a global flow optimizer
+    /// only needs these validated inputs, not an unused provisional allocation.
+    /// Both planners must reject phantom or duplicated demand identities.
+    /// Physical reachability, exact cargo granularity and all shipments are
+    /// independently verified by their routing solver and final auditor.
+    /// </summary>
+    internal static (FoundationPhysicalCommodityMarketInputs Market,
+        Dictionary<(PhysicalTacticalTileId Tile, CivilizationId Owner,
+            CommodityId Commodity), FoundationCommodityMarketPlanningQuote> Quotes)
+        ValidateMarketAndQuotes(
+            PhysicalWorkerRuntimeState census,
+            FoundationActivityCommodityDemandPolicy demandPolicy,
+            FoundationCommodityCargoConversionPolicy conversionPolicy,
+            IEnumerable<FoundationCommodityMarketPlanningQuote> quotes)
     {
         ArgumentNullException.ThrowIfNull(census);
-        ArgumentNullException.ThrowIfNull(incidence);
         ArgumentNullException.ThrowIfNull(demandPolicy);
         ArgumentNullException.ThrowIfNull(conversionPolicy);
         ArgumentNullException.ThrowIfNull(quotes);
-        ArgumentNullException.ThrowIfNull(edgeCosts);
-
         var market = FoundationPhysicalCommodityDemandProjector.Project(
             census, demandPolicy);
         if (!market.Commodities.SequenceEqual(conversionPolicy.Commodities))
@@ -266,6 +272,27 @@ public static class FoundationPhysicalMarginalMarketDistributor
                 "Every real physical demand line needs a scaling quote.",
                 nameof(quotes));
 
+        return (market, quoteMap);
+    }
+
+    public static FoundationPhysicalMarginalMarketDistributionPlan Distribute(
+        PhysicalWorkerRuntimeState census,
+        PhysicalTacticalIncidenceMap incidence,
+        FoundationActivityCommodityDemandPolicy demandPolicy,
+        FoundationCommodityCargoConversionPolicy conversionPolicy,
+        IEnumerable<FoundationCommodityMarketPlanningQuote> quotes,
+        IEnumerable<FoundationPhysicalRoutingEdgeCost> edgeCosts)
+    {
+        ArgumentNullException.ThrowIfNull(census);
+        ArgumentNullException.ThrowIfNull(incidence);
+        ArgumentNullException.ThrowIfNull(demandPolicy);
+        ArgumentNullException.ThrowIfNull(conversionPolicy);
+        ArgumentNullException.ThrowIfNull(quotes);
+        ArgumentNullException.ThrowIfNull(edgeCosts);
+
+        var (market, quoteMap) = ValidateMarketAndQuotes(
+            census, demandPolicy, conversionPolicy, quotes);
+
         var (graph, ownership) =
             FoundationPhysicalTradeRouteCandidatePlanner.BuildGraph(
                 incidence, edgeCosts);
@@ -273,7 +300,8 @@ public static class FoundationPhysicalMarginalMarketDistributor
         var routes = new Dictionary<
             (PhysicalTacticalTileId Tile, CivilizationId Seller),
             FoundationPhysicalTradeRouteCandidatePlanner.RouteTree>();
-        var delivered = lines.Keys.ToDictionary(key => key, _ => 0UL);
+        var delivered = market.DemandByCivilization.ToDictionary(
+            line => (line.Tile, line.Owner, line.Commodity), _ => 0UL);
         var candidates = new List<FoundationPhysicalCommodityDeliveryCandidate>();
 
         foreach (var lot in market.SupplyLots)
