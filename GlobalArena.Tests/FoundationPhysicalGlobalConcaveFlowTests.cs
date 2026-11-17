@@ -771,4 +771,178 @@ public sealed class FoundationPhysicalGlobalConcaveFlowTests
             stress.Host.GetLastClosedEconomicTradeView(Red).Availability);
     }
 
+
+    [Theory]
+    [InlineData(2)]
+    [InlineData(4)]
+    [InlineData(8)]
+    public void UnusedSequentialSeedElisionMatchesFullReferenceOn104GoldbergMarkets(
+        int segmentsPerMarket)
+    {
+        var stress = EightCompetingSellersInConnectedGoldbergMarkets();
+        var policy = Demand();
+        var cargo = Cargo();
+        var initialHash = stress.Host.StateHash;
+        var initialSnapshot = stress.Host.Snapshot;
+
+        (FoundationPhysicalGlobalConcaveFlowPlan Plan, double ElapsedMs,
+            long AllocatedBytes) Measure(bool oldSequentialSeed)
+        {
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            long started = Stopwatch.GetTimestamp();
+            var result = FoundationPhysicalGlobalConcaveFlowPlanner
+                .CoordinateWithSearchWorkspace(
+                    stress.Workers, stress.Host.Incidence, policy, cargo,
+                    stress.Quotes, stress.Roads, segmentsPerMarket, 8192,
+                    reuseSearchWorkspace: true,
+                    useSequentialSeedReference: oldSequentialSeed);
+            double milliseconds =
+                Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+            long bytes = GC.GetAllocatedBytesForCurrentThread() - before;
+            Assert.True(double.IsFinite(milliseconds) && milliseconds >= 0);
+            Assert.True(bytes >= 0);
+            return (result, milliseconds, bytes);
+        }
+
+        var reference = Measure(oldSequentialSeed: true);
+        var optimized = Measure(oldSequentialSeed: false);
+        var original = reference.Plan;
+        var current = optimized.Plan;
+
+        Assert.Equal(original.ProductiveLotCount, current.ProductiveLotCount);
+        Assert.Equal(original.RealMarketCount, current.RealMarketCount);
+        Assert.Equal(original.FlowAugmentations, current.FlowAugmentations);
+        Assert.Equal(original.SegmentsPerAverageMarket,
+            current.SegmentsPerAverageMarket);
+        Assert.Equal(original.SegmentedNetPotentialScaled,
+            current.SegmentedNetPotentialScaled);
+        Assert.Equal(original.IntegratedNetPotentialScaled,
+            current.IntegratedNetPotentialScaled);
+        Assert.Equal(original.SegmentationUnderstatementScaled,
+            current.SegmentationUnderstatementScaled);
+        Assert.Equal(original.MarketTotals, current.MarketTotals);
+        Assert.Equal(original.Candidates.Select(d => (
+                d.DeliveryOrdinal, d.Seller, d.SourceOccupation,
+                d.SourceTile, d.Buyer, d.BuyerTile, d.Commodity,
+                d.GoodsMicro,
+                Route: string.Join(",", d.RouteTiles.Select(
+                    tile => tile.FineStrategicCellId.Value)))),
+            current.Candidates.Select(d => (
+                d.DeliveryOrdinal, d.Seller, d.SourceOccupation,
+                d.SourceTile, d.Buyer, d.BuyerTile, d.Commodity,
+                d.GoodsMicro,
+                Route: string.Join(",", d.RouteTiles.Select(
+                    tile => tile.FineStrategicCellId.Value)))));
+        Assert.Equal(original.AllocationAudit.DeliveryCount,
+            current.AllocationAudit.DeliveryCount);
+        Assert.Equal(original.AllocationAudit.TotalAvailableGoodsMicro,
+            current.AllocationAudit.TotalAvailableGoodsMicro);
+        Assert.Equal(original.AllocationAudit.TotalAllocatedGoodsMicro,
+            current.AllocationAudit.TotalAllocatedGoodsMicro);
+        Assert.Equal(original.AllocationAudit.Freight.TotalDeliveredCargoMicro,
+            current.AllocationAudit.Freight.TotalDeliveredCargoMicro);
+        Assert.Equal(
+            original.AllocationAudit.Freight.TotalEdgeTraversalCargoMicro,
+            current.AllocationAudit.Freight.TotalEdgeTraversalCargoMicro);
+        Assert.Equal(
+            original.AllocationAudit.Freight.UsedEdges.Select(edge =>
+                (edge.Edge, edge.TotalCargoMicro)),
+            current.AllocationAudit.Freight.UsedEdges.Select(edge =>
+                (edge.Edge, edge.TotalCargoMicro)));
+        Assert.Equal(8, current.ProductiveLotCount);
+        Assert.Equal(104, current.RealMarketCount);
+        Assert.Equal(8_000_000UL,
+            current.AllocationAudit.TotalAvailableGoodsMicro);
+        Assert.Equal(8_000_000UL,
+            current.AllocationAudit.TotalAllocatedGoodsMicro);
+        Assert.Equal(initialHash, stress.Host.StateHash);
+        Assert.Same(initialSnapshot, stress.Host.Snapshot);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            stress.Host.GetLastClosedEconomicTradeView(Red).Availability);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            stress.Host.GetLastClosedEconomicTradeView(Blue).Availability);
+        _output.WriteLine(
+            $"GA-NEXT SEED ELISION A/B segments={segmentsPerMarket} " +
+            $"referenceMs={reference.ElapsedMs:F3} " +
+            $"optimizedMs={optimized.ElapsedMs:F3} " +
+            $"referenceAllocated={reference.AllocatedBytes} " +
+            $"optimizedAllocated={optimized.AllocatedBytes} EXACT");
+
+        string? directory = Environment.GetEnvironmentVariable(
+            "GA_SEED_ELISION_AB_REPORT_DIR");
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+            File.WriteAllText(
+                Path.Combine(directory,
+                    $"seed-elision-segments-{segmentsPerMarket}.json"),
+                JsonSerializer.Serialize(new
+                {
+                    Schema = "ga-next.global-seed-elision-ab.v1",
+                    Scenario = "112-connected-Goldberg-8-sellers-104-markets",
+                    SellerCount = current.ProductiveLotCount,
+                    MarketCount = current.RealMarketCount,
+                    SegmentsPerAverageMarket = segmentsPerMarket,
+                    FlowAugmentations = current.FlowAugmentations,
+                    TotalAvailableGoodsMicro =
+                        current.AllocationAudit.TotalAvailableGoodsMicro,
+                    TotalAllocatedGoodsMicro =
+                        current.AllocationAudit.TotalAllocatedGoodsMicro,
+                    ReferenceElapsedMilliseconds = reference.ElapsedMs,
+                    OptimizedElapsedMilliseconds = optimized.ElapsedMs,
+                    ReferenceAllocatedBytesCurrentThread =
+                        reference.AllocatedBytes,
+                    OptimizedAllocatedBytesCurrentThread =
+                        optimized.AllocatedBytes,
+                    ExactlyEquivalent = true,
+                    StateHashUnchanged = true,
+                    NoClosedCycle = true,
+                    CandidateSettledEconomically = false
+                }, new JsonSerializerOptions { WriteIndented = true }));
+        }
+    }
+
+    [Fact]
+    public void GlobalSeedPreflightAndReferenceRejectInvalidMarketsAndRoads()
+    {
+        var stress = EightCompetingSellersInConnectedGoldbergMarkets();
+        var demand = Demand();
+        var cargo = Cargo();
+        var missingQuote = stress.Quotes.Skip(1).ToArray();
+        var duplicatedQuote = stress.Quotes.Concat(new[]
+        {
+            stress.Quotes[0]
+        }).ToArray();
+        var invalidCost = stress.Roads.Select((road, i) =>
+            i == 0 ? road with
+            {
+                PhysicalCostMicroPerWholeCargoUnit = 0UL
+            } : road).ToArray();
+
+        foreach (bool reference in new[] { true, false })
+        {
+            FoundationPhysicalGlobalConcaveFlowPlan Calculate(
+                FoundationCommodityMarketPlanningQuote[] quotes,
+                FoundationPhysicalRoutingEdgeCost[] roads,
+                int maxAugmentations = 8192) =>
+                FoundationPhysicalGlobalConcaveFlowPlanner
+                    .CoordinateWithSearchWorkspace(stress.Workers,
+                        stress.Host.Incidence, demand, cargo, quotes, roads,
+                        4, maxAugmentations,
+                        reuseSearchWorkspace: true,
+                        useSequentialSeedReference: reference);
+
+            Assert.Throws<ArgumentException>(() =>
+                Calculate(missingQuote, stress.Roads));
+            Assert.Throws<ArgumentException>(() =>
+                Calculate(duplicatedQuote, stress.Roads));
+            Assert.Throws<ArgumentException>(() =>
+                Calculate(stress.Quotes, invalidCost));
+            var budget = Assert.Throws<InvalidOperationException>(() =>
+                Calculate(stress.Quotes, stress.Roads, maxAugmentations: 1));
+            Assert.Contains("augmentation budget", budget.Message);
+        }
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            stress.Host.GetLastClosedEconomicTradeView(Red).Availability);
+    }
 }
