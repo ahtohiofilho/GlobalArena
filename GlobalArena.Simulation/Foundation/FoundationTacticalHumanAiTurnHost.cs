@@ -161,6 +161,24 @@ public sealed class FoundationTacticalHumanAiTurnHost
         return _closedTrade.Read(viewer, Snapshot);
     }
 
+    /// <summary>
+    /// Trusted server-side candidate audit against ONLY the last committed
+    /// physical worker census. It cannot publish trades, money, a closed
+    /// economic cycle or a client-visible overlay. It is internal because
+    /// every candidate may disclose trading data from other civilizations.
+    /// </summary>
+    internal FoundationPhysicalDeliveryAllocationAudit AuditDeliveryCandidates(
+        FoundationActivityCommodityDemandPolicy demandPolicy,
+        FoundationCommodityCargoConversionPolicy conversionPolicy,
+        IEnumerable<FoundationPhysicalCommodityDeliveryCandidate> candidates,
+        IEnumerable<FoundationTransportEdgeOwnershipEvidence> ownership)
+    {
+        CheckSnapshot();
+        return FoundationPhysicalDeliveryAllocationAuditor.Audit(
+            Snapshot.Workers, Incidence, demandPolicy, conversionPolicy,
+            candidates, ownership);
+    }
+
     public bool AllRequiredReady => _participants.All(_ready.Contains);
 
     public FoundationTacticalHumanAiTurnHost(
