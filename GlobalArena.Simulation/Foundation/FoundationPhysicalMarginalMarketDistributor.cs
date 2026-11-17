@@ -52,10 +52,10 @@ public sealed class FoundationPhysicalMarginalMarketDistributionPlan
 /// </summary>
 public static class FoundationPhysicalMarginalMarketDistributor
 {
-    private const ulong Micro = 1_000_000UL;
-    private static readonly BigInteger ScoreScale = new(Micro);
+    internal const ulong Micro = 1_000_000UL;
+    internal static readonly BigInteger ScoreScale = new(Micro);
 
-    private sealed record Buyer(
+    internal sealed record Buyer(
         FoundationPhysicalCommodityDemandLine Demand,
         FoundationCommodityMarketPlanningQuote Quote,
         FoundationPhysicalTradeRouteCandidatePlanner.RouteTree Route,
@@ -64,7 +64,7 @@ public static class FoundationPhysicalMarginalMarketDistributor
         ulong PreviousGoodsMicro,
         ulong CargoQuantum);
 
-    private static ulong Gcd(ulong a, ulong b)
+    internal static ulong Gcd(ulong a, ulong b)
     {
         while (b != 0UL)
             (a, b) = (b, a % b);
@@ -95,7 +95,7 @@ public static class FoundationPhysicalMarginalMarketDistributor
         return checked((ulong)quanta);
     }
 
-    private static ulong[] DistributeOneLot(
+    internal static ulong[] DistributeOneLot(
         IReadOnlyList<Buyer> buyers, ulong quantityMicro)
     {
         if (buyers.Count == 0)

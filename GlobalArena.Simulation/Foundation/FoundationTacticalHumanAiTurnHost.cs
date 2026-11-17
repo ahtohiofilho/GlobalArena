@@ -214,6 +214,26 @@ public sealed class FoundationTacticalHumanAiTurnHost
             quotes, edgeCosts);
     }
 
+    /// <summary>
+    /// Trusted simulation-only global marginal CANDIDATE rebalancing across
+    /// physical producers. Throws if the declared iteration budget cannot
+    /// stabilize discrete seller best responses. Never writes a receipt,
+    /// worker turn, treasury, trade ledger or last closed economic cycle.
+    /// </summary>
+    internal FoundationPhysicalGlobalMarginalCoordinationPlan
+        CoordinateGlobalMarginalMarketCandidates(
+            FoundationActivityCommodityDemandPolicy demandPolicy,
+            FoundationCommodityCargoConversionPolicy conversionPolicy,
+            IEnumerable<FoundationCommodityMarketPlanningQuote> quotes,
+            IEnumerable<FoundationPhysicalRoutingEdgeCost> edgeCosts,
+            int maxPasses)
+    {
+        CheckSnapshot();
+        return FoundationPhysicalGlobalMarginalCoordinator.Coordinate(
+            Snapshot.Workers, Incidence, demandPolicy, conversionPolicy,
+            quotes, edgeCosts, maxPasses);
+    }
+
     public bool AllRequiredReady => _participants.All(_ready.Contains);
 
     public FoundationTacticalHumanAiTurnHost(
