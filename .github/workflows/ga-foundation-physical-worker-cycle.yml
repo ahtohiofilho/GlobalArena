@@ -33,6 +33,7 @@ on:
       - 'GlobalArena.Tests/FoundationPhysicalSameCommodityConvergenceTests.cs'
       - 'GlobalArena.Tests/FoundationPhysicalGlobalConcaveFlowTests.cs'
       - 'GlobalArena.Tests/FoundationPhysicalJointMarketRoutePotentialTests.cs'
+      - 'GlobalArena.Tests/FoundationPhysicalProgressiveMarketRouteTests.cs'
       - 'GlobalArena.Tests/FoundationPhysicalJointAdversarialMarketRouteTests.cs'
       - 'scripts/GA-Next-Joint-Stress-Report.ps1'
       - 'scripts/GA-Next-Joint-Stage-Profiling-Report.ps1'
@@ -133,6 +134,8 @@ jobs:
           GA_RESIDUAL_WORKSPACE_REPORT_DIR: ${{ runner.temp }}/ga-next-residual-workspace
         run: |
           & ./scripts/GA-Next-Residual-Workspace-AB-Report.ps1 -ReportDirectory $env:GA_RESIDUAL_WORKSPACE_REPORT_DIR
+      - name: Progressive market route anytime proposals — exact bounded continuation and 104 real markets
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalProgressiveMarketRouteTests|FullyQualifiedName~ProgressiveOneProposalBudgetReplaysEightSellers104MarketsLikeFullJointSearch' --logger 'console;verbosity=normal'
       - name: Joint global market and multipath integrated potential — monotone worker-backed search
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalJointMarketRoutePotentialTests' --logger 'console;verbosity=normal'
       - name: Joint global Goldberg stress — 8/104 baseline, severe load, and larger 16/192 markets
