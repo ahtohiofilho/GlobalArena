@@ -1,0 +1,341 @@
+using System.Numerics;
+
+namespace GlobalArena.Simulation.Foundation;
+
+/// <summary>
+/// An opt-in, uncommitted min-cost flow solver for a ONE-commodity,
+/// piecewise-linear concave market benefit. It jointly optimizes every
+/// seller/buyer arc; reverse residual arcs permit reassigning earlier sellers.
+/// This solves the DECLARED SEGMENTED objective, not the unsegmented square-root
+/// equilibrium, congestion feedback, real pricing or economic settlement.
+/// </summary>
+internal static class FoundationPhysicalConcaveCommodityFlow
+{
+    internal sealed record Market(ulong QuoteMicro, ulong DemandMicro);
+    internal sealed record Seller(ulong SupplyQuanta,
+        IReadOnlyList<BigInteger?> TransportCostPerQuantumScaled);
+
+    internal sealed class Result
+    {
+        internal ulong[][] AllocationQuanta { get; }
+        internal ulong[] MarketQuanta { get; }
+        internal int Augmentations { get; }
+        internal BigInteger SegmentedNetPotentialScaled { get; }
+        internal BigInteger IntegratedNetPotentialScaled { get; }
+
+        internal Result(ulong[][] allocations, ulong[] markets, int augmentations,
+            BigInteger segmented, BigInteger integrated)
+        {
+            AllocationQuanta = allocations;
+            MarketQuanta = markets;
+            Augmentations = augmentations;
+            SegmentedNetPotentialScaled = segmented;
+            IntegratedNetPotentialScaled = integrated;
+        }
+    }
+
+    private sealed class Edge
+    {
+        internal int To { get; }
+        internal int ReverseIndex { get; }
+        internal BigInteger Cost { get; }
+        internal ulong Remaining;
+
+        internal Edge(int to, int reverseIndex, ulong remaining, BigInteger cost)
+        {
+            To = to;
+            ReverseIndex = reverseIndex;
+            Remaining = remaining;
+            Cost = cost;
+        }
+    }
+
+    private sealed class Network
+    {
+        internal List<Edge>[] Links { get; }
+
+        internal Network(int vertices)
+        {
+            Links = Enumerable.Range(0, vertices)
+                .Select(_ => new List<Edge>()).ToArray();
+        }
+
+        internal Edge Add(int from, int to, ulong capacity, BigInteger cost)
+        {
+            if (from == to)
+                throw new InvalidOperationException("Residual self-edge is invalid.");
+            var forward = new Edge(to, Links[to].Count, capacity, cost);
+            var backward = new Edge(from, Links[from].Count, 0UL, -cost);
+            Links[from].Add(forward);
+            Links[to].Add(backward);
+            return forward;
+        }
+    }
+
+    private sealed class MarketSegments
+    {
+        private readonly Network _network;
+        private readonly int _node;
+        private readonly int _sink;
+        private readonly Market _market;
+        private readonly ulong _quantum;
+        private readonly ulong _total;
+        private readonly ulong _width;
+        private BigInteger? _lastSlope;
+        private ulong _covered;
+        private Edge? _latest;
+
+        internal MarketSegments(Network network, int node, int sink,
+            Market market, ulong quantum, ulong total, ulong width)
+        {
+            _network = network;
+            _node = node;
+            _sink = sink;
+            _market = market;
+            _quantum = quantum;
+            _total = total;
+            _width = width;
+        }
+
+        // Exposes only the next unsaturated, consecutively activated interval.
+        // Concavity ensures that a later interval is never cheaper than an
+        // earlier interval on the buyer-to-sink residual graph.
+        internal void ActivateIfNeeded()
+        {
+            if (_covered == _total || _latest?.Remaining > 0UL)
+                return;
+            ulong count = Math.Min(_width, _total - _covered);
+            ulong upper = checked(_covered + count);
+            ulong beforeGoods = checked(_covered * _quantum);
+            ulong afterGoods = checked(upper * _quantum);
+            BigInteger benefit = FoundationPhysicalMarginalIntegratedUtility
+                .MarketBenefitScaled(_market.QuoteMicro,
+                    _market.DemandMicro, afterGoods) -
+                FoundationPhysicalMarginalIntegratedUtility
+                .MarketBenefitScaled(_market.QuoteMicro,
+                    _market.DemandMicro, beforeGoods);
+            BigInteger slope = benefit / count;
+            // Guard the monotone-segment invariant against integer sqrt floors.
+            if (_lastSlope.HasValue && slope > _lastSlope.Value)
+                slope = _lastSlope.Value;
+            _latest = _network.Add(_node, _sink, count, -slope);
+            _covered = upper;
+            _lastSlope = slope;
+        }
+
+        internal Edge? Latest => _latest;
+    }
+
+    internal static Result Solve(IReadOnlyList<Seller> sellers,
+        IReadOnlyList<Market> markets, ulong goodsQuantum,
+        int segmentsPerAverageMarket, int maxAugmentations)
+    {
+        ArgumentNullException.ThrowIfNull(sellers);
+        ArgumentNullException.ThrowIfNull(markets);
+        if (sellers.Count == 0 || markets.Count == 0 ||
+            goodsQuantum == 0UL || segmentsPerAverageMarket < 1 ||
+            maxAugmentations < 1)
+            throw new ArgumentException(
+                "Positive sources, markets, quantum, segments and augmentation budget are required.");
+
+        ulong totalSupply = 0UL;
+        foreach (var seller in sellers)
+        {
+            if (seller is null || seller.SupplyQuanta == 0UL ||
+                seller.TransportCostPerQuantumScaled is null ||
+                seller.TransportCostPerQuantumScaled.Count != markets.Count)
+                throw new ArgumentException(
+                    "Every positive seller requires a cost or null for each real market.");
+            totalSupply = checked(totalSupply + seller.SupplyQuanta);
+            if (seller.TransportCostPerQuantumScaled.All(cost =>
+                    !cost.HasValue))
+                throw new InvalidOperationException(
+                    "A producing seller has no physically reachable market.");
+            if (seller.TransportCostPerQuantumScaled.Any(cost =>
+                    cost.HasValue && cost.Value.Sign < 0))
+                throw new ArgumentException(
+                    "Physical freight and external-owner tariffs cannot be negative.");
+        }
+        checked { _ = totalSupply * goodsQuantum; }
+        foreach (var market in markets)
+            if (market is null || market.QuoteMicro == 0UL ||
+                market.DemandMicro == 0UL)
+                throw new ArgumentException(
+                    "A real buyer needs positive quoted marginal scale and demand.");
+
+        ulong denominator = checked((ulong)markets.Count *
+            (ulong)segmentsPerAverageMarket);
+        ulong width = totalSupply / denominator +
+            (totalSupply % denominator == 0UL ? 0UL : 1UL);
+        width = Math.Max(1UL, width);
+
+        int sellerCount = sellers.Count;
+        int marketCount = markets.Count;
+        int source = 0, sellerStart = 1, marketStart = 1 + sellerCount;
+        int sink = checked(marketStart + marketCount);
+        var network = new Network(checked(sink + 1));
+        var allocations = new Edge?[sellerCount, marketCount];
+        var cheapest = new BigInteger?[marketCount];
+
+        for (int i = 0; i < sellerCount; i++)
+        {
+            var seller = sellers[i];
+            network.Add(source, sellerStart + i, seller.SupplyQuanta,
+                BigInteger.Zero);
+            for (int j = 0; j < marketCount; j++)
+            {
+                var cost = seller.TransportCostPerQuantumScaled[j];
+                if (!cost.HasValue) continue;
+                allocations[i, j] = network.Add(sellerStart + i,
+                    marketStart + j, seller.SupplyQuanta, cost.Value);
+                if (!cheapest[j].HasValue || cost.Value < cheapest[j].Value)
+                    cheapest[j] = cost.Value;
+            }
+        }
+
+        var segments = new MarketSegments?[marketCount];
+        for (int j = 0; j < marketCount; j++)
+        {
+            if (!cheapest[j].HasValue) continue;
+            var segment = new MarketSegments(network, marketStart + j, sink,
+                markets[j], goodsQuantum, totalSupply, width);
+            segment.ActivateIfNeeded();
+            segments[j] = segment;
+        }
+
+        // Initial reduced-cost potentials are exact shortest distances in
+        // the initial acyclic source -> sellers -> buyers -> sink network.
+        var potential = new BigInteger[sink + 1];
+        BigInteger? sinkDistance = null;
+        for (int j = 0; j < marketCount; j++)
+        {
+            if (!cheapest[j].HasValue) continue;
+            potential[marketStart + j] = cheapest[j].Value;
+            var first = segments[j]!.Latest!;
+            var viaMarket = cheapest[j].Value + first.Cost;
+            if (!sinkDistance.HasValue || viaMarket < sinkDistance.Value)
+                sinkDistance = viaMarket;
+        }
+        if (!sinkDistance.HasValue)
+            throw new InvalidOperationException(
+                "No real market can receive positive physical supply.");
+        potential[sink] = sinkDistance.Value;
+
+        ulong shipped = 0UL;
+        int augmentations = 0;
+        BigInteger minimumCost = BigInteger.Zero;
+        while (shipped != totalSupply)
+        {
+            if (augmentations >= maxAugmentations)
+                throw new InvalidOperationException(
+                    "Global segmented concave flow exceeded its explicit " +
+                    "augmentation budget; no partial market candidate is returned.");
+
+            var distance = new BigInteger?[sink + 1];
+            var previousNode = Enumerable.Repeat(-1, sink + 1).ToArray();
+            var previousEdge = new int[sink + 1];
+            var queue = new PriorityQueue<int, (BigInteger Distance, int Node)>();
+            distance[source] = BigInteger.Zero;
+            queue.Enqueue(source, (BigInteger.Zero, source));
+
+            while (queue.TryDequeue(out var at, out var priority))
+            {
+                if (!distance[at].HasValue ||
+                    priority.Distance != distance[at]!.Value)
+                    continue;
+                var edges = network.Links[at];
+                for (int e = 0; e < edges.Count; e++)
+                {
+                    var edge = edges[e];
+                    if (edge.Remaining == 0UL) continue;
+                    var reduced = edge.Cost + potential[at] -
+                        potential[edge.To];
+                    if (reduced.Sign < 0)
+                        throw new InvalidOperationException(
+                            "Residual reduced-cost invariant violated.");
+                    var candidate = priority.Distance + reduced;
+                    if (distance[edge.To].HasValue &&
+                        candidate >= distance[edge.To]!.Value)
+                        continue;
+                    distance[edge.To] = candidate;
+                    previousNode[edge.To] = at;
+                    previousEdge[edge.To] = e;
+                    queue.Enqueue(edge.To, (candidate, edge.To));
+                }
+            }
+
+            if (!distance[sink].HasValue)
+                throw new InvalidOperationException(
+                    "Declared real routes cannot conserve all physical output.");
+            for (int v = 0; v <= sink; v++)
+                if (distance[v].HasValue)
+                    potential[v] += distance[v]!.Value;
+
+            ulong send = totalSupply - shipped;
+            for (int at = sink; at != source; at = previousNode[at])
+            {
+                int from = previousNode[at];
+                if (from < 0)
+                    throw new InvalidOperationException("Broken residual augmenting path.");
+                send = Math.Min(send,
+                    network.Links[from][previousEdge[at]].Remaining);
+            }
+            if (send == 0UL)
+                throw new InvalidOperationException("Zero-volume flow augmentation.");
+            for (int at = sink; at != source; at = previousNode[at])
+            {
+                int from = previousNode[at];
+                var edge = network.Links[from][previousEdge[at]];
+                var reverse = network.Links[edge.To][edge.ReverseIndex];
+                edge.Remaining -= send;
+                reverse.Remaining = checked(reverse.Remaining + send);
+                minimumCost += edge.Cost * send;
+            }
+            shipped = checked(shipped + send);
+            augmentations = checked(augmentations + 1);
+            foreach (var segment in segments)
+                segment?.ActivateIfNeeded();
+        }
+
+        var matrix = new ulong[sellerCount][];
+        var marketTotals = new ulong[marketCount];
+        BigInteger transport = BigInteger.Zero;
+        for (int i = 0; i < sellerCount; i++)
+        {
+            matrix[i] = new ulong[marketCount];
+            ulong row = 0UL;
+            for (int j = 0; j < marketCount; j++)
+            {
+                var forward = allocations[i, j];
+                if (forward is null) continue;
+                ulong quantity = sellers[i].SupplyQuanta - forward.Remaining;
+                matrix[i][j] = quantity;
+                row = checked(row + quantity);
+                marketTotals[j] = checked(marketTotals[j] + quantity);
+                transport += sellers[i].TransportCostPerQuantumScaled[j]!.Value *
+                    quantity;
+            }
+            if (row != sellers[i].SupplyQuanta)
+                throw new InvalidOperationException(
+                    "Global flow does not conserve an individual seller lot.");
+        }
+        if (marketTotals.Aggregate(BigInteger.Zero,
+                (sum, n) => sum + n) != totalSupply)
+            throw new InvalidOperationException(
+                "Global flow does not conserve all producing workers.");
+
+        BigInteger integrated = -transport;
+        for (int j = 0; j < marketCount; j++)
+            integrated += FoundationPhysicalMarginalIntegratedUtility
+                .MarketBenefitScaled(markets[j].QuoteMicro,
+                    markets[j].DemandMicro,
+                    checked(marketTotals[j] * goodsQuantum));
+        BigInteger segmented = -minimumCost;
+        if (integrated < segmented)
+            throw new InvalidOperationException(
+                "The declared piecewise chord must understate exact integrated utility.");
+
+        return new Result(matrix, marketTotals, augmentations,
+            segmented, integrated);
+    }
+}
