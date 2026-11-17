@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Numerics;
+using System.Text.Json;
 using GlobalArena.Runtime;
 using GlobalArena.Simulation;
 using GlobalArena.Simulation.Foundation;
@@ -243,6 +244,185 @@ public sealed class FoundationPhysicalGlobalConcaveFlowTests
                     t.FineStrategicCellId.Value)))));
         Assert.Equal(flow.SegmentedNetPotentialScaled,
             repeated.SegmentedNetPotentialScaled);
+    }
+
+    [Fact]
+    public void ReusedResidualWorkspaceMatchesOriginalWorkerBackedGoldbergFlowBitForBit()
+    {
+        var stress = EightCompetingSellersInConnectedGoldbergMarkets();
+        var snapshot = stress.Host.Snapshot;
+        var stateHash = stress.Host.StateHash;
+        foreach (int segments in new[] { 2, 4, 8 })
+        {
+            long baselineBefore = GC.GetAllocatedBytesForCurrentThread();
+            var baselineClock = Stopwatch.StartNew();
+            var reference =
+                FoundationPhysicalGlobalConcaveFlowPlanner
+                    .CoordinateWithSearchWorkspace(
+                        stress.Workers, stress.Host.Incidence,
+                        Demand(), Cargo(), stress.Quotes, stress.Roads,
+                        segments, 8192, reuseSearchWorkspace: false);
+            baselineClock.Stop();
+            long baselineBytes = GC.GetAllocatedBytesForCurrentThread() -
+                baselineBefore;
+
+            long reusedBefore = GC.GetAllocatedBytesForCurrentThread();
+            var reusedClock = Stopwatch.StartNew();
+            var optimized =
+                FoundationPhysicalGlobalConcaveFlowPlanner
+                    .CoordinateWithSearchWorkspace(
+                        stress.Workers, stress.Host.Incidence,
+                        Demand(), Cargo(), stress.Quotes, stress.Roads,
+                        segments, 8192, reuseSearchWorkspace: true);
+            reusedClock.Stop();
+            long reusedBytes = GC.GetAllocatedBytesForCurrentThread() -
+                reusedBefore;
+
+            Assert.Equal(reference.ProductiveLotCount,
+                optimized.ProductiveLotCount);
+            Assert.Equal(reference.RealMarketCount, optimized.RealMarketCount);
+            Assert.Equal(reference.FlowAugmentations, optimized.FlowAugmentations);
+            Assert.Equal(reference.SegmentedNetPotentialScaled,
+                optimized.SegmentedNetPotentialScaled);
+            Assert.Equal(reference.IntegratedNetPotentialScaled,
+                optimized.IntegratedNetPotentialScaled);
+            Assert.Equal(reference.SegmentationUnderstatementScaled,
+                optimized.SegmentationUnderstatementScaled);
+            Assert.Equal(reference.MarketTotals.Select(m =>
+                    (m.Tile, m.Buyer, m.Commodity, m.DemandMicro,
+                        m.AllocatedGoodsMicro)),
+                optimized.MarketTotals.Select(m =>
+                    (m.Tile, m.Buyer, m.Commodity, m.DemandMicro,
+                        m.AllocatedGoodsMicro)));
+            Assert.Equal(reference.Candidates.Select(d =>
+                    (d.DeliveryOrdinal, d.Seller, d.SourceOccupation,
+                        d.SourceTile, d.Buyer, d.BuyerTile, d.Commodity,
+                        d.GoodsMicro, Route: string.Join(",", d.RouteTiles
+                            .Select(t => t.FineStrategicCellId.Value)))),
+                optimized.Candidates.Select(d =>
+                    (d.DeliveryOrdinal, d.Seller, d.SourceOccupation,
+                        d.SourceTile, d.Buyer, d.BuyerTile, d.Commodity,
+                        d.GoodsMicro, Route: string.Join(",", d.RouteTiles
+                            .Select(t => t.FineStrategicCellId.Value)))));
+            Assert.Equal(reference.AllocationAudit.TotalAvailableGoodsMicro,
+                optimized.AllocationAudit.TotalAvailableGoodsMicro);
+            Assert.Equal(reference.AllocationAudit.TotalAllocatedGoodsMicro,
+                optimized.AllocationAudit.TotalAllocatedGoodsMicro);
+            Assert.Equal(reference.AllocationAudit.Freight
+                    .TotalEdgeTraversalCargoMicro,
+                optimized.AllocationAudit.Freight
+                    .TotalEdgeTraversalCargoMicro);
+            Assert.Equal(8_000_000UL,
+                optimized.AllocationAudit.TotalAllocatedGoodsMicro);
+            Assert.Equal(stateHash, stress.Host.StateHash);
+            Assert.Same(snapshot, stress.Host.Snapshot);
+            Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+                stress.Host.GetLastClosedEconomicTradeView(Red).Availability);
+            _output.WriteLine(
+                $"GA_NEXT_RESIDUAL_WORKSPACE segments={segments} " +
+                $"referenceMs={baselineClock.ElapsedMilliseconds} " +
+                $"reuseMs={reusedClock.ElapsedMilliseconds} " +
+                $"referenceManagedAllocatedBytes={baselineBytes} " +
+                $"reuseManagedAllocatedBytes={reusedBytes} " +
+                $"augmentations={optimized.FlowAugmentations}; EXACT");
+            var diagnosticDirectory = Environment.GetEnvironmentVariable(
+                "GA_RESIDUAL_WORKSPACE_REPORT_DIR");
+            if (!string.IsNullOrWhiteSpace(diagnosticDirectory))
+            {
+                // Write ONLY AFTER all exact market, seller, routing,
+                // conservation and uncommitted-state comparisons passed.
+                // No shipment identities or price/treasury state are exported.
+                Directory.CreateDirectory(diagnosticDirectory);
+                var observation = new
+                {
+                    Schema = "ga-next.residual-workspace.v1",
+                    SegmentsPerAverageMarket = segments,
+                    SellerCount = optimized.ProductiveLotCount,
+                    MarketCount = optimized.RealMarketCount,
+                    TotalAvailableGoodsMicro =
+                        optimized.AllocationAudit.TotalAvailableGoodsMicro,
+                    TotalAllocatedGoodsMicro =
+                        optimized.AllocationAudit.TotalAllocatedGoodsMicro,
+                    Augmentations = optimized.FlowAugmentations,
+                    ReferenceElapsedMilliseconds =
+                        baselineClock.ElapsedMilliseconds,
+                    ReusedElapsedMilliseconds =
+                        reusedClock.ElapsedMilliseconds,
+                    ReferenceAllocatedBytesCurrentThread = baselineBytes,
+                    ReusedAllocatedBytesCurrentThread = reusedBytes,
+                    ExactlyEquivalent = true,
+                    CandidateSettledEconomically = false
+                };
+                File.WriteAllText(
+                    Path.Combine(diagnosticDirectory,
+                        $"segments-{segments}.json"),
+                    JsonSerializer.Serialize(observation,
+                        new JsonSerializerOptions { WriteIndented = true }));
+            }
+        }
+    }
+
+    [Fact]
+    public void ReusedResidualQueueMatchesReferenceOnConstrainedSellerReassignment()
+    {
+        var buyers = new[]
+        {
+            new FoundationPhysicalConcaveCommodityFlow.Market(
+                1_000_000UL, 1_000_000UL),
+            new FoundationPhysicalConcaveCommodityFlow.Market(
+                1_000_000UL, 1_000_000UL)
+        };
+        var sellers = new[]
+        {
+            new FoundationPhysicalConcaveCommodityFlow.Seller(
+                3UL, new BigInteger?[]
+                    { BigInteger.Zero, BigInteger.Zero }),
+            new FoundationPhysicalConcaveCommodityFlow.Seller(
+                3UL, new BigInteger?[] { BigInteger.Zero, null })
+        };
+        var reference = FoundationPhysicalConcaveCommodityFlow.Solve(
+            sellers, buyers, 1UL, 3, 32,
+            reuseSearchWorkspace: false);
+        var reused = FoundationPhysicalConcaveCommodityFlow.Solve(
+            sellers, buyers, 1UL, 3, 32,
+            reuseSearchWorkspace: true);
+        Assert.Equal(reference.Augmentations, reused.Augmentations);
+        Assert.Equal(reference.MarketQuanta, reused.MarketQuanta);
+        for (int i = 0; i < sellers.Length; i++)
+            Assert.Equal(reference.AllocationQuanta[i],
+                reused.AllocationQuanta[i]);
+        Assert.Equal(reference.IntegratedNetPotentialScaled,
+            reused.IntegratedNetPotentialScaled);
+        Assert.Equal(reference.SegmentedNetPotentialScaled,
+            reused.SegmentedNetPotentialScaled);
+        Assert.Equal(new ulong[] { 0UL, 3UL },
+            reused.AllocationQuanta[0]);
+        Assert.Equal(new ulong[] { 3UL, 0UL },
+            reused.AllocationQuanta[1]);
+    }
+
+    [Fact]
+    public void ResidualWorkspaceAndReferenceFailClosedOnIdenticalAugmentationBudget()
+    {
+        var sellers = new[]
+        {
+            new FoundationPhysicalConcaveCommodityFlow.Seller(
+                100UL, new BigInteger?[] { BigInteger.Zero }),
+        };
+        var markets = new[]
+        {
+            new FoundationPhysicalConcaveCommodityFlow.Market(
+                1_000_000UL, 1_000_000UL)
+        };
+        foreach (bool reuse in new[] { false, true })
+        {
+            var exception = Assert.Throws<InvalidOperationException>(() =>
+                FoundationPhysicalConcaveCommodityFlow.Solve(
+                    sellers, markets, goodsQuantum: 1UL,
+                    segmentsPerAverageMarket: 5, maxAugmentations: 1,
+                    reuseSearchWorkspace: reuse));
+            Assert.Contains("augmentation budget", exception.Message);
+        }
     }
 
     [Fact]

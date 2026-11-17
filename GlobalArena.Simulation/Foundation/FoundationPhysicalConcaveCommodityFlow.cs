@@ -128,7 +128,8 @@ internal static class FoundationPhysicalConcaveCommodityFlow
 
     internal static Result Solve(IReadOnlyList<Seller> sellers,
         IReadOnlyList<Market> markets, ulong goodsQuantum,
-        int segmentsPerAverageMarket, int maxAugmentations)
+        int segmentsPerAverageMarket, int maxAugmentations,
+        bool reuseSearchWorkspace = true)
     {
         ArgumentNullException.ThrowIfNull(sellers);
         ArgumentNullException.ThrowIfNull(markets);
@@ -224,6 +225,21 @@ internal static class FoundationPhysicalConcaveCommodityFlow
                 "No real market can receive positive physical supply.");
         potential[sink] = sinkDistance.Value;
 
+        // A residual augmentation changes only capacities and potentials;
+        // graph vertex count and predecessor-workspace shape never change.
+        // Reuse scratch storage within this one solver call, never across
+        // workers, commodities, economic cycles or concurrent invocations.
+        // The opt-out retains the allocation-per-augmentation reference path
+        // for exact A/B verification of deliveries and integrated potential.
+        BigInteger?[]? retainedDistance = reuseSearchWorkspace
+            ? new BigInteger?[sink + 1] : null;
+        int[]? retainedPreviousNode = reuseSearchWorkspace
+            ? new int[sink + 1] : null;
+        int[]? retainedPreviousEdge = reuseSearchWorkspace
+            ? new int[sink + 1] : null;
+        PriorityQueue<int, (BigInteger Distance, int Node)>? retainedQueue =
+            reuseSearchWorkspace ? new() : null;
+
         ulong shipped = 0UL;
         int augmentations = 0;
         BigInteger minimumCost = BigInteger.Zero;
@@ -234,10 +250,22 @@ internal static class FoundationPhysicalConcaveCommodityFlow
                     "Global segmented concave flow exceeded its explicit " +
                     "augmentation budget; no partial market candidate is returned.");
 
-            var distance = new BigInteger?[sink + 1];
-            var previousNode = Enumerable.Repeat(-1, sink + 1).ToArray();
-            var previousEdge = new int[sink + 1];
-            var queue = new PriorityQueue<int, (BigInteger Distance, int Node)>();
+            var distance = retainedDistance ?? new BigInteger?[sink + 1];
+            var previousNode = retainedPreviousNode ??
+                Enumerable.Repeat(-1, sink + 1).ToArray();
+            var previousEdge = retainedPreviousEdge ?? new int[sink + 1];
+            var queue = retainedQueue ??
+                new PriorityQueue<int, (BigInteger Distance, int Node)>();
+            if (reuseSearchWorkspace)
+            {
+                // Explicit reset is necessary: stale reachable nodes,
+                // predecessor ties or residual queue entries must not alter
+                // the deterministic shortest augmenting path.
+                Array.Clear(distance);
+                Array.Fill(previousNode, -1);
+                Array.Clear(previousEdge);
+                queue.Clear();
+            }
             distance[source] = BigInteger.Zero;
             queue.Enqueue(source, (BigInteger.Zero, source));
 
