@@ -136,7 +136,7 @@ public sealed class FoundationGodotTileClickMenuSmoke
             var card = _map.FindChild(
                 "GANextExperimentalTileClick", true, false) as PanelContainer;
             var title = _map.FindChild(
-                "CityHoverPopulation", true, false) as Label;
+                "CityClickPopulation", true, false) as Label;
             Must(card is not null && title?.Text.Contains("6 TRABALHADORES") == true,
                 "Tile click overview does not show the real population.");
             foreach (var role in new[] {
@@ -145,7 +145,7 @@ public sealed class FoundationGodotTileClickMenuSmoke
                 PhysicalWorkerOccupation.Mining })
             {
                 var row = _map.FindChild(
-                    $"CityHoverRole_{role}", true, false) as Button;
+                    $"CityClickRole_{role}", true, false) as Button;
                 Must(row?.Text.EndsWith("2") == true,
                     $"Actual role {role} missing or count not two.");
             }
@@ -233,9 +233,9 @@ public sealed class FoundationGodotTileClickMenuSmoke
                     PhysicalWorkerOccupation.Mining) == 3,
                 "A collective role update must preserve six people and refresh group counts.");
             var agriculture = _map.FindChild(
-                "CityHoverRole_Agriculture", true, false) as Button;
+                "CityClickRole_Agriculture", true, false) as Button;
             var mining = _map.FindChild(
-                "CityHoverRole_Mining", true, false) as Button;
+                "CityClickRole_Mining", true, false) as Button;
             Must(agriculture?.Text.EndsWith("1") == true &&
                  mining?.Text.EndsWith("3") == true,
                 "Pinned menu did not update 2/2/2 to 1/2/3 after E.");
