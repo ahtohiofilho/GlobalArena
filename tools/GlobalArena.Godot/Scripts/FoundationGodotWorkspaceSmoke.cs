@@ -210,13 +210,16 @@ internal sealed class FoundationGodotWorkspaceSmoke
             // scrolling the old inner HUD leaves lower controls unreachable.
             var bodyScroll = operations.FindChild(
                 "GANextOperationsBodyScroll", recursive: true, owned: false)
-                as ScrollContainer;
+                as ScrollContainer ?? throw new InvalidOperationException("Operations scroll missing.");
             var body = operations.FindChild(
-                "GANextOperationsBody", recursive: true, owned: false) as Control;
+                "GANextOperationsBody", recursive: true, owned: false) as Control
+                ?? throw new InvalidOperationException("Operations content missing.");
             var feedback = operations.FindChild(
-                "GANextOrderFeedback", recursive: true, owned: false) as Label;
+                "GANextOrderFeedback", recursive: true, owned: false) as Label
+                ?? throw new InvalidOperationException("Order feedback missing.");
             var quickEnd = _main.FindChild(
-                "GANextEndTurnButton", recursive: true, owned: false) as Button;
+                "GANextEndTurnButton", recursive: true, owned: false) as Button
+                ?? throw new InvalidOperationException("Pinned E missing.");
             Must(bodyScroll is not null && body is not null &&
                  feedback is not null && quickEnd is not null,
                 "Operations dock has no full-height scroll, bottom order feedback or pinned E.");
