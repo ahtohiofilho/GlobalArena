@@ -1006,4 +1006,133 @@ public sealed class FoundationPhysicalJointAdversarialMarketRouteTests
                 $"gainScaled={sample.AcceptedGainScaled} " +
                 $"conserved={sample.PhysicalConservationPassed}");
     }
+
+    [Fact]
+    public void DuplicateGoldbergRouteProposalMatchesReferenceAndAvoidsRecalculation()
+    {
+        var scenario = EightCompetingSellersInConnectedGoldbergMarkets(
+            edgeReferenceCargoMicro: 100_000_000UL);
+        var policy = Demand();
+        var cargo = Cargo();
+        var originalHash = scenario.Host.StateHash;
+        var originalSnapshot = scenario.Host.Snapshot;
+
+        var initial = FoundationPhysicalProgressiveMarketRouteCoordinator
+            .BeginOrResume(scenario.Workers, scenario.Host.Incidence,
+                policy, cargo, scenario.Quotes, scenario.Roads,
+                scenario.Scales, 4, 4096, 2, 4096, BigInteger.Zero);
+        var afterMarket = FoundationPhysicalProgressiveMarketRouteCoordinator
+            .Advance(initial, 1);
+        Assert.Equal(1, afterMarket.NextProposalIndex);
+
+        (FoundationPhysicalProgressiveMarketRouteState State,
+            double ElapsedMs, long AllocatedBytes) Measure(
+                Func<FoundationPhysicalProgressiveMarketRouteState> action)
+        {
+            long beforeBytes = GC.GetAllocatedBytesForCurrentThread();
+            long started = Stopwatch.GetTimestamp();
+            var result = action();
+            double elapsed = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+            long bytes = GC.GetAllocatedBytesForCurrentThread() - beforeBytes;
+            Assert.True(double.IsFinite(elapsed) && elapsed >= 0);
+            Assert.True(bytes >= 0);
+            return (result, elapsed, bytes);
+        }
+
+        // The reference is the exact pre-Gate16 algorithm: it recomputes
+        // the same fixed-market physical routes even if already audited.
+        var reference = Measure(() =>
+            FoundationPhysicalProgressiveMarketRouteCoordinator
+                .AdvanceWithOriginalRoutingForTests(afterMarket, 1));
+        var optimized = Measure(() =>
+            FoundationPhysicalProgressiveMarketRouteCoordinator
+                .Advance(afterMarket, 1));
+        var slow = reference.State;
+        var fast = optimized.State;
+
+        string Signature(FoundationPhysicalProgressiveMarketRouteState state) =>
+            string.Join(";", state.BestAuditedCandidate.Parts.Select(p =>
+                string.Join("|", p.ParentDeliveryOrdinal,
+                    p.Delivery.DeliveryOrdinal, p.Delivery.Seller.Value,
+                    p.Delivery.Buyer.Value, p.Delivery.GoodsMicro,
+                    string.Join(",", p.Delivery.RouteTiles.Select(t =>
+                        t.FineStrategicCellId.Value)))));
+
+        Assert.Equal(slow.BestPotentialScaled, fast.BestPotentialScaled);
+        Assert.Equal(slow.AcceptedPotentialHistoryScaled,
+            fast.AcceptedPotentialHistoryScaled);
+        Assert.Equal(slow.ProposalsEvaluated, fast.ProposalsEvaluated);
+        Assert.Equal(slow.AcceptedMarketProposals, fast.AcceptedMarketProposals);
+        Assert.Equal(slow.AcceptedRouteProposals, fast.AcceptedRouteProposals);
+        Assert.Equal(slow.RejectedProposals, fast.RejectedProposals);
+        Assert.Equal(slow.CompletedPasses, fast.CompletedPasses);
+        Assert.Equal(slow.NextProposalIndex, fast.NextProposalIndex);
+        Assert.Equal(slow.ImprovedInCurrentPass, fast.ImprovedInCurrentPass);
+        Assert.Equal(slow.StableUnderDeclaredGainFloor,
+            fast.StableUnderDeclaredGainFloor);
+        Assert.Equal(slow.SeedKind, fast.SeedKind);
+        Assert.Equal(Signature(slow), Signature(fast));
+        Assert.Equal(slow.BestAuditedCandidate.FinalIntegratedFreightCost,
+            fast.BestAuditedCandidate.FinalIntegratedFreightCost);
+        Assert.Equal(slow.BestAuditedCandidate.ProjectedEdges.Select(edge =>
+                (edge.Edge, edge.CargoMicro,
+                    edge.CongestedPhysicalCostMicroPerWholeCargoUnit)),
+            fast.BestAuditedCandidate.ProjectedEdges.Select(edge =>
+                (edge.Edge, edge.CargoMicro,
+                    edge.CongestedPhysicalCostMicroPerWholeCargoUnit)));
+        Assert.Same(afterMarket.BestAuditedCandidate,
+            fast.BestAuditedCandidate);
+        Assert.Equal(8_000_000UL, fast.BestAuditedCandidate.AllocationAudit
+            .TotalAvailableGoodsMicro);
+        Assert.Equal(8_000_000UL, fast.BestAuditedCandidate.AllocationAudit
+            .TotalAllocatedGoodsMicro);
+        Assert.Equal(originalHash, scenario.Host.StateHash);
+        Assert.Same(originalSnapshot, scenario.Host.Snapshot);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            scenario.Host.GetLastClosedEconomicTradeView(Red).Availability);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            scenario.Host.GetLastClosedEconomicTradeView(Blue).Availability);
+
+        var report = new
+        {
+            Schema = "ga-next.route-elision-ab.v1",
+            Scenario = "eight-real-sellers-104-worker-markets-connected-Goldberg",
+            TileCount = scenario.TileCount,
+            SellerCount = scenario.SellerCount,
+            MarketCount = scenario.MarketCount,
+            TotalAvailableGoodsMicro = 8_000_000UL,
+            TotalAllocatedGoodsMicro = 8_000_000UL,
+            StateHashUnchanged = scenario.Host.StateHash == originalHash,
+            EconomicallySettled = false,
+            NoClosedCycle = true,
+            ExactlyEquivalent = true,
+            ReferenceElapsedMilliseconds = reference.ElapsedMs,
+            OptimizedElapsedMilliseconds = optimized.ElapsedMs,
+            ReferenceAllocatedBytesCurrentThread = reference.AllocatedBytes,
+            OptimizedAllocatedBytesCurrentThread = optimized.AllocatedBytes,
+            PotentialScaled = fast.BestPotentialScaled.ToString(
+                System.Globalization.CultureInfo.InvariantCulture),
+            CandidateObjectReused = ReferenceEquals(
+                afterMarket.BestAuditedCandidate, fast.BestAuditedCandidate),
+            RouteProposalRejected = fast.AcceptedRouteProposals ==
+                afterMarket.AcceptedRouteProposals &&
+                fast.RejectedProposals == afterMarket.RejectedProposals + 1
+        };
+        Assert.True(report.RouteProposalRejected);
+        var directory = Environment.GetEnvironmentVariable(
+            "GA_ROUTE_ELISION_AB_REPORT_DIR");
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+            File.WriteAllText(Path.Combine(directory, "route-elision-104.json"),
+                JsonSerializer.Serialize(report,
+                    new JsonSerializerOptions { WriteIndented = true }));
+        }
+        _output.WriteLine(
+            $"GA-NEXT ROUTE ELISION A/B refMs={reference.ElapsedMs:F3} " +
+            $"optimizedMs={optimized.ElapsedMs:F3} " +
+            $"refAllocatedBytes={reference.AllocatedBytes} " +
+            $"optimizedAllocatedBytes={optimized.AllocatedBytes} " +
+            $"potential={fast.BestPotentialScaled} EXACT StateHash NoClosedCycle");
+    }
 }

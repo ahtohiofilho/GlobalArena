@@ -286,9 +286,33 @@ public static class FoundationPhysicalProgressiveMarketRouteCoordinator
                 "Quote-only rebase mismatched the independently audited freight.");
     }
 
+    /// <summary>
+    /// Advance the same exact two-block schedule, but do not recompute
+    /// RouteFixedMarket when its immutable inputs have already been routed
+    /// and audited in this economic epoch. A skipped duplicate still counts
+    /// as a rejected proposal, so convergence and budgets stay identical.
+    /// </summary>
     public static FoundationPhysicalProgressiveMarketRouteState Advance(
         FoundationPhysicalProgressiveMarketRouteState state,
-        int maxProposalEvaluations)
+        int maxProposalEvaluations) =>
+        AdvanceCore(state, maxProposalEvaluations,
+            elideIdenticalFixedMarketRouting: true);
+
+    /// <summary>
+    /// A/B oracle for tests only. Executes the original physical route
+    /// recalculation even when its deterministic inputs are identical.
+    /// </summary>
+    internal static FoundationPhysicalProgressiveMarketRouteState
+        AdvanceWithOriginalRoutingForTests(
+            FoundationPhysicalProgressiveMarketRouteState state,
+            int maxProposalEvaluations) =>
+        AdvanceCore(state, maxProposalEvaluations,
+            elideIdenticalFixedMarketRouting: false);
+
+    private static FoundationPhysicalProgressiveMarketRouteState AdvanceCore(
+        FoundationPhysicalProgressiveMarketRouteState state,
+        int maxProposalEvaluations,
+        bool elideIdenticalFixedMarketRouting)
     {
         ArgumentNullException.ThrowIfNull(state);
         if (maxProposalEvaluations < 1)
@@ -311,6 +335,7 @@ public static class FoundationPhysicalProgressiveMarketRouteCoordinator
         for (int i = 0; i < maxProposalEvaluations; i++)
         {
             FoundationPhysicalGlobalConcaveMultiPathPlan proposed;
+            bool reusedAuditedFixedRoute = false;
             if (nextBlock == 0)
             {
                 // Propose changes in buyers/quantities from the last
@@ -342,13 +367,28 @@ public static class FoundationPhysicalProgressiveMarketRouteCoordinator
             }
             else if (nextBlock == 1)
             {
-                // Independent route proposal with CURRENT accepted buyers.
-                proposed = FoundationPhysicalGlobalConcaveMultiPathPlanner
-                    .RouteFixedMarket(state.Census, state.Incidence,
-                        state.DemandPolicy, state.ConversionPolicy,
-                        incumbent.MarketAllocation, state.FrozenRoads,
-                        state.FrozenScales, state.MaxRouteBatchesPerParent,
-                        state.MaxTotalRouteBatches);
+                // Every incumbent in this coordinator was created by
+                // RouteFixedMarket using the SAME frozen census, topology,
+                // policies, roads, scales and route budgets: initial Plan(),
+                // accepted market proposal, or the audited warm-start paths.
+                // RouteFixedMarket is deterministic for these inputs. A
+                // second invocation on the same MarketAllocation therefore
+                // returns exactly the already audited route, never a new
+                // economic gain. Keep the reference execution for A/B tests.
+                if (elideIdenticalFixedMarketRouting)
+                {
+                    proposed = incumbent;
+                    reusedAuditedFixedRoute = true;
+                }
+                else
+                {
+                    proposed = FoundationPhysicalGlobalConcaveMultiPathPlanner
+                        .RouteFixedMarket(state.Census, state.Incidence,
+                            state.DemandPolicy, state.ConversionPolicy,
+                            incumbent.MarketAllocation, state.FrozenRoads,
+                            state.FrozenScales, state.MaxRouteBatchesPerParent,
+                            state.MaxTotalRouteBatches);
+                }
             }
             else
                 throw new InvalidOperationException(
@@ -361,8 +401,12 @@ public static class FoundationPhysicalProgressiveMarketRouteCoordinator
                 throw new InvalidOperationException(
                     "A progressive economic proposal broke physical conservation.");
 
-            var proposedScore = FoundationPhysicalJointMarketRoutePotentialCoordinator
-                .IntegratedNetPotentialScaled(proposed, state.FrozenQuotes);
+            // An identical, previously audited physical plan has exactly
+            // the incumbent potential: do not pay again for scoring it.
+            var proposedScore = reusedAuditedFixedRoute
+                ? score
+                : FoundationPhysicalJointMarketRoutePotentialCoordinator
+                    .IntegratedNetPotentialScaled(proposed, state.FrozenQuotes);
             // Finite economic significance: below this explicit threshold,
             // postpone the improvement. No rounding of prices or quantities.
             bool accept = proposedScore > score &&
