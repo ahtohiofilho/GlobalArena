@@ -32,20 +32,35 @@ public sealed record FoundationPhysicalCongestedEdgeReading(
 /// CongestionIterations counts complete re-solves of the coupled producer
 /// planner. It is NOT a market-equilibrium or monetary-settlement receipt.
 /// </summary>
+/// <summary>
+/// Explicit numerical strategy for fixed-point SEARCH, not an economic rule.
+/// Denominator 1 is the original exact Picard iteration; allowing larger
+/// denominators enables controlled under-relaxation after an observed cycle.
+/// This cannot guarantee a fixed point when a discrete route split cannot
+/// represent one; such cycles must still fail closed.
+/// </summary>
+public sealed record FoundationPhysicalCongestionRelaxationPolicy(
+    uint InitialDenominator, uint MaximumDenominator);
+
 public sealed class FoundationPhysicalEndogenousCongestionPlan
 {
     public FoundationPhysicalGlobalMarginalCoordinationPlan Distribution { get; }
     public IReadOnlyList<FoundationPhysicalCongestedEdgeReading> Edges { get; }
     public int CongestionIterations { get; }
     public bool ConsistentWithFinalEdgeLoads { get; }
+    public uint FinalRelaxationDenominator { get; }
+    public int AdaptiveRestarts { get; }
 
     internal FoundationPhysicalEndogenousCongestionPlan(
         FoundationPhysicalGlobalMarginalCoordinationPlan distribution,
-        FoundationPhysicalCongestedEdgeReading[] edges, int iterations)
+        FoundationPhysicalCongestedEdgeReading[] edges, int iterations,
+        uint relaxationDenominator, int adaptiveRestarts)
     {
         Distribution = distribution;
         Edges = Array.AsReadOnly(edges);
         CongestionIterations = iterations;
+        FinalRelaxationDenominator = relaxationDenominator;
+        AdaptiveRestarts = adaptiveRestarts;
         ConsistentWithFinalEdgeLoads = true;
     }
 }
@@ -92,6 +107,25 @@ public static class FoundationPhysicalEndogenousCongestionFeedback
         return checked((ulong)total);
     }
 
+    /// <summary>
+    /// Relax the PHYSICAL COST iteration by an explicitly chosen positive
+    /// denominator. Each changed cost advances at least one micro-unit, so
+    /// a stationary update cannot be mistaken for exact convergence.
+    /// </summary>
+    internal static ulong RelaxCostTowards(
+        ulong current, ulong target, uint denominator)
+    {
+        if (denominator == 0U)
+            throw new ArgumentOutOfRangeException(nameof(denominator));
+        if (current == target)
+            return current;
+        var delta = current < target ? target - current : current - target;
+        var step = delta / denominator +
+            (delta % denominator == 0UL ? 0UL : 1UL);
+        return current < target ? checked(current + step) :
+            checked(current - step);
+    }
+
     public static FoundationPhysicalEndogenousCongestionPlan Coordinate(
         PhysicalWorkerRuntimeState census,
         PhysicalTacticalIncidenceMap incidence,
@@ -101,7 +135,8 @@ public static class FoundationPhysicalEndogenousCongestionFeedback
         IEnumerable<FoundationPhysicalRoutingEdgeCost> freeFlowEdgeCosts,
         IEnumerable<FoundationPhysicalEdgeCarryingScale> carryingScales,
         int maxProducerPasses,
-        int maxCongestionIterations)
+        int maxCongestionIterations,
+        FoundationPhysicalCongestionRelaxationPolicy? relaxation = null)
     {
         ArgumentNullException.ThrowIfNull(census);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -114,6 +149,11 @@ public static class FoundationPhysicalEndogenousCongestionFeedback
             throw new ArgumentOutOfRangeException(nameof(maxProducerPasses));
         if (maxCongestionIterations <= 0)
             throw new ArgumentOutOfRangeException(nameof(maxCongestionIterations));
+        relaxation ??= new FoundationPhysicalCongestionRelaxationPolicy(1U, 1U);
+        if (relaxation.InitialDenominator == 0U ||
+            relaxation.MaximumDenominator < relaxation.InitialDenominator)
+            throw new ArgumentOutOfRangeException(nameof(relaxation),
+                "Require 1 <= initial denominator <= maximum denominator.");
 
         // Materialize all external policies ONCE; repeated feedback must not
         // change due to a mutable IEnumerable or noncanonical iteration.
@@ -146,8 +186,11 @@ public static class FoundationPhysicalEndogenousCongestionFeedback
                 nameof(carryingScales));
 
         var current = baseEdges;
-        // Detect deterministic two-cycles and longer route/load feedback
-        // oscillations without claiming a converged snapshot.
+        uint denominator = relaxation.InitialDenominator;
+        int adaptiveRestarts = 0;
+        // Detect exact repeats of the physical cost vector only; when a
+        // higher damping level is authorized, restart deterministically from
+        // the original free-flow policy rather than carrying a partial cycle.
         var observed = new HashSet<string>();
         string Signature(FoundationPhysicalRoutingEdgeCost[] edges) =>
             string.Join(",", edges.Select(edge =>
@@ -176,7 +219,9 @@ public static class FoundationPhysicalEndogenousCongestionFeedback
                     edge.PhysicalCostMicroPerWholeCargoUnit, load, scale);
                 next[i] = edge with
                 {
-                    PhysicalCostMicroPerWholeCargoUnit = rate
+                    PhysicalCostMicroPerWholeCargoUnit =
+                        RelaxCostTowards(current[i].PhysicalCostMicroPerWholeCargoUnit,
+                            rate, denominator)
                 };
                 readings[i] = new FoundationPhysicalCongestedEdgeReading(
                     edge.Edge, load, scale,
@@ -196,12 +241,24 @@ public static class FoundationPhysicalEndogenousCongestionFeedback
                     throw new InvalidOperationException(
                         "Congestion loads disagree with physical freight audit.");
                 return new FoundationPhysicalEndogenousCongestionPlan(
-                    distribution, readings, pass);
+                    distribution, readings, pass,
+                    denominator, adaptiveRestarts);
             }
             if (!observed.Add(Signature(next)))
-                throw new InvalidOperationException(
-                    "Congestion and physical route choices oscillated; " +
-                    "do not mislabel a feedback cycle as an equilibrium.");
+            {
+                if (denominator == relaxation.MaximumDenominator)
+                    throw new InvalidOperationException(
+                        "Congestion routes oscillated even at the explicitly " +
+                        "allowed relaxation level. No economic settlement.");
+                denominator = checked((uint)Math.Min(
+                    (ulong)relaxation.MaximumDenominator,
+                    (ulong)denominator * 2UL));
+                adaptiveRestarts = checked(adaptiveRestarts + 1);
+                current = baseEdges;
+                observed.Clear();
+                observed.Add(Signature(current));
+                continue;
+            }
             current = next;
         }
         throw new InvalidOperationException(
