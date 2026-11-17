@@ -85,7 +85,8 @@ public static class FoundationPhysicalGlobalConcaveFlowPlanner
         IEnumerable<FoundationPhysicalRoutingEdgeCost> edgeCosts,
         int segmentsPerAverageMarket,
         int maxFlowAugmentations,
-        bool reuseSearchWorkspace)
+        bool reuseSearchWorkspace,
+        bool useSequentialSeedReference = false)
     {
         ArgumentNullException.ThrowIfNull(census);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -97,18 +98,33 @@ public static class FoundationPhysicalGlobalConcaveFlowPlanner
             throw new ArgumentOutOfRangeException(
                 "Positive segmentation and augmentation budgets are mandatory.");
 
-        // The existing progressive allocator validates actual workers,
-        // one positive quote per real demand line, physically reachable
-        // lots, cargo granularity and explicit edge ownership up front.
-        // Its sequential result is NOT used as a flow constraint or answer.
+        // The sequential marginal response used to be fully SOLVED and
+        // audited here solely to retrieve worker-market inputs and quotes.
+        // It never constrained this global solver. Reuse the exact complete
+        // worker/quote preflight instead and keep the original slow seed
+        // as an independently executable A/B oracle.
         var quoteList = quotes.ToArray();
         var costList = edgeCosts.ToArray();
-        var seed = FoundationPhysicalMarginalMarketDistributor.Distribute(
-            census, incidence, demandPolicy, conversionPolicy,
-            quoteList, costList);
-        var inputs = seed.AllocationAudit.MarketInputs;
-        var quoteMap = quoteList.ToDictionary(
-            quote => (quote.BuyerTile, quote.Buyer, quote.Commodity));
+        FoundationPhysicalCommodityMarketInputs inputs;
+        Dictionary<(PhysicalTacticalTileId Tile, CivilizationId Owner,
+            CommodityId Commodity), FoundationCommodityMarketPlanningQuote>
+            quoteMap;
+        if (useSequentialSeedReference)
+        {
+            var seed = FoundationPhysicalMarginalMarketDistributor.Distribute(
+                census, incidence, demandPolicy, conversionPolicy,
+                quoteList, costList);
+            inputs = seed.AllocationAudit.MarketInputs;
+            quoteMap = quoteList.ToDictionary(
+                quote => (quote.BuyerTile, quote.Buyer, quote.Commodity));
+        }
+        else
+        {
+            (inputs, quoteMap) =
+                FoundationPhysicalMarginalMarketDistributor
+                    .ValidateMarketAndQuotes(
+                        census, demandPolicy, conversionPolicy, quoteList);
+        }
         var (graph, ownership) =
             FoundationPhysicalTradeRouteCandidatePlanner.BuildGraph(
                 incidence, costList);
