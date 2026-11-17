@@ -244,4 +244,137 @@ public sealed class FoundationPhysicalGlobalConcaveFlowTests
         Assert.Equal(flow.SegmentedNetPotentialScaled,
             repeated.SegmentedNetPotentialScaled);
     }
+
+    [Fact]
+    public void SameCommodityPrecisionSweepReportsSegmentedUnderstatementWithoutClaimingExactOptimum()
+    {
+        var stress = EightCompetingSellersInConnectedGoldbergMarkets();
+        var snapshot = stress.Host.Snapshot;
+        var hash = stress.Host.StateHash;
+        var results = new List<FoundationPhysicalGlobalConcaveFlowPlan>();
+        foreach (int segments in new[] { 2, 4, 8 })
+        {
+            var watch = Stopwatch.StartNew();
+            var plan = FoundationPhysicalGlobalConcaveFlowPlanner.Coordinate(
+                stress.Workers, stress.Host.Incidence, Demand(), Cargo(),
+                stress.Quotes, stress.Roads, segmentsPerAverageMarket: segments,
+                maxFlowAugmentations: 8192);
+            watch.Stop();
+            _output.WriteLine(
+                $"precisionSweep segments={segments}, " +
+                $"understatement={plan.SegmentationUnderstatementScaled}, " +
+                $"integratedPotential={plan.IntegratedNetPotentialScaled}, " +
+                $"segmentedPotential={plan.SegmentedNetPotentialScaled}, " +
+                $"augmentations={plan.FlowAugmentations}, " +
+                $"milliseconds={watch.ElapsedMilliseconds}");
+            Assert.Equal(8_000_000UL,
+                plan.AllocationAudit.TotalAllocatedGoodsMicro);
+            Assert.Equal(plan.AllocationAudit.TotalAvailableGoodsMicro,
+                plan.AllocationAudit.TotalAllocatedGoodsMicro);
+            Assert.True(plan.SegmentationUnderstatementScaled >=
+                BigInteger.Zero);
+            Assert.Equal(104, plan.RealMarketCount);
+            results.Add(plan);
+        }
+        // Different segmentation boundaries can yield different optima.
+        // No false assertion of monotonic continuous utility or global gap.
+        Assert.Equal(3, results.Count);
+        Assert.Equal(hash, stress.Host.StateHash);
+        Assert.Same(snapshot, stress.Host.Snapshot);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            stress.Host.GetLastClosedEconomicTradeView(Red).Availability);
+    }
+
+    [Fact]
+    public void GlobalSameGrainCongestionRequiresExactAuditedCostLoadAgreement()
+    {
+        var stress = EightCompetingSellersInConnectedGoldbergMarkets();
+        var hash = stress.Host.StateHash;
+        var snapshot = stress.Host.Snapshot;
+        var scales = stress.Roads.Select(road =>
+            new FoundationPhysicalEdgeCarryingScale(
+                road.Edge, 100_000_000UL)).ToArray();
+        var watch = Stopwatch.StartNew();
+        var plan = FoundationPhysicalGlobalConcaveCongestionFeedback.Coordinate(
+            stress.Workers, stress.Host.Incidence, Demand(), Cargo(),
+            stress.Quotes, stress.Roads, scales,
+            segmentsPerAverageMarket: 4,
+            maxFlowAugmentationsPerSolve: 4096,
+            maxFeedbackIterations: 16);
+        watch.Stop();
+        _output.WriteLine(
+            $"globalCongestion sellers={plan.Distribution.ProductiveLotCount}, " +
+            $"markets={plan.Distribution.RealMarketCount}, " +
+            $"iterations={plan.FeedbackIterations}, " +
+            $"augmentations={plan.TotalFlowAugmentations}, " +
+            $"milliseconds={watch.ElapsedMilliseconds}");
+        Assert.True(plan.ExactCostAndLoadAgreement);
+        Assert.InRange(plan.FeedbackIterations, 2, 16);
+        Assert.Equal(8, plan.Distribution.ProductiveLotCount);
+        Assert.Equal(104, plan.Distribution.RealMarketCount);
+        Assert.Equal(8_000_000UL,
+            plan.Distribution.AllocationAudit.TotalAllocatedGoodsMicro);
+        Assert.Equal(plan.Edges.Count, stress.Roads.Length);
+        var loads = plan.Distribution.AllocationAudit.Freight.UsedEdges
+            .ToDictionary(edge => edge.Edge, edge => edge.TotalCargoMicro);
+        Assert.Equal(
+            plan.Distribution.AllocationAudit.Freight
+                .TotalEdgeTraversalCargoMicro,
+            plan.Edges.Aggregate(BigInteger.Zero,
+                (sum, edge) => sum + edge.CargoMicro));
+        for (int i = 0; i < plan.Edges.Count; i++)
+        {
+            var edge = plan.Edges[i];
+            Assert.Equal(loads.GetValueOrDefault(edge.Edge), edge.CargoMicro);
+            Assert.Equal(
+                FoundationPhysicalEndogenousCongestionFeedback
+                    .CalculateCongestedRate(
+                        edge.FreePhysicalCostMicroPerWholeCargoUnit,
+                        edge.CargoMicro, edge.CargoMicroAtReferenceLoad),
+                edge.CongestedPhysicalCostMicroPerWholeCargoUnit);
+            Assert.Equal(edge.CongestedPhysicalCostMicroPerWholeCargoUnit,
+                plan.ConsistentEdgeCosts[i]
+                    .PhysicalCostMicroPerWholeCargoUnit);
+            Assert.Equal(edge.InfrastructureOwner,
+                plan.ConsistentEdgeCosts[i].InfrastructureOwner);
+            Assert.Equal(edge.ExternalTariffMicroPerWholeCargoUnit,
+                plan.ConsistentEdgeCosts[i].ExternalTariffMicroPerWholeCargoUnit);
+        }
+        Assert.Equal(hash, stress.Host.StateHash);
+        Assert.Same(snapshot, stress.Host.Snapshot);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            stress.Host.GetLastClosedEconomicTradeView(Red).Availability);
+    }
+
+    [Fact]
+    public void GlobalConcaveCongestionBudgetAndMissingCarryingScaleFailClosed()
+    {
+        var stress = EightCompetingSellersInConnectedGoldbergMarkets();
+        var snapshot = stress.Host.Snapshot;
+        var hash = stress.Host.StateHash;
+        var scales = stress.Roads.Select(road =>
+            new FoundationPhysicalEdgeCarryingScale(
+                road.Edge, 100_000_000UL)).ToArray();
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            FoundationPhysicalGlobalConcaveCongestionFeedback.Coordinate(
+                stress.Workers, stress.Host.Incidence, Demand(), Cargo(),
+                stress.Quotes, stress.Roads, scales,
+                segmentsPerAverageMarket: 4,
+                maxFlowAugmentationsPerSolve: 4096,
+                maxFeedbackIterations: 1));
+        Assert.Contains("iteration budget", error.Message);
+
+        Assert.Throws<ArgumentException>(() =>
+            FoundationPhysicalGlobalConcaveCongestionFeedback.Coordinate(
+                stress.Workers, stress.Host.Incidence, Demand(), Cargo(),
+                stress.Quotes, stress.Roads, scales.Skip(1),
+                segmentsPerAverageMarket: 4,
+                maxFlowAugmentationsPerSolve: 4096,
+                maxFeedbackIterations: 8));
+        Assert.Equal(hash, stress.Host.StateHash);
+        Assert.Same(snapshot, stress.Host.Snapshot);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            stress.Host.GetLastClosedEconomicTradeView(Red).Availability);
+    }
+
 }
