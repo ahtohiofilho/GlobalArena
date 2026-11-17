@@ -411,6 +411,7 @@ public partial class TacticalContextPreview : SubViewportContainer
             _yawDegrees = 0f;
             UpdateCameraOrientation();
             UpdateCameraFraming();
+            RebuildWorkerMarkers();
         };
         orbitRow.AddChild(resetNorth);
         var terrainRow = new HBoxContainer();
@@ -572,6 +573,9 @@ public partial class TacticalContextPreview : SubViewportContainer
             return;
         }
         _camera.Size = preservedSize;
+        // Count glyphs are coplanar but screen-oriented. Update only the
+        // presentation mesh after accepted yaw; do not move any worker.
+        RebuildWorkerMarkers();
         GD.Print($"GA_TACTICAL_ROTATION_ZOOM_PRESERVED_R13 focus={_activeFocus} yaw_deg={_yawDegrees:F0} camera_size={_camera.Size:F4}");
     }
 
