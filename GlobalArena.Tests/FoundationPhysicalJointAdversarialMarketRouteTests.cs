@@ -465,4 +465,205 @@ public sealed class FoundationPhysicalJointAdversarialMarketRouteTests
         }
     }
 
+
+    private sealed record StageReading(
+        string Name, long ElapsedMilliseconds,
+        long ManagedAllocatedBytesCurrentThread);
+
+    private static (T Value, StageReading Reading) MeasureStage<T>(
+        string name, Func<T> operation)
+    {
+        long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+        long start = Stopwatch.GetTimestamp();
+        T value = operation();
+        long elapsed = checked((long)Stopwatch.GetElapsedTime(start)
+            .TotalMilliseconds);
+        long allocated = GC.GetAllocatedBytesForCurrentThread() -
+            allocatedBefore;
+        if (allocated < 0L || elapsed < 0L)
+            throw new InvalidOperationException(
+                "Profiling counters must not become negative.");
+        return (value, new StageReading(name, elapsed, allocated));
+    }
+
+    [Fact]
+    public void IncreasingGoldbergMarketsSeparatesGlobalFlowMultipathAuditorAndJointCosts()
+    {
+        // These observational CI measurements intentionally have NO SLA,
+        // hard timeout, memory ceiling or unsupported scaling inference.
+        // Each stage runs the same physical-worker fixture at its size.
+        var sizes = new[]
+        {
+            (Name: "eight-sellers-104-markets", Frequency: 3,
+                Tiles: 112, Sellers: 8, Markets: 104,
+                Reference: 100_000_000UL),
+            (Name: "sixteen-sellers-192-markets", Frequency: 5,
+                Tiles: 208, Sellers: 16, Markets: 192,
+                Reference: 10_000_000UL),
+            (Name: "twentyfour-sellers-288-markets", Frequency: 6,
+                Tiles: 320, Sellers: 24, Markets: 288,
+                Reference: 10_000_000UL)
+        };
+
+        foreach (var size in sizes)
+        {
+            var scenario = EightCompetingSellersInConnectedGoldbergMarkets(
+                size.Reference, size.Frequency, size.Tiles,
+                size.Sellers, size.Markets);
+            var originalHash = scenario.Host.StateHash;
+            var originalSnapshot = scenario.Host.Snapshot;
+            var policy = Demand();
+            var conversion = Cargo();
+            var (market, flowStage) = MeasureStage(
+                "GlobalSellerMarketFlow", () =>
+                    FoundationPhysicalGlobalConcaveFlowPlanner.Coordinate(
+                        scenario.Workers, scenario.Host.Incidence, policy,
+                        conversion, scenario.Quotes, scenario.Roads,
+                        segmentsPerAverageMarket: 4,
+                        maxFlowAugmentations: 4096));
+            Assert.Equal(size.Sellers, market.ProductiveLotCount);
+            Assert.Equal(size.Markets, market.RealMarketCount);
+            Assert.Equal(checked((ulong)size.Sellers * 1_000_000UL),
+                market.AllocationAudit.TotalAllocatedGoodsMicro);
+
+            var (routes, routeStage) = MeasureStage(
+                "FixedMarketMultipathRouting", () =>
+                    FoundationPhysicalGlobalConcaveMultiPathPlanner
+                        .RouteFixedMarket(
+                            scenario.Workers, scenario.Host.Incidence, policy,
+                            conversion, market, scenario.Roads,
+                            scenario.Scales, maxRouteBatchesPerParent: 2,
+                            maxTotalRouteBatches: 8192));
+            Assert.Equal(market.AllocationAudit.TotalAllocatedGoodsMicro,
+                routes.AllocationAudit.TotalAllocatedGoodsMicro);
+            Assert.True(routes.FinalIntegratedFreightCost <=
+                routes.BaselineIntegratedFreightCost);
+
+            // BuildGraph is explicitly excluded from the independent auditor
+            // measurement; RouteFixedMarket has already included it in
+            // its routing phase. We measure the same physical candidate
+            // auditor separately, not an artificial mock implementation.
+            var (_, owners) =
+                FoundationPhysicalTradeRouteCandidatePlanner.BuildGraph(
+                    scenario.Host.Incidence, scenario.Roads);
+            var (rechecked, auditStage) = MeasureStage(
+                "IndependentPhysicalFreightAudit", () =>
+                    FoundationPhysicalDeliveryAllocationAuditor.Audit(
+                        scenario.Workers, scenario.Host.Incidence, policy,
+                        conversion, routes.Parts.Select(x => x.Delivery),
+                        owners));
+            Assert.Equal(routes.AllocationAudit.TotalAllocatedGoodsMicro,
+                rechecked.TotalAllocatedGoodsMicro);
+            Assert.Equal(routes.AllocationAudit.Freight
+                    .TotalEdgeTraversalCargoMicro,
+                rechecked.Freight.TotalEdgeTraversalCargoMicro);
+
+            var (joint, jointStage) = MeasureStage(
+                "CompleteJointBlockSearch", () =>
+                {
+                    try
+                    {
+                        var plan =
+                            FoundationPhysicalJointMarketRoutePotentialCoordinator
+                                .Coordinate(
+                                    scenario.Workers, scenario.Host.Incidence,
+                                    policy, conversion, scenario.Quotes,
+                                    scenario.Roads, scenario.Scales,
+                                    segmentsPerAverageMarket: 4,
+                                    maxFlowAugmentationsPerProposal: 4096,
+                                    maxRouteBatchesPerParent: 2,
+                                    maxTotalRouteBatches: 8192,
+                                    maxCompletePasses: 3);
+                        AssertRealWorkerMarketConservation(scenario, plan);
+                        return (
+                            Outcome: "BLOCK_STATIONARY",
+                            Passes: plan.CompletePasses,
+                            Accepted: plan.AcceptedMarketRouteProposals +
+                                plan.AcceptedRouteOnlyProposals,
+                            Trace: plan.AcceptedPotentialHistoryScaled);
+                    }
+                    catch (FoundationPhysicalJointMarketRouteBudgetException ex)
+                    {
+                        Assert.Equal(3, ex.CompletePassBudget);
+                        Assert.True(ex.AcceptedProposals > 0);
+                        Assert.Equal(ex.AcceptedProposals + 1,
+                            ex.AcceptedPotentialHistoryScaled.Count);
+                        AssertStrictPotential(ex.AcceptedPotentialHistoryScaled);
+                        return (
+                            Outcome: "BUDGET_EXHAUSTED",
+                            Passes: 3,
+                            Accepted: ex.AcceptedProposals,
+                            Trace: ex.AcceptedPotentialHistoryScaled);
+                    }
+                });
+
+            AssertStrictPotential(joint.Trace);
+            Assert.Equal(joint.Accepted + 1, joint.Trace.Count);
+            Assert.Equal(originalHash, scenario.Host.StateHash);
+            Assert.Same(originalSnapshot, scenario.Host.Snapshot);
+            Assert.Equal(
+                FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+                scenario.Host.GetLastClosedEconomicTradeView(Red).Availability);
+            Assert.Equal(
+                FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+                scenario.Host.GetLastClosedEconomicTradeView(Blue).Availability);
+
+            var observations = new[]
+            {
+                flowStage, routeStage, auditStage, jointStage
+            };
+            var report = new
+            {
+                Schema = "ga-next.joint-stage-profiling.v1",
+                Scenario = size.Name,
+                TileCount = scenario.TileCount,
+                SellerCount = scenario.SellerCount,
+                MarketCount = scenario.MarketCount,
+                PhysicalEdgeCount = scenario.Roads.Length,
+                SellerMarketPairsUpperBound =
+                    checked((long)size.Sellers * size.Markets),
+                AvailableGoodsMicro =
+                    checked((ulong)size.Sellers * 1_000_000UL),
+                AllocatedGoodsMicro =
+                    market.AllocationAudit.TotalAllocatedGoodsMicro,
+                GlobalFlowAugmentations = market.FlowAugmentations,
+                MultipathRouteBatches = routes.RouteBatchDecisions,
+                MultipathDeliveryParts = routes.Parts.Count,
+                JointOutcome = joint.Outcome,
+                JointPasses = joint.Passes,
+                JointAcceptedProposals = joint.Accepted,
+                JointPotentialHistoryScaled = joint.Trace.Select(
+                    value => value.ToString(
+                        System.Globalization.CultureInfo.InvariantCulture))
+                    .ToArray(),
+                CandidateSettledEconomically = false,
+                Counters = "Stopwatch wall time and GC.GetAllocatedBytesForCurrentThread; " +
+                    "no peak memory; nested joint cost includes its own solver, " +
+                    "routing and audits; independent stage timings are not " +
+                    "an additive decomposition of the joint run",
+                Stages = observations
+            };
+            _output.WriteLine(
+                $"GA_JOINT_STAGE_PROFILE scenario={size.Name} " +
+                $"outcome={joint.Outcome} " +
+                $"pairs={report.SellerMarketPairsUpperBound} " +
+                $"flowMs={flowStage.ElapsedMilliseconds} " +
+                $"routeMs={routeStage.ElapsedMilliseconds} " +
+                $"auditMs={auditStage.ElapsedMilliseconds} " +
+                $"jointMs={jointStage.ElapsedMilliseconds} " +
+                $"jointAccepted={joint.Accepted}; NoClosedCycle");
+
+            string? reportDirectory = Environment.GetEnvironmentVariable(
+                "GA_JOINT_SCALE_REPORT_DIR");
+            if (!string.IsNullOrWhiteSpace(reportDirectory))
+            {
+                Directory.CreateDirectory(reportDirectory);
+                File.WriteAllText(
+                    Path.Combine(reportDirectory, size.Name + ".json"),
+                    JsonSerializer.Serialize(report,
+                        new JsonSerializerOptions { WriteIndented = true }));
+            }
+        }
+    }
+
 }
