@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Numerics;
+using System.Text.Json;
 using GlobalArena.Runtime;
 using GlobalArena.Simulation;
 using GlobalArena.Simulation.Foundation;
@@ -324,6 +325,40 @@ public sealed class FoundationPhysicalGlobalConcaveFlowTests
                 $"referenceManagedAllocatedBytes={baselineBytes} " +
                 $"reuseManagedAllocatedBytes={reusedBytes} " +
                 $"augmentations={optimized.FlowAugmentations}; EXACT");
+            var diagnosticDirectory = Environment.GetEnvironmentVariable(
+                "GA_RESIDUAL_WORKSPACE_REPORT_DIR");
+            if (!string.IsNullOrWhiteSpace(diagnosticDirectory))
+            {
+                // Write ONLY AFTER all exact market, seller, routing,
+                // conservation and uncommitted-state comparisons passed.
+                // No shipment identities or price/treasury state are exported.
+                Directory.CreateDirectory(diagnosticDirectory);
+                var observation = new
+                {
+                    Schema = "ga-next.residual-workspace.v1",
+                    SegmentsPerAverageMarket = segments,
+                    SellerCount = optimized.ProductiveLotCount,
+                    MarketCount = optimized.RealMarketCount,
+                    TotalAvailableGoodsMicro =
+                        optimized.AllocationAudit.TotalAvailableGoodsMicro,
+                    TotalAllocatedGoodsMicro =
+                        optimized.AllocationAudit.TotalAllocatedGoodsMicro,
+                    Augmentations = optimized.FlowAugmentations,
+                    ReferenceElapsedMilliseconds =
+                        baselineClock.ElapsedMilliseconds,
+                    ReusedElapsedMilliseconds =
+                        reusedClock.ElapsedMilliseconds,
+                    ReferenceAllocatedBytesCurrentThread = baselineBytes,
+                    ReusedAllocatedBytesCurrentThread = reusedBytes,
+                    ExactlyEquivalent = true,
+                    CandidateSettledEconomically = false
+                };
+                File.WriteAllText(
+                    Path.Combine(diagnosticDirectory,
+                        $"segments-{segments}.json"),
+                    JsonSerializer.Serialize(observation,
+                        new JsonSerializerOptions { WriteIndented = true }));
+            }
         }
     }
 
