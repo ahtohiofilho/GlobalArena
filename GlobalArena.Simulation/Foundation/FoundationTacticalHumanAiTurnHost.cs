@@ -118,6 +118,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
         SortedDictionary<ulong, FoundationTacticalWorkerOrder>> _plans;
     private readonly HashSet<CivilizationId> _ready = new();
     private WorldState _knownSnapshot;
+    private readonly FoundationEconomicTradeCycleReadBoundary _closedTrade;
 
     public CanonicalGameSession Session => _session;
     public WorldState Snapshot => _session.Snapshot;
@@ -147,6 +148,19 @@ public sealed class FoundationTacticalHumanAiTurnHost
     public FoundationPhysicalCommodityMarketInputs GetCommodityMarketInputs(
         FoundationActivityCommodityDemandPolicy policy) =>
         FoundationPhysicalCommodityDemandProjector.Project(Snapshot.Workers, policy);
+    /// <summary>
+    /// Read-only transport overlay for the last AUTHORITATIVELY settled
+    /// economic cycle. The current worker-only host correctly returns
+    /// NoClosedCycle, even after multiple E confirmations; it cannot
+    /// turn movement receipts or experimental allocator results into trade.
+    /// </summary>
+    public FoundationLastClosedEconomicTradeView GetLastClosedEconomicTradeView(
+        CivilizationId viewer)
+    {
+        CheckSnapshot();
+        return _closedTrade.Read(viewer, Snapshot);
+    }
+
     public bool AllRequiredReady => _participants.All(_ready.Contains);
 
     public FoundationTacticalHumanAiTurnHost(
@@ -198,6 +212,10 @@ public sealed class FoundationTacticalHumanAiTurnHost
         _plans = _participants.ToDictionary(civ => civ,
             _ => new SortedDictionary<ulong, FoundationTacticalWorkerOrder>());
         _knownSnapshot = Snapshot;
+        _closedTrade = new FoundationEconomicTradeCycleReadBoundary(
+            Snapshot.WorldBinding ?? throw new InvalidOperationException(
+                "Tactical world lacks its world binding."),
+            incidence.Refinement.FineParameters, _participants);
         _executor = new PhysicalTacticalWorkerMoveEventExecutor(
             session.GeneratedWorld, incidence);
         var engine = new PhasedTurnResolutionEngine(
