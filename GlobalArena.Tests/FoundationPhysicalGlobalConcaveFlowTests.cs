@@ -286,7 +286,7 @@ public sealed class FoundationPhysicalGlobalConcaveFlowTests
     }
 
     [Fact]
-    public void GlobalSameGrainCongestionRequiresExactAuditedCostLoadAgreement()
+    public void SameGrainStressOscillationIsDetectedAndCannotBePublishedAsEquilibrium()
     {
         var stress = EightCompetingSellersInConnectedGoldbergMarkets();
         var hash = stress.Host.StateHash;
@@ -295,55 +295,102 @@ public sealed class FoundationPhysicalGlobalConcaveFlowTests
             new FoundationPhysicalEdgeCarryingScale(
                 road.Edge, 100_000_000UL)).ToArray();
         var watch = Stopwatch.StartNew();
-        var plan = FoundationPhysicalGlobalConcaveCongestionFeedback.Coordinate(
-            stress.Workers, stress.Host.Incidence, Demand(), Cargo(),
-            stress.Quotes, stress.Roads, scales,
-            segmentsPerAverageMarket: 4,
-            maxFlowAugmentationsPerSolve: 4096,
-            maxFeedbackIterations: 16);
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            FoundationPhysicalGlobalConcaveCongestionFeedback.Coordinate(
+                stress.Workers, stress.Host.Incidence, Demand(), Cargo(),
+                stress.Quotes, stress.Roads, scales,
+                segmentsPerAverageMarket: 4,
+                maxFlowAugmentationsPerSolve: 4096,
+                maxFeedbackIterations: 16));
         watch.Stop();
+        Assert.Contains("oscillated", error.Message);
         _output.WriteLine(
-            $"globalCongestion sellers={plan.Distribution.ProductiveLotCount}, " +
-            $"markets={plan.Distribution.RealMarketCount}, " +
-            $"iterations={plan.FeedbackIterations}, " +
-            $"augmentations={plan.TotalFlowAugmentations}, " +
-            $"milliseconds={watch.ElapsedMilliseconds}");
-        Assert.True(plan.ExactCostAndLoadAgreement);
-        Assert.InRange(plan.FeedbackIterations, 2, 16);
-        Assert.Equal(8, plan.Distribution.ProductiveLotCount);
-        Assert.Equal(104, plan.Distribution.RealMarketCount);
-        Assert.Equal(8_000_000UL,
-            plan.Distribution.AllocationAudit.TotalAllocatedGoodsMicro);
-        Assert.Equal(plan.Edges.Count, stress.Roads.Length);
-        var loads = plan.Distribution.AllocationAudit.Freight.UsedEdges
-            .ToDictionary(edge => edge.Edge, edge => edge.TotalCargoMicro);
-        Assert.Equal(
-            plan.Distribution.AllocationAudit.Freight
-                .TotalEdgeTraversalCargoMicro,
-            plan.Edges.Aggregate(BigInteger.Zero,
-                (sum, edge) => sum + edge.CargoMicro));
-        for (int i = 0; i < plan.Edges.Count; i++)
-        {
-            var edge = plan.Edges[i];
-            Assert.Equal(loads.GetValueOrDefault(edge.Edge), edge.CargoMicro);
-            Assert.Equal(
-                FoundationPhysicalEndogenousCongestionFeedback
-                    .CalculateCongestedRate(
-                        edge.FreePhysicalCostMicroPerWholeCargoUnit,
-                        edge.CargoMicro, edge.CargoMicroAtReferenceLoad),
-                edge.CongestedPhysicalCostMicroPerWholeCargoUnit);
-            Assert.Equal(edge.CongestedPhysicalCostMicroPerWholeCargoUnit,
-                plan.ConsistentEdgeCosts[i]
-                    .PhysicalCostMicroPerWholeCargoUnit);
-            Assert.Equal(edge.InfrastructureOwner,
-                plan.ConsistentEdgeCosts[i].InfrastructureOwner);
-            Assert.Equal(edge.ExternalTariffMicroPerWholeCargoUnit,
-                plan.ConsistentEdgeCosts[i].ExternalTariffMicroPerWholeCargoUnit);
-        }
+            $"sameGrainCongestion: 8 sellers / 104 markets; " +
+            $"documented exact-rate-vector oscillation, " +
+            $"milliseconds={watch.ElapsedMilliseconds}; " +
+            $"NO fixed point or settled sale certified");
         Assert.Equal(hash, stress.Host.StateHash);
         Assert.Same(snapshot, stress.Host.Snapshot);
         Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
             stress.Host.GetLastClosedEconomicTradeView(Red).Availability);
+    }
+
+    [Fact]
+    public void StableConnectedTwoMarketCorridorCertifiesExactAuditAndRateEquality()
+    {
+        var host = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL),
+                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)));
+        var map = host.Incidence;
+        var border = map.FineTopology.Edges[0];
+        var tileA = new PhysicalTacticalTileId(
+            map.Refinement.FineParameters, border.IncidentCellIds[0]);
+        var tileB = new PhysicalTacticalTileId(
+            map.Refinement.FineParameters, border.IncidentCellIds[1]);
+        StrategicCellId coarse(PhysicalTacticalTileId tile) =>
+            map.TileIncidences[
+                checked((int)tile.FineStrategicCellId.Value - 1)]
+                .IncidentCoarseCellIds[0];
+
+        var workers = new PhysicalWorkerRuntimeState(new[]
+        {
+            new PhysicalWorkerRuntimeRecord(new PhysicalWorkerId(1UL),
+                Red, coarse(tileA), Grain, 1_000_000UL,
+                PhysicalWorkerActivity.Producing, 1_000_000U,
+                tileA, PhysicalWorkerOccupation.Agriculture),
+            new PhysicalWorkerRuntimeRecord(new PhysicalWorkerId(2UL),
+                Blue, coarse(tileB), Grain, 0UL,
+                PhysicalWorkerActivity.Other, 1_000_000U,
+                tileB, PhysicalWorkerOccupation.Unassigned)
+        }, tacticalLocationsAuthoritative: true,
+           occupationsAuthoritative: true);
+
+        var quotes = FoundationPhysicalCommodityDemandProjector
+            .Project(workers, Demand()).DemandByCivilization.Select(line =>
+                new FoundationCommodityMarketPlanningQuote(
+                    line.Tile, line.Owner, line.Commodity,
+                    line.Owner == Blue ? 1_000_000_000UL :
+                        1_000_000UL)).ToArray();
+        var road = new FoundationPhysicalRoutingEdgeCost(
+            new PhysicalTacticalEdgeId(map.Refinement.FineParameters,
+                border.Id),
+            FoundationInfrastructureOwnershipKind.NoInfrastructure,
+            null, 100_000UL, 0UL);
+        var scale = new FoundationPhysicalEdgeCarryingScale(
+            road.Edge, 100_000_000UL);
+        var hash = host.StateHash;
+        var snapshot = host.Snapshot;
+        var plan = FoundationPhysicalGlobalConcaveCongestionFeedback.Coordinate(
+            workers, map, Demand(), Cargo(), quotes,
+            new[] { road }, new[] { scale },
+            segmentsPerAverageMarket: 4,
+            maxFlowAugmentationsPerSolve: 128,
+            maxFeedbackIterations: 6);
+        Assert.True(plan.ExactCostAndLoadAgreement);
+        Assert.Equal(2, plan.FeedbackIterations);
+        Assert.Equal(2, plan.Distribution.RealMarketCount);
+        Assert.Equal(1_000_000UL,
+            plan.Distribution.AllocationAudit.TotalAllocatedGoodsMicro);
+        Assert.Single(plan.Edges);
+        Assert.Single(plan.ConsistentEdgeCosts);
+        var edge = plan.Edges[0];
+        Assert.True(edge.CargoMicro > 0UL);
+        Assert.Equal(
+            FoundationPhysicalEndogenousCongestionFeedback
+                .CalculateCongestedRate(
+                    edge.FreePhysicalCostMicroPerWholeCargoUnit,
+                    edge.CargoMicro, edge.CargoMicroAtReferenceLoad),
+            edge.CongestedPhysicalCostMicroPerWholeCargoUnit);
+        Assert.Equal(edge.CongestedPhysicalCostMicroPerWholeCargoUnit,
+            plan.ConsistentEdgeCosts[0]
+                .PhysicalCostMicroPerWholeCargoUnit);
+        Assert.Equal(edge.CargoMicro,
+            plan.Distribution.AllocationAudit.Freight
+                .TotalEdgeTraversalCargoMicro);
+        Assert.Equal(hash, host.StateHash);
+        Assert.Same(snapshot, host.Snapshot);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            host.GetLastClosedEconomicTradeView(Red).Availability);
     }
 
     [Fact]
