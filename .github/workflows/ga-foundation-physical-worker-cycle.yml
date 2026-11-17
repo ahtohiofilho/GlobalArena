@@ -43,6 +43,7 @@ on:
       - 'scripts/GA-Next-Identical-Market-AB-Report.ps1'
       - 'scripts/GA-Next-Global-Seed-Elision-AB-Report.ps1'
       - 'scripts/GA-Next-Global-Internal-Scaling-Report.ps1'
+      - 'scripts/GA-Next-Indexed-Residual-Heap-AB-Report.ps1'
       - 'GlobalArena.Simulation/Foundation/FoundationConcentratedWorkforceScenario.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationWorkforceActivityGroups.cs'
       - 'GlobalArena.Tests/StrategicPhysicalWorkerInspectorTests.cs'
@@ -170,6 +171,22 @@ jobs:
         with:
           name: ga-next-global-flow-internals-${{ matrix.os }}
           path: ${{ runner.temp }}/ga-next-global-flow-internals/global-flow-internals-*.json
+          if-no-files-found: error
+      - name: Exact A/B indexed decrease-key versus legacy residual heap, 112 to 416 tiles
+        env:
+          GA_INDEXED_HEAP_AB_REPORT_DIR: ${{ runner.temp }}/ga-next-indexed-residual-heap
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~IndexedResidualHeapPreservesExactFourScaleGoldbergGlobalMarkets|FullyQualifiedName~IndexedHeapMatchesOriginalResidualQueueOnReassignmentsTiesAndBudgets' --logger 'console;verbosity=normal'
+      - name: Validate and publish four real-market indexed residual heap A/B reports
+        shell: pwsh
+        env:
+          GA_INDEXED_HEAP_AB_REPORT_DIR: ${{ runner.temp }}/ga-next-indexed-residual-heap
+        run: |
+          & ./scripts/GA-Next-Indexed-Residual-Heap-AB-Report.ps1 -ReportDirectory $env:GA_INDEXED_HEAP_AB_REPORT_DIR
+      - name: Archive exact indexed residual heap A/B per system
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-next-indexed-residual-heap-${{ matrix.os }}
+          path: ${{ runner.temp }}/ga-next-indexed-residual-heap/indexed-heap-*.json
           if-no-files-found: error
       - name: Progressive market route anytime proposals — exact bounded continuation and 104 real markets
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalProgressiveMarketRouteTests|FullyQualifiedName~ProgressiveOneProposalBudgetReplaysEightSellers104MarketsLikeFullJointSearch|FullyQualifiedName~ProgressiveRepriceOf104RealMarketsRetainsAuditedFreightAndRebasesOneProposal' --logger 'console;verbosity=normal'
