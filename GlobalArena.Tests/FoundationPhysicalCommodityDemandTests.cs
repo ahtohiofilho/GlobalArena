@@ -265,8 +265,18 @@ public sealed class FoundationPhysicalCommodityDemandTests
                 PhysicalWorkerActivity.Other, 1U,
                 sample.TacticalTileId, PhysicalWorkerOccupation.Unassigned)
         }, tacticalLocationsAuthoritative: true, occupationsAuthoritative: true);
+        // Every profile/item is intentionally one MICRO-unit per worker
+        // multiplier of 1.0; a 1-micro worker multiplier cannot resolve that
+        // into a representable commodity demand. This is an input-policy edge
+        // case, not the ordinary 1.0-worker demonstration matrix above.
+        var oneMicro = new FoundationActivityCommodityDemandPolicy(
+            new[] { ItemOne, ItemTwo },
+            Enum.GetValues<FoundationPhysicalDemandProfile>()
+                .SelectMany(profile => new[] { ItemOne, ItemTwo }.Select(item =>
+                    new FoundationActivityCommodityDemandCoefficient(
+                        profile, item, 1UL))));
         Assert.Throws<InvalidOperationException>(() =>
-            FoundationPhysicalCommodityDemandProjector.Project(tiny, Policy()));
+            FoundationPhysicalCommodityDemandProjector.Project(tiny, oneMicro));
 
         var allMax = Enum.GetValues<FoundationPhysicalDemandProfile>()
             .SelectMany(p => new[] { ItemOne, ItemTwo }.Select(item =>
