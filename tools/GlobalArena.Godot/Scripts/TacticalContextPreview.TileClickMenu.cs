@@ -80,6 +80,11 @@ public partial class TacticalContextPreview
 
     public bool DismissTileClickMenu()
     {
+        if (IsWorkerBoardVisible)
+        {
+            HideWorkerBoard();
+            return true;
+        }
         if (!IsTileClickMenuVisible) return false;
         HideTileClickMenu();
         return true;
@@ -188,6 +193,16 @@ public partial class TacticalContextPreview
             _tileClickMemberContainers[role] = members;
         }
 
+        var organize = new Button
+        {
+            Name = "WorkerBoardOpenButton",
+            Text = "WORKERS  /  ORGANIZE",
+            FocusMode = FocusModeEnum.None,
+            MouseFilter = MouseFilterEnum.Stop
+        };
+        organize.Pressed += OpenWorkerBoard;
+        root.AddChild(organize);
+
         var hint = new Label
         {
             Name = "CityClickHint",
@@ -201,6 +216,7 @@ public partial class TacticalContextPreview
         AddChild(card);
         _tileClickPanel = card;
         Resized += PositionTileClickMenu;
+        InitializeWorkerBoard();
     }
 
     private static string OccupationHeading(PhysicalWorkerOccupation role) =>
@@ -230,6 +246,7 @@ public partial class TacticalContextPreview
         if (_tileClickFineId == fineTile && _tileClickOwnerId == owner &&
             _tileClickPanel.Visible) return;
 
+        HideWorkerBoard();
         _tileClickFineId = fineTile;
         _tileClickOwnerId = owner;
         _tileClickExpandedRole = null;
@@ -330,6 +347,7 @@ public partial class TacticalContextPreview
 
     private void HideTileClickMenu()
     {
+        HideWorkerBoard();
         if (_tileClickPanel is not null)
             _tileClickPanel.Visible = false;
         _tileClickFineId = null;
@@ -341,6 +359,7 @@ public partial class TacticalContextPreview
     {
         if (!_tileClickHypothesis || !_tileClickFineId.HasValue) return;
         RebuildTileClickMenu();
+        RefreshWorkerBoardAfterSnapshot();
     }
 
 }
