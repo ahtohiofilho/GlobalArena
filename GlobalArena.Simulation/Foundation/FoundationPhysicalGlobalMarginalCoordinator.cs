@@ -25,6 +25,13 @@ public sealed class FoundationPhysicalGlobalMarginalCoordinationPlan
     /// diagnostics; never an economic trade receipt or settled delivery.
     /// </summary>
     public IReadOnlyList<ulong> MovedGoodsByPass { get; }
+    public bool StrictIntegratedPotentialAcceptance { get; }
+    public int RejectedNonImprovingSellerProposals { get; }
+    /// <summary>
+    /// Positive accepted increases of the fixed-point integer integrated
+    /// utility comparison objective. NOT micro-money collected or a receipt.
+    /// </summary>
+    public BigInteger AcceptedPotentialGainScaled { get; }
 
     internal FoundationPhysicalGlobalMarginalCoordinationPlan(
         FoundationPhysicalCommodityDeliveryCandidate[] candidates,
@@ -32,7 +39,9 @@ public sealed class FoundationPhysicalGlobalMarginalCoordinationPlan
         FoundationPhysicalMarketAllocationTotal[] final,
         FoundationPhysicalDeliveryAllocationAudit audit,
         int lotCount, int passes, ulong totalMoved,
-        bool preferIncumbentTies, ulong[] movementByPass)
+        bool preferIncumbentTies, ulong[] movementByPass,
+        bool strictPotentialAcceptance, int rejectedProposals,
+        BigInteger acceptedGainScaled)
     {
         Candidates = Array.AsReadOnly(candidates);
         InitialMarketTotals = Array.AsReadOnly(initial);
@@ -44,6 +53,9 @@ public sealed class FoundationPhysicalGlobalMarginalCoordinationPlan
         StableUnderOneFullCanonicalPass = true;
         PreferIncumbentThresholdTies = preferIncumbentTies;
         MovedGoodsByPass = Array.AsReadOnly(movementByPass);
+        StrictIntegratedPotentialAcceptance = strictPotentialAcceptance;
+        RejectedNonImprovingSellerProposals = rejectedProposals;
+        AcceptedPotentialGainScaled = acceptedGainScaled;
     }
 }
 
@@ -89,7 +101,8 @@ public static class FoundationPhysicalGlobalMarginalCoordinator
         IEnumerable<FoundationCommodityMarketPlanningQuote> quotes,
         IEnumerable<FoundationPhysicalRoutingEdgeCost> edgeCosts,
         int maxPasses,
-        bool preferIncumbentThresholdTies = false)
+        bool preferIncumbentThresholdTies = false,
+        bool acceptOnlyStrictIntegratedGain = false)
     {
         ArgumentNullException.ThrowIfNull(census);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -199,6 +212,8 @@ public static class FoundationPhysicalGlobalMarginalCoordinator
         int passes = 0;
         ulong movedGoods = 0UL;
         var movementByPass = new List<ulong>(Math.Min(maxPasses, 1024));
+        int rejectedNonImproving = 0;
+        BigInteger acceptedPotentialGain = BigInteger.Zero;
         bool fixedPoint = false;
         for (int pass = 0; pass < maxPasses; pass++)
         {
@@ -230,6 +245,20 @@ public static class FoundationPhysicalGlobalMarginalCoordinator
                         opponents, source.Lot.CapacityMicroPerTurn,
                         preferIncumbentThresholdTies
                             ? source.GoodsQuanta : null);
+                if (acceptOnlyStrictIntegratedGain &&
+                    !proposed.SequenceEqual(source.GoodsQuanta))
+                {
+                    var gain = FoundationPhysicalMarginalIntegratedUtility
+                        .ProposalGain(source.Buyers, source.GoodsQuanta,
+                            proposed, source.CargoQuantum, global);
+                    if (gain <= BigInteger.Zero)
+                    {
+                        rejectedNonImproving =
+                            checked(rejectedNonImproving + 1);
+                        continue;
+                    }
+                    acceptedPotentialGain += gain;
+                }
                 for (int i = 0; i < proposed.Length; i++)
                 {
                     var oldQuanta = source.GoodsQuanta[i];
@@ -302,6 +331,8 @@ public static class FoundationPhysicalGlobalMarginalCoordinator
         return new FoundationPhysicalGlobalMarginalCoordinationPlan(
             finalCandidates.ToArray(), starting, final,
             audit, sources.Count, passes, movedGoods,
-            preferIncumbentThresholdTies, movementByPass.ToArray());
+            preferIncumbentThresholdTies, movementByPass.ToArray(),
+            acceptOnlyStrictIntegratedGain, rejectedNonImproving,
+            acceptedPotentialGain);
     }
 }
