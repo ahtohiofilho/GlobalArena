@@ -191,6 +191,7 @@ public static class FoundationPhysicalMarginalMarketDistributor
                 keep = Math.Min(keep, remaining);
                 allocations[i] = checked(allocations[i] + keep);
                 capacities[i] -= keep;
+                totalCapacity -= keep;
                 remaining -= keep;
             }
         }
