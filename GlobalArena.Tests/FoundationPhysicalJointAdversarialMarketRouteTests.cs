@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Numerics;
+using System.Text.Json;
 using GlobalArena.Runtime;
 using GlobalArena.Simulation;
 using GlobalArena.Simulation.Foundation;
@@ -42,17 +43,30 @@ public sealed class FoundationPhysicalJointAdversarialMarketRouteTests
         PhysicalWorkerRuntimeState Workers,
         FoundationCommodityMarketPlanningQuote[] Quotes,
         FoundationPhysicalRoutingEdgeCost[] Roads,
-        FoundationPhysicalEdgeCarryingScale[] Scales);
+        FoundationPhysicalEdgeCarryingScale[] Scales,
+        int TileCount,
+        int SellerCount,
+        int MarketCount,
+        ulong ReferenceCargoMicro);
 
     private static Case EightCompetingSellersInConnectedGoldbergMarkets(
-        ulong edgeReferenceCargoMicro)
+        ulong edgeReferenceCargoMicro,
+        int worldFrequency = 3,
+        int tileCount = 112,
+        int sellerCount = 8,
+        int marketCount = 104)
     {
-        const int cells = 112;
-        const int sellers = 8;
-        const int nonSellers = 96;
+        if (worldFrequency < 1 || tileCount <= 112 && worldFrequency > 3 ||
+            sellerCount < 1 || marketCount < sellerCount ||
+            marketCount > tileCount)
+            throw new ArgumentOutOfRangeException(
+                "Adversarial fixture requires valid connected market and seller counts.");
+        int cells = tileCount;
+        int sellers = sellerCount;
+        int nonSellers = marketCount - sellers;
         var host = FoundationConcentratedWorkforceScenario.CreatePreview(
             new WorldGenerationRequest(new WorldSeed(20261012UL),
-                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)));
+                WorldGenerationVersion.Initial, new GoldbergParameters(worldFrequency, 0)));
         var map = host.Incidence;
         var seed = map.FineTopology.Cells[0].Id;
         var queue = new Queue<StrategicCellId>();
@@ -108,7 +122,7 @@ public sealed class FoundationPhysicalJointAdversarialMarketRouteTests
                     line.Tile, line.Owner, line.Commodity,
                     line.Owner == Blue ? 1_000_000_000UL :
                         1_000_000UL)).ToArray();
-        Assert.Equal(104, quotes.Length);
+        Assert.Equal(marketCount, quotes.Length);
         var roads = borders.Select(border =>
             new FoundationPhysicalRoutingEdgeCost(
                 new PhysicalTacticalEdgeId(map.Refinement.FineParameters,
@@ -118,12 +132,13 @@ public sealed class FoundationPhysicalJointAdversarialMarketRouteTests
         var scales = roads.Select(road =>
             new FoundationPhysicalEdgeCarryingScale(
                 road.Edge, edgeReferenceCargoMicro)).ToArray();
-        return new Case(host, census, quotes, roads, scales);
+        return new Case(host, census, quotes, roads, scales,
+            tileCount, sellerCount, marketCount, edgeReferenceCargoMicro);
     }
 
     private static FoundationPhysicalJointMarketRoutePotentialPlan Coordinate(
         Case scenario, int maxPasses, FoundationCommodityMarketPlanningQuote[]?
-            quotes = null)
+            quotes = null, int maxRouteBatches = 4096)
     {
         return FoundationPhysicalJointMarketRoutePotentialCoordinator
             .Coordinate(scenario.Workers, scenario.Host.Incidence,
@@ -131,7 +146,7 @@ public sealed class FoundationPhysicalJointAdversarialMarketRouteTests
                 scenario.Scales, segmentsPerAverageMarket: 4,
                 maxFlowAugmentationsPerProposal: 4096,
                 maxRouteBatchesPerParent: 2,
-                maxTotalRouteBatches: 4096,
+                maxTotalRouteBatches: maxRouteBatches,
                 maxCompletePasses: maxPasses);
     }
 
@@ -163,10 +178,13 @@ public sealed class FoundationPhysicalJointAdversarialMarketRouteTests
         Case scenario, FoundationPhysicalJointMarketRoutePotentialPlan plan)
     {
         Assert.True(plan.StableUnderOneCompleteBlockPass);
-        Assert.Equal(8, plan.Allocation.MarketAllocation.ProductiveLotCount);
-        Assert.Equal(104, plan.Allocation.MarketAllocation.RealMarketCount);
+        Assert.Equal(scenario.SellerCount,
+            plan.Allocation.MarketAllocation.ProductiveLotCount);
+        Assert.Equal(scenario.MarketCount,
+            plan.Allocation.MarketAllocation.RealMarketCount);
         var audit = plan.Allocation.AllocationAudit;
-        Assert.Equal(8_000_000UL, audit.TotalAvailableGoodsMicro);
+        Assert.Equal(checked((ulong)scenario.SellerCount * 1_000_000UL),
+            audit.TotalAvailableGoodsMicro);
         Assert.Equal(audit.TotalAvailableGoodsMicro,
             audit.TotalAllocatedGoodsMicro);
         Assert.Equal(audit.TotalAllocatedGoodsMicro,
@@ -227,6 +245,61 @@ public sealed class FoundationPhysicalJointAdversarialMarketRouteTests
                     plan.Allocation, scenario.Quotes));
     }
 
+    private void RecordOutcome(Case scenario, string fileName,
+        string outcome, int passBudget, int completePasses,
+        int marketAccepts, int routeAccepts, int rejected,
+        IReadOnlyList<BigInteger> acceptedHistory, long elapsedMilliseconds)
+    {
+        Assert.Contains(outcome,
+            new[] { "BLOCK_STATIONARY", "BUDGET_EXHAUSTED" });
+        AssertStrictPotential(acceptedHistory);
+        int acceptedTotal = marketAccepts >= 0 && routeAccepts >= 0
+            ? checked(marketAccepts + routeAccepts)
+            : acceptedHistory.Count - 1;
+        Assert.Equal(1 + acceptedTotal, acceptedHistory.Count);
+        var record = new
+        {
+            Schema = "ga-next.joint-stress.v1",
+            Scenario = fileName,
+            Outcome = outcome,
+            scenario.TileCount,
+            scenario.SellerCount,
+            scenario.MarketCount,
+            TotalSupplyGoodsMicro =
+                checked((ulong)scenario.SellerCount * 1_000_000UL),
+            scenario.ReferenceCargoMicro,
+            PassBudget = passBudget,
+            CompletePasses = completePasses,
+            AcceptedProposals = acceptedTotal,
+            AcceptedMarketProposals =
+                marketAccepts < 0 ? (int?)null : marketAccepts,
+            AcceptedRouteProposals =
+                routeAccepts < 0 ? (int?)null : routeAccepts,
+            RejectedProposals = rejected < 0 ? (int?)null : rejected,
+            PotentialHistoryScaled =
+                acceptedHistory.Select(value => value.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture))
+                    .ToArray(),
+            ElapsedMilliseconds = elapsedMilliseconds,
+            CandidateSettledEconomically = false
+        };
+        _output.WriteLine(
+            $"GA_JOINT_STRESS_OUTCOME scenario={fileName} " +
+            $"outcome={outcome} tiles={scenario.TileCount} " +
+            $"sellers={scenario.SellerCount} markets={scenario.MarketCount} " +
+            $"passBudget={passBudget} completed={completePasses} " +
+            $"accepted={acceptedTotal} " +
+            $"elapsedMs={elapsedMilliseconds}; NoClosedCycle");
+        var reportDirectory = Environment.GetEnvironmentVariable(
+            "GA_JOINT_STRESS_REPORT_DIR");
+        if (string.IsNullOrWhiteSpace(reportDirectory))
+            return; // Local test runs remain file-free.
+        Directory.CreateDirectory(reportDirectory);
+        File.WriteAllText(Path.Combine(reportDirectory, fileName + ".json"),
+            JsonSerializer.Serialize(record,
+                new JsonSerializerOptions { WriteIndented = true }));
+    }
+
     [Fact]
     public void EightSellers104MarketsMildCongestionReachesAuditedBlockStationarity()
     {
@@ -267,6 +340,13 @@ public sealed class FoundationPhysicalJointAdversarialMarketRouteTests
         Assert.Equal(RouteSignature(result), RouteSignature(reversed));
         Assert.Equal(result.AcceptedPotentialHistoryScaled,
             reversed.AcceptedPotentialHistoryScaled);
+        RecordOutcome(scenario, "eight-sellers-104-markets-mild",
+            "BLOCK_STATIONARY", 12, result.CompletePasses,
+            result.AcceptedMarketRouteProposals,
+            result.AcceptedRouteOnlyProposals,
+            result.RejectedNonImprovingProposals,
+            result.AcceptedPotentialHistoryScaled,
+            clock.ElapsedMilliseconds);
     }
 
     [Fact]
@@ -290,6 +370,13 @@ public sealed class FoundationPhysicalJointAdversarialMarketRouteTests
                 $"accepted={settledCandidate.AcceptedMarketRouteProposals +
                     settledCandidate.AcceptedRouteOnlyProposals}, " +
                 $"milliseconds={clock.ElapsedMilliseconds}");
+            RecordOutcome(scenario, "eight-sellers-104-markets-severe",
+                "BLOCK_STATIONARY", 4, settledCandidate.CompletePasses,
+                settledCandidate.AcceptedMarketRouteProposals,
+                settledCandidate.AcceptedRouteOnlyProposals,
+                settledCandidate.RejectedNonImprovingProposals,
+                settledCandidate.AcceptedPotentialHistoryScaled,
+                clock.ElapsedMilliseconds);
         }
         catch (FoundationPhysicalJointMarketRouteBudgetException failure)
         {
@@ -304,6 +391,11 @@ public sealed class FoundationPhysicalJointAdversarialMarketRouteTests
                 $"milliseconds={clock.ElapsedMilliseconds}; " +
                 $"potentialHistory={string.Join(",",
                     failure.AcceptedPotentialHistoryScaled)}");
+            RecordOutcome(scenario, "eight-sellers-104-markets-severe",
+                "BUDGET_EXHAUSTED", 4, 4,
+                -1, -1, -1,
+                failure.AcceptedPotentialHistoryScaled,
+                clock.ElapsedMilliseconds);
         }
         finally
         {
@@ -318,4 +410,59 @@ public sealed class FoundationPhysicalJointAdversarialMarketRouteTests
                 scenario.Host.GetLastClosedEconomicTradeView(Blue).Availability);
         }
     }
+
+    [Fact]
+    public void SixteenSellers192MarketsLargerGoldbergReportsBudgetOrAuditedStationarity()
+    {
+        // Different, larger physical Goldberg topology and more real worker
+        // markets. This is a bounded scaling probe, not proof of >10k scale.
+        var scenario = EightCompetingSellersInConnectedGoldbergMarkets(
+            edgeReferenceCargoMicro: 10_000_000UL,
+            worldFrequency: 5, tileCount: 208,
+            sellerCount: 16, marketCount: 192);
+        Assert.True(scenario.TileCount > 112);
+        Assert.True(scenario.Roads.Length > 112);
+        var snapshot = scenario.Host.Snapshot;
+        var hash = scenario.Host.StateHash;
+        var timer = Stopwatch.StartNew();
+        try
+        {
+            var result = Coordinate(scenario, maxPasses: 3,
+                maxRouteBatches: 8192);
+            Assert.InRange(result.CompletePasses, 1, 3);
+            AssertRealWorkerMarketConservation(scenario, result);
+            RecordOutcome(scenario, "sixteen-sellers-192-markets-scale",
+                "BLOCK_STATIONARY", 3, result.CompletePasses,
+                result.AcceptedMarketRouteProposals,
+                result.AcceptedRouteOnlyProposals,
+                result.RejectedNonImprovingProposals,
+                result.AcceptedPotentialHistoryScaled,
+                timer.ElapsedMilliseconds);
+        }
+        catch (FoundationPhysicalJointMarketRouteBudgetException ex)
+        {
+            Assert.Equal(3, ex.CompletePassBudget);
+            Assert.True(ex.AcceptedProposals > 0);
+            Assert.Equal(ex.AcceptedProposals + 1,
+                ex.AcceptedPotentialHistoryScaled.Count);
+            AssertStrictPotential(ex.AcceptedPotentialHistoryScaled);
+            RecordOutcome(scenario, "sixteen-sellers-192-markets-scale",
+                "BUDGET_EXHAUSTED", 3, 3, -1,
+                -1, -1, ex.AcceptedPotentialHistoryScaled,
+                timer.ElapsedMilliseconds);
+        }
+        finally
+        {
+            timer.Stop();
+            Assert.Equal(hash, scenario.Host.StateHash);
+            Assert.Same(snapshot, scenario.Host.Snapshot);
+            Assert.Equal(
+                FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+                scenario.Host.GetLastClosedEconomicTradeView(Red).Availability);
+            Assert.Equal(
+                FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+                scenario.Host.GetLastClosedEconomicTradeView(Blue).Availability);
+        }
+    }
+
 }
