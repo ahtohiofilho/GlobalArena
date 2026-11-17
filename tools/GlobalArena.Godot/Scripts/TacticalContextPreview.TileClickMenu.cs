@@ -19,6 +19,7 @@ public partial class TacticalContextPreview
     private CivilizationId _tileClickHuman;
     private PanelContainer? _tileClickPanel;
     private Label? _tileClickHeading;
+    private ColorRect? _tileClickCivilizationStripe;
     private Label? _tileClickSubheading;
     private ulong? _tileClickFineId;
     private ulong? _tileClickOwnerId;
@@ -108,6 +109,14 @@ public partial class TacticalContextPreview
             MouseFilter = MouseFilterEnum.Pass
         };
         root.AddChild(top);
+        _tileClickCivilizationStripe = new ColorRect
+        {
+            Name = "CityClickCivilizationIdentityStripe",
+            Color = GaCivilizationVisualIdentity.ColorFor(1UL),
+            CustomMinimumSize = new Vector2(6f, 30f),
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        top.AddChild(_tileClickCivilizationStripe);
         var titles = new VBoxContainer
         {
             MouseFilter = MouseFilterEnum.Ignore,
@@ -250,7 +259,11 @@ public partial class TacticalContextPreview
         }
         _tileClickHeading.Text = $"NÚCLEO HABITADO  ·  TILE {tile}";
         _tileClickSubheading.Text =
-            $"CIV {owner}  ·  {workers.Length} TRABALHADORES";
+            $"CIV {owner}  ·  {GaCivilizationVisualIdentity.EnglishNameFor(owner)}  ·  " +
+            $"{workers.Length} TRABALHADORES";
+        if (_tileClickCivilizationStripe is not null)
+            _tileClickCivilizationStripe.Color =
+                GaCivilizationVisualIdentity.ColorFor(owner);
         foreach (var (role, button) in _tileClickRoleButtons)
         {
             var members = workers.Where(w => w.Occupation == role).ToArray();
