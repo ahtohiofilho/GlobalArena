@@ -1,0 +1,230 @@
+using GlobalArena.Kernel;
+using GlobalArena.Runtime;
+using GlobalArena.World;
+
+namespace GlobalArena.Simulation.Foundation;
+
+/// <summary>
+/// No closed cycle is NOT the same as a closed cycle that transported no
+/// goods. AuthorizedSubset never exposes hidden global totals or edge IDs.
+/// </summary>
+public enum FoundationEconomicTradeOverlayAvailability : uint
+{
+    NoClosedCycle = 1,
+    Ready = 2,
+    AuthorizedSubset = 3
+}
+
+/// <summary>
+/// Per-participant immutable view of the last ACTUALLY closed economic cycle.
+/// Nothing in this type makes a market settle or guesses a trade from workers.
+/// </summary>
+public sealed class FoundationLastClosedEconomicTradeView
+{
+    public FoundationEconomicTradeOverlayAvailability Availability { get; }
+    public RuntimeWorldBinding WorldBinding { get; }
+    public GoldbergParameters FineTopology { get; }
+    public ulong? EconomicCycleOrdinal { get; }
+    public TurnNumber? ClosedAtWorkerTurn { get; }
+    public ulong? PublishedRevision { get; }
+    public WorldStateHash? PublishedHash { get; }
+    public string? CargoUnitCode { get; }
+    public IReadOnlyList<FoundationPhysicalTradeEdgeLoad> UsedEdges { get; }
+
+    internal FoundationLastClosedEconomicTradeView(
+        FoundationEconomicTradeOverlayAvailability availability,
+        RuntimeWorldBinding binding, GoldbergParameters fine,
+        ulong? cycle, TurnNumber? workerTurn, ulong? revision,
+        WorldStateHash? hash, string? unit,
+        IEnumerable<FoundationPhysicalTradeEdgeLoad> edges)
+    {
+        Availability = availability;
+        WorldBinding = binding;
+        FineTopology = fine;
+        EconomicCycleOrdinal = cycle;
+        ClosedAtWorkerTurn = workerTurn;
+        PublishedRevision = revision;
+        PublishedHash = hash;
+        CargoUnitCode = unit;
+        UsedEdges = Array.AsReadOnly(edges.ToArray());
+    }
+}
+
+/// <summary>
+/// Privileged IN-ASSEMBLY handoff, reserved for a future authoritative
+/// economic SETTLEMENT phase. The current v11 worker-turn host cannot create
+/// this proof, and its worker journal is NOT a substitute for one.
+/// No public application-client method issues this receipt.
+/// </summary>
+internal sealed class FoundationSettledEconomicTradeCycleArtifact
+{
+    internal WorldState CommittedSnapshot { get; }
+    internal WorldStateHash StateHash { get; }
+    internal ulong EconomicCycleOrdinal { get; }
+    internal TurnNumber ClosedAtWorkerTurn { get; }
+    internal FoundationPhysicalTradeEdgeLoadAudit CargoAudit { get; }
+    internal IReadOnlyDictionary<CivilizationId, IReadOnlyList<PhysicalTacticalEdgeId>>
+        AuthorizedVisibleEdges { get; }
+
+    internal FoundationSettledEconomicTradeCycleArtifact(
+        WorldState snapshot, WorldStateHash hash, ulong cycleOrdinal,
+        TurnNumber closedAtWorkerTurn,
+        FoundationPhysicalTradeEdgeLoadAudit cargoAudit,
+        IReadOnlyDictionary<CivilizationId,
+            IReadOnlyList<PhysicalTacticalEdgeId>> authorizedVisibleEdges)
+    {
+        CommittedSnapshot = snapshot ?? throw new ArgumentNullException(nameof(snapshot));
+        StateHash = hash;
+        EconomicCycleOrdinal = cycleOrdinal;
+        ClosedAtWorkerTurn = closedAtWorkerTurn;
+        CargoAudit = cargoAudit ?? throw new ArgumentNullException(nameof(cargoAudit));
+        AuthorizedVisibleEdges = authorizedVisibleEdges
+            ?? throw new ArgumentNullException(nameof(authorizedVisibleEdges));
+    }
+}
+
+/// <summary>
+/// Strict read-side boundary. Production currently only exposes
+/// NoClosedCycle: no commerce-resolution phase issues a settlement artifact.
+/// The internal publication method validates world binding, hash/revision,
+/// exact topology, monotone economic chronology, and viewer-specific
+/// authorized edges before atomically replacing the previous read view.
+/// </summary>
+internal sealed class FoundationEconomicTradeCycleReadBoundary
+{
+    private readonly RuntimeWorldBinding _binding;
+    private readonly GoldbergParameters _fine;
+    private readonly HashSet<CivilizationId> _participants;
+    private readonly Dictionary<CivilizationId,
+        FoundationLastClosedEconomicTradeView> _noCycle;
+    private readonly object _sync = new();
+
+    private Dictionary<CivilizationId,
+        FoundationLastClosedEconomicTradeView>? _last;
+    private ulong _lastCycleOrdinal;
+
+    internal FoundationEconomicTradeCycleReadBoundary(
+        RuntimeWorldBinding world, GoldbergParameters fine,
+        IEnumerable<CivilizationId> participants)
+    {
+        _binding = world ?? throw new ArgumentNullException(nameof(world));
+        if (!fine.IsValid)
+            throw new ArgumentException(
+                "Closed-cycle views need an existing fine Goldberg topology.",
+                nameof(fine));
+        _fine = fine;
+        ArgumentNullException.ThrowIfNull(participants);
+        var ids = participants.ToArray();
+        if (ids.Length == 0 ||
+            ids.Any(civ => !civ.IsValid) ||
+            ids.Distinct().Count() != ids.Length)
+            throw new ArgumentException(
+                "Authorized participant identities must be valid and unique.",
+                nameof(participants));
+        _participants = ids.ToHashSet();
+        _noCycle = ids.ToDictionary(
+            civ => civ, _ => new FoundationLastClosedEconomicTradeView(
+                FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+                _binding, _fine, null, null, null, null, null,
+                Array.Empty<FoundationPhysicalTradeEdgeLoad>()));
+    }
+
+    internal FoundationLastClosedEconomicTradeView Read(
+        CivilizationId requester, WorldState currentSnapshot)
+    {
+        ArgumentNullException.ThrowIfNull(currentSnapshot);
+        if (!_participants.Contains(requester))
+            throw new InvalidOperationException(
+                "Unknown civilization cannot read economic-cycle transport.");
+        if (currentSnapshot.WorldBinding != _binding)
+            throw new InvalidOperationException(
+                "Economic-cycle view belongs to another world.");
+        lock (_sync)
+            return _last is null ? _noCycle[requester] : _last[requester];
+    }
+
+    /// <summary>
+    /// Unreachable from the currently configured v11 worker-only phases.
+    /// The future settlement phase must supply committed final deliveries,
+    /// unit conversion, and authoritative per-civilization visibility.
+    /// Validation here prevents metadata mismatch and accidental leakage;
+    /// this method does NOT itself prove a solver calculated real deliveries.
+    /// </summary>
+    internal void PublishFromSettledEconomicPhase(
+        FoundationSettledEconomicTradeCycleArtifact artifact,
+        WorldState currentSnapshot,
+        TurnNumber nextWorkerTurn)
+    {
+        ArgumentNullException.ThrowIfNull(artifact);
+        ArgumentNullException.ThrowIfNull(currentSnapshot);
+        var snapshot = artifact.CommittedSnapshot;
+        var audit = artifact.CargoAudit;
+        if (artifact.EconomicCycleOrdinal == 0UL ||
+            artifact.ClosedAtWorkerTurn.Value == 0UL ||
+            nextWorkerTurn.Value == 0UL ||
+            artifact.ClosedAtWorkerTurn.Value >= nextWorkerTurn.Value ||
+            !ReferenceEquals(snapshot, currentSnapshot) ||
+            snapshot.WorldBinding != _binding ||
+            snapshot.Workers.HasAuthoritativeOccupations != true ||
+            artifact.StateHash != new CanonicalWorldStateHasher().Compute(snapshot))
+            throw new InvalidOperationException(
+                "Economic settlement must match one committed authoritative " +
+                "v11 world snapshot, digest and completed worker turn.");
+        if (string.IsNullOrWhiteSpace(audit.CargoUnitCode) ||
+            audit.UsedEdges.Any(line =>
+                line.Edge.FineGoldbergParameters != _fine ||
+                line.FirstTile.FineGoldbergParameters != _fine ||
+                line.SecondTile.FineGoldbergParameters != _fine))
+            throw new InvalidOperationException(
+                "Economic cargo audit belongs to a different fine topology.");
+
+        var visible = artifact.AuthorizedVisibleEdges;
+        if (visible.Count != _participants.Count ||
+            visible.Keys.Any(civ => !_participants.Contains(civ)))
+            throw new InvalidOperationException(
+                "Economic settlement must specify visibility for each participant.");
+
+        var used = audit.UsedEdges.ToDictionary(edge => edge.Edge);
+        var next = new Dictionary<CivilizationId,
+            FoundationLastClosedEconomicTradeView>(_participants.Count);
+        foreach (var civ in _participants.OrderBy(x => x.Value))
+        {
+            if (!visible.TryGetValue(civ, out var candidates) ||
+                candidates is null)
+                throw new InvalidOperationException(
+                    "Missing participant visibility evidence.");
+            var ids = candidates.ToArray();
+            if (ids.Any(edge => !edge.IsValid || !used.ContainsKey(edge)) ||
+                ids.Distinct().Count() != ids.Length)
+                throw new InvalidOperationException(
+                    "Visibility includes unknown, duplicated or foreign trade edges.");
+            var byEdge = ids.ToHashSet();
+            var authorized = audit.UsedEdges
+                .Where(edge => byEdge.Contains(edge.Edge)).ToArray();
+            var availability = ids.Length == used.Count
+                ? FoundationEconomicTradeOverlayAvailability.Ready
+                : FoundationEconomicTradeOverlayAvailability.AuthorizedSubset;
+            next.Add(civ, new FoundationLastClosedEconomicTradeView(
+                availability, _binding, _fine,
+                artifact.EconomicCycleOrdinal,
+                artifact.ClosedAtWorkerTurn,
+                snapshot.Revision, artifact.StateHash,
+                audit.CargoUnitCode, authorized));
+        }
+
+        // Nothing changes if validation fails; a later worker-only turn does
+        // not replace the economic snapshot or recolor its historical owners.
+        lock (_sync)
+        {
+            if (artifact.EconomicCycleOrdinal <= _lastCycleOrdinal ||
+                (_last is not null && next.Values.Any(view =>
+                    view.PublishedRevision < _last.Values.First().PublishedRevision ||
+                    view.ClosedAtWorkerTurn!.Value.Value <
+                        _last.Values.First().ClosedAtWorkerTurn!.Value.Value)))
+                throw new InvalidOperationException(
+                    "Closed economic cycles cannot be replayed, reordered or rolled back.");
+            _last = next;
+            _lastCycleOrdinal = artifact.EconomicCycleOrdinal;
+        }
+    }
+}
