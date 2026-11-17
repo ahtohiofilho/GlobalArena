@@ -29,6 +29,7 @@ on:
       - 'GlobalArena.Tests/FoundationPhysicalCongestionStabilityScaleTests.cs'
       - 'GlobalArena.Tests/FoundationPhysicalMultiPathFreightPlannerTests.cs'
       - 'GlobalArena.Tests/FoundationPhysicalCoupledMultiPathMarketFeedbackTests.cs'
+      - 'GlobalArena.Tests/FoundationPhysicalMarginalPathRebalancerTests.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationConcentratedWorkforceScenario.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationWorkforceActivityGroups.cs'
       - 'GlobalArena.Tests/StrategicPhysicalWorkerInspectorTests.cs'
@@ -111,6 +112,8 @@ jobs:
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalMultiPathFreightPlannerTests' --logger 'console;verbosity=normal'
       - name: Coupled physical buyers and audited multi-path freight congestion — connected world regression
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalCoupledMultiPathMarketFeedbackTests' --logger 'console;verbosity=normal'
+      - name: Integrated marginal network-cost multi-path rerouting — owner tariffs and 104 connected real markets
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalMarginalPathRebalancerTests' --logger 'console;verbosity=normal'
       - name: Concentrated capital workforce with 3 6 and 12 people per civ
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationConcentratedWorkforceTests' --logger 'console;verbosity=normal'
       - name: Real executable three-turn gameplay kernel preview
