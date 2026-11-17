@@ -424,4 +424,171 @@ public sealed class FoundationPhysicalGlobalConcaveFlowTests
             stress.Host.GetLastClosedEconomicTradeView(Red).Availability);
     }
 
+
+    [Fact]
+    public void GlobalConcaveFlowCanSplitOneRealDeliveryAcrossTwoGoldbergCorridorsWithStrictGain()
+    {
+        var host = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL),
+                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)));
+        var map = host.Incidence;
+        var topology = map.FineTopology.Cells;
+        var origin = topology[0].Id;
+        var neighbors = topology[0].AdjacentCellIds.ToHashSet();
+        var choice = topology
+            .Where(cell => cell.Id != origin)
+            .Select(cell => new
+            {
+                Target = cell.Id,
+                Intermediate = cell.AdjacentCellIds
+                    .Where(neighbors.Contains)
+                    .OrderBy(x => x.Value).Take(2).ToArray()
+            })
+            .First(x => x.Intermediate.Length == 2 &&
+                !neighbors.Contains(x.Target));
+        var crossingPairs = new HashSet<(ulong, ulong)>();
+        void pair(StrategicCellId x, StrategicCellId y) =>
+            crossingPairs.Add((Math.Min(x.Value, y.Value),
+                Math.Max(x.Value, y.Value)));
+        foreach (var middle in choice.Intermediate)
+        {
+            pair(origin, middle);
+            pair(middle, choice.Target);
+        }
+        var edges = map.FineTopology.Edges
+            .Where(edge => crossingPairs.Contains((
+                Math.Min(edge.IncidentCellIds[0].Value,
+                    edge.IncidentCellIds[1].Value),
+                Math.Max(edge.IncidentCellIds[0].Value,
+                    edge.IncidentCellIds[1].Value)))).ToArray();
+        Assert.Equal(4, edges.Length);
+        PhysicalTacticalTileId tile(StrategicCellId id) =>
+            new(map.Refinement.FineParameters, id);
+        StrategicCellId coarse(StrategicCellId id) =>
+            map.TileIncidences[checked((int)id.Value - 1)]
+                .IncidentCoarseCellIds[0];
+
+        var census = new PhysicalWorkerRuntimeState(new[]
+        {
+            new PhysicalWorkerRuntimeRecord(new PhysicalWorkerId(1UL),
+                Red, coarse(origin), Grain, 1_000_000UL,
+                PhysicalWorkerActivity.Producing, 1_000_000U,
+                tile(origin), PhysicalWorkerOccupation.Agriculture),
+            new PhysicalWorkerRuntimeRecord(new PhysicalWorkerId(2UL),
+                Blue, coarse(choice.Target), Grain, 0UL,
+                PhysicalWorkerActivity.Other, 1_000_000U,
+                tile(choice.Target), PhysicalWorkerOccupation.Unassigned)
+        }, tacticalLocationsAuthoritative: true,
+           occupationsAuthoritative: true);
+        var quotes = FoundationPhysicalCommodityDemandProjector
+            .Project(census, Demand()).DemandByCivilization.Select(line =>
+                new FoundationCommodityMarketPlanningQuote(
+                    line.Tile, line.Owner, line.Commodity,
+                    line.Owner == Blue ? 1_000_000_000UL :
+                        1_000_000UL)).ToArray();
+        var roads = edges.Select(edge =>
+            new FoundationPhysicalRoutingEdgeCost(
+                new PhysicalTacticalEdgeId(map.Refinement.FineParameters,
+                    edge.Id),
+                FoundationInfrastructureOwnershipKind.NoInfrastructure,
+                null, 100_000UL, 0UL)).ToArray();
+        var scales = roads.Select(road =>
+            new FoundationPhysicalEdgeCarryingScale(road.Edge, 100_000UL))
+            .ToArray();
+        var hash = host.StateHash;
+        var snapshot = host.Snapshot;
+        var plan = FoundationPhysicalGlobalConcaveMultiPathPlanner.Plan(
+            census, map, Demand(), Cargo(), quotes, roads, scales,
+            segmentsPerAverageMarket: 4, maxFlowAugmentations: 64,
+            maxRouteBatchesPerParent: 8, maxTotalRouteBatches: 32);
+
+        Assert.True(plan.AppliedStrictImprovement);
+        Assert.True(plan.FinalIntegratedFreightCost <
+            plan.BaselineIntegratedFreightCost);
+        Assert.Equal(1_000_000UL,
+            plan.AllocationAudit.TotalAllocatedGoodsMicro);
+        Assert.Equal(plan.MarketAllocation.AllocationAudit.TotalAllocatedGoodsMicro,
+            plan.AllocationAudit.TotalAllocatedGoodsMicro);
+        Assert.True(plan.Parts.Where(p => p.Delivery.BuyerTile ==
+                tile(choice.Target)).Select(p => string.Join(",",
+                    p.Delivery.RouteTiles.Select(t =>
+                        t.FineStrategicCellId.Value))).Distinct().Count() >= 2);
+        Assert.Equal(plan.Parts.Count, plan.AllocationAudit.DeliveryCount);
+        Assert.Equal(hash, host.StateHash);
+        Assert.Same(snapshot, host.Snapshot);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            host.GetLastClosedEconomicTradeView(Red).Availability);
+    }
+
+    [Fact]
+    public void GlobalEightProducerMultipathConservesEveryParentAndNeverIncreasesIntegratedCost()
+    {
+        var stress = EightCompetingSellersInConnectedGoldbergMarkets();
+        var scales = stress.Roads.Select(road =>
+            new FoundationPhysicalEdgeCarryingScale(
+                road.Edge, 1_000_000UL)).ToArray();
+        var snapshot = stress.Host.Snapshot;
+        var hash = stress.Host.StateHash;
+        var watch = Stopwatch.StartNew();
+        var plan = FoundationPhysicalGlobalConcaveMultiPathPlanner.Plan(
+            stress.Workers, stress.Host.Incidence, Demand(), Cargo(),
+            stress.Quotes, stress.Roads, scales,
+            segmentsPerAverageMarket: 4, maxFlowAugmentations: 4096,
+            maxRouteBatchesPerParent: 2, maxTotalRouteBatches: 4096);
+        watch.Stop();
+        _output.WriteLine(
+            $"globalMultipath sellers={plan.MarketAllocation.ProductiveLotCount}, " +
+            $"markets={plan.MarketAllocation.RealMarketCount}, " +
+            $"parents={plan.MarketAllocation.Candidates.Count}, " +
+            $"parts={plan.Parts.Count}, batches={plan.RouteBatchDecisions}, " +
+            $"accepted={plan.AppliedStrictImprovement}, " +
+            $"initialIntegratedCost={plan.BaselineIntegratedFreightCost}, " +
+            $"finalIntegratedCost={plan.FinalIntegratedFreightCost}, " +
+            $"milliseconds={watch.ElapsedMilliseconds}");
+        Assert.Equal(8, plan.MarketAllocation.ProductiveLotCount);
+        Assert.Equal(104, plan.MarketAllocation.RealMarketCount);
+        Assert.Equal(8_000_000UL,
+            plan.AllocationAudit.TotalAllocatedGoodsMicro);
+        Assert.Equal(plan.MarketAllocation.AllocationAudit.TotalAllocatedGoodsMicro,
+            plan.AllocationAudit.TotalAllocatedGoodsMicro);
+        Assert.True(plan.FinalIntegratedFreightCost <=
+            plan.BaselineIntegratedFreightCost);
+        Assert.Equal(stress.Roads.Length, plan.ProjectedEdges.Count);
+        var totals = plan.Parts.GroupBy(p => p.ParentDeliveryOrdinal)
+            .ToDictionary(g => g.Key, g => g.Aggregate(
+                0UL, (sum, x) => checked(sum + x.Delivery.GoodsMicro)));
+        foreach (var parent in plan.MarketAllocation.Candidates)
+            Assert.Equal(parent.GoodsMicro, totals[parent.DeliveryOrdinal]);
+        Assert.Equal(
+            plan.AllocationAudit.Freight.TotalEdgeTraversalCargoMicro,
+            plan.ProjectedEdges.Aggregate(BigInteger.Zero,
+                (sum, edge) => sum + edge.CargoMicro));
+        Assert.Equal(hash, stress.Host.StateHash);
+        Assert.Same(snapshot, stress.Host.Snapshot);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            stress.Host.GetLastClosedEconomicTradeView(Red).Availability);
+    }
+
+    [Fact]
+    public void GlobalMultipathRouteBatchBudgetFailsClosedInsteadOfTruncatingGoods()
+    {
+        var stress = EightCompetingSellersInConnectedGoldbergMarkets();
+        var scales = stress.Roads.Select(road =>
+            new FoundationPhysicalEdgeCarryingScale(
+                road.Edge, 1_000_000UL)).ToArray();
+        var snapshot = stress.Host.Snapshot;
+        var hash = stress.Host.StateHash;
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            FoundationPhysicalGlobalConcaveMultiPathPlanner.Plan(
+                stress.Workers, stress.Host.Incidence, Demand(), Cargo(),
+                stress.Quotes, stress.Roads, scales,
+                segmentsPerAverageMarket: 4, maxFlowAugmentations: 4096,
+                maxRouteBatchesPerParent: 2, maxTotalRouteBatches: 1));
+        Assert.Contains("batch budget", error.Message);
+        Assert.Equal(hash, stress.Host.StateHash);
+        Assert.Same(snapshot, stress.Host.Snapshot);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            stress.Host.GetLastClosedEconomicTradeView(Red).Availability);
+    }
+
 }
