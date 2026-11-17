@@ -195,4 +195,32 @@ public sealed class FoundationPhysicalJointMarketRoutePotentialTests
                 maxRouteBatchesPerParent: 4, maxTotalRouteBatches: 16,
                 maxCompletePasses: 0));
     }
+
+    [Fact]
+    public void JointPotentialUsesSameMicroComparisonScaleForMarketAndIntegratedFreight()
+    {
+        var scenario = AdjacentBuyerCase(100_000UL);
+        var market = FoundationPhysicalGlobalConcaveMultiPathPlanner.Plan(
+            scenario.Workers, scenario.Host.Incidence, Demand(), Cargo(),
+            scenario.Quotes, scenario.Roads, scenario.Scales,
+            segmentsPerAverageMarket: 8, maxFlowAugmentations: 256,
+            maxRouteBatchesPerParent: 4, maxTotalRouteBatches: 16);
+        var quotes = scenario.Quotes.ToDictionary(
+            x => (x.BuyerTile, x.Buyer, x.Commodity),
+            x => x.QuoteMicroPerWholeCommodityUnit);
+        BigInteger grossBenefit = BigInteger.Zero;
+        foreach (var line in market.MarketAllocation.MarketTotals)
+            grossBenefit += FoundationPhysicalMarginalIntegratedUtility
+                .MarketBenefitScaled(
+                    quotes[(line.Tile, line.Buyer, line.Commodity)],
+                    line.DemandMicro, line.AllocatedGoodsMicro);
+        Assert.True(market.FinalIntegratedFreightCost > BigInteger.Zero);
+        var expected = grossBenefit -
+            ((market.FinalIntegratedFreightCost *
+                FoundationPhysicalMarginalMarketDistributor.Micro) << 64);
+        Assert.Equal(expected,
+            FoundationPhysicalJointMarketRoutePotentialCoordinator
+                .IntegratedNetPotentialScaled(market, scenario.Quotes));
+    }
+
 }
