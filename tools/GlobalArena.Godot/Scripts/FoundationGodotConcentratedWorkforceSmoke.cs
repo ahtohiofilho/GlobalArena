@@ -145,6 +145,17 @@ public sealed class FoundationGodotConcentratedWorkforceSmoke
                 Must(_map.ActivityGroupMemberCount(
                         home.FineStrategicCellId.Value, _human.Value, role) == 2,
                     $"Actual activity group {role} did not contain two individuals.");
+            Must(_map.AreWorkerCountDigitsScreenUpright() &&
+                 _map.RenderedWorkerCivilizationColor(1UL) ==
+                     GaCivilizationVisualIdentity.ColorFor(1UL) &&
+                 GaCivilizationVisualIdentity.ColorFor(1UL) !=
+                     GaCivilizationVisualIdentity.ColorFor(2UL) &&
+                 GaCivilizationVisualIdentity.ColorFor(2UL) !=
+                     GaCivilizationVisualIdentity.ColorFor(3UL),
+                "Oblique worker numerals must be upright and RGB identity must be independent.");
+            GD.Print("GA_NEXT_UPRIGHT_BADGE_NUMBERS_PASS " +
+                "glyph=screen_up_right flat_y=0 yaw_degrees=0 " +
+                "civilizations=red_blue_green occupations=separate");
             Must(_map.RenderedWorkerBadgeFill(1UL) == new Color("#61d98b") &&
                 _map.RenderedWorkerBadgeFill(2UL) == new Color("#b88656") &&
                 _map.RenderedWorkerBadgeFill(3UL) == new Color("#c4c7d4"),
@@ -292,6 +303,21 @@ public sealed class FoundationGodotConcentratedWorkforceSmoke
                 "One reassignment should merge mining 2→3, remove empty farm " +
                 "badge and preserve all independent worker economics.");
             await Capture("04_after_reassignment");
+            // The AI is a separate civilization using the same occupation
+            // fill but an explicitly different owner-identification rim.
+            var ai = _host.Snapshot.Workers.Workers.Single(w => w.Id.Value == 7UL);
+            _map.Open(ai.CellId.Value);
+            _map.PresentAuthoritativeWorkers(
+                _host.Snapshot.Workers, _main.SelectedTacticalWorkerId);
+            await Frames();
+            Must(_map.RenderedWorkerCivilizationColor(7UL) ==
+                     GaCivilizationVisualIdentity.ColorFor(2UL) &&
+                 _map.AreWorkerCountDigitsScreenUpright(),
+                "AI worker must have blue civilization rim and upright count.");
+            await Capture("05_blue_owner_rim");
+            GD.Print("GA_NEXT_CIVILIZATION_COLOR_PASS " +
+                "human=red ai=blue reserved_civ3=green " +
+                "work_activity_colors=preserved");
             GD.Print("GA_NEXT_OCCUPATION_TURN_E2E_PASS " +
                 "human_worker=4 agriculture=1_to_0 mining=2_to_3 " +
                 "capital_groups=3_to_2 individual=unchanged_location " +

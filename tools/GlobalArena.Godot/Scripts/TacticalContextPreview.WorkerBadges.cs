@@ -67,6 +67,13 @@ public partial class TacticalContextPreview
         return false;
     }
 
+    public Color? RenderedWorkerCivilizationColor(ulong workerId)
+    {
+        var worker = _displayWorkers.FirstOrDefault(w => w.Id.Value == workerId);
+        return worker is not null && _workerGlyphPositions.ContainsKey(workerId)
+            ? GaCivilizationVisualIdentity.ColorFor(worker.Owner.Value) : null;
+    }
+
     public Color? RenderedWorkerBadgeFill(ulong workerId)
     {
         var worker = _displayWorkers.FirstOrDefault(w => w.Id.Value == workerId);
@@ -195,6 +202,33 @@ public partial class TacticalContextPreview
 
     // Draw exact counts as coplanar seven-segment digits. No floating Label3D
     // or additional 2D screen-space layer that drifts at oblique camera angles.
+    // The old X/Z map-plane glyph was seen upside-down from the orthographic
+    // oblique camera: an actual "3" appeared as an "E". Build the digit
+    // axes from the camera yaw: glyph right/down are always screen right/down.
+    public (Vector2 Right, Vector2 Down) WorkerCountScreenAxes
+    {
+        get
+        {
+            var radians = Mathf.DegToRad(_yawDegrees);
+            return (new Vector2(-Mathf.Cos(radians), -Mathf.Sin(radians)),
+                    new Vector2(Mathf.Sin(radians), -Mathf.Cos(radians)));
+        }
+    }
+
+    public bool AreWorkerCountDigitsScreenUpright()
+    {
+        if (_camera is null || _activeFocus == 0) return false;
+        var axes = WorkerCountScreenAxes;
+        var origin = _camera.UnprojectPosition(_cameraTarget);
+        var right = _camera.UnprojectPosition(_cameraTarget +
+            new Vector3(axes.Right.X, 0f, axes.Right.Y));
+        var down = _camera.UnprojectPosition(_cameraTarget +
+            new Vector3(axes.Down.X, 0f, axes.Down.Y));
+        return right.X > origin.X && down.Y > origin.Y &&
+            Mathf.Abs(right.Y - origin.Y) < 0.05f &&
+            Mathf.Abs(down.X - origin.X) < 0.05f;
+    }
+
     private static void AddCountSegment(
         SurfaceTool surface, Vector2 from, Vector2 to, float thickness)
     {
@@ -205,7 +239,7 @@ public partial class TacticalContextPreview
                 new Color("#13222c"));
     }
 
-    private static void AddBadgeCount(
+    private void AddBadgeCount(
         SurfaceTool surface, Vector2 center, float radius, int count)
     {
         var digits = count.ToString(System.Globalization.CultureInfo.InvariantCulture);
@@ -213,9 +247,14 @@ public partial class TacticalContextPreview
         var height = radius * 1.02f;
         var gap = radius * .14f;
         var thickness = radius * .12f;
-        var left = center.X - (digits.Length * width +
+        // Express glyph points in a screen-aligned local coordinate frame.
+        // The markers themselves remain flush with the tactical surface.
+        var start = -(digits.Length * width +
             (digits.Length - 1) * gap) / 2f;
-        var top = center.Y - height / 2f;
+        var top = -height / 2f;
+        var axes = WorkerCountScreenAxes;
+        Vector2 OnPlane(float horizontal, float vertical) =>
+            center + axes.Right * horizontal + axes.Down * vertical;
         var masks = new[] {
             0b0111111, 0b0000110, 0b1011011, 0b1001111, 0b1100110,
             0b1101101, 0b1111101, 0b0000111, 0b1111111, 0b1101111
@@ -223,13 +262,13 @@ public partial class TacticalContextPreview
         for (var i = 0; i < digits.Length; i++)
         {
             var mask = masks[digits[i] - '0'];
-            var x = left + i * (width + gap);
-            var tl = new Vector2(x, top);
-            var tr = new Vector2(x + width, top);
-            var ml = tl + new Vector2(0f, height / 2f);
-            var mr = tr + new Vector2(0f, height / 2f);
-            var bl = tl + new Vector2(0f, height);
-            var br = tr + new Vector2(0f, height);
+            var x = start + i * (width + gap);
+            var tl = OnPlane(x, top);
+            var tr = OnPlane(x + width, top);
+            var ml = OnPlane(x, top + height / 2f);
+            var mr = OnPlane(x + width, top + height / 2f);
+            var bl = OnPlane(x, top + height);
+            var br = OnPlane(x + width, top + height);
             if ((mask & 1) != 0) AddCountSegment(surface, tl, tr, thickness);
             if ((mask & 2) != 0) AddCountSegment(surface, tr, mr, thickness);
             if ((mask & 4) != 0) AddCountSegment(surface, mr, br, thickness);
@@ -285,14 +324,20 @@ public partial class TacticalContextPreview
                     w.Id.Value == _hoveredBadgeId);
                 if (selected || hovered)
                 {
-                    AddBadgeDisk(surface, position, radius * 1.63f,
+                    AddBadgeDisk(surface, position, radius * 1.70f,
                         hovered ? new Color("#ffffff") : new Color("#f3f9ff"));
                     diskCount++;
                 }
+                // Two independent channels: the OUTER rim identifies
+                // civilization; the INNER disk identifies occupation.
+                // Selection/Travel state overlays remain distinct.
+                AddBadgeDisk(surface, position, radius * 1.56f,
+                    GaCivilizationVisualIdentity.ColorFor(group.Owner.Value));
+                diskCount++;
                 if (group.Members.Any(w =>
                     w.Activity == PhysicalWorkerActivity.Traveling))
                 {
-                    AddBadgeDisk(surface, position, radius * 1.46f,
+                    AddBadgeDisk(surface, position, radius * 1.42f,
                         new Color("#dfaf60"));
                     diskCount++;
                 }

@@ -122,6 +122,8 @@ jobs:
             2>&1 | tee "$RUNNER_TEMP/ga-godot/concentrated-workforce.log"
           grep -q 'GA_NEXT_CONCENTRATED_WORKFORCE_E2E_PASS' "$RUNNER_TEMP/ga-godot/concentrated-workforce.log"
           grep -q 'GA_NEXT_OCCUPATION_TURN_E2E_PASS' "$RUNNER_TEMP/ga-godot/concentrated-workforce.log"
+          grep -q 'GA_NEXT_UPRIGHT_BADGE_NUMBERS_PASS' "$RUNNER_TEMP/ga-godot/concentrated-workforce.log"
+          grep -q 'GA_NEXT_CIVILIZATION_COLOR_PASS' "$RUNNER_TEMP/ga-godot/concentrated-workforce.log"
           grep -q 'GA_NEXT_WORKFORCE_AGGREGATION_HOVER_PASS' "$RUNNER_TEMP/ga-godot/concentrated-workforce.log"
           grep -q 'GA_NEXT_CONCENTRATED_WORKFORCE_COMMIT_PASS' "$RUNNER_TEMP/ga-godot/concentrated-workforce.log"
           if grep -E 'GA_NEXT_CONCENTRATED_WORKFORCE_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/concentrated-workforce.log"; then exit 1; fi
@@ -238,8 +240,10 @@ jobs:
             2>&1 | tee "$RUNNER_TEMP/ga-godot/concentrated-workforce-graphical.log"
           grep -q 'GA_NEXT_CONCENTRATED_WORKFORCE_E2E_PASS' "$RUNNER_TEMP/ga-godot/concentrated-workforce-graphical.log"
           grep -q 'GA_NEXT_OCCUPATION_TURN_E2E_PASS' "$RUNNER_TEMP/ga-godot/concentrated-workforce-graphical.log"
+          grep -q 'GA_NEXT_UPRIGHT_BADGE_NUMBERS_PASS' "$RUNNER_TEMP/ga-godot/concentrated-workforce-graphical.log"
+          grep -q 'GA_NEXT_CIVILIZATION_COLOR_PASS' "$RUNNER_TEMP/ga-godot/concentrated-workforce-graphical.log"
           grep -q 'GA_NEXT_WORKFORCE_AGGREGATION_HOVER_PASS' "$RUNNER_TEMP/ga-godot/concentrated-workforce-graphical.log"
-          for stage in 00_group_hover 01_three_groups 02_after_individual_move 03_after_production 04_after_reassignment; do
+          for stage in 00_group_hover 01_three_groups 02_after_individual_move 03_after_production 04_after_reassignment 05_blue_owner_rim; do
             grep -q "GA_NEXT_CONCENTRATED_FRAME_PASS stage=$stage" "$RUNNER_TEMP/ga-godot/concentrated-workforce-graphical.log"
             test -s "$GA_NEXT_CONCENTRATED_SCREENSHOT_DIR/$stage.png"
           done
