@@ -349,7 +349,8 @@ public static class FoundationPhysicalMultiPathFreightPlanner
         IEnumerable<FoundationPhysicalEdgeCarryingScale> carryingScales,
         int maxProducerPasses,
         int maxBatchesPerDelivery,
-        bool preferIncumbentThresholdTies = false)
+        bool preferIncumbentThresholdTies = false,
+        bool acceptOnlyStrictIntegratedGain = false)
     {
         ArgumentNullException.ThrowIfNull(census);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -369,7 +370,7 @@ public static class FoundationPhysicalMultiPathFreightPlanner
         var market = FoundationPhysicalGlobalMarginalCoordinator.Coordinate(
             census, incidence, demandPolicy, conversionPolicy,
             quoteList, edges, maxProducerPasses,
-            preferIncumbentThresholdTies);
+            preferIncumbentThresholdTies, acceptOnlyStrictIntegratedGain);
         return Split(census, incidence, demandPolicy, conversionPolicy,
             market, edges, scales, maxBatchesPerDelivery);
     }
