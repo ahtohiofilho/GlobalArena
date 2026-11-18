@@ -17,7 +17,6 @@ public sealed class FoundationPhysicalEconomicAccountingProposalTests
     private static readonly CivilizationId Red = new(1UL);
     private static readonly CivilizationId Blue = new(2UL);
     private static readonly CommodityId Grain = new(1U);
-    private static readonly CommodityId Wood = new(2U);
 
     private static FoundationTacticalHumanAiTurnHost Host() =>
         FoundationConcentratedWorkforceScenario.CreatePreview(
@@ -52,7 +51,7 @@ public sealed class FoundationPhysicalEconomicAccountingProposalTests
         bool collocateCivilizations = false,
         ulong remoteDemandMultiplierMicro = 100_000_000UL,
         ulong physicalCost = 100_000UL,
-        uint redTaxBasisPoints = 1_000U)
+        bool traversable = true)
     {
         var host = Host();
         var map = host.Incidence;
@@ -85,12 +84,13 @@ public sealed class FoundationPhysicalEconomicAccountingProposalTests
             new PhysicalTacticalEdgeId(fine, border.Id),
             FoundationInfrastructureOwnershipKind.Owned, Blue,
             physicalCost, 30_000UL);
-        var roads = new[] { road };
-        var scales = new[]
-        {
-            new FoundationPhysicalEdgeCarryingScale(
-                road.Edge, 1_000_000UL)
-        };
+        var roads = traversable
+            ? new[] { road }
+            : Array.Empty<FoundationPhysicalRoutingEdgeCost>();
+        var scales = traversable
+            ? new[] { new FoundationPhysicalEdgeCarryingScale(
+                road.Edge, 1_000_000UL) }
+            : Array.Empty<FoundationPhysicalEdgeCarryingScale>();
         var candidate = FoundationPhysicalLaggedFreightCyclePlanner
             .CoordinateUniversalCandidate(
                 census, map, demand, cargo, roads, scales);
@@ -159,11 +159,11 @@ public sealed class FoundationPhysicalEconomicAccountingProposalTests
     }
 
     [Fact]
-    public void NoPhysicalCrossingHasZeroFreightAndZeroOwnerToll()
+    public void AbsentPhysicalRoadMeansNoFreightAndNoInventedTrade()
     {
         var s = RealTwoTileScenario(
             remoteDemandMultiplierMicro: 1_000_000UL,
-            physicalCost: 5_000_000UL);
+            traversable: false);
         var proposal = Evaluate(s);
         Assert.All(proposal.Lines, row =>
         {
@@ -244,12 +244,10 @@ public sealed class FoundationPhysicalEconomicAccountingProposalTests
         Assert.All(output.Lines, row =>
         {
             Assert.Equal(Grain, row.Commodity);
-            Assert.True(row.MarketPriceMicroPerWholeGood <=
-                ulong.MaxValue);
+            Assert.True(row.MarketPriceMicroPerWholeGood > 0UL);
         });
         Assert.Equal(1U,
             output.Lines.Select(x => x.Commodity.Value).Distinct().Single());
         Assert.NotEqual(0, s.Host.Incidence.FineTopology.Edges.Count);
-        Assert.NotNull(Wood);
     }
 }
