@@ -145,6 +145,11 @@ public sealed class FoundationTacticalHumanAiTurnHost
         Array.AsReadOnly(_participants.Where(_humans.Contains).ToArray());
     public IReadOnlyList<CivilizationId> AiCivilizations =>
         Array.AsReadOnly(_participants.Where(_ai.ContainsKey).ToArray());
+    // Trusted bootstrap only: preserve AI behavior byte-for-byte when
+    // enabling a declared economic policy before the first turn.
+    internal IReadOnlyDictionary<CivilizationId, IFoundationTacticalAiTurnPolicy>
+        SnapshotAiPoliciesForBootstrap() =>
+        new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy>(_ai);
     public IReadOnlyList<CivilizationId> ReadyCivilizations =>
         Array.AsReadOnly(_participants.Where(_ready.Contains).ToArray());
     public int PendingOrderCount => _plans.Values.Sum(plan => plan.Count) +
