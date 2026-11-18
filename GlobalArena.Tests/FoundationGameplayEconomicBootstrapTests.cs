@@ -92,7 +92,17 @@ public sealed class FoundationGameplayEconomicBootstrapTests
         Assert.True(host.Snapshot.Treasury.Get(Red).CashScaled > 0);
         Assert.Equal(FoundationEconomicTradeOverlayAvailability.AuthorizedSubset,
             host.GetLastClosedEconomicTradeView(Red).Availability);
-        Assert.Same(before.Workers, host.Snapshot.Workers);
+        // Existing deterministic AI can resume its REAL traveling worker
+        // during the first collective turn. That is a valid worker-event
+        // mutation; bootstrap must still preserve each worker's identity,
+        // physical node, capacity and location-linked demand.
+        Assert.Equal(
+            before.Workers.Workers.Select(w =>
+                (w.Id, w.Owner, w.TacticalTileId, w.OutputMicroPerTurn,
+                    w.DemandMultiplierMicro)),
+            host.Snapshot.Workers.Workers.Select(w =>
+                (w.Id, w.Owner, w.TacticalTileId, w.OutputMicroPerTurn,
+                    w.DemandMultiplierMicro)));
     }
 
     [Fact]
