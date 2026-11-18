@@ -175,13 +175,15 @@ public static class FoundationPhysicalEconomicAccountingReconciler
             .GroupBy(x => (x.BuyerTile, x.Buyer, x.Commodity))
             .ToDictionary(g => g.Key, g => g.Aggregate(0UL,
                 (sum, x) => checked(sum + x.GoodsMicro)));
-        if (market.DemandByCivilization.Any(line =>
-                !candidate.Distribution.MarketTotals.Any(t =>
-                    t.Tile == line.Tile && t.Buyer == line.Owner &&
-                    t.Commodity == line.Commodity &&
-                    t.DemandMicro == line.DemandMicro &&
-                    t.AllocatedGoodsMicro == totals.GetValueOrDefault(
-                        (line.Tile, line.Owner, line.Commodity)))))
+        var declaredTotals = candidate.Distribution.MarketTotals.ToDictionary(
+            t => (t.Tile, t.Buyer, t.Commodity));
+        if (declaredTotals.Count != market.DemandByCivilization.Count ||
+            market.DemandByCivilization.Any(line =>
+                !declaredTotals.TryGetValue(
+                    (line.Tile, line.Owner, line.Commodity), out var t) ||
+                t.DemandMicro != line.DemandMicro ||
+                t.AllocatedGoodsMicro != totals.GetValueOrDefault(
+                    (line.Tile, line.Owner, line.Commodity))))
             throw new InvalidOperationException(
                 "Candidate marginal market quantities disagree with real " +
                 "physical demand and actual allocated goods.");
