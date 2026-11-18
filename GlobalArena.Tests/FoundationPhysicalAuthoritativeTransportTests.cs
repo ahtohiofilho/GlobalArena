@@ -106,7 +106,8 @@ public sealed class FoundationPhysicalAuthoritativeTransportTests
         Assert.Equal(2_000_000UL,
             b.Transport.Edges[0].FreePhysicalCostMicroPerWholeCargoUnit);
         Assert.Throws<InvalidOperationException>(() =>
-            a.DeployInitialPhysicalTransport(a.Transport, host.Incidence));
+            a.DeployInitialPhysicalTransport(a.Transport,
+                host.Session.GeneratedWorld, host.Incidence));
     }
 
     [Fact]
@@ -118,7 +119,7 @@ public sealed class FoundationPhysicalAuthoritativeTransportTests
         Assert.Throws<InvalidOperationException>(() =>
             world.DeployInitialPhysicalTransport(
                 PhysicalTransportInfrastructureRuntimeState.CreateInitial(
-                    roads.Skip(1)), host.Incidence));
+                    roads.Skip(1)), host.Session.GeneratedWorld, host.Incidence));
         Assert.Throws<ArgumentException>(() =>
             PhysicalTransportInfrastructureRuntimeState.CreateInitial(
                 roads.Append(roads[0])));
@@ -133,7 +134,7 @@ public sealed class FoundationPhysicalAuthoritativeTransportTests
                         ? r with
                         {
                             InfrastructureOwner = new CivilizationId(999UL)
-                        } : r)), host.Incidence));
+                        } : r)), host.Session.GeneratedWorld, host.Incidence));
         Assert.Throws<ArgumentException>(() =>
             PhysicalTransportInfrastructureRuntimeState.CreateInitial(
                 roads.Select((r, i) => i == 1
@@ -153,7 +154,8 @@ public sealed class FoundationPhysicalAuthoritativeTransportTests
 
         var snapshot = uninitialized.DeployInitialPhysicalTransport(
             PhysicalTransportInfrastructureRuntimeState.CreateInitial(
-                Complete(host.Incidence)), host.Incidence);
+                Complete(host.Incidence)), host.Session.GeneratedWorld,
+                host.Incidence);
         var before = new CanonicalWorldStateHasher().Compute(snapshot);
         var projection = FoundationPhysicalAuthoritativeTransportProjector
             .FromWorld(snapshot, host.Incidence);
