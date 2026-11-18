@@ -266,6 +266,7 @@ public sealed class FoundationPhysicalLaggedFreightCycleTests
 
         Assert.False(first.RepricedWithinCycle);
         Assert.Equal(1UL, first.NextCycleQuotes.AuditedPreviewCycles);
+        Assert.False(first.NextCycleQuotes.HasSettledProvenance);
         Assert.True(first.Distribution.StableUnderOneFullCanonicalPass);
         Assert.Equal(2_000_000UL,
             first.Distribution.AllocationAudit.TotalAvailableGoodsMicro);
@@ -298,6 +299,7 @@ public sealed class FoundationPhysicalLaggedFreightCycleTests
                 maxProducerPasses: 8);
         Assert.False(next.RepricedWithinCycle);
         Assert.Equal(2UL, next.NextCycleQuotes.AuditedPreviewCycles);
+        Assert.False(next.NextCycleQuotes.HasSettledProvenance);
         Assert.Equal(firstReading.DampedNextPhysicalQuoteMicroPerWholeCargoUnit,
             Assert.Single(next.FixedCycleEdges)
                 .PhysicalCostMicroPerWholeCargoUnit);
