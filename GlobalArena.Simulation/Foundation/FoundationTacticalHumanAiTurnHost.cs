@@ -658,8 +658,27 @@ public sealed class FoundationTacticalHumanAiTurnHost
         var turn = NextTurn;
         var orders = _plans.Values.SelectMany(plan => plan.Values)
             .OrderBy(order => order.WorkerId.Value).ToArray();
-        if (orders.Select(order => order.WorkerId).Distinct().Count() != orders.Length)
-            throw new InvalidOperationException("Duplicate inter-civilization worker order.");
+        var construction = _constructionPlans.Values
+            .SelectMany(plan => plan.Values)
+            .OrderBy(order => order.WorkerId.Value).ToArray();
+        if (orders.Select(order => order.WorkerId)
+                .Concat(construction.Select(order => order.WorkerId))
+                .Distinct().Count() != orders.Length + construction.Length)
+            throw new InvalidOperationException(
+                "A worker cannot receive concurrent movement and construction " +
+                "orders across civilizations.");
+        if (construction.Length > 0)
+        {
+            if (_constructionPolicy is null)
+                throw new InvalidOperationException(
+                    "Construction was not explicitly enabled for this host.");
+            var plan = FoundationPhysicalConstructionWorkPlanner.PlanCandidate(
+                before, _session.GeneratedWorld, _incidence,
+                _constructionPolicy, construction);
+            if (plan.Workers.Any(w => w.ContributedLaborMicro == 0UL))
+                throw new InvalidOperationException(
+                    "Zero-work construction orders cannot become journal events.");
+        }
 
         // A stale plan or forged origin must never be committed. Orders are
         // revalidated against the same immutable turn-start snapshot.
@@ -673,11 +692,25 @@ public sealed class FoundationTacticalHumanAiTurnHost
                     "Pending tactical source no longer matches canonical worker.");
         }
 
-        var commands = orders.Select((order, index) =>
-            (ISimulationCommand)new PhysicalTacticalWorkerMoveCommand(
-                new CommandId(turn, checked((ulong)index + 1UL)),
-                order.Issuer, order.WorkerId, order.Destination,
-                order.Activity, order.NextOccupation)).ToArray();
+        var moveByWorker = orders.ToDictionary(order =>
+            order.WorkerId.Value);
+        var constructionByWorker = construction.ToDictionary(order =>
+            order.WorkerId.Value);
+        var commands = moveByWorker.Keys.Concat(constructionByWorker.Keys)
+            .OrderBy(id => id)
+            .Select((id, index) =>
+            {
+                var commandId = new CommandId(
+                    turn, checked((ulong)index + 1UL));
+                if (moveByWorker.TryGetValue(id, out var movement))
+                    return (ISimulationCommand)new PhysicalTacticalWorkerMoveCommand(
+                        commandId, movement.Issuer, movement.WorkerId,
+                        movement.Destination, movement.Activity,
+                        movement.NextOccupation);
+                var work = constructionByWorker[id];
+                return (ISimulationCommand)new PhysicalTransportConstructionWorkCommand(
+                    commandId, work.Issuer, work.WorkerId, work.Edge);
+            }).ToArray();
         var context = new SimulationContext(turn, new SimulationSeed(712UL));
         var committed = _publisher.ResolveAndCommit(
             new TurnPolicyResolutionGateInput(
@@ -688,29 +721,40 @@ public sealed class FoundationTacticalHumanAiTurnHost
             committed.ResolutionResult is not { } resolved)
             throw new InvalidOperationException(
                 "Canonical tactical turn gate failed to commit.");
-        var events = resolved.Events.Select(ev =>
-            ev as PhysicalTacticalWorkerMovedEvent ??
-                throw new InvalidOperationException(
-                    "Unexpected event in v10 tactical journal."))
-            .ToArray();
-        if (events.Length != commands.Length ||
-            resolved.EventLog.Entries.Count != events.Length ||
+        var events = resolved.Events
+            .OfType<PhysicalTacticalWorkerMovedEvent>().ToArray();
+        var constructionEvents = resolved.Events
+            .OfType<PhysicalTransportConstructionWorkedEvent>().ToArray();
+        if (events.Length != orders.Length ||
+            constructionEvents.Length != construction.Length ||
+            resolved.Events.Count != commands.Length ||
+            resolved.EventLog.Entries.Count != commands.Length ||
             resolved.EventLog.Entries.Any(entry => !entry.WasExecuted))
             throw new InvalidOperationException(
-                "v10 committed event log differs from submitted worker orders.");
+                "Committed journal differs from the complete collective " +
+                "worker movement and construction order batch.");
 
-        var replay = new SimulationEventLogReplayer(_executor)
+        ISimulationEventExecutor replayExecutor =
+            _constructionExecutor is null
+                ? _executor
+                : new FoundationTacticalConstructionReplayExecutor(
+                    _executor, _constructionExecutor);
+        var replay = new SimulationEventLogReplayer(replayExecutor)
             .Replay(new SimulationReplayInput(
                 before, resolved.EventLog, context));
         var hash = _hasher.Compute(Snapshot);
-        if (hash.FormatVersion != _hasher.Compute(before).FormatVersion ||
-            (hash.FormatVersion != 10U && hash.FormatVersion != 11U) ||
+        var previousVersion = _hasher.Compute(before).FormatVersion;
+        if ((hash.FormatVersion != previousVersion &&
+             !(previousVersion == 13U && hash.FormatVersion == 14U)) ||
+            hash.FormatVersion < 10U || hash.FormatVersion > 14U ||
             _hasher.Compute(replay) != hash)
             throw new InvalidOperationException(
-                "Tactical collective journal replay does not match v10/v11 authority.");
+                "Tactical worker/construction journal replay or canonical " +
+                "world version differs from the committed authority.");
         var receipt = new FoundationTacticalCollectiveReceipt(
-            turn, hash, Snapshot.Revision, events);
+            turn, hash, Snapshot.Revision, events, constructionEvents);
         foreach (var plan in _plans.Values) plan.Clear();
+        foreach (var plan in _constructionPlans.Values) plan.Clear();
         _ready.Clear();
         _knownSnapshot = Snapshot;
         return receipt;
