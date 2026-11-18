@@ -14,6 +14,7 @@ public sealed class FoundationPhysicalAuthoritativeTransportTests
     private static readonly CivilizationId Red = new(1UL);
     private static readonly CivilizationId Blue = new(2UL);
     private static readonly CommodityId Grain = new(1U);
+    private static readonly CommodityId Wood = new(2U);
 
     private static FoundationTacticalHumanAiTurnHost Host() =>
         FoundationConcentratedWorkforceScenario.CreatePreview(
@@ -36,15 +37,17 @@ public sealed class FoundationPhysicalAuthoritativeTransportTests
     }
 
     private static FoundationActivityCommodityDemandPolicy Demand() =>
-        new(new[] { Grain },
-            Enum.GetValues<FoundationPhysicalDemandProfile>().Select(p =>
-                new FoundationActivityCommodityDemandCoefficient(
-                    p, Grain, 1_000_000UL)));
+        new(new[] { Grain, Wood },
+            Enum.GetValues<FoundationPhysicalDemandProfile>().SelectMany(p =>
+                new[] { Grain, Wood }.Select(commodity =>
+                    new FoundationActivityCommodityDemandCoefficient(
+                        p, commodity, 1_000_000UL))));
 
     private static FoundationCommodityCargoConversionPolicy Cargo() =>
         new("hash-bound-freight-unit", new[]
         {
-            new FoundationCommodityCargoConversion(Grain, 1_000_000UL)
+            new FoundationCommodityCargoConversion(Grain, 1_000_000UL),
+            new FoundationCommodityCargoConversion(Wood, 1_000_000UL)
         });
 
     [Fact]
