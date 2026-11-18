@@ -79,7 +79,9 @@ internal static class GaExplicitEconomicQaConfiguration
                     w.Owner == Red ? CommodityOne : CommodityTwo,
                     w.OutputMicroPerTurn, w.Activity,
                     w.DemandMultiplierMicro, w.TacticalTileId,
-                    w.Occupation)));
+                    w.Occupation)),
+            tacticalLocationsAuthoritative: true,
+            occupationsAuthoritative: true);
         demo.Session.AcceptSnapshot(demo.Snapshot.WithWorkers(specialized));
         return FoundationGameplayEconomicBootstrap.Enable(
             demo, Profile());
