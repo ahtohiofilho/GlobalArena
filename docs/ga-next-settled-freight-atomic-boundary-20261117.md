@@ -25,6 +25,9 @@ Este Gate conecta estritamente o **lado de publicação** ao preço de frete par
 8. A leitura \`ReadLastSettledFreightForNextCycle\` é **apenas interna ao kernel** e contém custos de todas as arestas, mesmo que um jogador só possa enxergar parte do histórico. Nenhum total de cargas globais é publicado na UI. Se há um ciclo publicado sem frete devidamente autenticado, essa leitura **falha fechada**.
 9. Uma chamada à publicação histórica antiga, sem a política de frete protegida, invalida o estado anterior em vez de mantê-lo silenciosamente como se fosse atual. Para futuros ciclos, isso impede retomar o congestionamento sem histórico legítimo.
 
+10. A função puramente numérica `FoundationPhysicalSettledFreightQuoteUpdater.FromClosedAudit` devolve **somente as linhas físicas** do próximo frete, sem poder atribuir qualquer marcador de liquidação. O marcador `HasSettledProvenance=true` só é criado na fronteira interna de publicação, com objeto imutável preparado antes da atualização atômica.
+11. A API `CoordinateUniversalCandidate`, destinada à integração do jogo, **rejeita explicitamente** um `previousClosedCycleQuotes` cujo `HasSettledProvenance=false`. O laboratório pode continuar iterando previews pela antiga `CoordinateCandidate` para comparação, mas nenhum preço simulado entra silenciosamente na entrada de jogo.
+
 ### Invariantes preservados
 
 - **Preço universal** para todos os produtos e mercados, \`p_i(Q_i) = sqrt(D_i/Q_i)\`, com \`P0 = 1\` (uma unidade monetária por unidade integral); apenas o censo e pesos físicos de consumo determinam \`D_i\`.
