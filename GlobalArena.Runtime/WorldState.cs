@@ -407,6 +407,25 @@ public sealed class WorldState
             Economy, Population, Warfare, Workers, transport);
     }
 
+    /// <summary>
+    /// Domain primitive for a validated executed construction journal event.
+    /// Does not build a road or assign ownership, materials, tariffs or funds.
+    /// Replay invokes the same primitive after independently verifying the
+    /// real worker and exact labor amount. Every mutation is a new snapshot.
+    /// </summary>
+    public WorldState RecordJournaledConstructionWork(
+        PhysicalTacticalEdgeId crossing, ulong creditedLaborMicro)
+    {
+        if (WorldBinding is null || !Workers.HasAuthoritativeOccupations)
+            throw new InvalidOperationException(
+                "Committed physical construction requires a bound worker world.");
+        var nextTransport = Transport.ApplyJournaledWork(
+            crossing, creditedLaborMicro);
+        return new WorldState(
+            Revision, WorldBinding, Civilizations, Territory, Diplomacy,
+            Economy, Population, Warfare, Workers, nextTransport);
+    }
+
     public WorldState AdvanceRevision()
     {
         return new WorldState(
@@ -621,6 +640,15 @@ public sealed class WorldState
             throw new InvalidOperationException(
                 "An uninitialized physical worker census cannot contain records.");
         }
+
+        if (transport.HasCommittedConstructionLabor &&
+            (!transport.HasNaturalConstructionLabor ||
+             transport.Edges.Any(e =>
+                 e.CommittedConstructionLaborMicro!.Value >
+                     e.NaturalConstructionLaborMicro!.Value)))
+            throw new InvalidOperationException(
+                "Committed construction progress exceeds natural labor " +
+                "or lacks the complete v13 physical construction schema.");
 
         if (transport.IsInitialized)
         {
