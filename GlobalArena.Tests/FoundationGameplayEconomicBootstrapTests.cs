@@ -120,6 +120,33 @@ public sealed class FoundationGameplayEconomicBootstrapTests
     }
 
     [Fact]
+    public void EconomicRulesCannotBeInjectedIntoAnAlreadyRunningV11Game()
+    {
+        var prepared = Preview();
+        var original = prepared.Snapshot;
+        prepared.QueueHumanActivity(
+            Red, original.Workers.Workers.First(w => w.Owner == Red).Id,
+            PhysicalWorkerActivity.Other);
+        Assert.Throws<InvalidOperationException>(() =>
+            FoundationGameplayEconomicBootstrap.Enable(
+                prepared, Configuration()));
+        Assert.Same(original, prepared.Snapshot);
+        prepared.CancelHumanOrder(
+            Red, original.Workers.Workers.First(w => w.Owner == Red).Id);
+        prepared.SetHumanReady(Red);
+        Assert.Throws<InvalidOperationException>(() =>
+            FoundationGameplayEconomicBootstrap.Enable(
+                prepared, Configuration()));
+        Assert.NotNull(prepared.TryCloseTurn());
+        Assert.Equal(2UL, prepared.NextTurn.Value);
+        Assert.Throws<InvalidOperationException>(() =>
+            FoundationGameplayEconomicBootstrap.Enable(
+                prepared, Configuration()));
+        Assert.False(prepared.Snapshot.Treasury.IsInitialized);
+        Assert.Equal(11U, prepared.StateHash.FormatVersion);
+    }
+
+    [Fact]
     public void BootstrapCannotReinitializeTreasuryOrRepeatAfterTurnStarts()
     {
         var plain = Preview();
