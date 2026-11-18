@@ -223,6 +223,74 @@ public static class FoundationPhysicalMarginalMarketDistributor
     }
 
     /// <summary>
+    /// The marginal solver sees ONE destination per physical (tile, commodity).
+    /// The representative owner is a REAL demand participant, but does not
+    /// partition D, Q, pricing, or the physical route.
+    /// </summary>
+    internal static FoundationPhysicalCommodityDemandLine SharedDemand(
+        FoundationPhysicalCommodityMarketInputs inputs,
+        FoundationPhysicalCommodityMarketDemand market)
+    {
+        var participant = inputs.DemandByCivilization.First(line =>
+            line.Tile == market.Tile && line.Commodity == market.Commodity);
+        return new FoundationPhysicalCommodityDemandLine(
+            market.Tile, participant.Owner, market.Commodity,
+            market.WorkerCount, market.DemandMicro);
+    }
+
+    /// <summary>
+    /// Attribute a single market's already-decided physical shipment to its
+    /// ACTUAL demand participants. Largest remainders conserve exact cargo
+    /// quanta; ownership never enters marginal comparisons or route selection.
+    /// This is not a buyer-wallet allocation or a consumption ceiling.
+    /// </summary>
+    internal static (CivilizationId Owner, ulong GoodsMicro)[] AttributeRealBuyers(
+        FoundationPhysicalCommodityMarketInputs inputs,
+        PhysicalTacticalTileId tile, CommodityId commodity,
+        ulong goodsMicro, ulong quantum)
+    {
+        if (quantum == 0UL || goodsMicro == 0UL ||
+            goodsMicro % quantum != 0UL)
+            throw new InvalidOperationException(
+                "Physical attribution requires positive exact cargo quanta.");
+        var owners = inputs.DemandByCivilization
+            .Where(line => line.Tile == tile && line.Commodity == commodity)
+            .ToArray();
+        if (owners.Length == 0)
+            throw new InvalidOperationException(
+                "A physical destination has no real worker demand.");
+        if (owners.Length == 1)
+            return new[] { (owners[0].Owner, goodsMicro) };
+
+        ulong demand = owners.Aggregate(0UL,
+            (sum, line) => checked(sum + line.DemandMicro));
+        ulong totalQuanta = goodsMicro / quantum;
+        var counts = new ulong[owners.Length];
+        var fractions = new BigInteger[owners.Length];
+        BigInteger allocated = BigInteger.Zero;
+        for (int i = 0; i < owners.Length; i++)
+        {
+            BigInteger fraction = BigInteger.DivRem(
+                new BigInteger(totalQuanta) * owners[i].DemandMicro,
+                demand, out var remainder);
+            counts[i] = checked((ulong)fraction);
+            fractions[i] = remainder;
+            allocated += fraction;
+        }
+        int tail = checked((int)(new BigInteger(totalQuanta) - allocated));
+        foreach (int i in Enumerable.Range(0, owners.Length)
+            .OrderByDescending(i => fractions[i])
+            .ThenBy(i => owners[i].Owner.Value).Take(tail))
+            counts[i] = checked(counts[i] + 1UL);
+        if (counts.Aggregate(BigInteger.Zero, (sum, value) => sum + value) !=
+            totalQuanta)
+            throw new InvalidOperationException(
+                "Buyer attribution lost physical cargo quanta.");
+        return owners.Select((line, i) =>
+            (line.Owner, checked(counts[i] * quantum))).ToArray();
+    }
+
+    /// <summary>
     /// The shared complete real-worker and quote preflight. It intentionally
     /// does NOT solve the sequential marginal market; a global flow optimizer
     /// only needs these validated inputs, not an unused provisional allocation.
@@ -271,6 +339,20 @@ public static class FoundationPhysicalMarginalMarketDistributor
             throw new ArgumentException(
                 "Every real physical demand line needs a scaling quote.",
                 nameof(quotes));
+        foreach (var physical in market.DemandByCivilization
+            .GroupBy(line => (line.Tile, line.Commodity)))
+        {
+            var first = physical.First();
+            ulong common = quoteMap[(first.Tile, first.Owner, first.Commodity)]
+                .QuoteMicroPerWholeCommodityUnit;
+            if (physical.Any(line => quoteMap[
+                (line.Tile, line.Owner, line.Commodity)]
+                .QuoteMicroPerWholeCommodityUnit != common))
+                throw new ArgumentException(
+                    "Civilization-specific reference quotes cannot partition " +
+                    "one shared physical tile/commodity market.",
+                    nameof(quotes));
+        }
 
         return (market, quoteMap);
     }
@@ -300,7 +382,9 @@ public static class FoundationPhysicalMarginalMarketDistributor
         var routes = new Dictionary<
             (PhysicalTacticalTileId Tile, CivilizationId Seller),
             FoundationPhysicalTradeRouteCandidatePlanner.RouteTree>();
-        var delivered = market.DemandByCivilization.ToDictionary(
+        var delivered = market.MarketDemand.ToDictionary(
+            line => (line.Tile, line.Commodity), _ => 0UL);
+        var deliveredByOwner = market.DemandByCivilization.ToDictionary(
             line => (line.Tile, line.Owner, line.Commodity), _ => 0UL);
         var candidates = new List<FoundationPhysicalCommodityDeliveryCandidate>();
 
@@ -325,9 +409,10 @@ public static class FoundationPhysicalMarginalMarketDistributor
                 lot.Commodity, Micro);
             ulong quantum = Micro / Gcd(Micro, cargoPerWholeGood);
             var eligible = new List<Buyer>();
-            foreach (var line in market.DemandByCivilization)
+            foreach (var physical in market.MarketDemand)
             {
-                if (line.Commodity != lot.Commodity) continue;
+                if (physical.Commodity != lot.Commodity) continue;
+                var line = SharedDemand(market, physical);
                 var idx = checked((int)line.Tile.FineStrategicCellId.Value);
                 if (line.Tile.FineGoldbergParameters !=
                         incidence.Refinement.FineParameters ||
@@ -347,7 +432,7 @@ public static class FoundationPhysicalMarginalMarketDistributor
                 eligible.Add(new Buyer(line, quote, tree,
                     new BigInteger(quote.QuoteMicroPerWholeCommodityUnit) *
                         ScoreScale, costScaled,
-                    delivered[(line.Tile, line.Owner, line.Commodity)], quantum));
+                    delivered[(line.Tile, line.Commodity)], quantum));
             }
             ulong[] allocation = DistributeOneLot(
                 eligible, lot.CapacityMicroPerTurn);
@@ -357,17 +442,24 @@ public static class FoundationPhysicalMarginalMarketDistributor
                 ulong quantity = checked(allocation[i] * quantum);
                 if (quantity == 0UL) continue;
                 var buyer = eligible[i];
-                var key = (buyer.Demand.Tile, buyer.Demand.Owner,
-                    buyer.Demand.Commodity);
+                var key = (buyer.Demand.Tile, buyer.Demand.Commodity);
                 delivered[key] = checked(delivered[key] + quantity);
                 var route =
                     FoundationPhysicalTradeRouteCandidatePlanner.Reconstruct(
                         lot.Tile, buyer.Demand.Tile, buyer.Route);
-                var ordinal = checked((ulong)candidates.Count + 1UL);
-                candidates.Add(new FoundationPhysicalCommodityDeliveryCandidate(
-                    ordinal, lot.Owner, lot.Occupation, lot.Tile,
-                    buyer.Demand.Owner, buyer.Demand.Tile, lot.Commodity,
-                    quantity, Array.AsReadOnly(route)));
+                foreach (var share in AttributeRealBuyers(
+                    market, buyer.Demand.Tile, lot.Commodity, quantity, quantum))
+                {
+                    if (share.GoodsMicro == 0UL) continue;
+                    var ownerKey = (buyer.Demand.Tile, share.Owner, lot.Commodity);
+                    deliveredByOwner[ownerKey] = checked(
+                        deliveredByOwner[ownerKey] + share.GoodsMicro);
+                    var ordinal = checked((ulong)candidates.Count + 1UL);
+                    candidates.Add(new FoundationPhysicalCommodityDeliveryCandidate(
+                        ordinal, lot.Owner, lot.Occupation, lot.Tile,
+                        share.Owner, buyer.Demand.Tile, lot.Commodity,
+                        share.GoodsMicro, Array.AsReadOnly(route)));
+                }
             }
         }
 
@@ -380,10 +472,15 @@ public static class FoundationPhysicalMarginalMarketDistributor
             new FoundationPhysicalMarketAllocationTotal(
                 line.Tile, line.Owner, line.Commodity,
                 line.DemandMicro,
-                delivered[(line.Tile, line.Owner, line.Commodity)])).ToArray();
+                deliveredByOwner[(line.Tile, line.Owner, line.Commodity)])).ToArray();
         if (totals.Aggregate(BigInteger.Zero,
                 (sum, line) => sum + line.AllocatedGoodsMicro) !=
-            audit.TotalAllocatedGoodsMicro)
+                audit.TotalAllocatedGoodsMicro ||
+            market.MarketDemand.Any(physical =>
+                delivered[(physical.Tile, physical.Commodity)] !=
+                totals.Where(line => line.Tile == physical.Tile &&
+                    line.Commodity == physical.Commodity).Aggregate(0UL,
+                    (sum, line) => checked(sum + line.AllocatedGoodsMicro))))
             throw new InvalidOperationException(
                 "Market delivery totals lost or duplicated real produced goods.");
 
