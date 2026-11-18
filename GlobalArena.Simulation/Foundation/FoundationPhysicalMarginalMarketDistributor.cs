@@ -223,29 +223,51 @@ public static class FoundationPhysicalMarginalMarketDistributor
     }
 
     /// <summary>
+    /// Index ACTUAL buyer participants once per physical market. Do not scan
+    /// all owner lines again for every producer-market pair: world sizes may
+    /// reach many thousands of tiles and lots.
+    /// </summary>
+    internal static Dictionary<
+        (PhysicalTacticalTileId Tile, CommodityId Commodity),
+        FoundationPhysicalCommodityDemandLine[]> IndexRealBuyers(
+            FoundationPhysicalCommodityMarketInputs inputs)
+    {
+        var index = inputs.DemandByCivilization
+            .GroupBy(line => (line.Tile, line.Commodity))
+            .ToDictionary(group => group.Key, group => group.ToArray());
+        if (index.Count != inputs.MarketDemand.Count)
+            throw new InvalidOperationException(
+                "The physical market index lost a real worker destination.");
+        return index;
+    }
+
+    /// <summary>
     /// The marginal solver sees ONE destination per physical (tile, commodity).
-    /// The representative owner is a REAL demand participant, but does not
-    /// partition D, Q, pricing, or the physical route.
+    /// The representative owner is a REAL participant and never partitions
+    /// D, Q, pricing, or the physical route.
     /// </summary>
     internal static FoundationPhysicalCommodityDemandLine SharedDemand(
-        FoundationPhysicalCommodityMarketInputs inputs,
-        FoundationPhysicalCommodityMarketDemand market)
+        FoundationPhysicalCommodityMarketDemand market,
+        IReadOnlyDictionary<(PhysicalTacticalTileId Tile,
+            CommodityId Commodity), FoundationPhysicalCommodityDemandLine[]>
+            ownersByMarket)
     {
-        var participant = inputs.DemandByCivilization.First(line =>
-            line.Tile == market.Tile && line.Commodity == market.Commodity);
+        var participant = ownersByMarket[(market.Tile, market.Commodity)][0];
         return new FoundationPhysicalCommodityDemandLine(
             market.Tile, participant.Owner, market.Commodity,
             market.WorkerCount, market.DemandMicro);
     }
 
     /// <summary>
-    /// Attribute a single market's already-decided physical shipment to its
-    /// ACTUAL demand participants. Largest remainders conserve exact cargo
-    /// quanta; ownership never enters marginal comparisons or route selection.
-    /// This is not a buyer-wallet allocation or a consumption ceiling.
+    /// Attribute a market's already-decided physical shipment to its ACTUAL
+    /// demand participants. Largest remainders conserve exact cargo quanta;
+    /// buyer ownership never enters marginal price or route comparisons.
+    /// This is neither a buyer wallet nor a consumption ceiling.
     /// </summary>
     internal static (CivilizationId Owner, ulong GoodsMicro)[] AttributeRealBuyers(
-        FoundationPhysicalCommodityMarketInputs inputs,
+        IReadOnlyDictionary<(PhysicalTacticalTileId Tile,
+            CommodityId Commodity), FoundationPhysicalCommodityDemandLine[]>
+            ownersByMarket,
         PhysicalTacticalTileId tile, CommodityId commodity,
         ulong goodsMicro, ulong quantum)
     {
@@ -253,10 +275,8 @@ public static class FoundationPhysicalMarginalMarketDistributor
             goodsMicro % quantum != 0UL)
             throw new InvalidOperationException(
                 "Physical attribution requires positive exact cargo quanta.");
-        var owners = inputs.DemandByCivilization
-            .Where(line => line.Tile == tile && line.Commodity == commodity)
-            .ToArray();
-        if (owners.Length == 0)
+        if (!ownersByMarket.TryGetValue((tile, commodity), out var owners) ||
+            owners.Length == 0)
             throw new InvalidOperationException(
                 "A physical destination has no real worker demand.");
         if (owners.Length == 1)
@@ -270,12 +290,12 @@ public static class FoundationPhysicalMarginalMarketDistributor
         BigInteger allocated = BigInteger.Zero;
         for (int i = 0; i < owners.Length; i++)
         {
-            BigInteger fraction = BigInteger.DivRem(
+            BigInteger count = BigInteger.DivRem(
                 new BigInteger(totalQuanta) * owners[i].DemandMicro,
                 demand, out var remainder);
-            counts[i] = checked((ulong)fraction);
+            counts[i] = checked((ulong)count);
             fractions[i] = remainder;
-            allocated += fraction;
+            allocated += count;
         }
         int tail = checked((int)(new BigInteger(totalQuanta) - allocated));
         foreach (int i in Enumerable.Range(0, owners.Length)
@@ -374,6 +394,7 @@ public static class FoundationPhysicalMarginalMarketDistributor
 
         var (market, quoteMap) = ValidateMarketAndQuotes(
             census, demandPolicy, conversionPolicy, quotes);
+        var ownersByMarket = IndexRealBuyers(market);
 
         var (graph, ownership) =
             FoundationPhysicalTradeRouteCandidatePlanner.BuildGraph(
@@ -412,7 +433,7 @@ public static class FoundationPhysicalMarginalMarketDistributor
             foreach (var physical in market.MarketDemand)
             {
                 if (physical.Commodity != lot.Commodity) continue;
-                var line = SharedDemand(market, physical);
+                var line = SharedDemand(physical, ownersByMarket);
                 var idx = checked((int)line.Tile.FineStrategicCellId.Value);
                 if (line.Tile.FineGoldbergParameters !=
                         incidence.Refinement.FineParameters ||
@@ -448,7 +469,8 @@ public static class FoundationPhysicalMarginalMarketDistributor
                     FoundationPhysicalTradeRouteCandidatePlanner.Reconstruct(
                         lot.Tile, buyer.Demand.Tile, buyer.Route);
                 foreach (var share in AttributeRealBuyers(
-                    market, buyer.Demand.Tile, lot.Commodity, quantity, quantum))
+                    ownersByMarket, buyer.Demand.Tile, lot.Commodity,
+                    quantity, quantum))
                 {
                     if (share.GoodsMicro == 0UL) continue;
                     var ownerKey = (buyer.Demand.Tile, share.Owner, lot.Commodity);
@@ -473,14 +495,17 @@ public static class FoundationPhysicalMarginalMarketDistributor
                 line.Tile, line.Owner, line.Commodity,
                 line.DemandMicro,
                 deliveredByOwner[(line.Tile, line.Owner, line.Commodity)])).ToArray();
+        var attributed = totals
+            .GroupBy(line => (line.Tile, line.Commodity))
+            .ToDictionary(group => group.Key,
+                group => group.Aggregate(0UL, (sum, line) =>
+                    checked(sum + line.AllocatedGoodsMicro)));
         if (totals.Aggregate(BigInteger.Zero,
                 (sum, line) => sum + line.AllocatedGoodsMicro) !=
                 audit.TotalAllocatedGoodsMicro ||
             market.MarketDemand.Any(physical =>
                 delivered[(physical.Tile, physical.Commodity)] !=
-                totals.Where(line => line.Tile == physical.Tile &&
-                    line.Commodity == physical.Commodity).Aggregate(0UL,
-                    (sum, line) => checked(sum + line.AllocatedGoodsMicro))))
+                attributed[(physical.Tile, physical.Commodity)]))
             throw new InvalidOperationException(
                 "Market delivery totals lost or duplicated real produced goods.");
 
