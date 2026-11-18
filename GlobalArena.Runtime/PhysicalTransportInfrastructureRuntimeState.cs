@@ -29,7 +29,8 @@ public sealed record PhysicalTransportEdgeRuntimeRecord(
     ulong FreePhysicalCostMicroPerWholeCargoUnit,
     ulong CargoMicroAtReferenceLoad,
     ulong ExternalTariffMicroPerWholeCargoUnit,
-    ulong? NaturalConstructionLaborMicro = null);
+    ulong? NaturalConstructionLaborMicro = null,
+    ulong? CommittedConstructionLaborMicro = null);
 
 /// <summary>
 /// Complete and immutable, world-seeded physical-transport inventory.
@@ -52,6 +53,12 @@ public sealed class PhysicalTransportInfrastructureRuntimeState
     /// </summary>
     public bool HasNaturalConstructionLabor { get; }
 
+    /// <summary>
+    /// Opt-in v14 immutable, fully populated construction progress ledger.
+    /// Null means old v12/v13, zero is explicitly zero work on a real edge.
+    /// </summary>
+    public bool HasCommittedConstructionLabor { get; }
+
     public IReadOnlyList<PhysicalTransportEdgeRuntimeRecord> Edges { get; }
 
     private PhysicalTransportInfrastructureRuntimeState(
@@ -61,6 +68,9 @@ public sealed class PhysicalTransportInfrastructureRuntimeState
         HasNaturalConstructionLabor = initialized &&
             edges.Length > 0 && edges.All(row =>
                 row.NaturalConstructionLaborMicro.HasValue);
+        HasCommittedConstructionLabor = initialized &&
+            edges.Length > 0 && edges.All(row =>
+                row.CommittedConstructionLaborMicro.HasValue);
         Edges = Array.AsReadOnly(edges);
     }
 
@@ -69,6 +79,11 @@ public sealed class PhysicalTransportInfrastructureRuntimeState
     {
         ArgumentNullException.ThrowIfNull(crossings);
         var records = crossings.ToArray();
+        if (records.Any(row => row?.CommittedConstructionLaborMicro is not null))
+            throw new ArgumentException(
+                "Committed construction progress is NEVER supplied during " +
+                "world seeding; only accepted journal events can record work.",
+                nameof(crossings));
         if (records.Length == 0)
             throw new ArgumentException(
                 "An initialized physical world needs explicit natural or built " +
@@ -111,5 +126,48 @@ public sealed class PhysicalTransportInfrastructureRuntimeState
             a.Edge.FineStrategicEdgeId.Value.CompareTo(
                 b.Edge.FineStrategicEdgeId.Value));
         return new PhysicalTransportInfrastructureRuntimeState(true, records);
+    }
+
+    /// <summary>
+    /// Domain mutation primitive used exclusively by the authoritative
+    /// construction event executor. The executor verifies the actual worker,
+    /// issuer, crossing, turn and per-worker effort before invoking this.
+    /// A first event activates the whole v14 ledger at explicit zero; no
+    /// other crossing, road or owner's title is silently modified.
+    /// </summary>
+    public PhysicalTransportInfrastructureRuntimeState ApplyJournaledWork(
+        PhysicalTacticalEdgeId crossing, ulong creditedLaborMicro)
+    {
+        if (!IsInitialized || !HasNaturalConstructionLabor ||
+            !crossing.IsValid || creditedLaborMicro == 0UL)
+            throw new InvalidOperationException(
+                "Journaled construction requires a v13/v14 world, " +
+                "one real crossing and strictly positive physical work.");
+        var index = -1;
+        for (int i = 0; i < Edges.Count; i++)
+            if (Edges[i].Edge == crossing)
+            {
+                index = i;
+                break;
+            }
+        if (index < 0 || Edges[index].OwnershipKind !=
+                PhysicalTransportOwnershipKind.NoInfrastructure)
+            throw new InvalidOperationException(
+                "Cannot build on a missing or already owned/built crossing.");
+        var target = Edges[index];
+        ulong already = target.CommittedConstructionLaborMicro ?? 0UL;
+        ulong required = target.NaturalConstructionLaborMicro!.Value;
+        if (already >= required || creditedLaborMicro > required - already)
+            throw new InvalidOperationException(
+                "Journaled construction cannot exceed the natural " +
+                "requirement or credit work to an already complete edge.");
+
+        var next = Edges.Select((row, i) => row with
+        {
+            CommittedConstructionLaborMicro = i == index
+                ? checked(already + creditedLaborMicro)
+                : row.CommittedConstructionLaborMicro ?? 0UL
+        }).ToArray();
+        return new PhysicalTransportInfrastructureRuntimeState(true, next);
     }
 }
