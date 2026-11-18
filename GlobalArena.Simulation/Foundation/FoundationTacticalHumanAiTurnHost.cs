@@ -646,6 +646,13 @@ public sealed class FoundationTacticalHumanAiTurnHost
         var turn = NextTurn;
         var orders = _plans.Values.SelectMany(plan => plan.Values)
             .OrderBy(order => order.WorkerId.Value).ToArray();
+        // Monetary orders do not occupy or teleport any worker. Sort by
+        // civilization and real edge for deterministic multi-investor turns.
+        var investments = _investmentPlans.Values
+            .SelectMany(plan => plan.Values)
+            .OrderBy(c => c.Issuer.Value)
+            .ThenBy(c => c.Edge.FineStrategicEdgeId.Value)
+            .ToArray();
         if (orders.Select(order => order.WorkerId).Distinct().Count() != orders.Length)
             throw new InvalidOperationException("Duplicate inter-civilization worker order.");
 
@@ -665,7 +672,13 @@ public sealed class FoundationTacticalHumanAiTurnHost
             (ISimulationCommand)new PhysicalTacticalWorkerMoveCommand(
                 new CommandId(turn, checked((ulong)index + 1UL)),
                 order.Issuer, order.WorkerId, order.Destination,
-                order.Activity, order.NextOccupation)).ToArray();
+                order.Activity, order.NextOccupation))
+            .Concat(investments.Select((order, index) =>
+                (ISimulationCommand)new FoundationMonetaryInfrastructureCommand(
+                    new CommandId(turn,
+                        checked((ulong)(orders.Length + index) + 1UL)),
+                    order.Issuer, order.Edge, order.MoneyMicro)))
+            .ToArray();
         var context = new SimulationContext(turn, new SimulationSeed(712UL));
         var committed = _publisher.ResolveAndCommit(
             new TurnPolicyResolutionGateInput(
@@ -676,29 +689,41 @@ public sealed class FoundationTacticalHumanAiTurnHost
             committed.ResolutionResult is not { } resolved)
             throw new InvalidOperationException(
                 "Canonical tactical turn gate failed to commit.");
-        var events = resolved.Events.Select(ev =>
-            ev as PhysicalTacticalWorkerMovedEvent ??
-                throw new InvalidOperationException(
-                    "Unexpected event in v10 tactical journal."))
-            .ToArray();
-        if (events.Length != commands.Length ||
-            resolved.EventLog.Entries.Count != events.Length ||
+        var events = resolved.Events
+            .OfType<PhysicalTacticalWorkerMovedEvent>().ToArray();
+        var moneyEvents = resolved.Events
+            .OfType<FoundationMonetaryInfrastructureInvestedEvent>().ToArray();
+        if (events.Length != orders.Length ||
+            moneyEvents.Length != investments.Length ||
+            resolved.Events.Count != commands.Length ||
+            resolved.EventLog.Entries.Count != commands.Length ||
             resolved.EventLog.Entries.Any(entry => !entry.WasExecuted))
             throw new InvalidOperationException(
-                "v10 committed event log differs from submitted worker orders.");
+                "Canonical collective journal differs from worker and " +
+                "real monetary investment orders.");
 
-        var replay = new SimulationEventLogReplayer(_executor)
+        ISimulationEventExecutor replayExecutor =
+            _monetaryExecutor is null
+                ? _executor
+                : new FoundationMonetaryCollectiveReplayExecutor(
+                    _executor, _monetaryExecutor);
+        var replay = new SimulationEventLogReplayer(replayExecutor)
             .Replay(new SimulationReplayInput(
                 before, resolved.EventLog, context));
         var hash = _hasher.Compute(Snapshot);
-        if (hash.FormatVersion != _hasher.Compute(before).FormatVersion ||
-            (hash.FormatVersion != 10U && hash.FormatVersion != 11U) ||
+        var previousFormat = _hasher.Compute(before).FormatVersion;
+        if ((hash.FormatVersion != previousFormat &&
+             !(previousFormat == 13U && hash.FormatVersion == 14U)) ||
+            (hash.FormatVersion != 10U && hash.FormatVersion != 11U &&
+             hash.FormatVersion != 13U && hash.FormatVersion != 14U) ||
             _hasher.Compute(replay) != hash)
             throw new InvalidOperationException(
-                "Tactical collective journal replay does not match v10/v11 authority.");
+                "Monetary construction or tactical journal replay does not " +
+                "match the authoritative world hash.");
         var receipt = new FoundationTacticalCollectiveReceipt(
-            turn, hash, Snapshot.Revision, events);
+            turn, hash, Snapshot.Revision, events, moneyEvents);
         foreach (var plan in _plans.Values) plan.Clear();
+        foreach (var plan in _investmentPlans.Values) plan.Clear();
         _ready.Clear();
         _knownSnapshot = Snapshot;
         return receipt;
