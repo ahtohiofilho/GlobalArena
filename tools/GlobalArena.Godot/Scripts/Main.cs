@@ -40,7 +40,26 @@ public partial class Main : Control
     // The ordinary visual checkpoint now uses the fully journaled v10 fine
     // collective host. Legacy v9 Godot smokes stay on their old host.
     private FoundationTacticalHumanAiTurnHost? _tacticalHost;
+    private FoundationGameplayEconomicConfiguration? _configuredEconomicGameplay;
     private readonly CivilizationId _humanCivilization = new(1UL);
+
+    /// <summary>
+    /// TRUSTED pre-scene bootstrap: the session/world owner may supply a
+    /// complete explicitly approved policy pack before Godot _Ready.
+    /// No policy pack -> the historical v11 demonstration remains unchanged.
+    /// No ordinary client ever gets unapproved laboratory tax coefficients.
+    /// </summary>
+    public void ConfigureAuthoritativeEconomicGameplay(
+        FoundationGameplayEconomicConfiguration profile)
+    {
+        ArgumentNullException.ThrowIfNull(profile);
+        if (IsNodeReady() || _tacticalHost is not null ||
+            _configuredEconomicGameplay is not null)
+            throw new InvalidOperationException(
+                "Economic profile must be supplied once by trusted bootstrap, " +
+                "BEFORE scene startup, never in an active collective turn.");
+        _configuredEconomicGameplay = profile;
+    }
     public FoundationTacticalHumanAiTurnHost? ActiveTacticalHost => _tacticalHost;
     public ulong? SelectedTacticalWorkerId => _tacticalHost is null ? null : _selectedLocalWorkerId;
     private OptionButton? _localWorkerSelector;
@@ -512,10 +531,29 @@ public partial class Main : Control
                     "Collective turn not closed: all participants not ready.");
             AttachRuntimeState(host.Snapshot);
             var humanCount = receipt.Events.Count(x => x.Issuer == _humanCivilization);
-            var aiCount = receipt.ExecutedEvents - humanCount;
+            var aiCount = receipt.Events.Count(x =>
+                x.Issuer != _humanCivilization);
             _localOrderStatus.Text =
                 $"Turn {receipt.Turn.Value}: Human {humanCount} + AI {aiCount} " +
                 $"actions | journal replay OK | hash v{receipt.Hash.FormatVersion}";
+            if (receipt.EconomicSettlement is { } settlement)
+            {
+                var view = host.GetLastClosedEconomicTradeView(
+                    _humanCivilization);
+                _localOrderStatus.Text =
+                    $"Turn {receipt.Turn.Value}: economic cycle " +
+                    $"{settlement.EconomicCycleOrdinal} closed | " +
+                    $"{settlement.SoldAndConsumedGoodsMicro}/" +
+                    $"{settlement.ProducedGoodsMicro} goods sold/consumed | " +
+                    $"routes visible {view.UsedEdges.Count} | " +
+                    $"journal replay OK | hash v{receipt.Hash.FormatVersion}";
+                GD.Print($"GA_NEXT_V15_SETTLED_TRADE_READY " +
+                    $"cycle={settlement.EconomicCycleOrdinal} " +
+                    $"visible_edge_count={view.UsedEdges.Count} " +
+                    $"sold_micro={settlement.SoldAndConsumedGoodsMicro} " +
+                    $"produced_micro={settlement.ProducedGoodsMicro} " +
+                    "source=authoritative_journal privacy=participant");
+            }
             GD.Print($"GA_NEXT_FINE_HUMAN_AI_COMMIT turn={receipt.Turn.Value} " +
                 $"human={humanCount} ai={aiCount} " +
                 $"rev={receipt.Revision} replay={receipt.ReplayMatched} " +
@@ -1496,6 +1534,15 @@ public partial class Main : Control
                 "GA_NEXT_TILE_CLICK_MENU_SMOKE") == "1";
             bool workerBoardSmoke = System.Environment.GetEnvironmentVariable(
                 "GA_NEXT_WORKER_BOARD_SMOKE") == "1";
+            bool settledTradeQaSmoke = System.Environment.GetEnvironmentVariable(
+                "GA_NEXT_SETTLED_TRADE_VISUAL_SMOKE") == "1";
+            if (settledTradeQaSmoke &&
+                (legacyV10Smoke || legacyV11Smoke || concentratedSmoke ||
+                 tileClickMenuSmoke || workerBoardSmoke ||
+                 legacyWorkspaceSmoke || _configuredEconomicGameplay is not null))
+                throw new InvalidOperationException(
+                    "Explicit market QA scenario cannot silently replace " +
+                    "another game or test configuration.");
             if (!legacyWorkspaceSmoke)
             {
                 var request = new WorldGenerationRequest(
@@ -1506,7 +1553,16 @@ public partial class Main : Control
                     : legacyV11Smoke
                         ? FoundationTacticalDemoScenario
                             .CreateLocalHumanAiOccupationPreview(request)
-                        : FoundationConcentratedWorkforceScenario.CreatePreview(request);
+                        : FoundationConcentratedWorkforceScenario.CreatePreview(
+                            request, settledTradeQaSmoke ? 3 :
+                                FoundationConcentratedWorkforceScenario
+                                    .DefaultWorkersPerCivilization);
+                if (settledTradeQaSmoke)
+                    _tacticalHost = GaExplicitEconomicQaConfiguration
+                        .Prepare(_tacticalHost);
+                else if (_configuredEconomicGameplay is not null)
+                    _tacticalHost = FoundationGameplayEconomicBootstrap.Enable(
+                        _tacticalHost, _configuredEconomicGameplay);
                 _canonicalSession = _tacticalHost.Session;
                 AttachRuntimeState(_tacticalHost.Snapshot);
             }
@@ -1557,7 +1613,7 @@ public partial class Main : Control
                     "Agriculture/Vegetal/Mining; E commits human + AI together.";
                 GD.Print("GA_NEXT_FINE_VISUAL_BRIDGE_READY " +
                     $"world=v{_tacticalHost.StateHash.FormatVersion} worker_ids={_tacticalHost.Snapshot.Workers.Workers.Count} physical_tiles=G(18,0) " +
-                    "inputs=G/P/X/E gameplay_economy=not_active");
+                    $"inputs=G/P/X/E gameplay_economy={(_tacticalHost.StateHash.FormatVersion >= 13U ? "explicit_v15" : "not_active")}");
             }
             _status!.Text = _tacticalHost is null
                 ? "GA-NEXT / WORKFORCE 01  •  TAB personnel  •  M planetary atlas  •  E collective turn"
@@ -1586,6 +1642,9 @@ public partial class Main : Control
                     this, _tacticalHost, _tacticalPreview!).RunAsync();
             else if (workerBoardSmoke && _tacticalHost is not null)
                 _ = new FoundationGodotWorkerBoardSmoke(
+                    this, _tacticalHost, _tacticalPreview!).RunAsync();
+            else if (settledTradeQaSmoke && _tacticalHost is not null)
+                _ = new FoundationGodotSettledTradeSmoke(
                     this, _tacticalHost, _tacticalPreview!).RunAsync();
         }
 
