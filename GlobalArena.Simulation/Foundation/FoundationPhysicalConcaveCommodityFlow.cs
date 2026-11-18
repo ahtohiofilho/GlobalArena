@@ -236,7 +236,8 @@ internal static class FoundationPhysicalConcaveCommodityFlow
         bool reuseSearchWorkspace = true,
         FoundationPhysicalGlobalFlowCostProfile? profile = null,
         bool useIndexedHeap = true,
-        bool useShiftedLabels = true)
+        bool useShiftedLabels = true,
+        bool useResidualDominanceFastPath = true)
     {
         var setupStart = profile?.Start() ?? default;
         ArgumentNullException.ThrowIfNull(sellers);
@@ -439,19 +440,45 @@ internal static class FoundationPhysicalConcaveCommodityFlow
                         // must remain nonnegative on every traversed arc.
                         // Comparing BEFORE subtracting avoids allocating
                         // an intermediate reduced-cost BigInteger.
-                        BigInteger upper = potential[at] + edge.Cost;
-                        if (upper < potential[edge.To])
-                            throw new InvalidOperationException(
-                                "Residual reduced-cost invariant violated.");
+                        // Cost >= 0 AND potential[from] >= potential[to]
+                        // PROVES the exact reduced cost is nonnegative.
+                        // The guarded fast path avoids constructing the
+                        // often very large temporary BigInteger sum. The
+                        // prior exact check remains the A/B oracle for all
+                        // other cases and when the fast path is disabled.
+                        bool nonnegativeCost = edge.Cost.Sign >= 0;
+                        bool invariantProven = useResidualDominanceFastPath &&
+                            nonnegativeCost &&
+                            potential[at] >= potential[edge.To];
+                        if (!invariantProven)
+                        {
+                            BigInteger upper = potential[at] + edge.Cost;
+                            if (upper < potential[edge.To])
+                                throw new InvalidOperationException(
+                                    "Residual reduced-cost invariant violated.");
+                        }
 
-                        // All candidates for the SAME destination differ
-                        // only by a constant potential[to]. Compare exact
-                        // shifted labels BEFORE computing a reduced queue
-                        // key. Rejected edges need no subtraction at all.
+                        // A nonnegative cost cannot improve a destination
+                        // whose shifted label is already <= that of its
+                        // source. This exact dominance test avoids a second
+                        // per-edge BigInteger sum for the common reject.
+                        // Crucially, the invariant above is still checked
+                        // first for EVERY residual edge with capacity.
+                        BigInteger sourceShifted = shifted![at]!.Value;
+                        BigInteger? targetShifted = shifted[edge.To];
+                        if (useResidualDominanceFastPath &&
+                            nonnegativeCost && targetShifted.HasValue &&
+                            sourceShifted >= targetShifted.Value)
+                            continue;
+
+                        // Addition by zero also needs no BigInteger math.
+                        // Strict comparisons and the indexed-heap keys
+                        // remain exactly equivalent to the old expression.
                         BigInteger shiftedCandidate =
-                            shifted![at]!.Value + edge.Cost;
-                        if (shifted[edge.To].HasValue &&
-                            shiftedCandidate >= shifted[edge.To]!.Value)
+                            useResidualDominanceFastPath && edge.Cost.IsZero
+                                ? sourceShifted : sourceShifted + edge.Cost;
+                        if (targetShifted.HasValue &&
+                            shiftedCandidate >= targetShifted.Value)
                             continue;
                         shifted[edge.To] = shiftedCandidate;
                         candidate = shiftedCandidate - potential[edge.To];
