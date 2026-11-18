@@ -120,7 +120,7 @@ public sealed class FoundationPhysicalLaggedFreightCycleTests
         Assert.True(actual.Count >= 4,
             "Both goods and both civilizations must participate.");
         Assert.Equal(
-            s.Quotes.Select(q => (q.Tile, q.Buyer, q.Commodity,
+            s.Quotes.Select(q => (Tile: q.BuyerTile, q.Buyer, q.Commodity,
                 q.QuoteMicroPerWholeCommodityUnit))
                 .OrderBy(x => x.Commodity.Value)
                 .ThenBy(x => x.Tile.FineStrategicCellId.Value)
