@@ -332,6 +332,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         _selectedTileOutline = new MeshInstance3D { Visible = false };
         _selectedTileOutline.MaterialOverride = MakeCoplanarOverlayMaterial();
         _world.AddChild(_selectedTileOutline);
+        InitializeSettledTradeMesh();
         InitializeWorkerBadges();
 
         _camera = new Camera3D
@@ -1015,6 +1016,9 @@ public partial class TacticalContextPreview : SubViewportContainer
         // Constrain the on-map status to concise navigation data. Full diagnostics stay in GD.Print.
         _information.Text = $"TACTICAL | territory {focusValue} | G(18,0) | {(_equidistant ? "EQUIDISTANT" : "DIRECT")} | frame {_ringCount}";
         RebuildWorkerMarkers();
+        // Same private closed-cycle evidence, reprojected at the new focus
+        // and ring size. No rerun of the economic solver or publication.
+        RebuildSettledTradeMesh();
         // Recompute the presentation-only selection outline after a ring or projection change.
         // A tile outside the new region is deselected rather than inventing an alias.
         SelectPhysicalTile(_selectedFineTileId);
