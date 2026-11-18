@@ -26,6 +26,7 @@ on:
       - 'GlobalArena.Tests/FoundationPhysicalMarginalMarketDistributorTests.cs'
       - 'GlobalArena.Tests/FoundationPhysicalGlobalMarginalCoordinatorTests.cs'
       - 'GlobalArena.Tests/FoundationPhysicalEndogenousCongestionFeedbackTests.cs'
+      - 'GlobalArena.Tests/FoundationPhysicalLaggedFreightCycleTests.cs'
       - 'GlobalArena.Tests/FoundationPhysicalCongestionStabilityScaleTests.cs'
       - 'GlobalArena.Tests/FoundationPhysicalMultiPathFreightPlannerTests.cs'
       - 'GlobalArena.Tests/FoundationPhysicalCoupledMultiPathMarketFeedbackTests.cs'
@@ -120,6 +121,8 @@ jobs:
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalMarginalMarketDistributorTests' --logger 'console;verbosity=normal'
       - name: Coordinated physical marginal global producer rebalancing with exact conservation
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalGlobalMarginalCoordinatorTests' --logger 'console;verbosity=normal'
+      - name: Turn-locked freight pivot — fixed-cost water-filling and next-cycle lagged congestion
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalLaggedFreightCycleTests' --logger 'console;verbosity=normal'
       - name: Endogenous physical edge congestion — shared cargo scale and bounded cost-volume feedback
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalEndogenousCongestionFeedbackTests' --logger 'console;verbosity=normal'
       - name: Adaptive congestion stability and 512 physically distributed producer corridors
