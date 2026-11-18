@@ -1175,6 +1175,163 @@ public sealed class FoundationPhysicalJointAdversarialMarketRouteTests
 
 
     [Fact]
+    public void ResidualNonnegativeDominanceMatchesExactReferenceOnFourGoldbergScales()
+    {
+        // A/B controls only the exact dominance/zero-cost fast path.
+        // Both modes use the same indexed heap and shifted BigInteger
+        // representation and must produce identical physical trade.
+        var sizes = new[]
+        {
+            (Tiles: 112, Frequency: 3, Sellers: 8, Markets: 104),
+            (Tiles: 208, Frequency: 5, Sellers: 16, Markets: 192),
+            (Tiles: 320, Frequency: 6, Sellers: 24, Markets: 288),
+            (Tiles: 416, Frequency: 7, Sellers: 32, Markets: 384)
+        };
+        foreach (var size in sizes)
+        {
+            var scenario = EightCompetingSellersInConnectedGoldbergMarkets(
+                edgeReferenceCargoMicro: 100_000_000UL,
+                worldFrequency: size.Frequency, tileCount: size.Tiles,
+                sellerCount: size.Sellers, marketCount: size.Markets);
+            var hash = scenario.Host.StateHash;
+            var snapshot = scenario.Host.Snapshot;
+            var policy = Demand();
+            var cargo = Cargo();
+
+            (FoundationPhysicalGlobalConcaveFlowPlan Plan, double SearchMs,
+                long SearchBytes, double CompleteMs, long CompleteBytes)
+                Measure(bool dominance)
+            {
+                var profile = new FoundationPhysicalGlobalFlowCostProfile();
+                long beforeBytes = GC.GetAllocatedBytesForCurrentThread();
+                long start = Stopwatch.GetTimestamp();
+                var result = FoundationPhysicalGlobalConcaveFlowPlanner
+                    .CoordinateWithSearchWorkspace(
+                        scenario.Workers, scenario.Host.Incidence,
+                        policy, cargo, scenario.Quotes, scenario.Roads,
+                        segmentsPerAverageMarket: 4,
+                        maxFlowAugmentations: 8192,
+                        reuseSearchWorkspace: true,
+                        profile: profile,
+                        useIndexedHeap: true,
+                        useShiftedLabels: true,
+                        useResidualDominanceFastPath: dominance);
+                double completeMs = Stopwatch.GetElapsedTime(start)
+                    .TotalMilliseconds;
+                long completeBytes = GC.GetAllocatedBytesForCurrentThread() -
+                    beforeBytes;
+                var search = Assert.Single(profile.Stages, stage =>
+                    stage.Phase == "residual-augmenting-search");
+                Assert.True(double.IsFinite(completeMs) && completeMs >= 0);
+                Assert.True(completeBytes >= 0);
+                return (result, search.ElapsedMilliseconds,
+                    search.AllocatedBytesCurrentThread,
+                    completeMs, completeBytes);
+            }
+
+            var old = Measure(dominance: false);
+            var now = Measure(dominance: true);
+            var a = old.Plan;
+            var b = now.Plan;
+
+            Assert.Equal(a.ProductiveLotCount, b.ProductiveLotCount);
+            Assert.Equal(a.RealMarketCount, b.RealMarketCount);
+            Assert.Equal(a.FlowAugmentations, b.FlowAugmentations);
+            Assert.Equal(a.SegmentsPerAverageMarket, b.SegmentsPerAverageMarket);
+            Assert.Equal(a.SegmentedNetPotentialScaled,
+                b.SegmentedNetPotentialScaled);
+            Assert.Equal(a.IntegratedNetPotentialScaled,
+                b.IntegratedNetPotentialScaled);
+            Assert.Equal(a.SegmentationUnderstatementScaled,
+                b.SegmentationUnderstatementScaled);
+            Assert.Equal(a.MarketTotals, b.MarketTotals);
+            Assert.Equal(a.Candidates.Select(x => (
+                    x.DeliveryOrdinal, x.Seller, x.SourceOccupation,
+                    x.SourceTile, x.Buyer, x.BuyerTile, x.Commodity,
+                    x.GoodsMicro, Route: string.Join(",",
+                        x.RouteTiles.Select(t => t.FineStrategicCellId.Value)))),
+                b.Candidates.Select(x => (
+                    x.DeliveryOrdinal, x.Seller, x.SourceOccupation,
+                    x.SourceTile, x.Buyer, x.BuyerTile, x.Commodity,
+                    x.GoodsMicro, Route: string.Join(",",
+                        x.RouteTiles.Select(t => t.FineStrategicCellId.Value)))));
+            Assert.Equal(a.AllocationAudit.DeliveryCount,
+                b.AllocationAudit.DeliveryCount);
+            Assert.Equal(a.AllocationAudit.TotalAvailableGoodsMicro,
+                b.AllocationAudit.TotalAvailableGoodsMicro);
+            Assert.Equal(a.AllocationAudit.TotalAllocatedGoodsMicro,
+                b.AllocationAudit.TotalAllocatedGoodsMicro);
+            Assert.Equal(a.AllocationAudit.Freight.TotalDeliveredCargoMicro,
+                b.AllocationAudit.Freight.TotalDeliveredCargoMicro);
+            Assert.Equal(a.AllocationAudit.Freight.TotalEdgeTraversalCargoMicro,
+                b.AllocationAudit.Freight.TotalEdgeTraversalCargoMicro);
+            Assert.Equal(a.AllocationAudit.Freight.UsedEdges.Select(e =>
+                    (e.Edge, e.TotalCargoMicro)),
+                b.AllocationAudit.Freight.UsedEdges.Select(e =>
+                    (e.Edge, e.TotalCargoMicro)));
+            Assert.Equal(checked((ulong)size.Sellers * 1_000_000UL),
+                b.AllocationAudit.TotalAvailableGoodsMicro);
+            Assert.Equal(b.AllocationAudit.TotalAvailableGoodsMicro,
+                b.AllocationAudit.TotalAllocatedGoodsMicro);
+            Assert.Equal(hash, scenario.Host.StateHash);
+            Assert.Same(snapshot, scenario.Host.Snapshot);
+            Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+                scenario.Host.GetLastClosedEconomicTradeView(Red).Availability);
+            Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+                scenario.Host.GetLastClosedEconomicTradeView(Blue).Availability);
+
+            var report = new
+            {
+                Schema = "ga-next.exact-residual-dominance-ab.v1",
+                Scenario = $"{size.Sellers}-sellers-{size.Markets}-markets",
+                TileCount = size.Tiles,
+                SellerCount = size.Sellers,
+                MarketCount = size.Markets,
+                PhysicalEdgeCount = scenario.Roads.Length,
+                SellerMarketPairsUpperBound =
+                    checked((long)size.Sellers * size.Markets),
+                SegmentsPerAverageMarket = 4,
+                FlowAugmentations = b.FlowAugmentations,
+                TotalAvailableGoodsMicro =
+                    b.AllocationAudit.TotalAvailableGoodsMicro,
+                TotalAllocatedGoodsMicro =
+                    b.AllocationAudit.TotalAllocatedGoodsMicro,
+                ExactlyEquivalent = true,
+                StateHashUnchanged = true,
+                NoClosedCycle = true,
+                EconomicallySettled = false,
+                OriginalResidualSearchMilliseconds = old.SearchMs,
+                DominanceResidualSearchMilliseconds = now.SearchMs,
+                OriginalResidualSearchAllocatedBytes = old.SearchBytes,
+                DominanceResidualSearchAllocatedBytes = now.SearchBytes,
+                OriginalCompleteFlowMilliseconds = old.CompleteMs,
+                DominanceCompleteFlowMilliseconds = now.CompleteMs,
+                OriginalCompleteFlowAllocatedBytes = old.CompleteBytes,
+                DominanceCompleteFlowAllocatedBytes = now.CompleteBytes
+            };
+            _output.WriteLine(
+                $"GA_NEXT_RESIDUAL_DOMINANCE_A_B tiles={size.Tiles} " +
+                $"sellers={size.Sellers} markets={size.Markets} " +
+                $"augmentations={b.FlowAugmentations} " +
+                $"originalSearchMs={old.SearchMs:F3} " +
+                $"dominanceSearchMs={now.SearchMs:F3} " +
+                $"originalSearchBytes={old.SearchBytes} " +
+                $"dominanceSearchBytes={now.SearchBytes}; EXACT");
+            var directory = Environment.GetEnvironmentVariable(
+                "GA_RESIDUAL_DOMINANCE_AB_REPORT_DIR");
+            if (!string.IsNullOrWhiteSpace(directory))
+            {
+                Directory.CreateDirectory(directory);
+                File.WriteAllText(
+                    Path.Combine(directory, $"residual-dominance-{size.Tiles}.json"),
+                    JsonSerializer.Serialize(report,
+                        new JsonSerializerOptions { WriteIndented = true }));
+            }
+        }
+    }
+
+
+    [Fact]
     public void ProgressiveOneProposalBudgetReplaysEightSellers104MarketsLikeFullJointSearch()
     {
         var scenario = EightCompetingSellersInConnectedGoldbergMarkets(
