@@ -136,8 +136,12 @@ public sealed class FoundationPhysicalNaturalTransportSeederTests
             host.Session.GeneratedWorld, host.Incidence, Policy());
         var b = FoundationPhysicalNaturalTransportSeeder.Create(
             host.Session.GeneratedWorld, host.Incidence, Policy());
-        Assert.Equal(a, b);
-        Assert.Equal(a.Transport.Edges, b.Transport.Edges);
+        Assert.Equal(a.LandTileCount, b.LandTileCount);
+        Assert.Equal(a.SeaTileCount, b.SeaTileCount);
+        Assert.Equal(a.LandCrossingCount, b.LandCrossingCount);
+        Assert.Equal(a.CoastCrossingCount, b.CoastCrossingCount);
+        Assert.Equal(a.SeaCrossingCount, b.SeaCrossingCount);
+        Assert.Equal(a.Transport.Edges.ToArray(), b.Transport.Edges.ToArray());
         var worldA = original.DeployInitialPhysicalTransport(
             a.Transport, host.Session.GeneratedWorld, host.Incidence);
         var worldB = original.DeployInitialPhysicalTransport(
