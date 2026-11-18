@@ -132,7 +132,7 @@ public static class FoundationPhysicalGlobalConcaveFlowPlanner
         FoundationPhysicalGlobalFlowCostProfile? profile = null,
         bool useIndexedHeap = true,
         bool useShiftedLabels = true,
-        bool useResidualDominanceFastPath = true)
+        bool useResidualDominanceFastPath = false)
     {
         ArgumentNullException.ThrowIfNull(census);
         ArgumentNullException.ThrowIfNull(incidence);
