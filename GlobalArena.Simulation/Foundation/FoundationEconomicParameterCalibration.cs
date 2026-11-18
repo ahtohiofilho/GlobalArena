@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Text;
+using GlobalArena.Kernel;
 using GlobalArena.Runtime;
 using GlobalArena.World;
 
