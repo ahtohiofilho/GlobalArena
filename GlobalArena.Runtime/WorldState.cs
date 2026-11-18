@@ -32,6 +32,12 @@ public sealed class WorldState
     /// </summary>
     public PhysicalTransportInfrastructureRuntimeState Transport { get; }
 
+    /// <summary>
+    /// Opt-in authoritative money balances, distinct from market proposals.
+    /// Every investment must debit a real pre-existing civilization account.
+    /// </summary>
+    public CivilizationTreasuryRuntimeState Treasury { get; }
+
     public static WorldState CreateInitial()
     {
         return new WorldState(
@@ -89,7 +95,7 @@ public sealed class WorldState
             Economy,
             Population,
             Warfare,
-            Workers, Transport);
+            Workers, Transport, Treasury);
     }
 
     public WorldState WithCivilizations(
@@ -107,7 +113,7 @@ public sealed class WorldState
             Economy,
             Population,
             Warfare,
-            Workers, Transport);
+            Workers, Transport, Treasury);
     }
 
     public WorldState WithTerritory(
@@ -125,7 +131,7 @@ public sealed class WorldState
             Economy,
             Population,
             Warfare,
-            Workers, Transport);
+            Workers, Transport, Treasury);
     }
 
     public WorldState WithDiplomacy(
@@ -143,7 +149,7 @@ public sealed class WorldState
             Economy,
             Population,
             Warfare,
-            Workers, Transport);
+            Workers, Transport, Treasury);
     }
 
     public WorldState WithEconomy(
@@ -161,7 +167,7 @@ public sealed class WorldState
             economy,
             Population,
             Warfare,
-            Workers, Transport);
+            Workers, Transport, Treasury);
     }
 
     /// <summary>
@@ -182,7 +188,7 @@ public sealed class WorldState
             Economy,
             population,
             Warfare,
-            Workers, Transport);
+            Workers, Transport, Treasury);
     }
 
     /// <summary>
@@ -206,7 +212,7 @@ public sealed class WorldState
             economy,
             population,
             Warfare,
-            Workers, Transport);
+            Workers, Transport, Treasury);
     }
 
     private void RejectPopulationDowngrade(PopulationRuntimeState next)
@@ -231,7 +237,7 @@ public sealed class WorldState
             Economy,
             Population,
             warfare,
-            Workers, Transport);
+            Workers, Transport, Treasury);
     }
 
     /// <summary>
@@ -259,7 +265,7 @@ public sealed class WorldState
                 "Changing worker occupation schema requires explicit full-census classification.");
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
-            Economy, Population, Warfare, workers, Transport);
+            Economy, Population, Warfare, workers, Transport, Treasury);
     }
 
     /// <summary>
@@ -316,7 +322,7 @@ public sealed class WorldState
         }
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
-            Economy, Population, Warfare, tacticalWorkers, Transport);
+            Economy, Population, Warfare, tacticalWorkers, Transport, Treasury);
     }
 
     /// <summary>
@@ -358,7 +364,7 @@ public sealed class WorldState
             occupationsAuthoritative: true);
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
-            Economy, Population, Warfare, recategorized, Transport);
+            Economy, Population, Warfare, recategorized, Transport, Treasury);
     }
 
     /// <summary>
@@ -404,7 +410,49 @@ public sealed class WorldState
                 "outside the authoritative civilization roster.");
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
-            Economy, Population, Warfare, Workers, transport);
+            Economy, Population, Warfare, Workers, transport, Treasury);
+    }
+
+    /// <summary>
+    /// One-time complete treasury deployment: every real civilization must
+    /// have an explicitly financed opening account (zero is legitimate).
+    /// This is NOT settlement of a hypothetical sale; an economic journal
+    /// must later supply income before finance can increase organically.
+    /// </summary>
+    public WorldState DeployInitialTreasury(
+        CivilizationTreasuryRuntimeState opening)
+    {
+        ArgumentNullException.ThrowIfNull(opening);
+        if (WorldBinding is null || Treasury.IsInitialized ||
+            !opening.IsInitialized || !Transport.HasMonetaryConstructionCosts ||
+            opening.Accounts.Count != Civilizations.Civilizations.Count ||
+            !opening.Accounts.Select(a => a.Civilization)
+                .SequenceEqual(Civilizations.Civilizations))
+            throw new InvalidOperationException(
+                "Opening treasury requires one explicit account for each " +
+                "civilization in an authoritative monetary world.");
+        return new WorldState(
+            Revision, WorldBinding, Civilizations, Territory, Diplomacy,
+            Economy, Population, Warfare, Workers, Transport, opening);
+    }
+
+    /// <summary>
+    /// Called by the validated monetary investment event executor. Both
+    /// the cash debit and edge capital investment are one immutable change;
+    /// no commodity, labor or buyer inventory is touched.
+    /// </summary>
+    public WorldState RecordMonetaryInfrastructureInvestment(
+        CivilizationId investor, PhysicalTacticalEdgeId edge,
+        ulong moneyMicro)
+    {
+        if (!Treasury.IsInitialized || !Transport.HasMonetaryConstructionCosts)
+            throw new InvalidOperationException(
+                "Investments need authoritative treasury and quoted costs.");
+        var newTransport = Transport.RecordMoneyInvestment(edge, moneyMicro);
+        var newTreasury = Treasury.DebitConstruction(investor, moneyMicro);
+        return new WorldState(
+            Revision, WorldBinding, Civilizations, Territory, Diplomacy,
+            Economy, Population, Warfare, Workers, newTransport, newTreasury);
     }
 
     public WorldState AdvanceRevision()
@@ -418,7 +466,7 @@ public sealed class WorldState
             Economy,
             Population,
             Warfare,
-            Workers, Transport);
+            Workers, Transport, Treasury);
     }
 
     private WorldState(
@@ -431,7 +479,8 @@ public sealed class WorldState
         PopulationRuntimeState population,
         WarfareRuntimeState warfare,
         PhysicalWorkerRuntimeState? workers = null,
-        PhysicalTransportInfrastructureRuntimeState? transport = null)
+        PhysicalTransportInfrastructureRuntimeState? transport = null,
+        CivilizationTreasuryRuntimeState? treasury = null)
     {
         ArgumentNullException.ThrowIfNull(
             civilizations);
@@ -454,6 +503,8 @@ public sealed class WorldState
         var workerState = workers ?? PhysicalWorkerRuntimeState.Uninitialized;
         var transportState = transport ??
             PhysicalTransportInfrastructureRuntimeState.Uninitialized;
+        var treasuryState = treasury ??
+            CivilizationTreasuryRuntimeState.Uninitialized;
 
         ValidateCrossDomainInvariants(
             worldBinding,
@@ -464,7 +515,8 @@ public sealed class WorldState
             population,
             warfare,
             workerState,
-            transportState);
+            transportState,
+            treasuryState);
 
         Revision = revision;
         WorldBinding = worldBinding;
@@ -476,6 +528,7 @@ public sealed class WorldState
         Warfare = warfare;
         Workers = workerState;
         Transport = transportState;
+        Treasury = treasuryState;
     }
 
     private static void ValidateCrossDomainInvariants(
@@ -487,12 +540,39 @@ public sealed class WorldState
         PopulationRuntimeState population,
         WarfareRuntimeState warfare,
         PhysicalWorkerRuntimeState workers,
-        PhysicalTransportInfrastructureRuntimeState transport)
+        PhysicalTransportInfrastructureRuntimeState transport,
+        CivilizationTreasuryRuntimeState treasury)
     {
         var civilizationIds =
             civilizations
                 .Civilizations
                 .ToHashSet();
+
+        if (treasury.IsInitialized)
+        {
+            if (worldBinding is null ||
+                !transport.HasMonetaryConstructionCosts ||
+                treasury.Accounts.Count != civilizationIds.Count ||
+                treasury.Accounts.Any(account =>
+                    !civilizationIds.Contains(account.Civilization) ||
+                    account.CashScaled.Sign < 0 ||
+                    account.TotalInfrastructureInvestmentScaled.Sign < 0))
+                throw new InvalidOperationException(
+                    "Authoritative treasury must match all real civilization " +
+                    "identities, monetary transport and nonnegative money.");
+        }
+        else if (treasury.Accounts.Count != 0)
+            throw new InvalidOperationException(
+                "An uninitialized treasury cannot contain accounts.");
+
+        if (transport.HasCommittedInvestments &&
+            (!treasury.IsInitialized || !transport.HasMonetaryConstructionCosts ||
+             transport.Edges.Any(row =>
+                 row.CommittedInvestmentMoneyMicro!.Value >
+                     row.NaturalConstructionCostMoneyMicro!.Value)))
+            throw new InvalidOperationException(
+                "Committed monetary construction must be fully financed " +
+                "and bounded by its per-edge capital requirement.");
 
         if (worldBinding is not null)
         {

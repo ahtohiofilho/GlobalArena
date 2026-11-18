@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Security.Cryptography;
+using System.Numerics;
 using GlobalArena.Runtime;
 
 namespace GlobalArena.Simulation;
@@ -15,6 +16,11 @@ public sealed class CanonicalWorldStateHasher
     // Only explicitly deployed physical infrastructure uses the v12 wire
     // extension; all old v8-v11 hashes remain byte-for-byte unchanged.
     public const uint PhysicalTransportFormatVersion = 12U;
+    // Monetary capital quotes only: physical workers and materials are
+    // not construction inputs. All v8-v12 bytes are unchanged.
+    public const uint MonetaryConstructionFormatVersion = 13U;
+    // First ACTUAL treasury debit activates canonical v14 edge progress.
+    public const uint MonetaryInvestmentFormatVersion = 14U;
 
     private static readonly byte[] Magic =
     {
@@ -30,8 +36,12 @@ public sealed class CanonicalWorldStateHasher
         ArgumentNullException.ThrowIfNull(
             worldState);
 
-        var version = worldState.Transport.IsInitialized
-            ? PhysicalTransportFormatVersion
+        var version = worldState.Transport.HasCommittedInvestments
+            ? MonetaryInvestmentFormatVersion
+            : worldState.Transport.HasMonetaryConstructionCosts
+                ? MonetaryConstructionFormatVersion
+                : worldState.Transport.IsInitialized
+                    ? PhysicalTransportFormatVersion
             : worldState.Workers.IsInitialized
                 ? worldState.Workers.HasAuthoritativeOccupations
                     ? OccupiedTacticalWorkerFormatVersion
@@ -356,6 +366,44 @@ public sealed class CanonicalWorldStateHasher
             }
         }
 
+        if (version >= MonetaryConstructionFormatVersion)
+        {
+            AppendUInt32(hash, 41U);
+            AppendUInt32(hash, 1U);
+            AppendUInt32(hash, checked((uint)worldState.Transport.Edges.Count));
+            foreach (var edge in worldState.Transport.Edges)
+                AppendUInt64(hash, edge.NaturalConstructionCostMoneyMicro ??
+                    throw new InvalidOperationException(
+                        "A v13 monetary edge has no construction cost."));
+
+            // Treasury may remain UNINITIALIZED while opening balances
+            // are being explicitly deployed; those are not market sales.
+            AppendUInt32(hash, 43U);
+            AppendUInt32(hash, worldState.Treasury.IsInitialized ? 1U : 0U);
+            if (worldState.Treasury.IsInitialized)
+            {
+                AppendUInt32(hash, checked((uint)worldState.Treasury.Accounts.Count));
+                foreach (var account in worldState.Treasury.Accounts)
+                {
+                    AppendUInt64(hash, account.Civilization.Value);
+                    AppendNonnegativeBigInteger(hash, account.CashScaled);
+                    AppendNonnegativeBigInteger(hash,
+                        account.TotalInfrastructureInvestmentScaled);
+                }
+            }
+        }
+
+        if (version >= MonetaryInvestmentFormatVersion)
+        {
+            AppendUInt32(hash, 42U);
+            AppendUInt32(hash, 1U);
+            AppendUInt32(hash, checked((uint)worldState.Transport.Edges.Count));
+            foreach (var edge in worldState.Transport.Edges)
+                AppendUInt64(hash, edge.CommittedInvestmentMoneyMicro ??
+                    throw new InvalidOperationException(
+                        "A v14 monetary investment ledger is incomplete."));
+        }
+
         var digest =
             hash.GetHashAndReset();
 
@@ -363,6 +411,22 @@ public sealed class CanonicalWorldStateHasher
             version,
             Convert.ToHexString(
                 digest));
+    }
+
+    /// <summary>
+    /// Canonical exact-money encoding: unsigned, big-endian, minimal.
+    /// No per-route rounding or arbitrary 64-bit cash ceiling.
+    /// </summary>
+    private static void AppendNonnegativeBigInteger(
+        IncrementalHash hash, BigInteger value)
+    {
+        if (value.Sign < 0)
+            throw new InvalidOperationException(
+                "Negative treasury money cannot be hashed.");
+        byte[] bytes = value.IsZero ? Array.Empty<byte>() :
+            value.ToByteArray(isUnsigned: true, isBigEndian: true);
+        AppendUInt32(hash, checked((uint)bytes.Length));
+        hash.AppendData(bytes);
     }
 
     private static void AppendUInt32(

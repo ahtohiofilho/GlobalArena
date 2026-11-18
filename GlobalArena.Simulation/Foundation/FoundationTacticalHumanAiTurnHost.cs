@@ -78,17 +78,22 @@ public sealed class FoundationTacticalCollectiveReceipt
     public WorldStateHash Hash { get; }
     public ulong Revision { get; }
     public IReadOnlyList<PhysicalTacticalWorkerMovedEvent> Events { get; }
-    public int ExecutedEvents => Events.Count;
+    public IReadOnlyList<FoundationMonetaryInfrastructureInvestedEvent>
+        InfrastructureInvestments { get; }
+    public int ExecutedEvents => Events.Count + InfrastructureInvestments.Count;
     public bool ReplayMatched { get; }
 
     internal FoundationTacticalCollectiveReceipt(
         TurnNumber turn, WorldStateHash hash, ulong revision,
-        PhysicalTacticalWorkerMovedEvent[] events)
+        PhysicalTacticalWorkerMovedEvent[] events,
+        FoundationMonetaryInfrastructureInvestedEvent[]? investments = null)
     {
         Turn = turn;
         Hash = hash;
         Revision = revision;
         Events = Array.AsReadOnly(events);
+        InfrastructureInvestments = Array.AsReadOnly(investments ??
+            Array.Empty<FoundationMonetaryInfrastructureInvestedEvent>());
         ReplayMatched = true;
     }
 }
@@ -108,6 +113,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
     private readonly CanonicalGameSession _session;
     private readonly PhysicalTacticalIncidenceMap _incidence;
     private readonly PhysicalTacticalWorkerMoveEventExecutor _executor;
+    private readonly FoundationMonetaryInfrastructureEventExecutor?
+        _monetaryExecutor;
     private readonly AuthoritativeTurnCommitGate _publisher;
     private readonly CanonicalWorldStateHasher _hasher = new();
     private readonly HashSet<CivilizationId> _humans;
@@ -116,6 +123,9 @@ public sealed class FoundationTacticalHumanAiTurnHost
     private readonly CivilizationId[] _participants;
     private readonly Dictionary<CivilizationId,
         SortedDictionary<ulong, FoundationTacticalWorkerOrder>> _plans;
+    private readonly Dictionary<CivilizationId,
+        SortedDictionary<ulong, FoundationMonetaryInfrastructureCommand>>
+        _investmentPlans;
     private readonly HashSet<CivilizationId> _ready = new();
     private WorldState _knownSnapshot;
     private readonly FoundationEconomicTradeCycleReadBoundary _closedTrade;
@@ -131,7 +141,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
         Array.AsReadOnly(_participants.Where(_ai.ContainsKey).ToArray());
     public IReadOnlyList<CivilizationId> ReadyCivilizations =>
         Array.AsReadOnly(_participants.Where(_ready.Contains).ToArray());
-    public int PendingOrderCount => _plans.Values.Sum(plan => plan.Count);
+    public int PendingOrderCount => _plans.Values.Sum(plan => plan.Count) +
+        _investmentPlans.Values.Sum(plan => plan.Count);
     /// <summary>
     /// Read-only v11 inputs for a future physical market, derived only from
     /// the last COMMITTED worker census. Pending orders cannot change them.
@@ -320,7 +331,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
         CanonicalGameSession session, PhysicalTacticalIncidenceMap incidence,
         IEnumerable<CivilizationId> humanCivilizations,
         IReadOnlyDictionary<CivilizationId, IFoundationTacticalAiTurnPolicy>
-            aiPolicies)
+            aiPolicies,
+        bool enableMonetaryInfrastructure = false)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
         _incidence = incidence ?? throw new ArgumentNullException(nameof(incidence));
@@ -364,6 +376,14 @@ public sealed class FoundationTacticalHumanAiTurnHost
             aiPolicies);
         _plans = _participants.ToDictionary(civ => civ,
             _ => new SortedDictionary<ulong, FoundationTacticalWorkerOrder>());
+        _investmentPlans = _participants.ToDictionary(civ => civ,
+            _ => new SortedDictionary<ulong, FoundationMonetaryInfrastructureCommand>());
+        if (enableMonetaryInfrastructure &&
+            (!Snapshot.Treasury.IsInitialized ||
+             !Snapshot.Transport.HasMonetaryConstructionCosts))
+            throw new InvalidOperationException(
+                "Monetary infrastructure orders require a complete " +
+                "real treasury and v13 capital construction costs.");
         _knownSnapshot = Snapshot;
         _closedTrade = new FoundationEconomicTradeCycleReadBoundary(
             Snapshot.WorldBinding ?? throw new InvalidOperationException(
@@ -371,12 +391,19 @@ public sealed class FoundationTacticalHumanAiTurnHost
             incidence.Refinement.FineParameters, _participants);
         _executor = new PhysicalTacticalWorkerMoveEventExecutor(
             session.GeneratedWorld, incidence);
-        var engine = new PhasedTurnResolutionEngine(
-            new ITurnResolutionPhase[]
-            {
-                new PhysicalTacticalWorkerMovementTurnPhase(
-                    session.GeneratedWorld, incidence)
-            });
+        var phases = new List<ITurnResolutionPhase>
+        {
+            new PhysicalTacticalWorkerMovementTurnPhase(
+                session.GeneratedWorld, incidence)
+        };
+        if (enableMonetaryInfrastructure)
+        {
+            _monetaryExecutor = new FoundationMonetaryInfrastructureEventExecutor(
+                session.GeneratedWorld, incidence);
+            phases.Add(new FoundationMonetaryInfrastructureTurnPhase(
+                session.GeneratedWorld, incidence));
+        }
+        var engine = new PhasedTurnResolutionEngine(phases);
         _publisher = new AuthoritativeTurnCommitGate(
             session, new TurnPolicyResolutionGate(
                 new ManualReadyTurnPolicy(), engine),
@@ -388,6 +415,71 @@ public sealed class FoundationTacticalHumanAiTurnHost
     {
         RequireHuman(requester);
         return Array.AsReadOnly(_plans[requester].Values.ToArray());
+    }
+
+    /// <summary>
+    /// An edge investment is an order of the CIVILIZATION, not a
+    /// construction order of a physical worker. It does not create any
+    /// resource/stock/material consumption. Money remains unchanged
+    /// until the all-ready authoritative turn is accepted.
+    /// </summary>
+    public void QueueHumanMonetaryInvestment(
+        CivilizationId human, PhysicalTacticalEdgeId edge, ulong moneyMicro)
+    {
+        RequireHuman(human);
+        CheckWritable(human);
+        if (_monetaryExecutor is null || !edge.IsValid || moneyMicro == 0UL)
+            throw new InvalidOperationException(
+                "Monetary investment is disabled or has invalid identity/amount.");
+
+        if (_investmentPlans[human].ContainsKey(edge.FineStrategicEdgeId.Value))
+            throw new InvalidOperationException(
+                "A civilization may submit at most one investment per " +
+                "physical edge during the same collective turn.");
+        var physical = Snapshot.Transport.Edges.FirstOrDefault(r =>
+            r.Edge == edge) ??
+            throw new InvalidOperationException(
+                "Investment cannot target an absent fine physical edge.");
+        if (physical.OwnershipKind !=
+                PhysicalTransportOwnershipKind.NoInfrastructure ||
+            physical.NaturalConstructionCostMoneyMicro is not { } cost)
+            throw new InvalidOperationException(
+                "Only a natural crossing with a monetary quote can be financed.");
+
+        ulong already = physical.CommittedInvestmentMoneyMicro ?? 0UL;
+        var pendingEdge = _investmentPlans.Values
+            .SelectMany(p => p.Values)
+            .Where(c => c.Edge == edge)
+            .Aggregate(System.Numerics.BigInteger.Zero,
+                (sum, c) => sum + c.MoneyMicro);
+        if ((System.Numerics.BigInteger)already + pendingEdge + moneyMicro >
+                cost)
+            throw new InvalidOperationException(
+                "Investment cannot exceed the unfinanced capital requirement.");
+
+        var pendingFromCivilization = _investmentPlans[human].Values
+            .Aggregate(System.Numerics.BigInteger.Zero,
+                (sum, c) => sum + GlobalArenaMoneyScale.FromMoneyMicro(c.MoneyMicro));
+        var thisSpend = GlobalArenaMoneyScale.FromMoneyMicro(moneyMicro);
+        if (pendingFromCivilization + thisSpend >
+            Snapshot.Treasury.Get(human).CashScaled)
+            throw new InvalidOperationException(
+                "Insufficient authoritative cash for all pending investments.");
+
+        _investmentPlans[human].Add(edge.FineStrategicEdgeId.Value,
+            new FoundationMonetaryInfrastructureCommand(
+                new CommandId(NextTurn, checked(
+                    (ulong)_investmentPlans[human].Count + 1UL)),
+                human, edge, moneyMicro));
+    }
+
+    public bool CancelHumanMonetaryInvestment(
+        CivilizationId human, PhysicalTacticalEdgeId edge)
+    {
+        RequireHuman(human);
+        CheckWritable(human);
+        return edge.IsValid &&
+            _investmentPlans[human].Remove(edge.FineStrategicEdgeId.Value);
     }
 
     public void QueueHumanMove(CivilizationId human, PhysicalWorkerId id,
@@ -554,6 +646,13 @@ public sealed class FoundationTacticalHumanAiTurnHost
         var turn = NextTurn;
         var orders = _plans.Values.SelectMany(plan => plan.Values)
             .OrderBy(order => order.WorkerId.Value).ToArray();
+        // Monetary orders do not occupy or teleport any worker. Sort by
+        // civilization and real edge for deterministic multi-investor turns.
+        var investments = _investmentPlans.Values
+            .SelectMany(plan => plan.Values)
+            .OrderBy(c => c.Issuer.Value)
+            .ThenBy(c => c.Edge.FineStrategicEdgeId.Value)
+            .ToArray();
         if (orders.Select(order => order.WorkerId).Distinct().Count() != orders.Length)
             throw new InvalidOperationException("Duplicate inter-civilization worker order.");
 
@@ -573,7 +672,13 @@ public sealed class FoundationTacticalHumanAiTurnHost
             (ISimulationCommand)new PhysicalTacticalWorkerMoveCommand(
                 new CommandId(turn, checked((ulong)index + 1UL)),
                 order.Issuer, order.WorkerId, order.Destination,
-                order.Activity, order.NextOccupation)).ToArray();
+                order.Activity, order.NextOccupation))
+            .Concat(investments.Select((order, index) =>
+                (ISimulationCommand)new FoundationMonetaryInfrastructureCommand(
+                    new CommandId(turn,
+                        checked((ulong)(orders.Length + index) + 1UL)),
+                    order.Issuer, order.Edge, order.MoneyMicro)))
+            .ToArray();
         var context = new SimulationContext(turn, new SimulationSeed(712UL));
         var committed = _publisher.ResolveAndCommit(
             new TurnPolicyResolutionGateInput(
@@ -584,29 +689,41 @@ public sealed class FoundationTacticalHumanAiTurnHost
             committed.ResolutionResult is not { } resolved)
             throw new InvalidOperationException(
                 "Canonical tactical turn gate failed to commit.");
-        var events = resolved.Events.Select(ev =>
-            ev as PhysicalTacticalWorkerMovedEvent ??
-                throw new InvalidOperationException(
-                    "Unexpected event in v10 tactical journal."))
-            .ToArray();
-        if (events.Length != commands.Length ||
-            resolved.EventLog.Entries.Count != events.Length ||
+        var events = resolved.Events
+            .OfType<PhysicalTacticalWorkerMovedEvent>().ToArray();
+        var moneyEvents = resolved.Events
+            .OfType<FoundationMonetaryInfrastructureInvestedEvent>().ToArray();
+        if (events.Length != orders.Length ||
+            moneyEvents.Length != investments.Length ||
+            resolved.Events.Count != commands.Length ||
+            resolved.EventLog.Entries.Count != commands.Length ||
             resolved.EventLog.Entries.Any(entry => !entry.WasExecuted))
             throw new InvalidOperationException(
-                "v10 committed event log differs from submitted worker orders.");
+                "Canonical collective journal differs from worker and " +
+                "real monetary investment orders.");
 
-        var replay = new SimulationEventLogReplayer(_executor)
+        ISimulationEventExecutor replayExecutor =
+            _monetaryExecutor is null
+                ? _executor
+                : new FoundationMonetaryCollectiveReplayExecutor(
+                    _executor, _monetaryExecutor);
+        var replay = new SimulationEventLogReplayer(replayExecutor)
             .Replay(new SimulationReplayInput(
                 before, resolved.EventLog, context));
         var hash = _hasher.Compute(Snapshot);
-        if (hash.FormatVersion != _hasher.Compute(before).FormatVersion ||
-            (hash.FormatVersion != 10U && hash.FormatVersion != 11U) ||
+        var previousFormat = _hasher.Compute(before).FormatVersion;
+        if ((hash.FormatVersion != previousFormat &&
+             !(previousFormat == 13U && hash.FormatVersion == 14U)) ||
+            (hash.FormatVersion != 10U && hash.FormatVersion != 11U &&
+             hash.FormatVersion != 13U && hash.FormatVersion != 14U) ||
             _hasher.Compute(replay) != hash)
             throw new InvalidOperationException(
-                "Tactical collective journal replay does not match v10/v11 authority.");
+                "Monetary construction or tactical journal replay does not " +
+                "match the authoritative world hash.");
         var receipt = new FoundationTacticalCollectiveReceipt(
-            turn, hash, Snapshot.Revision, events);
+            turn, hash, Snapshot.Revision, events, moneyEvents);
         foreach (var plan in _plans.Values) plan.Clear();
+        foreach (var plan in _investmentPlans.Values) plan.Clear();
         _ready.Clear();
         _knownSnapshot = Snapshot;
         return receipt;
