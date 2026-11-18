@@ -132,6 +132,27 @@ public static class FoundationPhysicalLaggedFreightCyclePlanner
         // Freeze the actual worker quotes and real physical graph exactly
         // once at the start of the cycle. The costs never change during it.
         var quotes = marketQuotes.ToArray();
+
+        // Product policy: a universal marginal price function, never
+        // an arbitrary civilization/market-specific starting valuation.
+        // D (real weighted workers) and Q (real delivered goods) are the
+        // ONLY market-specific inputs to P0*sqrt(D/Q). Reject inconsistent
+        // quote vectors until the legacy per-market quote input can be
+        // removed from the public planner contract.
+        if (quotes.Length == 0 || quotes[0] is null ||
+            quotes[0].QuoteMicroPerWholeCommodityUnit == 0UL)
+            throw new ArgumentException(
+                "Universal marginal baseline must be positive and defined.",
+                nameof(marketQuotes));
+        ulong universalQuote = quotes[0].QuoteMicroPerWholeCommodityUnit;
+        if (quotes.Any(q => q is null ||
+            q.QuoteMicroPerWholeCommodityUnit != universalQuote))
+            throw new ArgumentException(
+                "Market-specific reference prices contradict the " +
+                "universal commodity/market marginal price function; " +
+                "only real demand and goods quantities may shift prices.",
+                nameof(marketQuotes));
+
         var roads = freeFlowEdges
             .OrderBy(r => r?.Edge.FineStrategicEdgeId.Value ?? 0UL).ToArray();
         FoundationPhysicalTradeRouteCandidatePlanner.BuildGraph(
