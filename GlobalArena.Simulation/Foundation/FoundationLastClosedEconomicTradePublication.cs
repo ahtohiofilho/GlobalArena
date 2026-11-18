@@ -212,11 +212,18 @@ internal sealed class FoundationEconomicTradeCycleReadBoundary
 
             // This is a pure, deterministic O(edges) post-close calculation.
             // No market solve, path search or same-turn cost feedback.
-            var nextFreight = FoundationPhysicalSettledFreightQuoteUpdater
+            var nextPhysicalEdges = FoundationPhysicalSettledFreightQuoteUpdater
                 .FromClosedAudit(artifact.CargoAudit, _fine,
                     freeFlowRoads, carryingScales, comparableCargoUnitCode,
                     artifact.EconomicCycleOrdinal, _nextSettledFreight,
                     smoothingDenominator);
+            // Only this privileged publisher may stamp provenanced quotes.
+            // Preallocate the immutable object before the final atomic
+            // publication so there is no post-commit allocation failure.
+            // It cannot escape to another consumer until publication succeeds.
+            var nextFreight = new FoundationPhysicalLaggedFreightQuoteState(
+                artifact.EconomicCycleOrdinal, nextPhysicalEdges,
+                hasSettledProvenance: true);
 
             // Existing boundary validates canonical world hash, immutable
             // committed snapshot, turn chronology, fine topology, and
