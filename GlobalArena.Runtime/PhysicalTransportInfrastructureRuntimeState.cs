@@ -1,3 +1,4 @@
+using System.Collections;
 using GlobalArena.World;
 
 namespace GlobalArena.Runtime;
@@ -42,20 +43,26 @@ public sealed record PhysicalTransportEdgeRuntimeRecord(
 /// </summary>
 public sealed class PhysicalTransportInfrastructureRuntimeState
 {
+    // A construction event changes one edge. Keep the physical records
+    // immutable and share them across historical states/replay. Only one
+    // 256-entry progress page and a small page-reference table are cloned.
+    // This replaces the former O(all edges) array/record copy per worker.
+    private const int ProgressPageSize = 256;
+
+    private readonly PhysicalTransportEdgeRuntimeRecord[] _physicalEdges;
+    private readonly ulong[]?[]? _constructionPages;
+
     public static PhysicalTransportInfrastructureRuntimeState Uninitialized { get; } =
         new(false, Array.Empty<PhysicalTransportEdgeRuntimeRecord>());
 
     public bool IsInitialized { get; }
 
-    /// <summary>
-    /// Only complete all-edge construction data may promote transport to v13.
-    /// Old v12 inventories remain valid and hash exactly as before.
-    /// </summary>
+    /// <summary>Only a complete edge schema promotes a world to v13.</summary>
     public bool HasNaturalConstructionLabor { get; }
 
     /// <summary>
-    /// Opt-in v14 immutable, fully populated construction progress ledger.
-    /// Null means old v12/v13, zero is explicitly zero work on a real edge.
+    /// The first ACCEPTED worker event opts into v14. The full logical
+    /// ledger reads zero on untouched edges; no zero-filled E-record array.
     /// </summary>
     public bool HasCommittedConstructionLabor { get; }
 
@@ -64,14 +71,66 @@ public sealed class PhysicalTransportInfrastructureRuntimeState
     private PhysicalTransportInfrastructureRuntimeState(
         bool initialized, PhysicalTransportEdgeRuntimeRecord[] edges)
     {
+        _physicalEdges = edges;
         IsInitialized = initialized;
         HasNaturalConstructionLabor = initialized &&
             edges.Length > 0 && edges.All(row =>
                 row.NaturalConstructionLaborMicro.HasValue);
-        HasCommittedConstructionLabor = initialized &&
-            edges.Length > 0 && edges.All(row =>
-                row.CommittedConstructionLaborMicro.HasValue);
+        HasCommittedConstructionLabor = false;
         Edges = Array.AsReadOnly(edges);
+    }
+
+    // Only ApplyJournaledWork can invoke this: the original topology and
+    // physical fields were already validated during the one-time seeding.
+    private PhysicalTransportInfrastructureRuntimeState(
+        PhysicalTransportInfrastructureRuntimeState source,
+        ulong[]?[] pages)
+    {
+        _physicalEdges = source._physicalEdges;
+        _constructionPages = pages;
+        IsInitialized = source.IsInitialized;
+        HasNaturalConstructionLabor = source.HasNaturalConstructionLabor;
+        HasCommittedConstructionLabor = true;
+        Edges = new ProgressedEdgeView(_physicalEdges, pages);
+    }
+
+    private sealed class ProgressedEdgeView :
+        IReadOnlyList<PhysicalTransportEdgeRuntimeRecord>
+    {
+        private readonly PhysicalTransportEdgeRuntimeRecord[] _physical;
+        private readonly ulong[]?[] _pages;
+
+        public ProgressedEdgeView(
+            PhysicalTransportEdgeRuntimeRecord[] physical, ulong[]?[] pages)
+        {
+            _physical = physical;
+            _pages = pages;
+        }
+
+        public int Count => _physical.Length;
+
+        public PhysicalTransportEdgeRuntimeRecord this[int index]
+        {
+            get
+            {
+                var physical = _physical[index]; // checked by array bounds
+                var page = _pages[index / ProgressPageSize];
+                ulong committed = page is null
+                    ? 0UL : page[index % ProgressPageSize];
+                return physical with
+                {
+                    CommittedConstructionLaborMicro = committed
+                };
+            }
+        }
+
+        public IEnumerator<PhysicalTransportEdgeRuntimeRecord> GetEnumerator()
+        {
+            for (int index = 0; index < _physical.Length; index++)
+                yield return this[index];
+        }
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 
     public static PhysicalTransportInfrastructureRuntimeState CreateInitial(
@@ -128,12 +187,49 @@ public sealed class PhysicalTransportInfrastructureRuntimeState
         return new PhysicalTransportInfrastructureRuntimeState(true, records);
     }
 
+    // Canonical IDs are sorted by the already validated one-time initializer.
+    // Lookup of one physical edge therefore costs O(log E), not O(E).
+    private int FindCanonicalEdgeIndex(PhysicalTacticalEdgeId crossing)
+    {
+        if (!crossing.IsValid || _physicalEdges.Length == 0 ||
+            crossing.FineGoldbergParameters !=
+                _physicalEdges[0].Edge.FineGoldbergParameters)
+            return -1;
+
+        ulong wanted = crossing.FineStrategicEdgeId.Value;
+        int left = 0, right = _physicalEdges.Length - 1;
+        while (left <= right)
+        {
+            int middle = left + (right - left) / 2;
+            ulong current = _physicalEdges[middle].Edge.FineStrategicEdgeId.Value;
+            if (current == wanted) return middle;
+            if (current < wanted) left = middle + 1;
+            else right = middle - 1;
+        }
+        return -1;
+    }
+
     /// <summary>
-    /// Domain mutation primitive used exclusively by the authoritative
-    /// construction event executor. The executor verifies the actual worker,
-    /// issuer, crossing, turn and per-worker effort before invoking this.
-    /// A first event activates the whole v14 ledger at explicit zero; no
-    /// other crossing, road or owner's title is silently modified.
+    /// Read-only indexed crossing lookup, preserving the v12/v13/v14
+    /// logical record projection. No phantom edge or implicit zero tariff.
+    /// </summary>
+    public bool TryGetEdge(PhysicalTacticalEdgeId crossing,
+        out PhysicalTransportEdgeRuntimeRecord? record)
+    {
+        int index = FindCanonicalEdgeIndex(crossing);
+        if (index < 0)
+        {
+            record = null;
+            return false;
+        }
+        record = Edges[index];
+        return true;
+    }
+
+    /// <summary>
+    /// Domain primitive used only after validation by the real-worker event
+    /// executor. A first event activates v14 without physically copying
+    /// every crossing. Existing snapshots retain immutable old progress.
     /// </summary>
     public PhysicalTransportInfrastructureRuntimeState ApplyJournaledWork(
         PhysicalTacticalEdgeId crossing, ulong creditedLaborMicro)
@@ -143,31 +239,36 @@ public sealed class PhysicalTransportInfrastructureRuntimeState
             throw new InvalidOperationException(
                 "Journaled construction requires a v13/v14 world, " +
                 "one real crossing and strictly positive physical work.");
-        var index = -1;
-        for (int i = 0; i < Edges.Count; i++)
-            if (Edges[i].Edge == crossing)
-            {
-                index = i;
-                break;
-            }
-        if (index < 0 || Edges[index].OwnershipKind !=
+
+        int index = FindCanonicalEdgeIndex(crossing);
+        if (index < 0 || _physicalEdges[index].OwnershipKind !=
                 PhysicalTransportOwnershipKind.NoInfrastructure)
             throw new InvalidOperationException(
                 "Cannot build on a missing or already owned/built crossing.");
-        var target = Edges[index];
-        ulong already = target.CommittedConstructionLaborMicro ?? 0UL;
+
+        var target = _physicalEdges[index];
+        int pageIndex = index / ProgressPageSize;
+        int offset = index % ProgressPageSize;
+        ulong already = _constructionPages?[pageIndex] is { } stored
+            ? stored[offset] : 0UL;
         ulong required = target.NaturalConstructionLaborMicro!.Value;
         if (already >= required || creditedLaborMicro > required - already)
             throw new InvalidOperationException(
                 "Journaled construction cannot exceed the natural " +
                 "requirement or credit work to an already complete edge.");
 
-        var next = Edges.Select((row, i) => row with
-        {
-            CommittedConstructionLaborMicro = i == index
-                ? checked(already + creditedLaborMicro)
-                : row.CommittedConstructionLaborMicro ?? 0UL
-        }).ToArray();
-        return new PhysicalTransportInfrastructureRuntimeState(true, next);
+        // Clone one shallow outer page directory and exactly one data page.
+        // No canonical physical row or unrelated progress page is mutated.
+        var nextPages = _constructionPages is null
+            ? new ulong[]?[( _physicalEdges.Length + ProgressPageSize - 1) /
+                ProgressPageSize]
+            : (ulong[]?[])_constructionPages.Clone();
+        var previousPage = nextPages[pageIndex];
+        var changedPage = previousPage is null
+            ? new ulong[ProgressPageSize]
+            : (ulong[])previousPage.Clone();
+        changedPage[offset] = checked(already + creditedLaborMicro);
+        nextPages[pageIndex] = changedPage;
+        return new PhysicalTransportInfrastructureRuntimeState(this, nextPages);
     }
 }
