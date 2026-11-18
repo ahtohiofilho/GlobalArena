@@ -12,6 +12,9 @@ public sealed class CanonicalWorldStateHasher
     public const uint PhysicalWorkerFormatVersion = 9U;
     public const uint TacticalWorkerFormatVersion = 10U;
     public const uint OccupiedTacticalWorkerFormatVersion = 11U;
+    // Only explicitly deployed physical infrastructure uses the v12 wire
+    // extension; all old v8-v11 hashes remain byte-for-byte unchanged.
+    public const uint PhysicalTransportFormatVersion = 12U;
 
     private static readonly byte[] Magic =
     {
@@ -27,12 +30,14 @@ public sealed class CanonicalWorldStateHasher
         ArgumentNullException.ThrowIfNull(
             worldState);
 
-        var version = worldState.Workers.IsInitialized
-            ? worldState.Workers.HasAuthoritativeOccupations
-                ? OccupiedTacticalWorkerFormatVersion
-                : worldState.Workers.HasAuthoritativeTacticalLocations
-                    ? TacticalWorkerFormatVersion : PhysicalWorkerFormatVersion
-            : FormatVersion;
+        var version = worldState.Transport.IsInitialized
+            ? PhysicalTransportFormatVersion
+            : worldState.Workers.IsInitialized
+                ? worldState.Workers.HasAuthoritativeOccupations
+                    ? OccupiedTacticalWorkerFormatVersion
+                    : worldState.Workers.HasAuthoritativeTacticalLocations
+                        ? TacticalWorkerFormatVersion : PhysicalWorkerFormatVersion
+                : FormatVersion;
 
         using var hash =
             IncrementalHash.CreateHash(
@@ -319,10 +324,35 @@ public sealed class CanonicalWorldStateHasher
                 // v11 explicitly adds a productive occupation code per
                 // individual AFTER the v10 qualified fine geometry.
                 // All old v8/v9/v10 byte streams remain unchanged.
-                if (version == OccupiedTacticalWorkerFormatVersion)
+                if (version >= OccupiedTacticalWorkerFormatVersion)
                     AppendUInt32(hash, (uint)(worker.Occupation ??
                         throw new InvalidOperationException(
                             "v11 worker has no authoritative productive occupation.")));
+            }
+        }
+
+        // v12 transport data are canonical world facts, NOT preview quotes.
+        // Include every crossing, natural base cost, cargo capacity, owner
+        // and tariff. No freight surcharge or proposed market Q is hashed.
+        if (worldState.Transport.IsInitialized)
+        {
+            AppendUInt32(hash, 40U);
+            AppendUInt32(hash, 1U);
+            AppendUInt32(hash, checked((uint)worldState.Transport.Edges.Count));
+            foreach (var road in worldState.Transport.Edges)
+            {
+                AppendUInt32(hash, checked(
+                    (uint)road.Edge.FineGoldbergParameters.M));
+                AppendUInt32(hash, checked(
+                    (uint)road.Edge.FineGoldbergParameters.N));
+                AppendUInt64(hash, road.Edge.FineStrategicEdgeId.Value);
+                AppendUInt32(hash, (uint)road.OwnershipKind);
+                AppendUInt32(hash, road.InfrastructureOwner.HasValue ? 1U : 0U);
+                if (road.InfrastructureOwner.HasValue)
+                    AppendUInt64(hash, road.InfrastructureOwner.Value.Value);
+                AppendUInt64(hash, road.FreePhysicalCostMicroPerWholeCargoUnit);
+                AppendUInt64(hash, road.CargoMicroAtReferenceLoad);
+                AppendUInt64(hash, road.ExternalTariffMicroPerWholeCargoUnit);
             }
         }
 
