@@ -237,7 +237,7 @@ internal static class FoundationPhysicalConcaveCommodityFlow
         FoundationPhysicalGlobalFlowCostProfile? profile = null,
         bool useIndexedHeap = true,
         bool useShiftedLabels = true,
-        bool useResidualDominanceFastPath = true)
+        bool useResidualDominanceFastPath = false)
     {
         var setupStart = profile?.Start() ?? default;
         ArgumentNullException.ThrowIfNull(sellers);
