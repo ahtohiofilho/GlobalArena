@@ -32,6 +32,7 @@ on:
       - 'GlobalArena.Tests/FoundationPhysicalNaturalTransportSeederTests.cs'
       - 'GlobalArena.Tests/FoundationPhysicalAltitudeCostSeparationTests.cs'
       - 'GlobalArena.Tests/FoundationPhysicalConstructionWorkProposalTests.cs'
+      - 'GlobalArena.Tests/FoundationPhysicalConstructionCommittedTurnTests.cs'
       - 'GlobalArena.Runtime/PhysicalTransportInfrastructureRuntimeState.cs'
       - 'GlobalArena.Tests/FoundationPhysicalCongestionStabilityScaleTests.cs'
       - 'GlobalArena.Tests/FoundationPhysicalMultiPathFreightPlannerTests.cs'
@@ -137,6 +138,8 @@ jobs:
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalAltitudeCostSeparationTests' --logger 'console;verbosity=normal'
       - name: Real worker construction precommit — exact per-edge labor, owner, eligibility and demand conservation
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalConstructionWorkProposalTests' --logger 'console;verbosity=normal'
+      - name: Journaled v14 construction — real worker turn, cumulative edge labor, hash and exact replay
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalConstructionCommittedTurnTests' --logger 'console;verbosity=normal'
 
 
       - name: Turn-locked freight pivot — fixed-cost water-filling and next-cycle lagged congestion
