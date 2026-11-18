@@ -19,6 +19,8 @@ public enum PhysicalTransportOwnershipKind : uint
 /// reference cargo capacity are explicit, never inferred from a missing edge.
 /// Cargo units and toll money are the same fixed-point units as the physical
 /// turn-locked freight coordinator. No market price is stored here.
+/// V13 optionally records explicit NATURAL construction labor per crossing;
+/// v12 callers leave it null to preserve the exact former wire format.
 /// </summary>
 public sealed record PhysicalTransportEdgeRuntimeRecord(
     PhysicalTacticalEdgeId Edge,
@@ -26,7 +28,8 @@ public sealed record PhysicalTransportEdgeRuntimeRecord(
     CivilizationId? InfrastructureOwner,
     ulong FreePhysicalCostMicroPerWholeCargoUnit,
     ulong CargoMicroAtReferenceLoad,
-    ulong ExternalTariffMicroPerWholeCargoUnit);
+    ulong ExternalTariffMicroPerWholeCargoUnit,
+    ulong? NaturalConstructionLaborMicro = null);
 
 /// <summary>
 /// Complete and immutable, world-seeded physical-transport inventory.
@@ -43,12 +46,21 @@ public sealed class PhysicalTransportInfrastructureRuntimeState
 
     public bool IsInitialized { get; }
 
+    /// <summary>
+    /// Only complete all-edge construction data may promote transport to v13.
+    /// Old v12 inventories remain valid and hash exactly as before.
+    /// </summary>
+    public bool HasNaturalConstructionLabor { get; }
+
     public IReadOnlyList<PhysicalTransportEdgeRuntimeRecord> Edges { get; }
 
     private PhysicalTransportInfrastructureRuntimeState(
         bool initialized, PhysicalTransportEdgeRuntimeRecord[] edges)
     {
         IsInitialized = initialized;
+        HasNaturalConstructionLabor = initialized &&
+            edges.Length > 0 && edges.All(row =>
+                row.NaturalConstructionLaborMicro.HasValue);
         Edges = Array.AsReadOnly(edges);
     }
 
@@ -61,6 +73,15 @@ public sealed class PhysicalTransportInfrastructureRuntimeState
             throw new ArgumentException(
                 "An initialized physical world needs explicit natural or built " +
                 "transport evidence for every fine crossing.", nameof(crossings));
+
+        bool anyConstruction = records.Any(row =>
+            row?.NaturalConstructionLaborMicro.HasValue == true);
+        if (anyConstruction && records.Any(row =>
+                row?.NaturalConstructionLaborMicro is not > 0UL))
+            throw new ArgumentException(
+                "V13 natural construction labor must be explicitly positive " +
+                "on EVERY fine crossing. Mixed v12/v13 records are invalid.",
+                nameof(crossings));
 
         var seen = new HashSet<PhysicalTacticalEdgeId>();
         GoldbergParameters? fine = null;
