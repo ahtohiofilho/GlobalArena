@@ -148,6 +148,106 @@ internal sealed class FoundationEconomicTradeCycleReadBoundary
     }
 
     /// <summary>
+    /// New v15 authoritative read-only publication. Invoked ONLY after
+    /// all-ready commit AND an independent recomputed event replay passed.
+    /// Each participant's edge volumes are calculated exclusively from
+    /// sales it actually bought or sold, not the GLOBAL cargo audit. This
+    /// avoids leaking unrelated routes or global edge-volume totals.
+    ///
+    /// No new rules for exploration, surveillance, geography or diplomatic
+    /// intelligence are inferred by this basic private trade entitlement.
+    /// </summary>
+    internal void PublishVerifiedParticipantSettlement(
+        FoundationEconomicSalesSettledEvent settled,
+        WorldState committedSnapshot, TurnNumber nextWorkerTurn)
+    {
+        ArgumentNullException.ThrowIfNull(settled);
+        ArgumentNullException.ThrowIfNull(committedSnapshot);
+        var audited = settled.AuditedParticipantEdges;
+        if (settled.Id.OriginKind != EventOriginKind.System ||
+            settled.Id.SystemPhaseId !=
+                FoundationAuthoritativeEconomicSalesSettlementPhase.StablePhaseId ||
+            settled.Id.Turn.Value == 0UL ||
+            settled.Id.Turn.Value >= nextWorkerTurn.Value ||
+            settled.EconomicCycleOrdinal == 0UL ||
+            committedSnapshot.WorldBinding != _binding ||
+            committedSnapshot.Treasury.LastSettledEconomicCycleOrdinal !=
+                settled.EconomicCycleOrdinal ||
+            committedSnapshot.Treasury.LastSettledCargoUnitCode !=
+                settled.CargoUnitCode ||
+            committedSnapshot.Revision <= settled.ExpectedWorldRevision ||
+            !committedSnapshot.Workers.HasAuthoritativeOccupations ||
+            audited is null ||
+            audited.Count != _participants.Count ||
+            audited.Keys.Any(civ => !_participants.Contains(civ)))
+            throw new InvalidOperationException(
+                "Participant trade publication requires the actual just-" +
+                "committed v15 market, correct world and complete privacy.");
+
+        var hash = new CanonicalWorldStateHasher().Compute(committedSnapshot);
+        if (hash.FormatVersion !=
+            CanonicalWorldStateHasher.ClosedEconomicCycleFormatVersion)
+            throw new InvalidOperationException(
+                "No participant route may be exposed from an uncommitted market.");
+
+        // Materialize every private presentation view BEFORE the atomic
+        // dictionary switch. Global volume/used-edge counts never enter
+        // individual view metadata.
+        var next = new Dictionary<CivilizationId,
+            FoundationLastClosedEconomicTradeView>(_participants.Count);
+        var validEdges = committedSnapshot.Transport.Edges
+            .ToDictionary(e => e.Edge);
+        foreach (var civ in _participants.OrderBy(c => c.Value))
+        {
+            if (!audited.TryGetValue(civ, out var visible) ||
+                visible is null)
+                throw new InvalidOperationException(
+                    "A participating civilization has no authorized trade view.");
+            var localIds = new HashSet<PhysicalTacticalEdgeId>();
+            foreach (var line in visible)
+            {
+                if (line is null || line.TotalCargoMicro == 0UL ||
+                    !localIds.Add(line.Edge) ||
+                    !validEdges.TryGetValue(line.Edge, out var actual) ||
+                    line.Edge.FineGoldbergParameters != _fine ||
+                    line.FirstTile.FineGoldbergParameters != _fine ||
+                    line.SecondTile.FineGoldbergParameters != _fine ||
+                    line.Owner != actual.InfrastructureOwner ||
+                    line.ByCommodity.Aggregate(0UL, (sum, item) =>
+                        checked(sum + item.CargoMicro)) != line.TotalCargoMicro)
+                    throw new InvalidOperationException(
+                        "Participant route must reference a real, positive " +
+                        "owned crossing without duplicates or invented load.");
+            }
+
+            // "AuthorizedSubset" is deliberately always used: even when
+            // a participant happens to see every used edge, the UI must
+            // not reveal whether unseen global trade exists elsewhere.
+            next.Add(civ, new FoundationLastClosedEconomicTradeView(
+                FoundationEconomicTradeOverlayAvailability.AuthorizedSubset,
+                _binding, _fine, settled.EconomicCycleOrdinal,
+                settled.Id.Turn, committedSnapshot.Revision, hash,
+                settled.CargoUnitCode, visible));
+        }
+
+        lock (_sync)
+        {
+            if (settled.EconomicCycleOrdinal !=
+                    checked(_lastCycleOrdinal + 1UL))
+                throw new InvalidOperationException(
+                    "Visible economic history must be consecutive: " +
+                    "reject duplicate or stale trade publications.");
+            _last = next;
+            _lastCycleOrdinal = settled.EconomicCycleOrdinal;
+            // v15 has its OWN authoritative quote memory in the
+            // WorldState treasury. Do not synthesize legacy quote state.
+            // This field only services the older independent publisher.
+            _nextSettledFreight = null;
+            _settledFreightCargoUnitCode = null;
+        }
+    }
+
+    /// <summary>
     /// Privileged kernel-only input for the NEXT economic turn. Returns
     /// null exactly when no economic cycle has ever closed. Rejects a
     /// published history whose freight was NOT registered atomically;
