@@ -436,49 +436,48 @@ internal static class FoundationPhysicalConcaveCommodityFlow
                     BigInteger candidate;
                     if (useShiftedLabels)
                     {
-                        // reducedCost=cost+potential[from]-potential[to]
-                        // must remain nonnegative on every traversed arc.
-                        // Comparing BEFORE subtracting avoids allocating
-                        // an intermediate reduced-cost BigInteger.
-                        // Cost >= 0 AND potential[from] >= potential[to]
-                        // PROVES the exact reduced cost is nonnegative.
-                        // The guarded fast path avoids constructing the
-                        // often very large temporary BigInteger sum. The
-                        // prior exact check remains the A/B oracle for all
-                        // other cases and when the fast path is disabled.
-                        bool nonnegativeCost = edge.Cost.Sign >= 0;
-                        bool invariantProven = useResidualDominanceFastPath &&
-                            nonnegativeCost &&
-                            potential[at] >= potential[edge.To];
-                        if (!invariantProven)
+                        BigInteger shiftedCandidate;
+                        if (useResidualDominanceFastPath)
                         {
+                            // Provably exact: c>=0 && p[u]>=p[v]
+                            // implies nonnegative reduced cost WITHOUT a
+                            // BigInteger addition. All other arcs receive
+                            // the original exact invariant check.
+                            bool nonnegativeCost = edge.Cost.Sign >= 0;
+                            if (!nonnegativeCost ||
+                                potential[at] < potential[edge.To])
+                            {
+                                BigInteger upper =
+                                    potential[at] + edge.Cost;
+                                if (upper < potential[edge.To])
+                                    throw new InvalidOperationException(
+                                        "Residual reduced-cost invariant violated.");
+                            }
+
+                            // Exact dominance: if c>=0 and h[u]>=h[v],
+                            // then h[u]+c cannot strictly improve h[v].
+                            BigInteger sourceShifted = shifted![at]!.Value;
+                            if (nonnegativeCost &&
+                                shifted[edge.To].HasValue &&
+                                sourceShifted >= shifted[edge.To]!.Value)
+                                continue;
+                            shiftedCandidate = edge.Cost.IsZero
+                                ? sourceShifted : sourceShifted + edge.Cost;
+                        }
+                        else
+                        {
+                            // Gate21 production oracle: preserve its exact
+                            // BigInteger operations, including invariant
+                            // validation, without extra dominance checks.
                             BigInteger upper = potential[at] + edge.Cost;
                             if (upper < potential[edge.To])
                                 throw new InvalidOperationException(
                                     "Residual reduced-cost invariant violated.");
+                            shiftedCandidate =
+                                shifted![at]!.Value + edge.Cost;
                         }
-
-                        // A nonnegative cost cannot improve a destination
-                        // whose shifted label is already <= that of its
-                        // source. This exact dominance test avoids a second
-                        // per-edge BigInteger sum for the common reject.
-                        // Crucially, the invariant above is still checked
-                        // first for EVERY residual edge with capacity.
-                        BigInteger sourceShifted = shifted![at]!.Value;
-                        BigInteger? targetShifted = shifted[edge.To];
-                        if (useResidualDominanceFastPath &&
-                            nonnegativeCost && targetShifted.HasValue &&
-                            sourceShifted >= targetShifted.Value)
-                            continue;
-
-                        // Addition by zero also needs no BigInteger math.
-                        // Strict comparisons and the indexed-heap keys
-                        // remain exactly equivalent to the old expression.
-                        BigInteger shiftedCandidate =
-                            useResidualDominanceFastPath && edge.Cost.IsZero
-                                ? sourceShifted : sourceShifted + edge.Cost;
-                        if (targetShifted.HasValue &&
-                            shiftedCandidate >= targetShifted.Value)
+                        if (shifted![edge.To].HasValue &&
+                            shiftedCandidate >= shifted[edge.To]!.Value)
                             continue;
                         shifted[edge.To] = shiftedCandidate;
                         candidate = shiftedCandidate - potential[edge.To];
