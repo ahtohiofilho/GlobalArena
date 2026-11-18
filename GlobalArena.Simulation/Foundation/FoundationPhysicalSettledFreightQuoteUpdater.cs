@@ -13,7 +13,7 @@ namespace GlobalArena.Simulation.Foundation;
 /// </summary>
 internal static class FoundationPhysicalSettledFreightQuoteUpdater
 {
-    internal static FoundationPhysicalLaggedFreightQuoteState FromClosedAudit(
+    internal static FoundationPhysicalLaggedFreightEdgeState[] FromClosedAudit(
         FoundationPhysicalTradeEdgeLoadAudit audit,
         GoldbergParameters fine,
         IEnumerable<FoundationPhysicalRoutingEdgeCost> freeFlowRoads,
@@ -140,7 +140,9 @@ internal static class FoundationPhysicalSettledFreightQuoteUpdater
                 road.Edge, baseCost, reference, nextSurcharge);
         }
 
-        return new FoundationPhysicalLaggedFreightQuoteState(
-            economicCycleOrdinal, next, hasSettledProvenance: true);
+        // Never mint an authoritative/provenance marker here. This pure
+        // numeric function returns only physical edge costs. The trusted
+        // publication boundary alone can stamp settled provenance.
+        return next;
     }
 }
