@@ -150,6 +150,8 @@ public static class FoundationPhysicalGlobalMarginalCoordinator
             census, incidence, demandPolicy, conversionPolicy,
             quoteList, costList);
         var inputs = initial.AllocationAudit.MarketInputs;
+        var ownersByMarket = FoundationPhysicalMarginalMarketDistributor
+            .IndexRealBuyers(inputs);
         var marketKeys = inputs.MarketDemand
             .Select(line => (line.Tile, line.Commodity))
             .ToArray();
@@ -211,7 +213,7 @@ public static class FoundationPhysicalGlobalMarginalCoordinator
             {
                 if (physical.Commodity != lot.Commodity) continue;
                 var line = FoundationPhysicalMarginalMarketDistributor
-                    .SharedDemand(inputs, physical);
+                    .SharedDemand(physical, ownersByMarket);
                 var target = checked((int)line.Tile.FineStrategicCellId.Value);
                 if (target < 1 || target > fineCount ||
                     line.Tile.FineGoldbergParameters !=
@@ -341,7 +343,7 @@ public static class FoundationPhysicalGlobalMarginalCoordinator
                 var route = FoundationPhysicalTradeRouteCandidatePlanner.Reconstruct(
                     source.Lot.Tile, buyer.Demand.Tile, buyer.Route);
                 foreach (var share in FoundationPhysicalMarginalMarketDistributor
-                    .AttributeRealBuyers(inputs, buyer.Demand.Tile,
+                    .AttributeRealBuyers(ownersByMarket, buyer.Demand.Tile,
                         source.Lot.Commodity,
                         checked(quanta * source.CargoQuantum),
                         source.CargoQuantum))
@@ -377,12 +379,15 @@ public static class FoundationPhysicalGlobalMarginalCoordinator
             audit.TotalAllocatedGoodsMicro)
             throw new InvalidOperationException(
                 "Globally adjusted market totals do not reconcile to physical sales.");
+        var attributed = final
+            .GroupBy(line => (line.Tile, line.Commodity))
+            .ToDictionary(group => group.Key,
+                group => group.Aggregate(0UL, (sum, line) =>
+                    checked(sum + line.AllocatedGoodsMicro)));
         if (marketKeys.Length != global.Count ||
             inputs.MarketDemand.Any(market =>
                 global[(market.Tile, market.Commodity)] !=
-                final.Where(line => line.Tile == market.Tile &&
-                    line.Commodity == market.Commodity).Aggregate(0UL,
-                    (sum, line) => checked(sum + line.AllocatedGoodsMicro))))
+                attributed[(market.Tile, market.Commodity)]))
             throw new InvalidOperationException(
                 "A physical market disappeared or its owner attributions " +
                 "failed to conserve the shared delivered quantity.");
