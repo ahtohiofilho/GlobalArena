@@ -35,6 +35,8 @@ on:
       - 'GlobalArena.Tests/FoundationMonetaryInfrastructureInvestmentTests.cs'
       - 'GlobalArena.Tests/FoundationAuthoritativeEconomicSalesSettlementTests.cs'
       - 'GlobalArena.Tests/FoundationGameplayEconomicBootstrapTests.cs'
+      - 'GlobalArena.Tests/FoundationEconomicParameterCalibrationTests.cs'
+      - 'GlobalArena.Simulation/Foundation/FoundationEconomicParameterCalibration.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationGameplayEconomicBootstrap.cs'
       - 'GlobalArena.Runtime/AuthoritativeEconomicSettlementVisibility.cs'
       - 'GlobalArena.Tests/FoundationPhysicalCongestionStabilityScaleTests.cs'
@@ -143,6 +145,8 @@ jobs:
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationAuthoritativeEconomicSalesSettlementTests' --logger 'console;verbosity=normal'
       - name: Explicit monetary economic startup — no QA defaults, complete policy, real v15 sales
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationGameplayEconomicBootstrapTests' --logger 'console;verbosity=normal'
+      - name: Economic policy calibration — exact same-world A/B tax, demand, cargo, capex with zero commits
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationEconomicParameterCalibrationTests' --logger 'console;verbosity=normal'
 
 
       - name: Turn-locked freight pivot — fixed-cost water-filling and next-cycle lagged congestion
