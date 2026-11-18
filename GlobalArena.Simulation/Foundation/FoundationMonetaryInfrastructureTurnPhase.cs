@@ -176,13 +176,16 @@ public sealed class FoundationMonetaryCollectiveReplayExecutor
 {
     private readonly PhysicalTacticalWorkerMoveEventExecutor _workers;
     private readonly FoundationMonetaryInfrastructureEventExecutor _money;
+    private readonly FoundationEconomicSalesSettlementEventExecutor? _sales;
 
     public FoundationMonetaryCollectiveReplayExecutor(
         PhysicalTacticalWorkerMoveEventExecutor workers,
-        FoundationMonetaryInfrastructureEventExecutor money)
+        FoundationMonetaryInfrastructureEventExecutor money,
+        FoundationEconomicSalesSettlementEventExecutor? sales = null)
     {
         _workers = workers ?? throw new ArgumentNullException(nameof(workers));
         _money = money ?? throw new ArgumentNullException(nameof(money));
+        _sales = sales;
     }
 
     public WorldState Execute(WorldState state,
@@ -191,6 +194,8 @@ public sealed class FoundationMonetaryCollectiveReplayExecutor
         PhysicalTacticalWorkerMovedEvent => _workers.Execute(state, ev, context),
         FoundationMonetaryInfrastructureInvestedEvent =>
             _money.Execute(state, ev, context),
+        FoundationEconomicSalesSettledEvent when _sales is not null =>
+            _sales.Execute(state, ev, context),
         _ => throw new InvalidOperationException(
             "Unrecognized monetary/worker journal event.")
     };
