@@ -18,6 +18,9 @@ public sealed class CanonicalWorldStateHasher
     // Opt-in natural construction effort. The v12 byte stream is unchanged
     // when the new all-edge labor schema has not been deployed.
     public const uint EdgeNaturalConstructionFormatVersion = 13U;
+    // v14 is activated ONLY by an accepted journaled construction event;
+    // no v13/v12 bytes change until committed labor actually exists.
+    public const uint EdgeCommittedConstructionFormatVersion = 14U;
 
     private static readonly byte[] Magic =
     {
@@ -33,8 +36,10 @@ public sealed class CanonicalWorldStateHasher
         ArgumentNullException.ThrowIfNull(
             worldState);
 
-        var version = worldState.Transport.HasNaturalConstructionLabor
-            ? EdgeNaturalConstructionFormatVersion
+        var version = worldState.Transport.HasCommittedConstructionLabor
+            ? EdgeCommittedConstructionFormatVersion
+            : worldState.Transport.HasNaturalConstructionLabor
+                ? EdgeNaturalConstructionFormatVersion
             : worldState.Transport.IsInitialized
                 ? PhysicalTransportFormatVersion
             : worldState.Workers.IsInitialized
@@ -372,6 +377,17 @@ public sealed class CanonicalWorldStateHasher
                 AppendUInt64(hash, edge.NaturalConstructionLaborMicro ??
                     throw new InvalidOperationException(
                         "V13 physical construction is incomplete."));
+        }
+
+        if (version >= EdgeCommittedConstructionFormatVersion)
+        {
+            AppendUInt32(hash, 42U);
+            AppendUInt32(hash, 1U);
+            AppendUInt32(hash, checked((uint)worldState.Transport.Edges.Count));
+            foreach (var crossing in worldState.Transport.Edges)
+                AppendUInt64(hash, crossing.CommittedConstructionLaborMicro ??
+                    throw new InvalidOperationException(
+                        "Committed v14 construction ledger is incomplete."));
         }
 
         var digest =
