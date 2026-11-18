@@ -188,14 +188,23 @@ public sealed class FoundationPhysicalLaggedFreightCycleTests
         Assert.Equal(original.NextCycleQuotes.Edges,
             generated.NextCycleQuotes.Edges);
 
-        // Even when prior freight surcharge changes the fixed quote, each
-        // turn resolves once at that quote; it never loops to settle current
-        // freight and current congestion simultaneously.
+        // The gameplay-facing entry must NEVER accept the previous
+        // provisional quote as though it came from a settled cycle.
+        Assert.False(generated.NextCycleQuotes.HasSettledProvenance);
+        Assert.Throws<InvalidOperationException>(() =>
+            FoundationPhysicalLaggedFreightCyclePlanner
+                .CoordinateUniversalCandidate(s.Workers, s.Host.Incidence,
+                    Demand(), Cargo(), s.Roads, s.Scales,
+                    previousClosedCycleQuotes: generated.NextCycleQuotes));
+
+        // Historical research A/B can still run successive previews through
+        // the explicit lab entry, without claiming economic settlement.
         var next = FoundationPhysicalLaggedFreightCyclePlanner
-            .CoordinateUniversalCandidate(s.Workers, s.Host.Incidence,
-                Demand(), Cargo(), s.Roads, s.Scales,
+            .CoordinateCandidate(s.Workers, s.Host.Incidence,
+                Demand(), Cargo(), s.Quotes, s.Roads, s.Scales,
                 previousClosedCycleQuotes: generated.NextCycleQuotes);
         Assert.False(next.RepricedWithinCycle);
+        Assert.False(next.NextCycleQuotes.HasSettledProvenance);
         Assert.Equal(generated.EdgeReadings[0]
             .DampedNextPhysicalQuoteMicroPerWholeCargoUnit,
             next.FixedCycleEdges[0].PhysicalCostMicroPerWholeCargoUnit);
