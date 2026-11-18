@@ -65,6 +65,13 @@ public static class FoundationGameplayEconomicBootstrap
         ArgumentNullException.ThrowIfNull(config);
         var current = prepared.Snapshot;
         var participants = current.Civilizations.Civilizations;
+        if (prepared.NextTurn.Value != 1UL ||
+            prepared.PendingOrderCount != 0 ||
+            prepared.ReadyCivilizations.Count != 0)
+            throw new InvalidOperationException(
+                "An explicit economy can be bootstrapped only before the " +
+                "FIRST real collective turn, never after any order or " +
+                "closed worker-only turn.");
         if (!current.Workers.HasAuthoritativeOccupations ||
             current.Transport.IsInitialized || current.Treasury.IsInitialized ||
             current.Treasury.HasClosedEconomicCycle ||
