@@ -61,7 +61,8 @@ internal static class FoundationPhysicalSettledFreightQuoteUpdater
                 !Enum.IsDefined(road.OwnershipKind) ||
                 (road.OwnershipKind == FoundationInfrastructureOwnershipKind.Owned
                     ? road.InfrastructureOwner is not { IsValid: true }
-                    : road.InfrastructureOwner.HasValue) ||
+                    : road.InfrastructureOwner.HasValue ||
+                      road.ExternalTariffMicroPerWholeCargoUnit != 0UL) ||
                 !byRoad.TryAdd(road.Edge, road))
                 throw new ArgumentException(
                     "Each physical road needs one real fine edge, positive " +
