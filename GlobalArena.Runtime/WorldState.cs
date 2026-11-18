@@ -369,17 +369,21 @@ public sealed class WorldState
     /// </summary>
     public WorldState DeployInitialPhysicalTransport(
         PhysicalTransportInfrastructureRuntimeState transport,
+        WorldGenerationResult generatedWorld,
         PhysicalTacticalIncidenceMap incidence)
     {
         ArgumentNullException.ThrowIfNull(transport);
+        ArgumentNullException.ThrowIfNull(generatedWorld);
         ArgumentNullException.ThrowIfNull(incidence);
         if (WorldBinding is null || !Workers.HasAuthoritativeOccupations ||
             Transport.IsInitialized || !transport.IsInitialized)
             throw new InvalidOperationException(
                 "Physical transport deployment requires an unmodified " +
                 "bound v11 worker world and an explicit initialized inventory.");
-        if (incidence.Refinement.CoarseParameters.StrategicCellCount !=
-                WorldBinding.StrategicCellCount ||
+        if (WorldBinding != RuntimeWorldBinding.FromGeneratedWorld(
+                generatedWorld) ||
+            incidence.Refinement.CoarseParameters !=
+                generatedWorld.Request.StrategicParameters ||
             transport.Edges.Count != incidence.FineTopology.Edges.Count)
             throw new InvalidOperationException(
                 "Complete transport must match all and only the bound " +
