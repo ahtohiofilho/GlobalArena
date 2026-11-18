@@ -68,6 +68,17 @@ public sealed class PhysicalTransportInfrastructureRuntimeState
 
     public IReadOnlyList<PhysicalTransportEdgeRuntimeRecord> Edges { get; }
 
+    // Internal regression hooks: prove an event shares the immutable fine
+    // geometry and allocates only the touched progress pages. No caller
+    // can use these to modify authoritative records or worker locations.
+    internal bool SharesCanonicalPhysicalStorageWith(
+        PhysicalTransportInfrastructureRuntimeState other) =>
+        other is not null && ReferenceEquals(
+            _physicalEdges, other._physicalEdges);
+
+    internal int AllocatedConstructionPageCount =>
+        _constructionPages?.Count(page => page is not null) ?? 0;
+
     private PhysicalTransportInfrastructureRuntimeState(
         bool initialized, PhysicalTransportEdgeRuntimeRecord[] edges)
     {
