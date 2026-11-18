@@ -13,13 +13,13 @@ No Dijkstra de custo reduzido, sejam `c = cost(u,v)`, `p[u]` e `p[v]` os potenci
 - `p[u] + c >= p[v]` (custo reduzido não negativo);
 - `h[u] + c < h[v]` para atualizar o destinatário.
 
-O caminho **opt-in interno**, ativado por padrão neste Gate, usa provas de dominância seguras:
+O caminho **experimental e opt-in interno**, DESATIVADO por padrão após os resultados de CI do Gate, usa provas de dominância seguras:
 
 1. Se `c >= 0` e `p[u] >= p[v]`, a invariante `p[u] + c >= p[v]` já está provada apenas por comparação, sem somar `BigInteger`. Em qualquer outro caso, executa a mesma soma e verificação da referência; **nenhuma aresta positiva deixa de ter a invariante validada**.
 2. Depois de validar, se `c >= 0` e o destinatário já tem rótulo `h[v]` tal que `h[u] >= h[v]`, então `h[u] + c >= h[v]`; o destino não pode melhorar. Não se calcula a soma do candidato nem se altera a fila.
 3. Se `c = 0`, o candidato é exatamente `h[u]` sem soma BigInteger. Nas outras situações não dominadas, mantém-se a soma e comparação BigInteger exatas anteriores.
 
-Nenhum número é convertido a `Int128`, `double` ou moeda arredondada. Potencial, prioridade `(BigInteger, nodeId)`, condição de empate estrito, arestas reversas negativas, segmentos de consumo, conservação física, orçamento de augmentations e auditoria continuam inalterados. O caminho anterior é disponibilizado apenas aos testes com `useResidualDominanceFastPath:false`; a API pública não muda.
+Nenhum número é convertido a `Int128`, `double` ou moeda arredondada. Potencial, prioridade `(BigInteger, nodeId)`, condição de empate estrito, arestas reversas negativas, segmentos de consumo, conservação física, orçamento de augmentations e auditoria continuam inalterados. O caminho anterior permanece como **padrão** com `useResidualDominanceFastPath:false`; a variante só é ativada explicitamente pela pesquisa com `true`. A API pública não muda.
 
 ## Certificação A/B
 
@@ -40,4 +40,4 @@ A CI Ubuntu/Windows arquiva quatro JSON por runner no schema `ga-next.exact-resi
 
 ## Critério de decisão
 
-Um A/B perfeito garante correção, não melhoria de performance. Uma regressão de tempo ou de alocações gerenciadas deve ser relatada como tal; o caminho original pode ser restaurado como padrão sem perder o oráculo. Não se extrapolará escala de 416 tiles /384 mercados para milhares de nós, e não haverá simplificação artificial de demanda, tarifas ou preço. **Governança:** manter Draft, sem alterações na `main`.
+Um A/B perfeito garante correção, não melhoria de performance. **Resultado do Gate 22:** a variante experimental reduziu alocações gerenciadas entre 3,42% e 4,98% em todas as quatro escalas, mas regrediu na busca residual em 384 mercados **4,00% no Ubuntu e 15,82% no Windows** nas amostras únicas de CI. Diante disso, o caminho anterior permaneceu como **padrão**, sem perder a alternativa opt-in para futuros experimentos. Não se extrapolará escala de 416 tiles /384 mercados para milhares de nós, e não haverá simplificação artificial de demanda, tarifas ou preço. **Governança:** manter Draft, sem alterações na `main`.
