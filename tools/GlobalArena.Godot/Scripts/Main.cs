@@ -1323,6 +1323,7 @@ public partial class Main : Control
         rightLayout.AddChild(_tacticalTileEdges);
         _tacticalSettledTradeRoutes = new CheckBox
         {
+            Name = "GANextSettledTradeRoutesToggle",
             Text = "LAST SETTLED TRADE ROUTES",
             ButtonPressed = true,
             Visible = false
