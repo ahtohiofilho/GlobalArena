@@ -52,6 +52,39 @@ public sealed class FoundationNaturalTransportSeedingPolicy
 }
 
 /// <summary>
+/// Explicit MONETARY capital cost for constructing natural infrastructure.
+/// No material inventory, worker allocation or resource consumption exists.
+/// For terrestrial crossings, elevation delta produces a quadratic surcharge.
+/// All numbers are money MICRO-units (1e-6 money), never labor units.
+/// </summary>
+public sealed class FoundationMonetaryConstructionPolicy
+{
+    public ulong LandBaseCostMoneyMicro { get; }
+    public ulong CoastBaseCostMoneyMicro { get; }
+    public ulong SeaBaseCostMoneyMicro { get; }
+    public ulong LandHeightSquaredCostMoneyMicro { get; }
+
+    public FoundationMonetaryConstructionPolicy(
+        ulong landBaseCostMoneyMicro,
+        ulong coastBaseCostMoneyMicro,
+        ulong seaBaseCostMoneyMicro,
+        ulong landHeightSquaredCostMoneyMicro)
+    {
+        if (landBaseCostMoneyMicro == 0UL ||
+            coastBaseCostMoneyMicro == 0UL ||
+            seaBaseCostMoneyMicro == 0UL)
+            throw new ArgumentOutOfRangeException(
+                nameof(landBaseCostMoneyMicro),
+                "Physical infrastructure needs explicitly positive monetary " +
+                "costs. The quadratic surcharge may be zero.");
+        LandBaseCostMoneyMicro = landBaseCostMoneyMicro;
+        CoastBaseCostMoneyMicro = coastBaseCostMoneyMicro;
+        SeaBaseCostMoneyMicro = seaBaseCostMoneyMicro;
+        LandHeightSquaredCostMoneyMicro = landHeightSquaredCostMoneyMicro;
+    }
+}
+
+/// <summary>
 /// Inspectable seed evidence. Classification is based on an interpolated,
 /// coarse-derived fine elevation, not a falsely claimed independent tactical
 /// altitude field. The inventory is still UNCOMMITTED until WorldState
@@ -73,10 +106,35 @@ public sealed record FoundationNaturalTransportSeedEvidence(
 /// </summary>
 public static class FoundationPhysicalNaturalTransportSeeder
 {
+    /// <summary>
+    /// Existing v12 natural transport path, preserved byte-for-byte.
+    /// </summary>
     public static FoundationNaturalTransportSeedEvidence Create(
         WorldGenerationResult generatedWorld,
         PhysicalTacticalIncidenceMap incidence,
-        FoundationNaturalTransportSeedingPolicy policy)
+        FoundationNaturalTransportSeedingPolicy policy) =>
+        CreateCore(generatedWorld, incidence, policy, null);
+
+    /// <summary>
+    /// Opt-in v13: independently seed physical operating friction and
+    /// MONEY required to invest in a natural crossing. No labor ledger.
+    /// </summary>
+    public static FoundationNaturalTransportSeedEvidence Create(
+        WorldGenerationResult generatedWorld,
+        PhysicalTacticalIncidenceMap incidence,
+        FoundationNaturalTransportSeedingPolicy operatingPolicy,
+        FoundationMonetaryConstructionPolicy monetaryPolicy)
+    {
+        ArgumentNullException.ThrowIfNull(monetaryPolicy);
+        return CreateCore(generatedWorld, incidence,
+            operatingPolicy, monetaryPolicy);
+    }
+
+    private static FoundationNaturalTransportSeedEvidence CreateCore(
+        WorldGenerationResult generatedWorld,
+        PhysicalTacticalIncidenceMap incidence,
+        FoundationNaturalTransportSeedingPolicy policy,
+        FoundationMonetaryConstructionPolicy? monetaryPolicy)
     {
         ArgumentNullException.ThrowIfNull(generatedWorld);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -125,6 +183,7 @@ public static class FoundationPhysicalNaturalTransportSeeder
             bool firstLand = isLand[a], secondLand = isLand[b];
             FoundationNaturalTransportCostBand band;
             ulong cost;
+            ulong? constructionMoney = null;
             if (firstLand && secondLand)
             {
                 landCrossings++;
@@ -133,27 +192,40 @@ public static class FoundationPhysicalNaturalTransportSeeder
                 // demand. UInt128 protects even large explicit slope policies.
                 Int128 delta = (Int128)fineElevation[a] - fineElevation[b];
                 if (delta < 0) delta = -delta;
-                UInt128 slope = (UInt128)policy.LandSlopeCostMicroPerNormalizedElevation *
-                    (UInt128)delta / (UInt128)StrategicScalarField.Denominator;
+                UInt128 scale = (UInt128)StrategicScalarField.Denominator;
+                UInt128 heightDelta = (UInt128)delta;
+                UInt128 operating = (UInt128)policy.LandSlopeCostMicroPerNormalizedElevation *
+                    heightDelta / scale;
                 cost = checked((ulong)((UInt128)band.FreePhysicalCostMicroPerWholeCargoUnit +
-                    slope));
+                    operating));
+                if (monetaryPolicy is not null)
+                {
+                    UInt128 construction = (UInt128)monetaryPolicy.LandHeightSquaredCostMoneyMicro *
+                        heightDelta * heightDelta / (scale * scale);
+                    constructionMoney = checked((ulong)(
+                        (UInt128)monetaryPolicy.LandBaseCostMoneyMicro +
+                        construction));
+                }
             }
             else if (firstLand || secondLand)
             {
                 coastCrossings++;
                 band = policy.Coast;
                 cost = band.FreePhysicalCostMicroPerWholeCargoUnit;
+                constructionMoney = monetaryPolicy?.CoastBaseCostMoneyMicro;
             }
             else
             {
                 seaCrossings++;
                 band = policy.Sea;
                 cost = band.FreePhysicalCostMicroPerWholeCargoUnit;
+                constructionMoney = monetaryPolicy?.SeaBaseCostMoneyMicro;
             }
             rows[i] = new PhysicalTransportEdgeRuntimeRecord(
                 new PhysicalTacticalEdgeId(fine, edge.Id),
                 PhysicalTransportOwnershipKind.NoInfrastructure,
-                null, cost, band.CargoMicroAtReferenceLoad, 0UL);
+                null, cost, band.CargoMicroAtReferenceLoad, 0UL,
+                constructionMoney);
         }
         if (landCrossings + coastCrossings + seaCrossings != rows.Length)
             throw new InvalidOperationException(
