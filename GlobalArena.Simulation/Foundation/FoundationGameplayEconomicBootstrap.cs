@@ -97,8 +97,7 @@ public static class FoundationGameplayEconomicBootstrap
         return new FoundationTacticalHumanAiTurnHost(
             prepared.Session, prepared.Incidence,
             prepared.HumanCivilizations,
-            prepared.AiCivilizations.ToDictionary(c => c,
-                c => prepared.GetAiPolicy(c)),
+            prepared.SnapshotAiPoliciesForBootstrap(),
             enableMonetaryInfrastructure: true,
             settlementPolicy: config.Settlement);
     }
