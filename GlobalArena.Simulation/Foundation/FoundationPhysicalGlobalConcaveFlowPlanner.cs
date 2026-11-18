@@ -131,7 +131,8 @@ public static class FoundationPhysicalGlobalConcaveFlowPlanner
         bool useSequentialSeedReference = false,
         FoundationPhysicalGlobalFlowCostProfile? profile = null,
         bool useIndexedHeap = true,
-        bool useShiftedLabels = true)
+        bool useShiftedLabels = true,
+        bool useResidualDominanceFastPath = true)
     {
         ArgumentNullException.ThrowIfNull(census);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -273,7 +274,7 @@ public static class FoundationPhysicalGlobalConcaveFlowPlanner
             var flow = FoundationPhysicalConcaveCommodityFlow.Solve(
                 sources, buyers, quantum, segmentsPerAverageMarket, remaining,
                 reuseSearchWorkspace, profile, useIndexedHeap,
-                useShiftedLabels);
+                useShiftedLabels, useResidualDominanceFastPath);
             augmentations = checked(augmentations + flow.Augmentations);
             piecewisePotential += flow.SegmentedNetPotentialScaled;
             integratedPotential += flow.IntegratedNetPotentialScaled;
