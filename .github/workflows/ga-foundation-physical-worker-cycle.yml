@@ -45,6 +45,7 @@ on:
       - 'scripts/GA-Next-Global-Internal-Scaling-Report.ps1'
       - 'scripts/GA-Next-Indexed-Residual-Heap-AB-Report.ps1'
       - 'scripts/GA-Next-Shifted-Residual-Labels-AB-Report.ps1'
+      - 'scripts/GA-Next-Residual-Dominance-AB-Report.ps1'
       - 'GlobalArena.Simulation/Foundation/FoundationConcentratedWorkforceScenario.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationWorkforceActivityGroups.cs'
       - 'GlobalArena.Tests/StrategicPhysicalWorkerInspectorTests.cs'
@@ -204,6 +205,22 @@ jobs:
         with:
           name: ga-next-shifted-residual-labels-${{ matrix.os }}
           path: ${{ runner.temp }}/ga-next-shifted-residual-labels/shifted-labels-*.json
+          if-no-files-found: error
+      - name: Exact A/B nonnegative residual dominance vs reference across four Goldberg sizes and 240-bit costs
+        env:
+          GA_RESIDUAL_DOMINANCE_AB_REPORT_DIR: ${{ runner.temp }}/ga-next-residual-dominance
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~ResidualDominanceMatchesShiftedReferenceOn240BitFreightAndAllHeapModes|FullyQualifiedName~ResidualNonnegativeDominanceMatchesExactReferenceOnFourGoldbergScales' --logger 'console;verbosity=normal'
+      - name: Validate four exact residual dominance A/B reports
+        shell: pwsh
+        env:
+          GA_RESIDUAL_DOMINANCE_AB_REPORT_DIR: ${{ runner.temp }}/ga-next-residual-dominance
+        run: |
+          & ./scripts/GA-Next-Residual-Dominance-AB-Report.ps1 -ReportDirectory $env:GA_RESIDUAL_DOMINANCE_AB_REPORT_DIR
+      - name: Archive full residual dominance A/B evidence on both systems
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-next-residual-dominance-${{ matrix.os }}
+          path: ${{ runner.temp }}/ga-next-residual-dominance/residual-dominance-*.json
           if-no-files-found: error
       - name: Progressive market route anytime proposals — exact bounded continuation and 104 real markets
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalProgressiveMarketRouteTests|FullyQualifiedName~ProgressiveOneProposalBudgetReplaysEightSellers104MarketsLikeFullJointSearch|FullyQualifiedName~ProgressiveRepriceOf104RealMarketsRetainsAuditedFreightAndRebasesOneProposal' --logger 'console;verbosity=normal'

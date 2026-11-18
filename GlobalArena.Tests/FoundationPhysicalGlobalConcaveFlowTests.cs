@@ -223,6 +223,97 @@ public sealed class FoundationPhysicalGlobalConcaveFlowTests
     }
 
     [Fact]
+    public void ResidualDominanceMatchesShiftedReferenceOn240BitFreightAndAllHeapModes()
+    {
+        // Both A/B paths retain shifted exact BigInteger labels. Test the
+        // provable nonnegative-cost dominance check on 240-bit freight,
+        // reverse residual arcs, ties, both heaps and both workspaces.
+        BigInteger huge = (BigInteger.One << 240) + 37;
+        var sellers = new[]
+        {
+            new FoundationPhysicalConcaveCommodityFlow.Seller(4UL,
+                new BigInteger?[] { huge, huge + 1, huge }),
+            new FoundationPhysicalConcaveCommodityFlow.Seller(3UL,
+                new BigInteger?[] { huge, null, huge }),
+            new FoundationPhysicalConcaveCommodityFlow.Seller(2UL,
+                new BigInteger?[] { null, huge, huge + 2 })
+        };
+        var markets = new[]
+        {
+            new FoundationPhysicalConcaveCommodityFlow.Market(
+                1_000_000UL, 1_000_000UL),
+            new FoundationPhysicalConcaveCommodityFlow.Market(
+                1_000_000UL, 1_000_000UL),
+            new FoundationPhysicalConcaveCommodityFlow.Market(
+                1_000_000UL, 1_000_000UL)
+        };
+        foreach (bool indexed in new[] { false, true })
+        foreach (bool reuse in new[] { false, true })
+        foreach (int segments in new[] { 1, 3, 9 })
+        {
+            var old = FoundationPhysicalConcaveCommodityFlow.Solve(
+                sellers, markets, goodsQuantum: 1UL,
+                segmentsPerAverageMarket: segments,
+                maxAugmentations: 256,
+                reuseSearchWorkspace: reuse,
+                useIndexedHeap: indexed,
+                useShiftedLabels: true,
+                useResidualDominanceFastPath: false);
+            var dominant = FoundationPhysicalConcaveCommodityFlow.Solve(
+                sellers, markets, goodsQuantum: 1UL,
+                segmentsPerAverageMarket: segments,
+                maxAugmentations: 256,
+                reuseSearchWorkspace: reuse,
+                useIndexedHeap: indexed,
+                useShiftedLabels: true,
+                useResidualDominanceFastPath: true);
+            Assert.Equal(old.Augmentations, dominant.Augmentations);
+            Assert.Equal(old.MarketQuanta, dominant.MarketQuanta);
+            Assert.Equal(old.SegmentedNetPotentialScaled,
+                dominant.SegmentedNetPotentialScaled);
+            Assert.Equal(old.IntegratedNetPotentialScaled,
+                dominant.IntegratedNetPotentialScaled);
+            for (int i = 0; i < sellers.Length; i++)
+                Assert.Equal(old.AllocationQuanta[i],
+                    dominant.AllocationQuanta[i]);
+            Assert.Equal(9UL, dominant.MarketQuanta.Aggregate(0UL,
+                (sum, n) => checked(sum + n)));
+        }
+
+        var oneMarket = new[]
+        {
+            new FoundationPhysicalConcaveCommodityFlow.Market(
+                1_000_000UL, 1_000_000UL)
+        };
+        var oneSeller = new[]
+        {
+            new FoundationPhysicalConcaveCommodityFlow.Seller(
+                100UL, new BigInteger?[] { huge })
+        };
+        foreach (bool dominance in new[] { false, true })
+        foreach (bool indexed in new[] { false, true })
+        {
+            var error = Assert.Throws<InvalidOperationException>(() =>
+                FoundationPhysicalConcaveCommodityFlow.Solve(
+                    oneSeller, oneMarket, 1UL, 5, 1,
+                    reuseSearchWorkspace: true,
+                    useIndexedHeap: indexed,
+                    useShiftedLabels: true,
+                    useResidualDominanceFastPath: dominance));
+            Assert.Contains("augmentation budget", error.Message);
+            Assert.Throws<InvalidOperationException>(() =>
+                FoundationPhysicalConcaveCommodityFlow.Solve(
+                    new[] { new FoundationPhysicalConcaveCommodityFlow.Seller(
+                        1UL, new BigInteger?[] { null }) },
+                    oneMarket, 1UL, 1, 16,
+                    reuseSearchWorkspace: true,
+                    useIndexedHeap: indexed,
+                    useShiftedLabels: true,
+                    useResidualDominanceFastPath: dominance));
+        }
+    }
+
+    [Fact]
     public void SingleMarketWholeSegmentsHaveExactIntegratedPotential()
     {
         var result = FoundationPhysicalConcaveCommodityFlow.Solve(

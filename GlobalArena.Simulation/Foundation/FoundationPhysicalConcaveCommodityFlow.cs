@@ -236,7 +236,8 @@ internal static class FoundationPhysicalConcaveCommodityFlow
         bool reuseSearchWorkspace = true,
         FoundationPhysicalGlobalFlowCostProfile? profile = null,
         bool useIndexedHeap = true,
-        bool useShiftedLabels = true)
+        bool useShiftedLabels = true,
+        bool useResidualDominanceFastPath = false)
     {
         var setupStart = profile?.Start() ?? default;
         ArgumentNullException.ThrowIfNull(sellers);
@@ -435,22 +436,47 @@ internal static class FoundationPhysicalConcaveCommodityFlow
                     BigInteger candidate;
                     if (useShiftedLabels)
                     {
-                        // reducedCost=cost+potential[from]-potential[to]
-                        // must remain nonnegative on every traversed arc.
-                        // Comparing BEFORE subtracting avoids allocating
-                        // an intermediate reduced-cost BigInteger.
-                        BigInteger upper = potential[at] + edge.Cost;
-                        if (upper < potential[edge.To])
-                            throw new InvalidOperationException(
-                                "Residual reduced-cost invariant violated.");
+                        BigInteger shiftedCandidate;
+                        if (useResidualDominanceFastPath)
+                        {
+                            // Provably exact: c>=0 && p[u]>=p[v]
+                            // implies nonnegative reduced cost WITHOUT a
+                            // BigInteger addition. All other arcs receive
+                            // the original exact invariant check.
+                            bool nonnegativeCost = edge.Cost.Sign >= 0;
+                            if (!nonnegativeCost ||
+                                potential[at] < potential[edge.To])
+                            {
+                                BigInteger upper =
+                                    potential[at] + edge.Cost;
+                                if (upper < potential[edge.To])
+                                    throw new InvalidOperationException(
+                                        "Residual reduced-cost invariant violated.");
+                            }
 
-                        // All candidates for the SAME destination differ
-                        // only by a constant potential[to]. Compare exact
-                        // shifted labels BEFORE computing a reduced queue
-                        // key. Rejected edges need no subtraction at all.
-                        BigInteger shiftedCandidate =
-                            shifted![at]!.Value + edge.Cost;
-                        if (shifted[edge.To].HasValue &&
+                            // Exact dominance: if c>=0 and h[u]>=h[v],
+                            // then h[u]+c cannot strictly improve h[v].
+                            BigInteger sourceShifted = shifted![at]!.Value;
+                            if (nonnegativeCost &&
+                                shifted[edge.To].HasValue &&
+                                sourceShifted >= shifted[edge.To]!.Value)
+                                continue;
+                            shiftedCandidate = edge.Cost.IsZero
+                                ? sourceShifted : sourceShifted + edge.Cost;
+                        }
+                        else
+                        {
+                            // Gate21 production oracle: preserve its exact
+                            // BigInteger operations, including invariant
+                            // validation, without extra dominance checks.
+                            BigInteger upper = potential[at] + edge.Cost;
+                            if (upper < potential[edge.To])
+                                throw new InvalidOperationException(
+                                    "Residual reduced-cost invariant violated.");
+                            shiftedCandidate =
+                                shifted![at]!.Value + edge.Cost;
+                        }
+                        if (shifted![edge.To].HasValue &&
                             shiftedCandidate >= shifted[edge.To]!.Value)
                             continue;
                         shifted[edge.To] = shiftedCandidate;
