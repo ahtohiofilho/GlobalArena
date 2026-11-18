@@ -112,6 +112,96 @@ public sealed class FoundationPhysicalLaggedFreightCycleTests
     }
 
     [Fact]
+    public void EveryMarketAndEveryCommodityHasExactlyOneNormalizedStartingValue()
+    {
+        var s = TwoGoodsOneRealCrossing();
+        var actual = FoundationPhysicalUniversalMarketPricing
+            .QuotesFromRealWorkers(s.Workers, Demand());
+        Assert.True(actual.Count >= 4,
+            "Both goods and both civilizations must participate.");
+        Assert.Equal(
+            s.Quotes.Select(q => (q.Tile, q.Buyer, q.Commodity,
+                q.QuoteMicroPerWholeCommodityUnit))
+                .OrderBy(x => x.Commodity.Value)
+                .ThenBy(x => x.Tile.FineStrategicCellId.Value)
+                .ThenBy(x => x.Buyer.Value),
+            actual.Select(q => (q.BuyerTile, q.Buyer, q.Commodity,
+                q.QuoteMicroPerWholeCommodityUnit))
+                .OrderBy(x => x.Commodity.Value)
+                .ThenBy(x => x.BuyerTile.FineStrategicCellId.Value)
+                .ThenBy(x => x.Buyer.Value)
+                .Select(x => (Tile: x.BuyerTile, x.Buyer, x.Commodity,
+                    x.QuoteMicroPerWholeCommodityUnit)));
+        Assert.All(actual, q => Assert.Equal(
+            FoundationPhysicalUniversalMarketPricing
+                .UnitQuoteMicroPerWholeCommodityUnit,
+            q.QuoteMicroPerWholeCommodityUnit));
+        Assert.Equal(1_000_000UL,
+            FoundationPhysicalUniversalMarketPricing
+                .UnitQuoteMicroPerWholeCommodityUnit);
+    }
+
+    [Fact]
+    public void OneBillionTimesMoreExpensiveForEveryoneStillBreaksTheRule()
+    {
+        var s = TwoGoodsOneRealCrossing();
+        var inflated = s.Quotes.Select(q => q with
+        {
+            QuoteMicroPerWholeCommodityUnit = 1_000_000_000UL
+        }).ToArray();
+        var before = s.Host.Snapshot;
+        var error = Assert.Throws<ArgumentException>(() =>
+            FoundationPhysicalLaggedFreightCyclePlanner.CoordinateCandidate(
+                s.Workers, s.Host.Incidence, Demand(), Cargo(),
+                inflated, s.Roads, s.Scales));
+        Assert.Contains("globally arbitrary multiplier", error.Message);
+        Assert.Same(before, s.Host.Snapshot);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            s.Host.GetLastClosedEconomicTradeView(Red).Availability);
+    }
+
+    [Fact]
+    public void WorkerDerivedPublicEntryPointMatchesFixedCostReferenceAndNeverRepricesWithinTurn()
+    {
+        var s = TwoGoodsOneRealCrossing();
+        var original = FoundationPhysicalLaggedFreightCyclePlanner
+            .CoordinateCandidate(s.Workers, s.Host.Incidence,
+                Demand(), Cargo(), s.Quotes, s.Roads, s.Scales);
+        var generated = FoundationPhysicalLaggedFreightCyclePlanner
+            .CoordinateUniversalCandidate(s.Workers, s.Host.Incidence,
+                Demand(), Cargo(), s.Roads, s.Scales);
+        Assert.False(generated.RepricedWithinCycle);
+        Assert.Equal(original.Distribution.MarketTotals,
+            generated.Distribution.MarketTotals);
+        Assert.Equal(original.Distribution.Candidates.Select(x => (
+                x.Seller, x.Buyer, x.Commodity, x.GoodsMicro,
+                string.Join(",",
+                    x.RouteTiles.Select(t => t.FineStrategicCellId.Value)))),
+            generated.Distribution.Candidates.Select(x => (
+                x.Seller, x.Buyer, x.Commodity, x.GoodsMicro,
+                string.Join(",",
+                    x.RouteTiles.Select(t => t.FineStrategicCellId.Value)))));
+        Assert.Equal(original.FixedCycleEdges,
+            generated.FixedCycleEdges);
+        Assert.Equal(original.EdgeReadings,
+            generated.EdgeReadings);
+        Assert.Equal(original.NextCycleQuotes.Edges,
+            generated.NextCycleQuotes.Edges);
+
+        // Even when prior freight surcharge changes the fixed quote, each
+        // turn resolves once at that quote; it never loops to settle current
+        // freight and current congestion simultaneously.
+        var next = FoundationPhysicalLaggedFreightCyclePlanner
+            .CoordinateUniversalCandidate(s.Workers, s.Host.Incidence,
+                Demand(), Cargo(), s.Roads, s.Scales,
+                previousClosedCycleQuotes: generated.NextCycleQuotes);
+        Assert.False(next.RepricedWithinCycle);
+        Assert.Equal(generated.EdgeReadings[0]
+            .DampedNextPhysicalQuoteMicroPerWholeCargoUnit,
+            next.FixedCycleEdges[0].PhysicalCostMicroPerWholeCargoUnit);
+    }
+
+    [Fact]
     public void FirstRepresentableUnitPrefersZeroFreightWhenDemandAndQuotesMatch()
     {
         var s = TwoGoodsOneRealCrossing();
