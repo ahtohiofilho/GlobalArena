@@ -122,6 +122,12 @@ public static class FoundationPhysicalLaggedFreightCyclePlanner
     {
         ArgumentNullException.ThrowIfNull(census);
         ArgumentNullException.ThrowIfNull(demandPolicy);
+        if (previousClosedCycleQuotes is
+            { HasSettledProvenance: false })
+            throw new InvalidOperationException(
+                "Gameplay-facing market planning cannot consume freight " +
+                "from a preview. A preceding economic cycle must be " +
+                "authoritatively settled before its congestion is reused.");
         return CoordinateCandidate(census, incidence, demandPolicy,
             conversionPolicy,
             FoundationPhysicalUniversalMarketPricing
