@@ -15,6 +15,9 @@ public sealed class CanonicalWorldStateHasher
     // Only explicitly deployed physical infrastructure uses the v12 wire
     // extension; all old v8-v11 hashes remain byte-for-byte unchanged.
     public const uint PhysicalTransportFormatVersion = 12U;
+    // Opt-in natural construction effort. The v12 byte stream is unchanged
+    // when the new all-edge labor schema has not been deployed.
+    public const uint EdgeNaturalConstructionFormatVersion = 13U;
 
     private static readonly byte[] Magic =
     {
@@ -30,8 +33,10 @@ public sealed class CanonicalWorldStateHasher
         ArgumentNullException.ThrowIfNull(
             worldState);
 
-        var version = worldState.Transport.IsInitialized
-            ? PhysicalTransportFormatVersion
+        var version = worldState.Transport.HasNaturalConstructionLabor
+            ? EdgeNaturalConstructionFormatVersion
+            : worldState.Transport.IsInitialized
+                ? PhysicalTransportFormatVersion
             : worldState.Workers.IsInitialized
                 ? worldState.Workers.HasAuthoritativeOccupations
                     ? OccupiedTacticalWorkerFormatVersion
@@ -354,6 +359,19 @@ public sealed class CanonicalWorldStateHasher
                 AppendUInt64(hash, road.CargoMicroAtReferenceLoad);
                 AppendUInt64(hash, road.ExternalTariffMicroPerWholeCargoUnit);
             }
+        }
+
+        // V13 adds a separate complete canonical section. V12 sees none
+        // of these bytes and retains its historical SHA-256 representation.
+        if (version >= EdgeNaturalConstructionFormatVersion)
+        {
+            AppendUInt32(hash, 41U);
+            AppendUInt32(hash, 1U);
+            AppendUInt32(hash, checked((uint)worldState.Transport.Edges.Count));
+            foreach (var edge in worldState.Transport.Edges)
+                AppendUInt64(hash, edge.NaturalConstructionLaborMicro ??
+                    throw new InvalidOperationException(
+                        "V13 physical construction is incomplete."));
         }
 
         var digest =
