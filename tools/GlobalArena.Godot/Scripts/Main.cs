@@ -565,6 +565,7 @@ public partial class Main : Control
             GD.PrintErr($"GA_NEXT_FINE_HUMAN_AI_REJECTED {e}");
         }
         RefreshFineTacticalWorkerControls();
+        RefreshInteractiveEconomyPreviewBanner();
     }
 
     private void OnLocalWorkerSelected(long optionIndex)
@@ -1163,6 +1164,11 @@ public partial class Main : Control
 
     public override void _Ready()
     {
+        // Explicit, isolated lab. Ordinary games never import QA balance.
+        // Unlike the CI smoke this mode remains open for manual E turns.
+        _interactiveEconomicPreviewActive =
+            System.Environment.GetEnvironmentVariable(
+                "GA_NEXT_INTERACTIVE_ECONOMY_PREVIEW") == "1";
         GD.Print("GA_PROD_MAIN_READY_R6");
         // Centralized production-oriented styling; Godot Theme is the owner
         // of interactive states rather than per-screen debug colors.
@@ -1207,6 +1213,9 @@ public partial class Main : Control
         var button = new Button { Text = "SYSTEM STATUS" };
         button.Pressed += ShowStatus;
         header.AddChild(button);
+
+        // Disclose provisional balancing while observing the actual market.
+        CreateInteractiveEconomyPreviewBanner(root);
 
         var content = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
         content.AddThemeConstantOverride("separation", 8);
@@ -1537,13 +1546,16 @@ public partial class Main : Control
                 "GA_NEXT_WORKER_BOARD_SMOKE") == "1";
             bool settledTradeQaSmoke = System.Environment.GetEnvironmentVariable(
                 "GA_NEXT_SETTLED_TRADE_VISUAL_SMOKE") == "1";
-            if (settledTradeQaSmoke &&
-                (legacyV10Smoke || legacyV11Smoke || concentratedSmoke ||
-                 tileClickMenuSmoke || workerBoardSmoke ||
-                 legacyWorkspaceSmoke || _configuredEconomicGameplay is not null))
+            bool useExplicitEconomicLab = settledTradeQaSmoke ||
+                _interactiveEconomicPreviewActive;
+            if ((useExplicitEconomicLab &&
+                 (legacyV10Smoke || legacyV11Smoke || concentratedSmoke ||
+                  tileClickMenuSmoke || workerBoardSmoke || legacyWorkspaceSmoke ||
+                  legacySmoke || _configuredEconomicGameplay is not null)) ||
+                (settledTradeQaSmoke && _interactiveEconomicPreviewActive))
                 throw new InvalidOperationException(
-                    "Explicit market QA scenario cannot silently replace " +
-                    "another game or test configuration.");
+                    "Experimental market must not replace normal gameplay, " +
+                    "another test, or a trusted economic configuration.");
             if (!legacyWorkspaceSmoke)
             {
                 var request = new WorldGenerationRequest(
@@ -1555,10 +1567,10 @@ public partial class Main : Control
                         ? FoundationTacticalDemoScenario
                             .CreateLocalHumanAiOccupationPreview(request)
                         : FoundationConcentratedWorkforceScenario.CreatePreview(
-                            request, settledTradeQaSmoke ? 3 :
+                            request, useExplicitEconomicLab ? 3 :
                                 FoundationConcentratedWorkforceScenario
                                     .DefaultWorkersPerCivilization);
-                if (settledTradeQaSmoke)
+                if (useExplicitEconomicLab)
                     _tacticalHost = GaExplicitEconomicQaConfiguration
                         .Prepare(_tacticalHost);
                 else if (_configuredEconomicGameplay is not null)
@@ -1616,12 +1628,20 @@ public partial class Main : Control
                     $"world=v{_tacticalHost.StateHash.FormatVersion} worker_ids={_tacticalHost.Snapshot.Workers.Workers.Count} physical_tiles=G(18,0) " +
                     $"inputs=G/P/X/E gameplay_economy={(_tacticalHost.StateHash.FormatVersion >= 13U ? "explicit_v15" : "not_active")}");
             }
-            _status!.Text = _tacticalHost is null
-                ? "GA-NEXT / WORKFORCE 01  •  TAB personnel  •  M planetary atlas  •  E collective turn"
-                : $"GA-NEXT / TACTICAL V{_tacticalHost.StateHash.FormatVersion}  •  G step  •  P produce  •  X cancel  •  E collective";
+            _status!.Text = _interactiveEconomicPreviewActive
+                ? "GA-NEXT / EXPERIMENTAL ECONOMY LAB  •  E sells/consumes  •  TAB orders  •  M map"
+                : _tacticalHost is null
+                    ? "GA-NEXT / WORKFORCE 01  •  TAB personnel  •  M planetary atlas  •  E collective turn"
+                    : $"GA-NEXT / TACTICAL V{_tacticalHost.StateHash.FormatVersion}  •  G step  •  P produce  •  X cancel  •  E collective";
             GD.Print("GA_VISUAL_FOUNDATION_01_READY tactical_rectangular=true theme_tokens=true " +
                 "windows=chrome native_windows=false game_authority=untouched");
             RefreshLocalWorkerOrderControls();
+            RefreshInteractiveEconomyPreviewBanner();
+            if (_interactiveEconomicPreviewActive)
+                GD.Print("GA_NEXT_INTERACTIVE_ECONOMY_PREVIEW_READY " +
+                    "mode=manual_e_turns auto_quit=false " +
+                    "configuration=qa_only_not_approved opening_cash=zero " +
+                    "source=real_v15_worker_market");
             GD.Print($"GA_NEXT_TACTICAL_ENTRY_PASS local_civ={_humanCivilization.Value} " +
                 $"worker={first.Id.Value} coarse_preview_focus={first.CellId.Value} " +
                 $"physical_worker_location_authoritative={(_tacticalHost is not null).ToString().ToLowerInvariant()} " +
