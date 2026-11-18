@@ -26,7 +26,9 @@ public sealed record PhysicalTransportEdgeRuntimeRecord(
     CivilizationId? InfrastructureOwner,
     ulong FreePhysicalCostMicroPerWholeCargoUnit,
     ulong CargoMicroAtReferenceLoad,
-    ulong ExternalTariffMicroPerWholeCargoUnit);
+    ulong ExternalTariffMicroPerWholeCargoUnit,
+    ulong? NaturalConstructionCostMoneyMicro = null,
+    ulong? CommittedInvestmentMoneyMicro = null);
 
 /// <summary>
 /// Complete and immutable, world-seeded physical-transport inventory.
@@ -43,12 +45,22 @@ public sealed class PhysicalTransportInfrastructureRuntimeState
 
     public bool IsInitialized { get; }
 
+    /// <summary>V13 complete monetary building costs, not physical labor.</summary>
+    public bool HasMonetaryConstructionCosts { get; }
+
+    /// <summary>V14 complete invested-money ledger after an actual debit.</summary>
+    public bool HasCommittedInvestments { get; }
+
     public IReadOnlyList<PhysicalTransportEdgeRuntimeRecord> Edges { get; }
 
     private PhysicalTransportInfrastructureRuntimeState(
         bool initialized, PhysicalTransportEdgeRuntimeRecord[] edges)
     {
         IsInitialized = initialized;
+        HasMonetaryConstructionCosts = initialized && edges.Length > 0 &&
+            edges.All(e => e.NaturalConstructionCostMoneyMicro.HasValue);
+        HasCommittedInvestments = initialized && edges.Length > 0 &&
+            edges.All(e => e.CommittedInvestmentMoneyMicro.HasValue);
         Edges = Array.AsReadOnly(edges);
     }
 
@@ -57,6 +69,19 @@ public sealed class PhysicalTransportInfrastructureRuntimeState
     {
         ArgumentNullException.ThrowIfNull(crossings);
         var records = crossings.ToArray();
+        if (records.Any(r => r?.CommittedInvestmentMoneyMicro is not null))
+            throw new ArgumentException(
+                "Initial physical transport cannot inject invested cash. " +
+                "Only an accepted monetary journal event may create progress.",
+                nameof(crossings));
+        bool anyMoney = records.Any(r =>
+            r?.NaturalConstructionCostMoneyMicro is not null);
+        if (anyMoney && records.Any(r =>
+            r?.NaturalConstructionCostMoneyMicro is not > 0UL))
+            throw new ArgumentException(
+                "The complete V13 inventory needs positive monetary " +
+                "construction costs on ALL canonical edges.",
+                nameof(crossings));
         if (records.Length == 0)
             throw new ArgumentException(
                 "An initialized physical world needs explicit natural or built " +
@@ -90,5 +115,45 @@ public sealed class PhysicalTransportInfrastructureRuntimeState
             a.Edge.FineStrategicEdgeId.Value.CompareTo(
                 b.Edge.FineStrategicEdgeId.Value));
         return new PhysicalTransportInfrastructureRuntimeState(true, records);
+    }
+
+    /// <summary>
+    /// Apply a verified MONEY debit to exactly one canonical natural edge.
+    /// This is capital expenditure, NOT material/commodity consumption.
+    /// Title and operational performance remain unchanged until a later
+    /// authoritative infrastructure-completion policy is implemented.
+    /// </summary>
+    public PhysicalTransportInfrastructureRuntimeState RecordMoneyInvestment(
+        PhysicalTacticalEdgeId edge, ulong moneyMicro)
+    {
+        if (!HasMonetaryConstructionCosts || moneyMicro == 0UL || !edge.IsValid)
+            throw new InvalidOperationException(
+                "Monetary investment requires complete v13 construction quotes.");
+        int index = -1;
+        for (int i = 0; i < Edges.Count; i++)
+            if (Edges[i].Edge == edge)
+            {
+                index = i;
+                break;
+            }
+        if (index < 0)
+            throw new InvalidOperationException("Unknown physical crossing.");
+        var record = Edges[index];
+        if (record.OwnershipKind != PhysicalTransportOwnershipKind.NoInfrastructure)
+            throw new InvalidOperationException(
+                "This gate only finances a natural, unbuilt crossing.");
+        ulong required = record.NaturalConstructionCostMoneyMicro!.Value;
+        ulong prior = record.CommittedInvestmentMoneyMicro ?? 0UL;
+        if (prior >= required || moneyMicro > required - prior)
+            throw new InvalidOperationException(
+                "Monetary investment exceeds the real remaining capital cost.");
+
+        var rows = Edges.Select((r, i) => r with
+        {
+            CommittedInvestmentMoneyMicro = i == index
+                ? checked(prior + moneyMicro)
+                : r.CommittedInvestmentMoneyMicro ?? 0UL
+        }).ToArray();
+        return new PhysicalTransportInfrastructureRuntimeState(true, rows);
     }
 }
