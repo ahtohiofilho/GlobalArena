@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Numerics;
+using System.Text;
 using GlobalArena.Runtime;
 
 namespace GlobalArena.Simulation;
@@ -21,6 +22,9 @@ public sealed class CanonicalWorldStateHasher
     public const uint MonetaryConstructionFormatVersion = 13U;
     // First ACTUAL treasury debit activates canonical v14 edge progress.
     public const uint MonetaryInvestmentFormatVersion = 14U;
+    // First verified sale+consumption settlement and trusted carry-forward
+    // congestion activates v15 without modifying historical v8–v14 bytes.
+    public const uint ClosedEconomicCycleFormatVersion = 15U;
 
     private static readonly byte[] Magic =
     {
@@ -36,8 +40,10 @@ public sealed class CanonicalWorldStateHasher
         ArgumentNullException.ThrowIfNull(
             worldState);
 
-        var version = worldState.Transport.HasCommittedInvestments
-            ? MonetaryInvestmentFormatVersion
+        var version = worldState.Treasury.HasClosedEconomicCycle
+            ? ClosedEconomicCycleFormatVersion
+            : worldState.Transport.HasCommittedInvestments
+                ? MonetaryInvestmentFormatVersion
             : worldState.Transport.HasMonetaryConstructionCosts
                 ? MonetaryConstructionFormatVersion
                 : worldState.Transport.IsInitialized
@@ -393,7 +399,7 @@ public sealed class CanonicalWorldStateHasher
             }
         }
 
-        if (version >= MonetaryInvestmentFormatVersion)
+        if (worldState.Transport.HasCommittedInvestments)
         {
             AppendUInt32(hash, 42U);
             AppendUInt32(hash, 1U);
@@ -402,6 +408,42 @@ public sealed class CanonicalWorldStateHasher
                 AppendUInt64(hash, edge.CommittedInvestmentMoneyMicro ??
                     throw new InvalidOperationException(
                         "A v14 monetary investment ledger is incomplete."));
+        }
+
+        if (version >= ClosedEconomicCycleFormatVersion)
+        {
+            var settled = worldState.Treasury;
+            AppendUInt32(hash, 44U);
+            AppendUInt32(hash, 1U);
+            AppendUInt64(hash, settled.LastSettledEconomicCycleOrdinal);
+            byte[] cargoCode = Encoding.UTF8.GetBytes(
+                settled.LastSettledCargoUnitCode ??
+                throw new InvalidOperationException(
+                    "Closed market lacks a settled cargo unit."));
+            AppendUInt32(hash, checked((uint)cargoCode.Length));
+            hash.AppendData(cargoCode);
+            AppendUInt32(hash, checked(
+                (uint)settled.LastSettledFreightQuotes.Count));
+            foreach (var quote in settled.LastSettledFreightQuotes)
+            {
+                AppendUInt32(hash, checked(
+                    (uint)quote.Edge.FineGoldbergParameters.M));
+                AppendUInt32(hash, checked(
+                    (uint)quote.Edge.FineGoldbergParameters.N));
+                AppendUInt64(hash, quote.Edge.FineStrategicEdgeId.Value);
+                AppendUInt64(hash,
+                    quote.FreePhysicalCostMicroPerWholeCargoUnit);
+                AppendUInt64(hash, quote.ReferenceCargoMicro);
+                AppendUInt64(hash,
+                    quote.QuotedCongestionSurchargeMicroPerWholeCargoUnit);
+            }
+            AppendUInt32(hash, checked((uint)settled.Accounts.Count));
+            foreach (var account in settled.Accounts)
+            {
+                AppendUInt64(hash, account.Civilization.Value);
+                AppendNonnegativeBigInteger(hash,
+                    account.TotalSettledEconomicIncomeScaled);
+            }
         }
 
         var digest =
