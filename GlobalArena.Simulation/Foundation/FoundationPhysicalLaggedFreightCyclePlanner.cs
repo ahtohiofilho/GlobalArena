@@ -102,6 +102,32 @@ public static class FoundationPhysicalLaggedFreightCyclePlanner
     public const uint DefaultSmoothingDenominator = 4U;
 
     /// <summary>
+    /// Preferred WORLD-BOUND entry. All natural crossings, free costs,
+    /// capacities, ownership and tolls come from the same canonically hashed
+    /// WorldState. No external road vector or capacity can replace them.
+    /// This is STILL an uncommitted candidate; neither a price nor a sale
+    /// is written to the economy. Settlement remains a separate gate.
+    /// </summary>
+    public static FoundationPhysicalLaggedFreightCyclePlan
+        CoordinateWorldCandidate(
+            WorldState snapshot,
+            PhysicalTacticalIncidenceMap incidence,
+            FoundationActivityCommodityDemandPolicy demandPolicy,
+            FoundationCommodityCargoConversionPolicy conversionPolicy,
+            FoundationPhysicalLaggedFreightQuoteState? previousClosedCycleQuotes = null,
+            int maxProducerPasses = 8,
+            uint smoothingDenominator = DefaultSmoothingDenominator)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        var (roads, scales) = FoundationPhysicalAuthoritativeTransportProjector
+            .FromWorld(snapshot, incidence);
+        return CoordinateUniversalCandidate(
+            snapshot.Workers, incidence, demandPolicy, conversionPolicy,
+            roads, scales, previousClosedCycleQuotes,
+            maxProducerPasses, smoothingDenominator);
+    }
+
+    /// <summary>
     /// Preferred gameplay-facing candidate entry point. The caller cannot
     /// assign prices to specific markets: quotes are projected solely from
     /// real worker demand and the universal normalized price function.
