@@ -143,8 +143,15 @@ public sealed class FoundationAuthoritativeEconomicSalesSettlementTests
             .Project(s.Host.Snapshot.Workers);
         Assert.Equal(demandBefore.DemandSites.ToArray(),
             demandAfter.DemandSites.ToArray());
-        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
-            s.Host.GetLastClosedEconomicTradeView(Red).Availability);
+        var visible = s.Host.GetLastClosedEconomicTradeView(Red);
+        Assert.Equal(
+            FoundationEconomicTradeOverlayAvailability.AuthorizedSubset,
+            visible.Availability);
+        Assert.Equal(settled.EconomicCycleOrdinal,
+            visible.EconomicCycleOrdinal);
+        Assert.Equal(receipt.Hash, visible.PublishedHash);
+        Assert.Equal(s.Policy.Cargo.CargoUnitCode,
+            visible.CargoUnitCode);
     }
 
     [Fact]
@@ -235,6 +242,105 @@ public sealed class FoundationAuthoritativeEconomicSalesSettlementTests
         Assert.False(s.Host.Snapshot.Treasury.HasClosedEconomicCycle);
         Assert.Same(before.Workers, s.Host.Snapshot.Workers);
         Assert.Same(before.Transport, s.Host.Snapshot.Transport);
+    }
+
+    [Fact]
+    public void EachCivilizationSeesOnlyItsParticipatedDeliveryCargoNotGlobalTotals()
+    {
+        var s = Create();
+        var prior = s.Host.Snapshot;
+        var hashBefore = s.Host.StateHash;
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            s.Host.GetLastClosedEconomicTradeView(Red).Availability);
+        s.Host.SetHumanReady(Red);
+        var receipt = s.Host.TryCloseTurn();
+        Assert.NotNull(receipt);
+        Assert.True(receipt!.ReplayMatched);
+
+        var plan = FoundationPhysicalLaggedFreightCyclePlanner
+            .CoordinateWorldCandidate(prior, s.Host.Incidence,
+                s.Policy.Demand, s.Policy.Cargo,
+                maxProducerPasses: s.Policy.MaxProducerPasses);
+        var topology = s.Host.Incidence.FineTopology.Edges.ToDictionary(
+            row => (
+                Math.Min(row.IncidentCellIds[0].Value,
+                         row.IncidentCellIds[1].Value),
+                Math.Max(row.IncidentCellIds[0].Value,
+                         row.IncidentCellIds[1].Value)),
+            row => new PhysicalTacticalEdgeId(
+                s.Host.Incidence.Refinement.FineParameters, row.Id));
+        var full = plan.Distribution.AllocationAudit.Freight.UsedEdges
+            .ToDictionary(row => row.Edge, row => row.TotalCargoMicro);
+
+        foreach (var civ in new[] { Red, Blue })
+        {
+            var expected = new Dictionary<PhysicalTacticalEdgeId, ulong>();
+            foreach (var delivery in plan.Distribution.Candidates.Where(c =>
+                c.Buyer == civ || c.Seller == civ))
+            {
+                ulong cargo = s.Policy.Cargo.CargoMicro(
+                    delivery.Commodity, delivery.GoodsMicro);
+                for (int index = 1; index < delivery.RouteTiles.Count; index++)
+                {
+                    ulong a = delivery.RouteTiles[index - 1]
+                        .FineStrategicCellId.Value;
+                    ulong b = delivery.RouteTiles[index]
+                        .FineStrategicCellId.Value;
+                    var edge = topology[(Math.Min(a, b), Math.Max(a, b))];
+                    expected[edge] = checked(
+                        expected.GetValueOrDefault(edge) + cargo);
+                }
+            }
+            var view = s.Host.GetLastClosedEconomicTradeView(civ);
+            Assert.Equal(
+                FoundationEconomicTradeOverlayAvailability.AuthorizedSubset,
+                view.Availability); // Never exposes global completeness.
+            Assert.Equal(1UL, view.EconomicCycleOrdinal);
+            Assert.Equal(receipt.Hash, view.PublishedHash);
+            Assert.Equal(receipt.Revision, view.PublishedRevision);
+            Assert.Equal(receipt.Turn, view.ClosedAtWorkerTurn);
+            Assert.Equal(expected.Count, view.UsedEdges.Count);
+            foreach (var line in view.UsedEdges)
+            {
+                Assert.Equal(expected[line.Edge], line.TotalCargoMicro);
+                Assert.True(line.TotalCargoMicro <= full[line.Edge]);
+                var actual = s.Host.Snapshot.Transport.Edges.Single(row =>
+                    row.Edge == line.Edge);
+                Assert.Equal(actual.InfrastructureOwner, line.Owner);
+                Assert.Equal(line.TotalCargoMicro, line.ByCommodity
+                    .Aggregate(0UL, (sum, item) =>
+                        checked(sum + item.CargoMicro)));
+            }
+        }
+        Assert.NotEqual(hashBefore, s.Host.StateHash);
+        Assert.Equal(receipt.Hash, s.Host.StateHash);
+        Assert.Throws<InvalidOperationException>(() =>
+            s.Host.GetLastClosedEconomicTradeView(
+                new CivilizationId(999UL)));
+    }
+
+    [Fact]
+    public void ConsecutiveClosedCyclesReplaceHistoricalViewWithoutInventingTransport()
+    {
+        var s = Create();
+        s.Host.SetHumanReady(Red);
+        var first = s.Host.TryCloseTurn();
+        Assert.NotNull(first);
+        var old = s.Host.GetLastClosedEconomicTradeView(Red);
+        Assert.Equal(1UL, old.EconomicCycleOrdinal);
+        Assert.Equal(first!.Hash, old.PublishedHash);
+
+        s.Host.SetHumanReady(Red);
+        var second = s.Host.TryCloseTurn();
+        Assert.NotNull(second);
+        var current = s.Host.GetLastClosedEconomicTradeView(Red);
+        Assert.Equal(2UL, current.EconomicCycleOrdinal);
+        Assert.Equal(second!.Hash, current.PublishedHash);
+        Assert.Equal(first.Hash, old.PublishedHash);
+        Assert.NotSame(old, current);
+        Assert.NotEqual(first.Hash, second.Hash);
+        Assert.Equal(2UL,
+            s.Host.Snapshot.Treasury.LastSettledEconomicCycleOrdinal);
     }
 
     [Fact]
