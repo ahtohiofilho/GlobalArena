@@ -29,6 +29,7 @@ on:
       - 'GlobalArena.Tests/FoundationPhysicalLaggedFreightCycleTests.cs'
       - 'GlobalArena.Tests/FoundationPhysicalEconomicAccountingProposalTests.cs'
       - 'GlobalArena.Tests/FoundationPhysicalAuthoritativeTransportTests.cs'
+      - 'GlobalArena.Tests/FoundationPhysicalNaturalTransportSeederTests.cs'
       - 'GlobalArena.Runtime/PhysicalTransportInfrastructureRuntimeState.cs'
       - 'GlobalArena.Tests/FoundationPhysicalCongestionStabilityScaleTests.cs'
       - 'GlobalArena.Tests/FoundationPhysicalMultiPathFreightPlannerTests.cs'
@@ -128,6 +129,8 @@ jobs:
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalEconomicAccountingProposalTests' --logger 'console;verbosity=normal'
       - name: Authoritative v12 physical transport inventory — topology, hash, natural crossings and world-only freight
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalAuthoritativeTransportTests' --logger 'console;verbosity=normal'
+      - name: Physical natural terrain-seeded freight — canonical land, coast, sea and no phantom road
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalNaturalTransportSeederTests' --logger 'console;verbosity=normal'
 
 
       - name: Turn-locked freight pivot — fixed-cost water-filling and next-cycle lagged congestion
