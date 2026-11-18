@@ -23,12 +23,20 @@ public sealed record FoundationPhysicalLaggedFreightEdgeState(
 public sealed class FoundationPhysicalLaggedFreightQuoteState
 {
     public ulong AuditedPreviewCycles { get; }
+    /// <summary>
+    /// True ONLY when an authoritative settlement publication accepted
+    /// the freight audit and quote state atomically. A planning candidate
+    /// always reports false, even when its freight was structurally audited.
+    /// </summary>
+    public bool HasSettledProvenance { get; }
     public IReadOnlyList<FoundationPhysicalLaggedFreightEdgeState> Edges { get; }
 
     internal FoundationPhysicalLaggedFreightQuoteState(
-        ulong cycles, FoundationPhysicalLaggedFreightEdgeState[] edges)
+        ulong cycles, FoundationPhysicalLaggedFreightEdgeState[] edges,
+        bool hasSettledProvenance = false)
     {
         AuditedPreviewCycles = cycles;
+        HasSettledProvenance = hasSettledProvenance;
         Edges = Array.AsReadOnly(edges);
     }
 }
