@@ -19,6 +19,7 @@ public partial class Main : Control
     private readonly System.Collections.Generic.List<Control> _strategicCalibrationGroups = new();
     private Button? _returnStrategicContext;
     private CheckBox? _tacticalTileEdges;
+    private CheckBox? _tacticalSettledTradeRoutes;
     private GlobePreview? _strategicGlobe;
     private TacticalContextPreview? _tacticalPreview;
     // Presentation-only sidebar ownership for map-free tactical controls.
@@ -382,6 +383,10 @@ public partial class Main : Control
             _selectedLocalWorkerId, host.Snapshot.Revision);
         _tacticalPreview?.PresentAuthoritativeWorkers(
             host.Snapshot.Workers, _selectedLocalWorkerId);
+        // Strictly participant-filtered last CLOSED market. The default
+        // worker-only preview has no settled sale and draws nothing.
+        _tacticalPreview?.PresentSettledTradeRoutes(
+            host.GetLastClosedEconomicTradeView(_humanCivilization));
         _tacticalPreview?.PresentPendingWorkerBoardOrders(
             pendingOrders.Where(order => order.NextOccupation.HasValue)
                 .Select(order => (order.WorkerId.Value, order.NextOccupation!.Value)),
@@ -889,6 +894,8 @@ public partial class Main : Control
             {
                 _tacticalTileEdges.ButtonPressed = false;
                 _tacticalTileEdges.Visible = true;
+                if (_tacticalSettledTradeRoutes is not null)
+                    _tacticalSettledTradeRoutes.Visible = true;
             }
             _tacticalBridgeStatus.Text = $"LOCAL TACTICAL | strategic {_bridgeSelection.Value} and adjacent territories";
             GD.Print($"GA_UI_TACTICAL_TRANSITION_OPEN focus={_bridgeSelection.Value}");
@@ -914,6 +921,8 @@ public partial class Main : Control
         _openTacticalContext.Visible = true;
         _returnStrategicContext.Visible = false;
         if (_tacticalTileEdges is not null) _tacticalTileEdges.Visible = false;
+        if (_tacticalSettledTradeRoutes is not null)
+            _tacticalSettledTradeRoutes.Visible = false;
         _tacticalBridgeStatus.Text = _bridgeSelection.HasValue
             ? $"Territory {_bridgeSelection.Value} selected | tactical context available"
             : "Select a canonical territory to enable tactical context";
@@ -1274,6 +1283,15 @@ public partial class Main : Control
         _tacticalTileEdges = new CheckBox { Text = "TACTICAL TILE EDGES", ButtonPressed = false, Visible = false };
         _tacticalTileEdges.Toggled += enabled => _tacticalPreview?.SetEdgesVisible(enabled);
         rightLayout.AddChild(_tacticalTileEdges);
+        _tacticalSettledTradeRoutes = new CheckBox
+        {
+            Text = "LAST SETTLED TRADE ROUTES",
+            ButtonPressed = true,
+            Visible = false
+        };
+        _tacticalSettledTradeRoutes.Toggled += enabled =>
+            _tacticalPreview?.SetSettledTradeRoutesVisible(enabled);
+        rightLayout.AddChild(_tacticalSettledTradeRoutes);
         // All sidebar details now belong to the single bounded outer dock
         // scroll region; this VBox must NOT create a nested vertical viewport.
         var detailSections = new VBoxContainer
