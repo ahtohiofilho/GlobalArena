@@ -63,7 +63,7 @@ public sealed class FoundationPhysicalAuthoritativeTransportTests
         var roads = PhysicalTransportInfrastructureRuntimeState
             .CreateInitial(input.Reverse());
         var snapshot = raw.DeployInitialPhysicalTransport(
-            roads, host.Incidence);
+            roads, host.Session.GeneratedWorld, host.Incidence);
         var hash = hasher.Compute(snapshot);
         Assert.True(snapshot.Transport.IsInitialized);
         Assert.Equal(12U, hash.FormatVersion);
@@ -72,7 +72,7 @@ public sealed class FoundationPhysicalAuthoritativeTransportTests
             snapshot.Transport.Edges.Count);
         Assert.Equal(hash, hasher.Compute(raw.DeployInitialPhysicalTransport(
             PhysicalTransportInfrastructureRuntimeState.CreateInitial(input),
-            host.Incidence)));
+            host.Session.GeneratedWorld, host.Incidence)));
         Assert.Equal(roads, snapshot.Transport);
         Assert.Equal(hash.FormatVersion,
             hasher.Compute(snapshot.AdvanceRevision()).FormatVersion);
@@ -90,7 +90,7 @@ public sealed class FoundationPhysicalAuthoritativeTransportTests
         var baseWorld = host.Snapshot;
         var a = baseWorld.DeployInitialPhysicalTransport(
             PhysicalTransportInfrastructureRuntimeState.CreateInitial(initial),
-            host.Incidence);
+            host.Session.GeneratedWorld, host.Incidence);
         var modified = initial.ToArray();
         modified[0] = modified[0] with
         {
@@ -98,7 +98,7 @@ public sealed class FoundationPhysicalAuthoritativeTransportTests
         };
         var b = baseWorld.DeployInitialPhysicalTransport(
             PhysicalTransportInfrastructureRuntimeState.CreateInitial(modified),
-            host.Incidence);
+            host.Session.GeneratedWorld, host.Incidence);
         Assert.NotEqual(new CanonicalWorldStateHasher().Compute(a),
             new CanonicalWorldStateHasher().Compute(b));
         Assert.Equal(1_000_000UL,
