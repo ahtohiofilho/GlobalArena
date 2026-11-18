@@ -48,7 +48,8 @@ public sealed record FoundationPhysicalConstructionEdgeProposal(
     int AssignedWorkerCount,
     ulong CreditableLaborMicro,
     ulong UnusedLaborMicro,
-    bool MeetsLaborRequirement);
+    bool MeetsLaborRequirement,
+    ulong PreviouslyCommittedLaborMicro = 0UL);
 
 /// <summary>
 /// Read-only potential work for ONE candidate turn, using the already
@@ -148,6 +149,8 @@ public static class FoundationPhysicalConstructionWorkPlanner
                 !inventory.TryGetValue(assignment.Edge, out var road) ||
                 road.OwnershipKind !=
                     PhysicalTransportOwnershipKind.NoInfrastructure ||
+                road.CommittedConstructionLaborMicro >=
+                    road.NaturalConstructionLaborMicro ||
                 !topology.TryGetValue(assignment.Edge, out var endpoints) ||
                 (worker.TacticalTileId != endpoints.First &&
                  worker.TacticalTileId != endpoints.Second))
@@ -172,7 +175,12 @@ public static class FoundationPhysicalConstructionWorkPlanner
             ulong required = inventory[pair.Key].NaturalConstructionLaborMicro ??
                 throw new InvalidOperationException(
                     "The canonical v13 labor requirement is missing.");
-            ulong remaining = required;
+            ulong already = inventory[pair.Key].CommittedConstructionLaborMicro
+                ?? 0UL;
+            if (already >= required)
+                throw new InvalidOperationException(
+                    "No additional construction labor is needed on this edge.");
+            ulong remaining = required - already;
             ulong edgeCredited = 0UL, edgeUnused = 0UL;
             foreach (var worker in pair.Value.OrderBy(w => w.Id.Value))
             {
@@ -192,7 +200,7 @@ public static class FoundationPhysicalConstructionWorkPlanner
             }
             edgeProposals.Add(new FoundationPhysicalConstructionEdgeProposal(
                 pair.Key, required, pair.Value.Count, edgeCredited,
-                edgeUnused, remaining == 0UL));
+                edgeUnused, remaining == 0UL, already));
         }
         if (checked(creditable + unused) != available ||
             workerContributions.Count != seen.Count ||
