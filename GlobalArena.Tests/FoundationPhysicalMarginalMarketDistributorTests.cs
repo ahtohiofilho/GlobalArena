@@ -241,6 +241,21 @@ public sealed class FoundationPhysicalMarginalMarketDistributorTests
     }
 
     [Fact]
+    public void CollocatedDemandCannotCarryDifferentCivilizationReferenceQuotes()
+    {
+        var host = Host();
+        var census = Census(host.Incidence);
+        var quotes = Quotes(census, line => line.Owner == Red
+            ? 1_000_000UL : 2_000_000UL);
+        var error = Assert.Throws<ArgumentException>(() =>
+            FoundationPhysicalMarginalMarketDistributor.Distribute(
+                census, host.Incidence, Demand(One), Cargo(), quotes,
+                Array.Empty<FoundationPhysicalRoutingEdgeCost>()));
+        Assert.Contains("shared physical tile/commodity market",
+            error.Message);
+    }
+
+    [Fact]
     public void OddGoodsAreRejectedWhenTheirCargoCannotBeRepresentedExactly()
     {
         var host = Host();
