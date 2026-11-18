@@ -1,0 +1,197 @@
+using GlobalArena.Kernel;
+using GlobalArena.Runtime;
+using GlobalArena.World;
+
+namespace GlobalArena.Simulation.Foundation;
+
+/// <summary>
+/// Capital investment is a monetary civilization action, NOT worker labor.
+/// Amount is expressed in money micro-units and must already exist in the
+/// authoritative civilizational treasury. No materials or stocks are debited.
+/// </summary>
+public sealed record FoundationMonetaryInfrastructureCommand : ISimulationCommand
+{
+    public CommandId Id { get; }
+    public CivilizationId Issuer { get; }
+    public PhysicalTacticalEdgeId Edge { get; }
+    public ulong MoneyMicro { get; }
+
+    public FoundationMonetaryInfrastructureCommand(
+        CommandId id, CivilizationId issuer,
+        PhysicalTacticalEdgeId edge, ulong moneyMicro)
+    {
+        if (id.Turn.Value == 0UL || id.Sequence == 0UL ||
+            !issuer.IsValid || !edge.IsValid || moneyMicro == 0UL)
+            throw new ArgumentException(
+                "Investment commands need one real civilization, " +
+                "real physical edge and strictly positive monetary funds.");
+        Id = id;
+        Issuer = issuer;
+        Edge = edge;
+        MoneyMicro = moneyMicro;
+    }
+}
+
+/// <summary>
+/// An exact cash debit and one edge capital credit. This is NOT a physical
+/// cargo lot, market settlement, employment contract or completed road.
+/// </summary>
+public sealed record FoundationMonetaryInfrastructureInvestedEvent
+    : ISimulationEvent
+{
+    public EventId Id { get; }
+    public CivilizationId Investor { get; }
+    public PhysicalTacticalEdgeId Edge { get; }
+    public ulong MoneyMicro { get; }
+    public ulong ExpectedRevision { get; }
+
+    public FoundationMonetaryInfrastructureInvestedEvent(
+        EventId id, CivilizationId investor,
+        PhysicalTacticalEdgeId edge, ulong moneyMicro,
+        ulong expectedRevision)
+    {
+        if (id.OriginKind != EventOriginKind.Command ||
+            !investor.IsValid || !edge.IsValid || moneyMicro == 0UL)
+            throw new ArgumentException(
+                "Monetary journal event needs a real originating command, " +
+                "positive treasury spend and a real physical edge.");
+        Id = id;
+        Investor = investor;
+        Edge = edge;
+        MoneyMicro = moneyMicro;
+        ExpectedRevision = expectedRevision;
+    }
+}
+
+/// <summary>
+/// Shared resolution and independent replay executor. The treasury and
+/// transport ledgers are debited/credited in the SAME immutable WorldState
+/// update; either both pass or neither state is published.
+/// </summary>
+public sealed class FoundationMonetaryInfrastructureEventExecutor
+    : ISimulationEventExecutor
+{
+    private readonly RuntimeWorldBinding _binding;
+    private readonly HashSet<PhysicalTacticalEdgeId> _actualEdges;
+
+    public FoundationMonetaryInfrastructureEventExecutor(
+        WorldGenerationResult world, PhysicalTacticalIncidenceMap incidence)
+    {
+        ArgumentNullException.ThrowIfNull(world);
+        ArgumentNullException.ThrowIfNull(incidence);
+        if (incidence.Refinement.CoarseParameters !=
+            world.Request.StrategicParameters)
+            throw new InvalidOperationException(
+                "Monetary investment needs the actual bound fine topology.");
+        _binding = RuntimeWorldBinding.FromGeneratedWorld(world);
+        var fine = incidence.Refinement.FineParameters;
+        _actualEdges = incidence.FineTopology.Edges.Select(e =>
+            new PhysicalTacticalEdgeId(fine, e.Id)).ToHashSet();
+    }
+
+    public WorldState Execute(WorldState state,
+        ISimulationEvent simulationEvent, SimulationContext context)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        if (simulationEvent is not FoundationMonetaryInfrastructureInvestedEvent ev)
+            throw new InvalidOperationException(
+                "This executor only applies monetary infrastructure events.");
+        if (ev.Id.Turn != context.Turn ||
+            state.Revision != ev.ExpectedRevision ||
+            state.WorldBinding != _binding ||
+            !state.Treasury.IsInitialized ||
+            !state.Transport.HasMonetaryConstructionCosts ||
+            !_actualEdges.Contains(ev.Edge) ||
+            !state.Civilizations.Civilizations.Contains(ev.Investor))
+            throw new InvalidOperationException(
+                "Stale, unfinanced or foreign infrastructure investment.");
+        return state.RecordMonetaryInfrastructureInvestment(
+            ev.Investor, ev.Edge, ev.MoneyMicro).AdvanceRevision();
+    }
+}
+
+/// <summary>
+/// Accepted infrastructure investments are resolved only at the collective
+/// all-ready turn boundary. Work is monetary and independent of worker
+/// locations, occupations and physical commodity production.
+/// </summary>
+public sealed class FoundationMonetaryInfrastructureTurnPhase
+    : ITurnResolutionPhase
+{
+    public const string StablePhaseId =
+        "foundation.real-civilization-monetary-infrastructure-v14";
+    private readonly FoundationMonetaryInfrastructureEventExecutor _executor;
+    public string PhaseId => StablePhaseId;
+
+    public FoundationMonetaryInfrastructureTurnPhase(
+        WorldGenerationResult world, PhysicalTacticalIncidenceMap incidence)
+    {
+        _executor = new FoundationMonetaryInfrastructureEventExecutor(
+            world, incidence);
+    }
+
+    public TurnResolutionResult Resolve(
+        TurnResolutionInput input, WorldState stagedState)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(stagedState);
+        var commands = input.Commands
+            .OfType<FoundationMonetaryInfrastructureCommand>()
+            .OrderBy(c => c.Id.Sequence)
+            .ToArray();
+        if (commands.Length == 0)
+            return new TurnResolutionResult(stagedState,
+                Array.Empty<ISimulationEvent>(),
+                new SimulationEventLog(Array.Empty<SimulationEventLogEntry>()));
+        if (commands.Any(c => c.Id.Turn != input.Context.Turn) ||
+            commands.Select(c => c.Id).Distinct().Count() != commands.Length)
+            throw new InvalidOperationException(
+                "Investment commands must be unique and belong to this turn.");
+
+        var state = stagedState;
+        var events = new List<ISimulationEvent>(commands.Length);
+        var entries = new List<SimulationEventLogEntry>(commands.Length);
+        foreach (var cmd in commands)
+        {
+            var ev = new FoundationMonetaryInfrastructureInvestedEvent(
+                new EventId(cmd.Id, 1UL), cmd.Issuer, cmd.Edge,
+                cmd.MoneyMicro, state.Revision);
+            state = _executor.Execute(state, ev, input.Context);
+            events.Add(ev);
+            entries.Add(new SimulationEventLogEntry(
+                checked((ulong)entries.Count + 1UL), ev,
+                wasEligible: true, wasExecuted: true));
+        }
+        return new TurnResolutionResult(state, events,
+            new SimulationEventLog(entries));
+    }
+}
+
+/// <summary>
+/// No worker-derived construction. The separate existing worker movement
+/// executor handles worker events and this executor handles only cash spending.
+/// </summary>
+public sealed class FoundationMonetaryCollectiveReplayExecutor
+    : ISimulationEventExecutor
+{
+    private readonly PhysicalTacticalWorkerMoveEventExecutor _workers;
+    private readonly FoundationMonetaryInfrastructureEventExecutor _money;
+
+    public FoundationMonetaryCollectiveReplayExecutor(
+        PhysicalTacticalWorkerMoveEventExecutor workers,
+        FoundationMonetaryInfrastructureEventExecutor money)
+    {
+        _workers = workers ?? throw new ArgumentNullException(nameof(workers));
+        _money = money ?? throw new ArgumentNullException(nameof(money));
+    }
+
+    public WorldState Execute(WorldState state,
+        ISimulationEvent ev, SimulationContext context) => ev switch
+    {
+        PhysicalTacticalWorkerMovedEvent => _workers.Execute(state, ev, context),
+        FoundationMonetaryInfrastructureInvestedEvent =>
+            _money.Execute(state, ev, context),
+        _ => throw new InvalidOperationException(
+            "Unrecognized monetary/worker journal event.")
+    };
+}
