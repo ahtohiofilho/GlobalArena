@@ -1,0 +1,89 @@
+using GlobalArena.Runtime;
+using GlobalArena.Simulation.Foundation;
+using GlobalArena.World;
+
+namespace GlobalArena.Godot;
+
+/// <summary>
+/// LAB ONLY. These coefficient and tax numbers are copied from the
+/// existing v15 C# regression fixture: they are NOT approved balance
+/// decisions and are NEVER selected for ordinary production gameplay.
+/// This explicitly selected Godot CI scenario creates a differentiated
+/// real producer census solely to render genuine freight routes.
+/// </summary>
+internal static class GaExplicitEconomicQaConfiguration
+{
+    private static readonly CivilizationId Red = new(1UL);
+    private static readonly CivilizationId Blue = new(2UL);
+    private static readonly CommodityId CommodityOne = new(1U);
+    private static readonly CommodityId CommodityTwo = new(2U);
+
+    internal static FoundationGameplayEconomicConfiguration Profile() =>
+        new(
+            new FoundationNaturalTransportSeedingPolicy(
+                new FoundationNaturalTransportCostBand(1_000UL, 1_000_000UL),
+                new FoundationNaturalTransportCostBand(5_000UL, 500_000UL),
+                new FoundationNaturalTransportCostBand(25_000UL, 100_000UL),
+                10_000UL),
+            new FoundationMonetaryConstructionPolicy(
+                2_000_000UL, 4_000_000UL, 6_000_000UL, 1_000_000UL),
+            new FoundationAuthoritativeEconomicSettlementPolicy(
+                new FoundationActivityCommodityDemandPolicy(
+                    new[] { CommodityOne, CommodityTwo },
+                    Enum.GetValues<FoundationPhysicalDemandProfile>()
+                        .SelectMany(activity =>
+                            new[] { CommodityOne, CommodityTwo }.Select(item =>
+                                new FoundationActivityCommodityDemandCoefficient(
+                                    activity, item, 1_000_000UL)))),
+                new FoundationCommodityCargoConversionPolicy(
+                    "explicit-godot-economic-qa-only",
+                    new[]
+                    {
+                        new FoundationCommodityCargoConversion(
+                            CommodityOne, 1_000_000UL),
+                        new FoundationCommodityCargoConversion(
+                            CommodityTwo, 1_000_000UL)
+                    }),
+                new[]
+                {
+                    new FoundationPhysicalEconomicTaxRate(Red, 1_000U),
+                    new FoundationPhysicalEconomicTaxRate(Blue, 500U)
+                },
+                maxProducerPasses: 64),
+            new[]
+            {
+                (Red, 0UL),
+                (Blue, 0UL)
+            });
+
+    /// <summary>
+    /// Deterministic, explicit QA specialization. No invented worker IDs,
+    /// locations, production capacities, work, stores or extra demand.
+    /// It only changes the two existing demo commodities before turn 1,
+    /// forcing a real interregional market test. NEVER call in normal mode.
+    /// </summary>
+    internal static FoundationTacticalHumanAiTurnHost Prepare(
+        FoundationTacticalHumanAiTurnHost demo)
+    {
+        ArgumentNullException.ThrowIfNull(demo);
+        if (demo.StateHash.FormatVersion != 11U ||
+            demo.Snapshot.Workers.Workers.Count != 6 ||
+            demo.Snapshot.Workers.Workers.Count(w => w.Owner == Red) != 3 ||
+            demo.Snapshot.Workers.Workers.Count(w => w.Owner == Blue) != 3)
+            throw new InvalidOperationException(
+                "QA economic trade needs the exact six real worker fixture.");
+        var specialized = new PhysicalWorkerRuntimeState(
+            demo.Snapshot.Workers.Workers.Select(w =>
+                new PhysicalWorkerRuntimeRecord(
+                    w.Id, w.Owner, w.CellId,
+                    w.Owner == Red ? CommodityOne : CommodityTwo,
+                    w.OutputMicroPerTurn, w.Activity,
+                    w.DemandMultiplierMicro, w.TacticalTileId,
+                    w.Occupation)),
+            tacticalLocationsAuthoritative: true,
+            occupationsAuthoritative: true);
+        demo.Session.AcceptSnapshot(demo.Snapshot.WithWorkers(specialized));
+        return FoundationGameplayEconomicBootstrap.Enable(
+            demo, Profile());
+    }
+}

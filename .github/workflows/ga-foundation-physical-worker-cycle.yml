@@ -34,6 +34,8 @@ on:
       - 'GlobalArena.Runtime/CivilizationTreasuryRuntimeState.cs'
       - 'GlobalArena.Tests/FoundationMonetaryInfrastructureInvestmentTests.cs'
       - 'GlobalArena.Tests/FoundationAuthoritativeEconomicSalesSettlementTests.cs'
+      - 'GlobalArena.Tests/FoundationGameplayEconomicBootstrapTests.cs'
+      - 'GlobalArena.Simulation/Foundation/FoundationGameplayEconomicBootstrap.cs'
       - 'GlobalArena.Runtime/AuthoritativeEconomicSettlementVisibility.cs'
       - 'GlobalArena.Tests/FoundationPhysicalCongestionStabilityScaleTests.cs'
       - 'GlobalArena.Tests/FoundationPhysicalMultiPathFreightPlannerTests.cs'
@@ -139,6 +141,8 @@ jobs:
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationMonetaryInfrastructureInvestmentTests' --logger 'console;verbosity=normal'
       - name: Authoritative economic close v15 — all real goods sold and consumed, sales-to-treasury credits, bounded freight and anti-forgery replay
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationAuthoritativeEconomicSalesSettlementTests' --logger 'console;verbosity=normal'
+      - name: Explicit monetary economic startup — no QA defaults, complete policy, real v15 sales
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationGameplayEconomicBootstrapTests' --logger 'console;verbosity=normal'
 
 
       - name: Turn-locked freight pivot — fixed-cost water-filling and next-cycle lagged congestion

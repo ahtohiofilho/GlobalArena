@@ -21,6 +21,8 @@ public partial class TacticalContextPreview
     private bool _showSettledTradeRoutes = true;
 
     public int VisibleSettledTradeCrossings { get; private set; }
+    public bool IsSettledTradeLayerVisible =>
+        _settledTradeMesh?.Visible ?? false;
 
     public bool HasSettledTradeData =>
         _lastAuthorizedTrade is not null &&
