@@ -80,13 +80,16 @@ public sealed class FoundationTacticalCollectiveReceipt
     public IReadOnlyList<PhysicalTacticalWorkerMovedEvent> Events { get; }
     public IReadOnlyList<FoundationMonetaryInfrastructureInvestedEvent>
         InfrastructureInvestments { get; }
-    public int ExecutedEvents => Events.Count + InfrastructureInvestments.Count;
+    public FoundationEconomicSalesSettledEvent? EconomicSettlement { get; }
+    public int ExecutedEvents => Events.Count + InfrastructureInvestments.Count +
+        (EconomicSettlement is null ? 0 : 1);
     public bool ReplayMatched { get; }
 
     internal FoundationTacticalCollectiveReceipt(
         TurnNumber turn, WorldStateHash hash, ulong revision,
         PhysicalTacticalWorkerMovedEvent[] events,
-        FoundationMonetaryInfrastructureInvestedEvent[]? investments = null)
+        FoundationMonetaryInfrastructureInvestedEvent[]? investments = null,
+        FoundationEconomicSalesSettledEvent? economicSettlement = null)
     {
         Turn = turn;
         Hash = hash;
@@ -94,6 +97,7 @@ public sealed class FoundationTacticalCollectiveReceipt
         Events = Array.AsReadOnly(events);
         InfrastructureInvestments = Array.AsReadOnly(investments ??
             Array.Empty<FoundationMonetaryInfrastructureInvestedEvent>());
+        EconomicSettlement = economicSettlement;
         ReplayMatched = true;
     }
 }
@@ -115,6 +119,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
     private readonly PhysicalTacticalWorkerMoveEventExecutor _executor;
     private readonly FoundationMonetaryInfrastructureEventExecutor?
         _monetaryExecutor;
+    private readonly FoundationEconomicSalesSettlementEventExecutor?
+        _economicExecutor;
     private readonly AuthoritativeTurnCommitGate _publisher;
     private readonly CanonicalWorldStateHasher _hasher = new();
     private readonly HashSet<CivilizationId> _humans;
@@ -332,7 +338,9 @@ public sealed class FoundationTacticalHumanAiTurnHost
         IEnumerable<CivilizationId> humanCivilizations,
         IReadOnlyDictionary<CivilizationId, IFoundationTacticalAiTurnPolicy>
             aiPolicies,
-        bool enableMonetaryInfrastructure = false)
+        bool enableMonetaryInfrastructure = false,
+        FoundationAuthoritativeEconomicSettlementPolicy?
+            settlementPolicy = null)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
         _incidence = incidence ?? throw new ArgumentNullException(nameof(incidence));
@@ -378,6 +386,10 @@ public sealed class FoundationTacticalHumanAiTurnHost
             _ => new SortedDictionary<ulong, FoundationTacticalWorkerOrder>());
         _investmentPlans = _participants.ToDictionary(civ => civ,
             _ => new SortedDictionary<ulong, FoundationMonetaryInfrastructureCommand>());
+        if (settlementPolicy is not null && !enableMonetaryInfrastructure)
+            throw new InvalidOperationException(
+                "Authoritative sales need the same monetary treasury and " +
+                "physical world as the existing investment journal.");
         if (enableMonetaryInfrastructure &&
             (!Snapshot.Treasury.IsInitialized ||
              !Snapshot.Transport.HasMonetaryConstructionCosts))
@@ -402,6 +414,15 @@ public sealed class FoundationTacticalHumanAiTurnHost
                 session.GeneratedWorld, incidence);
             phases.Add(new FoundationMonetaryInfrastructureTurnPhase(
                 session.GeneratedWorld, incidence));
+        }
+        if (settlementPolicy is not null)
+        {
+            _economicExecutor = new FoundationEconomicSalesSettlementEventExecutor(
+                session.GeneratedWorld, incidence, settlementPolicy);
+            // Money available for THIS turn's investment must already exist:
+            // the current sales close AFTER its orders and funds NEXT turn.
+            phases.Add(new FoundationAuthoritativeEconomicSalesSettlementPhase(
+                session.GeneratedWorld, incidence, settlementPolicy));
         }
         var engine = new PhasedTurnResolutionEngine(phases);
         _publisher = new AuthoritativeTurnCommitGate(
@@ -693,35 +714,44 @@ public sealed class FoundationTacticalHumanAiTurnHost
             .OfType<PhysicalTacticalWorkerMovedEvent>().ToArray();
         var moneyEvents = resolved.Events
             .OfType<FoundationMonetaryInfrastructureInvestedEvent>().ToArray();
+        var settled = resolved.Events
+            .OfType<FoundationEconomicSalesSettledEvent>().ToArray();
+        int expectedSettlements = _economicExecutor is null ? 0 : 1;
         if (events.Length != orders.Length ||
             moneyEvents.Length != investments.Length ||
-            resolved.Events.Count != commands.Length ||
-            resolved.EventLog.Entries.Count != commands.Length ||
+            settled.Length != expectedSettlements ||
+            resolved.Events.Count != commands.Length + expectedSettlements ||
+            resolved.EventLog.Entries.Count !=
+                commands.Length + expectedSettlements ||
             resolved.EventLog.Entries.Any(entry => !entry.WasExecuted))
             throw new InvalidOperationException(
-                "Canonical collective journal differs from worker and " +
-                "real monetary investment orders.");
+                "Committed journal differs from the complete worker, " +
+                "investment and real production/consumption settlement.");
 
         ISimulationEventExecutor replayExecutor =
             _monetaryExecutor is null
                 ? _executor
                 : new FoundationMonetaryCollectiveReplayExecutor(
-                    _executor, _monetaryExecutor);
+                    _executor, _monetaryExecutor, _economicExecutor);
         var replay = new SimulationEventLogReplayer(replayExecutor)
             .Replay(new SimulationReplayInput(
                 before, resolved.EventLog, context));
         var hash = _hasher.Compute(Snapshot);
         var previousFormat = _hasher.Compute(before).FormatVersion;
         if ((hash.FormatVersion != previousFormat &&
-             !(previousFormat == 13U && hash.FormatVersion == 14U)) ||
+             !(previousFormat == 13U &&
+               (hash.FormatVersion == 14U || hash.FormatVersion == 15U)) &&
+             !(previousFormat == 14U && hash.FormatVersion == 15U)) ||
             (hash.FormatVersion != 10U && hash.FormatVersion != 11U &&
-             hash.FormatVersion != 13U && hash.FormatVersion != 14U) ||
+             hash.FormatVersion != 13U && hash.FormatVersion != 14U &&
+             hash.FormatVersion != 15U) ||
             _hasher.Compute(replay) != hash)
             throw new InvalidOperationException(
-                "Monetary construction or tactical journal replay does not " +
-                "match the authoritative world hash.");
+                "Worker, infrastructure and closed market journal replay " +
+                "does not match the authoritative world hash.");
         var receipt = new FoundationTacticalCollectiveReceipt(
-            turn, hash, Snapshot.Revision, events, moneyEvents);
+            turn, hash, Snapshot.Revision, events, moneyEvents,
+            settled.SingleOrDefault());
         foreach (var plan in _plans.Values) plan.Clear();
         foreach (var plan in _investmentPlans.Values) plan.Clear();
         _ready.Clear();

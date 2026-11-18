@@ -1,4 +1,5 @@
 using System.Numerics;
+using GlobalArena.World;
 
 namespace GlobalArena.Runtime;
 
@@ -25,7 +26,22 @@ public static class GlobalArenaMoneyScale
 /// </summary>
 public sealed record CivilizationCashAccount(
     CivilizationId Civilization, BigInteger CashScaled,
-    BigInteger TotalInfrastructureInvestmentScaled);
+    BigInteger TotalInfrastructureInvestmentScaled)
+{
+    /// <summary>Verified cumulative economic income, not opening grants.</summary>
+    public BigInteger TotalSettledEconomicIncomeScaled { get; init; }
+}
+
+/// <summary>
+/// Persisted, trusted freight quotes derived ONLY from a settled economic
+/// cycle's independently audited edge loads. They are physical costs,
+/// not market prices, stock, or invented roads.
+/// </summary>
+public sealed record CivilizationSettledFreightQuote(
+    PhysicalTacticalEdgeId Edge,
+    ulong FreePhysicalCostMicroPerWholeCargoUnit,
+    ulong ReferenceCargoMicro,
+    ulong QuotedCongestionSurchargeMicroPerWholeCargoUnit);
 
 /// <summary>
 /// Opt-in complete treasury, indexed by canonical civilization identities.
@@ -43,11 +59,34 @@ public sealed class CivilizationTreasuryRuntimeState
     public bool IsInitialized { get; }
     public IReadOnlyList<CivilizationCashAccount> Accounts { get; }
 
+    public ulong LastSettledEconomicCycleOrdinal { get; }
+    public string? LastSettledCargoUnitCode { get; }
+    public IReadOnlyList<CivilizationSettledFreightQuote>
+        LastSettledFreightQuotes { get; }
+
+    public bool HasClosedEconomicCycle =>
+        LastSettledEconomicCycleOrdinal > 0UL;
+
     private CivilizationTreasuryRuntimeState(
         bool initialized, CivilizationCashAccount[] accounts)
     {
         IsInitialized = initialized;
         Accounts = Array.AsReadOnly(accounts);
+        LastSettledEconomicCycleOrdinal = 0UL;
+        LastSettledCargoUnitCode = null;
+        LastSettledFreightQuotes = Array.Empty<CivilizationSettledFreightQuote>();
+    }
+
+    private CivilizationTreasuryRuntimeState(
+        CivilizationTreasuryRuntimeState source,
+        CivilizationCashAccount[] accounts, ulong ordinal,
+        string cargoUnitCode, CivilizationSettledFreightQuote[] quotes)
+    {
+        IsInitialized = source.IsInitialized;
+        Accounts = Array.AsReadOnly(accounts);
+        LastSettledEconomicCycleOrdinal = ordinal;
+        LastSettledCargoUnitCode = cargoUnitCode;
+        LastSettledFreightQuotes = Array.AsReadOnly(quotes);
     }
 
     public static CivilizationTreasuryRuntimeState CreateOpening(
@@ -97,6 +136,62 @@ public sealed class CivilizationTreasuryRuntimeState
                     row.TotalInfrastructureInvestmentScaled + amount
             }
             : row).ToArray();
-        return new CivilizationTreasuryRuntimeState(true, next);
+        // Investment cannot erase the provenance of previous closed
+        // economic cycles or their next-cycle congestion quotes.
+        return HasClosedEconomicCycle
+            ? new CivilizationTreasuryRuntimeState(
+                this, next, LastSettledEconomicCycleOrdinal,
+                LastSettledCargoUnitCode!,
+                LastSettledFreightQuotes.ToArray())
+            : new CivilizationTreasuryRuntimeState(true, next);
+    }
+
+    /// <summary>
+    /// Internal capability, available only to the simulation's validated
+    /// system-event executor. There is deliberately NO public money-credit
+    /// API for arbitrary market previews or client-provided revenues.
+    /// </summary>
+    internal CivilizationTreasuryRuntimeState CloseVerifiedEconomicCycle(
+        ulong economicCycleOrdinal,
+        string cargoUnitCode,
+        IReadOnlyDictionary<CivilizationId, BigInteger> creditsScaled,
+        IEnumerable<CivilizationSettledFreightQuote> nextFreightQuotes)
+    {
+        ArgumentNullException.ThrowIfNull(creditsScaled);
+        ArgumentNullException.ThrowIfNull(nextFreightQuotes);
+        if (!IsInitialized || economicCycleOrdinal == 0UL ||
+            economicCycleOrdinal != checked(LastSettledEconomicCycleOrdinal + 1UL) ||
+            string.IsNullOrWhiteSpace(cargoUnitCode) ||
+            creditsScaled.Count != Accounts.Count ||
+            Accounts.Any(account =>
+                !creditsScaled.TryGetValue(account.Civilization, out var credit) ||
+                credit.Sign < 0))
+            throw new InvalidOperationException(
+                "Economic credit must be nonnegative, complete, funded by " +
+                "a single consecutive audited closed market cycle.");
+
+        var quotes = nextFreightQuotes.ToArray();
+        if (quotes.Length == 0 ||
+            quotes.Any(q => q is null || !q.Edge.IsValid ||
+                q.FreePhysicalCostMicroPerWholeCargoUnit == 0UL ||
+                q.ReferenceCargoMicro == 0UL) ||
+            quotes.Select(q => q.Edge).Distinct().Count() != quotes.Length)
+            throw new InvalidOperationException(
+                "Settled freight must include exact unique real edge quotes.");
+        Array.Sort(quotes, (a, b) =>
+            a.Edge.FineStrategicEdgeId.Value.CompareTo(
+                b.Edge.FineStrategicEdgeId.Value));
+        var next = Accounts.Select(account =>
+        {
+            BigInteger credit = creditsScaled[account.Civilization];
+            return account with
+            {
+                CashScaled = account.CashScaled + credit,
+                TotalSettledEconomicIncomeScaled =
+                    account.TotalSettledEconomicIncomeScaled + credit
+            };
+        }).ToArray();
+        return new CivilizationTreasuryRuntimeState(
+            this, next, economicCycleOrdinal, cargoUnitCode, quotes);
     }
 }

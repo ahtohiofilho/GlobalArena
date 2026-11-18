@@ -455,6 +455,31 @@ public sealed class WorldState
             Economy, Population, Warfare, Workers, newTransport, newTreasury);
     }
 
+    /// <summary>
+    /// This is an INTERNAL mutation capability, invoked only after a
+    /// system-event executor independently recalculates and audits all
+    /// real production, deliveries, market prices, taxes, tolls, and
+    /// freight. Buyers have no wallets; goods never become stock.
+    /// </summary>
+    internal WorldState RecordAuditedEconomicCycle(
+        ulong ordinal, string cargoUnitCode,
+        IReadOnlyDictionary<CivilizationId, System.Numerics.BigInteger>
+            verifiedCivilizationCreditsScaled,
+        IEnumerable<CivilizationSettledFreightQuote> nextFreightQuotes)
+    {
+        if (WorldBinding is null || !Treasury.IsInitialized ||
+            !Transport.HasMonetaryConstructionCosts ||
+            !Workers.HasAuthoritativeOccupations)
+            throw new InvalidOperationException(
+                "Economic settlement needs a real bound market and treasury.");
+        var settled = Treasury.CloseVerifiedEconomicCycle(
+            ordinal, cargoUnitCode, verifiedCivilizationCreditsScaled,
+            nextFreightQuotes);
+        return new WorldState(
+            Revision, WorldBinding, Civilizations, Territory, Diplomacy,
+            Economy, Population, Warfare, Workers, Transport, settled);
+    }
+
     public WorldState AdvanceRevision()
     {
         return new WorldState(
@@ -556,7 +581,8 @@ public sealed class WorldState
                 treasury.Accounts.Any(account =>
                     !civilizationIds.Contains(account.Civilization) ||
                     account.CashScaled.Sign < 0 ||
-                    account.TotalInfrastructureInvestmentScaled.Sign < 0))
+                    account.TotalInfrastructureInvestmentScaled.Sign < 0 ||
+                    account.TotalSettledEconomicIncomeScaled.Sign < 0))
                 throw new InvalidOperationException(
                     "Authoritative treasury must match all real civilization " +
                     "identities, monetary transport and nonnegative money.");
@@ -564,6 +590,26 @@ public sealed class WorldState
         else if (treasury.Accounts.Count != 0)
             throw new InvalidOperationException(
                 "An uninitialized treasury cannot contain accounts.");
+
+        if (treasury.HasClosedEconomicCycle)
+        {
+            var quotes = treasury.LastSettledFreightQuotes;
+            var known = transport.Edges.Select(e => e.Edge).ToHashSet();
+            if (!transport.IsInitialized ||
+                string.IsNullOrWhiteSpace(treasury.LastSettledCargoUnitCode) ||
+                quotes.Count != known.Count ||
+                quotes.Any(q => q is null || !q.Edge.IsValid ||
+                    q.FreePhysicalCostMicroPerWholeCargoUnit == 0UL ||
+                    q.ReferenceCargoMicro == 0UL || !known.Remove(q.Edge)) ||
+                known.Count != 0)
+                throw new InvalidOperationException(
+                    "A closed economic cycle requires complete canonical " +
+                    "freight memory tied to real physical crossings.");
+        }
+        else if (treasury.LastSettledFreightQuotes.Count != 0 ||
+                 treasury.LastSettledCargoUnitCode is not null)
+            throw new InvalidOperationException(
+                "Unsettled worlds cannot carry invented freight history.");
 
         if (transport.HasCommittedInvestments &&
             (!treasury.IsInitialized || !transport.HasMonetaryConstructionCosts ||
