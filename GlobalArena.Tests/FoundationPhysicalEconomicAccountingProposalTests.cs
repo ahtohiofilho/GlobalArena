@@ -10,7 +10,7 @@ namespace GlobalArena.Tests;
 /// Financial evidence from real workers and fixed-freight allocation.
 /// NEVER asserts monetary settlement, treasury mutation or invented
 /// published economic cycles. Protect the universal price policy and
-/// reject known owner-split physical market ambiguity before commit.
+/// settle shared physical markets without ownership-specific prices.
 /// </summary>
 public sealed class FoundationPhysicalEconomicAccountingProposalTests
 {
@@ -178,13 +178,33 @@ public sealed class FoundationPhysicalEconomicAccountingProposalTests
     }
 
     [Fact]
-    public void CollocatedDifferentCivilizationsMustNotSettleTwoPricesInOnePhysicalMarket()
+    public void CollocatedCivilizationsShareOnePhysicalDemandAndOneMarketPrice()
     {
         var s = RealTwoTileScenario(collocateCivilizations: true,
             remoteDemandMultiplierMicro: 1_000_000UL);
-        var error = Assert.Throws<InvalidOperationException>(() =>
-            Evaluate(s));
-        Assert.Contains("owner-split water-filling", error.Message);
+        var hash = s.Host.StateHash;
+        var result = Evaluate(s);
+        Assert.False(result.IsCommitted);
+        Assert.Equal(2, result.Lines.Count);
+        Assert.Equal(1_000_000UL, result.Lines.Aggregate(0UL,
+            (sum, line) => checked(sum + line.GoodsMicro)));
+        Assert.Equal(1_414_213UL, result.Lines[0].MarketPriceMicroPerWholeGood);
+        Assert.All(result.Lines, line =>
+        {
+            Assert.Equal(result.Lines[0].MarketPriceMicroPerWholeGood,
+                line.MarketPriceMicroPerWholeGood);
+            Assert.Equal(line.SourceTile, line.BuyerTile);
+            Assert.Equal(BigInteger.Zero, line.PhysicalFreightScaled);
+            Assert.Equal(BigInteger.Zero, line.ExternalTollsScaled);
+        });
+        Assert.Equal(new[] { Red, Blue },
+            result.Lines.Select(line => line.Buyer).OrderBy(id => id.Value));
+        Assert.All(s.Candidate.Distribution.MarketTotals, line =>
+        {
+            Assert.Equal(1_000_000UL, line.DemandMicro);
+            Assert.Equal(500_000UL, line.AllocatedGoodsMicro);
+        });
+        Assert.Equal(hash, s.Host.StateHash);
         Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
             s.Host.GetLastClosedEconomicTradeView(Red).Availability);
     }
