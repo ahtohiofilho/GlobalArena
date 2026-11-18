@@ -95,11 +95,8 @@ public sealed class FoundationPhysicalEconomicAccountingProposal
 /// and the actual quantity allocated. All freight rates are frozen from
 /// the already-built turn plan; prior-cycle congestion is not recalculated.
 ///
-/// A legacy unresolved caveat: the current experimental allocator groups
-/// buyers by (tile, civilization, commodity), while the game requires ONE
-/// physical (tile, commodity) market. If more than one civilization lives
-/// in the SAME market, reject the proposal rather than settle different
-/// clearing prices for the same good at the same physical location.
+/// Workers of distinct civilizations at one tile share ONE physical market.
+/// Buyer ownership is retained for provenance, never to partition price D/Q.
 /// </summary>
 public static class FoundationPhysicalEconomicAccountingReconciler
 {
@@ -151,15 +148,7 @@ public static class FoundationPhysicalEconomicAccountingReconciler
         if (!market.Commodities.SequenceEqual(cargoPolicy.Commodities))
             throw new InvalidOperationException(
                 "Tax accounting may not change the physical commodity catalog.");
-        var collocated = market.DemandByCivilization
-            .GroupBy(line => (line.Tile, line.Commodity))
-            .FirstOrDefault(g => g.Count() > 1);
-        if (collocated is not null)
-            throw new InvalidOperationException(
-                "One physical tile/commodity market contains multiple " +
-                "civilizations. The legacy owner-split water-filling must " +
-                "be consolidated BEFORE any economic settlement.");
-
+        // Multiple real owners at one location share ONE price and Q.
         // Independent audit: one and only one physical source, destination,
         // cargo conversion, traversable edge, owner, and quantity for each
         // real delivered lot. Candidate audit alone is not proof.
@@ -197,18 +186,21 @@ public static class FoundationPhysicalEconomicAccountingReconciler
                 "Candidate marginal market quantities disagree with real " +
                 "physical demand and actual allocated goods.");
 
-        var markets = market.DemandByCivilization.ToDictionary(
-            x => (x.Tile, x.Owner, x.Commodity), x => x.DemandMicro);
+        var markets = market.MarketDemand.ToDictionary(
+            x => (x.Tile, x.Commodity), x => x.DemandMicro);
+        var sharedTotals = candidate.Distribution.Candidates
+            .GroupBy(x => (x.BuyerTile, x.Commodity))
+            .ToDictionary(g => g.Key, g => g.Aggregate(0UL,
+                (sum, x) => checked(sum + x.GoodsMicro)));
         var prices = new Dictionary<
-            (PhysicalTacticalTileId Tile, CivilizationId Buyer,
-             CommodityId Commodity), ulong>();
-        foreach (var pair in totals)
+            (PhysicalTacticalTileId Tile, CommodityId Commodity), ulong>();
+        foreach (var pair in sharedTotals)
         {
             if (pair.Value == 0UL ||
                 !markets.TryGetValue(pair.Key, out var d) || d == 0UL)
                 throw new InvalidOperationException(
-                    "A positive real delivery requires positive physical " +
-                    "demand and a real received quantity.");
+                    "A positive real delivery requires positive shared " +
+                    "physical demand and a real received quantity.");
             // Exact integer floor(sqrt(D/Q)*1e6), no floating point and
             // no arbitrary quote multipliers. Integer square root is stable
             // on every architecture and preserves the approved P0=1.
@@ -235,7 +227,7 @@ public static class FoundationPhysicalEconomicAccountingReconciler
         foreach (var delivery in candidate.Distribution.Candidates
             .OrderBy(x => x.DeliveryOrdinal))
         {
-            var key = (delivery.BuyerTile, delivery.Buyer, delivery.Commodity);
+            var key = (delivery.BuyerTile, delivery.Commodity);
             ulong price = prices[key];
             ulong cargo = cargoPolicy.CargoMicro(
                 delivery.Commodity, delivery.GoodsMicro);
