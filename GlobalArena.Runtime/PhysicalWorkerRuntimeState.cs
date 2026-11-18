@@ -152,6 +152,27 @@ public sealed class PhysicalWorkerRuntimeState
     public bool HasAuthoritativeOccupations { get; }
     public IReadOnlyList<PhysicalWorkerRuntimeRecord> Workers { get; }
 
+    /// <summary>
+    /// The canonical worker census is sorted by stable individual ID.
+    /// Construction-event replay must not scan 10k workers for every
+    /// contributor; O(log W) lookup also preserves old immutable snapshots.
+    /// </summary>
+    public PhysicalWorkerRuntimeRecord? FindWorker(PhysicalWorkerId id)
+    {
+        if (!id.IsValid) return null;
+        ulong target = id.Value;
+        int left = 0, right = Workers.Count - 1;
+        while (left <= right)
+        {
+            int mid = left + (right - left) / 2;
+            ulong value = Workers[mid].Id.Value;
+            if (value == target) return Workers[mid];
+            if (value < target) left = mid + 1;
+            else right = mid - 1;
+        }
+        return null;
+    }
+
     public PhysicalWorkerRuntimeState(
         IEnumerable<PhysicalWorkerRuntimeRecord> workers,
         bool tacticalLocationsAuthoritative = false,
