@@ -749,6 +749,15 @@ public sealed class FoundationTacticalHumanAiTurnHost
             throw new InvalidOperationException(
                 "Worker, infrastructure and closed market journal replay " +
                 "does not match the authoritative world hash.");
+        // Financial/cargo evidence can become visible ONLY after its
+        // entire all-ready journal was committed and independently
+        // reproduced from real workers and canonical transport. The
+        // read boundary publishes participant-specific volumes, never
+        // global trade totals or a fabricated preview overlay.
+        if (settled.SingleOrDefault() is { } verifiedCycle)
+            _closedTrade.PublishVerifiedParticipantSettlement(
+                verifiedCycle, Snapshot, NextTurn);
+
         var receipt = new FoundationTacticalCollectiveReceipt(
             turn, hash, Snapshot.Revision, events, moneyEvents,
             settled.SingleOrDefault());
