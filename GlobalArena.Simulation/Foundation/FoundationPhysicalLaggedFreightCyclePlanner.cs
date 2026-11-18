@@ -214,14 +214,19 @@ public static class FoundationPhysicalLaggedFreightCyclePlanner
             var baseRoad = roads[i];
             ulong load = loads.GetValueOrDefault(baseRoad.Edge);
             totalCrossingCargo += load;
-            ulong nextSurcharge = NextSurcharge(
-                baseRoad.PhysicalCostMicroPerWholeCargoUnit,
-                carriedSurcharge[i], load, scales[baseRoad.Edge],
-                smoothingDenominator);
+            // Compute the congestion target ONCE per crossing AFTER
+            // the fixed-cost water-filling solve. It must never feed
+            // back into this same turn's allocation or route costs.
             ulong targetQuote =
                 FoundationPhysicalEndogenousCongestionFeedback.CalculateCongestedRate(
                     baseRoad.PhysicalCostMicroPerWholeCargoUnit, load,
                     scales[baseRoad.Edge]);
+            ulong targetSurcharge = checked(targetQuote -
+                baseRoad.PhysicalCostMicroPerWholeCargoUnit);
+            ulong nextSurcharge =
+                FoundationPhysicalEndogenousCongestionFeedback.RelaxCostTowards(
+                    carriedSurcharge[i], targetSurcharge,
+                    smoothingDenominator);
             ulong nextQuote = checked(
                 baseRoad.PhysicalCostMicroPerWholeCargoUnit + nextSurcharge);
             readings[i] = new FoundationPhysicalLaggedFreightEdgeReading(
