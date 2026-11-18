@@ -53,7 +53,7 @@ internal sealed class FoundationGodotSettledTradeSmoke
 
     private async Task Screenshot(string step)
     {
-        var directory = Environment.GetEnvironmentVariable(
+        var directory = System.Environment.GetEnvironmentVariable(
             "GA_NEXT_SETTLED_TRADE_SCREENSHOT_DIR");
         if (string.IsNullOrWhiteSpace(directory)) return;
         Directory.CreateDirectory(directory);
@@ -62,7 +62,7 @@ internal sealed class FoundationGodotSettledTradeSmoke
         Must(shot is not null && !shot.IsEmpty(),
             "Actual Godot trade screenshot has no framebuffer.");
         var path = Path.Combine(directory, step + ".png");
-        Must(shot.SavePng(path) == Error.Ok &&
+        Must(shot!.SavePng(path) == Error.Ok &&
              new FileInfo(path).Length > 1500,
             "Cannot save authoritative trade overlay screenshot.");
         GD.Print($"GA_NEXT_V15_SETTLED_TRADE_FRAME_PASS step={step} " +
