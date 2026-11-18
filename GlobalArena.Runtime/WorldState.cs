@@ -421,13 +421,19 @@ public sealed class WorldState
                 "Committed physical construction requires a bound worker world.");
         var nextTransport = Transport.ApplyJournaledWork(
             crossing, creditedLaborMicro);
+        // Existing worker/geography/ownership domains were validated when
+        // THIS snapshot was created; the strictly capped single-edge
+        // journaled work cannot change any of their invariants. Rechecking
+        // thousands of edges per builder would be quadratic in workers.
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
-            Economy, Population, Warfare, Workers, nextTransport);
+            Economy, Population, Warfare, Workers, nextTransport,
+            reuseValidatedDomains: true);
     }
 
     public WorldState AdvanceRevision()
     {
+        // Revision alone never changes the already validated domain graph.
         return new WorldState(
             checked(Revision + 1UL),
             WorldBinding,
@@ -437,7 +443,7 @@ public sealed class WorldState
             Economy,
             Population,
             Warfare,
-            Workers, Transport);
+            Workers, Transport, reuseValidatedDomains: true);
     }
 
     private WorldState(
@@ -450,7 +456,8 @@ public sealed class WorldState
         PopulationRuntimeState population,
         WarfareRuntimeState warfare,
         PhysicalWorkerRuntimeState? workers = null,
-        PhysicalTransportInfrastructureRuntimeState? transport = null)
+        PhysicalTransportInfrastructureRuntimeState? transport = null,
+        bool reuseValidatedDomains = false)
     {
         ArgumentNullException.ThrowIfNull(
             civilizations);
@@ -474,16 +481,22 @@ public sealed class WorldState
         var transportState = transport ??
             PhysicalTransportInfrastructureRuntimeState.Uninitialized;
 
-        ValidateCrossDomainInvariants(
-            worldBinding,
-            civilizations,
-            territory,
-            diplomacy,
-            economy,
-            population,
-            warfare,
-            workerState,
-            transportState);
+        // Only the two sealed immutable replay/copy paths use this flag:
+        // AdvanceRevision and RecordJournaledConstructionWork. All public
+        // world binding/initialization/replacement inputs still take the
+        // full cross-domain validation. The transport mutation has already
+        // verified its canonical ID, unchanged title and bounded progress.
+        if (!reuseValidatedDomains)
+            ValidateCrossDomainInvariants(
+                worldBinding,
+                civilizations,
+                territory,
+                diplomacy,
+                economy,
+                population,
+                warfare,
+                workerState,
+                transportState);
 
         Revision = revision;
         WorldBinding = worldBinding;
