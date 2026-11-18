@@ -145,10 +145,10 @@ public sealed class FoundationPhysicalEconomicAccountingProposalTests
             Assert.True(row.MarketPriceMicroPerWholeGood > 0UL);
         });
         Assert.Equal(result.ExternalTollsScaled,
-            Assert.Single(result.Accounts.Where(x => x.Civilization == Blue))
+            Assert.Single(result.Accounts, x => x.Civilization == Blue)
                 .TollIncomeScaled);
         Assert.Equal(BigInteger.Zero,
-            Assert.Single(result.Accounts.Where(x => x.Civilization == Red))
+            Assert.Single(result.Accounts, x => x.Civilization == Red)
                 .TollIncomeScaled);
         Assert.Equal(s.Candidate.Distribution.Candidates.Count,
             result.Lines.Count);
@@ -248,6 +248,6 @@ public sealed class FoundationPhysicalEconomicAccountingProposalTests
         });
         Assert.Equal(1U,
             output.Lines.Select(x => x.Commodity.Value).Distinct().Single());
-        Assert.NotEqual(0, s.Host.Incidence.FineTopology.Edges.Count);
+        Assert.NotEmpty(s.Host.Incidence.FineTopology.Edges);
     }
 }
