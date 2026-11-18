@@ -320,4 +320,269 @@ public sealed class FoundationLastClosedEconomicTradePublicationTests
         Assert.Equal(turn.Hash, original.PublishedHash);
         Assert.Equal(Red, Assert.Single(original.UsedEdges).Owner);
     }
+
+    private static (
+        FoundationPhysicalRoutingEdgeCost[] Roads,
+        FoundationPhysicalEdgeCarryingScale[] Scales)
+        SettledFreightPolicy(PhysicalTacticalEdgeId edge,
+            ulong freeCost = 100_000UL, ulong referenceCargo = 1_000_000UL) =>
+        (new[]
+        {
+            new FoundationPhysicalRoutingEdgeCost(
+                edge, FoundationInfrastructureOwnershipKind.Owned, Red,
+                freeCost, 30_000UL)
+        }, new[]
+        {
+            new FoundationPhysicalEdgeCarryingScale(edge, referenceCargo)
+        });
+
+    [Fact]
+    public void WorkerOnlyTurnsCannotMintSettledFreightHistory()
+    {
+        var host = Start();
+        var boundary = Boundary(host);
+        Assert.Null(boundary.ReadLastSettledFreightForNextCycle(host.Snapshot));
+        CloseOneWorkerTurn(host);
+        CloseOneWorkerTurn(host);
+        Assert.Null(boundary.ReadLastSettledFreightForNextCycle(host.Snapshot));
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            boundary.Read(Red, host.Snapshot).Availability);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            host.GetLastClosedEconomicTradeView(Red).Availability);
+    }
+
+    [Fact]
+    public void ValidSettledCargoPublishesNextFreightExactlyOnceWithoutChangingClosedTurn()
+    {
+        var host = Start();
+        var closed = CloseOneWorkerTurn(host);
+        var boundary = Boundary(host);
+        var (_, _, edge) = FirstEdge(host.Incidence);
+        var (roads, scales) = SettledFreightPolicy(edge);
+        var cargo = Audit(host);
+        var artifact = Artifact(host, closed, cargo, Audience(edge));
+
+        boundary.PublishSettledCycleWithNextFreight(
+            artifact, host.Snapshot, host.NextTurn,
+            roads, scales, Unit);
+
+        var first = Assert.IsType<FoundationPhysicalLaggedFreightQuoteState>(
+            boundary.ReadLastSettledFreightForNextCycle(host.Snapshot));
+        Assert.True(first.HasSettledProvenance);
+        Assert.Equal(1UL, first.AuditedPreviewCycles);
+        var quote = Assert.Single(first.Edges);
+        Assert.Equal(edge, quote.Edge);
+        Assert.Equal(100_000UL, quote.FreePhysicalCostMicroPerWholeCargoUnit);
+        Assert.Equal(1_000_000UL, quote.ReferenceCargoMicro);
+        // 2 million cargo on reference 1 million:
+        // target=100_000*(1+2^4)=1_700_000.
+        // Only the NEXT cycle gets 25% of the 1_600_000 surcharge.
+        Assert.Equal(400_000UL,
+            quote.QuotedCongestionSurchargeMicroPerWholeCargoUnit);
+        var red = boundary.Read(Red, host.Snapshot);
+        var blue = boundary.Read(Blue, host.Snapshot);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.Ready,
+            red.Availability);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.AuthorizedSubset,
+            blue.Availability);
+        Assert.Equal(2_000_000UL,
+            Assert.Single(red.UsedEdges).TotalCargoMicro);
+        Assert.Empty(blue.UsedEdges); // No global freight leaked to client.
+
+        // A worker-only turn cannot advance freight or rewrite the last
+        // genuinely closed economic cycle.
+        var nextWorkerTurn = CloseOneWorkerTurn(host);
+        Assert.Same(first,
+            boundary.ReadLastSettledFreightForNextCycle(host.Snapshot));
+        Assert.Same(red, boundary.Read(Red, host.Snapshot));
+        Assert.Equal(nextWorkerTurn.Hash, host.StateHash);
+
+        boundary.PublishSettledCycleWithNextFreight(
+            Artifact(host, nextWorkerTurn, Audit(host),
+                Audience(edge), ordinal: 2UL),
+            host.Snapshot, host.NextTurn, roads, scales, Unit);
+        var second = Assert.IsType<FoundationPhysicalLaggedFreightQuoteState>(
+            boundary.ReadLastSettledFreightForNextCycle(host.Snapshot));
+        Assert.NotSame(first, second);
+        Assert.Equal(2UL, second.AuditedPreviewCycles);
+        Assert.Equal(700_000UL,
+            Assert.Single(second.Edges)
+                .QuotedCongestionSurchargeMicroPerWholeCargoUnit);
+        Assert.Equal(400_000UL,
+            Assert.Single(first.Edges)
+                .QuotedCongestionSurchargeMicroPerWholeCargoUnit);
+        Assert.Equal(2UL,
+            boundary.Read(Red, host.Snapshot).EconomicCycleOrdinal);
+    }
+
+    [Fact]
+    public void ClosedZeroCargoCoolsNextFreightButNeverInventsTrade()
+    {
+        var host = Start();
+        var boundary = Boundary(host);
+        var (_, _, edge) = FirstEdge(host.Incidence);
+        var (roads, scales) = SettledFreightPolicy(edge);
+        var firstTurn = CloseOneWorkerTurn(host);
+        boundary.PublishSettledCycleWithNextFreight(
+            Artifact(host, firstTurn, Audit(host), Audience(edge)),
+            host.Snapshot, host.NextTurn, roads, scales, Unit);
+        var first = Assert.IsType<FoundationPhysicalLaggedFreightQuoteState>(
+            boundary.ReadLastSettledFreightForNextCycle(host.Snapshot));
+        Assert.Equal(400_000UL,
+            Assert.Single(first.Edges)
+                .QuotedCongestionSurchargeMicroPerWholeCargoUnit);
+
+        var nextTurn = CloseOneWorkerTurn(host);
+        var none = Audit(host, withTransport: false);
+        var noVisibility = new Dictionary<CivilizationId,
+            IReadOnlyList<PhysicalTacticalEdgeId>>
+        {
+            [Red] = Array.Empty<PhysicalTacticalEdgeId>(),
+            [Blue] = Array.Empty<PhysicalTacticalEdgeId>()
+        };
+        boundary.PublishSettledCycleWithNextFreight(
+            Artifact(host, nextTurn, none, noVisibility, ordinal: 2UL),
+            host.Snapshot, host.NextTurn, roads, scales, Unit);
+        var cooled = Assert.IsType<FoundationPhysicalLaggedFreightQuoteState>(
+            boundary.ReadLastSettledFreightForNextCycle(host.Snapshot));
+        Assert.Equal(300_000UL, Assert.Single(cooled.Edges)
+            .QuotedCongestionSurchargeMicroPerWholeCargoUnit);
+        Assert.Empty(boundary.Read(Red, host.Snapshot).UsedEdges);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.Ready,
+            boundary.Read(Blue, host.Snapshot).Availability);
+    }
+
+    [Fact]
+    public void BadWorldHashCargoScaleOwnershipAndVisibilityAreAtomicFailures()
+    {
+        var host = Start();
+        var boundary = Boundary(host);
+        var (_, _, edge) = FirstEdge(host.Incidence);
+        var (roads, scales) = SettledFreightPolicy(edge);
+        var firstTurn = CloseOneWorkerTurn(host);
+        boundary.PublishSettledCycleWithNextFreight(
+            Artifact(host, firstTurn, Audit(host), Audience(edge)),
+            host.Snapshot, host.NextTurn, roads, scales, Unit);
+        var firstQuote = boundary.ReadLastSettledFreightForNextCycle(host.Snapshot);
+        var firstView = boundary.Read(Red, host.Snapshot);
+        var secondTurn = CloseOneWorkerTurn(host);
+        var artifact = Artifact(host, secondTurn, Audit(host),
+            Audience(edge), ordinal: 2UL);
+
+        Assert.Throws<InvalidOperationException>(() =>
+            boundary.PublishSettledCycleWithNextFreight(
+                artifact, host.Snapshot, host.NextTurn,
+                roads, scales, "wrong-cargo-unit"));
+        Assert.Throws<ArgumentException>(() =>
+            boundary.PublishSettledCycleWithNextFreight(
+                artifact, host.Snapshot, host.NextTurn,
+                roads, new[] { scales[0] with
+                { CargoMicroAtReferenceLoad = 0UL } }, Unit));
+        Assert.Throws<InvalidOperationException>(() =>
+            boundary.PublishSettledCycleWithNextFreight(
+                artifact, host.Snapshot, host.NextTurn,
+                new[] { roads[0] with
+                { InfrastructureOwner = Blue } }, scales, Unit));
+        Assert.Throws<InvalidOperationException>(() =>
+            boundary.PublishSettledCycleWithNextFreight(
+                Artifact(host, secondTurn, Audit(host), Audience(edge),
+                    ordinal: 2UL,
+                    hash: new WorldStateHash(
+                        secondTurn.Hash.FormatVersion, new string('A', 64))),
+                host.Snapshot, host.NextTurn, roads, scales, Unit));
+        var invented = Audience(edge);
+        invented[Blue] = new[] { new PhysicalTacticalEdgeId(
+            host.Incidence.Refinement.FineParameters,
+            host.Incidence.FineTopology.Edges[1].Id) };
+        Assert.Throws<InvalidOperationException>(() =>
+            boundary.PublishSettledCycleWithNextFreight(
+                Artifact(host, secondTurn, Audit(host), invented,
+                    ordinal: 2UL),
+                host.Snapshot, host.NextTurn, roads, scales, Unit));
+
+        Assert.Same(firstQuote,
+            boundary.ReadLastSettledFreightForNextCycle(host.Snapshot));
+        Assert.Same(firstView, boundary.Read(Red, host.Snapshot));
+        Assert.Equal(1UL, boundary.Read(Red, host.Snapshot).EconomicCycleOrdinal);
+        Assert.Equal(secondTurn.Hash, host.StateHash);
+
+        // A valid retry after all failures still succeeds exactly once.
+        boundary.PublishSettledCycleWithNextFreight(
+            artifact, host.Snapshot, host.NextTurn, roads, scales, Unit);
+        Assert.Equal(2UL,
+            boundary.ReadLastSettledFreightForNextCycle(host.Snapshot)!
+                .AuditedPreviewCycles);
+    }
+
+    [Fact]
+    public void LegacyPublicationCannotReuseEarlierSettledFreightOrSkipCycle()
+    {
+        var host = Start();
+        var boundary = Boundary(host);
+        var (_, _, edge) = FirstEdge(host.Incidence);
+        var (roads, scales) = SettledFreightPolicy(edge);
+        var first = CloseOneWorkerTurn(host);
+        var firstArtifact = Artifact(
+            host, first, Audit(host), Audience(edge));
+        Assert.Throws<InvalidOperationException>(() =>
+            boundary.PublishSettledCycleWithNextFreight(
+                Artifact(host, first, Audit(host), Audience(edge),
+                    ordinal: 2UL),
+                host.Snapshot, host.NextTurn, roads, scales, Unit));
+        Assert.Null(boundary.ReadLastSettledFreightForNextCycle(host.Snapshot));
+
+        boundary.PublishSettledCycleWithNextFreight(
+            firstArtifact, host.Snapshot, host.NextTurn,
+            roads, scales, Unit);
+        var second = CloseOneWorkerTurn(host);
+        var secondArtifact = Artifact(host, second,
+            Audit(host), Audience(edge), ordinal: 2UL);
+        // The old publication API does not carry the privileged freight
+        // state. It invalidates it, rather than making up a next quote.
+        boundary.PublishFromSettledEconomicPhase(
+            secondArtifact, host.Snapshot, host.NextTurn);
+        Assert.Throws<InvalidOperationException>(() =>
+            boundary.ReadLastSettledFreightForNextCycle(host.Snapshot));
+        var third = CloseOneWorkerTurn(host);
+        Assert.Throws<InvalidOperationException>(() =>
+            boundary.PublishSettledCycleWithNextFreight(
+                Artifact(host, third, Audit(host), Audience(edge),
+                    ordinal: 3UL),
+                host.Snapshot, host.NextTurn, roads, scales, Unit));
+        Assert.Equal(2UL,
+            boundary.Read(Red, host.Snapshot).EconomicCycleOrdinal);
+    }
+
+    [Fact]
+    public void InfrastructureUpgradeResetsOnlyThisCrossingCongestionMemory()
+    {
+        var host = Start();
+        var boundary = Boundary(host);
+        var (_, _, edge) = FirstEdge(host.Incidence);
+        var (roads, scales) = SettledFreightPolicy(edge);
+        var first = CloseOneWorkerTurn(host);
+        boundary.PublishSettledCycleWithNextFreight(
+            Artifact(host, first, Audit(host), Audience(edge)),
+            host.Snapshot, host.NextTurn, roads, scales, Unit);
+        var second = CloseOneWorkerTurn(host);
+        var upgraded = new[] { roads[0] with
+        {
+            PhysicalCostMicroPerWholeCargoUnit = 80_000UL,
+            ExternalTariffMicroPerWholeCargoUnit = 50_000UL
+        } };
+        boundary.PublishSettledCycleWithNextFreight(
+            Artifact(host, second, Audit(host), Audience(edge),
+                ordinal: 2UL),
+            host.Snapshot, host.NextTurn, upgraded, scales, Unit);
+        var next = Assert.IsType<FoundationPhysicalLaggedFreightQuoteState>(
+            boundary.ReadLastSettledFreightForNextCycle(host.Snapshot));
+        var line = Assert.Single(next.Edges);
+        Assert.Equal(80_000UL, line.FreePhysicalCostMicroPerWholeCargoUnit);
+        // Reset previous congestion memory because baseline changed.
+        // 80_000 * (2^4) / 4 = 320_000.
+        Assert.Equal(320_000UL,
+            line.QuotedCongestionSurchargeMicroPerWholeCargoUnit);
+        Assert.True(next.HasSettledProvenance);
+    }
+
 }
