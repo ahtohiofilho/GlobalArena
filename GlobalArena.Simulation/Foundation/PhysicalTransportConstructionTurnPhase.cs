@@ -120,8 +120,7 @@ public sealed class PhysicalTransportConstructionEventExecutor
             throw new InvalidOperationException(
                 "Stale, foreign or unbound construction journal event.");
 
-        var worker = state.Workers.Workers.FirstOrDefault(w =>
-            w.Id == ev.WorkerId)
+        var worker = state.Workers.FindWorker(ev.WorkerId)
             ?? throw new InvalidOperationException(
                 "Construction journal references a nonexistent worker.");
         if (worker.Owner != ev.Issuer ||
@@ -134,9 +133,9 @@ public sealed class PhysicalTransportConstructionEventExecutor
                 "Construction journal must identify an eligible real " +
                 "owner-controlled worker at a real edge endpoint.");
 
-        var crossing = state.Transport.Edges.FirstOrDefault(row =>
-            row.Edge == ev.Edge)
-            ?? throw new InvalidOperationException(
+        if (!state.Transport.TryGetEdge(ev.Edge, out var crossing) ||
+            crossing is null)
+            throw new InvalidOperationException(
                 "Construction crossing absent from authoritative transport.");
         if (crossing.OwnershipKind !=
             PhysicalTransportOwnershipKind.NoInfrastructure ||
