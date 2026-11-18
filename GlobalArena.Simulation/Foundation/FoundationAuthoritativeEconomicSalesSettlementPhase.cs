@@ -78,6 +78,25 @@ public sealed class FoundationEconomicSalesSettledEvent : ISimulationEvent
     public string CargoUnitCode { get; }
     public IReadOnlyList<FoundationCivilizationEconomicSettlementCredit> Credits { get; }
 
+    // Server-only, NON-monetary evidence. Never expose this dictionary to
+    // clients: a caller must use a participant-filtered read boundary.
+    // Only Derive can attach it and only exact independent replay can
+    // certify it for publication.
+    internal IReadOnlyDictionary<CivilizationId,
+        IReadOnlyList<FoundationPhysicalTradeEdgeLoad>>?
+        AuditedParticipantEdges { get; private set; }
+
+    internal void AttachAuditedParticipantEdges(
+        IReadOnlyDictionary<CivilizationId,
+            IReadOnlyList<FoundationPhysicalTradeEdgeLoad>> exact)
+    {
+        if (AuditedParticipantEdges is not null)
+            throw new InvalidOperationException(
+                "Verified trade evidence cannot be overwritten.");
+        AuditedParticipantEdges = exact ??
+            throw new ArgumentNullException(nameof(exact));
+    }
+
     public FoundationEconomicSalesSettledEvent(
         EventId id, WorldStateHash sourceWorldHash,
         ulong expectedWorldRevision, ulong economicCycleOrdinal,
@@ -255,6 +274,9 @@ public sealed class FoundationEconomicSalesSettlementEventExecutor
             accounts.PhysicalFreightScaled, accounts.RevenueTaxScaled,
             accounts.ExternalTollsScaled, accounts.NetSellerReceiptsScaled,
             totalCredit, _policy.Cargo.CargoUnitCode, credits);
+        ev.AttachAuditedParticipantEdges(
+            FoundationSettledTradeParticipantProjection.FromAuditedPlan(
+                snapshot, _incidence, _policy.Cargo, plan));
         return new Expected(ev, credits.ToDictionary(c => c.Civilization,
             c => c.CashCreditScaled), next);
     }
@@ -277,7 +299,10 @@ public sealed class FoundationEconomicSalesSettlementEventExecutor
             received.CreditedToTreasuriesScaled !=
                 derived.CreditedToTreasuriesScaled ||
             received.CargoUnitCode != derived.CargoUnitCode ||
-            !received.Credits.SequenceEqual(derived.Credits))
+            !received.Credits.SequenceEqual(derived.Credits) ||
+            !FoundationSettledTradeParticipantProjection.Identical(
+                received.AuditedParticipantEdges,
+                derived.AuditedParticipantEdges))
             throw new InvalidOperationException(
                 "Forged, stale or duplicated sale / cash / tax / toll " +
                 "journal event; only the recomputed physical market may settle.");
