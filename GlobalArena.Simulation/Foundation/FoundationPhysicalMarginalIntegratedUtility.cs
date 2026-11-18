@@ -69,7 +69,10 @@ internal static class FoundationPhysicalMarginalIntegratedUtility
 
     /// <summary>
     /// Exact, deterministic fixed-point comparison of a full proposed
-    /// seller response against the current allocation. Q of all OTHER
+    /// seller response against the current allocation. Q aggregates ALL
+    /// civilization demand at each physical (tile, commodity), independently
+    /// of the bookkeeping buyer to whom physical goods are attributed.
+    /// Q of all OTHER
     /// sellers is unchanged; the seller's own positive production is
     /// conserved by the water-filling solver. A strictly positive score
     /// increases the global concave-market potential after transport.
@@ -80,7 +83,7 @@ internal static class FoundationPhysicalMarginalIntegratedUtility
         IReadOnlyList<ulong> newQuanta,
         ulong goodsQuantum,
         IReadOnlyDictionary<(PhysicalTacticalTileId Tile,
-            CivilizationId Owner, CommodityId Commodity), ulong> marketTotals)
+            CommodityId Commodity), ulong> marketTotals)
     {
         ArgumentNullException.ThrowIfNull(buyers);
         ArgumentNullException.ThrowIfNull(oldQuanta);
@@ -104,7 +107,7 @@ internal static class FoundationPhysicalMarginalIntegratedUtility
                 continue;
 
             var market = buyers[i].Demand;
-            var key = (market.Tile, market.Owner, market.Commodity);
+            var key = (market.Tile, market.Commodity);
             if (!marketTotals.TryGetValue(key, out ulong oldMarket) ||
                 oldMarket < oldGoods)
                 throw new InvalidOperationException(
