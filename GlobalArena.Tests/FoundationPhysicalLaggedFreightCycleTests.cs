@@ -79,8 +79,7 @@ public sealed class FoundationPhysicalLaggedFreightCycleTests
             workers, policy).DemandByCivilization.Select(line =>
                 new FoundationCommodityMarketPlanningQuote(
                     line.Tile, line.Owner, line.Commodity,
-                    line.Tile == b ? 1_000_000_000UL :
-                        1_000_000UL)).ToArray();
+                    1_000_000UL)).ToArray();
         var road = new FoundationPhysicalRoutingEdgeCost(
             crossing, FoundationInfrastructureOwnershipKind.Owned, Blue,
             100_000UL, 30_000UL);
@@ -88,6 +87,80 @@ public sealed class FoundationPhysicalLaggedFreightCycleTests
             new[] { road },
             new[] { new FoundationPhysicalEdgeCarryingScale(
                 crossing, 1_000_000UL) }, crossing);
+    }
+
+    [Fact]
+    public void ArbitraryMarketPricePremiumIsForbiddenByTheUniversalPriceRule()
+    {
+        var s = TwoGoodsOneRealCrossing();
+        Assert.All(s.Quotes, q =>
+            Assert.Equal(1_000_000UL,
+                q.QuoteMicroPerWholeCommodityUnit));
+        var privilege = s.Quotes.Select((q, index) =>
+            index == 0 ? q with
+            {
+                QuoteMicroPerWholeCommodityUnit = 1_000_000_000UL
+            } : q).ToArray();
+        var failure = Assert.Throws<ArgumentException>(() =>
+            FoundationPhysicalLaggedFreightCyclePlanner.CoordinateCandidate(
+                s.Workers, s.Host.Incidence, Demand(), Cargo(),
+                privilege, s.Roads, s.Scales));
+        Assert.Contains("Market-specific reference prices",
+            failure.Message);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            s.Host.GetLastClosedEconomicTradeView(Red).Availability);
+    }
+
+    [Fact]
+    public void FirstRepresentableUnitPrefersZeroFreightWhenDemandAndQuotesMatch()
+    {
+        var s = TwoGoodsOneRealCrossing();
+        var map = s.Host.Incidence;
+        var border = map.FineTopology.Edges[0];
+        var fine = map.Refinement.FineParameters;
+        var origin = new PhysicalTacticalTileId(
+            fine, border.IncidentCellIds[0]);
+        var destination = new PhysicalTacticalTileId(
+            fine, border.IncidentCellIds[1]);
+        StrategicCellId coarse(PhysicalTacticalTileId t) =>
+            map.TileIncidences[checked((int)t.FineStrategicCellId.Value - 1)]
+                .IncidentCoarseCellIds[0];
+        var workers = new PhysicalWorkerRuntimeState(new[]
+        {
+            new PhysicalWorkerRuntimeRecord(new PhysicalWorkerId(1UL),
+                Red, coarse(origin), Grain, 1UL,
+                PhysicalWorkerActivity.Producing, 1_000_000U, origin,
+                PhysicalWorkerOccupation.Agriculture),
+            new PhysicalWorkerRuntimeRecord(new PhysicalWorkerId(2UL),
+                Blue, coarse(destination), Grain, 0UL,
+                PhysicalWorkerActivity.Other, 1_000_000U, destination,
+                PhysicalWorkerOccupation.Unassigned)
+        }, tacticalLocationsAuthoritative: true,
+            occupationsAuthoritative: true);
+        var policy = new FoundationActivityCommodityDemandPolicy(
+            new[] { Grain },
+            Enum.GetValues<FoundationPhysicalDemandProfile>().Select(
+                profile => new FoundationActivityCommodityDemandCoefficient(
+                    profile, Grain, 1_000_000UL)));
+        var cargo = new FoundationCommodityCargoConversionPolicy(
+            "single-quantum-universal-grain",
+            new[] { new FoundationCommodityCargoConversion(
+                Grain, 1_000_000UL) });
+        var quotes = FoundationPhysicalCommodityDemandProjector
+            .Project(workers, policy).DemandByCivilization.Select(
+                line => new FoundationCommodityMarketPlanningQuote(
+                    line.Tile, line.Owner, line.Commodity, 1_000_000UL)).ToArray();
+        Assert.Equal(2, quotes.Length);
+        var plan = FoundationPhysicalLaggedFreightCyclePlanner
+            .CoordinateCandidate(workers, map, policy, cargo, quotes,
+                s.Roads, s.Scales, maxProducerPasses: 8);
+        var delivery = Assert.Single(plan.Distribution.Candidates);
+        Assert.Equal(origin, delivery.BuyerTile);
+        Assert.Equal(1UL, delivery.GoodsMicro);
+        Assert.Equal(BigInteger.Zero,
+            plan.Distribution.AllocationAudit.Freight.TotalEdgeTraversalCargoMicro);
+        Assert.All(plan.EdgeReadings, reading =>
+            Assert.Equal(0UL, reading.CurrentCargoMicro));
     }
 
     [Fact]
