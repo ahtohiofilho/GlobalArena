@@ -78,17 +78,22 @@ public sealed class FoundationTacticalCollectiveReceipt
     public WorldStateHash Hash { get; }
     public ulong Revision { get; }
     public IReadOnlyList<PhysicalTacticalWorkerMovedEvent> Events { get; }
-    public int ExecutedEvents => Events.Count;
+    public IReadOnlyList<PhysicalTransportConstructionWorkedEvent>
+        ConstructionEvents { get; }
+    public int ExecutedEvents => Events.Count + ConstructionEvents.Count;
     public bool ReplayMatched { get; }
 
     internal FoundationTacticalCollectiveReceipt(
         TurnNumber turn, WorldStateHash hash, ulong revision,
-        PhysicalTacticalWorkerMovedEvent[] events)
+        PhysicalTacticalWorkerMovedEvent[] events,
+        PhysicalTransportConstructionWorkedEvent[]? constructionEvents = null)
     {
         Turn = turn;
         Hash = hash;
         Revision = revision;
         Events = Array.AsReadOnly(events);
+        ConstructionEvents = Array.AsReadOnly(constructionEvents ??
+            Array.Empty<PhysicalTransportConstructionWorkedEvent>());
         ReplayMatched = true;
     }
 }
@@ -108,6 +113,10 @@ public sealed class FoundationTacticalHumanAiTurnHost
     private readonly CanonicalGameSession _session;
     private readonly PhysicalTacticalIncidenceMap _incidence;
     private readonly PhysicalTacticalWorkerMoveEventExecutor _executor;
+    private readonly PhysicalTransportConstructionEventExecutor?
+        _constructionExecutor;
+    private readonly FoundationPhysicalConstructionLaborPolicy?
+        _constructionPolicy;
     private readonly AuthoritativeTurnCommitGate _publisher;
     private readonly CanonicalWorldStateHasher _hasher = new();
     private readonly HashSet<CivilizationId> _humans;
@@ -116,6 +125,9 @@ public sealed class FoundationTacticalHumanAiTurnHost
     private readonly CivilizationId[] _participants;
     private readonly Dictionary<CivilizationId,
         SortedDictionary<ulong, FoundationTacticalWorkerOrder>> _plans;
+    private readonly Dictionary<CivilizationId,
+        SortedDictionary<ulong, FoundationPhysicalConstructionWorkAssignment>>
+        _constructionPlans;
     private readonly HashSet<CivilizationId> _ready = new();
     private WorldState _knownSnapshot;
     private readonly FoundationEconomicTradeCycleReadBoundary _closedTrade;
@@ -131,7 +143,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
         Array.AsReadOnly(_participants.Where(_ai.ContainsKey).ToArray());
     public IReadOnlyList<CivilizationId> ReadyCivilizations =>
         Array.AsReadOnly(_participants.Where(_ready.Contains).ToArray());
-    public int PendingOrderCount => _plans.Values.Sum(plan => plan.Count);
+    public int PendingOrderCount => _plans.Values.Sum(plan => plan.Count) +
+        _constructionPlans.Values.Sum(plan => plan.Count);
     /// <summary>
     /// Read-only v11 inputs for a future physical market, derived only from
     /// the last COMMITTED worker census. Pending orders cannot change them.
@@ -320,7 +333,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
         CanonicalGameSession session, PhysicalTacticalIncidenceMap incidence,
         IEnumerable<CivilizationId> humanCivilizations,
         IReadOnlyDictionary<CivilizationId, IFoundationTacticalAiTurnPolicy>
-            aiPolicies)
+            aiPolicies,
+        FoundationPhysicalConstructionLaborPolicy? constructionPolicy = null)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
         _incidence = incidence ?? throw new ArgumentNullException(nameof(incidence));
@@ -364,6 +378,16 @@ public sealed class FoundationTacticalHumanAiTurnHost
             aiPolicies);
         _plans = _participants.ToDictionary(civ => civ,
             _ => new SortedDictionary<ulong, FoundationTacticalWorkerOrder>());
+        _constructionPlans = _participants.ToDictionary(civ => civ,
+            _ => new SortedDictionary<ulong,
+                FoundationPhysicalConstructionWorkAssignment>());
+        if (constructionPolicy is not null &&
+            (!Snapshot.Transport.HasNaturalConstructionLabor ||
+             !Snapshot.Workers.HasAuthoritativeOccupations))
+            throw new InvalidOperationException(
+                "Construction-enabled collective turns require a complete " +
+                "v13/v14 physical transport inventory and worker occupations.");
+        _constructionPolicy = constructionPolicy;
         _knownSnapshot = Snapshot;
         _closedTrade = new FoundationEconomicTradeCycleReadBoundary(
             Snapshot.WorldBinding ?? throw new InvalidOperationException(
@@ -371,12 +395,19 @@ public sealed class FoundationTacticalHumanAiTurnHost
             incidence.Refinement.FineParameters, _participants);
         _executor = new PhysicalTacticalWorkerMoveEventExecutor(
             session.GeneratedWorld, incidence);
-        var engine = new PhasedTurnResolutionEngine(
-            new ITurnResolutionPhase[]
-            {
-                new PhysicalTacticalWorkerMovementTurnPhase(
-                    session.GeneratedWorld, incidence)
-            });
+        var phases = new List<ITurnResolutionPhase>
+        {
+            new PhysicalTacticalWorkerMovementTurnPhase(
+                session.GeneratedWorld, incidence)
+        };
+        if (constructionPolicy is not null)
+        {
+            _constructionExecutor = new PhysicalTransportConstructionEventExecutor(
+                session.GeneratedWorld, incidence, constructionPolicy);
+            phases.Add(new PhysicalTransportConstructionTurnPhase(
+                session.GeneratedWorld, incidence, constructionPolicy));
+        }
+        var engine = new PhasedTurnResolutionEngine(phases);
         _publisher = new AuthoritativeTurnCommitGate(
             session, new TurnPolicyResolutionGate(
                 new ManualReadyTurnPolicy(), engine),
@@ -388,6 +419,74 @@ public sealed class FoundationTacticalHumanAiTurnHost
     {
         RequireHuman(requester);
         return Array.AsReadOnly(_plans[requester].Values.ToArray());
+    }
+
+    public IReadOnlyList<FoundationPhysicalConstructionWorkAssignment>
+        GetHumanConstructionOrders(CivilizationId requester)
+    {
+        RequireHuman(requester);
+        return Array.AsReadOnly(
+            _constructionPlans[requester].Values.ToArray());
+    }
+
+    /// <summary>
+    /// Private per-worker construction intent. No work is committed until
+    /// ALL participants close the collective turn and journal replay agrees.
+    /// Cannot steal an already queued move, occupation or activity command.
+    /// </summary>
+    public void QueueHumanConstruction(CivilizationId human,
+        PhysicalWorkerId workerId, PhysicalTacticalEdgeId edge)
+    {
+        QueueHumanConstructionBatch(human,
+            new[] { new FoundationPhysicalConstructionWorkAssignment(
+                human, workerId, edge) });
+    }
+
+    /// <summary>
+    /// Atomic bulk validation prevents accidental partial construction
+    /// orders or duplicate worker assignment on large multi-worker projects.
+    /// </summary>
+    public int QueueHumanConstructionBatch(CivilizationId human,
+        IReadOnlyList<FoundationPhysicalConstructionWorkAssignment> orders)
+    {
+        RequireHuman(human);
+        ArgumentNullException.ThrowIfNull(orders);
+        CheckWritable(human);
+        if (_constructionPolicy is null)
+            throw new InvalidOperationException(
+                "This host has not enabled authoritative construction.");
+        if (orders.Count == 0)
+            throw new ArgumentException(
+                "Construction batch must be nonempty.", nameof(orders));
+        var staged = new SortedDictionary<ulong,
+            FoundationPhysicalConstructionWorkAssignment>();
+        foreach (var order in orders)
+        {
+            if (order is null || order.Issuer != human ||
+                !order.WorkerId.IsValid ||
+                _plans[human].ContainsKey(order.WorkerId.Value) ||
+                _constructionPlans[human].ContainsKey(order.WorkerId.Value) ||
+                !staged.TryAdd(order.WorkerId.Value, order))
+                throw new InvalidOperationException(
+                    "Construction cannot overlap another order or forge " +
+                    "a worker's participant identity.");
+        }
+
+        var combined = _constructionPlans.Values
+            .SelectMany(plan => plan.Values)
+            .Concat(staged.Values)
+            .ToArray();
+        var preflight = FoundationPhysicalConstructionWorkPlanner.PlanCandidate(
+            Snapshot, Session.GeneratedWorld, _incidence,
+            _constructionPolicy, combined);
+        if (preflight.Workers.Any(w => w.ContributedLaborMicro == 0UL))
+            throw new InvalidOperationException(
+                "A work assignment with zero usable labor cannot be " +
+                "submitted as a real construction order.");
+
+        foreach (var (id, order) in staged)
+            _constructionPlans[human].Add(id, order);
+        return staged.Count;
     }
 
     public void QueueHumanMove(CivilizationId human, PhysicalWorkerId id,
@@ -446,9 +545,11 @@ public sealed class FoundationTacticalHumanAiTurnHost
                 !owned.TryGetValue(change.WorkerId.Value, out var worker))
                 throw new InvalidOperationException(
                     "Batch contains a missing, invalid or non-owned physical worker.");
-            if (staged.ContainsKey(change.WorkerId.Value))
+            if (staged.ContainsKey(change.WorkerId.Value) ||
+                _constructionPlans[human].ContainsKey(change.WorkerId.Value))
                 throw new InvalidOperationException(
-                    "A physical worker cannot appear twice in the same batch.");
+                    "A physical worker cannot be assigned to both " +
+                    "occupation and construction in the same turn.");
             ValidateOccupationTarget(worker, change.Occupation);
             var source = worker.TacticalTileId ??
                 throw new InvalidOperationException("Worker has no fine position.");
@@ -467,7 +568,10 @@ public sealed class FoundationTacticalHumanAiTurnHost
     {
         RequireHuman(human);
         CheckWritable(human);
-        return id.IsValid && _plans[human].Remove(id.Value);
+        if (!id.IsValid) return false;
+        bool movement = _plans[human].Remove(id.Value);
+        bool construction = _constructionPlans[human].Remove(id.Value);
+        return movement || construction;
     }
 
     public void SetHumanReady(CivilizationId human)
@@ -617,6 +721,9 @@ public sealed class FoundationTacticalHumanAiTurnHost
     {
         CheckWritable(issuer);
         var worker = RequireOwnedWorker(issuer, id);
+        if (_constructionPlans[issuer].ContainsKey(id.Value))
+            throw new InvalidOperationException(
+                "Cancel construction before issuing a move for this worker.");
         ValidateOrder(issuer, id, destination,
             PhysicalWorkerActivity.Traveling, movement: true);
         _plans[issuer][id.Value] = new FoundationTacticalWorkerOrder(
@@ -629,6 +736,9 @@ public sealed class FoundationTacticalHumanAiTurnHost
     {
         CheckWritable(issuer);
         var worker = RequireOwnedWorker(issuer, id);
+        if (_constructionPlans[issuer].ContainsKey(id.Value))
+            throw new InvalidOperationException(
+                "Cancel construction before changing this worker's activity.");
         var source = worker.TacticalTileId!.Value;
         ValidateOrder(issuer, id, source, activity, movement: false);
         _plans[issuer][id.Value] = new FoundationTacticalWorkerOrder(
@@ -640,6 +750,9 @@ public sealed class FoundationTacticalHumanAiTurnHost
     {
         CheckWritable(issuer);
         var worker = RequireOwnedWorker(issuer, id);
+        if (_constructionPlans[issuer].ContainsKey(id.Value))
+            throw new InvalidOperationException(
+                "Cancel construction before changing this worker's occupation.");
         var tile = worker.TacticalTileId!.Value;
         ValidateOrder(issuer, id, tile, worker.Activity,
             movement: false, nextOccupation: occupation);
