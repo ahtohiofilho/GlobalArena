@@ -25,6 +25,13 @@ public sealed class WorldState
 
     public PhysicalWorkerRuntimeState Workers { get; }
 
+    /// <summary>
+    /// The complete hashed fine transport inventory, distinct from economic
+    /// previews or caller-supplied routing inputs. Legacy worlds remain
+    /// explicitly uninitialized until an opt-in topology-checked deployment.
+    /// </summary>
+    public PhysicalTransportInfrastructureRuntimeState Transport { get; }
+
     public static WorldState CreateInitial()
     {
         return new WorldState(
@@ -82,7 +89,7 @@ public sealed class WorldState
             Economy,
             Population,
             Warfare,
-            Workers);
+            Workers, Transport);
     }
 
     public WorldState WithCivilizations(
@@ -100,7 +107,7 @@ public sealed class WorldState
             Economy,
             Population,
             Warfare,
-            Workers);
+            Workers, Transport);
     }
 
     public WorldState WithTerritory(
@@ -118,7 +125,7 @@ public sealed class WorldState
             Economy,
             Population,
             Warfare,
-            Workers);
+            Workers, Transport);
     }
 
     public WorldState WithDiplomacy(
@@ -136,7 +143,7 @@ public sealed class WorldState
             Economy,
             Population,
             Warfare,
-            Workers);
+            Workers, Transport);
     }
 
     public WorldState WithEconomy(
@@ -154,7 +161,7 @@ public sealed class WorldState
             economy,
             Population,
             Warfare,
-            Workers);
+            Workers, Transport);
     }
 
     /// <summary>
@@ -175,7 +182,7 @@ public sealed class WorldState
             Economy,
             population,
             Warfare,
-            Workers);
+            Workers, Transport);
     }
 
     /// <summary>
@@ -199,7 +206,7 @@ public sealed class WorldState
             economy,
             population,
             Warfare,
-            Workers);
+            Workers, Transport);
     }
 
     private void RejectPopulationDowngrade(PopulationRuntimeState next)
@@ -224,7 +231,7 @@ public sealed class WorldState
             Economy,
             Population,
             warfare,
-            Workers);
+            Workers, Transport);
     }
 
     /// <summary>
@@ -252,7 +259,7 @@ public sealed class WorldState
                 "Changing worker occupation schema requires explicit full-census classification.");
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
-            Economy, Population, Warfare, workers);
+            Economy, Population, Warfare, workers, Transport);
     }
 
     /// <summary>
@@ -309,7 +316,7 @@ public sealed class WorldState
         }
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
-            Economy, Population, Warfare, tacticalWorkers);
+            Economy, Population, Warfare, tacticalWorkers, Transport);
     }
 
     /// <summary>
@@ -351,7 +358,49 @@ public sealed class WorldState
             occupationsAuthoritative: true);
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
-            Economy, Population, Warfare, recategorized);
+            Economy, Population, Warfare, recategorized, Transport);
+    }
+
+    /// <summary>
+    /// One-time explicit v11 -> v12 physical-transport deployment. Requires
+    /// complete, canonical fine-topology evidence and a bound world; never
+    /// derives natural rates, constructed ownership or tariff defaults.
+    /// Future upgrades/captures MUST use a separate journaled turn phase.
+    /// </summary>
+    public WorldState DeployInitialPhysicalTransport(
+        PhysicalTransportInfrastructureRuntimeState transport,
+        PhysicalTacticalIncidenceMap incidence)
+    {
+        ArgumentNullException.ThrowIfNull(transport);
+        ArgumentNullException.ThrowIfNull(incidence);
+        if (WorldBinding is null || !Workers.HasAuthoritativeOccupations ||
+            Transport.IsInitialized || !transport.IsInitialized)
+            throw new InvalidOperationException(
+                "Physical transport deployment requires an unmodified " +
+                "bound v11 worker world and an explicit initialized inventory.");
+        if (incidence.Refinement.CoarseParameters.StrategicCellCount !=
+                WorldBinding.StrategicCellCount ||
+            transport.Edges.Count != incidence.FineTopology.Edges.Count)
+            throw new InvalidOperationException(
+                "Complete transport must match all and only the bound " +
+                "fine Goldberg dual-graph crossings.");
+        var fine = incidence.Refinement.FineParameters;
+        var canonical = incidence.FineTopology.Edges
+            .Select(edge => new PhysicalTacticalEdgeId(fine, edge.Id))
+            .ToHashSet();
+        var known = Civilizations.Civilizations.ToHashSet();
+        if (transport.Edges.Any(row =>
+                row.Edge.FineGoldbergParameters != fine ||
+                !canonical.Remove(row.Edge) ||
+                (row.InfrastructureOwner.HasValue &&
+                    !known.Contains(row.InfrastructureOwner.Value))) ||
+            canonical.Count != 0)
+            throw new InvalidOperationException(
+                "Transport contains missing/foreign crossings or owners " +
+                "outside the authoritative civilization roster.");
+        return new WorldState(
+            Revision, WorldBinding, Civilizations, Territory, Diplomacy,
+            Economy, Population, Warfare, Workers, transport);
     }
 
     public WorldState AdvanceRevision()
@@ -365,7 +414,7 @@ public sealed class WorldState
             Economy,
             Population,
             Warfare,
-            Workers);
+            Workers, Transport);
     }
 
     private WorldState(
@@ -377,7 +426,8 @@ public sealed class WorldState
         EconomyRuntimeState economy,
         PopulationRuntimeState population,
         WarfareRuntimeState warfare,
-        PhysicalWorkerRuntimeState? workers = null)
+        PhysicalWorkerRuntimeState? workers = null,
+        PhysicalTransportInfrastructureRuntimeState? transport = null)
     {
         ArgumentNullException.ThrowIfNull(
             civilizations);
@@ -398,6 +448,8 @@ public sealed class WorldState
             warfare);
 
         var workerState = workers ?? PhysicalWorkerRuntimeState.Uninitialized;
+        var transportState = transport ??
+            PhysicalTransportInfrastructureRuntimeState.Uninitialized;
 
         ValidateCrossDomainInvariants(
             worldBinding,
@@ -407,7 +459,8 @@ public sealed class WorldState
             economy,
             population,
             warfare,
-            workerState);
+            workerState,
+            transportState);
 
         Revision = revision;
         WorldBinding = worldBinding;
@@ -418,6 +471,7 @@ public sealed class WorldState
         Population = population;
         Warfare = warfare;
         Workers = workerState;
+        Transport = transportState;
     }
 
     private static void ValidateCrossDomainInvariants(
@@ -428,7 +482,8 @@ public sealed class WorldState
         EconomyRuntimeState economy,
         PopulationRuntimeState population,
         WarfareRuntimeState warfare,
-        PhysicalWorkerRuntimeState workers)
+        PhysicalWorkerRuntimeState workers,
+        PhysicalTransportInfrastructureRuntimeState transport)
     {
         var civilizationIds =
             civilizations
@@ -561,6 +616,18 @@ public sealed class WorldState
         {
             throw new InvalidOperationException(
                 "An uninitialized physical worker census cannot contain records.");
+        }
+
+        if (transport.IsInitialized)
+        {
+            if (worldBinding is null || !workers.HasAuthoritativeOccupations)
+                throw new InvalidOperationException(
+                    "Hashed transport requires a bound v11 worker world.");
+            if (transport.Edges.Any(row =>
+                row.InfrastructureOwner.HasValue &&
+                !civilizationIds.Contains(row.InfrastructureOwner.Value)))
+                throw new InvalidOperationException(
+                    "Hashed physical transport references a foreign civilization.");
         }
 
         foreach (var unit in
