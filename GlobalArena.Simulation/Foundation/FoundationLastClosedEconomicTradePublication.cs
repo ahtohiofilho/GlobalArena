@@ -102,6 +102,10 @@ internal sealed class FoundationEconomicTradeCycleReadBoundary
     private Dictionary<CivilizationId,
         FoundationLastClosedEconomicTradeView>? _last;
     private ulong _lastCycleOrdinal;
+    // PRIVILEGED economic input: full crossing vector is never exposed
+    // through participant-specific read views or the Godot client.
+    private FoundationPhysicalLaggedFreightQuoteState? _nextSettledFreight;
+    private string? _settledFreightCargoUnitCode;
 
     internal FoundationEconomicTradeCycleReadBoundary(
         RuntimeWorldBinding world, GoldbergParameters fine,
@@ -141,6 +145,89 @@ internal sealed class FoundationEconomicTradeCycleReadBoundary
                 "Economic-cycle view belongs to another world.");
         lock (_sync)
             return _last is null ? _noCycle[requester] : _last[requester];
+    }
+
+    /// <summary>
+    /// Privileged kernel-only input for the NEXT economic turn. Returns
+    /// null exactly when no economic cycle has ever closed. Rejects a
+    /// published history whose freight was NOT registered atomically;
+    /// never use preview/candidate quotes as a fallback.
+    /// </summary>
+    internal FoundationPhysicalLaggedFreightQuoteState?
+        ReadLastSettledFreightForNextCycle(WorldState currentSnapshot)
+    {
+        ArgumentNullException.ThrowIfNull(currentSnapshot);
+        if (currentSnapshot.WorldBinding != _binding)
+            throw new InvalidOperationException(
+                "Cannot read freight history from another world.");
+        lock (_sync)
+        {
+            if (_lastCycleOrdinal == 0UL)
+                return null;
+            if (_nextSettledFreight is null ||
+                !_nextSettledFreight.HasSettledProvenance ||
+                _nextSettledFreight.AuditedPreviewCycles != _lastCycleOrdinal)
+                throw new InvalidOperationException(
+                    "Economic history exists but no trusted settled " +
+                    "freight quote is available; never substitute a preview.");
+            return _nextSettledFreight;
+        }
+    }
+
+    /// <summary>
+    /// Transactional handoff for a FUTURE real economic settlement phase:
+    /// accept the canonical settled trade publication AND prepare one
+    /// next-cycle freight quotation from that very same audited cargo.
+    /// All preflights must succeed before either historical state changes.
+    /// The closed current turn is NEVER re-priced or re-solved.
+    ///
+    /// The existing worker-only gameplay host cannot invoke a genuine
+    /// settled economic artifact; a worker turn is not a settlement.
+    /// </summary>
+    internal void PublishSettledCycleWithNextFreight(
+        FoundationSettledEconomicTradeCycleArtifact artifact,
+        WorldState currentSnapshot,
+        TurnNumber nextWorkerTurn,
+        IEnumerable<FoundationPhysicalRoutingEdgeCost> freeFlowRoads,
+        IEnumerable<FoundationPhysicalEdgeCarryingScale> carryingScales,
+        string comparableCargoUnitCode,
+        uint smoothingDenominator =
+            FoundationPhysicalLaggedFreightCyclePlanner.DefaultSmoothingDenominator)
+    {
+        ArgumentNullException.ThrowIfNull(artifact);
+        ArgumentNullException.ThrowIfNull(currentSnapshot);
+        lock (_sync)
+        {
+            if (_lastCycleOrdinal == ulong.MaxValue ||
+                artifact.EconomicCycleOrdinal != _lastCycleOrdinal + 1UL)
+                throw new InvalidOperationException(
+                    "Freight history requires consecutive settled " +
+                    "economic cycles; no missing or duplicated cycle.");
+            if (_lastCycleOrdinal != 0UL &&
+                (_nextSettledFreight is null ||
+                 _settledFreightCargoUnitCode != comparableCargoUnitCode))
+                throw new InvalidOperationException(
+                    "Cannot resume freight from an unpublished or differently " +
+                    "unitized closed cycle. No synthetic history is permitted.");
+
+            // This is a pure, deterministic O(edges) post-close calculation.
+            // No market solve, path search or same-turn cost feedback.
+            var nextFreight = FoundationPhysicalSettledFreightQuoteUpdater
+                .FromClosedAudit(artifact.CargoAudit, _fine,
+                    freeFlowRoads, carryingScales, comparableCargoUnitCode,
+                    artifact.EconomicCycleOrdinal, _nextSettledFreight,
+                    smoothingDenominator);
+
+            // Existing boundary validates canonical world hash, immutable
+            // committed snapshot, turn chronology, fine topology, and
+            // per-civilization visibility. Lock is reentrant in C#.
+            // On any failure, neither historical trade nor freight changes.
+            PublishFromSettledEconomicPhase(
+                artifact, currentSnapshot, nextWorkerTurn);
+
+            _nextSettledFreight = nextFreight;
+            _settledFreightCargoUnitCode = comparableCargoUnitCode;
+        }
     }
 
     /// <summary>
@@ -225,6 +312,11 @@ internal sealed class FoundationEconomicTradeCycleReadBoundary
                     "Closed economic cycles cannot be replayed, reordered or rolled back.");
             _last = next;
             _lastCycleOrdinal = artifact.EconomicCycleOrdinal;
+            // A legacy publication WITHOUT the protected freight policy
+            // cannot leave a stale previous-cycle quote available to a
+            // future market turn.
+            _nextSettledFreight = null;
+            _settledFreightCargoUnitCode = null;
         }
     }
 }
