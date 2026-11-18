@@ -150,12 +150,14 @@ public static class FoundationPhysicalGlobalMarginalCoordinator
             census, incidence, demandPolicy, conversionPolicy,
             quoteList, costList);
         var inputs = initial.AllocationAudit.MarketInputs;
-        var marketKeys = inputs.DemandByCivilization
-            .Select(line => (line.Tile, line.Owner, line.Commodity))
+        var marketKeys = inputs.MarketDemand
+            .Select(line => (line.Tile, line.Commodity))
             .ToArray();
-        var global = initial.MarketTotals.ToDictionary(
-            line => (line.Tile, line.Buyer, line.Commodity),
-            line => line.AllocatedGoodsMicro);
+        var global = initial.MarketTotals
+            .GroupBy(line => (line.Tile, line.Commodity))
+            .ToDictionary(group => group.Key,
+                group => group.Aggregate(0UL,
+                    (sum, line) => checked(sum + line.AllocatedGoodsMicro)));
         var starting = initial.MarketTotals.ToArray();
         var quoteMap = quoteList.ToDictionary(
             quote => (quote.BuyerTile, quote.Buyer, quote.Commodity));
@@ -167,9 +169,11 @@ public static class FoundationPhysicalGlobalMarginalCoordinator
             .GroupBy(x => (x.SourceTile, x.Seller, x.SourceOccupation,
                 x.Commodity))
             .ToDictionary(group => group.Key,
-                group => group.ToDictionary(
-                    candidate => (candidate.BuyerTile, candidate.Buyer),
-                    candidate => candidate.GoodsMicro));
+                group => group.GroupBy(candidate => candidate.BuyerTile)
+                    .ToDictionary(destination => destination.Key,
+                        destination => destination.Aggregate(0UL,
+                            (sum, candidate) =>
+                                checked(sum + candidate.GoodsMicro))));
 
         var sources = new List<SourceLot>(inputs.SupplyLots.Count);
         var routingCache = new Dictionary<
@@ -203,9 +207,11 @@ public static class FoundationPhysicalGlobalMarginalCoordinator
                     "The initial progressive plan omitted a real source lot.");
             var eligible = new List<FoundationPhysicalMarginalMarketDistributor.Buyer>();
             var quanta = new List<ulong>();
-            foreach (var line in inputs.DemandByCivilization)
+            foreach (var physical in inputs.MarketDemand)
             {
-                if (line.Commodity != lot.Commodity) continue;
+                if (physical.Commodity != lot.Commodity) continue;
+                var line = FoundationPhysicalMarginalMarketDistributor
+                    .SharedDemand(inputs, physical);
                 var target = checked((int)line.Tile.FineStrategicCellId.Value);
                 if (target < 1 || target > fineCount ||
                     line.Tile.FineGoldbergParameters !=
@@ -222,8 +228,7 @@ public static class FoundationPhysicalGlobalMarginalCoordinator
                     new BigInteger(quote.QuoteMicroPerWholeCommodityUnit) *
                         QuoteScale,
                     costScaled, 0UL, quantum));
-                ulong already = previous.GetValueOrDefault(
-                    (line.Tile, line.Owner));
+                ulong already = previous.GetValueOrDefault(line.Tile);
                 if (already % quantum != 0UL)
                     throw new InvalidOperationException(
                         "Initial source-market delivery violates cargo granularity.");
@@ -254,8 +259,7 @@ public static class FoundationPhysicalGlobalMarginalCoordinator
                 for (int i = 0; i < opponents.Length; i++)
                 {
                     var buyer = source.Buyers[i];
-                    var key = (buyer.Demand.Tile, buyer.Demand.Owner,
-                        buyer.Demand.Commodity);
+                    var key = (buyer.Demand.Tile, buyer.Demand.Commodity);
                     var own = checked(
                         source.GoodsQuanta[i] * source.CargoQuantum);
                     var total = global[key];
@@ -293,8 +297,7 @@ public static class FoundationPhysicalGlobalMarginalCoordinator
                     var newQuanta = proposed[i];
                     if (oldQuanta == newQuanta) continue;
                     var buyer = source.Buyers[i];
-                    var key = (buyer.Demand.Tile, buyer.Demand.Owner,
-                        buyer.Demand.Commodity);
+                    var key = (buyer.Demand.Tile, buyer.Demand.Commodity);
                     var oldGoods = checked(oldQuanta * source.CargoQuantum);
                     var newGoods = checked(newQuanta * source.CargoQuantum);
                     global[key] = checked(global[key] - oldGoods + newGoods);
@@ -337,13 +340,19 @@ public static class FoundationPhysicalGlobalMarginalCoordinator
                 var buyer = source.Buyers[i];
                 var route = FoundationPhysicalTradeRouteCandidatePlanner.Reconstruct(
                     source.Lot.Tile, buyer.Demand.Tile, buyer.Route);
-                finalCandidates.Add(new FoundationPhysicalCommodityDeliveryCandidate(
-                    checked((ulong)finalCandidates.Count + 1UL),
-                    source.Lot.Owner, source.Lot.Occupation, source.Lot.Tile,
-                    buyer.Demand.Owner, buyer.Demand.Tile,
-                    source.Lot.Commodity,
-                    checked(quanta * source.CargoQuantum),
-                    Array.AsReadOnly(route)));
+                foreach (var share in FoundationPhysicalMarginalMarketDistributor
+                    .AttributeRealBuyers(inputs, buyer.Demand.Tile,
+                        source.Lot.Commodity,
+                        checked(quanta * source.CargoQuantum),
+                        source.CargoQuantum))
+                {
+                    if (share.GoodsMicro == 0UL) continue;
+                    finalCandidates.Add(new FoundationPhysicalCommodityDeliveryCandidate(
+                        checked((ulong)finalCandidates.Count + 1UL),
+                        source.Lot.Owner, source.Lot.Occupation, source.Lot.Tile,
+                        share.Owner, buyer.Demand.Tile, source.Lot.Commodity,
+                        share.GoodsMicro, Array.AsReadOnly(route)));
+                }
             }
         }
 
@@ -352,18 +361,31 @@ public static class FoundationPhysicalGlobalMarginalCoordinator
         var audit = FoundationPhysicalDeliveryAllocationAuditor.Audit(
             census, incidence, demandPolicy, conversionPolicy,
             finalCandidates, ownership);
+        var ownerTotals = finalCandidates
+            .GroupBy(candidate =>
+                (candidate.BuyerTile, candidate.Buyer, candidate.Commodity))
+            .ToDictionary(group => group.Key,
+                group => group.Aggregate(0UL, (sum, candidate) =>
+                    checked(sum + candidate.GoodsMicro)));
         var final = inputs.DemandByCivilization.Select(line =>
             new FoundationPhysicalMarketAllocationTotal(
                 line.Tile, line.Owner, line.Commodity, line.DemandMicro,
-                global[(line.Tile, line.Owner, line.Commodity)])).ToArray();
+                ownerTotals.GetValueOrDefault(
+                    (line.Tile, line.Owner, line.Commodity)))).ToArray();
         if (final.Aggregate(BigInteger.Zero,
                 (sum, line) => sum + line.AllocatedGoodsMicro) !=
             audit.TotalAllocatedGoodsMicro)
             throw new InvalidOperationException(
                 "Globally adjusted market totals do not reconcile to physical sales.");
-        if (marketKeys.Length != final.Length)
+        if (marketKeys.Length != global.Count ||
+            inputs.MarketDemand.Any(market =>
+                global[(market.Tile, market.Commodity)] !=
+                final.Where(line => line.Tile == market.Tile &&
+                    line.Commodity == market.Commodity).Aggregate(0UL,
+                    (sum, line) => checked(sum + line.AllocatedGoodsMicro))))
             throw new InvalidOperationException(
-                "A real buyer disappeared during global marginal coordination.");
+                "A physical market disappeared or its owner attributions " +
+                "failed to conserve the shared delivered quantity.");
 
         return new FoundationPhysicalGlobalMarginalCoordinationPlan(
             finalCandidates.ToArray(), starting, final,
