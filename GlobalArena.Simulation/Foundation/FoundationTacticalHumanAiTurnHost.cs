@@ -469,11 +469,13 @@ public sealed class FoundationTacticalHumanAiTurnHost
         if (physical.CargoMicroAtReferenceLoad == ulong.MaxValue)
             throw new InvalidOperationException(
                 "Open sea has no constructed infrastructure or financeable bottleneck.");
-        if (physical.OwnershipKind !=
-                PhysicalTransportOwnershipKind.NoInfrastructure ||
-            physical.NaturalConstructionCostMoneyMicro is not > 0UL)
+        if (physical.NaturalConstructionCostMoneyMicro is not > 0UL ||
+            physical.OwnershipKind == PhysicalTransportOwnershipKind.UnownedInfrastructure ||
+            (physical.OwnershipKind == PhysicalTransportOwnershipKind.Owned &&
+             physical.InfrastructureOwner != human))
             throw new InvalidOperationException(
-                "Only an eligible finite crossing with a monetary quote can be financed.");
+                "Financing requires a natural edge or the current owner of " +
+                "one existing infrastructure; takeover is a military action.");
 
         ulong already = physical.CommittedInvestmentMoneyMicro ?? 0UL;
         var pendingEdge = _investmentPlans.Values
