@@ -204,8 +204,8 @@ public sealed class FoundationPhysicalMultimodalRoiBenchmarkTests
             .Analyze(host.Session.GeneratedWorld, host.Incidence,
                 improved.Transport, start, end,
                 independentlyChecked.Result);
-        Assert.True(naturalBound.ChosenSeaPairPreserved);
-        Assert.True(capitalBound.ChosenSeaPairPreserved);
+        Assert.True(naturalBound.GlobalWinnerPreserved);
+        Assert.True(capitalBound.GlobalWinnerPreserved);
         Assert.Equal(naturalBound.PotentialPairs,
             naturalBound.ProvablyExcludedPairs +
             naturalBound.RemainingPairs);
