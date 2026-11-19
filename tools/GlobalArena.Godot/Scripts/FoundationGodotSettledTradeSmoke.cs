@@ -73,6 +73,26 @@ internal sealed class FoundationGodotSettledTradeSmoke
     {
         try
         {
+            // R80: PR277 continuous relief was restored using the canonical
+            // economic height domain, not discrete 01C biome colors.
+            // Check transitions and sea-level continuity before real E turns.
+            var ocean = CanonicalEconomyReliefPalette.FromElevation(
+                -80L, 0L, -100L, 100L);
+            var coast = CanonicalEconomyReliefPalette.FromElevation(
+                0L, 0L, -100L, 100L);
+            var plains = CanonicalEconomyReliefPalette.FromElevation(
+                10L, 0L, -100L, 100L);
+            var highland = CanonicalEconomyReliefPalette.FromElevation(
+                80L, 0L, -100L, 100L);
+            Must(ocean != coast && coast != plains &&
+                 plains != highland,
+                "Authoritative continuous relief must distinguish real " +
+                "depth, coastline, lowland and highland.");
+            Must(CanonicalEconomyReliefPalette.FromElevation(
+                10L, 0L, -100L, 100L) == plains,
+                "Canonical relief color cannot vary between frames.");
+            GD.Print("GA_NEXT_R80_CONTINUOUS_ECONOMY_RELIEF_PASS " +
+                "source=authoritative_v1 no_discrete_biomes=true");
             await Frames();
             Must(_main.ActiveTacticalHost == _host &&
                  _host.StateHash.FormatVersion == 13U &&
