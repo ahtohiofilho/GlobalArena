@@ -49,7 +49,8 @@ public sealed class FoundationPhysicalAuditedSellerTollBindingTests
                 seeded.Transport, preview.Session.GeneratedWorld,
                 preview.Incidence)
             .DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
-                new[] { (Red, 1_000_000_000_000UL), (Blue, 0UL) })),
+                new[] { (Red, 1_000_000_000_000UL),
+                    (Blue, 1_000_000_000_000UL) })),
             preview.Incidence, Demand(), Cargo());
     }
 
@@ -90,20 +91,25 @@ public sealed class FoundationPhysicalAuditedSellerTollBindingTests
         var scene = Setup();
         var natural = Plan(scene.State, scene.Incidence,
             scene.Demand, scene.Cargo);
-        var usedByBlue = natural.Distribution.Candidates
-            .Where(c => c.Seller == Blue && c.RouteTiles.Count > 1)
+        var firstNonLocal = natural.Distribution.Candidates
+            .First(c => c.RouteTiles.Count > 1);
+        var actualSeller = firstNonLocal.Seller;
+        var investor = actualSeller == Red ? Blue : Red;
+        var usedBySeller = natural.Distribution.Candidates
+            .Where(c => c.Seller == actualSeller &&
+                c.RouteTiles.Count > 1)
             .SelectMany(c => Enumerable.Range(1, c.RouteTiles.Count - 1)
                 .Select(i => (
                     First: c.RouteTiles[i - 1].FineStrategicCellId.Value,
                     Second: c.RouteTiles[i].FineStrategicCellId.Value)))
             .ToHashSet();
-        Assert.NotEmpty(usedByBlue);
+        Assert.NotEmpty(usedBySeller);
 
         var edge = scene.Incidence.FineTopology.Edges
             .Select(e => (Geometry: e, A: e.IncidentCellIds[0].Value,
                 B: e.IncidentCellIds[1].Value))
-            .First(e => (usedByBlue.Contains((e.A, e.B)) ||
-                usedByBlue.Contains((e.B, e.A))) &&
+            .First(e => (usedBySeller.Contains((e.A, e.B)) ||
+                usedBySeller.Contains((e.B, e.A))) &&
                 scene.State.Transport.Edges.Single(row =>
                     row.Edge == new PhysicalTacticalEdgeId(
                         scene.Incidence.Refinement.FineParameters,
@@ -116,15 +122,15 @@ public sealed class FoundationPhysicalAuditedSellerTollBindingTests
         Assert.NotEqual(ulong.MaxValue,
             naturalEdge.CargoMicroAtReferenceLoad);
         var invested = scene.State.RecordMonetaryInfrastructureInvestment(
-            Red, edgeId, checked(
+            investor, edgeId, checked(
                 naturalEdge.NaturalConstructionCostMoneyMicro!.Value * 32UL));
         var plan = Plan(invested, scene.Incidence,
             scene.Demand, scene.Cargo);
         var result = FoundationPhysicalAuditedSellerTollBinding.Inspect(
             invested, scene.Incidence, scene.Demand, scene.Cargo,
             plan, 1UL, naturalEdge.CargoMicroAtReferenceLoad, 1U, 2U);
-        var blueCrossingCargo = plan.Distribution.Candidates
-            .Where(c => c.Seller == Blue)
+        var sellerCrossingCargo = plan.Distribution.Candidates
+            .Where(c => c.Seller == actualSeller)
             .Where(c => Enumerable.Range(1, c.RouteTiles.Count - 1)
                 .Any(i =>
                 {
@@ -135,13 +141,13 @@ public sealed class FoundationPhysicalAuditedSellerTollBindingTests
                 }))
             .Aggregate(0UL, (sum, c) => checked(sum +
                 scene.Cargo.CargoMicro(c.Commodity, c.GoodsMicro)));
-        if (blueCrossingCargo > 0UL)
+        if (sellerCrossingCargo > 0UL)
         {
             var toll = Assert.Single(result.SellerEdgeCandidates);
             Assert.Equal(edgeId, toll.Edge);
-            Assert.Equal(Blue, toll.Seller);
-            Assert.Equal(Red, toll.Owner);
-            Assert.Equal(blueCrossingCargo, toll.CargoMicro);
+            Assert.Equal(actualSeller, toll.Seller);
+            Assert.Equal(investor, toll.Owner);
+            Assert.Equal(sellerCrossingCargo, toll.CargoMicro);
             Assert.True(toll.TariffMicroPerWholeCargoUnit > 0UL);
         }
         else
