@@ -156,6 +156,10 @@ public sealed class FoundationPhysicalLargeWorldMultimarketGateTests
         };
         var cache = new FoundationPhysicalMultimodalRouteComparator
             .FrozenSeaDistanceCache(4_000_000);
+        var unboundedPhases = new List<
+            FoundationPhysicalMultimodalRouteComparator.ResearchPhaseTelemetry>();
+        var boundedPhases = new List<
+            FoundationPhysicalMultimodalRouteComparator.ResearchPhaseTelemetry>();
         FoundationPhysicalMultimodalRouteComparator.Result Compare(
             PhysicalTransportInfrastructureRuntimeState transport,
             ulong from, ulong to, bool prune)
@@ -166,13 +170,17 @@ public sealed class FoundationPhysicalLargeWorldMultimarketGateTests
                 new PhysicalTacticalTileId(fine, new StrategicCellId(to)),
                 maxEligibleEmbarkations: 20_000,
                 frozenSeaDistances: cache,
-                useProvenLandBound: prune);
+                useProvenLandBound: prune,
+                reportPhases: report => (prune ? boundedPhases :
+                    unboundedPhases).Add(report));
 
         // Warm BOTH architectures with the same caller-owned cache and
         // one real market pair, then measure identical per-market calls.
         // This prevents attributing an ordinary atlas miss to the bound.
         Compare(states[0].Inventory, selected[0].From,
             selected[0].To, prune: false);
+        unboundedPhases.Clear();
+        boundedPhases.Clear();
 
         double originalMs = 0.0, boundedMs = 0.0;
         long originalAlloc = 0L, boundedAlloc = 0L;
@@ -230,6 +238,33 @@ public sealed class FoundationPhysicalLargeWorldMultimarketGateTests
                 $"unbounded_ms={profileOriginalMs:F3} " +
                 $"bounded_ms={profileBoundedMs:F3}");
         }
+        Assert.Equal(queryCount, unboundedPhases.Count);
+        Assert.Equal(queryCount, boundedPhases.Count);
+        // Diagnostic reports are observational: phase clocks and counters
+        // cannot influence transport or state. They identify whether
+        // another routing micro-optimization would have any ROI.
+        void LogPhases(string mode, IReadOnlyList<
+            FoundationPhysicalMultimodalRouteComparator.ResearchPhaseTelemetry> phases)
+        {
+            _output.WriteLine(
+                $"GA_R65_PHASES coarse={m},{n} mode={mode} " +
+                $"queries={phases.Count} " +
+                $"preparation_ms={phases.Sum(p => p.PreparationMs):F3} " +
+                $"land_search_ms={phases.Sum(p => p.LandSearchMs):F3} " +
+                $"bound_ms={phases.Sum(p => p.BoundMs):F3} " +
+                $"sea_search_ms={phases.Sum(p => p.SeaSearchMs):F3} " +
+                $"pair_scoring_ms={phases.Sum(p => p.PairEvaluationMs):F3} " +
+                $"pair_slots={phases.Sum(p => p.EvaluatedPairSlots)} " +
+                $"sea_quotes={phases.Sum(p => p.SeaQuotes)} " +
+                $"potential_pairs={phases.Sum(p => p.PotentialPairs)} " +
+                $"proven_excluded={phases.Sum(p => p.ProvenExcludedPairs)}");
+        }
+        LogPhases("oracle", unboundedPhases);
+        LogPhases("proven_bound", boundedPhases);
+        Assert.True(unboundedPhases.Sum(p => p.EvaluatedPairSlots) >=
+            boundedPhases.Sum(p => p.EvaluatedPairSlots));
+        Assert.True(unboundedPhases.Sum(p => p.SeaQuotes) >=
+            boundedPhases.Sum(p => p.SeaQuotes));
         Assert.True(totalPairs > 0L);
         Assert.True(removedPairs > 0L);
         Assert.Equal(queryCount, seaWinners + landWinners);

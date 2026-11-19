@@ -1,0 +1,39 @@
+name: GA-Next R65 — routing phase-cost ROI audit
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/Foundation/FoundationPhysicalMultimodalRouteComparator.cs'
+      - 'GlobalArena.Tests/FoundationPhysicalLargeWorldMultimarketGateTests.cs'
+      - '.github/workflows/ga-next-r65-route-phase-roi.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  phase-breakdown:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Measure exact route phase costs at 5762 tiles and 8 market queries
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release \
+            --filter 'FullyQualifiedName~FoundationPhysicalLargeWorldMultimarketGateTests' \
+            --logger 'console;verbosity=detailed' --nologo 2>&1 | tee ga-next-r65-evidence.log
+          grep -E 'GA_R65_PHASES|GA_R64_MARKETS' ga-next-r65-evidence.log > ga-next-r65-phase-report.txt
+      - name: Archive observations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-next-r65-routing-phase-roi
+          path: |
+            ga-next-r65-evidence.log
+            ga-next-r65-phase-report.txt
+          retention-days: 14
