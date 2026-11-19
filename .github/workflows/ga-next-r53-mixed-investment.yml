@@ -1,0 +1,38 @@
+name: GA-Next R53 — real terrestrial and coastal investments A/B
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Tests/FoundationMixedTerrestrialCoastalInvestmentQaTests.cs'
+      - '.github/workflows/ga-next-r53-mixed-investment.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mixed-financing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Run mixed land/coast real treasury and freight A/B
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release \
+            --filter 'FullyQualifiedName~FoundationMixedTerrestrialCoastalInvestmentQaTests' \
+            --logger 'console;verbosity=detailed' --nologo 2>&1 | tee ga-next-r53-evidence.log
+          grep 'GA_R53 profile=' ga-next-r53-evidence.log > ga-next-r53-quantitative-report.txt
+      - name: Preserve monetary and freight audit
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ga-next-r53-mixed-land-coast-investment
+          path: |
+            ga-next-r53-evidence.log
+            ga-next-r53-quantitative-report.txt
+          retention-days: 14
