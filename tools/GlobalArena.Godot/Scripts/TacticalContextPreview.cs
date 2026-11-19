@@ -80,9 +80,6 @@ public partial class TacticalContextPreview : SubViewportContainer
     private WorldGenerationResult? _cachedFineWorld;
     private Vector3 _prefetchIntentOrigin;
     private ulong _lastPrefetchIntentFocus;
-    // A drag gesture may cross a single strategic boundary. Re-arm on mouse-up
-    // to prevent oscillating focus swaps and expensive repeated mesh rebuilds.
-    private bool _focusHandoffInCurrentDrag;
     // R29 additive resident expansion remains disabled: R43 now performs a
     // bounded, camera-anchored focus handoff instead of unbounded extension.
     // R27: additions are rendered in the ORIGINAL projection; the base chart never moves.
@@ -138,138 +135,138 @@ public partial class TacticalContextPreview : SubViewportContainer
     }
 
 
-    // R25: choose the prepared neighboring focus in the player's actual pan direction.
-    // No mutation to the camera, projected mesh, topology or selected physical tile.
-    private void ReportPreparedPrefetchIntent()
+    // R45: the camera travels on the canonical sphere. The chart is only a
+    // bounded local projection; its planar coordinates are NEVER used to
+    // decide which strategic territory owns the ongoing drag.
+    private bool TryUnprojectOnSphere(Vector3 planar, out Vector3 spherical)
+    {
+        spherical = Vector3.Zero;
+        var tangent = _basisEast * -planar.X + _basisNorth * planar.Z;
+        var radius = tangent.Length();
+        if (_equidistant)
+        {
+            if (radius >= Mathf.Pi * 0.5f - 0.01f) return false;
+            spherical = (_surfaceNormal * Mathf.Cos(radius) +
+                tangent * (radius < 1e-6f ? 1f : Mathf.Sin(radius) / radius))
+                .Normalized();
+        }
+        else
+        {
+            if (radius >= 0.999f) return false;
+            spherical = (_surfaceNormal * Mathf.Sqrt(1f - radius * radius) +
+                tangent).Normalized();
+        }
+        return spherical.IsFinite();
+    }
+
+    // Invoked on EVERY motion while the mouse button remains down. Handoff
+    // happens at the geodesic Voronoi boundary, *before* the viewport can
+    // reach the bounded three-ring mesh edge. No one-handoff-per-drag latch.
+    private bool TryContinuousFocusHandoff(Vector2 cursorPixel)
     {
         if (_camera is null || _cachedCoarseGeometry is null ||
             _cachedPhysicalMap is null || _activeFocus == 0UL ||
-            _focusHandoffInCurrentDrag) return;
-        var travel = new Vector2(_cameraTarget.X - _prefetchIntentOrigin.X,
-            _cameraTarget.Z - _prefetchIntentOrigin.Z);
-        if (travel.Length() < Math.Max(0.03f, _camera.Size * 0.20f))
-        {
-            _lastPrefetchIntentFocus = 0UL;
-            return;
-        }
-        var active = new StrategicCellId(_activeFocus);
-        var reference = Flatten(_cachedCoarseGeometry.GetCell(active).Center);
-        float bestAlignment = 0.50f;
-        ulong bestFocus = 0UL;
+            !TryProjectCursorOnTacticalPlane(cursorPixel, out var cursorPoint) ||
+            !TryUnprojectOnSphere(_cameraTarget, out var sphereCenter) ||
+            !TryUnprojectOnSphere(cursorPoint, out var sphereCursor)) return false;
+
+        var focus = new StrategicCellId(_activeFocus);
+        var current = ConvertPoint(_cachedCoarseGeometry.GetCell(focus).Center)
+            .Normalized();
+        // A small hysteresis margin avoids repeated A/B handoffs at a border.
+        var bestScore = current.Dot(sphereCenter) + 0.002f;
+        ulong nextFocus = 0UL;
         foreach (var neighbor in _cachedPhysicalMap.CoarseTopology.Cells[
             checked((int)_activeFocus - 1)].AdjacentCellIds.OrderBy(id => id.Value))
         {
             if (!_preparedTransfers.ContainsKey(neighbor.Value))
                 throw new InvalidOperationException("Missing prepared canonical neighbor plan.");
-            var projected = Flatten(_cachedCoarseGeometry.GetCell(neighbor).Center);
-            var toward = new Vector2(projected.X - reference.X,
-                projected.Z - reference.Z);
-            if (toward.LengthSquared() <= 1e-10f) continue;
-            var alignment = travel.Normalized().Dot(toward.Normalized());
-            if (alignment <= bestAlignment) continue;
-            // Require camera to be genuinely nearer to the adjacent
-            // strategic center than the source focus, not merely to move
-            // 20% of one viewport toward it.
-            var target = new Vector2(_cameraTarget.X, _cameraTarget.Z);
-            var sourceDistance = target.DistanceTo(new Vector2(reference.X, reference.Z));
-            var neighborDistance = target.DistanceTo(new Vector2(projected.X, projected.Z));
-            if (neighborDistance >= sourceDistance * 0.85f) continue;
-            bestAlignment = alignment;
-            bestFocus = neighbor.Value;
+            var candidate = ConvertPoint(_cachedCoarseGeometry.GetCell(neighbor).Center)
+                .Normalized();
+            var score = candidate.Dot(sphereCenter);
+            if (score <= bestScore) continue;
+            bestScore = score;
+            nextFocus = neighbor.Value;
         }
-        if (bestFocus == 0UL)
-        {
-            _lastPrefetchIntentFocus = 0UL;
-            return;
-        }
-        if (_lastPrefetchIntentFocus == bestFocus) return;
-        _lastPrefetchIntentFocus = bestFocus;
-        var plan = _preparedTransfers[bestFocus];
+        if (nextFocus == 0UL) return false;
+
+        var plan = _preparedTransfers[nextFocus];
         if (plan.ToPrepare.Any(id => !_preparedCanonicalTileGeometry.ContainsKey(
             id.FineStrategicCellId.Value)))
-            throw new InvalidOperationException("Pan intent selected an incomplete prefetch plan.");
-        GD.Print($"GA_TACTICAL_PREFETCH_INTENT_R25 source={_activeFocus} next={bestFocus} " +
-            $"reused={plan.Reused.Count} new={plan.ToPrepare.Count} " +
-            $"alignment={bestAlignment:F3} camera_size={_camera.Size:F4} yaw_deg={_yawDegrees:F0} " +
-            "chart_swapped=false camera_changed=false");
-        // A prepared neighboring focus is now a real navigation handoff,
-        // not merely an advisory log. Rebase the local chart while preserving
-        // the location of a shared canonical tile under the same camera.
-        TransitionToAdjacentFocus(bestFocus, plan);
+            throw new InvalidOperationException("R45 incomplete adjacent prefetch.");
+        return TryTransferProjection(nextFocus, plan, cursorPixel, sphereCursor);
     }
 
-    // Keep a geographic anchor fixed in screen space while swapping bounded
-    // tactical charts. The anchor must exist with the SAME physical tile ID in
-    // both charts; there is no synthetic coordinate or worker movement.
-    private void TransitionToAdjacentFocus(
-        ulong destinationFocus, PhysicalTacticalResidentTransferPlan plan)
+    // Preserve the real geographic point under the cursor across two local
+    // projections. This is stronger than preserving a planar offset from a
+    // shared tile (R43), which introduced visible jumps and empty corners.
+    private bool TryTransferProjection(
+        ulong nextFocus, PhysicalTacticalResidentTransferPlan plan,
+        Vector2 cursorPixel, Vector3 sphereCursor)
     {
-        if (_camera is null || _activeFocus == destinationFocus) return;
-
-        ulong anchorId = 0UL;
-        var closestDistance = float.PositiveInfinity;
-        foreach (var tile in plan.Reused)
-        {
-            var id = tile.FineStrategicCellId.Value;
-            if (!_tileCenters.TryGetValue(id, out var point)) continue;
-            var distance = (_cameraTarget - point).LengthSquared();
-            if (distance >= closestDistance) continue;
-            anchorId = id;
-            closestDistance = distance;
-        }
-        if (anchorId == 0UL)
-            throw new InvalidOperationException("Adjacent focus has no shared canonical screen anchor.");
-
+        if (_camera is null) return false;
         var sourceFocus = _activeFocus;
-        var anchorBefore = _tileCenters[anchorId];
-        var offsetFromAnchor = _cameraTarget - anchorBefore;
-        var zoom = _camera.Size;
-        var yaw = _yawDegrees;
-        var selected = _selectedFineTileId;
+        var previousTarget = _cameraTarget;
+        var previousZoom = _camera.Size;
+        var previousYaw = _yawDegrees;
+        var selectedId = _selectedFineTileId;
 
-        // Open rebuilds the bounded mesh, freight display and prefetch plans.
-        // The previous camera framing is replaced only temporarily during
-        // this same input event; the player does not see an intermediate frame.
-        Open(destinationFocus);
-        if (!_tileCenters.TryGetValue(anchorId, out var anchorAfter))
-            throw new InvalidOperationException("Rebased chart lost its canonical shared anchor.");
-        _cameraTarget = anchorAfter + offsetFromAnchor;
+        if (!plan.Reused.Any(tile =>
+            _tileCenters.ContainsKey(tile.FineStrategicCellId.Value)))
+            throw new InvalidOperationException("Focus transfer lacks shared physical identities.");
+
+        Open(nextFocus);
+        _camera.Size = previousZoom;
+        _yawDegrees = previousYaw;
+        UpdateCameraOrientation();
+
+        // In the destination chart the same globe point obtains new XY
+        // coordinates. Translate the camera until it lands under the very
+        // same mouse pixel. Do not touch _pressed or _dragStart.
+        var nextPoint = FlattenUnitVector(sphereCursor, TacticalSurfacePlaneY);
+        if (!TryProjectCursorOnTacticalPlane(cursorPixel, out var hit))
+        {
+            RestoreProjection(sourceFocus, previousTarget, previousZoom,
+                previousYaw, selectedId);
+            return false;
+        }
+        var shift = nextPoint - hit;
+        shift.Y = 0f;
+        _cameraTarget += shift;
+        UpdateCameraOrientation();
+
+        if (_coverViewport && !ViewportSamplesHaveTerrain(_camera.Size, 6, 5))
+        {
+            RestoreProjection(sourceFocus, previousTarget, previousZoom,
+                previousYaw, selectedId);
+            GD.Print($"GA_TACTICAL_HANDOFF_DEFERRED_R45 source={sourceFocus} next={nextFocus} reason=viewport_coverage");
+            return false;
+        }
+
+        if (selectedId.HasValue && _tileCenters.ContainsKey(selectedId.Value))
+            SelectPhysicalTile(selectedId);
+        _prefetchIntentOrigin = _cameraTarget;
+        _lastPrefetchIntentFocus = 0UL;
+        GD.Print($"GA_TACTICAL_FOCUS_HANDOFF_R45 source={sourceFocus} next={nextFocus} " +
+            $"zoom={previousZoom:F6} yaw={previousYaw:F3} " +
+            "cursor_geography_preserved=true drag_continues=true " +
+            "viewport_covered=true simulation_mutation=false");
+        return true;
+    }
+
+    private void RestoreProjection(
+        ulong focus, Vector3 target, float zoom, float yaw, ulong? selection)
+    {
+        Open(focus);
+        if (_camera is null)
+            throw new InvalidOperationException("Tactical camera missing during rollback.");
+        _cameraTarget = target;
         _camera.Size = zoom;
         _yawDegrees = yaw;
         UpdateCameraOrientation();
-        // Preserve selection only when its exact physical ID remains resident.
-        // Open deliberately clears selection when focus changes.
-        if (selected.HasValue && _tileCenters.ContainsKey(selected.Value))
-            SelectPhysicalTile(selected);
-        // The former R43 could restore a zoom whose screen corners fell
-        // outside the destination resident mesh. Never expose that invalid
-        // chart to the renderer; restore the old focus and camera atomically.
-        if (_coverViewport && !ViewportSamplesHaveTerrain(_camera.Size, 4, 4))
-        {
-            Open(sourceFocus);
-            if (!_tileCenters.TryGetValue(anchorId, out var restoredAnchor))
-                throw new InvalidOperationException("Focus rollback lost the shared physical anchor.");
-            _cameraTarget = restoredAnchor + offsetFromAnchor;
-            _camera.Size = zoom;
-            _yawDegrees = yaw;
-            UpdateCameraOrientation();
-            if (selected.HasValue && _tileCenters.ContainsKey(selected.Value))
-                SelectPhysicalTile(selected);
-            _prefetchIntentOrigin = _cameraTarget;
-            _lastPrefetchIntentFocus = destinationFocus;
-            _focusHandoffInCurrentDrag = true;
-            GD.Print($"GA_TACTICAL_FOCUS_HANDOFF_BLOCKED_R44 source={sourceFocus} destination={destinationFocus} reason=viewport_not_covered restored=true");
-            return;
-        }
-        // Only one complete handoff per drag gesture, so a map rebase cannot
-        // trigger a second expensive rebase until mouse release.
-        _focusHandoffInCurrentDrag = true;
+        if (selection.HasValue && _tileCenters.ContainsKey(selection.Value))
+            SelectPhysicalTile(selection);
         _prefetchIntentOrigin = _cameraTarget;
-        _lastPrefetchIntentFocus = 0UL;
-        GD.Print($"GA_TACTICAL_FOCUS_HANDOFF_R43 source={sourceFocus} destination={destinationFocus} " +
-            $"anchor={anchorId} zoom_before={zoom:F6} zoom_after={_camera.Size:F6} " +
-            $"yaw_before={yaw:F3} yaw_after={_yawDegrees:F3} " +
-            "physical_ids_preserved=true simulation_mutation=false");
     }
 
     // R27: one-chart expansion only. Never modify the old surface, existing positions,
@@ -539,9 +536,9 @@ public partial class TacticalContextPreview : SubViewportContainer
         GD.Print("GA_TACTICAL_CAMERA_STATE_READY_R13 rotation_preserves_zoom=true probe_is_non_mutating=true");
         GD.Print("GA_TACTICAL_PAN_ANCHOR_READY_R15 cursor_follows_drag=true axis_independent=true yaw_aware=true");
         GD.Print("GA_TACTICAL_PREFETCH_COMPONENT_READY_R23 canonical_only=true visual_chart_unchanged=true");
-        GD.Print("GA_TACTICAL_PREFETCH_INTENT_COMPONENT_READY_R25 directional=true handoff_r43=true");
+        GD.Print("GA_TACTICAL_PREFETCH_INTENT_COMPONENT_READY_R45 sphere_geodesic=true continuous_drag=true");
         GD.Print("GA_TACTICAL_RESIDENT_EXTENSION_COMPONENT_READY_R27 additive=true original_projection=true safe_horizon_rejection=true base_chart_unchanged=true");
-        GD.Print($"GA_TACTICAL_MVP_SCOPE_READY_R29 expansion_enabled=false ring_buffer={_residentRingCount} prefetch_intent=active_handoff");
+        GD.Print($"GA_TACTICAL_MVP_SCOPE_READY_R45 expansion_enabled=false ring_buffer={_residentRingCount} handoff=geodesic");
     }
 
     // GA_UI_TACTICAL_HUD_SIDEBAR_R1: move existing controls, never recreate handlers.
@@ -1219,7 +1216,6 @@ public partial class TacticalContextPreview : SubViewportContainer
                 {
                     _pressed = true;
                     _moved = false;
-                    _focusHandoffInCurrentDrag = false;
                     _dragStart = button.Position;
                 }
                 else
@@ -1256,19 +1252,20 @@ public partial class TacticalContextPreview : SubViewportContainer
                 }
                 var translation = previousHit - currentHit;
                 translation.Y = 0f;
+                var previousTarget = _cameraTarget;
                 _camera.Position += translation;
                 _cameraTarget += translation;
-                // The three-ring resident buffer permits free movement inside its coverage.
-                // R43 transfers to prepared adjacent charts during pan; the
-                // coverage guard still prevents looking into unrendered space.
-                if (_coverViewport && !ViewportSamplesHaveTerrain(_camera.Size, 4, 4))
+
+                // Transfer the map to the nearest strategic focus BEFORE
+                // enforcing viewport coverage, never at the map's visible edge.
+                // The drag gesture stays active throughout the transition.
+                var transferred = TryContinuousFocusHandoff(motion.Position);
+                if (!transferred && _coverViewport &&
+                    !ViewportSamplesHaveTerrain(_camera.Size, 4, 4))
                 {
-                    _camera.Position -= translation;
-                    _cameraTarget -= translation;
-                }
-                else
-                {
-                    ReportPreparedPrefetchIntent();
+                    _cameraTarget = previousTarget;
+                    UpdateCameraOrientation();
+                    GD.Print("GA_TACTICAL_NAV_COVERAGE_GUARD_R45 no_missing_tiles=true");
                 }
                 AcceptEvent();
             }
