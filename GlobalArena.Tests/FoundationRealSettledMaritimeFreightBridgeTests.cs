@@ -254,4 +254,63 @@ public sealed class FoundationRealSettledMaritimeFreightBridgeTests
         Assert.Same(committed, s.Host.Snapshot);
         Assert.Equal(committedHash, s.Host.StateHash);
     }
+
+    [Fact]
+    public void R74RealSettledCyclesPreserveExhaustiveVersusBoundedMaritimeDecision()
+    {
+        var scene = Create();
+        var world = scene.Host.Session.GeneratedWorld;
+        var incidence = scene.Host.Incidence;
+
+        // Economic-cycle history is generated only by the real public
+        // settlement boundary (R70), never fabricated in the treasury.
+        for (ulong settled = 1UL; settled <= 2UL; settled++)
+        {
+            var economic = Close(scene, settled);
+            Assert.True(economic.CreditedToTreasuriesScaled.Sign > 0);
+            var snapshot = scene.Host.Snapshot;
+            var hash = scene.Host.StateHash;
+            Assert.True(snapshot.Treasury.HasClosedEconomicCycle);
+            Assert.Equal(settled,
+                snapshot.Treasury.LastSettledEconomicCycleOrdinal);
+            Assert.NotEmpty(snapshot.Treasury.LastSettledFreightQuotes);
+
+            foreach (var seller in new[] { Red, Blue })
+            {
+                var exhaustive =
+                    FoundationPhysicalFrozenEconomicMaritimeComparator.Compare(
+                        snapshot, world, incidence, scene.Policy.Cargo,
+                        Grain, 1_000_000UL, seller, scene.Source,
+                        scene.Destination, settled + 1UL, proveBound: false);
+                var bounded =
+                    FoundationPhysicalFrozenEconomicMaritimeComparator.Compare(
+                        snapshot, world, incidence, scene.Policy.Cargo,
+                        Grain, 1_000_000UL, seller, scene.Source,
+                        scene.Destination, settled + 1UL, proveBound: true);
+
+                Assert.Equal(exhaustive.LandOnlyRateMicro,
+                    bounded.LandOnlyRateMicro);
+                Assert.Equal(exhaustive.SeaPreferred, bounded.SeaPreferred);
+                Assert.Equal(exhaustive.PotentialPairs, bounded.PotentialPairs);
+                Assert.True(bounded.ExcludedPairs >= 0);
+                Assert.True(bounded.QuotedPairs <= exhaustive.QuotedPairs);
+                Assert.True(exhaustive.QuotedPairs > 0);
+                if (exhaustive.SeaPreferred)
+                {
+                    Assert.Equal(exhaustive.BestSeaRateMicro,
+                        bounded.BestSeaRateMicro);
+                    Assert.Equal(exhaustive.EmbarkEdge, bounded.EmbarkEdge);
+                    Assert.Equal(exhaustive.DisembarkEdge,
+                        bounded.DisembarkEdge);
+                }
+                Assert.Equal(exhaustive,
+                    FoundationPhysicalFrozenEconomicMaritimeComparator.Compare(
+                        snapshot, world, incidence, scene.Policy.Cargo,
+                        Grain, 1_000_000UL, seller, scene.Source,
+                        scene.Destination, settled + 1UL, proveBound: false));
+                Assert.Same(snapshot, scene.Host.Snapshot);
+                Assert.Equal(hash, scene.Host.StateHash);
+            }
+        }
+    }
 }
