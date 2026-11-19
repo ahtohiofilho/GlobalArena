@@ -448,7 +448,7 @@ public sealed class WorldState
         if (!Treasury.IsInitialized || !Transport.HasMonetaryConstructionCosts)
             throw new InvalidOperationException(
                 "Investments need authoritative treasury and quoted costs.");
-        var newTransport = Transport.RecordMoneyInvestment(edge, moneyMicro);
+        var newTransport = Transport.RecordMoneyInvestment(investor, edge, moneyMicro);
         var newTreasury = Treasury.DebitConstruction(investor, moneyMicro);
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,

@@ -192,9 +192,9 @@ public sealed class FoundationMonetaryInfrastructureInvestmentTests
             .CargoMicroAtReferenceLoad;
         Assert.True(effective > initialProjected,
             "Capital already debited from the real treasury must improve throughput.");
-        Assert.Equal(PhysicalTransportOwnershipKind.NoInfrastructure,
+        Assert.Equal(PhysicalTransportOwnershipKind.Owned,
             Edge(s).OwnershipKind);
-        Assert.Null(Edge(s).InfrastructureOwner);
+        Assert.Equal(Red, Edge(s).InfrastructureOwner);
         Assert.Equal(0UL, Edge(s).ExternalTariffMicroPerWholeCargoUnit);
 
         var amount = GlobalArenaMoneyScale.FromMoneyMicro(spend);
@@ -243,8 +243,9 @@ public sealed class FoundationMonetaryInfrastructureInvestmentTests
         Assert.Equal(GlobalArenaMoneyScale.FromMoneyMicro(cost),
             s.Host.Snapshot.Treasury.Get(Red)
                 .TotalInfrastructureInvestmentScaled);
-        Assert.Equal(PhysicalTransportOwnershipKind.NoInfrastructure,
+        Assert.Equal(PhysicalTransportOwnershipKind.Owned,
             Edge(s).OwnershipKind);
+        Assert.Equal(Red, Edge(s).InfrastructureOwner);
         // Once the original construction quote is fully funded, further
         // upgrades remain possible on the SAME physical edge.
         s.Host.QueueHumanMonetaryInvestment(Red, s.RemoteEdge, cost);
@@ -261,8 +262,9 @@ public sealed class FoundationMonetaryInfrastructureInvestmentTests
         Assert.True(afterUpgrade > funded);
         Assert.Equal(initial - GlobalArenaMoneyScale.FromMoneyMicro(cost * 2UL),
             s.Host.Snapshot.Treasury.Get(Red).CashScaled);
-        Assert.Equal(PhysicalTransportOwnershipKind.NoInfrastructure,
+        Assert.Equal(PhysicalTransportOwnershipKind.Owned,
             Edge(s).OwnershipKind);
+        Assert.Equal(Red, Edge(s).InfrastructureOwner);
     }
 
     [Fact]
@@ -423,15 +425,16 @@ public sealed class FoundationMonetaryInfrastructureInvestmentTests
             .FromWorld(after, s.Host.Incidence).Scales
             .Single(x => x.Edge == coast.Edge).CargoMicroAtReferenceLoad;
         Assert.True(effective > coast.CargoMicroAtReferenceLoad);
-        Assert.Equal(PhysicalTransportOwnershipKind.NoInfrastructure,
+        Assert.Equal(PhysicalTransportOwnershipKind.Owned,
             built.OwnershipKind);
+        Assert.Equal(Red, built.InfrastructureOwner);
         Assert.Equal(0UL, built.ExternalTariffMicroPerWholeCargoUnit);
         Assert.Equal(ulong.MaxValue,
             FoundationPhysicalAuthoritativeTransportProjector
                 .FromWorld(after, s.Host.Incidence).Scales
                 .Single(x => x.Edge == sea.Edge).CargoMicroAtReferenceLoad);
         Assert.Throws<InvalidOperationException>(() =>
-            after.Transport.RecordMoneyInvestment(sea.Edge, 1UL));
+            after.Transport.RecordMoneyInvestment(Red, sea.Edge, 1UL));
     }
 
     [Fact]
@@ -509,6 +512,55 @@ public sealed class FoundationMonetaryInfrastructureInvestmentTests
             Assert.True(root * root <= n &&
                 (root + 1) * (root + 1) > n);
         }
+    }
+
+    [Fact]
+    public void InvestedEdgeHasOneOwnerAndForeignReinvestmentCannotSeizeTitle()
+    {
+        var s = Create(redOpeningMoneyMicro: 25_000_000UL,
+            blueOpeningMoneyMicro: 25_000_000UL);
+        var natural = Edge(s);
+        Assert.Equal(PhysicalTransportOwnershipKind.NoInfrastructure,
+            natural.OwnershipKind);
+        const ulong first = 120_000UL;
+        s.Host.QueueHumanMonetaryInvestment(Red, s.RemoteEdge, first);
+        s.Host.SetHumanReady(Red);
+        var receipt = s.Host.TryCloseTurn();
+        Assert.NotNull(receipt);
+        Assert.True(receipt!.ReplayMatched);
+
+        var owned = Edge(s);
+        Assert.Equal(PhysicalTransportOwnershipKind.Owned,
+            owned.OwnershipKind);
+        Assert.Equal(Red, owned.InfrastructureOwner);
+        Assert.Equal(0UL, owned.ExternalTariffMicroPerWholeCargoUnit);
+        Assert.Equal(first, owned.CommittedInvestmentMoneyMicro);
+        var projected = FoundationPhysicalAuthoritativeTransportProjector
+            .FromWorld(s.Host.Snapshot, s.Host.Incidence).Roads
+            .Single(r => r.Edge == s.RemoteEdge);
+        Assert.Equal(FoundationInfrastructureOwnershipKind.Owned,
+            projected.OwnershipKind);
+        Assert.Equal(Red, projected.InfrastructureOwner);
+        Assert.Equal(0UL, projected.ExternalTariffMicroPerWholeCargoUnit);
+        var originalHash = s.Host.StateHash;
+        var originalSnapshot = s.Host.Snapshot;
+        Assert.Throws<InvalidOperationException>(() =>
+            s.Host.QueueHumanMonetaryInvestment(Blue, s.RemoteEdge, 1UL));
+        Assert.Throws<InvalidOperationException>(() =>
+            originalSnapshot.RecordMonetaryInfrastructureInvestment(
+                Blue, s.RemoteEdge, 1UL));
+        Assert.Equal(originalHash, s.Host.StateHash);
+        Assert.Same(originalSnapshot, s.Host.Snapshot);
+        Assert.Equal(0, s.Host.PendingOrderCount);
+
+        s.Host.QueueHumanMonetaryInvestment(Red, s.RemoteEdge, 2UL);
+        s.Host.SetHumanReady(Red);
+        var reinvested = s.Host.TryCloseTurn();
+        Assert.NotNull(reinvested);
+        Assert.True(reinvested!.ReplayMatched);
+        Assert.Equal(Red, Edge(s).InfrastructureOwner);
+        Assert.Equal(first + 2UL, Edge(s).CommittedInvestmentMoneyMicro);
+        Assert.Equal(0UL, Edge(s).ExternalTariffMicroPerWholeCargoUnit);
     }
 
 }
