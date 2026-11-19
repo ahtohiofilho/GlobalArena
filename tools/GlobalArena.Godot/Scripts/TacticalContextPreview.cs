@@ -31,6 +31,47 @@ public partial class TacticalContextPreview : SubViewportContainer
     private WorldGenerationV2PhysicalComposition? _terrainReference;
     private bool _showExperimentalTerrain = true;
     private const ulong TerrainExperimentSeed = 20261012UL;
+    // The decorative 01C biome experiment has an independent land/sea
+    // composition. Economy QA must show the ACTUAL V1 physical sea-level
+    // used to classify canonical freight edges, or terrestrial paths will
+    // appear to sail over unrelated blue experimental tiles.
+    private WorldGenerationResult? _authoritativeEconomyTerrainWorld;
+
+    public void ConfigureAuthoritativeEconomyTerrain(
+        WorldGenerationResult? world)
+    {
+        if (world is not null &&
+            world.Request.StrategicParameters.StrategicCellCount == 0)
+            throw new ArgumentException(
+                "Canonical economy terrain requires a generated bound world.",
+                nameof(world));
+        _authoritativeEconomyTerrainWorld = world;
+    }
+
+    private bool IsAuthoritativeEconomyLand(
+        ulong tileId, PhysicalTacticalIncidenceMap physical)
+    {
+        var world = _authoritativeEconomyTerrainWorld ??
+            throw new InvalidOperationException(
+                "Economy terrain requires its authoritative world.");
+        if (physical.Refinement.CoarseParameters !=
+                world.Request.StrategicParameters)
+            throw new InvalidOperationException(
+                "Economic terrain world disagrees with the routed fine topology.");
+        var tile = physical.TileIncidences[checked((int)tileId - 1)];
+        var elevation = world.StrategicPhysicalFields.Elevation;
+        long total = 0L;
+        foreach (var coarse in tile.IncidentCoarseCellIds)
+            total = checked(total + elevation.GetRawValue(coarse));
+        long average = total / tile.IncidentCoarseCellIds.Count;
+        return average > world.StrategicPhysicalFields.SeaLevel.RawValue;
+    }
+
+    private Color EconomicTerrainTint(
+        ulong tileId, PhysicalTacticalIncidenceMap physical) =>
+        IsAuthoritativeEconomyLand(tileId, physical)
+            ? new Color("#7bad72") : TerrainColor(
+                ExperimentalProceduralBiomeClassifier.Biome.Ocean);
     private ulong? _selectedFineTileId;
     // R30: presentation-only notification to the existing right sidebar.
     public event Action<ulong?, string, string>? PhysicalTileInspected;
@@ -311,9 +352,14 @@ public partial class TacticalContextPreview : SubViewportContainer
             Color tint;
             if (_showExperimentalTerrain)
             {
-                if (_terrainReference is null)
-                    throw new InvalidOperationException("R27 terrain data missing.");
-                tint = TerrainColor(_terrainReference.Biomes[checked((int)id - 1)].VisibleBiome);
+                if (_authoritativeEconomyTerrainWorld is not null)
+                    tint = EconomicTerrainTint(id, _cachedPhysicalMap);
+                else
+                {
+                    if (_terrainReference is null)
+                        throw new InvalidOperationException("R27 terrain data missing.");
+                    tint = TerrainColor(_terrainReference.Biomes[checked((int)id - 1)].VisibleBiome);
+                }
             }
             else
             {
@@ -819,7 +865,9 @@ public partial class TacticalContextPreview : SubViewportContainer
             _selection.Text = "Wheel: zoom | Drag: pan | Click: inspect tile";
             if (_terrainDetails is not null)
                 _terrainDetails.Text = _showExperimentalTerrain
-                    ? "01C EXPERIMENT | tactical terrain only; strategic globe still V1"
+                    ? (_authoritativeEconomyTerrainWorld is not null
+                        ? "ECONOMY TERRAIN | canonical V1 elevation and sea level"
+                        : "01C EXPERIMENT | tactical terrain only; strategic globe still V1")
                     : "DIAGNOSTIC COLORS | not a terrain classification";
             PhysicalTileInspected?.Invoke(null, _selection.Text, _terrainDetails?.Text ?? "");
             return;
@@ -843,7 +891,16 @@ public partial class TacticalContextPreview : SubViewportContainer
         _selectedFineTileId = matched.Id;
         var shape = matched.Degree == 5 ? "Pentagon" : "Hexagon";
         _selection.Text = $"G(18,0)/{matched.Id} | {shape} | ring {matched.Ring} | strategic {string.Join(",", matched.Owners)} | selected";
-        if (_terrainDetails is not null && _terrainReference is not null && _showExperimentalTerrain)
+        if (_terrainDetails is not null && _showExperimentalTerrain &&
+            _authoritativeEconomyTerrainWorld is not null &&
+            _cachedPhysicalMap is not null)
+        {
+            bool land = IsAuthoritativeEconomyLand(matched.Id, _cachedPhysicalMap);
+            _terrainDetails.Text = land
+                ? "ECONOMY TERRAIN | LAND | canonical V1 elevation and sea level"
+                : "ECONOMY TERRAIN | WATER | canonical V1 elevation and sea level";
+        }
+        else if (_terrainDetails is not null && _terrainReference is not null && _showExperimentalTerrain)
         {
             int index = checked((int)matched.Id - 1);
             var biome = _terrainReference.Biomes[index];
@@ -935,7 +992,8 @@ public partial class TacticalContextPreview : SubViewportContainer
         faceTool.Begin(Mesh.PrimitiveType.Triangles);
         var geometry = fineWorld.StrategicSphericalGeometry;
         // Lazy one-time V2 preview. Worldgen V1 and strategic presentation remain unchanged.
-        if (_showExperimentalTerrain && _terrainReference is null)
+        if (_showExperimentalTerrain && _terrainReference is null &&
+            _authoritativeEconomyTerrainWorld is null)
             _terrainReference = WorldGenerationV2PhysicalComposition.Generate(
                 geometry, TerrainExperimentSeed, landTargetPercent: 35);
         if (_terrainReference is not null && _terrainReference.Geometry.Cells.Count != geometry.Cells.Count)
@@ -955,9 +1013,14 @@ public partial class TacticalContextPreview : SubViewportContainer
             Color tint;
             if (_showExperimentalTerrain)
             {
-                if (_terrainReference is null)
-                    throw new InvalidOperationException("Experimental terrain reference missing.");
-                tint = TerrainColor(_terrainReference.Biomes[index].VisibleBiome);
+                if (_authoritativeEconomyTerrainWorld is not null)
+                    tint = EconomicTerrainTint(id.FineStrategicCellId.Value, physical);
+                else
+                {
+                    if (_terrainReference is null)
+                        throw new InvalidOperationException("Experimental terrain reference missing.");
+                    tint = TerrainColor(_terrainReference.Biomes[index].VisibleBiome);
+                }
             }
             else
             {
