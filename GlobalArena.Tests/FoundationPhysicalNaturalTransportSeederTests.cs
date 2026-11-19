@@ -121,7 +121,10 @@ public sealed class FoundationPhysicalNaturalTransportSeederTests
             {
                 Assert.Equal(100_000_000UL,
                     row.FreePhysicalCostMicroPerWholeCargoUnit);
-                Assert.Equal(10_000UL, row.CargoMicroAtReferenceLoad);
+                Assert.Equal(
+                    FoundationPhysicalEndogenousCongestionFeedback
+                        .UnboundedNaturalCargoCapacity,
+                    row.CargoMicroAtReferenceLoad);
             }
         }
     }

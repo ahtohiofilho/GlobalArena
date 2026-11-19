@@ -221,10 +221,19 @@ public static class FoundationPhysicalNaturalTransportSeeder
                 cost = band.FreePhysicalCostMicroPerWholeCargoUnit;
                 constructionMoney = monetaryPolicy?.SeaBaseCostMoneyMicro;
             }
+            // Open sea has no physical congestion bottleneck, regardless
+            // of epoch or freight volume. Its *positive* free operating cost
+            // remains; coast/port transfers retain their finite K.
+            // The explicit unbounded marker is canonically stored in the
+            // existing hashed cargo-capacity field, without schema changes.
+            ulong capacity = !firstLand && !secondLand
+                ? FoundationPhysicalEndogenousCongestionFeedback
+                    .UnboundedNaturalCargoCapacity
+                : band.CargoMicroAtReferenceLoad;
             rows[i] = new PhysicalTransportEdgeRuntimeRecord(
                 new PhysicalTacticalEdgeId(fine, edge.Id),
                 PhysicalTransportOwnershipKind.NoInfrastructure,
-                null, cost, band.CargoMicroAtReferenceLoad, 0UL,
+                null, cost, capacity, 0UL,
                 constructionMoney);
         }
         if (landCrossings + coastCrossings + seaCrossings != rows.Length)
