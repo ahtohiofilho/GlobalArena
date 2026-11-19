@@ -507,9 +507,9 @@ public partial class TacticalContextPreview : SubViewportContainer
         GD.Print("GA_TACTICAL_CAMERA_STATE_READY_R13 rotation_preserves_zoom=true probe_is_non_mutating=true");
         GD.Print("GA_TACTICAL_PAN_ANCHOR_READY_R15 cursor_follows_drag=true axis_independent=true yaw_aware=true");
         GD.Print("GA_TACTICAL_PREFETCH_COMPONENT_READY_R23 canonical_only=true visual_chart_unchanged=true");
-        GD.Print("GA_TACTICAL_PREFETCH_INTENT_COMPONENT_READY_R25 directional=true advisory_only=true chart_unchanged=true");
+        GD.Print("GA_TACTICAL_PREFETCH_INTENT_COMPONENT_READY_R25 directional=true handoff_r43=true");
         GD.Print("GA_TACTICAL_RESIDENT_EXTENSION_COMPONENT_READY_R27 additive=true original_projection=true safe_horizon_rejection=true base_chart_unchanged=true");
-        GD.Print($"GA_TACTICAL_MVP_SCOPE_READY_R29 expansion_enabled={EnablePostMvpResidentExpansion.ToString().ToLowerInvariant()} ring_buffer={_residentRingCount} prefetch_intent=advisory");
+        GD.Print($"GA_TACTICAL_MVP_SCOPE_READY_R29 expansion_enabled=false ring_buffer={_residentRingCount} prefetch_intent=active_handoff");
     }
 
     // GA_UI_TACTICAL_HUD_SIDEBAR_R1: move existing controls, never recreate handlers.
