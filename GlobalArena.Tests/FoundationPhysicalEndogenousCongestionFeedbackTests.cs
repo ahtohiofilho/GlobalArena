@@ -95,9 +95,13 @@ public sealed class FoundationPhysicalEndogenousCongestionFeedbackTests
         Assert.Equal(1_700_000UL,
             FoundationPhysicalEndogenousCongestionFeedback.CalculateCongestedRate(
                 100_000UL, 2_000_000UL, 1_000_000UL));
-        Assert.Equal(100_001UL,
+        // Insignificant physical loads must not get a fabricated surcharge.
+        Assert.Equal(100_000UL,
             FoundationPhysicalEndogenousCongestionFeedback.CalculateCongestedRate(
                 100_000UL, 1UL, 1_000_000UL));
+        Assert.Equal(100_000UL,
+            FoundationPhysicalEndogenousCongestionFeedback.CalculateCongestedRate(
+                100_000UL, 100_000UL, 1_000_000_000UL));
         Assert.Throws<OverflowException>(() =>
             FoundationPhysicalEndogenousCongestionFeedback.CalculateCongestedRate(
                 ulong.MaxValue, ulong.MaxValue, 1UL));
