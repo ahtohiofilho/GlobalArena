@@ -102,8 +102,13 @@ public sealed class FoundationPhysicalAuditedSellerTollBindingTests
         var edge = scene.Incidence.FineTopology.Edges
             .Select(e => (Geometry: e, A: e.IncidentCellIds[0].Value,
                 B: e.IncidentCellIds[1].Value))
-            .First(e => usedByBlue.Contains((e.A, e.B)) ||
-                usedByBlue.Contains((e.B, e.A)));
+            .First(e => (usedByBlue.Contains((e.A, e.B)) ||
+                usedByBlue.Contains((e.B, e.A))) &&
+                scene.State.Transport.Edges.Single(row =>
+                    row.Edge == new PhysicalTacticalEdgeId(
+                        scene.Incidence.Refinement.FineParameters,
+                        e.Geometry.Id)).CargoMicroAtReferenceLoad !=
+                    ulong.MaxValue);
         var edgeId = new PhysicalTacticalEdgeId(
             scene.Incidence.Refinement.FineParameters, edge.Geometry.Id);
         var naturalEdge = scene.State.Transport.Edges
@@ -128,7 +133,8 @@ public sealed class FoundationPhysicalAuditedSellerTollBindingTests
                     return (a == edge.A && b == edge.B) ||
                            (a == edge.B && b == edge.A);
                 }))
-            .Sum(c => scene.Cargo.CargoMicro(c.Commodity, c.GoodsMicro));
+            .Aggregate(0UL, (sum, c) => checked(sum +
+                scene.Cargo.CargoMicro(c.Commodity, c.GoodsMicro)));
         if (blueCrossingCargo > 0UL)
         {
             var toll = Assert.Single(result.SellerEdgeCandidates);
