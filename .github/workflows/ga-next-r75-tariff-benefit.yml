@@ -1,0 +1,36 @@
+name: GA-Next R75 — read-only physical benefit tariff reference
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/Foundation/FoundationPhysicalTariffBenefitReference.cs'
+      - 'GlobalArena.Tests/FoundationPhysicalTariffBenefitReferenceTests.cs'
+      - '.github/workflows/ga-next-r75-tariff-benefit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reference-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Verify R75 tariff reference and R74 economic A/B
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release \
+            --filter 'FullyQualifiedName~FoundationPhysicalTariffBenefitReferenceTests|FullyQualifiedName~FoundationRealSettledMaritimeFreightBridgeTests|FullyQualifiedName~FoundationPhysicalFrozenEconomicMaritimeComparatorTests' \
+            --logger 'console;verbosity=detailed' --nologo 2>&1 | tee ga-next-r75-results.log
+      - name: Archive evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ga-next-r75-tariff-benefit
+          path: ga-next-r75-results.log
+          retention-days: 14
