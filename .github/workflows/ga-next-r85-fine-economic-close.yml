@@ -1,0 +1,36 @@
+name: GA-Next R85 — real fine-first economic close with independent replay
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/Foundation/FoundationAuthoritativeEconomicSalesSettlementPhase.cs'
+      - 'GlobalArena.Simulation/Foundation/FoundationFineFirstEconomicCycleGate.cs'
+      - 'GlobalArena.Tests/FoundationFineFirstEconomicCycleGateTests.cs'
+      - '.github/workflows/ga-next-r85-fine-economic-close.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-fine-economic-close:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Verify real G18 close and R84/R83/R82/V1 economic contracts
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release \
+            --filter 'FullyQualifiedName~FoundationFineFirstEconomicCycleGateTests|FullyQualifiedName~FoundationFineFirstWorldBindingTests|FullyQualifiedName~FoundationFineFirstWorldgenCanonicalSignatureTests|FullyQualifiedName~FoundationFineFirstPhysicalGeographyTests|FullyQualifiedName~FoundationPhysicalNaturalTransportSeederTests|FullyQualifiedName~FoundationSettledOwnerTollEndToEndTests|FullyQualifiedName~WorldGenerationCanonicalSignatureTests' \
+            --logger 'console;verbosity=detailed' --nologo 2>&1 | tee ga-next-r85-results.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ga-next-r85-fine-economic-close
+          path: ga-next-r85-results.log
+          retention-days: 14
