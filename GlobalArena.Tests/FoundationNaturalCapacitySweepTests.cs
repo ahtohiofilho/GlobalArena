@@ -168,14 +168,16 @@ public sealed class FoundationNaturalCapacitySweepTests
             Assert.All(cycles, cycle =>
                 Assert.Equal(cycle.TotalAvailableGoods, cycle.TotalAllocatedGoods));
             foreach (var cycle in cycles)
-                _output.WriteLine(FormattableString.Invariant(
-                    $"GA_K_SWEEP profile={row.Name} cycle={cycle.Index} " +
-                    $"used_edges={cycle.UsedEdges} changed_edge_loads={cycle.ChangedEdges} " +
-                    $"max_V_K_land={cycle.MaxLandRatio:F6} " +
-                    $"max_V_K_coast={cycle.MaxCoastRatio:F6} " +
-                    $"max_V_K_sea={cycle.MaxSeaRatio:F6} " +
-                    $"max_current_surcharge_pct={cycle.MaxCurrentSurchargePercent:F6} " +
-                    $"max_next_surcharge_pct={cycle.MaxNextSurchargePercent:F6}"));
+                _output.WriteLine(string.Format(
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    "GA_K_SWEEP profile={0} cycle={1} used_edges={2} " +
+                    "changed_edge_loads={3} max_V_K_land={4:F6} " +
+                    "max_V_K_coast={5:F6} max_V_K_sea={6:F6} " +
+                    "max_current_surcharge_pct={7:F6} max_next_surcharge_pct={8:F6}",
+                    row.Name, cycle.Index, cycle.UsedEdges, cycle.ChangedEdges,
+                    cycle.MaxLandRatio, cycle.MaxCoastRatio, cycle.MaxSeaRatio,
+                    cycle.MaxCurrentSurchargePercent,
+                    cycle.MaxNextSurchargePercent));
             var anchor = cycles[0];
             _output.WriteLine($"GA_K_SWEEP_SUMMARY profile={row.Name} " +
                 $"last_three_route_revisions={string.Join(",", cycles.Skip(1).Select(c => c.ChangedEdges))} " +
