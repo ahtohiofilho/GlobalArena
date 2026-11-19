@@ -125,8 +125,8 @@ public sealed class FoundationPhysicalMultimodalRoiBenchmarkTests
         }
         // A single flood-fill per network, rather than the repeated
         // nested flood-fills in the original R55 fixture.
-        (PhysicalTransportEdgeRuntimeRecord Record, ulong Land, ulong Sea) a =
-            default, b = default;
+        (PhysicalTransportEdgeRuntimeRecord Record, ulong Land, ulong Sea) portA =
+            default, portB = default;
         bool found = false;
         foreach (var first in coasts)
         {
@@ -138,8 +138,8 @@ public sealed class FoundationPhysicalMultimodalRoiBenchmarkTests
                     landReach.Contains(second.Land) &&
                     seaReach.Contains(second.Sea))
                 {
-                    a = first;
-                    b = second;
+                    portA = first;
+                    portB = second;
                     found = true;
                     break;
                 }
@@ -147,9 +147,9 @@ public sealed class FoundationPhysicalMultimodalRoiBenchmarkTests
         }
         Assert.True(found, "Both alternatives must exist in the real world.");
         var start = new PhysicalTacticalTileId(
-            fine, new StrategicCellId(a.Land));
+            fine, new StrategicCellId(portA.Land));
         var end = new PhysicalTacticalTileId(
-            fine, new StrategicCellId(b.Land));
+            fine, new StrategicCellId(portB.Land));
         var opening = original.DeployInitialPhysicalTransport(
             seeded.Transport, host.Session.GeneratedWorld, host.Incidence)
             .DeployInitialTreasury(
@@ -159,8 +159,8 @@ public sealed class FoundationPhysicalMultimodalRoiBenchmarkTests
                     (new CivilizationId(2UL), 1_000_000_000UL)
                 }));
         var improved = opening.RecordMonetaryInfrastructureInvestment(
-            Red, a.Record.Edge,
-            checked(a.Record.NaturalConstructionCostMoneyMicro!.Value *
+            Red, portA.Record!.Edge,
+            checked(portA.Record.NaturalConstructionCostMoneyMicro!.Value *
                 4UL));
         var cache = new FoundationPhysicalMultimodalRouteComparator
             .FrozenSeaDistanceCache(4_000_000);
