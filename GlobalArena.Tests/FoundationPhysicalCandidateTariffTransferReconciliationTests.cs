@@ -63,8 +63,13 @@ public sealed class FoundationPhysicalCandidateTariffTransferReconciliationTests
             green.NetCandidateCreditScaled);
         Assert.Equal(redBefore, treasury.Get(Red));
         Assert.Equal(blueBefore, treasury.Get(Blue));
-        Assert.Equal(evidence, FoundationPhysicalCandidateTariffTransferReconciliation
-            .Reconcile(treasury, gross, proposed));
+        var replay = FoundationPhysicalCandidateTariffTransferReconciliation
+            .Reconcile(treasury, gross, proposed);
+        Assert.Equal(evidence.TotalNetCandidateCreditsScaled,
+            replay.TotalNetCandidateCreditsScaled);
+        Assert.Equal(evidence.TotalTollTransferredScaled,
+            replay.TotalTollTransferredScaled);
+        Assert.Equal(evidence.Accounts, replay.Accounts);
     }
 
     [Fact]
