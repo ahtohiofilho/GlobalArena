@@ -45,7 +45,8 @@ public static class FoundationPhysicalMaritimePairLowerBoundAudit
         PhysicalTransportInfrastructureRuntimeState transport,
         PhysicalTacticalTileId from,
         PhysicalTacticalTileId to,
-        FoundationPhysicalMultimodalRouteComparator.Result oracle)
+        FoundationPhysicalMultimodalRouteComparator.Result oracle,
+        bool useOnlyLandFeasibleUpperBound = false)
     {
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -135,7 +136,12 @@ public static class FoundationPhysicalMaritimePairLowerBoundAudit
         // The exact oracle is used ONLY to provide an observed feasible
         // upper bound, not to choose the pairs or supply any distances.
         ulong? upper = oracle.LandOnlyRateMicro;
-        if (oracle.OneSeaLegRateMicro is ulong sea &&
+        // The terrestrial path is a feasible upper bound available
+        // BEFORE evaluating ANY maritime route. This mode measures
+        // practical early pruning. The default uses the retrospectively
+        // optimal oracle bound and is a theoretical pruning ceiling.
+        if (!useOnlyLandFeasibleUpperBound &&
+            oracle.OneSeaLegRateMicro is ulong sea &&
             (!upper.HasValue || sea < upper.Value))
             upper = sea;
         if (!upper.HasValue)
