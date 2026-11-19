@@ -471,7 +471,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
                 "Open sea has no constructed infrastructure or financeable bottleneck.");
         if (physical.OwnershipKind !=
                 PhysicalTransportOwnershipKind.NoInfrastructure ||
-            physical.NaturalConstructionCostMoneyMicro is not { } cost)
+            physical.NaturalConstructionCostMoneyMicro is not > 0UL)
             throw new InvalidOperationException(
                 "Only an eligible finite crossing with a monetary quote can be financed.");
 
