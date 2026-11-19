@@ -1,0 +1,34 @@
+name: GA-Next R79 — settled owner toll end-to-end acceptance
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Tests/FoundationSettledOwnerTollEndToEndTests.cs'
+      - '.github/workflows/ga-next-r79-settled-toll-acceptance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  accepted-settlement:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Verify R79 closed toll settlement and R78-R73
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release \
+            --filter 'FullyQualifiedName~FoundationSettledOwnerTollEndToEndTests|FullyQualifiedName~FoundationPhysicalAuditedSellerTollBindingTests|FullyQualifiedName~FoundationPhysicalCandidateTariffTransferReconciliationTests|FullyQualifiedName~FoundationPhysicalFrozenTariffAdmissionTests|FullyQualifiedName~FoundationPhysicalTariffBenefitReferenceTests|FullyQualifiedName~FoundationRealSettledMaritimeFreightBridgeTests|FullyQualifiedName~FoundationPhysicalFrozenEconomicMaritimeComparatorTests' \
+            --logger 'console;verbosity=detailed' --nologo 2>&1 | tee ga-next-r79-acceptance.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ga-next-r79-acceptance
+          path: ga-next-r79-acceptance.log
+          retention-days: 14
