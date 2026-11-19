@@ -1,0 +1,36 @@
+name: GA-Next R71 — economic route policy parity audit
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/Foundation/FoundationPhysicalMultimodalEconomicParityAudit.cs'
+      - 'GlobalArena.Tests/FoundationPhysicalMultimodalEconomicParityAuditTests.cs'
+      - '.github/workflows/ga-next-r71-economic-route-parity.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  route-policy-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Check research maritime vs authoritative physical owner quote
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release \
+            --filter 'FullyQualifiedName~FoundationPhysicalMultimodalEconomicParityAuditTests|FullyQualifiedName~FoundationRealSettledMaritimeFreightBridgeTests' \
+            --logger 'console;verbosity=detailed' --nologo 2>&1 | tee ga-next-r71-evidence.log
+      - name: Preserve exact settlement safety findings
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ga-next-r71-economic-route-parity
+          path: ga-next-r71-evidence.log
+          retention-days: 14
