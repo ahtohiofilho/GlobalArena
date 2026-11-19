@@ -97,8 +97,12 @@ public static class FoundationPhysicalEndogenousCongestionFeedback
         // congestion remains unbounded (fail closed above representable rate).
         BigInteger load4 = BigInteger.Pow(new BigInteger(cargoLoadMicro), 4);
         BigInteger cap4 = BigInteger.Pow(new BigInteger(referenceLoadMicro), 4);
+        // Deterministic nearest-integer quantization. The old ceiling
+        // charged one micro-unit for EVERY positive load, even if the true
+        // quartic cost was less than one trillionth of a micro-unit.
+        // This is a numerical rule, not a minimum congestion toll.
         BigInteger surcharge = (new BigInteger(freePhysicalCostMicro) * load4
-            + cap4 - BigInteger.One) / cap4;
+            + cap4 / 2) / cap4;
         BigInteger total = new BigInteger(freePhysicalCostMicro) + surcharge;
         if (total > ulong.MaxValue)
             throw new OverflowException(
