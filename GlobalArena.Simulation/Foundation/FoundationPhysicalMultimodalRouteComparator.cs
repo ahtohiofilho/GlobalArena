@@ -17,6 +17,15 @@ namespace GlobalArena.Simulation.Foundation;
 /// </summary>
 public static class FoundationPhysicalMultimodalRouteComparator
 {
+    /// <summary>R60 research alternatives. OnDemandArc uses the R56/R57
+    /// per-terminal distances; EmbarkationState carries the origin terminal
+    /// through a single shared multi-label maritime priority queue.</summary>
+    public enum MaritimeResearchArchitecture
+    {
+        OnDemandArc = 0,
+        EmbarkationState = 1
+    }
+
     public sealed record Result(
         ulong? LandOnlyRateMicro,
         ulong? OneSeaLegRateMicro,
@@ -166,7 +175,8 @@ public static class FoundationPhysicalMultimodalRouteComparator
         PhysicalTacticalTileId destination,
         int maxEligibleEmbarkations = 128,
         bool useOptimizedSeaSearch = true,
-        FrozenSeaDistanceCache? frozenSeaDistances = null)
+        FrozenSeaDistanceCache? frozenSeaDistances = null,
+        MaritimeResearchArchitecture architecture = MaritimeResearchArchitecture.OnDemandArc)
     {
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -247,6 +257,12 @@ public static class FoundationPhysicalMultimodalRouteComparator
                     la ? a : b, la ? b : a, rate));
             }
         }
+        if (!Enum.IsDefined(architecture))
+            throw new ArgumentOutOfRangeException(nameof(architecture));
+        if (architecture == MaritimeResearchArchitecture.EmbarkationState &&
+            (!useOptimizedSeaSearch || frozenSeaDistances is not null))
+            throw new ArgumentException(
+                "State-based research requires no R57 arc distance cache.");
         if (frozenSeaDistances is not null)
         {
             if (!useOptimizedSeaSearch)
@@ -291,7 +307,19 @@ public static class FoundationPhysicalMultimodalRouteComparator
         var cache = new Dictionary<ulong, ulong[]>();
         IReadOnlySet<ulong>? targets = useOptimizedSeaSearch
             ? targetTiles.ToHashSet() : null;
-        if (useOptimizedSeaSearch)
+        if (architecture == MaritimeResearchArchitecture.EmbarkationState)
+        {
+            // Alternative B of R59: one shared queue of (embarkation tile,
+            // current sea tile) states. Each origin label is preserved:
+            // merging only by current tile would be mathematically wrong
+            // because disembarkation discounts depend on the embarkation.
+            // The sea graph remains natural and snapshot-frozen.
+            cache = InterleavedTerminalStateDistances(
+                searchTiles, targetTiles, seaGraph, count,
+                maxEligibleEmbarkations, out explored,
+                out expandedSeaTiles);
+        }
+        else if (useOptimizedSeaSearch)
         {
             foreach (ulong tile in searchTiles)
             {
@@ -362,6 +390,64 @@ public static class FoundationPhysicalMultimodalRouteComparator
         }
         return new Result(landOnly, seaBest, embark, disembark,
             explored, entrances.Length, exits.Length, expandedSeaTiles);
+    }
+
+    /// <summary>
+    /// R60 architectural spike B. A single interleaved Dijkstra over
+    /// (embarkation, current sea tile) preserves the actual terminal identity.
+    /// It is exact for one contiguous maritime leg, but may require
+    /// O(ports * sea tiles) labels. No heuristic dominance or truncation.
+    /// Unlike the R57 atlas, this approach does NOT persist between calls.
+    /// </summary>
+    private static Dictionary<ulong, ulong[]> InterleavedTerminalStateDistances(
+        ulong[] origins, ulong[] targetTiles,
+        Dictionary<ulong, List<Link>> graph, int count,
+        int maximumOrigins, out int searchedOrigins, out long expandedStates)
+    {
+        if (origins.Length > maximumOrigins)
+            throw new InvalidOperationException(
+                "Research state search exceeds its explicit terminal budget.");
+        searchedOrigins = origins.Length;
+        expandedStates = 0L;
+        var results = new Dictionary<ulong, ulong[]>(origins.Length);
+        var targetSet = targetTiles.ToHashSet();
+        var remaining = new int[origins.Length];
+        var queue = new PriorityQueue<(int OriginIndex, ulong Tile),
+            (ulong Rate, ulong Origin, ulong Tile)>();
+        for (int i = 0; i < origins.Length; i++)
+        {
+            ulong[] distances = Enumerable.Repeat(ulong.MaxValue, count + 1)
+                .ToArray();
+            distances[checked((int)origins[i])] = 0UL;
+            results.Add(origins[i], distances);
+            remaining[i] = targetSet.Count;
+            if (remaining[i] > 0)
+                queue.Enqueue((i, origins[i]), (0UL, origins[i], origins[i]));
+        }
+        while (queue.TryDequeue(out var state, out var priority))
+        {
+            var distances = results[origins[state.OriginIndex]];
+            if (distances[checked((int)state.Tile)] != priority.Rate ||
+                remaining[state.OriginIndex] == 0)
+                continue;
+            expandedStates++;
+            if (targetSet.Contains(state.Tile) &&
+                --remaining[state.OriginIndex] == 0)
+                continue;
+            if (!graph.TryGetValue(state.Tile, out var links))
+                continue;
+            foreach (var edge in links)
+            {
+                ulong proposal = checked(priority.Rate + edge.Rate);
+                int index = checked((int)edge.Other);
+                if (proposal >= distances[index])
+                    continue;
+                distances[index] = proposal;
+                queue.Enqueue((state.OriginIndex, edge.Other),
+                    (proposal, origins[state.OriginIndex], edge.Other));
+            }
+        }
+        return results;
     }
 
     /// <summary>
