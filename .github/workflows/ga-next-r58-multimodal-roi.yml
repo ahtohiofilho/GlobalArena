@@ -1,0 +1,38 @@
+name: GA-Next R58 — multimodal cold/warm ROI benchmark
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Tests/FoundationPhysicalMultimodalRoiBenchmarkTests.cs'
+      - '.github/workflows/ga-next-r58-multimodal-roi.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  roi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Compare cold and warm exact maritime queries at two world scales
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release \
+            --filter 'FullyQualifiedName~FoundationPhysicalMultimodalRoiBenchmarkTests' \
+            --logger 'console;verbosity=detailed' --nologo 2>&1 | tee ga-next-r58-roi.log
+          grep 'GA_R58_ROI' ga-next-r58-roi.log > ga-next-r58-roi-metrics.txt
+      - name: Archive benchmark measurements
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ga-next-r58-roi-two-world-scales
+          path: |
+            ga-next-r58-roi.log
+            ga-next-r58-roi-metrics.txt
+          retention-days: 14
