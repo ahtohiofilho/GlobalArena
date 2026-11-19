@@ -139,6 +139,11 @@ public sealed class PhysicalTransportInfrastructureRuntimeState
         if (index < 0)
             throw new InvalidOperationException("Unknown physical crossing.");
         var record = Edges[index];
+        // Unbounded natural sea has no physical construction or bottleneck.
+        // This exact marker is already the canonical, hashed transport state.
+        if (record.CargoMicroAtReferenceLoad == ulong.MaxValue)
+            throw new InvalidOperationException(
+                "Open sea remains natural and cannot receive capital investment.");
         if (record.OwnershipKind != PhysicalTransportOwnershipKind.NoInfrastructure)
             throw new InvalidOperationException(
                 "This gate only finances a natural, unbuilt crossing.");
