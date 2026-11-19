@@ -353,6 +353,8 @@ public sealed class FoundationRealSettledMaritimeFreightBridgeTests
                     row.PhysicalCostMicroPerWholeCargoUnit ==
                         previous.FreePhysicalCostMicroPerWholeCargoUnit &&
                     previous.QuotedCongestionSurchargeMicroPerWholeCargoUnit > 0UL);
+            Assert.True(validPositiveLaggedSurcharges > 0,
+                "R74 requires genuinely positive prior-settlement congestion.");
             if (initialTariff)
             {
                 Assert.True(positiveThirdPartyTariffs > 0,
@@ -361,6 +363,14 @@ public sealed class FoundationRealSettledMaritimeFreightBridgeTests
                     row.InfrastructureOwner == Red &&
                     row.ExternalTariffMicroPerWholeCargoUnit == 2_000UL);
                 Assert.Equal(2_000UL, tolled.ExternalTariffMicroPerWholeCargoUnit);
+                // The same physical traversal charges its owner zero
+                // external toll, but another civilization the exact
+                // canonical tariff; neither is exempt from physical freight.
+                UInt128 ownerRate =
+                    tolled.PhysicalCostMicroPerWholeCargoUnit;
+                UInt128 outsiderRate = ownerRate +
+                    tolled.ExternalTariffMicroPerWholeCargoUnit;
+                Assert.Equal((UInt128)2_000UL, outsiderRate - ownerRate);
             }
             _output.WriteLine(
                 $"GA_R74_SETTLED_COVERAGE financed={funded} seeded_tariff={initialTariff} cycle={settled} " +
