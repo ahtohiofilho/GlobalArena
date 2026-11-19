@@ -1,0 +1,36 @@
+name: GA-Next R72 — verified single-sea-leg economic quote
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/Foundation/FoundationPhysicalSingleSeaLegEconomicQuote.cs'
+      - 'GlobalArena.Tests/FoundationPhysicalWorldBoundMaritimeFreightProofTests.cs'
+      - '.github/workflows/ga-next-r72-economic-sea-leg-quote.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  economic-single-leg:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Validate seller-specific frozen freight and one whole sea-leg quote
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release \
+            --filter 'FullyQualifiedName~FoundationPhysicalWorldBoundMaritimeFreightProofTests|FullyQualifiedName~FoundationPhysicalMaritimeMarginalFreightBoundTests|FullyQualifiedName~FoundationPhysicalMultimodalEconomicParityAuditTests' \
+            --logger 'console;verbosity=detailed' --nologo 2>&1 | tee ga-next-r72-evidence.log
+      - name: Archive evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ga-next-r72-single-leg-economic-contract
+          path: ga-next-r72-evidence.log
+          retention-days: 14
