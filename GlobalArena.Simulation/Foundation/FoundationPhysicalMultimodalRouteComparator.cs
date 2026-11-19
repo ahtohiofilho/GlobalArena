@@ -114,7 +114,7 @@ public static class FoundationPhysicalMultimodalRouteComparator
         }
     }
 
-    private sealed record Link(ulong Other, ulong Rate);
+    internal sealed record Link(ulong Other, ulong Rate);
     private sealed record Coast(
         PhysicalTransportEdgeRuntimeRecord Record,
         ulong LandTile, ulong SeaTile, ulong Rate);
