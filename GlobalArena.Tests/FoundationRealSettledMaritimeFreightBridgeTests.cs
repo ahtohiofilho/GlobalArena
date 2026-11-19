@@ -2,6 +2,7 @@ using GlobalArena.Runtime;
 using GlobalArena.Simulation;
 using GlobalArena.Simulation.Foundation;
 using GlobalArena.World;
+using Xunit.Abstractions;
 
 namespace GlobalArena.Tests;
 
@@ -12,6 +13,11 @@ namespace GlobalArena.Tests;
 /// </summary>
 public sealed class FoundationRealSettledMaritimeFreightBridgeTests
 {
+    private readonly ITestOutputHelper _output;
+
+    public FoundationRealSettledMaritimeFreightBridgeTests(ITestOutputHelper output)
+        => _output = output;
+
     private static readonly CivilizationId Red = new(1UL);
     private static readonly CivilizationId Blue = new(2UL);
     private static readonly CommodityId Grain = new(1U);
@@ -60,7 +66,8 @@ public sealed class FoundationRealSettledMaritimeFreightBridgeTests
         return known;
     }
 
-    private static Scenario Create()
+    private static Scenario Create(bool fundCoastalInfrastructure = false,
+        bool seedOwnedTariff = false)
     {
         var initial = FoundationConcentratedWorkforceScenario.CreatePreview(
             new WorldGenerationRequest(new WorldSeed(20261012UL),
@@ -79,9 +86,27 @@ public sealed class FoundationRealSettledMaritimeFreightBridgeTests
             new FoundationMonetaryConstructionPolicy(
                 2_000_000UL, 4_000_000UL, 6_000_000UL, 1_000_000UL));
         var treasury = CivilizationTreasuryRuntimeState.CreateOpening(
-            new[] { (Red, 0UL), (Blue, 0UL) });
+            new[] { (Red, fundCoastalInfrastructure ? 1_000_000_000_000_000UL : 0UL), (Blue, 0UL) });
+        // An explicitly pre-owned and tolled initial crossing is valid in
+        // the canonical inventory. This is a TEST-ONLY tariff policy input,
+        // not a claim that investment automatically chooses a tariff.
+        PhysicalTransportInfrastructureRuntimeState transport = seeded.Transport;
+        if (seedOwnedTariff)
+        {
+            var coastSeed = transport.Edges.First(row =>
+                row.CargoMicroAtReferenceLoad == 500_000UL);
+            transport = PhysicalTransportInfrastructureRuntimeState.CreateInitial(
+                transport.Edges.Select(row => row.Edge == coastSeed.Edge
+                    ? row with
+                    {
+                        OwnershipKind = PhysicalTransportOwnershipKind.Owned,
+                        InfrastructureOwner = Red,
+                        ExternalTariffMicroPerWholeCargoUnit = 2_000UL
+                    }
+                    : row));
+        }
         var snapshot = initial.Snapshot.DeployInitialPhysicalTransport(
-                seeded.Transport,
+                transport,
                 initial.Session.GeneratedWorld, initial.Incidence)
             .DeployInitialTreasury(treasury);
         initial.Session.AcceptSnapshot(snapshot);
@@ -151,6 +176,30 @@ public sealed class FoundationRealSettledMaritimeFreightBridgeTests
         }
         Assert.True(found, "Need two actual coastline edges with " +
             "positive natural sea leg and reachable terrestrial endpoints.");
+
+        if (fundCoastalInfrastructure)
+        {
+            // Test-owned, monetary investment in one REAL crossing.
+            // Red owns the infrastructure; Blue must pay its actual tariff.
+            var selected = host.Snapshot.Transport.Edges.Single(
+                edge => edge.Edge == chosen.From.Edge);
+            var invested = host.Snapshot.RecordMonetaryInfrastructureInvestment(
+                Red, selected.Edge,
+                checked(selected.NaturalConstructionCostMoneyMicro!.Value * 32UL));
+            var financed = invested.Transport.Edges.Single(
+                edge => edge.Edge == chosen.From.Edge);
+            Assert.Equal(Red, financed.InfrastructureOwner);
+            // Money funding establishes ownership/capacity, not an
+            // automatic positive commercial tariff. Do not invent one.
+            host.Session.AcceptSnapshot(invested);
+            host = new FoundationTacticalHumanAiTurnHost(
+                host.Session, host.Incidence, new[] { Red },
+                new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy>
+                {
+                    [Blue] = new FoundationTacticalAiHoldPolicy()
+                }, enableMonetaryInfrastructure: true,
+                settlementPolicy: policy);
+        }
 
         var fine = host.Incidence.Refinement.FineParameters;
         return new Scenario(host, policy,
@@ -253,5 +302,120 @@ public sealed class FoundationRealSettledMaritimeFreightBridgeTests
             Proof(s, 2UL, unrelatedCargo));
         Assert.Same(committed, s.Host.Snapshot);
         Assert.Equal(committedHash, s.Host.StateHash);
+    }
+
+    [Fact]
+    public void R74RealSettledCyclesPreserveExhaustiveVersusBoundedMaritimeDecision()
+    {
+        foreach (var (funded, initialTariff) in new[]
+        {
+            (Funded: false, InitialTariff: false),
+            (Funded: true, InitialTariff: false),
+            (Funded: false, InitialTariff: true)
+        })
+        {
+        var scene = Create(funded, initialTariff);
+        if (funded)
+            Assert.Contains(scene.Host.Snapshot.Transport.Edges,
+                edge => edge.InfrastructureOwner == Red);
+        var world = scene.Host.Session.GeneratedWorld;
+        var incidence = scene.Host.Incidence;
+
+        // Economic-cycle history is generated only by the real public
+        // settlement boundary (R70), never fabricated in the treasury.
+        for (ulong settled = 1UL; settled <= 2UL; settled++)
+        {
+            var economic = Close(scene, settled);
+            Assert.True(economic.CreditedToTreasuriesScaled.Sign > 0);
+            var snapshot = scene.Host.Snapshot;
+            var hash = scene.Host.StateHash;
+            Assert.True(snapshot.Treasury.HasClosedEconomicCycle);
+            Assert.Equal(settled,
+                snapshot.Treasury.LastSettledEconomicCycleOrdinal);
+            Assert.NotEmpty(snapshot.Treasury.LastSettledFreightQuotes);
+
+            // Capture what the real settled economy ACTUALLY exercised.
+            // Zero values remain a documented coverage gap, not a PASS
+            // for strictly positive tariffs or lagged congestion.
+            var projected = FoundationPhysicalAuthoritativeTransportProjector
+                .FromWorld(snapshot, incidence);
+            var projectedByEdge = projected.Roads.ToDictionary(e => e.Edge);
+            var projectedScales = projected.Scales.ToDictionary(
+                e => e.Edge, e => e.CargoMicroAtReferenceLoad);
+            var positiveThirdPartyTariffs = projectedByEdge.Values.Count(
+                row => row.InfrastructureOwner.HasValue &&
+                    row.ExternalTariffMicroPerWholeCargoUnit > 0UL);
+            var validPositiveLaggedSurcharges =
+                snapshot.Treasury.LastSettledFreightQuotes.Count(previous =>
+                    projectedByEdge.TryGetValue(previous.Edge, out var row) &&
+                    projectedScales[previous.Edge] ==
+                        previous.ReferenceCargoMicro &&
+                    row.PhysicalCostMicroPerWholeCargoUnit ==
+                        previous.FreePhysicalCostMicroPerWholeCargoUnit &&
+                    previous.QuotedCongestionSurchargeMicroPerWholeCargoUnit > 0UL);
+            Assert.True(validPositiveLaggedSurcharges > 0,
+                "R74 requires genuinely positive prior-settlement congestion.");
+            if (initialTariff)
+            {
+                Assert.True(positiveThirdPartyTariffs > 0,
+                    "Explicit test-only tariff must survive a real settlement.");
+                var tolled = projectedByEdge.Values.Single(row =>
+                    row.InfrastructureOwner == Red &&
+                    row.ExternalTariffMicroPerWholeCargoUnit == 2_000UL);
+                Assert.Equal(2_000UL, tolled.ExternalTariffMicroPerWholeCargoUnit);
+                // The same physical traversal charges its owner zero
+                // external toll, but another civilization the exact
+                // canonical tariff; neither is exempt from physical freight.
+                UInt128 ownerRate =
+                    tolled.PhysicalCostMicroPerWholeCargoUnit;
+                UInt128 outsiderRate = ownerRate +
+                    tolled.ExternalTariffMicroPerWholeCargoUnit;
+                Assert.Equal((UInt128)2_000UL, outsiderRate - ownerRate);
+            }
+            _output.WriteLine(
+                $"GA_R74_SETTLED_COVERAGE financed={funded} seeded_tariff={initialTariff} cycle={settled} " +
+                $"positive_tariff_edges={positiveThirdPartyTariffs} " +
+                $"valid_positive_lagged_surcharge_edges={validPositiveLaggedSurcharges} " +
+                $"positive_tariff_gate={(positiveThirdPartyTariffs > 0 ? "COVERED" : "OPEN")} " +
+                $"positive_surcharge_gate={(validPositiveLaggedSurcharges > 0 ? "COVERED" : "OPEN")}");
+
+            foreach (var seller in new[] { Red, Blue })
+            {
+                var exhaustive =
+                    FoundationPhysicalFrozenEconomicMaritimeComparator.Compare(
+                        snapshot, world, incidence, scene.Policy.Cargo,
+                        Grain, 1_000_000UL, seller, scene.Source,
+                        scene.Destination, settled + 1UL, proveBound: false);
+                var bounded =
+                    FoundationPhysicalFrozenEconomicMaritimeComparator.Compare(
+                        snapshot, world, incidence, scene.Policy.Cargo,
+                        Grain, 1_000_000UL, seller, scene.Source,
+                        scene.Destination, settled + 1UL, proveBound: true);
+
+                Assert.Equal(exhaustive.LandOnlyRateMicro,
+                    bounded.LandOnlyRateMicro);
+                Assert.Equal(exhaustive.SeaPreferred, bounded.SeaPreferred);
+                Assert.Equal(exhaustive.PotentialPairs, bounded.PotentialPairs);
+                Assert.True(bounded.ExcludedPairs >= 0);
+                Assert.True(bounded.QuotedPairs <= exhaustive.QuotedPairs);
+                Assert.True(exhaustive.QuotedPairs > 0);
+                if (exhaustive.SeaPreferred)
+                {
+                    Assert.Equal(exhaustive.BestSeaRateMicro,
+                        bounded.BestSeaRateMicro);
+                    Assert.Equal(exhaustive.EmbarkEdge, bounded.EmbarkEdge);
+                    Assert.Equal(exhaustive.DisembarkEdge,
+                        bounded.DisembarkEdge);
+                }
+                Assert.Equal(exhaustive,
+                    FoundationPhysicalFrozenEconomicMaritimeComparator.Compare(
+                        snapshot, world, incidence, scene.Policy.Cargo,
+                        Grain, 1_000_000UL, seller, scene.Source,
+                        scene.Destination, settled + 1UL, proveBound: false));
+                Assert.Same(snapshot, scene.Host.Snapshot);
+                Assert.Equal(hash, scene.Host.StateHash);
+            }
+        }
+        }
     }
 }
