@@ -320,6 +320,114 @@ public sealed class FoundationPhysicalWorldBoundMaritimeFreightProofTests
                 cargoPerUnit: 1UL), goodsMicro: 1UL));
     }
 
+    private static PhysicalTacticalTileId[] RealSeaLegTiles(Fixture f)
+    {
+        var fine = f.Host.Incidence.Refinement.FineParameters;
+        var world = f.Host.Session.GeneratedWorld;
+        var fields = world.StrategicPhysicalFields;
+        bool[] land = f.Host.Incidence.TileIncidences.Select(tile =>
+        {
+            long sum = 0;
+            foreach (var coarse in tile.IncidentCoarseCellIds)
+                sum = checked(sum + fields.Elevation.GetRawValue(coarse));
+            return sum / tile.IncidentCoarseCellIds.Count >
+                fields.SeaLevel.RawValue;
+        }).ToArray();
+        var ocean = new Dictionary<ulong, List<ulong>>();
+        var ends = new Dictionary<PhysicalTacticalEdgeId, (ulong Land, ulong Sea)>();
+        foreach (var edge in f.Host.Incidence.FineTopology.Edges)
+        {
+            ulong a = edge.IncidentCellIds[0].Value;
+            ulong b = edge.IncidentCellIds[1].Value;
+            bool la = land[checked((int)a - 1)];
+            bool lb = land[checked((int)b - 1)];
+            if (!la && !lb)
+            {
+                if (!ocean.TryGetValue(a, out var left))
+                    ocean[a] = left = new();
+                if (!ocean.TryGetValue(b, out var right))
+                    ocean[b] = right = new();
+                left.Add(b);
+                right.Add(a);
+            }
+            else if (la != lb)
+                ends[new PhysicalTacticalEdgeId(fine, edge.Id)] =
+                    (la ? a : b, la ? b : a);
+        }
+        var embark = ends[f.Embark];
+        var disembark = ends[f.Disembark];
+        var queue = new Queue<ulong>();
+        var parent = new Dictionary<ulong, ulong>();
+        var seen = new HashSet<ulong> { embark.Sea };
+        queue.Enqueue(embark.Sea);
+        while (queue.TryDequeue(out ulong at) &&
+            !seen.Contains(disembark.Sea))
+            if (ocean.TryGetValue(at, out var links))
+                foreach (var next in links.OrderBy(x => x))
+                    if (seen.Add(next))
+                    {
+                        parent[next] = at;
+                        queue.Enqueue(next);
+                    }
+        Assert.Contains(disembark.Sea, seen);
+        var water = new List<ulong> { disembark.Sea };
+        while (water[^1] != embark.Sea)
+            water.Add(parent[water[^1]]);
+        water.Reverse();
+        return new[] { embark.Land }.Concat(water)
+            .Append(disembark.Land)
+            .Select(id => new PhysicalTacticalTileId(
+                fine, new StrategicCellId(id))).ToArray();
+    }
+
+    [Fact]
+    public void OneCompleteRealSeaLegUsesSameFrozenFreightAndDiscountOnce()
+    {
+        var f = Prepare();
+        var world = f.Host.Session.GeneratedWorld;
+        var path = RealSeaLegTiles(f);
+        var cargo = R69Policy();
+        var beforeHash = f.Host.StateHash;
+        var sea = FoundationPhysicalSingleSeaLegEconomicQuote.QuoteVerified(
+            f.Snapshot, world, f.Host.Incidence, cargo, R69Commodity,
+            3_000_000UL, Red, f.Source, f.Destination,
+            f.Embark, f.Disembark, 1UL, path);
+        Assert.False(sea.IsAnAuthoritativeSale);
+        Assert.Equal(6_000_000UL, sea.FrozenProof.CargoMicro);
+        Assert.True(sea.NaturalSeaLegMicroPerWholeCargoUnit > 0UL);
+        Assert.InRange(sea.DiscountedSeaLegMicroPerWholeCargoUnit,
+            1UL, sea.NaturalSeaLegMicroPerWholeCargoUnit);
+        Assert.Equal(
+            sea.FrozenProof.Route.Bound.MaritimeLowerBoundMicroPerWholeCargoUnit -
+            1UL + sea.DiscountedSeaLegMicroPerWholeCargoUnit,
+            sea.TotalFreightMicroPerWholeCargoUnit);
+        Assert.Equal(sea, FoundationPhysicalSingleSeaLegEconomicQuote
+            .QuoteVerified(f.Snapshot, world, f.Host.Incidence,
+                cargo, R69Commodity, 3_000_000UL, Red,
+                f.Source, f.Destination, f.Embark, f.Disembark, 1UL, path));
+        Assert.Equal(beforeHash, f.Host.StateHash);
+    }
+
+    [Fact]
+    public void PairedMaritimeQuoteRejectsInventedOrSwappedCoastPath()
+    {
+        var f = Prepare();
+        var path = RealSeaLegTiles(f);
+        var argsWorld = f.Host.Session.GeneratedWorld;
+        var cargo = R69Policy();
+        Assert.Throws<ArgumentException>(() =>
+            FoundationPhysicalSingleSeaLegEconomicQuote.QuoteVerified(
+                f.Snapshot, argsWorld, f.Host.Incidence, cargo,
+                R69Commodity, 1_000_000UL, Red, f.Source, f.Destination,
+                f.Disembark, f.Embark, 1UL, path));
+        Assert.Throws<ArgumentException>(() =>
+            FoundationPhysicalSingleSeaLegEconomicQuote.QuoteVerified(
+                f.Snapshot, argsWorld, f.Host.Incidence, cargo,
+                R69Commodity, 1_000_000UL, Red, f.Source, f.Destination,
+                f.Embark, f.Disembark, 1UL,
+                new[] { path[0], path[1], path[1], path[^1] }));
+    }
+
     [Fact]
     public void RejectsLandEdgesAndForeignWorldGenerationSignature()
     {
