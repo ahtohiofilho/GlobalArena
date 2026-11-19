@@ -83,10 +83,17 @@ public sealed class FoundationPhysicalEndogenousCongestionPlan
 /// </summary>
 public static class FoundationPhysicalEndogenousCongestionFeedback
 {
+    // Explicit fixed-point representation of unbounded natural throughput.
+    // No sea-edge congestion, regardless of the volume or game era.
+    public const ulong UnboundedNaturalCargoCapacity = ulong.MaxValue;
+
     internal static ulong CalculateCongestedRate(
         ulong freePhysicalCostMicro, ulong cargoLoadMicro,
         ulong referenceLoadMicro)
     {
+        if (freePhysicalCostMicro > 0UL &&
+            referenceLoadMicro == UnboundedNaturalCargoCapacity)
+            return freePhysicalCostMicro;
         if (freePhysicalCostMicro == 0UL || referenceLoadMicro == 0UL)
             throw new ArgumentOutOfRangeException(nameof(referenceLoadMicro),
                 "Both base physical rate and reference carrying scale must be positive.");
