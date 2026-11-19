@@ -142,10 +142,19 @@ public sealed class FoundationPhysicalMultimodalRouteComparatorTests
         Assert.Equal(landEdge.FreePhysicalCostMicroPerWholeCargoUnit,
             baseLandRate);
 
+        // The frozen sea graph must be identical across snapshots with
+        // DIFFERENT land/coast capital. Caller-owned bounded cache is an
+        // amortization mechanism, not a new input to market decisions.
+        var frozenSea =
+            new FoundationPhysicalMultimodalRouteComparator
+                .FrozenSeaDistanceCache();
         var natural = FoundationPhysicalMultimodalRouteComparator.Compare(
             host.Session.GeneratedWorld, host.Incidence,
             snapshot.Transport, source, destination,
-            maxEligibleEmbarkations: 4096);
+            maxEligibleEmbarkations: 4096,
+            frozenSeaDistances: frozenSea);
+        Assert.True(natural.ExploredSeaOrigins > 0);
+        Assert.Equal(natural.ExploredSeaOrigins, frozenSea.CachedSeaOrigins);
         Assert.NotNull(natural.LandOnlyRateMicro);
         Assert.NotNull(natural.OneSeaLegRateMicro);
         Assert.True(natural.ExploredSeaOrigins > 0);
@@ -193,7 +202,19 @@ public sealed class FoundationPhysicalMultimodalRouteComparatorTests
         var coastRoute = FoundationPhysicalMultimodalRouteComparator.Compare(
             host.Session.GeneratedWorld, host.Incidence,
             fundedCoast.Transport, source, destination,
-            maxEligibleEmbarkations: 4096);
+            maxEligibleEmbarkations: 4096,
+            frozenSeaDistances: frozenSea);
+        Assert.Equal(0, coastRoute.ExploredSeaOrigins);
+        Assert.Equal(0L, coastRoute.ExpandedSeaTiles);
+        var coastWithoutCache =
+            FoundationPhysicalMultimodalRouteComparator.Compare(
+                host.Session.GeneratedWorld, host.Incidence,
+                fundedCoast.Transport, source, destination,
+                maxEligibleEmbarkations: 4096);
+        Assert.Equal(coastWithoutCache.OneSeaLegRateMicro,
+            coastRoute.OneSeaLegRateMicro);
+        Assert.Equal(coastWithoutCache.EmbarkEdge, coastRoute.EmbarkEdge);
+        Assert.Equal(coastWithoutCache.DisembarkEdge, coastRoute.DisembarkEdge);
         Assert.Equal(natural.LandOnlyRateMicro,
             coastRoute.LandOnlyRateMicro);
         Assert.True(coastRoute.OneSeaLegRateMicro <=
@@ -204,7 +225,9 @@ public sealed class FoundationPhysicalMultimodalRouteComparatorTests
         var landRoute = FoundationPhysicalMultimodalRouteComparator.Compare(
             host.Session.GeneratedWorld, host.Incidence,
             fundedLand.Transport, source, destination,
-            maxEligibleEmbarkations: 4096);
+            maxEligibleEmbarkations: 4096,
+            frozenSeaDistances: frozenSea);
+        Assert.Equal(0, landRoute.ExploredSeaOrigins);
         Assert.True(landRoute.LandOnlyRateMicro <=
             natural.LandOnlyRateMicro);
         var both = fundedCoast.RecordMonetaryInfrastructureInvestment(
@@ -212,7 +235,8 @@ public sealed class FoundationPhysicalMultimodalRouteComparatorTests
             checked(landEdge.NaturalConstructionCostMoneyMicro!.Value * 4UL));
         var bothRoute = FoundationPhysicalMultimodalRouteComparator.Compare(
             host.Session.GeneratedWorld, host.Incidence, both.Transport,
-            source, destination, maxEligibleEmbarkations: 4096);
+            source, destination, maxEligibleEmbarkations: 4096,
+            frozenSeaDistances: frozenSea);
         Assert.True(bothRoute.OneSeaLegRateMicro <=
             coastRoute.OneSeaLegRateMicro);
         Assert.True(bothRoute.LandOnlyRateMicro <=
@@ -248,11 +272,15 @@ public sealed class FoundationPhysicalMultimodalRouteComparatorTests
         var allPortRoutes = FoundationPhysicalMultimodalRouteComparator
             .Compare(host.Session.GeneratedWorld, host.Incidence,
                 improvedCoasts.Transport, source, destination,
-                maxEligibleEmbarkations: 4096);
+                maxEligibleEmbarkations: 4096,
+                frozenSeaDistances: frozenSea);
+        Assert.Equal(0, allPortRoutes.ExploredSeaOrigins);
         var allLandRoutes = FoundationPhysicalMultimodalRouteComparator
             .Compare(host.Session.GeneratedWorld, host.Incidence,
                 improvedLand.Transport, source, destination,
-                maxEligibleEmbarkations: 4096);
+                maxEligibleEmbarkations: 4096,
+                frozenSeaDistances: frozenSea);
+        Assert.Equal(0, allLandRoutes.ExploredSeaOrigins);
         Assert.Equal(natural.LandOnlyRateMicro,
             allPortRoutes.LandOnlyRateMicro);
         Assert.True(allPortRoutes.OneSeaLegRateMicro <
@@ -272,7 +300,9 @@ public sealed class FoundationPhysicalMultimodalRouteComparatorTests
         var intensiveSea = FoundationPhysicalMultimodalRouteComparator
             .Compare(host.Session.GeneratedWorld, host.Incidence,
                 intensiveCoasts.Transport, source, destination,
-                maxEligibleEmbarkations: 4096);
+                maxEligibleEmbarkations: 4096,
+                frozenSeaDistances: frozenSea);
+        Assert.Equal(0, intensiveSea.ExploredSeaOrigins);
         Assert.True(intensiveSea.OneSeaLegRateMicro <=
             allPortRoutes.OneSeaLegRateMicro);
         Assert.Equal(natural.LandOnlyRateMicro,
@@ -313,6 +343,22 @@ public sealed class FoundationPhysicalMultimodalRouteComparatorTests
             $"intensive_ports_sea={intensiveSea.OneSeaLegRateMicro} " +
             $"intensive_ports_preferred={intensiveSea.SeaRoutePreferred} " +
             $"modeled_legs=one exploration_upper_bound=4096");
+
+        // Quantify return on complexity: the expensive sea component is
+        // calculated only on the first query, then reused across all the
+        // differing CAPEX snapshots in this one scenario.
+        Assert.True(frozenSea.CachedSeaOrigins > 0);
+        Assert.True(frozenSea.DistanceEntries <= 4_000_000L);
+        Assert.True(frozenSea.Hits >= frozenSea.CachedSeaOrigins * 5L);
+        _output.WriteLine(
+            $"GA_R57_CACHE first_dijkstra={natural.ExploredSeaOrigins} " +
+            $"subsequent_dijkstra={coastRoute.ExploredSeaOrigins} " +
+            $"cached_origins={frozenSea.CachedSeaOrigins} " +
+            $"cached_distance_entries={frozenSea.DistanceEntries} " +
+            $"cache_hits={frozenSea.Hits} " +
+            $"cache_misses={frozenSea.Misses} " +
+            $"coast_same_optimum=true" +
+            " repeatable_atlas_scope=caller_owned");
 
         // No sea edge can receive investments, title or any expense.
         Assert.All(both.Transport.Edges.Where(x =>
