@@ -194,6 +194,51 @@ public sealed class FoundationPhysicalMultimodalRoiBenchmarkTests
         Equivalent(reference.Result, cacheCold.Result);
         Equivalent(reference.Result, cacheWarm.Result);
         Equivalent(changedCapital.Result, independentlyChecked.Result);
+        // A structural candidate-count analysis, NOT a hidden change in
+        // freight selection. The oracle is held fixed and is only used as
+        // a feasible cost upper bound: no sea distance is computed here.
+        var naturalBound = FoundationPhysicalMaritimePairLowerBoundAudit
+            .Analyze(host.Session.GeneratedWorld, host.Incidence,
+                opening.Transport, start, end, reference.Result);
+        var capitalBound = FoundationPhysicalMaritimePairLowerBoundAudit
+            .Analyze(host.Session.GeneratedWorld, host.Incidence,
+                improved.Transport, start, end,
+                independentlyChecked.Result);
+        Assert.True(naturalBound.ChosenSeaPairPreserved);
+        Assert.True(capitalBound.ChosenSeaPairPreserved);
+        Assert.Equal(naturalBound.PotentialPairs,
+            naturalBound.ProvablyExcludedPairs +
+            naturalBound.RemainingPairs);
+        Assert.Equal(capitalBound.PotentialPairs,
+            capitalBound.ProvablyExcludedPairs +
+            capitalBound.RemainingPairs);
+        Assert.Equal(reference.Result.EligibleEmbarkations,
+            naturalBound.ReachableEmbarkations);
+        Assert.Equal(reference.Result.EligibleDisembarkations,
+            naturalBound.ReachableDisembarkations);
+        Assert.Equal(independentlyChecked.Result.EligibleEmbarkations,
+            capitalBound.ReachableEmbarkations);
+        Assert.Equal(independentlyChecked.Result.EligibleDisembarkations,
+            capitalBound.ReachableDisembarkations);
+        // Compare a second reconstruction to establish deterministic
+        // candidate counts without changing the transport inventory.
+        Assert.Equal(naturalBound,
+            FoundationPhysicalMaritimePairLowerBoundAudit.Analyze(
+                host.Session.GeneratedWorld, host.Incidence,
+                opening.Transport, start, end, reference.Result));
+        _log.WriteLine(
+            $"GA_R61_BOUNDS coarse={m},{n} " +
+            $"fine_tiles={host.Incidence.FineTopology.Cells.Count} " +
+            $"natural_pairs={naturalBound.PotentialPairs} " +
+            $"natural_provably_excluded={naturalBound.ProvablyExcludedPairs} " +
+            $"natural_remaining={naturalBound.RemainingPairs} " +
+            $"natural_excluded_percent={naturalBound.ExcludedPercent:F3} " +
+            $"capital_pairs={capitalBound.PotentialPairs} " +
+            $"capital_provably_excluded={capitalBound.ProvablyExcludedPairs} " +
+            $"capital_remaining={capitalBound.RemainingPairs} " +
+            $"capital_excluded_percent={capitalBound.ExcludedPercent:F3} " +
+            $"winner_preserved=true " +
+            $"bound_source=known_feasible_global_route");
         var stateAfterCapital = Measure(() =>
             FoundationPhysicalMultimodalRouteComparator.Compare(
                 host.Session.GeneratedWorld, host.Incidence,
