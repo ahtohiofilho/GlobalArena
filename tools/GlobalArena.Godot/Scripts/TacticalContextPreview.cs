@@ -76,8 +76,8 @@ public partial class TacticalContextPreview : SubViewportContainer
     private StrategicSphericalGeometry? _cachedCoarseGeometry;
     private Vector3 _prefetchIntentOrigin;
     private ulong _lastPrefetchIntentFocus;
-    // R29 MVP gate: preserve R27 implementation for post-MVP, disable visual expansion.
-    private static readonly bool EnablePostMvpResidentExpansion = false;
+    // R29 additive resident expansion remains disabled: R43 now performs a
+    // bounded, camera-anchored focus handoff instead of unbounded extension.
     // R27: additions are rendered in the ORIGINAL projection; the base chart never moves.
     private MeshInstance3D? _extensionSurface;
     private MeshInstance3D? _extensionEdges;
@@ -177,8 +177,63 @@ public partial class TacticalContextPreview : SubViewportContainer
             $"reused={plan.Reused.Count} new={plan.ToPrepare.Count} " +
             $"alignment={bestAlignment:F3} camera_size={_camera.Size:F4} yaw_deg={_yawDegrees:F0} " +
             "chart_swapped=false camera_changed=false");
-        if (EnablePostMvpResidentExpansion)
-            ExpandResidentInCurrentProjection(bestFocus);
+        // A prepared neighboring focus is now a real navigation handoff,
+        // not merely an advisory log. Rebase the local chart while preserving
+        // the location of a shared canonical tile under the same camera.
+        TransitionToAdjacentFocus(bestFocus, plan);
+    }
+
+    // Keep a geographic anchor fixed in screen space while swapping bounded
+    // tactical charts. The anchor must exist with the SAME physical tile ID in
+    // both charts; there is no synthetic coordinate or worker movement.
+    private void TransitionToAdjacentFocus(
+        ulong destinationFocus, PhysicalTacticalResidentTransferPlan plan)
+    {
+        if (_camera is null || _activeFocus == destinationFocus) return;
+
+        ulong anchorId = 0UL;
+        var closestDistance = float.PositiveInfinity;
+        foreach (var tile in plan.Reused)
+        {
+            var id = tile.FineStrategicCellId.Value;
+            if (!_tileCenters.TryGetValue(id, out var point)) continue;
+            var distance = (_cameraTarget - point).LengthSquared();
+            if (distance >= closestDistance) continue;
+            anchorId = id;
+            closestDistance = distance;
+        }
+        if (anchorId == 0UL)
+            throw new InvalidOperationException("Adjacent focus has no shared canonical screen anchor.");
+
+        var sourceFocus = _activeFocus;
+        var anchorBefore = _tileCenters[anchorId];
+        var offsetFromAnchor = _cameraTarget - anchorBefore;
+        var zoom = _camera.Size;
+        var yaw = _yawDegrees;
+        var selected = _selectedFineTileId;
+
+        // Open rebuilds the bounded mesh, freight display and prefetch plans.
+        // The previous camera framing is replaced only temporarily during
+        // this same input event; the player does not see an intermediate frame.
+        Open(destinationFocus);
+        if (!_tileCenters.TryGetValue(anchorId, out var anchorAfter))
+            throw new InvalidOperationException("Rebased chart lost its canonical shared anchor.");
+        _cameraTarget = anchorAfter + offsetFromAnchor;
+        _camera.Size = zoom;
+        _yawDegrees = yaw;
+        UpdateCameraOrientation();
+        // Preserve selection only when its exact physical ID remains resident.
+        // Open deliberately clears selection when focus changes.
+        if (selected.HasValue && _tileCenters.ContainsKey(selected.Value))
+            SelectPhysicalTile(selected);
+        // New chart origin is the transferred camera center, preventing an
+        // immediate reverse handoff from the same drag input.
+        _prefetchIntentOrigin = _cameraTarget;
+        _lastPrefetchIntentFocus = 0UL;
+        GD.Print($"GA_TACTICAL_FOCUS_HANDOFF_R43 source={sourceFocus} destination={destinationFocus} " +
+            $"anchor={anchorId} zoom_before={zoom:F6} zoom_after={_camera.Size:F6} " +
+            $"yaw_before={yaw:F3} yaw_after={_yawDegrees:F3} " +
+            "physical_ids_preserved=true simulation_mutation=false");
     }
 
     // R27: one-chart expansion only. Never modify the old surface, existing positions,
@@ -1166,7 +1221,8 @@ public partial class TacticalContextPreview : SubViewportContainer
                 _camera.Position += translation;
                 _cameraTarget += translation;
                 // The three-ring resident buffer permits free movement inside its coverage.
-                // A coarse guard remains until recentering/prefetch is implemented.
+                // R43 transfers to prepared adjacent charts during pan; the
+                // coverage guard still prevents looking into unrendered space.
                 if (_coverViewport && !ViewportSamplesHaveTerrain(_camera.Size, 4, 4))
                 {
                     _camera.Position -= translation;
