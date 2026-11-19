@@ -431,4 +431,39 @@ public sealed class FoundationPhysicalLaggedFreightCycleTests
                 s.Quotes, s.Roads, s.Scales,
                 smoothingDenominator: 0U));
     }
+    [Fact]
+    public void UnboundedNaturalSeaCannotInheritPriorCycleCongestion()
+    {
+        var s = TwoGoodsOneRealCrossing();
+        var road = Assert.Single(s.Roads);
+        const ulong staleSurcharge = 100_000UL;
+        var infinity = FoundationPhysicalEndogenousCongestionFeedback
+            .UnboundedNaturalCargoCapacity;
+        var prior = new FoundationPhysicalLaggedFreightQuoteState(
+            1UL, new[]
+            {
+                new FoundationPhysicalLaggedFreightEdgeState(
+                    road.Edge, road.PhysicalCostMicroPerWholeCargoUnit,
+                    infinity, staleSurcharge)
+            }, hasSettledProvenance: true);
+        var plan = FoundationPhysicalLaggedFreightCyclePlanner
+            .CoordinateCandidate(
+                s.Workers, s.Host.Incidence, Demand(), Cargo(), s.Quotes,
+                s.Roads, new[]
+                {
+                    new FoundationPhysicalEdgeCarryingScale(road.Edge, infinity)
+                }, previousClosedCycleQuotes: prior, maxProducerPasses: 8);
+        var current = Assert.Single(plan.FixedCycleEdges);
+        var reading = Assert.Single(plan.EdgeReadings);
+        var next = Assert.Single(plan.NextCycleQuotes.Edges);
+        Assert.Equal(road.PhysicalCostMicroPerWholeCargoUnit,
+            current.PhysicalCostMicroPerWholeCargoUnit);
+        Assert.Equal(road.PhysicalCostMicroPerWholeCargoUnit,
+            reading.DampedNextPhysicalQuoteMicroPerWholeCargoUnit);
+        Assert.Equal(0UL, next.QuotedCongestionSurchargeMicroPerWholeCargoUnit);
+        Assert.Equal(s.Host.NextTurn.Value, 1UL);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            s.Host.GetLastClosedEconomicTradeView(Red).Availability);
+    }
+
 }
