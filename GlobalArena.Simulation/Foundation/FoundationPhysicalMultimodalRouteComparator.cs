@@ -34,7 +34,9 @@ public static class FoundationPhysicalMultimodalRouteComparator
         int ExploredSeaOrigins,
         int EligibleEmbarkations,
         int EligibleDisembarkations,
-        long ExpandedSeaTiles = 0L)
+        long ExpandedSeaTiles = 0L,
+        long PotentialMaritimePairs = 0L,
+        long ProvenExcludedMaritimePairs = 0L)
     {
         public bool SeaRoutePreferred =>
             OneSeaLegRateMicro.HasValue &&
@@ -176,7 +178,8 @@ public static class FoundationPhysicalMultimodalRouteComparator
         int maxEligibleEmbarkations = 128,
         bool useOptimizedSeaSearch = true,
         FrozenSeaDistanceCache? frozenSeaDistances = null,
-        MaritimeResearchArchitecture architecture = MaritimeResearchArchitecture.OnDemandArc)
+        MaritimeResearchArchitecture architecture = MaritimeResearchArchitecture.OnDemandArc,
+        bool useProvenLandBound = false)
     {
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -284,6 +287,51 @@ public static class FoundationPhysicalMultimodalRouteComparator
             throw new InvalidOperationException(
                 "Unbounded port-pair discovery would exceed the explicit " +
                 "R55 research budget; no silently truncated optimum.");
+
+        long potentialPairs = checked((long)entrances.Length * exits.Length);
+        long safelyExcluded = 0L;
+
+        // R62 RESEARCH-ONLY: the best land-only route is a feasible upper
+        // bound KNOWN BEFORE any maritime search. For one REAL sea leg,
+        // every sea quote is >= 1 micro, so:
+        //   landToA + coastA + 1 + coastB + landFromB <= U
+        // is a NECESSARY condition for a maritime path to compete.
+        // Equality must be kept to preserve canonical sea ties.
+        //
+        // This pass only examines cheap terrestrial/costal arithmetic;
+        // it does not request maritime distances or modify edge costs.
+        // It also removes ALL sea searches when land already dominates
+        // every possible terminal pair, rather than merely skipping Quote.
+        if (useProvenLandBound && landOnly is ulong feasibleLandUpper)
+        {
+            var viableEmbark = new HashSet<PhysicalTacticalEdgeId>();
+            var viableDisembark = new HashSet<PhysicalTacticalEdgeId>();
+            foreach (var a in entrances)
+            {
+                UInt128 first = (UInt128)fromSource[
+                    checked((int)a.LandTile)] + a.Rate + 1UL;
+                foreach (var b in exits)
+                {
+                    UInt128 floor = first +
+                        toDestination[checked((int)b.LandTile)] + b.Rate;
+                    if (floor > feasibleLandUpper)
+                    {
+                        safelyExcluded++;
+                        continue;
+                    }
+                    viableEmbark.Add(a.Record.Edge);
+                    viableDisembark.Add(b.Record.Edge);
+                }
+            }
+            entrances = entrances.Where(a =>
+                viableEmbark.Contains(a.Record.Edge)).ToArray();
+            exits = exits.Where(b =>
+                viableDisembark.Contains(b.Record.Edge)).ToArray();
+            if (entrances.Length == 0 || exits.Length == 0)
+                return new Result(landOnly, null, null, null, 0,
+                    0, 0, 0L, potentialPairs, safelyExcluded);
+        }
+
         ulong? seaBest = null;
         PhysicalTacticalEdgeId? embark = null, disembark = null;
         int explored = 0;
@@ -355,6 +403,16 @@ public static class FoundationPhysicalMultimodalRouteComparator
             }
             foreach (var portB in exits)
             {
+                if (useProvenLandBound && landOnly is ulong landLimit)
+                {
+                    UInt128 cheapFloor =
+                        (UInt128)fromSource[
+                            checked((int)portA.LandTile)] + portA.Rate +
+                        1UL + portB.Rate +
+                        toDestination[checked((int)portB.LandTile)];
+                    if (cheapFloor > landLimit)
+                        continue;
+                }
                 ulong[] seaDistances = useOptimizedSeaSearch
                     ? cache[searchFromExits
                         ? portB.SeaTile : portA.SeaTile]
@@ -389,7 +447,8 @@ public static class FoundationPhysicalMultimodalRouteComparator
             }
         }
         return new Result(landOnly, seaBest, embark, disembark,
-            explored, entrances.Length, exits.Length, expandedSeaTiles);
+            explored, entrances.Length, exits.Length, expandedSeaTiles,
+            potentialPairs, safelyExcluded);
     }
 
     /// <summary>
