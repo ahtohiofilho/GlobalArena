@@ -310,6 +310,28 @@ public sealed class FoundationPhysicalMultimodalRouteComparatorTests
         Assert.True(intensiveSea.SeaRoutePreferred,
             "The research curve must eventually make developed coastal " +
             "logistics competitive without any sea-sea investment.");
+        var boundedWinner =
+            FoundationPhysicalMultimodalRouteComparator.Compare(
+                host.Session.GeneratedWorld, host.Incidence,
+                intensiveCoasts.Transport, source, destination,
+                maxEligibleEmbarkations: 4096,
+                useProvenLandBound: true);
+        Assert.True(boundedWinner.SeaRoutePreferred);
+        Assert.Equal(intensiveSea.OneSeaLegRateMicro,
+            boundedWinner.OneSeaLegRateMicro);
+        Assert.Equal(intensiveSea.EmbarkEdge, boundedWinner.EmbarkEdge);
+        Assert.Equal(intensiveSea.DisembarkEdge,
+            boundedWinner.DisembarkEdge);
+        Assert.Equal(intensiveSea.LandOnlyRateMicro,
+            boundedWinner.LandOnlyRateMicro);
+        Assert.True(boundedWinner.ProvenExcludedMaritimePairs > 0);
+        _output.WriteLine(
+            $"GA_R62_SEA_WINNER potential_pairs=" +
+            $"{boundedWinner.PotentialMaritimePairs} " +
+            $"excluded_pairs={boundedWinner.ProvenExcludedMaritimePairs} " +
+            $"bounded_sea_searches={boundedWinner.ExploredSeaOrigins} " +
+            $"unbounded_sea_searches={intensiveSea.ExploredSeaOrigins} " +
+            $"same_port_pair=true exact_global_winner=true");
         // The R61 lower bound MUST also preserve the chosen maritime
         // route when SEA really beats land. This complements the R58
         // cases, where the losing sea alternative may be safely pruned.

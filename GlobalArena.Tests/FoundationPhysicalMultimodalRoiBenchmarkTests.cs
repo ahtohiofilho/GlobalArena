@@ -237,6 +237,57 @@ public sealed class FoundationPhysicalMultimodalRoiBenchmarkTests
             capitalBound.ReachableEmbarkations);
         Assert.Equal(independentlyChecked.Result.EligibleDisembarkations,
             capitalBound.ReachableDisembarkations);
+        // R62 actually executes the land-known bound BEFORE making any
+        // sea Dijkstra request. The R61 audit is an independent numerical
+        // oracle for the exact candidate elimination count.
+        Timing boundedNatural = Measure(() =>
+            FoundationPhysicalMultimodalRouteComparator.Compare(
+                host.Session.GeneratedWorld, host.Incidence,
+                opening.Transport, start, end,
+                maxEligibleEmbarkations: 20_000,
+                useProvenLandBound: true));
+        Timing boundedCapital = Measure(() =>
+            FoundationPhysicalMultimodalRouteComparator.Compare(
+                host.Session.GeneratedWorld, host.Incidence,
+                improved.Transport, start, end,
+                maxEligibleEmbarkations: 20_000,
+                useProvenLandBound: true));
+        Assert.Equal(reference.Result.LandOnlyRateMicro,
+            boundedNatural.Result.LandOnlyRateMicro);
+        Assert.Equal(independentlyChecked.Result.LandOnlyRateMicro,
+            boundedCapital.Result.LandOnlyRateMicro);
+        // The rejected best-sea alternative need NOT survive when the
+        // terrestrial path wins; global route decision MUST survive.
+        Assert.Equal(reference.Result.SeaRoutePreferred,
+            boundedNatural.Result.SeaRoutePreferred);
+        Assert.Equal(independentlyChecked.Result.SeaRoutePreferred,
+            boundedCapital.Result.SeaRoutePreferred);
+        if (reference.Result.SeaRoutePreferred)
+            Equivalent(reference.Result, boundedNatural.Result);
+        if (independentlyChecked.Result.SeaRoutePreferred)
+            Equivalent(independentlyChecked.Result, boundedCapital.Result);
+        Assert.Equal(naturalLandUpper.PotentialPairs,
+            boundedNatural.Result.PotentialMaritimePairs);
+        Assert.Equal(naturalLandUpper.ProvablyExcludedPairs,
+            boundedNatural.Result.ProvenExcludedMaritimePairs);
+        Assert.Equal(capitalLandUpper.PotentialPairs,
+            boundedCapital.Result.PotentialMaritimePairs);
+        Assert.Equal(capitalLandUpper.ProvablyExcludedPairs,
+            boundedCapital.Result.ProvenExcludedMaritimePairs);
+        _log.WriteLine(
+            $"GA_R62_AB coarse={m},{n} " +
+            $"tiles={host.Incidence.FineTopology.Cells.Count} " +
+            $"oracle_natural_ms={reference.Milliseconds:F3} " +
+            $"bound_natural_ms={boundedNatural.Milliseconds:F3} " +
+            $"oracle_capital_ms={independentlyChecked.Milliseconds:F3} " +
+            $"bound_capital_ms={boundedCapital.Milliseconds:F3} " +
+            $"potential_pairs={naturalLandUpper.PotentialPairs} " +
+            $"excluded_natural={boundedNatural.Result.ProvenExcludedMaritimePairs} " +
+            $"excluded_capital={boundedCapital.Result.ProvenExcludedMaritimePairs} " +
+            $"sea_searches_natural={boundedNatural.Result.ExploredSeaOrigins} " +
+            $"sea_searches_capital={boundedCapital.Result.ExploredSeaOrigins} " +
+            $"baseline_sea_searches={reference.Result.ExploredSeaOrigins} " +
+            $"global_winner_identical=true");
         // Compare a second reconstruction to establish deterministic
         // candidate counts without changing the transport inventory.
         Assert.Equal(naturalBound,
