@@ -1222,7 +1222,7 @@ public partial class TacticalContextPreview : SubViewportContainer
                 {
                     if (_pressed && !_moved) PickPhysicalTile(button.Position);
                     _pressed = false;
-                    _focusHandoffInCurrentDrag = false;
+
                 }
                 AcceptEvent();
             }
