@@ -2,6 +2,7 @@ using GlobalArena.Runtime;
 using GlobalArena.Simulation;
 using GlobalArena.Simulation.Foundation;
 using GlobalArena.World;
+using Xunit.Abstractions;
 
 namespace GlobalArena.Tests;
 
@@ -12,6 +13,11 @@ namespace GlobalArena.Tests;
 /// </summary>
 public sealed class FoundationRealSettledMaritimeFreightBridgeTests
 {
+    private readonly ITestOutputHelper _output;
+
+    public FoundationRealSettledMaritimeFreightBridgeTests(ITestOutputHelper output)
+        => _output = output;
+
     private static readonly CivilizationId Red = new(1UL);
     private static readonly CivilizationId Blue = new(2UL);
     private static readonly CommodityId Grain = new(1U);
@@ -274,6 +280,32 @@ public sealed class FoundationRealSettledMaritimeFreightBridgeTests
             Assert.Equal(settled,
                 snapshot.Treasury.LastSettledEconomicCycleOrdinal);
             Assert.NotEmpty(snapshot.Treasury.LastSettledFreightQuotes);
+
+            // Capture what the real settled economy ACTUALLY exercised.
+            // Zero values remain a documented coverage gap, not a PASS
+            // for strictly positive tariffs or lagged congestion.
+            var projected = FoundationPhysicalAuthoritativeTransportProjector
+                .FromWorld(snapshot, incidence);
+            var projectedByEdge = projected.Roads.ToDictionary(e => e.Edge);
+            var projectedScales = projected.Scales.ToDictionary(
+                e => e.Edge, e => e.CargoMicroAtReferenceLoad);
+            var positiveThirdPartyTariffs = projectedByEdge.Values.Count(
+                row => row.InfrastructureOwner.HasValue &&
+                    row.ExternalTariffMicroPerWholeCargoUnit > 0UL);
+            var validPositiveLaggedSurcharges =
+                snapshot.Treasury.LastSettledFreightQuotes.Count(previous =>
+                    projectedByEdge.TryGetValue(previous.Edge, out var row) &&
+                    projectedScales[previous.Edge] ==
+                        previous.ReferenceCargoMicro &&
+                    row.PhysicalCostMicroPerWholeCargoUnit ==
+                        previous.FreePhysicalCostMicroPerWholeCargoUnit &&
+                    previous.QuotedCongestionSurchargeMicroPerWholeCargoUnit > 0UL);
+            _output.WriteLine(
+                $"GA_R74_SETTLED_COVERAGE cycle={settled} " +
+                $"positive_tariff_edges={positiveThirdPartyTariffs} " +
+                $"valid_positive_lagged_surcharge_edges={validPositiveLaggedSurcharges} " +
+                $"positive_tariff_gate={(positiveThirdPartyTariffs > 0 ? "COVERED" : "OPEN")} " +
+                $"positive_surcharge_gate={(validPositiveLaggedSurcharges > 0 ? "COVERED" : "OPEN")}");
 
             foreach (var seller in new[] { Red, Blue })
             {
