@@ -98,6 +98,82 @@ public sealed class WorldState
             Workers, Transport, Treasury);
     }
 
+    /// <summary>
+    /// R84 explicit V1-to-fine-first pre-economic promotion. A fully placed
+    /// worker census may be retained since tactical IDs and coarse regions
+    /// are unchanged. Deployed V1 transport or monetary history may NOT be
+    /// carried across a different physical geography. Existing saves and
+    /// the legacy creation API remain byte-for-byte unchanged.
+    /// </summary>
+    public WorldState PromoteFineFirstBeforeTransport(
+        WorldGenerationResult strategicWorld,
+        PhysicalTacticalIncidenceMap incidence,
+        FoundationFineFirstPhysicalGeography fine,
+        FoundationFineFirstWorldgenIdentity signedGeography)
+    {
+        var evidence =
+            FoundationFineFirstMigrationAdmission.InspectBeforeMigration(
+                this, strategicWorld, incidence, fine, signedGeography);
+        if (!Workers.HasAuthoritativeOccupations ||
+            !Workers.HasAuthoritativeTacticalLocations)
+            throw new InvalidOperationException(
+                "Fine-first promotion needs a complete already-deployed " +
+                "physical workforce to preserve tactical identities.");
+        var binding = RuntimeWorldBinding.FromFineFirst(
+            strategicWorld, incidence, fine, evidence.FineIdentity);
+        return new WorldState(
+            Revision, binding, Civilizations, Territory, Diplomacy, Economy,
+            Population, Warfare, Workers, Transport, Treasury);
+    }
+
+    /// <summary>
+    /// R84 fine-first transport deployment is an explicit parallel to the
+    /// V1 method. It needs matching signed G(fine) physical geography.
+    /// Only seed-time deployment is permitted here: established economic
+    /// journals and saves cannot be migrated through this API.
+    /// </summary>
+    public WorldState DeployInitialFineFirstPhysicalTransport(
+        PhysicalTransportInfrastructureRuntimeState transport,
+        WorldGenerationResult strategicWorld,
+        PhysicalTacticalIncidenceMap incidence,
+        FoundationFineFirstPhysicalGeography fine,
+        FoundationFineFirstWorldgenIdentity signedGeography)
+    {
+        ArgumentNullException.ThrowIfNull(transport);
+        ArgumentNullException.ThrowIfNull(strategicWorld);
+        ArgumentNullException.ThrowIfNull(incidence);
+        if (!Workers.HasAuthoritativeOccupations ||
+            !transport.IsInitialized)
+            throw new InvalidOperationException(
+                "Fine-first transport deployment requires complete workers " +
+                "and a complete new physical crossing inventory.");
+        if (Transport.IsInitialized || Treasury.IsInitialized ||
+            WorldBinding != RuntimeWorldBinding.FromFineFirst(
+                strategicWorld, incidence, fine, signedGeography) ||
+            transport.Edges.Count != incidence.FineTopology.Edges.Count ||
+            !transport.IsInitialized)
+            throw new InvalidOperationException(
+                "Only a clean, identically signed fine-first world may " +
+                "accept a complete new natural transport inventory.");
+        var known = incidence.FineTopology.Edges.Select(edge =>
+            new PhysicalTacticalEdgeId(
+                incidence.Refinement.FineParameters, edge.Id)).ToHashSet();
+        var roster = Civilizations.Civilizations.ToHashSet();
+        if (transport.Edges.Any(edge =>
+                !known.Remove(edge.Edge) ||
+                edge.Edge.FineGoldbergParameters !=
+                    incidence.Refinement.FineParameters ||
+                edge.InfrastructureOwner.HasValue &&
+                    !roster.Contains(edge.InfrastructureOwner.Value)) ||
+            known.Count != 0)
+            throw new InvalidOperationException(
+                "Fine-first transport contains foreign, missing or " +
+                "duplicated tactical crossings or owners.");
+        return new WorldState(
+            Revision, WorldBinding, Civilizations, Territory, Diplomacy,
+            Economy, Population, Warfare, Workers, transport, Treasury);
+    }
+
     public WorldState WithCivilizations(
         CivilizationRuntimeState civilizations)
     {

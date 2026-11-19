@@ -1,0 +1,36 @@
+name: GA-Next R84 — signed fine-world runtime binding
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Runtime/RuntimeWorldBinding.cs'
+      - 'GlobalArena.Runtime/WorldState.cs'
+      - 'GlobalArena.Tests/FoundationFineFirstWorldBindingTests.cs'
+      - '.github/workflows/ga-next-r84-fine-runtime-binding.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-fine-binding:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Verify R84 runtime binding and R83-R79 V1 regression
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release \
+            --filter 'FullyQualifiedName~FoundationFineFirstWorldBindingTests|FullyQualifiedName~FoundationFineFirstWorldgenCanonicalSignatureTests|FullyQualifiedName~FoundationFineFirstPhysicalGeographyTests|FullyQualifiedName~FoundationPhysicalNaturalTransportSeederTests|FullyQualifiedName~FoundationSettledOwnerTollEndToEndTests|FullyQualifiedName~WorldGenerationCanonicalSignatureTests' \
+            --logger 'console;verbosity=detailed' --nologo 2>&1 | tee ga-next-r84-results.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ga-next-r84-fine-runtime-binding
+          path: ga-next-r84-results.log
+          retention-days: 14
