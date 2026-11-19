@@ -5,6 +5,7 @@ on:
     paths:
       - 'GlobalArena.Simulation/Foundation/FoundationPhysicalMaritimePairLowerBoundAudit.cs'
       - 'GlobalArena.Tests/FoundationPhysicalMultimodalRoiBenchmarkTests.cs'
+      - 'GlobalArena.Tests/FoundationPhysicalMultimodalRouteComparatorTests.cs'
       - '.github/workflows/ga-next-r61-pair-lower-bound-audit.yml'
   workflow_dispatch:
 
@@ -25,9 +26,9 @@ jobs:
         run: |
           set -o pipefail
           dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release \
-            --filter 'FullyQualifiedName~FoundationPhysicalMultimodalRoiBenchmarkTests' \
+            --filter 'FullyQualifiedName~FoundationPhysicalMultimodalRoiBenchmarkTests|FullyQualifiedName~FoundationPhysicalMultimodalRouteComparatorTests' \
             --logger 'console;verbosity=detailed' --nologo 2>&1 | tee ga-next-r61-evidence.log
-          grep 'GA_R61_BOUNDS' ga-next-r61-evidence.log > ga-next-r61-counts.txt
+          grep 'GA_R61_' ga-next-r61-evidence.log > ga-next-r61-counts.txt
       - name: Preserve numerical evidence
         uses: actions/upload-artifact@v4
         if: always()
