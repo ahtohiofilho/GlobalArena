@@ -473,7 +473,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
                 PhysicalTransportOwnershipKind.NoInfrastructure ||
             physical.NaturalConstructionCostMoneyMicro is not { } cost)
             throw new InvalidOperationException(
-                "Only a natural crossing with a monetary quote can be financed.");
+                "Only an eligible finite crossing with a monetary quote can be financed.");
 
         ulong already = physical.CommittedInvestmentMoneyMicro ?? 0UL;
         var pendingEdge = _investmentPlans.Values
@@ -482,9 +482,9 @@ public sealed class FoundationTacticalHumanAiTurnHost
             .Aggregate(System.Numerics.BigInteger.Zero,
                 (sum, c) => sum + c.MoneyMicro);
         if ((System.Numerics.BigInteger)already + pendingEdge + moneyMicro >
-                cost)
+                ulong.MaxValue)
             throw new InvalidOperationException(
-                "Investment cannot exceed the unfinanced capital requirement.");
+                "Cumulative edge financing exceeds the canonical money range.");
 
         var pendingFromCivilization = _investmentPlans[human].Values
             .Aggregate(System.Numerics.BigInteger.Zero,
