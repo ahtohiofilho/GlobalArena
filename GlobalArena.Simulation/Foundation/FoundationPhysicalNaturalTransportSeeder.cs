@@ -130,11 +130,35 @@ public static class FoundationPhysicalNaturalTransportSeeder
             operatingPolicy, monetaryPolicy);
     }
 
+    /// <summary>
+    /// R82 explicitly opt-in tactical-first transport preview. This creates
+    /// only proposed edge records; it MUST NOT be deployed to a legacy V1
+    /// hashed WorldState until a versioned worldgen/migration gate exists.
+    /// </summary>
+    public static FoundationNaturalTransportSeedEvidence PreviewFineFirst(
+        WorldGenerationResult generatedWorld,
+        PhysicalTacticalIncidenceMap incidence,
+        FoundationFineFirstPhysicalGeography fineGeography,
+        FoundationNaturalTransportSeedingPolicy operatingPolicy,
+        FoundationMonetaryConstructionPolicy? monetaryPolicy = null)
+    {
+        ArgumentNullException.ThrowIfNull(fineGeography);
+        if (fineGeography.Seed != generatedWorld.Request.Seed ||
+            fineGeography.FineParameters != incidence.Refinement.FineParameters ||
+            fineGeography.CoarseParameters != incidence.Refinement.CoarseParameters ||
+            fineGeography.FineElevationRaw.Count != incidence.TileIncidences.Count)
+            throw new InvalidOperationException(
+                "Fine-first preview must be bound to the same seed and scales.");
+        return CreateCore(generatedWorld, incidence,
+            operatingPolicy, monetaryPolicy, fineGeography);
+    }
+
     private static FoundationNaturalTransportSeedEvidence CreateCore(
         WorldGenerationResult generatedWorld,
         PhysicalTacticalIncidenceMap incidence,
         FoundationNaturalTransportSeedingPolicy policy,
-        FoundationMonetaryConstructionPolicy? monetaryPolicy)
+        FoundationMonetaryConstructionPolicy? monetaryPolicy,
+        FoundationFineFirstPhysicalGeography? fineGeography = null)
     {
         ArgumentNullException.ThrowIfNull(generatedWorld);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -152,9 +176,11 @@ public static class FoundationPhysicalNaturalTransportSeeder
                 "Natural transport must derive from the same generated " +
                 "strategic world and the declared fine refinement.");
 
-        // This array is indexed only by the canonical fine one-based tile ID.
-        // The coarse elevation and sea level are part of the signed worldgen.
-        long seaLevel = generatedWorld.StrategicPhysicalFields.SeaLevel.RawValue;
+        // Legacy V1 remains byte-compatible by default. The R82 explicit
+        // preview reverses the physical dependency: fine elevation and fine
+        // sea-level are generated first; coarse geography is never sampled.
+        long seaLevel = fineGeography?.SeaLevelRaw ??
+            generatedWorld.StrategicPhysicalFields.SeaLevel.RawValue;
         var elevation = generatedWorld.StrategicPhysicalFields.Elevation;
         int count = incidence.TileIncidences.Count;
         var fineElevation = new long[count];
@@ -162,11 +188,16 @@ public static class FoundationPhysicalNaturalTransportSeeder
         int landTiles = 0;
         for (int i = 0; i < count; i++)
         {
-            var tile = incidence.TileIncidences[i];
-            long total = 0L;
-            foreach (var coarse in tile.IncidentCoarseCellIds)
-                total = checked(total + elevation.GetRawValue(coarse));
-            fineElevation[i] = total / tile.IncidentCoarseCellIds.Count;
+            if (fineGeography is not null)
+                fineElevation[i] = fineGeography.FineElevationRaw[i];
+            else
+            {
+                var tile = incidence.TileIncidences[i];
+                long total = 0L;
+                foreach (var coarse in tile.IncidentCoarseCellIds)
+                    total = checked(total + elevation.GetRawValue(coarse));
+                fineElevation[i] = total / tile.IncidentCoarseCellIds.Count;
+            }
             isLand[i] = fineElevation[i] > seaLevel;
             if (isLand[i]) landTiles++;
         }
