@@ -345,17 +345,27 @@ public sealed class FoundationTacticalHumanAiTurnHost
             aiPolicies,
         bool enableMonetaryInfrastructure = false,
         FoundationAuthoritativeEconomicSettlementPolicy?
-            settlementPolicy = null)
+            settlementPolicy = null,
+        FoundationFineFirstPhysicalGeography? fineGeography = null,
+        FoundationFineFirstWorldgenIdentity? fineSignature = null)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
         _incidence = incidence ?? throw new ArgumentNullException(nameof(incidence));
         ArgumentNullException.ThrowIfNull(humanCivilizations);
         ArgumentNullException.ThrowIfNull(aiPolicies);
 
+        if ((fineGeography is null) != (fineSignature is null))
+            throw new InvalidOperationException(
+                "G18 host needs its complete signed geography, never an " +
+                "unverified fine-world identity.");
+        var expectedBinding = fineGeography is null
+            ? RuntimeWorldBinding.FromGeneratedWorld(session.GeneratedWorld)
+            : RuntimeWorldBinding.FromFineFirst(
+                session.GeneratedWorld, incidence, fineGeography,
+                fineSignature!);
         if (!Snapshot.Workers.IsInitialized ||
             !Snapshot.Workers.HasAuthoritativeTacticalLocations ||
-            Snapshot.WorldBinding !=
-                RuntimeWorldBinding.FromGeneratedWorld(session.GeneratedWorld) ||
+            Snapshot.WorldBinding != expectedBinding ||
             incidence.Refinement.CoarseParameters !=
                 session.GeneratedWorld.Request.StrategicParameters ||
             Snapshot.Workers.Workers.Any(worker =>
@@ -406,28 +416,52 @@ public sealed class FoundationTacticalHumanAiTurnHost
             Snapshot.WorldBinding ?? throw new InvalidOperationException(
                 "Tactical world lacks its world binding."),
             incidence.Refinement.FineParameters, _participants);
-        _executor = new PhysicalTacticalWorkerMoveEventExecutor(
-            session.GeneratedWorld, incidence);
+        _executor = fineGeography is null
+            ? new PhysicalTacticalWorkerMoveEventExecutor(
+                session.GeneratedWorld, incidence)
+            : new PhysicalTacticalWorkerMoveEventExecutor(
+                session.GeneratedWorld, incidence, fineGeography,
+                fineSignature!);
         var phases = new List<ITurnResolutionPhase>
         {
-            new PhysicalTacticalWorkerMovementTurnPhase(
-                session.GeneratedWorld, incidence)
+            fineGeography is null
+                ? new PhysicalTacticalWorkerMovementTurnPhase(
+                    session.GeneratedWorld, incidence)
+                : new PhysicalTacticalWorkerMovementTurnPhase(
+                    session.GeneratedWorld, incidence, fineGeography,
+                    fineSignature!)
         };
         if (enableMonetaryInfrastructure)
         {
-            _monetaryExecutor = new FoundationMonetaryInfrastructureEventExecutor(
-                session.GeneratedWorld, incidence);
-            phases.Add(new FoundationMonetaryInfrastructureTurnPhase(
-                session.GeneratedWorld, incidence));
+            _monetaryExecutor = fineGeography is null
+                ? new FoundationMonetaryInfrastructureEventExecutor(
+                    session.GeneratedWorld, incidence)
+                : new FoundationMonetaryInfrastructureEventExecutor(
+                    session.GeneratedWorld, incidence, fineGeography,
+                    fineSignature!);
+            phases.Add(fineGeography is null
+                ? new FoundationMonetaryInfrastructureTurnPhase(
+                    session.GeneratedWorld, incidence)
+                : new FoundationMonetaryInfrastructureTurnPhase(
+                    session.GeneratedWorld, incidence, fineGeography,
+                    fineSignature!));
         }
         if (settlementPolicy is not null)
         {
-            _economicExecutor = new FoundationEconomicSalesSettlementEventExecutor(
-                session.GeneratedWorld, incidence, settlementPolicy);
+            _economicExecutor = fineGeography is null
+                ? new FoundationEconomicSalesSettlementEventExecutor(
+                    session.GeneratedWorld, incidence, settlementPolicy)
+                : new FoundationEconomicSalesSettlementEventExecutor(
+                    session.GeneratedWorld, incidence, settlementPolicy,
+                    fineGeography, fineSignature!);
             // Money available for THIS turn's investment must already exist:
             // the current sales close AFTER its orders and funds NEXT turn.
-            phases.Add(new FoundationAuthoritativeEconomicSalesSettlementPhase(
-                session.GeneratedWorld, incidence, settlementPolicy));
+            phases.Add(fineGeography is null
+                ? new FoundationAuthoritativeEconomicSalesSettlementPhase(
+                    session.GeneratedWorld, incidence, settlementPolicy)
+                : new FoundationAuthoritativeEconomicSalesSettlementPhase(
+                    session.GeneratedWorld, incidence, settlementPolicy,
+                    fineGeography, fineSignature!));
         }
         var engine = new PhasedTurnResolutionEngine(phases);
         _publisher = new AuthoritativeTurnCommitGate(
