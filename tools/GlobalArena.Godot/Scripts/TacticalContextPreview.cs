@@ -80,6 +80,9 @@ public partial class TacticalContextPreview : SubViewportContainer
     private WorldGenerationResult? _cachedFineWorld;
     private Vector3 _prefetchIntentOrigin;
     private ulong _lastPrefetchIntentFocus;
+    // A drag gesture may cross a single strategic boundary. Re-arm on mouse-up
+    // to prevent oscillating focus swaps and expensive repeated mesh rebuilds.
+    private bool _focusHandoffInCurrentDrag;
     // R29 additive resident expansion remains disabled: R43 now performs a
     // bounded, camera-anchored focus handoff instead of unbounded extension.
     // R27: additions are rendered in the ORIGINAL projection; the base chart never moves.
@@ -140,7 +143,8 @@ public partial class TacticalContextPreview : SubViewportContainer
     private void ReportPreparedPrefetchIntent()
     {
         if (_camera is null || _cachedCoarseGeometry is null ||
-            _cachedPhysicalMap is null || _activeFocus == 0UL) return;
+            _cachedPhysicalMap is null || _activeFocus == 0UL ||
+            _focusHandoffInCurrentDrag) return;
         var travel = new Vector2(_cameraTarget.X - _prefetchIntentOrigin.X,
             _cameraTarget.Z - _prefetchIntentOrigin.Z);
         if (travel.Length() < Math.Max(0.03f, _camera.Size * 0.20f))
@@ -163,6 +167,13 @@ public partial class TacticalContextPreview : SubViewportContainer
             if (toward.LengthSquared() <= 1e-10f) continue;
             var alignment = travel.Normalized().Dot(toward.Normalized());
             if (alignment <= bestAlignment) continue;
+            // Require camera to be genuinely nearer to the adjacent
+            // strategic center than the source focus, not merely to move
+            // 20% of one viewport toward it.
+            var target = new Vector2(_cameraTarget.X, _cameraTarget.Z);
+            var sourceDistance = target.DistanceTo(new Vector2(reference.X, reference.Z));
+            var neighborDistance = target.DistanceTo(new Vector2(projected.X, projected.Z));
+            if (neighborDistance >= sourceDistance * 0.85f) continue;
             bestAlignment = alignment;
             bestFocus = neighbor.Value;
         }
@@ -230,8 +241,29 @@ public partial class TacticalContextPreview : SubViewportContainer
         // Open deliberately clears selection when focus changes.
         if (selected.HasValue && _tileCenters.ContainsKey(selected.Value))
             SelectPhysicalTile(selected);
-        // New chart origin is the transferred camera center, preventing an
-        // immediate reverse handoff from the same drag input.
+        // The former R43 could restore a zoom whose screen corners fell
+        // outside the destination resident mesh. Never expose that invalid
+        // chart to the renderer; restore the old focus and camera atomically.
+        if (_coverViewport && !ViewportSamplesHaveTerrain(_camera.Size, 4, 4))
+        {
+            Open(sourceFocus);
+            if (!_tileCenters.TryGetValue(anchorId, out var restoredAnchor))
+                throw new InvalidOperationException("Focus rollback lost the shared physical anchor.");
+            _cameraTarget = restoredAnchor + offsetFromAnchor;
+            _camera.Size = zoom;
+            _yawDegrees = yaw;
+            UpdateCameraOrientation();
+            if (selected.HasValue && _tileCenters.ContainsKey(selected.Value))
+                SelectPhysicalTile(selected);
+            _prefetchIntentOrigin = _cameraTarget;
+            _lastPrefetchIntentFocus = destinationFocus;
+            _focusHandoffInCurrentDrag = true;
+            GD.Print($"GA_TACTICAL_FOCUS_HANDOFF_BLOCKED_R44 source={sourceFocus} destination={destinationFocus} reason=viewport_not_covered restored=true");
+            return;
+        }
+        // Only one complete handoff per drag gesture, so a map rebase cannot
+        // trigger a second expensive rebase until mouse release.
+        _focusHandoffInCurrentDrag = true;
         _prefetchIntentOrigin = _cameraTarget;
         _lastPrefetchIntentFocus = 0UL;
         GD.Print($"GA_TACTICAL_FOCUS_HANDOFF_R43 source={sourceFocus} destination={destinationFocus} " +
@@ -1187,12 +1219,14 @@ public partial class TacticalContextPreview : SubViewportContainer
                 {
                     _pressed = true;
                     _moved = false;
+                    _focusHandoffInCurrentDrag = false;
                     _dragStart = button.Position;
                 }
                 else
                 {
                     if (_pressed && !_moved) PickPhysicalTile(button.Position);
                     _pressed = false;
+                    _focusHandoffInCurrentDrag = false;
                 }
                 AcceptEvent();
             }
