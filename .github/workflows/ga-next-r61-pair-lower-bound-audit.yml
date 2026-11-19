@@ -1,0 +1,39 @@
+name: GA-Next R61 — structural coastal-pair lower-bound audit
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/Foundation/FoundationPhysicalMaritimePairLowerBoundAudit.cs'
+      - 'GlobalArena.Tests/FoundationPhysicalMultimodalRoiBenchmarkTests.cs'
+      - '.github/workflows/ga-next-r61-pair-lower-bound-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pair-bounds:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Audit safe pair exclusion against fixed route oracle
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release \
+            --filter 'FullyQualifiedName~FoundationPhysicalMultimodalRoiBenchmarkTests' \
+            --logger 'console;verbosity=detailed' --nologo 2>&1 | tee ga-next-r61-evidence.log
+          grep 'GA_R61_BOUNDS' ga-next-r61-evidence.log > ga-next-r61-counts.txt
+      - name: Preserve numerical evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ga-next-r61-structural-bounds
+          path: |
+            ga-next-r61-evidence.log
+            ga-next-r61-counts.txt
+          retention-days: 14
