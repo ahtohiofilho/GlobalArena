@@ -151,6 +151,34 @@ public sealed class FoundationPhysicalMultimodalRouteComparatorTests
         Assert.True(natural.ExploredSeaOrigins > 0);
         Assert.NotNull(natural.EmbarkEdge);
         Assert.NotNull(natural.DisembarkEdge);
+        // Compare the exact R55 baseline algorithm with the R56 cached,
+        // smaller-side, early-stopping Dijkstra. Both must report the SAME
+        // optimal cost and the SAME actual terminal pair, not just a route
+        // with a similar final number.
+        var baseline = FoundationPhysicalMultimodalRouteComparator.Compare(
+            host.Session.GeneratedWorld, host.Incidence,
+            snapshot.Transport, source, destination,
+            maxEligibleEmbarkations: 4096,
+            useOptimizedSeaSearch: false);
+        Assert.Equal(baseline.LandOnlyRateMicro,
+            natural.LandOnlyRateMicro);
+        Assert.Equal(baseline.OneSeaLegRateMicro,
+            natural.OneSeaLegRateMicro);
+        Assert.Equal(baseline.EmbarkEdge, natural.EmbarkEdge);
+        Assert.Equal(baseline.DisembarkEdge, natural.DisembarkEdge);
+        Assert.True(natural.ExploredSeaOrigins <=
+            baseline.ExploredSeaOrigins);
+        Assert.True(natural.ExpandedSeaTiles <=
+            baseline.ExpandedSeaTiles);
+        Assert.True(natural.ExploredSeaOrigins > 0);
+        _output.WriteLine(
+            $"GA_R56_AB profile=natural " +
+            $"baseline_dijkstra={baseline.ExploredSeaOrigins} " +
+            $"optimized_dijkstra={natural.ExploredSeaOrigins} " +
+            $"baseline_sea_settled_tiles={baseline.ExpandedSeaTiles} " +
+            $"optimized_sea_settled_tiles={natural.ExpandedSeaTiles} " +
+            $"optimal_cost={natural.OneSeaLegRateMicro} " +
+            $"identical_terminal_pair=true");
 
         var coastA = candidate.A.Crossing;
         var coastB = candidate.B.Crossing;
@@ -252,6 +280,32 @@ public sealed class FoundationPhysicalMultimodalRouteComparatorTests
         Assert.True(intensiveSea.SeaRoutePreferred,
             "The research curve must eventually make developed coastal " +
             "logistics competitive without any sea-sea investment.");
+        var intensiveBaseline =
+            FoundationPhysicalMultimodalRouteComparator.Compare(
+                host.Session.GeneratedWorld, host.Incidence,
+                intensiveCoasts.Transport, source, destination,
+                maxEligibleEmbarkations: 4096,
+                useOptimizedSeaSearch: false);
+        Assert.Equal(intensiveBaseline.LandOnlyRateMicro,
+            intensiveSea.LandOnlyRateMicro);
+        Assert.Equal(intensiveBaseline.OneSeaLegRateMicro,
+            intensiveSea.OneSeaLegRateMicro);
+        Assert.Equal(intensiveBaseline.EmbarkEdge,
+            intensiveSea.EmbarkEdge);
+        Assert.Equal(intensiveBaseline.DisembarkEdge,
+            intensiveSea.DisembarkEdge);
+        Assert.True(intensiveSea.ExploredSeaOrigins <=
+            intensiveBaseline.ExploredSeaOrigins);
+        Assert.True(intensiveSea.ExpandedSeaTiles <=
+            intensiveBaseline.ExpandedSeaTiles);
+        _output.WriteLine(
+            $"GA_R56_AB profile=intensive_coast " +
+            $"baseline_dijkstra={intensiveBaseline.ExploredSeaOrigins} " +
+            $"optimized_dijkstra={intensiveSea.ExploredSeaOrigins} " +
+            $"baseline_sea_settled_tiles={intensiveBaseline.ExpandedSeaTiles} " +
+            $"optimized_sea_settled_tiles={intensiveSea.ExpandedSeaTiles} " +
+            $"optimal_cost={intensiveSea.OneSeaLegRateMicro} " +
+            $"identical_terminal_pair=true");
         _output.WriteLine(
             $"GA_R55_NETWORK all_ports={portCount} all_land_edges={landCount} " +
             $"all_ports_sea={allPortRoutes.OneSeaLegRateMicro} " +
