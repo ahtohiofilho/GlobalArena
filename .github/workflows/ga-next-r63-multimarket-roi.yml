@@ -1,0 +1,38 @@
+name: GA-Next R63 — multimarket exact warm ROI
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Tests/FoundationPhysicalMultimodalMultiMarketRoiTests.cs'
+      - '.github/workflows/ga-next-r63-multimarket-roi.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  multimarket-roi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Compare warmed routes across multiple real market pairs and CAPEX snapshots
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release \
+            --filter 'FullyQualifiedName~FoundationPhysicalMultimodalMultiMarketRoiTests' \
+            --logger 'console;verbosity=detailed' --nologo 2>&1 | tee ga-next-r63-evidence.log
+          grep 'GA_R63_' ga-next-r63-evidence.log > ga-next-r63-multimarket-report.txt
+      - name: Archive exactness and amortized CPU evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ga-next-r63-multimarket-warm-roi
+          path: |
+            ga-next-r63-evidence.log
+            ga-next-r63-multimarket-report.txt
+          retention-days: 14
