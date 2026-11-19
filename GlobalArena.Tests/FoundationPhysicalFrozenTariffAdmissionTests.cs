@@ -136,7 +136,9 @@ public sealed class FoundationPhysicalFrozenTariffAdmissionTests
                 new FoundationNaturalTransportCostBand(1_000UL, 1_000_000UL),
                 new FoundationNaturalTransportCostBand(5_000UL, 500_000UL),
                 new FoundationNaturalTransportCostBand(25_000UL, 100_000UL),
-                10_000UL));
+                10_000UL),
+            new FoundationMonetaryConstructionPolicy(
+                2_000_000UL, 4_000_000UL, 6_000_000UL, 1_000_000UL));
         var coast = seeded.Transport.Edges.First(row =>
             row.CargoMicroAtReferenceLoad == 500_000UL);
         var withTariff = PhysicalTransportInfrastructureRuntimeState.CreateInitial(
