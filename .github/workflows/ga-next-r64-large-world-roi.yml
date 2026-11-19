@@ -1,0 +1,39 @@
+name: GA-Next R64 — larger-world multimarket ROI gate
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Tests/FoundationPhysicalLargeWorldMultimarketGateTests.cs'
+      - 'docs/ga-next/R64-large-world-and-economic-integration-gates.md'
+      - '.github/workflows/ga-next-r64-large-world-roi.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  larger-world:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Verify large real-world routing ROI and global exactness
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release \
+            --filter 'FullyQualifiedName~FoundationPhysicalLargeWorldMultimarketGateTests' \
+            --logger 'console;verbosity=detailed' --nologo 2>&1 | tee ga-next-r64-evidence.log
+          grep 'GA_R64_' ga-next-r64-evidence.log > ga-next-r64-larger-world-report.txt
+      - name: Preserve numerical evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-next-r64-larger-world-gate
+          path: |
+            ga-next-r64-evidence.log
+            ga-next-r64-larger-world-report.txt
+          retention-days: 14
