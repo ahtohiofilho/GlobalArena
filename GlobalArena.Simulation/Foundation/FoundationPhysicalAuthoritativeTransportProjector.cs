@@ -72,13 +72,14 @@ public static class FoundationPhysicalAuthoritativeTransportProjector
 
     /// <summary>
     /// R49 provisional, unbounded-with-respect-to-investment rule:
-    /// K = Knatural + floor(Knatural * I / (B + floor(sqrt(B*I)))).
-    /// I is the already-settled money invested in this single edge;
-    /// B is its original construction-cost reference. For I=B the
-    /// improvement remains 50%, matching R48. Beyond B the gain keeps
-    /// growing, asymptotically like sqrt(I/B), at diminishing marginal
-    /// returns. No artificial port class, level cap or world-era switch.
-    /// Pure integer arithmetic protects cross-platform deterministic replay.
+    /// K = Knatural + floor(Knatural * (sqrt(1 + 3*I/B) - 1)/2).
+    /// This expression is evaluated EXACTLY with scaled integer square
+    /// roots. I is real settled investment; B the original base quote.
+    /// I=B yields a 50% improvement matching R48, while larger I keeps
+    /// increasing capacity with diminishing returns and no game-stage cap.
+    /// Since the integer radicand increases with I and the square root is
+    /// monotone, additional funding CANNOT reduce throughput due to
+    /// rounding. No floating point or port-specific rules.
     /// </summary>
     public static ulong EffectiveReferenceCargo(
         PhysicalTransportEdgeRuntimeRecord edge)
@@ -112,10 +113,13 @@ public static class FoundationPhysicalAuthoritativeTransportProjector
 
         BigInteger amount = new BigInteger(invested);
         BigInteger quote = new BigInteger(baseQuote);
-        BigInteger root = IntegerSquareRoot(quote * amount);
-        BigInteger improvement = new BigInteger(natural) * amount /
-            (quote + root);
-        BigInteger capacity = new BigInteger(natural) + improvement;
+        BigInteger baseCapacity = new BigInteger(natural);
+        // floor(sqrt(floor(K^2 * (B + 3I) / B))) equals
+        // floor(K * sqrt(1 + 3I/B)); exact with integer arithmetic.
+        BigInteger scaledRoot = IntegerSquareRoot(
+            baseCapacity * baseCapacity * (quote + 3 * amount) / quote);
+        BigInteger improvement = (scaledRoot - baseCapacity) / 2;
+        BigInteger capacity = baseCapacity + improvement;
         if (capacity >= ulong.MaxValue)
             throw new OverflowException(
                 "Finite improved crossing exceeds the available canonical capacity range.");
