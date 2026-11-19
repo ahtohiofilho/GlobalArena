@@ -57,6 +57,9 @@ public partial class TacticalContextPreview : SubViewportContainer
     private bool _equidistant = true;
     private float _yawDegrees;
     private ulong _activeFocus;
+    private ulong _continuousNavigationHandoffs;
+    public ulong ActiveStrategicFocus => _activeFocus;
+    public ulong ContinuousNavigationHandoffs => _continuousNavigationHandoffs;
     private Vector3 _surfaceNormal;
     private Vector3 _cameraTarget;
     // R23: projection-independent canonical prefetch, never a rendered chart or a camera owner.
@@ -247,6 +250,7 @@ public partial class TacticalContextPreview : SubViewportContainer
             SelectPhysicalTile(selectedId);
         _prefetchIntentOrigin = _cameraTarget;
         _lastPrefetchIntentFocus = 0UL;
+        _continuousNavigationHandoffs++;
         GD.Print($"GA_TACTICAL_FOCUS_HANDOFF_R45 source={sourceFocus} next={nextFocus} " +
             $"zoom={previousZoom:F6} yaw={previousYaw:F3} " +
             "cursor_geography_preserved=true drag_continues=true " +
@@ -1164,6 +1168,85 @@ public partial class TacticalContextPreview : SubViewportContainer
         HoverWorkerBadge(null);
         if (_tileClickHypothesis) HideTileClickMenu();
         _selection.Text = "No physical tile under cursor";
+    }
+
+
+    // CI-only interaction probe. It deliberately holds one simulated mouse
+    // gesture across two adjacent strategic territories. This checks the
+    // same _GuiInput handler used by real users, not a mock movement method.
+    internal void ExerciseContinuousNavigationSmoke()
+    {
+        if (_camera is null || _cachedCoarseGeometry is null ||
+            _cachedPhysicalMap is null || _innerViewport is null)
+            throw new InvalidOperationException("Continuous nav smoke requires the real map.");
+        var source = _activeFocus;
+        var zoom = _camera.Size;
+        var yaw = _yawDegrees;
+        var initialHandoffs = _continuousNavigationHandoffs;
+        var centerPixel = new Vector2(_innerViewport.Size.X * 0.5f,
+            _innerViewport.Size.Y * 0.5f);
+        var motionPixel = centerPixel + new Vector2(15, 15);
+        _GuiInput(new InputEventMouseButton
+        {
+            ButtonIndex = MouseButton.Left, Pressed = true, Position = centerPixel
+        });
+        try
+        {
+            for (int crossing = 0; crossing < 2; crossing++)
+            {
+                var previousFocus = _activeFocus;
+                var adjacent = _cachedPhysicalMap.CoarseTopology.Cells[
+                    checked((int)previousFocus - 1)].AdjacentCellIds
+                    .OrderBy(id => id.Value)
+                    .FirstOrDefault(id => id.Value != source);
+                if (adjacent.Value == 0)
+                    throw new InvalidOperationException("No second navigation neighbor.");
+                var desired = Flatten(_cachedCoarseGeometry.GetCell(adjacent).Center);
+                var direction = _camera.UnprojectPosition(desired) -
+                    _camera.UnprojectPosition(_cameraTarget);
+                if (direction.LengthSquared() < 0.001f)
+                    throw new InvalidOperationException("Navigation direction collapsed.");
+                // Drag the map opposite the desired destination.
+                var relative = -direction.Normalized() * 12f;
+                bool crossed = false;
+                for (int step = 0; step < 140; step++)
+                {
+                    _GuiInput(new InputEventMouseMotion
+                    {
+                        Position = motionPixel, Relative = relative
+                    });
+                    if (!_pressed || !_moved)
+                        throw new InvalidOperationException("Drag capture was lost during handoff.");
+                    if (_camera.Size != zoom || _yawDegrees != yaw)
+                        throw new InvalidOperationException("Drag changed zoom/yaw.");
+                    if (_coverViewport &&
+                        !ViewportSamplesHaveTerrain(_camera.Size, 4, 4))
+                        throw new InvalidOperationException("Unrendered viewport corner during pan.");
+                    if (_activeFocus != previousFocus)
+                    {
+                        crossed = true;
+                        break;
+                    }
+                }
+                if (!crossed)
+                    throw new InvalidOperationException(
+                        $"Focus never handed off during drag from {previousFocus}.");
+            }
+        }
+        finally
+        {
+            _GuiInput(new InputEventMouseButton
+            {
+                ButtonIndex = MouseButton.Left, Pressed = false, Position = motionPixel
+            });
+        }
+        if (_continuousNavigationHandoffs - initialHandoffs < 2 ||
+            _activeFocus == source || _pressed)
+            throw new InvalidOperationException(
+                "Continuous multi-focus mouse gesture was not completed.");
+        GD.Print($"GA_NEXT_CONTINUOUS_NAVIGATION_INPUT_PASS start={source} " +
+            $"end={_activeFocus} handoffs={_continuousNavigationHandoffs - initialHandoffs} " +
+            "one_held_drag=true zoom_preserved=true no_empty_corners=true");
     }
 
     // Screen-anchored pan: the map point under the pointer follows the pointer.
