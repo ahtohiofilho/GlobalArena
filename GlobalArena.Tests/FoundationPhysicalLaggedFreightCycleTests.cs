@@ -461,7 +461,7 @@ public sealed class FoundationPhysicalLaggedFreightCycleTests
         Assert.Equal(road.PhysicalCostMicroPerWholeCargoUnit,
             reading.DampedNextPhysicalQuoteMicroPerWholeCargoUnit);
         Assert.Equal(0UL, next.QuotedCongestionSurchargeMicroPerWholeCargoUnit);
-        Assert.Equal(s.Host.NextTurn.Value, 1UL);
+        Assert.Equal(1UL, s.Host.NextTurn.Value);
         Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
             s.Host.GetLastClosedEconomicTradeView(Red).Availability);
     }
