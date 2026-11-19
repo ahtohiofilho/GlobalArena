@@ -33,7 +33,8 @@ public static class FoundationPhysicalWorldBoundMaritimeFreightProof
         PhysicalTacticalTileId source,
         PhysicalTacticalTileId destination,
         PhysicalTacticalEdgeId embarkEdge,
-        PhysicalTacticalEdgeId disembarkEdge)
+        PhysicalTacticalEdgeId disembarkEdge,
+        FoundationPhysicalLaggedFreightQuoteState? previousClosedCycleQuotes = null)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentNullException.ThrowIfNull(world);
@@ -63,10 +64,65 @@ public static class FoundationPhysicalWorldBoundMaritimeFreightProof
             RuntimeWorldBinding.FromGeneratedWorld(world))
             throw new ArgumentException(
                 "World generation signature does not match the bound snapshot.");
-        var (roads, _) =
+        var (roads, scales) =
             FoundationPhysicalAuthoritativeTransportProjector.FromWorld(
                 snapshot, incidence);
-        var byId = roads.ToDictionary(x => x.Edge);
+        // R68 mirrors the ALREADY EXISTING fixed-cycle quote rule in
+        // LaggedFreightCyclePlanner, and rejects untrusted previews.
+        // Each carried surcharge is used only if this edge's actual
+        // FREE physical cost and carrying scale remain unchanged.
+        // Investments are monetary events; changed capacity invalidates
+        // only that edge's historic surcharge.
+        var effective = roads.ToDictionary(x => x.Edge);
+        if (previousClosedCycleQuotes is not null)
+        {
+            if (!previousClosedCycleQuotes.HasSettledProvenance ||
+                previousClosedCycleQuotes.AuditedPreviewCycles == 0UL)
+                throw new InvalidOperationException(
+                    "Only authoritatively CLOSED preceding-cycle quotes may " +
+                    "contribute to the current frozen freight.");
+            var old = new Dictionary<PhysicalTacticalEdgeId,
+                FoundationPhysicalLaggedFreightEdgeState>();
+            foreach (var previous in previousClosedCycleQuotes.Edges)
+            {
+                if (previous is null || !previous.Edge.IsValid ||
+                    !old.TryAdd(previous.Edge, previous))
+                    throw new ArgumentException(
+                        "Closed-cycle freight memory has invalid or repeated crossings.");
+            }
+            if (old.Count != roads.Count ||
+                roads.Any(road => !old.ContainsKey(road.Edge)))
+                throw new ArgumentException(
+                    "Closed-cycle freight must cover exactly this physical inventory.");
+            var referenceByEdge = scales.ToDictionary(s => s.Edge,
+                s => s.CargoMicroAtReferenceLoad);
+            foreach (var road in roads)
+            {
+                ulong reference = referenceByEdge[road.Edge];
+                var previous = old[road.Edge];
+                if (previous.FreePhysicalCostMicroPerWholeCargoUnit == 0UL ||
+                    previous.ReferenceCargoMicro == 0UL)
+                    throw new ArgumentException(
+                        "Closed-cycle quotation includes an invalid historical edge.");
+                // The authoritative cycle coordinator never carries any
+                // congestion to naturally unbounded mar-mar crossings.
+                if (reference == ulong.MaxValue &&
+                    previous.QuotedCongestionSurchargeMicroPerWholeCargoUnit != 0UL)
+                    throw new ArgumentException(
+                        "Naturally unbounded sea cannot have congestion surcharge.");
+                if (reference != ulong.MaxValue &&
+                    previous.FreePhysicalCostMicroPerWholeCargoUnit ==
+                        road.PhysicalCostMicroPerWholeCargoUnit &&
+                    previous.ReferenceCargoMicro == reference)
+                    effective[road.Edge] = road with
+                    {
+                        PhysicalCostMicroPerWholeCargoUnit = checked(
+                            road.PhysicalCostMicroPerWholeCargoUnit +
+                            previous.QuotedCongestionSurchargeMicroPerWholeCargoUnit)
+                    };
+            }
+        }
+        var byId = effective;
         var investedById = snapshot.Transport.Edges.ToDictionary(x => x.Edge);
         var isLand = incidence.TileIncidences.Select(tile =>
         {

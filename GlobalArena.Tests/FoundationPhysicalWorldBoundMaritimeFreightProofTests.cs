@@ -177,6 +177,90 @@ public sealed class FoundationPhysicalWorldBoundMaritimeFreightProofTests
                 f.Source, f.Destination, f.Embark, f.Disembark));
     }
 
+    private static FoundationPhysicalLaggedFreightQuoteState History(
+        Fixture fixture, ulong embarkSurcharge = 0UL,
+        bool settled = true, bool missingLastEdge = false)
+    {
+        var (roads, scales) =
+            FoundationPhysicalAuthoritativeTransportProjector.FromWorld(
+                fixture.Snapshot, fixture.Host.Incidence);
+        var capacity = scales.ToDictionary(x => x.Edge,
+            x => x.CargoMicroAtReferenceLoad);
+        var history = roads.Select(road =>
+            new FoundationPhysicalLaggedFreightEdgeState(
+                road.Edge, road.PhysicalCostMicroPerWholeCargoUnit,
+                capacity[road.Edge],
+                road.Edge == fixture.Embark ? embarkSurcharge : 0UL))
+            .ToArray();
+        if (missingLastEdge)
+            history = history[..^1];
+        return new FoundationPhysicalLaggedFreightQuoteState(
+            1UL, history, hasSettledProvenance: settled);
+    }
+
+    [Fact]
+    public void ClosedCycleCongestionIsAppliedExactlyOnceForSameSeller()
+    {
+        var f = Prepare();
+        var world = f.Host.Session.GeneratedWorld;
+        var baseline = FoundationPhysicalWorldBoundMaritimeFreightProof
+            .Evaluate(f.Snapshot, world, f.Host.Incidence, Red,
+                f.Source, f.Destination, f.Embark, f.Disembark);
+        var closed = History(f, embarkSurcharge: 17UL);
+        var after = FoundationPhysicalWorldBoundMaritimeFreightProof
+            .Evaluate(f.Snapshot, world, f.Host.Incidence, Red,
+                f.Source, f.Destination, f.Embark, f.Disembark,
+                previousClosedCycleQuotes: closed);
+        Assert.Equal((UInt128)17UL +
+            baseline.Bound.MaritimeLowerBoundMicroPerWholeCargoUnit,
+            after.Bound.MaritimeLowerBoundMicroPerWholeCargoUnit);
+        Assert.Equal(
+            baseline.Bound.EmbarkCoastRateMicroPerWholeCargoUnit + 17UL,
+            after.Bound.EmbarkCoastRateMicroPerWholeCargoUnit);
+        Assert.Equal(baseline.Bound.DisembarkCoastRateMicroPerWholeCargoUnit,
+            after.Bound.DisembarkCoastRateMicroPerWholeCargoUnit);
+        Assert.Equal(after, FoundationPhysicalWorldBoundMaritimeFreightProof
+            .Evaluate(f.Snapshot, world, f.Host.Incidence, Red,
+                f.Source, f.Destination, f.Embark, f.Disembark, closed));
+    }
+
+    [Fact]
+    public void UnsettledPreviewAndIncompleteHistoryFailClosed()
+    {
+        var f = Prepare();
+        var world = f.Host.Session.GeneratedWorld;
+        Assert.Throws<InvalidOperationException>(() =>
+            FoundationPhysicalWorldBoundMaritimeFreightProof.Evaluate(
+                f.Snapshot, world, f.Host.Incidence, Red, f.Source,
+                f.Destination, f.Embark, f.Disembark,
+                History(f, embarkSurcharge: 17UL, settled: false)));
+        Assert.Throws<ArgumentException>(() =>
+            FoundationPhysicalWorldBoundMaritimeFreightProof.Evaluate(
+                f.Snapshot, world, f.Host.Incidence, Red, f.Source,
+                f.Destination, f.Embark, f.Disembark,
+                History(f, missingLastEdge: true)));
+    }
+
+    [Fact]
+    public void CapitalFinancingResetsHistoricalCongestionOnChangedCapacity()
+    {
+        var f = Prepare();
+        var world = f.Host.Session.GeneratedWorld;
+        var closed = History(f, embarkSurcharge: 17UL);
+        var edge = f.Snapshot.Transport.Edges.Single(
+            x => x.Edge == f.Embark);
+        var invested = f.Snapshot.RecordMonetaryInfrastructureInvestment(
+            Red, f.Embark,
+            checked(edge.NaturalConstructionCostMoneyMicro!.Value * 4UL));
+        var withoutMemory = FoundationPhysicalWorldBoundMaritimeFreightProof
+            .Evaluate(invested, world, f.Host.Incidence, Red,
+                f.Source, f.Destination, f.Embark, f.Disembark);
+        var withOldMemory = FoundationPhysicalWorldBoundMaritimeFreightProof
+            .Evaluate(invested, world, f.Host.Incidence, Red,
+                f.Source, f.Destination, f.Embark, f.Disembark, closed);
+        Assert.Equal(withoutMemory.Bound, withOldMemory.Bound);
+    }
+
     [Fact]
     public void RejectsLandEdgesAndForeignWorldGenerationSignature()
     {
