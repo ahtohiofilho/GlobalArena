@@ -1,0 +1,35 @@
+name: GA-Next R70 — real settled two-cycle maritime bridge
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Tests/FoundationRealSettledMaritimeFreightBridgeTests.cs'
+      - '.github/workflows/ga-next-r70-real-cycle-maritime-bridge.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-cycle-freight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Verify economic settlement and matching next-cycle freight proof
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release \
+            --filter 'FullyQualifiedName~FoundationRealSettledMaritimeFreightBridgeTests|FullyQualifiedName~FoundationPhysicalWorldBoundMaritimeFreightProofTests|FullyQualifiedName~FoundationPhysicalMaritimeMarginalFreightBoundTests' \
+            --logger 'console;verbosity=detailed' --nologo 2>&1 | tee ga-next-r70-evidence.log
+      - name: Preserve trusted settlement audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-next-r70-real-settled-maritime-cycle
+          path: ga-next-r70-evidence.log
+          retention-days: 14
