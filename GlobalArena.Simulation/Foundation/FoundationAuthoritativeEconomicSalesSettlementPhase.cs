@@ -167,6 +167,25 @@ public sealed class FoundationEconomicSalesSettlementEventExecutor
     public FoundationEconomicSalesSettlementEventExecutor(
         WorldGenerationResult world, PhysicalTacticalIncidenceMap incidence,
         FoundationAuthoritativeEconomicSettlementPolicy policy)
+        : this(world, incidence, policy,
+            RuntimeWorldBinding.FromGeneratedWorld(world)) { }
+
+    // R85: special constructor is deliberately NOT a switch based on a
+    // string or an arbitrary caller-provided expected hash. Every G18 field
+    // is cryptographically checked by RuntimeWorldBinding.FromFineFirst.
+    public FoundationEconomicSalesSettlementEventExecutor(
+        WorldGenerationResult world, PhysicalTacticalIncidenceMap incidence,
+        FoundationAuthoritativeEconomicSettlementPolicy policy,
+        FoundationFineFirstPhysicalGeography fine,
+        FoundationFineFirstWorldgenIdentity signature)
+        : this(world, incidence, policy,
+            RuntimeWorldBinding.FromFineFirst(
+                world, incidence, fine, signature)) { }
+
+    private FoundationEconomicSalesSettlementEventExecutor(
+        WorldGenerationResult world, PhysicalTacticalIncidenceMap incidence,
+        FoundationAuthoritativeEconomicSettlementPolicy policy,
+        RuntimeWorldBinding binding)
     {
         ArgumentNullException.ThrowIfNull(world);
         _incidence = incidence ?? throw new ArgumentNullException(nameof(incidence));
@@ -177,7 +196,7 @@ public sealed class FoundationEconomicSalesSettlementEventExecutor
                 world.StrategicTopology.Cells.Count)
             throw new InvalidOperationException(
                 "Economic close must use the actual signed physical world.");
-        _binding = RuntimeWorldBinding.FromGeneratedWorld(world);
+        _binding = binding;
     }
 
     private sealed record Expected(
