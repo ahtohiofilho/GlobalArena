@@ -189,4 +189,99 @@ public sealed class FoundationNaturalCapacitySweepTests
         Assert.Equal(initialHash, scenario.Host.StateHash);
         Assert.Equal(1UL, scenario.Host.NextTurn.Value);
     }
+    [Fact]
+    public void RealCoastalAndSeaCrossingsExposeTheirOwnCapacityThresholds()
+    {
+        var s = BuildScenario();
+        var frozen = s.Host.Snapshot;
+        var digest = s.Host.StateHash;
+        var seed = FoundationPhysicalNaturalTransportSeeder.Create(
+            s.Host.Session.GeneratedWorld, s.Host.Incidence,
+            new FoundationNaturalTransportSeedingPolicy(
+                new FoundationNaturalTransportCostBand(1_000UL, 1_000_000UL),
+                new FoundationNaturalTransportCostBand(5_000UL, 500_000UL),
+                new FoundationNaturalTransportCostBand(25_000UL, 100_000UL),
+                10_000UL));
+        Assert.True(seed.CoastCrossingCount > 0);
+        Assert.True(seed.SeaCrossingCount > 0);
+        var sourceRed = s.Workers.Workers.First(w => w.Owner == Red);
+        var sourceBlue = s.Workers.Workers.First(w => w.Owner == Blue);
+
+        foreach (var (kind, originalK, multiplier) in new[]
+        {
+            ("coast", 500_000UL, 1UL),
+            ("coast", 500_000UL, 10UL),
+            ("coast", 500_000UL, 100UL),
+            ("sea", 100_000UL, 1UL),
+            ("sea", 100_000UL, 100UL),
+            ("sea", 100_000UL, 10_000UL)
+        })
+        {
+            var edge = seed.Transport.Edges.First(e =>
+                e.CargoMicroAtReferenceLoad == originalK);
+            var topology = s.Host.Incidence.FineTopology.Edges.First(e =>
+                e.Id == edge.Edge.FineStrategicEdgeId);
+            var a = new PhysicalTacticalTileId(
+                s.Host.Incidence.Refinement.FineParameters,
+                topology.IncidentCellIds[0]);
+            var b = new PhysicalTacticalTileId(
+                s.Host.Incidence.Refinement.FineParameters,
+                topology.IncidentCellIds[1]);
+            StrategicCellId coarse(PhysicalTacticalTileId tile) =>
+                s.Host.Incidence.TileIncidences[
+                    checked((int)tile.FineStrategicCellId.Value - 1)]
+                    .IncidentCoarseCellIds[0];
+            // Two of the SAME real demo worker IDs, explicitly relocated to
+            // opposite sides of a REAL edge in this uncommitted test scenario.
+            // One supplies each commodity; neither makes a game move.
+            var census = new PhysicalWorkerRuntimeState(new[]
+            {
+                new PhysicalWorkerRuntimeRecord(sourceRed.Id, Red, coarse(a),
+                    One, sourceRed.OutputMicroPerTurn,
+                    PhysicalWorkerActivity.Producing,
+                    sourceRed.DemandMultiplierMicro, a, sourceRed.Occupation),
+                new PhysicalWorkerRuntimeRecord(sourceBlue.Id, Blue, coarse(b),
+                    Two, sourceBlue.OutputMicroPerTurn,
+                    PhysicalWorkerActivity.Producing,
+                    sourceBlue.DemandMultiplierMicro, b, sourceBlue.Occupation)
+            }, tacticalLocationsAuthoritative: true,
+                occupationsAuthoritative: true);
+            var road = new FoundationPhysicalRoutingEdgeCost(
+                edge.Edge, FoundationInfrastructureOwnershipKind.NoInfrastructure,
+                null, edge.FreePhysicalCostMicroPerWholeCargoUnit, 0UL);
+            var scale = new FoundationPhysicalEdgeCarryingScale(
+                edge.Edge, checked(originalK * multiplier));
+            var quotes = FoundationPhysicalUniversalMarketPricing
+                .QuotesFromRealWorkers(census, s.Demand);
+            FoundationPhysicalLaggedFreightQuoteState? prior = null;
+            for (int turn = 1; turn <= 3; turn++)
+            {
+                var plan = FoundationPhysicalLaggedFreightCyclePlanner
+                    .CoordinateCandidate(census, s.Host.Incidence,
+                        s.Demand, s.Cargo, quotes, new[] { road },
+                        new[] { scale }, previousClosedCycleQuotes: prior,
+                        maxProducerPasses: 64);
+                Assert.Equal(plan.Distribution.AllocationAudit.TotalAvailableGoodsMicro,
+                    plan.Distribution.AllocationAudit.TotalAllocatedGoodsMicro);
+                var reading = Assert.Single(plan.EdgeReadings);
+                if (turn == 1)
+                    Assert.True(reading.CurrentCargoMicro > 0UL,
+                        "The isolated real coastal/sea edge must actually be used.");
+                _output.WriteLine(string.Format(
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    "GA_K_CROSSING class={0} K_multiplier={1} cycle={2} " +
+                    "cargo_micro={3} V_over_K={4:F6} " +
+                    "base_cost={5} current_quote={6} next_quote={7}",
+                    kind, multiplier, turn, reading.CurrentCargoMicro,
+                    (double)reading.CurrentCargoMicro / scale.CargoMicroAtReferenceLoad,
+                    reading.FreePhysicalCostMicroPerWholeCargoUnit,
+                    reading.CurrentPhysicalQuoteMicroPerWholeCargoUnit,
+                    reading.DampedNextPhysicalQuoteMicroPerWholeCargoUnit));
+                prior = plan.NextCycleQuotes;
+            }
+        }
+        Assert.Same(frozen, s.Host.Snapshot);
+        Assert.Equal(digest, s.Host.StateHash);
+    }
+
 }
