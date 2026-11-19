@@ -261,6 +261,65 @@ public sealed class FoundationPhysicalWorldBoundMaritimeFreightProofTests
         Assert.Equal(withoutMemory.Bound, withOldMemory.Bound);
     }
 
+    private const string R69CargoUnit = "r69-comparable-cargo-micro";
+    private static readonly CommodityId R69Commodity = new(1U);
+
+    private static FoundationCommodityCargoConversionPolicy R69Policy(
+        string unit = R69CargoUnit, ulong cargoPerUnit = 2_000_000UL) =>
+        new(unit, new[]
+        {
+            new FoundationCommodityCargoConversion(
+                R69Commodity, cargoPerUnit)
+        });
+
+    private static FoundationPhysicalTreasuryBoundMaritimeProof.Evidence R69(
+        Fixture fixture, WorldState snapshot,
+        FoundationCommodityCargoConversionPolicy policy,
+        ulong nextOrdinal = 1UL,
+        ulong goodsMicro = 3_000_000UL)
+        => FoundationPhysicalTreasuryBoundMaritimeProof.Evaluate(
+            snapshot, fixture.Host.Session.GeneratedWorld,
+            fixture.Host.Incidence, policy, R69Commodity, goodsMicro,
+            Red, fixture.Source, fixture.Destination,
+            fixture.Embark, fixture.Disembark, nextOrdinal);
+
+    [Fact]
+    public void OpeningCycleUsesRealCommodityConversionAndNoImaginedFreightHistory()
+    {
+        var f = Prepare();
+        var policy = R69Policy();
+        var result = R69(f, f.Snapshot, policy);
+        Assert.Equal(1UL, result.PlanningEconomicCycleOrdinal);
+        Assert.Equal(0UL, result.PreviousSettledEconomicCycleOrdinal);
+        Assert.False(result.UsedVerifiedSettledFreight);
+        Assert.Equal(R69Commodity, result.Commodity);
+        Assert.Equal(3_000_000UL, result.GoodsMicro);
+        Assert.Equal(6_000_000UL, result.CargoMicro);
+        Assert.Equal(R69CargoUnit, result.CargoUnitCode);
+        Assert.Equal(FoundationPhysicalWorldBoundMaritimeFreightProof
+            .Evaluate(f.Snapshot, f.Host.Session.GeneratedWorld,
+                f.Host.Incidence, Red, f.Source, f.Destination,
+                f.Embark, f.Disembark), result.Route);
+        Assert.Equal(result, R69(f, f.Snapshot, policy));
+    }
+
+    [Fact]
+    public void OpeningCycleRejectsSkippedCycleUnknownCommodityAndInexactCargo()
+    {
+        var f = Prepare();
+        Assert.Throws<InvalidOperationException>(() =>
+            R69(f, f.Snapshot, R69Policy(), nextOrdinal: 2UL));
+        Assert.Throws<ArgumentException>(() =>
+            FoundationPhysicalTreasuryBoundMaritimeProof.Evaluate(
+                f.Snapshot, f.Host.Session.GeneratedWorld,
+                f.Host.Incidence, R69Policy(), new CommodityId(77U),
+                1_000_000UL, Red, f.Source, f.Destination,
+                f.Embark, f.Disembark, 1UL));
+        Assert.Throws<InvalidOperationException>(() =>
+            R69(f, f.Snapshot, R69Policy(
+                cargoPerUnit: 1UL), goodsMicro: 1UL));
+    }
+
     [Fact]
     public void RejectsLandEdgesAndForeignWorldGenerationSignature()
     {
