@@ -17,7 +17,7 @@ $ExpectedCodeBlobs = @{
     'GlobalArena.Simulation/Foundation/FoundationAuthoritativeEconomicSalesSettlementPhase.cs' = '0feda919196aab74b9a58746a6235136d869f3d0'
     'GlobalArena.Simulation/Foundation/FoundationGameplayEconomicBootstrap.cs' = '2e6dd2ff661344135d32c6d4f30306efea4b157b'
     'tools/GlobalArena.Godot/Scripts/TacticalContextPreview.SettledTradeRoutes.cs' = '86ecb9b8ef52262ff59d45d66e735badb3b1b8b5'
-    'tools/GlobalArena.Godot/Scripts/TacticalContextPreview.cs' = '0c01e9fcb45f04a405721bdf3884cde859a74968'
+    'tools/GlobalArena.Godot/Scripts/TacticalContextPreview.cs' = '87ddce1f4ac953e0769230bed82116f286ab2597'
 }
 $OfficialGodotUrl = 'https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_mono_win64.zip'
 $OfficialGodotSha = 'a2a48473a7414c5f19fab690518caebb738c09ef9601f6bd2388676a7f53b3c0'
