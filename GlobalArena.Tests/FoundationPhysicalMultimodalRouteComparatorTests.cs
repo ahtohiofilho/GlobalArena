@@ -144,7 +144,8 @@ public sealed class FoundationPhysicalMultimodalRouteComparatorTests
 
         var natural = FoundationPhysicalMultimodalRouteComparator.Compare(
             host.Session.GeneratedWorld, host.Incidence,
-            snapshot.Transport, source, destination);
+            snapshot.Transport, source, destination,
+            maxEligibleEmbarkations: 4096);
         Assert.NotNull(natural.LandOnlyRateMicro);
         Assert.NotNull(natural.OneSeaLegRateMicro);
         Assert.True(natural.ExploredSeaOrigins > 0);
@@ -163,7 +164,8 @@ public sealed class FoundationPhysicalMultimodalRouteComparatorTests
             Blue, coastB.Edge, costB);
         var coastRoute = FoundationPhysicalMultimodalRouteComparator.Compare(
             host.Session.GeneratedWorld, host.Incidence,
-            fundedCoast.Transport, source, destination);
+            fundedCoast.Transport, source, destination,
+            maxEligibleEmbarkations: 4096);
         Assert.Equal(natural.LandOnlyRateMicro,
             coastRoute.LandOnlyRateMicro);
         Assert.True(coastRoute.OneSeaLegRateMicro <=
@@ -173,7 +175,8 @@ public sealed class FoundationPhysicalMultimodalRouteComparatorTests
             checked(landEdge.NaturalConstructionCostMoneyMicro!.Value * 4UL));
         var landRoute = FoundationPhysicalMultimodalRouteComparator.Compare(
             host.Session.GeneratedWorld, host.Incidence,
-            fundedLand.Transport, source, destination);
+            fundedLand.Transport, source, destination,
+            maxEligibleEmbarkations: 4096);
         Assert.True(landRoute.LandOnlyRateMicro <=
             natural.LandOnlyRateMicro);
         var both = fundedCoast.RecordMonetaryInfrastructureInvestment(
@@ -181,7 +184,7 @@ public sealed class FoundationPhysicalMultimodalRouteComparatorTests
             checked(landEdge.NaturalConstructionCostMoneyMicro!.Value * 4UL));
         var bothRoute = FoundationPhysicalMultimodalRouteComparator.Compare(
             host.Session.GeneratedWorld, host.Incidence, both.Transport,
-            source, destination);
+            source, destination, maxEligibleEmbarkations: 4096);
         Assert.True(bothRoute.OneSeaLegRateMicro <=
             coastRoute.OneSeaLegRateMicro);
         Assert.True(bothRoute.LandOnlyRateMicro <=
