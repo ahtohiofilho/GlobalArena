@@ -36,6 +36,7 @@ public partial class TacticalContextPreview : SubViewportContainer
     // used to classify canonical freight edges, or terrestrial paths will
     // appear to sail over unrelated blue experimental tiles.
     private WorldGenerationResult? _authoritativeEconomyTerrainWorld;
+    private Button? _terrainModeButton;
 
     public void ConfigureAuthoritativeEconomyTerrain(
         WorldGenerationResult? world)
@@ -46,6 +47,11 @@ public partial class TacticalContextPreview : SubViewportContainer
                 "Canonical economy terrain requires a generated bound world.",
                 nameof(world));
         _authoritativeEconomyTerrainWorld = world;
+        if (_terrainModeButton is not null)
+            _terrainModeButton.Text = !_showExperimentalTerrain
+                ? "TERRAIN: IDS"
+                : world is null ? "TERRAIN: 01C EXP" : "TERRAIN: ECONOMY V1";
+        GD.Print($"GA_TACTICAL_TERRAIN_SOURCE source={(world is null ? "DECORATIVE_01C" : "AUTH_V1_ECONOMY")} freight_map_aligned={world is not null}");
     }
 
     private bool IsAuthoritativeEconomyLand(
@@ -556,10 +562,13 @@ public partial class TacticalContextPreview : SubViewportContainer
         var terrainRow = new HBoxContainer();
         controls.AddChild(terrainRow);
         var terrainButton = new Button { Text = "TERRAIN: 01C EXP" };
+        _terrainModeButton = terrainButton;
         terrainButton.Pressed += () =>
         {
             _showExperimentalTerrain = !_showExperimentalTerrain;
-            terrainButton.Text = _showExperimentalTerrain ? "TERRAIN: 01C EXP" : "TERRAIN: IDS";
+            terrainButton.Text = !_showExperimentalTerrain ? "TERRAIN: IDS" :
+                _authoritativeEconomyTerrainWorld is null
+                    ? "TERRAIN: 01C EXP" : "TERRAIN: ECONOMY V1";
             if (_activeFocus != 0) Open(_activeFocus);
             GD.Print($"GA_TACTICAL_EXPERIMENTAL_TERRAIN visible={_showExperimentalTerrain} reference_seed={TerrainExperimentSeed}");
         };
