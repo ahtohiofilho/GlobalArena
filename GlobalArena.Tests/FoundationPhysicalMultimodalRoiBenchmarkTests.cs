@@ -175,6 +175,14 @@ public sealed class FoundationPhysicalMultimodalRoiBenchmarkTests
 
         // Baseline R56: no cross-call cache, target-aware Dijkstra.
         Timing reference = Measure(() => Evaluate(opening.Transport));
+        Timing stateArchitecture = Measure(() =>
+            FoundationPhysicalMultimodalRouteComparator.Compare(
+                host.Session.GeneratedWorld, host.Incidence,
+                opening.Transport, start, end,
+                maxEligibleEmbarkations: 20_000,
+                architecture: FoundationPhysicalMultimodalRouteComparator
+                    .MaritimeResearchArchitecture.EmbarkationState));
+        Equivalent(reference.Result, stateArchitecture.Result);
         Timing cacheCold = Measure(() =>
             Evaluate(opening.Transport, cache));
         Timing cacheWarm = Measure(() =>
@@ -186,6 +194,26 @@ public sealed class FoundationPhysicalMultimodalRoiBenchmarkTests
         Equivalent(reference.Result, cacheCold.Result);
         Equivalent(reference.Result, cacheWarm.Result);
         Equivalent(changedCapital.Result, independentlyChecked.Result);
+        var stateAfterCapital = Measure(() =>
+            FoundationPhysicalMultimodalRouteComparator.Compare(
+                host.Session.GeneratedWorld, host.Incidence,
+                improved.Transport, start, end,
+                maxEligibleEmbarkations: 20_000,
+                architecture: FoundationPhysicalMultimodalRouteComparator
+                    .MaritimeResearchArchitecture.EmbarkationState));
+        Equivalent(independentlyChecked.Result, stateAfterCapital.Result);
+        _log.WriteLine(
+            $"GA_R60_AB coarse={m},{n} " +
+            $"fine_tiles={host.Incidence.FineTopology.Cells.Count} " +
+            $"A_supergraph_ms={reference.Milliseconds:F3} " +
+            $"B_embarkation_state_ms={stateArchitecture.Milliseconds:F3} " +
+            $"A_capital_ms={independentlyChecked.Milliseconds:F3} " +
+            $"B_capital_ms={stateAfterCapital.Milliseconds:F3} " +
+            $"A_states={reference.Result.ExpandedSeaTiles} " +
+            $"B_states={stateArchitecture.Result.ExpandedSeaTiles} " +
+            $"A_alloc_bytes={reference.AllocatedBytes} " +
+            $"B_alloc_bytes={stateArchitecture.AllocatedBytes} " +
+            $"same_two_terminal_ids=true same_optimal_cost=true");
         Assert.Equal(0, cacheWarm.Result.ExploredSeaOrigins);
         Assert.Equal(0, changedCapital.Result.ExploredSeaOrigins);
         Assert.True(cacheCold.Result.ExploredSeaOrigins > 0);
