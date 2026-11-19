@@ -59,10 +59,15 @@ public static class FoundationPhysicalWorldBoundMaritimeFreightProof
         // The authoritative projector checks the WorldState binding,
         // worker occupation provenance and ALL real crossings, including
         // duplicate or foreign edge IDs. It is the only quote source.
+        if (snapshot.WorldBinding !=
+            RuntimeWorldBinding.FromGeneratedWorld(world))
+            throw new ArgumentException(
+                "World generation signature does not match the bound snapshot.");
         var (roads, _) =
             FoundationPhysicalAuthoritativeTransportProjector.FromWorld(
                 snapshot, incidence);
         var byId = roads.ToDictionary(x => x.Edge);
+        var investedById = snapshot.Transport.Edges.ToDictionary(x => x.Edge);
         var isLand = incidence.TileIncidences.Select(tile =>
         {
             long sum = 0L;
@@ -128,16 +133,14 @@ public static class FoundationPhysicalWorldBoundMaritimeFreightProof
                 // only establishes that the one maritime leg exists.
                 if (record.InfrastructureOwner.HasValue ||
                     record.ExternalTariffMicroPerWholeCargoUnit != 0UL ||
-                    snapshot.Transport.Edges.Single(x => x.Edge == id)
-                        .CargoMicroAtReferenceLoad != ulong.MaxValue)
+                    investedById[id].CargoMicroAtReferenceLoad != ulong.MaxValue)
                     throw new InvalidOperationException(
                         "Natural sea must remain untariffed and unbounded.");
                 AddSea(oceanGraph, a, b);
             }
             else
             {
-                var infrastructure = snapshot.Transport.Edges
-                    .Single(x => x.Edge == id);
+                var infrastructure = investedById[id];
                 if (infrastructure.CargoMicroAtReferenceLoad == ulong.MaxValue)
                     throw new InvalidOperationException(
                         "A coastal crossing must have finite capacity.");
