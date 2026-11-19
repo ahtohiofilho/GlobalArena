@@ -1,0 +1,36 @@
+name: GA-Next R68 — settled-cycle maritime freight proof
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/Foundation/FoundationPhysicalWorldBoundMaritimeFreightProof.cs'
+      - 'GlobalArena.Tests/FoundationPhysicalWorldBoundMaritimeFreightProofTests.cs'
+      - '.github/workflows/ga-next-r68-closed-cycle-freight-proof.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  settled-quote-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Verify closed-cycle marginal freight invariants without economic settlement
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release \
+            --filter 'FullyQualifiedName~FoundationPhysicalWorldBoundMaritimeFreightProofTests|FullyQualifiedName~FoundationPhysicalMaritimeMarginalFreightBoundTests' \
+            --logger 'console;verbosity=detailed' --nologo 2>&1 | tee ga-next-r68-evidence.log
+      - name: Archive settled-quote evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ga-next-r68-closed-cycle-freight
+          path: ga-next-r68-evidence.log
+          retention-days: 14
