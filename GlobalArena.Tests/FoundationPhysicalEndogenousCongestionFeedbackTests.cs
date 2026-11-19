@@ -102,6 +102,13 @@ public sealed class FoundationPhysicalEndogenousCongestionFeedbackTests
         Assert.Equal(100_000UL,
             FoundationPhysicalEndogenousCongestionFeedback.CalculateCongestedRate(
                 100_000UL, 100_000UL, 1_000_000_000UL));
+        // Open sea is a natural crossing with no congestion bottleneck,
+        // not a zero-cost road and not a finite "very large" capacity.
+        Assert.Equal(25_000UL,
+            FoundationPhysicalEndogenousCongestionFeedback.CalculateCongestedRate(
+                25_000UL, ulong.MaxValue,
+                FoundationPhysicalEndogenousCongestionFeedback
+                    .UnboundedNaturalCargoCapacity));
         Assert.Throws<OverflowException>(() =>
             FoundationPhysicalEndogenousCongestionFeedback.CalculateCongestedRate(
                 ulong.MaxValue, ulong.MaxValue, 1UL));
