@@ -1,0 +1,39 @@
+name: GA-Next R73 — frozen economic multimodal exact A/B
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/Foundation/FoundationPhysicalFrozenEconomicMaritimeComparator.cs'
+      - 'GlobalArena.Tests/FoundationPhysicalFrozenEconomicMaritimeComparatorTests.cs'
+      - '.github/workflows/ga-next-r73-frozen-economic-ab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  frozen-economic-ab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Verify exhaustive versus proven-bound economic maritime choice
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release \
+            --filter 'FullyQualifiedName~FoundationPhysicalFrozenEconomicMaritimeComparatorTests|FullyQualifiedName~FoundationRealSettledMaritimeFreightBridgeTests' \
+            --logger 'console;verbosity=detailed' --nologo 2>&1 | tee ga-next-r73-evidence.log
+          grep 'GA_R73_' ga-next-r73-evidence.log > ga-next-r73-ab-results.txt
+      - name: Archive exactness and cost evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ga-next-r73-frozen-economy-ab
+          path: |
+            ga-next-r73-evidence.log
+            ga-next-r73-ab-results.txt
+          retention-days: 14
