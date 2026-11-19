@@ -118,8 +118,8 @@ public sealed class FoundationPhysicalMultimodalRouteComparatorTests
             .DeployInitialTreasury(
                 CivilizationTreasuryRuntimeState.CreateOpening(new[]
                 {
-                    (Red, 10_000_000_000UL),
-                    (Blue, 10_000_000_000UL)
+                    (Red, 1_000_000_000_000UL),
+                    (Blue, 1_000_000_000_000UL)
                 }));
         var landEdge = seed.Transport.Edges.First(x =>
             x.CargoMicroAtReferenceLoad != ulong.MaxValue &&
@@ -189,6 +189,73 @@ public sealed class FoundationPhysicalMultimodalRouteComparatorTests
             coastRoute.OneSeaLegRateMicro);
         Assert.True(bothRoute.LandOnlyRateMicro <=
             landRoute.LandOnlyRateMicro);
+
+        // STRESS QA: invest in EVERY real coast/land crossing, not just
+        // the two hand-picked terminals. This exposes whether shared
+        // physical infrastructure changes the preferred route at all.
+        var improvedCoasts = snapshot;
+        var improvedLand = snapshot;
+        int portCount = 0, landCount = 0;
+        foreach (var record in seed.Transport.Edges)
+        {
+            if (record.CargoMicroAtReferenceLoad == 500_000UL)
+            {
+                improvedCoasts =
+                    improvedCoasts.RecordMonetaryInfrastructureInvestment(
+                        Red, record.Edge,
+                        checked(record.NaturalConstructionCostMoneyMicro!.Value
+                            * 4UL));
+                portCount++;
+            }
+            else if (record.CargoMicroAtReferenceLoad == 1_000_000UL)
+            {
+                improvedLand = improvedLand.RecordMonetaryInfrastructureInvestment(
+                    Red, record.Edge,
+                    checked(record.NaturalConstructionCostMoneyMicro!.Value
+                        * 4UL));
+                landCount++;
+            }
+        }
+        Assert.True(portCount > 0 && landCount > 0);
+        var allPortRoutes = FoundationPhysicalMultimodalRouteComparator
+            .Compare(host.Session.GeneratedWorld, host.Incidence,
+                improvedCoasts.Transport, source, destination,
+                maxEligibleEmbarkations: 4096);
+        var allLandRoutes = FoundationPhysicalMultimodalRouteComparator
+            .Compare(host.Session.GeneratedWorld, host.Incidence,
+                improvedLand.Transport, source, destination,
+                maxEligibleEmbarkations: 4096);
+        Assert.Equal(natural.LandOnlyRateMicro,
+            allPortRoutes.LandOnlyRateMicro);
+        Assert.True(allPortRoutes.OneSeaLegRateMicro <
+            natural.OneSeaLegRateMicro);
+        Assert.True(allLandRoutes.LandOnlyRateMicro <
+            natural.LandOnlyRateMicro);
+        // Much stronger terminal development as a sensitivity test; this
+        // is NOT a historical coefficient or a proposed gameplay default.
+        var intensiveCoasts = snapshot;
+        foreach (var record in seed.Transport.Edges.Where(x =>
+            x.CargoMicroAtReferenceLoad == 500_000UL))
+            intensiveCoasts =
+                intensiveCoasts.RecordMonetaryInfrastructureInvestment(
+                    Red, record.Edge,
+                    checked(record.NaturalConstructionCostMoneyMicro!.Value
+                        * 64UL));
+        var intensiveSea = FoundationPhysicalMultimodalRouteComparator
+            .Compare(host.Session.GeneratedWorld, host.Incidence,
+                intensiveCoasts.Transport, source, destination,
+                maxEligibleEmbarkations: 4096);
+        Assert.True(intensiveSea.OneSeaLegRateMicro <=
+            allPortRoutes.OneSeaLegRateMicro);
+        Assert.Equal(natural.LandOnlyRateMicro,
+            intensiveSea.LandOnlyRateMicro);
+        _output.WriteLine(
+            $"GA_R55_NETWORK all_ports={portCount} all_land_edges={landCount} " +
+            $"all_ports_sea={allPortRoutes.OneSeaLegRateMicro} " +
+            $"all_land_terrestrial={allLandRoutes.LandOnlyRateMicro} " +
+            $"intensive_ports_sea={intensiveSea.OneSeaLegRateMicro} " +
+            $"intensive_ports_preferred={intensiveSea.SeaRoutePreferred} " +
+            $"modeled_legs=one exploration_upper_bound=4096");
 
         // No sea edge can receive investments, title or any expense.
         Assert.All(both.Transport.Edges.Where(x =>
