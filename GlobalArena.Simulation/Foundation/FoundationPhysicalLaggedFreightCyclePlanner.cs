@@ -251,7 +251,11 @@ public static class FoundationPhysicalLaggedFreightCyclePlanner
         {
             var road = roads[i];
             ulong scale = scales[road.Edge];
-            if (old.TryGetValue(road.Edge, out var prior) &&
+            // Unbounded natural sea throughput is never congestible,
+            // including when a stale historical quote is supplied.
+            if (scale != FoundationPhysicalEndogenousCongestionFeedback
+                    .UnboundedNaturalCargoCapacity &&
+                old.TryGetValue(road.Edge, out var prior) &&
                 prior.FreePhysicalCostMicroPerWholeCargoUnit ==
                     road.PhysicalCostMicroPerWholeCargoUnit &&
                 prior.ReferenceCargoMicro == scale)
