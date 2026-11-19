@@ -52,8 +52,8 @@ public sealed class FoundationPhysicalFrozenEconomicMaritimeComparatorTests
             .DeployInitialTreasury(
                 CivilizationTreasuryRuntimeState.CreateOpening(new[]
                 {
-                    (Red, 10_000_000_000_000UL),
-                    (Blue, 10_000_000_000_000UL)
+                    (Red, 1_000_000_000_000_000UL),
+                    (Blue, 1_000_000_000_000_000UL)
                 }));
         var fields = host.Session.GeneratedWorld.StrategicPhysicalFields;
         var isLand = host.Incidence.TileIncidences.Select(tile =>
@@ -115,8 +115,9 @@ public sealed class FoundationPhysicalFrozenEconomicMaritimeComparatorTests
         WorldState financed = state;
         if (m == 3)
         {
-            // The R63 research scenario established that developed
-            // coastal logistics can actually WIN for markets 16 -> 27.
+            // R63's older research cost policy could make maritime routes
+            // win at lower investment. Here much higher stress funding
+            // isolates the independent AUTHORITATIVE frozen cost domain.
             // Finance ALL real coast crossings with money (not materials),
             // but retain AUTHORITATIVE physical costs/capacity policy.
             var fields = host.Session.GeneratedWorld.StrategicPhysicalFields;
@@ -141,7 +142,7 @@ public sealed class FoundationPhysicalFrozenEconomicMaritimeComparatorTests
                 financed = financed.RecordMonetaryInfrastructureInvestment(
                     Red, coast.Edge,
                     checked(coast.NaturalConstructionCostMoneyMicro!.Value *
-                        256UL));
+                        65_536UL));
         }
         else
             financed = state.RecordMonetaryInfrastructureInvestment(
