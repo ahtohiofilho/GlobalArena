@@ -1,0 +1,36 @@
+name: GA-Next R66 — owner-aware frozen freight bound
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/Foundation/FoundationPhysicalMaritimeMarginalFreightBound.cs'
+      - 'GlobalArena.Tests/FoundationPhysicalMaritimeMarginalFreightBoundTests.cs'
+      - '.github/workflows/ga-next-r66-marginal-freight-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  economic-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Prove owner-aware freight floor and avoid same-cycle congestion
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release \
+            --filter 'FullyQualifiedName~FoundationPhysicalMaritimeMarginalFreightBoundTests' \
+            --logger 'console;verbosity=detailed' --nologo 2>&1 | tee ga-next-r66-evidence.log
+      - name: Archive safety gate evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ga-next-r66-frozen-owner-freight-gate
+          path: ga-next-r66-evidence.log
+          retention-days: 14
