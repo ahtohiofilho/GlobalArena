@@ -118,10 +118,11 @@ public sealed class PhysicalTransportInfrastructureRuntimeState
     }
 
     /// <summary>
-    /// Apply a verified MONEY debit to exactly one canonical natural edge.
-    /// This is capital expenditure, NOT material/commodity consumption.
-    /// Title and operational performance remain unchanged until a later
-    /// authoritative infrastructure-completion policy is implemented.
+    /// Apply a verified MONEY debit to one existing finite-capacity edge.
+    /// Reinvestment is allowed across turns without creating parallel
+    /// infrastructure. One monotone capital ledger finances progressively
+    /// greater operating capacity; ownership/tariffs are a separate gate.
+    /// No physical material, stock or worker is consumed.
     /// </summary>
     public PhysicalTransportInfrastructureRuntimeState RecordMoneyInvestment(
         PhysicalTacticalEdgeId edge, ulong moneyMicro)
@@ -147,11 +148,13 @@ public sealed class PhysicalTransportInfrastructureRuntimeState
         if (record.OwnershipKind != PhysicalTransportOwnershipKind.NoInfrastructure)
             throw new InvalidOperationException(
                 "This gate only finances a natural, unbuilt crossing.");
-        ulong required = record.NaturalConstructionCostMoneyMicro!.Value;
-        ulong prior = record.CommittedInvestmentMoneyMicro ?? 0UL;
-        if (prior >= required || moneyMicro > required - prior)
+        if (record.NaturalConstructionCostMoneyMicro is not > 0UL)
             throw new InvalidOperationException(
-                "Monetary investment exceeds the real remaining capital cost.");
+                "A financed edge needs its original positive capital quote.");
+        ulong prior = record.CommittedInvestmentMoneyMicro ?? 0UL;
+        if (moneyMicro > ulong.MaxValue - prior)
+            throw new InvalidOperationException(
+                "Cumulative investment exceeds exact canonical money range.");
 
         var rows = Edges.Select((r, i) => r with
         {

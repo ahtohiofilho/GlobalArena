@@ -614,11 +614,12 @@ public sealed class WorldState
         if (transport.HasCommittedInvestments &&
             (!treasury.IsInitialized || !transport.HasMonetaryConstructionCosts ||
              transport.Edges.Any(row =>
-                 row.CommittedInvestmentMoneyMicro!.Value >
-                     row.NaturalConstructionCostMoneyMicro!.Value)))
+                 row.NaturalConstructionCostMoneyMicro is not > 0UL ||
+                 (row.CargoMicroAtReferenceLoad == ulong.MaxValue &&
+                  row.CommittedInvestmentMoneyMicro.GetValueOrDefault() != 0UL))))
             throw new InvalidOperationException(
-                "Committed monetary construction must be fully financed " +
-                "and bounded by its per-edge capital requirement.");
+                "Committed improvements require a positive original monetary " +
+                "reference, authoritative treasury and zero investment in open sea.");
 
         if (worldBinding is not null)
         {

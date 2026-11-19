@@ -71,16 +71,15 @@ public static class FoundationPhysicalAuthoritativeTransportProjector
     }
 
     /// <summary>
-    /// R48 EXPERIMENTAL efficiency contract, not approved final balance:
-    /// K_effective = K_natural * (1 + I / (B + I)).
-    /// B is the immutable, real monetary construction quote; I is the
-    /// authenticated capital ledger already debited from civilization cash.
-    /// This rational form needs no floating point, has strictly decreasing
-    /// marginal returns in I, and keeps all rates deterministic. Under the
-    /// current one-construction funding gate 0 <= I <= B, so capacity gains
-    /// range from zero to 50%. Further funding stages need a separate gate.
-    /// Sea is physically unbounded permanently and rejects investment;
-    /// it never receives a finite artificial carrying capacity.
+    /// R49 provisional, unbounded-with-respect-to-investment rule:
+    /// K = Knatural + floor(Knatural * (sqrt(1 + 3*I/B) - 1)/2).
+    /// This expression is evaluated EXACTLY with scaled integer square
+    /// roots. I is real settled investment; B the original base quote.
+    /// I=B yields a 50% improvement matching R48, while larger I keeps
+    /// increasing capacity with diminishing returns and no game-stage cap.
+    /// Since the integer radicand increases with I and the square root is
+    /// monotone, additional funding CANNOT reduce throughput due to
+    /// rounding. No floating point or port-specific rules.
     /// </summary>
     public static ulong EffectiveReferenceCargo(
         PhysicalTransportEdgeRuntimeRecord edge)
@@ -108,18 +107,45 @@ public static class FoundationPhysicalAuthoritativeTransportProjector
         ulong baseQuote = edge.NaturalConstructionCostMoneyMicro
             ?? throw new InvalidOperationException(
                 "Capital-bearing crossings need a verified construction quote.");
-        if (baseQuote == 0UL || invested > baseQuote)
+        if (baseQuote == 0UL)
             throw new InvalidOperationException(
-                "Investment must respect the already authorized construction budget.");
+                "Investment requires a positive monetary construction reference.");
 
-        BigInteger numerator = (BigInteger)natural * invested;
-        BigInteger denominator = (BigInteger)baseQuote + invested;
-        // Exact integer truncation is deterministic; not a fictional
-        // absolute shipment cap. Reject overflow, never silently clamp.
-        BigInteger capacity = (BigInteger)natural + numerator / denominator;
+        BigInteger amount = new BigInteger(invested);
+        BigInteger quote = new BigInteger(baseQuote);
+        BigInteger baseCapacity = new BigInteger(natural);
+        // floor(sqrt(floor(K^2 * (B + 3I) / B))) equals
+        // floor(K * sqrt(1 + 3I/B)); exact with integer arithmetic.
+        BigInteger scaledRoot = IntegerSquareRoot(
+            baseCapacity * baseCapacity * (quote + 3 * amount) / quote);
+        BigInteger improvement = (scaledRoot - baseCapacity) / 2;
+        BigInteger capacity = baseCapacity + improvement;
         if (capacity >= ulong.MaxValue)
             throw new OverflowException(
-                "A finite built crossing cannot use the unbounded-sea marker.");
+                "Finite improved crossing exceeds the available canonical capacity range.");
         return checked((ulong)capacity);
+    }
+
+    /// <summary>
+    /// Floor(sqrt(value)); exact for all nonnegative BigInteger inputs.
+    /// Uses no float, random state, rounding mode or platform-dependent Math.
+    /// The starting bound is derived from bit length, Newton converges
+    /// monotonically downward to the exact integer square root.
+    /// </summary>
+    internal static BigInteger IntegerSquareRoot(BigInteger value)
+    {
+        if (value.Sign < 0)
+            throw new ArgumentOutOfRangeException(nameof(value));
+        if (value.IsZero)
+            return BigInteger.Zero;
+        int bits = checked((int)value.GetBitLength());
+        BigInteger x = BigInteger.One << ((bits + 1) / 2);
+        while (true)
+        {
+            BigInteger next = (x + value / x) >> 1;
+            if (next >= x)
+                return x;
+            x = next;
+        }
     }
 }
