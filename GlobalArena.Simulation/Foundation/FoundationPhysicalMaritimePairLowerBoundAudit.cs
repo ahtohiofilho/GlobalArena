@@ -29,7 +29,7 @@ public static class FoundationPhysicalMaritimePairLowerBoundAudit
         long RemainingPairs,
         int ReachableEmbarkations,
         int ReachableDisembarkations,
-        bool ChosenSeaPairPreserved)
+        bool GlobalWinnerPreserved)
     {
         public double ExcludedPercent => PotentialPairs == 0L ? 0.0 :
             100.0 * ProvablyExcludedPairs / PotentialPairs;
@@ -187,10 +187,16 @@ public static class FoundationPhysicalMaritimePairLowerBoundAudit
                     "The reference disembarkation is not reachable by land.");
             UInt128 lower = (UInt128)a.LandApproachPlusTransfer +
                 b.LandApproachPlusTransfer + 1UL;
-            winnerSafe = lower <= upper.Value;
+            // The oracle reports its best SEA alternative even when
+            // the terrestrial route is globally cheaper. In that case
+            // legitimately eliminating the losing sea choice is exactly
+            // what the bound is intended to do. Protect the sea pair only
+            // when it is the GLOBAL winning mode (tie: land preferred).
+            winnerSafe = !oracle.SeaRoutePreferred ||
+                lower <= upper.Value;
             if (!winnerSafe)
                 throw new InvalidOperationException(
-                    "Provable exclusion would lose the oracle's chosen sea pair.");
+                    "Provable exclusion would lose the globally winning sea pair.");
         }
         return new Evidence(upper.Value, potential, excluded, retained,
             entries.Length, exits.Length, winnerSafe);
