@@ -217,8 +217,12 @@ public sealed class FoundationNaturalCapacitySweepTests
             ("sea", 100_000UL, 10_000UL)
         })
         {
+            var infiniteSea = kind == "sea";
             var edge = seed.Transport.Edges.First(e =>
-                e.CargoMicroAtReferenceLoad == originalK);
+                e.CargoMicroAtReferenceLoad == (infiniteSea
+                    ? FoundationPhysicalEndogenousCongestionFeedback
+                        .UnboundedNaturalCargoCapacity
+                    : originalK));
             var topology = s.Host.Incidence.FineTopology.Edges.First(e =>
                 e.Id == edge.Edge.FineStrategicEdgeId);
             var a = new PhysicalTacticalTileId(
@@ -250,7 +254,10 @@ public sealed class FoundationNaturalCapacitySweepTests
                 edge.Edge, FoundationInfrastructureOwnershipKind.NoInfrastructure,
                 null, edge.FreePhysicalCostMicroPerWholeCargoUnit, 0UL);
             var scale = new FoundationPhysicalEdgeCarryingScale(
-                edge.Edge, checked(originalK * multiplier));
+                edge.Edge, infiniteSea
+                    ? FoundationPhysicalEndogenousCongestionFeedback
+                        .UnboundedNaturalCargoCapacity
+                    : checked(originalK * multiplier));
             var quotes = FoundationPhysicalUniversalMarketPricing
                 .QuotesFromRealWorkers(census, s.Demand);
             FoundationPhysicalLaggedFreightQuoteState? prior = null;
@@ -267,6 +274,9 @@ public sealed class FoundationNaturalCapacitySweepTests
                 if (turn == 1)
                     Assert.True(reading.CurrentCargoMicro > 0UL,
                         "The isolated real coastal/sea edge must actually be used.");
+                if (infiniteSea)
+                    Assert.Equal(reading.FreePhysicalCostMicroPerWholeCargoUnit,
+                        reading.DampedNextPhysicalQuoteMicroPerWholeCargoUnit);
                 _output.WriteLine(string.Format(
                     System.Globalization.CultureInfo.InvariantCulture,
                     "GA_K_CROSSING class={0} K_multiplier={1} cycle={2} " +
