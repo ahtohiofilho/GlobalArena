@@ -121,6 +121,8 @@ jobs:
         run: dotnet restore GlobalArena.Tests/GlobalArena.Tests.csproj
       - name: Compile all canonical simulation plus new foundation code
         run: dotnet build GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-restore
+      - name: R51 — audited per-delivery modal transitions and real coastline cost A/B
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationCoastalTransshipmentRouteDiagnosticsTests' --logger 'console;verbosity=detailed'
       - name: QA #435 — K-only three/four-cycle route stability matrix, frozen six workers
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationNaturalCapacitySweepTests' --logger 'console;verbosity=detailed'
       - name: Real CSharp physical worker market and movement contracts
