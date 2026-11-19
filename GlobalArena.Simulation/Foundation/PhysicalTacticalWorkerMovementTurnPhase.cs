@@ -99,13 +99,25 @@ public sealed class PhysicalTacticalWorkerMoveEventExecutor : ISimulationEventEx
 
     public PhysicalTacticalWorkerMoveEventExecutor(
         WorldGenerationResult world, PhysicalTacticalIncidenceMap map)
+        : this(world, map, RuntimeWorldBinding.FromGeneratedWorld(world)) { }
+
+    public PhysicalTacticalWorkerMoveEventExecutor(
+        WorldGenerationResult world, PhysicalTacticalIncidenceMap map,
+        FoundationFineFirstPhysicalGeography fine,
+        FoundationFineFirstWorldgenIdentity signature)
+        : this(world, map, RuntimeWorldBinding.FromFineFirst(
+            world, map, fine, signature)) { }
+
+    private PhysicalTacticalWorkerMoveEventExecutor(
+        WorldGenerationResult world, PhysicalTacticalIncidenceMap map,
+        RuntimeWorldBinding binding)
     {
         ArgumentNullException.ThrowIfNull(world);
         _map = map ?? throw new ArgumentNullException(nameof(map));
         if (world.Request.StrategicParameters != map.Refinement.CoarseParameters)
             throw new InvalidOperationException(
                 "Fine graph must refine the actual bound canonical generated world.");
-        _binding = RuntimeWorldBinding.FromGeneratedWorld(world);
+        _binding = binding;
         foreach (var edge in map.FineTopology.Edges)
         {
             var a = edge.IncidentCellIds[0];
@@ -213,6 +225,14 @@ public sealed class PhysicalTacticalWorkerMovementTurnPhase : ITurnResolutionPha
         WorldGenerationResult world, PhysicalTacticalIncidenceMap map)
     {
         _executor = new(world, map);
+    }
+
+    public PhysicalTacticalWorkerMovementTurnPhase(
+        WorldGenerationResult world, PhysicalTacticalIncidenceMap map,
+        FoundationFineFirstPhysicalGeography fine,
+        FoundationFineFirstWorldgenIdentity signature)
+    {
+        _executor = new(world, map, fine, signature);
     }
 
     public TurnResolutionResult Resolve(
