@@ -74,6 +74,10 @@ public partial class TacticalContextPreview : SubViewportContainer
     private readonly Dictionary<ulong, SphericalPoint3[]> _preparedCanonicalTileGeometry = new();
     // R25: pan intent is advisory; it selects existing canonical prefetch plans only.
     private StrategicSphericalGeometry? _cachedCoarseGeometry;
+    // The world geometry is deterministic for this presentation seed and
+    // refinement. Generate it only once, not at every focus boundary.
+    private WorldGenerationResult? _cachedCoarseWorld;
+    private WorldGenerationResult? _cachedFineWorld;
     private Vector3 _prefetchIntentOrigin;
     private ulong _lastPrefetchIntentFocus;
     // R29 additive resident expansion remains disabled: R43 now performs a
@@ -865,10 +869,10 @@ public partial class TacticalContextPreview : SubViewportContainer
         if (_ringCount == 1 && !framingTiles.SequenceEqual(canonicalFirstRing.PhysicalTileIds))
             throw new InvalidOperationException("First-ring physical identities changed.");
 
-        var coarseWorld = new DeterministicWorldGenerator().Generate(
+        var coarseWorld = _cachedCoarseWorld ??= new DeterministicWorldGenerator().Generate(
             new WorldGenerationRequest(new WorldSeed(20261012UL),
                 WorldGenerationVersion.Initial, refinement.CoarseParameters));
-        var fineWorld = new DeterministicWorldGenerator().Generate(
+        var fineWorld = _cachedFineWorld ??= new DeterministicWorldGenerator().Generate(
             new WorldGenerationRequest(new WorldSeed(20261012UL),
                 WorldGenerationVersion.Initial, refinement.FineParameters));
         _cachedCoarseGeometry = coarseWorld.StrategicSphericalGeometry;
