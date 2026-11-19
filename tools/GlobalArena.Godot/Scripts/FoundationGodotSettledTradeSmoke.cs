@@ -93,7 +93,45 @@ internal sealed class FoundationGodotSettledTradeSmoke
                 "Canonical relief color cannot vary between frames.");
             GD.Print("GA_NEXT_R80_CONTINUOUS_ECONOMY_RELIEF_PASS " +
                 "source=authoritative_v1 no_discrete_biomes=true");
+
+            // R81 independently verify that high-resolution 01C-style
+            // variation stays on the SAME economic side of sea level
+            // for all real fine tiles. It is not a new gameplay height.
+            var canonical = _host.Session.GeneratedWorld;
+            var incidence = _host.Incidence;
+            var heights = canonical.StrategicTopology.Cells.Select(cell =>
+                canonical.StrategicPhysicalFields.Elevation
+                    .GetRawValue(cell.Id)).ToArray();
+            long min = heights.Min(), max = heights.Max();
+            long sea = canonical.StrategicPhysicalFields.SeaLevel.RawValue;
+            var detail = CanonicalEconomyFineVisualDetail.Create(
+                canonical, incidence, min, max);
+            Must(detail.FineTileCount == incidence.FineTopology.Cells.Count,
+                "R81 must cover the full actual physical tactical grid.");
+            var distinctHeights = new HashSet<long>();
+            for (int i = 0; i < incidence.TileIncidences.Count; i++)
+            {
+                var row = incidence.TileIncidences[i];
+                long sum = 0L;
+                foreach (var coarse in row.IncidentCoarseCellIds)
+                    sum = checked(sum + canonical.StrategicPhysicalFields
+                        .Elevation.GetRawValue(coarse));
+                long baseHeight = sum / row.IncidentCoarseCellIds.Count;
+                long visual = detail.Elevation((ulong)i + 1UL);
+                Must((baseHeight > sea) == (visual > sea) &&
+                     visual >= min && visual <= max,
+                    "Visual microdetail changed a physical land/water edge.");
+                distinctHeights.Add(visual);
+            }
+            Must(distinctHeights.Count > heights.Distinct().Count(),
+                "Fine relief must have more actual variation than coarse V1.");
+            GD.Print("GA_NEXT_R81_MULTISCALE_DETAIL_PASS " +
+                $"tiles={detail.FineTileCount} distinct={distinctHeights.Count} " +
+                "coast=authoritative_v1 visual_only=true");
             await Frames();
+            Must(_map.FineVisualDetailTileCount ==
+                 incidence.FineTopology.Cells.Count,
+                "Godot tactical surface did not use the R81 fine relief.");
             Must(_main.ActiveTacticalHost == _host &&
                  _host.StateHash.FormatVersion == 13U &&
                  _host.Snapshot.Treasury.IsInitialized &&

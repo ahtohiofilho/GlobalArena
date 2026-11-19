@@ -38,6 +38,9 @@ public partial class TacticalContextPreview : SubViewportContainer
     private WorldGenerationResult? _authoritativeEconomyTerrainWorld;
     private long _economyReliefMinimum;
     private long _economyReliefMaximum;
+    private CanonicalEconomyFineVisualDetail? _economyFineDetail;
+    internal int FineVisualDetailTileCount =>
+        _economyFineDetail?.FineTileCount ?? 0;
     private Button? _terrainModeButton;
 
     public void ConfigureAuthoritativeEconomyTerrain(
@@ -63,10 +66,11 @@ public partial class TacticalContextPreview : SubViewportContainer
             _economyReliefMaximum = heights.Max();
         }
         _authoritativeEconomyTerrainWorld = world;
+        _economyFineDetail = null;
         if (_terrainModeButton is not null)
             _terrainModeButton.Text = !_showExperimentalTerrain
                 ? "TERRAIN: IDS"
-                : world is null ? "TERRAIN: 01C EXP" : "TERRAIN: ECONOMY RELIEF";
+                : world is null ? "TERRAIN: 01C EXP" : "TERRAIN: ECONOMY RELIEF + DETAIL";
         GD.Print($"GA_TACTICAL_TERRAIN_SOURCE source={(world is null ? "DECORATIVE_01C" : "AUTH_V1_ECONOMY")} freight_map_aligned={world is not null}");
     }
 
@@ -95,12 +99,21 @@ public partial class TacticalContextPreview : SubViewportContainer
             .SeaLevel.RawValue;
 
     private Color EconomicTerrainTint(
-        ulong tileId, PhysicalTacticalIncidenceMap physical) =>
-        CanonicalEconomyReliefPalette.FromElevation(
-            AuthoritativeEconomyElevation(tileId, physical),
-            _authoritativeEconomyTerrainWorld!.StrategicPhysicalFields
-                .SeaLevel.RawValue,
+        ulong tileId, PhysicalTacticalIncidenceMap physical)
+    {
+        var world = _authoritativeEconomyTerrainWorld ??
+            throw new InvalidOperationException(
+                "Detailed economy preview requires a canonical world.");
+        // Lazily build one deterministic high-frequency visual field for
+        // all tiles; pan and zoom never reseed it. Only presentation uses it.
+        _economyFineDetail ??= CanonicalEconomyFineVisualDetail.Create(
+            world, physical, _economyReliefMinimum,
+            _economyReliefMaximum);
+        return CanonicalEconomyReliefPalette.FromElevation(
+            _economyFineDetail.Elevation(tileId),
+            world.StrategicPhysicalFields.SeaLevel.RawValue,
             _economyReliefMinimum, _economyReliefMaximum);
+    }
     private ulong? _selectedFineTileId;
     // R30: presentation-only notification to the existing right sidebar.
     public event Action<ulong?, string, string>? PhysicalTileInspected;
@@ -591,7 +604,7 @@ public partial class TacticalContextPreview : SubViewportContainer
             _showExperimentalTerrain = !_showExperimentalTerrain;
             terrainButton.Text = !_showExperimentalTerrain ? "TERRAIN: IDS" :
                 _authoritativeEconomyTerrainWorld is null
-                    ? "TERRAIN: 01C EXP" : "TERRAIN: ECONOMY RELIEF";
+                    ? "TERRAIN: 01C EXP" : "TERRAIN: ECONOMY RELIEF + DETAIL";
             if (_activeFocus != 0) Open(_activeFocus);
             GD.Print($"GA_TACTICAL_EXPERIMENTAL_TERRAIN visible={_showExperimentalTerrain} reference_seed={TerrainExperimentSeed}");
         };
@@ -898,7 +911,7 @@ public partial class TacticalContextPreview : SubViewportContainer
             if (_terrainDetails is not null)
                 _terrainDetails.Text = _showExperimentalTerrain
                     ? (_authoritativeEconomyTerrainWorld is not null
-                        ? "ECONOMY RELIEF | continuous canonical V1 elevation"
+                        ? "ECONOMY RELIEF | V1 coast; 01C fine detail is visual only"
                         : "01C EXPERIMENT | tactical terrain only; strategic globe still V1")
                     : "DIAGNOSTIC COLORS | not a terrain classification";
             PhysicalTileInspected?.Invoke(null, _selection.Text, _terrainDetails?.Text ?? "");
@@ -929,8 +942,8 @@ public partial class TacticalContextPreview : SubViewportContainer
         {
             bool land = IsAuthoritativeEconomyLand(matched.Id, _cachedPhysicalMap);
             _terrainDetails.Text = land
-                ? "ECONOMY RELIEF | LAND | continuous canonical V1 elevation"
-                : "ECONOMY RELIEF | WATER | continuous canonical V1 depth";
+                ? "ECONOMY RELIEF | LAND | V1 coast; fine visual relief"
+                : "ECONOMY RELIEF | WATER | V1 coast; fine visual depth";
         }
         else if (_terrainDetails is not null && _terrainReference is not null && _showExperimentalTerrain)
         {
