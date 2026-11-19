@@ -39,6 +39,8 @@ public partial class TacticalContextPreview : SubViewportContainer
     private long _economyReliefMinimum;
     private long _economyReliefMaximum;
     private CanonicalEconomyFineVisualDetail? _economyFineDetail;
+    internal int FineVisualDetailTileCount =>
+        _economyFineDetail?.FineTileCount ?? 0;
     private Button? _terrainModeButton;
 
     public void ConfigureAuthoritativeEconomyTerrain(
