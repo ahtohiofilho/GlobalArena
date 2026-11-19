@@ -1,0 +1,39 @@
+name: GA-Next R54 — paired coastal investment affects an entire sea leg
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/Foundation/FoundationPhysicalPairedCoastalSeaLegQuote.cs'
+      - 'GlobalArena.Tests/FoundationPhysicalPairedCoastalSeaLegQuoteTests.cs'
+      - '.github/workflows/ga-next-r54-paired-sea-legs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  paired-sea-leg:
+    name: Exact real-port financing and zero cyclic feedback
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Audit real coastline and frozen invested quote
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release \
+            --filter 'FullyQualifiedName~FoundationPhysicalPairedCoastalSeaLegQuoteTests' \
+            --logger 'console;verbosity=detailed' --nologo 2>&1 | tee ga-next-r54-paied-sea-leg.log
+          grep 'GA_R54 paired_coast=' ga-next-r54-paied-sea-leg.log > ga-next-r54-sea-leg-report.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ga-next-r54-verified-maritime-quote
+          path: |
+            ga-next-r54-paied-sea-leg.log
+            ga-next-r54-sea-leg-report.txt
+          retention-days: 14
