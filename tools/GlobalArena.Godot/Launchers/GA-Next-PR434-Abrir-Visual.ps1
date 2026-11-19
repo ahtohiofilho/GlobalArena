@@ -11,13 +11,14 @@ $ErrorActionPreference = 'Stop'
 $ExpectedAncestor = '65c868a2abcd8f74bbdeabda204dae16555e850a'
 $PullRef = 'refs/pull/434/head'
 $ExpectedCodeBlobs = @{
-    'tools/GlobalArena.Godot/Scripts/Main.cs' = '8b3f35ce65dd64bad3e9a73d4565fa10db971186'
+    'tools/GlobalArena.Godot/Scripts/Main.cs' = '172b8e74e26a2396281f343ea7f62565f155a739'
     'tools/GlobalArena.Godot/Scripts/Main.InteractiveEconomyPreview.cs' = '530e52ebef582e8d95be5a38ac6653cde26fa690'
     'tools/GlobalArena.Godot/Scripts/GaExplicitEconomicQaConfiguration.cs' = 'd0eff1907fbe69814b1c60a67a0b1217a962152b'
     'GlobalArena.Simulation/Foundation/FoundationAuthoritativeEconomicSalesSettlementPhase.cs' = '0feda919196aab74b9a58746a6235136d869f3d0'
     'GlobalArena.Simulation/Foundation/FoundationGameplayEconomicBootstrap.cs' = '2e6dd2ff661344135d32c6d4f30306efea4b157b'
     'tools/GlobalArena.Godot/Scripts/TacticalContextPreview.SettledTradeRoutes.cs' = '86ecb9b8ef52262ff59d45d66e735badb3b1b8b5'
-    'tools/GlobalArena.Godot/Scripts/TacticalContextPreview.cs' = 'c541f9bf9ec0ffe815f4a71fe5395fbdaea6e634'
+    'tools/GlobalArena.Godot/Scripts/TacticalContextPreview.cs' = 'eea210f34d37b2ecacb0f3ef124334e801034e8a'
+    'tools/GlobalArena.Godot/Scripts/FoundationGodotContinuousNavigationSmoke.cs' = '23a31085fc1d8fde5337d20e8d14604e7ba34537'
 }
 $OfficialGodotUrl = 'https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_mono_win64.zip'
 $OfficialGodotSha = 'a2a48473a7414c5f19fab690518caebb738c09ef9601f6bd2388676a7f53b3c0'
@@ -132,7 +133,8 @@ try {
         'GA_NEXT_WORKER_BOARD_SMOKE',
         'GA_NEXT_TILE_HOVER_HYPOTHESIS_SMOKE',
         'GA_NEXT_SETTLED_TRADE_VISUAL_SMOKE',
-        'GA_NEXT_INTERACTIVE_ECONOMY_PREVIEW'
+        'GA_NEXT_INTERACTIVE_ECONOMY_PREVIEW',
+        'GA_NEXT_CONTINUOUS_NAVIGATION_SMOKE'
     )) {
         [System.Environment]::SetEnvironmentVariable($name, $null, 'Process')
     }
