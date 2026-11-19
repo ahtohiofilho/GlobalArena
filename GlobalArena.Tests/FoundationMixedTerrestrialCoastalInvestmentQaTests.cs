@@ -103,6 +103,8 @@ public sealed class FoundationMixedTerrestrialCoastalInvestmentQaTests
         var seaEdge = seeded.Transport.Edges.First(x =>
             x.CargoMicroAtReferenceLoad == ulong.MaxValue);
         var originalCash = noConstruction.Treasury.Get(Red).CashScaled;
+        var quotes = FoundationPhysicalUniversalMarketPricing
+            .QuotesFromRealWorkers(census, demand);
         var signatures = new List<string>();
         foreach (var (label, terrestrial, coastal) in new[]
         {
@@ -154,9 +156,13 @@ public sealed class FoundationMixedTerrestrialCoastalInvestmentQaTests
             FoundationPhysicalLaggedFreightQuoteState? previous = null;
             for (int cycle = 1; cycle <= 4; cycle++)
             {
+                // A/B uses an uncommitted preview across all four rounds:
+                // the gameplay API correctly forbids preview quotes being
+                // reused as settled history, so use the explicit research
+                // candidate and never write these quotes into the treasury.
                 var plan = FoundationPhysicalLaggedFreightCyclePlanner
-                    .CoordinateUniversalCandidate(census, host.Incidence,
-                        demand, cargo, roads, scales,
+                    .CoordinateCandidate(census, host.Incidence,
+                        demand, cargo, quotes, roads, scales,
                         previousClosedCycleQuotes: previous,
                         maxProducerPasses: 64);
                 var audit = plan.Distribution.AllocationAudit;
