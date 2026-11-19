@@ -365,4 +365,90 @@ public sealed class FoundationMonetaryInfrastructureInvestmentTests
         Assert.Equal(BigInteger.Zero,
             zero.Treasury.Get(Blue).CashScaled);
     }
+    [Fact]
+    public void NaturalCoastIsAnInvestableGargleneckButOpenSeaIsNeverConstructible()
+    {
+        var s = Create();
+        var start = s.Host.Snapshot;
+        var sea = start.Transport.Edges.First(row =>
+            row.CargoMicroAtReferenceLoad == ulong.MaxValue);
+        var coast = start.Transport.Edges.First(row =>
+            row.FreePhysicalCostMicroPerWholeCargoUnit == 20_000_000UL &&
+            row.CargoMicroAtReferenceLoad == 100_000UL);
+        Assert.Equal(PhysicalTransportOwnershipKind.NoInfrastructure,
+            coast.OwnershipKind);
+        Assert.Equal(PhysicalTransportOwnershipKind.NoInfrastructure,
+            sea.OwnershipKind);
+        Assert.Throws<InvalidOperationException>(() =>
+            s.Host.QueueHumanMonetaryInvestment(Red, sea.Edge, 1UL));
+        Assert.Equal(0, s.Host.PendingOrderCount);
+        Assert.Same(start, s.Host.Snapshot);
+        Assert.Equal(ulong.MaxValue,
+            FoundationPhysicalAuthoritativeTransportProjector
+                .FromWorld(start, s.Host.Incidence).Scales
+                .Single(x => x.Edge == sea.Edge).CargoMicroAtReferenceLoad);
+
+        // No port entity or construction mode: invest in the actual coast
+        // edge using the same monetary command as every terrestrial edge.
+        const ulong spend = 1_000_000UL;
+        s.Host.QueueHumanMonetaryInvestment(Red, coast.Edge, spend);
+        s.Host.SetHumanReady(Red);
+        var receipt = s.Host.TryCloseTurn();
+        Assert.NotNull(receipt);
+        Assert.True(receipt!.ReplayMatched);
+        Assert.Single(receipt.InfrastructureInvestments);
+        var after = s.Host.Snapshot;
+        Assert.Equal(start.Transport.Edges.Count, after.Transport.Edges.Count);
+        var built = after.Transport.Edges.Single(x => x.Edge == coast.Edge);
+        Assert.Equal(spend, built.CommittedInvestmentMoneyMicro);
+        Assert.Equal(coast.CargoMicroAtReferenceLoad,
+            built.CargoMicroAtReferenceLoad);
+        var effective = FoundationPhysicalAuthoritativeTransportProjector
+            .FromWorld(after, s.Host.Incidence).Scales
+            .Single(x => x.Edge == coast.Edge).CargoMicroAtReferenceLoad;
+        Assert.True(effective > coast.CargoMicroAtReferenceLoad);
+        Assert.Equal(PhysicalTransportOwnershipKind.NoInfrastructure,
+            built.OwnershipKind);
+        Assert.Equal(0UL, built.ExternalTariffMicroPerWholeCargoUnit);
+        Assert.Equal(ulong.MaxValue,
+            FoundationPhysicalAuthoritativeTransportProjector
+                .FromWorld(after, s.Host.Incidence).Scales
+                .Single(x => x.Edge == sea.Edge).CargoMicroAtReferenceLoad);
+        Assert.Throws<InvalidOperationException>(() =>
+            after.Transport.RecordMoneyInvestment(sea.Edge, 1UL));
+    }
+
+    [Fact]
+    public void TheSameInvestmentFunctionHasDiminishingMarginalCapacityReturns()
+    {
+        var s = Create();
+        var natural = s.Host.Snapshot.Transport.Edges.First(x =>
+            x.CargoMicroAtReferenceLoad != ulong.MaxValue &&
+            x.NaturalConstructionCostMoneyMicro is > 0UL);
+        ulong cost = natural.NaturalConstructionCostMoneyMicro!.Value;
+        ulong quarter = cost / 4UL;
+        Assert.True(quarter > 0UL);
+        ulong k0 = FoundationPhysicalAuthoritativeTransportProjector
+            .EffectiveReferenceCargo(natural);
+        ulong k1 = FoundationPhysicalAuthoritativeTransportProjector
+            .EffectiveReferenceCargo(natural with
+            { CommittedInvestmentMoneyMicro = quarter });
+        ulong k2 = FoundationPhysicalAuthoritativeTransportProjector
+            .EffectiveReferenceCargo(natural with
+            { CommittedInvestmentMoneyMicro = quarter * 2UL });
+        ulong k4 = FoundationPhysicalAuthoritativeTransportProjector
+            .EffectiveReferenceCargo(natural with
+            { CommittedInvestmentMoneyMicro = cost });
+        Assert.True(k0 < k1 && k1 < k2 && k2 < k4);
+        // For equal-sized investment increments the earlier increment
+        // must return more additional capacity than the later increment.
+        Assert.True(k1 - k0 > (k2 - k1));
+        Assert.True(k2 - k0 > k4 - k2);
+        Assert.Equal(k0 + k0 / 2UL, k4);
+        Assert.Throws<InvalidOperationException>(() =>
+            FoundationPhysicalAuthoritativeTransportProjector
+                .EffectiveReferenceCargo(natural with
+                { CommittedInvestmentMoneyMicro = cost + 1UL }));
+    }
+
 }
