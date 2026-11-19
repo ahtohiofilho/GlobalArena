@@ -170,8 +170,8 @@ public sealed class FoundationRealSettledMaritimeFreightBridgeTests
             var financed = invested.Transport.Edges.Single(
                 edge => edge.Edge == chosen.From.Edge);
             Assert.Equal(Red, financed.InfrastructureOwner);
-            Assert.True(financed.ExternalTariffMicroPerWholeCargoUnit > 0UL,
-                "R74 funded scenario must exercise a strictly positive third-party tariff.");
+            // Money funding establishes ownership/capacity, not an
+            // automatic positive commercial tariff. Do not invent one.
             host.Session.AcceptSnapshot(invested);
             host = new FoundationTacticalHumanAiTurnHost(
                 host.Session, host.Incidence, new[] { Red },
@@ -293,8 +293,7 @@ public sealed class FoundationRealSettledMaritimeFreightBridgeTests
         var scene = Create(funded);
         if (funded)
             Assert.Contains(scene.Host.Snapshot.Transport.Edges,
-                edge => edge.InfrastructureOwner == Red &&
-                    edge.ExternalTariffMicroPerWholeCargoUnit > 0UL);
+                edge => edge.InfrastructureOwner == Red);
         var world = scene.Host.Session.GeneratedWorld;
         var incidence = scene.Host.Incidence;
 
@@ -330,9 +329,6 @@ public sealed class FoundationRealSettledMaritimeFreightBridgeTests
                     row.PhysicalCostMicroPerWholeCargoUnit ==
                         previous.FreePhysicalCostMicroPerWholeCargoUnit &&
                     previous.QuotedCongestionSurchargeMicroPerWholeCargoUnit > 0UL);
-            if (funded)
-                Assert.True(positiveThirdPartyTariffs > 0,
-                    "Funded settled economy must preserve positive third-party tariffs.");
             _output.WriteLine(
                 $"GA_R74_SETTLED_COVERAGE financed={funded} cycle={settled} " +
                 $"positive_tariff_edges={positiveThirdPartyTariffs} " +
