@@ -24,7 +24,8 @@ public static class FoundationPhysicalMultimodalRouteComparator
         PhysicalTacticalEdgeId? DisembarkEdge,
         int ExploredSeaOrigins,
         int EligibleEmbarkations,
-        int EligibleDisembarkations)
+        int EligibleDisembarkations,
+        long ExpandedSeaTiles = 0L)
     {
         public bool SeaRoutePreferred =>
             OneSeaLegRateMicro.HasValue &&
@@ -82,7 +83,8 @@ public static class FoundationPhysicalMultimodalRouteComparator
         PhysicalTransportInfrastructureRuntimeState transport,
         PhysicalTacticalTileId source,
         PhysicalTacticalTileId destination,
-        int maxEligibleEmbarkations = 128)
+        int maxEligibleEmbarkations = 128,
+        bool useOptimizedSeaSearch = true)
     {
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -176,23 +178,63 @@ public static class FoundationPhysicalMultimodalRouteComparator
         ulong? seaBest = null;
         PhysicalTacticalEdgeId? embark = null, disembark = null;
         int explored = 0;
+        long expandedSeaTiles = 0L;
+
+        // The sea graph is undirected and the R54 terminal-pair discount
+        // is symmetric. Therefore computing distances from the smaller set
+        // of DISTINCT water tiles is exact. Multiple coast crossings can
+        // share the same water tile: one solve serves all of those ports.
+        // Dijkstra can also stop when every relevant destination water
+        // tile is settled. Every result is still tested in the ORIGINAL
+        // ordered port-pair traversal below, preserving tie-breaking.
+        ulong[] entryTiles = entrances.Select(p => p.SeaTile)
+            .Distinct().OrderBy(x => x).ToArray();
+        ulong[] exitTiles = exits.Select(p => p.SeaTile)
+            .Distinct().OrderBy(x => x).ToArray();
+        bool searchFromExits = useOptimizedSeaSearch &&
+            exitTiles.Length < entryTiles.Length;
+        ulong[] searchTiles = searchFromExits ? exitTiles : entryTiles;
+        ulong[] targetTiles = searchFromExits ? entryTiles : exitTiles;
+        var cache = new Dictionary<ulong, ulong[]>();
+        IReadOnlySet<ulong>? targets = useOptimizedSeaSearch
+            ? targetTiles.ToHashSet() : null;
+        if (useOptimizedSeaSearch)
+        {
+            foreach (ulong tile in searchTiles)
+            {
+                cache.Add(tile, ShortestSea(tile, seaGraph, count,
+                    targets!, out long visited));
+                explored++;
+                expandedSeaTiles = checked(expandedSeaTiles + visited);
+            }
+        }
         foreach (var portA in entrances)
         {
-            // One exact sea-subgraph Dijkstra per ACTUAL reachable
-            // embarkation port, never once per commodity or cargo unit.
-            ulong[] seaDistances = Shortest(portA.SeaTile,
-                seaGraph, count);
-            explored++;
+            // R55 baseline remains selectable for an independent numerical
+            // A/B. Never cache a result from another transport snapshot:
+            // all graph and investment-derived costs belong to THIS call.
+            ulong[]? baselineDistances = null;
+            if (!useOptimizedSeaSearch)
+            {
+                baselineDistances = ShortestSea(portA.SeaTile,
+                    seaGraph, count, null, out long visited);
+                explored++;
+                expandedSeaTiles = checked(expandedSeaTiles + visited);
+            }
             foreach (var portB in exits)
             {
+                ulong[] seaDistances = useOptimizedSeaSearch
+                    ? cache[searchFromExits
+                        ? portB.SeaTile : portA.SeaTile]
+                    : baselineDistances!;
+                ulong target = searchFromExits
+                    ? portA.SeaTile : portB.SeaTile;
+                ulong seaRate = seaDistances[checked((int)target)];
                 if (portA.Record.Edge == portB.Record.Edge ||
-                    seaDistances[checked((int)portB.SeaTile)] is
-                        0UL or ulong.MaxValue)
+                    seaRate is 0UL or ulong.MaxValue)
                     continue;
-                ulong seaRate = seaDistances[
-                    checked((int)portB.SeaTile)];
-                // This rate is for the ENTIRE sea leg, not a rate to write
-                // into each sea-sea edge of the authoritative ledger.
+                // The R54 discount is applied ONCE to the entire sea leg.
+                // Never modify the underlying sea-sea edge inventory.
                 ulong seaQuote = FoundationPhysicalPairedCoastalSeaLegQuote
                     .Quote(seaRate, portA.Record, portB.Record);
                 ulong candidate = checked(
@@ -215,7 +257,49 @@ public static class FoundationPhysicalMultimodalRouteComparator
             }
         }
         return new Result(landOnly, seaBest, embark, disembark,
-            explored, entrances.Length, exits.Length);
+            explored, entrances.Length, exits.Length, expandedSeaTiles);
+    }
+
+    /// <summary>
+    /// Exact positive-weight Dijkstra. With a target set, every necessary
+    /// target distance is final when its tile is dequeued at the minimum
+    /// priority. Stop only after ALL target tiles have been settled.
+    /// Unreachable target tiles correctly force full component exploration.
+    /// Empty target sets require no sea work.
+    /// </summary>
+    private static ulong[] ShortestSea(
+        ulong start, Dictionary<ulong, List<Link>> graph, int count,
+        IReadOnlySet<ulong>? targets, out long explored)
+    {
+        explored = 0L;
+        var distance = Enumerable.Repeat(ulong.MaxValue, count + 1)
+            .ToArray();
+        distance[checked((int)start)] = 0UL;
+        if (targets is { Count: 0 })
+            return distance;
+        int remaining = targets?.Count ?? 0;
+        var queue = new PriorityQueue<ulong, (ulong Cost, ulong Tile)>();
+        queue.Enqueue(start, (0UL, start));
+        while (queue.TryDequeue(out ulong at, out var priority))
+        {
+            if (priority.Cost != distance[checked((int)at)])
+                continue;
+            explored++;
+            if (targets is not null && targets.Contains(at) &&
+                --remaining == 0)
+                break;
+            if (!graph.TryGetValue(at, out var links))
+                continue;
+            foreach (var link in links)
+            {
+                ulong next = checked(priority.Cost + link.Rate);
+                if (next >= distance[checked((int)link.Other)])
+                    continue;
+                distance[checked((int)link.Other)] = next;
+                queue.Enqueue(link.Other, (next, link.Other));
+            }
+        }
+        return distance;
     }
 
     private static void Add(Dictionary<ulong, List<Link>> graph,
