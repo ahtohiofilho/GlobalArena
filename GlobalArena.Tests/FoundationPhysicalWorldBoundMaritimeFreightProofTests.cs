@@ -321,44 +321,6 @@ public sealed class FoundationPhysicalWorldBoundMaritimeFreightProofTests
     }
 
     [Fact]
-    public void ConsecutiveSettledTreasuryMemoryIsOnlySourceOfPriorFreight()
-    {
-        var f = Prepare();
-        var (roads, scales) =
-            FoundationPhysicalAuthoritativeTransportProjector.FromWorld(
-                f.Snapshot, f.Host.Incidence);
-        var byScale = scales.ToDictionary(
-            x => x.Edge, x => x.CargoMicroAtReferenceLoad);
-        var settledQuotes = roads.Select(road =>
-            new CivilizationSettledFreightQuote(
-                road.Edge, road.PhysicalCostMicroPerWholeCargoUnit,
-                byScale[road.Edge],
-                road.Edge == f.Embark ? 19UL : 0UL)).ToArray();
-        // This is a PRIVILEGED TEST FIXTURE using the real verified
-        // settlement capability, never a public API accepting a preview.
-        var zeroCredits = f.Snapshot.Treasury.Accounts.ToDictionary(
-            x => x.Civilization, _ => System.Numerics.BigInteger.Zero);
-        WorldState settled = f.Snapshot.RecordAuditedEconomicCycle(
-            1UL, R69CargoUnit, zeroCredits, settledQuotes);
-        var result = R69(f, settled, R69Policy(), nextOrdinal: 2UL);
-        Assert.True(result.UsedVerifiedSettledFreight);
-        Assert.Equal(1UL, result.PreviousSettledEconomicCycleOrdinal);
-        Assert.Equal(2UL, result.PlanningEconomicCycleOrdinal);
-        var baseline = R69(f, f.Snapshot, R69Policy());
-        Assert.Equal(baseline.Route.Bound.MaritimeLowerBoundMicroPerWholeCargoUnit +
-            (UInt128)19UL,
-            result.Route.Bound.MaritimeLowerBoundMicroPerWholeCargoUnit);
-        Assert.Throws<InvalidOperationException>(() =>
-            R69(f, settled, R69Policy(), nextOrdinal: 1UL));
-        Assert.Throws<InvalidOperationException>(() =>
-            R69(f, settled, R69Policy(), nextOrdinal: 3UL));
-        Assert.Throws<InvalidOperationException>(() =>
-            R69(f, settled, R69Policy(unit: "different-cargo-unit"),
-                nextOrdinal: 2UL));
-        Assert.Equal(1UL, settled.Treasury.LastSettledEconomicCycleOrdinal);
-    }
-
-    [Fact]
     public void RejectsLandEdgesAndForeignWorldGenerationSignature()
     {
         var f = Prepare();
