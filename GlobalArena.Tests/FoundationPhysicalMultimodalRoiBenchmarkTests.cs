@@ -204,6 +204,23 @@ public sealed class FoundationPhysicalMultimodalRoiBenchmarkTests
             .Analyze(host.Session.GeneratedWorld, host.Incidence,
                 improved.Transport, start, end,
                 independentlyChecked.Result);
+        var naturalLandUpper =
+            FoundationPhysicalMaritimePairLowerBoundAudit.Analyze(
+                host.Session.GeneratedWorld, host.Incidence,
+                opening.Transport, start, end, reference.Result,
+                useOnlyLandFeasibleUpperBound: true);
+        var capitalLandUpper =
+            FoundationPhysicalMaritimePairLowerBoundAudit.Analyze(
+                host.Session.GeneratedWorld, host.Incidence,
+                improved.Transport, start, end,
+                independentlyChecked.Result,
+                useOnlyLandFeasibleUpperBound: true);
+        Assert.True(naturalLandUpper.GlobalWinnerPreserved);
+        Assert.True(capitalLandUpper.GlobalWinnerPreserved);
+        Assert.True(naturalBound.ProvablyExcludedPairs >=
+            naturalLandUpper.ProvablyExcludedPairs);
+        Assert.True(capitalBound.ProvablyExcludedPairs >=
+            capitalLandUpper.ProvablyExcludedPairs);
         Assert.True(naturalBound.GlobalWinnerPreserved);
         Assert.True(capitalBound.GlobalWinnerPreserved);
         Assert.Equal(naturalBound.PotentialPairs,
@@ -230,6 +247,8 @@ public sealed class FoundationPhysicalMultimodalRoiBenchmarkTests
             $"GA_R61_BOUNDS coarse={m},{n} " +
             $"fine_tiles={host.Incidence.FineTopology.Cells.Count} " +
             $"natural_pairs={naturalBound.PotentialPairs} " +
+            $"natural_land_upper_excluded={naturalLandUpper.ProvablyExcludedPairs} " +
+            $"capital_land_upper_excluded={capitalLandUpper.ProvablyExcludedPairs} " +
             $"natural_provably_excluded={naturalBound.ProvablyExcludedPairs} " +
             $"natural_remaining={naturalBound.RemainingPairs} " +
             $"natural_excluded_percent={naturalBound.ExcludedPercent:F3} " +
