@@ -128,8 +128,11 @@ public sealed class FoundationPhysicalEndogenousCongestionFeedbackTests
             state, host.Incidence, demand, Cargo(One, Two),
             Quotes(state, demand, preferred: b),
             new[] { Road(edge, owner: Blue) },
+            // Deliberately choose a genuinely loaded crossing. Under the
+            // corrected quantization 2m/100m is below one microcost and
+            // must NOT be considered congested.
             new[] { new FoundationPhysicalEdgeCarryingScale(
-                edge, 100_000_000UL) },
+                edge, 10_000_000UL) },
             maxProducerPasses: 8, maxCongestionIterations: 8);
 
         Assert.True(result.ConsistentWithFinalEdgeLoads);
@@ -145,7 +148,7 @@ public sealed class FoundationPhysicalEndogenousCongestionFeedbackTests
         var reading = Assert.Single(result.Edges);
         Assert.Equal(edge, reading.Edge);
         Assert.Equal(used.TotalCargoMicro, reading.CargoMicro);
-        Assert.Equal(100_000_000UL, reading.CargoMicroAtReferenceLoad);
+        Assert.Equal(10_000_000UL, reading.CargoMicroAtReferenceLoad);
         Assert.True(reading.CongestedPhysicalCostMicroPerWholeCargoUnit >
             reading.FreePhysicalCostMicroPerWholeCargoUnit);
         Assert.Equal(30_000UL, reading.ExternalTariffMicroPerWholeCargoUnit);
