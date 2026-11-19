@@ -127,6 +127,37 @@ public sealed class FoundationPhysicalPairedCoastalSeaLegQuoteTests
         ulong quoteBoth = FoundationPhysicalPairedCoastalSeaLegQuote
             .Quote(seaLeg, fundedA, fundedB);
         Assert.True(quoteBoth < quoteOne && quoteOne < quote0);
+        var canonicalEdges = host.Incidence.FineTopology.Edges;
+        var departure = canonicalEdges.Single(e =>
+            e.Id == first.Crossing.Edge.FineStrategicEdgeId);
+        var arrival = canonicalEdges.Single(e =>
+            e.Id == other.Edge.FineStrategicEdgeId);
+        var landA = departure.IncidentCellIds.Single(t =>
+            t != first.SeaTile);
+        var landB = arrival.IncidentCellIds.Single(t =>
+            t != pair.Destination.SeaTile);
+        var fine = host.Incidence.Refinement.FineParameters;
+        var tiles = new[]
+        {
+            new PhysicalTacticalTileId(fine, landA),
+            new PhysicalTacticalTileId(fine, first.SeaTile),
+            new PhysicalTacticalTileId(fine, pair.Destination.SeaTile),
+            new PhysicalTacticalTileId(fine, landB)
+        };
+        var routeRecords = new[]
+        {
+            fundedA, all[pair.SeaEdge], fundedB
+        };
+        Assert.Equal(quoteBoth,
+            FoundationPhysicalPairedCoastalSeaLegQuote.QuoteVerifiedSeaLeg(
+                host.Session.GeneratedWorld, host.Incidence,
+                tiles, routeRecords));
+        // A fake coastal terminal or discontinuous sea path cannot claim
+        // the paired-terminal bonus for a different part of the world.
+        Assert.Throws<ArgumentException>(() =>
+            FoundationPhysicalPairedCoastalSeaLegQuote.QuoteVerifiedSeaLeg(
+                host.Session.GeneratedWorld, host.Incidence,
+                tiles, new[] { fundedB, all[pair.SeaEdge], fundedA }));
         Assert.Equal(quoteBoth,
             FoundationPhysicalPairedCoastalSeaLegQuote
                 .Quote(seaLeg, fundedB, fundedA));
