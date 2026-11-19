@@ -514,4 +514,53 @@ public sealed class FoundationMonetaryInfrastructureInvestmentTests
         }
     }
 
+    [Fact]
+    public void InvestedEdgeHasOneOwnerAndForeignReinvestmentCannotSeizeTitle()
+    {
+        var s = Create(redOpeningMoneyMicro: 25_000_000UL,
+            blueOpeningMoneyMicro: 25_000_000UL);
+        var natural = Edge(s);
+        Assert.Equal(PhysicalTransportOwnershipKind.NoInfrastructure,
+            natural.OwnershipKind);
+        const ulong first = 120_000UL;
+        s.Host.QueueHumanMonetaryInvestment(Red, s.RemoteEdge, first);
+        s.Host.SetHumanReady(Red);
+        var receipt = s.Host.TryCloseTurn();
+        Assert.NotNull(receipt);
+        Assert.True(receipt!.ReplayMatched);
+
+        var owned = Edge(s);
+        Assert.Equal(PhysicalTransportOwnershipKind.Owned,
+            owned.OwnershipKind);
+        Assert.Equal(Red, owned.InfrastructureOwner);
+        Assert.Equal(0UL, owned.ExternalTariffMicroPerWholeCargoUnit);
+        Assert.Equal(first, owned.CommittedInvestmentMoneyMicro);
+        var projected = FoundationPhysicalAuthoritativeTransportProjector
+            .FromWorld(s.Host.Snapshot, s.Host.Incidence).Roads
+            .Single(r => r.Edge == s.RemoteEdge);
+        Assert.Equal(FoundationInfrastructureOwnershipKind.Owned,
+            projected.OwnershipKind);
+        Assert.Equal(Red, projected.InfrastructureOwner);
+        Assert.Equal(0UL, projected.ExternalTariffMicroPerWholeCargoUnit);
+        var originalHash = s.Host.StateHash;
+        var originalSnapshot = s.Host.Snapshot;
+        Assert.Throws<InvalidOperationException>(() =>
+            s.Host.QueueHumanMonetaryInvestment(Blue, s.RemoteEdge, 1UL));
+        Assert.Throws<InvalidOperationException>(() =>
+            originalSnapshot.RecordMonetaryInfrastructureInvestment(
+                Blue, s.RemoteEdge, 1UL));
+        Assert.Equal(originalHash, s.Host.StateHash);
+        Assert.Same(originalSnapshot, s.Host.Snapshot);
+        Assert.Equal(0, s.Host.PendingOrderCount);
+
+        s.Host.QueueHumanMonetaryInvestment(Red, s.RemoteEdge, 2UL);
+        s.Host.SetHumanReady(Red);
+        var reinvested = s.Host.TryCloseTurn();
+        Assert.NotNull(reinvested);
+        Assert.True(reinvested!.ReplayMatched);
+        Assert.Equal(Red, Edge(s).InfrastructureOwner);
+        Assert.Equal(first + 2UL, Edge(s).CommittedInvestmentMoneyMicro);
+        Assert.Equal(0UL, Edge(s).ExternalTariffMicroPerWholeCargoUnit);
+    }
+
 }
