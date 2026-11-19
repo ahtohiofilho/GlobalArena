@@ -33,7 +33,88 @@ public static class FoundationPhysicalMultimodalRouteComparator
              OneSeaLegRateMicro.Value < LandOnlyRateMicro.Value);
     }
 
-    private sealed record Link(ulong Other, ulong Rate);
+    /// <summary>
+    /// Explicit caller-owned, bounded reuse of COMPLETE sea distances
+    /// across comparisons sharing the SAME physical sea graph. Sea-sea
+    /// edges remain natural throughout the game, so committed LAND/COAST
+    /// investments do not invalidate these distances. The full canonical
+    /// sea-edge inventory is checked on EVERY use; unrelated worlds,
+    /// mutable sea rates or corrupted topology fail closed.
+    ///
+    /// Not a global/static cache and never stores commodity, market,
+    /// congestion, tariff or current-turn state.
+    /// </summary>
+    public sealed class FrozenSeaDistanceCache
+    {
+        private readonly int _maximumEntries;
+        private readonly Dictionary<ulong, ulong[]> _distances = new();
+        private (ulong Id, ulong A, ulong B, ulong Rate)[]? _seaSignature;
+        private WorldGenerationResult? _world;
+        private PhysicalTacticalIncidenceMap? _incidence;
+        private long _entryCount;
+
+        public FrozenSeaDistanceCache(int maximumDistanceEntries = 4_000_000)
+        {
+            if (maximumDistanceEntries < 1)
+                throw new ArgumentOutOfRangeException(
+                    nameof(maximumDistanceEntries));
+            _maximumEntries = maximumDistanceEntries;
+        }
+
+        public long DistanceEntries => _entryCount;
+        public int CachedSeaOrigins => _distances.Count;
+        public long Hits { get; private set; }
+        public long Misses { get; private set; }
+
+        internal void Validate(
+            WorldGenerationResult world,
+            PhysicalTacticalIncidenceMap incidence,
+            IReadOnlyList<(ulong Id, ulong A, ulong B, ulong Rate)> sea)
+        {
+            if (_seaSignature is null)
+            {
+                _world = world;
+                _incidence = incidence;
+                _seaSignature = sea.ToArray();
+            }
+            else if (!ReferenceEquals(_world, world) ||
+                     !ReferenceEquals(_incidence, incidence) ||
+                     !_seaSignature.SequenceEqual(sea))
+                throw new InvalidOperationException(
+                    "Frozen sea-distance cache cannot be reused with a " +
+                    "different world, topology or maritime operating rate.");
+        }
+
+        internal ulong[] GetOrCompute(
+            ulong source, Dictionary<ulong, List<Link>> graph,
+            int count, out bool computed, out long explored)
+        {
+            if (_distances.TryGetValue(source, out var cached))
+            {
+                Hits++;
+                computed = false;
+                explored = 0L;
+                return cached;
+            }
+            Misses++;
+            computed = true;
+            // Reusable results must settle the COMPLETE sea component.
+            // A target-short-circuited search is not safe to share with
+            // another pair of settlements requesting different targets.
+            ulong[] distances = ShortestSea(
+                source, graph, count, null, out explored);
+            if (_entryCount + distances.LongLength <= _maximumEntries)
+            {
+                _distances.Add(source, distances);
+                _entryCount += distances.LongLength;
+            }
+            // At budget exhaustion correctness is preserved: the result
+            // is returned but never retained. No silent approximate path.
+            return distances;
+        }
+    }
+
+    internal sealed record Link(ulong Other, ulong Rate);
     private sealed record Coast(
         PhysicalTransportEdgeRuntimeRecord Record,
         ulong LandTile, ulong SeaTile, ulong Rate);
@@ -84,7 +165,8 @@ public static class FoundationPhysicalMultimodalRouteComparator
         PhysicalTacticalTileId source,
         PhysicalTacticalTileId destination,
         int maxEligibleEmbarkations = 128,
-        bool useOptimizedSeaSearch = true)
+        bool useOptimizedSeaSearch = true,
+        FrozenSeaDistanceCache? frozenSeaDistances = null)
     {
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -128,6 +210,8 @@ public static class FoundationPhysicalMultimodalRouteComparator
         var landGraph = new Dictionary<ulong, List<Link>>();
         var seaGraph = new Dictionary<ulong, List<Link>>();
         var coast = new List<Coast>();
+        var seaSignature = new List<
+            (ulong Id, ulong A, ulong B, ulong Rate)>();
         foreach (var edge in incidence.FineTopology.Edges)
         {
             if (!records.TryGetValue(edge.Id, out var record))
@@ -151,6 +235,8 @@ public static class FoundationPhysicalMultimodalRouteComparator
                     throw new InvalidOperationException(
                         "Sea edge requires naturally unbounded capacity.");
                 Add(seaGraph, a, b, rate);
+                seaSignature.Add((edge.Id.Value, Math.Min(a, b),
+                    Math.Max(a, b), rate));
             }
             else
             {
@@ -160,6 +246,13 @@ public static class FoundationPhysicalMultimodalRouteComparator
                 coast.Add(new Coast(record,
                     la ? a : b, la ? b : a, rate));
             }
+        }
+        if (frozenSeaDistances is not null)
+        {
+            if (!useOptimizedSeaSearch)
+                throw new ArgumentException(
+                    "Frozen sea distances require optimized mode.");
+            frozenSeaDistances.Validate(world, incidence, seaSignature);
         }
         var fromSource = Shortest(s, landGraph, count);
         var toDestination = Shortest(d, landGraph, count);
@@ -202,9 +295,20 @@ public static class FoundationPhysicalMultimodalRouteComparator
         {
             foreach (ulong tile in searchTiles)
             {
-                cache.Add(tile, ShortestSea(tile, seaGraph, count,
-                    targets!, out long visited));
-                explored++;
+                ulong[] distances;
+                long visited;
+                bool computed;
+                if (frozenSeaDistances is null)
+                {
+                    distances = ShortestSea(tile, seaGraph, count,
+                        targets!, out visited);
+                    computed = true;
+                }
+                else
+                    distances = frozenSeaDistances.GetOrCompute(tile,
+                        seaGraph, count, out computed, out visited);
+                cache.Add(tile, distances);
+                if (computed) explored++;
                 expandedSeaTiles = checked(expandedSeaTiles + visited);
             }
         }
