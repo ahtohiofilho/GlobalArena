@@ -100,7 +100,7 @@ public sealed class FoundationMixedTerrestrialCoastalInvestmentQaTests
                 }));
         var landEdge = rows[pair.Land.Id].Edge;
         var coastEdge = rows[pair.Coast.Id].Edge;
-        var seaEdge = seeded.Transport.Edges.Single(x =>
+        var seaEdge = seeded.Transport.Edges.First(x =>
             x.CargoMicroAtReferenceLoad == ulong.MaxValue);
         var originalCash = noConstruction.Treasury.Get(Red).CashScaled;
         var signatures = new List<string>();
