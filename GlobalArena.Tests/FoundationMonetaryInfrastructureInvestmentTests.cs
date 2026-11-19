@@ -476,4 +476,39 @@ public sealed class FoundationMonetaryInfrastructureInvestmentTests
         Assert.True(k16 - k8 < k8 - k0);
     }
 
+    [Fact]
+    public void ExactIntegerInvestmentCurveNeverLosesCapacityAtRoundingBoundaries()
+    {
+        var s = Create();
+        var natural = s.Host.Snapshot.Transport.Edges.First(e =>
+            e.CargoMicroAtReferenceLoad != ulong.MaxValue);
+        var edge = natural with
+        {
+            CargoMicroAtReferenceLoad = 10_000UL,
+            NaturalConstructionCostMoneyMicro = 7UL
+        };
+        ulong previous = 0UL;
+        for (ulong investment = 0UL; investment <= 500UL; investment++)
+        {
+            ulong current = FoundationPhysicalAuthoritativeTransportProjector
+                .EffectiveReferenceCargo(edge with
+                { CommittedInvestmentMoneyMicro = investment });
+            if (investment > 0UL)
+                Assert.True(current >= previous,
+                    "More verified capital may never lower transport capacity.");
+            previous = current;
+        }
+        Assert.True(previous > 20_000UL,
+            "Repeated improvements must overcome two times natural throughput.");
+        // An independent arbitrary-integer sanity check for the square root.
+        for (int i = 0; i < 100; i++)
+        {
+            BigInteger n = (BigInteger)i * i + i;
+            BigInteger root = FoundationPhysicalAuthoritativeTransportProjector
+                .IntegerSquareRoot(n);
+            Assert.True(root * root <= n &&
+                (root + 1) * (root + 1) > n);
+        }
+    }
+
 }
