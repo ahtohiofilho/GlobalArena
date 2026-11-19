@@ -121,6 +121,8 @@ jobs:
         run: dotnet restore GlobalArena.Tests/GlobalArena.Tests.csproj
       - name: Compile all canonical simulation plus new foundation code
         run: dotnet build GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-restore
+      - name: QA #435 — K-only three/four-cycle route stability matrix, frozen six workers
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationNaturalCapacitySweepTests' --logger 'console;verbosity=detailed'
       - name: Real CSharp physical worker market and movement contracts
         run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPhysicalTradeCycleTests|FullyQualifiedName~GoldbergFoundationSessionTests|FullyQualifiedName~AuthoritativePhysicalWorkerJournalTests|FullyQualifiedName~StrategicPhysicalWorkerInspectorTests|FullyQualifiedName~FoundationLocalGameHostTests|FullyQualifiedName~FoundationBatchedTurnTests|FullyQualifiedName~FoundationCollectiveTurnCoordinatorTests|FullyQualifiedName~FoundationHumanAiTurnHostTests|FullyQualifiedName~FoundationHumanAiLocalPreviewTests' --logger 'console;verbosity=normal'
       - name: Canonical fine G(18,0) worker v10 movement and replay tests
