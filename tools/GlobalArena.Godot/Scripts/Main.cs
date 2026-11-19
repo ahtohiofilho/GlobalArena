@@ -1579,6 +1579,13 @@ public partial class Main : Control
                     _tacticalHost = FoundationGameplayEconomicBootstrap.Enable(
                         _tacticalHost, _configuredEconomicGameplay);
                 _canonicalSession = _tacticalHost.Session;
+                // The economic freight seeder uses V1 elevation/sea level,
+                // while the old decorative 01C experiment uses an unrelated
+                // coastline. Present the authoritative physical classification
+                // whenever real economic freight is enabled.
+                _tacticalPreview!.ConfigureAuthoritativeEconomyTerrain(
+                    useExplicitEconomicLab || _configuredEconomicGameplay is not null
+                        ? _tacticalHost.Session.GeneratedWorld : null);
                 AttachRuntimeState(_tacticalHost.Snapshot);
             }
             // The old v9 record locates workers on G(3,0). This is a
