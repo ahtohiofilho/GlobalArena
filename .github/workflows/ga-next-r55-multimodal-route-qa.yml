@@ -1,0 +1,38 @@
+name: GA-Next R55 — competing real land and terminal-aware maritime routes
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/Foundation/FoundationPhysicalMultimodalRouteComparator.cs'
+      - 'GlobalArena.Tests/FoundationPhysicalMultimodalRouteComparatorTests.cs'
+      - '.github/workflows/ga-next-r55-multimodal-route-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  research-comparator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Compare real two-land-endpoint paths and capital-financed costs
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release \
+            --filter 'FullyQualifiedName~FoundationPhysicalMultimodalRouteComparatorTests' \
+            --logger 'console;verbosity=detailed' --nologo 2>&1 | tee ga-next-r55-evidence.log
+          grep 'GA_R55 landA=' ga-next-r55-evidence.log > ga-next-r55-route-comparison.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ga-next-r55-real-multimodal-routes
+          path: |
+            ga-next-r55-evidence.log
+            ga-next-r55-route-comparison.txt
+          retention-days: 14
