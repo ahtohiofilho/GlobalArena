@@ -40,8 +40,14 @@ internal sealed class CanonicalEconomyFineVisualDetail
             throw new InvalidOperationException(
                 "Visual detail cannot use unrelated world or physical topology.");
 
-        var geometry = StrategicSphericalGeometryGenerator.Generate(
-            incidence.FineTopology);
+        var fineWorld = new DeterministicWorldGenerator().Generate(
+            new WorldGenerationRequest(world.Request.Seed,
+                world.Request.Version, incidence.Refinement.FineParameters));
+        if (fineWorld.StrategicTopology.Cells.Count !=
+            incidence.FineTopology.Cells.Count)
+            throw new InvalidOperationException(
+                "Generated fine geometry does not match canonical incidence.");
+        var geometry = fineWorld.StrategicSphericalGeometry;
         // The exact original 01C three-band generator. No second coastline:
         // take only variation around its own global mean.
         var source = TacticalIndependentScaleGenerator.GenerateWeighted(
