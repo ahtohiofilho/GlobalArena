@@ -141,17 +141,16 @@ public sealed class FoundationPhysicalAuditedSellerTollBindingTests
                 }))
             .Aggregate(0UL, (sum, c) => checked(sum +
                 scene.Cargo.CargoMicro(c.Commodity, c.GoodsMicro)));
-        if (sellerCrossingCargo > 0UL)
-        {
-            var toll = Assert.Single(result.SellerEdgeCandidates);
-            Assert.Equal(edgeId, toll.Edge);
-            Assert.Equal(actualSeller, toll.Seller);
-            Assert.Equal(investor, toll.Owner);
-            Assert.Equal(sellerCrossingCargo, toll.CargoMicro);
-            Assert.True(toll.TariffMicroPerWholeCargoUnit > 0UL);
-        }
-        else
-            Assert.Empty(result.SellerEdgeCandidates);
+        // This positive-coverage assertion prevents an empty toll fixture
+        // from masquerading as proof of seller-specific freight incidence.
+        Assert.True(sellerCrossingCargo > 0UL,
+            "The financed crossing must actually carry third-party cargo.");
+        var toll = Assert.Single(result.SellerEdgeCandidates);
+        Assert.Equal(edgeId, toll.Edge);
+        Assert.Equal(actualSeller, toll.Seller);
+        Assert.Equal(investor, toll.Owner);
+        Assert.Equal(sellerCrossingCargo, toll.CargoMicro);
+        Assert.True(toll.TariffMicroPerWholeCargoUnit > 0UL);
         Assert.Equal(0UL, invested.Transport.Edges
             .Single(e => e.Edge == edgeId)
             .ExternalTariffMicroPerWholeCargoUnit);
