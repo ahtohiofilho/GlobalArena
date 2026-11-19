@@ -1,0 +1,39 @@
+name: GA-Next R60 — exact maritime architecture A/B
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/Foundation/FoundationPhysicalMultimodalRouteComparator.cs'
+      - 'GlobalArena.Tests/FoundationPhysicalMultimodalRoiBenchmarkTests.cs'
+      - '.github/workflows/ga-next-r60-architecture-ab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  architecture-ab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Compare exact port-arc search against embarkation-state search
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release \
+            --filter 'FullyQualifiedName~FoundationPhysicalMultimodalRoiBenchmarkTests' \
+            --logger 'console;verbosity=detailed' --nologo 2>&1 | tee ga-next-r60-architecture.log
+          grep 'GA_R60_AB' ga-next-r60-architecture.log > ga-next-r60-architecture-comparison.txt
+      - name: Preserve real-world A/B results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ga-next-r60-exact-architecture-ab
+          path: |
+            ga-next-r60-architecture.log
+            ga-next-r60-architecture-comparison.txt
+          retention-days: 14
