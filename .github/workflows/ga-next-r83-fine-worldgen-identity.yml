@@ -1,0 +1,36 @@
+name: GA-Next R83 — signed fine-worldgen migration boundary
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.World/FoundationFineFirstWorldgenCanonicalSignature.cs'
+      - 'GlobalArena.Runtime/FoundationFineFirstMigrationAdmission.cs'
+      - 'GlobalArena.Tests/FoundationFineFirstWorldgenCanonicalSignatureTests.cs'
+      - '.github/workflows/ga-next-r83-fine-worldgen-identity.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fine-worldgen-identity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Verify signed physical worldgen and backward-compatible economic gates
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release \
+            --filter 'FullyQualifiedName~FoundationFineFirstWorldgenCanonicalSignatureTests|FullyQualifiedName~FoundationFineFirstPhysicalGeographyTests|FullyQualifiedName~FoundationPhysicalNaturalTransportSeederTests|FullyQualifiedName~FoundationSettledOwnerTollEndToEndTests|FullyQualifiedName~WorldGenerationCanonicalSignatureTests' \
+            --logger 'console;verbosity=detailed' --nologo 2>&1 | tee ga-next-r83-results.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ga-next-r83-fine-worldgen-identity
+          path: ga-next-r83-results.log
+          retention-days: 14
