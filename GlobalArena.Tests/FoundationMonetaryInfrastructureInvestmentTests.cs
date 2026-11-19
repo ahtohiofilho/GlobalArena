@@ -245,8 +245,24 @@ public sealed class FoundationMonetaryInfrastructureInvestmentTests
                 .TotalInfrastructureInvestmentScaled);
         Assert.Equal(PhysicalTransportOwnershipKind.NoInfrastructure,
             Edge(s).OwnershipKind);
-        Assert.Throws<InvalidOperationException>(() =>
-            s.Host.QueueHumanMonetaryInvestment(Red, s.RemoteEdge, 1UL));
+        // Once the original construction quote is fully funded, further
+        // upgrades remain possible on the SAME physical edge.
+        s.Host.QueueHumanMonetaryInvestment(Red, s.RemoteEdge, cost);
+        s.Host.SetHumanReady(Red);
+        var upgraded = s.Host.TryCloseTurn();
+        Assert.NotNull(upgraded);
+        Assert.True(upgraded!.ReplayMatched);
+        Assert.Single(upgraded.InfrastructureInvestments);
+        Assert.Equal(checked(cost * 2UL),
+            Edge(s).CommittedInvestmentMoneyMicro);
+        ulong afterUpgrade = FoundationPhysicalAuthoritativeTransportProjector
+            .FromWorld(s.Host.Snapshot, s.Host.Incidence).Scales
+            .Single(row => row.Edge == s.RemoteEdge).CargoMicroAtReferenceLoad;
+        Assert.True(afterUpgrade > funded);
+        Assert.Equal(initial - GlobalArenaMoneyScale.FromMoneyMicro(cost * 2UL),
+            s.Host.Snapshot.Treasury.Get(Red).CashScaled);
+        Assert.Equal(PhysicalTransportOwnershipKind.NoInfrastructure,
+            Edge(s).OwnershipKind);
     }
 
     [Fact]
@@ -445,10 +461,19 @@ public sealed class FoundationMonetaryInfrastructureInvestmentTests
         Assert.True(k1 - k0 > (k2 - k1));
         Assert.True(k2 - k0 > k4 - k2);
         Assert.Equal(k0 + k0 / 2UL, k4);
-        Assert.Throws<InvalidOperationException>(() =>
-            FoundationPhysicalAuthoritativeTransportProjector
-                .EffectiveReferenceCargo(natural with
-                { CommittedInvestmentMoneyMicro = cost + 1UL }));
+        // Unlike R48, the curve continues past the original construction
+        // quote rather than approaching a 2x hard ceiling.
+        ulong k8 = FoundationPhysicalAuthoritativeTransportProjector
+            .EffectiveReferenceCargo(natural with
+            { CommittedInvestmentMoneyMicro = cost * 8UL });
+        ulong k16 = FoundationPhysicalAuthoritativeTransportProjector
+            .EffectiveReferenceCargo(natural with
+            { CommittedInvestmentMoneyMicro = cost * 16UL });
+        Assert.True(k16 > k8 && k8 > k4);
+        Assert.True(k16 > k0 * 2UL);
+        Assert.True(k8 - k4 > 0UL);
+        // The growth is sublinear, not an artificial cap.
+        Assert.True(k16 - k8 < k8 - k0);
     }
 
 }
