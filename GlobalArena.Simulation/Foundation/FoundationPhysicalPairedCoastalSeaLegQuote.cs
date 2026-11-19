@@ -1,5 +1,6 @@
 using System.Numerics;
 using GlobalArena.Runtime;
+using GlobalArena.World;
 
 namespace GlobalArena.Simulation.Foundation;
 
@@ -69,6 +70,103 @@ public static class FoundationPhysicalPairedCoastalSeaLegQuote
             (numerator + effectiveDenominator - BigInteger.One) /
             effectiveDenominator;
         return checked((ulong)quote);
+    }
+
+    /// <summary>
+    /// Audit a proposed EXACT single sea leg before quoting it. The first
+    /// tile must be LAND, the last LAND and all internal tiles WATER under
+    /// the same V1 elevation/sea-level rule as the freight seeder.
+    /// The ordered edges must form this real fine-graph path: one coast
+    /// crossing, one or more all-natural sea-sea edges, one coast crossing.
+    /// This is intended for a future terminal-aware pathfinder; it does not
+    /// change candidate selection or authoritative settlement in R54.
+    /// </summary>
+    public static ulong QuoteVerifiedSeaLeg(
+        WorldGenerationResult world,
+        PhysicalTacticalIncidenceMap incidence,
+        IReadOnlyList<PhysicalTacticalTileId> routeTiles,
+        IReadOnlyList<PhysicalTransportEdgeRuntimeRecord> routeEdges,
+        ulong strengthNumerator = 1UL,
+        ulong strengthDenominator = 4UL)
+    {
+        ArgumentNullException.ThrowIfNull(world);
+        ArgumentNullException.ThrowIfNull(incidence);
+        ArgumentNullException.ThrowIfNull(routeTiles);
+        ArgumentNullException.ThrowIfNull(routeEdges);
+        if (incidence.Refinement.CoarseParameters !=
+                world.Request.StrategicParameters ||
+            routeTiles.Count < 4 ||
+            routeEdges.Count != routeTiles.Count - 1)
+            throw new ArgumentException(
+                "A single maritime leg needs one real land-to-water transfer, " +
+                "at least one sea-sea segment and one water-to-land transfer.");
+        var graph = incidence.FineTopology.Edges.ToDictionary(
+            edge => edge.Id);
+        bool IsLand(PhysicalTacticalTileId tile)
+        {
+            if (!tile.IsValid ||
+                tile.FineGoldbergParameters !=
+                    incidence.Refinement.FineParameters)
+                throw new ArgumentException(
+                    "Foreign or invalid physical tile in maritime route.");
+            var index = checked((int)tile.FineStrategicCellId.Value - 1);
+            var incident = incidence.TileIncidences[index]
+                .IncidentCoarseCellIds;
+            long elevation = 0L;
+            foreach (var coarse in incident)
+                elevation = checked(elevation +
+                    world.StrategicPhysicalFields.Elevation.GetRawValue(coarse));
+            return elevation / incident.Count >
+                world.StrategicPhysicalFields.SeaLevel.RawValue;
+        }
+
+        if (!IsLand(routeTiles[0]) ||
+            !IsLand(routeTiles[^1]))
+            throw new ArgumentException(
+                "Maritime terminal endpoints must be on land.");
+        for (int i = 1; i < routeTiles.Count - 1; i++)
+            if (IsLand(routeTiles[i]))
+                throw new ArgumentException(
+                    "An internal land tile splits the journey into separate maritime legs.");
+
+        ulong totalNaturalSeaCost = 0UL;
+        for (int i = 0; i < routeEdges.Count; i++)
+        {
+            var record = routeEdges[i];
+            if (record is null ||
+                !graph.TryGetValue(record.Edge.FineStrategicEdgeId,
+                    out var edge) ||
+                record.Edge.FineGoldbergParameters !=
+                    incidence.Refinement.FineParameters ||
+                !edge.IncidentCellIds.Contains(
+                    routeTiles[i].FineStrategicCellId) ||
+                !edge.IncidentCellIds.Contains(
+                    routeTiles[i + 1].FineStrategicCellId) ||
+                routeTiles[i] == routeTiles[i + 1])
+                throw new ArgumentException(
+                    "A maritime route must consist of contiguous genuine physical edges.");
+            bool sea = i > 0 && i < routeEdges.Count - 1;
+            if (sea)
+            {
+                if (record.CargoMicroAtReferenceLoad != ulong.MaxValue ||
+                    record.OwnershipKind !=
+                        PhysicalTransportOwnershipKind.NoInfrastructure ||
+                    record.InfrastructureOwner.HasValue ||
+                    record.ExternalTariffMicroPerWholeCargoUnit != 0UL ||
+                    record.CommittedInvestmentMoneyMicro.GetValueOrDefault() != 0UL)
+                    throw new ArgumentException(
+                        "Open sea cannot contain constructed infrastructure or tolls.");
+                totalNaturalSeaCost = checked(
+                    totalNaturalSeaCost +
+                    record.FreePhysicalCostMicroPerWholeCargoUnit);
+            }
+            else if (record.CargoMicroAtReferenceLoad == ulong.MaxValue)
+                throw new ArgumentException(
+                    "A coast transfer must have finite natural capacity.");
+        }
+        return Quote(totalNaturalSeaCost,
+            routeEdges[0], routeEdges[^1],
+            strengthNumerator, strengthDenominator);
     }
 
     private static BigInteger EndpointEfficiency(
