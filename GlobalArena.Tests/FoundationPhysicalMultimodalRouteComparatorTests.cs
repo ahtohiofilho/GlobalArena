@@ -310,6 +310,26 @@ public sealed class FoundationPhysicalMultimodalRouteComparatorTests
         Assert.True(intensiveSea.SeaRoutePreferred,
             "The research curve must eventually make developed coastal " +
             "logistics competitive without any sea-sea investment.");
+        // The R61 lower bound MUST also preserve the chosen maritime
+        // route when SEA really beats land. This complements the R58
+        // cases, where the losing sea alternative may be safely pruned.
+        var maritimeWinnerBound =
+            FoundationPhysicalMaritimePairLowerBoundAudit.Analyze(
+                host.Session.GeneratedWorld, host.Incidence,
+                intensiveCoasts.Transport, source, destination,
+                intensiveSea);
+        Assert.True(maritimeWinnerBound.GlobalWinnerPreserved);
+        Assert.Equal(
+            maritimeWinnerBound.PotentialPairs,
+            maritimeWinnerBound.ProvablyExcludedPairs +
+                maritimeWinnerBound.RemainingPairs);
+        _output.WriteLine(
+            $"GA_R61_SEA_WINNER potential_pairs=" +
+            $"{maritimeWinnerBound.PotentialPairs} " +
+            $"excluded_pairs=" +
+            $"{maritimeWinnerBound.ProvablyExcludedPairs} " +
+            $"remaining_pairs={maritimeWinnerBound.RemainingPairs} " +
+            $"global_maritime_winner_preserved=true");
         var intensiveBaseline =
             FoundationPhysicalMultimodalRouteComparator.Compare(
                 host.Session.GeneratedWorld, host.Incidence,
