@@ -70,7 +70,7 @@ public partial class Main
                 state.Treasury.Get(_humanCivilization).CashScaled) +
             "  •  CLOSED CYCLES " +
             state.Treasury.LastSettledEconomicCycleOrdinal +
-            "  •  PARTICIPANT ROUTES " + read.UsedEdges.Count +
+            "  •  USED TRADE EDGES " + read.UsedEdges.Count +
             "  •  E = CLOSE NEXT REAL ECONOMIC TURN";
     }
 }
