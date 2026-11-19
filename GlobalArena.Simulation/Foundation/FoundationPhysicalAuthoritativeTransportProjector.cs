@@ -71,16 +71,14 @@ public static class FoundationPhysicalAuthoritativeTransportProjector
     }
 
     /// <summary>
-    /// R48 EXPERIMENTAL efficiency contract, not approved final balance:
-    /// K_effective = K_natural * (1 + I / (B + I)).
-    /// B is the immutable, real monetary construction quote; I is the
-    /// authenticated capital ledger already debited from civilization cash.
-    /// This rational form needs no floating point, has strictly decreasing
-    /// marginal returns in I, and keeps all rates deterministic. Under the
-    /// current one-construction funding gate 0 <= I <= B, so capacity gains
-    /// range from zero to 50%. Further funding stages need a separate gate.
-    /// Sea is physically unbounded permanently and rejects investment;
-    /// it never receives a finite artificial carrying capacity.
+    /// R49 provisional, unbounded-with-respect-to-investment rule:
+    /// K = Knatural + floor(Knatural * I / (B + floor(sqrt(B*I)))).
+    /// I is the already-settled money invested in this single edge;
+    /// B is its original construction-cost reference. For I=B the
+    /// improvement remains 50%, matching R48. Beyond B the gain keeps
+    /// growing, asymptotically like sqrt(I/B), at diminishing marginal
+    /// returns. No artificial port class, level cap or world-era switch.
+    /// Pure integer arithmetic protects cross-platform deterministic replay.
     /// </summary>
     public static ulong EffectiveReferenceCargo(
         PhysicalTransportEdgeRuntimeRecord edge)
@@ -108,18 +106,42 @@ public static class FoundationPhysicalAuthoritativeTransportProjector
         ulong baseQuote = edge.NaturalConstructionCostMoneyMicro
             ?? throw new InvalidOperationException(
                 "Capital-bearing crossings need a verified construction quote.");
-        if (baseQuote == 0UL || invested > baseQuote)
+        if (baseQuote == 0UL)
             throw new InvalidOperationException(
-                "Investment must respect the already authorized construction budget.");
+                "Investment requires a positive monetary construction reference.");
 
-        BigInteger numerator = (BigInteger)natural * invested;
-        BigInteger denominator = (BigInteger)baseQuote + invested;
-        // Exact integer truncation is deterministic; not a fictional
-        // absolute shipment cap. Reject overflow, never silently clamp.
-        BigInteger capacity = (BigInteger)natural + numerator / denominator;
+        BigInteger amount = new BigInteger(invested);
+        BigInteger quote = new BigInteger(baseQuote);
+        BigInteger root = IntegerSquareRoot(quote * amount);
+        BigInteger improvement = new BigInteger(natural) * amount /
+            (quote + root);
+        BigInteger capacity = new BigInteger(natural) + improvement;
         if (capacity >= ulong.MaxValue)
             throw new OverflowException(
-                "A finite built crossing cannot use the unbounded-sea marker.");
+                "Finite improved crossing exceeds the available canonical capacity range.");
         return checked((ulong)capacity);
+    }
+
+    /// <summary>
+    /// Floor(sqrt(value)); exact for all nonnegative BigInteger inputs.
+    /// Uses no float, random state, rounding mode or platform-dependent Math.
+    /// The starting bound is derived from bit length, Newton converges
+    /// monotonically downward to the exact integer square root.
+    /// </summary>
+    internal static BigInteger IntegerSquareRoot(BigInteger value)
+    {
+        if (value.Sign < 0)
+            throw new ArgumentOutOfRangeException(nameof(value));
+        if (value.IsZero)
+            return BigInteger.Zero;
+        int bits = checked((int)value.GetBitLength());
+        BigInteger x = BigInteger.One << ((bits + 1) / 2);
+        while (true)
+        {
+            BigInteger next = (x + value / x) >> 1;
+            if (next >= x)
+                return x;
+            x = next;
+        }
     }
 }
