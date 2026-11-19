@@ -735,9 +735,11 @@ public sealed class FoundationPhysicalGlobalConcaveFlowTests
         var stress = EightCompetingSellersInConnectedGoldbergMarkets();
         var hash = stress.Host.StateHash;
         var snapshot = stress.Host.Snapshot;
+        // True severe-load scenario: the old 100m capacity relied on
+        // fabricated one-microcost congestion at insignificant volumes.
         var scales = stress.Roads.Select(road =>
             new FoundationPhysicalEdgeCarryingScale(
-                road.Edge, 100_000_000UL)).ToArray();
+                road.Edge, 1_000_000UL)).ToArray();
         var watch = Stopwatch.StartNew();
         var error = Assert.Throws<InvalidOperationException>(() =>
             FoundationPhysicalGlobalConcaveCongestionFeedback.Coordinate(
@@ -800,8 +802,10 @@ public sealed class FoundationPhysicalGlobalConcaveFlowTests
                 border.Id),
             FoundationInfrastructureOwnershipKind.NoInfrastructure,
             null, 100_000UL, 0UL);
+        // Give the edge an observable quartic price change while
+        // retaining a genuinely stable two-market corridor.
         var scale = new FoundationPhysicalEdgeCarryingScale(
-            road.Edge, 100_000_000UL);
+            road.Edge, 10_000_000UL);
         var hash = host.StateHash;
         var snapshot = host.Snapshot;
         var plan = FoundationPhysicalGlobalConcaveCongestionFeedback.Coordinate(
@@ -843,9 +847,11 @@ public sealed class FoundationPhysicalGlobalConcaveFlowTests
         var stress = EightCompetingSellersInConnectedGoldbergMarkets();
         var snapshot = stress.Host.Snapshot;
         var hash = stress.Host.StateHash;
+        // Require a nontrivial cost/load solve, not a fake minimum
+        // surcharge that arose from ceiling every tiny positive value.
         var scales = stress.Roads.Select(road =>
             new FoundationPhysicalEdgeCarryingScale(
-                road.Edge, 100_000_000UL)).ToArray();
+                road.Edge, 1_000_000UL)).ToArray();
         var error = Assert.Throws<InvalidOperationException>(() =>
             FoundationPhysicalGlobalConcaveCongestionFeedback.Coordinate(
                 stress.Workers, stress.Host.Incidence, Demand(), Cargo(),
