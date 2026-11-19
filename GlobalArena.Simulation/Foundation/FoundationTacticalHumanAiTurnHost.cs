@@ -466,6 +466,9 @@ public sealed class FoundationTacticalHumanAiTurnHost
             r.Edge == edge) ??
             throw new InvalidOperationException(
                 "Investment cannot target an absent fine physical edge.");
+        if (physical.CargoMicroAtReferenceLoad == ulong.MaxValue)
+            throw new InvalidOperationException(
+                "Open sea has no constructed infrastructure or financeable bottleneck.");
         if (physical.OwnershipKind !=
                 PhysicalTransportOwnershipKind.NoInfrastructure ||
             physical.NaturalConstructionCostMoneyMicro is not { } cost)
