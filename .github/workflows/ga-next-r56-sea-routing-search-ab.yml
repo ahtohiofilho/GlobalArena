@@ -1,0 +1,39 @@
+name: GA-Next R56 — exact multimodal route search optimization A/B
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/Foundation/FoundationPhysicalMultimodalRouteComparator.cs'
+      - 'GlobalArena.Tests/FoundationPhysicalMultimodalRouteComparatorTests.cs'
+      - '.github/workflows/ga-next-r56-sea-routing-search-ab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-ab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Compare R55 exact baseline vs R56 search
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release \
+            --filter 'FullyQualifiedName~FoundationPhysicalMultimodalRouteComparatorTests' \
+            --logger 'console;verbosity=detailed' --nologo 2>&1 | tee ga-next-r56-ab.log
+          grep 'GA_R56_AB' ga-next-r56-ab.log > ga-next-r56-optimization-report.txt
+      - name: Preserve exact-route and search-budget evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-next-r56-exact-route-search-ab
+          path: |
+            ga-next-r56-ab.log
+            ga-next-r56-optimization-report.txt
+          retention-days: 14
