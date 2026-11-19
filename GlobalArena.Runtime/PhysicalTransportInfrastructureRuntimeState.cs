@@ -119,15 +119,17 @@ public sealed class PhysicalTransportInfrastructureRuntimeState
 
     /// <summary>
     /// Apply a verified MONEY debit to one existing finite-capacity edge.
-    /// Reinvestment is allowed across turns without creating parallel
-    /// infrastructure. One monotone capital ledger finances progressively
-    /// greater operating capacity; ownership/tariffs are a separate gate.
-    /// No physical material, stock or worker is consumed.
+    /// The first verified investor acquires title to this ONE finite
+    /// crossing; subsequent funding by the same owner increases its
+    /// capacity. Foreign reinvestment requires an independently authorized
+    /// military-title transfer (not available in this gate).
+    /// No physical materials, stock or workers are consumed.
     /// </summary>
     public PhysicalTransportInfrastructureRuntimeState RecordMoneyInvestment(
-        PhysicalTacticalEdgeId edge, ulong moneyMicro)
+        CivilizationId investor, PhysicalTacticalEdgeId edge, ulong moneyMicro)
     {
-        if (!HasMonetaryConstructionCosts || moneyMicro == 0UL || !edge.IsValid)
+        if (!HasMonetaryConstructionCosts || !investor.IsValid ||
+            moneyMicro == 0UL || !edge.IsValid)
             throw new InvalidOperationException(
                 "Monetary investment requires complete v13 construction quotes.");
         int index = -1;
@@ -145,9 +147,16 @@ public sealed class PhysicalTransportInfrastructureRuntimeState
         if (record.CargoMicroAtReferenceLoad == ulong.MaxValue)
             throw new InvalidOperationException(
                 "Open sea remains natural and cannot receive capital investment.");
-        if (record.OwnershipKind != PhysicalTransportOwnershipKind.NoInfrastructure)
+        if (record.OwnershipKind == PhysicalTransportOwnershipKind.UnownedInfrastructure ||
+            (record.OwnershipKind == PhysicalTransportOwnershipKind.Owned &&
+             record.InfrastructureOwner != investor))
             throw new InvalidOperationException(
-                "This gate only finances a natural, unbuilt crossing.");
+                "Only the existing infrastructure owner may reinvest; foreign " +
+                "title changes require an independently authorized military event.");
+        if (record.OwnershipKind != PhysicalTransportOwnershipKind.NoInfrastructure &&
+            record.OwnershipKind != PhysicalTransportOwnershipKind.Owned)
+            throw new InvalidOperationException(
+                "Invalid infrastructure title for monetary financing.");
         if (record.NaturalConstructionCostMoneyMicro is not > 0UL)
             throw new InvalidOperationException(
                 "A financed edge needs its original positive capital quote.");
@@ -156,12 +165,21 @@ public sealed class PhysicalTransportInfrastructureRuntimeState
             throw new InvalidOperationException(
                 "Cumulative investment exceeds exact canonical money range.");
 
-        var rows = Edges.Select((r, i) => r with
-        {
-            CommittedInvestmentMoneyMicro = i == index
-                ? checked(prior + moneyMicro)
-                : r.CommittedInvestmentMoneyMicro ?? 0UL
-        }).ToArray();
+        var rows = Edges.Select((r, i) => i == index
+            ? r with
+            {
+                OwnershipKind = PhysicalTransportOwnershipKind.Owned,
+                InfrastructureOwner = investor,
+                // No unilateral toll invented by investing: policy comes later.
+                ExternalTariffMicroPerWholeCargoUnit =
+                    r.ExternalTariffMicroPerWholeCargoUnit,
+                CommittedInvestmentMoneyMicro = checked(prior + moneyMicro)
+            }
+            : r with
+            {
+                CommittedInvestmentMoneyMicro =
+                    r.CommittedInvestmentMoneyMicro ?? 0UL
+            }).ToArray();
         return new PhysicalTransportInfrastructureRuntimeState(true, rows);
     }
 }
