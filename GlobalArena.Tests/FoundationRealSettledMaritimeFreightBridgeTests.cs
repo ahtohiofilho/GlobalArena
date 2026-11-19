@@ -66,7 +66,8 @@ public sealed class FoundationRealSettledMaritimeFreightBridgeTests
         return known;
     }
 
-    private static Scenario Create(bool fundCoastalInfrastructure = false)
+    private static Scenario Create(bool fundCoastalInfrastructure = false,
+        bool seedOwnedTariff = false)
     {
         var initial = FoundationConcentratedWorkforceScenario.CreatePreview(
             new WorldGenerationRequest(new WorldSeed(20261012UL),
@@ -86,8 +87,26 @@ public sealed class FoundationRealSettledMaritimeFreightBridgeTests
                 2_000_000UL, 4_000_000UL, 6_000_000UL, 1_000_000UL));
         var treasury = CivilizationTreasuryRuntimeState.CreateOpening(
             new[] { (Red, fundCoastalInfrastructure ? 1_000_000_000_000_000UL : 0UL), (Blue, 0UL) });
+        // An explicitly pre-owned and tolled initial crossing is valid in
+        // the canonical inventory. This is a TEST-ONLY tariff policy input,
+        // not a claim that investment automatically chooses a tariff.
+        PhysicalTransportInfrastructureRuntimeState transport = seeded.Transport;
+        if (seedOwnedTariff)
+        {
+            var coastSeed = transport.Edges.First(row =>
+                row.CargoMicroAtReferenceLoad == 500_000UL);
+            transport = PhysicalTransportInfrastructureRuntimeState.CreateInitial(
+                transport.Edges.Select(row => row.Edge == coastSeed.Edge
+                    ? row with
+                    {
+                        OwnershipKind = PhysicalTransportOwnershipKind.Owned,
+                        InfrastructureOwner = Red,
+                        ExternalTariffMicroPerWholeCargoUnit = 2_000UL
+                    }
+                    : row));
+        }
         var snapshot = initial.Snapshot.DeployInitialPhysicalTransport(
-                seeded.Transport,
+                transport,
                 initial.Session.GeneratedWorld, initial.Incidence)
             .DeployInitialTreasury(treasury);
         initial.Session.AcceptSnapshot(snapshot);
@@ -288,9 +307,14 @@ public sealed class FoundationRealSettledMaritimeFreightBridgeTests
     [Fact]
     public void R74RealSettledCyclesPreserveExhaustiveVersusBoundedMaritimeDecision()
     {
-        foreach (bool funded in new[] { false, true })
+        foreach (var (funded, initialTariff) in new[]
         {
-        var scene = Create(funded);
+            (Funded: false, InitialTariff: false),
+            (Funded: true, InitialTariff: false),
+            (Funded: false, InitialTariff: true)
+        })
+        {
+        var scene = Create(funded, initialTariff);
         if (funded)
             Assert.Contains(scene.Host.Snapshot.Transport.Edges,
                 edge => edge.InfrastructureOwner == Red);
@@ -329,8 +353,17 @@ public sealed class FoundationRealSettledMaritimeFreightBridgeTests
                     row.PhysicalCostMicroPerWholeCargoUnit ==
                         previous.FreePhysicalCostMicroPerWholeCargoUnit &&
                     previous.QuotedCongestionSurchargeMicroPerWholeCargoUnit > 0UL);
+            if (initialTariff)
+            {
+                Assert.True(positiveThirdPartyTariffs > 0,
+                    "Explicit test-only tariff must survive a real settlement.");
+                var tolled = projectedByEdge.Values.Single(row =>
+                    row.InfrastructureOwner == Red &&
+                    row.ExternalTariffMicroPerWholeCargoUnit == 2_000UL);
+                Assert.Equal(2_000UL, tolled.ExternalTariffMicroPerWholeCargoUnit);
+            }
             _output.WriteLine(
-                $"GA_R74_SETTLED_COVERAGE financed={funded} cycle={settled} " +
+                $"GA_R74_SETTLED_COVERAGE financed={funded} seeded_tariff={initialTariff} cycle={settled} " +
                 $"positive_tariff_edges={positiveThirdPartyTariffs} " +
                 $"valid_positive_lagged_surcharge_edges={validPositiveLaggedSurcharges} " +
                 $"positive_tariff_gate={(positiveThirdPartyTariffs > 0 ? "COVERED" : "OPEN")} " +
