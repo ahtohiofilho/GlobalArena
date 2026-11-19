@@ -1,0 +1,35 @@
+name: GA-Next R78 — audit seller-specific physical toll crossings
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/Foundation/FoundationPhysicalAuditedSellerTollBinding.cs'
+      - 'GlobalArena.Tests/FoundationPhysicalAuditedSellerTollBindingTests.cs'
+      - '.github/workflows/ga-next-r78-audited-seller-toll.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  seller-crossings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Validate R78 alongside R77-R73
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release \
+            --filter 'FullyQualifiedName~FoundationPhysicalAuditedSellerTollBindingTests|FullyQualifiedName~FoundationPhysicalCandidateTariffTransferReconciliationTests|FullyQualifiedName~FoundationPhysicalFrozenTariffAdmissionTests|FullyQualifiedName~FoundationPhysicalTariffBenefitReferenceTests|FullyQualifiedName~FoundationRealSettledMaritimeFreightBridgeTests|FullyQualifiedName~FoundationPhysicalFrozenEconomicMaritimeComparatorTests' \
+            --logger 'console;verbosity=detailed' --nologo 2>&1 | tee ga-next-r78-results.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ga-next-r78-seller-crossings
+          path: ga-next-r78-results.log
+          retention-days: 14
