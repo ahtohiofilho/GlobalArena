@@ -66,7 +66,7 @@ public sealed class FoundationRealSettledMaritimeFreightBridgeTests
         return known;
     }
 
-    private static Scenario Create()
+    private static Scenario Create(bool fundCoastalInfrastructure = false)
     {
         var initial = FoundationConcentratedWorkforceScenario.CreatePreview(
             new WorldGenerationRequest(new WorldSeed(20261012UL),
@@ -85,7 +85,7 @@ public sealed class FoundationRealSettledMaritimeFreightBridgeTests
             new FoundationMonetaryConstructionPolicy(
                 2_000_000UL, 4_000_000UL, 6_000_000UL, 1_000_000UL));
         var treasury = CivilizationTreasuryRuntimeState.CreateOpening(
-            new[] { (Red, 0UL), (Blue, 0UL) });
+            new[] { (Red, fundCoastalInfrastructure ? 1_000_000_000_000_000UL : 0UL), (Blue, 0UL) });
         var snapshot = initial.Snapshot.DeployInitialPhysicalTransport(
                 seeded.Transport,
                 initial.Session.GeneratedWorld, initial.Incidence)
@@ -157,6 +157,30 @@ public sealed class FoundationRealSettledMaritimeFreightBridgeTests
         }
         Assert.True(found, "Need two actual coastline edges with " +
             "positive natural sea leg and reachable terrestrial endpoints.");
+
+        if (fundCoastalInfrastructure)
+        {
+            // Test-owned, monetary investment in one REAL crossing.
+            // Red owns the infrastructure; Blue must pay its actual tariff.
+            var selected = host.Snapshot.Transport.Edges.Single(
+                edge => edge.Edge == chosen.From.Edge);
+            var invested = host.Snapshot.RecordMonetaryInfrastructureInvestment(
+                Red, selected.Edge,
+                checked(selected.NaturalConstructionCostMoneyMicro!.Value * 32UL));
+            var financed = invested.Transport.Edges.Single(
+                edge => edge.Edge == chosen.From.Edge);
+            Assert.Equal(Red, financed.InfrastructureOwner);
+            Assert.True(financed.ExternalTariffMicroPerWholeCargoUnit > 0UL,
+                "R74 funded scenario must exercise a strictly positive third-party tariff.");
+            host.Session.AcceptSnapshot(invested);
+            host = new FoundationTacticalHumanAiTurnHost(
+                host.Session, host.Incidence, new[] { Red },
+                new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy>
+                {
+                    [Blue] = new FoundationTacticalAiHoldPolicy()
+                }, enableMonetaryInfrastructure: true,
+                settlementPolicy: policy);
+        }
 
         var fine = host.Incidence.Refinement.FineParameters;
         return new Scenario(host, policy,
@@ -264,7 +288,13 @@ public sealed class FoundationRealSettledMaritimeFreightBridgeTests
     [Fact]
     public void R74RealSettledCyclesPreserveExhaustiveVersusBoundedMaritimeDecision()
     {
-        var scene = Create();
+        foreach (bool funded in new[] { false, true })
+        {
+        var scene = Create(funded);
+        if (funded)
+            Assert.Contains(scene.Host.Snapshot.Transport.Edges,
+                edge => edge.InfrastructureOwner == Red &&
+                    edge.ExternalTariffMicroPerWholeCargoUnit > 0UL);
         var world = scene.Host.Session.GeneratedWorld;
         var incidence = scene.Host.Incidence;
 
@@ -300,8 +330,11 @@ public sealed class FoundationRealSettledMaritimeFreightBridgeTests
                     row.PhysicalCostMicroPerWholeCargoUnit ==
                         previous.FreePhysicalCostMicroPerWholeCargoUnit &&
                     previous.QuotedCongestionSurchargeMicroPerWholeCargoUnit > 0UL);
+            if (funded)
+                Assert.True(positiveThirdPartyTariffs > 0,
+                    "Funded settled economy must preserve positive third-party tariffs.");
             _output.WriteLine(
-                $"GA_R74_SETTLED_COVERAGE cycle={settled} " +
+                $"GA_R74_SETTLED_COVERAGE financed={funded} cycle={settled} " +
                 $"positive_tariff_edges={positiveThirdPartyTariffs} " +
                 $"valid_positive_lagged_surcharge_edges={validPositiveLaggedSurcharges} " +
                 $"positive_tariff_gate={(positiveThirdPartyTariffs > 0 ? "COVERED" : "OPEN")} " +
@@ -343,6 +376,7 @@ public sealed class FoundationRealSettledMaritimeFreightBridgeTests
                 Assert.Same(snapshot, scene.Host.Snapshot);
                 Assert.Equal(hash, scene.Host.StateHash);
             }
+        }
         }
     }
 }
