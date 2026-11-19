@@ -1,0 +1,36 @@
+name: GA-Next R69 — treasury-cycle commodity freight gate
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/Foundation/FoundationPhysicalTreasuryBoundMaritimeProof.cs'
+      - 'GlobalArena.Tests/FoundationPhysicalWorldBoundMaritimeFreightProofTests.cs'
+      - '.github/workflows/ga-next-r69-treasury-commodity-bound.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  economic-cycle-binding:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Verify exact commodity mass and consecutive authoritative settled freight
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release \
+            --filter 'FullyQualifiedName~FoundationPhysicalWorldBoundMaritimeFreightProofTests|FullyQualifiedName~FoundationPhysicalMaritimeMarginalFreightBoundTests' \
+            --logger 'console;verbosity=detailed' --nologo 2>&1 | tee ga-next-r69-evidence.log
+      - name: Preserve binding regression evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ga-next-r69-treasury-commodity-gate
+          path: ga-next-r69-evidence.log
+          retention-days: 14
