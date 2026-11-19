@@ -112,9 +112,41 @@ public sealed class FoundationPhysicalFrozenEconomicMaritimeComparatorTests
         // We deliberately test the authoritative INVESTMENT model:
         // CAPEX improves capacity; no R55 operational cost substitution.
         var record = state.Transport.Edges.Single(e => e.Edge == financeEdge);
-        var financed = state.RecordMonetaryInfrastructureInvestment(
-            Red, financeEdge,
-            checked(record.NaturalConstructionCostMoneyMicro!.Value * 32UL));
+        WorldState financed = state;
+        if (m == 3)
+        {
+            // The R63 research scenario established that developed
+            // coastal logistics can actually WIN for markets 16 -> 27.
+            // Finance ALL real coast crossings with money (not materials),
+            // but retain AUTHORITATIVE physical costs/capacity policy.
+            var fields = host.Session.GeneratedWorld.StrategicPhysicalFields;
+            var isLand = host.Incidence.TileIncidences.Select(tile =>
+            {
+                long sum = 0;
+                foreach (var coarse in tile.IncidentCoarseCellIds)
+                    sum = checked(sum +
+                        fields.Elevation.GetRawValue(coarse));
+                return sum / tile.IncidentCoarseCellIds.Count >
+                    fields.SeaLevel.RawValue;
+            }).ToArray();
+            var coastalIds = host.Incidence.FineTopology.Edges
+                .Where(edge =>
+                    isLand[checked((int)edge.IncidentCellIds[0].Value - 1)] !=
+                    isLand[checked((int)edge.IncidentCellIds[1].Value - 1)])
+                .Select(edge => new PhysicalTacticalEdgeId(
+                    host.Incidence.Refinement.FineParameters, edge.Id))
+                .ToHashSet();
+            foreach (var coast in state.Transport.Edges.Where(
+                row => coastalIds.Contains(row.Edge)))
+                financed = financed.RecordMonetaryInfrastructureInvestment(
+                    Red, coast.Edge,
+                    checked(coast.NaturalConstructionCostMoneyMicro!.Value *
+                        256UL));
+        }
+        else
+            financed = state.RecordMonetaryInfrastructureInvestment(
+                Red, financeEdge,
+                checked(record.NaturalConstructionCostMoneyMicro!.Value * 32UL));
         int comparisons = 0;
         foreach (var (label, inventory) in new[]
         {
@@ -138,6 +170,10 @@ public sealed class FoundationPhysicalFrozenEconomicMaritimeComparatorTests
             // The best losing maritime ALTERNATIVE may have been pruned;
             // when sea wins globally, its exact quote and REAL terminals
             // must be retained without approximate tie-breaking.
+            if (m == 3 && label == "financed")
+                Assert.True(reference.SeaPreferred,
+                    "R73 must cover a real maritime GLOBAL winner, not " +
+                    "only inexpensive terrestrial routes.");
             if (reference.SeaPreferred)
             {
                 Assert.Equal(reference.BestSeaRateMicro,
