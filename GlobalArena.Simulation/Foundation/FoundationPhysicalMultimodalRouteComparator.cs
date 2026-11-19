@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Diagnostics;
 using GlobalArena.Runtime;
 using GlobalArena.World;
 
@@ -25,6 +26,17 @@ public static class FoundationPhysicalMultimodalRouteComparator
         OnDemandArc = 0,
         EmbarkationState = 1
     }
+
+    /// <summary>
+    /// R65 observational timings only. Not part of the game state, route
+    /// price, deterministic ordering or any cache. Counts are exact, timings
+    /// are non-deterministic and suitable solely for aggregate profiling.
+    /// </summary>
+    public sealed record ResearchPhaseTelemetry(
+        double PreparationMs, double LandSearchMs, double BoundMs,
+        double SeaSearchMs, double PairEvaluationMs,
+        long EvaluatedPairSlots, long SeaQuotes,
+        long PotentialPairs, long ProvenExcludedPairs);
 
     public sealed record Result(
         ulong? LandOnlyRateMicro,
@@ -179,8 +191,27 @@ public static class FoundationPhysicalMultimodalRouteComparator
         bool useOptimizedSeaSearch = true,
         FrozenSeaDistanceCache? frozenSeaDistances = null,
         MaritimeResearchArchitecture architecture = MaritimeResearchArchitecture.OnDemandArc,
-        bool useProvenLandBound = false)
+        bool useProvenLandBound = false,
+        Action<ResearchPhaseTelemetry>? reportPhases = null)
     {
+        long tickStart = reportPhases is null ? 0L :
+            Stopwatch.GetTimestamp();
+        long tickGraph = tickStart, tickLand = tickStart;
+        long tickBound = tickStart, tickSea = tickStart;
+        long countedPairSlots = 0L, countedQuotes = 0L;
+        static double Milliseconds(long from, long to) =>
+            1000.0 * (to - from) / Stopwatch.Frequency;
+        void Emit(long tickPairs, long possible, long removed)
+        {
+            if (reportPhases is null) return;
+            reportPhases(new ResearchPhaseTelemetry(
+                Milliseconds(tickStart, tickGraph),
+                Milliseconds(tickGraph, tickLand),
+                Milliseconds(tickLand, tickBound),
+                Milliseconds(tickBound, tickSea),
+                Milliseconds(tickSea, tickPairs),
+                countedPairSlots, countedQuotes, possible, removed));
+        }
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(incidence);
         ArgumentNullException.ThrowIfNull(transport);
@@ -273,6 +304,7 @@ public static class FoundationPhysicalMultimodalRouteComparator
                     "Frozen sea distances require optimized mode.");
             frozenSeaDistances.Validate(world, incidence, seaSignature);
         }
+        if (reportPhases is not null) tickGraph = Stopwatch.GetTimestamp();
         var fromSource = Shortest(s, landGraph, count);
         var toDestination = Shortest(d, landGraph, count);
         ulong? landOnly = fromSource[checked((int)d)] == ulong.MaxValue
@@ -288,6 +320,7 @@ public static class FoundationPhysicalMultimodalRouteComparator
                 "Unbounded port-pair discovery would exceed the explicit " +
                 "R55 research budget; no silently truncated optimum.");
 
+        if (reportPhases is not null) tickLand = Stopwatch.GetTimestamp();
         long potentialPairs = checked((long)entrances.Length * exits.Length);
         long safelyExcluded = 0L;
 
@@ -328,10 +361,19 @@ public static class FoundationPhysicalMultimodalRouteComparator
             exits = exits.Where(b =>
                 viableDisembark.Contains(b.Record.Edge)).ToArray();
             if (entrances.Length == 0 || exits.Length == 0)
+            {
+                if (reportPhases is not null)
+                {
+                    tickBound = Stopwatch.GetTimestamp();
+                    tickSea = tickBound;
+                    Emit(tickBound, potentialPairs, safelyExcluded);
+                }
                 return new Result(landOnly, null, null, null, 0,
                     0, 0, 0L, potentialPairs, safelyExcluded);
+            }
         }
 
+        if (reportPhases is not null) tickBound = Stopwatch.GetTimestamp();
         ulong? seaBest = null;
         PhysicalTacticalEdgeId? embark = null, disembark = null;
         int explored = 0;
@@ -388,6 +430,7 @@ public static class FoundationPhysicalMultimodalRouteComparator
                 expandedSeaTiles = checked(expandedSeaTiles + visited);
             }
         }
+        if (reportPhases is not null) tickSea = Stopwatch.GetTimestamp();
         foreach (var portA in entrances)
         {
             // R55 baseline remains selectable for an independent numerical
@@ -403,6 +446,7 @@ public static class FoundationPhysicalMultimodalRouteComparator
             }
             foreach (var portB in exits)
             {
+                if (reportPhases is not null) countedPairSlots++;
                 if (useProvenLandBound && landOnly is ulong landLimit)
                 {
                     UInt128 cheapFloor =
@@ -425,6 +469,7 @@ public static class FoundationPhysicalMultimodalRouteComparator
                     continue;
                 // The R54 discount is applied ONCE to the entire sea leg.
                 // Never modify the underlying sea-sea edge inventory.
+                if (reportPhases is not null) countedQuotes++;
                 ulong seaQuote = FoundationPhysicalPairedCoastalSeaLegQuote
                     .Quote(seaRate, portA.Record, portB.Record);
                 ulong candidate = checked(
@@ -446,6 +491,8 @@ public static class FoundationPhysicalMultimodalRouteComparator
                 }
             }
         }
+        if (reportPhases is not null)
+            Emit(Stopwatch.GetTimestamp(), potentialPairs, safelyExcluded);
         return new Result(landOnly, seaBest, embark, disembark,
             explored, entrances.Length, exits.Length, expandedSeaTiles,
             potentialPairs, safelyExcluded);
