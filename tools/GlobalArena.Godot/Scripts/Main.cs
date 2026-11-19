@@ -1546,6 +1546,8 @@ public partial class Main : Control
                 "GA_NEXT_WORKER_BOARD_SMOKE") == "1";
             bool settledTradeQaSmoke = System.Environment.GetEnvironmentVariable(
                 "GA_NEXT_SETTLED_TRADE_VISUAL_SMOKE") == "1";
+            bool continuousNavigationSmoke = System.Environment.GetEnvironmentVariable(
+                "GA_NEXT_CONTINUOUS_NAVIGATION_SMOKE") == "1";
             bool useExplicitEconomicLab = settledTradeQaSmoke ||
                 _interactiveEconomicPreviewActive;
             if ((useExplicitEconomicLab &&
@@ -1666,6 +1668,9 @@ public partial class Main : Control
                     this, _tacticalHost, _tacticalPreview!).RunAsync();
             else if (settledTradeQaSmoke && _tacticalHost is not null)
                 _ = new FoundationGodotSettledTradeSmoke(
+                    this, _tacticalHost, _tacticalPreview!).RunAsync();
+            else if (continuousNavigationSmoke && _tacticalHost is not null)
+                _ = new FoundationGodotContinuousNavigationSmoke(
                     this, _tacticalHost, _tacticalPreview!).RunAsync();
         }
 

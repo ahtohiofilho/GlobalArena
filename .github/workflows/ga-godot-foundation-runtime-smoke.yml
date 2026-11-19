@@ -180,6 +180,17 @@ jobs:
             echo 'Preview must not auto-commit a trade turn or launch the CI autoplay smoke.'
             exit 1
           fi
+      - name: R45 continuous tactical navigation (two focus handoffs in one held drag)
+        shell: bash
+        run: |
+          set -euo pipefail
+          GA_FOUNDATION_GODOT_SMOKE=0 GA_NEXT_WORKSPACE_SMOKE=0 \
+            GA_NEXT_CONTINUOUS_NAVIGATION_SMOKE=1 \
+            timeout 120s "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --quit-after 900 \
+            2>&1 | tee "$RUNNER_TEMP/ga-godot/continuous-nav.log"
+          grep -q 'GA_NEXT_CONTINUOUS_NAVIGATION_INPUT_PASS' "$RUNNER_TEMP/ga-godot/continuous-nav.log"
+          grep -q 'GA_NEXT_CONTINUOUS_NAVIGATION_PASS' "$RUNNER_TEMP/ga-godot/continuous-nav.log"
+          if grep -E 'GA_NEXT_CONTINUOUS_NAVIGATION_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/continuous-nav.log"; then exit 1; fi
       - name: Install virtual display and software OpenGL for a real rendered frame
         run: |
           sudo apt-get update -qq
