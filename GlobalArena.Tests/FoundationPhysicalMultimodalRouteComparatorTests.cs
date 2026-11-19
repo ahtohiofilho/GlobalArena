@@ -240,7 +240,7 @@ public sealed class FoundationPhysicalMultimodalRouteComparatorTests
                 intensiveCoasts.RecordMonetaryInfrastructureInvestment(
                     Red, record.Edge,
                     checked(record.NaturalConstructionCostMoneyMicro!.Value
-                        * 64UL));
+                        * 256UL));
         var intensiveSea = FoundationPhysicalMultimodalRouteComparator
             .Compare(host.Session.GeneratedWorld, host.Incidence,
                 intensiveCoasts.Transport, source, destination,
@@ -249,6 +249,9 @@ public sealed class FoundationPhysicalMultimodalRouteComparatorTests
             allPortRoutes.OneSeaLegRateMicro);
         Assert.Equal(natural.LandOnlyRateMicro,
             intensiveSea.LandOnlyRateMicro);
+        Assert.True(intensiveSea.SeaRoutePreferred,
+            "The research curve must eventually make developed coastal " +
+            "logistics competitive without any sea-sea investment.");
         _output.WriteLine(
             $"GA_R55_NETWORK all_ports={portCount} all_land_edges={landCount} " +
             $"all_ports_sea={allPortRoutes.OneSeaLegRateMicro} " +
