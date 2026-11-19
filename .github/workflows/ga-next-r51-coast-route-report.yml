@@ -1,0 +1,41 @@
+name: GA-Next R51 — coastal transfers evidence (frozen real worker census)
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Tests/FoundationCoastalTransshipmentRouteDiagnosticsTests.cs'
+      - '.github/workflows/ga-next-r51-coast-route-report.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  coast-evidence:
+    name: Isolated coast C0 A/B and per-delivery routes
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Run frozen-census per-delivery audit
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release \
+            --filter 'FullyQualifiedName~FoundationCoastalTransshipmentRouteDiagnosticsTests' \
+            --logger 'console;verbosity=detailed' --nologo 2>&1 | tee ga-next-r51-coastal-evidence.log
+          grep 'GA_R51_SUMMARY' ga-next-r51-coastal-evidence.log > ga-next-r51-summary.txt
+          grep 'GA_R51_PATH' ga-next-r51-coastal-evidence.log > ga-next-r51-deliveries.txt
+      - name: Upload actual regression diagnostics
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ga-next-r51-coastal-path-evidence
+          path: |
+            ga-next-r51-coastal-evidence.log
+            ga-next-r51-summary.txt
+            ga-next-r51-deliveries.txt
+          retention-days: 14
