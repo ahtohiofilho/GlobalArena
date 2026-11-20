@@ -877,7 +877,7 @@ public partial class GlobePreview : SubViewportContainer
             geography.FineElevationRaw.Count != incidence.FineTopology.Cells.Count ||
             geography.FineTemperatureRaw.Count != incidence.FineTopology.Cells.Count ||
             geography.CoarseParameters !=
-                PresentedCanonicalWorld.Request.Parameters)
+                PresentedCanonicalWorld.Request.StrategicParameters)
             throw new InvalidOperationException(
                 "Signed physical globe requires matching tactical world parameters and topology.");
 
