@@ -53,7 +53,7 @@ internal sealed class FoundationGodotFineFirstTerrainSmoke
 
     private async Task Capture(string name)
     {
-        string? dir = Environment.GetEnvironmentVariable(
+        string? dir = System.Environment.GetEnvironmentVariable(
             "GA_NEXT_R87_SCREENSHOT_DIR");
         if (string.IsNullOrWhiteSpace(dir)) return;
         Directory.CreateDirectory(dir);
