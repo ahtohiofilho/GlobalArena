@@ -171,6 +171,24 @@ public static class PhysicalTacticalIncidenceMapper
             lineage.CoarseTopology, lineage.FineTopology, ownerSets);
     }
 
+    /// <summary>
+    /// R109: compare strategic region overlays on real fine POLYGON sides.
+    /// This is diagnostic-only; scale-six remains the materialization gate.
+    /// Shared incidence is NOT changed by the audit's temporary tie-break.
+    /// </summary>
+    public static PhysicalTacticalPolygonBoundaryDiagnostics
+        DiagnosePolygonBoundaries(GoldbergScaledRefinement refinement)
+    {
+        ArgumentNullException.ThrowIfNull(refinement);
+        var lineage = GoldbergStrategicTopologyGenerator
+            .GenerateClassIScaledRefinementLineage(refinement);
+        var owners = BuildNearestOwnerPartition(
+            lineage.CoarseTopology, lineage.FineTopology,
+            lineage.FineAnchorByCoarseCellId);
+        return PhysicalTacticalPolygonBoundaryAuditor.Analyze(
+            refinement, lineage.CoarseTopology, lineage.FineTopology, owners);
+    }
+
 public static PhysicalTacticalIncidenceMap Materialize(
     GoldbergScaledRefinement refinement)
 {
