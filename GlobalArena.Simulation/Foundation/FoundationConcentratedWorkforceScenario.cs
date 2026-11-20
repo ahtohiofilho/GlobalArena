@@ -17,7 +17,8 @@ public static class FoundationConcentratedWorkforceScenario
 
     public static FoundationTacticalHumanAiTurnHost CreatePreview(
         WorldGenerationRequest request,
-        int workersPerCivilization = DefaultWorkersPerCivilization)
+        int workersPerCivilization = DefaultWorkersPerCivilization,
+        GoldbergScaledRefinement? startupRefinement = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         // Demo-size guard only; the production engine has no six-worker cap.
@@ -33,8 +34,16 @@ public static class FoundationConcentratedWorkforceScenario
         if (coarse.M <= 0 || coarse.N != 0)
             throw new NotSupportedException(
                 "This concentrated preview uses class-I scaled Goldberg worlds.");
-        var refinement = new GoldbergScaledRefinement(
-            coarse, new GoldbergParameters(checked(coarse.M * 6), 0));
+        // R105: if a startup refinement is supplied, it is authoritative
+        // for both physical workers and the economic host. Do not silently
+        // recreate a sixfold grid divergent from the visual contract.
+        var refinement = startupRefinement ??
+            new GoldbergScaledRefinement(
+                coarse, new GoldbergParameters(checked(coarse.M * 6), 0));
+        if (refinement.CoarseParameters != coarse)
+            throw new ArgumentException(
+                "Concentrated workforce refinement must match the world request.",
+                nameof(startupRefinement));
         var incidence = PhysicalTacticalIncidenceMapper.Materialize(refinement);
         var human = new CivilizationId(1UL);
         var ai = new CivilizationId(2UL);
