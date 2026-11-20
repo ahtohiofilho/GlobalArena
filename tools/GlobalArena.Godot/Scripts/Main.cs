@@ -1615,7 +1615,8 @@ public partial class Main : Control
                         : FoundationConcentratedWorkforceScenario.CreatePreview(
                             request, useExplicitEconomicLab ? 3 :
                                 FoundationConcentratedWorkforceScenario
-                                    .DefaultWorkersPerCivilization);
+                                    .DefaultWorkersPerCivilization,
+                            _goldbergStartup.Refinement);
                 if (fineFirstLab)
                 {
                     _goldbergStartup.VerifyWorldAndIncidence(
