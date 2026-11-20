@@ -200,6 +200,56 @@ public sealed class FoundationGodotWorkerBoardSmoke
                  _host.StateHash == hash,
                 "After targeted cancellation the same worker can queue again.");
 
+            // R111: two independent real-worker orders may be queued.
+            // Cancel either one directly from its row without changing
+            // selection, and verify the other remains authoritative.
+            var secondChip = _map.FindChild(
+                "WorkerBoardChip_5", true, false) as GaWorkerBoardDragChip;
+            Must(secondChip is not null,
+                "Second real worker must remain visible in own tile board.");
+            var secondPayload = secondChip!._GetDragData(Vector2.Zero);
+            Must(mining._CanDropData(Vector2.Zero, secondPayload),
+                "Second worker must be assignable to the mining zone.");
+            mining._DropData(Vector2.Zero, secondPayload);
+            await Frames();
+            Must(_host.PendingOrderCount == 2 &&
+                 _host.StateHash == hash &&
+                 _map.WorkerBoardSelectedId == 4UL &&
+                 _map.WorkerBoardProjectedCount(PhysicalWorkerOccupation.Mining) == 4,
+                "Two independent pending orders must project without mutating world.");
+            var cancelFourth = _map.WorkerBoardCancelPendingRect(4UL);
+            Must(cancelFourth.HasValue,
+                "Queued worker #4 needs a visible per-row cancel button.");
+            await Click(cancelFourth.GetValueOrDefault().GetCenter());
+            Must(_host.PendingOrderCount == 1 &&
+                 _host.StateHash == hash &&
+                 !_map.WorkerBoardCancelPendingRect(4UL).HasValue &&
+                 _map.WorkerBoardCancelPendingRect(5UL).HasValue &&
+                 _map.WorkerBoardSelectedId == 4UL &&
+                 _map.WorkerBoardProjectedCount(PhysicalWorkerOccupation.Agriculture) == 2 &&
+                 _map.WorkerBoardProjectedCount(PhysicalWorkerOccupation.Forestry) == 1 &&
+                 _map.WorkerBoardProjectedCount(PhysicalWorkerOccupation.Mining) == 3,
+                "Canceling worker #4 must preserve worker #5's pending intent.");
+            var cancelFifth = _map.WorkerBoardCancelPendingRect(5UL);
+            Must(cancelFifth.HasValue,
+                "Worker #5 order must remain individually cancelable.");
+            await Click(cancelFifth.GetValueOrDefault().GetCenter());
+            Must(_host.PendingOrderCount == 0 &&
+                 _host.StateHash == hash &&
+                 _map.WorkerBoardSelectedId == 4UL &&
+                 _map.WorkerBoardProjectedCount(PhysicalWorkerOccupation.Agriculture) == 2 &&
+                 _map.WorkerBoardProjectedCount(PhysicalWorkerOccupation.Forestry) == 2 &&
+                 _map.WorkerBoardProjectedCount(PhysicalWorkerOccupation.Mining) == 2,
+                "Canceling both orders must restore the original projection.");
+            GD.Print("GA_NEXT_R111_MULTI_ORDER_CANCEL_PASS " +
+                "two_workers=true independent_cancel=true " +
+                "selection_unchanged=true host_authority=true hash_unchanged=true");
+            mining._DropData(Vector2.Zero, payload);
+            await Frames();
+            Must(_host.PendingOrderCount == 1 &&
+                 _host.StateHash == hash,
+                "Board must permit a new order after selective cancellations.");
+
             await KeyPress(Key.X);
             Must(_host.PendingOrderCount == 0 &&
                  _host.StateHash == hash &&

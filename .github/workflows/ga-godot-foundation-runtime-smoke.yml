@@ -156,6 +156,7 @@ jobs:
           grep -q 'GA_NEXT_WORKER_BOARD_PENDING_PASS' "$RUNNER_TEMP/ga-godot/worker-board.log"
           grep -q 'GA_NEXT_WORKER_BOARD_COMMIT_PASS' "$RUNNER_TEMP/ga-godot/worker-board.log"
           grep -q 'GA_NEXT_R110_WORKER_BOARD_CANCEL_PASS' "$RUNNER_TEMP/ga-godot/worker-board.log"
+          grep -q 'GA_NEXT_R111_MULTI_ORDER_CANCEL_PASS' "$RUNNER_TEMP/ga-godot/worker-board.log"
           grep -q 'GA_NEXT_WORKER_BOARD_E2E_PASS' "$RUNNER_TEMP/ga-godot/worker-board.log"
           if grep -E 'GA_NEXT_WORKER_BOARD_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/worker-board.log"; then exit 1; fi
       - name: QA-only v15 monetary closing in actual Godot scene (headless E keys)
@@ -385,6 +386,7 @@ jobs:
             timeout 120s "$GODOT_BIN" --path tools/GlobalArena.Godot --quit-after 900 \
             2>&1 | tee "$RUNNER_TEMP/ga-godot/worker-board-graphical.log"
           grep -q 'GA_NEXT_R110_WORKER_BOARD_CANCEL_PASS' "$RUNNER_TEMP/ga-godot/worker-board-graphical.log"
+          grep -q 'GA_NEXT_R111_MULTI_ORDER_CANCEL_PASS' "$RUNNER_TEMP/ga-godot/worker-board-graphical.log"
           grep -q 'GA_NEXT_WORKER_BOARD_E2E_PASS' "$RUNNER_TEMP/ga-godot/worker-board-graphical.log"
           for stage in 01_worker_board 02_worker_selected 03_pending_intent 04_after_turn; do
             grep -q "GA_NEXT_WORKER_BOARD_FRAME_PASS stage=$stage" "$RUNNER_TEMP/ga-godot/worker-board-graphical.log"

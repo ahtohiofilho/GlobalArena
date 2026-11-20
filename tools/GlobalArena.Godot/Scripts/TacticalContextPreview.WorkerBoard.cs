@@ -49,6 +49,19 @@ public partial class TacticalContextPreview
         _workerBoardCancelSelected?.IsVisibleInTree() == true
             ? _workerBoardCancelSelected.GetGlobalRect() : null;
 
+    public Rect2? WorkerBoardCancelPendingRect(ulong workerId)
+    {
+        var button = _workerBoard?.FindChild(
+            $"WorkerBoardCancelPending_{workerId}", true, false) as Button;
+        return button is not null && button.IsVisibleInTree() && !button.Disabled
+            ? button.GetGlobalRect() : null;
+    }
+
+    private bool CanCancelWorkerBoardPendingOrder(ulong workerId) =>
+        IsWorkerBoardVisible && _tileClickOwnerId == _tileClickHuman.Value &&
+        _workerBoardAcceptingOrders && _workerBoardPending.ContainsKey(workerId) &&
+        BoardPeople().Any(worker => worker.Id.Value == workerId);
+
     public bool IsWorkerBoardVisible => _workerBoard?.Visible == true;
     public ulong? WorkerBoardSelectedId => _workerBoardSelectedId;
     public Rect2? WorkerBoardChipRect(ulong workerId)
@@ -333,7 +346,8 @@ public partial class TacticalContextPreview
             ? "READ ONLY: YOU CANNOT CHANGE THIS CIVILIZATION'S WORKERS."
             : queuedCount > 0
                 ? $"{queuedCount} PENDING ORDER(S). COUNTS CHANGE ONLY AFTER E. " +
-                  "SELECT ONE TO CANCEL ITS ORDER; X ALSO CANCELS."
+                  "USE × NEXT TO AN ORDER TO CANCEL JUST THAT WORKER."
+
                 : "DRAG A WORKER OR CLICK + ASSIGN. E CONFIRMS; X CANCELS.";
         if (_workerBoardCancelSelected is not null)
             _workerBoardCancelSelected.Disabled =
@@ -380,7 +394,7 @@ public partial class TacticalContextPreview
                     FocusMode = FocusModeEnum.None,
                     Disabled = !editable,
                     SizeFlagsHorizontal = SizeFlags.ExpandFill,
-                    CustomMinimumSize = new Vector2(170f, 32f)
+                    CustomMinimumSize = new Vector2(116f, 32f)
                 };
                 chip.AddThemeFontSizeOverride("font_size", 11);
                 chip.Pressed += () =>
@@ -389,7 +403,34 @@ public partial class TacticalContextPreview
                     CanonicalWorkerBadgeClicked?.Invoke(workerCopy.Id.Value);
                     if (IsWorkerBoardVisible) RebuildWorkerBoard();
                 };
-                container.AddChild(chip);
+                var workerRow = new HBoxContainer
+                {
+                    Name = $"WorkerBoardRow_{worker.Id.Value}",
+                    MouseFilter = MouseFilterEnum.Pass,
+                    SizeFlagsHorizontal = SizeFlags.ExpandFill
+                };
+                workerRow.AddThemeConstantOverride("separation", 2);
+                container.AddChild(workerRow);
+                workerRow.AddChild(chip);
+                if (queued && editable)
+                {
+                    var cancelWorkerId = worker.Id.Value;
+                    var cancelPending = new Button
+                    {
+                        Name = $"WorkerBoardCancelPending_{cancelWorkerId}",
+                        Text = "×",
+                        TooltipText = $"Cancel pending order for worker #{cancelWorkerId}",
+                        FocusMode = FocusModeEnum.None,
+                        MouseFilter = MouseFilterEnum.Stop,
+                        CustomMinimumSize = new Vector2(30f, 32f)
+                    };
+                    cancelPending.Pressed += () =>
+                    {
+                        if (CanCancelWorkerBoardPendingOrder(cancelWorkerId))
+                            WorkerBoardCancelSelectedOrderRequested?.Invoke(cancelWorkerId);
+                    };
+                    workerRow.AddChild(cancelPending);
+                }
             }
         }
         PositionWorkerBoard();
