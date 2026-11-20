@@ -39,9 +39,53 @@ public partial class TacticalContextPreview : SubViewportContainer
     private long _economyReliefMinimum;
     private long _economyReliefMaximum;
     private CanonicalEconomyFineVisualDetail? _economyFineDetail;
+    private FoundationFineFirstPhysicalGeography? _authoritativeFineEconomy;
+    internal FoundationFineFirstPhysicalGeography? AuthoritativeFineEconomy =>
+        _authoritativeFineEconomy;
+    internal long PresentedFineElevation(ulong tileId) =>
+        _authoritativeFineEconomy is { } fine &&
+        tileId > 0UL && tileId <= (ulong)fine.FineElevationRaw.Count
+            ? fine.FineElevationRaw[checked((int)tileId - 1)]
+            : throw new InvalidOperationException(
+                "No authoritative G18 elevation available for this tile.");
     internal int FineVisualDetailTileCount =>
         _economyFineDetail?.FineTileCount ?? 0;
     private Button? _terrainModeButton;
+
+    /// <summary>
+    /// R87: the renderer reads the exact signed G18 physical elevation used
+    /// to seed economic freight, not V1 coarse interpolation and not 01C
+    /// decorative microdetail. Only the signed host may configure this.
+    /// </summary>
+    public void ConfigureFineFirstEconomicTerrain(
+        WorldGenerationResult world,
+        PhysicalTacticalIncidenceMap incidence,
+        FoundationFineFirstPhysicalGeography physical,
+        FoundationFineFirstWorldgenIdentity signature,
+        WorldState snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        if (snapshot.WorldBinding != RuntimeWorldBinding.FromFineFirst(
+                world, incidence, physical, signature) ||
+            physical.FineElevationRaw.Count != incidence.FineTopology.Cells.Count ||
+            (CanonicalPhysicalIncidenceMap is not null &&
+             CanonicalPhysicalIncidenceMap.Refinement != incidence.Refinement))
+            throw new InvalidOperationException(
+                "Godot cannot paint a terrain different from the signed " +
+                "G18 world used by the authoritative economic session.");
+        _authoritativeEconomyTerrainWorld = world;
+        _authoritativeFineEconomy = physical;
+        _economyFineDetail = null;
+        _economyReliefMinimum = physical.FineElevationRaw.Min();
+        _economyReliefMaximum = physical.FineElevationRaw.Max();
+        if (_terrainModeButton is not null)
+            _terrainModeButton.Text = _showExperimentalTerrain
+                ? "TERRAIN: AUTHORITATIVE G18" : "TERRAIN: IDS";
+        GD.Print("GA_NEXT_R87_G18_TERRAIN_BOUND source=signed_g18 " +
+            $"tiles={physical.FineElevationRaw.Count} " +
+            $"land={physical.LandTileCount} sea={physical.FineElevationRaw.Count - physical.LandTileCount} " +
+            "freight_map_aligned=true decorative_microdetail=false");
+    }
 
     public void ConfigureAuthoritativeEconomyTerrain(
         WorldGenerationResult? world)
@@ -66,6 +110,7 @@ public partial class TacticalContextPreview : SubViewportContainer
             _economyReliefMaximum = heights.Max();
         }
         _authoritativeEconomyTerrainWorld = world;
+        _authoritativeFineEconomy = null;
         _economyFineDetail = null;
         if (_terrainModeButton is not null)
             _terrainModeButton.Text = !_showExperimentalTerrain
@@ -94,9 +139,12 @@ public partial class TacticalContextPreview : SubViewportContainer
 
     private bool IsAuthoritativeEconomyLand(
         ulong tileId, PhysicalTacticalIncidenceMap physical) =>
-        AuthoritativeEconomyElevation(tileId, physical) >
-        _authoritativeEconomyTerrainWorld!.StrategicPhysicalFields
-            .SeaLevel.RawValue;
+        _authoritativeFineEconomy is { } fine
+            ? fine.FineElevationRaw[checked((int)tileId - 1)] >
+                fine.SeaLevelRaw
+            : AuthoritativeEconomyElevation(tileId, physical) >
+                _authoritativeEconomyTerrainWorld!.StrategicPhysicalFields
+                    .SeaLevel.RawValue;
 
     private Color EconomicTerrainTint(
         ulong tileId, PhysicalTacticalIncidenceMap physical)
@@ -104,8 +152,12 @@ public partial class TacticalContextPreview : SubViewportContainer
         var world = _authoritativeEconomyTerrainWorld ??
             throw new InvalidOperationException(
                 "Detailed economy preview requires a canonical world.");
-        // Lazily build one deterministic high-frequency visual field for
-        // all tiles; pan and zoom never reseed it. Only presentation uses it.
+        if (_authoritativeFineEconomy is { } physicalWorld)
+            return CanonicalEconomyReliefPalette.FromElevation(
+                physicalWorld.FineElevationRaw[checked((int)tileId - 1)],
+                physicalWorld.SeaLevelRaw,
+                _economyReliefMinimum, _economyReliefMaximum);
+        // Legacy V1-only path retained for old experimental tests.
         _economyFineDetail ??= CanonicalEconomyFineVisualDetail.Create(
             world, physical, _economyReliefMinimum,
             _economyReliefMaximum);
@@ -911,7 +963,9 @@ public partial class TacticalContextPreview : SubViewportContainer
             if (_terrainDetails is not null)
                 _terrainDetails.Text = _showExperimentalTerrain
                     ? (_authoritativeEconomyTerrainWorld is not null
-                        ? "ECONOMY RELIEF | V1 coast; 01C fine detail is visual only"
+                        ? (_authoritativeFineEconomy is null
+                            ? "ECONOMY RELIEF | V1 coast; 01C detail is visual only"
+                            : "ECONOMY RELIEF | authoritative G18 terrain and freight")
                         : "01C EXPERIMENT | tactical terrain only; strategic globe still V1")
                     : "DIAGNOSTIC COLORS | not a terrain classification";
             PhysicalTileInspected?.Invoke(null, _selection.Text, _terrainDetails?.Text ?? "");
@@ -942,8 +996,12 @@ public partial class TacticalContextPreview : SubViewportContainer
         {
             bool land = IsAuthoritativeEconomyLand(matched.Id, _cachedPhysicalMap);
             _terrainDetails.Text = land
-                ? "ECONOMY RELIEF | LAND | V1 coast; fine visual relief"
-                : "ECONOMY RELIEF | WATER | V1 coast; fine visual depth";
+                ? (_authoritativeFineEconomy is null
+                    ? "ECONOMY RELIEF | LAND | V1 visual detail"
+                    : "ECONOMY RELIEF | LAND | real G18 elevation")
+                : (_authoritativeFineEconomy is null
+                    ? "ECONOMY RELIEF | WATER | V1 visual detail"
+                    : "ECONOMY RELIEF | WATER | real G18 depth");
         }
         else if (_terrainDetails is not null && _terrainReference is not null && _showExperimentalTerrain)
         {
