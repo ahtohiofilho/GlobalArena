@@ -81,42 +81,22 @@ Write-Host "[GA-NEXT VISUAL] Building isolated R111 review worktree"
 & dotnet build (Join-Path $projectDir 'GlobalArena.Godot.csproj') -c Debug
 Assert-LastCommand 'Build Godot Mono client'
 $godot = Locate-Godot
-$oldPreview = [Environment]::GetEnvironmentVariable('GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW', 'Process')
-$oldSmoke = [Environment]::GetEnvironmentVariable('GA_NEXT_WORKER_BOARD_SMOKE', 'Process')
+Write-Host "[GA-NEXT VISUAL] Godot executable: $godot"
+# PowerShell can receive no version text from native executables even if they run.
+# Do not reject an executable on an empty version probe; import/run are decisive.
 try {
-    # Disable CI-only automatic closures; leave the window open for human visual review.
-    [Environment]::SetEnvironmentVariable('GA_NEXT_WORKER_BOARD_SMOKE', $null, 'Process')
-    if ($Mode -eq 'Geography') {
-        [Environment]::SetEnvironmentVariable('GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW', '1', 'Process')
+    $versionLines = @(& $godot --headless --version 2>&1)
+    $reportedVersion = ($versionLines | ForEach-Object { [string]$_ }) -join ' '
+    if ($reportedVersion -match '4\\.7\\.2') {
+        Write-Host "[GA-NEXT VISUAL] Version: $reportedVersion"
+    } elseif ([string]::IsNullOrWhiteSpace($reportedVersion)) {
+        Write-Warning 'Godot provided no version text; attempting real project import/run.'
     } else {
-        [Environment]::SetEnvironmentVariable('GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW', $null, 'Process')
+        Write-Warning "Godot reports $reportedVersion; attempting compatibility check."
     }
-    Write-Host "[GA-NEXT VISUAL] Opening $Mode — Godot 4.7.2 Mono; press M for planetary map, E for turn."
-    & $godot --path $projectDir
-    Assert-LastCommand 'Run Godot client'
-} finally {
-    [Environment]::SetEnvironmentVariable('GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW', $oldPreview, 'Process')
-    [Environment]::SetEnvironmentVariable('GA_NEXT_WORKER_BOARD_SMOKE', $oldSmoke, 'Process')
+} catch {
+    Write-Warning 'Godot version probe failed; proceeding with real project launch.'
 }
-) {
-    throw "Git returned an invalid R111 commit SHA: $target"
-}
-$visualRoot = Join-Path $env:LOCALAPPDATA ('GA-Next\visual-r111-' + $target.Substring(0, 12))
-if (Test-Path -LiteralPath $visualRoot) {
-    $existing = (& git -C $visualRoot rev-parse HEAD 2>$null | Select-Object -First 1)
-    if ($LASTEXITCODE -ne 0 -or $existing -ne $target) {
-        throw 'A different worktree already occupies the R111 review location; no files were removed.'
-    }
-} else {
-    New-Item -ItemType Directory -Path (Split-Path $visualRoot -Parent) -Force | Out-Null
-    & git -C $repoRoot worktree add --detach $visualRoot $target
-    Assert-LastCommand 'Create isolated review worktree'
-}
-$projectDir = Join-Path $visualRoot $projectRelative
-Write-Host "[GA-NEXT VISUAL] Building immutable review commit $target"
-& dotnet build (Join-Path $projectDir 'GlobalArena.Godot.csproj') -c Debug
-Assert-LastCommand 'Build Godot Mono client'
-$godot = Locate-Godot
 $oldPreview = [Environment]::GetEnvironmentVariable('GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW', 'Process')
 $oldSmoke = [Environment]::GetEnvironmentVariable('GA_NEXT_WORKER_BOARD_SMOKE', 'Process')
 try {
