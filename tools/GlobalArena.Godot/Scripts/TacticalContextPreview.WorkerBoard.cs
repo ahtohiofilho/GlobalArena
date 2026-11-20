@@ -24,6 +24,7 @@ public partial class TacticalContextPreview
     private PanelContainer? _workerBoard;
     private Label? _workerBoardHeading;
     private Label? _workerBoardStatus;
+    private Button? _workerBoardCancelSelected;
     private ulong? _workerBoardSelectedId;
     private bool _workerBoardAcceptingOrders = true;
     private readonly Dictionary<ulong, PhysicalWorkerOccupation> _workerBoardPending = new();
@@ -37,6 +38,16 @@ public partial class TacticalContextPreview
         _workerBoardTransferButtons = new();
 
     public event Action<ulong, PhysicalWorkerOccupation>? WorkerBoardOccupationRequested;
+    public event Action<ulong>? WorkerBoardCancelSelectedOrderRequested;
+
+    public bool CanCancelSelectedWorkerBoardOrder =>
+        IsWorkerBoardVisible && _workerBoardSelectedId is { } id &&
+        _tileClickOwnerId == _tileClickHuman.Value &&
+        _workerBoardAcceptingOrders && _workerBoardPending.ContainsKey(id);
+
+    public Rect2? WorkerBoardCancelSelectedRect =>
+        _workerBoardCancelSelected?.IsVisibleInTree() == true
+            ? _workerBoardCancelSelected.GetGlobalRect() : null;
 
     public bool IsWorkerBoardVisible => _workerBoard?.Visible == true;
     public ulong? WorkerBoardSelectedId => _workerBoardSelectedId;
@@ -216,6 +227,25 @@ public partial class TacticalContextPreview
             _workerBoardChips[role] = chips;
         }
 
+        var cancelSelected = new Button
+        {
+            Name = "WorkerBoardCancelSelected",
+            Text = "CANCEL SELECTED ORDER",
+            FocusMode = FocusModeEnum.None,
+            Disabled = true,
+            MouseFilter = MouseFilterEnum.Stop,
+            SizeFlagsHorizontal = SizeFlags.ShrinkBegin
+        };
+        cancelSelected.Pressed += () =>
+        {
+            if (!CanCancelSelectedWorkerBoardOrder ||
+                !_workerBoardSelectedId.HasValue) return;
+            WorkerBoardCancelSelectedOrderRequested?.Invoke(
+                _workerBoardSelectedId.Value);
+        };
+        root.AddChild(cancelSelected);
+        _workerBoardCancelSelected = cancelSelected;
+
         _workerBoardStatus = new Label
         {
             Name = "WorkerBoardStatus",
@@ -302,8 +332,12 @@ public partial class TacticalContextPreview
         _workerBoardStatus.Text = !editable
             ? "READ ONLY: YOU CANNOT CHANGE THIS CIVILIZATION'S WORKERS."
             : queuedCount > 0
-                ? $"{queuedCount} PENDING ORDER(S). COUNTS CHANGE ONLY AFTER E; X CANCELS."
+                ? $"{queuedCount} PENDING ORDER(S). COUNTS CHANGE ONLY AFTER E. " +
+                  "SELECT ONE TO CANCEL ITS ORDER; X ALSO CANCELS."
                 : "DRAG A WORKER OR CLICK + ASSIGN. E CONFIRMS; X CANCELS.";
+        if (_workerBoardCancelSelected is not null)
+            _workerBoardCancelSelected.Disabled =
+                !CanCancelSelectedWorkerBoardOrder;
 
         foreach (var role in BoardRoles)
         {
