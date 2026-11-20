@@ -129,6 +129,30 @@ internal sealed class FoundationGodotFineFirstTerrainSmoke
                 "G18 must contain actual sea, land and port crossings.");
             Must(_map.FineVisualDetailTileCount == 0,
                 "R81 decorative microdetail must never be active in G18.");
+            // R88: continuous G18 thermal rendering must preserve the signed
+            // freight elevations and expose a smooth snow/sea-ice transition.
+            Must(TacticalContextPreview.FineIceWeight(-800_000L) == 1f &&
+                TacticalContextPreview.FineIceWeight(800_000L) == 0f &&
+                TacticalContextPreview.FineIceWeight(-300_000L) > 0f &&
+                TacticalContextPreview.FineIceWeight(-300_000L) < 1f,
+                "G18 polar temperature must blend continuously.");
+            Must(fine.FineTemperatureRaw.Count == count,
+                "Every fine physical tile needs the signed G18 temperature.");
+            int frozen = 0, temperate = 0, transition = 0;
+            for (int i = 0; i < count; i++)
+            {
+                float ice = TacticalContextPreview.FineIceWeight(
+                    fine.FineTemperatureRaw[i]);
+                if (ice >= 0.999f) frozen++;
+                else if (ice <= 0.001f) temperate++;
+                else transition++;
+            }
+            Must(frozen > 0 && temperate > 0 && transition > 0,
+                "The signed G18 map must exhibit polar ice, temperate " +
+                "terrain and smooth thermal transition.");
+            GD.Print($"GA_NEXT_R88_G18_CONTINUOUS_ICE_PASS " +
+                $"frozen={frozen} temperate={temperate} transition={transition} " +
+                "source=signed_g18_temperature no_discrete_biomes=true");
             GD.Print($"GA_NEXT_R87_G18_TERRAIN_FREIGHT_PASS " +
                 $"tiles={count} land={land} sea={water} " +
                 $"land_edges={landEdges} coast_edges={coastEdges} " +

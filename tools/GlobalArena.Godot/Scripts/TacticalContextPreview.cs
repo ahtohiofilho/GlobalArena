@@ -146,6 +146,19 @@ public partial class TacticalContextPreview : SubViewportContainer
                 _authoritativeEconomyTerrainWorld!.StrategicPhysicalFields
                     .SeaLevel.RawValue;
 
+    // A soft thermal transition around the 01C physical ice threshold.
+    // Temperature, including altitude cooling, comes directly from the signed
+    // G18 field. No discrete ice/biome assignment is persisted.
+    internal static float FineIceWeight(long temperatureRaw)
+    {
+        const double cold = -0.48;
+        const double warm = -0.12;
+        double temperature = temperatureRaw /
+            (double)ExperimentalIceTemperatureComposer.Scale;
+        double t = Math.Clamp((warm - temperature) / (warm - cold), 0.0, 1.0);
+        return (float)(t * t * (3.0 - 2.0 * t));
+    }
+
     private Color EconomicTerrainTint(
         ulong tileId, PhysicalTacticalIncidenceMap physical)
     {
@@ -153,10 +166,21 @@ public partial class TacticalContextPreview : SubViewportContainer
             throw new InvalidOperationException(
                 "Detailed economy preview requires a canonical world.");
         if (_authoritativeFineEconomy is { } physicalWorld)
-            return CanonicalEconomyReliefPalette.FromElevation(
-                physicalWorld.FineElevationRaw[checked((int)tileId - 1)],
-                physicalWorld.SeaLevelRaw,
+        {
+            int index = checked((int)tileId - 1);
+            long elevation = physicalWorld.FineElevationRaw[index];
+            var relief = CanonicalEconomyReliefPalette.FromElevation(
+                elevation, physicalWorld.SeaLevelRaw,
                 _economyReliefMinimum, _economyReliefMaximum);
+            // R88: the signed G18 climate is already latitude-, moisture-,
+            // bathymetry- and altitude-dependent. Blend its continuous cold
+            // field over the EXACT G18 economic relief, without discrete biomes,
+            // coarse G3 interpolation or changes to transport/economic state.
+            float ice = FineIceWeight(physicalWorld.FineTemperatureRaw[index]);
+            bool land = elevation > physicalWorld.SeaLevelRaw;
+            return relief.Lerp(land
+                ? new Color("#edf3ee") : new Color("#d9edf3"), ice);
+        }
         // Legacy V1-only path retained for old experimental tests.
         _economyFineDetail ??= CanonicalEconomyFineVisualDetail.Create(
             world, physical, _economyReliefMinimum,
