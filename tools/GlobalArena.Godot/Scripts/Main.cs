@@ -21,6 +21,18 @@ public partial class Main : Control
     private CheckBox? _tacticalTileEdges;
     private CheckBox? _tacticalSettledTradeRoutes;
     private GlobePreview? _strategicGlobe;
+    private GaGoldbergStartupConfiguration? _goldbergStartup;
+    private bool _resolutionBootstrapSmoke;
+    internal GoldbergParameters StartupCoarseParameters =>
+        _goldbergStartup?.Coarse ??
+        throw new InvalidOperationException("Goldberg startup not initialized.");
+    internal GoldbergParameters? ActiveFineParameters =>
+        _tacticalHost?.Incidence.Refinement.FineParameters;
+    internal GoldbergParameters? GlobeCoarseParameters =>
+        _strategicGlobe?.PresentedCanonicalWorld?.Request.StrategicParameters;
+    // Read-only QA evidence; private participant routes never leave the host.
+    internal int VisibleSphericalTradeCrossings =>
+        _strategicGlobe?.VisibleSphericalSettledTradeCrossings ?? 0;
     private TacticalContextPreview? _tacticalPreview;
     // Presentation-only sidebar ownership for map-free tactical controls.
     private VBoxContainer? _tacticalHudPanel;
@@ -404,8 +416,10 @@ public partial class Main : Control
             host.Snapshot.Workers, _selectedLocalWorkerId);
         // Strictly participant-filtered last CLOSED market. The default
         // worker-only preview has no settled sale and draws nothing.
-        _tacticalPreview?.PresentSettledTradeRoutes(
-            host.GetLastClosedEconomicTradeView(_humanCivilization));
+        var authorizedSettledTrade =
+            host.GetLastClosedEconomicTradeView(_humanCivilization);
+        _tacticalPreview?.PresentSettledTradeRoutes(authorizedSettledTrade);
+        _strategicGlobe?.PresentSphericalSettledTradeRoutes(authorizedSettledTrade);
         _tacticalPreview?.PresentPendingWorkerBoardOrders(
             pendingOrders.Where(order => order.NextOccupation.HasValue)
                 .Select(order => (order.WorkerId.Value, order.NextOccupation!.Value)),
@@ -474,6 +488,36 @@ public partial class Main : Control
         }
         OnCanonicalWorkerBadgeClicked(workerId);
         QueueFineWorkerOccupation(occupation);
+    }
+
+    private void OnWorkerBoardCancelSelectedOrderRequested(ulong workerId)
+    {
+        if (_tacticalHost is null || _localOrderStatus is null ||
+            !_tacticalHost.Snapshot.Workers.Workers.Any(worker =>
+                worker.Id.Value == workerId &&
+                worker.Owner == _humanCivilization))
+        {
+            GD.PrintErr($"GA_NEXT_R110_CANCEL_REJECT_NOT_OWNER worker={workerId}");
+            return;
+        }
+        try
+        {
+            bool cancelled = _tacticalHost.CancelHumanOrder(
+                _humanCivilization, new PhysicalWorkerId(workerId));
+            _localOrderStatus.Text = cancelled
+                ? $"Worker #{workerId}: pending order cancelled; no turn committed."
+                : $"Worker #{workerId}: no pending order to cancel.";
+            GD.Print($"GA_NEXT_R110_BOARD_CANCEL worker={workerId} " +
+                $"cancelled={cancelled.ToString().ToLowerInvariant()} " +
+                "source=authorized_host before_turn=true");
+        }
+        catch (System.Exception error)
+        {
+            _localOrderStatus.Text =
+                $"Worker #{workerId}: cancellation rejected: {error.Message}";
+            GD.PrintErr($"GA_NEXT_R110_BOARD_CANCEL_REJECT {error.Message}");
+        }
+        RefreshFineTacticalWorkerControls();
     }
 
     private void QueueFineWorkerOccupation(PhysicalWorkerOccupation occupation)
@@ -1169,6 +1213,24 @@ public partial class Main : Control
         _interactiveEconomicPreviewActive =
             System.Environment.GetEnvironmentVariable(
                 "GA_NEXT_INTERACTIVE_ECONOMY_PREVIEW") == "1";
+        // R104: one immutable pre-scene source of the world request and
+        // coarse-to-fine scale. Neither renderer chooses an independent grid.
+        _resolutionBootstrapSmoke =
+            System.Environment.GetEnvironmentVariable(
+                "GA_NEXT_GOLDBERG_RESOLUTION_SMOKE") == "1";
+        _goldbergStartup = GaGoldbergStartupConfiguration.FromEnvironment(
+            _resolutionBootstrapSmoke,
+            System.Environment.GetEnvironmentVariable(
+                "GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW") == "1");
+        GD.Print($"GA_NEXT_R102_BOOTSTRAP_CONFIGURATION " +
+            $"coarse=G({_goldbergStartup.Coarse.M},0) " +
+            $"fine=G({_goldbergStartup.Fine.M},0) " +
+            "source=pre_scene strict_profiles=true");
+        GD.Print("GA_NEXT_R104_SINGLE_BOOTSTRAP_READY " +
+            $"coarse=G({_goldbergStartup.Coarse.M},0) " +
+            $"fine=G({_goldbergStartup.Fine.M},0) " +
+            $"scale={_goldbergStartup.Refinement.Scale} " +
+            "source=immutable_request shared=true");
         GD.Print("GA_PROD_MAIN_READY_R6");
         // Centralized production-oriented styling; Godot Theme is the owner
         // of interactive states rather than per-screen debug colors.
@@ -1235,6 +1297,7 @@ public partial class Main : Control
         content.AddChild(mapRegion);
         var globe = new GlobePreview
         {
+            StartupWorldRequest = _goldbergStartup.WorldRequest,
             Name = "GANextPlanetGlobe",
             CustomMinimumSize = new Vector2(360f, 300f),
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
@@ -1256,12 +1319,13 @@ public partial class Main : Control
         _tacticalPreview.CanonicalPhysicalTileClicked += OnTacticalPhysicalTileClicked;
         _tacticalPreview.CanonicalWorkerBadgeClicked += OnCanonicalWorkerBadgeClicked;
         _tacticalPreview.WorkerBoardOccupationRequested += OnWorkerBoardOccupationRequested;
+        _tacticalPreview.WorkerBoardCancelSelectedOrderRequested +=
+            OnWorkerBoardCancelSelectedOrderRequested;
         // The Foundation gameplay host materializes a *labeled local preview*
         // scenario. Main/Godot never creates, moves or settles workers directly.
         // This is NOT a claim of final world-population generation.
         _localFoundation = FoundationHumanAiLocalPreview.CreateLocalPreview(
-            new WorldGenerationRequest(new WorldSeed(20261012UL),
-                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)));
+            _goldbergStartup.WorldRequest);
         _canonicalSession = _localFoundation.Session;
         if (globe.PresentedCanonicalWorld is null ||
             RuntimeWorldBinding.FromGeneratedWorld(globe.PresentedCanonicalWorld) !=
@@ -1338,7 +1402,10 @@ public partial class Main : Control
             Visible = false
         };
         _tacticalSettledTradeRoutes.Toggled += enabled =>
+        {
             _tacticalPreview?.SetSettledTradeRoutesVisible(enabled);
+            _strategicGlobe?.SetSphericalSettledTradeRoutesVisible(enabled);
+        };
         rightLayout.AddChild(_tacticalSettledTradeRoutes);
         // All sidebar details now belong to the single bounded outer dock
         // scroll region; this VBox must NOT create a nested vertical viewport.
@@ -1550,7 +1617,8 @@ public partial class Main : Control
                 "GA_NEXT_FINE_FIRST_VISUAL_SMOKE") == "1";
             bool fineFirstInteractive = System.Environment.GetEnvironmentVariable(
                 "GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW") == "1";
-            bool fineFirstLab = fineFirstVisualSmoke || fineFirstInteractive;
+            bool fineFirstLab = fineFirstVisualSmoke || fineFirstInteractive ||
+                _resolutionBootstrapSmoke;
             bool continuousNavigationSmoke = System.Environment.GetEnvironmentVariable(
                 "GA_NEXT_CONTINUOUS_NAVIGATION_SMOKE") == "1";
             bool useExplicitEconomicLab = settledTradeQaSmoke ||
@@ -1562,15 +1630,15 @@ public partial class Main : Control
                 (settledTradeQaSmoke && _interactiveEconomicPreviewActive) ||
                 (fineFirstLab &&
                  (settledTradeQaSmoke || _interactiveEconomicPreviewActive)) ||
-                (fineFirstVisualSmoke && fineFirstInteractive))
+                (fineFirstVisualSmoke && fineFirstInteractive) ||
+                (_resolutionBootstrapSmoke &&
+                    (fineFirstVisualSmoke || fineFirstInteractive)))
                 throw new InvalidOperationException(
                     "Experimental market must not replace normal gameplay, " +
                     "another test, or a trusted economic configuration.");
             if (!legacyWorkspaceSmoke)
             {
-                var request = new WorldGenerationRequest(
-                    new WorldSeed(20261012UL), WorldGenerationVersion.Initial,
-                    new GoldbergParameters(3, 0));
+                var request = _goldbergStartup.WorldRequest;
                 _tacticalHost = legacyV10Smoke
                     ? FoundationTacticalDemoScenario.CreateLocalHumanAiPreview(request)
                     : legacyV11Smoke
@@ -1579,22 +1647,44 @@ public partial class Main : Control
                         : FoundationConcentratedWorkforceScenario.CreatePreview(
                             request, useExplicitEconomicLab ? 3 :
                                 FoundationConcentratedWorkforceScenario
-                                    .DefaultWorkersPerCivilization);
+                                    .DefaultWorkersPerCivilization,
+                            _goldbergStartup.Refinement);
                 if (fineFirstLab)
                 {
+                    _goldbergStartup.VerifyWorldAndIncidence(
+                        _tacticalHost.Session.GeneratedWorld,
+                        _tacticalHost.Incidence);
                     var g18 = GaExplicitEconomicQaConfiguration
                         .PrepareFineFirst(_tacticalHost);
                     _tacticalHost = g18.Host;
+                    _goldbergStartup.VerifyWorldAndIncidence(
+                        _tacticalHost.Session.GeneratedWorld,
+                        _tacticalHost.Incidence);
                     // R99: the strategic navigation sphere displays the
                     // exact same signed G18 geography, without flattening.
                     // Keep G3 identity only as an invisible selection index.
                     globe.ConfigureSignedFineFirstSphere(
                         _tacticalHost.Session.GeneratedWorld,
-                        _tacticalHost.Incidence, g18.Geography);
+                        _tacticalHost.Incidence, g18.Geography,
+                        _tacticalHost.Snapshot.WorldBinding ??
+                            throw new System.InvalidOperationException(
+                                "G18 globe requires a signed world binding."));
                     _tacticalPreview!.ConfigureFineFirstEconomicTerrain(
                         _tacticalHost.Session.GeneratedWorld,
                         _tacticalHost.Incidence, g18.Geography, g18.Identity,
                         _tacticalHost.Snapshot);
+                    if (globe.PresentedCanonicalWorld?.Request.Seed !=
+                            _goldbergStartup.WorldRequest.Seed ||
+                        globe.PresentedCanonicalWorld?.Request.StrategicParameters !=
+                            _goldbergStartup.Coarse ||
+                        g18.Geography.FineParameters != _goldbergStartup.Fine)
+                        throw new InvalidOperationException(
+                            "Signed physical sphere and economic world must share startup request.");
+                    GD.Print("GA_NEXT_R104_SIGNED_WORLD_CONTRACT_PASS " +
+                        $"coarse=G({_goldbergStartup.Coarse.M},0) " +
+                        $"fine=G({_goldbergStartup.Fine.M},0) " +
+                        $"scale={_goldbergStartup.Refinement.Scale} " +
+                        "sphere=true tactical=true economy=true");
                 }
                 else
                 {
@@ -1608,6 +1698,9 @@ public partial class Main : Control
                         useExplicitEconomicLab || _configuredEconomicGameplay is not null
                             ? _tacticalHost.Session.GeneratedWorld : null);
                 }
+                _goldbergStartup.VerifyWorldAndIncidence(
+                    _tacticalHost.Session.GeneratedWorld,
+                    _tacticalHost.Incidence);
                 _canonicalSession = _tacticalHost.Session;
                 AttachRuntimeState(_tacticalHost.Snapshot);
             }
@@ -1653,11 +1746,11 @@ public partial class Main : Control
                 _localProduceButton!.Text = "P | RESUME PRODUCTION";
                 _localCancelQueuedButton!.Text = "X | CANCEL ORDER";
                 _localOrderStatus!.Text =
-                    "Click your worker, click an adjacent G(18,0) tile, then G. " +
+                    $"Click your worker, click an adjacent G({_goldbergStartup.Fine.M},{_goldbergStartup.Fine.N}) tile, then G. " +
                     "P resumes production; A/V/N reassign an individual to " +
                     "Agriculture/Vegetal/Mining; E commits human + AI together.";
                 GD.Print("GA_NEXT_FINE_VISUAL_BRIDGE_READY " +
-                    $"world=v{_tacticalHost.StateHash.FormatVersion} worker_ids={_tacticalHost.Snapshot.Workers.Workers.Count} physical_tiles=G(18,0) " +
+                    $"world=v{_tacticalHost.StateHash.FormatVersion} worker_ids={_tacticalHost.Snapshot.Workers.Workers.Count} physical_tiles=G({_goldbergStartup.Fine.M},{_goldbergStartup.Fine.N}) " +
                     $"inputs=G/P/X/E gameplay_economy={(_tacticalHost.StateHash.FormatVersion >= 13U ? "explicit_v15" : "not_active")}");
             }
             _status!.Text = _interactiveEconomicPreviewActive
@@ -1726,6 +1819,9 @@ public partial class Main : Control
                     this, _tacticalHost, _tacticalPreview!).RunAsync();
             else if (workerBoardSmoke && _tacticalHost is not null)
                 _ = new FoundationGodotWorkerBoardSmoke(
+                    this, _tacticalHost, _tacticalPreview!).RunAsync();
+            else if (_resolutionBootstrapSmoke && _tacticalHost is not null)
+                _ = new FoundationGodotGoldbergResolutionBootstrapSmoke(
                     this, _tacticalHost, _tacticalPreview!).RunAsync();
             else if (fineFirstVisualSmoke && _tacticalHost is not null)
                 _ = new FoundationGodotFineFirstTerrainSmoke(

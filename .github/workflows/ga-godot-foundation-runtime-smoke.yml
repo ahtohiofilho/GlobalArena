@@ -28,6 +28,10 @@ jobs:
           dotnet-version: '10.0.x'
       - name: Compile the real Godot CSharp client with gameplay domain
         run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
+      - name: R105 ensure physical workforce receives the exact startup refinement
+        run: |
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release \
+            --filter 'FullyQualifiedName~FoundationConcentratedWorkforceTests.ExplicitFineRefinementIsUsedByRealWorkerAndEconomicHost|FullyQualifiedName~FoundationConcentratedWorkforceTests.MismatchedExplicitRefinementFailsBeforeWorkersOrEconomy'
       - name: Obtain official Godot 4.7.2-stable .NET Linux runtime
         shell: bash
         run: |
@@ -151,6 +155,7 @@ jobs:
           grep -q 'GA_NEXT_WORKER_BOARD_SLOTS_PASS' "$RUNNER_TEMP/ga-godot/worker-board.log"
           grep -q 'GA_NEXT_WORKER_BOARD_PENDING_PASS' "$RUNNER_TEMP/ga-godot/worker-board.log"
           grep -q 'GA_NEXT_WORKER_BOARD_COMMIT_PASS' "$RUNNER_TEMP/ga-godot/worker-board.log"
+          grep -q 'GA_NEXT_R110_WORKER_BOARD_CANCEL_PASS' "$RUNNER_TEMP/ga-godot/worker-board.log"
           grep -q 'GA_NEXT_WORKER_BOARD_E2E_PASS' "$RUNNER_TEMP/ga-godot/worker-board.log"
           if grep -E 'GA_NEXT_WORKER_BOARD_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/worker-board.log"; then exit 1; fi
       - name: QA-only v15 monetary closing in actual Godot scene (headless E keys)
@@ -195,8 +200,24 @@ jobs:
           grep -q 'GA_NEXT_R91_SURFACE_CONTRACT_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-headless.log"
           grep -q 'GA_NEXT_R94_FROZEN_FREIGHT_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-headless.log"
           grep -q 'GA_NEXT_R99_G18_SPHERE_READY' "$RUNNER_TEMP/ga-godot/r87-g18-headless.log"
+          grep -q 'GA_NEXT_R104_SIGNED_WORLD_CONTRACT_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-headless.log"
+          grep -q 'GA_NEXT_R100_SPHERICAL_TRADE_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-headless.log"
           grep -q 'GA_NEXT_R87_G18_GODOT_ACCEPTANCE_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-headless.log"
           if grep -E 'GA_NEXT_R87_G18_GODOT_ACCEPTANCE_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/r87-g18-headless.log"; then exit 1; fi
+      - name: R102 alternate G2 to G12 signed bootstrap in actual Godot
+        shell: bash
+        run: |
+          set -euo pipefail
+          GA_FOUNDATION_GODOT_SMOKE=0 GA_NEXT_WORKSPACE_SMOKE=0 \
+            GA_NEXT_GOLDBERG_COARSE_M=2 \
+            GA_NEXT_GOLDBERG_RESOLUTION_SMOKE=1 \
+            timeout 180s "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --quit-after 900 \
+            2>&1 | tee "$RUNNER_TEMP/ga-godot/r102-g2-g12-bootstrap.log"
+          grep -q 'GA_NEXT_R102_BOOTSTRAP_CONFIGURATION coarse=G(2,0) fine=G(12,0)' "$RUNNER_TEMP/ga-godot/r102-g2-g12-bootstrap.log"
+          grep -q 'GA_NEXT_R102_ALTERNATE_GOLDBERG_BOOTSTRAP_PASS' "$RUNNER_TEMP/ga-godot/r102-g2-g12-bootstrap.log"
+          grep -q 'GA_NEXT_R104_SIGNED_WORLD_CONTRACT_PASS' "$RUNNER_TEMP/ga-godot/r102-g2-g12-bootstrap.log"
+          grep -q 'GA_NEXT_R103_G12_ECONOMIC_TWO_CYCLES_PASS' "$RUNNER_TEMP/ga-godot/r102-g2-g12-bootstrap.log"
+          if grep -E 'GA_NEXT_R102_ALTERNATE_GOLDBERG_BOOTSTRAP_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/r102-g2-g12-bootstrap.log"; then exit 1; fi
       - name: R87 G18 interactive evaluation has no autoplay and stays open
         shell: bash
         run: |
@@ -363,6 +384,7 @@ jobs:
           xvfb-run -a -s "-screen 0 1600x1000x24" \
             timeout 120s "$GODOT_BIN" --path tools/GlobalArena.Godot --quit-after 900 \
             2>&1 | tee "$RUNNER_TEMP/ga-godot/worker-board-graphical.log"
+          grep -q 'GA_NEXT_R110_WORKER_BOARD_CANCEL_PASS' "$RUNNER_TEMP/ga-godot/worker-board-graphical.log"
           grep -q 'GA_NEXT_WORKER_BOARD_E2E_PASS' "$RUNNER_TEMP/ga-godot/worker-board-graphical.log"
           for stage in 01_worker_board 02_worker_selected 03_pending_intent 04_after_turn; do
             grep -q "GA_NEXT_WORKER_BOARD_FRAME_PASS stage=$stage" "$RUNNER_TEMP/ga-godot/worker-board-graphical.log"
@@ -406,6 +428,7 @@ jobs:
           grep -q 'GA_NEXT_R91_SURFACE_CONTRACT_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-graphical.log"
           grep -q 'GA_NEXT_R94_FROZEN_FREIGHT_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-graphical.log"
           grep -q 'GA_NEXT_R99_G18_SPHERE_READY' "$RUNNER_TEMP/ga-godot/r87-g18-graphical.log"
+          grep -q 'GA_NEXT_R100_SPHERICAL_TRADE_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-graphical.log"
           grep -q 'GA_NEXT_R87_G18_GODOT_ACCEPTANCE_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-graphical.log"
           for stage in 01_g18_terrain_before_trade 02_g18_after_first_trade 03_g18_after_second_trade 04_g18_north_pole 05_g18_south_pole; do
             grep -q "GA_NEXT_R87_G18_FRAME_PASS stage=$stage" "$RUNNER_TEMP/ga-godot/r87-g18-graphical.log"

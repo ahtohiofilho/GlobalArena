@@ -140,12 +140,14 @@ public partial class TacticalContextPreview
         PhysicalWorkerRuntimeState census, ulong? selectedWorkerId)
     {
         ArgumentNullException.ThrowIfNull(census);
+        var signedFine = _cachedPhysicalMap?.Refinement.FineParameters ??
+            _presentationRefinement.FineParameters;
         if (!census.IsInitialized || !census.HasAuthoritativeTacticalLocations ||
             census.Workers.Any(worker =>
-                worker.TacticalTileId?.FineGoldbergParameters !=
-                    new GoldbergParameters(18, 0)))
+                worker.TacticalTileId?.FineGoldbergParameters != signedFine))
             throw new InvalidOperationException(
-                "Worker activity markers require actual G(18,0) individuals.");
+                "Worker activity markers require physical tiles from " +
+                "the SAME signed fine Goldberg topology as this map.");
         _displayWorkers = census.Workers.ToArray();
         _selectedWorkerGlyphId = selectedWorkerId;
         RebuildWorkerMarkers();

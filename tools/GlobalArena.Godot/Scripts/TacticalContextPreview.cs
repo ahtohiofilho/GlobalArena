@@ -40,6 +40,11 @@ public partial class TacticalContextPreview : SubViewportContainer
     private long _economyReliefMaximum;
     private CanonicalEconomyFineVisualDetail? _economyFineDetail;
     private FoundationFineFirstPhysicalGeography? _authoritativeFineEconomy;
+    // R101: the physical resolution is supplied by the signed runtime world,
+    // rather than inferred from this visualization's former G3/G18 fixture.
+    // Legacy demo retains its existing G3/G18 default until its host migrates.
+    private GoldbergScaledRefinement _presentationRefinement =
+        new(new GoldbergParameters(3, 0), new GoldbergParameters(18, 0));
     internal FoundationFineFirstPhysicalGeography? AuthoritativeFineEconomy =>
         _authoritativeFineEconomy;
     internal long PresentedFineElevation(ulong tileId) =>
@@ -73,6 +78,11 @@ public partial class TacticalContextPreview : SubViewportContainer
             throw new InvalidOperationException(
                 "Godot cannot paint a terrain different from the signed " +
                 "G18 world used by the authoritative economic session.");
+        _presentationRefinement = incidence.Refinement;
+        _cachedPhysicalMap = incidence;
+        _cachedCoarseWorld = null;
+        _cachedFineWorld = null;
+        _cachedCoarseGeometry = null;
         _authoritativeEconomyTerrainWorld = world;
         _authoritativeFineEconomy = physical;
         _economyFineDetail = null;
@@ -308,7 +318,10 @@ public partial class TacticalContextPreview : SubViewportContainer
         var radius = tangent.Length();
         if (_equidistant)
         {
-            if (radius >= Mathf.Pi * 0.5f - 0.01f) return false;
+            // R102: azimuthal equidistant charts are valid beyond 90
+            // degrees. Smaller coarse grids can require broader resident
+            // neighborhoods. Reject only the antipodal singularity.
+            if (radius >= Mathf.Pi - 0.01f) return false;
             spherical = (_surfaceNormal * Mathf.Cos(radius) +
                 tangent * (radius < 1e-6f ? 1f : Mathf.Sin(radius) / radius))
                 .Normalized();
@@ -813,8 +826,11 @@ public partial class TacticalContextPreview : SubViewportContainer
         if (_equidistant)
         {
             var depth = Mathf.Clamp(p.Dot(_surfaceNormal), -1f, 1f);
-            if (depth <= 0f)
-                throw new InvalidOperationException("Tactical equidistant projection crossed the visible hemisphere.");
+            // On a sphere, equidistant projection remains defined on the
+            // far hemisphere. Only the antipode has no unique bearing.
+            if (depth < -0.99999f)
+                throw new InvalidOperationException(
+                    "Tactical equidistant projection reached the antipode.");
             var radial = Mathf.Sqrt(east * east + north * north);
             if (radial > 1e-7f)
             {
@@ -1120,7 +1136,9 @@ public partial class TacticalContextPreview : SubViewportContainer
         _selectedTileOutline.Visible = true;
         _selectedFineTileId = matched.Id;
         var shape = matched.Degree == 5 ? "Pentagon" : "Hexagon";
-        _selection.Text = $"G(18,0)/{matched.Id} | {shape} | ring {matched.Ring} | strategic {string.Join(",", matched.Owners)} | selected";
+        var fineResolution = _cachedPhysicalMap?.Refinement.FineParameters ??
+            _presentationRefinement.FineParameters;
+        _selection.Text = $"G({fineResolution.M},{fineResolution.N})/{matched.Id} | {shape} | ring {matched.Ring} | strategic {string.Join(",", matched.Owners)} | selected";
         if (_terrainDetails is not null && _showExperimentalTerrain &&
             _authoritativeEconomyTerrainWorld is not null &&
             _cachedPhysicalMap is not null)
@@ -1156,8 +1174,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         if (_activeFocus != focusValue) _selectedFineTileId = null;
 
         // Accepted scale-six hierarchy, not an experimental G(48,0) preview.
-        var refinement = new GoldbergScaledRefinement(
-            new GoldbergParameters(3, 0), new GoldbergParameters(18, 0));
+        var refinement = _presentationRefinement;
         var physical = _cachedPhysicalMap ??= PhysicalTacticalIncidenceMapper.Materialize(refinement);
         if (physical.Refinement.FineParameters != refinement.FineParameters ||
             physical.Refinement.CoarseParameters != refinement.CoarseParameters)
@@ -1344,8 +1361,16 @@ public partial class TacticalContextPreview : SubViewportContainer
 
         // Mesh-derived MVP border paths: canonical physical centers only.
         // Presentation boundary is not an obstacle or a territory ownership rewrite.
-        var boundaryPaths = _cachedBoundaryPaths ??=
-            PhysicalTacticalTerritoryBoundaryMaterializer.Materialize(physical);
+        bool auditedLegacyBorders =
+            refinement.CoarseParameters == new GoldbergParameters(3, 0) &&
+            refinement.FineParameters == new GoldbergParameters(18, 0);
+        // The historical five-center border materializer has its OWN G3/G18
+        // fixture contract. An unsupported decorative overlay must never
+        // prevent a different signed physical world from opening.
+        var boundaryPaths = auditedLegacyBorders
+            ? _cachedBoundaryPaths ??=
+                PhysicalTacticalTerritoryBoundaryMaterializer.Materialize(physical)
+            : Array.Empty<PhysicalTacticalTerritoryBoundaryPath>();
         var boundaryTool = new SurfaceTool();
         boundaryTool.Begin(Mesh.PrimitiveType.Lines);
         var boundaryTint = new Color("#84969a");
@@ -1400,8 +1425,14 @@ public partial class TacticalContextPreview : SubViewportContainer
         }
         var boundaryMesh = boundaryTool.Commit();
         boundaryTool.Dispose();
-        if (boundaryMesh is null || strategicEdgesRendered == 0 || boundarySegments == 0)
-            throw new InvalidOperationException("Mesh-aligned territory boundary overlay is empty.");
+        if (auditedLegacyBorders &&
+            (boundaryMesh is null || strategicEdgesRendered == 0 ||
+             boundarySegments == 0))
+            throw new InvalidOperationException(
+                "Audited G3/G18 strategic border overlay is empty.");
+        if (!auditedLegacyBorders && boundarySegments != 0)
+            throw new InvalidOperationException(
+                "Unsupported strategic boundary may not invent decorative lines.");
 
         var oldSurface = _surface.Mesh;
         var oldEdges = _edges.Mesh;
@@ -1409,7 +1440,9 @@ public partial class TacticalContextPreview : SubViewportContainer
         _surface.Mesh = faceMesh;
         _edges.Mesh = lineMesh;
         _territoryBoundaries.Mesh = boundaryMesh;
-        _territoryBoundaries.Visible = _showTerritoryBoundaries;
+        _territoryBoundaries.Visible =
+            _showTerritoryBoundaries && auditedLegacyBorders &&
+            boundaryMesh is not null;
         oldSurface?.Dispose();
         oldEdges?.Dispose();
         oldBoundaries?.Dispose();
@@ -1430,7 +1463,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         UpdateCameraFraming();
         PrepareAdjacentCanonicalData(physical, focus, geometry, physicalTiles);
         // Constrain the on-map status to concise navigation data. Full diagnostics stay in GD.Print.
-        _information.Text = $"TACTICAL | territory {focusValue} | G(18,0) | {(_equidistant ? "EQUIDISTANT" : "DIRECT")} | frame {_ringCount}";
+        _information.Text = $"TACTICAL | territory {focusValue} | G({refinement.FineParameters.M},{refinement.FineParameters.N}) | {(_equidistant ? "EQUIDISTANT" : "DIRECT")} | frame {_ringCount}";
         RebuildWorkerMarkers();
         // Same private closed-cycle evidence, reprojected at the new focus
         // and ring size. No rerun of the economic solver or publication.
@@ -1438,7 +1471,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         // Recompute the presentation-only selection outline after a ring or projection change.
         // A tile outside the new region is deselected rather than inventing an alias.
         SelectPhysicalTile(_selectedFineTileId);
-        GD.Print($"GA_TACTICAL_LOCAL_OPEN focus={focusValue} framing_rings={_ringCount} resident_rings={_residentRingCount} frame_tiles={framingTiles.Count} projection={(_equidistant ? "Equidistant" : "Orthographic")} regions={selectedStrategic.Count} physical_tiles={selectedPhysical.Count} triangles={countTriangles} edges={edgeCount} parameters=G(3,0)>G(18,0) duplicate_ids=0");
+        GD.Print($"GA_TACTICAL_LOCAL_OPEN focus={focusValue} framing_rings={_ringCount} resident_rings={_residentRingCount} frame_tiles={framingTiles.Count} projection={(_equidistant ? "Equidistant" : "Orthographic")} regions={selectedStrategic.Count} physical_tiles={selectedPhysical.Count} triangles={countTriangles} edges={edgeCount} parameters=G({refinement.CoarseParameters.M},{refinement.CoarseParameters.N})>G({refinement.FineParameters.M},{refinement.FineParameters.N}) duplicate_ids=0");
         GD.Print($"GA_TACTICAL_TERRITORY_BORDERS_MESH_R1 focus={focusValue} strategic_edges={strategicEdgesRendered} segments={boundarySegments} source=physical_centers surface_epsilon=0 toggle={_showTerritoryBoundaries} movement_unchanged=true");
         GD.Print($"GA_TACTICAL_TERRITORY_SHAPE_ANCHORS_R1 focus={focusValue} anchors=3-2-3 segments={boundarySegments} feature=visual_only highlight=false movement_unchanged=true");
         GD.Print($"GA_TACTICAL_TERRAIN_01C focus={focusValue} visible={_showExperimentalTerrain} seed={TerrainExperimentSeed} land_target=35 physical_reference_cached={_terrainReference is not null} strategic_globe_v1_unchanged=true");

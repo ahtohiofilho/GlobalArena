@@ -19,6 +19,30 @@ public sealed class FoundationFineFirstPhysicalGeographyTests
         10_000UL);
 
     [Fact]
+    public void AlternativeG2ToG12GeneratesSignedPhysicalFieldsWithoutG18()
+    {
+        // R101 regression: the physical worldgen must derive its real fine
+        // geometry from the refinement contract, not a hard-coded 3242 count.
+        var coarse = new GoldbergParameters(2, 0);
+        var fine = new GoldbergParameters(12, 0);
+        var map = PhysicalTacticalIncidenceMapper.Materialize(
+            new GoldbergScaledRefinement(coarse, fine));
+        var world = new DeterministicWorldGenerator().Generate(
+            new WorldGenerationRequest(new WorldSeed(20261012UL),
+                WorldGenerationVersion.Initial, coarse));
+        var signed = FoundationFineFirstPhysicalGeography.Generate(world, map);
+        var replay = FoundationFineFirstPhysicalGeography.Generate(world, map);
+
+        Assert.Equal(coarse, signed.CoarseParameters);
+        Assert.Equal(fine, signed.FineParameters);
+        Assert.Equal(1442, signed.FineElevationRaw.Count);
+        Assert.Equal(map.FineTopology.Cells.Count, signed.FineTemperatureRaw.Count);
+        Assert.Equal(signed.FineElevationRaw, replay.FineElevationRaw);
+        Assert.Equal(signed.FineTemperatureRaw, replay.FineTemperatureRaw);
+        Assert.Equal(signed.SeaLevelRaw, replay.SeaLevelRaw);
+    }
+
+    [Fact]
     public void FineFieldsGenerateFirstAndStrategicRegionsOnlyAggregateTheirIncidences()
     {
         var host = Host();

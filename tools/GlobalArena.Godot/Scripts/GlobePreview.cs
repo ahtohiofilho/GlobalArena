@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using GlobalArena.World;
+using GlobalArena.Runtime;
 using Godot;
 
 namespace GlobalArena.Godot;
@@ -9,6 +10,11 @@ namespace GlobalArena.Godot;
 // No inset, borders, duplicate topology or simulation ownership in the renderer.
 public partial class GlobePreview : SubViewportContainer
 {
+    // R102: set once before AddChild/_Ready; the same coarse contract
+    // is supplied to the preview session and the signed tactical map.
+    public WorldGenerationRequest StartupWorldRequest { get; set; } =
+        new(new WorldSeed(20261012UL), WorldGenerationVersion.Initial,
+            new GoldbergParameters(3, 0));
     private Node3D? _planet;
     private Camera3D? _camera;
     private bool _dragging;
@@ -70,17 +76,17 @@ public partial class GlobePreview : SubViewportContainer
         var world = new Node3D();
         viewport.AddChild(world);
 
-        var request = new WorldGenerationRequest(
-            new WorldSeed(20261012UL),
-            WorldGenerationVersion.Initial,
-            new GoldbergParameters(3, 0));
+        var request = StartupWorldRequest;
         var generation = new DeterministicWorldGenerator().Generate(request);
         PresentedCanonicalWorld = generation;
         var geometry = generation.StrategicSphericalGeometry;
         var topology = generation.StrategicTopology;
         if (geometry.Cells.Count != topology.Cells.Count ||
             geometry.Vertices.Count != topology.Vertices.Count ||
-            geometry.Cells.Count != 92 || geometry.Vertices.Count != 180)
+            geometry.Cells.Count != topology.Cells.Count ||
+            geometry.Cells.Count != 10 * (request.StrategicParameters.M * request.StrategicParameters.M +
+                request.StrategicParameters.M * request.StrategicParameters.N +
+                request.StrategicParameters.N * request.StrategicParameters.N) + 2)
             throw new InvalidOperationException("Authoritative globe geometry/count contract failed.");
 
         // Read-only experiment. Strategic world generation and biome authority remain unchanged.
@@ -129,7 +135,8 @@ public partial class GlobePreview : SubViewportContainer
             }
         }
         var mesh = surface.Commit();
-        if (mesh is null || triangleCount != 540)
+        if (mesh is null ||
+            triangleCount != geometry.Cells.Sum(cell => cell.BoundaryVertexIds.Count))
             throw new InvalidOperationException($"Canonical globe triangulation mismatch: {triangleCount}.");
         _planet = new Node3D();
         world.AddChild(_planet);
@@ -859,29 +866,35 @@ public partial class GlobePreview : SubViewportContainer
     public void ConfigureSignedFineFirstSphere(
         WorldGenerationResult strategicWorld,
         PhysicalTacticalIncidenceMap incidence,
-        FoundationFineFirstPhysicalGeography geography)
+        FoundationFineFirstPhysicalGeography geography,
+        RuntimeWorldBinding worldBinding)
     {
         ArgumentNullException.ThrowIfNull(strategicWorld);
         ArgumentNullException.ThrowIfNull(incidence);
         ArgumentNullException.ThrowIfNull(geography);
+        ArgumentNullException.ThrowIfNull(worldBinding);
         if (_planet is null || _surfaceInstance is null ||
             _mapLayerSelector is null || PresentedCanonicalWorld is null ||
+            !worldBinding.IsFineFirstWorld ||
             geography.Seed != strategicWorld.Request.Seed ||
             geography.Seed != PresentedCanonicalWorld.Request.Seed ||
             geography.FineParameters != incidence.Refinement.FineParameters ||
             geography.CoarseParameters != incidence.Refinement.CoarseParameters ||
             geography.FineElevationRaw.Count != incidence.FineTopology.Cells.Count ||
             geography.FineTemperatureRaw.Count != incidence.FineTopology.Cells.Count ||
-            geography.FineParameters != new GoldbergParameters(18, 0))
+            geography.CoarseParameters !=
+                PresentedCanonicalWorld.Request.StrategicParameters)
             throw new InvalidOperationException(
-                "Signed G18 physical globe requires the exact tactical world and topology.");
+                "Signed physical globe requires matching tactical world parameters and topology.");
 
         var fineWorld = new DeterministicWorldGenerator().Generate(
             new WorldGenerationRequest(geography.Seed,
                 WorldGenerationVersion.Initial, geography.FineParameters));
         var geometry = fineWorld.StrategicSphericalGeometry;
         if (geometry.Cells.Count != geography.FineElevationRaw.Count)
-            throw new InvalidOperationException("G18 spherical geometry and field differ.");
+            throw new InvalidOperationException("Fine spherical geometry and signed physical field differ.");
+        _signedG18RouteGeometry = geometry;
+        _signedG18WorldBinding = worldBinding;
 
         long minimum = geography.FineElevationRaw.Min();
         long maximum = geography.FineElevationRaw.Max();
@@ -924,12 +937,16 @@ public partial class GlobePreview : SubViewportContainer
         _signedG18Sphere.Mesh = mesh;
         _signedG18Geography = geography;
         if (_mapLayerSelector.GetItemIndex(SignedG18MapMode) < 0)
-            _mapLayerSelector.AddItem("G18 PHYSICAL SPHERE", SignedG18MapMode);
+            _mapLayerSelector.AddItem("PHYSICAL SPHERE", SignedG18MapMode);
+        _mapLayerSelector.SetItemText(
+            _mapLayerSelector.GetItemIndex(SignedG18MapMode),
+            $"G({geography.FineParameters.M},{geography.FineParameters.N}) PHYSICAL SPHERE");
         _mapMode = SignedG18MapMode;
         _mapLayerSelector.Select(
             _mapLayerSelector.GetItemIndex(SignedG18MapMode));
         RefreshSelectionColors();
         UpdateMapLegend();
+        RebuildSphericalSettledTradeRoutes();
         GD.Print($"GA_NEXT_R99_G18_SPHERE_READY tiles={geometry.Cells.Count} " +
             $"triangles={triangles} firm_sea_ice={iceTiles} " +
             "source=signed_g18 terrain_palette=tactical_exact " +
@@ -944,12 +961,16 @@ public partial class GlobePreview : SubViewportContainer
         _surfaceInstance.Visible = !fineView && !signedView;
         if (_highResSurface is not null) _highResSurface.Visible = fineView;
         if (_signedG18Sphere is not null) _signedG18Sphere.Visible = signedView;
+        if (_settledGlobeRoutes is not null)
+            _settledGlobeRoutes.Visible = signedView &&
+                _showSettledGlobeRoutes &&
+                _settledGlobeRoutes.Mesh is not null;
         if (signedView)
         {
             // The displayed tiles are physical G18; strategic G3 picking is
             // an independent, invisible geographic selection overlay.
             if (_pickedLabel is not null && !_selectedCellId.HasValue)
-                _pickedLabel.Text = "G18 physical globe | click to select a strategic region";
+                _pickedLabel.Text = $"G({_signedG18Geography!.FineParameters.M},{_signedG18Geography.FineParameters.N}) physical globe | click to select a strategic region";
             return;
         }
         if (fineView)
@@ -1043,7 +1064,9 @@ public partial class GlobePreview : SubViewportContainer
             8 => "RELEVO INDEP. ULTRA | G(48,0): 23042 cells\nIndependent macro/medium/micro scales; same seed & sea-level target",
             9 => "RELEVO PESOS MED. | G(48,0)\nMacro 0.75, medium 1.50, micro 2.00; experimental",
             10 => "RELEVO PESOS EQ. | G(48,0)\nMacro 0.50, medium 2.00, micro 3.00; experimental",
-            SignedG18MapMode => "G18 PHYSICAL SPHERE | 3242 real tactical tiles\nSame signed elevation, temperature and firm sea ice as tactical view; no planar projection",
+            SignedG18MapMode => _signedG18Geography is { } fine
+                ? $"G({fine.FineParameters.M},{fine.FineParameters.N}) PHYSICAL SPHERE | {fine.FineElevationRaw.Count} real tactical tiles\nSame signed elevation, temperature and firm sea ice as tactical view; no planar projection"
+                : "PHYSICAL SPHERE | No signed physical world",
             _ => "CELL COLORS | Deterministic colors distinguish adjacent territories\nColors do not imply ownership, biome, or political borders"
         };
     }
