@@ -149,17 +149,8 @@ public partial class TacticalContextPreview : SubViewportContainer
     // R91 continuous land snow band; frozen ocean uses a crisp movement edge.
     // Temperature, including altitude cooling, comes directly from the signed
     // G18 field. No discrete ice/biome assignment is persisted.
-    internal static float FineIceWeight(long temperatureRaw)
-    {
-        const double cold = -0.70;
-        // Snow starts at the historical discrete limit, then increases
-        // continuously rather than making an abrupt biome transition.
-        const double warm = -0.55;
-        double temperature = temperatureRaw /
-            (double)ExperimentalIceTemperatureComposer.Scale;
-        double t = Math.Clamp((warm - temperature) / (warm - cold), 0.0, 1.0);
-        return (float)(t * t * (3.0 - 2.0 * t));
-    }
+    internal static float FineIceWeight(long temperatureRaw) =>
+        CanonicalEconomyReliefPalette.ContinuousLandSnowWeight(temperatureRaw);
 
     private Color EconomicTerrainTint(
         ulong tileId, PhysicalTacticalIncidenceMap physical)
@@ -169,28 +160,9 @@ public partial class TacticalContextPreview : SubViewportContainer
                 "Detailed economy preview requires a canonical world.");
         if (_authoritativeFineEconomy is { } physicalWorld)
         {
-            int index = checked((int)tileId - 1);
-            long elevation = physicalWorld.FineElevationRaw[index];
-            var relief = CanonicalEconomyReliefPalette.FromElevation(
-                elevation, physicalWorld.SeaLevelRaw,
+            return CanonicalEconomyReliefPalette.FromSignedFineSurface(
+                physicalWorld, checked((int)tileId - 1),
                 _economyReliefMinimum, _economyReliefMaximum);
-            // R88: the signed G18 climate is already latitude-, moisture-,
-            // bathymetry- and altitude-dependent. Blend its continuous cold
-            // field over the EXACT G18 economic relief, without discrete biomes,
-            // coarse G3 interpolation or changes to transport/economic state.
-            bool geologicalLand = elevation > physicalWorld.SeaLevelRaw;
-            if (!geologicalLand)
-            {
-                // R91: a navigable ocean always looks like water. A frozen
-                // ocean always looks like firm ice: no ambiguous blended
-                // navigability strip between the two movement surfaces.
-                // Underlying geological water remains unchanged.
-                return physicalWorld.SurfaceAtIndex(index) ==
-                    FoundationFineSurfaceKind.FirmSeaIce
-                    ? new Color("#d9edf3") : relief;
-            }
-            float snow = FineIceWeight(physicalWorld.FineTemperatureRaw[index]);
-            return relief.Lerp(new Color("#edf3ee"), snow);
         }
         // Legacy V1-only path retained for old experimental tests.
         _economyFineDetail ??= CanonicalEconomyFineVisualDetail.Create(

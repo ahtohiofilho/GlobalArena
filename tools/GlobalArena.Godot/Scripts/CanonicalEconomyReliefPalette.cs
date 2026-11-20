@@ -1,4 +1,5 @@
 using Godot;
+using GlobalArena.World;
 
 namespace GlobalArena.Godot;
 
@@ -10,6 +11,39 @@ namespace GlobalArena.Godot;
 /// </summary>
 internal static class CanonicalEconomyReliefPalette
 {
+    /// <summary>
+    /// Same physical G18 tint on flat tactical chart and unprojected sphere.
+    /// Geography, thermal field, and sea-ice mobility are authoritative;
+    /// this is a pure presentation function, not a second world generator.
+    /// </summary>
+    public static Color FromSignedFineSurface(
+        FoundationFineFirstPhysicalGeography physical,
+        int index, long minimum, long maximum)
+    {
+        ArgumentNullException.ThrowIfNull(physical);
+        if ((uint)index >= (uint)physical.FineElevationRaw.Count)
+            throw new ArgumentOutOfRangeException(nameof(index));
+        long elevation = physical.FineElevationRaw[index];
+        var relief = FromElevation(
+            elevation, physical.SeaLevelRaw, minimum, maximum);
+        if (elevation <= physical.SeaLevelRaw)
+            return physical.SurfaceAtIndex(index) ==
+                FoundationFineSurfaceKind.FirmSeaIce
+                ? new Color("#d9edf3") : relief;
+        float snow = ContinuousLandSnowWeight(physical.FineTemperatureRaw[index]);
+        return relief.Lerp(new Color("#edf3ee"), snow);
+    }
+
+    public static float ContinuousLandSnowWeight(long temperatureRaw)
+    {
+        const double cold = -0.70;
+        const double warm = -0.55;
+        double temperature = temperatureRaw /
+            (double)ExperimentalIceTemperatureComposer.Scale;
+        double t = Math.Clamp((warm - temperature) / (warm - cold), 0.0, 1.0);
+        return (float)(t * t * (3.0 - 2.0 * t));
+    }
+
     public static Color FromElevation(
         long elevation, long seaLevel, long minimum, long maximum)
     {

@@ -18,6 +18,11 @@ public partial class GlobePreview : SubViewportContainer
     private Label? _pickedLabel;
     private MeshInstance3D? _surfaceInstance;
     private MeshInstance3D? _highResSurface; // Experimental G(12,0), never canonical ownership
+    // R99: direct unprojected G18 Goldberg sphere, using the same signed
+    // physical samples and palette as the tactical chart.
+    private MeshInstance3D? _signedG18Sphere;
+    private FoundationFineFirstPhysicalGeography? _signedG18Geography;
+    private const int SignedG18MapMode = 11;
     private StrategicSphericalGeometry? _finePreviewGeometry;
     private int _fineFrequency = 12;
     private int _fineLandTargetPercent = 35;
@@ -239,6 +244,8 @@ public partial class GlobePreview : SubViewportContainer
         mapLayerSelector.AddItem("RELEVO INDEP. ULTRA", 8);
         mapLayerSelector.AddItem("RELEVO PESOS MED.", 9);
         mapLayerSelector.AddItem("RELEVO PESOS EQ.", 10);
+        // Only advertised after the real fine-first world is bound.
+        // Legacy V1 globe retains its previous available diagnostic modes.
         mapLayerSelector.Select(0);
         mapLayerSelector.ItemSelected += selectedIndex =>
         {
@@ -843,12 +850,108 @@ public partial class GlobePreview : SubViewportContainer
         GD.Print($"GA_WORLDGEN_01B_CALIBRATION_READY centers={TacticalRadialElevationGenerator.GetVariedDeformationCount(_finePreviewSeed)} seed={_finePreviewSeed} target={_fineLandTargetPercent} actual={actualLand:F2} sea={seaLevel} components={landComponents} largest={largestComponent} mean_delta={deltaSum / edgeCount:F1} max_delta={maxDelta} saturated={saturated} count={values.Length} generation_ms={generationWatch.ElapsedMilliseconds}");
     }
 
+    /// <summary>
+    /// R99: replace ONLY the globe's displayed layer in signed fine-first QA.
+    /// The complete 3242-tile G(18,0) physical field comes from the same
+    /// already-signed fine-first simulation used by tactical rendering.
+    /// G3 remains a non-rendered hit-test/index for strategic selection.
+    /// </summary>
+    public void ConfigureSignedFineFirstSphere(
+        WorldGenerationResult strategicWorld,
+        PhysicalTacticalIncidenceMap incidence,
+        FoundationFineFirstPhysicalGeography geography)
+    {
+        ArgumentNullException.ThrowIfNull(strategicWorld);
+        ArgumentNullException.ThrowIfNull(incidence);
+        ArgumentNullException.ThrowIfNull(geography);
+        if (_planet is null || _surfaceInstance is null ||
+            _mapLayerSelector is null || PresentedCanonicalWorld is null ||
+            geography.Seed != strategicWorld.Request.Seed ||
+            geography.Seed != PresentedCanonicalWorld.Request.Seed ||
+            geography.FineParameters != incidence.Refinement.FineParameters ||
+            geography.CoarseParameters != incidence.Refinement.CoarseParameters ||
+            geography.FineElevationRaw.Count != incidence.FineTopology.Cells.Count ||
+            geography.FineTemperatureRaw.Count != incidence.FineTopology.Cells.Count ||
+            geography.FineParameters != new GoldbergParameters(18, 0))
+            throw new InvalidOperationException(
+                "Signed G18 physical globe requires the exact tactical world and topology.");
+
+        var fineWorld = new DeterministicWorldGenerator().Generate(
+            new WorldGenerationRequest(geography.Seed,
+                WorldGenerationVersion.Initial, geography.FineParameters));
+        var geometry = fineWorld.StrategicSphericalGeometry;
+        if (geometry.Cells.Count != geography.FineElevationRaw.Count)
+            throw new InvalidOperationException("G18 spherical geometry and field differ.");
+
+        long minimum = geography.FineElevationRaw.Min();
+        long maximum = geography.FineElevationRaw.Max();
+        var tool = new SurfaceTool();
+        tool.Begin(Mesh.PrimitiveType.Triangles);
+        int triangles = 0;
+        int iceTiles = 0;
+        for (int i = 0; i < geometry.Cells.Count; i++)
+        {
+            var cell = geometry.Cells[i];
+            int index = checked((int)cell.CellId.Value - 1);
+            var color = CanonicalEconomyReliefPalette.FromSignedFineSurface(
+                geography, index, minimum, maximum);
+            if (geography.SurfaceAtIndex(index) ==
+                FoundationFineSurfaceKind.FirmSeaIce)
+                iceTiles++;
+            var center = ToGodot(cell.Center);
+            foreach (var vertexIndex in Enumerable.Range(0,
+                cell.BoundaryVertexIds.Count))
+            {
+                var a = ToGodot(geometry.GetVertex(
+                    cell.BoundaryVertexIds[vertexIndex]).Position);
+                var b = ToGodot(geometry.GetVertex(
+                    cell.BoundaryVertexIds[(vertexIndex + 1) %
+                        cell.BoundaryVertexIds.Count]).Position);
+                AddVertex(tool, center, color);
+                AddVertex(tool, a, color);
+                AddVertex(tool, b, color);
+                triangles++;
+            }
+        }
+        var mesh = tool.Commit() ??
+            throw new InvalidOperationException("Signed G18 globe mesh is empty.");
+        _signedG18Sphere ??= new MeshInstance3D
+        {
+            MaterialOverride = _surfaceInstance.MaterialOverride
+        };
+        if (_signedG18Sphere.GetParent() is null)
+            _planet.AddChild(_signedG18Sphere);
+        _signedG18Sphere.Mesh = mesh;
+        _signedG18Geography = geography;
+        if (_mapLayerSelector.GetItemIndex(SignedG18MapMode) < 0)
+            _mapLayerSelector.AddItem("G18 PHYSICAL SPHERE", SignedG18MapMode);
+        _mapMode = SignedG18MapMode;
+        _mapLayerSelector.Select(
+            _mapLayerSelector.GetItemIndex(SignedG18MapMode));
+        RefreshSelectionColors();
+        UpdateMapLegend();
+        GD.Print($"GA_NEXT_R99_G18_SPHERE_READY tiles={geometry.Cells.Count} " +
+            $"triangles={triangles} firm_sea_ice={iceTiles} " +
+            "source=signed_g18 terrain_palette=tactical_exact " +
+            "projection=spherical selection_overlay=g3_readonly");
+    }
+
     private void RefreshSelectionColors()
     {
         if (_surfaceInstance is null) return;
         bool fineView = _mapMode == 6 || _mapMode == 7 || _mapMode == 8 || _mapMode == 9 || _mapMode == 10;
-        _surfaceInstance.Visible = !fineView;
+        bool signedView = _mapMode == SignedG18MapMode && _signedG18Sphere is not null;
+        _surfaceInstance.Visible = !fineView && !signedView;
         if (_highResSurface is not null) _highResSurface.Visible = fineView;
+        if (_signedG18Sphere is not null) _signedG18Sphere.Visible = signedView;
+        if (signedView)
+        {
+            // The displayed tiles are physical G18; strategic G3 picking is
+            // an independent, invisible geographic selection overlay.
+            if (_pickedLabel is not null && !_selectedCellId.HasValue)
+                _pickedLabel.Text = "G18 physical globe | click to select a strategic region";
+            return;
+        }
         if (fineView)
         {
             // HD is an experimental fine grid, NOT a canonical strategic
@@ -940,6 +1043,7 @@ public partial class GlobePreview : SubViewportContainer
             8 => "RELEVO INDEP. ULTRA | G(48,0): 23042 cells\nIndependent macro/medium/micro scales; same seed & sea-level target",
             9 => "RELEVO PESOS MED. | G(48,0)\nMacro 0.75, medium 1.50, micro 2.00; experimental",
             10 => "RELEVO PESOS EQ. | G(48,0)\nMacro 0.50, medium 2.00, micro 3.00; experimental",
+            SignedG18MapMode => "G18 PHYSICAL SPHERE | 3242 real tactical tiles\nSame signed elevation, temperature and firm sea ice as tactical view; no planar projection",
             _ => "CELL COLORS | Deterministic colors distinguish adjacent territories\nColors do not imply ownership, biome, or political borders"
         };
     }
