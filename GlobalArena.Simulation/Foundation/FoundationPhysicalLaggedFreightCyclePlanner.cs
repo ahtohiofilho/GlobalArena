@@ -116,15 +116,38 @@ public static class FoundationPhysicalLaggedFreightCyclePlanner
             FoundationCommodityCargoConversionPolicy conversionPolicy,
             FoundationPhysicalLaggedFreightQuoteState? previousClosedCycleQuotes = null,
             int maxProducerPasses = 8,
-            uint smoothingDenominator = DefaultSmoothingDenominator)
+            uint smoothingDenominator = DefaultSmoothingDenominator,
+            FoundationFineFirstPhysicalGeography? fineGeography = null)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
+        if (snapshot.WorldBinding?.IsFineFirstWorld == true &&
+            fineGeography is null)
+            throw new InvalidOperationException(
+                "A signed G18 settlement must include its physical ice surface.");
+        if (fineGeography is not null &&
+            (snapshot.WorldBinding?.IsFineFirstWorld != true ||
+             fineGeography.FineParameters != incidence.Refinement.FineParameters ||
+             fineGeography.FineElevationRaw.Count !=
+                 incidence.FineTopology.Cells.Count))
+            throw new InvalidOperationException(
+                "Freight ice boundaries must use the same bound G18 surface.");
+        var blocked = new HashSet<PhysicalTacticalEdgeId>();
+        if (fineGeography is not null)
+            foreach (var edge in incidence.FineTopology.Edges)
+            {
+                int a = checked((int)edge.IncidentCellIds[0].Value - 1);
+                int b = checked((int)edge.IncidentCellIds[1].Value - 1);
+                if (fineGeography.CrossingAtIndices(a, b) ==
+                    FoundationFineTransportCrossingKind.BlockedIceSeaBoundary)
+                    blocked.Add(new PhysicalTacticalEdgeId(
+                        incidence.Refinement.FineParameters, edge.Id));
+            }
         var (roads, scales) = FoundationPhysicalAuthoritativeTransportProjector
             .FromWorld(snapshot, incidence);
         return CoordinateUniversalCandidate(
             snapshot.Workers, incidence, demandPolicy, conversionPolicy,
             roads, scales, previousClosedCycleQuotes,
-            maxProducerPasses, smoothingDenominator);
+            maxProducerPasses, smoothingDenominator, blocked);
     }
 
     /// <summary>
@@ -144,7 +167,8 @@ public static class FoundationPhysicalLaggedFreightCyclePlanner
             IEnumerable<FoundationPhysicalEdgeCarryingScale> carryingScales,
             FoundationPhysicalLaggedFreightQuoteState? previousClosedCycleQuotes = null,
             int maxProducerPasses = 8,
-            uint smoothingDenominator = DefaultSmoothingDenominator)
+            uint smoothingDenominator = DefaultSmoothingDenominator,
+            IReadOnlySet<PhysicalTacticalEdgeId>? blockedEdges = null)
     {
         ArgumentNullException.ThrowIfNull(census);
         ArgumentNullException.ThrowIfNull(demandPolicy);
@@ -159,7 +183,7 @@ public static class FoundationPhysicalLaggedFreightCyclePlanner
             FoundationPhysicalUniversalMarketPricing
                 .QuotesFromRealWorkers(census, demandPolicy),
             freeFlowEdges, carryingScales, previousClosedCycleQuotes,
-            maxProducerPasses, smoothingDenominator);
+            maxProducerPasses, smoothingDenominator, blockedEdges);
     }
 
     internal static ulong NextSurcharge(
@@ -185,7 +209,8 @@ public static class FoundationPhysicalLaggedFreightCyclePlanner
         IEnumerable<FoundationPhysicalEdgeCarryingScale> carryingScales,
         FoundationPhysicalLaggedFreightQuoteState? previousClosedCycleQuotes = null,
         int maxProducerPasses = 8,
-        uint smoothingDenominator = DefaultSmoothingDenominator)
+        uint smoothingDenominator = DefaultSmoothingDenominator,
+        IReadOnlySet<PhysicalTacticalEdgeId>? blockedEdges = null)
     {
         ArgumentNullException.ThrowIfNull(census);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -277,7 +302,11 @@ public static class FoundationPhysicalLaggedFreightCyclePlanner
         // but NEVER recomputes congestion nor changes these edge quotes.
         var distribution = FoundationPhysicalGlobalMarginalCoordinator.Coordinate(
             census, incidence, demandPolicy, conversionPolicy, quotes,
-            fixedRoads, maxProducerPasses);
+            blockedEdges is null || blockedEdges.Count == 0
+                ? fixedRoads
+                : fixedRoads.Where(road => !blockedEdges.Contains(road.Edge))
+                    .ToArray(),
+            maxProducerPasses);
         var freight = distribution.AllocationAudit.Freight;
         var loads = freight.UsedEdges.ToDictionary(
             edge => edge.Edge, edge => edge.TotalCargoMicro);
