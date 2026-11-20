@@ -1640,6 +1640,18 @@ public partial class Main : Control
                         _tacticalHost.Session.GeneratedWorld,
                         _tacticalHost.Incidence, g18.Geography, g18.Identity,
                         _tacticalHost.Snapshot);
+                    if (globe.PresentedCanonicalWorld?.Request.Seed !=
+                            _goldbergStartup.WorldRequest.Seed ||
+                        globe.PresentedCanonicalWorld?.Request.StrategicParameters !=
+                            _goldbergStartup.Coarse ||
+                        g18.Geography.FineParameters != _goldbergStartup.Fine)
+                        throw new InvalidOperationException(
+                            "Signed physical sphere and economic world must share startup request.");
+                    GD.Print("GA_NEXT_R104_SIGNED_WORLD_CONTRACT_PASS " +
+                        $"coarse=G({_goldbergStartup.Coarse.M},0) " +
+                        $"fine=G({_goldbergStartup.Fine.M},0) " +
+                        $"scale={_goldbergStartup.Refinement.Scale} " +
+                        "sphere=true tactical=true economy=true");
                 }
                 else
                 {
