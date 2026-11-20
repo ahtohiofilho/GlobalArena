@@ -21,6 +21,9 @@ public partial class Main : Control
     private CheckBox? _tacticalTileEdges;
     private CheckBox? _tacticalSettledTradeRoutes;
     private GlobePreview? _strategicGlobe;
+    // Read-only QA evidence; private participant routes never leave the host.
+    internal int VisibleSphericalTradeCrossings =>
+        _strategicGlobe?.VisibleSphericalSettledTradeCrossings ?? 0;
     private TacticalContextPreview? _tacticalPreview;
     // Presentation-only sidebar ownership for map-free tactical controls.
     private VBoxContainer? _tacticalHudPanel;
