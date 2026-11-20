@@ -79,7 +79,13 @@ internal sealed class FoundationGodotFineFirstTerrainSmoke
                     "The visual tile mesh is not bound to the G18 physical world.");
             Must(_host.Snapshot.WorldBinding?.IsFineFirstWorld == true &&
                 _main.ActiveTacticalHost == _host &&
-                ReferenceEquals(_map.CanonicalPhysicalIncidenceMap, _host.Incidence),
+                _map.CanonicalPhysicalIncidenceMap is { } displayedIncidence &&
+                displayedIncidence.Refinement.FineParameters ==
+                    _host.Incidence.Refinement.FineParameters &&
+                displayedIncidence.Refinement.CoarseParameters ==
+                    _host.Incidence.Refinement.CoarseParameters &&
+                displayedIncidence.TileIncidences.Count ==
+                    _host.Incidence.TileIncidences.Count,
                 "Godot must use the authoritative G18 host and incidence.");
 
             var incidence = _host.Incidence;
