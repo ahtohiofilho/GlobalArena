@@ -57,25 +57,27 @@ if (-not (Test-Path -LiteralPath (Join-Path $repoRoot $projectRelative))) {
 Write-Host '[GA-NEXT VISUAL] Fetching R111 into a separate worktree (your current branch stays untouched).'
 & git -C $repoRoot fetch --no-tags origin "refs/heads/$branch"
 Assert-LastCommand 'Fetch R111'
-$targetOutput = @(& git -C $repoRoot rev-parse "refs/remotes/origin/$branch")
-Assert-LastCommand 'Resolve R111 commit'
-$target = ([string]$targetOutput[0]).Trim()
-if ($target -notmatch '^[0-9a-f]{40}
-$visualRoot = Join-Path $env:LOCALAPPDATA ('GA-Next\visual-r111-' + $target.Substring(0, 12))
+# Avoid rev-parse/PowerShell pipeline exit-code ambiguity on Windows.
+# The remote tracking ref was updated by the successful fetch above.
+# Git itself resolves this ref directly when creating/updating the worktree.
+$visualRoot = Join-Path $env:LOCALAPPDATA 'GA-Next\visual-r111-inspection'
+$remoteRef = "refs/remotes/origin/$branch"
 if (Test-Path -LiteralPath $visualRoot) {
-    $existingOutput = @(& git -C $visualRoot rev-parse HEAD 2>$null)
-    $gitExitCode = $LASTEXITCODE
-    $existing = if ($existingOutput.Count -gt 0) { ([string]$existingOutput[0]).Trim() } else { '' }
-    if ($gitExitCode -ne 0 -or $existing -ne $target) {
-        throw 'A different worktree already occupies the R111 review location; no files were removed.'
+    if (-not (Test-Path -LiteralPath (Join-Path $visualRoot '.git'))) {
+        throw 'The inspection location exists but is not a Git worktree. No files were removed.'
     }
+    & git -C $visualRoot switch --detach $remoteRef
+    Assert-LastCommand 'Update isolated R111 worktree'
 } else {
     New-Item -ItemType Directory -Path (Split-Path $visualRoot -Parent) -Force | Out-Null
-    & git -C $repoRoot worktree add --detach $visualRoot $target
-    Assert-LastCommand 'Create isolated review worktree'
+    & git -C $repoRoot worktree add --detach $visualRoot $remoteRef
+    Assert-LastCommand 'Create isolated R111 worktree'
+}
+if (-not (Test-Path -LiteralPath (Join-Path $visualRoot $projectRelative))) {
+    throw 'The isolated R111 worktree does not contain the Godot project.'
 }
 $projectDir = Join-Path $visualRoot $projectRelative
-Write-Host "[GA-NEXT VISUAL] Building immutable review commit $target"
+Write-Host "[GA-NEXT VISUAL] Building isolated R111 review worktree"
 & dotnet build (Join-Path $projectDir 'GlobalArena.Godot.csproj') -c Debug
 Assert-LastCommand 'Build Godot Mono client'
 $godot = Locate-Godot
