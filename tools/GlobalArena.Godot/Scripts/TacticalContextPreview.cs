@@ -1359,8 +1359,16 @@ public partial class TacticalContextPreview : SubViewportContainer
 
         // Mesh-derived MVP border paths: canonical physical centers only.
         // Presentation boundary is not an obstacle or a territory ownership rewrite.
-        var boundaryPaths = _cachedBoundaryPaths ??=
-            PhysicalTacticalTerritoryBoundaryMaterializer.Materialize(physical);
+        bool auditedLegacyBorders =
+            refinement.CoarseParameters == new GoldbergParameters(3, 0) &&
+            refinement.FineParameters == new GoldbergParameters(18, 0);
+        // The historical five-center border materializer has its OWN G3/G18
+        // fixture contract. An unsupported decorative overlay must never
+        // prevent a different signed physical world from opening.
+        var boundaryPaths = auditedLegacyBorders
+            ? _cachedBoundaryPaths ??=
+                PhysicalTacticalTerritoryBoundaryMaterializer.Materialize(physical)
+            : Array.Empty<PhysicalTacticalTerritoryBoundaryPath>();
         var boundaryTool = new SurfaceTool();
         boundaryTool.Begin(Mesh.PrimitiveType.Lines);
         var boundaryTint = new Color("#84969a");
@@ -1415,8 +1423,14 @@ public partial class TacticalContextPreview : SubViewportContainer
         }
         var boundaryMesh = boundaryTool.Commit();
         boundaryTool.Dispose();
-        if (boundaryMesh is null || strategicEdgesRendered == 0 || boundarySegments == 0)
-            throw new InvalidOperationException("Mesh-aligned territory boundary overlay is empty.");
+        if (auditedLegacyBorders &&
+            (boundaryMesh is null || strategicEdgesRendered == 0 ||
+             boundarySegments == 0))
+            throw new InvalidOperationException(
+                "Audited G3/G18 strategic border overlay is empty.");
+        if (!auditedLegacyBorders && boundarySegments != 0)
+            throw new InvalidOperationException(
+                "Unsupported strategic boundary may not invent decorative lines.");
 
         var oldSurface = _surface.Mesh;
         var oldEdges = _edges.Mesh;
@@ -1424,7 +1438,9 @@ public partial class TacticalContextPreview : SubViewportContainer
         _surface.Mesh = faceMesh;
         _edges.Mesh = lineMesh;
         _territoryBoundaries.Mesh = boundaryMesh;
-        _territoryBoundaries.Visible = _showTerritoryBoundaries;
+        _territoryBoundaries.Visible =
+            _showTerritoryBoundaries && auditedLegacyBorders &&
+            boundaryMesh is not null;
         oldSurface?.Dispose();
         oldEdges?.Dispose();
         oldBoundaries?.Dispose();
