@@ -160,6 +160,7 @@ public sealed class FoundationEconomicSalesSettlementEventExecutor
     : ISimulationEventExecutor
 {
     private readonly RuntimeWorldBinding _binding;
+    private readonly FoundationFineFirstPhysicalGeography? _fineGeography;
     private readonly PhysicalTacticalIncidenceMap _incidence;
     private readonly FoundationAuthoritativeEconomicSettlementPolicy _policy;
     private readonly CanonicalWorldStateHasher _hasher = new();
@@ -180,12 +181,13 @@ public sealed class FoundationEconomicSalesSettlementEventExecutor
         FoundationFineFirstWorldgenIdentity signature)
         : this(world, incidence, policy,
             RuntimeWorldBinding.FromFineFirst(
-                world, incidence, fine, signature)) { }
+                world, incidence, fine, signature), fine) { }
 
     private FoundationEconomicSalesSettlementEventExecutor(
         WorldGenerationResult world, PhysicalTacticalIncidenceMap incidence,
         FoundationAuthoritativeEconomicSettlementPolicy policy,
-        RuntimeWorldBinding binding)
+        RuntimeWorldBinding binding,
+        FoundationFineFirstPhysicalGeography? fine = null)
     {
         ArgumentNullException.ThrowIfNull(world);
         _incidence = incidence ?? throw new ArgumentNullException(nameof(incidence));
@@ -197,6 +199,7 @@ public sealed class FoundationEconomicSalesSettlementEventExecutor
             throw new InvalidOperationException(
                 "Economic close must use the actual signed physical world.");
         _binding = binding;
+        _fineGeography = fine;
     }
 
     private sealed record Expected(
@@ -234,7 +237,8 @@ public sealed class FoundationEconomicSalesSettlementEventExecutor
         var plan = FoundationPhysicalLaggedFreightCyclePlanner
             .CoordinateWorldCandidate(
                 snapshot, _incidence, _policy.Demand, _policy.Cargo,
-                previous, _policy.MaxProducerPasses);
+                previous, _policy.MaxProducerPasses,
+                fineGeography: _fineGeography);
         var audit = plan.Distribution.AllocationAudit;
         if (audit.TotalAvailableGoodsMicro != audit.TotalAllocatedGoodsMicro ||
             plan.RepricedWithinCycle ||
