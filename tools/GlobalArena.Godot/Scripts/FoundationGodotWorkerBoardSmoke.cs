@@ -175,6 +175,31 @@ public sealed class FoundationGodotWorkerBoardSmoke
                 "world_hash_unchanged=true");
             await Capture("03_pending_intent");
 
+            // R110: selected worker cancellation is visible and targets
+            // only its real host-queued order. Never touches settled census.
+            Must(_map.CanCancelSelectedWorkerBoardOrder,
+                "Selected own pending worker must expose cancel affordance.");
+            var cancelRect = _map.WorkerBoardCancelSelectedRect;
+            Must(cancelRect.HasValue,
+                "Worker-board targeted cancel button must be visible.");
+            await Click(cancelRect.Value.GetCenter());
+            Must(_host.PendingOrderCount == 0 &&
+                 _host.StateHash == hash &&
+                 !_map.CanCancelSelectedWorkerBoardOrder &&
+                 _map.WorkerBoardProjectedCount(PhysicalWorkerOccupation.Mining) == 2 &&
+                 _host.Snapshot.Workers.Workers.Single(w => w.Id.Value == 4UL)
+                     .Occupation == PhysicalWorkerOccupation.Agriculture,
+                "Board cancel must remove ONLY queued intent before the E turn.");
+            GD.Print("GA_NEXT_R110_WORKER_BOARD_CANCEL_PASS " +
+                "worker=4 targeted=true authoritative_host=true " +
+                "pending=0 actual_census_unchanged=true hash_unchanged=true");
+            mining._DropData(Vector2.Zero, payload);
+            await Frames();
+            Must(_host.PendingOrderCount == 1 &&
+                 _map.CanCancelSelectedWorkerBoardOrder &&
+                 _host.StateHash == hash,
+                "After targeted cancellation the same worker can queue again.");
+
             await KeyPress(Key.X);
             Must(_host.PendingOrderCount == 0 &&
                  _host.StateHash == hash &&
