@@ -44,6 +44,48 @@ public sealed class PhysicalTacticalIncidenceMapperTests
         }
     }
 
+    [Theory]
+    [InlineData(1, 2)]
+    [InlineData(1, 3)]
+    [InlineData(1, 4)]
+    [InlineData(1, 5)]
+    [InlineData(1, 6)]
+    [InlineData(2, 2)]
+    [InlineData(2, 3)]
+    [InlineData(2, 4)]
+    [InlineData(2, 5)]
+    [InlineData(2, 6)]
+    public void ResearchConnectivityAuditReadsSameFineAdjacency(
+        int coarseFrequency, int scale)
+    {
+        var coarse = new GoldbergParameters(coarseFrequency, 0);
+        var fine = new GoldbergParameters(
+            checked(coarseFrequency * scale), 0);
+        var refinement = new GoldbergScaledRefinement(coarse, fine);
+        var first = PhysicalTacticalIncidenceMapper
+            .DiagnoseConnectivity(refinement);
+        var replay = PhysicalTacticalIncidenceMapper
+            .DiagnoseConnectivity(refinement);
+        Assert.Equal(first, replay);
+        Assert.Equal((int)coarse.StrategicCellCount, first.CoarseRegions);
+        Assert.Equal((int)coarse.StrategicEdgeCount, first.CoarseEdges);
+        Assert.InRange(first.EmptyOwnerRegions, 0, first.CoarseRegions);
+        Assert.InRange(first.DisconnectedOwnerRegions, 0, first.CoarseRegions);
+        Assert.InRange(first.CoarseEdgesWithoutFineContact, 0, first.CoarseEdges);
+        Assert.InRange(first.MinimumFineContactsPerCoarseEdge,
+            0, first.MaximumFineContactsPerCoarseEdge);
+        // Only the accepted scale six is entitled to structural guarantees.
+        // Other results remain evidence, not permission to use Materialize.
+        if (scale == 6)
+        {
+            Assert.True(first.RegionConnectivityVerified);
+            Assert.True(first.CoarseAdjacencyRepresented);
+        }
+        else
+            Assert.Throws<NotSupportedException>(() =>
+                PhysicalTacticalIncidenceMapper.Materialize(refinement));
+    }
+
     [Fact]
     public void NullRefinementIsRejected()
     {
