@@ -190,6 +190,7 @@ jobs:
             2>&1 | tee "$RUNNER_TEMP/ga-godot/r87-g18-headless.log"
           grep -q 'GA_NEXT_R87_G18_TERRAIN_FREIGHT_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-headless.log"
           grep -q 'GA_NEXT_R88_G18_CONTINUOUS_ICE_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-headless.log"
+          grep -q 'GA_NEXT_R89_MARITIME_HIERARCHY_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-headless.log"
           grep -q 'GA_NEXT_R87_G18_GODOT_ACCEPTANCE_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-headless.log"
           if grep -E 'GA_NEXT_R87_G18_GODOT_ACCEPTANCE_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/r87-g18-headless.log"; then exit 1; fi
       - name: R87 G18 interactive evaluation has no autoplay and stays open
@@ -394,6 +395,7 @@ jobs:
             2>&1 | tee "$RUNNER_TEMP/ga-godot/r87-g18-graphical.log"
           grep -q 'GA_NEXT_R87_G18_TERRAIN_FREIGHT_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-graphical.log"
           grep -q 'GA_NEXT_R88_G18_CONTINUOUS_ICE_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-graphical.log"
+          grep -q 'GA_NEXT_R89_MARITIME_HIERARCHY_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-graphical.log"
           grep -q 'GA_NEXT_R87_G18_GODOT_ACCEPTANCE_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-graphical.log"
           for stage in 01_g18_terrain_before_trade 02_g18_after_first_trade 03_g18_after_second_trade; do
             grep -q "GA_NEXT_R87_G18_FRAME_PASS stage=$stage" "$RUNNER_TEMP/ga-godot/r87-g18-graphical.log"
