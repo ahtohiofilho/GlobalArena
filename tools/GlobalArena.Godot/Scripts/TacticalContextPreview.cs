@@ -227,6 +227,13 @@ public partial class TacticalContextPreview : SubViewportContainer
     private bool _equidistant = true;
     private float _yawDegrees;
     private ulong _activeFocus;
+    // R96: a chart switch can change the tangent-plane location of the
+    // camera center just enough to immediately select the previous focus.
+    // Prevent that A/B oscillation until the user has actually dragged
+    // beyond a small screen-space distance after the switch.
+    private ulong _previousHandoffFocus;
+    private float _dragPixelsAfterHandoff;
+    private const float ReverseHandoffDragPixels = 48f;
     private ulong _continuousNavigationHandoffs;
     public ulong ActiveStrategicFocus => _activeFocus;
     public ulong ContinuousNavigationHandoffs => _continuousNavigationHandoffs;
@@ -362,6 +369,9 @@ public partial class TacticalContextPreview : SubViewportContainer
             nextFocus = neighbor.Value;
         }
         if (nextFocus == 0UL) return false;
+        if (nextFocus == _previousHandoffFocus &&
+            _dragPixelsAfterHandoff < ReverseHandoffDragPixels)
+            return false;
 
         var plan = _preparedTransfers[nextFocus];
         if (plan.ToPrepare.Any(id => !_preparedCanonicalTileGeometry.ContainsKey(
@@ -420,6 +430,8 @@ public partial class TacticalContextPreview : SubViewportContainer
             SelectPhysicalTile(selectedId);
         _prefetchIntentOrigin = _cameraTarget;
         _lastPrefetchIntentFocus = 0UL;
+        _previousHandoffFocus = sourceFocus;
+        _dragPixelsAfterHandoff = 0f;
         _continuousNavigationHandoffs++;
         GD.Print($"GA_TACTICAL_FOCUS_HANDOFF_R45 source={sourceFocus} next={nextFocus} " +
             $"zoom={previousZoom:F6} yaw={previousYaw:F3} " +
@@ -1500,13 +1512,16 @@ public partial class TacticalContextPreview : SubViewportContainer
                 {
                     _pressed = true;
                     _moved = false;
+                    _previousHandoffFocus = 0UL;
+                    _dragPixelsAfterHandoff = 0f;
                     _dragStart = button.Position;
                 }
                 else
                 {
                     if (_pressed && !_moved) PickPhysicalTile(button.Position);
                     _pressed = false;
-
+                    _previousHandoffFocus = 0UL;
+                    _dragPixelsAfterHandoff = 0f;
                 }
                 AcceptEvent();
             }
@@ -1522,6 +1537,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         }
         if (@event is InputEventMouseMotion motion && _pressed)
         {
+            _dragPixelsAfterHandoff += motion.Relative.Length();
             if (motion.Position.DistanceTo(_dragStart) > 6f) _moved = true;
             if (_moved)
             {
