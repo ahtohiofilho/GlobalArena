@@ -99,10 +99,9 @@ public sealed class FoundationFineFirstPhysicalGeographyTests
         {
             int a = checked((int)edge.IncidentCellIds[0].Value - 1);
             int b = checked((int)edge.IncidentCellIds[1].Value - 1);
-            bool left = fine.FineElevationRaw[a] > fine.SeaLevelRaw;
-            bool right = fine.FineElevationRaw[b] > fine.SeaLevelRaw;
+            var mode = fine.CrossingAtIndices(a, b);
             var record = rows[edge.Id];
-            if (left && right)
+            if (mode == FoundationFineTransportCrossingKind.Ground)
             {
                 ulong difference = (ulong)Math.Abs(
                     fine.FineElevationRaw[a] - fine.FineElevationRaw[b]);
@@ -111,13 +110,15 @@ public sealed class FoundationFineFirstPhysicalGeographyTests
                     record.FreePhysicalCostMicroPerWholeCargoUnit);
                 Assert.Equal(1_000_000UL, record.CargoMicroAtReferenceLoad);
             }
-            else if (left || right)
+            else if (mode == FoundationFineTransportCrossingKind.Port ||
+                mode == FoundationFineTransportCrossingKind.BlockedIceSeaBoundary)
             {
                 Assert.Equal(5_000UL, record.FreePhysicalCostMicroPerWholeCargoUnit);
                 Assert.Equal(500_000UL, record.CargoMicroAtReferenceLoad);
             }
             else
             {
+                Assert.Equal(FoundationFineTransportCrossingKind.OpenSea, mode);
                 Assert.Equal(25_000UL, record.FreePhysicalCostMicroPerWholeCargoUnit);
                 Assert.Equal(
                     FoundationPhysicalEndogenousCongestionFeedback
