@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using GlobalArena.World;
+using GlobalArena.Runtime;
 using Godot;
 
 namespace GlobalArena.Godot;
@@ -859,13 +860,16 @@ public partial class GlobePreview : SubViewportContainer
     public void ConfigureSignedFineFirstSphere(
         WorldGenerationResult strategicWorld,
         PhysicalTacticalIncidenceMap incidence,
-        FoundationFineFirstPhysicalGeography geography)
+        FoundationFineFirstPhysicalGeography geography,
+        RuntimeWorldBinding worldBinding)
     {
         ArgumentNullException.ThrowIfNull(strategicWorld);
         ArgumentNullException.ThrowIfNull(incidence);
         ArgumentNullException.ThrowIfNull(geography);
+        ArgumentNullException.ThrowIfNull(worldBinding);
         if (_planet is null || _surfaceInstance is null ||
             _mapLayerSelector is null || PresentedCanonicalWorld is null ||
+            !worldBinding.IsFineFirstWorld ||
             geography.Seed != strategicWorld.Request.Seed ||
             geography.Seed != PresentedCanonicalWorld.Request.Seed ||
             geography.FineParameters != incidence.Refinement.FineParameters ||
@@ -882,6 +886,8 @@ public partial class GlobePreview : SubViewportContainer
         var geometry = fineWorld.StrategicSphericalGeometry;
         if (geometry.Cells.Count != geography.FineElevationRaw.Count)
             throw new InvalidOperationException("G18 spherical geometry and field differ.");
+        _signedG18RouteGeometry = geometry;
+        _signedG18WorldBinding = worldBinding;
 
         long minimum = geography.FineElevationRaw.Min();
         long maximum = geography.FineElevationRaw.Max();
@@ -930,6 +936,7 @@ public partial class GlobePreview : SubViewportContainer
             _mapLayerSelector.GetItemIndex(SignedG18MapMode));
         RefreshSelectionColors();
         UpdateMapLegend();
+        RebuildSphericalSettledTradeRoutes();
         GD.Print($"GA_NEXT_R99_G18_SPHERE_READY tiles={geometry.Cells.Count} " +
             $"triangles={triangles} firm_sea_ice={iceTiles} " +
             "source=signed_g18 terrain_palette=tactical_exact " +
@@ -944,6 +951,10 @@ public partial class GlobePreview : SubViewportContainer
         _surfaceInstance.Visible = !fineView && !signedView;
         if (_highResSurface is not null) _highResSurface.Visible = fineView;
         if (_signedG18Sphere is not null) _signedG18Sphere.Visible = signedView;
+        if (_settledGlobeRoutes is not null)
+            _settledGlobeRoutes.Visible = signedView &&
+                _showSettledGlobeRoutes &&
+                _settledGlobeRoutes.Mesh is not null;
         if (signedView)
         {
             // The displayed tiles are physical G18; strategic G3 picking is
