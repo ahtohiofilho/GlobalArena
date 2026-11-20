@@ -12,8 +12,9 @@ public partial class GlobePreview : SubViewportContainer
 {
     // R102: set once before AddChild/_Ready; the same coarse contract
     // is supplied to the preview session and the signed tactical map.
-    public GoldbergParameters StrategicParameters { get; set; } =
-        new(3, 0);
+    public WorldGenerationRequest StartupWorldRequest { get; set; } =
+        new(new WorldSeed(20261012UL), WorldGenerationVersion.Initial,
+            new GoldbergParameters(3, 0));
     private Node3D? _planet;
     private Camera3D? _camera;
     private bool _dragging;
@@ -75,10 +76,7 @@ public partial class GlobePreview : SubViewportContainer
         var world = new Node3D();
         viewport.AddChild(world);
 
-        var request = new WorldGenerationRequest(
-            new WorldSeed(20261012UL),
-            WorldGenerationVersion.Initial,
-            StrategicParameters);
+        var request = StartupWorldRequest;
         var generation = new DeterministicWorldGenerator().Generate(request);
         PresentedCanonicalWorld = generation;
         var geometry = generation.StrategicSphericalGeometry;
@@ -86,9 +84,9 @@ public partial class GlobePreview : SubViewportContainer
         if (geometry.Cells.Count != topology.Cells.Count ||
             geometry.Vertices.Count != topology.Vertices.Count ||
             geometry.Cells.Count != topology.Cells.Count ||
-            geometry.Cells.Count != 10 * (StrategicParameters.M * StrategicParameters.M +
-                StrategicParameters.M * StrategicParameters.N +
-                StrategicParameters.N * StrategicParameters.N) + 2)
+            geometry.Cells.Count != 10 * (request.StrategicParameters.M * request.StrategicParameters.M +
+                request.StrategicParameters.M * request.StrategicParameters.N +
+                request.StrategicParameters.N * request.StrategicParameters.N) + 2)
             throw new InvalidOperationException("Authoritative globe geometry/count contract failed.");
 
         // Read-only experiment. Strategic world generation and biome authority remain unchanged.
