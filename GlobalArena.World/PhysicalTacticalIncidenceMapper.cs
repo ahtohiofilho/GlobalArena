@@ -2,6 +2,63 @@ namespace GlobalArena.World;
 
 public static class PhysicalTacticalIncidenceMapper
 {
+    /// <summary>
+    /// R106 research-only audit. It uses the same authoritative Class I
+    /// seed lineage and nearest-owner partition as Materialize, but DOES NOT
+    /// certify or materialize an alternative economic/tactical incidence.
+    /// In particular, the established scale-six gate stays unchanged.
+    /// </summary>
+    public static PhysicalTacticalIncidenceCandidateDiagnostics DiagnoseCandidate(
+        GoldbergScaledRefinement refinement)
+    {
+        ArgumentNullException.ThrowIfNull(refinement);
+        var lineage = GoldbergStrategicTopologyGenerator
+            .GenerateClassIScaledRefinementLineage(refinement);
+        var owners = BuildNearestOwnerPartition(
+            lineage.CoarseTopology, lineage.FineTopology,
+            lineage.FineAnchorByCoarseCellId);
+        var interior = 0;
+        var edgeShared = 0;
+        var vertexShared = 0;
+        var unsupported = 0;
+        var observedEdges = new HashSet<string>(StringComparer.Ordinal);
+        var observedVertices = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var ownerSet in owners)
+        {
+            switch (ownerSet.Count)
+            {
+                case 1:
+                    interior++;
+                    break;
+                case 2:
+                    edgeShared++;
+                    observedEdges.Add(CreateCoarseSignature(ownerSet));
+                    break;
+                case 3:
+                    vertexShared++;
+                    observedVertices.Add(CreateCoarseSignature(ownerSet));
+                    break;
+                default:
+                    unsupported++;
+                    break;
+            }
+        }
+        var expectedEdges = lineage.CoarseTopology.Edges
+            .Select(edge => CreateCoarseSignature(edge.IncidentCellIds))
+            .ToHashSet(StringComparer.Ordinal);
+        var expectedVertices = lineage.CoarseTopology.Vertices
+            .Select(vertex => CreateCoarseSignature(vertex.IncidentCellIds))
+            .ToHashSet(StringComparer.Ordinal);
+        return new PhysicalTacticalIncidenceCandidateDiagnostics(
+            refinement.CoarseParameters, refinement.FineParameters,
+            lineage.CoarseTopology.Cells.Count, lineage.FineTopology.Cells.Count,
+            interior, edgeShared, vertexShared, unsupported,
+            observedEdges.Count(signature => expectedEdges.Contains(signature)),
+            observedVertices.Count(signature => expectedVertices.Contains(signature)),
+            expectedEdges.Count, expectedVertices.Count,
+            observedEdges.Count, observedVertices.Count);
+    }
+
 public static PhysicalTacticalIncidenceMap Materialize(
     GoldbergScaledRefinement refinement)
 {
