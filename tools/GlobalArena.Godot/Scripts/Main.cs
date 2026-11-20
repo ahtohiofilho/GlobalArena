@@ -21,6 +21,13 @@ public partial class Main : Control
     private CheckBox? _tacticalTileEdges;
     private CheckBox? _tacticalSettledTradeRoutes;
     private GlobePreview? _strategicGlobe;
+    private GoldbergParameters _startupCoarseParameters = new(3, 0);
+    private bool _resolutionBootstrapSmoke;
+    internal GoldbergParameters StartupCoarseParameters => _startupCoarseParameters;
+    internal GoldbergParameters? ActiveFineParameters =>
+        _tacticalHost?.Incidence.Refinement.FineParameters;
+    internal GoldbergParameters? GlobeCoarseParameters =>
+        _strategicGlobe?.PresentedCanonicalWorld?.Request.StrategicParameters;
     // Read-only QA evidence; private participant routes never leave the host.
     internal int VisibleSphericalTradeCrossings =>
         _strategicGlobe?.VisibleSphericalSettledTradeCrossings ?? 0;
@@ -1174,6 +1181,32 @@ public partial class Main : Control
         _interactiveEconomicPreviewActive =
             System.Environment.GetEnvironmentVariable(
                 "GA_NEXT_INTERACTIVE_ECONOMY_PREVIEW") == "1";
+        // R102: opt-in resolution profiles. Guard before creating ANY
+        // Godot globe or session; never mutate a running world's geometry.
+        _resolutionBootstrapSmoke =
+            System.Environment.GetEnvironmentVariable(
+                "GA_NEXT_GOLDBERG_RESOLUTION_SMOKE") == "1";
+        string? coarseProfile = System.Environment.GetEnvironmentVariable(
+            "GA_NEXT_GOLDBERG_COARSE_M");
+        if (coarseProfile is not null)
+        {
+            if (coarseProfile != "2" && coarseProfile != "3")
+                throw new InvalidOperationException(
+                    "R102 accepts only explicitly tested coarse G(2,0) or G(3,0).");
+            if (coarseProfile == "2" &&
+                !_resolutionBootstrapSmoke &&
+                System.Environment.GetEnvironmentVariable(
+                    "GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW") != "1")
+                throw new InvalidOperationException(
+                    "Alternate G2/G12 is QA-only until full game acceptance.");
+            _startupCoarseParameters = new GoldbergParameters(
+                int.Parse(coarseProfile,
+                    System.Globalization.CultureInfo.InvariantCulture), 0);
+        }
+        GD.Print($"GA_NEXT_R102_BOOTSTRAP_CONFIGURATION " +
+            $"coarse=G({_startupCoarseParameters.M},0) " +
+            $"fine=G({checked(_startupCoarseParameters.M * 6)},0) " +
+            "source=pre_scene strict_profiles=true");
         GD.Print("GA_PROD_MAIN_READY_R6");
         // Centralized production-oriented styling; Godot Theme is the owner
         // of interactive states rather than per-screen debug colors.
@@ -1240,6 +1273,7 @@ public partial class Main : Control
         content.AddChild(mapRegion);
         var globe = new GlobePreview
         {
+            StrategicParameters = _startupCoarseParameters,
             Name = "GANextPlanetGlobe",
             CustomMinimumSize = new Vector2(360f, 300f),
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
@@ -1266,7 +1300,7 @@ public partial class Main : Control
         // This is NOT a claim of final world-population generation.
         _localFoundation = FoundationHumanAiLocalPreview.CreateLocalPreview(
             new WorldGenerationRequest(new WorldSeed(20261012UL),
-                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)));
+                WorldGenerationVersion.Initial, _startupCoarseParameters));
         _canonicalSession = _localFoundation.Session;
         if (globe.PresentedCanonicalWorld is null ||
             RuntimeWorldBinding.FromGeneratedWorld(globe.PresentedCanonicalWorld) !=
@@ -1558,7 +1592,8 @@ public partial class Main : Control
                 "GA_NEXT_FINE_FIRST_VISUAL_SMOKE") == "1";
             bool fineFirstInteractive = System.Environment.GetEnvironmentVariable(
                 "GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW") == "1";
-            bool fineFirstLab = fineFirstVisualSmoke || fineFirstInteractive;
+            bool fineFirstLab = fineFirstVisualSmoke || fineFirstInteractive ||
+                _resolutionBootstrapSmoke;
             bool continuousNavigationSmoke = System.Environment.GetEnvironmentVariable(
                 "GA_NEXT_CONTINUOUS_NAVIGATION_SMOKE") == "1";
             bool useExplicitEconomicLab = settledTradeQaSmoke ||
@@ -1570,7 +1605,9 @@ public partial class Main : Control
                 (settledTradeQaSmoke && _interactiveEconomicPreviewActive) ||
                 (fineFirstLab &&
                  (settledTradeQaSmoke || _interactiveEconomicPreviewActive)) ||
-                (fineFirstVisualSmoke && fineFirstInteractive))
+                (fineFirstVisualSmoke && fineFirstInteractive) ||
+                (_resolutionBootstrapSmoke &&
+                    (fineFirstVisualSmoke || fineFirstInteractive)))
                 throw new InvalidOperationException(
                     "Experimental market must not replace normal gameplay, " +
                     "another test, or a trusted economic configuration.");
@@ -1578,7 +1615,7 @@ public partial class Main : Control
             {
                 var request = new WorldGenerationRequest(
                     new WorldSeed(20261012UL), WorldGenerationVersion.Initial,
-                    new GoldbergParameters(3, 0));
+                    _startupCoarseParameters);
                 _tacticalHost = legacyV10Smoke
                     ? FoundationTacticalDemoScenario.CreateLocalHumanAiPreview(request)
                     : legacyV11Smoke
@@ -1737,6 +1774,9 @@ public partial class Main : Control
                     this, _tacticalHost, _tacticalPreview!).RunAsync();
             else if (workerBoardSmoke && _tacticalHost is not null)
                 _ = new FoundationGodotWorkerBoardSmoke(
+                    this, _tacticalHost, _tacticalPreview!).RunAsync();
+            else if (_resolutionBootstrapSmoke && _tacticalHost is not null)
+                _ = new FoundationGodotGoldbergResolutionBootstrapSmoke(
                     this, _tacticalHost, _tacticalPreview!).RunAsync();
             else if (fineFirstVisualSmoke && _tacticalHost is not null)
                 _ = new FoundationGodotFineFirstTerrainSmoke(
