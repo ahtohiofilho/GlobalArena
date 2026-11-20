@@ -44,12 +44,13 @@ public partial class GlobePreview
             authorizedView.Availability !=
                 FoundationEconomicTradeOverlayAvailability.NoClosedCycle &&
             (_signedG18WorldBinding != authorizedView.WorldBinding ||
-             authorizedView.FineTopology != new GoldbergParameters(18, 0) ||
+             _signedG18Geography is null ||
+             authorizedView.FineTopology != _signedG18Geography.FineParameters ||
              authorizedView.EconomicCycleOrdinal is not > 0UL ||
              authorizedView.PublishedHash is null ||
              string.IsNullOrWhiteSpace(authorizedView.CargoUnitCode)))
             throw new InvalidOperationException(
-                "Spherical trade must use a published participant-private G18 cycle.");
+                "Spherical trade must use the signed participant-private fine topology.");
         _authorizedGlobeTrade = authorizedView is
             { Availability: FoundationEconomicTradeOverlayAvailability.NoClosedCycle }
                 ? null : authorizedView;
