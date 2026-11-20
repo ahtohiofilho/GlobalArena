@@ -212,10 +212,19 @@ public static class FoundationPhysicalNaturalTransportSeeder
             int a = checked((int)edge.IncidentCellIds[0].Value - 1);
             int b = checked((int)edge.IncidentCellIds[1].Value - 1);
             bool firstLand = isLand[a], secondLand = isLand[b];
+            var surfaceCrossing = fineGeography?.CrossingAtIndices(a, b);
+            bool groundCrossing = surfaceCrossing ==
+                FoundationFineTransportCrossingKind.Ground;
+            bool portCrossing = surfaceCrossing ==
+                FoundationFineTransportCrossingKind.Port ||
+                surfaceCrossing ==
+                    FoundationFineTransportCrossingKind.BlockedIceSeaBoundary;
+            bool openSeaCrossing = surfaceCrossing ==
+                FoundationFineTransportCrossingKind.OpenSea;
             FoundationNaturalTransportCostBand band;
             ulong cost;
             ulong? constructionMoney = null;
-            if (firstLand && secondLand)
+            if (fineGeography is null ? firstLand && secondLand : groundCrossing)
             {
                 landCrossings++;
                 band = policy.Land;
@@ -238,7 +247,7 @@ public static class FoundationPhysicalNaturalTransportSeeder
                         construction));
                 }
             }
-            else if (firstLand || secondLand)
+            else if (fineGeography is null ? firstLand || secondLand : portCrossing)
             {
                 coastCrossings++;
                 band = policy.Coast;
@@ -247,6 +256,9 @@ public static class FoundationPhysicalNaturalTransportSeeder
             }
             else
             {
+                if (fineGeography is not null && !openSeaCrossing)
+                    throw new InvalidOperationException(
+                        "Every fine crossing requires a canonical surface mode.");
                 seaCrossings++;
                 band = policy.Sea;
                 cost = band.FreePhysicalCostMicroPerWholeCargoUnit;
@@ -257,7 +269,8 @@ public static class FoundationPhysicalNaturalTransportSeeder
             // remains; coast/port transfers retain their finite K.
             // The explicit unbounded marker is canonically stored in the
             // existing hashed cargo-capacity field, without schema changes.
-            ulong capacity = !firstLand && !secondLand
+            ulong capacity = (fineGeography is null
+                    ? !firstLand && !secondLand : openSeaCrossing)
                 ? FoundationPhysicalEndogenousCongestionFeedback
                     .UnboundedNaturalCargoCapacity
                 : band.CargoMicroAtReferenceLoad;

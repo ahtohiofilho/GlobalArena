@@ -105,52 +105,66 @@ internal sealed class FoundationGodotFineFirstTerrainSmoke
             Must(land == fine.LandTileCount && land > 0 && water > 0,
                 "Every terrain tile must use one G18 sea level.");
 
-            int seaEdges = 0, landEdges = 0, coastEdges = 0;
+            int seaEdges = 0, landEdges = 0, coastEdges = 0, blockedEdges = 0;
             var records = _host.Snapshot.Transport.Edges.ToDictionary(
                 e => e.Edge.FineStrategicEdgeId);
             foreach (var edge in incidence.FineTopology.Edges)
             {
                 int left = checked((int)edge.IncidentCellIds[0].Value - 1);
                 int right = checked((int)edge.IncidentCellIds[1].Value - 1);
-                bool a = fine.FineElevationRaw[left] > fine.SeaLevelRaw;
-                bool b = fine.FineElevationRaw[right] > fine.SeaLevelRaw;
+                var crossing = fine.CrossingAtIndices(left, right);
                 var transport = records[edge.Id];
                 bool unbounded = transport.CargoMicroAtReferenceLoad ==
                     FoundationPhysicalEndogenousCongestionFeedback
                         .UnboundedNaturalCargoCapacity;
-                Must(unbounded == (!a && !b),
-                    "A real sea crossing in the map disagrees with " +
-                    "the economic transport capacity.");
+                Must(unbounded ==
+                    (crossing == FoundationFineTransportCrossingKind.OpenSea),
+                    "Only open-water sea passages may have unbounded capacity.");
                 // R89: verify the actual seeded inventory, not merely
                 // the policy constants. Slope may only add land cost.
                 ulong baseCost = transport.FreePhysicalCostMicroPerWholeCargoUnit;
-                if (a && b)
+                switch (crossing)
                 {
-                    landEdges++;
-                    Must(baseCost >= GaExplicitEconomicQaConfiguration.QaLandEdgeCostMicro,
-                        "Natural land freight must include at least land base cost.");
-                }
-                else if (a || b)
-                {
-                    coastEdges++;
-                    Must(baseCost == GaExplicitEconomicQaConfiguration.QaCoastEdgeCostMicro,
-                        "Port transition must have the configured coastal cost.");
-                }
-                else
-                {
-                    seaEdges++;
-                    Must(baseCost == GaExplicitEconomicQaConfiguration.QaSeaEdgeCostMicro,
-                        "Open sea must retain the cheap positive freight cost.");
+                    case FoundationFineTransportCrossingKind.Ground:
+                        landEdges++;
+                        Must(baseCost >= GaExplicitEconomicQaConfiguration.QaLandEdgeCostMicro,
+                            "Ground, including frozen sea, must pay land freight.");
+                        break;
+                    case FoundationFineTransportCrossingKind.Port:
+                        coastEdges++;
+                        Must(baseCost == GaExplicitEconomicQaConfiguration.QaCoastEdgeCostMicro,
+                            "Land/open-water port must pay coastal freight.");
+                        break;
+                    case FoundationFineTransportCrossingKind.BlockedIceSeaBoundary:
+                        blockedEdges++;
+                        Must(baseCost == GaExplicitEconomicQaConfiguration.QaCoastEdgeCostMicro,
+                            "Blocked sea-ice boundaries remain finite inventory quotes.");
+                        break;
+                    case FoundationFineTransportCrossingKind.OpenSea:
+                        seaEdges++;
+                        Must(baseCost == GaExplicitEconomicQaConfiguration.QaSeaEdgeCostMicro,
+                            "Open-sea freight must be cheap and uncongested.");
+                        break;
+                    default:
+                        throw new InvalidOperationException("Unknown ice freight surface.");
                 }
             }
-            Must(seaEdges > 0 && landEdges > 0 && coastEdges > 0,
-                "G18 must contain actual sea, land and port crossings.");
+            Must(seaEdges > 0 && landEdges > 0 && coastEdges > 0 &&
+                blockedEdges > 0,
+                "G18 must contain sea, land, port and blocked ice boundaries.");
+            Must(seaEdges + landEdges + coastEdges + blockedEdges ==
+                incidence.FineTopology.Edges.Count,
+                "Every economic crossing must have exactly one surface mode.");
             GaExplicitEconomicQaConfiguration.AssertNaturalFreightHierarchy();
             GD.Print($"GA_NEXT_R89_MARITIME_HIERARCHY_PASS " +
                 $"land_base={GaExplicitEconomicQaConfiguration.QaLandEdgeCostMicro} " +
                 $"coast_base={GaExplicitEconomicQaConfiguration.QaCoastEdgeCostMicro} " +
                 $"sea_base={GaExplicitEconomicQaConfiguration.QaSeaEdgeCostMicro} " +
-                $"sea_edges={seaEdges} coast_edges={coastEdges} land_edges={landEdges}");
+                $"sea_edges={seaEdges} coast_edges={coastEdges} land_edges={landEdges} " +
+                $"blocked_ice_edges={blockedEdges}");
+            GD.Print($"GA_NEXT_R94_FROZEN_FREIGHT_PASS ground={landEdges} " +
+                $"open_sea={seaEdges} ports={coastEdges} " +
+                $"blocked_ice_sea={blockedEdges}");
             Must(_map.FineVisualDetailTileCount == 0,
                 "R81 decorative microdetail must never be active in G18.");
             // R88: continuous G18 thermal rendering must preserve the signed
@@ -210,7 +224,8 @@ internal sealed class FoundationGodotFineFirstTerrainSmoke
             GD.Print($"GA_NEXT_R87_G18_TERRAIN_FREIGHT_PASS " +
                 $"tiles={count} land={land} sea={water} " +
                 $"land_edges={landEdges} coast_edges={coastEdges} " +
-                $"sea_edges={seaEdges} source=signed_g18 exact_match=true");
+                $"sea_edges={seaEdges} blocked_ice_edges={blockedEdges} " +
+                "source=signed_g18 exact_match=true");
 
             var initialHash = _host.StateHash;
             var camera = _map.TacticalCameraState;
