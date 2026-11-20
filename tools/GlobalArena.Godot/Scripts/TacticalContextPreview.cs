@@ -146,13 +146,13 @@ public partial class TacticalContextPreview : SubViewportContainer
                 _authoritativeEconomyTerrainWorld!.StrategicPhysicalFields
                     .SeaLevel.RawValue;
 
-    // A soft thermal transition around the 01C physical ice threshold.
+    // R91 continuous land snow band; frozen ocean uses a crisp movement edge.
     // Temperature, including altitude cooling, comes directly from the signed
     // G18 field. No discrete ice/biome assignment is persisted.
     internal static float FineIceWeight(long temperatureRaw)
     {
-        const double cold = -0.48;
-        const double warm = -0.12;
+        const double cold = -0.70;
+        const double warm = -0.58;
         double temperature = temperatureRaw /
             (double)ExperimentalIceTemperatureComposer.Scale;
         double t = Math.Clamp((warm - temperature) / (warm - cold), 0.0, 1.0);
@@ -176,10 +176,19 @@ public partial class TacticalContextPreview : SubViewportContainer
             // bathymetry- and altitude-dependent. Blend its continuous cold
             // field over the EXACT G18 economic relief, without discrete biomes,
             // coarse G3 interpolation or changes to transport/economic state.
-            float ice = FineIceWeight(physicalWorld.FineTemperatureRaw[index]);
-            bool land = elevation > physicalWorld.SeaLevelRaw;
-            return relief.Lerp(land
-                ? new Color("#edf3ee") : new Color("#d9edf3"), ice);
+            bool geologicalLand = elevation > physicalWorld.SeaLevelRaw;
+            if (!geologicalLand)
+            {
+                // R91: a navigable ocean always looks like water. A frozen
+                // ocean always looks like firm ice: no ambiguous blended
+                // navigability strip between the two movement surfaces.
+                // Underlying geological water remains unchanged.
+                return physicalWorld.SurfaceAtIndex(index) ==
+                    FoundationFineSurfaceKind.FirmSeaIce
+                    ? new Color("#d9edf3") : relief;
+            }
+            float snow = FineIceWeight(physicalWorld.FineTemperatureRaw[index]);
+            return relief.Lerp(new Color("#edf3ee"), snow);
         }
         // Legacy V1-only path retained for old experimental tests.
         _economyFineDetail ??= CanonicalEconomyFineVisualDetail.Create(
