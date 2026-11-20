@@ -152,6 +152,25 @@ public static class PhysicalTacticalIncidenceMapper
             min == int.MaxValue ? 0 : min, max);
     }
 
+    /// <summary>
+    /// R108 research-only fine-graph corridor audit. The exact same
+    /// owner sets used by production are examined before any prospective
+    /// generalization; this method cannot authorize a new scale.
+    /// </summary>
+    public static PhysicalTacticalBoundaryPathCandidateDiagnostics
+        DiagnoseBoundaryPaths(GoldbergScaledRefinement refinement)
+    {
+        ArgumentNullException.ThrowIfNull(refinement);
+        var lineage = GoldbergStrategicTopologyGenerator
+            .GenerateClassIScaledRefinementLineage(refinement);
+        var ownerSets = BuildNearestOwnerPartition(
+            lineage.CoarseTopology, lineage.FineTopology,
+            lineage.FineAnchorByCoarseCellId);
+        return PhysicalTacticalBoundaryPathCandidateAuditor.Analyze(
+            refinement.CoarseParameters, refinement.FineParameters,
+            lineage.CoarseTopology, lineage.FineTopology, ownerSets);
+    }
+
 public static PhysicalTacticalIncidenceMap Materialize(
     GoldbergScaledRefinement refinement)
 {

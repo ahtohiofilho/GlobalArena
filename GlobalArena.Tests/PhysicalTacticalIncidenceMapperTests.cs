@@ -86,6 +86,48 @@ public sealed class PhysicalTacticalIncidenceMapperTests
                 PhysicalTacticalIncidenceMapper.Materialize(refinement));
     }
 
+    [Theory]
+    [InlineData(1, 2)]
+    [InlineData(1, 3)]
+    [InlineData(1, 4)]
+    [InlineData(1, 5)]
+    [InlineData(1, 6)]
+    [InlineData(2, 6)]
+    public void CandidateBoundaryCorridorsAreAuditedWithoutScalePromotion(
+        int coarseFrequency, int scale)
+    {
+        var coarse = new GoldbergParameters(coarseFrequency, 0);
+        var fine = new GoldbergParameters(
+            checked(coarseFrequency * scale), 0);
+        var refinement = new GoldbergScaledRefinement(coarse, fine);
+        var first = PhysicalTacticalIncidenceMapper
+            .DiagnoseBoundaryPaths(refinement);
+        var replay = PhysicalTacticalIncidenceMapper
+            .DiagnoseBoundaryPaths(refinement);
+        Assert.Equal(first, replay);
+        Assert.Equal(coarse.StrategicEdgeCount,
+            (ulong)first.StrategicEdgeCount);
+        Assert.Equal(first.StrategicEdgeCount,
+            first.CompleteEdgeCorridors +
+            first.MissingAnchorEdges +
+            first.AmbiguousAnchorEdges +
+            first.DisconnectedEdgeCorridors +
+            first.RepeatedTileCorridors);
+        Assert.InRange(first.MinimumCompletedPathCells,
+            0, first.MaximumCompletedPathCells);
+        if (scale != 6)
+        {
+            Assert.Throws<NotSupportedException>(() =>
+                PhysicalTacticalIncidenceMapper.Materialize(refinement));
+        }
+        else
+        {
+            Assert.True(first.EveryStrategicEdgeHasAUniqueAuditedCorridor);
+            Assert.Equal(5, first.MinimumCompletedPathCells);
+            Assert.Equal(5, first.MaximumCompletedPathCells);
+        }
+    }
+
     [Fact]
     public void NullRefinementIsRejected()
     {
