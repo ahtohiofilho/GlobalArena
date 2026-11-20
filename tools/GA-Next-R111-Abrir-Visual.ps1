@@ -57,8 +57,48 @@ if (-not (Test-Path -LiteralPath (Join-Path $repoRoot $projectRelative))) {
 Write-Host '[GA-NEXT VISUAL] Fetching R111 into a separate worktree (your current branch stays untouched).'
 & git -C $repoRoot fetch --no-tags origin "refs/heads/$branch"
 Assert-LastCommand 'Fetch R111'
-$target = (& git -C $repoRoot rev-parse FETCH_HEAD | Select-Object -First 1).Trim()
+$targetOutput = @(& git -C $repoRoot rev-parse "refs/remotes/origin/$branch")
 Assert-LastCommand 'Resolve R111 commit'
+$target = ([string]$targetOutput[0]).Trim()
+if ($target -notmatch '^[0-9a-f]{40}
+$visualRoot = Join-Path $env:LOCALAPPDATA ('GA-Next\visual-r111-' + $target.Substring(0, 12))
+if (Test-Path -LiteralPath $visualRoot) {
+    $existingOutput = @(& git -C $visualRoot rev-parse HEAD 2>$null)
+    $gitExitCode = $LASTEXITCODE
+    $existing = if ($existingOutput.Count -gt 0) { ([string]$existingOutput[0]).Trim() } else { '' }
+    if ($gitExitCode -ne 0 -or $existing -ne $target) {
+        throw 'A different worktree already occupies the R111 review location; no files were removed.'
+    }
+} else {
+    New-Item -ItemType Directory -Path (Split-Path $visualRoot -Parent) -Force | Out-Null
+    & git -C $repoRoot worktree add --detach $visualRoot $target
+    Assert-LastCommand 'Create isolated review worktree'
+}
+$projectDir = Join-Path $visualRoot $projectRelative
+Write-Host "[GA-NEXT VISUAL] Building immutable review commit $target"
+& dotnet build (Join-Path $projectDir 'GlobalArena.Godot.csproj') -c Debug
+Assert-LastCommand 'Build Godot Mono client'
+$godot = Locate-Godot
+$oldPreview = [Environment]::GetEnvironmentVariable('GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW', 'Process')
+$oldSmoke = [Environment]::GetEnvironmentVariable('GA_NEXT_WORKER_BOARD_SMOKE', 'Process')
+try {
+    # Disable CI-only automatic closures; leave the window open for human visual review.
+    [Environment]::SetEnvironmentVariable('GA_NEXT_WORKER_BOARD_SMOKE', $null, 'Process')
+    if ($Mode -eq 'Geography') {
+        [Environment]::SetEnvironmentVariable('GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW', '1', 'Process')
+    } else {
+        [Environment]::SetEnvironmentVariable('GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW', $null, 'Process')
+    }
+    Write-Host "[GA-NEXT VISUAL] Opening $Mode — Godot 4.7.2 Mono; press M for planetary map, E for turn."
+    & $godot --path $projectDir
+    Assert-LastCommand 'Run Godot client'
+} finally {
+    [Environment]::SetEnvironmentVariable('GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW', $oldPreview, 'Process')
+    [Environment]::SetEnvironmentVariable('GA_NEXT_WORKER_BOARD_SMOKE', $oldSmoke, 'Process')
+}
+) {
+    throw "Git returned an invalid R111 commit SHA: $target"
+}
 $visualRoot = Join-Path $env:LOCALAPPDATA ('GA-Next\visual-r111-' + $target.Substring(0, 12))
 if (Test-Path -LiteralPath $visualRoot) {
     $existing = (& git -C $visualRoot rev-parse HEAD 2>$null | Select-Object -First 1)
