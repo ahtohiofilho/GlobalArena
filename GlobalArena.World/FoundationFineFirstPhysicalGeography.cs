@@ -12,9 +12,48 @@ namespace GlobalArena.World;
 /// This is a candidate contract until world hash/save and economic seeding
 /// are versioned to consume it together.
 /// </summary>
+/// <summary>Functional movement surface, distinct from geological land/sea.</summary>
+public enum FoundationFineSurfaceKind : byte
+{
+    Land = 1,
+    OpenWater = 2,
+    FirmSeaIce = 3
+}
+
 public sealed class FoundationFineFirstPhysicalGeography
 {
     public const int InitialLandTargetPercent = 35;
+    // R91: stable gameplay thermal threshold (raw physical temperature).
+    // This is not a biome classifier. Ocean below this limit is a
+    // land-traversable frozen surface; its geological identity remains sea.
+    public const long FirmSeaIceTemperatureRaw = -700_000L;
+
+    public FoundationFineSurfaceKind SurfaceAtIndex(int index)
+    {
+        if ((uint)index >= (uint)FineElevationRaw.Count)
+            throw new ArgumentOutOfRangeException(nameof(index));
+        if (FineElevationRaw[index] > SeaLevelRaw)
+            return FoundationFineSurfaceKind.Land;
+        return FineTemperatureRaw[index] <= FirmSeaIceTemperatureRaw
+            ? FoundationFineSurfaceKind.FirmSeaIce
+            : FoundationFineSurfaceKind.OpenWater;
+    }
+
+    public FoundationFineSurfaceKind SurfaceAt(PhysicalTacticalTileId id)
+    {
+        if (!id.IsValid || id.FineGoldbergParameters != FineParameters ||
+            id.FineStrategicCellId.Value > (ulong)FineElevationRaw.Count)
+            throw new ArgumentOutOfRangeException(nameof(id));
+        return SurfaceAtIndex(checked((int)id.FineStrategicCellId.Value - 1));
+    }
+
+    public bool CanTraverseOnFoot(int index) =>
+        SurfaceAtIndex(index) != FoundationFineSurfaceKind.OpenWater;
+
+    public bool CanNavigateByShip(int index) =>
+        SurfaceAtIndex(index) == FoundationFineSurfaceKind.OpenWater;
+
+
 
     public WorldSeed Seed { get; }
     public GoldbergParameters FineParameters { get; }
