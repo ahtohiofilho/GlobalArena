@@ -1546,15 +1546,23 @@ public partial class Main : Control
                 "GA_NEXT_WORKER_BOARD_SMOKE") == "1";
             bool settledTradeQaSmoke = System.Environment.GetEnvironmentVariable(
                 "GA_NEXT_SETTLED_TRADE_VISUAL_SMOKE") == "1";
+            bool fineFirstVisualSmoke = System.Environment.GetEnvironmentVariable(
+                "GA_NEXT_FINE_FIRST_VISUAL_SMOKE") == "1";
+            bool fineFirstInteractive = System.Environment.GetEnvironmentVariable(
+                "GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW") == "1";
+            bool fineFirstLab = fineFirstVisualSmoke || fineFirstInteractive;
             bool continuousNavigationSmoke = System.Environment.GetEnvironmentVariable(
                 "GA_NEXT_CONTINUOUS_NAVIGATION_SMOKE") == "1";
             bool useExplicitEconomicLab = settledTradeQaSmoke ||
-                _interactiveEconomicPreviewActive;
+                _interactiveEconomicPreviewActive || fineFirstLab;
             if ((useExplicitEconomicLab &&
                  (legacyV10Smoke || legacyV11Smoke || concentratedSmoke ||
                   tileClickMenuSmoke || workerBoardSmoke || legacyWorkspaceSmoke ||
                   legacySmoke || _configuredEconomicGameplay is not null)) ||
-                (settledTradeQaSmoke && _interactiveEconomicPreviewActive))
+                (settledTradeQaSmoke && _interactiveEconomicPreviewActive) ||
+                (fineFirstLab &&
+                 (settledTradeQaSmoke || _interactiveEconomicPreviewActive)) ||
+                (fineFirstVisualSmoke && fineFirstInteractive))
                 throw new InvalidOperationException(
                     "Experimental market must not replace normal gameplay, " +
                     "another test, or a trusted economic configuration.");
@@ -1572,20 +1580,29 @@ public partial class Main : Control
                             request, useExplicitEconomicLab ? 3 :
                                 FoundationConcentratedWorkforceScenario
                                     .DefaultWorkersPerCivilization);
-                if (useExplicitEconomicLab)
-                    _tacticalHost = GaExplicitEconomicQaConfiguration
-                        .Prepare(_tacticalHost);
-                else if (_configuredEconomicGameplay is not null)
-                    _tacticalHost = FoundationGameplayEconomicBootstrap.Enable(
-                        _tacticalHost, _configuredEconomicGameplay);
+                if (fineFirstLab)
+                {
+                    var g18 = GaExplicitEconomicQaConfiguration
+                        .PrepareFineFirst(_tacticalHost);
+                    _tacticalHost = g18.Host;
+                    _tacticalPreview!.ConfigureFineFirstEconomicTerrain(
+                        _tacticalHost.Session.GeneratedWorld,
+                        _tacticalHost.Incidence, g18.Geography, g18.Identity,
+                        _tacticalHost.Snapshot);
+                }
+                else
+                {
+                    if (useExplicitEconomicLab)
+                        _tacticalHost = GaExplicitEconomicQaConfiguration
+                            .Prepare(_tacticalHost);
+                    else if (_configuredEconomicGameplay is not null)
+                        _tacticalHost = FoundationGameplayEconomicBootstrap.Enable(
+                            _tacticalHost, _configuredEconomicGameplay);
+                    _tacticalPreview!.ConfigureAuthoritativeEconomyTerrain(
+                        useExplicitEconomicLab || _configuredEconomicGameplay is not null
+                            ? _tacticalHost.Session.GeneratedWorld : null);
+                }
                 _canonicalSession = _tacticalHost.Session;
-                // The economic freight seeder uses V1 elevation/sea level,
-                // while the old decorative 01C experiment uses an unrelated
-                // coastline. Present the authoritative physical classification
-                // whenever real economic freight is enabled.
-                _tacticalPreview!.ConfigureAuthoritativeEconomyTerrain(
-                    useExplicitEconomicLab || _configuredEconomicGameplay is not null
-                        ? _tacticalHost.Session.GeneratedWorld : null);
                 AttachRuntimeState(_tacticalHost.Snapshot);
             }
             // The old v9 record locates workers on G(3,0). This is a
@@ -1646,6 +1663,10 @@ public partial class Main : Control
                 "windows=chrome native_windows=false game_authority=untouched");
             RefreshLocalWorkerOrderControls();
             RefreshInteractiveEconomyPreviewBanner();
+            if (fineFirstInteractive)
+                GD.Print("GA_NEXT_R87_FINE_FIRST_INTERACTIVE_READY " +
+                    "source=signed_g18 physical_freight_same_field=true " +
+                    "mode=manual_e_turns auto_quit=false qa_only=true");
             if (_interactiveEconomicPreviewActive)
                 GD.Print("GA_NEXT_INTERACTIVE_ECONOMY_PREVIEW_READY " +
                     "mode=manual_e_turns auto_quit=false " +
@@ -1672,6 +1693,9 @@ public partial class Main : Control
                     this, _tacticalHost, _tacticalPreview!).RunAsync();
             else if (workerBoardSmoke && _tacticalHost is not null)
                 _ = new FoundationGodotWorkerBoardSmoke(
+                    this, _tacticalHost, _tacticalPreview!).RunAsync();
+            else if (fineFirstVisualSmoke && _tacticalHost is not null)
+                _ = new FoundationGodotFineFirstTerrainSmoke(
                     this, _tacticalHost, _tacticalPreview!).RunAsync();
             else if (settledTradeQaSmoke && _tacticalHost is not null)
                 _ = new FoundationGodotSettledTradeSmoke(
