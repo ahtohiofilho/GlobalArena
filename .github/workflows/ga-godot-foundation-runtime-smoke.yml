@@ -209,6 +209,7 @@ jobs:
             2>&1 | tee "$RUNNER_TEMP/ga-godot/r102-g2-g12-bootstrap.log"
           grep -q 'GA_NEXT_R102_BOOTSTRAP_CONFIGURATION coarse=G(2,0) fine=G(12,0)' "$RUNNER_TEMP/ga-godot/r102-g2-g12-bootstrap.log"
           grep -q 'GA_NEXT_R102_ALTERNATE_GOLDBERG_BOOTSTRAP_PASS' "$RUNNER_TEMP/ga-godot/r102-g2-g12-bootstrap.log"
+          grep -q 'GA_NEXT_R103_G12_ECONOMIC_TWO_CYCLES_PASS' "$RUNNER_TEMP/ga-godot/r102-g2-g12-bootstrap.log"
           if grep -E 'GA_NEXT_R102_ALTERNATE_GOLDBERG_BOOTSTRAP_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/r102-g2-g12-bootstrap.log"; then exit 1; fi
       - name: R87 G18 interactive evaluation has no autoplay and stays open
         shell: bash
