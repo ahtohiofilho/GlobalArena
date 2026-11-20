@@ -318,7 +318,10 @@ public partial class TacticalContextPreview : SubViewportContainer
         var radius = tangent.Length();
         if (_equidistant)
         {
-            if (radius >= Mathf.Pi * 0.5f - 0.01f) return false;
+            // R102: azimuthal equidistant charts are valid beyond 90
+            // degrees. Smaller coarse grids can require broader resident
+            // neighborhoods. Reject only the antipodal singularity.
+            if (radius >= Mathf.Pi - 0.01f) return false;
             spherical = (_surfaceNormal * Mathf.Cos(radius) +
                 tangent * (radius < 1e-6f ? 1f : Mathf.Sin(radius) / radius))
                 .Normalized();
@@ -823,8 +826,11 @@ public partial class TacticalContextPreview : SubViewportContainer
         if (_equidistant)
         {
             var depth = Mathf.Clamp(p.Dot(_surfaceNormal), -1f, 1f);
-            if (depth <= 0f)
-                throw new InvalidOperationException("Tactical equidistant projection crossed the visible hemisphere.");
+            // On a sphere, equidistant projection remains defined on the
+            // far hemisphere. Only the antipode has no unique bearing.
+            if (depth < -0.99999f)
+                throw new InvalidOperationException(
+                    "Tactical equidistant projection reached the antipode.");
             var radial = Mathf.Sqrt(east * east + north * north);
             if (radial > 1e-7f)
             {
@@ -1353,8 +1359,16 @@ public partial class TacticalContextPreview : SubViewportContainer
 
         // Mesh-derived MVP border paths: canonical physical centers only.
         // Presentation boundary is not an obstacle or a territory ownership rewrite.
-        var boundaryPaths = _cachedBoundaryPaths ??=
-            PhysicalTacticalTerritoryBoundaryMaterializer.Materialize(physical);
+        bool auditedLegacyBorders =
+            refinement.CoarseParameters == new GoldbergParameters(3, 0) &&
+            refinement.FineParameters == new GoldbergParameters(18, 0);
+        // The historical five-center border materializer has its OWN G3/G18
+        // fixture contract. An unsupported decorative overlay must never
+        // prevent a different signed physical world from opening.
+        var boundaryPaths = auditedLegacyBorders
+            ? _cachedBoundaryPaths ??=
+                PhysicalTacticalTerritoryBoundaryMaterializer.Materialize(physical)
+            : Array.Empty<PhysicalTacticalTerritoryBoundaryPath>();
         var boundaryTool = new SurfaceTool();
         boundaryTool.Begin(Mesh.PrimitiveType.Lines);
         var boundaryTint = new Color("#84969a");
@@ -1409,8 +1423,14 @@ public partial class TacticalContextPreview : SubViewportContainer
         }
         var boundaryMesh = boundaryTool.Commit();
         boundaryTool.Dispose();
-        if (boundaryMesh is null || strategicEdgesRendered == 0 || boundarySegments == 0)
-            throw new InvalidOperationException("Mesh-aligned territory boundary overlay is empty.");
+        if (auditedLegacyBorders &&
+            (boundaryMesh is null || strategicEdgesRendered == 0 ||
+             boundarySegments == 0))
+            throw new InvalidOperationException(
+                "Audited G3/G18 strategic border overlay is empty.");
+        if (!auditedLegacyBorders && boundarySegments != 0)
+            throw new InvalidOperationException(
+                "Unsupported strategic boundary may not invent decorative lines.");
 
         var oldSurface = _surface.Mesh;
         var oldEdges = _edges.Mesh;
@@ -1418,7 +1438,9 @@ public partial class TacticalContextPreview : SubViewportContainer
         _surface.Mesh = faceMesh;
         _edges.Mesh = lineMesh;
         _territoryBoundaries.Mesh = boundaryMesh;
-        _territoryBoundaries.Visible = _showTerritoryBoundaries;
+        _territoryBoundaries.Visible =
+            _showTerritoryBoundaries && auditedLegacyBorders &&
+            boundaryMesh is not null;
         oldSurface?.Dispose();
         oldEdges?.Dispose();
         oldBoundaries?.Dispose();

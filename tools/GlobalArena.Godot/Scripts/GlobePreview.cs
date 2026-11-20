@@ -10,6 +10,10 @@ namespace GlobalArena.Godot;
 // No inset, borders, duplicate topology or simulation ownership in the renderer.
 public partial class GlobePreview : SubViewportContainer
 {
+    // R102: set once before AddChild/_Ready; the same coarse contract
+    // is supplied to the preview session and the signed tactical map.
+    public GoldbergParameters StrategicParameters { get; set; } =
+        new(3, 0);
     private Node3D? _planet;
     private Camera3D? _camera;
     private bool _dragging;
@@ -74,14 +78,17 @@ public partial class GlobePreview : SubViewportContainer
         var request = new WorldGenerationRequest(
             new WorldSeed(20261012UL),
             WorldGenerationVersion.Initial,
-            new GoldbergParameters(3, 0));
+            StrategicParameters);
         var generation = new DeterministicWorldGenerator().Generate(request);
         PresentedCanonicalWorld = generation;
         var geometry = generation.StrategicSphericalGeometry;
         var topology = generation.StrategicTopology;
         if (geometry.Cells.Count != topology.Cells.Count ||
             geometry.Vertices.Count != topology.Vertices.Count ||
-            geometry.Cells.Count != 92 || geometry.Vertices.Count != 180)
+            geometry.Cells.Count != topology.Cells.Count ||
+            geometry.Cells.Count != 10 * (StrategicParameters.M * StrategicParameters.M +
+                StrategicParameters.M * StrategicParameters.N +
+                StrategicParameters.N * StrategicParameters.N) + 2)
             throw new InvalidOperationException("Authoritative globe geometry/count contract failed.");
 
         // Read-only experiment. Strategic world generation and biome authority remain unchanged.
@@ -130,7 +137,8 @@ public partial class GlobePreview : SubViewportContainer
             }
         }
         var mesh = surface.Commit();
-        if (mesh is null || triangleCount != 540)
+        if (mesh is null ||
+            triangleCount != geometry.Cells.Sum(cell => cell.BoundaryVertexIds.Count))
             throw new InvalidOperationException($"Canonical globe triangulation mismatch: {triangleCount}.");
         _planet = new Node3D();
         world.AddChild(_planet);

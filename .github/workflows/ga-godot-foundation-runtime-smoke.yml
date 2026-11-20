@@ -198,6 +198,18 @@ jobs:
           grep -q 'GA_NEXT_R100_SPHERICAL_TRADE_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-headless.log"
           grep -q 'GA_NEXT_R87_G18_GODOT_ACCEPTANCE_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-headless.log"
           if grep -E 'GA_NEXT_R87_G18_GODOT_ACCEPTANCE_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/r87-g18-headless.log"; then exit 1; fi
+      - name: R102 alternate G2 to G12 signed bootstrap in actual Godot
+        shell: bash
+        run: |
+          set -euo pipefail
+          GA_FOUNDATION_GODOT_SMOKE=0 GA_NEXT_WORKSPACE_SMOKE=0 \
+            GA_NEXT_GOLDBERG_COARSE_M=2 \
+            GA_NEXT_GOLDBERG_RESOLUTION_SMOKE=1 \
+            timeout 180s "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --quit-after 900 \
+            2>&1 | tee "$RUNNER_TEMP/ga-godot/r102-g2-g12-bootstrap.log"
+          grep -q 'GA_NEXT_R102_BOOTSTRAP_CONFIGURATION coarse=G(2,0) fine=G(12,0)' "$RUNNER_TEMP/ga-godot/r102-g2-g12-bootstrap.log"
+          grep -q 'GA_NEXT_R102_ALTERNATE_GOLDBERG_BOOTSTRAP_PASS' "$RUNNER_TEMP/ga-godot/r102-g2-g12-bootstrap.log"
+          if grep -E 'GA_NEXT_R102_ALTERNATE_GOLDBERG_BOOTSTRAP_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/r102-g2-g12-bootstrap.log"; then exit 1; fi
       - name: R87 G18 interactive evaluation has no autoplay and stays open
         shell: bash
         run: |
