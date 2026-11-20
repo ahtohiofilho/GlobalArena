@@ -7,6 +7,56 @@ namespace GlobalArena.Tests;
 public sealed class FoundationFineFrozenGroundMovementTests
 {
     [Fact]
+    public void FreightCrossingKindIsSymmetricAndBlocksIceToOpenSea()
+    {
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL),
+                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)));
+        var fine = FoundationFineFirstPhysicalGeography.Generate(
+            demo.Session.GeneratedWorld, demo.Incidence);
+        int ground = 0, sea = 0, port = 0, iceBoundary = 0;
+        foreach (var edge in demo.Incidence.FineTopology.Edges)
+        {
+            int a = checked((int)edge.IncidentCellIds[0].Value - 1);
+            int b = checked((int)edge.IncidentCellIds[1].Value - 1);
+            var crossing = fine.CrossingAtIndices(a, b);
+            Assert.Equal(crossing, fine.CrossingAtIndices(b, a));
+            var first = fine.SurfaceAtIndex(a);
+            var second = fine.SurfaceAtIndex(b);
+            switch (crossing)
+            {
+                case FoundationFineTransportCrossingKind.Ground:
+                    Assert.NotEqual(FoundationFineSurfaceKind.OpenWater, first);
+                    Assert.NotEqual(FoundationFineSurfaceKind.OpenWater, second);
+                    ground++;
+                    break;
+                case FoundationFineTransportCrossingKind.OpenSea:
+                    Assert.Equal(FoundationFineSurfaceKind.OpenWater, first);
+                    Assert.Equal(FoundationFineSurfaceKind.OpenWater, second);
+                    sea++;
+                    break;
+                case FoundationFineTransportCrossingKind.Port:
+                    Assert.Contains(FoundationFineSurfaceKind.Land, new[] { first, second });
+                    Assert.Contains(FoundationFineSurfaceKind.OpenWater, new[] { first, second });
+                    port++;
+                    break;
+                case FoundationFineTransportCrossingKind.BlockedIceSeaBoundary:
+                    Assert.Contains(FoundationFineSurfaceKind.FirmSeaIce,
+                        new[] { first, second });
+                    Assert.Contains(FoundationFineSurfaceKind.OpenWater,
+                        new[] { first, second });
+                    iceBoundary++;
+                    break;
+                default:
+                    throw new InvalidOperationException("Unknown crossing surface.");
+            }
+        }
+        Assert.True(ground > 0 && sea > 0 && port > 0 && iceBoundary > 0);
+        Assert.Equal(demo.Incidence.FineTopology.Edges.Count,
+            ground + sea + port + iceBoundary);
+    }
+
+    [Fact]
     public void SignedG18WorkersTraverseFirmIceButNeverOpenWater()
     {
         var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
