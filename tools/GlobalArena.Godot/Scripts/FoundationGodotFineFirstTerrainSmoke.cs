@@ -220,17 +220,17 @@ internal sealed class FoundationGodotFineFirstTerrainSmoke
             var coarseGeometry = _host.Session.GeneratedWorld.StrategicSphericalGeometry;
             var north = coarseGeometry.Cells.OrderByDescending(x => x.Center.Z).First();
             var south = coarseGeometry.Cells.OrderBy(x => x.Center.Z).First();
-            Must(north.Id != south.Id,
+            Must(north.CellId != south.CellId,
                 "Polar preview requires distinct northern and southern cells.");
             var settledHash = _host.StateHash;
-            _map.Open(north.Id.Value);
+            _map.Open(north.CellId.Value);
             await Capture("04_g18_north_pole");
-            _map.Open(south.Id.Value);
+            _map.Open(south.CellId.Value);
             await Capture("05_g18_south_pole");
             Must(_host.StateHash == settledHash,
                 "Polar camera inspection must not change economic state.");
-            GD.Print($"GA_NEXT_R90_POLAR_FRAMES_PASS north={north.Id.Value} " +
-                $"south={south.Id.Value} signed_g18=true economic_state_unchanged=true");
+            GD.Print($"GA_NEXT_R90_POLAR_FRAMES_PASS north={north.CellId.Value} " +
+                $"south={south.CellId.Value} signed_g18=true economic_state_unchanged=true");
             GD.Print("GA_NEXT_R87_G18_GODOT_ACCEPTANCE_PASS " +
                 "cycles=2 replay=true real_economy=true " +
                 "terrain_and_freight=same_signed_g18 manual_control=true");
