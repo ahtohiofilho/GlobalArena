@@ -106,7 +106,12 @@ internal static class GaExplicitEconomicQaConfiguration
             opening, demo.Incidence, fine, identity);
         var host = new FoundationTacticalHumanAiTurnHost(
             demo.Session, demo.Incidence, demo.HumanCivilizations,
-            demo.SnapshotAiPoliciesForBootstrap(),
+            // This fixture's AI is the existing resume-production policy.
+            // Do not access simulation-internal bootstrap helpers from Godot.
+            demo.AiCivilizations.ToDictionary(
+                civ => civ,
+                civ => (IFoundationTacticalAiTurnPolicy)
+                    new FoundationTacticalAiResumeProductionPolicy()),
             enableMonetaryInfrastructure: true,
             settlementPolicy: configuration.Settlement,
             fineGeography: fine, fineSignature: identity);
