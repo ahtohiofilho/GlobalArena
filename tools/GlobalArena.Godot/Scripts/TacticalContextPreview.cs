@@ -152,7 +152,9 @@ public partial class TacticalContextPreview : SubViewportContainer
     internal static float FineIceWeight(long temperatureRaw)
     {
         const double cold = -0.70;
-        const double warm = -0.58;
+        // Snow starts at the historical discrete limit, then increases
+        // continuously rather than making an abrupt biome transition.
+        const double warm = -0.55;
         double temperature = temperatureRaw /
             (double)ExperimentalIceTemperatureComposer.Scale;
         double t = Math.Clamp((warm - temperature) / (warm - cold), 0.0, 1.0);
