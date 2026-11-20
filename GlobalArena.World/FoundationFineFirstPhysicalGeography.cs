@@ -20,6 +20,15 @@ public enum FoundationFineSurfaceKind : byte
     FirmSeaIce = 3
 }
 
+/// <summary>Surface-compatible freight edge, independent of the base geology.</summary>
+public enum FoundationFineTransportCrossingKind : byte
+{
+    Ground = 1,
+    OpenSea = 2,
+    Port = 3,
+    BlockedIceSeaBoundary = 4
+}
+
 public sealed class FoundationFineFirstPhysicalGeography
 {
     public const int InitialLandTargetPercent = 35;
@@ -52,6 +61,29 @@ public sealed class FoundationFineFirstPhysicalGeography
 
     public bool CanNavigateByShip(int index) =>
         SurfaceAtIndex(index) == FoundationFineSurfaceKind.OpenWater;
+
+    /// <summary>
+    /// R93: single authoritative, symmetric surface-edge decision. Frozen
+    /// seawater behaves as ground, including its coast with geological land.
+    /// A ground/open-water boundary allows a port ONLY where the ground is
+    /// geological land; shipping cannot secretly enter or exit through ice.
+    /// The latter boundary is a blocked crossing, not a high-cost ferry.
+    /// </summary>
+    public FoundationFineTransportCrossingKind CrossingAtIndices(int first, int second)
+    {
+        var a = SurfaceAtIndex(first);
+        var b = SurfaceAtIndex(second);
+        bool aGround = a != FoundationFineSurfaceKind.OpenWater;
+        bool bGround = b != FoundationFineSurfaceKind.OpenWater;
+        if (aGround && bGround)
+            return FoundationFineTransportCrossingKind.Ground;
+        if (!aGround && !bGround)
+            return FoundationFineTransportCrossingKind.OpenSea;
+        return a == FoundationFineSurfaceKind.FirmSeaIce ||
+            b == FoundationFineSurfaceKind.FirmSeaIce
+            ? FoundationFineTransportCrossingKind.BlockedIceSeaBoundary
+            : FoundationFineTransportCrossingKind.Port;
+    }
 
 
 
