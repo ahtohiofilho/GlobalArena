@@ -121,12 +121,36 @@ internal sealed class FoundationGodotFineFirstTerrainSmoke
                 Must(unbounded == (!a && !b),
                     "A real sea crossing in the map disagrees with " +
                     "the economic transport capacity.");
-                if (a && b) landEdges++;
-                else if (a || b) coastEdges++;
-                else seaEdges++;
+                // R89: verify the actual seeded inventory, not merely
+                // the policy constants. Slope may only add land cost.
+                ulong baseCost = transport.FreePhysicalCostMicroPerWholeCargoUnit;
+                if (a && b)
+                {
+                    landEdges++;
+                    Must(baseCost >= GaExplicitEconomicQaConfiguration.QaLandEdgeCostMicro,
+                        "Natural land freight must include at least land base cost.");
+                }
+                else if (a || b)
+                {
+                    coastEdges++;
+                    Must(baseCost == GaExplicitEconomicQaConfiguration.QaCoastEdgeCostMicro,
+                        "Port transition must have the configured coastal cost.");
+                }
+                else
+                {
+                    seaEdges++;
+                    Must(baseCost == GaExplicitEconomicQaConfiguration.QaSeaEdgeCostMicro,
+                        "Open sea must retain the cheap positive freight cost.");
+                }
             }
             Must(seaEdges > 0 && landEdges > 0 && coastEdges > 0,
                 "G18 must contain actual sea, land and port crossings.");
+            GaExplicitEconomicQaConfiguration.AssertNaturalFreightHierarchy();
+            GD.Print($"GA_NEXT_R89_MARITIME_HIERARCHY_PASS " +
+                $"land_base={GaExplicitEconomicQaConfiguration.QaLandEdgeCostMicro} " +
+                $"coast_base={GaExplicitEconomicQaConfiguration.QaCoastEdgeCostMicro} " +
+                $"sea_base={GaExplicitEconomicQaConfiguration.QaSeaEdgeCostMicro} " +
+                $"sea_edges={seaEdges} coast_edges={coastEdges} land_edges={landEdges}");
             Must(_map.FineVisualDetailTileCount == 0,
                 "R81 decorative microdetail must never be active in G18.");
             // R88: continuous G18 thermal rendering must preserve the signed
