@@ -846,6 +846,39 @@ public partial class TacticalContextPreview : SubViewportContainer
         return new Vector3(-east, lift, north);
     }
 
+    // R97 CI-only: exercise both policies on real local geometry without
+    // changing the game, zoom, or selected physical identities.
+    internal void ExerciseDualOrientationSmoke()
+    {
+        if (_camera is null || _activeFocus == 0UL)
+            throw new InvalidOperationException("Orientation smoke requires a map.");
+        bool priorMode = _geographicNorthUp;
+        ulong focus = _activeFocus;
+        float zoom = _camera.Size;
+        try
+        {
+            _geographicNorthUp = true;
+            Open(focus);
+            if (!_basisNorth.IsFinite() || !_basisEast.IsFinite() ||
+                Math.Abs(_basisNorth.Dot(_basisEast)) > 0.001f)
+                throw new InvalidOperationException("North-up projection is not orthogonal.");
+            _geographicNorthUp = false;
+            Open(focus);
+            if (!_basisNorth.IsFinite() || !_basisEast.IsFinite() ||
+                Math.Abs(_basisNorth.Dot(_basisEast)) > 0.001f)
+                throw new InvalidOperationException("Locked projection is not orthogonal.");
+            GD.Print("GA_NEXT_R97_DUAL_ORIENTATION_PASS " +
+                "north_up=true locked=true finite_basis=true");
+        }
+        finally
+        {
+            _geographicNorthUp = priorMode;
+            Open(focus);
+            _camera.Size = zoom;
+            UpdateCameraOrientation();
+        }
+    }
+
     private void UpdateCameraOrientation()
     {
         if (_camera is null || _activeFocus == 0) return;
