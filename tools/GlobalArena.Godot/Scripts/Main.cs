@@ -21,9 +21,11 @@ public partial class Main : Control
     private CheckBox? _tacticalTileEdges;
     private CheckBox? _tacticalSettledTradeRoutes;
     private GlobePreview? _strategicGlobe;
-    private GoldbergParameters _startupCoarseParameters = new(3, 0);
+    private GaGoldbergStartupConfiguration? _goldbergStartup;
     private bool _resolutionBootstrapSmoke;
-    internal GoldbergParameters StartupCoarseParameters => _startupCoarseParameters;
+    internal GoldbergParameters StartupCoarseParameters =>
+        _goldbergStartup?.Coarse ??
+        throw new InvalidOperationException("Goldberg startup not initialized.");
     internal GoldbergParameters? ActiveFineParameters =>
         _tacticalHost?.Incidence.Refinement.FineParameters;
     internal GoldbergParameters? GlobeCoarseParameters =>
@@ -1181,32 +1183,24 @@ public partial class Main : Control
         _interactiveEconomicPreviewActive =
             System.Environment.GetEnvironmentVariable(
                 "GA_NEXT_INTERACTIVE_ECONOMY_PREVIEW") == "1";
-        // R102: opt-in resolution profiles. Guard before creating ANY
-        // Godot globe or session; never mutate a running world's geometry.
+        // R104: one immutable pre-scene source of the world request and
+        // coarse-to-fine scale. Neither renderer chooses an independent grid.
         _resolutionBootstrapSmoke =
             System.Environment.GetEnvironmentVariable(
                 "GA_NEXT_GOLDBERG_RESOLUTION_SMOKE") == "1";
-        string? coarseProfile = System.Environment.GetEnvironmentVariable(
-            "GA_NEXT_GOLDBERG_COARSE_M");
-        if (coarseProfile is not null)
-        {
-            if (coarseProfile != "2" && coarseProfile != "3")
-                throw new InvalidOperationException(
-                    "R102 accepts only explicitly tested coarse G(2,0) or G(3,0).");
-            if (coarseProfile == "2" &&
-                !_resolutionBootstrapSmoke &&
-                System.Environment.GetEnvironmentVariable(
-                    "GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW") != "1")
-                throw new InvalidOperationException(
-                    "Alternate G2/G12 is QA-only until full game acceptance.");
-            _startupCoarseParameters = new GoldbergParameters(
-                int.Parse(coarseProfile,
-                    System.Globalization.CultureInfo.InvariantCulture), 0);
-        }
+        _goldbergStartup = GaGoldbergStartupConfiguration.FromEnvironment(
+            _resolutionBootstrapSmoke,
+            System.Environment.GetEnvironmentVariable(
+                "GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW") == "1");
         GD.Print($"GA_NEXT_R102_BOOTSTRAP_CONFIGURATION " +
-            $"coarse=G({_startupCoarseParameters.M},0) " +
-            $"fine=G({checked(_startupCoarseParameters.M * 6)},0) " +
+            $"coarse=G({_goldbergStartup.Coarse.M},0) " +
+            $"fine=G({_goldbergStartup.Fine.M},0) " +
             "source=pre_scene strict_profiles=true");
+        GD.Print("GA_NEXT_R104_SINGLE_BOOTSTRAP_READY " +
+            $"coarse=G({_goldbergStartup.Coarse.M},0) " +
+            $"fine=G({_goldbergStartup.Fine.M},0) " +
+            $"scale={_goldbergStartup.Refinement.Scale} " +
+            "source=immutable_request shared=true");
         GD.Print("GA_PROD_MAIN_READY_R6");
         // Centralized production-oriented styling; Godot Theme is the owner
         // of interactive states rather than per-screen debug colors.
@@ -1273,7 +1267,7 @@ public partial class Main : Control
         content.AddChild(mapRegion);
         var globe = new GlobePreview
         {
-            StrategicParameters = _startupCoarseParameters,
+            StartupWorldRequest = _goldbergStartup.WorldRequest,
             Name = "GANextPlanetGlobe",
             CustomMinimumSize = new Vector2(360f, 300f),
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
@@ -1299,8 +1293,7 @@ public partial class Main : Control
         // scenario. Main/Godot never creates, moves or settles workers directly.
         // This is NOT a claim of final world-population generation.
         _localFoundation = FoundationHumanAiLocalPreview.CreateLocalPreview(
-            new WorldGenerationRequest(new WorldSeed(20261012UL),
-                WorldGenerationVersion.Initial, _startupCoarseParameters));
+            _goldbergStartup.WorldRequest);
         _canonicalSession = _localFoundation.Session;
         if (globe.PresentedCanonicalWorld is null ||
             RuntimeWorldBinding.FromGeneratedWorld(globe.PresentedCanonicalWorld) !=
@@ -1613,9 +1606,7 @@ public partial class Main : Control
                     "another test, or a trusted economic configuration.");
             if (!legacyWorkspaceSmoke)
             {
-                var request = new WorldGenerationRequest(
-                    new WorldSeed(20261012UL), WorldGenerationVersion.Initial,
-                    _startupCoarseParameters);
+                var request = _goldbergStartup.WorldRequest;
                 _tacticalHost = legacyV10Smoke
                     ? FoundationTacticalDemoScenario.CreateLocalHumanAiPreview(request)
                     : legacyV11Smoke
@@ -1627,9 +1618,15 @@ public partial class Main : Control
                                     .DefaultWorkersPerCivilization);
                 if (fineFirstLab)
                 {
+                    _goldbergStartup.VerifyWorldAndIncidence(
+                        _tacticalHost.Session.GeneratedWorld,
+                        _tacticalHost.Incidence);
                     var g18 = GaExplicitEconomicQaConfiguration
                         .PrepareFineFirst(_tacticalHost);
                     _tacticalHost = g18.Host;
+                    _goldbergStartup.VerifyWorldAndIncidence(
+                        _tacticalHost.Session.GeneratedWorld,
+                        _tacticalHost.Incidence);
                     // R99: the strategic navigation sphere displays the
                     // exact same signed G18 geography, without flattening.
                     // Keep G3 identity only as an invisible selection index.
@@ -1643,6 +1640,18 @@ public partial class Main : Control
                         _tacticalHost.Session.GeneratedWorld,
                         _tacticalHost.Incidence, g18.Geography, g18.Identity,
                         _tacticalHost.Snapshot);
+                    if (globe.PresentedCanonicalWorld?.Request.Seed !=
+                            _goldbergStartup.WorldRequest.Seed ||
+                        globe.PresentedCanonicalWorld?.Request.StrategicParameters !=
+                            _goldbergStartup.Coarse ||
+                        g18.Geography.FineParameters != _goldbergStartup.Fine)
+                        throw new InvalidOperationException(
+                            "Signed physical sphere and economic world must share startup request.");
+                    GD.Print("GA_NEXT_R104_SIGNED_WORLD_CONTRACT_PASS " +
+                        $"coarse=G({_goldbergStartup.Coarse.M},0) " +
+                        $"fine=G({_goldbergStartup.Fine.M},0) " +
+                        $"scale={_goldbergStartup.Refinement.Scale} " +
+                        "sphere=true tactical=true economy=true");
                 }
                 else
                 {
@@ -1656,6 +1665,9 @@ public partial class Main : Control
                         useExplicitEconomicLab || _configuredEconomicGameplay is not null
                             ? _tacticalHost.Session.GeneratedWorld : null);
                 }
+                _goldbergStartup.VerifyWorldAndIncidence(
+                    _tacticalHost.Session.GeneratedWorld,
+                    _tacticalHost.Incidence);
                 _canonicalSession = _tacticalHost.Session;
                 AttachRuntimeState(_tacticalHost.Snapshot);
             }
@@ -1701,11 +1713,11 @@ public partial class Main : Control
                 _localProduceButton!.Text = "P | RESUME PRODUCTION";
                 _localCancelQueuedButton!.Text = "X | CANCEL ORDER";
                 _localOrderStatus!.Text =
-                    "Click your worker, click an adjacent G(18,0) tile, then G. " +
+                    $"Click your worker, click an adjacent G({_goldbergStartup.Fine.M},{_goldbergStartup.Fine.N}) tile, then G. " +
                     "P resumes production; A/V/N reassign an individual to " +
                     "Agriculture/Vegetal/Mining; E commits human + AI together.";
                 GD.Print("GA_NEXT_FINE_VISUAL_BRIDGE_READY " +
-                    $"world=v{_tacticalHost.StateHash.FormatVersion} worker_ids={_tacticalHost.Snapshot.Workers.Workers.Count} physical_tiles=G(18,0) " +
+                    $"world=v{_tacticalHost.StateHash.FormatVersion} worker_ids={_tacticalHost.Snapshot.Workers.Workers.Count} physical_tiles=G({_goldbergStartup.Fine.M},{_goldbergStartup.Fine.N}) " +
                     $"inputs=G/P/X/E gameplay_economy={(_tacticalHost.StateHash.FormatVersion >= 13U ? "explicit_v15" : "not_active")}");
             }
             _status!.Text = _interactiveEconomicPreviewActive
