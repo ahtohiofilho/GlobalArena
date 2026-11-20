@@ -1136,7 +1136,9 @@ public partial class TacticalContextPreview : SubViewportContainer
         _selectedTileOutline.Visible = true;
         _selectedFineTileId = matched.Id;
         var shape = matched.Degree == 5 ? "Pentagon" : "Hexagon";
-        _selection.Text = $"G(18,0)/{matched.Id} | {shape} | ring {matched.Ring} | strategic {string.Join(",", matched.Owners)} | selected";
+        var fineResolution = _cachedPhysicalMap?.Refinement.FineParameters ??
+            _presentationRefinement.FineParameters;
+        _selection.Text = $"G({fineResolution.M},{fineResolution.N})/{matched.Id} | {shape} | ring {matched.Ring} | strategic {string.Join(",", matched.Owners)} | selected";
         if (_terrainDetails is not null && _showExperimentalTerrain &&
             _authoritativeEconomyTerrainWorld is not null &&
             _cachedPhysicalMap is not null)
