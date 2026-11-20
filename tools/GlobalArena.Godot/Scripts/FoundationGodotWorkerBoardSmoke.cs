@@ -182,7 +182,7 @@ public sealed class FoundationGodotWorkerBoardSmoke
             var cancelRect = _map.WorkerBoardCancelSelectedRect;
             Must(cancelRect.HasValue,
                 "Worker-board targeted cancel button must be visible.");
-            await Click(cancelRect.Value.GetCenter());
+            await Click(cancelRect.GetValueOrDefault().GetCenter());
             Must(_host.PendingOrderCount == 0 &&
                  _host.StateHash == hash &&
                  !_map.CanCancelSelectedWorkerBoardOrder &&
