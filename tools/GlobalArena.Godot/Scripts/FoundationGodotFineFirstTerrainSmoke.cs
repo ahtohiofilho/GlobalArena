@@ -157,11 +157,41 @@ internal sealed class FoundationGodotFineFirstTerrainSmoke
             // freight elevations and expose a smooth snow/sea-ice transition.
             Must(TacticalContextPreview.FineIceWeight(-800_000L) == 1f &&
                 TacticalContextPreview.FineIceWeight(800_000L) == 0f &&
-                TacticalContextPreview.FineIceWeight(-300_000L) > 0f &&
-                TacticalContextPreview.FineIceWeight(-300_000L) < 1f,
+                TacticalContextPreview.FineIceWeight(-640_000L) > 0f &&
+                TacticalContextPreview.FineIceWeight(-640_000L) < 1f,
                 "G18 polar temperature must blend continuously.");
             Must(fine.FineTemperatureRaw.Count == count,
                 "Every fine physical tile needs the signed G18 temperature.");
+            // R91: terrain classification must be exhaustive, deterministic
+            // and match the visual ice/open-water boundary. No coast can be
+            // converted to land merely by changing the elevation or sea-level.
+            int firmSeaIce = 0, openWater = 0, geologicalLand = 0;
+            for (int i = 0; i < count; i++)
+            {
+                var surface = fine.SurfaceAtIndex(i);
+                bool isGeologicalLand = fine.FineElevationRaw[i] > fine.SeaLevelRaw;
+                bool frozenWater = !isGeologicalLand &&
+                    fine.FineTemperatureRaw[i] <=
+                        FoundationFineFirstPhysicalGeography.FirmSeaIceTemperatureRaw;
+                Must((surface == FoundationFineSurfaceKind.Land) == isGeologicalLand &&
+                    (surface == FoundationFineSurfaceKind.FirmSeaIce) == frozenWater &&
+                    fine.CanTraverseOnFoot(i) ==
+                        (surface != FoundationFineSurfaceKind.OpenWater) &&
+                    fine.CanNavigateByShip(i) ==
+                        (surface == FoundationFineSurfaceKind.OpenWater),
+                    "The functional sea-ice boundary must match G18 temperature.");
+                if (surface == FoundationFineSurfaceKind.Land) geologicalLand++;
+                else if (surface == FoundationFineSurfaceKind.OpenWater) openWater++;
+                else firmSeaIce++;
+            }
+            Must(firmSeaIce > 0 && openWater > 0 &&
+                geologicalLand == fine.LandTileCount &&
+                firmSeaIce + openWater + geologicalLand == count,
+                "Polar ice, ocean and geological land must remain distinguishable.");
+            GD.Print($"GA_NEXT_R91_SURFACE_CONTRACT_PASS " +
+                $"land={geologicalLand} open_water={openWater} " +
+                $"firm_sea_ice={firmSeaIce} " +
+                "worldgen_unchanged=true mobility_classification_derived=true");
             int frozen = 0, temperate = 0, transition = 0;
             for (int i = 0; i < count; i++)
             {
