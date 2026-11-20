@@ -214,6 +214,11 @@ public partial class TacticalContextPreview : SubViewportContainer
     private int _residentRingCount = 3;
     private Vector3 _basisEast;
     private Vector3 _basisNorth;
+    // R97: camera orientation is a presentation policy, not a property of G3.
+    // LOCKED parallel-transports the previous viewing direction across charts.
+    // NORTH follows geographic north at the actual spherical camera center.
+    private bool _geographicNorthUp;
+    private Vector3? _navigationOrientationAnchor;
     private Vector2 _dragStart;
     private bool _pressed;
     private bool _moved;
@@ -398,6 +403,10 @@ public partial class TacticalContextPreview : SubViewportContainer
             _tileCenters.ContainsKey(tile.FineStrategicCellId.Value)))
             throw new InvalidOperationException("Focus transfer lacks shared physical identities.");
 
+        // Capture the exact spherical center BEFORE replacing the local chart.
+        // North mode uses this position, not the discrete strategic focus.
+        if (TryUnprojectOnSphere(previousTarget, out var centerOnGlobe))
+            _navigationOrientationAnchor = centerOnGlobe;
         Open(nextFocus);
         _camera.Size = previousZoom;
         _yawDegrees = previousYaw;
@@ -679,6 +688,19 @@ public partial class TacticalContextPreview : SubViewportContainer
             if (_activeFocus != 0) Open(_activeFocus);
         };
         primaryRow.AddChild(projectionButton);
+        var northModeButton = new Button { Text = "ORIENTATION: LOCKED" };
+        northModeButton.Pressed += () =>
+        {
+            _geographicNorthUp = !_geographicNorthUp;
+            northModeButton.Text = _geographicNorthUp
+                ? "ORIENTATION: NORTH UP" : "ORIENTATION: LOCKED";
+            // Recompute the current projection only upon an explicit switch.
+            // Dragging keeps the existing bounded focus-handoff lifecycle.
+            if (_activeFocus != 0) Open(_activeFocus);
+            GD.Print($"GA_NEXT_R97_ORIENTATION_MODE mode=" +
+                (_geographicNorthUp ? "north_up" : "locked"));
+        };
+        orbitRow.AddChild(northModeButton);
         var rotateLeft = new Button { Text = "ROTATE -15°" };
         rotateLeft.Pressed += () => RotateView(-15f);
         orbitRow.AddChild(rotateLeft);
@@ -1122,8 +1144,35 @@ public partial class TacticalContextPreview : SubViewportContainer
             throw new InvalidOperationException("Physical and geometric topology counts differ.");
 
         var normal = ConvertPoint(coarseWorld.StrategicSphericalGeometry.GetCell(focus).Center).Normalized();
-        var reference = Math.Abs(normal.Dot(Vector3.Up)) > 0.95f ? Vector3.Forward : Vector3.Up;
-        _basisEast = reference.Cross(normal).Normalized();
+        // At every focus transfer, derive the new local frame from either
+        // the transported previous screen-up direction or the geographic
+        // north vector at the actual camera center. This avoids the abrupt
+        // reference-axis flip (Up -> Forward) near polar latitudes.
+        Vector3 desiredNorth = Vector3.Zero;
+        if (_geographicNorthUp)
+        {
+            Vector3 position = _navigationOrientationAnchor ?? normal;
+            // North is tangent to the sphere; at the exact pole its direction
+            // is undefined. Retain the last valid orientation there.
+            desiredNorth = Vector3.Up - position * position.Dot(Vector3.Up);
+        }
+        else if (_basisNorth.LengthSquared() > 0.01f)
+            desiredNorth = _basisNorth;
+        _navigationOrientationAnchor = null;
+        desiredNorth -= normal * desiredNorth.Dot(normal);
+        if (desiredNorth.LengthSquared() < 1e-6f)
+        {
+            desiredNorth = _basisNorth -
+                normal * _basisNorth.Dot(normal);
+            if (desiredNorth.LengthSquared() < 1e-6f)
+            {
+                var fallback = Math.Abs(normal.Dot(Vector3.Up)) > 0.95f
+                    ? Vector3.Forward : Vector3.Up;
+                desiredNorth = fallback - normal * fallback.Dot(normal);
+            }
+        }
+        _basisNorth = desiredNorth.Normalized();
+        _basisEast = _basisNorth.Cross(normal).Normalized();
         _basisNorth = normal.Cross(_basisEast).Normalized();
 
         _surfaceNormal = normal;
