@@ -252,6 +252,7 @@ internal sealed class FoundationGodotFineFirstTerrainSmoke
                     FoundationEconomicTradeOverlayAvailability.AuthorizedSubset &&
                 _map.HasSettledTradeData &&
                 _map.PresentedEconomicCycleOrdinal == 1UL &&
+                _main.VisibleSphericalTradeCrossings == first.UsedEdges.Count &&
                 _map.TacticalCameraState == camera,
                 "One E-key must close an actual G18 economic sale and " +
                 "publish its private participant-visible freight overlay.");
@@ -265,10 +266,16 @@ internal sealed class FoundationGodotFineFirstTerrainSmoke
                 second.EconomicCycleOrdinal == 2UL &&
                 second.PublishedHash == _host.StateHash &&
                 _map.PresentedEconomicCycleOrdinal == 2UL &&
+                _main.VisibleSphericalTradeCrossings == second.UsedEdges.Count &&
                 _map.TacticalCameraState == camera,
                 "Second E-key must settle and publish exactly one new " +
                 "G18 economic cycle without changing the map.");
             await Capture("03_g18_after_second_trade");
+            GD.Print($"GA_NEXT_R100_SPHERICAL_TRADE_PASS " +
+                $"cycle={second.EconomicCycleOrdinal} " +
+                $"globe_edges={_main.VisibleSphericalTradeCrossings} " +
+                $"authorized_edges={second.UsedEdges.Count} " +
+                "private_view_only=true sphere=g18 replay_preserved=true");
 
             // R90: capture both actual geographic caps, not just the
             // economy-demo starting neighborhood. Strategic focus only
