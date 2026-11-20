@@ -32,6 +32,7 @@ internal sealed class FoundationGodotContinuousNavigationSmoke
             var priorHash = _host.StateHash;
             var priorTurn = _host.NextTurn;
             _map.ExerciseDualOrientationSmoke();
+            _map.ExerciseContinuousSphericalFocusSmoke();
             _map.ExerciseContinuousNavigationSmoke();
             if (_host.StateHash != priorHash || _host.NextTurn != priorTurn)
                 throw new InvalidOperationException(
