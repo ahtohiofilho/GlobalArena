@@ -48,8 +48,8 @@ internal static class PhysicalTacticalBoundaryPathCandidateAuditor
                 var vertex = coarse.Vertices[
                     checked((int)edge.IncidentVertexIds[j].Value - 1)];
                 tripleAnchors.TryGetValue(Key(vertex.IncidentCellIds),
-                    out junctionCandidates[j]!);
-                junctionCandidates[j] ??= Array.Empty<int>();
+                    out var candidates);
+                junctionCandidates[j] = candidates ?? Array.Empty<int>();
             }
             doubleAnchors.TryGetValue(pair, out var midpoints);
             midpoints ??= Array.Empty<int>();
@@ -135,7 +135,7 @@ internal static class PhysicalTacticalBoundaryPathCandidateAuditor
                 int next = checked((int)adjacent.Value - 1);
                 if (next != goal && next != start &&
                     (owners[next].Count != 1 ||
-                     !owners[next].Any(pair.Contains)))
+                     !owners[next].Any(owner => pair.Contains(owner))))
                     continue;
                 int step = distance[current] + 1;
                 if (distance[next] == -1)
