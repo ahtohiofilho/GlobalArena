@@ -216,6 +216,7 @@ jobs:
             timeout 120s "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --quit-after 900 \
             2>&1 | tee "$RUNNER_TEMP/ga-godot/continuous-nav.log"
           grep -q 'GA_NEXT_CONTINUOUS_NAVIGATION_INPUT_PASS' "$RUNNER_TEMP/ga-godot/continuous-nav.log"
+          grep -q 'GA_NEXT_R98_EXACT_SPHERE_FOCUS_PASS' "$RUNNER_TEMP/ga-godot/continuous-nav.log"
           grep -q 'GA_NEXT_CONTINUOUS_NAVIGATION_PASS' "$RUNNER_TEMP/ga-godot/continuous-nav.log"
           if grep -E 'GA_NEXT_CONTINUOUS_NAVIGATION_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/continuous-nav.log"; then exit 1; fi
       - name: Install virtual display and software OpenGL for a real rendered frame
