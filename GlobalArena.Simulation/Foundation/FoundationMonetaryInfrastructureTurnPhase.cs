@@ -76,6 +76,20 @@ public sealed class FoundationMonetaryInfrastructureEventExecutor
 
     public FoundationMonetaryInfrastructureEventExecutor(
         WorldGenerationResult world, PhysicalTacticalIncidenceMap incidence)
+        : this(world, incidence,
+            RuntimeWorldBinding.FromGeneratedWorld(world)) { }
+
+    public FoundationMonetaryInfrastructureEventExecutor(
+        WorldGenerationResult world, PhysicalTacticalIncidenceMap incidence,
+        FoundationFineFirstPhysicalGeography fine,
+        FoundationFineFirstWorldgenIdentity signature)
+        : this(world, incidence,
+            RuntimeWorldBinding.FromFineFirst(
+                world, incidence, fine, signature)) { }
+
+    private FoundationMonetaryInfrastructureEventExecutor(
+        WorldGenerationResult world, PhysicalTacticalIncidenceMap incidence,
+        RuntimeWorldBinding binding)
     {
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -83,7 +97,7 @@ public sealed class FoundationMonetaryInfrastructureEventExecutor
             world.Request.StrategicParameters)
             throw new InvalidOperationException(
                 "Monetary investment needs the actual bound fine topology.");
-        _binding = RuntimeWorldBinding.FromGeneratedWorld(world);
+        _binding = binding;
         var fine = incidence.Refinement.FineParameters;
         _actualEdges = incidence.FineTopology.Edges.Select(e =>
             new PhysicalTacticalEdgeId(fine, e.Id)).ToHashSet();
@@ -128,6 +142,15 @@ public sealed class FoundationMonetaryInfrastructureTurnPhase
     {
         _executor = new FoundationMonetaryInfrastructureEventExecutor(
             world, incidence);
+    }
+
+    public FoundationMonetaryInfrastructureTurnPhase(
+        WorldGenerationResult world, PhysicalTacticalIncidenceMap incidence,
+        FoundationFineFirstPhysicalGeography fine,
+        FoundationFineFirstWorldgenIdentity signature)
+    {
+        _executor = new FoundationMonetaryInfrastructureEventExecutor(
+            world, incidence, fine, signature);
     }
 
     public TurnResolutionResult Resolve(

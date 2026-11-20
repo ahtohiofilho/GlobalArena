@@ -384,6 +384,16 @@ public sealed class FoundationAuthoritativeEconomicSalesSettlementPhase
             world, incidence, policy);
     }
 
+    public FoundationAuthoritativeEconomicSalesSettlementPhase(
+        WorldGenerationResult world, PhysicalTacticalIncidenceMap incidence,
+        FoundationAuthoritativeEconomicSettlementPolicy policy,
+        FoundationFineFirstPhysicalGeography fine,
+        FoundationFineFirstWorldgenIdentity signature)
+    {
+        _executor = new FoundationEconomicSalesSettlementEventExecutor(
+            world, incidence, policy, fine, signature);
+    }
+
     public TurnResolutionResult Resolve(
         TurnResolutionInput input, WorldState stagedState)
     {

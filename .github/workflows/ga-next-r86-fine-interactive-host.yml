@@ -1,0 +1,38 @@
+name: GA-Next R86 — fine G18 interactive all-ready turn acceptance
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/Foundation/FoundationTacticalHumanAiTurnHost.cs'
+      - 'GlobalArena.Simulation/Foundation/PhysicalTacticalWorkerMovementTurnPhase.cs'
+      - 'GlobalArena.Simulation/Foundation/FoundationMonetaryInfrastructureTurnPhase.cs'
+      - 'GlobalArena.Simulation/Foundation/FoundationAuthoritativeEconomicSalesSettlementPhase.cs'
+      - 'GlobalArena.Tests/FoundationFineFirstInteractiveTurnHostTests.cs'
+      - '.github/workflows/ga-next-r86-fine-interactive-host.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  signed-g18-all-ready:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Prove G18 host and legacy real economy
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release \
+            --filter 'FullyQualifiedName~FoundationFineFirstInteractiveTurnHostTests|FullyQualifiedName~FoundationFineFirstEconomicCycleGateTests|FullyQualifiedName~FoundationFineFirstWorldBindingTests|FullyQualifiedName~FoundationFineFirstWorldgenCanonicalSignatureTests|FullyQualifiedName~FoundationFineFirstPhysicalGeographyTests|FullyQualifiedName~FoundationSettledOwnerTollEndToEndTests' \
+            --logger 'console;verbosity=detailed' --nologo 2>&1 | tee ga-next-r86-results.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ga-next-r86-fine-host
+          path: ga-next-r86-results.log
+          retention-days: 14
