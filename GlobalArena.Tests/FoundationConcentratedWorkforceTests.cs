@@ -11,6 +11,35 @@ public sealed class FoundationConcentratedWorkforceTests
         new WorldSeed(20261012UL), WorldGenerationVersion.Initial,
         new GoldbergParameters(3, 0));
 
+    [Fact]
+    public void ExplicitFineRefinementIsUsedByRealWorkerAndEconomicHost()
+    {
+        var coarse = new GoldbergParameters(2, 0);
+        var fine = new GoldbergParameters(12, 0);
+        var refinement = new GoldbergScaledRefinement(coarse, fine);
+        var request = new WorldGenerationRequest(
+            new WorldSeed(20261012UL), WorldGenerationVersion.Initial, coarse);
+        var host = FoundationConcentratedWorkforceScenario.CreatePreview(
+            request, 3, refinement);
+
+        Assert.Same(refinement, host.Incidence.Refinement);
+        Assert.Equal(coarse, host.Session.GeneratedWorld.Request.StrategicParameters);
+        Assert.Equal(fine, host.Incidence.Refinement.FineParameters);
+        Assert.Equal(1442, host.Incidence.FineTopology.Cells.Count);
+        Assert.All(host.Snapshot.Workers.Workers, worker =>
+            Assert.Equal(fine, worker.TacticalTileId?.FineGoldbergParameters));
+    }
+
+    [Fact]
+    public void MismatchedExplicitRefinementFailsBeforeWorkersOrEconomy()
+    {
+        var wrong = new GoldbergScaledRefinement(
+            new GoldbergParameters(2, 0), new GoldbergParameters(12, 0));
+        Assert.Throws<ArgumentException>(() =>
+            FoundationConcentratedWorkforceScenario.CreatePreview(
+                Request(), 3, wrong));
+    }
+
     [Theory]
     [InlineData(3)]
     [InlineData(6)]
