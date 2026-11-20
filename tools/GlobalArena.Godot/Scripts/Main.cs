@@ -1585,6 +1585,12 @@ public partial class Main : Control
                     var g18 = GaExplicitEconomicQaConfiguration
                         .PrepareFineFirst(_tacticalHost);
                     _tacticalHost = g18.Host;
+                    // R99: the strategic navigation sphere displays the
+                    // exact same signed G18 geography, without flattening.
+                    // Keep G3 identity only as an invisible selection index.
+                    globe.ConfigureSignedFineFirstSphere(
+                        _tacticalHost.Session.GeneratedWorld,
+                        _tacticalHost.Incidence, g18.Geography);
                     _tacticalPreview!.ConfigureFineFirstEconomicTerrain(
                         _tacticalHost.Session.GeneratedWorld,
                         _tacticalHost.Incidence, g18.Geography, g18.Identity,
