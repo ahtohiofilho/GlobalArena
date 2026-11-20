@@ -180,6 +180,28 @@ jobs:
             echo 'Preview must not auto-commit a trade turn or launch the CI autoplay smoke.'
             exit 1
           fi
+      - name: R87 signed G18 headless visual-authority and actual economic turn acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          GA_FOUNDATION_GODOT_SMOKE=0 GA_NEXT_WORKSPACE_SMOKE=0 \
+            GA_NEXT_FINE_FIRST_VISUAL_SMOKE=1 \
+            timeout 180s "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --quit-after 900 \
+            2>&1 | tee "$RUNNER_TEMP/ga-godot/r87-g18-headless.log"
+          grep -q 'GA_NEXT_R87_G18_TERRAIN_FREIGHT_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-headless.log"
+          grep -q 'GA_NEXT_R87_G18_GODOT_ACCEPTANCE_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-headless.log"
+          if grep -E 'GA_NEXT_R87_G18_GODOT_ACCEPTANCE_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/r87-g18-headless.log"; then exit 1; fi
+      - name: R87 G18 interactive evaluation has no autoplay and stays open
+        shell: bash
+        run: |
+          set -euo pipefail
+          GA_FOUNDATION_GODOT_SMOKE=0 GA_NEXT_WORKSPACE_SMOKE=0 \
+            GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW=1 \
+            timeout 180s "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --quit-after 120 \
+            2>&1 | tee "$RUNNER_TEMP/ga-godot/r87-g18-interactive.log"
+          grep -q 'GA_NEXT_R87_FINE_FIRST_INTERACTIVE_READY' "$RUNNER_TEMP/ga-godot/r87-g18-interactive.log"
+          grep -q 'GA_NEXT_R87_G18_TERRAIN_BOUND source=signed_g18' "$RUNNER_TEMP/ga-godot/r87-g18-interactive.log"
+          if grep -E 'GA_NEXT_R87_G18_GODOT_ACCEPTANCE_PASS|GA_NEXT_R87_G18_GODOT_ACCEPTANCE_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/r87-g18-interactive.log"; then exit 1; fi
       - name: R45 continuous tactical navigation (two focus handoffs in one held drag)
         shell: bash
         run: |
@@ -356,6 +378,25 @@ jobs:
             grep -q "GA_NEXT_V15_SETTLED_TRADE_FRAME_PASS step=$stage" "$RUNNER_TEMP/ga-godot/settled-trade-graphical.log"
             test -s "$GA_NEXT_SETTLED_TRADE_SCREENSHOT_DIR/$stage.png"
           done
+      - name: R87 photograph real signed G18 terrain and commerce under Xvfb
+        shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          GA_FOUNDATION_GODOT_SMOKE: '0'
+          GA_NEXT_WORKSPACE_SMOKE: '0'
+          GA_NEXT_FINE_FIRST_VISUAL_SMOKE: '1'
+          GA_NEXT_R87_SCREENSHOT_DIR: ${{ runner.temp }}/ga-godot/r87-g18
+        run: |
+          set -euo pipefail
+          xvfb-run -a -s "-screen 0 1600x1000x24" \
+            timeout 180s "$GODOT_BIN" --path tools/GlobalArena.Godot --quit-after 900 \
+            2>&1 | tee "$RUNNER_TEMP/ga-godot/r87-g18-graphical.log"
+          grep -q 'GA_NEXT_R87_G18_TERRAIN_FREIGHT_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-graphical.log"
+          grep -q 'GA_NEXT_R87_G18_GODOT_ACCEPTANCE_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-graphical.log"
+          for stage in 01_g18_terrain_before_trade 02_g18_after_first_trade 03_g18_after_second_trade; do
+            grep -q "GA_NEXT_R87_G18_FRAME_PASS stage=$stage" "$RUNNER_TEMP/ga-godot/r87-g18-graphical.log"
+            test -s "$GA_NEXT_R87_SCREENSHOT_DIR/$stage.png"
+          done
       - name: Keep actual runtime evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -385,6 +426,10 @@ jobs:
             ${{ runner.temp }}/ga-godot/interactive-economy-preview.log
             ${{ runner.temp }}/ga-godot/settled-trade-graphical.log
             ${{ runner.temp }}/ga-godot/settled-trade/*.png
+            ${{ runner.temp }}/ga-godot/r87-g18-headless.log
+            ${{ runner.temp }}/ga-godot/r87-g18-interactive.log
+            ${{ runner.temp }}/ga-godot/r87-g18-graphical.log
+            ${{ runner.temp }}/ga-godot/r87-g18/*.png
             ${{ runner.temp }}/ga-godot/graphical-smoke.log
             ${{ runner.temp }}/ga-godot/workspace-graphical.log
             ${{ runner.temp }}/ga-godot/workspace/*.png
