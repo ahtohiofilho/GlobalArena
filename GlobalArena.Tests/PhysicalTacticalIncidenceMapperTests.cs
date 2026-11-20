@@ -4,6 +4,46 @@ namespace GlobalArena.Tests;
 
 public sealed class PhysicalTacticalIncidenceMapperTests
 {
+    [Theory]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    [InlineData(6)]
+    public void CandidateScaleUsesActualLineageWithoutCertifyingProduction(int scale)
+    {
+        // R106: research does not weaken the materialization gate.
+        var refinement = new GoldbergScaledRefinement(
+            new GoldbergParameters(1, 0),
+            new GoldbergParameters(scale, 0));
+        var first = PhysicalTacticalIncidenceMapper.DiagnoseCandidate(refinement);
+        var replay = PhysicalTacticalIncidenceMapper.DiagnoseCandidate(refinement);
+        Assert.Equal(first, replay);
+        Assert.Equal(12, first.CoarseCells);
+        Assert.Equal(10 * scale * scale + 2, first.FineCells);
+        Assert.Equal(first.FineCells, first.CoveredTiles);
+        Assert.Equal(0, first.UnsupportedOwnerCountTiles);
+        Assert.Equal(30, first.ExpectedCoarseEdges);
+        Assert.Equal(20, first.ExpectedCoarseVertices);
+        Assert.InRange(first.MatchedCoarseEdgeSignatures, 0,
+            first.ExpectedCoarseEdges);
+        Assert.InRange(first.MatchedCoarseVertexSignatures, 0,
+            first.ExpectedCoarseVertices);
+        if (scale != 6)
+            Assert.Throws<NotSupportedException>(() =>
+                PhysicalTacticalIncidenceMapper.Materialize(refinement));
+        else
+        {
+            var authorized = PhysicalTacticalIncidenceMapper.Materialize(refinement);
+            Assert.Equal(authorized.TileIncidences.Count, first.FineCells);
+            Assert.Equal(312, first.InteriorTiles);
+            Assert.Equal(30, first.EdgeSharedTiles);
+            Assert.Equal(20, first.VertexSharedTiles);
+            Assert.True(first.EveryCoarseEdgeSignatureRepresented);
+            Assert.True(first.EveryCoarseVertexSignatureRepresented);
+        }
+    }
+
     [Fact]
     public void NullRefinementIsRejected()
     {
