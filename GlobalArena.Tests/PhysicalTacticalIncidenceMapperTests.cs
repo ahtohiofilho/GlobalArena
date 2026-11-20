@@ -128,6 +128,59 @@ public sealed class PhysicalTacticalIncidenceMapperTests
         }
     }
 
+    [Theory]
+    [InlineData(1, 2)]
+    [InlineData(1, 3)]
+    [InlineData(1, 4)]
+    [InlineData(1, 5)]
+    [InlineData(1, 6)]
+    [InlineData(2, 2)]
+    [InlineData(2, 3)]
+    [InlineData(2, 4)]
+    [InlineData(2, 5)]
+    [InlineData(2, 6)]
+    public void CandidatePolygonSidesUseActualFineVerticesAndRemainQaOnly(
+        int coarseFrequency, int scale)
+    {
+        var coarse = new GoldbergParameters(coarseFrequency, 0);
+        var fine = new GoldbergParameters(
+            checked(coarseFrequency * scale), 0);
+        var refinement = new GoldbergScaledRefinement(coarse, fine);
+        var first = PhysicalTacticalIncidenceMapper
+            .DiagnosePolygonBoundaries(refinement);
+        var replay = PhysicalTacticalIncidenceMapper
+            .DiagnosePolygonBoundaries(refinement);
+        Assert.Equal(first, replay);
+        Assert.Equal(coarse, first.CoarseParameters);
+        Assert.Equal(fine, first.FineParameters);
+        Assert.Equal((int)fine.StrategicEdgeCount, first.FinePolygonEdges);
+        Assert.Equal((int)coarse.StrategicEdgeCount,
+            first.ExpectedStrategicPairs);
+        Assert.Equal(0, first.SegmentsWithInvalidVertexIdentity);
+        Assert.InRange(first.PolygonBoundaryEdges, 0, first.FinePolygonEdges);
+        Assert.InRange(first.RepresentedStrategicPairs,
+            0, first.ExpectedStrategicPairs);
+        Console.WriteLine(
+            $"GA_NEXT_R109_POLYGON_AUDIT " +
+            $"coarse=G({coarse.M},0) fine=G({fine.M},0) scale={scale} " +
+            $"sides={first.PolygonBoundaryEdges} " +
+            $"shared_tiles={first.SharedOwnerTiles} " +
+            $"missing={first.MissingStrategicPairs} " +
+            $"nonneighbors={first.UnexpectedNonNeighborPairs} " +
+            $"branching={first.BranchingStrategicPairPaths} " +
+            $"disconnected={first.DisconnectedStrategicPairPaths} " +
+            $"closed={first.ClosedStrategicPairCycles}");
+        // Even a perfectly connected polygon edge overlay is NOT approval
+        // for physical movement, economic trades or other refinements.
+        if (scale != 6)
+            Assert.Throws<NotSupportedException>(() =>
+                PhysicalTacticalIncidenceMapper.Materialize(refinement));
+        else
+            Assert.Equal((int)fine.StrategicCellCount,
+                PhysicalTacticalIncidenceMapper.Materialize(refinement)
+                    .TileIncidences.Count);
+    }
+
     [Fact]
     public void NullRefinementIsRejected()
     {
