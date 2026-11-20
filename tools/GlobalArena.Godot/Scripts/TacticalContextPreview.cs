@@ -318,7 +318,10 @@ public partial class TacticalContextPreview : SubViewportContainer
         var radius = tangent.Length();
         if (_equidistant)
         {
-            if (radius >= Mathf.Pi * 0.5f - 0.01f) return false;
+            // R102: azimuthal equidistant charts are valid beyond 90
+            // degrees. Smaller coarse grids can require broader resident
+            // neighborhoods. Reject only the antipodal singularity.
+            if (radius >= Mathf.Pi - 0.01f) return false;
             spherical = (_surfaceNormal * Mathf.Cos(radius) +
                 tangent * (radius < 1e-6f ? 1f : Mathf.Sin(radius) / radius))
                 .Normalized();
@@ -823,8 +826,11 @@ public partial class TacticalContextPreview : SubViewportContainer
         if (_equidistant)
         {
             var depth = Mathf.Clamp(p.Dot(_surfaceNormal), -1f, 1f);
-            if (depth <= 0f)
-                throw new InvalidOperationException("Tactical equidistant projection crossed the visible hemisphere.");
+            // On a sphere, equidistant projection remains defined on the
+            // far hemisphere. Only the antipode has no unique bearing.
+            if (depth < -0.99999f)
+                throw new InvalidOperationException(
+                    "Tactical equidistant projection reached the antipode.");
             var radial = Mathf.Sqrt(east * east + north * north);
             if (radial > 1e-7f)
             {
