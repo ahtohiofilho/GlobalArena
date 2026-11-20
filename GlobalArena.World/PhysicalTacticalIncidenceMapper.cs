@@ -59,6 +59,99 @@ public static class PhysicalTacticalIncidenceMapper
             observedEdges.Count, observedVertices.Count);
     }
 
+    /// <summary>
+    /// R107: independently audit the actual fine adjacency graph before any
+    /// other scale is authorized. Every coarse cell must have a connected
+    /// physical footprint, and every coarse edge must be represented by
+    /// physical contact between the corresponding two ownership regions.
+    /// This is research evidence, not a boundary-path or economic approval.
+    /// </summary>
+    public static PhysicalTacticalIncidenceConnectivityDiagnostics
+        DiagnoseConnectivity( GoldbergScaledRefinement refinement)
+    {
+        ArgumentNullException.ThrowIfNull(refinement);
+        var lineage = GoldbergStrategicTopologyGenerator
+            .GenerateClassIScaledRefinementLineage(refinement);
+        var owners = BuildNearestOwnerPartition(
+            lineage.CoarseTopology, lineage.FineTopology,
+            lineage.FineAnchorByCoarseCellId);
+        var fineCells = lineage.FineTopology.Cells;
+        var actualPairContacts = new Dictionary<string, int>(
+            StringComparer.Ordinal);
+
+        foreach (var edge in lineage.FineTopology.Edges)
+        {
+            var leftId = checked((int)edge.IncidentCellIds[0].Value - 1);
+            var rightId = checked((int)edge.IncidentCellIds[1].Value - 1);
+            var leftOwners = owners[leftId];
+            var rightOwners = owners[rightId];
+
+            // An edge is a contact witness for strategic pair A,B iff
+            // A is in one incident tile, B in the other, and the endpoints
+            // do not both belong solely to A or solely to B. A shared
+            // owner tile may participate in multiple witnesses; that is
+            // why we count contacts, not unique geometric border paths.
+            foreach (var coarseEdge in lineage.CoarseTopology.Edges)
+            {
+                var a = coarseEdge.IncidentCellIds[0];
+                var b = coarseEdge.IncidentCellIds[1];
+                if ((leftOwners.Contains(a) && rightOwners.Contains(b)) ||
+                    (leftOwners.Contains(b) && rightOwners.Contains(a)))
+                {
+                    var signature = CreateCoarseSignature(
+                        coarseEdge.IncidentCellIds);
+                    actualPairContacts.TryGetValue(signature, out int count);
+                    actualPairContacts[signature] = checked(count + 1);
+                }
+            }
+        }
+
+        int disconnected = 0;
+        int emptyRegions = 0;
+        foreach (var coarseCell in lineage.CoarseTopology.Cells)
+        {
+            var valid = Enumerable.Range(0, fineCells.Count)
+                .Where(i => owners[i].Contains(coarseCell.Id))
+                .ToHashSet();
+            if (valid.Count == 0)
+            {
+                emptyRegions++;
+                continue;
+            }
+            var start = valid.Min();
+            var visited = new HashSet<int> { start };
+            var pending = new Queue<int>();
+            pending.Enqueue(start);
+            while (pending.Count > 0)
+            {
+                var current = pending.Dequeue();
+                foreach (var neighbor in fineCells[current].AdjacentCellIds)
+                {
+                    int next = checked((int)neighbor.Value - 1);
+                    if (valid.Contains(next) && visited.Add(next))
+                        pending.Enqueue(next);
+                }
+            }
+            if (visited.Count != valid.Count)
+                disconnected++;
+        }
+        int missingContacts = 0, min = int.MaxValue, max = 0;
+        foreach (var strategicEdge in lineage.CoarseTopology.Edges)
+        {
+            var key = CreateCoarseSignature(strategicEdge.IncidentCellIds);
+            actualPairContacts.TryGetValue(key, out int crossings);
+            if (crossings == 0) missingContacts++;
+            min = Math.Min(min, crossings);
+            max = Math.Max(max, crossings);
+        }
+        return new PhysicalTacticalIncidenceConnectivityDiagnostics(
+            refinement.CoarseParameters, refinement.FineParameters,
+            lineage.CoarseTopology.Cells.Count,
+            lineage.CoarseTopology.Edges.Count,
+            emptyRegions, disconnected, missingContacts,
+            min == int.MaxValue ? 0 : min, max);
+    }
+
 public static PhysicalTacticalIncidenceMap Materialize(
     GoldbergScaledRefinement refinement)
 {
