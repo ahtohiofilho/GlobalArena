@@ -490,6 +490,36 @@ public partial class Main : Control
         QueueFineWorkerOccupation(occupation);
     }
 
+    private void OnWorkerBoardCancelSelectedOrderRequested(ulong workerId)
+    {
+        if (_tacticalHost is null || _localOrderStatus is null ||
+            !_tacticalHost.Snapshot.Workers.Workers.Any(worker =>
+                worker.Id.Value == workerId &&
+                worker.Owner == _humanCivilization))
+        {
+            GD.PrintErr($"GA_NEXT_R110_CANCEL_REJECT_NOT_OWNER worker={workerId}");
+            return;
+        }
+        try
+        {
+            bool cancelled = _tacticalHost.CancelHumanOrder(
+                _humanCivilization, new PhysicalWorkerId(workerId));
+            _localOrderStatus.Text = cancelled
+                ? $"Worker #{workerId}: pending order cancelled; no turn committed."
+                : $"Worker #{workerId}: no pending order to cancel.";
+            GD.Print($"GA_NEXT_R110_BOARD_CANCEL worker={workerId} " +
+                $"cancelled={cancelled.ToString().ToLowerInvariant()} " +
+                "source=authorized_host before_turn=true");
+        }
+        catch (System.Exception error)
+        {
+            _localOrderStatus.Text =
+                $"Worker #{workerId}: cancellation rejected: {error.Message}";
+            GD.PrintErr($"GA_NEXT_R110_BOARD_CANCEL_REJECT {error.Message}");
+        }
+        RefreshFineTacticalWorkerControls();
+    }
+
     private void QueueFineWorkerOccupation(PhysicalWorkerOccupation occupation)
     {
         if (_tacticalHost is null || !_selectedLocalWorkerId.HasValue ||
@@ -1289,6 +1319,8 @@ public partial class Main : Control
         _tacticalPreview.CanonicalPhysicalTileClicked += OnTacticalPhysicalTileClicked;
         _tacticalPreview.CanonicalWorkerBadgeClicked += OnCanonicalWorkerBadgeClicked;
         _tacticalPreview.WorkerBoardOccupationRequested += OnWorkerBoardOccupationRequested;
+        _tacticalPreview.WorkerBoardCancelSelectedOrderRequested +=
+            OnWorkerBoardCancelSelectedOrderRequested;
         // The Foundation gameplay host materializes a *labeled local preview*
         // scenario. Main/Godot never creates, moves or settles workers directly.
         // This is NOT a claim of final world-population generation.
