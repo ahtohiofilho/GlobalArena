@@ -404,8 +404,10 @@ public partial class Main : Control
             host.Snapshot.Workers, _selectedLocalWorkerId);
         // Strictly participant-filtered last CLOSED market. The default
         // worker-only preview has no settled sale and draws nothing.
-        _tacticalPreview?.PresentSettledTradeRoutes(
-            host.GetLastClosedEconomicTradeView(_humanCivilization));
+        var authorizedSettledTrade =
+            host.GetLastClosedEconomicTradeView(_humanCivilization);
+        _tacticalPreview?.PresentSettledTradeRoutes(authorizedSettledTrade);
+        _strategicGlobe?.PresentSphericalSettledTradeRoutes(authorizedSettledTrade);
         _tacticalPreview?.PresentPendingWorkerBoardOrders(
             pendingOrders.Where(order => order.NextOccupation.HasValue)
                 .Select(order => (order.WorkerId.Value, order.NextOccupation!.Value)),
@@ -1338,7 +1340,10 @@ public partial class Main : Control
             Visible = false
         };
         _tacticalSettledTradeRoutes.Toggled += enabled =>
+        {
             _tacticalPreview?.SetSettledTradeRoutesVisible(enabled);
+            _strategicGlobe?.SetSphericalSettledTradeRoutesVisible(enabled);
+        };
         rightLayout.AddChild(_tacticalSettledTradeRoutes);
         // All sidebar details now belong to the single bounded outer dock
         // scroll region; this VBox must NOT create a nested vertical viewport.
@@ -1590,7 +1595,10 @@ public partial class Main : Control
                     // Keep G3 identity only as an invisible selection index.
                     globe.ConfigureSignedFineFirstSphere(
                         _tacticalHost.Session.GeneratedWorld,
-                        _tacticalHost.Incidence, g18.Geography);
+                        _tacticalHost.Incidence, g18.Geography,
+                        _tacticalHost.Snapshot.WorldBinding ??
+                            throw new System.InvalidOperationException(
+                                "G18 globe requires a signed world binding."));
                     _tacticalPreview!.ConfigureFineFirstEconomicTerrain(
                         _tacticalHost.Session.GeneratedWorld,
                         _tacticalHost.Incidence, g18.Geography, g18.Identity,
