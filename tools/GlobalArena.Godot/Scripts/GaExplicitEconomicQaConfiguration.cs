@@ -18,12 +18,29 @@ internal static class GaExplicitEconomicQaConfiguration
     private static readonly CommodityId CommodityOne = new(1U);
     private static readonly CommodityId CommodityTwo = new(2U);
 
+    // R89 experimental logistics invariant: at zero investment, long
+    // sea passages are much cheaper than overland haulage. Port transitions
+    // remain deliberately expensive, discouraging unnecessary land/sea
+    // switching. Keep this isolated from production balancing.
+    internal const ulong QaLandEdgeCostMicro = 1_000UL;
+    internal const ulong QaCoastEdgeCostMicro = 5_000UL;
+    internal const ulong QaSeaEdgeCostMicro = 40UL;
+
+    internal static void AssertNaturalFreightHierarchy()
+    {
+        if (!(QaSeaEdgeCostMicro * 20UL <= QaLandEdgeCostMicro &&
+            QaLandEdgeCostMicro < QaCoastEdgeCostMicro))
+            throw new InvalidOperationException(
+                "QA natural freight must strongly favor open sea and " +
+                "discourage unnecessary port transitions.");
+    }
+
     internal static FoundationGameplayEconomicConfiguration Profile() =>
         new(
             new FoundationNaturalTransportSeedingPolicy(
-                new FoundationNaturalTransportCostBand(1_000UL, 1_000_000UL),
-                new FoundationNaturalTransportCostBand(5_000UL, 500_000UL),
-                new FoundationNaturalTransportCostBand(25_000UL, 100_000UL),
+                new FoundationNaturalTransportCostBand(QaLandEdgeCostMicro, 1_000_000UL),
+                new FoundationNaturalTransportCostBand(QaCoastEdgeCostMicro, 500_000UL),
+                new FoundationNaturalTransportCostBand(QaSeaEdgeCostMicro, 100_000UL),
                 10_000UL),
             new FoundationMonetaryConstructionPolicy(
                 2_000_000UL, 4_000_000UL, 6_000_000UL, 1_000_000UL),
@@ -74,6 +91,7 @@ internal static class GaExplicitEconomicQaConfiguration
             FoundationTacticalHumanAiTurnHost demo)
     {
         ArgumentNullException.ThrowIfNull(demo);
+        AssertNaturalFreightHierarchy();
         if (demo.StateHash.FormatVersion != 11U ||
             demo.Snapshot.Workers.Workers.Count != 6 ||
             demo.Snapshot.Transport.IsInitialized ||
