@@ -40,6 +40,11 @@ public partial class TacticalContextPreview : SubViewportContainer
     private long _economyReliefMaximum;
     private CanonicalEconomyFineVisualDetail? _economyFineDetail;
     private FoundationFineFirstPhysicalGeography? _authoritativeFineEconomy;
+    // R101: the physical resolution is supplied by the signed runtime world,
+    // rather than inferred from this visualization's former G3/G18 fixture.
+    // Legacy demo retains its existing G3/G18 default until its host migrates.
+    private GoldbergScaledRefinement _presentationRefinement =
+        new(new GoldbergParameters(3, 0), new GoldbergParameters(18, 0));
     internal FoundationFineFirstPhysicalGeography? AuthoritativeFineEconomy =>
         _authoritativeFineEconomy;
     internal long PresentedFineElevation(ulong tileId) =>
@@ -73,6 +78,11 @@ public partial class TacticalContextPreview : SubViewportContainer
             throw new InvalidOperationException(
                 "Godot cannot paint a terrain different from the signed " +
                 "G18 world used by the authoritative economic session.");
+        _presentationRefinement = incidence.Refinement;
+        _cachedPhysicalMap = incidence;
+        _cachedCoarseWorld = null;
+        _cachedFineWorld = null;
+        _cachedCoarseGeometry = null;
         _authoritativeEconomyTerrainWorld = world;
         _authoritativeFineEconomy = physical;
         _economyFineDetail = null;
@@ -1156,8 +1166,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         if (_activeFocus != focusValue) _selectedFineTileId = null;
 
         // Accepted scale-six hierarchy, not an experimental G(48,0) preview.
-        var refinement = new GoldbergScaledRefinement(
-            new GoldbergParameters(3, 0), new GoldbergParameters(18, 0));
+        var refinement = _presentationRefinement;
         var physical = _cachedPhysicalMap ??= PhysicalTacticalIncidenceMapper.Materialize(refinement);
         if (physical.Refinement.FineParameters != refinement.FineParameters ||
             physical.Refinement.CoarseParameters != refinement.CoarseParameters)
@@ -1430,7 +1439,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         UpdateCameraFraming();
         PrepareAdjacentCanonicalData(physical, focus, geometry, physicalTiles);
         // Constrain the on-map status to concise navigation data. Full diagnostics stay in GD.Print.
-        _information.Text = $"TACTICAL | territory {focusValue} | G(18,0) | {(_equidistant ? "EQUIDISTANT" : "DIRECT")} | frame {_ringCount}";
+        _information.Text = $"TACTICAL | territory {focusValue} | G({refinement.FineParameters.M},{refinement.FineParameters.N}) | {(_equidistant ? "EQUIDISTANT" : "DIRECT")} | frame {_ringCount}";
         RebuildWorkerMarkers();
         // Same private closed-cycle evidence, reprojected at the new focus
         // and ring size. No rerun of the economic solver or publication.
@@ -1438,7 +1447,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         // Recompute the presentation-only selection outline after a ring or projection change.
         // A tile outside the new region is deselected rather than inventing an alias.
         SelectPhysicalTile(_selectedFineTileId);
-        GD.Print($"GA_TACTICAL_LOCAL_OPEN focus={focusValue} framing_rings={_ringCount} resident_rings={_residentRingCount} frame_tiles={framingTiles.Count} projection={(_equidistant ? "Equidistant" : "Orthographic")} regions={selectedStrategic.Count} physical_tiles={selectedPhysical.Count} triangles={countTriangles} edges={edgeCount} parameters=G(3,0)>G(18,0) duplicate_ids=0");
+        GD.Print($"GA_TACTICAL_LOCAL_OPEN focus={focusValue} framing_rings={_ringCount} resident_rings={_residentRingCount} frame_tiles={framingTiles.Count} projection={(_equidistant ? "Equidistant" : "Orthographic")} regions={selectedStrategic.Count} physical_tiles={selectedPhysical.Count} triangles={countTriangles} edges={edgeCount} parameters=G({refinement.CoarseParameters.M},{refinement.CoarseParameters.N})>G({refinement.FineParameters.M},{refinement.FineParameters.N}) duplicate_ids=0");
         GD.Print($"GA_TACTICAL_TERRITORY_BORDERS_MESH_R1 focus={focusValue} strategic_edges={strategicEdgesRendered} segments={boundarySegments} source=physical_centers surface_epsilon=0 toggle={_showTerritoryBoundaries} movement_unchanged=true");
         GD.Print($"GA_TACTICAL_TERRITORY_SHAPE_ANCHORS_R1 focus={focusValue} anchors=3-2-3 segments={boundarySegments} feature=visual_only highlight=false movement_unchanged=true");
         GD.Print($"GA_TACTICAL_TERRAIN_01C focus={focusValue} visible={_showExperimentalTerrain} seed={TerrainExperimentSeed} land_target=35 physical_reference_cached={_terrainReference is not null} strategic_globe_v1_unchanged=true");

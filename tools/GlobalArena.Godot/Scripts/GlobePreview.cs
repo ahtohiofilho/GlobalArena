@@ -876,16 +876,17 @@ public partial class GlobePreview : SubViewportContainer
             geography.CoarseParameters != incidence.Refinement.CoarseParameters ||
             geography.FineElevationRaw.Count != incidence.FineTopology.Cells.Count ||
             geography.FineTemperatureRaw.Count != incidence.FineTopology.Cells.Count ||
-            geography.FineParameters != new GoldbergParameters(18, 0))
+            geography.CoarseParameters !=
+                PresentedCanonicalWorld.Request.StrategicParameters)
             throw new InvalidOperationException(
-                "Signed G18 physical globe requires the exact tactical world and topology.");
+                "Signed physical globe requires matching tactical world parameters and topology.");
 
         var fineWorld = new DeterministicWorldGenerator().Generate(
             new WorldGenerationRequest(geography.Seed,
                 WorldGenerationVersion.Initial, geography.FineParameters));
         var geometry = fineWorld.StrategicSphericalGeometry;
         if (geometry.Cells.Count != geography.FineElevationRaw.Count)
-            throw new InvalidOperationException("G18 spherical geometry and field differ.");
+            throw new InvalidOperationException("Fine spherical geometry and signed physical field differ.");
         _signedG18RouteGeometry = geometry;
         _signedG18WorldBinding = worldBinding;
 
@@ -930,7 +931,10 @@ public partial class GlobePreview : SubViewportContainer
         _signedG18Sphere.Mesh = mesh;
         _signedG18Geography = geography;
         if (_mapLayerSelector.GetItemIndex(SignedG18MapMode) < 0)
-            _mapLayerSelector.AddItem("G18 PHYSICAL SPHERE", SignedG18MapMode);
+            _mapLayerSelector.AddItem("PHYSICAL SPHERE", SignedG18MapMode);
+        _mapLayerSelector.SetItemText(
+            _mapLayerSelector.GetItemIndex(SignedG18MapMode),
+            $"G({geography.FineParameters.M},{geography.FineParameters.N}) PHYSICAL SPHERE");
         _mapMode = SignedG18MapMode;
         _mapLayerSelector.Select(
             _mapLayerSelector.GetItemIndex(SignedG18MapMode));
@@ -960,7 +964,7 @@ public partial class GlobePreview : SubViewportContainer
             // The displayed tiles are physical G18; strategic G3 picking is
             // an independent, invisible geographic selection overlay.
             if (_pickedLabel is not null && !_selectedCellId.HasValue)
-                _pickedLabel.Text = "G18 physical globe | click to select a strategic region";
+                _pickedLabel.Text = $"G({_signedG18Geography!.FineParameters.M},{_signedG18Geography.FineParameters.N}) physical globe | click to select a strategic region";
             return;
         }
         if (fineView)
@@ -1054,7 +1058,9 @@ public partial class GlobePreview : SubViewportContainer
             8 => "RELEVO INDEP. ULTRA | G(48,0): 23042 cells\nIndependent macro/medium/micro scales; same seed & sea-level target",
             9 => "RELEVO PESOS MED. | G(48,0)\nMacro 0.75, medium 1.50, micro 2.00; experimental",
             10 => "RELEVO PESOS EQ. | G(48,0)\nMacro 0.50, medium 2.00, micro 3.00; experimental",
-            SignedG18MapMode => "G18 PHYSICAL SPHERE | 3242 real tactical tiles\nSame signed elevation, temperature and firm sea ice as tactical view; no planar projection",
+            SignedG18MapMode => _signedG18Geography is { } fine
+                ? $"G({fine.FineParameters.M},{fine.FineParameters.N}) PHYSICAL SPHERE | {fine.FineElevationRaw.Count} real tactical tiles\nSame signed elevation, temperature and firm sea ice as tactical view; no planar projection"
+                : "PHYSICAL SPHERE | No signed physical world",
             _ => "CELL COLORS | Deterministic colors distinguish adjacent territories\nColors do not imply ownership, biome, or political borders"
         };
     }
