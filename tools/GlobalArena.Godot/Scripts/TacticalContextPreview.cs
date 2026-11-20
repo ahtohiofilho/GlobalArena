@@ -219,6 +219,12 @@ public partial class TacticalContextPreview : SubViewportContainer
     // NORTH follows geographic north at the actual spherical camera center.
     private bool _geographicNorthUp;
     private Vector3? _navigationOrientationAnchor;
+    // R98: independent of strategic/tactical tile centers. The continuous
+    // screen-center geography is computed from the inverse spherical chart
+    // on every accepted pointer motion; chart focus is only a mesh cache key.
+    private Vector3 _exactViewPointOnSphere;
+    private Vector3 _lastValidGeographicNorth = Vector3.Forward;
+    public Vector3 ExactViewPointOnSphere => _exactViewPointOnSphere;
     private Vector2 _dragStart;
     private bool _pressed;
     private bool _moved;
@@ -397,6 +403,8 @@ public partial class TacticalContextPreview : SubViewportContainer
         var previousTarget = _cameraTarget;
         var previousZoom = _camera.Size;
         var previousYaw = _yawDegrees;
+        var previousExact = _exactViewPointOnSphere;
+        var previousNorth = _lastValidGeographicNorth;
         var selectedId = _selectedFineTileId;
 
         if (!plan.Reused.Any(tile =>
@@ -420,6 +428,8 @@ public partial class TacticalContextPreview : SubViewportContainer
         {
             RestoreProjection(sourceFocus, previousTarget, previousZoom,
                 previousYaw, selectedId);
+            _exactViewPointOnSphere = previousExact;
+            _lastValidGeographicNorth = previousNorth;
             return false;
         }
         var shift = nextPoint - hit;
@@ -431,6 +441,8 @@ public partial class TacticalContextPreview : SubViewportContainer
         {
             RestoreProjection(sourceFocus, previousTarget, previousZoom,
                 previousYaw, selectedId);
+            _exactViewPointOnSphere = previousExact;
+            _lastValidGeographicNorth = previousNorth;
             GD.Print($"GA_TACTICAL_HANDOFF_DEFERRED_R45 source={sourceFocus} next={nextFocus} reason=viewport_coverage");
             return false;
         }
@@ -694,9 +706,9 @@ public partial class TacticalContextPreview : SubViewportContainer
             _geographicNorthUp = !_geographicNorthUp;
             northModeButton.Text = _geographicNorthUp
                 ? "ORIENTATION: NORTH UP" : "ORIENTATION: LOCKED";
-            // Recompute the current projection only upon an explicit switch.
-            // Dragging keeps the existing bounded focus-handoff lifecycle.
-            if (_activeFocus != 0) Open(_activeFocus);
+            // Reorient in place at the actual spherical view point. A mode
+            // toggle must not rebuild G18 tiles, change zoom or reset focus.
+            UpdateCameraOrientation();
             GD.Print($"GA_NEXT_R97_ORIENTATION_MODE mode=" +
                 (_geographicNorthUp ? "north_up" : "locked"));
         };
@@ -879,14 +891,59 @@ public partial class TacticalContextPreview : SubViewportContainer
         }
     }
 
+    // R98: update from the actual map point under the optical center. A
+    // geographical focus is a continuous unit vector, not a G3/G18 tile.
+    // This is O(1) vector math and never rebuilds the rendered mesh.
     private void UpdateCameraOrientation()
     {
         if (_camera is null || _activeFocus == 0) return;
         var radians = Mathf.DegToRad(_yawDegrees);
         _camera.Position = _cameraTarget +
             new Vector3(2.5f * Mathf.Sin(radians), 2.5f, -2.5f * Mathf.Cos(radians));
-        _camera.LookAt(_cameraTarget, Vector3.Up);
-        GD.Print($"GA_TACTICAL_CAMERA_ORBIT focus={_activeFocus} yaw_deg={_yawDegrees:F0} north_far_default=true");
+
+        if (TryUnprojectOnSphere(_cameraTarget, out var exact))
+            _exactViewPointOnSphere = exact;
+        if (!_geographicNorthUp || _exactViewPointOnSphere.LengthSquared() < 0.9f)
+        {
+            // LOCKED: the viewing frame does not rotate during ordinary pan.
+            _camera.LookAt(_cameraTarget, Vector3.Up);
+            return;
+        }
+
+        var north = Vector3.Up -
+            _exactViewPointOnSphere * _exactViewPointOnSphere.Dot(Vector3.Up);
+        // Geographic north has no unique direction at a pole. Preserve the
+        // last valid tangent direction, and project it onto the new tangent
+        // plane; do not flip the compass by sampling a different G3 center.
+        if (north.LengthSquared() < 1e-6f)
+            north = _lastValidGeographicNorth -
+                _exactViewPointOnSphere *
+                _lastValidGeographicNorth.Dot(_exactViewPointOnSphere);
+        if (north.LengthSquared() < 1e-6f)
+        {
+            _camera.LookAt(_cameraTarget, Vector3.Up);
+            return;
+        }
+        north = north.Normalized();
+        _lastValidGeographicNorth = north;
+        // Transform the physical north tangent to the CURRENT local chart
+        // using a small geodesic differential. Only the camera rotates.
+        // G18 terrain and the underlying sphere remain untouched.
+        var nearbyNorth = (_exactViewPointOnSphere + 0.001f * north).Normalized();
+        Vector3 planarNorth;
+        if (nearbyNorth.Dot(_surfaceNormal) > 0.001f)
+            planarNorth = FlattenUnitVector(nearbyNorth, 0f) -
+                FlattenUnitVector(_exactViewPointOnSphere, 0f);
+        else
+            planarNorth = new Vector3(-north.Dot(_basisEast), 0f,
+                north.Dot(_basisNorth));
+        planarNorth.Y = 0f;
+        if (planarNorth.LengthSquared() < 1e-10f || !planarNorth.IsFinite())
+        {
+            _camera.LookAt(_cameraTarget, Vector3.Up);
+            return;
+        }
+        _camera.LookAt(_cameraTarget, planarNorth.Normalized());
     }
 
     // Camera ownership contract R13: rotation is an orientation-only action.
@@ -1544,6 +1601,67 @@ public partial class TacticalContextPreview : SubViewportContainer
             "one_held_drag=true zoom_preserved=true no_empty_corners=true");
     }
 
+    // R98: exercise the exact optical-center focus on the real event path.
+    // The map must move continuously WITHIN a single strategic chart:
+    // neither a tile center nor a handoff may be required for orientation.
+    internal void ExerciseContinuousSphericalFocusSmoke()
+    {
+        if (_camera is null || _innerViewport is null || _activeFocus == 0UL)
+            throw new InvalidOperationException("R98 requires a real camera.");
+        ulong initialFocus = _activeFocus;
+        float zoom = _camera.Size;
+        float yaw = _yawDegrees;
+        bool mode = _geographicNorthUp;
+        var initialExact = _exactViewPointOnSphere;
+        var center = new Vector2(_innerViewport.Size.X * 0.5f,
+            _innerViewport.Size.Y * 0.5f);
+        try
+        {
+            _geographicNorthUp = true;
+            UpdateCameraOrientation();
+            _GuiInput(new InputEventMouseButton
+            {
+                ButtonIndex = MouseButton.Left, Pressed = true, Position = center
+            });
+            _GuiInput(new InputEventMouseMotion
+            {
+                Position = center + new Vector2(12f, 0f),
+                Relative = new Vector2(12f, 0f)
+            });
+            var afterFirst = _exactViewPointOnSphere;
+            _GuiInput(new InputEventMouseMotion
+            {
+                Position = center + new Vector2(24f, 0f),
+                Relative = new Vector2(12f, 0f)
+            });
+            var afterSecond = _exactViewPointOnSphere;
+            if (!afterFirst.IsFinite() || !afterSecond.IsFinite() ||
+                afterFirst.LengthSquared() < 0.99f ||
+                afterSecond.LengthSquared() < 0.99f ||
+                afterFirst.DistanceTo(initialExact) < 1e-6f ||
+                afterSecond.DistanceTo(afterFirst) < 1e-6f ||
+                _camera.Size != zoom || _yawDegrees != yaw)
+                throw new InvalidOperationException(
+                    "Exact sphere view focus must change on each mouse motion.");
+            GD.Print("GA_NEXT_R98_EXACT_SPHERE_FOCUS_PASS " +
+                $"initial_chart={initialFocus} ending_chart={_activeFocus} " +
+                "per_motion=true no_tile_center_snap=true preserved_zoom=true");
+        }
+        finally
+        {
+            _GuiInput(new InputEventMouseButton
+            {
+                ButtonIndex = MouseButton.Left, Pressed = false,
+                Position = center + new Vector2(24f, 0f)
+            });
+            _geographicNorthUp = mode;
+            Open(initialFocus);
+            _camera.Size = zoom;
+            _yawDegrees = yaw;
+            UpdateCameraOrientation();
+        }
+    }
+
     // Screen-anchored pan: the map point under the pointer follows the pointer.
     // The tactical mesh lies on Y=0. Orthographic ray/plane intersections
     // automatically account for zoom, 45-degree pitch, and +/-15-degree yaw.
@@ -1635,8 +1753,10 @@ public partial class TacticalContextPreview : SubViewportContainer
                 var translation = previousHit - currentHit;
                 translation.Y = 0f;
                 var previousTarget = _cameraTarget;
-                _camera.Position += translation;
                 _cameraTarget += translation;
+                // Refresh spherical focus and geographic north on EVERY
+                // drag update, without tile search or mesh regeneration.
+                UpdateCameraOrientation();
 
                 // Transfer the map to the nearest strategic focus BEFORE
                 // enforcing viewport coverage, never at the map's visible edge.
