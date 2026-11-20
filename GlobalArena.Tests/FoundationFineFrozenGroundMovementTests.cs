@@ -1,3 +1,4 @@
+using GlobalArena.Simulation;
 using GlobalArena.Simulation.Foundation;
 using GlobalArena.World;
 
