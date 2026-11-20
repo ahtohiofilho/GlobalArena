@@ -1601,6 +1601,67 @@ public partial class TacticalContextPreview : SubViewportContainer
             "one_held_drag=true zoom_preserved=true no_empty_corners=true");
     }
 
+    // R98: exercise the exact optical-center focus on the real event path.
+    // The map must move continuously WITHIN a single strategic chart:
+    // neither a tile center nor a handoff may be required for orientation.
+    internal void ExerciseContinuousSphericalFocusSmoke()
+    {
+        if (_camera is null || _innerViewport is null || _activeFocus == 0UL)
+            throw new InvalidOperationException("R98 requires a real camera.");
+        ulong initialFocus = _activeFocus;
+        float zoom = _camera.Size;
+        float yaw = _yawDegrees;
+        bool mode = _geographicNorthUp;
+        var initialExact = _exactViewPointOnSphere;
+        var center = new Vector2(_innerViewport.Size.X * 0.5f,
+            _innerViewport.Size.Y * 0.5f);
+        try
+        {
+            _geographicNorthUp = true;
+            UpdateCameraOrientation();
+            _GuiInput(new InputEventMouseButton
+            {
+                ButtonIndex = MouseButton.Left, Pressed = true, Position = center
+            });
+            _GuiInput(new InputEventMouseMotion
+            {
+                Position = center + new Vector2(12f, 0f),
+                Relative = new Vector2(12f, 0f)
+            });
+            var afterFirst = _exactViewPointOnSphere;
+            _GuiInput(new InputEventMouseMotion
+            {
+                Position = center + new Vector2(24f, 0f),
+                Relative = new Vector2(12f, 0f)
+            });
+            var afterSecond = _exactViewPointOnSphere;
+            if (!afterFirst.IsFinite() || !afterSecond.IsFinite() ||
+                afterFirst.LengthSquared() < 0.99f ||
+                afterSecond.LengthSquared() < 0.99f ||
+                afterFirst.DistanceTo(initialExact) < 1e-6f ||
+                afterSecond.DistanceTo(afterFirst) < 1e-6f ||
+                _camera.Size != zoom || _yawDegrees != yaw)
+                throw new InvalidOperationException(
+                    "Exact sphere view focus must change on each mouse motion.");
+            GD.Print("GA_NEXT_R98_EXACT_SPHERE_FOCUS_PASS " +
+                $"initial_chart={initialFocus} ending_chart={_activeFocus} " +
+                "per_motion=true no_tile_center_snap=true preserved_zoom=true");
+        }
+        finally
+        {
+            _GuiInput(new InputEventMouseButton
+            {
+                ButtonIndex = MouseButton.Left, Pressed = false,
+                Position = center + new Vector2(24f, 0f)
+            });
+            _geographicNorthUp = mode;
+            Open(initialFocus);
+            _camera.Size = zoom;
+            _yawDegrees = yaw;
+            UpdateCameraOrientation();
+        }
+    }
+
     // Screen-anchored pan: the map point under the pointer follows the pointer.
     // The tactical mesh lies on Y=0. Orthographic ray/plane intersections
     // automatically account for zoom, 45-degree pitch, and +/-15-degree yaw.
