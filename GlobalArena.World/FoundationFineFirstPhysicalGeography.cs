@@ -35,7 +35,10 @@ public sealed class FoundationFineFirstPhysicalGeography
     // R91: stable gameplay thermal threshold (raw physical temperature).
     // This is not a biome classifier. Ocean below this limit is a
     // land-traversable frozen surface; its geological identity remains sea.
-    public const long FirmSeaIceTemperatureRaw = -700_000L;
+    // Slightly smaller than the historical -550_000 discrete polar mask.
+    // The threshold is applied only to ocean; geological land is unchanged.
+    public const long FirmSeaIceTemperatureRaw =
+        ExperimentalProceduralBiomeClassifier.IceThreshold - 20_000L;
 
     public FoundationFineSurfaceKind SurfaceAtIndex(int index)
     {

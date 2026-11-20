@@ -1664,9 +1664,36 @@ public partial class Main : Control
             RefreshLocalWorkerOrderControls();
             RefreshInteractiveEconomyPreviewBanner();
             if (fineFirstInteractive)
+            {
+                var polarGeometry = _tacticalHost!.Session.GeneratedWorld
+                    .StrategicSphericalGeometry;
+                ulong northId = polarGeometry.Cells
+                    .OrderByDescending(cell => cell.Center.Z)
+                    .First().CellId.Value;
+                ulong southId = polarGeometry.Cells
+                    .OrderBy(cell => cell.Center.Z)
+                    .First().CellId.Value;
+                void AddPolarButton(string label, ulong focusId)
+                {
+                    var polarButton = new Button { Text = label };
+                    polarButton.Pressed += () =>
+                    {
+                        _bridgeSelection = focusId;
+                        OpenTacticalContext();
+                        GD.Print($"GA_NEXT_R95_MANUAL_POLAR_FOCUS " +
+                            $"focus={focusId} economic_hash_unchanged=true");
+                    };
+                    header.AddChild(polarButton);
+                }
+                AddPolarButton("NORTH POLE", northId);
+                AddPolarButton("SOUTH POLE", southId);
+                GD.Print("GA_NEXT_R95_MANUAL_POLAR_CONTROLS_READY " +
+                    $"north={northId} south={southId} " +
+                    "manual_navigation_only=true no_autoplay=true");
                 GD.Print("GA_NEXT_R87_FINE_FIRST_INTERACTIVE_READY " +
                     "source=signed_g18 physical_freight_same_field=true " +
                     "mode=manual_e_turns auto_quit=false qa_only=true");
+            }
             if (_interactiveEconomicPreviewActive)
                 GD.Print("GA_NEXT_INTERACTIVE_ECONOMY_PREVIEW_READY " +
                     "mode=manual_e_turns auto_quit=false " +

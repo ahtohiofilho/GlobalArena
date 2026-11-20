@@ -73,6 +73,7 @@ public sealed class FoundationMonetaryInfrastructureEventExecutor
 {
     private readonly RuntimeWorldBinding _binding;
     private readonly HashSet<PhysicalTacticalEdgeId> _actualEdges;
+    private readonly HashSet<PhysicalTacticalEdgeId> _blockedIceSeaEdges = new();
 
     public FoundationMonetaryInfrastructureEventExecutor(
         WorldGenerationResult world, PhysicalTacticalIncidenceMap incidence)
@@ -85,11 +86,12 @@ public sealed class FoundationMonetaryInfrastructureEventExecutor
         FoundationFineFirstWorldgenIdentity signature)
         : this(world, incidence,
             RuntimeWorldBinding.FromFineFirst(
-                world, incidence, fine, signature)) { }
+                world, incidence, fine, signature), fine) { }
 
     private FoundationMonetaryInfrastructureEventExecutor(
         WorldGenerationResult world, PhysicalTacticalIncidenceMap incidence,
-        RuntimeWorldBinding binding)
+        RuntimeWorldBinding binding,
+        FoundationFineFirstPhysicalGeography? fineGeography = null)
     {
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -101,6 +103,18 @@ public sealed class FoundationMonetaryInfrastructureEventExecutor
         var fine = incidence.Refinement.FineParameters;
         _actualEdges = incidence.FineTopology.Edges.Select(e =>
             new PhysicalTacticalEdgeId(fine, e.Id)).ToHashSet();
+        // R95: natural ice/open-water contacts are not buildable ports.
+        // Validate this in the event executor so private resolution and
+        // independent journal replay make the same decision.
+        if (fineGeography is not null)
+            foreach (var edge in incidence.FineTopology.Edges)
+            {
+                int a = checked((int)edge.IncidentCellIds[0].Value - 1);
+                int b = checked((int)edge.IncidentCellIds[1].Value - 1);
+                if (fineGeography.CrossingAtIndices(a, b) ==
+                    FoundationFineTransportCrossingKind.BlockedIceSeaBoundary)
+                    _blockedIceSeaEdges.Add(new PhysicalTacticalEdgeId(fine, edge.Id));
+            }
     }
 
     public WorldState Execute(WorldState state,
@@ -116,6 +130,7 @@ public sealed class FoundationMonetaryInfrastructureEventExecutor
             !state.Treasury.IsInitialized ||
             !state.Transport.HasMonetaryConstructionCosts ||
             !_actualEdges.Contains(ev.Edge) ||
+            _blockedIceSeaEdges.Contains(ev.Edge) ||
             !state.Civilizations.Civilizations.Contains(ev.Investor))
             throw new InvalidOperationException(
                 "Stale, unfinanced or foreign infrastructure investment.");
