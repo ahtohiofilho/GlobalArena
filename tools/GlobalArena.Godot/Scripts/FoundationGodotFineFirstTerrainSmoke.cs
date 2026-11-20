@@ -180,10 +180,17 @@ internal sealed class FoundationGodotFineFirstTerrainSmoke
             // and match the visual ice/open-water boundary. No coast can be
             // converted to land merely by changing the elevation or sea-level.
             int firmSeaIce = 0, openWater = 0, geologicalLand = 0;
+            int previousDiscreteIce = 0, previousDiscreteSeaIce = 0;
             for (int i = 0; i < count; i++)
             {
                 var surface = fine.SurfaceAtIndex(i);
                 bool isGeologicalLand = fine.FineElevationRaw[i] > fine.SeaLevelRaw;
+                if (fine.FineTemperatureRaw[i] <=
+                    ExperimentalProceduralBiomeClassifier.IceThreshold)
+                {
+                    previousDiscreteIce++;
+                    if (!isGeologicalLand) previousDiscreteSeaIce++;
+                }
                 bool frozenWater = !isGeologicalLand &&
                     fine.FineTemperatureRaw[i] <=
                         FoundationFineFirstPhysicalGeography.FirmSeaIceTemperatureRaw;
@@ -199,12 +206,16 @@ internal sealed class FoundationGodotFineFirstTerrainSmoke
                 else firmSeaIce++;
             }
             Must(firmSeaIce > 0 && openWater > 0 &&
+                firmSeaIce <= previousDiscreteSeaIce &&
+                previousDiscreteIce > 0 &&
                 geologicalLand == fine.LandTileCount &&
                 firmSeaIce + openWater + geologicalLand == count,
                 "Polar ice, ocean and geological land must remain distinguishable.");
             GD.Print($"GA_NEXT_R91_SURFACE_CONTRACT_PASS " +
                 $"land={geologicalLand} open_water={openWater} " +
                 $"firm_sea_ice={firmSeaIce} " +
+                $"prior_discrete_ice={previousDiscreteIce} " +
+                $"prior_discrete_ocean_ice={previousDiscreteSeaIce} " +
                 "worldgen_unchanged=true mobility_classification_derived=true");
             int frozen = 0, temperate = 0, transition = 0;
             for (int i = 0; i < count; i++)
