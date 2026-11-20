@@ -58,7 +58,10 @@ public sealed class FoundationFineFirstInteractiveTurnHostTests
         var opened = FoundationFineFirstEconomicCycleGate.OpenNewEconomy(
             legacy.Snapshot, generated, legacy.Incidence, fine,
             signature, policy);
-        legacy.Session.AcceptSnapshot(opened);
+        Assert.Throws<InvalidOperationException>(() =>
+            legacy.Session.AcceptSnapshot(opened));
+        legacy.Session.AcceptFineFirstOpening(
+            opened, legacy.Incidence, fine, signature);
         Assert.Throws<InvalidOperationException>(() =>
             new FoundationTacticalHumanAiTurnHost(
                 legacy.Session, legacy.Incidence, new[] { Red },
