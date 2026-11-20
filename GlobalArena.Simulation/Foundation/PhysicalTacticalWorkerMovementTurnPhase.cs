@@ -94,6 +94,7 @@ public sealed class PhysicalTacticalWorkerMoveEventExecutor : ISimulationEventEx
 {
     private readonly RuntimeWorldBinding _binding;
     private readonly PhysicalTacticalIncidenceMap _map;
+    private readonly FoundationFineFirstPhysicalGeography? _fineSurface;
     private readonly Dictionary<StrategicCellId,
         Dictionary<StrategicCellId, PhysicalTacticalEdgeId>> _edges = new();
 
@@ -106,11 +107,12 @@ public sealed class PhysicalTacticalWorkerMoveEventExecutor : ISimulationEventEx
         FoundationFineFirstPhysicalGeography fine,
         FoundationFineFirstWorldgenIdentity signature)
         : this(world, map, RuntimeWorldBinding.FromFineFirst(
-            world, map, fine, signature)) { }
+            world, map, fine, signature), fine) { }
 
     private PhysicalTacticalWorkerMoveEventExecutor(
         WorldGenerationResult world, PhysicalTacticalIncidenceMap map,
-        RuntimeWorldBinding binding)
+        RuntimeWorldBinding binding,
+        FoundationFineFirstPhysicalGeography? fine = null)
     {
         ArgumentNullException.ThrowIfNull(world);
         _map = map ?? throw new ArgumentNullException(nameof(map));
@@ -118,6 +120,7 @@ public sealed class PhysicalTacticalWorkerMoveEventExecutor : ISimulationEventEx
             throw new InvalidOperationException(
                 "Fine graph must refine the actual bound canonical generated world.");
         _binding = binding;
+        _fineSurface = fine;
         foreach (var edge in map.FineTopology.Edges)
         {
             var a = edge.IncidentCellIds[0];
@@ -141,6 +144,18 @@ public sealed class PhysicalTacticalWorkerMoveEventExecutor : ISimulationEventEx
             target.FineGoldbergParameters != _map.Refinement.FineParameters)
             throw new ArgumentException("Tactical endpoint is not in the bound fine graph.");
         if (source == target) return null;
+        // R92: workers are ground units. The signed G18 surface, not
+        // elevation alone, determines whether each endpoint is walkable.
+        // This validation is shared by planning AND journal replay.
+        // Legacy V1 movement remains unchanged.
+        if (_fineSurface is { } physical &&
+            (!physical.CanTraverseOnFoot(
+                checked((int)source.FineStrategicCellId.Value - 1)) ||
+             !physical.CanTraverseOnFoot(
+                checked((int)target.FineStrategicCellId.Value - 1))))
+            throw new InvalidOperationException(
+                "Ground workers cannot cross open water; firm sea ice " +
+                "is ground-traversable on the signed G18 world.");
         if (_edges.TryGetValue(source.FineStrategicCellId, out var neighbors) &&
             neighbors.TryGetValue(target.FineStrategicCellId, out var edge))
             return edge;
