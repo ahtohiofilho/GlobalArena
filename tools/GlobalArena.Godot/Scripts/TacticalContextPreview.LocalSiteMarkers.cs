@@ -21,6 +21,10 @@ public partial class TacticalContextPreview
     private readonly List<LocalSiteMarker> _localSiteMarkers = new();
     private bool _localSitesEnabled;
 
+    // Semantic map zoom: a distant view may intentionally show no sites.
+    // Detailed workforce always belongs in the administrative interface.
+    public bool IsCartographicSiteMode => _localSitesEnabled;
+
     public int VisibleLocalSiteMarkerCount =>
         _localSiteMarkers.Count(x => x.Visual.Visible);
 
@@ -108,7 +112,16 @@ public partial class TacticalContextPreview
         if (baseSize.X <= 0 || baseSize.Y <= 0) return;
         float factorX = Size.X / baseSize.X;
         float factorY = Size.Y / baseSize.Y;
-        foreach (var place in _localSiteMarkers)
+        // A wide map should not render every settlement label. Relative
+        // thresholds use camera framing, not absolute kilometers or G18 IDs.
+        float zoomRatio = _camera.Size / Math.Max(0.001f,
+            _coverViewport ? _coverSize : _originalSize);
+        int minimumWorkers = zoomRatio >= 0.96f ? int.MaxValue
+            : zoomRatio >= 0.77f ? 8
+            : zoomRatio >= 0.58f ? 4 : 1;
+        var occupiedScreenRects = new List<Rect2>();
+        foreach (var place in _localSiteMarkers
+            .OrderByDescending(x => x.WorkerCount).ThenBy(x => x.TileId))
         {
             var label = place.Visual;
             if (!_tileCenters.TryGetValue(place.TileId, out var center) ||
@@ -122,9 +135,21 @@ public partial class TacticalContextPreview
                 projected.Y * factorY);
             // Do not place text over the actual physical worker circle.
             label.Position = screen + new Vector2(12f, -18f);
-            label.Visible = _camera.IsPositionBehind(center) == false &&
+            bool candidate = place.WorkerCount >= minimumWorkers &&
+                !_camera.IsPositionBehind(center) &&
                 screen.X >= 6f && screen.Y >= 18f &&
                 screen.X < Size.X - 100f && screen.Y < Size.Y - 24f;
+            if (!candidate)
+            {
+                label.Visible = false;
+                continue;
+            }
+            // Stable, high-importance-first collision avoidance.
+            var rect = new Rect2(label.Position,
+                new Vector2(108f, 26f));
+            label.Visible = !occupiedScreenRects.Any(other =>
+                other.Intersects(rect));
+            if (label.Visible) occupiedScreenRects.Add(rect);
         }
     }
 }
