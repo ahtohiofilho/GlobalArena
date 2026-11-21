@@ -144,16 +144,16 @@ public sealed class FoundationMixedTerrestrialCoastalInvestmentQaTests
                 .CargoMicroAtReferenceLoad;
             ulong kCoast = scales.Single(x => x.Edge == coastEdge)
                 .CargoMicroAtReferenceLoad;
+            // R112: physical carrying references are legacy metadata, not
+            // the improvement lever. Invested edges reduce fixed unit freight.
             Assert.Equal(rows[pair.Land.Id].CargoMicroAtReferenceLoad, kLand);
             Assert.Equal(rows[pair.Coast.Id].CargoMicroAtReferenceLoad, kCoast);
-            ulong landRate = roads.Single(x => x.Edge == landEdge)
-                .PhysicalCostMicroPerWholeCargoUnit;
-            ulong coastRate = roads.Single(x => x.Edge == coastEdge)
-                .PhysicalCostMicroPerWholeCargoUnit;
-            Assert.Equal(terrestrial,
-                landRate < rows[pair.Land.Id].FreePhysicalCostMicroPerWholeCargoUnit);
-            Assert.Equal(coastal,
-                coastRate < rows[pair.Coast.Id].FreePhysicalCostMicroPerWholeCargoUnit);
+            Assert.Equal(terrestrial, roads.Single(x => x.Edge == landEdge)
+                .PhysicalCostMicroPerWholeCargoUnit <
+                rows[pair.Land.Id].FreePhysicalCostMicroPerWholeCargoUnit);
+            Assert.Equal(coastal, roads.Single(x => x.Edge == coastEdge)
+                .PhysicalCostMicroPerWholeCargoUnit <
+                rows[pair.Coast.Id].FreePhysicalCostMicroPerWholeCargoUnit);
             Assert.All(roads, road => Assert.True(
                 road.PhysicalCostMicroPerWholeCargoUnit > 0UL));
             Assert.Equal(ulong.MaxValue,
@@ -172,7 +172,7 @@ public sealed class FoundationMixedTerrestrialCoastalInvestmentQaTests
                     .CoordinateCandidate(census, host.Incidence,
                         demand, cargo, quotes, roads, scales,
                         previousClosedCycleQuotes: previous,
-                        maxProducerPasses: 64);
+                        maxProducerPasses: 64, fixedUnitFreight: true);
                 var audit = plan.Distribution.AllocationAudit;
                 Assert.Equal(audit.TotalAvailableGoodsMicro,
                     audit.TotalAllocatedGoodsMicro);
