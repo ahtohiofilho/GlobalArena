@@ -382,7 +382,7 @@ public sealed class FoundationMonetaryInfrastructureInvestmentTests
             row.Edge != s.RemoteEdge &&
             row.CargoMicroAtReferenceLoad != ulong.MaxValue &&
             row.NaturalConstructionCostMoneyMicro is > 0UL &&
-            row.OwnershipKind == PhysicalTransportOwnershipKind.Natural).Edge;
+            row.OwnershipKind == PhysicalTransportOwnershipKind.NoInfrastructure).Edge;
         var before = s.Host.Snapshot;
         var initialHash = s.Host.StateHash;
         var initialCash = before.Treasury.Get(Red).CashScaled;
@@ -397,7 +397,7 @@ public sealed class FoundationMonetaryInfrastructureInvestmentTests
                     row.Edge != s.RemoteEdge && row.Edge != second &&
                     row.CargoMicroAtReferenceLoad != ulong.MaxValue &&
                     row.NaturalConstructionCostMoneyMicro is > 0UL &&
-                    row.OwnershipKind == PhysicalTransportOwnershipKind.Natural).Edge,
+                    row.OwnershipKind == PhysicalTransportOwnershipKind.NoInfrastructure).Edge,
                 100_000UL));
         Assert.Same(before, s.Host.Snapshot);
         Assert.Equal(initialHash, s.Host.StateHash);
