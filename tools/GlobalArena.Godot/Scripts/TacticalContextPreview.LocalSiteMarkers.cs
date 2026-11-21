@@ -76,6 +76,9 @@ public partial class TacticalContextPreview
     {
         _localSitesEnabled =
             System.Environment.GetEnvironmentVariable("GA_NEXT_QA_LOCAL_SITE_MARKERS") == "1";
+        // True geographic +Z north for the experimental city map only.
+        // Do not change legacy test/gameplay modes in this UI gate.
+        _geographicNorthUp = _localSitesEnabled;
         SetProcess(_localSitesEnabled);
         if (_localSitesEnabled)
             GD.Print("GA_NEXT_R127_SITE_MARKERS source=real_fine_worker_tiles " +
