@@ -1701,7 +1701,17 @@ public partial class TacticalContextPreview : SubViewportContainer
         _lastPrefetchIntentFocus = 0UL;
         UpdateCameraOrientation();
         UpdateCameraFraming();
-        PrepareAdjacentCanonicalData(physical, focus, geometry, physicalTiles);
+        if (_localSitesEnabled)
+        {
+            // R138 cartographic fine-tile navigation never uses the legacy
+            // coarse-region transfer planner (whose supported radius is <=3).
+            // The independent four-ring resident chart is rebuilt from the
+            // authoritative fine focus when its geographical anchor advances.
+            _preparedTransfers.Clear();
+            _preparedCanonicalTileGeometry.Clear();
+        }
+        else
+            PrepareAdjacentCanonicalData(physical, focus, geometry, physicalTiles);
         // Constrain the on-map status to concise navigation data. Full diagnostics stay in GD.Print.
         _information.Text = $"TACTICAL | territory {focusValue} | G({refinement.FineParameters.M},{refinement.FineParameters.N}) | {(_equidistant ? "EQUIDISTANT" : "DIRECT")} | frame {_ringCount}";
         RebuildWorkerMarkers();
