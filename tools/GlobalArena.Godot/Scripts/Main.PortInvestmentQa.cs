@@ -29,7 +29,6 @@ public partial class Main
         (ulong BeforeFreight, ulong BeforeCargo)> _r144QueuedCapital = new();
     private OptionButton? _r144PendingSelector;
     private readonly List<PhysicalTacticalEdgeId> _r144PendingChoices = new();
-    private ulong _portQaOldFreight;
     private string? _portQaLastSettledAudit;
     private bool _portQaUserSelected;
     private ulong _portQaCargoBefore;
