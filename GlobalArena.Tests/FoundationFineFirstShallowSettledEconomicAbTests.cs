@@ -289,7 +289,7 @@ public sealed class FoundationFineFirstShallowSettledEconomicAbTests
         int changedPortQuotes = 0, changedSeaQuotes = 0;
         var fineEdges = baseCycle.Incidence.FineTopology.Edges.ToDictionary(
             x => x.Id);
-        foreach (var (edgeId, original) in original)
+        foreach (var (edgeId, baseEdge) in original)
         {
             var modified = all[edgeId];
             var topology = fineEdges[edgeId.FineStrategicEdgeId];
@@ -304,18 +304,18 @@ public sealed class FoundationFineFirstShallowSettledEconomicAbTests
             else if (kind == FoundationFineTransportCrossingKind.Port)
             {
                 Assert.True(modified.NaturalConstructionCostMoneyMicro >=
-                    original.NaturalConstructionCostMoneyMicro);
+                    baseEdge.NaturalConstructionCostMoneyMicro);
                 if (modified.NaturalConstructionCostMoneyMicro >
-                    original.NaturalConstructionCostMoneyMicro)
+                    baseEdge.NaturalConstructionCostMoneyMicro)
                     changedPortQuotes++;
             }
             else
             {
                 Assert.Equal(FoundationFineTransportCrossingKind.OpenSea, kind);
-                Assert.Equal(original.NaturalConstructionCostMoneyMicro,
+                Assert.Equal(baseEdge.NaturalConstructionCostMoneyMicro,
                     modified.NaturalConstructionCostMoneyMicro);
                 if (modified.FreePhysicalCostMicroPerWholeCargoUnit >
-                    original.FreePhysicalCostMicroPerWholeCargoUnit)
+                    baseEdge.FreePhysicalCostMicroPerWholeCargoUnit)
                     changedSeaQuotes++;
             }
         }
