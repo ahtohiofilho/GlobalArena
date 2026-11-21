@@ -33,6 +33,18 @@ public partial class Main
         root.AddChild(_interactiveEconomicPreviewBanner);
     }
 
+    // R124: all monetary quantities on-screen use ONE abstract unit.
+    // The kernel keeps its exact micro integer and 1e16 ledger scales.
+    // Values here are only an invariant-culture presentation conversion.
+    private static string FormatMoneyMicroForDisplay(ulong micro)
+    {
+        const ulong microPerUnit = 1_000_000UL;
+        return (micro / microPerUnit).ToString(
+            System.Globalization.CultureInfo.InvariantCulture) + "." +
+            (micro % microPerUnit).ToString(
+                System.Globalization.CultureInfo.InvariantCulture).PadLeft(6, '0');
+    }
+
     private static string FormatExactMoneyForDisplay(BigInteger scaled)
     {
         if (scaled.Sign < 0)

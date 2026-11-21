@@ -43,7 +43,7 @@ public partial class Main
         section.AddChild(new Label
         {
             Text = "Close E once to earn real cash. Select an actual port " +
-                "edge, queue 0.100000 monetary investment, then E to commit. " +
+                "edge, queue 0.100000 investment, then E to commit. " +
                 "Only your treasury pays; no workers or goods are consumed.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         });
@@ -69,7 +69,8 @@ public partial class Main
         _portQaInvest = new Button
         {
             Name = "GANextR123InvestPort",
-            Text = "QUEUE PORT INVESTMENT | 0.100000",
+            Text = "QUEUE PORT INVESTMENT | " +
+                FormatMoneyMicroForDisplay(PortQaSpendMoneyMicro),
             Disabled = true
         };
         _portQaInvest.Pressed += QueuePortInvestmentQa;
@@ -123,6 +124,7 @@ public partial class Main
         // financeable access edges. Never fabricate a port or a tile.
         var selected = navigable.Where(p => p.Used)
             .OrderBy(p => p.Id.FineStrategicEdgeId.Value).Take(8).ToList();
+        int usedPortCount = navigable.Count(p => p.Used);
         if (selected.Count == 0)
             selected = navigable.OrderBy(p => p.Id.FineStrategicEdgeId.Value)
                 .Take(8).ToList();
@@ -157,10 +159,11 @@ public partial class Main
             .EffectiveUnitFreightCost(current);
         var investment = current.CommittedInvestmentMoneyMicro ?? 0UL;
         _portQaDetails.Text =
-            $"Natural unit freight {current.FreePhysicalCostMicroPerWholeCargoUnit} micro" +
-            $" | effective {effective} micro" +
-            $" | port construction basis {current.NaturalConstructionCostMoneyMicro} micro" +
-            $" | already invested {investment} micro";
+            $"Last-cycle used ports: {usedPortCount} | " +
+            $"Natural unit freight {FormatMoneyMicroForDisplay(current.FreePhysicalCostMicroPerWholeCargoUnit)}" +
+            $" | effective {FormatMoneyMicroForDisplay(effective)}" +
+            $" | port construction basis {FormatMoneyMicroForDisplay(current.NaturalConstructionCostMoneyMicro!.Value)}" +
+            $" | accumulated capital {FormatMoneyMicroForDisplay(investment)}";
         bool affordable = snapshot.Treasury.Get(_humanCivilization).CashScaled >=
             GlobalArenaMoneyScale.FromMoneyMicro(PortQaSpendMoneyMicro);
         bool ownedByAnother = current.OwnershipKind ==
@@ -180,6 +183,10 @@ public partial class Main
                 "to earn enough treasury cash before investing.";
         else if (ownedByAnother)
             _portQaFeedback.Text = "Selected port belongs to another owner.";
+        else if (usedPortCount == 0)
+            _portQaFeedback.Text = "No port appears in CIV 1 last settled " +
+                "trade routes. Available ports can be financed, but a route " +
+                "response cannot be inferred from this test.";
         else
             _portQaFeedback.Text = "Port is financeable. Queue investment, then E.";
     }
@@ -199,7 +206,9 @@ public partial class Main
                 _portQaSelected.Value, PortQaSpendMoneyMicro);
             _portQaLastSettledAudit = null;
             _portQaQueued = _portQaSelected;
-            _portQaFeedback.Text = "0.100000 queued (NOT YET SPENT). Press E.";
+            _portQaFeedback.Text =
+                $"{FormatMoneyMicroForDisplay(PortQaSpendMoneyMicro)} queued " +
+                "(NOT YET SPENT). Press E.";
             GD.Print("GA_NEXT_R123_PORT_INVESTMENT_QUEUED " +
                 $"edge={_portQaSelected.Value.FineStrategicEdgeId.Value} " +
                 $"money_micro={PortQaSpendMoneyMicro} " +
@@ -234,7 +243,9 @@ public partial class Main
                 "R123 authoritative port capital must reduce, not raise freight.");
         _portQaLastSettledAudit =
             $"REAL INVESTMENT COMMITTED | edge {_portQaQueued.Value.FineStrategicEdgeId.Value}" +
-            $" | spent 0.100000 | unit freight {_portQaOldFreight} -> {newCost}" +
+            $" | spent {FormatMoneyMicroForDisplay(committed.MoneyMicro)}" +
+            $" | unit freight {FormatMoneyMicroForDisplay(_portQaOldFreight)}" +
+            $" -> {FormatMoneyMicroForDisplay(newCost)}" +
             $" | replay {(receipt.ReplayMatched ? "OK" : "FAIL")}";
         GD.Print("GA_NEXT_R123_PORT_INVESTMENT_SETTLED " +
             $"edge={_portQaQueued.Value.FineStrategicEdgeId.Value} " +
