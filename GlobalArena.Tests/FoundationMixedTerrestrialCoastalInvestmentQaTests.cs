@@ -144,8 +144,16 @@ public sealed class FoundationMixedTerrestrialCoastalInvestmentQaTests
                 .CargoMicroAtReferenceLoad;
             ulong kCoast = scales.Single(x => x.Edge == coastEdge)
                 .CargoMicroAtReferenceLoad;
-            Assert.Equal(terrestrial, kLand > rows[pair.Land.Id].CargoMicroAtReferenceLoad);
-            Assert.Equal(coastal, kCoast > rows[pair.Coast.Id].CargoMicroAtReferenceLoad);
+            // R112: physical carrying references are legacy metadata, not
+            // the improvement lever. Invested edges reduce fixed unit freight.
+            Assert.Equal(rows[pair.Land.Id].CargoMicroAtReferenceLoad, kLand);
+            Assert.Equal(rows[pair.Coast.Id].CargoMicroAtReferenceLoad, kCoast);
+            Assert.Equal(terrestrial, roads.Single(x => x.Edge == landEdge)
+                .PhysicalCostMicroPerWholeCargoUnit <
+                rows[pair.Land.Id].FreePhysicalCostMicroPerWholeCargoUnit);
+            Assert.Equal(coastal, roads.Single(x => x.Edge == coastEdge)
+                .PhysicalCostMicroPerWholeCargoUnit <
+                rows[pair.Coast.Id].FreePhysicalCostMicroPerWholeCargoUnit);
             Assert.All(roads, road => Assert.True(
                 road.PhysicalCostMicroPerWholeCargoUnit > 0UL));
             Assert.Equal(ulong.MaxValue,
@@ -164,7 +172,7 @@ public sealed class FoundationMixedTerrestrialCoastalInvestmentQaTests
                     .CoordinateCandidate(census, host.Incidence,
                         demand, cargo, quotes, roads, scales,
                         previousClosedCycleQuotes: previous,
-                        maxProducerPasses: 64);
+                        maxProducerPasses: 64, fixedUnitFreight: true);
                 var audit = plan.Distribution.AllocationAudit;
                 Assert.Equal(audit.TotalAvailableGoodsMicro,
                     audit.TotalAllocatedGoodsMicro);
