@@ -212,6 +212,8 @@ public partial class TacticalContextPreview : SubViewportContainer
     // R137: resolve the geographic reference from actual canonical fine-cell pole centers.
     // The axis is a world-generation fact, not a camera or strategic-grid convention.
     private Vector3 _physicalPolarAxis = GeographicNorthAxis;
+    private Vector3 _northPoleCenter = GeographicNorthAxis;
+    private Vector3 _southPoleCenter = -GeographicNorthAxis;
     private Vector3 _lastValidGeographicNorth = Vector3.Back;
     public Vector3 ExactViewPointOnSphere => _exactViewPointOnSphere;
     private Vector2 _dragStart;
@@ -1037,9 +1039,9 @@ public partial class TacticalContextPreview : SubViewportContainer
             throw new InvalidOperationException("No active home projection.");
         return (_camera.UnprojectPosition(city),
             _camera.UnprojectPosition(
-                FlattenUnitVector(_physicalPolarAxis, 0f)),
+                FlattenUnitVector(_northPoleCenter, 0f)),
             _camera.UnprojectPosition(
-                FlattenUnitVector(-_physicalPolarAxis, 0f)));
+                FlattenUnitVector(_southPoleCenter, 0f)));
     }
 
     // Camera ownership contract R13: rotation is an orientation-only action.
@@ -1331,6 +1333,8 @@ public partial class TacticalContextPreview : SubViewportContainer
         var southCell = fineCells.MinBy(id => fineWorld.StrategicSphericalGeometry.GetCell(id.Id).Center.Z);
         var northPoleCenter = ConvertPoint(fineWorld.StrategicSphericalGeometry.GetCell(northCell.Id).Center).Normalized();
         var southPoleCenter = ConvertPoint(fineWorld.StrategicSphericalGeometry.GetCell(southCell.Id).Center).Normalized();
+        _northPoleCenter = northPoleCenter;
+        _southPoleCenter = southPoleCenter;
         var polarAxis = northPoleCenter - southPoleCenter;
         if (polarAxis.LengthSquared() < 1f) throw new InvalidOperationException("Invalid fine-mesh pole centers.");
         _physicalPolarAxis = polarAxis.Normalized();
@@ -1682,7 +1686,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         {
             for (int i = 0; i < 4; i++)
             {
-                var step = new Vector2(4f, 3f);
+                var step = new Vector2(8f, 6f);
                 pixel += step;
                 _GuiInput(new InputEventMouseMotion
                 {
