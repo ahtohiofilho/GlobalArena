@@ -238,6 +238,9 @@ public partial class TacticalContextPreview : SubViewportContainer
     // Exposed to in-scene QA only: an intentional viewport-coverage clamp
     // cannot also keep moving terrain beneath the cursor.
     private bool _lastPanClampedByCoverage;
+    // One immutable spherical point is held from mouse-down until mouse-up.
+    // Reprojecting a fresh anchor on every motion would accumulate drift.
+    private Vector3? _heldCartographicCursorGeography;
     // R138: the physical fine tile under the optical center is authoritative for
     // cartographic navigation. Rendering can lag behind this continuously tracked focus.
     private StrategicCellId? _focusedFineTile;
@@ -387,6 +390,27 @@ public partial class TacticalContextPreview : SubViewportContainer
         return candidate;
     }
 
+    // Solve the cartographic cursor constraint in the current projection.
+    // The anchor is the *same physical point* grabbed on mouse-down, even
+    // when we change charts or the North Up bearing during a gesture.
+    private void RestoreHeldCartographicCursor(Vector2 cursorPixel)
+    {
+        if (!_localSitesEnabled || !_heldCartographicCursorGeography.HasValue)
+            return;
+        var desired = FlattenUnitVector(
+            _heldCartographicCursorGeography.Value, TacticalSurfacePlaneY);
+        for (int k = 0; k < 24; k++)
+        {
+            if (!TryProjectCursorOnTacticalPlane(cursorPixel, out var hit))
+                throw new InvalidOperationException("Cannot project the held cartographic cursor.");
+            var correction = desired - hit;
+            correction.Y = 0f;
+            if (correction.LengthSquared() < 1e-12f) return;
+            _cameraTarget += correction;
+            UpdateCameraOrientation();
+        }
+    }
+
     // The chart center is a rendering anchor, not the simulation or input focus.
     // Rebuild a generous resident buffer around a *fine* tile only after the
     // optical focus has moved several fine cells away from the old anchor.
@@ -425,7 +449,8 @@ public partial class TacticalContextPreview : SubViewportContainer
         // under the moving cursor. No viewport-edge veto is applied.
         _cameraTarget = FlattenUnitVector(center, TacticalSurfacePlaneY);
         UpdateCameraOrientation();
-        var cursorPoint = FlattenUnitVector(cursorGeography, TacticalSurfacePlaneY);
+        var cursorPoint = FlattenUnitVector(
+            _heldCartographicCursorGeography ?? cursorGeography, TacticalSurfacePlaneY);
         for (int k = 0; k < 6; k++)
         {
             if (!TryProjectCursorOnTacticalPlane(cursorPixel, out var hit)) break;
@@ -435,6 +460,7 @@ public partial class TacticalContextPreview : SubViewportContainer
             UpdateCameraOrientation();
             if (correction.LengthSquared() < 1e-12f) break;
         }
+        RestoreHeldCartographicCursor(cursorPixel);
         _cartographicChartAnchor = fine;
         _focusedFineTile = fine;
         _cartographicReanchors++;
@@ -2066,6 +2092,11 @@ public partial class TacticalContextPreview : SubViewportContainer
                     _previousHandoffFocus = 0UL;
                     _dragPixelsAfterHandoff = 0f;
                     _dragStart = button.Position;
+                    _heldCartographicCursorGeography = null;
+                    if (_localSitesEnabled &&
+                        TryProjectCursorOnTacticalPlane(button.Position, out var grabbed) &&
+                        TryUnprojectOnSphere(grabbed, out var grabbedGeography))
+                        _heldCartographicCursorGeography = grabbedGeography;
                 }
                 else
                 {
@@ -2073,6 +2104,7 @@ public partial class TacticalContextPreview : SubViewportContainer
                         !PickVisibleCartographicLocalSite(button.Position))
                         PickPhysicalTile(button.Position);
                     _pressed = false;
+                    _heldCartographicCursorGeography = null;
                     _previousHandoffFocus = 0UL;
                     _dragPixelsAfterHandoff = 0f;
                 }
@@ -2134,6 +2166,7 @@ public partial class TacticalContextPreview : SubViewportContainer
                     // Cartographic pan is sovereign: focus and buffer follow
                     // the camera, never reject valid motion at a mesh boundary.
                     UpdateCartographicFocusAndBuffer(motion.Position);
+                    RestoreHeldCartographicCursor(motion.Position);
                 }
                 else
                 {
