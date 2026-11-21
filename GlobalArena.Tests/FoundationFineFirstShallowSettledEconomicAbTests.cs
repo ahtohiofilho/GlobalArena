@@ -188,7 +188,7 @@ public sealed class FoundationFineFirstShallowSettledEconomicAbTests
         Assert.True(first!.ReplayMatched);
         Assert.NotNull(first.EconomicSettlement);
         var tradeBefore = host.GetLastClosedEconomicTradeView(Red);
-        Assert.Equal(FoundationEconomicTradeOverlayAvailability.Ready,
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.AuthorizedSubset,
             tradeBefore.Availability);
         Assert.Equal(1UL, tradeBefore.EconomicCycleOrdinal);
         var topology = demo.Incidence.FineTopology.Edges.ToDictionary(x =>
@@ -246,7 +246,7 @@ public sealed class FoundationFineFirstShallowSettledEconomicAbTests
             host.Snapshot.Treasury.Get(Red).CashScaled);
 
         var tradeAfter = host.GetLastClosedEconomicTradeView(Red);
-        Assert.Equal(FoundationEconomicTradeOverlayAvailability.Ready,
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.AuthorizedSubset,
             tradeAfter.Availability);
         Assert.Equal(2UL, tradeAfter.EconomicCycleOrdinal);
         ulong cargoAfter = tradeAfter.UsedEdges
