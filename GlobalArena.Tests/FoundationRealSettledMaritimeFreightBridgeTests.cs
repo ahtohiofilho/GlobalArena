@@ -335,8 +335,8 @@ public sealed class FoundationRealSettledMaritimeFreightBridgeTests
             Assert.NotEmpty(snapshot.Treasury.LastSettledFreightQuotes);
 
             // Capture what the real settled economy ACTUALLY exercised.
-            // Zero values remain a documented coverage gap, not a PASS
-            // for strictly positive tariffs or lagged congestion.
+            // R112 requires zero carry-over congestion after every real close.
+            // A positive third-party tariff remains a separately audited case.
             var projected = FoundationPhysicalAuthoritativeTransportProjector
                 .FromWorld(snapshot, incidence);
             var projectedByEdge = projected.Roads.ToDictionary(e => e.Edge);
@@ -345,16 +345,18 @@ public sealed class FoundationRealSettledMaritimeFreightBridgeTests
             var positiveThirdPartyTariffs = projectedByEdge.Values.Count(
                 row => row.InfrastructureOwner.HasValue &&
                     row.ExternalTariffMicroPerWholeCargoUnit > 0UL);
-            var validPositiveLaggedSurcharges =
-                snapshot.Treasury.LastSettledFreightQuotes.Count(previous =>
-                    projectedByEdge.TryGetValue(previous.Edge, out var row) &&
-                    projectedScales[previous.Edge] ==
-                        previous.ReferenceCargoMicro &&
-                    row.PhysicalCostMicroPerWholeCargoUnit ==
-                        previous.FreePhysicalCostMicroPerWholeCargoUnit &&
-                    previous.QuotedCongestionSurchargeMicroPerWholeCargoUnit > 0UL);
-            Assert.True(validPositiveLaggedSurcharges > 0,
-                "R74 requires genuinely positive prior-settlement congestion.");
+            Assert.All(snapshot.Treasury.LastSettledFreightQuotes,
+                previous =>
+                {
+                    Assert.True(projectedByEdge.TryGetValue(
+                        previous.Edge, out var row));
+                    Assert.Equal(projectedScales[previous.Edge],
+                        previous.ReferenceCargoMicro);
+                    Assert.Equal(row!.PhysicalCostMicroPerWholeCargoUnit,
+                        previous.FreePhysicalCostMicroPerWholeCargoUnit);
+                    Assert.Equal(0UL,
+                        previous.QuotedCongestionSurchargeMicroPerWholeCargoUnit);
+                });
             if (initialTariff)
             {
                 Assert.True(positiveThirdPartyTariffs > 0,
@@ -375,9 +377,9 @@ public sealed class FoundationRealSettledMaritimeFreightBridgeTests
             _output.WriteLine(
                 $"GA_R74_SETTLED_COVERAGE financed={funded} seeded_tariff={initialTariff} cycle={settled} " +
                 $"positive_tariff_edges={positiveThirdPartyTariffs} " +
-                $"valid_positive_lagged_surcharge_edges={validPositiveLaggedSurcharges} " +
+                $"settled_fixed_freight_edges={snapshot.Treasury.LastSettledFreightQuotes.Count} " +
                 $"positive_tariff_gate={(positiveThirdPartyTariffs > 0 ? "COVERED" : "OPEN")} " +
-                $"positive_surcharge_gate={(validPositiveLaggedSurcharges > 0 ? "COVERED" : "OPEN")}");
+                $"zero_surcharge_gate=COVERED");
 
             foreach (var seller in new[] { Red, Blue })
             {
