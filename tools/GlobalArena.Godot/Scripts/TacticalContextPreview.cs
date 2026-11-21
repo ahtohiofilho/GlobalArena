@@ -238,6 +238,12 @@ public partial class TacticalContextPreview : SubViewportContainer
     // Exposed to in-scene QA only: an intentional viewport-coverage clamp
     // cannot also keep moving terrain beneath the cursor.
     private bool _lastPanClampedByCoverage;
+    // R138: the physical fine tile under the optical center is authoritative for
+    // cartographic navigation. Rendering can lag behind this continuously tracked focus.
+    private StrategicCellId? _focusedFineTile;
+    private StrategicCellId? _cartographicChartAnchor;
+    private int _cartographicReanchors;
+    private const float FineAnchorRecenterDot = 0.970f;
     private const float ReverseHandoffDragPixels = 48f;
     private ulong _continuousNavigationHandoffs;
     public ulong ActiveStrategicFocus => _activeFocus;
@@ -345,6 +351,95 @@ public partial class TacticalContextPreview : SubViewportContainer
                 tangent).Normalized();
         }
         return spherical.IsFinite();
+    }
+
+    // R138: move across canonical fine tiles by walking their real adjacency,
+    // rather than asking the coarse chart which territory the player may enter.
+    // A global scan is used only for startup or a lost local seed.
+    private StrategicCellId FindFineTileAt(Vector3 geographicalPoint)
+    {
+        if (_cachedFineWorld is null)
+            throw new InvalidOperationException("Fine geometry unavailable for cartographic focus.");
+        var topology = _cachedFineWorld.StrategicTopology.Cells;
+        var geometry = _cachedFineWorld.StrategicSphericalGeometry;
+        var start = _focusedFineTile ?? topology
+            .MaxBy(c => ConvertPoint(geometry.GetCell(c.Id).Center).Dot(geographicalPoint))?.Id
+            ?? throw new InvalidOperationException("No fine tile for camera position.");
+        var candidate = start;
+        // Monotone ascent over the actual fine adjacency graph. Always finite;
+        // no dependency on the currently rendered strategic mesh.
+        for (int k = 0; k < topology.Count; k++)
+        {
+            var score = ConvertPoint(geometry.GetCell(candidate).Center).Dot(geographicalPoint);
+            var next = candidate;
+            foreach (var adjacent in topology[checked((int)candidate.Value - 1)].AdjacentCellIds)
+            {
+                var adjacentScore = ConvertPoint(geometry.GetCell(adjacent).Center).Dot(geographicalPoint);
+                if (adjacentScore > score + 0.000001f)
+                {
+                    next = adjacent;
+                    score = adjacentScore;
+                }
+            }
+            if (next == candidate) return candidate;
+            candidate = next;
+        }
+        return candidate;
+    }
+
+    // The chart center is a rendering anchor, not the simulation or input focus.
+    // Rebuild a generous resident buffer around a *fine* tile only after the
+    // optical focus has moved several fine cells away from the old anchor.
+    private void UpdateCartographicFocusAndBuffer(Vector2 cursorPixel)
+    {
+        if (!_localSitesEnabled || _camera is null || _cachedPhysicalMap is null ||
+            _cachedFineWorld is null || _cachedCoarseGeometry is null ||
+            !TryUnprojectOnSphere(_cameraTarget, out var center)) return;
+        var fine = FindFineTileAt(center);
+        _focusedFineTile = fine;
+        if (!_cartographicChartAnchor.HasValue)
+        {
+            _cartographicChartAnchor = fine;
+            return;
+        }
+        var chartAnchorCenter = ConvertPoint(_cachedFineWorld.StrategicSphericalGeometry
+            .GetCell(_cartographicChartAnchor.Value).Center).Normalized();
+        if (center.Dot(chartAnchorCenter) >= FineAnchorRecenterDot) return;
+
+        // The fine tile can have multiple coarse owners. Pick the one closest
+        // to the actual camera center; never choose by an arbitrary ID.
+        var incidence = _cachedPhysicalMap.TileIncidences[checked((int)fine.Value - 1)];
+        var coarse = incidence.IncidentCoarseCellIds.OrderByDescending(id =>
+            ConvertPoint(_cachedCoarseGeometry.GetCell(id).Center).Dot(center))
+            .First();
+        if (!TryProjectCursorOnTacticalPlane(cursorPixel, out var oldHit) ||
+            !TryUnprojectOnSphere(oldHit, out var cursorGeography)) return;
+        var zoom = _camera.Size;
+        var yaw = _yawDegrees;
+        var physicalAnchor = new PhysicalTacticalTileId(
+            _cachedPhysicalMap.Refinement.FineParameters, fine);
+        Open(coarse.Value, physicalAnchor);
+        _camera.Size = zoom;
+        _yawDegrees = yaw;
+        // Restore the continuous geographical center, then the grabbed point
+        // under the moving cursor. No viewport-edge veto is applied.
+        _cameraTarget = FlattenUnitVector(center, TacticalSurfacePlaneY);
+        UpdateCameraOrientation();
+        var cursorPoint = FlattenUnitVector(cursorGeography, TacticalSurfacePlaneY);
+        for (int k = 0; k < 6; k++)
+        {
+            if (!TryProjectCursorOnTacticalPlane(cursorPixel, out var hit)) break;
+            var correction = cursorPoint - hit;
+            correction.Y = 0f;
+            _cameraTarget += correction;
+            UpdateCameraOrientation();
+            if (correction.LengthSquared() < 1e-12f) break;
+        }
+        _cartographicChartAnchor = fine;
+        _focusedFineTile = fine;
+        _cartographicReanchors++;
+        GD.Print($"GA_NEXT_R138_FINE_ANCHOR tile={fine.Value} strategic={coarse.Value} " +
+            $"updates={_cartographicReanchors} zoom={zoom:F5} no_coverage_clamp=true");
     }
 
     // Invoked on EVERY motion while the mouse button remains down. Handoff
@@ -1298,7 +1393,7 @@ public partial class TacticalContextPreview : SubViewportContainer
             throw new InvalidOperationException("Canonical tactical neighborhood contract failed.");
 
         // Reuse the authoritative physical incidence query; never infer fine IDs geometrically.
-        _residentRingCount = Math.Min(3, _ringCount + 1);
+        _residentRingCount = _localSitesEnabled ? Math.Min(4, _ringCount + 2) : Math.Min(3, _ringCount + 1);
         var selectedStrategic = new HashSet<StrategicCellId> { focus };
         var strategicRingDistances = new Dictionary<StrategicCellId, int> { [focus] = 0 };
         var frontier = new Queue<(StrategicCellId Id, int Step)>();
@@ -1357,6 +1452,16 @@ public partial class TacticalContextPreview : SubViewportContainer
             ? ConvertPoint(fineWorld.StrategicSphericalGeometry.GetCell(
                 openingHome.Value.FineStrategicCellId).Center).Normalized()
             : ConvertPoint(coarseWorld.StrategicSphericalGeometry.GetCell(focus).Center).Normalized();
+        if (_localSitesEnabled)
+        {
+            // The player sees a real fine tile as chart anchor, not a coarse
+            // strategic region. The initial tile is set by the actual city.
+            _cartographicChartAnchor = openingHome?.FineStrategicCellId ??
+                fineWorld.StrategicTopology.Cells.MaxBy(c =>
+                    ConvertPoint(fineWorld.StrategicSphericalGeometry.GetCell(c.Id).Center)
+                        .Dot(normal))?.Id;
+            _focusedFineTile = _cartographicChartAnchor;
+        }
         // At every focus transfer, derive the new local frame from either
         // the transported previous screen-up direction or the geographic
         // north vector at the actual camera center. This avoids the abrupt
@@ -2007,14 +2112,23 @@ public partial class TacticalContextPreview : SubViewportContainer
                 // Transfer the map to the nearest strategic focus BEFORE
                 // enforcing viewport coverage, never at the map's visible edge.
                 // The drag gesture stays active throughout the transition.
-                var transferred = TryContinuousFocusHandoff(motion.Position);
-                if (!transferred && _coverViewport &&
-                    !ViewportSamplesHaveTerrain(_camera.Size, 4, 4))
+                if (_localSitesEnabled)
                 {
-                    _cameraTarget = previousTarget;
-                    UpdateCameraOrientation();
-                    _lastPanClampedByCoverage = true;
-                    GD.Print("GA_TACTICAL_NAV_COVERAGE_GUARD_R45 no_missing_tiles=true");
+                    // Cartographic pan is sovereign: focus and buffer follow
+                    // the camera, never reject valid motion at a mesh boundary.
+                    UpdateCartographicFocusAndBuffer(motion.Position);
+                }
+                else
+                {
+                    var transferred = TryContinuousFocusHandoff(motion.Position);
+                    if (!transferred && _coverViewport &&
+                        !ViewportSamplesHaveTerrain(_camera.Size, 4, 4))
+                    {
+                        _cameraTarget = previousTarget;
+                        UpdateCameraOrientation();
+                        _lastPanClampedByCoverage = true;
+                        GD.Print("GA_TACTICAL_NAV_COVERAGE_GUARD_R45 no_missing_tiles=true");
+                    }
                 }
                 AcceptEvent();
             }
