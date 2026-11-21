@@ -1695,10 +1695,17 @@ public partial class TacticalContextPreview : SubViewportContainer
                     Position = pixel, Relative = step
                 });
                 if (!TryProjectCursorOnTacticalPlane(pixel, out var hit) ||
-                    !TryUnprojectOnSphere(hit, out var actualGeography) ||
-                    fixedGeography.Dot(actualGeography) < 0.99995f)
+                    !TryUnprojectOnSphere(hit, out var actualGeography))
                     throw new InvalidOperationException(
-                        "NORTH UP drag lost the spherical point under the mouse.");
+                        "NORTH UP drag produced an invalid spherical cursor.");
+                var similarity = fixedGeography.Dot(actualGeography);
+                if (similarity < 0.99995f)
+                    throw new InvalidOperationException(
+                        $"NORTH UP drag lost spherical cursor: step={i} " +
+                        $"similarity={similarity:F8} focus={_activeFocus} " +
+                        $"handoffs={_continuousNavigationHandoffs} " +
+                        $"camera={_cameraTarget} original={originalTarget} " +
+                        $"cursor={pixel}");
                 if (Math.Abs(_camera.Size - originalZoom) > 0.00001f ||
                     Math.Abs(_yawDegrees - originalYaw) > 0.00001f)
                     throw new InvalidOperationException("NORTH UP drag changed zoom or yaw.");
