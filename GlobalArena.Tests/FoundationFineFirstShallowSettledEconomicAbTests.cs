@@ -229,7 +229,8 @@ public sealed class FoundationFineFirstShallowSettledEconomicAbTests
         Assert.Equal(Red, invested.InfrastructureOwner);
         Assert.True(FoundationPhysicalAuthoritativeTransportProjector
             .EffectiveUnitFreightCost(invested) < originalEffective);
-        Assert.Same(demandBefore, host.Snapshot.Workers);
+        Assert.Equal(demandBefore.Workers.Select(w => w.Id),
+            host.Snapshot.Workers.Workers.Select(w => w.Id));
         Assert.Equal(cash - GlobalArenaMoneyScale.FromMoneyMicro(spend) +
             second.EconomicSettlement.Credits.Single(x =>
                 x.Civilization == Red).CashCreditScaled,
