@@ -1628,8 +1628,15 @@ public partial class Main : Control
                   tileClickMenuSmoke || workerBoardSmoke || legacyWorkspaceSmoke ||
                   legacySmoke || _configuredEconomicGameplay is not null)) ||
                 (settledTradeQaSmoke && _interactiveEconomicPreviewActive) ||
+                // The explicit interactive EconomyLab may share the
+                // fine-first G18 QA world: both read the same signed physical
+                // geography and settled treasury, with no parallel worldgen.
+                // Keep automated smoke, resolution probes and configured
+                // production gameplay mutually exclusive.
                 (fineFirstLab &&
-                 (settledTradeQaSmoke || _interactiveEconomicPreviewActive)) ||
+                 (settledTradeQaSmoke ||
+                  (_interactiveEconomicPreviewActive &&
+                   !fineFirstInteractive))) ||
                 (fineFirstVisualSmoke && fineFirstInteractive) ||
                 (_resolutionBootstrapSmoke &&
                     (fineFirstVisualSmoke || fineFirstInteractive)))
