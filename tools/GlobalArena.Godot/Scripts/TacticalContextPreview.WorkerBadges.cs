@@ -205,16 +205,28 @@ public partial class TacticalContextPreview
 
     // Draw exact counts as coplanar seven-segment digits. No floating Label3D
     // or additional 2D screen-space layer that drifts at oblique camera angles.
-    // The old X/Z map-plane glyph was seen upside-down from the orthographic
-    // oblique camera: an actual "3" appeared as an "E". Build the digit
-    // axes from the camera yaw: glyph right/down are always screen right/down.
+    // R135: in NORTH UP, camera roll is driven by the geodesic direction,
+    // not merely _yawDegrees. Invert the actual X/Z -> screen projection
+    // to keep legacy count numerals upright in BOTH orientation modes.
+    // The digits remain coplanar with the physical tiles.
     public (Vector2 Right, Vector2 Down) WorkerCountScreenAxes
     {
         get
         {
-            var radians = Mathf.DegToRad(_yawDegrees);
-            return (new Vector2(-Mathf.Cos(radians), -Mathf.Sin(radians)),
-                    new Vector2(Mathf.Sin(radians), -Mathf.Cos(radians)));
+            if (_camera is null)
+                return (Vector2.Left, Vector2.Down);
+            var basis = _camera.GlobalTransform.Basis;
+            Vector3 right = basis.X;
+            Vector3 up = basis.Y;
+            float determinant = right.Z * up.X - right.X * up.Z;
+            if (Math.Abs(determinant) < 0.00001f)
+                throw new InvalidOperationException(
+                    "Tactical camera cannot produce upright planar glyphs.");
+            var planeRight = new Vector2(-up.Z / determinant,
+                up.X / determinant).Normalized();
+            var planeDown = new Vector2(-right.Z / determinant,
+                right.X / determinant).Normalized();
+            return (planeRight, planeDown);
         }
     }
 

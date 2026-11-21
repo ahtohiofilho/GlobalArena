@@ -1750,9 +1750,24 @@ public partial class Main : Control
             if (first is null)
                 throw new System.InvalidOperationException(
                     "No local physical worker available for tactical entry.");
-            _bridgeSelection = first.CellId.Value;
+            // Prefer the physical home tile's actual coarse incidence as
+            // the initial chart, rather than assuming the worker's legacy
+            // strategic CellId is the center of its fine location.
+            PhysicalTacticalTileId? openingHome = null;
+            if (_tacticalHost?.Snapshot.Workers.HasAuthoritativeTacticalLocations == true &&
+                first.TacticalTileId.HasValue)
+            {
+                openingHome = first.TacticalTileId.Value;
+                var fineTile = openingHome.Value.FineStrategicCellId.Value;
+                _bridgeSelection = _tacticalHost.Incidence.TileIncidences[
+                    checked((int)fineTile - 1)].IncidentCoarseCellIds
+                    .OrderBy(id => id.Value).First().Value;
+            }
+            else _bridgeSelection = first.CellId.Value;
             _openTacticalContext!.Disabled = false;
             OpenTacticalContext();
+            if (openingHome.HasValue)
+                _tacticalPreview!.FocusInitialPhysicalCity(openingHome.Value);
             CreateTacticalWorkspaceWindows(globe, rightPanel, header, content);
             // Keep the 1280x720 header usable: the long subtitle belongs in
             // secondary information, not beside all keyboard-first controls.
