@@ -1659,6 +1659,60 @@ public partial class TacticalContextPreview : SubViewportContainer
     }
 
 
+    // R137: cartographic regression uses the real GUI input path. The spherical
+    // location grabbed by the cursor must stay under that cursor while NORTH UP
+    // rotates the map; a fixed-camera-only test would miss the observed drift.
+    internal void ExerciseOverheadPolarDragSmoke()
+    {
+        if (!_localSitesEnabled || _camera is null || _innerViewport is null)
+            throw new InvalidOperationException("Cartographic drag smoke requires active map.");
+        var originalTarget = _cameraTarget;
+        var originalZoom = _camera.Size;
+        var originalYaw = _yawDegrees;
+        var pixel = new Vector2(_innerViewport.Size.X * 0.5f,
+            _innerViewport.Size.Y * 0.5f);
+        if (!TryProjectCursorOnTacticalPlane(pixel, out var initialHit) ||
+            !TryUnprojectOnSphere(initialHit, out var fixedGeography))
+            throw new InvalidOperationException("No initial mouse geography.");
+        _GuiInput(new InputEventMouseButton
+        {
+            ButtonIndex = MouseButton.Left, Pressed = true, Position = pixel
+        });
+        try
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                var step = new Vector2(4f, 3f);
+                pixel += step;
+                _GuiInput(new InputEventMouseMotion
+                {
+                    Position = pixel, Relative = step
+                });
+                if (!TryProjectCursorOnTacticalPlane(pixel, out var hit) ||
+                    !TryUnprojectOnSphere(hit, out var actualGeography) ||
+                    fixedGeography.Dot(actualGeography) < 0.99995f)
+                    throw new InvalidOperationException(
+                        "NORTH UP drag lost the spherical point under the mouse.");
+                if (Math.Abs(_camera.Size - originalZoom) > 0.00001f ||
+                    Math.Abs(_yawDegrees - originalYaw) > 0.00001f)
+                    throw new InvalidOperationException("NORTH UP drag changed zoom or yaw.");
+            }
+            GD.Print("GA_NEXT_R137_OVERHEAD_DRAG_PASS cursor_geography_locked=true " +
+                "north_up_dynamic=true zoom_preserved=true");
+        }
+        finally
+        {
+            _GuiInput(new InputEventMouseButton
+            {
+                ButtonIndex = MouseButton.Left, Pressed = false, Position = pixel
+            });
+            _cameraTarget = originalTarget;
+            _camera.Size = originalZoom;
+            _yawDegrees = originalYaw;
+            UpdateCameraOrientation();
+        }
+    }
+
     // CI-only interaction probe. It deliberately holds one simulated mouse
     // gesture across two adjacent strategic territories. This checks the
     // same _GuiInput handler used by real users, not a mock movement method.
