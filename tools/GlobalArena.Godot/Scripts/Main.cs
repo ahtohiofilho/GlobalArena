@@ -1767,7 +1767,12 @@ public partial class Main : Control
             }
             else _bridgeSelection = first.CellId.Value;
             _openTacticalContext!.Disabled = false;
-            _initialTacticalHomeAnchor = openingHome;
+            // The city-centric chart is the cartographic UX pilot.
+            // Legacy navigation/E2E retains its established coarse chart
+            // until the new handoff policy is validated separately.
+            _initialTacticalHomeAnchor =
+                _tacticalPreview?.IsCartographicSiteMode == true
+                    ? openingHome : null;
             OpenTacticalContext();
             _initialTacticalHomeAnchor = null;
             if (openingHome.HasValue)
