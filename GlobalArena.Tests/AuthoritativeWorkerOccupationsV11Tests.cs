@@ -175,4 +175,77 @@ public sealed class AuthoritativeWorkerOccupationsV11Tests
         Assert.Equal(target, resumed.TacticalTileId);
         Assert.Equal(PhysicalWorkerActivity.Producing, resumed.Activity);
     }
+    [Fact]
+    public void HumanTravelAutomaticallyResumesOnFollowingTurnWithoutPhantomProduction()
+    {
+        var host = Occupied();
+        var human = new CivilizationId(1UL);
+        var worker = host.Snapshot.Workers.Workers.Single(w => w.Id.Value == 1UL);
+        var source = worker.TacticalTileId!.Value;
+        var targetId = host.Incidence.FineTopology.Cells[
+            checked((int)source.FineStrategicCellId.Value - 1)]
+            .AdjacentCellIds[0];
+        var target = new PhysicalTacticalTileId(
+            host.Incidence.Refinement.FineParameters, targetId);
+
+        host.QueueHumanMove(human, worker.Id, target);
+        host.SetHumanReady(human);
+        var arrival = Assert.IsType<FoundationTacticalCollectiveReceipt>(
+            host.TryCloseTurn());
+        Assert.True(arrival.ReplayMatched);
+        var arrived = host.Snapshot.Workers.Workers.Single(w => w.Id == worker.Id);
+        Assert.Equal(target, arrived.TacticalTileId);
+        Assert.Equal(PhysicalWorkerActivity.Traveling, arrived.Activity);
+        Assert.Empty(host.GetHumanOrders(human));
+
+        // No P command: the next turn's authoritative journal resumes work.
+        var beforeResume = host.StateHash;
+        host.SetHumanReady(human);
+        var resumed = Assert.IsType<FoundationTacticalCollectiveReceipt>(
+            host.TryCloseTurn());
+        Assert.True(resumed.ReplayMatched);
+        var resumeEvent = Assert.Single(resumed.Events.Where(e => e.WorkerId == worker.Id));
+        Assert.Equal(target, resumeEvent.Source);
+        Assert.Equal(target, resumeEvent.Destination);
+        Assert.Null(resumeEvent.TraversedEdge);
+        Assert.Equal(PhysicalWorkerActivity.Producing, resumeEvent.NextActivity);
+        var atWork = host.Snapshot.Workers.Workers.Single(w => w.Id == worker.Id);
+        Assert.Equal(target, atWork.TacticalTileId);
+        Assert.Equal(PhysicalWorkerActivity.Producing, atWork.Activity);
+        Assert.NotEqual(beforeResume, host.StateHash);
+    }
+
+    [Fact]
+    public void HumanExplicitNextTurnTravelOverridesAutomaticProduction()
+    {
+        var host = Occupied();
+        var human = new CivilizationId(1UL);
+        var worker = host.Snapshot.Workers.Workers.Single(w => w.Id.Value == 1UL);
+        var start = worker.TacticalTileId!.Value;
+        var firstId = host.Incidence.FineTopology.Cells[
+            checked((int)start.FineStrategicCellId.Value - 1)]
+            .AdjacentCellIds[0];
+        var first = new PhysicalTacticalTileId(
+            host.Incidence.Refinement.FineParameters, firstId);
+        host.QueueHumanMove(human, worker.Id, first);
+        host.SetHumanReady(human);
+        Assert.NotNull(host.TryCloseTurn());
+        var secondId = host.Incidence.FineTopology.Cells[
+            checked((int)firstId.Value - 1)]
+            .AdjacentCellIds.First(id => id != start.FineStrategicCellId);
+        var second = new PhysicalTacticalTileId(
+            host.Incidence.Refinement.FineParameters, secondId);
+        host.QueueHumanMove(human, worker.Id, second);
+        host.SetHumanReady(human);
+        var receipt = Assert.IsType<FoundationTacticalCollectiveReceipt>(
+            host.TryCloseTurn());
+        var ev = Assert.Single(receipt.Events.Where(e => e.WorkerId == worker.Id));
+        Assert.Equal(first, ev.Source);
+        Assert.Equal(second, ev.Destination);
+        Assert.Equal(PhysicalWorkerActivity.Traveling, ev.NextActivity);
+        Assert.Equal(second, host.Snapshot.Workers.Workers.Single(w =>
+            w.Id == worker.Id).TacticalTileId);
+        Assert.True(receipt.ReplayMatched);
+    }
+
 }
