@@ -199,7 +199,7 @@ public partial class TacticalContextPreview : SubViewportContainer
     // R97: camera orientation is a presentation policy, not a property of G3.
     // LOCKED parallel-transports the previous viewing direction across charts.
     // NORTH follows geographic north at the actual spherical camera center.
-    private bool _geographicNorthUp;
+    private bool _geographicNorthUp = true;
     private Vector3? _navigationOrientationAnchor;
     // R98: independent of strategic/tactical tile centers. The continuous
     // screen-center geography is computed from the inverse spherical chart
@@ -686,7 +686,7 @@ public partial class TacticalContextPreview : SubViewportContainer
             if (_activeFocus != 0) Open(_activeFocus);
         };
         primaryRow.AddChild(projectionButton);
-        var northModeButton = new Button { Text = "ORIENTATION: LOCKED" };
+        var northModeButton = new Button { Text = "ORIENTATION: NORTH UP" };
         northModeButton.Pressed += () =>
         {
             _geographicNorthUp = !_geographicNorthUp;
@@ -933,6 +933,69 @@ public partial class TacticalContextPreview : SubViewportContainer
             return;
         }
         _camera.LookAt(_cameraTarget, planarNorth.Normalized());
+    }
+
+    // R135: the initial home is a REAL authoritative physical tile, not
+    // the center of the surrounding strategic territory. Camera state only.
+    // Call exactly once at initial tactical entry, never during later
+    // strategic navigation or continuous focus handoffs.
+    public void FocusInitialPhysicalCity(PhysicalTacticalTileId home)
+    {
+        if (_camera is null || _innerViewport is null ||
+            _cachedPhysicalMap is null || _activeFocus == 0UL ||
+            home.FineGoldbergParameters !=
+                _cachedPhysicalMap.Refinement.FineParameters)
+            throw new InvalidOperationException(
+                "Opening city requires a live canonical fine tactical map.");
+        ulong tileId = home.FineStrategicCellId.Value;
+        if (!TryGetSitePolygonCentroid(tileId, out var center))
+            throw new InvalidOperationException(
+                $"Opening city {tileId} has no valid projected polygon.");
+        _geographicNorthUp = true;
+        _yawDegrees = 0f;
+        _cameraTarget = center;
+        UpdateCameraOrientation();
+
+        // A city can sit away from the center of its coarse territory.
+        // Preserve the opening zoom whenever its rendered resident tiles
+        // cover the viewport; otherwise reduce it to the first safe size.
+        float openingZoom = _camera.Size;
+        while (!ViewportSamplesHaveTerrain(_camera.Size, 8, 6))
+        {
+            if (_camera.Size < 0.02f)
+                throw new InvalidOperationException(
+                    "Cannot frame the initial city within the resident map.");
+            _camera.Size *= 0.8f;
+        }
+        _prefetchIntentOrigin = center;
+        _lastPrefetchIntentFocus = 0UL;
+        UpdateCameraOrientation();
+        GD.Print($"GA_NEXT_R135_INITIAL_CITY_FOCUS tile={tileId} " +
+            $"strategic_focus={_activeFocus} north_up=true " +
+            $"city_at_optical_center=true initial_zoom={openingZoom:F5} " +
+            $"actual_zoom={_camera.Size:F5} no_world_mutation=true");
+    }
+
+    // Validation from the REAL camera projection. The next local
+    // geographic-north point must appear directly ABOVE the city on screen.
+    internal (Vector2 City, Vector2 North) OpeningCityScreenProof(
+        PhysicalTacticalTileId home)
+    {
+        if (_camera is null || _innerViewport is null ||
+            !TryGetSitePolygonCentroid(
+                home.FineStrategicCellId.Value, out var center))
+            throw new InvalidOperationException("No projected opening city.");
+        if (!TryUnprojectOnSphere(center, out var spherical))
+            throw new InvalidOperationException("Opening city has no spherical center.");
+        var north = Vector3.Up - spherical * spherical.Dot(Vector3.Up);
+        if (north.LengthSquared() < 1e-6f)
+            throw new InvalidOperationException(
+                "Compass direction is undefined at the exact geographic pole.");
+        north = north.Normalized();
+        var nearbyNorth = (spherical + 0.025f * north).Normalized();
+        var northOnMap = FlattenUnitVector(nearbyNorth, 0f);
+        return (_camera.UnprojectPosition(center),
+            _camera.UnprojectPosition(northOnMap));
     }
 
     // Camera ownership contract R13: rotation is an orientation-only action.
