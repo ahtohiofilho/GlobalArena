@@ -1466,6 +1466,11 @@ public partial class TacticalContextPreview : SubViewportContainer
         // Constrain the on-map status to concise navigation data. Full diagnostics stay in GD.Print.
         _information.Text = $"TACTICAL | territory {focusValue} | G({refinement.FineParameters.M},{refinement.FineParameters.N}) | {(_equidistant ? "EQUIDISTANT" : "DIRECT")} | frame {_ringCount}";
         RebuildWorkerMarkers();
+        // Focus handoffs rebuild the local planar chart, but the actual
+        // inhabited tiles retain the same physical IDs. Their labels must
+        // be recalculated from the new map projection on every Open(), not
+        // only when a worker record changes after an economic turn.
+        UpdateLocalSiteCensus();
         // Same private closed-cycle evidence, reprojected at the new focus
         // and ring size. No rerun of the economic solver or publication.
         RebuildSettledTradeMesh();

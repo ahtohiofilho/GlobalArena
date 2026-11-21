@@ -17,7 +17,7 @@ namespace GlobalArena.Godot;
 public partial class TacticalContextPreview
 {
     private sealed record LocalSiteMarker(
-        ulong TileId, int WorkerCount, Label Dot, Label Visual);
+        ulong TileId, int WorkerCount, Vector3 PolygonCentroid, Panel Dot, Label Visual);
 
     private readonly List<LocalSiteMarker> _localSiteMarkers = new();
     private bool _localSitesEnabled;
@@ -27,7 +27,13 @@ public partial class TacticalContextPreview
     public bool IsCartographicSiteMode => _localSitesEnabled;
 
     public int VisibleLocalSiteMarkerCount =>
-        _localSiteMarkers.Count(x => x.Visual.Visible);
+        _localSiteMarkers.Count(x => x.Dot.Visible);
+
+    // A marker's actual physical identity and rendered geometric centroid
+    // can be inspected by visual E2E tests without inventing settlement IDs.
+    public IReadOnlyList<(ulong TileId, Vector3 Centroid)> LocalSiteAnchors =>
+        Array.AsReadOnly(_localSiteMarkers.Select(x =>
+            (x.TileId, x.PolygonCentroid)).ToArray());
 
     public event Action<ulong>? CartographicLocalSiteSelected;
 
@@ -46,7 +52,7 @@ public partial class TacticalContextPreview
                 new Vector2(108f, 26f));
             // The dot is centered on the physical polygon; the name is
             // separately offset and both select the same canonical tile.
-            var dotCenter = site.Dot.Position + new Vector2(8f, 8f);
+            var dotCenter = site.Dot.Position + new Vector2(5f, 5f);
             if (!textBounds.HasPoint(localPixel) &&
                 dotCenter.DistanceSquaredTo(localPixel) > 100f)
                 continue;
@@ -96,8 +102,12 @@ public partial class TacticalContextPreview
             .ToArray();
         foreach (var place in occupied)
         {
-            if (!_tileCenters.ContainsKey(place.Key))
-                continue; // Only currently drawn physical tiles.
+            // The displayed chart loads only a few strategic rings.
+            // A genuine inhabited tile MUST NOT disappear merely because
+            // its physical polygon is outside that small resident cache.
+            // Reuse the canonical fine topology's visual geometry instead.
+            if (!TryGetSitePolygonCentroid(place.Key, out var centroid))
+                continue;
             int population = place.Count();
             var label = new Label
             {
@@ -117,30 +127,91 @@ public partial class TacticalContextPreview
                 new Color("#16212c"));
             label.AddThemeConstantOverride("shadow_offset_x", 1);
             label.AddThemeConstantOverride("shadow_offset_y", 1);
-            var dot = new Label
+            // A circular Panel has exact geometry. A bullet CHARACTER
+            // does not: glyph ascent, baseline and margins make it appear
+            // above the polygon even with an ostensibly centered Label.
+            var dot = new Panel
             {
-                Name = "GANextR133SiteDot" + place.Key.ToString(
+                Name = "GANextR134SiteDot" + place.Key.ToString(
                     CultureInfo.InvariantCulture),
-                Text = "●",
-                CustomMinimumSize = new Vector2(16f, 16f),
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
+                CustomMinimumSize = new Vector2(10f, 10f),
+                Size = new Vector2(10f, 10f),
                 MouseFilter = MouseFilterEnum.Ignore,
                 Visible = false
             };
-            dot.AddThemeFontSizeOverride("font_size", 13);
-            dot.AddThemeColorOverride("font_color", new Color("#f6e6c4"));
-            dot.AddThemeColorOverride("font_shadow_color",
-                new Color("#16212c"));
+            var disc = new StyleBoxFlat
+            {
+                BgColor = new Color("#f6e6c4"),
+                BorderColor = new Color("#172736"),
+                BorderWidthLeft = 1,
+                BorderWidthRight = 1,
+                BorderWidthTop = 1,
+                BorderWidthBottom = 1,
+                CornerRadiusTopLeft = 5,
+                CornerRadiusTopRight = 5,
+                CornerRadiusBottomLeft = 5,
+                CornerRadiusBottomRight = 5
+            };
+            dot.AddThemeStyleboxOverride("panel", disc);
             AddChild(dot);
             AddChild(label);
             _localSiteMarkers.Add(new LocalSiteMarker(
-                place.Key, population, dot, label));
+                place.Key, population, centroid, dot, label));
         }
         PositionLocalSiteMarkers();
-        GD.Print($"GA_NEXT_R127_SITE_CENSUS sites={occupied.Length} " +
-            $"labels={_localSiteMarkers.Count} workers={_displayWorkers.Count} " +
-            "source=canonical_signed_fine no_fake_city=true");
+        GD.Print($"GA_NEXT_R134_SITE_CENSUS sites={occupied.Length} " +
+            $"projected={_localSiteMarkers.Count} workers={_displayWorkers.Count} " +
+            "source=all_occupied_fine_tiles centroid=polygon_area " +
+            "resident_cache_not_required=true no_fake_city=true");
+    }
+
+    // Use the *same* canonical fine spherical geometry and Flatten()
+    // as the rendered tile mesh. The polygon's area centroid, not the
+    // spherical cell origin or the bounding-box corner, defines its dot.
+    // The local chart can be rebuilt on focus handoff without generating
+    // any new names, cities, or authoritative economic objects.
+    private bool TryGetSitePolygonCentroid(ulong tileId, out Vector3 center)
+    {
+        center = Vector3.Zero;
+        if (_cachedFineWorld is null || _cachedPhysicalMap is null)
+            return false;
+        var geometry = _cachedFineWorld.StrategicSphericalGeometry;
+        if (tileId == 0UL || tileId > (ulong)geometry.Cells.Count)
+            return false;
+        var cell = geometry.GetCell(new StrategicCellId(tileId));
+        // Avoid projecting the antipode of the current local chart.
+        if (ConvertPoint(cell.Center).Dot(_surfaceNormal) <= 0.00001f)
+            return false;
+        var contour = cell.BoundaryVertexIds.Select(v =>
+        {
+            var point = Flatten(geometry.GetVertex(v).Position);
+            return new Vector2(point.X, point.Z);
+        }).ToArray();
+        var centroid = SitePolygonAreaCentroid(contour);
+        center = new Vector3(centroid.X, 0f, centroid.Y);
+        return true;
+    }
+
+    internal static Vector2 SitePolygonAreaCentroid(
+        IReadOnlyList<Vector2> polygon)
+    {
+        if (polygon.Count < 3)
+            throw new ArgumentException("A physical site needs a polygon.");
+        double areaTwice = 0, weightedX = 0, weightedY = 0;
+        for (int i = 0; i < polygon.Count; i++)
+        {
+            var a = polygon[i];
+            var b = polygon[(i + 1) % polygon.Count];
+            double cross = (double)a.X * b.Y - (double)b.X * a.Y;
+            areaTwice += cross;
+            weightedX += ((double)a.X + b.X) * cross;
+            weightedY += ((double)a.Y + b.Y) * cross;
+        }
+        if (Math.Abs(areaTwice) < 1e-12)
+            throw new InvalidOperationException(
+                "Canonical physical site has degenerate polygon area.");
+        return new Vector2((float)(weightedX / (3d * areaTwice)),
+            (float)(weightedY / (3d * areaTwice)));
     }
 
     /// <summary>
@@ -180,13 +251,7 @@ public partial class TacticalContextPreview
         {
             var label = place.Visual;
             var dot = place.Dot;
-            if (!_tileCenters.TryGetValue(place.TileId, out var center) ||
-                !_renderedPhysicalTileIds.Contains(place.TileId))
-            {
-                label.Visible = false;
-                dot.Visible = false;
-                continue;
-            }
+            var center = place.PolygonCentroid;
             var projected = _camera.UnprojectPosition(center);
             Vector2 screen = new(projected.X * factorX,
                 projected.Y * factorY);
@@ -196,7 +261,7 @@ public partial class TacticalContextPreview
 
             // The glyph itself is centered on the polygon anchor.
             // Only the name is shifted away from the marker.
-            dot.Position = screen - new Vector2(8f, 8f);
+            dot.Position = screen - new Vector2(5f, 5f);
             label.Position = screen + new Vector2(11f, -13f);
             dot.Visible = inMap;
             label.Visible = inMap;

@@ -1,0 +1,97 @@
+using Godot;
+using GlobalArena.Simulation.Foundation;
+using GlobalArena.World;
+
+namespace GlobalArena.Godot;
+
+/// <summary>
+/// R134 actual-scene regression for the failures reported in screenshots:
+/// a city dot was on a vertex rather than the polygon interior, and a second
+/// legitimate occupied tile never became a cartographic site marker.
+/// Independent of the historical worker-badge E2E.
+/// </summary>
+internal sealed class FoundationGodotCartographicSiteSmoke
+{
+    private readonly Main _main;
+    private readonly FoundationTacticalHumanAiTurnHost _host;
+    private readonly TacticalContextPreview _map;
+
+    internal FoundationGodotCartographicSiteSmoke(
+        Main main, FoundationTacticalHumanAiTurnHost host,
+        TacticalContextPreview map)
+    {
+        _main = main;
+        _host = host;
+        _map = map;
+    }
+
+    private static void Must(bool condition, string message)
+    {
+        if (!condition) throw new InvalidOperationException(message);
+    }
+
+    private async Task Frames()
+    {
+        for (int i = 0; i < 6; i++)
+            await _main.ToSignal(_main.GetTree(), SceneTree.SignalName.ProcessFrame);
+    }
+
+    internal async Task RunAsync()
+    {
+        try
+        {
+            await Frames();
+            Must(_map.IsCartographicSiteMode &&
+                 _host.Snapshot.Workers.HasAuthoritativeTacticalLocations,
+                "Cartographic site smoke requires QA mode and signed fine workers.");
+            var sites = _host.Snapshot.Workers.Workers
+                .Select(w => w.TacticalTileId!.Value.FineStrategicCellId.Value)
+                .Distinct().OrderBy(id => id).ToArray();
+            Must(sites.Length >= 2,
+                "Cartographic QA fixture must include at least two true sites.");
+            var beforeHash = _host.StateHash;
+            int visited = 0;
+            foreach (var tile in sites)
+            {
+                var incident = _host.Incidence.TileIncidences[
+                    checked((int)tile - 1)];
+                var focus = incident.IncidentCoarseCellIds
+                    .OrderBy(x => x.Value).First();
+                _map.Open(focus.Value);
+                await Frames();
+                Must(_map.LocalSiteMarkerTileIds.Contains(tile),
+                    $"Real occupied tile {tile} lost its site marker on focus {focus.Value}.");
+                Must(_map.VisibleLocalSiteMarkerCount > 0,
+                    $"No site visible after focusing occupied tile {tile}.");
+                var anchor = _map.LocalSiteAnchors
+                    .Single(x => x.TileId == tile);
+                Must(float.IsFinite(anchor.Centroid.X) &&
+                     float.IsFinite(anchor.Centroid.Z),
+                    "Site polygon centroid must be finite.");
+                var dot = _map.FindChild(
+                    "GANextR134SiteDot" + tile, true, false) as Panel;
+                Must(dot is not null && dot.Visible,
+                    $"Real city dot {tile} is not displayed on its focused polygon.");
+                // The Panel is a real 10x10 circular geometry, not a
+                // font glyph whose baseline drifts from the polygon center.
+                Must(dot!.Size.DistanceTo(new Vector2(10f, 10f)) < 0.01f,
+                    "Cartographic dot is not the centered 10px circular Panel.");
+                GD.Print($"GA_NEXT_R134_SITE_FOCUS tile={tile} " +
+                    $"focus={focus.Value} centroid={anchor.Centroid} " +
+                    "dot_panel=true present=true");
+                visited++;
+            }
+            Must(visited == sites.Length && _host.StateHash == beforeHash,
+                "Site-focus inspection must cover both localities without gameplay mutation.");
+            GD.Print($"GA_NEXT_R134_CARTOGRAPHIC_SITES_PASS " +
+                $"sites={visited} physical_ids=true centroid=polygon_area " +
+                "focus_rebuild=true no_hidden_locality=true no_economy_mutation=true");
+            _main.GetTree().Quit();
+        }
+        catch (Exception e)
+        {
+            GD.PushError($"GA_NEXT_R134_CARTOGRAPHIC_SITES_FAIL {e}");
+            _main.GetTree().Quit(1);
+        }
+    }
+}

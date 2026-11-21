@@ -1635,12 +1635,20 @@ public partial class Main : Control
                 "GA_NEXT_SETTLED_TRADE_VISUAL_SMOKE") == "1";
             bool fineFirstVisualSmoke = System.Environment.GetEnvironmentVariable(
                 "GA_NEXT_FINE_FIRST_VISUAL_SMOKE") == "1";
+            bool cartographicSiteSmoke = System.Environment.GetEnvironmentVariable(
+                "GA_NEXT_CARTOGRAPHIC_SITE_SMOKE") == "1";
             bool fineFirstInteractive = System.Environment.GetEnvironmentVariable(
                 "GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW") == "1";
             bool fineFirstLab = fineFirstVisualSmoke || fineFirstInteractive ||
                 _resolutionBootstrapSmoke;
             bool continuousNavigationSmoke = System.Environment.GetEnvironmentVariable(
                 "GA_NEXT_CONTINUOUS_NAVIGATION_SMOKE") == "1";
+            if (cartographicSiteSmoke &&
+                (!fineFirstInteractive ||
+                 System.Environment.GetEnvironmentVariable(
+                     "GA_NEXT_QA_LOCAL_SITE_MARKERS") != "1"))
+                throw new InvalidOperationException(
+                    "Cartographic QA smoke requires signed G18 and explicit site markers.");
             bool useExplicitEconomicLab = settledTradeQaSmoke ||
                 _interactiveEconomicPreviewActive || fineFirstLab;
             if ((useExplicitEconomicLab &&
@@ -1857,6 +1865,9 @@ public partial class Main : Control
                     this, _tacticalHost, _tacticalPreview!).RunAsync();
             else if (_resolutionBootstrapSmoke && _tacticalHost is not null)
                 _ = new FoundationGodotGoldbergResolutionBootstrapSmoke(
+                    this, _tacticalHost, _tacticalPreview!).RunAsync();
+            else if (cartographicSiteSmoke && _tacticalHost is not null)
+                _ = new FoundationGodotCartographicSiteSmoke(
                     this, _tacticalHost, _tacticalPreview!).RunAsync();
             else if (fineFirstVisualSmoke && _tacticalHost is not null)
                 _ = new FoundationGodotFineFirstTerrainSmoke(
