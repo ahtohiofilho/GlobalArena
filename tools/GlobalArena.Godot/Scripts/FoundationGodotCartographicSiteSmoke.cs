@@ -56,6 +56,7 @@ internal sealed class FoundationGodotCartographicSiteSmoke
                  initialDecision.Contains(" | from ") &&
                  initialDecision.Contains(" to "),
                  "R140 movement feasibility panel must describe the selected real worker.");
+            _main.ExerciseR143RealCrossingSelectionSmoke();
             var beforeHash = _host.StateHash;
             var human = new GlobalArena.Runtime.CivilizationId(1UL);
             var firstHome = _host.Snapshot.Workers.Workers
