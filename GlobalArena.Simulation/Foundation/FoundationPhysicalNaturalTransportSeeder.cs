@@ -90,20 +90,27 @@ public sealed class FoundationMonetaryConstructionPolicy
 /// Threshold is an elevation-field unit (never meters); the caller chooses
 /// experimental percentages explicitly. All calculations use integers.
 /// </summary>
-public sealed record FoundationExperimentalShallowFreightPolicy(
-    long DepthThresholdRaw,
-    uint PortOperatingSurchargePercent,
-    uint SeaOperatingSurchargePercent,
-    uint PortConstructionSurchargePercent)
+public sealed class FoundationExperimentalShallowFreightPolicy
 {
-    public FoundationExperimentalShallowFreightPolicy
+    public long DepthThresholdRaw { get; }
+    public uint PortOperatingSurchargePercent { get; }
+    public uint SeaOperatingSurchargePercent { get; }
+    public uint PortConstructionSurchargePercent { get; }
+
+    public FoundationExperimentalShallowFreightPolicy(
+        long depthThresholdRaw, uint portOperatingSurchargePercent,
+        uint seaOperatingSurchargePercent, uint portConstructionSurchargePercent)
     {
-        if (DepthThresholdRaw <= 0L ||
-            PortOperatingSurchargePercent > 100U ||
-            SeaOperatingSurchargePercent > 100U ||
-            PortConstructionSurchargePercent > 100U)
-            throw new ArgumentOutOfRangeException(nameof(DepthThresholdRaw),
+        if (depthThresholdRaw <= 0L ||
+            portOperatingSurchargePercent > 100U ||
+            seaOperatingSurchargePercent > 100U ||
+            portConstructionSurchargePercent > 100U)
+            throw new ArgumentOutOfRangeException(nameof(depthThresholdRaw),
                 "Research depth must be positive and surcharge percentages <= 100.");
+        DepthThresholdRaw = depthThresholdRaw;
+        PortOperatingSurchargePercent = portOperatingSurchargePercent;
+        SeaOperatingSurchargePercent = seaOperatingSurchargePercent;
+        PortConstructionSurchargePercent = portConstructionSurchargePercent;
     }
 
     public ulong Increment(ulong baseline, long depthRaw, uint percent)
