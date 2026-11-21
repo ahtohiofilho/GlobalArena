@@ -199,7 +199,9 @@ public partial class TacticalContextPreview : SubViewportContainer
     // R97: camera orientation is a presentation policy, not a property of G3.
     // LOCKED parallel-transports the previous viewing direction across charts.
     // NORTH follows geographic north at the actual spherical camera center.
-    private bool _geographicNorthUp = true;
+    // The new canonical north-up policy is gated to cartographic local sites.
+    // Legacy tactical worker/navigation modes retain their tested locked frame.
+    private bool _geographicNorthUp;
     private Vector3? _navigationOrientationAnchor;
     // R98: independent of strategic/tactical tile centers. The continuous
     // screen-center geography is computed from the inverse spherical chart
@@ -688,7 +690,11 @@ public partial class TacticalContextPreview : SubViewportContainer
             if (_activeFocus != 0) Open(_activeFocus);
         };
         primaryRow.AddChild(projectionButton);
-        var northModeButton = new Button { Text = "ORIENTATION: NORTH UP" };
+        var northModeButton = new Button
+        {
+            Text = _geographicNorthUp
+                ? "ORIENTATION: NORTH UP" : "ORIENTATION: LOCKED"
+        };
         northModeButton.Pressed += () =>
         {
             _geographicNorthUp = !_geographicNorthUp;
