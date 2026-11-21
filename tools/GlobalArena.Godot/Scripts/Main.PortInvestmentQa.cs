@@ -16,6 +16,7 @@ public partial class Main
     private FoundationFineFirstPhysicalGeography? _r123FineGeography;
     private OptionButton? _portQaSelector;
     private Button? _portQaInvest;
+    private Button? _portQaCancel;
     private Label? _portQaDetails;
     private Label? _portQaFeedback;
     private readonly System.Collections.Generic.List<PhysicalTacticalEdgeId>
@@ -78,6 +79,14 @@ public partial class Main
         };
         _portQaInvest.Pressed += QueuePortInvestmentQa;
         section.AddChild(_portQaInvest);
+        _portQaCancel = new Button
+        {
+            Name = "GANextR142CancelPortInvestment",
+            Text = "CANCEL PENDING PORT INVESTMENT",
+            Disabled = true
+        };
+        _portQaCancel.Pressed += CancelPortInvestmentQa;
+        section.AddChild(_portQaCancel);
         _portQaFeedback = new Label
         {
             Name = "GANextR123PortFeedback",
@@ -90,7 +99,7 @@ public partial class Main
     private void RefreshPortInvestmentQaControls()
     {
         if (_portQaSelector is null || _portQaInvest is null ||
-            _portQaDetails is null || _portQaFeedback is null ||
+            _portQaCancel is null || _portQaDetails is null || _portQaFeedback is null ||
             _tacticalHost is null || !_interactiveEconomicPreviewActive)
             return;
         var host = _tacticalHost;
@@ -155,6 +164,7 @@ public partial class Main
         if (_portQaChoices.Count == 0)
         {
             _portQaInvest.Disabled = true;
+            _portQaCancel.Disabled = !_portQaQueued.HasValue;
             _portQaDetails.Text = "No financeable navigable port exists.";
             return;
         }
@@ -190,6 +200,7 @@ public partial class Main
         bool ready = host.ReadyCivilizations.Contains(_humanCivilization);
         _portQaInvest.Disabled = !affordable || ownedByAnother ||
             ready || _portQaQueued.HasValue;
+        _portQaCancel.Disabled = ready || !_portQaQueued.HasValue;
         if (_portQaQueued.HasValue)
             _portQaFeedback.Text = "Investment queued in the real host; " +
                 "press E to commit and audit the ledger.";
@@ -241,6 +252,42 @@ public partial class Main
         }
         RefreshPortInvestmentQaControls();
     }
+
+    // R142: cancel a private monetary intention, never undo a committed
+    // turn or credit cash from a fictitious reverse transaction.
+    private void CancelPortInvestmentQa()
+    {
+        if (_tacticalHost is null || !_portQaQueued.HasValue ||
+            _portQaFeedback is null) return;
+        var edge = _portQaQueued.Value;
+        try
+        {
+            bool cancelled = _tacticalHost.CancelHumanMonetaryInvestment(
+                _humanCivilization, edge);
+            if (!cancelled)
+                throw new InvalidOperationException(
+                    "Authoritative host had no queued investment for this edge.");
+            _portQaQueued = null;
+            _portQaLastSettledAudit =
+                "Pending port investment cancelled before E; treasury and " +
+                "edge capital unchanged. You may choose another edge.";
+            GD.Print("GA_NEXT_R142_PORT_INVESTMENT_CANCELLED " +
+                $"edge={edge.FineStrategicEdgeId.Value} " +
+                "before_commit=true treasury_unchanged=true");
+        }
+        catch (System.Exception ex)
+        {
+            _portQaFeedback.Text = "Cancellation rejected: " + ex.Message;
+            GD.PrintErr("GA_NEXT_R142_PORT_INVESTMENT_CANCEL_REJECTED " + ex);
+            return;
+        }
+        RefreshPortInvestmentQaControls();
+    }
+
+    // Automated scene accessors expose presentation state, not mutable authority.
+    internal bool R142PortCancelAvailable =>
+        _portQaCancel is { Disabled: false };
+    internal bool R142PortInvestmentQueued => _portQaQueued.HasValue;
 
     private void AuditPortInvestmentQa(
         FoundationTacticalCollectiveReceipt receipt)
