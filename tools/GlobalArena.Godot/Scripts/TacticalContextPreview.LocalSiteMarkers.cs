@@ -17,13 +17,13 @@ namespace GlobalArena.Godot;
 public partial class TacticalContextPreview
 {
     private sealed record LocalSiteMarker(
-        ulong TileId, int WorkerCount, Label Visual);
+        ulong TileId, int WorkerCount, Label Dot, Label Visual);
 
     private readonly List<LocalSiteMarker> _localSiteMarkers = new();
     private bool _localSitesEnabled;
 
-    // Semantic map zoom: a distant view may intentionally show no sites.
-    // Detailed workforce always belongs in the administrative interface.
+    // Tactical sites remain visible at every supported zoom.
+    // Workforce belongs in the administration screen, not as map dots.
     public bool IsCartographicSiteMode => _localSitesEnabled;
 
     public int VisibleLocalSiteMarkerCount =>
@@ -40,11 +40,16 @@ public partial class TacticalContextPreview
             return false;
         foreach (var site in _localSiteMarkers)
         {
-            if (!site.Visual.Visible) continue;
+            if (!site.Dot.Visible) continue;
             var label = site.Visual;
-            var bounds = new Rect2(label.Position,
+            var textBounds = new Rect2(label.Position,
                 new Vector2(108f, 26f));
-            if (!bounds.HasPoint(localPixel)) continue;
+            // The dot is centered on the physical polygon; the name is
+            // separately offset and both select the same canonical tile.
+            var dotCenter = site.Dot.Position + new Vector2(8f, 8f);
+            if (!textBounds.HasPoint(localPixel) &&
+                dotCenter.DistanceSquaredTo(localPixel) > 100f)
+                continue;
             SelectPhysicalTile(site.TileId);
             var id = new PhysicalTacticalTileId(
                 _cachedPhysicalMap.Refinement.FineParameters,
@@ -76,7 +81,9 @@ public partial class TacticalContextPreview
         if (!_localSitesEnabled) return;
         foreach (var prior in _localSiteMarkers)
         {
+            RemoveChild(prior.Dot);
             RemoveChild(prior.Visual);
+            prior.Dot.QueueFree();
             prior.Visual.QueueFree();
         }
         _localSiteMarkers.Clear();
@@ -96,7 +103,7 @@ public partial class TacticalContextPreview
             {
                 Name = "GANextR127Site" + place.Key.ToString(
                     CultureInfo.InvariantCulture),
-                Text = "\u25cf Site " + place.Key.ToString("D4",
+                Text = "Site " + place.Key.ToString("D4",
                     CultureInfo.InvariantCulture),
                 MouseFilter = MouseFilterEnum.Ignore,
                 Visible = false
@@ -110,9 +117,25 @@ public partial class TacticalContextPreview
                 new Color("#16212c"));
             label.AddThemeConstantOverride("shadow_offset_x", 1);
             label.AddThemeConstantOverride("shadow_offset_y", 1);
+            var dot = new Label
+            {
+                Name = "GANextR133SiteDot" + place.Key.ToString(
+                    CultureInfo.InvariantCulture),
+                Text = "●",
+                CustomMinimumSize = new Vector2(16f, 16f),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                MouseFilter = MouseFilterEnum.Ignore,
+                Visible = false
+            };
+            dot.AddThemeFontSizeOverride("font_size", 13);
+            dot.AddThemeColorOverride("font_color", new Color("#f6e6c4"));
+            dot.AddThemeColorOverride("font_shadow_color",
+                new Color("#16212c"));
+            AddChild(dot);
             AddChild(label);
             _localSiteMarkers.Add(new LocalSiteMarker(
-                place.Key, population, label));
+                place.Key, population, dot, label));
         }
         PositionLocalSiteMarkers();
         GD.Print($"GA_NEXT_R127_SITE_CENSUS sites={occupied.Length} " +
@@ -121,19 +144,12 @@ public partial class TacticalContextPreview
     }
 
     /// <summary>
-    /// R128 experimental cartographic decluttering. No fixed number of
-    /// workers is required to appear on the map. Very distant views can
-    /// suppress every locality; intermediate views reveal the highest-
-    /// ranked sites, then all at close zoom. Never mutates worker state.
+    /// R133 tactical presentation contract: all in-view eligible localities
+    /// remain visible at every supported tactical zoom. The strategic
+    /// atlas can implement its own decluttering later if evidence warrants.
     /// </summary>
-    internal static int SiteLabelBudget(float zoomRatio, int siteCount)
-    {
-        if (siteCount <= 0 || zoomRatio >= 0.96f) return 0;
-        if (zoomRatio >= 0.76f) return 1;
-        if (zoomRatio >= 0.56f)
-            return Math.Max(1, (int)Math.Ceiling(siteCount * 0.4));
-        return siteCount;
-    }
+    internal static int SiteLabelBudget(float zoomRatio, int siteCount) =>
+        Math.Max(0, siteCount);
 
     // The orthographic view pans/rotates/zooms independently from the
     // marker labels. Reproject only the few occupied, rendered sites;
@@ -157,48 +173,33 @@ public partial class TacticalContextPreview
         if (baseSize.X <= 0 || baseSize.Y <= 0) return;
         float factorX = Size.X / baseSize.X;
         float factorY = Size.Y / baseSize.Y;
-        // A wide map should not render every settlement label. Relative
-        // thresholds use camera framing, not absolute kilometers or G18 IDs.
-        float zoomRatio = _camera.Size / Math.Max(0.001f,
-            _coverViewport ? _coverSize : _originalSize);
-        var ranking = _localSiteMarkers
-            .OrderByDescending(x => x.WorkerCount)
-            .ThenBy(x => x.TileId).ToArray();
-        // A symbolic cartographic priority, NOT a city category or a
-        // gameplay population rule. The fixture has few real workers:
-        // fixed absolute population thresholds would hide all its labels.
-        int budget = SiteLabelBudget(zoomRatio, ranking.Length);
-        var occupiedScreenRects = new List<Rect2>();
-        for (int index = 0; index < ranking.Length; index++)
+        // Render every eligible physical locality within the tactical
+        // viewport. No zoom threshold, population threshold, top-N budget,
+        // or collision suppression: those previously hid real locations.
+        foreach (var place in _localSiteMarkers)
         {
-            var place = ranking[index];
             var label = place.Visual;
+            var dot = place.Dot;
             if (!_tileCenters.TryGetValue(place.TileId, out var center) ||
                 !_renderedPhysicalTileIds.Contains(place.TileId))
             {
                 label.Visible = false;
+                dot.Visible = false;
                 continue;
             }
             var projected = _camera.UnprojectPosition(center);
             Vector2 screen = new(projected.X * factorX,
                 projected.Y * factorY);
-            // Place labels next to the canonical site anchor, not any worker.
-            label.Position = screen + new Vector2(12f, -18f);
-            bool candidate = index < budget &&
-                !_camera.IsPositionBehind(center) &&
-                screen.X >= 6f && screen.Y >= 18f &&
-                screen.X < Size.X - 100f && screen.Y < Size.Y - 24f;
-            if (!candidate)
-            {
-                label.Visible = false;
-                continue;
-            }
-            // Stable, high-importance-first collision avoidance.
-            var rect = new Rect2(label.Position,
-                new Vector2(108f, 26f));
-            label.Visible = !occupiedScreenRects.Any(other =>
-                other.Intersects(rect));
-            if (label.Visible) occupiedScreenRects.Add(rect);
+            bool inMap = !_camera.IsPositionBehind(center) &&
+                screen.X >= 0f && screen.Y >= 0f &&
+                screen.X < Size.X && screen.Y < Size.Y;
+
+            // The glyph itself is centered on the polygon anchor.
+            // Only the name is shifted away from the marker.
+            dot.Position = screen - new Vector2(8f, 8f);
+            label.Position = screen + new Vector2(11f, -13f);
+            dot.Visible = inMap;
+            label.Visible = inMap;
         }
     }
 }
