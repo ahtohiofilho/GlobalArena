@@ -93,6 +93,89 @@ public sealed class FoundationFineFirstPhysicalGeographyTests
         Assert.Equal(before, host.StateHash);
     }
 
+    [Theory]
+    [InlineData(20261012UL)]
+    [InlineData(20261013UL)]
+    public void LandAndPortInfrastructureShareOneInvestmentLawWithoutTransferFee(
+        ulong seed)
+    {
+        // R125: crossing class determines c0/B, NOT a different
+        // capital response formula, ownership rule or special transshipment
+        // toll. The maritime overlay is opt-in and fine-first only.
+        var host = Host(seed);
+        var physical = host.Session.GeneratedWorld;
+        var incidence = host.Incidence;
+        var fine = FoundationFineFirstPhysicalGeography.Generate(
+            physical, incidence);
+        var depths = fine.FineElevationRaw
+            .Where(h => h <= fine.SeaLevelRaw)
+            .Select(h => fine.SeaLevelRaw - h)
+            .OrderBy(x => x).ToArray();
+        var research = new FoundationExperimentalShallowFreightPolicy(
+            depths[(depths.Length - 1) / 4], 10U, 3U, 20U);
+        var monetary = new FoundationMonetaryConstructionPolicy(
+            2_000_000UL, 4_000_000UL, 6_000_000UL, 1_000_000UL);
+        var seeded = FoundationPhysicalNaturalTransportSeeder.PreviewFineFirst(
+            physical, incidence, fine, Policy(), monetary, research);
+        var rows = seeded.Transport.Edges.ToDictionary(x =>
+            x.Edge.FineStrategicEdgeId);
+        int ground = 0, port = 0, openSea = 0;
+        foreach (var physicalEdge in incidence.FineTopology.Edges)
+        {
+            int a = checked((int)physicalEdge.IncidentCellIds[0].Value - 1);
+            int b = checked((int)physicalEdge.IncidentCellIds[1].Value - 1);
+            var crossing = fine.CrossingAtIndices(a, b);
+            var edge = rows[physicalEdge.Id];
+            ulong natural = edge.FreePhysicalCostMicroPerWholeCargoUnit;
+            ulong bMoney = edge.NaturalConstructionCostMoneyMicro!.Value;
+            Assert.True(natural > 0UL && bMoney > 0UL);
+            Assert.Equal(natural,
+                FoundationPhysicalAuthoritativeTransportProjector
+                    .EffectiveUnitFreightCost(edge));
+            Assert.Equal(0UL, edge.ExternalTariffMicroPerWholeCargoUnit);
+            if (crossing == FoundationFineTransportCrossingKind.OpenSea)
+            {
+                openSea++;
+                Assert.Throws<InvalidOperationException>(() =>
+                    FoundationPhysicalAuthoritativeTransportProjector
+                        .EffectiveUnitFreightCost(edge with
+                        {
+                            CommittedInvestmentMoneyMicro = bMoney
+                        }));
+                continue;
+            }
+            if (crossing == FoundationFineTransportCrossingKind.BlockedIceSeaBoundary)
+                continue; // The test does not make ice passages navigable.
+            if (crossing == FoundationFineTransportCrossingKind.Ground)
+                ground++;
+            else if (crossing == FoundationFineTransportCrossingKind.Port)
+                port++;
+            else
+                throw new InvalidOperationException("Unknown crossing class.");
+
+            // Exactly the SAME universal c(I) for ground and port.
+            // No separate fee for modal changes and no extra port multiplier.
+            var invested = edge with
+            {
+                CommittedInvestmentMoneyMicro = bMoney
+            };
+            var actual = FoundationPhysicalAuthoritativeTransportProjector
+                .EffectiveUnitFreightCost(invested);
+            var squared = (System.Numerics.BigInteger)natural * natural;
+            ulong expected = checked((ulong)
+                FoundationPhysicalAuthoritativeTransportProjector
+                    .IntegerSquareRoot(squared / 2));
+            Assert.Equal(Math.Max(1UL, expected), actual);
+            Assert.InRange(actual, 1UL, natural);
+            Assert.Equal(edge.FreePhysicalCostMicroPerWholeCargoUnit,
+                invested.FreePhysicalCostMicroPerWholeCargoUnit);
+            Assert.Equal(bMoney,
+                invested.NaturalConstructionCostMoneyMicro);
+            Assert.Equal(0UL, invested.ExternalTariffMicroPerWholeCargoUnit);
+        }
+        Assert.True(ground > 0 && port > 0 && openSea > 0);
+    }
+
     [Fact]
     public void ShallowPortQaOverlayChangesOnlyNavigableFineFirstSeaAndPortEdges()
     {
