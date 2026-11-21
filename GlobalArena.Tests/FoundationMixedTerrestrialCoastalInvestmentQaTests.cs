@@ -144,8 +144,16 @@ public sealed class FoundationMixedTerrestrialCoastalInvestmentQaTests
                 .CargoMicroAtReferenceLoad;
             ulong kCoast = scales.Single(x => x.Edge == coastEdge)
                 .CargoMicroAtReferenceLoad;
-            Assert.Equal(terrestrial, kLand > rows[pair.Land.Id].CargoMicroAtReferenceLoad);
-            Assert.Equal(coastal, kCoast > rows[pair.Coast.Id].CargoMicroAtReferenceLoad);
+            Assert.Equal(rows[pair.Land.Id].CargoMicroAtReferenceLoad, kLand);
+            Assert.Equal(rows[pair.Coast.Id].CargoMicroAtReferenceLoad, kCoast);
+            ulong landRate = roads.Single(x => x.Edge == landEdge)
+                .PhysicalCostMicroPerWholeCargoUnit;
+            ulong coastRate = roads.Single(x => x.Edge == coastEdge)
+                .PhysicalCostMicroPerWholeCargoUnit;
+            Assert.Equal(terrestrial,
+                landRate < rows[pair.Land.Id].FreePhysicalCostMicroPerWholeCargoUnit);
+            Assert.Equal(coastal,
+                coastRate < rows[pair.Coast.Id].FreePhysicalCostMicroPerWholeCargoUnit);
             Assert.All(roads, road => Assert.True(
                 road.PhysicalCostMicroPerWholeCargoUnit > 0UL));
             Assert.Equal(ulong.MaxValue,
