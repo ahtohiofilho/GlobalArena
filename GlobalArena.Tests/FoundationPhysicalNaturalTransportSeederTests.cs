@@ -222,6 +222,16 @@ public sealed class FoundationPhysicalNaturalTransportSeederTests
                 maxProducerPasses: 64);
         Assert.False(candidate.RepricedWithinCycle);
         Assert.False(candidate.NextCycleQuotes.HasSettledProvenance);
+        Assert.All(candidate.NextCycleQuotes.Edges, q =>
+            Assert.Equal(0UL,
+                q.QuotedCongestionSurchargeMicroPerWholeCargoUnit));
+        Assert.All(candidate.EdgeReadings, q =>
+        {
+            Assert.Equal(q.FreePhysicalCostMicroPerWholeCargoUnit,
+                q.CurrentPhysicalQuoteMicroPerWholeCargoUnit);
+            Assert.Equal(q.FreePhysicalCostMicroPerWholeCargoUnit,
+                q.TargetNextPhysicalQuoteMicroPerWholeCargoUnit);
+        });
         Assert.Equal(0UL, candidate.Distribution.AllocationAudit.Freight.UsedEdges
             .Aggregate(0UL, (sum, edge) => checked(sum +
                 (edge.OwnershipKind ==

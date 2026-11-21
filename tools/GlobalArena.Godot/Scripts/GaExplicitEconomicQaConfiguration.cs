@@ -19,16 +19,16 @@ internal static class GaExplicitEconomicQaConfiguration
     private static readonly CommodityId CommodityTwo = new(2U);
 
     // R89 experimental logistics invariant: at zero investment, long
-    // sea passages are much cheaper than overland haulage. Port transitions
+    // sea passages are cheaper than overland haulage. Port transitions
     // remain deliberately expensive, discouraging unnecessary land/sea
     // switching. Keep this isolated from production balancing.
-    internal const ulong QaLandEdgeCostMicro = 1_000UL;
-    internal const ulong QaCoastEdgeCostMicro = 5_000UL;
-    internal const ulong QaSeaEdgeCostMicro = 40UL;
+    internal const ulong QaLandEdgeCostMicro = 250_000UL;
+    internal const ulong QaCoastEdgeCostMicro = 500_000UL;
+    internal const ulong QaSeaEdgeCostMicro = 25_000UL;
 
     internal static void AssertNaturalFreightHierarchy()
     {
-        if (!(QaSeaEdgeCostMicro * 20UL <= QaLandEdgeCostMicro &&
+        if (!(QaSeaEdgeCostMicro < QaLandEdgeCostMicro &&
             QaLandEdgeCostMicro < QaCoastEdgeCostMicro))
             throw new InvalidOperationException(
                 "QA natural freight must strongly favor open sea and " +

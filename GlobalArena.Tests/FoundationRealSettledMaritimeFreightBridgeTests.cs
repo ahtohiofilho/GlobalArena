@@ -335,8 +335,8 @@ public sealed class FoundationRealSettledMaritimeFreightBridgeTests
             Assert.NotEmpty(snapshot.Treasury.LastSettledFreightQuotes);
 
             // Capture what the real settled economy ACTUALLY exercised.
-            // Zero values remain a documented coverage gap, not a PASS
-            // for strictly positive tariffs or lagged congestion.
+            // Third-party tariffs remain auditable; lagged congestion is
+            // prohibited by the fixed-unit economic contract.
             var projected = FoundationPhysicalAuthoritativeTransportProjector
                 .FromWorld(snapshot, incidence);
             var projectedByEdge = projected.Roads.ToDictionary(e => e.Edge);
@@ -353,8 +353,12 @@ public sealed class FoundationRealSettledMaritimeFreightBridgeTests
                     row.PhysicalCostMicroPerWholeCargoUnit ==
                         previous.FreePhysicalCostMicroPerWholeCargoUnit &&
                     previous.QuotedCongestionSurchargeMicroPerWholeCargoUnit > 0UL);
-            Assert.True(validPositiveLaggedSurcharges > 0,
-                "R74 requires genuinely positive prior-settlement congestion.");
+            // R112 contract: real settled cycles MUST NOT generate
+            // endogenous congestion, even when the corridor is active.
+            Assert.Equal(0, validPositiveLaggedSurcharges);
+            Assert.All(snapshot.Treasury.LastSettledFreightQuotes,
+                quote => Assert.Equal(0UL,
+                    quote.QuotedCongestionSurchargeMicroPerWholeCargoUnit));
             if (initialTariff)
             {
                 Assert.True(positiveThirdPartyTariffs > 0,

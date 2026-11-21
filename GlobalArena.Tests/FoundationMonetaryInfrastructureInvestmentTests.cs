@@ -155,10 +155,10 @@ public sealed class FoundationMonetaryInfrastructureInvestmentTests
         BigInteger oldCash = before.Treasury.Get(Red).CashScaled;
         var original = Edge(s);
         var initialProjected = FoundationPhysicalAuthoritativeTransportProjector
-            .FromWorld(before, s.Host.Incidence).Scales
+            .FromWorld(before, s.Host.Incidence).Roads
             .Single(row => row.Edge == s.RemoteEdge)
-            .CargoMicroAtReferenceLoad;
-        Assert.Equal(original.CargoMicroAtReferenceLoad, initialProjected);
+            .PhysicalCostMicroPerWholeCargoUnit;
+        Assert.Equal(original.FreePhysicalCostMicroPerWholeCargoUnit, initialProjected);
         const ulong spend = 175_000UL;
 
         s.Host.QueueHumanMonetaryInvestment(Red, s.RemoteEdge, spend);
@@ -187,11 +187,11 @@ public sealed class FoundationMonetaryInfrastructureInvestmentTests
         Assert.Equal(original.CargoMicroAtReferenceLoad,
             Edge(s).CargoMicroAtReferenceLoad); // immutable natural baseline
         ulong effective = FoundationPhysicalAuthoritativeTransportProjector
-            .FromWorld(s.Host.Snapshot, s.Host.Incidence).Scales
+            .FromWorld(s.Host.Snapshot, s.Host.Incidence).Roads
             .Single(row => row.Edge == s.RemoteEdge)
-            .CargoMicroAtReferenceLoad;
-        Assert.True(effective > initialProjected,
-            "Capital already debited from the real treasury must improve throughput.");
+            .PhysicalCostMicroPerWholeCargoUnit;
+        Assert.True(effective < initialProjected,
+            "Settled capital must reduce the unit operating cost.");
         Assert.Equal(PhysicalTransportOwnershipKind.Owned,
             Edge(s).OwnershipKind);
         Assert.Equal(Red, Edge(s).InfrastructureOwner);
@@ -216,7 +216,7 @@ public sealed class FoundationMonetaryInfrastructureInvestmentTests
     }
 
     [Fact]
-    public void RealCashFundingCanBeSpreadAcrossTurnsWithoutChangingFreight()
+    public void RealCashFundingCanBeSpreadAcrossTurnsToReduceUnitFreight()
     {
         var s = Create();
         ulong cost = Edge(s).NaturalConstructionCostMoneyMicro!.Value;
@@ -234,10 +234,9 @@ public sealed class FoundationMonetaryInfrastructureInvestmentTests
         }
         Assert.Equal(cost, Edge(s).CommittedInvestmentMoneyMicro);
         var funded = FoundationPhysicalAuthoritativeTransportProjector
-            .FromWorld(s.Host.Snapshot, s.Host.Incidence).Scales
-            .Single(row => row.Edge == s.RemoteEdge).CargoMicroAtReferenceLoad;
-        Assert.Equal(Edge(s).CargoMicroAtReferenceLoad +
-            Edge(s).CargoMicroAtReferenceLoad / 2UL, funded);
+            .FromWorld(s.Host.Snapshot, s.Host.Incidence).Roads
+            .Single(row => row.Edge == s.RemoteEdge).PhysicalCostMicroPerWholeCargoUnit;
+        Assert.True(funded < Edge(s).FreePhysicalCostMicroPerWholeCargoUnit);
         Assert.Equal(initial - GlobalArenaMoneyScale.FromMoneyMicro(cost),
             s.Host.Snapshot.Treasury.Get(Red).CashScaled);
         Assert.Equal(GlobalArenaMoneyScale.FromMoneyMicro(cost),
@@ -257,9 +256,9 @@ public sealed class FoundationMonetaryInfrastructureInvestmentTests
         Assert.Equal(checked(cost * 2UL),
             Edge(s).CommittedInvestmentMoneyMicro);
         ulong afterUpgrade = FoundationPhysicalAuthoritativeTransportProjector
-            .FromWorld(s.Host.Snapshot, s.Host.Incidence).Scales
-            .Single(row => row.Edge == s.RemoteEdge).CargoMicroAtReferenceLoad;
-        Assert.True(afterUpgrade > funded);
+            .FromWorld(s.Host.Snapshot, s.Host.Incidence).Roads
+            .Single(row => row.Edge == s.RemoteEdge).PhysicalCostMicroPerWholeCargoUnit;
+        Assert.True(afterUpgrade < funded);
         Assert.Equal(initial - GlobalArenaMoneyScale.FromMoneyMicro(cost * 2UL),
             s.Host.Snapshot.Treasury.Get(Red).CashScaled);
         Assert.Equal(PhysicalTransportOwnershipKind.Owned,
@@ -422,9 +421,9 @@ public sealed class FoundationMonetaryInfrastructureInvestmentTests
         Assert.Equal(coast.CargoMicroAtReferenceLoad,
             built.CargoMicroAtReferenceLoad);
         var effective = FoundationPhysicalAuthoritativeTransportProjector
-            .FromWorld(after, s.Host.Incidence).Scales
-            .Single(x => x.Edge == coast.Edge).CargoMicroAtReferenceLoad;
-        Assert.True(effective > coast.CargoMicroAtReferenceLoad);
+            .FromWorld(after, s.Host.Incidence).Roads
+            .Single(x => x.Edge == coast.Edge).PhysicalCostMicroPerWholeCargoUnit;
+        Assert.True(effective < coast.FreePhysicalCostMicroPerWholeCargoUnit);
         Assert.Equal(PhysicalTransportOwnershipKind.Owned,
             built.OwnershipKind);
         Assert.Equal(Red, built.InfrastructureOwner);
