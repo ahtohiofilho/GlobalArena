@@ -122,6 +122,7 @@ public partial class Main : Control
         AttachRuntimeState(_canonicalSession.Snapshot);
     }
     private ulong? _bridgeSelection;
+    private PhysicalTacticalTileId? _initialTacticalHomeAnchor;
 
     private void OnCanonicalTerritorySelectionChanged(ulong? selectedId)
     {
@@ -969,7 +970,8 @@ public partial class Main : Control
             _openTacticalContext is null) return;
         try
         {
-            _tacticalPreview.Open(_bridgeSelection.Value);
+            _tacticalPreview.Open(_bridgeSelection.Value,
+                _initialTacticalHomeAnchor);
             _strategicGlobe.Visible = false;
             _tacticalPreview.Visible = true;
             if (_strategicHudPanel is not null) _strategicHudPanel.Visible = false;
@@ -1765,7 +1767,9 @@ public partial class Main : Control
             }
             else _bridgeSelection = first.CellId.Value;
             _openTacticalContext!.Disabled = false;
+            _initialTacticalHomeAnchor = openingHome;
             OpenTacticalContext();
+            _initialTacticalHomeAnchor = null;
             if (openingHome.HasValue)
                 _tacticalPreview!.FocusInitialPhysicalCity(openingHome.Value);
             CreateTacticalWorkspaceWindows(globe, rightPanel, header, content);
