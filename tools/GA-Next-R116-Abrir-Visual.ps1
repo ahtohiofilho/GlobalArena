@@ -38,7 +38,7 @@ function Locate-Godot() {
     $archive = Join-Path $cache 'runtime.zip'
     $url = 'https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_mono_win64.zip'
     Write-Host '[GA-NEXT VISUAL] Obtaining official Godot Mono 4.7.2...'
-    Invoke-WebRequest -Uri $url -OutFile $archive
+    Invoke-WebRequest -Uri $url -OutFile $archive -UseBasicParsing
     Expand-Archive -LiteralPath $archive -DestinationPath $cache -Force
     $found = Get-ChildItem -LiteralPath $cache -Recurse -File |
         Where-Object { $_.Name -eq 'Godot_v4.7.2-stable_mono_win64.exe' } |
