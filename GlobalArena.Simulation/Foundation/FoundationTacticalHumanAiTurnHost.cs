@@ -478,6 +478,17 @@ public sealed class FoundationTacticalHumanAiTurnHost
     }
 
     /// <summary>
+    /// Read-only pending monetary intentions for the requesting human civilization.
+    /// No treasury debit or physical construction occurs until the all-ready turn.
+    /// </summary>
+    public IReadOnlyList<FoundationMonetaryInfrastructureCommand>
+        GetHumanMonetaryInvestments(CivilizationId requester)
+    {
+        RequireHuman(requester);
+        return Array.AsReadOnly(_investmentPlans[requester].Values.ToArray());
+    }
+
+    /// <summary>
     /// An edge investment is an order of the CIVILIZATION, not a
     /// construction order of a physical worker. It does not create any
     /// resource/stock/material consumption. Money remains unchanged
