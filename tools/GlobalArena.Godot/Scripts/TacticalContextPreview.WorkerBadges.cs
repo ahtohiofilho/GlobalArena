@@ -151,6 +151,7 @@ public partial class TacticalContextPreview
         _displayWorkers = census.Workers.ToArray();
         _selectedWorkerGlyphId = selectedWorkerId;
         RebuildWorkerMarkers();
+        UpdateLocalSiteCensus();
         RefreshWorkerInspectorFromCensus();
         RefreshTileClickMenuAfterSnapshot();
     }
