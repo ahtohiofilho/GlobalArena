@@ -1087,6 +1087,43 @@ public partial class TacticalContextPreview : SubViewportContainer
         _camera.LookAt(_cameraTarget, planarNorth.Normalized());
     }
 
+    // R139: the globe and tactical viewer exchange exact spherical positions,
+    // not rounded tile centers. Fine identity determines resident coverage only.
+    public Vector3 CenterGeography => _exactViewPointOnSphere;
+
+    public void CenterOnGeography(Vector3 spherical)
+    {
+        if (_camera is null || _cachedFineWorld is null ||
+            _cachedPhysicalMap is null || _cachedCoarseGeometry is null ||
+            !spherical.IsFinite() || spherical.LengthSquared() < 0.5f)
+            throw new InvalidOperationException("Invalid tactical geographic focus.");
+        spherical = spherical.Normalized();
+        var fine = FindFineTileAt(spherical);
+        var owners = _cachedPhysicalMap.TileIncidences[
+            checked((int)fine.Value - 1)].IncidentCoarseCellIds;
+        var coarse = owners.OrderByDescending(id =>
+            ConvertPoint(_cachedCoarseGeometry.GetCell(id).Center).Dot(spherical)).First();
+        var zoom = _camera.Size;
+        var physical = new PhysicalTacticalTileId(
+            _cachedPhysicalMap.Refinement.FineParameters, fine);
+        Open(coarse.Value, physical);
+        _camera.Size = zoom;
+        _cameraTarget = FlattenUnitVector(spherical, TacticalSurfacePlaneY);
+        UpdateCameraOrientation();
+        _focusedFineTile = fine;
+        _cartographicChartAnchor = fine;
+        GD.Print($"GA_NEXT_R139_TACTICAL_FOCUS fine={fine.Value} " +
+            $"coarse={coarse.Value} exact={CenterGeography} no_simulation_mutation=true");
+    }
+
+    private void CenterOnRightClickedGeography(Vector2 pixel)
+    {
+        if (!_localSitesEnabled ||
+            !TryProjectCursorOnTacticalPlane(pixel, out var hit) ||
+            !TryUnprojectOnSphere(hit, out var location)) return;
+        CenterOnGeography(location);
+    }
+
     // R135: the initial home is a REAL authoritative physical tile, not
     // the center of the surrounding strategic territory. Camera state only.
     // Call exactly once at initial tactical entry, never during later
@@ -2066,6 +2103,12 @@ public partial class TacticalContextPreview : SubViewportContainer
                     button.ButtonIndex == MouseButton.WheelDown ||
                     button.ButtonIndex == MouseButton.Left))
                 HoverWorkerBadge(null);
+            if (button.ButtonIndex == MouseButton.Right && button.Pressed && _localSitesEnabled)
+            {
+                CenterOnRightClickedGeography(button.Position);
+                AcceptEvent();
+                return;
+            }
             if (button.ButtonIndex == MouseButton.WheelUp && button.Pressed)
             {
                 _camera.Size = Mathf.Clamp(_camera.Size * 0.88f,

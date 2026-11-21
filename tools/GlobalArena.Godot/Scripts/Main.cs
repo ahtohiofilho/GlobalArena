@@ -1201,12 +1201,48 @@ public partial class Main : Control
     {
         if (_planetWindow is null || _strategicGlobe is null) return;
         var open = !_planetWindow.Visible;
-        // A secondary atlas does not hide the dock or resize its viewport.
-        if (open) _atlasFloatingWindow?.ClampIntoParent();
+        // R139: M is a two-way exact geographic handoff, not a camera reset.
+        // Preserve each viewer's independent zoom and never touch simulation.
+        if (open)
+        {
+            _atlasFloatingWindow?.ClampIntoParent();
+            if (_tacticalPreview is not null && _tacticalPreview.IsCartographicSiteMode)
+                _strategicGlobe.CenterOnGeography(_tacticalPreview.CenterGeography);
+        }
+        else if (_tacticalPreview is not null && _tacticalPreview.IsCartographicSiteMode)
+            _tacticalPreview.CenterOnGeography(_strategicGlobe.CenterGeography);
         _planetWindow.Visible = open;
         _strategicGlobe.Visible = open;
         GD.Print($"GA_NEXT_PLANET_WINDOW visible={open.ToString().ToLowerInvariant()} " +
             "navigation_only=true worker_move=false");
+    }
+
+    // R139 regression: exercise the SAME M-window handoff used by the player.
+    // No authoritative turn, selection or workforce mutation is permitted.
+    internal void ExerciseGeographicHandoffSmoke()
+    {
+        if (_planetWindow is null || _strategicGlobe is null ||
+            _tacticalPreview is null || !_tacticalPreview.IsCartographicSiteMode)
+            throw new System.InvalidOperationException("Cartographic handoff scene unavailable.");
+        if (_planetWindow.Visible) TogglePlanetWindow();
+        var before = _tacticalPreview.CenterGeography;
+        var tacticalZoom = _tacticalPreview.TacticalCameraState.Zoom;
+        TogglePlanetWindow();
+        if (!_planetWindow.Visible ||
+            before.Dot(_strategicGlobe.CenterGeography) < 0.99999f)
+            throw new System.InvalidOperationException("M did not open globe at tactical geography.");
+        // Simulate planetary navigation to an arbitrary non-cell-center position.
+        var target = (before + new Vector3(0.03f, 0.045f, -0.017f)).Normalized();
+        _strategicGlobe.CenterOnGeography(target);
+        var globeCenter = _strategicGlobe.CenterGeography;
+        TogglePlanetWindow();
+        if (_planetWindow.Visible ||
+            globeCenter.Dot(_tacticalPreview.CenterGeography) < 0.99999f ||
+            Math.Abs(_tacticalPreview.TacticalCameraState.Zoom - tacticalZoom) > 0.00001f)
+            throw new System.InvalidOperationException("M return lost geography or tactical zoom.");
+        GD.Print("GA_NEXT_R139_M_ROUNDTRIP_PASS " +
+            "tactical_to_globe=true globe_to_tactical=true exact_geography=true " +
+            "tactical_zoom_preserved=true simulation_unchanged=true");
     }
 
     private void SetOperationalDockVisible(bool visible)

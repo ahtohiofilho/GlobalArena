@@ -115,6 +115,7 @@ internal sealed class FoundationGodotCartographicSiteSmoke
                     "dot_panel=true present=true");
                 visited++;
             }
+            _main.ExerciseGeographicHandoffSmoke();
             Must(visited == sites.Length && _host.StateHash == beforeHash,
                 "Site-focus inspection must cover both localities without gameplay mutation.");
             GD.Print($"GA_NEXT_R134_CARTOGRAPHIC_SITES_PASS " +
