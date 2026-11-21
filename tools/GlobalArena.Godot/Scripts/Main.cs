@@ -1319,6 +1319,7 @@ public partial class Main : Control
         mapRegion.AddChild(_tacticalPreview);
         _tacticalPreview.PhysicalTileInspected += OnPhysicalTileInspected;
         _tacticalPreview.CanonicalPhysicalTileClicked += OnTacticalPhysicalTileClicked;
+        _tacticalPreview.CartographicLocalSiteSelected += OnCartographicLocalSiteSelected;
         _tacticalPreview.CanonicalWorkerBadgeClicked += OnCanonicalWorkerBadgeClicked;
         _tacticalPreview.WorkerBoardOccupationRequested += OnWorkerBoardOccupationRequested;
         _tacticalPreview.WorkerBoardCancelSelectedOrderRequested +=
@@ -1364,6 +1365,7 @@ public partial class Main : Control
         _tacticalBridgeStatus = new Label { Text = "Select a canonical territory to enable tactical context" };
         _tacticalBridgeStatus.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         rightLayout.AddChild(_tacticalBridgeStatus);
+        CreateLocalSiteSelectionQaControls(rightLayout);
         // MVP inspection in the existing right column; the tactical viewport stays unchanged.
         var inspector = new VBoxContainer { Visible = false };
         inspector.AddThemeConstantOverride("separation", 5);
