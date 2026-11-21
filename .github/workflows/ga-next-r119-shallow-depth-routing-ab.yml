@@ -1,0 +1,35 @@
+name: GA-Next R119 Shallow-Depth Routing AB
+
+on:
+  pull_request:
+    paths:
+      - "GlobalArena.Console/**"
+      - "GlobalArena.World/**"
+      - "GlobalArena.Simulation/**"
+      - ".github/workflows/ga-next-r119-shallow-depth-routing-ab.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  routing-ab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout research candidate
+        uses: actions/checkout@v7
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+      - name: Build research executable
+        run: dotnet build GlobalArena.Console/GlobalArena.Console.csproj --configuration Release
+      - name: Run deterministic fine-first routing A/B
+        run: dotnet run --no-build --configuration Release --project GlobalArena.Console/GlobalArena.Console.csproj -- --foundation-shallow-depth-routing-ab | tee r119-shallow-routing-ab.txt
+      - name: Publish comparison report
+        uses: actions/upload-artifact@v7
+        with:
+          name: r119-shallow-routing-ab
+          path: r119-shallow-routing-ab.txt
+          if-no-files-found: error
