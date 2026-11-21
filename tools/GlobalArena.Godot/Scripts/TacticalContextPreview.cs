@@ -235,6 +235,9 @@ public partial class TacticalContextPreview : SubViewportContainer
     // beyond a small screen-space distance after the switch.
     private ulong _previousHandoffFocus;
     private float _dragPixelsAfterHandoff;
+    // Exposed to in-scene QA only: an intentional viewport-coverage clamp
+    // cannot also keep moving terrain beneath the cursor.
+    private bool _lastPanClampedByCoverage;
     private const float ReverseHandoffDragPixels = 48f;
     private ulong _continuousNavigationHandoffs;
     public ulong ActiveStrategicFocus => _activeFocus;
@@ -1684,6 +1687,8 @@ public partial class TacticalContextPreview : SubViewportContainer
         {
             ButtonIndex = MouseButton.Left, Pressed = true, Position = pixel
         });
+        int successfulMoves = 0;
+        int blockedMoves = 0;
         try
         {
             for (int i = 0; i < 4; i++)
@@ -1699,6 +1704,16 @@ public partial class TacticalContextPreview : SubViewportContainer
                     throw new InvalidOperationException(
                         "NORTH UP drag produced an invalid spherical cursor.");
                 var similarity = fixedGeography.Dot(actualGeography);
+                if (_lastPanClampedByCoverage)
+                {
+                    // A coverage clamp intentionally holds the map still:
+                    // the mouse can move, but no terrain is dragged with it.
+                    // The next motion starts from the newly grabbed point.
+                    blockedMoves++;
+                    fixedGeography = actualGeography;
+                    continue;
+                }
+                successfulMoves++;
                 if (similarity < 0.99995f)
                     throw new InvalidOperationException(
                         $"NORTH UP drag lost spherical cursor: step={i} " +
@@ -1710,7 +1725,10 @@ public partial class TacticalContextPreview : SubViewportContainer
                     Math.Abs(_yawDegrees - originalYaw) > 0.00001f)
                     throw new InvalidOperationException("NORTH UP drag changed zoom or yaw.");
             }
-            GD.Print("GA_NEXT_R137_OVERHEAD_DRAG_PASS cursor_geography_locked=true " +
+            if (successfulMoves == 0)
+                throw new InvalidOperationException("No unconstrained polar drag motion was tested.");
+            GD.Print($"GA_NEXT_R137_OVERHEAD_DRAG_PASS accepted={successfulMoves} " +
+                $"clamped={blockedMoves} cursor_geography_locked=true " +
                 "north_up_dynamic=true zoom_preserved=true");
         }
         finally
@@ -1950,6 +1968,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         }
         if (@event is InputEventMouseMotion motion && _pressed)
         {
+            _lastPanClampedByCoverage = false;
             _dragPixelsAfterHandoff += motion.Relative.Length();
             if (motion.Position.DistanceTo(_dragStart) > 6f) _moved = true;
             if (_moved)
@@ -1994,6 +2013,7 @@ public partial class TacticalContextPreview : SubViewportContainer
                 {
                     _cameraTarget = previousTarget;
                     UpdateCameraOrientation();
+                    _lastPanClampedByCoverage = true;
                     GD.Print("GA_TACTICAL_NAV_COVERAGE_GUARD_R45 no_missing_tiles=true");
                 }
                 AcceptEvent();
