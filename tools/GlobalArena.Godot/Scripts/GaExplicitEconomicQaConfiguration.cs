@@ -139,13 +139,13 @@ internal static class GaExplicitEconomicQaConfiguration
                     "Shallow port QA requires a positive relative depth.");
             shallow = new FoundationExperimentalShallowFreightPolicy(
                 threshold, 10U, 3U, 20U);
-            Godot.GD.Print($"GA_NEXT_R120_SHALLOW_PORT_AB_ENABLED " +
+            global::Godot.GD.Print($"GA_NEXT_R120_SHALLOW_PORT_AB_ENABLED " +
                 $"threshold_raw={threshold} coast_operating_pct=10 " +
                 "sea_operating_pct=3 port_construction_pct=20 " +
                 "depth_is_not_meters=true experimental=true");
         }
         else
-            Godot.GD.Print("GA_NEXT_R120_SHALLOW_PORT_AB_BASELINE enabled=false");
+            global::Godot.GD.Print("GA_NEXT_R120_SHALLOW_PORT_AB_BASELINE enabled=false");
         var opening = FoundationFineFirstEconomicCycleGate.OpenNewEconomy(
             demo.Snapshot, world, demo.Incidence, fine, identity,
             configuration, shallow);
