@@ -166,7 +166,8 @@ public sealed class FoundationPhysicalLaggedFreightCycleTests
         var s = TwoGoodsOneRealCrossing();
         var original = FoundationPhysicalLaggedFreightCyclePlanner
             .CoordinateCandidate(s.Workers, s.Host.Incidence,
-                Demand(), Cargo(), s.Quotes, s.Roads, s.Scales);
+                Demand(), Cargo(), s.Quotes, s.Roads, s.Scales,
+                fixedUnitFreight: true);
         var generated = FoundationPhysicalLaggedFreightCyclePlanner
             .CoordinateUniversalCandidate(s.Workers, s.Host.Incidence,
                 Demand(), Cargo(), s.Roads, s.Scales);
@@ -208,6 +209,65 @@ public sealed class FoundationPhysicalLaggedFreightCycleTests
         Assert.Equal(generated.EdgeReadings[0]
             .DampedNextPhysicalQuoteMicroPerWholeCargoUnit,
             next.FixedCycleEdges[0].PhysicalCostMicroPerWholeCargoUnit);
+    }
+
+    [Fact]
+    public void UniversalGameplayCandidateIgnoresSettledLegacyCongestionAcrossCycles()
+    {
+        var s = TwoGoodsOneRealCrossing();
+        var baseline = FoundationPhysicalLaggedFreightCyclePlanner
+            .CoordinateUniversalCandidate(s.Workers, s.Host.Incidence,
+                Demand(), Cargo(), s.Roads, s.Scales);
+        var previous = baseline.NextCycleQuotes.Edges.Select(edge => edge with
+        {
+            QuotedCongestionSurchargeMicroPerWholeCargoUnit = 900_000_000UL
+        }).ToArray();
+        // Historical settled snapshots remain constructible only from
+        // internal QA; gameplay callers cannot forge settlement receipts.
+        var constructor = typeof(FoundationPhysicalLaggedFreightQuoteState)
+            .GetConstructor(
+                System.Reflection.BindingFlags.Instance |
+                System.Reflection.BindingFlags.NonPublic,
+                binder: null,
+                new[] { typeof(ulong),
+                    typeof(FoundationPhysicalLaggedFreightEdgeState[]),
+                    typeof(bool) },
+                modifiers: null);
+        Assert.NotNull(constructor);
+        var settled = (FoundationPhysicalLaggedFreightQuoteState)
+            constructor.Invoke(new object[] { 17UL, previous, true });
+
+        var replay = FoundationPhysicalLaggedFreightCyclePlanner
+            .CoordinateUniversalCandidate(s.Workers, s.Host.Incidence,
+                Demand(), Cargo(), s.Roads, s.Scales,
+                previousClosedCycleQuotes: settled);
+
+        Assert.Equal(baseline.FixedCycleEdges, replay.FixedCycleEdges);
+        Assert.Equal(baseline.Distribution.MarketTotals,
+            replay.Distribution.MarketTotals);
+        Assert.Equal(
+            baseline.Distribution.Candidates.Select(c => (
+                c.Seller, c.Buyer, c.Commodity, c.GoodsMicro,
+                Route: string.Join(",", c.RouteTiles.Select(tile =>
+                    tile.FineStrategicCellId.Value)))),
+            replay.Distribution.Candidates.Select(c => (
+                c.Seller, c.Buyer, c.Commodity, c.GoodsMicro,
+                Route: string.Join(",", c.RouteTiles.Select(tile =>
+                    tile.FineStrategicCellId.Value)))));
+        Assert.All(replay.EdgeReadings, edge =>
+        {
+            Assert.Equal(edge.FreePhysicalCostMicroPerWholeCargoUnit,
+                edge.CurrentPhysicalQuoteMicroPerWholeCargoUnit);
+            Assert.Equal(edge.FreePhysicalCostMicroPerWholeCargoUnit,
+                edge.TargetNextPhysicalQuoteMicroPerWholeCargoUnit);
+            Assert.Equal(edge.FreePhysicalCostMicroPerWholeCargoUnit,
+                edge.DampedNextPhysicalQuoteMicroPerWholeCargoUnit);
+        });
+        Assert.All(replay.NextCycleQuotes.Edges, edge =>
+            Assert.Equal(0UL,
+                edge.QuotedCongestionSurchargeMicroPerWholeCargoUnit));
+        Assert.Equal(18UL, replay.NextCycleQuotes.AuditedPreviewCycles);
+        Assert.False(replay.NextCycleQuotes.HasSettledProvenance);
     }
 
     [Fact]
