@@ -65,7 +65,7 @@ Assert-LastCommand 'Fetch R116'
 # Avoid rev-parse/PowerShell pipeline exit-code ambiguity on Windows.
 # The remote tracking ref was updated by the successful fetch above.
 # Git itself resolves this ref directly when creating/updating the worktree.
-$visualRoot = Join-Path $env:LOCALAPPDATA 'GA-Next\visual-r116-inspection'
+$visualRoot = Join-Path $env:LOCALAPPDATA 'GA-Next\visual-r116-signed-g18-inspection'
 $remoteRef = "refs/remotes/origin/$branch"
 if (Test-Path -LiteralPath $visualRoot) {
     if (-not (Test-Path -LiteralPath (Join-Path $visualRoot '.git'))) {
