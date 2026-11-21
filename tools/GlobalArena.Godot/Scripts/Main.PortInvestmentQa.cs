@@ -24,6 +24,8 @@ public partial class Main
     private PhysicalTacticalEdgeId? _portQaQueued;
     private ulong _portQaOldFreight;
     private string? _portQaLastSettledAudit;
+    private bool _portQaUserSelected;
+    private ulong _portQaCargoBefore;
 
     private void CreatePortInvestmentQaControls(VBoxContainer parent)
     {
@@ -57,6 +59,7 @@ public partial class Main
             int slot = checked((int)index);
             if (slot < 0 || slot >= _portQaChoices.Count) return;
             _portQaSelected = _portQaChoices[slot];
+            _portQaUserSelected = true;
             RefreshPortInvestmentQaControls();
         };
         section.AddChild(_portQaSelector);
@@ -98,9 +101,10 @@ public partial class Main
         var incidence = host.Incidence;
         var byId = snapshot.Transport.Edges.ToDictionary(x => x.Edge);
         var navigable = new System.Collections.Generic.List<
-            (PhysicalTacticalEdgeId Id, long Depth, bool Used)>();
+            (PhysicalTacticalEdgeId Id, long Depth, ulong CargoMicro)>();
         var authorized = host.GetLastClosedEconomicTradeView(_humanCivilization);
-        var used = authorized.UsedEdges.Select(x => x.Edge).ToHashSet();
+        var used = authorized.UsedEdges.ToDictionary(
+            x => x.Edge, x => x.TotalCargoMicro);
         foreach (var edge in incidence.FineTopology.Edges)
         {
             int a = checked((int)edge.IncidentCellIds[0].Value - 1);
@@ -117,18 +121,20 @@ public partial class Main
                 ? fine.FineElevationRaw[a] : fine.FineElevationRaw[b];
             long depth = System.Math.Max(0L,
                 fine.SeaLevelRaw - waterElevation);
-            navigable.Add((id, depth, used.Contains(id)));
+            navigable.Add((id, depth, used.GetValueOrDefault(id)));
         }
 
         // Display real used port edges first; if none, offer a few real
         // financeable access edges. Never fabricate a port or a tile.
-        var selected = navigable.Where(p => p.Used)
-            .OrderBy(p => p.Id.FineStrategicEdgeId.Value).Take(8).ToList();
-        int usedPortCount = navigable.Count(p => p.Used);
+        var selected = navigable.Where(p => p.CargoMicro > 0UL)
+            .OrderByDescending(p => p.CargoMicro)
+            .ThenBy(p => p.Id.FineStrategicEdgeId.Value).Take(8).ToList();
+        int usedPortCount = navigable.Count(p => p.CargoMicro > 0UL);
         if (selected.Count == 0)
             selected = navigable.OrderBy(p => p.Id.FineStrategicEdgeId.Value)
                 .Take(8).ToList();
-        if (_portQaSelected.HasValue &&
+        if ((_portQaUserSelected || _portQaQueued.HasValue) &&
+            _portQaSelected.HasValue &&
             navigable.Any(p => p.Id == _portQaSelected.Value) &&
             selected.All(p => p.Id != _portQaSelected.Value))
             selected.Add(navigable.Single(p => p.Id == _portQaSelected.Value));
@@ -141,7 +147,10 @@ public partial class Main
             _portQaChoices.Add(p.Id);
             _portQaSelector.AddItem(
                 $"PORT EDGE {p.Id.FineStrategicEdgeId.Value} | " +
-                $"depth {p.Depth} | {(p.Used ? "USED" : "AVAILABLE")}");
+                $"depth {p.Depth} | " +
+                (p.CargoMicro > 0UL
+                    ? $"USED ({p.CargoMicro} cargo micro)"
+                    : "AVAILABLE"));
         }
         if (_portQaChoices.Count == 0)
         {
@@ -149,8 +158,14 @@ public partial class Main
             _portQaDetails.Text = "No financeable navigable port exists.";
             return;
         }
+        // After the first actual settlement, automatically focus a port
+        // carrying real cargo, unless the user deliberately selected an
+        // alternative or already queued a specific port order.
         if (!_portQaSelected.HasValue ||
-            !_portQaChoices.Contains(_portQaSelected.Value))
+            !_portQaChoices.Contains(_portQaSelected.Value) ||
+            (!_portQaUserSelected && !_portQaQueued.HasValue &&
+             usedPortCount > 0 &&
+             !used.ContainsKey(_portQaSelected.Value)))
             _portQaSelected = _portQaChoices[0];
         int index = _portQaChoices.IndexOf(_portQaSelected.Value);
         _portQaSelector.Select(index);
@@ -158,8 +173,10 @@ public partial class Main
         ulong effective = FoundationPhysicalAuthoritativeTransportProjector
             .EffectiveUnitFreightCost(current);
         var investment = current.CommittedInvestmentMoneyMicro ?? 0UL;
+        ulong selectedCargo = used.GetValueOrDefault(_portQaSelected.Value);
         _portQaDetails.Text =
-            $"Last-cycle used ports: {usedPortCount} | " +
+            $"Last-cycle used ports: {usedPortCount}" +
+            $" | selected-port cargo: {selectedCargo} micro | " +
             $"Natural unit freight {FormatMoneyMicroForDisplay(current.FreePhysicalCostMicroPerWholeCargoUnit)}" +
             $" | effective {FormatMoneyMicroForDisplay(effective)}" +
             $" | port construction basis {FormatMoneyMicroForDisplay(current.NaturalConstructionCostMoneyMicro!.Value)}" +
@@ -202,6 +219,9 @@ public partial class Main
                 x.Edge == _portQaSelected.Value);
             _portQaOldFreight = FoundationPhysicalAuthoritativeTransportProjector
                 .EffectiveUnitFreightCost(edge);
+            _portQaCargoBefore = host.GetLastClosedEconomicTradeView(
+                _humanCivilization).UsedEdges.FirstOrDefault(x =>
+                    x.Edge == _portQaSelected.Value)?.TotalCargoMicro ?? 0UL;
             host.QueueHumanMonetaryInvestment(_humanCivilization,
                 _portQaSelected.Value, PortQaSpendMoneyMicro);
             _portQaLastSettledAudit = null;
@@ -241,11 +261,15 @@ public partial class Main
             committed.MoneyMicro != PortQaSpendMoneyMicro)
             throw new InvalidOperationException(
                 "R123 authoritative port capital must reduce, not raise freight.");
+        ulong cargoAfter = _tacticalHost.GetLastClosedEconomicTradeView(
+            _humanCivilization).UsedEdges.FirstOrDefault(x =>
+                x.Edge == _portQaQueued.Value)?.TotalCargoMicro ?? 0UL;
         _portQaLastSettledAudit =
             $"REAL INVESTMENT COMMITTED | edge {_portQaQueued.Value.FineStrategicEdgeId.Value}" +
             $" | spent {FormatMoneyMicroForDisplay(committed.MoneyMicro)}" +
             $" | unit freight {FormatMoneyMicroForDisplay(_portQaOldFreight)}" +
             $" -> {FormatMoneyMicroForDisplay(newCost)}" +
+            $" | observed cargo {_portQaCargoBefore} -> {cargoAfter} micro" +
             $" | replay {(receipt.ReplayMatched ? "OK" : "FAIL")}";
         GD.Print("GA_NEXT_R123_PORT_INVESTMENT_SETTLED " +
             $"edge={_portQaQueued.Value.FineStrategicEdgeId.Value} " +
