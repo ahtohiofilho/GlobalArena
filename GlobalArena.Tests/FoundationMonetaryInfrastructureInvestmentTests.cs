@@ -75,6 +75,74 @@ public sealed class FoundationMonetaryInfrastructureInvestmentTests
             x.Edge == s.RemoteEdge);
 
     [Fact]
+    public void FixedUnitFreightIsPositiveMonotoneAndDeterministicAcrossExtremeCapital()
+    {
+        var s = Create();
+        var edge = Edge(s);
+        ulong natural = edge.FreePhysicalCostMicroPerWholeCargoUnit;
+        ulong quote = edge.NaturalConstructionCostMoneyMicro!.Value;
+        var investments = new[]
+        {
+            0UL, 1UL, quote / 2UL, quote,
+            checked(quote * 2UL), checked(quote * 10UL),
+            ulong.MaxValue
+        }.Distinct().OrderBy(amount => amount).ToArray();
+
+        ulong previous = natural;
+        foreach (ulong amount in investments)
+        {
+            var row = edge with { CommittedInvestmentMoneyMicro = amount };
+            ulong actual = FoundationPhysicalAuthoritativeTransportProjector
+                .EffectiveUnitFreightCost(row);
+            Assert.InRange(actual, 1UL, previous);
+            Assert.Equal(actual,
+                FoundationPhysicalAuthoritativeTransportProjector
+                    .EffectiveUnitFreightCost(row));
+            previous = actual;
+        }
+        Assert.Equal(natural,
+            FoundationPhysicalAuthoritativeTransportProjector
+                .EffectiveUnitFreightCost(edge with
+                {
+                    CommittedInvestmentMoneyMicro = 0UL
+                }));
+        Assert.Equal(1UL,
+            FoundationPhysicalAuthoritativeTransportProjector
+                .EffectiveUnitFreightCost(edge with
+                {
+                    CommittedInvestmentMoneyMicro = ulong.MaxValue,
+                    FreePhysicalCostMicroPerWholeCargoUnit = 1UL
+                }));
+    }
+
+    [Fact]
+    public void FixedUnitFreightNeverDependsOnHistoricalCargoCapacityOrOwnerToll()
+    {
+        var s = Create();
+        var edge = Edge(s);
+        ulong quote = edge.NaturalConstructionCostMoneyMicro!.Value;
+        var invested = edge with { CommittedInvestmentMoneyMicro = quote };
+        ulong expected = FoundationPhysicalAuthoritativeTransportProjector
+            .EffectiveUnitFreightCost(invested);
+
+        var differentHistoricalCapacity = invested with
+        {
+            CargoMicroAtReferenceLoad = 1UL
+        };
+        var differentOwnerTariff = invested with
+        {
+            ExternalTariffMicroPerWholeCargoUnit = 987_654_321UL
+        };
+        Assert.Equal(expected,
+            FoundationPhysicalAuthoritativeTransportProjector
+                .EffectiveUnitFreightCost(differentHistoricalCapacity));
+        Assert.Equal(expected,
+            FoundationPhysicalAuthoritativeTransportProjector
+                .EffectiveUnitFreightCost(differentOwnerTariff));
+        Assert.True(expected < edge.FreePhysicalCostMicroPerWholeCargoUnit);
+    }
+
+    [Fact]
     public void MonetaryConstructionQuotesAreQuadraticWhileOperatingIsLinear()
     {
         var fixture = FoundationConcentratedWorkforceScenario.CreatePreview(
