@@ -709,7 +709,24 @@ public sealed class FoundationTacticalHumanAiTurnHost
 
         var before = Snapshot;
         var turn = NextTurn;
+        // R141: after a completed fine-edge travel, a capable idle human
+        // worker resumes productive activity on the NEXT collective turn.
+        // A real human order (move, occupation, activity) always takes priority.
+        // This is a journaled command, never an implicit WorldState mutation.
+        var automaticResumptions = Snapshot.Workers.Workers
+            .Where(worker => _humans.Contains(worker.Owner) &&
+                worker.Activity == PhysicalWorkerActivity.Traveling &&
+                worker.OutputMicroPerTurn > 0UL &&
+                worker.TacticalTileId.HasValue &&
+                !_plans[worker.Owner].ContainsKey(worker.Id.Value))
+            .OrderBy(worker => worker.Id.Value)
+            .Select(worker => new FoundationTacticalWorkerOrder(
+                worker.Owner, worker.Id,
+                worker.TacticalTileId!.Value, worker.TacticalTileId.Value,
+                PhysicalWorkerActivity.Producing, IsMovement: false))
+            .ToArray();
         var orders = _plans.Values.SelectMany(plan => plan.Values)
+            .Concat(automaticResumptions)
             .OrderBy(order => order.WorkerId.Value).ToArray();
         // Monetary orders do not occupy or teleport any worker. Sort by
         // civilization and real edge for deterministic multi-investor turns.

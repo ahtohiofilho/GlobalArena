@@ -447,7 +447,11 @@ public partial class Main : Control
         var source = worker.TacticalTileId!.Value.FineStrategicCellId.Value;
         var queued = _tacticalHost.GetHumanOrders(_humanCivilization)
             .FirstOrDefault(o => o.WorkerId == worker.Id);
-        var queuedText = queued is null ? "no pending order"
+        var queuedText = queued is null
+            ? worker.Activity == PhysicalWorkerActivity.Traveling &&
+              worker.OutputMicroPerTurn > 0UL
+                ? "production resumes automatically on next E unless reassigned"
+                : "no pending order"
             : queued.IsMovement
                 ? $"move queued to tile {queued.Destination.FineStrategicCellId.Value}"
                 : queued.NextOccupation.HasValue
