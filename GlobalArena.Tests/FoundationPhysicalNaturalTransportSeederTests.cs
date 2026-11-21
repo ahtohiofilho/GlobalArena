@@ -248,6 +248,16 @@ public sealed class FoundationPhysicalNaturalTransportSeederTests
                 previousClosedCycleQuotes: historical, maxProducerPasses: 64);
         Assert.Equal(candidate.FixedCycleEdges.ToArray(),
             replay.FixedCycleEdges.ToArray());
+        // Aggregate totals alone could conceal rerouting between buyers.
+        // Compare the complete ordered distribution transcript as well.
+        Assert.Equal(candidate.Distribution.Candidates.ToArray(),
+            replay.Distribution.Candidates.ToArray());
+        Assert.Equal(candidate.Distribution.MarketTotals.ToArray(),
+            replay.Distribution.MarketTotals.ToArray());
+        Assert.Equal(candidate.Distribution.MovedGoodsByPass.ToArray(),
+            replay.Distribution.MovedGoodsByPass.ToArray());
+        Assert.Equal(candidate.Distribution.Passes,
+            replay.Distribution.Passes);
         Assert.Equal(
             candidate.Distribution.AllocationAudit.Freight
                 .TotalEdgeTraversalCargoMicro,
