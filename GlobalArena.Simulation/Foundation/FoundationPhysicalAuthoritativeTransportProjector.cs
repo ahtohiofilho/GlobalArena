@@ -56,12 +56,12 @@ public static class FoundationPhysicalAuthoritativeTransportProjector
                 edge.Edge, ownership, edge.InfrastructureOwner,
                 EffectiveUnitFreightCost(edge),
                 edge.ExternalTariffMicroPerWholeCargoUnit));
-            // The only capital ledger is the already-hashed, already-
-            // debited money committed to this exact physical crossing.
-            // All land/coast crossings follow the SAME diminishing-return
-            // function; no "port" object or separate investment economy.
+            // Compatibility field retained for old historical records;
+            // fixed-unit routing has no capacity-based congestion.
+            // In particular, never compute investment-based K during
+            // authoritative transport projection.
             scales.Add(new FoundationPhysicalEdgeCarryingScale(
-                edge.Edge, EffectiveReferenceCargo(edge)));
+                edge.Edge, edge.CargoMicroAtReferenceLoad));
         }
         if (known.Count != 0)
             throw new InvalidOperationException(
