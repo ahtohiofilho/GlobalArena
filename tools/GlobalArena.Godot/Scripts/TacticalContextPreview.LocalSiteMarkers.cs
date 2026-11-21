@@ -90,6 +90,21 @@ public partial class TacticalContextPreview
             "source=canonical_signed_fine no_fake_city=true");
     }
 
+    /// <summary>
+    /// R128 experimental cartographic decluttering. No fixed number of
+    /// workers is required to appear on the map. Very distant views can
+    /// suppress every locality; intermediate views reveal the highest-
+    /// ranked sites, then all at close zoom. Never mutates worker state.
+    /// </summary>
+    internal static int SiteLabelBudget(float zoomRatio, int siteCount)
+    {
+        if (siteCount <= 0 || zoomRatio >= 0.96f) return 0;
+        if (zoomRatio >= 0.76f) return 1;
+        if (zoomRatio >= 0.56f)
+            return Math.Max(1, (int)Math.Ceiling(siteCount * 0.4));
+        return siteCount;
+    }
+
     // The orthographic view pans/rotates/zooms independently from the
     // marker labels. Reproject only the few occupied, rendered sites;
     // no per-frame market or worldgen calculations.
@@ -116,13 +131,17 @@ public partial class TacticalContextPreview
         // thresholds use camera framing, not absolute kilometers or G18 IDs.
         float zoomRatio = _camera.Size / Math.Max(0.001f,
             _coverViewport ? _coverSize : _originalSize);
-        int minimumWorkers = zoomRatio >= 0.96f ? int.MaxValue
-            : zoomRatio >= 0.77f ? 8
-            : zoomRatio >= 0.58f ? 4 : 1;
+        var ranking = _localSiteMarkers
+            .OrderByDescending(x => x.WorkerCount)
+            .ThenBy(x => x.TileId).ToArray();
+        // A symbolic cartographic priority, NOT a city category or a
+        // gameplay population rule. The fixture has few real workers:
+        // fixed absolute population thresholds would hide all its labels.
+        int budget = SiteLabelBudget(zoomRatio, ranking.Length);
         var occupiedScreenRects = new List<Rect2>();
-        foreach (var place in _localSiteMarkers
-            .OrderByDescending(x => x.WorkerCount).ThenBy(x => x.TileId))
+        for (int index = 0; index < ranking.Length; index++)
         {
+            var place = ranking[index];
             var label = place.Visual;
             if (!_tileCenters.TryGetValue(place.TileId, out var center) ||
                 !_renderedPhysicalTileIds.Contains(place.TileId))
@@ -133,9 +152,9 @@ public partial class TacticalContextPreview
             var projected = _camera.UnprojectPosition(center);
             Vector2 screen = new(projected.X * factorX,
                 projected.Y * factorY);
-            // Do not place text over the actual physical worker circle.
+            // Place labels next to the canonical site anchor, not any worker.
             label.Position = screen + new Vector2(12f, -18f);
-            bool candidate = place.WorkerCount >= minimumWorkers &&
+            bool candidate = index < budget &&
                 !_camera.IsPositionBehind(center) &&
                 screen.X >= 6f && screen.Y >= 18f &&
                 screen.X < Size.X - 100f && screen.Y < Size.Y - 24f;

@@ -189,6 +189,17 @@ public sealed class FoundationGodotTacticalV10Smoke
                 "GANextPlanetWindow", true, false) as Control;
             Must(roster is not null && operations is not null && planet is not null,
                 "v10 UI missing operational dock or atlas");
+            // R128: semantic cartography is independent of whether the
+            // worker-badge smoke is running. Ranking has no fixed minimum
+            // worker population and broad zoom may hide every site.
+            Must(TacticalContextPreview.SiteLabelBudget(1.0f, 3) == 0 &&
+                 TacticalContextPreview.SiteLabelBudget(0.85f, 3) == 1 &&
+                 TacticalContextPreview.SiteLabelBudget(0.65f, 3) == 2 &&
+                 TacticalContextPreview.SiteLabelBudget(0.42f, 3) == 3 &&
+                 TacticalContextPreview.SiteLabelBudget(0.42f, 0) == 0 &&
+                 TacticalContextPreview.SiteLabelBudget(0.85f, 1) == 1,
+                "Semantic map zoom must progressively reveal real sites " +
+                "even with small worker populations.");
             Must(_main.ActiveTacticalHost == _host &&
                  _host.StateHash.FormatVersion == _expectedFormatVersion &&
                  _host.Snapshot.Workers.Workers.Count == 6 &&
