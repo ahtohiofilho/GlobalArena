@@ -211,6 +211,16 @@ internal static class FoundationShallowDepthRoutingAb
                 ulong baselineSum = 0UL, candidateSum = 0UL;
                 ulong baselineRouteUnderCandidate = 0UL, totalReroutingBenefit = 0UL;
                 int baselinePortCrossings = 0, candidatePortCrossings = 0;
+                // R121 causal attribution: compare changed port depths on
+                // exactly the same demand pair; also isolate each modifier
+                // to avoid mistaking route tie breaking for coastal selection.
+                int deeperPortChoices = 0, shallowerPortChoices = 0;
+                int equalDepthPortChoices = 0, unequalPortCounts = 0;
+                int portOnlyRouteChanges = 0, seaOnlyRouteChanges = 0;
+                int changedByBothModifiers = 0;
+                ulong baselineNaturalAtNewRoute = 0UL;
+                ulong candidateShallowPenalty = 0UL;
+                ulong baselineShallowPenalty = 0UL;
                 foreach (var (a, b) in pairs)
                 {
                     var baseline = Shortest(a, b, graph, crossings, cutoff, 0U, 0U);
@@ -235,7 +245,48 @@ internal static class FoundationShallowDepthRoutingAb
                     var newPorts = candidate.Edges.Where(id =>
                         crossings[id].Kind == FoundationFineTransportCrossingKind.Port)
                         .OrderBy(id => id);
-                    if (!oldPorts.SequenceEqual(newPorts)) portChoiceChanges++;
+                    bool portChanged = !oldPorts.SequenceEqual(newPorts);
+                    if (portChanged) portChoiceChanges++;
+                    var beforePorts = oldPorts.ToArray();
+                    var afterPorts = newPorts.ToArray();
+                    if (portChanged)
+                    {
+                        if (beforePorts.Length == afterPorts.Length)
+                        {
+                            long beforeDepth = beforePorts.Sum(
+                                id => crossings[id].Depth);
+                            long afterDepth = afterPorts.Sum(
+                                id => crossings[id].Depth);
+                            if (afterDepth > beforeDepth) deeperPortChoices++;
+                            else if (afterDepth < beforeDepth) shallowerPortChoices++;
+                            else equalDepthPortChoices++;
+                        }
+                        else unequalPortCounts++;
+                    }
+                    var portOnly = Shortest(a, b, graph, crossings,
+                        cutoff, profile.Port, 0U);
+                    var seaOnly = Shortest(a, b, graph, crossings,
+                        cutoff, 0U, profile.Sea);
+                    bool differsPort = !baseline.Edges.SequenceEqual(portOnly.Edges);
+                    bool differsSea = !baseline.Edges.SequenceEqual(seaOnly.Edges);
+                    if (differsPort) portOnlyRouteChanges++;
+                    if (differsSea) seaOnlyRouteChanges++;
+                    if (differsPort && differsSea) changedByBothModifiers++;
+
+                    foreach (int id in candidate.Edges)
+                    {
+                        ulong naturalCost = crossings[id].NaturalFreight;
+                        baselineNaturalAtNewRoute = checked(
+                            baselineNaturalAtNewRoute + naturalCost);
+                        candidateShallowPenalty = checked(
+                            candidateShallowPenalty + Cost(crossings[id],
+                                cutoff, profile.Port, profile.Sea) - naturalCost);
+                    }
+                    foreach (int id in baseline.Edges)
+                        baselineShallowPenalty = checked(
+                            baselineShallowPenalty + Cost(crossings[id],
+                                cutoff, profile.Port, profile.Sea) -
+                            crossings[id].NaturalFreight);
                     baselineSum = checked(baselineSum + baseline.Cost);
                     candidateSum = checked(candidateSum + candidate.Cost);
                     int bPorts = baseline.Edges.Count(e =>
@@ -247,6 +298,38 @@ internal static class FoundationShallowDepthRoutingAb
                     if (bPorts > 0) maritimeBaseline++;
                     if (cPorts > 0) maritimeCandidate++;
                 }
+                if (portChoiceChanges != deeperPortChoices +
+                    shallowerPortChoices + equalDepthPortChoices +
+                    unequalPortCounts ||
+                    checked(baselineNaturalAtNewRoute +
+                        candidateShallowPenalty) != candidateSum ||
+                    checked(baselineSum + baselineShallowPenalty) !=
+                        baselineRouteUnderCandidate)
+                    throw new InvalidOperationException(
+                        "R121 causal attribution must reconcile every route, " +
+                        "natural price and shallow-depth surcharge.");
+                // This trace is descriptive, NOT proof of a better sea
+                // state or port geometry: the choice also depends on land
+                // access and the entire path. Baseline and candidate have
+                // identical physical topology and blocked-ice constraints.
+                Console.WriteLine($"GA_R121_CAUSAL seed={seed} profile={profile.Name} " +
+                    $"demand_pairs={pairs.Length} " +
+                    $"port_switches={portChoiceChanges} " +
+                    $"switched_to_deeper_total_port_depth={deeperPortChoices} " +
+                    $"switched_to_shallower_total_port_depth={shallowerPortChoices} " +
+                    $"switched_equal_port_depth={equalDepthPortChoices} " +
+                    $"switched_different_port_count={unequalPortCounts} " +
+                    $"port_modifier_alone_route_changes={portOnlyRouteChanges} " +
+                    $"sea_modifier_alone_route_changes={seaOnlyRouteChanges} " +
+                    $"both_alone_changed_route={changedByBothModifiers} " +
+                    $"baseline_natural_total={baselineSum} " +
+                    $"candidate_route_natural_total={baselineNaturalAtNewRoute} " +
+                    $"baseline_route_shallow_surcharge={baselineShallowPenalty} " +
+                    $"candidate_route_shallow_surcharge={candidateShallowPenalty} " +
+                    $"candidate_total={candidateSum} " +
+                    $"reroute_savings_vs_old_at_new_rates={totalReroutingBenefit} " +
+                    "depth_units=relative_raw_no_meters=true " +
+                    "synthetic_pairs_not_settled_worker_demands=true");
                 Console.WriteLine($"GA_R119_AB seed={seed} profile={profile.Name} " +
                     $"depth_cutoff_raw={cutoff} port_percent={profile.Port} " +
                     $"sea_percent={profile.Sea} construction_percent={profile.Construction} " +
