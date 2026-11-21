@@ -168,10 +168,54 @@ public sealed class FoundationFineFirstShallowSettledEconomicAbTests
 
         var prior = baseCycle.Used.ToDictionary(x => x.Edge, x => x.TotalCargoMicro);
         var newer = candidate.Used.ToDictionary(x => x.Edge, x => x.TotalCargoMicro);
-        // Report real settled trade impact, not a hard-coded assertion
-        // about any specific seed's chosen port or individual route.
         Assert.True(prior.Count > 0 && newer.Count > 0);
+        var allUsed = prior.Keys.Concat(newer.Keys).Distinct().ToArray();
+        int changedLoads = allUsed.Count(edge =>
+            prior.GetValueOrDefault(edge) != newer.GetValueOrDefault(edge));
+        // The visual benchmark in R120 used this seed with real workers.
+        // Other seeds are measured, not forced to manufacture a route change.
+        if (seed == 20261012UL)
+            Assert.True(changedLoads > 0,
+                "R120 depth must change at least one real settled trade load.");
         Assert.True(candidate.First.Event.PhysicalFreightScaled >= BigInteger.Zero);
         Assert.True(baseCycle.First.Event.PhysicalFreightScaled >= BigInteger.Zero);
+        int changedPortQuotes = 0, changedSeaQuotes = 0;
+        var fineEdges = baseCycle.Incidence.FineTopology.Edges.ToDictionary(
+            x => x.Id);
+        foreach (var (edgeId, original) in original)
+        {
+            var modified = all[edgeId];
+            var topology = fineEdges[edgeId.FineStrategicEdgeId];
+            int a = checked((int)topology.IncidentCellIds[0].Value - 1);
+            int b = checked((int)topology.IncidentCellIds[1].Value - 1);
+            var kind = baseCycle.Geography.CrossingAtIndices(a, b);
+            if (kind is FoundationFineTransportCrossingKind.Ground or
+                FoundationFineTransportCrossingKind.BlockedIceSeaBoundary)
+            {
+                Assert.Equal(original, modified);
+            }
+            else if (kind == FoundationFineTransportCrossingKind.Port)
+            {
+                Assert.True(modified.NaturalConstructionCostMoneyMicro >=
+                    original.NaturalConstructionCostMoneyMicro);
+                if (modified.NaturalConstructionCostMoneyMicro >
+                    original.NaturalConstructionCostMoneyMicro)
+                    changedPortQuotes++;
+            }
+            else
+            {
+                Assert.Equal(FoundationFineTransportCrossingKind.OpenSea, kind);
+                Assert.Equal(original.NaturalConstructionCostMoneyMicro,
+                    modified.NaturalConstructionCostMoneyMicro);
+                if (modified.FreePhysicalCostMicroPerWholeCargoUnit >
+                    original.FreePhysicalCostMicroPerWholeCargoUnit)
+                    changedSeaQuotes++;
+            }
+        }
+        Assert.True(changedPortQuotes > 0 && changedSeaQuotes > 0);
+        Assert.Equal(baseCycle.Second.Event.CreditedToTreasuriesScaled,
+            baseCycle.First.Event.CreditedToTreasuriesScaled);
+        Assert.Equal(candidate.Second.Event.CreditedToTreasuriesScaled,
+            candidate.First.Event.CreditedToTreasuriesScaled);
     }
 }
