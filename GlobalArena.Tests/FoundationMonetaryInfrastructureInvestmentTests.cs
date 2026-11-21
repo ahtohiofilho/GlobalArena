@@ -222,7 +222,7 @@ public sealed class FoundationMonetaryInfrastructureInvestmentTests
     }
 
     [Fact]
-    public void RealCashFundingCanBeSpreadAcrossTurnsWithoutChangingFreight()
+    public void RealCashFundingCanBeSpreadAcrossTurnsToReduceUnitFreight()
     {
         var s = Create();
         ulong cost = Edge(s).NaturalConstructionCostMoneyMicro!.Value;
