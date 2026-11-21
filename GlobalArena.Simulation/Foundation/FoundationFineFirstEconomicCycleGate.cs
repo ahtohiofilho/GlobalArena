@@ -25,7 +25,8 @@ public static class FoundationFineFirstEconomicCycleGate
         PhysicalTacticalIncidenceMap incidence,
         FoundationFineFirstPhysicalGeography fine,
         FoundationFineFirstWorldgenIdentity signature,
-        FoundationGameplayEconomicConfiguration policy)
+        FoundationGameplayEconomicConfiguration policy,
+        FoundationExperimentalShallowFreightPolicy? researchShallow = null)
     {
         ArgumentNullException.ThrowIfNull(prepared);
         ArgumentNullException.ThrowIfNull(policy);
@@ -46,7 +47,7 @@ public static class FoundationFineFirstEconomicCycleGate
             strategicWorld, incidence, fine, signature);
         var natural = FoundationPhysicalNaturalTransportSeeder.PreviewFineFirst(
             strategicWorld, incidence, fine, policy.OperatingTransport,
-            policy.MonetaryConstruction);
+            policy.MonetaryConstruction, researchShallow);
         return signed.DeployInitialFineFirstPhysicalTransport(
                 natural.Transport, strategicWorld, incidence, fine, signature)
             .DeployInitialTreasury(
