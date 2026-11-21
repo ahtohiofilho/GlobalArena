@@ -15,7 +15,8 @@ if (args.Length != 1 ||
      args[0] != "--foundation-local-game" &&
      args[0] != "--foundation-batched-turn" &&
      args[0] != "--foundation-collective-turn" &&
-     args[0] != "--foundation-human-ai-turn"))
+     args[0] != "--foundation-human-ai-turn" &&
+     args[0] != "--foundation-crossing-depth-report"))
 {
     Console.WriteLine("Global Arena — executable foundation preview");
     Console.WriteLine("Run: dotnet run --project GlobalArena.Console -- --foundation-slice");
@@ -26,6 +27,14 @@ if (args.Length != 1 ||
     Console.WriteLine("Batch turn: dotnet run --project GlobalArena.Console -- --foundation-batched-turn");
     Console.WriteLine("Collective turn: dotnet run --project GlobalArena.Console -- --foundation-collective-turn");
     Console.WriteLine("Human + AI turn: dotnet run --project GlobalArena.Console -- --foundation-human-ai-turn");
+    Console.WriteLine("R118 depth-only QA: dotnet run --project GlobalArena.Console -- --foundation-crossing-depth-report");
+    return;
+}
+
+// Isolated R118 physical-depth diagnostics; does not create a market turn.
+if (args[0] == "--foundation-crossing-depth-report")
+{
+    FoundationCrossingDepthReport.Run();
     return;
 }
 
