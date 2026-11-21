@@ -269,6 +269,10 @@ public sealed class FoundationPhysicalNaturalTransportSeederTests
             replay.Distribution.MovedGoodsByPass.ToArray());
         Assert.Equal(candidate.Distribution.Passes,
             replay.Distribution.Passes);
+        Assert.Equal(candidate.Distribution.ProductiveLotCount,
+            replay.Distribution.ProductiveLotCount);
+        Assert.Equal(candidate.Distribution.TotalReallocatedGoodsMicro,
+            replay.Distribution.TotalReallocatedGoodsMicro);
         Assert.Equal(
             candidate.Distribution.AllocationAudit.Freight
                 .TotalEdgeTraversalCargoMicro,
