@@ -57,7 +57,10 @@ if (-not (Test-Path -LiteralPath (Join-Path $repoRoot $projectRelative))) {
 }
 Write-Host '[GA-NEXT VISUAL] Fetching R115 into a separate worktree (your current branch stays untouched).'
 $origin = (& git -C $repoRoot remote get-url origin 2>$null | Out-String).Trim()
-if ($LASTEXITCODE -ne 0 -or $origin -notmatch '^(https://github[.]com/|git@github[.]com:)ahtohiofilho/GlobalArena([.]git)?
+if ($LASTEXITCODE -ne 0 -or $origin -notmatch '^(https://github[.]com/|git@github[.]com:)ahtohiofilho/GlobalArena([.]git)?$') {
+    throw "Unexpected repository origin: $origin"
+}
+& git -C $repoRoot fetch --no-tags origin "refs/heads/$branch:refs/remotes/origin/$branch"
 Assert-LastCommand 'Fetch R115'
 # Avoid rev-parse/PowerShell pipeline exit-code ambiguity on Windows.
 # The remote tracking ref was updated by the successful fetch above.
