@@ -226,6 +226,8 @@ public partial class Main
         _portQaInvest.Disabled = !affordable || ownedByAnother ||
             ready || _portQaQueued.HasValue;
         _portQaCancel.Disabled = ready || !_portQaQueued.HasValue;
+        if (_r143CrossingFilter is not null)
+            _r143CrossingFilter.Disabled = ready || _portQaQueued.HasValue;
         if (_portQaQueued.HasValue)
             _portQaFeedback.Text = "Investment queued in the real host; " +
                 "press E to commit and audit the ledger.";
@@ -314,6 +316,50 @@ public partial class Main
         _portQaCancel is { Disabled: false };
     internal bool R142PortInvestmentQueued => _portQaQueued.HasValue;
     internal string R143CrossingFilterSelected => _r143SelectedCrossing.ToString();
+
+    // Verify the actual Godot selector against the signed crossing catalogue.
+    // This intentionally never invokes a money command or closes a turn.
+    internal void ExerciseR143RealCrossingSelectionSmoke()
+    {
+        if (!_interactiveEconomicPreviewActive) return;
+        if (_r143CrossingFilter is null || _portQaSelector is null ||
+            _tacticalHost is null || _r123FineGeography is null)
+            throw new InvalidOperationException("R143 investment selector missing.");
+        var original = _r143SelectedCrossing;
+        var geography = _r123FineGeography;
+        var incidence = _tacticalHost.Incidence;
+        var before = _tacticalHost.StateHash;
+        foreach (var crossing in new[] {
+            FoundationFineTransportCrossingKind.Ground,
+            FoundationFineTransportCrossingKind.Port })
+        {
+            _r143SelectedCrossing = crossing;
+            _portQaSelected = null;
+            RefreshPortInvestmentQaControls();
+            if (_portQaChoices.Count == 0)
+                throw new InvalidOperationException(
+                    $"R143 no actual financeable {crossing} edges.");
+            foreach (var edgeId in _portQaChoices)
+            {
+                var edge = incidence.FineTopology.Edges.Single(x =>
+                    x.Id == edgeId.FineStrategicEdgeId);
+                var a = checked((int)edge.IncidentCellIds[0].Value - 1);
+                var b = checked((int)edge.IncidentCellIds[1].Value - 1);
+                if (geography.CrossingAtIndices(a, b) != crossing)
+                    throw new InvalidOperationException(
+                        $"R143 selected {crossing} displays a foreign edge.");
+            }
+            if (_tacticalHost.StateHash != before)
+                throw new InvalidOperationException("Selecting crossings mutated the game.");
+        }
+        _r143SelectedCrossing = original;
+        _r143CrossingFilter.Select(original ==
+            FoundationFineTransportCrossingKind.Ground ? 1 : 0);
+        _portQaSelected = null;
+        RefreshPortInvestmentQaControls();
+        GD.Print("GA_NEXT_R143_CROSSING_SELECTOR_PASS " +
+            "land=true coast=true real_edges_only=true state_unchanged=true");
+    }
 
     private void AuditPortInvestmentQa(
         FoundationTacticalCollectiveReceipt receipt)
