@@ -118,8 +118,10 @@ public sealed class FoundationFineFirstPhysicalGeographyTests
         var replay = FoundationPhysicalNaturalTransportSeeder.PreviewFineFirst(
             host.Session.GeneratedWorld, host.Incidence, geography,
             Policy(), money, policy);
-        Assert.Equal(candidate.Transport.Edges, replay.Transport.Edges);
+        Assert.Equal(candidate.Transport.Edges.ToArray(), replay.Transport.Edges.ToArray());
         var originals = baseline.Transport.Edges.ToDictionary(x =>
+            x.Edge.FineStrategicEdgeId);
+        var projected = candidate.Transport.Edges.ToDictionary(x =>
             x.Edge.FineStrategicEdgeId);
         int changedPorts = 0, changedSea = 0;
         foreach (var edge in host.Incidence.FineTopology.Edges)
@@ -128,8 +130,7 @@ public sealed class FoundationFineFirstPhysicalGeographyTests
             var b = checked((int)edge.IncidentCellIds[1].Value - 1);
             var kind = geography.CrossingAtIndices(a, b);
             var beforeEdge = originals[edge.Id];
-            var afterEdge = candidate.Transport.Edges.Single(x =>
-                x.Edge.FineStrategicEdgeId == edge.Id);
+            var afterEdge = projected[edge.Id];
             ulong baseCost = beforeEdge.FreePhysicalCostMicroPerWholeCargoUnit;
             ulong newCost = afterEdge.FreePhysicalCostMicroPerWholeCargoUnit;
             Assert.InRange(newCost, baseCost, checked(baseCost * 2UL));
