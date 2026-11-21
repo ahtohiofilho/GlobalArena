@@ -199,13 +199,17 @@ public partial class TacticalContextPreview : SubViewportContainer
     // R97: camera orientation is a presentation policy, not a property of G3.
     // LOCKED parallel-transports the previous viewing direction across charts.
     // NORTH follows geographic north at the actual spherical camera center.
-    private bool _geographicNorthUp = true;
+    // The new canonical north-up policy is gated to cartographic local sites.
+    // Legacy tactical worker/navigation modes retain their tested locked frame.
+    private bool _geographicNorthUp;
     private Vector3? _navigationOrientationAnchor;
     // R98: independent of strategic/tactical tile centers. The continuous
     // screen-center geography is computed from the inverse spherical chart
     // on every accepted pointer motion; chart focus is only a mesh cache key.
     private Vector3 _exactViewPointOnSphere;
-    private Vector3 _lastValidGeographicNorth = Vector3.Forward;
+    // World temperature/latitude and canonical poles use spherical +Z (not Godot +Y).
+    private static readonly Vector3 GeographicNorthAxis = Vector3.Back;
+    private Vector3 _lastValidGeographicNorth = Vector3.Back;
     public Vector3 ExactViewPointOnSphere => _exactViewPointOnSphere;
     private Vector2 _dragStart;
     private bool _pressed;
@@ -686,7 +690,11 @@ public partial class TacticalContextPreview : SubViewportContainer
             if (_activeFocus != 0) Open(_activeFocus);
         };
         primaryRow.AddChild(projectionButton);
-        var northModeButton = new Button { Text = "ORIENTATION: NORTH UP" };
+        var northModeButton = new Button
+        {
+            Text = _geographicNorthUp
+                ? "ORIENTATION: NORTH UP" : "ORIENTATION: LOCKED"
+        };
         northModeButton.Pressed += () =>
         {
             _geographicNorthUp = !_geographicNorthUp;
@@ -899,8 +907,8 @@ public partial class TacticalContextPreview : SubViewportContainer
             return;
         }
 
-        var north = Vector3.Up -
-            _exactViewPointOnSphere * _exactViewPointOnSphere.Dot(Vector3.Up);
+        var north = GeographicNorthAxis -
+            _exactViewPointOnSphere * _exactViewPointOnSphere.Dot(GeographicNorthAxis);
         // Geographic north has no unique direction at a pole. Preserve the
         // last valid tangent direction, and project it onto the new tangent
         // plane; do not flip the compass by sampling a different G3 center.
@@ -988,7 +996,8 @@ public partial class TacticalContextPreview : SubViewportContainer
             throw new InvalidOperationException("No projected opening city.");
         if (!TryUnprojectOnSphere(center, out var spherical))
             throw new InvalidOperationException("Opening city has no spherical center.");
-        var north = Vector3.Up - spherical * spherical.Dot(Vector3.Up);
+        var north = GeographicNorthAxis -
+            spherical * spherical.Dot(GeographicNorthAxis);
         if (north.LengthSquared() < 1e-6f)
             throw new InvalidOperationException(
                 "Compass direction is undefined at the exact geographic pole.");
@@ -997,6 +1006,22 @@ public partial class TacticalContextPreview : SubViewportContainer
         var northOnMap = FlattenUnitVector(nearbyNorth, 0f);
         return (_camera.UnprojectPosition(center),
             _camera.UnprojectPosition(northOnMap));
+    }
+
+    // R136: verify the poles defined by REAL world latitude, not a camera
+    // convention. Ice temperature and signed geography use +Z/-Z.
+    internal (Vector2 City, Vector2 NorthPole, Vector2 SouthPole)
+        OpeningGeographicPolesScreenProof(PhysicalTacticalTileId home)
+    {
+        if (_camera is null ||
+            !TryGetSitePolygonCentroid(
+                home.FineStrategicCellId.Value, out var city))
+            throw new InvalidOperationException("No active home projection.");
+        return (_camera.UnprojectPosition(city),
+            _camera.UnprojectPosition(
+                FlattenUnitVector(GeographicNorthAxis, 0f)),
+            _camera.UnprojectPosition(
+                FlattenUnitVector(-GeographicNorthAxis, 0f)));
     }
 
     // Camera ownership contract R13: rotation is an orientation-only action.
@@ -1231,7 +1256,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         PhysicalTileInspected?.Invoke(matched.Id, _selection.Text, _terrainDetails?.Text ?? "");
     }
 
-    public void Open(ulong focusValue)
+    public void Open(ulong focusValue, PhysicalTacticalTileId? openingHome = null)
     {
         if (_camera is null || _surface is null || _edges is null || _territoryBoundaries is null || _information is null || _selection is null || _selectedTileOutline is null)
             throw new InvalidOperationException("Tactical preview is not ready.");
@@ -1287,7 +1312,14 @@ public partial class TacticalContextPreview : SubViewportContainer
             fineWorld.StrategicTopology.Cells.Count != physical.FineTopology.Cells.Count)
             throw new InvalidOperationException("Physical and geometric topology counts differ.");
 
-        var normal = ConvertPoint(coarseWorld.StrategicSphericalGeometry.GetCell(focus).Center).Normalized();
+        // The opening azimuthal chart must be centered on the player's
+        // REAL physical home, not on the coarse strategic cell. Otherwise
+        // the two genuine geographic poles bend sideways relative to the
+        // city even if the camera's local north derivative points upward.
+        var normal = openingHome.HasValue
+            ? ConvertPoint(fineWorld.StrategicSphericalGeometry.GetCell(
+                openingHome.Value.FineStrategicCellId).Center).Normalized()
+            : ConvertPoint(coarseWorld.StrategicSphericalGeometry.GetCell(focus).Center).Normalized();
         // At every focus transfer, derive the new local frame from either
         // the transported previous screen-up direction or the geographic
         // north vector at the actual camera center. This avoids the abrupt
@@ -1298,7 +1330,8 @@ public partial class TacticalContextPreview : SubViewportContainer
             Vector3 position = _navigationOrientationAnchor ?? normal;
             // North is tangent to the sphere; at the exact pole its direction
             // is undefined. Retain the last valid orientation there.
-            desiredNorth = Vector3.Up - position * position.Dot(Vector3.Up);
+            desiredNorth = GeographicNorthAxis -
+                position * position.Dot(GeographicNorthAxis);
         }
         else if (_basisNorth.LengthSquared() > 0.01f)
             desiredNorth = _basisNorth;
@@ -1310,8 +1343,8 @@ public partial class TacticalContextPreview : SubViewportContainer
                 normal * _basisNorth.Dot(normal);
             if (desiredNorth.LengthSquared() < 1e-6f)
             {
-                var fallback = Math.Abs(normal.Dot(Vector3.Up)) > 0.95f
-                    ? Vector3.Forward : Vector3.Up;
+                var fallback = Math.Abs(normal.Dot(GeographicNorthAxis)) > 0.95f
+                    ? Vector3.Up : GeographicNorthAxis;
                 desiredNorth = fallback - normal * fallback.Dot(normal);
             }
         }
@@ -1628,16 +1661,24 @@ public partial class TacticalContextPreview : SubViewportContainer
                     .FirstOrDefault(id => id.Value != source);
                 if (adjacent.Value == 0)
                     throw new InvalidOperationException("No second navigation neighbor.");
-                var desired = Flatten(_cachedCoarseGeometry.GetCell(adjacent).Center);
-                var direction = _camera.UnprojectPosition(desired) -
-                    _camera.UnprojectPosition(_cameraTarget);
-                if (direction.LengthSquared() < 0.001f)
-                    throw new InvalidOperationException("Navigation direction collapsed.");
-                // Drag the map opposite the desired destination.
-                var relative = -direction.Normalized() * 12f;
+                // In geographic NORTH UP, the camera rotates its chart
+                // orientation continuously as the point under the viewport
+                // changes. The old smoke held a *fixed pixel direction*
+                // computed only once, which tested a compass-locked straight
+                // drag rather than steering toward an actual geographic
+                // neighbor. Keep ONE held gesture, but recalculate bearing.
                 bool crossed = false;
                 for (int step = 0; step < 140; step++)
                 {
+                    var desired = Flatten(
+                        _cachedCoarseGeometry.GetCell(adjacent).Center);
+                    var direction = _camera.UnprojectPosition(desired) -
+                        _camera.UnprojectPosition(_cameraTarget);
+                    if (direction.LengthSquared() < 0.001f)
+                        throw new InvalidOperationException(
+                            "Geographic navigation bearing collapsed.");
+                    // Drag terrain opposite the desired real destination.
+                    var relative = -direction.Normalized() * 12f;
                     _GuiInput(new InputEventMouseMotion
                     {
                         Position = motionPixel, Relative = relative

@@ -122,6 +122,7 @@ public partial class Main : Control
         AttachRuntimeState(_canonicalSession.Snapshot);
     }
     private ulong? _bridgeSelection;
+    private PhysicalTacticalTileId? _initialTacticalHomeAnchor;
 
     private void OnCanonicalTerritorySelectionChanged(ulong? selectedId)
     {
@@ -969,7 +970,8 @@ public partial class Main : Control
             _openTacticalContext is null) return;
         try
         {
-            _tacticalPreview.Open(_bridgeSelection.Value);
+            _tacticalPreview.Open(_bridgeSelection.Value,
+                _initialTacticalHomeAnchor);
             _strategicGlobe.Visible = false;
             _tacticalPreview.Visible = true;
             if (_strategicHudPanel is not null) _strategicHudPanel.Visible = false;
@@ -1765,9 +1767,20 @@ public partial class Main : Control
             }
             else _bridgeSelection = first.CellId.Value;
             _openTacticalContext!.Disabled = false;
+            // The city-centric chart is the cartographic UX pilot.
+            // Legacy navigation/E2E retains its established coarse chart
+            // until the new handoff policy is validated separately.
+            _initialTacticalHomeAnchor =
+                _tacticalPreview?.IsCartographicSiteMode == true
+                    ? openingHome : null;
             OpenTacticalContext();
-            if (openingHome.HasValue)
-                _tacticalPreview!.FocusInitialPhysicalCity(openingHome.Value);
+            _initialTacticalHomeAnchor = null;
+            // City-centered first frame is opt-in to the cartographic map.
+            // Legacy worker/navigation demos retain their proven tactical
+            // region opening until that interface adopts named localities.
+            if (openingHome.HasValue &&
+                _tacticalPreview?.IsCartographicSiteMode == true)
+                _tacticalPreview.FocusInitialPhysicalCity(openingHome.Value);
             CreateTacticalWorkspaceWindows(globe, rightPanel, header, content);
             // Keep the 1280x720 header usable: the long subtitle belongs in
             // secondary information, not beside all keyboard-first controls.
