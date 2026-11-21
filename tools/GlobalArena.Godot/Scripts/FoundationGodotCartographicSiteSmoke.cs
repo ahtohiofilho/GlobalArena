@@ -65,8 +65,8 @@ internal sealed class FoundationGodotCartographicSiteSmoke
                     $"No site visible after focusing occupied tile {tile}.");
                 var anchor = _map.LocalSiteAnchors
                     .Single(x => x.TileId == tile);
-                Must(Mathf.IsFinite(anchor.Centroid.X) &&
-                     Mathf.IsFinite(anchor.Centroid.Z),
+                Must(float.IsFinite(anchor.Centroid.X) &&
+                     float.IsFinite(anchor.Centroid.Z),
                     "Site polygon centroid must be finite.");
                 var dot = _map.FindChild(
                     "GANextR134SiteDot" + tile, true, false) as Panel;
