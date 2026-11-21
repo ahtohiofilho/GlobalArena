@@ -141,18 +141,37 @@ public partial class Main
                             e.SecondTile.FineStrategicCellId.Value == tile)
                 .OrderBy(e => e.Edge.FineStrategicEdgeId.Value)
                 .ToArray();
+            var transport = snapshot.Transport.Edges.ToDictionary(e => e.Edge);
+            // These are CURRENT physical unit freight quotes from the
+            // canonical infrastructure snapshot, not the historical price
+            // charged during the previous settled cycle. A site's exact
+            // money allocation requires a separate authorized market ledger.
+            string CrossingReadout(FoundationPhysicalTradeEdgeLoad line)
+            {
+                if (!transport.TryGetValue(line.Edge, out var infrastructure))
+                    throw new InvalidOperationException(
+                        "Authorized used crossing is absent from current transport.");
+                ulong currentUnitFreight =
+                    FoundationPhysicalAuthoritativeTransportProjector
+                        .EffectiveUnitFreightCost(infrastructure);
+                return $"Edge {line.Edge.FineStrategicEdgeId.Value} | " +
+                    $"cargo {line.TotalCargoMicro} micro (last cycle) | " +
+                    $"current unit freight " +
+                    $"{FormatMoneyMicroForDisplay(currentUnitFreight)} | " +
+                    $"{line.FirstTile.FineStrategicCellId.Value}" +
+                    $" - {line.SecondTile.FineStrategicCellId.Value}";
+            }
             _localCenterTradeQa.Text = adjacent.Length == 0
                 ? $"TRADE | Last closed cycle {view.EconomicCycleOrdinal}: " +
                   "no authorized used crossing incident to this site."
                 : $"TRADE | Last closed cycle {view.EconomicCycleOrdinal}\n" +
                   $"Authorized used crossings: {adjacent.Length}\n" +
-                  string.Join("\n", adjacent.Select(e =>
-                      $"Edge {e.Edge.FineStrategicEdgeId.Value} | " +
-                      $"cargo {e.TotalCargoMicro} micro | " +
-                      $"{e.FirstTile.FineStrategicCellId.Value}" +
-                      $" - {e.SecondTile.FineStrategicCellId.Value}")) +
-                  "\nThese are crossing volumes, not a full route list. " +
-                  "Site revenue/freight allocation is unavailable.";
+                  string.Join("\n", adjacent.Select(CrossingReadout)) +
+                  "\nCurrent unit freight is a quote, NOT the money " +
+                  "actually charged in the last closed cycle. " +
+                  "These are used crossings, not full routes. " +
+                  "Revenue, taxes, toll payments and exact historical " +
+                  "freight by site are unavailable.";
         }
         GD.Print($"GA_NEXT_R130_LOCAL_CENTER_READ tile={tile} " +
             $"own_workers={own.Length} settled_cycle=" +
