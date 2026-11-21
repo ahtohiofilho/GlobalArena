@@ -130,6 +130,139 @@ public sealed class FoundationFineFirstShallowSettledEconomicAbTests
             opened.Transport, fine, demo.Incidence, unchangedBefore);
     }
 
+    [Theory]
+    [InlineData(20261012UL)]
+    [InlineData(20261013UL)]
+    public void InvestInAnActuallyUsedPortAndAuditNextClosedCycle(
+        ulong seed)
+    {
+        // R126: unlike earlier arbitrary port selection, this scenario
+        // chooses from a participant-authorized REAL settled trade view.
+        // A new route or higher cargo is not presumed to be guaranteed.
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(seed),
+                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)),
+            workersPerCivilization: 3);
+        var specialized = new PhysicalWorkerRuntimeState(
+            demo.Snapshot.Workers.Workers.Select(w =>
+                new PhysicalWorkerRuntimeRecord(
+                    w.Id, w.Owner, w.CellId,
+                    w.Owner == Red ? Grain : Wood,
+                    w.OutputMicroPerTurn, w.Activity,
+                    w.DemandMultiplierMicro, w.TacticalTileId,
+                    w.Occupation)),
+            tacticalLocationsAuthoritative: true,
+            occupationsAuthoritative: true);
+        demo.Session.AcceptSnapshot(demo.Snapshot.WithWorkers(specialized));
+        var world = demo.Session.GeneratedWorld;
+        var fine = FoundationFineFirstPhysicalGeography.Generate(
+            world, demo.Incidence);
+        var identity = FoundationFineFirstWorldgenCanonicalSignature.Compute(
+            world, demo.Incidence, fine);
+        var policy = Policy();
+        var seaDepths = fine.FineElevationRaw
+            .Where(h => h <= fine.SeaLevelRaw)
+            .Select(h => fine.SeaLevelRaw - h)
+            .OrderBy(x => x).ToArray();
+        var shallow = new FoundationExperimentalShallowFreightPolicy(
+            seaDepths[(seaDepths.Length - 1) / 4], 10U, 3U, 20U);
+        var opened = FoundationFineFirstEconomicCycleGate.OpenNewEconomy(
+            demo.Snapshot, world, demo.Incidence, fine, identity,
+            policy, shallow);
+        demo.Session.AcceptFineFirstOpening(
+            opened, demo.Incidence, fine, identity);
+        var host = new FoundationTacticalHumanAiTurnHost(
+            demo.Session, demo.Incidence,
+            new[] { Red },
+            new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy>
+            {
+                [Blue] = new FoundationTacticalAiResumeProductionPolicy()
+            },
+            enableMonetaryInfrastructure: true,
+            settlementPolicy: policy.Settlement,
+            fineGeography: fine, fineSignature: identity);
+
+        host.SetHumanReady(Red);
+        var first = host.TryCloseTurn();
+        Assert.NotNull(first);
+        Assert.True(first!.ReplayMatched);
+        Assert.NotNull(first.EconomicSettlement);
+        var tradeBefore = host.GetLastClosedEconomicTradeView(Red);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.AuthorizedSubset,
+            tradeBefore.Availability);
+        Assert.Equal(1UL, tradeBefore.EconomicCycleOrdinal);
+        var topology = demo.Incidence.FineTopology.Edges.ToDictionary(x =>
+            new PhysicalTacticalEdgeId(
+                demo.Incidence.Refinement.FineParameters, x.Id));
+        var usedPorts = tradeBefore.UsedEdges
+            .Where(row =>
+            {
+                var edge = topology[row.Edge];
+                int a = checked((int)edge.IncidentCellIds[0].Value - 1);
+                int b = checked((int)edge.IncidentCellIds[1].Value - 1);
+                return fine.CrossingAtIndices(a, b) ==
+                    FoundationFineTransportCrossingKind.Port;
+            })
+            .OrderByDescending(row => row.TotalCargoMicro)
+            .ThenBy(row => row.Edge.FineStrategicEdgeId.Value)
+            .ToArray();
+        Assert.NotEmpty(usedPorts);
+        var chosen = usedPorts[0];
+        Assert.True(chosen.TotalCargoMicro > 0UL);
+        var edgeBefore = host.Snapshot.Transport.Edges.Single(x =>
+            x.Edge == chosen.Edge);
+        ulong costBefore = FoundationPhysicalAuthoritativeTransportProjector
+            .EffectiveUnitFreightCost(edgeBefore);
+        BigInteger cashBefore = host.Snapshot.Treasury.Get(Red).CashScaled;
+        const ulong invest = 100_000UL;
+        Assert.True(cashBefore > GlobalArenaMoneyScale.FromMoneyMicro(invest));
+
+        host.QueueHumanMonetaryInvestment(Red, chosen.Edge, invest);
+        host.SetHumanReady(Red);
+        var second = host.TryCloseTurn();
+        Assert.NotNull(second);
+        Assert.True(second!.ReplayMatched);
+        Assert.Equal(2UL, second.EconomicSettlement!.EconomicCycleOrdinal);
+        var journal = Assert.Single(second.InfrastructureInvestments);
+        Assert.Equal(chosen.Edge, journal.Edge);
+        Assert.Equal(invest, journal.MoneyMicro);
+        var edgeAfter = host.Snapshot.Transport.Edges.Single(x =>
+            x.Edge == chosen.Edge);
+        ulong costAfter = FoundationPhysicalAuthoritativeTransportProjector
+            .EffectiveUnitFreightCost(edgeAfter);
+        Assert.True(costAfter < costBefore);
+        Assert.Equal(edgeBefore.FreePhysicalCostMicroPerWholeCargoUnit,
+            edgeAfter.FreePhysicalCostMicroPerWholeCargoUnit);
+        Assert.Equal(edgeBefore.NaturalConstructionCostMoneyMicro,
+            edgeAfter.NaturalConstructionCostMoneyMicro);
+        Assert.Equal(edgeBefore.CargoMicroAtReferenceLoad,
+            edgeAfter.CargoMicroAtReferenceLoad);
+        Assert.Equal(invest, edgeAfter.CommittedInvestmentMoneyMicro);
+        Assert.Equal(Red, edgeAfter.InfrastructureOwner);
+        Assert.Equal(
+            cashBefore - GlobalArenaMoneyScale.FromMoneyMicro(invest) +
+            second.EconomicSettlement.Credits.Single(x =>
+                x.Civilization == Red).CashCreditScaled,
+            host.Snapshot.Treasury.Get(Red).CashScaled);
+
+        var tradeAfter = host.GetLastClosedEconomicTradeView(Red);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.AuthorizedSubset,
+            tradeAfter.Availability);
+        Assert.Equal(2UL, tradeAfter.EconomicCycleOrdinal);
+        ulong cargoAfter = tradeAfter.UsedEdges
+            .FirstOrDefault(x => x.Edge == chosen.Edge)?.TotalCargoMicro ?? 0UL;
+        // Both figures are sourced from independently committed trade views;
+        // no assertion assumes spending must automatically raise local cargo.
+        Assert.True(chosen.TotalCargoMicro > 0UL);
+        Assert.True(cargoAfter <=
+            second.EconomicSettlement.ProducedGoodsMicro);
+        Assert.Equal(second.EconomicSettlement.ProducedGoodsMicro,
+            second.EconomicSettlement.SoldAndConsumedGoodsMicro);
+        Assert.Equal(second.EconomicSettlement.GrossSalesScaled,
+            second.EconomicSettlement.PhysicalFreightScaled +
+            second.EconomicSettlement.CreditedToTreasuriesScaled);
+    }
+
     [Fact]
     public void RealSettledCashCanFinanceShallowPortWithoutBuilderOrCongestion()
     {
