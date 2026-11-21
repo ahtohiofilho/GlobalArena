@@ -369,7 +369,9 @@ public partial class TacticalContextPreview
             _workerBadgeMesh.Mesh = surface.Commit() ??
                 throw new InvalidOperationException("Workforce group mesh missing.");
         surface.Dispose();
-        _workerBadgeMesh.Visible = diskCount > 0;
+        // Cartographic mode never renders individual workforce dots; real
+        // workers remain available via the operational workforce panels.
+        _workerBadgeMesh.Visible = diskCount > 0 && !_localSitesEnabled;
         if (_hoveredBadgeId.HasValue &&
             !_workerGlyphPositions.ContainsKey(_hoveredBadgeId.Value))
         {
