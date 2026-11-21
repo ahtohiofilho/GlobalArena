@@ -117,9 +117,38 @@ internal static class GaExplicitEconomicQaConfiguration
         var identity = FoundationFineFirstWorldgenCanonicalSignature.Compute(
             world, demo.Incidence, fine);
         var configuration = Profile();
+        var shallowMode = System.Environment.GetEnvironmentVariable(
+            "GA_NEXT_QA_SHALLOW_PORTS") == "1";
+        FoundationExperimentalShallowFreightPolicy? shallow = null;
+        if (shallowMode)
+        {
+            // R119 mild-p25 A/B: same G18 fine-first sea-depth quantile
+            // determines the research cutoff, with NO invented meter scale.
+            // Explicit QA-only switch, absent in normal gameplay.
+            var sortedSeaDepths = fine.FineElevationRaw
+                .Where(elevation => elevation <= fine.SeaLevelRaw)
+                .Select(elevation => fine.SeaLevelRaw - elevation)
+                .OrderBy(depth => depth).ToArray();
+            if (sortedSeaDepths.Length == 0)
+                throw new InvalidOperationException(
+                    "Shallow port QA requires an actual navigable sea.");
+            long threshold = sortedSeaDepths[
+                (sortedSeaDepths.Length - 1) / 4];
+            if (threshold <= 0)
+                throw new InvalidOperationException(
+                    "Shallow port QA requires a positive relative depth.");
+            shallow = new FoundationExperimentalShallowFreightPolicy(
+                threshold, 10U, 3U, 20U);
+            Godot.GD.Print($"GA_NEXT_R120_SHALLOW_PORT_AB_ENABLED " +
+                $"threshold_raw={threshold} coast_operating_pct=10 " +
+                "sea_operating_pct=3 port_construction_pct=20 " +
+                "depth_is_not_meters=true experimental=true");
+        }
+        else
+            Godot.GD.Print("GA_NEXT_R120_SHALLOW_PORT_AB_BASELINE enabled=false");
         var opening = FoundationFineFirstEconomicCycleGate.OpenNewEconomy(
             demo.Snapshot, world, demo.Incidence, fine, identity,
-            configuration);
+            configuration, shallow);
         demo.Session.AcceptFineFirstOpening(
             opening, demo.Incidence, fine, identity);
         var host = new FoundationTacticalHumanAiTurnHost(
