@@ -189,6 +189,17 @@ public sealed class FoundationGodotTacticalV10Smoke
                 "GANextPlanetWindow", true, false) as Control;
             Must(roster is not null && operations is not null && planet is not null,
                 "v10 UI missing operational dock or atlas");
+            // R134: polygon-area centroid, not label baseline, center
+            // bounding rectangle, or the sphere's raw cell-center point.
+            var rectangular = TacticalContextPreview.SitePolygonAreaCentroid(
+                new[] { new Vector2(10f, 20f), new Vector2(30f, 20f),
+                        new Vector2(30f, 32f), new Vector2(10f, 32f) });
+            var asymmetric = TacticalContextPreview.SitePolygonAreaCentroid(
+                new[] { new Vector2(0f, 0f), new Vector2(4f, 0f),
+                        new Vector2(0f, 2f) });
+            Must(rectangular.DistanceTo(new Vector2(20f, 26f)) < 0.0001f &&
+                 asymmetric.DistanceTo(new Vector2(4f / 3f, 2f / 3f)) < 0.0001f,
+                "Cartographic site dot must use canonical polygon area centroid.");
             // R133: the tactical viewport must not hide a site at any
             // supported zoom. Future strategic-planet filtering is separate.
             Must(TacticalContextPreview.SiteLabelBudget(1.2f, 3) == 3 &&
