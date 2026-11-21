@@ -130,6 +130,112 @@ public sealed class FoundationFineFirstShallowSettledEconomicAbTests
             opened.Transport, fine, demo.Incidence, unchangedBefore);
     }
 
+    [Fact]
+    public void RealSettledCashCanFinanceShallowPortWithoutBuilderOrCongestion()
+    {
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL),
+                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)),
+            workersPerCivilization: 3);
+        var specialized = new PhysicalWorkerRuntimeState(
+            demo.Snapshot.Workers.Workers.Select(w =>
+                new PhysicalWorkerRuntimeRecord(
+                    w.Id, w.Owner, w.CellId,
+                    w.Owner == Red ? Grain : Wood,
+                    w.OutputMicroPerTurn, w.Activity,
+                    w.DemandMultiplierMicro, w.TacticalTileId,
+                    w.Occupation)),
+            tacticalLocationsAuthoritative: true,
+            occupationsAuthoritative: true);
+        demo.Session.AcceptSnapshot(demo.Snapshot.WithWorkers(specialized));
+        var world = demo.Session.GeneratedWorld;
+        var fine = FoundationFineFirstPhysicalGeography.Generate(
+            world, demo.Incidence);
+        var identity = FoundationFineFirstWorldgenCanonicalSignature.Compute(
+            world, demo.Incidence, fine);
+        var policy = Policy();
+        long[] depths = fine.FineElevationRaw
+            .Where(h => h <= fine.SeaLevelRaw)
+            .Select(h => fine.SeaLevelRaw - h).OrderBy(x => x).ToArray();
+        var shallow = new FoundationExperimentalShallowFreightPolicy(
+            depths[(depths.Length - 1) / 4], 10U, 3U, 20U);
+        var opened = FoundationFineFirstEconomicCycleGate.OpenNewEconomy(
+            demo.Snapshot, world, demo.Incidence, fine, identity,
+            policy, shallow);
+        var baseline = FoundationPhysicalNaturalTransportSeeder
+            .PreviewFineFirst(world, demo.Incidence, fine,
+                policy.OperatingTransport, policy.MonetaryConstruction);
+        var old = baseline.Transport.Edges.ToDictionary(x => x.Edge);
+        var portIds = demo.Incidence.FineTopology.Edges
+            .Where(e =>
+            {
+                int a = checked((int)e.IncidentCellIds[0].Value - 1);
+                int b = checked((int)e.IncidentCellIds[1].Value - 1);
+                return fine.CrossingAtIndices(a, b) ==
+                    FoundationFineTransportCrossingKind.Port;
+            }).Select(e => new PhysicalTacticalEdgeId(
+                demo.Incidence.Refinement.FineParameters, e.Id)).ToHashSet();
+        var port = opened.Transport.Edges.First(x =>
+            portIds.Contains(x.Edge) &&
+            x.NaturalConstructionCostMoneyMicro >
+                old[x.Edge].NaturalConstructionCostMoneyMicro);
+        Assert.True(port.NaturalConstructionCostMoneyMicro >
+            policy.MonetaryConstruction.CoastBaseCostMoneyMicro);
+        demo.Session.AcceptFineFirstOpening(
+            opened, demo.Incidence, fine, identity);
+        var host = new FoundationTacticalHumanAiTurnHost(
+            demo.Session, demo.Incidence,
+            new[] { Red },
+            new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy>
+            {
+                [Blue] = new FoundationTacticalAiResumeProductionPolicy()
+            },
+            enableMonetaryInfrastructure: true,
+            settlementPolicy: policy.Settlement,
+            fineGeography: fine, fineSignature: identity);
+
+        host.SetHumanReady(Red);
+        var first = host.TryCloseTurn();
+        Assert.NotNull(first);
+        Assert.True(first!.ReplayMatched);
+        Assert.Equal(1UL, first.EconomicSettlement!.EconomicCycleOrdinal);
+        const ulong spend = 100_000UL;
+        BigInteger cash = host.Snapshot.Treasury.Get(Red).CashScaled;
+        Assert.True(cash > GlobalArenaMoneyScale.FromMoneyMicro(spend));
+        var before = host.Snapshot.Transport.Edges.Single(x =>
+            x.Edge == port.Edge);
+        ulong originalEffective =
+            FoundationPhysicalAuthoritativeTransportProjector
+                .EffectiveUnitFreightCost(before);
+        var demandBefore = host.Snapshot.Workers;
+        host.QueueHumanMonetaryInvestment(Red, port.Edge, spend);
+        host.SetHumanReady(Red);
+        var second = host.TryCloseTurn();
+        Assert.NotNull(second);
+        Assert.True(second!.ReplayMatched);
+        Assert.Equal(2UL, second.EconomicSettlement!.EconomicCycleOrdinal);
+        Assert.Single(second.InfrastructureInvestments);
+        Assert.Equal(spend, second.InfrastructureInvestments[0].MoneyMicro);
+
+        var invested = host.Snapshot.Transport.Edges.Single(x =>
+            x.Edge == port.Edge);
+        Assert.Equal(port.NaturalConstructionCostMoneyMicro,
+            invested.NaturalConstructionCostMoneyMicro);
+        Assert.Equal(port.FreePhysicalCostMicroPerWholeCargoUnit,
+            invested.FreePhysicalCostMicroPerWholeCargoUnit);
+        Assert.Equal(port.CargoMicroAtReferenceLoad,
+            invested.CargoMicroAtReferenceLoad);
+        Assert.Equal(spend, invested.CommittedInvestmentMoneyMicro);
+        Assert.Equal(Red, invested.InfrastructureOwner);
+        Assert.True(FoundationPhysicalAuthoritativeTransportProjector
+            .EffectiveUnitFreightCost(invested) < originalEffective);
+        Assert.Same(demandBefore, host.Snapshot.Workers);
+        Assert.Equal(cash - GlobalArenaMoneyScale.FromMoneyMicro(spend) +
+            second.EconomicSettlement.Credits.Single(x =>
+                x.Civilization == Red).CashCreditScaled,
+            host.Snapshot.Treasury.Get(Red).CashScaled);
+    }
+
     [Theory]
     [InlineData(20261012UL)]
     [InlineData(20261013UL)]
