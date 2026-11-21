@@ -1329,8 +1329,10 @@ public partial class TacticalContextPreview : SubViewportContainer
         // The north/south poles are fine-mesh cells, generally pentagons.
         // Resolve by latitude extrema from authoritative geometry, once per Open.
         var fineCells = fineWorld.StrategicTopology.Cells;
-        var northCell = fineCells.MaxBy(id => fineWorld.StrategicSphericalGeometry.GetCell(id.Id).Center.Z);
-        var southCell = fineCells.MinBy(id => fineWorld.StrategicSphericalGeometry.GetCell(id.Id).Center.Z);
+        var northCell = fineCells.MaxBy(id => fineWorld.StrategicSphericalGeometry.GetCell(id.Id).Center.Z)
+            ?? throw new InvalidOperationException("Fine world has no northern polar cell.");
+        var southCell = fineCells.MinBy(id => fineWorld.StrategicSphericalGeometry.GetCell(id.Id).Center.Z)
+            ?? throw new InvalidOperationException("Fine world has no southern polar cell.");
         var northPoleCenter = ConvertPoint(fineWorld.StrategicSphericalGeometry.GetCell(northCell.Id).Center).Normalized();
         var southPoleCenter = ConvertPoint(fineWorld.StrategicSphericalGeometry.GetCell(southCell.Id).Center).Normalized();
         _northPoleCenter = northPoleCenter;
