@@ -462,9 +462,11 @@ public partial class Main : Control
                     : "not adjacent — one physical edge per move";
         var target = selectedTile.HasValue ? selectedTile.Value.ToString() : "none";
         _fineMovementDecision.Text =
-            $"MOVEMENT | worker #{worker.Id.Value} | from {source} to {target}\\n" +
+            $"MOVEMENT | worker #{worker.Id.Value} | from {source} to {target}\n" +
             $"{decision} | {queuedText}";
     }
+
+    internal string FineMovementDecisionText => _fineMovementDecision?.Text ?? "";
 
     private void QueueFineWorkerMove()
     {
