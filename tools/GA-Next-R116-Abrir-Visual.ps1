@@ -60,7 +60,7 @@ $origin = (& git -C $repoRoot remote get-url origin 2>$null | Out-String).Trim()
 if ($LASTEXITCODE -ne 0 -or $origin -notmatch '^(https://github[.]com/|git@github[.]com:)ahtohiofilho/GlobalArena([.]git)?$') {
     throw "Unexpected repository origin: $origin"
 }
-& git -C $repoRoot fetch --no-tags origin "refs/heads/$branch:refs/remotes/origin/$branch"
+& git -C $repoRoot fetch --no-tags origin ("refs/heads/{0}:refs/remotes/origin/{0}" -f $branch)
 Assert-LastCommand 'Fetch R115'
 # Avoid rev-parse/PowerShell pipeline exit-code ambiguity on Windows.
 # The remote tracking ref was updated by the successful fetch above.
