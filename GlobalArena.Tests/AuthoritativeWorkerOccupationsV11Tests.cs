@@ -204,7 +204,7 @@ public sealed class AuthoritativeWorkerOccupationsV11Tests
         var resumed = Assert.IsType<FoundationTacticalCollectiveReceipt>(
             host.TryCloseTurn());
         Assert.True(resumed.ReplayMatched);
-        var resumeEvent = Assert.Single(resumed.Events.Where(e => e.WorkerId == worker.Id));
+        var resumeEvent = Assert.Single(resumed.Events, e => e.WorkerId == worker.Id);
         Assert.Equal(target, resumeEvent.Source);
         Assert.Equal(target, resumeEvent.Destination);
         Assert.Null(resumeEvent.TraversedEdge);
@@ -239,7 +239,7 @@ public sealed class AuthoritativeWorkerOccupationsV11Tests
         host.SetHumanReady(human);
         var receipt = Assert.IsType<FoundationTacticalCollectiveReceipt>(
             host.TryCloseTurn());
-        var ev = Assert.Single(receipt.Events.Where(e => e.WorkerId == worker.Id));
+        var ev = Assert.Single(receipt.Events, e => e.WorkerId == worker.Id);
         Assert.Equal(first, ev.Source);
         Assert.Equal(second, ev.Destination);
         Assert.Equal(PhysicalWorkerActivity.Traveling, ev.NextActivity);
