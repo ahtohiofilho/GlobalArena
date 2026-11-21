@@ -13,6 +13,7 @@ namespace GlobalArena.Godot;
 public partial class Main
 {
     private const ulong PortQaSpendMoneyMicro = 100_000UL;
+    private FoundationFineFirstPhysicalGeography? _r123FineGeography;
     private OptionButton? _portQaSelector;
     private Button? _portQaInvest;
     private Label? _portQaDetails;
@@ -89,12 +90,11 @@ public partial class Main
             return;
         var host = _tacticalHost;
         var snapshot = host.Snapshot;
-        var fine = _canonicalFineFirstPhysicalGeography;
+        var fine = _r123FineGeography;
         if (fine is null) return;
 
         var incidence = host.Incidence;
         var byId = snapshot.Transport.Edges.ToDictionary(x => x.Edge);
-        var byEdge = incidence.FineTopology.Edges.ToDictionary(x => x.Id);
         var navigable = new System.Collections.Generic.List<
             (PhysicalTacticalEdgeId Id, long Depth, bool Used)>();
         var authorized = host.GetLastClosedEconomicTradeView(_humanCivilization);
