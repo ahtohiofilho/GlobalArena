@@ -1655,16 +1655,24 @@ public partial class TacticalContextPreview : SubViewportContainer
                     .FirstOrDefault(id => id.Value != source);
                 if (adjacent.Value == 0)
                     throw new InvalidOperationException("No second navigation neighbor.");
-                var desired = Flatten(_cachedCoarseGeometry.GetCell(adjacent).Center);
-                var direction = _camera.UnprojectPosition(desired) -
-                    _camera.UnprojectPosition(_cameraTarget);
-                if (direction.LengthSquared() < 0.001f)
-                    throw new InvalidOperationException("Navigation direction collapsed.");
-                // Drag the map opposite the desired destination.
-                var relative = -direction.Normalized() * 12f;
+                // In geographic NORTH UP, the camera rotates its chart
+                // orientation continuously as the point under the viewport
+                // changes. The old smoke held a *fixed pixel direction*
+                // computed only once, which tested a compass-locked straight
+                // drag rather than steering toward an actual geographic
+                // neighbor. Keep ONE held gesture, but recalculate bearing.
                 bool crossed = false;
                 for (int step = 0; step < 140; step++)
                 {
+                    var desired = Flatten(
+                        _cachedCoarseGeometry.GetCell(adjacent).Center);
+                    var direction = _camera.UnprojectPosition(desired) -
+                        _camera.UnprojectPosition(_cameraTarget);
+                    if (direction.LengthSquared() < 0.001f)
+                        throw new InvalidOperationException(
+                            "Geographic navigation bearing collapsed.");
+                    // Drag terrain opposite the desired real destination.
+                    var relative = -direction.Normalized() * 12f;
                     _GuiInput(new InputEventMouseMotion
                     {
                         Position = motionPixel, Relative = relative
