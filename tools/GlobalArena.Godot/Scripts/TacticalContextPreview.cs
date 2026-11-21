@@ -628,6 +628,7 @@ public partial class TacticalContextPreview : SubViewportContainer
             Far = 25f
         };
         _world.AddChild(_camera);
+        InitializeLocalSiteMarkers();
 
         _information = new Label
         {
