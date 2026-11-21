@@ -357,7 +357,7 @@ public partial class Main : Control
                     .FineStrategicCellId.Value - 1)]
                 .AdjacentCellIds.Contains(destination.Value.FineStrategicCellId);
         _localMoveButton.Disabled = ready || !adjacent;
-        RefreshFineMovementDecision(chosen, selectedTile, adjacent, ready, pendingOrders);
+        RefreshFineMovementDecision(selectedTile, adjacent, ready);
         _localProduceButton.Disabled = ready || chosen is null ||
             chosen.Activity == PhysicalWorkerActivity.Producing ||
             chosen.OutputMicroPerTurn == 0UL;
@@ -432,21 +432,21 @@ public partial class Main : Control
         RefreshLocalSiteSelectionQa();
     }
 
-    // R140: no new economic model or order path: only inspect the same signed
-    // worker snapshot, canonical fine adjacency and existing queued intentions.
-    private void RefreshFineMovementDecision(
-        GlobalArena.World.PhysicalWorkerState? worker, ulong? selectedTile,
-        bool adjacent, bool ready,
-        IReadOnlyList<GlobalArena.World.PhysicalTacticalHumanOrder> pendingOrders)
+    // R140: read directly from the same authoritative worker and pending-order
+    // snapshots as the movement command. No UI-owned copies of game state.
+    private void RefreshFineMovementDecision(ulong? selectedTile, bool adjacent, bool ready)
     {
         if (_fineMovementDecision is null || _tacticalHost is null) return;
+        var worker = _tacticalHost.Snapshot.Workers.Workers.FirstOrDefault(w =>
+            w.Id.Value == _selectedLocalWorkerId && w.Owner == _humanCivilization);
         if (worker is null)
         {
             _fineMovementDecision.Text = "MOVEMENT | Select one of your workers";
             return;
         }
         var source = worker.TacticalTileId!.Value.FineStrategicCellId.Value;
-        var queued = pendingOrders.FirstOrDefault(o => o.WorkerId == worker.Id);
+        var queued = _tacticalHost.GetHumanOrders(_humanCivilization)
+            .FirstOrDefault(o => o.WorkerId == worker.Id);
         var queuedText = queued is null ? "no pending order"
             : queued.IsMovement
                 ? $"move queued to tile {queued.Destination.FineStrategicCellId.Value}"
