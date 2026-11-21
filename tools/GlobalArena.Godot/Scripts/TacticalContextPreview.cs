@@ -205,7 +205,9 @@ public partial class TacticalContextPreview : SubViewportContainer
     // screen-center geography is computed from the inverse spherical chart
     // on every accepted pointer motion; chart focus is only a mesh cache key.
     private Vector3 _exactViewPointOnSphere;
-    private Vector3 _lastValidGeographicNorth = Vector3.Forward;
+    // World temperature/latitude and canonical poles use spherical +Z (not Godot +Y).
+    private static readonly Vector3 GeographicNorthAxis = Vector3.Back;
+    private Vector3 _lastValidGeographicNorth = Vector3.Back;
     public Vector3 ExactViewPointOnSphere => _exactViewPointOnSphere;
     private Vector2 _dragStart;
     private bool _pressed;
@@ -899,8 +901,8 @@ public partial class TacticalContextPreview : SubViewportContainer
             return;
         }
 
-        var north = Vector3.Up -
-            _exactViewPointOnSphere * _exactViewPointOnSphere.Dot(Vector3.Up);
+        var north = GeographicNorthAxis -
+            _exactViewPointOnSphere * _exactViewPointOnSphere.Dot(GeographicNorthAxis);
         // Geographic north has no unique direction at a pole. Preserve the
         // last valid tangent direction, and project it onto the new tangent
         // plane; do not flip the compass by sampling a different G3 center.
@@ -988,7 +990,8 @@ public partial class TacticalContextPreview : SubViewportContainer
             throw new InvalidOperationException("No projected opening city.");
         if (!TryUnprojectOnSphere(center, out var spherical))
             throw new InvalidOperationException("Opening city has no spherical center.");
-        var north = Vector3.Up - spherical * spherical.Dot(Vector3.Up);
+        var north = GeographicNorthAxis -
+            spherical * spherical.Dot(GeographicNorthAxis);
         if (north.LengthSquared() < 1e-6f)
             throw new InvalidOperationException(
                 "Compass direction is undefined at the exact geographic pole.");
@@ -1298,7 +1301,8 @@ public partial class TacticalContextPreview : SubViewportContainer
             Vector3 position = _navigationOrientationAnchor ?? normal;
             // North is tangent to the sphere; at the exact pole its direction
             // is undefined. Retain the last valid orientation there.
-            desiredNorth = Vector3.Up - position * position.Dot(Vector3.Up);
+            desiredNorth = GeographicNorthAxis -
+                position * position.Dot(GeographicNorthAxis);
         }
         else if (_basisNorth.LengthSquared() > 0.01f)
             desiredNorth = _basisNorth;
@@ -1310,8 +1314,8 @@ public partial class TacticalContextPreview : SubViewportContainer
                 normal * _basisNorth.Dot(normal);
             if (desiredNorth.LengthSquared() < 1e-6f)
             {
-                var fallback = Math.Abs(normal.Dot(Vector3.Up)) > 0.95f
-                    ? Vector3.Forward : Vector3.Up;
+                var fallback = Math.Abs(normal.Dot(GeographicNorthAxis)) > 0.95f
+                    ? Vector3.Up : GeographicNorthAxis;
                 desiredNorth = fallback - normal * fallback.Dot(normal);
             }
         }
