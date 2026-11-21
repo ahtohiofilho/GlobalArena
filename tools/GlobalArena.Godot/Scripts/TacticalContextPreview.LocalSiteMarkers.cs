@@ -30,7 +30,7 @@ public partial class TacticalContextPreview
     private void InitializeLocalSiteMarkers()
     {
         _localSitesEnabled =
-            Environment.GetEnvironmentVariable("GA_NEXT_QA_LOCAL_SITE_MARKERS") == "1";
+            System.Environment.GetEnvironmentVariable("GA_NEXT_QA_LOCAL_SITE_MARKERS") == "1";
         SetProcess(_localSitesEnabled);
         if (_localSitesEnabled)
             GD.Print("GA_NEXT_R127_SITE_MARKERS source=real_fine_worker_tiles " +
