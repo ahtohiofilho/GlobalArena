@@ -71,6 +71,8 @@ internal sealed class FoundationGodotCartographicSiteSmoke
             var poles = _map.OpeningGeographicPolesScreenProof(firstHome);
             var polarNorth = poles.NorthPole - poles.City;
             var polarSouth = poles.SouthPole - poles.City;
+            GD.Print($"GA_NEXT_R136_POLAR_SCREEN_OBSERVATION north={polarNorth} " +
+                $"south={polarSouth} city={poles.City}");
             Must(polarNorth.Y < -0.1f && polarSouth.Y > 0.1f,
                 "The REAL +Z north pole must appear above the home city " +
                 "and the -Z south pole below it.");
