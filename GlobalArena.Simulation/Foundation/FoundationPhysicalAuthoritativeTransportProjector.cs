@@ -54,7 +54,7 @@ public static class FoundationPhysicalAuthoritativeTransportProjector
             };
             roads.Add(new FoundationPhysicalRoutingEdgeCost(
                 edge.Edge, ownership, edge.InfrastructureOwner,
-                edge.FreePhysicalCostMicroPerWholeCargoUnit,
+                EffectiveUnitFreightCost(edge),
                 edge.ExternalTariffMicroPerWholeCargoUnit));
             // The only capital ledger is the already-hashed, already-
             // debited money committed to this exact physical crossing.
@@ -68,6 +68,40 @@ public static class FoundationPhysicalAuthoritativeTransportProjector
                 "Authoritative physical transport inventory omits real crossings.");
         return (Array.AsReadOnly(roads.ToArray()),
             Array.AsReadOnly(scales.ToArray()));
+    }
+
+    /// <summary>
+    /// R112 fixed unit freight: the natural cost belongs to one logical
+    /// crossing, never to geographic kilometers or current cargo volume.
+    /// Settled money investment continuously reduces that cost according to
+    /// c(I)=c0/sqrt(1+I/B), with B the canonical construction quote.
+    /// Exact integer arithmetic and a one-micro minimum keep rates positive.
+    /// </summary>
+    public static ulong EffectiveUnitFreightCost(
+        PhysicalTransportEdgeRuntimeRecord edge)
+    {
+        ArgumentNullException.ThrowIfNull(edge);
+        ulong natural = edge.FreePhysicalCostMicroPerWholeCargoUnit;
+        if (natural == 0UL)
+            throw new InvalidOperationException(
+                "Natural unit freight cost must remain positive.");
+        ulong investment = edge.CommittedInvestmentMoneyMicro.GetValueOrDefault();
+        if (investment == 0UL)
+            return natural;
+        if (edge.CargoMicroAtReferenceLoad ==
+                FoundationPhysicalEndogenousCongestionFeedback.UnboundedNaturalCargoCapacity)
+            throw new InvalidOperationException(
+                "Open-sea edges cannot contain direct infrastructure investments.");
+        ulong reference = edge.NaturalConstructionCostMoneyMicro ??
+            throw new InvalidOperationException(
+                "An invested edge must retain its natural construction quote.");
+        if (reference == 0UL)
+            throw new InvalidOperationException(
+                "The construction reference must be positive.");
+        BigInteger numerator = (BigInteger)natural * natural * reference;
+        BigInteger divisor = (BigInteger)reference + investment;
+        BigInteger integerCost = IntegerSquareRoot(numerator / divisor);
+        return integerCost < BigInteger.One ? 1UL : checked((ulong)integerCost);
     }
 
     /// <summary>
