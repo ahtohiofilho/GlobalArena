@@ -81,6 +81,15 @@ public partial class Main
             return;
         _selectedCartographicSite = physicalTileId;
         RefreshLocalSiteSelectionQa();
+        // Map -> administration is a single action: no additional TAB
+        // keystroke and no need to scroll past all existing worker tools.
+        SetOperationalDockVisible(true);
+        if (_workspaceWindow?.FindChild(
+                "GANextOperationsBodyScroll", true, false)
+            is ScrollContainer bodyScroll)
+            bodyScroll.ScrollVertical = 0;
+        GD.Print($"GA_NEXT_R132_LOCAL_CENTER_OPEN tile={physicalTileId} " +
+            "dock_visible=true scroll_top=true worker_selection_unchanged=true");
     }
 
     private void RefreshLocalSiteSelectionQa()

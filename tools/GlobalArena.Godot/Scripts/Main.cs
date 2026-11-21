@@ -1109,6 +1109,18 @@ public partial class Main : Control
         roster.WorkerSelected += OnOperationalWorkerSelected;
         operationsBody.AddChild(roster);
         _operationalRoster = roster;
+        // R132: a selected local center belongs at the TOP of the
+        // administration pane, not buried under the worker roster and
+        // every experimental order widget. Reparent existing controls:
+        // no second model, window, or authoritative state.
+        if (_localSiteSelectionQa is not null &&
+            _localCenterQaPanel is not null)
+        {
+            _localSiteSelectionQa.Reparent(operationsBody);
+            _localCenterQaPanel.Reparent(operationsBody);
+            operationsBody.MoveChild(_localSiteSelectionQa, 0);
+            operationsBody.MoveChild(_localCenterQaPanel, 1);
+        }
         // The existing region/worker/order controls keep their original
         // event callbacks and remain below the roster in one scroll flow.
         rightPanel.Reparent(operationsBody);
