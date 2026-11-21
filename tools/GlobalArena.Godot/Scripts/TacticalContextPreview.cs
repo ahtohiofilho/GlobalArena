@@ -1002,6 +1002,22 @@ public partial class TacticalContextPreview : SubViewportContainer
             _camera.UnprojectPosition(northOnMap));
     }
 
+    // R136: verify the poles defined by REAL world latitude, not a camera
+    // convention. Ice temperature and signed geography use +Z/-Z.
+    internal (Vector2 City, Vector2 NorthPole, Vector2 SouthPole)
+        OpeningGeographicPolesScreenProof(PhysicalTacticalTileId home)
+    {
+        if (_camera is null ||
+            !TryGetSitePolygonCentroid(
+                home.FineStrategicCellId.Value, out var city))
+            throw new InvalidOperationException("No active home projection.");
+        return (_camera.UnprojectPosition(city),
+            _camera.UnprojectPosition(
+                FlattenUnitVector(GeographicNorthAxis, 0f)),
+            _camera.UnprojectPosition(
+                FlattenUnitVector(-GeographicNorthAxis, 0f)));
+    }
+
     // Camera ownership contract R13: rotation is an orientation-only action.
     // Never rerun the initial COVER framing after a user-adjusted zoom or pan.
     private void RotateView(float degrees)
