@@ -1783,6 +1783,9 @@ public partial class TacticalContextPreview : SubViewportContainer
         var originalTarget = _cameraTarget;
         var originalZoom = _camera.Size;
         var originalYaw = _yawDegrees;
+        var initialReanchors = _cartographicReanchors;
+        var initialFocus = _focusedFineTile;
+        var initialGeography = _exactViewPointOnSphere;
         var pixel = new Vector2(_innerViewport.Size.X * 0.5f,
             _innerViewport.Size.Y * 0.5f);
         if (!TryProjectCursorOnTacticalPlane(pixel, out var initialHit) ||
@@ -1796,7 +1799,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         int blockedMoves = 0;
         try
         {
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < 36; i++)
             {
                 var step = new Vector2(8f, 6f);
                 pixel += step;
@@ -1810,14 +1813,8 @@ public partial class TacticalContextPreview : SubViewportContainer
                         "NORTH UP drag produced an invalid spherical cursor.");
                 var similarity = fixedGeography.Dot(actualGeography);
                 if (_lastPanClampedByCoverage)
-                {
-                    // A coverage clamp intentionally holds the map still:
-                    // the mouse can move, but no terrain is dragged with it.
-                    // The next motion starts from the newly grabbed point.
-                    blockedMoves++;
-                    fixedGeography = actualGeography;
-                    continue;
-                }
+                    throw new InvalidOperationException(
+                        "R138 must never block cartographic pan on viewport coverage.");
                 successfulMoves++;
                 if (similarity < 0.99995f)
                     throw new InvalidOperationException(
@@ -1830,10 +1827,20 @@ public partial class TacticalContextPreview : SubViewportContainer
                     Math.Abs(_yawDegrees - originalYaw) > 0.00001f)
                     throw new InvalidOperationException("NORTH UP drag changed zoom or yaw.");
             }
-            if (successfulMoves == 0)
-                throw new InvalidOperationException("No unconstrained polar drag motion was tested.");
-            GD.Print($"GA_NEXT_R137_OVERHEAD_DRAG_PASS accepted={successfulMoves} " +
-                $"clamped={blockedMoves} cursor_geography_locked=true " +
+            if (successfulMoves != 36 || blockedMoves != 0 ||
+                _cartographicReanchors <= initialReanchors ||
+                _focusedFineTile == initialFocus ||
+                _exactViewPointOnSphere.Dot(initialGeography) > 0.995f)
+                throw new InvalidOperationException(
+                    $"R138 cartographic drag did not advance: accepted={successfulMoves} " +
+                    $"reanchors={_cartographicReanchors - initialReanchors} " +
+                    $"focus={_focusedFineTile} starting_focus={initialFocus}");
+            if (!ViewportSamplesHaveTerrain(_camera.Size, 4, 4))
+                throw new InvalidOperationException(
+                    "R138 active cartographic view has missing rendered tiles.");
+            GD.Print($"GA_NEXT_R138_FINE_FOCUS_DRAG_PASS accepted={successfulMoves} " +
+                $"reanchors={_cartographicReanchors - initialReanchors} " +
+                "clamped=0 cursor_geography_locked=true rendered=true " +
                 "north_up_dynamic=true zoom_preserved=true");
         }
         finally
