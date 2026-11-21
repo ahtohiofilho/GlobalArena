@@ -970,6 +970,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         _prefetchIntentOrigin = center;
         _lastPrefetchIntentFocus = 0UL;
         UpdateCameraOrientation();
+        RebuildWorkerMarkers();
         GD.Print($"GA_NEXT_R135_INITIAL_CITY_FOCUS tile={tileId} " +
             $"strategic_focus={_activeFocus} north_up=true " +
             $"city_at_optical_center=true initial_zoom={openingZoom:F5} " +
