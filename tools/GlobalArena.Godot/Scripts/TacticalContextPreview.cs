@@ -209,6 +209,11 @@ public partial class TacticalContextPreview : SubViewportContainer
     private Vector3 _exactViewPointOnSphere;
     // World temperature/latitude and canonical poles use spherical +Z (not Godot +Y).
     private static readonly Vector3 GeographicNorthAxis = Vector3.Back;
+    // R137: resolve the geographic reference from actual canonical fine-cell pole centers.
+    // The axis is a world-generation fact, not a camera or strategic-grid convention.
+    private Vector3 _physicalPolarAxis = GeographicNorthAxis;
+    private Vector3 _northPoleCenter = GeographicNorthAxis;
+    private Vector3 _southPoleCenter = -GeographicNorthAxis;
     private Vector3 _lastValidGeographicNorth = Vector3.Back;
     public Vector3 ExactViewPointOnSphere => _exactViewPointOnSphere;
     private Vector2 _dragStart;
@@ -230,6 +235,9 @@ public partial class TacticalContextPreview : SubViewportContainer
     // beyond a small screen-space distance after the switch.
     private ulong _previousHandoffFocus;
     private float _dragPixelsAfterHandoff;
+    // Exposed to in-scene QA only: an intentional viewport-coverage clamp
+    // cannot also keep moving terrain beneath the cursor.
+    private bool _lastPanClampedByCoverage;
     private const float ReverseHandoffDragPixels = 48f;
     private ulong _continuousNavigationHandoffs;
     public ulong ActiveStrategicFocus => _activeFocus;
@@ -425,6 +433,18 @@ public partial class TacticalContextPreview : SubViewportContainer
         shift.Y = 0f;
         _cameraTarget += shift;
         UpdateCameraOrientation();
+        if (_localSitesEnabled)
+        {
+            // Re-anchor after the new chart changes the live camera rotation.
+            for (int k = 0; k < 3; k++)
+            {
+                if (!TryProjectCursorOnTacticalPlane(cursorPixel, out var actualHit)) break;
+                var delta = nextPoint - actualHit;
+                delta.Y = 0f;
+                _cameraTarget += delta;
+                UpdateCameraOrientation();
+            }
+        }
 
         if (_coverViewport && !ViewportSamplesHaveTerrain(_camera.Size, 6, 5))
         {
@@ -895,20 +915,23 @@ public partial class TacticalContextPreview : SubViewportContainer
     {
         if (_camera is null || _activeFocus == 0) return;
         var radians = Mathf.DegToRad(_yawDegrees);
-        _camera.Position = _cameraTarget +
-            new Vector3(2.5f * Mathf.Sin(radians), 2.5f, -2.5f * Mathf.Cos(radians));
+        // R137: the cartographic camera is normal to the local map plane.
+        // Legacy tactical views retain their previous oblique presentation.
+        _camera.Position = _cameraTarget + (_localSitesEnabled
+            ? new Vector3(0f, 3.535534f, 0f)
+            : new Vector3(2.5f * Mathf.Sin(radians), 2.5f, -2.5f * Mathf.Cos(radians)));
 
         if (TryUnprojectOnSphere(_cameraTarget, out var exact))
             _exactViewPointOnSphere = exact;
         if (!_geographicNorthUp || _exactViewPointOnSphere.LengthSquared() < 0.9f)
         {
             // LOCKED: the viewing frame does not rotate during ordinary pan.
-            _camera.LookAt(_cameraTarget, Vector3.Up);
+            _camera.LookAt(_cameraTarget, _localSitesEnabled ? Vector3.Back : Vector3.Up);
             return;
         }
 
-        var north = GeographicNorthAxis -
-            _exactViewPointOnSphere * _exactViewPointOnSphere.Dot(GeographicNorthAxis);
+        var north = _physicalPolarAxis -
+            _exactViewPointOnSphere * _exactViewPointOnSphere.Dot(_physicalPolarAxis);
         // Geographic north has no unique direction at a pole. Preserve the
         // last valid tangent direction, and project it onto the new tangent
         // plane; do not flip the compass by sampling a different G3 center.
@@ -918,7 +941,7 @@ public partial class TacticalContextPreview : SubViewportContainer
                 _lastValidGeographicNorth.Dot(_exactViewPointOnSphere);
         if (north.LengthSquared() < 1e-6f)
         {
-            _camera.LookAt(_cameraTarget, Vector3.Up);
+            _camera.LookAt(_cameraTarget, _localSitesEnabled ? Vector3.Back : Vector3.Up);
             return;
         }
         north = north.Normalized();
@@ -937,7 +960,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         planarNorth.Y = 0f;
         if (planarNorth.LengthSquared() < 1e-10f || !planarNorth.IsFinite())
         {
-            _camera.LookAt(_cameraTarget, Vector3.Up);
+            _camera.LookAt(_cameraTarget, _localSitesEnabled ? Vector3.Back : Vector3.Up);
             return;
         }
         _camera.LookAt(_cameraTarget, planarNorth.Normalized());
@@ -996,8 +1019,8 @@ public partial class TacticalContextPreview : SubViewportContainer
             throw new InvalidOperationException("No projected opening city.");
         if (!TryUnprojectOnSphere(center, out var spherical))
             throw new InvalidOperationException("Opening city has no spherical center.");
-        var north = GeographicNorthAxis -
-            spherical * spherical.Dot(GeographicNorthAxis);
+        var north = _physicalPolarAxis -
+            spherical * spherical.Dot(_physicalPolarAxis);
         if (north.LengthSquared() < 1e-6f)
             throw new InvalidOperationException(
                 "Compass direction is undefined at the exact geographic pole.");
@@ -1019,9 +1042,9 @@ public partial class TacticalContextPreview : SubViewportContainer
             throw new InvalidOperationException("No active home projection.");
         return (_camera.UnprojectPosition(city),
             _camera.UnprojectPosition(
-                FlattenUnitVector(GeographicNorthAxis, 0f)),
+                FlattenUnitVector(_northPoleCenter, 0f)),
             _camera.UnprojectPosition(
-                FlattenUnitVector(-GeographicNorthAxis, 0f)));
+                FlattenUnitVector(_southPoleCenter, 0f)));
     }
 
     // Camera ownership contract R13: rotation is an orientation-only action.
@@ -1306,6 +1329,20 @@ public partial class TacticalContextPreview : SubViewportContainer
         var fineWorld = _cachedFineWorld ??= new DeterministicWorldGenerator().Generate(
             new WorldGenerationRequest(new WorldSeed(20261012UL),
                 WorldGenerationVersion.Initial, refinement.FineParameters));
+        // The north/south poles are fine-mesh cells, generally pentagons.
+        // Resolve by latitude extrema from authoritative geometry, once per Open.
+        var fineCells = fineWorld.StrategicTopology.Cells;
+        var northCell = fineCells.MaxBy(id => fineWorld.StrategicSphericalGeometry.GetCell(id.Id).Center.Z)
+            ?? throw new InvalidOperationException("Fine world has no northern polar cell.");
+        var southCell = fineCells.MinBy(id => fineWorld.StrategicSphericalGeometry.GetCell(id.Id).Center.Z)
+            ?? throw new InvalidOperationException("Fine world has no southern polar cell.");
+        var northPoleCenter = ConvertPoint(fineWorld.StrategicSphericalGeometry.GetCell(northCell.Id).Center).Normalized();
+        var southPoleCenter = ConvertPoint(fineWorld.StrategicSphericalGeometry.GetCell(southCell.Id).Center).Normalized();
+        _northPoleCenter = northPoleCenter;
+        _southPoleCenter = southPoleCenter;
+        var polarAxis = northPoleCenter - southPoleCenter;
+        if (polarAxis.LengthSquared() < 1f) throw new InvalidOperationException("Invalid fine-mesh pole centers.");
+        _physicalPolarAxis = polarAxis.Normalized();
         _cachedCoarseGeometry = coarseWorld.StrategicSphericalGeometry;
         PresentedCoarseWorld = coarseWorld;
         if (coarseWorld.StrategicTopology.Cells.Count != physical.CoarseTopology.Cells.Count ||
@@ -1330,8 +1367,8 @@ public partial class TacticalContextPreview : SubViewportContainer
             Vector3 position = _navigationOrientationAnchor ?? normal;
             // North is tangent to the sphere; at the exact pole its direction
             // is undefined. Retain the last valid orientation there.
-            desiredNorth = GeographicNorthAxis -
-                position * position.Dot(GeographicNorthAxis);
+            desiredNorth = _physicalPolarAxis -
+                position * position.Dot(_physicalPolarAxis);
         }
         else if (_basisNorth.LengthSquared() > 0.01f)
             desiredNorth = _basisNorth;
@@ -1343,8 +1380,8 @@ public partial class TacticalContextPreview : SubViewportContainer
                 normal * _basisNorth.Dot(normal);
             if (desiredNorth.LengthSquared() < 1e-6f)
             {
-                var fallback = Math.Abs(normal.Dot(GeographicNorthAxis)) > 0.95f
-                    ? Vector3.Up : GeographicNorthAxis;
+                var fallback = Math.Abs(normal.Dot(_physicalPolarAxis)) > 0.95f
+                    ? Vector3.Up : _physicalPolarAxis;
                 desiredNorth = fallback - normal * fallback.Dot(normal);
             }
         }
@@ -1631,6 +1668,82 @@ public partial class TacticalContextPreview : SubViewportContainer
     }
 
 
+    // R137: cartographic regression uses the real GUI input path. The spherical
+    // location grabbed by the cursor must stay under that cursor while NORTH UP
+    // rotates the map; a fixed-camera-only test would miss the observed drift.
+    internal void ExerciseOverheadPolarDragSmoke()
+    {
+        if (!_localSitesEnabled || _camera is null || _innerViewport is null)
+            throw new InvalidOperationException("Cartographic drag smoke requires active map.");
+        var originalTarget = _cameraTarget;
+        var originalZoom = _camera.Size;
+        var originalYaw = _yawDegrees;
+        var pixel = new Vector2(_innerViewport.Size.X * 0.5f,
+            _innerViewport.Size.Y * 0.5f);
+        if (!TryProjectCursorOnTacticalPlane(pixel, out var initialHit) ||
+            !TryUnprojectOnSphere(initialHit, out var fixedGeography))
+            throw new InvalidOperationException("No initial mouse geography.");
+        _GuiInput(new InputEventMouseButton
+        {
+            ButtonIndex = MouseButton.Left, Pressed = true, Position = pixel
+        });
+        int successfulMoves = 0;
+        int blockedMoves = 0;
+        try
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                var step = new Vector2(8f, 6f);
+                pixel += step;
+                _GuiInput(new InputEventMouseMotion
+                {
+                    Position = pixel, Relative = step
+                });
+                if (!TryProjectCursorOnTacticalPlane(pixel, out var hit) ||
+                    !TryUnprojectOnSphere(hit, out var actualGeography))
+                    throw new InvalidOperationException(
+                        "NORTH UP drag produced an invalid spherical cursor.");
+                var similarity = fixedGeography.Dot(actualGeography);
+                if (_lastPanClampedByCoverage)
+                {
+                    // A coverage clamp intentionally holds the map still:
+                    // the mouse can move, but no terrain is dragged with it.
+                    // The next motion starts from the newly grabbed point.
+                    blockedMoves++;
+                    fixedGeography = actualGeography;
+                    continue;
+                }
+                successfulMoves++;
+                if (similarity < 0.99995f)
+                    throw new InvalidOperationException(
+                        $"NORTH UP drag lost spherical cursor: step={i} " +
+                        $"similarity={similarity:F8} focus={_activeFocus} " +
+                        $"handoffs={_continuousNavigationHandoffs} " +
+                        $"camera={_cameraTarget} original={originalTarget} " +
+                        $"cursor={pixel}");
+                if (Math.Abs(_camera.Size - originalZoom) > 0.00001f ||
+                    Math.Abs(_yawDegrees - originalYaw) > 0.00001f)
+                    throw new InvalidOperationException("NORTH UP drag changed zoom or yaw.");
+            }
+            if (successfulMoves == 0)
+                throw new InvalidOperationException("No unconstrained polar drag motion was tested.");
+            GD.Print($"GA_NEXT_R137_OVERHEAD_DRAG_PASS accepted={successfulMoves} " +
+                $"clamped={blockedMoves} cursor_geography_locked=true " +
+                "north_up_dynamic=true zoom_preserved=true");
+        }
+        finally
+        {
+            _GuiInput(new InputEventMouseButton
+            {
+                ButtonIndex = MouseButton.Left, Pressed = false, Position = pixel
+            });
+            _cameraTarget = originalTarget;
+            _camera.Size = originalZoom;
+            _yawDegrees = originalYaw;
+            UpdateCameraOrientation();
+        }
+    }
+
     // CI-only interaction probe. It deliberately holds one simulated mouse
     // gesture across two adjacent strategic territories. This checks the
     // same _GuiInput handler used by real users, not a mock movement method.
@@ -1855,6 +1968,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         }
         if (@event is InputEventMouseMotion motion && _pressed)
         {
+            _lastPanClampedByCoverage = false;
             _dragPixelsAfterHandoff += motion.Relative.Length();
             if (motion.Position.DistanceTo(_dragStart) > 6f) _moved = true;
             if (_moved)
@@ -1875,6 +1989,20 @@ public partial class TacticalContextPreview : SubViewportContainer
                 // Refresh spherical focus and geographic north on EVERY
                 // drag update, without tile search or mesh regeneration.
                 UpdateCameraOrientation();
+                if (_localSitesEnabled)
+                {
+                    // Reapply the actual mouse-plane anchor after NORTH UP turns
+                    // the camera. Otherwise the cursor slips on every motion.
+                    // The correction is exact for the overhead orthographic view.
+                    for (int k = 0; k < 2; k++)
+                    {
+                        if (!TryProjectCursorOnTacticalPlane(motion.Position, out var anchoredHit)) break;
+                        var correction = previousHit - anchoredHit;
+                        correction.Y = 0f;
+                        _cameraTarget += correction;
+                        UpdateCameraOrientation();
+                    }
+                }
 
                 // Transfer the map to the nearest strategic focus BEFORE
                 // enforcing viewport coverage, never at the map's visible edge.
@@ -1885,6 +2013,7 @@ public partial class TacticalContextPreview : SubViewportContainer
                 {
                     _cameraTarget = previousTarget;
                     UpdateCameraOrientation();
+                    _lastPanClampedByCoverage = true;
                     GD.Print("GA_TACTICAL_NAV_COVERAGE_GUARD_R45 no_missing_tiles=true");
                 }
                 AcceptEvent();

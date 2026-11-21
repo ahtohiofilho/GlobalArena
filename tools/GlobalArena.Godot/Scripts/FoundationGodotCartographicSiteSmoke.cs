@@ -82,6 +82,8 @@ internal sealed class FoundationGodotCartographicSiteSmoke
             GD.Print($"GA_NEXT_R136_CANONICAL_POLES_PASS " +
                 $"north_delta={polarNorth} south_delta={polarSouth} " +
                 "physical_north=+Z physical_south=-Z horizontal_offset_small=true");
+            _map.ExerciseOverheadPolarDragSmoke();
+            await Frames();
             int visited = 0;
             foreach (var tile in sites)
             {
