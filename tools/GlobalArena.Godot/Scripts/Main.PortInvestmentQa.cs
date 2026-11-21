@@ -23,6 +23,7 @@ public partial class Main
     private PhysicalTacticalEdgeId? _portQaSelected;
     private PhysicalTacticalEdgeId? _portQaQueued;
     private ulong _portQaOldFreight;
+    private string? _portQaLastSettledAudit;
 
     private void CreatePortInvestmentQaControls(VBoxContainer parent)
     {
@@ -172,6 +173,8 @@ public partial class Main
         if (_portQaQueued.HasValue)
             _portQaFeedback.Text = "Investment queued in the real host; " +
                 "press E to commit and audit the ledger.";
+        else if (_portQaLastSettledAudit is not null)
+            _portQaFeedback.Text = _portQaLastSettledAudit;
         else if (!affordable)
             _portQaFeedback.Text = "Close one real economic turn (E) " +
                 "to earn enough treasury cash before investing.";
@@ -194,6 +197,7 @@ public partial class Main
                 .EffectiveUnitFreightCost(edge);
             host.QueueHumanMonetaryInvestment(_humanCivilization,
                 _portQaSelected.Value, PortQaSpendMoneyMicro);
+            _portQaLastSettledAudit = null;
             _portQaQueued = _portQaSelected;
             _portQaFeedback.Text = "0.100000 queued (NOT YET SPENT). Press E.";
             GD.Print("GA_NEXT_R123_PORT_INVESTMENT_QUEUED " +
@@ -228,7 +232,7 @@ public partial class Main
             committed.MoneyMicro != PortQaSpendMoneyMicro)
             throw new InvalidOperationException(
                 "R123 authoritative port capital must reduce, not raise freight.");
-        _portQaFeedback.Text =
+        _portQaLastSettledAudit =
             $"REAL INVESTMENT COMMITTED | edge {_portQaQueued.Value.FineStrategicEdgeId.Value}" +
             $" | spent 0.100000 | unit freight {_portQaOldFreight} -> {newCost}" +
             $" | replay {(receipt.ReplayMatched ? "OK" : "FAIL")}";
@@ -236,6 +240,7 @@ public partial class Main
             $"edge={_portQaQueued.Value.FineStrategicEdgeId.Value} " +
             $"money_micro={committed.MoneyMicro} before={_portQaOldFreight} " +
             $"after={newCost} replay={receipt.ReplayMatched}");
+        _portQaFeedback.Text = _portQaLastSettledAudit;
         _portQaQueued = null;
     }
 }
