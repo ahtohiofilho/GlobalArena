@@ -137,9 +137,34 @@ internal static class FoundationShallowDepthRoutingAb
             }
             foreach (var neighbors in graph)
                 neighbors.Sort((x, y) => x.Edge.CompareTo(y.Edge));
-            int[] coast = coastalNodes.ToArray();
+            // Compare only mutually reachable coastal endpoints. Frozen
+            // boundaries can split the graph, and must stay physically blocked.
+            var components = Enumerable.Repeat(-1, graph.Length).ToArray();
+            int componentId = 0;
+            for (int first = 0; first < graph.Length; first++)
+            {
+                if (components[first] >= 0) continue;
+                var queue = new Queue<int>();
+                components[first] = componentId;
+                queue.Enqueue(first);
+                while (queue.Count > 0)
+                {
+                    int at = queue.Dequeue();
+                    foreach (var (to, _) in graph[at])
+                    {
+                        if (components[to] >= 0) continue;
+                        components[to] = componentId;
+                        queue.Enqueue(to);
+                    }
+                }
+                componentId++;
+            }
+            int[] coast = coastalNodes.GroupBy(node => components[node])
+                .OrderByDescending(group => group.Count())
+                .ThenBy(group => group.Key)
+                .First().OrderBy(node => node).ToArray();
             if (coast.Length < 32)
-                throw new InvalidOperationException("Insufficient coastal sample.");
+                throw new InvalidOperationException("Insufficient connected coastal sample.");
             // 24 widely spaced, reproducible land-to-land coastal demands.
             // Do not claim that these synthetic pairs represent worker demand.
             var pairs = Enumerable.Range(0, 24).Select(i =>
