@@ -224,14 +224,25 @@ public sealed class FoundationPhysicalNaturalTransportSeederTests
         // must not alter authoritative R112 routing, allocation or next-cycle
         // freight. Keep the same physical graph and reference scales so the
         // test would detect a regression that accidentally reuses old rates.
-        var historical = new FoundationPhysicalLaggedFreightQuoteState(
-            7UL,
-            candidate.NextCycleQuotes.Edges.Select(q => q with
-            {
-                QuotedCongestionSurchargeMicroPerWholeCargoUnit =
-                    50_000_000UL
-            }).ToArray(),
-            hasSettledProvenance: true);
+        // The legacy quote snapshot constructor is deliberately internal.
+        // Build a synthetic settled history only within the regression test,
+        // without expanding the production API to permit fabricated receipts.
+        var legacyRows = candidate.NextCycleQuotes.Edges.Select(q => q with
+        {
+            QuotedCongestionSurchargeMicroPerWholeCargoUnit = 50_000_000UL
+        }).ToArray();
+        var constructor = typeof(FoundationPhysicalLaggedFreightQuoteState)
+            .GetConstructor(
+                System.Reflection.BindingFlags.Instance |
+                System.Reflection.BindingFlags.NonPublic,
+                binder: null,
+                new[] { typeof(ulong),
+                    typeof(FoundationPhysicalLaggedFreightEdgeState[]),
+                    typeof(bool) },
+                modifiers: null);
+        Assert.NotNull(constructor);
+        var historical = (FoundationPhysicalLaggedFreightQuoteState)
+            constructor.Invoke(new object[] { 7UL, legacyRows, true });
         var replay = FoundationPhysicalLaggedFreightCyclePlanner
             .CoordinateWorldCandidate(world, host.Incidence, Demand(), Cargo(),
                 previousClosedCycleQuotes: historical, maxProducerPasses: 64);
