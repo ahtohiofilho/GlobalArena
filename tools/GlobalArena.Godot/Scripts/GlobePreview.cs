@@ -557,12 +557,61 @@ public partial class GlobePreview : SubViewportContainer
         GetViewport().SetInputAsHandled();
     }
 
+    // R139: the atlas and tactical viewer share a unit sphere position.
+    // The planet rotates around a stationary camera; account for that inverse
+    // rotation when reading the exact geography at the screen center.
+    public Vector3 CenterGeography
+    {
+        get
+        {
+            if (_planet is null || _camera is null) return Vector3.Back;
+            var outward = (_camera.GlobalPosition - _planet.GlobalPosition).Normalized();
+            return (_planet.Quaternion.Inverse() * outward).Normalized();
+        }
+    }
+
+    public void CenterOnGeography(Vector3 geographicalPoint)
+    {
+        if (_planet is null || _camera is null || !geographicalPoint.IsFinite() ||
+            geographicalPoint.LengthSquared() < 0.5f)
+            throw new InvalidOperationException("Atlas focus requires valid globe geography.");
+        var outward = (_camera.GlobalPosition - _planet.GlobalPosition).Normalized();
+        var current = (_planet.Quaternion * geographicalPoint.Normalized()).Normalized();
+        _planet.Quaternion = (new Quaternion(current, outward) * _planet.Quaternion).Normalized();
+        GD.Print($"GA_NEXT_R139_GLOBE_FOCUS center={CenterGeography} geography_only=true");
+    }
+
+    private bool TryGlobeGeographyAtPixel(Vector2 pixel, out Vector3 point)
+    {
+        point = Vector3.Zero;
+        if (_planet is null || _camera is null) return false;
+        var origin = _camera.ProjectRayOrigin(pixel);
+        var direction = _camera.ProjectRayNormal(pixel).Normalized();
+        var center = _planet.GlobalPosition;
+        var relative = origin - center;
+        var projection = relative.Dot(direction);
+        var discriminant = projection * projection -
+            (relative.LengthSquared() - 1f);
+        if (discriminant < 0f) return false;
+        var near = -projection - Mathf.Sqrt(discriminant);
+        if (near < 0f) return false;
+        var worldPoint = (origin + near * direction - center).Normalized();
+        point = (_planet.Quaternion.Inverse() * worldPoint).Normalized();
+        return point.IsFinite();
+    }
+
     public override void _GuiInput(InputEvent @event)
     {
         if (_planet is null || _camera is null) return;
         if (@event is InputEventMouseButton button)
         {
-            if (button.ButtonIndex == MouseButton.Left)
+            if (button.ButtonIndex == MouseButton.Right && button.Pressed)
+            {
+                if (TryGlobeGeographyAtPixel(button.Position, out var point))
+                    CenterOnGeography(point);
+                AcceptEvent();
+            }
+            else if (button.ButtonIndex == MouseButton.Left)
             {
                 if (button.Pressed)
                 {
