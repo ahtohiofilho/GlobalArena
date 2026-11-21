@@ -159,6 +159,10 @@ public static class FoundationPhysicalLaggedFreightCyclePlanner
     /// Preferred gameplay-facing candidate entry point. The caller cannot
     /// assign prices to specific markets: quotes are projected solely from
     /// real worker demand and the universal normalized price function.
+    /// Like the authoritative world entry, this gameplay-facing gateway
+    /// always ignores legacy congestion quotations and uses fixed unit
+    /// freight; explicit research CoordinateCandidate retains its opt-in
+    /// legacy congestion behavior.
     /// The output is still UNCOMMITTED; a future authoritative settlement
     /// boundary must separately approve promotion to economic history.
     /// </summary>
@@ -188,7 +192,8 @@ public static class FoundationPhysicalLaggedFreightCyclePlanner
             FoundationPhysicalUniversalMarketPricing
                 .QuotesFromRealWorkers(census, demandPolicy),
             freeFlowEdges, carryingScales, previousClosedCycleQuotes,
-            maxProducerPasses, smoothingDenominator, blockedEdges);
+            maxProducerPasses, smoothingDenominator, blockedEdges,
+            fixedUnitFreight: true);
     }
 
     internal static ulong NextSurcharge(
