@@ -1724,7 +1724,9 @@ public partial class TacticalContextPreview : SubViewportContainer
                 }
                 else
                 {
-                    if (_pressed && !_moved) PickPhysicalTile(button.Position);
+                    if (_pressed && !_moved &&
+                        !PickVisibleCartographicLocalSite(button.Position))
+                        PickPhysicalTile(button.Position);
                     _pressed = false;
                     _previousHandoffFocus = 0UL;
                     _dragPixelsAfterHandoff = 0f;

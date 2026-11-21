@@ -905,7 +905,9 @@ public partial class Main : Control
             .Where(w => w.Owner == _humanCivilization &&
                 w.TacticalTileId == tile)
             .OrderBy(w => w.Id.Value).FirstOrDefault();
-        if (own is not null)
+        // Cartographic click selects a PLACE, not an individual worker.
+        // Workforce assignment is retained for the future local admin UI.
+        if (own is not null && _tacticalPreview?.IsCartographicSiteMode != true)
             _selectedLocalWorkerId = own.Id.Value;
         RefreshFineTacticalWorkerControls();
         GD.Print($"GA_NEXT_FINE_TILE_CLICK tile={tile.FineStrategicCellId.Value} " +
@@ -1319,6 +1321,7 @@ public partial class Main : Control
         mapRegion.AddChild(_tacticalPreview);
         _tacticalPreview.PhysicalTileInspected += OnPhysicalTileInspected;
         _tacticalPreview.CanonicalPhysicalTileClicked += OnTacticalPhysicalTileClicked;
+        _tacticalPreview.CartographicLocalSiteSelected += OnCartographicLocalSiteSelected;
         _tacticalPreview.CanonicalWorkerBadgeClicked += OnCanonicalWorkerBadgeClicked;
         _tacticalPreview.WorkerBoardOccupationRequested += OnWorkerBoardOccupationRequested;
         _tacticalPreview.WorkerBoardCancelSelectedOrderRequested +=
@@ -1364,6 +1367,7 @@ public partial class Main : Control
         _tacticalBridgeStatus = new Label { Text = "Select a canonical territory to enable tactical context" };
         _tacticalBridgeStatus.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         rightLayout.AddChild(_tacticalBridgeStatus);
+        CreateLocalSiteSelectionQaControls(rightLayout);
         // MVP inspection in the existing right column; the tactical viewport stays unchanged.
         var inspector = new VBoxContainer { Visible = false };
         inspector.AddThemeConstantOverride("separation", 5);
