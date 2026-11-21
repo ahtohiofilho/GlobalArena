@@ -207,7 +207,9 @@ internal static class FoundationShallowDepthRoutingAb
                         alteredSea++;
                 }
                 int changed = 0, maritimeBaseline = 0, maritimeCandidate = 0;
+                int portChoiceChanges = 0, meaningfulChanges = 0;
                 ulong baselineSum = 0UL, candidateSum = 0UL;
+                ulong baselineRouteUnderCandidate = 0UL, totalReroutingBenefit = 0UL;
                 int baselinePortCrossings = 0, candidatePortCrossings = 0;
                 foreach (var (a, b) in pairs)
                 {
@@ -215,6 +217,25 @@ internal static class FoundationShallowDepthRoutingAb
                     var candidate = Shortest(a, b, graph, crossings,
                         cutoff, profile.Port, profile.Sea);
                     if (!baseline.Edges.SequenceEqual(candidate.Edges)) changed++;
+                    ulong keepOldRoute = 0UL;
+                    foreach (int id in baseline.Edges)
+                        keepOldRoute = checked(keepOldRoute +
+                            Cost(crossings[id], cutoff, profile.Port, profile.Sea));
+                    if (candidate.Cost > keepOldRoute)
+                        throw new InvalidOperationException(
+                            "Candidate routing must beat or match the old route at candidate costs.");
+                    ulong benefit = keepOldRoute - candidate.Cost;
+                    if (benefit > 0UL) meaningfulChanges++;
+                    totalReroutingBenefit = checked(totalReroutingBenefit + benefit);
+                    baselineRouteUnderCandidate = checked(
+                        baselineRouteUnderCandidate + keepOldRoute);
+                    var oldPorts = baseline.Edges.Where(id =>
+                        crossings[id].Kind == FoundationFineTransportCrossingKind.Port)
+                        .OrderBy(id => id);
+                    var newPorts = candidate.Edges.Where(id =>
+                        crossings[id].Kind == FoundationFineTransportCrossingKind.Port)
+                        .OrderBy(id => id);
+                    if (!oldPorts.SequenceEqual(newPorts)) portChoiceChanges++;
                     baselineSum = checked(baselineSum + baseline.Cost);
                     candidateSum = checked(candidateSum + candidate.Cost);
                     int bPorts = baseline.Edges.Count(e =>
@@ -232,6 +253,10 @@ internal static class FoundationShallowDepthRoutingAb
                     $"altered_ports={alteredPorts} altered_sea={alteredSea} " +
                     $"added_port_construction_micro={portMoneyIncrease} " +
                     $"route_changes={changed}/{pairs.Length} " +
+                    $"port_choice_changes={portChoiceChanges}/{pairs.Length} " +
+                    $"meaningful_reroutes={meaningfulChanges}/{pairs.Length} " +
+                    $"old_routes_under_new_costs={baselineRouteUnderCandidate} " +
+                    $"rerouting_benefit={totalReroutingBenefit} " +
                     $"maritime_pairs_base={maritimeBaseline} " +
                     $"maritime_pairs_candidate={maritimeCandidate} " +
                     $"port_crossings_base={baselinePortCrossings} " +
