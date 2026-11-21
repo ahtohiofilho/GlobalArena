@@ -28,6 +28,35 @@ public partial class TacticalContextPreview
     public int VisibleLocalSiteMarkerCount =>
         _localSiteMarkers.Count(x => x.Visual.Visible);
 
+    public event Action<ulong>? CartographicLocalSiteSelected;
+
+    // Hit-test uses the SAME on-screen label and anchor shown to the
+    // player. Labels ignore mouse events; the map handles the click.
+    // Site is a QA presentation proxy, never a new simulation entity.
+    private bool PickVisibleCartographicLocalSite(Vector2 localPixel)
+    {
+        if (!_localSitesEnabled || _cachedPhysicalMap is null)
+            return false;
+        foreach (var site in _localSiteMarkers)
+        {
+            if (!site.Visual.Visible) continue;
+            var label = site.Visual;
+            var bounds = new Rect2(label.Position,
+                new Vector2(108f, 26f));
+            if (!bounds.HasPoint(localPixel)) continue;
+            SelectPhysicalTile(site.TileId);
+            var id = new PhysicalTacticalTileId(
+                _cachedPhysicalMap.Refinement.FineParameters,
+                new StrategicCellId(site.TileId));
+            CanonicalPhysicalTileClicked?.Invoke(id);
+            CartographicLocalSiteSelected?.Invoke(site.TileId);
+            GD.Print($"GA_NEXT_R129_LOCAL_SITE_SELECTED tile={site.TileId} " +
+                "source=real_fine_worker_tile simulated_city=false mutation=false");
+            return true;
+        }
+        return false;
+    }
+
     public IReadOnlyList<ulong> LocalSiteMarkerTileIds =>
         Array.AsReadOnly(_localSiteMarkers.Select(x => x.TileId).ToArray());
 
