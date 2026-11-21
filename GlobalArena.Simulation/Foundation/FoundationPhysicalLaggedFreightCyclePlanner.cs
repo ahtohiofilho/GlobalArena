@@ -144,10 +144,15 @@ public static class FoundationPhysicalLaggedFreightCyclePlanner
             }
         var (roads, scales) = FoundationPhysicalAuthoritativeTransportProjector
             .FromWorld(snapshot, incidence);
-        return CoordinateUniversalCandidate(
+        // R112: world-authoritative settlement uses fixed unit freight.
+        // Legacy congestion-planner entry points remain research-only.
+        var quotes = FoundationPhysicalUniversalMarketPricing
+            .QuotesFromRealWorkers(snapshot.Workers, demandPolicy);
+        return CoordinateCandidate(
             snapshot.Workers, incidence, demandPolicy, conversionPolicy,
-            roads, scales, previousClosedCycleQuotes,
-            maxProducerPasses, smoothingDenominator, blocked);
+            quotes, roads, scales, previousClosedCycleQuotes,
+            maxProducerPasses, smoothingDenominator, blocked,
+            fixedUnitFreight: true);
     }
 
     /// <summary>
@@ -210,7 +215,8 @@ public static class FoundationPhysicalLaggedFreightCyclePlanner
         FoundationPhysicalLaggedFreightQuoteState? previousClosedCycleQuotes = null,
         int maxProducerPasses = 8,
         uint smoothingDenominator = DefaultSmoothingDenominator,
-        IReadOnlySet<PhysicalTacticalEdgeId>? blockedEdges = null)
+        IReadOnlySet<PhysicalTacticalEdgeId>? blockedEdges = null,
+        bool fixedUnitFreight = false)
     {
         ArgumentNullException.ThrowIfNull(census);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -278,7 +284,8 @@ public static class FoundationPhysicalLaggedFreightCyclePlanner
             ulong scale = scales[road.Edge];
             // Unbounded natural sea throughput is never congestible,
             // including when a stale historical quote is supplied.
-            if (scale != FoundationPhysicalEndogenousCongestionFeedback
+            if (!fixedUnitFreight &&
+                scale != FoundationPhysicalEndogenousCongestionFeedback
                     .UnboundedNaturalCargoCapacity &&
                 old.TryGetValue(road.Edge, out var prior) &&
                 prior.FreePhysicalCostMicroPerWholeCargoUnit ==
@@ -322,13 +329,14 @@ public static class FoundationPhysicalLaggedFreightCyclePlanner
             // Compute the congestion target ONCE per crossing AFTER
             // the fixed-cost water-filling solve. It must never feed
             // back into this same turn's allocation or route costs.
-            ulong targetQuote =
-                FoundationPhysicalEndogenousCongestionFeedback.CalculateCongestedRate(
+            ulong targetQuote = fixedUnitFreight
+                ? baseRoad.PhysicalCostMicroPerWholeCargoUnit
+                : FoundationPhysicalEndogenousCongestionFeedback.CalculateCongestedRate(
                     baseRoad.PhysicalCostMicroPerWholeCargoUnit, load,
                     scales[baseRoad.Edge]);
             ulong targetSurcharge = checked(targetQuote -
                 baseRoad.PhysicalCostMicroPerWholeCargoUnit);
-            ulong nextSurcharge =
+            ulong nextSurcharge = fixedUnitFreight ? 0UL :
                 FoundationPhysicalEndogenousCongestionFeedback.RelaxCostTowards(
                     carriedSurcharge[i], targetSurcharge,
                     smoothingDenominator);
