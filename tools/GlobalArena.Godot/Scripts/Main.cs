@@ -1775,8 +1775,12 @@ public partial class Main : Control
                     ? openingHome : null;
             OpenTacticalContext();
             _initialTacticalHomeAnchor = null;
-            if (openingHome.HasValue)
-                _tacticalPreview!.FocusInitialPhysicalCity(openingHome.Value);
+            // City-centered first frame is opt-in to the cartographic map.
+            // Legacy worker/navigation demos retain their proven tactical
+            // region opening until that interface adopts named localities.
+            if (openingHome.HasValue &&
+                _tacticalPreview?.IsCartographicSiteMode == true)
+                _tacticalPreview.FocusInitialPhysicalCity(openingHome.Value);
             CreateTacticalWorkspaceWindows(globe, rightPanel, header, content);
             // Keep the 1280x720 header usable: the long subtitle belongs in
             // secondary information, not beside all keyboard-first controls.
