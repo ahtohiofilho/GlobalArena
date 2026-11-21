@@ -1201,8 +1201,16 @@ public partial class Main : Control
     {
         if (_planetWindow is null || _strategicGlobe is null) return;
         var open = !_planetWindow.Visible;
-        // A secondary atlas does not hide the dock or resize its viewport.
-        if (open) _atlasFloatingWindow?.ClampIntoParent();
+        // R139: M is a two-way exact geographic handoff, not a camera reset.
+        // Preserve each viewer's independent zoom and never touch simulation.
+        if (open)
+        {
+            _atlasFloatingWindow?.ClampIntoParent();
+            if (_tacticalPreview is not null && _tacticalPreview.IsCartographicSiteMode)
+                _strategicGlobe.CenterOnGeography(_tacticalPreview.CenterGeography);
+        }
+        else if (_tacticalPreview is not null && _tacticalPreview.IsCartographicSiteMode)
+            _tacticalPreview.CenterOnGeography(_strategicGlobe.CenterGeography);
         _planetWindow.Visible = open;
         _strategicGlobe.Visible = open;
         GD.Print($"GA_NEXT_PLANET_WINDOW visible={open.ToString().ToLowerInvariant()} " +
