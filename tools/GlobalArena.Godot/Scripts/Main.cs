@@ -424,6 +424,7 @@ public partial class Main : Control
             pendingOrders.Where(order => order.NextOccupation.HasValue)
                 .Select(order => (order.WorkerId.Value, order.NextOccupation!.Value)),
             !ready);
+        RefreshPortInvestmentQaControls();
     }
 
     private void QueueFineWorkerMove()
@@ -574,6 +575,7 @@ public partial class Main : Control
                 throw new System.InvalidOperationException(
                     "Collective turn not closed: all participants not ready.");
             AttachRuntimeState(host.Snapshot);
+            AuditPortInvestmentQa(receipt);
             var humanCount = receipt.Events.Count(x => x.Issuer == _humanCivilization);
             var aiCount = receipt.Events.Count(x =>
                 x.Issuer != _humanCivilization);
@@ -1545,6 +1547,7 @@ public partial class Main : Control
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         orderSection.AddChild(_localOrderStatus);
+        CreatePortInvestmentQaControls(orderSection);
         RefreshLocalWorkerOrderControls();
         GD.Print("GA_UI_FOUNDATION_LOCAL_GAME_R1 workers_initial=" +
             _localFoundation!.Snapshot.Workers.Workers.Count +
@@ -1664,6 +1667,7 @@ public partial class Main : Control
                     var g18 = GaExplicitEconomicQaConfiguration
                         .PrepareFineFirst(_tacticalHost);
                     _tacticalHost = g18.Host;
+                    _r123FineGeography = g18.Geography;
                     _goldbergStartup.VerifyWorldAndIncidence(
                         _tacticalHost.Session.GeneratedWorld,
                         _tacticalHost.Incidence);
