@@ -66,6 +66,20 @@ internal sealed class FoundationGodotCartographicSiteSmoke
                 $"tile={firstHome.FineStrategicCellId.Value} " +
                 $"city_pixel={proof.City} north_delta={direction} " +
                 "centered=true geo_north_up=true");
+            // Worldgen's climate uses Center.Z for sine latitude. Test the
+            // actual +Z/-Z poles, not a synthetic +Y camera 'north' axis.
+            var poles = _map.OpeningGeographicPolesScreenProof(firstHome);
+            var polarNorth = poles.NorthPole - poles.City;
+            var polarSouth = poles.SouthPole - poles.City;
+            Must(polarNorth.Y < -0.1f && polarSouth.Y > 0.1f,
+                "The REAL +Z north pole must appear above the home city " +
+                "and the -Z south pole below it.");
+            Must(Math.Abs(polarNorth.X) < Math.Abs(polarNorth.Y) * 0.2f &&
+                 Math.Abs(polarSouth.X) < Math.Abs(polarSouth.Y) * 0.2f,
+                "Worldgen's real poles must lie on the vertical map axis.");
+            GD.Print($"GA_NEXT_R136_CANONICAL_POLES_PASS " +
+                $"north_delta={polarNorth} south_delta={polarSouth} " +
+                "physical_north=+Z physical_south=-Z horizontal_offset_small=true");
             int visited = 0;
             foreach (var tile in sites)
             {
