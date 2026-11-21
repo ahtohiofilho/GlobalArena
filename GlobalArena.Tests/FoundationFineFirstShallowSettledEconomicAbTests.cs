@@ -299,7 +299,7 @@ public sealed class FoundationFineFirstShallowSettledEconomicAbTests
             if (kind is FoundationFineTransportCrossingKind.Ground or
                 FoundationFineTransportCrossingKind.BlockedIceSeaBoundary)
             {
-                Assert.Equal(original, modified);
+                Assert.Equal(baseEdge, modified);
             }
             else if (kind == FoundationFineTransportCrossingKind.Port)
             {
