@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using GlobalArena.Runtime;
+using GlobalArena.World;
 using Godot;
 
 namespace GlobalArena.Godot;
