@@ -1,0 +1,34 @@
+name: GA-Next R118 Fine-First Depth Diagnostic
+
+on:
+  pull_request:
+    paths:
+      - "GlobalArena.Console/**"
+      - "GlobalArena.World/**"
+      - ".github/workflows/ga-next-r118-depth-diagnostic.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  depth-report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout report candidate
+        uses: actions/checkout@v7
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+      - name: Build research executable
+        run: dotnet build GlobalArena.Console/GlobalArena.Console.csproj --configuration Release
+      - name: Produce canonical fine-first depth report
+        run: dotnet run --no-build --configuration Release --project GlobalArena.Console/GlobalArena.Console.csproj -- --foundation-crossing-depth-report | tee r118-fine-depth.txt
+      - name: Publish report
+        uses: actions/upload-artifact@v7
+        with:
+          name: r118-fine-first-depth
+          path: r118-fine-depth.txt
+          if-no-files-found: error
