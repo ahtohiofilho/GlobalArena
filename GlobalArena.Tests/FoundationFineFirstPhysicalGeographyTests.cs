@@ -94,6 +94,77 @@ public sealed class FoundationFineFirstPhysicalGeographyTests
     }
 
     [Fact]
+    public void ShallowPortQaOverlayChangesOnlyNavigableFineFirstSeaAndPortEdges()
+    {
+        var host = Host();
+        var before = host.StateHash;
+        var geography = FoundationFineFirstPhysicalGeography.Generate(
+            host.Session.GeneratedWorld, host.Incidence);
+        var depths = geography.FineElevationRaw
+            .Where(h => h <= geography.SeaLevelRaw)
+            .Select(h => geography.SeaLevelRaw - h)
+            .OrderBy(h => h).ToArray();
+        long threshold = depths[(depths.Length - 1) / 4];
+        var policy = new FoundationExperimentalShallowFreightPolicy(
+            threshold, 10U, 3U, 20U);
+        var money = new FoundationMonetaryConstructionPolicy(
+            2_000_000UL, 4_000_000UL, 6_000_000UL, 1_000_000UL);
+        var baseline = FoundationPhysicalNaturalTransportSeeder.PreviewFineFirst(
+            host.Session.GeneratedWorld, host.Incidence, geography,
+            Policy(), money);
+        var candidate = FoundationPhysicalNaturalTransportSeeder.PreviewFineFirst(
+            host.Session.GeneratedWorld, host.Incidence, geography,
+            Policy(), money, policy);
+        var replay = FoundationPhysicalNaturalTransportSeeder.PreviewFineFirst(
+            host.Session.GeneratedWorld, host.Incidence, geography,
+            Policy(), money, policy);
+        Assert.Equal(candidate.Transport.Edges, replay.Transport.Edges);
+        var originals = baseline.Transport.Edges.ToDictionary(x =>
+            x.Edge.FineStrategicEdgeId);
+        int changedPorts = 0, changedSea = 0;
+        foreach (var edge in host.Incidence.FineTopology.Edges)
+        {
+            var a = checked((int)edge.IncidentCellIds[0].Value - 1);
+            var b = checked((int)edge.IncidentCellIds[1].Value - 1);
+            var kind = geography.CrossingAtIndices(a, b);
+            var beforeEdge = originals[edge.Id];
+            var afterEdge = candidate.Transport.Edges.Single(x =>
+                x.Edge.FineStrategicEdgeId == edge.Id);
+            ulong baseCost = beforeEdge.FreePhysicalCostMicroPerWholeCargoUnit;
+            ulong newCost = afterEdge.FreePhysicalCostMicroPerWholeCargoUnit;
+            Assert.InRange(newCost, baseCost, checked(baseCost * 2UL));
+            Assert.Equal(beforeEdge.CargoMicroAtReferenceLoad,
+                afterEdge.CargoMicroAtReferenceLoad);
+            Assert.Equal(beforeEdge.OwnershipKind, afterEdge.OwnershipKind);
+            Assert.Equal(beforeEdge.ExternalTariffMicroPerWholeCargoUnit,
+                afterEdge.ExternalTariffMicroPerWholeCargoUnit);
+            if (kind is FoundationFineTransportCrossingKind.Ground or
+                FoundationFineTransportCrossingKind.BlockedIceSeaBoundary)
+            {
+                Assert.Equal(beforeEdge, afterEdge);
+            }
+            else if (kind == FoundationFineTransportCrossingKind.OpenSea)
+            {
+                Assert.Equal(beforeEdge.NaturalConstructionCostMoneyMicro,
+                    afterEdge.NaturalConstructionCostMoneyMicro);
+                if (newCost > baseCost) changedSea++;
+            }
+            else
+            {
+                Assert.Equal(FoundationFineTransportCrossingKind.Port, kind);
+                Assert.InRange(
+                    afterEdge.NaturalConstructionCostMoneyMicro!.Value,
+                    beforeEdge.NaturalConstructionCostMoneyMicro!.Value,
+                    checked(beforeEdge.NaturalConstructionCostMoneyMicro!.Value * 2UL));
+                if (newCost > baseCost) changedPorts++;
+            }
+        }
+        Assert.True(changedPorts > 0 && changedSea > 0);
+        Assert.Equal(before, host.StateHash);
+        Assert.False(host.Snapshot.Transport.IsInitialized);
+    }
+
+    [Fact]
     public void FineTransportPreviewUsesFineFirstSeaAndSlopeWithoutChangingLegacyWorld()
     {
         var host = Host();
