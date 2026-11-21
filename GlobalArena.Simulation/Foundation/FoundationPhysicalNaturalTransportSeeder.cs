@@ -85,6 +85,45 @@ public sealed class FoundationMonetaryConstructionPolicy
 }
 
 /// <summary>
+/// Research-only bounded shallow-water scenario. This is NOT a default
+/// gameplay seeding policy and does not create any new crossing classes.
+/// Threshold is an elevation-field unit (never meters); the caller chooses
+/// experimental percentages explicitly. All calculations use integers.
+/// </summary>
+public sealed class FoundationExperimentalShallowFreightPolicy
+{
+    public long DepthThresholdRaw { get; }
+    public uint PortOperatingSurchargePercent { get; }
+    public uint SeaOperatingSurchargePercent { get; }
+    public uint PortConstructionSurchargePercent { get; }
+
+    public FoundationExperimentalShallowFreightPolicy(
+        long depthThresholdRaw, uint portOperatingSurchargePercent,
+        uint seaOperatingSurchargePercent, uint portConstructionSurchargePercent)
+    {
+        if (depthThresholdRaw <= 0L ||
+            portOperatingSurchargePercent > 100U ||
+            seaOperatingSurchargePercent > 100U ||
+            portConstructionSurchargePercent > 100U)
+            throw new ArgumentOutOfRangeException(nameof(depthThresholdRaw),
+                "Research depth must be positive and surcharge percentages <= 100.");
+        DepthThresholdRaw = depthThresholdRaw;
+        PortOperatingSurchargePercent = portOperatingSurchargePercent;
+        SeaOperatingSurchargePercent = seaOperatingSurchargePercent;
+        PortConstructionSurchargePercent = portConstructionSurchargePercent;
+    }
+
+    public ulong Increment(ulong baseline, long depthRaw, uint percent)
+    {
+        if (depthRaw >= DepthThresholdRaw || percent == 0U) return 0UL;
+        long shallow = DepthThresholdRaw - Math.Max(0L, depthRaw);
+        UInt128 scaled = (UInt128)baseline * percent * (ulong)shallow;
+        return checked((ulong)(scaled /
+            ((UInt128)100 * (ulong)DepthThresholdRaw)));
+    }
+}
+
+/// <summary>
 /// Inspectable seed evidence. Classification is based on an interpolated,
 /// coarse-derived fine elevation, not a falsely claimed independent tactical
 /// altitude field. The inventory is still UNCOMMITTED until WorldState
@@ -140,7 +179,8 @@ public static class FoundationPhysicalNaturalTransportSeeder
         PhysicalTacticalIncidenceMap incidence,
         FoundationFineFirstPhysicalGeography fineGeography,
         FoundationNaturalTransportSeedingPolicy operatingPolicy,
-        FoundationMonetaryConstructionPolicy? monetaryPolicy = null)
+        FoundationMonetaryConstructionPolicy? monetaryPolicy = null,
+        FoundationExperimentalShallowFreightPolicy? researchShallow = null)
     {
         ArgumentNullException.ThrowIfNull(fineGeography);
         if (fineGeography.Seed != generatedWorld.Request.Seed ||
@@ -150,7 +190,7 @@ public static class FoundationPhysicalNaturalTransportSeeder
             throw new InvalidOperationException(
                 "Fine-first preview must be bound to the same seed and scales.");
         return CreateCore(generatedWorld, incidence,
-            operatingPolicy, monetaryPolicy, fineGeography);
+            operatingPolicy, monetaryPolicy, fineGeography, researchShallow);
     }
 
     private static FoundationNaturalTransportSeedEvidence CreateCore(
@@ -158,7 +198,8 @@ public static class FoundationPhysicalNaturalTransportSeeder
         PhysicalTacticalIncidenceMap incidence,
         FoundationNaturalTransportSeedingPolicy policy,
         FoundationMonetaryConstructionPolicy? monetaryPolicy,
-        FoundationFineFirstPhysicalGeography? fineGeography = null)
+        FoundationFineFirstPhysicalGeography? fineGeography = null,
+        FoundationExperimentalShallowFreightPolicy? researchShallow = null)
     {
         ArgumentNullException.ThrowIfNull(generatedWorld);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -263,6 +304,35 @@ public static class FoundationPhysicalNaturalTransportSeeder
                 band = policy.Sea;
                 cost = band.FreePhysicalCostMicroPerWholeCargoUnit;
                 constructionMoney = monetaryPolicy?.SeaBaseCostMoneyMicro;
+            }
+            // Experimental overlay is opt-in and fine-first ONLY. Never
+            // interpret the old strategic V1 sea level as bathymetry, and
+            // never turn a frozen sea boundary into a navigable port.
+            if (researchShallow is not null && fineGeography is not null)
+            {
+                if (surfaceCrossing == FoundationFineTransportCrossingKind.Port)
+                {
+                    int waterIndex = firstLand ? b : a;
+                    long depth = Math.Max(0L,
+                        seaLevel - fineElevation[waterIndex]);
+                    cost = checked(cost + researchShallow.Increment(
+                        band.FreePhysicalCostMicroPerWholeCargoUnit, depth,
+                        researchShallow.PortOperatingSurchargePercent));
+                    if (constructionMoney is { } naturalMoney)
+                        constructionMoney = checked(naturalMoney +
+                            researchShallow.Increment(naturalMoney, depth,
+                                researchShallow.PortConstructionSurchargePercent));
+                }
+                else if (surfaceCrossing ==
+                    FoundationFineTransportCrossingKind.OpenSea)
+                {
+                    long depth = Math.Min(
+                        Math.Max(0L, seaLevel - fineElevation[a]),
+                        Math.Max(0L, seaLevel - fineElevation[b]));
+                    cost = checked(cost + researchShallow.Increment(
+                        band.FreePhysicalCostMicroPerWholeCargoUnit, depth,
+                        researchShallow.SeaOperatingSurchargePercent));
+                }
             }
             // Open sea has no physical congestion bottleneck, regardless
             // of epoch or freight volume. Its *positive* free operating cost

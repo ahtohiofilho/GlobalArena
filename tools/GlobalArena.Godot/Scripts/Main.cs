@@ -1761,7 +1761,10 @@ public partial class Main : Control
                     $"inputs=G/P/X/E gameplay_economy={(_tacticalHost.StateHash.FormatVersion >= 13U ? "explicit_v15" : "not_active")}");
             }
             _status!.Text = _interactiveEconomicPreviewActive
-                ? "GA-NEXT / EXPERIMENTAL ECONOMY LAB  •  E sells/consumes  •  TAB orders  •  M map"
+                ? (System.Environment.GetEnvironmentVariable(
+                    "GA_NEXT_QA_SHALLOW_PORTS") == "1"
+                    ? "GA-NEXT / SHALLOW PORT A/B • QA ONLY • E turn • M map"
+                    : "GA-NEXT / ECONOMY BASELINE • QA ONLY • E turn • M map")
                 : _tacticalHost is null
                     ? "GA-NEXT / WORKFORCE 01  •  TAB personnel  •  M planetary atlas  •  E collective turn"
                     : $"GA-NEXT / TACTICAL V{_tacticalHost.StateHash.FormatVersion}  •  G step  •  P produce  •  X cancel  •  E collective";
@@ -1800,6 +1803,10 @@ public partial class Main : Control
                     "source=signed_g18 physical_freight_same_field=true " +
                     "mode=manual_e_turns auto_quit=false qa_only=true");
             }
+            if (_interactiveEconomicPreviewActive)
+                GD.Print("GA_NEXT_R120_EXPERIMENTAL_COASTAL_PROFILE " +
+                    $"shallow={(System.Environment.GetEnvironmentVariable("GA_NEXT_QA_SHALLOW_PORTS") == "1").ToString().ToLowerInvariant()} " +
+                    "physical_source=signed_fine_first_g18");
             if (_interactiveEconomicPreviewActive)
                 GD.Print("GA_NEXT_INTERACTIVE_ECONOMY_PREVIEW_READY " +
                     "mode=manual_e_turns auto_quit=false " +
