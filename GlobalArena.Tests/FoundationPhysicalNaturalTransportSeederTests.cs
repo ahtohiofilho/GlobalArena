@@ -250,8 +250,19 @@ public sealed class FoundationPhysicalNaturalTransportSeederTests
             replay.FixedCycleEdges.ToArray());
         // Aggregate totals alone could conceal rerouting between buyers.
         // Compare the complete ordered distribution transcript as well.
-        Assert.Equal(candidate.Distribution.Candidates.ToArray(),
-            replay.Distribution.Candidates.ToArray());
+        Assert.Equal(
+            candidate.Distribution.Candidates.Select(c => (
+                c.DeliveryOrdinal, c.Seller, c.SourceOccupation,
+                c.SourceTile, c.Buyer, c.BuyerTile, c.Commodity,
+                c.GoodsMicro,
+                Route: string.Join(",", c.RouteTiles.Select(t =>
+                    t.FineStrategicCellId.Value)))).ToArray(),
+            replay.Distribution.Candidates.Select(c => (
+                c.DeliveryOrdinal, c.Seller, c.SourceOccupation,
+                c.SourceTile, c.Buyer, c.BuyerTile, c.Commodity,
+                c.GoodsMicro,
+                Route: string.Join(",", c.RouteTiles.Select(t =>
+                    t.FineStrategicCellId.Value)))).ToArray());
         Assert.Equal(candidate.Distribution.MarketTotals.ToArray(),
             replay.Distribution.MarketTotals.ToArray());
         Assert.Equal(candidate.Distribution.MovedGoodsByPass.ToArray(),
