@@ -905,7 +905,9 @@ public partial class Main : Control
             .Where(w => w.Owner == _humanCivilization &&
                 w.TacticalTileId == tile)
             .OrderBy(w => w.Id.Value).FirstOrDefault();
-        if (own is not null)
+        // Cartographic click selects a PLACE, not an individual worker.
+        // Workforce assignment is retained for the future local admin UI.
+        if (own is not null && _tacticalPreview?.IsCartographicSiteMode != true)
             _selectedLocalWorkerId = own.Id.Value;
         RefreshFineTacticalWorkerControls();
         GD.Print($"GA_NEXT_FINE_TILE_CLICK tile={tile.FineStrategicCellId.Value} " +
