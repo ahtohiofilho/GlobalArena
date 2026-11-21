@@ -390,7 +390,7 @@ public sealed class FoundationMonetaryInfrastructureInvestmentTests
         s.Host.QueueHumanMonetaryInvestment(Red, second, 100_000UL);
         var pending = s.Host.GetHumanMonetaryInvestments(Red);
         Assert.Equal(2, pending.Count);
-        Assert.Equal(200_000UL, pending.Sum(x => x.MoneyMicro));
+        Assert.Equal(200_000UL, pending.Aggregate(0UL, (total, order) => checked(total + order.MoneyMicro)));
         Assert.Throws<InvalidOperationException>(() =>
             s.Host.QueueHumanMonetaryInvestment(Red,
                 before.Transport.Edges.First(row =>
