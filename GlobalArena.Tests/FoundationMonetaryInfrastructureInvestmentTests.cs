@@ -375,6 +375,54 @@ public sealed class FoundationMonetaryInfrastructureInvestmentTests
     }
 
     [Fact]
+    public void MultipleEdgeCapitalOrdersRespectBudgetCancellationAndSingleTurnJournal()
+    {
+        var s = Create(redOpeningMoneyMicro: 250_000UL);
+        var second = s.Host.Snapshot.Transport.Edges.First(row =>
+            row.Edge != s.RemoteEdge &&
+            row.CargoMicroAtReferenceLoad != ulong.MaxValue &&
+            row.NaturalConstructionCostMoneyMicro is > 0UL &&
+            row.OwnershipKind == PhysicalTransportOwnershipKind.Natural).Edge;
+        var before = s.Host.Snapshot;
+        var initialHash = s.Host.StateHash;
+        var initialCash = before.Treasury.Get(Red).CashScaled;
+        s.Host.QueueHumanMonetaryInvestment(Red, s.RemoteEdge, 100_000UL);
+        s.Host.QueueHumanMonetaryInvestment(Red, second, 100_000UL);
+        var pending = s.Host.GetHumanMonetaryInvestments(Red);
+        Assert.Equal(2, pending.Count);
+        Assert.Equal(200_000UL, pending.Sum(x => x.MoneyMicro));
+        Assert.Throws<InvalidOperationException>(() =>
+            s.Host.QueueHumanMonetaryInvestment(Red,
+                before.Transport.Edges.First(row =>
+                    row.Edge != s.RemoteEdge && row.Edge != second &&
+                    row.CargoMicroAtReferenceLoad != ulong.MaxValue &&
+                    row.NaturalConstructionCostMoneyMicro is > 0UL &&
+                    row.OwnershipKind == PhysicalTransportOwnershipKind.Natural).Edge,
+                100_000UL));
+        Assert.Same(before, s.Host.Snapshot);
+        Assert.Equal(initialHash, s.Host.StateHash);
+        Assert.True(s.Host.CancelHumanMonetaryInvestment(Red, second));
+        Assert.Single(s.Host.GetHumanMonetaryInvestments(Red));
+        s.Host.QueueHumanMonetaryInvestment(Red, second, 100_000UL);
+        Assert.Equal(2, s.Host.PendingOrderCount);
+
+        s.Host.SetHumanReady(Red);
+        var receipt = Assert.IsType<FoundationTacticalCollectiveReceipt>(
+            s.Host.TryCloseTurn());
+        Assert.True(receipt.ReplayMatched);
+        Assert.Equal(2, receipt.InfrastructureInvestments.Count);
+        Assert.Contains(receipt.InfrastructureInvestments,
+            ev => ev.Edge == s.RemoteEdge && ev.MoneyMicro == 100_000UL);
+        Assert.Contains(receipt.InfrastructureInvestments,
+            ev => ev.Edge == second && ev.MoneyMicro == 100_000UL);
+        Assert.Equal(initialCash - GlobalArenaMoneyScale.FromMoneyMicro(200_000UL),
+            s.Host.Snapshot.Treasury.Get(Red).CashScaled);
+        Assert.Equal(100_000UL, s.Host.Snapshot.Transport.Edges
+            .Single(row => row.Edge == second).CommittedInvestmentMoneyMicro);
+        Assert.Empty(s.Host.GetHumanMonetaryInvestments(Red));
+    }
+
+    [Fact]
     public void CancelledCapitalLeavesTreasuryAndEdgeIntactWhenTurnCloses()
     {
         var s = Create(redOpeningMoneyMicro: 300_000UL);
