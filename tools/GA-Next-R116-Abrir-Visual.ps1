@@ -1,4 +1,4 @@
-# GA-Next R116 — isolated visual review of R115 validated source, not main.
+# GA-Next R116 - isolated visual review of R115 validated source, not main.
 # EconomyLab and Geography are separate modes by the Godot QA contract.
 # Run from any directory inside the local GlobalArena Git checkout.
 param(
@@ -133,7 +133,7 @@ try {
         [Environment]::SetEnvironmentVariable(
             'GA_NEXT_INTERACTIVE_ECONOMY_PREVIEW', '1', 'Process')
     }
-    Write-Host "[GA-NEXT VISUAL] Opening $Mode — Godot 4.7.2 Mono." 
+    Write-Host "[GA-NEXT VISUAL] Opening $Mode - Godot 4.7.2 Mono." 
     Write-Host '[GA-NEXT VISUAL] M = map; TAB = operations; E = close next turn.'
     if ($Mode -eq 'EconomyLab') {
         Write-Warning 'Experimental QA economy only: prices and balances are NOT final calibration.'
