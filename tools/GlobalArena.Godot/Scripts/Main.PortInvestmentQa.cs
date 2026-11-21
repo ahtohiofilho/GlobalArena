@@ -25,7 +25,10 @@ public partial class Main
     private readonly System.Collections.Generic.List<PhysicalTacticalEdgeId>
         _portQaChoices = new();
     private PhysicalTacticalEdgeId? _portQaSelected;
-    private PhysicalTacticalEdgeId? _portQaQueued;
+    private readonly Dictionary<PhysicalTacticalEdgeId,
+        (ulong BeforeFreight, ulong BeforeCargo)> _r144QueuedCapital = new();
+    private OptionButton? _r144PendingSelector;
+    private readonly List<PhysicalTacticalEdgeId> _r144PendingChoices = new();
     private ulong _portQaOldFreight;
     private string? _portQaLastSettledAudit;
     private bool _portQaUserSelected;
@@ -99,6 +102,12 @@ public partial class Main
         };
         _portQaInvest.Pressed += QueuePortInvestmentQa;
         section.AddChild(_portQaInvest);
+        _r144PendingSelector = new OptionButton
+        {
+            Name = "GANextR144PendingEdgeSelector",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        section.AddChild(_r144PendingSelector);
         _portQaCancel = new Button
         {
             Name = "GANextR142CancelPortInvestment",
@@ -119,11 +128,24 @@ public partial class Main
     private void RefreshPortInvestmentQaControls()
     {
         if (_portQaSelector is null || _portQaInvest is null ||
-            _portQaCancel is null || _portQaDetails is null || _portQaFeedback is null ||
+            _portQaCancel is null || _r144PendingSelector is null ||
+            _portQaDetails is null || _portQaFeedback is null ||
             _tacticalHost is null || !_interactiveEconomicPreviewActive)
             return;
         var host = _tacticalHost;
         var snapshot = host.Snapshot;
+        var plans = host.GetHumanMonetaryInvestments(_humanCivilization);
+        _r144PendingChoices.Clear();
+        _r144PendingSelector.Clear();
+        foreach (var plan in plans)
+        {
+            _r144PendingChoices.Add(plan.Edge);
+            _r144PendingSelector.AddItem(
+                $"PENDING EDGE {plan.Edge.FineStrategicEdgeId.Value} | " +
+                FormatMoneyMicroForDisplay(plan.MoneyMicro));
+        }
+        if (plans.Count == 0)
+            _r144PendingSelector.AddItem("NO PENDING INVESTMENTS");
         var fine = _r123FineGeography;
         if (fine is null) return;
 
@@ -166,7 +188,7 @@ public partial class Main
         if (selected.Count == 0)
             selected = navigable.OrderBy(p => p.Id.FineStrategicEdgeId.Value)
                 .Take(8).ToList();
-        if ((_portQaUserSelected || _portQaQueued.HasValue) &&
+        if ((_portQaUserSelected || _r144QueuedCapital.Count > 0) &&
             _portQaSelected.HasValue &&
             navigable.Any(p => p.Id == _portQaSelected.Value) &&
             selected.All(p => p.Id != _portQaSelected.Value))
@@ -189,7 +211,7 @@ public partial class Main
         if (_portQaChoices.Count == 0)
         {
             _portQaInvest.Disabled = true;
-            _portQaCancel.Disabled = !_portQaQueued.HasValue;
+            _portQaCancel.Disabled = plans.Count == 0;
             _portQaDetails.Text = $"No financeable {crossingLabel} edges exist.";
             return;
         }
@@ -198,7 +220,7 @@ public partial class Main
         // alternative or already queued a specific port order.
         if (!_portQaSelected.HasValue ||
             !_portQaChoices.Contains(_portQaSelected.Value) ||
-            (!_portQaUserSelected && !_portQaQueued.HasValue &&
+            (!_portQaUserSelected && _r144QueuedCapital.Count == 0 &&
              usedPortCount > 0 &&
              !used.ContainsKey(_portQaSelected.Value)))
             _portQaSelected = _portQaChoices[0];
@@ -216,21 +238,28 @@ public partial class Main
             $" | effective {FormatMoneyMicroForDisplay(effective)}" +
             $" | edge construction basis {FormatMoneyMicroForDisplay(current.NaturalConstructionCostMoneyMicro!.Value)}" +
             $" | accumulated capital {FormatMoneyMicroForDisplay(investment)}";
-        bool affordable = snapshot.Treasury.Get(_humanCivilization).CashScaled >=
-            GlobalArenaMoneyScale.FromMoneyMicro(PortQaSpendMoneyMicro);
+        var reserved = plans.Aggregate(System.Numerics.BigInteger.Zero,
+            (total, plan) => total +
+                GlobalArenaMoneyScale.FromMoneyMicro(plan.MoneyMicro));
+        bool affordable = snapshot.Treasury.Get(_humanCivilization).CashScaled -
+            reserved >= GlobalArenaMoneyScale.FromMoneyMicro(PortQaSpendMoneyMicro);
+        bool alreadyQueued = plans.Any(plan => plan.Edge == _portQaSelected.Value);
         bool ownedByAnother = current.OwnershipKind ==
                 PhysicalTransportOwnershipKind.UnownedInfrastructure ||
             (current.OwnershipKind == PhysicalTransportOwnershipKind.Owned &&
              current.InfrastructureOwner != _humanCivilization);
         bool ready = host.ReadyCivilizations.Contains(_humanCivilization);
         _portQaInvest.Disabled = !affordable || ownedByAnother ||
-            ready || _portQaQueued.HasValue;
-        _portQaCancel.Disabled = ready || !_portQaQueued.HasValue;
+            ready || alreadyQueued;
+        _portQaCancel.Disabled = ready || plans.Count == 0;
+        _r144PendingSelector.Disabled = ready || plans.Count == 0;
         if (_r143CrossingFilter is not null)
-            _r143CrossingFilter.Disabled = ready || _portQaQueued.HasValue;
-        if (_portQaQueued.HasValue)
-            _portQaFeedback.Text = "Investment queued in the real host; " +
-                "press E to commit and audit the ledger.";
+            _r143CrossingFilter.Disabled = ready;
+        if (plans.Count > 0)
+            _portQaFeedback.Text = $"{plans.Count} real investment(s) pending | " +
+                $"reserved {FormatMoneyMicroForDisplay(
+                    plans.Aggregate(0UL, (sum, order) => checked(sum + order.MoneyMicro)))} | " +
+                "choose another edge/type, cancel a listed order, or press E to commit.";
         else if (_portQaLastSettledAudit is not null)
             _portQaFeedback.Text = _portQaLastSettledAudit;
         else if (!affordable)
@@ -255,22 +284,23 @@ public partial class Main
             var host = _tacticalHost;
             var edge = host.Snapshot.Transport.Edges.Single(x =>
                 x.Edge == _portQaSelected.Value);
-            _portQaOldFreight = FoundationPhysicalAuthoritativeTransportProjector
+            var beforeFreight = FoundationPhysicalAuthoritativeTransportProjector
                 .EffectiveUnitFreightCost(edge);
-            _portQaCargoBefore = host.GetLastClosedEconomicTradeView(
+            var beforeCargo = host.GetLastClosedEconomicTradeView(
                 _humanCivilization).UsedEdges.FirstOrDefault(x =>
                     x.Edge == _portQaSelected.Value)?.TotalCargoMicro ?? 0UL;
             host.QueueHumanMonetaryInvestment(_humanCivilization,
                 _portQaSelected.Value, PortQaSpendMoneyMicro);
             _portQaLastSettledAudit = null;
-            _portQaQueued = _portQaSelected;
+            _r144QueuedCapital.Add(_portQaSelected.Value,
+                (beforeFreight, beforeCargo));
             _portQaFeedback.Text =
                 $"{FormatMoneyMicroForDisplay(PortQaSpendMoneyMicro)} queued " +
                 "(NOT YET SPENT). Press E.";
             GD.Print("GA_NEXT_R123_PORT_INVESTMENT_QUEUED " +
                 $"edge={_portQaSelected.Value.FineStrategicEdgeId.Value} " +
                 $"money_micro={PortQaSpendMoneyMicro} " +
-                $"old_effective_freight_micro={_portQaOldFreight}");
+                $"old_effective_freight_micro={beforeFreight}");
         }
         catch (System.Exception ex)
         {
@@ -284,9 +314,12 @@ public partial class Main
     // turn or credit cash from a fictitious reverse transaction.
     private void CancelPortInvestmentQa()
     {
-        if (_tacticalHost is null || !_portQaQueued.HasValue ||
-            _portQaFeedback is null) return;
-        var edge = _portQaQueued.Value;
+        if (_tacticalHost is null || _r144PendingSelector is null ||
+            _r144PendingChoices.Count == 0 || _portQaFeedback is null)
+            return;
+        int index = _r144PendingSelector.Selected;
+        if (index < 0 || index >= _r144PendingChoices.Count) return;
+        var edge = _r144PendingChoices[index];
         try
         {
             bool cancelled = _tacticalHost.CancelHumanMonetaryInvestment(
@@ -294,7 +327,7 @@ public partial class Main
             if (!cancelled)
                 throw new InvalidOperationException(
                     "Authoritative host had no queued investment for this edge.");
-            _portQaQueued = null;
+            _r144QueuedCapital.Remove(edge);
             _portQaLastSettledAudit =
                 "Pending edge investment cancelled before E; treasury and " +
                 "capital unchanged. You may choose another edge.";
@@ -314,7 +347,8 @@ public partial class Main
     // Automated scene accessors expose presentation state, not mutable authority.
     internal bool R142PortCancelAvailable =>
         _portQaCancel is { Disabled: false };
-    internal bool R142PortInvestmentQueued => _portQaQueued.HasValue;
+    internal bool R142PortInvestmentQueued => _r144QueuedCapital.Count > 0;
+    internal int R144PendingCapitalCount => _r144QueuedCapital.Count;
     internal string R143CrossingFilterSelected => _r143SelectedCrossing.ToString();
 
     // Verify the actual Godot selector against the signed crossing catalogue.
@@ -364,37 +398,44 @@ public partial class Main
     private void AuditPortInvestmentQa(
         FoundationTacticalCollectiveReceipt receipt)
     {
-        if (!_portQaQueued.HasValue || _tacticalHost is null ||
+        if (_r144QueuedCapital.Count == 0 || _tacticalHost is null ||
             _portQaFeedback is null) return;
-        var committed = receipt.InfrastructureInvestments.FirstOrDefault(x =>
-            x.Edge == _portQaQueued.Value &&
-            x.Investor == _humanCivilization);
-        if (committed is null)
-            throw new InvalidOperationException(
-                "Queued port investment absent from closed real journal.");
-        var after = _tacticalHost.Snapshot.Transport.Edges.Single(x =>
-            x.Edge == _portQaQueued.Value);
-        ulong newCost = FoundationPhysicalAuthoritativeTransportProjector
-            .EffectiveUnitFreightCost(after);
-        if (newCost > _portQaOldFreight ||
-            committed.MoneyMicro != PortQaSpendMoneyMicro)
-            throw new InvalidOperationException(
-                "Authoritative edge capital must reduce, not raise freight.");
-        ulong cargoAfter = _tacticalHost.GetLastClosedEconomicTradeView(
-            _humanCivilization).UsedEdges.FirstOrDefault(x =>
-                x.Edge == _portQaQueued.Value)?.TotalCargoMicro ?? 0UL;
-        _portQaLastSettledAudit =
-            $"REAL INVESTMENT COMMITTED | edge {_portQaQueued.Value.FineStrategicEdgeId.Value}" +
-            $" | spent {FormatMoneyMicroForDisplay(committed.MoneyMicro)}" +
-            $" | unit freight {FormatMoneyMicroForDisplay(_portQaOldFreight)}" +
-            $" -> {FormatMoneyMicroForDisplay(newCost)}" +
-            $" | observed cargo {_portQaCargoBefore} -> {cargoAfter} micro" +
+        var audit = new List<string>();
+        foreach (var (edge, previous) in _r144QueuedCapital.OrderBy(
+            x => x.Key.FineStrategicEdgeId.Value))
+        {
+            var committed = receipt.InfrastructureInvestments.SingleOrDefault(x =>
+                x.Edge == edge && x.Investor == _humanCivilization);
+            if (committed is null)
+                throw new InvalidOperationException(
+                    "Queued investment absent from the real closed journal.");
+            var after = _tacticalHost.Snapshot.Transport.Edges.Single(x =>
+                x.Edge == edge);
+            ulong newCost = FoundationPhysicalAuthoritativeTransportProjector
+                .EffectiveUnitFreightCost(after);
+            if (newCost > previous.BeforeFreight ||
+                committed.MoneyMicro != PortQaSpendMoneyMicro)
+                throw new InvalidOperationException(
+                    "Canonical capital investment must not raise effective freight.");
+            ulong cargoAfter = _tacticalHost.GetLastClosedEconomicTradeView(
+                _humanCivilization).UsedEdges.FirstOrDefault(x =>
+                    x.Edge == edge)?.TotalCargoMicro ?? 0UL;
+            audit.Add($"edge {edge.FineStrategicEdgeId.Value}: " +
+                $"spent {FormatMoneyMicroForDisplay(committed.MoneyMicro)}, " +
+                $"freight {FormatMoneyMicroForDisplay(previous.BeforeFreight)} -> " +
+                $"{FormatMoneyMicroForDisplay(newCost)}, " +
+                $"cargo {previous.BeforeCargo} -> {cargoAfter}");
+            GD.Print("GA_NEXT_R144_MULTI_EDGE_INVESTMENT_SETTLED " +
+                $"edge={edge.FineStrategicEdgeId.Value} " +
+                $"money_micro={committed.MoneyMicro} " +
+                $"before={previous.BeforeFreight} after={newCost} " +
+                $"replay={receipt.ReplayMatched}");
+        }
+        _portQaLastSettledAudit = $"REAL INVESTMENTS COMMITTED " +
+            $"({_r144QueuedCapital.Count}) | " +
+            string.Join(" | ", audit) +
             $" | replay {(receipt.ReplayMatched ? "OK" : "FAIL")}";
-        GD.Print("GA_NEXT_R123_PORT_INVESTMENT_SETTLED " +
-            $"edge={_portQaQueued.Value.FineStrategicEdgeId.Value} " +
-            $"money_micro={committed.MoneyMicro} before={_portQaOldFreight} " +
-            $"after={newCost} replay={receipt.ReplayMatched}");
         _portQaFeedback.Text = _portQaLastSettledAudit;
-        _portQaQueued = null;
+        _r144QueuedCapital.Clear();
     }
 }
