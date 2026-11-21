@@ -49,6 +49,13 @@ internal sealed class FoundationGodotCartographicSiteSmoke
                 .Distinct().OrderBy(id => id).ToArray();
             Must(sites.Length >= 2,
                 "Cartographic QA fixture must include at least two true sites.");
+            // R140: gameplay decision comes from the signed worker snapshot;
+            // reading the preview never queues an order or alters the host.
+            var initialDecision = _main.FineMovementDecisionText;
+            Must(initialDecision.Contains("MOVEMENT | worker #") &&
+                 initialDecision.Contains(" | from ") &&
+                 initialDecision.Contains(" to "),
+                 "R140 movement feasibility panel must describe the selected real worker.");
             var beforeHash = _host.StateHash;
             var human = new GlobalArena.Runtime.CivilizationId(1UL);
             var firstHome = _host.Snapshot.Workers.Workers
@@ -116,6 +123,10 @@ internal sealed class FoundationGodotCartographicSiteSmoke
                 visited++;
             }
             _main.ExerciseGeographicHandoffSmoke();
+            Must(_main.FineMovementDecisionText.Contains("MOVEMENT | worker #"),
+                "R140 movement preview vanished after geographic handoff.");
+            GD.Print("GA_NEXT_R140_MOVE_DECISION_PASS signed_worker=true " +
+                "canonical_destination=true read_only=true survives_map_handoff=true");
             Must(visited == sites.Length && _host.StateHash == beforeHash,
                 "Site-focus inspection must cover both localities without gameplay mutation.");
             GD.Print($"GA_NEXT_R134_CARTOGRAPHIC_SITES_PASS " +

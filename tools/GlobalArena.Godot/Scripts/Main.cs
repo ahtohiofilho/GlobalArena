@@ -86,6 +86,8 @@ public partial class Main : Control
     private Label? _localTurnLabel;
     private Label? _localAiStatus;
     private Label? _localOrderStatus;
+    // R140: read-only order feasibility before a real human movement decision.
+    private Label? _fineMovementDecision;
     private ulong? _selectedLocalWorkerId;
     // R38: composition owner, not a second simulation state inside the renderer.
     private CanonicalGameSession? _canonicalSession;
@@ -355,6 +357,7 @@ public partial class Main : Control
                     .FineStrategicCellId.Value - 1)]
                 .AdjacentCellIds.Contains(destination.Value.FineStrategicCellId);
         _localMoveButton.Disabled = ready || !adjacent;
+        RefreshFineMovementDecision(selectedTile, adjacent, ready);
         _localProduceButton.Disabled = ready || chosen is null ||
             chosen.Activity == PhysicalWorkerActivity.Producing ||
             chosen.OutputMicroPerTurn == 0UL;
@@ -428,6 +431,42 @@ public partial class Main : Control
         RefreshPortInvestmentQaControls();
         RefreshLocalSiteSelectionQa();
     }
+
+    // R140: read directly from the same authoritative worker and pending-order
+    // snapshots as the movement command. No UI-owned copies of game state.
+    private void RefreshFineMovementDecision(ulong? selectedTile, bool adjacent, bool ready)
+    {
+        if (_fineMovementDecision is null || _tacticalHost is null) return;
+        var worker = _tacticalHost.Snapshot.Workers.Workers.FirstOrDefault(w =>
+            w.Id.Value == _selectedLocalWorkerId && w.Owner == _humanCivilization);
+        if (worker is null)
+        {
+            _fineMovementDecision.Text = "MOVEMENT | Select one of your workers";
+            return;
+        }
+        var source = worker.TacticalTileId!.Value.FineStrategicCellId.Value;
+        var queued = _tacticalHost.GetHumanOrders(_humanCivilization)
+            .FirstOrDefault(o => o.WorkerId == worker.Id);
+        var queuedText = queued is null ? "no pending order"
+            : queued.IsMovement
+                ? $"move queued to tile {queued.Destination.FineStrategicCellId.Value}"
+                : queued.NextOccupation.HasValue
+                    ? $"occupation queued: {queued.NextOccupation.Value}"
+                    : $"activity queued: {queued.Activity}";
+        string decision = !selectedTile.HasValue
+            ? "select a destination tile on the map"
+            : selectedTile.Value == source
+                ? "destination equals current tile"
+                : adjacent
+                    ? ready ? "turn already committed" : "adjacent — G can queue movement"
+                    : "not adjacent — one physical edge per move";
+        var target = selectedTile.HasValue ? selectedTile.Value.ToString() : "none";
+        _fineMovementDecision.Text =
+            $"MOVEMENT | worker #{worker.Id.Value} | from {source} to {target}\n" +
+            $"{decision} | {queuedText}";
+    }
+
+    internal string FineMovementDecisionText => _fineMovementDecision?.Text ?? "";
 
     private void QueueFineWorkerMove()
     {
@@ -1582,6 +1621,13 @@ public partial class Main : Control
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         orderSection.AddChild(_localPendingLabel);
+        _fineMovementDecision = new Label
+        {
+            Name = "GANextFineMovementDecision",
+            Text = "MOVEMENT | Select a worker and a destination tile",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        orderSection.AddChild(_fineMovementDecision);
         _localCancelQueuedButton = new Button
         {
             Text = "X | CANCEL SELECTED WORKER ORDER",
