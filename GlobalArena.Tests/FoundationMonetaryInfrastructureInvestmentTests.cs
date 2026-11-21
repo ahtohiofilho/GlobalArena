@@ -375,6 +375,34 @@ public sealed class FoundationMonetaryInfrastructureInvestmentTests
     }
 
     [Fact]
+    public void CancelledCapitalLeavesTreasuryAndEdgeIntactWhenTurnCloses()
+    {
+        var s = Create(redOpeningMoneyMicro: 300_000UL);
+        var original = s.Host.Snapshot;
+        var hash = s.Host.StateHash;
+        var cash = original.Treasury.Get(Red).CashScaled;
+        var originalCapital = Edge(s).CommittedInvestmentMoneyMicro;
+
+        s.Host.QueueHumanMonetaryInvestment(Red, s.RemoteEdge, 100_000UL);
+        Assert.Equal(1, s.Host.PendingOrderCount);
+        Assert.Same(original, s.Host.Snapshot);
+        Assert.True(s.Host.CancelHumanMonetaryInvestment(Red, s.RemoteEdge));
+        Assert.False(s.Host.CancelHumanMonetaryInvestment(Red, s.RemoteEdge));
+        Assert.Equal(0, s.Host.PendingOrderCount);
+        Assert.Same(original, s.Host.Snapshot);
+        Assert.Equal(hash, s.Host.StateHash);
+
+        s.Host.SetHumanReady(Red);
+        var receipt = Assert.IsType<FoundationTacticalCollectiveReceipt>(
+            s.Host.TryCloseTurn());
+        Assert.True(receipt.ReplayMatched);
+        Assert.Empty(receipt.InfrastructureInvestments);
+        Assert.Equal(cash, s.Host.Snapshot.Treasury.Get(Red).CashScaled);
+        Assert.Equal(originalCapital, Edge(s).CommittedInvestmentMoneyMicro);
+        Assert.Same(original.Workers, s.Host.Snapshot.Workers);
+    }
+
+    [Fact]
     public void NoOverdraftForgedFundsOrDuplicateInvestmentCanBePublished()
     {
         var s = Create(redOpeningMoneyMicro: 300_000UL);
