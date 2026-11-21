@@ -50,6 +50,22 @@ internal sealed class FoundationGodotCartographicSiteSmoke
             Must(sites.Length >= 2,
                 "Cartographic QA fixture must include at least two true sites.");
             var beforeHash = _host.StateHash;
+            var human = new GlobalArena.Runtime.CivilizationId(1UL);
+            var firstHome = _host.Snapshot.Workers.Workers
+                .First(w => w.Owner == human).TacticalTileId!.Value;
+            var proof = _map.OpeningCityScreenProof(firstHome);
+            var viewport = _map.RenderViewportSize;
+            Must(Math.Abs(proof.City.X - viewport.X / 2f) < 1.5f &&
+                 Math.Abs(proof.City.Y - viewport.Y / 2f) < 1.5f,
+                "Startup MUST center optical camera exactly on human home city.");
+            var direction = proof.North - proof.City;
+            Must(direction.Y < -0.1f &&
+                 Math.Abs(direction.X) < -direction.Y * 0.15f,
+                "Geographic north must be above the initial city, not left or right.");
+            GD.Print($"GA_NEXT_R135_HOME_NORTH_UP_PASS " +
+                $"tile={firstHome.FineStrategicCellId.Value} " +
+                $"city_pixel={proof.City} north_delta={direction} " +
+                "centered=true geo_north_up=true");
             int visited = 0;
             foreach (var tile in sites)
             {
