@@ -1250,7 +1250,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         PhysicalTileInspected?.Invoke(matched.Id, _selection.Text, _terrainDetails?.Text ?? "");
     }
 
-    public void Open(ulong focusValue)
+    public void Open(ulong focusValue, PhysicalTacticalTileId? openingHome = null)
     {
         if (_camera is null || _surface is null || _edges is null || _territoryBoundaries is null || _information is null || _selection is null || _selectedTileOutline is null)
             throw new InvalidOperationException("Tactical preview is not ready.");
@@ -1306,7 +1306,14 @@ public partial class TacticalContextPreview : SubViewportContainer
             fineWorld.StrategicTopology.Cells.Count != physical.FineTopology.Cells.Count)
             throw new InvalidOperationException("Physical and geometric topology counts differ.");
 
-        var normal = ConvertPoint(coarseWorld.StrategicSphericalGeometry.GetCell(focus).Center).Normalized();
+        // The opening azimuthal chart must be centered on the player's
+        // REAL physical home, not on the coarse strategic cell. Otherwise
+        // the two genuine geographic poles bend sideways relative to the
+        // city even if the camera's local north derivative points upward.
+        var normal = openingHome.HasValue
+            ? ConvertPoint(fineWorld.StrategicSphericalGeometry.GetCell(
+                openingHome.Value.FineStrategicCellId).Center).Normalized()
+            : ConvertPoint(coarseWorld.StrategicSphericalGeometry.GetCell(focus).Center).Normalized();
         // At every focus transfer, derive the new local frame from either
         // the transported previous screen-up direction or the geographic
         // north vector at the actual camera center. This avoids the abrupt
