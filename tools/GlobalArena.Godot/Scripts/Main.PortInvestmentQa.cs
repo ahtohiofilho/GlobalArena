@@ -31,7 +31,6 @@ public partial class Main
     private readonly List<PhysicalTacticalEdgeId> _r144PendingChoices = new();
     private string? _portQaLastSettledAudit;
     private bool _portQaUserSelected;
-    private ulong _portQaCargoBefore;
 
     private void CreatePortInvestmentQaControls(VBoxContainer parent)
     {
