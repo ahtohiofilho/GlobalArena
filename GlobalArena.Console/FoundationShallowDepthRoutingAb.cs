@@ -298,6 +298,16 @@ internal static class FoundationShallowDepthRoutingAb
                     if (bPorts > 0) maritimeBaseline++;
                     if (cPorts > 0) maritimeCandidate++;
                 }
+                if (portChoiceChanges != deeperPortChoices +
+                    shallowerPortChoices + equalDepthPortChoices +
+                    unequalPortCounts ||
+                    checked(baselineNaturalAtNewRoute +
+                        candidateShallowPenalty) != candidateSum ||
+                    checked(baselineSum + baselineShallowPenalty) !=
+                        baselineRouteUnderCandidate)
+                    throw new InvalidOperationException(
+                        "R121 causal attribution must reconcile every route, " +
+                        "natural price and shallow-depth surcharge.");
                 // This trace is descriptive, NOT proof of a better sea
                 // state or port geometry: the choice also depends on land
                 // access and the entire path. Baseline and candidate have
