@@ -186,7 +186,7 @@ jobs:
             echo 'Preview must not auto-commit a trade turn or launch the CI autoplay smoke.'
             exit 1
           fi
-      - name: R134 actual cartographic sites: polygon centroids and two locality focus changes
+      - name: R134 actual cartographic sites - polygon centroids and two locality focus changes
         shell: bash
         run: |
           set -euo pipefail
