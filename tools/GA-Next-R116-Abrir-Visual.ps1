@@ -1,4 +1,4 @@
-# GA-Next R116 - isolated visual review of R115 validated source, not main.
+# GA-Next R116 - isolated fine-first economic visual review atop R115, not main.
 # EconomyLab and Geography are separate modes by the Godot QA contract.
 # Run from any directory inside the local GlobalArena Git checkout.
 param(
@@ -7,7 +7,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
-$branch = 'test/ga-next-r115-fixed-freight-investment-invariants-20261121'
+$branch = 'feature/ga-next-r116-visual-review-launcher-20261121'
 $projectRelative = 'tools/GlobalArena.Godot'
 function Assert-LastCommand([string]$Description) {
     if ($LASTEXITCODE -ne 0) { throw "$Description failed (exit $LASTEXITCODE)." }
@@ -55,13 +55,13 @@ $repoRoot = ($repoRoot | Select-Object -First 1).Trim()
 if (-not (Test-Path -LiteralPath (Join-Path $repoRoot $projectRelative))) {
     throw 'Current Git checkout does not contain the GlobalArena Godot project.'
 }
-Write-Host '[GA-NEXT VISUAL] Fetching R115 into a separate worktree (your current branch stays untouched).'
+Write-Host '[GA-NEXT VISUAL] Fetching R116 into a separate worktree (your current branch stays untouched).'
 $origin = (& git -C $repoRoot remote get-url origin 2>$null | Out-String).Trim()
 if ($LASTEXITCODE -ne 0 -or $origin -notmatch '^(https://github[.]com/|git@github[.]com:)ahtohiofilho/GlobalArena([.]git)?$') {
     throw "Unexpected repository origin: $origin"
 }
 & git -C $repoRoot fetch --no-tags origin ("refs/heads/{0}:refs/remotes/origin/{0}" -f $branch)
-Assert-LastCommand 'Fetch R115'
+Assert-LastCommand 'Fetch R116'
 # Avoid rev-parse/PowerShell pipeline exit-code ambiguity on Windows.
 # The remote tracking ref was updated by the successful fetch above.
 # Git itself resolves this ref directly when creating/updating the worktree.
@@ -72,17 +72,17 @@ if (Test-Path -LiteralPath $visualRoot) {
         throw 'The inspection location exists but is not a Git worktree. No files were removed.'
     }
     & git -C $visualRoot switch --detach $remoteRef
-    Assert-LastCommand 'Update isolated R115 worktree'
+    Assert-LastCommand 'Update isolated R116 worktree'
 } else {
     New-Item -ItemType Directory -Path (Split-Path $visualRoot -Parent) -Force | Out-Null
     & git -C $repoRoot worktree add --detach $visualRoot $remoteRef
-    Assert-LastCommand 'Create isolated R115 worktree'
+    Assert-LastCommand 'Create isolated R116 worktree'
 }
 if (-not (Test-Path -LiteralPath (Join-Path $visualRoot $projectRelative))) {
     throw 'The isolated R115 worktree does not contain the Godot project.'
 }
 $projectDir = Join-Path $visualRoot $projectRelative
-Write-Host "[GA-NEXT VISUAL] Building isolated R115 review worktree"
+Write-Host "[GA-NEXT VISUAL] Building isolated R116 review worktree"
 & dotnet build (Join-Path $projectDir 'GlobalArena.Godot.csproj') -c Debug
 Assert-LastCommand 'Build Godot Mono client'
 $godot = Locate-Godot
@@ -130,6 +130,10 @@ try {
         [Environment]::SetEnvironmentVariable(
             'GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW', '1', 'Process')
     } elseif ($Mode -eq 'EconomyLab') {
+        # Explicit manual combined mode: signed fine-first G18 field drives
+        # BOTH game freight and tactical coloring, with QA treasury UI.
+        [Environment]::SetEnvironmentVariable(
+            'GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW', '1', 'Process')
         [Environment]::SetEnvironmentVariable(
             'GA_NEXT_INTERACTIVE_ECONOMY_PREVIEW', '1', 'Process')
     }
