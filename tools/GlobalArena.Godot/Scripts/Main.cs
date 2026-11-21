@@ -425,6 +425,7 @@ public partial class Main : Control
                 .Select(order => (order.WorkerId.Value, order.NextOccupation!.Value)),
             !ready);
         RefreshPortInvestmentQaControls();
+        RefreshLocalSiteSelectionQa();
     }
 
     private void QueueFineWorkerMove()
