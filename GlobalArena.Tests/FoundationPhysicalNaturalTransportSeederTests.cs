@@ -220,6 +220,44 @@ public sealed class FoundationPhysicalNaturalTransportSeederTests
         var candidate = FoundationPhysicalLaggedFreightCyclePlanner
             .CoordinateWorldCandidate(world, host.Incidence, Demand(), Cargo(),
                 maxProducerPasses: 64);
+        // A historical settled quote with an extreme congestion surcharge
+        // must not alter authoritative R112 routing, allocation or next-cycle
+        // freight. Keep the same physical graph and reference scales so the
+        // test would detect a regression that accidentally reuses old rates.
+        var historical = new FoundationPhysicalLaggedFreightQuoteState(
+            7UL,
+            candidate.NextCycleQuotes.Edges.Select(q => q with
+            {
+                QuotedCongestionSurchargeMicroPerWholeCargoUnit =
+                    50_000_000UL
+            }).ToArray(),
+            hasSettledProvenance: true);
+        var replay = FoundationPhysicalLaggedFreightCyclePlanner
+            .CoordinateWorldCandidate(world, host.Incidence, Demand(), Cargo(),
+                previousClosedCycleQuotes: historical, maxProducerPasses: 64);
+        Assert.Equal(candidate.FixedCycleEdges.ToArray(),
+            replay.FixedCycleEdges.ToArray());
+        Assert.Equal(
+            candidate.Distribution.AllocationAudit.Freight
+                .TotalEdgeTraversalCargoMicro,
+            replay.Distribution.AllocationAudit.Freight
+                .TotalEdgeTraversalCargoMicro);
+        Assert.Equal(
+            candidate.Distribution.AllocationAudit.TotalAllocatedGoodsMicro,
+            replay.Distribution.AllocationAudit.TotalAllocatedGoodsMicro);
+        Assert.All(replay.NextCycleQuotes.Edges, q =>
+            Assert.Equal(0UL,
+                q.QuotedCongestionSurchargeMicroPerWholeCargoUnit));
+        Assert.All(replay.EdgeReadings, q =>
+        {
+            Assert.Equal(q.FreePhysicalCostMicroPerWholeCargoUnit,
+                q.CurrentPhysicalQuoteMicroPerWholeCargoUnit);
+            Assert.Equal(q.FreePhysicalCostMicroPerWholeCargoUnit,
+                q.DampedNextPhysicalQuoteMicroPerWholeCargoUnit);
+        });
+        Assert.Equal(8UL, replay.NextCycleQuotes.AuditedPreviewCycles);
+        Assert.False(replay.NextCycleQuotes.HasSettledProvenance);
+
         Assert.False(candidate.RepricedWithinCycle);
         Assert.False(candidate.NextCycleQuotes.HasSettledProvenance);
         Assert.All(candidate.NextCycleQuotes.Edges, q =>
