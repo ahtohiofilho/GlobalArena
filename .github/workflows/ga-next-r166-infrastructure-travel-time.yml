@@ -1,0 +1,31 @@
+name: GA-Next R166 Infrastructure-Aware Ground Travel Time
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/Foundation/FoundationGroundEdgeTravelTimeProjector.cs'
+      - 'GlobalArena.Tests/FoundationGroundEdgeTravelTimeProjectorTests.cs'
+      - '.github/workflows/ga-next-r166-infrastructure-travel-time.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  travel-time:
+    name: R166 authoritative crossing infrastructure to physical time / ubuntu-latest
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build physical transport and time model
+        run: dotnet build GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: Test infrastructure-aware crossing time and fractional travel
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationGroundEdgeTravelTimeProjectorTests|FullyQualifiedName~FoundationFractionalEdgeTravelProjectorTests|FullyQualifiedName~FoundationPhysicalPresenceDemographicTests' --logger 'console;verbosity=detailed'
+      - name: Summarize policy separation
+        run: |
+          echo '### R166 — physical movement time from existing infrastructure' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Validated fine physical edge + existing investment efficiency ratio; explicitly configured natural time. No tariffs, money costs, congestion, cargo volume or distance conversion. Precommit only.' >> "$GITHUB_STEP_SUMMARY"
