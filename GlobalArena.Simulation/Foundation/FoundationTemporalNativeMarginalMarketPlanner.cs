@@ -16,14 +16,18 @@ public static class FoundationTemporalNativeMarginalMarketPlanner
         FoundationActivityCommodityDemandPolicy demandPolicy,
         FoundationCommodityCargoConversionPolicy cargoPolicy,
         int maxProducerPasses = 64,
-        FoundationFineFirstPhysicalGeography? signedFine = null)
+        FoundationFineFirstPhysicalGeography? signedFine = null,
+        WorldState? freightSnapshot = null)
     {
         ArgumentNullException.ThrowIfNull(baseline);
         ArgumentNullException.ThrowIfNull(incidence);
         ArgumentNullException.ThrowIfNull(temporal);
         ArgumentNullException.ThrowIfNull(demandPolicy);
         ArgumentNullException.ThrowIfNull(cargoPolicy);
-        if (!baseline.Transport.IsInitialized ||
+        var transportWorld = freightSnapshot ?? baseline;
+        if (baseline.WorldBinding != transportWorld.WorldBinding ||
+            !ReferenceEquals(baseline.Workers, transportWorld.Workers) ||
+            !transportWorld.Transport.IsInitialized ||
             !baseline.Workers.HasAuthoritativeOccupations ||
             !demandPolicy.Commodities.SequenceEqual(cargoPolicy.Commodities) ||
             (baseline.WorldBinding?.IsFineFirstWorld == true &&
@@ -33,7 +37,7 @@ public static class FoundationTemporalNativeMarginalMarketPlanner
         var market = FoundationTemporalNativeMarketInputs.FromTemporal(
             baseline, temporal, demandPolicy);
         var (roads, _) = FoundationPhysicalAuthoritativeTransportProjector
-            .FromWorld(baseline, incidence);
+            .FromWorld(transportWorld, incidence);
         var blocked = new HashSet<PhysicalTacticalEdgeId>();
         if (signedFine is not null)
         {
