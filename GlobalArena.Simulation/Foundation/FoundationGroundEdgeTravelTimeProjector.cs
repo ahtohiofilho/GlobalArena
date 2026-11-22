@@ -63,6 +63,20 @@ public static class FoundationGroundEdgeTravelTimeProjector
                 "Travel edge missing from authoritative physical transport inventory.");
         // CheckEdge already rejects open sea and forbidden ground crossings.
         // Natural crossing time is separate from freight currency units.
+        return FromInfrastructure(record, policy);
+    }
+
+    /// <summary>
+    /// Pure duration conversion for the exact existing crossing ledger row.
+    /// Does not read cargo, tariff, owner or settlement revenue.
+    /// </summary>
+    public static FoundationGroundEdgeTravelTimeReading FromInfrastructure(
+        PhysicalTransportEdgeRuntimeRecord record,
+        FoundationGroundEdgeTravelTimePolicy policy)
+    {
+        ArgumentNullException.ThrowIfNull(record);
+        ArgumentNullException.ThrowIfNull(policy);
+        policy.RequireValid();
         ulong natural = record.FreePhysicalCostMicroPerWholeCargoUnit;
         ulong effective =
             FoundationPhysicalAuthoritativeTransportProjector.EffectiveUnitFreightCost(record);
@@ -73,7 +87,7 @@ public static class FoundationGroundEdgeTravelTimeProjector
             effective;
         BigInteger duration = (numerator + natural - 1UL) / natural;
         if (duration < BigInteger.One) duration = BigInteger.One;
-        return new FoundationGroundEdgeTravelTimeReading(edge,
+        return new FoundationGroundEdgeTravelTimeReading(record.Edge,
             policy.NaturalCrossingTimeMicro,
             checked((ulong)duration),
             record.CommittedInvestmentMoneyMicro.GetValueOrDefault(),
