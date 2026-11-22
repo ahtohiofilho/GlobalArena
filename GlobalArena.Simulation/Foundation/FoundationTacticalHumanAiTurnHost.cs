@@ -587,9 +587,10 @@ public sealed class FoundationTacticalHumanAiTurnHost
     }
 
     /// <summary>
-    /// Journaled logistics occupation for an existing worker already in the
-    /// Other activity. This cannot divert a producing worker within the same
-    /// command: activity conversion must be separately authorized first.
+    /// R148: one queued command to change a real producer directly into a
+    /// land or port operator. The worker remains at their exact fine tile,
+    /// and nothing becomes effective before the collective turn is closed.
+    /// Existing Other operators may switch between operational roles.
     /// </summary>
     public void QueueHumanOperationalRole(CivilizationId human,
         PhysicalWorkerId id, FoundationOperationalWorkKind kind)
@@ -603,7 +604,23 @@ public sealed class FoundationTacticalHumanAiTurnHost
                 PhysicalWorkerOccupation.PortOperations,
             _ => throw new ArgumentOutOfRangeException(nameof(kind))
         };
-        QueueOccupation(human, id, occupation);
+        QueueActivityAndOccupation(human, id, PhysicalWorkerActivity.Other,
+            occupation);
+    }
+
+    /// <summary>
+    /// R148: direct return from logistics to a productive occupation using
+    /// ONE local, replayable event. Ordinary occupation-only changes remain
+    /// available through QueueHumanOccupation.
+    /// </summary>
+    public void QueueHumanProductiveRole(CivilizationId human,
+        PhysicalWorkerId id, PhysicalWorkerOccupation occupation)
+    {
+        RequireHuman(human);
+        if (!FoundationTacticalWorkerReassignmentPolicy.IsProductive(occupation))
+            throw new ArgumentOutOfRangeException(nameof(occupation));
+        QueueActivityAndOccupation(human, id,
+            PhysicalWorkerActivity.Producing, occupation);
     }
 
     /// <summary>
@@ -900,6 +917,24 @@ public sealed class FoundationTacticalHumanAiTurnHost
             IsMovement: false, NextOccupation: occupation);
     }
 
+    private void QueueActivityAndOccupation(
+        CivilizationId issuer, PhysicalWorkerId id,
+        PhysicalWorkerActivity activity, PhysicalWorkerOccupation occupation)
+    {
+        CheckWritable(issuer);
+        var worker = RequireOwnedWorker(issuer, id);
+        var tile = worker.TacticalTileId!.Value;
+        // A worker already in the target occupation needs an activity-only
+        // command; never fabricate a no-op occupational journal event.
+        PhysicalWorkerOccupation? change = worker.Occupation == occupation
+            ? null : occupation;
+        ValidateOrder(issuer, id, tile, activity,
+            movement: false, nextOccupation: change);
+        _plans[issuer][id.Value] = new FoundationTacticalWorkerOrder(
+            issuer, id, tile, tile, activity,
+            IsMovement: false, NextOccupation: change);
+    }
+
     private void ValidateOccupationTarget(
         PhysicalWorkerRuntimeRecord worker, PhysicalWorkerOccupation occupation)
     {
@@ -937,20 +972,22 @@ public sealed class FoundationTacticalHumanAiTurnHost
         try { edge = _executor.CheckEdge(source, destination); }
         catch (ArgumentException ex)
         { throw new InvalidOperationException("Foreign fine topology.", ex); }
+        if (nextOccupation.HasValue)
+        {
+            if (!Snapshot.Workers.HasAuthoritativeOccupations ||
+                !FoundationTacticalWorkerReassignmentPolicy
+                    .IsValidOccupationTransition(worker, activity,
+                        nextOccupation.Value, movement || edge.HasValue))
+                throw new InvalidOperationException(
+                    "Occupational reassignment must be a valid local " +
+                    "production or operational transition.");
+            return worker;
+        }
         if (activity == PhysicalWorkerActivity.Producing &&
             worker.Occupation is PhysicalWorkerOccupation.LandTransport or
                 PhysicalWorkerOccupation.PortOperations)
             throw new InvalidOperationException(
                 "Logistics workers must change to a productive occupation before producing.");
-        if (nextOccupation.HasValue)
-        {
-            ValidateOccupationTarget(worker, nextOccupation.Value);
-            if (movement || edge.HasValue || activity != worker.Activity)
-                throw new InvalidOperationException(
-                    "Reallocation requires an existing owned v11 worker and " +
-                    "a different productive occupation at the same fine tile.");
-            return worker;
-        }
         if (movement)
         {
             if (edge is null || activity != PhysicalWorkerActivity.Traveling)
