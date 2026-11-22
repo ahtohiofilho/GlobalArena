@@ -55,8 +55,8 @@ public sealed class FoundationGroundEdgeTravelTimeProjectorTests
         Assert.Equal(travel.Crossing, reading.Edge);
         Assert.Equal(reading.ImprovedCrossingTimeMicro,
             travel.RemainingTravelMicro);
-        Assert.Equal(reading.NaturalCrossingTimeMicro,
-            1_400_000UL);
+        Assert.Equal(1_400_000UL,
+            reading.NaturalCrossingTimeMicro);
         Assert.True(reading.ImprovedCrossingTimeMicro > 0UL);
         Assert.True(reading.ImprovedCrossingTimeMicro <=
             reading.NaturalCrossingTimeMicro);
