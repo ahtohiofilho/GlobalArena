@@ -19,6 +19,7 @@ public sealed record FoundationNewWorkerProductiveReading(
     PhysicalWorkerOccupation Occupation,
     CommodityId Commodity,
     ulong AddedProductionMicro,
+    ulong AddedDemandMicro,
     BigInteger CollectiveCashGainScaled);
 
 public sealed class FoundationNewWorkerProductiveAssessment
@@ -131,6 +132,8 @@ public static class FoundationNewWorkerProductiveMarginalProjector
         }
 
         var original = Solve(baseline.Workers);
+        var originalInputs = FoundationPhysicalCommodityDemandProjector
+            .Project(baseline.Workers, marketPolicy.Demand);
         var newbornId = new PhysicalWorkerId(
             checked(existing.Keys.Max(x => x.Value) + 1UL));
         var fingerprint = new CanonicalWorldStateHasher().Compute(baseline)
@@ -158,6 +161,24 @@ public static class FoundationNewWorkerProductiveMarginalProjector
                     .Any(w => !Equals(w, existing[w.Id])))
                 throw new InvalidOperationException(
                     "New-worker comparisons must preserve the entire original census.");
+            var expandedInputs = FoundationPhysicalCommodityDemandProjector
+                .Project(expanded, marketPolicy.Demand);
+            var workerProfile = FoundationPhysicalCommodityDemandProjector
+                .SelectProfile(newborn);
+            ulong exactNewDemand = marketPolicy.Demand.Commodities
+                .Aggregate(0UL, (sum, item) =>
+                    checked(sum + checked((ulong)(
+                        (UInt128)newborn.DemandMultiplierMicro *
+                        marketPolicy.Demand.IntensityMicroPerWorker(
+                            workerProfile, item) / 1_000_000U))));
+            if (expandedInputs.DistinctWorkers !=
+                    originalInputs.DistinctWorkers + 1 ||
+                expandedInputs.TotalCommodityDemandMicro <
+                    originalInputs.TotalCommodityDemandMicro ||
+                expandedInputs.TotalCommodityDemandMicro -
+                    originalInputs.TotalCommodityDemandMicro != exactNewDemand)
+                throw new InvalidOperationException(
+                    "New-worker comparisons must add the complete real commodity demand of exactly one worker.");
             var future = Solve(expanded);
             if (future.Goods < original.Goods ||
                 future.Goods - original.Goods != newborn.OutputMicroPerTurn)
@@ -172,7 +193,8 @@ public static class FoundationNewWorkerProductiveMarginalProjector
             readings.Add(new FoundationNewWorkerProductiveReading(
                 candidate.ArchetypeWorker, newborn.Owner,
                 newborn.TacticalTileId.Value, newborn.Occupation.Value,
-                newborn.Commodity, newborn.OutputMicroPerTurn, delta));
+                newborn.Commodity, newborn.OutputMicroPerTurn,
+                exactNewDemand, delta));
         }
 
         var results = readings.ToArray();
