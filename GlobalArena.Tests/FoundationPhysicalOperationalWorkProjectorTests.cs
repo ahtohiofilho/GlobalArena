@@ -69,7 +69,12 @@ public sealed class FoundationPhysicalOperationalWorkProjectorTests
         Assert.All(node.Allocation.Shares, share =>
         {
             Assert.Contains(share.Edge, adjacent);
-            Assert.Equal(FoundationOperationalWorkKind.Land, share.Kind);
+            // The physical node can have both land and port crossings.
+            // A land-only worker pool must never supply effort to ports.
+            if (share.Kind == FoundationOperationalWorkKind.Port)
+                Assert.Equal(0UL, share.EffortMicro);
+            else
+                Assert.Equal(FoundationOperationalWorkKind.Land, share.Kind);
         });
         Assert.Equal(1_000_000UL,
             node.Allocation.Shares.Aggregate(
