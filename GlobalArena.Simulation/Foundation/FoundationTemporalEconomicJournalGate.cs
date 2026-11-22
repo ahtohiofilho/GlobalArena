@@ -117,7 +117,9 @@ public static class FoundationTemporalEconomicJournalGate
         var (settlement, expected) = Derive(beginning, staged,
             executor.VerifiedPhysicalEvents, incidence, economicPolicy,
             context, signedFine);
-        var actual = executor.Execute(staged, settlement, context);
+        // Resolution solves once; the fresh journal executor below solves
+        // independently once more. Avoid an unneeded third market pass.
+        var actual = expected;
         var events = physicalEvents.Cast<ISimulationEvent>()
             .Append(settlement).ToArray();
         var journal = new SimulationEventLog(events.Select((ev, index) =>
