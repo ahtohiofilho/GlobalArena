@@ -40,7 +40,9 @@ public enum PhysicalWorkerOccupation : uint
     Unassigned = 0,
     Agriculture = 1,
     Forestry = 2,
-    Mining = 3
+    Mining = 3,
+    LandTransport = 4,
+    PortOperations = 5
 }
 
 /// <summary>
