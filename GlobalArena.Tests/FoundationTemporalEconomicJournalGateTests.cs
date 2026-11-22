@@ -144,6 +144,34 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             Assert.Equal(credited.CashCreditScaled,
                 receipt.Next.Treasury.Get(credited.Civilization).CashScaled);
         Assert.Equal(2, receipt.Journal.Entries.Count);
+        var authenticatedReplay =
+            FoundationTemporalEconomicJournalGate.ReplayJournal(
+                beginning, receipt.Journal, movement,
+                new FoundationGroundEdgeTravelTimePolicy(1_400_000UL),
+                incidence, policy, context, fine);
+        Assert.Equal(receipt.Hash,
+            new CanonicalWorldStateHasher().Compute(authenticatedReplay));
+        var settled = receipt.EconomicEvent;
+        var forgedMoney = new FoundationTemporalSalesSettledEvent(
+            settled.Id, settled.BeginningHash, settled.PreSettlementHash,
+            settled.PreSettlementRevision, settled.EconomicCycleOrdinal,
+            settled.ScheduleDigest + "FAKE", settled.CargoUnitCode,
+            settled.ProducedGoodsMicro, settled.GrossSalesScaled,
+            settled.PhysicalFreightScaled, settled.SellerNetScaled,
+            settled.TaxesScaled, settled.ExternalTollsScaled,
+            settled.Credits);
+        var tamperedJournal = new SimulationEventLog(new[]
+        {
+            new SimulationEventLogEntry(1UL, movementEvent,
+                wasEligible: true, wasExecuted: true),
+            new SimulationEventLogEntry(2UL, forgedMoney,
+                wasEligible: true, wasExecuted: true)
+        });
+        Assert.Throws<InvalidOperationException>(() =>
+            FoundationTemporalEconomicJournalGate.ReplayJournal(
+                beginning, tamperedJournal, movement,
+                new FoundationGroundEdgeTravelTimePolicy(1_400_000UL),
+                incidence, policy, context, fine));
         Assert.Throws<InvalidOperationException>(() =>
             FoundationTemporalEconomicJournalGate.CloseAndReplay(
                 receipt.Next, new[] { movementEvent }, movement,
