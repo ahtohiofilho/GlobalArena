@@ -115,6 +115,7 @@ public static class FoundationDemographicGrowthPlanner
         // Actual roaming/visiting populations need a residence ledger in a
         // later phase; do not silently conflate location and residence.
         var counts = baseline.Workers.Workers
+            .Where(w => alive.Contains(w.Owner))
             .GroupBy(w => (Owner: w.Owner, Tile: w.TacticalTileId!.Value))
             .ToDictionary(g => g.Key, g => checked((ulong)g.LongCount()));
         if (sorted.Any(c => !counts.TryGetValue((c.Owner, c.Tile),
