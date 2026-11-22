@@ -85,11 +85,12 @@ public sealed class FoundationDemographicGrowthPlannerTests
         var onlyFirst = survivors.Take(1).ToArray();
         var eligibleCities = cities
             .Where(c => c.Owner == onlyFirst[0]).ToArray();
-        // Demographic validation deliberately refuses an incomplete
-        // physical census until city residence is explicitly available.
-        Assert.Throws<ArgumentException>(() =>
-            FoundationDemographicGrowthPlanner.Plan(
-                world, eligibleCities, onlyFirst, turn: 2));
+        var reduced = FoundationDemographicGrowthPlanner.Plan(
+            world, eligibleCities, onlyFirst, turn: 2);
+        Assert.Single(reduced.Births);
+        Assert.Equal(1, reduced.SurvivingCivilizations);
+        Assert.Equal(4UL, reduced.Cities.Single().After);
+        Assert.Equal(onlyFirst[0], reduced.Births.Single().Owner);
     }
 
     [Fact]
