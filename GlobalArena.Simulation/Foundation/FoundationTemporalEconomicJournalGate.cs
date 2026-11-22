@@ -102,31 +102,55 @@ public static class FoundationTemporalEconomicJournalGate
         SimulationContext context,
         FoundationFineFirstPhysicalGeography? signedFine = null)
     {
-        ArgumentNullException.ThrowIfNull(beginning);
         ArgumentNullException.ThrowIfNull(physicalEvents);
+        return CloseAndReplayWithInvestments(beginning,
+            physicalEvents.Cast<ISimulationEvent>().ToArray(),
+            movement, movementPolicy, incidence, economicPolicy, context,
+            investmentExecutor: null, signedFine: signedFine);
+    }
+
+    /// <summary>
+    /// R170 same-turn verified capital investment extension. Incoming
+    /// events must be replayable commands, with all physical travel before
+    /// all investments; funds are debited BEFORE fresh sales are credited.
+    /// </summary>
+    public static Receipt CloseAndReplayWithInvestments(
+        WorldState beginning,
+        IReadOnlyList<ISimulationEvent> physicalAndInvestmentEvents,
+        PhysicalTacticalWorkerMoveEventExecutor movement,
+        FoundationGroundEdgeTravelTimePolicy movementPolicy,
+        PhysicalTacticalIncidenceMap incidence,
+        FoundationAuthoritativeEconomicSettlementPolicy economicPolicy,
+        SimulationContext context,
+        FoundationMonetaryInfrastructureEventExecutor? investmentExecutor,
+        FoundationFineFirstPhysicalGeography? signedFine = null)
+    {
+        ArgumentNullException.ThrowIfNull(beginning);
+        ArgumentNullException.ThrowIfNull(physicalAndInvestmentEvents);
         if (!beginning.EdgeTravels.IsInitialized ||
             !beginning.Treasury.IsInitialized ||
             !beginning.Transport.HasMonetaryConstructionCosts)
             throw new InvalidOperationException(
                 "Temporal cash cannot close without a bound opt-in world and funded treasury.");
         var executor = new ReplayExecutor(beginning, movement, movementPolicy,
-            incidence, economicPolicy, signedFine);
+            incidence, economicPolicy, signedFine, investmentExecutor);
         var staged = beginning;
-        foreach (var ev in physicalEvents)
+        foreach (var ev in physicalAndInvestmentEvents)
             staged = executor.Execute(staged, ev, context);
         var (settlement, expected) = Derive(beginning, staged,
-            executor.VerifiedPhysicalEvents, incidence, economicPolicy,
-            context, signedFine);
+            executor.VerifiedPhysicalEvents, executor.VerifiedInvestmentCount,
+            incidence, economicPolicy, context, signedFine);
         // Resolution solves once; the fresh journal executor below solves
         // independently once more. Avoid an unneeded third market pass.
         var actual = expected;
-        var events = physicalEvents.Cast<ISimulationEvent>()
-            .Append(settlement).ToArray();
+        var events = physicalAndInvestmentEvents
+            .Append((ISimulationEvent)settlement).ToArray();
         var journal = new SimulationEventLog(events.Select((ev, index) =>
             new SimulationEventLogEntry(checked((ulong)index + 1UL), ev,
                 wasEligible: true, wasExecuted: true)).ToArray());
         var independent = ReplayJournal(beginning, journal, movement,
-            movementPolicy, incidence, economicPolicy, context, signedFine);
+            movementPolicy, incidence, economicPolicy, context, signedFine,
+            investmentExecutor);
         var hash = Hasher.Compute(actual);
         if (hash != Hasher.Compute(independent) ||
             hash != Hasher.Compute(expected))
@@ -146,12 +170,13 @@ public static class FoundationTemporalEconomicJournalGate
         PhysicalTacticalIncidenceMap incidence,
         FoundationAuthoritativeEconomicSettlementPolicy economicPolicy,
         SimulationContext context,
-        FoundationFineFirstPhysicalGeography? signedFine = null)
+        FoundationFineFirstPhysicalGeography? signedFine = null,
+        FoundationMonetaryInfrastructureEventExecutor? investmentExecutor = null)
     {
         ArgumentNullException.ThrowIfNull(beginning);
         ArgumentNullException.ThrowIfNull(journal);
         var executor = new ReplayExecutor(beginning, movement, movementPolicy,
-            incidence, economicPolicy, signedFine);
+            incidence, economicPolicy, signedFine, investmentExecutor);
         var state = new SimulationEventLogReplayer(executor).Replay(
             new SimulationReplayInput(beginning, journal, context));
         if (!executor.IsClosed)
@@ -164,19 +189,20 @@ public static class FoundationTemporalEconomicJournalGate
         FoundationTemporalSalesSettledEvent Event, WorldState State) Derive(
         WorldState beginning, WorldState staged,
         IReadOnlyList<FoundationEdgeTravelTurnEvent> physicalEvents,
+        int investmentCount,
         PhysicalTacticalIncidenceMap incidence,
         FoundationAuthoritativeEconomicSettlementPolicy policy,
         SimulationContext context,
         FoundationFineFirstPhysicalGeography? signedFine)
     {
-        if (HashedBeginningInvalid(beginning, staged) ||
+        if (HashedBeginningInvalid(beginning, staged, investmentCount) ||
             physicalEvents.Any(ev => ev.Id.Turn != context.Turn))
             throw new InvalidOperationException(
                 "Temporal monetary evidence is not from one authoritative worker turn.");
         var calendar = FoundationTemporalEconomicTurnProjector.Project(
             beginning, staged, physicalEvents, policy.Demand);
         var financial = FoundationTemporalFinancialReconciler.Evaluate(
-            beginning, incidence, calendar, policy, signedFine);
+            beginning, incidence, calendar, policy, signedFine, staged);
         ulong ordinal = checked(staged.Treasury.LastSettledEconomicCycleOrdinal + 1UL);
         if (staged.Treasury.HasClosedEconomicCycle &&
             staged.Treasury.LastSettledCargoUnitCode != policy.Cargo.CargoUnitCode)
@@ -213,12 +239,18 @@ public static class FoundationTemporalEconomicJournalGate
         return (ev, state);
     }
 
-    private static bool HashedBeginningInvalid(WorldState start, WorldState end) =>
+    private static bool HashedBeginningInvalid(
+        WorldState start, WorldState end, int investments) =>
         !start.EdgeTravels.IsInitialized ||
         start.WorldBinding != end.WorldBinding ||
         start.Civilizations != end.Civilizations ||
-        start.Transport != end.Transport ||
-        start.Treasury != end.Treasury ||
+        (investments == 0 &&
+            (start.Transport != end.Transport || start.Treasury != end.Treasury)) ||
+        (investments > 0 &&
+            (start.Treasury.LastSettledEconomicCycleOrdinal !=
+                end.Treasury.LastSettledEconomicCycleOrdinal ||
+             start.Treasury.LastSettledCargoUnitCode !=
+                end.Treasury.LastSettledCargoUnitCode)) ||
         start.Workers.Workers.Count != end.Workers.Workers.Count;
 
     private static void RequireIdentical(
@@ -253,23 +285,29 @@ public static class FoundationTemporalEconomicJournalGate
         private readonly FoundationAuthoritativeEconomicSettlementPolicy _policy;
         private readonly FoundationFineFirstPhysicalGeography? _signedFine;
         private readonly List<FoundationEdgeTravelTurnEvent> _events = new();
+        private readonly FoundationMonetaryInfrastructureEventExecutor? _investment;
+        private bool _investmentsStarted;
+        private int _investmentCount;
         private bool _closed;
 
         public IReadOnlyList<FoundationEdgeTravelTurnEvent> VerifiedPhysicalEvents => _events;
         public bool IsClosed => _closed;
+        public int VerifiedInvestmentCount => _investmentCount;
 
         public ReplayExecutor(
             WorldState beginning, PhysicalTacticalWorkerMoveEventExecutor movement,
             FoundationGroundEdgeTravelTimePolicy movementPolicy,
             PhysicalTacticalIncidenceMap incidence,
             FoundationAuthoritativeEconomicSettlementPolicy policy,
-            FoundationFineFirstPhysicalGeography? signedFine)
+            FoundationFineFirstPhysicalGeography? signedFine,
+            FoundationMonetaryInfrastructureEventExecutor? investment)
         {
             _beginning = beginning;
             _travel = new FoundationEdgeTravelEventExecutor(movement, movementPolicy);
             _incidence = incidence;
             _policy = policy;
             _signedFine = signedFine;
+            _investment = investment;
         }
 
         public WorldState Execute(WorldState state, ISimulationEvent ev,
@@ -279,7 +317,7 @@ public static class FoundationTemporalEconomicJournalGate
                 throw new InvalidOperationException("Cannot append events after economic close.");
             if (ev is FoundationEdgeTravelTurnEvent travel)
             {
-                if (travel.Id.Turn != context.Turn ||
+                if (_investmentsStarted || travel.Id.Turn != context.Turn ||
                     _events.Any(item => item.WorkerId == travel.WorkerId))
                     throw new InvalidOperationException(
                         "Duplicate physical traveler or mixed economic turns.");
@@ -287,12 +325,22 @@ public static class FoundationTemporalEconomicJournalGate
                 _events.Add(travel);
                 return next;
             }
+            if (ev is FoundationMonetaryInfrastructureInvestedEvent capital)
+            {
+                if (_investment is null || capital.Id.Turn != context.Turn)
+                    throw new InvalidOperationException(
+                        "Capital investments require a verified world-bound event executor.");
+                _investmentsStarted = true;
+                var next = _investment.Execute(state, capital, context);
+                _investmentCount = checked(_investmentCount + 1);
+                return next;
+            }
             if (ev is not FoundationTemporalSalesSettledEvent monetary ||
                 monetary.Id.Turn != context.Turn)
                 throw new InvalidOperationException(
                     "Only canonical physical movements and one temporal SYSTEM sale are allowed.");
             var (derived, after) = Derive(_beginning, state, _events,
-                _incidence, _policy, context, _signedFine);
+                _investmentCount, _incidence, _policy, context, _signedFine);
             RequireIdentical(monetary, derived);
             _closed = true;
             return after;
