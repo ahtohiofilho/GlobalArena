@@ -153,4 +153,41 @@ public sealed class FoundationPhysicalOperationalWorkProjectorTests
             s => Assert.Equal(0UL, s.EffortMicro));
     }
 
+    [Fact]
+    public void CommittedRealLogisticsWorkerProducesServiceOnlyOnPhysicalIncidentEdges()
+    {
+        var s = Scenario();
+        var selected = s.World.Workers.Workers.Single(w => w.Id == s.Worker);
+        var committed = s.World.Workers.Workers.Select(w =>
+            w.Id == selected.Id
+                ? w.WithTacticalOccupation(PhysicalWorkerOccupation.LandTransport)
+                : w).ToArray();
+        var world = s.World.WithWorkers(new PhysicalWorkerRuntimeState(
+            committed, tacticalLocationsAuthoritative: true,
+            occupationsAuthoritative: true));
+        var allocation = FoundationPhysicalOperationalWorkProjector
+            .ProjectCommitted(world, s.Incidence, s.Geography);
+        var rates = allocation.SelectMany(node => node.Allocation.Shares)
+            .Where(share => share.EffortMicro > 0UL)
+            .Select(share => new FoundationOperationalEdgeProductivity(
+                share.Edge, share.Kind, 1_000_000UL))
+            .ToArray();
+        var result = FoundationOperationalServiceProjector.ProjectCommitted(
+            world, s.Incidence, s.Geography, rates);
+        Assert.Equal(1_000_000UL, result.TotalAllocatedEffortMicro +
+            result.TotalIdleEffortMicro);
+        Assert.Equal(result.TotalAllocatedEffortMicro, result.TotalServiceMicro);
+        Assert.All(result.Edges, item =>
+        {
+            Assert.Equal(FoundationOperationalWorkKind.Land, item.Kind);
+            Assert.True(item.EffortMicro > 0UL);
+            Assert.Contains(item.Edge,
+                s.Incidence.FineTopology.Edges
+                    .Where(edge => edge.IncidentCellIds.Contains(
+                        selected.TacticalTileId!.Value.FineStrategicCellId))
+                    .Select(edge => new PhysicalTacticalEdgeId(
+                        s.Incidence.Refinement.FineParameters, edge.Id)));
+        });
+    }
+
 }
