@@ -1,0 +1,47 @@
+name: GA-Next R160 Current Worker Marginal Contribution
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/Foundation/FoundationCurrentWorkMarginalProjector.cs'
+      - 'GlobalArena.Tests/FoundationOperationalEconomicCounterfactualTests.cs'
+      - '.github/workflows/ga-next-r160-current-worker-marginal.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  marginal-current-work:
+    name: R160 current productive work marginal market / ubuntu-latest
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build CSharp physical economic foundation
+        run: dotnet build GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: Compute actual current-worker contribution
+        env:
+          GA_R160_REPORT_DIR: ${{ runner.temp }}/ga-next-r160-current
+        run: |
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~CurrentProductionMarginalReturnKeepsWorkerDemandAndComparesRealMarkets' --logger 'console;verbosity=detailed'
+          test -s "$GA_R160_REPORT_DIR/r160-current-work-marginal.json"
+      - name: Expose evidence and computational cost
+        env:
+          GA_R160_REPORT_DIR: ${{ runner.temp }}/ga-next-r160-current
+        run: |
+          echo 'GA_NEXT_R160_CURRENT_WORK_REPORT'
+          cat "$GA_R160_REPORT_DIR/r160-current-work-marginal.json"
+          echo '### R160 — current productive work: real counterfactual marginal contribution' >> "$GITHUB_STEP_SUMMARY"
+          echo 'One shared baseline, no workers deleted, all consumers retained.' >> "$GITHUB_STEP_SUMMARY"
+          echo '~~~json' >> "$GITHUB_STEP_SUMMARY"
+          cat "$GA_R160_REPORT_DIR/r160-current-work-marginal.json" >> "$GITHUB_STEP_SUMMARY"
+          echo '~~~' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ga-next-r160-current-work-marginal
+          path: ${{ runner.temp }}/ga-next-r160-current/r160-current-work-marginal.json
+          if-no-files-found: error
