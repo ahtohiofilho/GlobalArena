@@ -120,10 +120,43 @@ public static class FoundationPhysicalEconomicAccountingReconciler
                 "Pre-commit accounting requires one fixed-freight planning " +
                 "candidate, never a settled or intra-turn repriced cycle.");
 
-        // Do not introduce a default tax rate. Every real civilization
-        // needs one explicit post-revenue rule, including zero rates.
-        var civs = census.Workers.Select(w => w.Owner).Distinct()
-            .OrderBy(x => x.Value).ToArray();
+        var market = FoundationPhysicalCommodityDemandProjector.Project(
+            census, demandPolicy);
+        return EvaluateCandidate(
+            market, incidence, cargoPolicy, candidate.Distribution,
+            candidate.FixedCycleEdges,
+            census.Workers.Select(w => w.Owner).Distinct().ToArray(),
+            taxRates);
+    }
+
+    /// <summary>
+    /// R170: the same monetary reconciliation consumes native temporal
+    /// market inputs and the existing audited marginal distribution.
+    /// Explicit real civilization identities are supplied from the original
+    /// WorldState, not inferred from trade participants or invented buyers.
+    /// </summary>
+    public static FoundationPhysicalEconomicAccountingProposal EvaluateCandidate(
+        FoundationPhysicalCommodityMarketInputs market,
+        PhysicalTacticalIncidenceMap incidence,
+        FoundationCommodityCargoConversionPolicy cargoPolicy,
+        FoundationPhysicalGlobalMarginalCoordinationPlan distribution,
+        IEnumerable<FoundationPhysicalRoutingEdgeCost> fixedCycleEdges,
+        IEnumerable<CivilizationId> civilizations,
+        IEnumerable<FoundationPhysicalEconomicTaxRate> taxRates)
+    {
+        ArgumentNullException.ThrowIfNull(market);
+        ArgumentNullException.ThrowIfNull(incidence);
+        ArgumentNullException.ThrowIfNull(cargoPolicy);
+        ArgumentNullException.ThrowIfNull(distribution);
+        ArgumentNullException.ThrowIfNull(fixedCycleEdges);
+        ArgumentNullException.ThrowIfNull(civilizations);
+        ArgumentNullException.ThrowIfNull(taxRates);
+        var civs = civilizations.OrderBy(x => x.Value).ToArray();
+        if (civs.Length == 0 || civs.Any(c => !c.IsValid) ||
+            civs.Distinct().Count() != civs.Length)
+            throw new ArgumentException("Expected unique real civilizations.",
+                nameof(civilizations));
+        // Complete explicit post-revenue tax contract; no implicit zero.
         var rates = new Dictionary<CivilizationId, uint>();
         foreach (var rate in taxRates)
         {
@@ -141,10 +174,7 @@ public static class FoundationPhysicalEconomicAccountingReconciler
                 "A complete explicit tax policy is needed for every " +
                 "civilization in the real workforce.", nameof(taxRates));
 
-        // The source price is the *universal* normalized curve, and the
-        // worker's activity still produces demand at its real local tile.
-        var market = FoundationPhysicalCommodityDemandProjector
-            .Project(census, demandPolicy);
+        // The same universal normalized physical-market price.
         if (!market.Commodities.SequenceEqual(cargoPolicy.Commodities))
             throw new InvalidOperationException(
                 "Tax accounting may not change the physical commodity catalog.");
@@ -152,14 +182,20 @@ public static class FoundationPhysicalEconomicAccountingReconciler
         // Independent audit: one and only one physical source, destination,
         // cargo conversion, traversable edge, owner, and quantity for each
         // real delivered lot. Candidate audit alone is not proof.
-        var edges = candidate.FixedCycleEdges.ToArray();
+        var edges = fixedCycleEdges.ToArray();
         var (_, ownership) =
             FoundationPhysicalTradeRouteCandidatePlanner.BuildGraph(
                 incidence, edges);
         var audit = FoundationPhysicalDeliveryAllocationAuditor.Audit(
-            census, incidence, demandPolicy, cargoPolicy,
-            candidate.Distribution.Candidates, ownership);
-        var original = candidate.Distribution.AllocationAudit;
+            market, incidence, cargoPolicy,
+            distribution.Candidates, ownership);
+        var original = distribution.AllocationAudit;
+        if (!market.DemandByCivilization.Any() ||
+            market.DemandByCivilization.Any(d => !civs.Contains(d.Owner)) ||
+            market.SupplyLots.Any(l => !civs.Contains(l.Owner)) ||
+            audit.TotalAvailableGoodsMicro != market.TotalActiveCapacityMicroPerTurn)
+            throw new InvalidOperationException(
+                "Temporal accounting must preserve exact real buyer and supplier identities.");
         if (audit.TotalAllocatedGoodsMicro != original.TotalAllocatedGoodsMicro ||
             audit.TotalAvailableGoodsMicro != original.TotalAvailableGoodsMicro ||
             audit.DeliveryCount != original.DeliveryCount ||
@@ -171,11 +207,11 @@ public static class FoundationPhysicalEconomicAccountingReconciler
             throw new InvalidOperationException(
                 "Independent physical re-audit differs from the candidate.");
 
-        var totals = candidate.Distribution.Candidates
+        var totals = distribution.Candidates
             .GroupBy(x => (x.BuyerTile, x.Buyer, x.Commodity))
             .ToDictionary(g => g.Key, g => g.Aggregate(0UL,
                 (sum, x) => checked(sum + x.GoodsMicro)));
-        var declaredTotals = candidate.Distribution.MarketTotals.ToDictionary(
+        var declaredTotals = distribution.MarketTotals.ToDictionary(
             t => (t.Tile, t.Buyer, t.Commodity));
         if (declaredTotals.Count != market.DemandByCivilization.Count ||
             market.DemandByCivilization.Any(line =>
@@ -190,7 +226,7 @@ public static class FoundationPhysicalEconomicAccountingReconciler
 
         var markets = market.MarketDemand.ToDictionary(
             x => (x.Tile, x.Commodity), x => x.DemandMicro);
-        var sharedTotals = candidate.Distribution.Candidates
+        var sharedTotals = distribution.Candidates
             .GroupBy(x => (x.BuyerTile, x.Commodity))
             .ToDictionary(g => g.Key, g => g.Aggregate(0UL,
                 (sum, x) => checked(sum + x.GoodsMicro)));
@@ -226,7 +262,7 @@ public static class FoundationPhysicalEconomicAccountingReconciler
         var roads = edges.ToDictionary(e => e.Edge);
         var rows = new List<FoundationPhysicalEconomicAccountingLine>();
         var tariffIncome = civs.ToDictionary(c => c, _ => BigInteger.Zero);
-        foreach (var delivery in candidate.Distribution.Candidates
+        foreach (var delivery in distribution.Candidates
             .OrderBy(x => x.DeliveryOrdinal))
         {
             var key = (delivery.BuyerTile, delivery.Commodity);
