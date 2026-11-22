@@ -206,6 +206,122 @@ public sealed class FoundationOperationalEconomicCounterfactualTests
             $"routes_A={comparison.AllProducingBaseline.UsedPhysicalCrossings} " +
             $"routes_B={comparison.ReassignedWithoutServiceDiscount.UsedPhysicalCrossings} " +
             $"routes_C={comparison.ReassignedWithServiceDiscount.UsedPhysicalCrossings}");
+
+        // R156: a PASSING xUnit test may hide ITestOutputHelper in standard
+        // GitHub logs. Publish exact evidence as explicit CI artifacts instead.
+        // No report is created during regular local unit-test execution.
+        var reportDirectory = Environment.GetEnvironmentVariable(
+            "GA_R156_REPORT_DIR");
+        if (!string.IsNullOrWhiteSpace(reportDirectory))
+        {
+            Directory.CreateDirectory(reportDirectory);
+            var moneyScale = FoundationPhysicalEconomicAccountingProposal.MoneyScale;
+
+            static string Money(BigInteger scaled)
+            {
+                bool negative = scaled.Sign < 0;
+                BigInteger whole = BigInteger.DivRem(BigInteger.Abs(scaled),
+                    FoundationPhysicalEconomicAccountingProposal.MoneyScale,
+                    out var fractional);
+                string decimalPart = fractional.ToString().PadLeft(16, '0')
+                    .TrimEnd('0');
+                return (negative ? "-" : "") + whole.ToString() +
+                    (decimalPart.Length > 0 ? "." + decimalPart : "");
+            }
+
+            static object ScenarioEntry(
+                FoundationOperationalEconomicScenarioReading row)
+                => new
+                {
+                    goodsMicro = row.ProducedAndSoldGoodsMicro,
+                    deliveries = row.DeliveryCount,
+                    usedCrossings = row.UsedPhysicalCrossings,
+                    traversalCargoMicro = row.TotalEdgeTraversalCargoMicro,
+                    grossSalesScaled = row.GrossSalesScaled.ToString(),
+                    physicalFreightScaled = row.PhysicalFreightScaled.ToString(),
+                    externalTollsScaled = row.ExternalTollsScaled.ToString(),
+                    revenueTaxScaled = row.RevenueTaxScaled.ToString(),
+                    sellerNetScaled = row.NetSellerReceiptsScaled.ToString(),
+                    totalCivilizationCashEquivalentScaled =
+                        (row.GrossSalesScaled - row.PhysicalFreightScaled)
+                            .ToString()
+                };
+
+            var json = new
+            {
+                schema = "ga-next-r156-economic-diagnostic-v1",
+                source = "FoundationOperationalEconomicCounterfactualTests",
+                worldSeed = 20261012UL,
+                workersPerCivilization = 3,
+                workerTransferred = scenario.Reassigned.Id.Value,
+                transferredFrom = "Producing",
+                transferredTo = "LandTransport",
+                landReferenceServiceMicro = 1_000_000UL,
+                portReferenceServiceMicro = 1_000_000UL,
+                moneyScale = moneyScale.ToString(),
+                stateCommitted = false,
+                populationGrowthEvaluated = false,
+                scenarios = new
+                {
+                    A = ScenarioEntry(comparison.AllProducingBaseline),
+                    B = ScenarioEntry(comparison.ReassignedWithoutServiceDiscount),
+                    C = ScenarioEntry(comparison.ReassignedWithServiceDiscount)
+                },
+                deltas = new
+                {
+                    transferCashScaled = result.ProductionOpportunityDelta
+                        .TotalCivilizationCashEquivalentScaled.ToString(),
+                    serviceCashScaled = result.LogisticsServiceDelta
+                        .TotalCivilizationCashEquivalentScaled.ToString(),
+                    overallCashScaled = result.CombinedDelta
+                        .TotalCivilizationCashEquivalentScaled.ToString(),
+                    goodsLostMicro = comparison.LostProductionGoodsMicro.ToString(),
+                    requiredServiceToBreakEvenScaled =
+                        result.RequiredServiceGainToBreakEvenScaled.ToString(),
+                    actualServiceCashScaled =
+                        result.ActualServiceCashGainScaled.ToString(),
+                    breakEvenGapScaled = result.RemainingBreakEvenGapScaled.ToString(),
+                    classification = result.CombinedCashOutcome.ToString()
+                }
+            };
+            string jsonPath = Path.Combine(reportDirectory,
+                "r156-economic-diagnostic.json");
+            File.WriteAllText(jsonPath,
+                System.Text.Json.JsonSerializer.Serialize(json,
+                    new System.Text.Json.JsonSerializerOptions
+                    { WriteIndented = true }) + Environment.NewLine);
+
+            var a = comparison.AllProducingBaseline;
+            var b = comparison.ReassignedWithoutServiceDiscount;
+            var c = comparison.ReassignedWithServiceDiscount;
+            string markdown =
+                "# GA-Next R156 — Diagnóstico econômico real (pré-commit)\n\n" +
+                "Cenário determinístico: seed 20261012, 3 trabalhadores por civilização; " +
+                $"trabalhador #{scenario.Reassigned.Id.Value} realocado para LAND.\n\n" +
+                "| Métrica | A: todos produzindo | B: realocado sem benefício | C: realocado com serviço |\n" +
+                "|---|---:|---:|---:|\n" +
+                $"| Mercadorias (micro) | {a.ProducedAndSoldGoodsMicro} | {b.ProducedAndSoldGoodsMicro} | {c.ProducedAndSoldGoodsMicro} |\n" +
+                $"| Entregas | {a.DeliveryCount} | {b.DeliveryCount} | {c.DeliveryCount} |\n" +
+                $"| Arestas usadas | {a.UsedPhysicalCrossings} | {b.UsedPhysicalCrossings} | {c.UsedPhysicalCrossings} |\n" +
+                $"| Tráfego em arestas (micro) | {a.TotalEdgeTraversalCargoMicro} | {b.TotalEdgeTraversalCargoMicro} | {c.TotalEdgeTraversalCargoMicro} |\n" +
+                $"| Receita bruta (moeda) | {Money(a.GrossSalesScaled)} | {Money(b.GrossSalesScaled)} | {Money(c.GrossSalesScaled)} |\n" +
+                $"| Frete físico (moeda) | {Money(a.PhysicalFreightScaled)} | {Money(b.PhysicalFreightScaled)} | {Money(c.PhysicalFreightScaled)} |\n" +
+                $"| Crédito conjunto (moeda) | {Money(a.GrossSalesScaled - a.PhysicalFreightScaled)} | {Money(b.GrossSalesScaled - b.PhysicalFreightScaled)} | {Money(c.GrossSalesScaled - c.PhysicalFreightScaled)} |\n\n" +
+                "## Decomposição causal\n\n" +
+                $"* A → B (custo de realocar): **{Money(result.ProductionOpportunityDelta.TotalCivilizationCashEquivalentScaled)}** moeda.\n" +
+                $"* B → C (benefício do serviço): **{Money(result.LogisticsServiceDelta.TotalCivilizationCashEquivalentScaled)}** moeda.\n" +
+                $"* A → C (saldo combinado): **{Money(result.CombinedDelta.TotalCivilizationCashEquivalentScaled)}** moeda — **{result.CombinedCashOutcome}**.\n" +
+                $"* Produção perdida: **{comparison.LostProductionGoodsMicro}** micro-mercadorias.\n" +
+                $"* Benefício necessário para equilíbrio: **{Money(result.RequiredServiceGainToBreakEvenScaled)}** moeda.\n" +
+                $"* Lacuna remanescente: **{Money(result.RemainingBreakEvenGapScaled)}** moeda.\n\n" +
+                "A referência monetária é exata: valores escalados estão no arquivo JSON. " +
+                "Sem ajuste de parâmetros, sem liquidação, sem modificação de tesouro. " +
+                "O resultado é **agregado das civilizações**, não recomendação por cidade. " +
+                "Realocação é diferente de nascimento: crescimento populacional não foi simulado.\n";
+            File.WriteAllText(Path.Combine(reportDirectory,
+                "r156-economic-diagnostic.md"), markdown);
+            _output.WriteLine("GA_NEXT_R156_REPORT_PASS " + jsonPath);
+        }
     }
 
     [Fact]
