@@ -1,0 +1,31 @@
+name: GA-Next R162 Deterministic Worldwide Demography
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/Foundation/FoundationDemographicGrowthPlanner.cs'
+      - 'GlobalArena.Tests/FoundationDemographicGrowthPlannerTests.cs'
+      - '.github/workflows/ga-next-r162-demographic-growth.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-population:
+    name: R162 weighted city growth and exact replay / ubuntu-latest
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Compile canonical physical economy and demography
+        run: dotnet build GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: Validate worldwide weighted city births and replay
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationDemographicGrowthPlannerTests' --logger 'console;verbosity=detailed'
+      - name: Summarize R162 contract
+        run: |
+          echo '### R162 — deterministic worldwide demographic growth' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Tests cover one-worker civilization starts, worldwide birth quota, city population weights, extinction, order-independent replay and no census mutation.' >> "$GITHUB_STEP_SUMMARY"
