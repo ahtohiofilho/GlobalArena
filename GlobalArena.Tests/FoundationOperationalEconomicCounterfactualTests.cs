@@ -350,6 +350,16 @@ public sealed class FoundationOperationalEconomicCounterfactualTests
         Assert.True(comparison.ReassignedWithoutServiceDiscount
             .TotalEdgeTraversalCargoMicro > 0,
             "Goods must traverse real physical crossings.");
+        Assert.Equal(0, comparison.AllProducingBaseline.UsedOperationalCrossings);
+        Assert.True(comparison.ReassignedWithoutServiceDiscount
+            .UsedOperationalCrossings > 0,
+            "Real workers must operate at least one commercially USED edge.");
+        Assert.True(comparison.ReassignedWithServiceDiscount
+            .UsedOperationalCrossings > 0,
+            "The shadow economic result must include actual operated trade.");
+        Assert.True(assessment.LogisticsServiceDelta
+            .TotalCivilizationCashEquivalentScaled > BigInteger.Zero,
+            "This fixed seed has a measurable, non-forced benefit from real work.");
         Assert.Equal(comparison.ReassignedWithoutServiceDiscount
                 .ProducedAndSoldGoodsMicro,
             comparison.ReassignedWithServiceDiscount.ProducedAndSoldGoodsMicro);
