@@ -73,7 +73,7 @@ public sealed class FoundationTemporalNativeMarketTests
         PhysicalTacticalTileId Destination)
         FirstTurn()
     {
-        var (world, worker, destination, movement) = Fixture();
+        var (world, worker, destination, movement, _, _) = Fixture();
         var before = FoundationPersistedEdgeTravelTransitions.DeployEmpty(world);
         var phase = new FoundationEdgeTravelTurnPhase(movement,
             new FoundationGroundEdgeTravelTimePolicy(1_400_000UL));
