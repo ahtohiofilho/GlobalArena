@@ -26,7 +26,6 @@ public static class FoundationTemporalNativeMarginalMarketPlanner
         ArgumentNullException.ThrowIfNull(cargoPolicy);
         var transportWorld = freightSnapshot ?? baseline;
         if (baseline.WorldBinding != transportWorld.WorldBinding ||
-            !ReferenceEquals(baseline.Workers, transportWorld.Workers) ||
             !transportWorld.Transport.IsInitialized ||
             !baseline.Workers.HasAuthoritativeOccupations ||
             !demandPolicy.Commodities.SequenceEqual(cargoPolicy.Commodities) ||
