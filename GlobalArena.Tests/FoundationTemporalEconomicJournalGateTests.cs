@@ -144,6 +144,38 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             Assert.Equal(credited.CashCreditScaled,
                 receipt.Next.Treasury.Get(credited.Civilization).CashScaled);
         Assert.Equal(2, receipt.Journal.Entries.Count);
+        // Turn 2 must consume the remaining 40% in transit, work 60%
+        // at the destination and publish exactly one additional cycle.
+        var nextContext = new SimulationContext(
+            new TurnNumber(2UL), new SimulationSeed(712UL));
+        var nextMove = new FoundationEdgeTravelTurnPhase(movement,
+            new FoundationGroundEdgeTravelTimePolicy(1_400_000UL)).Resolve(
+            new TurnResolutionInput(receipt.Next, new ISimulationCommand[]
+            {
+                new FoundationEdgeTravelTurnCommand(
+                    new CommandId(new TurnNumber(2UL), 1UL),
+                    worker.Owner, worker.Id, destination, isStart: false)
+            }, nextContext), receipt.Next);
+        var secondEvent = Assert.IsType<FoundationEdgeTravelTurnEvent>(
+            Assert.Single(nextMove.Events));
+        var second = FoundationTemporalEconomicJournalGate.CloseAndReplay(
+            receipt.Next, new[] { secondEvent }, movement,
+            new FoundationGroundEdgeTravelTimePolicy(1_400_000UL),
+            incidence, policy, nextContext, fine);
+        Assert.Empty(second.Next.EdgeTravels.Pending);
+        Assert.Equal(2UL, second.Next.Treasury.LastSettledEconomicCycleOrdinal);
+        Assert.Equal(destination,
+            second.Next.Workers.Workers.Single(w => w.Id == worker.Id)
+                .TacticalTileId);
+        Assert.Equal(400_000U,
+            secondEvent.Receipt.TurnResult!.TimeSlices[0].PresenceMicro);
+        Assert.Equal(600_000U,
+            secondEvent.Receipt.TurnResult.TimeSlices[1].ProductiveEffortMicro);
+        Assert.Equal(second.Hash, new CanonicalWorldStateHasher().Compute(
+            FoundationTemporalEconomicJournalGate.ReplayJournal(
+                receipt.Next, second.Journal, movement,
+                new FoundationGroundEdgeTravelTimePolicy(1_400_000UL),
+                incidence, policy, nextContext, fine)));
         var authenticatedReplay =
             FoundationTemporalEconomicJournalGate.ReplayJournal(
                 beginning, receipt.Journal, movement,
