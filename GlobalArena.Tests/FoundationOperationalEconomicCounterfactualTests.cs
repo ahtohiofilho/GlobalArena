@@ -1,6 +1,7 @@
 using System.Numerics;
 using GlobalArena.Kernel;
 using GlobalArena.Runtime;
+using GlobalArena.Simulation;
 using GlobalArena.Simulation.Foundation;
 using GlobalArena.World;
 
@@ -421,6 +422,108 @@ public sealed class FoundationOperationalEconomicCounterfactualTests
                     new System.Text.Json.JsonSerializerOptions { WriteIndented = true })
                 + Environment.NewLine);
             _output.WriteLine("GA_NEXT_R157_ECONOMIC_REPORT_PASS " + path);
+        }
+    }
+
+    [Fact]
+    public void RealMarginalTransferRankingSharesOnePhysicalBaselineAndMeasuresCost()
+    {
+        var fixture = Scenario();
+        var selected = fixture.Before.Workers.Workers
+            .Where(w => w.Owner == Human &&
+                w.Activity == PhysicalWorkerActivity.Producing)
+            .OrderBy(w => w.Id.Value).Take(2)
+            .Select(w => w.Id).ToArray();
+        var baselineHash = new CanonicalWorldStateHasher()
+            .Compute(fixture.Before);
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var diagnostics = FoundationRealMarginalTransferEvaluator.Evaluate(
+            fixture.Before, fixture.Incidence, fixture.Geography,
+            MarketPolicy(),
+            new FoundationOperationalProductivityPolicy(
+                new FoundationOperationalProductivityBand(
+                    1_000_000UL, 10_000U),
+                new FoundationOperationalProductivityBand(
+                    1_000_000UL, 10_000U)),
+            new FoundationOperationalFreightShadowPolicy(
+                1_000_000UL, 1_000_000UL),
+            selected, PhysicalWorkerOccupation.LandTransport,
+            evaluationBudget: 2, topCount: 2);
+        clock.Stop();
+
+        Assert.False(diagnostics.IsCommitted);
+        Assert.Equal(2, diagnostics.Evaluated.Count);
+        Assert.Equal(6, diagnostics.CompleteMarketSolutions);
+        Assert.Equal(2, diagnostics.Ranking.EvaluatedCandidates);
+        Assert.Equal(FoundationMarginalLaborChangeKind.ExistingWorkerTransfer,
+            diagnostics.Ranking.ChangeKind);
+        Assert.Equal(diagnostics.Evaluated[0].BaselineIdentity,
+            diagnostics.Evaluated[1].BaselineIdentity);
+        Assert.Equal(baselineHash, new CanonicalWorldStateHasher()
+            .Compute(fixture.Before));
+        Assert.Equal(selected, fixture.Before.Workers.Workers
+            .Where(w => w.Owner == Human &&
+                w.Activity == PhysicalWorkerActivity.Producing)
+            .OrderBy(w => w.Id.Value).Take(2).Select(w => w.Id));
+        Assert.All(diagnostics.Evaluated, item =>
+        {
+            Assert.Equal(Human, item.Owner);
+            Assert.Equal(FoundationMarginalLaborChangeKind.ExistingWorkerTransfer,
+                item.ChangeKind);
+            Assert.Equal(item.DestinationTile, item.SourceTile);
+        });
+        Assert.Equal(diagnostics.Evaluated
+                .OrderBy(x => x.CashDeltaScaled)
+                .Select(x => x.ExistingWorkerId),
+            diagnostics.Ranking.LowestReturns
+                .Select(x => x.ExistingWorkerId));
+        Assert.Throws<ArgumentException>(() =>
+            FoundationRealMarginalTransferEvaluator.Evaluate(
+                fixture.Before, fixture.Incidence, fixture.Geography,
+                MarketPolicy(),
+                new FoundationOperationalProductivityPolicy(
+                    new FoundationOperationalProductivityBand(
+                        1_000_000UL, 10_000U),
+                    new FoundationOperationalProductivityBand(
+                        1_000_000UL, 10_000U)),
+                new FoundationOperationalFreightShadowPolicy(
+                    1_000_000UL, 1_000_000UL),
+                selected, PhysicalWorkerOccupation.LandTransport,
+                evaluationBudget: 1, topCount: 2));
+
+        string? folder = Environment.GetEnvironmentVariable("GA_R159_REPORT_DIR");
+        if (!string.IsNullOrWhiteSpace(folder))
+        {
+            Directory.CreateDirectory(folder);
+            var payload = new
+            {
+                schema = "ga-next-r159-real-marginal-transfer-v1",
+                source = "one-identical-canonical-world-baseline",
+                baseline = diagnostics.Ranking.BaselineIdentity,
+                testedCandidates = diagnostics.Evaluated.Count,
+                completeMarketSolutions = diagnostics.CompleteMarketSolutions,
+                elapsedMilliseconds = clock.ElapsedMilliseconds,
+                moneyScale =
+                    FoundationPhysicalEconomicAccountingProposal.MoneyScale.ToString(),
+                outcomeBasis = "collective-gross-less-physical-freight",
+                scope = "existing-workers-in-place-only",
+                workerAdditionsEvaluated = false,
+                migrationEvaluated = false,
+                committed = false,
+                decisions = diagnostics.Evaluated.Select(x => new
+                {
+                    workerId = x.ExistingWorkerId!.Value.Value,
+                    tileId = x.DestinationTile.FineStrategicCellId.Value,
+                    occupation = x.DestinationOccupation.ToString(),
+                    cashDeltaScaled = x.CashDeltaScaled.ToString()
+                })
+            };
+            string path = Path.Combine(folder, "r159-real-marginal.json");
+            File.WriteAllText(path,
+                System.Text.Json.JsonSerializer.Serialize(payload,
+                    new System.Text.Json.JsonSerializerOptions
+                    { WriteIndented = true }) + Environment.NewLine);
+            _output.WriteLine("GA_NEXT_R159_REAL_MARGINAL_PASS " + path);
         }
     }
 
