@@ -1,0 +1,30 @@
+name: GA-Next R167 Persisted Physical Edge Travel
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Runtime/FoundationEdgeTravelRuntimeState.cs'
+      - 'GlobalArena.Runtime/WorldState.cs'
+      - 'GlobalArena.Simulation/CanonicalWorldStateHasher.cs'
+      - 'GlobalArena.Simulation/Foundation/FoundationPersistedEdgeTravelTransitions.cs'
+      - 'GlobalArena.Tests/FoundationPersistedEdgeTravelTests.cs'
+      - '.github/workflows/ga-next-r167-persisted-edge-travel.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  persisted-travel:
+    name: R167 physical travel persistence and deterministic replay / ubuntu-latest
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build R167 persistence
+        run: dotnet build GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: Validate persistence, R165/R166 movement and physical presence
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationPersistedEdgeTravelTests|FullyQualifiedName~FoundationGroundEdgeTravelTimeProjectorTests|FullyQualifiedName~FoundationFractionalEdgeTravelProjectorTests|FullyQualifiedName~FoundationPhysicalPresenceDemographicTests' --logger 'console;verbosity=detailed'
