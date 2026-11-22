@@ -60,6 +60,8 @@ public sealed class FoundationTacticalAiResumeProductionPolicy
         return Array.AsReadOnly(snapshot.Workers.Workers
             .Where(worker => worker.Owner == civilization &&
                 worker.Activity == PhysicalWorkerActivity.Traveling &&
+                worker.Occupation is not PhysicalWorkerOccupation.LandTransport and
+                    not PhysicalWorkerOccupation.PortOperations &&
                 worker.OutputMicroPerTurn > 0UL &&
                 worker.TacticalTileId.HasValue)
             .OrderBy(worker => worker.Id.Value)
@@ -747,6 +749,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
         var automaticResumptions = Snapshot.Workers.Workers
             .Where(worker => _humans.Contains(worker.Owner) &&
                 worker.Activity == PhysicalWorkerActivity.Traveling &&
+                worker.Occupation is not PhysicalWorkerOccupation.LandTransport and
+                    not PhysicalWorkerOccupation.PortOperations &&
                 worker.OutputMicroPerTurn > 0UL &&
                 worker.TacticalTileId.HasValue &&
                 !_plans[worker.Owner].ContainsKey(worker.Id.Value))
@@ -906,7 +910,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
                 PhysicalWorkerOccupation.Agriculture or
                 PhysicalWorkerOccupation.Forestry or
                 PhysicalWorkerOccupation.Mining =>
-                    worker.Activity == PhysicalWorkerActivity.Producing,
+                    (worker.Activity == PhysicalWorkerActivity.Producing ||
+                     worker.Activity == PhysicalWorkerActivity.Other),
                 PhysicalWorkerOccupation.LandTransport or
                 PhysicalWorkerOccupation.PortOperations =>
                     worker.Activity == PhysicalWorkerActivity.Other,
@@ -932,6 +937,11 @@ public sealed class FoundationTacticalHumanAiTurnHost
         try { edge = _executor.CheckEdge(source, destination); }
         catch (ArgumentException ex)
         { throw new InvalidOperationException("Foreign fine topology.", ex); }
+        if (activity == PhysicalWorkerActivity.Producing &&
+            worker.Occupation is PhysicalWorkerOccupation.LandTransport or
+                PhysicalWorkerOccupation.PortOperations)
+            throw new InvalidOperationException(
+                "Logistics workers must change to a productive occupation before producing.");
         if (nextOccupation.HasValue)
         {
             ValidateOccupationTarget(worker, nextOccupation.Value);
