@@ -585,6 +585,26 @@ public sealed class FoundationTacticalHumanAiTurnHost
     }
 
     /// <summary>
+    /// Journaled logistics occupation for an existing worker already in the
+    /// Other activity. This cannot divert a producing worker within the same
+    /// command: activity conversion must be separately authorized first.
+    /// </summary>
+    public void QueueHumanOperationalRole(CivilizationId human,
+        PhysicalWorkerId id, FoundationOperationalWorkKind kind)
+    {
+        RequireHuman(human);
+        var occupation = kind switch
+        {
+            FoundationOperationalWorkKind.Land =>
+                PhysicalWorkerOccupation.LandTransport,
+            FoundationOperationalWorkKind.Port =>
+                PhysicalWorkerOccupation.PortOperations,
+            _ => throw new ArgumentOutOfRangeException(nameof(kind))
+        };
+        QueueOccupation(human, id, occupation);
+    }
+
+    /// <summary>
     /// Validates the ENTIRE occupational batch against the same turn-start
     /// authoritative census before touching the participant's pending orders.
     /// Existing pending orders for mentioned workers are replaced only after
@@ -881,9 +901,17 @@ public sealed class FoundationTacticalHumanAiTurnHost
     {
         if (!Snapshot.Workers.HasAuthoritativeOccupations ||
             !worker.Occupation.HasValue ||
-            (occupation != PhysicalWorkerOccupation.Agriculture &&
-             occupation != PhysicalWorkerOccupation.Forestry &&
-             occupation != PhysicalWorkerOccupation.Mining) ||
+            !(occupation switch
+            {
+                PhysicalWorkerOccupation.Agriculture or
+                PhysicalWorkerOccupation.Forestry or
+                PhysicalWorkerOccupation.Mining =>
+                    worker.Activity == PhysicalWorkerActivity.Producing,
+                PhysicalWorkerOccupation.LandTransport or
+                PhysicalWorkerOccupation.PortOperations =>
+                    worker.Activity == PhysicalWorkerActivity.Other,
+                _ => false
+            }) ||
             worker.Occupation.Value == occupation)
             throw new InvalidOperationException(
                 "Reallocation requires an existing owned v11 worker and " +
