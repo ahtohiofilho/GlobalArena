@@ -130,4 +130,59 @@ public sealed class FoundationPersistedEdgeTravelTests
             FoundationPersistedEdgeTravelTransitions.ReplayStart(
                 started, receipt, to, validator, policy));
     }
+
+    [Fact]
+    public void JournaledStartAndAutomaticContinuationSpendEachTurnExactlyOnce()
+    {
+        var (baseWorld, worker, to, movement) = Fixture();
+        var initial = FoundationPersistedEdgeTravelTransitions.DeployEmpty(baseWorld);
+        var policy = new FoundationGroundEdgeTravelTimePolicy(1_400_000UL);
+        var phase = new FoundationEdgeTravelTurnPhase(movement, policy);
+        var executor = new FoundationEdgeTravelEventExecutor(movement, policy);
+        var turn1 = new TurnNumber(1UL);
+        var context1 = new SimulationContext(turn1, new SimulationSeed(712UL));
+        var startCommand = new FoundationEdgeTravelTurnCommand(
+            new CommandId(turn1, 1UL), worker.Owner, worker.Id, to, isStart: true);
+        var first = phase.Resolve(
+            new TurnResolutionInput(initial,
+                new ISimulationCommand[] { startCommand }, context1), initial);
+        var event1 = Assert.IsType<FoundationEdgeTravelTurnEvent>(
+            Assert.Single(first.Events));
+        Assert.True(event1.Receipt.Started);
+        Assert.Equal(400_000UL,
+            first.State.EdgeTravels.Pending.Single().RemainingMicro);
+        Assert.Equal(1_000_000U,
+            event1.Receipt.TurnResult!.TimeSlices.Sum(s => s.PresenceMicro));
+        var replayFirst = new SimulationEventLogReplayer(executor).Replay(
+            new SimulationReplayInput(initial, first.EventLog, context1));
+        Assert.Equal(new CanonicalWorldStateHasher().Compute(first.State),
+            new CanonicalWorldStateHasher().Compute(replayFirst));
+
+        var turn2 = new TurnNumber(2UL);
+        var context2 = new SimulationContext(turn2, new SimulationSeed(712UL));
+        var continueCommand = new FoundationEdgeTravelTurnCommand(
+            new CommandId(turn2, 1UL), worker.Owner, worker.Id, to, isStart: false);
+        var second = phase.Resolve(
+            new TurnResolutionInput(first.State,
+                new ISimulationCommand[] { continueCommand }, context2),
+            first.State);
+        var event2 = Assert.IsType<FoundationEdgeTravelTurnEvent>(
+            Assert.Single(second.Events));
+        Assert.False(event2.Receipt.Started);
+        Assert.Empty(second.State.EdgeTravels.Pending);
+        var arrived = second.State.Workers.Workers.Single(w => w.Id == worker.Id);
+        Assert.Equal(to, arrived.TacticalTileId);
+        Assert.Equal(movement.PresentationRegion(to, worker.CellId), arrived.CellId);
+        Assert.Equal(400_000U, event2.Receipt.TurnResult!.TimeSlices[0].PresenceMicro);
+        Assert.Equal(600_000U, event2.Receipt.TurnResult.TimeSlices[1].ProductiveEffortMicro);
+        var replaySecond = new SimulationEventLogReplayer(executor).Replay(
+            new SimulationReplayInput(replayFirst, second.EventLog, context2));
+        Assert.Equal(new CanonicalWorldStateHasher().Compute(second.State),
+            new CanonicalWorldStateHasher().Compute(replaySecond));
+
+        Assert.Throws<InvalidOperationException>(() =>
+            phase.Resolve(new TurnResolutionInput(second.State,
+                new ISimulationCommand[] { continueCommand }, context2),
+                second.State));
+    }
 }
