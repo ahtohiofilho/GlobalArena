@@ -606,6 +606,127 @@ public sealed class FoundationOperationalEconomicCounterfactualTests
     }
 
     [Fact]
+    public void AddingOneRealWorkerChangesBothSupplyAndConsumptionInTheSameMarket()
+    {
+        var fixture = Scenario();
+        var baselineHash = new CanonicalWorldStateHasher()
+            .Compute(fixture.Before);
+        var originWorkers = fixture.Before.Workers.Workers
+            .Where(w => w.Owner == Human &&
+                w.Activity == PhysicalWorkerActivity.Producing)
+            .OrderBy(w => w.Id.Value).Take(2).ToArray();
+        var proposals = originWorkers
+            .Select(w => new FoundationNewWorkerProductiveOpportunity(w.Id))
+            .ToArray();
+
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        var result = FoundationNewWorkerProductiveMarginalProjector.Evaluate(
+            fixture.Before, fixture.Incidence, fixture.Geography,
+            MarketPolicy(), proposals, evaluationBudget: 2, topCount: 2);
+        timer.Stop();
+
+        Assert.False(result.IsCommitted);
+        Assert.Equal(3, result.CompleteMarketSolutions);
+        Assert.Equal(2, result.Evaluated.Count);
+        Assert.Equal(FoundationMarginalLaborChangeKind.NewWorkerAddition,
+            result.Ranking.ChangeKind);
+        Assert.Equal(2, result.Ranking.EvaluatedCandidates);
+        Assert.All(result.Ranking.HighestOpportunities,
+            x => { Assert.Null(x.ExistingWorkerId); Assert.Null(x.SourceTile); });
+        Assert.All(result.Evaluated, x =>
+        {
+            Assert.Equal(Human, x.Owner);
+            Assert.Equal(1_000_000UL, x.AddedProductionMicro);
+            Assert.Equal(2_000_000UL, x.AddedDemandMicro);
+            Assert.Equal(originWorkers[0].TacticalTileId, x.Tile);
+        });
+        Assert.Equal(result.Evaluated
+                .OrderByDescending(x => x.CollectiveCashGainScaled)
+                .Select(x => x.CollectiveCashGainScaled),
+            result.Ranking.HighestOpportunities.Select(x => x.CashDeltaScaled));
+
+        // A real newborn remains a buyer; no existing employee is repurposed.
+        // Demand totals are observed from the existing authoritative workforce
+        // pricing, not inferred from a producer's supply alone.
+        var first = originWorkers[0];
+        var newWorker = new PhysicalWorkerRuntimeRecord(
+            new PhysicalWorkerId(fixture.Before.Workers.Workers
+                .Max(w => w.Id.Value) + 1UL),
+            first.Owner, first.CellId, first.Commodity,
+            first.OutputMicroPerTurn, PhysicalWorkerActivity.Producing,
+            first.DemandMultiplierMicro, first.TacticalTileId, first.Occupation);
+        var originalDemand = FoundationPhysicalCommodityDemandProjector
+            .Project(fixture.Before.Workers, MarketPolicy().Demand);
+        var expanded = new PhysicalWorkerRuntimeState(
+            fixture.Before.Workers.Workers.Append(newWorker),
+            tacticalLocationsAuthoritative: true,
+            occupationsAuthoritative: true);
+        var expandedDemand = FoundationPhysicalCommodityDemandProjector
+            .Project(expanded, MarketPolicy().Demand);
+        Assert.Equal(fixture.Before.Workers.Workers.Count + 1,
+            expanded.Workers.Count);
+        Assert.Equal(originalDemand.DistinctWorkers + 1,
+            expandedDemand.DistinctWorkers);
+        Assert.Equal(2_000_000UL,
+            expandedDemand.TotalCommodityDemandMicro -
+            originalDemand.TotalCommodityDemandMicro);
+        Assert.Equal(1_000_000UL,
+            expandedDemand.TotalActiveCapacityMicroPerTurn -
+            originalDemand.TotalActiveCapacityMicroPerTurn);
+        Assert.Equal(baselineHash, new CanonicalWorldStateHasher()
+            .Compute(fixture.Before));
+        Assert.Throws<ArgumentException>(() =>
+            FoundationNewWorkerProductiveMarginalProjector.Evaluate(
+                fixture.Before, fixture.Incidence, fixture.Geography,
+                MarketPolicy(), proposals, evaluationBudget: 1, topCount: 2));
+        Assert.Throws<ArgumentException>(() =>
+            FoundationNewWorkerProductiveMarginalProjector.Evaluate(
+                fixture.Before, fixture.Incidence, fixture.Geography,
+                MarketPolicy(), new[] { proposals[0], proposals[0] },
+                evaluationBudget: 2, topCount: 2));
+
+        string? folder = Environment.GetEnvironmentVariable("GA_R161_REPORT_DIR");
+        if (!string.IsNullOrWhiteSpace(folder))
+        {
+            Directory.CreateDirectory(folder);
+            var payload = new
+            {
+                schema = "ga-next-r161-new-worker-marginal-v1",
+                baseline = result.BaselineIdentity,
+                oldPopulation = fixture.Before.Workers.Workers.Count,
+                proposedPopulation = fixture.Before.Workers.Workers.Count + 1,
+                oneNewWorkerPerAlternative = true,
+                demandAdded = true,
+                newProductionAdded = true,
+                noExistingWorkerRemoved = true,
+                authoritativeStateCommitted = false,
+                moneyScale =
+                    FoundationPhysicalEconomicAccountingProposal.MoneyScale.ToString(),
+                elapsedMilliseconds = timer.ElapsedMilliseconds,
+                marketSolutions = result.CompleteMarketSolutions,
+                scenario = "existing-node-existing-productive-archetype",
+                candidates = result.Evaluated.Select(x => new
+                {
+                    sourceArchetypeId = x.ArchetypeWorker.Value,
+                    ownerId = x.Owner.Value,
+                    tileId = x.Tile.FineStrategicCellId.Value,
+                    occupation = x.Occupation.ToString(),
+                    commodity = x.Commodity.Value,
+                    addedProductionMicro = x.AddedProductionMicro,
+                    addedConsumptionDemandMicro = x.AddedDemandMicro,
+                    collectiveCashGainScaled = x.CollectiveCashGainScaled.ToString()
+                })
+            };
+            string path = Path.Combine(folder, "r161-new-worker-marginal.json");
+            File.WriteAllText(path,
+                System.Text.Json.JsonSerializer.Serialize(payload,
+                    new System.Text.Json.JsonSerializerOptions
+                    { WriteIndented = true }) + Environment.NewLine);
+            _output.WriteLine("GA_NEXT_R161_NEW_WORKER_REPORT " + path);
+        }
+    }
+
+    [Fact]
     public void CounterfactualRejectsUnchangedWorkersAndTamperedLocations()
     {
         var s = Scenario();

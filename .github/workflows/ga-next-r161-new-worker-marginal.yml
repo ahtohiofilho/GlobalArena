@@ -1,0 +1,47 @@
+name: GA-Next R161 New Worker Supply-Demand Marginal
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/Foundation/FoundationNewWorkerProductiveMarginalProjector.cs'
+      - 'GlobalArena.Tests/FoundationOperationalEconomicCounterfactualTests.cs'
+      - '.github/workflows/ga-next-r161-new-worker-marginal.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  newborn-market:
+    name: R161 new-worker real supply-and-demand economics / ubuntu-latest
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build canonical .NET physical market and marginal evaluator
+        run: dotnet build GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: Verify new worker adds both actual supply and consumption
+        env:
+          GA_R161_REPORT_DIR: ${{ runner.temp }}/ga-next-r161-new-worker
+        run: |
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~AddingOneRealWorkerChangesBothSupplyAndConsumptionInTheSameMarket' --logger 'console;verbosity=detailed'
+          test -s "$GA_R161_REPORT_DIR/r161-new-worker-marginal.json"
+      - name: Publish exact newborn marginal results and measured cost
+        env:
+          GA_R161_REPORT_DIR: ${{ runner.temp }}/ga-next-r161-new-worker
+        run: |
+          echo 'GA_NEXT_R161_NEW_WORKER_REPORT'
+          cat "$GA_R161_REPORT_DIR/r161-new-worker-marginal.json"
+          echo '### R161 — one real new worker in alternative occupations' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Baseline shared; old census untouched; every alternative adds one real producer and its complete consumer demand.' >> "$GITHUB_STEP_SUMMARY"
+          echo '~~~json' >> "$GITHUB_STEP_SUMMARY"
+          cat "$GA_R161_REPORT_DIR/r161-new-worker-marginal.json" >> "$GITHUB_STEP_SUMMARY"
+          echo '~~~' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ga-next-r161-new-worker-marginal
+          path: ${{ runner.temp }}/ga-next-r161-new-worker/r161-new-worker-marginal.json
+          if-no-files-found: error
