@@ -60,6 +60,7 @@ public sealed class FoundationTacticalAiResumeProductionPolicy
         return Array.AsReadOnly(snapshot.Workers.Workers
             .Where(worker => worker.Owner == civilization &&
                 worker.Activity == PhysicalWorkerActivity.Traveling &&
+                !snapshot.EdgeTravels.Pending.Any(p => p.Worker == worker.Id) &&
                 worker.Occupation is not PhysicalWorkerOccupation.LandTransport and
                     not PhysicalWorkerOccupation.PortOperations &&
                 worker.OutputMicroPerTurn > 0UL &&
