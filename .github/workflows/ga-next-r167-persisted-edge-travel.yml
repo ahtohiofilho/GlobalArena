@@ -8,6 +8,9 @@ on:
       - 'GlobalArena.Simulation/CanonicalWorldStateHasher.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationPersistedEdgeTravelTransitions.cs'
       - 'GlobalArena.Tests/FoundationPersistedEdgeTravelTests.cs'
+      - 'GlobalArena.Simulation/Foundation/FoundationEdgeTravelTurnPhase.cs'
+      - 'GlobalArena.Simulation/Foundation/FoundationTacticalHumanAiTurnHost.cs'
+      - 'GlobalArena.Simulation/Foundation/PhysicalTacticalWorkerMovementTurnPhase.cs'
       - '.github/workflows/ga-next-r167-persisted-edge-travel.yml'
   workflow_dispatch:
 
