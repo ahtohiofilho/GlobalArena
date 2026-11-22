@@ -80,6 +80,8 @@ public partial class Main : Control
     private Button? _localAgricultureButton;
     private Button? _localForestryButton;
     private Button? _localMiningButton;
+    private Button? _r149LandWorkButton;
+    private Button? _r149PortWorkButton;
     private Button? _localEndTurnButton;
     private Button? _localCancelQueuedButton;
     private Label? _localPendingLabel;
@@ -336,6 +338,7 @@ public partial class Main : Control
                 .Any(order => order.WorkerId == worker.Id);
             _localWorkerSelector.AddItem(
                 $"#{worker.Id.Value} | G(18,0)/{tile} | {worker.Activity}" +
+                (worker.Occupation.HasValue ? $" / {worker.Occupation}" : "") +
                 (pending ? " | QUEUED" : ""));
             if (_selectedLocalWorkerId == worker.Id.Value)
                 _localWorkerSelector.Select(i);
@@ -360,9 +363,24 @@ public partial class Main : Control
         RefreshFineMovementDecision(selectedTile, adjacent, ready);
         _localProduceButton.Disabled = ready || chosen is null ||
             chosen.Activity == PhysicalWorkerActivity.Producing ||
-            chosen.OutputMicroPerTurn == 0UL;
+            chosen.OutputMicroPerTurn == 0UL ||
+            chosen.Occupation is (PhysicalWorkerOccupation.LandTransport or
+                PhysicalWorkerOccupation.PortOperations);
         _localCancelQueuedButton.Disabled = ready || chosen is null ||
             !pendingOrders.Any(order => order.WorkerId == chosen.Id);
+        if (_r149LandWorkButton is not null && _r149PortWorkButton is not null)
+        {
+            bool canAssign = !ready && chosen is not null &&
+                host.Snapshot.Workers.HasAuthoritativeOccupations &&
+                chosen.Activity is (PhysicalWorkerActivity.Producing or
+                    PhysicalWorkerActivity.Other);
+            _r149LandWorkButton.Visible = host.Snapshot.Workers.HasAuthoritativeOccupations;
+            _r149PortWorkButton.Visible = host.Snapshot.Workers.HasAuthoritativeOccupations;
+            _r149LandWorkButton.Disabled = !canAssign ||
+                chosen!.Occupation == PhysicalWorkerOccupation.LandTransport;
+            _r149PortWorkButton.Disabled = !canAssign ||
+                chosen!.Occupation == PhysicalWorkerOccupation.PortOperations;
+        }
         var hasOccupations = host.Snapshot.Workers.HasAuthoritativeOccupations;
         foreach (var (button, role) in new[] {
             (_localAgricultureButton, PhysicalWorkerOccupation.Agriculture),
@@ -372,7 +390,9 @@ public partial class Main : Control
             {
                 button.Visible = hasOccupations;
                 button.Disabled = ready || chosen is null ||
-                    !hasOccupations || chosen.Occupation == role;
+                    !hasOccupations || chosen.Occupation == role ||
+                    chosen.Activity is (PhysicalWorkerActivity.Traveling or
+                        PhysicalWorkerActivity.Military);
             }
         _localEndTurnButton.Disabled = false;
         _localTurnLabel.Text =
@@ -395,7 +415,7 @@ public partial class Main : Control
             : string.Join(", ", pendingOrders.Select(order =>
                 $"#{order.WorkerId.Value} " +
                 (order.NextOccupation.HasValue
-                    ? $"profissão → {order.NextOccupation.Value} no tile {order.Source.FineStrategicCellId.Value}"
+                    ? $"{order.Activity} / {order.NextOccupation.Value} at tile {order.Source.FineStrategicCellId.Value}"
                     : order.IsMovement
                         ? $"G(18,0)/{order.Source.FineStrategicCellId.Value}→{order.Destination.FineStrategicCellId.Value}"
                         : $"{order.Activity} at {order.Source.FineStrategicCellId.Value}")));
@@ -410,6 +430,8 @@ public partial class Main : Control
                     PhysicalWorkerOccupation.Agriculture => "Agricultura",
                     PhysicalWorkerOccupation.Forestry => "Extração vegetal",
                     PhysicalWorkerOccupation.Mining => "Mineração",
+                    PhysicalWorkerOccupation.LandTransport => "Transporte terrestre",
+                    PhysicalWorkerOccupation.PortOperations => "Operação portuária",
                     PhysicalWorkerOccupation.Unassigned => "Não atribuída",
                     null => null,
                     _ => throw new System.InvalidOperationException(
@@ -572,8 +594,15 @@ public partial class Main : Control
             _localOrderStatus is null) return;
         try
         {
-            _tacticalHost.QueueHumanOccupation(_humanCivilization,
-                new PhysicalWorkerId(_selectedLocalWorkerId.Value), occupation);
+            var worker = _tacticalHost.Snapshot.Workers.Workers.Single(w =>
+                w.Id.Value == _selectedLocalWorkerId.Value);
+            if (worker.Occupation is (PhysicalWorkerOccupation.LandTransport or
+                    PhysicalWorkerOccupation.PortOperations))
+                _tacticalHost.QueueHumanProductiveRole(_humanCivilization,
+                    worker.Id, occupation);
+            else
+                _tacticalHost.QueueHumanOccupation(_humanCivilization,
+                    worker.Id, occupation);
             _localOrderStatus.Text =
                 $"Worker #{_selectedLocalWorkerId.Value}: {occupation} " +
                 "queued at the current fine tile. Press E to apply.";
@@ -585,6 +614,31 @@ public partial class Main : Control
         {
             _localOrderStatus.Text = $"Occupation reassignment rejected: {e.Message}";
             GD.Print($"GA_NEXT_OCCUPATION_REJECTED {e.Message}");
+        }
+        RefreshFineTacticalWorkerControls();
+    }
+
+    private void QueueFineWorkerOperationalRole(
+        FoundationOperationalWorkKind kind)
+    {
+        if (_tacticalHost is null || !_selectedLocalWorkerId.HasValue ||
+            _localOrderStatus is null) return;
+        try
+        {
+            _tacticalHost.QueueHumanOperationalRole(_humanCivilization,
+                new PhysicalWorkerId(_selectedLocalWorkerId.Value), kind);
+            _localOrderStatus.Text =
+                $"Worker #{_selectedLocalWorkerId.Value}: {kind} queued at the " +
+                "current physical tile. Press E to commit; X cancels.";
+            GD.Print($"GA_NEXT_R149_LOGISTICS_ORDER worker={_selectedLocalWorkerId.Value} " +
+                $"kind={kind} pending={_tacticalHost.PendingOrderCount} " +
+                "world_mutation=false");
+        }
+        catch (System.Exception error)
+        {
+            _localOrderStatus.Text =
+                $"Logistics assignment rejected: {error.Message}";
+            GD.PrintErr($"GA_NEXT_R149_LOGISTICS_REJECT {error.Message}");
         }
         RefreshFineTacticalWorkerControls();
     }
@@ -1619,6 +1673,27 @@ public partial class Main : Control
         _localMiningButton.Pressed += () =>
             QueueFineWorkerOccupation(PhysicalWorkerOccupation.Mining);
         occupationRow.AddChild(_localMiningButton);
+        var logisticsRow = new HBoxContainer();
+        logisticsRow.AddThemeConstantOverride("separation", 4);
+        orderSection.AddChild(logisticsRow);
+        _r149LandWorkButton = new Button
+        {
+            Text = "LAND | ASSIGN TRANSPORT",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            Visible = false, Disabled = true
+        };
+        _r149LandWorkButton.Pressed += () =>
+            QueueFineWorkerOperationalRole(FoundationOperationalWorkKind.Land);
+        logisticsRow.AddChild(_r149LandWorkButton);
+        _r149PortWorkButton = new Button
+        {
+            Text = "PORT | ASSIGN OPERATIONS",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            Visible = false, Disabled = true
+        };
+        _r149PortWorkButton.Pressed += () =>
+            QueueFineWorkerOperationalRole(FoundationOperationalWorkKind.Port);
+        logisticsRow.AddChild(_r149PortWorkButton);
         _localPendingLabel = new Label
         {
             Text = "No orders queued",
@@ -1896,9 +1971,9 @@ public partial class Main : Control
                 _localProduceButton!.Text = "P | RESUME PRODUCTION";
                 _localCancelQueuedButton!.Text = "X | CANCEL ORDER";
                 _localOrderStatus!.Text =
-                    $"Click your worker, click an adjacent G({_goldbergStartup.Fine.M},{_goldbergStartup.Fine.N}) tile, then G. " +
-                    "P resumes production; A/V/N reassign an individual to " +
-                    "Agriculture/Vegetal/Mining; E commits human + AI together.";
+                    $"Click your worker, select an adjacent G({_goldbergStartup.Fine.M},{_goldbergStartup.Fine.N}) tile, then G. " +
+                    "LAND/PORT assigns logistic work; A/V/N selects or resumes " +
+                    "production; X cancels; E commits the collective turn.";
                 GD.Print("GA_NEXT_FINE_VISUAL_BRIDGE_READY " +
                     $"world=v{_tacticalHost.StateHash.FormatVersion} worker_ids={_tacticalHost.Snapshot.Workers.Workers.Count} physical_tiles=G({_goldbergStartup.Fine.M},{_goldbergStartup.Fine.N}) " +
                     $"inputs=G/P/X/E gameplay_economy={(_tacticalHost.StateHash.FormatVersion >= 13U ? "explicit_v15" : "not_active")}");

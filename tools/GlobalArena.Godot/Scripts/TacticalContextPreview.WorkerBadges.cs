@@ -162,6 +162,8 @@ public partial class TacticalContextPreview
             PhysicalWorkerOccupation.Agriculture => "Agricultura",
             PhysicalWorkerOccupation.Forestry => "Extração vegetal",
             PhysicalWorkerOccupation.Mining => "Mineração",
+            PhysicalWorkerOccupation.LandTransport => "Transporte terrestre",
+            PhysicalWorkerOccupation.PortOperations => "Operação portuária",
             PhysicalWorkerOccupation.Unassigned => "Sem profissão produtiva",
             _ => throw new InvalidOperationException("Unknown physical occupation.")
         };
@@ -174,6 +176,8 @@ public partial class TacticalContextPreview
                 PhysicalWorkerOccupation.Agriculture => new Color("#61d98b"),
                 PhysicalWorkerOccupation.Forestry => new Color("#b88656"),
                 PhysicalWorkerOccupation.Mining => new Color("#c4c7d4"),
+                PhysicalWorkerOccupation.LandTransport => new Color("#4da6ad"),
+                PhysicalWorkerOccupation.PortOperations => new Color("#6c9ad1"),
                 PhysicalWorkerOccupation.Unassigned => new Color("#7b91aa"),
                 _ => throw new InvalidOperationException("Unknown v11 occupation.")
             };
