@@ -430,6 +430,8 @@ public partial class Main : Control
                     PhysicalWorkerOccupation.Agriculture => "Agricultura",
                     PhysicalWorkerOccupation.Forestry => "Extração vegetal",
                     PhysicalWorkerOccupation.Mining => "Mineração",
+                    PhysicalWorkerOccupation.LandTransport => "Transporte terrestre",
+                    PhysicalWorkerOccupation.PortOperations => "Operação portuária",
                     PhysicalWorkerOccupation.Unassigned => "Não atribuída",
                     null => null,
                     _ => throw new System.InvalidOperationException(
