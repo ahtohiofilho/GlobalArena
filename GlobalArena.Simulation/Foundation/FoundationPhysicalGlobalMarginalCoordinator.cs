@@ -142,13 +142,38 @@ public static class FoundationPhysicalGlobalMarginalCoordinator
             throw new ArgumentOutOfRangeException(nameof(maxPasses),
                 "A positive, explicitly budgeted fixed-point pass count is required.");
 
+        var market = FoundationPhysicalCommodityDemandProjector.Project(
+            census, demandPolicy);
+        return Coordinate(market, incidence, conversionPolicy, quotes,
+            edgeCosts, maxPasses, preferIncumbentThresholdTies,
+            acceptOnlyStrictIntegratedGain);
+    }
+
+    /// <summary>Same canonical global response solver with native temporal
+    /// market supply/demand, not simulated partial workers.</summary>
+    public static FoundationPhysicalGlobalMarginalCoordinationPlan Coordinate(
+        FoundationPhysicalCommodityMarketInputs market,
+        PhysicalTacticalIncidenceMap incidence,
+        FoundationCommodityCargoConversionPolicy conversionPolicy,
+        IEnumerable<FoundationCommodityMarketPlanningQuote> quotes,
+        IEnumerable<FoundationPhysicalRoutingEdgeCost> edgeCosts,
+        int maxPasses,
+        bool preferIncumbentThresholdTies = false,
+        bool acceptOnlyStrictIntegratedGain = false)
+    {
+        ArgumentNullException.ThrowIfNull(market);
+        ArgumentNullException.ThrowIfNull(incidence);
+        ArgumentNullException.ThrowIfNull(conversionPolicy);
+        ArgumentNullException.ThrowIfNull(quotes);
+        ArgumentNullException.ThrowIfNull(edgeCosts);
+        if (maxPasses < 1)
+            throw new ArgumentOutOfRangeException(nameof(maxPasses));
         // The existing 01B.2C-1 planner seeds only real worker-backed,
         // globally reconciled deliveries, so no phantom initial Q or route.
         var quoteList = quotes.ToArray();
         var costList = edgeCosts.ToArray();
         var initial = FoundationPhysicalMarginalMarketDistributor.Distribute(
-            census, incidence, demandPolicy, conversionPolicy,
-            quoteList, costList);
+            market, incidence, conversionPolicy, quoteList, costList);
         var inputs = initial.AllocationAudit.MarketInputs;
         var ownersByMarket = FoundationPhysicalMarginalMarketDistributor
             .IndexRealBuyers(inputs);
@@ -361,7 +386,7 @@ public static class FoundationPhysicalGlobalMarginalCoordinator
         // Re-verify every seller, buyer and physical edge on the FINAL pass.
         // Candidate planning never issues a settlement receipt or ledger entry.
         var audit = FoundationPhysicalDeliveryAllocationAuditor.Audit(
-            census, incidence, demandPolicy, conversionPolicy,
+            market, incidence, conversionPolicy,
             finalCandidates, ownership);
         var ownerTotals = finalCandidates
             .GroupBy(candidate =>
