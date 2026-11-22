@@ -6,6 +6,8 @@ on:
       - 'GlobalArena.Simulation/Foundation/FoundationPhysicalEconomicAccountingProposal.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationTemporalFinancialReconciler.cs'
       - 'GlobalArena.Tests/FoundationTemporalFinancialReconciliationTests.cs'
+      - 'GlobalArena.Simulation/Foundation/FoundationTemporalEconomicJournalGate.cs'
+      - 'GlobalArena.Tests/FoundationTemporalEconomicJournalGateTests.cs'
       - '.github/workflows/ga-next-r170-temporal-financial-reconciliation.yml'
   workflow_dispatch:
 
@@ -25,4 +27,4 @@ jobs:
       - name: Build financial reconciliation on canonical market
         run: dotnet build GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
       - name: Validate R170 financial conservation and historical accounting
-        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationTemporalFinancialReconciliationTests|FullyQualifiedName~FoundationPhysicalEconomicAccountingProposalTests|FullyQualifiedName~FoundationTemporalNativeMarketTests|FullyQualifiedName~FoundationTemporalEconomicTurnTests|FullyQualifiedName~FoundationPersistedEdgeTravelTests' --logger 'console;verbosity=detailed'
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationTemporalEconomicJournalGateTests|FullyQualifiedName~FoundationTemporalFinancialReconciliationTests|FullyQualifiedName~FoundationPhysicalEconomicAccountingProposalTests|FullyQualifiedName~FoundationTemporalNativeMarketTests|FullyQualifiedName~FoundationTemporalEconomicTurnTests|FullyQualifiedName~FoundationPersistedEdgeTravelTests' --logger 'console;verbosity=detailed'
