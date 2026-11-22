@@ -160,7 +160,9 @@ public sealed class FoundationFractionalEdgeTravelProjectorTests
                 {
                     Crossing = new PhysicalTacticalEdgeId(
                         initial.Crossing.FineGoldbergParameters,
-                        new StrategicEdgeId(999999UL))
+                        new StrategicEdgeId(
+                            initial.Crossing.FineStrategicEdgeId.Value == 1UL
+                                ? 2UL : 1UL))
                 }, worker, validator));
         Assert.Throws<ArgumentException>(() =>
             FoundationFractionalEdgeTravelProjector.Start(
