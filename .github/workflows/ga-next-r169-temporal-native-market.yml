@@ -1,0 +1,31 @@
+name: GA-Next R169 Native Temporal Marginal Market
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/Foundation/FoundationTemporalNativeMarketInputs.cs'
+      - 'GlobalArena.Simulation/Foundation/FoundationTemporalNativeMarginalMarketPlanner.cs'
+      - 'GlobalArena.Simulation/Foundation/FoundationPhysicalMarginalMarketDistributor.cs'
+      - 'GlobalArena.Simulation/Foundation/FoundationPhysicalGlobalMarginalCoordinator.cs'
+      - 'GlobalArena.Simulation/Foundation/FoundationPhysicalDeliveryAllocationAudit.cs'
+      - 'GlobalArena.Tests/FoundationTemporalNativeMarketTests.cs'
+      - '.github/workflows/ga-next-r169-temporal-native-market.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  temporal-native-market:
+    name: R169 native temporal inputs through canonical water filling / ubuntu-latest
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Compile integrated physical marginal market
+        run: dotnet build GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: Test native temporal physical market and prior economic regressions
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationTemporalNativeMarketTests|FullyQualifiedName~FoundationTemporalEconomicTurnTests|FullyQualifiedName~FoundationPersistedEdgeTravelTests|FullyQualifiedName~FoundationPhysicalGlobalMarginal|FullyQualifiedName~FoundationPhysicalMarginalMarket|FullyQualifiedName~FoundationPhysicalDeliveryAllocation' --logger 'console;verbosity=detailed'
