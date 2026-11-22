@@ -79,10 +79,9 @@ public static class FoundationOperationalFreightShadowProjector
                 (item.Kind != FoundationOperationalWorkKind.Land &&
                  item.Kind != FoundationOperationalWorkKind.Port) ||
                 item.EffortMicro == 0UL ||
-                item.ServiceMicro == 0UL ||
                 !serviceByEdge.TryAdd(item.Edge, item))
                 throw new ArgumentException(
-                    "Shadow quotes require unique, positive, real operational service rows.",
+                    "Shadow quotes require unique, physically worked operational service rows.",
                     nameof(service));
 
         var seen = new HashSet<PhysicalTacticalEdgeId>();
