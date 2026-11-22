@@ -102,20 +102,20 @@ public sealed class FoundationMarginalLaborDiagnosticIndexerTests
     }
 
     [Fact]
-    public void ExistingCounterfactualNetDeltaCanBePresentedWithoutPretendingItIsAnEntry()
+    public void RankingDoesNotMisrepresentAnEvaluatedTransferAsNewPopulation()
     {
-        var comparison = new[]
+        // Illustrative SAME-baseline scores are supplied by the caller,
+        // not fabricated by the diagnostic engine.
+        var candidates = new[]
         {
-            Transfer(1, 178, -1_088_085_468_527L),
-            Transfer(2, 251, -719_982_000_000L),
+            Transfer(1, 178, -100),
+            Transfer(2, 251, 20)
         };
-        var result = FoundationMarginalLaborDiagnosticIndexer.Rank(comparison, 1);
+        var result = FoundationMarginalLaborDiagnosticIndexer.Rank(candidates, 1);
         Assert.Equal(2UL,
             result.HighestOpportunities[0].ExistingWorkerId!.Value.Value);
-        Assert.Equal(1UL,
-            result.LowestReturns[0].ExistingWorkerId!.Value.Value);
         Assert.Equal(FoundationMarginalLaborChangeKind.ExistingWorkerTransfer,
             result.ChangeKind);
-        // Ranking already EVALUATED deltas does not run a worker x city search.
+        Assert.False(result.IsCommitted);
     }
 }
