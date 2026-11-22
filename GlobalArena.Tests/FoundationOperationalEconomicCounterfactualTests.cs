@@ -8,6 +8,11 @@ namespace GlobalArena.Tests;
 
 public sealed class FoundationOperationalEconomicCounterfactualTests
 {
+    private readonly Xunit.Abstractions.ITestOutputHelper _output;
+
+    public FoundationOperationalEconomicCounterfactualTests(
+        Xunit.Abstractions.ITestOutputHelper output) => _output = output;
+
     private static readonly CivilizationId Human = new(1UL);
     private static readonly CivilizationId Ai = new(2UL);
     private static readonly CommodityId Grain = new(1U);
@@ -125,6 +130,82 @@ public sealed class FoundationOperationalEconomicCounterfactualTests
         Assert.Equal(PhysicalWorkerActivity.Other,
             s.After.Workers.Workers.Single(w =>
                 w.Id == s.Reassigned.Id).Activity);
+    }
+
+    [Fact]
+    public void QuantitativeTransferAndLogisticsEffectsReconcileWithoutAssumingProfit()
+    {
+        var scenario = Scenario();
+        var comparison = Compare(scenario.Before, scenario.After,
+            scenario.Incidence, scenario.Geography);
+        var result = FoundationOperationalEconomicAssessmentProjector
+            .Evaluate(comparison);
+
+        Assert.False(result.IsCommitted);
+        Assert.Equal(-new BigInteger(scenario.Reassigned.OutputMicroPerTurn),
+            result.ProductionOpportunityDelta.GoodsMicro);
+        Assert.Equal(BigInteger.Zero, result.LogisticsServiceDelta.GoodsMicro);
+        Assert.Equal(result.ProductionOpportunityDelta.GoodsMicro,
+            result.CombinedDelta.GoodsMicro);
+
+        Assert.Equal(result.ProductionOpportunityDelta.GrossSalesScaled +
+            result.LogisticsServiceDelta.GrossSalesScaled,
+            result.CombinedDelta.GrossSalesScaled);
+        Assert.Equal(result.ProductionOpportunityDelta.PhysicalFreightScaled +
+            result.LogisticsServiceDelta.PhysicalFreightScaled,
+            result.CombinedDelta.PhysicalFreightScaled);
+        Assert.Equal(result.ProductionOpportunityDelta.NetSellersScaled +
+            result.LogisticsServiceDelta.NetSellersScaled,
+            result.CombinedDelta.NetSellersScaled);
+        Assert.Equal(result.ProductionOpportunityDelta
+                .TotalCivilizationCashEquivalentScaled +
+            result.LogisticsServiceDelta
+                .TotalCivilizationCashEquivalentScaled,
+            result.CombinedDelta.TotalCivilizationCashEquivalentScaled);
+
+        // Exact total civilization cash equivalent is gross sales minus
+        // physical freight; paid tolls and taxes are transfers to other
+        // civilization accounts, not resources destroyed by the economy.
+        foreach (var reading in new[]
+        {
+            comparison.AllProducingBaseline,
+            comparison.ReassignedWithoutServiceDiscount,
+            comparison.ReassignedWithServiceDiscount
+        })
+            Assert.Equal(reading.GrossSalesScaled -
+                reading.PhysicalFreightScaled,
+                reading.NetSellerReceiptsScaled +
+                reading.RevenueTaxScaled + reading.ExternalTollsScaled);
+
+        var expectedOutcome = result.CombinedDelta
+            .TotalCivilizationCashEquivalentScaled.Sign;
+        Assert.Equal(expectedOutcome < 0
+                ? FoundationOperationalEconomicRelativeOutcome.Worse
+                : expectedOutcome > 0
+                    ? FoundationOperationalEconomicRelativeOutcome.Better
+                    : FoundationOperationalEconomicRelativeOutcome.Equivalent,
+            result.CombinedCashOutcome);
+
+        _output.WriteLine(
+            "GA_NEXT_R155_ECONOMIC_DIAGNOSTIC " +
+            $"goods_A={comparison.AllProducingBaseline.ProducedAndSoldGoodsMicro} " +
+            $"goods_B={comparison.ReassignedWithoutServiceDiscount.ProducedAndSoldGoodsMicro} " +
+            $"goods_C={comparison.ReassignedWithServiceDiscount.ProducedAndSoldGoodsMicro} " +
+            $"cash_A={comparison.AllProducingBaseline.GrossSalesScaled -
+                comparison.AllProducingBaseline.PhysicalFreightScaled} " +
+            $"cash_B={comparison.ReassignedWithoutServiceDiscount.GrossSalesScaled -
+                comparison.ReassignedWithoutServiceDiscount.PhysicalFreightScaled} " +
+            $"cash_C={comparison.ReassignedWithServiceDiscount.GrossSalesScaled -
+                comparison.ReassignedWithServiceDiscount.PhysicalFreightScaled} " +
+            $"transfer_delta={result.ProductionOpportunityDelta.TotalCivilizationCashEquivalentScaled} " +
+            $"logistics_delta={result.LogisticsServiceDelta.TotalCivilizationCashEquivalentScaled} " +
+            $"combined_delta={result.CombinedDelta.TotalCivilizationCashEquivalentScaled} " +
+            $"break_even_need={result.RequiredServiceGainToBreakEvenScaled} " +
+            $"break_even_gap={result.RemainingBreakEvenGapScaled} " +
+            $"outcome={result.CombinedCashOutcome} " +
+            $"routes_A={comparison.AllProducingBaseline.UsedPhysicalCrossings} " +
+            $"routes_B={comparison.ReassignedWithoutServiceDiscount.UsedPhysicalCrossings} " +
+            $"routes_C={comparison.ReassignedWithServiceDiscount.UsedPhysicalCrossings}");
     }
 
     [Fact]
