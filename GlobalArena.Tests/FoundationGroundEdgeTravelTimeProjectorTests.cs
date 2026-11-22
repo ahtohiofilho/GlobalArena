@@ -38,7 +38,18 @@ public sealed class FoundationGroundEdgeTravelTimeProjectorTests
                 try { return validator.CheckEdge(location, tile).HasValue; }
                 catch (InvalidOperationException) { return false; }
             });
-        return (demo.Session.Snapshot, worker, adjacent, validator);
+        var seeded = FoundationPhysicalNaturalTransportSeeder.PreviewFineFirst(
+            demo.Session.GeneratedWorld, demo.Incidence, fine,
+            new FoundationNaturalTransportSeedingPolicy(
+                new FoundationNaturalTransportCostBand(1_000UL, 1_000_000UL),
+                new FoundationNaturalTransportCostBand(5_000UL, 500_000UL),
+                new FoundationNaturalTransportCostBand(25_000UL, 100_000UL),
+                10_000UL),
+            new FoundationMonetaryConstructionPolicy(
+                2_000_000UL, 4_000_000UL, 6_000_000UL, 1_000_000UL));
+        var bound = demo.Session.Snapshot.DeployInitialPhysicalTransport(
+            seeded.Transport, demo.Session.GeneratedWorld, demo.Incidence);
+        return (bound, worker, adjacent, validator);
     }
 
     [Fact]
