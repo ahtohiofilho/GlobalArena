@@ -15,10 +15,17 @@ A R169 já introduziu oferta e demanda dos trabalhadores reais por frações de 
   - `Créditos às civilizações + custo físico = receita bruta`.
 - O resultado é determinístico, somente leitura e rejeita política tributária incompleta.
 
-## Gate ainda pendente — autoria e publicação econômica
-**Não há nova liquidação no caixa nesta entrega.** O `FoundationAuthoritativeEconomicSalesSettlementPhase` ainda deriva seus dados do censo instantâneo. Não é seguro publicar a reconciliação temporal sem antes ligar a evidência de frações do journal R167 ao evento SYSTEM do mesmo turno e ao replay independente, validando inclusive infraestrutura investida no mesmo turno.
+## Gate autoritativo restrito (segunda entrega)
+- `FoundationTemporalEconomicJournalGate.CloseAndReplay` recebe a fotografia física inicial e somente eventos de travessia R167 do mesmo turno, com infraestrutura e tesouraria já inicializadas.
+- Todos os eventos físicos são reexecutados e conferidos antes de calcular a demanda R164, o mercado R169 e as contas R170. Um novo evento SYSTEM `FoundationTemporalSalesSettledEvent` carrega os montantes e hashes verificáveis.
+- O registro de ciclo econômico é feito por `WorldState.RecordAuditedEconomicCycle`, sem outro sistema financeiro, e o journal COMPLETO é reexecutado por executor independente para comparar o hash final.
+- O gate proíbe duplicidade de movimentação, turno misturado, replay adulterado e duplicação de fechamento do ciclo. Exige infraestrutura e tesouraria físicas reais.
+- Esse primeiro gate só aceita travessias físicas e o encerramento monetário: não inclui investimentos nem mudanças de ocupação no mesmo turno.
 
-O bloqueio da R167 contra liquidação antiga simultânea à viagem fracionária permanece obrigatório. O recibo de R170 é um candidato auditado, não autorização para creditar dinheiro. A integração ao journal econômico e ao estado de tesouraria será tratada como gate seguinte, com testes de replay e fraude.
+## Gate ainda pendente — ativação automática no host coletivo
+**Há liquidação autoritativa no gate restrito, mas ela ainda NÃO é ativada no host de partida.** O `FoundationAuthoritativeEconomicSalesSettlementPhase` antigo ainda deriva seus dados do censo instantâneo. O novo gate explícito faz isso para jornadas físicas puras. A integração ao host coletivo ainda deve lidar com a ordem completa de eventos de investimento e mudanças de atividade/ocupação, com replay de toda a partida. Até lá, manter o bloqueio de settlement antigo em modo fracionário.
+
+O bloqueio da R167 contra liquidação antiga simultânea à viagem fracionária permanece obrigatório. O adaptador `FoundationTemporalFinancialReconciler` continua candidato read-only. Apenas o gate explícito, com verificação de journal completo de travessias e tesouraria, pode creditar dinheiro. A integração ao journal econômico e ao estado de tesouraria será tratada como gate seguinte, com testes de replay e fraude.
 
 ## Governança
 PR empilhada sobre R169 (#562), Draft, sem merge. Não abrir Godot neste ciclo.
