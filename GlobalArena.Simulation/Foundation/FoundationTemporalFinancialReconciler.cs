@@ -51,7 +51,7 @@ public static class FoundationTemporalFinancialReconciler
         ArgumentNullException.ThrowIfNull(policy);
         var freightWorld = freightSnapshot ?? baseline;
         if (freightWorld.WorldBinding != baseline.WorldBinding ||
-            !ReferenceEquals(freightWorld.Workers, baseline.Workers))
+            freightWorld.Workers.Workers.Count != baseline.Workers.Workers.Count)
             throw new InvalidOperationException(
                 "Transport-stage market cannot replace the temporal worker census.");
         var market = FoundationTemporalNativeMarketInputs.FromTemporal(
