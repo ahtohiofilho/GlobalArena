@@ -125,16 +125,39 @@ public static class FoundationTemporalEconomicJournalGate
         var journal = new SimulationEventLog(events.Select((ev, index) =>
             new SimulationEventLogEntry(checked((ulong)index + 1UL), ev,
                 wasEligible: true, wasExecuted: true)).ToArray());
-        var independent = new SimulationEventLogReplayer(
-            new ReplayExecutor(beginning, movement, movementPolicy,
-                incidence, economicPolicy, signedFine)).Replay(
-            new SimulationReplayInput(beginning, journal, context));
+        var independent = ReplayJournal(beginning, journal, movement,
+            movementPolicy, incidence, economicPolicy, context, signedFine);
         var hash = Hasher.Compute(actual);
         if (hash != Hasher.Compute(independent) ||
             hash != Hasher.Compute(expected))
             throw new InvalidOperationException(
                 "Temporal monetary close failed independent canonical journal replay.");
         return new Receipt(settlement, journal, actual, hash, true);
+    }
+
+    /// <summary>
+    /// Externally auditable, independent replay boundary. A log without an
+    /// executed SYSTEM sale, or with a duplicate sale, is never accepted.
+    /// </summary>
+    public static WorldState ReplayJournal(
+        WorldState beginning, SimulationEventLog journal,
+        PhysicalTacticalWorkerMoveEventExecutor movement,
+        FoundationGroundEdgeTravelTimePolicy movementPolicy,
+        PhysicalTacticalIncidenceMap incidence,
+        FoundationAuthoritativeEconomicSettlementPolicy economicPolicy,
+        SimulationContext context,
+        FoundationFineFirstPhysicalGeography? signedFine = null)
+    {
+        ArgumentNullException.ThrowIfNull(beginning);
+        ArgumentNullException.ThrowIfNull(journal);
+        var executor = new ReplayExecutor(beginning, movement, movementPolicy,
+            incidence, economicPolicy, signedFine);
+        var state = new SimulationEventLogReplayer(executor).Replay(
+            new SimulationReplayInput(beginning, journal, context));
+        if (!executor.IsClosed)
+            throw new InvalidOperationException(
+                "The physical journal did not contain a completed temporal economic sale.");
+        return state;
     }
 
     private static (
@@ -233,6 +256,7 @@ public static class FoundationTemporalEconomicJournalGate
         private bool _closed;
 
         public IReadOnlyList<FoundationEdgeTravelTurnEvent> VerifiedPhysicalEvents => _events;
+        public bool IsClosed => _closed;
 
         public ReplayExecutor(
             WorldState beginning, PhysicalTacticalWorkerMoveEventExecutor movement,
