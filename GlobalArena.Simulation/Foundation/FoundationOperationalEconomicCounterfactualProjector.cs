@@ -17,7 +17,14 @@ public sealed record FoundationOperationalEconomicScenarioReading(
     BigInteger PhysicalFreightScaled,
     BigInteger ExternalTollsScaled,
     BigInteger RevenueTaxScaled,
-    BigInteger NetSellerReceiptsScaled);
+    BigInteger NetSellerReceiptsScaled)
+{
+    /// <summary>
+    /// Real traded crossings that intersect a WORKED physical crossing,
+    /// independent of whether the experimental discount changed routing.
+    /// </summary>
+    public int UsedOperationalCrossings { get; init; }
+}
 
 /// <summary>
 /// Three-way comparison keeps the opportunity cost of labor separate from the
@@ -205,13 +212,20 @@ public static class FoundationOperationalEconomicCounterfactualProjector
                 .EvaluateCandidate(workforce, incidence,
                     marketPolicy.Demand, marketPolicy.Cargo, plan,
                     marketPolicy.TaxRates);
+            var operatedEdges = service.Edges
+                .Where(item => item.ServiceMicro > 0UL)
+                .Select(item => item.Edge).ToHashSet();
             return new FoundationOperationalEconomicScenarioReading(
                 audit.TotalAllocatedGoodsMicro, audit.DeliveryCount,
                 audit.Freight.UsedEdges.Count,
                 audit.Freight.TotalEdgeTraversalCargoMicro,
                 accounts.GrossSalesScaled, accounts.PhysicalFreightScaled,
                 accounts.ExternalTollsScaled, accounts.RevenueTaxScaled,
-                accounts.NetSellerReceiptsScaled);
+                accounts.NetSellerReceiptsScaled)
+            {
+                UsedOperationalCrossings = audit.Freight.UsedEdges.Count(
+                    item => operatedEdges.Contains(item.Edge))
+            };
         }
 
         var allProducing = Solve(beforeReassignment.Workers, authoritativeRoads);
