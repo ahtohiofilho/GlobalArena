@@ -83,7 +83,8 @@ public static class FoundationPersistedEdgeTravelTransitions
         var nextWorkers = result.Arrived
             ? ReplaceWorker(world, worker,
                 worker.WithTacticalLocationAndActivity(
-                    pending.Destination, worker.CellId,
+                    pending.Destination,
+                    movement.PresentationRegion(pending.Destination, worker.CellId),
                     result.TimeSlices.LastOrDefault()?.DemandActivity
                         == PhysicalWorkerActivity.Producing
                         ? PhysicalWorkerActivity.Producing
@@ -137,7 +138,13 @@ public static class FoundationPersistedEdgeTravelTransitions
         FoundationEdgeTravelTransitionReceipt actual,
         FoundationEdgeTravelTransitionReceipt expected)
     {
-        if (actual.After != expected.After ||
+        if ((actual.TurnResult is null) != (expected.TurnResult is null) ||
+            (actual.TurnResult is not null && expected.TurnResult is not null &&
+             (actual.TurnResult.Arrived != expected.TurnResult.Arrived ||
+              actual.TurnResult.PhysicalTileAfterTurn != expected.TurnResult.PhysicalTileAfterTurn ||
+              actual.TurnResult.ContinuingTravel != expected.TurnResult.ContinuingTravel)) ||
+            actual.Before != expected.Before ||
+            actual.After != expected.After ||
             actual.Revision != expected.Revision ||
             actual.Started != expected.Started ||
             actual.Worker != expected.Worker ||
