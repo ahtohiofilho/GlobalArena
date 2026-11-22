@@ -7,7 +7,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
-$branch = 'feature/ga-next-r149-multi-edge-capital-plan-20261121'
+$branch = 'feature/ga-next-r149-operational-command-desk-20261121'
 $projectRelative = 'tools/GlobalArena.Godot'
 function Assert-LastCommand([string]$Description) {
     if ($LASTEXITCODE -ne 0) { throw "$Description failed (exit $LASTEXITCODE)." }
