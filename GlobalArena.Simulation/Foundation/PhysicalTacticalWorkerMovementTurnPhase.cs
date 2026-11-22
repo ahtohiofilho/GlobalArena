@@ -196,6 +196,9 @@ public sealed class PhysicalTacticalWorkerMoveEventExecutor : ISimulationEventEx
             throw new InvalidOperationException("Forged tactical traversed edge.");
         var worker = state.Workers.Workers.SingleOrDefault(w => w.Id == ev.WorkerId)
             ?? throw new InvalidOperationException("Unknown fine worker identity.");
+        if (state.EdgeTravels.Pending.Any(p => p.Worker == ev.WorkerId))
+            throw new InvalidOperationException(
+                "A pending physical edge journey cannot be bypassed by immediate movement.");
         if (worker.Owner != ev.Issuer || worker.TacticalTileId != ev.Source)
             throw new InvalidOperationException(
                 "Stale or foreign tactical worker origin.");
