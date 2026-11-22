@@ -89,6 +89,35 @@ public static class FoundationPhysicalPresenceDemographicProjector
 {
     public const uint WholeTurnMicro = 1_000_000U;
 
+    /// <summary>
+    /// Crossing an edge may consume the first 40% of a turn. The remainder
+    /// is usable productive effort at the destination on that SAME turn.
+    /// Each slice's demand is located where the time is attributed.
+    /// </summary>
+    public static IReadOnlyList<FoundationWorkerTemporalNodeSlice>
+        ArrivalWithinTurn(PhysicalWorkerId worker,
+            PhysicalTacticalTileId departure, PhysicalTacticalTileId arrival,
+            uint remainingTravelMicro)
+    {
+        if (!worker.IsValid || !departure.IsValid || !arrival.IsValid ||
+            departure == arrival ||
+            departure.FineGoldbergParameters != arrival.FineGoldbergParameters ||
+            remainingTravelMicro == 0U ||
+            remainingTravelMicro > WholeTurnMicro)
+            throw new ArgumentException("Arrival requires a real adjacent-edge time fragment and compatible distinct physical nodes.");
+        var segments = new List<FoundationWorkerTemporalNodeSlice>
+        {
+            new(worker, departure, remainingTravelMicro, 0U,
+                PhysicalWorkerActivity.Traveling)
+        };
+        uint usable = WholeTurnMicro - remainingTravelMicro;
+        if (usable > 0U)
+            segments.Add(new FoundationWorkerTemporalNodeSlice(
+                worker, arrival, usable, usable,
+                PhysicalWorkerActivity.Producing));
+        return Array.AsReadOnly(segments.ToArray());
+    }
+
     public static FoundationPhysicalTemporalPresenceReport Project(
         WorldState baseline,
         IReadOnlyList<FoundationWorkerTemporalNodeSlice> slices,
@@ -110,6 +139,8 @@ public static class FoundationPhysicalPresenceDemographicProjector
         if (workers.Count == 0 || fines is null)
             throw new ArgumentException("No physical workforce available.");
 
+        if (slices.Any(s => s is null))
+            throw new ArgumentException("Worker-time evidence may not contain null segments.", nameof(slices));
         var ordered = slices.OrderBy(s => s.Worker.Value)
             .ThenBy(s => s.Node.FineStrategicCellId.Value)
             .ThenBy(s => (uint)s.DemandActivity)
@@ -120,8 +151,9 @@ public static class FoundationPhysicalPresenceDemographicProjector
         var grouped = new Dictionary<
             (CivilizationId Owner, PhysicalTacticalTileId Node),
             (ulong Presence, ulong Effort)>();
-        var demands = new Dictionary<
-            (CivilizationId Owner, PhysicalTacticalTileId Node, CommodityId Item), ulong>();
+        var demandNumerators = new Dictionary<
+            (PhysicalWorkerId Worker, CivilizationId Owner,
+             PhysicalTacticalTileId Node, CommodityId Item), UInt128>();
 
         // A canonical digest makes two different time histories with the same
         // worker positions distinguishable in a deterministic lottery.
@@ -173,21 +205,15 @@ public static class FoundationPhysicalPresenceDemographicProjector
             };
             foreach (var item in demandPolicy.Commodities)
             {
-                // Produce the demand in numerator-space first; round only
-                // after accumulating all slices of the SAME person and market
-                // below. This preserves time proportions as far as physically
-                // representable micro-units permit.
-                var quantity = (UInt128)person.DemandMultiplierMicro *
+                // Keep the full integer numerator across segments from
+                // the same worker in one market, rounding only ONCE per
+                // worker/node/commodity. No fractional fictitious buyer.
+                UInt128 quantity = (UInt128)person.DemandMultiplierMicro *
                     demandPolicy.IntensityMicroPerWorker(profile, item) *
                     slice.PresenceMicro;
-                var demandKey = (person.Owner, slice.Node, item);
-                // Demand denominator = 1e12 (worker multiplier x time).
-                // Each slice carries its exact fixed-point demand; the
-                // unavoidable remainder is accounted deterministically.
-                ulong micro = checked((ulong)(quantity /
-                    ((UInt128)WholeTurnMicro * WholeTurnMicro)));
-                demands[demandKey] = checked(
-                    demands.GetValueOrDefault(demandKey) + micro);
+                var demandKey = (slice.Worker, person.Owner, slice.Node, item);
+                demandNumerators[demandKey] = checked(
+                    demandNumerators.GetValueOrDefault(demandKey) + quantity);
             }
             evidence.Append(slice.Worker.Value).Append(':')
                 .Append(slice.Node.FineStrategicCellId.Value).Append(':')
@@ -207,11 +233,20 @@ public static class FoundationPhysicalPresenceDemographicProjector
             .Select(x => new FoundationPhysicalPresenceBucket(
                 x.Key.Owner, x.Key.Node, x.Value.Presence, x.Value.Effort))
             .ToArray();
-        var demandRows = demands.OrderBy(x => x.Key.Owner.Value)
+        var demandRows = demandNumerators
+            .Select(x => new
+            {
+                x.Key.Owner, x.Key.Node, x.Key.Item,
+                Micro = checked((ulong)(x.Value /
+                    ((UInt128)WholeTurnMicro * WholeTurnMicro)))
+            })
+            .GroupBy(x => (x.Owner, x.Node, x.Item))
+            .OrderBy(x => x.Key.Owner.Value)
             .ThenBy(x => x.Key.Node.FineStrategicCellId.Value)
             .ThenBy(x => x.Key.Item.Value)
-            .Select(x => new FoundationPhysicalPresenceDemand(
-                x.Key.Owner, x.Key.Node, x.Key.Item, x.Value))
+            .Select(g => new FoundationPhysicalPresenceDemand(
+                g.Key.Owner, g.Key.Node, g.Key.Item,
+                g.Aggregate(0UL, (sum, x) => checked(sum + x.Micro))))
             .ToArray();
         string baselineHash = new CanonicalWorldStateHasher().Compute(baseline)
             .ToString() ?? throw new InvalidOperationException("Missing world hash.");
