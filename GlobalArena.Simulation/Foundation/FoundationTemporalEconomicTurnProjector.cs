@@ -67,6 +67,15 @@ public static class FoundationTemporalEconomicTurnProjector
 
         var beginning = start.Workers.Workers.ToDictionary(w => w.Id);
         var ending = end.Workers.Workers.ToDictionary(w => w.Id);
+        if (beginning.Any(entry =>
+                !ending.TryGetValue(entry.Key, out var after) ||
+                entry.Value.Owner != after.Owner ||
+                entry.Value.Occupation != after.Occupation ||
+                entry.Value.Commodity != after.Commodity ||
+                entry.Value.OutputMicroPerTurn != after.OutputMicroPerTurn ||
+                entry.Value.DemandMultiplierMicro != after.DemandMultiplierMicro))
+            throw new InvalidOperationException(
+                "Temporal input does not yet support changes to occupation or worker economics during this turn.");
         if (!beginning.Keys.ToHashSet().SetEquals(ending.Keys))
             throw new InvalidOperationException(
                 "Movement cannot create or remove an economic worker.");
