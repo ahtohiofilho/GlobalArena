@@ -94,6 +94,46 @@ public sealed class FoundationDemographicGrowthPlannerTests
     }
 
     [Fact]
+    public void TwoCitiesCanBelongToOneCivilizationWithoutReservedCivilizationBirths()
+    {
+        var (original, _, survivors) = Preview(3);
+        var migrant = original.Workers.Workers.First(w =>
+            w.Owner == survivors[0] &&
+            w.Activity == PhysicalWorkerActivity.Producing);
+        var newTile = new PhysicalTacticalTileId(
+            migrant.TacticalTileId!.Value.FineGoldbergParameters,
+            new StrategicCellId(checked(
+                migrant.TacticalTileId.Value.FineStrategicCellId.Value + 1UL)));
+        var relocated = original.Workers.Workers.Select(w =>
+            w.Id == migrant.Id
+                ? w.WithTacticalLocationAndActivity(
+                    newTile, w.CellId, w.Activity)
+                : w).ToArray();
+        var world = original.WithWorkers(new PhysicalWorkerRuntimeState(
+            relocated, tacticalLocationsAuthoritative: true,
+            occupationsAuthoritative: true));
+        var cities = world.Workers.Workers
+            .GroupBy(w => (w.Owner, Tile: w.TacticalTileId!.Value))
+            .OrderBy(g => g.Key.Owner.Value)
+            .ThenBy(g => g.Key.Tile.FineStrategicCellId.Value)
+            .Select((group, index) => new FoundationDemographicCityPopulation(
+                checked((ulong)index + 1UL), group.Key.Owner,
+                group.Key.Tile, checked((ulong)group.Count())))
+            .ToArray();
+        Assert.Equal(3, cities.Length);
+        Assert.Equal(2, cities.Count(c => c.Owner == survivors[0]));
+        var plan = FoundationDemographicGrowthPlanner.Plan(
+            world, cities, survivors, turn: 47);
+        Assert.Equal(2, plan.Births.Count);
+        Assert.Equal(3, plan.Cities.Count);
+        Assert.Equal(2UL, plan.Cities.Aggregate(0UL,
+            (sum, c) => checked(sum + c.Added)));
+        Assert.All(plan.Births, birth =>
+            Assert.Contains(cities, c => c.CityId == birth.CityId &&
+                c.Owner == birth.Owner));
+    }
+
+    [Fact]
     public void RejectsTamperedCityPopulationAndDuplicatePhysicalCityIdentities()
     {
         var (world, cities, survivors) = Preview(1);
