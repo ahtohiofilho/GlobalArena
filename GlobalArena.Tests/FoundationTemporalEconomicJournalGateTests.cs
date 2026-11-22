@@ -224,4 +224,68 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             roster.Select(c => new FoundationPhysicalEconomicTaxRate(c, 0U)),
             maxProducerPasses: 64);
     }
+
+    [Fact]
+    public void PreFundedCapitalInvestmentPrecedesTemporalSalesAndReplaysAsOneJournal()
+    {
+        var (world, worker, destination, movement, incidence, fine) = Fixture();
+        var funding = CivilizationTreasuryRuntimeState.CreateOpening(
+            world.Civilizations.Civilizations.Select(c =>
+                (c, c == worker.Owner ? 5_000_000UL : 0UL)));
+        var beginning = FoundationPersistedEdgeTravelTransitions.DeployEmpty(
+            world.DeployInitialTreasury(funding));
+        var turn = new TurnNumber(1UL);
+        var context = new SimulationContext(turn, new SimulationSeed(712UL));
+        var travel = new FoundationEdgeTravelTurnPhase(movement,
+            new FoundationGroundEdgeTravelTimePolicy(1_400_000UL)).Resolve(
+            new TurnResolutionInput(beginning, new ISimulationCommand[]
+            {
+                new FoundationEdgeTravelTurnCommand(
+                    new CommandId(turn, 1UL), worker.Owner, worker.Id,
+                    destination, isStart: true)
+            }, context), beginning);
+        var movementEvent = Assert.IsType<FoundationEdgeTravelTurnEvent>(
+            Assert.Single(travel.Events));
+        var edge = movement.CheckEdge(worker.TacticalTileId!.Value, destination)!.Value;
+        var capital = new FoundationMonetaryInfrastructureInvestedEvent(
+            new EventId(new CommandId(turn, 2UL), 1UL),
+            worker.Owner, edge, 100_000UL,
+            travel.ResultingWorldState.Revision);
+
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL),
+                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)),
+            workersPerCivilization: 3);
+        var signed = FoundationFineFirstPhysicalGeography.Generate(
+            demo.Session.GeneratedWorld, demo.Incidence);
+        var signature = FoundationFineFirstWorldgenCanonicalSignature.Compute(
+            demo.Session.GeneratedWorld, demo.Incidence, signed);
+        var investmentExecutor = new FoundationMonetaryInfrastructureEventExecutor(
+            demo.Session.GeneratedWorld, incidence, signed, signature);
+        var policy = Policy(beginning.Civilizations.Civilizations);
+        var journal = FoundationTemporalEconomicJournalGate.CloseAndReplayWithInvestments(
+            beginning, new ISimulationEvent[] { movementEvent, capital },
+            movement, new FoundationGroundEdgeTravelTimePolicy(1_400_000UL),
+            incidence, policy, context, investmentExecutor, fine);
+        Assert.True(journal.ReplayMatched);
+        Assert.Equal(3, journal.Journal.Entries.Count);
+        Assert.Equal(1UL, journal.Next.Treasury.LastSettledEconomicCycleOrdinal);
+        Assert.Equal(journal.Hash, new CanonicalWorldStateHasher().Compute(
+            FoundationTemporalEconomicJournalGate.ReplayJournal(
+                beginning, journal.Journal, movement,
+                new FoundationGroundEdgeTravelTimePolicy(1_400_000UL),
+                incidence, policy, context, fine, investmentExecutor)));
+        Assert.Equal(100_000UL,
+            journal.Next.Transport.Edges.Single(e => e.Edge == edge)
+                .CommittedInvestmentMoneyMicro);
+        Assert.Equal(journal.EconomicEvent.GrossSalesScaled,
+            journal.EconomicEvent.TotalCivilizationCreditsScaled +
+            journal.EconomicEvent.PhysicalFreightScaled);
+        Assert.Throws<InvalidOperationException>(() =>
+            FoundationTemporalEconomicJournalGate.CloseAndReplayWithInvestments(
+                beginning, new ISimulationEvent[] { capital, movementEvent },
+                movement, new FoundationGroundEdgeTravelTimePolicy(1_400_000UL),
+                incidence, policy, context, investmentExecutor, fine));
+        Assert.Equal(0UL, beginning.Treasury.LastSettledEconomicCycleOrdinal);
+    }
 }
