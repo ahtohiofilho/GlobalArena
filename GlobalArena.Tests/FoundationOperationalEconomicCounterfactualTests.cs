@@ -369,6 +369,7 @@ public sealed class FoundationOperationalEconomicCounterfactualTests
                 goodsMicro = item.ProducedAndSoldGoodsMicro,
                 deliveries = item.DeliveryCount,
                 tradeCrossings = item.UsedPhysicalCrossings,
+                tradedAndOperatedCrossings = item.UsedOperationalCrossings,
                 traversalCargoMicro = item.TotalEdgeTraversalCargoMicro,
                 grossScaled = item.GrossSalesScaled.ToString(),
                 freightScaled = item.PhysicalFreightScaled.ToString(),
