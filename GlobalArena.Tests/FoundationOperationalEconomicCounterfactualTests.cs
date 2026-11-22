@@ -637,6 +637,7 @@ public sealed class FoundationOperationalEconomicCounterfactualTests
         {
             Assert.Equal(Human, x.Owner);
             Assert.Equal(1_000_000UL, x.AddedProductionMicro);
+            Assert.Equal(2_000_000UL, x.AddedDemandMicro);
             Assert.Equal(originWorkers[0].TacticalTileId, x.Tile);
         });
         Assert.Equal(result.Evaluated
@@ -654,18 +655,24 @@ public sealed class FoundationOperationalEconomicCounterfactualTests
             first.Owner, first.CellId, first.Commodity,
             first.OutputMicroPerTurn, PhysicalWorkerActivity.Producing,
             first.DemandMultiplierMicro, first.TacticalTileId, first.Occupation);
-        var originalQuotes = FoundationPhysicalUniversalMarketPricing
-            .QuotesFromRealWorkers(fixture.Before.Workers, MarketPolicy().Demand);
+        var originalDemand = FoundationPhysicalCommodityDemandProjector
+            .Project(fixture.Before.Workers, MarketPolicy().Demand);
         var expanded = new PhysicalWorkerRuntimeState(
             fixture.Before.Workers.Workers.Append(newWorker),
             tacticalLocationsAuthoritative: true,
             occupationsAuthoritative: true);
-        var expandedQuotes = FoundationPhysicalUniversalMarketPricing
-            .QuotesFromRealWorkers(expanded, MarketPolicy().Demand);
+        var expandedDemand = FoundationPhysicalCommodityDemandProjector
+            .Project(expanded, MarketPolicy().Demand);
         Assert.Equal(fixture.Before.Workers.Workers.Count + 1,
             expanded.Workers.Count);
-        Assert.NotEqual(originalQuotes.Count, 0);
-        Assert.NotEqual(expandedQuotes.Count, 0);
+        Assert.Equal(originalDemand.DistinctWorkers + 1,
+            expandedDemand.DistinctWorkers);
+        Assert.Equal(2_000_000UL,
+            expandedDemand.TotalCommodityDemandMicro -
+            originalDemand.TotalCommodityDemandMicro);
+        Assert.Equal(1_000_000UL,
+            expandedDemand.TotalActiveCapacityMicroPerTurn -
+            originalDemand.TotalActiveCapacityMicroPerTurn);
         Assert.Equal(baselineHash, new CanonicalWorldStateHasher()
             .Compute(fixture.Before));
         Assert.Throws<ArgumentException>(() =>
@@ -706,6 +713,7 @@ public sealed class FoundationOperationalEconomicCounterfactualTests
                     occupation = x.Occupation.ToString(),
                     commodity = x.Commodity.Value,
                     addedProductionMicro = x.AddedProductionMicro,
+                    addedConsumptionDemandMicro = x.AddedDemandMicro,
                     collectiveCashGainScaled = x.CollectiveCashGainScaled.ToString()
                 })
             };
