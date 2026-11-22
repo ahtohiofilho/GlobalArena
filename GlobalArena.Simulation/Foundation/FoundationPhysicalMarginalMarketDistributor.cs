@@ -333,6 +333,20 @@ public static class FoundationPhysicalMarginalMarketDistributor
         ArgumentNullException.ThrowIfNull(quotes);
         var market = FoundationPhysicalCommodityDemandProjector.Project(
             census, demandPolicy);
+        return ValidateMarketAndQuotes(market, conversionPolicy, quotes);
+    }
+
+    internal static (FoundationPhysicalCommodityMarketInputs Market,
+        Dictionary<(PhysicalTacticalTileId Tile, CivilizationId Owner,
+            CommodityId Commodity), FoundationCommodityMarketPlanningQuote> Quotes)
+        ValidateMarketAndQuotes(
+            FoundationPhysicalCommodityMarketInputs market,
+            FoundationCommodityCargoConversionPolicy conversionPolicy,
+            IEnumerable<FoundationCommodityMarketPlanningQuote> quotes)
+    {
+        ArgumentNullException.ThrowIfNull(market);
+        ArgumentNullException.ThrowIfNull(conversionPolicy);
+        ArgumentNullException.ThrowIfNull(quotes);
         if (!market.Commodities.SequenceEqual(conversionPolicy.Commodities))
             throw new ArgumentException(
                 "Marginal distribution requires identical demand/cargo catalogs.",
@@ -392,8 +406,29 @@ public static class FoundationPhysicalMarginalMarketDistributor
         ArgumentNullException.ThrowIfNull(quotes);
         ArgumentNullException.ThrowIfNull(edgeCosts);
 
-        var (market, quoteMap) = ValidateMarketAndQuotes(
-            census, demandPolicy, conversionPolicy, quotes);
+        var market = FoundationPhysicalCommodityDemandProjector.Project(
+            census, demandPolicy);
+        return Distribute(market, incidence, conversionPolicy, quotes, edgeCosts);
+    }
+
+    /// <summary>
+    /// Native temporal input entry to the SAME progressive water-filling and
+    /// canonical freight audit. No worker records are fabricated.
+    /// </summary>
+    public static FoundationPhysicalMarginalMarketDistributionPlan Distribute(
+        FoundationPhysicalCommodityMarketInputs market,
+        PhysicalTacticalIncidenceMap incidence,
+        FoundationCommodityCargoConversionPolicy conversionPolicy,
+        IEnumerable<FoundationCommodityMarketPlanningQuote> quotes,
+        IEnumerable<FoundationPhysicalRoutingEdgeCost> edgeCosts)
+    {
+        ArgumentNullException.ThrowIfNull(market);
+        ArgumentNullException.ThrowIfNull(incidence);
+        ArgumentNullException.ThrowIfNull(conversionPolicy);
+        ArgumentNullException.ThrowIfNull(quotes);
+        ArgumentNullException.ThrowIfNull(edgeCosts);
+        var (_, quoteMap) = ValidateMarketAndQuotes(
+            market, conversionPolicy, quotes);
         var ownersByMarket = IndexRealBuyers(market);
 
         var (graph, ownership) =
@@ -488,7 +523,7 @@ public static class FoundationPhysicalMarginalMarketDistributor
         // The hard conservation, exact cargo conversion, physical adjacency
         // and ownership gates of PR #388 are mandatory, not best-effort.
         var audit = FoundationPhysicalDeliveryAllocationAuditor.Audit(
-            census, incidence, demandPolicy, conversionPolicy,
+            market, incidence, conversionPolicy,
             candidates, ownership);
         var totals = market.DemandByCivilization.Select(line =>
             new FoundationPhysicalMarketAllocationTotal(
