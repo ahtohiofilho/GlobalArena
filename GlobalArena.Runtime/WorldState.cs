@@ -26,6 +26,12 @@ public sealed class WorldState
     public PhysicalWorkerRuntimeState Workers { get; }
 
     /// <summary>
+    /// Opt-in canonical city identities and workers' HOME cities (v16).
+    /// Physical worker positions remain separate from residence.
+    /// </summary>
+    public FoundationCityResidenceRuntimeState CityResidences { get; }
+
+    /// <summary>
     /// The complete hashed fine transport inventory, distinct from economic
     /// previews or caller-supplied routing inputs. Legacy worlds remain
     /// explicitly uninitialized until an opt-in topology-checked deployment.
@@ -95,7 +101,7 @@ public sealed class WorldState
             Economy,
             Population,
             Warfare,
-            Workers, Transport, Treasury);
+            Workers, Transport, Treasury, CityResidences);
     }
 
     /// <summary>
@@ -123,7 +129,7 @@ public sealed class WorldState
             strategicWorld, incidence, fine, evidence.FineIdentity);
         return new WorldState(
             Revision, binding, Civilizations, Territory, Diplomacy, Economy,
-            Population, Warfare, Workers, Transport, Treasury);
+            Population, Warfare, Workers, Transport, Treasury, CityResidences);
     }
 
     /// <summary>
@@ -171,7 +177,7 @@ public sealed class WorldState
                 "duplicated tactical crossings or owners.");
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
-            Economy, Population, Warfare, Workers, transport, Treasury);
+            Economy, Population, Warfare, Workers, transport, Treasury, CityResidences);
     }
 
     public WorldState WithCivilizations(
@@ -189,7 +195,7 @@ public sealed class WorldState
             Economy,
             Population,
             Warfare,
-            Workers, Transport, Treasury);
+            Workers, Transport, Treasury, CityResidences);
     }
 
     public WorldState WithTerritory(
@@ -207,7 +213,7 @@ public sealed class WorldState
             Economy,
             Population,
             Warfare,
-            Workers, Transport, Treasury);
+            Workers, Transport, Treasury, CityResidences);
     }
 
     public WorldState WithDiplomacy(
@@ -225,7 +231,7 @@ public sealed class WorldState
             Economy,
             Population,
             Warfare,
-            Workers, Transport, Treasury);
+            Workers, Transport, Treasury, CityResidences);
     }
 
     public WorldState WithEconomy(
@@ -243,7 +249,7 @@ public sealed class WorldState
             economy,
             Population,
             Warfare,
-            Workers, Transport, Treasury);
+            Workers, Transport, Treasury, CityResidences);
     }
 
     /// <summary>
@@ -264,7 +270,7 @@ public sealed class WorldState
             Economy,
             population,
             Warfare,
-            Workers, Transport, Treasury);
+            Workers, Transport, Treasury, CityResidences);
     }
 
     /// <summary>
@@ -288,7 +294,7 @@ public sealed class WorldState
             economy,
             population,
             Warfare,
-            Workers, Transport, Treasury);
+            Workers, Transport, Treasury, CityResidences);
     }
 
     private void RejectPopulationDowngrade(PopulationRuntimeState next)
@@ -313,7 +319,7 @@ public sealed class WorldState
             Economy,
             Population,
             warfare,
-            Workers, Transport, Treasury);
+            Workers, Transport, Treasury, CityResidences);
     }
 
     /// <summary>
@@ -322,6 +328,26 @@ public sealed class WorldState
     /// Initialization is a world-materialization operation; movement after
     /// setup must use the journaled authoritative movement turn phase.
     /// </summary>
+    /// <summary>
+    /// One-time explicit promotion to canonical cities and a complete HOME
+    /// assignment for all physical workers. This is an immutable state
+    /// transition; journal authorization will be added separately.
+    /// </summary>
+    public WorldState DeployInitialCityResidences(
+        FoundationCityResidenceRuntimeState residenceLedger)
+    {
+        ArgumentNullException.ThrowIfNull(residenceLedger);
+        if (CityResidences.IsInitialized || !residenceLedger.IsInitialized ||
+            !Workers.HasAuthoritativeOccupations ||
+            !Workers.HasAuthoritativeTacticalLocations)
+            throw new InvalidOperationException(
+                "City/residence promotion requires an existing authoritative physical workforce.");
+        return new WorldState(
+            Revision, WorldBinding, Civilizations, Territory, Diplomacy,
+            Economy, Population, Warfare, Workers, Transport, Treasury,
+            residenceLedger);
+    }
+
     public WorldState WithWorkers(PhysicalWorkerRuntimeState workers)
     {
         ArgumentNullException.ThrowIfNull(workers);
@@ -341,7 +367,7 @@ public sealed class WorldState
                 "Changing worker occupation schema requires explicit full-census classification.");
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
-            Economy, Population, Warfare, workers, Transport, Treasury);
+            Economy, Population, Warfare, workers, Transport, Treasury, CityResidences);
     }
 
     /// <summary>
@@ -398,7 +424,7 @@ public sealed class WorldState
         }
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
-            Economy, Population, Warfare, tacticalWorkers, Transport, Treasury);
+            Economy, Population, Warfare, tacticalWorkers, Transport, Treasury, CityResidences);
     }
 
     /// <summary>
@@ -440,7 +466,7 @@ public sealed class WorldState
             occupationsAuthoritative: true);
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
-            Economy, Population, Warfare, recategorized, Transport, Treasury);
+            Economy, Population, Warfare, recategorized, Transport, Treasury, CityResidences);
     }
 
     /// <summary>
@@ -486,7 +512,7 @@ public sealed class WorldState
                 "outside the authoritative civilization roster.");
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
-            Economy, Population, Warfare, Workers, transport, Treasury);
+            Economy, Population, Warfare, Workers, transport, Treasury, CityResidences);
     }
 
     /// <summary>
@@ -509,7 +535,7 @@ public sealed class WorldState
                 "civilization in an authoritative monetary world.");
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
-            Economy, Population, Warfare, Workers, Transport, opening);
+            Economy, Population, Warfare, Workers, Transport, opening, CityResidences);
     }
 
     /// <summary>
@@ -528,7 +554,7 @@ public sealed class WorldState
         var newTreasury = Treasury.DebitConstruction(investor, moneyMicro);
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
-            Economy, Population, Warfare, Workers, newTransport, newTreasury);
+            Economy, Population, Warfare, Workers, newTransport, newTreasury, CityResidences);
     }
 
     /// <summary>
@@ -553,7 +579,7 @@ public sealed class WorldState
             nextFreightQuotes);
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
-            Economy, Population, Warfare, Workers, Transport, settled);
+            Economy, Population, Warfare, Workers, Transport, settled, CityResidences);
     }
 
     public WorldState AdvanceRevision()
@@ -567,7 +593,7 @@ public sealed class WorldState
             Economy,
             Population,
             Warfare,
-            Workers, Transport, Treasury);
+            Workers, Transport, Treasury, CityResidences);
     }
 
     private WorldState(
@@ -581,7 +607,8 @@ public sealed class WorldState
         WarfareRuntimeState warfare,
         PhysicalWorkerRuntimeState? workers = null,
         PhysicalTransportInfrastructureRuntimeState? transport = null,
-        CivilizationTreasuryRuntimeState? treasury = null)
+        CivilizationTreasuryRuntimeState? treasury = null,
+        FoundationCityResidenceRuntimeState? cityResidences = null)
     {
         ArgumentNullException.ThrowIfNull(
             civilizations);
@@ -606,6 +633,8 @@ public sealed class WorldState
             PhysicalTransportInfrastructureRuntimeState.Uninitialized;
         var treasuryState = treasury ??
             CivilizationTreasuryRuntimeState.Uninitialized;
+        var cityState = cityResidences ??
+            FoundationCityResidenceRuntimeState.Uninitialized;
 
         ValidateCrossDomainInvariants(
             worldBinding,
@@ -617,7 +646,8 @@ public sealed class WorldState
             warfare,
             workerState,
             transportState,
-            treasuryState);
+            treasuryState,
+            cityState);
 
         Revision = revision;
         WorldBinding = worldBinding;
@@ -630,6 +660,7 @@ public sealed class WorldState
         Workers = workerState;
         Transport = transportState;
         Treasury = treasuryState;
+        CityResidences = cityState;
     }
 
     private static void ValidateCrossDomainInvariants(
@@ -642,12 +673,39 @@ public sealed class WorldState
         WarfareRuntimeState warfare,
         PhysicalWorkerRuntimeState workers,
         PhysicalTransportInfrastructureRuntimeState transport,
-        CivilizationTreasuryRuntimeState treasury)
+        CivilizationTreasuryRuntimeState treasury,
+        FoundationCityResidenceRuntimeState cityResidences)
     {
         var civilizationIds =
             civilizations
                 .Civilizations
                 .ToHashSet();
+        if (cityResidences.IsInitialized)
+        {
+            if (worldBinding is null ||
+                !workers.HasAuthoritativeTacticalLocations ||
+                !workers.HasAuthoritativeOccupations ||
+                cityResidences.Residences.Count != workers.Workers.Count)
+                throw new InvalidOperationException(
+                    "Canonical city residence requires complete v11 workers.");
+            var owners = cityResidences.Cities.ToDictionary(c => c.Id);
+            var actual = workers.Workers.ToDictionary(w => w.Id);
+            var fine = workers.Workers.FirstOrDefault()?.TacticalTileId
+                ?.FineGoldbergParameters;
+            if (fine is null || cityResidences.Cities.Any(c =>
+                    !civilizationIds.Contains(c.Owner) ||
+                    c.Tile.FineGoldbergParameters != fine.Value ||
+                    c.Tile.FineStrategicCellId.Value >
+                        fine.Value.StrategicCellCount) ||
+                cityResidences.Residences.Any(r =>
+                    !actual.TryGetValue(r.Worker, out var person) ||
+                    !owners.TryGetValue(r.HomeCity, out var home) ||
+                    person.Owner != home.Owner))
+                throw new InvalidOperationException(
+                    "Each real worker must have exactly one valid owned city of residence.");
+        }
+
+
 
         if (treasury.IsInitialized)
         {
