@@ -27,7 +27,7 @@ A R169 já introduziu oferta e demanda dos trabalhadores reais por frações de 
 - O reconciliador econômico usa **a posição e o esforço temporal do início do turno**, mas a infraestrutura já atualizada pelos investimentos na hora de construir os custos físicos. Não recalcula retroativamente a duração de viagens em andamento.
 - Após os investimentos, o saldo de abertura sofre o débito na mesma transição imutável de `WorldState`; o faturamento das vendas entra **depois**, financiando ações do próximo turno, nunca investimentos sem dinheiro anterior.
 - O replay independente rejeita investimentos sem executor autoritativo, eventos de viagem posteriores ao primeiro investimento, registros duplicados e divergência do hash final.
-- Regressões incluem a viagem de 1,4 turno (100% trânsito no primeiro, chegada 40/60 no segundo) com duas liquidações consecutivas, além de investimento com fundos já existentes no mesmo ciclo.
+- Regressões incluem viagem de 1,4 turno (100% trânsito no primeiro, chegada 40/60 no segundo). O mercado sintético do segundo turno não converge dentro de 64 passagens: o teste exige recusa de liquidação e ausência de novo crédito. A liquidação do primeiro turno é positiva e auditada. Há também teste separado de investimento com caixa anterior ao ciclo e binding canônico.
 - **Ainda não aceita alteração de atividade/ocupação pelo mesmo journal**, que exige um calendário de transições de trabalho. Por isso, sem cutover automático do host.
 
 ## Gate ainda pendente — ativação automática no host coletivo
