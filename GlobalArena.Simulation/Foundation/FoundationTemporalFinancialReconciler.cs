@@ -42,19 +42,25 @@ public static class FoundationTemporalFinancialReconciler
         PhysicalTacticalIncidenceMap incidence,
         FoundationTemporalEconomicTurnInputs temporal,
         FoundationAuthoritativeEconomicSettlementPolicy policy,
-        FoundationFineFirstPhysicalGeography? signedFine = null)
+        FoundationFineFirstPhysicalGeography? signedFine = null,
+        WorldState? freightSnapshot = null)
     {
         ArgumentNullException.ThrowIfNull(baseline);
         ArgumentNullException.ThrowIfNull(incidence);
         ArgumentNullException.ThrowIfNull(temporal);
         ArgumentNullException.ThrowIfNull(policy);
+        var freightWorld = freightSnapshot ?? baseline;
+        if (freightWorld.WorldBinding != baseline.WorldBinding ||
+            !ReferenceEquals(freightWorld.Workers, baseline.Workers))
+            throw new InvalidOperationException(
+                "Transport-stage market cannot replace the temporal worker census.");
         var market = FoundationTemporalNativeMarketInputs.FromTemporal(
             baseline, temporal, policy.Demand);
         var distribution = FoundationTemporalNativeMarginalMarketPlanner.Coordinate(
             baseline, incidence, temporal, policy.Demand, policy.Cargo,
-            policy.MaxProducerPasses, signedFine);
+            policy.MaxProducerPasses, signedFine, freightWorld);
         var roads = FoundationPhysicalAuthoritativeTransportProjector.FromWorld(
-            baseline, incidence).Roads;
+            freightWorld, incidence).Roads;
         // Matching R169's signed topology, only real permitted freight edges
         // are considered in the financial cost calculation.
         if (signedFine is not null)
