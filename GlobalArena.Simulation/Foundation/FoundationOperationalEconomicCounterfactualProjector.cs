@@ -17,7 +17,14 @@ public sealed record FoundationOperationalEconomicScenarioReading(
     BigInteger PhysicalFreightScaled,
     BigInteger ExternalTollsScaled,
     BigInteger RevenueTaxScaled,
-    BigInteger NetSellerReceiptsScaled);
+    BigInteger NetSellerReceiptsScaled)
+{
+    /// <summary>
+    /// Real traded crossings that intersect a WORKED physical crossing,
+    /// independent of whether the experimental discount changed routing.
+    /// </summary>
+    public int UsedOperationalCrossings { get; init; }
+}
 
 /// <summary>
 /// Three-way comparison keeps the opportunity cost of labor separate from the
@@ -185,7 +192,8 @@ public static class FoundationOperationalEconomicCounterfactualProjector
 
         FoundationOperationalEconomicScenarioReading Solve(
             PhysicalWorkerRuntimeState workforce,
-            IReadOnlyList<FoundationPhysicalRoutingEdgeCost> roads)
+            IReadOnlyList<FoundationPhysicalRoutingEdgeCost> roads,
+            bool hasOperationalWorkforce)
         {
             var quotes = FoundationPhysicalUniversalMarketPricing
                 .QuotesFromRealWorkers(workforce, marketPolicy.Demand);
@@ -205,19 +213,30 @@ public static class FoundationOperationalEconomicCounterfactualProjector
                 .EvaluateCandidate(workforce, incidence,
                     marketPolicy.Demand, marketPolicy.Cargo, plan,
                     marketPolicy.TaxRates);
+            var operatedEdges = hasOperationalWorkforce
+                ? service.Edges
+                    .Where(item => item.ServiceMicro > 0UL)
+                    .Select(item => item.Edge).ToHashSet()
+                : new HashSet<PhysicalTacticalEdgeId>();
             return new FoundationOperationalEconomicScenarioReading(
                 audit.TotalAllocatedGoodsMicro, audit.DeliveryCount,
                 audit.Freight.UsedEdges.Count,
                 audit.Freight.TotalEdgeTraversalCargoMicro,
                 accounts.GrossSalesScaled, accounts.PhysicalFreightScaled,
                 accounts.ExternalTollsScaled, accounts.RevenueTaxScaled,
-                accounts.NetSellerReceiptsScaled);
+                accounts.NetSellerReceiptsScaled)
+            {
+                UsedOperationalCrossings = audit.Freight.UsedEdges.Count(
+                    item => operatedEdges.Contains(item.Edge))
+            };
         }
 
-        var allProducing = Solve(beforeReassignment.Workers, authoritativeRoads);
-        var reassignedWithout = Solve(afterReassignment.Workers, authoritativeRoads);
+        var allProducing = Solve(beforeReassignment.Workers,
+            authoritativeRoads, hasOperationalWorkforce: false);
+        var reassignedWithout = Solve(afterReassignment.Workers,
+            authoritativeRoads, hasOperationalWorkforce: true);
         var reassignedWith = Solve(afterReassignment.Workers,
-            shadow.CounterfactualRoads);
+            shadow.CounterfactualRoads, hasOperationalWorkforce: true);
         if (allProducing.ProducedAndSoldGoodsMicro <
                 reassignedWithout.ProducedAndSoldGoodsMicro ||
             reassignedWithout.ProducedAndSoldGoodsMicro !=

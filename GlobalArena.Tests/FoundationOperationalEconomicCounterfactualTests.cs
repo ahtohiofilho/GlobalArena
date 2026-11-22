@@ -42,7 +42,10 @@ public sealed class FoundationOperationalEconomicCounterfactualTests
         WorldState Before, WorldState After,
         PhysicalTacticalIncidenceMap Incidence,
         FoundationFineFirstPhysicalGeography Geography,
-        PhysicalWorkerRuntimeRecord Reassigned) Scenario()
+        PhysicalWorkerRuntimeRecord Reassigned) Scenario(
+        int humanWorkerOrdinal = 0,
+        PhysicalWorkerOccupation destination =
+            PhysicalWorkerOccupation.LandTransport)
     {
         var fixture = FoundationConcentratedWorkforceScenario.CreatePreview(
             new WorldGenerationRequest(new WorldSeed(20261012UL),
@@ -61,15 +64,17 @@ public sealed class FoundationOperationalEconomicCounterfactualTests
                 2_000_000UL, 4_000_000UL, 6_000_000UL, 1_000_000UL));
         var before = fixture.Snapshot.DeployInitialPhysicalTransport(
             seeded.Transport, fixture.Session.GeneratedWorld, fixture.Incidence);
-        var person = before.Workers.Workers.First(worker =>
+        var person = before.Workers.Workers.Where(worker =>
             worker.Owner == Human &&
-            worker.Activity == PhysicalWorkerActivity.Producing);
+            worker.Activity == PhysicalWorkerActivity.Producing)
+            .OrderBy(worker => worker.Id.Value)
+            .Skip(humanWorkerOrdinal).First();
         var workers = before.Workers.Workers.Select(worker =>
             worker.Id == person.Id
                 ? worker.WithTacticalAssignment(
                     worker.TacticalTileId!.Value, worker.CellId,
                     PhysicalWorkerActivity.Other,
-                    PhysicalWorkerOccupation.LandTransport)
+                    destination)
                 : worker).ToArray();
         var after = before.WithWorkers(new PhysicalWorkerRuntimeState(
             workers, tacticalLocationsAuthoritative: true,
@@ -321,6 +326,101 @@ public sealed class FoundationOperationalEconomicCounterfactualTests
             File.WriteAllText(Path.Combine(reportDirectory,
                 "r156-economic-diagnostic.md"), markdown);
             _output.WriteLine("GA_NEXT_R156_REPORT_PASS " + jsonPath);
+        }
+    }
+
+    [Fact]
+    public void TradePreservingLogisticsComparisonMeasuresRealUsedCrossings()
+    {
+        // i=1 produces WOOD. Reallocating i=0 (GRAIN) in R156 made
+        // both civilizations self-sufficient and eliminated ALL trade.
+        // Changing the candidate, not the market coefficients, must
+        // preserve commercial flows and expose genuine route overlap.
+        var scenario = Scenario(humanWorkerOrdinal: 1);
+        Assert.Equal(Wood, scenario.Reassigned.Commodity);
+
+        var comparison = Compare(scenario.Before, scenario.After,
+            scenario.Incidence, scenario.Geography);
+        var assessment = FoundationOperationalEconomicAssessmentProjector
+            .Evaluate(comparison);
+
+        Assert.True(comparison.ReassignedWithoutServiceDiscount
+            .UsedPhysicalCrossings > 0,
+            "A logistics counterfactual requires REAL trade after reassignment.");
+        Assert.True(comparison.ReassignedWithoutServiceDiscount
+            .TotalEdgeTraversalCargoMicro > 0,
+            "Goods must traverse real physical crossings.");
+        Assert.Equal(0, comparison.AllProducingBaseline.UsedOperationalCrossings);
+        Assert.True(comparison.ReassignedWithoutServiceDiscount
+            .UsedOperationalCrossings > 0,
+            "Real workers must operate at least one commercially USED edge.");
+        Assert.True(comparison.ReassignedWithServiceDiscount
+            .UsedOperationalCrossings > 0,
+            "The shadow economic result must include actual operated trade.");
+        Assert.True(assessment.LogisticsServiceDelta
+            .TotalCivilizationCashEquivalentScaled > BigInteger.Zero,
+            "This fixed seed has a measurable, non-forced benefit from real work.");
+        Assert.Equal(comparison.ReassignedWithoutServiceDiscount
+                .ProducedAndSoldGoodsMicro,
+            comparison.ReassignedWithServiceDiscount.ProducedAndSoldGoodsMicro);
+        Assert.Equal(new BigInteger(scenario.Reassigned.OutputMicroPerTurn),
+            comparison.LostProductionGoodsMicro);
+
+        string? folder = Environment.GetEnvironmentVariable("GA_R157_REPORT_DIR");
+        if (!string.IsNullOrWhiteSpace(folder))
+        {
+            Directory.CreateDirectory(folder);
+            var moneyScale = FoundationPhysicalEconomicAccountingProposal.MoneyScale;
+            var a = comparison.AllProducingBaseline;
+            var b = comparison.ReassignedWithoutServiceDiscount;
+            var c = comparison.ReassignedWithServiceDiscount;
+            object Reading(FoundationOperationalEconomicScenarioReading item) => new
+            {
+                goodsMicro = item.ProducedAndSoldGoodsMicro,
+                deliveries = item.DeliveryCount,
+                tradeCrossings = item.UsedPhysicalCrossings,
+                tradedAndOperatedCrossings = item.UsedOperationalCrossings,
+                traversalCargoMicro = item.TotalEdgeTraversalCargoMicro,
+                grossScaled = item.GrossSalesScaled.ToString(),
+                freightScaled = item.PhysicalFreightScaled.ToString(),
+                collectiveCashScaled =
+                    (item.GrossSalesScaled - item.PhysicalFreightScaled).ToString()
+            };
+            var report = new
+            {
+                schema = "ga-next-r157-trade-preserving-logistics-v1",
+                source = "FoundationOperationalEconomicCounterfactualTests",
+                worldSeed = 20261012UL,
+                targetWorkerId = scenario.Reassigned.Id.Value,
+                targetCommodity = scenario.Reassigned.Commodity.Value,
+                workerOperation = "LandTransport",
+                capitalPolicy = "same-authoritative-infrastructure-in-A-B-C",
+                stateCommitted = false,
+                moneyScale = moneyScale.ToString(),
+                A = Reading(a),
+                B = Reading(b),
+                C = Reading(c),
+                transferCashDeltaScaled = assessment.ProductionOpportunityDelta
+                    .TotalCivilizationCashEquivalentScaled.ToString(),
+                logisticsCashDeltaScaled = assessment.LogisticsServiceDelta
+                    .TotalCivilizationCashEquivalentScaled.ToString(),
+                combinedCashDeltaScaled = assessment.CombinedDelta
+                    .TotalCivilizationCashEquivalentScaled.ToString(),
+                effectiveServiceMicro =
+                    comparison.CommittedOperationalService.TotalServiceMicro.ToString(),
+                activeServiceCrossings = comparison.FreightShadow.EdgeReadings
+                    .Count(edge => edge.OperationalServiceMicro > 0UL),
+                discountedPhysicalCrossings = comparison.FreightShadow.EdgeReadings
+                    .Count(edge => edge.ShadowPhysicalCostMicroPerWholeCargoUnit <
+                        edge.OriginalPhysicalCostMicroPerWholeCargoUnit),
+                outcome = assessment.CombinedCashOutcome.ToString()
+            };
+            string path = Path.Combine(folder, "r157-trade-preserving.json");
+            File.WriteAllText(path,
+                System.Text.Json.JsonSerializer.Serialize(report,
+                    new System.Text.Json.JsonSerializerOptions { WriteIndented = true })
+                + Environment.NewLine);
+            _output.WriteLine("GA_NEXT_R157_ECONOMIC_REPORT_PASS " + path);
         }
     }
 
