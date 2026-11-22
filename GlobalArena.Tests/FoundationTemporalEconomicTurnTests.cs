@@ -56,7 +56,7 @@ public sealed class FoundationTemporalEconomicTurnTests
 
     private static FoundationActivityCommodityDemandPolicy Demand()
     {
-        var items = new[] { new CommodityId(1UL), new CommodityId(2UL) };
+        var items = new[] { new CommodityId(1U), new CommodityId(2U) };
         return new FoundationActivityCommodityDemandPolicy(
             items, Enum.GetValues<FoundationPhysicalDemandProfile>()
                 .SelectMany(profile => items.Select(item =>
