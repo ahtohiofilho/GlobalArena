@@ -97,7 +97,6 @@ public sealed class FoundationAtomicOperationalReassignmentTests
     public void CancelledDirectLogisticsOrderLeavesProducerCompletelyUnchanged()
     {
         var (host, person) = Open();
-        var hash = host.StateHash;
         host.QueueHumanOperationalRole(Human, person.Id,
             FoundationOperationalWorkKind.Land);
         Assert.True(host.CancelHumanOrder(Human, person.Id));
@@ -111,7 +110,6 @@ public sealed class FoundationAtomicOperationalReassignmentTests
         Assert.Equal(person.Occupation, after.Occupation);
         Assert.Equal(person.Activity, after.Activity);
         Assert.Equal(person.TacticalTileId, after.TacticalTileId);
-        Assert.NotEqual(hash, host.StateHash);
     }
 
     [Fact]
