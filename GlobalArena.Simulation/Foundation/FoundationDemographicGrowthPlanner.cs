@@ -65,11 +65,43 @@ public sealed class FoundationDemographicGrowthPlan
 /// </summary>
 public static class FoundationDemographicGrowthPlanner
 {
+    /// <summary>
+    /// R163: prefer the canonical RESIDENCE ledger, not physical worker
+    /// positions. A traveling worker still counts in the home city.
+    /// </summary>
+    public static FoundationDemographicGrowthPlan Plan(
+        WorldState baseline,
+        IReadOnlyList<CivilizationId> survivingCivilizations,
+        ulong turn)
+    {
+        ArgumentNullException.ThrowIfNull(baseline);
+        if (!baseline.CityResidences.IsInitialized)
+            throw new ArgumentException(
+                "Authoritative demographic planning needs the v16 home ledger.");
+        var cities = baseline.CityResidences.PopulationByResidence()
+            .Where(x => x.Population > 0UL)
+            .Select(x => new FoundationDemographicCityPopulation(
+                x.City.Id.Value, x.City.Owner, x.City.Tile, x.Population))
+            .Where(x => survivingCivilizations?.Contains(x.Owner) == true)
+            .ToArray();
+        return PlanCore(baseline, cities, survivingCivilizations,
+            turn, residenceBased: true);
+    }
+
     public static FoundationDemographicGrowthPlan Plan(
         WorldState baseline,
         IReadOnlyList<FoundationDemographicCityPopulation> cities,
         IReadOnlyList<CivilizationId> survivingCivilizations,
-        ulong turn)
+        ulong turn) =>
+        PlanCore(baseline, cities, survivingCivilizations,
+            turn, residenceBased: false);
+
+    private static FoundationDemographicGrowthPlan PlanCore(
+        WorldState baseline,
+        IReadOnlyList<FoundationDemographicCityPopulation> cities,
+        IReadOnlyList<CivilizationId> survivingCivilizations,
+        ulong turn,
+        bool residenceBased)
     {
         ArgumentNullException.ThrowIfNull(baseline);
         ArgumentNullException.ThrowIfNull(cities);
@@ -114,10 +146,17 @@ public static class FoundationDemographicGrowthPlanner
         // must cover the entire canonical worker census at CITY sites.
         // Actual roaming/visiting populations need a residence ledger in a
         // later phase; do not silently conflate location and residence.
-        var counts = baseline.Workers.Workers
-            .Where(w => alive.Contains(w.Owner))
-            .GroupBy(w => (Owner: w.Owner, Tile: w.TacticalTileId!.Value))
-            .ToDictionary(g => g.Key, g => checked((ulong)g.LongCount()));
+        var counts = residenceBased
+            ? baseline.CityResidences.PopulationByResidence()
+                .Where(x => alive.Contains(x.City.Owner) &&
+                    x.Population > 0UL)
+                .ToDictionary(x => (Owner: x.City.Owner,
+                    Tile: x.City.Tile), x => x.Population)
+            : baseline.Workers.Workers
+                .Where(w => alive.Contains(w.Owner))
+                .GroupBy(w => (Owner: w.Owner,
+                    Tile: w.TacticalTileId!.Value))
+                .ToDictionary(g => g.Key, g => checked((ulong)g.LongCount()));
         if (sorted.Any(c => !counts.TryGetValue((c.Owner, c.Tile),
                 out ulong n) || n != c.Population) ||
             counts.Count != sorted.Length)

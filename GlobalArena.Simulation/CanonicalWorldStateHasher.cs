@@ -25,6 +25,9 @@ public sealed class CanonicalWorldStateHasher
     // First verified sale+consumption settlement and trusted carry-forward
     // congestion activates v15 without modifying historical v8–v14 bytes.
     public const uint ClosedEconomicCycleFormatVersion = 15U;
+    // Opt-in stable cities and worker HOME assignments. No old v8-v15
+    // hash changes unless the canonical ledger has been deployed.
+    public const uint CanonicalCityResidenceFormatVersion = 16U;
 
     private static readonly byte[] Magic =
     {
@@ -40,7 +43,9 @@ public sealed class CanonicalWorldStateHasher
         ArgumentNullException.ThrowIfNull(
             worldState);
 
-        var version = worldState.Treasury.HasClosedEconomicCycle
+        var version = worldState.CityResidences.IsInitialized
+            ? CanonicalCityResidenceFormatVersion
+            : worldState.Treasury.HasClosedEconomicCycle
             ? ClosedEconomicCycleFormatVersion
             : worldState.Transport.HasCommittedInvestments
                 ? MonetaryInvestmentFormatVersion
@@ -372,7 +377,7 @@ public sealed class CanonicalWorldStateHasher
             }
         }
 
-        if (version >= MonetaryConstructionFormatVersion)
+        if (worldState.Transport.HasMonetaryConstructionCosts)
         {
             AppendUInt32(hash, 41U);
             AppendUInt32(hash, 1U);
@@ -410,7 +415,7 @@ public sealed class CanonicalWorldStateHasher
                         "A v14 monetary investment ledger is incomplete."));
         }
 
-        if (version >= ClosedEconomicCycleFormatVersion)
+        if (worldState.Treasury.HasClosedEconomicCycle)
         {
             var settled = worldState.Treasury;
             AppendUInt32(hash, 44U);
@@ -443,6 +448,31 @@ public sealed class CanonicalWorldStateHasher
                 AppendUInt64(hash, account.Civilization.Value);
                 AppendNonnegativeBigInteger(hash,
                     account.TotalSettledEconomicIncomeScaled);
+            }
+        }
+
+        if (version >= CanonicalCityResidenceFormatVersion)
+        {
+            var ledger = worldState.CityResidences;
+            if (!ledger.IsInitialized)
+                throw new InvalidOperationException(
+                    "v16 must contain an authoritative residence ledger.");
+            AppendUInt32(hash, 45U);
+            AppendUInt32(hash, 1U);
+            AppendUInt32(hash, checked((uint)ledger.Cities.Count));
+            foreach (var city in ledger.Cities)
+            {
+                AppendUInt64(hash, city.Id.Value);
+                AppendUInt64(hash, city.Owner.Value);
+                AppendUInt32(hash, checked((uint)city.Tile.FineGoldbergParameters.M));
+                AppendUInt32(hash, checked((uint)city.Tile.FineGoldbergParameters.N));
+                AppendUInt64(hash, city.Tile.FineStrategicCellId.Value);
+            }
+            AppendUInt32(hash, checked((uint)ledger.Residences.Count));
+            foreach (var entry in ledger.Residences)
+            {
+                AppendUInt64(hash, entry.Worker.Value);
+                AppendUInt64(hash, entry.HomeCity.Value);
             }
         }
 
