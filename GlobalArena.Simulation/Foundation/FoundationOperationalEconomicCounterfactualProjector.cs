@@ -192,7 +192,8 @@ public static class FoundationOperationalEconomicCounterfactualProjector
 
         FoundationOperationalEconomicScenarioReading Solve(
             PhysicalWorkerRuntimeState workforce,
-            IReadOnlyList<FoundationPhysicalRoutingEdgeCost> roads)
+            IReadOnlyList<FoundationPhysicalRoutingEdgeCost> roads,
+            bool hasOperationalWorkforce)
         {
             var quotes = FoundationPhysicalUniversalMarketPricing
                 .QuotesFromRealWorkers(workforce, marketPolicy.Demand);
@@ -212,9 +213,11 @@ public static class FoundationOperationalEconomicCounterfactualProjector
                 .EvaluateCandidate(workforce, incidence,
                     marketPolicy.Demand, marketPolicy.Cargo, plan,
                     marketPolicy.TaxRates);
-            var operatedEdges = service.Edges
-                .Where(item => item.ServiceMicro > 0UL)
-                .Select(item => item.Edge).ToHashSet();
+            var operatedEdges = hasOperationalWorkforce
+                ? service.Edges
+                    .Where(item => item.ServiceMicro > 0UL)
+                    .Select(item => item.Edge).ToHashSet()
+                : new HashSet<PhysicalTacticalEdgeId>();
             return new FoundationOperationalEconomicScenarioReading(
                 audit.TotalAllocatedGoodsMicro, audit.DeliveryCount,
                 audit.Freight.UsedEdges.Count,
@@ -228,10 +231,12 @@ public static class FoundationOperationalEconomicCounterfactualProjector
             };
         }
 
-        var allProducing = Solve(beforeReassignment.Workers, authoritativeRoads);
-        var reassignedWithout = Solve(afterReassignment.Workers, authoritativeRoads);
+        var allProducing = Solve(beforeReassignment.Workers,
+            authoritativeRoads, hasOperationalWorkforce: false);
+        var reassignedWithout = Solve(afterReassignment.Workers,
+            authoritativeRoads, hasOperationalWorkforce: true);
         var reassignedWith = Solve(afterReassignment.Workers,
-            shadow.CounterfactualRoads);
+            shadow.CounterfactualRoads, hasOperationalWorkforce: true);
         if (allProducing.ProducedAndSoldGoodsMicro <
                 reassignedWithout.ProducedAndSoldGoodsMicro ||
             reassignedWithout.ProducedAndSoldGoodsMicro !=
