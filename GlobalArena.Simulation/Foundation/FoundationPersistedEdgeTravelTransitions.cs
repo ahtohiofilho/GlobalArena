@@ -155,6 +155,20 @@ public static class FoundationPersistedEdgeTravelTransitions
                 Array.Empty<FoundationPendingEdgeTravel>()));
     }
 
+    public static WorldState ReplayStartAndAdvance(
+        WorldState before, FoundationEdgeTravelTransitionReceipt expected,
+        PhysicalTacticalTileId destination,
+        PhysicalTacticalWorkerMoveEventExecutor movement,
+        FoundationGroundEdgeTravelTimePolicy policy)
+    {
+        if (!expected.Started || Hasher.Compute(before) != expected.Before)
+            throw new InvalidOperationException("Travel start pre-state hash mismatch.");
+        var (after, receipt) = StartAndAdvance(
+            before, expected.Worker, destination, movement, policy);
+        RequireMatching(receipt, expected);
+        return after;
+    }
+
     public static WorldState ReplayStart(
         WorldState before, FoundationEdgeTravelTransitionReceipt expected,
         PhysicalTacticalTileId destination,
