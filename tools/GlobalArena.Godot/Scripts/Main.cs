@@ -364,16 +364,16 @@ public partial class Main : Control
         _localProduceButton.Disabled = ready || chosen is null ||
             chosen.Activity == PhysicalWorkerActivity.Producing ||
             chosen.OutputMicroPerTurn == 0UL ||
-            chosen.Occupation is PhysicalWorkerOccupation.LandTransport or
-                PhysicalWorkerOccupation.PortOperations;
+            chosen.Occupation is (PhysicalWorkerOccupation.LandTransport or
+                PhysicalWorkerOccupation.PortOperations);
         _localCancelQueuedButton.Disabled = ready || chosen is null ||
             !pendingOrders.Any(order => order.WorkerId == chosen.Id);
         if (_r149LandWorkButton is not null && _r149PortWorkButton is not null)
         {
-            bool canAssign = !ready && chosen is not null && 
+            bool canAssign = !ready && chosen is not null &&
                 host.Snapshot.Workers.HasAuthoritativeOccupations &&
-                chosen.Activity is PhysicalWorkerActivity.Producing or
-                    PhysicalWorkerActivity.Other;
+                chosen.Activity is (PhysicalWorkerActivity.Producing or
+                    PhysicalWorkerActivity.Other);
             _r149LandWorkButton.Visible = host.Snapshot.Workers.HasAuthoritativeOccupations;
             _r149PortWorkButton.Visible = host.Snapshot.Workers.HasAuthoritativeOccupations;
             _r149LandWorkButton.Disabled = !canAssign ||
@@ -391,8 +391,8 @@ public partial class Main : Control
                 button.Visible = hasOccupations;
                 button.Disabled = ready || chosen is null ||
                     !hasOccupations || chosen.Occupation == role ||
-                    chosen.Activity is PhysicalWorkerActivity.Traveling or
-                        PhysicalWorkerActivity.Military;
+                    chosen.Activity is (PhysicalWorkerActivity.Traveling or
+                        PhysicalWorkerActivity.Military);
             }
         _localEndTurnButton.Disabled = false;
         _localTurnLabel.Text =
@@ -415,7 +415,7 @@ public partial class Main : Control
             : string.Join(", ", pendingOrders.Select(order =>
                 $"#{order.WorkerId.Value} " +
                 (order.NextOccupation.HasValue
-                    ? $"profissão → {order.NextOccupation.Value} no tile {order.Source.FineStrategicCellId.Value}"
+                    ? $"{order.Activity} / {order.NextOccupation.Value} at tile {order.Source.FineStrategicCellId.Value}"
                     : order.IsMovement
                         ? $"G(18,0)/{order.Source.FineStrategicCellId.Value}→{order.Destination.FineStrategicCellId.Value}"
                         : $"{order.Activity} at {order.Source.FineStrategicCellId.Value}")));
@@ -594,8 +594,8 @@ public partial class Main : Control
         {
             var worker = _tacticalHost.Snapshot.Workers.Workers.Single(w =>
                 w.Id.Value == _selectedLocalWorkerId.Value);
-            if (worker.Occupation is PhysicalWorkerOccupation.LandTransport or
-                    PhysicalWorkerOccupation.PortOperations)
+            if (worker.Occupation is (PhysicalWorkerOccupation.LandTransport or
+                    PhysicalWorkerOccupation.PortOperations))
                 _tacticalHost.QueueHumanProductiveRole(_humanCivilization,
                     worker.Id, occupation);
             else
