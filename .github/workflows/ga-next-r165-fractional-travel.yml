@@ -1,0 +1,32 @@
+name: GA-Next R165 Canonical Fractional Edge Travel
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/Foundation/FoundationFractionalEdgeTravelProjector.cs'
+      - 'GlobalArena.Tests/FoundationFractionalEdgeTravelProjectorTests.cs'
+      - '.github/workflows/ga-next-r165-fractional-travel.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fractional-travel:
+    name: R165 signed physical edge partial travel and R164 market slices / ubuntu-latest
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build CSharp foundation
+        run: dotnet build GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: Validate fractional canonical edge movement, time and demand
+        run: |
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationFractionalEdgeTravelProjectorTests|FullyQualifiedName~FoundationPhysicalPresenceDemographicTests' --logger 'console;verbosity=detailed'
+      - name: Record R165 guarantee
+        run: |
+          echo '### R165 — physical edge fractional movement' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Uses existing signed G18 tactical adjacency; tests 1.4 turn crossing = 100% travel then 40% travel + 60% destination effort, R164 demand/birth input, exact replay and tamper rejection. Still precommit.' >> "$GITHUB_STEP_SUMMARY"
