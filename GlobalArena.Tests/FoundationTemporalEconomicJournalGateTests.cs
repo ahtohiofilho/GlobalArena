@@ -18,7 +18,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
             new WorldGenerationRequest(new WorldSeed(20261012UL),
                 WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)),
-            workersPerCivilization: 1);
+            workersPerCivilization: 3);
         var worker = demo.Session.Snapshot.Workers.Workers.First(w =>
             w.Activity == PhysicalWorkerActivity.Producing);
         var fine = FoundationFineFirstPhysicalGeography.Generate(
