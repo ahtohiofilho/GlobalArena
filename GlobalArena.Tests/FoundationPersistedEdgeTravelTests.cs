@@ -185,4 +185,82 @@ public sealed class FoundationPersistedEdgeTravelTests
                 new ISimulationCommand[] { continueCommand }, context2),
                 second.ResultingWorldState));
     }
+
+    [Fact]
+    public void CollectiveHostJournalsStartThenContinuesWithoutAnotherMoveOrder()
+    {
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL),
+                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)),
+            workersPerCivilization: 1);
+        var worker = demo.Session.Snapshot.Workers.Workers.First(w =>
+            w.Activity == PhysicalWorkerActivity.Producing);
+        var fine = FoundationFineFirstPhysicalGeography.Generate(
+            demo.Session.GeneratedWorld, demo.Incidence);
+        var signed = FoundationFineFirstWorldgenCanonicalSignature.Compute(
+            demo.Session.GeneratedWorld, demo.Incidence, fine);
+        var validator = new PhysicalTacticalWorkerMoveEventExecutor(
+            demo.Session.GeneratedWorld, demo.Incidence, fine, signed);
+        var source = worker.TacticalTileId!.Value;
+        var to = demo.Incidence.FineTopology.Edges
+            .Where(e => e.IncidentCellIds.Contains(source.FineStrategicCellId))
+            .Select(e => e.IncidentCellIds.Single(id => id != source.FineStrategicCellId))
+            .Where(id => fine.CanTraverseOnFoot(checked((int)id.Value - 1)))
+            .Select(id => new PhysicalTacticalTileId(
+                demo.Incidence.Refinement.FineParameters, id))
+            .First(t =>
+            {
+                try { return validator.CheckEdge(source, t).HasValue; }
+                catch (InvalidOperationException) { return false; }
+            });
+        var transport = FoundationPhysicalNaturalTransportSeeder.PreviewFineFirst(
+            demo.Session.GeneratedWorld, demo.Incidence, fine,
+            new FoundationNaturalTransportSeedingPolicy(
+                new FoundationNaturalTransportCostBand(1_000UL, 1_000_000UL),
+                new FoundationNaturalTransportCostBand(5_000UL, 500_000UL),
+                new FoundationNaturalTransportCostBand(25_000UL, 100_000UL),
+                10_000UL),
+            new FoundationMonetaryConstructionPolicy(
+                2_000_000UL, 4_000_000UL, 6_000_000UL, 1_000_000UL));
+        var bound = demo.Session.Snapshot.DeployInitialPhysicalTransport(
+            transport.Transport, demo.Session.GeneratedWorld, demo.Incidence);
+        demo.Session.AcceptSnapshot(
+            FoundationPersistedEdgeTravelTransitions.DeployEmpty(bound));
+        var ai = demo.Session.Snapshot.Civilizations.Civilizations
+            .Where(c => c != worker.Owner)
+            .ToDictionary(c => c,
+                _ => (IFoundationTacticalAiTurnPolicy)new FoundationTacticalAiHoldPolicy());
+        var host = new FoundationTacticalHumanAiTurnHost(
+            demo.Session, demo.Incidence, new[] { worker.Owner }, ai,
+            physicalTravelPolicy: new FoundationGroundEdgeTravelTimePolicy(1_400_000UL));
+        var before = host.StateHash;
+        host.QueueHumanMove(worker.Owner, worker.Id, to);
+        Assert.Equal(before, host.StateHash);
+        host.SetHumanReady(worker.Owner);
+        var first = host.TryCloseTurn();
+        Assert.NotNull(first);
+        Assert.True(first!.ReplayMatched);
+        Assert.Single(first.EdgeTravels);
+        Assert.Equal(400_000UL, host.Snapshot.EdgeTravels.Pending.Single().RemainingMicro);
+        Assert.Equal(source,
+            host.Snapshot.Workers.Workers.Single(w => w.Id == worker.Id).TacticalTileId);
+        Assert.Throws<InvalidOperationException>(() =>
+            host.QueueHumanMove(worker.Owner, worker.Id, to));
+        Assert.Throws<InvalidOperationException>(() =>
+            host.QueueHumanActivity(worker.Owner, worker.Id,
+                PhysicalWorkerActivity.Producing));
+
+        host.SetHumanReady(worker.Owner);
+        var second = host.TryCloseTurn();
+        Assert.NotNull(second);
+        Assert.True(second!.ReplayMatched);
+        Assert.Single(second.EdgeTravels);
+        Assert.Empty(host.Snapshot.EdgeTravels.Pending);
+        var arrived = host.Snapshot.Workers.Workers.Single(w => w.Id == worker.Id);
+        Assert.Equal(to, arrived.TacticalTileId);
+        Assert.Equal(validator.PresentationRegion(to, worker.CellId), arrived.CellId);
+        Assert.Equal(600_000U,
+            second.EdgeTravels.Single().Receipt.TurnResult!.TimeSlices[1]
+                .ProductiveEffortMicro);
+    }
 }
