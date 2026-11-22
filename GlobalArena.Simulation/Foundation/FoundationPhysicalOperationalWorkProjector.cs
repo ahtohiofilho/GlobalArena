@@ -25,6 +25,44 @@ public sealed record FoundationPhysicalOperationalNodeAllocation(
 /// </summary>
 public static class FoundationPhysicalOperationalWorkProjector
 {
+    /// <summary>
+    /// R147 read-only projection of actual journal-committed worker roles.
+    /// No external assignment ledger or independent workforce pool exists.
+    /// An operational worker must be in Other, never Producing or Traveling.
+    /// </summary>
+    public static IReadOnlyList<FoundationPhysicalOperationalNodeAllocation>
+        ProjectCommitted(WorldState world,
+            PhysicalTacticalIncidenceMap incidence,
+            FoundationFineFirstPhysicalGeography geography)
+    {
+        ArgumentNullException.ThrowIfNull(world);
+        if (!world.Workers.HasAuthoritativeOccupations)
+            throw new InvalidOperationException(
+                "Operational roles require authoritative worker occupations.");
+        var assignments = new List<FoundationOperationalWorkerAssignment>();
+        foreach (var worker in world.Workers.Workers)
+        {
+            FoundationOperationalWorkKind? role = worker.Occupation switch
+            {
+                PhysicalWorkerOccupation.LandTransport =>
+                    FoundationOperationalWorkKind.Land,
+                PhysicalWorkerOccupation.PortOperations =>
+                    FoundationOperationalWorkKind.Port,
+                _ => null
+            };
+            if (!role.HasValue) continue;
+            if (worker.Activity == PhysicalWorkerActivity.Other)
+                assignments.Add(new FoundationOperationalWorkerAssignment(
+                    worker.Id, role.Value));
+            else if (worker.Activity == PhysicalWorkerActivity.Producing)
+                throw new InvalidOperationException(
+                    "A producing worker cannot simultaneously operate a transport link.");
+            // Traveling and Military workers retain their stored occupation
+            // for later resumption but provide no operational effort.
+        }
+        return Project(world, incidence, geography, assignments);
+    }
+
     public static IReadOnlyList<FoundationPhysicalOperationalNodeAllocation> Project(
         WorldState world,
         PhysicalTacticalIncidenceMap incidence,

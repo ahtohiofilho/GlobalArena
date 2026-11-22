@@ -60,6 +60,8 @@ public sealed class FoundationTacticalAiResumeProductionPolicy
         return Array.AsReadOnly(snapshot.Workers.Workers
             .Where(worker => worker.Owner == civilization &&
                 worker.Activity == PhysicalWorkerActivity.Traveling &&
+                worker.Occupation is not PhysicalWorkerOccupation.LandTransport and
+                    not PhysicalWorkerOccupation.PortOperations &&
                 worker.OutputMicroPerTurn > 0UL &&
                 worker.TacticalTileId.HasValue)
             .OrderBy(worker => worker.Id.Value)
@@ -585,6 +587,26 @@ public sealed class FoundationTacticalHumanAiTurnHost
     }
 
     /// <summary>
+    /// Journaled logistics occupation for an existing worker already in the
+    /// Other activity. This cannot divert a producing worker within the same
+    /// command: activity conversion must be separately authorized first.
+    /// </summary>
+    public void QueueHumanOperationalRole(CivilizationId human,
+        PhysicalWorkerId id, FoundationOperationalWorkKind kind)
+    {
+        RequireHuman(human);
+        var occupation = kind switch
+        {
+            FoundationOperationalWorkKind.Land =>
+                PhysicalWorkerOccupation.LandTransport,
+            FoundationOperationalWorkKind.Port =>
+                PhysicalWorkerOccupation.PortOperations,
+            _ => throw new ArgumentOutOfRangeException(nameof(kind))
+        };
+        QueueOccupation(human, id, occupation);
+    }
+
+    /// <summary>
     /// Validates the ENTIRE occupational batch against the same turn-start
     /// authoritative census before touching the participant's pending orders.
     /// Existing pending orders for mentioned workers are replaced only after
@@ -727,6 +749,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
         var automaticResumptions = Snapshot.Workers.Workers
             .Where(worker => _humans.Contains(worker.Owner) &&
                 worker.Activity == PhysicalWorkerActivity.Traveling &&
+                worker.Occupation is not PhysicalWorkerOccupation.LandTransport and
+                    not PhysicalWorkerOccupation.PortOperations &&
                 worker.OutputMicroPerTurn > 0UL &&
                 worker.TacticalTileId.HasValue &&
                 !_plans[worker.Owner].ContainsKey(worker.Id.Value))
@@ -881,9 +905,18 @@ public sealed class FoundationTacticalHumanAiTurnHost
     {
         if (!Snapshot.Workers.HasAuthoritativeOccupations ||
             !worker.Occupation.HasValue ||
-            (occupation != PhysicalWorkerOccupation.Agriculture &&
-             occupation != PhysicalWorkerOccupation.Forestry &&
-             occupation != PhysicalWorkerOccupation.Mining) ||
+            !(occupation switch
+            {
+                PhysicalWorkerOccupation.Agriculture or
+                PhysicalWorkerOccupation.Forestry or
+                PhysicalWorkerOccupation.Mining =>
+                    (worker.Activity == PhysicalWorkerActivity.Producing ||
+                     worker.Activity == PhysicalWorkerActivity.Other),
+                PhysicalWorkerOccupation.LandTransport or
+                PhysicalWorkerOccupation.PortOperations =>
+                    worker.Activity == PhysicalWorkerActivity.Other,
+                _ => false
+            }) ||
             worker.Occupation.Value == occupation)
             throw new InvalidOperationException(
                 "Reallocation requires an existing owned v11 worker and " +
@@ -904,6 +937,11 @@ public sealed class FoundationTacticalHumanAiTurnHost
         try { edge = _executor.CheckEdge(source, destination); }
         catch (ArgumentException ex)
         { throw new InvalidOperationException("Foreign fine topology.", ex); }
+        if (activity == PhysicalWorkerActivity.Producing &&
+            worker.Occupation is PhysicalWorkerOccupation.LandTransport or
+                PhysicalWorkerOccupation.PortOperations)
+            throw new InvalidOperationException(
+                "Logistics workers must change to a productive occupation before producing.");
         if (nextOccupation.HasValue)
         {
             ValidateOccupationTarget(worker, nextOccupation.Value);

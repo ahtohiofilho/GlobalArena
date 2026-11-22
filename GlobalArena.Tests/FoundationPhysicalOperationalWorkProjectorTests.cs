@@ -125,4 +125,32 @@ public sealed class FoundationPhysicalOperationalWorkProjectorTests
                 new[] { new FoundationOperationalWorkerAssignment(
                     producing.Id, FoundationOperationalWorkKind.Land) }));
     }
+    [Fact]
+    public void JournaledOccupationIsTheOnlySourceOfCommittedOperationalWork()
+    {
+        var s = Scenario();
+        var selected = s.World.Workers.Workers.Single(w => w.Id == s.Worker);
+        var committed = s.World.Workers.Workers.Select(w =>
+            w.Id == selected.Id
+                ? w.WithTacticalOccupation(PhysicalWorkerOccupation.LandTransport)
+                : w).ToArray();
+        var world = s.World.WithWorkers(new PhysicalWorkerRuntimeState(
+            committed, tacticalLocationsAuthoritative: true,
+            occupationsAuthoritative: true));
+        var allocations = FoundationPhysicalOperationalWorkProjector.ProjectCommitted(
+            world, s.Incidence, s.Geography);
+        Assert.Single(allocations);
+        var node = allocations[0];
+        Assert.Equal(selected.TacticalTileId, node.Tile);
+        Assert.Equal(1_000_000UL, node.Allocation.LandEffortMicro);
+        Assert.Equal(0UL, node.Allocation.PortEffortMicro);
+        Assert.Equal(1_000_000UL,
+            node.Allocation.Shares.Aggregate(
+                node.Allocation.UnallocatedLandEffortMicro,
+                (sum, work) => checked(sum + work.EffortMicro)));
+        Assert.All(node.Allocation.Shares.Where(s =>
+            s.Kind == FoundationOperationalWorkKind.Port),
+            s => Assert.Equal(0UL, s.EffortMicro));
+    }
+
 }
