@@ -201,11 +201,11 @@ public sealed class PhysicalTacticalWorkerMoveEventExecutor : ISimulationEventEx
                 "Stale or foreign tactical worker origin.");
         if (ev.NextOccupation.HasValue &&
             (!state.Workers.HasAuthoritativeOccupations ||
-             !worker.Occupation.HasValue ||
-             ev.NextOccupation.Value == worker.Occupation.Value ||
-             ev.NextActivity != worker.Activity || edge.HasValue))
+             !FoundationTacticalWorkerReassignmentPolicy
+                .IsValidOccupationTransition(worker, ev.NextActivity,
+                    ev.NextOccupation.Value, edge.HasValue)))
             throw new InvalidOperationException(
-                "Invalid, unchanged or nonlocal v11 occupational journal event.");
+                "Invalid or nonlocal atomic occupational journal event.");
         if (edge is null && ev.NextActivity == worker.Activity &&
             !ev.NextOccupation.HasValue)
             throw new InvalidOperationException("No-op tactical event rejected.");
@@ -217,11 +217,13 @@ public sealed class PhysicalTacticalWorkerMoveEventExecutor : ISimulationEventEx
         var newWorkers = state.Workers.Workers.Select(w =>
         {
             if (w.Id != ev.WorkerId) return w;
-            var updated = w.WithTacticalLocationAndActivity(
-                ev.Destination, ev.ResultingPresentationRegion, ev.NextActivity);
             return ev.NextOccupation.HasValue
-                ? updated.WithTacticalOccupation(ev.NextOccupation.Value)
-                : updated;
+                ? w.WithTacticalAssignment(
+                    ev.Destination, ev.ResultingPresentationRegion,
+                    ev.NextActivity, ev.NextOccupation.Value)
+                : w.WithTacticalLocationAndActivity(
+                    ev.Destination, ev.ResultingPresentationRegion,
+                    ev.NextActivity);
         }).ToArray();
         return state.WithWorkers(new PhysicalWorkerRuntimeState(
             newWorkers, tacticalLocationsAuthoritative: true,
@@ -285,11 +287,11 @@ public sealed class PhysicalTacticalWorkerMovementTurnPhase : ITurnResolutionPha
                 (edge.HasValue ? PhysicalWorkerActivity.Traveling : worker.Activity);
             if (command.NextOccupation.HasValue &&
                 (!staged.Workers.HasAuthoritativeOccupations ||
-                 !worker.Occupation.HasValue ||
-                 command.NextOccupation.Value == worker.Occupation.Value ||
-                 edge.HasValue || activity != worker.Activity))
+                 !FoundationTacticalWorkerReassignmentPolicy
+                    .IsValidOccupationTransition(worker, activity,
+                        command.NextOccupation.Value, edge.HasValue)))
                 throw new InvalidOperationException(
-                    "Invalid nonlocal or no-op v11 occupation order.");
+                    "Invalid or nonlocal atomic occupation order.");
             if (edge is null && activity == worker.Activity &&
                 !command.NextOccupation.HasValue)
                 throw new InvalidOperationException("No-op tactical order.");

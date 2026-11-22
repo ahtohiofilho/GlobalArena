@@ -127,6 +127,27 @@ public sealed record PhysicalWorkerRuntimeRecord
             Activity, DemandMultiplierMicro, TacticalTileId, nextOccupation);
     }
 
+    /// <summary>
+    /// Apply one validated, local, journaled worker reassignment atomically.
+    /// Activity and occupation must be constructed together: changing the
+    /// occupation or activity first can produce an invalid intermediate
+    /// producing-logistics worker. Authorization lives in the turn phase.
+    /// </summary>
+    public PhysicalWorkerRuntimeRecord WithTacticalAssignment(
+        PhysicalTacticalTileId tile, StrategicCellId presentationRegion,
+        PhysicalWorkerActivity activity, PhysicalWorkerOccupation occupation)
+    {
+        if (!TacticalTileId.HasValue || !Occupation.HasValue ||
+            !tile.IsValid || !presentationRegion.IsValid ||
+            tile.FineGoldbergParameters !=
+                TacticalTileId.Value.FineGoldbergParameters ||
+            !Enum.IsDefined(activity) || !Enum.IsDefined(occupation))
+            throw new InvalidOperationException(
+                "Atomic assignment requires a real v11 worker at a compatible fine tile.");
+        return new(Id, Owner, presentationRegion, Commodity,
+            OutputMicroPerTurn, activity, DemandMultiplierMicro, tile, occupation);
+    }
+
     public PhysicalWorkerRuntimeRecord WithTacticalLocationAndActivity(
         PhysicalTacticalTileId destination, StrategicCellId presentationRegion,
         PhysicalWorkerActivity activity)
