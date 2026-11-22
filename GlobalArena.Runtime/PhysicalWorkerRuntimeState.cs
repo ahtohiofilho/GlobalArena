@@ -82,7 +82,9 @@ public sealed record PhysicalWorkerRuntimeRecord
             (occupation.HasValue && (!tacticalTileId.HasValue ||
                 !Enum.IsDefined(occupation.Value) ||
                 (activity == PhysicalWorkerActivity.Producing &&
-                 occupation.Value == PhysicalWorkerOccupation.Unassigned))))
+                 (occupation.Value == PhysicalWorkerOccupation.Unassigned ||
+                  occupation.Value == PhysicalWorkerOccupation.LandTransport ||
+                  occupation.Value == PhysicalWorkerOccupation.PortOperations)))))
             throw new ArgumentException("Invalid physical worker identity, location or policy.");
 
         Id = id;
