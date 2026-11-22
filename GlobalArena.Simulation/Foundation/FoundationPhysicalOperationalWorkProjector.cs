@@ -140,15 +140,11 @@ public static class FoundationPhysicalOperationalWorkProjector
                     "Unknown physical crossing kind.")
             };
             if (operation is null) continue;
-            ulong natural = row.NaturalConstructionCostMoneyMicro
-                ?? throw new InvalidOperationException(
-                    "Finite operational crossing lacks a construction baseline.");
-            if (natural == 0UL)
-                throw new InvalidOperationException(
-                    "Operational crossing has no positive natural weight.");
-            ulong invested = row.CommittedInvestmentMoneyMicro.GetValueOrDefault();
-            var weighted = new FoundationOperationalWorkEdge(
-                edgeId, operation.Value, natural, invested);
+            // The natural construction QUOTE is money, not operational
+            // infrastructure. R151 gives every natural crossing one unit
+            // and normalizes confirmed capital relative to its own quote.
+            var weighted = FoundationOperationalCapitalWeightProjector
+                .Project(row, operation.Value);
             foreach (var cell in geometric.IncidentCellIds)
             {
                 // A port is served by the land terminal, never by the water tile.
