@@ -132,7 +132,12 @@ public sealed class FoundationGroundEdgeTravelTimeProjectorTests
                 new FoundationGroundEdgeTravelTimePolicy(0UL)));
         Assert.Throws<InvalidOperationException>(() =>
             FoundationGroundEdgeTravelTimeProjector.Start(
-                world, worker with { }, to, validator,
+                world, new PhysicalWorkerRuntimeRecord(
+                    worker.Id, worker.Owner, worker.CellId,
+                    worker.Commodity, worker.OutputMicroPerTurn + 1UL,
+                    worker.Activity, worker.DemandMultiplierMicro,
+                    worker.TacticalTileId, worker.Occupation),
+                to, validator,
                 new FoundationGroundEdgeTravelTimePolicy(1_000_000UL)));
         Assert.Throws<ArgumentException>(() =>
             FoundationGroundEdgeTravelTimeProjector.Start(
