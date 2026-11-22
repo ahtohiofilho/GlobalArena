@@ -1,0 +1,48 @@
+name: GA-Next R159 Real Marginal Transfer Cost
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/Foundation/FoundationRealMarginalTransferEvaluator.cs'
+      - 'GlobalArena.Tests/FoundationOperationalEconomicCounterfactualTests.cs'
+      - '.github/workflows/ga-next-r159-real-marginal.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  marginal-evaluation:
+    name: R159 same-baseline real candidate economics / ubuntu-latest
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build authoritative economic comparison and tests
+        run: dotnet build GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: Run budgeted real-worker marginal gate and measure execution
+        env:
+          GA_R159_REPORT_DIR: ${{ runner.temp }}/ga-next-r159-marginal
+        run: |
+          dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~RealMarginalTransferRankingSharesOnePhysicalBaselineAndMeasuresCost' --logger 'console;verbosity=detailed'
+          test -s "$GA_R159_REPORT_DIR/r159-real-marginal.json"
+      - name: Publish observed candidate rankings and elapsed time
+        env:
+          GA_R159_REPORT_DIR: ${{ runner.temp }}/ga-next-r159-marginal
+        run: |
+          echo 'GA_NEXT_R159_REAL_MARGINAL_REPORT'
+          cat "$GA_R159_REPORT_DIR/r159-real-marginal.json"
+          echo '### R159 — real marginal transfer observations' >> "$GITHUB_STEP_SUMMARY"
+          echo 'All candidates use the SAME original world; no automatic orders or newborn workers.' >> "$GITHUB_STEP_SUMMARY"
+          echo '~~~json' >> "$GITHUB_STEP_SUMMARY"
+          cat "$GA_R159_REPORT_DIR/r159-real-marginal.json" >> "$GITHUB_STEP_SUMMARY"
+          echo '~~~' >> "$GITHUB_STEP_SUMMARY"
+      - name: Archive exact R159 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga-next-r159-real-marginal
+          path: ${{ runner.temp }}/ga-next-r159-marginal/r159-real-marginal.json
+          if-no-files-found: error
