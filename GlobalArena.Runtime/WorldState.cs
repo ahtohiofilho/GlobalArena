@@ -348,7 +348,7 @@ public sealed class WorldState
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
             Economy, Population, Warfare, Workers, Transport, Treasury,
-            residenceLedger);
+            residenceLedger, EdgeTravels);
     }
 
     public WorldState WithWorkers(PhysicalWorkerRuntimeState workers)
