@@ -55,7 +55,8 @@ public sealed class FoundationOperationalServiceProjectorTests
             nodes, productivity);
         Assert.Equal(7_000_000UL, result.TotalAllocatedEffortMicro);
         Assert.Equal(0UL, result.TotalIdleEffortMicro);
-        Assert.Equal(13_000_000UL, result.TotalServiceMicro);
+        Assert.Equal(new System.Numerics.BigInteger(13_000_000UL),
+            result.TotalServiceMicro);
         Assert.Equal(3, result.Edges.Count);
         Assert.Equal(2_000_000UL, result.Edges.Single(x =>
             x.Edge == e[0]).EffortMicro);
@@ -83,7 +84,7 @@ public sealed class FoundationOperationalServiceProjectorTests
         Assert.Empty(result.Edges);
         Assert.Equal(0UL, result.TotalAllocatedEffortMicro);
         Assert.Equal(0UL, result.TotalIdleEffortMicro);
-        Assert.Equal(0UL, result.TotalServiceMicro);
+        Assert.Equal(System.Numerics.BigInteger.Zero, result.TotalServiceMicro);
     }
 
     [Fact]
