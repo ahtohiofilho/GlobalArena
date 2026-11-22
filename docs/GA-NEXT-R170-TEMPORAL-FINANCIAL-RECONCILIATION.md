@@ -22,6 +22,14 @@ A R169 já introduziu oferta e demanda dos trabalhadores reais por frações de 
 - O gate proíbe duplicidade de movimentação, turno misturado, replay adulterado e duplicação de fechamento do ciclo. Exige infraestrutura e tesouraria físicas reais.
 - Esse primeiro gate só aceita travessias físicas e o encerramento monetário: não inclui investimentos nem mudanças de ocupação no mesmo turno.
 
+## Gate autoritativo ampliado — investimento e continuidade
+- `CloseAndReplayWithInvestments` aceita uma sequência de **eventos reais**, executados pelo mesmo `FoundationMonetaryInfrastructureEventExecutor` do mundo. Ordem obrigatória: jornadas R167, investimentos debitados de caixa preexistente, e somente então o evento SYSTEM de vendas.
+- O reconciliador econômico usa **a posição e o esforço temporal do início do turno**, mas a infraestrutura já atualizada pelos investimentos na hora de construir os custos físicos. Não recalcula retroativamente a duração de viagens em andamento.
+- Após os investimentos, o saldo de abertura sofre o débito na mesma transição imutável de `WorldState`; o faturamento das vendas entra **depois**, financiando ações do próximo turno, nunca investimentos sem dinheiro anterior.
+- O replay independente rejeita investimentos sem executor autoritativo, eventos de viagem posteriores ao primeiro investimento, registros duplicados e divergência do hash final.
+- Regressões incluem a viagem de 1,4 turno (100% trânsito no primeiro, chegada 40/60 no segundo) com duas liquidações consecutivas, além de investimento com fundos já existentes no mesmo ciclo.
+- **Ainda não aceita alteração de atividade/ocupação pelo mesmo journal**, que exige um calendário de transições de trabalho. Por isso, sem cutover automático do host.
+
 ## Gate ainda pendente — ativação automática no host coletivo
 **Há liquidação autoritativa no gate restrito, mas ela ainda NÃO é ativada no host de partida.** O `FoundationAuthoritativeEconomicSalesSettlementPhase` antigo ainda deriva seus dados do censo instantâneo. O novo gate explícito faz isso para jornadas físicas puras. A integração ao host coletivo ainda deve lidar com a ordem completa de eventos de investimento e mudanças de atividade/ocupação, com replay de toda a partida. Até lá, manter o bloqueio de settlement antigo em modo fracionário.
 
