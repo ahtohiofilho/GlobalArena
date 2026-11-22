@@ -55,7 +55,7 @@ public sealed class FoundationJournaledOperationalOccupationTests
         Assert.Equal(PhysicalWorkerActivity.Other, after.Activity);
         Assert.Equal(worker.TacticalTileId, after.TacticalTileId);
         Assert.NotEqual(initial, host.StateHash);
-        Assert.Single(receipt.Events.Where(e => e.WorkerId == worker.Id));
+        Assert.Single(receipt.Events, e => e.WorkerId == worker.Id);
     }
 
     [Fact]
