@@ -158,24 +158,34 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             }, nextContext), receipt.Next);
         var secondEvent = Assert.IsType<FoundationEdgeTravelTurnEvent>(
             Assert.Single(nextMove.Events));
-        var second = FoundationTemporalEconomicJournalGate.CloseAndReplay(
-            receipt.Next, new[] { secondEvent }, movement,
-            new FoundationGroundEdgeTravelTimePolicy(1_400_000UL),
-            incidence, policy, nextContext, fine);
-        Assert.Empty(second.Next.EdgeTravels.Pending);
-        Assert.Equal(2UL, second.Next.Treasury.LastSettledEconomicCycleOrdinal);
-        Assert.Equal(destination,
-            second.Next.Workers.Workers.Single(w => w.Id == worker.Id)
-                .TacticalTileId);
+        // The second-cycle market in this deliberately small scenario
+        // cannot certify a fixed point under its explicit 64-pass budget.
+        // The gate MUST refuse treasury credit, while the physical 40/60
+        // timeline remains fully deterministic and auditable.
+        var timeline = FoundationTemporalEconomicTurnProjector.Project(
+            receipt.Next, nextMove.ResultingWorldState,
+            new[] { secondEvent }, policy.Demand);
         Assert.Equal(400_000U,
             secondEvent.Receipt.TurnResult!.TimeSlices[0].PresenceMicro);
         Assert.Equal(600_000U,
             secondEvent.Receipt.TurnResult.TimeSlices[1].ProductiveEffortMicro);
-        Assert.Equal(second.Hash, new CanonicalWorldStateHasher().Compute(
-            FoundationTemporalEconomicJournalGate.ReplayJournal(
-                receipt.Next, second.Journal, movement,
+        Assert.Contains(timeline.Production,
+            p => p.Worker == worker.Id && p.Node == destination &&
+                p.EffortMicro == 600_000U);
+        Assert.Empty(nextMove.ResultingWorldState.EdgeTravels.Pending);
+        Assert.Equal(destination,
+            nextMove.ResultingWorldState.Workers.Workers.Single(w => w.Id == worker.Id)
+                .TacticalTileId);
+        var hashBeforeRejectedClose = new CanonicalWorldStateHasher()
+            .Compute(receipt.Next);
+        Assert.Throws<InvalidOperationException>(() =>
+            FoundationTemporalEconomicJournalGate.CloseAndReplay(
+                receipt.Next, new[] { secondEvent }, movement,
                 new FoundationGroundEdgeTravelTimePolicy(1_400_000UL),
-                incidence, policy, nextContext, fine)));
+                incidence, policy, nextContext, fine));
+        Assert.Equal(1UL, receipt.Next.Treasury.LastSettledEconomicCycleOrdinal);
+        Assert.Equal(hashBeforeRejectedClose,
+            new CanonicalWorldStateHasher().Compute(receipt.Next));
         var authenticatedReplay =
             FoundationTemporalEconomicJournalGate.ReplayJournal(
                 beginning, receipt.Journal, movement,
@@ -288,12 +298,11 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             new WorldGenerationRequest(new WorldSeed(20261012UL),
                 WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)),
             workersPerCivilization: 3);
-        var signed = FoundationFineFirstPhysicalGeography.Generate(
-            demo.Session.GeneratedWorld, demo.Incidence);
-        var signature = FoundationFineFirstWorldgenCanonicalSignature.Compute(
-            demo.Session.GeneratedWorld, demo.Incidence, signed);
+        // The fixture's WorldBinding is the original generated-world binding,
+        // not the promoted fine-first binding. The investment executor must
+        // match that exact identity; a forged binding must remain rejected.
         var investmentExecutor = new FoundationMonetaryInfrastructureEventExecutor(
-            demo.Session.GeneratedWorld, incidence, signed, signature);
+            demo.Session.GeneratedWorld, incidence);
         var policy = Policy(beginning.Civilizations.Civilizations);
         var journal = FoundationTemporalEconomicJournalGate.CloseAndReplayWithInvestments(
             beginning, new ISimulationEvent[] { movementEvent, capital },
