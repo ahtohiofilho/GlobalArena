@@ -176,7 +176,8 @@ public sealed class FoundationPhysicalOperationalWorkProjectorTests
             world, s.Incidence, s.Geography, rates);
         Assert.Equal(1_000_000UL, result.TotalAllocatedEffortMicro +
             result.TotalIdleEffortMicro);
-        Assert.Equal(result.TotalAllocatedEffortMicro, result.TotalServiceMicro);
+        Assert.Equal(new System.Numerics.BigInteger(
+            result.TotalAllocatedEffortMicro), result.TotalServiceMicro);
         Assert.All(result.Edges, item =>
         {
             Assert.Equal(FoundationOperationalWorkKind.Land, item.Kind);
