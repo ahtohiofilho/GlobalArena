@@ -132,7 +132,7 @@ public static class FoundationPhysicalOperationalWorkProjector
             incident.TryGetValue(item.Key.Tile, out var edges);
             var allocation = FoundationOperationalWorkAllocator.Allocate(
                 item.Value.Land, item.Value.Port,
-                edges ?? Array.Empty<FoundationOperationalWorkEdge>());
+                edges is null ? Array.Empty<FoundationOperationalWorkEdge>() : edges);
             answer.Add(new FoundationPhysicalOperationalNodeAllocation(
                 item.Key.Tile, item.Key.Owner, allocation));
         }
