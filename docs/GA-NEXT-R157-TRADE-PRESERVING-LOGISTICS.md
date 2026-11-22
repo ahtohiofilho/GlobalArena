@@ -24,3 +24,26 @@ No relatório R157, observar:
 ## Limites
 
 R157 continua estritamente **precommit**: não altera fretes reais, estoque, trabalhadores no jogo, preços, receitas, diário, turnos ou UI. Não introduz congestionamento. A avaliação compara **realocação de trabalhador existente**, não a entrada de novo trabalhador pelo crescimento populacional; esta última exige uma hipótese de oferta e demanda adicionais e um contrato de cenário independente.
+
+## Evidência real da primeira execução do gate (commit 5c01dbf)
+
+O workflow específico publicou o JSON em
+`https://github.com/ahtohiofilho/GlobalArena/actions/runs/44996939267/artifacts/14743214826`.
+Os dados abaixo **foram extraídos da execução**, não interpolados nem utilizados para ajustar os coeficientes:
+
+| Métrica | A: produtores | B: sem desconto | C: com serviço |
+|---|---:|---:|---:|
+| Mercadorias | 5,000000 | 4,000000 | 4,000000 |
+| Arestas usadas | 49 | 49 | 49 |
+| Carga atravessando arestas (micro) | 16493890 | 39445441 | 39483661 |
+| Crédito coletivo (moeda) | 7,648182 | 6,559651468399 | 6,560096531473 |
+
+- Transferência A→B: **−1,088530531601**.
+- Serviço B→C: **+0,000445063074**.
+- Saldo A→C: **−1,088085468527**.
+- Serviço físico total: 1.000.000 unidades micro, distribuído por **2 arestas**; em B e C, **1 das 49 arestas comerciais efetivamente utilizadas** cruza o trabalho dos operadores.
+- O resultado confirma que o benefício econômico operacional existe, mas é muito menor que o custo de oportunidade de retirar um trabalhador da produção neste estágio.
+
+### Correção de procedência após o primeiro relatório
+
+O primeiro arquivo também rotulava uma ligação de A como operada porque reutilizava a lista de serviço projetada para B, mesmo que **A não tivesse qualquer operador**. O projetor passou a registrar zero arestas efetivamente operadas no cenário A, mantendo os valores monetários e as rotas intactos. Teste de regressão acrescentado para impedir nova atribuição indevida.
