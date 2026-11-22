@@ -60,6 +60,7 @@ public sealed class FoundationTacticalAiResumeProductionPolicy
         return Array.AsReadOnly(snapshot.Workers.Workers
             .Where(worker => worker.Owner == civilization &&
                 worker.Activity == PhysicalWorkerActivity.Traveling &&
+                !snapshot.EdgeTravels.Pending.Any(p => p.Worker == worker.Id) &&
                 worker.Occupation is not PhysicalWorkerOccupation.LandTransport and
                     not PhysicalWorkerOccupation.PortOperations &&
                 worker.OutputMicroPerTurn > 0UL &&
@@ -83,7 +84,8 @@ public sealed class FoundationTacticalCollectiveReceipt
     public IReadOnlyList<FoundationMonetaryInfrastructureInvestedEvent>
         InfrastructureInvestments { get; }
     public FoundationEconomicSalesSettledEvent? EconomicSettlement { get; }
-    public int ExecutedEvents => Events.Count + InfrastructureInvestments.Count +
+    public IReadOnlyList<FoundationEdgeTravelTurnEvent> EdgeTravels { get; }
+    public int ExecutedEvents => Events.Count + EdgeTravels.Count + InfrastructureInvestments.Count +
         (EconomicSettlement is null ? 0 : 1);
     public bool ReplayMatched { get; }
 
@@ -91,7 +93,8 @@ public sealed class FoundationTacticalCollectiveReceipt
         TurnNumber turn, WorldStateHash hash, ulong revision,
         PhysicalTacticalWorkerMovedEvent[] events,
         FoundationMonetaryInfrastructureInvestedEvent[]? investments = null,
-        FoundationEconomicSalesSettledEvent? economicSettlement = null)
+        FoundationEconomicSalesSettledEvent? economicSettlement = null,
+        FoundationEdgeTravelTurnEvent[]? edgeTravels = null)
     {
         Turn = turn;
         Hash = hash;
@@ -100,6 +103,7 @@ public sealed class FoundationTacticalCollectiveReceipt
         InfrastructureInvestments = Array.AsReadOnly(investments ??
             Array.Empty<FoundationMonetaryInfrastructureInvestedEvent>());
         EconomicSettlement = economicSettlement;
+        EdgeTravels = Array.AsReadOnly(edgeTravels ?? Array.Empty<FoundationEdgeTravelTurnEvent>());
         ReplayMatched = true;
     }
 }
@@ -123,6 +127,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
         _monetaryExecutor;
     private readonly FoundationEconomicSalesSettlementEventExecutor?
         _economicExecutor;
+    private readonly FoundationEdgeTravelEventExecutor? _travelExecutor;
+    private readonly FoundationGroundEdgeTravelTimePolicy? _travelPolicy;
     private readonly AuthoritativeTurnCommitGate _publisher;
     private readonly CanonicalWorldStateHasher _hasher = new();
     private readonly HashSet<CivilizationId> _humans;
@@ -349,7 +355,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
         FoundationAuthoritativeEconomicSettlementPolicy?
             settlementPolicy = null,
         FoundationFineFirstPhysicalGeography? fineGeography = null,
-        FoundationFineFirstWorldgenIdentity? fineSignature = null)
+        FoundationFineFirstWorldgenIdentity? fineSignature = null,
+        FoundationGroundEdgeTravelTimePolicy? physicalTravelPolicy = null)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
         _incidence = incidence ?? throw new ArgumentNullException(nameof(incidence));
@@ -403,6 +410,11 @@ public sealed class FoundationTacticalHumanAiTurnHost
             _ => new SortedDictionary<ulong, FoundationTacticalWorkerOrder>());
         _investmentPlans = _participants.ToDictionary(civ => civ,
             _ => new SortedDictionary<ulong, FoundationMonetaryInfrastructureCommand>());
+        // R164 fraction slices are not yet fed into the monetary cycle.
+        // Reject rather than silently settle a whole turn at one location.
+        if (settlementPolicy is not null && physicalTravelPolicy is not null)
+            throw new InvalidOperationException(
+                "Fractional travel cannot close an unadapted economic settlement.");
         if (settlementPolicy is not null && !enableMonetaryInfrastructure)
             throw new InvalidOperationException(
                 "Authoritative sales need the same monetary treasury and " +
@@ -413,6 +425,11 @@ public sealed class FoundationTacticalHumanAiTurnHost
             throw new InvalidOperationException(
                 "Monetary infrastructure orders require a complete " +
                 "real treasury and v13 capital construction costs.");
+        if (Snapshot.EdgeTravels.IsInitialized != (physicalTravelPolicy is not null))
+            throw new InvalidOperationException(
+                "Opt-in persisted physical travel requires an explicit natural-time policy.");
+        physicalTravelPolicy?.RequireValid();
+        _travelPolicy = physicalTravelPolicy;
         _knownSnapshot = Snapshot;
         _closedTrade = new FoundationEconomicTradeCycleReadBoundary(
             Snapshot.WorldBinding ?? throw new InvalidOperationException(
@@ -433,6 +450,11 @@ public sealed class FoundationTacticalHumanAiTurnHost
                     session.GeneratedWorld, incidence, fineGeography,
                     fineSignature!)
         };
+        if (_travelPolicy is not null)
+        {
+            _travelExecutor = new FoundationEdgeTravelEventExecutor(_executor, _travelPolicy);
+            phases.Add(new FoundationEdgeTravelTurnPhase(_executor, _travelPolicy));
+        }
         if (enableMonetaryInfrastructure)
         {
             _monetaryExecutor = fineGeography is null
@@ -766,6 +788,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
         var automaticResumptions = Snapshot.Workers.Workers
             .Where(worker => _humans.Contains(worker.Owner) &&
                 worker.Activity == PhysicalWorkerActivity.Traveling &&
+                !Snapshot.EdgeTravels.Pending.Any(p => p.Worker == worker.Id) &&
                 worker.Occupation is not PhysicalWorkerOccupation.LandTransport and
                     not PhysicalWorkerOccupation.PortOperations &&
                 worker.OutputMicroPerTurn > 0UL &&
@@ -802,15 +825,30 @@ public sealed class FoundationTacticalHumanAiTurnHost
                     "Pending tactical source no longer matches canonical worker.");
         }
 
+        var continuations = Snapshot.EdgeTravels.Pending
+            .OrderBy(p => p.Worker.Value).ToArray();
+        if (orders.Any(o => continuations.Any(p => p.Worker == o.WorkerId)))
+            throw new InvalidOperationException(
+                "Unfinished physical crossing cannot receive competing orders.");
         var commands = orders.Select((order, index) =>
-            (ISimulationCommand)new PhysicalTacticalWorkerMoveCommand(
-                new CommandId(turn, checked((ulong)index + 1UL)),
-                order.Issuer, order.WorkerId, order.Destination,
-                order.Activity, order.NextOccupation))
+            _travelExecutor is not null && order.IsMovement
+                ? (ISimulationCommand)new FoundationEdgeTravelTurnCommand(
+                    new CommandId(turn, checked((ulong)index + 1UL)),
+                    order.Issuer, order.WorkerId, order.Destination, isStart: true)
+                : new PhysicalTacticalWorkerMoveCommand(
+                    new CommandId(turn, checked((ulong)index + 1UL)),
+                    order.Issuer, order.WorkerId, order.Destination,
+                    order.Activity, order.NextOccupation))
+            .Concat(continuations.Select((pending, index) =>
+                (ISimulationCommand)new FoundationEdgeTravelTurnCommand(
+                    new CommandId(turn,
+                        checked((ulong)(orders.Length + index) + 1UL)),
+                    pending.Owner, pending.Worker, pending.Destination,
+                    isStart: false)))
             .Concat(investments.Select((order, index) =>
                 (ISimulationCommand)new FoundationMonetaryInfrastructureCommand(
                     new CommandId(turn,
-                        checked((ulong)(orders.Length + index) + 1UL)),
+                        checked((ulong)(orders.Length + continuations.Length + index) + 1UL)),
                     order.Issuer, order.Edge, order.MoneyMicro)))
             .ToArray();
         var context = new SimulationContext(turn, new SimulationSeed(712UL));
@@ -825,12 +863,16 @@ public sealed class FoundationTacticalHumanAiTurnHost
                 "Canonical tactical turn gate failed to commit.");
         var events = resolved.Events
             .OfType<PhysicalTacticalWorkerMovedEvent>().ToArray();
+        var travelEvents = resolved.Events
+            .OfType<FoundationEdgeTravelTurnEvent>().ToArray();
         var moneyEvents = resolved.Events
             .OfType<FoundationMonetaryInfrastructureInvestedEvent>().ToArray();
         var settled = resolved.Events
             .OfType<FoundationEconomicSalesSettledEvent>().ToArray();
         int expectedSettlements = _economicExecutor is null ? 0 : 1;
-        if (events.Length != orders.Length ||
+        if (events.Length != orders.Count(o => !o.IsMovement || _travelExecutor is null) ||
+            travelEvents.Length != orders.Count(o => o.IsMovement && _travelExecutor is not null) +
+                continuations.Length ||
             moneyEvents.Length != investments.Length ||
             settled.Length != expectedSettlements ||
             resolved.Events.Count != commands.Length + expectedSettlements ||
@@ -846,6 +888,9 @@ public sealed class FoundationTacticalHumanAiTurnHost
                 ? _executor
                 : new FoundationMonetaryCollectiveReplayExecutor(
                     _executor, _monetaryExecutor, _economicExecutor);
+        if (_travelExecutor is not null)
+            replayExecutor = new FoundationEdgeTravelCompositeReplayExecutor(
+                replayExecutor, _travelExecutor);
         var replay = new SimulationEventLogReplayer(replayExecutor)
             .Replay(new SimulationReplayInput(
                 before, resolved.EventLog, context));
@@ -857,7 +902,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
              !(previousFormat == 14U && hash.FormatVersion == 15U)) ||
             (hash.FormatVersion != 10U && hash.FormatVersion != 11U &&
              hash.FormatVersion != 13U && hash.FormatVersion != 14U &&
-             hash.FormatVersion != 15U) ||
+             hash.FormatVersion != 15U && hash.FormatVersion != 17U) ||
             _hasher.Compute(replay) != hash)
             throw new InvalidOperationException(
                 "Worker, infrastructure and closed market journal replay " +
@@ -873,7 +918,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
 
         var receipt = new FoundationTacticalCollectiveReceipt(
             turn, hash, Snapshot.Revision, events, moneyEvents,
-            settled.SingleOrDefault());
+            settled.SingleOrDefault(), travelEvents);
         foreach (var plan in _plans.Values) plan.Clear();
         foreach (var plan in _investmentPlans.Values) plan.Clear();
         _ready.Clear();
@@ -964,6 +1009,9 @@ public sealed class FoundationTacticalHumanAiTurnHost
         bool movement, PhysicalWorkerOccupation? nextOccupation = null)
     {
         var worker = RequireOwnedWorker(issuer, workerId);
+        if (Snapshot.EdgeTravels.Pending.Any(p => p.Worker == workerId))
+            throw new InvalidOperationException(
+                "Cannot replace an unfinished physical crossing with another order.");
         if (!destination.IsValid || !Enum.IsDefined(activity))
             throw new InvalidOperationException("Invalid fine destination or worker activity.");
         var source = worker.TacticalTileId ??

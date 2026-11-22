@@ -28,6 +28,8 @@ public sealed class CanonicalWorldStateHasher
     // Opt-in stable cities and worker HOME assignments. No old v8-v15
     // hash changes unless the canonical ledger has been deployed.
     public const uint CanonicalCityResidenceFormatVersion = 16U;
+    // Only opt-in persisted journeys activate v17. Historical hashes stay stable.
+    public const uint PersistedPhysicalTravelFormatVersion = 17U;
 
     private static readonly byte[] Magic =
     {
@@ -43,7 +45,9 @@ public sealed class CanonicalWorldStateHasher
         ArgumentNullException.ThrowIfNull(
             worldState);
 
-        var version = worldState.CityResidences.IsInitialized
+        var version = worldState.EdgeTravels.IsInitialized
+            ? PersistedPhysicalTravelFormatVersion
+            : worldState.CityResidences.IsInitialized
             ? CanonicalCityResidenceFormatVersion
             : worldState.Treasury.HasClosedEconomicCycle
             ? ClosedEconomicCycleFormatVersion
@@ -451,7 +455,7 @@ public sealed class CanonicalWorldStateHasher
             }
         }
 
-        if (version >= CanonicalCityResidenceFormatVersion)
+        if (worldState.CityResidences.IsInitialized)
         {
             var ledger = worldState.CityResidences;
             if (!ledger.IsInitialized)
@@ -473,6 +477,25 @@ public sealed class CanonicalWorldStateHasher
             {
                 AppendUInt64(hash, entry.Worker.Value);
                 AppendUInt64(hash, entry.HomeCity.Value);
+            }
+        }
+
+        if (worldState.EdgeTravels.IsInitialized)
+        {
+            AppendUInt32(hash, 46U);
+            AppendUInt32(hash, 1U);
+            AppendUInt32(hash, checked((uint)worldState.EdgeTravels.Pending.Count));
+            foreach (var journey in worldState.EdgeTravels.Pending)
+            {
+                AppendUInt64(hash, journey.Worker.Value);
+                AppendUInt64(hash, journey.Owner.Value);
+                AppendUInt32(hash, checked((uint)journey.Source.FineGoldbergParameters.M));
+                AppendUInt32(hash, checked((uint)journey.Source.FineGoldbergParameters.N));
+                AppendUInt64(hash, journey.Source.FineStrategicCellId.Value);
+                AppendUInt64(hash, journey.Destination.FineStrategicCellId.Value);
+                AppendUInt64(hash, journey.Edge.FineStrategicEdgeId.Value);
+                AppendUInt64(hash, journey.RemainingMicro);
+                AppendUInt64(hash, journey.OriginalDurationMicro);
             }
         }
 
