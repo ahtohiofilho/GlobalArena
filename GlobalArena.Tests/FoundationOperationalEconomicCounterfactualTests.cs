@@ -528,6 +528,84 @@ public sealed class FoundationOperationalEconomicCounterfactualTests
     }
 
     [Fact]
+    public void CurrentProductionMarginalReturnKeepsWorkerDemandAndComparesRealMarkets()
+    {
+        var fixture = Scenario();
+        var ids = fixture.Before.Workers.Workers
+            .Where(w => w.Owner == Human &&
+                w.Activity == PhysicalWorkerActivity.Producing)
+            .OrderBy(w => w.Id.Value).Take(2)
+            .Select(w => w.Id).ToArray();
+        var originalHash = new CanonicalWorldStateHasher()
+            .Compute(fixture.Before);
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var report = FoundationCurrentWorkMarginalProjector.Evaluate(
+            fixture.Before, fixture.Incidence, fixture.Geography,
+            MarketPolicy(), ids, evaluationBudget: 2, topCount: 2);
+        watch.Stop();
+
+        Assert.False(report.IsCommitted);
+        Assert.Equal(3, report.CompleteMarketSolutions);
+        Assert.Equal(2, report.AllReadings.Count);
+        Assert.All(report.AllReadings, r =>
+        {
+            Assert.Equal(Human, r.Owner);
+            Assert.Equal(1_000_000UL, r.LostProductionMicro);
+            Assert.Equal(fixture.Reassigned.TacticalTileId, r.Tile);
+        });
+        Assert.Equal(report.AllReadings
+                .OrderBy(x => x.ContributionScaled)
+                .Select(x => x.Worker),
+            report.LowestContributions.Select(x => x.Worker));
+        Assert.Equal(originalHash, new CanonicalWorldStateHasher()
+            .Compute(fixture.Before));
+        Assert.All(fixture.Before.Workers.Workers,
+            w => Assert.NotEqual(PhysicalWorkerOccupation.Unassigned,
+                w.Occupation));
+        Assert.Throws<ArgumentException>(() =>
+            FoundationCurrentWorkMarginalProjector.Evaluate(
+                fixture.Before, fixture.Incidence, fixture.Geography,
+                MarketPolicy(), ids, evaluationBudget: 1, topCount: 2));
+
+        var folder = Environment.GetEnvironmentVariable("GA_R160_REPORT_DIR");
+        if (!string.IsNullOrWhiteSpace(folder))
+        {
+            Directory.CreateDirectory(folder);
+            var payload = new
+            {
+                schema = "ga-next-r160-current-work-marginal-v1",
+                baseline = report.BaselineIdentity,
+                populationUnchanged = true,
+                consumptionUnchanged = true,
+                stateCommitted = report.IsCommitted,
+                moneyScale =
+                    FoundationPhysicalEconomicAccountingProposal.MoneyScale.ToString(),
+                completeMarketSolutions = report.CompleteMarketSolutions,
+                elapsedMilliseconds = watch.ElapsedMilliseconds,
+                metric = "baseline_collective_cash_minus_same_population_one_worker_inactive",
+                candidates = report.AllReadings.Select(r => new
+                {
+                    workerId = r.Worker.Value,
+                    ownerId = r.Owner.Value,
+                    tileId = r.Tile.FineStrategicCellId.Value,
+                    occupation = r.CurrentOccupation.ToString(),
+                    commodity = r.Commodity.Value,
+                    outputMicro = r.LostProductionMicro,
+                    contributionScaled = r.ContributionScaled.ToString()
+                }),
+                lowestWorkerId = report.LowestContributions[0].Worker.Value,
+                highestWorkerId = report.HighestContributions[0].Worker.Value
+            };
+            string path = Path.Combine(folder, "r160-current-work-marginal.json");
+            File.WriteAllText(path,
+                System.Text.Json.JsonSerializer.Serialize(payload,
+                    new System.Text.Json.JsonSerializerOptions
+                    { WriteIndented = true }) + Environment.NewLine);
+            _output.WriteLine("GA_NEXT_R160_CURRENT_WORK_PASS " + path);
+        }
+    }
+
+    [Fact]
     public void CounterfactualRejectsUnchangedWorkersAndTamperedLocations()
     {
         var s = Scenario();
