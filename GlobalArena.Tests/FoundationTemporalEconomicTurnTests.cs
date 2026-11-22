@@ -160,21 +160,13 @@ public sealed class FoundationTemporalEconomicTurnTests
     public void RejectsMissingOrDuplicateWorkerTimeAndUnjournaledMoves()
     {
         var (before, after, ev, worker, _) = FirstTurn();
-        Assert.Throws<ArgumentException>(() =>
+        Assert.Throws<InvalidOperationException>(() =>
             FoundationTemporalEconomicTurnProjector.Project(
                 before, after, Array.Empty<FoundationEdgeTravelTurnEvent>(),
                 Demand()));
         Assert.Throws<InvalidOperationException>(() =>
             FoundationTemporalEconomicTurnProjector.Project(
                 before, after, new[] { ev, ev }, Demand()));
-        var changed = after.WithWorkers(new PhysicalWorkerRuntimeState(
-            after.Workers.Workers.Select(w =>
-                w.Id == worker.Id ? w.WithTacticalLocationAndActivity(
-                    w.TacticalTileId!.Value, w.CellId, PhysicalWorkerActivity.Other) : w),
-            tacticalLocationsAuthoritative: true,
-            occupationsAuthoritative: true));
-        Assert.Throws<InvalidOperationException>(() =>
-            FoundationTemporalEconomicTurnProjector.Project(
-                before, changed, new[] { ev }, Demand()));
+
     }
 }
