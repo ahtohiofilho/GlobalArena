@@ -377,7 +377,7 @@ public sealed class CanonicalWorldStateHasher
             }
         }
 
-        if (version >= MonetaryConstructionFormatVersion)
+        if (worldState.Transport.HasMonetaryConstructionCosts)
         {
             AppendUInt32(hash, 41U);
             AppendUInt32(hash, 1U);
@@ -415,7 +415,7 @@ public sealed class CanonicalWorldStateHasher
                         "A v14 monetary investment ledger is incomplete."));
         }
 
-        if (version >= ClosedEconomicCycleFormatVersion)
+        if (worldState.Treasury.HasClosedEconomicCycle)
         {
             var settled = worldState.Treasury;
             AppendUInt32(hash, 44U);
