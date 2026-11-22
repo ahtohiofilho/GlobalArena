@@ -59,6 +59,52 @@ public static class FoundationPersistedEdgeTravelTransitions
             id, true, before, Hasher.Compute(state), state.Revision, null));
     }
 
+    /// <summary>
+    /// One whole-turn commit: a newly ordered physical crossing immediately
+    /// consumes this turn's time; one journal event advances one world revision.
+    /// </summary>
+    public static (WorldState State, FoundationEdgeTravelTransitionReceipt Receipt)
+        StartAndAdvance(
+            WorldState world, PhysicalWorkerId id,
+            PhysicalTacticalTileId destination,
+            PhysicalTacticalWorkerMoveEventExecutor movement,
+            FoundationGroundEdgeTravelTimePolicy policy)
+    {
+        ArgumentNullException.ThrowIfNull(world);
+        if (!world.EdgeTravels.IsInitialized ||
+            world.EdgeTravels.Pending.Any(p => p.Worker == id))
+            throw new InvalidOperationException("Worker has an unfinished journey or no travel ledger.");
+        var worker = world.Workers.Workers.SingleOrDefault(w => w.Id == id)
+            ?? throw new InvalidOperationException("Unknown physical worker.");
+        if (worker.Activity == PhysicalWorkerActivity.Traveling)
+            throw new InvalidOperationException("Worker is already traveling.");
+        var (progress, quote) = FoundationGroundEdgeTravelTimeProjector.Start(
+            world, worker, destination, movement, policy);
+        var traveling = worker.WithTacticalLocationAndActivity(
+            progress.Source, worker.CellId, PhysicalWorkerActivity.Traveling);
+        var turn = FoundationFractionalEdgeTravelProjector.Advance(
+            progress, traveling, movement);
+        var nextRecord = turn.Arrived
+            ? worker.WithTacticalLocationAndActivity(
+                destination, movement.PresentationRegion(destination, worker.CellId),
+                turn.TimeSlices.LastOrDefault()?.DemandActivity ==
+                    PhysicalWorkerActivity.Producing
+                    ? PhysicalWorkerActivity.Producing
+                    : PhysicalWorkerActivity.Other)
+            : traveling;
+        var ledger = world.EdgeTravels.Replace(id,
+            turn.ContinuingTravel is null ? null :
+                new FoundationPendingEdgeTravel(
+                    id, worker.Owner, progress.Source, destination,
+                    quote.Edge, turn.ContinuingTravel.RemainingTravelMicro,
+                    quote.ImprovedCrossingTimeMicro));
+        var hashBefore = Hasher.Compute(world);
+        var state = world.WithPhysicalEdgeTravel(
+            ReplaceWorker(world, worker, nextRecord), ledger).AdvanceRevision();
+        return (state, new FoundationEdgeTravelTransitionReceipt(
+            id, true, hashBefore, Hasher.Compute(state), state.Revision, turn));
+    }
+
     public static (WorldState State, FoundationEdgeTravelTransitionReceipt Receipt) Advance(
         WorldState world, PhysicalWorkerId id,
         PhysicalTacticalWorkerMoveEventExecutor movement)
