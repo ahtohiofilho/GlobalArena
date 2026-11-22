@@ -58,15 +58,18 @@ public static class FoundationTemporalFinancialReconciler
         // Matching R169's signed topology, only real permitted freight edges
         // are considered in the financial cost calculation.
         if (signedFine is not null)
-            roads = roads.Where(road =>
-            {
-                var edge = incidence.FineTopology.Edges.Single(e =>
-                    e.Id == road.Edge.FineStrategicEdgeId);
-                int a = checked((int)edge.IncidentCellIds[0].Value - 1);
-                int b = checked((int)edge.IncidentCellIds[1].Value - 1);
-                return signedFine.CrossingAtIndices(a, b) !=
-                    FoundationFineTransportCrossingKind.BlockedIceSeaBoundary;
-            }).ToArray();
+        {
+            if (signedFine.FineParameters != incidence.Refinement.FineParameters)
+                throw new InvalidOperationException("Signed world mismatch.");
+            var forbidden = incidence.FineTopology.Edges
+                .Where(edge => signedFine.CrossingAtIndices(
+                    checked((int)edge.IncidentCellIds[0].Value - 1),
+                    checked((int)edge.IncidentCellIds[1].Value - 1)) ==
+                    FoundationFineTransportCrossingKind.BlockedIceSeaBoundary)
+                .Select(edge => new PhysicalTacticalEdgeId(
+                    incidence.Refinement.FineParameters, edge.Id)).ToHashSet();
+            roads = roads.Where(road => !forbidden.Contains(road.Edge)).ToArray();
+        }
         var accounts = FoundationPhysicalEconomicAccountingReconciler
             .EvaluateCandidate(market, incidence, policy.Cargo, distribution,
                 roads, baseline.Civilizations.Civilizations, policy.TaxRates);
