@@ -13,12 +13,19 @@
 - `FoundationPersistedEdgeTravelTransitions`: implantação opt-in vazia; começo (R166), avanço R165 por um turno, gravação do saldo e chegada; receipts determinísticos de before/after com replay verificável.
 - Regressão: percurso de 1,4 turno, 100% tempo de viagem no primeiro, 40% viagem e 60% esforço produtivo no segundo, duplicatas/forja, replay, preservação de baseline.
 
-## Limites importantes antes do cutover para gameplay
-- A transição ainda não está ligada ao `FoundationTacticalHumanAiTurnHost` / `ISimulationEventExecutor` / journal canônico. Não usar como promessa de integração completa ou replay dos turnos publicados.
-- Na chegada, a posição física fina é atualizada; a região estratégica legada de apresentação é preservada. Antes da integração ao executor canônico, utilizar seu mapeamento de região para uma travessia que atravesse fronteira estratégica.
+## Integração adicional sob gate de CI
+- Uma política explícita de tempo natural habilita o modo R167 no `FoundationTacticalHumanAiTurnHost` **somente** quando o ledger opt-in existe; o host legado permanece inalterado por padrão.
+- `FoundationEdgeTravelTurnPhase` emite eventos de início/avanço no journal canônico e o executor de replay reproduz a transição e confere as evidências.
+- No início, o trabalhador já consome a capacidade temporal do turno; nos turnos seguintes, a continuidade é automática no fechamento coletivo e independe de nova ordem humana.
+- O host rejeita ordens concorrentes para trabalhador com viagem pendente e não retoma sua produção até a chegada.
+- Na chegada, a posição física e a região estratégica legada são atualizadas pelo mapeamento canônico `PresentationRegion`.
+
+## Limites importantes antes do cutover econômico
 - Não foi implantada a liquidação econômica fracionária de R164 por turno; as fatias do receipt ainda são evidência.
 - Ainda não foram introduzidos nascimentos reais, movimento por várias arestas, cancelamento de viagens, melhoria dinâmica de tempo durante uma travessia já iniciada, migração de saves nem UI.
 - O campo `OriginalDurationMicro` congela a duração de uma aresta ao começar; melhorias posteriores de infraestrutura afetam as **novas** travessias, não retroativamente as já iniciadas.
+- **Crítico:** a contabilidade de demanda e produção autoritativa da liquidação econômica ainda não aplica automaticamente as fatias de R164. O receipt expõe essas frações, mas o settlement coletivo legado continua lendo o censo instantâneo; não habilitar conjuntamente esse modo e liquidação econômica sem uma integração específica.
+- A origem física é atribuída a toda fração de viagem dentro da aresta, e a chegada passa ao destino apenas após completar a travessia.
 
 ## Critério de promoção
-Manter Draft até CI verde e até integrar comandos/eventos de início/continuação no journal canônico, bloquear ordens concorrentes para trabalhadores em trânsito, resolver a região estratégica de chegada pelo executor de movimento e auditar R164 na mesma transação.
+Manter Draft até o CI do novo journal e do host estar verde; antes de qualquer liberação de gameplay econômico é obrigatório auditar R164 no settlement da mesma transação, sem fracionar consumo duas vezes.
