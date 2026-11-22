@@ -122,10 +122,28 @@ public static class FoundationPhysicalDeliveryAllocationAuditor
         ArgumentNullException.ThrowIfNull(candidates);
         ArgumentNullException.ThrowIfNull(ownership);
 
-        // Real v11 worker census and complete positive demand policy are
-        // validated by the existing projector; none are reconstructed here.
         var market = FoundationPhysicalCommodityDemandProjector.Project(
             census, demandPolicy);
+        return Audit(market, incidence, conversionPolicy, candidates, ownership);
+    }
+
+    /// <summary>
+    /// Native market audit shares the exact freight and allocation validation
+    /// with census-based clearing; only the source of the real physical
+    /// supply/demand lines differs. Temporal quantities are never a census.
+    /// </summary>
+    public static FoundationPhysicalDeliveryAllocationAudit Audit(
+        FoundationPhysicalCommodityMarketInputs market,
+        PhysicalTacticalIncidenceMap incidence,
+        FoundationCommodityCargoConversionPolicy conversionPolicy,
+        IEnumerable<FoundationPhysicalCommodityDeliveryCandidate> candidates,
+        IEnumerable<FoundationTransportEdgeOwnershipEvidence> ownership)
+    {
+        ArgumentNullException.ThrowIfNull(market);
+        ArgumentNullException.ThrowIfNull(incidence);
+        ArgumentNullException.ThrowIfNull(conversionPolicy);
+        ArgumentNullException.ThrowIfNull(candidates);
+        ArgumentNullException.ThrowIfNull(ownership);
         if (!market.Commodities.SequenceEqual(conversionPolicy.Commodities))
             throw new ArgumentException(
                 "Demand and freight policies must declare the SAME complete " +
