@@ -410,6 +410,11 @@ public sealed class FoundationTacticalHumanAiTurnHost
             _ => new SortedDictionary<ulong, FoundationTacticalWorkerOrder>());
         _investmentPlans = _participants.ToDictionary(civ => civ,
             _ => new SortedDictionary<ulong, FoundationMonetaryInfrastructureCommand>());
+        // R164 fraction slices are not yet fed into the monetary cycle.
+        // Reject rather than silently settle a whole turn at one location.
+        if (settlementPolicy is not null && physicalTravelPolicy is not null)
+            throw new InvalidOperationException(
+                "Fractional travel cannot close an unadapted economic settlement.");
         if (settlementPolicy is not null && !enableMonetaryInfrastructure)
             throw new InvalidOperationException(
                 "Authoritative sales need the same monetary treasury and " +
