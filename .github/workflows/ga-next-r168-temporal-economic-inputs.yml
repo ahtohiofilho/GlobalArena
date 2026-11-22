@@ -1,0 +1,27 @@
+name: GA-Next R168 Temporal Economic Worker-Turn Inputs
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/Foundation/FoundationTemporalEconomicTurnProjector.cs'
+      - 'GlobalArena.Tests/FoundationTemporalEconomicTurnTests.cs'
+      - '.github/workflows/ga-next-r168-temporal-economic-inputs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  temporal-inputs:
+    name: R168 journal-backed temporal demand and productive supply / ubuntu-latest
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build full physical economic kernel and tests
+        run: dotnet build GlobalArena.Tests/GlobalArena.Tests.csproj -c Release
+      - name: R168 journal fractions with R164-R167 regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~FoundationTemporalEconomicTurnTests|FullyQualifiedName~FoundationPersistedEdgeTravelTests|FullyQualifiedName~FoundationFractionalEdgeTravelProjectorTests|FullyQualifiedName~FoundationPhysicalPresenceDemographicTests|FullyQualifiedName~FoundationGroundEdgeTravelTimeProjectorTests' --logger 'console;verbosity=detailed'
