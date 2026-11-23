@@ -292,6 +292,7 @@ public static class FoundationTemporalEconomicJournalGate
         private readonly List<PhysicalTacticalWorkerMovedEvent> _localEvents = new();
         private readonly HashSet<PhysicalWorkerId> _orderedWorkers = new();
         private readonly FoundationMonetaryInfrastructureEventExecutor? _investment;
+        private bool _travelsStarted;
         private bool _investmentsStarted;
         private int _investmentCount;
         private bool _closed;
@@ -325,7 +326,8 @@ public static class FoundationTemporalEconomicJournalGate
                 throw new InvalidOperationException("Cannot append events after economic close.");
             if (ev is PhysicalTacticalWorkerMovedEvent local)
             {
-                if (_investmentsStarted || local.Id.Turn != context.Turn ||
+                if (_travelsStarted || _investmentsStarted ||
+                    local.Id.Turn != context.Turn ||
                     local.Source != local.Destination ||
                     local.TraversedEdge.HasValue ||
                     !_orderedWorkers.Add(local.WorkerId))
@@ -342,6 +344,7 @@ public static class FoundationTemporalEconomicJournalGate
                     throw new InvalidOperationException(
                         "Duplicate physical traveler or mixed economic turns.");
                 var next = _travel.Execute(state, travel, context);
+                _travelsStarted = true;
                 _events.Add(travel);
                 return next;
             }
