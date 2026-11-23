@@ -426,6 +426,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             settlementPolicy: Policy(world.Civilizations.Civilizations),
             physicalTravelPolicy: new FoundationGroundEdgeTravelTimePolicy(1_400_000UL));
         var initial = host.StateHash;
+        var snapshotBefore = host.Snapshot;
         host.QueueHumanMove(worker.Owner, worker.Id, destination);
         Assert.Equal(initial, host.StateHash);
         host.SetHumanReady(worker.Owner);
@@ -441,6 +442,25 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             host.Snapshot.EdgeTravels.Pending.Single().RemainingMicro);
         Assert.Equal(receipt.Hash, host.StateHash);
         Assert.NotEqual(initial, receipt.Hash);
+        var publicForViewer =
+            FoundationViewerTemporalEconomicCloseProjector.Read(
+                receipt, host.Snapshot, worker.Owner);
+        var expected = receipt.TemporalEconomicSettlement!.Credits.Single(
+            credit => credit.Civilization == worker.Owner);
+        Assert.Equal(expected.CashCreditScaled, publicForViewer.TotalCashCreditScaled);
+        Assert.Equal(expected.SellerNetScaled, publicForViewer.SellerNetScaled);
+        Assert.Equal(expected.SellerTaxScaled, publicForViewer.TaxReceiptsScaled);
+        Assert.Equal(expected.OwnerTollIncomeScaled,
+            publicForViewer.OwnerTollIncomeScaled);
+        Assert.Equal(host.StateHash, publicForViewer.CommittedWorldHash);
+        Assert.Throws<InvalidOperationException>(() =>
+            FoundationViewerTemporalEconomicCloseProjector.Read(
+                receipt, snapshotBefore, worker.Owner));
+        var outsider = new CivilizationId(uint.MaxValue);
+        Assert.Throws<InvalidOperationException>(() =>
+            FoundationViewerTemporalEconomicCloseProjector.Read(
+                receipt, host.Snapshot, outsider));
+
     }
 
     [Fact]
