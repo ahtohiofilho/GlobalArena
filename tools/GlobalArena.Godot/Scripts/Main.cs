@@ -943,7 +943,7 @@ public partial class Main : Control
         {
             ToggleWorkspaceWindow();
         }
-        else if (key.Keycode == Key.C)
+        else if (key.Keycode == Key.Y)
         {
             OpenSelectedCityWindow();
         }
@@ -1177,7 +1177,7 @@ public partial class Main : Control
         var openPlanet = new Button { Name = "GANextPlanetButton", Text = "M | PLANET" };
         openPlanet.Pressed += TogglePlanetWindow;
         header.AddChild(openPlanet);
-        var city = new Button { Name = "GANextCityButton", Text = "C | CIDADE" };
+        var city = new Button { Name = "GANextCityButton", Text = "Y | CIDADE" };
         city.Pressed += OpenSelectedCityWindow;
         header.AddChild(city);
         var openWorkspace = new Button { Name = "GANextPanelsButton", Text = "TAB | PANELS" };

@@ -201,6 +201,28 @@ jobs:
           grep -q 'GA_NEXT_R134_CARTOGRAPHIC_SITES_PASS' "$RUNNER_TEMP/ga-godot/r134-cartographic-sites.log"
           grep -q 'GA_NEXT_R180_CITY_LINKS_PASS' "$RUNNER_TEMP/ga-godot/r134-cartographic-sites.log"
           if grep -E 'GA_NEXT_R134_CARTOGRAPHIC_SITES_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/r134-cartographic-sites.log"; then exit 1; fi
+      - name: R181 actual Godot city tabs and immediate-link screenshots
+        shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          GA_FOUNDATION_GODOT_SMOKE: '0'
+          GA_NEXT_WORKSPACE_SMOKE: '0'
+          GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW: '1'
+          GA_NEXT_INTERACTIVE_ECONOMY_PREVIEW: '1'
+          GA_NEXT_QA_LOCAL_SITE_MARKERS: '1'
+          GA_NEXT_CARTOGRAPHIC_SITE_SMOKE: '1'
+          GA_NEXT_R181_CITY_VISUAL_SMOKE: '1'
+          GA_NEXT_R181_CITY_SCREENSHOT_DIR: ${{ runner.temp }}/ga-godot/r181-city
+        run: |
+          set -euo pipefail
+          xvfb-run -a -s "-screen 0 1600x1000x24" timeout 180s "$GODOT_BIN" --path tools/GlobalArena.Godot --quit-after 900 2>&1 | tee "$RUNNER_TEMP/ga-godot/r181-city.log"
+          grep -q 'GA_NEXT_R181_CITY_VISUAL_PASS' "$RUNNER_TEMP/ga-godot/r181-city.log"
+          grep -q 'GA_NEXT_R134_CARTOGRAPHIC_SITES_PASS' "$RUNNER_TEMP/ga-godot/r181-city.log"
+          for stage in 01_city_overview 02_city_direct_links 03_local_connection_detail; do
+            grep -q "GA_NEXT_R181_CITY_FRAME_PASS stage=$stage" "$RUNNER_TEMP/ga-godot/r181-city.log"
+            test -s "$GA_NEXT_R181_CITY_SCREENSHOT_DIR/$stage.png"
+          done
+          if grep -E 'GA_NEXT_R134_CARTOGRAPHIC_SITES_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/r181-city.log"; then exit 1; fi
       - name: R87 signed G18 headless visual-authority and actual economic turn acceptance
         shell: bash
         run: |
@@ -505,6 +527,8 @@ jobs:
             ${{ runner.temp }}/ga-godot/r87-g18/*.png
             ${{ runner.temp }}/ga-godot/r179-temporal-economy.log
             ${{ runner.temp }}/ga-godot/r179-temporal-economy/*.png
+            ${{ runner.temp }}/ga-godot/r181-city.log
+            ${{ runner.temp }}/ga-godot/r181-city/*.png
             ${{ runner.temp }}/ga-godot/graphical-smoke.log
             ${{ runner.temp }}/ga-godot/workspace-graphical.log
             ${{ runner.temp }}/ga-godot/workspace/*.png

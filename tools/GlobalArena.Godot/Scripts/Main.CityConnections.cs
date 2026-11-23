@@ -64,7 +64,9 @@ public partial class Main
         _cityOverview = new Label
         {
             Text = "Selecione um nó físico no mapa.",
-            AutowrapMode = TextServer.AutowrapMode.WordSmart
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            VerticalAlignment = VerticalAlignment.Top,
+            SizeFlagsVertical = SizeFlags.ShrinkBegin
         };
         overview.AddChild(_cityOverview);
 
@@ -167,6 +169,92 @@ public partial class Main
                 ? link.InfrastructureOwner.Value.Value.ToString()
                 : "sem titular")}\n" +
             $"Investimento acumulado: {link.InvestedMoneyMicro} micro";
+    }
+
+    // R181: exact visual acceptance from the REAL cartographic site
+    // selected in the rendered G18 world. QA never commits any turn.
+    internal async Task ExerciseR181CityWindowVisualSmoke(ulong site)
+    {
+        if (_tacticalHost is null || _tacticalPreview is null ||
+            !_tacticalPreview.LocalSiteMarkerTileIds.Contains(site))
+            throw new InvalidOperationException(
+                "R181 visual QA requires a currently focused actual inhabited site.");
+        var beforeHash = _tacticalHost.StateHash;
+        var viewport = GetViewport();
+        var folder = System.Environment.GetEnvironmentVariable(
+            "GA_NEXT_R181_CITY_SCREENSHOT_DIR");
+        if (string.IsNullOrWhiteSpace(folder))
+            throw new InvalidOperationException("R181 screenshot directory required.");
+        System.IO.Directory.CreateDirectory(folder);
+        async Task Frames()
+        {
+            for (int i = 0; i < 6; i++)
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+        async Task Capture(string stage)
+        {
+            await Frames();
+            if (_cityWindowLayer?.IsVisibleInTree() != true ||
+                _cityWindowTitle?.IsVisibleInTree() != true ||
+                _cityWindowLayer.GetGlobalRect().Intersects(
+                    new Rect2(Vector2.Zero, viewport.GetVisibleRect().Size)) == false)
+                throw new InvalidOperationException(
+                    "R181 window exists in memory but is not actually displayed.");
+            var image = viewport.GetTexture().GetImage();
+            if (image is null || image.IsEmpty())
+                throw new InvalidOperationException(
+                    "No real rendered framebuffer for city QA.");
+            var target = System.IO.Path.Combine(folder, stage + ".png");
+            if (image.SavePng(target) != Error.Ok ||
+                new System.IO.FileInfo(target).Length < 1500)
+                throw new InvalidOperationException(
+                    "R181 real city panel screenshot was not saved.");
+            GD.Print($"GA_NEXT_R181_CITY_FRAME_PASS stage={stage} " +
+                $"width={image.GetWidth()} height={image.GetHeight()}");
+        }
+
+        OnCartographicLocalSiteSelected(site);
+        OpenSelectedCityWindow();
+        var tabs = FindChild("GANextCityTabs", true, false) as TabContainer;
+        var tile = new PhysicalTacticalTileId(
+            _tacticalHost.Incidence.Refinement.FineParameters,
+            new StrategicCellId(site));
+        var rows = FoundationLocalConnectionsProjector.Read(
+            _tacticalHost.Snapshot, _tacticalHost.Incidence, tile);
+        if (tabs is null || tabs.GetTabCount() != 2 ||
+            tabs.GetTabTitle(0) != "Visão geral" ||
+            tabs.GetTabTitle(1) != "Ligações" ||
+            _cityLinksList?.GetChildCount() != rows.Count ||
+            _cityWindowTitle?.Text != $"CIDADE | NÓ {site}" ||
+            _tacticalHost.StateHash != beforeHash)
+            throw new InvalidOperationException(
+                "R181 window tabs and incident-edges data do not match the physical world.");
+        tabs.CurrentTab = 0;
+        await Capture("01_city_overview");
+        tabs.CurrentTab = 1;
+        await Frames();
+        if (_cityLinksList?.IsVisibleInTree() != true ||
+            _cityLinksList.GetChildCount() != rows.Count ||
+            rows.Count == 0)
+            throw new InvalidOperationException(
+                "R181 local links are hidden or not strictly incident edges.");
+        await Capture("02_city_direct_links");
+        ShowCityConnectionDetail(rows[0]);
+        await Frames();
+        if (_cityLinkDetail?.IsVisibleInTree() != true ||
+            _cityLinkDetailText?.Text.Contains(
+                $"Nó vizinho: {rows[0].Neighbor.FineStrategicCellId.Value}",
+                StringComparison.Ordinal) != true)
+            throw new InvalidOperationException(
+                "R181 connection detail did not display the real neighboring node.");
+        await Capture("03_local_connection_detail");
+        if (_tacticalHost.StateHash != beforeHash)
+            throw new InvalidOperationException(
+                "City presentation must not mutate economic or physical state.");
+        _cityWindowLayer!.Visible = false;
+        GD.Print($"GA_NEXT_R181_CITY_VISUAL_PASS site={site} " +
+            $"direct_edges={rows.Count} frames=3 tabs=2 " +
+            "map_background=true real_incidence=true no_economy_mutation=true");
     }
 
     // Execute the exact existing cartographic selection handler; this is

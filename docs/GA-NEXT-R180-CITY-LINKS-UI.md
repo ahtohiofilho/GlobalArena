@@ -2,7 +2,7 @@
 
 ## Decisão de arquitetura visual
 - O mapa permanece a tela principal, com ou sem coluna lateral (TAB); as telas de civilização e cidade são janelas próprias com abas.
-- A janela da cidade é acessível por **C | CIDADE**. O primeiro incremento tem duas abas: **Visão geral** e **Ligações**. Não adicionamos dezenas de painéis especulativos.
+- A janela da cidade é acessível por **Y | CIDADE**. O primeiro incremento tem duas abas: **Visão geral** e **Ligações**. Não adicionamos dezenas de painéis especulativos.
 - A aba Ligações mostra **somente as arestas diretamente incidentes ao nó físico selecionado**, não caminhos arbitrários nem objetos de rota comercial persistente.
 - Selecionar uma ligação revela um detalhamento local simples (nó vizinho, frete físico unitário, tarifa, investimento e titular). Uma janela histórica extraordinária, gráficos e agregações por conjuntos de arestas ficam fora deste escopo, sujeitos a ROI.
 - O nome amigável **Ligação** designa a aresta, mantendo IDs físicos e precisão no kernel.
