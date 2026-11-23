@@ -660,7 +660,7 @@ public partial class GlobePreview : SubViewportContainer
             if (!_movedSincePress && motion.Position.DistanceTo(_pressPosition) >= ClickThresholdPixels)
                 _movedSincePress = true;
             if (!_movedSincePress) return;
-            if (_mapMode == SignedG18MapMode)
+            if (Name == "GANextPlanetGlobe" || _signedG18Geography is not null)
             {
                 if (!_northUpInitialized)
                 {
@@ -1091,6 +1091,8 @@ public partial class GlobePreview : SubViewportContainer
         _northUpInitialized = false;
         _camera.Position = new Vector3(0f, 0.05f, 3.15f);
         _camera.LookAt(Vector3.Zero, Vector3.Up);
+        if (Name == "GANextPlanetGlobe" || _signedG18Geography is not null)
+            CenterOnGeography(Vector3.Right);
         UpdateZoomLabel();
         GD.Print("GA_PROD_VIEW_RESET_15");
     }
@@ -1101,6 +1103,8 @@ public partial class GlobePreview : SubViewportContainer
         var position = _camera.Position;
         position.Z = Mathf.Clamp(position.Z + delta, MinZoom, MaxZoom);
         _camera.Position = position;
+        _camera.LookAt(Vector3.Zero, Vector3.Up);
+        if (_northUpInitialized) ApplyCanonicalNorthUp();
         UpdateZoomLabel();
     }
 
