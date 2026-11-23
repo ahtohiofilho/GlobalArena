@@ -20,3 +20,7 @@ O gate visual automatizado comprova que os elementos aparecem, mas a homologaç�
 **Não restaurar as três bolinhas.** A representação cartográfica canônica usa um símbolo único em estilo de mapa antigo, diferenciado pelo porte do assentamento; esta PR não substitui os marcadores em uso.
 
 Windows/Linux obrigatórios, macOS facultativo. PR empilhada sobre a R180, Draft, sem merge.
+
+## Ajustes após inspeção dos PNGs
+
+O texto da Visão geral é alinhado ao topo, evitando espaço vazio excessivo. O atalho da cidade passa a ser **Y**, como no esboço canônico; a tecla **C** fica reservada à futura janela da civilização. Nenhuma nova entidade de UI ou regra econômica foi introduzida.
