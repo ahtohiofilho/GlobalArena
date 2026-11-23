@@ -37,8 +37,17 @@ A R169 já introduziu oferta e demanda dos trabalhadores reais por frações de 
 - A entrada econômica rejeita atividade ou ocupação alterada sem evidência do journal; o replay do evento físico valida identidade, origem e regras de transição.
 - As ordens locais são efetivas no início do turno. Não há modelo de mudança ocupacional em frações intermediárias do mesmo turno; isso precisará de timestamp próprio se vier a ser permitido.
 
-## Gate ainda pendente — ativação automática no host coletivo
-**Há liquidação autoritativa no gate restrito, mas ela ainda NÃO é ativada no host de partida.** O `FoundationAuthoritativeEconomicSalesSettlementPhase` antigo ainda deriva seus dados do censo instantâneo. O novo gate explícito faz isso para jornadas físicas puras. A integração ao host coletivo ainda deve lidar com a ordem completa de eventos de investimento e mudanças de atividade/ocupação, com replay de toda a partida. Até lá, manter o bloqueio de settlement antigo em modo fracionário.
+## Cutover opt-in do host coletivo (candidato de homologação)
+- Quando há **simultaneamente** ledger físico R167 inicializado, política explícita de tempo, tesouraria física, infraestrutura monetária e política econômica, o host seleciona uma **única fase** `FoundationTemporalCollectiveTurnPhase` para todo o turno.
+- A fase usa os executores existentes para ordens locais de atividade/ocupação, viagens, investimentos de dinheiro já disponível e um único evento SYSTEM temporal. Nenhum estado intermediário é publicado no `CanonicalGameSession`.
+- O recibo coletivo inclui `TemporalEconomicSettlement`, distinto de `EconomicSettlement` legado. O host reproduz o journal inteiro pelo `FoundationTemporalEconomicJournalGate.ReplayJournal` e exige o mesmo hash final canônico.
+- A política anterior permanece em modo legado quando não é fornecida a combinação explícita de política temporal e econômica; não há mudança de versão de hash nesses cenários.
+- Falha de convergência interrompe a resolução antes do commit coletivo, preservando a fotografia de entrada. Não aumentar automaticamente o limite de passagens.
+- A leitura de comércio liquidado no overlay legado ainda não foi adaptada para o tipo novo de evento temporal e permanece não publicada nesse modo; a tesouraria, por outro lado, é registrada no `WorldState`.
+- A validação do novo host é **gate obrigatório**: testar CI dedicado, regressões de kernel, hash multiplataforma e comportamento do host em cenário com início de viagem, capital e ocupação. Não promover até tudo verde.
+
+## Pendências posteriores — integração completa de visualização e calibragem
+**A ativação do host foi implementada de modo opt-in, ainda sujeita à homologação dos novos workflows.** O `FoundationAuthoritativeEconomicSalesSettlementPhase` antigo ainda deriva seus dados do censo instantâneo. A fase integrada trata jornadas, investimentos e mudanças locais de atividade/ocupação no journal do mesmo turno. Manter o modo legado separado e não habilitar o novo modo em builds finais até o CI e a auditoria do replay estarem verdes.
 
 O bloqueio da R167 contra liquidação antiga simultânea à viagem fracionária permanece obrigatório. O adaptador `FoundationTemporalFinancialReconciler` continua candidato read-only. Apenas o gate explícito, com verificação de journal completo de travessias e tesouraria, pode creditar dinheiro. A integração ao journal econômico e ao estado de tesouraria será tratada como gate seguinte, com testes de replay e fraude.
 
