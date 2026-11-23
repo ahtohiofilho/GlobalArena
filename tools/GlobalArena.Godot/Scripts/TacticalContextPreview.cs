@@ -202,6 +202,8 @@ public partial class TacticalContextPreview : SubViewportContainer
     // The new canonical north-up policy is gated to cartographic local sites.
     // Legacy tactical worker/navigation modes retain their tested locked frame.
     private bool _geographicNorthUp;
+    private readonly CanonicalNorthUpNavigation _northUpNavigation = new();
+    private bool _canonicalDragFrame;
     private Vector3? _navigationOrientationAnchor;
     // R98: independent of strategic/tactical tile centers. The continuous
     // screen-center geography is computed from the inverse spherical chart
@@ -1074,8 +1076,10 @@ public partial class TacticalContextPreview : SubViewportContainer
             return;
         }
 
-        var north = _physicalPolarAxis -
-            _exactViewPointOnSphere * _exactViewPointOnSphere.Dot(_physicalPolarAxis);
+        var north = _canonicalDragFrame && _localSitesEnabled
+            ? _northUpNavigation.North(_physicalPolarAxis)
+            : _physicalPolarAxis -
+                _exactViewPointOnSphere * _exactViewPointOnSphere.Dot(_physicalPolarAxis);
         // Geographic north has no unique direction at a pole. Preserve the
         // last valid tangent direction, and project it onto the new tangent
         // plane; do not flip the compass by sampling a different G3 center.
@@ -1121,6 +1125,8 @@ public partial class TacticalContextPreview : SubViewportContainer
             !spherical.IsFinite() || spherical.LengthSquared() < 0.5f)
             throw new InvalidOperationException("Invalid tactical geographic focus.");
         spherical = spherical.Normalized();
+        if (!_canonicalDragFrame)
+            _northUpNavigation.SetCenter(spherical, _physicalPolarAxis);
         var fine = FindFineTileAt(spherical);
         var owners = _cachedPhysicalMap.TileIncidences[
             checked((int)fine.Value - 1)].IncidentCoarseCellIds;
@@ -1139,11 +1145,44 @@ public partial class TacticalContextPreview : SubViewportContainer
             $"coarse={coarse.Value} exact={CenterGeography} no_simulation_mutation=true");
     }
 
+    private void MoveCanonicalNorthUp(Vector2 delta)
+    {
+        if (_camera is null || _innerViewport is null || _cachedFineWorld is null ||
+            _cachedPhysicalMap is null || _cachedCoarseGeometry is null) return;
+        if (!_canonicalDragFrame)
+        {
+            _northUpNavigation.SetCenter(_exactViewPointOnSphere, _physicalPolarAxis);
+            _canonicalDragFrame = true;
+        }
+        float scale = _camera.Size / Math.Max(1, _innerViewport.Size.Y);
+        _northUpNavigation.Move(_physicalPolarAxis, -delta.X * scale, delta.Y * scale);
+        var center = _northUpNavigation.Center(_physicalPolarAxis);
+        var fine = FindFineTileAt(center);
+        var anchor = _cartographicChartAnchor;
+        bool rebuild = !anchor.HasValue ||
+            center.Dot(ConvertPoint(_cachedFineWorld.StrategicSphericalGeometry
+                .GetCell(anchor.Value).Center).Normalized()) < FineAnchorRecenterDot;
+        if (rebuild)
+        {
+            CenterOnGeography(center);
+            _cartographicReanchors++;
+        }
+        else
+        {
+            _cameraTarget = FlattenUnitVector(center, TacticalSurfacePlaneY);
+            UpdateCameraOrientation();
+            _focusedFineTile = fine;
+        }
+        if (_coverViewport && !ViewportSamplesHaveTerrain(_camera.Size, 4, 4))
+            CenterOnGeography(center);
+    }
+
     private void CenterOnRightClickedGeography(Vector2 pixel)
     {
         if (!_localSitesEnabled ||
             !TryProjectCursorOnTacticalPlane(pixel, out var hit) ||
             !TryUnprojectOnSphere(hit, out var location)) return;
+        _canonicalDragFrame = false;
         CenterOnGeography(location);
     }
 
@@ -1877,6 +1916,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         if (!_localSitesEnabled || _camera is null || _innerViewport is null)
             throw new InvalidOperationException("Cartographic drag smoke requires active map.");
         var originalTarget = _cameraTarget;
+        var originalCenter = _exactViewPointOnSphere;
         var originalZoom = _camera.Size;
         var originalYaw = _yawDegrees;
         var initialReanchors = _cartographicReanchors;
@@ -1915,7 +1955,7 @@ public partial class TacticalContextPreview : SubViewportContainer
                     throw new InvalidOperationException(
                         $"R184 intermediate cartographic frame lacks terrain: step={i}");
                 successfulMoves++;
-                if (similarity < 0.99995f)
+                if (!_geographicNorthUp && similarity < 0.99995f)
                     throw new InvalidOperationException(
                         $"NORTH UP drag lost spherical cursor: step={i} " +
                         $"similarity={similarity:F8} focus={_activeFocus} " +
@@ -1937,6 +1977,12 @@ public partial class TacticalContextPreview : SubViewportContainer
             if (!ViewportSamplesHaveTerrain(_camera.Size, 4, 4))
                 throw new InvalidOperationException(
                     "R138 active cartographic view has missing rendered tiles.");
+            // Horizontal motion may change the meridian but never latitude.
+            var beforeHorizontal = _exactViewPointOnSphere.Dot(_physicalPolarAxis);
+            MoveCanonicalNorthUp(new Vector2(120f, 0f));
+            if (MathF.Abs(_exactViewPointOnSphere.Dot(_physicalPolarAxis) - beforeHorizontal) > 0.00001f)
+                throw new InvalidOperationException("R185 horizontal drag changed latitude.");
+            GD.Print("GA_NEXT_R185_NORTH_UP_PASS independent_axes=true");
             GD.Print("GA_NEXT_R184_DRAG_COVERAGE_PASS per_motion=true zoom_preserved=true");
             GD.Print($"GA_NEXT_R138_FINE_FOCUS_DRAG_PASS accepted={successfulMoves} " +
                 $"reanchors={_cartographicReanchors - initialReanchors} " +
@@ -1949,7 +1995,8 @@ public partial class TacticalContextPreview : SubViewportContainer
             {
                 ButtonIndex = MouseButton.Left, Pressed = false, Position = pixel
             });
-            _cameraTarget = originalTarget;
+            _canonicalDragFrame = false;
+            CenterOnGeography(originalCenter);
             _camera.Size = originalZoom;
             _yawDegrees = originalYaw;
             UpdateCameraOrientation();
@@ -2163,6 +2210,11 @@ public partial class TacticalContextPreview : SubViewportContainer
                     _dragPixelsAfterHandoff = 0f;
                     _dragStart = button.Position;
                     _heldCartographicCursorGeography = null;
+                    if (_localSitesEnabled && _geographicNorthUp)
+                    {
+                        _northUpNavigation.SetCenter(_exactViewPointOnSphere, _physicalPolarAxis);
+                        _canonicalDragFrame = true;
+                    }
                     if (_localSitesEnabled &&
                         TryProjectCursorOnTacticalPlane(button.Position, out var grabbed) &&
                         TryUnprojectOnSphere(grabbed, out var grabbedGeography))
@@ -2197,6 +2249,12 @@ public partial class TacticalContextPreview : SubViewportContainer
             if (motion.Position.DistanceTo(_dragStart) > 6f) _moved = true;
             if (_moved)
             {
+                if (_localSitesEnabled && _geographicNorthUp)
+                {
+                    MoveCanonicalNorthUp(motion.Relative);
+                    AcceptEvent();
+                    return;
+                }
                 // Translate the camera oppositely to the cursor's world-plane
                 // displacement, keeping the original map point under the cursor.
                 // Never mix world X/Z with screen axes: yaw changes that mapping.
