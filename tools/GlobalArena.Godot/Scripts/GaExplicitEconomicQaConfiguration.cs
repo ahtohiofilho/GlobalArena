@@ -88,7 +88,8 @@ internal static class GaExplicitEconomicQaConfiguration
         FoundationTacticalHumanAiTurnHost Host,
         FoundationFineFirstPhysicalGeography Geography,
         FoundationFineFirstWorldgenIdentity Identity) PrepareFineFirst(
-            FoundationTacticalHumanAiTurnHost demo)
+            FoundationTacticalHumanAiTurnHost demo,
+            bool enableTemporalFinancialVisualSmoke = false)
     {
         ArgumentNullException.ThrowIfNull(demo);
         AssertNaturalFreightHierarchy();
@@ -151,6 +152,15 @@ internal static class GaExplicitEconomicQaConfiguration
             configuration, shallow);
         demo.Session.AcceptFineFirstOpening(
             opening, demo.Incidence, fine, identity);
+        if (enableTemporalFinancialVisualSmoke)
+        {
+            // R179 opt-in on the SAME signed G18 opening and existing worker
+            // census. Required by the R167/R170 travel and financial journal;
+            // never installed in ordinary or legacy visual QA sessions.
+            demo.Session.AcceptSnapshot(
+                FoundationPersistedEdgeTravelTransitions.DeployEmpty(
+                    demo.Session.Snapshot));
+        }
         var host = new FoundationTacticalHumanAiTurnHost(
             demo.Session, demo.Incidence, demo.HumanCivilizations,
             // This fixture's AI is the existing resume-production policy.
@@ -161,7 +171,10 @@ internal static class GaExplicitEconomicQaConfiguration
                     new FoundationTacticalAiResumeProductionPolicy()),
             enableMonetaryInfrastructure: true,
             settlementPolicy: configuration.Settlement,
-            fineGeography: fine, fineSignature: identity);
+            fineGeography: fine, fineSignature: identity,
+            physicalTravelPolicy: enableTemporalFinancialVisualSmoke
+                ? new FoundationGroundEdgeTravelTimePolicy(1_400_000UL)
+                : null);
         return (host, fine, identity);
     }
 
