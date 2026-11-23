@@ -12,6 +12,8 @@ namespace GlobalArena.Godot;
 public partial class Main
 {
     private CenterContainer? _cityWindowLayer;
+    private PanelContainer? _cityWindowPanel;
+    private ulong? _cityConnectionSource;
     private Label? _cityWindowTitle;
     private Label? _cityOverview;
     private VBoxContainer? _cityLinksList;
@@ -38,6 +40,7 @@ public partial class Main
         };
         panel.AddThemeStyleboxOverride("panel", GaVisualFoundation.WindowSurface());
         overlay.AddChild(panel);
+        _cityWindowPanel = panel;
         var column = new VBoxContainer();
         panel.AddChild(column);
 
@@ -81,20 +84,23 @@ public partial class Main
         _cityLinkDetail = new PanelContainer
         {
             Name = "GANextConnectionDetail",
-            Visible = false
+            Visible = false,
+            CustomMinimumSize = new Vector2(575f, 350f),
+            MouseFilter = MouseFilterEnum.Stop
         };
-        column.AddChild(_cityLinkDetail);
+        _cityLinkDetail.AddThemeStyleboxOverride("panel", GaVisualFoundation.WindowSurface());
+        overlay.AddChild(_cityLinkDetail);
         var details = new VBoxContainer();
         _cityLinkDetail.AddChild(details);
         var detailsHeader = new HBoxContainer();
         details.AddChild(detailsHeader);
         detailsHeader.AddChild(new Label
         {
-            Text = "LIGAÇÃO | Detalhamento local",
+            Text = "CONNECTION",
             SizeFlagsHorizontal = SizeFlags.ExpandFill
         });
-        var hideDetails = new Button { Text = "FECHAR DETALHES" };
-        hideDetails.Pressed += () => _cityLinkDetail.Visible = false;
+        var hideDetails = new Button { Text = "BACK TO CITY" };
+        hideDetails.Pressed += CloseConnectionDetail;
         detailsHeader.AddChild(hideDetails);
         _cityLinkDetailText = new Label
         {
@@ -114,7 +120,8 @@ public partial class Main
             _cityLinksList.RemoveChild(old);
             old.QueueFree();
         }
-        _cityLinkDetail.Visible = false;
+        CloseConnectionDetail();
+        _cityConnectionSource = null;
         // Main management windows are mutually exclusive.
         if (_civilizationWindowLayer is not null)
             _civilizationWindowLayer.Visible = false;
@@ -140,6 +147,7 @@ public partial class Main
             new StrategicCellId(selected.Value));
         var rows = FoundationLocalConnectionsProjector.Read(
             host.Snapshot, host.Incidence, node);
+        _cityConnectionSource = selected.Value;
         _cityWindowTitle.Text = $"CIDADE | NÓ {selected.Value}";
         _cityOverview.Text =
             $"Nó físico #{selected.Value} da malha tática.\n" +
@@ -158,20 +166,29 @@ public partial class Main
         }
     }
 
+    private void CloseConnectionDetail()
+    {
+        if (_cityLinkDetail is not null) _cityLinkDetail.Visible = false;
+        if (_cityWindowPanel is not null) _cityWindowPanel.Visible = true;
+    }
+
     private void ShowCityConnectionDetail(FoundationLocalConnection link)
     {
-        if (_cityLinkDetail is null || _cityLinkDetailText is null)
+        if (_cityLinkDetail is null || _cityLinkDetailText is null ||
+            _cityWindowPanel is null || !_cityConnectionSource.HasValue)
             return;
+        _cityWindowPanel.Visible = false;
         _cityLinkDetail.Visible = true;
         _cityLinkDetailText.Text =
-            $"Nó vizinho: {link.Neighbor.FineStrategicCellId.Value}\n" +
-            $"Custo físico unitário: {link.UnitPhysicalFreightMicro} micro\n" +
-            $"Tarifa externa: {link.ExternalTariffMicro} micro\n" +
-            $"Infraestrutura: {link.Ownership}\n" +
-            $"Titular: {(link.InfrastructureOwner.HasValue
+            $"From node: {_cityConnectionSource.Value}\n" +
+            $"To node: {link.Neighbor.FineStrategicCellId.Value}\n" +
+            $"Unit physical freight: {link.UnitPhysicalFreightMicro} micro\n" +
+            $"External tariff: {link.ExternalTariffMicro} micro\n" +
+            $"Infrastructure: {link.Ownership}\n" +
+            $"Owner: {(link.InfrastructureOwner.HasValue
                 ? link.InfrastructureOwner.Value.Value.ToString()
-                : "sem titular")}\n" +
-            $"Investimento acumulado: {link.InvestedMoneyMicro} micro";
+                : "Unowned")}\n" +
+            $"Cumulative investment: {link.InvestedMoneyMicro} micro";
     }
 
     // R181: exact visual acceptance from the REAL cartographic site
@@ -198,7 +215,8 @@ public partial class Main
         {
             await Frames();
             if (_cityWindowLayer?.IsVisibleInTree() != true ||
-                _cityWindowTitle?.IsVisibleInTree() != true ||
+                (_cityWindowTitle?.IsVisibleInTree() != true &&
+                 _cityLinkDetail?.IsVisibleInTree() != true) ||
                 _cityWindowLayer.GetGlobalRect().Intersects(
                     new Rect2(Vector2.Zero, viewport.GetVisibleRect().Size)) == false)
                 throw new InvalidOperationException(
@@ -246,11 +264,20 @@ public partial class Main
         await Frames();
         if (_cityLinkDetail?.IsVisibleInTree() != true ||
             _cityLinkDetailText?.Text.Contains(
-                $"Nó vizinho: {rows[0].Neighbor.FineStrategicCellId.Value}",
+                $"To node: {rows[0].Neighbor.FineStrategicCellId.Value}",
                 StringComparison.Ordinal) != true)
             throw new InvalidOperationException(
                 "R181 connection detail did not display the real neighboring node.");
+        if (_cityWindowPanel?.IsVisibleInTree() != false ||
+            _cityLinkDetailText?.Text.Contains($"From node: {site}",
+                StringComparison.Ordinal) != true)
+            throw new InvalidOperationException("R183 connection endpoints or window exclusivity invalid.");
         await Capture("03_local_connection_detail");
+        CloseConnectionDetail();
+        if (_cityWindowPanel?.IsVisibleInTree() != true ||
+            _cityLinkDetail?.Visible != false || tabs.CurrentTab != 1)
+            throw new InvalidOperationException("R183 Back must restore the city Links tab.");
+        GD.Print("GA_NEXT_R183_CONNECTION_WINDOW_PASS language=en read_only=true back_to_city=true");
         if (_tacticalHost.StateHash != beforeHash)
             throw new InvalidOperationException(
                 "City presentation must not mutate economic or physical state.");
