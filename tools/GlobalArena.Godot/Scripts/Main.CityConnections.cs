@@ -64,7 +64,9 @@ public partial class Main
         _cityOverview = new Label
         {
             Text = "Selecione um nó físico no mapa.",
-            AutowrapMode = TextServer.AutowrapMode.WordSmart
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            VerticalAlignment = VerticalAlignment.Top,
+            SizeFlagsVertical = SizeFlags.ShrinkBegin
         };
         overview.AddChild(_cityOverview);
 
