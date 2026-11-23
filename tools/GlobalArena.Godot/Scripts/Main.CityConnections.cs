@@ -115,6 +115,9 @@ public partial class Main
             old.QueueFree();
         }
         _cityLinkDetail.Visible = false;
+        // Main management windows are mutually exclusive.
+        if (_civilizationWindowLayer is not null)
+            _civilizationWindowLayer.Visible = false;
         _cityWindowLayer.Visible = true;
 
         var host = _tacticalHost;
