@@ -446,7 +446,16 @@ public sealed class FoundationTemporalEconomicJournalGateTests
     [Fact]
     public void AtomicJournalReplaysLocalOccupationAndTravelInTheSameTurn()
     {
-        var (world, traveler, destination, movement, incidence, fine) = Fixture();
+        var (world, traveler, destination, _, incidence, fine) = Fixture();
+        // This fixture uses the generated-world binding, not the promoted
+        // fine-first world binding. Both the local and travel events must be
+        // validated by the same matching canonical executor.
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL),
+                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)),
+            workersPerCivilization: 3);
+        var movement = new PhysicalTacticalWorkerMoveEventExecutor(
+            demo.Session.GeneratedWorld, incidence);
         var localWorker = world.Workers.Workers.Single(w =>
             w.Owner == traveler.Owner &&
             w.Occupation == PhysicalWorkerOccupation.Forestry);
