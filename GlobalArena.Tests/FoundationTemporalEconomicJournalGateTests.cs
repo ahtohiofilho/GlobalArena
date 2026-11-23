@@ -361,6 +361,32 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Equal(1_000_000U, row.ProductiveEffortMicro);
         Assert.Equal(PhysicalWorkerOccupation.Forestry,
             input.EffectiveOccupations[worker.Id]);
+        // Distinct activity coefficients prove the journaled occupation,
+        // rather than the stale census occupation, drives consumer demand.
+        var goods = new[] { new CommodityId(1U), new CommodityId(2U) };
+        var profilePolicy = new FoundationActivityCommodityDemandPolicy(
+            goods, Enum.GetValues<FoundationPhysicalDemandProfile>()
+                .SelectMany(profile => goods.Select(item =>
+                    new FoundationActivityCommodityDemandCoefficient(
+                        profile, item,
+                        profile == FoundationPhysicalDemandProfile.ForestryProduction
+                            ? 2_000_000UL : 1_000_000UL))));
+        var historical = FoundationTemporalEconomicTurnProjector.Project(
+            begin, begin, Array.Empty<FoundationEdgeTravelTurnEvent>(),
+            profilePolicy);
+        var reassigned = FoundationTemporalEconomicTurnProjector.Project(
+            begin, after, Array.Empty<FoundationEdgeTravelTurnEvent>(),
+            new[] { ev }, profilePolicy);
+        foreach (var item in goods)
+        {
+            var oldDemand = historical.Presence.Demand.Single(d =>
+                d.Owner == worker.Owner && d.Node == atNode &&
+                d.Commodity == item).DemandMicro;
+            var newDemand = reassigned.Presence.Demand.Single(d =>
+                d.Owner == worker.Owner && d.Node == atNode &&
+                d.Commodity == item).DemandMicro;
+            Assert.Equal(1_000_000UL, newDemand - oldDemand);
+        }
         var market = FoundationTemporalNativeMarketInputs.FromTemporal(
             begin, input, Demand());
         Assert.Contains(market.SupplyLots, lot =>
