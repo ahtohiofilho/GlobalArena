@@ -1,4 +1,5 @@
 using Godot;
+using System.Numerics;
 using GlobalArena.Runtime;
 using GlobalArena.World;
 using GlobalArena.Simulation.Foundation;
@@ -88,6 +89,13 @@ public partial class Main : Control
     private Label? _localTurnLabel;
     private Label? _localAiStatus;
     private Label? _localOrderStatus;
+    // R178: presentation-only authoritative temporal close for the human
+    // civilization. Hidden before a committed temporal sale; never a preview.
+    private Label? _lastTemporalEconomyLabel;
+    internal string LastTemporalEconomyText =>
+        _lastTemporalEconomyLabel?.Text ?? "";
+    internal bool LastTemporalEconomyVisible =>
+        _lastTemporalEconomyLabel?.Visible == true;
     // R140: read-only order feasibility before a real human movement decision.
     private Label? _fineMovementDecision;
     private ulong? _selectedLocalWorkerId;
@@ -315,6 +323,42 @@ public partial class Main : Control
             _selectedLocalWorkerId, _localFoundation.Snapshot.Revision);
     }
 
+    // Exact decimal presentation of the existing scaled monetary ledger:
+    // 1 monetary unit = MoneyScale scaled units. No float or UI-side revenue.
+    private static string FormatTemporalMoney(BigInteger scaled)
+    {
+        var scale = FoundationPhysicalEconomicAccountingProposal.MoneyScale;
+        var magnitude = BigInteger.Abs(scaled);
+        var whole = BigInteger.DivRem(magnitude, scale, out var remainder);
+        var fractional = remainder.ToString().PadLeft(scale.ToString().Length - 1, '0')
+            .TrimEnd('0');
+        return (scaled.Sign < 0 ? "-" : "") + whole +
+            (fractional.Length == 0 ? "" : "." + fractional);
+    }
+
+    private void RefreshLastTemporalEconomyReadout()
+    {
+        var label = _lastTemporalEconomyLabel;
+        if (label is null) return;
+        // Never expose staged orders, historical receipts after another
+        // closure, or the financial lines of AI civilizations.
+        var settlement = _tacticalHost?.GetLastClosedTemporalEconomics(
+            _humanCivilization);
+        label.Visible = settlement is not null;
+        if (settlement is null)
+        {
+            label.Text = "";
+            return;
+        }
+        label.Text =
+            $"ÚLTIMA ECONOMIA TEMPORAL | CICLO {settlement.EconomicCycleOrdinal}\n" +
+            $"Crédito ao caixa: {FormatTemporalMoney(settlement.TotalCashCreditScaled)} u.m.\n" +
+            $"Vendas líquidas: {FormatTemporalMoney(settlement.SellerNetScaled)} u.m.\n" +
+            $"Impostos recebidos: {FormatTemporalMoney(settlement.TaxReceiptsScaled)} u.m.\n" +
+            $"Pedágios recebidos: {FormatTemporalMoney(settlement.OwnerTollIncomeScaled)} u.m.\n" +
+            $"Produção global liquidada: {settlement.PhysicalGoodsProducedMicro} microunidades";
+    }
+
     private void RefreshFineTacticalWorkerControls()
     {
         var host = _tacticalHost;
@@ -452,6 +496,7 @@ public partial class Main : Control
             !ready);
         RefreshPortInvestmentQaControls();
         RefreshLocalSiteSelectionQa();
+        RefreshLastTemporalEconomyReadout();
     }
 
     // R140: read directly from the same authoritative worker and pending-order
@@ -1727,6 +1772,14 @@ public partial class Main : Control
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         orderSection.AddChild(_localOrderStatus);
+        _lastTemporalEconomyLabel = new Label
+        {
+            Name = "GANextTemporalEconomicClose",
+            Text = "",
+            Visible = false,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        orderSection.AddChild(_lastTemporalEconomyLabel);
         CreatePortInvestmentQaControls(orderSection);
         RefreshLocalWorkerOrderControls();
         GD.Print("GA_UI_FOUNDATION_LOCAL_GAME_R1 workers_initial=" +
