@@ -122,7 +122,12 @@ internal sealed class FoundationGodotCartographicSiteSmoke
                 // is still in the focused map; another focus rebuilds the
                 // visible-site list and must not be used as stale selection.
                 if (visited == 0)
+                {
                     _main.ExerciseR180CityWindowSmoke(tile);
+                    if (System.Environment.GetEnvironmentVariable(
+                            "GA_NEXT_R181_CITY_VISUAL_SMOKE") == "1")
+                        await _main.ExerciseR181CityWindowVisualSmoke(tile);
+                }
                 GD.Print($"GA_NEXT_R134_SITE_FOCUS tile={tile} " +
                     $"focus={focus.Value} centroid={anchor.Centroid} " +
                     "dot_panel=true present=true");
