@@ -51,6 +51,19 @@ internal sealed class FoundationGodotTemporalEconomySmoke
         await Frames();
     }
 
+    private async Task PressTab()
+    {
+        var viewport = _main.GetViewport();
+        viewport.PushInput(new InputEventKey
+            { Keycode = Key.Tab, Pressed = true, Echo = false },
+            inLocalCoords: true);
+        await Frames();
+        viewport.PushInput(new InputEventKey
+            { Keycode = Key.Tab, Pressed = false, Echo = false },
+            inLocalCoords: true);
+        await Frames();
+    }
+
     private async Task Capture(string stage, Label label)
     {
         var directory = System.Environment.GetEnvironmentVariable(
@@ -69,6 +82,12 @@ internal sealed class FoundationGodotTemporalEconomySmoke
             }
         }
         await Frames();
+        Must(label.IsVisibleInTree() &&
+            label.GetGlobalRect().Intersects(
+                new Rect2(Vector2.Zero,
+                    _main.GetViewport().GetVisibleRect().Size)),
+            "The temporal economic text exists but is not visible within " +
+            "the rendered operational sidebar.");
         var image = _main.GetViewport().GetTexture().GetImage();
         Must(image is not null && !image.IsEmpty(),
             "The financial screenshot has no actual framebuffer.");
@@ -139,6 +158,15 @@ internal sealed class FoundationGodotTemporalEconomySmoke
             ValidateClose(label!, first!, 1UL);
             var firstText = _main.LastTemporalEconomyText;
             var firstHash = _host.StateHash;
+            // R179 visual acceptance must show the actual operational dock.
+            // The prior screenshot only photographed the globe because TAB
+            // had never been pressed, despite correct hidden-control text.
+            await PressTab();
+            var dock = _main.FindChild(
+                "GANextOperationsWindow", true, false) as Control;
+            Must(dock is not null && dock.Visible &&
+                label!.IsVisibleInTree(),
+                "TAB must reveal the real command desk and finance label.");
             await Capture("01_temporal_close_cycle_1", label!);
 
             await PressE();
