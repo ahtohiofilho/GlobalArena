@@ -85,8 +85,10 @@ public sealed class FoundationTacticalCollectiveReceipt
         InfrastructureInvestments { get; }
     public FoundationEconomicSalesSettledEvent? EconomicSettlement { get; }
     public IReadOnlyList<FoundationEdgeTravelTurnEvent> EdgeTravels { get; }
+    public FoundationTemporalSalesSettledEvent? TemporalEconomicSettlement { get; }
     public int ExecutedEvents => Events.Count + EdgeTravels.Count + InfrastructureInvestments.Count +
-        (EconomicSettlement is null ? 0 : 1);
+        (EconomicSettlement is null ? 0 : 1) +
+        (TemporalEconomicSettlement is null ? 0 : 1);
     public bool ReplayMatched { get; }
 
     internal FoundationTacticalCollectiveReceipt(
@@ -94,7 +96,8 @@ public sealed class FoundationTacticalCollectiveReceipt
         PhysicalTacticalWorkerMovedEvent[] events,
         FoundationMonetaryInfrastructureInvestedEvent[]? investments = null,
         FoundationEconomicSalesSettledEvent? economicSettlement = null,
-        FoundationEdgeTravelTurnEvent[]? edgeTravels = null)
+        FoundationEdgeTravelTurnEvent[]? edgeTravels = null,
+        FoundationTemporalSalesSettledEvent? temporalSettlement = null)
     {
         Turn = turn;
         Hash = hash;
@@ -103,6 +106,7 @@ public sealed class FoundationTacticalCollectiveReceipt
         InfrastructureInvestments = Array.AsReadOnly(investments ??
             Array.Empty<FoundationMonetaryInfrastructureInvestedEvent>());
         EconomicSettlement = economicSettlement;
+        TemporalEconomicSettlement = temporalSettlement;
         EdgeTravels = Array.AsReadOnly(edgeTravels ?? Array.Empty<FoundationEdgeTravelTurnEvent>());
         ReplayMatched = true;
     }
@@ -129,6 +133,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
         _economicExecutor;
     private readonly FoundationEdgeTravelEventExecutor? _travelExecutor;
     private readonly FoundationGroundEdgeTravelTimePolicy? _travelPolicy;
+    private readonly FoundationAuthoritativeEconomicSettlementPolicy? _temporalPolicy;
+    private readonly FoundationFineFirstPhysicalGeography? _signedFine;
     private readonly AuthoritativeTurnCommitGate _publisher;
     private readonly CanonicalWorldStateHasher _hasher = new();
     private readonly HashSet<CivilizationId> _humans;
@@ -410,11 +416,11 @@ public sealed class FoundationTacticalHumanAiTurnHost
             _ => new SortedDictionary<ulong, FoundationTacticalWorkerOrder>());
         _investmentPlans = _participants.ToDictionary(civ => civ,
             _ => new SortedDictionary<ulong, FoundationMonetaryInfrastructureCommand>());
-        // R164 fraction slices are not yet fed into the monetary cycle.
-        // Reject rather than silently settle a whole turn at one location.
-        if (settlementPolicy is not null && physicalTravelPolicy is not null)
-            throw new InvalidOperationException(
-                "Fractional travel cannot close an unadapted economic settlement.");
+        // Opt-in temporal mode uses a single R170 phase, never the
+        // legacy census-based seller settlement.
+        _temporalPolicy = settlementPolicy is not null &&
+            physicalTravelPolicy is not null ? settlementPolicy : null;
+        _signedFine = fineGeography;
         if (settlementPolicy is not null && !enableMonetaryInfrastructure)
             throw new InvalidOperationException(
                 "Authoritative sales need the same monetary treasury and " +
@@ -470,7 +476,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
                     session.GeneratedWorld, incidence, fineGeography,
                     fineSignature!));
         }
-        if (settlementPolicy is not null)
+        if (settlementPolicy is not null && _temporalPolicy is null)
         {
             _economicExecutor = fineGeography is null
                 ? new FoundationEconomicSalesSettlementEventExecutor(
@@ -486,6 +492,15 @@ public sealed class FoundationTacticalHumanAiTurnHost
                 : new FoundationAuthoritativeEconomicSalesSettlementPhase(
                     session.GeneratedWorld, incidence, settlementPolicy,
                     fineGeography, fineSignature!));
+        }
+        if (_temporalPolicy is not null)
+        {
+            // No staged partial state is published: resolution and monetary
+            // journal replay occur inside one canonical atomic phase.
+            phases.Clear();
+            phases.Add(new FoundationTemporalCollectiveTurnPhase(
+                session.GeneratedWorld, incidence, _travelPolicy!,
+                _temporalPolicy, fineGeography, fineSignature));
         }
         var engine = new PhasedTurnResolutionEngine(phases);
         _publisher = new AuthoritativeTurnCommitGate(
@@ -869,12 +884,16 @@ public sealed class FoundationTacticalHumanAiTurnHost
             .OfType<FoundationMonetaryInfrastructureInvestedEvent>().ToArray();
         var settled = resolved.Events
             .OfType<FoundationEconomicSalesSettledEvent>().ToArray();
-        int expectedSettlements = _economicExecutor is null ? 0 : 1;
+        var temporalSettled = resolved.Events
+            .OfType<FoundationTemporalSalesSettledEvent>().ToArray();
+        int expectedSettlements = _economicExecutor is null &&
+            _temporalPolicy is null ? 0 : 1;
         if (events.Length != orders.Count(o => !o.IsMovement || _travelExecutor is null) ||
             travelEvents.Length != orders.Count(o => o.IsMovement && _travelExecutor is not null) +
                 continuations.Length ||
             moneyEvents.Length != investments.Length ||
-            settled.Length != expectedSettlements ||
+            settled.Length + temporalSettled.Length != expectedSettlements ||
+            (_temporalPolicy is not null && temporalSettled.Length != 1) ||
             resolved.Events.Count != commands.Length + expectedSettlements ||
             resolved.EventLog.Entries.Count !=
                 commands.Length + expectedSettlements ||
@@ -891,9 +910,14 @@ public sealed class FoundationTacticalHumanAiTurnHost
         if (_travelExecutor is not null)
             replayExecutor = new FoundationEdgeTravelCompositeReplayExecutor(
                 replayExecutor, _travelExecutor);
-        var replay = new SimulationEventLogReplayer(replayExecutor)
-            .Replay(new SimulationReplayInput(
-                before, resolved.EventLog, context));
+        var replay = _temporalPolicy is not null
+            ? FoundationTemporalEconomicJournalGate.ReplayJournal(
+                before, resolved.EventLog, _executor, _travelPolicy!,
+                Incidence, _temporalPolicy, context, _signedFine,
+                _monetaryExecutor)
+            : new SimulationEventLogReplayer(replayExecutor)
+                .Replay(new SimulationReplayInput(
+                    before, resolved.EventLog, context));
         var hash = _hasher.Compute(Snapshot);
         var previousFormat = _hasher.Compute(before).FormatVersion;
         if ((hash.FormatVersion != previousFormat &&
@@ -918,7 +942,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
 
         var receipt = new FoundationTacticalCollectiveReceipt(
             turn, hash, Snapshot.Revision, events, moneyEvents,
-            settled.SingleOrDefault(), travelEvents);
+            settled.SingleOrDefault(), travelEvents,
+            temporalSettled.SingleOrDefault());
         foreach (var plan in _plans.Values) plan.Clear();
         foreach (var plan in _investmentPlans.Values) plan.Clear();
         _ready.Clear();
