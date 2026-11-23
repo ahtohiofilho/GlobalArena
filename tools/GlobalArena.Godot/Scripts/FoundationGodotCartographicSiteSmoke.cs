@@ -128,6 +128,9 @@ internal sealed class FoundationGodotCartographicSiteSmoke
                 "R140 movement preview vanished after geographic handoff.");
             GD.Print("GA_NEXT_R140_MOVE_DECISION_PASS signed_worker=true " +
                 "canonical_destination=true read_only=true survives_map_handoff=true");
+            // City management must open only for a real local-site marker
+            // and list precisely the physical crossings at that site.
+            _main.ExerciseR180CityWindowSmoke(sites[0]);
             Must(visited == sites.Length && _host.StateHash == beforeHash,
                 "Site-focus inspection must cover both localities without gameplay mutation.");
             GD.Print($"GA_NEXT_R134_CARTOGRAPHIC_SITES_PASS " +
