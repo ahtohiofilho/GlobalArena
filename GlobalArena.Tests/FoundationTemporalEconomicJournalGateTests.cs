@@ -403,4 +403,44 @@ public sealed class FoundationTemporalEconomicJournalGateTests
                 new[] { ev, ev }, Demand()));
     }
 
+    [Fact]
+    public void CollectiveHostCommitsOneAtomicTemporalSaleAfterAnOrderedPhysicalTurn()
+    {
+        var (world, worker, destination, _, incidence, _) = Fixture();
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL),
+                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)),
+            workersPerCivilization: 3);
+        var funding = CivilizationTreasuryRuntimeState.CreateOpening(
+            world.Civilizations.Civilizations.Select(c => (c, 0UL)));
+        var prepared = FoundationPersistedEdgeTravelTransitions.DeployEmpty(
+            world.DeployInitialTreasury(funding));
+        demo.Session.AcceptSnapshot(prepared);
+        var host = new FoundationTacticalHumanAiTurnHost(
+            demo.Session, incidence, new[] { worker.Owner },
+            new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy>
+            {
+                [world.Civilizations.Civilizations.Single(c => c != worker.Owner)] =
+                    new FoundationTacticalAiHoldPolicy()
+            }, enableMonetaryInfrastructure: true,
+            settlementPolicy: Policy(world.Civilizations.Civilizations),
+            physicalTravelPolicy: new FoundationGroundEdgeTravelTimePolicy(1_400_000UL));
+        var initial = host.StateHash;
+        host.QueueHumanMove(worker.Owner, worker.Id, destination);
+        Assert.Equal(initial, host.StateHash);
+        host.SetHumanReady(worker.Owner);
+        var receipt = Assert.IsType<FoundationTacticalCollectiveReceipt>(
+            host.TryCloseTurn());
+        Assert.True(receipt.ReplayMatched);
+        Assert.NotNull(receipt.TemporalEconomicSettlement);
+        Assert.Null(receipt.EconomicSettlement);
+        Assert.Single(receipt.EdgeTravels);
+        Assert.Equal(2, receipt.ExecutedEvents);
+        Assert.Equal(1UL, host.Snapshot.Treasury.LastSettledEconomicCycleOrdinal);
+        Assert.Equal(400_000UL,
+            host.Snapshot.EdgeTravels.Pending.Single().RemainingMicro);
+        Assert.Equal(receipt.Hash, host.StateHash);
+        Assert.NotEqual(initial, receipt.Hash);
+    }
+
 }
