@@ -1,29 +1,20 @@
-# GA-Next — Dois gates de qualidade no CI
+# GA-Next — Gates de desenvolvimento e homologação (Windows + Linux)
 
-## Objetivo
-Evitar que escassez de runners macOS impeça o trabalho incremental no kernel, sem transformar a ausência de evidência em aprovação.
+## Decisão de produto — 2026-11-23
 
-### Gate D — Desenvolvimento (autoriza criar PR empilhada)
-Condições cumulativas, avaliadas **sobre o SHA mais recente** da PR-base:
-1. Regressões completas do kernel em Ubuntu e Windows: **success**.
-2. Hash de estado determinístico nos sistemas em que os jobs já terminaram: **success**; a validação de hash no macOS também deve estar concluída com **success** quando presente na matriz.
-3. Workflows de domínio tocados pela alteração (movimento, economia, kernel, Godot smoke, benchmark): **success**.
-4. Nenhum job executado tem `failure`, `timed_out` ou `cancelled` sem triagem.
-5. **Única exceção admissível:** job de *regressão completa do kernel* macOS ainda `queued` devido à indisponibilidade de runner, ou cancelado por infraestrutura e já reenfileirado. Evidência da fila deve ficar registrada.
-6. O código não pode ser promovido a merge enquanto a exceção permanecer.
+**Windows e Linux são as únicas plataformas obrigatórias** para desenvolvimento e homologação do GA-Next neste estágio. macOS não integra as matrizes automáticas nem é pré-requisito de merge. Não estamos declarando o jogo incompatível com macOS; apenas não prometemos suporte ou certificação em cada revisão. O GitHub macOS mostrou filas que prejudicam significativamente a produtividade.
 
-Uma falha efetiva de teste em macOS NÃO recebe exceção. No caso de cancelamento por falta de executor, não se registra teste como aprovado.
+## Gate D — Desenvolvimento
+No SHA atual, todos os workflows de domínio afetados e as regressões completas de kernel **Ubuntu e Windows** devem concluir com `success`, sem falhas reais. Hash determinístico obrigatório em **Ubuntu e Windows**. Trabalhos ainda em andamento não podem ser tratados como aprovados.
 
-### Gate H — Homologação / Merge
-Todos os checks exigidos para o SHA atual devem estar **success**, incluindo regressão completa do kernel no macOS. Nenhuma exceção de runner vale para homologação. Revisão técnica e políticas de proteção da branch continuam aplicáveis.
+## Gate H — Homologação e merge
+No SHA atual, **todos os checks obrigatórios Windows/Linux** devem concluir `success` e as regras de revisão/branch protection devem ser satisfeitas. macOS não é exigido. A PR permanece Draft até a homologação e decisão explícita de merge.
 
-### Aplicação
-- O Gate D permite começar **R171 sobre R170** mesmo com a regressão macOS de R170 na fila, desde que as demais condições estejam satisfeitas.
-- R170, R171 e os demais incrementos permanecem em **Draft e sem merge** até o Gate H respectivo.
-- Workflows macOS **não são removidos, pulados ou marcados não bloqueantes no merge**.
-- Não mudar a fórmula de mercado, tolerância do solver ou a matriz histórica para encobrir congestionamento de runners.
-- Se a regressão macOS finalmente falhar, suspender a promoção da cadeia que depende desse SHA e corrigir antes de homologar.
-- A política é de processo/avanço de desenvolvimento; não altera automaticamente configurações de branch protection do GitHub.
+## macOS — auditoria voluntária
+O workflow `.github/workflows/optional-macos-determinism.yml` é acionado manualmente por `workflow_dispatch` no GitHub Actions e executa hashes determinísticos e testes financeiros temporais no macOS. Seu resultado não bloqueia os gates Windows/Linux, mas uma divergência real identificada deve ser analisada e registrada como incompatibilidade não resolvida; nunca descrita como validação bem-sucedida do macOS. Os workflows históricos Windows/Linux conservam a regressão completa e os hashes.
 
-## Registro da decisão — 2026-11-23
-Base R170 PR #563, commit `dc3287370125ed2e712b8024e09660a1aede99ea`. CI de domínio, regressões kernel Windows/Ubuntu, hash macOS/Windows/Ubuntu e smoke test Godot aprovados; regressão kernel macOS reenfileirada e sem resultado. Portanto o Gate D é elegível, mas o Gate H permanece pendente.
+## Observações operacionais
+- Não alterar os solucionadores econômicos nem reduzir as validações Windows/Linux em função das filas macOS.
+- A alteração de YAML não altera automaticamente as regras de branch protection. Verificar e remover dos requisitos obrigatórios qualquer **nome de check macOS** registrado nas configurações do repositório, caso exista.
+- PR #564 permanece Draft e empilhada na R170; nenhuma promoção automática nem merge foi realizado.
+- As PRs antigas preservam checks anteriores; a nova política vale para os commits e workflows que a incluem e, após integração, para os próximos.
