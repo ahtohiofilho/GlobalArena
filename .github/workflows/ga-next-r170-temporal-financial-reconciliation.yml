@@ -7,6 +7,8 @@ on:
       - 'GlobalArena.Simulation/Foundation/FoundationTemporalFinancialReconciler.cs'
       - 'GlobalArena.Tests/FoundationTemporalFinancialReconciliationTests.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationTemporalEconomicJournalGate.cs'
+      - 'GlobalArena.Simulation/Foundation/FoundationTemporalCollectiveTurnPhase.cs'
+      - 'GlobalArena.Simulation/Foundation/FoundationTacticalHumanAiTurnHost.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationTemporalEconomicTurnProjector.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationTemporalNativeMarketInputs.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationPhysicalPresenceDemographicProjector.cs'
