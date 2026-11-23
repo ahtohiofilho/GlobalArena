@@ -325,7 +325,7 @@ public partial class Main : Control
 
     // Exact decimal presentation of the existing scaled monetary ledger:
     // 1 monetary unit = MoneyScale scaled units. No float or UI-side revenue.
-    private static string FormatTemporalMoney(BigInteger scaled)
+    internal static string FormatTemporalMoney(BigInteger scaled)
     {
         var scale = FoundationPhysicalEconomicAccountingProposal.MoneyScale;
         var magnitude = BigInteger.Abs(scaled);
@@ -1851,12 +1851,14 @@ public partial class Main : Control
                 "GA_NEXT_SETTLED_TRADE_VISUAL_SMOKE") == "1";
             bool fineFirstVisualSmoke = System.Environment.GetEnvironmentVariable(
                 "GA_NEXT_FINE_FIRST_VISUAL_SMOKE") == "1";
+            bool temporalEconomyVisualSmoke = System.Environment.GetEnvironmentVariable(
+                "GA_NEXT_R179_TEMPORAL_ECONOMY_SMOKE") == "1";
             bool cartographicSiteSmoke = System.Environment.GetEnvironmentVariable(
                 "GA_NEXT_CARTOGRAPHIC_SITE_SMOKE") == "1";
             bool fineFirstInteractive = System.Environment.GetEnvironmentVariable(
                 "GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW") == "1";
             bool fineFirstLab = fineFirstVisualSmoke || fineFirstInteractive ||
-                _resolutionBootstrapSmoke;
+                temporalEconomyVisualSmoke || _resolutionBootstrapSmoke;
             bool continuousNavigationSmoke = System.Environment.GetEnvironmentVariable(
                 "GA_NEXT_CONTINUOUS_NAVIGATION_SMOKE") == "1";
             if (cartographicSiteSmoke &&
@@ -1882,6 +1884,9 @@ public partial class Main : Control
                   (_interactiveEconomicPreviewActive &&
                    !fineFirstInteractive))) ||
                 (fineFirstVisualSmoke && fineFirstInteractive) ||
+                (temporalEconomyVisualSmoke &&
+                 (fineFirstVisualSmoke || fineFirstInteractive ||
+                  _resolutionBootstrapSmoke || cartographicSiteSmoke)) ||
                 (_resolutionBootstrapSmoke &&
                     (fineFirstVisualSmoke || fineFirstInteractive)))
                 throw new InvalidOperationException(
@@ -1906,7 +1911,9 @@ public partial class Main : Control
                         _tacticalHost.Session.GeneratedWorld,
                         _tacticalHost.Incidence);
                     var g18 = GaExplicitEconomicQaConfiguration
-                        .PrepareFineFirst(_tacticalHost);
+                        .PrepareFineFirst(_tacticalHost,
+                            enableTemporalFinancialVisualSmoke:
+                                temporalEconomyVisualSmoke);
                     _tacticalHost = g18.Host;
                     _r123FineGeography = g18.Geography;
                     _goldbergStartup.VerifyWorldAndIncidence(
@@ -2113,6 +2120,9 @@ public partial class Main : Control
                     this, _tacticalHost, _tacticalPreview!).RunAsync();
             else if (fineFirstVisualSmoke && _tacticalHost is not null)
                 _ = new FoundationGodotFineFirstTerrainSmoke(
+                    this, _tacticalHost, _tacticalPreview!).RunAsync();
+            else if (temporalEconomyVisualSmoke && _tacticalHost is not null)
+                _ = new FoundationGodotTemporalEconomySmoke(
                     this, _tacticalHost, _tacticalPreview!).RunAsync();
             else if (settledTradeQaSmoke && _tacticalHost is not null)
                 _ = new FoundationGodotSettledTradeSmoke(
