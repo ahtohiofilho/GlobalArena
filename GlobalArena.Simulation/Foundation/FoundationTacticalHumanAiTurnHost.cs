@@ -149,6 +149,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
     private readonly HashSet<CivilizationId> _ready = new();
     private WorldState _knownSnapshot;
     private readonly FoundationEconomicTradeCycleReadBoundary _closedTrade;
+    private FoundationTacticalCollectiveReceipt? _lastTemporalClose;
 
     public CanonicalGameSession Session => _session;
     public WorldState Snapshot => _session.Snapshot;
@@ -195,6 +196,24 @@ public sealed class FoundationTacticalHumanAiTurnHost
     {
         CheckSnapshot();
         return _closedTrade.Read(viewer, Snapshot);
+    }
+
+    /// <summary>
+    /// R171: returns ONLY the requesting human civilization's monetary
+    /// credit from the last independently replayed temporal economic close.
+    /// Pending turns and AI participants are never exposed. No market
+    /// calculation, world mutation or alternate economic ledger.
+    /// Returns null when no temporal cycle has yet been committed.
+    /// </summary>
+    public FoundationViewerTemporalEconomicClose? GetLastClosedTemporalEconomics(
+        CivilizationId viewer)
+    {
+        CheckSnapshot();
+        RequireHuman(viewer);
+        if (_lastTemporalClose is null)
+            return null;
+        return FoundationViewerTemporalEconomicCloseProjector.Read(
+            _lastTemporalClose, Snapshot, viewer);
     }
 
     /// <summary>
@@ -944,6 +963,11 @@ public sealed class FoundationTacticalHumanAiTurnHost
             turn, hash, Snapshot.Revision, events, moneyEvents,
             settled.SingleOrDefault(), travelEvents,
             temporalSettled.SingleOrDefault());
+        // Do not expose the receipt until the entire all-ready turn, journal
+        // replay and authoritative hash checks have succeeded. A subsequent
+        // non-temporal cycle invalidates the old view (no stale presentation).
+        _lastTemporalClose = receipt.TemporalEconomicSettlement is null
+            ? null : receipt;
         foreach (var plan in _plans.Values) plan.Clear();
         foreach (var plan in _investmentPlans.Values) plan.Clear();
         _ready.Clear();
