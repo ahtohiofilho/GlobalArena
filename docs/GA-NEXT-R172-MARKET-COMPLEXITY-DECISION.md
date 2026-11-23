@@ -28,3 +28,22 @@ Antes de alterar o código de produção, medir em cenários representativos:
 3. se uma distribuição sem retroajuste global é suficientemente justa para a regra do jogo.
 
 Evitar simplesmente reduzir `MaxProducerPasses` de 64 para outro número sem fundamentação: seria apenas esconder a complexidade. Se o retroajuste não se justificar, remover o requisito de ponto fixo por uma decisão de modelo econômico explicitamente testada.
+
+## Primeiros resultados medidos — CI Ubuntu, 2026-11-23
+
+A execução `GA-Next R172 Marginal Market Complexity Audit` concluiu com **3 testes aprovados**. Tempos abaixo são observações brutas do runner e NÃO limites de performance.
+
+| Dois produtores, output cada | Aresta acessível | Passes até parada | Quantidade reatribuída entre mercados (micro) | Tempo do coordenador no runner |
+|---|---|---:|---:|---:|
+| 50.000.000 micro | não | 1 | 0 | 72,725 ms |
+| 50.000.000 micro | sim | 5 | 3.524.545 | 12,611 ms |
+| 5.000.000 micro | sim | 13 | 111.768 | 7,343 ms |
+
+`MovedGoodsByPass` para o cenário conectado de menor produção:
+`[447072,447072,447072,447072,447072,447072,447072,447072,447072,447072,336886,1582,0]`.
+
+**Limites de interpretação:** a execução isolada mede também aquecimento do runtime; o cenário sem conexão ter tempo maior que o conectado não implica maior custo algorítmico. Nos três casos, a auditoria final registrou carga de travessia física igual a zero; os números não demonstram frete congestionado ou uso real de rota intermunicipal. Os passes contam revisões internas de quantidades por produtor, e o primeiro-ao-último é mudança líquida por mercado, não receita, bem-estar ou melhora de preço.
+
+**Achado:** 13 passagens com 2 produtores e nenhum frete físico percorrido são um sinal concreto de que exigir ponto fixo de resposta por produtor pode introduzir um custo desproporcional. **Não é prova de que a redistribuição deva ser descartada**: falta medir o benefício econômico comparável entre primeira distribuição e ponto fixo com os mesmos custos e demanda.
+
+Próxima análise recomendada: obter valor de receita líquida ou utilidade integrada nos dois resultados e verificar diferença relativa, sem usar tempo como critério de aprovação em CI.
