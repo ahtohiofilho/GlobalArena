@@ -218,9 +218,13 @@ public sealed class FoundationMarginalMarketComplexityAuditTests
 
         var first = FoundationPhysicalMarginalMarketDistributor.Distribute(
             workers, map, demand, cargo, quotes, costs);
+        var observations = new List<FoundationMarginalPassObservation>();
         var clock = Stopwatch.StartNew();
-        var final = FoundationPhysicalGlobalMarginalCoordinator.Coordinate(
-            workers, map, demand, cargo, quotes, costs, maxPasses: 128);
+        var final = FoundationPhysicalGlobalMarginalCoordinator.CoordinateAudited(
+            market, map, cargo, quotes, costs, maxPasses: 128,
+            preferIncumbentThresholdTies: false,
+            acceptOnlyStrictIntegratedGain: false,
+            observer: observations.Add);
         clock.Stop();
 
         // Same exact integer square-root pricing as the canonical financial
@@ -261,6 +265,26 @@ public sealed class FoundationMarginalMarketComplexityAuditTests
             return total;
         }
 
+        // Use the exact same shared D/Q financial rule at every observed
+        // point, including pass zero. Each reading is an immutable snapshot.
+        BigInteger ObservedGross(FoundationMarginalPassObservation point)
+        {
+            BigInteger gross = BigInteger.Zero;
+            foreach (var row in market.MarketDemand)
+            {
+                ulong q = point.MarketGoodsMicro[
+                    (row.Tile, row.Commodity)];
+                if (q == 0UL) continue;
+                BigInteger price = FoundationPhysicalMarginalIntegratedUtility
+                    .IntegerSqrt((BigInteger)row.DemandMicro *
+                        1_000_000UL * 1_000_000UL / q);
+                gross += (BigInteger)q * price * 10_000UL;
+            }
+            return gross;
+        }
+        var perPassNet = observations.Select(point =>
+            ObservedGross(point) - point.PhysicalFreightScaled).ToArray();
+
         BigInteger firstGross = Gross(first.MarketTotals);
         BigInteger finalGross = Gross(final.MarketTotals);
         BigInteger firstFreight = Freight(first.Candidates);
@@ -270,6 +294,16 @@ public sealed class FoundationMarginalMarketComplexityAuditTests
         BigInteger difference = finalNet - firstNet;
         BigInteger basisPoints = firstNet.IsZero
             ? BigInteger.Zero : difference * 10_000 / firstNet;
+        Assert.Equal(final.Passes + 1, observations.Count);
+        Assert.Equal(0, observations[0].PassIndex);
+        Assert.Equal(firstGross, ObservedGross(observations[0]));
+        Assert.Equal(firstFreight, observations[0].PhysicalFreightScaled);
+        Assert.Equal(finalGross, ObservedGross(observations[^1]));
+        Assert.Equal(finalFreight, observations[^1].PhysicalFreightScaled);
+        Assert.Equal(firstNet, perPassNet[0]);
+        Assert.Equal(finalNet, perPassNet[^1]);
+        Assert.Equal(0UL, observations[^1].MovedGoodsMicro);
+        Assert.Equal(perPassNet[^1], perPassNet[^2]);
         Assert.True(firstFreight > BigInteger.Zero,
             "Audit must route real cargo across the edge initially.");
         Assert.True(finalFreight > BigInteger.Zero,
@@ -289,6 +323,10 @@ public sealed class FoundationMarginalMarketComplexityAuditTests
             $"firstNet={firstNet} finalNet={finalNet} netDelta={difference} " +
             $"netDeltaBasisPoints={basisPoints} elapsedMs={clock.Elapsed.TotalMilliseconds:F3} " +
             $"firstUsedEdges={first.AllocationAudit.Freight.UsedEdges.Count} " +
-            $"finalUsedEdges={final.AllocationAudit.Freight.UsedEdges.Count}");
+            $"finalUsedEdges={final.AllocationAudit.Freight.UsedEdges.Count} " +
+            $"perPassNetScaled=[{string.Join(",", perPassNet)}] " +
+            $"perPassGainBasisPoints=[{string.Join(",", perPassNet.Select(
+                value => firstNet.IsZero ? BigInteger.Zero :
+                    (value - firstNet) * 10_000 / firstNet))}]");
     }
 }
