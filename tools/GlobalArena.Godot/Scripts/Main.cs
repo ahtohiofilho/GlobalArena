@@ -943,6 +943,14 @@ public partial class Main : Control
         {
             ToggleWorkspaceWindow();
         }
+        else if (key.Keycode == Key.C)
+        {
+            OpenSelectedCityWindow();
+        }
+        else if (key.Keycode == Key.Escape && _cityWindowLayer?.Visible == true)
+        {
+            _cityWindowLayer.Visible = false;
+        }
         else if (key.Keycode == Key.Escape &&
             _tacticalPreview?.DismissTileClickMenu() == true)
         {
@@ -1169,6 +1177,9 @@ public partial class Main : Control
         var openPlanet = new Button { Name = "GANextPlanetButton", Text = "M | PLANET" };
         openPlanet.Pressed += TogglePlanetWindow;
         header.AddChild(openPlanet);
+        var city = new Button { Name = "GANextCityButton", Text = "C | CIDADE" };
+        city.Pressed += OpenSelectedCityWindow;
+        header.AddChild(city);
         var openWorkspace = new Button { Name = "GANextPanelsButton", Text = "TAB | PANELS" };
         openWorkspace.Pressed += ToggleWorkspaceWindow;
         header.AddChild(openWorkspace);
@@ -2003,6 +2014,7 @@ public partial class Main : Control
                 _tacticalPreview?.IsCartographicSiteMode == true)
                 _tacticalPreview.FocusInitialPhysicalCity(openingHome.Value);
             CreateTacticalWorkspaceWindows(globe, rightPanel, header, content);
+            CreateCityWindow();
             // Keep the 1280x720 header usable: the long subtitle belongs in
             // secondary information, not beside all keyboard-first controls.
             subtitle.Visible = false;
