@@ -1,0 +1,30 @@
+name: GA-Next R180 City Local Links
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/Foundation/FoundationLocalConnectionsProjector.cs'
+      - 'GlobalArena.Tests/FoundationLocalConnectionsProjectorTests.cs'
+      - 'tools/GlobalArena.Godot/Scripts/Main.CityConnections.cs'
+      - 'tools/GlobalArena.Godot/Scripts/Main.cs'
+      - '.github/workflows/ga-next-r180-city-local-links.yml'
+      - 'docs/GA-NEXT-R180-CITY-LINKS-UI.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  links:
+    name: R180 canonical incident edges and city UI compile / ubuntu-latest
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build physical world and city screen
+        run: dotnet build tools/GlobalArena.Godot/GlobalArena.Godot.csproj -c Debug
+      - name: Validate only local links and unchanged state
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~FoundationLocalConnectionsProjectorTests' --logger 'console;verbosity=detailed'

@@ -118,6 +118,11 @@ internal sealed class FoundationGodotCartographicSiteSmoke
                 // font glyph whose baseline drifts from the polygon center.
                 Must(dot!.Size.DistanceTo(new Vector2(10f, 10f)) < 0.01f,
                     "Cartographic dot is not the centered 10px circular Panel.");
+                // Verify city management while THIS authentic site marker
+                // is still in the focused map; another focus rebuilds the
+                // visible-site list and must not be used as stale selection.
+                if (visited == 0)
+                    _main.ExerciseR180CityWindowSmoke(tile);
                 GD.Print($"GA_NEXT_R134_SITE_FOCUS tile={tile} " +
                     $"focus={focus.Value} centroid={anchor.Centroid} " +
                     "dot_panel=true present=true");
