@@ -97,6 +97,17 @@ public sealed class FoundationPhysicalGlobalMarginalBudgetExceededException
 /// volume-dependent congestion, endogenous prices and financial settlement
 /// remain future gates.
 /// </summary>
+/// <summary>
+/// Diagnostic-only physical-market observation. NEVER a settled ledger,
+/// never a new price rule, and absent from all production calls.
+/// </summary>
+internal sealed record FoundationMarginalPassObservation(
+    int PassIndex,
+    IReadOnlyDictionary<(PhysicalTacticalTileId Tile, CommodityId Commodity), ulong>
+        MarketGoodsMicro,
+    BigInteger PhysicalFreightScaled,
+    ulong MovedGoodsMicro);
+
 public static class FoundationPhysicalGlobalMarginalCoordinator
 {
     private const ulong Micro = FoundationPhysicalMarginalMarketDistributor.Micro;
@@ -159,7 +170,27 @@ public static class FoundationPhysicalGlobalMarginalCoordinator
         IEnumerable<FoundationPhysicalRoutingEdgeCost> edgeCosts,
         int maxPasses,
         bool preferIncumbentThresholdTies = false,
-        bool acceptOnlyStrictIntegratedGain = false)
+        bool acceptOnlyStrictIntegratedGain = false) =>
+        CoordinateAudited(market, incidence, conversionPolicy, quotes,
+            edgeCosts, maxPasses, preferIncumbentThresholdTies,
+            acceptOnlyStrictIntegratedGain, null);
+
+    /// <summary>
+    /// R175 diagnostic-only observer receives immutable copies after each
+    /// completed global pass. No callbacks or extra projections exist in
+    /// the production solver path (observer null). A pass-zero reading
+    /// captures the unchanged historical progressive allocation.
+    /// </summary>
+    internal static FoundationPhysicalGlobalMarginalCoordinationPlan CoordinateAudited(
+        FoundationPhysicalCommodityMarketInputs market,
+        PhysicalTacticalIncidenceMap incidence,
+        FoundationCommodityCargoConversionPolicy conversionPolicy,
+        IEnumerable<FoundationCommodityMarketPlanningQuote> quotes,
+        IEnumerable<FoundationPhysicalRoutingEdgeCost> edgeCosts,
+        int maxPasses,
+        bool preferIncumbentThresholdTies,
+        bool acceptOnlyStrictIntegratedGain,
+        Action<FoundationMarginalPassObservation>? observer)
     {
         ArgumentNullException.ThrowIfNull(market);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -269,6 +300,41 @@ public static class FoundationPhysicalGlobalMarginalCoordinator
                 quanta.ToArray(), quantum));
         }
 
+        // Physical freight is read from each real source's cached route tree.
+        // Tariffs are intentionally excluded, mirroring the exact accounting
+        // separation: the observer is for physical freights only.
+        void Observe(int pass, ulong movement)
+        {
+            if (observer is null) return;
+            BigInteger physicalFreight = BigInteger.Zero;
+            foreach (var source in sources)
+            {
+                for (int i = 0; i < source.Buyers.Length; i++)
+                {
+                    ulong goods = checked(source.GoodsQuanta[i] *
+                        source.CargoQuantum);
+                    if (goods == 0UL) continue;
+                    var buyer = source.Buyers[i];
+                    var target = checked((int)buyer.Demand.Tile
+                        .FineStrategicCellId.Value);
+                    ulong cargo = conversionPolicy.CargoMicro(
+                        source.Lot.Commodity, goods);
+                    physicalFreight += (BigInteger)cargo *
+                        buyer.Route.PhysicalRate[target] *
+                        FoundationPhysicalEconomicAccountingProposal.BasisPoints;
+                }
+            }
+            observer(new FoundationMarginalPassObservation(
+                pass,
+                new System.Collections.ObjectModel.ReadOnlyDictionary<
+                    (PhysicalTacticalTileId Tile, CommodityId Commodity), ulong>(
+                    new Dictionary<
+                        (PhysicalTacticalTileId Tile, CommodityId Commodity), ulong>(
+                        global)),
+                physicalFreight, movement));
+        }
+        Observe(0, 0UL);
+
         int passes = 0;
         ulong movedGoods = 0UL;
         var movementByPass = new List<ulong>(Math.Min(maxPasses, 1024));
@@ -336,6 +402,7 @@ public static class FoundationPhysicalGlobalMarginalCoordinator
             }
             movedGoods = checked(movedGoods + passMoved);
             movementByPass.Add(passMoved);
+            Observe(pass + 1, passMoved);
             if (passMoved == 0UL)
             {
                 fixedPoint = true;
