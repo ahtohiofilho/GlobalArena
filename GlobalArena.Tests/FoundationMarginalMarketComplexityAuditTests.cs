@@ -302,6 +302,25 @@ public sealed class FoundationMarginalMarketComplexityAuditTests
         Assert.Equal(finalFreight, observations[^1].PhysicalFreightScaled);
         Assert.Equal(firstNet, perPassNet[0]);
         Assert.Equal(finalNet, perPassNet[^1]);
+        // Compare possible early stops only; still certify the full
+        // economic result through the original unchanged coordinator.
+        var toleranceOneBp = FoundationMarginalEconomicStopCandidate.Compare(
+            perPassNet, final.MovedGoodsByPass, thresholdBasisPoints: 1);
+        var toleranceTenBp = FoundationMarginalEconomicStopCandidate.Compare(
+            perPassNet, final.MovedGoodsByPass, thresholdBasisPoints: 10);
+        Assert.Equal(finalNet, toleranceOneBp.CertifiedNetScaled);
+        Assert.Equal(finalNet, toleranceTenBp.CertifiedNetScaled);
+        Assert.True(toleranceOneBp.CandidatePass >= 1);
+        Assert.True(toleranceTenBp.CandidatePass >= 1);
+        Assert.True(toleranceOneBp.CandidatePass >= toleranceTenBp.CandidatePass);
+        _output.WriteLine(
+            $"R177 TWO LOT STOP outputMicro={outputPerWorker} " +
+            $"pass1bp={toleranceOneBp.CandidatePass} " +
+            $"pass10bp={toleranceTenBp.CandidatePass} " +
+            $"certified={final.Passes} " +
+            $"missed1bp={toleranceOneBp.MissedNetScaled} " +
+            $"missed10bp={toleranceTenBp.MissedNetScaled}");
+
         Assert.Equal(0UL, observations[^1].MovedGoodsMicro);
         Assert.Equal(perPassNet[^1], perPassNet[^2]);
         Assert.True(firstFreight > BigInteger.Zero,
@@ -427,6 +446,23 @@ public sealed class FoundationMarginalMarketComplexityAuditTests
         Assert.Equal(0UL, readings[^1].MovedGoodsMicro);
         Assert.Equal(net[^2], net[^1]);
         Assert.Equal(net.Length, readings.Count);
+        var stopOneBp = FoundationMarginalEconomicStopCandidate.Compare(
+            net, final.MovedGoodsByPass, thresholdBasisPoints: 1);
+        var stopTenBp = FoundationMarginalEconomicStopCandidate.Compare(
+            net, final.MovedGoodsByPass, thresholdBasisPoints: 10);
+        Assert.Equal(net[^1], stopOneBp.CertifiedNetScaled);
+        Assert.Equal(net[^1], stopTenBp.CertifiedNetScaled);
+        Assert.InRange(stopOneBp.CandidatePass, 1, final.Passes);
+        Assert.InRange(stopTenBp.CandidatePass, 1, final.Passes);
+        Assert.True(stopTenBp.CandidatePass <= stopOneBp.CandidatePass);
+        _output.WriteLine(
+            $"R177 THREE LOT STOP goodsPerLotMicro={goodsPerProducer} " +
+            $"pass1bp={stopOneBp.CandidatePass} " +
+            $"pass10bp={stopTenBp.CandidatePass} " +
+            $"certified={final.Passes} " +
+            $"missed1bp={stopOneBp.MissedNetScaled} " +
+            $"missed10bp={stopTenBp.MissedNetScaled}");
+
         _output.WriteLine(
             $"R176 MULTI PRODUCER goodsPerLotMicro={goodsPerProducer} " +
             $"lots={final.ProductiveLotCount} passes={final.Passes} " +
