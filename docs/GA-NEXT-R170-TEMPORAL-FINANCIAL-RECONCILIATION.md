@@ -30,6 +30,13 @@ A R169 já introduziu oferta e demanda dos trabalhadores reais por frações de 
 - Regressões incluem viagem de 1,4 turno (100% trânsito no primeiro, chegada 40/60 no segundo). O mercado sintético do segundo turno não converge dentro de 64 passagens: o teste exige recusa de liquidação e ausência de novo crédito. A liquidação do primeiro turno é positiva e auditada. Há também teste separado de investimento com caixa anterior ao ciclo e binding canônico.
 - **Ainda não aceita alteração de atividade/ocupação pelo mesmo journal**, que exige um calendário de transições de trabalho. Por isso, sem cutover automático do host.
 
+## Gate de atividade e ocupação no mesmo journal
+- Eventos `PhysicalTacticalWorkerMovedEvent` **estritamente locais**, executados pela movimentação canônica, podem determinar atividade e ocupação do trabalhador por todo o turno. Um trabalhador não pode ter, no mesmo ciclo, reassociação local e travessia, nem ordens duplicadas.
+- A R164 classifica a demanda produtiva segundo a ocupação do evento autoritativo, não a ocupação antiga da fotografia inicial. A R169 agrupa a oferta no lote da ocupação efetiva; o trabalhador continua único e sua capacidade física não é multiplicada.
+- O digest temporal inclui a nova ocupação apenas quando houver evento de reassociação. Calendários antigos, sem alteração de ocupação, preservam exatamente o hash anterior.
+- A entrada econômica rejeita atividade ou ocupação alterada sem evidência do journal; o replay do evento físico valida identidade, origem e regras de transição.
+- As ordens locais são efetivas no início do turno. Não há modelo de mudança ocupacional em frações intermediárias do mesmo turno; isso precisará de timestamp próprio se vier a ser permitido.
+
 ## Gate ainda pendente — ativação automática no host coletivo
 **Há liquidação autoritativa no gate restrito, mas ela ainda NÃO é ativada no host de partida.** O `FoundationAuthoritativeEconomicSalesSettlementPhase` antigo ainda deriva seus dados do censo instantâneo. O novo gate explícito faz isso para jornadas físicas puras. A integração ao host coletivo ainda deve lidar com a ordem completa de eventos de investimento e mudanças de atividade/ocupação, com replay de toda a partida. Até lá, manter o bloqueio de settlement antigo em modo fracionário.
 
