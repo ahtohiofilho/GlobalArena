@@ -168,4 +168,32 @@ public partial class Main
                 : "sem titular")}\n" +
             $"Investimento acumulado: {link.InvestedMoneyMicro} micro";
     }
+
+    // Execute the exact existing cartographic selection handler; this is
+    // UI-only QA, not a worker, infrastructure or settlement mutation.
+    internal void ExerciseR180CityWindowSmoke(ulong site)
+    {
+        if (_tacticalHost is null || _tacticalPreview is null ||
+            !_tacticalPreview.LocalSiteMarkerTileIds.Contains(site))
+            throw new InvalidOperationException(
+                "R180 city QA requires a real visible inhabited site.");
+        var before = _tacticalHost.StateHash;
+        OnCartographicLocalSiteSelected(site);
+        OpenSelectedCityWindow();
+        var tile = new PhysicalTacticalTileId(
+            _tacticalHost.Incidence.Refinement.FineParameters,
+            new StrategicCellId(site));
+        var expected = FoundationLocalConnectionsProjector.Read(
+            _tacticalHost.Snapshot, _tacticalHost.Incidence, tile);
+        if (_cityWindowLayer?.Visible != true ||
+            _cityLinksList?.GetChildCount() != expected.Count ||
+            _cityWindowTitle?.Text != $"CIDADE | NÓ {site}" ||
+            _tacticalHost.StateHash != before)
+            throw new InvalidOperationException(
+                "R180 city tabs did not show exactly real adjacent links.");
+        _cityWindowLayer.Visible = false;
+        GD.Print($"GA_NEXT_R180_CITY_LINKS_PASS site={site} " +
+            $"direct_edges={expected.Count} real_transport=true " +
+            "no_fake_routes=true no_economy_mutation=true");
+    }
 }
