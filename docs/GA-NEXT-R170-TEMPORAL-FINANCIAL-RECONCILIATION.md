@@ -39,7 +39,9 @@ A R169 já introduziu oferta e demanda dos trabalhadores reais por frações de 
 
 ## Cutover opt-in do host coletivo (candidato de homologação)
 - Quando há **simultaneamente** ledger físico R167 inicializado, política explícita de tempo, tesouraria física, infraestrutura monetária e política econômica, o host seleciona uma **única fase** `FoundationTemporalCollectiveTurnPhase` para todo o turno.
-- A fase usa os executores existentes para ordens locais de atividade/ocupação, viagens, investimentos de dinheiro já disponível e um único evento SYSTEM temporal. Nenhum estado intermediário é publicado no `CanonicalGameSession`.
+- A fase usa os executores existentes para ordens locais de atividade/ocupação, viagens, investimentos de dinheiro já disponível e um único evento SYSTEM temporal.
+- Ordem formal de execução e replay: eventos locais de atividade/ocupação, travessias, investimentos, evento SYSTEM. A execução rejeita evento local depois da primeira travessia ou de investimento, evitando reordenar historicamente trabalho e consumo.
+- O ID da única fase opt-in é o mesmo ID declarado no evento SYSTEM, conforme o contrato de integridade de `PhasedTurnResolutionEngine`. Nenhum estado intermediário é publicado no `CanonicalGameSession`.
 - O recibo coletivo inclui `TemporalEconomicSettlement`, distinto de `EconomicSettlement` legado. O host reproduz o journal inteiro pelo `FoundationTemporalEconomicJournalGate.ReplayJournal` e exige o mesmo hash final canônico.
 - A política anterior permanece em modo legado quando não é fornecida a combinação explícita de política temporal e econômica; não há mudança de versão de hash nesses cenários.
 - Falha de convergência interrompe a resolução antes do commit coletivo, preservando a fotografia de entrada. Não aumentar automaticamente o limite de passagens.
