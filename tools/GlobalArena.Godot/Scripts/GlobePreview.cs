@@ -18,6 +18,9 @@ public partial class GlobePreview : SubViewportContainer
     private Node3D? _planet;
     private Camera3D? _camera;
     private bool _dragging;
+    private readonly CanonicalNorthUpNavigation _northUpNavigation = new();
+    private bool _northUpInitialized;
+    private static readonly Vector3 NorthAxis = Vector3.Back;
     private readonly System.Collections.Generic.List<(ulong Id, Vector3 A, Vector3 B, Vector3 C)> _pickTriangles = new();
     // Canonical sphere used for territory picking. Never an economic game owner.
     public WorldGenerationResult? PresentedCanonicalWorld { get; private set; }
@@ -575,10 +578,22 @@ public partial class GlobePreview : SubViewportContainer
         if (_planet is null || _camera is null || !geographicalPoint.IsFinite() ||
             geographicalPoint.LengthSquared() < 0.5f)
             throw new InvalidOperationException("Atlas focus requires valid globe geography.");
-        var outward = (_camera.GlobalPosition - _planet.GlobalPosition).Normalized();
-        var current = (_planet.Quaternion * geographicalPoint.Normalized()).Normalized();
-        _planet.Quaternion = (new Quaternion(current, outward) * _planet.Quaternion).Normalized();
+        _northUpNavigation.SetCenter(geographicalPoint, NorthAxis);
+        _northUpInitialized = true;
+        ApplyCanonicalNorthUp();
         GD.Print($"GA_NEXT_R139_GLOBE_FOCUS center={CenterGeography} geography_only=true");
+    }
+
+    private void ApplyCanonicalNorthUp()
+    {
+        if (_planet is null || _camera is null) return;
+        var center = _northUpNavigation.Center(NorthAxis);
+        var north = _northUpNavigation.North(NorthAxis);
+        var east = north.Cross(center).Normalized();
+        north = center.Cross(east).Normalized();
+        var geographic = new Basis(east, north, center);
+        var screen = _camera.GlobalTransform.Basis.Orthonormalized();
+        _planet.Quaternion = (screen * geographic.Transposed()).GetRotationQuaternion().Normalized();
     }
 
     private bool TryGlobeGeographyAtPixel(Vector2 pixel, out Vector3 point)
@@ -640,15 +655,31 @@ public partial class GlobePreview : SubViewportContainer
         else if (@event is InputEventMouseMotion motion && _dragging &&
                  (motion.ButtonMask & MouseButtonMask.Left) != 0)
         {
-            // Screen-space orbital dragging: axes stay aligned to camera, not planet Euler angles.
-            // Compose in world space so the same mouse direction works at every longitude.
-            var cameraBasis = _camera.GlobalTransform.Basis.Orthonormalized();
-            var yaw = new Quaternion(cameraBasis.Y.Normalized(), motion.Relative.X * DragSensitivity);
-            var pitch = new Quaternion(cameraBasis.X.Normalized(), motion.Relative.Y * DragSensitivity);
+            // Preserve the signed G18 atlas's sensitivity and click threshold.
+            // Other diagnostic maps retain their existing orbit policy.
             if (!_movedSincePress && motion.Position.DistanceTo(_pressPosition) >= ClickThresholdPixels)
                 _movedSincePress = true;
             if (!_movedSincePress) return;
-            _planet.Quaternion = (yaw * pitch * _planet.Quaternion).Normalized();
+            if (Name == "GANextPlanetGlobe" || _signedG18Geography is not null)
+            {
+                if (!_northUpInitialized)
+                {
+                    _northUpNavigation.SetCenter(CenterGeography, NorthAxis);
+                    _northUpInitialized = true;
+                }
+                _northUpNavigation.Move(NorthAxis,
+                    -motion.Relative.X * DragSensitivity,
+                    motion.Relative.Y * DragSensitivity);
+                ApplyCanonicalNorthUp();
+            }
+            else
+            {
+                var cameraBasis = _camera.GlobalTransform.Basis.Orthonormalized();
+                var yaw = new Quaternion(cameraBasis.Y.Normalized(), motion.Relative.X * DragSensitivity);
+                var pitch = new Quaternion(cameraBasis.X.Normalized(), motion.Relative.Y * DragSensitivity);
+                _planet.Quaternion = (yaw * pitch * _planet.Quaternion).Normalized();
+                _northUpInitialized = false;
+            }
             AcceptEvent();
         }
     }
@@ -1057,8 +1088,11 @@ public partial class GlobePreview : SubViewportContainer
         _dragging = false;
         _movedSincePress = false;
         _planet.Quaternion = Quaternion.Identity;
+        _northUpInitialized = false;
         _camera.Position = new Vector3(0f, 0.05f, 3.15f);
         _camera.LookAt(Vector3.Zero, Vector3.Up);
+        if (Name == "GANextPlanetGlobe" || _signedG18Geography is not null)
+            CenterOnGeography(Vector3.Right);
         UpdateZoomLabel();
         GD.Print("GA_PROD_VIEW_RESET_15");
     }
@@ -1069,6 +1103,8 @@ public partial class GlobePreview : SubViewportContainer
         var position = _camera.Position;
         position.Z = Mathf.Clamp(position.Z + delta, MinZoom, MaxZoom);
         _camera.Position = position;
+        _camera.LookAt(Vector3.Zero, Vector3.Up);
+        if (_northUpInitialized) ApplyCanonicalNorthUp();
         UpdateZoomLabel();
     }
 
