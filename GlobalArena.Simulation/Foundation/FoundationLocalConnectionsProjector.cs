@@ -27,7 +27,7 @@ public static class FoundationLocalConnectionsProjector
         if (!snapshot.Transport.IsInitialized || snapshot.WorldBinding is null ||
             incidence.Refinement.CoarseParameters.StrategicCellCount !=
                 snapshot.WorldBinding.StrategicCellCount ||
-            node.FineParameters != incidence.Refinement.FineParameters)
+            node.FineGoldbergParameters != incidence.Refinement.FineParameters)
             throw new InvalidOperationException(
                 "Local links require the matching authoritative physical world.");
         var known = incidence.FineTopology.Cells
