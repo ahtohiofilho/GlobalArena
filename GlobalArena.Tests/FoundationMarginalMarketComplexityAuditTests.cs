@@ -329,4 +329,115 @@ public sealed class FoundationMarginalMarketComplexityAuditTests
                 value => firstNet.IsZero ? BigInteger.Zero :
                     (value - firstNet) * 10_000 / firstNet))}]");
     }
+
+    [Theory]
+    [InlineData(5_000_000UL)]
+    [InlineData(20_000_000UL)]
+    public void ThreeRealProducerLotsExposeIncrementalNetBenefit(
+        ulong goodsPerProducer)
+    {
+        var host = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL),
+                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)));
+        var map = host.Incidence;
+        var edge = map.FineTopology.Edges[0];
+        var fine = map.Refinement.FineParameters;
+        var a = new PhysicalTacticalTileId(fine, edge.IncidentCellIds[0]);
+        var b = new PhysicalTacticalTileId(fine, edge.IncidentCellIds[1]);
+        StrategicCellId Coarse(PhysicalTacticalTileId tile) =>
+            map.TileIncidences[checked((int)tile.FineStrategicCellId.Value - 1)]
+                .IncidentCoarseCellIds[0];
+
+        // Three distinct real (tile, owner, occupation, commodity) lots:
+        // two producers on A, one on B, and a real additional consumer on B.
+        var workers = new PhysicalWorkerRuntimeState(new[]
+        {
+            new PhysicalWorkerRuntimeRecord(
+                new PhysicalWorkerId(1UL), Red, Coarse(a), Food,
+                goodsPerProducer, PhysicalWorkerActivity.Producing,
+                1_000_000U, a, PhysicalWorkerOccupation.Agriculture),
+            new PhysicalWorkerRuntimeRecord(
+                new PhysicalWorkerId(2UL), Red, Coarse(a), Food,
+                goodsPerProducer, PhysicalWorkerActivity.Producing,
+                1_000_000U, a, PhysicalWorkerOccupation.Forestry),
+            new PhysicalWorkerRuntimeRecord(
+                new PhysicalWorkerId(3UL), Blue, Coarse(b), Food,
+                goodsPerProducer, PhysicalWorkerActivity.Producing,
+                1_000_000U, b, PhysicalWorkerOccupation.Agriculture),
+            new PhysicalWorkerRuntimeRecord(
+                new PhysicalWorkerId(4UL), Blue, Coarse(b), Food,
+                0UL, PhysicalWorkerActivity.Other,
+                12_000_000U, b, PhysicalWorkerOccupation.Unassigned)
+        }, tacticalLocationsAuthoritative: true,
+            occupationsAuthoritative: true);
+        var demand = new FoundationActivityCommodityDemandPolicy(
+            new[] { Food },
+            Enum.GetValues<FoundationPhysicalDemandProfile>().Select(profile =>
+                new FoundationActivityCommodityDemandCoefficient(
+                    profile, Food, 1_000_000UL)));
+        var cargo = new FoundationCommodityCargoConversionPolicy(
+            "audit-3-lot-cargo",
+            new[] { new FoundationCommodityCargoConversion(Food, 1_000_000UL) });
+        var market = FoundationPhysicalCommodityDemandProjector.Project(
+            workers, demand);
+        var quotes = market.DemandByCivilization.Select(line =>
+            new FoundationCommodityMarketPlanningQuote(
+                line.Tile, line.Owner, line.Commodity, 1_000_000UL)).ToArray();
+        var costs = new[] { new FoundationPhysicalRoutingEdgeCost(
+            new PhysicalTacticalEdgeId(fine, edge.Id),
+            FoundationInfrastructureOwnershipKind.NoInfrastructure,
+            null, 100_000UL, 0UL) };
+        var first = FoundationPhysicalMarginalMarketDistributor.Distribute(
+            workers, map, demand, cargo, quotes, costs);
+        var readings = new List<FoundationMarginalPassObservation>();
+        var clock = Stopwatch.StartNew();
+        var final = FoundationPhysicalGlobalMarginalCoordinator.CoordinateAudited(
+            market, map, cargo, quotes, costs, maxPasses: 128,
+            preferIncumbentThresholdTies: false,
+            acceptOnlyStrictIntegratedGain: false,
+            observer: readings.Add);
+        clock.Stop();
+
+        BigInteger Net(FoundationMarginalPassObservation observation)
+        {
+            BigInteger revenue = BigInteger.Zero;
+            foreach (var line in market.MarketDemand)
+            {
+                ulong q = observation.MarketGoodsMicro[(line.Tile, line.Commodity)];
+                if (q == 0UL) continue;
+                BigInteger price = FoundationPhysicalMarginalIntegratedUtility
+                    .IntegerSqrt((BigInteger)line.DemandMicro *
+                        1_000_000UL * 1_000_000UL / q);
+                revenue += (BigInteger)q * price * 10_000UL;
+            }
+            return revenue - observation.PhysicalFreightScaled;
+        }
+        var net = readings.Select(Net).ToArray();
+        Assert.Equal(3, final.ProductiveLotCount);
+        Assert.Equal(3, market.SupplyLots.Count);
+        Assert.Equal(final.Passes + 1, readings.Count);
+        Assert.Equal(checked(goodsPerProducer * 3UL),
+            final.AllocationAudit.TotalAllocatedGoodsMicro);
+        Assert.Equal(first.MarketTotals.ToArray(),
+            final.InitialMarketTotals.ToArray());
+        Assert.True(first.AllocationAudit.Freight.TotalEdgeTraversalCargoMicro > 0UL,
+            "The multi-producer audit must pay real transport.");
+        Assert.True(final.AllocationAudit.Freight.TotalEdgeTraversalCargoMicro > 0UL,
+            "The stabilized audit must keep a physical crossing.");
+        Assert.Equal(0UL, readings[^1].MovedGoodsMicro);
+        Assert.Equal(net[^2], net[^1]);
+        Assert.Equal(net.Length, readings.Count);
+        _output.WriteLine(
+            $"R176 MULTI PRODUCER goodsPerLotMicro={goodsPerProducer} " +
+            $"lots={final.ProductiveLotCount} passes={final.Passes} " +
+            $"firstNet={net[0]} finalNet={net[^1]} " +
+            $"deltaNet={net[^1] - net[0]} " +
+            $"perPassNetScaled=[{string.Join(",", net)}] " +
+            $"perPassDeltaBp=[{string.Join(",", net.Select(x =>
+                net[0].IsZero ? BigInteger.Zero :
+                    (x - net[0]) * 10_000 / net[0]))}] " +
+            $"firstCargo={first.AllocationAudit.Freight.TotalEdgeTraversalCargoMicro} " +
+            $"finalCargo={final.AllocationAudit.Freight.TotalEdgeTraversalCargoMicro} " +
+            $"elapsedMs={clock.Elapsed.TotalMilliseconds:F3}");
+    }
 }
