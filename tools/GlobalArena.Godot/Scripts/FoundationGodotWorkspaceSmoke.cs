@@ -47,6 +47,22 @@ internal sealed class FoundationGodotWorkspaceSmoke
                 "GANextPanelsButton", recursive: true, owned: false) as Button;
             Must(panelsButton is not null,
                 "panels toggle button missing from tactical header");
+            var cityButton = _main.FindChild(
+                "GANextCityButton", recursive: true, owned: false) as Button;
+            var cityWindow = _main.FindChild(
+                "GANextCityWindowLayer", recursive: true, owned: false)
+                as CenterContainer;
+            var cityTabs = _main.FindChild(
+                "GANextCityTabs", recursive: true, owned: false)
+                as TabContainer;
+            Must(cityButton is not null && cityWindow is not null &&
+                !cityWindow.Visible && cityTabs is not null &&
+                cityTabs.GetTabCount() == 2 &&
+                cityTabs.GetTabTitle(0) == "Visão geral" &&
+                cityTabs.GetTabTitle(1) == "Ligações",
+                "city window must have exactly overview and immediate links " +
+                "tabs and remain closed in the clean map startup");
+
             var canvas = _main.FindChild(
                 "GANextWideTacticalCanvas", recursive: true, owned: false)
                 as PanelContainer;
