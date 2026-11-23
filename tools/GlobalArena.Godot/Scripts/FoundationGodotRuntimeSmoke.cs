@@ -76,6 +76,9 @@ internal sealed class FoundationGodotRuntimeSmoke
                 .Activity == PhysicalWorkerActivity.Traveling,
                 "real AI preview worker should start Traveling");
             Must(_game.LastTurnReceipt is null, "preview contains a phantom completed turn");
+            Must(!_main.LastTemporalEconomyVisible &&
+                 string.IsNullOrEmpty(_main.LastTemporalEconomyText),
+                "Godot must not display an uncommitted temporal financial result");
             Must(_pending.Text.Contains("No orders queued", StringComparison.Ordinal),
                 "initial pending label incorrect");
 
