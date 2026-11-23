@@ -23,3 +23,19 @@ Os testes registram `firstGrossScaled`, `finalGrossScaled`, `grossDeltaScaled` e
 
 ## Critério de decisão
 Se as passagens extras gerarem ganhos brutos irrisórios em cenários representativos e custos operacionais relevantes, propor simplificação transparente da regra de redistribuição, sem retornar ao acoplamento de congestionamento. Caso contrário, preservar o benefício e procurar simplificação estrutural controlada.
+
+## Medições observadas — CI Ubuntu, 2026-11-23
+
+Workflow dedicado R173 concluído com 3 testes aprovados. A comparação de receita usa a mesma curva financeira canônica `p=floor(1e6*sqrt(D/Q))`; o primeiro plano foi computado separadamente pelo distribuidor original, conferido contra os totais iniciais do coordenador.
+
+| Cenário | Passagens | Receita inicial (scaled) | Receita final (scaled) | Diferença scaled | Ganho |
+|---|---:|---:|---:|---:|---:|
+| 50 milhões micro por trabalhador, sem conexão | 1 | 141421000000000000 | 141421000000000000 | 0 | 0% |
+| 50 milhões micro por trabalhador, mercados conectados | 5 | 141332545500000000 | 141421000000000000 | 88454500000000 | 0,0626% |
+| 5 milhões micro por trabalhador, mercados conectados | 13 | 44718523200000000 | 44721300000000000 | 2776800000000 | 0,00621% |
+
+**Arredondamento:** os valores de `grossDeltaBasisPoints` registrados pelo teste são inteiros truncados (6 e 0, respectivamente). Os percentuais desta tabela são aproximações a partir dos valores inteiros brutos, não promessas de exatidão monetária infinita.
+
+**Interpretação:** neste conjunto limitado, mais passagens geraram retornos brutos menores que 0,1%. Isso é evidência de retornos decrescentes, não prova de que sempre aconteçam ou de que a melhoria seja economicamente dispensável. Ainda não foi medida a vantagem de custos líquidos/rotas reais, nem a fidelidade com a demanda temporal em escalas grandes. Nenhuma regra de produção foi modificada.
+
+**Recomendação após esta evidência:** testar cenário com transporte efetivamente usado e avaliar melhora de receita líquida/benefício integrado antes de decidir substituir a coordenação fixa. Não aumentar a precisão do solucionador por conta dos ganhos de centésimos percentuais.
