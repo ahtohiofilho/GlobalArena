@@ -7,12 +7,32 @@ namespace GlobalArena.Tests;
 
 public sealed class FoundationLocalConnectionsProjectorTests
 {
+    private static (FoundationTacticalHumanAiTurnHost Host, WorldState World)
+        TransportWorld()
+    {
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL),
+                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)));
+        var fine = FoundationFineFirstPhysicalGeography.Generate(
+            demo.Session.GeneratedWorld, demo.Incidence);
+        var seeded = FoundationPhysicalNaturalTransportSeeder.PreviewFineFirst(
+            demo.Session.GeneratedWorld, demo.Incidence, fine,
+            new FoundationNaturalTransportSeedingPolicy(
+                new FoundationNaturalTransportCostBand(1_000UL, 1_000_000UL),
+                new FoundationNaturalTransportCostBand(5_000UL, 500_000UL),
+                new FoundationNaturalTransportCostBand(25_000UL, 100_000UL),
+                10_000UL),
+            new FoundationMonetaryConstructionPolicy(
+                2_000_000UL, 4_000_000UL, 6_000UL, 1_000_000UL));
+        var world = demo.Session.Snapshot.DeployInitialPhysicalTransport(
+            seeded.Transport, demo.Session.GeneratedWorld, demo.Incidence);
+        return (demo, world);
+    }
+
     [Fact]
     public void EveryCityNodeListsExactlyItsRealIncidentEdgesAndNoOthers()
     {
-        var host = FoundationConcentratedWorkforceScenario.CreatePreview(
-            new WorldGenerationRequest(new WorldSeed(20261012UL),
-                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)));
+        var (host, snapshot) = TransportWorld();
         var incidence = host.Incidence;
         var nodeId = incidence.FineTopology.Edges[0].IncidentCellIds[0];
         var node = new PhysicalTacticalTileId(
@@ -20,7 +40,7 @@ public sealed class FoundationLocalConnectionsProjectorTests
         var originalHash = host.StateHash;
 
         var rows = FoundationLocalConnectionsProjector.Read(
-            host.Snapshot, incidence, node);
+            snapshot, incidence, node);
         var expected = incidence.FineTopology.Edges
             .Where(e => e.IncidentCellIds.Contains(nodeId))
             .ToArray();
@@ -36,7 +56,7 @@ public sealed class FoundationLocalConnectionsProjectorTests
             Assert.Contains(row.Neighbor.FineStrategicCellId,
                 edge.IncidentCellIds);
             Assert.NotEqual(node, row.Neighbor);
-            var original = Assert.Single(host.Snapshot.Transport.Edges,
+            var original = Assert.Single(snapshot.Transport.Edges,
                 e => e.Edge == row.Edge);
             Assert.Equal(original.OwnershipKind, row.Ownership);
             Assert.Equal(original.InfrastructureOwner, row.InfrastructureOwner);
@@ -53,9 +73,7 @@ public sealed class FoundationLocalConnectionsProjectorTests
     [Fact]
     public void ForeignResolutionCannotMasqueradeAsLocalPhysicalLinks()
     {
-        var host = FoundationConcentratedWorkforceScenario.CreatePreview(
-            new WorldGenerationRequest(new WorldSeed(20261012UL),
-                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)));
+        var (host, snapshot) = TransportWorld();
         var incident = host.Incidence;
         var foreign = new PhysicalTacticalTileId(
             incident.Refinement.CoarseParameters,
@@ -64,6 +82,6 @@ public sealed class FoundationLocalConnectionsProjectorTests
                 : throw new InvalidOperationException());
         Assert.Throws<InvalidOperationException>(() =>
             FoundationLocalConnectionsProjector.Read(
-                host.Snapshot, incident, foreign));
+                snapshot, incident, foreign));
     }
 }
