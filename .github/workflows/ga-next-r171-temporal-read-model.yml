@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'GlobalArena.Simulation/Foundation/FoundationViewerTemporalEconomicCloseProjector.cs'
+      - 'GlobalArena.Simulation/Foundation/FoundationTacticalHumanAiTurnHost.cs'
       - 'GlobalArena.Tests/FoundationTemporalEconomicJournalGateTests.cs'
       - 'docs/GA-NEXT-DUAL-CI-GATES.md'
       - '.github/workflows/ga-next-r171-temporal-read-model.yml'
