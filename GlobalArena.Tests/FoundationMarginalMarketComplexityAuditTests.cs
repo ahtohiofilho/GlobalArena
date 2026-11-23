@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Numerics;
 using GlobalArena.Runtime;
 using GlobalArena.Simulation;
 using GlobalArena.Simulation.Foundation;
@@ -75,6 +76,11 @@ public sealed class FoundationMarginalMarketComplexityAuditTests
                 null, 100_000UL, 0UL) }
             : Array.Empty<FoundationPhysicalRoutingEdgeCost>();
 
+        // Independent first-pass candidate: same workers, prices and fixed
+        // costs; do not approximate or mutate the production solver.
+        var firstPass = FoundationPhysicalMarginalMarketDistributor.Distribute(
+            workers, incidence, demand, cargo, quotes, roads);
+
         var clock = Stopwatch.StartNew();
         var result = FoundationPhysicalGlobalMarginalCoordinator.Coordinate(
             workers, incidence, demand, cargo, quotes, roads, maxPasses: 128);
@@ -98,6 +104,42 @@ public sealed class FoundationMarginalMarketComplexityAuditTests
         }
         quantityShift /= 2UL; // half of absolute market deltas, one transfer
 
+        // The exact canonical price function from the accounting reconciler:
+        // floor(sqrt(D/Q) * 1e6), with one shared physical Q per market.
+        // Gross = sum(Q * price * 10_000), in the accounting scaled units.
+        // This is an audit of gross revenue, not a new pricing mechanism.
+        static BigInteger GrossRevenue(
+            IReadOnlyList<FoundationPhysicalMarketAllocationTotal> totals)
+        {
+            BigInteger gross = BigInteger.Zero;
+            foreach (var market in totals.GroupBy(
+                x => (x.Tile, x.Commodity)))
+            {
+                ulong q = market.Aggregate(0UL,
+                    (sum, row) => checked(sum + row.AllocatedGoodsMicro));
+                if (q == 0UL) continue;
+                ulong d = market.Aggregate(0UL,
+                    (sum, row) => checked(sum + row.DemandMicro));
+                BigInteger price =
+                    FoundationPhysicalMarginalIntegratedUtility.IntegerSqrt(
+                        (BigInteger)d * 1_000_000UL * 1_000_000UL / q);
+                gross += (BigInteger)q * price * 10_000UL;
+            }
+            return gross;
+        }
+        BigInteger firstGross = GrossRevenue(firstPass.MarketTotals);
+        BigInteger finalGross = GrossRevenue(result.MarketTotals);
+        BigInteger grossDelta = finalGross - firstGross;
+        BigInteger grossDeltaBasisPoints = firstGross == BigInteger.Zero
+            ? BigInteger.Zero
+            : grossDelta * 10_000 / firstGross;
+
+        Assert.Equal(firstPass.MarketTotals.ToArray(),
+            result.InitialMarketTotals.ToArray());
+        Assert.Equal(firstPass.AllocationAudit.TotalAllocatedGoodsMicro,
+            result.AllocationAudit.TotalAllocatedGoodsMicro);
+
+
         Assert.True(result.StableUnderOneFullCanonicalPass);
         Assert.Equal(2, result.ProductiveLotCount);
         Assert.Equal(checked(outputPerWorker * 2UL),
@@ -115,6 +157,8 @@ public sealed class FoundationMarginalMarketComplexityAuditTests
             $"firstToFinalShiftMicro={quantityShift} " +
             $"movedByPass=[{string.Join(",", result.MovedGoodsByPass)}] " +
             $"elapsedMs={clock.Elapsed.TotalMilliseconds:F3} " +
-            $"freightEdgeTraversals={result.AllocationAudit.Freight.TotalEdgeTraversalCargoMicro}");
+            $"freightEdgeTraversals={result.AllocationAudit.Freight.TotalEdgeTraversalCargoMicro} " +
+            $"firstGrossScaled={firstGross} finalGrossScaled={finalGross} " +
+            $"grossDeltaScaled={grossDelta} grossDeltaBasisPoints={grossDeltaBasisPoints}");
     }
 }
