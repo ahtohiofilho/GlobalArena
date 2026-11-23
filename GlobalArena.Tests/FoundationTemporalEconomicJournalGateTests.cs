@@ -427,6 +427,10 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             physicalTravelPolicy: new FoundationGroundEdgeTravelTimePolicy(1_400_000UL));
         var initial = host.StateHash;
         var snapshotBefore = host.Snapshot;
+        Assert.Null(host.GetLastClosedTemporalEconomics(worker.Owner));
+        var aiCivilization = world.Civilizations.Civilizations.Single(c => c != worker.Owner);
+        Assert.Throws<InvalidOperationException>(() =>
+            host.GetLastClosedTemporalEconomics(aiCivilization));
         host.QueueHumanMove(worker.Owner, worker.Id, destination);
         Assert.Equal(initial, host.StateHash);
         host.SetHumanReady(worker.Owner);
@@ -453,9 +457,13 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Equal(expected.OwnerTollIncomeScaled,
             publicForViewer.OwnerTollIncomeScaled);
         Assert.Equal(host.StateHash, publicForViewer.CommittedWorldHash);
+        Assert.Equal(publicForViewer,
+            host.GetLastClosedTemporalEconomics(worker.Owner));
         Assert.Throws<InvalidOperationException>(() =>
             FoundationViewerTemporalEconomicCloseProjector.Read(
                 receipt, snapshotBefore, worker.Owner));
+        Assert.Throws<InvalidOperationException>(() =>
+            host.GetLastClosedTemporalEconomics(aiCivilization));
         var outsider = new CivilizationId(uint.MaxValue);
         Assert.Throws<InvalidOperationException>(() =>
             FoundationViewerTemporalEconomicCloseProjector.Read(
