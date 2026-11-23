@@ -329,4 +329,52 @@ public sealed class FoundationTemporalEconomicJournalGateTests
                 incidence, policy, context, investmentExecutor, fine));
         Assert.Equal(0UL, beginning.Treasury.LastSettledEconomicCycleOrdinal);
     }
+    [Fact]
+    public void LocalOccupationChangeAffectsFullTurnDemandAndCanonicalSupplyLot()
+    {
+        var (world, worker, _, _, incidence, _) = Fixture();
+        Assert.Equal(PhysicalWorkerActivity.Producing, worker.Activity);
+        Assert.Equal(PhysicalWorkerOccupation.Agriculture, worker.Occupation);
+        var begin = FoundationPersistedEdgeTravelTransitions.DeployEmpty(world);
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL),
+                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)),
+            workersPerCivilization: 3);
+        var localExecutor = new PhysicalTacticalWorkerMoveEventExecutor(
+            demo.Session.GeneratedWorld, incidence);
+        var turn = new TurnNumber(1UL);
+        var context = new SimulationContext(turn, new SimulationSeed(712UL));
+        var atNode = worker.TacticalTileId!.Value;
+        var ev = new PhysicalTacticalWorkerMovedEvent(
+            new EventId(new CommandId(turn, 1UL), 1UL),
+            worker.Owner, worker.Id, atNode, atNode, null,
+            localExecutor.PresentationRegion(atNode, worker.CellId),
+            PhysicalWorkerActivity.Producing, PhysicalWorkerOccupation.Forestry);
+        var after = localExecutor.Execute(begin, ev, context);
+        Assert.Equal(PhysicalWorkerOccupation.Forestry,
+            after.Workers.Workers.Single(w => w.Id == worker.Id).Occupation);
+        var input = FoundationTemporalEconomicTurnProjector.Project(
+            begin, after, Array.Empty<FoundationEdgeTravelTurnEvent>(),
+            new[] { ev }, Demand());
+        var row = Assert.Single(input.Slices, s => s.Worker == worker.Id);
+        Assert.Equal(1_000_000U, row.PresenceMicro);
+        Assert.Equal(1_000_000U, row.ProductiveEffortMicro);
+        Assert.Equal(PhysicalWorkerOccupation.Forestry,
+            input.EffectiveOccupations[worker.Id]);
+        var market = FoundationTemporalNativeMarketInputs.FromTemporal(
+            begin, input, Demand());
+        Assert.Contains(market.SupplyLots, lot =>
+            lot.Owner == worker.Owner &&
+            lot.Occupation == PhysicalWorkerOccupation.Forestry &&
+            lot.Tile == atNode);
+        Assert.Throws<InvalidOperationException>(() =>
+            FoundationTemporalEconomicTurnProjector.Project(
+                begin, after, Array.Empty<FoundationEdgeTravelTurnEvent>(),
+                Demand()));
+        Assert.Throws<InvalidOperationException>(() =>
+            FoundationTemporalEconomicTurnProjector.Project(
+                begin, after, Array.Empty<FoundationEdgeTravelTurnEvent>(),
+                new[] { ev, ev }, Demand()));
+    }
+
 }
