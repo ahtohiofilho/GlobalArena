@@ -12,7 +12,8 @@ O teste R179 executa a cena real Godot 4.7.2 .NET no mundo fine-first assinado G
 2. A primeira tecla E gera um fechamento temporal real com replay, hash e caixa autoritativos, exibindo apenas os créditos da civilização humana através de `GetLastClosedTemporalEconomics` (R171).
 3. Cada campo da UI é comparado com o respectivo valor do recibo: ciclo, crédito ao caixa, líquido de vendas, impostos, pedágios e quantidade global física claramente identificada.
 4. Após a segunda tecla E, ciclo e hash mudam, o painel é atualizado e o mapa não sofre deslocamento por iniciativa da apresentação.
-5. O teste salva duas capturas PNG reais, após os fechamentos, na evidência do workflow Godot (14 dias). Captura headless de um framebuffer renderizado é prova de execução visual automática, mas a apreciação humana da disposição e legibilidade ainda depende de abrir os PNGs ou o cliente interativo.
+5. Antes das capturas, o teste aciona **TAB** para abrir a bancada operacional real; rola o painel para o campo financeiro e exige `IsVisibleInTree` e interseção do retângulo do controle com o viewport. Sem isso, PNGs só do mapa não satisfazem o gate visual.
+6. O teste salva duas capturas PNG reais, após os fechamentos, na evidência do workflow Godot (14 dias). Captura headless de um framebuffer renderizado é prova de execução visual automática, mas a apreciação humana da disposição e legibilidade ainda depende de abrir os PNGs ou o cliente interativo.
 
 ## Limites
 Sem alterar fórmula, congestionamento, solver marginal, ledger ou redistribuição. Regressões obrigatórias Windows/Linux; macOS facultativo. PR Draft e sem merge.
