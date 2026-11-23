@@ -443,4 +443,61 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.NotEqual(initial, receipt.Hash);
     }
 
+    [Fact]
+    public void AtomicJournalReplaysLocalOccupationAndTravelInTheSameTurn()
+    {
+        var (world, traveler, destination, movement, incidence, fine) = Fixture();
+        var localWorker = world.Workers.Workers.Single(w =>
+            w.Owner == traveler.Owner &&
+            w.Occupation == PhysicalWorkerOccupation.Forestry);
+        Assert.NotEqual(traveler.Id, localWorker.Id);
+        var funding = CivilizationTreasuryRuntimeState.CreateOpening(
+            world.Civilizations.Civilizations.Select(c => (c, 0UL)));
+        var beginning = FoundationPersistedEdgeTravelTransitions.DeployEmpty(
+            world.DeployInitialTreasury(funding));
+        var turn = new TurnNumber(1UL);
+        var context = new SimulationContext(turn, new SimulationSeed(712UL));
+        var location = localWorker.TacticalTileId!.Value;
+        var local = new PhysicalTacticalWorkerMovedEvent(
+            new EventId(new CommandId(turn, 1UL), 1UL),
+            localWorker.Owner, localWorker.Id, location, location, null,
+            movement.PresentationRegion(location, localWorker.CellId),
+            PhysicalWorkerActivity.Producing,
+            PhysicalWorkerOccupation.Agriculture);
+        var afterLocal = movement.Execute(beginning, local, context);
+        var travelResult = new FoundationEdgeTravelTurnPhase(movement,
+            new FoundationGroundEdgeTravelTimePolicy(1_400_000UL)).Resolve(
+            new TurnResolutionInput(afterLocal, new ISimulationCommand[]
+            {
+                new FoundationEdgeTravelTurnCommand(
+                    new CommandId(turn, 2UL), traveler.Owner, traveler.Id,
+                    destination, isStart: true)
+            }, context), afterLocal);
+        var travel = Assert.IsType<FoundationEdgeTravelTurnEvent>(
+            Assert.Single(travelResult.Events));
+        var policy = Policy(beginning.Civilizations.Civilizations);
+        var receipt = FoundationTemporalEconomicJournalGate.CloseAndReplayWithInvestments(
+            beginning, new ISimulationEvent[] { local, travel }, movement,
+            new FoundationGroundEdgeTravelTimePolicy(1_400_000UL), incidence,
+            policy, context, investmentExecutor: null, signedFine: fine);
+        Assert.True(receipt.ReplayMatched);
+        Assert.Equal(3, receipt.Journal.Entries.Count);
+        Assert.Equal(1UL, receipt.Next.Treasury.LastSettledEconomicCycleOrdinal);
+        Assert.Equal(PhysicalWorkerOccupation.Agriculture,
+            receipt.Next.Workers.Workers.Single(w => w.Id == localWorker.Id).Occupation);
+        Assert.Equal(400_000UL, receipt.Next.EdgeTravels.Pending.Single()
+            .RemainingMicro);
+        Assert.Equal(receipt.Hash,
+            new CanonicalWorldStateHasher().Compute(
+                FoundationTemporalEconomicJournalGate.ReplayJournal(
+                    beginning, receipt.Journal, movement,
+                    new FoundationGroundEdgeTravelTimePolicy(1_400_000UL),
+                    incidence, policy, context, fine)));
+        Assert.Throws<InvalidOperationException>(() =>
+            FoundationTemporalEconomicJournalGate.CloseAndReplayWithInvestments(
+                beginning, new ISimulationEvent[] { travel, local }, movement,
+                new FoundationGroundEdgeTravelTimePolicy(1_400_000UL), incidence,
+                policy, context, investmentExecutor: null, signedFine: fine));
+    }
+
 }
