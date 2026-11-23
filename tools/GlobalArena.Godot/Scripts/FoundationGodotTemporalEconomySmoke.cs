@@ -53,7 +53,7 @@ internal sealed class FoundationGodotTemporalEconomySmoke
 
     private async Task Capture(string stage, Label label)
     {
-        var directory = Environment.GetEnvironmentVariable(
+        var directory = System.Environment.GetEnvironmentVariable(
             "GA_NEXT_R179_SCREENSHOT_DIR");
         if (string.IsNullOrWhiteSpace(directory)) return;
         Directory.CreateDirectory(directory);
