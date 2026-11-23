@@ -1118,15 +1118,16 @@ public partial class TacticalContextPreview : SubViewportContainer
     // not rounded tile centers. Fine identity determines resident coverage only.
     public Vector3 CenterGeography => _exactViewPointOnSphere;
 
-    public void CenterOnGeography(Vector3 spherical)
+    public void CenterOnGeography(Vector3 spherical, bool preserveNavigationBearing = false)
     {
         if (_camera is null || _cachedFineWorld is null ||
             _cachedPhysicalMap is null || _cachedCoarseGeometry is null ||
             !spherical.IsFinite() || spherical.LengthSquared() < 0.5f)
             throw new InvalidOperationException("Invalid tactical geographic focus.");
         spherical = spherical.Normalized();
-        if (!_canonicalDragFrame)
+        if (!preserveNavigationBearing)
             _northUpNavigation.SetCenter(spherical, _physicalPolarAxis);
+        _canonicalDragFrame = _localSitesEnabled && _geographicNorthUp;
         var fine = FindFineTileAt(spherical);
         var owners = _cachedPhysicalMap.TileIncidences[
             checked((int)fine.Value - 1)].IncidentCoarseCellIds;
@@ -1135,7 +1136,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         var zoom = _camera.Size;
         var physical = new PhysicalTacticalTileId(
             _cachedPhysicalMap.Refinement.FineParameters, fine);
-        Open(coarse.Value, physical);
+        Open(coarse.Value, physical, preserveNavigationBearing: true);
         _camera.Size = zoom;
         _cameraTarget = FlattenUnitVector(spherical, TacticalSurfacePlaneY);
         UpdateCameraOrientation();
@@ -1164,7 +1165,7 @@ public partial class TacticalContextPreview : SubViewportContainer
                 .GetCell(anchor.Value).Center).Normalized()) < FineAnchorRecenterDot;
         if (rebuild)
         {
-            CenterOnGeography(center);
+            CenterOnGeography(center, preserveNavigationBearing: true);
             _cartographicReanchors++;
         }
         else
@@ -1174,7 +1175,7 @@ public partial class TacticalContextPreview : SubViewportContainer
             _focusedFineTile = fine;
         }
         if (_coverViewport && !ViewportSamplesHaveTerrain(_camera.Size, 4, 4))
-            CenterOnGeography(center);
+            CenterOnGeography(center, preserveNavigationBearing: true);
     }
 
     private void CenterOnRightClickedGeography(Vector2 pixel)
@@ -1499,8 +1500,10 @@ public partial class TacticalContextPreview : SubViewportContainer
         PhysicalTileInspected?.Invoke(matched.Id, _selection.Text, _terrainDetails?.Text ?? "");
     }
 
-    public void Open(ulong focusValue, PhysicalTacticalTileId? openingHome = null)
+    public void Open(ulong focusValue, PhysicalTacticalTileId? openingHome = null,
+        bool preserveNavigationBearing = false)
     {
+        if (!preserveNavigationBearing) _canonicalDragFrame = false;
         if (_camera is null || _surface is null || _edges is null || _territoryBoundaries is null || _information is null || _selection is null || _selectedTileOutline is null)
             throw new InvalidOperationException("Tactical preview is not ready.");
         ResetExtendedResident();
@@ -2210,7 +2213,7 @@ public partial class TacticalContextPreview : SubViewportContainer
                     _dragPixelsAfterHandoff = 0f;
                     _dragStart = button.Position;
                     _heldCartographicCursorGeography = null;
-                    if (_localSitesEnabled && _geographicNorthUp)
+                    if (_localSitesEnabled && _geographicNorthUp && !_canonicalDragFrame)
                     {
                         _northUpNavigation.SetCenter(_exactViewPointOnSphere, _physicalPolarAxis);
                         _canonicalDragFrame = true;
