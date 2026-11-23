@@ -13,8 +13,10 @@ namespace GlobalArena.Simulation.Foundation;
 /// </summary>
 public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
 {
+    // The system sale is emitted by THIS sole atomic phase. The generic
+    // phase engine requires the SYSTEM event origin to equal its phase ID.
     public const string StablePhaseId =
-        "foundation.temporal-collective-economic-v17";
+        FoundationTemporalEconomicJournalGate.StablePhaseId;
     public string PhaseId => StablePhaseId;
 
     private readonly PhysicalTacticalWorkerMovementTurnPhase _local;
