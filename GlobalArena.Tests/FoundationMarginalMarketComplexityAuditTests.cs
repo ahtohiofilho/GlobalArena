@@ -161,4 +161,134 @@ public sealed class FoundationMarginalMarketComplexityAuditTests
             $"firstGrossScaled={firstGross} finalGrossScaled={finalGross} " +
             $"grossDeltaScaled={grossDelta} grossDeltaBasisPoints={grossDeltaBasisPoints}");
     }
+
+    [Theory]
+    [InlineData(5_000_000UL)]
+    [InlineData(50_000_000UL)]
+    public void MeasureCanonicalNetBenefitWithActualFreight(ulong outputPerWorker)
+    {
+        var host = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL),
+                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)));
+        var map = host.Incidence;
+        var edge = map.FineTopology.Edges[0];
+        var fine = map.Refinement.FineParameters;
+        var a = new PhysicalTacticalTileId(fine, edge.IncidentCellIds[0]);
+        var b = new PhysicalTacticalTileId(fine, edge.IncidentCellIds[1]);
+        StrategicCellId Coarse(PhysicalTacticalTileId tile) =>
+            map.TileIncidences[checked((int)tile.FineStrategicCellId.Value - 1)]
+                .IncidentCoarseCellIds[0];
+
+        // The third worker is a real non-producing consumer at B. This
+        // creates physical demand that can attract exports from A without
+        // any artificial non-universal price quote or congestion feedback.
+        var workers = new PhysicalWorkerRuntimeState(new[]
+        {
+            new PhysicalWorkerRuntimeRecord(
+                new PhysicalWorkerId(1UL), Red, Coarse(a), Food,
+                outputPerWorker, PhysicalWorkerActivity.Producing,
+                1_000_000U, a, PhysicalWorkerOccupation.Agriculture),
+            new PhysicalWorkerRuntimeRecord(
+                new PhysicalWorkerId(2UL), Blue, Coarse(b), Food,
+                outputPerWorker, PhysicalWorkerActivity.Producing,
+                1_000_000U, b, PhysicalWorkerOccupation.Forestry),
+            new PhysicalWorkerRuntimeRecord(
+                new PhysicalWorkerId(3UL), Blue, Coarse(b), Food,
+                0UL, PhysicalWorkerActivity.Other,
+                10_000_000U, b, PhysicalWorkerOccupation.Unassigned)
+        }, tacticalLocationsAuthoritative: true,
+           occupationsAuthoritative: true);
+        var demand = new FoundationActivityCommodityDemandPolicy(
+            new[] { Food },
+            Enum.GetValues<FoundationPhysicalDemandProfile>().Select(profile =>
+                new FoundationActivityCommodityDemandCoefficient(
+                    profile, Food, 1_000_000UL)));
+        var cargo = new FoundationCommodityCargoConversionPolicy(
+            "audit-real-freight-cargo",
+            new[] { new FoundationCommodityCargoConversion(Food, 1_000_000UL) });
+        var market = FoundationPhysicalCommodityDemandProjector.Project(workers, demand);
+        var quotes = market.DemandByCivilization.Select(line =>
+            new FoundationCommodityMarketPlanningQuote(
+                line.Tile, line.Owner, line.Commodity, 1_000_000UL)).ToArray();
+        const ulong freightRate = 100_000UL;
+        var costs = new[] { new FoundationPhysicalRoutingEdgeCost(
+            new PhysicalTacticalEdgeId(fine, edge.Id),
+            FoundationInfrastructureOwnershipKind.NoInfrastructure,
+            null, freightRate, 0UL) };
+
+        var first = FoundationPhysicalMarginalMarketDistributor.Distribute(
+            workers, map, demand, cargo, quotes, costs);
+        var clock = Stopwatch.StartNew();
+        var final = FoundationPhysicalGlobalMarginalCoordinator.Coordinate(
+            workers, map, demand, cargo, quotes, costs, maxPasses: 128);
+        clock.Stop();
+
+        // Same exact integer square-root pricing as the canonical financial
+        // reconciler. No rounding to cents and no independent price rule.
+        static BigInteger Gross(
+            IReadOnlyList<FoundationPhysicalMarketAllocationTotal> totals)
+        {
+            BigInteger gross = BigInteger.Zero;
+            foreach (var group in totals.GroupBy(x => (x.Tile, x.Commodity)))
+            {
+                ulong q = group.Aggregate(0UL,
+                    (sum, x) => checked(sum + x.AllocatedGoodsMicro));
+                if (q == 0UL) continue;
+                ulong d = group.Aggregate(0UL,
+                    (sum, x) => checked(sum + x.DemandMicro));
+                BigInteger price = FoundationPhysicalMarginalIntegratedUtility
+                    .IntegerSqrt((BigInteger)d * 1_000_000UL * 1_000_000UL / q);
+                gross += (BigInteger)q * price * 10_000UL;
+            }
+            return gross;
+        }
+
+        // With exactly one declared physical edge and one cargo micro-unit
+        // per goods micro-unit, these are the same scaled physical charges
+        // as the existing accounting reconciler. No tariffs or income taxes.
+        static BigInteger Freight(
+            IEnumerable<FoundationPhysicalCommodityDeliveryCandidate> candidates)
+        {
+            BigInteger total = BigInteger.Zero;
+            foreach (var delivery in candidates)
+            {
+                if (delivery.RouteTiles.Count is not (1 or 2))
+                    throw new InvalidOperationException("Unexpected audit route.");
+                if (delivery.RouteTiles.Count == 2)
+                    total += (BigInteger)delivery.GoodsMicro *
+                        freightRate * 10_000UL;
+            }
+            return total;
+        }
+
+        BigInteger firstGross = Gross(first.MarketTotals);
+        BigInteger finalGross = Gross(final.MarketTotals);
+        BigInteger firstFreight = Freight(first.Candidates);
+        BigInteger finalFreight = Freight(final.Candidates);
+        BigInteger firstNet = firstGross - firstFreight;
+        BigInteger finalNet = finalGross - finalFreight;
+        BigInteger difference = finalNet - firstNet;
+        BigInteger basisPoints = firstNet.IsZero
+            ? BigInteger.Zero : difference * 10_000 / firstNet;
+        Assert.True(firstFreight > BigInteger.Zero,
+            "Audit must route real cargo across the edge initially.");
+        Assert.True(finalFreight > BigInteger.Zero,
+            "Audit must route real cargo across the edge finally.");
+        Assert.Equal(checked(outputPerWorker * 2UL),
+            first.AllocationAudit.TotalAllocatedGoodsMicro);
+        Assert.Equal(first.AllocationAudit.TotalAllocatedGoodsMicro,
+            final.AllocationAudit.TotalAllocatedGoodsMicro);
+        Assert.Equal(first.MarketTotals.ToArray(),
+            final.InitialMarketTotals.ToArray());
+        Assert.Equal(0UL, final.MovedGoodsByPass.Last());
+
+        _output.WriteLine(
+            $"R174 REAL FREIGHT outputMicro={outputPerWorker} " +
+            $"passes={final.Passes} firstGross={firstGross} finalGross={finalGross} " +
+            $"firstFreight={firstFreight} finalFreight={finalFreight} " +
+            $"firstNet={firstNet} finalNet={finalNet} netDelta={difference} " +
+            $"netDeltaBasisPoints={basisPoints} elapsedMs={clock.Elapsed.TotalMilliseconds:F3} " +
+            $"firstUsedEdges={first.AllocationAudit.Freight.UsedEdges.Count} " +
+            $"finalUsedEdges={final.AllocationAudit.Freight.UsedEdges.Count}");
+    }
 }
