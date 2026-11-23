@@ -63,6 +63,23 @@ internal sealed class FoundationGodotWorkspaceSmoke
                 "city window must have exactly overview and immediate links " +
                 "tabs and remain closed in the clean map startup");
 
+            // R182 English-first shell: no fabricated population or GDP,
+            // no exposed panel before C and no impact on physical world.
+            var civilizationButton = _main.FindChild(
+                "GANextCivilizationButton", true, false) as Button;
+            var civilizationWindow = _main.FindChild(
+                "GANextCivilizationWindowLayer", true, false) as CenterContainer;
+            var civilizationTabs = _main.FindChild(
+                "GANextCivilizationTabs", true, false) as TabContainer;
+            Must(civilizationButton is not null &&
+                civilizationButton.Text == "C | CIVILIZATION" &&
+                civilizationWindow is not null && !civilizationWindow.Visible &&
+                civilizationTabs is not null &&
+                civilizationTabs.GetTabCount() == 2 &&
+                civilizationTabs.GetTabTitle(0) == "Overview" &&
+                civilizationTabs.GetTabTitle(1) == "Economy",
+                "R182 must provide two English civilization tabs, closed on map startup");
+
             var canvas = _main.FindChild(
                 "GANextWideTacticalCanvas", recursive: true, owned: false)
                 as PanelContainer;

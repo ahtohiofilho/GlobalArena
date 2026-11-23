@@ -57,6 +57,9 @@ internal sealed class FoundationGodotCartographicSiteSmoke
                  initialDecision.Contains(" to "),
                  "R140 movement feasibility panel must describe the selected real worker.");
             _main.ExerciseR143RealCrossingSelectionSmoke();
+            // The new Civilization screen must read the SAME current host
+            // and leave all physical/economic state unchanged.
+            _main.ExerciseR182CivilizationWindowSmoke();
             var beforeHash = _host.StateHash;
             var human = new GlobalArena.Runtime.CivilizationId(1UL);
             var firstHome = _host.Snapshot.Workers.Workers
