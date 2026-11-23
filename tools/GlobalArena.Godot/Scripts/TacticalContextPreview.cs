@@ -406,15 +406,44 @@ public partial class TacticalContextPreview : SubViewportContainer
             var correction = desired - hit;
             correction.Y = 0f;
             if (correction.LengthSquared() < 1e-12f) return;
-            _cameraTarget += correction;
-            UpdateCameraOrientation();
+            // North-up bearing depends on the target. Near a pole a full
+            // fixed-point step can overshoot, reverse bearing and diverge.
+            // Accept only steps that reduce the actual cursor residual.
+            var origin = _cameraTarget;
+            var previousNorth = _lastValidGeographicNorth;
+            float error = correction.LengthSquared();
+            bool accepted = false;
+            for (int attempt = 0; attempt < 8; attempt++)
+            {
+                _cameraTarget = origin + correction * MathF.Pow(0.5f, attempt);
+                _lastValidGeographicNorth = previousNorth;
+                UpdateCameraOrientation();
+                if (TryUnprojectOnSphere(_cameraTarget, out _) &&
+                    TryProjectCursorOnTacticalPlane(cursorPixel, out var trialHit))
+                {
+                    var residual = desired - trialHit;
+                    residual.Y = 0f;
+                    if (residual.LengthSquared() < error)
+                    {
+                        accepted = true;
+                        break;
+                    }
+                }
+            }
+            if (!accepted)
+            {
+                _cameraTarget = origin;
+                _lastValidGeographicNorth = previousNorth;
+                UpdateCameraOrientation();
+                return;
+            }
         }
     }
 
     // The chart center is a rendering anchor, not the simulation or input focus.
     // Rebuild a generous resident buffer around a *fine* tile only after the
     // optical focus has moved several fine cells away from the old anchor.
-    private void UpdateCartographicFocusAndBuffer(Vector2 cursorPixel)
+    private void UpdateCartographicFocusAndBuffer(Vector2 cursorPixel, bool force = false)
     {
         if (!_localSitesEnabled || _camera is null || _cachedPhysicalMap is null ||
             _cachedFineWorld is null || _cachedCoarseGeometry is null ||
@@ -428,7 +457,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         }
         var chartAnchorCenter = ConvertPoint(_cachedFineWorld.StrategicSphericalGeometry
             .GetCell(_cartographicChartAnchor.Value).Center).Normalized();
-        if (center.Dot(chartAnchorCenter) >= FineAnchorRecenterDot) return;
+        if (!force && center.Dot(chartAnchorCenter) >= FineAnchorRecenterDot) return;
 
         // The fine tile can have multiple coarse owners. Pick the one closest
         // to the actual camera center; never choose by an arbitrary ID.
@@ -449,18 +478,12 @@ public partial class TacticalContextPreview : SubViewportContainer
         // under the moving cursor. No viewport-edge veto is applied.
         _cameraTarget = FlattenUnitVector(center, TacticalSurfacePlaneY);
         UpdateCameraOrientation();
-        var cursorPoint = FlattenUnitVector(
-            _heldCartographicCursorGeography ?? cursorGeography, TacticalSurfacePlaneY);
-        for (int k = 0; k < 6; k++)
-        {
-            if (!TryProjectCursorOnTacticalPlane(cursorPixel, out var hit)) break;
-            var correction = cursorPoint - hit;
-            correction.Y = 0f;
-            _cameraTarget += correction;
-            UpdateCameraOrientation();
-            if (correction.LengthSquared() < 1e-12f) break;
-        }
+        // Use the same bounded residual solver after a chart replacement;
+        // do not apply a second uncontrolled fixed-point loop.
+        var originalHeld = _heldCartographicCursorGeography;
+        _heldCartographicCursorGeography ??= cursorGeography;
         RestoreHeldCartographicCursor(cursorPixel);
+        _heldCartographicCursorGeography = originalHeld;
         _cartographicChartAnchor = fine;
         _focusedFineTile = fine;
         _cartographicReanchors++;
@@ -1888,6 +1911,9 @@ public partial class TacticalContextPreview : SubViewportContainer
                 if (_lastPanClampedByCoverage)
                     throw new InvalidOperationException(
                         "R138 must never block cartographic pan on viewport coverage.");
+                if (!ViewportSamplesHaveTerrain(_camera.Size, 4, 4))
+                    throw new InvalidOperationException(
+                        $"R184 intermediate cartographic frame lacks terrain: step={i}");
                 successfulMoves++;
                 if (similarity < 0.99995f)
                     throw new InvalidOperationException(
@@ -1911,6 +1937,7 @@ public partial class TacticalContextPreview : SubViewportContainer
             if (!ViewportSamplesHaveTerrain(_camera.Size, 4, 4))
                 throw new InvalidOperationException(
                     "R138 active cartographic view has missing rendered tiles.");
+            GD.Print("GA_NEXT_R184_DRAG_COVERAGE_PASS per_motion=true zoom_preserved=true");
             GD.Print($"GA_NEXT_R138_FINE_FOCUS_DRAG_PASS accepted={successfulMoves} " +
                 $"reanchors={_cartographicReanchors - initialReanchors} " +
                 "clamped=0 cursor_geography_locked=true rendered=true " +
@@ -2182,24 +2209,13 @@ public partial class TacticalContextPreview : SubViewportContainer
                 var translation = previousHit - currentHit;
                 translation.Y = 0f;
                 var previousTarget = _cameraTarget;
+                var previousGeography = _exactViewPointOnSphere;
                 _cameraTarget += translation;
                 // Refresh spherical focus and geographic north on EVERY
                 // drag update, without tile search or mesh regeneration.
                 UpdateCameraOrientation();
                 if (_localSitesEnabled)
-                {
-                    // Reapply the actual mouse-plane anchor after NORTH UP turns
-                    // the camera. Otherwise the cursor slips on every motion.
-                    // The correction is exact for the overhead orthographic view.
-                    for (int k = 0; k < 2; k++)
-                    {
-                        if (!TryProjectCursorOnTacticalPlane(motion.Position, out var anchoredHit)) break;
-                        var correction = previousHit - anchoredHit;
-                        correction.Y = 0f;
-                        _cameraTarget += correction;
-                        UpdateCameraOrientation();
-                    }
-                }
+                    RestoreHeldCartographicCursor(motion.Position);
 
                 // Transfer the map to the nearest strategic focus BEFORE
                 // enforcing viewport coverage, never at the map's visible edge.
@@ -2209,7 +2225,20 @@ public partial class TacticalContextPreview : SubViewportContainer
                     // Cartographic pan is sovereign: focus and buffer follow
                     // the camera, never reject valid motion at a mesh boundary.
                     UpdateCartographicFocusAndBuffer(motion.Position);
-                    RestoreHeldCartographicCursor(motion.Position);
+                    // Reanchor from the final solved position, not the
+                    // provisional translation. Preserve zoom and geography.
+                    if (_coverViewport && !ViewportSamplesHaveTerrain(_camera.Size, 4, 4))
+                    {
+                        UpdateCartographicFocusAndBuffer(motion.Position, force: true);
+                        if (!ViewportSamplesHaveTerrain(_camera.Size, 4, 4))
+                        {
+                            // Last-resort safety: never publish a frame with
+                            // uncovered terrain. A later motion may recover.
+                            CenterOnGeography(previousGeography);
+                            _lastPanClampedByCoverage = true;
+                            GD.Print("GA_NEXT_R184_CARTOGRAPHIC_COVERAGE_FALLBACK");
+                        }
+                    }
                 }
                 else
                 {

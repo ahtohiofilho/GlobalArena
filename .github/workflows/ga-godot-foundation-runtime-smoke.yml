@@ -201,6 +201,7 @@ jobs:
           grep -q 'GA_NEXT_R134_CARTOGRAPHIC_SITES_PASS' "$RUNNER_TEMP/ga-godot/r134-cartographic-sites.log"
           grep -q 'GA_NEXT_R180_CITY_LINKS_PASS' "$RUNNER_TEMP/ga-godot/r134-cartographic-sites.log"
           grep -q 'GA_NEXT_R182_CIVILIZATION_SCREEN_PASS' "$RUNNER_TEMP/ga-godot/r134-cartographic-sites.log"
+          grep -q 'GA_NEXT_R184_DRAG_COVERAGE_PASS' "$RUNNER_TEMP/ga-godot/r134-cartographic-sites.log"
           if grep -E 'GA_NEXT_R134_CARTOGRAPHIC_SITES_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/r134-cartographic-sites.log"; then exit 1; fi
       - name: R181 actual Godot city tabs and immediate-link screenshots
         shell: bash
