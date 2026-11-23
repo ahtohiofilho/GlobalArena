@@ -118,6 +118,11 @@ internal sealed class FoundationGodotCartographicSiteSmoke
                 // font glyph whose baseline drifts from the polygon center.
                 Must(dot!.Size.DistanceTo(new Vector2(10f, 10f)) < 0.01f,
                     "Cartographic dot is not the centered 10px circular Panel.");
+                // Verify city management while THIS authentic site marker
+                // is still in the focused map; another focus rebuilds the
+                // visible-site list and must not be used as stale selection.
+                if (visited == 0)
+                    _main.ExerciseR180CityWindowSmoke(tile);
                 GD.Print($"GA_NEXT_R134_SITE_FOCUS tile={tile} " +
                     $"focus={focus.Value} centroid={anchor.Centroid} " +
                     "dot_panel=true present=true");
@@ -128,9 +133,6 @@ internal sealed class FoundationGodotCartographicSiteSmoke
                 "R140 movement preview vanished after geographic handoff.");
             GD.Print("GA_NEXT_R140_MOVE_DECISION_PASS signed_worker=true " +
                 "canonical_destination=true read_only=true survives_map_handoff=true");
-            // City management must open only for a real local-site marker
-            // and list precisely the physical crossings at that site.
-            _main.ExerciseR180CityWindowSmoke(sites[0]);
             Must(visited == sites.Length && _host.StateHash == beforeHash,
                 "Site-focus inspection must cover both localities without gameplay mutation.");
             GD.Print($"GA_NEXT_R134_CARTOGRAPHIC_SITES_PASS " +
