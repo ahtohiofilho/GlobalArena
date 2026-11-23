@@ -236,7 +236,8 @@ public static class FoundationPhysicalPresenceDemographicProjector
                 .Append(slice.ProductiveEffortMicro).Append(':')
                 .Append((uint)slice.DemandActivity).Append('|');
             if (effectiveOccupations.ContainsKey(slice.Worker))
-                evidence.Append("O:").Append((uint)effectiveOccupation).Append('|');
+                evidence.Append("O:").Append(
+                    (uint)effectiveOccupations[slice.Worker]).Append('|');
         }
         if (times.Count != workers.Count ||
             times.Any(x => x.Value != WholeTurnMicro) ||
