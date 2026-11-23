@@ -121,7 +121,8 @@ public static class FoundationPhysicalPresenceDemographicProjector
     public static FoundationPhysicalTemporalPresenceReport Project(
         WorldState baseline,
         IReadOnlyList<FoundationWorkerTemporalNodeSlice> slices,
-        FoundationActivityCommodityDemandPolicy demandPolicy)
+        FoundationActivityCommodityDemandPolicy demandPolicy,
+        IReadOnlyDictionary<PhysicalWorkerId, PhysicalWorkerOccupation>? occupationOverrides = null)
     {
         ArgumentNullException.ThrowIfNull(baseline);
         ArgumentNullException.ThrowIfNull(slices);
@@ -133,7 +134,16 @@ public static class FoundationPhysicalPresenceDemographicProjector
             throw new ArgumentException(
                 "Physical temporal presence needs a real bound v11 workforce and nonempty worker-time evidence.");
 
+        // R170: only verified beginning-of-turn local reassignment events
+        // may supply a different occupation for demand classification.
+        var effectiveOccupations = occupationOverrides ??
+            new Dictionary<PhysicalWorkerId, PhysicalWorkerOccupation>();
         var workers = baseline.Workers.Workers.ToDictionary(w => w.Id);
+        if (effectiveOccupations.Any(p =>
+                !workers.ContainsKey(p.Key) ||
+                !Enum.IsDefined(p.Value) ||
+                p.Value == PhysicalWorkerOccupation.Unassigned))
+            throw new InvalidOperationException("Invalid temporal occupation override.");
         var fines = workers.Values.FirstOrDefault()?.TacticalTileId
             ?.FineGoldbergParameters;
         if (workers.Count == 0 || fines is null)
@@ -170,9 +180,11 @@ public static class FoundationPhysicalPresenceDemographicProjector
                 (slice.ProductiveEffortMicro > 0 &&
                     slice.DemandActivity != PhysicalWorkerActivity.Producing) ||
                 (slice.DemandActivity == PhysicalWorkerActivity.Producing &&
-                    person.Occupation is not (PhysicalWorkerOccupation.Agriculture or
-                        PhysicalWorkerOccupation.Forestry or
-                        PhysicalWorkerOccupation.Mining)))
+                    (effectiveOccupations.TryGetValue(slice.Worker, out var assigned)
+                        ? assigned : person.Occupation) is not
+                        (PhysicalWorkerOccupation.Agriculture or
+                         PhysicalWorkerOccupation.Forestry or
+                         PhysicalWorkerOccupation.Mining)))
                 throw new ArgumentException(
                     "Temporal slices must identify valid people, physical nodes, time and effort.",
                     nameof(slices));
@@ -185,9 +197,12 @@ public static class FoundationPhysicalPresenceDemographicProjector
                 checked(old.Presence + slice.PresenceMicro),
                 checked(old.Effort + slice.ProductiveEffortMicro));
 
+            var effectiveOccupation =
+                effectiveOccupations.TryGetValue(slice.Worker, out var assignedOccupation)
+                    ? assignedOccupation : person.Occupation;
             var profile = slice.DemandActivity switch
             {
-                PhysicalWorkerActivity.Producing => person.Occupation switch
+                PhysicalWorkerActivity.Producing => effectiveOccupation switch
                 {
                     PhysicalWorkerOccupation.Agriculture =>
                         FoundationPhysicalDemandProfile.AgricultureProduction,
@@ -220,6 +235,9 @@ public static class FoundationPhysicalPresenceDemographicProjector
                 .Append(slice.PresenceMicro).Append(':')
                 .Append(slice.ProductiveEffortMicro).Append(':')
                 .Append((uint)slice.DemandActivity).Append('|');
+            if (effectiveOccupations.ContainsKey(slice.Worker))
+                evidence.Append("O:").Append(
+                    (uint)effectiveOccupations[slice.Worker]).Append('|');
         }
         if (times.Count != workers.Count ||
             times.Any(x => x.Value != WholeTurnMicro) ||

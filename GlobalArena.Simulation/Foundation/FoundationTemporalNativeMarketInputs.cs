@@ -58,11 +58,14 @@ public static class FoundationTemporalNativeMarketInputs
                 Item = p,
                 Worker = workers.TryGetValue(p.Worker, out var w)
                     ? w : throw new InvalidOperationException(
-                        "Temporal supply uses an unknown real worker.")
+                        "Temporal supply uses an unknown real worker."),
+                Occupation = temporal.EffectiveOccupations.TryGetValue(
+                    p.Worker, out var updatedOccupation)
+                    ? updatedOccupation : workers[p.Worker].Occupation!.Value
             }).ToArray();
         var lots = production
             .GroupBy(x => (x.Item.Node, x.Item.Owner,
-                Occupation: x.Worker.Occupation!.Value, x.Item.Commodity))
+                Occupation: x.Occupation, x.Item.Commodity))
             .OrderBy(g => g.Key.Node.FineStrategicCellId.Value)
             .ThenBy(g => g.Key.Owner.Value)
             .ThenBy(g => g.Key.Occupation)

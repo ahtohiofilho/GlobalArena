@@ -21,16 +21,22 @@ public sealed class FoundationTemporalEconomicTurnInputs
     public ulong TotalProductionMicro { get; }
     public ulong TotalPresenceMicro { get; }
     public ulong TotalProductiveEffortMicro { get; }
+    public IReadOnlyDictionary<PhysicalWorkerId, PhysicalWorkerOccupation> EffectiveOccupations { get; }
     public bool IsCommitted => false;
 
     internal FoundationTemporalEconomicTurnInputs(
         FoundationPhysicalTemporalPresenceReport presence,
         FoundationWorkerTemporalNodeSlice[] slices,
-        FoundationTemporalPhysicalProduction[] production)
+        FoundationTemporalPhysicalProduction[] production,
+        IReadOnlyDictionary<PhysicalWorkerId, PhysicalWorkerOccupation>? effectiveOccupations = null)
     {
         Presence = presence;
         Slices = Array.AsReadOnly(slices);
         Production = Array.AsReadOnly(production);
+        EffectiveOccupations = new System.Collections.ObjectModel.ReadOnlyDictionary<
+            PhysicalWorkerId, PhysicalWorkerOccupation>(
+            new Dictionary<PhysicalWorkerId, PhysicalWorkerOccupation>(
+                effectiveOccupations ?? new Dictionary<PhysicalWorkerId, PhysicalWorkerOccupation>()));
         TotalProductionMicro = production.Aggregate(0UL,
             (sum, row) => checked(sum + row.ProducedMicro));
         TotalPresenceMicro = presence.WorkerTurnMicro;
@@ -50,8 +56,23 @@ public static class FoundationTemporalEconomicTurnProjector
     public static FoundationTemporalEconomicTurnInputs Project(
         WorldState start, WorldState end,
         IReadOnlyList<FoundationEdgeTravelTurnEvent> travelEvents,
+        FoundationActivityCommodityDemandPolicy demandPolicy) =>
+        Project(start, end, travelEvents, Array.Empty<PhysicalTacticalWorkerMovedEvent>(),
+            demandPolicy);
+
+    /// <summary>
+    /// Local activity/occupation commands are executed at the start of the
+    /// collective turn: the worker's resulting state applies to its ONE
+    /// complete worker-turn. They cannot share a turn with travel for
+    /// the same worker or change physical location.
+    /// </summary>
+    public static FoundationTemporalEconomicTurnInputs Project(
+        WorldState start, WorldState end,
+        IReadOnlyList<FoundationEdgeTravelTurnEvent> travelEvents,
+        IReadOnlyList<PhysicalTacticalWorkerMovedEvent> localEvents,
         FoundationActivityCommodityDemandPolicy demandPolicy)
     {
+        ArgumentNullException.ThrowIfNull(localEvents);
         ArgumentNullException.ThrowIfNull(start);
         ArgumentNullException.ThrowIfNull(end);
         ArgumentNullException.ThrowIfNull(travelEvents);
@@ -67,15 +88,34 @@ public static class FoundationTemporalEconomicTurnProjector
 
         var beginning = start.Workers.Workers.ToDictionary(w => w.Id);
         var ending = end.Workers.Workers.ToDictionary(w => w.Id);
+        var local = new Dictionary<PhysicalWorkerId, PhysicalTacticalWorkerMovedEvent>();
+        foreach (var ev in localEvents)
+        {
+            if (ev is null || ev.Source != ev.Destination ||
+                ev.TraversedEdge.HasValue || !local.TryAdd(ev.WorkerId, ev) ||
+                !beginning.TryGetValue(ev.WorkerId, out var person) ||
+                !ending.TryGetValue(ev.WorkerId, out var after) ||
+                person.Owner != ev.Issuer || after.Owner != ev.Issuer ||
+                person.TacticalTileId != ev.Source ||
+                after.TacticalTileId != ev.Destination ||
+                after.Activity != ev.NextActivity ||
+                after.Occupation != (ev.NextOccupation ?? person.Occupation))
+                throw new InvalidOperationException(
+                    "Temporal activity or occupation must match one canonical local journal event.");
+        }
         if (beginning.Any(entry =>
                 !ending.TryGetValue(entry.Key, out var after) ||
                 entry.Value.Owner != after.Owner ||
-                entry.Value.Occupation != after.Occupation ||
+                (entry.Value.Occupation != after.Occupation &&
+                    !local.ContainsKey(entry.Key)) ||
+                (entry.Value.Activity != after.Activity &&
+                    !local.ContainsKey(entry.Key) &&
+                    !travelEvents.Any(ev => ev.WorkerId == entry.Key)) ||
                 entry.Value.Commodity != after.Commodity ||
                 entry.Value.OutputMicroPerTurn != after.OutputMicroPerTurn ||
                 entry.Value.DemandMultiplierMicro != after.DemandMultiplierMicro))
             throw new InvalidOperationException(
-                "Temporal input does not yet support changes to occupation or worker economics during this turn.");
+                "Unjournaled occupation, activity, or worker-economic change in temporal cycle.");
         if (!beginning.Keys.ToHashSet().SetEquals(ending.Keys))
             throw new InvalidOperationException(
                 "Movement cannot create or remove an economic worker.");
@@ -85,7 +125,8 @@ public static class FoundationTemporalEconomicTurnProjector
         foreach (var ev in travelEvents)
         {
             if (ev is null || !beginning.TryGetValue(ev.WorkerId, out var person) ||
-                person.Owner != ev.Issuer || !traveled.Add(ev.WorkerId) ||
+                person.Owner != ev.Issuer || local.ContainsKey(ev.WorkerId) ||
+                !traveled.Add(ev.WorkerId) ||
                 ev.Receipt.TurnResult is not { } result ||
                 result.Worker != ev.WorkerId ||
                 result.TimeSlices.Count == 0 ||
@@ -110,6 +151,9 @@ public static class FoundationTemporalEconomicTurnProjector
             var after = ending[person.Id];
             if (after.Owner != person.Owner ||
                 after.TacticalTileId != person.TacticalTileId ||
+                (local.TryGetValue(person.Id, out var instruction) &&
+                    (instruction.Source != person.TacticalTileId ||
+                     instruction.NextActivity != after.Activity)) ||
                 start.EdgeTravels.Pending.Any(p => p.Worker == person.Id) ||
                 end.EdgeTravels.Pending.Any(p => p.Worker == person.Id))
                 throw new InvalidOperationException(
@@ -123,8 +167,11 @@ public static class FoundationTemporalEconomicTurnProjector
                 after.Activity));
         }
 
+        var effectiveOccupations = local.Values
+            .Where(ev => ev.NextOccupation.HasValue)
+            .ToDictionary(ev => ev.WorkerId, ev => ev.NextOccupation!.Value);
         var report = FoundationPhysicalPresenceDemographicProjector.Project(
-            start, schedule, demandPolicy);
+            start, schedule, demandPolicy, effectiveOccupations);
         // Accumulate effort at the worker/node level before one integer rounding.
         // This avoids a supply-side rounding tax from splitting identical slices.
         const ulong whole = FoundationPhysicalPresenceDemographicProjector.WholeTurnMicro;
@@ -145,6 +192,6 @@ public static class FoundationTemporalEconomicTurnProjector
                     checked((uint)effort), amount);
             }).ToArray();
         return new FoundationTemporalEconomicTurnInputs(
-            report, schedule.ToArray(), production);
+            report, schedule.ToArray(), production, effectiveOccupations);
     }
 }
