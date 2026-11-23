@@ -20,3 +20,23 @@ Os testes R174 reconstroem a receita bruta com a função canônica p = floor(1e
 - Uma passagem final sem movimentação é uma certificação do ponto fixo; o ganho dela deve ser zero.
 - Os dois cenários medidos ainda são pequenos. A simplificação da economia dependerá de considerar o ganho marginal por passagem também em casos maiores, não apenas de um número isolado.
 - Windows e Linux continuam obrigatórios. macOS permanece auditoria opt-in. PR Draft sem merge.
+
+## Resultados observados — CI Ubuntu, 2026-11-23
+
+O workflow dedicado executou cinco testes diagnósticos sem falhas. Ambos os cenários com frete real reconciliaram exatamente a leitura de passagem 0 com a distribuição inicial e a última leitura com o plano final.
+
+| Produção por trabalhador | Passagem 0: saldo escalado | Após 1º ajuste | Após 2º ajuste | Passagem final de certificação |
+|---|---:|---:|---:|---:|
+| 5.000.000 micro | 104746322000000000 | 105283962363930000 | 105493900000000000 | 105493900000000000 |
+| 50.000.000 micro | 302331457404200000 | 309436000000000000 | — | 309436000000000000 |
+
+Ganho acumulado aproximado sobre o saldo inicial:
+- 5.000.000 micro: após a primeira passagem **+0,513%**; após a segunda **+0,714%**; passagem 3 certifica sem ganho.
+- 50.000.000 micro: após a primeira **+2,350%**; passagem 2 certifica sem ganho.
+
+Na produção menor, o primeiro ajuste capturou aproximadamente **71,92%** do ganho líquido final; o segundo capturou o restante. Na maior, capturou **100%**.
+
+### Decisão técnica sustentada
+Os dados já demonstram por que não devemos eliminar simplesmente a redistribuição global. Também revelam por que a quantidade de iterações e a exigência de ponto fixo devem ser tratadas como escolha de projeto, não como consequência da presença fracionária de trabalhadores.
+
+**Ainda não implementar parada antecipada:** o critério para interromper quando o ganho marginal fica pequeno precisa ser economicamente justificado em cenários com mais produtores/rotas; um limiar arbitrário com base apenas nestes dois casos poderia distorcer receitas ou mudar o determinismo de uma forma invisível. O teste permanece diagnóstico e o solver autoritativo está inalterado.
