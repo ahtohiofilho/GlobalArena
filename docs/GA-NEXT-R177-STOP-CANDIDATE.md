@@ -22,3 +22,20 @@ Os limites de 1 e 10 basis points são parâmetros de pesquisa em escala monetá
 
 ## Critério de avanço
 Propor alteração em produção somente se a hipótese reduzir trabalho comprovadamente em cenários diversos, com conservação, determinismo, justiça econômica e perda residual conhecida/aceitável. Caso a economia medida não justifique parar antes, **não** ampliar o sistema de limiares e preferir o algoritmo atual.
+
+## Resultado de execução — 2026-11-23
+
+O workflow R177 foi executado com **7 testes aprovados**, incluindo os quatro cenários com transporte real.
+
+| Lotação real | Passagens certificadas | Candidato de 1 bp | Candidato de 10 bp | Ganho residual perdido |
+|---|---:|---:|---:|---:|
+| 2 lotes, 5 milhões micro por produtor | 3 | 3 | 3 | 0 |
+| 2 lotes, 50 milhões micro por produtor | 2 | 2 | 2 | 0 |
+| 3 lotes, 5 milhões micro por produtor | 3 | 3 | 2 | 0 |
+| 3 lotes, 20 milhões micro por produtor | 2 | 2 | 2 | 0 |
+
+**Decisão após medição:** não incorporar a heurística de 1/10 bp à liquidação real. Ela não reduziu os ajustes econômicos necessários nos cenários testados. O único ganho da condição de 10 bp foi dispensar uma passagem terminal de certificação em um cenário. Essa passagem também comprova a estabilidade e sua eliminação exigiria mudanças nos contratos de auditoria e replay. O benefício operacional não justifica essa nova complexidade.
+
+Esta decisão respeita o requisito de simplicidade: não criar uma nova regra monetária ou um critério de parada de difícil explicação para economizar um único teste de ponto fixo. Se mercados maiores demonstrassem custos efetivamente inviáveis, revisitar a **arquitetura de cálculo** ou a regra econômica de maneira explícita — não microajustar limiares sem suporte.
+
+O código de produção permanece inalterado, e o avaliador R177 é exclusivamente diagnóstico.
