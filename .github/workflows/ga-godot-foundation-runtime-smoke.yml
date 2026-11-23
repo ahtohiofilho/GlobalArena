@@ -450,6 +450,25 @@ jobs:
             grep -q "GA_NEXT_R87_G18_FRAME_PASS stage=$stage" "$RUNNER_TEMP/ga-godot/r87-g18-graphical.log"
             test -s "$GA_NEXT_R87_SCREENSHOT_DIR/$stage.png"
           done
+      - name: R179 render two real temporal economic closes in Godot (G18)
+        shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          GA_FOUNDATION_GODOT_SMOKE: '0'
+          GA_NEXT_WORKSPACE_SMOKE: '0'
+          GA_NEXT_R179_TEMPORAL_ECONOMY_SMOKE: '1'
+          GA_NEXT_R179_SCREENSHOT_DIR: ${{ runner.temp }}/ga-godot/r179-temporal-economy
+        run: |
+          set -euo pipefail
+          xvfb-run -a -s "-screen 0 1600x1000x24" \
+            timeout 180s "$GODOT_BIN" --path tools/GlobalArena.Godot --quit-after 900 \
+            2>&1 | tee "$RUNNER_TEMP/ga-godot/r179-temporal-economy.log"
+          grep -q 'GA_NEXT_R179_TEMPORAL_START_PASS' "$RUNNER_TEMP/ga-godot/r179-temporal-economy.log"
+          grep -q 'GA_NEXT_R179_TEMPORAL_GODOT_PASS' "$RUNNER_TEMP/ga-godot/r179-temporal-economy.log"
+          for stage in 01_temporal_close_cycle_1 02_temporal_close_cycle_2; do
+            grep -q "GA_NEXT_R179_FRAME_PASS stage=$stage" "$RUNNER_TEMP/ga-godot/r179-temporal-economy.log"
+            test -s "$GA_NEXT_R179_SCREENSHOT_DIR/$stage.png"
+          done
       - name: Keep actual runtime evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -483,6 +502,8 @@ jobs:
             ${{ runner.temp }}/ga-godot/r87-g18-interactive.log
             ${{ runner.temp }}/ga-godot/r87-g18-graphical.log
             ${{ runner.temp }}/ga-godot/r87-g18/*.png
+            ${{ runner.temp }}/ga-godot/r179-temporal-economy.log
+            ${{ runner.temp }}/ga-godot/r179-temporal-economy/*.png
             ${{ runner.temp }}/ga-godot/graphical-smoke.log
             ${{ runner.temp }}/ga-godot/workspace-graphical.log
             ${{ runner.temp }}/ga-godot/workspace/*.png
