@@ -116,9 +116,10 @@ public partial class Main
         _cityWindowLayer.Visible = true;
 
         var host = _tacticalHost;
-        var selected = _tacticalPreview?.SelectedCanonicalPhysicalTileId;
+        var selected = _selectedCartographicSite;
         if (host is null || selected is null ||
-            _tacticalPreview?.IsCartographicSiteMode != true)
+            _tacticalPreview?.IsCartographicSiteMode != true ||
+            !_tacticalPreview.LocalSiteMarkerTileIds.Contains(selected.Value))
         {
             _cityWindowTitle.Text = "CIDADE | Selecione um assentamento";
             _cityOverview.Text = "Abra o mapa cartográfico e selecione uma cidade.";
