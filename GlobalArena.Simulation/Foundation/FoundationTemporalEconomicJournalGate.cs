@@ -138,7 +138,8 @@ public static class FoundationTemporalEconomicJournalGate
         foreach (var ev in physicalAndInvestmentEvents)
             staged = executor.Execute(staged, ev, context);
         var (settlement, expected) = Derive(beginning, staged,
-            executor.VerifiedPhysicalEvents, executor.VerifiedInvestmentCount,
+            executor.VerifiedPhysicalEvents, executor.VerifiedLocalEvents,
+            executor.VerifiedInvestmentCount,
             incidence, economicPolicy, context, signedFine);
         // Resolution solves once; the fresh journal executor below solves
         // independently once more. Avoid an unneeded third market pass.
@@ -189,6 +190,7 @@ public static class FoundationTemporalEconomicJournalGate
         FoundationTemporalSalesSettledEvent Event, WorldState State) Derive(
         WorldState beginning, WorldState staged,
         IReadOnlyList<FoundationEdgeTravelTurnEvent> physicalEvents,
+        IReadOnlyList<PhysicalTacticalWorkerMovedEvent> localEvents,
         int investmentCount,
         PhysicalTacticalIncidenceMap incidence,
         FoundationAuthoritativeEconomicSettlementPolicy policy,
@@ -196,11 +198,12 @@ public static class FoundationTemporalEconomicJournalGate
         FoundationFineFirstPhysicalGeography? signedFine)
     {
         if (HashedBeginningInvalid(beginning, staged, investmentCount) ||
-            physicalEvents.Any(ev => ev.Id.Turn != context.Turn))
+            physicalEvents.Any(ev => ev.Id.Turn != context.Turn) ||
+            localEvents.Any(ev => ev.Id.Turn != context.Turn))
             throw new InvalidOperationException(
                 "Temporal monetary evidence is not from one authoritative worker turn.");
         var calendar = FoundationTemporalEconomicTurnProjector.Project(
-            beginning, staged, physicalEvents, policy.Demand);
+            beginning, staged, physicalEvents, localEvents, policy.Demand);
         var financial = FoundationTemporalFinancialReconciler.Evaluate(
             beginning, incidence, calendar, policy, signedFine, staged);
         ulong ordinal = checked(staged.Treasury.LastSettledEconomicCycleOrdinal + 1UL);
@@ -281,16 +284,20 @@ public static class FoundationTemporalEconomicJournalGate
     {
         private readonly WorldState _beginning;
         private readonly FoundationEdgeTravelEventExecutor _travel;
+        private readonly PhysicalTacticalWorkerMoveEventExecutor _local;
         private readonly PhysicalTacticalIncidenceMap _incidence;
         private readonly FoundationAuthoritativeEconomicSettlementPolicy _policy;
         private readonly FoundationFineFirstPhysicalGeography? _signedFine;
         private readonly List<FoundationEdgeTravelTurnEvent> _events = new();
+        private readonly List<PhysicalTacticalWorkerMovedEvent> _localEvents = new();
+        private readonly HashSet<PhysicalWorkerId> _orderedWorkers = new();
         private readonly FoundationMonetaryInfrastructureEventExecutor? _investment;
         private bool _investmentsStarted;
         private int _investmentCount;
         private bool _closed;
 
         public IReadOnlyList<FoundationEdgeTravelTurnEvent> VerifiedPhysicalEvents => _events;
+        public IReadOnlyList<PhysicalTacticalWorkerMovedEvent> VerifiedLocalEvents => _localEvents;
         public bool IsClosed => _closed;
         public int VerifiedInvestmentCount => _investmentCount;
 
@@ -304,6 +311,7 @@ public static class FoundationTemporalEconomicJournalGate
         {
             _beginning = beginning;
             _travel = new FoundationEdgeTravelEventExecutor(movement, movementPolicy);
+            _local = movement;
             _incidence = incidence;
             _policy = policy;
             _signedFine = signedFine;
@@ -315,10 +323,22 @@ public static class FoundationTemporalEconomicJournalGate
         {
             if (_closed)
                 throw new InvalidOperationException("Cannot append events after economic close.");
+            if (ev is PhysicalTacticalWorkerMovedEvent local)
+            {
+                if (_investmentsStarted || local.Id.Turn != context.Turn ||
+                    local.Source != local.Destination ||
+                    local.TraversedEdge.HasValue ||
+                    !_orderedWorkers.Add(local.WorkerId))
+                    throw new InvalidOperationException(
+                        "Temporal local orders require one canonical in-place event per worker.");
+                var next = _local.Execute(state, local, context);
+                _localEvents.Add(local);
+                return next;
+            }
             if (ev is FoundationEdgeTravelTurnEvent travel)
             {
                 if (_investmentsStarted || travel.Id.Turn != context.Turn ||
-                    _events.Any(item => item.WorkerId == travel.WorkerId))
+                    !_orderedWorkers.Add(travel.WorkerId))
                     throw new InvalidOperationException(
                         "Duplicate physical traveler or mixed economic turns.");
                 var next = _travel.Execute(state, travel, context);
@@ -340,7 +360,8 @@ public static class FoundationTemporalEconomicJournalGate
                 throw new InvalidOperationException(
                     "Only canonical physical movements and one temporal SYSTEM sale are allowed.");
             var (derived, after) = Derive(_beginning, state, _events,
-                _investmentCount, _incidence, _policy, context, _signedFine);
+                _localEvents, _investmentCount, _incidence, _policy,
+                context, _signedFine);
             RequireIdentical(monetary, derived);
             _closed = true;
             return after;
