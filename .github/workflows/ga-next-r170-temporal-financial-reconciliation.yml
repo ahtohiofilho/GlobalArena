@@ -7,6 +7,9 @@ on:
       - 'GlobalArena.Simulation/Foundation/FoundationTemporalFinancialReconciler.cs'
       - 'GlobalArena.Tests/FoundationTemporalFinancialReconciliationTests.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationTemporalEconomicJournalGate.cs'
+      - 'GlobalArena.Simulation/Foundation/FoundationTemporalEconomicTurnProjector.cs'
+      - 'GlobalArena.Simulation/Foundation/FoundationTemporalNativeMarketInputs.cs'
+      - 'GlobalArena.Simulation/Foundation/FoundationPhysicalPresenceDemographicProjector.cs'
       - 'GlobalArena.Tests/FoundationTemporalEconomicJournalGateTests.cs'
       - '.github/workflows/ga-next-r170-temporal-financial-reconciliation.yml'
   workflow_dispatch:
