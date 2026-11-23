@@ -497,6 +497,7 @@ public partial class Main : Control
         RefreshPortInvestmentQaControls();
         RefreshLocalSiteSelectionQa();
         RefreshLastTemporalEconomyReadout();
+        RefreshCivilizationWindow();
     }
 
     // R140: read directly from the same authoritative worker and pending-order
@@ -947,6 +948,15 @@ public partial class Main : Control
         {
             OpenSelectedCityWindow();
         }
+        else if (key.Keycode == Key.C)
+        {
+            OpenCivilizationWindow();
+        }
+        else if (key.Keycode == Key.Escape &&
+            _civilizationWindowLayer?.Visible == true)
+        {
+            _civilizationWindowLayer.Visible = false;
+        }
         else if (key.Keycode == Key.Escape && _cityWindowLayer?.Visible == true)
         {
             _cityWindowLayer.Visible = false;
@@ -1180,6 +1190,13 @@ public partial class Main : Control
         var city = new Button { Name = "GANextCityButton", Text = "Y | CIDADE" };
         city.Pressed += OpenSelectedCityWindow;
         header.AddChild(city);
+        var civilization = new Button
+        {
+            Name = "GANextCivilizationButton",
+            Text = "C | CIVILIZATION"
+        };
+        civilization.Pressed += OpenCivilizationWindow;
+        header.AddChild(civilization);
         var openWorkspace = new Button { Name = "GANextPanelsButton", Text = "TAB | PANELS" };
         openWorkspace.Pressed += ToggleWorkspaceWindow;
         header.AddChild(openWorkspace);
@@ -2015,6 +2032,7 @@ public partial class Main : Control
                 _tacticalPreview.FocusInitialPhysicalCity(openingHome.Value);
             CreateTacticalWorkspaceWindows(globe, rightPanel, header, content);
             CreateCityWindow();
+            CreateCivilizationWindow();
             // Keep the 1280x720 header usable: the long subtitle belongs in
             // secondary information, not beside all keyboard-first controls.
             subtitle.Visible = false;
