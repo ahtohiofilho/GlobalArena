@@ -1,5 +1,5 @@
 using Godot;
-using System.Numerics;
+using BigInteger = System.Numerics.BigInteger;
 using GlobalArena.Runtime;
 using GlobalArena.World;
 using GlobalArena.Simulation.Foundation;
