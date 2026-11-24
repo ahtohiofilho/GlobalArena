@@ -698,6 +698,12 @@ public sealed class WorldState
     public WorldState ReorderWorkerOrder(CivilizationId issuer, PhysicalWorkerId worker, ulong id, int index)
         => CopyWithWorkerOrders(WorkerOrders.Reorder(issuer, worker, id, index));
 
+    public WorldState StartWorkerOrder(CivilizationId owner, PhysicalWorkerId worker)
+        => CopyWithWorkerOrders(WorkerOrders.StartHead(owner, worker));
+
+    public WorldState CompleteWorkerOrder(CivilizationId owner, PhysicalWorkerId worker, ulong id)
+        => CopyWithWorkerOrders(WorkerOrders.CompleteHead(owner, worker, id));
+
     private WorldState CopyWithWorkerOrders(FoundationWorkerOrderQueueSet queues)
         => new WorldState(Revision, WorldBinding, Civilizations, Territory, Diplomacy,
             Economy, Population, Warfare, Workers, Transport, Treasury, CityResidences,
