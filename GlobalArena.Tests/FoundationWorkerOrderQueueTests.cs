@@ -96,14 +96,13 @@ public sealed class FoundationWorkerOrderQueueTests
         var set = new FoundationWorkerOrderQueueSet(new[] { a, b });
         Assert.Equal(new ulong[] { 2, 7 }, set.Queues.Select(q => q.Worker.Value));
         Assert.Equal(new ulong[] { 2, 1 }, set.Queues[1].Orders.Select(o => o.Id));
-        var edited = a.Remove(Owner, 1);
-        var next = set.Replace(Owner, edited);
+        var next = set.Remove(Owner, Worker, 1);
         Assert.Single(next.Queues[1].Orders);
         Assert.Equal(2, set.Queues[1].Orders.Count);
         Assert.Same(b, next.Queues[0]);
-        Assert.Throws<InvalidOperationException>(() => set.Replace(Foreign, edited));
-        Assert.Throws<InvalidOperationException>(() => set.Replace(Owner, Empty()));
-        Assert.Throws<InvalidOperationException>(() => FoundationWorkerOrderQueueSet.Uninitialized.Replace(Owner, a));
+        Assert.Throws<InvalidOperationException>(() => set.Remove(Foreign, Worker, 1));
+        Assert.Throws<InvalidOperationException>(() => set.Remove(Owner, new PhysicalWorkerId(999UL), 1));
+        Assert.Throws<InvalidOperationException>(() => FoundationWorkerOrderQueueSet.Uninitialized.Remove(Owner, Worker, 1));
         Assert.Throws<ArgumentException>(() => new FoundationWorkerOrderQueueSet(new[] { a, a }));
         Assert.False(FoundationWorkerOrderQueueSet.Uninitialized.IsInitialized);
         Assert.True(new FoundationWorkerOrderQueueSet(Array.Empty<FoundationWorkerOrderQueue>()).IsInitialized);
