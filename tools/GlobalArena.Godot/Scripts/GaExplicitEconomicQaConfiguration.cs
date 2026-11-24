@@ -58,13 +58,8 @@ internal static class GaExplicitEconomicQaConfiguration
                                     activity, item, crops && item.Value > 2U ? 166_667UL : 1_000_000UL)))),
                 new FoundationCommodityCargoConversionPolicy(
                     "explicit-godot-economic-qa-only",
-                    new[]
-                    {
-                        new FoundationCommodityCargoConversion(
-                            CommodityOne, 1_000_000UL),
-                        new FoundationCommodityCargoConversion(
-                            CommodityTwo, 1_000_000UL)
-                    }),
+                    MarketItems(crops).Select(item =>
+                        new FoundationCommodityCargoConversion(item, 1_000_000UL))),
                 new[]
                 {
                     new FoundationPhysicalEconomicTaxRate(Red, 1_000U),
