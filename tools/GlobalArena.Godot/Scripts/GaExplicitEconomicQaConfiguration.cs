@@ -90,10 +90,13 @@ internal static class GaExplicitEconomicQaConfiguration
         FoundationFineFirstWorldgenIdentity Identity) PrepareFineFirst(
             FoundationTacticalHumanAiTurnHost demo,
             bool enableTemporalFinancialVisualSmoke = false,
-            bool enableConstructionPreview = false)
+            bool enableConstructionPreview = false,
+            bool enablePersistentOrders = false)
     {
         ArgumentNullException.ThrowIfNull(demo);
         AssertNaturalFreightHierarchy();
+        if (enablePersistentOrders && !enableConstructionPreview)
+            throw new InvalidOperationException("Persistent preview requires construction preview.");
         if (demo.StateHash.FormatVersion != 11U ||
             demo.Snapshot.Workers.Workers.Count != 6 ||
             demo.Snapshot.Transport.IsInitialized ||
@@ -173,13 +176,15 @@ internal static class GaExplicitEconomicQaConfiguration
             demo.Session.AcceptSnapshot(snapshot.WithWorkers(workers).WithConstructions(
                 new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>())));
         }
+        if (enablePersistentOrders)
+            demo.Session.AcceptSnapshot(demo.Snapshot.DeployInitialWorkerOrders());
         var host = new FoundationTacticalHumanAiTurnHost(
             demo.Session, demo.Incidence, demo.HumanCivilizations,
             // This fixture's AI is the existing resume-production policy.
             // Do not access simulation-internal bootstrap helpers from Godot.
             demo.AiCivilizations.ToDictionary(
                 civ => civ,
-                civ => (IFoundationTacticalAiTurnPolicy)
+                civ => enablePersistentOrders ? (IFoundationTacticalAiTurnPolicy)new FoundationTacticalAiHoldPolicy() :
                     new FoundationTacticalAiResumeProductionPolicy()),
             enableMonetaryInfrastructure: true,
             settlementPolicy: configuration.Settlement,
