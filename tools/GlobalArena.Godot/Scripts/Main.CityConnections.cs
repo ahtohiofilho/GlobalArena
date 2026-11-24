@@ -20,6 +20,8 @@ public partial class Main
     private PanelContainer? _cityLinkDetail;
     private Label? _cityLinkDetailText;
     private Button? _connectionInvest;
+    private LineEdit? _connectionAmount;
+    private Label? _connectionProjection;
     private Button? _connectionCancel;
     private Label? _connectionFeedback;
     private ulong? _connectionDestination;
@@ -111,9 +113,15 @@ public partial class Main
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         details.AddChild(_cityLinkDetailText);
+        details.AddChild(new Label { Text = "Investment amount (money units; decimal point)" });
+        _connectionAmount = new LineEdit { Text = "0.100000", MaxLength = 32 };
+        _connectionAmount.TextChanged += _ => RefreshConnectionInvestmentControls();
+        details.AddChild(_connectionAmount);
+        _connectionProjection = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        details.AddChild(_connectionProjection);
         _connectionInvest = new Button
         {
-            Text = "QUEUE INVESTMENT | " + FormatMoneyMicroForDisplay(PortQaSpendMoneyMicro),
+            Text = "QUEUE INVESTMENT",
             Disabled = true
         };
         _connectionInvest.Pressed += () => ChangeConnectionInvestment(false);
@@ -223,11 +231,27 @@ public partial class Main
         return new PhysicalTacticalEdgeId(host.Incidence.Refinement.FineParameters, edge.Id);
     }
 
+    private bool TryReadConnectionAmount(out ulong micro)
+    {
+        micro = 0UL;
+        if (_connectionAmount is null ||
+            !decimal.TryParse(_connectionAmount.Text,
+                System.Globalization.NumberStyles.AllowDecimalPoint,
+                System.Globalization.CultureInfo.InvariantCulture, out var amount) ||
+            amount <= 0m || amount > ulong.MaxValue / 1000000m)
+            return false;
+        var scaled = amount * 1000000m;
+        if (scaled != decimal.Truncate(scaled)) return false;
+        micro = (ulong)scaled;
+        return micro > 0UL;
+    }
+
     private void RefreshConnectionInvestmentControls()
     {
         if (_connectionInvest is null || _connectionCancel is null || _connectionFeedback is null)
             return;
         _connectionInvest.Disabled = _connectionCancel.Disabled = true;
+        if (_connectionProjection is not null) _connectionProjection.Text = "Projection unavailable.";
         var host = _tacticalHost;
         if (!_interactiveEconomicPreviewActive || host is null ||
             !_cityConnectionSource.HasValue || !_connectionDestination.HasValue)
@@ -237,7 +261,8 @@ public partial class Main
         }
         var id = ResolveConnectionEdge(_cityConnectionSource.Value, _connectionDestination.Value);
         var plans = host.GetHumanMonetaryInvestments(_humanCivilization);
-        bool pending = plans.Any(p => p.Edge == id);
+        var pendingPlan = plans.SingleOrDefault(p => p.Edge == id);
+        bool pending = pendingPlan is not null;
         bool ready = host.ReadyCivilizations.Contains(_humanCivilization);
         var physical = host.Snapshot.Transport.Edges.Single(e => e.Edge == id);
         bool financeable = physical.NaturalConstructionCostMoneyMicro is > 0UL &&
@@ -248,12 +273,26 @@ public partial class Main
         var reserved = plans.Aggregate(System.Numerics.BigInteger.Zero,
             (sum, p) => sum + GlobalArenaMoneyScale.FromMoneyMicro(p.MoneyMicro));
         var available = host.Snapshot.Treasury.Get(_humanCivilization).CashScaled - reserved;
-        bool affordable = available >= GlobalArenaMoneyScale.FromMoneyMicro(PortQaSpendMoneyMicro);
-        _connectionInvest.Disabled = ready || pending || !financeable || !affordable;
+        bool valid = TryReadConnectionAmount(out var amount);
+        var projectedAmount = pendingPlan?.MoneyMicro ?? amount;
+        bool withinRange = projectedAmount <= ulong.MaxValue - physical.CommittedInvestmentMoneyMicro.GetValueOrDefault();
+        bool affordable = valid && available >= GlobalArenaMoneyScale.FromMoneyMicro(amount);
+        if (_connectionAmount is not null) _connectionAmount.Editable = !ready && !pending;
+        if (_connectionProjection is not null && financeable && (pending || valid) && withinRange)
+        {
+            var before = FoundationPhysicalAuthoritativeTransportProjector.EffectiveUnitFreightCost(physical);
+            var after = FoundationPhysicalAuthoritativeTransportProjector.ProjectUnitFreightCost(physical, projectedAmount);
+            _connectionProjection.Text =
+                $"Physical freight per cargo unit: {FormatMoneyMicroForDisplay(before)} -> {FormatMoneyMicroForDisplay(after)}\n" +
+                $"Reduction: {FormatMoneyMicroForDisplay(before - after)} | Conditional on settlement; not a revenue forecast.";
+        }
+        _connectionInvest.Disabled = ready || pending || !financeable || !affordable || !withinRange;
         _connectionCancel.Disabled = ready || !pending;
         _connectionFeedback.Text = ready ? "Turn already submitted." :
             pending ? "Investment pending. Press E to commit the turn." :
             !financeable ? "This connection cannot be financed by your civilization." :
+            !valid ? "Enter a positive amount with at most six decimal places." :
+            !withinRange ? "Capital exceeds the canonical money range." :
             !affordable ? "Insufficient unreserved treasury cash." :
             "Queue investment; cash is debited only on turn settlement.";
     }
@@ -283,8 +322,9 @@ public partial class Main
                 var freight = FoundationPhysicalAuthoritativeTransportProjector.EffectiveUnitFreightCost(edge);
                 var cargo = host.GetLastClosedEconomicTradeView(_humanCivilization).UsedEdges
                     .FirstOrDefault(e => e.Edge == id)?.TotalCargoMicro ?? 0UL;
-                host.QueueHumanMonetaryInvestment(_humanCivilization, id, PortQaSpendMoneyMicro);
-                _r144QueuedCapital[id] = (freight, cargo);
+                if (!TryReadConnectionAmount(out var amount)) return;
+                host.QueueHumanMonetaryInvestment(_humanCivilization, id, amount);
+                _r144QueuedCapital[id] = (freight, cargo, amount);
             }
             _portQaLastSettledAudit = null;
             RefreshPortInvestmentQaControls();
@@ -459,6 +499,29 @@ public partial class Main
         if (_connectionInvest is null || _connectionCancel is null ||
             !_connectionInvest.IsVisibleInTree() || !_connectionCancel.IsVisibleInTree())
             throw new InvalidOperationException("R188 connection investment controls missing.");
+        if (_connectionAmount is null || _connectionProjection is null)
+            throw new InvalidOperationException("R189 amount and projection controls missing.");
+        _connectionAmount.Text = "0.123456";
+        RefreshConnectionInvestmentControls();
+        if (!TryReadConnectionAmount(out var customAmount) || customAmount != 123456UL)
+            throw new InvalidOperationException("R189 exact decimal conversion failed.");
+        var physicalEdge = _tacticalHost.Snapshot.Transport.Edges.Single(e => e.Edge == realId);
+        if (physicalEdge.NaturalConstructionCostMoneyMicro is > 0UL &&
+            physicalEdge.CargoMicroAtReferenceLoad != ulong.MaxValue)
+        {
+            var current = FoundationPhysicalAuthoritativeTransportProjector.EffectiveUnitFreightCost(physicalEdge);
+            var projected = FoundationPhysicalAuthoritativeTransportProjector.ProjectUnitFreightCost(physicalEdge, customAmount);
+            if (projected > current ||
+                FoundationPhysicalAuthoritativeTransportProjector.ProjectUnitFreightCost(physicalEdge, 0UL) != current)
+                throw new InvalidOperationException("R189 projection violates canonical freight.");
+        }
+        _connectionAmount.Text = "0.0000001";
+        RefreshConnectionInvestmentControls();
+        if (TryReadConnectionAmount(out _) || !_connectionInvest.Disabled)
+            throw new InvalidOperationException("R189 fractional micro accepted.");
+        _connectionAmount.Text = "0.123456";
+        RefreshConnectionInvestmentControls();
+        GD.Print("GA_NEXT_R189_CONFIGURABLE_INVESTMENT_PASS exact_amount=true canonical_projection=true");
         var initialPlans = _tacticalHost.GetHumanMonetaryInvestments(_humanCivilization).ToArray();
         // Real UI signal on the current initial treasury; no fabricated funding.
         if (_connectionInvest.Disabled)
@@ -471,7 +534,7 @@ public partial class Main
         {
             _connectionInvest.EmitSignal(Button.SignalName.Pressed);
             if (!_tacticalHost.GetHumanMonetaryInvestments(_humanCivilization)
-                    .Any(p => p.Edge == realId && p.MoneyMicro == PortQaSpendMoneyMicro) ||
+                    .Any(p => p.Edge == realId && p.MoneyMicro == customAmount) ||
                 _connectionCancel.Disabled)
                 throw new InvalidOperationException("R188 queue did not reach authoritative host.");
             _connectionCancel.EmitSignal(Button.SignalName.Pressed);
