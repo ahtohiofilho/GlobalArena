@@ -21,6 +21,7 @@ public sealed class FoundationConstructionApproachRouter
 {
     private readonly PhysicalTacticalIncidenceMap _map;
     private readonly RuntimeWorldBinding _binding;
+    private readonly RuntimeWorldBinding _legacyBinding;
     private readonly FoundationFineFirstPhysicalGeography _geo;
     private readonly PhysicalTacticalWorkerMoveEventExecutor _movement;
     private readonly FoundationGroundEdgeTravelTimePolicy _policy;
@@ -35,11 +36,12 @@ public sealed class FoundationConstructionApproachRouter
         _policy.RequireValid();
         _movement = new(world, map, geo, signature);
         _binding = RuntimeWorldBinding.FromFineFirst(world, map, geo, signature);
+        _legacyBinding = RuntimeWorldBinding.FromGeneratedWorld(world);
     }
 
     public FoundationConstructionApproach Plan(WorldState world, PhysicalWorkerId workerId)
     {
-        if (world.WorldBinding != _binding || !world.WorkerOrders.IsInitialized || !world.EdgeTravels.IsInitialized ||
+        if ((world.WorldBinding != _binding && world.WorldBinding != _legacyBinding) || !world.WorkerOrders.IsInitialized || !world.EdgeTravels.IsInitialized ||
             !world.Constructions.IsInitialized || !world.Transport.IsInitialized)
             throw new InvalidOperationException("Approach requires canonical queues, journeys and projects.");
         var worker = world.Workers.Workers.Single(w => w.Id == workerId);
