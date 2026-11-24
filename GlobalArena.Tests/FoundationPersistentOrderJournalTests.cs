@@ -68,6 +68,14 @@ public sealed class FoundationPersistentOrderJournalTests
             new EventId(new CommandId(turn, 2UL), 1UL), remove, context);
         var replay = executor.Execute(executor.Execute(world, ev, context), removal, context);
         Assert.Equal(hash.Compute(last), hash.Compute(replay));
+        var log = new SimulationEventLog(new[]
+        {
+            new SimulationEventLogEntry(1UL, ev, wasEligible: true, wasExecuted: true),
+            new SimulationEventLogEntry(2UL, removal, wasEligible: true, wasExecuted: true)
+        });
+        var journalReplay = new SimulationEventLogReplayer(executor).Replay(
+            new SimulationReplayInput(world, log, context));
+        Assert.Equal(hash.Compute(last), hash.Compute(journalReplay));
         Assert.Empty(last.WorkerOrders.Queues.Single(q => q.Worker == w.Id).Orders);
         Assert.Equal(2UL, last.WorkerOrders.Queues.Single(q => q.Worker == w.Id).NextId);
     }
