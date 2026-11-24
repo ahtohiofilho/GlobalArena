@@ -1151,8 +1151,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
         var fund = list.OfType<FoundationFundedWorkerIntentCommand>().SingleOrDefault(c => c.Edge == edge);
         if (fund is null) return false;
         // Reject cancellation if subsequent commands depend on the reservation.
-        var remaining = list.Where(c => c != fund).ToArray();
-        if (list.Last() != fund)
+        var remaining = list.Where(c => c.Id != fund.Id).ToArray();
+        if (list.Last().Id != fund.Id)
             throw new InvalidOperationException("Cancel subsequent plan edits first, or clear the pending plan.");
         _ = ProjectPersistentPlan(human, remaining);
         list.Remove(fund);
