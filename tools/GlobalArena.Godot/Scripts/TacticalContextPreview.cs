@@ -285,6 +285,41 @@ public partial class TacticalContextPreview : SubViewportContainer
     private readonly SortedDictionary<ulong, (Vector3[] Points, Color Tint, ulong[] Owners, Vector2[] Polygon)> _extendedPhysicalTiles = new();
 
 
+    // R220: local tangent-plane presentation of actual spherical vertices.
+    // This never changes the navigation frame, camera or resident tile buffer.
+    internal (Vector2[] Boundary, Dictionary<ulong, (Vector2 A, Vector2 B, Vector2 Neighbor)> Links)
+        ReadLocalConnectionGeometry(StrategicCellId node)
+    {
+        var world = _cachedFineWorld ?? throw new InvalidOperationException("Fine geometry unavailable.");
+        var geometry = world.StrategicSphericalGeometry;
+        var cell = geometry.GetCell(node);
+        var center = ConvertPoint(cell.Center).Normalized();
+        var north = _physicalPolarAxis - center * _physicalPolarAxis.Dot(center);
+        if (north.LengthSquared() < 1e-8f)
+            north = _lastValidGeographicNorth - center * _lastValidGeographicNorth.Dot(center);
+        if (north.LengthSquared() < 1e-8f)
+            north = Vector3.Up - center * Vector3.Up.Dot(center);
+        if (north.LengthSquared() < 1e-8f)
+            north = Vector3.Right - center * Vector3.Right.Dot(center);
+        north = north.Normalized();
+        var east = north.Cross(center).Normalized();
+        Vector2 Project(SphericalPoint3 point)
+        {
+            var p = ConvertPoint(point);
+            return new Vector2(p.Dot(east), -p.Dot(north));
+        }
+        var boundary = cell.BoundaryVertexIds.Select(v => Project(geometry.GetVertex(v).Position)).ToArray();
+        var links = world.StrategicTopology.Edges.Where(e => e.IncidentCellIds.Contains(node))
+            .ToDictionary(e => e.Id.Value, e => (
+                A: Project(geometry.GetVertex(e.IncidentVertexIds[0]).Position),
+                B: Project(geometry.GetVertex(e.IncidentVertexIds[1]).Position),
+                Neighbor: Project(geometry.GetCell(e.IncidentCellIds.Single(c => c != node)).Center)));
+        if (boundary.Length is not (5 or 6) || links.Count != boundary.Length ||
+            boundary.Any(p => !p.IsFinite()) || links.Values.Any(p => !p.A.IsFinite() || !p.B.IsFinite() || !p.Neighbor.IsFinite()))
+            throw new InvalidOperationException("Invalid canonical connection geometry.");
+        return (boundary, links);
+    }
+
     private static Vector3 ConvertPoint(SphericalPoint3 point) =>
         new((float)point.X, (float)point.Y, (float)point.Z);
 
