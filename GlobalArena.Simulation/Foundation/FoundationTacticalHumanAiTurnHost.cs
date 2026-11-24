@@ -628,6 +628,13 @@ public sealed class FoundationTacticalHumanAiTurnHost
                 human, edge, moneyMicro));
     }
 
+    public IReadOnlyList<FoundationConstructionWorkerAssignment> GetHumanConstructionOrders(CivilizationId human)
+    {
+        RequireHuman(human);
+        return Array.AsReadOnly(_constructionPlans.Where(p => p.Value.Owner == human)
+            .OrderBy(p => p.Key.Value).Select(p => new FoundationConstructionWorkerAssignment(p.Key, p.Value.Project)).ToArray());
+    }
+
     public void QueueHumanConstructionWork(CivilizationId human, PhysicalWorkerId worker, ulong projectId)
     {
         RequireHuman(human);
@@ -640,6 +647,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
             person.Activity != PhysicalWorkerActivity.Other ||
             person.Occupation != PhysicalWorkerOccupation.Unassigned)
             throw new InvalidOperationException("Construction needs an eligible idle worker and existing owned project.");
+        _ = FoundationConstructionWorkerWork.Apply(Snapshot, Incidence, _signedFine!,
+            new[] { new FoundationConstructionWorkerAssignment(worker, projectId) });
         _constructionPlans[worker] = (human, projectId);
     }
 
