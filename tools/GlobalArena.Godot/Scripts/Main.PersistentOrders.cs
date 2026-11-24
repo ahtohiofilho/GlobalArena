@@ -403,7 +403,39 @@ public partial class Main
                 var physical = host.Snapshot.Transport.Edges.Single(e => e.Edge == edge);
                 return physical.NaturalConstructionCostMoneyMicro is > 0UL && physical.CargoMicroAtReferenceLoad != ulong.MaxValue;
             });
-            ShowCityConnectionDetail(link);
+            var tabs = FindChild("GANextCityTabs", true, false) as TabContainer
+                ?? throw new InvalidOperationException("Missing city tabs.");
+            tabs.CurrentTab = 1;
+            var diagram = _cityConnectionDiagram ?? throw new InvalidOperationException("Missing connection diagram.");
+            var diagramHash = host.StateHash;
+            if (!diagram.IsVisibleInTree() || diagram.BoundaryCount != links.Count ||
+                !diagram.EdgeIds.OrderBy(x => x).SequenceEqual(links.Select(l => l.Edge.FineStrategicEdgeId.Value).OrderBy(x => x)))
+                throw new InvalidOperationException("Diagram does not match actual local topology.");
+            foreach (var candidate in links)
+            {
+                diagram.EdgeButton(candidate.Edge.FineStrategicEdgeId.Value).EmitSignal(Button.SignalName.Pressed);
+                if (_connectionDestination != candidate.Neighbor.FineStrategicCellId.Value ||
+                    _cityLinkDetail?.IsVisibleInTree() != true || _cityWindowPanel?.Visible != false ||
+                    host.StateHash != diagramHash)
+                    throw new InvalidOperationException("Diagram button opened wrong physical connection.");
+                CloseConnectionDetail();
+                if (tabs.CurrentTab != 1 || !diagram.IsVisibleInTree())
+                    throw new InvalidOperationException("Back did not restore connection diagram.");
+            }
+            // Exercise both actual Goldberg cell types, not synthetic polygons.
+            foreach (int sides in new[] { 5, 6 })
+            {
+                var cell = host.Incidence.FineTopology.Cells.First(c => c.AdjacentCellIds.Count == sides);
+                var geometry = _tacticalPreview.ReadLocalConnectionGeometry(cell.Id);
+                if (geometry.Boundary.Length != sides || geometry.Links.Count != sides)
+                    throw new InvalidOperationException("Canonical pentagon/hexagon geometry unavailable.");
+                var expectedEdges = host.Incidence.FineTopology.Edges.Where(e => e.IncidentCellIds.Contains(cell.Id))
+                    .Select(e => e.Id.Value).OrderBy(x => x);
+                if (!geometry.Links.Keys.OrderBy(x => x).SequenceEqual(expectedEdges))
+                    throw new InvalidOperationException("Diagram geometry includes nonincident edges.");
+            }
+            diagram.EdgeButton(link.Edge.FineStrategicEdgeId.Value).EmitSignal(Button.SignalName.Pressed);
+            GD.Print("GA_NEXT_R220_CONNECTION_DIAGRAM_PASS canonical_geometry=true real_buttons=true hash_unchanged=true");
             _connectionAmount!.Text = "0.100000";
             RefreshConnectionInvestmentControls();
             var check = _persistentFundingWorkers!.GetChildren().OfType<CheckBox>().First();
