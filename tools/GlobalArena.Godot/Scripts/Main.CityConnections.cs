@@ -190,7 +190,27 @@ public partial class Main
                 : "Unowned")}\n" +
             $"Cumulative investment: {link.InvestedMoneyMicro} micro\n" +
             ReadConnectionWorkforce(_cityConnectionSource.Value,
+                link.Neighbor.FineStrategicCellId.Value) + "\n\n" +
+            ReadConnectionInvestment(_cityConnectionSource.Value,
                 link.Neighbor.FineStrategicCellId.Value);
+    }
+
+    // Read the same authoritative pending plan as the investment laboratory.
+    // Resolve the undirected physical edge by its exact incident nodes.
+    private string ReadConnectionInvestment(ulong source, ulong destination)
+    {
+        var host = _tacticalHost;
+        if (host is null) return "Pending investment: unavailable";
+        var edge = host.Incidence.FineTopology.Edges.Single(e =>
+            e.IncidentCellIds.Any(c => c.Value == source) &&
+            e.IncidentCellIds.Any(c => c.Value == destination));
+        var id = new PhysicalTacticalEdgeId(
+            host.Incidence.Refinement.FineParameters, edge.Id);
+        var plan = host.GetHumanMonetaryInvestments(_humanCivilization)
+            .SingleOrDefault(p => p.Edge == id);
+        return $"Physical connection ID: {edge.Id.Value}\n" +
+            (plan is null ? "Your pending investment: None" :
+                $"Your pending investment: {plan.MoneyMicro} micro (not yet spent)");
     }
 
     // Presence is not construction eligibility: workers can have other orders
@@ -306,6 +326,21 @@ public partial class Main
                 $"Your workers at to node: {toCount}\n", StringComparison.Ordinal) != true)
             throw new InvalidOperationException("R186 connection workforce differs from signed worker locations.");
         GD.Print("GA_NEXT_R186_CONNECTION_WORKFORCE_PASS physical_presence=true read_only=true");
+        var realEdge = _tacticalHost.Incidence.FineTopology.Edges.Single(e =>
+            e.IncidentCellIds.Any(c => c.Value == site) &&
+            e.IncidentCellIds.Any(c => c.Value == destination));
+        var realId = new PhysicalTacticalEdgeId(
+            _tacticalHost.Incidence.Refinement.FineParameters, realEdge.Id);
+        var pending = _tacticalHost.GetHumanMonetaryInvestments(_humanCivilization)
+            .SingleOrDefault(p => p.Edge == realId);
+        var expectedPending = pending is null ? "Your pending investment: None" :
+            $"Your pending investment: {pending.MoneyMicro} micro (not yet spent)";
+        if (_cityLinkDetailText?.Text.Contains(
+                $"Physical connection ID: {realEdge.Id.Value}\n", StringComparison.Ordinal) != true ||
+            !_cityLinkDetailText.Text.EndsWith(expectedPending, StringComparison.Ordinal) ||
+            ReadConnectionInvestment(site, destination) != ReadConnectionInvestment(destination, site))
+            throw new InvalidOperationException("R187 connection plan or undirected identity mismatch.");
+        GD.Print("GA_NEXT_R187_CONNECTION_PLAN_PASS authoritative=true undirected=true read_only=true");
         await Capture("03_local_connection_detail");
         CloseConnectionDetail();
         if (_cityWindowPanel?.IsVisibleInTree() != true ||
