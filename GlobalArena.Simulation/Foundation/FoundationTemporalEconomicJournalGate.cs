@@ -21,6 +21,7 @@ public sealed class FoundationTemporalSalesSettledEvent : ISimulationEvent
     public string CargoUnitCode { get; }
     public ulong ProducedGoodsMicro { get; }
     public IReadOnlyList<FoundationWorkerFoodIntake>? FoodIntake { get; }
+    public IReadOnlyList<FoundationOperationalFreightShadowEdge>? OperationalQuotes { get; }
     public BigInteger GrossSalesScaled { get; }
     public BigInteger PhysicalFreightScaled { get; }
     public BigInteger SellerNetScaled { get; }
@@ -35,7 +36,8 @@ public sealed class FoundationTemporalSalesSettledEvent : ISimulationEvent
         string cargoUnitCode, ulong goods, BigInteger gross,
         BigInteger freight, BigInteger net, BigInteger taxes,
         BigInteger tolls, IEnumerable<FoundationCivilizationEconomicSettlementCredit> credits,
-        IReadOnlyList<FoundationWorkerFoodIntake>? foodIntake = null)
+        IReadOnlyList<FoundationWorkerFoodIntake>? foodIntake = null,
+        IReadOnlyList<FoundationOperationalFreightShadowEdge>? operationalQuotes = null)
     {
         ArgumentNullException.ThrowIfNull(credits);
         var lines = credits.OrderBy(c => c.Civilization.Value).ToArray();
@@ -61,6 +63,7 @@ public sealed class FoundationTemporalSalesSettledEvent : ISimulationEvent
         CargoUnitCode = cargoUnitCode;
         ProducedGoodsMicro = goods;
         FoodIntake = foodIntake is null ? null : Array.AsReadOnly(foodIntake.ToArray());
+        OperationalQuotes = operationalQuotes is null ? null : Array.AsReadOnly(operationalQuotes.ToArray());
         GrossSalesScaled = gross;
         PhysicalFreightScaled = freight;
         SellerNetScaled = net;
@@ -130,7 +133,7 @@ public static class FoundationTemporalEconomicJournalGate
         FoundationConstructionCollectiveTurnPhase? constructionPhase = null,
         FoundationPersistentWorkerTurnScheduler? persistentScheduler = null,
         FoundationFundedWorkerIntentJournal? fundedIntents = null,
-        bool enableDemographicGrowth = false, FoundationAgriculturalProductionPolicy? agriculture = null)
+        bool enableDemographicGrowth = false, FoundationAgriculturalProductionPolicy? agriculture = null, FoundationOperationalFreightShadowPolicy? operationalPolicy = null)
     {
         ArgumentNullException.ThrowIfNull(beginning);
         ArgumentNullException.ThrowIfNull(physicalAndInvestmentEvents);
@@ -140,14 +143,14 @@ public static class FoundationTemporalEconomicJournalGate
             throw new InvalidOperationException(
                 "Temporal cash cannot close without a bound opt-in world and funded treasury.");
         var executor = new ReplayExecutor(beginning, movement, movementPolicy,
-            incidence, economicPolicy, signedFine, investmentExecutor, constructionPhase, persistentScheduler, fundedIntents, enableDemographicGrowth, agriculture);
+            incidence, economicPolicy, signedFine, investmentExecutor, constructionPhase, persistentScheduler, fundedIntents, enableDemographicGrowth, agriculture, operationalPolicy);
         var staged = beginning;
         foreach (var ev in physicalAndInvestmentEvents)
             staged = executor.Execute(staged, ev, context);
         var (settlement, expected) = Derive(beginning, staged,
             executor.VerifiedPhysicalEvents, executor.VerifiedLocalEvents,
             executor.VerifiedInvestmentCount,
-            incidence, economicPolicy, context, signedFine, executor.VerifiedTimeline, agriculture);
+            incidence, economicPolicy, context, signedFine, executor.VerifiedTimeline, agriculture, operationalPolicy);
         // Resolution solves once; the fresh journal executor below solves
         // independently once more. Avoid an unneeded third market pass.
         var actual = expected;
@@ -164,7 +167,7 @@ public static class FoundationTemporalEconomicJournalGate
                 wasEligible: true, wasExecuted: true)).ToArray());
         var independent = ReplayJournal(beginning, journal, movement,
             movementPolicy, incidence, economicPolicy, context, signedFine,
-            investmentExecutor, constructionPhase, persistentScheduler, fundedIntents, enableDemographicGrowth, agriculture);
+            investmentExecutor, constructionPhase, persistentScheduler, fundedIntents, enableDemographicGrowth, agriculture, operationalPolicy);
         var hash = Hasher.Compute(actual);
         if (hash != Hasher.Compute(independent))
             throw new InvalidOperationException(
@@ -188,12 +191,12 @@ public static class FoundationTemporalEconomicJournalGate
         FoundationConstructionCollectiveTurnPhase? constructionPhase = null,
         FoundationPersistentWorkerTurnScheduler? persistentScheduler = null,
         FoundationFundedWorkerIntentJournal? fundedIntents = null,
-        bool enableDemographicGrowth = false, FoundationAgriculturalProductionPolicy? agriculture = null)
+        bool enableDemographicGrowth = false, FoundationAgriculturalProductionPolicy? agriculture = null, FoundationOperationalFreightShadowPolicy? operationalPolicy = null)
     {
         ArgumentNullException.ThrowIfNull(beginning);
         ArgumentNullException.ThrowIfNull(journal);
         var executor = new ReplayExecutor(beginning, movement, movementPolicy,
-            incidence, economicPolicy, signedFine, investmentExecutor, constructionPhase, persistentScheduler, fundedIntents, enableDemographicGrowth, agriculture);
+            incidence, economicPolicy, signedFine, investmentExecutor, constructionPhase, persistentScheduler, fundedIntents, enableDemographicGrowth, agriculture, operationalPolicy);
         var state = new SimulationEventLogReplayer(executor).Replay(
             new SimulationReplayInput(beginning, journal, context));
         if (!executor.IsClosed)
@@ -212,7 +215,7 @@ public static class FoundationTemporalEconomicJournalGate
         FoundationAuthoritativeEconomicSettlementPolicy policy,
         SimulationContext context,
         FoundationFineFirstPhysicalGeography? signedFine,
-        FoundationPersistentWorkerTurnEvent? timeline = null, FoundationAgriculturalProductionPolicy? agriculture = null)
+        FoundationPersistentWorkerTurnEvent? timeline = null, FoundationAgriculturalProductionPolicy? agriculture = null, FoundationOperationalFreightShadowPolicy? operationalPolicy = null)
     {
         if (beginning.WorkerOrders.IsInitialized != (timeline is not null))
             throw new InvalidOperationException("Persistent close requires exactly one verified timeline.");
@@ -225,7 +228,7 @@ public static class FoundationTemporalEconomicJournalGate
             ? FoundationTemporalEconomicTurnProjector.Project(beginning, staged, physicalEvents, localEvents, policy.Demand)
             : FoundationTemporalEconomicTurnProjector.ProjectPersistent(beginning, timeline.Slices, policy.Demand, agriculture);
         var financial = FoundationTemporalFinancialReconciler.Evaluate(
-            beginning, incidence, calendar, policy, signedFine, beginning.Constructions.IsInitialized ? beginning : staged);
+            beginning, incidence, calendar, policy, signedFine, beginning.Constructions.IsInitialized ? beginning : staged, operationalPolicy);
         ulong ordinal = checked(staged.Treasury.LastSettledEconomicCycleOrdinal + 1UL);
         if (staged.Treasury.HasClosedEconomicCycle &&
             staged.Treasury.LastSettledCargoUnitCode != policy.Cargo.CargoUnitCode)
@@ -254,7 +257,7 @@ public static class FoundationTemporalEconomicJournalGate
             financial.Accounting.NetSellerReceiptsScaled,
             financial.Accounting.RevenueTaxScaled,
             financial.Accounting.ExternalTollsScaled, credits,
-            agriculture is null ? null : FoundationSettledFoodIntake.Attribute(beginning, calendar, financial.Distribution, agriculture.Commodities));
+            agriculture is null ? null : FoundationSettledFoodIntake.Attribute(beginning, calendar, financial.Distribution, agriculture.Commodities), financial.OperationalQuotes);
         var amounts = ev.Credits.ToDictionary(c => c.Civilization,
             c => c.CashCreditScaled);
         var state = staged.RecordAuditedEconomicCycle(
@@ -298,7 +301,9 @@ public static class FoundationTemporalEconomicJournalGate
                 expected.TotalCivilizationCreditsScaled ||
             !received.Credits.SequenceEqual(expected.Credits) ||
             (received.FoodIntake is null) != (expected.FoodIntake is null) ||
-            (received.FoodIntake is not null && !received.FoodIntake.SequenceEqual(expected.FoodIntake!)))
+            (received.FoodIntake is not null && !received.FoodIntake.SequenceEqual(expected.FoodIntake!)) ||
+            (received.OperationalQuotes is null) != (expected.OperationalQuotes is null) ||
+            (received.OperationalQuotes is not null && !received.OperationalQuotes.SequenceEqual(expected.OperationalQuotes!)))
             throw new InvalidOperationException(
                 "Forgery, duplicate, or stale temporal sale/cash journal event.");
     }
@@ -324,6 +329,7 @@ public static class FoundationTemporalEconomicJournalGate
         private bool _birthsSeen;
         private readonly bool _growth;
         private readonly FoundationAgriculturalProductionPolicy? _agriculture;
+        private readonly FoundationOperationalFreightShadowPolicy? _operationalPolicy;
         private readonly FoundationPersistentWorkerTurnScheduler? _scheduler;
         private readonly FoundationFundedWorkerIntentJournal? _fundedIntents;
         private readonly HashSet<EventId> _persistentIds = new();
@@ -343,11 +349,15 @@ public static class FoundationTemporalEconomicJournalGate
             FoundationMonetaryInfrastructureEventExecutor? investment,
             FoundationConstructionCollectiveTurnPhase? constructionPhase,
             FoundationPersistentWorkerTurnScheduler? persistentScheduler,
-            FoundationFundedWorkerIntentJournal? fundedIntents, bool enableDemographicGrowth, FoundationAgriculturalProductionPolicy? agriculture)
+            FoundationFundedWorkerIntentJournal? fundedIntents, bool enableDemographicGrowth, FoundationAgriculturalProductionPolicy? agriculture, FoundationOperationalFreightShadowPolicy? operationalPolicy)
         {
             _beginning = beginning;
             _growth = enableDemographicGrowth;
             _agriculture = agriculture;
+            _operationalPolicy = operationalPolicy;
+            operationalPolicy?.RequireValid();
+            if (operationalPolicy is not null && (signedFine is null || persistentScheduler is null))
+                throw new InvalidOperationException("Operational freight requires signed persistent scheduling.");
             if (agriculture is not null && (persistentScheduler is null || !ReferenceEquals(signedFine, agriculture.Geography)))
                 throw new InvalidOperationException("Crop policy requires the same signed geography and persistent timeline.");
             if (_growth && (persistentScheduler is null || beginning.CityResidences.IsInitialized))
@@ -456,7 +466,7 @@ public static class FoundationTemporalEconomicJournalGate
                     "Only canonical physical movements and one temporal SYSTEM sale are allowed.");
             var (derived, after) = Derive(_beginning, state, _events,
                 _localEvents, _investmentCount, _incidence, _policy,
-                context, _signedFine, VerifiedTimeline, _agriculture);
+                context, _signedFine, VerifiedTimeline, _agriculture, _operationalPolicy);
             RequireIdentical(monetary, derived);
             _closed = true;
             return after;

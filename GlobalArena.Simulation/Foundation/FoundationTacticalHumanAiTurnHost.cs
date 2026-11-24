@@ -191,6 +191,21 @@ public sealed class FoundationTacticalHumanAiTurnHost
         return rows.Length == 0 ? null : Array.AsReadOnly(rows);
     }
 
+    public IReadOnlyList<FoundationOperationalFreightShadowEdge>? ReadOperationalQuotes(CivilizationId viewer, PhysicalTacticalTileId node)
+    {
+        CheckSnapshot();
+        RequireHuman(viewer);
+        if (!Snapshot.Workers.Workers.Any(w => w.Owner == viewer && w.TacticalTileId == node))
+            throw new InvalidOperationException("Operational readout requires own local presence.");
+        var sale = _lastTemporalClose?.TemporalEconomicSettlement;
+        if (sale?.OperationalQuotes is null || sale.EconomicCycleOrdinal != Snapshot.Treasury.LastSettledEconomicCycleOrdinal)
+            return null;
+        var incident = Incidence.FineTopology.Cells[(int)node.FineStrategicCellId.Value - 1].AdjacentCellIds.ToHashSet();
+        var edges = Incidence.FineTopology.Edges.Where(e => e.IncidentCellIds.Contains(node.FineStrategicCellId) &&
+            e.IncidentCellIds.Any(incident.Contains)).Select(e => new PhysicalTacticalEdgeId(Incidence.Refinement.FineParameters, e.Id)).ToHashSet();
+        return Array.AsReadOnly(sale.OperationalQuotes.Where(q => edges.Contains(q.Edge)).ToArray());
+    }
+
     public CanonicalGameSession Session => _session;
     public WorldState Snapshot => _session.Snapshot;
     public WorldStateHash StateHash => _hasher.Compute(Snapshot);
@@ -410,6 +425,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
     }
 
     public FoundationAgriculturalProductionPolicy? AgriculturalProduction { get; }
+    public FoundationOperationalFreightShadowPolicy? OperationalFreight { get; }
 
     public bool AllRequiredReady => _participants.All(_ready.Contains);
 
@@ -424,9 +440,11 @@ public sealed class FoundationTacticalHumanAiTurnHost
         FoundationFineFirstPhysicalGeography? fineGeography = null,
         FoundationFineFirstWorldgenIdentity? fineSignature = null,
         FoundationGroundEdgeTravelTimePolicy? physicalTravelPolicy = null,
-        ulong? constructionMoneyMicroPerWholeWork = null, bool enableDemographicGrowth = false, FoundationAgriculturalProductionPolicy? agriculture = null)
+        ulong? constructionMoneyMicroPerWholeWork = null, bool enableDemographicGrowth = false, FoundationAgriculturalProductionPolicy? agriculture = null, FoundationOperationalFreightShadowPolicy? operationalPolicy = null)
     {
         AgriculturalProduction = agriculture;
+        OperationalFreight = operationalPolicy;
+        if (operationalPolicy is not null && (!session.Snapshot.WorkerOrders.IsInitialized || fineGeography is null)) throw new InvalidOperationException("Operational freight requires signed persistent scheduling.");
         _session = session ?? throw new ArgumentNullException(nameof(session));
         _incidence = incidence ?? throw new ArgumentNullException(nameof(incidence));
         ArgumentNullException.ThrowIfNull(humanCivilizations);
@@ -577,7 +595,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
             var temporal = new FoundationTemporalCollectiveTurnPhase(
                 session.GeneratedWorld, incidence, _travelPolicy!,
                 _temporalPolicy, fineGeography, fineSignature, _constructionPhase,
-                persistent ? constructionMoneyMicroPerWholeWork : null, enableDemographicGrowth, agriculture);
+                persistent ? constructionMoneyMicroPerWholeWork : null, enableDemographicGrowth, agriculture, operationalPolicy);
             phases.Add(temporal);
             if (persistent)
             {

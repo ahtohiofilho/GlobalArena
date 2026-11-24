@@ -51,11 +51,13 @@ jobs:
           GA_NEXT_PERSISTENT_ORDERS: '1'
           GA_NEXT_R213_UI_SMOKE: '1'
           GA_NEXT_CROP_PREVIEW: '1'
+          GA_NEXT_OPERATIONAL_PREVIEW: '1'
         run: |
           set -o pipefail
           timeout 180 "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --rendering-method gl_compatibility 2>&1 | tee "$RUNNER_TEMP/crops.log"
           grep -q 'GA_NEXT_R219A1_CROP_PREVIEW_PASS' "$RUNNER_TEMP/crops.log"
           grep -q 'GA_NEXT_R219A3_FOOD_READOUT_PASS' "$RUNNER_TEMP/crops.log"
+          grep -q 'GA_NEXT_R219B_OPERATIONAL_UI_PASS' "$RUNNER_TEMP/crops.log"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
