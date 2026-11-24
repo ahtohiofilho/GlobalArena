@@ -58,11 +58,11 @@ public partial class Main
         column.AddChild(header);
         _cityWindowTitle = new Label
         {
-            Text = "CIDADE | Selecione um nó",
+            Text = "CITY | Select a node",
             SizeFlagsHorizontal = SizeFlags.ExpandFill
         };
         header.AddChild(_cityWindowTitle);
-        var close = new Button { Text = "FECHAR" };
+        var close = new Button { Text = "CLOSE" };
         close.Pressed += () => overlay.Visible = false;
         header.AddChild(close);
 
@@ -72,18 +72,18 @@ public partial class Main
             SizeFlagsVertical = SizeFlags.ExpandFill
         };
         column.AddChild(tabs);
-        var overview = new MarginContainer { Name = "Visão geral" };
+        var overview = new MarginContainer { Name = "Overview" };
         tabs.AddChild(overview);
         _cityOverview = new Label
         {
-            Text = "Selecione um nó físico no mapa.",
+            Text = "Select a physical node on the map.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
             VerticalAlignment = VerticalAlignment.Top,
             SizeFlagsVertical = SizeFlags.ShrinkBegin
         };
         overview.AddChild(_cityOverview);
 
-        var links = new ScrollContainer { Name = "Ligações" };
+        var links = new ScrollContainer { Name = "Connections" };
         tabs.AddChild(links);
         _cityLinksList = new VBoxContainer
         {
@@ -171,11 +171,11 @@ public partial class Main
             _tacticalPreview?.IsCartographicSiteMode != true ||
             !_tacticalPreview.LocalSiteMarkerTileIds.Contains(selected.Value))
         {
-            _cityWindowTitle.Text = "CIDADE | Selecione um assentamento";
-            _cityOverview.Text = "Abra o mapa cartográfico e selecione uma cidade.";
+            _cityWindowTitle.Text = "CITY | Select a settlement";
+            _cityOverview.Text = "Select a city on the map.";
             _cityLinksList.AddChild(new Label
             {
-                Text = "As ligações locais aparecem após a seleção da cidade."
+                Text = "Local connections appear after selecting a city."
             });
             return;
         }
@@ -186,17 +186,17 @@ public partial class Main
         var rows = FoundationLocalConnectionsProjector.Read(
             host.Snapshot, host.Incidence, node);
         _cityConnectionSource = selected.Value;
-        _cityWindowTitle.Text = $"CIDADE | NÓ {selected.Value}";
+        _cityWindowTitle.Text = $"CITY | NODE {selected.Value}";
         _cityOverview.Text =
-            $"Nó físico #{selected.Value} da malha tática.\n" +
-            $"{rows.Count} ligações diretas. Sem trajetos comerciais agregados.";
+            $"Physical node #{selected.Value} on the tactical map.\n" +
+            $"{rows.Count} direct connections.";
         foreach (var link in rows)
         {
             var displayed = link;
             var button = new Button
             {
-                Text = $"Nó {link.Neighbor.FineStrategicCellId.Value}   " +
-                    $"| frete físico {link.UnitPhysicalFreightMicro} micro/carga",
+                Text = $"Node {link.Neighbor.FineStrategicCellId.Value}   " +
+                    $"| physical freight {FormatMoneyMicroForDisplay(link.UnitPhysicalFreightMicro)}/cargo",
                 Alignment = HorizontalAlignment.Left
             };
             button.Pressed += () => ShowCityConnectionDetail(displayed);
@@ -492,10 +492,10 @@ public partial class Main
         var rows = FoundationLocalConnectionsProjector.Read(
             _tacticalHost.Snapshot, _tacticalHost.Incidence, tile);
         if (tabs is null || tabs.GetTabCount() != 2 ||
-            tabs.GetTabTitle(0) != "Visão geral" ||
-            tabs.GetTabTitle(1) != "Ligações" ||
+            tabs.GetTabTitle(0) != "Overview" ||
+            tabs.GetTabTitle(1) != "Connections" ||
             _cityLinksList?.GetChildCount() != rows.Count ||
-            _cityWindowTitle?.Text != $"CIDADE | NÓ {site}" ||
+            _cityWindowTitle?.Text != $"CITY | NODE {site}" ||
             _tacticalHost.StateHash != beforeHash)
             throw new InvalidOperationException(
                 "R181 window tabs and incident-edges data do not match the physical world.");
@@ -630,7 +630,7 @@ public partial class Main
             _tacticalHost.Snapshot, _tacticalHost.Incidence, tile);
         if (_cityWindowLayer?.Visible != true ||
             _cityLinksList?.GetChildCount() != expected.Count ||
-            _cityWindowTitle?.Text != $"CIDADE | NÓ {site}" ||
+            _cityWindowTitle?.Text != $"CITY | NODE {site}" ||
             _tacticalHost.StateHash != before)
             throw new InvalidOperationException(
                 "R180 city tabs did not show exactly real adjacent links.");
