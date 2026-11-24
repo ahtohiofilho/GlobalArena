@@ -126,7 +126,8 @@ public static class FoundationTemporalEconomicJournalGate
         FoundationFineFirstPhysicalGeography? signedFine = null,
         FoundationConstructionCollectiveTurnPhase? constructionPhase = null,
         FoundationPersistentWorkerTurnScheduler? persistentScheduler = null,
-        FoundationFundedWorkerIntentJournal? fundedIntents = null)
+        FoundationFundedWorkerIntentJournal? fundedIntents = null,
+        bool enableDemographicGrowth = false)
     {
         ArgumentNullException.ThrowIfNull(beginning);
         ArgumentNullException.ThrowIfNull(physicalAndInvestmentEvents);
@@ -136,7 +137,7 @@ public static class FoundationTemporalEconomicJournalGate
             throw new InvalidOperationException(
                 "Temporal cash cannot close without a bound opt-in world and funded treasury.");
         var executor = new ReplayExecutor(beginning, movement, movementPolicy,
-            incidence, economicPolicy, signedFine, investmentExecutor, constructionPhase, persistentScheduler, fundedIntents);
+            incidence, economicPolicy, signedFine, investmentExecutor, constructionPhase, persistentScheduler, fundedIntents, enableDemographicGrowth);
         var staged = beginning;
         foreach (var ev in physicalAndInvestmentEvents)
             staged = executor.Execute(staged, ev, context);
@@ -147,17 +148,22 @@ public static class FoundationTemporalEconomicJournalGate
         // Resolution solves once; the fresh journal executor below solves
         // independently once more. Avoid an unneeded third market pass.
         var actual = expected;
-        var events = physicalAndInvestmentEvents
-            .Append((ISimulationEvent)settlement).ToArray();
+        var events = physicalAndInvestmentEvents.Append((ISimulationEvent)settlement).ToList();
+        if (enableDemographicGrowth)
+        {
+            var birth = FoundationPersistentDemographicClose.Record(beginning, actual,
+                executor.VerifiedTimeline!, economicPolicy.Demand, movement, context);
+            actual = birth.Next;
+            events.Add(birth.Event);
+        }
         var journal = new SimulationEventLog(events.Select((ev, index) =>
             new SimulationEventLogEntry(checked((ulong)index + 1UL), ev,
                 wasEligible: true, wasExecuted: true)).ToArray());
         var independent = ReplayJournal(beginning, journal, movement,
             movementPolicy, incidence, economicPolicy, context, signedFine,
-            investmentExecutor, constructionPhase, persistentScheduler, fundedIntents);
+            investmentExecutor, constructionPhase, persistentScheduler, fundedIntents, enableDemographicGrowth);
         var hash = Hasher.Compute(actual);
-        if (hash != Hasher.Compute(independent) ||
-            hash != Hasher.Compute(expected))
+        if (hash != Hasher.Compute(independent))
             throw new InvalidOperationException(
                 "Temporal monetary close failed independent canonical journal replay.");
         return new Receipt(settlement, journal, actual, hash, true);
@@ -178,12 +184,13 @@ public static class FoundationTemporalEconomicJournalGate
         FoundationMonetaryInfrastructureEventExecutor? investmentExecutor = null,
         FoundationConstructionCollectiveTurnPhase? constructionPhase = null,
         FoundationPersistentWorkerTurnScheduler? persistentScheduler = null,
-        FoundationFundedWorkerIntentJournal? fundedIntents = null)
+        FoundationFundedWorkerIntentJournal? fundedIntents = null,
+        bool enableDemographicGrowth = false)
     {
         ArgumentNullException.ThrowIfNull(beginning);
         ArgumentNullException.ThrowIfNull(journal);
         var executor = new ReplayExecutor(beginning, movement, movementPolicy,
-            incidence, economicPolicy, signedFine, investmentExecutor, constructionPhase, persistentScheduler, fundedIntents);
+            incidence, economicPolicy, signedFine, investmentExecutor, constructionPhase, persistentScheduler, fundedIntents, enableDemographicGrowth);
         var state = new SimulationEventLogReplayer(executor).Replay(
             new SimulationReplayInput(beginning, journal, context));
         if (!executor.IsClosed)
@@ -308,6 +315,8 @@ public static class FoundationTemporalEconomicJournalGate
         private bool _investmentsStarted;
         private int _investmentCount;
         private bool _closed;
+        private bool _birthsSeen;
+        private readonly bool _growth;
         private readonly FoundationPersistentWorkerTurnScheduler? _scheduler;
         private readonly FoundationFundedWorkerIntentJournal? _fundedIntents;
         private readonly HashSet<EventId> _persistentIds = new();
@@ -315,7 +324,7 @@ public static class FoundationTemporalEconomicJournalGate
 
         public IReadOnlyList<FoundationEdgeTravelTurnEvent> VerifiedPhysicalEvents => _events;
         public IReadOnlyList<PhysicalTacticalWorkerMovedEvent> VerifiedLocalEvents => _localEvents;
-        public bool IsClosed => _closed;
+        public bool IsClosed => _closed && (!_growth || _birthsSeen);
         public int VerifiedInvestmentCount => _investmentCount;
 
         public ReplayExecutor(
@@ -327,9 +336,12 @@ public static class FoundationTemporalEconomicJournalGate
             FoundationMonetaryInfrastructureEventExecutor? investment,
             FoundationConstructionCollectiveTurnPhase? constructionPhase,
             FoundationPersistentWorkerTurnScheduler? persistentScheduler,
-            FoundationFundedWorkerIntentJournal? fundedIntents)
+            FoundationFundedWorkerIntentJournal? fundedIntents, bool enableDemographicGrowth)
         {
             _beginning = beginning;
+            _growth = enableDemographicGrowth;
+            if (_growth && (persistentScheduler is null || beginning.CityResidences.IsInitialized))
+                throw new InvalidOperationException("Growth requires persistent physical census without legacy home schema.");
             _travel = new FoundationEdgeTravelEventExecutor(movement, movementPolicy);
             _local = movement;
             _incidence = incidence;
@@ -350,7 +362,14 @@ public static class FoundationTemporalEconomicJournalGate
             SimulationContext context)
         {
             if (_closed)
-                throw new InvalidOperationException("Cannot append events after economic close.");
+            {
+                if (!_growth || _birthsSeen || ev is not FoundationPhysicalBirthBatchEvent birth)
+                    throw new InvalidOperationException("Unexpected event after economic close.");
+                var next = FoundationPersistentDemographicClose.Replay(_beginning, state,
+                    VerifiedTimeline!, _policy.Demand, _local, context, birth);
+                _birthsSeen = true;
+                return next;
+            }
             if (_scheduler is not null && ev is not FoundationTemporalSalesSettledEvent)
             {
                 if (VerifiedTimeline is not null || !_persistentIds.Add(ev.Id))

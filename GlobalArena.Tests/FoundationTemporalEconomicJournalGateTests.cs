@@ -154,6 +154,86 @@ public sealed class FoundationTemporalEconomicJournalGateTests
     }
 
     [Fact]
+    public void R217BirthsAfterEconomicCloseAreAtomicAndReplayable()
+    {
+        var (world, worker, _, _, incidence, fine) = Fixture();
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL),
+                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)), workersPerCivilization: 3);
+        var signature = FoundationFineFirstWorldgenCanonicalSignature.Compute(demo.Session.GeneratedWorld, incidence, fine);
+        var tile = worker.TacticalTileId!.Value;
+        var crossing = incidence.FineTopology.Edges.First(e =>
+            e.IncidentCellIds.Contains(tile.FineStrategicCellId) &&
+            fine.CrossingAtIndices((int)e.IncidentCellIds[0].Value - 1,
+                (int)e.IncidentCellIds[1].Value - 1) == FoundationFineTransportCrossingKind.Ground);
+        var edge = new PhysicalTacticalEdgeId(incidence.Refinement.FineParameters, crossing.Id);
+        // Use a real signed fine-first monetary world for collective admission.
+        var bound = demo.Session.Snapshot.PromoteFineFirstBeforeTransport(
+            demo.Session.GeneratedWorld, incidence, fine, signature)
+            .DeployInitialFineFirstPhysicalTransport(world.Transport, demo.Session.GeneratedWorld,
+                incidence, fine, signature);
+        var beginning = FoundationPersistedEdgeTravelTransitions.DeployEmpty(
+            bound.DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
+                bound.Civilizations.Civilizations.Select(c => (c, 5_000_000UL)))))
+            .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
+            .DeployInitialWorkerOrders();
+        var phase = new FoundationTemporalCollectiveTurnPhase(demo.Session.GeneratedWorld, incidence,
+            new FoundationGroundEdgeTravelTimePolicy(1_400_000UL), Policy(beginning.Civilizations.Civilizations),
+            fine, signature, persistentMoneyMicroPerWholeWork: 1_000_000UL, enableDemographicGrowth: true);
+        var context = new SimulationContext(new TurnNumber(1UL), new SimulationSeed(712UL));
+        var commands = new ISimulationCommand[]
+        {
+            new FoundationFundedWorkerIntentCommand(new CommandId(context.Turn, 1UL), worker.Owner,
+                edge, 600_000UL, new[] { new FoundationFundedWorkerInsertion(worker.Id, 0) }),
+            new FoundationPersistentOrderEditCommand(new CommandId(context.Turn, 2UL),
+                new FoundationPersistentOrderEdit(worker.Owner, worker.Id,
+                    FoundationPersistentOrderEditKind.Insert, Index: 1,
+                    OrderKind: FoundationWorkerOrderKind.Occupation, Occupation: PhysicalWorkerOccupation.Agriculture))
+        };
+        var resolved = phase.Resolve(new TurnResolutionInput(beginning, commands, context), beginning);
+        var next = resolved.ResultingWorldState;
+        var sale = Assert.Single(resolved.Events.OfType<FoundationTemporalSalesSettledEvent>());
+        var timeline = Assert.Single(resolved.Events.OfType<FoundationPersistentWorkerTurnEvent>());
+        Assert.Single(resolved.Events.OfType<FoundationFundedWorkerIntentEvent>());
+        Assert.Equal(1UL, next.Treasury.LastSettledEconomicCycleOrdinal);
+        var batch = Assert.IsType<FoundationPhysicalBirthBatchEvent>(resolved.Events.Last());
+        Assert.IsType<FoundationTemporalSalesSettledEvent>(resolved.Events.Reverse().Skip(1).First());
+        Assert.Equal(beginning.Civilizations.Civilizations.Count, batch.Newborns.Count);
+        Assert.Equal(beginning.Workers.Workers.Count + batch.Newborns.Count, next.Workers.Workers.Count);
+        Assert.Equal(next.Workers.Workers.Count, next.WorkerOrders.Queues.Count);
+        Assert.Equal(21U, new CanonicalWorldStateHasher().Compute(next).FormatVersion);
+        var presence = FoundationPhysicalPresenceDemographicProjector.Project(beginning, timeline.Slices.Select(s => new FoundationWorkerTemporalNodeSlice(s.Worker, s.Node, s.DurationMicro, s.Activity == PhysicalWorkerActivity.Producing ? s.DurationMicro : 0U, s.Activity, s.Occupation)).ToArray(), Demand());
+        var expected = FoundationPhysicalPresenceDemographicProjector.PlanBirths(beginning, presence,
+            beginning.Civilizations.Civilizations, context.Turn.Value);
+        Assert.Equal(expected.Births.Select(b => b.NatalNode), batch.Newborns.Select(w => w.NatalNode!.Value));
+        foreach (var child in batch.Newborns)
+        {
+            Assert.Equal(child.NatalNode, child.TacticalTileId);
+            Assert.Equal(PhysicalWorkerOccupation.Unassigned, child.Occupation);
+            Assert.Empty(next.WorkerOrders.Queues.Single(q => q.Worker == child.Id).Orders);
+            Assert.DoesNotContain(timeline.Slices, s => s.Worker == child.Id);
+            Assert.Equal(child.NatalNode, child.WithTacticalAssignment(child.TacticalTileId!.Value,
+                child.CellId, PhysicalWorkerActivity.Producing, PhysicalWorkerOccupation.Agriculture).NatalNode);
+        }
+        var hash = new CanonicalWorldStateHasher();
+        Assert.Equal(hash.Compute(next), hash.Compute(phase.ReplayPersistentJournal(beginning, resolved.EventLog, context)));
+        foreach (var events in new[] { resolved.Events.Take(resolved.Events.Count() - 1).ToArray(),
+            resolved.Events.Append(batch).ToArray(),
+            resolved.Events.Take(resolved.Events.Count - 1).Append(batch with { ScheduleDigest = "forged" }).ToArray() })
+        {
+            var log = new SimulationEventLog(events.Select((e, i) => new SimulationEventLogEntry((ulong)i + 1, e, true, true)).ToArray());
+            Assert.ThrowsAny<Exception>(() => phase.ReplayPersistentJournal(beginning, log, context));
+        }
+        Assert.Equal(0UL, beginning.Treasury.LastSettledEconomicCycleOrdinal);
+        var secondContext = new SimulationContext(new TurnNumber(2UL), new SimulationSeed(712UL));
+        var second = phase.Resolve(new TurnResolutionInput(next, Array.Empty<ISimulationCommand>(), secondContext), next);
+        var secondTimeline = Assert.Single(second.Events.OfType<FoundationPersistentWorkerTurnEvent>());
+        foreach (var child in batch.Newborns)
+            Assert.Equal(1_000_000L, secondTimeline.Slices.Where(s => s.Worker == child.Id).Sum(s => (long)s.DurationMicro));
+        Assert.Equal(hash.Compute(second.ResultingWorldState), hash.Compute(phase.ReplayPersistentJournal(next, second.EventLog, secondContext)));
+    }
+
+    [Fact]
     public void R211CollectiveFundingAndTimelineSettleOneMarketAndReplay()
     {
         var (world, worker, _, _, incidence, fine) = Fixture();

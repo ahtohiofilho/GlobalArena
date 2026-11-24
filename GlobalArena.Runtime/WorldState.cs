@@ -676,6 +676,32 @@ public sealed class WorldState
             CityResidences, EdgeTravels, constructions, WorkerOrders);
     }
 
+    /// <summary>Atomic append of journal-authorized births and empty individual queues.
+    /// Existing worker facts, orders, trips and construction are preserved.
+    /// The legacy complete-home schema is deliberately not a demographic authority.</summary>
+    public WorldState AppendPhysicalBirths(IEnumerable<PhysicalWorkerRuntimeRecord> newborns)
+    {
+        ArgumentNullException.ThrowIfNull(newborns);
+        if (!WorkerOrders.IsInitialized || CityResidences.IsInitialized)
+            throw new InvalidOperationException("Births require persistent physical queues without legacy home census.");
+        var rows = newborns.ToArray();
+        ulong next = Workers.Workers.Max(w => w.Id.Value);
+        foreach (var child in rows)
+        {
+            if (child.Id.Value != checked(++next) || child.NatalNode is null ||
+                child.NatalNode != child.TacticalTileId || child.NatalCity.HasValue ||
+                child.Activity != PhysicalWorkerActivity.Other ||
+                child.Occupation != PhysicalWorkerOccupation.Unassigned)
+                throw new InvalidOperationException("Invalid newborn identity, origin or activity.");
+        }
+        var workers = new PhysicalWorkerRuntimeState(Workers.Workers.Concat(rows), true, true);
+        var queues = new FoundationWorkerOrderQueueSet(WorkerOrders.Queues.Concat(
+            rows.Select(w => FoundationWorkerOrderQueue.Empty(w.Id, w.Owner))));
+        return new WorldState(Revision, WorldBinding, Civilizations, Territory, Diplomacy,
+            Economy, Population, Warfare, workers, Transport, Treasury, CityResidences,
+            EdgeTravels, Constructions, queues);
+    }
+
     public WorldState DeployInitialWorkerOrders()
     {
         if (WorkerOrders.IsInitialized || !Workers.HasAuthoritativeOccupations ||

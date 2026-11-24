@@ -67,17 +67,25 @@ public sealed record PhysicalWorkerRuntimeRecord
     // v11 opt-in. Null = schema v8/v9/v10 with no occupation assigned,
     // NOT an actual occupation of Unassigned.
     public PhysicalWorkerOccupation? Occupation { get; }
+    // Null for pre-R217 founders whose birthplace is not known.
+    public PhysicalTacticalTileId? NatalNode { get; }
+    public FoundationCityId? NatalCity { get; }
 
     public PhysicalWorkerRuntimeRecord(
         PhysicalWorkerId id, CivilizationId owner, StrategicCellId cellId,
         CommodityId commodity, ulong outputMicroPerTurn,
         PhysicalWorkerActivity activity, uint demandMultiplierMicro = 1_000_000U,
         PhysicalTacticalTileId? tacticalTileId = null,
-        PhysicalWorkerOccupation? occupation = null)
+        PhysicalWorkerOccupation? occupation = null,
+        PhysicalTacticalTileId? natalNode = null, FoundationCityId? natalCity = null)
     {
         if (!id.IsValid || !owner.IsValid || !cellId.IsValid ||
             !commodity.IsValid || !Enum.IsDefined(activity) ||
             demandMultiplierMicro == 0U ||
+            (natalCity.HasValue && (!natalCity.Value.IsValid || !natalNode.HasValue)) ||
+            (natalNode.HasValue && (!natalNode.Value.IsValid || !tacticalTileId.HasValue ||
+                natalNode.Value.FineGoldbergParameters != tacticalTileId.Value.FineGoldbergParameters ||
+                natalNode.Value.FineStrategicCellId.Value > natalNode.Value.FineGoldbergParameters.StrategicCellCount)) ||
             (tacticalTileId.HasValue && !tacticalTileId.Value.IsValid) ||
             (occupation.HasValue && (!tacticalTileId.HasValue ||
                 !Enum.IsDefined(occupation.Value) ||
@@ -96,6 +104,8 @@ public sealed record PhysicalWorkerRuntimeRecord
         DemandMultiplierMicro = demandMultiplierMicro;
         TacticalTileId = tacticalTileId;
         Occupation = occupation;
+        NatalNode = natalNode;
+        NatalCity = natalCity;
     }
 
     public PhysicalWorkerRuntimeRecord WithLocationAndActivity(
@@ -105,7 +115,7 @@ public sealed record PhysicalWorkerRuntimeRecord
             throw new InvalidOperationException(
                 "v10 physical workers cannot move via v9 coarse Goldberg cells.");
         return new(Id, Owner, cell, Commodity, OutputMicroPerTurn,
-            activity, DemandMultiplierMicro, occupation: Occupation);
+            activity, DemandMultiplierMicro, occupation: Occupation, natalNode: NatalNode, natalCity: NatalCity);
     }
 
     /// <summary>
@@ -124,7 +134,7 @@ public sealed record PhysicalWorkerRuntimeRecord
             throw new InvalidOperationException(
                 "Occupation assignment needs a different valid v11 productive role.");
         return new(Id, Owner, CellId, Commodity, OutputMicroPerTurn,
-            Activity, DemandMultiplierMicro, TacticalTileId, nextOccupation);
+            Activity, DemandMultiplierMicro, TacticalTileId, nextOccupation, NatalNode, NatalCity);
     }
 
     /// <summary>
@@ -145,7 +155,7 @@ public sealed record PhysicalWorkerRuntimeRecord
             throw new InvalidOperationException(
                 "Atomic assignment requires a real v11 worker at a compatible fine tile.");
         return new(Id, Owner, presentationRegion, Commodity,
-            OutputMicroPerTurn, activity, DemandMultiplierMicro, tile, occupation);
+            OutputMicroPerTurn, activity, DemandMultiplierMicro, tile, occupation, NatalNode, NatalCity);
     }
 
     public PhysicalWorkerRuntimeRecord WithTacticalLocationAndActivity(
@@ -158,7 +168,7 @@ public sealed record PhysicalWorkerRuntimeRecord
             throw new InvalidOperationException(
                 "Tactical movement requires an existing compatible v10 position.");
         return new(Id, Owner, presentationRegion, Commodity, OutputMicroPerTurn,
-            activity, DemandMultiplierMicro, destination, Occupation);
+            activity, DemandMultiplierMicro, destination, Occupation, NatalNode, NatalCity);
     }
 }
 

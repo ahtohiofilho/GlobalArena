@@ -34,6 +34,8 @@ public sealed class CanonicalWorldStateHasher
     public const uint ActivatedConstructionFormatVersion = 19U;
     public const uint PersistentWorkerOrdersFormatVersion = 20U;
 
+    public const uint NatalOriginsFormatVersion = 21U;
+
     private static readonly byte[] Magic =
     {
         (byte)'G',
@@ -48,7 +50,9 @@ public sealed class CanonicalWorldStateHasher
         ArgumentNullException.ThrowIfNull(
             worldState);
 
-        var version = worldState.WorkerOrders.IsInitialized
+        var version = worldState.Workers.Workers.Any(w => w.NatalNode.HasValue)
+            ? NatalOriginsFormatVersion
+            : worldState.WorkerOrders.IsInitialized
             ? PersistentWorkerOrdersFormatVersion
             : worldState.Constructions.IsInitialized
             ? (worldState.Constructions.Projects.Any(p => p.IsActivated)
@@ -556,6 +560,23 @@ public sealed class CanonicalWorldStateHasher
                     AppendUInt32(hash, order.Occupation.HasValue ? 1U : 0U);
                     if (order.Occupation.HasValue) AppendUInt32(hash, (uint)order.Occupation.Value);
                 }
+            }
+        }
+
+        if (version == NatalOriginsFormatVersion)
+        {
+            AppendUInt32(hash, 49U);
+            var origins = worldState.Workers.Workers.Where(w => w.NatalNode.HasValue).ToArray();
+            AppendUInt32(hash, checked((uint)origins.Length));
+            foreach (var w in origins)
+            {
+                var node = w.NatalNode!.Value;
+                AppendUInt64(hash, w.Id.Value);
+                AppendUInt32(hash, checked((uint)node.FineGoldbergParameters.M));
+                AppendUInt32(hash, checked((uint)node.FineGoldbergParameters.N));
+                AppendUInt64(hash, node.FineStrategicCellId.Value);
+                AppendUInt32(hash, w.NatalCity.HasValue ? 1U : 0U);
+                if (w.NatalCity.HasValue) AppendUInt64(hash, w.NatalCity.Value.Value);
             }
         }
 
