@@ -1,0 +1,27 @@
+name: GA-Next R207 Persistent Order Journal
+
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Runtime/WorldState.cs'
+      - 'GlobalArena.Runtime/FoundationWorkerOrderQueue.cs'
+      - 'GlobalArena.Simulation/CanonicalWorldStateHasher.cs'
+      - 'GlobalArena.Simulation/Foundation/FoundationPersistentOrderEditJournal.cs'
+      - 'GlobalArena.Tests/FoundationPersistentOrderJournalTests.cs'
+      - '.github/workflows/ga-next-r207-persistent-order-journal.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  persistent-order-journal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build and verify canonical queue edits
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~FoundationPersistentOrderJournalTests|FullyQualifiedName~FoundationWorkerOrderQueueTests|FullyQualifiedName~FoundationPersistedEdgeTravelTests' --logger 'console;verbosity=detailed'
