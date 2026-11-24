@@ -303,6 +303,28 @@ public sealed class FoundationTemporalEconomicJournalGateTests
                 (group.Key.Crop.HasValue ? expected.WholeTurnOutput : beginning.Workers.Workers.Single(w => w.Id == group.Key.Worker).OutputMicroPerTurn)
                 * (ulong)group.Sum(s => (long)s.DurationMicro) / 1_000_000UL)));
         Assert.Equal(total, sale.ProducedGoodsMicro);
+        var intake = Assert.IsAssignableFrom<IReadOnlyList<FoundationWorkerFoodIntake>>(sale.FoodIntake);
+        Assert.Equal(beginning.Workers.Workers.Count * 6, intake.Count);
+        Assert.Equal(total, intake.Aggregate(0UL, (sum, row) => checked(sum + row.ConsumedMicro)));
+        foreach (var cropItem in crops.Values)
+        {
+            ulong cropProduction = timeline.Slices.Where(s => s.Activity == PhysicalWorkerActivity.Producing)
+                .GroupBy(s => (s.Worker, s.Node, s.Occupation, s.Crop))
+                .Where(g => (g.Key.Crop.HasValue ? agriculture.Resolve(g.Key.Node, (GlobalArena.Foundation.Agriculture.CropId)g.Key.Crop.Value).Commodity
+                    : beginning.Workers.Workers.Single(w => w.Id == g.Key.Worker).Commodity) == cropItem)
+                .Aggregate(0UL, (sum, g) => checked(sum + (ulong)((UInt128)
+                    (g.Key.Crop.HasValue ? agriculture.Resolve(g.Key.Node, (GlobalArena.Foundation.Agriculture.CropId)g.Key.Crop.Value).WholeTurnOutput
+                    : beginning.Workers.Workers.Single(w => w.Id == g.Key.Worker).OutputMicroPerTurn)
+                    * (ulong)g.Sum(s => (long)s.DurationMicro) / 1_000_000UL)));
+            Assert.Equal(cropProduction, intake.Where(x => x.Commodity == cropItem)
+                .Aggregate(0UL, (sum, x) => checked(sum + x.ConsumedMicro)));
+        }
+        var conversions = crops.Values.ToDictionary(c => c, _ => 0.000001);
+        var nutrition = FoundationSettledFoodIntake.Evaluate(worker.Id, intake, conversions,
+            new CanonicalNutritionCandidateParameters(0.5, 2.8));
+        Assert.Null(nutrition.CandidateQuality);
+        Assert.False(nutrition.AuthorizesProductivityChange);
+
         var hash = new CanonicalWorldStateHasher();
         Assert.Equal(22U, hash.Compute(next).FormatVersion);
         Assert.Equal(hash.Compute(next), hash.Compute(phase.ReplayPersistentJournal(beginning, resolved.EventLog, context)));
@@ -1039,6 +1061,42 @@ public sealed class FoundationTemporalEconomicJournalGateTests
                 beginning, new ISimulationEvent[] { travel, local }, movement,
                 new FoundationGroundEdgeTravelTimePolicy(1_400_000UL), incidence,
                 policy, context, investmentExecutor: null, signedFine: fine));
+    }
+
+    [Fact]
+    public void R219A2PresenceSharesConserveAndResolveTiesByWorker()
+    {
+        var a = new PhysicalWorkerId(1UL);
+        var b = new PhysicalWorkerId(2UL);
+        var c = new PhysicalWorkerId(3UL);
+        var shares = FoundationSettledFoodIntake.Split(101UL,
+            new[] { (c, 400_000UL), (b, 600_000UL), (a, 1_000_000UL) });
+        Assert.Equal(new[] { (a, 51UL), (b, 30UL), (c, 20UL) }, shares);
+        Assert.Equal(FoundationSettledFoodIntake.Split(101UL,
+            new[] { (a, 1_000_000UL), (b, 600_000UL), (c, 400_000UL) }), shares);
+        Assert.Equal(new[] { (a, 1UL), (b, 0UL) },
+            FoundationSettledFoodIntake.Split(1UL, new[] { (b, 1UL), (a, 1UL) }));
+        Assert.Throws<ArgumentException>(() => FoundationSettledFoodIntake.Split(1UL,
+            new[] { (a, 0UL) }));
+    }
+
+    [Fact]
+    public void R219A2NutritionScalarRequiresExplicitSufficiencyAndSixFoods()
+    {
+        var worker = new PhysicalWorkerId(1UL);
+        var items = Enumerable.Range(1, 6).Select(i => new CommodityId((uint)i)).ToArray();
+        var conversions = items.ToDictionary(c => c, _ => 0.000001);
+        var mono = items.Select((c, i) => new FoundationWorkerFoodIntake(worker, c, i == 0 ? 6_000_000UL : 0UL)).ToArray();
+        var mixed = items.Select(c => new FoundationWorkerFoodIntake(worker, c, 1_000_000UL)).ToArray();
+        var p = new CanonicalNutritionCandidateParameters(0.5, 2.8);
+        var m = FoundationSettledFoodIntake.Evaluate(worker, mono, conversions, p);
+        var v = FoundationSettledFoodIntake.Evaluate(worker, mixed, conversions, p, f => f / (1 + f));
+        Assert.Equal(m.FoodPerPerson, v.FoodPerPerson);
+        Assert.Equal(1.0, m.CandidateVarietyFactor);
+        Assert.True(v.CandidateVarietyFactor > m.CandidateVarietyFactor);
+        Assert.Null(m.CandidateQuality);
+        Assert.True(v.CandidateQuality > 0);
+        Assert.Throws<ArgumentException>(() => FoundationSettledFoodIntake.Evaluate(worker, mixed.Skip(1).ToArray(), conversions, p));
     }
 
 }
