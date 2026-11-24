@@ -41,6 +41,7 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
     private readonly FoundationConstructionCollectiveTurnPhase? _construction;
     private readonly FoundationPersistentWorkerTurnScheduler? _persistent;
     private readonly FoundationFundedWorkerIntentJournal? _funded;
+    private readonly bool _growth;
 
     public FoundationTemporalCollectiveTurnPhase(
         WorldGenerationResult world,
@@ -50,7 +51,7 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
         FoundationFineFirstPhysicalGeography? fine = null,
         FoundationFineFirstWorldgenIdentity? signature = null,
         FoundationConstructionCollectiveTurnPhase? construction = null,
-        ulong? persistentMoneyMicroPerWholeWork = null)
+        ulong? persistentMoneyMicroPerWholeWork = null, bool enableDemographicGrowth = false)
     {
         ArgumentNullException.ThrowIfNull(world);
         _incidence = incidence ?? throw new ArgumentNullException(nameof(incidence));
@@ -60,6 +61,8 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
         if ((fine is null) != (signature is null))
             throw new InvalidOperationException(
                 "Temporal collective settlement requires complete signed geography.");
+        _growth = enableDemographicGrowth;
+        if (_growth && !persistentMoneyMicroPerWholeWork.HasValue) throw new InvalidOperationException("Demographic growth requires persistent scheduling.");
         _fine = fine;
         _construction = construction;
         if (fine is null)
@@ -162,11 +165,11 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
         operations.Add(timeline.Event);
         var receipt = FoundationTemporalEconomicJournalGate.CloseAndReplayWithInvestments(
             beginning, operations, _movement, _movementPolicy, _incidence, _economy, input.Context,
-            _capitalExecutor, _fine, persistentScheduler: _persistent, fundedIntents: _funded);
+            _capitalExecutor, _fine, persistentScheduler: _persistent, fundedIntents: _funded, enableDemographicGrowth: _growth);
         if (receipt.EconomicEvent.PreSettlementHash != new CanonicalWorldStateHasher().Compute(timeline.Next))
             throw new InvalidOperationException("Persistent timeline and economic settlement diverged.");
         return new TurnResolutionResult(receipt.Next,
-            operations.Append((ISimulationEvent)receipt.EconomicEvent).ToArray(), receipt.Journal);
+            receipt.Journal.Entries.Select(e => e.Event).ToArray(), receipt.Journal);
     }
 
     public WorldState ReplayPersistentJournal(WorldState beginning, SimulationEventLog log, SimulationContext context)
@@ -174,6 +177,6 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
         if (_persistent is null) throw new InvalidOperationException("Persistent phase not configured.");
         return FoundationTemporalEconomicJournalGate.ReplayJournal(beginning, log, _movement,
             _movementPolicy, _incidence, _economy, context, _fine, _capitalExecutor,
-            persistentScheduler: _persistent, fundedIntents: _funded);
+            persistentScheduler: _persistent, fundedIntents: _funded, enableDemographicGrowth: _growth);
     }
 }
