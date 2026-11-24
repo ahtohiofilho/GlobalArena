@@ -1,3 +1,5 @@
+using GlobalArena.Kernel;
+using GlobalArena.Simulation;
 using GlobalArena.Runtime;
 using GlobalArena.Simulation.Foundation;
 using GlobalArena.World;
@@ -48,6 +50,42 @@ public sealed class FoundationConstructionWorkerWorkTests
             new PhysicalTacticalEdgeId(incidence.Refinement.FineParameters, edge.Id),
             1_000_000UL, 1_600_000UL);
         return (world, incidence, geography, person.Id);
+    }
+
+    [Fact]
+    public void CollectiveConstructionBatchReplaysAndRejectsDuplicateOrForgedWork()
+    {
+        var s = Scenario();
+        var fixture = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL),
+                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)));
+        var admission = new FoundationMonetaryInfrastructureEventExecutor(
+            fixture.Session.GeneratedWorld, s.Incidence);
+        var phase = new FoundationConstructionCollectiveTurnPhase(
+            new FoundationConstructionFundingExecutor(admission, 1_000_000UL),
+            s.Incidence, s.Geography);
+        var owner = s.World.Workers.Workers.Single(w => w.Id == s.Worker).Owner;
+        var context = new SimulationContext(new TurnNumber(1UL), new SimulationSeed(712UL));
+        var command = new FoundationConstructionWorkCommand(
+            new CommandId(context.Turn, 1UL), owner, s.Worker, 1UL);
+        var input = new TurnResolutionInput(s.World, new ISimulationCommand[] { command }, context);
+        var resolved = new PhasedTurnResolutionEngine(new[] { phase }).Resolve(input);
+        var ev = Assert.IsType<FoundationConstructionWorkBatchEvent>(Assert.Single(resolved.Events));
+        var replay = phase.CreateReplayExecutor(admission);
+        var next = replay.Execute(s.World, ev, context);
+        var hasher = new CanonicalWorldStateHasher();
+        Assert.Equal(hasher.Compute(resolved.ResultingWorldState), hasher.Compute(next));
+        Assert.Throws<InvalidOperationException>(() => replay.Execute(next, ev, context));
+        Assert.Throws<InvalidOperationException>(() => phase.CreateReplayExecutor(admission).Execute(
+            s.World, ev with { Receipts = Array.Empty<FoundationConstructionWorkerReceipt>() }, context));
+        var duplicate = new TurnResolutionInput(s.World, new ISimulationCommand[] {
+            command, command with { Id = new CommandId(context.Turn, 2UL) } }, context);
+        Assert.Throws<InvalidOperationException>(() => phase.Resolve(duplicate, s.World));
+        var secondContext = new SimulationContext(new TurnNumber(2UL), new SimulationSeed(712UL));
+        var second = phase.Resolve(new TurnResolutionInput(next, new ISimulationCommand[] {
+            command with { Id = new CommandId(secondContext.Turn, 1UL) } }, secondContext), next);
+        Assert.True(second.ResultingWorldState.Constructions.Projects.Single().IsActivated);
+        Assert.Same(s.World.Treasury, second.ResultingWorldState.Treasury);
     }
 
     [Fact]
