@@ -215,11 +215,21 @@ public partial class Main
             var before = host.StateHash;
             var worker = host.Snapshot.Workers.Workers.First(w => w.Owner == _humanCivilization);
             OnOperationalWorkerSelected(worker.Id.Value);
+            if (_persistentQueueList!.Visible || _persistentInsert!.Disabled != true ||
+                _persistentCrossingProgress!.Visible || _persistentCrossingLabel!.Visible)
+                throw new InvalidOperationException("Empty queue or stationary controls are incorrect.");
             _localAgricultureButton!.EmitSignal(Button.SignalName.Pressed);
             _localMiningButton!.EmitSignal(Button.SignalName.Pressed);
             var q = ReadPersistentQueue(worker.Id);
             if (q.Orders.Count != 2 || _persistentQueueList!.ItemCount != 2 || host.StateHash != before)
                 throw new InvalidOperationException("Queue controls did not stage two real orders.");
+            _persistentQueueList.EmitSignal(ItemList.SignalName.ItemSelected, 1L);
+            if (_persistentInsert!.Disabled) throw new InvalidOperationException("Valid insertion unavailable.");
+            var other = host.Snapshot.Workers.Workers.First(w => w.Owner == _humanCivilization && w.Id != worker.Id);
+            OnOperationalWorkerSelected(other.Id.Value);
+            if (!_persistentInsert.Disabled || _persistentSelectedOrder.HasValue)
+                throw new InvalidOperationException("Selection leaked between workers.");
+            OnOperationalWorkerSelected(worker.Id.Value);
             _persistentQueueList.EmitSignal(ItemList.SignalName.ItemSelected, 1L);
             _persistentUp!.EmitSignal(Button.SignalName.Pressed);
             if (ReadPersistentQueue(worker.Id).Orders[0].Occupation != PhysicalWorkerOccupation.Mining)
@@ -257,6 +267,39 @@ public partial class Main
             _connectionCancel!.EmitSignal(Button.SignalName.Pressed);
             if (host.GetHumanPersistentFunding(_humanCivilization).Count != 0 || host.StateHash != fundedBefore)
                 throw new InvalidOperationException("Funding cancel signal failed.");
+            // Start a genuine natural ground crossing from the same signed geography.
+            _cityWindowLayer!.Visible = false;
+            OnOperationalWorkerSelected(worker.Id.Value);
+            var source = host.Snapshot.Workers.Workers.Single(w => w.Id == worker.Id).TacticalTileId!.Value;
+            var fine = _r123FineGeography!;
+            var destination = host.Incidence.FineTopology.Cells[(int)source.FineStrategicCellId.Value - 1]
+                .AdjacentCellIds.First(c => fine.CrossingAtIndices((int)source.FineStrategicCellId.Value - 1,
+                    (int)c.Value - 1) == FoundationFineTransportCrossingKind.Ground);
+            AppendPersistentOrder(worker.Id, FoundationWorkerOrderKind.Move,
+                destination: new PhysicalTacticalTileId(host.Incidence.Refinement.FineParameters, destination));
+            RefreshFineTacticalWorkerControls();
+            if (_persistentCrossingProgress!.Visible || _localPendingLabel!.Text != "Pending changes | E to submit")
+                throw new InvalidOperationException("Staged journey presented as committed crossing.");
+            EndFineCollectiveTurn();
+            var travel = host.Snapshot.EdgeTravels.Pending.Single(p => p.Worker == worker.Id);
+            var expected = 100m * (travel.OriginalDurationMicro - travel.RemainingMicro) / travel.OriginalDurationMicro;
+            var travelHash = host.StateHash;
+            if (!_persistentCrossingProgress.Visible || !_persistentCrossingLabel!.Visible ||
+                Math.Abs(_persistentCrossingProgress.Value - (double)expected) > 0.000001 ||
+                !_persistentCrossingLabel.Text.Contains(FormattableString.Invariant($"Remaining: {travel.RemainingMicro / 1_000_000m:0.######} turns")) ||
+                !_persistentWorkerSummary!.Text.StartsWith("Traveling", StringComparison.Ordinal))
+                throw new InvalidOperationException("Crossing readout does not match canonical ledger.");
+            OnOperationalWorkerSelected(other.Id.Value);
+            if (_persistentCrossingProgress.Visible) throw new InvalidOperationException("Crossing leaked to stationary worker.");
+            OnOperationalWorkerSelected(worker.Id.Value);
+            if (!_persistentCrossingProgress.Visible || host.StateHash != travelHash)
+                throw new InvalidOperationException("Context selection mutated state.");
+            EndFineCollectiveTurn();
+            if (host.Snapshot.EdgeTravels.Pending.Any(p => p.Worker == worker.Id) ||
+                _persistentCrossingProgress.Visible || _persistentCrossingLabel!.Visible ||
+                ReadPersistentQueue(worker.Id).Orders.Count != 0)
+                throw new InvalidOperationException("Completed crossing retained stale UI.");
+            GD.Print("GA_NEXT_R216_WORKER_CONTEXT_PASS real_crossing=true exact_progress=true selection_isolated=true");
             GD.Print("GA_NEXT_R213_PERSISTENT_UI_PASS real_signals=true queue_edit=true funding_assignment=true committed_state_unchanged=true");
             GetTree().Quit(0);
         }
