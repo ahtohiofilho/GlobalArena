@@ -24,6 +24,8 @@ public partial class Main
     private Label? _connectionProjection;
     private Button? _connectionCancel;
     private Label? _connectionFeedback;
+    private VBoxContainer? _connectionFunding;
+    private Label? _constructionWorkforceTitle;
     private ulong? _connectionDestination;
     private VBoxContainer? _constructionSection;
     private Label? _constructionStatus;
@@ -95,7 +97,7 @@ public partial class Main
         {
             Name = "GANextConnectionDetail",
             Visible = false,
-            CustomMinimumSize = new Vector2(575f, 350f),
+            CustomMinimumSize = new Vector2(440f, 410f),
             MouseFilter = MouseFilterEnum.Stop
         };
         _cityLinkDetail.AddThemeStyleboxOverride("panel", GaVisualFoundation.WindowSurface());
@@ -112,37 +114,53 @@ public partial class Main
         var hideDetails = new Button { Text = "BACK TO CITY" };
         hideDetails.Pressed += CloseConnectionDetail;
         detailsHeader.AddChild(hideDetails);
+        // A bounded scroll viewport prevents a large workforce from growing
+        // the window beyond its normal footprint. Header stays accessible.
+        var connectionScroll = new ScrollContainer
+        {
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
+            ClipContents = true
+        };
+        details.AddChild(connectionScroll);
+        var body = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        connectionScroll.AddChild(body);
         _cityLinkDetailText = new Label
         {
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
-        details.AddChild(_cityLinkDetailText);
-        details.AddChild(new Label { Text = "Investment amount (money units; decimal point)" });
+        body.AddChild(_cityLinkDetailText);
+        _connectionFunding = new VBoxContainer();
+        body.AddChild(_connectionFunding);
+        _connectionFunding.AddChild(new Label { Text = "Investment amount" });
         _connectionAmount = new LineEdit { Text = "0.100000", MaxLength = 32 };
         _connectionAmount.TextChanged += _ => RefreshConnectionInvestmentControls();
-        details.AddChild(_connectionAmount);
+        _connectionFunding.AddChild(_connectionAmount);
         _connectionProjection = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
-        details.AddChild(_connectionProjection);
+        body.AddChild(_connectionProjection);
         _connectionInvest = new Button
         {
             Text = "QUEUE INVESTMENT",
             Disabled = true
         };
         _connectionInvest.Pressed += () => ChangeConnectionInvestment(false);
-        details.AddChild(_connectionInvest);
+        _connectionFunding.AddChild(_connectionInvest);
         _connectionCancel = new Button { Text = "CANCEL PENDING INVESTMENT", Disabled = true };
         _connectionCancel.Pressed += () => ChangeConnectionInvestment(true);
-        details.AddChild(_connectionCancel);
+        _connectionFunding.AddChild(_connectionCancel);
         _connectionFeedback = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
-        details.AddChild(_connectionFeedback);
+        body.AddChild(_connectionFeedback);
         _constructionSection = new VBoxContainer { Name = "GANextConstruction", Visible = false };
-        details.AddChild(_constructionSection);
+        body.AddChild(_constructionSection);
         _constructionSection.AddChild(new Label { Text = "CONSTRUCTION" });
         _constructionStatus = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
         _constructionSection.AddChild(_constructionStatus);
         _constructionProgress = new ProgressBar { MinValue = 0, MaxValue = 100, ShowPercentage = true };
         _constructionSection.AddChild(_constructionProgress);
-        _constructionSection.AddChild(new Label { Text = "CONSTRUCTION WORKFORCE" });
+        _constructionWorkforceTitle = new Label { Text = "WORKFORCE" };
+        _constructionSection.AddChild(_constructionWorkforceTitle);
         _constructionWorkers = new VBoxContainer();
         _constructionSection.AddChild(_constructionWorkers);
     }
@@ -222,15 +240,14 @@ public partial class Main
         _cityLinkDetailText.Text =
             $"From node: {_cityConnectionSource.Value}\n" +
             $"To node: {link.Neighbor.FineStrategicCellId.Value}\n" +
-            $"Unit physical freight: {link.UnitPhysicalFreightMicro} micro\n" +
-            $"External tariff: {link.ExternalTariffMicro} micro\n" +
-            $"Infrastructure: {link.Ownership}\n" +
+            $"Current freight: {FormatMoneyMicroForDisplay(link.UnitPhysicalFreightMicro)}/cargo\n" +
+            $"External tariff: {FormatMoneyMicroForDisplay(link.ExternalTariffMicro)}/cargo\n" +
             $"Owner: {(link.InfrastructureOwner.HasValue
                 ? link.InfrastructureOwner.Value.Value.ToString()
                 : "Unowned")}\n" +
-            $"Cumulative investment: {link.InvestedMoneyMicro} micro\n" +
+            $"Active capital: {FormatMoneyMicroForDisplay(link.InvestedMoneyMicro)}\n" +
             ReadConnectionWorkforce(_cityConnectionSource.Value,
-                link.Neighbor.FineStrategicCellId.Value) + "\n\n" +
+                link.Neighbor.FineStrategicCellId.Value) + "\n" +
             ReadConnectionInvestment(_cityConnectionSource.Value,
                 link.Neighbor.FineStrategicCellId.Value);
         RefreshConnectionInvestmentControls();
@@ -295,19 +312,20 @@ public partial class Main
         var projectedAmount = project?.FundedMoneyMicro ?? pendingPlan?.MoneyMicro ?? amount;
         bool withinRange = projectedAmount <= ulong.MaxValue - physical.CommittedInvestmentMoneyMicro.GetValueOrDefault();
         bool affordable = valid && available >= GlobalArenaMoneyScale.FromMoneyMicro(amount);
+        if (_connectionFunding is not null) _connectionFunding.Visible = project is null;
         if (_connectionAmount is not null) _connectionAmount.Editable = !ready && !pending && project is null;
         if (_connectionProjection is not null && financeable && (project is not null || pending || valid) && withinRange)
         {
             var before = FoundationPhysicalAuthoritativeTransportProjector.EffectiveUnitFreightCost(physical);
             var after = FoundationPhysicalAuthoritativeTransportProjector.ProjectUnitFreightCost(physical, projectedAmount);
             _connectionProjection.Text =
-                $"Physical freight per cargo unit: {FormatMoneyMicroForDisplay(before)} -> {FormatMoneyMicroForDisplay(after)}\n" +
-                $"Reduction: {FormatMoneyMicroForDisplay(before - after)} | {(construction ? "Available next economic cycle after completion." : "Conditional on settlement; not a revenue forecast.")}";
+                $"Projected freight: {FormatMoneyMicroForDisplay(after)}/cargo\n" +
+                $"Reduction: {FormatMoneyMicroForDisplay(before - after)} | {(construction ? "Next cycle after completion." : "After settlement.")}";
         }
         _connectionInvest.Disabled = ready || pending || project is not null || !financeable || !affordable || !withinRange;
         _connectionCancel.Disabled = ready || !pending;
         _connectionFeedback.Text = ready ? "Turn already submitted." :
-            project is not null ? "Construction already funded. Assign workers below." :
+            project is not null ? (project.Investor == _humanCivilization ? "Assign workers for this turn." : "Project funded by another civilization.") :
             pending ? "Funding pending. Press E to commit the turn." :
             !financeable ? "This connection cannot be financed by your civilization." :
             !valid ? "Enter a positive amount with at most six decimal places." :
@@ -321,14 +339,19 @@ public partial class Main
     {
         var host = _tacticalHost;
         if (_constructionSection is null || _constructionStatus is null || _constructionProgress is null || _constructionWorkers is null || host is null) return;
-        _constructionSection.Visible = host.Snapshot.Constructions.IsInitialized;
-        if (!_constructionSection.Visible) return;
         foreach (Node child in _constructionWorkers.GetChildren()) { _constructionWorkers.RemoveChild(child); child.QueueFree(); }
-        var project = host.Snapshot.Constructions.Projects.LastOrDefault(p => p.Edge == id);
-        _constructionProgress.Value = project is null ? 0 : 100.0 * project.CompletedWorkMicro / project.RequiredWorkMicro;
-        _constructionStatus.Text = project is null ? "No funded construction. Fund a project first." :
-            $"Status: {(project.IsActivated ? "Operational" : project.IsComplete ? "Completed" : "Under construction")} | Project #{project.Id}\nFunded capital: {FormatMoneyMicroForDisplay(project.FundedMoneyMicro)}\nWork: {FormatMoneyMicroForDisplay(project.CompletedWorkMicro)} / {FormatMoneyMicroForDisplay(project.RequiredWorkMicro)}\nBenefits apply from the next economic cycle after completion.";
-        if (project is null || project.IsComplete || project.Investor != _humanCivilization) return;
+        var project = host.Snapshot.Constructions.Projects.LastOrDefault(p => p.Edge == id && !p.IsActivated);
+        _constructionSection.Visible = host.Snapshot.Constructions.IsInitialized && project is not null;
+        _constructionProgress.Value = 0;
+        _constructionStatus.Text = "";
+        if (project is null || !_constructionSection.Visible) return;
+        _constructionProgress.Value = 100.0 * project.CompletedWorkMicro / project.RequiredWorkMicro;
+        _constructionStatus.Text =
+            $"Project #{project.Id} | {(project.IsComplete ? "Awaiting activation" : "Under construction")}\nFunded capital: {FormatMoneyMicroForDisplay(project.FundedMoneyMicro)}\nWork: {FormatMoneyMicroForDisplay(project.CompletedWorkMicro)} / {FormatMoneyMicroForDisplay(project.RequiredWorkMicro)}";
+        bool showWorkers = !project.IsComplete && project.Investor == _humanCivilization;
+        if (_constructionWorkforceTitle is not null) _constructionWorkforceTitle.Visible = showWorkers;
+        _constructionWorkers.Visible = showWorkers;
+        if (!showWorkers) return;
         var plans = host.GetHumanConstructionOrders(_humanCivilization);
         var otherOrders = host.GetHumanOrders(_humanCivilization);
         var edge = host.Incidence.FineTopology.Edges.Single(e => e.Id == id.FineStrategicEdgeId);
@@ -418,7 +441,7 @@ public partial class Main
             .SingleOrDefault(p => p.Edge == id);
         return $"Physical connection ID: {edge.Id.Value}\n" +
             (plan is null ? "Your pending investment: None" :
-                $"Your pending investment: {plan.MoneyMicro} micro (not yet spent)");
+                $"Your pending investment: {FormatMoneyMicroForDisplay(plan.MoneyMicro)} (not yet spent)");
     }
 
     // Presence is not construction eligibility: workers can have other orders
@@ -436,8 +459,7 @@ public partial class Main
             w.TacticalTileId.HasValue &&
             w.TacticalTileId.Value.FineStrategicCellId.Value == destination);
         return $"Your workers at from node: {from}\n" +
-            $"Your workers at to node: {to}\n" +
-            "Physical presence only; construction eligibility not evaluated.";
+            $"Your workers at to node: {to} (presence only)";
     }
 
     // R181: exact visual acceptance from the REAL cartographic site
@@ -531,7 +553,7 @@ public partial class Main
         if (_cityLinkDetailText?.Text.Contains(
                 $"Your workers at from node: {fromCount}\n", StringComparison.Ordinal) != true ||
             _cityLinkDetailText.Text.Contains(
-                $"Your workers at to node: {toCount}\n", StringComparison.Ordinal) != true)
+                $"Your workers at to node: {toCount} (presence only)", StringComparison.Ordinal) != true)
             throw new InvalidOperationException("R186 connection workforce differs from signed worker locations.");
         GD.Print("GA_NEXT_R186_CONNECTION_WORKFORCE_PASS physical_presence=true read_only=true");
         var realEdge = _tacticalHost.Incidence.FineTopology.Edges.Single(e =>
@@ -542,7 +564,7 @@ public partial class Main
         var pending = _tacticalHost.GetHumanMonetaryInvestments(_humanCivilization)
             .SingleOrDefault(p => p.Edge == realId);
         var expectedPending = pending is null ? "Your pending investment: None" :
-            $"Your pending investment: {pending.MoneyMicro} micro (not yet spent)";
+            $"Your pending investment: {FormatMoneyMicroForDisplay(pending.MoneyMicro)} (not yet spent)";
         if (_cityLinkDetailText?.Text.Contains(
                 $"Physical connection ID: {realEdge.Id.Value}\n", StringComparison.Ordinal) != true ||
             !_cityLinkDetailText.Text.EndsWith(expectedPending, StringComparison.Ordinal) ||
