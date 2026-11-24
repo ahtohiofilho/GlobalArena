@@ -106,6 +106,9 @@ public partial class Main : Control
     private Control? _planetWindow;
     private Control? _workspaceWindow;
     private Label? _operationalContext;
+    private Label? _selectedUnitIdentity;
+    private VBoxContainer? _selectedUnitSlot;
+    private const float R2212DockWidth = 304f;
     private bool _operationalCitySelected;
     private ulong? _operationalSelectedTile;
     private bool CompactOperationalDock => System.Environment.GetEnvironmentVariable("GA_NEXT_CONSTRUCTION_PREVIEW") == "1";
@@ -115,7 +118,17 @@ public partial class Main : Control
         _operationalContext.Text = _operationalCitySelected && _selectedCartographicSite.HasValue
             ? $"City | Node {_selectedCartographicSite.Value}"
             : _operationalSelectedTile.HasValue ? $"Node {_operationalSelectedTile.Value}"
-            : _selectedLocalWorkerId.HasValue ? $"Worker #{_selectedLocalWorkerId.Value}" : "Select a city or worker";
+            : "Select a destination on the map";
+        RefreshSelectedUnitSlot();
+    }
+    private void RefreshSelectedUnitSlot()
+    {
+        if (_selectedUnitIdentity is null) return;
+        var worker = _tacticalHost?.Snapshot.Workers.Workers.FirstOrDefault(w =>
+            w.Owner == _humanCivilization && w.Id.Value == _selectedLocalWorkerId);
+        _selectedUnitIdentity.Text = worker is null ? "No unit selected" :
+            $"Worker #{worker.Id.Value} | Node {worker.TacticalTileId?.FineStrategicCellId.Value}\n" +
+            (worker.Activity == PhysicalWorkerActivity.Traveling ? "Traveling" : worker.Occupation == PhysicalWorkerOccupation.Unassigned ? "Idle / assigned" : worker.Occupation?.ToString() ?? worker.Activity.ToString());
     }
     private Label? _compactTurnPulse;
     private GaFloatingWindow? _atlasFloatingWindow;
@@ -1272,7 +1285,7 @@ public partial class Main : Control
         {
             Name = "GANextOperationsWindow",
             Visible = CompactOperationalDock,
-            CustomMinimumSize = new Vector2(CompactOperationalDock ? 240f : 394f, 0f),
+            CustomMinimumSize = new Vector2(CompactOperationalDock ? R2212DockWidth : 394f, 0f),
             SizeFlagsHorizontal = SizeFlags.ShrinkEnd,
             SizeFlagsVertical = SizeFlags.ExpandFill,
             MouseFilter = MouseFilterEnum.Stop
@@ -1297,6 +1310,17 @@ public partial class Main : Control
             var hide = new Button { Text = "X" };
             hide.Pressed += () => SetOperationalDockVisible(false);
             compactHeader.AddChild(hide);
+            var selectedPanel = new PanelContainer { Name = "GANextSelectedUnitSlot" };
+            selectedPanel.AddThemeStyleboxOverride("panel", GaVisualFoundation.WindowSurface());
+            operationsColumn.AddChild(selectedPanel);
+            _selectedUnitSlot = new VBoxContainer();
+            selectedPanel.AddChild(_selectedUnitSlot);
+            _selectedUnitSlot.AddChild(new Label { Text = "SELECTED UNIT" });
+            var unitRow = new HBoxContainer();
+            _selectedUnitSlot.AddChild(unitRow);
+            unitRow.AddChild(new R218WorkerSilhouette { CustomMinimumSize = new Vector2(28, 32), MouseFilter = MouseFilterEnum.Ignore });
+            _selectedUnitIdentity = new Label { Name = "GANextSelectedUnitIdentity", AutowrapMode = TextServer.AutowrapMode.WordSmart, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            unitRow.AddChild(_selectedUnitIdentity);
             _operationalContext = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
             operationsColumn.AddChild(_operationalContext);
             var cityAction = new Button { Text = "Y | OPEN CITY" };
@@ -1407,11 +1431,32 @@ public partial class Main : Control
                 if (row.GetChildCount() == 0 && row is Control emptyRow) emptyRow.Visible = false;
             }
             _localWorkerSelector.FitToLongestItem = false;
-            operationsBody.Visible = false;
-            var advanced = new Button { Text = "WORKER COMMANDS" };
-            operationsColumn.AddChild(advanced);
-            operationsColumn.MoveChild(advanced, operationsColumn.GetChildCount() - 2);
-            advanced.Pressed += () => operationsBody.Visible = !operationsBody.Visible;
+            // One selected-worker slot, one set of real command controls.
+            // Keep identity and roster selector fixed; actions/details scroll.
+            _localWorkerSelector.Reparent(_selectedUnitSlot!);
+            _localWorkerSelector.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            operationsBody.Visible = true;
+            // Existing controls stay accessible without a second click.
+            // The body scrolls independently and the fixed header leaves
+            // the lower dock available for the future auxiliary planet.
+            if (_persistentQueuePanel is not null)
+            {
+                // Put frequently used move/production/crop controls before
+                // the detailed queue; retain all existing widgets/callbacks.
+                if (_cropSelector is not null)
+                {
+                    _cropSelector.Reparent(orderPanel);
+                    orderPanel.MoveChild(_cropSelector, 0);
+                }
+                var actions = new VBoxContainer { Name = "GANextSelectedUnitActions" };
+                orderPanel.AddChild(actions);
+                orderPanel.MoveChild(actions, 1);
+                foreach (var button in new[] { _localMoveButton, _localProduceButton,
+                    _localAgricultureButton, _localForestryButton, _localMiningButton,
+                    _r149LandWorkButton, _r149PortWorkButton, _localCancelQueuedButton })
+                    if (button is not null) button.Reparent(actions);
+            }
+            RefreshSelectedUnitSlot();
         }
 
         // Secondary planetary atlas is a bounded, movable and resizable

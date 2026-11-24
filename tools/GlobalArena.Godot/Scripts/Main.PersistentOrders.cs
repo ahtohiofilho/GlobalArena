@@ -395,6 +395,14 @@ public partial class Main
                 throw new InvalidOperationException("HUD selection failed or mutated state.");
             GD.Print("GA_NEXT_R218_SITE_HUD_PASS canonical_roster=true real_button=true hash_unchanged=true");
             GD.Print("GA_NEXT_R2211_HUD_POINTER_PASS press_release=true different_worker=true");
+            if (_selectedUnitSlot?.IsVisibleInTree() != true ||
+                _selectedUnitIdentity?.Text.StartsWith($"Worker #{hoverWorker.Id.Value} |", StringComparison.Ordinal) != true ||
+                _localWorkerSelector?.GetParent() != _selectedUnitSlot ||
+                _workspaceWindow!.CustomMinimumSize.X != R2212DockWidth ||
+                _localAgricultureButton?.IsVisibleInTree() != true ||
+                _localMoveButton?.IsVisibleInTree() != true || host.StateHash != before)
+                throw new InvalidOperationException("Selected unit slot did not expose existing operational controls.");
+            GD.Print("GA_NEXT_R2212_CONTEXTUAL_DOCK_PASS fixed_slot=true direct_actions=true hash_unchanged=true");
             var worker = host.Snapshot.Workers.Workers.First(w => w.Owner == _humanCivilization);
             OnOperationalWorkerSelected(worker.Id.Value);
             if (_persistentQueueList!.Visible || _persistentInsert!.Disabled != true ||
