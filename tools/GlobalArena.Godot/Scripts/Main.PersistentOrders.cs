@@ -352,44 +352,45 @@ public partial class Main
             var hoverSite = hoverWorker.TacticalTileId!.Value.FineStrategicCellId.Value;
             if (!R218Available()) throw new InvalidOperationException("Site hover unavailable in persistent preview.");
             _r218Anchor = _tacticalPreview!.GetGlobalRect().GetCenter();
-            _r218Candidate = hoverSite;
-            _r218Elapsed = R218Delay;
+            // Prepare the actual panel layout before arming the hover timer.
+            // Headless startup has no pointer over this site yet.
             RenderR218SiteHover(hoverSite);
             for (int i = 0; i < 3; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             var hoverScroll = _r218Rows!.GetChildren().OfType<ScrollContainer>().Single();
             var hoverList = hoverScroll.GetChild<VBoxContainer>(0);
             var hoverButton = hoverList.GetChildren().OfType<HBoxContainer>()
                 .SelectMany(r => r.GetChildren().OfType<Button>()).Single(b => b.Name.ToString() == $"R218Worker{hoverWorker.Id.Value}");
-            if (!_r218Hud!.Visible || host.StateHash != before)
-                throw new InvalidOperationException("Site HUD mutated canonical state.");
-            // Route genuine GUI events through the root viewport, not EmitSignal.
-            // Headless pointer position is explicitly moved before the dwell/update.
+            if (!_r218Hud!.Visible) throw new InvalidOperationException("HUD hidden during layout preparation.");
+            if (host.StateHash != before) throw new InvalidOperationException("HUD layout changed canonical hash.");
+            // One input dispatch path: the engine updates Input and routes
+            // the event through the viewport. Never emit Button.Pressed directly.
             var position = hoverButton.GetGlobalRect().GetCenter();
-            GetViewport().PushInput(new InputEventMouseMotion { Position = position, GlobalPosition = position }, true);
-            GetViewport().PushInput(new InputEventMouseButton {
-                Position = position, GlobalPosition = position, ButtonIndex = MouseButton.Left,
-                Pressed = true, ButtonMask = MouseButtonMask.Left }, true);
-            // Inject the held-button state into Input as well: _Process consults Input.
-            // ParseInputEvent is intentionally paired with release in finally.
+            Input.ParseInputEvent(new InputEventMouseMotion { Position = position, GlobalPosition = position });
+            Input.FlushBufferedEvents();
+            _r218Candidate = hoverSite;
+            _r218Elapsed = R218Delay;
             Input.ParseInputEvent(new InputEventMouseButton {
                 Position = position, GlobalPosition = position, ButtonIndex = MouseButton.Left,
                 Pressed = true, ButtonMask = MouseButtonMask.Left });
+            Input.FlushBufferedEvents();
             try
             {
+                if (!Input.IsMouseButtonPressed(MouseButton.Left) || !hoverButton.ButtonPressed)
+                    throw new InvalidOperationException("Mouse-down did not reach actual HUD button.");
                 UpdateR218SiteHover(0.016);
                 if (!_r218Hud.Visible || _selectedLocalWorkerId == hoverWorker.Id.Value)
                     throw new InvalidOperationException("HUD dismissed or selected before release.");
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                if (!_r218Hud.Visible || !hoverButton.ButtonPressed)
+                    throw new InvalidOperationException("HUD lost held click across frame.");
             }
             finally
             {
                 Input.ParseInputEvent(new InputEventMouseButton {
                     Position = position, GlobalPosition = position, ButtonIndex = MouseButton.Left,
                     Pressed = false, ButtonMask = (MouseButtonMask)0 });
+                Input.FlushBufferedEvents();
             }
-            if (_r218Hud.Visible)
-                GetViewport().PushInput(new InputEventMouseButton {
-                    Position = position, GlobalPosition = position, ButtonIndex = MouseButton.Left,
-                    Pressed = false, ButtonMask = (MouseButtonMask)0 }, true);
             if (_r218Hud.Visible || _selectedLocalWorkerId != hoverWorker.Id.Value || host.StateHash != before)
                 throw new InvalidOperationException("HUD selection failed or mutated state.");
             GD.Print("GA_NEXT_R218_SITE_HUD_PASS canonical_roster=true real_button=true hash_unchanged=true");
