@@ -197,7 +197,9 @@ internal static class GaExplicitEconomicQaConfiguration
             physicalTravelPolicy: enableTemporalFinancialVisualSmoke || enableConstructionPreview
                 ? new FoundationGroundEdgeTravelTimePolicy(1_400_000UL)
                 : null,
-            constructionMoneyMicroPerWholeWork: enableConstructionPreview ? 1_000_000UL : null, agriculture: agriculture);
+            constructionMoneyMicroPerWholeWork: enableConstructionPreview ? 1_000_000UL : null, agriculture: agriculture,
+            operationalPolicy: enablePersistentOrders && System.Environment.GetEnvironmentVariable("GA_NEXT_OPERATIONAL_PREVIEW") == "1"
+                ? new FoundationOperationalFreightShadowPolicy(1_000_000UL, 1_000_000UL) : null);
         return (host, fine, identity);
     }
 
