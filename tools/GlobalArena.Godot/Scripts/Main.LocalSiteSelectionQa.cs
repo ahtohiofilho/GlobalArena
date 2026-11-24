@@ -85,13 +85,22 @@ public partial class Main
         // keystroke and no need to scroll past all existing worker tools.
         _operationalCitySelected = true;
         RefreshOperationalContext();
-        if (!CompactOperationalDock) SetOperationalDockVisible(true);
+        if (CompactOperationalDock)
+        {
+            _operationalSelectedTile = physicalTileId;
+            // Polygon and marker callbacks may both arrive for the same click.
+            // Do not rebuild the window twice or disturb an open connection.
+            if (_cityWindowLayer?.Visible != true || _cityConnectionSource != physicalTileId)
+                OpenSelectedCityWindow();
+            return;
+        }
+        SetOperationalDockVisible(true);
         if (_workspaceWindow?.FindChild(
                 "GANextOperationsBodyScroll", true, false)
             is ScrollContainer bodyScroll)
             bodyScroll.ScrollVertical = 0;
         GD.Print($"GA_NEXT_R132_LOCAL_CENTER_OPEN tile={physicalTileId} " +
-            "dock_visible={_workspaceWindow?.Visible == true} scroll_top=true worker_selection_unchanged=true");
+            $"dock_visible={_workspaceWindow?.Visible == true} scroll_top=true worker_selection_unchanged=true");
     }
 
     private void RefreshLocalSiteSelectionQa()
