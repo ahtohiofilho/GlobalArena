@@ -96,6 +96,65 @@ public sealed class FoundationTemporalEconomicJournalGateTests
 
 
     [Fact]
+    public void R210PersistentBuildUsesArrivalRemainderAndContinuesWithoutNewOrder()
+    {
+        var (world, worker, adjacent, _, incidence, fine) = Fixture();
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL),
+                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)), workersPerCivilization: 3);
+        var signature = FoundationFineFirstWorldgenCanonicalSignature.Compute(demo.Session.GeneratedWorld, incidence, fine);
+        var crossing = incidence.FineTopology.Edges.First(e =>
+            e.IncidentCellIds.Contains(adjacent.FineStrategicCellId) &&
+            !e.IncidentCellIds.Contains(worker.TacticalTileId!.Value.FineStrategicCellId) &&
+            fine.CrossingAtIndices((int)e.IncidentCellIds[0].Value - 1,
+                (int)e.IncidentCellIds[1].Value - 1) == FoundationFineTransportCrossingKind.Ground);
+        var edge = new PhysicalTacticalEdgeId(incidence.Refinement.FineParameters, crossing.Id);
+        var initial = FoundationPersistedEdgeTravelTransitions.DeployEmpty(
+            world.DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
+                world.Civilizations.Civilizations.Select(c => (c, 5_000_000UL)))))
+            .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
+            .DeployInitialWorkerOrders();
+        var funding = new FoundationFundedWorkerIntentJournal(new FoundationConstructionFundingExecutor(
+            new FoundationMonetaryInfrastructureEventExecutor(demo.Session.GeneratedWorld, incidence), 1_000_000UL));
+        var context = new SimulationContext(new TurnNumber(1UL), new SimulationSeed(712UL));
+        var (funded, _) = funding.Record(initial, new EventId(new CommandId(context.Turn, 1UL), 1UL),
+            worker.Owner, edge, 1_200_000UL, new[] { new FoundationFundedWorkerInsertion(worker.Id, 0) }, context);
+        funded = funded.InsertWorkerOrder(worker.Owner, worker.Id, 1, FoundationWorkerOrderKind.Occupation,
+            occupation: PhysicalWorkerOccupation.Agriculture);
+        var scheduler = new FoundationPersistentWorkerTurnScheduler(new FoundationConstructionApproachRouter(
+            demo.Session.GeneratedWorld, incidence, fine, signature, new FoundationGroundEdgeTravelTimePolicy(1_400_000UL)));
+        var hash = new CanonicalWorldStateHasher();
+        var state = funded;
+        for (ulong turn = 1; turn <= 3; turn++)
+        {
+            context = new SimulationContext(new TurnNumber(turn), new SimulationSeed(712UL));
+            var (next, ev) = scheduler.Record(state, context);
+            Assert.Equal(hash.Compute(next), hash.Compute(scheduler.Execute(state, ev, context)));
+            Assert.Throws<InvalidOperationException>(() => scheduler.Execute(next, ev, context));
+            Assert.All(ev.Slices.GroupBy(x => x.Worker), g => Assert.Equal(1_000_000UL, g.Sum(x => (long)x.DurationMicro) > 0 ? (ulong)g.Sum(x => (long)x.DurationMicro) : 0UL));
+            var slices = ev.Slices.Where(x => x.Worker == worker.Id).ToArray();
+            Assert.Equal(turn == 1 ? 0UL : turn == 2 ? 600_000UL : 1_200_000UL,
+                next.Constructions.Projects.Single().CompletedWorkMicro);
+            Assert.Equal(turn == 3, next.Constructions.Projects.Single().IsActivated);
+            if (turn == 2)
+            {
+                Assert.Equal(400_000U, slices[0].DurationMicro);
+                Assert.Equal(600_000U, slices[1].DurationMicro);
+                Assert.Equal(1UL, slices[1].ProjectId);
+            }
+            if (turn == 3)
+            {
+                Assert.Equal(600_000U, slices[0].DurationMicro);
+                Assert.Equal(400_000U, slices[1].DurationMicro);
+                Assert.Equal(PhysicalWorkerActivity.Producing, slices[1].Activity);
+                Assert.Equal(2UL, next.WorkerOrders.Queues.Single(q => q.Worker == worker.Id).ActiveOrderId);
+            }
+            Assert.Same(funded.Treasury, next.Treasury);
+            state = next;
+        }
+    }
+
+    [Fact]
     public void R209RemoteBuildHeadAutomaticallyApproachesSiteAcrossTurns()
     {
         var (world, worker, adjacent, movement, incidence, fine) = Fixture();
