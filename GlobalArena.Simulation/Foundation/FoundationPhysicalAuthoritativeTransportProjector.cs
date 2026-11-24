@@ -81,11 +81,20 @@ public static class FoundationPhysicalAuthoritativeTransportProjector
         PhysicalTransportEdgeRuntimeRecord edge)
     {
         ArgumentNullException.ThrowIfNull(edge);
+        return ProjectUnitFreightCost(edge, 0UL);
+    }
+
+    // Hypothetical additional capital, not a command or a mutation.
+    // Uses exactly the same integer cost function as committed freight.
+    public static ulong ProjectUnitFreightCost(
+        PhysicalTransportEdgeRuntimeRecord edge, ulong additionalMoneyMicro)
+    {
+        ArgumentNullException.ThrowIfNull(edge);
         ulong natural = edge.FreePhysicalCostMicroPerWholeCargoUnit;
         if (natural == 0UL)
             throw new InvalidOperationException(
                 "Natural unit freight cost must remain positive.");
-        ulong investment = edge.CommittedInvestmentMoneyMicro.GetValueOrDefault();
+        ulong investment = checked(edge.CommittedInvestmentMoneyMicro.GetValueOrDefault() + additionalMoneyMicro);
         if (investment == 0UL)
             return natural;
         if (edge.CargoMicroAtReferenceLoad ==
