@@ -124,7 +124,9 @@ public static class FoundationTemporalEconomicJournalGate
         SimulationContext context,
         FoundationMonetaryInfrastructureEventExecutor? investmentExecutor,
         FoundationFineFirstPhysicalGeography? signedFine = null,
-        FoundationConstructionCollectiveTurnPhase? constructionPhase = null)
+        FoundationConstructionCollectiveTurnPhase? constructionPhase = null,
+        FoundationPersistentWorkerTurnScheduler? persistentScheduler = null,
+        FoundationFundedWorkerIntentJournal? fundedIntents = null)
     {
         ArgumentNullException.ThrowIfNull(beginning);
         ArgumentNullException.ThrowIfNull(physicalAndInvestmentEvents);
@@ -134,14 +136,14 @@ public static class FoundationTemporalEconomicJournalGate
             throw new InvalidOperationException(
                 "Temporal cash cannot close without a bound opt-in world and funded treasury.");
         var executor = new ReplayExecutor(beginning, movement, movementPolicy,
-            incidence, economicPolicy, signedFine, investmentExecutor, constructionPhase);
+            incidence, economicPolicy, signedFine, investmentExecutor, constructionPhase, persistentScheduler, fundedIntents);
         var staged = beginning;
         foreach (var ev in physicalAndInvestmentEvents)
             staged = executor.Execute(staged, ev, context);
         var (settlement, expected) = Derive(beginning, staged,
             executor.VerifiedPhysicalEvents, executor.VerifiedLocalEvents,
             executor.VerifiedInvestmentCount,
-            incidence, economicPolicy, context, signedFine);
+            incidence, economicPolicy, context, signedFine, executor.VerifiedTimeline);
         // Resolution solves once; the fresh journal executor below solves
         // independently once more. Avoid an unneeded third market pass.
         var actual = expected;
@@ -152,7 +154,7 @@ public static class FoundationTemporalEconomicJournalGate
                 wasEligible: true, wasExecuted: true)).ToArray());
         var independent = ReplayJournal(beginning, journal, movement,
             movementPolicy, incidence, economicPolicy, context, signedFine,
-            investmentExecutor, constructionPhase);
+            investmentExecutor, constructionPhase, persistentScheduler, fundedIntents);
         var hash = Hasher.Compute(actual);
         if (hash != Hasher.Compute(independent) ||
             hash != Hasher.Compute(expected))
@@ -174,12 +176,14 @@ public static class FoundationTemporalEconomicJournalGate
         SimulationContext context,
         FoundationFineFirstPhysicalGeography? signedFine = null,
         FoundationMonetaryInfrastructureEventExecutor? investmentExecutor = null,
-        FoundationConstructionCollectiveTurnPhase? constructionPhase = null)
+        FoundationConstructionCollectiveTurnPhase? constructionPhase = null,
+        FoundationPersistentWorkerTurnScheduler? persistentScheduler = null,
+        FoundationFundedWorkerIntentJournal? fundedIntents = null)
     {
         ArgumentNullException.ThrowIfNull(beginning);
         ArgumentNullException.ThrowIfNull(journal);
         var executor = new ReplayExecutor(beginning, movement, movementPolicy,
-            incidence, economicPolicy, signedFine, investmentExecutor, constructionPhase);
+            incidence, economicPolicy, signedFine, investmentExecutor, constructionPhase, persistentScheduler, fundedIntents);
         var state = new SimulationEventLogReplayer(executor).Replay(
             new SimulationReplayInput(beginning, journal, context));
         if (!executor.IsClosed)
@@ -197,15 +201,19 @@ public static class FoundationTemporalEconomicJournalGate
         PhysicalTacticalIncidenceMap incidence,
         FoundationAuthoritativeEconomicSettlementPolicy policy,
         SimulationContext context,
-        FoundationFineFirstPhysicalGeography? signedFine)
+        FoundationFineFirstPhysicalGeography? signedFine,
+        FoundationPersistentWorkerTurnEvent? timeline = null)
     {
+        if (beginning.WorkerOrders.IsInitialized != (timeline is not null))
+            throw new InvalidOperationException("Persistent close requires exactly one verified timeline.");
         if (HashedBeginningInvalid(beginning, staged, investmentCount) ||
             physicalEvents.Any(ev => ev.Id.Turn != context.Turn) ||
             localEvents.Any(ev => ev.Id.Turn != context.Turn))
             throw new InvalidOperationException(
                 "Temporal monetary evidence is not from one authoritative worker turn.");
-        var calendar = FoundationTemporalEconomicTurnProjector.Project(
-            beginning, staged, physicalEvents, localEvents, policy.Demand);
+        var calendar = timeline is null
+            ? FoundationTemporalEconomicTurnProjector.Project(beginning, staged, physicalEvents, localEvents, policy.Demand)
+            : FoundationTemporalEconomicTurnProjector.ProjectPersistent(beginning, timeline.Slices, policy.Demand);
         var financial = FoundationTemporalFinancialReconciler.Evaluate(
             beginning, incidence, calendar, policy, signedFine, beginning.Constructions.IsInitialized ? beginning : staged);
         ulong ordinal = checked(staged.Treasury.LastSettledEconomicCycleOrdinal + 1UL);
@@ -300,6 +308,10 @@ public static class FoundationTemporalEconomicJournalGate
         private bool _investmentsStarted;
         private int _investmentCount;
         private bool _closed;
+        private readonly FoundationPersistentWorkerTurnScheduler? _scheduler;
+        private readonly FoundationFundedWorkerIntentJournal? _fundedIntents;
+        private readonly HashSet<EventId> _persistentIds = new();
+        public FoundationPersistentWorkerTurnEvent? VerifiedTimeline { get; private set; }
 
         public IReadOnlyList<FoundationEdgeTravelTurnEvent> VerifiedPhysicalEvents => _events;
         public IReadOnlyList<PhysicalTacticalWorkerMovedEvent> VerifiedLocalEvents => _localEvents;
@@ -313,7 +325,9 @@ public static class FoundationTemporalEconomicJournalGate
             FoundationAuthoritativeEconomicSettlementPolicy policy,
             FoundationFineFirstPhysicalGeography? signedFine,
             FoundationMonetaryInfrastructureEventExecutor? investment,
-            FoundationConstructionCollectiveTurnPhase? constructionPhase)
+            FoundationConstructionCollectiveTurnPhase? constructionPhase,
+            FoundationPersistentWorkerTurnScheduler? persistentScheduler,
+            FoundationFundedWorkerIntentJournal? fundedIntents)
         {
             _beginning = beginning;
             _travel = new FoundationEdgeTravelEventExecutor(movement, movementPolicy);
@@ -322,7 +336,12 @@ public static class FoundationTemporalEconomicJournalGate
             _policy = policy;
             _signedFine = signedFine;
             _investment = investment;
-            if (beginning.Constructions.IsInitialized != (constructionPhase is not null))
+            _scheduler = persistentScheduler;
+            _fundedIntents = fundedIntents;
+            if (beginning.WorkerOrders.IsInitialized != (_scheduler is not null) ||
+                (_scheduler is not null && (_fundedIntents is null || constructionPhase is not null)))
+                throw new InvalidOperationException("Persistent replay requires matching exclusive executor configuration.");
+            if (_scheduler is null && beginning.Constructions.IsInitialized != (constructionPhase is not null))
                 throw new InvalidOperationException("Construction replay requires matching opt-in phase.");
             _construction = constructionPhase?.CreateReplayExecutor(movement);
         }
@@ -332,6 +351,27 @@ public static class FoundationTemporalEconomicJournalGate
         {
             if (_closed)
                 throw new InvalidOperationException("Cannot append events after economic close.");
+            if (_scheduler is not null && ev is not FoundationTemporalSalesSettledEvent)
+            {
+                if (VerifiedTimeline is not null || !_persistentIds.Add(ev.Id))
+                    throw new InvalidOperationException("Duplicate or late persistent operation.");
+                if (ev is FoundationPersistentOrderEditEvent)
+                    return new FoundationPersistentOrderEditJournal().Execute(state, ev, context);
+                if (ev is FoundationFundedWorkerIntentEvent)
+                {
+                    var funded = _fundedIntents!.Execute(state, ev, context);
+                    _investmentCount++;
+                    return funded;
+                }
+                if (ev is FoundationPersistentWorkerTurnEvent timeline)
+                {
+                    var next = _scheduler.Execute(state, timeline, context);
+                    VerifiedTimeline = timeline;
+                    _investmentCount++; // scheduler may activate funded capital
+                    return next;
+                }
+                throw new InvalidOperationException("Legacy operations cannot compete with persistent scheduling.");
+            }
             if (ev is PhysicalTacticalWorkerMovedEvent local)
             {
                 if (_travelsStarted || _investmentsStarted ||
@@ -387,7 +427,7 @@ public static class FoundationTemporalEconomicJournalGate
                     "Only canonical physical movements and one temporal SYSTEM sale are allowed.");
             var (derived, after) = Derive(_beginning, state, _events,
                 _localEvents, _investmentCount, _incidence, _policy,
-                context, _signedFine);
+                context, _signedFine, VerifiedTimeline);
             RequireIdentical(monetary, derived);
             _closed = true;
             return after;
