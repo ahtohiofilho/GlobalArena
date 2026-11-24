@@ -1886,6 +1886,9 @@ public partial class Main : Control
                 "GA_NEXT_CARTOGRAPHIC_SITE_SMOKE") == "1";
             bool fineFirstInteractive = System.Environment.GetEnvironmentVariable(
                 "GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW") == "1";
+            bool constructionPreview = System.Environment.GetEnvironmentVariable("GA_NEXT_CONSTRUCTION_PREVIEW") == "1";
+            if (constructionPreview && (!fineFirstInteractive || !_interactiveEconomicPreviewActive))
+                throw new InvalidOperationException("Construction preview requires the signed interactive economy lab.");
             bool fineFirstLab = fineFirstVisualSmoke || fineFirstInteractive ||
                 temporalEconomyVisualSmoke || _resolutionBootstrapSmoke;
             bool continuousNavigationSmoke = System.Environment.GetEnvironmentVariable(
@@ -1942,7 +1945,7 @@ public partial class Main : Control
                     var g18 = GaExplicitEconomicQaConfiguration
                         .PrepareFineFirst(_tacticalHost,
                             enableTemporalFinancialVisualSmoke:
-                                temporalEconomyVisualSmoke);
+                                temporalEconomyVisualSmoke, enableConstructionPreview: constructionPreview);
                     _tacticalHost = g18.Host;
                     _r123FineGeography = g18.Geography;
                     _goldbergStartup.VerifyWorldAndIncidence(
