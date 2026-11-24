@@ -58,8 +58,8 @@ internal sealed class FoundationGodotWorkspaceSmoke
             Must(cityButton is not null && cityWindow is not null &&
                 !cityWindow.Visible && cityTabs is not null &&
                 cityTabs.GetTabCount() == 2 &&
-                cityTabs.GetTabTitle(0) == "Visão geral" &&
-                cityTabs.GetTabTitle(1) == "Ligações",
+                cityTabs.GetTabTitle(0) == "Overview" &&
+                cityTabs.GetTabTitle(1) == "Connections",
                 "city window must have exactly overview and immediate links " +
                 "tabs and remain closed in the clean map startup");
 
