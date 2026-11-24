@@ -1,11 +1,11 @@
 using GlobalArena.World;
 
-namespace GlobalArena.Runtime;
+namespace GlobalArena.Runtime.PersistentOrders;
 
 /// <summary>Intent only: no physical progress, treasury or work is stored here.</summary>
 public enum FoundationWorkerOrderKind { Move = 1, Build = 2, Occupation = 3 }
 
-public sealed record FoundationQueuedWorkerOrder(
+public sealed record FoundationPersistentWorkerIntent(
     ulong Id, FoundationWorkerOrderKind Kind,
     PhysicalTacticalTileId? Destination = null,
     ulong? ProjectId = null,
@@ -35,10 +35,10 @@ public sealed class FoundationWorkerOrderQueue
     public CivilizationId Owner { get; }
     public ulong NextId { get; }
     public ulong? ActiveOrderId { get; }
-    public IReadOnlyList<FoundationQueuedWorkerOrder> Orders { get; }
+    public IReadOnlyList<FoundationPersistentWorkerIntent> Orders { get; }
 
     public FoundationWorkerOrderQueue(PhysicalWorkerId worker, CivilizationId owner,
-        ulong nextId, ulong? activeOrderId, IEnumerable<FoundationQueuedWorkerOrder> orders)
+        ulong nextId, ulong? activeOrderId, IEnumerable<FoundationPersistentWorkerIntent> orders)
     {
         ArgumentNullException.ThrowIfNull(orders);
         var rows = orders.ToArray();
@@ -55,7 +55,7 @@ public sealed class FoundationWorkerOrderQueue
     }
 
     public static FoundationWorkerOrderQueue Empty(PhysicalWorkerId worker, CivilizationId owner)
-        => new(worker, owner, 1, null, Array.Empty<FoundationQueuedWorkerOrder>());
+        => new(worker, owner, 1, null, Array.Empty<FoundationPersistentWorkerIntent>());
 
     private void Authorize(CivilizationId issuer)
     {
@@ -82,7 +82,7 @@ public sealed class FoundationWorkerOrderQueue
         Authorize(issuer);
         RequireInsertionIndex(index, Orders.Count);
         var rows = Orders.ToList();
-        rows.Insert(index, new FoundationQueuedWorkerOrder(NextId, kind, destination, projectId, occupation));
+        rows.Insert(index, new FoundationPersistentWorkerIntent(NextId, kind, destination, projectId, occupation));
         return new(Worker, Owner, checked(NextId + 1), ActiveOrderId, rows);
     }
 
