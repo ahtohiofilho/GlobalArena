@@ -26,7 +26,7 @@ public partial class Main
         _portQaChoices = new();
     private PhysicalTacticalEdgeId? _portQaSelected;
     private readonly Dictionary<PhysicalTacticalEdgeId,
-        (ulong BeforeFreight, ulong BeforeCargo)> _r144QueuedCapital = new();
+        (ulong BeforeFreight, ulong BeforeCargo, ulong MoneyMicro)> _r144QueuedCapital = new();
     private OptionButton? _r144PendingSelector;
     private readonly List<PhysicalTacticalEdgeId> _r144PendingChoices = new();
     private string? _portQaLastSettledAudit;
@@ -291,7 +291,7 @@ public partial class Main
                 _portQaSelected.Value, PortQaSpendMoneyMicro);
             _portQaLastSettledAudit = null;
             _r144QueuedCapital.Add(_portQaSelected.Value,
-                (beforeFreight, beforeCargo));
+                (beforeFreight, beforeCargo, PortQaSpendMoneyMicro));
             _portQaFeedback.Text =
                 $"{FormatMoneyMicroForDisplay(PortQaSpendMoneyMicro)} queued " +
                 "(NOT YET SPENT). Press E.";
@@ -412,7 +412,7 @@ public partial class Main
             ulong newCost = FoundationPhysicalAuthoritativeTransportProjector
                 .EffectiveUnitFreightCost(after);
             if (newCost > previous.BeforeFreight ||
-                committed.MoneyMicro != PortQaSpendMoneyMicro)
+                committed.MoneyMicro != previous.MoneyMicro)
                 throw new InvalidOperationException(
                     "Canonical capital investment must not raise effective freight.");
             ulong cargoAfter = _tacticalHost.GetLastClosedEconomicTradeView(
