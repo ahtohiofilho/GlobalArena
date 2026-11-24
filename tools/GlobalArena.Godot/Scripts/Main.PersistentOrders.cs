@@ -233,6 +233,28 @@ public partial class Main
             $"Crossing {travel.Source.FineStrategicCellId.Value} → {travel.Destination.FineStrategicCellId.Value} | {percent:F1}%\nRemaining: {travel.RemainingMicro / 1_000_000m:0.######} turns");
     }
 
+    private void ExerciseCropPreview(FoundationTacticalHumanAiTurnHost host)
+    {
+        var before = host.StateHash;
+        var worker = host.Snapshot.Workers.Workers.First(w => w.Owner == _humanCivilization);
+        OnOperationalWorkerSelected(worker.Id.Value);
+        if (_cropSelector?.Visible != true || _cropSelector.ItemCount != 6)
+            throw new InvalidOperationException("Six crop controls unavailable.");
+        _cropSelector.Select(3);
+        _localAgricultureButton!.EmitSignal(Button.SignalName.Pressed);
+        var order = ReadPersistentQueue(worker.Id).Orders.Single();
+        if (order.Crop != (byte)CropId.Rice || host.StateHash != before ||
+            !_persistentQueueList!.GetItemText(0).Contains("Rice"))
+            throw new InvalidOperationException("Crop selection did not stage real rice intent.");
+        EndFineCollectiveTurn();
+        var queue = host.Snapshot.WorkerOrders.Queues.Single(q => q.Worker == worker.Id);
+        if (queue.Orders.Single().Crop != (byte)CropId.Rice ||
+            queue.ActiveOrderId != order.Id || host.Snapshot.Treasury.LastSettledEconomicCycleOrdinal != 1 ||
+            !_persistentWorkerSummary!.Text.Contains("Rice"))
+            throw new InvalidOperationException("Crop preview did not commit persistent rice production.");
+        GD.Print("GA_NEXT_R219A1_CROP_PREVIEW_PASS six_choices=true real_order=true economic_close=true");
+    }
+
     internal async Task ExerciseR213PersistentInterfaceSmoke()
     {
         try
@@ -241,6 +263,12 @@ public partial class Main
             var host = _tacticalHost ?? throw new InvalidOperationException("Missing host.");
             if (!host.PersistentOrdersEnabled) throw new InvalidOperationException("Missing persistent preview.");
             var before = host.StateHash;
+            if (host.AgriculturalProduction is not null)
+            {
+                ExerciseCropPreview(host);
+                GetTree().Quit(0);
+                return;
+            }
             var hoverWorker = host.Snapshot.Workers.Workers.First(w => w.Owner == _humanCivilization);
             var hoverSite = hoverWorker.TacticalTileId!.Value.FineStrategicCellId.Value;
             if (!R218Available()) throw new InvalidOperationException("Site hover unavailable in persistent preview.");
