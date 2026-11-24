@@ -43,7 +43,8 @@ public static class FoundationTemporalFinancialReconciler
         FoundationTemporalEconomicTurnInputs temporal,
         FoundationAuthoritativeEconomicSettlementPolicy policy,
         FoundationFineFirstPhysicalGeography? signedFine = null,
-        WorldState? freightSnapshot = null)
+        WorldState? freightSnapshot = null,
+        FoundationOperationalFreightShadowPolicy? operationalPolicy = null)
     {
         ArgumentNullException.ThrowIfNull(baseline);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -56,11 +57,20 @@ public static class FoundationTemporalFinancialReconciler
                 "Transport-stage market cannot replace the temporal worker census.");
         var market = FoundationTemporalNativeMarketInputs.FromTemporal(
             baseline, temporal, policy.Demand);
+        var roads = FoundationPhysicalAuthoritativeTransportProjector.FromWorld(freightWorld, incidence).Roads;
+        if (operationalPolicy is not null)
+        {
+            if (signedFine is null || !baseline.WorkerOrders.IsInitialized || !ReferenceEquals(baseline, freightWorld))
+                throw new InvalidOperationException("Operational freight requires signed persistent opening infrastructure.");
+            var nodes = FoundationPhysicalOperationalWorkProjector.ProjectTemporal(baseline, incidence, signedFine, temporal);
+            var factors = nodes.SelectMany(n => n.Allocation.Shares).Where(s => s.EffortMicro > 0)
+                .GroupBy(s => s.Edge).Select(g => new FoundationOperationalEdgeProductivity(g.Key, g.First().Kind, 1_000_000UL)).ToArray();
+            var service = FoundationOperationalServiceProjector.Project(nodes, factors);
+            roads = FoundationOperationalFreightShadowProjector.Project(roads, service, operationalPolicy).CounterfactualRoads;
+        }
         var distribution = FoundationTemporalNativeMarginalMarketPlanner.Coordinate(
             baseline, incidence, temporal, policy.Demand, policy.Cargo,
-            policy.MaxProducerPasses, signedFine, freightWorld);
-        var roads = FoundationPhysicalAuthoritativeTransportProjector.FromWorld(
-            freightWorld, incidence).Roads;
+            policy.MaxProducerPasses, signedFine, freightWorld, roads);
         // Matching R169's signed topology, only real permitted freight edges
         // are considered in the financial cost calculation.
         if (signedFine is not null)
