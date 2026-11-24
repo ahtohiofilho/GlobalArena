@@ -106,12 +106,14 @@ public partial class Main : Control
     private Control? _workspaceWindow;
     private Label? _operationalContext;
     private bool _operationalCitySelected;
+    private ulong? _operationalSelectedTile;
     private bool CompactOperationalDock => System.Environment.GetEnvironmentVariable("GA_NEXT_CONSTRUCTION_PREVIEW") == "1";
     private void RefreshOperationalContext()
     {
         if (_operationalContext is null) return;
         _operationalContext.Text = _operationalCitySelected && _selectedCartographicSite.HasValue
             ? $"City | Node {_selectedCartographicSite.Value}"
+            : _operationalSelectedTile.HasValue ? $"Node {_operationalSelectedTile.Value}"
             : _selectedLocalWorkerId.HasValue ? $"Worker #{_selectedLocalWorkerId.Value}" : "Select a city or worker";
     }
     private Label? _compactTurnPulse;
@@ -802,6 +804,9 @@ public partial class Main : Control
                 w.Id.Value == id && w.Owner == _humanCivilization))
                 return;
             _selectedLocalWorkerId = id;
+            _operationalCitySelected = false;
+            _operationalSelectedTile = null;
+            RefreshOperationalContext();
             RefreshFineTacticalWorkerControls();
             GD.Print($"GA_NEXT_FINE_WORKER_SELECTED worker={id} source=canonical_v10 mutation=false");
             return;
@@ -1065,6 +1070,7 @@ public partial class Main : Control
             return;
         _selectedLocalWorkerId = id;
         _operationalCitySelected = false;
+        _operationalSelectedTile = null;
         RefreshOperationalContext();
         RefreshFineTacticalWorkerControls();
         GD.Print($"GA_NEXT_WORKER_BADGE_SELECTED worker={id} " +
@@ -1083,7 +1089,19 @@ public partial class Main : Control
             .OrderBy(w => w.Id.Value).FirstOrDefault();
         // Cartographic click selects a PLACE, not an individual worker.
         // Workforce assignment is retained for the future local admin UI.
-        if (own is not null && _tacticalPreview?.IsCartographicSiteMode != true)
+        if (CompactOperationalDock && _tacticalPreview?.IsCartographicSiteMode == true)
+        {
+            _operationalSelectedTile = tile.FineStrategicCellId.Value;
+            _operationalCitySelected = false;
+            if (_tacticalPreview.LocalSiteMarkerTileIds.Contains(tile.FineStrategicCellId.Value))
+                OnCartographicLocalSiteSelected(tile.FineStrategicCellId.Value);
+            else
+            {
+                _selectedCartographicSite = null;
+                RefreshOperationalContext();
+            }
+        }
+        else if (own is not null && _tacticalPreview?.IsCartographicSiteMode != true)
             _selectedLocalWorkerId = own.Id.Value;
         RefreshFineTacticalWorkerControls();
         GD.Print($"GA_NEXT_FINE_TILE_CLICK tile={tile.FineStrategicCellId.Value} " +
