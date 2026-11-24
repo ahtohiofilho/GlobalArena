@@ -145,4 +145,62 @@ public partial class Main
             if (b is not null) b.Disabled = ready;
         if (_fineMovementDecision is not null) _fineMovementDecision.Text = "Select a destination on the map. Orders run in sequence.";
     }
+
+    internal async Task ExerciseR213PersistentInterfaceSmoke()
+    {
+        try
+        {
+            for (int i = 0; i < 6; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var host = _tacticalHost ?? throw new InvalidOperationException("Missing host.");
+            if (!host.PersistentOrdersEnabled) throw new InvalidOperationException("Missing persistent preview.");
+            var before = host.StateHash;
+            var worker = host.Snapshot.Workers.Workers.First(w => w.Owner == _humanCivilization);
+            OnOperationalWorkerSelected(worker.Id.Value);
+            _localAgricultureButton!.EmitSignal(Button.SignalName.Pressed);
+            _localMiningButton!.EmitSignal(Button.SignalName.Pressed);
+            var q = ReadPersistentQueue(worker.Id);
+            if (q.Orders.Count != 2 || _persistentQueueList!.ItemCount != 2 || host.StateHash != before)
+                throw new InvalidOperationException("Queue controls did not stage two real orders.");
+            _persistentQueueList.EmitSignal(ItemList.SignalName.ItemSelected, 1L);
+            _persistentUp!.EmitSignal(Button.SignalName.Pressed);
+            if (ReadPersistentQueue(worker.Id).Orders[0].Occupation != PhysicalWorkerOccupation.Mining)
+                throw new InvalidOperationException("Reorder signal failed.");
+            _persistentRemove!.EmitSignal(Button.SignalName.Pressed);
+            if (ReadPersistentQueue(worker.Id).Orders.Count != 1)
+                throw new InvalidOperationException("Remove signal failed.");
+            host.ClearHumanPersistentPlan(_humanCivilization);
+            RefreshFineTacticalWorkerControls();
+            // Earn real treasury funds through the ordinary E action.
+            EndFineCollectiveTurn();
+            if (host.Snapshot.Treasury.LastSettledEconomicCycleOrdinal != 1)
+                throw new InvalidOperationException("Initial economic turn did not close.");
+            var site = _tacticalPreview!.LocalSiteMarkerTileIds.First();
+            OnCartographicLocalSiteSelected(site);
+            OpenSelectedCityWindow();
+            var tile = new PhysicalTacticalTileId(host.Incidence.Refinement.FineParameters, new StrategicCellId(site));
+            var links = FoundationLocalConnectionsProjector.Read(host.Snapshot, host.Incidence, tile);
+            var link = links.First(l => {
+                var edge = ResolveConnectionEdge(site, l.Neighbor.FineStrategicCellId.Value);
+                var physical = host.Snapshot.Transport.Edges.Single(e => e.Edge == edge);
+                return physical.NaturalConstructionCostMoneyMicro is > 0UL && physical.CargoMicroAtReferenceLoad != ulong.MaxValue;
+            });
+            ShowCityConnectionDetail(link);
+            _connectionAmount!.Text = "0.100000";
+            RefreshConnectionInvestmentControls();
+            var check = _persistentFundingWorkers!.GetChildren().OfType<CheckBox>().First();
+            check.ButtonPressed = true;
+            var fundedBefore = host.StateHash;
+            if (_connectionInvest!.Disabled) throw new InvalidOperationException("Funding control unavailable.");
+            _connectionInvest.EmitSignal(Button.SignalName.Pressed);
+            var funding = host.GetHumanPersistentFunding(_humanCivilization).Single();
+            if (funding.Assignments.Count != 1 || funding.MoneyMicro != 100_000UL || host.StateHash != fundedBefore)
+                throw new InvalidOperationException("Funding and workforce were not staged atomically.");
+            _connectionCancel!.EmitSignal(Button.SignalName.Pressed);
+            if (host.GetHumanPersistentFunding(_humanCivilization).Count != 0 || host.StateHash != fundedBefore)
+                throw new InvalidOperationException("Funding cancel signal failed.");
+            GD.Print("GA_NEXT_R213_PERSISTENT_UI_PASS real_signals=true queue_edit=true funding_assignment=true committed_state_unchanged=true");
+            GetTree().Quit(0);
+        }
+        catch (Exception ex) { GD.PrintErr("GA_NEXT_R213_PERSISTENT_UI_FAIL " + ex); GetTree().Quit(213); }
+    }
 }
