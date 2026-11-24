@@ -89,7 +89,8 @@ internal static class GaExplicitEconomicQaConfiguration
         FoundationFineFirstPhysicalGeography Geography,
         FoundationFineFirstWorldgenIdentity Identity) PrepareFineFirst(
             FoundationTacticalHumanAiTurnHost demo,
-            bool enableTemporalFinancialVisualSmoke = false)
+            bool enableTemporalFinancialVisualSmoke = false,
+            bool enableConstructionPreview = false)
     {
         ArgumentNullException.ThrowIfNull(demo);
         AssertNaturalFreightHierarchy();
@@ -152,7 +153,7 @@ internal static class GaExplicitEconomicQaConfiguration
             configuration, shallow);
         demo.Session.AcceptFineFirstOpening(
             opening, demo.Incidence, fine, identity);
-        if (enableTemporalFinancialVisualSmoke)
+        if (enableTemporalFinancialVisualSmoke || enableConstructionPreview)
         {
             // R179 opt-in on the SAME signed G18 opening and existing worker
             // census. Required by the R167/R170 travel and financial journal;
@@ -160,6 +161,17 @@ internal static class GaExplicitEconomicQaConfiguration
             demo.Session.AcceptSnapshot(
                 FoundationPersistedEdgeTravelTransitions.DeployEmpty(
                     demo.Session.Snapshot));
+        }
+        if (enableConstructionPreview)
+        {
+            // QA-only one existing idle builder; retain all identities and locations.
+            var snapshot = demo.Session.Snapshot;
+            var builder = snapshot.Workers.Workers.First(w => w.Owner == Red && w.Occupation == PhysicalWorkerOccupation.Forestry);
+            var workers = new PhysicalWorkerRuntimeState(snapshot.Workers.Workers.Select(w => w.Id == builder.Id
+                ? w.WithTacticalAssignment(w.TacticalTileId!.Value, w.CellId, PhysicalWorkerActivity.Other, PhysicalWorkerOccupation.Unassigned) : w),
+                tacticalLocationsAuthoritative: true, occupationsAuthoritative: true);
+            demo.Session.AcceptSnapshot(snapshot.WithWorkers(workers).WithConstructions(
+                new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>())));
         }
         var host = new FoundationTacticalHumanAiTurnHost(
             demo.Session, demo.Incidence, demo.HumanCivilizations,
@@ -172,9 +184,10 @@ internal static class GaExplicitEconomicQaConfiguration
             enableMonetaryInfrastructure: true,
             settlementPolicy: configuration.Settlement,
             fineGeography: fine, fineSignature: identity,
-            physicalTravelPolicy: enableTemporalFinancialVisualSmoke
+            physicalTravelPolicy: enableTemporalFinancialVisualSmoke || enableConstructionPreview
                 ? new FoundationGroundEdgeTravelTimePolicy(1_400_000UL)
-                : null);
+                : null,
+            constructionMoneyMicroPerWholeWork: enableConstructionPreview ? 1_000_000UL : null);
         return (host, fine, identity);
     }
 
