@@ -393,6 +393,7 @@ public partial class Main : Control
             var pending = host.GetHumanOrders(_humanCivilization)
                 .Any(order => order.WorkerId == worker.Id);
             _localWorkerSelector.AddItem(
+                CompactOperationalDock ? $"Worker #{worker.Id.Value} | Node {tile}" + (pending ? " *" : "") :
                 $"#{worker.Id.Value} | G(18,0)/{tile} | {worker.Activity}" +
                 (worker.Occupation.HasValue ? $" / {worker.Occupation}" : "") +
                 (pending ? " | QUEUED" : ""));
@@ -778,11 +779,13 @@ public partial class Main : Control
         if (_tacticalHost is not null)
         {
             var fineWorkers = _tacticalHost.Snapshot.Workers.Workers
-                .Where(w => w.Owner == _humanCivilization).ToArray();
+                .Where(w => w.Owner == _humanCivilization).OrderBy(w => w.Id.Value).ToArray();
             var chosenIndex = checked((int)optionIndex);
             if (chosenIndex >= 0 && chosenIndex < fineWorkers.Length)
             {
                 _selectedLocalWorkerId = fineWorkers[chosenIndex].Id.Value;
+                _operationalCitySelected = false;
+                _operationalSelectedTile = null;
                 RefreshFineTacticalWorkerControls();
             }
             return;
@@ -1310,7 +1313,7 @@ public partial class Main : Control
             Name = "GANextOperationsBodyScroll",
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill,
-            HorizontalScrollMode = CompactOperationalDock ? ScrollContainer.ScrollMode.Auto : ScrollContainer.ScrollMode.Disabled,
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
             VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
             MouseFilter = MouseFilterEnum.Stop,
             ClipContents = true
@@ -1355,6 +1358,35 @@ public partial class Main : Control
         if (CompactOperationalDock)
         {
             // Keep existing detailed commands reachable on demand, not as default clutter.
+            // Keep diagnostic controls instantiated for existing callbacks, but
+            // outside the visible command layout. Reuse the real order widgets.
+            rightPanel.Visible = false;
+            if (_localSiteSelectionQa is not null) _localSiteSelectionQa.Visible = false;
+            var orderPanel = _localWorkerSelector!.GetParent() as VBoxContainer
+                ?? throw new InvalidOperationException("Worker command layout unavailable.");
+            orderPanel.Reparent(operationsBody);
+            orderPanel.CustomMinimumSize = Vector2.Zero;
+            _localTurnLabel!.Visible = false;
+            _localAiStatus!.Visible = false;
+            _localEndTurnButton!.Visible = false;
+            _lastTemporalEconomyLabel!.Visible = false;
+            _localMoveButton!.Text = "G | MOVE TO NODE";
+            _localProduceButton!.Text = "P | PRODUCE";
+            _localCancelQueuedButton!.Text = "X | CANCEL ORDER";
+            _localAgricultureButton!.Text = "A | AGRICULTURE";
+            _localForestryButton!.Text = "V | FORESTRY";
+            _localMiningButton!.Text = "N | MINING";
+            _r149LandWorkButton!.Text = "LAND TRANSPORT";
+            _r149PortWorkButton!.Text = "PORT OPERATIONS";
+            foreach (var button in new[] { _localAgricultureButton, _localForestryButton,
+                _localMiningButton, _r149LandWorkButton, _r149PortWorkButton })
+            {
+                var row = button!.GetParent();
+                button.Reparent(orderPanel);
+                orderPanel.MoveChild(button, orderPanel.GetChildCount() - 1);
+                if (row.GetChildCount() == 0 && row is Control emptyRow) emptyRow.Visible = false;
+            }
+            _localWorkerSelector.FitToLongestItem = false;
             operationsBody.Visible = false;
             var advanced = new Button { Text = "WORKER COMMANDS" };
             operationsColumn.AddChild(advanced);
