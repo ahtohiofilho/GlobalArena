@@ -127,7 +127,8 @@ public partial class Main : Control
         var worker = _tacticalHost?.Snapshot.Workers.Workers.FirstOrDefault(w =>
             w.Owner == _humanCivilization && w.Id.Value == _selectedLocalWorkerId);
         _selectedUnitIdentity.Text = worker is null ? "No unit selected" :
-            $"Worker #{worker.Id.Value} | Node {worker.TacticalTileId?.FineStrategicCellId.Value}";
+            $"Worker #{worker.Id.Value} | Node {worker.TacticalTileId?.FineStrategicCellId.Value}\n" +
+            (worker.Activity == PhysicalWorkerActivity.Traveling ? "Traveling" : worker.Occupation == PhysicalWorkerOccupation.Unassigned ? "Idle / assigned" : worker.Occupation?.ToString() ?? worker.Activity.ToString());
     }
     private Label? _compactTurnPulse;
     private GaFloatingWindow? _atlasFloatingWindow;
