@@ -1,6 +1,7 @@
 using System.Numerics;
 using GlobalArena.Kernel;
 using GlobalArena.Runtime;
+using GlobalArena.Runtime.PersistentOrders;
 using GlobalArena.Simulation;
 using GlobalArena.Simulation.Foundation;
 using GlobalArena.World;
@@ -93,6 +94,58 @@ public sealed class FoundationTemporalEconomicJournalGateTests
 
 
 
+
+    [Fact]
+    public void R209RemoteBuildHeadAutomaticallyApproachesSiteAcrossTurns()
+    {
+        var (world, worker, adjacent, movement, incidence, fine) = Fixture();
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL),
+                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)),
+            workersPerCivilization: 3);
+        var signature = FoundationFineFirstWorldgenCanonicalSignature.Compute(
+            demo.Session.GeneratedWorld, incidence, fine);
+        var source = worker.TacticalTileId!.Value;
+        var crossing = incidence.FineTopology.Edges.First(e =>
+            e.IncidentCellIds.Contains(adjacent.FineStrategicCellId) &&
+            !e.IncidentCellIds.Contains(source.FineStrategicCellId) &&
+            fine.CrossingAtIndices((int)e.IncidentCellIds[0].Value - 1,
+                (int)e.IncidentCellIds[1].Value - 1) == FoundationFineTransportCrossingKind.Ground);
+        var edge = new PhysicalTacticalEdgeId(incidence.Refinement.FineParameters, crossing.Id);
+        var initial = FoundationPersistedEdgeTravelTransitions.DeployEmpty(
+            world.DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
+                world.Civilizations.Civilizations.Select(c => (c, 5_000_000UL)))))
+            .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
+            .DeployInitialWorkerOrders();
+        var funding = new FoundationFundedWorkerIntentJournal(new FoundationConstructionFundingExecutor(
+            new FoundationMonetaryInfrastructureEventExecutor(demo.Session.GeneratedWorld, incidence), 1_000_000UL));
+        var context = new SimulationContext(new TurnNumber(1UL), new SimulationSeed(712UL));
+        var (funded, _) = funding.Record(initial, new EventId(new CommandId(context.Turn, 1UL), 1UL),
+            worker.Owner, edge, 1_600_000UL, new[] { new FoundationFundedWorkerInsertion(worker.Id, 0) }, context);
+        var policy = new FoundationGroundEdgeTravelTimePolicy(1_400_000UL);
+        var router = new FoundationConstructionApproachRouter(demo.Session.GeneratedWorld, incidence, fine, signature, policy);
+        var plan = router.Plan(funded, worker.Id);
+        Assert.Equal(FoundationConstructionApproachStatus.RouteAvailable, plan.Status);
+        Assert.Equal(source, plan.Path[0]);
+        Assert.Contains(plan.Path.Last().FineStrategicCellId, crossing.IncidentCellIds);
+        Assert.Equal(new BigInteger(1_400_000UL), plan.RemainingTravelMicro);
+        var hasher = new CanonicalWorldStateHasher();
+        var (first, receipt) = router.Advance(funded, worker.Id);
+        Assert.NotNull(receipt);
+        Assert.Equal(400_000UL, first.EdgeTravels.Pending.Single().RemainingMicro);
+        Assert.Equal(FoundationConstructionApproachStatus.CrossingInProgress, router.Plan(first, worker.Id).Status);
+        Assert.Equal(hasher.Compute(first), hasher.Compute(router.Advance(funded, worker.Id).State));
+        var (arrived, second) = router.Advance(first, worker.Id);
+        Assert.NotNull(second);
+        Assert.Empty(arrived.EdgeTravels.Pending);
+        Assert.Equal(FoundationConstructionApproachStatus.AtSite, router.Plan(arrived, worker.Id).Status);
+        Assert.Same(arrived, router.Advance(arrived, worker.Id).State);
+        Assert.Equal(0UL, arrived.Constructions.Projects.Single().CompletedWorkMicro);
+        Assert.Same(funded.Treasury, arrived.Treasury);
+        Assert.Same(funded.WorkerOrders, arrived.WorkerOrders);
+        Assert.Equal(FoundationConstructionApproachStatus.NoBuildHead,
+            router.Plan(initial, worker.Id).Status);
+    }
 
     [Fact]
     public void FundWorkAndCommissionAcrossCyclesUsingOnlyOpeningInfrastructure()
