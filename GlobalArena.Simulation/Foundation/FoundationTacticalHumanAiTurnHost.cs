@@ -394,6 +394,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
             acceptOnlyStrictIntegratedGain);
     }
 
+    public FoundationAgriculturalProductionPolicy? AgriculturalProduction { get; }
+
     public bool AllRequiredReady => _participants.All(_ready.Contains);
 
     public FoundationTacticalHumanAiTurnHost(
@@ -409,6 +411,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
         FoundationGroundEdgeTravelTimePolicy? physicalTravelPolicy = null,
         ulong? constructionMoneyMicroPerWholeWork = null, bool enableDemographicGrowth = false, FoundationAgriculturalProductionPolicy? agriculture = null)
     {
+        AgriculturalProduction = agriculture;
         _session = session ?? throw new ArgumentNullException(nameof(session));
         _incidence = incidence ?? throw new ArgumentNullException(nameof(incidence));
         ArgumentNullException.ThrowIfNull(humanCivilizations);
@@ -1122,6 +1125,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
     {
         RequireHuman(human); CheckWritable(human);
         if (edit.Issuer != human) throw new InvalidOperationException("Foreign order edit.");
+        if (edit.Crop.HasValue && AgriculturalProduction is null) throw new InvalidOperationException("Crop preview not configured.");
         var list = _persistentPlans[human];
         var command = new FoundationPersistentOrderEditCommand(new CommandId(NextTurn, (ulong)list.Count + 1UL), edit);
         _ = ProjectPersistentPlan(human, list.Append(command));
