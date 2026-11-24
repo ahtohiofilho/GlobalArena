@@ -36,7 +36,7 @@ public partial class Main
     {
         // Only the deliberately selected economy laboratory exposes this UI.
         // The ordinary gameplay panel and existing smoke tests are unchanged.
-        if (!_interactiveEconomicPreviewActive) return;
+        if (!_interactiveEconomicPreviewActive || System.Environment.GetEnvironmentVariable("GA_NEXT_CONSTRUCTION_PREVIEW") == "1") return;
 
         var section = new VBoxContainer
         {
