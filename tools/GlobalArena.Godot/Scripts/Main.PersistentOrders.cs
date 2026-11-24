@@ -1,4 +1,5 @@
 using Godot;
+using GlobalArena.Foundation.Agriculture;
 using GlobalArena.Runtime;
 using GlobalArena.Runtime.PersistentOrders;
 using GlobalArena.Simulation.Foundation;
@@ -9,6 +10,8 @@ namespace GlobalArena.Godot;
 public partial class Main
 {
     private VBoxContainer? _persistentQueuePanel;
+    private OptionButton? _cropSelector;
+    private CropId? SelectedCrop => _cropSelector is { Selected: >= 0 } ? (CropId)_cropSelector.GetSelectedId() : null;
     private ItemList? _persistentQueueList;
     private Button? _persistentUp, _persistentDown, _persistentRemove;
     private Button? _persistentInsert;
@@ -28,7 +31,9 @@ public partial class Main
         var index = _persistentInsertionIndex < 0 ? q.Orders.Count : Math.Clamp(_persistentInsertionIndex, q.ActiveOrderId.HasValue ? 1 : 0, q.Orders.Count);
         _tacticalHost!.QueueHumanPersistentEdit(_humanCivilization, new FoundationPersistentOrderEdit(
             _humanCivilization, worker, FoundationPersistentOrderEditKind.Insert, Index: index,
-            OrderKind: kind, Destination: destination, ProjectId: project, Occupation: occupation));
+            OrderKind: kind, Destination: destination, ProjectId: project, Occupation: occupation,
+            Crop: occupation == PhysicalWorkerOccupation.Agriculture && _tacticalHost.AgriculturalProduction is not null
+                ? (byte?)(SelectedCrop ?? throw new InvalidOperationException("Select a crop first.")) : null));
         _persistentInsertionIndex = -1;
     }
 
@@ -54,6 +59,8 @@ public partial class Main
         parent.AddChild(_persistentQueuePanel);
         _persistentWorkerSummary = new Label { Name = "GANextWorkerContext", AutowrapMode = TextServer.AutowrapMode.WordSmart };
         _persistentQueuePanel.AddChild(_persistentWorkerSummary);
+        _cropSelector = new OptionButton { Name = "GANextCropSelector", Visible = false, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        _persistentQueuePanel.AddChild(_cropSelector);
         _persistentCrossingLabel = new Label { Name = "GANextCrossingDetails", AutowrapMode = TextServer.AutowrapMode.WordSmart, Visible = false };
         _persistentQueuePanel.AddChild(_persistentCrossingLabel);
         _persistentCrossingProgress = new ProgressBar { Name = "GANextCrossingProgress", MinValue = 0, MaxValue = 100, Step = 0, ShowPercentage = false, Visible = false };
@@ -135,6 +142,7 @@ public partial class Main
             _persistentInsertionIndex = -1;
         }
         RefreshPersistentWorkerSummary(host, q.Worker);
+        RefreshCropSelector(host, q.Worker, ready);
         _persistentQueueList.Clear();
         _persistentQueueList.Visible = q.Orders.Count > 0;
         if (_persistentEmpty is not null) _persistentEmpty.Visible = q.Orders.Count == 0;
@@ -144,7 +152,7 @@ public partial class Main
             {
                 FoundationWorkerOrderKind.Move => $"Move to {order.Destination!.Value.FineStrategicCellId.Value}",
                 FoundationWorkerOrderKind.Build => $"Build #{order.ProjectId}",
-                _ => order.Occupation.ToString() ?? "Occupation"
+                _ => order.Crop is { } crop ? $"Grow {(CropId)crop}" : order.Occupation.ToString() ?? "Occupation"
             };
             _persistentQueueList.AddItem((q.ActiveOrderId == order.Id ? "Active | " : "") + name);
         }
@@ -176,6 +184,25 @@ public partial class Main
         if (_fineMovementDecision is not null) _fineMovementDecision.Text = "Select a destination on the map. Orders run in sequence.";
     }
 
+    private void RefreshCropSelector(FoundationTacticalHumanAiTurnHost host, PhysicalWorkerId worker, bool ready)
+    {
+        if (_cropSelector is null) return;
+        var policy = host.AgriculturalProduction;
+        _cropSelector.Visible = policy is not null;
+        if (policy is null) return;
+        var previous = SelectedCrop;
+        var node = host.Snapshot.Workers.Workers.Single(w => w.Id == worker).TacticalTileId!.Value;
+        _cropSelector.Clear();
+        foreach (var crop in CropCatalog.All)
+        {
+            var output = policy.Resolve(node, crop.Id).WholeTurnOutput;
+            _cropSelector.AddItem(FormattableString.Invariant($"{crop.Id} | {output / 1_000_000m:0.###}/turn"), (int)crop.Id);
+        }
+        _cropSelector.Select(previous.HasValue ? (int)previous.Value - 1 : 0);
+        _cropSelector.Disabled = ready;
+        if (_localAgricultureButton is not null) _localAgricultureButton.Text = "A | Grow selected crop";
+    }
+
     private void RefreshPersistentWorkerSummary(FoundationTacticalHumanAiTurnHost host, PhysicalWorkerId id)
     {
         var person = host.Snapshot.Workers.Workers.Single(w => w.Id == id);
@@ -187,6 +214,7 @@ public partial class Main
             active?.Kind == FoundationWorkerOrderKind.Build ? "Construction order active" :
             person.Occupation is PhysicalWorkerOccupation.LandTransport or PhysicalWorkerOccupation.PortOperations ? person.Occupation.ToString()! :
             person.Activity == PhysicalWorkerActivity.Other ? "Idle" : person.Activity.ToString();
+        if (active?.Crop is { } crop && travel is null) activity = $"Growing {(CropId)crop}";
         string target = active?.Kind == FoundationWorkerOrderKind.Move ? $" | Target {active.Destination!.Value.FineStrategicCellId.Value}" :
             active?.Kind == FoundationWorkerOrderKind.Build ? $" | Build #{active.ProjectId}" : "";
         if (_persistentWorkerSummary is not null)
@@ -205,6 +233,28 @@ public partial class Main
             $"Crossing {travel.Source.FineStrategicCellId.Value} → {travel.Destination.FineStrategicCellId.Value} | {percent:F1}%\nRemaining: {travel.RemainingMicro / 1_000_000m:0.######} turns");
     }
 
+    private void ExerciseCropPreview(FoundationTacticalHumanAiTurnHost host)
+    {
+        var before = host.StateHash;
+        var worker = host.Snapshot.Workers.Workers.First(w => w.Owner == _humanCivilization);
+        OnOperationalWorkerSelected(worker.Id.Value);
+        if (_cropSelector?.Visible != true || _cropSelector.ItemCount != 6)
+            throw new InvalidOperationException("Six crop controls unavailable.");
+        _cropSelector.Select(3);
+        _localAgricultureButton!.EmitSignal(Button.SignalName.Pressed);
+        var order = ReadPersistentQueue(worker.Id).Orders.Single();
+        if (order.Crop != (byte)CropId.Rice || host.StateHash != before ||
+            !_persistentQueueList!.GetItemText(0).Contains("Rice"))
+            throw new InvalidOperationException("Crop selection did not stage real rice intent.");
+        EndFineCollectiveTurn();
+        var queue = host.Snapshot.WorkerOrders.Queues.Single(q => q.Worker == worker.Id);
+        if (queue.Orders.Single().Crop != (byte)CropId.Rice ||
+            queue.ActiveOrderId != order.Id || host.Snapshot.Treasury.LastSettledEconomicCycleOrdinal != 1 ||
+            !_persistentWorkerSummary!.Text.Contains("Rice"))
+            throw new InvalidOperationException("Crop preview did not commit persistent rice production.");
+        GD.Print("GA_NEXT_R219A1_CROP_PREVIEW_PASS six_choices=true real_order=true economic_close=true");
+    }
+
     internal async Task ExerciseR213PersistentInterfaceSmoke()
     {
         try
@@ -213,6 +263,12 @@ public partial class Main
             var host = _tacticalHost ?? throw new InvalidOperationException("Missing host.");
             if (!host.PersistentOrdersEnabled) throw new InvalidOperationException("Missing persistent preview.");
             var before = host.StateHash;
+            if (host.AgriculturalProduction is not null)
+            {
+                ExerciseCropPreview(host);
+                GetTree().Quit(0);
+                return;
+            }
             var hoverWorker = host.Snapshot.Workers.Workers.First(w => w.Owner == _humanCivilization);
             var hoverSite = hoverWorker.TacticalTileId!.Value.FineStrategicCellId.Value;
             if (!R218Available()) throw new InvalidOperationException("Site hover unavailable in persistent preview.");

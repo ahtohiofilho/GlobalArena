@@ -42,6 +42,19 @@ jobs:
           grep -q 'GA_NEXT_R213_PERSISTENT_UI_PASS' "$RUNNER_TEMP/r213.log"
           grep -q 'GA_NEXT_R216_WORKER_CONTEXT_PASS' "$RUNNER_TEMP/r213.log"
           grep -q 'GA_NEXT_R218_SITE_HUD_PASS' "$RUNNER_TEMP/r213.log"
+      - name: Exercise crop preview
+        env:
+          GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW: '1'
+          GA_NEXT_INTERACTIVE_ECONOMY_PREVIEW: '1'
+          GA_NEXT_QA_LOCAL_SITE_MARKERS: '1'
+          GA_NEXT_CONSTRUCTION_PREVIEW: '1'
+          GA_NEXT_PERSISTENT_ORDERS: '1'
+          GA_NEXT_R213_UI_SMOKE: '1'
+          GA_NEXT_CROP_PREVIEW: '1'
+        run: |
+          set -o pipefail
+          timeout 180 "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --rendering-method gl_compatibility 2>&1 | tee "$RUNNER_TEMP/crops.log"
+          grep -q 'GA_NEXT_R219A1_CROP_PREVIEW_PASS' "$RUNNER_TEMP/crops.log"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
