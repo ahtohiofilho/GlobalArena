@@ -1,4 +1,5 @@
 using GlobalArena.Runtime;
+using GlobalArena.Foundation.Agriculture;
 using GlobalArena.World;
 
 namespace GlobalArena.Simulation.Foundation;
@@ -56,8 +57,12 @@ public static class FoundationTemporalEconomicTurnProjector
 {
     internal static FoundationTemporalEconomicTurnInputs ProjectPersistent(
         WorldState start, IReadOnlyList<FoundationPersistentWorkerSlice> timeline,
-        FoundationActivityCommodityDemandPolicy demandPolicy)
+        FoundationActivityCommodityDemandPolicy demandPolicy, FoundationAgriculturalProductionPolicy? agriculture = null)
     {
+        if (agriculture is null && timeline.Any(s => s.Crop.HasValue))
+            throw new InvalidOperationException("Explicit crop production requires configured agricultural policy.");
+        if (agriculture is not null && agriculture.Commodities.Any(c => !demandPolicy.Commodities.Contains(c)))
+            throw new InvalidOperationException("Every crop requires an explicit market demand entry.");
         var people = start.Workers.Workers.ToDictionary(w => w.Id);
         foreach (var group in timeline.GroupBy(s => s.Worker))
         {
@@ -78,17 +83,20 @@ public static class FoundationTemporalEconomicTurnProjector
             s.Activity, s.Occupation)).ToArray();
         var presence = FoundationPhysicalPresenceDemographicProjector.Project(start, schedule, demandPolicy);
         const ulong whole = FoundationPhysicalPresenceDemographicProjector.WholeTurnMicro;
-        var production = schedule.Where(s => s.ProductiveEffortMicro > 0)
-            .GroupBy(s => (s.Worker, s.Node, s.SliceOccupation))
+        var production = timeline.Where(s => s.Activity == PhysicalWorkerActivity.Producing)
+            .GroupBy(s => (s.Worker, s.Node, SliceOccupation: s.Occupation, s.Crop))
             .OrderBy(g => g.Key.Worker.Value).ThenBy(g => g.Key.Node.FineStrategicCellId.Value)
-            .ThenBy(g => g.Key.SliceOccupation)
+            .ThenBy(g => g.Key.SliceOccupation).ThenBy(g => g.Key.Crop)
             .Select(g =>
             {
                 var worker = people[g.Key.Worker];
-                ulong effort = g.Aggregate(0UL, (sum, s) => checked(sum + s.ProductiveEffortMicro));
+                ulong effort = g.Aggregate(0UL, (sum, s) => checked(sum + s.DurationMicro));
+                var output = g.Key.Crop is { } crop
+                    ? agriculture!.Resolve(g.Key.Node, (CropId)crop)
+                    : (Commodity: worker.Commodity, WholeTurnOutput: worker.OutputMicroPerTurn);
                 return new FoundationTemporalPhysicalProduction(worker.Id, worker.Owner, g.Key.Node,
-                    worker.Commodity, checked((uint)effort),
-                    checked((ulong)((UInt128)worker.OutputMicroPerTurn * effort / whole)),
+                    output.Commodity, checked((uint)effort),
+                    checked((ulong)((UInt128)output.WholeTurnOutput * effort / whole)),
                     g.Key.SliceOccupation);
             }).ToArray();
         return new FoundationTemporalEconomicTurnInputs(presence, schedule, production);
