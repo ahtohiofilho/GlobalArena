@@ -72,11 +72,39 @@ public sealed class FoundationConstructionApproachRouter
              (kind == FoundationFineTransportCrossingKind.Port &&
               _geo.FineElevationRaw[checked((int)n.Value - 1)] > _geo.SeaLevelRaw)) &&
             _geo.CanTraverseOnFoot(checked((int)n.Value - 1))).ToHashSet();
+        return FindPath(world, source, goals, project.Id);
+    }
+
+    public FoundationConstructionApproach PlanMove(WorldState world, PhysicalWorkerId workerId,
+        PhysicalTacticalTileId destination)
+    {
+        if ((world.WorldBinding != _binding && world.WorldBinding != _legacyBinding) ||
+            !world.WorkerOrders.IsInitialized || !world.EdgeTravels.IsInitialized || !world.Transport.IsInitialized)
+            throw new InvalidOperationException("Move requires canonical physical orders.");
+        var worker = world.Workers.Workers.Single(w => w.Id == workerId);
+        var source = worker.TacticalTileId!.Value;
+        if (destination.FineGoldbergParameters != _map.Refinement.FineParameters ||
+            !destination.IsValid || destination.FineStrategicCellId.Value > _map.Refinement.FineParameters.StrategicCellCount)
+            throw new InvalidOperationException("Foreign move destination.");
+        var pending = world.EdgeTravels.Pending.SingleOrDefault(p => p.Worker == workerId);
+        if (pending is not null)
+            return new(FoundationConstructionApproachStatus.CrossingInProgress, null,
+                Array.AsReadOnly(new[] { pending.Source, pending.Destination }), pending.RemainingMicro);
+        var goals = new HashSet<StrategicCellId>();
+        if (_geo.CanTraverseOnFoot(checked((int)destination.FineStrategicCellId.Value - 1)))
+            goals.Add(destination.FineStrategicCellId);
+        return FindPath(world, source, goals, null);
+    }
+
+    private FoundationConstructionApproach FindPath(WorldState world, PhysicalTacticalTileId source,
+        HashSet<StrategicCellId> goals, ulong? projectId)
+    {
+        var fine = _map.Refinement.FineParameters;
         if (goals.Contains(source.FineStrategicCellId))
-            return new(FoundationConstructionApproachStatus.AtSite, project.Id,
+            return new(FoundationConstructionApproachStatus.AtSite, projectId,
                 Array.AsReadOnly(new[] { source }), BigInteger.Zero);
         if (goals.Count == 0 || !_geo.CanTraverseOnFoot(checked((int)source.FineStrategicCellId.Value - 1)))
-            return new(FoundationConstructionApproachStatus.Unreachable, project.Id,
+            return new(FoundationConstructionApproachStatus.Unreachable, projectId,
                 Array.Empty<PhysicalTacticalTileId>(), BigInteger.Zero);
 
         var inventory = world.Transport.Edges.ToDictionary(e => e.Edge);
@@ -111,7 +139,7 @@ public sealed class FoundationConstructionApproachRouter
                     cursor = prev[cursor]; path.Add(new(fine, cursor));
                 }
                 path.Reverse();
-                return new(FoundationConstructionApproachStatus.RouteAvailable, project.Id,
+                return new(FoundationConstructionApproachStatus.RouteAvailable, projectId,
                     Array.AsReadOnly(path.ToArray()), priority.Item1);
             }
             if (!graph.TryGetValue(node, out var neighbors)) continue;
@@ -123,9 +151,12 @@ public sealed class FoundationConstructionApproachRouter
                 frontier.Enqueue(next.To, (candidate, next.To.Value));
             }
         }
-        return new(FoundationConstructionApproachStatus.Unreachable, project.Id,
+        return new(FoundationConstructionApproachStatus.Unreachable, projectId,
             Array.Empty<PhysicalTacticalTileId>(), BigInteger.Zero);
     }
+
+    internal PhysicalTacticalWorkerMoveEventExecutor Movement => _movement;
+    internal FoundationGroundEdgeTravelTimePolicy Policy => _policy;
 
     // One existing R167 crossing per invocation; general residual scheduling belongs to R210.
     public (WorldState State, FoundationEdgeTravelTransitionReceipt? Receipt) Advance(
