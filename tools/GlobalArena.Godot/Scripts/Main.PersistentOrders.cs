@@ -213,6 +213,21 @@ public partial class Main
             var host = _tacticalHost ?? throw new InvalidOperationException("Missing host.");
             if (!host.PersistentOrdersEnabled) throw new InvalidOperationException("Missing persistent preview.");
             var before = host.StateHash;
+            var hoverWorker = host.Snapshot.Workers.Workers.First(w => w.Owner == _humanCivilization);
+            var hoverSite = hoverWorker.TacticalTileId!.Value.FineStrategicCellId.Value;
+            if (!R218Available()) throw new InvalidOperationException("Site hover unavailable in persistent preview.");
+            _r218Anchor = _tacticalPreview!.GetGlobalRect().GetCenter();
+            RenderR218SiteHover(hoverSite);
+            var hoverScroll = _r218Rows!.GetChildren().OfType<ScrollContainer>().Single();
+            var hoverList = hoverScroll.GetChild<VBoxContainer>(0);
+            var hoverButton = hoverList.GetChildren().OfType<HBoxContainer>()
+                .SelectMany(r => r.GetChildren().OfType<Button>()).Single(b => b.Name.ToString() == $"R218Worker{hoverWorker.Id.Value}");
+            if (!_r218Hud!.Visible || host.StateHash != before)
+                throw new InvalidOperationException("Site HUD mutated canonical state.");
+            hoverButton.EmitSignal(Button.SignalName.Pressed);
+            if (_r218Hud.Visible || _selectedLocalWorkerId != hoverWorker.Id.Value || host.StateHash != before)
+                throw new InvalidOperationException("HUD selection failed or mutated state.");
+            GD.Print("GA_NEXT_R218_SITE_HUD_PASS canonical_roster=true real_button=true hash_unchanged=true");
             var worker = host.Snapshot.Workers.Workers.First(w => w.Owner == _humanCivilization);
             OnOperationalWorkerSelected(worker.Id.Value);
             if (_persistentQueueList!.Visible || _persistentInsert!.Disabled != true ||
