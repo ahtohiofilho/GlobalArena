@@ -104,6 +104,16 @@ public partial class Main : Control
     // GA-NEXT TACTICAL-WORKSPACE-01: view-only windows, no worker-location aliasing.
     private Control? _planetWindow;
     private Control? _workspaceWindow;
+    private Label? _operationalContext;
+    private bool _operationalCitySelected;
+    private bool CompactOperationalDock => System.Environment.GetEnvironmentVariable("GA_NEXT_CONSTRUCTION_PREVIEW") == "1";
+    private void RefreshOperationalContext()
+    {
+        if (_operationalContext is null) return;
+        _operationalContext.Text = _operationalCitySelected && _selectedCartographicSite.HasValue
+            ? $"City | Node {_selectedCartographicSite.Value}"
+            : _selectedLocalWorkerId.HasValue ? $"Worker #{_selectedLocalWorkerId.Value}" : "Select a city or worker";
+    }
     private Label? _compactTurnPulse;
     private GaFloatingWindow? _atlasFloatingWindow;
     private Label? _metricTurn;
@@ -497,6 +507,7 @@ public partial class Main : Control
         RefreshPortInvestmentQaControls();
         RefreshOpenConnectionInvestment();
         RefreshLocalSiteSelectionQa();
+        RefreshOperationalContext();
         RefreshLastTemporalEconomyReadout();
         RefreshCivilizationWindow();
     }
@@ -1053,6 +1064,8 @@ public partial class Main : Control
                 w.Id.Value == id && w.Owner == _humanCivilization))
             return;
         _selectedLocalWorkerId = id;
+        _operationalCitySelected = false;
+        RefreshOperationalContext();
         RefreshFineTacticalWorkerControls();
         GD.Print($"GA_NEXT_WORKER_BADGE_SELECTED worker={id} " +
             "source=canonical_v10 no_order=true state_unchanged=true");
@@ -1188,7 +1201,7 @@ public partial class Main : Control
         var openPlanet = new Button { Name = "GANextPlanetButton", Text = "M | PLANET" };
         openPlanet.Pressed += TogglePlanetWindow;
         header.AddChild(openPlanet);
-        var city = new Button { Name = "GANextCityButton", Text = "Y | CIDADE" };
+        var city = new Button { Name = "GANextCityButton", Text = "Y | CITY" };
         city.Pressed += OpenSelectedCityWindow;
         header.AddChild(city);
         var civilization = new Button
@@ -1217,8 +1230,8 @@ public partial class Main : Control
         var operations = new MarginContainer
         {
             Name = "GANextOperationsWindow",
-            Visible = false,
-            CustomMinimumSize = new Vector2(394f, 0f),
+            Visible = CompactOperationalDock,
+            CustomMinimumSize = new Vector2(CompactOperationalDock ? 240f : 394f, 0f),
             SizeFlagsHorizontal = SizeFlags.ShrinkEnd,
             SizeFlagsVertical = SizeFlags.ExpandFill,
             MouseFilter = MouseFilterEnum.Stop
@@ -1235,13 +1248,32 @@ public partial class Main : Control
         operationsPanel.AddThemeStyleboxOverride("panel", GaVisualFoundation.WindowSurface());
         var operationsColumn = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
         operationsPanel.AddChild(operationsColumn);
-        GaVisualFoundation.AddWindowHeader(
+        if (CompactOperationalDock)
+        {
+            var compactHeader = new HBoxContainer();
+            operationsColumn.AddChild(compactHeader);
+            compactHeader.AddChild(new Label { Text = "COMMANDS", SizeFlagsHorizontal = SizeFlags.ExpandFill });
+            var hide = new Button { Text = "X" };
+            hide.Pressed += () => SetOperationalDockVisible(false);
+            compactHeader.AddChild(hide);
+            _operationalContext = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
+            operationsColumn.AddChild(_operationalContext);
+            var cityAction = new Button { Text = "Y | OPEN CITY" };
+            cityAction.Pressed += OpenSelectedCityWindow;
+            operationsColumn.AddChild(cityAction);
+            var civAction = new Button { Text = "C | CIVILIZATION" };
+            civAction.Pressed += OpenCivilizationWindow;
+            operationsColumn.AddChild(civAction);
+            RefreshOperationalContext();
+        }
+        else GaVisualFoundation.AddWindowHeader(
             operationsColumn, "GA / COMMAND DESK", "Operational workspace",
             "People · orders · administrative intelligence",
             () => SetOperationalDockVisible(false));
         var metrics = new HBoxContainer();
         metrics.AddThemeConstantOverride("separation", 6);
         operationsColumn.AddChild(metrics);
+        metrics.Visible = !CompactOperationalDock;
         metrics.AddChild(GaVisualFoundation.CreateMetric(
             "TURN", _localFoundation!.NextTurn.Value.ToString(), out _metricTurn));
         metrics.AddChild(GaVisualFoundation.CreateMetric(
@@ -1260,7 +1292,7 @@ public partial class Main : Control
             Name = "GANextOperationsBodyScroll",
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill,
-            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            HorizontalScrollMode = CompactOperationalDock ? ScrollContainer.ScrollMode.Auto : ScrollContainer.ScrollMode.Disabled,
             VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
             MouseFilter = MouseFilterEnum.Stop,
             ClipContents = true
@@ -1282,6 +1314,7 @@ public partial class Main : Control
         roster.WorkerSelected += OnOperationalWorkerSelected;
         operationsBody.AddChild(roster);
         _operationalRoster = roster;
+        roster.Visible = !CompactOperationalDock;
         // R132: a selected local center belongs at the TOP of the
         // administration pane, not buried under the worker roster and
         // every experimental order widget. Reparent existing controls:
@@ -1301,6 +1334,15 @@ public partial class Main : Control
         rightPanel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         rightPanel.SizeFlagsVertical = SizeFlags.ShrinkBegin;
         _workspaceWindow = operations;
+        if (CompactOperationalDock)
+        {
+            // Keep existing detailed commands reachable on demand, not as default clutter.
+            operationsBody.Visible = false;
+            var advanced = new Button { Text = "WORKER COMMANDS" };
+            operationsColumn.AddChild(advanced);
+            operationsColumn.MoveChild(advanced, operationsColumn.GetChildCount() - 2);
+            advanced.Pressed += () => operationsBody.Visible = !operationsBody.Visible;
+        }
 
         // Secondary planetary atlas is a bounded, movable and resizable
         // internal window. Outside the atlas, the tactical map still gets
