@@ -191,6 +191,21 @@ public sealed class FoundationTacticalHumanAiTurnHost
         return rows.Length == 0 ? null : Array.AsReadOnly(rows);
     }
 
+    public IReadOnlyList<FoundationOperationalFreightShadowEdge>? ReadOperationalQuotes(CivilizationId viewer, PhysicalTacticalTileId node)
+    {
+        CheckSnapshot();
+        RequireHuman(viewer);
+        if (!Snapshot.Workers.Workers.Any(w => w.Owner == viewer && w.TacticalTileId == node))
+            throw new InvalidOperationException("Operational readout requires own local presence.");
+        var sale = _lastTemporalClose?.TemporalEconomicSettlement;
+        if (sale?.OperationalQuotes is null || sale.EconomicCycleOrdinal != Snapshot.Treasury.LastSettledEconomicCycleOrdinal)
+            return null;
+        var incident = Incidence.FineTopology.Cells[(int)node.FineStrategicCellId.Value - 1].AdjacentCellIds.ToHashSet();
+        var edges = Incidence.FineTopology.Edges.Where(e => e.IncidentCellIds.Contains(node.FineStrategicCellId) &&
+            e.IncidentCellIds.Any(incident.Contains)).Select(e => new PhysicalTacticalEdgeId(Incidence.Refinement.FineParameters, e.Id)).ToHashSet();
+        return Array.AsReadOnly(sale.OperationalQuotes.Where(q => edges.Contains(q.Edge)).ToArray());
+    }
+
     public CanonicalGameSession Session => _session;
     public WorldState Snapshot => _session.Snapshot;
     public WorldStateHash StateHash => _hasher.Compute(Snapshot);
