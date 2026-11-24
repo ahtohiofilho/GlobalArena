@@ -2237,7 +2237,9 @@ public partial class Main : Control
                 $"worker={first.Id.Value} coarse_preview_focus={first.CellId.Value} " +
                 $"physical_worker_location_authoritative={(_tacticalHost is not null).ToString().ToLowerInvariant()} " +
                 "tactical_visible=true");
-            if (legacyWorkspaceSmoke)
+            if (System.Environment.GetEnvironmentVariable("GA_NEXT_R213_UI_SMOKE") == "1")
+                _ = ExerciseR213PersistentInterfaceSmoke();
+            else if (legacyWorkspaceSmoke)
                 _ = new FoundationGodotWorkspaceSmoke(this, _localFoundation!).RunAsync();
             if (legacyV10Smoke && _tacticalHost is not null)
                 _ = new FoundationGodotTacticalV10Smoke(
