@@ -109,6 +109,41 @@ public static class FoundationPhysicalOperationalWorkProjector
                 : (pool.Land, checked(pool.Port + effortPerWorkerMicro));
         }
 
+        return AllocatePools(world, incidence, geography, pools);
+    }
+
+    /// <summary>Verified temporal slices, not final census: only actual Other
+    /// time in a logistics occupation provides operational work.</summary>
+    internal static IReadOnlyList<FoundationPhysicalOperationalNodeAllocation> ProjectTemporal(
+        WorldState opening, PhysicalTacticalIncidenceMap incidence,
+        FoundationFineFirstPhysicalGeography geography, FoundationTemporalEconomicTurnInputs temporal)
+    {
+        var owners = opening.Workers.Workers.ToDictionary(w => w.Id, w => w.Owner);
+        if (temporal.Presence.BaselineIdentity != new CanonicalWorldStateHasher().Compute(opening).ToString())
+            throw new InvalidOperationException("Foreign operational timeline.");
+        var pools = new Dictionary<(PhysicalTacticalTileId Tile, CivilizationId Owner), (ulong Land, ulong Port)>();
+        foreach (var slice in temporal.Slices)
+        {
+            if (slice.DemandActivity != PhysicalWorkerActivity.Other) continue;
+            var role = slice.SliceOccupation;
+            if (role is not (PhysicalWorkerOccupation.LandTransport or PhysicalWorkerOccupation.PortOperations)) continue;
+            var key = (slice.Node, owners[slice.Worker]);
+            var old = pools.GetValueOrDefault(key);
+            pools[key] = role == PhysicalWorkerOccupation.LandTransport
+                ? (checked(old.Land + slice.PresenceMicro), old.Port)
+                : (old.Land, checked(old.Port + slice.PresenceMicro));
+        }
+        return AllocatePools(opening, incidence, geography, pools);
+    }
+
+    private static IReadOnlyList<FoundationPhysicalOperationalNodeAllocation> AllocatePools(
+        WorldState world, PhysicalTacticalIncidenceMap incidence, FoundationFineFirstPhysicalGeography geography,
+        Dictionary<(PhysicalTacticalTileId Tile, CivilizationId Owner), (ulong Land, ulong Port)> pools)
+    {
+        var fine = incidence.Refinement.FineParameters;
+        if (geography.FineParameters != fine || geography.CoarseParameters != incidence.Refinement.CoarseParameters)
+            throw new InvalidOperationException("Foreign operational geography.");
+        if (pools.Count == 0) return Array.Empty<FoundationPhysicalOperationalNodeAllocation>();
         // Exactly one canonical transport row per real fine crossing.
         var transport = world.Transport.Edges.ToDictionary(e => e.Edge);
         if (transport.Count != incidence.FineTopology.Edges.Count)
