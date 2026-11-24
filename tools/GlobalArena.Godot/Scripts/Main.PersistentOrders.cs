@@ -13,6 +13,7 @@ public partial class Main
     private VBoxContainer? _persistentQueuePanel;
     private OptionButton? _cropSelector;
     private Label? _foodQuality;
+    private Label? _operationalReadout;
     private CropId? SelectedCrop => _cropSelector is { Selected: >= 0 } ? (CropId)_cropSelector.GetSelectedId() : null;
     private ItemList? _persistentQueueList;
     private Button? _persistentUp, _persistentDown, _persistentRemove;
@@ -63,6 +64,8 @@ public partial class Main
         _persistentQueuePanel.AddChild(_persistentWorkerSummary);
         _foodQuality = new Label { Name = "GANextFoodQuality", Visible = false, AutowrapMode = TextServer.AutowrapMode.WordSmart };
         _persistentQueuePanel.AddChild(_foodQuality);
+        _operationalReadout = new Label { Name = "GANextOperationalReadout", Visible = false, AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        _persistentQueuePanel.AddChild(_operationalReadout);
         _cropSelector = new OptionButton { Name = "GANextCropSelector", Visible = false, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _persistentQueuePanel.AddChild(_cropSelector);
         _persistentCrossingLabel = new Label { Name = "GANextCrossingDetails", AutowrapMode = TextServer.AutowrapMode.WordSmart, Visible = false };
@@ -148,6 +151,7 @@ public partial class Main
         RefreshPersistentWorkerSummary(host, q.Worker);
         RefreshCropSelector(host, q.Worker, ready);
         RefreshFoodQuality(host, q.Worker);
+        RefreshOperationalReadout(host, q.Worker);
         _persistentQueueList.Clear();
         _persistentQueueList.Visible = q.Orders.Count > 0;
         if (_persistentEmpty is not null) _persistentEmpty.Visible = q.Orders.Count == 0;
@@ -187,6 +191,20 @@ public partial class Main
         foreach (var b in new[] { _localAgricultureButton, _localForestryButton, _localMiningButton, _r149LandWorkButton, _r149PortWorkButton })
             if (b is not null) b.Disabled = ready;
         if (_fineMovementDecision is not null) _fineMovementDecision.Text = "Select a destination on the map. Orders run in sequence.";
+    }
+
+    private void RefreshOperationalReadout(FoundationTacticalHumanAiTurnHost host, PhysicalWorkerId worker)
+    {
+        if (_operationalReadout is null) return;
+        _operationalReadout.Visible = host.OperationalFreight is not null;
+        if (!_operationalReadout.Visible) return;
+        var node = host.Snapshot.Workers.Workers.Single(w => w.Id == worker).TacticalTileId!.Value;
+        var quotes = host.ReadOperationalQuotes(_humanCivilization, node);
+        _operationalReadout.Text = quotes is null ? "Local logistics: no closed cycle" :
+            quotes.Count == 0 ? "Local logistics: no service last cycle" :
+            FormattableString.Invariant($"Local logistics: {quotes.Count} worked links | Last cycle");
+        _operationalReadout.TooltipText = quotes is null ? "" : string.Join("\n", quotes.Select(q =>
+            FormattableString.Invariant($"Link {q.Edge.FineStrategicEdgeId.Value}: {q.OriginalPhysicalCostMicroPerWholeCargoUnit} → {q.ShadowPhysicalCostMicroPerWholeCargoUnit} micro freight")));
     }
 
     private void RefreshFoodQuality(FoundationTacticalHumanAiTurnHost host, PhysicalWorkerId worker)
@@ -292,6 +310,26 @@ public partial class Main
         catch (InvalidOperationException) { rejected = true; }
         if (!rejected || host.StateHash != committedHash)
             throw new InvalidOperationException("Food read boundary leaked foreign data or mutated world.");
+        if (host.OperationalFreight is not null)
+        {
+            var operatorWorker = host.Snapshot.Workers.Workers.First(w => w.Owner == _humanCivilization &&
+                w.Id != worker.Id && host.Incidence.FineTopology.Cells[(int)w.TacticalTileId!.Value.FineStrategicCellId.Value - 1]
+                    .AdjacentCellIds.Any(c => _r123FineGeography!.CrossingAtIndices(
+                        (int)w.TacticalTileId.Value.FineStrategicCellId.Value - 1, (int)c.Value - 1) == FoundationFineTransportCrossingKind.Ground));
+            OnOperationalWorkerSelected(operatorWorker.Id.Value);
+            _r149LandWorkButton!.EmitSignal(Button.SignalName.Pressed);
+            if (ReadPersistentQueue(operatorWorker.Id).Orders.Single().Occupation != PhysicalWorkerOccupation.LandTransport ||
+                host.StateHash != committedHash)
+                throw new InvalidOperationException("Operational button did not stage a real order.");
+            EndFineCollectiveTurn();
+            var node = host.Snapshot.Workers.Workers.Single(w => w.Id == operatorWorker.Id).TacticalTileId!.Value;
+            var quotes = host.ReadOperationalQuotes(_humanCivilization, node);
+            if (quotes is null || quotes.Count == 0 || quotes.Aggregate(0UL, (sum, q) => checked(sum + q.OperationalServiceMicro)) != 1_000_000UL ||
+                quotes.Any(q => q.ShadowPhysicalCostMicroPerWholeCargoUnit >= q.OriginalPhysicalCostMicroPerWholeCargoUnit) ||
+                !_operationalReadout!.Text.Contains("worked links"))
+                throw new InvalidOperationException("Operational service did not affect closed freight quotes.");
+            GD.Print("GA_NEXT_R219B_OPERATIONAL_UI_PASS real_order=true service_conserved=true freight_reduced=true");
+        }
         GD.Print("GA_NEXT_R219A3_FOOD_READOUT_PASS committed=true owner_scoped=true hash_unchanged=true");
         GD.Print("GA_NEXT_R219A1_CROP_PREVIEW_PASS six_choices=true real_order=true economic_close=true");
     }
