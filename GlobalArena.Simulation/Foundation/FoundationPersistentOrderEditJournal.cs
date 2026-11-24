@@ -12,7 +12,7 @@ public sealed record FoundationPersistentOrderEdit(
     FoundationPersistentOrderEditKind Kind, ulong OrderId = 0,
     int Index = 0, FoundationWorkerOrderKind? OrderKind = null,
     PhysicalTacticalTileId? Destination = null, ulong? ProjectId = null,
-    PhysicalWorkerOccupation? Occupation = null);
+    PhysicalWorkerOccupation? Occupation = null, byte? Crop = null);
 
 public sealed record FoundationPersistentOrderEditEvent(
     EventId Id, FoundationPersistentOrderEdit Edit,
@@ -30,12 +30,12 @@ public sealed class FoundationPersistentOrderEditJournal : ISimulationEventExecu
         if (!world.WorkerOrders.IsInitialized || !edit.Issuer.IsValid || !edit.Worker.IsValid)
             throw new InvalidOperationException("Persistent order edit requires canonical queue deployment.");
         var noPayload = edit.OrderKind is null && edit.Destination is null &&
-            edit.ProjectId is null && edit.Occupation is null;
+            edit.ProjectId is null && edit.Occupation is null && edit.Crop is null;
         return (edit.Kind switch
         {
             FoundationPersistentOrderEditKind.Insert when edit.OrderId == 0 && edit.OrderKind.HasValue =>
                 world.InsertWorkerOrder(edit.Issuer, edit.Worker, edit.Index, edit.OrderKind.Value,
-                    edit.Destination, edit.ProjectId, edit.Occupation),
+                    edit.Destination, edit.ProjectId, edit.Occupation, edit.Crop),
             FoundationPersistentOrderEditKind.Remove when edit.OrderId != 0 && edit.Index == 0 && noPayload =>
                 world.RemoveWorkerOrder(edit.Issuer, edit.Worker, edit.OrderId),
             FoundationPersistentOrderEditKind.Interrupt when edit.OrderId != 0 && edit.Index == 0 && noPayload =>

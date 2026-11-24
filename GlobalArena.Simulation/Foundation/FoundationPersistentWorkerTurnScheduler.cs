@@ -8,7 +8,7 @@ namespace GlobalArena.Simulation.Foundation;
 public sealed record FoundationPersistentWorkerSlice(
     PhysicalWorkerId Worker, PhysicalTacticalTileId Node, uint StartMicro,
     uint DurationMicro, PhysicalWorkerActivity Activity,
-    PhysicalWorkerOccupation Occupation, ulong? ProjectId);
+    PhysicalWorkerOccupation Occupation, ulong? ProjectId, byte? Crop = null);
 
 public sealed record FoundationPersistentWorkerTurnEvent(
     EventId Id, WorldStateHash Before, WorldStateHash After,
@@ -29,7 +29,7 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
 
     private sealed record Mode(PhysicalWorkerId Worker, PhysicalTacticalTileId Node,
         PhysicalWorkerActivity Activity, PhysicalWorkerOccupation Occupation,
-        ulong? Project, FoundationPendingEdgeTravel? Travel);
+        ulong? Project, FoundationPendingEdgeTravel? Travel, byte? Crop = null);
 
     private static bool Produces(PhysicalWorkerOccupation occupation) =>
         occupation is PhysicalWorkerOccupation.Agriculture or PhysicalWorkerOccupation.Forestry
@@ -85,7 +85,7 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
                         var activity = Produces(nextOccupation) ? PhysicalWorkerActivity.Producing : PhysicalWorkerActivity.Other;
                         state = Assign(state, worker, node, worker.CellId, activity, nextOccupation);
                         // Continuous occupation remains the active head until explicit interruption.
-                        modes.Add(new(id, node, activity, nextOccupation, null, null));
+                        modes.Add(new(id, node, activity, nextOccupation, null, null, head.Crop));
                         break;
                     }
                     if (head.Kind == FoundationWorkerOrderKind.Build &&
@@ -156,7 +156,7 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
             foreach (var m in modes)
             {
                 uint work = m.Project.HasValue ? shares[m.Worker] : duration;
-                if (work > 0) slices.Add(new(m.Worker, m.Node, now, work, m.Activity, m.Occupation, m.Project));
+                if (work > 0) slices.Add(new(m.Worker, m.Node, now, work, m.Activity, m.Occupation, m.Project, m.Crop));
                 if (work < duration) slices.Add(new(m.Worker, m.Node, now + work, duration - work,
                     PhysicalWorkerActivity.Other, PhysicalWorkerOccupation.Unassigned, null));
                 if (m.Travel is not { } t) continue;

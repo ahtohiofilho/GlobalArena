@@ -21,7 +21,7 @@ public static class FoundationPersistentDemographicClose
             settled.Treasury.LastSettledEconomicCycleOrdinal != checked(opening.Treasury.LastSettledEconomicCycleOrdinal + 1UL) ||
             opening.Workers.Workers.Count != settled.Workers.Workers.Count)
             throw new InvalidOperationException("Births require one settled persistent turn.");
-        var presence = FoundationTemporalEconomicTurnProjector.ProjectPersistent(opening, timeline.Slices, demand).Presence;
+        var presence = FoundationPhysicalPresenceDemographicProjector.Project(opening, timeline.Slices.Select(s => new FoundationWorkerTemporalNodeSlice(s.Worker, s.Node, s.DurationMicro, s.Activity == PhysicalWorkerActivity.Producing ? s.DurationMicro : 0U, s.Activity, s.Occupation)).ToArray(), demand);
         var surviving = opening.Workers.Workers.Select(w => w.Owner).Distinct().OrderBy(c => c.Value).ToArray();
         var plan = FoundationPhysicalPresenceDemographicProjector.PlanBirths(opening, presence, surviving, context.Turn.Value);
         ulong next = settled.Workers.Workers.Max(w => w.Id.Value);

@@ -715,8 +715,8 @@ public sealed class WorldState
     // Only validated value-model operations are exposed; no arbitrary ledger replacement.
     public WorldState InsertWorkerOrder(CivilizationId issuer, PhysicalWorkerId worker,
         int index, FoundationWorkerOrderKind kind, PhysicalTacticalTileId? destination = null,
-        ulong? projectId = null, PhysicalWorkerOccupation? occupation = null)
-        => CopyWithWorkerOrders(WorkerOrders.Insert(issuer, worker, index, kind, destination, projectId, occupation));
+        ulong? projectId = null, PhysicalWorkerOccupation? occupation = null, byte? crop = null)
+        => CopyWithWorkerOrders(WorkerOrders.Insert(issuer, worker, index, kind, destination, projectId, occupation, crop));
 
     public WorldState RemoveWorkerOrder(CivilizationId issuer, PhysicalWorkerId worker, ulong id)
         => CopyWithWorkerOrders(WorkerOrders.Remove(issuer, worker, id));

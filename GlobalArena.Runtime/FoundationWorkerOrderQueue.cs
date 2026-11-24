@@ -9,9 +9,9 @@ public sealed record FoundationPersistentWorkerIntent(
     ulong Id, FoundationWorkerOrderKind Kind,
     PhysicalTacticalTileId? Destination = null,
     ulong? ProjectId = null,
-    PhysicalWorkerOccupation? Occupation = null)
+    PhysicalWorkerOccupation? Occupation = null, byte? Crop = null)
 {
-    internal bool IsValid => Id != 0 && (Kind switch
+    internal bool IsValid => Id != 0 && (!Crop.HasValue || (Crop.Value >= 1 && Crop.Value <= 6 && Kind == FoundationWorkerOrderKind.Occupation && Occupation == PhysicalWorkerOccupation.Agriculture)) && (Kind switch
     {
         FoundationWorkerOrderKind.Move => Destination.HasValue && Destination.Value.IsValid &&
             ProjectId is null && Occupation is null,
@@ -77,12 +77,12 @@ public sealed class FoundationWorkerOrderQueue
 
     public FoundationWorkerOrderQueue Insert(CivilizationId issuer, int index,
         FoundationWorkerOrderKind kind, PhysicalTacticalTileId? destination = null,
-        ulong? projectId = null, PhysicalWorkerOccupation? occupation = null)
+        ulong? projectId = null, PhysicalWorkerOccupation? occupation = null, byte? crop = null)
     {
         Authorize(issuer);
         RequireInsertionIndex(index, Orders.Count);
         var rows = Orders.ToList();
-        rows.Insert(index, new FoundationPersistentWorkerIntent(NextId, kind, destination, projectId, occupation));
+        rows.Insert(index, new FoundationPersistentWorkerIntent(NextId, kind, destination, projectId, occupation, crop));
         return new(Worker, Owner, checked(NextId + 1), ActiveOrderId, rows);
     }
 
@@ -158,8 +158,8 @@ public sealed class FoundationWorkerOrderQueueSet
 
     public FoundationWorkerOrderQueueSet Insert(CivilizationId issuer, PhysicalWorkerId worker,
         int index, FoundationWorkerOrderKind kind, PhysicalTacticalTileId? destination = null,
-        ulong? projectId = null, PhysicalWorkerOccupation? occupation = null)
-        => Replace(issuer, Get(issuer, worker).Insert(issuer, index, kind, destination, projectId, occupation));
+        ulong? projectId = null, PhysicalWorkerOccupation? occupation = null, byte? crop = null)
+        => Replace(issuer, Get(issuer, worker).Insert(issuer, index, kind, destination, projectId, occupation, crop));
 
     public FoundationWorkerOrderQueueSet Remove(CivilizationId issuer, PhysicalWorkerId worker, ulong id)
         => Replace(issuer, Get(issuer, worker).Remove(issuer, id));
