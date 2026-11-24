@@ -5,7 +5,7 @@ using GlobalArena.World;
 
 namespace GlobalArena.Simulation.Foundation;
 
-public enum FoundationPersistentOrderEditKind { Insert = 1, Remove = 2, Reorder = 3 }
+public enum FoundationPersistentOrderEditKind { Insert = 1, Remove = 2, Reorder = 3, Interrupt = 4 }
 
 public sealed record FoundationPersistentOrderEdit(
     CivilizationId Issuer, PhysicalWorkerId Worker,
@@ -38,6 +38,8 @@ public sealed class FoundationPersistentOrderEditJournal : ISimulationEventExecu
                     edit.Destination, edit.ProjectId, edit.Occupation),
             FoundationPersistentOrderEditKind.Remove when edit.OrderId != 0 && edit.Index == 0 && noPayload =>
                 world.RemoveWorkerOrder(edit.Issuer, edit.Worker, edit.OrderId),
+            FoundationPersistentOrderEditKind.Interrupt when edit.OrderId != 0 && edit.Index == 0 && noPayload =>
+                world.InterruptWorkerOrder(edit.Issuer, edit.Worker, edit.OrderId),
             FoundationPersistentOrderEditKind.Reorder when edit.OrderId != 0 && noPayload =>
                 world.ReorderWorkerOrder(edit.Issuer, edit.Worker, edit.OrderId, edit.Index),
             _ => throw new InvalidOperationException("Malformed persistent order edit.")
