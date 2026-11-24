@@ -701,6 +701,23 @@ public sealed class WorldState
     public WorldState StartWorkerOrder(CivilizationId owner, PhysicalWorkerId worker)
         => CopyWithWorkerOrders(WorkerOrders.StartHead(owner, worker));
 
+    // An explicit interruption removes only the active head. An unfinished
+    // crossing remains physically committed and finishes before new activity.
+    public WorldState InterruptWorkerOrder(CivilizationId owner, PhysicalWorkerId worker, ulong id)
+    {
+        var next = CopyWithWorkerOrders(WorkerOrders.InterruptHead(owner, worker, id));
+        var person = next.Workers.Workers.Single(w => w.Id == worker);
+        if (next.EdgeTravels.Pending.Any(p => p.Worker == worker))
+            return next.WithWorkers(new PhysicalWorkerRuntimeState(next.Workers.Workers.Select(w =>
+                w.Id == worker ? w.WithTacticalAssignment(w.TacticalTileId!.Value, w.CellId,
+                    PhysicalWorkerActivity.Traveling, PhysicalWorkerOccupation.Unassigned) : w),
+                tacticalLocationsAuthoritative: true, occupationsAuthoritative: true));
+        return next.WithWorkers(new PhysicalWorkerRuntimeState(next.Workers.Workers.Select(w =>
+            w.Id == worker ? person.WithTacticalAssignment(person.TacticalTileId!.Value, person.CellId,
+                PhysicalWorkerActivity.Other, PhysicalWorkerOccupation.Unassigned) : w),
+            tacticalLocationsAuthoritative: true, occupationsAuthoritative: true));
+    }
+
     public WorldState CompleteWorkerOrder(CivilizationId owner, PhysicalWorkerId worker, ulong id)
         => CopyWithWorkerOrders(WorkerOrders.CompleteHead(owner, worker, id));
 
