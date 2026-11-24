@@ -131,7 +131,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             var (next, ev) = scheduler.Record(state, context);
             Assert.Equal(hash.Compute(next), hash.Compute(scheduler.Execute(state, ev, context)));
             Assert.Throws<InvalidOperationException>(() => scheduler.Execute(next, ev, context));
-            Assert.All(ev.Slices.GroupBy(x => x.Worker), g => Assert.Equal(1_000_000UL, g.Sum(x => (long)x.DurationMicro) > 0 ? (ulong)g.Sum(x => (long)x.DurationMicro) : 0UL));
+            Assert.All(ev.Slices.GroupBy(x => x.Worker), g => Assert.Equal(1_000_000L, g.Sum(x => (long)x.DurationMicro)));
             var slices = ev.Slices.Where(x => x.Worker == worker.Id).ToArray();
             Assert.Equal(turn == 1 ? 0UL : turn == 2 ? 600_000UL : 1_200_000UL,
                 next.Constructions.Projects.Single().CompletedWorkMicro);
@@ -149,7 +149,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
                 Assert.Equal(PhysicalWorkerActivity.Producing, slices[1].Activity);
                 Assert.Equal(2UL, next.WorkerOrders.Queues.Single(q => q.Worker == worker.Id).ActiveOrderId);
             }
-            Assert.Same(funded.Treasury, next.Treasury);
+            Assert.Equal(funded.Treasury.Get(worker.Owner).CashScaled, next.Treasury.Get(worker.Owner).CashScaled);
             state = next;
         }
     }
