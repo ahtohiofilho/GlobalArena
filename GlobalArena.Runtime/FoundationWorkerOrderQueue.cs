@@ -145,8 +145,33 @@ public sealed class FoundationWorkerOrderQueueSet
         Queues = Array.AsReadOnly(rows.OrderBy(q => q.Worker.Value).ToArray());
     }
 
-    /// <summary>Replace only an existing queue. Census admission belongs to the world integration.</summary>
-    public FoundationWorkerOrderQueueSet Replace(CivilizationId issuer, FoundationWorkerOrderQueue next)
+    private FoundationWorkerOrderQueue Get(CivilizationId issuer, PhysicalWorkerId worker)
+    {
+        var queue = Queues.SingleOrDefault(q => q.Worker == worker);
+        if (!IsInitialized || queue is null || queue.Owner != issuer)
+            throw new InvalidOperationException("Unauthorized worker queue.");
+        return queue;
+    }
+
+    public FoundationWorkerOrderQueueSet Insert(CivilizationId issuer, PhysicalWorkerId worker,
+        int index, FoundationWorkerOrderKind kind, PhysicalTacticalTileId? destination = null,
+        ulong? projectId = null, PhysicalWorkerOccupation? occupation = null)
+        => Replace(issuer, Get(issuer, worker).Insert(issuer, index, kind, destination, projectId, occupation));
+
+    public FoundationWorkerOrderQueueSet Remove(CivilizationId issuer, PhysicalWorkerId worker, ulong id)
+        => Replace(issuer, Get(issuer, worker).Remove(issuer, id));
+
+    public FoundationWorkerOrderQueueSet Reorder(CivilizationId issuer, PhysicalWorkerId worker, ulong id, int finalIndex)
+        => Replace(issuer, Get(issuer, worker).Reorder(issuer, id, finalIndex));
+
+    public FoundationWorkerOrderQueueSet StartHead(CivilizationId issuer, PhysicalWorkerId worker)
+        => Replace(issuer, Get(issuer, worker).StartHead(issuer));
+
+    public FoundationWorkerOrderQueueSet CompleteHead(CivilizationId issuer, PhysicalWorkerId worker, ulong id)
+        => Replace(issuer, Get(issuer, worker).CompleteHead(issuer, id));
+
+    // No arbitrary replacement from untrusted snapshots.
+    private FoundationWorkerOrderQueueSet Replace(CivilizationId issuer, FoundationWorkerOrderQueue next)
     {
         ArgumentNullException.ThrowIfNull(next);
         var prior = Queues.SingleOrDefault(q => q.Worker == next.Worker);
