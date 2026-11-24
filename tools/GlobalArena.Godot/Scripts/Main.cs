@@ -1,6 +1,7 @@
 using Godot;
 using BigInteger = System.Numerics.BigInteger;
 using GlobalArena.Runtime;
+using GlobalArena.Runtime.PersistentOrders;
 using GlobalArena.World;
 using GlobalArena.Simulation.Foundation;
 
@@ -513,6 +514,7 @@ public partial class Main : Control
         RefreshOperationalContext();
         RefreshLastTemporalEconomyReadout();
         RefreshCivilizationWindow();
+        RefreshPersistentWorkerControls();
     }
 
     // R140: read directly from the same authoritative worker and pending-order
@@ -566,7 +568,9 @@ public partial class Main : Control
                 _tacticalHost.Incidence.Refinement.FineParameters,
                 new StrategicCellId(
                     _tacticalPreview.SelectedCanonicalPhysicalTileId.Value));
-            _tacticalHost.QueueHumanMove(
+            if (_tacticalHost.PersistentOrdersEnabled)
+                AppendPersistentOrder(new PhysicalWorkerId(_selectedLocalWorkerId.Value), FoundationWorkerOrderKind.Move, destination: target);
+            else _tacticalHost.QueueHumanMove(
                 _humanCivilization,
                 new PhysicalWorkerId(_selectedLocalWorkerId.Value), target);
             _localOrderStatus.Text =
@@ -590,7 +594,13 @@ public partial class Main : Control
             _localOrderStatus is null) return;
         try
         {
-            _tacticalHost.QueueHumanActivity(
+            if (_tacticalHost.PersistentOrdersEnabled)
+            {
+                var worker = _tacticalHost.Snapshot.Workers.Workers.Single(w => w.Id.Value == _selectedLocalWorkerId.Value);
+                AppendPersistentOrder(worker.Id, FoundationWorkerOrderKind.Occupation,
+                    occupation: worker.Occupation is PhysicalWorkerOccupation.Agriculture or PhysicalWorkerOccupation.Forestry or PhysicalWorkerOccupation.Mining ? worker.Occupation : PhysicalWorkerOccupation.Agriculture);
+            }
+            else _tacticalHost.QueueHumanActivity(
                 _humanCivilization, new PhysicalWorkerId(_selectedLocalWorkerId.Value),
                 PhysicalWorkerActivity.Producing);
             _localOrderStatus.Text =
@@ -631,7 +641,7 @@ public partial class Main : Control
         }
         try
         {
-            bool cancelled = _tacticalHost.CancelHumanOrder(
+            bool cancelled = _tacticalHost.PersistentOrdersEnabled ? RemovePersistentHead(new PhysicalWorkerId(workerId)) : _tacticalHost.CancelHumanOrder(
                 _humanCivilization, new PhysicalWorkerId(workerId));
             _localOrderStatus.Text = cancelled
                 ? $"Worker #{workerId}: pending order cancelled; no turn committed."
@@ -657,7 +667,9 @@ public partial class Main : Control
         {
             var worker = _tacticalHost.Snapshot.Workers.Workers.Single(w =>
                 w.Id.Value == _selectedLocalWorkerId.Value);
-            if (worker.Occupation is (PhysicalWorkerOccupation.LandTransport or
+            if (_tacticalHost.PersistentOrdersEnabled)
+                AppendPersistentOrder(worker.Id, FoundationWorkerOrderKind.Occupation, occupation: occupation);
+            else if (worker.Occupation is (PhysicalWorkerOccupation.LandTransport or
                     PhysicalWorkerOccupation.PortOperations))
                 _tacticalHost.QueueHumanProductiveRole(_humanCivilization,
                     worker.Id, occupation);
@@ -686,7 +698,10 @@ public partial class Main : Control
             _localOrderStatus is null) return;
         try
         {
-            _tacticalHost.QueueHumanOperationalRole(_humanCivilization,
+            if (_tacticalHost.PersistentOrdersEnabled)
+                AppendPersistentOrder(new PhysicalWorkerId(_selectedLocalWorkerId.Value), FoundationWorkerOrderKind.Occupation,
+                    occupation: kind == FoundationOperationalWorkKind.Land ? PhysicalWorkerOccupation.LandTransport : PhysicalWorkerOccupation.PortOperations);
+            else _tacticalHost.QueueHumanOperationalRole(_humanCivilization,
                 new PhysicalWorkerId(_selectedLocalWorkerId.Value), kind);
             _localOrderStatus.Text =
                 $"Worker #{_selectedLocalWorkerId.Value}: {kind} queued at the " +
@@ -710,7 +725,7 @@ public partial class Main : Control
             _localOrderStatus is null) return;
         try
         {
-            if (_tacticalHost.CancelHumanOrder(
+            if (_tacticalHost.PersistentOrdersEnabled ? RemovePersistentHead(new PhysicalWorkerId(_selectedLocalWorkerId.Value)) : _tacticalHost.CancelHumanOrder(
                     _humanCivilization,
                     new PhysicalWorkerId(_selectedLocalWorkerId.Value)))
                 _localOrderStatus.Text =
@@ -1801,6 +1816,7 @@ public partial class Main : Control
         };
         _localWorkerSelector.ItemSelected += OnLocalWorkerSelected;
         orderSection.AddChild(_localWorkerSelector);
+        CreatePersistentWorkerControls(orderSection);
         _localMoveButton = new Button
         {
             Text = "G | QUEUE MOVE TO SELECTED ADJACENT TILE",
@@ -2037,7 +2053,8 @@ public partial class Main : Control
                     var g18 = GaExplicitEconomicQaConfiguration
                         .PrepareFineFirst(_tacticalHost,
                             enableTemporalFinancialVisualSmoke:
-                                temporalEconomyVisualSmoke, enableConstructionPreview: constructionPreview);
+                                temporalEconomyVisualSmoke, enableConstructionPreview: constructionPreview,
+                            enablePersistentOrders: constructionPreview && System.Environment.GetEnvironmentVariable("GA_NEXT_PERSISTENT_ORDERS") == "1");
                     _tacticalHost = g18.Host;
                     _r123FineGeography = g18.Geography;
                     _goldbergStartup.VerifyWorldAndIncidence(
