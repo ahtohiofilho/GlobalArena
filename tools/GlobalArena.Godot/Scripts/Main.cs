@@ -2060,7 +2060,8 @@ public partial class Main : Control
                         .PrepareFineFirst(_tacticalHost,
                             enableTemporalFinancialVisualSmoke:
                                 temporalEconomyVisualSmoke, enableConstructionPreview: constructionPreview,
-                            enablePersistentOrders: constructionPreview && System.Environment.GetEnvironmentVariable("GA_NEXT_PERSISTENT_ORDERS") == "1");
+                            enablePersistentOrders: constructionPreview && System.Environment.GetEnvironmentVariable("GA_NEXT_PERSISTENT_ORDERS") == "1",
+                            enableCropPreview: System.Environment.GetEnvironmentVariable("GA_NEXT_CROP_PREVIEW") == "1");
                     _tacticalHost = g18.Host;
                     _r123FineGeography = g18.Geography;
                     _goldbergStartup.VerifyWorldAndIncidence(
