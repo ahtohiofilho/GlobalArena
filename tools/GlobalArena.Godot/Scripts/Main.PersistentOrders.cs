@@ -56,7 +56,7 @@ public partial class Main
         _persistentQueuePanel.AddChild(_persistentWorkerSummary);
         _persistentCrossingLabel = new Label { Name = "GANextCrossingDetails", AutowrapMode = TextServer.AutowrapMode.WordSmart, Visible = false };
         _persistentQueuePanel.AddChild(_persistentCrossingLabel);
-        _persistentCrossingProgress = new ProgressBar { Name = "GANextCrossingProgress", MinValue = 0, MaxValue = 100, ShowPercentage = false, Visible = false };
+        _persistentCrossingProgress = new ProgressBar { Name = "GANextCrossingProgress", MinValue = 0, MaxValue = 100, Step = 0, ShowPercentage = false, Visible = false };
         _persistentQueuePanel.AddChild(_persistentCrossingProgress);
         _persistentQueuePanel.AddChild(new Label { Text = "ORDER QUEUE" });
         _persistentEmpty = new Label { Text = "No orders" };
@@ -285,10 +285,10 @@ public partial class Main
             var expected = 100m * (travel.OriginalDurationMicro - travel.RemainingMicro) / travel.OriginalDurationMicro;
             var travelHash = host.StateHash;
             if (!_persistentCrossingProgress.Visible || !_persistentCrossingLabel!.Visible ||
-                Math.Abs(_persistentCrossingProgress.Value - (double)expected) > 0.000001 ||
+                Math.Abs(_persistentCrossingProgress.Value - (double)expected) > 0.00001 ||
                 !_persistentCrossingLabel.Text.Contains(FormattableString.Invariant($"Remaining: {travel.RemainingMicro / 1_000_000m:0.######} turns")) ||
                 !_persistentWorkerSummary!.Text.StartsWith("Traveling", StringComparison.Ordinal))
-                throw new InvalidOperationException("Crossing readout does not match canonical ledger.");
+                throw new InvalidOperationException($"Crossing readout mismatch: expected={expected}, bar={_persistentCrossingProgress.Value}, visible={_persistentCrossingProgress.Visible}, label={_persistentCrossingLabel?.Text}, summary={_persistentWorkerSummary?.Text}");
             OnOperationalWorkerSelected(other.Id.Value);
             if (_persistentCrossingProgress.Visible) throw new InvalidOperationException("Crossing leaked to stationary worker.");
             OnOperationalWorkerSelected(worker.Id.Value);
