@@ -20,6 +20,7 @@ public sealed class FoundationTemporalSalesSettledEvent : ISimulationEvent
     public string ScheduleDigest { get; }
     public string CargoUnitCode { get; }
     public ulong ProducedGoodsMicro { get; }
+    public IReadOnlyList<FoundationWorkerFoodIntake>? FoodIntake { get; }
     public BigInteger GrossSalesScaled { get; }
     public BigInteger PhysicalFreightScaled { get; }
     public BigInteger SellerNetScaled { get; }
@@ -33,7 +34,8 @@ public sealed class FoundationTemporalSalesSettledEvent : ISimulationEvent
         ulong preSettlementRevision, ulong cycleOrdinal, string digest,
         string cargoUnitCode, ulong goods, BigInteger gross,
         BigInteger freight, BigInteger net, BigInteger taxes,
-        BigInteger tolls, IEnumerable<FoundationCivilizationEconomicSettlementCredit> credits)
+        BigInteger tolls, IEnumerable<FoundationCivilizationEconomicSettlementCredit> credits,
+        IReadOnlyList<FoundationWorkerFoodIntake>? foodIntake = null)
     {
         ArgumentNullException.ThrowIfNull(credits);
         var lines = credits.OrderBy(c => c.Civilization.Value).ToArray();
@@ -58,6 +60,7 @@ public sealed class FoundationTemporalSalesSettledEvent : ISimulationEvent
         ScheduleDigest = digest;
         CargoUnitCode = cargoUnitCode;
         ProducedGoodsMicro = goods;
+        FoodIntake = foodIntake is null ? null : Array.AsReadOnly(foodIntake.ToArray());
         GrossSalesScaled = gross;
         PhysicalFreightScaled = freight;
         SellerNetScaled = net;
@@ -250,7 +253,8 @@ public static class FoundationTemporalEconomicJournalGate
             financial.Accounting.PhysicalFreightScaled,
             financial.Accounting.NetSellerReceiptsScaled,
             financial.Accounting.RevenueTaxScaled,
-            financial.Accounting.ExternalTollsScaled, credits);
+            financial.Accounting.ExternalTollsScaled, credits,
+            agriculture is null ? null : FoundationSettledFoodIntake.Attribute(beginning, calendar, financial.Distribution, agriculture.Commodities));
         var amounts = ev.Credits.ToDictionary(c => c.Civilization,
             c => c.CashCreditScaled);
         var state = staged.RecordAuditedEconomicCycle(
@@ -292,7 +296,9 @@ public static class FoundationTemporalEconomicJournalGate
             received.ExternalTollsScaled != expected.ExternalTollsScaled ||
             received.TotalCivilizationCreditsScaled !=
                 expected.TotalCivilizationCreditsScaled ||
-            !received.Credits.SequenceEqual(expected.Credits))
+            !received.Credits.SequenceEqual(expected.Credits) ||
+            (received.FoodIntake is null) != (expected.FoodIntake is null) ||
+            (received.FoodIntake is not null && !received.FoodIntake.SequenceEqual(expected.FoodIntake!)))
             throw new InvalidOperationException(
                 "Forgery, duplicate, or stale temporal sale/cash journal event.");
     }
