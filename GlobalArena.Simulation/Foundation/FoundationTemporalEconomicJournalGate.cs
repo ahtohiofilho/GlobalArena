@@ -123,7 +123,8 @@ public static class FoundationTemporalEconomicJournalGate
         FoundationAuthoritativeEconomicSettlementPolicy economicPolicy,
         SimulationContext context,
         FoundationMonetaryInfrastructureEventExecutor? investmentExecutor,
-        FoundationFineFirstPhysicalGeography? signedFine = null)
+        FoundationFineFirstPhysicalGeography? signedFine = null,
+        FoundationConstructionCollectiveTurnPhase? constructionPhase = null)
     {
         ArgumentNullException.ThrowIfNull(beginning);
         ArgumentNullException.ThrowIfNull(physicalAndInvestmentEvents);
@@ -133,7 +134,7 @@ public static class FoundationTemporalEconomicJournalGate
             throw new InvalidOperationException(
                 "Temporal cash cannot close without a bound opt-in world and funded treasury.");
         var executor = new ReplayExecutor(beginning, movement, movementPolicy,
-            incidence, economicPolicy, signedFine, investmentExecutor);
+            incidence, economicPolicy, signedFine, investmentExecutor, constructionPhase);
         var staged = beginning;
         foreach (var ev in physicalAndInvestmentEvents)
             staged = executor.Execute(staged, ev, context);
@@ -151,7 +152,7 @@ public static class FoundationTemporalEconomicJournalGate
                 wasEligible: true, wasExecuted: true)).ToArray());
         var independent = ReplayJournal(beginning, journal, movement,
             movementPolicy, incidence, economicPolicy, context, signedFine,
-            investmentExecutor);
+            investmentExecutor, constructionPhase);
         var hash = Hasher.Compute(actual);
         if (hash != Hasher.Compute(independent) ||
             hash != Hasher.Compute(expected))
@@ -172,12 +173,13 @@ public static class FoundationTemporalEconomicJournalGate
         FoundationAuthoritativeEconomicSettlementPolicy economicPolicy,
         SimulationContext context,
         FoundationFineFirstPhysicalGeography? signedFine = null,
-        FoundationMonetaryInfrastructureEventExecutor? investmentExecutor = null)
+        FoundationMonetaryInfrastructureEventExecutor? investmentExecutor = null,
+        FoundationConstructionCollectiveTurnPhase? constructionPhase = null)
     {
         ArgumentNullException.ThrowIfNull(beginning);
         ArgumentNullException.ThrowIfNull(journal);
         var executor = new ReplayExecutor(beginning, movement, movementPolicy,
-            incidence, economicPolicy, signedFine, investmentExecutor);
+            incidence, economicPolicy, signedFine, investmentExecutor, constructionPhase);
         var state = new SimulationEventLogReplayer(executor).Replay(
             new SimulationReplayInput(beginning, journal, context));
         if (!executor.IsClosed)
@@ -205,7 +207,7 @@ public static class FoundationTemporalEconomicJournalGate
         var calendar = FoundationTemporalEconomicTurnProjector.Project(
             beginning, staged, physicalEvents, localEvents, policy.Demand);
         var financial = FoundationTemporalFinancialReconciler.Evaluate(
-            beginning, incidence, calendar, policy, signedFine, staged);
+            beginning, incidence, calendar, policy, signedFine, beginning.Constructions.IsInitialized ? beginning : staged);
         ulong ordinal = checked(staged.Treasury.LastSettledEconomicCycleOrdinal + 1UL);
         if (staged.Treasury.HasClosedEconomicCycle &&
             staged.Treasury.LastSettledCargoUnitCode != policy.Cargo.CargoUnitCode)
@@ -292,6 +294,8 @@ public static class FoundationTemporalEconomicJournalGate
         private readonly List<PhysicalTacticalWorkerMovedEvent> _localEvents = new();
         private readonly HashSet<PhysicalWorkerId> _orderedWorkers = new();
         private readonly FoundationMonetaryInfrastructureEventExecutor? _investment;
+        private readonly ISimulationEventExecutor? _construction;
+        private bool _constructionWorkSeen;
         private bool _travelsStarted;
         private bool _investmentsStarted;
         private int _investmentCount;
@@ -308,7 +312,8 @@ public static class FoundationTemporalEconomicJournalGate
             PhysicalTacticalIncidenceMap incidence,
             FoundationAuthoritativeEconomicSettlementPolicy policy,
             FoundationFineFirstPhysicalGeography? signedFine,
-            FoundationMonetaryInfrastructureEventExecutor? investment)
+            FoundationMonetaryInfrastructureEventExecutor? investment,
+            FoundationConstructionCollectiveTurnPhase? constructionPhase)
         {
             _beginning = beginning;
             _travel = new FoundationEdgeTravelEventExecutor(movement, movementPolicy);
@@ -317,6 +322,9 @@ public static class FoundationTemporalEconomicJournalGate
             _policy = policy;
             _signedFine = signedFine;
             _investment = investment;
+            if (beginning.Constructions.IsInitialized != (constructionPhase is not null))
+                throw new InvalidOperationException("Construction replay requires matching opt-in phase.");
+            _construction = constructionPhase?.CreateReplayExecutor(movement);
         }
 
         public WorldState Execute(WorldState state, ISimulationEvent ev,
@@ -346,6 +354,21 @@ public static class FoundationTemporalEconomicJournalGate
                 var next = _travel.Execute(state, travel, context);
                 _travelsStarted = true;
                 _events.Add(travel);
+                return next;
+            }
+            if (ev is FoundationConstructionFundedEvent || ev is FoundationConstructionWorkBatchEvent)
+            {
+                if (_construction is null || _constructionWorkSeen)
+                    throw new InvalidOperationException("Unexpected construction event or duplicate work batch.");
+                if (ev is FoundationConstructionWorkBatchEvent batch)
+                {
+                    if (batch.Commands.Any(c => !_orderedWorkers.Add(c.WorkerId)))
+                        throw new InvalidOperationException("Construction worker has competing orders.");
+                    _constructionWorkSeen = true;
+                }
+                _investmentsStarted = true;
+                var next = _construction.Execute(state, ev, context);
+                _investmentCount = checked(_investmentCount + 1);
                 return next;
             }
             if (ev is FoundationMonetaryInfrastructureInvestedEvent capital)

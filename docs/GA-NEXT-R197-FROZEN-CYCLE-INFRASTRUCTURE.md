@@ -1,0 +1,5 @@
+# R197 — Frozen infrastructure per economic cycle
+
+R196 approved 10/10. The approved rule supersedes intraturn freight activation: all movement and economic routing/accounting in a construction-enabled turn use the opening infrastructure. Funding debits opening cash; physical construction progress and commissioning occur in the journal before settlement, but the market uses the beginning snapshot, including ownership and tariffs. The final snapshot and next-cycle freight quotes include commissioned infrastructure. No extra market equilibrium or weighted freight is introduced. Legacy opt-out investment timing remains unchanged.
+
+Construction events join the temporal collective phase and independent replay. The work batch has a distinct system ordinal; duplicate or competing work is rejected. Residual time remains recorded but is not yet dispatched into subsequent commands. The new host mode is opt-in; interactive bootstrap/UI, end-to-end validation and worker queues remain subsequent gates. No calibration of money-to-Work rate is introduced.

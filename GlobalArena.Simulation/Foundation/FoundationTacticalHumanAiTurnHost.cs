@@ -450,8 +450,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
             physicalTravelPolicy is not null ? settlementPolicy : null;
         _signedFine = fineGeography;
         if (Snapshot.Constructions.IsInitialized != constructionMoneyMicroPerWholeWork.HasValue ||
-            (constructionMoneyMicroPerWholeWork.HasValue && (!enableMonetaryInfrastructure || fineGeography is null || settlementPolicy is not null)))
-            throw new InvalidOperationException("Construction host requires signed geography, explicit rate and no economic settlement until timing integration.");
+            (constructionMoneyMicroPerWholeWork.HasValue && (!enableMonetaryInfrastructure || fineGeography is null || (settlementPolicy is not null && physicalTravelPolicy is null))))
+            throw new InvalidOperationException("Construction host requires signed geography, explicit rate and temporal travel for economic settlement.");
         if (settlementPolicy is not null && !enableMonetaryInfrastructure)
             throw new InvalidOperationException(
                 "Authoritative sales need the same monetary treasury and " +
@@ -503,7 +503,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
             if (constructionMoneyMicroPerWholeWork is { } rate)
             {
                 _constructionPhase = new FoundationConstructionCollectiveTurnPhase(
-                    new FoundationConstructionFundingExecutor(_monetaryExecutor, rate), incidence, fineGeography!);
+                    new FoundationConstructionFundingExecutor(_monetaryExecutor, rate), incidence, fineGeography!, _temporalPolicy is not null);
                 phases.Add(_constructionPhase);
             }
             else phases.Add(fineGeography is null
@@ -537,7 +537,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
             phases.Clear();
             phases.Add(new FoundationTemporalCollectiveTurnPhase(
                 session.GeneratedWorld, incidence, _travelPolicy!,
-                _temporalPolicy, fineGeography, fineSignature));
+                _temporalPolicy, fineGeography, fineSignature, _constructionPhase));
         }
         var engine = new PhasedTurnResolutionEngine(phases);
         _publisher = new AuthoritativeTurnCommitGate(
@@ -990,7 +990,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
             ? FoundationTemporalEconomicJournalGate.ReplayJournal(
                 before, resolved.EventLog, _executor, _travelPolicy!,
                 Incidence, _temporalPolicy, context, _signedFine,
-                _monetaryExecutor)
+                _monetaryExecutor, _constructionPhase)
             : new SimulationEventLogReplayer(replayExecutor)
                 .Replay(new SimulationReplayInput(
                     before, resolved.EventLog, context));
