@@ -25,6 +25,10 @@ public partial class Main
     private Button? _connectionCancel;
     private Label? _connectionFeedback;
     private ulong? _connectionDestination;
+    private VBoxContainer? _constructionSection;
+    private Label? _constructionStatus;
+    private ProgressBar? _constructionProgress;
+    private VBoxContainer? _constructionWorkers;
 
     private void CreateCityWindow()
     {
@@ -131,6 +135,16 @@ public partial class Main
         details.AddChild(_connectionCancel);
         _connectionFeedback = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
         details.AddChild(_connectionFeedback);
+        _constructionSection = new VBoxContainer { Name = "GANextConstruction", Visible = false };
+        details.AddChild(_constructionSection);
+        _constructionSection.AddChild(new Label { Text = "CONSTRUCTION" });
+        _constructionStatus = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        _constructionSection.AddChild(_constructionStatus);
+        _constructionProgress = new ProgressBar { MinValue = 0, MaxValue = 100, ShowPercentage = true };
+        _constructionSection.AddChild(_constructionProgress);
+        _constructionSection.AddChild(new Label { Text = "CONSTRUCTION WORKFORCE" });
+        _constructionWorkers = new VBoxContainer();
+        _constructionSection.AddChild(_constructionWorkers);
     }
 
     private void OpenSelectedCityWindow()
@@ -263,6 +277,10 @@ public partial class Main
         var plans = host.GetHumanMonetaryInvestments(_humanCivilization);
         var pendingPlan = plans.SingleOrDefault(p => p.Edge == id);
         bool pending = pendingPlan is not null;
+        bool construction = host.Snapshot.Constructions.IsInitialized;
+        var project = host.Snapshot.Constructions.Projects.LastOrDefault(p => p.Edge == id && !p.IsActivated);
+        _connectionInvest.Text = construction ? "QUEUE CONSTRUCTION FUNDING" : "QUEUE INVESTMENT";
+        _connectionCancel.Text = construction ? "CANCEL PENDING FUNDING" : "CANCEL PENDING INVESTMENT";
         bool ready = host.ReadyCivilizations.Contains(_humanCivilization);
         var physical = host.Snapshot.Transport.Edges.Single(e => e.Edge == id);
         bool financeable = physical.NaturalConstructionCostMoneyMicro is > 0UL &&
@@ -274,27 +292,62 @@ public partial class Main
             (sum, p) => sum + GlobalArenaMoneyScale.FromMoneyMicro(p.MoneyMicro));
         var available = host.Snapshot.Treasury.Get(_humanCivilization).CashScaled - reserved;
         bool valid = TryReadConnectionAmount(out var amount);
-        var projectedAmount = pendingPlan?.MoneyMicro ?? amount;
+        var projectedAmount = project?.FundedMoneyMicro ?? pendingPlan?.MoneyMicro ?? amount;
         bool withinRange = projectedAmount <= ulong.MaxValue - physical.CommittedInvestmentMoneyMicro.GetValueOrDefault();
         bool affordable = valid && available >= GlobalArenaMoneyScale.FromMoneyMicro(amount);
-        if (_connectionAmount is not null) _connectionAmount.Editable = !ready && !pending;
-        if (_connectionProjection is not null && financeable && (pending || valid) && withinRange)
+        if (_connectionAmount is not null) _connectionAmount.Editable = !ready && !pending && project is null;
+        if (_connectionProjection is not null && financeable && (project is not null || pending || valid) && withinRange)
         {
             var before = FoundationPhysicalAuthoritativeTransportProjector.EffectiveUnitFreightCost(physical);
             var after = FoundationPhysicalAuthoritativeTransportProjector.ProjectUnitFreightCost(physical, projectedAmount);
             _connectionProjection.Text =
                 $"Physical freight per cargo unit: {FormatMoneyMicroForDisplay(before)} -> {FormatMoneyMicroForDisplay(after)}\n" +
-                $"Reduction: {FormatMoneyMicroForDisplay(before - after)} | Conditional on settlement; not a revenue forecast.";
+                $"Reduction: {FormatMoneyMicroForDisplay(before - after)} | {(construction ? "Available next economic cycle after completion." : "Conditional on settlement; not a revenue forecast.")}";
         }
-        _connectionInvest.Disabled = ready || pending || !financeable || !affordable || !withinRange;
+        _connectionInvest.Disabled = ready || pending || project is not null || !financeable || !affordable || !withinRange;
         _connectionCancel.Disabled = ready || !pending;
         _connectionFeedback.Text = ready ? "Turn already submitted." :
-            pending ? "Investment pending. Press E to commit the turn." :
+            project is not null ? "Construction already funded. Assign workers below." :
+            pending ? "Funding pending. Press E to commit the turn." :
             !financeable ? "This connection cannot be financed by your civilization." :
             !valid ? "Enter a positive amount with at most six decimal places." :
             !withinRange ? "Capital exceeds the canonical money range." :
             !affordable ? "Insufficient unreserved treasury cash." :
-            "Queue investment; cash is debited only on turn settlement.";
+            "Queue funding; cash is debited only on turn settlement.";
+        RefreshConstructionSection(id, ready);
+    }
+
+    private void RefreshConstructionSection(PhysicalTacticalEdgeId id, bool ready)
+    {
+        var host = _tacticalHost;
+        if (_constructionSection is null || _constructionStatus is null || _constructionProgress is null || _constructionWorkers is null || host is null) return;
+        _constructionSection.Visible = host.Snapshot.Constructions.IsInitialized;
+        if (!_constructionSection.Visible) return;
+        foreach (Node child in _constructionWorkers.GetChildren()) { _constructionWorkers.RemoveChild(child); child.QueueFree(); }
+        var project = host.Snapshot.Constructions.Projects.LastOrDefault(p => p.Edge == id);
+        _constructionProgress.Value = project is null ? 0 : 100.0 * project.CompletedWorkMicro / project.RequiredWorkMicro;
+        _constructionStatus.Text = project is null ? "No funded construction. Fund a project first." :
+            $"Status: {(project.IsActivated ? "Operational" : project.IsComplete ? "Completed" : "Under construction")} | Project #{project.Id}\nFunded capital: {FormatMoneyMicroForDisplay(project.FundedMoneyMicro)}\nWork: {FormatMoneyMicroForDisplay(project.CompletedWorkMicro)} / {FormatMoneyMicroForDisplay(project.RequiredWorkMicro)}\nBenefits apply from the next economic cycle after completion.";
+        if (project is null || project.IsComplete || project.Investor != _humanCivilization) return;
+        var plans = host.GetHumanConstructionOrders(_humanCivilization);
+        var otherOrders = host.GetHumanOrders(_humanCivilization);
+        var edge = host.Incidence.FineTopology.Edges.Single(e => e.Id == id.FineStrategicEdgeId);
+        var fine = _r123FineGeography;
+        if (fine is null) return;
+        var kind = fine.CrossingAtIndices((int)edge.IncidentCellIds[0].Value - 1, (int)edge.IncidentCellIds[1].Value - 1);
+        foreach (var worker in host.Snapshot.Workers.Workers.Where(w => w.Owner == _humanCivilization && w.TacticalTileId.HasValue && edge.IncidentCellIds.Contains(w.TacticalTileId.Value.FineStrategicCellId)))
+        {
+            var plan = plans.SingleOrDefault(p => p.Worker == worker.Id);
+            bool assigned = plan?.ProjectId == project.Id;
+            bool eligible = worker.Activity == PhysicalWorkerActivity.Other && worker.Occupation == PhysicalWorkerOccupation.Unassigned &&
+                !host.Snapshot.EdgeTravels.Pending.Any(p => p.Worker == worker.Id) && !otherOrders.Any(o => o.WorkerId == worker.Id) &&
+                (kind == FoundationFineTransportCrossingKind.Ground || (kind == FoundationFineTransportCrossingKind.Port && fine.FineElevationRaw[(int)worker.TacticalTileId!.Value.FineStrategicCellId.Value - 1] > fine.SeaLevelRaw));
+            var button = new Button { Text = $"Worker #{worker.Id.Value} | {(assigned ? "Cancel assignment" : eligible && plan is null ? "Assign" : "Unavailable")}", Disabled = ready || (!assigned && (!eligible || plan is not null)) };
+            var workerId = worker.Id;
+            button.Pressed += () => { try { if (assigned) host.CancelHumanConstructionWork(_humanCivilization, workerId); else host.QueueHumanConstructionWork(_humanCivilization, workerId, project.Id); RefreshOpenConnectionInvestment(); } catch (Exception ex) { if (_connectionFeedback is not null) _connectionFeedback.Text = "Command rejected: " + ex.Message; } };
+            _constructionWorkers.AddChild(button);
+        }
+        if (_constructionWorkers.GetChildCount() == 0) _constructionWorkers.AddChild(new Label { Text = "No local workers." });
     }
 
     private void ChangeConnectionInvestment(bool cancel)
@@ -324,7 +377,7 @@ public partial class Main
                     .FirstOrDefault(e => e.Edge == id)?.TotalCargoMicro ?? 0UL;
                 if (!TryReadConnectionAmount(out var amount)) return;
                 host.QueueHumanMonetaryInvestment(_humanCivilization, id, amount);
-                _r144QueuedCapital[id] = (freight, cargo, amount);
+                if (!host.Snapshot.Constructions.IsInitialized) _r144QueuedCapital[id] = (freight, cargo, amount);
             }
             _portQaLastSettledAudit = null;
             RefreshPortInvestmentQaControls();
