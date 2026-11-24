@@ -1,0 +1,22 @@
+name: GA-Next R211 Persistent Economic Close
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/Foundation/FoundationTemporal*.cs'
+      - 'GlobalArena.Simulation/Foundation/FoundationPhysicalPresenceDemographicProjector.cs'
+      - 'GlobalArena.Simulation/Foundation/FoundationPersistentWorkerTurnScheduler.cs'
+      - 'GlobalArena.Tests/FoundationTemporalEconomicJournalGateTests.cs'
+      - '.github/workflows/ga-next-r211-persistent-economic-close.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  persistent-economic-close:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~FoundationTemporal|FullyQualifiedName~FoundationPhysicalPresenceDemographicTests|FullyQualifiedName~FoundationPersistentOrderJournalTests|FullyQualifiedName~FoundationWorkerOrderQueueTests' --logger 'console;verbosity=detailed'

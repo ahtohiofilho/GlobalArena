@@ -18,7 +18,8 @@ public sealed record FoundationWorkerTemporalNodeSlice(
     PhysicalTacticalTileId Node,
     uint PresenceMicro,
     uint ProductiveEffortMicro,
-    PhysicalWorkerActivity DemandActivity);
+    PhysicalWorkerActivity DemandActivity,
+    PhysicalWorkerOccupation? SliceOccupation = null);
 
 public sealed record FoundationPhysicalPresenceBucket(
     CivilizationId Owner,
@@ -155,7 +156,8 @@ public static class FoundationPhysicalPresenceDemographicProjector
             .ThenBy(s => s.Node.FineStrategicCellId.Value)
             .ThenBy(s => (uint)s.DemandActivity)
             .ThenBy(s => s.PresenceMicro)
-            .ThenBy(s => s.ProductiveEffortMicro).ToArray();
+            .ThenBy(s => s.ProductiveEffortMicro)
+            .ThenBy(s => s.SliceOccupation).ToArray();
 
         var times = new Dictionary<PhysicalWorkerId, ulong>();
         var grouped = new Dictionary<
@@ -177,11 +179,12 @@ public static class FoundationPhysicalPresenceDemographicProjector
                 slice.PresenceMicro > WholeTurnMicro ||
                 slice.ProductiveEffortMicro > slice.PresenceMicro ||
                 !Enum.IsDefined(slice.DemandActivity) ||
+                (slice.SliceOccupation.HasValue && !Enum.IsDefined(slice.SliceOccupation.Value)) ||
                 (slice.ProductiveEffortMicro > 0 &&
                     slice.DemandActivity != PhysicalWorkerActivity.Producing) ||
                 (slice.DemandActivity == PhysicalWorkerActivity.Producing &&
-                    (effectiveOccupations.TryGetValue(slice.Worker, out var assigned)
-                        ? assigned : person.Occupation) is not
+                    (slice.SliceOccupation ?? (effectiveOccupations.TryGetValue(slice.Worker, out var assigned)
+                        ? assigned : person.Occupation)) is not
                         (PhysicalWorkerOccupation.Agriculture or
                          PhysicalWorkerOccupation.Forestry or
                          PhysicalWorkerOccupation.Mining)))
@@ -197,9 +200,9 @@ public static class FoundationPhysicalPresenceDemographicProjector
                 checked(old.Presence + slice.PresenceMicro),
                 checked(old.Effort + slice.ProductiveEffortMicro));
 
-            var effectiveOccupation =
-                effectiveOccupations.TryGetValue(slice.Worker, out var assignedOccupation)
-                    ? assignedOccupation : person.Occupation;
+            var effectiveOccupation = slice.SliceOccupation ??
+                (effectiveOccupations.TryGetValue(slice.Worker, out var assignedOccupation)
+                    ? assignedOccupation : person.Occupation);
             var profile = slice.DemandActivity switch
             {
                 PhysicalWorkerActivity.Producing => effectiveOccupation switch
@@ -235,6 +238,8 @@ public static class FoundationPhysicalPresenceDemographicProjector
                 .Append(slice.PresenceMicro).Append(':')
                 .Append(slice.ProductiveEffortMicro).Append(':')
                 .Append((uint)slice.DemandActivity).Append('|');
+            if (slice.SliceOccupation.HasValue)
+                evidence.Append("S:").Append((uint)slice.SliceOccupation.Value).Append('|');
             if (effectiveOccupations.ContainsKey(slice.Worker))
                 evidence.Append("O:").Append(
                     (uint)effectiveOccupations[slice.Worker]).Append('|');

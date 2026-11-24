@@ -11,6 +11,16 @@ namespace GlobalArena.Simulation.Foundation;
 /// An unstable market aborts the entire private resolution, without publishing
 /// intermediate worker, capital or treasury states.
 /// </summary>
+public sealed record FoundationPersistentOrderEditCommand(
+    CommandId Id, FoundationPersistentOrderEdit Edit) : ISimulationCommand
+{
+    public CivilizationId Issuer => Edit.Issuer;
+}
+
+public sealed record FoundationFundedWorkerIntentCommand(
+    CommandId Id, CivilizationId Issuer, PhysicalTacticalEdgeId Edge,
+    ulong MoneyMicro, IReadOnlyList<FoundationFundedWorkerInsertion> Assignments) : ISimulationCommand;
+
 public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
 {
     // The system sale is emitted by THIS sole atomic phase. The generic
@@ -29,6 +39,8 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
     private readonly FoundationAuthoritativeEconomicSettlementPolicy _economy;
     private readonly FoundationFineFirstPhysicalGeography? _fine;
     private readonly FoundationConstructionCollectiveTurnPhase? _construction;
+    private readonly FoundationPersistentWorkerTurnScheduler? _persistent;
+    private readonly FoundationFundedWorkerIntentJournal? _funded;
 
     public FoundationTemporalCollectiveTurnPhase(
         WorldGenerationResult world,
@@ -37,7 +49,8 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
         FoundationAuthoritativeEconomicSettlementPolicy economy,
         FoundationFineFirstPhysicalGeography? fine = null,
         FoundationFineFirstWorldgenIdentity? signature = null,
-        FoundationConstructionCollectiveTurnPhase? construction = null)
+        FoundationConstructionCollectiveTurnPhase? construction = null,
+        ulong? persistentMoneyMicroPerWholeWork = null)
     {
         ArgumentNullException.ThrowIfNull(world);
         _incidence = incidence ?? throw new ArgumentNullException(nameof(incidence));
@@ -65,6 +78,15 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
                 world, incidence, fine, signature!);
         }
         _travel = new FoundationEdgeTravelTurnPhase(_movement, movementPolicy);
+        if (persistentMoneyMicroPerWholeWork.HasValue)
+        {
+            if (fine is null || construction is not null)
+                throw new InvalidOperationException("Persistent scheduling requires signed geography and exclusive construction execution.");
+            _persistent = new FoundationPersistentWorkerTurnScheduler(new FoundationConstructionApproachRouter(
+                world, incidence, fine, signature!, movementPolicy));
+            _funded = new FoundationFundedWorkerIntentJournal(new FoundationConstructionFundingExecutor(
+                _capitalExecutor, persistentMoneyMicroPerWholeWork.Value));
+        }
     }
 
     public TurnResolutionResult Resolve(
@@ -77,6 +99,9 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
             !stagedState.Transport.HasMonetaryConstructionCosts)
             throw new InvalidOperationException(
                 "Temporal collective economy requires a complete opt-in physical world.");
+        if (stagedState.WorkerOrders.IsInitialized != (_persistent is not null))
+            throw new InvalidOperationException("Persistent queue deployment and collective phase must match.");
+        if (_persistent is not null) return ResolvePersistent(input, stagedState);
         // Each existing phase selects only its own command type.
         var workers = _local.Resolve(input, stagedState);
         var travel = _travel.Resolve(input, workers.ResultingWorldState);
@@ -106,5 +131,49 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
             receipt.Next,
             operations.Append((ISimulationEvent)receipt.EconomicEvent).ToArray(),
             receipt.Journal);
+    }
+
+    private TurnResolutionResult ResolvePersistent(TurnResolutionInput input, WorldState beginning)
+    {
+        if (input.Commands.Any(c => c.Id.Turn != input.Context.Turn || c.Id.Sequence == 0) ||
+            input.Commands.Select(c => c.Id).Distinct().Count() != input.Commands.Count)
+            throw new InvalidOperationException("Persistent collective commands must be unique and current.");
+        var state = beginning;
+        var operations = new List<ISimulationEvent>();
+        foreach (var command in input.Commands.OrderBy(c => c.Id.Sequence))
+        {
+            var id = new EventId(command.Id, 1UL);
+            if (command is FoundationPersistentOrderEditCommand edit)
+            {
+                var recorded = FoundationPersistentOrderEditJournal.Record(state, id, edit.Edit, input.Context);
+                state = recorded.Next;
+                operations.Add(recorded.Event);
+            }
+            else if (command is FoundationFundedWorkerIntentCommand funding)
+            {
+                var recorded = _funded!.Record(state, id, funding.Issuer, funding.Edge,
+                    funding.MoneyMicro, funding.Assignments, input.Context);
+                state = recorded.Next;
+                operations.Add(recorded.Event);
+            }
+            else throw new InvalidOperationException("Legacy commands cannot compete with persistent scheduling.");
+        }
+        var timeline = _persistent!.Record(state, input.Context);
+        operations.Add(timeline.Event);
+        var receipt = FoundationTemporalEconomicJournalGate.CloseAndReplayWithInvestments(
+            beginning, operations, _movement, _movementPolicy, _incidence, _economy, input.Context,
+            _capitalExecutor, _fine, persistentScheduler: _persistent, fundedIntents: _funded);
+        if (receipt.EconomicEvent.PreSettlementHash != new CanonicalWorldStateHasher().Compute(timeline.Next))
+            throw new InvalidOperationException("Persistent timeline and economic settlement diverged.");
+        return new TurnResolutionResult(receipt.Next,
+            operations.Append((ISimulationEvent)receipt.EconomicEvent).ToArray(), receipt.Journal);
+    }
+
+    public WorldState ReplayPersistentJournal(WorldState beginning, SimulationEventLog log, SimulationContext context)
+    {
+        if (_persistent is null) throw new InvalidOperationException("Persistent phase not configured.");
+        return FoundationTemporalEconomicJournalGate.ReplayJournal(beginning, log, _movement,
+            _movementPolicy, _incidence, _economy, context, _fine, _capitalExecutor,
+            persistentScheduler: _persistent, fundedIntents: _funded);
     }
 }

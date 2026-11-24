@@ -19,7 +19,7 @@ public sealed record FoundationPersistentWorkerTurnEvent(
 /// quotes remain fixed for new crossings until the next turn.</summary>
 public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventExecutor
 {
-    public const string StablePhaseId = "foundation.persistent-worker-time-v20";
+    public const string StablePhaseId = FoundationTemporalEconomicJournalGate.StablePhaseId;
     private const uint Whole = 1_000_000;
     private readonly FoundationConstructionApproachRouter _router;
     private static readonly CanonicalWorldStateHasher Hasher = new();
@@ -196,14 +196,14 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
     public (WorldState Next, FoundationPersistentWorkerTurnEvent Event) Record(WorldState opening, SimulationContext context)
     {
         var (next, slices) = Calculate(opening);
-        return (next, new(EventId.ForSystemPhase(context.Turn, StablePhaseId, 1UL),
+        return (next, new(EventId.ForSystemPhase(context.Turn, StablePhaseId, 2UL),
             Hasher.Compute(opening), Hasher.Compute(next), Array.AsReadOnly(slices)));
     }
 
     public WorldState Execute(WorldState state, ISimulationEvent simulationEvent, SimulationContext context)
     {
         if (simulationEvent is not FoundationPersistentWorkerTurnEvent ev ||
-            ev.Id != EventId.ForSystemPhase(context.Turn, StablePhaseId, 1UL) || Hasher.Compute(state) != ev.Before)
+            ev.Id != EventId.ForSystemPhase(context.Turn, StablePhaseId, 2UL) || Hasher.Compute(state) != ev.Before)
             throw new InvalidOperationException("Stale persistent worker timeline.");
         var (next, actual) = Record(state, context);
         if (actual.After != ev.After || !actual.Slices.SequenceEqual(ev.Slices))

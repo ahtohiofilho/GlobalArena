@@ -11,7 +11,8 @@ namespace GlobalArena.Simulation.Foundation;
 public sealed record FoundationTemporalPhysicalProduction(
     PhysicalWorkerId Worker, CivilizationId Owner,
     PhysicalTacticalTileId Node, CommodityId Commodity,
-    uint EffortMicro, ulong ProducedMicro);
+    uint EffortMicro, ulong ProducedMicro,
+    PhysicalWorkerOccupation? SliceOccupation = null);
 
 public sealed class FoundationTemporalEconomicTurnInputs
 {
@@ -53,6 +54,46 @@ public sealed class FoundationTemporalEconomicTurnInputs
 /// </summary>
 public static class FoundationTemporalEconomicTurnProjector
 {
+    internal static FoundationTemporalEconomicTurnInputs ProjectPersistent(
+        WorldState start, IReadOnlyList<FoundationPersistentWorkerSlice> timeline,
+        FoundationActivityCommodityDemandPolicy demandPolicy)
+    {
+        var people = start.Workers.Workers.ToDictionary(w => w.Id);
+        foreach (var group in timeline.GroupBy(s => s.Worker))
+        {
+            uint cursor = 0;
+            foreach (var slice in group.OrderBy(s => s.StartMicro))
+            {
+                if (slice.StartMicro != cursor || slice.DurationMicro == 0 ||
+                    (slice.ProjectId.HasValue && slice.Activity != PhysicalWorkerActivity.Other))
+                    throw new InvalidOperationException("Invalid persistent worker timeline.");
+                cursor = checked(cursor + slice.DurationMicro);
+            }
+            if (cursor != FoundationPhysicalPresenceDemographicProjector.WholeTurnMicro)
+                throw new InvalidOperationException("Incomplete persistent worker timeline.");
+        }
+        var schedule = timeline.Select(s => new FoundationWorkerTemporalNodeSlice(
+            s.Worker, s.Node, s.DurationMicro,
+            s.Activity == PhysicalWorkerActivity.Producing ? s.DurationMicro : 0U,
+            s.Activity, s.Occupation)).ToArray();
+        var presence = FoundationPhysicalPresenceDemographicProjector.Project(start, schedule, demandPolicy);
+        const ulong whole = FoundationPhysicalPresenceDemographicProjector.WholeTurnMicro;
+        var production = schedule.Where(s => s.ProductiveEffortMicro > 0)
+            .GroupBy(s => (s.Worker, s.Node, s.SliceOccupation))
+            .OrderBy(g => g.Key.Worker.Value).ThenBy(g => g.Key.Node.FineStrategicCellId.Value)
+            .ThenBy(g => g.Key.SliceOccupation)
+            .Select(g =>
+            {
+                var worker = people[g.Key.Worker];
+                ulong effort = g.Aggregate(0UL, (sum, s) => checked(sum + s.ProductiveEffortMicro));
+                return new FoundationTemporalPhysicalProduction(worker.Id, worker.Owner, g.Key.Node,
+                    worker.Commodity, checked((uint)effort),
+                    checked((ulong)((UInt128)worker.OutputMicroPerTurn * effort / whole)),
+                    g.Key.SliceOccupation);
+            }).ToArray();
+        return new FoundationTemporalEconomicTurnInputs(presence, schedule, production);
+    }
+
     public static FoundationTemporalEconomicTurnInputs Project(
         WorldState start, WorldState end,
         IReadOnlyList<FoundationEdgeTravelTurnEvent> travelEvents,
