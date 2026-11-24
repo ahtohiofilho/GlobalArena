@@ -10,6 +10,7 @@ public partial class Main
     private ulong? _r218Candidate;
     private Vector2 _r218Anchor;
     private double _r218Elapsed;
+    private bool _r218ButtonHeld;
     private WorldState? _r218Rendered;
     private const double R218Delay = 0.75;
     private const float R218Width = 240f;
@@ -43,6 +44,7 @@ public partial class Main
     private void DismissR218SiteHover()
     {
         _r218Candidate = null;
+        _r218ButtonHeld = false;
         _r218Elapsed = 0;
         _r218Rendered = null;
         if (_r218Hud is not null) _r218Hud.Visible = false;
@@ -53,8 +55,12 @@ public partial class Main
         if (_r218Hud is null || _r218Candidate is not { } site) return;
         var mouse = GetGlobalMousePosition();
         var overHud = _r218Hud.Visible && _r218Hud.GetGlobalRect().Grow(6).HasPoint(mouse);
-        if (!R218Available() || Input.IsMouseButtonPressed(MouseButton.Right) ||
-            (Input.IsMouseButtonPressed(MouseButton.Left) && !overHud))
+        if (!R218Available() || Input.IsMouseButtonPressed(MouseButton.Right))
+        { DismissR218SiteHover(); return; }
+        // The actual GUI button owns its press until release, even when
+        // the pointer leaves its rectangle during the gesture.
+        if (_r218ButtonHeld) return;
+        if (Input.IsMouseButtonPressed(MouseButton.Left) && !overHud)
         { DismissR218SiteHover(); return; }
         // Keep the actual button alive between mouse-down and mouse-up.
         // Rebuilding its roster during a held click would also lose release.
@@ -98,6 +104,8 @@ public partial class Main
             var button = new Button { Name = $"R218Worker{id}", Text = $"Worker #{id} | {activity}",
                 SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipText = true };
             row.AddChild(button);
+            button.ButtonDown += () => _r218ButtonHeld = true;
+            button.ButtonUp += () => _r218ButtonHeld = false;
             button.Pressed += () => { OnOperationalWorkerSelected(id); DismissR218SiteHover(); };
         }
         _r218Rendered = snapshot;
