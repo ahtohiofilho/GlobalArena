@@ -18,6 +18,7 @@ public partial class Main
     private Label? _cityWindowTitle;
     private Label? _cityOverview;
     private VBoxContainer? _cityLinksList;
+    private GaLocalConnectionDiagram? _cityConnectionDiagram;
     private PanelContainer? _cityLinkDetail;
     private Label? _cityLinkDetailText;
     private Button? _connectionInvest;
@@ -94,7 +95,12 @@ public partial class Main
         {
             SizeFlagsHorizontal = SizeFlags.ExpandFill
         };
-        links.AddChild(_cityLinksList);
+        var connectionColumn = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        links.AddChild(connectionColumn);
+        connectionColumn.AddChild(new Label { Text = "Select a connection" });
+        _cityConnectionDiagram = new GaLocalConnectionDiagram { Visible = false };
+        connectionColumn.AddChild(_cityConnectionDiagram);
+        connectionColumn.AddChild(_cityLinksList);
 
         _cityLinkDetail = new PanelContainer
         {
@@ -182,6 +188,7 @@ public partial class Main
             old.QueueFree();
         }
         CloseConnectionDetail();
+        if (_cityConnectionDiagram is not null) _cityConnectionDiagram.Visible = false;
         _cityConnectionSource = null;
         // Main management windows are mutually exclusive.
         if (_civilizationWindowLayer is not null)
@@ -209,6 +216,18 @@ public partial class Main
         var rows = FoundationLocalConnectionsProjector.Read(
             host.Snapshot, host.Incidence, node);
         _cityConnectionSource = selected.Value;
+        if (_cityConnectionDiagram is not null && _tacticalPreview is not null)
+        {
+            var geometry = _tacticalPreview.ReadLocalConnectionGeometry(node.FineStrategicCellId);
+            _cityConnectionDiagram.Configure(geometry.Boundary, geometry.Links, rows, link =>
+            {
+                // Resolve fresh canonical values, not the old display snapshot.
+                var current = FoundationLocalConnectionsProjector.Read(host.Snapshot, host.Incidence, node)
+                    .Single(r => r.Edge == link.Edge);
+                ShowCityConnectionDetail(current);
+            });
+            _cityConnectionDiagram.Visible = true;
+        }
         _cityWindowTitle.Text = $"CITY | NODE {selected.Value}";
         _cityOverview.Text =
             $"Physical node #{selected.Value} on the tactical map.\n" +
