@@ -26,7 +26,7 @@ public partial class Main
         map.R218HoverMotion += point =>
         {
             if (!R218Available()) { DismissR218SiteHover(); return; }
-            if (_r218Hud.Visible && _r218Hud.GetGlobalRect().HasPoint(GetGlobalMousePosition())) return;
+            if (_r218Hud.Visible && _r218Hud.GetGlobalRect().Grow(6).HasPoint(GetGlobalMousePosition())) return;
             var site = map.R218SiteAt(point);
             if (site == _r218Candidate) return;
             DismissR218SiteHover();
@@ -51,11 +51,14 @@ public partial class Main
     private void UpdateR218SiteHover(double delta)
     {
         if (_r218Hud is null || _r218Candidate is not { } site) return;
-        if (!R218Available() || Input.IsMouseButtonPressed(MouseButton.Left) ||
-            Input.IsMouseButtonPressed(MouseButton.Right))
-        { DismissR218SiteHover(); return; }
         var mouse = GetGlobalMousePosition();
         var overHud = _r218Hud.Visible && _r218Hud.GetGlobalRect().Grow(6).HasPoint(mouse);
+        if (!R218Available() || Input.IsMouseButtonPressed(MouseButton.Right) ||
+            (Input.IsMouseButtonPressed(MouseButton.Left) && !overHud))
+        { DismissR218SiteHover(); return; }
+        // Keep the actual button alive between mouse-down and mouse-up.
+        // Rebuilding its roster during a held click would also lose release.
+        if (overHud && Input.IsMouseButtonPressed(MouseButton.Left)) return;
         var overSite = _tacticalPreview!.GetGlobalRect().HasPoint(mouse) &&
             _tacticalPreview.R218SiteAt(_tacticalPreview.GetGlobalTransform().AffineInverse() * mouse) == site;
         // The HUD overlaps its anchor by a few pixels, allowing direct pointer transfer.
@@ -107,6 +110,9 @@ public partial class Main
             Math.Max(mapRect.Position.Y, mapRect.End.Y - extent.Y));
         _r218Hud.GlobalPosition = new Vector2(x, y);
         _r218Hud.Visible = true;
+        // ZIndex alone only changes drawing, not GUI input traversal.
+        // Place the contextual HUD after other root controls for hit testing.
+        MoveChild(_r218Hud, GetChildCount() - 1);
     }
 }
 
