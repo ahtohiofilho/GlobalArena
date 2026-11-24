@@ -96,6 +96,75 @@ public sealed class FoundationTemporalEconomicJournalGateTests
 
 
     [Fact]
+    public void R211CollectiveFundingAndTimelineSettleOneMarketAndReplay()
+    {
+        var (world, worker, _, _, incidence, fine) = Fixture();
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL),
+                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)), workersPerCivilization: 3);
+        var signature = FoundationFineFirstWorldgenCanonicalSignature.Compute(demo.Session.GeneratedWorld, incidence, fine);
+        var tile = worker.TacticalTileId!.Value;
+        var crossing = incidence.FineTopology.Edges.First(e =>
+            e.IncidentCellIds.Contains(tile.FineStrategicCellId) &&
+            fine.CrossingAtIndices((int)e.IncidentCellIds[0].Value - 1,
+                (int)e.IncidentCellIds[1].Value - 1) == FoundationFineTransportCrossingKind.Ground);
+        var edge = new PhysicalTacticalEdgeId(incidence.Refinement.FineParameters, crossing.Id);
+        // Use a real signed fine-first monetary world for collective admission.
+        var bound = demo.Session.Snapshot.PromoteFineFirstBeforeTransport(
+            demo.Session.GeneratedWorld, incidence, fine, signature)
+            .DeployInitialFineFirstPhysicalTransport(world.Transport, demo.Session.GeneratedWorld,
+                incidence, fine, signature);
+        var beginning = FoundationPersistedEdgeTravelTransitions.DeployEmpty(
+            bound.DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
+                bound.Civilizations.Civilizations.Select(c => (c, 5_000_000UL)))))
+            .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
+            .DeployInitialWorkerOrders();
+        var phase = new FoundationTemporalCollectiveTurnPhase(demo.Session.GeneratedWorld, incidence,
+            new FoundationGroundEdgeTravelTimePolicy(1_400_000UL), Policy(beginning.Civilizations.Civilizations),
+            fine, signature, persistentMoneyMicroPerWholeWork: 1_000_000UL);
+        var context = new SimulationContext(new TurnNumber(1UL), new SimulationSeed(712UL));
+        var commands = new ISimulationCommand[]
+        {
+            new FoundationFundedWorkerIntentCommand(new CommandId(context.Turn, 1UL), worker.Owner,
+                edge, 600_000UL, new[] { new FoundationFundedWorkerInsertion(worker.Id, 0) }),
+            new FoundationPersistentOrderEditCommand(new CommandId(context.Turn, 2UL),
+                new FoundationPersistentOrderEdit(worker.Owner, worker.Id,
+                    FoundationPersistentOrderEditKind.Insert, Index: 1,
+                    OrderKind: FoundationWorkerOrderKind.Occupation, Occupation: PhysicalWorkerOccupation.Agriculture))
+        };
+        var resolved = phase.Resolve(new TurnResolutionInput(beginning, commands, context), beginning);
+        var next = resolved.ResultingWorldState;
+        var sale = Assert.Single(resolved.Events.OfType<FoundationTemporalSalesSettledEvent>());
+        var timeline = Assert.Single(resolved.Events.OfType<FoundationPersistentWorkerTurnEvent>());
+        Assert.Single(resolved.Events.OfType<FoundationFundedWorkerIntentEvent>());
+        Assert.Equal(1UL, next.Treasury.LastSettledEconomicCycleOrdinal);
+        Assert.True(next.Constructions.Projects.Single().IsActivated);
+        var slices = timeline.Slices.Where(s => s.Worker == worker.Id).ToArray();
+        Assert.Equal(600_000U, slices[0].DurationMicro);
+        Assert.Equal(1UL, slices[0].ProjectId);
+        Assert.Equal(400_000U, slices[1].DurationMicro);
+        Assert.Equal(PhysicalWorkerActivity.Producing, slices[1].Activity);
+        ulong expectedGoods = timeline.Slices.Where(s => s.Activity == PhysicalWorkerActivity.Producing)
+            .GroupBy(s => (s.Worker, s.Node, s.Occupation))
+            .Aggregate(0UL, (sum, g) => checked(sum + (ulong)((UInt128)beginning.Workers.Workers
+                .Single(w => w.Id == g.Key.Worker).OutputMicroPerTurn *
+                (ulong)g.Sum(s => (long)s.DurationMicro) / 1_000_000UL)));
+        Assert.Equal(expectedGoods, sale.ProducedGoodsMicro);
+        Assert.Equal(sale.GrossSalesScaled, sale.TotalCivilizationCreditsScaled + sale.PhysicalFreightScaled);
+        foreach (var credit in sale.Credits)
+            Assert.Equal(beginning.Treasury.Get(credit.Civilization).CashScaled + credit.CashCreditScaled -
+                (credit.Civilization == worker.Owner ? GlobalArenaMoneyScale.FromMoneyMicro(600_000UL) : BigInteger.Zero),
+                next.Treasury.Get(credit.Civilization).CashScaled);
+        var hash = new CanonicalWorldStateHasher();
+        Assert.Equal(hash.Compute(next), hash.Compute(phase.ReplayPersistentJournal(beginning, resolved.EventLog, context)));
+        var duplicate = new SimulationEventLog(resolved.Events.Take(3).Append(timeline).Append(sale)
+            .Select((e, i) => new SimulationEventLogEntry((ulong)i + 1, e, true, true)).ToArray());
+        Assert.ThrowsAny<Exception>(() => phase.ReplayPersistentJournal(beginning, duplicate, context));
+        Assert.Empty(beginning.Constructions.Projects);
+        Assert.Equal(0UL, beginning.Treasury.LastSettledEconomicCycleOrdinal);
+    }
+
+    [Fact]
     public void R210PersistentBuildUsesArrivalRemainderAndContinuesWithoutNewOrder()
     {
         var (world, worker, adjacent, _, incidence, fine) = Fixture();
