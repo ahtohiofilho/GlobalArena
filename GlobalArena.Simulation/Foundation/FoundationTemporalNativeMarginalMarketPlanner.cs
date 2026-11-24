@@ -17,7 +17,8 @@ public static class FoundationTemporalNativeMarginalMarketPlanner
         FoundationCommodityCargoConversionPolicy cargoPolicy,
         int maxProducerPasses = 64,
         FoundationFineFirstPhysicalGeography? signedFine = null,
-        WorldState? freightSnapshot = null)
+        WorldState? freightSnapshot = null,
+        IReadOnlyList<FoundationPhysicalRoutingEdgeCost>? verifiedRoads = null)
     {
         ArgumentNullException.ThrowIfNull(baseline);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -35,8 +36,8 @@ public static class FoundationTemporalNativeMarginalMarketPlanner
                 "Temporal clearing needs the bound real physical market, signed geography and complete commodity policies.");
         var market = FoundationTemporalNativeMarketInputs.FromTemporal(
             baseline, temporal, demandPolicy);
-        var (roads, _) = FoundationPhysicalAuthoritativeTransportProjector
-            .FromWorld(transportWorld, incidence);
+        var roads = verifiedRoads ?? FoundationPhysicalAuthoritativeTransportProjector
+            .FromWorld(transportWorld, incidence).Roads;
         var blocked = new HashSet<PhysicalTacticalEdgeId>();
         if (signedFine is not null)
         {
