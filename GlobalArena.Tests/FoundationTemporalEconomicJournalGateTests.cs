@@ -111,7 +111,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
                 bound.Civilizations.Civilizations.Select(c => (c, 5_000_000UL)))))
             .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
             .DeployInitialWorkerOrders();
-        demo.Session.AcceptSnapshot(beginning);
+        demo.Session.AcceptFineFirstOpening(beginning, incidence, fine, signature);
         var host = new FoundationTacticalHumanAiTurnHost(demo.Session, incidence,
             beginning.Civilizations.Civilizations,
             new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy>(),
