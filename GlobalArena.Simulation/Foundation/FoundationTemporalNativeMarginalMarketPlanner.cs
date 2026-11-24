@@ -17,8 +17,14 @@ public static class FoundationTemporalNativeMarginalMarketPlanner
         FoundationCommodityCargoConversionPolicy cargoPolicy,
         int maxProducerPasses = 64,
         FoundationFineFirstPhysicalGeography? signedFine = null,
-        WorldState? freightSnapshot = null,
-        IReadOnlyList<FoundationPhysicalRoutingEdgeCost>? verifiedRoads = null)
+        WorldState? freightSnapshot = null) => CoordinateVerified(baseline, incidence, temporal, demandPolicy, cargoPolicy, maxProducerPasses, signedFine, freightSnapshot, null);
+
+    internal static FoundationPhysicalGlobalMarginalCoordinationPlan CoordinateVerified(
+        WorldState baseline, PhysicalTacticalIncidenceMap incidence,
+        FoundationTemporalEconomicTurnInputs temporal, FoundationActivityCommodityDemandPolicy demandPolicy,
+        FoundationCommodityCargoConversionPolicy cargoPolicy, int maxProducerPasses,
+        FoundationFineFirstPhysicalGeography? signedFine, WorldState? freightSnapshot,
+        IReadOnlyList<FoundationPhysicalRoutingEdgeCost>? verifiedRoads)
     {
         ArgumentNullException.ThrowIfNull(baseline);
         ArgumentNullException.ThrowIfNull(incidence);
