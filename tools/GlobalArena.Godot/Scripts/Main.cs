@@ -1653,6 +1653,7 @@ public partial class Main : Control
             SizeFlagsVertical = SizeFlags.ExpandFill
         };
         mapRegion.AddChild(_tacticalPreview);
+        CreateR218SiteHover();
         _tacticalPreview.PhysicalTileInspected += OnPhysicalTileInspected;
         _tacticalPreview.CanonicalPhysicalTileClicked += OnTacticalPhysicalTileClicked;
         _tacticalPreview.CartographicLocalSiteSelected += OnCartographicLocalSiteSelected;
@@ -2306,6 +2307,7 @@ public partial class Main : Control
             AttachRuntimeState(latest);
             GD.Print($"GA_UI_RUNTIME_SNAPSHOT_REFRESH_R39 revision={latest.Revision} presentation_only=true");
         }
+        UpdateR218SiteHover(delta);
         if (_layoutDiagnosticFrame is null || _layoutDiagnosticRoot is null) return;
         var view = GetViewport();
         if (view is null) return;
