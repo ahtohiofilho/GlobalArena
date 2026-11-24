@@ -497,8 +497,30 @@ public partial class Main
             };
             _constructionWorkers!.AddChild(button);
         }
-        if (!queues.Any(q => q.Orders.Any(o => o.ProjectId == project.Id)))
-            _constructionStatus!.Text = _constructionStatus.Text.Replace("Under construction", "Awaiting workforce");
+        // Status is derived from committed authority, not projected edits.
+        var active = host.Snapshot.WorkerOrders.Queues.Where(q =>
+            q.Orders.Any(o => o.Id == q.ActiveOrderId && o.Kind == FoundationWorkerOrderKind.Build && o.ProjectId == project.Id)).ToArray();
+        var assigned = host.Snapshot.WorkerOrders.Queues.Any(q => q.Orders.Any(o =>
+            o.Kind == FoundationWorkerOrderKind.Build && o.ProjectId == project.Id));
+        var crossing = host.Incidence.FineTopology.Edges.Single(e => e.Id == project.Edge.FineStrategicEdgeId);
+        bool working = active.Any(q =>
+        {
+            var person = host.Snapshot.Workers.Workers.Single(w => w.Id == q.Worker);
+            if (host.Snapshot.EdgeTravels.Pending.Any(p => p.Worker == q.Worker) ||
+                person.Activity != PhysicalWorkerActivity.Other || person.Occupation != PhysicalWorkerOccupation.Unassigned ||
+                !person.TacticalTileId.HasValue || !crossing.IncidentCellIds.Contains(person.TacticalTileId.Value.FineStrategicCellId))
+                return false;
+            var fine = _r123FineGeography;
+            if (fine is null) return false;
+            var kind = fine.CrossingAtIndices((int)crossing.IncidentCellIds[0].Value - 1, (int)crossing.IncidentCellIds[1].Value - 1);
+            return kind == FoundationFineTransportCrossingKind.Ground ||
+                (kind == FoundationFineTransportCrossingKind.Port &&
+                 fine.FineElevationRaw[(int)person.TacticalTileId.Value.FineStrategicCellId.Value - 1] > fine.SeaLevelRaw);
+        });
+        var status = working ? "Under construction" :
+            active.Any(q => host.Snapshot.EdgeTravels.Pending.Any(p => p.Worker == q.Worker)) ? "Workforce en route" :
+            assigned ? "Workforce scheduled" : "Awaiting workforce";
+        _constructionStatus!.Text = _constructionStatus.Text.Replace("Under construction", status);
     }
 
     private void RefreshOpenConnectionInvestment()

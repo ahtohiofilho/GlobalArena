@@ -40,6 +40,7 @@ jobs:
           set -o pipefail
           timeout 180 "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --rendering-method gl_compatibility 2>&1 | tee "$RUNNER_TEMP/r213.log"
           grep -q 'GA_NEXT_R213_PERSISTENT_UI_PASS' "$RUNNER_TEMP/r213.log"
+          grep -q 'GA_NEXT_R216_WORKER_CONTEXT_PASS' "$RUNNER_TEMP/r213.log"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

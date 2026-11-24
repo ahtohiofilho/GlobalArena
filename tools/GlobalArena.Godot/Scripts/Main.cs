@@ -289,7 +289,7 @@ public partial class Main : Control
             $"LOCAL HUMAN + AI PREVIEW | turn {_localFoundation.NextTurn.Value} | " +
             $"rev {_localFoundation.Snapshot.Revision} | Human Civ {_localFoundation.PlayerCivilization.Value}";
         if (_compactTurnPulse is not null)
-            _compactTurnPulse.Text = $"TURN {_localFoundation.NextTurn.Value} | REV {_localFoundation.Snapshot.Revision} | Human + IA";
+            _compactTurnPulse.Text = $"TURN {_localFoundation.NextTurn.Value} | REV {_localFoundation.Snapshot.Revision} | Human + AI";
         if (_metricTurn is not null)
             _metricTurn.Text = _localFoundation.NextTurn.Value.ToString();
         if (_metricHumanWorkers is not null)
@@ -364,12 +364,12 @@ public partial class Main : Control
             return;
         }
         label.Text =
-            $"ÚLTIMA ECONOMIA TEMPORAL | CICLO {settlement.EconomicCycleOrdinal}\n" +
-            $"Crédito ao caixa: {FormatTemporalMoney(settlement.TotalCashCreditScaled)} u.m.\n" +
-            $"Vendas líquidas: {FormatTemporalMoney(settlement.SellerNetScaled)} u.m.\n" +
-            $"Impostos recebidos: {FormatTemporalMoney(settlement.TaxReceiptsScaled)} u.m.\n" +
-            $"Pedágios recebidos: {FormatTemporalMoney(settlement.OwnerTollIncomeScaled)} u.m.\n" +
-            $"Produção global liquidada: {settlement.PhysicalGoodsProducedMicro} microunidades";
+            $"LAST ECONOMIC CLOSE | CYCLE {settlement.EconomicCycleOrdinal}\n" +
+            $"Treasury credit: {FormatTemporalMoney(settlement.TotalCashCreditScaled)} money units\n" +
+            $"Net sales: {FormatTemporalMoney(settlement.SellerNetScaled)} money units\n" +
+            $"Tax receipts: {FormatTemporalMoney(settlement.TaxReceiptsScaled)} money units\n" +
+            $"Toll receipts: {FormatTemporalMoney(settlement.OwnerTollIncomeScaled)} money units\n" +
+            $"Global settled output: {settlement.PhysicalGoodsProducedMicro} micro-units";
     }
 
     private void RefreshFineTacticalWorkerControls()
@@ -458,7 +458,7 @@ public partial class Main : Control
             $"rev {host.Snapshot.Revision} | Human Civ {_humanCivilization.Value}";
         if (_compactTurnPulse is not null)
             _compactTurnPulse.Text =
-                $"TURN {host.NextTurn.Value} | REV {host.Snapshot.Revision} | Human + IA v{host.StateHash.FormatVersion}";
+                $"TURN {host.NextTurn.Value} | REV {host.Snapshot.Revision} | Human + AI v{host.StateHash.FormatVersion}";
         if (_metricTurn is not null)
             _metricTurn.Text = host.NextTurn.Value.ToString();
         if (_metricHumanWorkers is not null)
@@ -574,7 +574,7 @@ public partial class Main : Control
                 _humanCivilization,
                 new PhysicalWorkerId(_selectedLocalWorkerId.Value), target);
             _localOrderStatus.Text =
-                $"Worker #{_selectedLocalWorkerId.Value}: physical step queued " +
+                $"Worker #{_selectedLocalWorkerId.Value}: {(_tacticalHost.PersistentOrdersEnabled ? "journey" : "physical step")} queued " +
                 $"toward G(18,0)/{target.FineStrategicCellId.Value}. E to commit.";
             GD.Print($"GA_NEXT_FINE_MOVE_QUEUED worker={_selectedLocalWorkerId.Value} " +
                 $"destination={target.FineStrategicCellId.Value} " +
@@ -757,6 +757,11 @@ public partial class Main : Control
             _localOrderStatus.Text =
                 $"Turn {receipt.Turn.Value}: Human {humanCount} + AI {aiCount} " +
                 $"actions | journal replay OK | hash v{receipt.Hash.FormatVersion}";
+            if (receipt.PersistentTimeline is { } timeline)
+            {
+                humanCount = receipt.PersistentEdits.Count(x => x.Edit.Issuer == _humanCivilization) + receipt.PersistentFunding.Count(x => x.Investor == _humanCivilization);
+                _localOrderStatus.Text = $"Turn {receipt.Turn.Value}: {humanCount} submitted commands | {timeline.Slices.Select(x => x.Worker).Distinct().Count()} workers scheduled | journal replay OK";
+            }
             if (receipt.EconomicSettlement is { } settlement)
             {
                 var view = host.GetLastClosedEconomicTradeView(
@@ -1252,7 +1257,7 @@ public partial class Main : Control
         header.AddChild(openWorkspace);
         _compactTurnPulse = new Label
         {
-            Text = "TURN 1 | REV 0 | Human + IA",
+            Text = "TURN 1 | REV 0 | Human + AI",
             VerticalAlignment = VerticalAlignment.Center
         };
         header.AddChild(_compactTurnPulse);
@@ -2174,6 +2179,7 @@ public partial class Main : Control
                 _localProduceButton!.Text = "P | RESUME PRODUCTION";
                 _localCancelQueuedButton!.Text = "X | CANCEL ORDER";
                 _localOrderStatus!.Text =
+                    _tacticalHost.PersistentOrdersEnabled ? "Select a worker and a destination. G adds movement; A/V/N adds occupation; X removes or interrupts the head; E submits changes." :
                     $"Click your worker, select an adjacent G({_goldbergStartup.Fine.M},{_goldbergStartup.Fine.N}) tile, then G. " +
                     "LAND/PORT assigns logistic work; A/V/N selects or resumes " +
                     "production; X cancels; E commits the collective turn.";

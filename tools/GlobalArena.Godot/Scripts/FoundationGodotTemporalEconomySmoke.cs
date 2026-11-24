@@ -106,20 +106,20 @@ internal sealed class FoundationGodotTemporalEconomySmoke
     {
         var text = label.Text;
         Must(label.Visible && receipt.EconomicCycleOrdinal == cycle &&
-            text.Contains($"CICLO {cycle}", StringComparison.Ordinal) &&
-            text.Contains("Crédito ao caixa: " +
-                Main.FormatTemporalMoney(receipt.TotalCashCreditScaled) + " u.m.",
+            text.Contains($"CYCLE {cycle}", StringComparison.Ordinal) &&
+            text.Contains("Treasury credit: " +
+                Main.FormatTemporalMoney(receipt.TotalCashCreditScaled) + " money units",
                 StringComparison.Ordinal) &&
-            text.Contains("Vendas líquidas: " +
-                Main.FormatTemporalMoney(receipt.SellerNetScaled) + " u.m.",
+            text.Contains("Net sales: " +
+                Main.FormatTemporalMoney(receipt.SellerNetScaled) + " money units",
                 StringComparison.Ordinal) &&
-            text.Contains("Impostos recebidos: " +
-                Main.FormatTemporalMoney(receipt.TaxReceiptsScaled) + " u.m.",
+            text.Contains("Tax receipts: " +
+                Main.FormatTemporalMoney(receipt.TaxReceiptsScaled) + " money units",
                 StringComparison.Ordinal) &&
-            text.Contains("Pedágios recebidos: " +
-                Main.FormatTemporalMoney(receipt.OwnerTollIncomeScaled) + " u.m.",
+            text.Contains("Toll receipts: " +
+                Main.FormatTemporalMoney(receipt.OwnerTollIncomeScaled) + " money units",
                 StringComparison.Ordinal) &&
-            text.Contains("Produção global liquidada: " +
+            text.Contains("Global settled output: " +
                 receipt.PhysicalGoodsProducedMicro, StringComparison.Ordinal),
             "Godot did not render the exact private committed finance fields.");
     }
