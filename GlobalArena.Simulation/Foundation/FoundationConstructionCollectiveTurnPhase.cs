@@ -14,14 +14,16 @@ public sealed record FoundationConstructionWorkBatchEvent(EventId Id, ulong Expe
 public sealed class FoundationConstructionCollectiveTurnPhase : ITurnResolutionPhase
 {
     public const string StablePhaseId = "foundation.construction-collective-v19";
-    public string PhaseId => StablePhaseId;
+    public string PhaseId { get; }
     private readonly FoundationConstructionFundingExecutor _funding;
     private readonly PhysicalTacticalIncidenceMap _incidence;
     private readonly FoundationFineFirstPhysicalGeography _geography;
 
     public FoundationConstructionCollectiveTurnPhase(FoundationConstructionFundingExecutor funding,
-        PhysicalTacticalIncidenceMap incidence, FoundationFineFirstPhysicalGeography geography)
+        PhysicalTacticalIncidenceMap incidence, FoundationFineFirstPhysicalGeography geography,
+        bool temporal = false)
     {
+        PhaseId = temporal ? FoundationTemporalEconomicJournalGate.StablePhaseId : StablePhaseId;
         _funding = funding ?? throw new ArgumentNullException(nameof(funding));
         _incidence = incidence ?? throw new ArgumentNullException(nameof(incidence));
         _geography = geography ?? throw new ArgumentNullException(nameof(geography));
@@ -64,7 +66,7 @@ public sealed class FoundationConstructionCollectiveTurnPhase : ITurnResolutionP
         {
             var work = Calculate(state, commands, input.Context);
             var ev = new FoundationConstructionWorkBatchEvent(
-                EventId.ForSystemPhase(input.Context.Turn, StablePhaseId, 1UL), state.Revision,
+                EventId.ForSystemPhase(input.Context.Turn, PhaseId, 2UL), state.Revision,
                 Array.AsReadOnly(commands), work.Workers);
             state = Commission(work.Snapshot).AdvanceRevision();
             events.Add(ev);
@@ -96,7 +98,7 @@ public sealed class FoundationConstructionCollectiveTurnPhase : ITurnResolutionP
                 return _phase._funding.Execute(state, simulationEvent, context);
             if (simulationEvent is FoundationConstructionWorkBatchEvent ev)
             {
-                if (ev.Id != EventId.ForSystemPhase(context.Turn, StablePhaseId, 1UL) ||
+                if (ev.Id != EventId.ForSystemPhase(context.Turn, _phase.PhaseId, 2UL) ||
                     ev.ExpectedRevision != state.Revision || ev.Commands.Count == 0 ||
                     ev.Commands.Any(c => _otherWorkers.Contains(c.WorkerId)))
                     throw new InvalidOperationException("Invalid or competing construction batch.");
