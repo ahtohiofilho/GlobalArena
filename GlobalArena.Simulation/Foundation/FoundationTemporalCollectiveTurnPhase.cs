@@ -28,6 +28,7 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
     private readonly FoundationGroundEdgeTravelTimePolicy _movementPolicy;
     private readonly FoundationAuthoritativeEconomicSettlementPolicy _economy;
     private readonly FoundationFineFirstPhysicalGeography? _fine;
+    private readonly FoundationConstructionCollectiveTurnPhase? _construction;
 
     public FoundationTemporalCollectiveTurnPhase(
         WorldGenerationResult world,
@@ -35,7 +36,8 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
         FoundationGroundEdgeTravelTimePolicy movementPolicy,
         FoundationAuthoritativeEconomicSettlementPolicy economy,
         FoundationFineFirstPhysicalGeography? fine = null,
-        FoundationFineFirstWorldgenIdentity? signature = null)
+        FoundationFineFirstWorldgenIdentity? signature = null,
+        FoundationConstructionCollectiveTurnPhase? construction = null)
     {
         ArgumentNullException.ThrowIfNull(world);
         _incidence = incidence ?? throw new ArgumentNullException(nameof(incidence));
@@ -46,6 +48,7 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
             throw new InvalidOperationException(
                 "Temporal collective settlement requires complete signed geography.");
         _fine = fine;
+        _construction = construction;
         if (fine is null)
         {
             _local = new PhysicalTacticalWorkerMovementTurnPhase(world, incidence);
@@ -77,10 +80,13 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
         // Each existing phase selects only its own command type.
         var workers = _local.Resolve(input, stagedState);
         var travel = _travel.Resolve(input, workers.ResultingWorldState);
-        var capital = _capital.Resolve(input, travel.ResultingWorldState);
+        var capital = _construction is null
+            ? _capital.Resolve(input, travel.ResultingWorldState)
+            : _construction.Resolve(input, travel.ResultingWorldState);
         var operations = workers.Events.Concat(travel.Events)
             .Concat(capital.Events).ToArray();
-        if (operations.Length != input.Commands.Count ||
+        int workCommands = input.Commands.OfType<FoundationConstructionWorkCommand>().Count();
+        if (operations.Length != input.Commands.Count - workCommands + (workCommands > 0 ? 1 : 0) ||
             operations.OfType<FoundationEdgeTravelTurnEvent>()
                 .Select(ev => ev.WorkerId)
                 .Intersect(operations.OfType<PhysicalTacticalWorkerMovedEvent>()
@@ -89,7 +95,7 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
                 "Temporal collective operation journal contains missing or competing orders.");
         var receipt = FoundationTemporalEconomicJournalGate.CloseAndReplayWithInvestments(
             stagedState, operations, _movement, _movementPolicy, _incidence,
-            _economy, input.Context, _capitalExecutor, _fine);
+            _economy, input.Context, _capitalExecutor, _fine, _construction);
         if (receipt.EconomicEvent.PreSettlementHash !=
                 new CanonicalWorldStateHasher().Compute(capital.ResultingWorldState) ||
             receipt.EconomicEvent.PreSettlementRevision !=
