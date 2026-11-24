@@ -407,7 +407,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
         FoundationFineFirstPhysicalGeography? fineGeography = null,
         FoundationFineFirstWorldgenIdentity? fineSignature = null,
         FoundationGroundEdgeTravelTimePolicy? physicalTravelPolicy = null,
-        ulong? constructionMoneyMicroPerWholeWork = null, bool enableDemographicGrowth = false)
+        ulong? constructionMoneyMicroPerWholeWork = null, bool enableDemographicGrowth = false, FoundationAgriculturalProductionPolicy? agriculture = null)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
         _incidence = incidence ?? throw new ArgumentNullException(nameof(incidence));
@@ -559,7 +559,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
             var temporal = new FoundationTemporalCollectiveTurnPhase(
                 session.GeneratedWorld, incidence, _travelPolicy!,
                 _temporalPolicy, fineGeography, fineSignature, _constructionPhase,
-                persistent ? constructionMoneyMicroPerWholeWork : null, enableDemographicGrowth);
+                persistent ? constructionMoneyMicroPerWholeWork : null, enableDemographicGrowth, agriculture);
             phases.Add(temporal);
             if (persistent)
             {
