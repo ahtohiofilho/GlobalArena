@@ -95,6 +95,111 @@ public sealed class FoundationTemporalEconomicJournalGateTests
 
 
     [Fact]
+    public void FundWorkAndCommissionAcrossCyclesUsingOnlyOpeningInfrastructure()
+    {
+        var (world, worker, _, _, incidence, fine) = Fixture();
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL),
+                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)),
+            workersPerCivilization: 3);
+        // Retain the proven legacy fixture binding and signed surface for
+        // routing. One stationary worker is reserved exclusively for work.
+        var movement = new PhysicalTacticalWorkerMoveEventExecutor(
+            demo.Session.GeneratedWorld, incidence);
+        var admission = new FoundationMonetaryInfrastructureEventExecutor(
+            demo.Session.GeneratedWorld, incidence);
+        var builder = world.Workers.Workers.First(w => w.Owner == worker.Owner &&
+            w.Occupation == PhysicalWorkerOccupation.Forestry);
+        var tile = builder.TacticalTileId!.Value;
+        var crossing = incidence.FineTopology.Edges.First(e =>
+            e.IncidentCellIds.Contains(tile.FineStrategicCellId) &&
+            fine.CrossingAtIndices((int)e.IncidentCellIds[0].Value - 1,
+                (int)e.IncidentCellIds[1].Value - 1) == FoundationFineTransportCrossingKind.Ground);
+        var edge = new PhysicalTacticalEdgeId(incidence.Refinement.FineParameters, crossing.Id);
+        world = world.WithWorkers(new PhysicalWorkerRuntimeState(
+            world.Workers.Workers.Select(w => w.Id == builder.Id
+                ? w.WithTacticalAssignment(tile, w.CellId, PhysicalWorkerActivity.Other,
+                    PhysicalWorkerOccupation.Unassigned) : w),
+            tacticalLocationsAuthoritative: true, occupationsAuthoritative: true));
+        var beginning = FoundationPersistedEdgeTravelTransitions.DeployEmpty(
+            world.DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
+                world.Civilizations.Civilizations.Select(c => (c, 5_000_000UL)))))
+            .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()));
+        var policy = Policy(beginning.Civilizations.Civilizations);
+        var travelPolicy = new FoundationGroundEdgeTravelTimePolicy(1_400_000UL);
+        var construction = new FoundationConstructionCollectiveTurnPhase(
+            new FoundationConstructionFundingExecutor(admission, 1_000_000UL),
+            incidence, fine, temporal: true);
+        var hasher = new CanonicalWorldStateHasher();
+        var natural = beginning.Transport.Edges.Single(e => e.Edge == edge);
+        ulong originalFreight = FoundationPhysicalAuthoritativeTransportProjector.EffectiveUnitFreightCost(natural);
+        var state = beginning;
+        const ulong money = 1_600_000UL;
+        FoundationTemporalSalesSettledEvent? completionSale = null;
+        for (ulong turn = 1; turn <= 4; turn++)
+        {
+            var context = new SimulationContext(new TurnNumber(turn), new SimulationSeed(712UL));
+            ISimulationCommand[] commands = turn == 1
+                ? new ISimulationCommand[] { new FoundationMonetaryInfrastructureCommand(
+                    new CommandId(context.Turn, 1UL), builder.Owner, edge, money) }
+                : turn <= 3
+                    ? new ISimulationCommand[] { new FoundationConstructionWorkCommand(
+                        new CommandId(context.Turn, 1UL), builder.Owner, builder.Id, 1UL) }
+                    : Array.Empty<ISimulationCommand>();
+            var opening = state;
+            var staged = construction.Resolve(new TurnResolutionInput(opening, commands, context), opening);
+            var receipt = FoundationTemporalEconomicJournalGate.CloseAndReplayWithInvestments(
+                opening, staged.Events, movement, travelPolicy, incidence, policy, context,
+                admission, fine, construction);
+            state = receipt.Next;
+            Assert.True(receipt.ReplayMatched);
+            Assert.Equal(turn, state.Treasury.LastSettledEconomicCycleOrdinal);
+            Assert.Equal(receipt.Hash, hasher.Compute(FoundationTemporalEconomicJournalGate.ReplayJournal(
+                opening, receipt.Journal, movement, travelPolicy, incidence, policy, context,
+                fine, admission, construction)));
+            Assert.Equal(receipt.EconomicEvent.GrossSalesScaled,
+                receipt.EconomicEvent.TotalCivilizationCreditsScaled + receipt.EconomicEvent.PhysicalFreightScaled);
+            foreach (var credit in receipt.EconomicEvent.Credits)
+            {
+                var debit = turn == 1 && credit.Civilization == builder.Owner
+                    ? GlobalArenaMoneyScale.FromMoneyMicro(money) : BigInteger.Zero;
+                Assert.Equal(opening.Treasury.Get(credit.Civilization).CashScaled - debit + credit.CashCreditScaled,
+                    state.Treasury.Get(credit.Civilization).CashScaled);
+            }
+            var calendar = FoundationTemporalEconomicTurnProjector.Project(opening, staged.ResultingWorldState,
+                Array.Empty<FoundationEdgeTravelTurnEvent>(), policy.Demand);
+            var expected = FoundationTemporalFinancialReconciler.Evaluate(opening, incidence, calendar, policy, fine, opening);
+            Assert.Equal(expected.Accounting.PhysicalFreightScaled, receipt.EconomicEvent.PhysicalFreightScaled);
+            Assert.Equal(expected.Accounting.GrossSalesScaled, receipt.EconomicEvent.GrossSalesScaled);
+            Assert.Equal(expected.Accounting.ExternalTollsScaled, receipt.EconomicEvent.ExternalTollsScaled);
+            var project = Assert.Single(state.Constructions.Projects);
+            Assert.Equal(turn == 1 ? 0UL : turn == 2 ? 1_000_000UL : money, project.CompletedWorkMicro);
+            Assert.Equal(turn >= 3, project.IsActivated);
+            var physical = state.Transport.Edges.Single(e => e.Edge == edge);
+            Assert.Equal(turn < 3 ? originalFreight :
+                FoundationPhysicalAuthoritativeTransportProjector.ProjectUnitFreightCost(natural, money),
+                FoundationPhysicalAuthoritativeTransportProjector.EffectiveUnitFreightCost(physical));
+            Assert.Equal(FoundationPhysicalAuthoritativeTransportProjector.EffectiveUnitFreightCost(physical),
+                state.Treasury.LastSettledFreightQuotes.Single(q => q.Edge == edge).FreePhysicalCostMicroPerWholeCargoUnit);
+            Assert.Equal(GlobalArenaMoneyScale.FromMoneyMicro(money),
+                state.Treasury.Get(builder.Owner).TotalInfrastructureInvestmentScaled);
+            Assert.DoesNotContain(calendar.Production, p => p.Worker == builder.Id);
+            if (turn == 3)
+            {
+                var batch = Assert.IsType<FoundationConstructionWorkBatchEvent>(Assert.Single(staged.Events));
+                Assert.Equal(400_000UL, Assert.Single(batch.Receipts).ResidualWorkMicro);
+                completionSale = receipt.EconomicEvent;
+            }
+            if (turn == 4)
+            {
+                Assert.NotNull(completionSale);
+                Assert.Equal(3UL, completionSale!.EconomicCycleOrdinal);
+                Assert.Equal(money, physical.CommittedInvestmentMoneyMicro.GetValueOrDefault());
+            }
+        }
+    }
+
+    [Fact]
     public void OneFullPhysicalTravelTurnCreditsRealTreasuryOnceAndReplays()
     {
         var (world, worker, destination, movement, incidence, fine) = Fixture();
