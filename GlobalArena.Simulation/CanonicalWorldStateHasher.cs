@@ -35,6 +35,7 @@ public sealed class CanonicalWorldStateHasher
     public const uint PersistentWorkerOrdersFormatVersion = 20U;
 
     public const uint NatalOriginsFormatVersion = 21U;
+    public const uint CropIntentFormatVersion = 22U;
 
     private static readonly byte[] Magic =
     {
@@ -50,7 +51,9 @@ public sealed class CanonicalWorldStateHasher
         ArgumentNullException.ThrowIfNull(
             worldState);
 
-        var version = worldState.Workers.Workers.Any(w => w.NatalNode.HasValue)
+        var version = worldState.WorkerOrders.Queues.Any(q => q.Orders.Any(o => o.Crop.HasValue))
+            ? CropIntentFormatVersion
+            : worldState.Workers.Workers.Any(w => w.NatalNode.HasValue)
             ? NatalOriginsFormatVersion
             : worldState.WorkerOrders.IsInitialized
             ? PersistentWorkerOrdersFormatVersion
@@ -559,11 +562,12 @@ public sealed class CanonicalWorldStateHasher
                     if (order.ProjectId.HasValue) AppendUInt64(hash, order.ProjectId.Value);
                     AppendUInt32(hash, order.Occupation.HasValue ? 1U : 0U);
                     if (order.Occupation.HasValue) AppendUInt32(hash, (uint)order.Occupation.Value);
+                    if (version >= CropIntentFormatVersion) AppendUInt32(hash, order.Crop.GetValueOrDefault());
                 }
             }
         }
 
-        if (version == NatalOriginsFormatVersion)
+        if (version >= NatalOriginsFormatVersion)
         {
             AppendUInt32(hash, 49U);
             var origins = worldState.Workers.Workers.Where(w => w.NatalNode.HasValue).ToArray();
