@@ -1,4 +1,5 @@
 using GlobalArena.Runtime;
+using GlobalArena.Foundation.Agriculture;
 using GlobalArena.Simulation.Foundation;
 using GlobalArena.World;
 
@@ -35,7 +36,10 @@ internal static class GaExplicitEconomicQaConfiguration
                 "discourage unnecessary port transitions.");
     }
 
-    internal static FoundationGameplayEconomicConfiguration Profile() =>
+    internal static IReadOnlyDictionary<CropId, CommodityId> CropItems() =>
+        CropCatalog.All.ToDictionary(c => c.Id, c => new CommodityId((uint)c.Id + 2U));
+
+    internal static FoundationGameplayEconomicConfiguration Profile(bool crops = false) =>
         new(
             new FoundationNaturalTransportSeedingPolicy(
                 new FoundationNaturalTransportCostBand(QaLandEdgeCostMicro, 1_000_000UL),
@@ -46,12 +50,12 @@ internal static class GaExplicitEconomicQaConfiguration
                 2_000_000UL, 4_000_000UL, 6_000_000UL, 1_000_000UL),
             new FoundationAuthoritativeEconomicSettlementPolicy(
                 new FoundationActivityCommodityDemandPolicy(
-                    new[] { CommodityOne, CommodityTwo },
+                    MarketItems(crops),
                     Enum.GetValues<FoundationPhysicalDemandProfile>()
                         .SelectMany(activity =>
-                            new[] { CommodityOne, CommodityTwo }.Select(item =>
+                            MarketItems(crops).Select(item =>
                                 new FoundationActivityCommodityDemandCoefficient(
-                                    activity, item, 1_000_000UL)))),
+                                    activity, item, crops && item.Value > 2U ? 166_667UL : 1_000_000UL)))),
                 new FoundationCommodityCargoConversionPolicy(
                     "explicit-godot-economic-qa-only",
                     new[]
@@ -73,6 +77,10 @@ internal static class GaExplicitEconomicQaConfiguration
                 (Blue, 0UL)
             });
 
+    private static CommodityId[] MarketItems(bool crops) => crops
+        ? new[] { CommodityOne, CommodityTwo }.Concat(CropItems().Values).ToArray()
+        : new[] { CommodityOne, CommodityTwo };
+
     /// <summary>
     /// Deterministic, explicit QA specialization. No invented worker IDs,
     /// locations, production capacities, work, stores or extra demand.
@@ -91,10 +99,11 @@ internal static class GaExplicitEconomicQaConfiguration
             FoundationTacticalHumanAiTurnHost demo,
             bool enableTemporalFinancialVisualSmoke = false,
             bool enableConstructionPreview = false,
-            bool enablePersistentOrders = false)
+            bool enablePersistentOrders = false, bool enableCropPreview = false)
     {
         ArgumentNullException.ThrowIfNull(demo);
         AssertNaturalFreightHierarchy();
+        if (enableCropPreview && !enablePersistentOrders) throw new InvalidOperationException("Crop preview requires persistent orders.");
         if (enablePersistentOrders && !enableConstructionPreview)
             throw new InvalidOperationException("Persistent preview requires construction preview.");
         if (demo.StateHash.FormatVersion != 11U ||
@@ -121,7 +130,8 @@ internal static class GaExplicitEconomicQaConfiguration
             world, demo.Incidence);
         var identity = FoundationFineFirstWorldgenCanonicalSignature.Compute(
             world, demo.Incidence, fine);
-        var configuration = Profile();
+        var configuration = Profile(enableCropPreview);
+        var agriculture = enableCropPreview ? new FoundationAgriculturalProductionPolicy(fine, demo.Incidence, CropItems(), 2_000_000UL) : null;
         var shallowMode = System.Environment.GetEnvironmentVariable(
             "GA_NEXT_QA_SHALLOW_PORTS") == "1";
         FoundationExperimentalShallowFreightPolicy? shallow = null;
@@ -192,7 +202,7 @@ internal static class GaExplicitEconomicQaConfiguration
             physicalTravelPolicy: enableTemporalFinancialVisualSmoke || enableConstructionPreview
                 ? new FoundationGroundEdgeTravelTimePolicy(1_400_000UL)
                 : null,
-            constructionMoneyMicroPerWholeWork: enableConstructionPreview ? 1_000_000UL : null);
+            constructionMoneyMicroPerWholeWork: enableConstructionPreview ? 1_000_000UL : null, agriculture: agriculture);
         return (host, fine, identity);
     }
 
