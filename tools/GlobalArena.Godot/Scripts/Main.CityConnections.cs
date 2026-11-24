@@ -1,5 +1,6 @@
 using Godot;
 using GlobalArena.Runtime;
+using GlobalArena.Runtime.PersistentOrders;
 using GlobalArena.Simulation.Foundation;
 using GlobalArena.World;
 
@@ -25,6 +26,8 @@ public partial class Main
     private Button? _connectionCancel;
     private Label? _connectionFeedback;
     private VBoxContainer? _connectionFunding;
+    private VBoxContainer? _persistentFundingWorkers;
+    private readonly Dictionary<PhysicalTacticalEdgeId, HashSet<PhysicalWorkerId>> _fundingSelections = new();
     private Label? _constructionWorkforceTitle;
     private ulong? _connectionDestination;
     private VBoxContainer? _constructionSection;
@@ -146,6 +149,8 @@ public partial class Main
             Disabled = true
         };
         _connectionInvest.Pressed += () => ChangeConnectionInvestment(false);
+        _persistentFundingWorkers = new VBoxContainer { Visible = false, Name = "GANextFundingWorkers" };
+        _connectionFunding.AddChild(_persistentFundingWorkers);
         _connectionFunding.AddChild(_connectionInvest);
         _connectionCancel = new Button { Text = "CANCEL PENDING INVESTMENT", Disabled = true };
         _connectionCancel.Pressed += () => ChangeConnectionInvestment(true);
@@ -291,7 +296,9 @@ public partial class Main
             return;
         }
         var id = ResolveConnectionEdge(_cityConnectionSource.Value, _connectionDestination.Value);
-        var plans = host.GetHumanMonetaryInvestments(_humanCivilization);
+        var plans = host.PersistentOrdersEnabled
+            ? host.GetHumanPersistentFunding(_humanCivilization).Select(p => new FoundationMonetaryInfrastructureCommand(p.Id, p.Issuer, p.Edge, p.MoneyMicro)).ToArray()
+            : host.GetHumanMonetaryInvestments(_humanCivilization).ToArray();
         var pendingPlan = plans.SingleOrDefault(p => p.Edge == id);
         bool pending = pendingPlan is not null;
         bool construction = host.Snapshot.Constructions.IsInitialized;
@@ -339,6 +346,9 @@ public partial class Main
             !withinRange ? "Capital exceeds the canonical money range." :
             !affordable ? "Insufficient unreserved treasury cash." :
             "Queue funding; cash is debited only on turn settlement.";
+        RefreshPersistentFundingWorkers(id, ready, pending, project is null && financeable);
+        if (host.PersistentOrdersEnabled && project is not null && project.Investor == _humanCivilization)
+            _connectionFeedback.Text = "Assign or remove persistent construction orders.";
         RefreshConstructionSection(id, ready);
     }
 
@@ -359,6 +369,11 @@ public partial class Main
         if (_constructionWorkforceTitle is not null) _constructionWorkforceTitle.Visible = showWorkers;
         _constructionWorkers.Visible = showWorkers;
         if (!showWorkers) return;
+        if (host.PersistentOrdersEnabled)
+        {
+            RefreshPersistentConstructionWorkers(project, ready);
+            return;
+        }
         var plans = host.GetHumanConstructionOrders(_humanCivilization);
         var otherOrders = host.GetHumanOrders(_humanCivilization);
         var edge = host.Incidence.FineTopology.Edges.Single(e => e.Id == id.FineStrategicEdgeId);
@@ -395,7 +410,7 @@ public partial class Main
         {
             if (cancel)
             {
-                if (!host.CancelHumanMonetaryInvestment(_humanCivilization, id))
+                if (!(host.PersistentOrdersEnabled ? host.CancelHumanPersistentFunding(_humanCivilization, id) : host.CancelHumanMonetaryInvestment(_humanCivilization, id)))
                     throw new InvalidOperationException("No pending investment on this connection.");
                 _r144QueuedCapital.Remove(id);
             }
@@ -406,7 +421,15 @@ public partial class Main
                 var cargo = host.GetLastClosedEconomicTradeView(_humanCivilization).UsedEdges
                     .FirstOrDefault(e => e.Edge == id)?.TotalCargoMicro ?? 0UL;
                 if (!TryReadConnectionAmount(out var amount)) return;
-                host.QueueHumanMonetaryInvestment(_humanCivilization, id, amount);
+                if (host.PersistentOrdersEnabled)
+                {
+                    var queues = host.GetHumanPersistentQueues(_humanCivilization);
+                    var selected = _fundingSelections.GetValueOrDefault(id) ?? new HashSet<PhysicalWorkerId>();
+                    host.QueueHumanFundedConstruction(_humanCivilization, id, amount,
+                        queues.Where(q => selected.Contains(q.Worker)).Select(q => new FoundationFundedWorkerInsertion(q.Worker, q.Orders.Count)));
+                    _fundingSelections.Remove(id);
+                }
+                else host.QueueHumanMonetaryInvestment(_humanCivilization, id, amount);
                 if (!host.Snapshot.Constructions.IsInitialized) _r144QueuedCapital[id] = (freight, cargo, amount);
             }
             _portQaLastSettledAudit = null;
@@ -419,6 +442,63 @@ public partial class Main
             if (_connectionFeedback is not null)
                 _connectionFeedback.Text = "Command rejected: " + ex.Message;
         }
+    }
+
+    private void RefreshPersistentFundingWorkers(PhysicalTacticalEdgeId edge, bool ready, bool pending, bool available)
+    {
+        if (_persistentFundingWorkers is null || _tacticalHost is not { } host) return;
+        _persistentFundingWorkers.Visible = host.PersistentOrdersEnabled && available;
+        foreach (Node child in _persistentFundingWorkers.GetChildren())
+        { _persistentFundingWorkers.RemoveChild(child); child.QueueFree(); }
+        if (!_persistentFundingWorkers.Visible) return;
+        _persistentFundingWorkers.AddChild(new Label { Text = "WORKFORCE | Select workers" });
+        if (!_fundingSelections.TryGetValue(edge, out var selected))
+            _fundingSelections[edge] = selected = new HashSet<PhysicalWorkerId>();
+        var committedPlan = host.GetHumanPersistentFunding(_humanCivilization).SingleOrDefault(p => p.Edge == edge);
+        foreach (var q in host.GetHumanPersistentQueues(_humanCivilization))
+        {
+            var worker = host.Snapshot.Workers.Workers.Single(w => w.Id == q.Worker);
+            var check = new CheckBox
+            {
+                Text = $"Worker #{q.Worker.Value} | Node {worker.TacticalTileId!.Value.FineStrategicCellId.Value}",
+                ButtonPressed = pending ? committedPlan!.Assignments.Any(a => a.Worker == q.Worker) : selected.Contains(q.Worker),
+                Disabled = ready || pending
+            };
+            check.Toggled += value => { if (value) selected.Add(q.Worker); else selected.Remove(q.Worker); };
+            _persistentFundingWorkers.AddChild(check);
+        }
+    }
+
+    private void RefreshPersistentConstructionWorkers(FoundationConstructionProject project, bool ready)
+    {
+        var host = _tacticalHost!;
+        var queues = host.GetHumanPersistentQueues(_humanCivilization);
+        foreach (var q in queues)
+        {
+            var worker = host.Snapshot.Workers.Workers.Single(w => w.Id == q.Worker);
+            var order = q.Orders.FirstOrDefault(o => o.Kind == FoundationWorkerOrderKind.Build && o.ProjectId == project.Id);
+            var label = order is null ? "Assign" : q.ActiveOrderId == order.Id ? "Interrupt" : "Remove";
+            var button = new Button
+            {
+                Text = $"#{q.Worker.Value} | Node {worker.TacticalTileId!.Value.FineStrategicCellId.Value} | {label}",
+                Disabled = ready
+            };
+            button.Pressed += () =>
+            {
+                try
+                {
+                    if (order is null) host.QueueHumanPersistentEdit(_humanCivilization, new FoundationPersistentOrderEdit(
+                        _humanCivilization, q.Worker, FoundationPersistentOrderEditKind.Insert, Index: q.Orders.Count,
+                        OrderKind: FoundationWorkerOrderKind.Build, ProjectId: project.Id));
+                    else RemovePersistentOrder(q, order.Id);
+                    RefreshFineTacticalWorkerControls();
+                }
+                catch (Exception ex) { if (_connectionFeedback is not null) _connectionFeedback.Text = "Command rejected: " + ex.Message; }
+            };
+            _constructionWorkers!.AddChild(button);
+        }
+        if (!queues.Any(q => q.Orders.Any(o => o.ProjectId == project.Id)))
+            _constructionStatus!.Text = _constructionStatus.Text.Replace("Under construction", "Awaiting workforce");
     }
 
     private void RefreshOpenConnectionInvestment()
@@ -444,8 +524,9 @@ public partial class Main
             e.IncidentCellIds.Any(c => c.Value == destination));
         var id = new PhysicalTacticalEdgeId(
             host.Incidence.Refinement.FineParameters, edge.Id);
-        var plan = host.GetHumanMonetaryInvestments(_humanCivilization)
-            .SingleOrDefault(p => p.Edge == id);
+        var plan = host.PersistentOrdersEnabled
+            ? host.GetHumanPersistentFunding(_humanCivilization).Select(p => new FoundationMonetaryInfrastructureCommand(p.Id, p.Issuer, p.Edge, p.MoneyMicro)).SingleOrDefault(p => p.Edge == id)
+            : host.GetHumanMonetaryInvestments(_humanCivilization).SingleOrDefault(p => p.Edge == id);
         return $"Physical connection ID: {edge.Id.Value}\n" +
             (plan is null ? "Your pending investment: None" :
                 $"Your pending investment: {FormatMoneyMicroForDisplay(plan.MoneyMicro)} (not yet spent)");

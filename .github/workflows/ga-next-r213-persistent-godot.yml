@@ -1,0 +1,47 @@
+name: GA-Next R213 Persistent Godot UI
+on:
+  pull_request:
+    paths:
+      - 'tools/GlobalArena.Godot/**'
+      - 'GlobalArena.Simulation/Foundation/FoundationTacticalHumanAiTurnHost.cs'
+      - '.github/workflows/ga-next-r213-persistent-godot.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  persistent-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Compile client
+        run: dotnet build tools/GlobalArena.Godot -c Debug
+      - name: Install Godot
+        run: |
+          curl -fL --retry 3 https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_mono_linux_x86_64.zip -o "$RUNNER_TEMP/godot.zip"
+          unzip -q "$RUNNER_TEMP/godot.zip" -d "$RUNNER_TEMP/godot"
+          GODOT_BIN="$(find "$RUNNER_TEMP/godot" -type f -name 'Godot_v4.7.2-stable_mono_linux*' | head -n 1)"
+          chmod +x "$GODOT_BIN"
+          echo "GODOT_BIN=$GODOT_BIN" >> "$GITHUB_ENV"
+      - name: Import project
+        run: timeout 180 "$GODOT_BIN" --headless --editor --path tools/GlobalArena.Godot --import
+      - name: Exercise actual controls
+        env:
+          GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW: '1'
+          GA_NEXT_INTERACTIVE_ECONOMY_PREVIEW: '1'
+          GA_NEXT_QA_LOCAL_SITE_MARKERS: '1'
+          GA_NEXT_CONSTRUCTION_PREVIEW: '1'
+          GA_NEXT_PERSISTENT_ORDERS: '1'
+          GA_NEXT_R213_UI_SMOKE: '1'
+        run: |
+          set -o pipefail
+          timeout 180 "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --rendering-method gl_compatibility 2>&1 | tee "$RUNNER_TEMP/r213.log"
+          grep -q 'GA_NEXT_R213_PERSISTENT_UI_PASS' "$RUNNER_TEMP/r213.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r213-ui-log
+          path: ${{ runner.temp }}/r213.log
