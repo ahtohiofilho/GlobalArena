@@ -495,6 +495,7 @@ public partial class Main : Control
                 .Select(order => (order.WorkerId.Value, order.NextOccupation!.Value)),
             !ready);
         RefreshPortInvestmentQaControls();
+        RefreshOpenConnectionInvestment();
         RefreshLocalSiteSelectionQa();
         RefreshLastTemporalEconomyReadout();
         RefreshCivilizationWindow();

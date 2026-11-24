@@ -19,6 +19,10 @@ public partial class Main
     private VBoxContainer? _cityLinksList;
     private PanelContainer? _cityLinkDetail;
     private Label? _cityLinkDetailText;
+    private Button? _connectionInvest;
+    private Button? _connectionCancel;
+    private Label? _connectionFeedback;
+    private ulong? _connectionDestination;
 
     private void CreateCityWindow()
     {
@@ -107,6 +111,18 @@ public partial class Main
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         details.AddChild(_cityLinkDetailText);
+        _connectionInvest = new Button
+        {
+            Text = "QUEUE INVESTMENT | " + FormatMoneyMicroForDisplay(PortQaSpendMoneyMicro),
+            Disabled = true
+        };
+        _connectionInvest.Pressed += () => ChangeConnectionInvestment(false);
+        details.AddChild(_connectionInvest);
+        _connectionCancel = new Button { Text = "CANCEL PENDING INVESTMENT", Disabled = true };
+        _connectionCancel.Pressed += () => ChangeConnectionInvestment(true);
+        details.AddChild(_connectionCancel);
+        _connectionFeedback = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        details.AddChild(_connectionFeedback);
     }
 
     private void OpenSelectedCityWindow()
@@ -168,6 +184,7 @@ public partial class Main
 
     private void CloseConnectionDetail()
     {
+        _connectionDestination = null;
         if (_cityLinkDetail is not null) _cityLinkDetail.Visible = false;
         if (_cityWindowPanel is not null) _cityWindowPanel.Visible = true;
     }
@@ -177,6 +194,7 @@ public partial class Main
         if (_cityLinkDetail is null || _cityLinkDetailText is null ||
             _cityWindowPanel is null || !_cityConnectionSource.HasValue)
             return;
+        _connectionDestination = link.Neighbor.FineStrategicCellId.Value;
         _cityWindowPanel.Visible = false;
         _cityLinkDetail.Visible = true;
         _cityLinkDetailText.Text =
@@ -193,6 +211,103 @@ public partial class Main
                 link.Neighbor.FineStrategicCellId.Value) + "\n\n" +
             ReadConnectionInvestment(_cityConnectionSource.Value,
                 link.Neighbor.FineStrategicCellId.Value);
+        RefreshConnectionInvestmentControls();
+    }
+
+    private PhysicalTacticalEdgeId ResolveConnectionEdge(ulong source, ulong destination)
+    {
+        var host = _tacticalHost ?? throw new InvalidOperationException("Host unavailable.");
+        var edge = host.Incidence.FineTopology.Edges.Single(e =>
+            e.IncidentCellIds.Any(c => c.Value == source) &&
+            e.IncidentCellIds.Any(c => c.Value == destination));
+        return new PhysicalTacticalEdgeId(host.Incidence.Refinement.FineParameters, edge.Id);
+    }
+
+    private void RefreshConnectionInvestmentControls()
+    {
+        if (_connectionInvest is null || _connectionCancel is null || _connectionFeedback is null)
+            return;
+        _connectionInvest.Disabled = _connectionCancel.Disabled = true;
+        var host = _tacticalHost;
+        if (!_interactiveEconomicPreviewActive || host is null ||
+            !_cityConnectionSource.HasValue || !_connectionDestination.HasValue)
+        {
+            _connectionFeedback.Text = "Investment commands unavailable in this preview.";
+            return;
+        }
+        var id = ResolveConnectionEdge(_cityConnectionSource.Value, _connectionDestination.Value);
+        var plans = host.GetHumanMonetaryInvestments(_humanCivilization);
+        bool pending = plans.Any(p => p.Edge == id);
+        bool ready = host.ReadyCivilizations.Contains(_humanCivilization);
+        var physical = host.Snapshot.Transport.Edges.Single(e => e.Edge == id);
+        bool financeable = physical.NaturalConstructionCostMoneyMicro is > 0UL &&
+            physical.CargoMicroAtReferenceLoad != ulong.MaxValue &&
+            physical.OwnershipKind != PhysicalTransportOwnershipKind.UnownedInfrastructure &&
+            (physical.OwnershipKind != PhysicalTransportOwnershipKind.Owned ||
+                physical.InfrastructureOwner == _humanCivilization);
+        var reserved = plans.Aggregate(System.Numerics.BigInteger.Zero,
+            (sum, p) => sum + GlobalArenaMoneyScale.FromMoneyMicro(p.MoneyMicro));
+        var available = host.Snapshot.Treasury.Get(_humanCivilization).CashScaled - reserved;
+        bool affordable = available >= GlobalArenaMoneyScale.FromMoneyMicro(PortQaSpendMoneyMicro);
+        _connectionInvest.Disabled = ready || pending || !financeable || !affordable;
+        _connectionCancel.Disabled = ready || !pending;
+        _connectionFeedback.Text = ready ? "Turn already submitted." :
+            pending ? "Investment pending. Press E to commit the turn." :
+            !financeable ? "This connection cannot be financed by your civilization." :
+            !affordable ? "Insufficient unreserved treasury cash." :
+            "Queue investment; cash is debited only on turn settlement.";
+    }
+
+    private void ChangeConnectionInvestment(bool cancel)
+    {
+        var host = _tacticalHost;
+        if (host is null || !_interactiveEconomicPreviewActive ||
+            !_cityConnectionSource.HasValue || !_connectionDestination.HasValue ||
+            _cityLinkDetail?.IsVisibleInTree() != true) return;
+        if (cancel ? _connectionCancel?.Disabled != false : _connectionInvest?.Disabled != false)
+            return;
+        var source = _cityConnectionSource.Value;
+        var destination = _connectionDestination.Value;
+        var id = ResolveConnectionEdge(source, destination);
+        try
+        {
+            if (cancel)
+            {
+                if (!host.CancelHumanMonetaryInvestment(_humanCivilization, id))
+                    throw new InvalidOperationException("No pending investment on this connection.");
+                _r144QueuedCapital.Remove(id);
+            }
+            else
+            {
+                var edge = host.Snapshot.Transport.Edges.Single(e => e.Edge == id);
+                var freight = FoundationPhysicalAuthoritativeTransportProjector.EffectiveUnitFreightCost(edge);
+                var cargo = host.GetLastClosedEconomicTradeView(_humanCivilization).UsedEdges
+                    .FirstOrDefault(e => e.Edge == id)?.TotalCargoMicro ?? 0UL;
+                host.QueueHumanMonetaryInvestment(_humanCivilization, id, PortQaSpendMoneyMicro);
+                _r144QueuedCapital[id] = (freight, cargo);
+            }
+            _portQaLastSettledAudit = null;
+            RefreshPortInvestmentQaControls();
+            RefreshOpenConnectionInvestment();
+        }
+        catch (Exception ex)
+        {
+            RefreshConnectionInvestmentControls();
+            if (_connectionFeedback is not null)
+                _connectionFeedback.Text = "Command rejected: " + ex.Message;
+        }
+    }
+
+    private void RefreshOpenConnectionInvestment()
+    {
+        var host = _tacticalHost;
+        if (host is null || _cityLinkDetail?.IsVisibleInTree() != true ||
+            !_cityConnectionSource.HasValue || !_connectionDestination.HasValue) return;
+        var source = new PhysicalTacticalTileId(host.Incidence.Refinement.FineParameters,
+            new StrategicCellId(_cityConnectionSource.Value));
+        var link = FoundationLocalConnectionsProjector.Read(host.Snapshot, host.Incidence, source)
+            .Single(r => r.Neighbor.FineStrategicCellId.Value == _connectionDestination.Value);
+        ShowCityConnectionDetail(link);
     }
 
     // Read the same authoritative pending plan as the investment laboratory.
@@ -341,6 +456,31 @@ public partial class Main
             ReadConnectionInvestment(site, destination) != ReadConnectionInvestment(destination, site))
             throw new InvalidOperationException("R187 connection plan or undirected identity mismatch.");
         GD.Print("GA_NEXT_R187_CONNECTION_PLAN_PASS authoritative=true undirected=true read_only=true");
+        if (_connectionInvest is null || _connectionCancel is null ||
+            !_connectionInvest.IsVisibleInTree() || !_connectionCancel.IsVisibleInTree())
+            throw new InvalidOperationException("R188 connection investment controls missing.");
+        var initialPlans = _tacticalHost.GetHumanMonetaryInvestments(_humanCivilization).ToArray();
+        // Real UI signal on the current initial treasury; no fabricated funding.
+        if (_connectionInvest.Disabled)
+        {
+            _connectionInvest.EmitSignal(Button.SignalName.Pressed);
+            if (!_tacticalHost.GetHumanMonetaryInvestments(_humanCivilization).SequenceEqual(initialPlans))
+                throw new InvalidOperationException("R188 disabled control altered the plan.");
+        }
+        else
+        {
+            _connectionInvest.EmitSignal(Button.SignalName.Pressed);
+            if (!_tacticalHost.GetHumanMonetaryInvestments(_humanCivilization)
+                    .Any(p => p.Edge == realId && p.MoneyMicro == PortQaSpendMoneyMicro) ||
+                _connectionCancel.Disabled)
+                throw new InvalidOperationException("R188 queue did not reach authoritative host.");
+            _connectionCancel.EmitSignal(Button.SignalName.Pressed);
+            if (!_tacticalHost.GetHumanMonetaryInvestments(_humanCivilization).SequenceEqual(initialPlans))
+                throw new InvalidOperationException("R188 cancellation failed to restore plan.");
+        }
+        if (_tacticalHost.StateHash != beforeHash)
+            throw new InvalidOperationException("R188 pending controls changed committed state.");
+        GD.Print("GA_NEXT_R188_CONNECTION_CONTROLS_PASS real_signals=true committed_state_unchanged=true");
         await Capture("03_local_connection_detail");
         CloseConnectionDetail();
         if (_cityWindowPanel?.IsVisibleInTree() != true ||
