@@ -2169,11 +2169,32 @@ public partial class TacticalContextPreview : SubViewportContainer
         return true;
     }
 
+    // Read-only hit test using the same physical polygon geometry as map clicks.
+    internal ulong? R218SiteAt(Vector2 localPoint)
+    {
+        if (!_localSitesEnabled || _camera is null || _pressed) return null;
+        var origin = _camera.ProjectRayOrigin(localPoint);
+        var direction = _camera.ProjectRayNormal(localPoint);
+        if (Math.Abs(direction.Y) < 1e-5f) return null;
+        float t = -origin.Y / direction.Y;
+        if (t < 0f) return null;
+        var hit = origin + direction * t;
+        var point = new Vector2(hit.X, hit.Z);
+        foreach (var item in _polygons)
+            if (Contains(point, item.Polygon))
+                return LocalSiteMarkerTileIds.Contains(item.Id) ? item.Id : null;
+        return null;
+    }
+
+    internal event Action<Vector2>? R218HoverMotion;
+    internal event Action? R218CameraInteraction;
+
     public override void _GuiInput(InputEvent @event)
     {
         if (_camera is null) return;
         if (@event is InputEventMouseButton button)
         {
+            if (button.Pressed) R218CameraInteraction?.Invoke();
             // A camera interaction must dismiss the transient inspector;
             // selected worker, selected tile and authority stay untouched.
             if (button.Pressed && (button.ButtonIndex == MouseButton.WheelUp ||
@@ -2239,6 +2260,7 @@ public partial class TacticalContextPreview : SubViewportContainer
         }
         if (@event is InputEventMouseMotion hoverMotion && !_pressed)
         {
+            R218HoverMotion?.Invoke(hoverMotion.Position);
             // Click-only prototype: no tooltip/menus or role expansion by
             // hovering, even above an existing coplanar worker marker.
             if (!_tileClickHypothesis && !_localSitesEnabled)
