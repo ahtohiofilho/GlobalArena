@@ -64,7 +64,7 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
                 "Temporal collective settlement requires complete signed geography.");
         _growth = enableDemographicGrowth;
         _agriculture = agriculture;
-        if (agriculture is not null && (!persistentMoneyMicroPerWholeWork.HasValue || fine is null)) throw new InvalidOperationException("Crop policy requires signed persistent scheduling.");
+        if (agriculture is not null && (!persistentMoneyMicroPerWholeWork.HasValue || !ReferenceEquals(fine, agriculture.Geography))) throw new InvalidOperationException("Crop policy requires signed persistent scheduling.");
         if (_growth && !persistentMoneyMicroPerWholeWork.HasValue) throw new InvalidOperationException("Demographic growth requires persistent scheduling.");
         _fine = fine;
         _construction = construction;
