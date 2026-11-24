@@ -1,6 +1,7 @@
 using System.Numerics;
 using GlobalArena.Kernel;
 using GlobalArena.Runtime;
+using GlobalArena.Runtime.PersistentOrders;
 using GlobalArena.Simulation;
 using GlobalArena.Simulation.Foundation;
 using GlobalArena.World;
@@ -73,6 +74,68 @@ public sealed class FoundationMonetaryInfrastructureInvestmentTests
     private static PhysicalTransportEdgeRuntimeRecord Edge(Scenario s) =>
         s.Host.Snapshot.Transport.Edges.Single(x =>
             x.Edge == s.RemoteEdge);
+
+    [Fact]
+    public void R208FundsAndBindsRemoteWorkersAtomicallyAndReplays()
+    {
+        var s = Create();
+        var before = s.Host.Snapshot.WithConstructions(
+            new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
+            .DeployInitialWorkerOrders();
+        var admission = new FoundationMonetaryInfrastructureEventExecutor(
+            s.Host.Session.GeneratedWorld, s.Host.Incidence);
+        var executor = new FoundationFundedWorkerIntentJournal(
+            new FoundationConstructionFundingExecutor(admission, 2_000_000UL));
+        var turn = new TurnNumber(1UL);
+        var context = new SimulationContext(turn, new SimulationSeed(712UL));
+        var id = new EventId(new CommandId(turn, 1UL), 1UL);
+        var workers = before.Workers.Workers.Where(w => w.Owner == Red).ToArray();
+        var assignments = workers.Select(w => new FoundationFundedWorkerInsertion(w.Id, 0)).ToArray();
+        var (after, ev) = executor.Record(before, id, Red, s.RemoteEdge, 2_000_000UL,
+            assignments.Reverse(), context);
+        var project = Assert.Single(after.Constructions.Projects);
+        Assert.Equal(project.Id, ev.ProjectId);
+        Assert.Equal(0UL, project.CompletedWorkMicro);
+        Assert.False(project.IsActivated);
+        Assert.Equal(1_000_000UL, project.RequiredWorkMicro);
+        Assert.Equal(before.Treasury.Get(Red).CashScaled -
+            GlobalArenaMoneyScale.FromMoneyMicro(2_000_000UL), after.Treasury.Get(Red).CashScaled);
+        Assert.Same(before.Transport, after.Transport);
+        Assert.Same(before.Workers, after.Workers);
+        Assert.Equal(before.Revision + 1, after.Revision);
+        foreach (var worker in workers)
+        {
+            var order = Assert.Single(after.WorkerOrders.Queues.Single(q => q.Worker == worker.Id).Orders);
+            Assert.Equal(FoundationWorkerOrderKind.Build, order.Kind);
+            Assert.Equal(project.Id, order.ProjectId);
+        }
+        var hash = new CanonicalWorldStateHasher();
+        Assert.Equal(hash.Compute(after), hash.Compute(executor.Execute(before, ev, context)));
+        var log = new SimulationEventLog(new[] { new SimulationEventLogEntry(1UL, ev, true, true) });
+        Assert.Equal(hash.Compute(after), hash.Compute(new SimulationEventLogReplayer(executor)
+            .Replay(new SimulationReplayInput(before, log, context))));
+        Assert.Equal(hash.Compute(after), hash.Compute(executor.Record(before, id, Red,
+            s.RemoteEdge, 2_000_000UL, assignments, context).Next));
+        Assert.Throws<InvalidOperationException>(() => executor.Execute(after, ev, context));
+        Assert.Throws<InvalidOperationException>(() => executor.Execute(before,
+            ev with { ProjectId = project.Id + 1 }, context));
+        Assert.Throws<InvalidOperationException>(() => executor.Execute(before,
+            ev with { Assignments = Array.Empty<FoundationFundedWorkerInsertion>() }, context));
+        var foreign = before.Workers.Workers.First(w => w.Owner == Blue);
+        Assert.Throws<InvalidOperationException>(() => executor.Record(before, id, Red,
+            s.RemoteEdge, 2_000_000UL, new[] { assignments[0], new FoundationFundedWorkerInsertion(foreign.Id, 0) }, context));
+        Assert.Throws<InvalidOperationException>(() => executor.Record(before, id, Red,
+            s.RemoteEdge, 2_000_000UL, new[] { assignments[0], assignments[0] }, context));
+        Assert.Throws<ArgumentOutOfRangeException>(() => executor.Record(before, id, Red,
+            s.RemoteEdge, 2_000_000UL, new[] { new FoundationFundedWorkerInsertion(s.Producer, 9) }, context));
+        Assert.Empty(before.Constructions.Projects);
+        Assert.All(before.WorkerOrders.Queues, q => Assert.Empty(q.Orders));
+        var alone = executor.Record(before, id, Red, s.RemoteEdge, 2_000_000UL,
+            Array.Empty<FoundationFundedWorkerInsertion>(), context).Next;
+        Assert.Single(alone.Constructions.Projects);
+        Assert.All(alone.WorkerOrders.Queues, q => Assert.Empty(q.Orders));
+        Assert.Equal(after.Treasury.Get(Red).CashScaled, alone.Treasury.Get(Red).CashScaled);
+    }
 
     [Fact]
     public void ConstructionFundingDebitsOnceAndReplaysWithoutActivatingInfrastructure()
