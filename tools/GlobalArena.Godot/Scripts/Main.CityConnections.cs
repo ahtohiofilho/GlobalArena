@@ -313,6 +313,11 @@ public partial class Main
         bool withinRange = projectedAmount <= ulong.MaxValue - physical.CommittedInvestmentMoneyMicro.GetValueOrDefault();
         bool affordable = valid && available >= GlobalArenaMoneyScale.FromMoneyMicro(amount);
         if (_connectionFunding is not null) _connectionFunding.Visible = project is null;
+        if (_connectionAmount is not null && pendingPlan is not null && construction)
+        {
+            // The authoritative reservation, not a stale value from another edge.
+            _connectionAmount.Text = FormatMoneyMicroForDisplay(pendingPlan.MoneyMicro);
+        }
         if (_connectionAmount is not null) _connectionAmount.Editable = !ready && !pending && project is null;
         if (_connectionProjection is not null && financeable && (project is not null || pending || valid) && withinRange)
         {
@@ -324,6 +329,8 @@ public partial class Main
         }
         _connectionInvest.Disabled = ready || pending || project is not null || !financeable || !affordable || !withinRange;
         _connectionCancel.Disabled = ready || !pending;
+        _connectionCancel.Visible = !construction || pending;
+        _connectionInvest.Visible = !construction || !pending;
         _connectionFeedback.Text = ready ? "Turn already submitted." :
             project is not null ? (project.Investor == _humanCivilization ? "Assign workers for this turn." : "Project funded by another civilization.") :
             pending ? "Funding pending. Press E to commit the turn." :
@@ -555,6 +562,10 @@ public partial class Main
             _cityLinkDetailText.Text.Contains(
                 $"Your workers at to node: {toCount} (presence only)", StringComparison.Ordinal) != true)
             throw new InvalidOperationException("R186 connection workforce differs from signed worker locations.");
+        if (_constructionSection?.Visible != false ||
+            _constructionProgress?.Value != 0)
+            throw new InvalidOperationException("R202 no active construction must not show stale progress.");
+        GD.Print("GA_NEXT_R202_EMPTY_CONSTRUCTION_PASS hidden=true");
         GD.Print("GA_NEXT_R186_CONNECTION_WORKFORCE_PASS physical_presence=true read_only=true");
         var realEdge = _tacticalHost.Incidence.FineTopology.Edges.Single(e =>
             e.IncidentCellIds.Any(c => c.Value == site) &&
