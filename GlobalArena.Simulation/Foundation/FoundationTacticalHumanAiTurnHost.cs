@@ -176,6 +176,21 @@ public sealed class FoundationTacticalHumanAiTurnHost
     private readonly FoundationEconomicTradeCycleReadBoundary _closedTrade;
     private FoundationTacticalCollectiveReceipt? _lastTemporalClose;
 
+    // Only the human owner's last independently verified cycle; no pending-plan data.
+    public IReadOnlyList<FoundationWorkerFoodIntake>? ReadWorkerFoodIntake(
+        CivilizationId viewer, PhysicalWorkerId worker)
+    {
+        CheckSnapshot();
+        RequireHuman(viewer);
+        _ = RequireOwnedWorker(viewer, worker);
+        var sale = _lastTemporalClose?.TemporalEconomicSettlement;
+        if (sale?.FoodIntake is null ||
+            sale.EconomicCycleOrdinal != Snapshot.Treasury.LastSettledEconomicCycleOrdinal)
+            return null;
+        var rows = sale.FoodIntake.Where(r => r.Worker == worker).ToArray();
+        return rows.Length == 0 ? null : Array.AsReadOnly(rows);
+    }
+
     public CanonicalGameSession Session => _session;
     public WorldState Snapshot => _session.Snapshot;
     public WorldStateHash StateHash => _hasher.Compute(Snapshot);

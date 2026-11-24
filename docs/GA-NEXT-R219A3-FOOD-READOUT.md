@@ -1,0 +1,3 @@
+# R219A.3 — Food quality readout
+
+Crop-enabled preview displays one individual food-quality scalar from the last committed replay-verified intake. Before first close or for a new worker without intake, unavailable, not zero. Ownership checked in host; pending commands do not affect result. Diagnostic tooltip shows cycle, f and D. Experimental equal conversions 1e-6 per micro-good, sigma=0.5, nu=0.5, A(f)=2f/(1+f). These are illustrative calibration assumptions, not final game rules. No productivity multiplier, state hash or save change, materials or energy implementation. Godot smoke checks unavailable before close, exact computed label after close, owner-only boundary and unchanged hash. CI and manual visual validation pending.

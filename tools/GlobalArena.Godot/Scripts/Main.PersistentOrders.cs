@@ -1,4 +1,5 @@
 using Godot;
+using GlobalArena.Simulation;
 using GlobalArena.Foundation.Agriculture;
 using GlobalArena.Runtime;
 using GlobalArena.Runtime.PersistentOrders;
@@ -11,6 +12,7 @@ public partial class Main
 {
     private VBoxContainer? _persistentQueuePanel;
     private OptionButton? _cropSelector;
+    private Label? _foodQuality;
     private CropId? SelectedCrop => _cropSelector is { Selected: >= 0 } ? (CropId)_cropSelector.GetSelectedId() : null;
     private ItemList? _persistentQueueList;
     private Button? _persistentUp, _persistentDown, _persistentRemove;
@@ -59,6 +61,8 @@ public partial class Main
         parent.AddChild(_persistentQueuePanel);
         _persistentWorkerSummary = new Label { Name = "GANextWorkerContext", AutowrapMode = TextServer.AutowrapMode.WordSmart };
         _persistentQueuePanel.AddChild(_persistentWorkerSummary);
+        _foodQuality = new Label { Name = "GANextFoodQuality", Visible = false, AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        _persistentQueuePanel.AddChild(_foodQuality);
         _cropSelector = new OptionButton { Name = "GANextCropSelector", Visible = false, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _persistentQueuePanel.AddChild(_cropSelector);
         _persistentCrossingLabel = new Label { Name = "GANextCrossingDetails", AutowrapMode = TextServer.AutowrapMode.WordSmart, Visible = false };
@@ -143,6 +147,7 @@ public partial class Main
         }
         RefreshPersistentWorkerSummary(host, q.Worker);
         RefreshCropSelector(host, q.Worker, ready);
+        RefreshFoodQuality(host, q.Worker);
         _persistentQueueList.Clear();
         _persistentQueueList.Visible = q.Orders.Count > 0;
         if (_persistentEmpty is not null) _persistentEmpty.Visible = q.Orders.Count == 0;
@@ -182,6 +187,25 @@ public partial class Main
         foreach (var b in new[] { _localAgricultureButton, _localForestryButton, _localMiningButton, _r149LandWorkButton, _r149PortWorkButton })
             if (b is not null) b.Disabled = ready;
         if (_fineMovementDecision is not null) _fineMovementDecision.Text = "Select a destination on the map. Orders run in sequence.";
+    }
+
+    private void RefreshFoodQuality(FoundationTacticalHumanAiTurnHost host, PhysicalWorkerId worker)
+    {
+        if (_foodQuality is null) return;
+        var agriculture = host.AgriculturalProduction;
+        _foodQuality.Visible = agriculture is not null;
+        if (agriculture is null) return;
+        var intake = host.ReadWorkerFoodIntake(_humanCivilization, worker);
+        if (intake is null)
+        {
+            _foodQuality.Text = "Food quality (experimental): unavailable";
+            return;
+        }
+        var conversions = agriculture.Commodities.ToDictionary(c => c, _ => 0.000001);
+        var result = FoundationSettledFoodIntake.Evaluate(worker, intake, conversions,
+            new CanonicalNutritionCandidateParameters(0.5, 0.5), f => 2.0 * f / (1.0 + f));
+        _foodQuality.Text = FormattableString.Invariant($"Food quality (experimental): {result.CandidateQuality!.Value:0.000}");
+        _foodQuality.TooltipText = FormattableString.Invariant($"Last closed cycle {host.Snapshot.Treasury.LastSettledEconomicCycleOrdinal} | Intake {result.FoodPerPerson:0.000} | Diversity {result.Diversity:0.000} | No productivity effect");
     }
 
     private void RefreshCropSelector(FoundationTacticalHumanAiTurnHost host, PhysicalWorkerId worker, bool ready)
@@ -240,6 +264,8 @@ public partial class Main
         OnOperationalWorkerSelected(worker.Id.Value);
         if (_cropSelector?.Visible != true || _cropSelector.ItemCount != 6)
             throw new InvalidOperationException("Six crop controls unavailable.");
+        if (_foodQuality?.Visible != true || !_foodQuality.Text.Contains("unavailable"))
+            throw new InvalidOperationException("Food quality must be unavailable before first close.");
         _cropSelector.Select(3);
         _localAgricultureButton!.EmitSignal(Button.SignalName.Pressed);
         var order = ReadPersistentQueue(worker.Id).Orders.Single();
@@ -252,6 +278,21 @@ public partial class Main
             queue.ActiveOrderId != order.Id || host.Snapshot.Treasury.LastSettledEconomicCycleOrdinal != 1 ||
             !_persistentWorkerSummary!.Text.Contains("Rice"))
             throw new InvalidOperationException("Crop preview did not commit persistent rice production.");
+        var committedHash = host.StateHash;
+        var intake = host.ReadWorkerFoodIntake(_humanCivilization, worker.Id);
+        if (intake is null || intake.Count != 6) throw new InvalidOperationException("Missing six settled foods.");
+        var expected = FoundationSettledFoodIntake.Evaluate(worker.Id, intake,
+            host.AgriculturalProduction!.Commodities.ToDictionary(c => c, _ => 0.000001),
+            new CanonicalNutritionCandidateParameters(0.5, 0.5), f => 2.0 * f / (1.0 + f));
+        if (_foodQuality!.Text != FormattableString.Invariant($"Food quality (experimental): {expected.CandidateQuality!.Value:0.000}"))
+            throw new InvalidOperationException("Food quality readout did not use the committed intake.");
+        var foreign = host.Snapshot.Workers.Workers.First(w => w.Owner != _humanCivilization);
+        bool rejected = false;
+        try { host.ReadWorkerFoodIntake(_humanCivilization, foreign.Id); }
+        catch (InvalidOperationException) { rejected = true; }
+        if (!rejected || host.StateHash != committedHash)
+            throw new InvalidOperationException("Food read boundary leaked foreign data or mutated world.");
+        GD.Print("GA_NEXT_R219A3_FOOD_READOUT_PASS committed=true owner_scoped=true hash_unchanged=true");
         GD.Print("GA_NEXT_R219A1_CROP_PREVIEW_PASS six_choices=true real_order=true economic_close=true");
     }
 
