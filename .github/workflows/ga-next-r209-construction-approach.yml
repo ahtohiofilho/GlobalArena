@@ -1,0 +1,20 @@
+name: GA-Next R209 Construction Approach
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/Foundation/FoundationConstructionApproachRouter.cs'
+      - 'GlobalArena.Tests/FoundationTemporalEconomicJournalGateTests.cs'
+      - '.github/workflows/ga-next-r209-construction-approach.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  approach:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~FoundationTemporalEconomicJournalGateTests|FullyQualifiedName~FoundationPersistedEdgeTravelTests|FullyQualifiedName~FoundationGroundEdgeTravelTimeProjectorTests' --logger 'console;verbosity=detailed'
