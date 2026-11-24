@@ -168,7 +168,9 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
                 var destination = remaining == 0 ? t.Destination : t.Source;
                 state = Assign(state, worker, destination,
                     _router.Movement.PresentationRegion(destination, worker.CellId),
-                    remaining == 0 ? PhysicalWorkerActivity.Other : PhysicalWorkerActivity.Traveling,
+                    remaining == 0
+                        ? (Produces(m.Occupation) ? PhysicalWorkerActivity.Producing : PhysicalWorkerActivity.Other)
+                        : PhysicalWorkerActivity.Traveling,
                     m.Occupation, ledger);
             }
             now += duration;
