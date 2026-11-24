@@ -107,6 +107,7 @@ public partial class Main : Control
     private Control? _workspaceWindow;
     private Label? _operationalContext;
     private Label? _selectedUnitIdentity;
+    private GaAuxiliaryPlanet? _auxiliaryPlanet;
     private VBoxContainer? _selectedUnitSlot;
     private const float R2212DockWidth = 304f;
     private bool _operationalCitySelected;
@@ -1457,6 +1458,14 @@ public partial class Main : Control
                     if (button is not null) button.Reparent(actions);
             }
             RefreshSelectedUnitSlot();
+            if (globe.ReadSignedPhysicalSurface() is { } surface)
+            {
+                operationsColumn.AddChild(new HSeparator());
+                operationsColumn.AddChild(new Label { Text = "PLANET | MAP FOCUS" });
+                _auxiliaryPlanet = new GaAuxiliaryPlanet(surface.Mesh, surface.Material);
+                operationsColumn.AddChild(_auxiliaryPlanet);
+                RefreshAuxiliaryPlanet();
+            }
         }
 
         // Secondary planetary atlas is a bounded, movable and resizable
@@ -2354,6 +2363,7 @@ public partial class Main : Control
             GD.Print($"GA_UI_RUNTIME_SNAPSHOT_REFRESH_R39 revision={latest.Revision} presentation_only=true");
         }
         UpdateR218SiteHover(delta);
+        RefreshAuxiliaryPlanet();
         if (_layoutDiagnosticFrame is null || _layoutDiagnosticRoot is null) return;
         var view = GetViewport();
         if (view is null) return;
@@ -2362,6 +2372,11 @@ public partial class Main : Control
         if (signature == _lastLoggedLayoutSignature) return;
         _lastLoggedLayoutSignature = signature;
         GD.Print($"GA_LAYOUT_DIAGNOSTIC_02 viewport={current} main={Size} frame={_layoutDiagnosticFrame.Size} root={_layoutDiagnosticRoot.Size} window={DisplayServer.WindowGetSize()} screen={DisplayServer.ScreenGetSize()}");
+    }
+    private void RefreshAuxiliaryPlanet()
+    {
+        if (_auxiliaryPlanet is null || _tacticalPreview?.IsCartographicSiteMode != true) return;
+        _auxiliaryPlanet.Synchronize(_tacticalPreview.CenterGeography, _tacticalPreview.AuxiliaryNorthGeography);
     }
     private void ShowStatus()
     {

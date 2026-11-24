@@ -563,6 +563,14 @@ public partial class GlobePreview : SubViewportContainer
     // R139: the atlas and tactical viewer share a unit sphere position.
     // The planet rotates around a stationary camera; account for that inverse
     // rotation when reading the exact geography at the screen center.
+    // R221.3: share immutable presentation resources, never the atlas node
+    // or its camera. No second generation or triangulation for the inset.
+    internal (Mesh Mesh, Material? Material)? ReadSignedPhysicalSurface()
+    {
+        if (_signedG18Sphere?.Mesh is not { } mesh) return null;
+        return (mesh, _signedG18Sphere.MaterialOverride);
+    }
+
     public Vector3 CenterGeography
     {
         get

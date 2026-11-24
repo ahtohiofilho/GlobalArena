@@ -403,6 +403,41 @@ public partial class Main
                 _localMoveButton?.IsVisibleInTree() != true || host.StateHash != before)
                 throw new InvalidOperationException("Selected unit slot did not expose existing operational controls.");
             GD.Print("GA_NEXT_R2212_CONTEXTUAL_DOCK_PASS fixed_slot=true direct_actions=true hash_unchanged=true");
+            var inset = _auxiliaryPlanet ?? throw new InvalidOperationException("Missing auxiliary planet.");
+            var surface = _strategicGlobe!.ReadSignedPhysicalSurface() ??
+                throw new InvalidOperationException("Missing canonical signed surface.");
+            var openingFocus = _tacticalPreview.CenterGeography;
+            var openingZoom = _tacticalPreview.TacticalCameraState.Zoom;
+            RefreshAuxiliaryPlanet();
+            if (!inset.IsVisibleInTree() || inset.MouseFilter != MouseFilterEnum.Ignore ||
+                !ReferenceEquals(inset.SurfaceMesh, surface.Mesh) ||
+                !ReferenceEquals(inset.SurfaceMaterial, surface.Material) ||
+                inset.CenterGeography.Dot(openingFocus) < 0.99999f)
+                throw new InvalidOperationException("Auxiliary planet does not share the actual physical surface or focus.");
+            var updates = inset.OrientationUpdates;
+            RefreshAuxiliaryPlanet();
+            if (updates != inset.OrientationUpdates)
+                throw new InvalidOperationException("Stationary auxiliary planet redundantly updates camera.");
+            var targetFocus = (openingFocus + new Vector3(0.03f, 0.045f, -0.017f)).Normalized();
+            _tacticalPreview.CenterOnGeography(targetFocus);
+            RefreshAuxiliaryPlanet();
+            if (inset.CenterGeography.Dot(_tacticalPreview.CenterGeography) < 0.99999f ||
+                inset.NorthGeography.Dot(_tacticalPreview.AuxiliaryNorthGeography) < 0.99999f ||
+                inset.OrientationUpdates <= updates ||
+                !ReferenceEquals(inset.SurfaceMesh, surface.Mesh))
+                throw new InvalidOperationException("Auxiliary globe did not track geographic movement.");
+            // Existing larger atlas remains independent and still hands focus back.
+            TogglePlanetWindow();
+            if (_planetWindow?.Visible != true || _strategicGlobe.CenterGeography.Dot(targetFocus) < 0.99999f)
+                throw new InvalidOperationException("Auxiliary planet broke larger atlas.");
+            TogglePlanetWindow();
+            _tacticalPreview.CenterOnGeography(openingFocus);
+            RefreshAuxiliaryPlanet();
+            if (_planetWindow?.Visible != false || inset.CenterGeography.Dot(openingFocus) < 0.99999f ||
+                Math.Abs(_tacticalPreview.TacticalCameraState.Zoom - openingZoom) > 0.00001f ||
+                host.StateHash != before)
+                throw new InvalidOperationException("Auxiliary globe altered canonical state or tactical zoom.");
+            GD.Print("GA_NEXT_R2213_AUXILIARY_PLANET_PASS shared_mesh=true north_up=true stationary_no_update=true atlas_preserved=true");
             var worker = host.Snapshot.Workers.Workers.First(w => w.Owner == _humanCivilization);
             OnOperationalWorkerSelected(worker.Id.Value);
             if (_persistentQueueList!.Visible || _persistentInsert!.Disabled != true ||
