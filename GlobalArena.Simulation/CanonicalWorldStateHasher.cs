@@ -32,6 +32,7 @@ public sealed class CanonicalWorldStateHasher
     public const uint PersistedPhysicalTravelFormatVersion = 17U;
     public const uint PersistedConstructionFormatVersion = 18U;
     public const uint ActivatedConstructionFormatVersion = 19U;
+    public const uint PersistentWorkerOrdersFormatVersion = 20U;
 
     private static readonly byte[] Magic =
     {
@@ -47,7 +48,9 @@ public sealed class CanonicalWorldStateHasher
         ArgumentNullException.ThrowIfNull(
             worldState);
 
-        var version = worldState.Constructions.IsInitialized
+        var version = worldState.WorkerOrders.IsInitialized
+            ? PersistentWorkerOrdersFormatVersion
+            : worldState.Constructions.IsInitialized
             ? (worldState.Constructions.Projects.Any(p => p.IsActivated)
                 ? ActivatedConstructionFormatVersion : PersistedConstructionFormatVersion)
             : worldState.EdgeTravels.IsInitialized
@@ -521,6 +524,38 @@ public sealed class CanonicalWorldStateHasher
                 AppendUInt64(hash, project.CompletedWorkMicro);
                 if (version >= ActivatedConstructionFormatVersion)
                     AppendUInt32(hash, project.IsActivated ? 1U : 0U);
+            }
+        }
+
+        if (worldState.WorkerOrders.IsInitialized)
+        {
+            AppendUInt32(hash, 48U);
+            AppendUInt32(hash, 1U);
+            AppendUInt32(hash, checked((uint)worldState.WorkerOrders.Queues.Count));
+            foreach (var queue in worldState.WorkerOrders.Queues)
+            {
+                AppendUInt64(hash, queue.Worker.Value);
+                AppendUInt64(hash, queue.Owner.Value);
+                AppendUInt64(hash, queue.NextId);
+                AppendUInt32(hash, queue.ActiveOrderId.HasValue ? 1U : 0U);
+                if (queue.ActiveOrderId.HasValue) AppendUInt64(hash, queue.ActiveOrderId.Value);
+                AppendUInt32(hash, checked((uint)queue.Orders.Count));
+                foreach (var order in queue.Orders)
+                {
+                    AppendUInt64(hash, order.Id);
+                    AppendUInt32(hash, (uint)order.Kind);
+                    AppendUInt32(hash, order.Destination.HasValue ? 1U : 0U);
+                    if (order.Destination is { } tile)
+                    {
+                        AppendUInt32(hash, checked((uint)tile.FineGoldbergParameters.M));
+                        AppendUInt32(hash, checked((uint)tile.FineGoldbergParameters.N));
+                        AppendUInt64(hash, tile.FineStrategicCellId.Value);
+                    }
+                    AppendUInt32(hash, order.ProjectId.HasValue ? 1U : 0U);
+                    if (order.ProjectId.HasValue) AppendUInt64(hash, order.ProjectId.Value);
+                    AppendUInt32(hash, order.Occupation.HasValue ? 1U : 0U);
+                    if (order.Occupation.HasValue) AppendUInt32(hash, (uint)order.Occupation.Value);
+                }
             }
         }
 
