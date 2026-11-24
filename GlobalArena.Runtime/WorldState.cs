@@ -615,7 +615,7 @@ public sealed class WorldState
     {
         if (!Constructions.IsInitialized || !Treasury.IsInitialized ||
             requiredWorkMicro == 0UL || moneyMicro == 0UL ||
-            Constructions.Projects.Any(p => p.Edge == edge && !p.IsComplete))
+            Constructions.Projects.Any(p => p.Edge == edge && !p.IsActivated))
             throw new InvalidOperationException("Construction funding requires an enabled ledger and free project slot.");
         // Reuse the existing title, range and financeability validator.
         // Its immutable hypothetical transport result is deliberately discarded.
@@ -631,11 +631,43 @@ public sealed class WorldState
             CityResidences, EdgeTravels, ledger);
     }
 
+    // Completion-only conversion of already financed Work into physical capital.
+    public WorldState ActivateCompletedConstruction(ulong projectId)
+    {
+        if (!Constructions.IsInitialized)
+            throw new InvalidOperationException("Construction ledger is not initialized.");
+        var project = Constructions.Projects.SingleOrDefault(p => p.Id == projectId);
+        if (project is null || !project.IsComplete || project.IsActivated)
+            throw new InvalidOperationException("Only a completed, unactivated project may be commissioned.");
+        var transport = Transport.RecordMoneyInvestment(project.Investor, project.Edge,
+            project.FundedMoneyMicro);
+        var ledger = new FoundationConstructionRuntimeState(Constructions.Projects.Select(p =>
+            p.Id == projectId ? p with { IsActivated = true } : p));
+        return new WorldState(Revision, WorldBinding, Civilizations, Territory,
+            Diplomacy, Economy, Population, Warfare, Workers, transport, Treasury,
+            CityResidences, EdgeTravels, ledger);
+    }
+
     public WorldState WithConstructions(FoundationConstructionRuntimeState constructions)
     {
         ArgumentNullException.ThrowIfNull(constructions);
         if (!constructions.IsInitialized)
             throw new InvalidOperationException("Construction ledger cannot be removed.");
+        // Existing projects cannot be erased, rewritten, regressed, or marked
+        // activated through the generic progress replacement API.
+        foreach (var prior in Constructions.Projects)
+        {
+            var next = constructions.Projects.SingleOrDefault(p => p.Id == prior.Id);
+            if (next is null || next.Edge != prior.Edge || next.Investor != prior.Investor ||
+                next.FundedMoneyMicro != prior.FundedMoneyMicro ||
+                next.RequiredWorkMicro != prior.RequiredWorkMicro ||
+                next.CompletedWorkMicro < prior.CompletedWorkMicro ||
+                next.IsActivated != prior.IsActivated)
+                throw new InvalidOperationException("Construction history cannot be rewritten.");
+        }
+        if (constructions.Projects.Any(p => p.IsActivated &&
+            !Constructions.Projects.Any(old => old.Id == p.Id && old.IsActivated)))
+            throw new InvalidOperationException("Activation requires the dedicated transition.");
         return new WorldState(Revision, WorldBinding, Civilizations, Territory,
             Diplomacy, Economy, Population, Warfare, Workers, Transport, Treasury,
             CityResidences, EdgeTravels, constructions);

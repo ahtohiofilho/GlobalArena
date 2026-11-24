@@ -1,0 +1,7 @@
+# R195 — Completion-only infrastructure activation
+
+R194 approved 6/6. A project now distinguishes work completion from activation. The atomic snapshot transition ActivateCompletedConstruction credits exactly the funded capital to its physical edge, using the existing transport investment rules, and sets the persistent activation marker. Treasury, workers and existing tariff are unchanged. Incomplete, unknown or already activated projects are rejected. The edge remains reserved until activation. Subsequent improvements preserve existing benefits until separately completed and activated.
+
+Canonical hash v19 includes the activation marker; v18 remains unchanged before any activation, and older opt-out worlds retain existing hashes. Generic ledger replacement cannot erase existing projects, regress progress, rewrite project identity or funding facts, or change activation markers.
+
+This is an isolated kernel transition, not yet a journaled commissioning event or an installed collective host phase. The R192 snapshot deployment/progress API remains a trusted fixture/internal staging boundary, not a public gameplay authorization mechanism. Before interactive enablement, funding, assignment, progress and commissioning must be wired to a single authoritative turn and replay flow, with once-per-turn labor admission and no fabricated projects. Save serialization and intra-turn timing of economic benefits remain subsequent gates. No second treasury debit, new freight equation, worker queue or UI change.

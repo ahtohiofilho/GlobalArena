@@ -51,6 +51,49 @@ public sealed class FoundationConstructionWorkerWorkTests
     }
 
     [Fact]
+    public void CompletedConstructionActivatesExactlyOnceWithoutAnotherDebit()
+    {
+        var s = Scenario();
+        var a = new[] { new FoundationConstructionWorkerAssignment(s.Worker, 1UL) };
+        var originalProject = s.World.Constructions.Projects.Single();
+        var originalEdge = s.World.Transport.Edges.Single(e => e.Edge == originalProject.Edge);
+        Assert.Throws<InvalidOperationException>(() => s.World.ActivateCompletedConstruction(1UL));
+        var partial = FoundationConstructionWorkerWork.Apply(s.World, s.Incidence, s.Geography, a).Snapshot;
+        Assert.Throws<InvalidOperationException>(() => partial.ActivateCompletedConstruction(1UL));
+        Assert.Same(s.World.Transport, partial.Transport);
+        var complete = FoundationConstructionWorkerWork.Apply(partial.AdvanceRevision(),
+            s.Incidence, s.Geography, a).Snapshot;
+        Assert.False(complete.Constructions.Projects.Single().IsActivated);
+        Assert.Throws<InvalidOperationException>(() => complete.FundConstruction(
+            originalProject.Investor, originalProject.Edge, 1UL, 1UL));
+        var active = complete.ActivateCompletedConstruction(1UL);
+        var edge = active.Transport.Edges.Single(e => e.Edge == originalProject.Edge);
+        Assert.True(active.Constructions.Projects.Single().IsActivated);
+        Assert.Equal(originalProject.FundedMoneyMicro, edge.CommittedInvestmentMoneyMicro.GetValueOrDefault());
+        Assert.Equal(originalProject.Investor, edge.InfrastructureOwner!.Value);
+        Assert.Equal(originalEdge.ExternalTariffMicroPerWholeCargoUnit, edge.ExternalTariffMicroPerWholeCargoUnit);
+        Assert.Equal(FoundationPhysicalAuthoritativeTransportProjector.ProjectUnitFreightCost(
+            originalEdge, originalProject.FundedMoneyMicro),
+            FoundationPhysicalAuthoritativeTransportProjector.EffectiveUnitFreightCost(edge));
+        Assert.Same(complete.Treasury, active.Treasury);
+        Assert.Same(complete.Workers, active.Workers);
+        Assert.Throws<InvalidOperationException>(() => active.ActivateCompletedConstruction(1UL));
+        Assert.Throws<InvalidOperationException>(() => active.WithConstructions(complete.Constructions));
+        var hasher = new GlobalArena.Simulation.CanonicalWorldStateHasher();
+        Assert.NotEqual(hasher.Compute(complete), hasher.Compute(active));
+        Assert.Equal(hasher.Compute(active), hasher.Compute(complete.ActivateCompletedConstruction(1UL)));
+
+        var upgrade = active.FundConstruction(originalProject.Investor, originalProject.Edge, 1_000_000UL, 500_000UL);
+        var upgradeComplete = FoundationConstructionWorkerWork.Apply(upgrade, s.Incidence, s.Geography,
+            new[] { new FoundationConstructionWorkerAssignment(s.Worker, 2UL) }).Snapshot;
+        Assert.Same(active.Transport, upgradeComplete.Transport);
+        var upgraded = upgradeComplete.ActivateCompletedConstruction(2UL);
+        Assert.Equal(2_000_000UL, upgraded.Transport.Edges.Single(e => e.Edge == originalProject.Edge)
+            .CommittedInvestmentMoneyMicro.GetValueOrDefault());
+        Assert.Same(upgradeComplete.Treasury, upgraded.Treasury);
+    }
+
+    [Fact]
     public void RealWorkerProgressSurvivesTurnsAndReturnsResidualWithoutCapitalCredit()
     {
         var s = Scenario();

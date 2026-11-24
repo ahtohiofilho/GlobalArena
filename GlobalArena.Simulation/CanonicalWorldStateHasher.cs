@@ -31,6 +31,7 @@ public sealed class CanonicalWorldStateHasher
     // Only opt-in persisted journeys activate v17. Historical hashes stay stable.
     public const uint PersistedPhysicalTravelFormatVersion = 17U;
     public const uint PersistedConstructionFormatVersion = 18U;
+    public const uint ActivatedConstructionFormatVersion = 19U;
 
     private static readonly byte[] Magic =
     {
@@ -47,7 +48,8 @@ public sealed class CanonicalWorldStateHasher
             worldState);
 
         var version = worldState.Constructions.IsInitialized
-            ? PersistedConstructionFormatVersion
+            ? (worldState.Constructions.Projects.Any(p => p.IsActivated)
+                ? ActivatedConstructionFormatVersion : PersistedConstructionFormatVersion)
             : worldState.EdgeTravels.IsInitialized
             ? PersistedPhysicalTravelFormatVersion
             : worldState.CityResidences.IsInitialized
@@ -517,6 +519,8 @@ public sealed class CanonicalWorldStateHasher
                 AppendUInt64(hash, project.FundedMoneyMicro);
                 AppendUInt64(hash, project.RequiredWorkMicro);
                 AppendUInt64(hash, project.CompletedWorkMicro);
+                if (version >= ActivatedConstructionFormatVersion)
+                    AppendUInt32(hash, project.IsActivated ? 1U : 0U);
             }
         }
 
