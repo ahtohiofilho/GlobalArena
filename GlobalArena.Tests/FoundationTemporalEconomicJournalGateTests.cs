@@ -96,6 +96,64 @@ public sealed class FoundationTemporalEconomicJournalGateTests
 
 
     [Fact]
+    public void R212HostPublishesOnlyAllReadyAndInterruptsActiveOccupation()
+    {
+        var (world, worker, _, _, incidence, fine) = Fixture();
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL),
+                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)), workersPerCivilization: 3);
+        var signature = FoundationFineFirstWorldgenCanonicalSignature.Compute(demo.Session.GeneratedWorld, incidence, fine);
+        var bound = demo.Session.Snapshot.PromoteFineFirstBeforeTransport(
+            demo.Session.GeneratedWorld, incidence, fine, signature)
+            .DeployInitialFineFirstPhysicalTransport(world.Transport, demo.Session.GeneratedWorld, incidence, fine, signature);
+        var beginning = FoundationPersistedEdgeTravelTransitions.DeployEmpty(
+            bound.DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
+                bound.Civilizations.Civilizations.Select(c => (c, 5_000_000UL)))))
+            .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
+            .DeployInitialWorkerOrders();
+        demo.Session.AcceptFineFirstOpening(beginning, incidence, fine, signature);
+        var host = new FoundationTacticalHumanAiTurnHost(demo.Session, incidence,
+            beginning.Civilizations.Civilizations,
+            new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy>(),
+            enableMonetaryInfrastructure: true, settlementPolicy: Policy(beginning.Civilizations.Civilizations),
+            fineGeography: fine, fineSignature: signature,
+            physicalTravelPolicy: new FoundationGroundEdgeTravelTimePolicy(1_400_000UL),
+            constructionMoneyMicroPerWholeWork: 1_000_000UL);
+        Assert.True(host.PersistentOrdersEnabled);
+        var owner = worker.Owner;
+        var foreign = beginning.Civilizations.Civilizations.First(c => c != owner);
+        host.QueueHumanPersistentEdit(owner, new FoundationPersistentOrderEdit(owner, worker.Id,
+            FoundationPersistentOrderEditKind.Insert, OrderKind: FoundationWorkerOrderKind.Occupation,
+            Occupation: PhysicalWorkerOccupation.Agriculture));
+        Assert.Single(host.GetHumanPersistentQueues(owner).Single(q => q.Worker == worker.Id).Orders);
+        Assert.Empty(host.Snapshot.WorkerOrders.Queues.Single(q => q.Worker == worker.Id).Orders);
+        Assert.Throws<InvalidOperationException>(() => host.QueueHumanPersistentEdit(foreign,
+            new FoundationPersistentOrderEdit(foreign, worker.Id, FoundationPersistentOrderEditKind.Insert,
+                OrderKind: FoundationWorkerOrderKind.Occupation, Occupation: PhysicalWorkerOccupation.Mining)));
+        host.SetHumanReady(owner);
+        Assert.Null(host.TryCloseTurn());
+        Assert.Same(beginning, host.Snapshot);
+        host.SetHumanReady(foreign);
+        var first = host.TryCloseTurn();
+        Assert.NotNull(first);
+        Assert.NotNull(first!.PersistentTimeline);
+        Assert.Single(first.PersistentEdits);
+        Assert.Equal(1UL, host.Snapshot.WorkerOrders.Queues.Single(q => q.Worker == worker.Id).ActiveOrderId);
+        Assert.Equal(0, host.PendingOrderCount);
+        // Interruption is staged privately; it removes the active head, not
+        // the worker, and leaves no implicit productive activity.
+        var interrupted = host.Snapshot.InterruptWorkerOrder(owner, worker.Id, 1UL);
+        Assert.Empty(interrupted.WorkerOrders.Queues.Single(q => q.Worker == worker.Id).Orders);
+        Assert.Equal(PhysicalWorkerActivity.Other, interrupted.Workers.Workers.Single(w => w.Id == worker.Id).Activity);
+        host.QueueHumanPersistentEdit(owner, new FoundationPersistentOrderEdit(owner, worker.Id,
+            FoundationPersistentOrderEditKind.Interrupt, OrderId: 1UL));
+        Assert.Empty(host.GetHumanPersistentQueues(owner).Single(q => q.Worker == worker.Id).Orders);
+        Assert.Equal(1UL, host.Snapshot.WorkerOrders.Queues.Single(q => q.Worker == worker.Id).ActiveOrderId);
+        Assert.Throws<InvalidOperationException>(() => host.QueueHumanPersistentEdit(owner,
+            new FoundationPersistentOrderEdit(owner, worker.Id, FoundationPersistentOrderEditKind.Interrupt, OrderId: 1UL)));
+    }
+
+    [Fact]
     public void R211CollectiveFundingAndTimelineSettleOneMarketAndReplay()
     {
         var (world, worker, _, _, incidence, fine) = Fixture();

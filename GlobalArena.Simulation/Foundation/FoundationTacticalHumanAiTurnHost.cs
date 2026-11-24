@@ -1,5 +1,6 @@
 using GlobalArena.Kernel;
 using GlobalArena.Runtime;
+using GlobalArena.Runtime.PersistentOrders;
 using GlobalArena.World;
 
 namespace GlobalArena.Simulation.Foundation;
@@ -86,12 +87,15 @@ public sealed class FoundationTacticalCollectiveReceipt
     public FoundationEconomicSalesSettledEvent? EconomicSettlement { get; }
     public IReadOnlyList<FoundationEdgeTravelTurnEvent> EdgeTravels { get; }
     public FoundationTemporalSalesSettledEvent? TemporalEconomicSettlement { get; }
-    public int ExecutedEvents => Events.Count + EdgeTravels.Count + InfrastructureInvestments.Count + ConstructionFunding.Count + ConstructionWork.Count +
+    public int ExecutedEvents => PersistentEdits.Count + PersistentFunding.Count + (PersistentTimeline is null ? 0 : 1) + Events.Count + EdgeTravels.Count + InfrastructureInvestments.Count + ConstructionFunding.Count + ConstructionWork.Count +
         (EconomicSettlement is null ? 0 : 1) +
         (TemporalEconomicSettlement is null ? 0 : 1);
     public IReadOnlyList<FoundationConstructionFundedEvent> ConstructionFunding { get; }
     public IReadOnlyList<FoundationConstructionWorkBatchEvent> ConstructionWork { get; }
     public bool ReplayMatched { get; }
+    public IReadOnlyList<FoundationPersistentOrderEditEvent> PersistentEdits { get; }
+    public IReadOnlyList<FoundationFundedWorkerIntentEvent> PersistentFunding { get; }
+    public FoundationPersistentWorkerTurnEvent? PersistentTimeline { get; }
 
     internal FoundationTacticalCollectiveReceipt(
         TurnNumber turn, WorldStateHash hash, ulong revision,
@@ -101,7 +105,10 @@ public sealed class FoundationTacticalCollectiveReceipt
         FoundationEdgeTravelTurnEvent[]? edgeTravels = null,
         FoundationTemporalSalesSettledEvent? temporalSettlement = null,
         FoundationConstructionFundedEvent[]? constructionFunding = null,
-        FoundationConstructionWorkBatchEvent[]? constructionWork = null)
+        FoundationConstructionWorkBatchEvent[]? constructionWork = null,
+        FoundationPersistentOrderEditEvent[]? persistentEdits = null,
+        FoundationFundedWorkerIntentEvent[]? persistentFunding = null,
+        FoundationPersistentWorkerTurnEvent? persistentTimeline = null)
     {
         Turn = turn;
         Hash = hash;
@@ -114,6 +121,9 @@ public sealed class FoundationTacticalCollectiveReceipt
         EdgeTravels = Array.AsReadOnly(edgeTravels ?? Array.Empty<FoundationEdgeTravelTurnEvent>());
         ConstructionFunding = Array.AsReadOnly(constructionFunding ?? Array.Empty<FoundationConstructionFundedEvent>());
         ConstructionWork = Array.AsReadOnly(constructionWork ?? Array.Empty<FoundationConstructionWorkBatchEvent>());
+        PersistentEdits = Array.AsReadOnly(persistentEdits ?? Array.Empty<FoundationPersistentOrderEditEvent>());
+        PersistentFunding = Array.AsReadOnly(persistentFunding ?? Array.Empty<FoundationFundedWorkerIntentEvent>());
+        PersistentTimeline = persistentTimeline;
         ReplayMatched = true;
     }
 }
@@ -144,6 +154,10 @@ public sealed class FoundationTacticalHumanAiTurnHost
     private readonly FoundationConstructionCollectiveTurnPhase? _constructionPhase;
     private readonly Dictionary<PhysicalWorkerId, (CivilizationId Owner, ulong Project)> _constructionPlans = new();
     private readonly AuthoritativeTurnCommitGate _publisher;
+    private readonly FoundationTemporalCollectiveTurnPhase? _persistentPhase;
+    private readonly FoundationFundedWorkerIntentJournal? _persistentFunding;
+    private readonly Dictionary<CivilizationId, List<ISimulationCommand>> _persistentPlans = new();
+    public bool PersistentOrdersEnabled => _persistentPhase is not null;
     private readonly CanonicalWorldStateHasher _hasher = new();
     private readonly HashSet<CivilizationId> _humans;
     private readonly IReadOnlyDictionary<CivilizationId,
@@ -175,7 +189,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
         new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy>(_ai);
     public IReadOnlyList<CivilizationId> ReadyCivilizations =>
         Array.AsReadOnly(_participants.Where(_ready.Contains).ToArray());
-    public int PendingOrderCount => _plans.Values.Sum(plan => plan.Count) +
+    public int PendingOrderCount => _persistentPlans.Values.Sum(plan => plan.Count) + _plans.Values.Sum(plan => plan.Count) +
         _investmentPlans.Values.Sum(plan => plan.Count);
     /// <summary>
     /// Read-only v11 inputs for a future physical market, derived only from
@@ -449,6 +463,10 @@ public sealed class FoundationTacticalHumanAiTurnHost
         _temporalPolicy = settlementPolicy is not null &&
             physicalTravelPolicy is not null ? settlementPolicy : null;
         _signedFine = fineGeography;
+        bool persistent = Snapshot.WorkerOrders.IsInitialized;
+        if (persistent && (_temporalPolicy is null || fineGeography is null || !constructionMoneyMicroPerWholeWork.HasValue || !enableMonetaryInfrastructure))
+            throw new InvalidOperationException("Persistent host needs complete signed temporal construction world.");
+        foreach (var civ in _participants) _persistentPlans[civ] = new();
         if (Snapshot.Constructions.IsInitialized != constructionMoneyMicroPerWholeWork.HasValue ||
             (constructionMoneyMicroPerWholeWork.HasValue && (!enableMonetaryInfrastructure || fineGeography is null || (settlementPolicy is not null && physicalTravelPolicy is null))))
             throw new InvalidOperationException("Construction host requires signed geography, explicit rate and temporal travel for economic settlement.");
@@ -500,7 +518,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
                 : new FoundationMonetaryInfrastructureEventExecutor(
                     session.GeneratedWorld, incidence, fineGeography,
                     fineSignature!);
-            if (constructionMoneyMicroPerWholeWork is { } rate)
+            if (constructionMoneyMicroPerWholeWork is { } rate && !persistent)
             {
                 _constructionPhase = new FoundationConstructionCollectiveTurnPhase(
                     new FoundationConstructionFundingExecutor(_monetaryExecutor, rate), incidence, fineGeography!, _temporalPolicy is not null);
@@ -535,9 +553,17 @@ public sealed class FoundationTacticalHumanAiTurnHost
             // No staged partial state is published: resolution and monetary
             // journal replay occur inside one canonical atomic phase.
             phases.Clear();
-            phases.Add(new FoundationTemporalCollectiveTurnPhase(
+            var temporal = new FoundationTemporalCollectiveTurnPhase(
                 session.GeneratedWorld, incidence, _travelPolicy!,
-                _temporalPolicy, fineGeography, fineSignature, _constructionPhase));
+                _temporalPolicy, fineGeography, fineSignature, _constructionPhase,
+                persistent ? constructionMoneyMicroPerWholeWork : null);
+            phases.Add(temporal);
+            if (persistent)
+            {
+                _persistentPhase = temporal;
+                _persistentFunding = new FoundationFundedWorkerIntentJournal(new FoundationConstructionFundingExecutor(
+                    _monetaryExecutor!, constructionMoneyMicroPerWholeWork!.Value));
+            }
         }
         var engine = new PhasedTurnResolutionEngine(phases);
         _publisher = new AuthoritativeTurnCommitGate(
@@ -573,6 +599,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
     public void QueueHumanMonetaryInvestment(
         CivilizationId human, PhysicalTacticalEdgeId edge, ulong moneyMicro)
     {
+        if (PersistentOrdersEnabled) throw new InvalidOperationException("Use persistent queue commands in this host.");
         RequireHuman(human);
         CheckWritable(human);
         if (_monetaryExecutor is null || !edge.IsValid || moneyMicro == 0UL)
@@ -637,6 +664,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
 
     public void QueueHumanConstructionWork(CivilizationId human, PhysicalWorkerId worker, ulong projectId)
     {
+        if (PersistentOrdersEnabled) throw new InvalidOperationException("Use persistent queue commands in this host.");
         RequireHuman(human);
         CheckWritable(human);
         if (_constructionPhase is null || projectId == 0UL || _plans[human].ContainsKey(worker.Value))
@@ -654,6 +682,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
 
     public bool CancelHumanConstructionWork(CivilizationId human, PhysicalWorkerId worker)
     {
+        if (PersistentOrdersEnabled) throw new InvalidOperationException("Use persistent queue commands in this host.");
         RequireHuman(human);
         CheckWritable(human);
         return _constructionPlans.TryGetValue(worker, out var plan) &&
@@ -663,6 +692,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
     public bool CancelHumanMonetaryInvestment(
         CivilizationId human, PhysicalTacticalEdgeId edge)
     {
+        if (PersistentOrdersEnabled) throw new InvalidOperationException("Use persistent queue commands in this host.");
         RequireHuman(human);
         CheckWritable(human);
         return edge.IsValid &&
@@ -672,6 +702,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
     public void QueueHumanMove(CivilizationId human, PhysicalWorkerId id,
         PhysicalTacticalTileId destination)
     {
+        if (PersistentOrdersEnabled) throw new InvalidOperationException("Use persistent queue commands in this host.");
         RequireHuman(human);
         QueueMove(human, id, destination);
     }
@@ -679,6 +710,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
     public void QueueHumanActivity(CivilizationId human, PhysicalWorkerId id,
         PhysicalWorkerActivity activity)
     {
+        if (PersistentOrdersEnabled) throw new InvalidOperationException("Use persistent queue commands in this host.");
         RequireHuman(human);
         QueueActivity(human, id, activity);
     }
@@ -691,6 +723,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
     public void QueueHumanOccupation(CivilizationId human,
         PhysicalWorkerId id, PhysicalWorkerOccupation occupation)
     {
+        if (PersistentOrdersEnabled) throw new InvalidOperationException("Use persistent queue commands in this host.");
         RequireHuman(human);
         QueueOccupation(human, id, occupation);
     }
@@ -704,6 +737,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
     public void QueueHumanOperationalRole(CivilizationId human,
         PhysicalWorkerId id, FoundationOperationalWorkKind kind)
     {
+        if (PersistentOrdersEnabled) throw new InvalidOperationException("Use persistent queue commands in this host.");
         RequireHuman(human);
         var occupation = kind switch
         {
@@ -725,6 +759,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
     public void QueueHumanProductiveRole(CivilizationId human,
         PhysicalWorkerId id, PhysicalWorkerOccupation occupation)
     {
+        if (PersistentOrdersEnabled) throw new InvalidOperationException("Use persistent queue commands in this host.");
         RequireHuman(human);
         if (!FoundationTacticalWorkerReassignmentPolicy.IsProductive(occupation))
             throw new ArgumentOutOfRangeException(nameof(occupation));
@@ -743,6 +778,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
     public int QueueHumanOccupationBatch(CivilizationId human,
         IReadOnlyList<FoundationTacticalOccupationChange> changes)
     {
+        if (PersistentOrdersEnabled) throw new InvalidOperationException("Use persistent queue commands in this host.");
         RequireHuman(human);
         ArgumentNullException.ThrowIfNull(changes);
         CheckWritable(human);
@@ -781,6 +817,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
 
     public bool CancelHumanOrder(CivilizationId human, PhysicalWorkerId id)
     {
+        if (PersistentOrdersEnabled) throw new InvalidOperationException("Use persistent queue commands in this host.");
         RequireHuman(human);
         CheckWritable(human);
         return id.IsValid && _plans[human].Remove(id.Value);
@@ -817,6 +854,13 @@ public sealed class FoundationTacticalHumanAiTurnHost
                 throw new InvalidOperationException(
                     "AI mutated canonical WorldState while planning.");
             var decisions = proposed.ToArray();
+            if (PersistentOrdersEnabled)
+            {
+                if (decisions.Length != 0)
+                    throw new InvalidOperationException("Persistent host currently requires an AI hold plan; legacy AI decisions are not silently converted.");
+                _ready.Add(civ);
+                continue;
+            }
             var seen = new HashSet<PhysicalWorkerId>();
             foreach (var decision in decisions)
             {
@@ -866,6 +910,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
             throw new InvalidOperationException(
                 "Cannot publish before all civilizations are ready.");
 
+        if (PersistentOrdersEnabled) return ClosePersistentTurn();
         var before = Snapshot;
         var turn = NextTurn;
         // R141: after a completed fine-edge travel, a capable idle human
@@ -1040,6 +1085,120 @@ public sealed class FoundationTacticalHumanAiTurnHost
         _constructionPlans.Clear();
         _ready.Clear();
         _knownSnapshot = Snapshot;
+        return receipt;
+    }
+
+    // Private plans are validated against an immutable projection of the
+    // issuer's own earlier commands; no treasury or queue is published.
+    private WorldState ProjectPersistentPlan(CivilizationId owner, IEnumerable<ISimulationCommand> commands)
+    {
+        if (!PersistentOrdersEnabled) throw new InvalidOperationException("Persistent orders disabled.");
+        var state = Snapshot;
+        var context = new SimulationContext(NextTurn, new SimulationSeed(712UL));
+        foreach (var command in commands)
+        {
+            var id = new EventId(command.Id, 1UL);
+            if (command is FoundationPersistentOrderEditCommand edit && edit.Issuer == owner)
+                state = FoundationPersistentOrderEditJournal.Record(state, id, edit.Edit, context).Next;
+            else if (command is FoundationFundedWorkerIntentCommand fund && fund.Issuer == owner)
+                state = _persistentFunding!.Record(state, id, owner, fund.Edge, fund.MoneyMicro, fund.Assignments, context).Next;
+            else throw new InvalidOperationException("Foreign persistent plan.");
+        }
+        return state;
+    }
+
+    public IReadOnlyList<FoundationWorkerOrderQueue> GetHumanPersistentQueues(CivilizationId human)
+    {
+        RequireHuman(human);
+        CheckSnapshot();
+        return Array.AsReadOnly(ProjectPersistentPlan(human, _persistentPlans[human])
+            .WorkerOrders.Queues.Where(q => q.Owner == human).ToArray());
+    }
+
+    public void QueueHumanPersistentEdit(CivilizationId human, FoundationPersistentOrderEdit edit)
+    {
+        RequireHuman(human); CheckWritable(human);
+        if (edit.Issuer != human) throw new InvalidOperationException("Foreign order edit.");
+        var list = _persistentPlans[human];
+        var command = new FoundationPersistentOrderEditCommand(new CommandId(NextTurn, (ulong)list.Count + 1UL), edit);
+        _ = ProjectPersistentPlan(human, list.Append(command));
+        list.Add(command);
+    }
+
+    public void QueueHumanFundedConstruction(CivilizationId human, PhysicalTacticalEdgeId edge,
+        ulong moneyMicro, IEnumerable<FoundationFundedWorkerInsertion> assignments)
+    {
+        RequireHuman(human); CheckWritable(human);
+        if (_persistentPlans.Values.SelectMany(p => p).OfType<FoundationFundedWorkerIntentCommand>().Any(c => c.Edge == edge))
+            throw new InvalidOperationException("Construction edge already reserved.");
+        var list = _persistentPlans[human];
+        var command = new FoundationFundedWorkerIntentCommand(new CommandId(NextTurn, (ulong)list.Count + 1UL),
+            human, edge, moneyMicro, Array.AsReadOnly(assignments.ToArray()));
+        _ = ProjectPersistentPlan(human, list.Append(command));
+        list.Add(command);
+    }
+
+    public void ClearHumanPersistentPlan(CivilizationId human)
+    {
+        RequireHuman(human); CheckWritable(human);
+        if (!PersistentOrdersEnabled) throw new InvalidOperationException("Persistent orders disabled.");
+        _persistentPlans[human].Clear();
+    }
+
+    private FoundationTacticalCollectiveReceipt ClosePersistentTurn()
+    {
+        var turn = NextTurn;
+        var before = Snapshot;
+        var commands = new List<ISimulationCommand>();
+        // Funding allocates global IDs. Translate local provisional project IDs
+        // by replaying each participant's earlier fund operations in final order.
+        var state = before;
+        var context = new SimulationContext(turn, new SimulationSeed(712UL));
+        foreach (var civ in _participants)
+        {
+            var local = before;
+            var projects = new Dictionary<ulong, ulong>();
+            foreach (var pending in _persistentPlans[civ])
+            {
+                var id = new CommandId(turn, (ulong)commands.Count + 1UL);
+                if (pending is FoundationFundedWorkerIntentCommand fund)
+                {
+                    var actual = fund with { Id = id };
+                    var provisional = _persistentFunding!.Record(local, new EventId(fund.Id, 1UL),
+                        civ, fund.Edge, fund.MoneyMicro, fund.Assignments, context);
+                    var committed = _persistentFunding.Record(state, new EventId(id, 1UL),
+                        civ, fund.Edge, fund.MoneyMicro, fund.Assignments, context);
+                    projects.Add(provisional.Event.ProjectId, committed.Event.ProjectId);
+                    local = provisional.Next; state = committed.Next; commands.Add(actual);
+                }
+                else if (pending is FoundationPersistentOrderEditCommand edit)
+                {
+                    var input = edit.Edit;
+                    var mapped = input.ProjectId is { } p && projects.TryGetValue(p, out var real)
+                        ? input with { ProjectId = real } : input;
+                    local = FoundationPersistentOrderEditJournal.Record(local, new EventId(edit.Id, 1UL), input, context).Next;
+                    state = FoundationPersistentOrderEditJournal.Record(state, new EventId(id, 1UL), mapped, context).Next;
+                    commands.Add(new FoundationPersistentOrderEditCommand(id, mapped));
+                }
+            }
+        }
+        var committedTurn = _publisher.ResolveAndCommit(new TurnPolicyResolutionGateInput(
+            new TurnPolicyInput(turn, allRequiredParticipantsReady: true, externalDeadlineReached: false),
+            new TurnResolutionInput(before, commands.ToArray(), context)));
+        if (!committedTurn.WasResolved || committedTurn.ResolutionResult is not { } resolved)
+            throw new InvalidOperationException("Persistent collective turn failed.");
+        // R211 already independently verifies the complete journal before
+        // the publisher accepts it; no third market solve is required here.
+        var sale = resolved.Events.OfType<FoundationTemporalSalesSettledEvent>().Single();
+        var timeline = resolved.Events.OfType<FoundationPersistentWorkerTurnEvent>().Single();
+        var receipt = new FoundationTacticalCollectiveReceipt(turn, StateHash, Snapshot.Revision,
+            Array.Empty<PhysicalTacticalWorkerMovedEvent>(), temporalSettlement: sale,
+            persistentEdits: resolved.Events.OfType<FoundationPersistentOrderEditEvent>().ToArray(),
+            persistentFunding: resolved.Events.OfType<FoundationFundedWorkerIntentEvent>().ToArray(),
+            persistentTimeline: timeline);
+        _lastTemporalClose = receipt;
+        foreach (var plan in _persistentPlans.Values) plan.Clear();
+        _ready.Clear(); _knownSnapshot = Snapshot;
         return receipt;
     }
 

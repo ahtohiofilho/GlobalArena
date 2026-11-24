@@ -1,0 +1,23 @@
+name: GA-Next R212 Persistent Host
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Runtime/WorldState.cs'
+      - 'GlobalArena.Runtime/FoundationWorkerOrderQueue.cs'
+      - 'GlobalArena.Simulation/Foundation/FoundationTacticalHumanAiTurnHost.cs'
+      - 'GlobalArena.Simulation/Foundation/FoundationPersistentOrderEditJournal.cs'
+      - 'GlobalArena.Tests/FoundationTemporalEconomicJournalGateTests.cs'
+      - '.github/workflows/ga-next-r212-persistent-host.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  persistent-host:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~FoundationTemporalEconomicJournalGateTests|FullyQualifiedName~FoundationPersistentOrderJournalTests|FullyQualifiedName~FoundationWorkerOrderQueueTests|FullyQualifiedName~FoundationTacticalHumanAiTurnHostTests' --logger 'console;verbosity=detailed'
