@@ -1,0 +1,7 @@
+# R194 — Physical construction work
+
+The opt-in construction calculation takes one batch of explicit worker/project assignments for a turn. It admits only existing stationary Other workers with Unassigned occupation, owned by the investor and physically incident to the project edge. Ground crossings allow either terminal; ports require the land terminal. No open sea or blocked ice-water crossing. Duplicate worker assignments in a batch are rejected. Producing, traveling, military and logistics workers cannot contribute. Neutral productivity is one whole Work unit per worker-turn.
+
+Simultaneous equal-productivity builders share the actually required remaining work equally, with integer micro-unit remainder resolved by worker ID. Each receipt conserves offered = used + residual. The snapshot retains progress and leaves workers, treasury and transport unchanged. No benefit is activated even on completion.
+
+This is an isolated snapshot transition, not an installed authoritative turn phase. Invoke once for the entire turn; repeated calls in the same turn are not yet prevented by a journal. The host must later ensure exclusive allocation across all activities and account for residual time; no command queue, occupation change, save serialization or intraturn economic activation is introduced. R195 will establish one-time activation of completed funded projects without another debit, before host integration.
