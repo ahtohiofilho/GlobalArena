@@ -188,7 +188,28 @@ public partial class Main
             $"Owner: {(link.InfrastructureOwner.HasValue
                 ? link.InfrastructureOwner.Value.Value.ToString()
                 : "Unowned")}\n" +
-            $"Cumulative investment: {link.InvestedMoneyMicro} micro";
+            $"Cumulative investment: {link.InvestedMoneyMicro} micro\n" +
+            ReadConnectionWorkforce(_cityConnectionSource.Value,
+                link.Neighbor.FineStrategicCellId.Value);
+    }
+
+    // Presence is not construction eligibility: workers can have other orders
+    // or occupations. Do not authorize investment from this read-only count.
+    private string ReadConnectionWorkforce(ulong source, ulong destination)
+    {
+        var workers = _tacticalHost?.Snapshot.Workers;
+        if (workers is null || !workers.HasAuthoritativeTacticalLocations)
+            return "Local workforce: unavailable";
+        var own = workers.Workers.Where(w => w.Owner == _humanCivilization);
+        var from = own.Count(w =>
+            w.TacticalTileId.HasValue &&
+            w.TacticalTileId.Value.FineStrategicCellId.Value == source);
+        var to = own.Count(w =>
+            w.TacticalTileId.HasValue &&
+            w.TacticalTileId.Value.FineStrategicCellId.Value == destination);
+        return $"Your workers at from node: {from}\n" +
+            $"Your workers at to node: {to}\n" +
+            "Physical presence only; construction eligibility not evaluated.";
     }
 
     // R181: exact visual acceptance from the REAL cartographic site
@@ -272,6 +293,19 @@ public partial class Main
             _cityLinkDetailText?.Text.Contains($"From node: {site}",
                 StringComparison.Ordinal) != true)
             throw new InvalidOperationException("R183 connection endpoints or window exclusivity invalid.");
+        var workforce = _tacticalHost.Snapshot.Workers.Workers
+            .Where(w => w.Owner == _humanCivilization).ToArray();
+        var destination = rows[0].Neighbor.FineStrategicCellId.Value;
+        var fromCount = workforce.Count(w => w.TacticalTileId.HasValue &&
+            w.TacticalTileId.Value.FineStrategicCellId.Value == site);
+        var toCount = workforce.Count(w => w.TacticalTileId.HasValue &&
+            w.TacticalTileId.Value.FineStrategicCellId.Value == destination);
+        if (_cityLinkDetailText?.Text.Contains(
+                $"Your workers at from node: {fromCount}\n", StringComparison.Ordinal) != true ||
+            _cityLinkDetailText.Text.Contains(
+                $"Your workers at to node: {toCount}\n", StringComparison.Ordinal) != true)
+            throw new InvalidOperationException("R186 connection workforce differs from signed worker locations.");
+        GD.Print("GA_NEXT_R186_CONNECTION_WORKFORCE_PASS physical_presence=true read_only=true");
         await Capture("03_local_connection_detail");
         CloseConnectionDetail();
         if (_cityWindowPanel?.IsVisibleInTree() != true ||
