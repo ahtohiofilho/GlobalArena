@@ -1152,6 +1152,10 @@ public partial class TacticalContextPreview : SubViewportContainer
     // R139: the globe and tactical viewer exchange exact spherical positions,
     // not rounded tile centers. Fine identity determines resident coverage only.
     public Vector3 CenterGeography => _exactViewPointOnSphere;
+    // Read-only bearing for the auxiliary camera; preserve the same meridian at poles.
+    internal Vector3 AuxiliaryNorthGeography => _canonicalDragFrame && _localSitesEnabled
+        ? _northUpNavigation.North(_physicalPolarAxis)
+        : _lastValidGeographicNorth;
 
     public void CenterOnGeography(Vector3 spherical, bool preserveNavigationBearing = false)
     {
