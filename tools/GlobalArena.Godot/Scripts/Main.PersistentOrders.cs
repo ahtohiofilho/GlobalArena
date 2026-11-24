@@ -11,6 +11,10 @@ public partial class Main
     private VBoxContainer? _persistentQueuePanel;
     private ItemList? _persistentQueueList;
     private Button? _persistentUp, _persistentDown, _persistentRemove;
+    private Button? _persistentInsert;
+    private Label? _persistentWorkerSummary, _persistentCrossingLabel, _persistentEmpty;
+    private ProgressBar? _persistentCrossingProgress;
+    private ulong? _persistentSelectionWorker;
     private ulong? _persistentSelectedOrder;
     private int _persistentInsertionIndex = -1;
 
@@ -48,7 +52,15 @@ public partial class Main
     {
         _persistentQueuePanel = new VBoxContainer { Name = "GANextPersistentQueue", Visible = false };
         parent.AddChild(_persistentQueuePanel);
+        _persistentWorkerSummary = new Label { Name = "GANextWorkerContext", AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        _persistentQueuePanel.AddChild(_persistentWorkerSummary);
+        _persistentCrossingLabel = new Label { Name = "GANextCrossingDetails", AutowrapMode = TextServer.AutowrapMode.WordSmart, Visible = false };
+        _persistentQueuePanel.AddChild(_persistentCrossingLabel);
+        _persistentCrossingProgress = new ProgressBar { Name = "GANextCrossingProgress", MinValue = 0, MaxValue = 100, ShowPercentage = false, Visible = false };
+        _persistentQueuePanel.AddChild(_persistentCrossingProgress);
         _persistentQueuePanel.AddChild(new Label { Text = "ORDER QUEUE" });
+        _persistentEmpty = new Label { Text = "No orders" };
+        _persistentQueuePanel.AddChild(_persistentEmpty);
         _persistentQueueList = new ItemList { CustomMinimumSize = new Vector2(0, 92), SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _persistentQueueList.ItemSelected += index =>
         {
@@ -68,10 +80,10 @@ public partial class Main
         _persistentUp.Pressed += () => EditPersistentSelected(-1);
         _persistentDown.Pressed += () => EditPersistentSelected(1);
         _persistentRemove.Pressed += () => EditPersistentSelected(0);
-        var insert = new Button { Text = "Insert before selected" };
+        var insert = _persistentInsert = new Button { Text = "Insert before selected", Disabled = true };
         insert.Pressed += () =>
         {
-            if (_selectedLocalWorkerId is not { } worker) return;
+            if (insert.Disabled || _selectedLocalWorkerId is not { } worker) return;
             var q = ReadPersistentQueue(new PhysicalWorkerId(worker));
             _persistentInsertionIndex = q.Orders.ToList().FindIndex(o => o.Id == _persistentSelectedOrder);
             if (_localOrderStatus is not null) _localOrderStatus.Text = "Choose the next order to insert.";
@@ -105,6 +117,7 @@ public partial class Main
         _persistentDown.Disabled = ready || active || i < 0 || i >= q.Orders.Count - 1;
         _persistentRemove.Disabled = ready || i < 0;
         _persistentRemove.Text = active ? "Interrupt" : "Remove";
+        if (_persistentInsert is not null) _persistentInsert.Disabled = ready || active || i < 0;
     }
 
     private void RefreshPersistentWorkerControls()
@@ -115,7 +128,16 @@ public partial class Main
         if (!_persistentQueuePanel.Visible || host is null || _selectedLocalWorkerId is not { } worker) return;
         var q = ReadPersistentQueue(new PhysicalWorkerId(worker));
         bool ready = host.ReadyCivilizations.Contains(_humanCivilization);
+        if (_persistentSelectionWorker != worker)
+        {
+            _persistentSelectionWorker = worker;
+            _persistentSelectedOrder = null;
+            _persistentInsertionIndex = -1;
+        }
+        RefreshPersistentWorkerSummary(host, q.Worker);
         _persistentQueueList.Clear();
+        _persistentQueueList.Visible = q.Orders.Count > 0;
+        if (_persistentEmpty is not null) _persistentEmpty.Visible = q.Orders.Count == 0;
         foreach (var order in q.Orders)
         {
             string name = order.Kind switch
@@ -128,12 +150,20 @@ public partial class Main
         }
         int selected = q.Orders.ToList().FindIndex(o => o.Id == _persistentSelectedOrder);
         if (selected >= 0) _persistentQueueList.Select(selected);
+        else { _persistentSelectedOrder = null; _persistentInsertionIndex = -1; }
         RefreshPersistentQueueButtons(q);
-        if (_localPendingLabel is not null) _localPendingLabel.Text = $"{q.Orders.Count} orders | E to submit";
+        if (_localPendingLabel is not null)
+        {
+            var committed = host.Snapshot.WorkerOrders.Queues.Single(x => x.Worker == q.Worker);
+            bool changed = !committed.Orders.SequenceEqual(q.Orders) || committed.ActiveOrderId != q.ActiveOrderId;
+            _localPendingLabel.Text = changed ? "Pending changes | E to submit" :
+                q.Orders.Count == 0 ? "No scheduled orders" : $"{q.Orders.Count} scheduled | {(q.ActiveOrderId.HasValue ? "Active" : "Waiting")}";
+        }
         if (_localMoveButton is not null)
         {
             _localMoveButton.Text = "G | Move to selected node";
-            _localMoveButton.Disabled = ready || _tacticalPreview?.SelectedCanonicalPhysicalTileId is null;
+            _localMoveButton.Disabled = ready || _tacticalPreview?.SelectedCanonicalPhysicalTileId is null ||
+                _tacticalPreview.SelectedCanonicalPhysicalTileId == host.Snapshot.Workers.Workers.Single(w => w.Id == q.Worker).TacticalTileId!.Value.FineStrategicCellId.Value;
         }
         if (_localProduceButton is not null) _localProduceButton.Disabled = ready;
         if (_localCancelQueuedButton is not null)
@@ -144,6 +174,35 @@ public partial class Main
         foreach (var b in new[] { _localAgricultureButton, _localForestryButton, _localMiningButton, _r149LandWorkButton, _r149PortWorkButton })
             if (b is not null) b.Disabled = ready;
         if (_fineMovementDecision is not null) _fineMovementDecision.Text = "Select a destination on the map. Orders run in sequence.";
+    }
+
+    private void RefreshPersistentWorkerSummary(FoundationTacticalHumanAiTurnHost host, PhysicalWorkerId id)
+    {
+        var person = host.Snapshot.Workers.Workers.Single(w => w.Id == id);
+        var committed = host.Snapshot.WorkerOrders.Queues.Single(q => q.Worker == id);
+        var active = committed.Orders.FirstOrDefault(o => o.Id == committed.ActiveOrderId);
+        var travel = host.Snapshot.EdgeTravels.Pending.SingleOrDefault(p => p.Worker == id);
+        string activity = travel is not null ? "Traveling" :
+            person.Activity == PhysicalWorkerActivity.Producing ? person.Occupation.ToString() ?? "Producing" :
+            active?.Kind == FoundationWorkerOrderKind.Build ? "Construction order active" :
+            person.Occupation is PhysicalWorkerOccupation.LandTransport or PhysicalWorkerOccupation.PortOperations ? person.Occupation.ToString()! :
+            person.Activity == PhysicalWorkerActivity.Other ? "Idle" : person.Activity.ToString();
+        string target = active?.Kind == FoundationWorkerOrderKind.Move ? $" | Target {active.Destination!.Value.FineStrategicCellId.Value}" :
+            active?.Kind == FoundationWorkerOrderKind.Build ? $" | Build #{active.ProjectId}" : "";
+        if (_persistentWorkerSummary is not null)
+            _persistentWorkerSummary.Text = $"{activity} | Node {person.TacticalTileId!.Value.FineStrategicCellId.Value}{target}";
+        if (_persistentCrossingLabel is null || _persistentCrossingProgress is null) return;
+        _persistentCrossingLabel.Visible = _persistentCrossingProgress.Visible = travel is not null;
+        if (travel is null)
+        {
+            _persistentCrossingLabel.Text = "";
+            _persistentCrossingProgress.Value = 0;
+            return;
+        }
+        var percent = 100m * (travel.OriginalDurationMicro - travel.RemainingMicro) / travel.OriginalDurationMicro;
+        _persistentCrossingProgress.Value = (double)percent;
+        _persistentCrossingLabel.Text = FormattableString.Invariant(
+            $"Crossing {travel.Source.FineStrategicCellId.Value} → {travel.Destination.FineStrategicCellId.Value} | {percent:F1}%\nRemaining: {travel.RemainingMicro / 1_000_000m:0.######} turns");
     }
 
     internal async Task ExerciseR213PersistentInterfaceSmoke()
