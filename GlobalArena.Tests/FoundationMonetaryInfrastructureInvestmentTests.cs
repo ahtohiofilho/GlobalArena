@@ -75,6 +75,50 @@ public sealed class FoundationMonetaryInfrastructureInvestmentTests
             x.Edge == s.RemoteEdge);
 
     [Fact]
+    public void ConstructionFundingDebitsOnceAndReplaysWithoutActivatingInfrastructure()
+    {
+        var s = Create();
+        var before = s.Host.Snapshot.WithConstructions(
+            new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()));
+        var admission = new FoundationMonetaryInfrastructureEventExecutor(
+            s.Host.Session.GeneratedWorld, s.Host.Incidence);
+        var executor = new FoundationConstructionFundingExecutor(admission, 2_000_000UL);
+        // Obtain the existing host's real command identity without committing it
+        // to the opt-in construction snapshot.
+        s.Host.QueueHumanMonetaryInvestment(Red, s.RemoteEdge, 2_000_000UL);
+        s.Host.SetHumanReady(Red);
+        var receipt = s.Host.TryCloseTurn();
+        Assert.NotNull(receipt);
+        var legacy = Assert.Single(receipt!.InfrastructureInvestments);
+        var context = new SimulationContext(legacy.Id.Turn, new SimulationSeed(712UL));
+        var ev = new FoundationConstructionFundedEvent(legacy.Id, Red, s.RemoteEdge,
+            2_000_000UL, 1_000_000UL, before.Revision);
+        var after = executor.Execute(before, ev, context);
+        var project = Assert.Single(after.Constructions.Projects);
+        Assert.Equal(1UL, project.Id);
+        Assert.Equal(0UL, project.CompletedWorkMicro);
+        Assert.Equal(1_000_000UL, project.RequiredWorkMicro);
+        Assert.Same(before.Transport, after.Transport);
+        Assert.Same(before.Workers, after.Workers);
+        Assert.Equal(before.Treasury.Get(Red).CashScaled -
+            GlobalArenaMoneyScale.FromMoneyMicro(2_000_000UL), after.Treasury.Get(Red).CashScaled);
+        Assert.Equal(before.Treasury.Get(Red).TotalInfrastructureInvestmentScaled +
+            GlobalArenaMoneyScale.FromMoneyMicro(2_000_000UL),
+            after.Treasury.Get(Red).TotalInfrastructureInvestmentScaled);
+        var hasher = new CanonicalWorldStateHasher();
+        Assert.Equal(hasher.Compute(after), hasher.Compute(executor.Execute(before, ev, context)));
+        Assert.Throws<InvalidOperationException>(() => executor.Execute(after, ev, context));
+        Assert.Throws<InvalidOperationException>(() => executor.Execute(before,
+            ev with { RequiredWorkMicro = 1UL }, context));
+        Assert.Throws<InvalidOperationException>(() => executor.Execute(after,
+            ev with { ExpectedRevision = after.Revision }, context));
+        Assert.Throws<InvalidOperationException>(() => executor.Execute(before,
+            ev with { Investor = Blue }, context));
+        Assert.Throws<InvalidOperationException>(() => before.RecordMonetaryInfrastructureInvestment(
+            Red, s.RemoteEdge, 1UL));
+    }
+
+    [Fact]
     public void ConstructionSnapshotRetainsProgressAndHashesWithoutActivatingCapital()
     {
         var scenario = Create();
