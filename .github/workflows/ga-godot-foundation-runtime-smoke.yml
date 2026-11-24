@@ -221,6 +221,7 @@ jobs:
           grep -q 'GA_NEXT_R181_CITY_VISUAL_PASS' "$RUNNER_TEMP/ga-godot/r181-city.log"
           grep -q 'GA_NEXT_R183_CONNECTION_WINDOW_PASS' "$RUNNER_TEMP/ga-godot/r181-city.log"
           grep -q 'GA_NEXT_R186_CONNECTION_WORKFORCE_PASS' "$RUNNER_TEMP/ga-godot/r181-city.log"
+          grep -q 'GA_NEXT_R187_CONNECTION_PLAN_PASS' "$RUNNER_TEMP/ga-godot/r181-city.log"
           grep -q 'GA_NEXT_R134_CARTOGRAPHIC_SITES_PASS' "$RUNNER_TEMP/ga-godot/r181-city.log"
           for stage in 01_city_overview 02_city_direct_links 03_local_connection_detail; do
             grep -q "GA_NEXT_R181_CITY_FRAME_PASS stage=$stage" "$RUNNER_TEMP/ga-godot/r181-city.log"
