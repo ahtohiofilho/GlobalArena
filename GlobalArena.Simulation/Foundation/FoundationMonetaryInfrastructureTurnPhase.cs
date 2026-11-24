@@ -124,18 +124,24 @@ public sealed class FoundationMonetaryInfrastructureEventExecutor
         if (simulationEvent is not FoundationMonetaryInfrastructureInvestedEvent ev)
             throw new InvalidOperationException(
                 "This executor only applies monetary infrastructure events.");
-        if (ev.Id.Turn != context.Turn ||
-            state.Revision != ev.ExpectedRevision ||
+        ValidateFunding(state, ev.Id, ev.ExpectedRevision, ev.Investor, ev.Edge, context);
+        return state.RecordMonetaryInfrastructureInvestment(
+            ev.Investor, ev.Edge, ev.MoneyMicro).AdvanceRevision();
+    }
+
+    internal void ValidateFunding(WorldState state, EventId id, ulong expectedRevision,
+        CivilizationId investor, PhysicalTacticalEdgeId edge, SimulationContext context)
+    {
+        if (id.Turn != context.Turn ||
+            state.Revision != expectedRevision ||
             state.WorldBinding != _binding ||
             !state.Treasury.IsInitialized ||
             !state.Transport.HasMonetaryConstructionCosts ||
-            !_actualEdges.Contains(ev.Edge) ||
-            _blockedIceSeaEdges.Contains(ev.Edge) ||
-            !state.Civilizations.Civilizations.Contains(ev.Investor))
+            !_actualEdges.Contains(edge) ||
+            _blockedIceSeaEdges.Contains(edge) ||
+            !state.Civilizations.Civilizations.Contains(investor))
             throw new InvalidOperationException(
                 "Stale, unfinanced or foreign infrastructure investment.");
-        return state.RecordMonetaryInfrastructureInvestment(
-            ev.Investor, ev.Edge, ev.MoneyMicro).AdvanceRevision();
     }
 }
 

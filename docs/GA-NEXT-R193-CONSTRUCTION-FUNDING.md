@@ -1,0 +1,5 @@
+# R193 — Construction funding
+
+R192 approved 9/9. The opt-in construction funding phase resolves existing monetary commands into distinct funded events. Executor verifies command origin, turn, revision, bound topology, blocked crossings, civilization, explicit rate and independently recalculated Work quote. Existing title, financeability and range checks are reused. One immutable transition debits real treasury cash and appends a unique zero-progress project. Transport and workers remain unchanged, including title and tariffs. No immediate capital investment is allowed in worlds with initialized construction ledger.
+
+Funding rate is explicit and must match between resolution and replay. It is not yet calibrated or installed in the interactive host. The new executor can replay its own event independently; collective host replay dispatch, save encoding and worker progress are subsequent gates. Legacy gameplay remains unchanged. Completion-only activation must later credit transport without a second debit. No claim that the present UI runs this phase. The cumulative treasury investment counter records expenditure, not available infrastructure.

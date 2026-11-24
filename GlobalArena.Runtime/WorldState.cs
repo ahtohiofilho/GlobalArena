@@ -555,6 +555,8 @@ public sealed class WorldState
         if (!Treasury.IsInitialized || !Transport.HasMonetaryConstructionCosts)
             throw new InvalidOperationException(
                 "Investments need authoritative treasury and quoted costs.");
+        if (Constructions.IsInitialized)
+            throw new InvalidOperationException("Immediate capital investment is disabled in construction-ledger worlds.");
         var newTransport = Transport.RecordMoneyInvestment(investor, edge, moneyMicro);
         var newTreasury = Treasury.DebitConstruction(investor, moneyMicro);
         return new WorldState(
@@ -607,6 +609,28 @@ public sealed class WorldState
     }
 
     // Snapshot-only deployment; no funding, progress or activation event yet.
+    // Atomic funding transition; the event executor determines required Work.
+    public WorldState FundConstruction(CivilizationId investor, PhysicalTacticalEdgeId edge,
+        ulong moneyMicro, ulong requiredWorkMicro)
+    {
+        if (!Constructions.IsInitialized || !Treasury.IsInitialized ||
+            requiredWorkMicro == 0UL || moneyMicro == 0UL ||
+            Constructions.Projects.Any(p => p.Edge == edge && !p.IsComplete))
+            throw new InvalidOperationException("Construction funding requires an enabled ledger and free project slot.");
+        // Reuse the existing title, range and financeability validator.
+        // Its immutable hypothetical transport result is deliberately discarded.
+        _ = Transport.RecordMoneyInvestment(investor, edge, moneyMicro);
+        var id = Constructions.Projects.Count == 0 ? 1UL :
+            checked(Constructions.Projects.Max(p => p.Id) + 1UL);
+        var project = new FoundationConstructionProject(id, edge, investor,
+            moneyMicro, requiredWorkMicro, 0UL);
+        var ledger = new FoundationConstructionRuntimeState(Constructions.Projects.Append(project));
+        var treasury = Treasury.DebitConstruction(investor, moneyMicro);
+        return new WorldState(Revision, WorldBinding, Civilizations, Territory,
+            Diplomacy, Economy, Population, Warfare, Workers, Transport, treasury,
+            CityResidences, EdgeTravels, ledger);
+    }
+
     public WorldState WithConstructions(FoundationConstructionRuntimeState constructions)
     {
         ArgumentNullException.ThrowIfNull(constructions);
