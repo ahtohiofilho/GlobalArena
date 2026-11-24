@@ -342,6 +342,8 @@ public static class FoundationTemporalEconomicJournalGate
             _beginning = beginning;
             _growth = enableDemographicGrowth;
             _agriculture = agriculture;
+            if (agriculture is not null && (persistentScheduler is null || !ReferenceEquals(signedFine, agriculture.Geography)))
+                throw new InvalidOperationException("Crop policy requires the same signed geography and persistent timeline.");
             if (_growth && (persistentScheduler is null || beginning.CityResidences.IsInitialized))
                 throw new InvalidOperationException("Growth requires persistent physical census without legacy home schema.");
             _travel = new FoundationEdgeTravelEventExecutor(movement, movementPolicy);
