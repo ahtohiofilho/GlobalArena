@@ -1,0 +1,23 @@
+name: GA-Next R208 Funded Worker Intents
+on:
+  pull_request:
+    paths:
+      - 'GlobalArena.Simulation/Foundation/FoundationFundedWorkerIntentJournal.cs'
+      - 'GlobalArena.Simulation/Foundation/FoundationConstructionFundingTurnPhase.cs'
+      - 'GlobalArena.Runtime/WorldState.cs'
+      - 'GlobalArena.Tests/FoundationMonetaryInfrastructureInvestmentTests.cs'
+      - '.github/workflows/ga-next-r208-funded-worker-intents.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  funded-worker-intents:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Verify funding, queue and journal regression
+        run: dotnet test GlobalArena.Tests/GlobalArena.Tests.csproj -c Release --filter 'FullyQualifiedName~FoundationMonetaryInfrastructureInvestmentTests|FullyQualifiedName~FoundationPersistentOrderJournalTests|FullyQualifiedName~FoundationWorkerOrderQueueTests' --logger 'console;verbosity=detailed'
