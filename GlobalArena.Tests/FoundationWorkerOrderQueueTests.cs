@@ -76,7 +76,7 @@ public sealed class FoundationWorkerOrderQueueTests
     [Fact]
     public void SnapshotAdmissionRejectsDuplicatesAndInvalidHeadAndCopiesInput()
     {
-        var item = new FoundationWorkerOrder(1, FoundationWorkerOrderKind.Move, Destination: Node);
+        var item = new FoundationQueuedWorkerOrder(1, FoundationWorkerOrderKind.Move, Destination: Node);
         var input = new[] { item };
         var q = new FoundationWorkerOrderQueue(Worker, Owner, 2, null, input);
         input[0] = item with { Id = 99 };
