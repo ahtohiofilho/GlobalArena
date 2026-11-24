@@ -197,7 +197,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Single(resolved.Events.OfType<FoundationFundedWorkerIntentEvent>());
         Assert.Equal(1UL, next.Treasury.LastSettledEconomicCycleOrdinal);
         var batch = Assert.IsType<FoundationPhysicalBirthBatchEvent>(resolved.Events.Last());
-        Assert.IsType<FoundationTemporalSalesSettledEvent>(resolved.Events[^2]);
+        Assert.IsType<FoundationTemporalSalesSettledEvent>(resolved.Events.Reverse().Skip(1).First());
         Assert.Equal(beginning.Civilizations.Civilizations.Count, batch.Newborns.Count);
         Assert.Equal(beginning.Workers.Workers.Count + batch.Newborns.Count, next.Workers.Workers.Count);
         Assert.Equal(next.Workers.Workers.Count, next.WorkerOrders.Queues.Count);
@@ -217,7 +217,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         }
         var hash = new CanonicalWorldStateHasher();
         Assert.Equal(hash.Compute(next), hash.Compute(phase.ReplayPersistentJournal(beginning, resolved.EventLog, context)));
-        foreach (var events in new[] { resolved.Events.Take(resolved.Events.Count - 1).ToArray(),
+        foreach (var events in new[] { resolved.Events.Take(resolved.Events.Count() - 1).ToArray(),
             resolved.Events.Append(batch).ToArray(),
             resolved.Events.Take(resolved.Events.Count - 1).Append(batch with { ScheduleDigest = "forged" }).ToArray() })
         {
