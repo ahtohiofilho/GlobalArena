@@ -12,6 +12,7 @@ public sealed class FoundationAgriculturalProductionPolicy
     private readonly IReadOnlyDictionary<CropId, CommodityId> _items;
     private readonly GoldbergParameters _fine;
     private readonly ulong _baseYield;
+    internal FoundationFineFirstPhysicalGeography Geography { get; }
 
     public FoundationAgriculturalProductionPolicy(FoundationFineFirstPhysicalGeography geography,
         PhysicalTacticalIncidenceMap incidence, IReadOnlyDictionary<CropId, CommodityId> items,
@@ -25,6 +26,7 @@ public sealed class FoundationAgriculturalProductionPolicy
             items.Values.Distinct().Count() != CropCatalog.Count)
             throw new ArgumentException("Explicit distinct six-crop market mapping and compatible fine geography required.");
         _items = new System.Collections.ObjectModel.ReadOnlyDictionary<CropId, CommodityId>(new Dictionary<CropId, CommodityId>(items));
+        Geography = geography;
         _baseYield = baseYieldMicro;
         _fine = geography.FineParameters;
         int count = geography.FineElevationRaw.Count;
