@@ -30,6 +30,7 @@ public sealed class CanonicalWorldStateHasher
     public const uint CanonicalCityResidenceFormatVersion = 16U;
     // Only opt-in persisted journeys activate v17. Historical hashes stay stable.
     public const uint PersistedPhysicalTravelFormatVersion = 17U;
+    public const uint PersistedConstructionFormatVersion = 18U;
 
     private static readonly byte[] Magic =
     {
@@ -45,7 +46,9 @@ public sealed class CanonicalWorldStateHasher
         ArgumentNullException.ThrowIfNull(
             worldState);
 
-        var version = worldState.EdgeTravels.IsInitialized
+        var version = worldState.Constructions.IsInitialized
+            ? PersistedConstructionFormatVersion
+            : worldState.EdgeTravels.IsInitialized
             ? PersistedPhysicalTravelFormatVersion
             : worldState.CityResidences.IsInitialized
             ? CanonicalCityResidenceFormatVersion
@@ -496,6 +499,24 @@ public sealed class CanonicalWorldStateHasher
                 AppendUInt64(hash, journey.Edge.FineStrategicEdgeId.Value);
                 AppendUInt64(hash, journey.RemainingMicro);
                 AppendUInt64(hash, journey.OriginalDurationMicro);
+            }
+        }
+
+        if (worldState.Constructions.IsInitialized)
+        {
+            AppendUInt32(hash, 47U);
+            AppendUInt32(hash, 1U);
+            AppendUInt32(hash, checked((uint)worldState.Constructions.Projects.Count));
+            foreach (var project in worldState.Constructions.Projects)
+            {
+                AppendUInt64(hash, project.Id);
+                AppendUInt32(hash, checked((uint)project.Edge.FineGoldbergParameters.M));
+                AppendUInt32(hash, checked((uint)project.Edge.FineGoldbergParameters.N));
+                AppendUInt64(hash, project.Edge.FineStrategicEdgeId.Value);
+                AppendUInt64(hash, project.Investor.Value);
+                AppendUInt64(hash, project.FundedMoneyMicro);
+                AppendUInt64(hash, project.RequiredWorkMicro);
+                AppendUInt64(hash, project.CompletedWorkMicro);
             }
         }
 

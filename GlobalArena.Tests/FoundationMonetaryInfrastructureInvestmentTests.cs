@@ -75,6 +75,37 @@ public sealed class FoundationMonetaryInfrastructureInvestmentTests
             x.Edge == s.RemoteEdge);
 
     [Fact]
+    public void ConstructionSnapshotRetainsProgressAndHashesWithoutActivatingCapital()
+    {
+        var scenario = Create();
+        var before = scenario.Host.Snapshot;
+        var project = new FoundationConstructionProject(1UL, scenario.RemoteEdge, Red,
+            2_000_000UL, 800UL, 500UL);
+        var ledger = new FoundationConstructionRuntimeState(new[] { project });
+        var next = before.WithConstructions(ledger);
+        var advanced = next.AdvanceRevision().WithWorkers(next.Workers);
+        Assert.Same(ledger, advanced.Constructions);
+        Assert.Equal(300UL, advanced.Constructions.Projects.Single().RemainingWorkMicro);
+        Assert.Same(before.Transport, advanced.Transport);
+        Assert.Same(before.Treasury, advanced.Treasury);
+        Assert.False(before.Constructions.IsInitialized);
+        var hasher = new CanonicalWorldStateHasher();
+        Assert.NotEqual(hasher.Compute(before), hasher.Compute(next));
+        var completed = next.WithConstructions(new FoundationConstructionRuntimeState(
+            new[] { project with { CompletedWorkMicro = 800UL } }));
+        Assert.True(completed.Constructions.Projects.Single().IsComplete);
+        Assert.NotEqual(hasher.Compute(next), hasher.Compute(completed));
+        Assert.Same(before.Transport, completed.Transport);
+        Assert.Same(before.Treasury, completed.Treasury);
+        Assert.Throws<ArgumentException>(() => new FoundationConstructionRuntimeState(
+            new[] { project, project with { Id = 2UL } }));
+        Assert.Throws<ArgumentException>(() => new FoundationConstructionRuntimeState(
+            new[] { project with { CompletedWorkMicro = 801UL } }));
+        Assert.Throws<InvalidOperationException>(() => next.WithConstructions(
+            FoundationConstructionRuntimeState.Uninitialized));
+    }
+
+    [Fact]
     public void FixedUnitFreightIsPositiveMonotoneAndDeterministicAcrossExtremeCapital()
     {
         var s = Create();
