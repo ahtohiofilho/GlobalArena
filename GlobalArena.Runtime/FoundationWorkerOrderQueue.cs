@@ -117,6 +117,9 @@ public sealed class FoundationWorkerOrderQueue
         return new(Worker, Owner, NextId, Orders[0].Id, Orders);
     }
 
+    public FoundationWorkerOrderQueue InterruptHead(CivilizationId issuer, ulong expectedId)
+        => CompleteHead(issuer, expectedId);
+
     public FoundationWorkerOrderQueue CompleteHead(CivilizationId issuer, ulong expectedId)
     {
         Authorize(issuer);
@@ -166,6 +169,9 @@ public sealed class FoundationWorkerOrderQueueSet
 
     public FoundationWorkerOrderQueueSet StartHead(CivilizationId issuer, PhysicalWorkerId worker)
         => Replace(issuer, Get(issuer, worker).StartHead(issuer));
+
+    public FoundationWorkerOrderQueueSet InterruptHead(CivilizationId issuer, PhysicalWorkerId worker, ulong id)
+        => Replace(issuer, Get(issuer, worker).InterruptHead(issuer, id));
 
     public FoundationWorkerOrderQueueSet CompleteHead(CivilizationId issuer, PhysicalWorkerId worker, ulong id)
         => Replace(issuer, Get(issuer, worker).CompleteHead(issuer, id));
