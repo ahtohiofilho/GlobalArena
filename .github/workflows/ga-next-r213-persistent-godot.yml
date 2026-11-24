@@ -42,6 +42,7 @@ jobs:
           grep -q 'GA_NEXT_R213_PERSISTENT_UI_PASS' "$RUNNER_TEMP/r213.log"
           grep -q 'GA_NEXT_R216_WORKER_CONTEXT_PASS' "$RUNNER_TEMP/r213.log"
           grep -q 'GA_NEXT_R218_SITE_HUD_PASS' "$RUNNER_TEMP/r213.log"
+          grep -q 'GA_NEXT_R2211_HUD_POINTER_PASS' "$RUNNER_TEMP/r213.log"
           grep -q 'GA_NEXT_R220_CONNECTION_DIAGRAM_PASS' "$RUNNER_TEMP/r213.log"
       - name: Exercise crop preview
         env:

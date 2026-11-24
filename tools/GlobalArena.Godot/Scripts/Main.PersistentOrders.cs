@@ -348,21 +348,53 @@ public partial class Main
                 GetTree().Quit(0);
                 return;
             }
-            var hoverWorker = host.Snapshot.Workers.Workers.First(w => w.Owner == _humanCivilization);
+            var hoverWorker = host.Snapshot.Workers.Workers.First(w => w.Owner == _humanCivilization && w.Id.Value != _selectedLocalWorkerId);
             var hoverSite = hoverWorker.TacticalTileId!.Value.FineStrategicCellId.Value;
             if (!R218Available()) throw new InvalidOperationException("Site hover unavailable in persistent preview.");
             _r218Anchor = _tacticalPreview!.GetGlobalRect().GetCenter();
+            // Prepare the actual panel layout before arming the hover timer.
+            // Headless startup has no pointer over this site yet.
             RenderR218SiteHover(hoverSite);
+            for (int i = 0; i < 3; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             var hoverScroll = _r218Rows!.GetChildren().OfType<ScrollContainer>().Single();
             var hoverList = hoverScroll.GetChild<VBoxContainer>(0);
             var hoverButton = hoverList.GetChildren().OfType<HBoxContainer>()
                 .SelectMany(r => r.GetChildren().OfType<Button>()).Single(b => b.Name.ToString() == $"R218Worker{hoverWorker.Id.Value}");
-            if (!_r218Hud!.Visible || host.StateHash != before)
-                throw new InvalidOperationException("Site HUD mutated canonical state.");
-            hoverButton.EmitSignal(Button.SignalName.Pressed);
+            if (!_r218Hud!.Visible) throw new InvalidOperationException("HUD hidden during layout preparation.");
+            if (host.StateHash != before) throw new InvalidOperationException("HUD layout changed canonical hash.");
+            // Headless has no native window mouse routing; inject actual
+            // mouse events into the root viewport's GUI dispatcher.
+            var position = hoverButton.GetGlobalRect().GetCenter();
+            var viewport = GetViewport();
+            if (!hoverButton.IsVisibleInTree() || !hoverScroll.GetGlobalRect().HasPoint(position))
+                throw new InvalidOperationException("HUD target is outside its visible scroll area.");
+            viewport.PushInput(new InputEventMouseMotion { Position = position, GlobalPosition = position }, true);
+            _r218Candidate = hoverSite;
+            _r218Elapsed = R218Delay;
+            viewport.PushInput(new InputEventMouseButton {
+                Position = position, GlobalPosition = position, ButtonIndex = MouseButton.Left,
+                Pressed = true, ButtonMask = MouseButtonMask.Left }, true);
+            try
+            {
+                if (!_r218ButtonHeld)
+                    throw new InvalidOperationException($"Mouse-down did not reach HUD. target={position} hud={_r218Hud.GetGlobalRect()} hovered={viewport.GuiGetHoveredControl()?.Name}");
+                UpdateR218SiteHover(0.016);
+                if (!_r218Hud.Visible || _selectedLocalWorkerId == hoverWorker.Id.Value)
+                    throw new InvalidOperationException("HUD dismissed or selected before release.");
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                if (!_r218Hud.Visible || !_r218ButtonHeld)
+                    throw new InvalidOperationException("HUD lost held click across frame.");
+            }
+            finally
+            {
+                viewport.PushInput(new InputEventMouseButton {
+                    Position = position, GlobalPosition = position, ButtonIndex = MouseButton.Left,
+                    Pressed = false, ButtonMask = (MouseButtonMask)0 }, true);
+            }
             if (_r218Hud.Visible || _selectedLocalWorkerId != hoverWorker.Id.Value || host.StateHash != before)
                 throw new InvalidOperationException("HUD selection failed or mutated state.");
             GD.Print("GA_NEXT_R218_SITE_HUD_PASS canonical_roster=true real_button=true hash_unchanged=true");
+            GD.Print("GA_NEXT_R2211_HUD_POINTER_PASS press_release=true different_worker=true");
             var worker = host.Snapshot.Workers.Workers.First(w => w.Owner == _humanCivilization);
             OnOperationalWorkerSelected(worker.Id.Value);
             if (_persistentQueueList!.Visible || _persistentInsert!.Disabled != true ||
