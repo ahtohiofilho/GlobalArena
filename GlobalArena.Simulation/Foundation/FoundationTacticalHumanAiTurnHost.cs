@@ -87,7 +87,7 @@ public sealed class FoundationTacticalCollectiveReceipt
     public FoundationEconomicSalesSettledEvent? EconomicSettlement { get; }
     public IReadOnlyList<FoundationEdgeTravelTurnEvent> EdgeTravels { get; }
     public FoundationTemporalSalesSettledEvent? TemporalEconomicSettlement { get; }
-    public int ExecutedEvents => PersistentEdits.Count + PersistentFunding.Count + (PersistentTimeline is null ? 0 : 1) + Events.Count + EdgeTravels.Count + InfrastructureInvestments.Count + ConstructionFunding.Count + ConstructionWork.Count +
+    public int ExecutedEvents => (BirthBatch is null ? 0 : 1) + PersistentEdits.Count + PersistentFunding.Count + (PersistentTimeline is null ? 0 : 1) + Events.Count + EdgeTravels.Count + InfrastructureInvestments.Count + ConstructionFunding.Count + ConstructionWork.Count +
         (EconomicSettlement is null ? 0 : 1) +
         (TemporalEconomicSettlement is null ? 0 : 1);
     public IReadOnlyList<FoundationConstructionFundedEvent> ConstructionFunding { get; }
@@ -96,6 +96,7 @@ public sealed class FoundationTacticalCollectiveReceipt
     public IReadOnlyList<FoundationPersistentOrderEditEvent> PersistentEdits { get; }
     public IReadOnlyList<FoundationFundedWorkerIntentEvent> PersistentFunding { get; }
     public FoundationPersistentWorkerTurnEvent? PersistentTimeline { get; }
+    public FoundationPhysicalBirthBatchEvent? BirthBatch { get; }
 
     internal FoundationTacticalCollectiveReceipt(
         TurnNumber turn, WorldStateHash hash, ulong revision,
@@ -108,7 +109,8 @@ public sealed class FoundationTacticalCollectiveReceipt
         FoundationConstructionWorkBatchEvent[]? constructionWork = null,
         FoundationPersistentOrderEditEvent[]? persistentEdits = null,
         FoundationFundedWorkerIntentEvent[]? persistentFunding = null,
-        FoundationPersistentWorkerTurnEvent? persistentTimeline = null)
+        FoundationPersistentWorkerTurnEvent? persistentTimeline = null,
+        FoundationPhysicalBirthBatchEvent? birthBatch = null)
     {
         Turn = turn;
         Hash = hash;
@@ -124,6 +126,7 @@ public sealed class FoundationTacticalCollectiveReceipt
         PersistentEdits = Array.AsReadOnly(persistentEdits ?? Array.Empty<FoundationPersistentOrderEditEvent>());
         PersistentFunding = Array.AsReadOnly(persistentFunding ?? Array.Empty<FoundationFundedWorkerIntentEvent>());
         PersistentTimeline = persistentTimeline;
+        BirthBatch = birthBatch;
         ReplayMatched = true;
     }
 }
@@ -404,7 +407,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
         FoundationFineFirstPhysicalGeography? fineGeography = null,
         FoundationFineFirstWorldgenIdentity? fineSignature = null,
         FoundationGroundEdgeTravelTimePolicy? physicalTravelPolicy = null,
-        ulong? constructionMoneyMicroPerWholeWork = null)
+        ulong? constructionMoneyMicroPerWholeWork = null, bool enableDemographicGrowth = false)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
         _incidence = incidence ?? throw new ArgumentNullException(nameof(incidence));
@@ -556,7 +559,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
             var temporal = new FoundationTemporalCollectiveTurnPhase(
                 session.GeneratedWorld, incidence, _travelPolicy!,
                 _temporalPolicy, fineGeography, fineSignature, _constructionPhase,
-                persistent ? constructionMoneyMicroPerWholeWork : null);
+                persistent ? constructionMoneyMicroPerWholeWork : null, enableDemographicGrowth);
             phases.Add(temporal);
             if (persistent)
             {
@@ -1216,7 +1219,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
             Array.Empty<PhysicalTacticalWorkerMovedEvent>(), temporalSettlement: sale,
             persistentEdits: resolved.Events.OfType<FoundationPersistentOrderEditEvent>().ToArray(),
             persistentFunding: resolved.Events.OfType<FoundationFundedWorkerIntentEvent>().ToArray(),
-            persistentTimeline: timeline);
+            persistentTimeline: timeline, birthBatch: resolved.Events.OfType<FoundationPhysicalBirthBatchEvent>().SingleOrDefault());
         _lastTemporalClose = receipt;
         foreach (var plan in _persistentPlans.Values) plan.Clear();
         _ready.Clear(); _knownSnapshot = Snapshot;
