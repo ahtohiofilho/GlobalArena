@@ -362,34 +362,34 @@ public partial class Main
                 .SelectMany(r => r.GetChildren().OfType<Button>()).Single(b => b.Name.ToString() == $"R218Worker{hoverWorker.Id.Value}");
             if (!_r218Hud!.Visible) throw new InvalidOperationException("HUD hidden during layout preparation.");
             if (host.StateHash != before) throw new InvalidOperationException("HUD layout changed canonical hash.");
-            // One input dispatch path: the engine updates Input and routes
-            // the event through the viewport. Never emit Button.Pressed directly.
+            // Headless has no native window mouse routing; inject actual
+            // mouse events into the root viewport's GUI dispatcher.
             var position = hoverButton.GetGlobalRect().GetCenter();
-            Input.ParseInputEvent(new InputEventMouseMotion { Position = position, GlobalPosition = position });
-            Input.FlushBufferedEvents();
+            var viewport = GetViewport();
+            if (!hoverButton.IsVisibleInTree() || !hoverScroll.GetGlobalRect().HasPoint(position))
+                throw new InvalidOperationException("HUD target is outside its visible scroll area.");
+            viewport.PushInput(new InputEventMouseMotion { Position = position, GlobalPosition = position }, true);
             _r218Candidate = hoverSite;
             _r218Elapsed = R218Delay;
-            Input.ParseInputEvent(new InputEventMouseButton {
+            viewport.PushInput(new InputEventMouseButton {
                 Position = position, GlobalPosition = position, ButtonIndex = MouseButton.Left,
-                Pressed = true, ButtonMask = MouseButtonMask.Left });
-            Input.FlushBufferedEvents();
+                Pressed = true, ButtonMask = MouseButtonMask.Left }, true);
             try
             {
-                if (!Input.IsMouseButtonPressed(MouseButton.Left) || !hoverButton.ButtonPressed)
-                    throw new InvalidOperationException("Mouse-down did not reach actual HUD button.");
+                if (!_r218ButtonHeld)
+                    throw new InvalidOperationException($"Mouse-down did not reach HUD. target={position} hud={_r218Hud.GetGlobalRect()} hovered={viewport.GuiGetHoveredControl()?.Name}");
                 UpdateR218SiteHover(0.016);
                 if (!_r218Hud.Visible || _selectedLocalWorkerId == hoverWorker.Id.Value)
                     throw new InvalidOperationException("HUD dismissed or selected before release.");
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-                if (!_r218Hud.Visible || !hoverButton.ButtonPressed)
+                if (!_r218Hud.Visible || !_r218ButtonHeld)
                     throw new InvalidOperationException("HUD lost held click across frame.");
             }
             finally
             {
-                Input.ParseInputEvent(new InputEventMouseButton {
+                viewport.PushInput(new InputEventMouseButton {
                     Position = position, GlobalPosition = position, ButtonIndex = MouseButton.Left,
-                    Pressed = false, ButtonMask = (MouseButtonMask)0 });
-                Input.FlushBufferedEvents();
+                    Pressed = false, ButtonMask = (MouseButtonMask)0 }, true);
             }
             if (_r218Hud.Visible || _selectedLocalWorkerId != hoverWorker.Id.Value || host.StateHash != before)
                 throw new InvalidOperationException("HUD selection failed or mutated state.");
