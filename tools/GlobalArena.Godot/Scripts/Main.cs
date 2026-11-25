@@ -420,7 +420,10 @@ public partial class Main : Control
             worker => worker.Id.Value == _selectedLocalWorkerId);
         var ready = host.ReadyCivilizations.Contains(_humanCivilization);
         if (_tacticalPreview is not null)
+        {
             _tacticalPreview.ExplicitMapMoveEnabled = CompactOperationalDock && host.PersistentOrdersEnabled && chosen is not null && !ready;
+            _tacticalPreview.MapConnectionEnabled = CompactOperationalDock && host.PersistentOrdersEnabled;
+        }
         var pendingOrders = host.GetHumanOrders(_humanCivilization);
         var selectedTile = _tacticalPreview?.SelectedCanonicalPhysicalTileId;
         PhysicalTacticalTileId? destination = selectedTile.HasValue
@@ -1733,6 +1736,7 @@ public partial class Main : Control
         _tacticalPreview.PhysicalTileInspected += OnPhysicalTileInspected;
         _tacticalPreview.CanonicalPhysicalTileClicked += OnTacticalPhysicalTileClicked;
         _tacticalPreview.ExplicitMapMoveRequested += OnR226MapMoveRequested;
+        _tacticalPreview.MapConnectionRequested += OnR227MapConnectionRequested;
         _tacticalPreview.CartographicLocalSiteSelected += OnCartographicLocalSiteSelected;
         _tacticalPreview.CanonicalWorkerBadgeClicked += OnCanonicalWorkerBadgeClicked;
         _tacticalPreview.WorkerBoardOccupationRequested += OnWorkerBoardOccupationRequested;
