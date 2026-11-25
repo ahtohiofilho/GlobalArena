@@ -162,6 +162,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
     private readonly Dictionary<CivilizationId, List<ISimulationCommand>> _persistentPlans = new();
     public bool PersistentOrdersEnabled => _persistentPhase is not null;
     public bool ExperimentalLocalEconomyEnabled { get; }
+    public bool DefaultAutomaticBaseEnabled { get; }
     private readonly CanonicalWorldStateHasher _hasher = new();
     private readonly HashSet<CivilizationId> _humans;
     private readonly IReadOnlyDictionary<CivilizationId,
@@ -442,7 +443,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
         FoundationFineFirstWorldgenIdentity? fineSignature = null,
         FoundationGroundEdgeTravelTimePolicy? physicalTravelPolicy = null,
         ulong? constructionMoneyMicroPerWholeWork = null, bool enableDemographicGrowth = false, FoundationAgriculturalProductionPolicy? agriculture = null, FoundationOperationalFreightShadowPolicy? operationalPolicy = null,
-        bool enableExperimentalLocalEconomy = false)
+        bool enableExperimentalLocalEconomy = false, bool enableDefaultAutomaticBase = false)
     {
         AgriculturalProduction = agriculture;
         OperationalFreight = operationalPolicy;
@@ -509,6 +510,9 @@ public sealed class FoundationTacticalHumanAiTurnHost
             (enableExperimentalLocalEconomy && (!persistent || _temporalPolicy is null || agriculture is null || fineGeography is null)))
             throw new InvalidOperationException("Experimental local economy requires explicit progressive temporal policy and signed persistent crops.");
         ExperimentalLocalEconomyEnabled = enableExperimentalLocalEconomy;
+        if (enableDefaultAutomaticBase && (!enableExperimentalLocalEconomy || agriculture?.BasicResources is null))
+            throw new InvalidOperationException("Default automatic base requires explicit experimental local economy and basic resources.");
+        DefaultAutomaticBaseEnabled = enableDefaultAutomaticBase;
         if (persistent && (_temporalPolicy is null || fineGeography is null || !constructionMoneyMicroPerWholeWork.HasValue || !enableMonetaryInfrastructure))
             throw new InvalidOperationException("Persistent host needs complete signed temporal construction world.");
         foreach (var civ in _participants) _persistentPlans[civ] = new();
@@ -603,7 +607,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
                 _temporalPolicy, fineGeography, fineSignature, _constructionPhase,
                 persistent ? constructionMoneyMicroPerWholeWork : null, enableDemographicGrowth, agriculture, operationalPolicy,
                 enableExperimentalAutomaticBase: ExperimentalLocalEconomyEnabled,
-                enableLocalPriceAllocation: ExperimentalLocalEconomyEnabled);
+                enableLocalPriceAllocation: ExperimentalLocalEconomyEnabled,
+                enableDefaultAutomaticBase: DefaultAutomaticBaseEnabled);
             phases.Add(temporal);
             if (persistent)
             {

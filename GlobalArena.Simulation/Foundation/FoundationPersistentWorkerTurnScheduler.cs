@@ -28,18 +28,27 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
     private readonly FoundationAuthoritativeEconomicSettlementPolicy? _automaticEconomy;
     private readonly FoundationOperationalFreightShadowPolicy? _automaticOperations;
     internal bool UsesLocalPriceAllocation { get; }
+    private readonly FoundationWorkerBaseActivity? _defaultBase;
+
+    // An absent preference stays absent in the canonical private queue.
+    // Only the explicitly configured execution policy supplies the fallback.
+    private FoundationWorkerBaseActivity? EffectiveBase(FoundationWorkerBaseActivity? preference) =>
+        preference ?? _defaultBase;
 
     public FoundationPersistentWorkerTurnScheduler(FoundationConstructionApproachRouter router,
         FoundationAgriculturalProductionPolicy? agriculture = null,
         FoundationAuthoritativeEconomicSettlementPolicy? experimentalAutomaticEconomy = null,
         FoundationOperationalFreightShadowPolicy? automaticOperations = null,
-        bool enableLocalPriceAllocation = false)
+        bool enableLocalPriceAllocation = false, bool enableDefaultAutomaticBase = false)
     {
         _router = router ?? throw new ArgumentNullException(nameof(router));
         _agriculture = agriculture;
         _automaticEconomy = experimentalAutomaticEconomy;
         _automaticOperations = automaticOperations;
         UsesLocalPriceAllocation = enableLocalPriceAllocation;
+        if (enableDefaultAutomaticBase && (!enableLocalPriceAllocation || agriculture?.BasicResources is null))
+            throw new InvalidOperationException("Default automatic base requires explicit local allocation and basic resources.");
+        _defaultBase = enableDefaultAutomaticBase ? new FoundationWorkerBaseActivity(FoundationWorkerBaseMode.Automatic) : null;
         if (enableLocalPriceAllocation && experimentalAutomaticEconomy is null)
             throw new InvalidOperationException("Local allocation requires the experimental automatic mode.");
         if (_automaticEconomy is not null && agriculture is null)
@@ -103,7 +112,7 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
             !opening.Constructions.IsInitialized)
             throw new InvalidOperationException("Persistent scheduling requires deployed ledgers.");
         // Reject unresolved policies before any timeline work, even if a task
-        // would consume the entire turn. No implicit automatic allocation.
+        // would consume the entire turn. Only the opt-in fallback is implicit.
         foreach (var q in opening.WorkerOrders.Queues)
             if (q.BaseActivity is { } b && ((b.Mode == FoundationWorkerBaseMode.Automatic && _automaticEconomy is null) ||
                 (b.Crop.HasValue && _agriculture is null)))
@@ -133,7 +142,7 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
                     var head = queue.Orders.FirstOrDefault();
                     if (head is null)
                     {
-                        if (queue.BaseActivity is { } preference)
+                        if (EffectiveBase(queue.BaseActivity) is { } preference)
                         {
                             var mode = BaseMode(worker, preference);
                             if (preference.Mode == FoundationWorkerBaseMode.Automatic)
@@ -263,11 +272,11 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
         }
         // At an exact turn boundary, report readiness for base work only
         // when no finite task or frozen crossing remains. No extra slice.
-        foreach (var q in state.WorkerOrders.Queues.Where(q => q.BaseActivity is not null &&
+        foreach (var q in state.WorkerOrders.Queues.Where(q => EffectiveBase(q.BaseActivity) is not null &&
             q.Orders.Count == 0 && !state.EdgeTravels.Pending.Any(p => p.Worker == q.Worker)).ToArray())
         {
             var worker = state.Workers.Workers.Single(w => w.Id == q.Worker);
-            var mode = BaseMode(worker, q.BaseActivity!);
+            var mode = BaseMode(worker, EffectiveBase(q.BaseActivity)!);
             state = Assign(state, worker, mode.Node, worker.CellId, mode.Activity, mode.Occupation);
         }
         if (automaticStarts.Count > 0)
