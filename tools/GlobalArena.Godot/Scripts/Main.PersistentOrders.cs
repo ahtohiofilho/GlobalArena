@@ -451,6 +451,7 @@ public partial class Main
             if (host.ExperimentalLocalEconomyEnabled)
             {
                 await ExerciseLayeredWorldDock(host);
+                ExerciseWorldPlanet(host);
                 ExerciseLocalEconomyPreview(host);
                 GetTree().Quit(0);
                 return;
