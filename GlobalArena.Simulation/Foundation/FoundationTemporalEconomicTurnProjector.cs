@@ -63,6 +63,8 @@ public static class FoundationTemporalEconomicTurnProjector
             throw new InvalidOperationException("Explicit crop production requires configured agricultural policy.");
         if (agriculture is not null && agriculture.Commodities.Any(c => !demandPolicy.Commodities.Contains(c)))
             throw new InvalidOperationException("Every crop requires an explicit market demand entry.");
+        if (agriculture is not null && agriculture.BasicResourceCommodities.Any(c => !demandPolicy.Commodities.Contains(c)))
+            throw new InvalidOperationException("Every basic resource requires explicit market demand.");
         var people = start.Workers.Workers.ToDictionary(w => w.Id);
         foreach (var group in timeline.GroupBy(s => s.Worker))
         {
@@ -91,8 +93,8 @@ public static class FoundationTemporalEconomicTurnProjector
             {
                 var worker = people[g.Key.Worker];
                 ulong effort = g.Aggregate(0UL, (sum, s) => checked(sum + s.DurationMicro));
-                var output = g.Key.Crop is { } crop
-                    ? agriculture!.Resolve(g.Key.Node, (CropId)crop)
+                var output = agriculture is not null
+                    ? agriculture.ResolveActivity(worker, g.Key.Node, g.Key.SliceOccupation, g.Key.Crop)
                     : (Commodity: worker.Commodity, WholeTurnOutput: worker.OutputMicroPerTurn);
                 return new FoundationTemporalPhysicalProduction(worker.Id, worker.Owner, g.Key.Node,
                     output.Commodity, checked((uint)effort),

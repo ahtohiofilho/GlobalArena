@@ -70,6 +70,8 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
             throw new InvalidOperationException("Progressive distribution requires the explicit local allocation experiment.");
         if (enableLocalPriceAllocation && !enableExperimentalAutomaticBase)
             throw new InvalidOperationException("Local allocation requires experimental automatic scheduling.");
+        if (agriculture?.BasicResources is not null && !enableLocalPriceAllocation)
+            throw new InvalidOperationException("Basic resource production requires explicit local allocation.");
         _growth = enableDemographicGrowth;
         _agriculture = agriculture;
         _operationalPolicy = operationalPolicy;

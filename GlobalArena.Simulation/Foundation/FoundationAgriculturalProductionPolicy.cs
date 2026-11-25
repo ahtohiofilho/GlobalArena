@@ -4,6 +4,10 @@ using GlobalArena.World;
 
 namespace GlobalArena.Simulation.Foundation;
 
+/// <summary>Explicit experimental whole-effort output and distinct market identities for universal land resources.</summary>
+public sealed record FoundationBasicResourceProductionPolicy(CommodityId Wood, CommodityId Stone,
+    ulong WoodWholeTurnOutput, ulong StoneWholeTurnOutput);
+
 /// <summary>Immutable experimental crop output policy. One projection per signed
 /// geography, explicit commodity mapping and whole-turn base yield.</summary>
 public sealed class FoundationAgriculturalProductionPolicy
@@ -13,10 +17,11 @@ public sealed class FoundationAgriculturalProductionPolicy
     private readonly GoldbergParameters _fine;
     private readonly ulong _baseYield;
     internal FoundationFineFirstPhysicalGeography Geography { get; }
+    public FoundationBasicResourceProductionPolicy? BasicResources { get; }
 
     public FoundationAgriculturalProductionPolicy(FoundationFineFirstPhysicalGeography geography,
         PhysicalTacticalIncidenceMap incidence, IReadOnlyDictionary<CropId, CommodityId> items,
-        ulong baseYieldMicro)
+        ulong baseYieldMicro, FoundationBasicResourceProductionPolicy? basicResources = null)
     {
         ArgumentNullException.ThrowIfNull(geography);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -26,6 +31,11 @@ public sealed class FoundationAgriculturalProductionPolicy
             items.Values.Distinct().Count() != CropCatalog.Count)
             throw new ArgumentException("Explicit distinct six-crop market mapping and compatible fine geography required.");
         _items = new System.Collections.ObjectModel.ReadOnlyDictionary<CropId, CommodityId>(new Dictionary<CropId, CommodityId>(items));
+        if (basicResources is { } basic && (!basic.Wood.IsValid || !basic.Stone.IsValid ||
+            basic.Wood == basic.Stone || items.Values.Contains(basic.Wood) || items.Values.Contains(basic.Stone) ||
+            basic.WoodWholeTurnOutput == 0 || basic.StoneWholeTurnOutput == 0))
+            throw new ArgumentException("Distinct wood and stone market identities and positive yields required.", nameof(basicResources));
+        BasicResources = basicResources;
         Geography = geography;
         _baseYield = baseYieldMicro;
         _fine = geography.FineParameters;
@@ -52,7 +62,25 @@ public sealed class FoundationAgriculturalProductionPolicy
         _projection = AgriculturalGeographyProjection.Build(new AgriculturalLogicalGeography(nodes, offsets, flat));
     }
 
+    // Food attribution uses only the six crop commodities.
     public IReadOnlyCollection<CommodityId> Commodities => _items.Values.ToArray();
+    internal IReadOnlyCollection<CommodityId> BasicResourceCommodities => BasicResources is { } basic
+        ? new[] { basic.Wood, basic.Stone } : Array.Empty<CommodityId>();
+
+    internal (CommodityId Commodity, ulong WholeTurnOutput) ResolveActivity(PhysicalWorkerRuntimeRecord worker,
+        PhysicalTacticalTileId node, PhysicalWorkerOccupation occupation, byte? crop)
+    {
+        if (crop.HasValue) return Resolve(node, (CropId)crop.Value);
+        if (BasicResources is { } basic && occupation is (PhysicalWorkerOccupation.Forestry or PhysicalWorkerOccupation.Mining))
+        {
+            if (!node.IsValid || node.FineGoldbergParameters != _fine) throw new ArgumentException("Foreign resource node.");
+            bool land = Geography.SurfaceAtIndex(checked((int)node.FineStrategicCellId.Value - 1)) == FoundationFineSurfaceKind.Land;
+            return occupation == PhysicalWorkerOccupation.Forestry
+                ? (basic.Wood, land ? basic.WoodWholeTurnOutput : 0UL)
+                : (basic.Stone, land ? basic.StoneWholeTurnOutput : 0UL);
+        }
+        return (worker.Commodity, worker.OutputMicroPerTurn);
+    }
     public (CommodityId Commodity, ulong WholeTurnOutput) Resolve(PhysicalTacticalTileId node, CropId crop)
     {
         if (!node.IsValid || node.FineGoldbergParameters != _fine) throw new ArgumentException("Foreign crop node.");
