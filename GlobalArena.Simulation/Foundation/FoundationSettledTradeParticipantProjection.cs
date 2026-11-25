@@ -34,8 +34,40 @@ internal static class FoundationSettledTradeParticipantProjection
         var (_, ownership) =
             FoundationPhysicalTradeRouteCandidatePlanner.BuildGraph(
                 incidence, plan.FixedCycleEdges);
+        return FromDistribution(source, incidence, cargoPolicy, plan.Distribution, ownership, requireCompleteOwnership: true);
+    }
+
+    // Temporal settlement already has a complete audited distribution. Its
+    // historical ownership is from the freight-stage world, not necessarily
+    // the post-construction or post-birth committed snapshot.
+    internal static IReadOnlyDictionary<CivilizationId,
+        IReadOnlyList<FoundationPhysicalTradeEdgeLoad>> FromTemporalDistribution(
+        WorldState freightSource, PhysicalTacticalIncidenceMap incidence,
+        FoundationCommodityCargoConversionPolicy cargoPolicy,
+        FoundationPhysicalGlobalMarginalCoordinationPlan distribution)
+    {
+        var ownership = distribution.AllocationAudit.Freight.UsedEdges
+            .Select(e => new FoundationTransportEdgeOwnershipEvidence(
+                e.Edge, e.OwnershipKind, e.Owner)).ToArray();
+        return FromDistribution(freightSource, incidence, cargoPolicy,
+            distribution, ownership, requireCompleteOwnership: false);
+    }
+
+    private static IReadOnlyDictionary<CivilizationId,
+        IReadOnlyList<FoundationPhysicalTradeEdgeLoad>> FromDistribution(
+        WorldState source, PhysicalTacticalIncidenceMap incidence,
+        FoundationCommodityCargoConversionPolicy cargoPolicy,
+        FoundationPhysicalGlobalMarginalCoordinationPlan distribution,
+        IReadOnlyList<FoundationTransportEdgeOwnershipEvidence> ownership,
+        bool requireCompleteOwnership)
+    {
+        var full = distribution.AllocationAudit.Freight;
+        if (full.CargoUnitCode != cargoPolicy.CargoUnitCode ||
+            distribution.AllocationAudit.TotalAvailableGoodsMicro !=
+                distribution.AllocationAudit.TotalAllocatedGoodsMicro)
+            throw new InvalidOperationException("Trade projection requires a fully audited market.");
         var realOwners = source.Transport.Edges.ToDictionary(r => r.Edge);
-        if (ownership.Count != realOwners.Count ||
+        if ((requireCompleteOwnership && ownership.Count != realOwners.Count) ||
             ownership.Any(row => !realOwners.ContainsKey(row.Edge)))
             throw new InvalidOperationException(
                 "Route ownership must originate in the actual transport world.");
@@ -49,7 +81,7 @@ internal static class FoundationSettledTradeParticipantProjection
             // Buyer's and seller's real transactions are observable to
             // the involved civilization. A delivery is NEVER counted twice
             // when both parties belong to the same civilization.
-            var deliveries = plan.Distribution.Candidates
+            var deliveries = distribution.Candidates
                 .Where(c => c.Buyer == civ || c.Seller == civ)
                 .OrderBy(c => c.DeliveryOrdinal)
                 .Select(c => new FoundationFreightDeliveryRouteEvidence(

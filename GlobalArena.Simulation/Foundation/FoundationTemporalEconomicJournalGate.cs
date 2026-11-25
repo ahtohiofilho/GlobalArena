@@ -30,6 +30,19 @@ public sealed class FoundationTemporalSalesSettledEvent : ISimulationEvent
     public BigInteger TotalCivilizationCreditsScaled { get; }
     public IReadOnlyList<FoundationCivilizationEconomicSettlementCredit> Credits { get; }
 
+    // Server-only derived evidence. Not part of the canonical world hash
+    // and never exposed as a global route list to application clients.
+    internal IReadOnlyDictionary<CivilizationId,
+        IReadOnlyList<FoundationPhysicalTradeEdgeLoad>>? AuditedParticipantEdges { get; private set; }
+
+    internal void AttachAuditedParticipantEdges(
+        IReadOnlyDictionary<CivilizationId, IReadOnlyList<FoundationPhysicalTradeEdgeLoad>> edges)
+    {
+        if (AuditedParticipantEdges is not null)
+            throw new InvalidOperationException("Temporal trade evidence is immutable.");
+        AuditedParticipantEdges = edges ?? throw new ArgumentNullException(nameof(edges));
+    }
+
     public FoundationTemporalSalesSettledEvent(
         EventId id, WorldStateHash beginningHash, WorldStateHash preSettlementHash,
         ulong preSettlementRevision, ulong cycleOrdinal, string digest,
@@ -258,6 +271,10 @@ public static class FoundationTemporalEconomicJournalGate
             financial.Accounting.RevenueTaxScaled,
             financial.Accounting.ExternalTollsScaled, credits,
             agriculture is null ? null : FoundationSettledFoodIntake.Attribute(beginning, calendar, financial.Distribution, agriculture.Commodities), financial.OperationalQuotes);
+        ev.AttachAuditedParticipantEdges(
+            FoundationSettledTradeParticipantProjection.FromTemporalDistribution(
+                beginning.Constructions.IsInitialized ? beginning : staged,
+                incidence, policy.Cargo, financial.Distribution));
         var amounts = ev.Credits.ToDictionary(c => c.Civilization,
             c => c.CashCreditScaled);
         var state = staged.RecordAuditedEconomicCycle(
@@ -300,6 +317,8 @@ public static class FoundationTemporalEconomicJournalGate
             received.TotalCivilizationCreditsScaled !=
                 expected.TotalCivilizationCreditsScaled ||
             !received.Credits.SequenceEqual(expected.Credits) ||
+            !FoundationSettledTradeParticipantProjection.Identical(
+                received.AuditedParticipantEdges, expected.AuditedParticipantEdges) ||
             (received.FoodIntake is null) != (expected.FoodIntake is null) ||
             (received.FoodIntake is not null && !received.FoodIntake.SequenceEqual(expected.FoodIntake!)) ||
             (received.OperationalQuotes is null) != (expected.OperationalQuotes is null) ||

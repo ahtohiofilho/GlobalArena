@@ -248,6 +248,68 @@ internal sealed class FoundationEconomicTradeCycleReadBoundary
     }
 
     /// <summary>
+    /// Publish exclusively from the replay-verified temporal sale after the
+    /// collective commit. Historical route ownership was checked against
+    /// the actual freight-stage world during derivation and replay; it
+    /// must not be recolored from later commissioned infrastructure.
+    /// </summary>
+    internal void PublishVerifiedTemporalSettlement(
+        FoundationTemporalSalesSettledEvent settled,
+        WorldState committedSnapshot, TurnNumber nextWorkerTurn)
+    {
+        ArgumentNullException.ThrowIfNull(settled);
+        ArgumentNullException.ThrowIfNull(committedSnapshot);
+        var audited = settled.AuditedParticipantEdges;
+        if (settled.Id.OriginKind != EventOriginKind.System ||
+            settled.Id.SystemPhaseId != FoundationTemporalEconomicJournalGate.StablePhaseId ||
+            settled.Id.SystemOrdinal != 1UL ||
+            settled.Id.Turn.Value == 0UL ||
+            settled.Id.Turn.Value >= nextWorkerTurn.Value ||
+            settled.EconomicCycleOrdinal == 0UL ||
+            committedSnapshot.WorldBinding != _binding ||
+            committedSnapshot.Treasury.LastSettledEconomicCycleOrdinal != settled.EconomicCycleOrdinal ||
+            committedSnapshot.Treasury.LastSettledCargoUnitCode != settled.CargoUnitCode ||
+            committedSnapshot.Revision <= settled.PreSettlementRevision ||
+            !committedSnapshot.Workers.HasAuthoritativeOccupations ||
+            audited is null || audited.Count != _participants.Count ||
+            audited.Keys.Any(civ => !_participants.Contains(civ)))
+            throw new InvalidOperationException("Temporal trade publication requires the committed replay-verified sale.");
+
+        var hash = new CanonicalWorldStateHasher().Compute(committedSnapshot);
+        var validEdges = committedSnapshot.Transport.Edges.Select(e => e.Edge).ToHashSet();
+        var next = new Dictionary<CivilizationId, FoundationLastClosedEconomicTradeView>(_participants.Count);
+        foreach (var civ in _participants.OrderBy(c => c.Value))
+        {
+            if (!audited.TryGetValue(civ, out var visible) || visible is null)
+                throw new InvalidOperationException("Missing participant trade evidence.");
+            var ids = new HashSet<PhysicalTacticalEdgeId>();
+            foreach (var line in visible)
+            {
+                if (line is null || line.TotalCargoMicro == 0UL ||
+                    !ids.Add(line.Edge) || !validEdges.Contains(line.Edge) ||
+                    line.Edge.FineGoldbergParameters != _fine ||
+                    line.FirstTile.FineGoldbergParameters != _fine ||
+                    line.SecondTile.FineGoldbergParameters != _fine ||
+                    line.ByCommodity.Aggregate(0UL, (sum, item) => checked(sum + item.CargoMicro)) != line.TotalCargoMicro)
+                    throw new InvalidOperationException("Invalid replay-verified temporal trade crossing.");
+            }
+            next.Add(civ, new FoundationLastClosedEconomicTradeView(
+                FoundationEconomicTradeOverlayAvailability.AuthorizedSubset,
+                _binding, _fine, settled.EconomicCycleOrdinal, settled.Id.Turn,
+                committedSnapshot.Revision, hash, settled.CargoUnitCode, visible));
+        }
+        lock (_sync)
+        {
+            if (settled.EconomicCycleOrdinal != checked(_lastCycleOrdinal + 1UL))
+                throw new InvalidOperationException("Temporal trade publication must be consecutive.");
+            _last = next;
+            _lastCycleOrdinal = settled.EconomicCycleOrdinal;
+            _nextSettledFreight = null;
+            _settledFreightCargoUnitCode = null;
+        }
+    }
+
+    /// <summary>
     /// Privileged kernel-only input for the NEXT economic turn. Returns
     /// null exactly when no economic cycle has ever closed. Rejects a
     /// published history whose freight was NOT registered atomically;

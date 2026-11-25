@@ -1109,6 +1109,9 @@ public sealed class FoundationTacticalHumanAiTurnHost
         if (settled.SingleOrDefault() is { } verifiedCycle)
             _closedTrade.PublishVerifiedParticipantSettlement(
                 verifiedCycle, Snapshot, NextTurn);
+        if (temporalSettled.SingleOrDefault() is { } verifiedTemporalCycle)
+            _closedTrade.PublishVerifiedTemporalSettlement(
+                verifiedTemporalCycle, Snapshot, NextTurn);
 
         var receipt = new FoundationTacticalCollectiveReceipt(
             turn, hash, Snapshot.Revision, events, moneyEvents,
@@ -1265,6 +1268,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
         // the publisher accepts it; no third market solve is required here.
         var sale = resolved.Events.OfType<FoundationTemporalSalesSettledEvent>().Single();
         var timeline = resolved.Events.OfType<FoundationPersistentWorkerTurnEvent>().Single();
+        _closedTrade.PublishVerifiedTemporalSettlement(sale, Snapshot, NextTurn);
         var receipt = new FoundationTacticalCollectiveReceipt(turn, StateHash, Snapshot.Revision,
             Array.Empty<PhysicalTacticalWorkerMovedEvent>(), temporalSettlement: sale,
             persistentEdits: resolved.Events.OfType<FoundationPersistentOrderEditEvent>().ToArray(),
