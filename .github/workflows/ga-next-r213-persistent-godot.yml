@@ -62,6 +62,7 @@ jobs:
           grep -q 'GA_NEXT_R219A1_CROP_PREVIEW_PASS' "$RUNNER_TEMP/crops.log"
           grep -q 'GA_NEXT_R219A3_FOOD_READOUT_PASS' "$RUNNER_TEMP/crops.log"
           grep -q 'GA_NEXT_R219B_OPERATIONAL_UI_PASS' "$RUNNER_TEMP/crops.log"
+          grep -q 'GA_NEXT_R224_WORKER_WINDOW_PASS' "$RUNNER_TEMP/crops.log"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

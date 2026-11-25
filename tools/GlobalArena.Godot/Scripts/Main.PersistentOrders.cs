@@ -31,6 +31,15 @@ public partial class Main
         PhysicalTacticalTileId? destination = null, ulong? project = null, PhysicalWorkerOccupation? occupation = null)
     {
         var q = ReadPersistentQueue(worker);
+        if (kind == FoundationWorkerOrderKind.Occupation && q.BaseActivity is not null)
+        {
+            var role = occupation ?? throw new InvalidOperationException("Select an occupation.");
+            _tacticalHost!.QueueHumanBaseActivity(_humanCivilization, worker,
+                new FoundationWorkerBaseActivity(FoundationWorkerBaseMode.Manual, role,
+                    role == PhysicalWorkerOccupation.Agriculture && _tacticalHost.AgriculturalProduction is not null
+                        ? (byte?)(SelectedCrop ?? throw new InvalidOperationException("Select a crop first.")) : null));
+            return;
+        }
         var index = _persistentInsertionIndex < 0 ? q.Orders.Count : Math.Clamp(_persistentInsertionIndex, q.ActiveOrderId.HasValue ? 1 : 0, q.Orders.Count);
         _tacticalHost!.QueueHumanPersistentEdit(_humanCivilization, new FoundationPersistentOrderEdit(
             _humanCivilization, worker, FoundationPersistentOrderEditKind.Insert, Index: index,
@@ -59,6 +68,7 @@ public partial class Main
     private void CreatePersistentWorkerControls(VBoxContainer parent)
     {
         _persistentQueuePanel = new VBoxContainer { Name = "GANextPersistentQueue", Visible = false };
+        CreateR224WorkerWindowLauncher(parent);
         parent.AddChild(_persistentQueuePanel);
         _persistentWorkerSummary = new Label { Name = "GANextWorkerContext", AutowrapMode = TextServer.AutowrapMode.WordSmart };
         _persistentQueuePanel.AddChild(_persistentWorkerSummary);
@@ -139,6 +149,7 @@ public partial class Main
         if (_persistentQueuePanel is null || _persistentQueueList is null) return;
         var host = _tacticalHost;
         _persistentQueuePanel.Visible = host?.PersistentOrdersEnabled == true;
+        RefreshR224WorkerWindow();
         if (!_persistentQueuePanel.Visible || host is null || _selectedLocalWorkerId is not { } worker) return;
         var q = ReadPersistentQueue(new PhysicalWorkerId(worker));
         bool ready = host.ReadyCivilizations.Contains(_humanCivilization);
@@ -172,7 +183,8 @@ public partial class Main
         if (_localPendingLabel is not null)
         {
             var committed = host.Snapshot.WorkerOrders.Queues.Single(x => x.Worker == q.Worker);
-            bool changed = !committed.Orders.SequenceEqual(q.Orders) || committed.ActiveOrderId != q.ActiveOrderId;
+            bool changed = !committed.Orders.SequenceEqual(q.Orders) || committed.ActiveOrderId != q.ActiveOrderId ||
+                !Equals(committed.BaseActivity, q.BaseActivity);
             _localPendingLabel.Text = changed ? "Pending changes | E to submit" :
                 q.Orders.Count == 0 ? "No scheduled orders" : $"{q.Orders.Count} scheduled | {(q.ActiveOrderId.HasValue ? "Active" : "Waiting")}";
         }
@@ -256,7 +268,9 @@ public partial class Main
             active?.Kind == FoundationWorkerOrderKind.Build ? "Construction order active" :
             person.Occupation is PhysicalWorkerOccupation.LandTransport or PhysicalWorkerOccupation.PortOperations ? person.Occupation.ToString()! :
             person.Activity == PhysicalWorkerActivity.Other ? "Idle" : person.Activity.ToString();
-        if (active?.Crop is { } crop && travel is null) activity = $"Growing {(CropId)crop}";
+        if (travel is null && person.Activity == PhysicalWorkerActivity.Producing &&
+            (active?.Crop ?? (active is null ? committed.BaseActivity?.Crop : null)) is { } crop)
+            activity = $"Growing {(CropId)crop}";
         string target = active?.Kind == FoundationWorkerOrderKind.Move ? $" | Target {active.Destination!.Value.FineStrategicCellId.Value}" :
             active?.Kind == FoundationWorkerOrderKind.Build ? $" | Build #{active.ProjectId}" : "";
         if (_persistentWorkerSummary is not null)
@@ -284,16 +298,17 @@ public partial class Main
             throw new InvalidOperationException("Six crop controls unavailable.");
         if (_foodQuality?.Visible != true || !_foodQuality.Text.Contains("unavailable"))
             throw new InvalidOperationException("Food quality must be unavailable before first close.");
-        _cropSelector.Select(3);
-        _localAgricultureButton!.EmitSignal(Button.SignalName.Pressed);
-        var order = ReadPersistentQueue(worker.Id).Orders.Single();
-        if (order.Crop != (byte)CropId.Rice || host.StateHash != before ||
-            !_persistentQueueList!.GetItemText(0).Contains("Rice"))
-            throw new InvalidOperationException("Crop selection did not stage real rice intent.");
+        ExerciseR224WorkerWindow(host, worker.Id);
+        if (ReadPersistentQueue(worker.Id).BaseActivity?.Crop != (byte)CropId.Rice ||
+            ReadPersistentQueue(worker.Id).Orders.Count != 0 || host.StateHash != before)
+            throw new InvalidOperationException("Crop selection did not stage real rice base intent without an indefinite task.");
         EndFineCollectiveTurn();
         var queue = host.Snapshot.WorkerOrders.Queues.Single(q => q.Worker == worker.Id);
-        if (queue.Orders.Single().Crop != (byte)CropId.Rice ||
-            queue.ActiveOrderId != order.Id || host.Snapshot.Treasury.LastSettledEconomicCycleOrdinal != 1 ||
+        if (queue.BaseActivity?.Crop != (byte)CropId.Rice)
+            throw new InvalidOperationException("R224 base activity was not collectively published.");
+        GD.Print("GA_NEXT_R224_WORKER_WINDOW_PASS actual_controls=true private_plan=true collective_commit=true queue_reused=true");
+        if (queue.Orders.Count != 0 || queue.ActiveOrderId.HasValue ||
+            host.Snapshot.Treasury.LastSettledEconomicCycleOrdinal != 1 ||
             !_persistentWorkerSummary!.Text.Contains("Rice"))
             throw new InvalidOperationException("Crop preview did not commit persistent rice production.");
         var committedHash = host.StateHash;
@@ -317,8 +332,13 @@ public partial class Main
                     .AdjacentCellIds.Any(c => _r123FineGeography!.CrossingAtIndices(
                         (int)w.TacticalTileId.Value.FineStrategicCellId.Value - 1, (int)c.Value - 1) == FoundationFineTransportCrossingKind.Ground));
             OnOperationalWorkerSelected(operatorWorker.Id.Value);
-            _r149LandWorkButton!.EmitSignal(Button.SignalName.Pressed);
-            if (ReadPersistentQueue(operatorWorker.Id).Orders.Single().Occupation != PhysicalWorkerOccupation.LandTransport ||
+            _r224Open!.EmitSignal(Button.SignalName.Pressed);
+            for (int i = 0; i < _r224Activity!.ItemCount; i++)
+                if (_r224Activity.GetItemId(i) == 103) _r224Activity.Select(i);
+            _r224Apply!.EmitSignal(Button.SignalName.Pressed);
+            CloseR224WorkerWindow();
+            if (ReadPersistentQueue(operatorWorker.Id).BaseActivity?.Occupation != PhysicalWorkerOccupation.LandTransport ||
+                ReadPersistentQueue(operatorWorker.Id).Orders.Count != 0 ||
                 host.StateHash != committedHash)
                 throw new InvalidOperationException("Operational button did not stage a real order.");
             EndFineCollectiveTurn();
