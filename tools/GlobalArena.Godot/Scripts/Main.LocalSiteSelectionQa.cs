@@ -79,6 +79,8 @@ public partial class Main
             _tacticalHost is null ||
             !_tacticalPreview.LocalSiteMarkerTileIds.Contains(physicalTileId))
             return;
+        SetHudMoveArmed(false);
+        _hudMapEdge = null;
         _selectedCartographicSite = physicalTileId;
         RefreshLocalSiteSelectionQa();
         // Map -> administration is a single action: no additional TAB

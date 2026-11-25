@@ -61,7 +61,7 @@ public partial class Main
         var unit = _selectedUnitSlot!;
         // Actual buttons retain their original signal handlers, shortcuts
         // and disabled state. Refresh routines must not restore long captions.
-        GaHudWidgets.IconButton(_localMoveButton!, "move", "Move to selected node (G) | Shift + click on map");
+        GaHudWidgets.IconButton(_localMoveButton!, "move", "Move (G): arm, then right-click destination on map; Esc cancels");
         GaHudWidgets.IconButton(_localCancelQueuedButton!, "cancel", "Remove or interrupt first order (X)");
         WidgetActionRow(_localMoveButton!, _localCancelQueuedButton!);
         _worldUnitDetails = new Button { Name = "GANextUnitDetails", Disabled = true };
@@ -94,7 +94,7 @@ public partial class Main
         foreach (var card in new[] { _worldUnitCard, _worldInfrastructureCard, _worldTerrainCard })
             card!.AddThemeStyleboxOverride("panel", GaVisualFoundation.HudOperationalCardSurface());
         _worldPlanetCard!.AddThemeStyleboxOverride("panel", GaVisualFoundation.HudCardSurface());
-        _worldLayerStack!.AddThemeConstantOverride("separation", 3);
+        _worldLayerStack!.AddThemeConstantOverride("separation", 10);
         if (_worldUnitActivity is not null) _worldUnitActivity.Visible = false; // same activity in identity
         if (_localPendingLabel is not null) _localPendingLabel.Visible = false; // same queue in Unit
         if (_fineMovementDecision is not null) _fineMovementDecision.Visible = false; // move tooltip
@@ -116,9 +116,10 @@ public partial class Main
     private void RefreshWidgetUnitActions()
     {
         if (!_widgetSections.ContainsKey("Unit")) return;
-        GaHudWidgets.IconButton(_localMoveButton!, "move", "Move to selected node (G) | Shift + click on map");
+        GaHudWidgets.IconButton(_localMoveButton!, "move", "Move (G): arm, then right-click destination on map; Esc cancels");
         GaHudWidgets.IconButton(_localCancelQueuedButton!, "cancel", "Remove or interrupt first order (X)");
         RefreshOperationalFeedback();
+        RefreshHudMoveVisual();
     }
 
     private async Task ExerciseWidgetDock(FoundationTacticalHumanAiTurnHost host)

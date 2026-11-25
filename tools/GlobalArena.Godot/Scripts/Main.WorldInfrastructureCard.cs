@@ -15,6 +15,8 @@ public partial class Main
     private Button? _worldInfrastructureManage;
     private ProgressBar? _worldInfrastructureProgress;
     private ulong? _worldInfrastructureNode, _worldDiagramNode;
+    private PhysicalTacticalEdgeId? _hudMapEdge;
+    private ulong? _hudMapEdgeSource;
     private GaLocalConnectionDiagram? _worldInfrastructureDiagram;
     private VBoxContainer? _worldInfrastructureMetrics;
     private Label? _worldCapitalValue, _worldFreightValue, _worldFundingValue, _worldBuildValue;
@@ -81,15 +83,15 @@ public partial class Main
     {
         if (_worldInfrastructureSelector is not { } selector || _worldInfrastructureContext is null) return;
         var host = _tacticalHost;
-        var source = ReadWorldContextNode();
-        var oldEdge = _worldInfrastructureNode == source ? SelectedWorldInfrastructure?.Edge : null;
+        var source = _hudMapEdge.HasValue ? _hudMapEdgeSource : ReadWorldContextNode();
+        var oldEdge = _hudMapEdge;
         _worldInfrastructureNode = source;
         _worldInfrastructureLinks = host is not null && source.HasValue
             ? FoundationLocalConnectionsProjector.Read(host.Snapshot, host.Incidence,
                 new PhysicalTacticalTileId(host.Incidence.Refinement.FineParameters, new StrategicCellId(source.Value)))
             : Array.Empty<FoundationLocalConnection>();
         selector.Clear();
-        int selected = 0;
+        int selected = -1;
         for (int i = 0; i < _worldInfrastructureLinks.Count; i++)
         {
             var link = _worldInfrastructureLinks[i];
@@ -97,7 +99,7 @@ public partial class Main
             if (oldEdge.HasValue && link.Edge == oldEdge.Value) selected = i;
         }
         selector.Disabled = _worldInfrastructureLinks.Count == 0;
-        if (!selector.Disabled) selector.Select(selected);
+        selector.Select(selected);
         int improved = _worldInfrastructureLinks.Count(l => l.InvestedMoneyMicro > 0UL);
         _worldInfrastructureContext.Text = source.HasValue
             ? $"Node {source.Value} | {_worldInfrastructureLinks.Count} connections\nImproved: {improved}"
@@ -117,12 +119,11 @@ public partial class Main
             var geometry = _tacticalPreview!.ReadLocalConnectionGeometry(new StrategicCellId(source!.Value));
             diagram.Configure(geometry.Boundary, geometry.Links, _worldInfrastructureLinks, link =>
             {
-                if (ReadWorldContextNode() != _worldDiagramNode) return;
-                int index = _worldInfrastructureLinks.ToList().FindIndex(l => l.Edge == link.Edge);
-                if (index < 0) return;
-                _worldInfrastructureSelector!.Select(index);
+                // Read-only context diagram; primary selection is on the map.
                 RefreshWorldInfrastructureDetail();
             });
+            foreach (var edgeId in diagram.EdgeIds)
+                diagram.EdgeButton(edgeId).Disabled = true;
             _worldDiagramNode = source;
         }
     }
@@ -207,8 +208,8 @@ public partial class Main
 
     private void OpenWorldInfrastructureConnection()
     {
-        if (ReadWorldContextNode() != _worldInfrastructureNode) { RefreshWorldInfrastructure(); return; }
-        if (SelectedWorldInfrastructure is { } link) OnR227MapConnectionRequested(link.Edge);
+        if (_hudMapEdge is { } edge && SelectedWorldInfrastructure?.Edge == edge)
+            OnR227MapConnectionRequested(edge);
     }
 
     private void ExerciseWorldInfrastructure(FoundationTacticalHumanAiTurnHost host, PhysicalTacticalTileId node, bool fund)
@@ -216,6 +217,7 @@ public partial class Main
         var hash = host.StateHash;
         SetWidgetSectionExpanded("Infrastructure", true);
         var source = node.FineStrategicCellId.Value;
+        _hudMapEdge = null;
         RefreshWorldInfrastructure();
         var expected = FoundationLocalConnectionsProjector.Read(host.Snapshot, host.Incidence, node);
         if (_worldInfrastructureNode != source || !_worldInfrastructureLinks.SequenceEqual(expected) ||
@@ -236,8 +238,11 @@ public partial class Main
             selector.IsVisibleInTree() || _worldInfrastructureDetail?.IsVisibleInTree() == true)
             throw new InvalidOperationException("Infrastructure widget did not replace text selector with canonical diagram.");
         var edgeButton = diagram.EdgeButton(link.Edge.FineStrategicEdgeId.Value);
-        edgeButton.EmitSignal(Button.SignalName.Pressed);
-        if (SelectedWorldInfrastructure?.Edge != link.Edge || !edgeButton.ButtonPressed ||
+        if (!edgeButton.Disabled) throw new InvalidOperationException("Dock edge must not be a primary selector.");
+        // Use the same canonical map edge callback as Ctrl+click.
+        OnR227MapConnectionRequested(link.Edge);
+        _r227CloseConnection!.EmitSignal(Button.SignalName.Pressed);
+        if (SelectedWorldInfrastructure?.Edge != link.Edge ||
             _worldCapitalValue?.Text != GaDisplayNumbers.MoneyMicro(link.InvestedMoneyMicro) ||
             _worldFreightValue?.Text != GaDisplayNumbers.MoneyMicro(link.UnitPhysicalFreightMicro))
             throw new InvalidOperationException("HUD edge selection or metric binding failed.");
