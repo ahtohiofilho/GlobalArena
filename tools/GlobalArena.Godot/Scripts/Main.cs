@@ -534,6 +534,7 @@ public partial class Main : Control
         RefreshLastTemporalEconomyReadout();
         RefreshCivilizationWindow();
         RefreshCityProduction();
+        RefreshCityWorkers();
         RefreshPersistentWorkerControls();
     }
 
@@ -1011,6 +1012,10 @@ public partial class Main : Control
         else if (key.Keycode == Key.C)
         {
             OpenCivilizationWindow();
+        }
+        else if (key.Keycode == Key.Escape && _cityWorkerOrigin.HasValue && _r224Window?.Visible == true)
+        {
+            CloseR224WorkerWindow();
         }
         else if (key.Keycode == Key.Escape &&
             _civilizationWindowLayer?.Visible == true)

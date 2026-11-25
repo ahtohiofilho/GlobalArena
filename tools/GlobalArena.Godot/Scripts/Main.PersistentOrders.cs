@@ -364,7 +364,7 @@ public partial class Main
         var worker = host.Snapshot.Workers.Workers.First(w => w.Owner == _humanCivilization &&
             _r123FineGeography!.SurfaceAtIndex((int)w.TacticalTileId!.Value.FineStrategicCellId.Value - 1) == FoundationFineSurfaceKind.Land);
         OnOperationalWorkerSelected(worker.Id.Value);
-        _r224Open!.EmitSignal(Button.SignalName.Pressed);
+        ExerciseOpenCityWorker(host, worker.Id, worker.TacticalTileId!.Value);
         if (_r224BaseReadout?.Text.Contains("Automatic (local)") != true || ReadPersistentQueue(worker.Id).BaseActivity is not null)
             throw new InvalidOperationException("Implicit automatic base must be visible without a synthetic command.");
         var before = host.StateHash;
@@ -379,7 +379,7 @@ public partial class Main
             host.GetLastClosedEconomicTradeView(_humanCivilization).EconomicCycleOrdinal != 1UL ||
             host.GetLastClosedTemporalEconomics(_humanCivilization) is null || ReadPersistentQueue(worker.Id).BaseActivity is not null)
             throw new InvalidOperationException("Uncommanded local worker failed to produce in a real closed cycle.");
-        _r224Open.EmitSignal(Button.SignalName.Pressed);
+        ExerciseOpenCityWorker(host, worker.Id, location!.Value);
         for (int i = 0; i < _r224Activity!.ItemCount; i++) if (_r224Activity.GetItemId(i) == 101) _r224Activity.Select(i);
         var committed = host.StateHash;
         _r224Apply!.EmitSignal(Button.SignalName.Pressed);
@@ -396,7 +396,7 @@ public partial class Main
         if (host.Snapshot.Treasury.LastSettledEconomicCycleOrdinal != 2UL ||
             host.Snapshot.Workers.Workers.Single(w => w.Id == worker.Id).Occupation != PhysicalWorkerOccupation.Forestry)
             throw new InvalidOperationException("Manual wood override did not close.");
-        _r224Open.EmitSignal(Button.SignalName.Pressed);
+        ExerciseOpenCityWorker(host, worker.Id, location!.Value);
         for (int i = 0; i < _r224Activity.ItemCount; i++) if (_r224Activity.GetItemId(i) == 105) _r224Activity.Select(i);
         _r224Apply.EmitSignal(Button.SignalName.Pressed);
         if (ReadPersistentQueue(worker.Id).BaseActivity?.Mode != FoundationWorkerBaseMode.Automatic)
@@ -408,6 +408,8 @@ public partial class Main
             host.Snapshot.WorkerOrders.Queues.Single(q => q.Worker == worker.Id).BaseActivity?.Mode != FoundationWorkerBaseMode.Automatic)
             throw new InvalidOperationException("Automatic preference did not close.");
         ExerciseCityProductionReadout(host, location.Value, 3UL);
+        ExerciseCityWorkersPrivacy(host, location.Value);
+        GD.Print("GA_NEXT_R2293_CITY_WORKERS_PASS scoped=true real_buttons=true private_commands=true return_to_city=true");
         GD.Print("GA_NEXT_R2292_CITY_PRODUCTION_PASS cycles=3 catalog=8 committed_only=true owner_scoped=true");
         GD.Print("GA_NEXT_R22813C_LOCAL_ECONOMY_UI_PASS three_closes=true automatic_default=true manual_override=true trade_published=true");
     }

@@ -57,11 +57,12 @@ internal sealed class FoundationGodotWorkspaceSmoke
                 as TabContainer;
             Must(cityButton is not null && cityWindow is not null &&
                 !cityWindow.Visible && cityTabs is not null &&
-                cityTabs.GetTabCount() == 3 &&
+                cityTabs.GetTabCount() == 4 &&
                 cityTabs.GetTabTitle(0) == "Overview" &&
                 cityTabs.GetTabTitle(1) == "Connections" &&
-                cityTabs.GetTabTitle(2) == "Production",
-                "city window must have overview, immediate links and production " +
+                cityTabs.GetTabTitle(2) == "Production" &&
+                cityTabs.GetTabTitle(3) == "Workers",
+                "city window must have overview, immediate links, production and workers " +
                 "tabs and remain closed in the clean map startup");
 
             // R182 English-first shell: no fabricated population or GDP,
