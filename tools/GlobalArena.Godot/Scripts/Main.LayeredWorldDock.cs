@@ -63,14 +63,7 @@ public partial class Main
         city.Reparent(terrain);
 
         _worldPlanetCard = AddWorldLayer(dock, "GANextPlanetSlot", "PLANET", out var planet);
-        if (globe.ReadSignedPhysicalSurface() is { } surface)
-        {
-            _auxiliaryPlanet = new GaAuxiliaryPlanet(surface.Mesh, surface.Material);
-            planet.AddChild(_auxiliaryPlanet);
-            RefreshAuxiliaryPlanet();
-        }
-        else planet.AddChild(WorldLayerPlaceholder("Planet preview unavailable."));
-        civilization.Reparent(planet);
+        CreateWorldPlanetReadout(planet, globe, civilization);
         GD.Print("GA_NEXT_R2302_LAYERED_WORLD_DOCK_READY unit=true infrastructure=true terrain=true planet_fixed=true");
     }
 
