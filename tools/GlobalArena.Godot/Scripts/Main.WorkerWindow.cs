@@ -19,6 +19,26 @@ public partial class Main
     private Label? _r224Identity, _r224BaseReadout, _r224Status;
     private OptionButton? _r224Activity;
     private ulong? _r224Worker;
+    private VBoxContainer? _r225DetailParking;
+    private readonly List<Control> _r225DetailControls = new();
+    private bool R225CompactWorkerDock => CompactOperationalDock && _tacticalHost?.PersistentOrdersEnabled == true;
+
+    private void ConfigureR225WorkerDock(VBoxContainer orderPanel)
+    {
+        if (!R225CompactWorkerDock || _r225DetailParking is not null) return;
+        _r225DetailParking = new VBoxContainer { Name = "GANextWorkerDetailParking", Visible = false };
+        orderPanel.AddChild(_r225DetailParking);
+        foreach (var control in new Control?[] { _cropSelector, _localProduceButton,
+            _localAgricultureButton, _localForestryButton, _localMiningButton,
+            _r149LandWorkButton, _r149PortWorkButton, _persistentQueuePanel })
+        {
+            if (control is null) continue;
+            _r225DetailControls.Add(control);
+            control.Reparent(_r225DetailParking);
+        }
+        if (_r224Open is not null && _selectedUnitSlot is not null)
+            _r224Open.Reparent(_selectedUnitSlot);
+    }
 
     private void CreateR224WorkerWindowLauncher(VBoxContainer parent)
     {
@@ -68,7 +88,12 @@ public partial class Main
             _r224Body.AddChild(new HSeparator());
             _r224Body.AddChild(new Label { Text = "TASK QUEUE | Add tasks using map and dock controls" });
         }
-        if (_persistentQueuePanel.GetParent() != _r224Body)
+        if (_r225DetailParking is not null)
+        {
+            foreach (var control in _r225DetailControls)
+                if (control.GetParent() != _r224Body) control.Reparent(_r224Body!);
+        }
+        else if (_persistentQueuePanel.GetParent() != _r224Body)
         {
             _r224QueueHome = _persistentQueuePanel.GetParent();
             _r224QueueIndex = _persistentQueuePanel.GetIndex();
@@ -84,7 +109,12 @@ public partial class Main
     {
         if (_r224Window is null) return;
         _r224Window.Visible = false;
-        if (_persistentQueuePanel is not null && _r224QueueHome is not null &&
+        if (_r225DetailParking is not null)
+        {
+            foreach (var control in _r225DetailControls)
+                if (control.GetParent() == _r224Body) control.Reparent(_r225DetailParking);
+        }
+        else if (_persistentQueuePanel is not null && _r224QueueHome is not null &&
             _persistentQueuePanel.GetParent() == _r224Body)
         {
             _persistentQueuePanel.Reparent(_r224QueueHome);
