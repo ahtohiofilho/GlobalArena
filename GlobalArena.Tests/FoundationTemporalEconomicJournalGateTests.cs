@@ -58,6 +58,63 @@ public sealed class FoundationTemporalEconomicJournalGateTests
 
 
 
+    [Fact]
+    public void R2281MarginalRevenueUsesCanonicalMarketAndPreservesOpening()
+    {
+        var (world, worker, _, _, incidence, fine) = Fixture();
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL),
+                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)), workersPerCivilization: 3);
+        var signature = FoundationFineFirstWorldgenCanonicalSignature.Compute(demo.Session.GeneratedWorld, incidence, fine);
+        var bound = demo.Session.Snapshot.PromoteFineFirstBeforeTransport(
+            demo.Session.GeneratedWorld, incidence, fine, signature)
+            .DeployInitialFineFirstPhysicalTransport(world.Transport, demo.Session.GeneratedWorld, incidence, fine, signature);
+        var opening = FoundationPersistedEdgeTravelTransitions.DeployEmpty(
+            bound.DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
+                bound.Civilizations.Civilizations.Select(c => (c, 5_000_000UL)))))
+            .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
+            .DeployInitialWorkerOrders();
+        var crops = Enum.GetValues<GlobalArena.Foundation.Agriculture.CropId>()
+            .ToDictionary(c => c, c => new CommodityId((uint)c));
+        var agriculture = new FoundationAgriculturalProductionPolicy(fine, incidence, crops, 2_000_000UL);
+        var items = crops.Values.Concat(opening.Workers.Workers.Select(w => w.Commodity)).Distinct().ToArray();
+        var demand = new FoundationActivityCommodityDemandPolicy(items,
+            Enum.GetValues<FoundationPhysicalDemandProfile>().SelectMany(profile => items.Select(c =>
+                new FoundationActivityCommodityDemandCoefficient(profile, c, 1_000_000UL))));
+        var policy = new FoundationAuthoritativeEconomicSettlementPolicy(demand,
+            new FoundationCommodityCargoConversionPolicy("r2281", items.Select(c =>
+                new FoundationCommodityCargoConversion(c, 1_000_000UL))),
+            opening.Civilizations.Civilizations.Select(c => new FoundationPhysicalEconomicTaxRate(c, 0U)), maxProducerPasses: 64);
+        var calendar = opening.Workers.Workers.Select(w => new FoundationPersistentWorkerSlice(
+            w.Id, w.TacticalTileId!.Value, 0U, 1_000_000U,
+            PhysicalWorkerActivity.Other, PhysicalWorkerOccupation.Unassigned, null)).ToArray();
+        var hasher = new CanonicalWorldStateHasher();
+        var before = hasher.Compute(opening);
+        var rows = FoundationBaseMarginalRevenueEvaluator.Evaluate(opening, incidence, fine, policy,
+            calendar, worker.Id, 0U, agriculture);
+        Assert.NotEmpty(rows);
+        Assert.Equal(rows.OrderByDescending(x => x.MarginalCreditScaled).ThenBy(x => x.Occupation).ThenBy(x => x.Crop).ToArray(), rows.ToArray());
+        var repeated = FoundationBaseMarginalRevenueEvaluator.Evaluate(opening, incidence, fine, policy,
+            calendar.Reverse().ToArray(), worker.Id, 0U, agriculture);
+        Assert.Equal(rows.ToArray(), repeated.ToArray());
+        var eligible = crops.Keys.Where(c => agriculture.Resolve(worker.TacticalTileId!.Value, c).WholeTurnOutput > 0)
+            .Select(c => (byte)c).OrderBy(c => c).ToArray();
+        Assert.Equal(eligible, rows.Where(x => x.Crop.HasValue).Select(x => x.Crop!.Value).OrderBy(c => c).ToArray());
+        foreach (var row in rows)
+        {
+            Assert.Equal(1_000_000U, row.EffortMicro);
+            Assert.Equal(BigInteger.Zero, row.BaselineCreditScaled);
+            Assert.True(row.MarginalCreditScaled > 0);
+        }
+        Assert.Equal(before, hasher.Compute(opening));
+        Assert.Equal(0UL, opening.Treasury.LastSettledEconomicCycleOrdinal);
+        Assert.All(calendar, x => Assert.Equal(PhysicalWorkerOccupation.Unassigned, x.Occupation));
+        var busy = calendar.Select(x => x.Worker == worker.Id ? x with
+            { Activity = PhysicalWorkerActivity.Producing, Occupation = PhysicalWorkerOccupation.Agriculture, Crop = eligible[0] } : x).ToArray();
+        Assert.Throws<InvalidOperationException>(() => FoundationBaseMarginalRevenueEvaluator.Evaluate(
+            opening, incidence, fine, policy, busy, worker.Id, 0U, agriculture));
+    }
+
     private static FoundationActivityCommodityDemandPolicy Demand()
     {
         var items = new[] { new CommodityId(1U), new CommodityId(2U) };
