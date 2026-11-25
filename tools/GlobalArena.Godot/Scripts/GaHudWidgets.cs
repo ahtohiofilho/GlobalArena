@@ -49,6 +49,7 @@ internal static class GaHudWidgets
             "rice" => "M5 22Q8 7 19 3 M9 12l-1-5 M12 8l5 1 M7 17l-3-4 M15 5l5 1",
             "soybean" => "M4 19Q1 11 12 4q8-5 9 3 1 8-9 13-6 3-8-1Z M8 15a2 2 0 1 0 0-4a2 2 0 1 0 0 4 M15 11a2 2 0 1 0 0-4a2 2 0 1 0 0 4",
             "barley" => "M12 22V2 M12 8L6 2 M12 12l6-10 M12 16L5 5 M12 20L19 5",
+            "tiles" => "M12 2l5 3v6l-5 3-5-3V5Z M7 11l-5 3v6l5 3 5-3v-6 M17 11l5 3v6l-5 3-5-3",
             "down" => "M5 9l7 7 7-7",
             "right" => "M9 5l7 7-7 7",
             _ => throw new ArgumentOutOfRangeException(nameof(key))
