@@ -27,16 +27,21 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
     private readonly FoundationAgriculturalProductionPolicy? _agriculture;
     private readonly FoundationAuthoritativeEconomicSettlementPolicy? _automaticEconomy;
     private readonly FoundationOperationalFreightShadowPolicy? _automaticOperations;
+    internal bool UsesLocalPriceAllocation { get; }
 
     public FoundationPersistentWorkerTurnScheduler(FoundationConstructionApproachRouter router,
         FoundationAgriculturalProductionPolicy? agriculture = null,
         FoundationAuthoritativeEconomicSettlementPolicy? experimentalAutomaticEconomy = null,
-        FoundationOperationalFreightShadowPolicy? automaticOperations = null)
+        FoundationOperationalFreightShadowPolicy? automaticOperations = null,
+        bool enableLocalPriceAllocation = false)
     {
         _router = router ?? throw new ArgumentNullException(nameof(router));
         _agriculture = agriculture;
         _automaticEconomy = experimentalAutomaticEconomy;
         _automaticOperations = automaticOperations;
+        UsesLocalPriceAllocation = enableLocalPriceAllocation;
+        if (enableLocalPriceAllocation && experimentalAutomaticEconomy is null)
+            throw new InvalidOperationException("Local allocation requires the experimental automatic mode.");
         if (_automaticEconomy is not null && agriculture is null)
             throw new InvalidOperationException("Experimental automatic base requires crop policy.");
         if (automaticOperations is not null && _automaticEconomy is null)
@@ -283,10 +288,13 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
             }
             var intervals = automaticStarts.OrderBy(x => x.Key.Value)
                 .Select(x => new FoundationBaseMarginalInterval(x.Key, x.Value)).ToArray();
-            var plan = FoundationFrozenMarginalRevenueEstimator.Plan(opening, _router.Incidence,
-                _router.Geography, _automaticEconomy!, slices, intervals, _agriculture!, _automaticOperations,
-                context.Turn.Value - 1UL);
-            slices = plan.Calendar.OrderBy(s => s.StartMicro).ThenBy(s => s.Worker.Value).ToList();
+            var calendar = UsesLocalPriceAllocation
+                ? FoundationLocalBaseCalendarPlanner.Plan(opening, _router.Incidence,
+                    _router.Geography, _automaticEconomy!, slices, intervals, _agriculture!)
+                : FoundationFrozenMarginalRevenueEstimator.Plan(opening, _router.Incidence,
+                    _router.Geography, _automaticEconomy!, slices, intervals, _agriculture!, _automaticOperations,
+                    context.Turn.Value - 1UL).Calendar.ToArray();
+            slices = calendar.OrderBy(s => s.StartMicro).ThenBy(s => s.Worker.Value).ToList();
             foreach (var item in intervals)
             {
                 var selected = slices.Single(s => s.Worker == item.Worker && s.StartMicro == item.StartMicro);
