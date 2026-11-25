@@ -122,6 +122,7 @@ public partial class Main
             _r224QueueHome.MoveChild(_persistentQueuePanel, _r224QueueIndex);
         }
         _r224Worker = null;
+        ReturnFromCityWorker();
     }
 
     private void RefreshR224WorkerWindow()
@@ -131,7 +132,9 @@ public partial class Main
             w.Owner == _humanCivilization && w.Id.Value == _selectedLocalWorkerId);
         if (_r224Open is not null)
         {
-            _r224Open.Visible = host?.PersistentOrdersEnabled == true;
+            // The current local-economy UX enters worker details through City / Workers.
+            // Historical non-local preview modes keep their established launcher.
+            _r224Open.Visible = host?.PersistentOrdersEnabled == true && !host.ExperimentalLocalEconomyEnabled;
             _r224Open.Disabled = worker is null;
         }
         if (_r224Window?.Visible != true) return;

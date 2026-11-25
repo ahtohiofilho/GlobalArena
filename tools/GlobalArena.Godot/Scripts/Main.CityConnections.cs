@@ -104,6 +104,7 @@ public partial class Main
         connectionColumn.AddChild(_cityConnectionDiagram);
         connectionColumn.AddChild(_cityLinksList);
         CreateCityProductionTab(tabs);
+        CreateCityWorkersTab(tabs);
 
         _cityLinkDetail = new PanelContainer
         {
@@ -207,6 +208,7 @@ public partial class Main
             _cityWindowTitle.Text = "CITY | Select a settlement";
             _cityOverview.Text = "Select a city on the map.";
             RefreshCityProduction();
+            RefreshCityWorkers();
             _cityLinksList.AddChild(new Label
             {
                 Text = "Local connections appear after selecting a city."
@@ -221,6 +223,7 @@ public partial class Main
             host.Snapshot, host.Incidence, node);
         _cityConnectionSource = selected.Value;
         RefreshCityProduction();
+        RefreshCityWorkers();
         if (_cityConnectionDiagram is not null && _tacticalPreview is not null)
         {
             var geometry = _tacticalPreview.ReadLocalConnectionGeometry(node.FineStrategicCellId);
@@ -260,6 +263,7 @@ public partial class Main
         if (_cityLinkDetail is not null) _cityLinkDetail.Visible = false;
         if (_cityWindowPanel is not null) _cityWindowPanel.Visible = true;
         RefreshCityProduction();
+        RefreshCityWorkers();
     }
 
     private void OnR227MapConnectionRequested(PhysicalTacticalEdgeId id)
@@ -671,10 +675,11 @@ public partial class Main
             new StrategicCellId(site));
         var rows = FoundationLocalConnectionsProjector.Read(
             _tacticalHost.Snapshot, _tacticalHost.Incidence, tile);
-        if (tabs is null || tabs.GetTabCount() != 3 ||
+        if (tabs is null || tabs.GetTabCount() != 4 ||
             tabs.GetTabTitle(0) != "Overview" ||
             tabs.GetTabTitle(1) != "Connections" ||
             tabs.GetTabTitle(2) != "Production" ||
+            tabs.GetTabTitle(3) != "Workers" ||
             _cityLinksList?.GetChildCount() != rows.Count ||
             _cityWindowTitle?.Text != $"CITY | NODE {site}" ||
             _tacticalHost.StateHash != beforeHash)
