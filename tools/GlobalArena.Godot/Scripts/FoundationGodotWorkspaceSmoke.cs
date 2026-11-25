@@ -192,7 +192,7 @@ internal sealed class FoundationGodotWorkspaceSmoke
                  movedCity.Y + expandedCity.Y <= cityWindow.Size.Y + 1f,
                 "floating city escaped viewport");
             await Press(Key.Escape);
-            Must(!cityWindow.Visible, "Escape did not close city");
+            Must(!cityWindow!.Visible, "Escape did not close city");
             cityButton.EmitSignal(Button.SignalName.Pressed);
             await WaitFrame();
             Must(cityPanel.Position.DistanceTo(movedCity) < 1f &&
