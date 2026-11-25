@@ -191,6 +191,7 @@ public partial class TacticalContextPreview : SubViewportContainer
     public event Action<PhysicalTacticalTileId>? ExplicitMapMoveRequested;
     private bool _r226MovePress;
     public bool ExplicitMapMoveEnabled { get; set; }
+    public bool ArmedRightClickMove { get; set; }
     public bool MapConnectionEnabled { get; set; }
     public event Action<PhysicalTacticalEdgeId>? MapConnectionRequested;
     private bool _r227ConnectionPress;
@@ -1930,6 +1931,15 @@ public partial class TacticalContextPreview : SubViewportContainer
         return inside;
     }
 
+    internal void ExerciseHudRightClickMove(PhysicalTacticalTileId destination)
+    {
+        var polygon = _polygons.Single(p => p.Id == destination.FineStrategicCellId.Value).Polygon;
+        var center = polygon.Aggregate(Vector2.Zero, (sum, p) => sum + p) / polygon.Length;
+        var pixel = _camera!.UnprojectPosition(new Vector3(center.X, 0, center.Y));
+        _GuiInput(new InputEventMouseButton { ButtonIndex = MouseButton.Right, Pressed = true, Position = pixel });
+        _GuiInput(new InputEventMouseButton { ButtonIndex = MouseButton.Right, Pressed = false, Position = pixel });
+    }
+
     internal void ExerciseR226MapGestures(PhysicalTacticalTileId destination, Action assertNoOrder, Action assertOneOrder)
     {
         if (_camera is null) throw new InvalidOperationException("Missing tactical camera.");
@@ -2355,7 +2365,11 @@ public partial class TacticalContextPreview : SubViewportContainer
                 _r226MovePress = false;
                 _r227ConnectionPress = false;
                 SetR227Hover(null);
-                CenterOnRightClickedGeography(button.Position);
+                if (ArmedRightClickMove)
+                {
+                    if (ExplicitMapMoveEnabled) PickPhysicalTile(button.Position, explicitMove: true);
+                }
+                else CenterOnRightClickedGeography(button.Position);
                 AcceptEvent();
                 return;
             }

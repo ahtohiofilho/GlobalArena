@@ -111,7 +111,15 @@ public partial class Main
         _worldTerrainPotential.Text = "";
         if (_terrainWidgets is null) return;
         _terrainWidgets.Visible = false;
-        if (_hudTerrainSummary is not null) _hudTerrainSummary.Visible = false;
+        if (_hudTerrainSummary is not null)
+        {
+            _hudTerrainSummary.Visible = true;
+            _hudTerrainSummary.TooltipText = "Select terrain on the map";
+            _terrainSurface!.Text = "—";
+            _terrainSurfaceIcon!.Texture = GaHudWidgets.Icon("terrain");
+            if (_terrainFootState!.GetParent() is Control foot) foot.Visible = false;
+            if (_terrainShipState!.GetParent() is Control ship) ship.Visible = false;
+        }
         SetTerrainYields(new Dictionary<string, ulong>());
         var host = _tacticalHost;
         var fine = _r123FineGeography;
@@ -146,6 +154,8 @@ public partial class Main
         {
             _hudTerrainSummary.Visible = true;
             _hudTerrainSummary.TooltipText = _worldTerrainFacts.Text;
+            if (_terrainFootState!.GetParent() is Control foot) foot.Visible = true;
+            if (_terrainShipState!.GetParent() is Control ship) ship.Visible = true;
         }
         _terrainSurface!.Text = surfaceName;
         _terrainSurfaceIcon!.Texture = GaHudWidgets.Icon(surface switch

@@ -153,7 +153,9 @@ public partial class Main
         if (!_persistentQueuePanel.Visible || host is null || _selectedLocalWorkerId is not { } worker)
         {
             ClearWorldUnitReadout();
+            RefreshWidgetUnitActions(); // restore icon-only captions even at neutral startup
             RefreshOperationalFeedback();
+            RefreshHudMoveVisual();
             return;
         }
         var q = ReadPersistentQueue(new PhysicalWorkerId(worker));
@@ -197,8 +199,9 @@ public partial class Main
         {
             _localMoveButton.Text = "G | Move to selected node";
             _localMoveButton.TooltipText = CompactOperationalDock ? "Shift + left-click a map node to queue a move directly." : "Select a node, then press G.";
-            _localMoveButton.Disabled = ready || _tacticalPreview?.SelectedCanonicalPhysicalTileId is null ||
-                _tacticalPreview.SelectedCanonicalPhysicalTileId == host.Snapshot.Workers.Workers.Single(w => w.Id == q.Worker).TacticalTileId!.Value.FineStrategicCellId.Value;
+            _localMoveButton.Disabled = ready || (!LayeredWorldDock &&
+                (_tacticalPreview?.SelectedCanonicalPhysicalTileId is null ||
+                _tacticalPreview.SelectedCanonicalPhysicalTileId == host.Snapshot.Workers.Workers.Single(w => w.Id == q.Worker).TacticalTileId!.Value.FineStrategicCellId.Value));
         }
         if (_localProduceButton is not null) _localProduceButton.Disabled = ready;
         if (_localCancelQueuedButton is not null)
@@ -461,10 +464,12 @@ public partial class Main
             var before = host.StateHash;
             if (host.ExperimentalLocalEconomyEnabled)
             {
+                AssertNeutralHudStart(host);
                 await ExerciseLayeredWorldDock(host);
                 await ExerciseWidgetDock(host);
                 ExerciseWorldPlanet(host);
                 ExerciseLocalEconomyPreview(host);
+                ExerciseHudArmedMove(host);
                 GetTree().Quit(0);
                 return;
             }

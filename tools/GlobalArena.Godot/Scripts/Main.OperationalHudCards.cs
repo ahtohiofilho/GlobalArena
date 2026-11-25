@@ -35,7 +35,7 @@ public partial class Main
 
     private static void HudPicture(TextureRect picture, string tooltip)
     {
-        picture.CustomMinimumSize = new Vector2(52, 52);
+        picture.CustomMinimumSize = new Vector2(44, 44);
         picture.SizeFlagsHorizontal = SizeFlags.ShrinkBegin;
         picture.SizeFlagsVertical = SizeFlags.ShrinkCenter;
         picture.TooltipText = tooltip;
@@ -52,11 +52,12 @@ public partial class Main
         _hudUnitObject = HudObject(unit, "GANextHudUnitObject", out var unitRow);
         var portrait = (Control)oldUnitRow.GetChild(0);
         portrait.Reparent(unitRow);
-        portrait.CustomMinimumSize = new Vector2(52, 62);
+        portrait.CustomMinimumSize = new Vector2(44, 48);
         portrait.SizeFlagsVertical = SizeFlags.ExpandFill;
         var unitFacts = HudObjectFacts(unitRow);
         _localWorkerSelector!.Reparent(unitFacts);
         _localWorkerSelector.CustomMinimumSize = new Vector2(0, 26);
+        _localWorkerSelector.Visible = false; // no selection control in the dock
         _selectedUnitIdentity.Reparent(unitFacts);
         _worldUnitReadout!.Reparent(unitFacts);
         oldUnitRow.Visible = false;
@@ -101,6 +102,7 @@ public partial class Main
         var access = (HBoxContainer)_terrainFootState!.GetParent().GetParent();
         access.Reparent(terrainFacts);
         city.Reparent(access);
+        _hudTerrainCity = city;
         city.SizeFlagsHorizontal = SizeFlags.ShrinkEnd;
         _operationalContext!.Visible = false;
         RefreshWorldTerrain();

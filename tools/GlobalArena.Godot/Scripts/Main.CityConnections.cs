@@ -331,6 +331,17 @@ public partial class Main
         var edge = host.Incidence.FineTopology.Edges.Single(e => e.Id == id.FineStrategicEdgeId);
         var source = new PhysicalTacticalTileId(host.Incidence.Refinement.FineParameters,
             edge.IncidentCellIds.OrderBy(c => c.Value).First());
+        if (LayeredWorldDock)
+        {
+            SetHudMoveArmed(false);
+            _hudMapEdge = id;
+            var context = ReadWorldContextNode();
+            _hudMapEdgeSource = context.HasValue && edge.IncidentCellIds.Any(x => x.Value == context.Value)
+                ? context : source.FineStrategicCellId.Value;
+            source = new PhysicalTacticalTileId(host.Incidence.Refinement.FineParameters,
+                new StrategicCellId(_hudMapEdgeSource.Value));
+            RefreshWorldInfrastructure();
+        }
         var link = FoundationLocalConnectionsProjector.Read(host.Snapshot, host.Incidence, source)
             .Single(r => r.Edge == id);
         CloseConnectionDetail();

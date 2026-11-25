@@ -130,7 +130,7 @@ public partial class Main : Control
         var worker = _tacticalHost?.Snapshot.Workers.Workers.FirstOrDefault(w =>
             w.Owner == _humanCivilization && w.Id.Value == _selectedLocalWorkerId);
         _selectedUnitIdentity.Text = worker is null ? "No unit selected" :
-            (LayeredWorldDock ? $"Node {worker.TacticalTileId?.FineStrategicCellId.Value}\n" :
+            (LayeredWorldDock ? $"Worker #{worker.Id.Value}\n" :
                 $"Worker #{worker.Id.Value} | Node {worker.TacticalTileId?.FineStrategicCellId.Value}\n") +
             (worker.Activity == PhysicalWorkerActivity.Traveling ? "Traveling" : worker.Occupation == PhysicalWorkerOccupation.Unassigned ? "Idle / assigned" : worker.Occupation?.ToString() ?? worker.Activity.ToString());
     }
@@ -391,7 +391,7 @@ public partial class Main : Control
             .Where(worker => worker.Owner == _humanCivilization)
             .OrderBy(worker => worker.Id.Value).ToArray();
         if (!workers.Any(worker => worker.Id.Value == _selectedLocalWorkerId))
-            _selectedLocalWorkerId = workers.FirstOrDefault()?.Id.Value;
+            _selectedLocalWorkerId = LayeredWorldDock ? null : workers.FirstOrDefault()?.Id.Value;
         _localWorkerSelector.Clear();
         for (var i = 0; i < workers.Length; i++)
         {
@@ -408,7 +408,8 @@ public partial class Main : Control
             if (_selectedLocalWorkerId == worker.Id.Value)
                 _localWorkerSelector.Select(i);
         }
-        _localWorkerSelector.Disabled = workers.Length == 0;
+        if (LayeredWorldDock && !_selectedLocalWorkerId.HasValue) _localWorkerSelector.Select(-1);
+        _localWorkerSelector.Disabled = LayeredWorldDock || workers.Length == 0;
         var chosen = workers.FirstOrDefault(
             worker => worker.Id.Value == _selectedLocalWorkerId);
         var ready = host.ReadyCivilizations.Contains(_humanCivilization);
@@ -429,7 +430,8 @@ public partial class Main : Control
                 checked((int)chosen.TacticalTileId!.Value
                     .FineStrategicCellId.Value - 1)]
                 .AdjacentCellIds.Contains(destination.Value.FineStrategicCellId);
-        _localMoveButton.Disabled = ready || !adjacent;
+        _localMoveButton.Disabled = ready || (LayeredWorldDock ? chosen is null : !adjacent);
+        if (LayeredWorldDock && (chosen is null || ready)) SetHudMoveArmed(false);
         RefreshFineMovementDecision(selectedTile, adjacent, ready);
         _localProduceButton.Disabled = ready || chosen is null ||
             chosen.Activity == PhysicalWorkerActivity.Producing ||
@@ -755,6 +757,7 @@ public partial class Main : Control
 
     private void EndFineCollectiveTurn()
     {
+        SetHudMoveArmed(false);
         if (_tacticalHost is null || _localOrderStatus is null) return;
         try
         {
@@ -811,6 +814,7 @@ public partial class Main : Control
 
     private void OnLocalWorkerSelected(long optionIndex)
     {
+        if (LayeredWorldDock) return; // map or specialized worker administration only
         if (_tacticalHost is not null)
         {
             var fineWorkers = _tacticalHost.Snapshot.Workers.Workers
@@ -841,6 +845,8 @@ public partial class Main : Control
             if (!_tacticalHost.Snapshot.Workers.Workers.Any(w =>
                 w.Id.Value == id && w.Owner == _humanCivilization))
                 return;
+            SetHudMoveArmed(false);
+            _hudMapEdge = null;
             _selectedLocalWorkerId = id;
             _operationalCitySelected = false;
             _operationalSelectedTile = null;
@@ -862,6 +868,11 @@ public partial class Main : Control
 
     private void OnLocalWorkerMoveRequested()
     {
+        if (LayeredWorldDock)
+        {
+            if (_localMoveButton?.Disabled == false) SetHudMoveArmed(!HudMoveArmed);
+            return;
+        }
         if (_tacticalHost is not null)
         {
             QueueFineWorkerMove();
@@ -991,8 +1002,13 @@ public partial class Main : Control
             _planetWindow is null)
             return;
 
-        if (key.Keycode == Key.M)
+        if (key.Keycode == Key.Escape && HudMoveArmed)
         {
+            SetHudMoveArmed(false);
+        }
+        else if (key.Keycode == Key.M)
+        {
+            SetHudMoveArmed(false);
             TogglePlanetWindow();
         }
         else if (key.Keycode == Key.Tab)
@@ -1110,6 +1126,8 @@ public partial class Main : Control
             !_tacticalHost.Snapshot.Workers.Workers.Any(w =>
                 w.Id.Value == id && w.Owner == _humanCivilization))
             return;
+        SetHudMoveArmed(false);
+        _hudMapEdge = null;
         _selectedLocalWorkerId = id;
         _operationalCitySelected = false;
         _operationalSelectedTile = null;
@@ -1124,6 +1142,7 @@ public partial class Main : Control
         var host = _tacticalHost;
         if (host?.PersistentOrdersEnabled != true || !CompactOperationalDock ||
             _selectedLocalWorkerId is not { } id || host.ReadyCivilizations.Contains(_humanCivilization)) return;
+        SetHudMoveArmed(false);
         var worker = host.Snapshot.Workers.Workers.FirstOrDefault(w => w.Id.Value == id && w.Owner == _humanCivilization);
         if (worker is null || worker.TacticalTileId == tile) return;
         try
@@ -1152,6 +1171,8 @@ public partial class Main : Control
         // Workforce assignment is retained for the future local admin UI.
         if (CompactOperationalDock && _tacticalPreview?.IsCartographicSiteMode == true)
         {
+            SetHudMoveArmed(false);
+            _hudMapEdge = null;
             _operationalSelectedTile = tile.FineStrategicCellId.Value;
             _operationalCitySelected = false;
             if (_tacticalPreview.LocalSiteMarkerTileIds.Contains(tile.FineStrategicCellId.Value))
@@ -2202,6 +2223,18 @@ public partial class Main : Control
                     _tacticalHost.Session.GeneratedWorld,
                     _tacticalHost.Incidence);
                 _canonicalSession = _tacticalHost.Session;
+                // The legacy coarse preview may have auto-selected its first
+                // worker. Enter the layered world with no inherited selection.
+                if (LayeredWorldDock)
+                {
+                    _selectedLocalWorkerId = null;
+                    _selectedCartographicSite = null;
+                    _operationalSelectedTile = null;
+                    _operationalCitySelected = false;
+                    _hudMapEdge = null;
+                    _hudMapEdgeSource = null;
+                    SetHudMoveArmed(false);
+                }
                 AttachRuntimeState(_tacticalHost.Snapshot);
             }
             // The old v9 record locates workers on G(3,0). This is a
@@ -2267,7 +2300,7 @@ public partial class Main : Control
             else
             {
                 _tacticalPreview!.PresentAuthoritativeWorkers(
-                    _tacticalHost.Snapshot.Workers, first.Id.Value);
+                    _tacticalHost.Snapshot.Workers, LayeredWorldDock ? null : first.Id.Value);
                 if (!legacyV10Smoke && !legacyV11Smoke && !concentratedSmoke)
                     _tacticalPreview.EnableTileClickMenuHypothesis(_humanCivilization);
                 _localMoveButton!.Text = "G | MOVE ONE FINE EDGE";
