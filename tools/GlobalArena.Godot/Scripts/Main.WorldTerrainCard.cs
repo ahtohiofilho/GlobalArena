@@ -73,6 +73,7 @@ public partial class Main
     private void ExerciseWorldTerrain(FoundationTacticalHumanAiTurnHost host, PhysicalWorkerId worker, PhysicalTacticalTileId land)
     {
         var hash = host.StateHash;
+        SetWidgetSectionExpanded("Terrain", true);
         var queues = host.GetHumanPersistentQueues(_humanCivilization).ToArray();
         var fine = _r123FineGeography ?? throw new InvalidOperationException("Missing fine geography.");
         var agriculture = host.AgriculturalProduction ?? throw new InvalidOperationException("Missing crop policy.");
@@ -103,6 +104,7 @@ public partial class Main
         if (!facts.Text.StartsWith($"Land | Node {land.FineStrategicCellId.Value}", StringComparison.Ordinal) ||
             host.StateHash != hash || !host.GetHumanPersistentQueues(_humanCivilization).SequenceEqual(queues))
             throw new InvalidOperationException("Terrain selection changed plans or failed to restore worker context.");
+        SetWidgetSectionExpanded("Terrain", false);
         GD.Print("GA_NEXT_R2305_TERRAIN_PASS signed_fields=true crop_policy=true land_water=true read_only=true");
     }
 }

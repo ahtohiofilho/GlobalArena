@@ -209,6 +209,7 @@ public partial class Main
             if (b is not null) b.Disabled = ready;
         if (_fineMovementDecision is not null) _fineMovementDecision.Text = "Select a destination on the map. Orders run in sequence.";
         RefreshWorldUnitReadout(host, q);
+        RefreshWidgetUnitActions();
     }
 
     private void RefreshOperationalReadout(FoundationTacticalHumanAiTurnHost host, PhysicalWorkerId worker)
@@ -451,6 +452,7 @@ public partial class Main
             if (host.ExperimentalLocalEconomyEnabled)
             {
                 await ExerciseLayeredWorldDock(host);
+                await ExerciseWidgetDock(host);
                 ExerciseWorldPlanet(host);
                 ExerciseLocalEconomyPreview(host);
                 GetTree().Quit(0);
