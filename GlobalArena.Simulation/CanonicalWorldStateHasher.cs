@@ -37,6 +37,7 @@ public sealed class CanonicalWorldStateHasher
     public const uint NatalOriginsFormatVersion = 21U;
     public const uint CropIntentFormatVersion = 22U;
     public const uint BaseActivityFormatVersion = 23U;
+    public const uint LocalPriceHistoryFormatVersion = 24U;
 
     private static readonly byte[] Magic =
     {
@@ -52,7 +53,9 @@ public sealed class CanonicalWorldStateHasher
         ArgumentNullException.ThrowIfNull(
             worldState);
 
-        var version = worldState.WorkerOrders.Queues.Any(q => q.BaseActivity is not null)
+        var version = worldState.Treasury.LocalPriceHistory is not null
+            ? LocalPriceHistoryFormatVersion
+            : worldState.WorkerOrders.Queues.Any(q => q.BaseActivity is not null)
             ? BaseActivityFormatVersion
             : worldState.WorkerOrders.Queues.Any(q => q.Orders.Any(o => o.Crop.HasValue))
             ? CropIntentFormatVersion
@@ -600,6 +603,21 @@ public sealed class CanonicalWorldStateHasher
                 AppendUInt32(hash, activity.Occupation.HasValue ? 1U : 0U);
                 if (activity.Occupation.HasValue) AppendUInt32(hash, (uint)activity.Occupation.Value);
                 AppendUInt32(hash, activity.Crop.GetValueOrDefault());
+            }
+        }
+
+        if (worldState.Treasury.LocalPriceHistory is { } history)
+        {
+            AppendUInt32(hash, 51U);
+            AppendUInt32(hash, checked((uint)history.Count));
+            foreach (var p in history)
+            {
+                AppendUInt32(hash, checked((uint)p.Node.FineGoldbergParameters.M));
+                AppendUInt32(hash, checked((uint)p.Node.FineGoldbergParameters.N));
+                AppendUInt64(hash, p.Node.FineStrategicCellId.Value);
+                AppendUInt64(hash, p.Commodity.Value);
+                AppendUInt64(hash, p.PriceMicro);
+                AppendUInt64(hash, p.ObservedCycleOrdinal);
             }
         }
 
