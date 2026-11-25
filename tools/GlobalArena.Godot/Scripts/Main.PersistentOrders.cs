@@ -440,6 +440,7 @@ public partial class Main
         AssertWorldUnitReadout(host, worker.Id);
         if (_worldUnitBase?.Text != "Auto" || _worldUnitBaseState?.Texture != GaHudWidgets.Icon("check"))
             throw new InvalidOperationException("Unit did not restore automatic base.");
+        GD.Print("GA_NEXT_R23061C_INFRA_WIDGET_PASS canonical_edges=true real_edge_buttons=true private_pending=true active_capital_separate=true");
         GD.Print("GA_NEXT_R2304_INFRASTRUCTURE_PASS real_edges=true private_funding=true canonical_dialog=true hash_unchanged=true");
         GD.Print("GA_NEXT_R23061B_UNIT_WIDGET_PASS icon_metrics=true pending_state=true details_action=true real_closes=true");
         GD.Print("GA_NEXT_R2303_UNIT_CARD_PASS real_activity=true private_base=true queue=true committed_only_travel=true");

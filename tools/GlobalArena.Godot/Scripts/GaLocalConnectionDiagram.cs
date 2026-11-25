@@ -11,6 +11,23 @@ public partial class GaLocalConnectionDiagram : Control
     private readonly List<(FoundationLocalConnection Link, Vector2 A, Vector2 B, Vector2 Neighbor, Button Button)> _links = new();
     private ulong? _hover;
     private float _extent = 1f;
+    private bool _compact;
+    private ulong? _selected;
+
+    internal void UseCompactLayout()
+    {
+        _compact = true;
+        CustomMinimumSize = new Vector2(116, 116);
+        SizeFlagsHorizontal = SizeFlags.ExpandFill;
+    }
+
+    internal void SelectEdge(ulong? id)
+    {
+        _selected = id;
+        foreach (var link in _links)
+            if (_compact) link.Button.SetPressedNoSignal(link.Link.Edge.FineStrategicEdgeId.Value == id);
+        QueueRedraw();
+    }
 
     public GaLocalConnectionDiagram()
     {
@@ -31,6 +48,7 @@ public partial class GaLocalConnectionDiagram : Control
         foreach (var child in GetChildren()) { RemoveChild(child); child.QueueFree(); }
         _links.Clear();
         _hover = null;
+        _selected = null;
         _boundary = boundary.ToArray();
         _extent = Math.Max(boundary.Max(p => p.Length()), geometry.Values.Max(p => p.Neighbor.Length()));
         if (!float.IsFinite(_extent) || _extent <= 0f)
@@ -42,10 +60,14 @@ public partial class GaLocalConnectionDiagram : Control
             var button = new Button
             {
                 Name = $"ConnectionEdge{id}",
-                Text = "•",
+                Text = _compact ? "" : "•",
+                Icon = _compact ? GaHudWidgets.Icon("edge") : null,
+                IconAlignment = HorizontalAlignment.Center,
+                ExpandIcon = _compact,
+                ToggleMode = _compact,
                 TooltipText = $"Connection to node {link.Neighbor.FineStrategicCellId.Value}",
                 MouseDefaultCursorShape = CursorShape.PointingHand,
-                CustomMinimumSize = new Vector2(30,30)
+                CustomMinimumSize = _compact ? new Vector2(24,24) : new Vector2(30,30)
             };
             button.MouseEntered += () => { _hover = id; QueueRedraw(); };
             button.MouseExited += () => { if (_hover == id) _hover = null; QueueRedraw(); };
@@ -64,8 +86,10 @@ public partial class GaLocalConnectionDiagram : Control
     {
         foreach (var link in _links)
         {
-            var center = Map((link.A + link.B) * 0.5f);
-            link.Button.Size = new Vector2(30,30);
+            // In the compact view put hit targets at neighbor centers, not
+            // shared boundaries, to retain separation between adjacent buttons.
+            var center = Map(_compact ? link.Neighbor : (link.A + link.B) * 0.5f);
+            link.Button.Size = _compact ? new Vector2(24,24) : new Vector2(30,30);
             link.Button.Position = center - link.Button.Size * 0.5f;
         }
         QueueRedraw();
@@ -80,13 +104,15 @@ public partial class GaLocalConnectionDiagram : Control
         var center = Map(Vector2.Zero);
         foreach (var link in _links)
         {
-            bool hovered = _hover == link.Link.Edge.FineStrategicEdgeId.Value;
+            bool hovered = _hover == link.Link.Edge.FineStrategicEdgeId.Value ||
+                (_compact && _selected == link.Link.Edge.FineStrategicEdgeId.Value);
             var color = hovered ? new Color(1f,0.82f,0.42f) : new Color(0.64f,0.73f,0.68f);
             DrawLine(center, Map(link.Neighbor), color, hovered ? 3f : 1.5f, true);
             DrawLine(Map(link.A), Map(link.B), color, hovered ? 4f : 1.5f, true);
             DrawCircle(Map(link.Neighbor), 4f, color);
         }
         DrawCircle(center, 6f, new Color(0.95f,0.97f,0.90f));
+        if (_compact) return; // same North-Up geometry; omit redundant compass at HUD scale
         var n = new Vector2(Size.X - 20, 28);
         DrawLine(n, n - new Vector2(0,15), Colors.White, 1.5f, true);
         DrawLine(n - new Vector2(0,15), n - new Vector2(4,9), Colors.White, 1.5f);

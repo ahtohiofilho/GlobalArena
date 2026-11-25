@@ -14,7 +14,11 @@ public partial class Main
     private OptionButton? _worldInfrastructureSelector;
     private Button? _worldInfrastructureManage;
     private ProgressBar? _worldInfrastructureProgress;
-    private ulong? _worldInfrastructureNode;
+    private ulong? _worldInfrastructureNode, _worldDiagramNode;
+    private GaLocalConnectionDiagram? _worldInfrastructureDiagram;
+    private VBoxContainer? _worldInfrastructureMetrics;
+    private Label? _worldCapitalValue, _worldFreightValue, _worldFundingValue, _worldBuildValue;
+    private HBoxContainer? _worldFundingMetric, _worldBuildMetric;
     private IReadOnlyList<FoundationLocalConnection> _worldInfrastructureLinks = Array.Empty<FoundationLocalConnection>();
 
     private ulong? ReadWorldContextNode()
@@ -31,18 +35,40 @@ public partial class Main
     {
         _worldInfrastructureContext = WorldLayerPlaceholder("");
         body.AddChild(_worldInfrastructureContext);
+        _worldInfrastructureContext.Visible = false;
         _worldInfrastructureSelector = new OptionButton { Name = "GANextInfrastructureConnection",
             FitToLongestItem = false, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         body.AddChild(_worldInfrastructureSelector);
+        _worldInfrastructureSelector.Visible = false; // selection model shared by diagram
         _worldInfrastructureSelector.ItemSelected += _ => RefreshWorldInfrastructureDetail();
         _worldInfrastructureDetail = WorldLayerPlaceholder("");
         body.AddChild(_worldInfrastructureDetail);
+        _worldInfrastructureDetail.Visible = false;
+        var widgets = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        body.AddChild(widgets);
+        _worldInfrastructureDiagram = new GaLocalConnectionDiagram { Name = "GANextHudConnectionDiagram" };
+        _worldInfrastructureDiagram.UseCompactLayout();
+        widgets.AddChild(_worldInfrastructureDiagram);
+        _worldInfrastructureMetrics = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        widgets.AddChild(_worldInfrastructureMetrics);
+        _worldInfrastructureMetrics.AddChild(GaHudWidgets.MetricRow("capital", "", "Active capital", out var capital));
+        _worldCapitalValue = capital;
+        _worldInfrastructureMetrics.AddChild(GaHudWidgets.MetricRow("freight", "", "Current freight per cargo", out var freight));
+        _worldFreightValue = freight;
+        _worldFundingMetric = GaHudWidgets.MetricRow("pending", "", "Pending own funding (E to submit)", out var funding);
+        _worldFundingValue = funding;
+        _worldFundingMetric.Visible = false;
+        _worldInfrastructureMetrics.AddChild(_worldFundingMetric);
+        _worldBuildMetric = GaHudWidgets.MetricRow("build", "", "Own committed construction progress", out var build);
+        _worldBuildValue = build;
+        _worldBuildMetric.Visible = false;
+        _worldInfrastructureMetrics.AddChild(_worldBuildMetric);
         _worldInfrastructureProgress = new ProgressBar { MinValue = 0, MaxValue = 100,
             Step = 0, ShowPercentage = false, Visible = false };
-        body.AddChild(_worldInfrastructureProgress);
+        _worldInfrastructureMetrics.AddChild(_worldInfrastructureProgress);
         _worldInfrastructureManage = new Button { Name = "GANextInfrastructureManage", Text = "Manage connection" };
         _worldInfrastructureManage.Pressed += OpenWorldInfrastructureConnection;
-        body.AddChild(_worldInfrastructureManage);
+        _worldInfrastructureMetrics.AddChild(_worldInfrastructureManage);
         RefreshWorldInfrastructure();
     }
 
@@ -76,7 +102,29 @@ public partial class Main
         _worldInfrastructureContext.Text = source.HasValue
             ? $"Node {source.Value} | {_worldInfrastructureLinks.Count} connections\nImproved: {improved}"
             : "Select a tile or worker.";
+        RefreshWorldInfrastructureDiagram(source);
         RefreshWorldInfrastructureDetail();
+    }
+
+    private void RefreshWorldInfrastructureDiagram(ulong? source)
+    {
+        var diagram = _worldInfrastructureDiagram;
+        if (diagram is null) return;
+        diagram.Visible = source.HasValue && _worldInfrastructureLinks.Count > 0 && _tacticalPreview is not null;
+        if (!diagram.Visible) { _worldDiagramNode = null; return; }
+        if (_worldDiagramNode != source)
+        {
+            var geometry = _tacticalPreview!.ReadLocalConnectionGeometry(new StrategicCellId(source!.Value));
+            diagram.Configure(geometry.Boundary, geometry.Links, _worldInfrastructureLinks, link =>
+            {
+                if (ReadWorldContextNode() != _worldDiagramNode) return;
+                int index = _worldInfrastructureLinks.ToList().FindIndex(l => l.Edge == link.Edge);
+                if (index < 0) return;
+                _worldInfrastructureSelector!.Select(index);
+                RefreshWorldInfrastructureDetail();
+            });
+            _worldDiagramNode = source;
+        }
     }
 
     private void RefreshWorldInfrastructureDetail()
@@ -88,6 +136,11 @@ public partial class Main
         var host = _tacticalHost;
         var link = SelectedWorldInfrastructure;
         _worldInfrastructureManage.Disabled = host is null || link is null;
+        _worldInfrastructureDiagram?.SelectEdge(link?.Edge.FineStrategicEdgeId.Value);
+        if (_worldCapitalValue is not null) _worldCapitalValue.Text = "—";
+        if (_worldFreightValue is not null) _worldFreightValue.Text = "—";
+        if (_worldFundingMetric is not null) _worldFundingMetric.Visible = false;
+        if (_worldBuildMetric is not null) _worldBuildMetric.Visible = false;
         if (host is null || link is null)
         {
             _worldInfrastructureDetail.Text = "No connection selected.";
@@ -122,6 +175,14 @@ public partial class Main
             _worldInfrastructureProgress.Value = 100.0 * project.CompletedWorkMicro / project.RequiredWorkMicro;
         }
         _worldInfrastructureDetail.Text = detail;
+        _worldInfrastructureManage.TooltipText = $"Manage connection to node {link.Neighbor.FineStrategicCellId.Value}\n{detail}";
+        _worldCapitalValue!.Text = GaDisplayNumbers.MoneyMicro(link.InvestedMoneyMicro);
+        _worldFreightValue!.Text = GaDisplayNumbers.MoneyMicro(link.UnitPhysicalFreightMicro);
+        _worldFundingMetric!.Visible = pending is not null;
+        _worldFundingValue!.Text = pending is null ? "" : GaDisplayNumbers.MoneyMicro(pending.MoneyMicro);
+        _worldBuildMetric!.Visible = project is not null;
+        _worldBuildValue!.Text = project is null ? "" : FormattableString.Invariant($"{_worldInfrastructureProgress.Value:0.#}%");
+        _worldInfrastructureProgress.TooltipText = detail;
     }
 
     private void OpenWorldInfrastructureConnection()
@@ -149,9 +210,17 @@ public partial class Main
             p.OwnershipKind != PhysicalTransportOwnershipKind.UnownedInfrastructure &&
             (p.OwnershipKind != PhysicalTransportOwnershipKind.Owned || p.InfrastructureOwner == _humanCivilization)));
         if (index < 0) throw new InvalidOperationException("Smoke requires a financeable incident connection.");
-        selector.Select(index);
-        selector.EmitSignal(OptionButton.SignalName.ItemSelected, (long)index);
         var link = expected[index];
+        var diagram = _worldInfrastructureDiagram ?? throw new InvalidOperationException("Missing HUD edge diagram.");
+        if (!diagram.IsVisibleInTree() || !diagram.EdgeIds.OrderBy(x => x).SequenceEqual(expected.Select(x => x.Edge.FineStrategicEdgeId.Value).OrderBy(x => x)) ||
+            selector.IsVisibleInTree() || _worldInfrastructureDetail?.IsVisibleInTree() == true)
+            throw new InvalidOperationException("Infrastructure widget did not replace text selector with canonical diagram.");
+        var edgeButton = diagram.EdgeButton(link.Edge.FineStrategicEdgeId.Value);
+        edgeButton.EmitSignal(Button.SignalName.Pressed);
+        if (SelectedWorldInfrastructure?.Edge != link.Edge || !edgeButton.ButtonPressed ||
+            _worldCapitalValue?.Text != GaDisplayNumbers.MoneyMicro(link.InvestedMoneyMicro) ||
+            _worldFreightValue?.Text != GaDisplayNumbers.MoneyMicro(link.UnitPhysicalFreightMicro))
+            throw new InvalidOperationException("HUD edge selection or metric binding failed.");
         if (_worldInfrastructureDetail?.Text.Contains($"Capital: {GaDisplayNumbers.MoneyMicro(link.InvestedMoneyMicro)}") != true ||
             _worldInfrastructureDetail.Text.Contains($"Freight: {GaDisplayNumbers.MoneyMicro(link.UnitPhysicalFreightMicro)}/cargo") != true)
             throw new InvalidOperationException("Infrastructure capital or freight differs from canonical link.");
@@ -168,12 +237,15 @@ public partial class Main
             _connectionInvest.EmitSignal(Button.SignalName.Pressed);
             if (!host.GetHumanPersistentFunding(_humanCivilization).Any(p => p.Edge == link.Edge && p.MoneyMicro == 100_000UL) ||
                 _worldInfrastructureDetail?.Text.Contains("Pending funding: $0.10 | E to submit") != true ||
+                _worldFundingMetric?.Visible != true || _worldFundingValue?.Text != "$0.10" ||
+                _worldCapitalValue?.Text != GaDisplayNumbers.MoneyMicro(link.InvestedMoneyMicro) ||
                 _worldInfrastructureProgress?.Visible == true || host.StateHash != hash)
                 throw new InvalidOperationException("Staged funding was not displayed privately or became active.");
             if (_connectionCancel?.Disabled != false) throw new InvalidOperationException("Funding cancellation unavailable.");
             _connectionCancel.EmitSignal(Button.SignalName.Pressed);
             if (host.GetHumanPersistentFunding(_humanCivilization).Any(p => p.Edge == link.Edge) ||
-                _worldInfrastructureDetail?.Text.Contains("Pending funding:") != false || host.StateHash != hash)
+                _worldInfrastructureDetail?.Text.Contains("Pending funding:") != false ||
+                _worldFundingMetric?.Visible != false || host.StateHash != hash)
                 throw new InvalidOperationException("Cancelled funding remained in Infrastructure.");
         }
         _r227CloseConnection!.EmitSignal(Button.SignalName.Pressed);
