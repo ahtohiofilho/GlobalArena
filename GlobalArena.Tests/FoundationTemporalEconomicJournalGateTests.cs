@@ -222,6 +222,12 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         }
         var baseline = Reconcile(partial);
         Assert.Equal(OwnerCredit(baseline), land.BaselineCreditScaled);
+        var frozen = FoundationFrozenMarginalRevenueEstimator.Evaluate(opening, incidence, fine, policy,
+            partial, new[] { new FoundationBaseMarginalInterval(worker.Id, 600_000U) }, agriculture, operations);
+        Assert.Equal(1, frozen.FinancialEvaluations);
+        Assert.Equal(reference.Candidates.Select(x => (x.Occupation, x.Crop)).OrderBy(x => x.Occupation).ThenBy(x => x.Crop).ToArray(),
+            frozen.Intervals.Single().Candidates.Select(x => (x.Occupation, x.Crop)).OrderBy(x => x.Occupation).ThenBy(x => x.Crop).ToArray());
+        Assert.All(frozen.Intervals.Single().Candidates, x => Assert.Equal(400_000U, x.EffortMicro));
         foreach (var candidate in reference.Candidates.Where(x =>
             x.Occupation is PhysicalWorkerOccupation.LandTransport or PhysicalWorkerOccupation.PortOperations))
         {
@@ -379,6 +385,36 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             calendar, requests, agriculture, operations);
         watch.Stop();
         long exactMs = watch.ElapsedMilliseconds;
+        watch.Restart();
+        var estimate = FoundationFrozenMarginalRevenueEstimator.Evaluate(opening, incidence, fine, policy,
+            calendar.Reverse().ToArray(), requests.Reverse().ToArray(), agriculture, operations);
+        watch.Stop();
+        long estimateMs = watch.ElapsedMilliseconds;
+        Assert.False(estimate.IsCommitted);
+        Assert.Equal(1, estimate.FinancialEvaluations);
+        Assert.Equal(requests, estimate.Intervals.Select(x => x.Interval).ToArray());
+        int comparable = 0, agreement = 0;
+        BigInteger regret = BigInteger.Zero, opportunity = BigInteger.Zero;
+        foreach (var interval in estimate.Intervals)
+        {
+            var reference = exact.Intervals.Single(x => x.Interval == interval.Interval).Candidates;
+            Assert.Equal(reference.Select(x => (x.Occupation, x.Crop)).OrderBy(x => x.Occupation).ThenBy(x => x.Crop).ToArray(),
+                interval.Candidates.Select(x => (x.Occupation, x.Crop)).OrderBy(x => x.Occupation).ThenBy(x => x.Crop).ToArray());
+            if (reference.Count == 0) continue;
+            comparable++;
+            var first = interval.Candidates[0];
+            var selected = reference.Single(x => x.Occupation == first.Occupation && x.Crop == first.Crop);
+            var best = BigInteger.Max(BigInteger.Zero, reference[0].MarginalCreditScaled);
+            var achieved = first.EstimatedCreditDeltaScaled > 0 ? selected.MarginalCreditScaled : BigInteger.Zero;
+            if (achieved == best) agreement++;
+            regret += best - achieved;
+            opportunity += best;
+        }
+        Console.WriteLine($"R2285_FROZEN workers={workers.Length} solves={estimate.FinancialEvaluations} trees={estimate.RouteTreesBuilt} elapsed_ms={estimateMs} comparable={comparable} exact_best_matches={agreement} regret_scaled={regret} opportunity_scaled={opportunity}");
+        var repeated = FoundationFrozenMarginalRevenueEstimator.Evaluate(opening, incidence, fine, policy,
+            calendar, requests, agriculture, operations);
+        foreach (var row in estimate.Intervals)
+            Assert.Equal(row.Candidates.ToArray(), repeated.Intervals.Single(x => x.Interval == row.Interval).Candidates.ToArray());
         Assert.Equal(0, exact.EquivalentIntervalsReused);
         Assert.Equal(0, exact.DeferredIntervals);
         Assert.Equal(1 + exact.Intervals.Sum(x => x.Candidates.Count), exact.FinancialEvaluations);
