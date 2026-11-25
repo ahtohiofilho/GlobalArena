@@ -133,6 +133,7 @@ public partial class Main
     private void ExerciseWorldInfrastructure(FoundationTacticalHumanAiTurnHost host, PhysicalTacticalTileId node, bool fund)
     {
         var hash = host.StateHash;
+        SetWidgetSectionExpanded("Infrastructure", true);
         var source = node.FineStrategicCellId.Value;
         RefreshWorldInfrastructure();
         var expected = FoundationLocalConnectionsProjector.Read(host.Snapshot, host.Incidence, node);
@@ -176,6 +177,7 @@ public partial class Main
                 throw new InvalidOperationException("Cancelled funding remained in Infrastructure.");
         }
         _r227CloseConnection!.EmitSignal(Button.SignalName.Pressed);
+        SetWidgetSectionExpanded("Infrastructure", false);
         if (_cityWindowLayer?.Visible == true || host.StateHash != hash)
             throw new InvalidOperationException("Infrastructure dialog close changed world or failed to return to map.");
     }

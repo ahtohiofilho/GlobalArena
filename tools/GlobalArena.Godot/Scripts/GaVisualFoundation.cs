@@ -57,6 +57,10 @@ public static class GaVisualFoundation
     public static StyleBoxFlat WindowSurface() =>
         SurfaceBox(Surface, Border, radius: 8, borderWidth: 1, innerPadding: 8);
 
+    /// <summary>Dense widget cards only; floating management windows retain normal padding.</summary>
+    internal static StyleBoxFlat HudCardSurface() =>
+        SurfaceBox(Surface, Border, radius: 6, borderWidth: 1, innerPadding: 5);
+
     public static StyleBoxFlat MapFrame() =>
         SurfaceBox(Background, AccentDim, radius: 5, borderWidth: 1, innerPadding: 0);
 

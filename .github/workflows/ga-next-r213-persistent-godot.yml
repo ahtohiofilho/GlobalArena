@@ -90,6 +90,7 @@ jobs:
           grep -q 'GA_NEXT_R2304_INFRASTRUCTURE_PASS' "$RUNNER_TEMP/local-economy.log"
           grep -q 'GA_NEXT_R2305_TERRAIN_PASS' "$RUNNER_TEMP/local-economy.log"
           grep -q 'GA_NEXT_R2306_PLANET_PASS' "$RUNNER_TEMP/local-economy.log"
+          grep -q 'GA_NEXT_R23061A_WIDGET_SHELL_PASS' "$RUNNER_TEMP/local-economy.log"
           for cycle in 1 2 3; do
             grep -E "GA_NEXT_R22921_CITY_PRIVACY_PASS own=[0-9]+ foreign=[0-9]+ cycle=$cycle$" "$RUNNER_TEMP/local-economy.log"
           done

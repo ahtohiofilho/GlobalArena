@@ -1,0 +1,3 @@
+# R230.6.1A.1 — Recover vertical HUD space
+
+PR #659 initial HEAD 9491cbe: runtime scene smoke passed; persistent UI failed because Terrain header rect (980,486) (264,32) extended 26 px beyond local scroll bottom 492 (bounds (972,108) (288,384)). Keep Unit expanded and the simultaneous-header test intact. Move the existing Planet and Civilization icon buttons into the Planet title row, use compact 5px card padding and 4px inter-card separation in widget mode only. Keep mini-globe minimum size, text font sizes, fixed footer, original actions/shortcuts and all data unchanged. Add a header placement assertion and geometry diagnostic. No change to simulation or privacy. CI and visual confirmation pending.

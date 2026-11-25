@@ -64,6 +64,7 @@ public partial class Main
 
         _worldPlanetCard = AddWorldLayer(dock, "GANextPlanetSlot", "PLANET", out var planet);
         CreateWorldPlanetReadout(planet, globe, civilization);
+        ConfigureWidgetDock(infrastructure, terrain, city, civilization);
         GD.Print("GA_NEXT_R2302_LAYERED_WORLD_DOCK_READY unit=true infrastructure=true terrain=true planet_fixed=true");
     }
 
@@ -83,7 +84,7 @@ public partial class Main
             planet.GetParent() != scroll.GetParent() || planet.GetIndex() <= scroll.GetIndex() ||
             !planet.IsAncestorOf(inset) || !unit.IsAncestorOf(_localWorkerSelector!) ||
             !unit.IsAncestorOf(_localMoveButton!) || !unit.IsAncestorOf(_localCancelQueuedButton!) ||
-            _operationalContext?.GetParent()?.GetParent() != terrain ||
+            !terrain.IsAncestorOf(_operationalContext!) ||
             _workspaceWindow?.CustomMinimumSize.X != R2212DockWidth)
             throw new InvalidOperationException("Layered dock order, controls or fixed footer contract failed.");
         if (!unit.IsVisibleInTree() || !infra.IsVisibleInTree() || !terrain.IsVisibleInTree() ||
