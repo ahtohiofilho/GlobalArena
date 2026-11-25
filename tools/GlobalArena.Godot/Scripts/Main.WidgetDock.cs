@@ -66,6 +66,22 @@ public partial class Main
         GaHudWidgets.IconButton(_worldPlanetAtlas!, "globe", "Planet map (M)");
         GaHudWidgets.IconButton(civilization, "civilization", "Civilization (C)");
         WidgetActionRow(_worldPlanetAtlas!, civilization);
+        // Integrate the existing navigation actions in the Planet header,
+        // rather than paying for an additional full-width row in the footer.
+        var planetActions = (HBoxContainer)_worldPlanetAtlas!.GetParent();
+        var planetBody = (VBoxContainer)planetActions.GetParent();
+        var planetHeading = (Label)planetBody.GetChild(0);
+        planetHeading.Reparent(planetActions);
+        planetActions.MoveChild(planetHeading, 0);
+        planetHeading.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        _worldPlanetAtlas.SizeFlagsHorizontal = SizeFlags.ShrinkEnd;
+        civilization.SizeFlagsHorizontal = SizeFlags.ShrinkEnd;
+        planetBody.MoveChild(planetActions, 0);
+
+        // Compact only the widget-mode cards, not the shared windows/theme.
+        foreach (var card in new[] { _worldUnitCard, _worldInfrastructureCard, _worldTerrainCard, _worldPlanetCard })
+            card!.AddThemeStyleboxOverride("panel", GaVisualFoundation.HudCardSurface());
+        _worldLayerStack!.AddThemeConstantOverride("separation", 4);
         if (_worldUnitActivity is not null) _worldUnitActivity.Visible = false; // same activity in identity
         if (_localPendingLabel is not null) _localPendingLabel.Visible = false; // same queue in Unit
         if (_fineMovementDecision is not null) _fineMovementDecision.Visible = false; // move tooltip
@@ -105,6 +121,14 @@ public partial class Main
                 throw new InvalidOperationException($"Widget header clipped at startup: {section.Header.Text}; bounds={bounds}; rect={rect}");
         }
         var footer = _worldPlanetCard!.GetGlobalRect();
+        var atlas = _worldPlanetAtlas ?? throw new InvalidOperationException("Planet action missing.");
+        var planetHeader = atlas.GetParent() as HBoxContainer
+            ?? throw new InvalidOperationException("Planet action is not in its header row.");
+        if (planetHeader.GetParent()?.GetChild(0) != planetHeader ||
+            planetHeader.GetChild(0) is not Label planetTitle || planetTitle.Text != "PLANET" ||
+            !atlas.IsVisibleInTree() || !planetHeader.IsVisibleInTree())
+            throw new InvalidOperationException("Compact Planet header or atlas action missing.");
+        GD.Print($"GA_NEXT_R23061A1_LAYOUT local={bounds} planet={footer} terrain={_widgetSections["Terrain"].Header.GetGlobalRect()}");
         foreach (var name in new[] { "Unit", "Infrastructure", "Terrain" })
         {
             var section = _widgetSections[name];
