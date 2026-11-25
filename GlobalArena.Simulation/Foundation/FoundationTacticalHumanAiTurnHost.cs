@@ -178,6 +178,25 @@ public sealed class FoundationTacticalHumanAiTurnHost
     private readonly FoundationEconomicTradeCycleReadBoundary _closedTrade;
     private FoundationTacticalCollectiveReceipt? _lastTemporalClose;
 
+    /// <summary>Own local economic evidence from the last committed temporal close.
+    /// Current own physical presence is required. No foreign worker or seller rows,
+    /// no previous-price fallback and no hypothetical market evaluation.</summary>
+    public FoundationViewerLocalEconomicClose? GetLastClosedLocalEconomics(CivilizationId viewer, PhysicalTacticalTileId node)
+    {
+        CheckSnapshot();
+        RequireHuman(viewer);
+        if (!Snapshot.Workers.Workers.Any(w => w.Owner == viewer && w.TacticalTileId == node))
+            throw new InvalidOperationException("Local economics require own current physical presence.");
+        var receipt = _lastTemporalClose;
+        var sale = receipt?.TemporalEconomicSettlement;
+        if (receipt is null || sale?.AuditedLocalEconomics is not { } evidence ||
+            !receipt.ReplayMatched || receipt.Revision != Snapshot.Revision ||
+            sale.EconomicCycleOrdinal != Snapshot.Treasury.LastSettledEconomicCycleOrdinal)
+            return null;
+        var rows = evidence.Read(viewer, node);
+        return rows is null ? null : new(viewer, node, evidence.CycleOrdinal, receipt.Hash, rows);
+    }
+
     // Only the human owner's last independently verified cycle; no pending-plan data.
     public IReadOnlyList<FoundationWorkerFoodIntake>? ReadWorkerFoodIntake(
         CivilizationId viewer, PhysicalWorkerId worker)

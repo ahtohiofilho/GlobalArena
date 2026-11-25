@@ -56,6 +56,16 @@ public sealed class FoundationTemporalSalesSettledEvent : ISimulationEvent
         AuditedLocalPrices = prices;
     }
 
+    internal FoundationSettledLocalEconomics? AuditedLocalEconomics { get; private set; }
+
+    internal void AttachAuditedLocalEconomics(FoundationSettledLocalEconomics evidence)
+    {
+        ArgumentNullException.ThrowIfNull(evidence);
+        if (AuditedLocalEconomics is not null || evidence.CycleOrdinal != EconomicCycleOrdinal)
+            throw new InvalidOperationException("Invalid or duplicate local economic evidence.");
+        AuditedLocalEconomics = evidence;
+    }
+
     public FoundationTemporalSalesSettledEvent(
         EventId id, WorldStateHash beginningHash, WorldStateHash preSettlementHash,
         ulong preSettlementRevision, ulong cycleOrdinal, string digest,
@@ -299,6 +309,8 @@ public static class FoundationTemporalEconomicJournalGate
                 incidence, policy.Cargo, financial.Distribution));
         ev.AttachAuditedLocalPrices(FoundationSettledLocalPriceSnapshot.FromAccounting(
             ordinal, financial.Accounting.Lines));
+        ev.AttachAuditedLocalEconomics(FoundationSettledLocalEconomics.FromClose(ordinal, calendar,
+            financial.Accounting.Lines, ev.AuditedLocalPrices!, policy.Demand.Commodities));
         var amounts = ev.Credits.ToDictionary(c => c.Civilization,
             c => c.CashCreditScaled);
         var observed = retainLocalPriceHistory ? ev.AuditedLocalPrices!.Prices.Select(p =>
@@ -349,6 +361,8 @@ public static class FoundationTemporalEconomicJournalGate
                 received.AuditedParticipantEdges, expected.AuditedParticipantEdges) ||
             (received.AuditedLocalPrices is not null &&
                 (expected.AuditedLocalPrices is null || !received.AuditedLocalPrices.Identical(expected.AuditedLocalPrices))) ||
+            (received.AuditedLocalEconomics is not null &&
+                (expected.AuditedLocalEconomics is null || !received.AuditedLocalEconomics.Identical(expected.AuditedLocalEconomics))) ||
             (received.FoodIntake is null) != (expected.FoodIntake is null) ||
             (received.FoodIntake is not null && !received.FoodIntake.SequenceEqual(expected.FoodIntake!)) ||
             (received.OperationalQuotes is null) != (expected.OperationalQuotes is null) ||
@@ -522,6 +536,8 @@ public static class FoundationTemporalEconomicJournalGate
             // them only from the already independently verified close.
             if (monetary.AuditedLocalPrices is null)
                 monetary.AttachAuditedLocalPrices(derived.AuditedLocalPrices!);
+            if (monetary.AuditedLocalEconomics is null)
+                monetary.AttachAuditedLocalEconomics(derived.AuditedLocalEconomics!);
             _closed = true;
             return after;
         }
