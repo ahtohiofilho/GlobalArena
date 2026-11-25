@@ -832,6 +832,144 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Equal(openingHash, hash.Compute(opening));
     }
 
+    [Fact]
+    public void R22812ExperimentalHostPublishesSixCollectiveTurnsAndPreservesPrivateOrders()
+    {
+        var (world, worker, _, _, incidence, fine) = Fixture();
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL),
+                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)), workersPerCivilization: 3);
+        var signature = FoundationFineFirstWorldgenCanonicalSignature.Compute(demo.Session.GeneratedWorld, incidence, fine);
+        var bound = demo.Session.Snapshot.PromoteFineFirstBeforeTransport(
+            demo.Session.GeneratedWorld, incidence, fine, signature)
+            .DeployInitialFineFirstPhysicalTransport(world.Transport, demo.Session.GeneratedWorld, incidence, fine, signature);
+        var opening = FoundationPersistedEdgeTravelTransitions.DeployEmpty(
+            bound.DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
+                bound.Civilizations.Civilizations.Select(c => (c, 5_000_000UL)))))
+            .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
+            .DeployInitialWorkerOrders();
+        // Other workers provide real demand but no independent native output.
+        opening = opening.WithWorkers(new PhysicalWorkerRuntimeState(opening.Workers.Workers.Select(w =>
+            w.WithTacticalLocationAndActivity(w.TacticalTileId!.Value, w.CellId, PhysicalWorkerActivity.Other)),
+            tacticalLocationsAuthoritative: true, occupationsAuthoritative: true));
+        var crops = Enum.GetValues<GlobalArena.Foundation.Agriculture.CropId>()
+            .ToDictionary(c => c, c => new CommodityId((uint)c));
+        var agriculture = new FoundationAgriculturalProductionPolicy(fine, incidence, crops, 2_000_000UL);
+        var demand = new FoundationActivityCommodityDemandPolicy(crops.Values.ToArray(),
+            Enum.GetValues<FoundationPhysicalDemandProfile>().SelectMany(profile => crops.Values.Select(c =>
+                new FoundationActivityCommodityDemandCoefficient(profile, c, 1_000_000UL))));
+        const bool progressive = true;
+        var policy = new FoundationAuthoritativeEconomicSettlementPolicy(demand,
+            new FoundationCommodityCargoConversionPolicy("r2287", crops.Values.Select(c =>
+                new FoundationCommodityCargoConversion(c, 1_000_000UL))),
+            opening.Civilizations.Civilizations.Select(c => new FoundationPhysicalEconomicTaxRate(c, 0U)), maxProducerPasses: 64, useTemporalProgressiveDistribution: progressive);
+        Assert.Equal(64, policy.MaxProducerPasses);
+        var movement = new FoundationGroundEdgeTravelTimePolicy(1_400_000UL);
+        // Select a real traversable land arrival with positive agricultural
+        // yield, not an arbitrary tile or a preselected market outcome.
+        var candidate = (from w in opening.Workers.Workers
+            let source = w.TacticalTileId!.Value
+            from crossing in incidence.FineTopology.Edges
+            where crossing.IncidentCellIds.Contains(source.FineStrategicCellId) &&
+                fine.CrossingAtIndices((int)crossing.IncidentCellIds[0].Value - 1,
+                    (int)crossing.IncidentCellIds[1].Value - 1) == FoundationFineTransportCrossingKind.Ground
+            let destination = new PhysicalTacticalTileId(incidence.Refinement.FineParameters,
+                crossing.IncidentCellIds.Single(n => n != source.FineStrategicCellId))
+            from crop in crops.Keys
+            where agriculture.Resolve(source, crop).WholeTurnOutput > 0 &&
+                agriculture.Resolve(destination, crop).WholeTurnOutput > 0
+            orderby w.Id != worker.Id, w.Id.Value, destination.FineStrategicCellId.Value, (byte)crop
+            select (Worker: w, Source: source, Destination: destination, Crop: crop)).First();
+        worker = candidate.Worker;
+        var own = opening.Workers.Workers.Where(w => w.Owner == worker.Owner).ToArray();
+        var automatic = new FoundationWorkerBaseActivity(FoundationWorkerBaseMode.Automatic);
+        demo.Session.AcceptFineFirstOpening(opening, incidence, fine, signature);
+        var foreign = opening.Civilizations.Civilizations.Single(c => c != worker.Owner);
+        var fixedPolicy = new FoundationAuthoritativeEconomicSettlementPolicy(demand, policy.Cargo,
+            policy.TaxRates, maxProducerPasses: 64);
+        FoundationTacticalHumanAiTurnHost CreateHost(FoundationAuthoritativeEconomicSettlementPolicy selected, bool enabled = false) =>
+            new(demo.Session, incidence, opening.Civilizations.Civilizations,
+                new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy>(),
+                enableMonetaryInfrastructure: true, settlementPolicy: selected,
+                fineGeography: fine, fineSignature: signature, physicalTravelPolicy: movement,
+                constructionMoneyMicroPerWholeWork: 1_000_000UL, agriculture: agriculture,
+                enableExperimentalLocalEconomy: enabled);
+        Assert.Throws<InvalidOperationException>(() => CreateHost(policy));
+        Assert.Throws<InvalidOperationException>(() => CreateHost(fixedPolicy, true));
+        var disabled = CreateHost(fixedPolicy);
+        Assert.False(disabled.ExperimentalLocalEconomyEnabled);
+        Assert.Throws<InvalidOperationException>(() => disabled.QueueHumanBaseActivity(worker.Owner, worker.Id, automatic));
+
+        var host = CreateHost(policy, true);
+        Assert.True(host.ExperimentalLocalEconomyEnabled);
+        Assert.True(host.PersistentOrdersEnabled);
+        var initialHash = host.StateHash;
+        foreach (var person in own)
+            host.QueueHumanBaseActivity(person.Owner, person.Id, automatic);
+        Assert.Throws<InvalidOperationException>(() => host.QueueHumanBaseActivity(foreign, worker.Id, automatic));
+        host.QueueHumanPersistentEdit(worker.Owner, new FoundationPersistentOrderEdit(
+            worker.Owner, worker.Id, FoundationPersistentOrderEditKind.Insert, Index: 0,
+            OrderKind: FoundationWorkerOrderKind.Move, Destination: candidate.Destination));
+        Assert.All(host.GetHumanPersistentQueues(worker.Owner), q => Assert.Equal(automatic, q.BaseActivity));
+        Assert.All(host.GetHumanPersistentQueues(foreign), q => Assert.Null(q.BaseActivity));
+        Assert.All(host.Snapshot.WorkerOrders.Queues, q => Assert.Null(q.BaseActivity));
+        Assert.Equal(initialHash, host.StateHash);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            host.GetLastClosedEconomicTradeView(worker.Owner).Availability);
+
+        for (ulong turn = 1; turn <= 6; turn++)
+        {
+            var before = host.Snapshot;
+            var beforeHash = host.StateHash;
+            var previousView = host.GetLastClosedEconomicTradeView(worker.Owner);
+            host.SetHumanReady(worker.Owner);
+            Assert.Null(host.TryCloseTurn());
+            Assert.Same(before, host.Snapshot);
+            Assert.Equal(beforeHash, host.StateHash);
+            Assert.Equal(previousView.EconomicCycleOrdinal, host.GetLastClosedEconomicTradeView(worker.Owner).EconomicCycleOrdinal);
+            host.SetHumanReady(foreign);
+            var receipt = Assert.IsType<FoundationTacticalCollectiveReceipt>(host.TryCloseTurn());
+            var sale = Assert.IsType<FoundationTemporalSalesSettledEvent>(receipt.TemporalEconomicSettlement);
+            Assert.True(receipt.ReplayMatched);
+            Assert.True(sale.UsedProgressiveDistribution);
+            Assert.Equal(turn, sale.EconomicCycleOrdinal);
+            Assert.Equal(turn, host.Snapshot.Treasury.LastSettledEconomicCycleOrdinal);
+            Assert.Equal(receipt.Hash, host.StateHash);
+            Assert.Equal(0, host.PendingOrderCount);
+            Assert.Equal(CanonicalWorldStateHasher.LocalPriceHistoryFormatVersion, host.StateHash.FormatVersion);
+            Assert.NotEmpty(FoundationLocalBaseCalendarPlanner.ReadHistory(host.Snapshot)!);
+            var timeline = Assert.IsType<FoundationPersistentWorkerTurnEvent>(receipt.PersistentTimeline);
+            Assert.All(timeline.Slices.GroupBy(x => x.Worker), g =>
+                Assert.Equal(1_000_000L, g.Sum(x => (long)x.DurationMicro)));
+            var traveler = timeline.Slices.Where(x => x.Worker == worker.Id).ToArray();
+            if (turn == 1UL)
+            {
+                Assert.All(traveler, x => Assert.Equal(PhysicalWorkerActivity.Traveling, x.Activity));
+                Assert.Equal(400_000UL, Assert.Single(host.Snapshot.EdgeTravels.Pending, p => p.Worker == worker.Id).RemainingMicro);
+            }
+            else
+            {
+                Assert.DoesNotContain(host.Snapshot.EdgeTravels.Pending, p => p.Worker == worker.Id);
+                Assert.Contains(traveler, x => x.Node == candidate.Destination && x.Activity == PhysicalWorkerActivity.Producing);
+                if (turn == 2UL)
+                    Assert.Equal(600_000L, traveler.Where(x => x.Activity == PhysicalWorkerActivity.Producing).Sum(x => (long)x.DurationMicro));
+            }
+            foreach (var civ in opening.Civilizations.Civilizations)
+            {
+                var view = host.GetLastClosedEconomicTradeView(civ);
+                Assert.Equal(FoundationEconomicTradeOverlayAvailability.AuthorizedSubset, view.Availability);
+                Assert.Equal((ulong?)turn, view.EconomicCycleOrdinal);
+                Assert.Equal((WorldStateHash?)receipt.Hash, view.PublishedHash);
+                Assert.Equal(sale.AuditedParticipantEdges![civ].ToArray(), view.UsedEdges.ToArray());
+                var credit = sale.Credits.Single(x => x.Civilization == civ);
+                Assert.Equal(before.Treasury.Get(civ).CashScaled + credit.CashCreditScaled,
+                    host.Snapshot.Treasury.Get(civ).CashScaled);
+            }
+            Console.WriteLine($"R22812_HOST turn={turn} goods_micro={sale.ProducedGoodsMicro} hash={receipt.Hash.HexDigest}");
+        }
+        Assert.Throws<InvalidOperationException>(() => host.GetLastClosedEconomicTradeView(new CivilizationId(uint.MaxValue)));
+    }
+
     private static FoundationActivityCommodityDemandPolicy Demand()
     {
         var items = new[] { new CommodityId(1U), new CommodityId(2U) };
