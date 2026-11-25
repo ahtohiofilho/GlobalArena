@@ -269,6 +269,8 @@ public partial class Main
             active?.Kind == FoundationWorkerOrderKind.Build ? "Construction order active" :
             person.Occupation is PhysicalWorkerOccupation.LandTransport or PhysicalWorkerOccupation.PortOperations ? person.Occupation.ToString()! :
             person.Activity == PhysicalWorkerActivity.Other ? "Idle" : person.Activity.ToString();
+        if (host.ExperimentalLocalEconomyEnabled && travel is null && person.Activity == PhysicalWorkerActivity.Producing)
+            activity = person.Occupation switch { PhysicalWorkerOccupation.Forestry => "Producing wood", PhysicalWorkerOccupation.Mining => "Producing stone", _ => activity };
         if (travel is null && person.Activity == PhysicalWorkerActivity.Producing &&
             (active?.Crop ?? (active is null ? committed.BaseActivity?.Crop : null)) is { } crop)
             activity = $"Growing {(CropId)crop}";
@@ -355,6 +357,51 @@ public partial class Main
         GD.Print("GA_NEXT_R219A1_CROP_PREVIEW_PASS six_choices=true real_order=true economic_close=true");
     }
 
+    private void ExerciseLocalEconomyPreview(FoundationTacticalHumanAiTurnHost host)
+    {
+        if (!host.DefaultAutomaticBaseEnabled || host.AgriculturalProduction?.BasicResources is null)
+            throw new InvalidOperationException("Missing experimental local host configuration.");
+        var worker = host.Snapshot.Workers.Workers.First(w => w.Owner == _humanCivilization &&
+            _r123FineGeography!.SurfaceAtIndex((int)w.TacticalTileId!.Value.FineStrategicCellId.Value - 1) == FoundationFineSurfaceKind.Land);
+        OnOperationalWorkerSelected(worker.Id.Value);
+        _r224Open!.EmitSignal(Button.SignalName.Pressed);
+        if (_r224BaseReadout?.Text.Contains("Automatic (local)") != true || ReadPersistentQueue(worker.Id).BaseActivity is not null)
+            throw new InvalidOperationException("Implicit automatic base must be visible without a synthetic command.");
+        var before = host.StateHash;
+        var location = worker.TacticalTileId;
+        CloseR224WorkerWindow();
+        EndFineCollectiveTurn();
+        var closed = host.Snapshot.Workers.Workers.Single(w => w.Id == worker.Id);
+        if (host.StateHash == before || closed.TacticalTileId != location || closed.Activity != PhysicalWorkerActivity.Producing ||
+            host.Snapshot.Treasury.LastSettledEconomicCycleOrdinal != 1UL ||
+            host.GetLastClosedEconomicTradeView(_humanCivilization).EconomicCycleOrdinal != 1UL ||
+            host.GetLastClosedTemporalEconomics(_humanCivilization) is null || ReadPersistentQueue(worker.Id).BaseActivity is not null)
+            throw new InvalidOperationException("Uncommanded local worker failed to produce in a real closed cycle.");
+        _r224Open.EmitSignal(Button.SignalName.Pressed);
+        for (int i = 0; i < _r224Activity!.ItemCount; i++) if (_r224Activity.GetItemId(i) == 101) _r224Activity.Select(i);
+        var committed = host.StateHash;
+        _r224Apply!.EmitSignal(Button.SignalName.Pressed);
+        if (host.StateHash != committed || ReadPersistentQueue(worker.Id).BaseActivity?.Occupation != PhysicalWorkerOccupation.Forestry)
+            throw new InvalidOperationException("Manual wood override was not staged privately.");
+        CloseR224WorkerWindow();
+        EndFineCollectiveTurn();
+        if (host.Snapshot.Treasury.LastSettledEconomicCycleOrdinal != 2UL ||
+            host.Snapshot.Workers.Workers.Single(w => w.Id == worker.Id).Occupation != PhysicalWorkerOccupation.Forestry)
+            throw new InvalidOperationException("Manual wood override did not close.");
+        _r224Open.EmitSignal(Button.SignalName.Pressed);
+        for (int i = 0; i < _r224Activity.ItemCount; i++) if (_r224Activity.GetItemId(i) == 105) _r224Activity.Select(i);
+        _r224Apply.EmitSignal(Button.SignalName.Pressed);
+        if (ReadPersistentQueue(worker.Id).BaseActivity?.Mode != FoundationWorkerBaseMode.Automatic)
+            throw new InvalidOperationException("Automatic base selector did not restore automatic preference.");
+        CloseR224WorkerWindow();
+        EndFineCollectiveTurn();
+        if (host.Snapshot.Treasury.LastSettledEconomicCycleOrdinal != 3UL ||
+            host.GetLastClosedEconomicTradeView(_humanCivilization).EconomicCycleOrdinal != 3UL ||
+            host.Snapshot.WorkerOrders.Queues.Single(q => q.Worker == worker.Id).BaseActivity?.Mode != FoundationWorkerBaseMode.Automatic)
+            throw new InvalidOperationException("Automatic preference did not close.");
+        GD.Print("GA_NEXT_R22813C_LOCAL_ECONOMY_UI_PASS three_closes=true automatic_default=true manual_override=true trade_published=true");
+    }
+
     internal async Task ExerciseR213PersistentInterfaceSmoke()
     {
         try
@@ -363,6 +410,12 @@ public partial class Main
             var host = _tacticalHost ?? throw new InvalidOperationException("Missing host.");
             if (!host.PersistentOrdersEnabled) throw new InvalidOperationException("Missing persistent preview.");
             var before = host.StateHash;
+            if (host.ExperimentalLocalEconomyEnabled)
+            {
+                ExerciseLocalEconomyPreview(host);
+                GetTree().Quit(0);
+                return;
+            }
             if (host.AgriculturalProduction is not null)
             {
                 ExerciseCropPreview(host);

@@ -77,7 +77,7 @@ public partial class Main
         var read = _tacticalHost.GetLastClosedEconomicTradeView(
             _humanCivilization);
         _interactiveEconomicPreviewBanner.Text =
-            "EXPERIMENTAL / NOT FINAL BALANCE  •  " +
+            (_tacticalHost.ExperimentalLocalEconomyEnabled ? "EXPERIMENTAL LOCAL ECONOMY / NOT FINAL BALANCE  •  " : "EXPERIMENTAL / NOT FINAL BALANCE  •  ") +
             "CIV 1 CASH " + FormatExactMoneyForDisplay(
                 state.Treasury.Get(_humanCivilization).CashScaled) +
             "  •  CLOSED CYCLES " +

@@ -39,7 +39,7 @@ internal static class GaExplicitEconomicQaConfiguration
     internal static IReadOnlyDictionary<CropId, CommodityId> CropItems() =>
         CropCatalog.All.ToDictionary(c => c.Id, c => new CommodityId((uint)c.Id + 2U));
 
-    internal static FoundationGameplayEconomicConfiguration Profile(bool crops = false) =>
+    internal static FoundationGameplayEconomicConfiguration Profile(bool crops = false, bool localEconomy = false) =>
         new(
             new FoundationNaturalTransportSeedingPolicy(
                 new FoundationNaturalTransportCostBand(QaLandEdgeCostMicro, 1_000_000UL),
@@ -65,7 +65,7 @@ internal static class GaExplicitEconomicQaConfiguration
                     new FoundationPhysicalEconomicTaxRate(Red, 1_000U),
                     new FoundationPhysicalEconomicTaxRate(Blue, 500U)
                 },
-                maxProducerPasses: 64),
+                maxProducerPasses: 64, useTemporalProgressiveDistribution: localEconomy),
             new[]
             {
                 (Red, 0UL),
@@ -94,10 +94,12 @@ internal static class GaExplicitEconomicQaConfiguration
             FoundationTacticalHumanAiTurnHost demo,
             bool enableTemporalFinancialVisualSmoke = false,
             bool enableConstructionPreview = false,
-            bool enablePersistentOrders = false, bool enableCropPreview = false)
+            bool enablePersistentOrders = false, bool enableCropPreview = false, bool enableLocalEconomy = false)
     {
         ArgumentNullException.ThrowIfNull(demo);
         AssertNaturalFreightHierarchy();
+        if (enableLocalEconomy && (!enableCropPreview || !enablePersistentOrders || !enableConstructionPreview))
+            throw new InvalidOperationException("Local economy preview requires signed persistent crop and construction QA.");
         if (enableCropPreview && !enablePersistentOrders) throw new InvalidOperationException("Crop preview requires persistent orders.");
         if (enablePersistentOrders && !enableConstructionPreview)
             throw new InvalidOperationException("Persistent preview requires construction preview.");
@@ -125,8 +127,10 @@ internal static class GaExplicitEconomicQaConfiguration
             world, demo.Incidence);
         var identity = FoundationFineFirstWorldgenCanonicalSignature.Compute(
             world, demo.Incidence, fine);
-        var configuration = Profile(enableCropPreview);
-        var agriculture = enableCropPreview ? new FoundationAgriculturalProductionPolicy(fine, demo.Incidence, CropItems(), 2_000_000UL) : null;
+        var configuration = Profile(enableCropPreview, enableLocalEconomy);
+        // QA-only provisional equal basic-resource yields; existing commodity 1/2 are wood/stone only in this experiment.
+        var basic = enableLocalEconomy ? new FoundationBasicResourceProductionPolicy(CommodityOne, CommodityTwo, 1_000_000UL, 1_000_000UL) : null;
+        var agriculture = enableCropPreview ? new FoundationAgriculturalProductionPolicy(fine, demo.Incidence, CropItems(), 2_000_000UL, basic) : null;
         var shallowMode = System.Environment.GetEnvironmentVariable(
             "GA_NEXT_QA_SHALLOW_PORTS") == "1";
         FoundationExperimentalShallowFreightPolicy? shallow = null;
@@ -199,7 +203,9 @@ internal static class GaExplicitEconomicQaConfiguration
                 : null,
             constructionMoneyMicroPerWholeWork: enableConstructionPreview ? 1_000_000UL : null, agriculture: agriculture,
             operationalPolicy: enablePersistentOrders && System.Environment.GetEnvironmentVariable("GA_NEXT_OPERATIONAL_PREVIEW") == "1"
-                ? new FoundationOperationalFreightShadowPolicy(1_000_000UL, 1_000_000UL) : null);
+                ? new FoundationOperationalFreightShadowPolicy(1_000_000UL, 1_000_000UL) : null,
+            enableExperimentalLocalEconomy: enableLocalEconomy, enableDefaultAutomaticBase: enableLocalEconomy);
+        if (enableLocalEconomy) global::Godot.GD.Print("GA_NEXT_R22813C_LOCAL_ECONOMY_READY experimental=true automatic_default=true commodities=8");
         return (host, fine, identity);
     }
 
