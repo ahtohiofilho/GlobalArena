@@ -371,6 +371,7 @@ public partial class Main
             _r123FineGeography!.SurfaceAtIndex((int)w.TacticalTileId!.Value.FineStrategicCellId.Value - 1) == FoundationFineSurfaceKind.Land);
         OnOperationalWorkerSelected(worker.Id.Value);
         AssertWorldUnitReadout(host, worker.Id);
+        ExerciseWorldTerrain(host, worker.Id, worker.TacticalTileId!.Value);
         ExerciseWorldInfrastructure(host, worker.TacticalTileId!.Value, false);
         ExerciseOpenCityWorker(host, worker.Id, worker.TacticalTileId!.Value);
         if (_r224BaseReadout?.Text.Contains("Automatic (local)") != true || ReadPersistentQueue(worker.Id).BaseActivity is not null)

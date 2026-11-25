@@ -122,6 +122,7 @@ public partial class Main : Control
             : "Select a destination on the map";
         RefreshSelectedUnitSlot();
         RefreshWorldInfrastructure();
+        RefreshWorldTerrain();
     }
     private void RefreshSelectedUnitSlot()
     {
