@@ -1345,7 +1345,8 @@ public partial class Main : Control
             MouseFilter = MouseFilterEnum.Stop
         };
         operations.AddChild(operationsPanel);
-        operationsPanel.AddThemeStyleboxOverride("panel", GaVisualFoundation.WindowSurface());
+        operationsPanel.AddThemeStyleboxOverride("panel", LayeredWorldDock
+            ? GaVisualFoundation.HudDockSurface() : GaVisualFoundation.WindowSurface());
         var operationsColumn = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
         operationsPanel.AddChild(operationsColumn);
         Button? cityNavigation = null, civilizationNavigation = null;
@@ -1355,6 +1356,11 @@ public partial class Main : Control
             operationsColumn.AddChild(compactHeader);
             compactHeader.AddChild(new Label { Text = LayeredWorldDock ? "WORLD CONTEXT" : "COMMANDS", SizeFlagsHorizontal = SizeFlags.ExpandFill });
             var hide = new Button { Text = "X" };
+            if (LayeredWorldDock)
+            {
+                GaHudWidgets.IconButton(hide, "cancel", "Hide world context (Tab)");
+                hide.CustomMinimumSize = new Vector2(30, 28);
+            }
             hide.Pressed += () => SetOperationalDockVisible(false);
             compactHeader.AddChild(hide);
             var selectedPanel = new PanelContainer { Name = "GANextSelectedUnitSlot" };

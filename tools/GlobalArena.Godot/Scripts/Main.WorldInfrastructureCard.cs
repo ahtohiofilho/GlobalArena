@@ -138,7 +138,12 @@ public partial class Main
         var link = SelectedWorldInfrastructure;
         _worldInfrastructureManage.Disabled = host is null || link is null;
         if (_hudInfrastructureKind is not null) _hudInfrastructureKind.Text = "No connection";
-        if (_hudInfrastructurePicture is not null) _hudInfrastructurePicture.Texture = GaHudWidgets.Icon("connection");
+        if (_worldInfrastructureMetrics is not null) _worldInfrastructureMetrics.Visible = host is not null && link is not null;
+        if (_hudInfrastructurePicture is not null)
+        {
+            _hudInfrastructurePicture.Texture = GaHudWidgets.Picture("connection");
+            _hudInfrastructurePicture.Modulate = GaVisualFoundation.Muted;
+        }
         _worldInfrastructureDiagram?.SelectEdge(link?.Edge.FineStrategicEdgeId.Value);
         if (_worldCapitalValue is not null) _worldCapitalValue.Text = "—";
         if (_worldFreightValue is not null) _worldFreightValue.Text = "—";
@@ -187,7 +192,7 @@ public partial class Main
             _ => "Connection"
         };
         if (_hudInfrastructurePicture is not null)
-            _hudInfrastructurePicture.Texture = GaHudWidgets.Icon(kind switch
+            _hudInfrastructurePicture.Texture = GaHudWidgets.Picture(kind switch
             {
                 "Land connection" => "connection",
                 "Coastal connection" => "ship",
@@ -195,6 +200,7 @@ public partial class Main
                 "Blocked ice–sea boundary" => "ice",
                 _ => "connection"
             });
+        if (_hudInfrastructurePicture is not null) _hudInfrastructurePicture.Modulate = Colors.White;
         if (_hudInfrastructureSummary is not null) _hudInfrastructureSummary.TooltipText = detail;
         _worldInfrastructureManage.TooltipText = $"Manage connection to node {link.Neighbor.FineStrategicCellId.Value}\n{detail}";
         _worldCapitalValue!.Text = GaDisplayNumbers.MoneyMicro(link.InvestedMoneyMicro);

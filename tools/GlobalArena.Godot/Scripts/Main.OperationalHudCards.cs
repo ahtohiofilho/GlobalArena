@@ -12,6 +12,39 @@ public partial class Main
     private Label? _hudInfrastructureKind, _hudFeedback;
     private PanelContainer? _hudUnitObject, _hudInfrastructureObject, _hudTerrainObject;
     private HBoxContainer? _hudUnitActions;
+    private readonly List<PanelContainer> _hudPortraitFrames = new();
+
+    // Distinct left visual compartment; stable geometry even without selection.
+    private void FrameHudPortrait(HBoxContainer row, Control picture, string tooltip)
+    {
+        var frame = new PanelContainer { Name = "Portrait", CustomMinimumSize = new Vector2(80, 48),
+            SizeFlagsVertical = SizeFlags.ExpandFill, TooltipText = tooltip,
+            MouseFilter = MouseFilterEnum.Pass };
+        frame.AddThemeStyleboxOverride("panel", GaVisualFoundation.HudPortraitSurface());
+        row.AddChild(frame);
+        var center = new CenterContainer { MouseFilter = MouseFilterEnum.Ignore };
+        frame.AddChild(center);
+        if (picture.GetParent() is null) center.AddChild(picture); else picture.Reparent(center);
+        picture.CustomMinimumSize = new Vector2(44, 44);
+        picture.MouseFilter = MouseFilterEnum.Ignore;
+        _hudPortraitFrames.Add(frame);
+    }
+
+    private void AssertMonochromeHud()
+    {
+        static bool Neutral(Color color) => Math.Abs(color.R - color.G) < 0.001f && Math.Abs(color.G - color.B) < 0.001f;
+        if (new[] { GaVisualFoundation.Background, GaVisualFoundation.Surface, GaVisualFoundation.Raised,
+                GaVisualFoundation.Border, GaVisualFoundation.Text, GaVisualFoundation.Accent }.Any(c => !Neutral(c)) ||
+            _hudPortraitFrames.Count != 3 || _hudPortraitFrames.Any(p =>
+                p.GetThemeStylebox("panel") is not StyleBoxFlat style || !Neutral(style.BgColor) ||
+                p.GetGlobalRect().Size.X < 79f || !p.IsVisibleInTree()) ||
+            _worldLayerStack!.GetThemeConstant("separation") < 14)
+            throw new InvalidOperationException("Monochrome operational card structure regressed.");
+        foreach (var action in new[] { _localMoveButton!, _localCancelQueuedButton!, _worldUnitDetails!, _worldInfrastructureManage! })
+            if (action.GetThemeStylebox("normal") is not StyleBoxFlat style || !Neutral(style.BgColor) ||
+                action.GetGlobalRect().Size.X > 52f || action.Text.Length != 0)
+                throw new InvalidOperationException("HUD action must be a compact independent neutral icon button.");
+    }
 
     private static PanelContainer HudObject(VBoxContainer parent, string name, out HBoxContainer row)
     {
@@ -33,14 +66,6 @@ public partial class Main
         return facts;
     }
 
-    private static void HudPicture(TextureRect picture, string tooltip)
-    {
-        picture.CustomMinimumSize = new Vector2(44, 44);
-        picture.SizeFlagsHorizontal = SizeFlags.ShrinkBegin;
-        picture.SizeFlagsVertical = SizeFlags.ShrinkCenter;
-        picture.TooltipText = tooltip;
-    }
-
     private void ComposeOperationalCards(VBoxContainer unit, VBoxContainer infrastructure, VBoxContainer terrain, Button city)
     {
         // Unit: existing silhouette + identity/selector/status inside one
@@ -51,9 +76,7 @@ public partial class Main
         while (orderPanel.GetParent() != unit) orderPanel = orderPanel.GetParent();
         _hudUnitObject = HudObject(unit, "GANextHudUnitObject", out var unitRow);
         var portrait = (Control)oldUnitRow.GetChild(0);
-        portrait.Reparent(unitRow);
-        portrait.CustomMinimumSize = new Vector2(44, 48);
-        portrait.SizeFlagsVertical = SizeFlags.ExpandFill;
+        FrameHudPortrait(unitRow, portrait, "Selected unit");
         var unitFacts = HudObjectFacts(unitRow);
         _localWorkerSelector!.Reparent(unitFacts);
         _localWorkerSelector.CustomMinimumSize = new Vector2(0, 26);
@@ -78,14 +101,16 @@ public partial class Main
         infrastructure.AddChild(_hudInfrastructureSummary);
         _hudInfrastructureObject = HudObject(_hudInfrastructureSummary, "GANextHudInfrastructureObject", out var infraRow);
         _hudInfrastructurePicture = GaHudWidgets.MetricIcon("connection");
-        HudPicture(_hudInfrastructurePicture, "Selected physical connection");
-        infraRow.AddChild(_hudInfrastructurePicture);
+        FrameHudPortrait(infraRow, _hudInfrastructurePicture, "Selected physical connection");
         var infraFacts = HudObjectFacts(infraRow);
         _hudInfrastructureKind = new Label { Text = "Connection" };
         infraFacts.AddChild(_hudInfrastructureKind);
         _worldInfrastructureMetrics!.Reparent(infraFacts);
         _worldInfrastructureMetrics.AddThemeConstantOverride("separation", 1);
-        _worldInfrastructureManage!.Reparent(_hudInfrastructureSummary);
+        var infraActions = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        _hudInfrastructureSummary.AddChild(infraActions);
+        _worldInfrastructureManage!.Reparent(infraActions);
         RefreshWorldInfrastructureDetail();
 
         // Terrain: surface and traversal are immediate context. The index
@@ -94,8 +119,7 @@ public partial class Main
         terrain.AddChild(_hudTerrainSummary);
         _hudTerrainObject = HudObject(_hudTerrainSummary, "GANextHudTerrainObject", out var terrainRow);
         var oldSurface = (Control)_terrainSurface!.GetParent();
-        _terrainSurfaceIcon!.Reparent(terrainRow);
-        HudPicture(_terrainSurfaceIcon, "Selected signed terrain");
+        FrameHudPortrait(terrainRow, _terrainSurfaceIcon!, "Selected signed terrain");
         var terrainFacts = HudObjectFacts(terrainRow);
         _terrainSurface.Reparent(terrainFacts);
         oldSurface.Visible = false;
