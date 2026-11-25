@@ -5,6 +5,7 @@ on:
     paths:
       - 'GlobalArena.Runtime/WorldState.cs'
       - 'GlobalArena.Runtime/FoundationWorkerOrderQueue.cs'
+      - 'GlobalArena.Runtime/FoundationWorkerBaseActivity.cs'
       - 'GlobalArena.Simulation/CanonicalWorldStateHasher.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationPersistentOrderEditJournal.cs'
       - 'GlobalArena.Tests/FoundationPersistentOrderJournalTests.cs'
