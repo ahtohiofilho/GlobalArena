@@ -563,10 +563,18 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         var policy = new FoundationAuthoritativeEconomicSettlementPolicy(demand,
             new FoundationCommodityCargoConversionPolicy("r2287", crops.Values.Select(c =>
                 new FoundationCommodityCargoConversion(c, 1_000_000UL))),
-            opening.Civilizations.Civilizations.Select(c => new FoundationPhysicalEconomicTaxRate(c, 0U)), maxProducerPasses: 64);
+            opening.Civilizations.Civilizations.Select(c => new FoundationPhysicalEconomicTaxRate(c, 0U)), maxProducerPasses: 64, preferTemporalIncumbentThresholdTies: true);
+        Assert.True(policy.PreferTemporalIncumbentThresholdTies);
+        Assert.Equal(64, policy.MaxProducerPasses);
         var movement = new FoundationGroundEdgeTravelTimePolicy(1_400_000UL);
         var phase = new FoundationTemporalCollectiveTurnPhase(demo.Session.GeneratedWorld, incidence,
             movement, policy, fine, signature, persistentMoneyMicroPerWholeWork: 1_000_000UL,
+            agriculture: agriculture, enableExperimentalAutomaticBase: true);
+        var legacyPolicy = new FoundationAuthoritativeEconomicSettlementPolicy(
+            demand, policy.Cargo, policy.TaxRates, maxProducerPasses: 64);
+        Assert.False(legacyPolicy.PreferTemporalIncumbentThresholdTies);
+        var legacyPhase = new FoundationTemporalCollectiveTurnPhase(demo.Session.GeneratedWorld, incidence,
+            movement, legacyPolicy, fine, signature, persistentMoneyMicroPerWholeWork: 1_000_000UL,
             agriculture: agriculture, enableExperimentalAutomaticBase: true);
         // Select a real traversable land arrival with positive agricultural
         // yield, not an arbitrary tile or a preselected market outcome.
@@ -591,7 +599,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         var hash = new CanonicalWorldStateHasher();
         var openingHash = hash.Compute(opening);
 
-        BigInteger Run(bool auto)
+        BigInteger Run(bool auto, FoundationTemporalCollectiveTurnPhase activePhase, bool expectLegacyFailure = false)
         {
             var state = opening;
             BigInteger cumulative = BigInteger.Zero;
@@ -614,7 +622,17 @@ public sealed class FoundationTemporalEconomicJournalGateTests
                             OrderKind: FoundationWorkerOrderKind.Move, Destination: candidate.Destination)));
                 }
                 var before = hash.Compute(state);
-                var resolved = phase.Resolve(new TurnResolutionInput(state, commands.ToArray(), context), state);
+                var input = new TurnResolutionInput(state, commands.ToArray(), context);
+                if (expectLegacyFailure && turn == 3UL)
+                {
+                    var error = Assert.Throws<InvalidOperationException>(() => activePhase.Resolve(input, state));
+                    Assert.Contains("stable full-pass fixed point", error.Message);
+                    Console.WriteLine($"R2287_LEGACY_REJECTED turn={turn} {error.Message}");
+                    Assert.Equal(before, hash.Compute(state));
+                    Assert.Equal(2UL, state.Treasury.LastSettledEconomicCycleOrdinal);
+                    return cumulative;
+                }
+                var resolved = activePhase.Resolve(input, state);
                 var next = resolved.ResultingWorldState;
                 var timeline = Assert.Single(resolved.Events.OfType<FoundationPersistentWorkerTurnEvent>());
                 var sale = Assert.Single(resolved.Events.OfType<FoundationTemporalSalesSettledEvent>());
@@ -664,7 +682,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
                 if (!auto)
                     Assert.All(timeline.Slices.Where(x => own.Any(w => w.Id == x.Worker) && x.Activity == PhysicalWorkerActivity.Producing),
                         x => Assert.Equal((byte)candidate.Crop, x.Crop));
-                Assert.Equal(hash.Compute(next), hash.Compute(phase.ReplayPersistentJournal(state, resolved.EventLog, context)));
+                Assert.Equal(hash.Compute(next), hash.Compute(activePhase.ReplayPersistentJournal(state, resolved.EventLog, context)));
                 Assert.Equal(before, hash.Compute(state));
                 if (auto && turn == 2UL)
                 {
@@ -676,7 +694,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
                     var events = resolved.Events.Select(e => e is FoundationPersistentWorkerTurnEvent ? timeline with { Slices = forged } : e).ToArray();
                     var log = new SimulationEventLog(events.Select((e, i) =>
                         new SimulationEventLogEntry((ulong)i + 1UL, e, true, true)).ToArray());
-                    Assert.ThrowsAny<Exception>(() => phase.ReplayPersistentJournal(state, log, context));
+                    Assert.ThrowsAny<Exception>(() => activePhase.ReplayPersistentJournal(state, log, context));
                 }
                 var ownerCredit = sale.Credits.Single(x => x.Civilization == worker.Owner).CashCreditScaled;
                 cumulative += ownerCredit;
@@ -688,8 +706,9 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             }
             return cumulative;
         }
-        var autoCredit = Run(true);
-        var manualCredit = Run(false);
+        _ = Run(true, legacyPhase, expectLegacyFailure: true);
+        var autoCredit = Run(true, phase);
+        var manualCredit = Run(false, phase);
         // Observed comparative quality, not a theorem that the approximate
         // policy must dominate every fixed manual allocation.
         Console.WriteLine($"R2287_COMPARISON turns=3 auto_credit_scaled={autoCredit} fixed_manual_credit_scaled={manualCredit} difference_scaled={autoCredit - manualCredit}");

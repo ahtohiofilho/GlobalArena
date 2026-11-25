@@ -17,11 +17,16 @@ public sealed class FoundationAuthoritativeEconomicSettlementPolicy
     public IReadOnlyList<FoundationPhysicalEconomicTaxRate> TaxRates { get; }
     public int MaxProducerPasses { get; }
 
+    // Experimental temporal-only tie resolution. Default false preserves
+    // historical policy and replay; the non-temporal settlement ignores it.
+    public bool PreferTemporalIncumbentThresholdTies { get; }
+
     public FoundationAuthoritativeEconomicSettlementPolicy(
         FoundationActivityCommodityDemandPolicy demand,
         FoundationCommodityCargoConversionPolicy cargo,
         IEnumerable<FoundationPhysicalEconomicTaxRate> taxRates,
-        int maxProducerPasses = 64)
+        int maxProducerPasses = 64,
+        bool preferTemporalIncumbentThresholdTies = false)
     {
         Demand = demand ?? throw new ArgumentNullException(nameof(demand));
         Cargo = cargo ?? throw new ArgumentNullException(nameof(cargo));
@@ -38,6 +43,7 @@ public sealed class FoundationAuthoritativeEconomicSettlementPolicy
                 "cargo, valid unique post-revenue taxes, and a positive " +
                 "producer resolution budget.");
         MaxProducerPasses = maxProducerPasses;
+        PreferTemporalIncumbentThresholdTies = preferTemporalIncumbentThresholdTies;
         TaxRates = Array.AsReadOnly(rates.OrderBy(r =>
             r.Civilization.Value).ToArray());
     }
