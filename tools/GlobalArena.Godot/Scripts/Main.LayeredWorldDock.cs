@@ -50,6 +50,7 @@ public partial class Main
         // Reuse the existing controls, pending labels and detail parking.
         // There is still exactly one worker selector and one move handler.
         orders.Reparent(_selectedUnitSlot);
+        CreateWorldUnitReadout(_selectedUnitSlot);
 
         _worldInfrastructureCard = AddWorldLayer(_worldLayerStack,
             "GANextInfrastructureSlot", "INFRASTRUCTURE", out var infrastructure);

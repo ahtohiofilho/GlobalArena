@@ -146,9 +146,7 @@ public partial class Main
         var q = ReadPersistentQueue(worker.Id);
         var committed = host.Snapshot.WorkerOrders.Queues.Single(x => x.Worker == worker.Id);
         _r224Identity!.Text = $"Worker #{worker.Id.Value} | Node {worker.TacticalTileId?.FineStrategicCellId.Value}";
-        _r224BaseReadout!.Text = "Base: " + (q.BaseActivity?.Crop is { } crop ? $"Grow {(CropId)crop}" :
-            q.BaseActivity?.Mode == FoundationWorkerBaseMode.Automatic || (q.BaseActivity is null && host.DefaultAutomaticBaseEnabled)
-                ? "Automatic (local)" : q.BaseActivity?.Occupation?.ToString() ?? "Not configured") +
+        _r224BaseReadout!.Text = "Base: " + DescribeWorkerBase(host, q) +
             (!Equals(q.BaseActivity, committed.BaseActivity) ? " | Pending submission" : " | Committed");
         if (_r224Worker != worker.Id.Value)
         {
