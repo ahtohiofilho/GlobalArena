@@ -502,11 +502,6 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             new WorldGenerationRequest(new WorldSeed(20261012UL),
                 WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)), workersPerCivilization: 3);
         var signature = FoundationFineFirstWorldgenCanonicalSignature.Compute(demo.Session.GeneratedWorld, incidence, fine);
-        var tile = worker.TacticalTileId!.Value;
-        var crossing = incidence.FineTopology.Edges.First(e =>
-            e.IncidentCellIds.Contains(tile.FineStrategicCellId) &&
-            fine.CrossingAtIndices((int)e.IncidentCellIds[0].Value - 1,
-                (int)e.IncidentCellIds[1].Value - 1) == FoundationFineTransportCrossingKind.Ground);
         // Use a real signed fine-first monetary world for collective admission.
         var bound = demo.Session.Snapshot.PromoteFineFirstBeforeTransport(
             demo.Session.GeneratedWorld, incidence, fine, signature)
@@ -520,10 +515,29 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         var crops = Enum.GetValues<GlobalArena.Foundation.Agriculture.CropId>()
             .ToDictionary(c => c, c => new CommodityId((uint)c));
         var agriculture = new FoundationAgriculturalProductionPolicy(fine, incidence, crops, 2_000_000UL);
-        var destination = new PhysicalTacticalTileId(incidence.Refinement.FineParameters,
-            crossing.IncidentCellIds.Single(n => n != tile.FineStrategicCellId));
-        var rice = new FoundationWorkerBaseActivity(FoundationWorkerBaseMode.Manual, PhysicalWorkerOccupation.Agriculture, 4);
-        var moving = beginning.SetWorkerBaseActivity(worker.Owner, worker.Id, rice)
+        // Select a real ground crossing whose destination supports the chosen crop.
+        // A ground crossing alone does not guarantee agricultural suitability.
+        var candidate = (from w in beginning.Workers.Workers
+            let source = w.TacticalTileId!.Value
+            from edge in incidence.FineTopology.Edges
+            where edge.IncidentCellIds.Contains(source.FineStrategicCellId)
+                && fine.CrossingAtIndices((int)edge.IncidentCellIds[0].Value - 1,
+                    (int)edge.IncidentCellIds[1].Value - 1) == FoundationFineTransportCrossingKind.Ground
+            let target = new PhysicalTacticalTileId(incidence.Refinement.FineParameters,
+                edge.IncidentCellIds.Single(n => n != source.FineStrategicCellId))
+            from crop in crops.Keys
+            where agriculture.Resolve(target, crop).WholeTurnOutput > 0
+            orderby w.Id != worker.Id, crop != GlobalArena.Foundation.Agriculture.CropId.Rice,
+                w.Id.Value, target.FineStrategicCellId.Value, (byte)crop
+            select (Worker: w, Source: source, Destination: target, Crop: crop)).First();
+        worker = candidate.Worker;
+        var tile = candidate.Source;
+        var destination = candidate.Destination;
+        var selectedCrop = (byte)candidate.Crop;
+        Assert.True(agriculture.Resolve(destination, candidate.Crop).WholeTurnOutput > 0);
+        var baseActivity = new FoundationWorkerBaseActivity(FoundationWorkerBaseMode.Manual,
+            PhysicalWorkerOccupation.Agriculture, selectedCrop);
+        var moving = beginning.SetWorkerBaseActivity(worker.Owner, worker.Id, baseActivity)
             .InsertWorkerOrder(worker.Owner, worker.Id, 0, FoundationWorkerOrderKind.Move, destination);
         var scheduler = new FoundationPersistentWorkerTurnScheduler(new FoundationConstructionApproachRouter(
             demo.Session.GeneratedWorld, incidence, fine, signature, new FoundationGroundEdgeTravelTimePolicy(1_400_000UL)), agriculture);
@@ -541,9 +555,10 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Equal(tile, slices[0].Node);
         Assert.Equal(600_000U, slices[1].DurationMicro);
         Assert.Equal(destination, slices[1].Node);
-        Assert.Equal((byte)4, slices[1].Crop);
+        Assert.Equal(PhysicalWorkerActivity.Producing, slices[1].Activity);
+        Assert.Equal(selectedCrop, slices[1].Crop);
         Assert.Empty(second.WorkerOrders.Queues.Single(q => q.Worker == worker.Id).Orders);
-        Assert.Equal(rice, second.WorkerOrders.Queues.Single(q => q.Worker == worker.Id).BaseActivity);
+        Assert.Equal(baseActivity, second.WorkerOrders.Queues.Single(q => q.Worker == worker.Id).BaseActivity);
         var hash = new CanonicalWorldStateHasher();
         Assert.Equal(hash.Compute(second), hash.Compute(scheduler.Execute(first, arrival, secondContext)));
         var exact = new FoundationPersistentWorkerTurnScheduler(new FoundationConstructionApproachRouter(
@@ -553,7 +568,9 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Equal(destination, boundary.Workers.Workers.Single(x => x.Id == worker.Id).TacticalTileId);
         var (following, followingEvent) = exact.Record(boundary, secondContext);
         Assert.Empty(following.WorkerOrders.Queues.Single(q => q.Worker == worker.Id).Orders);
-        Assert.All(followingEvent.Slices.Where(x => x.Worker == worker.Id), x => Assert.Equal((byte)4, x.Crop));
+        var followingSlices = followingEvent.Slices.Where(x => x.Worker == worker.Id).ToArray();
+        Assert.Equal(1_000_000L, followingSlices.Sum(x => (long)x.DurationMicro));
+        Assert.All(followingSlices, x => { Assert.Equal(PhysicalWorkerActivity.Producing, x.Activity); Assert.Equal(selectedCrop, x.Crop); });
     }
 
     [Fact]
