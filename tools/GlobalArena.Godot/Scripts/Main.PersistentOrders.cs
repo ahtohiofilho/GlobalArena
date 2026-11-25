@@ -217,7 +217,7 @@ public partial class Main
             quotes.Count == 0 ? "Local logistics: no service last cycle" :
             FormattableString.Invariant($"Local logistics: {quotes.Count} worked links | Last cycle");
         _operationalReadout.TooltipText = quotes is null ? "" : string.Join("\n", quotes.Select(q =>
-            FormattableString.Invariant($"Link {q.Edge.FineStrategicEdgeId.Value}: {q.OriginalPhysicalCostMicroPerWholeCargoUnit} → {q.ShadowPhysicalCostMicroPerWholeCargoUnit} micro freight")));
+            FormattableString.Invariant($"Link {q.Edge.FineStrategicEdgeId.Value}: {GaDisplayNumbers.MoneyMicro(q.OriginalPhysicalCostMicroPerWholeCargoUnit)} → {GaDisplayNumbers.MoneyMicro(q.ShadowPhysicalCostMicroPerWholeCargoUnit)} / cargo")));
     }
 
     private void RefreshFoodQuality(FoundationTacticalHumanAiTurnHost host, PhysicalWorkerId worker)
@@ -251,7 +251,7 @@ public partial class Main
         foreach (var crop in CropCatalog.All)
         {
             var output = policy.Resolve(node, crop.Id).WholeTurnOutput;
-            _cropSelector.AddItem(FormattableString.Invariant($"{crop.Id} | {output / 1_000_000m:0.###}/turn"), (int)crop.Id);
+            _cropSelector.AddItem(FormattableString.Invariant($"{crop.Id} | {GaDisplayNumbers.PhysicalMicro(output)}/turn"), (int)crop.Id);
         }
         _cropSelector.Select(previous.HasValue ? (int)previous.Value - 1 : 0);
         _cropSelector.Disabled = ready;
@@ -289,7 +289,7 @@ public partial class Main
         var percent = 100m * (travel.OriginalDurationMicro - travel.RemainingMicro) / travel.OriginalDurationMicro;
         _persistentCrossingProgress.Value = (double)percent;
         _persistentCrossingLabel.Text = FormattableString.Invariant(
-            $"Crossing {travel.Source.FineStrategicCellId.Value} → {travel.Destination.FineStrategicCellId.Value} | {percent:F1}%\nRemaining: {travel.RemainingMicro / 1_000_000m:0.######} turns");
+            $"Crossing {travel.Source.FineStrategicCellId.Value} → {travel.Destination.FineStrategicCellId.Value} | {percent:F1}%\nRemaining: {GaDisplayNumbers.PhysicalMicro(travel.RemainingMicro)} turns");
     }
 
     private void ExerciseCropPreview(FoundationTacticalHumanAiTurnHost host)
@@ -359,6 +359,7 @@ public partial class Main
 
     private void ExerciseLocalEconomyPreview(FoundationTacticalHumanAiTurnHost host)
     {
+        GaDisplayNumbers.ExerciseContract();
         if (!host.DefaultAutomaticBaseEnabled || host.AgriculturalProduction?.BasicResources is null)
             throw new InvalidOperationException("Missing experimental local host configuration.");
         var worker = host.Snapshot.Workers.Workers.First(w => w.Owner == _humanCivilization &&
@@ -695,7 +696,7 @@ public partial class Main
             var travelHash = host.StateHash;
             if (!_persistentCrossingProgress.Visible || !_persistentCrossingLabel!.Visible ||
                 Math.Abs(_persistentCrossingProgress.Value - (double)expected) > 0.00001 ||
-                !_persistentCrossingLabel.Text.Contains(FormattableString.Invariant($"Remaining: {travel.RemainingMicro / 1_000_000m:0.######} turns")) ||
+                !_persistentCrossingLabel.Text.Contains(FormattableString.Invariant($"Remaining: {GaDisplayNumbers.PhysicalMicro(travel.RemainingMicro)} turns")) ||
                 !_persistentWorkerSummary!.Text.StartsWith("Traveling", StringComparison.Ordinal))
                 throw new InvalidOperationException($"Crossing readout mismatch: expected={expected}, bar={_persistentCrossingProgress.Value}, visible={_persistentCrossingProgress.Visible}, label={_persistentCrossingLabel?.Text}, summary={_persistentWorkerSummary?.Text}");
             OnOperationalWorkerSelected(other.Id.Value);

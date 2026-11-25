@@ -136,11 +136,11 @@ public partial class Main
                 $"#{w.Id.Value} | {w.Activity} | " +
                 $"occupation {(w.Occupation?.ToString() ?? "n/a")} | " +
                 $"commodity {w.Commodity.Value} | " +
-                $"output {w.OutputMicroPerTurn} micro/turn"));
+                $"output {GaDisplayNumbers.PhysicalMicro(w.OutputMicroPerTurn)}/turn"));
         _localCenterProductionQa.Text =
             $"PRODUCTION | Site {tile:D4}\n" +
             $"Own workers: {own.Length} | own producing output: " +
-            $"{output} micro/turn (current assignments, NOT settled sales)\n" +
+            $"{GaDisplayNumbers.PhysicalMicro(output)}/turn (current assignments, NOT settled sales)\n" +
             rows;
 
         var view = _tacticalHost.GetLastClosedEconomicTradeView(
@@ -175,7 +175,7 @@ public partial class Main
                     FoundationPhysicalAuthoritativeTransportProjector
                         .EffectiveUnitFreightCost(infrastructure);
                 return $"Edge {line.Edge.FineStrategicEdgeId.Value} | " +
-                    $"cargo {line.TotalCargoMicro} micro (last cycle) | " +
+                    $"cargo {GaDisplayNumbers.PhysicalMicro(line.TotalCargoMicro)} (last cycle) | " +
                     $"current unit freight " +
                     $"{FormatMoneyMicroForDisplay(currentUnitFreight)} | " +
                     $"{line.FirstTile.FineStrategicCellId.Value}" +

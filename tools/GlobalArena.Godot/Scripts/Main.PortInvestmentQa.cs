@@ -49,7 +49,7 @@ public partial class Main
         section.AddChild(title);
         section.AddChild(new Label
         {
-            Text = "Choose a real land or coastal edge. Queue 0.100000 " +
+            Text = "Choose a real land or coastal edge. Queue $0.10 " +
                 "capital, cancel before E or commit with E. Only your " +
                 "civilization treasury pays; no workers or goods are consumed.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
@@ -203,7 +203,7 @@ public partial class Main
                 (_r143SelectedCrossing == FoundationFineTransportCrossingKind.Port
                     ? $"depth {p.Depth} | " : "") +
                 (p.CargoMicro > 0UL
-                    ? $"USED ({p.CargoMicro} cargo micro)"
+                    ? $"USED ({GaDisplayNumbers.PhysicalMicro(p.CargoMicro)} cargo)"
                     : "AVAILABLE"));
         }
         if (_portQaChoices.Count == 0)
@@ -231,7 +231,7 @@ public partial class Main
         ulong selectedCargo = used.GetValueOrDefault(_portQaSelected.Value);
         _portQaDetails.Text =
             $"Crossing {crossingLabel} | last-cycle used: {usedPortCount}" +
-            $" | selected-edge cargo: {selectedCargo} micro | " +
+            $" | selected-edge cargo: {GaDisplayNumbers.PhysicalMicro(selectedCargo)} | " +
             $"Natural unit freight {FormatMoneyMicroForDisplay(current.FreePhysicalCostMicroPerWholeCargoUnit)}" +
             $" | effective {FormatMoneyMicroForDisplay(effective)}" +
             $" | edge construction basis {FormatMoneyMicroForDisplay(current.NaturalConstructionCostMoneyMicro!.Value)}" +
@@ -422,7 +422,7 @@ public partial class Main
                 $"spent {FormatMoneyMicroForDisplay(committed.MoneyMicro)}, " +
                 $"freight {FormatMoneyMicroForDisplay(previous.BeforeFreight)} -> " +
                 $"{FormatMoneyMicroForDisplay(newCost)}, " +
-                $"cargo {previous.BeforeCargo} -> {cargoAfter}");
+                $"cargo {GaDisplayNumbers.PhysicalMicro(previous.BeforeCargo)} -> {GaDisplayNumbers.PhysicalMicro(cargoAfter)}");
             GD.Print("GA_NEXT_R144_MULTI_EDGE_INVESTMENT_SETTLED " +
                 $"edge={edge.FineStrategicEdgeId.Value} " +
                 $"money_micro={committed.MoneyMicro} " +

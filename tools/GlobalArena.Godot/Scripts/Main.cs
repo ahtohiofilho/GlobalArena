@@ -350,18 +350,7 @@ public partial class Main : Control
             _selectedLocalWorkerId, _localFoundation.Snapshot.Revision);
     }
 
-    // Exact decimal presentation of the existing scaled monetary ledger:
-    // 1 monetary unit = MoneyScale scaled units. No float or UI-side revenue.
-    internal static string FormatTemporalMoney(BigInteger scaled)
-    {
-        var scale = FoundationPhysicalEconomicAccountingProposal.MoneyScale;
-        var magnitude = BigInteger.Abs(scaled);
-        var whole = BigInteger.DivRem(magnitude, scale, out var remainder);
-        var fractional = remainder.ToString().PadLeft(scale.ToString().Length - 1, '0')
-            .TrimEnd('0');
-        return (scaled.Sign < 0 ? "-" : "") + whole +
-            (fractional.Length == 0 ? "" : "." + fractional);
-    }
+    internal static string FormatTemporalMoney(BigInteger scaled) => GaDisplayNumbers.MoneyScaled(scaled);
 
     private void RefreshLastTemporalEconomyReadout()
     {
@@ -379,11 +368,11 @@ public partial class Main : Control
         }
         label.Text =
             $"LAST ECONOMIC CLOSE | CYCLE {settlement.EconomicCycleOrdinal}\n" +
-            $"Treasury credit: {FormatTemporalMoney(settlement.TotalCashCreditScaled)} money units\n" +
-            $"Net sales: {FormatTemporalMoney(settlement.SellerNetScaled)} money units\n" +
-            $"Tax receipts: {FormatTemporalMoney(settlement.TaxReceiptsScaled)} money units\n" +
-            $"Toll receipts: {FormatTemporalMoney(settlement.OwnerTollIncomeScaled)} money units\n" +
-            $"Global settled output: {settlement.PhysicalGoodsProducedMicro} micro-units";
+            $"Treasury credit: {FormatTemporalMoney(settlement.TotalCashCreditScaled)}\n" +
+            $"Net sales: {FormatTemporalMoney(settlement.SellerNetScaled)}\n" +
+            $"Tax receipts: {FormatTemporalMoney(settlement.TaxReceiptsScaled)}\n" +
+            $"Toll receipts: {FormatTemporalMoney(settlement.OwnerTollIncomeScaled)}\n" +
+            $"Global settled output: {GaDisplayNumbers.PhysicalMicro(settlement.PhysicalGoodsProducedMicro)} units";
     }
 
     private void RefreshFineTacticalWorkerControls()

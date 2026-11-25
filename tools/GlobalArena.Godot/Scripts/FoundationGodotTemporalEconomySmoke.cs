@@ -108,19 +108,19 @@ internal sealed class FoundationGodotTemporalEconomySmoke
         Must(label.Visible && receipt.EconomicCycleOrdinal == cycle &&
             text.Contains($"CYCLE {cycle}", StringComparison.Ordinal) &&
             text.Contains("Treasury credit: " +
-                Main.FormatTemporalMoney(receipt.TotalCashCreditScaled) + " money units",
+                Main.FormatTemporalMoney(receipt.TotalCashCreditScaled),
                 StringComparison.Ordinal) &&
             text.Contains("Net sales: " +
-                Main.FormatTemporalMoney(receipt.SellerNetScaled) + " money units",
+                Main.FormatTemporalMoney(receipt.SellerNetScaled),
                 StringComparison.Ordinal) &&
             text.Contains("Tax receipts: " +
-                Main.FormatTemporalMoney(receipt.TaxReceiptsScaled) + " money units",
+                Main.FormatTemporalMoney(receipt.TaxReceiptsScaled),
                 StringComparison.Ordinal) &&
             text.Contains("Toll receipts: " +
-                Main.FormatTemporalMoney(receipt.OwnerTollIncomeScaled) + " money units",
+                Main.FormatTemporalMoney(receipt.OwnerTollIncomeScaled),
                 StringComparison.Ordinal) &&
             text.Contains("Global settled output: " +
-                receipt.PhysicalGoodsProducedMicro, StringComparison.Ordinal),
+                GaDisplayNumbers.PhysicalMicro(receipt.PhysicalGoodsProducedMicro) + " units", StringComparison.Ordinal),
             "Godot did not render the exact private committed finance fields.");
     }
 

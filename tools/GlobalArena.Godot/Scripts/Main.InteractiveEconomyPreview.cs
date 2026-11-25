@@ -33,34 +33,10 @@ public partial class Main
         root.AddChild(_interactiveEconomicPreviewBanner);
     }
 
-    // R124: all monetary quantities on-screen use ONE abstract unit.
-    // The kernel keeps its exact micro integer and 1e16 ledger scales.
-    // Values here are only an invariant-culture presentation conversion.
-    private static string FormatMoneyMicroForDisplay(ulong micro)
-    {
-        const ulong microPerUnit = 1_000_000UL;
-        return (micro / microPerUnit).ToString(
-            System.Globalization.CultureInfo.InvariantCulture) + "." +
-            (micro % microPerUnit).ToString(
-                System.Globalization.CultureInfo.InvariantCulture).PadLeft(6, '0');
-    }
-
-    private static string FormatExactMoneyForDisplay(BigInteger scaled)
-    {
-        if (scaled.Sign < 0)
-            throw new InvalidOperationException(
-                "An authoritative civilization treasury cannot be negative.");
-        BigInteger whole = scaled / GlobalArenaMoneyScale.ExactScaledPerUnit;
-        BigInteger fractionMicro =
-            (scaled % GlobalArenaMoneyScale.ExactScaledPerUnit) /
-            GlobalArenaMoneyScale.ExactScaledPerMoneyMicro;
-        // The UI truncates beyond six displayed decimal places, but
-        // the REAL 1e16-scale monetary ledger remains exact in WorldState.
-        return whole.ToString(System.Globalization.CultureInfo.InvariantCulture) +
-            "." + fractionMicro.ToString(
-                System.Globalization.CultureInfo.InvariantCulture)
-                .PadLeft(6, '0');
-    }
+    // Separate read-only presentation from exact command input.
+    private static string FormatMoneyMicroForDisplay(ulong micro) => GaDisplayNumbers.MoneyMicro(micro);
+    private static string FormatExactMoneyForDisplay(BigInteger scaled) => GaDisplayNumbers.MoneyScaled(scaled);
+    private static string FormatPhysicalMicroForDisplay(ulong micro) => GaDisplayNumbers.PhysicalMicro(micro);
 
     private void RefreshInteractiveEconomyPreviewBanner()
     {
