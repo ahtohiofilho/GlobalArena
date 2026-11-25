@@ -191,6 +191,7 @@ public partial class Main
         if (_localMoveButton is not null)
         {
             _localMoveButton.Text = "G | Move to selected node";
+            _localMoveButton.TooltipText = CompactOperationalDock ? "Shift + left-click a map node to queue a move directly." : "Select a node, then press G.";
             _localMoveButton.Disabled = ready || _tacticalPreview?.SelectedCanonicalPhysicalTileId is null ||
                 _tacticalPreview.SelectedCanonicalPhysicalTileId == host.Snapshot.Workers.Workers.Single(w => w.Id == q.Worker).TacticalTileId!.Value.FineStrategicCellId.Value;
         }
