@@ -31,6 +31,15 @@ public partial class Main
         PhysicalTacticalTileId? destination = null, ulong? project = null, PhysicalWorkerOccupation? occupation = null)
     {
         var q = ReadPersistentQueue(worker);
+        if (kind == FoundationWorkerOrderKind.Occupation && q.BaseActivity is not null)
+        {
+            var role = occupation ?? throw new InvalidOperationException("Select an occupation.");
+            _tacticalHost!.QueueHumanBaseActivity(_humanCivilization, worker,
+                new FoundationWorkerBaseActivity(FoundationWorkerBaseMode.Manual, role,
+                    role == PhysicalWorkerOccupation.Agriculture && _tacticalHost.AgriculturalProduction is not null
+                        ? (byte?)(SelectedCrop ?? throw new InvalidOperationException("Select a crop first.")) : null));
+            return;
+        }
         var index = _persistentInsertionIndex < 0 ? q.Orders.Count : Math.Clamp(_persistentInsertionIndex, q.ActiveOrderId.HasValue ? 1 : 0, q.Orders.Count);
         _tacticalHost!.QueueHumanPersistentEdit(_humanCivilization, new FoundationPersistentOrderEdit(
             _humanCivilization, worker, FoundationPersistentOrderEditKind.Insert, Index: index,
