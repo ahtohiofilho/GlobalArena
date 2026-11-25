@@ -718,6 +718,12 @@ public sealed class WorldState
         ulong? projectId = null, PhysicalWorkerOccupation? occupation = null, byte? crop = null)
         => CopyWithWorkerOrders(WorkerOrders.Insert(issuer, worker, index, kind, destination, projectId, occupation, crop));
 
+    // R223.1 explicit per-worker opt-in. No implicit migration of legacy
+    // continuous orders and no mutation of physical activity.
+    public WorldState SetWorkerBaseActivity(CivilizationId issuer, PhysicalWorkerId worker,
+        FoundationWorkerBaseActivity activity)
+        => CopyWithWorkerOrders(WorkerOrders.SetBaseActivity(issuer, worker, activity));
+
     public WorldState RemoveWorkerOrder(CivilizationId issuer, PhysicalWorkerId worker, ulong id)
         => CopyWithWorkerOrders(WorkerOrders.Remove(issuer, worker, id));
 
