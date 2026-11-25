@@ -31,6 +31,8 @@ public partial class Main
     private readonly Dictionary<PhysicalTacticalEdgeId, HashSet<PhysicalWorkerId>> _fundingSelections = new();
     private Label? _constructionWorkforceTitle;
     private ulong? _connectionDestination;
+    private bool _r227DirectConnection;
+    private Button? _r227CloseConnection;
     private VBoxContainer? _constructionSection;
     private Label? _constructionStatus;
     private ProgressBar? _constructionProgress;
@@ -120,7 +122,7 @@ public partial class Main
             Text = "CONNECTION",
             SizeFlagsHorizontal = SizeFlags.ExpandFill
         });
-        var hideDetails = new Button { Text = "BACK TO CITY" };
+        var hideDetails = _r227CloseConnection = new Button { Text = "BACK TO CITY" };
         hideDetails.Pressed += CloseConnectionDetail;
         detailsHeader.AddChild(hideDetails);
         // A bounded scroll viewport prevents a large workforce from growing
@@ -248,9 +250,32 @@ public partial class Main
 
     private void CloseConnectionDetail()
     {
+        if (_r227DirectConnection && _cityWindowLayer is not null) _cityWindowLayer.Visible = false;
+        _r227DirectConnection = false;
+        if (_r227CloseConnection is not null) _r227CloseConnection.Text = "BACK TO CITY";
         _connectionDestination = null;
         if (_cityLinkDetail is not null) _cityLinkDetail.Visible = false;
         if (_cityWindowPanel is not null) _cityWindowPanel.Visible = true;
+    }
+
+    private void OnR227MapConnectionRequested(PhysicalTacticalEdgeId id)
+    {
+        var host = _tacticalHost;
+        if (host is null || !CompactOperationalDock || _cityWindowLayer is null ||
+            _tacticalPreview?.IsCartographicSiteMode != true) return;
+        if (!host.Snapshot.Transport.Edges.Any(e => e.Edge == id)) return;
+        var edge = host.Incidence.FineTopology.Edges.Single(e => e.Id == id.FineStrategicEdgeId);
+        var source = new PhysicalTacticalTileId(host.Incidence.Refinement.FineParameters,
+            edge.IncidentCellIds.OrderBy(c => c.Value).First());
+        var link = FoundationLocalConnectionsProjector.Read(host.Snapshot, host.Incidence, source)
+            .Single(r => r.Edge == id);
+        CloseConnectionDetail();
+        if (_civilizationWindowLayer is not null) _civilizationWindowLayer.Visible = false;
+        _cityConnectionSource = source.FineStrategicCellId.Value;
+        _r227DirectConnection = true;
+        if (_r227CloseConnection is not null) _r227CloseConnection.Text = "CLOSE";
+        _cityWindowLayer.Visible = true;
+        ShowCityConnectionDetail(link);
     }
 
     private void ShowCityConnectionDetail(FoundationLocalConnection link)
