@@ -103,6 +103,7 @@ public partial class Main
         _cityConnectionDiagram = new GaLocalConnectionDiagram { Visible = false };
         connectionColumn.AddChild(_cityConnectionDiagram);
         connectionColumn.AddChild(_cityLinksList);
+        CreateCityProductionTab(tabs);
 
         _cityLinkDetail = new PanelContainer
         {
@@ -205,6 +206,7 @@ public partial class Main
         {
             _cityWindowTitle.Text = "CITY | Select a settlement";
             _cityOverview.Text = "Select a city on the map.";
+            RefreshCityProduction();
             _cityLinksList.AddChild(new Label
             {
                 Text = "Local connections appear after selecting a city."
@@ -218,6 +220,7 @@ public partial class Main
         var rows = FoundationLocalConnectionsProjector.Read(
             host.Snapshot, host.Incidence, node);
         _cityConnectionSource = selected.Value;
+        RefreshCityProduction();
         if (_cityConnectionDiagram is not null && _tacticalPreview is not null)
         {
             var geometry = _tacticalPreview.ReadLocalConnectionGeometry(node.FineStrategicCellId);

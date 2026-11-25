@@ -81,6 +81,7 @@ jobs:
           timeout 180 "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --rendering-method gl_compatibility 2>&1 | tee "$RUNNER_TEMP/local-economy.log"
           grep -q 'GA_NEXT_R22813C_LOCAL_ECONOMY_READY' "$RUNNER_TEMP/local-economy.log"
           grep -q 'GA_NEXT_R22813C_LOCAL_ECONOMY_UI_PASS' "$RUNNER_TEMP/local-economy.log"
+          grep -q 'GA_NEXT_R2292_CITY_PRODUCTION_PASS' "$RUNNER_TEMP/local-economy.log"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
