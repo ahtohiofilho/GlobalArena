@@ -51,6 +51,9 @@ public sealed record CivilizationSettledFreightQuote(
 /// Subsequent cash CREDIT must be wired to a verified closed sales journal:
 /// this class deliberately has no free "mint money" method.
 /// </summary>
+public sealed record CivilizationObservedMarketPrice(
+    PhysicalTacticalTileId Node, CommodityId Commodity, ulong PriceMicro, ulong ObservedCycleOrdinal);
+
 public sealed class CivilizationTreasuryRuntimeState
 {
     public static CivilizationTreasuryRuntimeState Uninitialized { get; } =
@@ -63,6 +66,10 @@ public sealed class CivilizationTreasuryRuntimeState
     public string? LastSettledCargoUnitCode { get; }
     public IReadOnlyList<CivilizationSettledFreightQuote>
         LastSettledFreightQuotes { get; }
+
+    // Null preserves the historical state format; an empty non-null ledger
+    // means the opt-in market has closed without a sale observation.
+    internal IReadOnlyList<CivilizationObservedMarketPrice>? LocalPriceHistory { get; }
 
     public bool HasClosedEconomicCycle =>
         LastSettledEconomicCycleOrdinal > 0UL;
@@ -80,13 +87,15 @@ public sealed class CivilizationTreasuryRuntimeState
     private CivilizationTreasuryRuntimeState(
         CivilizationTreasuryRuntimeState source,
         CivilizationCashAccount[] accounts, ulong ordinal,
-        string cargoUnitCode, CivilizationSettledFreightQuote[] quotes)
+        string cargoUnitCode, CivilizationSettledFreightQuote[] quotes,
+        IReadOnlyList<CivilizationObservedMarketPrice>? localPrices = null)
     {
         IsInitialized = source.IsInitialized;
         Accounts = Array.AsReadOnly(accounts);
         LastSettledEconomicCycleOrdinal = ordinal;
         LastSettledCargoUnitCode = cargoUnitCode;
         LastSettledFreightQuotes = Array.AsReadOnly(quotes);
+        LocalPriceHistory = localPrices ?? source.LocalPriceHistory;
     }
 
     public static CivilizationTreasuryRuntimeState CreateOpening(
@@ -155,7 +164,8 @@ public sealed class CivilizationTreasuryRuntimeState
         ulong economicCycleOrdinal,
         string cargoUnitCode,
         IReadOnlyDictionary<CivilizationId, BigInteger> creditsScaled,
-        IEnumerable<CivilizationSettledFreightQuote> nextFreightQuotes)
+        IEnumerable<CivilizationSettledFreightQuote> nextFreightQuotes,
+        IEnumerable<CivilizationObservedMarketPrice>? observedPrices = null)
     {
         ArgumentNullException.ThrowIfNull(creditsScaled);
         ArgumentNullException.ThrowIfNull(nextFreightQuotes);
@@ -191,7 +201,24 @@ public sealed class CivilizationTreasuryRuntimeState
                     account.TotalSettledEconomicIncomeScaled + credit
             };
         }).ToArray();
+        if (LocalPriceHistory is not null && observedPrices is null)
+            throw new InvalidOperationException("Cannot disable a deployed local price history.");
+        IReadOnlyList<CivilizationObservedMarketPrice>? history = null;
+        if (observedPrices is not null)
+        {
+            var updates = observedPrices.ToArray();
+            if (updates.Any(p => p is null || !p.Node.IsValid || !p.Commodity.IsValid ||
+                    p.ObservedCycleOrdinal != economicCycleOrdinal) ||
+                updates.Select(p => (p.Node, p.Commodity)).Distinct().Count() != updates.Length)
+                throw new InvalidOperationException("Invalid audited local market observations.");
+            var merged = (LocalPriceHistory ?? Array.Empty<CivilizationObservedMarketPrice>())
+                .ToDictionary(p => (p.Node, p.Commodity));
+            foreach (var p in updates) merged[(p.Node, p.Commodity)] = p;
+            history = Array.AsReadOnly(merged.Values.OrderBy(p => p.Node.FineGoldbergParameters.M)
+                .ThenBy(p => p.Node.FineGoldbergParameters.N)
+                .ThenBy(p => p.Node.FineStrategicCellId.Value).ThenBy(p => p.Commodity.Value).ToArray());
+        }
         return new CivilizationTreasuryRuntimeState(
-            this, next, economicCycleOrdinal, cargoUnitCode, quotes);
+            this, next, economicCycleOrdinal, cargoUnitCode, quotes, history);
     }
 }

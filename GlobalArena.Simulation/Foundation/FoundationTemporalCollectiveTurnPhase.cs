@@ -54,7 +54,7 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
         FoundationFineFirstWorldgenIdentity? signature = null,
         FoundationConstructionCollectiveTurnPhase? construction = null,
         ulong? persistentMoneyMicroPerWholeWork = null, bool enableDemographicGrowth = false, FoundationAgriculturalProductionPolicy? agriculture = null, FoundationOperationalFreightShadowPolicy? operationalPolicy = null,
-        bool enableExperimentalAutomaticBase = false)
+        bool enableExperimentalAutomaticBase = false, bool enableLocalPriceAllocation = false)
     {
         ArgumentNullException.ThrowIfNull(world);
         _incidence = incidence ?? throw new ArgumentNullException(nameof(incidence));
@@ -66,6 +66,8 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
                 "Temporal collective settlement requires complete signed geography.");
         if (enableExperimentalAutomaticBase && (!persistentMoneyMicroPerWholeWork.HasValue || agriculture is null || fine is null))
             throw new InvalidOperationException("Experimental automatic base requires signed persistent crop scheduling.");
+        if (enableLocalPriceAllocation && !enableExperimentalAutomaticBase)
+            throw new InvalidOperationException("Local allocation requires experimental automatic scheduling.");
         _growth = enableDemographicGrowth;
         _agriculture = agriculture;
         _operationalPolicy = operationalPolicy;
@@ -98,7 +100,7 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
             _persistent = new FoundationPersistentWorkerTurnScheduler(new FoundationConstructionApproachRouter(
                 world, incidence, fine, signature!, movementPolicy), agriculture,
                 enableExperimentalAutomaticBase ? economy : null,
-                enableExperimentalAutomaticBase ? operationalPolicy : null);
+                enableExperimentalAutomaticBase ? operationalPolicy : null, enableLocalPriceAllocation);
             _funded = new FoundationFundedWorkerIntentJournal(new FoundationConstructionFundingExecutor(
                 _capitalExecutor, persistentMoneyMicroPerWholeWork.Value));
         }

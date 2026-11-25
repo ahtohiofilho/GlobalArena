@@ -174,7 +174,8 @@ public static class FoundationTemporalEconomicJournalGate
         var (settlement, expected) = Derive(beginning, staged,
             executor.VerifiedPhysicalEvents, executor.VerifiedLocalEvents,
             executor.VerifiedInvestmentCount,
-            incidence, economicPolicy, context, signedFine, executor.VerifiedTimeline, agriculture, operationalPolicy);
+            incidence, economicPolicy, context, signedFine, executor.VerifiedTimeline, agriculture, operationalPolicy,
+            persistentScheduler?.UsesLocalPriceAllocation == true);
         // Resolution solves once; the fresh journal executor below solves
         // independently once more. Avoid an unneeded third market pass.
         var actual = expected;
@@ -239,7 +240,8 @@ public static class FoundationTemporalEconomicJournalGate
         FoundationAuthoritativeEconomicSettlementPolicy policy,
         SimulationContext context,
         FoundationFineFirstPhysicalGeography? signedFine,
-        FoundationPersistentWorkerTurnEvent? timeline = null, FoundationAgriculturalProductionPolicy? agriculture = null, FoundationOperationalFreightShadowPolicy? operationalPolicy = null)
+        FoundationPersistentWorkerTurnEvent? timeline = null, FoundationAgriculturalProductionPolicy? agriculture = null, FoundationOperationalFreightShadowPolicy? operationalPolicy = null,
+        bool retainLocalPriceHistory = false)
     {
         if (beginning.WorkerOrders.IsInitialized != (timeline is not null))
             throw new InvalidOperationException("Persistent close requires exactly one verified timeline.");
@@ -290,8 +292,10 @@ public static class FoundationTemporalEconomicJournalGate
             ordinal, financial.Accounting.Lines));
         var amounts = ev.Credits.ToDictionary(c => c.Civilization,
             c => c.CashCreditScaled);
+        var observed = retainLocalPriceHistory ? ev.AuditedLocalPrices!.Prices.Select(p =>
+            new CivilizationObservedMarketPrice(p.Node, p.Commodity, p.PriceMicro, ordinal)) : null;
         var state = staged.RecordAuditedEconomicCycle(
-            ordinal, policy.Cargo.CargoUnitCode, amounts, nextFreight)
+            ordinal, policy.Cargo.CargoUnitCode, amounts, nextFreight, observed)
             .AdvanceRevision();
         return (ev, state);
     }
@@ -500,7 +504,8 @@ public static class FoundationTemporalEconomicJournalGate
                     "Only canonical physical movements and one temporal SYSTEM sale are allowed.");
             var (derived, after) = Derive(_beginning, state, _events,
                 _localEvents, _investmentCount, _incidence, _policy,
-                context, _signedFine, VerifiedTimeline, _agriculture, _operationalPolicy);
+                context, _signedFine, VerifiedTimeline, _agriculture, _operationalPolicy,
+                _scheduler?.UsesLocalPriceAllocation == true);
             RequireIdentical(monetary, derived);
             // Older journals need not carry derived local prices. Rebuild
             // them only from the already independently verified close.

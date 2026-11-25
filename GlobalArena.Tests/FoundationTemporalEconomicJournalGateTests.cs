@@ -477,8 +477,10 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Equal(0UL, opening.Treasury.LastSettledEconomicCycleOrdinal);
     }
 
-    [Fact]
-    public void R2286ExperimentalAutomaticBaseUsesOnlyAvailableSuffixAndReplaysCollectively()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void R2286ExperimentalAutomaticBaseUsesOnlyAvailableSuffixAndReplaysCollectively(bool localPriceAllocation)
     {
         var (world, worker, _, _, incidence, fine) = Fixture();
         var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
@@ -518,7 +520,8 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         var movement = new FoundationGroundEdgeTravelTimePolicy(1_400_000UL);
         var phase = new FoundationTemporalCollectiveTurnPhase(demo.Session.GeneratedWorld, incidence,
             movement, policy, fine, signature, persistentMoneyMicroPerWholeWork: 1_000_000UL,
-            agriculture: agriculture, enableExperimentalAutomaticBase: true);
+            agriculture: agriculture, enableExperimentalAutomaticBase: true,
+            enableLocalPriceAllocation: localPriceAllocation);
         var disabled = new FoundationTemporalCollectiveTurnPhase(demo.Session.GeneratedWorld, incidence,
             movement, policy, fine, signature, persistentMoneyMicroPerWholeWork: 1_000_000UL,
             agriculture: agriculture);
@@ -567,6 +570,39 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         var hasher = new CanonicalWorldStateHasher();
         Assert.Equal(hasher.Compute(resolved.ResultingWorldState), hasher.Compute(replay));
         Assert.Equal(before, hasher.Compute(opening));
+        Assert.Null(FoundationLocalBaseCalendarPlanner.ReadHistory(opening));
+        var firstState = resolved.ResultingWorldState;
+        var history = FoundationLocalBaseCalendarPlanner.ReadHistory(firstState);
+        if (!localPriceAllocation)
+        {
+            Assert.Null(history);
+            Assert.Equal(CanonicalWorldStateHasher.BaseActivityFormatVersion, hasher.Compute(firstState).FormatVersion);
+            return;
+        }
+        Assert.Equal(CanonicalWorldStateHasher.LocalPriceHistoryFormatVersion, hasher.Compute(firstState).FormatVersion);
+        Assert.NotNull(history);
+        var firstPrices = Assert.Single(resolved.Events.OfType<FoundationTemporalSalesSettledEvent>()).AuditedLocalPrices!;
+        Assert.NotEmpty(firstPrices.Prices);
+        Assert.Equal(firstPrices.Prices.Select(p => new CivilizationObservedMarketPrice(p.Node, p.Commodity, p.PriceMicro, 1UL)).ToArray(),
+            history!.ToArray());
+        Assert.Equal(history.ToArray(), FoundationLocalBaseCalendarPlanner.ReadHistory(replay)!.ToArray());
+
+        // The next close uses the previous immutable state as the input.
+        // Verify retained and overwritten observations, not just the ordinal.
+        var nextContext = new SimulationContext(new TurnNumber(2UL), new SimulationSeed(712UL));
+        var nextInput = new TurnResolutionInput(firstState, Array.Empty<ISimulationCommand>(), nextContext);
+        var next = phase.Resolve(nextInput, firstState);
+        var nextPrices = Assert.Single(next.Events.OfType<FoundationTemporalSalesSettledEvent>()).AuditedLocalPrices!;
+        var expectedHistory = history.ToDictionary(p => (p.Node, p.Commodity));
+        foreach (var p in nextPrices.Prices)
+            expectedHistory[(p.Node, p.Commodity)] = new CivilizationObservedMarketPrice(p.Node, p.Commodity, p.PriceMicro, 2UL);
+        var nextHistory = FoundationLocalBaseCalendarPlanner.ReadHistory(next.ResultingWorldState)!;
+        Assert.Equal(expectedHistory.Count, nextHistory.Count);
+        Assert.All(nextHistory, p => Assert.Equal(expectedHistory[(p.Node, p.Commodity)], p));
+        Assert.All(history, p => Assert.Equal(1UL, p.ObservedCycleOrdinal));
+        Assert.Equal(hasher.Compute(next.ResultingWorldState),
+            hasher.Compute(phase.ReplayPersistentJournal(firstState, next.EventLog, nextContext)));
+
     }
 
     private static FoundationActivityCommodityDemandPolicy Demand()
