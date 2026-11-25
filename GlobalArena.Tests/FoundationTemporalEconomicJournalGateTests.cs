@@ -476,7 +476,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Empty(queue.Orders);
         Assert.Equal((byte)4, queue.BaseActivity!.Crop);
         var input = FoundationTemporalEconomicTurnProjector.ProjectPersistent(beginning, timeline.Slices, demand, agriculture);
-        var output = Assert.Single(input.Production.Where(p => p.Worker == worker.Id));
+        var output = Assert.Single(input.Production, p => p.Worker == worker.Id);
         var expected = agriculture.Resolve(tile, GlobalArena.Foundation.Agriculture.CropId.Rice);
         Assert.Equal(expected.Commodity, output.Commodity);
         Assert.Equal(400_000U, output.EffortMicro);
