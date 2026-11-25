@@ -148,9 +148,14 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             PhysicalWorkerActivity.Other, PhysicalWorkerOccupation.Unassigned, null)).ToArray();
         var hasher = new CanonicalWorldStateHasher();
         var before = hasher.Compute(opening);
-        var rows = FoundationBaseMarginalRevenueEvaluator.Evaluate(opening, incidence, fine, policy,
-            calendar, worker.Id, 0U, agriculture);
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        var measured = FoundationBaseMarginalRevenueEvaluator.EvaluateWithDiagnostics(
+            opening, incidence, fine, policy, calendar, worker.Id, 0U, agriculture);
+        timer.Stop();
+        var rows = measured.Candidates;
         Assert.NotEmpty(rows);
+        Assert.Equal(rows.Count + 1, measured.FinancialEvaluations);
+        Console.WriteLine($"R2282_REFERENCE crops/native workers={calendar.Length} candidates={rows.Count} financial_evaluations={measured.FinancialEvaluations} elapsed_ms={timer.ElapsedMilliseconds}");
         Assert.Equal(rows.OrderByDescending(x => x.MarginalCreditScaled).ThenBy(x => x.Occupation).ThenBy(x => x.Crop).ToArray(), rows.ToArray());
         var repeated = FoundationBaseMarginalRevenueEvaluator.Evaluate(opening, incidence, fine, policy,
             calendar.Reverse().ToArray(), worker.Id, 0U, agriculture);
@@ -171,6 +176,67 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             { Activity = PhysicalWorkerActivity.Producing, Occupation = PhysicalWorkerOccupation.Agriculture, Crop = eligible[0] } : x).ToArray();
         Assert.Throws<InvalidOperationException>(() => FoundationBaseMarginalRevenueEvaluator.Evaluate(
             opening, incidence, fine, policy, busy, worker.Id, 0U, agriculture));
+
+        // A real producer and the remaining idle workers define one complete
+        // reference calendar. Split the target's interval to verify that
+        // operational effort is fractional rather than a whole worker.
+        var producer = opening.Workers.Workers.First(w => w.Id != worker.Id && w.Owner == worker.Owner);
+        var partial = calendar.Where(s => s.Worker != worker.Id)
+            .Select(s => s.Worker == producer.Id ? s with
+            { Activity = PhysicalWorkerActivity.Producing, Occupation = producer.Occupation!.Value } : s)
+            .Concat(new[]
+            {
+                new FoundationPersistentWorkerSlice(worker.Id, worker.TacticalTileId!.Value, 0U, 600_000U,
+                    PhysicalWorkerActivity.Other, PhysicalWorkerOccupation.Unassigned, 1UL),
+                new FoundationPersistentWorkerSlice(worker.Id, worker.TacticalTileId!.Value, 600_000U, 400_000U,
+                    PhysicalWorkerActivity.Other, PhysicalWorkerOccupation.Unassigned, null)
+            }).ToArray();
+        var operations = new FoundationOperationalFreightShadowPolicy(1_000_000UL, 1_000_000UL);
+        timer.Restart();
+        var reference = FoundationBaseMarginalRevenueEvaluator.EvaluateWithDiagnostics(
+            opening, incidence, fine, policy, partial, worker.Id, 600_000U, agriculture, operations);
+        timer.Stop();
+        Assert.Equal(reference.Candidates.Count + 1, reference.FinancialEvaluations);
+        Console.WriteLine($"R2282_REFERENCE operational workers={calendar.Length} candidates={reference.Candidates.Count} financial_evaluations={reference.FinancialEvaluations} elapsed_ms={timer.ElapsedMilliseconds}");
+        var land = Assert.Single(reference.Candidates, x => x.Occupation == PhysicalWorkerOccupation.LandTransport);
+        Assert.Equal(400_000U, land.EffortMicro);
+        Assert.Null(land.Crop);
+        int nodeIndex = (int)worker.TacticalTileId!.Value.FineStrategicCellId.Value - 1;
+        bool portEligible = fine.FineElevationRaw[nodeIndex] > fine.SeaLevelRaw &&
+            incidence.FineTopology.Edges.Any(e =>
+                e.IncidentCellIds.Contains(worker.TacticalTileId.Value.FineStrategicCellId) &&
+                fine.CrossingAtIndices((int)e.IncidentCellIds[0].Value - 1,
+                    (int)e.IncidentCellIds[1].Value - 1) == FoundationFineTransportCrossingKind.Port);
+        Assert.Equal(portEligible, reference.Candidates.Any(x => x.Occupation == PhysicalWorkerOccupation.PortOperations));
+
+        // Independent direct use of the canonical reconciler, not an invented
+        // per-edge tariff or a benefit estimated from global freight savings.
+        FoundationTemporalFinancialReconciliation Reconcile(IReadOnlyList<FoundationPersistentWorkerSlice> input) =>
+            FoundationTemporalFinancialReconciler.Evaluate(opening, incidence,
+                FoundationTemporalEconomicTurnProjector.ProjectPersistent(opening, input, policy.Demand, agriculture),
+                policy, fine, opening, operations);
+        BigInteger OwnerCredit(FoundationTemporalFinancialReconciliation f)
+        {
+            var account = f.Accounting.Accounts.Single(a => a.Civilization == worker.Owner);
+            return account.SellerNetScaled + account.RevenueTaxScaled + account.TollIncomeScaled;
+        }
+        var baseline = Reconcile(partial);
+        Assert.Equal(OwnerCredit(baseline), land.BaselineCreditScaled);
+        foreach (var candidate in reference.Candidates.Where(x =>
+            x.Occupation is PhysicalWorkerOccupation.LandTransport or PhysicalWorkerOccupation.PortOperations))
+        {
+            var modified = partial.Select(s => s.Worker == worker.Id && s.StartMicro == 600_000U
+                ? s with { Occupation = candidate.Occupation } : s).ToArray();
+            var direct = Reconcile(modified);
+            Assert.Equal(OwnerCredit(direct), candidate.CandidateCreditScaled);
+            var quotes = Assert.IsAssignableFrom<IReadOnlyList<FoundationOperationalFreightShadowEdge>>(direct.OperationalQuotes);
+            Assert.NotEmpty(quotes);
+            Assert.Equal(400_000UL, quotes.Aggregate(0UL, (sum, q) => checked(sum + q.OperationalServiceMicro)));
+            Assert.All(quotes, q => Assert.True(q.ShadowPhysicalCostMicroPerWholeCargoUnit <= q.OriginalPhysicalCostMicroPerWholeCargoUnit));
+        }
+        Assert.Equal(before, hasher.Compute(opening));
+        Assert.All(partial.Where(s => s.Worker == worker.Id), s => Assert.Equal(PhysicalWorkerOccupation.Unassigned, s.Occupation));
+        Assert.Equal(0UL, opening.Treasury.LastSettledEconomicCycleOrdinal);
     }
 
     private static FoundationActivityCommodityDemandPolicy Demand()
