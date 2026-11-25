@@ -62,5 +62,5 @@ internal static class GaDisplayNumbers
         GDMarker();
     }
 
-    private static void GDMarker() => Godot.GD.Print("GA_NEXT_R2301_NUMERIC_FORMAT_PASS physical=3 money=2 exact_input=true");
+    private static void GDMarker() => global::Godot.GD.Print("GA_NEXT_R2301_NUMERIC_FORMAT_PASS physical=3 money=2 exact_input=true");
 }
