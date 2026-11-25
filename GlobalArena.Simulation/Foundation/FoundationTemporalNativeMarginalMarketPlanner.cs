@@ -25,7 +25,8 @@ public static class FoundationTemporalNativeMarginalMarketPlanner
         FoundationCommodityCargoConversionPolicy cargoPolicy, int maxProducerPasses,
         FoundationFineFirstPhysicalGeography? signedFine, WorldState? freightSnapshot,
         IReadOnlyList<FoundationPhysicalRoutingEdgeCost>? verifiedRoads,
-        bool preferIncumbentThresholdTies = false)
+        bool preferIncumbentThresholdTies = false,
+        bool acceptOnlyStrictIntegratedGain = false)
     {
         ArgumentNullException.ThrowIfNull(baseline);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -70,7 +71,8 @@ public static class FoundationTemporalNativeMarginalMarketPlanner
         var plan = FoundationPhysicalGlobalMarginalCoordinator.Coordinate(
             market, incidence, cargoPolicy, quotes,
             roads.Where(edge => !blocked.Contains(edge.Edge)),
-            maxProducerPasses, preferIncumbentThresholdTies: preferIncumbentThresholdTies);
+            maxProducerPasses, preferIncumbentThresholdTies: preferIncumbentThresholdTies,
+            acceptOnlyStrictIntegratedGain: acceptOnlyStrictIntegratedGain);
         if (plan.AllocationAudit.TotalAvailableGoodsMicro !=
                 temporal.TotalProductionMicro ||
             plan.AllocationAudit.TotalAllocatedGoodsMicro !=

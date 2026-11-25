@@ -563,8 +563,10 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         var policy = new FoundationAuthoritativeEconomicSettlementPolicy(demand,
             new FoundationCommodityCargoConversionPolicy("r2287", crops.Values.Select(c =>
                 new FoundationCommodityCargoConversion(c, 1_000_000UL))),
-            opening.Civilizations.Civilizations.Select(c => new FoundationPhysicalEconomicTaxRate(c, 0U)), maxProducerPasses: 64, preferTemporalIncumbentThresholdTies: true);
+            opening.Civilizations.Civilizations.Select(c => new FoundationPhysicalEconomicTaxRate(c, 0U)), maxProducerPasses: 64, preferTemporalIncumbentThresholdTies: true,
+            requireTemporalStrictIntegratedGain: true);
         Assert.True(policy.PreferTemporalIncumbentThresholdTies);
+        Assert.True(policy.RequireTemporalStrictIntegratedGain);
         Assert.Equal(64, policy.MaxProducerPasses);
         var movement = new FoundationGroundEdgeTravelTimePolicy(1_400_000UL);
         var phase = new FoundationTemporalCollectiveTurnPhase(demo.Session.GeneratedWorld, incidence,
@@ -573,8 +575,16 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         var legacyPolicy = new FoundationAuthoritativeEconomicSettlementPolicy(
             demand, policy.Cargo, policy.TaxRates, maxProducerPasses: 64);
         Assert.False(legacyPolicy.PreferTemporalIncumbentThresholdTies);
+        Assert.False(legacyPolicy.RequireTemporalStrictIntegratedGain);
         var legacyPhase = new FoundationTemporalCollectiveTurnPhase(demo.Session.GeneratedWorld, incidence,
             movement, legacyPolicy, fine, signature, persistentMoneyMicroPerWholeWork: 1_000_000UL,
+            agriculture: agriculture, enableExperimentalAutomaticBase: true);
+        var tiesOnlyPolicy = new FoundationAuthoritativeEconomicSettlementPolicy(
+            demand, policy.Cargo, policy.TaxRates, maxProducerPasses: 64,
+            preferTemporalIncumbentThresholdTies: true);
+        Assert.False(tiesOnlyPolicy.RequireTemporalStrictIntegratedGain);
+        var tiesOnlyPhase = new FoundationTemporalCollectiveTurnPhase(demo.Session.GeneratedWorld, incidence,
+            movement, tiesOnlyPolicy, fine, signature, persistentMoneyMicroPerWholeWork: 1_000_000UL,
             agriculture: agriculture, enableExperimentalAutomaticBase: true);
         // Select a real traversable land arrival with positive agricultural
         // yield, not an arbitrary tile or a preselected market outcome.
@@ -599,7 +609,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         var hash = new CanonicalWorldStateHasher();
         var openingHash = hash.Compute(opening);
 
-        BigInteger Run(bool auto, FoundationTemporalCollectiveTurnPhase activePhase, bool expectLegacyFailure = false)
+        BigInteger Run(bool auto, FoundationTemporalCollectiveTurnPhase activePhase, string? expectedFailure = null)
         {
             var state = opening;
             BigInteger cumulative = BigInteger.Zero;
@@ -623,11 +633,24 @@ public sealed class FoundationTemporalEconomicJournalGateTests
                 }
                 var before = hash.Compute(state);
                 var input = new TurnResolutionInput(state, commands.ToArray(), context);
-                if (expectLegacyFailure && turn == 3UL)
+                if (expectedFailure is not null && turn == 3UL)
                 {
-                    var error = Assert.Throws<InvalidOperationException>(() => activePhase.Resolve(input, state));
-                    Assert.Contains("stable full-pass fixed point", error.Message);
-                    Console.WriteLine($"R2287_LEGACY_REJECTED turn={turn} {error.Message}");
+                    // Preserve both reproduced failure paths, not just a
+                    // successful alternative. Neither may commit the turn.
+                    if (expectedFailure == "ties-only")
+                    {
+                        var error = Assert.Throws<FoundationPhysicalGlobalMarginalBudgetExceededException>(() => activePhase.Resolve(input, state));
+                        Assert.Equal(64, error.PassBudget);
+                        Assert.NotEmpty(error.LastPassMovesMicro);
+                        Assert.All(error.LastPassMovesMicro, moved => Assert.True(moved > 0UL));
+                        Console.WriteLine($"R2287_TIES_ONLY_REJECTED turn={turn} {error.Message}");
+                    }
+                    else
+                    {
+                        var error = Assert.Throws<InvalidOperationException>(() => activePhase.Resolve(input, state));
+                        Assert.Contains("stable full-pass fixed point", error.Message);
+                        Console.WriteLine($"R2287_LEGACY_REJECTED turn={turn} {error.Message}");
+                    }
                     Assert.Equal(before, hash.Compute(state));
                     Assert.Equal(2UL, state.Treasury.LastSettledEconomicCycleOrdinal);
                     return cumulative;
@@ -696,6 +719,25 @@ public sealed class FoundationTemporalEconomicJournalGateTests
                         new SimulationEventLogEntry((ulong)i + 1UL, e, true, true)).ToArray());
                     Assert.ThrowsAny<Exception>(() => activePhase.ReplayPersistentJournal(state, log, context));
                 }
+                if (expectedFailure is null)
+                {
+                    // Independent diagnostic of the chosen calendar, not
+                    // another authoritative sale. This fixture has no
+                    // construction or operational policy changing roads.
+                    var temporal = FoundationTemporalEconomicTurnProjector.ProjectPersistent(
+                        state, timeline.Slices, policy.Demand, agriculture);
+                    var diagnostic = FoundationTemporalFinancialReconciler.Evaluate(
+                        state, incidence, temporal, policy, fine, state);
+                    var distribution = diagnostic.Distribution;
+                    Assert.True(distribution.StrictIntegratedPotentialAcceptance);
+                    Assert.True(distribution.StableUnderOneFullCanonicalPass);
+                    Assert.InRange(distribution.Passes, 1, 64);
+                    Assert.Equal(0UL, distribution.MovedGoodsByPass[^1]);
+                    Assert.Equal(sale.ProducedGoodsMicro, distribution.AllocationAudit.TotalAllocatedGoodsMicro);
+                    Assert.Equal(sale.GrossSalesScaled, diagnostic.Accounting.GrossSalesScaled);
+                    Assert.Equal(sale.TotalCivilizationCreditsScaled, diagnostic.CashCreditsScaled);
+                    Console.WriteLine($"R2287_MONOTONE mode={(auto ? "auto" : "manual")} turn={turn} passes={distribution.Passes} rejected={distribution.RejectedNonImprovingSellerProposals} gain_scaled={distribution.AcceptedPotentialGainScaled}");
+                }
                 var ownerCredit = sale.Credits.Single(x => x.Civilization == worker.Owner).CashCreditScaled;
                 cumulative += ownerCredit;
                 var roles = timeline.Slices.Where(x => own.Any(w => w.Id == x.Worker))
@@ -706,7 +748,8 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             }
             return cumulative;
         }
-        _ = Run(true, legacyPhase, expectLegacyFailure: true);
+        _ = Run(true, legacyPhase, expectedFailure: "legacy");
+        _ = Run(true, tiesOnlyPhase, expectedFailure: "ties-only");
         var autoCredit = Run(true, phase);
         var manualCredit = Run(false, phase);
         // Observed comparative quality, not a theorem that the approximate

@@ -21,12 +21,18 @@ public sealed class FoundationAuthoritativeEconomicSettlementPolicy
     // historical policy and replay; the non-temporal settlement ignores it.
     public bool PreferTemporalIncumbentThresholdTies { get; }
 
+    // Experimental temporal-only monotone proposal policy. Stability means
+    // a complete pass with no accepted improving proposal, not a fixed
+    // point of the unrestricted historical seller response rule.
+    public bool RequireTemporalStrictIntegratedGain { get; }
+
     public FoundationAuthoritativeEconomicSettlementPolicy(
         FoundationActivityCommodityDemandPolicy demand,
         FoundationCommodityCargoConversionPolicy cargo,
         IEnumerable<FoundationPhysicalEconomicTaxRate> taxRates,
         int maxProducerPasses = 64,
-        bool preferTemporalIncumbentThresholdTies = false)
+        bool preferTemporalIncumbentThresholdTies = false,
+        bool requireTemporalStrictIntegratedGain = false)
     {
         Demand = demand ?? throw new ArgumentNullException(nameof(demand));
         Cargo = cargo ?? throw new ArgumentNullException(nameof(cargo));
@@ -44,6 +50,7 @@ public sealed class FoundationAuthoritativeEconomicSettlementPolicy
                 "producer resolution budget.");
         MaxProducerPasses = maxProducerPasses;
         PreferTemporalIncumbentThresholdTies = preferTemporalIncumbentThresholdTies;
+        RequireTemporalStrictIntegratedGain = requireTemporalStrictIntegratedGain;
         TaxRates = Array.AsReadOnly(rates.OrderBy(r =>
             r.Civilization.Value).ToArray());
     }
