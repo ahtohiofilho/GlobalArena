@@ -1323,11 +1323,12 @@ public partial class Main : Control
         operationsPanel.AddThemeStyleboxOverride("panel", GaVisualFoundation.WindowSurface());
         var operationsColumn = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
         operationsPanel.AddChild(operationsColumn);
+        Button? cityNavigation = null, civilizationNavigation = null;
         if (CompactOperationalDock)
         {
             var compactHeader = new HBoxContainer();
             operationsColumn.AddChild(compactHeader);
-            compactHeader.AddChild(new Label { Text = "COMMANDS", SizeFlagsHorizontal = SizeFlags.ExpandFill });
+            compactHeader.AddChild(new Label { Text = LayeredWorldDock ? "WORLD CONTEXT" : "COMMANDS", SizeFlagsHorizontal = SizeFlags.ExpandFill });
             var hide = new Button { Text = "X" };
             hide.Pressed += () => SetOperationalDockVisible(false);
             compactHeader.AddChild(hide);
@@ -1336,7 +1337,7 @@ public partial class Main : Control
             operationsColumn.AddChild(selectedPanel);
             _selectedUnitSlot = new VBoxContainer();
             selectedPanel.AddChild(_selectedUnitSlot);
-            _selectedUnitSlot.AddChild(new Label { Text = "SELECTED UNIT" });
+            _selectedUnitSlot.AddChild(new Label { Text = LayeredWorldDock ? "UNIT" : "SELECTED UNIT" });
             var unitRow = new HBoxContainer();
             _selectedUnitSlot.AddChild(unitRow);
             unitRow.AddChild(new R218WorkerSilhouette { CustomMinimumSize = new Vector2(28, 32), MouseFilter = MouseFilterEnum.Ignore });
@@ -1344,10 +1345,10 @@ public partial class Main : Control
             unitRow.AddChild(_selectedUnitIdentity);
             _operationalContext = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
             operationsColumn.AddChild(_operationalContext);
-            var cityAction = new Button { Text = "Y | OPEN CITY" };
+            var cityAction = cityNavigation = new Button { Text = "Y | OPEN CITY" };
             cityAction.Pressed += OpenSelectedCityWindow;
             operationsColumn.AddChild(cityAction);
-            var civAction = new Button { Text = "C | CIVILIZATION" };
+            var civAction = civilizationNavigation = new Button { Text = "C | CIVILIZATION" };
             civAction.Pressed += OpenCivilizationWindow;
             operationsColumn.AddChild(civAction);
             RefreshOperationalContext();
@@ -1479,7 +1480,12 @@ public partial class Main : Control
             }
             ConfigureR225WorkerDock(orderPanel);
             RefreshSelectedUnitSlot();
-            if (globe.ReadSignedPhysicalSurface() is { } surface)
+            if (LayeredWorldDock)
+            {
+                CreateLayeredWorldDock(operationsColumn, operationsScroll, operationsBody,
+                    orderPanel, cityNavigation!, civilizationNavigation!, globe);
+            }
+            else if (globe.ReadSignedPhysicalSurface() is { } surface)
             {
                 operationsColumn.AddChild(new HSeparator());
                 operationsColumn.AddChild(new Label { Text = "PLANET | MAP FOCUS" });
