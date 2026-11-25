@@ -421,7 +421,9 @@ public static class FoundationPhysicalGlobalMarginalCoordinator
             throw new InvalidOperationException(
                 "The global marginal candidate planner has not reached a " +
                 "stable full-pass fixed point inside its explicit pass budget. " +
-                "Do not publish unstable candidate deliveries as a settled market.");
+                "Do not publish unstable candidate deliveries as a settled market. " +
+                "Last pass movements (goods micro-units): " +
+                string.Join(",", movementByPass.Skip(Math.Max(0, movementByPass.Count - 12))) + ".");
         }
 
         var finalCandidates = new List<FoundationPhysicalCommodityDeliveryCandidate>();
