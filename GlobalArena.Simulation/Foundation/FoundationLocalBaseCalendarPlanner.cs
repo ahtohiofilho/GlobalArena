@@ -9,6 +9,9 @@ namespace GlobalArena.Simulation.Foundation;
 /// The old experimental allocator remains available for historical replay.</summary>
 internal static class FoundationLocalBaseCalendarPlanner
 {
+    internal static IReadOnlyList<CivilizationObservedMarketPrice>? ReadHistory(WorldState opening) =>
+        opening.Treasury.LocalPriceHistory;
+
     internal static FoundationPersistentWorkerSlice[] Plan(WorldState opening,
         PhysicalTacticalIncidenceMap incidence, FoundationFineFirstPhysicalGeography geography,
         FoundationAuthoritativeEconomicSettlementPolicy policy,
@@ -20,7 +23,7 @@ internal static class FoundationLocalBaseCalendarPlanner
         var indices = ordered.Select((s, i) => (s, i))
             .ToDictionary(x => (x.s.Worker, x.s.StartMicro), x => x.i);
         var workers = opening.Workers.Workers.ToDictionary(w => w.Id);
-        var prices = (opening.Treasury.LocalPriceHistory ?? Array.Empty<CivilizationObservedMarketPrice>())
+        var prices = (ReadHistory(opening) ?? Array.Empty<CivilizationObservedMarketPrice>())
             .ToDictionary(p => (p.Node, p.Commodity), p => p.PriceMicro);
         var reservations = new Dictionary<(CivilizationId, PhysicalTacticalTileId),
             Dictionary<(PhysicalWorkerOccupation, byte?), uint>>();
