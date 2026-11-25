@@ -518,6 +518,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         // Select a real ground crossing whose destination supports the chosen crop.
         // A ground crossing alone does not guarantee agricultural suitability.
         var candidate = (from w in beginning.Workers.Workers
+            where w.Activity != PhysicalWorkerActivity.Traveling && w.TacticalTileId.HasValue
             let source = w.TacticalTileId!.Value
             from edge in incidence.FineTopology.Edges
             where edge.IncidentCellIds.Contains(source.FineStrategicCellId)
@@ -531,6 +532,8 @@ public sealed class FoundationTemporalEconomicJournalGateTests
                 w.Id.Value, target.FineStrategicCellId.Value, (byte)crop
             select (Worker: w, Source: source, Destination: target, Crop: crop)).First();
         worker = candidate.Worker;
+        Assert.NotEqual(PhysicalWorkerActivity.Traveling, worker.Activity);
+        Assert.DoesNotContain(beginning.EdgeTravels.Pending, p => p.Worker == worker.Id);
         var tile = candidate.Source;
         var destination = candidate.Destination;
         var selectedCrop = (byte)candidate.Crop;
