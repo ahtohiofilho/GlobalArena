@@ -495,6 +495,81 @@ public sealed class FoundationTemporalEconomicJournalGateTests
     }
 
     [Fact]
+    public void R2232ManualBaseLogisticsUsesOnlyResidualTimeAndReplays()
+    {
+        var (world, worker, _, _, incidence, fine) = Fixture();
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL),
+                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)), workersPerCivilization: 3);
+        var signature = FoundationFineFirstWorldgenCanonicalSignature.Compute(demo.Session.GeneratedWorld, incidence, fine);
+        var tile = worker.TacticalTileId!.Value;
+        var crossing = incidence.FineTopology.Edges.First(e =>
+            e.IncidentCellIds.Contains(tile.FineStrategicCellId) &&
+            fine.CrossingAtIndices((int)e.IncidentCellIds[0].Value - 1,
+                (int)e.IncidentCellIds[1].Value - 1) == FoundationFineTransportCrossingKind.Ground);
+        var edge = new PhysicalTacticalEdgeId(incidence.Refinement.FineParameters, crossing.Id);
+        // Use a real signed fine-first monetary world for collective admission.
+        var bound = demo.Session.Snapshot.PromoteFineFirstBeforeTransport(
+            demo.Session.GeneratedWorld, incidence, fine, signature)
+            .DeployInitialFineFirstPhysicalTransport(world.Transport, demo.Session.GeneratedWorld,
+                incidence, fine, signature);
+        var beginning = FoundationPersistedEdgeTravelTransitions.DeployEmpty(
+            bound.DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
+                bound.Civilizations.Civilizations.Select(c => (c, 5_000_000UL)))))
+            .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
+            .DeployInitialWorkerOrders();
+        var crops = Enum.GetValues<GlobalArena.Foundation.Agriculture.CropId>()
+            .ToDictionary(c => c, c => new CommodityId((uint)c));
+        var agriculture = new FoundationAgriculturalProductionPolicy(fine, incidence, crops, 2_000_000UL);
+        var demand = new FoundationActivityCommodityDemandPolicy(crops.Values.ToArray(),
+            Enum.GetValues<FoundationPhysicalDemandProfile>().SelectMany(profile => crops.Values.Select(c =>
+                new FoundationActivityCommodityDemandCoefficient(profile, c, 1_000_000UL))));
+        var policy = new FoundationAuthoritativeEconomicSettlementPolicy(demand,
+            new FoundationCommodityCargoConversionPolicy("crop-test", crops.Values.Select(c =>
+                new FoundationCommodityCargoConversion(c, 1_000_000UL))),
+            beginning.Civilizations.Civilizations.Select(c => new FoundationPhysicalEconomicTaxRate(c, 0U)),
+            maxProducerPasses: 64);
+        var phase = new FoundationTemporalCollectiveTurnPhase(demo.Session.GeneratedWorld, incidence,
+            new FoundationGroundEdgeTravelTimePolicy(1_400_000UL), policy,
+            fine, signature, persistentMoneyMicroPerWholeWork: 1_000_000UL, agriculture: agriculture, operationalPolicy: new FoundationOperationalFreightShadowPolicy(1_000_000UL, 1_000_000UL));
+        var context = new SimulationContext(new TurnNumber(1UL), new SimulationSeed(712UL));
+        var commands = new ISimulationCommand[]
+        {
+            new FoundationFundedWorkerIntentCommand(new CommandId(context.Turn, 1UL), worker.Owner,
+                edge, 600_000UL, new[] { new FoundationFundedWorkerInsertion(worker.Id, 0) }),
+            new FoundationPersistentOrderEditCommand(new CommandId(context.Turn, 2UL),
+                new FoundationPersistentOrderEdit(worker.Owner, worker.Id,
+                    FoundationPersistentOrderEditKind.SetBaseActivity, BaseActivity:
+                    new FoundationWorkerBaseActivity(FoundationWorkerBaseMode.Manual, PhysicalWorkerOccupation.LandTransport)))
+        };
+        var resolved = phase.Resolve(new TurnResolutionInput(beginning, commands, context), beginning);
+        var next = resolved.ResultingWorldState;
+        var sale = Assert.Single(resolved.Events.OfType<FoundationTemporalSalesSettledEvent>());
+        var timeline = Assert.Single(resolved.Events.OfType<FoundationPersistentWorkerTurnEvent>());
+        Assert.Single(resolved.Events.OfType<FoundationFundedWorkerIntentEvent>());
+        Assert.Equal(1UL, next.Treasury.LastSettledEconomicCycleOrdinal);
+        Assert.True(next.Constructions.Projects.Single().IsActivated);
+        var slices = timeline.Slices.Where(s => s.Worker == worker.Id).ToArray();
+        Assert.Equal(600_000U, slices[0].DurationMicro);
+        Assert.Equal(1UL, slices[0].ProjectId);
+        Assert.Equal(400_000U, slices[1].DurationMicro);
+        Assert.Equal(PhysicalWorkerActivity.Other, slices[1].Activity);
+        Assert.Equal(PhysicalWorkerOccupation.LandTransport, slices[1].Occupation);
+        Assert.Empty(next.WorkerOrders.Queues.Single(q => q.Worker == worker.Id).Orders);
+        var quotes = Assert.IsAssignableFrom<IReadOnlyList<FoundationOperationalFreightShadowEdge>>(sale.OperationalQuotes);
+        Assert.NotEmpty(quotes);
+        Assert.Equal(400_000UL, quotes.Aggregate(0UL, (sum, q) => checked(sum + q.OperationalServiceMicro)));
+        foreach (var quote in quotes)
+        {
+            var openingEdge = beginning.Transport.Edges.Single(e => e.Edge == quote.Edge);
+            Assert.Equal(FoundationPhysicalAuthoritativeTransportProjector.EffectiveUnitFreightCost(openingEdge), quote.OriginalPhysicalCostMicroPerWholeCargoUnit);
+            Assert.True(quote.ShadowPhysicalCostMicroPerWholeCargoUnit < quote.OriginalPhysicalCostMicroPerWholeCargoUnit);
+        }
+        var hash = new CanonicalWorldStateHasher();
+        Assert.Equal(hash.Compute(next), hash.Compute(phase.ReplayPersistentJournal(beginning, resolved.EventLog, context)));
+    }
+
+    [Fact]
     public void R211CollectiveFundingAndTimelineSettleOneMarketAndReplay()
     {
         var (world, worker, _, _, incidence, fine) = Fixture();
