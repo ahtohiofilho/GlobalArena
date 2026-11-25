@@ -15,13 +15,33 @@ public sealed record FoundationBaseMarginalRevenue(
     public BigInteger MarginalCreditScaled => CandidateCreditScaled - BaselineCreditScaled;
 }
 
+/// <summary>Deterministic reference workload counters, not a wall-clock
+/// measurement or a new economic state. A full evaluation is the existing
+/// temporal financial reconciler, including its native market planner.</summary>
+public sealed record FoundationBaseMarginalRevenueEvaluation(
+    IReadOnlyList<FoundationBaseMarginalRevenue> Candidates,
+    int FinancialEvaluations);
+
 /// <summary>Reference oracle for one unallocated stationary interval in a
 /// complete temporal calendar. One baseline and one canonical market solve
 /// per eligible candidate; no outer equilibrium search or congestion loop.
-/// Intentionally not connected to scheduler or human commands in R228.1.</summary>
+/// Intentionally not connected to scheduler or human commands. R228.2
+/// extends the exact reference to eligible operational work and reports its
+/// cost in full financial evaluations before any production cutover.</summary>
 public static class FoundationBaseMarginalRevenueEvaluator
 {
     public static IReadOnlyList<FoundationBaseMarginalRevenue> Evaluate(
+        WorldState opening, PhysicalTacticalIncidenceMap incidence,
+        FoundationFineFirstPhysicalGeography geography,
+        FoundationAuthoritativeEconomicSettlementPolicy policy,
+        IReadOnlyList<FoundationPersistentWorkerSlice> calendar,
+        PhysicalWorkerId workerId, uint startMicro,
+        FoundationAgriculturalProductionPolicy agriculture,
+        FoundationOperationalFreightShadowPolicy? operationalPolicy = null) =>
+        EvaluateWithDiagnostics(opening, incidence, geography, policy, calendar,
+            workerId, startMicro, agriculture, operationalPolicy).Candidates;
+
+    public static FoundationBaseMarginalRevenueEvaluation EvaluateWithDiagnostics(
         WorldState opening, PhysicalTacticalIncidenceMap incidence,
         FoundationFineFirstPhysicalGeography geography,
         FoundationAuthoritativeEconomicSettlementPolicy policy,
@@ -33,6 +53,9 @@ public static class FoundationBaseMarginalRevenueEvaluator
         ArgumentNullException.ThrowIfNull(opening);
         ArgumentNullException.ThrowIfNull(calendar);
         ArgumentNullException.ThrowIfNull(agriculture);
+        operationalPolicy?.RequireValid();
+        if (operationalPolicy is not null && !opening.WorkerOrders.IsInitialized)
+            throw new InvalidOperationException("Operational evaluation requires persistent opening infrastructure.");
         if (!ReferenceEquals(agriculture.Geography, geography) ||
             geography.FineParameters != incidence.Refinement.FineParameters)
             throw new InvalidOperationException("Marginal evaluation requires matching signed geography.");
@@ -50,9 +73,11 @@ public static class FoundationBaseMarginalRevenueEvaluator
         // Validate even when no activity is eligible.
         var baseline = FoundationTemporalEconomicTurnProjector.ProjectPersistent(opening, ordered, policy.Demand, agriculture);
         if (geography.SurfaceAtIndex(checked((int)idle.Node.FineStrategicCellId.Value - 1)) != FoundationFineSurfaceKind.Land)
-            return Array.Empty<FoundationBaseMarginalRevenue>();
+            return new(Array.Empty<FoundationBaseMarginalRevenue>(), 0);
+        int financialEvaluations = 0;
         BigInteger Credit(FoundationTemporalEconomicTurnInputs inputs)
         {
+            financialEvaluations = checked(financialEvaluations + 1);
             var result = FoundationTemporalFinancialReconciler.Evaluate(opening, incidence, inputs,
                 policy, geography, opening, operationalPolicy);
             var account = result.Accounting.Accounts.Single(a => a.Civilization == worker.Owner);
@@ -76,10 +101,29 @@ public static class FoundationBaseMarginalRevenueEvaluator
         if (worker.OutputMicroPerTurn > 0 && policy.Demand.Commodities.Contains(worker.Commodity) &&
             worker.Occupation is PhysicalWorkerOccupation.Forestry or PhysicalWorkerOccupation.Mining)
             Score(worker.Occupation.Value, null, PhysicalWorkerActivity.Producing);
-        // Logistics is deliberately not ranked until frozen-quote marginal
-        // eligibility and attribution are specified. Existing logistics in
-        // the supplied calendar is still included in canonical reconciliation.
-        return Array.AsReadOnly(rows.OrderByDescending(r => r.MarginalCreditScaled)
-            .ThenBy(r => r.Occupation).ThenBy(r => r.Crop).ToArray());
+        // The same signed crossing kinds and land-terminal rule used by
+        // ProjectTemporal determine eligibility. The canonical reconciler
+        // computes the actual proportional service and fixed quote discount
+        // before clearing each hypothetical market. No benefit from a mere
+        // infrastructure title or from cargo-dependent congestion is assumed.
+        if (operationalPolicy is not null)
+        {
+            int indexAtNode = checked((int)idle.Node.FineStrategicCellId.Value - 1);
+            bool land = false, port = false;
+            foreach (var edge in incidence.FineTopology.Edges)
+            {
+                if (!edge.IncidentCellIds.Contains(idle.Node.FineStrategicCellId)) continue;
+                var other = edge.IncidentCellIds.Single(id => id != idle.Node.FineStrategicCellId);
+                var kind = geography.CrossingAtIndices(indexAtNode, checked((int)other.Value - 1));
+                land |= kind == FoundationFineTransportCrossingKind.Ground;
+                port |= kind == FoundationFineTransportCrossingKind.Port &&
+                    geography.FineElevationRaw[indexAtNode] > geography.SeaLevelRaw;
+                if (land && port) break;
+            }
+            if (land) Score(PhysicalWorkerOccupation.LandTransport, null, PhysicalWorkerActivity.Other);
+            if (port) Score(PhysicalWorkerOccupation.PortOperations, null, PhysicalWorkerActivity.Other);
+        }
+        return new(Array.AsReadOnly(rows.OrderByDescending(r => r.MarginalCreditScaled)
+            .ThenBy(r => r.Occupation).ThenBy(r => r.Crop).ToArray()), financialEvaluations);
     }
 }
