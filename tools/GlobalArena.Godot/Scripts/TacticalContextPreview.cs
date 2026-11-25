@@ -191,6 +191,12 @@ public partial class TacticalContextPreview : SubViewportContainer
     public event Action<PhysicalTacticalTileId>? ExplicitMapMoveRequested;
     private bool _r226MovePress;
     public bool ExplicitMapMoveEnabled { get; set; }
+    public bool MapConnectionEnabled { get; set; }
+    public event Action<PhysicalTacticalEdgeId>? MapConnectionRequested;
+    private bool _r227ConnectionPress;
+    private MeshInstance3D? _r227Outline;
+    private PhysicalTacticalEdgeId? _r227HoveredEdge;
+    private readonly Dictionary<PhysicalTacticalEdgeId, (Vector3 A, Vector3 B)> _r227Edges = new();
     private readonly List<(ulong Id, Vector2[] Polygon, ulong[] Owners, int Degree, int Ring)> _polygons = new();
     private readonly Dictionary<ulong, Vector3> _tileCenters = new();
     // Framing geometry and resident geometry have separate scopes.
@@ -822,6 +828,10 @@ public partial class TacticalContextPreview : SubViewportContainer
         _extensionSurface.MaterialOverride = _surface.MaterialOverride;
         _extensionEdges.MaterialOverride = _edges.MaterialOverride;
         // Presentation-only selection overlay. Never creates or replaces a physical tile ID.
+        _r227Outline = new MeshInstance3D { Visible = false };
+        _r227Outline.MaterialOverride = MakeCoplanarOverlayMaterial();
+        _world.AddChild(_r227Outline);
+        MouseExited += () => SetR227Hover(null);
         _selectedTileOutline = new MeshInstance3D { Visible = false };
         _selectedTileOutline.MaterialOverride = MakeCoplanarOverlayMaterial();
         _world.AddChild(_selectedTileOutline);
@@ -1751,6 +1761,8 @@ public partial class TacticalContextPreview : SubViewportContainer
         if (faceMesh is null || countTriangles == 0)
             throw new InvalidOperationException("Canonical tactical surface mesh was not built.");
 
+        _r227Edges.Clear();
+        SetR227Hover(null);
         var lineTool = new SurfaceTool();
         lineTool.Begin(Mesh.PrimitiveType.Lines);
         var lineColor = new Color("#203949");
@@ -1760,6 +1772,8 @@ public partial class TacticalContextPreview : SubViewportContainer
             if (!edge.IncidentCellIds.Any(selectedPhysical.Contains)) continue;
             var first = Flatten(geometry.GetVertex(edge.IncidentVertexIds[0]).Position);
             var second = Flatten(geometry.GetVertex(edge.IncidentVertexIds[1]).Position);
+            if (edge.IncidentCellIds.All(selectedPhysical.Contains))
+                _r227Edges.Add(new PhysicalTacticalEdgeId(refinement.FineParameters, edge.Id), (first, second));
             AddColored(lineTool, first, lineColor);
             AddColored(lineTool, second, lineColor);
             edgeCount++;
@@ -1948,6 +1962,57 @@ public partial class TacticalContextPreview : SubViewportContainer
         Left(false, true, start + new Vector2(15, 0));
         assertOneOrder();
         CenterOnGeography(opening);
+    }
+
+    private PhysicalTacticalEdgeId? PickR227Edge(Vector2 pixel)
+    {
+        if (_camera is null) return null;
+        PhysicalTacticalEdgeId? best = null;
+        float distance = 6f;
+        foreach (var pair in _r227Edges.OrderBy(p => p.Key.FineStrategicEdgeId.Value))
+        {
+            var a = _camera.UnprojectPosition(pair.Value.A);
+            var b = _camera.UnprojectPosition(pair.Value.B);
+            var ab = b - a;
+            if (ab.LengthSquared() < 0.01f) continue;
+            var t = Mathf.Clamp((pixel - a).Dot(ab) / ab.LengthSquared(), 0f, 1f);
+            var d = pixel.DistanceTo(a + ab * t);
+            if (d < distance) { distance = d; best = pair.Key; }
+        }
+        return best;
+    }
+
+    private void SetR227Hover(PhysicalTacticalEdgeId? edge)
+    {
+        if (_r227Outline is null) return;
+        if (_r227HoveredEdge == edge) return;
+        _r227HoveredEdge = edge;
+        _r227Outline.Visible = false;
+        if (edge is not { } id || !_r227Edges.TryGetValue(id, out var segment)) return;
+        var tool = new SurfaceTool();
+        tool.Begin(Mesh.PrimitiveType.Lines);
+        AddColored(tool, segment.A, Colors.White);
+        AddColored(tool, segment.B, Colors.White);
+        _r227Outline.Mesh = tool.Commit();
+        tool.Dispose();
+        _r227Outline.Visible = true;
+    }
+
+    internal void ExerciseR227ConnectionGesture(PhysicalTacticalEdgeId edge, Action noOpen, Action opened)
+    {
+        var segment = _r227Edges[edge];
+        var pixel = _camera!.UnprojectPosition((segment.A + segment.B) * 0.5f);
+        if (PickR227Edge(pixel) != edge) throw new InvalidOperationException("R227 canonical edge midpoint mismatch.");
+        void Left(bool pressed, bool ctrl, Vector2 pos) => _GuiInput(new InputEventMouseButton
+        { ButtonIndex = MouseButton.Left, Pressed = pressed, CtrlPressed = ctrl, Position = pos });
+        Left(true, false, pixel); Left(false, false, pixel); noOpen();
+        Left(true, false, pixel); Left(false, true, pixel); noOpen();
+        Left(true, true, pixel); Left(false, false, pixel); noOpen();
+        Left(true, true, pixel); Left(false, true, pixel + new Vector2(12, 0)); noOpen();
+        _GuiInput(new InputEventMouseMotion { Position = pixel, CtrlPressed = true });
+        if (_r227HoveredEdge != edge || _r227Outline?.Visible != true)
+            throw new InvalidOperationException("R227 hover did not highlight canonical edge.");
+        Left(true, true, pixel); Left(false, true, pixel); opened();
     }
 
     private void PickPhysicalTile(Vector2 localPoint, bool explicitMove = false)
@@ -2288,6 +2353,8 @@ public partial class TacticalContextPreview : SubViewportContainer
             if (button.ButtonIndex == MouseButton.Right && button.Pressed && _localSitesEnabled)
             {
                 _r226MovePress = false;
+                _r227ConnectionPress = false;
+                SetR227Hover(null);
                 CenterOnRightClickedGeography(button.Position);
                 AcceptEvent();
                 return;
@@ -2315,6 +2382,8 @@ public partial class TacticalContextPreview : SubViewportContainer
                 {
                     _pressed = true;
                     _r226MovePress = ExplicitMapMoveEnabled && button.ShiftPressed;
+                    _r227ConnectionPress = MapConnectionEnabled && button.CtrlPressed && !button.ShiftPressed;
+                    SetR227Hover(null);
                     _moved = false;
                     _previousHandoffFocus = 0UL;
                     _dragPixelsAfterHandoff = 0f;
@@ -2339,10 +2408,17 @@ public partial class TacticalContextPreview : SubViewportContainer
                             if (ExplicitMapMoveEnabled && button.ShiftPressed)
                                 PickPhysicalTile(button.Position, explicitMove: true);
                         }
+                        else if (_r227ConnectionPress)
+                        {
+                            if (MapConnectionEnabled && button.CtrlPressed && !button.ShiftPressed &&
+                                PickR227Edge(button.Position) is { } edge)
+                                MapConnectionRequested?.Invoke(edge);
+                        }
                         else if (!PickVisibleCartographicLocalSite(button.Position))
                             PickPhysicalTile(button.Position);
                     }
                     _r226MovePress = false;
+                    _r227ConnectionPress = false;
                     _pressed = false;
                     _heldCartographicCursorGeography = null;
                     _previousHandoffFocus = 0UL;
@@ -2354,6 +2430,8 @@ public partial class TacticalContextPreview : SubViewportContainer
         }
         if (@event is InputEventMouseMotion hoverMotion && !_pressed)
         {
+            SetR227Hover(MapConnectionEnabled && hoverMotion.CtrlPressed && !hoverMotion.ShiftPressed
+                ? PickR227Edge(hoverMotion.Position) : null);
             R218HoverMotion?.Invoke(hoverMotion.Position);
             // Click-only prototype: no tooltip/menus or role expansion by
             // hovering, even above an existing coplanar worker marker.
