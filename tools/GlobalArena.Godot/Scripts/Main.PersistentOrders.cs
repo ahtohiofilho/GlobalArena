@@ -150,7 +150,11 @@ public partial class Main
         var host = _tacticalHost;
         _persistentQueuePanel.Visible = host?.PersistentOrdersEnabled == true;
         RefreshR224WorkerWindow();
-        if (!_persistentQueuePanel.Visible || host is null || _selectedLocalWorkerId is not { } worker) return;
+        if (!_persistentQueuePanel.Visible || host is null || _selectedLocalWorkerId is not { } worker)
+        {
+            ClearWorldUnitReadout();
+            return;
+        }
         var q = ReadPersistentQueue(new PhysicalWorkerId(worker));
         bool ready = host.ReadyCivilizations.Contains(_humanCivilization);
         if (_persistentSelectionWorker != worker)
@@ -204,6 +208,7 @@ public partial class Main
         foreach (var b in new[] { _localAgricultureButton, _localForestryButton, _localMiningButton, _r149LandWorkButton, _r149PortWorkButton })
             if (b is not null) b.Disabled = ready;
         if (_fineMovementDecision is not null) _fineMovementDecision.Text = "Select a destination on the map. Orders run in sequence.";
+        RefreshWorldUnitReadout(host, q);
     }
 
     private void RefreshOperationalReadout(FoundationTacticalHumanAiTurnHost host, PhysicalWorkerId worker)
@@ -365,6 +370,7 @@ public partial class Main
         var worker = host.Snapshot.Workers.Workers.First(w => w.Owner == _humanCivilization &&
             _r123FineGeography!.SurfaceAtIndex((int)w.TacticalTileId!.Value.FineStrategicCellId.Value - 1) == FoundationFineSurfaceKind.Land);
         OnOperationalWorkerSelected(worker.Id.Value);
+        AssertWorldUnitReadout(host, worker.Id);
         ExerciseOpenCityWorker(host, worker.Id, worker.TacticalTileId!.Value);
         if (_r224BaseReadout?.Text.Contains("Automatic (local)") != true || ReadPersistentQueue(worker.Id).BaseActivity is not null)
             throw new InvalidOperationException("Implicit automatic base must be visible without a synthetic command.");
@@ -389,6 +395,9 @@ public partial class Main
         if (host.StateHash != committed || ReadPersistentQueue(worker.Id).BaseActivity?.Occupation != PhysicalWorkerOccupation.Forestry)
             throw new InvalidOperationException("Manual wood override was not staged privately.");
         CloseR224WorkerWindow();
+        AssertWorldUnitReadout(host, worker.Id);
+        if (_worldUnitBase?.Text != "Base: Forestry | Pending submission")
+            throw new InvalidOperationException("Unit did not distinguish staged base preference.");
         ExerciseCityProductionReadout(host, location.Value, 1UL);
         // Keep the city open across E to verify live refresh of committed evidence.
         OpenSelectedCityWindow();
@@ -397,6 +406,9 @@ public partial class Main
             throw new InvalidOperationException("Open production tab did not refresh after close.");
         ExerciseCityProductionReadout(host, location.Value, 2UL);
         ExerciseCityConnectionTradeReadout(host, location.Value, 2UL);
+        AssertWorldUnitReadout(host, worker.Id);
+        if (_worldUnitBase?.Text != "Base: Forestry | Committed")
+            throw new InvalidOperationException("Unit did not show committed base preference.");
         if (host.Snapshot.Treasury.LastSettledEconomicCycleOrdinal != 2UL ||
             host.Snapshot.Workers.Workers.Single(w => w.Id == worker.Id).Occupation != PhysicalWorkerOccupation.Forestry)
             throw new InvalidOperationException("Manual wood override did not close.");
@@ -414,6 +426,10 @@ public partial class Main
         ExerciseCityProductionReadout(host, location.Value, 3UL);
         ExerciseCityConnectionTradeReadout(host, location.Value, 3UL);
         ExerciseCityWorkersPrivacy(host, location.Value);
+        AssertWorldUnitReadout(host, worker.Id);
+        if (_worldUnitBase?.Text != "Base: Automatic (local) | Committed")
+            throw new InvalidOperationException("Unit did not restore automatic base.");
+        GD.Print("GA_NEXT_R2303_UNIT_CARD_PASS real_activity=true private_base=true queue=true committed_only_travel=true");
         GD.Print("GA_NEXT_R2294_CONNECTION_TRADE_PASS before_close=true three_closes=true real_edges=true authorized_only=true");
         GD.Print("GA_NEXT_R2293_CITY_WORKERS_PASS scoped=true real_buttons=true private_commands=true return_to_city=true");
         GD.Print("GA_NEXT_R2292_CITY_PRODUCTION_PASS cycles=3 catalog=8 committed_only=true owner_scoped=true");

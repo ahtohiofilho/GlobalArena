@@ -61,10 +61,7 @@ public partial class Main
                     PhysicalWorkerOccupation.Mining when host.ExperimentalLocalEconomyEnabled => "Producing stone",
                     _ => $"Producing | {worker.Occupation}" })
                 : worker.Activity.ToString();
-            string preference = q?.BaseActivity?.Crop is { } crop ? $"Grow {(CropId)crop}" :
-                q?.BaseActivity?.Mode == FoundationWorkerBaseMode.Automatic ||
-                    (q?.BaseActivity is null && host.DefaultAutomaticBaseEnabled) ? "Automatic (local)" :
-                    q?.BaseActivity?.Occupation?.ToString() ?? "Not configured";
+            string preference = q is null ? "Not configured" : DescribeWorkerBase(host, q);
             string orders = q is null ? "Detailed planning unavailable" : $"Orders: {q.Orders.Count} | Base: {preference}";
             var button = new Button { Name = $"GANextCityWorker{worker.Id.Value}",
                 Text = $"Worker #{worker.Id.Value} | {activity}\n{orders}",
