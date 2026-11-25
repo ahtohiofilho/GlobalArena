@@ -155,6 +155,7 @@ public sealed class FoundationConstructionApproachRouter
             Array.Empty<PhysicalTacticalTileId>(), BigInteger.Zero);
     }
 
+    internal FoundationFineFirstPhysicalGeography Geography => _geo;
     internal PhysicalTacticalWorkerMoveEventExecutor Movement => _movement;
     internal FoundationGroundEdgeTravelTimePolicy Policy => _policy;
 
