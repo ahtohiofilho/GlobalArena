@@ -259,7 +259,9 @@ public partial class Main
             active?.Kind == FoundationWorkerOrderKind.Build ? "Construction order active" :
             person.Occupation is PhysicalWorkerOccupation.LandTransport or PhysicalWorkerOccupation.PortOperations ? person.Occupation.ToString()! :
             person.Activity == PhysicalWorkerActivity.Other ? "Idle" : person.Activity.ToString();
-        if (active?.Crop is { } crop && travel is null) activity = $"Growing {(CropId)crop}";
+        if (travel is null && person.Activity == PhysicalWorkerActivity.Producing &&
+            (active?.Crop ?? (active is null ? committed.BaseActivity?.Crop : null)) is { } crop)
+            activity = $"Growing {(CropId)crop}";
         string target = active?.Kind == FoundationWorkerOrderKind.Move ? $" | Target {active.Destination!.Value.FineStrategicCellId.Value}" :
             active?.Kind == FoundationWorkerOrderKind.Build ? $" | Build #{active.ProjectId}" : "";
         if (_persistentWorkerSummary is not null)
@@ -288,19 +290,16 @@ public partial class Main
         if (_foodQuality?.Visible != true || !_foodQuality.Text.Contains("unavailable"))
             throw new InvalidOperationException("Food quality must be unavailable before first close.");
         ExerciseR224WorkerWindow(host, worker.Id);
-        _cropSelector.Select(3);
-        _localAgricultureButton!.EmitSignal(Button.SignalName.Pressed);
-        var order = ReadPersistentQueue(worker.Id).Orders.Single();
-        if (order.Crop != (byte)CropId.Rice || host.StateHash != before ||
-            !_persistentQueueList!.GetItemText(0).Contains("Rice"))
-            throw new InvalidOperationException("Crop selection did not stage real rice intent.");
+        if (ReadPersistentQueue(worker.Id).BaseActivity?.Crop != (byte)CropId.Rice ||
+            ReadPersistentQueue(worker.Id).Orders.Count != 0 || host.StateHash != before)
+            throw new InvalidOperationException("Crop selection did not stage real rice base intent without an indefinite task.");
         EndFineCollectiveTurn();
         var queue = host.Snapshot.WorkerOrders.Queues.Single(q => q.Worker == worker.Id);
         if (queue.BaseActivity?.Crop != (byte)CropId.Rice)
             throw new InvalidOperationException("R224 base activity was not collectively published.");
         GD.Print("GA_NEXT_R224_WORKER_WINDOW_PASS actual_controls=true private_plan=true collective_commit=true queue_reused=true");
-        if (queue.Orders.Single().Crop != (byte)CropId.Rice ||
-            queue.ActiveOrderId != order.Id || host.Snapshot.Treasury.LastSettledEconomicCycleOrdinal != 1 ||
+        if (queue.Orders.Count != 0 || queue.ActiveOrderId.HasValue ||
+            host.Snapshot.Treasury.LastSettledEconomicCycleOrdinal != 1 ||
             !_persistentWorkerSummary!.Text.Contains("Rice"))
             throw new InvalidOperationException("Crop preview did not commit persistent rice production.");
         var committedHash = host.StateHash;
@@ -324,8 +323,13 @@ public partial class Main
                     .AdjacentCellIds.Any(c => _r123FineGeography!.CrossingAtIndices(
                         (int)w.TacticalTileId.Value.FineStrategicCellId.Value - 1, (int)c.Value - 1) == FoundationFineTransportCrossingKind.Ground));
             OnOperationalWorkerSelected(operatorWorker.Id.Value);
-            _r149LandWorkButton!.EmitSignal(Button.SignalName.Pressed);
-            if (ReadPersistentQueue(operatorWorker.Id).Orders.Single().Occupation != PhysicalWorkerOccupation.LandTransport ||
+            _r224Open!.EmitSignal(Button.SignalName.Pressed);
+            for (int i = 0; i < _r224Activity!.ItemCount; i++)
+                if (_r224Activity.GetItemId(i) == 103) _r224Activity.Select(i);
+            _r224Apply!.EmitSignal(Button.SignalName.Pressed);
+            CloseR224WorkerWindow();
+            if (ReadPersistentQueue(operatorWorker.Id).BaseActivity?.Occupation != PhysicalWorkerOccupation.LandTransport ||
+                ReadPersistentQueue(operatorWorker.Id).Orders.Count != 0 ||
                 host.StateHash != committedHash)
                 throw new InvalidOperationException("Operational button did not stage a real order.");
             EndFineCollectiveTurn();
