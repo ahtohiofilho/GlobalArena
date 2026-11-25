@@ -54,7 +54,8 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
         FoundationFineFirstWorldgenIdentity? signature = null,
         FoundationConstructionCollectiveTurnPhase? construction = null,
         ulong? persistentMoneyMicroPerWholeWork = null, bool enableDemographicGrowth = false, FoundationAgriculturalProductionPolicy? agriculture = null, FoundationOperationalFreightShadowPolicy? operationalPolicy = null,
-        bool enableExperimentalAutomaticBase = false, bool enableLocalPriceAllocation = false)
+        bool enableExperimentalAutomaticBase = false, bool enableLocalPriceAllocation = false,
+        bool enableDefaultAutomaticBase = false)
     {
         ArgumentNullException.ThrowIfNull(world);
         _incidence = incidence ?? throw new ArgumentNullException(nameof(incidence));
@@ -72,6 +73,8 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
             throw new InvalidOperationException("Local allocation requires experimental automatic scheduling.");
         if (agriculture?.BasicResources is not null && !enableLocalPriceAllocation)
             throw new InvalidOperationException("Basic resource production requires explicit local allocation.");
+        if (enableDefaultAutomaticBase && (!enableLocalPriceAllocation || agriculture?.BasicResources is null))
+            throw new InvalidOperationException("Default automatic base requires the complete local economy experiment.");
         _growth = enableDemographicGrowth;
         _agriculture = agriculture;
         _operationalPolicy = operationalPolicy;
@@ -104,7 +107,7 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
             _persistent = new FoundationPersistentWorkerTurnScheduler(new FoundationConstructionApproachRouter(
                 world, incidence, fine, signature!, movementPolicy), agriculture,
                 enableExperimentalAutomaticBase ? economy : null,
-                enableExperimentalAutomaticBase ? operationalPolicy : null, enableLocalPriceAllocation);
+                enableExperimentalAutomaticBase ? operationalPolicy : null, enableLocalPriceAllocation, enableDefaultAutomaticBase);
             _funded = new FoundationFundedWorkerIntentJournal(new FoundationConstructionFundingExecutor(
                 _capitalExecutor, persistentMoneyMicroPerWholeWork.Value));
         }

@@ -1,0 +1,5 @@
+# R228.13B — Default automatic base in experimental local economy
+
+Base #645 ffa0718: 13/13 workflows successful. Separate explicit host opt-in requires the local economy experiment and configured wood/stone policy; existing host callers and historical experimental configurations retain behavior. Absent private base preferences resolve to automatic only at execution; no synthetic queue edits, new serialized fields or changed hash schema. Explicit manual preferences and pending/explicit orders retain priority; available residual effort uses the same local ranker. Applies equally to participants with no instructions, including AI workers when they have no explicit tasks. No new movement or market solve.
+
+Three collective turns with all eight configured market commodities, explicit manual stone worker, implicit local wood production, movement 1.4 turns and residual 0.6, privacy, real treasury credits, audited trade, hash and replay. Existing six-turn test remains unchanged. Godot, disk persistence, logistics, production calibration and default adoption outside the experiment remain pending. CI required; draft, no merge.
