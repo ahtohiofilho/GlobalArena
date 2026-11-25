@@ -419,10 +419,24 @@ public partial class Main
                 _selectedUnitIdentity?.Text.StartsWith($"Worker #{hoverWorker.Id.Value} |", StringComparison.Ordinal) != true ||
                 _localWorkerSelector?.GetParent() != _selectedUnitSlot ||
                 _workspaceWindow!.CustomMinimumSize.X != R2212DockWidth ||
-                _localAgricultureButton?.IsVisibleInTree() != true ||
+                _r224Open?.IsVisibleInTree() != true ||
                 _localMoveButton?.IsVisibleInTree() != true || host.StateHash != before)
                 throw new InvalidOperationException("Selected unit slot did not expose existing operational controls.");
             GD.Print("GA_NEXT_R2212_CONTEXTUAL_DOCK_PASS fixed_slot=true direct_actions=true hash_unchanged=true");
+            if (_r225DetailParking is null || _persistentQueuePanel!.IsVisibleInTree() ||
+                _localAgricultureButton!.IsVisibleInTree() || _cropSelector!.IsVisibleInTree() ||
+                _r224Open!.GetParent() != _selectedUnitSlot)
+                throw new InvalidOperationException("R225 dock still exposes detailed worker controls.");
+            _r224Open.EmitSignal(Button.SignalName.Pressed);
+            if (!_persistentQueuePanel.IsVisibleInTree() || !_localAgricultureButton.IsVisibleInTree() ||
+                _persistentQueuePanel.GetParent() != _r224Body || !_localMoveButton!.IsVisibleInTree() ||
+                host.StateHash != before)
+                throw new InvalidOperationException("R225 worker controls unavailable in window.");
+            CloseR224WorkerWindow();
+            if (_persistentQueuePanel.IsVisibleInTree() || _localAgricultureButton.IsVisibleInTree() ||
+                _persistentQueuePanel.GetParent() != _r225DetailParking || host.StateHash != before)
+                throw new InvalidOperationException("R225 close exposed details or mutated world.");
+            GD.Print("GA_NEXT_R225_COMPACT_DOCK_PASS details_hidden=true real_controls_reused=true map_commands=true hash_unchanged=true");
             var inset = _auxiliaryPlanet ?? throw new InvalidOperationException("Missing auxiliary planet.");
             var surface = _strategicGlobe!.ReadSignedPhysicalSurface() ??
                 throw new InvalidOperationException("Missing canonical signed surface.");
@@ -460,6 +474,7 @@ public partial class Main
             GD.Print("GA_NEXT_R2213_AUXILIARY_PLANET_PASS shared_mesh=true north_up=true stationary_no_update=true atlas_preserved=true");
             var worker = host.Snapshot.Workers.Workers.First(w => w.Owner == _humanCivilization);
             OnOperationalWorkerSelected(worker.Id.Value);
+            _r224Open!.EmitSignal(Button.SignalName.Pressed);
             if (_persistentQueueList!.Visible || _persistentInsert!.Disabled != true ||
                 _persistentCrossingProgress!.Visible || _persistentCrossingLabel!.Visible)
                 throw new InvalidOperationException("Empty queue or stationary controls are incorrect.");
@@ -483,6 +498,7 @@ public partial class Main
             if (ReadPersistentQueue(worker.Id).Orders.Count != 1)
                 throw new InvalidOperationException("Remove signal failed.");
             host.ClearHumanPersistentPlan(_humanCivilization);
+            CloseR224WorkerWindow();
             RefreshFineTacticalWorkerControls();
             // Earn real treasury funds through the ordinary E action.
             EndFineCollectiveTurn();

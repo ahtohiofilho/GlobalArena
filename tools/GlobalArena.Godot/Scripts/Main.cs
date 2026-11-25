@@ -1457,6 +1457,7 @@ public partial class Main : Control
                     _r149LandWorkButton, _r149PortWorkButton, _localCancelQueuedButton })
                     if (button is not null) button.Reparent(actions);
             }
+            ConfigureR225WorkerDock(orderPanel);
             RefreshSelectedUnitSlot();
             if (globe.ReadSignedPhysicalSurface() is { } surface)
             {
