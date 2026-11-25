@@ -533,6 +533,7 @@ public partial class Main : Control
         RefreshOperationalContext();
         RefreshLastTemporalEconomyReadout();
         RefreshCivilizationWindow();
+        RefreshCityProduction();
         RefreshPersistentWorkerControls();
     }
 

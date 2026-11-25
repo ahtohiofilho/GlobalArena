@@ -370,7 +370,9 @@ public partial class Main
         var before = host.StateHash;
         var location = worker.TacticalTileId;
         CloseR224WorkerWindow();
+        ExerciseCityProductionReadout(host, location!.Value, 0UL);
         EndFineCollectiveTurn();
+        ExerciseCityProductionReadout(host, location.Value, 1UL);
         var closed = host.Snapshot.Workers.Workers.Single(w => w.Id == worker.Id);
         if (host.StateHash == before || closed.TacticalTileId != location || closed.Activity != PhysicalWorkerActivity.Producing ||
             host.Snapshot.Treasury.LastSettledEconomicCycleOrdinal != 1UL ||
@@ -384,7 +386,13 @@ public partial class Main
         if (host.StateHash != committed || ReadPersistentQueue(worker.Id).BaseActivity?.Occupation != PhysicalWorkerOccupation.Forestry)
             throw new InvalidOperationException("Manual wood override was not staged privately.");
         CloseR224WorkerWindow();
+        ExerciseCityProductionReadout(host, location.Value, 1UL);
+        // Keep the city open across E to verify live refresh of committed evidence.
+        OpenSelectedCityWindow();
         EndFineCollectiveTurn();
+        if (_cityProductionStatus?.Text.Contains("CYCLE 2") != true)
+            throw new InvalidOperationException("Open production tab did not refresh after close.");
+        ExerciseCityProductionReadout(host, location.Value, 2UL);
         if (host.Snapshot.Treasury.LastSettledEconomicCycleOrdinal != 2UL ||
             host.Snapshot.Workers.Workers.Single(w => w.Id == worker.Id).Occupation != PhysicalWorkerOccupation.Forestry)
             throw new InvalidOperationException("Manual wood override did not close.");
@@ -399,6 +407,8 @@ public partial class Main
             host.GetLastClosedEconomicTradeView(_humanCivilization).EconomicCycleOrdinal != 3UL ||
             host.Snapshot.WorkerOrders.Queues.Single(q => q.Worker == worker.Id).BaseActivity?.Mode != FoundationWorkerBaseMode.Automatic)
             throw new InvalidOperationException("Automatic preference did not close.");
+        ExerciseCityProductionReadout(host, location.Value, 3UL);
+        GD.Print("GA_NEXT_R2292_CITY_PRODUCTION_PASS cycles=3 catalog=8 committed_only=true owner_scoped=true");
         GD.Print("GA_NEXT_R22813C_LOCAL_ECONOMY_UI_PASS three_closes=true automatic_default=true manual_override=true trade_published=true");
     }
 
