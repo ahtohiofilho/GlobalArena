@@ -1916,6 +1916,40 @@ public partial class TacticalContextPreview : SubViewportContainer
         return inside;
     }
 
+    internal void ExerciseR226MapGestures(PhysicalTacticalTileId destination, Action assertNoOrder, Action assertOneOrder)
+    {
+        if (_camera is null) throw new InvalidOperationException("Missing tactical camera.");
+        var polygon = _polygons.Single(p => p.Id == destination.FineStrategicCellId.Value).Polygon;
+        var center = polygon.Aggregate(Vector2.Zero, (sum, p) => sum + p) / polygon.Length;
+        var pixel = _camera.UnprojectPosition(new Vector3(center.X, 0, center.Y));
+        void Left(bool pressed, bool shift, Vector2 position) => _GuiInput(new InputEventMouseButton
+        {
+            ButtonIndex = MouseButton.Left, Pressed = pressed, ShiftPressed = shift, Position = position
+        });
+        Left(true, false, pixel); Left(false, false, pixel);
+        assertNoOrder();
+        Left(true, false, pixel); Left(false, true, pixel);
+        assertNoOrder();
+        Left(true, true, pixel); Left(false, false, pixel);
+        assertNoOrder();
+        Left(true, true, pixel); Left(false, true, pixel + new Vector2(12, 0));
+        assertNoOrder();
+        Left(true, true, pixel); Left(false, true, pixel);
+        assertOneOrder();
+        Left(false, true, pixel);
+        assertOneOrder();
+        var opening = CenterGeography;
+        _GuiInput(new InputEventMouseButton { ButtonIndex = MouseButton.Right, Pressed = true, ShiftPressed = true, Position = pixel });
+        assertOneOrder();
+        CenterOnGeography(opening);
+        var start = _camera.UnprojectPosition(new Vector3(center.X, 0, center.Y));
+        Left(true, true, start);
+        _GuiInput(new InputEventMouseMotion { Position = start + new Vector2(15, 0), Relative = new Vector2(15, 0), ShiftPressed = true });
+        Left(false, true, start + new Vector2(15, 0));
+        assertOneOrder();
+        CenterOnGeography(opening);
+    }
+
     private void PickPhysicalTile(Vector2 localPoint, bool explicitMove = false)
     {
         if (_camera is null || _selection is null) return;
