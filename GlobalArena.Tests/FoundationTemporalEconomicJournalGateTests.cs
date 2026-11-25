@@ -524,8 +524,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             crossing.IncidentCellIds.Single(n => n != tile.FineStrategicCellId));
         var rice = new FoundationWorkerBaseActivity(FoundationWorkerBaseMode.Manual, PhysicalWorkerOccupation.Agriculture, 4);
         var moving = beginning.SetWorkerBaseActivity(worker.Owner, worker.Id, rice)
-            .InsertWorkerOrder(worker.Owner, worker.Id, 0, FoundationWorkerOrderKind.Move, destination)
-            .InsertWorkerOrder(worker.Owner, worker.Id, 1, FoundationWorkerOrderKind.Move, destination);
+            .InsertWorkerOrder(worker.Owner, worker.Id, 0, FoundationWorkerOrderKind.Move, destination);
         var scheduler = new FoundationPersistentWorkerTurnScheduler(new FoundationConstructionApproachRouter(
             demo.Session.GeneratedWorld, incidence, fine, signature, new FoundationGroundEdgeTravelTimePolicy(1_400_000UL)), agriculture);
         var context = new SimulationContext(new TurnNumber(1UL), new SimulationSeed(712UL));
