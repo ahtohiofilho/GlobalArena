@@ -24,7 +24,8 @@ public static class FoundationTemporalNativeMarginalMarketPlanner
         FoundationTemporalEconomicTurnInputs temporal, FoundationActivityCommodityDemandPolicy demandPolicy,
         FoundationCommodityCargoConversionPolicy cargoPolicy, int maxProducerPasses,
         FoundationFineFirstPhysicalGeography? signedFine, WorldState? freightSnapshot,
-        IReadOnlyList<FoundationPhysicalRoutingEdgeCost>? verifiedRoads)
+        IReadOnlyList<FoundationPhysicalRoutingEdgeCost>? verifiedRoads,
+        bool useProgressiveDistribution = false)
     {
         ArgumentNullException.ThrowIfNull(baseline);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -66,10 +67,23 @@ public static class FoundationTemporalNativeMarginalMarketPlanner
                     .UnitQuoteMicroPerWholeCommodityUnit))
             .ToArray();
         FoundationPhysicalUniversalMarketPricing.RequireUniversal(quotes);
-        var plan = FoundationPhysicalGlobalMarginalCoordinator.Coordinate(
-            market, incidence, cargoPolicy, quotes,
-            roads.Where(edge => !blocked.Contains(edge.Edge)),
-            maxProducerPasses);
+        var allowed = roads.Where(edge => !blocked.Contains(edge.Edge)).ToArray();
+        FoundationPhysicalGlobalMarginalCoordinationPlan plan;
+        if (useProgressiveDistribution)
+        {
+            // Complete audited progressive allocation, NOT a truncated
+            // failed global solve. Never certify a fixed point here.
+            var progressive = FoundationPhysicalMarginalMarketDistributor.Distribute(
+                market, incidence, cargoPolicy, quotes, allowed);
+            plan = new FoundationPhysicalGlobalMarginalCoordinationPlan(
+                progressive.Candidates.ToArray(), progressive.MarketTotals.ToArray(),
+                progressive.MarketTotals.ToArray(), progressive.AllocationAudit,
+                progressive.ProductiveLotCount, 0, 0UL, false, Array.Empty<ulong>(),
+                false, 0, System.Numerics.BigInteger.Zero, stableUnderOneFullCanonicalPass: false);
+        }
+        else
+            plan = FoundationPhysicalGlobalMarginalCoordinator.Coordinate(
+                market, incidence, cargoPolicy, quotes, allowed, maxProducerPasses);
         if (plan.AllocationAudit.TotalAvailableGoodsMicro !=
                 temporal.TotalProductionMicro ||
             plan.AllocationAudit.TotalAllocatedGoodsMicro !=
