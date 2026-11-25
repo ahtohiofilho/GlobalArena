@@ -35,6 +35,18 @@ public partial class TacticalContextPreview
         Array.AsReadOnly(_localSiteMarkers.Select(x =>
             (x.TileId, x.PolygonCentroid)).ToArray());
 
+    internal void AssertSitePopulationPresentation()
+    {
+        foreach (var marker in _localSiteMarkers)
+        {
+            int count = _displayWorkers.Count(w => w.TacticalTileId.HasValue &&
+                w.TacticalTileId.Value.FineStrategicCellId.Value == marker.TileId);
+            if (count <= 0 || marker.WorkerCount != count ||
+                marker.Dot.Size != new Vector2(GaCartographicStyle.SiteDiameter(count), GaCartographicStyle.SiteDiameter(count)))
+                throw new InvalidOperationException("Site marker must represent its actual occupied population.");
+        }
+    }
+
     public event Action<ulong>? CartographicLocalSiteSelected;
 
     // Hit-test uses the SAME on-screen label and anchor shown to the
@@ -52,9 +64,10 @@ public partial class TacticalContextPreview
                 new Vector2(108f, 26f));
             // The dot is centered on the physical polygon; the name is
             // separately offset and both select the same canonical tile.
-            var dotCenter = site.Dot.Position + new Vector2(5f, 5f);
+            var dotCenter = site.Dot.Position + site.Dot.Size * 0.5f;
+            float hitRadius = Math.Max(10f, site.Dot.Size.X * 0.5f);
             if (!textBounds.HasPoint(localPixel) &&
-                dotCenter.DistanceSquaredTo(localPixel) > 100f)
+                dotCenter.DistanceSquaredTo(localPixel) > hitRadius * hitRadius)
                 continue;
             SelectPhysicalTile(site.TileId);
             var id = new PhysicalTacticalTileId(
@@ -79,7 +92,7 @@ public partial class TacticalContextPreview
         // True geographic +Z north for the experimental city map only.
         // Do not change legacy test/gameplay modes in this UI gate.
         _geographicNorthUp = _localSitesEnabled;
-        SetProcess(_localSitesEnabled);
+        SetProcess(true); // screen-space trade ink also follows the live camera
         if (_localSitesEnabled)
             GD.Print("GA_NEXT_R127_SITE_MARKERS source=real_fine_worker_tiles " +
                 "placeholder_names=true no_settlement_state=true");
@@ -112,6 +125,8 @@ public partial class TacticalContextPreview
             if (!TryGetSitePolygonCentroid(place.Key, out var centroid))
                 continue;
             int population = place.Count();
+            int diameter = GaCartographicStyle.SiteDiameter(population);
+            int radius = diameter / 2;
             var label = new Label
             {
                 Name = "GANextR127Site" + place.Key.ToString(
@@ -137,23 +152,23 @@ public partial class TacticalContextPreview
             {
                 Name = "GANextR134SiteDot" + place.Key.ToString(
                     CultureInfo.InvariantCulture),
-                CustomMinimumSize = new Vector2(10f, 10f),
-                Size = new Vector2(10f, 10f),
+                CustomMinimumSize = new Vector2(diameter, diameter),
+                Size = new Vector2(diameter, diameter),
                 MouseFilter = MouseFilterEnum.Ignore,
                 Visible = false
             };
             var disc = new StyleBoxFlat
             {
-                BgColor = new Color("#f6e6c4"),
-                BorderColor = new Color("#172736"),
+                BgColor = new Color("#151515"),
+                BorderColor = new Color("#f5f5f5"),
                 BorderWidthLeft = 1,
                 BorderWidthRight = 1,
                 BorderWidthTop = 1,
                 BorderWidthBottom = 1,
-                CornerRadiusTopLeft = 5,
-                CornerRadiusTopRight = 5,
-                CornerRadiusBottomLeft = 5,
-                CornerRadiusBottomRight = 5
+                CornerRadiusTopLeft = radius,
+                CornerRadiusTopRight = radius,
+                CornerRadiusBottomLeft = radius,
+                CornerRadiusBottomRight = radius
             };
             dot.AddThemeStyleboxOverride("panel", disc);
             AddChild(dot);
@@ -232,6 +247,7 @@ public partial class TacticalContextPreview
     {
         if (_localSitesEnabled)
             PositionLocalSiteMarkers();
+        UpdateTradeInkProjection();
     }
 
     private void PositionLocalSiteMarkers()
@@ -264,8 +280,8 @@ public partial class TacticalContextPreview
 
             // The glyph itself is centered on the polygon anchor.
             // Only the name is shifted away from the marker.
-            dot.Position = screen - new Vector2(5f, 5f);
-            label.Position = screen + new Vector2(11f, -13f);
+            dot.Position = screen - dot.Size * 0.5f;
+            label.Position = screen + new Vector2(dot.Size.X * 0.5f + 6f, -13f);
             dot.Visible = inMap;
             label.Visible = inMap;
         }

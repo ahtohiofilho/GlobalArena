@@ -118,10 +118,12 @@ internal sealed class FoundationGodotCartographicSiteSmoke
                     "GANextR134SiteDot" + tile, true, false) as Panel;
                 Must(dot is not null && dot.Visible,
                     $"Real city dot {tile} is not displayed on its focused polygon.");
-                // The Panel is a real 10x10 circular geometry, not a
-                // font glyph whose baseline drifts from the polygon center.
-                Must(dot!.Size.DistanceTo(new Vector2(10f, 10f)) < 0.01f,
-                    "Cartographic dot is not the centered 10px circular Panel.");
+                int population = _host.Snapshot.Workers.Workers.Count(w =>
+                    w.TacticalTileId!.Value.FineStrategicCellId.Value == tile);
+                int diameter = GaCartographicStyle.SiteDiameter(population);
+                Must(dot!.Size.DistanceTo(new Vector2(diameter, diameter)) < 0.01f,
+                    "Cartographic dot does not follow the population band.");
+                _map.AssertSitePopulationPresentation();
                 // Verify city management while THIS authentic site marker
                 // is still in the focused map; another focus rebuilds the
                 // visible-site list and must not be used as stale selection.

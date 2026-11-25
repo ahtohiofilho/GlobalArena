@@ -156,6 +156,7 @@ internal sealed class FoundationGodotTemporalEconomySmoke
                 _map.TacticalCameraState == camera,
                 "First real E key did not commit a validated temporal sale.");
             ValidateClose(label!, first!, 1UL);
+            _main.AssertCartographicPublication(_host, 1UL);
             var firstText = _main.LastTemporalEconomyText;
             var firstHash = _host.StateHash;
             // R179 visual acceptance must show the actual operational dock.
@@ -179,6 +180,7 @@ internal sealed class FoundationGodotTemporalEconomySmoke
                 _map.TacticalCameraState == camera,
                 "Second E key did not commit the next real temporal cycle.");
             ValidateClose(label!, second!, 2UL);
+            _main.AssertCartographicPublication(_host, 2UL);
             Must(_main.LastTemporalEconomyText != firstText,
                 "The Godot sidebar retained the previous cycle after E.");
             await Capture("02_temporal_close_cycle_2", label!);
