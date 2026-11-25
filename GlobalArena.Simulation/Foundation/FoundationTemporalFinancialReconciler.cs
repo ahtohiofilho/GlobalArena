@@ -72,7 +72,8 @@ public static class FoundationTemporalFinancialReconciler
         var distribution = FoundationTemporalNativeMarginalMarketPlanner.CoordinateVerified(
             baseline, incidence, temporal, policy.Demand, policy.Cargo,
             policy.MaxProducerPasses, signedFine, freightWorld, roads,
-            policy.UseTemporalProgressiveDistribution);
+            policy.UseTemporalProgressiveDistribution,
+            policy.RequireSafeProgressiveRoutes ? policy.TaxRates : null);
         // Matching R169's signed topology, only real permitted freight edges
         // are considered in the financial cost calculation.
         if (signedFine is not null)

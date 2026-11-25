@@ -65,7 +65,8 @@ internal static class GaExplicitEconomicQaConfiguration
                     new FoundationPhysicalEconomicTaxRate(Red, 1_000U),
                     new FoundationPhysicalEconomicTaxRate(Blue, 500U)
                 },
-                maxProducerPasses: 64, useTemporalProgressiveDistribution: localEconomy),
+                maxProducerPasses: 64, useTemporalProgressiveDistribution: localEconomy,
+                requireSafeProgressiveRoutes: localEconomy),
             new[]
             {
                 (Red, 0UL),
