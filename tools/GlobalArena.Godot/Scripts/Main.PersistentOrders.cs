@@ -59,6 +59,7 @@ public partial class Main
     private void CreatePersistentWorkerControls(VBoxContainer parent)
     {
         _persistentQueuePanel = new VBoxContainer { Name = "GANextPersistentQueue", Visible = false };
+        CreateR224WorkerWindowLauncher(parent);
         parent.AddChild(_persistentQueuePanel);
         _persistentWorkerSummary = new Label { Name = "GANextWorkerContext", AutowrapMode = TextServer.AutowrapMode.WordSmart };
         _persistentQueuePanel.AddChild(_persistentWorkerSummary);
@@ -139,6 +140,7 @@ public partial class Main
         if (_persistentQueuePanel is null || _persistentQueueList is null) return;
         var host = _tacticalHost;
         _persistentQueuePanel.Visible = host?.PersistentOrdersEnabled == true;
+        RefreshR224WorkerWindow();
         if (!_persistentQueuePanel.Visible || host is null || _selectedLocalWorkerId is not { } worker) return;
         var q = ReadPersistentQueue(new PhysicalWorkerId(worker));
         bool ready = host.ReadyCivilizations.Contains(_humanCivilization);
@@ -172,7 +174,8 @@ public partial class Main
         if (_localPendingLabel is not null)
         {
             var committed = host.Snapshot.WorkerOrders.Queues.Single(x => x.Worker == q.Worker);
-            bool changed = !committed.Orders.SequenceEqual(q.Orders) || committed.ActiveOrderId != q.ActiveOrderId;
+            bool changed = !committed.Orders.SequenceEqual(q.Orders) || committed.ActiveOrderId != q.ActiveOrderId ||
+                !Equals(committed.BaseActivity, q.BaseActivity);
             _localPendingLabel.Text = changed ? "Pending changes | E to submit" :
                 q.Orders.Count == 0 ? "No scheduled orders" : $"{q.Orders.Count} scheduled | {(q.ActiveOrderId.HasValue ? "Active" : "Waiting")}";
         }
@@ -284,6 +287,7 @@ public partial class Main
             throw new InvalidOperationException("Six crop controls unavailable.");
         if (_foodQuality?.Visible != true || !_foodQuality.Text.Contains("unavailable"))
             throw new InvalidOperationException("Food quality must be unavailable before first close.");
+        ExerciseR224WorkerWindow(host, worker.Id);
         _cropSelector.Select(3);
         _localAgricultureButton!.EmitSignal(Button.SignalName.Pressed);
         var order = ReadPersistentQueue(worker.Id).Orders.Single();
@@ -292,6 +296,9 @@ public partial class Main
             throw new InvalidOperationException("Crop selection did not stage real rice intent.");
         EndFineCollectiveTurn();
         var queue = host.Snapshot.WorkerOrders.Queues.Single(q => q.Worker == worker.Id);
+        if (queue.BaseActivity?.Crop != (byte)CropId.Rice)
+            throw new InvalidOperationException("R224 base activity was not collectively published.");
+        GD.Print("GA_NEXT_R224_WORKER_WINDOW_PASS actual_controls=true private_plan=true collective_commit=true queue_reused=true");
         if (queue.Orders.Single().Crop != (byte)CropId.Rice ||
             queue.ActiveOrderId != order.Id || host.Snapshot.Treasury.LastSettledEconomicCycleOrdinal != 1 ||
             !_persistentWorkerSummary!.Text.Contains("Rice"))
