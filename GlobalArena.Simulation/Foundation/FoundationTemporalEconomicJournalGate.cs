@@ -43,6 +43,17 @@ public sealed class FoundationTemporalSalesSettledEvent : ISimulationEvent
         AuditedParticipantEdges = edges ?? throw new ArgumentNullException(nameof(edges));
     }
 
+    // Derived server-only evidence, never an externally supplied price rule.
+    internal FoundationSettledLocalPriceSnapshot? AuditedLocalPrices { get; private set; }
+
+    internal void AttachAuditedLocalPrices(FoundationSettledLocalPriceSnapshot prices)
+    {
+        ArgumentNullException.ThrowIfNull(prices);
+        if (AuditedLocalPrices is not null || prices.CycleOrdinal != EconomicCycleOrdinal)
+            throw new InvalidOperationException("Invalid or duplicate local price evidence.");
+        AuditedLocalPrices = prices;
+    }
+
     public FoundationTemporalSalesSettledEvent(
         EventId id, WorldStateHash beginningHash, WorldStateHash preSettlementHash,
         ulong preSettlementRevision, ulong cycleOrdinal, string digest,
@@ -275,6 +286,8 @@ public static class FoundationTemporalEconomicJournalGate
             FoundationSettledTradeParticipantProjection.FromTemporalDistribution(
                 beginning.Constructions.IsInitialized ? beginning : staged,
                 incidence, policy.Cargo, financial.Distribution));
+        ev.AttachAuditedLocalPrices(FoundationSettledLocalPriceSnapshot.FromAccounting(
+            ordinal, financial.Accounting.Lines));
         var amounts = ev.Credits.ToDictionary(c => c.Civilization,
             c => c.CashCreditScaled);
         var state = staged.RecordAuditedEconomicCycle(
@@ -319,6 +332,8 @@ public static class FoundationTemporalEconomicJournalGate
             !received.Credits.SequenceEqual(expected.Credits) ||
             !FoundationSettledTradeParticipantProjection.Identical(
                 received.AuditedParticipantEdges, expected.AuditedParticipantEdges) ||
+            (received.AuditedLocalPrices is not null &&
+                (expected.AuditedLocalPrices is null || !received.AuditedLocalPrices.Identical(expected.AuditedLocalPrices))) ||
             (received.FoodIntake is null) != (expected.FoodIntake is null) ||
             (received.FoodIntake is not null && !received.FoodIntake.SequenceEqual(expected.FoodIntake!)) ||
             (received.OperationalQuotes is null) != (expected.OperationalQuotes is null) ||
@@ -487,6 +502,10 @@ public static class FoundationTemporalEconomicJournalGate
                 _localEvents, _investmentCount, _incidence, _policy,
                 context, _signedFine, VerifiedTimeline, _agriculture, _operationalPolicy);
             RequireIdentical(monetary, derived);
+            // Older journals need not carry derived local prices. Rebuild
+            // them only from the already independently verified close.
+            if (monetary.AuditedLocalPrices is null)
+                monetary.AttachAuditedLocalPrices(derived.AuditedLocalPrices!);
             _closed = true;
             return after;
         }
