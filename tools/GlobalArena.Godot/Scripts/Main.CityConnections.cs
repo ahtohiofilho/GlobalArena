@@ -12,8 +12,9 @@ namespace GlobalArena.Godot;
 /// </summary>
 public partial class Main
 {
-    private CenterContainer? _cityWindowLayer;
-    private PanelContainer? _cityWindowPanel;
+    private Control? _cityWindowLayer;
+    private GaFloatingWindow? _cityWindowPanel;
+    private bool _cityWindowPositioned;
     private ulong? _cityConnectionSource;
     private Label? _cityWindowTitle;
     private Label? _cityOverview;
@@ -40,7 +41,7 @@ public partial class Main
 
     private void CreateCityWindow()
     {
-        var overlay = new CenterContainer
+        var overlay = new Control
         {
             Name = "GANextCityWindowLayer",
             Visible = false,
@@ -50,26 +51,34 @@ public partial class Main
         AddChild(overlay);
         _cityWindowLayer = overlay;
 
-        var panel = new PanelContainer
+        var panel = new GaFloatingWindow
         {
             Name = "GANextCityWindow",
-            CustomMinimumSize = new Vector2(575f, 450f),
+            Size = new Vector2(575f, 450f),
+            MinimumFloatingSize = new Vector2(440f, 300f),
             MouseFilter = MouseFilterEnum.Stop
         };
         panel.AddThemeStyleboxOverride("panel", GaVisualFoundation.WindowSurface());
         overlay.AddChild(panel);
         _cityWindowPanel = panel;
-        var column = new VBoxContainer();
+        overlay.Resized += () =>
+        {
+            if (overlay.Visible && _cityWindowPositioned) panel.ClampIntoParent();
+        };
+        var column = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
         panel.AddChild(column);
 
         var header = new HBoxContainer();
         column.AddChild(header);
         _cityWindowTitle = new Label
         {
+            Name = "GANextCityDragHandle",
             Text = "CITY | Select a node",
+            TooltipText = "Drag to move city window",
             SizeFlagsHorizontal = SizeFlags.ExpandFill
         };
         header.AddChild(_cityWindowTitle);
+        panel.AttachTitleBar(_cityWindowTitle);
         var close = new Button { Text = "CLOSE" };
         close.Pressed += () => overlay.Visible = false;
         header.AddChild(close);
@@ -80,13 +89,19 @@ public partial class Main
             SizeFlagsVertical = SizeFlags.ExpandFill
         };
         column.AddChild(tabs);
-        var overview = new MarginContainer { Name = "Overview" };
+        // Every city tab must bound its contents independently. In particular,
+        // an autowrapping Overview label measured before the first layout can
+        // otherwise inflate the floating panel's minimum height.
+        var overview = new ScrollContainer { Name = "Overview",
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Auto,
+            VerticalScrollMode = ScrollContainer.ScrollMode.Auto };
         tabs.AddChild(overview);
         _cityOverview = new Label
         {
             Text = "Select a physical node on the map.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
             VerticalAlignment = VerticalAlignment.Top,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ShrinkBegin
         };
         overview.AddChild(_cityOverview);
@@ -108,6 +123,25 @@ public partial class Main
         CreateCityProductionTab(tabs);
         CreateCityWorkersTab(tabs);
 
+        var gripRow = new HBoxContainer();
+        column.AddChild(gripRow);
+        gripRow.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
+        var grip = new Button
+        {
+            Name = "GANextCityResizeGrip",
+            Text = "◢",
+            TooltipText = "Drag to resize city window",
+            CustomMinimumSize = new Vector2(30f, 25f)
+        };
+        gripRow.AddChild(grip);
+        panel.AttachResizeGrip(grip);
+
+        // The compact connection detail keeps its independent centered layout.
+        // The non-container overlay must not override the floating city's bounds.
+        var detailCenter = new CenterContainer { Name = "GANextConnectionCenter",
+            MouseFilter = MouseFilterEnum.Ignore };
+        overlay.AddChild(detailCenter);
+        detailCenter.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         _cityLinkDetail = new PanelContainer
         {
             Name = "GANextConnectionDetail",
@@ -116,7 +150,7 @@ public partial class Main
             MouseFilter = MouseFilterEnum.Stop
         };
         _cityLinkDetail.AddThemeStyleboxOverride("panel", GaVisualFoundation.WindowSurface());
-        overlay.AddChild(_cityLinkDetail);
+        detailCenter.AddChild(_cityLinkDetail);
         var details = new VBoxContainer();
         _cityLinkDetail.AddChild(details);
         var detailsHeader = new HBoxContainer();
@@ -204,6 +238,19 @@ public partial class Main
         if (_civilizationWindowLayer is not null)
             _civilizationWindowLayer.Visible = false;
         _cityWindowLayer.Visible = true;
+        if (_cityWindowPanel is { } floating)
+        {
+            if (!_cityWindowPositioned)
+            {
+                // The node was created hidden, before its children received
+                // their final layout. Reset any transient auto-grown size
+                // only on the first open, never after user resizing.
+                floating.Size = new Vector2(575f, 450f);
+                floating.Position = (_cityWindowLayer.Size - floating.Size) * 0.5f;
+                _cityWindowPositioned = true;
+            }
+            floating.ClampIntoParent();
+        }
 
         var host = _tacticalHost;
         var selected = _selectedCartographicSite;
