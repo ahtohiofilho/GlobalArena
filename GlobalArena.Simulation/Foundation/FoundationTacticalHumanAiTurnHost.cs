@@ -161,6 +161,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
     private readonly FoundationFundedWorkerIntentJournal? _persistentFunding;
     private readonly Dictionary<CivilizationId, List<ISimulationCommand>> _persistentPlans = new();
     public bool PersistentOrdersEnabled => _persistentPhase is not null;
+    public bool ExperimentalLocalEconomyEnabled { get; }
     private readonly CanonicalWorldStateHasher _hasher = new();
     private readonly HashSet<CivilizationId> _humans;
     private readonly IReadOnlyDictionary<CivilizationId,
@@ -440,7 +441,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
         FoundationFineFirstPhysicalGeography? fineGeography = null,
         FoundationFineFirstWorldgenIdentity? fineSignature = null,
         FoundationGroundEdgeTravelTimePolicy? physicalTravelPolicy = null,
-        ulong? constructionMoneyMicroPerWholeWork = null, bool enableDemographicGrowth = false, FoundationAgriculturalProductionPolicy? agriculture = null, FoundationOperationalFreightShadowPolicy? operationalPolicy = null)
+        ulong? constructionMoneyMicroPerWholeWork = null, bool enableDemographicGrowth = false, FoundationAgriculturalProductionPolicy? agriculture = null, FoundationOperationalFreightShadowPolicy? operationalPolicy = null,
+        bool enableExperimentalLocalEconomy = false)
     {
         AgriculturalProduction = agriculture;
         OperationalFreight = operationalPolicy;
@@ -503,6 +505,10 @@ public sealed class FoundationTacticalHumanAiTurnHost
             physicalTravelPolicy is not null ? settlementPolicy : null;
         _signedFine = fineGeography;
         bool persistent = Snapshot.WorkerOrders.IsInitialized;
+        if (enableExperimentalLocalEconomy != (settlementPolicy?.UseTemporalProgressiveDistribution == true) ||
+            (enableExperimentalLocalEconomy && (!persistent || _temporalPolicy is null || agriculture is null || fineGeography is null)))
+            throw new InvalidOperationException("Experimental local economy requires explicit progressive temporal policy and signed persistent crops.");
+        ExperimentalLocalEconomyEnabled = enableExperimentalLocalEconomy;
         if (persistent && (_temporalPolicy is null || fineGeography is null || !constructionMoneyMicroPerWholeWork.HasValue || !enableMonetaryInfrastructure))
             throw new InvalidOperationException("Persistent host needs complete signed temporal construction world.");
         foreach (var civ in _participants) _persistentPlans[civ] = new();
@@ -595,7 +601,9 @@ public sealed class FoundationTacticalHumanAiTurnHost
             var temporal = new FoundationTemporalCollectiveTurnPhase(
                 session.GeneratedWorld, incidence, _travelPolicy!,
                 _temporalPolicy, fineGeography, fineSignature, _constructionPhase,
-                persistent ? constructionMoneyMicroPerWholeWork : null, enableDemographicGrowth, agriculture, operationalPolicy);
+                persistent ? constructionMoneyMicroPerWholeWork : null, enableDemographicGrowth, agriculture, operationalPolicy,
+                enableExperimentalAutomaticBase: ExperimentalLocalEconomyEnabled,
+                enableLocalPriceAllocation: ExperimentalLocalEconomyEnabled);
             phases.Add(temporal);
             if (persistent)
             {
@@ -1164,7 +1172,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
         if (!PersistentOrdersEnabled) throw new InvalidOperationException("Persistent orders not configured.");
         if ((edit.Crop.HasValue || edit.BaseActivity?.Crop is not null) && AgriculturalProduction is null)
             throw new InvalidOperationException("Crop preview not configured.");
-        if (edit.BaseActivity?.Mode == FoundationWorkerBaseMode.Automatic)
+        if (edit.BaseActivity?.Mode == FoundationWorkerBaseMode.Automatic && !ExperimentalLocalEconomyEnabled)
             throw new InvalidOperationException("Automatic base allocation is not activated.");
         var list = _persistentPlans[human];
         var command = new FoundationPersistentOrderEditCommand(new CommandId(NextTurn, (ulong)list.Count + 1UL), edit);
