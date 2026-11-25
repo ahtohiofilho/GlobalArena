@@ -22,6 +22,8 @@ public partial class GlobePreview
     private bool _showSettledGlobeRoutes = true;
 
     public int VisibleSphericalSettledTradeCrossings { get; private set; }
+    internal ulong? PresentedSphericalTradeCycle => _authorizedGlobeTrade?.EconomicCycleOrdinal;
+    internal bool HasSphericalTradeMesh => _settledGlobeRoutes?.Mesh is not null;
 
     public void SetSphericalSettledTradeRoutesVisible(bool enabled)
     {

@@ -370,6 +370,8 @@ public partial class Main
     private void ExerciseLocalEconomyPreview(FoundationTacticalHumanAiTurnHost host)
     {
         GaDisplayNumbers.ExerciseContract();
+        GaCartographicStyle.ExerciseContract();
+        AssertCartographicPublication(host, 0UL);
         if (!host.DefaultAutomaticBaseEnabled || host.AgriculturalProduction?.BasicResources is null)
             throw new InvalidOperationException("Missing experimental local host configuration.");
         var worker = host.Snapshot.Workers.Workers.First(w => w.Owner == _humanCivilization &&
@@ -396,6 +398,7 @@ public partial class Main
         EndFineCollectiveTurn();
         ExerciseCityProductionReadout(host, location.Value, 1UL);
         ExerciseCityConnectionTradeReadout(host, location.Value, 1UL);
+        AssertCartographicPublication(host, 1UL);
         ExerciseWorldInfrastructure(host, location.Value, true);
         var closed = host.Snapshot.Workers.Workers.Single(w => w.Id == worker.Id);
         if (host.StateHash == before || closed.TacticalTileId != location || closed.Activity != PhysicalWorkerActivity.Producing ||
@@ -421,6 +424,7 @@ public partial class Main
             throw new InvalidOperationException("Open production tab did not refresh after close.");
         ExerciseCityProductionReadout(host, location.Value, 2UL);
         ExerciseCityConnectionTradeReadout(host, location.Value, 2UL);
+        AssertCartographicPublication(host, 2UL);
         AssertWorldUnitReadout(host, worker.Id);
         if (_worldUnitBase?.Text != "Wood" || _worldUnitBaseState?.Texture != GaHudWidgets.Icon("check"))
             throw new InvalidOperationException("Unit did not show committed base preference.");
@@ -440,6 +444,7 @@ public partial class Main
             throw new InvalidOperationException("Automatic preference did not close.");
         ExerciseCityProductionReadout(host, location.Value, 3UL);
         ExerciseCityConnectionTradeReadout(host, location.Value, 3UL);
+        AssertCartographicPublication(host, 3UL);
         ExerciseCityWorkersPrivacy(host, location.Value);
         AssertWorldUnitReadout(host, worker.Id);
         if (_worldUnitBase?.Text != "Auto" || _worldUnitBaseState?.Texture != GaHudWidgets.Icon("check"))
@@ -451,6 +456,7 @@ public partial class Main
         GD.Print("GA_NEXT_R2294_CONNECTION_TRADE_PASS before_close=true three_closes=true real_edges=true authorized_only=true");
         GD.Print("GA_NEXT_R2293_CITY_WORKERS_PASS scoped=true real_buttons=true private_commands=true return_to_city=true");
         GD.Print("GA_NEXT_R2292_CITY_PRODUCTION_PASS cycles=3 catalog=8 committed_only=true owner_scoped=true");
+        GD.Print("GA_NEXT_R2311_CARTOGRAPHIC_PASS four_publication_states=true population_bands=true exact_authorized_edges=true");
         GD.Print("GA_NEXT_R22813C_LOCAL_ECONOMY_UI_PASS three_closes=true automatic_default=true manual_override=true trade_published=true");
     }
 

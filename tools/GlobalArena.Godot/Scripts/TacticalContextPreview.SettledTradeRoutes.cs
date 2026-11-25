@@ -16,13 +16,26 @@ namespace GlobalArena.Godot;
 /// </summary>
 public partial class TacticalContextPreview
 {
-    private MeshInstance3D? _settledTradeMesh;
+    private Control? _tradeInkClip;
+    private Node2D? _tradeInk;
+    private readonly List<(PhysicalTacticalEdgeId Id, Vector3 A, Vector3 B, float Width)> _tradeBands = new();
+    private Transform3D _lastInkCamera;
+    private Vector2 _lastInkSize;
+    private float _lastInkZoom = -1f;
+
+    internal IReadOnlyList<PhysicalTacticalEdgeId> DrawnTradeEdgeIds =>
+        _tradeBands.Select(x => x.Id).ToArray();
+
+    internal IReadOnlyList<PhysicalTacticalEdgeId> ExpectedResidentTradeEdges(FoundationLastClosedEconomicTradeView view) =>
+        view.UsedEdges.Where(e => _tileCenters.ContainsKey(e.FirstTile.FineStrategicCellId.Value) &&
+            _tileCenters.ContainsKey(e.SecondTile.FineStrategicCellId.Value))
+            .Select(e => e.Edge).OrderBy(e => e.FineStrategicEdgeId.Value).ToArray();
     private FoundationLastClosedEconomicTradeView? _lastAuthorizedTrade;
     private bool _showSettledTradeRoutes = true;
 
     public int VisibleSettledTradeCrossings { get; private set; }
     public bool IsSettledTradeLayerVisible =>
-        _settledTradeMesh?.Visible ?? false;
+        _tradeInkClip?.Visible ?? false;
 
     public bool HasSettledTradeData =>
         _lastAuthorizedTrade is not null &&
@@ -38,19 +51,24 @@ public partial class TacticalContextPreview
         if (_world is null)
             throw new InvalidOperationException(
                 "Trade overlay needs the existing tactical world.");
-        _settledTradeMesh = new MeshInstance3D { Visible = false };
-        var material = MakeCoplanarOverlayMaterial();
-        material.RenderPriority = 2;
-        _settledTradeMesh.MaterialOverride = material;
-        _world.AddChild(_settledTradeMesh);
+        // Screen-space layer: the white outline remains one logical pixel
+        // on each side at every zoom. Clip to the tactical viewport, and
+        // keep it beneath the later site/worker labels and above terrain.
+        _tradeInkClip = new Control { Name = "GANextTradeInk", MouseFilter = MouseFilterEnum.Ignore,
+            ClipContents = true, Visible = false };
+        AddChild(_tradeInkClip);
+        _tradeInkClip.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        _tradeInk = new Node2D();
+        _tradeInkClip.AddChild(_tradeInk);
+        _tradeInk.Draw += DrawTradeInk;
     }
 
     public void SetSettledTradeRoutesVisible(bool enabled)
     {
         _showSettledTradeRoutes = enabled;
-        if (_settledTradeMesh is not null)
-            _settledTradeMesh.Visible =
-                enabled && _settledTradeMesh.Mesh is not null;
+        if (_tradeInkClip is not null)
+            _tradeInkClip.Visible = enabled && _tradeBands.Count > 0;
+        _tradeInk?.QueueRedraw();
     }
 
     /// <summary>
@@ -82,100 +100,59 @@ public partial class TacticalContextPreview
         RebuildSettledTradeMesh();
     }
 
-    private static Color SettledTradeOwnerColor(
-        FoundationPhysicalTradeEdgeLoad crossing)
+    private void UpdateTradeInkProjection()
     {
-        var baseColor = crossing.OwnershipKind switch
-        {
-            FoundationInfrastructureOwnershipKind.Owned
-                when crossing.Owner is { IsValid: true } owner =>
-                GaCivilizationVisualIdentity.ColorFor(owner.Value),
-            FoundationInfrastructureOwnershipKind.UnownedInfrastructure =>
-                new Color("#c5ced8"),
-            FoundationInfrastructureOwnershipKind.NoInfrastructure =>
-                new Color("#a8b3bf"),
-            _ => throw new InvalidOperationException(
-                "Trade visualization cannot invent a road owner.")
-        };
-        baseColor.A = 0.86f;
-        return baseColor;
+        if (_tradeInkClip?.Visible != true || _camera is null) return;
+        if (_lastInkCamera == _camera.GlobalTransform && _lastInkZoom == _camera.Size && _lastInkSize == Size) return;
+        _lastInkCamera = _camera.GlobalTransform;
+        _lastInkZoom = _camera.Size;
+        _lastInkSize = Size;
+        _tradeInk?.QueueRedraw();
+    }
+
+    private void DrawTradeInk()
+    {
+        if (_tradeInk is null || _camera is null || _innerViewport is null || _innerViewport.Size.Y <= 0 ||
+            _innerViewport.Size.X <= 0) return;
+        Vector2 scale = new(Size.X / _innerViewport.Size.X, Size.Y / _innerViewport.Size.Y);
+        var screen = _tradeBands.Select(b => (A: _camera.UnprojectPosition(b.A) * scale,
+            B: _camera.UnprojectPosition(b.B) * scale, b.Width)).ToArray();
+        // All outlines first, then all cores: no white transverse seams
+        // where two real crossings join at a physical node.
+        foreach (var line in screen)
+            _tradeInk.DrawLine(line.A, line.B, Colors.White, line.Width + 2f * GaCartographicStyle.TradeOutlinePixels, true);
+        foreach (var line in screen)
+            _tradeInk.DrawLine(line.A, line.B, Colors.Black, line.Width, true);
     }
 
     private void RebuildSettledTradeMesh()
     {
         VisibleSettledTradeCrossings = 0;
-        if (_settledTradeMesh is null) return;
-        var old = _settledTradeMesh.Mesh;
-        _settledTradeMesh.Mesh = null;
-        _settledTradeMesh.Visible = false;
-        old?.Dispose();
-
+        _tradeBands.Clear();
+        if (_tradeInkClip is null) return;
+        _tradeInkClip.Visible = false;
+        _tradeInk?.QueueRedraw();
         var view = _lastAuthorizedTrade;
-        if (view is null || _cachedPhysicalMap is null ||
-            _tileCenters.Count == 0 || view.UsedEdges.Count == 0)
-            return;
-        if (view.FineTopology !=
-            _cachedPhysicalMap.Refinement.FineParameters)
-            throw new InvalidOperationException(
-                "Visible trade edge belongs to another real topology.");
-        // Only intersections of the private-authorized edges with the
-        // CURRENT resident presentation chart are drawn. Off-screen
-        // trade remains invisible; there is no inferred continuation.
-        var visible = view.UsedEdges
-            .Where(edge => _tileCenters.ContainsKey(
-                    edge.FirstTile.FineStrategicCellId.Value) &&
-                _tileCenters.ContainsKey(
-                    edge.SecondTile.FineStrategicCellId.Value))
-            .OrderBy(edge => edge.Edge.FineStrategicEdgeId.Value)
-            .ToArray();
-        if (visible.Length == 0) return;
-        ulong maxVolume = visible.Max(e => e.TotalCargoMicro);
-        if (maxVolume == 0UL)
-            throw new InvalidOperationException(
-                "Zero-volume crossings are not completed trade routes.");
-
-        var tool = new SurfaceTool();
-        tool.Begin(Mesh.PrimitiveType.Triangles);
+        if (view is null || _cachedPhysicalMap is null || _tileCenters.Count == 0 || view.UsedEdges.Count == 0) return;
+        if (view.FineTopology != _cachedPhysicalMap.Refinement.FineParameters)
+            throw new InvalidOperationException("Visible trade edge belongs to another real topology.");
+        var expected = ExpectedResidentTradeEdges(view).ToHashSet();
         var seen = new HashSet<PhysicalTacticalEdgeId>();
-        foreach (var edge in visible)
+        foreach (var edge in view.UsedEdges.OrderBy(e => e.Edge.FineStrategicEdgeId.Value))
         {
+            if (!expected.Contains(edge.Edge)) continue;
             if (!seen.Add(edge.Edge) || !edge.Edge.IsValid ||
-                edge.Edge.FineGoldbergParameters != view.FineTopology ||
-                edge.TotalCargoMicro == 0UL)
-                throw new InvalidOperationException(
-                    "Only unique, nonempty canonical crossings are drawable.");
-            Vector3 a = _tileCenters[
-                edge.FirstTile.FineStrategicCellId.Value];
-            Vector3 b = _tileCenters[
-                edge.SecondTile.FineStrategicCellId.Value];
-            Vector3 delta = b - a;
-            if (delta.LengthSquared() < 1e-12f) continue;
-
-            // Larger AUDITED participant cargo makes a thicker band.
-            // sqrt compression is purely aesthetic and deterministic:
-            // it never alters market cargo, geography or freight costs.
-            float relative = MathF.Sqrt(
-                (float)((double)edge.TotalCargoMicro / maxVolume));
-            float fullWidth = 0.0018f + 0.0072f * relative;
-            Vector3 side = new Vector3(-delta.Z, 0f, delta.X)
-                .Normalized() * (fullWidth / 2f);
-            Color color = SettledTradeOwnerColor(edge);
-            AddColored(tool, a + side, color);
-            AddColored(tool, b + side, color);
-            AddColored(tool, b - side, color);
-            AddColored(tool, a + side, color);
-            AddColored(tool, b - side, color);
-            AddColored(tool, a - side, color);
-            VisibleSettledTradeCrossings++;
+                edge.Edge.FineGoldbergParameters != view.FineTopology || edge.TotalCargoMicro == 0UL)
+                throw new InvalidOperationException("Only unique, nonempty canonical crossings are drawable.");
+            ulong first = edge.FirstTile.FineStrategicCellId.Value, second = edge.SecondTile.FineStrategicCellId.Value;
+            Vector3 a = TryGetSitePolygonCentroid(first, out var ca) ? ca : _tileCenters[first];
+            Vector3 b = TryGetSitePolygonCentroid(second, out var cb) ? cb : _tileCenters[second];
+            if (a.DistanceSquaredTo(b) < 1e-12f)
+                throw new InvalidOperationException("Degenerate freight edge.");
+            _tradeBands.Add((edge.Edge, a, b, GaCartographicStyle.TradeWidth(edge.TotalCargoMicro)));
         }
-        var mesh = tool.Commit();
-        tool.Dispose();
-        if (mesh is null || VisibleSettledTradeCrossings == 0)
-        {
-            mesh?.Dispose();
-            return;
-        }
-        _settledTradeMesh.Mesh = mesh;
-        _settledTradeMesh.Visible = _showSettledTradeRoutes;
+        VisibleSettledTradeCrossings = _tradeBands.Count;
+        _tradeInkClip.Visible = _showSettledTradeRoutes && _tradeBands.Count > 0;
+        _tradeInk?.QueueRedraw();
     }
 }

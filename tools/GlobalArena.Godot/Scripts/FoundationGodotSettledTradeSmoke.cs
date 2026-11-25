@@ -164,6 +164,9 @@ internal sealed class FoundationGodotSettledTradeSmoke
                  _map.TacticalCameraState == camera,
                 "Real E-key closed market must create funded cash and private " +
                 "visible route mesh without moving the tactical camera.");
+            GaCartographicStyle.ExerciseContract();
+            Must(_map.DrawnTradeEdgeIds.SequenceEqual(_map.ExpectedResidentTradeEdges(first)),
+                "Actual tactical ink must contain exactly the authorized resident crossings.");
             var firstVisible = _map.VisibleSettledTradeCrossings;
             var hash = _host.StateHash;
             toggle!.ButtonPressed = false;
@@ -192,6 +195,8 @@ internal sealed class FoundationGodotSettledTradeSmoke
                  _map.TacticalCameraState == camera,
                 "Second real E-key must replace the visible last-closed trade " +
                 "without altering camera, topology or issuing fake preview routes.");
+            Must(_map.DrawnTradeEdgeIds.SequenceEqual(_map.ExpectedResidentTradeEdges(second)),
+                "Next close must replace the actual tactical ink without stale routes.");
             await Screenshot("02_v15_next_closed_trade");
             GD.Print("GA_NEXT_V15_GODOT_SETTLED_TRADE_PASS " +
                 $"first_visible={firstVisible} " +
