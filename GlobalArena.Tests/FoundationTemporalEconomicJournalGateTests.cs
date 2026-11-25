@@ -507,7 +507,6 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             e.IncidentCellIds.Contains(tile.FineStrategicCellId) &&
             fine.CrossingAtIndices((int)e.IncidentCellIds[0].Value - 1,
                 (int)e.IncidentCellIds[1].Value - 1) == FoundationFineTransportCrossingKind.Ground);
-        var edge = new PhysicalTacticalEdgeId(incidence.Refinement.FineParameters, crossing.Id);
         // Use a real signed fine-first monetary world for collective admission.
         var bound = demo.Session.Snapshot.PromoteFineFirstBeforeTransport(
             demo.Session.GeneratedWorld, incidence, fine, signature)
@@ -521,14 +520,6 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         var crops = Enum.GetValues<GlobalArena.Foundation.Agriculture.CropId>()
             .ToDictionary(c => c, c => new CommodityId((uint)c));
         var agriculture = new FoundationAgriculturalProductionPolicy(fine, incidence, crops, 2_000_000UL);
-        var demand = new FoundationActivityCommodityDemandPolicy(crops.Values.ToArray(),
-            Enum.GetValues<FoundationPhysicalDemandProfile>().SelectMany(profile => crops.Values.Select(c =>
-                new FoundationActivityCommodityDemandCoefficient(profile, c, 1_000_000UL))));
-        var policy = new FoundationAuthoritativeEconomicSettlementPolicy(demand,
-            new FoundationCommodityCargoConversionPolicy("crop-test", crops.Values.Select(c =>
-                new FoundationCommodityCargoConversion(c, 1_000_000UL))),
-            beginning.Civilizations.Civilizations.Select(c => new FoundationPhysicalEconomicTaxRate(c, 0U)),
-            maxProducerPasses: 64);
         var destination = new PhysicalTacticalTileId(incidence.Refinement.FineParameters,
             crossing.IncidentCellIds.Single(n => n != tile.FineStrategicCellId));
         var rice = new FoundationWorkerBaseActivity(FoundationWorkerBaseMode.Manual, PhysicalWorkerOccupation.Agriculture, 4);
