@@ -185,8 +185,8 @@ public partial class Main
         body.AddChild(_connectionTradeDetail);
         _connectionFunding = new VBoxContainer();
         body.AddChild(_connectionFunding);
-        _connectionFunding.AddChild(new Label { Text = "Investment amount" });
-        _connectionAmount = new LineEdit { Text = "0.100000", MaxLength = 32 };
+        _connectionFunding.AddChild(new Label { Text = "Investment amount ($)" });
+        _connectionAmount = new LineEdit { Text = "0.10", MaxLength = 32 };
         _connectionAmount.TextChanged += _ => RefreshConnectionInvestmentControls();
         _connectionFunding.AddChild(_connectionAmount);
         _connectionProjection = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
@@ -432,7 +432,7 @@ public partial class Main
         if (_connectionAmount is not null && pendingPlan is not null && construction)
         {
             // The authoritative reservation, not a stale value from another edge.
-            _connectionAmount.Text = FormatMoneyMicroForDisplay(pendingPlan.MoneyMicro);
+            _connectionAmount.Text = GaDisplayNumbers.ExactMoneyInput(pendingPlan.MoneyMicro);
         }
         if (_connectionAmount is not null) _connectionAmount.Editable = !ready && !pending && project is null;
         if (_connectionProjection is not null && financeable && (project is not null || pending || valid) && withinRange)
@@ -473,7 +473,7 @@ public partial class Main
         if (project is null || !_constructionSection.Visible) return;
         _constructionProgress.Value = 100.0 * project.CompletedWorkMicro / project.RequiredWorkMicro;
         _constructionStatus.Text =
-            $"Project #{project.Id} | {(project.IsComplete ? "Awaiting activation" : "Under construction")}\nFunded capital: {FormatMoneyMicroForDisplay(project.FundedMoneyMicro)}\nWork: {FormatMoneyMicroForDisplay(project.CompletedWorkMicro)} / {FormatMoneyMicroForDisplay(project.RequiredWorkMicro)}";
+            $"Project #{project.Id} | {(project.IsComplete ? "Awaiting activation" : "Under construction")}\nFunded capital: {FormatMoneyMicroForDisplay(project.FundedMoneyMicro)}\nWork: {FormatPhysicalMicroForDisplay(project.CompletedWorkMicro)} / {FormatPhysicalMicroForDisplay(project.RequiredWorkMicro)}";
         bool showWorkers = !project.IsComplete && project.Investor == _humanCivilization;
         if (_constructionWorkforceTitle is not null) _constructionWorkforceTitle.Visible = showWorkers;
         _constructionWorkers.Visible = showWorkers;

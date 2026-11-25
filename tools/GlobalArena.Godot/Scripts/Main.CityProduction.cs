@@ -33,7 +33,7 @@ public partial class Main
         _cityProductionTrade = new GridContainer { Name = "GANextCityProductionTrade", Columns = 6,
             SizeFlagsHorizontal = SizeFlags.ExpandFill };
         body.AddChild(_cityProductionTrade);
-        body.AddChild(new Label { Text = "Goods in commodity units; prices and revenue in money units. Imports and exports cross tile boundaries. — = no observed local price.",
+        body.AddChild(new Label { Text = "Goods in commodity units; prices and revenue in $. Rounded for display. Imports and exports cross tile boundaries. — = no observed local price.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart });
     }
 
@@ -105,11 +105,11 @@ public partial class Main
         foreach (var row in read.Commodities)
         {
             string name = CityCommodityName(names, row.Commodity);
-            AddCityProductionRow(_cityProductionGoods, new[] { name, FormatMoneyMicroForDisplay(row.ProducedMicro),
-                FormatMoneyMicroForDisplay(row.DemandMicro), FormatMoneyMicroForDisplay(row.ReceivedMicro),
+            AddCityProductionRow(_cityProductionGoods, new[] { name, FormatPhysicalMicroForDisplay(row.ProducedMicro),
+                FormatPhysicalMicroForDisplay(row.DemandMicro), FormatPhysicalMicroForDisplay(row.ReceivedMicro),
                 row.LocalPriceMicro is { } price ? FormatMoneyMicroForDisplay(price) : "—" });
-            AddCityProductionRow(_cityProductionTrade, new[] { name, FormatMoneyMicroForDisplay(row.SoldMicro),
-                FormatMoneyMicroForDisplay(row.ExportedMicro), FormatMoneyMicroForDisplay(row.ImportedMicro),
+            AddCityProductionRow(_cityProductionTrade, new[] { name, FormatPhysicalMicroForDisplay(row.SoldMicro),
+                FormatPhysicalMicroForDisplay(row.ExportedMicro), FormatPhysicalMicroForDisplay(row.ImportedMicro),
                 FormatExactMoneyForDisplay(row.GrossSalesScaled), FormatExactMoneyForDisplay(row.SellerNetScaled) });
         }
     }
@@ -162,11 +162,11 @@ public partial class Main
             for (int i = 0; i < read.Commodities.Count; i++)
             {
                 var row = read.Commodities[i];
-                var goods = new[] { CityCommodityName(names, row.Commodity), FormatMoneyMicroForDisplay(row.ProducedMicro),
-                    FormatMoneyMicroForDisplay(row.DemandMicro), FormatMoneyMicroForDisplay(row.ReceivedMicro),
+                var goods = new[] { CityCommodityName(names, row.Commodity), FormatPhysicalMicroForDisplay(row.ProducedMicro),
+                    FormatPhysicalMicroForDisplay(row.DemandMicro), FormatPhysicalMicroForDisplay(row.ReceivedMicro),
                     row.LocalPriceMicro is { } price ? FormatMoneyMicroForDisplay(price) : "—" };
-                var trade = new[] { goods[0], FormatMoneyMicroForDisplay(row.SoldMicro),
-                    FormatMoneyMicroForDisplay(row.ExportedMicro), FormatMoneyMicroForDisplay(row.ImportedMicro),
+                var trade = new[] { goods[0], FormatPhysicalMicroForDisplay(row.SoldMicro),
+                    FormatPhysicalMicroForDisplay(row.ExportedMicro), FormatPhysicalMicroForDisplay(row.ImportedMicro),
                     FormatExactMoneyForDisplay(row.GrossSalesScaled), FormatExactMoneyForDisplay(row.SellerNetScaled) };
                 for (int j = 0; j < goods.Length; j++)
                     if (((Label)_cityProductionGoods.GetChild((i + 1) * goods.Length + j)).Text != goods[j])

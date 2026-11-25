@@ -22,7 +22,7 @@ public partial class Main
         view.Availability == FoundationEconomicTradeOverlayAvailability.NoClosedCycle
             ? "Cargo: — (no closed cycle)"
             : load is null ? "Cargo: 0 (no own trade)" :
-                $"Cargo: {FormatMoneyMicroForDisplay(load.TotalCargoMicro)}";
+                $"Cargo: {FormatPhysicalMicroForDisplay(load.TotalCargoMicro)}";
 
     private void RefreshCityConnectionTrade()
     {
@@ -56,7 +56,7 @@ public partial class Main
             var names = CityCommodityNames(host, link.Neighbor);
             text += "\nCargo by commodity (both directions):\n" +
                 string.Join("\n", load.ByCommodity.Select(row =>
-                    $"{CityCommodityName(names, row.Commodity)}: {FormatMoneyMicroForDisplay(row.CargoMicro)}"));
+                    $"{CityCommodityName(names, row.Commodity)}: {FormatPhysicalMicroForDisplay(row.CargoMicro)}"));
         }
         _connectionTradeDetail.Text = text +
             "\nOnly your civilization's trade is shown. Historical freight charges are not available here.";
@@ -93,7 +93,7 @@ public partial class Main
                 var names = CityCommodityNames(host, link.Neighbor);
                 foreach (var row in load.ByCommodity)
                     if (!_connectionTradeDetail.Text.Contains(
-                        $"{CityCommodityName(names, row.Commodity)}: {FormatMoneyMicroForDisplay(row.CargoMicro)}", StringComparison.Ordinal))
+                        $"{CityCommodityName(names, row.Commodity)}: {FormatPhysicalMicroForDisplay(row.CargoMicro)}", StringComparison.Ordinal))
                         throw new InvalidOperationException("Commodity cargo breakdown missing.");
             }
             _r227CloseConnection!.EmitSignal(Button.SignalName.Pressed);
