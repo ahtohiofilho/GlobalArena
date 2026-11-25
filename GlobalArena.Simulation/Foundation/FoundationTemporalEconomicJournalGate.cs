@@ -20,6 +20,7 @@ public sealed class FoundationTemporalSalesSettledEvent : ISimulationEvent
     public string ScheduleDigest { get; }
     public string CargoUnitCode { get; }
     public ulong ProducedGoodsMicro { get; }
+    public bool UsedProgressiveDistribution { get; }
     public IReadOnlyList<FoundationWorkerFoodIntake>? FoodIntake { get; }
     public IReadOnlyList<FoundationOperationalFreightShadowEdge>? OperationalQuotes { get; }
     public BigInteger GrossSalesScaled { get; }
@@ -61,7 +62,8 @@ public sealed class FoundationTemporalSalesSettledEvent : ISimulationEvent
         BigInteger freight, BigInteger net, BigInteger taxes,
         BigInteger tolls, IEnumerable<FoundationCivilizationEconomicSettlementCredit> credits,
         IReadOnlyList<FoundationWorkerFoodIntake>? foodIntake = null,
-        IReadOnlyList<FoundationOperationalFreightShadowEdge>? operationalQuotes = null)
+        IReadOnlyList<FoundationOperationalFreightShadowEdge>? operationalQuotes = null,
+        bool usedProgressiveDistribution = false)
     {
         ArgumentNullException.ThrowIfNull(credits);
         var lines = credits.OrderBy(c => c.Civilization.Value).ToArray();
@@ -86,6 +88,7 @@ public sealed class FoundationTemporalSalesSettledEvent : ISimulationEvent
         ScheduleDigest = digest;
         CargoUnitCode = cargoUnitCode;
         ProducedGoodsMicro = goods;
+        UsedProgressiveDistribution = usedProgressiveDistribution;
         FoodIntake = foodIntake is null ? null : Array.AsReadOnly(foodIntake.ToArray());
         OperationalQuotes = operationalQuotes is null ? null : Array.AsReadOnly(operationalQuotes.ToArray());
         GrossSalesScaled = gross;
@@ -243,6 +246,8 @@ public static class FoundationTemporalEconomicJournalGate
         FoundationPersistentWorkerTurnEvent? timeline = null, FoundationAgriculturalProductionPolicy? agriculture = null, FoundationOperationalFreightShadowPolicy? operationalPolicy = null,
         bool retainLocalPriceHistory = false)
     {
+        if (policy.UseTemporalProgressiveDistribution && !retainLocalPriceHistory)
+            throw new InvalidOperationException("Progressive settlement is restricted to the opt-in local price experiment.");
         if (beginning.WorkerOrders.IsInitialized != (timeline is not null))
             throw new InvalidOperationException("Persistent close requires exactly one verified timeline.");
         if (HashedBeginningInvalid(beginning, staged, investmentCount) ||
@@ -283,7 +288,7 @@ public static class FoundationTemporalEconomicJournalGate
             financial.Accounting.NetSellerReceiptsScaled,
             financial.Accounting.RevenueTaxScaled,
             financial.Accounting.ExternalTollsScaled, credits,
-            agriculture is null ? null : FoundationSettledFoodIntake.Attribute(beginning, calendar, financial.Distribution, agriculture.Commodities), financial.OperationalQuotes);
+            agriculture is null ? null : FoundationSettledFoodIntake.Attribute(beginning, calendar, financial.Distribution, agriculture.Commodities), financial.OperationalQuotes, policy.UseTemporalProgressiveDistribution);
         ev.AttachAuditedParticipantEdges(
             FoundationSettledTradeParticipantProjection.FromTemporalDistribution(
                 beginning.Constructions.IsInitialized ? beginning : staged,
@@ -326,6 +331,7 @@ public static class FoundationTemporalEconomicJournalGate
             received.ScheduleDigest != expected.ScheduleDigest ||
             received.CargoUnitCode != expected.CargoUnitCode ||
             received.ProducedGoodsMicro != expected.ProducedGoodsMicro ||
+            received.UsedProgressiveDistribution != expected.UsedProgressiveDistribution ||
             received.GrossSalesScaled != expected.GrossSalesScaled ||
             received.PhysicalFreightScaled != expected.PhysicalFreightScaled ||
             received.SellerNetScaled != expected.SellerNetScaled ||

@@ -41,7 +41,7 @@ public sealed class FoundationPhysicalGlobalMarginalCoordinationPlan
         int lotCount, int passes, ulong totalMoved,
         bool preferIncumbentTies, ulong[] movementByPass,
         bool strictPotentialAcceptance, int rejectedProposals,
-        BigInteger acceptedGainScaled)
+        BigInteger acceptedGainScaled, bool stableUnderOneFullCanonicalPass = true)
     {
         Candidates = Array.AsReadOnly(candidates);
         InitialMarketTotals = Array.AsReadOnly(initial);
@@ -50,7 +50,7 @@ public sealed class FoundationPhysicalGlobalMarginalCoordinationPlan
         ProductiveLotCount = lotCount;
         Passes = passes;
         TotalReallocatedGoodsMicro = totalMoved;
-        StableUnderOneFullCanonicalPass = true;
+        StableUnderOneFullCanonicalPass = stableUnderOneFullCanonicalPass;
         PreferIncumbentThresholdTies = preferIncumbentTies;
         MovedGoodsByPass = Array.AsReadOnly(movementByPass);
         StrictIntegratedPotentialAcceptance = strictPotentialAcceptance;

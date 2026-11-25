@@ -16,12 +16,14 @@ public sealed class FoundationAuthoritativeEconomicSettlementPolicy
     public FoundationCommodityCargoConversionPolicy Cargo { get; }
     public IReadOnlyList<FoundationPhysicalEconomicTaxRate> TaxRates { get; }
     public int MaxProducerPasses { get; }
+    // Explicit alternative temporal contract, not a fallback after failure.
+    public bool UseTemporalProgressiveDistribution { get; }
 
     public FoundationAuthoritativeEconomicSettlementPolicy(
         FoundationActivityCommodityDemandPolicy demand,
         FoundationCommodityCargoConversionPolicy cargo,
         IEnumerable<FoundationPhysicalEconomicTaxRate> taxRates,
-        int maxProducerPasses = 64)
+        int maxProducerPasses = 64, bool useTemporalProgressiveDistribution = false)
     {
         Demand = demand ?? throw new ArgumentNullException(nameof(demand));
         Cargo = cargo ?? throw new ArgumentNullException(nameof(cargo));
@@ -38,6 +40,7 @@ public sealed class FoundationAuthoritativeEconomicSettlementPolicy
                 "cargo, valid unique post-revenue taxes, and a positive " +
                 "producer resolution budget.");
         MaxProducerPasses = maxProducerPasses;
+        UseTemporalProgressiveDistribution = useTemporalProgressiveDistribution;
         TaxRates = Array.AsReadOnly(rates.OrderBy(r =>
             r.Civilization.Value).ToArray());
     }
