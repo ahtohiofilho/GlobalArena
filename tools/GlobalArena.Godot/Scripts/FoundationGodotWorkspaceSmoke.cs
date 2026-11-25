@@ -51,7 +51,7 @@ internal sealed class FoundationGodotWorkspaceSmoke
                 "GANextCityButton", recursive: true, owned: false) as Button;
             var cityWindow = _main.FindChild(
                 "GANextCityWindowLayer", recursive: true, owned: false)
-                as CenterContainer;
+                as Control;
             var cityTabs = _main.FindChild(
                 "GANextCityTabs", recursive: true, owned: false)
                 as TabContainer;
@@ -162,6 +162,46 @@ internal sealed class FoundationGodotWorkspaceSmoke
                 $"selected={roster.SelectedWorkerId} authoritative_ids=true " +
                 "physical_tile_unavailable=true queued_orders=0 state_mutation=false");
             await CaptureRenderedViewIfRequested("01_tactical_start");
+
+            // Actual city window controls, not a private geometry setter.
+            // This shell-only startup has no selected city; the same floating
+            // panel hosts all four tabs in the real cartographic preview.
+            var cityPanel = _main.FindChild("GANextCityWindow", true, false) as GaFloatingWindow;
+            var cityHandle = _main.FindChild("GANextCityDragHandle", true, false) as Control;
+            var cityGrip = _main.FindChild("GANextCityResizeGrip", true, false) as Control;
+            Must(cityPanel is not null && cityHandle is not null && cityGrip is not null,
+                "city floating window or its move/resize controls missing");
+            cityButton!.EmitSignal(Button.SignalName.Pressed);
+            await WaitFrame();
+            Must(cityPanel!.IsVisibleInTree(), "city window did not open");
+            cityTabs!.CurrentTab = 2;
+            await WaitFrame();
+            var cityStart = cityPanel.Position;
+            var cityDrag = cityHandle!.GlobalPosition + cityHandle.Size * new Vector2(0.35f, 0.5f);
+            await DragPointer(cityDrag, cityDrag + new Vector2(42f, 22f));
+            Must((cityPanel.Position - cityStart).Length() > 8f, "real pointer drag did not move city");
+            var citySize = cityPanel.Size;
+            var cityResize = cityGrip!.GlobalPosition + cityGrip.Size * 0.5f;
+            await DragPointer(cityResize, cityResize + new Vector2(40f, 32f));
+            Must(cityPanel.Size.X > citySize.X + 8f && cityPanel.Size.Y > citySize.Y + 8f,
+                "real pointer resize did not expand city");
+            var movedCity = cityPanel.Position;
+            var expandedCity = cityPanel.Size;
+            Must(movedCity.X >= 0f && movedCity.Y >= 0f &&
+                 movedCity.X + expandedCity.X <= cityWindow!.Size.X + 1f &&
+                 movedCity.Y + expandedCity.Y <= cityWindow.Size.Y + 1f,
+                "floating city escaped viewport");
+            await Press(Key.Escape);
+            Must(!cityWindow.Visible, "Escape did not close city");
+            cityButton.EmitSignal(Button.SignalName.Pressed);
+            await WaitFrame();
+            Must(cityPanel.Position.DistanceTo(movedCity) < 1f &&
+                cityPanel.Size.DistanceTo(expandedCity) < 1f && cityTabs.CurrentTab == 2,
+                "city geometry or selected tab reset on reopening");
+            await Press(Key.Escape);
+            Must(_game.StateHash == hash && tactical.TacticalCameraState == initialCamera &&
+                _game.PendingOrderCount == 0, "city geometry changed gameplay or camera");
+            GD.Print("GA_NEXT_R2295_CITY_FLOATING_PASS pointer=true drag=true resize=true bounded=true reopen_preserves_geometry=true");
 
             // Drive Godot's input pipeline, NOT a direct _UnhandledKeyInput
             // method call. Tab is normally consumed by focus_next and Esc by
