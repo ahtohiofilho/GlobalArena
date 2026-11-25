@@ -207,7 +207,7 @@ public sealed class CivilizationTreasuryRuntimeState
         if (observedPrices is not null)
         {
             var updates = observedPrices.ToArray();
-            if (updates.Any(p => p is null || !p.Node.IsValid ||
+            if (updates.Any(p => p is null || !p.Node.IsValid || !p.Commodity.IsValid ||
                     p.ObservedCycleOrdinal != economicCycleOrdinal) ||
                 updates.Select(p => (p.Node, p.Commodity)).Distinct().Count() != updates.Length)
                 throw new InvalidOperationException("Invalid audited local market observations.");
