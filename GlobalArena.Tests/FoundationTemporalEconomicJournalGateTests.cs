@@ -528,7 +528,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Equal(automatic, resolved.ResultingWorldState.WorkerOrders.Queues.Single(q => q.Worker == worker.Id).BaseActivity);
         Assert.Equal(1UL, resolved.ResultingWorldState.Treasury.LastSettledEconomicCycleOrdinal);
         Assert.True(resolved.ResultingWorldState.Constructions.Projects.Single().IsActivated);
-        var replay = phase.ReplayPersistentJournal(opening, resolved.Journal!, context);
+        var replay = phase.ReplayPersistentJournal(opening, resolved.EventLog, context);
         var hasher = new CanonicalWorldStateHasher();
         Assert.Equal(hasher.Compute(resolved.ResultingWorldState), hasher.Compute(replay));
         Assert.Equal(before, hasher.Compute(opening));
