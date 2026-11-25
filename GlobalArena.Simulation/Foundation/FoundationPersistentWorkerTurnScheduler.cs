@@ -25,12 +25,23 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
     private readonly FoundationConstructionApproachRouter _router;
     private static readonly CanonicalWorldStateHasher Hasher = new();
     private readonly FoundationAgriculturalProductionPolicy? _agriculture;
+    private readonly FoundationAuthoritativeEconomicSettlementPolicy? _automaticEconomy;
+    private readonly FoundationOperationalFreightShadowPolicy? _automaticOperations;
 
     public FoundationPersistentWorkerTurnScheduler(FoundationConstructionApproachRouter router,
-        FoundationAgriculturalProductionPolicy? agriculture = null)
+        FoundationAgriculturalProductionPolicy? agriculture = null,
+        FoundationAuthoritativeEconomicSettlementPolicy? experimentalAutomaticEconomy = null,
+        FoundationOperationalFreightShadowPolicy? automaticOperations = null)
     {
         _router = router ?? throw new ArgumentNullException(nameof(router));
         _agriculture = agriculture;
+        _automaticEconomy = experimentalAutomaticEconomy;
+        _automaticOperations = automaticOperations;
+        if (_automaticEconomy is not null && agriculture is null)
+            throw new InvalidOperationException("Experimental automatic base requires crop policy.");
+        if (automaticOperations is not null && _automaticEconomy is null)
+            throw new InvalidOperationException("Automatic operations require the experimental allocator.");
+        automaticOperations?.RequireValid();
         if (agriculture is not null && !ReferenceEquals(agriculture.Geography, router.Geography))
             throw new InvalidOperationException("Base crop scheduling requires the same signed geography.");
     }
@@ -55,13 +66,17 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
         return journeys is null ? world.WithWorkers(roster) : world.WithPhysicalEdgeTravel(roster, journeys);
     }
 
-    // Explicit manual base only. Unresolved automatic policy is not silently
-    // interpreted as idle or as the last physical occupation.
+    // Automatic availability is marked as an idle placeholder only under
+    // explicit experimental policy, then resolved on the complete timeline.
     private Mode BaseMode(PhysicalWorkerRuntimeRecord worker, FoundationWorkerBaseActivity preference)
     {
-        if (preference.Mode != FoundationWorkerBaseMode.Manual)
-            throw new InvalidOperationException("Automatic base allocation is not activated.");
         var node = worker.TacticalTileId!.Value;
+        if (preference.Mode == FoundationWorkerBaseMode.Automatic)
+        {
+            if (_automaticEconomy is null)
+                throw new InvalidOperationException("Automatic base allocation is not activated.");
+            return new(worker.Id, node, PhysicalWorkerActivity.Other, PhysicalWorkerOccupation.Unassigned, null, null);
+        }
         var occupation = preference.Occupation!.Value;
         if (preference.Crop.HasValue && _agriculture is null)
             throw new InvalidOperationException("Manual crop base requires agricultural policy.");
@@ -77,7 +92,7 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
             PhysicalWorkerActivity.Other, occupation, null, null, preference.Crop);
     }
 
-    private (WorldState Next, FoundationPersistentWorkerSlice[] Slices) Calculate(WorldState opening)
+    private (WorldState Next, FoundationPersistentWorkerSlice[] Slices) Calculate(WorldState opening, SimulationContext context)
     {
         if (!opening.WorkerOrders.IsInitialized || !opening.EdgeTravels.IsInitialized ||
             !opening.Constructions.IsInitialized)
@@ -85,11 +100,12 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
         // Reject unresolved policies before any timeline work, even if a task
         // would consume the entire turn. No implicit automatic allocation.
         foreach (var q in opening.WorkerOrders.Queues)
-            if (q.BaseActivity is { } b && (b.Mode != FoundationWorkerBaseMode.Manual ||
+            if (q.BaseActivity is { } b && ((b.Mode == FoundationWorkerBaseMode.Automatic && _automaticEconomy is null) ||
                 (b.Crop.HasValue && _agriculture is null)))
                 throw new InvalidOperationException("Base activity execution policy is unavailable.");
         var state = opening;
         var slices = new List<FoundationPersistentWorkerSlice>();
+        var automaticStarts = new Dictionary<PhysicalWorkerId, uint>();
         uint now = 0;
         while (now < Whole)
         {
@@ -115,6 +131,8 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
                         if (queue.BaseActivity is { } preference)
                         {
                             var mode = BaseMode(worker, preference);
+                            if (preference.Mode == FoundationWorkerBaseMode.Automatic)
+                                automaticStarts.TryAdd(id, now);
                             state = Assign(state, worker, node, worker.CellId, mode.Activity, mode.Occupation);
                             modes.Add(mode);
                         }
@@ -247,6 +265,39 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
             var mode = BaseMode(worker, q.BaseActivity!);
             state = Assign(state, worker, mode.Node, worker.CellId, mode.Activity, mode.Occupation);
         }
+        if (automaticStarts.Count > 0)
+        {
+            // Other workers' event boundaries can split a continuous idle
+            // suffix. Allocate that suffix once, not once per unrelated event.
+            foreach (var item in automaticStarts.OrderBy(x => x.Key.Value))
+            {
+                var suffix = slices.Where(s => s.Worker == item.Key && s.StartMicro >= item.Value)
+                    .OrderBy(s => s.StartMicro).ToArray();
+                if (suffix.Length == 0 || suffix[0].StartMicro != item.Value ||
+                    suffix.Any(s => s.Node != suffix[0].Node || s.Activity != PhysicalWorkerActivity.Other ||
+                        s.Occupation != PhysicalWorkerOccupation.Unassigned || s.ProjectId.HasValue || s.Crop.HasValue) ||
+                    suffix.Aggregate(0UL, (sum, s) => sum + s.DurationMicro) != Whole - item.Value)
+                    throw new InvalidOperationException("Automatic base must occupy only the stationary available suffix.");
+                slices.RemoveAll(s => s.Worker == item.Key && s.StartMicro >= item.Value);
+                slices.Add(suffix[0] with { DurationMicro = Whole - item.Value });
+            }
+            var intervals = automaticStarts.OrderBy(x => x.Key.Value)
+                .Select(x => new FoundationBaseMarginalInterval(x.Key, x.Value)).ToArray();
+            var plan = FoundationFrozenMarginalRevenueEstimator.Plan(opening, _router.Incidence,
+                _router.Geography, _automaticEconomy!, slices, intervals, _agriculture!, _automaticOperations,
+                context.Turn.Value - 1UL);
+            slices = plan.Calendar.OrderBy(s => s.StartMicro).ThenBy(s => s.Worker.Value).ToList();
+            foreach (var item in intervals)
+            {
+                var selected = slices.Single(s => s.Worker == item.Worker && s.StartMicro == item.StartMicro);
+                var worker = state.Workers.Workers.Single(w => w.Id == item.Worker);
+                if (worker.TacticalTileId != selected.Node ||
+                    state.EdgeTravels.Pending.Any(t => t.Worker == item.Worker) ||
+                    state.WorkerOrders.Queues.Single(q => q.Worker == item.Worker).Orders.Count != 0)
+                    throw new InvalidOperationException("Automatic base cannot supersede a physical task.");
+                state = Assign(state, worker, selected.Node, worker.CellId, selected.Activity, selected.Occupation);
+            }
+        }
         foreach (var p in state.Constructions.Projects.Where(p => p.IsComplete && !p.IsActivated).ToArray())
             state = state.ActivateCompletedConstruction(p.Id);
         return (state.AdvanceRevision(), slices.ToArray());
@@ -254,7 +305,7 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
 
     public (WorldState Next, FoundationPersistentWorkerTurnEvent Event) Record(WorldState opening, SimulationContext context)
     {
-        var (next, slices) = Calculate(opening);
+        var (next, slices) = Calculate(opening, context);
         return (next, new(EventId.ForSystemPhase(context.Turn, StablePhaseId, 2UL),
             Hasher.Compute(opening), Hasher.Compute(next), Array.AsReadOnly(slices)));
     }
