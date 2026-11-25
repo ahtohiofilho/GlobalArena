@@ -66,6 +66,8 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
                 "Temporal collective settlement requires complete signed geography.");
         if (enableExperimentalAutomaticBase && (!persistentMoneyMicroPerWholeWork.HasValue || agriculture is null || fine is null))
             throw new InvalidOperationException("Experimental automatic base requires signed persistent crop scheduling.");
+        if (economy.UseTemporalProgressiveDistribution && !enableLocalPriceAllocation)
+            throw new InvalidOperationException("Progressive distribution requires the explicit local allocation experiment.");
         if (enableLocalPriceAllocation && !enableExperimentalAutomaticBase)
             throw new InvalidOperationException("Local allocation requires experimental automatic scheduling.");
         _growth = enableDemographicGrowth;
