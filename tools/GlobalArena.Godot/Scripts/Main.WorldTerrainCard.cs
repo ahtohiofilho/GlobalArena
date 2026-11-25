@@ -111,6 +111,7 @@ public partial class Main
         _worldTerrainPotential.Text = "";
         if (_terrainWidgets is null) return;
         _terrainWidgets.Visible = false;
+        if (_hudTerrainSummary is not null) _hudTerrainSummary.Visible = false;
         SetTerrainYields(new Dictionary<string, ulong>());
         var host = _tacticalHost;
         var fine = _r123FineGeography;
@@ -141,6 +142,11 @@ public partial class Main
             $"Slope index: {GaDisplayNumbers.PhysicalMicro(slope)}\n" +
             $"On foot: {(fine.CanTraverseOnFoot(index) ? "Yes" : "No")} | Ship: {(fine.CanNavigateByShip(index) ? "Yes" : "No")}";
         _terrainWidgets.Visible = true;
+        if (_hudTerrainSummary is not null)
+        {
+            _hudTerrainSummary.Visible = true;
+            _hudTerrainSummary.TooltipText = _worldTerrainFacts.Text;
+        }
         _terrainSurface!.Text = surfaceName;
         _terrainSurfaceIcon!.Texture = GaHudWidgets.Icon(surface switch
         {

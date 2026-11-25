@@ -22,10 +22,13 @@ public partial class Main
             Icon = GaHudWidgets.Icon(icon), Alignment = HorizontalAlignment.Left,
             IconAlignment = HorizontalAlignment.Left, CustomMinimumSize = new Vector2(0, 28),
             SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        GaVisualFoundation.StyleHudSectionHeader(header);
+        root.AddThemeConstantOverride("separation", 2);
         root.AddChild(header);
         root.MoveChild(header, 0);
         var content = new VBoxContainer { Name = $"GANextWidget{name}Content",
             SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        content.AddThemeConstantOverride("separation", 2);
         root.AddChild(content);
         foreach (var control in old.Skip(1)) control.Reparent(content);
         _widgetSections.Add(name, (header, content));
@@ -88,9 +91,10 @@ public partial class Main
         planetBody.MoveChild(planetActions, 0);
 
         // Compact only the widget-mode cards, not the shared windows/theme.
-        foreach (var card in new[] { _worldUnitCard, _worldInfrastructureCard, _worldTerrainCard, _worldPlanetCard })
-            card!.AddThemeStyleboxOverride("panel", GaVisualFoundation.HudCardSurface());
-        _worldLayerStack!.AddThemeConstantOverride("separation", 4);
+        foreach (var card in new[] { _worldUnitCard, _worldInfrastructureCard, _worldTerrainCard })
+            card!.AddThemeStyleboxOverride("panel", GaVisualFoundation.HudOperationalCardSurface());
+        _worldPlanetCard!.AddThemeStyleboxOverride("panel", GaVisualFoundation.HudCardSurface());
+        _worldLayerStack!.AddThemeConstantOverride("separation", 3);
         if (_worldUnitActivity is not null) _worldUnitActivity.Visible = false; // same activity in identity
         if (_localPendingLabel is not null) _localPendingLabel.Visible = false; // same queue in Unit
         if (_fineMovementDecision is not null) _fineMovementDecision.Visible = false; // move tooltip
@@ -98,9 +102,15 @@ public partial class Main
             _localOrderStatus.Text = ""; // retain subsequent command/rejection feedback
         if (_worldUnitProgress is not null) GaHudWidgets.CompactProgress(_worldUnitProgress);
         if (_worldInfrastructureProgress is not null) GaHudWidgets.CompactProgress(_worldInfrastructureProgress);
+        ComposeOperationalCards(unit, infrastructure, terrain, city);
         AddWidgetSection(unit, "Unit", "unit", true);
         AddWidgetSection(infrastructure, "Infrastructure", "connection", false);
         AddWidgetSection(terrain, "Terrain", "terrain", false);
+        // Local summaries stay visible. The latter two headings expand only
+        // the optional detail widgets, not the primary object and action.
+        PinOperationalSummary("Infrastructure", _hudInfrastructureSummary!);
+        PinOperationalSummary("Terrain", _hudTerrainSummary!);
+        RefreshOperationalFeedback();
     }
 
     private void RefreshWidgetUnitActions()
@@ -108,6 +118,7 @@ public partial class Main
         if (!_widgetSections.ContainsKey("Unit")) return;
         GaHudWidgets.IconButton(_localMoveButton!, "move", "Move to selected node (G) | Shift + click on map");
         GaHudWidgets.IconButton(_localCancelQueuedButton!, "cancel", "Remove or interrupt first order (X)");
+        RefreshOperationalFeedback();
     }
 
     private async Task ExerciseWidgetDock(FoundationTacticalHumanAiTurnHost host)
@@ -129,6 +140,7 @@ public partial class Main
             if (rect.Position.Y < bounds.Position.Y - 1f || rect.End.Y > bounds.End.Y + 1f)
                 throw new InvalidOperationException($"Widget header clipped at startup: {section.Header.Text}; bounds={bounds}; rect={rect}");
         }
+        AssertOperationalCardLayout(bounds);
         var footer = _worldPlanetCard!.GetGlobalRect();
         var atlas = _worldPlanetAtlas ?? throw new InvalidOperationException("Planet action missing.");
         var planetHeader = atlas.GetParent() as HBoxContainer
@@ -155,6 +167,8 @@ public partial class Main
             host.StateHash != hash || _tacticalPreview.TacticalCameraState != camera ||
             !host.GetHumanPersistentQueues(_humanCivilization).SequenceEqual(queues))
             throw new InvalidOperationException("Widget layout mutated world or displaced Planet.");
+        AssertOperationalFeedback();
+        GD.Print("GA_NEXT_R23062_OPERATIONAL_CARD_PASS visual_summaries=true action_strips=true instruction_hidden=true feedback_preserved=true");
         GD.Print("GA_NEXT_R23061A_WIDGET_SHELL_PASS icon_actions=true collapsible=true headers_visible=true fixed_planet=true read_only=true");
     }
 }

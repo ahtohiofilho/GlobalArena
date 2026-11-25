@@ -1,0 +1,3 @@
+# R230.6.2.1 — Recover nested HUD height
+
+PR #664 HEAD aef57f0: 1/2 workflows passed. Persistent UI job 139543119654 reported Terrain object rect (977,472) size (270,58), bottom 530 versus local scroll bottom 519 (11 px clipped). Reduce duplicated outer padding from 5 to 3 only for local operational cards, section header style padding from 4 to 2, inner vertical spacing to 2 and stack spacing to 3. Preserve full-size object pictograms, font size, action button sizes, fixed Planet and all previous controls and data. Keep the original smoke visibility assertions and extend them to require complete outer card geometry with a diagnostic for all four slots. No change to kernel, economy, replay, commands or CI coverage. New CI and Windows review pending. Draft, no merge.

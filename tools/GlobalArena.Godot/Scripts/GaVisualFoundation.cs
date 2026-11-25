@@ -61,6 +61,24 @@ public static class GaVisualFoundation
     internal static StyleBoxFlat HudCardSurface() =>
         SurfaceBox(Surface, Border, radius: 6, borderWidth: 1, innerPadding: 5);
 
+    // Local operational cards have two nested surfaces. Avoid paying for
+    // the standard window padding twice; the object and action sizes stay intact.
+    internal static StyleBoxFlat HudOperationalCardSurface() =>
+        SurfaceBox(Surface, Border, radius: 6, borderWidth: 1, innerPadding: 3);
+
+    internal static void StyleHudSectionHeader(Button header)
+    {
+        header.AddThemeStyleboxOverride("normal",
+            SurfaceBox(Raised, Border, radius: 4, borderWidth: 1, innerPadding: 2));
+        header.AddThemeStyleboxOverride("hover",
+            SurfaceBox(new Color("#244454"), Accent, radius: 4, borderWidth: 1, innerPadding: 2));
+        header.AddThemeStyleboxOverride("pressed",
+            SurfaceBox(AccentDim, Accent, radius: 4, borderWidth: 1, innerPadding: 2));
+    }
+
+    internal static StyleBoxFlat HudObjectSurface() =>
+        SurfaceBox(Raised, AccentDim, radius: 5, borderWidth: 1, innerPadding: 3);
+
     public static StyleBoxFlat MapFrame() =>
         SurfaceBox(Background, AccentDim, radius: 5, borderWidth: 1, innerPadding: 0);
 
