@@ -2082,6 +2082,11 @@ public partial class Main : Control
             bool fineFirstInteractive = System.Environment.GetEnvironmentVariable(
                 "GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW") == "1";
             bool constructionPreview = System.Environment.GetEnvironmentVariable("GA_NEXT_CONSTRUCTION_PREVIEW") == "1";
+            bool localEconomyPreview = System.Environment.GetEnvironmentVariable("GA_NEXT_LOCAL_ECONOMY_PREVIEW") == "1";
+            if (localEconomyPreview && (!fineFirstInteractive || !_interactiveEconomicPreviewActive || !constructionPreview ||
+                System.Environment.GetEnvironmentVariable("GA_NEXT_PERSISTENT_ORDERS") != "1" ||
+                System.Environment.GetEnvironmentVariable("GA_NEXT_CROP_PREVIEW") != "1"))
+                throw new InvalidOperationException("Local economy preview requires explicit signed interactive economy, construction, orders and crops.");
             if (constructionPreview && (!fineFirstInteractive || !_interactiveEconomicPreviewActive))
                 throw new InvalidOperationException("Construction preview requires the signed interactive economy lab.");
             bool fineFirstLab = fineFirstVisualSmoke || fineFirstInteractive ||
@@ -2142,7 +2147,8 @@ public partial class Main : Control
                             enableTemporalFinancialVisualSmoke:
                                 temporalEconomyVisualSmoke, enableConstructionPreview: constructionPreview,
                             enablePersistentOrders: constructionPreview && System.Environment.GetEnvironmentVariable("GA_NEXT_PERSISTENT_ORDERS") == "1",
-                            enableCropPreview: System.Environment.GetEnvironmentVariable("GA_NEXT_CROP_PREVIEW") == "1");
+                            enableCropPreview: System.Environment.GetEnvironmentVariable("GA_NEXT_CROP_PREVIEW") == "1",
+                            enableLocalEconomy: localEconomyPreview);
                     _tacticalHost = g18.Host;
                     _r123FineGeography = g18.Geography;
                     _goldbergStartup.VerifyWorldAndIncidence(

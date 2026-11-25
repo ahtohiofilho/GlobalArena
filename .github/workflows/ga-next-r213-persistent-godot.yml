@@ -66,8 +66,26 @@ jobs:
           grep -q 'GA_NEXT_R219A3_FOOD_READOUT_PASS' "$RUNNER_TEMP/crops.log"
           grep -q 'GA_NEXT_R219B_OPERATIONAL_UI_PASS' "$RUNNER_TEMP/crops.log"
           grep -q 'GA_NEXT_R224_WORKER_WINDOW_PASS' "$RUNNER_TEMP/crops.log"
+      - name: Exercise experimental local economy
+        env:
+          GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW: '1'
+          GA_NEXT_INTERACTIVE_ECONOMY_PREVIEW: '1'
+          GA_NEXT_QA_LOCAL_SITE_MARKERS: '1'
+          GA_NEXT_CONSTRUCTION_PREVIEW: '1'
+          GA_NEXT_PERSISTENT_ORDERS: '1'
+          GA_NEXT_CROP_PREVIEW: '1'
+          GA_NEXT_LOCAL_ECONOMY_PREVIEW: '1'
+          GA_NEXT_R213_UI_SMOKE: '1'
+        run: |
+          set -o pipefail
+          timeout 180 "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --rendering-method gl_compatibility 2>&1 | tee "$RUNNER_TEMP/local-economy.log"
+          grep -q 'GA_NEXT_R22813C_LOCAL_ECONOMY_READY' "$RUNNER_TEMP/local-economy.log"
+          grep -q 'GA_NEXT_R22813C_LOCAL_ECONOMY_UI_PASS' "$RUNNER_TEMP/local-economy.log"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: r213-ui-log
-          path: ${{ runner.temp }}/r213.log
+          path: |
+            ${{ runner.temp }}/r213.log
+            ${{ runner.temp }}/crops.log
+            ${{ runner.temp }}/local-economy.log

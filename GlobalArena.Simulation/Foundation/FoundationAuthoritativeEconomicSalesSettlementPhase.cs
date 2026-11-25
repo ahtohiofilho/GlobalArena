@@ -18,12 +18,14 @@ public sealed class FoundationAuthoritativeEconomicSettlementPolicy
     public int MaxProducerPasses { get; }
     // Explicit alternative temporal contract, not a fallback after failure.
     public bool UseTemporalProgressiveDistribution { get; }
+    public bool RequireSafeProgressiveRoutes { get; }
 
     public FoundationAuthoritativeEconomicSettlementPolicy(
         FoundationActivityCommodityDemandPolicy demand,
         FoundationCommodityCargoConversionPolicy cargo,
         IEnumerable<FoundationPhysicalEconomicTaxRate> taxRates,
-        int maxProducerPasses = 64, bool useTemporalProgressiveDistribution = false)
+        int maxProducerPasses = 64, bool useTemporalProgressiveDistribution = false,
+        bool requireSafeProgressiveRoutes = false)
     {
         Demand = demand ?? throw new ArgumentNullException(nameof(demand));
         Cargo = cargo ?? throw new ArgumentNullException(nameof(cargo));
@@ -40,7 +42,10 @@ public sealed class FoundationAuthoritativeEconomicSettlementPolicy
                 "cargo, valid unique post-revenue taxes, and a positive " +
                 "producer resolution budget.");
         MaxProducerPasses = maxProducerPasses;
+        if (requireSafeProgressiveRoutes && !useTemporalProgressiveDistribution)
+            throw new ArgumentException("Safe route admission requires progressive temporal distribution.");
         UseTemporalProgressiveDistribution = useTemporalProgressiveDistribution;
+        RequireSafeProgressiveRoutes = requireSafeProgressiveRoutes;
         TaxRates = Array.AsReadOnly(rates.OrderBy(r =>
             r.Civilization.Value).ToArray());
     }

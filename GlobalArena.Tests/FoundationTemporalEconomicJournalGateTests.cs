@@ -833,6 +833,21 @@ public sealed class FoundationTemporalEconomicJournalGateTests
     }
 
     [Fact]
+    public void R22813C1SafeRouteBoundIncludesFinalSupplyAndTaxWithoutChangingPrice()
+    {
+        // Final worst case P=1/2 when four units are delivered against one.
+        // A 0.45 route is just affordable after 10% tax, a more expensive one is not.
+        Assert.True(FoundationPhysicalMarginalMarketDistributor.IsSafeAtFinalSupplyBound(
+            1_000_000UL, 4_000_000UL, new BigInteger(450_000UL) * 1_000_000UL, 1_000U));
+        Assert.False(FoundationPhysicalMarginalMarketDistributor.IsSafeAtFinalSupplyBound(
+            1_000_000UL, 4_000_000UL, new BigInteger(450_001UL) * 1_000_000UL, 1_000U));
+        Assert.True(FoundationPhysicalMarginalMarketDistributor.IsSafeAtFinalSupplyBound(
+            1_000_000UL, 1_000_000UL, new BigInteger(450_001UL) * 1_000_000UL, 1_000U));
+        Assert.True(FoundationPhysicalMarginalMarketDistributor.IsSafeAtFinalSupplyBound(
+            1_000_000UL, 4_000_000UL, BigInteger.Zero, 10_000U));
+    }
+
+    [Fact]
     public void R22813LocalBasicResourcesUseDistinctCommoditiesAndActualEffort()
     {
         var (world, worker, _, _, incidence, fine) = Fixture();
@@ -1066,7 +1081,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         var policy = new FoundationAuthoritativeEconomicSettlementPolicy(demand,
             new FoundationCommodityCargoConversionPolicy("r22813b", items.Select(c =>
                 new FoundationCommodityCargoConversion(c, 1_000_000UL))),
-            opening.Civilizations.Civilizations.Select(c => new FoundationPhysicalEconomicTaxRate(c, 0U)), maxProducerPasses: 64, useTemporalProgressiveDistribution: progressive);
+            opening.Civilizations.Civilizations.Select(c => new FoundationPhysicalEconomicTaxRate(c, 0U)), maxProducerPasses: 64, useTemporalProgressiveDistribution: progressive, requireSafeProgressiveRoutes: true);
         Assert.Equal(64, policy.MaxProducerPasses);
         var movement = new FoundationGroundEdgeTravelTimePolicy(1_400_000UL);
         // Select a real traversable land arrival with positive agricultural
@@ -1141,6 +1156,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             var sale = Assert.IsType<FoundationTemporalSalesSettledEvent>(receipt.TemporalEconomicSettlement);
             Assert.True(receipt.ReplayMatched);
             Assert.True(sale.UsedProgressiveDistribution);
+            Assert.True(sale.UsedSafeProgressiveRoutes);
             Assert.Equal(turn, sale.EconomicCycleOrdinal);
             Assert.Equal(turn, host.Snapshot.Treasury.LastSettledEconomicCycleOrdinal);
             Assert.Equal(receipt.Hash, host.StateHash);

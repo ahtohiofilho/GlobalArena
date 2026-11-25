@@ -64,6 +64,19 @@ public static class FoundationPhysicalMarginalMarketDistributor
         ulong PreviousGoodsMicro,
         ulong CargoQuantum);
 
+    // Worst-case final price uses all real supply of this commodity at the
+    // destination. This is a conservative admissibility bound, not a quote
+    // or a market solve. Later sellers cannot invalidate an admitted route.
+    internal static bool IsSafeAtFinalSupplyBound(ulong demand, ulong totalSupply,
+        BigInteger cargoCostScaled, uint sellerTaxBasisPoints)
+    {
+        if (demand == 0UL || totalSupply == 0UL || cargoCostScaled < 0 || sellerTaxBasisPoints > 10_000U)
+            throw new ArgumentException("Invalid safe route inputs.");
+        var minimumPrice = FoundationPhysicalMarginalIntegratedUtility.IntegerSqrt(
+            new BigInteger(demand) * Micro * Micro / totalSupply);
+        return minimumPrice * Micro * (10_000U - sellerTaxBasisPoints) >= cargoCostScaled * 10_000U;
+    }
+
     internal static ulong Gcd(ulong a, ulong b)
     {
         while (b != 0UL)
@@ -420,7 +433,8 @@ public static class FoundationPhysicalMarginalMarketDistributor
         PhysicalTacticalIncidenceMap incidence,
         FoundationCommodityCargoConversionPolicy conversionPolicy,
         IEnumerable<FoundationCommodityMarketPlanningQuote> quotes,
-        IEnumerable<FoundationPhysicalRoutingEdgeCost> edgeCosts)
+        IEnumerable<FoundationPhysicalRoutingEdgeCost> edgeCosts,
+        IReadOnlyList<FoundationPhysicalEconomicTaxRate>? safeRouteTaxes = null)
     {
         ArgumentNullException.ThrowIfNull(market);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -443,6 +457,9 @@ public static class FoundationPhysicalMarginalMarketDistributor
         var deliveredByOwner = market.DemandByCivilization.ToDictionary(
             line => (line.Tile, line.Owner, line.Commodity), _ => 0UL);
         var candidates = new List<FoundationPhysicalCommodityDeliveryCandidate>();
+        var supplyByCommodity = safeRouteTaxes is null ? null : market.SupplyLots.GroupBy(l => l.Commodity)
+            .ToDictionary(g => g.Key, g => g.Aggregate(0UL, (sum, l) => checked(sum + l.CapacityMicroPerTurn)));
+        var taxes = safeRouteTaxes?.ToDictionary(t => t.Civilization, t => t.GrossRevenueBasisPoints);
 
         foreach (var lot in market.SupplyLots)
         {
@@ -485,6 +502,8 @@ public static class FoundationPhysicalMarginalMarketDistributor
                 BigInteger costScaled = goodsCargoFactor *
                     (new BigInteger(tree.PhysicalRate[idx]) +
                      tree.TariffRate[idx]);
+                if (taxes is not null && !IsSafeAtFinalSupplyBound(line.DemandMicro,
+                    supplyByCommodity![lot.Commodity], costScaled, taxes[lot.Owner])) continue;
                 eligible.Add(new Buyer(line, quote, tree,
                     new BigInteger(quote.QuoteMicroPerWholeCommodityUnit) *
                         ScoreScale, costScaled,

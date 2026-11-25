@@ -79,10 +79,11 @@ public partial class Main
             _r224Body.AddChild(_r224BaseReadout);
             _r224Activity = new OptionButton { Name = "GANextBaseActivity", FitToLongestItem = false };
             _r224Body.AddChild(_r224Activity);
-            _r224Apply = new Button { Name = "GANextApplyBaseActivity", Text = "Set manual base activity" };
+            _r224Apply = new Button { Name = "GANextApplyBaseActivity", Text = _tacticalHost.ExperimentalLocalEconomyEnabled ? "Set base activity" : "Set manual base activity" };
             _r224Apply.Pressed += StageR224BaseActivity;
             _r224Body.AddChild(_r224Apply);
-            _r224Body.AddChild(new Label { Text = "Automatic allocation: not available" });
+            _r224Body.AddChild(new Label { Text = _tacticalHost.ExperimentalLocalEconomyEnabled
+                ? "Automatic allocation: local tile only (experimental)" : "Automatic allocation: not available" });
             _r224Status = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
             _r224Body.AddChild(_r224Status);
             _r224Body.AddChild(new HSeparator());
@@ -143,20 +144,23 @@ public partial class Main
         var committed = host.Snapshot.WorkerOrders.Queues.Single(x => x.Worker == worker.Id);
         _r224Identity!.Text = $"Worker #{worker.Id.Value} | Node {worker.TacticalTileId?.FineStrategicCellId.Value}";
         _r224BaseReadout!.Text = "Base: " + (q.BaseActivity?.Crop is { } crop ? $"Grow {(CropId)crop}" :
-            q.BaseActivity?.Occupation?.ToString() ?? "Not configured") +
+            q.BaseActivity?.Mode == FoundationWorkerBaseMode.Automatic || (q.BaseActivity is null && host.DefaultAutomaticBaseEnabled)
+                ? "Automatic (local)" : q.BaseActivity?.Occupation?.ToString() ?? "Not configured") +
             (!Equals(q.BaseActivity, committed.BaseActivity) ? " | Pending submission" : " | Committed");
         if (_r224Worker != worker.Id.Value)
         {
             _r224Worker = worker.Id.Value;
             _r224Activity!.Clear();
+            if (host.ExperimentalLocalEconomyEnabled) _r224Activity.AddItem("Automatic (local)", 105);
             if (host.AgriculturalProduction is not null)
                 foreach (var item in CropCatalog.All)
                     _r224Activity.AddItem($"Grow {item.Id}", (int)item.Id);
-            _r224Activity.AddItem("Forestry", 101);
-            _r224Activity.AddItem("Mining", 102);
+            _r224Activity.AddItem(host.ExperimentalLocalEconomyEnabled ? "Wood" : "Forestry", 101);
+            _r224Activity.AddItem(host.ExperimentalLocalEconomyEnabled ? "Stone" : "Mining", 102);
             _r224Activity.AddItem("Land transport", 103);
             _r224Activity.AddItem("Port operations", 104);
-            int selected = q.BaseActivity?.Crop is { } current ? current : q.BaseActivity?.Occupation switch
+            int selected = q.BaseActivity?.Mode == FoundationWorkerBaseMode.Automatic || (q.BaseActivity is null && host.DefaultAutomaticBaseEnabled)
+                ? 105 : q.BaseActivity?.Crop is { } current ? current : q.BaseActivity?.Occupation switch
             {
                 PhysicalWorkerOccupation.Forestry => 101,
                 PhysicalWorkerOccupation.Mining => 102,
@@ -179,6 +183,14 @@ public partial class Main
             var host = _tacticalHost ?? throw new InvalidOperationException("No active host.");
             if (_r224Worker is not { } id || id != _selectedLocalWorkerId || _r224Activity!.Selected < 0) return;
             int selection = _r224Activity.GetSelectedId();
+            if (selection == 105)
+            {
+                host.QueueHumanBaseActivity(_humanCivilization, new PhysicalWorkerId(id),
+                    new FoundationWorkerBaseActivity(FoundationWorkerBaseMode.Automatic));
+                _r224Status!.Text = "Automatic base staged privately.";
+                RefreshFineTacticalWorkerControls();
+                return;
+            }
             var occupation = selection switch
             {
                 101 => PhysicalWorkerOccupation.Forestry,

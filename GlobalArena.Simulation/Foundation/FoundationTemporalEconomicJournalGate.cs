@@ -21,6 +21,7 @@ public sealed class FoundationTemporalSalesSettledEvent : ISimulationEvent
     public string CargoUnitCode { get; }
     public ulong ProducedGoodsMicro { get; }
     public bool UsedProgressiveDistribution { get; }
+    public bool UsedSafeProgressiveRoutes { get; }
     public IReadOnlyList<FoundationWorkerFoodIntake>? FoodIntake { get; }
     public IReadOnlyList<FoundationOperationalFreightShadowEdge>? OperationalQuotes { get; }
     public BigInteger GrossSalesScaled { get; }
@@ -63,7 +64,7 @@ public sealed class FoundationTemporalSalesSettledEvent : ISimulationEvent
         BigInteger tolls, IEnumerable<FoundationCivilizationEconomicSettlementCredit> credits,
         IReadOnlyList<FoundationWorkerFoodIntake>? foodIntake = null,
         IReadOnlyList<FoundationOperationalFreightShadowEdge>? operationalQuotes = null,
-        bool usedProgressiveDistribution = false)
+        bool usedProgressiveDistribution = false, bool usedSafeProgressiveRoutes = false)
     {
         ArgumentNullException.ThrowIfNull(credits);
         var lines = credits.OrderBy(c => c.Civilization.Value).ToArray();
@@ -88,7 +89,10 @@ public sealed class FoundationTemporalSalesSettledEvent : ISimulationEvent
         ScheduleDigest = digest;
         CargoUnitCode = cargoUnitCode;
         ProducedGoodsMicro = goods;
+        if (usedSafeProgressiveRoutes && !usedProgressiveDistribution)
+            throw new ArgumentException("Safe routes require progressive settlement evidence.");
         UsedProgressiveDistribution = usedProgressiveDistribution;
+        UsedSafeProgressiveRoutes = usedSafeProgressiveRoutes;
         FoodIntake = foodIntake is null ? null : Array.AsReadOnly(foodIntake.ToArray());
         OperationalQuotes = operationalQuotes is null ? null : Array.AsReadOnly(operationalQuotes.ToArray());
         GrossSalesScaled = gross;
@@ -288,7 +292,7 @@ public static class FoundationTemporalEconomicJournalGate
             financial.Accounting.NetSellerReceiptsScaled,
             financial.Accounting.RevenueTaxScaled,
             financial.Accounting.ExternalTollsScaled, credits,
-            agriculture is null ? null : FoundationSettledFoodIntake.Attribute(beginning, calendar, financial.Distribution, agriculture.Commodities), financial.OperationalQuotes, policy.UseTemporalProgressiveDistribution);
+            agriculture is null ? null : FoundationSettledFoodIntake.Attribute(beginning, calendar, financial.Distribution, agriculture.Commodities), financial.OperationalQuotes, policy.UseTemporalProgressiveDistribution, policy.RequireSafeProgressiveRoutes);
         ev.AttachAuditedParticipantEdges(
             FoundationSettledTradeParticipantProjection.FromTemporalDistribution(
                 beginning.Constructions.IsInitialized ? beginning : staged,
@@ -332,6 +336,7 @@ public static class FoundationTemporalEconomicJournalGate
             received.CargoUnitCode != expected.CargoUnitCode ||
             received.ProducedGoodsMicro != expected.ProducedGoodsMicro ||
             received.UsedProgressiveDistribution != expected.UsedProgressiveDistribution ||
+            received.UsedSafeProgressiveRoutes != expected.UsedSafeProgressiveRoutes ||
             received.GrossSalesScaled != expected.GrossSalesScaled ||
             received.PhysicalFreightScaled != expected.PhysicalFreightScaled ||
             received.SellerNetScaled != expected.SellerNetScaled ||
