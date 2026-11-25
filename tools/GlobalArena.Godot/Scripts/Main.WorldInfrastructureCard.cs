@@ -101,7 +101,9 @@ public partial class Main
             {
                 FoundationFineTransportCrossingKind.Ground => "Land connection",
                 FoundationFineTransportCrossingKind.Port => "Coastal connection",
-                _ => "Sea connection"
+                FoundationFineTransportCrossingKind.OpenSea => "Sea connection",
+                FoundationFineTransportCrossingKind.BlockedIceSeaBoundary => "Blocked ice–sea boundary",
+                _ => "Connection"
             };
         }
         var pending = host.GetHumanPersistentFunding(_humanCivilization).SingleOrDefault(p => p.Edge == link.Edge);

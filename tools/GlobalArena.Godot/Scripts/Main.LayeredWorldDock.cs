@@ -59,7 +59,7 @@ public partial class Main
         _worldTerrainCard = AddWorldLayer(_worldLayerStack,
             "GANextTerrainSlot", "TERRAIN", out var terrain);
         _operationalContext!.Reparent(terrain);
-        terrain.AddChild(WorldLayerPlaceholder("Detailed terrain attributes will appear here."));
+        CreateWorldTerrainReadout(terrain);
         city.Reparent(terrain);
 
         _worldPlanetCard = AddWorldLayer(dock, "GANextPlanetSlot", "PLANET", out var planet);
