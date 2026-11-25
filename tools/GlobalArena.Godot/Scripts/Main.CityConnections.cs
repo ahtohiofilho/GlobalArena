@@ -544,6 +544,7 @@ public partial class Main
             _portQaLastSettledAudit = null;
             RefreshPortInvestmentQaControls();
             RefreshOpenConnectionInvestment();
+            RefreshWorldInfrastructure();
         }
         catch (Exception ex)
         {

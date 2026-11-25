@@ -121,6 +121,7 @@ public partial class Main : Control
             : _operationalSelectedTile.HasValue ? $"Node {_operationalSelectedTile.Value}"
             : "Select a destination on the map";
         RefreshSelectedUnitSlot();
+        RefreshWorldInfrastructure();
     }
     private void RefreshSelectedUnitSlot()
     {
