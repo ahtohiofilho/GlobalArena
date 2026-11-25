@@ -419,6 +419,8 @@ public partial class Main : Control
         var chosen = workers.FirstOrDefault(
             worker => worker.Id.Value == _selectedLocalWorkerId);
         var ready = host.ReadyCivilizations.Contains(_humanCivilization);
+        if (_tacticalPreview is not null)
+            _tacticalPreview.ExplicitMapMoveEnabled = CompactOperationalDock && host.PersistentOrdersEnabled && chosen is not null && !ready;
         var pendingOrders = host.GetHumanOrders(_humanCivilization);
         var selectedTile = _tacticalPreview?.SelectedCanonicalPhysicalTileId;
         PhysicalTacticalTileId? destination = selectedTile.HasValue
@@ -1114,6 +1116,25 @@ public partial class Main : Control
             "source=canonical_v10 no_order=true state_unchanged=true");
     }
 
+    private void OnR226MapMoveRequested(PhysicalTacticalTileId tile)
+    {
+        var host = _tacticalHost;
+        if (host?.PersistentOrdersEnabled != true || !CompactOperationalDock ||
+            _selectedLocalWorkerId is not { } id || host.ReadyCivilizations.Contains(_humanCivilization)) return;
+        var worker = host.Snapshot.Workers.Workers.FirstOrDefault(w => w.Id.Value == id && w.Owner == _humanCivilization);
+        if (worker is null || worker.TacticalTileId == tile) return;
+        try
+        {
+            AppendPersistentOrder(worker.Id, FoundationWorkerOrderKind.Move, destination: tile);
+            if (_localOrderStatus is not null) _localOrderStatus.Text = $"Worker #{id}: move to node {tile.FineStrategicCellId.Value} queued. E to commit.";
+        }
+        catch (Exception ex)
+        {
+            if (_localOrderStatus is not null) _localOrderStatus.Text = "Map move rejected: " + ex.Message;
+        }
+        RefreshFineTacticalWorkerControls();
+    }
+
     private void OnTacticalPhysicalTileClicked(PhysicalTacticalTileId tile)
     {
         if (_tacticalHost is null) return;
@@ -1711,6 +1732,7 @@ public partial class Main : Control
         CreateR218SiteHover();
         _tacticalPreview.PhysicalTileInspected += OnPhysicalTileInspected;
         _tacticalPreview.CanonicalPhysicalTileClicked += OnTacticalPhysicalTileClicked;
+        _tacticalPreview.ExplicitMapMoveRequested += OnR226MapMoveRequested;
         _tacticalPreview.CartographicLocalSiteSelected += OnCartographicLocalSiteSelected;
         _tacticalPreview.CanonicalWorkerBadgeClicked += OnCanonicalWorkerBadgeClicked;
         _tacticalPreview.WorkerBoardOccupationRequested += OnWorkerBoardOccupationRequested;

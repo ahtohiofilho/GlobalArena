@@ -191,6 +191,7 @@ public partial class Main
         if (_localMoveButton is not null)
         {
             _localMoveButton.Text = "G | Move to selected node";
+            _localMoveButton.TooltipText = CompactOperationalDock ? "Shift + left-click a map node to queue a move directly." : "Select a node, then press G.";
             _localMoveButton.Disabled = ready || _tacticalPreview?.SelectedCanonicalPhysicalTileId is null ||
                 _tacticalPreview.SelectedCanonicalPhysicalTileId == host.Snapshot.Workers.Workers.Single(w => w.Id == q.Worker).TacticalTileId!.Value.FineStrategicCellId.Value;
         }
@@ -568,8 +569,23 @@ public partial class Main
             var destination = host.Incidence.FineTopology.Cells[(int)source.FineStrategicCellId.Value - 1]
                 .AdjacentCellIds.First(c => fine.CrossingAtIndices((int)source.FineStrategicCellId.Value - 1,
                     (int)c.Value - 1) == FoundationFineTransportCrossingKind.Ground);
-            AppendPersistentOrder(worker.Id, FoundationWorkerOrderKind.Move,
-                destination: new PhysicalTacticalTileId(host.Incidence.Refinement.FineParameters, destination));
+            var target = new PhysicalTacticalTileId(host.Incidence.Refinement.FineParameters, destination);
+            var gestureHash = host.StateHash;
+            var initialOrders = ReadPersistentQueue(worker.Id).Orders.Count;
+            _tacticalPreview!.ExerciseR226MapGestures(target,
+                () =>
+                {
+                    if (ReadPersistentQueue(worker.Id).Orders.Count != initialOrders || host.StateHash != gestureHash)
+                        throw new InvalidOperationException("R226 navigation staged an involuntary order.");
+                },
+                () =>
+                {
+                    var orders = ReadPersistentQueue(worker.Id).Orders;
+                    if (orders.Count != initialOrders + 1 || orders.Last().Kind != FoundationWorkerOrderKind.Move ||
+                        orders.Last().Destination != target || host.StateHash != gestureHash)
+                        throw new InvalidOperationException("R226 explicit gesture did not stage exactly one private move.");
+                });
+            GD.Print("GA_NEXT_R226_MAP_ORDERS_PASS explicit_move=true navigation_safe=true private_hash=true");
             RefreshFineTacticalWorkerControls();
             if (_persistentCrossingProgress!.Visible || _localPendingLabel!.Text != "Pending changes | E to submit")
                 throw new InvalidOperationException("Staged journey presented as committed crossing.");

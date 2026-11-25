@@ -45,6 +45,7 @@ jobs:
           grep -q 'GA_NEXT_R2211_HUD_POINTER_PASS' "$RUNNER_TEMP/r213.log"
           grep -q 'GA_NEXT_R2212_CONTEXTUAL_DOCK_PASS' "$RUNNER_TEMP/r213.log"
           grep -q 'GA_NEXT_R225_COMPACT_DOCK_PASS' "$RUNNER_TEMP/r213.log"
+          grep -q 'GA_NEXT_R226_MAP_ORDERS_PASS' "$RUNNER_TEMP/r213.log"
           grep -q 'GA_NEXT_R2213_AUXILIARY_PLANET_PASS' "$RUNNER_TEMP/r213.log"
           grep -q 'GA_NEXT_R220_CONNECTION_DIAGRAM_PASS' "$RUNNER_TEMP/r213.log"
       - name: Exercise crop preview

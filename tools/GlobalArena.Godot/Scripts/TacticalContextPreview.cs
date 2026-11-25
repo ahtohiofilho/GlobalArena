@@ -188,6 +188,9 @@ public partial class TacticalContextPreview : SubViewportContainer
     public event Action<ulong?, string, string>? PhysicalTileInspected;
     // A click is distinguishable from read-only programmatic tile inspection.
     public event Action<PhysicalTacticalTileId>? CanonicalPhysicalTileClicked;
+    public event Action<PhysicalTacticalTileId>? ExplicitMapMoveRequested;
+    private bool _r226MovePress;
+    public bool ExplicitMapMoveEnabled { get; set; }
     private readonly List<(ulong Id, Vector2[] Polygon, ulong[] Owners, int Degree, int Ring)> _polygons = new();
     private readonly Dictionary<ulong, Vector3> _tileCenters = new();
     // Framing geometry and resident geometry have separate scopes.
@@ -1913,7 +1916,41 @@ public partial class TacticalContextPreview : SubViewportContainer
         return inside;
     }
 
-    private void PickPhysicalTile(Vector2 localPoint)
+    internal void ExerciseR226MapGestures(PhysicalTacticalTileId destination, Action assertNoOrder, Action assertOneOrder)
+    {
+        if (_camera is null) throw new InvalidOperationException("Missing tactical camera.");
+        var polygon = _polygons.Single(p => p.Id == destination.FineStrategicCellId.Value).Polygon;
+        var center = polygon.Aggregate(Vector2.Zero, (sum, p) => sum + p) / polygon.Length;
+        var pixel = _camera.UnprojectPosition(new Vector3(center.X, 0, center.Y));
+        void Left(bool pressed, bool shift, Vector2 position) => _GuiInput(new InputEventMouseButton
+        {
+            ButtonIndex = MouseButton.Left, Pressed = pressed, ShiftPressed = shift, Position = position
+        });
+        Left(true, false, pixel); Left(false, false, pixel);
+        assertNoOrder();
+        Left(true, false, pixel); Left(false, true, pixel);
+        assertNoOrder();
+        Left(true, true, pixel); Left(false, false, pixel);
+        assertNoOrder();
+        Left(true, true, pixel); Left(false, true, pixel + new Vector2(12, 0));
+        assertNoOrder();
+        Left(true, true, pixel); Left(false, true, pixel);
+        assertOneOrder();
+        Left(false, true, pixel);
+        assertOneOrder();
+        var opening = CenterGeography;
+        _GuiInput(new InputEventMouseButton { ButtonIndex = MouseButton.Right, Pressed = true, ShiftPressed = true, Position = pixel });
+        assertOneOrder();
+        CenterOnGeography(opening);
+        var start = _camera.UnprojectPosition(new Vector3(center.X, 0, center.Y));
+        Left(true, true, start);
+        _GuiInput(new InputEventMouseMotion { Position = start + new Vector2(15, 0), Relative = new Vector2(15, 0), ShiftPressed = true });
+        Left(false, true, start + new Vector2(15, 0));
+        assertOneOrder();
+        CenterOnGeography(opening);
+    }
+
+    private void PickPhysicalTile(Vector2 localPoint, bool explicitMove = false)
     {
         if (_camera is null || _selection is null) return;
         var rayOrigin = _camera.ProjectRayOrigin(localPoint);
@@ -1926,6 +1963,13 @@ public partial class TacticalContextPreview : SubViewportContainer
         foreach (var item in _polygons)
         {
             if (!Contains(point, item.Polygon)) continue;
+            if (explicitMove)
+            {
+                if (_cachedPhysicalMap is not null)
+                    ExplicitMapMoveRequested?.Invoke(new PhysicalTacticalTileId(
+                        _cachedPhysicalMap.Refinement.FineParameters, new StrategicCellId(item.Id)));
+                return;
+            }
             SelectPhysicalTile(item.Id);
             if (_cachedPhysicalMap is not null)
                 CanonicalPhysicalTileClicked?.Invoke(
@@ -1943,6 +1987,7 @@ public partial class TacticalContextPreview : SubViewportContainer
             GD.Print($"GA_TACTICAL_LOCAL_PICK fine_cell={item.Id} parameters=G(18,0) degree={item.Degree} ring={item.Ring} strategic_incidence={string.Join("-", item.Owners)} highlight=true");
             return;
         }
+        if (explicitMove) return;
         SelectPhysicalTile(null);
         HoverWorkerBadge(null);
         if (_tileClickHypothesis) HideTileClickMenu();
@@ -2242,6 +2287,7 @@ public partial class TacticalContextPreview : SubViewportContainer
                 HoverWorkerBadge(null);
             if (button.ButtonIndex == MouseButton.Right && button.Pressed && _localSitesEnabled)
             {
+                _r226MovePress = false;
                 CenterOnRightClickedGeography(button.Position);
                 AcceptEvent();
                 return;
@@ -2268,6 +2314,7 @@ public partial class TacticalContextPreview : SubViewportContainer
                 if (button.Pressed)
                 {
                     _pressed = true;
+                    _r226MovePress = ExplicitMapMoveEnabled && button.ShiftPressed;
                     _moved = false;
                     _previousHandoffFocus = 0UL;
                     _dragPixelsAfterHandoff = 0f;
@@ -2285,9 +2332,17 @@ public partial class TacticalContextPreview : SubViewportContainer
                 }
                 else
                 {
-                    if (_pressed && !_moved &&
-                        !PickVisibleCartographicLocalSite(button.Position))
-                        PickPhysicalTile(button.Position);
+                    if (_pressed && !_moved && button.Position.DistanceTo(_dragStart) <= 6f)
+                    {
+                        if (_r226MovePress)
+                        {
+                            if (ExplicitMapMoveEnabled && button.ShiftPressed)
+                                PickPhysicalTile(button.Position, explicitMove: true);
+                        }
+                        else if (!PickVisibleCartographicLocalSite(button.Position))
+                            PickPhysicalTile(button.Position);
+                    }
+                    _r226MovePress = false;
                     _pressed = false;
                     _heldCartographicCursorGeography = null;
                     _previousHandoffFocus = 0UL;
