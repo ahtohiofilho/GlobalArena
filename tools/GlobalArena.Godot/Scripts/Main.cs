@@ -130,7 +130,8 @@ public partial class Main : Control
         var worker = _tacticalHost?.Snapshot.Workers.Workers.FirstOrDefault(w =>
             w.Owner == _humanCivilization && w.Id.Value == _selectedLocalWorkerId);
         _selectedUnitIdentity.Text = worker is null ? "No unit selected" :
-            $"Worker #{worker.Id.Value} | Node {worker.TacticalTileId?.FineStrategicCellId.Value}\n" +
+            (LayeredWorldDock ? $"Node {worker.TacticalTileId?.FineStrategicCellId.Value}\n" :
+                $"Worker #{worker.Id.Value} | Node {worker.TacticalTileId?.FineStrategicCellId.Value}\n") +
             (worker.Activity == PhysicalWorkerActivity.Traveling ? "Traveling" : worker.Occupation == PhysicalWorkerOccupation.Unassigned ? "Idle / assigned" : worker.Occupation?.ToString() ?? worker.Activity.ToString());
     }
     private Label? _compactTurnPulse;
@@ -399,6 +400,7 @@ public partial class Main : Control
             var pending = host.GetHumanOrders(_humanCivilization)
                 .Any(order => order.WorkerId == worker.Id);
             _localWorkerSelector.AddItem(
+                LayeredWorldDock ? $"Worker #{worker.Id.Value}" :
                 CompactOperationalDock ? $"Worker #{worker.Id.Value} | Node {tile}" + (pending ? " *" : "") :
                 $"#{worker.Id.Value} | G(18,0)/{tile} | {worker.Activity}" +
                 (worker.Occupation.HasValue ? $" / {worker.Occupation}" : "") +

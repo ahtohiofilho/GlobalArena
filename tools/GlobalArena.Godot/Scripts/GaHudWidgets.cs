@@ -22,6 +22,15 @@ internal static class GaHudWidgets
             "globe" => "M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20 M2 12h20 M12 2c-7 6-7 14 0 20 M12 2c7 6 7 14 0 20",
             "city" => "M3 21V9h6v12 M9 21V3h6v18 M15 21V7h6v14 M2 21h20 M11 7h2 M11 11h2 M5 13h2 M17 11h2",
             "civilization" => "M12 2l9 5v6c0 5-4 8-9 9-5-1-9-4-9-9V7Z M8 12l3 3 5-6",
+            "auto" => "M20 9a8 8 0 0 0-14-4L3 8 M3 3v5h5 M4 15a8 8 0 0 0 14 4l3-3 M21 21v-5h-5",
+            "queue" => "M8 5h13 M8 12h13 M8 19h13 M3 5h1 M3 12h1 M3 19h1",
+            "pending" => "M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20 M12 6v6l4 2",
+            "check" => "M4 12l5 5L20 6",
+            "active" => "M8 4l12 8-12 8Z",
+            "details" => "M4 3h16v18H4Z M8 8h8 M8 12h8 M8 16h5",
+            "wood" => "M12 2L5 11h4l-5 7h16l-5-7h4Z M12 18v4",
+            "stone" => "M2 17l4-10 9-4 7 9-3 8H6Z M6 7l6 6 3-10 M12 13l7 7",
+            "crop" => "M12 22V3 M12 8C4 8 4 3 4 3c6 0 8 5 8 5 M12 14c8 0 8-5 8-5-6 0-8 5-8 5 M12 19c-8 0-8-5-8-5 6 0 8 5 8 5",
             "down" => "M5 9l7 7 7-7",
             "right" => "M9 5l7 7-7 7",
             _ => throw new ArgumentOutOfRangeException(nameof(key))
@@ -51,13 +60,19 @@ internal static class GaHudWidgets
         progress.ShowPercentage = false;
     }
 
+    internal static TextureRect MetricIcon(string icon) => new()
+    {
+        Texture = Icon(icon), CustomMinimumSize = new Vector2(18,18),
+        ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+        StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+        MouseFilter = Control.MouseFilterEnum.Ignore
+    };
+
     internal static HBoxContainer MetricRow(string icon, string value, string tooltip, out Label label)
     {
         var row = new HBoxContainer { TooltipText = tooltip, MouseFilter = Control.MouseFilterEnum.Pass };
         row.AddThemeConstantOverride("separation", 4);
-        row.AddChild(new TextureRect { Texture = Icon(icon), CustomMinimumSize = new Vector2(18,18),
-            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-            MouseFilter = Control.MouseFilterEnum.Ignore });
+        row.AddChild(MetricIcon(icon));
         label = new Label { Text = value, MouseFilter = Control.MouseFilterEnum.Ignore };
         row.AddChild(label);
         return row;

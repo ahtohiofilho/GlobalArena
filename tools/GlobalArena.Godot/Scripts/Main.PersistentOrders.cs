@@ -372,6 +372,13 @@ public partial class Main
             _r123FineGeography!.SurfaceAtIndex((int)w.TacticalTileId!.Value.FineStrategicCellId.Value - 1) == FoundationFineSurfaceKind.Land);
         OnOperationalWorkerSelected(worker.Id.Value);
         AssertWorldUnitReadout(host, worker.Id);
+        var detailsHash = host.StateHash;
+        var details = _worldUnitDetails ?? throw new InvalidOperationException("Unit details action missing.");
+        details.EmitSignal(Button.SignalName.Pressed);
+        if (_r224Window?.Visible != true || _r224Identity?.Text != $"Worker #{worker.Id.Value} | Node {worker.TacticalTileId!.Value.FineStrategicCellId.Value}" ||
+            host.StateHash != detailsHash)
+            throw new InvalidOperationException("Unit details did not open selected own worker planner.");
+        CloseR224WorkerWindow();
         ExerciseWorldTerrain(host, worker.Id, worker.TacticalTileId!.Value);
         ExerciseWorldInfrastructure(host, worker.TacticalTileId!.Value, false);
         ExerciseOpenCityWorker(host, worker.Id, worker.TacticalTileId!.Value);
@@ -400,7 +407,7 @@ public partial class Main
             throw new InvalidOperationException("Manual wood override was not staged privately.");
         CloseR224WorkerWindow();
         AssertWorldUnitReadout(host, worker.Id);
-        if (_worldUnitBase?.Text != "Base: Forestry | Pending submission")
+        if (_worldUnitBase?.Text != "Wood" || _worldUnitBaseState?.Texture != GaHudWidgets.Icon("pending"))
             throw new InvalidOperationException("Unit did not distinguish staged base preference.");
         ExerciseCityProductionReadout(host, location.Value, 1UL);
         // Keep the city open across E to verify live refresh of committed evidence.
@@ -411,7 +418,7 @@ public partial class Main
         ExerciseCityProductionReadout(host, location.Value, 2UL);
         ExerciseCityConnectionTradeReadout(host, location.Value, 2UL);
         AssertWorldUnitReadout(host, worker.Id);
-        if (_worldUnitBase?.Text != "Base: Forestry | Committed")
+        if (_worldUnitBase?.Text != "Wood" || _worldUnitBaseState?.Texture != GaHudWidgets.Icon("check"))
             throw new InvalidOperationException("Unit did not show committed base preference.");
         if (host.Snapshot.Treasury.LastSettledEconomicCycleOrdinal != 2UL ||
             host.Snapshot.Workers.Workers.Single(w => w.Id == worker.Id).Occupation != PhysicalWorkerOccupation.Forestry)
@@ -431,9 +438,10 @@ public partial class Main
         ExerciseCityConnectionTradeReadout(host, location.Value, 3UL);
         ExerciseCityWorkersPrivacy(host, location.Value);
         AssertWorldUnitReadout(host, worker.Id);
-        if (_worldUnitBase?.Text != "Base: Automatic (local) | Committed")
+        if (_worldUnitBase?.Text != "Auto" || _worldUnitBaseState?.Texture != GaHudWidgets.Icon("check"))
             throw new InvalidOperationException("Unit did not restore automatic base.");
         GD.Print("GA_NEXT_R2304_INFRASTRUCTURE_PASS real_edges=true private_funding=true canonical_dialog=true hash_unchanged=true");
+        GD.Print("GA_NEXT_R23061B_UNIT_WIDGET_PASS icon_metrics=true pending_state=true details_action=true real_closes=true");
         GD.Print("GA_NEXT_R2303_UNIT_CARD_PASS real_activity=true private_base=true queue=true committed_only_travel=true");
         GD.Print("GA_NEXT_R2294_CONNECTION_TRADE_PASS before_close=true three_closes=true real_edges=true authorized_only=true");
         GD.Print("GA_NEXT_R2293_CITY_WORKERS_PASS scoped=true real_buttons=true private_commands=true return_to_city=true");

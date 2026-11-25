@@ -61,6 +61,15 @@ public partial class Main
         GaHudWidgets.IconButton(_localMoveButton!, "move", "Move to selected node (G) | Shift + click on map");
         GaHudWidgets.IconButton(_localCancelQueuedButton!, "cancel", "Remove or interrupt first order (X)");
         WidgetActionRow(_localMoveButton!, _localCancelQueuedButton!);
+        _worldUnitDetails = new Button { Name = "GANextUnitDetails", Disabled = true };
+        GaHudWidgets.IconButton(_worldUnitDetails, "details", "Selected worker: detailed planning");
+        _worldUnitDetails.Pressed += () =>
+        {
+            if (_tacticalHost?.Snapshot.Workers.Workers.Any(w =>
+                w.Owner == _humanCivilization && w.Id.Value == _selectedLocalWorkerId) == true)
+                OpenR224WorkerWindow();
+        };
+        _localMoveButton!.GetParent().AddChild(_worldUnitDetails);
         GaHudWidgets.IconButton(_worldInfrastructureManage!, "connection", "Manage selected connection");
         GaHudWidgets.IconButton(city, "city", "Open selected city (Y)");
         GaHudWidgets.IconButton(_worldPlanetAtlas!, "globe", "Planet map (M)");
@@ -138,7 +147,7 @@ public partial class Main
             section.Header.EmitSignal(Button.SignalName.Pressed);
             if (section.Content.Visible != was) throw new InvalidOperationException("Widget restore failed.");
         }
-        foreach (var button in new[] { _localMoveButton, _localCancelQueuedButton, _worldInfrastructureManage, _worldPlanetAtlas })
+        foreach (var button in new[] { _localMoveButton, _localCancelQueuedButton, _worldUnitDetails, _worldInfrastructureManage, _worldPlanetAtlas })
             if (button?.Icon is null || !string.IsNullOrEmpty(button.Text) || string.IsNullOrEmpty(button.TooltipText))
                 throw new InvalidOperationException("Icon action contract failed.");
         for (int i = 0; i < 3; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
