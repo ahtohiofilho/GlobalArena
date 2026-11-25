@@ -570,6 +570,36 @@ public partial class Main
                 .AdjacentCellIds.First(c => fine.CrossingAtIndices((int)source.FineStrategicCellId.Value - 1,
                     (int)c.Value - 1) == FoundationFineTransportCrossingKind.Ground);
             var target = new PhysicalTacticalTileId(host.Incidence.Refinement.FineParameters, destination);
+            var mapEdge = ResolveConnectionEdge(source.FineStrategicCellId.Value, destination.Value);
+            var mapEdgeHash = host.StateHash;
+            var mapEdgeOrders = host.GetHumanPersistentQueues(_humanCivilization).Select(q => (q.Worker, Count: q.Orders.Count)).ToArray();
+            var mapEdgeFunding = host.GetHumanPersistentFunding(_humanCivilization).Count;
+            void AssertMapEdgeReadOnly()
+            {
+                if (host.StateHash != mapEdgeHash || host.GetHumanPersistentFunding(_humanCivilization).Count != mapEdgeFunding ||
+                    !host.GetHumanPersistentQueues(_humanCivilization).Select(q => (q.Worker, Count: q.Orders.Count)).SequenceEqual(mapEdgeOrders))
+                    throw new InvalidOperationException("R227 map interaction mutated canonical state or private plans.");
+            }
+            _tacticalPreview!.ExerciseR227ConnectionGesture(mapEdge,
+                () =>
+                {
+                    if (_cityLinkDetail?.IsVisibleInTree() == true)
+                        throw new InvalidOperationException("R227 opened a connection without explicit gesture.");
+                    AssertMapEdgeReadOnly();
+                },
+                () =>
+                {
+                    if (_cityLinkDetail?.IsVisibleInTree() != true || !_cityConnectionSource.HasValue ||
+                        !_connectionDestination.HasValue || ResolveConnectionEdge(_cityConnectionSource.Value, _connectionDestination.Value) != mapEdge)
+                        throw new InvalidOperationException("R227 opened wrong canonical connection.");
+                    AssertMapEdgeReadOnly();
+                });
+            _r227CloseConnection!.EmitSignal(Button.SignalName.Pressed);
+            if (_cityWindowLayer?.Visible != false || _cityLinkDetail?.Visible != false)
+                throw new InvalidOperationException("R227 direct connection did not close to map.");
+            AssertMapEdgeReadOnly();
+            GD.Print("GA_NEXT_R227_MAP_CONNECTION_PASS canonical_edge=true explicit_gesture=true read_only=true close_to_map=true");
+
             var gestureHash = host.StateHash;
             var initialOrders = ReadPersistentQueue(worker.Id).Orders.Count;
             _tacticalPreview!.ExerciseR226MapGestures(target,
