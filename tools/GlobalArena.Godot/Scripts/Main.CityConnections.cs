@@ -89,13 +89,19 @@ public partial class Main
             SizeFlagsVertical = SizeFlags.ExpandFill
         };
         column.AddChild(tabs);
-        var overview = new MarginContainer { Name = "Overview" };
+        // Every city tab must bound its contents independently. In particular,
+        // an autowrapping Overview label measured before the first layout can
+        // otherwise inflate the floating panel's minimum height.
+        var overview = new ScrollContainer { Name = "Overview",
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Auto,
+            VerticalScrollMode = ScrollContainer.ScrollMode.Auto };
         tabs.AddChild(overview);
         _cityOverview = new Label
         {
             Text = "Select a physical node on the map.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
             VerticalAlignment = VerticalAlignment.Top,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ShrinkBegin
         };
         overview.AddChild(_cityOverview);
@@ -236,6 +242,10 @@ public partial class Main
         {
             if (!_cityWindowPositioned)
             {
+                // The node was created hidden, before its children received
+                // their final layout. Reset any transient auto-grown size
+                // only on the first open, never after user resizing.
+                floating.Size = new Vector2(575f, 450f);
                 floating.Position = (_cityWindowLayer.Size - floating.Size) * 0.5f;
                 _cityWindowPositioned = true;
             }

@@ -176,6 +176,10 @@ internal sealed class FoundationGodotWorkspaceSmoke
             Must(cityPanel!.IsVisibleInTree(), "city window did not open");
             cityTabs!.CurrentTab = 2;
             await WaitFrame();
+            GD.Print($"GA_NEXT_R22952_CITY_GEOMETRY pos={cityPanel.Position} size={cityPanel.Size} min={cityPanel.GetCombinedMinimumSize()} bounds={cityWindow!.Size}");
+            Must(cityPanel.Size.Y <= Math.Max(450f, cityPanel.GetCombinedMinimumSize().Y) + 2f &&
+                cityPanel.Size.Y + 70f < cityWindow!.Size.Y,
+                "city first-open geometry consumed the available resize headroom");
             var cityStart = cityPanel.Position;
             var cityDrag = cityHandle!.GlobalPosition + cityHandle.Size * new Vector2(0.35f, 0.5f);
             await DragPointer(cityDrag, cityDrag + new Vector2(42f, 22f));
@@ -184,7 +188,12 @@ internal sealed class FoundationGodotWorkspaceSmoke
             var cityResize = cityGrip!.GlobalPosition + cityGrip.Size * 0.5f;
             await DragPointer(cityResize, cityResize + new Vector2(40f, 32f));
             Must(cityPanel.Size.X > citySize.X + 8f && cityPanel.Size.Y > citySize.Y + 8f,
-                "real pointer resize did not expand city");
+                $"real pointer resize did not expand city: before={citySize} after={cityPanel.Size} bounds={cityWindow!.Size} min={cityPanel.GetCombinedMinimumSize()}");
+            var enlarged = cityPanel.Size;
+            var shrinkFrom = cityGrip.GlobalPosition + cityGrip.Size * 0.5f;
+            await DragPointer(shrinkFrom, shrinkFrom - new Vector2(24f, 20f));
+            Must(cityPanel.Size.X < enlarged.X - 8f && cityPanel.Size.Y < enlarged.Y - 8f,
+                "real pointer resize did not shrink city");
             var movedCity = cityPanel.Position;
             var expandedCity = cityPanel.Size;
             Must(movedCity.X >= 0f && movedCity.Y >= 0f &&

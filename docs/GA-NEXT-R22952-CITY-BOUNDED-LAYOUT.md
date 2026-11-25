@@ -1,0 +1,3 @@
+# R229.5.2 — bounded city content
+
+R229.5.1 ae32f22: 2/3 workflows passed. Runtime input logs show successful title drag and resize gesture dispatch, but the panel was already near the viewport height (grip y=668 before drag, y=679 after drag). The resize clamp therefore prevented the required vertical growth. Bound Overview in a scroll viewport like the other tabs, and explicitly restore intended first-open size after hidden creation, preserving subsequent user geometry. Add initial geometry diagnostics and headroom assertion; keep the two-axis enlargement requirement and add two-axis shrink verification. No changes to shared floating window, economic state, camera or commands. CI pending; cause and visual result subject to confirmation.
