@@ -2223,6 +2223,18 @@ public partial class Main : Control
                     _tacticalHost.Session.GeneratedWorld,
                     _tacticalHost.Incidence);
                 _canonicalSession = _tacticalHost.Session;
+                // The legacy coarse preview may have auto-selected its first
+                // worker. Enter the layered world with no inherited selection.
+                if (LayeredWorldDock)
+                {
+                    _selectedLocalWorkerId = null;
+                    _selectedCartographicSite = null;
+                    _operationalSelectedTile = null;
+                    _operationalCitySelected = false;
+                    _hudMapEdge = null;
+                    _hudMapEdgeSource = null;
+                    SetHudMoveArmed(false);
+                }
                 AttachRuntimeState(_tacticalHost.Snapshot);
             }
             // The old v9 record locates workers on G(3,0). This is a
@@ -2288,7 +2300,7 @@ public partial class Main : Control
             else
             {
                 _tacticalPreview!.PresentAuthoritativeWorkers(
-                    _tacticalHost.Snapshot.Workers, first.Id.Value);
+                    _tacticalHost.Snapshot.Workers, LayeredWorldDock ? null : first.Id.Value);
                 if (!legacyV10Smoke && !legacyV11Smoke && !concentratedSmoke)
                     _tacticalPreview.EnableTileClickMenuHypothesis(_humanCivilization);
                 _localMoveButton!.Text = "G | MOVE ONE FINE EDGE";

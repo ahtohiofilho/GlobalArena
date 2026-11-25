@@ -35,6 +35,7 @@ public partial class Main
         var hash = host.StateHash;
         var queues = host.GetHumanPersistentQueues(_humanCivilization).ToArray();
         RefreshFineTacticalWorkerControls();
+        GD.Print($"GA_NEXT_R230632_NEUTRAL worker={_selectedLocalWorkerId} context={ReadWorldContextNode()} edge={_hudMapEdge} site={_selectedCartographicSite} armed={HudMoveArmed} move_disabled={_localMoveButton?.Disabled} details_disabled={_worldUnitDetails?.Disabled} infra_disabled={_worldInfrastructureManage?.Disabled} city_disabled={_hudTerrainCity?.Disabled} selector_visible={_localWorkerSelector?.IsVisibleInTree()} readout_visible={_worldUnitReadout?.IsVisibleInTree()} terrain={_terrainSurface?.Text} hash_same={host.StateHash == hash}");
         if (_selectedLocalWorkerId.HasValue || ReadWorldContextNode().HasValue ||
             _hudMapEdge.HasValue || SelectedWorldInfrastructure is not null ||
             _selectedCartographicSite.HasValue || HudMoveArmed ||

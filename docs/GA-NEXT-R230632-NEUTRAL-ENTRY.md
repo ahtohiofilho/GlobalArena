@@ -1,0 +1,3 @@
+# R230.6.3.2 — Neutral entry correction
+
+PR #665 HEAD 217a78f: four of five checks passed, persistent UI job 139557847337 failed AssertNeutralHudStart. The legacy coarse preview auto-selects its first worker before the fine host is attached, and the fine entry explicitly presents first.Id.Value. Clear inherited operational selection on transition to the layered fine host, retain first worker solely as camera home anchor, present neutral worker focus. Refresh icon actions on the no-worker path, because startup also sets legacy text captions. Keep the neutral-start assertion and add diagnostics for each condition; no reset inside the test itself. Existing map/queue/economic gates unchanged. CI and Windows manual review pending. Draft, no merge.

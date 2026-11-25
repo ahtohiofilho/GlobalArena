@@ -153,6 +153,7 @@ public partial class Main
         if (!_persistentQueuePanel.Visible || host is null || _selectedLocalWorkerId is not { } worker)
         {
             ClearWorldUnitReadout();
+            RefreshWidgetUnitActions(); // restore icon-only captions even at neutral startup
             RefreshOperationalFeedback();
             RefreshHudMoveVisual();
             return;
