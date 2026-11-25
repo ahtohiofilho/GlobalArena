@@ -331,6 +331,81 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Equal(0UL, opening.Treasury.LastSettledEconomicCycleOrdinal);
     }
 
+    [Theory]
+    [InlineData(3)]
+    [InlineData(12)]
+    public void R2284BoundedReferenceMeasuresHeterogeneousWorkersWithoutPartialRankings(int workersPerCivilization)
+    {
+        var (world, _, _, _, incidence, fine) = Fixture();
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL),
+                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)),
+            workersPerCivilization: workersPerCivilization);
+        var signature = FoundationFineFirstWorldgenCanonicalSignature.Compute(demo.Session.GeneratedWorld, incidence, fine);
+        var bound = demo.Session.Snapshot.PromoteFineFirstBeforeTransport(
+            demo.Session.GeneratedWorld, incidence, fine, signature)
+            .DeployInitialFineFirstPhysicalTransport(world.Transport, demo.Session.GeneratedWorld, incidence, fine, signature);
+        var opening = FoundationPersistedEdgeTravelTransitions.DeployEmpty(
+            bound.DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
+                bound.Civilizations.Civilizations.Select(c => (c, 5_000_000UL)))))
+            .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
+            .DeployInitialWorkerOrders();
+        // Deliberately unique economic facts even at the same node.
+        // Native roles/commodities remain authentic to the test scenario.
+        var workers = opening.Workers.Workers.Select(w => new PhysicalWorkerRuntimeRecord(
+            w.Id, w.Owner, w.CellId, w.Commodity, checked(1_000_000UL + 10_000UL * w.Id.Value),
+            w.Activity, w.DemandMultiplierMicro, w.TacticalTileId, w.Occupation)).ToArray();
+        opening = opening.WithWorkers(new PhysicalWorkerRuntimeState(workers,
+            tacticalLocationsAuthoritative: true, occupationsAuthoritative: true));
+        var crops = Enum.GetValues<GlobalArena.Foundation.Agriculture.CropId>()
+            .ToDictionary(c => c, c => new CommodityId((uint)c));
+        var agriculture = new FoundationAgriculturalProductionPolicy(fine, incidence, crops, 2_000_000UL);
+        var items = crops.Values.Concat(workers.Select(w => w.Commodity)).Distinct().ToArray();
+        var demand = new FoundationActivityCommodityDemandPolicy(items,
+            Enum.GetValues<FoundationPhysicalDemandProfile>().SelectMany(profile => items.Select(c =>
+                new FoundationActivityCommodityDemandCoefficient(profile, c, 1_000_000UL))));
+        var policy = new FoundationAuthoritativeEconomicSettlementPolicy(demand,
+            new FoundationCommodityCargoConversionPolicy("r2284", items.Select(c =>
+                new FoundationCommodityCargoConversion(c, 1_000_000UL))),
+            opening.Civilizations.Civilizations.Select(c => new FoundationPhysicalEconomicTaxRate(c, 0U)), maxProducerPasses: 64);
+        var operations = new FoundationOperationalFreightShadowPolicy(1_000_000UL, 1_000_000UL);
+        var calendar = workers.Select(w => new FoundationPersistentWorkerSlice(
+            w.Id, w.TacticalTileId!.Value, 0U, 1_000_000U,
+            PhysicalWorkerActivity.Other, PhysicalWorkerOccupation.Unassigned, null)).ToArray();
+        var requests = calendar.Select(s => new FoundationBaseMarginalInterval(s.Worker, s.StartMicro)).ToArray();
+        var before = new CanonicalWorldStateHasher().Compute(opening);
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var exact = FoundationBaseMarginalRevenueEvaluator.EvaluateBatch(opening, incidence, fine, policy,
+            calendar, requests, agriculture, operations);
+        watch.Stop();
+        long exactMs = watch.ElapsedMilliseconds;
+        Assert.Equal(0, exact.EquivalentIntervalsReused);
+        Assert.Equal(0, exact.DeferredIntervals);
+        Assert.Equal(1 + exact.Intervals.Sum(x => x.Candidates.Count), exact.FinancialEvaluations);
+        const int budget = 18;
+        watch.Restart();
+        var limited = FoundationBaseMarginalRevenueEvaluator.EvaluateBatch(opening, incidence, fine, policy,
+            calendar.Reverse().ToArray(), requests.Reverse().ToArray(), agriculture, operations, budget);
+        watch.Stop();
+        Assert.InRange(limited.FinancialEvaluations, 1, budget);
+        Assert.InRange(limited.DeferredIntervals, 1, requests.Length - 1);
+        Assert.Equal(requests, limited.Intervals.Select(x => x.Interval).ToArray());
+        foreach (var row in limited.Intervals)
+        {
+            if (row.DeferredByBudget) Assert.Empty(row.Candidates);
+            else Assert.Equal(exact.Intervals.Single(x => x.Interval == row.Interval).Candidates.ToArray(),
+                row.Candidates.ToArray());
+        }
+        Console.WriteLine($"R2284_HETEROGENEOUS workers={workers.Length} exact_solves={exact.FinancialEvaluations} exact_ms={exactMs} budget={budget} bounded_solves={limited.FinancialEvaluations} bounded_ms={watch.ElapsedMilliseconds} deferred={limited.DeferredIntervals}");
+        var zero = FoundationBaseMarginalRevenueEvaluator.EvaluateBatch(opening, incidence, fine, policy,
+            calendar, requests, agriculture, operations, 0);
+        Assert.Equal(0, zero.FinancialEvaluations);
+        Assert.Equal(exact.Intervals.Count(x => x.Candidates.Count > 0), zero.DeferredIntervals);
+        Assert.All(zero.Intervals, x => Assert.Empty(x.Candidates));
+        Assert.Equal(before, new CanonicalWorldStateHasher().Compute(opening));
+        Assert.Equal(0UL, opening.Treasury.LastSettledEconomicCycleOrdinal);
+    }
+
     private static FoundationActivityCommodityDemandPolicy Demand()
     {
         var items = new[] { new CommodityId(1U), new CommodityId(2U) };

@@ -25,11 +25,15 @@ public sealed record FoundationBaseMarginalRevenueEvaluation(
 public sealed record FoundationBaseMarginalInterval(PhysicalWorkerId Worker, uint StartMicro);
 
 public sealed record FoundationBaseMarginalIntervalResult(
-    FoundationBaseMarginalInterval Interval, IReadOnlyList<FoundationBaseMarginalRevenue> Candidates);
+    FoundationBaseMarginalInterval Interval, IReadOnlyList<FoundationBaseMarginalRevenue> Candidates,
+    bool DeferredByBudget = false);
 
 public sealed record FoundationBaseMarginalBatchEvaluation(
     IReadOnlyList<FoundationBaseMarginalIntervalResult> Intervals,
-    int FinancialEvaluations, int EquivalentIntervalsReused);
+    int FinancialEvaluations, int EquivalentIntervalsReused)
+{
+    public int DeferredIntervals => Intervals.Count(x => x.DeferredByBudget);
+}
 
 /// <summary>Reference oracle for one unallocated stationary interval in a
 /// complete temporal calendar. One baseline and one canonical market solve
@@ -72,6 +76,9 @@ public static class FoundationBaseMarginalRevenueEvaluator
     /// identities within the same owner/node cannot change aggregate market
     /// inputs or operational service. Partial intervals remain ungrouped
     /// because per-worker rounding and earlier production can differ.
+    /// An optional hard solve budget admits only entire rankings; a deferred
+    /// interval has no result and must not be interpreted as a zero score.
+    /// Canonical ID order is diagnostic only, not a gameplay fairness policy.
     /// </summary>
     public static FoundationBaseMarginalBatchEvaluation EvaluateBatch(
         WorldState opening, PhysicalTacticalIncidenceMap incidence,
@@ -80,8 +87,11 @@ public static class FoundationBaseMarginalRevenueEvaluator
         IReadOnlyList<FoundationPersistentWorkerSlice> calendar,
         IReadOnlyList<FoundationBaseMarginalInterval> intervals,
         FoundationAgriculturalProductionPolicy agriculture,
-        FoundationOperationalFreightShadowPolicy? operationalPolicy = null)
+        FoundationOperationalFreightShadowPolicy? operationalPolicy = null,
+        int? maxFinancialEvaluations = null)
     {
+        if (maxFinancialEvaluations is < 0)
+            throw new ArgumentOutOfRangeException(nameof(maxFinancialEvaluations));
         ArgumentNullException.ThrowIfNull(opening);
         ArgumentNullException.ThrowIfNull(calendar);
         ArgumentNullException.ThrowIfNull(intervals);
@@ -155,16 +165,11 @@ public static class FoundationBaseMarginalRevenueEvaluator
                 results.Add(new(interval, cached));
                 continue;
             }
-            baselineFinancial ??= Finance(baseline);
-            var baselineCredit = Credit(baselineFinancial, worker.Owner);
-            var rows = new List<FoundationBaseMarginalRevenue>();
-            void Score(PhysicalWorkerOccupation role, byte? crop, PhysicalWorkerActivity activity)
-            {
-                var candidate = (FoundationPersistentWorkerSlice[])ordered.Clone();
-                candidate[index] = idle with { Activity = activity, Occupation = role, Crop = crop };
-                var projected = FoundationTemporalEconomicTurnProjector.ProjectPersistent(opening, candidate, policy.Demand, agriculture);
-                rows.Add(new(role, crop, idle.DurationMicro, baselineCredit, Credit(Finance(projected), worker.Owner)));
-            }
+            // Enumerate every eligible candidate before spending any budget.
+            // Never advertise a truncated ranking as an economic optimum.
+            var eligible = new List<(PhysicalWorkerOccupation Role, byte? Crop, PhysicalWorkerActivity Activity)>();
+            void Score(PhysicalWorkerOccupation role, byte? crop, PhysicalWorkerActivity activity) =>
+                eligible.Add((role, crop, activity));
             foreach (var crop in CropCatalog.All.OrderBy(c => (byte)c.Id))
                 if (agriculture.Resolve(idle.Node, crop.Id).WholeTurnOutput > 0)
                     Score(PhysicalWorkerOccupation.Agriculture, (byte)crop.Id, PhysicalWorkerActivity.Producing);
@@ -195,6 +200,27 @@ public static class FoundationBaseMarginalRevenueEvaluator
                 }
                 if (land) Score(PhysicalWorkerOccupation.LandTransport, null, PhysicalWorkerActivity.Other);
                 if (port) Score(PhysicalWorkerOccupation.PortOperations, null, PhysicalWorkerActivity.Other);
+            }
+            if (eligible.Count == 0)
+            {
+                results.Add(new(interval, Array.Empty<FoundationBaseMarginalRevenue>()));
+                continue;
+            }
+            int required = checked(eligible.Count + (baselineFinancial is null ? 1 : 0));
+            if (maxFinancialEvaluations is { } budget && required > budget - financialEvaluations)
+            {
+                results.Add(new(interval, Array.Empty<FoundationBaseMarginalRevenue>(), DeferredByBudget: true));
+                continue;
+            }
+            baselineFinancial ??= Finance(baseline);
+            var baselineCredit = Credit(baselineFinancial, worker.Owner);
+            var rows = new List<FoundationBaseMarginalRevenue>();
+            foreach (var choice in eligible)
+            {
+                var candidate = (FoundationPersistentWorkerSlice[])ordered.Clone();
+                candidate[index] = idle with { Activity = choice.Activity, Occupation = choice.Role, Crop = choice.Crop };
+                var projected = FoundationTemporalEconomicTurnProjector.ProjectPersistent(opening, candidate, policy.Demand, agriculture);
+                rows.Add(new(choice.Role, choice.Crop, idle.DurationMicro, baselineCredit, Credit(Finance(projected), worker.Owner)));
             }
             var ranked = Array.AsReadOnly(rows.OrderByDescending(r => r.MarginalCreditScaled)
                 .ThenBy(r => r.Occupation).ThenBy(r => r.Crop).ToArray());
