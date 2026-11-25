@@ -577,7 +577,8 @@ public sealed class WorldState
         ulong ordinal, string cargoUnitCode,
         IReadOnlyDictionary<CivilizationId, System.Numerics.BigInteger>
             verifiedCivilizationCreditsScaled,
-        IEnumerable<CivilizationSettledFreightQuote> nextFreightQuotes)
+        IEnumerable<CivilizationSettledFreightQuote> nextFreightQuotes,
+        IEnumerable<CivilizationObservedMarketPrice>? observedPrices = null)
     {
         if (WorldBinding is null || !Treasury.IsInitialized ||
             !Transport.HasMonetaryConstructionCosts ||
@@ -586,7 +587,7 @@ public sealed class WorldState
                 "Economic settlement needs a real bound market and treasury.");
         var settled = Treasury.CloseVerifiedEconomicCycle(
             ordinal, cargoUnitCode, verifiedCivilizationCreditsScaled,
-            nextFreightQuotes);
+            nextFreightQuotes, observedPrices);
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
             Economy, Population, Warfare, Workers, Transport, settled, CityResidences, EdgeTravels, Constructions, WorkerOrders);
