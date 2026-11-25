@@ -1,4 +1,5 @@
 using GlobalArena.Kernel;
+using GlobalArena.Foundation.Agriculture;
 using GlobalArena.Runtime;
 using GlobalArena.Runtime.PersistentOrders;
 using GlobalArena.World;
@@ -23,9 +24,16 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
     private const uint Whole = 1_000_000;
     private readonly FoundationConstructionApproachRouter _router;
     private static readonly CanonicalWorldStateHasher Hasher = new();
+    private readonly FoundationAgriculturalProductionPolicy? _agriculture;
 
-    public FoundationPersistentWorkerTurnScheduler(FoundationConstructionApproachRouter router)
-        => _router = router ?? throw new ArgumentNullException(nameof(router));
+    public FoundationPersistentWorkerTurnScheduler(FoundationConstructionApproachRouter router,
+        FoundationAgriculturalProductionPolicy? agriculture = null)
+    {
+        _router = router ?? throw new ArgumentNullException(nameof(router));
+        _agriculture = agriculture;
+        if (agriculture is not null && !ReferenceEquals(agriculture.Geography, router.Geography))
+            throw new InvalidOperationException("Base crop scheduling requires the same signed geography.");
+    }
 
     private sealed record Mode(PhysicalWorkerId Worker, PhysicalTacticalTileId Node,
         PhysicalWorkerActivity Activity, PhysicalWorkerOccupation Occupation,
@@ -45,11 +53,39 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
         return journeys is null ? world.WithWorkers(roster) : world.WithPhysicalEdgeTravel(roster, journeys);
     }
 
+    // Explicit manual base only. Unresolved automatic policy is not silently
+    // interpreted as idle or as the last physical occupation.
+    private Mode BaseMode(PhysicalWorkerRuntimeRecord worker, FoundationWorkerBaseActivity preference)
+    {
+        if (preference.Mode != FoundationWorkerBaseMode.Manual)
+            throw new InvalidOperationException("Automatic base allocation is not activated.");
+        var node = worker.TacticalTileId!.Value;
+        var occupation = preference.Occupation!.Value;
+        if (preference.Crop is { } crop && _agriculture is null)
+            throw new InvalidOperationException("Manual crop base requires agricultural policy.");
+        int index = checked((int)node.FineStrategicCellId.Value - 1);
+        // Provisional conservative eligibility: retain preference but do not
+        // invent work/output on incompatible physical surfaces.
+        bool eligible = _router.Geography.SurfaceAtIndex(index) == FoundationFineSurfaceKind.Land;
+        if (eligible && preference.Crop is { } selected)
+            eligible = _agriculture!.Resolve(node, (CropId)selected).WholeTurnOutput > 0;
+        if (!eligible)
+            return new(worker.Id, node, PhysicalWorkerActivity.Other, PhysicalWorkerOccupation.Unassigned, null, null);
+        return new(worker.Id, node, Produces(occupation) ? PhysicalWorkerActivity.Producing :
+            PhysicalWorkerActivity.Other, occupation, null, null, preference.Crop);
+    }
+
     private (WorldState Next, FoundationPersistentWorkerSlice[] Slices) Calculate(WorldState opening)
     {
         if (!opening.WorkerOrders.IsInitialized || !opening.EdgeTravels.IsInitialized ||
             !opening.Constructions.IsInitialized)
             throw new InvalidOperationException("Persistent scheduling requires deployed ledgers.");
+        // Reject unresolved policies before any timeline work, even if a task
+        // would consume the entire turn. No implicit automatic allocation.
+        foreach (var q in opening.WorkerOrders.Queues)
+            if (q.BaseActivity is { } b && (b.Mode != FoundationWorkerBaseMode.Manual ||
+                (b.Crop.HasValue && _agriculture is null)))
+                throw new InvalidOperationException("Base activity execution policy is unavailable.");
         var state = opening;
         var slices = new List<FoundationPersistentWorkerSlice>();
         uint now = 0;
@@ -74,7 +110,13 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
                     var head = queue.Orders.FirstOrDefault();
                     if (head is null)
                     {
-                        modes.Add(new(id, node, worker.Activity, occupation, null, null));
+                        if (queue.BaseActivity is { } preference)
+                        {
+                            var mode = BaseMode(worker, preference);
+                            state = Assign(state, worker, node, worker.CellId, mode.Activity, mode.Occupation);
+                            modes.Add(mode);
+                        }
+                        else modes.Add(new(id, node, worker.Activity, occupation, null, null));
                         break;
                     }
                     if (!queue.ActiveOrderId.HasValue)
@@ -157,8 +199,14 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
             {
                 uint work = m.Project.HasValue ? shares[m.Worker] : duration;
                 if (work > 0) slices.Add(new(m.Worker, m.Node, now, work, m.Activity, m.Occupation, m.Project, m.Crop));
-                if (work < duration) slices.Add(new(m.Worker, m.Node, now + work, duration - work,
-                    PhysicalWorkerActivity.Other, PhysicalWorkerOccupation.Unassigned, null));
+                if (work < duration)
+                {
+                    // Team completion can leave a sub-micro remainder for a
+                    // subset of builders. Preserve existing idle rounding
+                    // for this interval; no overlapping or invented effort.
+                    slices.Add(new(m.Worker, m.Node, now + work, duration - work,
+                        PhysicalWorkerActivity.Other, PhysicalWorkerOccupation.Unassigned, null));
+                }
                 if (m.Travel is not { } t) continue;
                 var worker = state.Workers.Workers.Single(w => w.Id == m.Worker);
                 var remaining = t.RemainingMicro - step;
@@ -187,6 +235,15 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
                 (head.Kind == FoundationWorkerOrderKind.Move && worker.TacticalTileId == head.Destination &&
                 !state.EdgeTravels.Pending.Any(p => p.Worker == q.Worker)))
                 state = state.CompleteWorkerOrder(q.Owner, q.Worker, head.Id);
+        }
+        // At an exact turn boundary, report readiness for base work only
+        // when no finite task or frozen crossing remains. No extra slice.
+        foreach (var q in state.WorkerOrders.Queues.Where(q => q.BaseActivity is not null &&
+            q.Orders.Count == 0 && !state.EdgeTravels.Pending.Any(p => p.Worker == q.Worker)).ToArray())
+        {
+            var worker = state.Workers.Workers.Single(w => w.Id == q.Worker);
+            var mode = BaseMode(worker, q.BaseActivity!);
+            state = Assign(state, worker, mode.Node, worker.CellId, mode.Activity, mode.Occupation);
         }
         foreach (var p in state.Constructions.Projects.Where(p => p.IsComplete && !p.IsActivated).ToArray())
             state = state.ActivateCompletedConstruction(p.Id);
