@@ -1158,11 +1158,24 @@ public sealed class FoundationTacticalHumanAiTurnHost
     {
         RequireHuman(human); CheckWritable(human);
         if (edit.Issuer != human) throw new InvalidOperationException("Foreign order edit.");
-        if (edit.Crop.HasValue && AgriculturalProduction is null) throw new InvalidOperationException("Crop preview not configured.");
+        if (!PersistentOrdersEnabled) throw new InvalidOperationException("Persistent orders not configured.");
+        if ((edit.Crop.HasValue || edit.BaseActivity?.Crop is not null) && AgriculturalProduction is null)
+            throw new InvalidOperationException("Crop preview not configured.");
+        if (edit.BaseActivity?.Mode == FoundationWorkerBaseMode.Automatic)
+            throw new InvalidOperationException("Automatic base allocation is not activated.");
         var list = _persistentPlans[human];
         var command = new FoundationPersistentOrderEditCommand(new CommandId(NextTurn, (ulong)list.Count + 1UL), edit);
         _ = ProjectPersistentPlan(human, list.Append(command));
         list.Add(command);
+    }
+
+    // Same private plan and collective publication as every other persistent edit.
+    public void QueueHumanBaseActivity(CivilizationId human, PhysicalWorkerId worker,
+        FoundationWorkerBaseActivity activity)
+    {
+        ArgumentNullException.ThrowIfNull(activity);
+        QueueHumanPersistentEdit(human, new FoundationPersistentOrderEdit(human, worker,
+            FoundationPersistentOrderEditKind.SetBaseActivity, BaseActivity: activity));
     }
 
     public void QueueHumanFundedConstruction(CivilizationId human, PhysicalTacticalEdgeId edge,
