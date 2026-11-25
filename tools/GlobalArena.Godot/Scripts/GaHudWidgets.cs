@@ -31,6 +31,10 @@ internal static class GaHudWidgets
             "wood" => "M12 2L5 11h4l-5 7h16l-5-7h4Z M12 18v4",
             "stone" => "M2 17l4-10 9-4 7 9-3 8H6Z M6 7l6 6 3-10 M12 13l7 7",
             "crop" => "M12 22V3 M12 8C4 8 4 3 4 3c6 0 8 5 8 5 M12 14c8 0 8-5 8-5-6 0-8 5-8 5 M12 19c-8 0-8-5-8-5 6 0 8 5 8 5",
+            "edge" => "M5 12h14 M5 9v6 M19 9v6",
+            "capital" => "M12 2v20 M17 6H9a3 3 0 0 0 0 6h6a3 3 0 0 1 0 6H7",
+            "freight" => "M3 5h18v14H3Z M3 10h18 M10 5v14",
+            "build" => "M3 21l9-9 M10 4l4-2 8 8-4 4-3-3-2 2-5-5Z",
             "down" => "M5 9l7 7 7-7",
             "right" => "M9 5l7 7-7 7",
             _ => throw new ArgumentOutOfRangeException(nameof(key))
