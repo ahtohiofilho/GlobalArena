@@ -33,12 +33,14 @@ public sealed class FoundationWorkerOrderQueue
 {
     public PhysicalWorkerId Worker { get; }
     public CivilizationId Owner { get; }
+    public FoundationWorkerBaseActivity? BaseActivity { get; }
     public ulong NextId { get; }
     public ulong? ActiveOrderId { get; }
     public IReadOnlyList<FoundationPersistentWorkerIntent> Orders { get; }
 
     public FoundationWorkerOrderQueue(PhysicalWorkerId worker, CivilizationId owner,
-        ulong nextId, ulong? activeOrderId, IEnumerable<FoundationPersistentWorkerIntent> orders)
+        ulong nextId, ulong? activeOrderId, IEnumerable<FoundationPersistentWorkerIntent> orders,
+        FoundationWorkerBaseActivity? baseActivity = null)
     {
         ArgumentNullException.ThrowIfNull(orders);
         var rows = orders.ToArray();
@@ -47,6 +49,9 @@ public sealed class FoundationWorkerOrderQueue
             rows.Select(o => o.Id).Distinct().Count() != rows.Length ||
             (activeOrderId.HasValue && (rows.Length == 0 || rows[0].Id != activeOrderId.Value)))
             throw new ArgumentException("Invalid worker order queue.");
+        if (baseActivity is not null && rows.Any(o => o.Kind == FoundationWorkerOrderKind.Occupation))
+            throw new ArgumentException("Base-enabled queues accept finite tasks only.");
+        BaseActivity = baseActivity;
         Worker = worker;
         Owner = owner;
         NextId = nextId;
@@ -56,6 +61,15 @@ public sealed class FoundationWorkerOrderQueue
 
     public static FoundationWorkerOrderQueue Empty(PhysicalWorkerId worker, CivilizationId owner)
         => new(worker, owner, 1, null, Array.Empty<FoundationPersistentWorkerIntent>());
+
+    public FoundationWorkerOrderQueue SetBaseActivity(CivilizationId issuer, FoundationWorkerBaseActivity activity)
+    {
+        Authorize(issuer);
+        ArgumentNullException.ThrowIfNull(activity);
+        if (Orders.Any(o => o.Kind == FoundationWorkerOrderKind.Occupation))
+            throw new InvalidOperationException("Legacy occupation orders require explicit migration.");
+        return new(Worker, Owner, NextId, ActiveOrderId, Orders, activity);
+    }
 
     private void Authorize(CivilizationId issuer)
     {
@@ -80,10 +94,12 @@ public sealed class FoundationWorkerOrderQueue
         ulong? projectId = null, PhysicalWorkerOccupation? occupation = null, byte? crop = null)
     {
         Authorize(issuer);
+        if (BaseActivity is not null && kind == FoundationWorkerOrderKind.Occupation)
+            throw new InvalidOperationException("Change base activity instead of inserting an indefinite task.");
         RequireInsertionIndex(index, Orders.Count);
         var rows = Orders.ToList();
         rows.Insert(index, new FoundationPersistentWorkerIntent(NextId, kind, destination, projectId, occupation, crop));
-        return new(Worker, Owner, checked(NextId + 1), ActiveOrderId, rows);
+        return new(Worker, Owner, checked(NextId + 1), ActiveOrderId, rows, BaseActivity);
     }
 
     public FoundationWorkerOrderQueue Remove(CivilizationId issuer, ulong id)
@@ -91,7 +107,7 @@ public sealed class FoundationWorkerOrderQueue
         Authorize(issuer);
         var rows = Orders.ToList();
         rows.RemoveAt(EditableIndex(id));
-        return new(Worker, Owner, NextId, ActiveOrderId, rows);
+        return new(Worker, Owner, NextId, ActiveOrderId, rows, BaseActivity);
     }
 
     /// <summary>Index in the final queue, after removing the moved item.</summary>
@@ -104,7 +120,7 @@ public sealed class FoundationWorkerOrderQueue
         rows.RemoveAt(old);
         RequireInsertionIndex(finalIndex, rows.Count);
         rows.Insert(finalIndex, item);
-        return new(Worker, Owner, NextId, ActiveOrderId, rows);
+        return new(Worker, Owner, NextId, ActiveOrderId, rows, BaseActivity);
     }
 
     // These are value-model lifecycle transitions, not authority to execute
@@ -114,7 +130,7 @@ public sealed class FoundationWorkerOrderQueue
         Authorize(issuer);
         if (ActiveOrderId.HasValue || Orders.Count == 0)
             throw new InvalidOperationException("No inactive head to start.");
-        return new(Worker, Owner, NextId, Orders[0].Id, Orders);
+        return new(Worker, Owner, NextId, Orders[0].Id, Orders, BaseActivity);
     }
 
     public FoundationWorkerOrderQueue InterruptHead(CivilizationId issuer, ulong expectedId)
@@ -125,7 +141,7 @@ public sealed class FoundationWorkerOrderQueue
         Authorize(issuer);
         if (ActiveOrderId != expectedId)
             throw new InvalidOperationException("Stale or inactive head.");
-        return new(Worker, Owner, NextId, null, Orders.Skip(1));
+        return new(Worker, Owner, NextId, null, Orders.Skip(1), BaseActivity);
     }
 }
 
@@ -155,6 +171,10 @@ public sealed class FoundationWorkerOrderQueueSet
             throw new InvalidOperationException("Unauthorized worker queue.");
         return queue;
     }
+
+    public FoundationWorkerOrderQueueSet SetBaseActivity(CivilizationId issuer, PhysicalWorkerId worker,
+        FoundationWorkerBaseActivity activity)
+        => Replace(issuer, Get(issuer, worker).SetBaseActivity(issuer, activity));
 
     public FoundationWorkerOrderQueueSet Insert(CivilizationId issuer, PhysicalWorkerId worker,
         int index, FoundationWorkerOrderKind kind, PhysicalTacticalTileId? destination = null,

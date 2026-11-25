@@ -36,6 +36,7 @@ public sealed class CanonicalWorldStateHasher
 
     public const uint NatalOriginsFormatVersion = 21U;
     public const uint CropIntentFormatVersion = 22U;
+    public const uint BaseActivityFormatVersion = 23U;
 
     private static readonly byte[] Magic =
     {
@@ -51,7 +52,9 @@ public sealed class CanonicalWorldStateHasher
         ArgumentNullException.ThrowIfNull(
             worldState);
 
-        var version = worldState.WorkerOrders.Queues.Any(q => q.Orders.Any(o => o.Crop.HasValue))
+        var version = worldState.WorkerOrders.Queues.Any(q => q.BaseActivity is not null)
+            ? BaseActivityFormatVersion
+            : worldState.WorkerOrders.Queues.Any(q => q.Orders.Any(o => o.Crop.HasValue))
             ? CropIntentFormatVersion
             : worldState.Workers.Workers.Any(w => w.NatalNode.HasValue)
             ? NatalOriginsFormatVersion
@@ -581,6 +584,22 @@ public sealed class CanonicalWorldStateHasher
                 AppendUInt64(hash, node.FineStrategicCellId.Value);
                 AppendUInt32(hash, w.NatalCity.HasValue ? 1U : 0U);
                 if (w.NatalCity.HasValue) AppendUInt64(hash, w.NatalCity.Value.Value);
+            }
+        }
+
+        if (version >= BaseActivityFormatVersion)
+        {
+            AppendUInt32(hash, 50U);
+            var bases = worldState.WorkerOrders.Queues.Where(q => q.BaseActivity is not null).ToArray();
+            AppendUInt32(hash, checked((uint)bases.Length));
+            foreach (var queue in bases)
+            {
+                var activity = queue.BaseActivity!;
+                AppendUInt64(hash, queue.Worker.Value);
+                AppendUInt32(hash, (uint)activity.Mode);
+                AppendUInt32(hash, activity.Occupation.HasValue ? 1U : 0U);
+                if (activity.Occupation.HasValue) AppendUInt32(hash, (uint)activity.Occupation.Value);
+                AppendUInt32(hash, activity.Crop.GetValueOrDefault());
             }
         }
 

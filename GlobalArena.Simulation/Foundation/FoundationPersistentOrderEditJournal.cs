@@ -5,14 +5,15 @@ using GlobalArena.World;
 
 namespace GlobalArena.Simulation.Foundation;
 
-public enum FoundationPersistentOrderEditKind { Insert = 1, Remove = 2, Reorder = 3, Interrupt = 4 }
+public enum FoundationPersistentOrderEditKind { Insert = 1, Remove = 2, Reorder = 3, Interrupt = 4, SetBaseActivity = 5 }
 
 public sealed record FoundationPersistentOrderEdit(
     CivilizationId Issuer, PhysicalWorkerId Worker,
     FoundationPersistentOrderEditKind Kind, ulong OrderId = 0,
     int Index = 0, FoundationWorkerOrderKind? OrderKind = null,
     PhysicalTacticalTileId? Destination = null, ulong? ProjectId = null,
-    PhysicalWorkerOccupation? Occupation = null, byte? Crop = null);
+    PhysicalWorkerOccupation? Occupation = null, byte? Crop = null,
+    FoundationWorkerBaseActivity? BaseActivity = null);
 
 public sealed record FoundationPersistentOrderEditEvent(
     EventId Id, FoundationPersistentOrderEdit Edit,
@@ -31,8 +32,13 @@ public sealed class FoundationPersistentOrderEditJournal : ISimulationEventExecu
             throw new InvalidOperationException("Persistent order edit requires canonical queue deployment.");
         var noPayload = edit.OrderKind is null && edit.Destination is null &&
             edit.ProjectId is null && edit.Occupation is null && edit.Crop is null;
+        if (edit.Kind != FoundationPersistentOrderEditKind.SetBaseActivity && edit.BaseActivity is not null)
+            throw new InvalidOperationException("Unexpected base activity payload.");
         return (edit.Kind switch
         {
+            FoundationPersistentOrderEditKind.SetBaseActivity when edit.OrderId == 0 && edit.Index == 0 &&
+                noPayload && edit.BaseActivity is not null =>
+                world.SetWorkerBaseActivity(edit.Issuer, edit.Worker, edit.BaseActivity),
             FoundationPersistentOrderEditKind.Insert when edit.OrderId == 0 && edit.OrderKind.HasValue =>
                 world.InsertWorkerOrder(edit.Issuer, edit.Worker, edit.Index, edit.OrderKind.Value,
                     edit.Destination, edit.ProjectId, edit.Occupation, edit.Crop),
