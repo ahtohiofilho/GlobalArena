@@ -47,6 +47,8 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
         PhysicalTacticalTileId tile, StrategicCellId region, PhysicalWorkerActivity activity,
         PhysicalWorkerOccupation occupation, FoundationEdgeTravelRuntimeState? journeys = null)
     {
+        if (journeys is null && worker.TacticalTileId == tile && worker.CellId == region &&
+            worker.Activity == activity && worker.Occupation == occupation) return world;
         var roster = new PhysicalWorkerRuntimeState(world.Workers.Workers.Select(w =>
             w.Id == worker.Id ? w.WithTacticalAssignment(tile, region, activity, occupation) : w),
             tacticalLocationsAuthoritative: true, occupationsAuthoritative: true);
@@ -61,7 +63,7 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
             throw new InvalidOperationException("Automatic base allocation is not activated.");
         var node = worker.TacticalTileId!.Value;
         var occupation = preference.Occupation!.Value;
-        if (preference.Crop is { } crop && _agriculture is null)
+        if (preference.Crop.HasValue && _agriculture is null)
             throw new InvalidOperationException("Manual crop base requires agricultural policy.");
         int index = checked((int)node.FineStrategicCellId.Value - 1);
         // Provisional conservative eligibility: retain preference but do not
