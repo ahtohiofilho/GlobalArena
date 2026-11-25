@@ -515,7 +515,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Equal(400_000U, first[1].DurationMicro);
         Assert.Equal(PhysicalWorkerActivity.Producing, first[1].Activity);
         Assert.Null(first[1].ProjectId);
-        var full = Assert.Single(timeline.Slices.Where(x => x.Worker == second.Id));
+        var full = Assert.Single(timeline.Slices, x => x.Worker == second.Id);
         Assert.Equal(1_000_000U, full.DurationMicro);
         Assert.Equal(PhysicalWorkerActivity.Producing, full.Activity);
         Assert.All(timeline.Slices.Where(x => x.Worker == manual.Id), x =>
