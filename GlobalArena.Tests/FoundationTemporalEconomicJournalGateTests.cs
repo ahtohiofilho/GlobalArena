@@ -848,10 +848,17 @@ public sealed class FoundationTemporalEconomicJournalGateTests
                 bound.Civilizations.Civilizations.Select(c => (c, 5_000_000UL)))))
             .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
             .DeployInitialWorkerOrders();
+        // Adopt the signed fine world while the original worker census
+        // still has the same identity as the session's opening census.
+        demo.Session.AcceptFineFirstOpening(opening, incidence, fine, signature);
         // Other workers provide real demand but no independent native output.
+        // This fixture-only activity change is a same-world snapshot update,
+        // not part of the signed world adoption.
         opening = opening.WithWorkers(new PhysicalWorkerRuntimeState(opening.Workers.Workers.Select(w =>
             w.WithTacticalLocationAndActivity(w.TacticalTileId!.Value, w.CellId, PhysicalWorkerActivity.Other)),
             tacticalLocationsAuthoritative: true, occupationsAuthoritative: true));
+        demo.Session.AcceptSnapshot(opening);
+        Assert.Same(opening, demo.Session.Snapshot);
         var crops = Enum.GetValues<GlobalArena.Foundation.Agriculture.CropId>()
             .ToDictionary(c => c, c => new CommodityId((uint)c));
         var agriculture = new FoundationAgriculturalProductionPolicy(fine, incidence, crops, 2_000_000UL);
@@ -883,7 +890,6 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         worker = candidate.Worker;
         var own = opening.Workers.Workers.Where(w => w.Owner == worker.Owner).ToArray();
         var automatic = new FoundationWorkerBaseActivity(FoundationWorkerBaseMode.Automatic);
-        demo.Session.AcceptFineFirstOpening(opening, incidence, fine, signature);
         var foreign = opening.Civilizations.Civilizations.Single(c => c != worker.Owner);
         var fixedPolicy = new FoundationAuthoritativeEconomicSettlementPolicy(demand, policy.Cargo,
             policy.TaxRates, maxProducerPasses: 64);
