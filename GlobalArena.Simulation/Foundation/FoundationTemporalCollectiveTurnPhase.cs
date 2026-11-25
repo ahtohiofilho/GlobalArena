@@ -93,7 +93,7 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
             if (fine is null || construction is not null)
                 throw new InvalidOperationException("Persistent scheduling requires signed geography and exclusive construction execution.");
             _persistent = new FoundationPersistentWorkerTurnScheduler(new FoundationConstructionApproachRouter(
-                world, incidence, fine, signature!, movementPolicy));
+                world, incidence, fine, signature!, movementPolicy), agriculture);
             _funded = new FoundationFundedWorkerIntentJournal(new FoundationConstructionFundingExecutor(
                 _capitalExecutor, persistentMoneyMicroPerWholeWork.Value));
         }
