@@ -1,6 +1,8 @@
 using Godot;
 using GlobalArena.Foundation.Agriculture;
 using GlobalArena.Runtime;
+using GlobalArena.World;
+using GlobalArena.Simulation;
 using GlobalArena.Runtime.PersistentOrders;
 using GlobalArena.Simulation.Foundation;
 
