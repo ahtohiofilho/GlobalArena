@@ -58,6 +58,64 @@ public sealed class FoundationTemporalEconomicJournalGateTests
 
 
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void R2271TemporalHostPublishesActualLocalOrRemoteTrade(bool remote)
+    {
+        var (world, worker, destination, _, incidence, _) = Fixture();
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL),
+                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)),
+            workersPerCivilization: 3);
+        // Explicit opening fixture: supply at one node, consumers either
+        // at that node or across a real adjacent crossing. No fabricated routes.
+        var node = worker.TacticalTileId!.Value;
+        var foreign = world.Civilizations.Civilizations.Single(c => c != worker.Owner);
+        var remoteRegion = incidence.TileIncidences[
+            (int)destination.FineStrategicCellId.Value - 1].IncidentCoarseCellIds[0];
+        var census = world.Workers.Workers.Select(w =>
+            w.WithTacticalLocationAndActivity(
+                remote && w.Owner == foreign ? destination : node,
+                remote && w.Owner == foreign ? remoteRegion : worker.CellId,
+                w.Owner == foreign ? PhysicalWorkerActivity.Other : PhysicalWorkerActivity.Producing));
+        var prepared = FoundationPersistedEdgeTravelTransitions.DeployEmpty(
+            world.WithWorkers(new PhysicalWorkerRuntimeState(census,
+                tacticalLocationsAuthoritative: true, occupationsAuthoritative: true))
+                .DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
+                    world.Civilizations.Civilizations.Select(c => (c, 0UL)))));
+        demo.Session.AcceptSnapshot(prepared);
+        var host = new FoundationTacticalHumanAiTurnHost(demo.Session, incidence,
+            world.Civilizations.Civilizations,
+            new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy>(),
+            enableMonetaryInfrastructure: true, settlementPolicy: Policy(world.Civilizations.Civilizations),
+            physicalTravelPolicy: new FoundationGroundEdgeTravelTimePolicy(1_400_000UL));
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            host.GetLastClosedEconomicTradeView(worker.Owner).Availability);
+        host.SetHumanReady(worker.Owner);
+        Assert.Null(host.TryCloseTurn());
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
+            host.GetLastClosedEconomicTradeView(worker.Owner).Availability);
+        host.SetHumanReady(foreign);
+        var receipt = Assert.IsType<FoundationTacticalCollectiveReceipt>(host.TryCloseTurn());
+        Assert.True(receipt.ReplayMatched);
+        var sale = Assert.IsType<FoundationTemporalSalesSettledEvent>(receipt.TemporalEconomicSettlement);
+        Assert.True(sale.GrossSalesScaled > BigInteger.Zero);
+        foreach (var civ in world.Civilizations.Civilizations)
+        {
+            var view = host.GetLastClosedEconomicTradeView(civ);
+            Assert.Equal(FoundationEconomicTradeOverlayAvailability.AuthorizedSubset, view.Availability);
+            Assert.Equal((ulong?)1UL, view.EconomicCycleOrdinal);
+            Assert.Equal((WorldStateHash?)receipt.Hash, view.PublishedHash);
+            Assert.Equal(sale.AuditedParticipantEdges![civ].ToArray(), view.UsedEdges.ToArray());
+            if (remote) Assert.NotEmpty(view.UsedEdges);
+            else Assert.Empty(view.UsedEdges);
+        }
+        Assert.Throws<InvalidOperationException>(() =>
+            host.GetLastClosedEconomicTradeView(new CivilizationId(uint.MaxValue)));
+        Assert.Equal(receipt.Hash, host.StateHash);
+    }
+
     [Fact]
     public void R2281MarginalRevenueUsesCanonicalMarketAndPreservesOpening()
     {
@@ -709,6 +767,12 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Equal(400_000U, slices[1].DurationMicro);
         Assert.Equal((byte)4, slices[1].Crop);
         Assert.Equal(0, host.PendingOrderCount);
+        var trade = host.GetLastClosedEconomicTradeView(owner);
+        Assert.Equal(FoundationEconomicTradeOverlayAvailability.AuthorizedSubset, trade.Availability);
+        Assert.Equal((ulong?)1UL, trade.EconomicCycleOrdinal);
+        Assert.Equal((WorldStateHash?)receipt.Hash, trade.PublishedHash);
+        Assert.Equal(receipt.TemporalEconomicSettlement!.AuditedParticipantEdges![owner].ToArray(),
+            trade.UsedEdges.ToArray());
     }
 
     [Fact]
