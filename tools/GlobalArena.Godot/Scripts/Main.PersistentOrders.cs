@@ -153,6 +153,7 @@ public partial class Main
         if (!_persistentQueuePanel.Visible || host is null || _selectedLocalWorkerId is not { } worker)
         {
             ClearWorldUnitReadout();
+            RefreshOperationalFeedback();
             return;
         }
         var q = ReadPersistentQueue(new PhysicalWorkerId(worker));

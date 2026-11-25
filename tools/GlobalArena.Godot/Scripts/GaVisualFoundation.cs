@@ -61,6 +61,9 @@ public static class GaVisualFoundation
     internal static StyleBoxFlat HudCardSurface() =>
         SurfaceBox(Surface, Border, radius: 6, borderWidth: 1, innerPadding: 5);
 
+    internal static StyleBoxFlat HudObjectSurface() =>
+        SurfaceBox(Raised, AccentDim, radius: 5, borderWidth: 1, innerPadding: 3);
+
     public static StyleBoxFlat MapFrame() =>
         SurfaceBox(Background, AccentDim, radius: 5, borderWidth: 1, innerPadding: 0);
 
