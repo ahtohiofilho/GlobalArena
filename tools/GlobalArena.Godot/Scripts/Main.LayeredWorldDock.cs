@@ -54,8 +54,7 @@ public partial class Main
 
         _worldInfrastructureCard = AddWorldLayer(_worldLayerStack,
             "GANextInfrastructureSlot", "INFRASTRUCTURE", out var infrastructure);
-        infrastructure.AddChild(WorldLayerPlaceholder(
-            "Use a map connection or City / Connections to manage infrastructure."));
+        CreateWorldInfrastructureReadout(infrastructure);
 
         _worldTerrainCard = AddWorldLayer(_worldLayerStack,
             "GANextTerrainSlot", "TERRAIN", out var terrain);

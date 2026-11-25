@@ -371,6 +371,7 @@ public partial class Main
             _r123FineGeography!.SurfaceAtIndex((int)w.TacticalTileId!.Value.FineStrategicCellId.Value - 1) == FoundationFineSurfaceKind.Land);
         OnOperationalWorkerSelected(worker.Id.Value);
         AssertWorldUnitReadout(host, worker.Id);
+        ExerciseWorldInfrastructure(host, worker.TacticalTileId!.Value, false);
         ExerciseOpenCityWorker(host, worker.Id, worker.TacticalTileId!.Value);
         if (_r224BaseReadout?.Text.Contains("Automatic (local)") != true || ReadPersistentQueue(worker.Id).BaseActivity is not null)
             throw new InvalidOperationException("Implicit automatic base must be visible without a synthetic command.");
@@ -382,6 +383,7 @@ public partial class Main
         EndFineCollectiveTurn();
         ExerciseCityProductionReadout(host, location.Value, 1UL);
         ExerciseCityConnectionTradeReadout(host, location.Value, 1UL);
+        ExerciseWorldInfrastructure(host, location.Value, true);
         var closed = host.Snapshot.Workers.Workers.Single(w => w.Id == worker.Id);
         if (host.StateHash == before || closed.TacticalTileId != location || closed.Activity != PhysicalWorkerActivity.Producing ||
             host.Snapshot.Treasury.LastSettledEconomicCycleOrdinal != 1UL ||
@@ -429,6 +431,7 @@ public partial class Main
         AssertWorldUnitReadout(host, worker.Id);
         if (_worldUnitBase?.Text != "Base: Automatic (local) | Committed")
             throw new InvalidOperationException("Unit did not restore automatic base.");
+        GD.Print("GA_NEXT_R2304_INFRASTRUCTURE_PASS real_edges=true private_funding=true canonical_dialog=true hash_unchanged=true");
         GD.Print("GA_NEXT_R2303_UNIT_CARD_PASS real_activity=true private_base=true queue=true committed_only_travel=true");
         GD.Print("GA_NEXT_R2294_CONNECTION_TRADE_PASS before_close=true three_closes=true real_edges=true authorized_only=true");
         GD.Print("GA_NEXT_R2293_CITY_WORKERS_PASS scoped=true real_buttons=true private_commands=true return_to_city=true");
