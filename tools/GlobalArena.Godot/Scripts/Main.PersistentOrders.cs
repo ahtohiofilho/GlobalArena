@@ -154,6 +154,7 @@ public partial class Main
         {
             ClearWorldUnitReadout();
             RefreshOperationalFeedback();
+            RefreshHudMoveVisual();
             return;
         }
         var q = ReadPersistentQueue(new PhysicalWorkerId(worker));

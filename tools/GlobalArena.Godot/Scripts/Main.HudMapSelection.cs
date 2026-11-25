@@ -1,5 +1,6 @@
 using Godot;
 using GlobalArena.Runtime;
+using GlobalArena.Runtime.PersistentOrders;
 using GlobalArena.Simulation.Foundation;
 using GlobalArena.World;
 
@@ -38,7 +39,8 @@ public partial class Main
             _hudMapEdge.HasValue || SelectedWorldInfrastructure is not null ||
             _selectedCartographicSite.HasValue || HudMoveArmed ||
             _localMoveButton?.Disabled != true || _worldUnitDetails?.Disabled != true ||
-            _worldInfrastructureManage?.Disabled != true || _localWorkerSelector?.IsVisibleInTree() != false ||
+            _worldInfrastructureManage?.Disabled != true || _hudTerrainCity?.Disabled != true ||
+            _localWorkerSelector?.IsVisibleInTree() != false ||
             _worldUnitReadout?.IsVisibleInTree() == true || _terrainSurface?.Text != "—" ||
             host.StateHash != hash || !host.GetHumanPersistentQueues(_humanCivilization).SequenceEqual(queues))
             throw new InvalidOperationException("HUD startup must be neutral and read-only.");
