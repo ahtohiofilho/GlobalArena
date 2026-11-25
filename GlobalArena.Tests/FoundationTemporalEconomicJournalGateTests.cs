@@ -673,7 +673,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
                     var forged = timeline.Slices.ToArray();
                     int index = Array.FindIndex(forged, x => x.Worker == worker.Id && x.Node == candidate.Destination);
                     forged[index] = forged[index] with { DurationMicro = forged[index].DurationMicro - 1U };
-                    var events = resolved.Events.Select(e => e == timeline ? timeline with { Slices = forged } : e).ToArray();
+                    var events = resolved.Events.Select(e => e is FoundationPersistentWorkerTurnEvent ? timeline with { Slices = forged } : e).ToArray();
                     var log = new SimulationEventLog(events.Select((e, i) =>
                         new SimulationEventLogEntry((ulong)i + 1UL, e, true, true)).ToArray());
                     Assert.ThrowsAny<Exception>(() => phase.ReplayPersistentJournal(state, log, context));
