@@ -82,6 +82,9 @@ jobs:
           grep -q 'GA_NEXT_R22813C_LOCAL_ECONOMY_READY' "$RUNNER_TEMP/local-economy.log"
           grep -q 'GA_NEXT_R22813C_LOCAL_ECONOMY_UI_PASS' "$RUNNER_TEMP/local-economy.log"
           grep -q 'GA_NEXT_R2292_CITY_PRODUCTION_PASS' "$RUNNER_TEMP/local-economy.log"
+          for cycle in 1 2 3; do
+            grep -E "GA_NEXT_R22921_CITY_PRIVACY_PASS own=[0-9]+ foreign=[0-9]+ cycle=$cycle$" "$RUNNER_TEMP/local-economy.log"
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:

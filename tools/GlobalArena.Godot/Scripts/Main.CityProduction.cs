@@ -114,11 +114,28 @@ public partial class Main
         }
     }
 
+    private void FocusCityProductionSmokeSite(FoundationTacticalHumanAiTurnHost host, PhysicalTacticalTileId node)
+    {
+        var map = _tacticalPreview ?? throw new InvalidOperationException("Missing tactical map.");
+        ulong tile = node.FineStrategicCellId.Value;
+        if (!map.LocalSiteMarkerTileIds.Contains(tile))
+        {
+            var incidence = host.Incidence.TileIncidences[checked((int)tile - 1)];
+            var focus = incidence.IncidentCoarseCellIds.OrderBy(id => id.Value).First();
+            map.Open(focus.Value);
+        }
+        if (!map.LocalSiteMarkerTileIds.Contains(tile))
+            throw new InvalidOperationException($"Cannot project actual city {tile} for production smoke.");
+        OnCartographicLocalSiteSelected(tile);
+        OpenSelectedCityWindow();
+        if (_cityConnectionSource != tile)
+            throw new InvalidOperationException($"City selection did not reach node {tile}.");
+    }
+
     private void ExerciseCityProductionReadout(FoundationTacticalHumanAiTurnHost host, PhysicalTacticalTileId node, ulong cycle)
     {
         var before = host.StateHash;
-        OnCartographicLocalSiteSelected(node.FineStrategicCellId.Value);
-        OpenSelectedCityWindow();
+        FocusCityProductionSmokeSite(host, node);
         var tabs = FindChild("GANextCityTabs", true, false) as TabContainer
             ?? throw new InvalidOperationException("City tabs missing.");
         tabs.CurrentTab = 2; // Preserve historical Connections index 1.
@@ -162,15 +179,30 @@ public partial class Main
             var foreign = host.Snapshot.Workers.Workers.FirstOrDefault(w => w.Owner != _humanCivilization &&
                 w.TacticalTileId is { } tile && !host.Snapshot.Workers.Workers.Any(own =>
                     own.Owner == _humanCivilization && own.TacticalTileId == tile));
-            if (foreign is not null)
-            {
-                OnCartographicLocalSiteSelected(foreign.TacticalTileId!.Value.FineStrategicCellId.Value);
-                OpenSelectedCityWindow();
-                if (_cityProductionGoods.GetChildCount() != 0 || _cityProductionTrade.GetChildCount() != 0)
-                    throw new InvalidOperationException("Foreign production leaked into city tab.");
-                OnCartographicLocalSiteSelected(node.FineStrategicCellId.Value);
-                OpenSelectedCityWindow();
-            }
+            if (foreign is null)
+                throw new InvalidOperationException("Local economy privacy smoke requires an exclusively foreign occupied tile.");
+            // A physical site beyond the current chart horizon has no projected
+            // marker. Navigate first (same canonical incidence used by R134),
+            // then use the ordinary site-selection handler, never assign the
+            // private selected node directly or silently skip this assertion.
+            var foreignNode = foreign.TacticalTileId!.Value;
+            FocusCityProductionSmokeSite(host, foreignNode);
+            if (_cityConnectionSource != foreignNode.FineStrategicCellId.Value ||
+                _cityWindowTitle?.Text != $"CITY | NODE {foreignNode.FineStrategicCellId.Value}" ||
+                _cityProductionStatus.Text != "Local production unavailable: no own workers at this node." ||
+                _cityProductionGoods.GetChildCount() != 0 || _cityProductionTrade.GetChildCount() != 0)
+                throw new InvalidOperationException("Foreign city identity or production privacy failed.");
+            bool denied = false;
+            try { _ = host.GetLastClosedLocalEconomics(_humanCivilization, foreignNode); }
+            catch (InvalidOperationException) { denied = true; }
+            if (!denied) throw new InvalidOperationException("Foreign node read boundary did not reject access.");
+            FocusCityProductionSmokeSite(host, node);
+            if (_cityConnectionSource != node.FineStrategicCellId.Value ||
+                _cityWindowTitle?.Text != $"CITY | NODE {node.FineStrategicCellId.Value}" ||
+                !_cityProductionStatus.Text.Contains($"CYCLE {cycle}") ||
+                _cityProductionGoods.GetChildCount() != 45 || _cityProductionTrade.GetChildCount() != 54)
+                throw new InvalidOperationException("Returning to own city did not restore authorized production.");
+            GD.Print($"GA_NEXT_R22921_CITY_PRIVACY_PASS own={node.FineStrategicCellId.Value} foreign={foreignNode.FineStrategicCellId.Value} cycle={cycle}");
         }
         if (host.StateHash != before) throw new InvalidOperationException("City production changed canonical state.");
         _cityWindowLayer!.Visible = false;
