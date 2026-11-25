@@ -167,40 +167,7 @@ public static class FoundationBaseMarginalRevenueEvaluator
             }
             // Enumerate every eligible candidate before spending any budget.
             // Never advertise a truncated ranking as an economic optimum.
-            var eligible = new List<(PhysicalWorkerOccupation Role, byte? Crop, PhysicalWorkerActivity Activity)>();
-            void Score(PhysicalWorkerOccupation role, byte? crop, PhysicalWorkerActivity activity) =>
-                eligible.Add((role, crop, activity));
-            foreach (var crop in CropCatalog.All.OrderBy(c => (byte)c.Id))
-                if (agriculture.Resolve(idle.Node, crop.Id).WholeTurnOutput > 0)
-                    Score(PhysicalWorkerOccupation.Agriculture, (byte)crop.Id, PhysicalWorkerActivity.Producing);
-            // Legacy forestry/mining share a worker commodity/output, so do not
-            // fabricate distinct yields: only the worker's existing native role
-            // is a supported non-crop candidate in this reference stage.
-            if (worker.OutputMicroPerTurn > 0 && policy.Demand.Commodities.Contains(worker.Commodity) &&
-                worker.Occupation is PhysicalWorkerOccupation.Forestry or PhysicalWorkerOccupation.Mining)
-                Score(worker.Occupation.Value, null, PhysicalWorkerActivity.Producing);
-            // The same signed crossing kinds and land-terminal rule used by
-            // ProjectTemporal determine eligibility. The canonical reconciler
-            // computes the actual proportional service and fixed quote discount
-            // before clearing each hypothetical market. No benefit from a mere
-            // infrastructure title or from cargo-dependent congestion is assumed.
-            if (operationalPolicy is not null)
-            {
-                int indexAtNode = checked((int)idle.Node.FineStrategicCellId.Value - 1);
-                bool land = false, port = false;
-                foreach (var edge in incidence.FineTopology.Edges)
-                {
-                    if (!edge.IncidentCellIds.Contains(idle.Node.FineStrategicCellId)) continue;
-                    var other = edge.IncidentCellIds.Single(id => id != idle.Node.FineStrategicCellId);
-                    var kind = geography.CrossingAtIndices(indexAtNode, checked((int)other.Value - 1));
-                    land |= kind == FoundationFineTransportCrossingKind.Ground;
-                    port |= kind == FoundationFineTransportCrossingKind.Port &&
-                        geography.FineElevationRaw[indexAtNode] > geography.SeaLevelRaw;
-                    if (land && port) break;
-                }
-                if (land) Score(PhysicalWorkerOccupation.LandTransport, null, PhysicalWorkerActivity.Other);
-                if (port) Score(PhysicalWorkerOccupation.PortOperations, null, PhysicalWorkerActivity.Other);
-            }
+            var eligible = EligibleActivities(worker, idle, incidence, geography, policy, agriculture, operationalPolicy);
             if (eligible.Count == 0)
             {
                 results.Add(new(interval, Array.Empty<FoundationBaseMarginalRevenue>()));
@@ -229,4 +196,49 @@ public static class FoundationBaseMarginalRevenueEvaluator
         }
         return new(Array.AsReadOnly(results.ToArray()), financialEvaluations, reused);
     }
+    // Shared exact and approximate candidate admission. Do not let the
+    // estimator silently skip a difficult occupation or invent a yield.
+    internal static List<(PhysicalWorkerOccupation Role, byte? Crop, PhysicalWorkerActivity Activity)> EligibleActivities(
+        PhysicalWorkerRuntimeRecord worker, FoundationPersistentWorkerSlice idle,
+        PhysicalTacticalIncidenceMap incidence, FoundationFineFirstPhysicalGeography geography,
+        FoundationAuthoritativeEconomicSettlementPolicy policy, FoundationAgriculturalProductionPolicy agriculture,
+        FoundationOperationalFreightShadowPolicy? operationalPolicy)
+    {
+        var eligible = new List<(PhysicalWorkerOccupation Role, byte? Crop, PhysicalWorkerActivity Activity)>();
+        void Score(PhysicalWorkerOccupation role, byte? crop, PhysicalWorkerActivity activity) =>
+            eligible.Add((role, crop, activity));
+        foreach (var crop in CropCatalog.All.OrderBy(c => (byte)c.Id))
+            if (agriculture.Resolve(idle.Node, crop.Id).WholeTurnOutput > 0)
+                Score(PhysicalWorkerOccupation.Agriculture, (byte)crop.Id, PhysicalWorkerActivity.Producing);
+        // Legacy forestry/mining share a worker commodity/output, so do not
+        // fabricate distinct yields: only the worker's existing native role
+        // is a supported non-crop candidate in this reference stage.
+        if (worker.OutputMicroPerTurn > 0 && policy.Demand.Commodities.Contains(worker.Commodity) &&
+            worker.Occupation is PhysicalWorkerOccupation.Forestry or PhysicalWorkerOccupation.Mining)
+            Score(worker.Occupation.Value, null, PhysicalWorkerActivity.Producing);
+        // The same signed crossing kinds and land-terminal rule used by
+        // ProjectTemporal determine eligibility. The canonical reconciler
+        // computes the actual proportional service and fixed quote discount
+        // before clearing each hypothetical market. No benefit from a mere
+        // infrastructure title or from cargo-dependent congestion is assumed.
+        if (operationalPolicy is not null)
+        {
+            int indexAtNode = checked((int)idle.Node.FineStrategicCellId.Value - 1);
+            bool land = false, port = false;
+            foreach (var edge in incidence.FineTopology.Edges)
+            {
+                if (!edge.IncidentCellIds.Contains(idle.Node.FineStrategicCellId)) continue;
+                var other = edge.IncidentCellIds.Single(id => id != idle.Node.FineStrategicCellId);
+                var kind = geography.CrossingAtIndices(indexAtNode, checked((int)other.Value - 1));
+                land |= kind == FoundationFineTransportCrossingKind.Ground;
+                port |= kind == FoundationFineTransportCrossingKind.Port &&
+                    geography.FineElevationRaw[indexAtNode] > geography.SeaLevelRaw;
+                if (land && port) break;
+            }
+            if (land) Score(PhysicalWorkerOccupation.LandTransport, null, PhysicalWorkerActivity.Other);
+            if (port) Score(PhysicalWorkerOccupation.PortOperations, null, PhysicalWorkerActivity.Other);
+        }
+        return eligible;
+    }
+
 }

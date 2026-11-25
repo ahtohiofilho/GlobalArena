@@ -65,11 +65,7 @@ public static class FoundationTemporalFinancialReconciler
         {
             if (signedFine is null || !baseline.WorkerOrders.IsInitialized || !ReferenceEquals(baseline, freightWorld))
                 throw new InvalidOperationException("Operational freight requires signed persistent opening infrastructure.");
-            var nodes = FoundationPhysicalOperationalWorkProjector.ProjectTemporal(baseline, incidence, signedFine, temporal);
-            var factors = nodes.SelectMany(n => n.Allocation.Shares).Where(s => s.EffortMicro > 0)
-                .GroupBy(s => s.Edge).Select(g => new FoundationOperationalEdgeProductivity(g.Key, g.First().Kind, 1_000_000UL)).ToArray();
-            var service = FoundationOperationalServiceProjector.Project(nodes, factors);
-            var projection = FoundationOperationalFreightShadowProjector.Project(roads, service, operationalPolicy);
+            var projection = ProjectOperationalQuotes(baseline, incidence, signedFine, temporal, roads, operationalPolicy);
             roads = projection.CounterfactualRoads;
             operationalQuotes = projection.EdgeReadings.Where(e => e.OperationalServiceMicro > 0).ToArray();
         }
@@ -112,4 +108,18 @@ public static class FoundationTemporalFinancialReconciler
                 "Temporal physical sales and exact monetary credits do not reconcile.");
         return outcome;
     }
+    // Identical fixed-cost/service projection for authoritative reconciliation
+    // and diagnostic frozen-flow counterfactuals. Never clears a market.
+    internal static FoundationOperationalFreightShadowResult ProjectOperationalQuotes(
+        WorldState baseline, PhysicalTacticalIncidenceMap incidence, FoundationFineFirstPhysicalGeography signedFine,
+        FoundationTemporalEconomicTurnInputs temporal, IReadOnlyList<FoundationPhysicalRoutingEdgeCost> roads,
+        FoundationOperationalFreightShadowPolicy operationalPolicy)
+    {
+        var nodes = FoundationPhysicalOperationalWorkProjector.ProjectTemporal(baseline, incidence, signedFine, temporal);
+        var factors = nodes.SelectMany(n => n.Allocation.Shares).Where(s => s.EffortMicro > 0)
+            .GroupBy(s => s.Edge).Select(g => new FoundationOperationalEdgeProductivity(g.Key, g.First().Kind, 1_000_000UL)).ToArray();
+        var service = FoundationOperationalServiceProjector.Project(nodes, factors);
+        return FoundationOperationalFreightShadowProjector.Project(roads, service, operationalPolicy);
+    }
+
 }

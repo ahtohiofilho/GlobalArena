@@ -1,0 +1,9 @@
+# R228.5 — frozen-distribution marginal estimator, diagnostic A/B
+
+Base: R228.4 4299196 (12/12 workflows, 16/16 checks, 47/47 focused tests). Heterogeneous 6/24-worker batches required 50/197 complete evaluations and 1866/7273 ms, covering only 2 workers at budget 18. Stop tuning the exact oracle as a gameplay allocator.
+
+New separate estimator: one canonical baseline reconciliation for the entire calendar. Production estimates the finite incremental owner credit from delivering all added goods to one reachable physical market at a time, keeping incumbent deliveries and demand frozen. Use the canonical integer price curve at Q and Q+increment, including the effect on the owner's existing sales in the same market; deduct seller-specific fixed freight/toll. At zero deliveries, use actual incremental goods in the denominator (no arbitrary price or phantom stock). Logistics reuses the canonical service and quote projector but applies quote deltas only to baseline cargo shipped by this owner on existing routes. Tax and seller revenue return to the same civilization; no separate tax deduction in the owner-credit estimate. No rerouting or induced demand in the estimate, so it is approximate and may misrank.
+
+Shared candidate eligibility and operational projection with the exact reference; no candidate market solves, no scheduler activation, no authoritative money/hash/journal change, no congestion loop. Diagnostics log exact top-score agreement including idle, regret and opportunity in canonical scaled money, runtime, routing trees and number of full financial evaluations. Compare 6/24-worker heterogeneous cold-start fixtures and partial-interval mixed baseline. This is not a production-scale benchmark or an acceptance threshold. Further decision on adequacy only after A/B evidence; a poor result should trigger conceptual review rather than endless tuning.
+
+Cartographic backlog #631/#632 unchanged.
