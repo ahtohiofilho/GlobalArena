@@ -19,8 +19,8 @@ public partial class Main
         root.RemoveChild(heading);
         heading.QueueFree();
         var header = new Button { Name = $"GANextWidget{name}Header", Text = name.ToUpperInvariant(),
-            Icon = GaHudWidgets.Icon(icon), Alignment = HorizontalAlignment.Left,
-            IconAlignment = HorizontalAlignment.Left, CustomMinimumSize = new Vector2(0, 28),
+            Icon = GaHudWidgets.Icon("right"), Alignment = HorizontalAlignment.Left,
+            IconAlignment = HorizontalAlignment.Right, CustomMinimumSize = new Vector2(0, 24),
             SizeFlagsHorizontal = SizeFlags.ExpandFill };
         GaVisualFoundation.StyleHudSectionHeader(header);
         root.AddThemeConstantOverride("separation", 2);
@@ -40,14 +40,17 @@ public partial class Main
     {
         if (!_widgetSections.TryGetValue(name, out var section)) return;
         section.Content.Visible = expanded;
-        section.Header.Text = name.ToUpperInvariant() + (expanded ? "   −" : "   +");
+        section.Header.Text = name.ToUpperInvariant();
+        section.Header.Icon = GaHudWidgets.Icon(expanded ? "down" : "right");
         section.Header.TooltipText = expanded ? $"Collapse {name}" : $"Expand {name}";
     }
 
     private static void WidgetActionRow(Button first, Button second)
     {
         var parent = first.GetParent() ?? throw new InvalidOperationException("Action parent missing.");
-        var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            Alignment = BoxContainer.AlignmentMode.Center };
+        row.AddThemeConstantOverride("separation", 8);
         int index = first.GetIndex();
         parent.AddChild(row);
         parent.MoveChild(row, index);
@@ -94,7 +97,7 @@ public partial class Main
         foreach (var card in new[] { _worldUnitCard, _worldInfrastructureCard, _worldTerrainCard })
             card!.AddThemeStyleboxOverride("panel", GaVisualFoundation.HudOperationalCardSurface());
         _worldPlanetCard!.AddThemeStyleboxOverride("panel", GaVisualFoundation.HudCardSurface());
-        _worldLayerStack!.AddThemeConstantOverride("separation", 10);
+        _worldLayerStack!.AddThemeConstantOverride("separation", 14);
         if (_worldUnitActivity is not null) _worldUnitActivity.Visible = false; // same activity in identity
         if (_localPendingLabel is not null) _localPendingLabel.Visible = false; // same queue in Unit
         if (_fineMovementDecision is not null) _fineMovementDecision.Visible = false; // move tooltip
@@ -142,6 +145,7 @@ public partial class Main
                 throw new InvalidOperationException($"Widget header clipped at startup: {section.Header.Text}; bounds={bounds}; rect={rect}");
         }
         AssertOperationalCardLayout(bounds);
+        AssertMonochromeHud();
         var footer = _worldPlanetCard!.GetGlobalRect();
         var atlas = _worldPlanetAtlas ?? throw new InvalidOperationException("Planet action missing.");
         var planetHeader = atlas.GetParent() as HBoxContainer
@@ -169,6 +173,7 @@ public partial class Main
             !host.GetHumanPersistentQueues(_humanCivilization).SequenceEqual(queues))
             throw new InvalidOperationException("Widget layout mutated world or displaced Planet.");
         AssertOperationalFeedback();
+        GD.Print("GA_NEXT_R23064_MONO_HUD_PASS neutral_palette=true framed_portraits=true compact_actions=true separate_slots=true");
         GD.Print("GA_NEXT_R23062_OPERATIONAL_CARD_PASS visual_summaries=true action_strips=true instruction_hidden=true feedback_preserved=true");
         GD.Print("GA_NEXT_R23061A_WIDGET_SHELL_PASS icon_actions=true collapsible=true headers_visible=true fixed_planet=true read_only=true");
     }

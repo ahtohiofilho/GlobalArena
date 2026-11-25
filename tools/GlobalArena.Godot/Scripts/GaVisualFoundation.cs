@@ -11,16 +11,16 @@ namespace GlobalArena.Godot;
 /// </summary>
 public static class GaVisualFoundation
 {
-    public static readonly Color Background = new("#07121c");
-    public static readonly Color Surface = new("#101f2b");
-    public static readonly Color Raised = new("#192c39");
-    public static readonly Color Header = new("#1d3544");
-    public static readonly Color Border = new("#365463");
-    public static readonly Color Text = new("#e8f1f4");
-    public static readonly Color Muted = new("#9db7c4");
-    public static readonly Color Accent = new("#72c9c0");
-    public static readonly Color AccentDim = new("#315e61");
-    public static readonly Color Warm = new("#dfbf7d");
+    public static readonly Color Background = new("#101010");
+    public static readonly Color Surface = new("#1b1b1b");
+    public static readonly Color Raised = new("#292929");
+    public static readonly Color Header = new("#303030");
+    public static readonly Color Border = new("#454545");
+    public static readonly Color Text = new("#dedede");
+    public static readonly Color Muted = new("#ababab");
+    public static readonly Color Accent = new("#bcbcbc");
+    public static readonly Color AccentDim = new("#454545");
+    public static readonly Color Warm = new("#c7af82");
     // Compact first-class typography scale. Art palette remains provisional.
     public const int ApplicationFontSize = 19;
     public const int WindowTitleFontSize = 15;
@@ -59,25 +59,48 @@ public static class GaVisualFoundation
 
     /// <summary>Dense widget cards only; floating management windows retain normal padding.</summary>
     internal static StyleBoxFlat HudCardSurface() =>
-        SurfaceBox(Surface, Border, radius: 6, borderWidth: 1, innerPadding: 5);
+        HudFlat(Surface, Surface, 4, 5);
 
     // Local operational cards have two nested surfaces. Avoid paying for
     // the standard window padding twice; the object and action sizes stay intact.
     internal static StyleBoxFlat HudOperationalCardSurface() =>
-        SurfaceBox(Surface, Border, radius: 6, borderWidth: 1, innerPadding: 3);
+        HudFlat(Background, Background, 0, 0);
+
+    // A section is a group of widgets, not another outlined form.
+    internal static StyleBoxFlat HudFlat(Color fill, Color border, int radius, int padding, int line = 0)
+    {
+        var box = SurfaceBox(fill, border, radius, line, padding);
+        box.ShadowSize = 0;
+        return box;
+    }
+
+    internal static StyleBoxFlat HudDockSurface() =>
+        HudFlat(Background, Background, 3, 8);
+
+    internal static StyleBoxFlat HudPortraitSurface() =>
+        HudFlat(new Color("#151515"), new Color("#393939"), 3, 2, 1);
+
+    internal static void StyleHudAction(Button button)
+    {
+        button.AddThemeStyleboxOverride("normal", HudFlat(Raised, Border, 4, 3, 1));
+        button.AddThemeStyleboxOverride("hover", HudFlat(new Color("#3a3a3a"), Accent, 4, 3, 1));
+        button.AddThemeStyleboxOverride("pressed", HudFlat(new Color("#505050"), Accent, 4, 3, 1));
+        button.AddThemeStyleboxOverride("disabled", HudFlat(new Color("#202020"), new Color("#303030"), 4, 3, 1));
+        button.AddThemeStyleboxOverride("focus", HudFlat(Colors.Transparent, Accent, 4, 0, 1));
+    }
 
     internal static void StyleHudSectionHeader(Button header)
     {
-        header.AddThemeStyleboxOverride("normal",
-            SurfaceBox(Raised, Border, radius: 4, borderWidth: 1, innerPadding: 2));
-        header.AddThemeStyleboxOverride("hover",
-            SurfaceBox(new Color("#244454"), Accent, radius: 4, borderWidth: 1, innerPadding: 2));
-        header.AddThemeStyleboxOverride("pressed",
-            SurfaceBox(AccentDim, Accent, radius: 4, borderWidth: 1, innerPadding: 2));
+        header.AddThemeStyleboxOverride("normal", HudFlat(Background, Background, 0, 0));
+        header.AddThemeStyleboxOverride("hover", HudFlat(Surface, Surface, 3, 0));
+        header.AddThemeStyleboxOverride("pressed", HudFlat(Raised, Raised, 3, 0));
+        header.AddThemeStyleboxOverride("focus", HudFlat(Colors.Transparent, Accent, 3, 0, 1));
+        header.AddThemeColorOverride("font_color", Muted);
+        header.AddThemeFontSizeOverride("font_size", CaptionFontSize);
     }
 
     internal static StyleBoxFlat HudObjectSurface() =>
-        SurfaceBox(Raised, AccentDim, radius: 5, borderWidth: 1, innerPadding: 3);
+        HudFlat(Surface, Border, 4, 3, 1);
 
     public static StyleBoxFlat MapFrame() =>
         SurfaceBox(Background, AccentDim, radius: 5, borderWidth: 1, innerPadding: 0);
@@ -96,11 +119,11 @@ public static class GaVisualFoundation
         result.SetStylebox("normal", "Button",
             SurfaceBox(Raised, Border, radius: 5, borderWidth: 1, innerPadding: 4));
         result.SetStylebox("hover", "Button",
-            SurfaceBox(new Color("#244454"), Accent, radius: 5, borderWidth: 1, innerPadding: 4));
+            SurfaceBox(new Color("#3a3a3a"), Accent, radius: 5, borderWidth: 1, innerPadding: 4));
         result.SetStylebox("pressed", "Button",
             SurfaceBox(AccentDim, Accent, radius: 5, borderWidth: 1, innerPadding: 4));
         result.SetStylebox("disabled", "Button",
-            SurfaceBox(Surface, new Color("#263946"), radius: 5,
+            SurfaceBox(Surface, new Color("#303030"), radius: 5,
                 borderWidth: 1, innerPadding: 4));
         result.SetStylebox("focus", "Button", new StyleBoxEmpty());
         result.SetStylebox("panel", "PanelContainer", WindowSurface());
@@ -109,7 +132,7 @@ public static class GaVisualFoundation
         result.SetStylebox("normal", "OptionButton",
             SurfaceBox(Raised, Border, radius: 5, borderWidth: 1, innerPadding: 4));
         result.SetStylebox("hover", "OptionButton",
-            SurfaceBox(new Color("#244454"), Accent, radius: 5,
+            SurfaceBox(new Color("#3a3a3a"), Accent, radius: 5,
                 borderWidth: 1, innerPadding: 4));
         result.SetColor("font_color", "PopupMenu", Text);
         result.SetStylebox("panel", "PopupMenu",
@@ -209,7 +232,7 @@ public static class GaVisualFoundation
             SurfaceBox(AccentDim, Accent, radius: 5,
                 borderWidth: 1, innerPadding: 4));
         button.AddThemeStyleboxOverride("hover",
-            SurfaceBox(new Color("#377b7c"), Accent, radius: 5,
+            SurfaceBox(new Color("#515151"), Accent, radius: 5,
                 borderWidth: 1, innerPadding: 4));
         button.AddThemeColorOverride("font_color", Text);
     }

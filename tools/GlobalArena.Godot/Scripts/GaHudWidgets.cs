@@ -9,9 +9,14 @@ internal static class GaHudWidgets
 {
     private static readonly Dictionary<string, Texture2D> Icons = new();
 
-    internal static Texture2D Icon(string key)
+    internal static Texture2D Picture(string key) => Icon(key, 3);
+
+    internal static Texture2D Icon(string key) => Icon(key, 1);
+
+    private static Texture2D Icon(string key, int scale)
     {
-        if (Icons.TryGetValue(key, out var cached)) return cached;
+        string cacheKey = $"{key}/{scale}";
+        if (Icons.TryGetValue(cacheKey, out var cached)) return cached;
         string path = key switch
         {
             "unit" => "M12 3a3 3 0 1 0 0 6a3 3 0 1 0 0-6 M5 21v-3a7 7 0 0 1 14 0v3",
@@ -55,11 +60,11 @@ internal static class GaHudWidgets
             _ => throw new ArgumentOutOfRangeException(nameof(key))
         };
         var image = new Image();
-        var svg = $"<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><path d='{path}' fill='none' stroke='#e8f1f4' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/></svg>";
-        if (image.LoadSvgFromString(svg) != Error.Ok)
+        var svg = $"<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><path d='{path}' fill='none' stroke='#d2d2d2' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/></svg>";
+        if (image.LoadSvgFromString(svg, scale) != Error.Ok)
             throw new InvalidOperationException($"HUD pictogram failed: {key}");
         var texture = ImageTexture.CreateFromImage(image);
-        Icons.Add(key, texture);
+        Icons.Add(cacheKey, texture);
         return texture;
     }
 
@@ -69,14 +74,17 @@ internal static class GaHudWidgets
         button.Icon = Icon(icon);
         button.IconAlignment = HorizontalAlignment.Center;
         button.TooltipText = tooltip;
-        button.CustomMinimumSize = new Vector2(36, 30);
-        button.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        button.CustomMinimumSize = new Vector2(40, 30);
+        button.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
+        GaVisualFoundation.StyleHudAction(button);
     }
 
     internal static void CompactProgress(ProgressBar progress)
     {
         progress.CustomMinimumSize = new Vector2(0, 8);
         progress.ShowPercentage = false;
+        progress.AddThemeStyleboxOverride("background", GaVisualFoundation.HudFlat(new Color("#242424"), new Color("#242424"), 2, 0));
+        progress.AddThemeStyleboxOverride("fill", GaVisualFoundation.HudFlat(new Color("#999999"), new Color("#999999"), 2, 0));
     }
 
     internal static TextureRect MetricIcon(string icon) => new()

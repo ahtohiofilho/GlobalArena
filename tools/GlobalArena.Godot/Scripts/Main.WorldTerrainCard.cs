@@ -116,7 +116,8 @@ public partial class Main
             _hudTerrainSummary.Visible = true;
             _hudTerrainSummary.TooltipText = "Select terrain on the map";
             _terrainSurface!.Text = "—";
-            _terrainSurfaceIcon!.Texture = GaHudWidgets.Icon("terrain");
+            _terrainSurfaceIcon!.Texture = GaHudWidgets.Picture("terrain");
+            _terrainSurfaceIcon.Modulate = GaVisualFoundation.Muted;
             if (_terrainFootState!.GetParent() is Control foot) foot.Visible = false;
             if (_terrainShipState!.GetParent() is Control ship) ship.Visible = false;
         }
@@ -158,7 +159,8 @@ public partial class Main
             if (_terrainShipState!.GetParent() is Control ship) ship.Visible = true;
         }
         _terrainSurface!.Text = surfaceName;
-        _terrainSurfaceIcon!.Texture = GaHudWidgets.Icon(surface switch
+        _terrainSurfaceIcon!.Modulate = Colors.White;
+        _terrainSurfaceIcon.Texture = GaHudWidgets.Picture(surface switch
         {
             FoundationFineSurfaceKind.OpenWater => "water",
             FoundationFineSurfaceKind.FirmSeaIce => "ice",
@@ -232,7 +234,7 @@ public partial class Main
             CropCatalog.All.Any(c => !potential.Text.Split('\n').Contains($"{c.Id}: 0")) ||
             !potential.Text.Split('\n').Contains("Wood: 0") || !potential.Text.Split('\n').Contains("Stone: 0"))
             throw new InvalidOperationException("Water selection retained land potential or traversal.");
-        if (_terrainSurface?.Text != "Open water" || _terrainSurfaceIcon?.Texture != GaHudWidgets.Icon("water") ||
+        if (_terrainSurface?.Text != "Open water" || _terrainSurfaceIcon?.Texture != GaHudWidgets.Picture("water") ||
             _terrainFootState?.Texture != GaHudWidgets.Icon("cancel") || _terrainShipState?.Texture != GaHudWidgets.Icon("check") ||
             _terrainYieldWidgets.Values.Any(w => w.Value.Text != "0" || w.Bar.Value != 0d))
             throw new InvalidOperationException("Water terrain widget retained land output or access.");
