@@ -101,6 +101,17 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.True(receipt.ReplayMatched);
         var sale = Assert.IsType<FoundationTemporalSalesSettledEvent>(receipt.TemporalEconomicSettlement);
         Assert.True(sale.GrossSalesScaled > BigInteger.Zero);
+        var prices = Assert.IsType<FoundationSettledLocalPriceSnapshot>(sale.AuditedLocalPrices);
+        Assert.Equal(1UL, prices.CycleOrdinal);
+        Assert.NotEmpty(prices.Prices);
+        Assert.All(prices.Prices, p =>
+        {
+            Assert.Equal((ulong?)p.PriceMicro, prices.ObservedPrice(p.Node, p.Commodity));
+            Assert.True(p.PriceMicro > 0UL);
+        });
+        if (remote) Assert.Contains(prices.Prices, p => p.Node == destination);
+        else Assert.All(prices.Prices, p => Assert.Equal(node, p.Node));
+        Assert.Null(prices.ObservedPrice(node, new CommodityId(uint.MaxValue)));
         foreach (var civ in world.Civilizations.Civilizations)
         {
             var view = host.GetLastClosedEconomicTradeView(civ);
@@ -114,6 +125,30 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Throws<InvalidOperationException>(() =>
             host.GetLastClosedEconomicTradeView(new CivilizationId(uint.MaxValue)));
         Assert.Equal(receipt.Hash, host.StateHash);
+    }
+
+    [Fact]
+    public void R2289SettledLocalPricesDeduplicateSharedMarketsAndPreserveMissingVersusZero()
+    {
+        var (_, worker, destination, _, _, _) = Fixture();
+        var node = worker.TacticalTileId!.Value;
+        var commodity = worker.Commodity;
+        FoundationPhysicalEconomicAccountingLine Line(ulong ordinal, PhysicalTacticalTileId buyer, ulong price) =>
+            new(ordinal, worker.Owner, worker.Owner, node, buyer, commodity, 1UL, price,
+                BigInteger.Zero, BigInteger.Zero, BigInteger.Zero, BigInteger.Zero, BigInteger.Zero);
+        var lines = new[] { Line(1, node, 2_000_000UL), Line(2, node, 2_000_000UL), Line(3, destination, 0UL) };
+        var snapshot = FoundationSettledLocalPriceSnapshot.FromAccounting(7UL, lines);
+        Assert.Equal(2, snapshot.Prices.Count);
+        Assert.Equal((ulong?)2_000_000UL, snapshot.ObservedPrice(node, commodity));
+        Assert.Equal((ulong?)0UL, snapshot.ObservedPrice(destination, commodity));
+        Assert.Null(snapshot.ObservedPrice(node, new CommodityId(uint.MaxValue)));
+        Assert.Equal(1_000_000UL, FoundationSettledLocalPriceSnapshot.InitialReferencePriceMicro);
+        Assert.True(snapshot.Identical(FoundationSettledLocalPriceSnapshot.FromAccounting(7UL, lines.Reverse())));
+        Assert.False(snapshot.Identical(FoundationSettledLocalPriceSnapshot.FromAccounting(8UL, lines)));
+        Assert.Throws<InvalidOperationException>(() =>
+            FoundationSettledLocalPriceSnapshot.FromAccounting(7UL, lines.Append(Line(4, node, 3_000_000UL))));
+        Assert.Empty(FoundationSettledLocalPriceSnapshot.FromAccounting(7UL,
+            Array.Empty<FoundationPhysicalEconomicAccountingLine>()).Prices);
     }
 
     [Fact]

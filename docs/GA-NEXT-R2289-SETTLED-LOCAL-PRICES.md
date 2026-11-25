@@ -1,0 +1,9 @@
+# R228.9 — Audited local market price observations
+
+Base R228.8 #639 02ea6d2: 6/6 workflows and 10/10 checks (PR view), no conflicts. Preserve failed R228.7 #638 as a separate commercial-distributor reproducer.
+
+Extract buyer-node/commodity market prices directly from the already calculated canonical temporal accounting lines. Shared markets have one price regardless of seller/buyer civilization. Deduplicate, canonicalize, reject inconsistent price or zero-quantity lines. No new financial evaluation, routing, price formula or settlement. Empty markets produce no observation, distinct from a genuine observed zero. The established P0=1 is represented by 1,000,000 micro-money per whole good. The lookup is internal/server-only; do not expose the global market map to clients.
+
+Attach immutable per-cycle price evidence to the temporal sale event. During existing independent replay compare attached evidence when present; for a historical event lacking the new derived evidence, attach the independently derived snapshot only after existing checks pass. No change to canonical world hash, treasury, save schema, or public event constructor. Extend the existing actual local/remote trade fixture and add snapshot tests for duplicate shared prices, missing/zero, canonical order, cycle identity and inconsistent input.
+
+This is the evidence extraction gate, not durable multi-cycle price memory. Do not use a mutable phase cache to drive scheduling: replay and save/load would diverge. Next gate must define authoritative prior-cycle history as deterministic simulation input with verified provenance, including retention across missing observations, and integrate the new ranker into stationary available suffixes with native commodity eligibility. Host/UI remain unchanged. Logistics and commercial convergence remain separate gates. CI must pass before advancement.
