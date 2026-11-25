@@ -92,10 +92,14 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             physicalTravelPolicy: new FoundationGroundEdgeTravelTimePolicy(1_400_000UL));
         Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
             host.GetLastClosedEconomicTradeView(worker.Owner).Availability);
+        Assert.Null(host.GetLastClosedLocalEconomics(worker.Owner, node));
+        Assert.Null(host.GetLastClosedLocalEconomics(foreign, remote ? destination : node));
+        if (remote) Assert.Throws<InvalidOperationException>(() => host.GetLastClosedLocalEconomics(worker.Owner, destination));
         host.SetHumanReady(worker.Owner);
         Assert.Null(host.TryCloseTurn());
         Assert.Equal(FoundationEconomicTradeOverlayAvailability.NoClosedCycle,
             host.GetLastClosedEconomicTradeView(worker.Owner).Availability);
+        Assert.Null(host.GetLastClosedLocalEconomics(worker.Owner, node));
         host.SetHumanReady(foreign);
         var receipt = Assert.IsType<FoundationTacticalCollectiveReceipt>(host.TryCloseTurn());
         Assert.True(receipt.ReplayMatched);
@@ -124,6 +128,23 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         }
         Assert.Throws<InvalidOperationException>(() =>
             host.GetLastClosedEconomicTradeView(new CivilizationId(uint.MaxValue)));
+        var mine = Assert.IsType<FoundationViewerLocalEconomicClose>(host.GetLastClosedLocalEconomics(worker.Owner, node));
+        var theirs = Assert.IsType<FoundationViewerLocalEconomicClose>(host.GetLastClosedLocalEconomics(foreign, remote ? destination : node));
+        Assert.Equal(receipt.Hash, mine.CommittedWorldHash);
+        Assert.Equal(1UL, mine.EconomicCycleOrdinal);
+        Assert.Equal(worker.Owner, mine.Viewer);
+        Assert.Equal(foreign, theirs.Viewer);
+        Assert.Equal(sale.ProducedGoodsMicro, mine.Commodities.Aggregate(0UL, (sum, row) => sum + row.ProducedMicro));
+        Assert.All(theirs.Commodities, row => Assert.Equal(0UL, row.ProducedMicro));
+        Assert.All(mine.Commodities, row => Assert.Equal(row.ProducedMicro, row.SoldMicro));
+        Assert.Equal(sale.SellerNetScaled, mine.Commodities.Aggregate(BigInteger.Zero, (sum, row) => sum + row.SellerNetScaled));
+        Assert.Equal(sale.ProducedGoodsMicro, mine.Commodities.Concat(theirs.Commodities).Aggregate(0UL, (sum, row) => sum + row.ReceivedMicro));
+        Assert.Equal(mine.Commodities.Aggregate(0UL, (sum, row) => sum + row.ExportedMicro),
+            theirs.Commodities.Aggregate(0UL, (sum, row) => sum + row.ImportedMicro));
+        if (remote) Assert.Contains(mine.Commodities, row => row.ExportedMicro > 0UL);
+        else Assert.All(mine.Commodities.Concat(theirs.Commodities), row => { Assert.Equal(0UL, row.ExportedMicro); Assert.Equal(0UL, row.ImportedMicro); });
+        Assert.All(mine.Commodities, row => Assert.Equal(prices.ObservedPrice(node, row.Commodity), row.LocalPriceMicro));
+        Assert.Throws<InvalidOperationException>(() => host.GetLastClosedLocalEconomics(new CivilizationId(uint.MaxValue), node));
         Assert.Equal(receipt.Hash, host.StateHash);
     }
 
@@ -2348,6 +2369,25 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Equal(receipt.Hash,
             new CanonicalWorldStateHasher().Compute(authenticatedReplay));
         var settled = receipt.EconomicEvent;
+        var forgedRead = new FoundationTemporalSalesSettledEvent(
+            settled.Id, settled.BeginningHash, settled.PreSettlementHash,
+            settled.PreSettlementRevision, settled.EconomicCycleOrdinal,
+            settled.ScheduleDigest, settled.CargoUnitCode, settled.ProducedGoodsMicro,
+            settled.GrossSalesScaled, settled.PhysicalFreightScaled, settled.SellerNetScaled,
+            settled.TaxesScaled, settled.ExternalTollsScaled, settled.Credits,
+            settled.FoodIntake, settled.OperationalQuotes, settled.UsedProgressiveDistribution, settled.UsedSafeProgressiveRoutes);
+        forgedRead.AttachAuditedParticipantEdges(settled.AuditedParticipantEdges!);
+        forgedRead.AttachAuditedLocalPrices(settled.AuditedLocalPrices!);
+        var localRows = settled.AuditedLocalEconomics!.Rows.ToArray();
+        localRows[0] = localRows[0] with { Commodity = localRows[0].Commodity with { DemandMicro = localRows[0].Commodity.DemandMicro + 1UL } };
+        forgedRead.AttachAuditedLocalEconomics(new FoundationSettledLocalEconomics(settled.EconomicCycleOrdinal, localRows));
+        var forgedReadJournal = new SimulationEventLog(new[]
+        {
+            new SimulationEventLogEntry(1UL, movementEvent, wasEligible: true, wasExecuted: true),
+            new SimulationEventLogEntry(2UL, forgedRead, wasEligible: true, wasExecuted: true)
+        });
+        Assert.Throws<InvalidOperationException>(() => FoundationTemporalEconomicJournalGate.ReplayJournal(
+            beginning, forgedReadJournal, movement, new FoundationGroundEdgeTravelTimePolicy(1_400_000UL), incidence, policy, context, fine));
         var forgedMoney = new FoundationTemporalSalesSettledEvent(
             settled.Id, settled.BeginningHash, settled.PreSettlementHash,
             settled.PreSettlementRevision, settled.EconomicCycleOrdinal,
