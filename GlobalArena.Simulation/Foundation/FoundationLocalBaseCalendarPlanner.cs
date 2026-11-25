@@ -19,6 +19,8 @@ internal static class FoundationLocalBaseCalendarPlanner
         IReadOnlyList<FoundationBaseMarginalInterval> intervals,
         FoundationAgriculturalProductionPolicy agriculture)
     {
+        if (agriculture.BasicResourceCommodities.Any(c => !policy.Demand.Commodities.Contains(c)))
+            throw new InvalidOperationException("Every basic resource requires explicit market demand.");
         var ordered = calendar.OrderBy(s => s.StartMicro).ThenBy(s => s.Worker.Value).ToArray();
         var indices = ordered.Select((s, i) => (s, i))
             .ToDictionary(x => (x.s.Worker, x.s.StartMicro), x => x.i);
@@ -43,12 +45,17 @@ internal static class FoundationLocalBaseCalendarPlanner
                 counts = new();
                 reservations.Add(key, counts);
             }
-            var candidates = FoundationBaseMarginalRevenueEvaluator.EligibleActivities(
-                worker, idle, incidence, geography, policy, agriculture, null).Select(choice =>
+            var eligible = FoundationBaseMarginalRevenueEvaluator.EligibleActivities(
+                worker, idle, incidence, geography, policy, agriculture, null);
+            if (agriculture.BasicResources is not null)
             {
-                var output = choice.Crop is { } crop
-                    ? agriculture.Resolve(idle.Node, (CropId)crop)
-                    : (Commodity: worker.Commodity, WholeTurnOutput: worker.OutputMicroPerTurn);
+                eligible.RemoveAll(c => c.Role is PhysicalWorkerOccupation.Forestry or PhysicalWorkerOccupation.Mining);
+                eligible.Add((PhysicalWorkerOccupation.Forestry, null, PhysicalWorkerActivity.Producing));
+                eligible.Add((PhysicalWorkerOccupation.Mining, null, PhysicalWorkerActivity.Producing));
+            }
+            var candidates = eligible.Select(choice =>
+            {
+                var output = agriculture.ResolveActivity(worker, idle.Node, choice.Role, choice.Crop);
                 ulong goods = checked((ulong)((UInt128)output.WholeTurnOutput * idle.DurationMicro / 1_000_000UL));
                 ulong? observed = prices.TryGetValue((idle.Node, output.Commodity), out var price) ? price : null;
                 return new FoundationLocalBaseCandidate(choice.Role, choice.Crop, goods, observed,

@@ -833,6 +833,55 @@ public sealed class FoundationTemporalEconomicJournalGateTests
     }
 
     [Fact]
+    public void R22813LocalBasicResourcesUseDistinctCommoditiesAndActualEffort()
+    {
+        var (world, worker, _, _, incidence, fine) = Fixture();
+        var crops = Enum.GetValues<GlobalArena.Foundation.Agriculture.CropId>()
+            .ToDictionary(c => c, c => new CommodityId((uint)c));
+        var wood = new CommodityId(100U);
+        var stone = new CommodityId(101U);
+        var basic = new FoundationBasicResourceProductionPolicy(wood, stone, 6_000_000UL, 5_000_000UL);
+        var agriculture = new FoundationAgriculturalProductionPolicy(fine, incidence, crops, 1_000_000UL, basic);
+        var items = crops.Values.Append(wood).Append(stone).ToArray();
+        var demand = new FoundationActivityCommodityDemandPolicy(items,
+            Enum.GetValues<FoundationPhysicalDemandProfile>().SelectMany(profile => items.Select(c =>
+                new FoundationActivityCommodityDemandCoefficient(profile, c, 1_000_000UL))));
+        var policy = new FoundationAuthoritativeEconomicSettlementPolicy(demand,
+            new FoundationCommodityCargoConversionPolicy("r22813", items.Select(c =>
+                new FoundationCommodityCargoConversion(c, 1_000_000UL))),
+            world.Civilizations.Civilizations.Select(c => new FoundationPhysicalEconomicTaxRate(c, 0U)));
+        var node = worker.TacticalTileId!.Value;
+        Assert.Equal(FoundationFineSurfaceKind.Land, fine.SurfaceAtIndex((int)node.FineStrategicCellId.Value - 1));
+        var pair = world.Workers.Workers.Where(w => w.Owner == worker.Owner).OrderBy(w => w.Id.Value).Take(2).ToArray();
+        Assert.Equal(2, pair.Length);
+        var roster = world.Workers.Workers.Select(w => pair.Any(p => p.Id == w.Id)
+            ? new PhysicalWorkerRuntimeRecord(w.Id, w.Owner, worker.CellId, w.Commodity, w.OutputMicroPerTurn,
+                PhysicalWorkerActivity.Other, w.DemandMultiplierMicro, node, PhysicalWorkerOccupation.Unassigned) : w).ToArray();
+        var opening = world.WithWorkers(new PhysicalWorkerRuntimeState(roster,
+            tacticalLocationsAuthoritative: true, occupationsAuthoritative: true));
+        var calendar = roster.Select(w => new FoundationPersistentWorkerSlice(w.Id, w.TacticalTileId!.Value, 0U,
+            1_000_000U, PhysicalWorkerActivity.Other, PhysicalWorkerOccupation.Unassigned, null)).ToArray();
+        var requests = pair.Select(w => new FoundationBaseMarginalInterval(w.Id, 0U)).ToArray();
+        var planned = FoundationLocalBaseCalendarPlanner.Plan(opening, incidence, fine, policy, calendar, requests, agriculture);
+        Assert.Equal(PhysicalWorkerOccupation.Forestry, planned.Single(s => s.Worker == pair[0].Id).Occupation);
+        Assert.Equal(PhysicalWorkerOccupation.Mining, planned.Single(s => s.Worker == pair[1].Id).Occupation);
+        Assert.Equal(planned, FoundationLocalBaseCalendarPlanner.Plan(opening, incidence, fine, policy,
+            calendar.Reverse().ToArray(), requests.Reverse().ToArray(), agriculture));
+        var actual = FoundationTemporalEconomicTurnProjector.ProjectPersistent(opening, planned, demand, agriculture);
+        Assert.Equal(2, actual.Production.Count);
+        Assert.Equal(6_000_000UL, Assert.Single(actual.Production, p => p.Commodity == wood).ProducedMicro);
+        Assert.Equal(5_000_000UL, Assert.Single(actual.Production, p => p.Commodity == stone).ProducedMicro);
+        Assert.DoesNotContain(wood, agriculture.Commodities);
+        Assert.DoesNotContain(stone, agriculture.Commodities);
+        var selected = planned.Single(s => s.Worker == pair[0].Id);
+        var residual = planned.Where(s => s.Worker != selected.Worker).Append(selected with { StartMicro = 400_000U, DurationMicro = 600_000U })
+            .Append(selected with { DurationMicro = 400_000U, Activity = PhysicalWorkerActivity.Other, Occupation = PhysicalWorkerOccupation.Unassigned }).ToArray();
+        var partial = FoundationTemporalEconomicTurnProjector.ProjectPersistent(opening, residual, demand, agriculture);
+        Assert.Equal(3_600_000UL, Assert.Single(partial.Production, p => p.Commodity == wood).ProducedMicro);
+        Assert.Equal(600_000U, Assert.Single(partial.Production, p => p.Commodity == wood).EffortMicro);
+    }
+
+    [Fact]
     public void R22812ExperimentalHostPublishesSixCollectiveTurnsAndPreservesPrivateOrders()
     {
         var (world, worker, _, _, incidence, fine) = Fixture();
