@@ -130,6 +130,10 @@ public partial class Main
     private void AssertOperationalCardLayout(Rect2 bounds)
     {
         var objects = new[] { _hudUnitObject, _hudInfrastructureObject, _hudTerrainObject };
+        // Record full geometry before asserting so any remaining overflow
+        // can be diagnosed in one run. Require the complete local cards,
+        // not just their headings or the upper edge of the last object.
+        GD.Print($"GA_NEXT_R23062A_LAYOUT viewport={bounds} unit={_worldUnitCard!.GetGlobalRect()} infrastructure={_worldInfrastructureCard!.GetGlobalRect()} terrain={_worldTerrainCard!.GetGlobalRect()} planet={_worldPlanetCard!.GetGlobalRect()}");
         foreach (var panel in objects)
         {
             if (panel?.IsVisibleInTree() != true)
@@ -137,6 +141,12 @@ public partial class Main
             var rect = panel.GetGlobalRect();
             if (rect.Position.Y < bounds.Position.Y - 1f || rect.End.Y > bounds.End.Y + 1f)
                 throw new InvalidOperationException($"Operational object clipped: {panel.Name} {rect} in {bounds}");
+        }
+        foreach (var card in new[] { _worldUnitCard!, _worldInfrastructureCard!, _worldTerrainCard! })
+        {
+            var rect = card.GetGlobalRect();
+            if (rect.Position.Y < bounds.Position.Y - 1f || rect.End.Y > bounds.End.Y + 1f)
+                throw new InvalidOperationException($"Complete operational card clipped: {card.Name} {rect} in {bounds}");
         }
         if (_hudUnitActions?.IsVisibleInTree() != true ||
             _hudUnitObject!.IsAncestorOf(_hudUnitActions) ||

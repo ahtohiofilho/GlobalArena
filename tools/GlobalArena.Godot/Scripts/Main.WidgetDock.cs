@@ -22,10 +22,13 @@ public partial class Main
             Icon = GaHudWidgets.Icon(icon), Alignment = HorizontalAlignment.Left,
             IconAlignment = HorizontalAlignment.Left, CustomMinimumSize = new Vector2(0, 28),
             SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        GaVisualFoundation.StyleHudSectionHeader(header);
+        root.AddThemeConstantOverride("separation", 2);
         root.AddChild(header);
         root.MoveChild(header, 0);
         var content = new VBoxContainer { Name = $"GANextWidget{name}Content",
             SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        content.AddThemeConstantOverride("separation", 2);
         root.AddChild(content);
         foreach (var control in old.Skip(1)) control.Reparent(content);
         _widgetSections.Add(name, (header, content));
@@ -88,9 +91,10 @@ public partial class Main
         planetBody.MoveChild(planetActions, 0);
 
         // Compact only the widget-mode cards, not the shared windows/theme.
-        foreach (var card in new[] { _worldUnitCard, _worldInfrastructureCard, _worldTerrainCard, _worldPlanetCard })
-            card!.AddThemeStyleboxOverride("panel", GaVisualFoundation.HudCardSurface());
-        _worldLayerStack!.AddThemeConstantOverride("separation", 4);
+        foreach (var card in new[] { _worldUnitCard, _worldInfrastructureCard, _worldTerrainCard })
+            card!.AddThemeStyleboxOverride("panel", GaVisualFoundation.HudOperationalCardSurface());
+        _worldPlanetCard!.AddThemeStyleboxOverride("panel", GaVisualFoundation.HudCardSurface());
+        _worldLayerStack!.AddThemeConstantOverride("separation", 3);
         if (_worldUnitActivity is not null) _worldUnitActivity.Visible = false; // same activity in identity
         if (_localPendingLabel is not null) _localPendingLabel.Visible = false; // same queue in Unit
         if (_fineMovementDecision is not null) _fineMovementDecision.Visible = false; // move tooltip
