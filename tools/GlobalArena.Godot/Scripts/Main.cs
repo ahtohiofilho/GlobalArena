@@ -535,6 +535,7 @@ public partial class Main : Control
         RefreshCivilizationWindow();
         RefreshCityProduction();
         RefreshCityWorkers();
+        RefreshCityConnectionTrade();
         RefreshPersistentWorkerControls();
     }
 

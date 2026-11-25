@@ -102,6 +102,8 @@ public partial class Main
         connectionColumn.AddChild(new Label { Text = "Select a connection" });
         _cityConnectionDiagram = new GaLocalConnectionDiagram { Visible = false };
         connectionColumn.AddChild(_cityConnectionDiagram);
+        _cityTradeStatus = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        connectionColumn.AddChild(_cityTradeStatus);
         connectionColumn.AddChild(_cityLinksList);
         CreateCityProductionTab(tabs);
         CreateCityWorkersTab(tabs);
@@ -145,6 +147,8 @@ public partial class Main
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         body.AddChild(_cityLinkDetailText);
+        _connectionTradeDetail = new Label { Name = "GANextConnectionTradeDetail", AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        body.AddChild(_connectionTradeDetail);
         _connectionFunding = new VBoxContainer();
         body.AddChild(_connectionFunding);
         _connectionFunding.AddChild(new Label { Text = "Investment amount" });
@@ -191,6 +195,8 @@ public partial class Main
             _cityLinksList.RemoveChild(old);
             old.QueueFree();
         }
+        _cityTradeButtons.Clear();
+        if (_cityTradeStatus is not null) _cityTradeStatus.Text = "Select a city on the map.";
         CloseConnectionDetail();
         if (_cityConnectionDiagram is not null) _cityConnectionDiagram.Visible = false;
         _cityConnectionSource = null;
@@ -242,16 +248,18 @@ public partial class Main
             $"{rows.Count} direct connections.";
         foreach (var link in rows)
         {
-            var displayed = link;
-            var button = new Button
+            var edge = link.Edge;
+            var button = new Button { Alignment = HorizontalAlignment.Left };
+            button.Pressed += () =>
             {
-                Text = $"Node {link.Neighbor.FineStrategicCellId.Value}   " +
-                    $"| physical freight {FormatMoneyMicroForDisplay(link.UnitPhysicalFreightMicro)}/cargo",
-                Alignment = HorizontalAlignment.Left
+                var current = FoundationLocalConnectionsProjector.Read(host.Snapshot, host.Incidence, node)
+                    .Single(r => r.Edge == edge);
+                ShowCityConnectionDetail(current);
             };
-            button.Pressed += () => ShowCityConnectionDetail(displayed);
+            _cityTradeButtons.Add(edge, button);
             _cityLinksList.AddChild(button);
         }
+        RefreshCityConnectionTrade();
     }
 
     private void CloseConnectionDetail()
@@ -264,6 +272,7 @@ public partial class Main
         if (_cityWindowPanel is not null) _cityWindowPanel.Visible = true;
         RefreshCityProduction();
         RefreshCityWorkers();
+        RefreshCityConnectionTrade();
     }
 
     private void OnR227MapConnectionRequested(PhysicalTacticalEdgeId id)
@@ -307,6 +316,7 @@ public partial class Main
                 link.Neighbor.FineStrategicCellId.Value) + "\n" +
             ReadConnectionInvestment(_cityConnectionSource.Value,
                 link.Neighbor.FineStrategicCellId.Value);
+        RefreshConnectionTradeDetail(link);
         RefreshConnectionInvestmentControls();
     }
 

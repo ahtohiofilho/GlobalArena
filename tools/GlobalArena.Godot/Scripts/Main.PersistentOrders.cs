@@ -371,8 +371,10 @@ public partial class Main
         var location = worker.TacticalTileId;
         CloseR224WorkerWindow();
         ExerciseCityProductionReadout(host, location!.Value, 0UL);
+        ExerciseCityConnectionTradeReadout(host, location.Value, 0UL);
         EndFineCollectiveTurn();
         ExerciseCityProductionReadout(host, location.Value, 1UL);
+        ExerciseCityConnectionTradeReadout(host, location.Value, 1UL);
         var closed = host.Snapshot.Workers.Workers.Single(w => w.Id == worker.Id);
         if (host.StateHash == before || closed.TacticalTileId != location || closed.Activity != PhysicalWorkerActivity.Producing ||
             host.Snapshot.Treasury.LastSettledEconomicCycleOrdinal != 1UL ||
@@ -393,6 +395,7 @@ public partial class Main
         if (_cityProductionStatus?.Text.Contains("CYCLE 2") != true)
             throw new InvalidOperationException("Open production tab did not refresh after close.");
         ExerciseCityProductionReadout(host, location.Value, 2UL);
+        ExerciseCityConnectionTradeReadout(host, location.Value, 2UL);
         if (host.Snapshot.Treasury.LastSettledEconomicCycleOrdinal != 2UL ||
             host.Snapshot.Workers.Workers.Single(w => w.Id == worker.Id).Occupation != PhysicalWorkerOccupation.Forestry)
             throw new InvalidOperationException("Manual wood override did not close.");
@@ -408,7 +411,9 @@ public partial class Main
             host.Snapshot.WorkerOrders.Queues.Single(q => q.Worker == worker.Id).BaseActivity?.Mode != FoundationWorkerBaseMode.Automatic)
             throw new InvalidOperationException("Automatic preference did not close.");
         ExerciseCityProductionReadout(host, location.Value, 3UL);
+        ExerciseCityConnectionTradeReadout(host, location.Value, 3UL);
         ExerciseCityWorkersPrivacy(host, location.Value);
+        GD.Print("GA_NEXT_R2294_CONNECTION_TRADE_PASS before_close=true three_closes=true real_edges=true authorized_only=true");
         GD.Print("GA_NEXT_R2293_CITY_WORKERS_PASS scoped=true real_buttons=true private_commands=true return_to_city=true");
         GD.Print("GA_NEXT_R2292_CITY_PRODUCTION_PASS cycles=3 catalog=8 committed_only=true owner_scoped=true");
         GD.Print("GA_NEXT_R22813C_LOCAL_ECONOMY_UI_PASS three_closes=true automatic_default=true manual_override=true trade_published=true");
