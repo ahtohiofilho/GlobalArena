@@ -430,6 +430,7 @@ public partial class Main
             var before = host.StateHash;
             if (host.ExperimentalLocalEconomyEnabled)
             {
+                await ExerciseLayeredWorldDock(host);
                 ExerciseLocalEconomyPreview(host);
                 GetTree().Quit(0);
                 return;
