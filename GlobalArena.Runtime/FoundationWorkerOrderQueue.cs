@@ -66,6 +66,8 @@ public sealed class FoundationWorkerOrderQueue
     {
         Authorize(issuer);
         ArgumentNullException.ThrowIfNull(activity);
+        if (Orders.Any(o => o.Kind == FoundationWorkerOrderKind.Occupation))
+            throw new InvalidOperationException("Legacy occupation orders require explicit migration.");
         return new(Worker, Owner, NextId, ActiveOrderId, Orders, activity);
     }
 
@@ -92,6 +94,8 @@ public sealed class FoundationWorkerOrderQueue
         ulong? projectId = null, PhysicalWorkerOccupation? occupation = null, byte? crop = null)
     {
         Authorize(issuer);
+        if (BaseActivity is not null && kind == FoundationWorkerOrderKind.Occupation)
+            throw new InvalidOperationException("Change base activity instead of inserting an indefinite task.");
         RequireInsertionIndex(index, Orders.Count);
         var rows = Orders.ToList();
         rows.Insert(index, new FoundationPersistentWorkerIntent(NextId, kind, destination, projectId, occupation, crop));
@@ -103,7 +107,7 @@ public sealed class FoundationWorkerOrderQueue
         Authorize(issuer);
         var rows = Orders.ToList();
         rows.RemoveAt(EditableIndex(id));
-        return new(Worker, Owner, NextId, ActiveOrderId, rows);
+        return new(Worker, Owner, NextId, ActiveOrderId, rows, BaseActivity);
     }
 
     /// <summary>Index in the final queue, after removing the moved item.</summary>
@@ -116,7 +120,7 @@ public sealed class FoundationWorkerOrderQueue
         rows.RemoveAt(old);
         RequireInsertionIndex(finalIndex, rows.Count);
         rows.Insert(finalIndex, item);
-        return new(Worker, Owner, NextId, ActiveOrderId, rows);
+        return new(Worker, Owner, NextId, ActiveOrderId, rows, BaseActivity);
     }
 
     // These are value-model lifecycle transitions, not authority to execute
