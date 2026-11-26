@@ -70,6 +70,8 @@ public sealed record PhysicalWorkerRuntimeRecord
     // Null for pre-R217 founders whose birthplace is not known.
     public PhysicalTacticalTileId? NatalNode { get; }
     public FoundationCityId? NatalCity { get; }
+    // Null preserves legacy demographic rules; zero is an enabled worker with weight one.
+    public ulong? BirthWaitTurns { get; }
 
     public PhysicalWorkerRuntimeRecord(
         PhysicalWorkerId id, CivilizationId owner, StrategicCellId cellId,
@@ -77,11 +79,13 @@ public sealed record PhysicalWorkerRuntimeRecord
         PhysicalWorkerActivity activity, uint demandMultiplierMicro = 1_000_000U,
         PhysicalTacticalTileId? tacticalTileId = null,
         PhysicalWorkerOccupation? occupation = null,
-        PhysicalTacticalTileId? natalNode = null, FoundationCityId? natalCity = null)
+        PhysicalTacticalTileId? natalNode = null, FoundationCityId? natalCity = null,
+        ulong? birthWaitTurns = null)
     {
         if (!id.IsValid || !owner.IsValid || !cellId.IsValid ||
             !commodity.IsValid || !Enum.IsDefined(activity) ||
             demandMultiplierMicro == 0U ||
+            (birthWaitTurns.HasValue && (!occupation.HasValue || birthWaitTurns.Value == ulong.MaxValue)) ||
             (natalCity.HasValue && (!natalCity.Value.IsValid || !natalNode.HasValue)) ||
             (natalNode.HasValue && (!natalNode.Value.IsValid || !tacticalTileId.HasValue ||
                 natalNode.Value.FineGoldbergParameters != tacticalTileId.Value.FineGoldbergParameters ||
@@ -106,7 +110,12 @@ public sealed record PhysicalWorkerRuntimeRecord
         Occupation = occupation;
         NatalNode = natalNode;
         NatalCity = natalCity;
+        BirthWaitTurns = birthWaitTurns;
     }
+
+    public PhysicalWorkerRuntimeRecord WithBirthWaitTurns(ulong turns) =>
+        new(Id, Owner, CellId, Commodity, OutputMicroPerTurn, Activity, DemandMultiplierMicro,
+            TacticalTileId, Occupation, NatalNode, NatalCity, turns);
 
     public PhysicalWorkerRuntimeRecord WithLocationAndActivity(
         StrategicCellId cell, PhysicalWorkerActivity activity)
@@ -115,7 +124,7 @@ public sealed record PhysicalWorkerRuntimeRecord
             throw new InvalidOperationException(
                 "v10 physical workers cannot move via v9 coarse Goldberg cells.");
         return new(Id, Owner, cell, Commodity, OutputMicroPerTurn,
-            activity, DemandMultiplierMicro, occupation: Occupation, natalNode: NatalNode, natalCity: NatalCity);
+            activity, DemandMultiplierMicro, occupation: Occupation, natalNode: NatalNode, natalCity: NatalCity, birthWaitTurns: BirthWaitTurns);
     }
 
     /// <summary>
@@ -134,7 +143,7 @@ public sealed record PhysicalWorkerRuntimeRecord
             throw new InvalidOperationException(
                 "Occupation assignment needs a different valid v11 productive role.");
         return new(Id, Owner, CellId, Commodity, OutputMicroPerTurn,
-            Activity, DemandMultiplierMicro, TacticalTileId, nextOccupation, NatalNode, NatalCity);
+            Activity, DemandMultiplierMicro, TacticalTileId, nextOccupation, NatalNode, NatalCity, BirthWaitTurns);
     }
 
     /// <summary>
@@ -155,7 +164,7 @@ public sealed record PhysicalWorkerRuntimeRecord
             throw new InvalidOperationException(
                 "Atomic assignment requires a real v11 worker at a compatible fine tile.");
         return new(Id, Owner, presentationRegion, Commodity,
-            OutputMicroPerTurn, activity, DemandMultiplierMicro, tile, occupation, NatalNode, NatalCity);
+            OutputMicroPerTurn, activity, DemandMultiplierMicro, tile, occupation, NatalNode, NatalCity, BirthWaitTurns);
     }
 
     public PhysicalWorkerRuntimeRecord WithTacticalLocationAndActivity(
@@ -168,7 +177,7 @@ public sealed record PhysicalWorkerRuntimeRecord
             throw new InvalidOperationException(
                 "Tactical movement requires an existing compatible v10 position.");
         return new(Id, Owner, presentationRegion, Commodity, OutputMicroPerTurn,
-            activity, DemandMultiplierMicro, destination, Occupation, NatalNode, NatalCity);
+            activity, DemandMultiplierMicro, destination, Occupation, NatalNode, NatalCity, BirthWaitTurns);
     }
 }
 
@@ -227,6 +236,8 @@ public sealed class PhysicalWorkerRuntimeState
                     "All tactical worker positions must use one fine topology.");
         }
 
+        if (workers.Any(w => w.BirthWaitTurns.HasValue) && workers.Any(w => !w.BirthWaitTurns.HasValue))
+            throw new ArgumentException("Individual demographic state must cover the entire census.");
         var sorted = workers.OrderBy(x => x.Id.Value).ToArray();
         for (var index = 1; index < sorted.Length; index++)
         {
