@@ -477,6 +477,12 @@ public partial class Main
                     GetTree().Quit(0);
                     return;
                 }
+                if (GaExplicitEconomicQaConfiguration.DemographicPreviewEnabled)
+                {
+                    await ExerciseDemographicPreview(host);
+                    GetTree().Quit(0);
+                    return;
+                }
                 await ExerciseLayeredWorldDock(host);
                 await ExerciseWidgetDock(host);
                 ExerciseWorldPlanet(host);

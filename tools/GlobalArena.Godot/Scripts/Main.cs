@@ -798,6 +798,8 @@ public partial class Main : Control
                     $"produced_micro={settlement.ProducedGoodsMicro} " +
                     "source=authoritative_journal privacy=participant");
             }
+            if (GaExplicitEconomicQaConfiguration.DemographicPreviewEnabled)
+                _lastDemographicPreviewReceipt = receipt;
             GD.Print($"GA_NEXT_FINE_HUMAN_AI_COMMIT turn={receipt.Turn.Value} " +
                 $"human={humanCount} ai={aiCount} " +
                 $"rev={receipt.Revision} replay={receipt.ReplayMatched} " +

@@ -35,6 +35,28 @@ public partial class TacticalContextPreview
         Array.AsReadOnly(_localSiteMarkers.Select(x =>
             (x.TileId, x.PolygonCentroid)).ToArray());
 
+    internal float? PresentedSiteDiameter(ulong tileId) =>
+        _localSiteMarkers.SingleOrDefault(m => m.TileId == tileId)?.Dot.Size.X;
+
+    // Acceptance only: inspect the actual rendered dot, not a calculated
+    // substitute. Use the existing geographic camera path for remote sites.
+    internal float InspectPopulationMarkerForSmoke(ulong tileId)
+    {
+        var marker = _localSiteMarkers.SingleOrDefault(m => m.TileId == tileId);
+        if (marker?.Dot.IsVisibleInTree() != true)
+        {
+            var geometry = _cachedFineWorld?.StrategicSphericalGeometry
+                ?? throw new InvalidOperationException("Population inspection requires signed geometry.");
+            CenterOnGeography(ConvertPoint(geometry.GetCell(new StrategicCellId(tileId)).Center).Normalized());
+            PositionLocalSiteMarkers();
+            marker = _localSiteMarkers.SingleOrDefault(m => m.TileId == tileId);
+        }
+        if (marker?.Dot.IsVisibleInTree() != true)
+            throw new InvalidOperationException($"Occupied site {tileId} has no visible dot after geographic focus.");
+        AssertSitePopulationPresentation();
+        return marker.Dot.Size.X;
+    }
+
     internal void AssertSitePopulationPresentation()
     {
         foreach (var marker in _localSiteMarkers)
