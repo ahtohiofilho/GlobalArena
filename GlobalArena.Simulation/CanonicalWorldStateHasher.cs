@@ -39,6 +39,7 @@ public sealed class CanonicalWorldStateHasher
     public const uint BaseActivityFormatVersion = 23U;
     public const uint LocalPriceHistoryFormatVersion = 24U;
     public const uint IndividualDemographyFormatVersion = 25U;
+    public const uint UniformCityDemographyFormatVersion = 26U;
 
     private static readonly byte[] Magic =
     {
@@ -54,7 +55,9 @@ public sealed class CanonicalWorldStateHasher
         ArgumentNullException.ThrowIfNull(
             worldState);
 
-        var version = worldState.Workers.Workers.Any(w => w.BirthWaitTurns.HasValue)
+        var version = worldState.Workers.Workers.Any(w => w.UniformCityDemography)
+            ? UniformCityDemographyFormatVersion
+            : worldState.Workers.Workers.Any(w => w.BirthWaitTurns.HasValue)
             ? IndividualDemographyFormatVersion
             : worldState.Treasury.LocalPriceHistory is not null
             ? LocalPriceHistoryFormatVersion
@@ -633,6 +636,12 @@ public sealed class CanonicalWorldStateHasher
                 AppendUInt64(hash, worker.Id.Value);
                 AppendUInt64(hash, worker.BirthWaitTurns ?? throw new InvalidOperationException("Missing demographic counter."));
             }
+        }
+
+        if (version == UniformCityDemographyFormatVersion)
+        {
+            AppendUInt32(hash, 53U);
+            AppendUInt32(hash, 1U); // Uniform-city policy, no per-worker lottery history.
         }
 
         var digest =
