@@ -260,6 +260,7 @@ jobs:
           diff -u docs/fixtures/GA-NEXT-R232A-UNIFORM-CITY-50-HASHES.txt "$RUNNER_TEMP/r232b-hashes.txt"
           echo 'GA_NEXT_R232B_BASELINE_EQUIVALENCE_PASS cycles=50 hash_v=26'
           grep -E 'GA_NEXT_R232D_DISPERSED_PASS through=100 population=201 own_sites=8 moves=7 travel_closes=[1-9][0-9]* stationary_closes=[1-9][0-9]* max_edges=[1-9][0-9]* positive_trade=true replay=true$' "$RUNNER_TEMP/uniform-city.log"
+          grep -q 'GA_NEXT_VISUAL02A_LABELS_PASS pure_collision=true actual_sites=8 dots_preserved=true hash_unchanged=true' "$RUNNER_TEMP/uniform-city.log"
           for cycle in $(seq 51 100); do
             grep -E "GA_NEXT_R232D_CYCLE cycle=$cycle stage=(expansion|stationary) own_sites=[1-9][0-9]* workers=[1-9][0-9]* edges=[0-9]+ traveled=(True|False) replay=true$" "$RUNNER_TEMP/uniform-city.log"
           done
@@ -312,6 +313,7 @@ jobs:
           diff -u docs/fixtures/GA-NEXT-R232A-UNIFORM-CITY-50-HASHES.txt "$RUNNER_TEMP/r232e-optimized-50-hashes.txt"
           echo 'GA_NEXT_R232B_BASELINE_EQUIVALENCE_PASS cycles=50 hash_v=26'
           grep -E 'GA_NEXT_R232D_DISPERSED_PASS through=100 population=201 own_sites=8 moves=7 travel_closes=[1-9][0-9]* stationary_closes=[1-9][0-9]* max_edges=[1-9][0-9]* positive_trade=true replay=true$' "$RUNNER_TEMP/uniform-city-optimized.log"
+          grep -q 'GA_NEXT_VISUAL02A_LABELS_PASS pure_collision=true actual_sites=8 dots_preserved=true hash_unchanged=true' "$RUNNER_TEMP/uniform-city-optimized.log"
           for cycle in $(seq 51 100); do
             grep -E "GA_NEXT_R232D_CYCLE cycle=$cycle stage=(expansion|stationary) own_sites=[1-9][0-9]* workers=[1-9][0-9]* edges=[0-9]+ traveled=(True|False) replay=true$" "$RUNNER_TEMP/uniform-city-optimized.log"
           done
