@@ -28,6 +28,12 @@ public static class GaVisualFoundation
     public const int ControlFontSize = 12;
     public const int TableFontSize = 11;
     public const int CaptionFontSize = 10;
+    internal const int HudIdentityFontSize = 13;
+    internal const int HudSectionFontSize = 11;
+    internal const int HudMetricFontSize = 12;
+    internal const int HudFeedbackFontSize = 11;
+    internal static readonly Color HudIdentityText = new("#eeeeee");
+    internal static readonly Color HudMetricText = new("#c7c7c7");
 
     private static StyleBoxFlat SurfaceBox(
         Color background, Color border, int radius, int borderWidth,
@@ -92,7 +98,33 @@ public static class GaVisualFoundation
         header.AddThemeStyleboxOverride("pressed", HudFlat(Raised, Raised, 3, 0));
         header.AddThemeStyleboxOverride("focus", HudFlat(Colors.Transparent, Accent, 3, 0, 1));
         header.AddThemeColorOverride("font_color", Muted);
-        header.AddThemeFontSizeOverride("font_size", CaptionFontSize);
+        header.AddThemeFontSizeOverride("font_size", HudSectionFontSize);
+    }
+
+    // Explicit information roles on native controls; no new fonts, nodes,
+    // layout passes or runtime polling. The identity is the primary readout.
+    internal static void StyleHudIdentity(Control label)
+    {
+        label.AddThemeFontSizeOverride("font_size", HudIdentityFontSize);
+        label.AddThemeColorOverride("font_color", HudIdentityText);
+    }
+
+    internal static void StyleHudMetric(Label label)
+    {
+        label.AddThemeFontSizeOverride("font_size", HudMetricFontSize);
+        label.AddThemeColorOverride("font_color", HudMetricText);
+    }
+
+    internal static void StyleHudSectionTitle(Label label)
+    {
+        label.AddThemeFontSizeOverride("font_size", HudSectionFontSize);
+        label.AddThemeColorOverride("font_color", Muted);
+    }
+
+    internal static void StyleHudFeedback(Label label)
+    {
+        label.AddThemeFontSizeOverride("font_size", HudFeedbackFontSize);
+        label.AddThemeColorOverride("font_color", Warm);
     }
 
     internal static StyleBoxFlat HudObjectSurface() =>
@@ -191,7 +223,7 @@ public static class GaVisualFoundation
         }
         var exit = new Button
         {
-            Text = "✕", TooltipText = "Fechar janela (Esc)",
+            Text = "✕", TooltipText = "Close window (Esc)",
             CustomMinimumSize = new Vector2(29f, 29f)
         };
         exit.Pressed += close;
