@@ -19,7 +19,10 @@ public partial class Main
         var initial = host.Snapshot.Workers.Workers.ToArray();
         var owners = initial.Select(w => w.Owner).Distinct().ToArray();
         bool unitOpening = GaExplicitEconomicQaConfiguration.UnitOpeningPreviewEnabled;
+        bool uniformCity = GaExplicitEconomicQaConfiguration.UniformCityDemographyPreviewEnabled;
         bool individual = GaExplicitEconomicQaConfiguration.IndividualDemographyPreviewEnabled;
+        if (uniformCity && initial.Any(w => !w.UniformCityDemography || w.BirthWaitTurns.HasValue))
+            throw new InvalidOperationException("Uniform city founders must not carry individual lottery weights.");
         if (individual && initial.Any(w => w.BirthWaitTurns != 0UL))
             throw new InvalidOperationException("All founders must start with weight one.");
         if (unitOpening && (owners.Length != 2 || initial.Length != owners.Length ||
@@ -161,7 +164,8 @@ public partial class Main
                     GD.Print($"GA_NEXT_R2318_OPENING_REFERENCE workers={before.Length} aggregate_seller_net_scaled={receipt.TemporalEconomicSettlement!.SellerNetScaled} diagnostic_only=true");
             }
             if (bounded) AuditLocalAutomaticAllocation(host, opening, receipt, allocationPriceHistory);
-            if (individual) AuditIndividualDemography(host, opening, receipt);
+            if (uniformCity) AuditUniformCityDemography(host, opening, receipt);
+            else if (individual) AuditIndividualDemography(host, opening, receipt);
             else if (unitOpening) AuditUnitOpeningDemography(host, opening, receipt);
             if (bounded && !unitOpening)
                 cropRows += ExerciseCityWorkerClosedCropRows(host, receipt);
@@ -191,6 +195,12 @@ public partial class Main
             }
             GD.Print("GA_NEXT_R2317_BOUNDED_TRADE_PASS cycles=9 positive_trade=true replay=true");
             if (unitOpening) GD.Print("GA_NEXT_R2318_UNIT_OPENING_PASS cycles=9 individual_demand=true initial_per_owner=1 replay=true");
+            if (uniformCity)
+            {
+                if (owners.Any(o => host.Snapshot.Workers.Workers.Count(w => w.Owner == o) != 10))
+                    throw new InvalidOperationException("Nine stationary closes must yield ten workers per civilization.");
+                GD.Print("GA_NEXT_R23112_UNIFORM_PASS cycles=9 population_per_owner=10 replay=true");
+            }
             if (individual)
             {
                 if (owners.Any(o => host.Snapshot.Workers.Workers.Count(w => w.Owner == o) != 10))
