@@ -125,7 +125,10 @@ public partial class Main
                 }
                 // Equivalent exact comparison to the floor sqrt admission
                 // rule: floor(sqrt(N)) >= ceil(required), iff N >= required^2.
-                BigInteger costScaled = (BigInteger)policy.Cargo.CargoMicro(item, unit) * rate;
+                // This diagnostic is restricted to the explicit QA profile above,
+                // whose cargo conversion is authored by the same shared constant.
+                // CargoMicro is simulation-internal; do not widen that API.
+                BigInteger costScaled = (BigInteger)GaExplicitEconomicQaConfiguration.QaCargoMicroPerWholeCommodity * rate;
                 BigInteger denominator = (BigInteger)unit * (10_000U - tax);
                 BigInteger minimumRequired = (costScaled * 10_000U + denominator - 1) / denominator;
                 bool safe = (BigInteger)target.Value * unit * unit >= minimumRequired * minimumRequired * totalSupply[item];
