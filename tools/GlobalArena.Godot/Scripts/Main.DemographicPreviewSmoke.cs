@@ -1,5 +1,6 @@
 using Godot;
 using GlobalArena.Runtime;
+using GlobalArena.Runtime.PersistentOrders;
 using GlobalArena.Simulation.Foundation;
 using GlobalArena.World;
 
@@ -11,6 +12,50 @@ public partial class Main
     // is presentation, not the authority for the demographic assertion.
     private FoundationTacticalCollectiveReceipt? _lastDemographicPreviewReceipt;
 
+    // Real E-close and actual orders: move every own worker across a
+    // natural 1.4-turn edge, then verify skip and resumption on arrival.
+    private async Task ExerciseUniformCityTransit(FoundationTacticalHumanAiTurnHost host)
+    {
+        var own = host.Snapshot.Workers.Workers.Where(w => w.Owner == _humanCivilization).ToArray();
+        var source = own[0].TacticalTileId!.Value;
+        if (own.Length != 10 || own.Any(w => w.TacticalTileId != source))
+            throw new InvalidOperationException("Expected stationary own city before travel acceptance.");
+        var fine = _r123FineGeography ?? throw new InvalidOperationException("Missing signed geography.");
+        var destination = host.Incidence.FineTopology.Cells[(int)source.FineStrategicCellId.Value - 1]
+            .AdjacentCellIds.First(c => fine.CrossingAtIndices((int)source.FineStrategicCellId.Value - 1,
+                (int)c.Value - 1) == FoundationFineTransportCrossingKind.Ground);
+        var target = new PhysicalTacticalTileId(host.Incidence.Refinement.FineParameters, destination);
+        foreach (var worker in own)
+            host.QueueHumanPersistentEdit(_humanCivilization, new FoundationPersistentOrderEdit(
+                _humanCivilization, worker.Id, FoundationPersistentOrderEditKind.Insert,
+                Index: 0, OrderKind: FoundationWorkerOrderKind.Move, Destination: target));
+        async Task<FoundationTacticalCollectiveReceipt> Close()
+        {
+            _lastDemographicPreviewReceipt = null;
+            var viewport = GetViewport();
+            viewport.PushInput(new InputEventKey { Keycode = Key.E, Pressed = true, Echo = false }, true);
+            for (int i = 0; i < 6; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            viewport.PushInput(new InputEventKey { Keycode = Key.E, Pressed = false, Echo = false }, true);
+            for (int i = 0; i < 6; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var result = _lastDemographicPreviewReceipt ?? throw new InvalidOperationException("Missing real travel close.");
+            if (!result.ReplayMatched || result.Hash != host.StateHash || result.BirthBatch is null)
+                throw new InvalidOperationException("Travel close did not replay.");
+            return result;
+        }
+        var crossing = await Close();
+        if (crossing.BirthBatch!.Newborns.Count != 1 ||
+            crossing.BirthBatch.Newborns.Any(w => w.Owner == _humanCivilization) ||
+            own.Any(w => !host.Snapshot.EdgeTravels.Pending.Any(p => p.Worker == w.Id)))
+            throw new InvalidOperationException("All-own-transit turn incorrectly allowed birth.");
+        var arrived = await Close();
+        var child = arrived.BirthBatch!.Newborns.Single(w => w.Owner == _humanCivilization);
+        if (arrived.BirthBatch.Newborns.Count != 2 || child.NatalNode != target ||
+            own.Any(w => host.Snapshot.Workers.Workers.Single(p => p.Id == w.Id).TacticalTileId != target) ||
+            host.Snapshot.Workers.Workers.Count(w => w.Owner == _humanCivilization) != 11)
+            throw new InvalidOperationException("Arrival birth was not resumed at destination or skipped birth was accumulated.");
+        GD.Print("GA_NEXT_R23112_TRANSIT_PASS actual_crossing=true birth_skipped=true resumed_at_destination=true no_carry=true replay=true");
+    }
+
     // Real normal preview: no worker relocations, no manual orders, no
     // additional commodities, no special market policy or invented sites.
     private async Task ExerciseDemographicPreview(FoundationTacticalHumanAiTurnHost host)
@@ -19,7 +64,10 @@ public partial class Main
         var initial = host.Snapshot.Workers.Workers.ToArray();
         var owners = initial.Select(w => w.Owner).Distinct().ToArray();
         bool unitOpening = GaExplicitEconomicQaConfiguration.UnitOpeningPreviewEnabled;
+        bool uniformCity = GaExplicitEconomicQaConfiguration.UniformCityDemographyPreviewEnabled;
         bool individual = GaExplicitEconomicQaConfiguration.IndividualDemographyPreviewEnabled;
+        if (uniformCity && initial.Any(w => !w.UniformCityDemography || w.BirthWaitTurns.HasValue))
+            throw new InvalidOperationException("Uniform city founders must not carry individual lottery weights.");
         if (individual && initial.Any(w => w.BirthWaitTurns != 0UL))
             throw new InvalidOperationException("All founders must start with weight one.");
         if (unitOpening && (owners.Length != 2 || initial.Length != owners.Length ||
@@ -161,7 +209,8 @@ public partial class Main
                     GD.Print($"GA_NEXT_R2318_OPENING_REFERENCE workers={before.Length} aggregate_seller_net_scaled={receipt.TemporalEconomicSettlement!.SellerNetScaled} diagnostic_only=true");
             }
             if (bounded) AuditLocalAutomaticAllocation(host, opening, receipt, allocationPriceHistory);
-            if (individual) AuditIndividualDemography(host, opening, receipt);
+            if (uniformCity) AuditUniformCityDemography(host, opening, receipt);
+            else if (individual) AuditIndividualDemography(host, opening, receipt);
             else if (unitOpening) AuditUnitOpeningDemography(host, opening, receipt);
             if (bounded && !unitOpening)
                 cropRows += ExerciseCityWorkerClosedCropRows(host, receipt);
@@ -191,6 +240,13 @@ public partial class Main
             }
             GD.Print("GA_NEXT_R2317_BOUNDED_TRADE_PASS cycles=9 positive_trade=true replay=true");
             if (unitOpening) GD.Print("GA_NEXT_R2318_UNIT_OPENING_PASS cycles=9 individual_demand=true initial_per_owner=1 replay=true");
+            if (uniformCity)
+            {
+                if (owners.Any(o => host.Snapshot.Workers.Workers.Count(w => w.Owner == o) != 10))
+                    throw new InvalidOperationException("Nine stationary closes must yield ten workers per civilization.");
+                GD.Print("GA_NEXT_R23112_UNIFORM_PASS cycles=9 population_per_owner=10 replay=true");
+                await ExerciseUniformCityTransit(host);
+            }
             if (individual)
             {
                 if (owners.Any(o => host.Snapshot.Workers.Workers.Count(w => w.Owner == o) != 10))

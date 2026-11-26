@@ -52,6 +52,9 @@ internal static class GaExplicitEconomicQaConfiguration
     internal static bool BoundedTradePreviewEnabled =>
         System.Environment.GetEnvironmentVariable("GA_NEXT_BOUNDED_TRADE_PREVIEW") == "1";
 
+    internal static bool UniformCityDemographyPreviewEnabled =>
+        System.Environment.GetEnvironmentVariable("GA_NEXT_R23112_UNIFORM_CITY_DEMOGRAPHY") == "1";
+
     internal static bool IndividualDemographyPreviewEnabled =>
         System.Environment.GetEnvironmentVariable("GA_NEXT_R2319_INDIVIDUAL_DEMOGRAPHY") == "1";
 
@@ -127,6 +130,8 @@ internal static class GaExplicitEconomicQaConfiguration
         var tradeFixture = TradeFixtureMode();
         bool growth = DemographicPreviewEnabled;
         bool unitOpening = UnitOpeningPreviewEnabled;
+        if (UniformCityDemographyPreviewEnabled && (!unitOpening || IndividualDemographyPreviewEnabled))
+            throw new InvalidOperationException("Uniform city demography requires unit opening and no legacy individual mode.");
         if (IndividualDemographyPreviewEnabled && !unitOpening)
             throw new InvalidOperationException("Individual demographic preview requires the one-worker opening.");
         if (unitOpening && (!BoundedTradePreviewEnabled || !growth || !enableLocalEconomy || tradeFixture is not null))
@@ -263,6 +268,9 @@ internal static class GaExplicitEconomicQaConfiguration
                 new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>())));
         if (enablePersistentOrders)
             demo.Session.AcceptSnapshot(demo.Snapshot.DeployInitialWorkerOrders());
+        if (UniformCityDemographyPreviewEnabled)
+            demo.Session.AcceptSnapshot(demo.Snapshot.WithWorkers(new PhysicalWorkerRuntimeState(
+                demo.Snapshot.Workers.Workers.Select(w => w.WithUniformCityDemography()), true, true)));
         if (IndividualDemographyPreviewEnabled)
             demo.Session.AcceptSnapshot(demo.Snapshot.WithWorkers(new PhysicalWorkerRuntimeState(
                 demo.Snapshot.Workers.Workers.Select(w => w.WithBirthWaitTurns(0UL)), true, true)));

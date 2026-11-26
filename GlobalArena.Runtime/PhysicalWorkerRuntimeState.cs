@@ -72,6 +72,8 @@ public sealed record PhysicalWorkerRuntimeRecord
     public FoundationCityId? NatalCity { get; }
     // Null preserves legacy demographic rules; zero is an enabled worker with weight one.
     public ulong? BirthWaitTurns { get; }
+    // Policy marker only, not a per-worker weight or history.
+    public bool UniformCityDemography { get; }
 
     public PhysicalWorkerRuntimeRecord(
         PhysicalWorkerId id, CivilizationId owner, StrategicCellId cellId,
@@ -80,11 +82,12 @@ public sealed record PhysicalWorkerRuntimeRecord
         PhysicalTacticalTileId? tacticalTileId = null,
         PhysicalWorkerOccupation? occupation = null,
         PhysicalTacticalTileId? natalNode = null, FoundationCityId? natalCity = null,
-        ulong? birthWaitTurns = null)
+        ulong? birthWaitTurns = null, bool uniformCityDemography = false)
     {
         if (!id.IsValid || !owner.IsValid || !cellId.IsValid ||
             !commodity.IsValid || !Enum.IsDefined(activity) ||
             demandMultiplierMicro == 0U ||
+            (uniformCityDemography && (!occupation.HasValue || birthWaitTurns.HasValue)) ||
             (birthWaitTurns.HasValue && (!occupation.HasValue || birthWaitTurns.Value == ulong.MaxValue)) ||
             (natalCity.HasValue && (!natalCity.Value.IsValid || !natalNode.HasValue)) ||
             (natalNode.HasValue && (!natalNode.Value.IsValid || !tacticalTileId.HasValue ||
@@ -111,7 +114,12 @@ public sealed record PhysicalWorkerRuntimeRecord
         NatalNode = natalNode;
         NatalCity = natalCity;
         BirthWaitTurns = birthWaitTurns;
+        UniformCityDemography = uniformCityDemography;
     }
+
+    public PhysicalWorkerRuntimeRecord WithUniformCityDemography() =>
+        new(Id, Owner, CellId, Commodity, OutputMicroPerTurn, Activity, DemandMultiplierMicro,
+            TacticalTileId, Occupation, NatalNode, NatalCity, uniformCityDemography: true);
 
     public PhysicalWorkerRuntimeRecord WithBirthWaitTurns(ulong turns) =>
         new(Id, Owner, CellId, Commodity, OutputMicroPerTurn, Activity, DemandMultiplierMicro,
@@ -124,7 +132,7 @@ public sealed record PhysicalWorkerRuntimeRecord
             throw new InvalidOperationException(
                 "v10 physical workers cannot move via v9 coarse Goldberg cells.");
         return new(Id, Owner, cell, Commodity, OutputMicroPerTurn,
-            activity, DemandMultiplierMicro, occupation: Occupation, natalNode: NatalNode, natalCity: NatalCity, birthWaitTurns: BirthWaitTurns);
+            activity, DemandMultiplierMicro, occupation: Occupation, natalNode: NatalNode, natalCity: NatalCity, birthWaitTurns: BirthWaitTurns, uniformCityDemography: UniformCityDemography);
     }
 
     /// <summary>
@@ -143,7 +151,7 @@ public sealed record PhysicalWorkerRuntimeRecord
             throw new InvalidOperationException(
                 "Occupation assignment needs a different valid v11 productive role.");
         return new(Id, Owner, CellId, Commodity, OutputMicroPerTurn,
-            Activity, DemandMultiplierMicro, TacticalTileId, nextOccupation, NatalNode, NatalCity, BirthWaitTurns);
+            Activity, DemandMultiplierMicro, TacticalTileId, nextOccupation, NatalNode, NatalCity, BirthWaitTurns, UniformCityDemography);
     }
 
     /// <summary>
@@ -164,7 +172,7 @@ public sealed record PhysicalWorkerRuntimeRecord
             throw new InvalidOperationException(
                 "Atomic assignment requires a real v11 worker at a compatible fine tile.");
         return new(Id, Owner, presentationRegion, Commodity,
-            OutputMicroPerTurn, activity, DemandMultiplierMicro, tile, occupation, NatalNode, NatalCity, BirthWaitTurns);
+            OutputMicroPerTurn, activity, DemandMultiplierMicro, tile, occupation, NatalNode, NatalCity, BirthWaitTurns, UniformCityDemography);
     }
 
     public PhysicalWorkerRuntimeRecord WithTacticalLocationAndActivity(
@@ -177,7 +185,7 @@ public sealed record PhysicalWorkerRuntimeRecord
             throw new InvalidOperationException(
                 "Tactical movement requires an existing compatible v10 position.");
         return new(Id, Owner, presentationRegion, Commodity, OutputMicroPerTurn,
-            activity, DemandMultiplierMicro, destination, Occupation, NatalNode, NatalCity, BirthWaitTurns);
+            activity, DemandMultiplierMicro, destination, Occupation, NatalNode, NatalCity, BirthWaitTurns, UniformCityDemography);
     }
 }
 
@@ -238,6 +246,8 @@ public sealed class PhysicalWorkerRuntimeState
 
         if (workers.Any(w => w.BirthWaitTurns.HasValue) && workers.Any(w => !w.BirthWaitTurns.HasValue))
             throw new ArgumentException("Individual demographic state must cover the entire census.");
+        if (workers.Any(w => w.UniformCityDemography) && workers.Any(w => !w.UniformCityDemography))
+            throw new ArgumentException("Uniform city demographic policy must cover the entire census.");
         var sorted = workers.OrderBy(x => x.Id.Value).ToArray();
         for (var index = 1; index < sorted.Length; index++)
         {
