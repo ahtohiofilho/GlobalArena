@@ -1347,6 +1347,7 @@ public partial class Main : Control
         operations.AddChild(operationsPanel);
         operationsPanel.AddThemeStyleboxOverride("panel", LayeredWorldDock
             ? GaVisualFoundation.HudDockSurface() : GaVisualFoundation.WindowSurface());
+        if (LayeredWorldDock) GaHudEffects.AttachSurface(operationsPanel, GaHudPlane.Atmosphere);
         var operationsColumn = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
         operationsPanel.AddChild(operationsColumn);
         Button? cityNavigation = null, civilizationNavigation = null;
