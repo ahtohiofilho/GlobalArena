@@ -58,6 +58,7 @@ public partial class Main
         bool bandChanged = false;
         bool bounded = GaExplicitEconomicQaConfiguration.BoundedTradePreviewEnabled;
         bool positiveTrade = false;
+        int cropRows = 0;
         for (ulong cycle = 1; cycle <= 9; cycle++)
         {
             var opening = host.Snapshot;
@@ -148,6 +149,8 @@ public partial class Main
                 if (cycle == 1)
                     GD.Print($"GA_NEXT_R2318_OPENING_REFERENCE workers={before.Length} aggregate_seller_net_scaled={receipt.TemporalEconomicSettlement!.SellerNetScaled} diagnostic_only=true");
             }
+            if (bounded && !unitOpening)
+                cropRows += ExerciseCityWorkerClosedCropRows(host, receipt);
             var diameters = ReadPopulationMarkers();
             AssertCartographicPublication(host, cycle);
             bandChanged |= diameters.Any(p => previousDiameters.TryGetValue(p.Key, out var prior) && p.Value > prior);
@@ -167,6 +170,11 @@ public partial class Main
         if (bounded)
         {
             if (!positiveTrade) throw new InvalidOperationException("Bounded preview did not settle any positive normal-opening remote trade.");
+            if (!unitOpening)
+            {
+                if (cropRows == 0) throw new InvalidOperationException("No actual own agricultural rows tested.");
+                GD.Print($"GA_NEXT_R2318C_CROP_ROWS_PASS actual_rows={cropRows} committed_calendar=true");
+            }
             GD.Print("GA_NEXT_R2317_BOUNDED_TRADE_PASS cycles=9 positive_trade=true replay=true");
             if (unitOpening) GD.Print("GA_NEXT_R2318_UNIT_OPENING_PASS cycles=9 individual_demand=true initial_per_owner=1 replay=true");
         }
