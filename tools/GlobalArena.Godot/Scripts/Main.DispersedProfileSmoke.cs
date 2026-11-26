@@ -37,6 +37,7 @@ public partial class Main
                 GD.Print($"GA_NEXT_R232E_BUILD mode={buildMode} assembly={assembly.GetName().Name} jit_optimizer_disabled={disabled}");
             }
         }
+        GaSiteLabelLayout.ExerciseContract();
         const int targetSites = 8;
         const ulong finalCycle = 100UL;
         var fine = _r123FineGeography ?? throw new InvalidOperationException("Missing signed geography.");
@@ -143,6 +144,19 @@ public partial class Main
         if (host.Snapshot.Workers.Workers.Count != 201 || OwnSites() < targetSites ||
             moveOrders != targetSites - 1 || travelCloses == 0 || stableCloses < 10 || !positiveDispersedTrade)
             throw new InvalidOperationException("Incomplete dispersed profiling evidence.");
+        var map = _tacticalPreview ?? throw new InvalidOperationException("Missing tactical map.");
+        var visualHash = host.StateHash;
+        var visualFocus = map.CenterGeography;
+        foreach (var tile in host.Snapshot.Workers.Workers.Where(w => w.Owner == _humanCivilization)
+            .Select(w => w.TacticalTileId!.Value.FineStrategicCellId.Value).Distinct().OrderBy(x => x))
+        {
+            map.InspectPopulationMarkerForSmoke(tile);
+            map.AssertSiteLabelLayout();
+        }
+        map.CenterOnGeography(visualFocus);
+        if (host.StateHash != visualHash)
+            throw new InvalidOperationException("Visual site inspection mutated the simulation.");
+        GD.Print("GA_NEXT_VISUAL02A_LABELS_PASS pure_collision=true actual_sites=8 dots_preserved=true hash_unchanged=true");
         GD.Print($"GA_NEXT_R232D_DISPERSED_PASS through={finalCycle} population=201 own_sites={OwnSites()} moves={moveOrders} travel_closes={travelCloses} stationary_closes={stableCloses} max_edges={maxEdges} positive_trade=true replay=true");
     }
 }
