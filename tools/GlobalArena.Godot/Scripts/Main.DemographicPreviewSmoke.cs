@@ -19,18 +19,43 @@ public partial class Main
         var owners = initial.Select(w => w.Owner).Distinct().ToArray();
         var home = initial.First(w => w.Owner == _humanCivilization).TacticalTileId!.Value;
         var homeId = home.FineStrategicCellId.Value;
-        int Population() => host.Snapshot.Workers.Workers.Count(w => w.TacticalTileId == home);
-        int openingPopulation = Population();
-        var openingDiameter = map.PresentedSiteDiameter(homeId);
-        if (openingDiameter != GaCartographicStyle.SiteDiameter(openingPopulation))
-            throw new InvalidOperationException("Opening population dot is missing or incorrectly sized.");
+        // Birth slots are global (R164), not one guaranteed child per owner.
+        // Inspect both starting sites with the real camera, including sites
+        // outside the opening chart. Restore the player's opening focus.
+        Dictionary<ulong, float> ReadPopulationMarkers()
+        {
+            var hash = host.StateHash;
+            var focus = map.CenterGeography;
+            var result = new Dictionary<ulong, float>();
+            try
+            {
+                foreach (var site in host.Snapshot.Workers.Workers
+                    .GroupBy(w => w.TacticalTileId!.Value.FineStrategicCellId.Value)
+                    .OrderBy(g => g.Key))
+                {
+                    var diameter = map.InspectPopulationMarkerForSmoke(site.Key);
+                    if (diameter != GaCartographicStyle.SiteDiameter(site.Count()))
+                        throw new InvalidOperationException($"Site {site.Key}: population={site.Count()} actual diameter={diameter}");
+                    result.Add(site.Key, diameter);
+                }
+            }
+            finally
+            {
+                if (map.CenterGeography.DistanceSquaredTo(focus) > 1e-10f)
+                    map.CenterOnGeography(focus);
+            }
+            if (host.StateHash != hash)
+                throw new InvalidOperationException("Population camera inspection mutated world state.");
+            return result;
+        }
+        var openingDiameters = ReadPopulationMarkers();
+        var previousDiameters = openingDiameters;
         AssertCartographicPublication(host, 0UL);
         bool bandChanged = false;
         for (ulong cycle = 1; cycle <= 3; cycle++)
         {
             var before = host.Snapshot.Workers.Workers.ToArray();
             var hash = host.StateHash;
-            var previousDiameter = map.PresentedSiteDiameter(homeId);
             _lastDemographicPreviewReceipt = null;
             var viewport = GetViewport();
             viewport.PushInput(new InputEventKey { Keycode = Key.E, Pressed = true, Echo = false }, true);
@@ -58,8 +83,8 @@ public partial class Main
             Require(current.Count == before.Length + owners.Length,
                 $"census opening={before.Length} current={current.Count} owners={owners.Length}");
             Require(newborns.Length == owners.Length, $"newborn count={newborns.Length}");
-            Require(owners.All(owner => newborns.Count(w => w.Owner == owner) == 1),
-                "births not distributed one per surviving owner");
+            Require(newborns.All(w => owners.Contains(w.Owner)),
+                "birth assigned to a non-surviving owner");
             Require(receipt.BirthBatch is not null &&
                 receipt.BirthBatch.Newborns.OrderBy(w => w.Id.Value).SequenceEqual(newborns.OrderBy(w => w.Id.Value)),
                 "birth event differs from actual committed newborns");
@@ -70,6 +95,12 @@ public partial class Main
             {
                 Require(child.NatalNode is not null && child.NatalNode == child.TacticalTileId,
                     $"worker {child.Id.Value}: natal node differs");
+                // The eligible lottery bucket is owner + physical worker-time,
+                // not a residence or the final position of a traveling worker.
+                Require(receipt.PersistentTimeline!.Slices.Any(s =>
+                    s.Node == child.NatalNode && s.DurationMicro > 0 &&
+                    before.Any(w => w.Id == s.Worker && w.Owner == child.Owner)),
+                    $"worker {child.Id.Value}: no eligible owner/node presence");
                 var queue = host.Snapshot.WorkerOrders.Queues.Single(q => q.Worker == child.Id);
                 Require(queue.Orders.Count == 0 && queue.Owner == child.Owner,
                     $"worker {child.Id.Value}: nonempty or wrong-owner newborn queue");
@@ -84,16 +115,18 @@ public partial class Main
             var view = host.GetLastClosedEconomicTradeView(_humanCivilization);
             if (view.PublishedHash != host.StateHash)
                 throw new InvalidOperationException("Trade publication was not bound to final post-birth state.");
+            var diameters = ReadPopulationMarkers();
             AssertCartographicPublication(host, cycle);
-            int population = Population();
-            var diameter = map.PresentedSiteDiameter(homeId);
-            if (diameter != GaCartographicStyle.SiteDiameter(population))
-                throw new InvalidOperationException("Population marker did not update from committed census.");
-            bandChanged |= diameter != previousDiameter;
-            GD.Print($"GA_NEXT_R2315_DEMOGRAPHIC_CYCLE cycle={cycle} own={current.Count(w => w.Owner == _humanCivilization)} home_population={population} dot_px={diameter} authorized_trade_edges={view.UsedEdges.Count} replay=true");
+            bandChanged |= diameters.Any(p => previousDiameters.TryGetValue(p.Key, out var prior) && p.Value > prior);
+            previousDiameters = diameters;
+            var distribution = string.Join(",", owners.OrderBy(o => o.Value)
+                .Select(o => $"{o.Value}:{newborns.Count(w => w.Owner == o)}"));
+            var sites = string.Join(",", diameters.OrderBy(p => p.Key).Select(p => $"{p.Key}:{p.Value}"));
+            GD.Print($"GA_NEXT_R2315_DEMOGRAPHIC_CYCLE cycle={cycle} own={current.Count(w => w.Owner == _humanCivilization)} home_population={current.Count(w => w.TacticalTileId == home)} dot_px={diameters[homeId]} authorized_trade_edges={view.UsedEdges.Count} replay=true births_by_owner={distribution} sites_px={sites}");
         }
-        if (!bandChanged || map.PresentedSiteDiameter(homeId) <= openingDiameter)
-            throw new InvalidOperationException("Growing normal opening did not cross a visible population band.");
+        if (!bandChanged || !previousDiameters.Any(p =>
+            openingDiameters.TryGetValue(p.Key, out var opening) && p.Value > opening))
+            throw new InvalidOperationException("Growing normal opening did not cross any actual visible population band.");
         GD.Print("GA_NEXT_R2315_DEMOGRAPHIC_PASS cycles=3 normal_opening=true actual_births=true atomic_queues=true dot_growth=true final_hash=true");
     }
 }
