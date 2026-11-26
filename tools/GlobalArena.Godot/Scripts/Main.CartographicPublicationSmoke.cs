@@ -19,9 +19,10 @@ public partial class Main
             map.VisibleSettledTradeCrossings != expected.Count ||
             map.IsSettledTradeLayerVisible != (expected.Count > 0) ||
             globe.VisibleSphericalSettledTradeCrossings != view.UsedEdges.Count ||
-            globe.HasSphericalTradeMesh != (view.UsedEdges.Count > 0) ||
+            globe.HasSphericalTradeInk != (view.UsedEdges.Count > 0) ||
             host.StateHash != hash)
             throw new InvalidOperationException($"Cartographic publication mismatch at cycle {cycle}: host={view.UsedEdges.Count}, tactical={map.VisibleSettledTradeCrossings}, expected={expected.Count}, globe={globe.VisibleSphericalSettledTradeCrossings}");
+        globe.AssertSphericalTradeGeometry(view);
         map.AssertSitePopulationPresentation();
         GD.Print($"GA_NEXT_R2311_TRADE_PUBLICATION cycle={cycle} authorized={view.UsedEdges.Count} resident={expected.Count} globe={globe.VisibleSphericalSettledTradeCrossings} hash_unchanged=true");
     }
