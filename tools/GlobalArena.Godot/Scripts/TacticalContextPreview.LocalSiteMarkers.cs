@@ -61,11 +61,16 @@ public partial class TacticalContextPreview
     {
         foreach (var marker in _localSiteMarkers)
         {
-            int count = _displayWorkers.Count(w => w.TacticalTileId.HasValue &&
-                w.TacticalTileId.Value.FineStrategicCellId.Value == marker.TileId);
+            var occupants = _displayWorkers.Where(w => w.TacticalTileId.HasValue &&
+                w.TacticalTileId.Value.FineStrategicCellId.Value == marker.TileId).ToArray();
+            int count = occupants.Length;
             if (count <= 0 || marker.WorkerCount != count ||
                 marker.Dot.Size != new Vector2(GaCartographicStyle.SiteDiameter(count), GaCartographicStyle.SiteDiameter(count)))
                 throw new InvalidOperationException("Site marker must represent its actual occupied population.");
+            if (marker.Dot.GetThemeStylebox("panel") is not StyleBoxFlat disc ||
+                disc.BgColor != GaCivilizationVisualIdentity.SiteColor(occupants.Select(w => w.Owner.Value)) ||
+                disc.BorderColor != new Color("#f5f5f5"))
+                throw new InvalidOperationException("Site marker color differs from displayed physical presence.");
         }
     }
 
@@ -181,7 +186,7 @@ public partial class TacticalContextPreview
             };
             var disc = new StyleBoxFlat
             {
-                BgColor = new Color("#151515"),
+                BgColor = GaCivilizationVisualIdentity.SiteColor(place.Select(w => w.Owner.Value)),
                 BorderColor = new Color("#f5f5f5"),
                 BorderWidthLeft = 1,
                 BorderWidthRight = 1,
