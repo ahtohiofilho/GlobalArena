@@ -56,6 +56,42 @@ public partial class Main
         GD.Print("GA_NEXT_R23112_TRANSIT_PASS actual_crossing=true birth_skipped=true resumed_at_destination=true no_carry=true replay=true");
     }
 
+    // Optional scalability continuation after the existing nine stationary
+    // and two real crossing/arrival closes. No synthetic worker injection.
+    private async Task ExerciseProfileScale(FoundationTacticalHumanAiTurnHost host)
+    {
+        string? configured = System.Environment.GetEnvironmentVariable("GA_NEXT_R232_PROFILE_THROUGH_CYCLE");
+        if (string.IsNullOrWhiteSpace(configured)) return;
+        if (System.Environment.GetEnvironmentVariable("GA_NEXT_R232_TURN_PROFILE") != "1" ||
+            !ulong.TryParse(configured, out ulong last) || last < 12UL || last > 1000UL)
+            throw new InvalidOperationException("Scale continuation requires explicit profiling and 12–1000 closes.");
+        var owners = host.Snapshot.Workers.Workers.Select(w => w.Owner).Distinct().ToArray();
+        int starting = host.Snapshot.Workers.Workers.Count;
+        ulong first = host.NextTurn.Value;
+        if (last < first) throw new InvalidOperationException("Invalid scale horizon.");
+        var viewport = GetViewport();
+        for (ulong cycle = first; cycle <= last; cycle++)
+        {
+            _lastDemographicPreviewReceipt = null;
+            int before = host.Snapshot.Workers.Workers.Count;
+            viewport.PushInput(new InputEventKey { Keycode = Key.E, Pressed = true, Echo = false }, true);
+            for (int i = 0; i < 6; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            viewport.PushInput(new InputEventKey { Keycode = Key.E, Pressed = false, Echo = false }, true);
+            for (int i = 0; i < 6; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var receipt = _lastDemographicPreviewReceipt ?? throw new InvalidOperationException("Missing scale close.");
+            if (receipt.Turn.Value != cycle || !receipt.ReplayMatched || receipt.Hash != host.StateHash ||
+                host.Snapshot.Workers.Workers.Count != before + owners.Length ||
+                receipt.BirthBatch is null || !receipt.BirthBatch.Newborns.Select(w => w.Owner).OrderBy(o => o.Value)
+                    .SequenceEqual(owners.OrderBy(o => o.Value)) ||
+                host.GetLastClosedEconomicTradeView(_humanCivilization).PublishedHash != receipt.Hash)
+                throw new InvalidOperationException($"Scale close {cycle} violated existing contracts.");
+        }
+        int expected = checked(starting + (int)(last - first + 1UL) * owners.Length);
+        if (host.Snapshot.Workers.Workers.Count != expected)
+            throw new InvalidOperationException("Scale census mismatch.");
+        GD.Print($"GA_NEXT_R232_SCALE_PASS through={last} population={expected} actual_closes=true replay=true");
+    }
+
     // Real normal preview: no worker relocations, no manual orders, no
     // additional commodities, no special market policy or invented sites.
     private async Task ExerciseDemographicPreview(FoundationTacticalHumanAiTurnHost host)
@@ -277,6 +313,7 @@ public partial class Main
                 if (!string.IsNullOrWhiteSpace(atlasEvidence) && !atlasChecked)
                     throw new InvalidOperationException("No positive trade frame tested in atlas.");
                 await ExerciseUniformCityTransit(host);
+                await ExerciseProfileScale(host);
             }
             if (individual)
             {
