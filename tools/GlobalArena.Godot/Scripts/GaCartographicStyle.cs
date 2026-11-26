@@ -22,7 +22,9 @@ internal static class GaCartographicStyle
     internal static int SiteDiameter(int population)
     {
         int band = SiteBand(population);
-        return band == 0 ? 0 : 6 + 2 * band;
+        // Keep the former 8px single-worker marker for the 3–4 band.
+        // Two smaller bands distinguish one and two workers.
+        return band == 0 ? 0 : 2 + 2 * band;
     }
 
     internal static float TradeWidth(ulong cargoMicro) => cargoMicro == 0UL ? 0f :
@@ -33,9 +35,12 @@ internal static class GaCartographicStyle
     {
         int[] population = { 0, 1, 2, 3, 4, 5, 8, 9, 16, 17 };
         int[] expected = { 0, 1, 2, 3, 3, 4, 4, 5, 5, 6 };
+        int[] expectedDiameters = { 0, 4, 6, 8, 8, 10, 10, 12, 12, 14 };
         for (int i = 0; i < population.Length; i++)
-            if (SiteBand(population[i]) != expected[i])
-                throw new InvalidOperationException("Population band boundary differs from user contract.");
+            if (SiteBand(population[i]) != expected[i] || SiteDiameter(population[i]) != expectedDiameters[i])
+                throw new InvalidOperationException("Population band or diameter differs from user contract.");
+        if (SiteDiameter(int.MaxValue) <= SiteDiameter(17))
+            throw new InvalidOperationException("Large populations must retain monotonic marker growth.");
         if (TradeWidth(0) != 0f || TradeWidth(1_000_000) >= TradeWidth(2_000_000) ||
             TradeWidth(2_000_000) >= TradeWidth(4_000_000) ||
             TradeWidth(ulong.MaxValue) > MaximumTradeCorePixels || TradeOutlinePixels != 1f)
