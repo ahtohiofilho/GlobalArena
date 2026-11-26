@@ -17,6 +17,10 @@ public partial class Main
         var map = _tacticalPreview ?? throw new InvalidOperationException("Missing demographic map.");
         var initial = host.Snapshot.Workers.Workers.ToArray();
         var owners = initial.Select(w => w.Owner).Distinct().ToArray();
+        bool unitOpening = GaExplicitEconomicQaConfiguration.UnitOpeningPreviewEnabled;
+        if (unitOpening && (owners.Length != 2 || initial.Length != owners.Length ||
+            initial.Any(w => w.DemandMultiplierMicro != 1_000_000UL)))
+            throw new InvalidOperationException("Unit opening must contain exactly one standard-demand worker per civilization.");
         var home = initial.First(w => w.Owner == _humanCivilization).TacticalTileId!.Value;
         var homeId = home.FineStrategicCellId.Value;
         // Birth slots are global (R164), not one guaranteed child per owner.
@@ -128,6 +132,22 @@ public partial class Main
                 GD.Print($"GA_NEXT_R2317_BOUNDED_CYCLE cycle={cycle} edges={view.UsedEdges.Count} freight={sale.PhysicalFreightScaled} net={sale.SellerNetScaled} replay=true");
             }
             else AuditNormalTradeInputs(host, opening, receipt);
+            if (unitOpening)
+            {
+                var people = before.Where(w => w.Owner == _humanCivilization).Select(w => w.Id).ToHashSet();
+                var durations = receipt.PersistentTimeline!.Slices.Where(s => people.Contains(s.Worker))
+                    .GroupBy(s => s.Node);
+                foreach (var node in durations)
+                {
+                    ulong expectedDemand = node.Aggregate(0UL, (sum, slice) => checked(sum + (ulong)slice.DurationMicro));
+                    var local = host.GetLastClosedLocalEconomics(_humanCivilization, node.Key) ??
+                        throw new InvalidOperationException("Unit opening has no own closed demand evidence.");
+                    Require(local.Commodities.Count() == 8 && local.Commodities.All(row => row.DemandMicro == expectedDemand),
+                        "individual commodity demand differs from physical worker-time");
+                }
+                if (cycle == 1)
+                    GD.Print($"GA_NEXT_R2318_OPENING_REFERENCE workers={before.Length} aggregate_seller_net_scaled={receipt.TemporalEconomicSettlement!.SellerNetScaled} diagnostic_only=true");
+            }
             var diameters = ReadPopulationMarkers();
             AssertCartographicPublication(host, cycle);
             bandChanged |= diameters.Any(p => previousDiameters.TryGetValue(p.Key, out var prior) && p.Value > prior);
@@ -148,6 +168,7 @@ public partial class Main
         {
             if (!positiveTrade) throw new InvalidOperationException("Bounded preview did not settle any positive normal-opening remote trade.");
             GD.Print("GA_NEXT_R2317_BOUNDED_TRADE_PASS cycles=9 positive_trade=true replay=true");
+            if (unitOpening) GD.Print("GA_NEXT_R2318_UNIT_OPENING_PASS cycles=9 individual_demand=true initial_per_owner=1 replay=true");
         }
         else GD.Print("GA_NEXT_R2316_NORMAL_TRADE_AUDIT_PASS cycles=9 no_market_resolve=true");
     }
