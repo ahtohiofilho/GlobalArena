@@ -386,6 +386,53 @@ public static class FoundationPhysicalPresenceDemographicProjector
         return (presence, Array.AsReadOnly(result.ToArray()));
     }
 
+    /// <summary>R231.12: one uniform draw among distinct eligible physical
+    /// nodes per owner, from the settled census. No parent or waiting weight.
+    /// The caller supplies the already verified persistent calendar.</summary>
+    public static IReadOnlyList<FoundationPhysicalPresenceBirth> PlanUniformCityBirths(
+        WorldState settled, IReadOnlyList<FoundationPersistentWorkerSlice> slices,
+        string scheduleDigest, ulong turn)
+    {
+        if (turn == 0 || string.IsNullOrWhiteSpace(scheduleDigest) ||
+            !settled.Workers.HasAuthoritativeOccupations || !settled.WorkerOrders.IsInitialized ||
+            settled.Workers.Workers.Any(w => !w.UniformCityDemography || w.BirthWaitTurns.HasValue))
+            throw new InvalidOperationException("Uniform city births require the canonical settled policy and census.");
+        var crossing = settled.EdgeTravels.Pending.Select(p => p.Worker).ToHashSet();
+        var last = slices.GroupBy(s => s.Worker).ToDictionary(g => g.Key,
+            g => g.OrderBy(s => s.StartMicro).Last());
+        var queues = settled.WorkerOrders.Queues.ToDictionary(q => q.Worker);
+        bool Stationary(PhysicalWorkerRuntimeRecord worker)
+        {
+            if (worker.Activity == PhysicalWorkerActivity.Traveling || crossing.Contains(worker.Id))
+                return false;
+            var q = queues[worker.Id];
+            var head = q.Orders.FirstOrDefault();
+            // A crossing can finish exactly at a turn boundary while a
+            // multi-edge order remains active. Do not count this stopover.
+            if (head is not null && q.ActiveOrderId == head.Id)
+            {
+                if (head.Kind == GlobalArena.Runtime.PersistentOrders.FoundationWorkerOrderKind.Move &&
+                    head.Destination != worker.TacticalTileId) return false;
+                if (head.Kind == GlobalArena.Runtime.PersistentOrders.FoundationWorkerOrderKind.Build &&
+                    last.TryGetValue(worker.Id, out var interval) &&
+                    interval.Activity == PhysicalWorkerActivity.Traveling) return false;
+            }
+            return true;
+        }
+        string key = "R23112-UNIFORM-CITY|" + new CanonicalWorldStateHasher().Compute(settled) + "|" + scheduleDigest;
+        var results = new List<FoundationPhysicalPresenceBirth>();
+        foreach (var group in settled.Workers.Workers.Where(Stationary)
+            .GroupBy(w => w.Owner).OrderBy(g => g.Key.Value))
+        {
+            var nodes = group.Select(w => w.TacticalTileId!.Value).Distinct()
+                .OrderBy(n => n.FineStrategicCellId.Value).ToArray();
+            var node = nodes[checked((int)Draw(key, turn, group.Key.Value, (ulong)nodes.Length))];
+            results.Add(new FoundationPhysicalPresenceBirth(
+                checked((ulong)results.Count + 1UL), group.Key, node, null));
+        }
+        return Array.AsReadOnly(results.ToArray());
+    }
+
     private static ulong Draw(string source, ulong turn, ulong ordinal,
         ulong bound)
     {
