@@ -186,6 +186,35 @@ jobs:
             grep -E "GA_NEXT_R2318D_ALLOCATION_PASS cycle=$cycle own=[1-9][0-9]* .* actual_calendar=true$" "$RUNNER_TEMP/unit-opening.log"
           done
           if grep -E 'GA_NEXT_R213_PERSISTENT_UI_FAIL|GA_NEXT_FINE_HUMAN_AI_REJECTED|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/unit-opening.log"; then exit 1; fi
+      - name: Exercise one-worker opening with per-civilization births
+        env:
+          GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW: '1'
+          GA_NEXT_INTERACTIVE_ECONOMY_PREVIEW: '1'
+          GA_NEXT_QA_LOCAL_SITE_MARKERS: '1'
+          GA_NEXT_CONSTRUCTION_PREVIEW: '1'
+          GA_NEXT_PERSISTENT_ORDERS: '1'
+          GA_NEXT_CROP_PREVIEW: '1'
+          GA_NEXT_LOCAL_ECONOMY_PREVIEW: '1'
+          GA_NEXT_DEMOGRAPHIC_PREVIEW: '1'
+          GA_NEXT_BOUNDED_TRADE_PREVIEW: '1'
+          GA_NEXT_R2318_UNIT_OPENING_PREVIEW: '1'
+          GA_NEXT_R2319_INDIVIDUAL_DEMOGRAPHY: '1'
+          GA_NEXT_R213_UI_SMOKE: '1'
+        run: |
+          set -o pipefail
+          timeout 180 "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --rendering-method gl_compatibility 2>&1 | tee "$RUNNER_TEMP/individual-demography.log"
+          grep -q 'GA_NEXT_R2315_DEMOGRAPHIC_PASS cycles=3' "$RUNNER_TEMP/individual-demography.log"
+          grep -q 'GA_NEXT_R2318_OPENING_REFERENCE workers=2' "$RUNNER_TEMP/individual-demography.log"
+          grep -q 'GA_NEXT_R2318_UNIT_OPENING_PASS cycles=9' "$RUNNER_TEMP/individual-demography.log"
+          grep -q 'GA_NEXT_R2319_INDIVIDUAL_PASS cycles=9 population_per_owner=10 replay=true' "$RUNNER_TEMP/individual-demography.log"
+          grep -E 'GA_NEXT_R2319_WEIGHT_SAMPLE_PASS samples=256 .* uncommitted=true$' "$RUNNER_TEMP/individual-demography.log"
+          for cycle in {1..9}; do
+            grep -E "GA_NEXT_R2319_BIRTH_PASS cycle=$cycle owners=2 one_per_owner=true weights=true$" "$RUNNER_TEMP/individual-demography.log"
+          done
+          for cycle in {1..9}; do
+            grep -E "GA_NEXT_R2318D_ALLOCATION_PASS cycle=$cycle own=[1-9][0-9]* .* actual_calendar=true$" "$RUNNER_TEMP/individual-demography.log"
+          done
+          if grep -E 'GA_NEXT_R213_PERSISTENT_UI_FAIL|GA_NEXT_FINE_HUMAN_AI_REJECTED|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/individual-demography.log"; then exit 1; fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -199,3 +228,4 @@ jobs:
             ${{ runner.temp }}/demographic.log
             ${{ runner.temp }}/bounded-trade.log
             ${{ runner.temp }}/unit-opening.log
+            ${{ runner.temp }}/individual-demography.log

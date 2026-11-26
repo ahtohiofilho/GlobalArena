@@ -19,6 +19,9 @@ public partial class Main
         var initial = host.Snapshot.Workers.Workers.ToArray();
         var owners = initial.Select(w => w.Owner).Distinct().ToArray();
         bool unitOpening = GaExplicitEconomicQaConfiguration.UnitOpeningPreviewEnabled;
+        bool individual = GaExplicitEconomicQaConfiguration.IndividualDemographyPreviewEnabled;
+        if (individual && initial.Any(w => w.BirthWaitTurns != 0UL))
+            throw new InvalidOperationException("All founders must start with weight one.");
         if (unitOpening && (owners.Length != 2 || initial.Length != owners.Length ||
             initial.Any(w => w.DemandMultiplierMicro != 1_000_000UL)))
             throw new InvalidOperationException("Unit opening must contain exactly one standard-demand worker per civilization.");
@@ -158,7 +161,8 @@ public partial class Main
                     GD.Print($"GA_NEXT_R2318_OPENING_REFERENCE workers={before.Length} aggregate_seller_net_scaled={receipt.TemporalEconomicSettlement!.SellerNetScaled} diagnostic_only=true");
             }
             if (bounded) AuditLocalAutomaticAllocation(host, opening, receipt, allocationPriceHistory);
-            if (unitOpening) AuditUnitOpeningDemography(host, opening, receipt);
+            if (individual) AuditIndividualDemography(host, opening, receipt);
+            else if (unitOpening) AuditUnitOpeningDemography(host, opening, receipt);
             if (bounded && !unitOpening)
                 cropRows += ExerciseCityWorkerClosedCropRows(host, receipt);
             var diameters = ReadPopulationMarkers();
@@ -187,6 +191,12 @@ public partial class Main
             }
             GD.Print("GA_NEXT_R2317_BOUNDED_TRADE_PASS cycles=9 positive_trade=true replay=true");
             if (unitOpening) GD.Print("GA_NEXT_R2318_UNIT_OPENING_PASS cycles=9 individual_demand=true initial_per_owner=1 replay=true");
+            if (individual)
+            {
+                if (owners.Any(o => host.Snapshot.Workers.Workers.Count(w => w.Owner == o) != 10))
+                    throw new InvalidOperationException("Nine closes must yield ten workers per surviving civilization.");
+                GD.Print("GA_NEXT_R2319_INDIVIDUAL_PASS cycles=9 population_per_owner=10 replay=true");
+            }
         }
         else GD.Print("GA_NEXT_R2316_NORMAL_TRADE_AUDIT_PASS cycles=9 no_market_resolve=true");
     }

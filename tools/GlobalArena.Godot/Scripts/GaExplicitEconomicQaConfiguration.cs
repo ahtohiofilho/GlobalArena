@@ -52,6 +52,9 @@ internal static class GaExplicitEconomicQaConfiguration
     internal static bool BoundedTradePreviewEnabled =>
         System.Environment.GetEnvironmentVariable("GA_NEXT_BOUNDED_TRADE_PREVIEW") == "1";
 
+    internal static bool IndividualDemographyPreviewEnabled =>
+        System.Environment.GetEnvironmentVariable("GA_NEXT_R2319_INDIVIDUAL_DEMOGRAPHY") == "1";
+
     internal static bool UnitOpeningPreviewEnabled =>
         System.Environment.GetEnvironmentVariable("GA_NEXT_R2318_UNIT_OPENING_PREVIEW") == "1";
 
@@ -124,6 +127,8 @@ internal static class GaExplicitEconomicQaConfiguration
         var tradeFixture = TradeFixtureMode();
         bool growth = DemographicPreviewEnabled;
         bool unitOpening = UnitOpeningPreviewEnabled;
+        if (IndividualDemographyPreviewEnabled && !unitOpening)
+            throw new InvalidOperationException("Individual demographic preview requires the one-worker opening.");
         if (unitOpening && (!BoundedTradePreviewEnabled || !growth || !enableLocalEconomy || tradeFixture is not null))
             throw new InvalidOperationException("Unit opening requires bounded demographic local economy, without trade fixture.");
         if (BoundedTradePreviewEnabled && (!growth || !enableLocalEconomy || tradeFixture is not null))
@@ -258,6 +263,9 @@ internal static class GaExplicitEconomicQaConfiguration
                 new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>())));
         if (enablePersistentOrders)
             demo.Session.AcceptSnapshot(demo.Snapshot.DeployInitialWorkerOrders());
+        if (IndividualDemographyPreviewEnabled)
+            demo.Session.AcceptSnapshot(demo.Snapshot.WithWorkers(new PhysicalWorkerRuntimeState(
+                demo.Snapshot.Workers.Workers.Select(w => w.WithBirthWaitTurns(0UL)), true, true)));
         var host = new FoundationTacticalHumanAiTurnHost(
             demo.Session, demo.Incidence, demo.HumanCivilizations,
             // This fixture's AI is the existing resume-production policy.

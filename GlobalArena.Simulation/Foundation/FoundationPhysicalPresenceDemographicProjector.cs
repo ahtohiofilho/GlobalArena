@@ -340,6 +340,52 @@ public static class FoundationPhysicalPresenceDemographicProjector
             turn, results);
     }
 
+    /// <summary>R231.9: one birth per living owner; individual waiting time
+    /// selects a parent and that parent's physical presence selects the node.
+    /// Both draws use the immutable opening and validated temporal evidence.</summary>
+    public static (FoundationPhysicalTemporalPresenceReport Presence,
+        IReadOnlyList<(PhysicalWorkerId Parent, FoundationPhysicalPresenceBirth Birth)> Births)
+        PlanIndividualBirths(WorldState baseline, IReadOnlyList<FoundationWorkerTemporalNodeSlice> slices,
+            FoundationActivityCommodityDemandPolicy demand, ulong turn)
+    {
+        if (turn == 0 || baseline.Workers.Workers.Any(w => !w.BirthWaitTurns.HasValue))
+            throw new InvalidOperationException("Individual demographic mode requires complete waiting counters.");
+        var presence = Project(baseline, slices, demand);
+        var byWorker = slices.ToLookup(s => s.Worker);
+        var cities = baseline.CityResidences.IsInitialized
+            ? baseline.CityResidences.Cities.ToDictionary(c => (c.Owner, c.Tile), c => c.Id)
+            : new Dictionary<(CivilizationId, PhysicalTacticalTileId), FoundationCityId>();
+        string key = "R2319-INDIVIDUAL|" + presence.BaselineIdentity + "|" + presence.ScheduleDigest;
+        var result = new List<(PhysicalWorkerId Parent, FoundationPhysicalPresenceBirth Birth)>();
+        foreach (var group in baseline.Workers.Workers.GroupBy(w => w.Owner).OrderBy(g => g.Key.Value))
+        {
+            var candidates = group.OrderBy(w => w.Id.Value).ToArray();
+            ulong total = candidates.Aggregate(0UL, (sum, w) => checked(sum + w.BirthWaitTurns!.Value + 1UL));
+            ulong pick = Draw(key + "|PARENT", turn, group.Key.Value, total);
+            var parent = candidates[0];
+            foreach (var candidate in candidates)
+            {
+                ulong weight = checked(candidate.BirthWaitTurns!.Value + 1UL);
+                if (pick < weight) { parent = candidate; break; }
+                pick -= weight;
+            }
+            var nodes = byWorker[parent.Id].GroupBy(s => s.Node)
+                .OrderBy(g => g.Key.FineStrategicCellId.Value)
+                .Select(g => (Node: g.Key, Weight: g.Aggregate(0UL, (sum, s) => checked(sum + s.PresenceMicro)))).ToArray();
+            ulong nodePick = Draw(key + "|NODE", turn, group.Key.Value, WholeTurnMicro);
+            var node = nodes[0].Node;
+            foreach (var candidate in nodes)
+            {
+                if (nodePick < candidate.Weight) { node = candidate.Node; break; }
+                nodePick -= candidate.Weight;
+            }
+            result.Add((parent.Id, new FoundationPhysicalPresenceBirth(
+                checked((ulong)result.Count + 1UL), group.Key, node,
+                cities.TryGetValue((group.Key, node), out var city) ? city : null)));
+        }
+        return (presence, Array.AsReadOnly(result.ToArray()));
+    }
+
     private static ulong Draw(string source, ulong turn, ulong ordinal,
         ulong bound)
     {
