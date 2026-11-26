@@ -215,6 +215,36 @@ jobs:
             grep -E "GA_NEXT_R2318D_ALLOCATION_PASS cycle=$cycle own=[1-9][0-9]* .* actual_calendar=true$" "$RUNNER_TEMP/individual-demography.log"
           done
           if grep -E 'GA_NEXT_R213_PERSISTENT_UI_FAIL|GA_NEXT_FINE_HUMAN_AI_REJECTED|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/individual-demography.log"; then exit 1; fi
+      - name: Exercise uniform city births and actual transit exclusion
+        env:
+          GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW: '1'
+          GA_NEXT_INTERACTIVE_ECONOMY_PREVIEW: '1'
+          GA_NEXT_QA_LOCAL_SITE_MARKERS: '1'
+          GA_NEXT_CONSTRUCTION_PREVIEW: '1'
+          GA_NEXT_PERSISTENT_ORDERS: '1'
+          GA_NEXT_CROP_PREVIEW: '1'
+          GA_NEXT_LOCAL_ECONOMY_PREVIEW: '1'
+          GA_NEXT_DEMOGRAPHIC_PREVIEW: '1'
+          GA_NEXT_BOUNDED_TRADE_PREVIEW: '1'
+          GA_NEXT_R2318_UNIT_OPENING_PREVIEW: '1'
+          GA_NEXT_R23112_UNIFORM_CITY_DEMOGRAPHY: '1'
+          GA_NEXT_R213_UI_SMOKE: '1'
+        run: |
+          set -o pipefail
+          timeout 180 "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --rendering-method gl_compatibility 2>&1 | tee "$RUNNER_TEMP/uniform-city.log"
+          grep -q 'GA_NEXT_R2315_DEMOGRAPHIC_PASS cycles=3' "$RUNNER_TEMP/uniform-city.log"
+          grep -q 'GA_NEXT_R2318_OPENING_REFERENCE workers=2' "$RUNNER_TEMP/uniform-city.log"
+          grep -q 'GA_NEXT_R2318_UNIT_OPENING_PASS cycles=9' "$RUNNER_TEMP/uniform-city.log"
+          grep -q 'GA_NEXT_R23112_UNIFORM_PASS cycles=9 population_per_owner=10 replay=true' "$RUNNER_TEMP/uniform-city.log"
+          grep -E 'GA_NEXT_R23112_CITY_SAMPLE_PASS samples=256 .* transit_excluded=true all_travel_skipped=true uncommitted=true$' "$RUNNER_TEMP/uniform-city.log"
+          for cycle in {1..9}; do
+            grep -E "GA_NEXT_R23112_BIRTH_PASS cycle=$cycle owners=2 uniform_city=true replay=true$" "$RUNNER_TEMP/uniform-city.log"
+          done
+          for cycle in {1..9}; do
+            grep -E "GA_NEXT_R2318D_ALLOCATION_PASS cycle=$cycle own=[1-9][0-9]* .* actual_calendar=true$" "$RUNNER_TEMP/uniform-city.log"
+          done
+          grep -q 'GA_NEXT_R23112_TRANSIT_PASS actual_crossing=true birth_skipped=true resumed_at_destination=true no_carry=true replay=true' "$RUNNER_TEMP/uniform-city.log"
+          if grep -E 'GA_NEXT_R213_PERSISTENT_UI_FAIL|GA_NEXT_FINE_HUMAN_AI_REJECTED|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/uniform-city.log"; then exit 1; fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -229,3 +259,4 @@ jobs:
             ${{ runner.temp }}/bounded-trade.log
             ${{ runner.temp }}/unit-opening.log
             ${{ runner.temp }}/individual-demography.log
+            ${{ runner.temp }}/uniform-city.log
