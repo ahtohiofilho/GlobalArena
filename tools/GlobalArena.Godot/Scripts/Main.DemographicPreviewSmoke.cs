@@ -52,9 +52,10 @@ public partial class Main
         var previousDiameters = openingDiameters;
         AssertCartographicPublication(host, 0UL);
         bool bandChanged = false;
-        for (ulong cycle = 1; cycle <= 3; cycle++)
+        for (ulong cycle = 1; cycle <= 9; cycle++)
         {
-            var before = host.Snapshot.Workers.Workers.ToArray();
+            var opening = host.Snapshot;
+            var before = opening.Workers.Workers.ToArray();
             var hash = host.StateHash;
             _lastDemographicPreviewReceipt = null;
             var viewport = GetViewport();
@@ -115,6 +116,7 @@ public partial class Main
             var view = host.GetLastClosedEconomicTradeView(_humanCivilization);
             if (view.PublishedHash != host.StateHash)
                 throw new InvalidOperationException("Trade publication was not bound to final post-birth state.");
+            AuditNormalTradeInputs(host, opening, receipt);
             var diameters = ReadPopulationMarkers();
             AssertCartographicPublication(host, cycle);
             bandChanged |= diameters.Any(p => previousDiameters.TryGetValue(p.Key, out var prior) && p.Value > prior);
@@ -123,10 +125,14 @@ public partial class Main
                 .Select(o => $"{o.Value}:{newborns.Count(w => w.Owner == o)}"));
             var sites = string.Join(",", diameters.OrderBy(p => p.Key).Select(p => $"{p.Key}:{p.Value}"));
             GD.Print($"GA_NEXT_R2315_DEMOGRAPHIC_CYCLE cycle={cycle} own={current.Count(w => w.Owner == _humanCivilization)} home_population={current.Count(w => w.TacticalTileId == home)} dot_px={diameters[homeId]} authorized_trade_edges={view.UsedEdges.Count} replay=true births_by_owner={distribution} sites_px={sites}");
+            if (cycle == 3)
+            {
+                if (!bandChanged || !previousDiameters.Any(p =>
+                    openingDiameters.TryGetValue(p.Key, out var original) && p.Value > original))
+                    throw new InvalidOperationException("Growing normal opening did not cross any actual visible population band.");
+                GD.Print("GA_NEXT_R2315_DEMOGRAPHIC_PASS cycles=3 normal_opening=true actual_births=true atomic_queues=true dot_growth=true final_hash=true");
+            }
         }
-        if (!bandChanged || !previousDiameters.Any(p =>
-            openingDiameters.TryGetValue(p.Key, out var opening) && p.Value > opening))
-            throw new InvalidOperationException("Growing normal opening did not cross any actual visible population band.");
-        GD.Print("GA_NEXT_R2315_DEMOGRAPHIC_PASS cycles=3 normal_opening=true actual_births=true atomic_queues=true dot_growth=true final_hash=true");
+        GD.Print("GA_NEXT_R2316_NORMAL_TRADE_AUDIT_PASS cycles=9 no_market_resolve=true");
     }
 }
