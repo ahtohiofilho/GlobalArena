@@ -314,6 +314,7 @@ public partial class Main
                     throw new InvalidOperationException("No positive trade frame tested in atlas.");
                 await ExerciseUniformCityTransit(host);
                 await ExerciseProfileScale(host);
+                await ExerciseDispersedProfileScale(host);
             }
             if (individual)
             {
