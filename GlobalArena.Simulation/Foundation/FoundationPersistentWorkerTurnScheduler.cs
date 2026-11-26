@@ -108,6 +108,7 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
 
     private (WorldState Next, FoundationPersistentWorkerSlice[] Slices) Calculate(WorldState opening, SimulationContext context)
     {
+        using var profile = FoundationTurnProfiler.Measure("worker_calendar");
         if (!opening.WorkerOrders.IsInitialized || !opening.EdgeTravels.IsInitialized ||
             !opening.Constructions.IsInitialized)
             throw new InvalidOperationException("Persistent scheduling requires deployed ledgers.");
@@ -297,7 +298,9 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
             }
             var intervals = automaticStarts.OrderBy(x => x.Key.Value)
                 .Select(x => new FoundationBaseMarginalInterval(x.Key, x.Value)).ToArray();
-            var calendar = UsesLocalPriceAllocation
+            FoundationPersistentWorkerSlice[] calendar;
+            using (FoundationTurnProfiler.Measure("automatic_allocation"))
+                calendar = UsesLocalPriceAllocation
                 ? FoundationLocalBaseCalendarPlanner.Plan(opening, _router.Incidence,
                     _router.Geography, _automaticEconomy!, slices, intervals, _agriculture!)
                 : FoundationFrozenMarginalRevenueEstimator.Plan(opening, _router.Incidence,
