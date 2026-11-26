@@ -77,6 +77,7 @@ internal static class GaHudWidgets
         button.CustomMinimumSize = new Vector2(40, 30);
         button.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
         GaVisualFoundation.StyleHudAction(button);
+        GaHudMotion.AttachAction(button);
     }
 
     internal static void CompactProgress(ProgressBar progress)
