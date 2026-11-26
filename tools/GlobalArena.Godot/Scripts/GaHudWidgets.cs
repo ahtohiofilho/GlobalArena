@@ -102,6 +102,7 @@ internal static class GaHudWidgets
         row.AddThemeConstantOverride("separation", 4);
         row.AddChild(MetricIcon(icon));
         label = new Label { Text = value, MouseFilter = Control.MouseFilterEnum.Ignore };
+        GaVisualFoundation.StyleHudMetric(label);
         row.AddChild(label);
         return row;
     }

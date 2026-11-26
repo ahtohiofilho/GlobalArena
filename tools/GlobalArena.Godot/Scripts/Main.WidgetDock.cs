@@ -88,6 +88,7 @@ public partial class Main
         var planetActions = (HBoxContainer)_worldPlanetAtlas!.GetParent();
         var planetBody = (VBoxContainer)planetActions.GetParent();
         var planetHeading = (Label)planetBody.GetChild(0);
+        GaVisualFoundation.StyleHudSectionTitle(planetHeading);
         planetHeading.Reparent(planetActions);
         planetActions.MoveChild(planetHeading, 0);
         planetHeading.SizeFlagsHorizontal = SizeFlags.ExpandFill;
@@ -178,6 +179,31 @@ public partial class Main
             !host.GetHumanPersistentQueues(_humanCivilization).SequenceEqual(queues))
             throw new InvalidOperationException("Widget layout mutated world or displaced Planet.");
         AssertOperationalFeedback();
+        // Verify actual live controls, not only constants in the palette.
+        foreach (Control identity in new Control[] { _selectedUnitIdentity!, _hudInfrastructureKind!, _terrainSurface! })
+            if (identity.GetThemeFontSize("font_size") != GaVisualFoundation.HudIdentityFontSize ||
+                identity.GetThemeColor("font_color") != GaVisualFoundation.HudIdentityText)
+                throw new InvalidOperationException("HUD identity hierarchy missing.");
+        foreach (var section in _widgetSections.Values)
+            if (section.Header.GetThemeFontSize("font_size") != GaVisualFoundation.HudSectionFontSize ||
+                section.Header.GetThemeColor("font_color") != GaVisualFoundation.Muted)
+                throw new InvalidOperationException("HUD section hierarchy missing.");
+        if (planetTitle.GetThemeFontSize("font_size") != GaVisualFoundation.HudSectionFontSize ||
+            planetTitle.GetThemeColor("font_color") != GaVisualFoundation.Muted ||
+            _hudFeedback!.GetThemeFontSize("font_size") != GaVisualFoundation.HudFeedbackFontSize ||
+            _hudFeedback.GetThemeColor("font_color") != GaVisualFoundation.Warm)
+            throw new InvalidOperationException("HUD title/feedback hierarchy missing.");
+        var metricRow = GaHudWidgets.MetricRow("capital", "$12.34", "Metric typography fixture", out var metric);
+        try
+        {
+            if (metric.GetThemeFontSize("font_size") != GaVisualFoundation.HudMetricFontSize ||
+                metric.GetThemeColor("font_color") != GaVisualFoundation.HudMetricText ||
+                GaVisualFoundation.HudIdentityFontSize <= GaVisualFoundation.HudMetricFontSize ||
+                GaVisualFoundation.HudMetricFontSize <= GaVisualFoundation.HudSectionFontSize)
+                throw new InvalidOperationException("HUD metric hierarchy missing.");
+        }
+        finally { metricRow.Free(); }
+        GD.Print("GA_NEXT_VISUAL02D_TYPE_PASS identities=3 sections=3 planet=true metric=true feedback=true");
         GD.Print("GA_NEXT_VISUAL01_MATERIAL_PASS neutral_planes=true cached_light=true independent_action_states=true motion_attached=true");
         GD.Print("GA_NEXT_R23064_MONO_HUD_PASS neutral_palette=true framed_portraits=true compact_actions=true separate_slots=true");
         GD.Print("GA_NEXT_R23062_OPERATIONAL_CARD_PASS visual_summaries=true action_strips=true instruction_hidden=true feedback_preserved=true");

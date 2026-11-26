@@ -84,6 +84,7 @@ public partial class Main
         _localWorkerSelector.CustomMinimumSize = new Vector2(0, 26);
         _localWorkerSelector.Visible = false; // no selection control in the dock
         _selectedUnitIdentity.Reparent(unitFacts);
+        GaVisualFoundation.StyleHudIdentity(_selectedUnitIdentity);
         _worldUnitReadout!.Reparent(unitFacts);
         oldUnitRow.Visible = false;
         _hudUnitActions.Reparent(unit);
@@ -93,7 +94,7 @@ public partial class Main
         _localOrderStatus!.Visible = false;
         _hudFeedback = new Label { Name = "GANextHudOrderFeedback", Visible = false,
             MouseFilter = MouseFilterEnum.Pass };
-        _hudFeedback.AddThemeColorOverride("font_color", GaVisualFoundation.Warm);
+        GaVisualFoundation.StyleHudFeedback(_hudFeedback);
         unit.AddChild(_hudFeedback);
 
         // Infrastructure: actual selected connection type, capital/freight
@@ -106,6 +107,7 @@ public partial class Main
         FrameHudPortrait(infraRow, _hudInfrastructurePicture, "Selected physical connection");
         var infraFacts = HudObjectFacts(infraRow);
         _hudInfrastructureKind = new Label { Text = "Connection" };
+        GaVisualFoundation.StyleHudIdentity(_hudInfrastructureKind);
         infraFacts.AddChild(_hudInfrastructureKind);
         _worldInfrastructureMetrics!.Reparent(infraFacts);
         _worldInfrastructureMetrics.AddThemeConstantOverride("separation", 1);
@@ -124,6 +126,7 @@ public partial class Main
         FrameHudPortrait(terrainRow, _terrainSurfaceIcon!, "Selected signed terrain");
         var terrainFacts = HudObjectFacts(terrainRow);
         _terrainSurface.Reparent(terrainFacts);
+        GaVisualFoundation.StyleHudIdentity(_terrainSurface);
         oldSurface.Visible = false;
         var access = (HBoxContainer)_terrainFootState!.GetParent().GetParent();
         access.Reparent(terrainFacts);
