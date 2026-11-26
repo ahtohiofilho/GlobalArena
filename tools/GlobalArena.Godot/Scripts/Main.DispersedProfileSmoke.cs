@@ -157,6 +157,13 @@ public partial class Main
         if (host.StateHash != visualHash)
             throw new InvalidOperationException("Visual site inspection mutated the simulation.");
         GD.Print("GA_NEXT_VISUAL02A_LABELS_PASS pure_collision=true actual_sites=8 dots_preserved=true hash_unchanged=true");
+        GaCartographicStyle.ExerciseContract();
+        // The dense scenario has already verified authorized geometry each
+        // cycle. Reassert both presentations at the last committed close.
+        AssertCartographicPublication(host, finalCycle);
+        if (host.StateHash != visualHash)
+            throw new InvalidOperationException("Strategic ink calibration mutated the simulation.");
+        GD.Print("GA_NEXT_VISUAL02B_TRADE_HIERARCHY_PASS actual_cycles=100 atlas_core_cap=6.5 atlas_rim=0.75 tactical_unchanged=true hash_unchanged=true");
         GD.Print($"GA_NEXT_R232D_DISPERSED_PASS through={finalCycle} population=201 own_sites={OwnSites()} moves={moveOrders} travel_closes={travelCloses} stationary_closes={stableCloses} max_edges={maxEdges} positive_trade=true replay=true");
     }
 }
