@@ -26,11 +26,19 @@ public static class FoundationPersistentDemographicClose
             opening.Workers.Workers.Count != settled.Workers.Workers.Count)
             throw new InvalidOperationException("Births require one settled persistent turn.");
         var slices = timeline.Slices.Select(s => new FoundationWorkerTemporalNodeSlice(s.Worker, s.Node, s.DurationMicro, s.Activity == PhysicalWorkerActivity.Producing ? s.DurationMicro : 0U, s.Activity, s.Occupation)).ToArray();
+        bool uniformCity = opening.Workers.Workers.Any(w => w.UniformCityDemography);
         bool individual = opening.Workers.Workers.Any(w => w.BirthWaitTurns.HasValue);
+        if (uniformCity && settled.Workers.Workers.Any(w => !w.UniformCityDemography || w.BirthWaitTurns.HasValue))
+            throw new InvalidOperationException("Uniform city policy changed before demographic close.");
         FoundationPhysicalTemporalPresenceReport presence;
         IReadOnlyList<FoundationPhysicalPresenceBirth> births;
         PhysicalWorkerId[]? parents = null;
-        if (individual)
+        if (uniformCity)
+        {
+            presence = FoundationPhysicalPresenceDemographicProjector.Project(opening, slices, demand);
+            births = FoundationPhysicalPresenceDemographicProjector.PlanUniformCityBirths(settled, timeline.Slices, presence.ScheduleDigest, context.Turn.Value);
+        }
+        else if (individual)
         {
             var plan = FoundationPhysicalPresenceDemographicProjector.PlanIndividualBirths(opening, slices, demand, context.Turn.Value);
             presence = plan.Presence;
@@ -52,7 +60,7 @@ public static class FoundationPersistentDemographicClose
                 movement.PresentationRegion(b.NatalNode, template.CellId), template.Commodity,
                 template.OutputMicroPerTurn, PhysicalWorkerActivity.Other, 1_000_000U,
                 b.NatalNode, PhysicalWorkerOccupation.Unassigned, b.NatalNode, b.NatalCity,
-                birthWaitTurns: individual ? 0UL : null);
+                birthWaitTurns: individual ? 0UL : null, uniformCityDemography: uniformCity);
         }).ToArray();
         var weighted = settled;
         if (parents is not null)
