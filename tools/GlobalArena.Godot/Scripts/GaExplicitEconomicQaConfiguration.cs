@@ -52,13 +52,16 @@ internal static class GaExplicitEconomicQaConfiguration
     internal static bool BoundedTradePreviewEnabled =>
         System.Environment.GetEnvironmentVariable("GA_NEXT_BOUNDED_TRADE_PREVIEW") == "1";
 
+    internal static bool UnitOpeningPreviewEnabled =>
+        System.Environment.GetEnvironmentVariable("GA_NEXT_R2318_UNIT_OPENING_PREVIEW") == "1";
+
     internal static bool DemographicPreviewEnabled =>
         System.Environment.GetEnvironmentVariable("GA_NEXT_DEMOGRAPHIC_PREVIEW") == "1";
 
     internal static IReadOnlyDictionary<CropId, CommodityId> CropItems() =>
         CropCatalog.All.ToDictionary(c => c.Id, c => new CommodityId((uint)c.Id + 2U));
 
-    internal static FoundationGameplayEconomicConfiguration Profile(bool crops = false, bool localEconomy = false, bool boundedTrade = false) =>
+    internal static FoundationGameplayEconomicConfiguration Profile(bool crops = false, bool localEconomy = false, bool boundedTrade = false, bool unitDemand = false) =>
         new(
             new FoundationNaturalTransportSeedingPolicy(
                 new FoundationNaturalTransportCostBand(QaLandEdgeCostMicro, 1_000_000UL),
@@ -74,7 +77,7 @@ internal static class GaExplicitEconomicQaConfiguration
                         .SelectMany(activity =>
                             MarketItems(crops).Select(item =>
                                 new FoundationActivityCommodityDemandCoefficient(
-                                    activity, item, crops && item.Value > 2U ? 166_667UL : 1_000_000UL)))),
+                                    activity, item, !unitDemand && crops && item.Value > 2U ? 166_667UL : 1_000_000UL)))),
                 new FoundationCommodityCargoConversionPolicy(
                     "explicit-godot-economic-qa-only",
                     MarketItems(crops).Select(item =>
@@ -120,6 +123,9 @@ internal static class GaExplicitEconomicQaConfiguration
         AssertNaturalFreightHierarchy();
         var tradeFixture = TradeFixtureMode();
         bool growth = DemographicPreviewEnabled;
+        bool unitOpening = UnitOpeningPreviewEnabled;
+        if (unitOpening && (!BoundedTradePreviewEnabled || !growth || !enableLocalEconomy || tradeFixture is not null))
+            throw new InvalidOperationException("Unit opening requires bounded demographic local economy, without trade fixture.");
         if (BoundedTradePreviewEnabled && (!growth || !enableLocalEconomy || tradeFixture is not null))
             throw new InvalidOperationException("Bounded trade preview requires the normal demographic local economy.");
         if (growth && (!enableLocalEconomy || !enablePersistentOrders || tradeFixture is not null))
@@ -139,8 +145,14 @@ internal static class GaExplicitEconomicQaConfiguration
             throw new InvalidOperationException(
                 "R87 G18 visual QA requires the pristine six-worker fixture.");
 
+        // Select existing canonical identities before economic initialization and queue deployment.
+        // Legacy six-worker acceptance scenarios remain unchanged.
+        var openingWorkers = demo.Snapshot.Workers.Workers.AsEnumerable();
+        if (unitOpening)
+            openingWorkers = openingWorkers.GroupBy(w => w.Owner)
+                .Select(g => g.OrderBy(w => w.Id.Value).First()).OrderBy(w => w.Id.Value);
         var specialized = new PhysicalWorkerRuntimeState(
-            demo.Snapshot.Workers.Workers.Select(w =>
+            openingWorkers.Select(w =>
                 new PhysicalWorkerRuntimeRecord(
                     w.Id, w.Owner, w.CellId,
                     w.Owner == Red ? CommodityOne : CommodityTwo,
@@ -156,7 +168,7 @@ internal static class GaExplicitEconomicQaConfiguration
             world, demo.Incidence);
         var identity = FoundationFineFirstWorldgenCanonicalSignature.Compute(
             world, demo.Incidence, fine);
-        var configuration = Profile(enableCropPreview, enableLocalEconomy, BoundedTradePreviewEnabled);
+        var configuration = Profile(enableCropPreview, enableLocalEconomy, BoundedTradePreviewEnabled, unitOpening);
         // QA-only provisional equal basic-resource yields; existing commodity 1/2 are wood/stone only in this experiment.
         var basic = enableLocalEconomy ? new FoundationBasicResourceProductionPolicy(CommodityOne, CommodityTwo, 1_000_000UL, 1_000_000UL) : null;
         var agriculture = enableCropPreview ? new FoundationAgriculturalProductionPolicy(fine, demo.Incidence, CropItems(), 2_000_000UL, basic) : null;
@@ -203,7 +215,7 @@ internal static class GaExplicitEconomicQaConfiguration
                 FoundationPersistedEdgeTravelTransitions.DeployEmpty(
                     demo.Session.Snapshot));
         }
-        if (enableConstructionPreview)
+        if (enableConstructionPreview && !unitOpening)
         {
             // QA-only one existing idle builder; retain all identities and locations.
             var snapshot = demo.Session.Snapshot;
@@ -241,6 +253,9 @@ internal static class GaExplicitEconomicQaConfiguration
                 tacticalLocationsAuthoritative: true, occupationsAuthoritative: true)));
             global::Godot.GD.Print($"GA_NEXT_R2313_FIXTURE mode={tradeFixture} source={source.Value} destination={destination.Value} workers={snapshot.Workers.Workers.Count} policy=unchanged");
         }
+        if (enableConstructionPreview && unitOpening)
+            demo.Session.AcceptSnapshot(demo.Snapshot.WithConstructions(
+                new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>())));
         if (enablePersistentOrders)
             demo.Session.AcceptSnapshot(demo.Snapshot.DeployInitialWorkerOrders());
         var host = new FoundationTacticalHumanAiTurnHost(
