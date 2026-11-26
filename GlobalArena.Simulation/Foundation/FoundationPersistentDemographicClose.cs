@@ -21,6 +21,7 @@ public static class FoundationPersistentDemographicClose
         FoundationActivityCommodityDemandPolicy demand, PhysicalTacticalWorkerMoveEventExecutor movement,
         SimulationContext context)
     {
+        using var profile = FoundationTurnProfiler.Measure("demography");
         if (!opening.WorkerOrders.IsInitialized || opening.CityResidences.IsInitialized ||
             settled.Treasury.LastSettledEconomicCycleOrdinal != checked(opening.Treasury.LastSettledEconomicCycleOrdinal + 1UL) ||
             opening.Workers.Workers.Count != settled.Workers.Workers.Count)

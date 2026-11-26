@@ -1256,6 +1256,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
 
     private FoundationTacticalCollectiveReceipt ClosePersistentTurn()
     {
+        using var profile = FoundationTurnProfiler.Measure("persistent_host_close");
         var turn = NextTurn;
         var before = Snapshot;
         var commands = new List<ISimulationCommand>();
@@ -1300,7 +1301,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
         // the publisher accepts it; no third market solve is required here.
         var sale = resolved.Events.OfType<FoundationTemporalSalesSettledEvent>().Single();
         var timeline = resolved.Events.OfType<FoundationPersistentWorkerTurnEvent>().Single();
-        _closedTrade.PublishVerifiedTemporalSettlement(sale, Snapshot, NextTurn);
+        using (FoundationTurnProfiler.Measure("trade_publication"))
+            _closedTrade.PublishVerifiedTemporalSettlement(sale, Snapshot, NextTurn);
         var receipt = new FoundationTacticalCollectiveReceipt(turn, StateHash, Snapshot.Revision,
             Array.Empty<PhysicalTacticalWorkerMovedEvent>(), temporalSettlement: sale,
             persistentEdits: resolved.Events.OfType<FoundationPersistentOrderEditEvent>().ToArray(),

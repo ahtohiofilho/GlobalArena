@@ -188,11 +188,13 @@ public static class FoundationTemporalEconomicJournalGate
             !beginning.Transport.HasMonetaryConstructionCosts)
             throw new InvalidOperationException(
                 "Temporal cash cannot close without a bound opt-in world and funded treasury.");
+        using var profile = FoundationTurnProfiler.Measure("journal_close_and_replay");
         var executor = new ReplayExecutor(beginning, movement, movementPolicy,
             incidence, economicPolicy, signedFine, investmentExecutor, constructionPhase, persistentScheduler, fundedIntents, enableDemographicGrowth, agriculture, operationalPolicy);
         var staged = beginning;
-        foreach (var ev in physicalAndInvestmentEvents)
-            staged = executor.Execute(staged, ev, context);
+        using (FoundationTurnProfiler.Measure("journal_stage_events"))
+            foreach (var ev in physicalAndInvestmentEvents)
+                staged = executor.Execute(staged, ev, context);
         var (settlement, expected) = Derive(beginning, staged,
             executor.VerifiedPhysicalEvents, executor.VerifiedLocalEvents,
             executor.VerifiedInvestmentCount,
@@ -242,6 +244,7 @@ public static class FoundationTemporalEconomicJournalGate
     {
         ArgumentNullException.ThrowIfNull(beginning);
         ArgumentNullException.ThrowIfNull(journal);
+        using var profile = FoundationTurnProfiler.Measure("independent_replay");
         var executor = new ReplayExecutor(beginning, movement, movementPolicy,
             incidence, economicPolicy, signedFine, investmentExecutor, constructionPhase, persistentScheduler, fundedIntents, enableDemographicGrowth, agriculture, operationalPolicy);
         var state = new SimulationEventLogReplayer(executor).Replay(
@@ -265,6 +268,7 @@ public static class FoundationTemporalEconomicJournalGate
         FoundationPersistentWorkerTurnEvent? timeline = null, FoundationAgriculturalProductionPolicy? agriculture = null, FoundationOperationalFreightShadowPolicy? operationalPolicy = null,
         bool retainLocalPriceHistory = false)
     {
+        using var profile = FoundationTurnProfiler.Measure("economic_derive");
         if (policy.UseTemporalProgressiveDistribution && !retainLocalPriceHistory)
             throw new InvalidOperationException("Progressive settlement is restricted to the opt-in local price experiment.");
         if (beginning.WorkerOrders.IsInitialized != (timeline is not null))

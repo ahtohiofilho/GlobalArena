@@ -759,60 +759,89 @@ public partial class Main : Control
     {
         SetHudMoveArmed(false);
         if (_tacticalHost is null || _localOrderStatus is null) return;
-        try
+        bool profiling = _tacticalHost.PersistentOrdersEnabled &&
+            System.Environment.GetEnvironmentVariable("GA_NEXT_R232_TURN_PROFILE") == "1";
+        using var profile = FoundationTurnProfiler.Begin(profiling);
+        int openingWorkers = profiling ? _tacticalHost.Snapshot.Workers.Workers.Count : 0;
+        FoundationTacticalCollectiveReceipt? measuredReceipt = null;
+        using (FoundationTurnProfiler.Measure("turn_total"))
         {
-            var host = _tacticalHost;
-            if (!host.ReadyCivilizations.Contains(_humanCivilization))
-                host.SetHumanReady(_humanCivilization);
-            var receipt = host.TryCloseTurn() ??
-                throw new System.InvalidOperationException(
-                    "Collective turn not closed: all participants not ready.");
-            RecordCityWorkerCropEvidence(host, receipt);
-            AttachRuntimeState(host.Snapshot);
-            AuditPortInvestmentQa(receipt);
-            var humanCount = receipt.Events.Count(x => x.Issuer == _humanCivilization);
-            var aiCount = receipt.Events.Count(x =>
-                x.Issuer != _humanCivilization);
-            _localOrderStatus.Text =
-                $"Turn {receipt.Turn.Value}: Human {humanCount} + AI {aiCount} " +
-                $"actions | journal replay OK | hash v{receipt.Hash.FormatVersion}";
-            if (receipt.PersistentTimeline is { } timeline)
+            try
             {
-                humanCount = receipt.PersistentEdits.Count(x => x.Edit.Issuer == _humanCivilization) + receipt.PersistentFunding.Count(x => x.Investor == _humanCivilization);
-                _localOrderStatus.Text = $"Turn {receipt.Turn.Value}: {humanCount} submitted commands | {timeline.Slices.Select(x => x.Worker).Distinct().Count()} workers scheduled | journal replay OK";
-            }
-            if (receipt.EconomicSettlement is { } settlement)
-            {
-                var view = host.GetLastClosedEconomicTradeView(
-                    _humanCivilization);
+                var host = _tacticalHost;
+                FoundationTacticalCollectiveReceipt receipt;
+                using (FoundationTurnProfiler.Measure("host_close"))
+                {
+                    if (!host.ReadyCivilizations.Contains(_humanCivilization))
+                        host.SetHumanReady(_humanCivilization);
+                    receipt = host.TryCloseTurn() ??
+                        throw new System.InvalidOperationException(
+                            "Collective turn not closed: all participants not ready.");
+                }
+                using (FoundationTurnProfiler.Measure("ui_attach"))
+                {
+                    RecordCityWorkerCropEvidence(host, receipt);
+                    AttachRuntimeState(host.Snapshot);
+                    AuditPortInvestmentQa(receipt);
+                }
+                var humanCount = receipt.Events.Count(x => x.Issuer == _humanCivilization);
+                var aiCount = receipt.Events.Count(x =>
+                    x.Issuer != _humanCivilization);
                 _localOrderStatus.Text =
-                    $"Turn {receipt.Turn.Value}: economic cycle " +
-                    $"{settlement.EconomicCycleOrdinal} closed | " +
-                    $"{settlement.SoldAndConsumedGoodsMicro}/" +
-                    $"{settlement.ProducedGoodsMicro} goods sold/consumed | " +
-                    $"routes visible {view.UsedEdges.Count} | " +
-                    $"journal replay OK | hash v{receipt.Hash.FormatVersion}";
-                GD.Print($"GA_NEXT_V15_SETTLED_TRADE_READY " +
-                    $"cycle={settlement.EconomicCycleOrdinal} " +
-                    $"visible_edge_count={view.UsedEdges.Count} " +
-                    $"sold_micro={settlement.SoldAndConsumedGoodsMicro} " +
-                    $"produced_micro={settlement.ProducedGoodsMicro} " +
-                    "source=authoritative_journal privacy=participant");
+                    $"Turn {receipt.Turn.Value}: Human {humanCount} + AI {aiCount} " +
+                    $"actions | journal replay OK | hash v{receipt.Hash.FormatVersion}";
+                if (receipt.PersistentTimeline is { } timeline)
+                {
+                    humanCount = receipt.PersistentEdits.Count(x => x.Edit.Issuer == _humanCivilization) + receipt.PersistentFunding.Count(x => x.Investor == _humanCivilization);
+                    _localOrderStatus.Text = $"Turn {receipt.Turn.Value}: {humanCount} submitted commands | {timeline.Slices.Select(x => x.Worker).Distinct().Count()} workers scheduled | journal replay OK";
+                }
+                if (receipt.EconomicSettlement is { } settlement)
+                {
+                    var view = host.GetLastClosedEconomicTradeView(
+                        _humanCivilization);
+                    _localOrderStatus.Text =
+                        $"Turn {receipt.Turn.Value}: economic cycle " +
+                        $"{settlement.EconomicCycleOrdinal} closed | " +
+                        $"{settlement.SoldAndConsumedGoodsMicro}/" +
+                        $"{settlement.ProducedGoodsMicro} goods sold/consumed | " +
+                        $"routes visible {view.UsedEdges.Count} | " +
+                        $"journal replay OK | hash v{receipt.Hash.FormatVersion}";
+                    GD.Print($"GA_NEXT_V15_SETTLED_TRADE_READY " +
+                        $"cycle={settlement.EconomicCycleOrdinal} " +
+                        $"visible_edge_count={view.UsedEdges.Count} " +
+                        $"sold_micro={settlement.SoldAndConsumedGoodsMicro} " +
+                        $"produced_micro={settlement.ProducedGoodsMicro} " +
+                        "source=authoritative_journal privacy=participant");
+                }
+                if (GaExplicitEconomicQaConfiguration.DemographicPreviewEnabled)
+                    _lastDemographicPreviewReceipt = receipt;
+                measuredReceipt = receipt;
+                GD.Print($"GA_NEXT_FINE_HUMAN_AI_COMMIT turn={receipt.Turn.Value} " +
+                    $"human={humanCount} ai={aiCount} " +
+                    $"rev={receipt.Revision} replay={receipt.ReplayMatched} " +
+                    $"hash_v={receipt.Hash.FormatVersion}");
             }
-            if (GaExplicitEconomicQaConfiguration.DemographicPreviewEnabled)
-                _lastDemographicPreviewReceipt = receipt;
-            GD.Print($"GA_NEXT_FINE_HUMAN_AI_COMMIT turn={receipt.Turn.Value} " +
-                $"human={humanCount} ai={aiCount} " +
-                $"rev={receipt.Revision} replay={receipt.ReplayMatched} " +
-                $"hash_v={receipt.Hash.FormatVersion}");
+            catch (System.Exception e)
+            {
+                _localOrderStatus.Text = $"Collective turn rejected: {e.Message}";
+                GD.PrintErr($"GA_NEXT_FINE_HUMAN_AI_REJECTED {e}");
+            }
+            using (FoundationTurnProfiler.Measure("ui_refresh"))
+            {
+                RefreshFineTacticalWorkerControls();
+                RefreshInteractiveEconomyPreviewBanner();
+            }
         }
-        catch (System.Exception e)
+        if (profile is not null && measuredReceipt is not null)
         {
-            _localOrderStatus.Text = $"Collective turn rejected: {e.Message}";
-            GD.PrintErr($"GA_NEXT_FINE_HUMAN_AI_REJECTED {e}");
+            var samples = profile.Read();
+            var snapshot = _tacticalHost.Snapshot;
+            int sites = snapshot.Workers.Workers.Select(w => w.TacticalTileId).Distinct().Count();
+            int tradeEdges = _tacticalHost.GetLastClosedEconomicTradeView(_humanCivilization).UsedEdges.Count;
+            foreach (var sample in samples)
+                GD.Print($"GA_NEXT_R232_PHASE cycle={measuredReceipt.Turn.Value} phase={sample.Phase} calls={sample.Calls} elapsed_us={sample.ElapsedMicroseconds} allocated_bytes={sample.AllocatedBytes}");
+            GD.Print($"GA_NEXT_R232_TURN cycle={measuredReceipt.Turn.Value} workers_before={openingWorkers} workers_after={snapshot.Workers.Workers.Count} occupied_nodes={sites} visible_trade_edges={tradeEdges} replay={measuredReceipt.ReplayMatched} hash={measuredReceipt.Hash} inclusive=true");
         }
-        RefreshFineTacticalWorkerControls();
-        RefreshInteractiveEconomyPreviewBanner();
     }
 
     private void OnLocalWorkerSelected(long optionIndex)
