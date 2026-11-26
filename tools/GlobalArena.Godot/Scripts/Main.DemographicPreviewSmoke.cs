@@ -105,6 +105,28 @@ public partial class Main
             return result;
         }
         var openingDiameters = ReadPopulationMarkers();
+        if (uniformCity)
+        {
+            GaCivilizationVisualIdentity.ExerciseSiteColorContract();
+            var focus = map.CenterGeography;
+            var hash = host.StateHash;
+            foreach (var founder in initial)
+            {
+                ulong tile = founder.TacticalTileId!.Value.FineStrategicCellId.Value;
+                map.InspectPopulationMarkerForSmoke(tile);
+                var dot = map.FindChild("GANextR134SiteDot" + tile, true, false) as Panel;
+                var expected = founder.Owner.Value == 1UL ? new Color("#ed5252") : new Color("#398bf2");
+                if (dot?.IsVisibleInTree() != true ||
+                    dot.GetThemeStylebox("panel") is not StyleBoxFlat disc ||
+                    disc.BgColor != expected || disc.BorderColor != new Color("#f5f5f5"))
+                    throw new InvalidOperationException("Founder's visible site must show the canonical civilization color.");
+            }
+            map.CenterOnGeography(focus);
+            if (host.StateHash != hash)
+                throw new InvalidOperationException("Site color inspection changed the canonical world.");
+            GD.Print("GA_NEXT_R23111_SITE_COLORS_PASS red=true blue=true mixed_policy=true white_border=true hash_unchanged=true");
+        }
+
         var previousDiameters = openingDiameters;
         AssertCartographicPublication(host, 0UL);
         bool bandChanged = false;
