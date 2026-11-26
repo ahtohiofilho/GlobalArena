@@ -158,6 +158,7 @@ public partial class Main
                     GD.Print($"GA_NEXT_R2318_OPENING_REFERENCE workers={before.Length} aggregate_seller_net_scaled={receipt.TemporalEconomicSettlement!.SellerNetScaled} diagnostic_only=true");
             }
             if (bounded) AuditLocalAutomaticAllocation(host, opening, receipt, allocationPriceHistory);
+            if (unitOpening) AuditUnitOpeningDemography(host, opening, receipt);
             if (bounded && !unitOpening)
                 cropRows += ExerciseCityWorkerClosedCropRows(host, receipt);
             var diameters = ReadPopulationMarkers();
