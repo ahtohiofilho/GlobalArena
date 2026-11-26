@@ -52,6 +52,7 @@ public sealed class CanonicalWorldStateHasher
     public WorldStateHash Compute(
         WorldState worldState)
     {
+        using var profile = Foundation.FoundationTurnProfiler.Measure("canonical_hash");
         ArgumentNullException.ThrowIfNull(
             worldState);
 
