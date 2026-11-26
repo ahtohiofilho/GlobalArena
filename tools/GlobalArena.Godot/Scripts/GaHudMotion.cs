@@ -8,7 +8,7 @@ namespace GlobalArena.Godot;
 internal static class GaHudMotion
 {
     private const string ActionMeta = "ga_hud_motion";
-    private static bool Reduced => Environment.GetEnvironmentVariable("GA_NEXT_REDUCED_HUD_MOTION") == "1";
+    private static bool Reduced => System.Environment.GetEnvironmentVariable("GA_NEXT_REDUCED_HUD_MOTION") == "1";
     internal static bool IsAttached(Button button) => button.HasMeta(ActionMeta);
 
     internal static void AttachAction(Button button)
