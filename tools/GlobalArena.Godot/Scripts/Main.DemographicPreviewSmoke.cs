@@ -59,9 +59,15 @@ public partial class Main
         bool bounded = GaExplicitEconomicQaConfiguration.BoundedTradePreviewEnabled;
         bool positiveTrade = false;
         int cropRows = 0;
+        // The canonical treasury retains the last observation per market,
+        // even across closes without sales. Reconstruct that history from
+        // consecutive authorized own-node reads, never replace it wholesale.
+        var allocationPriceHistory = new Dictionary<(PhysicalTacticalTileId, CommodityId), ulong>();
         for (ulong cycle = 1; cycle <= 9; cycle++)
         {
-            var openingPrices = bounded ? ReadOpeningAllocationPrices(host) : null;
+            if (bounded)
+                foreach (var observation in ReadOpeningAllocationPrices(host))
+                    allocationPriceHistory[observation.Key] = observation.Value;
             var opening = host.Snapshot;
             var before = opening.Workers.Workers.ToArray();
             var hash = host.StateHash;
@@ -150,7 +156,7 @@ public partial class Main
                 if (cycle == 1)
                     GD.Print($"GA_NEXT_R2318_OPENING_REFERENCE workers={before.Length} aggregate_seller_net_scaled={receipt.TemporalEconomicSettlement!.SellerNetScaled} diagnostic_only=true");
             }
-            if (bounded) AuditLocalAutomaticAllocation(host, opening, receipt, openingPrices!);
+            if (bounded) AuditLocalAutomaticAllocation(host, opening, receipt, allocationPriceHistory);
             if (bounded && !unitOpening)
                 cropRows += ExerciseCityWorkerClosedCropRows(host, receipt);
             var diameters = ReadPopulationMarkers();
