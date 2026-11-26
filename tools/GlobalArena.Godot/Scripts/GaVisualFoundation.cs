@@ -59,12 +59,12 @@ public static class GaVisualFoundation
 
     /// <summary>Dense widget cards only; floating management windows retain normal padding.</summary>
     internal static StyleBoxFlat HudCardSurface() =>
-        HudFlat(Surface, Surface, 4, 5);
+        GaHudEffects.Surface(GaHudPlane.Footer, 5);
 
     // Local operational cards have two nested surfaces. Avoid paying for
     // the standard window padding twice; the object and action sizes stay intact.
     internal static StyleBoxFlat HudOperationalCardSurface() =>
-        HudFlat(Background, Background, 0, 0);
+        GaHudEffects.Surface(GaHudPlane.Structure, 0);
 
     // A section is a group of widgets, not another outlined form.
     internal static StyleBoxFlat HudFlat(Color fill, Color border, int radius, int padding, int line = 0)
@@ -75,18 +75,14 @@ public static class GaVisualFoundation
     }
 
     internal static StyleBoxFlat HudDockSurface() =>
-        HudFlat(Background, Background, 3, 8);
+        GaHudEffects.Surface(GaHudPlane.Atmosphere, 8);
 
     internal static StyleBoxFlat HudPortraitSurface() =>
-        HudFlat(new Color("#151515"), new Color("#393939"), 3, 2, 1);
+        GaHudEffects.Surface(GaHudPlane.Portrait, 2);
 
     internal static void StyleHudAction(Button button)
     {
-        button.AddThemeStyleboxOverride("normal", HudFlat(Raised, Border, 4, 3, 1));
-        button.AddThemeStyleboxOverride("hover", HudFlat(new Color("#3a3a3a"), Accent, 4, 3, 1));
-        button.AddThemeStyleboxOverride("pressed", HudFlat(new Color("#505050"), Accent, 4, 3, 1));
-        button.AddThemeStyleboxOverride("disabled", HudFlat(new Color("#202020"), new Color("#303030"), 4, 3, 1));
-        button.AddThemeStyleboxOverride("focus", HudFlat(Colors.Transparent, Accent, 4, 0, 1));
+        GaHudEffects.StyleAction(button);
     }
 
     internal static void StyleHudSectionHeader(Button header)
@@ -100,7 +96,7 @@ public static class GaVisualFoundation
     }
 
     internal static StyleBoxFlat HudObjectSurface() =>
-        HudFlat(Surface, Border, 4, 3, 1);
+        GaHudEffects.Surface(GaHudPlane.Object, 3);
 
     public static StyleBoxFlat MapFrame() =>
         SurfaceBox(Background, AccentDim, radius: 5, borderWidth: 1, innerPadding: 0);

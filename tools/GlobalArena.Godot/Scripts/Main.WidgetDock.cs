@@ -39,7 +39,9 @@ public partial class Main
     private void SetWidgetSectionExpanded(string name, bool expanded)
     {
         if (!_widgetSections.TryGetValue(name, out var section)) return;
+        bool changed = section.Content.Visible != expanded;
         section.Content.Visible = expanded;
+        if (changed) GaHudMotion.SetDisclosure(section.Content, expanded);
         section.Header.Text = name.ToUpperInvariant();
         section.Header.Icon = GaHudWidgets.Icon(expanded ? "down" : "right");
         section.Header.TooltipText = expanded ? $"Collapse {name}" : $"Expand {name}";
@@ -97,6 +99,7 @@ public partial class Main
         foreach (var card in new[] { _worldUnitCard, _worldInfrastructureCard, _worldTerrainCard })
             card!.AddThemeStyleboxOverride("panel", GaVisualFoundation.HudOperationalCardSurface());
         _worldPlanetCard!.AddThemeStyleboxOverride("panel", GaVisualFoundation.HudCardSurface());
+        GaHudEffects.AttachSurface(_worldPlanetCard, GaHudPlane.Footer);
         _worldLayerStack!.AddThemeConstantOverride("separation", 14);
         if (_worldUnitActivity is not null) _worldUnitActivity.Visible = false; // same activity in identity
         if (_localPendingLabel is not null) _localPendingLabel.Visible = false; // same queue in Unit
@@ -146,6 +149,8 @@ public partial class Main
         }
         AssertOperationalCardLayout(bounds);
         AssertMonochromeHud();
+        GaHudEffects.ExerciseContract(_hudPortraitFrames, new[] { _hudUnitObject!, _hudInfrastructureObject!, _hudTerrainObject! },
+            _worldPlanetCard!, new[] { _localMoveButton!, _localCancelQueuedButton!, _worldUnitDetails!, _worldInfrastructureManage! });
         var footer = _worldPlanetCard!.GetGlobalRect();
         var atlas = _worldPlanetAtlas ?? throw new InvalidOperationException("Planet action missing.");
         var planetHeader = atlas.GetParent() as HBoxContainer
@@ -173,6 +178,7 @@ public partial class Main
             !host.GetHumanPersistentQueues(_humanCivilization).SequenceEqual(queues))
             throw new InvalidOperationException("Widget layout mutated world or displaced Planet.");
         AssertOperationalFeedback();
+        GD.Print("GA_NEXT_VISUAL01_MATERIAL_PASS neutral_planes=true cached_light=true independent_action_states=true motion_attached=true");
         GD.Print("GA_NEXT_R23064_MONO_HUD_PASS neutral_palette=true framed_portraits=true compact_actions=true separate_slots=true");
         GD.Print("GA_NEXT_R23062_OPERATIONAL_CARD_PASS visual_summaries=true action_strips=true instruction_hidden=true feedback_preserved=true");
         GD.Print("GA_NEXT_R23061A_WIDGET_SHELL_PASS icon_actions=true collapsible=true headers_visible=true fixed_planet=true read_only=true");

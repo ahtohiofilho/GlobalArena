@@ -21,6 +21,7 @@ public partial class Main
             SizeFlagsVertical = SizeFlags.ExpandFill, TooltipText = tooltip,
             MouseFilter = MouseFilterEnum.Pass };
         frame.AddThemeStyleboxOverride("panel", GaVisualFoundation.HudPortraitSurface());
+        GaHudEffects.AttachSurface(frame, GaHudPlane.Portrait);
         row.AddChild(frame);
         var center = new CenterContainer { MouseFilter = MouseFilterEnum.Ignore };
         frame.AddChild(center);
@@ -50,6 +51,7 @@ public partial class Main
     {
         var panel = new PanelContainer { Name = name, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         panel.AddThemeStyleboxOverride("panel", GaVisualFoundation.HudObjectSurface());
+        GaHudEffects.AttachSurface(panel, GaHudPlane.Object);
         parent.AddChild(panel);
         row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         row.AddThemeConstantOverride("separation", 6);
