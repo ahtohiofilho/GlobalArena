@@ -16,6 +16,36 @@ public partial class Main
     private Label? _cityWorkersStatus;
     private VBoxContainer? _cityWorkersList;
     private ulong? _cityWorkerOrigin;
+    private FoundationTacticalHumanAiTurnHost? _cityWorkerCropHost;
+    private ulong _cityWorkerCropTurn;
+    private readonly Dictionary<PhysicalWorkerId, FoundationPersistentWorkerSlice> _cityWorkerCropEvidence = new();
+
+    // Last actual interval, not an order or preference. Keep only own workers.
+    private void RecordCityWorkerCropEvidence(FoundationTacticalHumanAiTurnHost host, FoundationTacticalCollectiveReceipt receipt)
+    {
+        _cityWorkerCropEvidence.Clear();
+        _cityWorkerCropHost = null;
+        if (!receipt.ReplayMatched || receipt.Hash != host.StateHash || receipt.PersistentTimeline is not { } timeline) return;
+        var own = host.Snapshot.Workers.Workers.Where(w => w.Owner == _humanCivilization).Select(w => w.Id).ToHashSet();
+        foreach (var group in timeline.Slices.Where(s => own.Contains(s.Worker) && s.DurationMicro > 0).GroupBy(s => s.Worker))
+        {
+            var last = group.OrderBy(s => s.StartMicro).Last();
+            if (last.Activity == PhysicalWorkerActivity.Producing && last.Occupation == PhysicalWorkerOccupation.Agriculture && last.Crop.HasValue)
+                _cityWorkerCropEvidence.Add(group.Key, last);
+        }
+        _cityWorkerCropHost = host;
+        _cityWorkerCropTurn = host.NextTurn.Value;
+    }
+
+    private string? CityWorkerClosedCrop(FoundationTacticalHumanAiTurnHost host, PhysicalWorkerRuntimeRecord worker)
+    {
+        if (!ReferenceEquals(_cityWorkerCropHost, host) || _cityWorkerCropTurn != host.NextTurn.Value ||
+            worker.Owner != _humanCivilization || worker.Activity != PhysicalWorkerActivity.Producing ||
+            worker.Occupation != PhysicalWorkerOccupation.Agriculture ||
+            !_cityWorkerCropEvidence.TryGetValue(worker.Id, out var slice) || slice.Node != worker.TacticalTileId ||
+            slice.Crop is not { } crop || !CropCatalog.All.Any(c => c.Id == (CropId)crop)) return null;
+        return ((CropId)crop).ToString();
+    }
 
     private void CreateCityWorkersTab(TabContainer tabs)
     {
@@ -57,6 +87,7 @@ public partial class Main
             var q = queues?.GetValueOrDefault(worker.Id);
             string activity = worker.Activity == PhysicalWorkerActivity.Producing
                 ? (worker.Occupation switch {
+                    PhysicalWorkerOccupation.Agriculture => $"Producing | {CityWorkerClosedCrop(host, worker) ?? "Agriculture"}",
                     PhysicalWorkerOccupation.Forestry when host.ExperimentalLocalEconomyEnabled => "Producing wood",
                     PhysicalWorkerOccupation.Mining when host.ExperimentalLocalEconomyEnabled => "Producing stone",
                     _ => $"Producing | {worker.Occupation}" })
@@ -124,6 +155,30 @@ public partial class Main
         var shown = _cityWorkersList!.GetChildren().OfType<Button>().Select(b => b.Name.ToString()).ToArray();
         if (_cityWorkersTab?.IsVisibleInTree() != true || !shown.SequenceEqual(expected))
             throw new InvalidOperationException("Worker list does not match own physical residents.");
+    }
+
+    private int ExerciseCityWorkerClosedCropRows(FoundationTacticalHumanAiTurnHost host, FoundationTacticalCollectiveReceipt receipt)
+    {
+        var hash = host.StateHash;
+        var timeline = receipt.PersistentTimeline ?? throw new InvalidOperationException("Missing crop evidence timeline.");
+        int count = 0;
+        foreach (var worker in host.Snapshot.Workers.Workers.Where(w => w.Owner == _humanCivilization &&
+            w.Activity == PhysicalWorkerActivity.Producing && w.Occupation == PhysicalWorkerOccupation.Agriculture && w.TacticalTileId.HasValue))
+        {
+            var last = timeline.Slices.Where(s => s.Worker == worker.Id && s.DurationMicro > 0).OrderBy(s => s.StartMicro).LastOrDefault();
+            if (last is null || last.Node != worker.TacticalTileId || last.Activity != PhysicalWorkerActivity.Producing ||
+                last.Occupation != PhysicalWorkerOccupation.Agriculture || last.Crop is not { } crop) continue;
+            FocusCityProductionSmokeSite(host, worker.TacticalTileId!.Value);
+            _cityWorkersTabs!.CurrentTab = 3;
+            AssertCityWorkerList(host, worker.TacticalTileId.Value);
+            var row = _cityWorkersList!.GetChildren().OfType<Button>().Single(b => b.Name.ToString() == $"GANextCityWorker{worker.Id.Value}");
+            if (!row.Text.StartsWith($"Worker #{worker.Id.Value} | Producing | {(CropId)crop}\n", StringComparison.Ordinal))
+                throw new InvalidOperationException("Worker crop row differs from committed calendar.");
+            _cityWindowLayer!.Visible = false;
+            count++;
+        }
+        if (hash != host.StateHash) throw new InvalidOperationException("Worker crop UI changed canonical state.");
+        return count;
     }
 
     private void ExerciseCityWorkersPrivacy(FoundationTacticalHumanAiTurnHost host, PhysicalTacticalTileId node)
