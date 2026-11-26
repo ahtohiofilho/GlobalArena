@@ -17,6 +17,26 @@ public partial class Main
         if (System.Environment.GetEnvironmentVariable("GA_NEXT_R232_TURN_PROFILE") != "1" ||
             host.NextTurn.Value != 51UL || host.Snapshot.Workers.Workers.Count != 101)
             throw new InvalidOperationException("Dispersed profiling requires the complete 50-cycle baseline.");
+        // This reports the actual loaded managed assemblies, not just the
+        // requested MSBuild property. The native Godot editor stays identical.
+        string? buildMode = System.Environment.GetEnvironmentVariable("GA_NEXT_R232E_MANAGED_BUILD");
+        if (!string.IsNullOrEmpty(buildMode))
+        {
+            if (buildMode != "debug" && buildMode != "optimized")
+                throw new InvalidOperationException("Unknown managed comparison build.");
+            bool expectedDisabled = buildMode == "debug";
+            var assemblies = new[] { typeof(Main).Assembly, typeof(FoundationTurnProfiler).Assembly,
+                typeof(WorldState).Assembly, typeof(PhysicalTacticalTileId).Assembly };
+            foreach (var assembly in assemblies.Distinct())
+            {
+                var debug = assembly.GetCustomAttributes(typeof(System.Diagnostics.DebuggableAttribute), false)
+                    .OfType<System.Diagnostics.DebuggableAttribute>().SingleOrDefault();
+                bool disabled = debug?.IsJITOptimizerDisabled ?? false;
+                if (disabled != expectedDisabled)
+                    throw new InvalidOperationException($"Unexpected managed optimizer flag: {assembly.GetName().Name}, disabled={disabled}.");
+                GD.Print($"GA_NEXT_R232E_BUILD mode={buildMode} assembly={assembly.GetName().Name} jit_optimizer_disabled={disabled}");
+            }
+        }
         const int targetSites = 8;
         const ulong finalCycle = 100UL;
         var fine = _r123FineGeography ?? throw new InvalidOperationException("Missing signed geography.");
