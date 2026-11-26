@@ -60,8 +60,35 @@ public static class GaVisualFoundation
         };
     }
 
-    public static StyleBoxFlat WindowSurface() =>
-        SurfaceBox(Surface, Border, radius: 8, borderWidth: 1, innerPadding: 8);
+    // Floating surfaces share the HUD's material family but retain their
+    // original padding, border width, corner radius and drag geometry.
+    public static StyleBoxFlat WindowSurface()
+    {
+        var box = SurfaceBox(GaHudVisualTokens.Footer, GaHudVisualTokens.Rim,
+            radius: 8, borderWidth: 1, innerPadding: 8);
+        box.ShadowColor = GaHudVisualTokens.Shadow;
+        box.ShadowSize = GaHudVisualTokens.FooterShadow;
+        box.ShadowOffset = new Vector2(0, 2);
+        return box;
+    }
+
+    internal static StyleBoxFlat WindowHeaderSurface() =>
+        GaHudEffects.Surface(GaHudPlane.Object, 7);
+
+    internal static void StyleWindowClose(Button button)
+    {
+        // The standard text button has four pixels of padding; retain
+        // that metric instead of the smaller icon-action padding.
+        var normal = SurfaceBox(GaHudVisualTokens.Action, GaHudVisualTokens.Rim, 5, 1, 4);
+        normal.ShadowColor = GaHudVisualTokens.Shadow;
+        normal.ShadowSize = GaHudVisualTokens.ContactShadow;
+        normal.ShadowOffset = new Vector2(0, 1);
+        button.AddThemeStyleboxOverride("normal", normal);
+        button.AddThemeStyleboxOverride("hover", HudFlat(GaHudVisualTokens.Hover, GaHudVisualTokens.Focus, 5, 4, 1));
+        button.AddThemeStyleboxOverride("pressed", HudFlat(GaHudVisualTokens.Pressed, GaHudVisualTokens.Focus, 5, 4, 1));
+        button.AddThemeStyleboxOverride("disabled", HudFlat(GaHudVisualTokens.Disabled, GaHudVisualTokens.RecessRim, 5, 4, 1));
+        button.AddThemeStyleboxOverride("focus", HudFlat(Colors.Transparent, GaHudVisualTokens.Focus, 5, 0, 1));
+    }
 
     /// <summary>Dense widget cards only; floating management windows retain normal padding.</summary>
     internal static StyleBoxFlat HudCardSurface() =>
@@ -185,9 +212,8 @@ public static class GaVisualFoundation
             Name = "GAWindowDragHandle",
             MouseFilter = Control.MouseFilterEnum.Stop
         };
-        frame.AddThemeStyleboxOverride("panel",
-            SurfaceBox(Header, AccentDim, radius: 5, borderWidth: 1,
-                innerPadding: 7));
+        frame.AddThemeStyleboxOverride("panel", WindowHeaderSurface());
+        GaHudEffects.AttachSurface(frame, GaHudPlane.Object);
         parent.AddChild(frame);
 
         var row = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
@@ -226,6 +252,7 @@ public static class GaVisualFoundation
             Text = "✕", TooltipText = "Close window (Esc)",
             CustomMinimumSize = new Vector2(29f, 29f)
         };
+        StyleWindowClose(exit);
         exit.Pressed += close;
         row.AddChild(exit);
         return frame;
