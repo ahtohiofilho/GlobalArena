@@ -43,7 +43,7 @@ internal static class GaSiteLabelLayout
     internal static void ExerciseContract()
     {
         var sites = new Site[] {
-            new(3, 2, new Rect2(112, 60, 6, 6), new Vector2(70, 18)),
+            new(3, 2, new Rect2(140, 60, 6, 6), new Vector2(70, 18)),
             new(2, 4, new Rect2(96, 60, 8, 8), new Vector2(70, 18)),
             new(1, 20, new Rect2(78, 60, 12, 12), new Vector2(80, 22))
         };
