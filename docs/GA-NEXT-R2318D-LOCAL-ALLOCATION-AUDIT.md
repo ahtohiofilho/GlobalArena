@@ -1,0 +1,13 @@
+# R231.8D — Local automatic allocation audit
+
+Base #677 2759a7e, four successful workflows / five checks; 58 actual own crop UI rows verified. The local ranker considers wood, stone and each geographically productive crop. It scores potential output times last observed buyer-node price (fallback 1_000_000 micro-money per whole good if absent), divided by 1 + earlier automatic assignments to the same occupation/crop at this civilization/node. Actual zero is not missing. Canonical occupation/crop order breaks ties. No hypothetical market solve. Basic wood and stone both have unit whole-turn yield in this QA configuration; crop yield is geography-dependent.
+
+Audit both bounded demographic openings (historical three-worker grouped demand and new one-worker individual demand) over nine real closes each. Reconstruct eligible own candidates and reservation counts in canonical worker order; log output, observed/fallback price, numerator, divisor, winner, and summary by activity. Require exact agreement with committed calendar and unchanged state hash. This diagnostic is deliberately restricted to uncommanded full-turn stationary workers on the tested land sites, not a general allocation simulator. No kernel, ranking, prices, demand, demographics, replay or UI changes. No forced diversification. The causes of missing stone and demographic asymmetry must be assessed from the resulting evidence, not assumed. CI pending, draft, no merge.
+
+## R231.8D.1 — Compile correction
+
+Both initial workflows failed at compile with CS1061 because treasury LocalPriceHistory is internal. Capture prior prices before E through GetLastClosedLocalEconomics, checking cycle, complete catalog, exclusive own occupancy and unchanged hash. The audit compares the resulting candidate selection to actual replay-verified intervals. No widening of internal API, no changes to allocator, market or acceptance criteria. This remains scoped to stationary exclusive sites.
+
+## R231.8D.2 — Historical observation retention
+
+R231.8D.1 compiled; full Godot scene passed, persistent UI passed through the first five bounded allocation audits, then diverged on cycle 6. Treasury CloseVerifiedEconomicCycle merges new observations into LocalPriceHistory, preserving older observations for markets without a new sale. The public local close exposes only that cycle's observations. Reconstruct cumulative own-node observations across the complete stationary smoke, updating only non-null observations (including actual zero). Do not reset history when a commodity has no sale. Keep strict equality with the committed calendar and all nine-cycle acceptance criteria. No production logic changes or internal API exposure. CI pending.
