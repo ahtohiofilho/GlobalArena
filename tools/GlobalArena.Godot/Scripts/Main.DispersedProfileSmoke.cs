@@ -154,6 +154,11 @@ public partial class Main
             map.AssertSiteLabelLayout();
         }
         map.CenterOnGeography(visualFocus);
+        // The focus rebuild recreates Control nodes. Let Godot settle their
+        // inherited minimum sizes and projection before asserting the actual frame.
+        for (int frame = 0; frame < 6; frame++)
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        map.AssertSiteLabelLayout();
         if (host.StateHash != visualHash)
             throw new InvalidOperationException("Visual site inspection mutated the simulation.");
         GD.Print("GA_NEXT_VISUAL02A_LABELS_PASS pure_collision=true actual_sites=8 dots_preserved=true hash_unchanged=true");
