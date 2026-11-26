@@ -36,6 +36,16 @@ internal static class GaExplicitEconomicQaConfiguration
                 "discourage unnecessary port transitions.");
     }
 
+    // Explicit opt-in acceptance fixture, never selected by the normal launcher.
+    internal static string? TradeFixtureMode()
+    {
+        var mode = System.Environment.GetEnvironmentVariable("GA_NEXT_R2313_TRADE_FIXTURE");
+        if (string.IsNullOrEmpty(mode)) return null;
+        if (mode != "remote" && mode != "local")
+            throw new InvalidOperationException("Trade fixture must be remote or local.");
+        return mode;
+    }
+
     internal static IReadOnlyDictionary<CropId, CommodityId> CropItems() =>
         CropCatalog.All.ToDictionary(c => c.Id, c => new CommodityId((uint)c.Id + 2U));
 
@@ -99,6 +109,10 @@ internal static class GaExplicitEconomicQaConfiguration
     {
         ArgumentNullException.ThrowIfNull(demo);
         AssertNaturalFreightHierarchy();
+        var tradeFixture = TradeFixtureMode();
+        if (tradeFixture is not null && (!enableLocalEconomy ||
+            System.Environment.GetEnvironmentVariable("GA_NEXT_R213_UI_SMOKE") != "1"))
+            throw new InvalidOperationException("R231.3 trade fixture is acceptance-only and requires the eight-item local economy smoke.");
         if (enableLocalEconomy && (!enableCropPreview || !enablePersistentOrders || !enableConstructionPreview))
             throw new InvalidOperationException("Local economy preview requires signed persistent crop and construction QA.");
         if (enableCropPreview && !enablePersistentOrders) throw new InvalidOperationException("Crop preview requires persistent orders.");
@@ -185,6 +199,33 @@ internal static class GaExplicitEconomicQaConfiguration
                 tacticalLocationsAuthoritative: true, occupationsAuthoritative: true);
             demo.Session.AcceptSnapshot(snapshot.WithWorkers(workers).WithConstructions(
                 new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>())));
+        }
+        if (tradeFixture is not null)
+        {
+            // Keep the signed fine-first world, canonical edge costs, six real
+            // identities and eight-item policy. Only the opening placements
+            // differ. Both cells share a chart so the positive edge is resident.
+            var incidence = demo.Incidence;
+            var crossing = incidence.FineTopology.Edges
+                .Where(e => fine.CrossingAtIndices((int)e.IncidentCellIds[0].Value - 1,
+                    (int)e.IncidentCellIds[1].Value - 1) == FoundationFineTransportCrossingKind.Ground)
+                .OrderBy(e => e.Id.Value)
+                .First(e => incidence.TileIncidences[(int)e.IncidentCellIds[0].Value - 1].IncidentCoarseCellIds
+                    .Intersect(incidence.TileIncidences[(int)e.IncidentCellIds[1].Value - 1].IncidentCoarseCellIds).Any());
+            var source = crossing.IncidentCellIds[0];
+            var destination = tradeFixture == "remote" ? crossing.IncidentCellIds[1] : source;
+            var snapshot = demo.Snapshot;
+            var census = snapshot.Workers.Workers.Select(w =>
+            {
+                var cell = w.Owner == Red ? source : destination;
+                var region = incidence.TileIncidences[(int)cell.Value - 1].IncidentCoarseCellIds
+                    .OrderBy(id => id.Value).First();
+                return w.WithTacticalLocationAndActivity(
+                    new PhysicalTacticalTileId(incidence.Refinement.FineParameters, cell), region, w.Activity);
+            });
+            demo.Session.AcceptSnapshot(snapshot.WithWorkers(new PhysicalWorkerRuntimeState(census,
+                tacticalLocationsAuthoritative: true, occupationsAuthoritative: true)));
+            global::Godot.GD.Print($"GA_NEXT_R2313_FIXTURE mode={tradeFixture} source={source.Value} destination={destination.Value} workers={snapshot.Workers.Workers.Count} policy=unchanged");
         }
         if (enablePersistentOrders)
             demo.Session.AcceptSnapshot(demo.Snapshot.DeployInitialWorkerOrders());

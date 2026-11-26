@@ -471,6 +471,12 @@ public partial class Main
             if (host.ExperimentalLocalEconomyEnabled)
             {
                 AssertNeutralHudStart(host);
+                if (GaExplicitEconomicQaConfiguration.TradeFixtureMode() is { } tradeMode)
+                {
+                    await ExerciseEightCommodityTradeFixture(host, tradeMode);
+                    GetTree().Quit(0);
+                    return;
+                }
                 await ExerciseLayeredWorldDock(host);
                 await ExerciseWidgetDock(host);
                 ExerciseWorldPlanet(host);
