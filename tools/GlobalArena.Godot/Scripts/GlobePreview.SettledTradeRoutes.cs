@@ -153,11 +153,11 @@ public partial class GlobePreview
                     _camera.UnprojectPosition(_planet.ToGlobal(last)), route.Width));
             }
         }
-        // Both passes use logical screen pixels, just as in the tactical map.
+        // Both passes use logical screen pixels, with lighter atlas-specific ink.
         // Draw all rims first so route junctions have no transverse white seam.
         foreach (var line in projected)
             _sphericalTradeInk.DrawLine(line.A, line.B, Colors.White,
-                line.Width + 2f * GaCartographicStyle.TradeOutlinePixels, true);
+                line.Width + 2f * GaCartographicStyle.StrategicTradeOutlinePixels, true);
         foreach (var line in projected)
             _sphericalTradeInk.DrawLine(line.A, line.B, Colors.Black, line.Width, true);
     }
@@ -176,7 +176,7 @@ public partial class GlobePreview
         foreach (var route in _sphericalTradeBands.Zip(view.UsedEdges.OrderBy(e => e.Edge.FineStrategicEdgeId.Value)))
         {
             var band = route.First;
-            if (band.Width != GaCartographicStyle.TradeWidth(route.Second.TotalCargoMicro) ||
+            if (band.Width != GaCartographicStyle.StrategicTradeWidth(route.Second.TotalCargoMicro) ||
                 !ClipTradeArc(band.A, band.B, (band.A + band.B).Normalized() * 3f, out _, out _) ||
                 ClipTradeArc(band.A, band.B, -(band.A + band.B).Normalized() * 3f, out _, out _))
                 throw new InvalidOperationException("Strategic trade width or front/back visibility contract failed.");
@@ -210,7 +210,7 @@ public partial class GlobePreview
             Vector3 a = ToGodot(_signedG18RouteGeometry.GetCell(edge.FirstTile.FineStrategicCellId).Center).Normalized();
             Vector3 b = ToGodot(_signedG18RouteGeometry.GetCell(edge.SecondTile.FineStrategicCellId).Center).Normalized();
             if (a.DistanceSquaredTo(b) < 1e-12f) throw new InvalidOperationException("Degenerate freight edge.");
-            _sphericalTradeBands.Add((edge.Edge, a, b, GaCartographicStyle.TradeWidth(edge.TotalCargoMicro)));
+            _sphericalTradeBands.Add((edge.Edge, a, b, GaCartographicStyle.StrategicTradeWidth(edge.TotalCargoMicro)));
         }
         VisibleSphericalSettledTradeCrossings = _sphericalTradeBands.Count;
         RefreshSphericalTradeVisibility();

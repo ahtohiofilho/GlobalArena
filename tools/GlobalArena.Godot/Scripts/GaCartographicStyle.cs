@@ -8,6 +8,8 @@ internal static class GaCartographicStyle
     internal const double CargoReferenceMicro = 1_000_000d;
     internal const float TradeLogGain = 2f;
     internal const float MaximumTradeCorePixels = 12f;
+    internal const float StrategicTradeOutlinePixels = 0.75f;
+    internal const float MaximumStrategicTradeCorePixels = 6.5f;
 
     internal static int SiteBand(int population)
     {
@@ -31,6 +33,11 @@ internal static class GaCartographicStyle
         Math.Min(MaximumTradeCorePixels, 1f + TradeLogGain *
             (float)Math.Log2(1d + cargoMicro / CargoReferenceMicro));
 
+    // Same cargo calibration and ordering; reduce only the atlas ink weight.
+    // Fixed screen-space mapping, independent of the current market maximum.
+    internal static float StrategicTradeWidth(ulong cargoMicro) => cargoMicro == 0UL ? 0f :
+        0.5f + 0.5f * TradeWidth(cargoMicro);
+
     internal static void ExerciseContract()
     {
         int[] population = { 0, 1, 2, 3, 4, 5, 8, 9, 16, 17 };
@@ -45,5 +52,19 @@ internal static class GaCartographicStyle
             TradeWidth(2_000_000) >= TradeWidth(4_000_000) ||
             TradeWidth(ulong.MaxValue) > MaximumTradeCorePixels || TradeOutlinePixels != 1f)
             throw new InvalidOperationException("Cartographic trade calibration failed.");
+        ulong[] cargo = { 0UL, 1UL, 1_000_000UL, 2_000_000UL, 4_000_000UL, 16_000_000UL, ulong.MaxValue };
+        for (int i = 0; i < cargo.Length; i++)
+        {
+            float width = StrategicTradeWidth(cargo[i]);
+            if (width > MaximumStrategicTradeCorePixels || width > TradeWidth(cargo[i]) ||
+                (cargo[i] == 0UL ? width != 0f : width < 1f) ||
+                (i > 0 && width < StrategicTradeWidth(cargo[i - 1])))
+                throw new InvalidOperationException("Strategic trade hierarchy failed.");
+        }
+        if (StrategicTradeWidth(1_000_000UL) >= StrategicTradeWidth(2_000_000UL) ||
+            StrategicTradeWidth(2_000_000UL) >= StrategicTradeWidth(4_000_000UL) ||
+            StrategicTradeWidth(ulong.MaxValue) != MaximumStrategicTradeCorePixels ||
+            StrategicTradeOutlinePixels >= TradeOutlinePixels)
+            throw new InvalidOperationException("Strategic trade compression must preserve visible hierarchy.");
     }
 }
