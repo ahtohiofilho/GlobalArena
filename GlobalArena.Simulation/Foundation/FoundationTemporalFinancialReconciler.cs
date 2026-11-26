@@ -57,6 +57,7 @@ public static class FoundationTemporalFinancialReconciler
             freightWorld.Workers.Workers.Count != baseline.Workers.Workers.Count)
             throw new InvalidOperationException(
                 "Transport-stage market cannot replace the temporal worker census.");
+        using var profile = FoundationTurnProfiler.Measure("financial_reconcile");
         var market = FoundationTemporalNativeMarketInputs.FromTemporal(
             baseline, temporal, policy.Demand);
         var roads = FoundationPhysicalAuthoritativeTransportProjector.FromWorld(freightWorld, incidence).Roads;
@@ -69,7 +70,9 @@ public static class FoundationTemporalFinancialReconciler
             roads = projection.CounterfactualRoads;
             operationalQuotes = projection.EdgeReadings.Where(e => e.OperationalServiceMicro > 0).ToArray();
         }
-        var distribution = FoundationTemporalNativeMarginalMarketPlanner.CoordinateVerified(
+        FoundationPhysicalGlobalMarginalCoordinationPlan distribution;
+        using (FoundationTurnProfiler.Measure("market_distribution"))
+            distribution = FoundationTemporalNativeMarginalMarketPlanner.CoordinateVerified(
             baseline, incidence, temporal, policy.Demand, policy.Cargo,
             policy.MaxProducerPasses, signedFine, freightWorld, roads,
             policy.UseTemporalProgressiveDistribution,
@@ -90,7 +93,9 @@ public static class FoundationTemporalFinancialReconciler
                     incidence.Refinement.FineParameters, edge.Id)).ToHashSet();
             roads = roads.Where(road => !forbidden.Contains(road.Edge)).ToArray();
         }
-        var accounts = FoundationPhysicalEconomicAccountingReconciler
+        FoundationPhysicalEconomicAccountingProposal accounts;
+        using (FoundationTurnProfiler.Measure("financial_accounting"))
+            accounts = FoundationPhysicalEconomicAccountingReconciler
             .EvaluateCandidate(market, incidence, policy.Cargo, distribution,
                 roads, baseline.Civilizations.Civilizations, policy.TaxRates);
         var outcome = new FoundationTemporalFinancialReconciliation(
