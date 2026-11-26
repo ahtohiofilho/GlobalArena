@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'tools/GlobalArena.Godot/**'
+      - 'GlobalArena.Simulation/CanonicalWorldStateHasher.cs'
       - 'GlobalArena.Runtime/**'
       - 'GlobalArena.Simulation/Foundation/**'
       - 'docs/ga-foundation-godot-runtime-smoke.md'
