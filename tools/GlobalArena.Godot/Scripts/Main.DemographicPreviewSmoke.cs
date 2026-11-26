@@ -6,6 +6,10 @@ namespace GlobalArena.Godot;
 
 public partial class Main
 {
+    // Typed, replay-verified receipt from the real E handler. UI label text
+    // is presentation, not the authority for the demographic assertion.
+    private FoundationTacticalCollectiveReceipt? _lastDemographicPreviewReceipt;
+
     // Real normal preview: no worker relocations, no manual orders, no
     // additional commodities, no special market policy or invented sites.
     private async Task ExerciseDemographicPreview(FoundationTacticalHumanAiTurnHost host)
@@ -27,6 +31,7 @@ public partial class Main
             var before = host.Snapshot.Workers.Workers.ToArray();
             var hash = host.StateHash;
             var previousDiameter = map.PresentedSiteDiameter(homeId);
+            _lastDemographicPreviewReceipt = null;
             var viewport = GetViewport();
             viewport.PushInput(new InputEventKey { Keycode = Key.E, Pressed = true, Echo = false }, true);
             for (int i = 0; i < 6; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
@@ -36,16 +41,41 @@ public partial class Main
             var current = host.Snapshot.Workers.Workers;
             var previousIds = before.Select(w => w.Id).ToHashSet();
             var newborns = current.Where(w => !previousIds.Contains(w.Id)).ToArray();
-            if (host.StateHash == hash || host.NextTurn.Value != cycle + 1UL ||
-                host.Snapshot.Treasury.LastSettledEconomicCycleOrdinal != cycle ||
-                current.Count != before.Length + owners.Length ||
-                newborns.Length != owners.Length ||
-                owners.Any(owner => newborns.Count(w => w.Owner == owner) != 1) ||
-                newborns.Any(w => w.NatalNode is null || w.NatalNode != w.TacticalTileId ||
-                    host.Snapshot.WorkerOrders.Queues.Single(q => q.Worker == w.Id).Orders.Count != 0) ||
-                host.Snapshot.WorkerOrders.Queues.Count != current.Count ||
-                _localOrderStatus?.Text.Contains("journal replay OK") != true)
-                throw new InvalidOperationException($"Demographic close failed at cycle {cycle}.");
+            void Require(bool ok, string condition)
+            {
+                if (!ok) throw new InvalidOperationException($"Demographic close cycle={cycle}: {condition}");
+            }
+            var receipt = _lastDemographicPreviewReceipt ??
+                throw new InvalidOperationException($"Missing real E-close receipt at cycle {cycle}.");
+            Require(receipt.ReplayMatched, "journal replay did not match");
+            Require(receipt.Turn.Value == cycle, $"receipt turn={receipt.Turn.Value}");
+            Require(host.NextTurn.Value == cycle + 1UL, $"next turn={host.NextTurn.Value}");
+            Require(host.StateHash != hash && receipt.Hash == host.StateHash,
+                "committed hash did not change or receipt differs");
+            Require(host.Snapshot.Treasury.LastSettledEconomicCycleOrdinal == cycle,
+                $"settled cycle={host.Snapshot.Treasury.LastSettledEconomicCycleOrdinal}");
+            Require(receipt.TemporalEconomicSettlement is not null, "missing temporal sale");
+            Require(current.Count == before.Length + owners.Length,
+                $"census opening={before.Length} current={current.Count} owners={owners.Length}");
+            Require(newborns.Length == owners.Length, $"newborn count={newborns.Length}");
+            Require(owners.All(owner => newborns.Count(w => w.Owner == owner) == 1),
+                "births not distributed one per surviving owner");
+            Require(receipt.BirthBatch is not null &&
+                receipt.BirthBatch.Newborns.OrderBy(w => w.Id.Value).SequenceEqual(newborns.OrderBy(w => w.Id.Value)),
+                "birth event differs from actual committed newborns");
+            Require(receipt.PersistentTimeline is not null &&
+                receipt.PersistentTimeline.Slices.All(s => previousIds.Contains(s.Worker)),
+                "newborn worked before birth");
+            foreach (var child in newborns)
+            {
+                Require(child.NatalNode is not null && child.NatalNode == child.TacticalTileId,
+                    $"worker {child.Id.Value}: natal node differs");
+                var queue = host.Snapshot.WorkerOrders.Queues.Single(q => q.Worker == child.Id);
+                Require(queue.Orders.Count == 0 && queue.Owner == child.Owner,
+                    $"worker {child.Id.Value}: nonempty or wrong-owner newborn queue");
+            }
+            Require(host.Snapshot.WorkerOrders.Queues.Count == current.Count,
+                $"queues={host.Snapshot.WorkerOrders.Queues.Count} census={current.Count}");
             // Births are after settlement; the preceding cycle's children
             // must have entered real automatic production by this close.
             foreach (var child in before.Where(w => !initial.Any(x => x.Id == w.Id)))
