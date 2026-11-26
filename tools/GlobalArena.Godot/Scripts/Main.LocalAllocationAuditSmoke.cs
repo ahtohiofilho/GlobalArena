@@ -10,8 +10,38 @@ public partial class Main
 {
     // Read-only reconstruction for the no-command demographic acceptance
     // scenarios. Never solve the market or feed these numbers to the allocator.
+    private Dictionary<(PhysicalTacticalTileId, CommodityId), ulong> ReadOpeningAllocationPrices(FoundationTacticalHumanAiTurnHost host)
+    {
+        // Only public, own-node evidence from the previous committed close.
+        // The smoke has stationary, exclusively occupied nodes; do not treat
+        // this projection as the global internal market history.
+        var hash = host.StateHash;
+        var result = new Dictionary<(PhysicalTacticalTileId, CommodityId), ulong>();
+        var opening = host.Snapshot;
+        var cycle = opening.Treasury.LastSettledEconomicCycleOrdinal;
+        foreach (var node in opening.Workers.Workers.Where(w => w.Owner == _humanCivilization)
+            .Select(w => w.TacticalTileId!.Value).Distinct())
+        {
+            if (opening.Workers.Workers.Any(w => w.Owner != _humanCivilization && w.TacticalTileId == node))
+                throw new InvalidOperationException("Allocation audit requires exclusively owned stationary sites.");
+            var local = host.GetLastClosedLocalEconomics(_humanCivilization, node);
+            if (cycle == 0UL)
+            {
+                if (local is not null) throw new InvalidOperationException("Unexpected opening price evidence.");
+                continue;
+            }
+            if (local is null || local.EconomicCycleOrdinal != cycle || local.Commodities.Count != 8)
+                throw new InvalidOperationException("Missing prior own-node price evidence.");
+            foreach (var row in local.Commodities)
+                if (row.LocalPriceMicro is { } price) result.Add((node, row.Commodity), price);
+        }
+        if (hash != host.StateHash) throw new InvalidOperationException("Opening price read mutated state.");
+        return result;
+    }
+
     private void AuditLocalAutomaticAllocation(FoundationTacticalHumanAiTurnHost host,
-        WorldState opening, FoundationTacticalCollectiveReceipt receipt)
+        WorldState opening, FoundationTacticalCollectiveReceipt receipt,
+        IReadOnlyDictionary<(PhysicalTacticalTileId, CommodityId), ulong> prices)
     {
         var hash = host.StateHash;
         var agriculture = host.AgriculturalProduction ?? throw new InvalidOperationException("Missing agricultural policy.");
@@ -19,8 +49,6 @@ public partial class Main
         var fine = _tacticalPreview?.AuthoritativeFineEconomy ?? throw new InvalidOperationException("Missing signed geography.");
         var timeline = receipt.PersistentTimeline ?? throw new InvalidOperationException("Missing actual calendar.");
         var own = opening.Workers.Workers.Where(w => w.Owner == _humanCivilization).ToDictionary(w => w.Id);
-        var history = opening.Treasury.LocalPriceHistory;
-        var prices = history?.ToDictionary(p => (p.Node, p.Commodity), p => p.PriceMicro);
         var reservations = new Dictionary<PhysicalTacticalTileId, Dictionary<(PhysicalWorkerOccupation, byte?), uint>>();
         int audited = 0, stone = 0, wood = 0, crops = 0;
         foreach (var worker in own.Values.OrderBy(w => w.Id.Value))
@@ -32,13 +60,15 @@ public partial class Main
             if (slices.Length != 1 || slices[0].StartMicro != 0 || slices[0].DurationMicro != 1_000_000U)
                 throw new InvalidOperationException("Allocation audit requires one whole stationary interval.");
             var actual = slices[0];
+            if (worker.TacticalTileId != actual.Node)
+                throw new InvalidOperationException("Allocation audit requires unchanged physical node.");
             if (fine.SurfaceAtIndex(checked((int)actual.Node.FineStrategicCellId.Value - 1)) != FoundationFineSurfaceKind.Land) continue;
             if (!reservations.TryGetValue(actual.Node, out var counts))
                 reservations.Add(actual.Node, counts = new());
             var candidates = new List<(string Name, FoundationLocalBaseCandidate Value)>();
             void Add(string name, PhysicalWorkerOccupation role, byte? crop, CommodityId commodity, ulong goods)
             {
-                ulong? observed = prices is not null && prices.TryGetValue((actual.Node, commodity), out var p) ? p : null;
+                ulong? observed = prices.TryGetValue((actual.Node, commodity), out var p) ? p : null;
                 candidates.Add((name, new FoundationLocalBaseCandidate(role, crop, goods, observed, 1_000_000UL)));
             }
             Add("Wood", PhysicalWorkerOccupation.Forestry, null, basic.Wood, basic.WoodWholeTurnOutput);
