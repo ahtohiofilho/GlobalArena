@@ -236,6 +236,7 @@ jobs:
           grep -q 'GA_NEXT_R2318_OPENING_REFERENCE workers=2' "$RUNNER_TEMP/uniform-city.log"
           grep -q 'GA_NEXT_R2318_UNIT_OPENING_PASS cycles=9' "$RUNNER_TEMP/uniform-city.log"
           grep -q 'GA_NEXT_R23112_UNIFORM_PASS cycles=9 population_per_owner=10 replay=true' "$RUNNER_TEMP/uniform-city.log"
+          grep -q 'GA_NEXT_R23111_SITE_COLORS_PASS red=true blue=true mixed_policy=true white_border=true hash_unchanged=true' "$RUNNER_TEMP/uniform-city.log"
           grep -E 'GA_NEXT_R23112_CITY_SAMPLE_PASS samples=256 .* transit_excluded=true all_travel_skipped=true uncommitted=true$' "$RUNNER_TEMP/uniform-city.log"
           for cycle in {1..9}; do
             grep -E "GA_NEXT_R23112_BIRTH_PASS cycle=$cycle owners=2 uniform_city=true replay=true$" "$RUNNER_TEMP/uniform-city.log"
