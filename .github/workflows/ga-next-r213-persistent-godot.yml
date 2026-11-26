@@ -248,6 +248,10 @@ jobs:
           done
           grep -q 'GA_NEXT_R23112_TRANSIT_PASS actual_crossing=true birth_skipped=true resumed_at_destination=true no_carry=true replay=true' "$RUNNER_TEMP/uniform-city.log"
           grep -q 'GA_NEXT_R232_SCALE_PASS through=50 population=101 actual_closes=true replay=true' "$RUNNER_TEMP/uniform-city.log"
+
+          sed -nE 's/^GA_NEXT_R232_TURN cycle=([0-9]+) .* replay=True hash=WorldStateHash \{ FormatVersion = 26, HexDigest = ([A-F0-9]{64}) \} inclusive=true$/\1 \2/p' "$RUNNER_TEMP/uniform-city.log" > "$RUNNER_TEMP/r232b-hashes.txt"
+          diff -u docs/fixtures/GA-NEXT-R232A-UNIFORM-CITY-50-HASHES.txt "$RUNNER_TEMP/r232b-hashes.txt"
+          echo 'GA_NEXT_R232B_BASELINE_EQUIVALENCE_PASS cycles=50 hash_v=26'
           for cycle in $(seq 1 50); do
             grep -E "GA_NEXT_R232_TURN cycle=$cycle .* replay=True .* inclusive=true$" "$RUNNER_TEMP/uniform-city.log"
             for phase in turn_total host_close worker_calendar automatic_allocation market_distribution financial_accounting demography independent_replay canonical_hash trade_publication ui_attach ui_refresh; do
@@ -270,3 +274,4 @@ jobs:
             ${{ runner.temp }}/unit-opening.log
             ${{ runner.temp }}/individual-demography.log
             ${{ runner.temp }}/uniform-city.log
+            ${{ runner.temp }}/r232b-hashes.txt
