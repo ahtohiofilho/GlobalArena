@@ -110,6 +110,8 @@ public partial class Main
         bool bandChanged = false;
         bool bounded = GaExplicitEconomicQaConfiguration.BoundedTradePreviewEnabled;
         bool positiveTrade = false;
+        string? atlasEvidence = System.Environment.GetEnvironmentVariable("GA_NEXT_R23110_ATLAS_SCREENSHOT_DIR");
+        bool atlasChecked = false;
         int cropRows = 0;
         // The canonical treasury retains the last observation per market,
         // even across closes without sales. Reconstruct that history from
@@ -216,6 +218,11 @@ public partial class Main
                 cropRows += ExerciseCityWorkerClosedCropRows(host, receipt);
             var diameters = ReadPopulationMarkers();
             AssertCartographicPublication(host, cycle);
+            if (uniformCity && !atlasChecked && !string.IsNullOrWhiteSpace(atlasEvidence) && view.UsedEdges.Count > 0)
+            {
+                await AssertRenderedStrategicTrade(host, atlasEvidence);
+                atlasChecked = true;
+            }
             bandChanged |= diameters.Any(p => previousDiameters.TryGetValue(p.Key, out var prior) && p.Value > prior);
             previousDiameters = diameters;
             var distribution = string.Join(",", owners.OrderBy(o => o.Value)
@@ -245,6 +252,8 @@ public partial class Main
                 if (owners.Any(o => host.Snapshot.Workers.Workers.Count(w => w.Owner == o) != 10))
                     throw new InvalidOperationException("Nine stationary closes must yield ten workers per civilization.");
                 GD.Print("GA_NEXT_R23112_UNIFORM_PASS cycles=9 population_per_owner=10 replay=true");
+                if (!string.IsNullOrWhiteSpace(atlasEvidence) && !atlasChecked)
+                    throw new InvalidOperationException("No positive trade frame tested in atlas.");
                 await ExerciseUniformCityTransit(host);
             }
             if (individual)
