@@ -30,11 +30,16 @@ public partial class GlobePreview
     internal bool HasSphericalTradeInk => _sphericalTradeInk is not null && _sphericalTradeBands.Count > 0;
     internal IReadOnlyList<PhysicalTacticalEdgeId> SphericalTradeEdgeIds => _sphericalTradeBands.Select(x => x.Id).ToArray();
 
-    private void InitializeSphericalTradeInk()
+    private void InitializeSphericalTradeInk(SubViewport viewport)
     {
         _sphericalTradeInk = new Control { Name = "GANextSphericalTradeInk",
             MouseFilter = MouseFilterEnum.Ignore, ClipContents = true, Visible = false };
-        AddChild(_sphericalTradeInk);
+        // Composite the ink INSIDE the same render target as the physical
+        // sphere. A Control under SubViewportContainer competes with its
+        // viewport texture and container layout, especially after reparent.
+        var overlay = new CanvasLayer { Name = "GANextSphericalTradeCanvas", Layer = 10 };
+        viewport.AddChild(overlay);
+        overlay.AddChild(_sphericalTradeInk);
         _sphericalTradeInk.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         _sphericalTradeInk.Draw += DrawSphericalTradeInk;
         _sphericalTradeInk.Resized += _sphericalTradeInk.QueueRedraw;
@@ -132,7 +137,8 @@ public partial class GlobePreview
         if (_sphericalTradeInk is null || _camera is null || _planet is null) return;
         var viewport = _camera.GetViewport().GetVisibleRect().Size;
         if (viewport.X <= 0 || viewport.Y <= 0) return;
-        Vector2 scale = new(Size.X / viewport.X, Size.Y / viewport.Y);
+        // The ink now uses the camera viewport's own pixel coordinates.
+        // Stretch is 1:1 in GlobePreview; no second projection scale.
         var camera = _planet.ToLocal(_camera.GlobalPosition);
         var projected = new List<(Vector2 A, Vector2 B, float Width)>();
         const int segments = 8;
@@ -143,8 +149,8 @@ public partial class GlobePreview
                 var a = route.A.Slerp(route.B, (float)i / segments).Normalized();
                 var b = route.A.Slerp(route.B, (float)(i + 1) / segments).Normalized();
                 if (!ClipTradeArc(a, b, camera, out var first, out var last)) continue;
-                projected.Add((_camera.UnprojectPosition(_planet.ToGlobal(first)) * scale,
-                    _camera.UnprojectPosition(_planet.ToGlobal(last)) * scale, route.Width));
+                projected.Add((_camera.UnprojectPosition(_planet.ToGlobal(first)),
+                    _camera.UnprojectPosition(_planet.ToGlobal(last)), route.Width));
             }
         }
         // Both passes use logical screen pixels, just as in the tactical map.
@@ -154,6 +160,13 @@ public partial class GlobePreview
                 line.Width + 2f * GaCartographicStyle.TradeOutlinePixels, true);
         foreach (var line in projected)
             _sphericalTradeInk.DrawLine(line.A, line.B, Colors.Black, line.Width, true);
+    }
+
+    internal void FocusFirstPublishedTradeForRenderSmoke()
+    {
+        if (_sphericalTradeBands.Count == 0) throw new InvalidOperationException("Missing actual trade.");
+        var band = _sphericalTradeBands[0];
+        CenterOnGeography((band.A + band.B).Normalized());
     }
 
     internal void AssertSphericalTradeGeometry(FoundationLastClosedEconomicTradeView view)
