@@ -44,6 +44,27 @@ public partial class Main
         await PressM();
         if (!_planetWindow.Visible || !globe.IsVisibleInTree())
             throw new InvalidOperationException("M did not expose the real atlas.");
+        var floating = _atlasFloatingWindow ?? throw new InvalidOperationException("Missing floating atlas.");
+        var header = floating.FindChild("GAWindowDragHandle", true, false) as PanelContainer
+            ?? throw new InvalidOperationException("Missing actual atlas header.");
+        var close = header.GetChild(0).GetChildren().OfType<Button>().Single();
+        if (floating.GetThemeStylebox("panel") is not StyleBoxFlat body ||
+            body.BgColor != GaHudVisualTokens.Footer || body.BorderColor != GaHudVisualTokens.Rim ||
+            body.ShadowSize != GaHudVisualTokens.FooterShadow ||
+            body.ContentMarginLeft != 8 || body.ContentMarginTop != 8 ||
+            header.GetThemeStylebox("panel") is not StyleBoxFlat titleStyle ||
+            titleStyle.BgColor != GaHudVisualTokens.Object ||
+            titleStyle.ContentMarginLeft != 7 || titleStyle.ContentMarginTop != 7 ||
+            !header.HasMeta("ga_hud_light_plane") ||
+            header.MouseFilter != Control.MouseFilterEnum.Stop ||
+            close.GetThemeStylebox("normal") is not StyleBoxFlat normal ||
+            normal.BgColor != GaHudVisualTokens.Action || normal.ContentMarginLeft != 4 ||
+            close.GetThemeStylebox("hover") is not StyleBoxFlat hover || hover.BgColor != GaHudVisualTokens.Hover ||
+            close.GetThemeStylebox("pressed") is not StyleBoxFlat pressed || pressed.BgColor != GaHudVisualTokens.Pressed ||
+            close.GetThemeStylebox("disabled") is not StyleBoxFlat disabled || disabled.BgColor != GaHudVisualTokens.Disabled ||
+            close.GetThemeStylebox("focus") is not StyleBoxFlat ||
+            !close.IsVisibleInTree())
+            throw new InvalidOperationException("Floating atlas material continuity contract failed.");
         globe.FocusFirstPublishedTradeForRenderSmoke();
         globe.SetSphericalSettledTradeRoutesVisible(false);
         var off = await Capture("01_atlas_routes_off");
@@ -72,6 +93,15 @@ public partial class Main
         if (_planetWindow.Visible || host.StateHash != hash ||
             focus.Dot(map.CenterGeography) < 0.99999f || Math.Abs(map.TacticalCameraState.Zoom - zoom) > 0.00001f)
             throw new InvalidOperationException("Atlas pixel test changed world or tactical navigation.");
+        // Exercise the shared close callback on the actual atlas after the
+        // existing reversible M/pixel test, without changing navigation.
+        await PressM();
+        close.EmitSignal(Button.SignalName.Pressed);
+        await Frames();
+        if (_planetWindow.Visible || globe.IsVisibleInTree() || host.StateHash != hash ||
+            focus.Dot(map.CenterGeography) < 0.99999f || Math.Abs(map.TacticalCameraState.Zoom - zoom) > 0.00001f)
+            throw new InvalidOperationException("Shared atlas close changed navigation or world.");
+        GD.Print("GA_NEXT_VISUAL02E_CONTINUITY_PASS actual_atlas=true shared_material=true close=true hash_unchanged=true");
         GD.Print($"GA_NEXT_R23110_ATLAS_PIXELS_PASS black={black} white={white} root_frame=true real_m=true reversible=true hash_unchanged=true");
     }
 

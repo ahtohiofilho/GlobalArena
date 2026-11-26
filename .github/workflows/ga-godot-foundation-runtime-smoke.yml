@@ -529,6 +529,7 @@ jobs:
             2>&1 | tee "$RUNNER_TEMP/ga-godot/atlas-trade.log"
           grep -E 'GA_NEXT_R23110_ATLAS_PIXELS_PASS black=[1-9][0-9]* white=[1-9][0-9]* root_frame=true real_m=true reversible=true hash_unchanged=true$' "$RUNNER_TEMP/ga-godot/atlas-trade.log"
           grep -q 'GA_NEXT_R23112_TRANSIT_PASS' "$RUNNER_TEMP/ga-godot/atlas-trade.log"
+          grep -q 'GA_NEXT_VISUAL02E_CONTINUITY_PASS actual_atlas=true shared_material=true close=true hash_unchanged=true' "$RUNNER_TEMP/ga-godot/atlas-trade.log"
           for stage in 01_atlas_routes_off 02_atlas_routes_on 03_atlas_routes_off_again; do
             test -s "$GA_NEXT_R23110_ATLAS_SCREENSHOT_DIR/$stage.png"
           done
