@@ -7,3 +7,7 @@ Audit both bounded demographic openings (historical three-worker grouped demand 
 ## R231.8D.1 — Compile correction
 
 Both initial workflows failed at compile with CS1061 because treasury LocalPriceHistory is internal. Capture prior prices before E through GetLastClosedLocalEconomics, checking cycle, complete catalog, exclusive own occupancy and unchanged hash. The audit compares the resulting candidate selection to actual replay-verified intervals. No widening of internal API, no changes to allocator, market or acceptance criteria. This remains scoped to stationary exclusive sites.
+
+## R231.8D.2 — Historical observation retention
+
+R231.8D.1 compiled; full Godot scene passed, persistent UI passed through the first five bounded allocation audits, then diverged on cycle 6. Treasury CloseVerifiedEconomicCycle merges new observations into LocalPriceHistory, preserving older observations for markets without a new sale. The public local close exposes only that cycle's observations. Reconstruct cumulative own-node observations across the complete stationary smoke, updating only non-null observations (including actual zero). Do not reset history when a commodity has no sale. Keep strict equality with the committed calendar and all nine-cycle acceptance criteria. No production logic changes or internal API exposure. CI pending.
