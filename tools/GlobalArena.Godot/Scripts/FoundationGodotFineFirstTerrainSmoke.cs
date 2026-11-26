@@ -256,6 +256,8 @@ internal sealed class FoundationGodotFineFirstTerrainSmoke
                 _map.TacticalCameraState == camera,
                 "One E-key must close an actual G18 economic sale and " +
                 "publish its private participant-visible freight overlay.");
+            Must(first.UsedEdges.Count > 0, "Historical remote trade fixture must publish positive freight.");
+            _main.AssertCartographicPublication(_host, 1UL);
             await Capture("02_g18_after_first_trade");
             var firstHash = _host.StateHash;
             await PressE();
@@ -270,7 +272,10 @@ internal sealed class FoundationGodotFineFirstTerrainSmoke
                 _map.TacticalCameraState == camera,
                 "Second E-key must settle and publish exactly one new " +
                 "G18 economic cycle without changing the map.");
+            Must(second.UsedEdges.Count > 0, "Historical remote trade fixture must retain positive freight.");
+            _main.AssertCartographicPublication(_host, 2UL);
             await Capture("03_g18_after_second_trade");
+            GD.Print("GA_NEXT_R2312_SPHERICAL_INK_PASS positive_remote=true exact_edge_ids=true common_width=true horizon_clipped=true");
             GD.Print($"GA_NEXT_R100_SPHERICAL_TRADE_PASS " +
                 $"cycle={second.EconomicCycleOrdinal} " +
                 $"globe_edges={_main.VisibleSphericalTradeCrossings} " +

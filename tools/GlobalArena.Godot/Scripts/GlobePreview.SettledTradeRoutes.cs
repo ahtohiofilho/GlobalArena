@@ -17,21 +17,41 @@ public partial class GlobePreview
 {
     private StrategicSphericalGeometry? _signedG18RouteGeometry;
     private RuntimeWorldBinding? _signedG18WorldBinding;
-    private MeshInstance3D? _settledGlobeRoutes;
+    private Control? _sphericalTradeInk;
+    private readonly List<(PhysicalTacticalEdgeId Id, Vector3 A, Vector3 B, float Width)> _sphericalTradeBands = new();
+    private Transform3D _lastTradePlanet, _lastTradeCamera;
+    private Vector2 _lastTradeSize;
+    private float _lastTradeFov = -1f;
     private FoundationLastClosedEconomicTradeView? _authorizedGlobeTrade;
     private bool _showSettledGlobeRoutes = true;
 
     public int VisibleSphericalSettledTradeCrossings { get; private set; }
     internal ulong? PresentedSphericalTradeCycle => _authorizedGlobeTrade?.EconomicCycleOrdinal;
-    internal bool HasSphericalTradeMesh => _settledGlobeRoutes?.Mesh is not null;
+    internal bool HasSphericalTradeInk => _sphericalTradeInk is not null && _sphericalTradeBands.Count > 0;
+    internal IReadOnlyList<PhysicalTacticalEdgeId> SphericalTradeEdgeIds => _sphericalTradeBands.Select(x => x.Id).ToArray();
+
+    private void InitializeSphericalTradeInk()
+    {
+        _sphericalTradeInk = new Control { Name = "GANextSphericalTradeInk",
+            MouseFilter = MouseFilterEnum.Ignore, ClipContents = true, Visible = false };
+        AddChild(_sphericalTradeInk);
+        _sphericalTradeInk.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        _sphericalTradeInk.Draw += DrawSphericalTradeInk;
+        _sphericalTradeInk.Resized += _sphericalTradeInk.QueueRedraw;
+    }
+
+    private void RefreshSphericalTradeVisibility()
+    {
+        if (_sphericalTradeInk is null) return;
+        _sphericalTradeInk.Visible = _showSettledGlobeRoutes &&
+            _mapMode == SignedG18MapMode && _sphericalTradeBands.Count > 0;
+        _sphericalTradeInk.QueueRedraw();
+    }
 
     public void SetSphericalSettledTradeRoutesVisible(bool enabled)
     {
         _showSettledGlobeRoutes = enabled;
-        if (_settledGlobeRoutes is not null)
-            _settledGlobeRoutes.Visible = enabled &&
-                _mapMode == SignedG18MapMode &&
-                _settledGlobeRoutes.Mesh is not null;
+        RefreshSphericalTradeVisibility();
     }
 
     /// <summary>
@@ -59,117 +79,130 @@ public partial class GlobePreview
         RebuildSphericalSettledTradeRoutes();
     }
 
-    private static Color SphericalTradeOwnerColor(
-        FoundationPhysicalTradeEdgeLoad edge)
+    private void UpdateSphericalTradeProjection()
     {
-        Color tint = edge.OwnershipKind switch
+        if (_sphericalTradeInk?.IsVisibleInTree() != true || _planet is null || _camera is null) return;
+        if (_lastTradePlanet == _planet.GlobalTransform && _lastTradeCamera == _camera.GlobalTransform &&
+            _lastTradeSize == Size && _lastTradeFov == _camera.Fov) return;
+        _lastTradePlanet = _planet.GlobalTransform;
+        _lastTradeCamera = _camera.GlobalTransform;
+        _lastTradeSize = Size;
+        _lastTradeFov = _camera.Fov;
+        _sphericalTradeInk.QueueRedraw();
+    }
+
+    // For a unit sphere and an external perspective camera C, P is on
+    // the visible cap precisely when P dot C >= 1. Clip the great-circle
+    // arc, not a straight chord, before projection. Find its stationary
+    // maximum as well, so a small visible interior is not discarded.
+    private static bool ClipTradeArc(Vector3 a, Vector3 b, Vector3 camera,
+        out Vector3 first, out Vector3 last)
+    {
+        first = a; last = b;
+        bool visibleA = a.Dot(camera) >= 1f, visibleB = b.Dot(camera) >= 1f;
+        Vector3 inside = visibleA ? a : b;
+        if (!visibleA && !visibleB)
         {
-            FoundationInfrastructureOwnershipKind.Owned
-                when edge.Owner is { IsValid: true } owner =>
-                GaCivilizationVisualIdentity.ColorFor(owner.Value),
-            FoundationInfrastructureOwnershipKind.UnownedInfrastructure =>
-                new Color("#c5ced8"),
-            FoundationInfrastructureOwnershipKind.NoInfrastructure =>
-                new Color("#a8b3bf"),
-            _ => throw new InvalidOperationException(
-                "A trade edge cannot fabricate an infrastructure owner.")
-        };
-        tint.A = 0.92f;
-        return tint;
+            double angle = Math.Acos(Math.Clamp((double)a.Dot(b), -1d, 1d));
+            var tangent = b - a * a.Dot(b);
+            if (angle < 1e-8 || tangent.LengthSquared() < 1e-12f) return false;
+            double maximum = Math.Atan2(tangent.Normalized().Dot(camera), a.Dot(camera));
+            if (maximum <= 0d || maximum >= angle) return false;
+            inside = a.Slerp(b, (float)(maximum / angle)).Normalized();
+            if (inside.Dot(camera) < 1f) return false;
+        }
+        if (!visibleA) first = HorizonPoint(a, inside, camera);
+        if (!visibleB) last = HorizonPoint(b, inside, camera);
+        return first.DistanceSquaredTo(last) > 1e-12f;
+    }
+
+    private static Vector3 HorizonPoint(Vector3 outside, Vector3 inside, Vector3 camera)
+    {
+        for (int i = 0; i < 18; i++)
+        {
+            var mid = outside.Slerp(inside, 0.5f).Normalized();
+            if (mid.Dot(camera) >= 1f) inside = mid;
+            else outside = mid;
+        }
+        return inside;
+    }
+
+    private void DrawSphericalTradeInk()
+    {
+        if (_sphericalTradeInk is null || _camera is null || _planet is null) return;
+        var viewport = _camera.GetViewport().GetVisibleRect().Size;
+        if (viewport.X <= 0 || viewport.Y <= 0) return;
+        Vector2 scale = new(Size.X / viewport.X, Size.Y / viewport.Y);
+        var camera = _planet.ToLocal(_camera.GlobalPosition);
+        var projected = new List<(Vector2 A, Vector2 B, float Width)>();
+        const int segments = 8;
+        foreach (var route in _sphericalTradeBands)
+        {
+            for (int i = 0; i < segments; i++)
+            {
+                var a = route.A.Slerp(route.B, (float)i / segments).Normalized();
+                var b = route.A.Slerp(route.B, (float)(i + 1) / segments).Normalized();
+                if (!ClipTradeArc(a, b, camera, out var first, out var last)) continue;
+                projected.Add((_camera.UnprojectPosition(_planet.ToGlobal(first)) * scale,
+                    _camera.UnprojectPosition(_planet.ToGlobal(last)) * scale, route.Width));
+            }
+        }
+        // Both passes use logical screen pixels, just as in the tactical map.
+        // Draw all rims first so route junctions have no transverse white seam.
+        foreach (var line in projected)
+            _sphericalTradeInk.DrawLine(line.A, line.B, Colors.White,
+                line.Width + 2f * GaCartographicStyle.TradeOutlinePixels, true);
+        foreach (var line in projected)
+            _sphericalTradeInk.DrawLine(line.A, line.B, Colors.Black, line.Width, true);
+    }
+
+    internal void AssertSphericalTradeGeometry(FoundationLastClosedEconomicTradeView view)
+    {
+        if (!SphericalTradeEdgeIds.SequenceEqual(view.UsedEdges.OrderBy(e => e.Edge.FineStrategicEdgeId.Value).Select(e => e.Edge)))
+            throw new InvalidOperationException("Strategic ink must contain precisely the authorized edges.");
+        foreach (var route in _sphericalTradeBands.Zip(view.UsedEdges.OrderBy(e => e.Edge.FineStrategicEdgeId.Value)))
+        {
+            var band = route.First;
+            if (band.Width != GaCartographicStyle.TradeWidth(route.Second.TotalCargoMicro) ||
+                !ClipTradeArc(band.A, band.B, (band.A + band.B).Normalized() * 3f, out _, out _) ||
+                ClipTradeArc(band.A, band.B, -(band.A + band.B).Normalized() * 3f, out _, out _))
+                throw new InvalidOperationException("Strategic trade width or front/back visibility contract failed.");
+        }
+        var near = Vector3.Back;
+        var far = Vector3.Right;
+        var eye = near * 2f;
+        if (!ClipTradeArc(near, far, eye, out var first, out var last) ||
+            first.DistanceSquaredTo(near) > 1e-6f || Math.Abs(last.Dot(eye) - 1f) > 1e-4f ||
+            !ClipTradeArc(far, near, eye, out first, out last) ||
+            Math.Abs(first.Dot(eye) - 1f) > 1e-4f || last.DistanceSquaredTo(near) > 1e-6f)
+            throw new InvalidOperationException("Strategic horizon clipping must work in both directions.");
     }
 
     private void RebuildSphericalSettledTradeRoutes()
     {
         VisibleSphericalSettledTradeCrossings = 0;
-        if (_planet is null || _signedG18RouteGeometry is null) return;
-        if (_settledGlobeRoutes is null)
-        {
-            var material = new StandardMaterial3D
-            {
-                VertexColorUseAsAlbedo = true,
-                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
-                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-                CullMode = BaseMaterial3D.CullModeEnum.Disabled,
-                RenderPriority = 2
-            };
-            _settledGlobeRoutes = new MeshInstance3D
-            {
-                MaterialOverride = material, Visible = false
-            };
-            _planet.AddChild(_settledGlobeRoutes);
-        }
-
-        var previous = _settledGlobeRoutes.Mesh;
-        _settledGlobeRoutes.Mesh = null;
-        _settledGlobeRoutes.Visible = false;
-        previous?.Dispose();
-
+        _sphericalTradeBands.Clear();
+        if (_planet is null || _signedG18RouteGeometry is null) { RefreshSphericalTradeVisibility(); return; }
         var view = _authorizedGlobeTrade;
-        if (view is null || view.UsedEdges.Count == 0) return;
-        var routes = view.UsedEdges
-            .OrderBy(e => e.Edge.FineStrategicEdgeId.Value).ToArray();
-        ulong peak = routes.Max(e => e.TotalCargoMicro);
-        if (peak == 0UL)
-            throw new InvalidOperationException("Zero-volume routes are not settled.");
+        if (view is null || view.UsedEdges.Count == 0) { RefreshSphericalTradeVisibility(); return; }
 
         var seen = new HashSet<PhysicalTacticalEdgeId>();
-        var mesh = new SurfaceTool();
-        mesh.Begin(Mesh.PrimitiveType.Triangles);
-        foreach (var edge in routes)
+        foreach (var edge in view.UsedEdges.OrderBy(e => e.Edge.FineStrategicEdgeId.Value))
         {
             if (!edge.Edge.IsValid || !seen.Add(edge.Edge) ||
                 edge.Edge.FineGoldbergParameters != view.FineTopology ||
                 edge.FirstTile.FineGoldbergParameters != view.FineTopology ||
-                edge.SecondTile.FineGoldbergParameters != view.FineTopology ||
-                edge.TotalCargoMicro == 0UL)
-                throw new InvalidOperationException(
-                    "Globe routes require unique, real, positive G18 crossings.");
-
-            Vector3 a = ToGodot(_signedG18RouteGeometry
-                .GetCell(edge.FirstTile.FineStrategicCellId).Center).Normalized();
-            Vector3 b = ToGodot(_signedG18RouteGeometry
-                .GetCell(edge.SecondTile.FineStrategicCellId).Center).Normalized();
-            if (a.DistanceSquaredTo(b) < 1e-12f)
-                throw new InvalidOperationException("Degenerate freight edge.");
-            float relative = MathF.Sqrt(
-                (float)((double)edge.TotalCargoMicro / peak));
-            float width = 0.0016f + 0.0064f * relative;
-            Color color = SphericalTradeOwnerColor(edge);
-
-            // Eight small great-circle segments hug the real 3D sphere.
-            // The lift is purely visual: it does not change terrain shape.
-            const int segments = 8;
-            for (int i = 0; i < segments; i++)
-            {
-                Vector3 centerA = a.Slerp(b, (float)i / segments).Normalized();
-                Vector3 centerB = a.Slerp(b, (float)(i + 1) / segments).Normalized();
-                var tangent = (centerB - centerA).Normalized();
-                var sideA = centerA.Cross(tangent).Normalized() * (width * 0.5f);
-                var sideB = centerB.Cross(tangent).Normalized() * (width * 0.5f);
-                Vector3 p1 = centerA * 1.003f + sideA;
-                Vector3 p2 = centerB * 1.003f + sideB;
-                Vector3 p3 = centerB * 1.003f - sideB;
-                Vector3 p4 = centerA * 1.003f - sideA;
-                AddVertex(mesh, p1, color);
-                AddVertex(mesh, p2, color);
-                AddVertex(mesh, p3, color);
-                AddVertex(mesh, p1, color);
-                AddVertex(mesh, p3, color);
-                AddVertex(mesh, p4, color);
-            }
-            VisibleSphericalSettledTradeCrossings++;
+                edge.SecondTile.FineGoldbergParameters != view.FineTopology || edge.TotalCargoMicro == 0UL)
+                throw new InvalidOperationException("Globe routes require unique, real, positive physical crossings.");
+            Vector3 a = ToGodot(_signedG18RouteGeometry.GetCell(edge.FirstTile.FineStrategicCellId).Center).Normalized();
+            Vector3 b = ToGodot(_signedG18RouteGeometry.GetCell(edge.SecondTile.FineStrategicCellId).Center).Normalized();
+            if (a.DistanceSquaredTo(b) < 1e-12f) throw new InvalidOperationException("Degenerate freight edge.");
+            _sphericalTradeBands.Add((edge.Edge, a, b, GaCartographicStyle.TradeWidth(edge.TotalCargoMicro)));
         }
-        var committed = mesh.Commit();
-        mesh.Dispose();
-        if (committed is null)
-            throw new InvalidOperationException("Spherical routes did not form a mesh.");
-        _settledGlobeRoutes.Mesh = committed;
-        _settledGlobeRoutes.Visible = _showSettledGlobeRoutes &&
-            _mapMode == SignedG18MapMode;
-        GD.Print($"GA_NEXT_R100_SPHERICAL_SETTLED_ROUTES_READY " +
-            $"cycle={view.EconomicCycleOrdinal} " +
-            $"visible_edges={VisibleSphericalSettledTradeCrossings} " +
-            "projection=great_circle privacy=participant_authorized " +
-            "line_width=audited_cargo color=infrastructure_owner");
+        VisibleSphericalSettledTradeCrossings = _sphericalTradeBands.Count;
+        RefreshSphericalTradeVisibility();
+        GD.Print($"GA_NEXT_R100_SPHERICAL_SETTLED_ROUTES_READY cycle={view.EconomicCycleOrdinal} " +
+            $"visible_edges={VisibleSphericalSettledTradeCrossings} projection=great_circle privacy=participant_authorized " +
+            "line_width=log_audited_cargo color=black_white horizon=clipped");
     }
 }

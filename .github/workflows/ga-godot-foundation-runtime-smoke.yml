@@ -248,6 +248,7 @@ jobs:
           grep -q 'GA_NEXT_R99_G18_SPHERE_READY' "$RUNNER_TEMP/ga-godot/r87-g18-headless.log"
           grep -q 'GA_NEXT_R104_SIGNED_WORLD_CONTRACT_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-headless.log"
           grep -q 'GA_NEXT_R100_SPHERICAL_TRADE_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-headless.log"
+          grep -q 'GA_NEXT_R2312_SPHERICAL_INK_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-headless.log"
           grep -q 'GA_NEXT_R87_G18_GODOT_ACCEPTANCE_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-headless.log"
           if grep -E 'GA_NEXT_R87_G18_GODOT_ACCEPTANCE_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/r87-g18-headless.log"; then exit 1; fi
       - name: R102 alternate G2 to G12 signed bootstrap in actual Godot
@@ -477,6 +478,7 @@ jobs:
           grep -q 'GA_NEXT_R94_FROZEN_FREIGHT_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-graphical.log"
           grep -q 'GA_NEXT_R99_G18_SPHERE_READY' "$RUNNER_TEMP/ga-godot/r87-g18-graphical.log"
           grep -q 'GA_NEXT_R100_SPHERICAL_TRADE_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-graphical.log"
+          grep -q 'GA_NEXT_R2312_SPHERICAL_INK_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-graphical.log"
           grep -q 'GA_NEXT_R87_G18_GODOT_ACCEPTANCE_PASS' "$RUNNER_TEMP/ga-godot/r87-g18-graphical.log"
           for stage in 01_g18_terrain_before_trade 02_g18_after_first_trade 03_g18_after_second_trade 04_g18_north_pole 05_g18_south_pole; do
             grep -q "GA_NEXT_R87_G18_FRAME_PASS stage=$stage" "$RUNNER_TEMP/ga-godot/r87-g18-graphical.log"

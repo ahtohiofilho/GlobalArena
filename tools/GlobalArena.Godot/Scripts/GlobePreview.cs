@@ -213,6 +213,7 @@ public partial class GlobePreview : SubViewportContainer
         world.AddChild(camera);
         _camera = camera;
         camera.LookAt(Vector3.Zero, Vector3.Up);
+        InitializeSphericalTradeInk();
         GD.Print("GA_PROD_NAV_READY_03A orbit=drag zoom=wheel");
         _pickedLabel = new Label
         {
@@ -498,6 +499,7 @@ public partial class GlobePreview : SubViewportContainer
     public override void _Process(double delta)
     {
         // GA-PROD-03A: no automatic spin; player controls the globe.
+        UpdateSphericalTradeProjection();
     }
 
     // Accessible keyboard shortcuts: digits 1-5 choose a layer; Escape clears a selection.
@@ -1049,10 +1051,7 @@ public partial class GlobePreview : SubViewportContainer
         _surfaceInstance.Visible = !fineView && !signedView;
         if (_highResSurface is not null) _highResSurface.Visible = fineView;
         if (_signedG18Sphere is not null) _signedG18Sphere.Visible = signedView;
-        if (_settledGlobeRoutes is not null)
-            _settledGlobeRoutes.Visible = signedView &&
-                _showSettledGlobeRoutes &&
-                _settledGlobeRoutes.Mesh is not null;
+        RefreshSphericalTradeVisibility();
         if (signedView)
         {
             // The displayed tiles are physical G18; strategic G3 picking is
