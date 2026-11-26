@@ -151,21 +151,22 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
         var slices = new List<FoundationPersistentWorkerSlice>();
         var automaticStarts = new Dictionary<PhysicalWorkerId, uint>();
         uint now = 0;
-        // Pure stationary turn: no task or crossing can observe another
-        // worker's temporary base assignment. Prepare these modes together.
-        // The mixed-task event-time path below remains unchanged.
-        if (state.EdgeTravels.Pending.Count == 0 &&
-            state.WorkerOrders.Queues.All(q => q.Orders.Count == 0))
-        {
-            var workers = state.Workers.Workers.ToDictionary(w => w.Id);
-            var changes = new Dictionary<PhysicalWorkerId, Mode>();
-            foreach (var q in state.WorkerOrders.Queues)
-                if (EffectiveBase(q.BaseActivity) is { } preference)
-                    changes.Add(q.Worker, BaseMode(workers[q.Worker], preference));
-            state = AssignStationaryBatch(state, changes);
-        }
         while (now < Whole)
         {
+            // Independent base assignments can be prepared together at each
+            // event boundary, including mixed turns. Only workers without a
+            // queued task or pending crossing qualify. BaseMode reads only
+            // this worker's node and fixed policy/geography; the router and
+            // crossing quote do not depend on other workers' occupations.
+            // Preserve every task transition, revision, slice and event order.
+            var availableWorkers = state.Workers.Workers.ToDictionary(w => w.Id);
+            var crossingWorkers = state.EdgeTravels.Pending.Select(p => p.Worker).ToHashSet();
+            var baseChanges = new Dictionary<PhysicalWorkerId, Mode>();
+            foreach (var q in state.WorkerOrders.Queues)
+                if (q.Orders.Count == 0 && !crossingWorkers.Contains(q.Worker) &&
+                    EffectiveBase(q.BaseActivity) is { } preference)
+                    baseChanges.Add(q.Worker, BaseMode(availableWorkers[q.Worker], preference));
+            state = AssignStationaryBatch(state, baseChanges);
             var modes = new List<Mode>();
             foreach (var id in state.Workers.Workers.Select(w => w.Id).ToArray())
             {
