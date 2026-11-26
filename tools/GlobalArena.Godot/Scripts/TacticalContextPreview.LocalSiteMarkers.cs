@@ -68,7 +68,7 @@ public partial class TacticalContextPreview
             int count = occupants.Length;
             if (count <= 0 || marker.WorkerCount != count ||
                 marker.Dot.Size != new Vector2(GaCartographicStyle.SiteDiameter(count), GaCartographicStyle.SiteDiameter(count)))
-                throw new InvalidOperationException("Site marker must represent its actual occupied population.");
+                throw new InvalidOperationException($"Site marker {marker.TileId} must represent its actual occupied population: census={count}, recorded={marker.WorkerCount}, size={marker.Dot.Size}, expected={GaCartographicStyle.SiteDiameter(count)}.");
             if (marker.Dot.GetThemeStylebox("panel") is not StyleBoxFlat disc ||
                 disc.BgColor != GaCivilizationVisualIdentity.SiteColor(occupants.Select(w => w.Owner.Value)) ||
                 disc.BorderColor != new Color("#f5f5f5"))
@@ -212,6 +212,9 @@ public partial class TacticalContextPreview
             };
             dot.AddThemeStyleboxOverride("panel", disc);
             AddChild(dot);
+            // Entering the tree resolves inherited theme minimums. Reapply
+            // the exact diameter after installing the disc and parenting it.
+            dot.Size = new Vector2(diameter, diameter);
             AddChild(label);
             _localSiteMarkers.Add(new LocalSiteMarker(
                 place.Key, population, centroid, dot, label));
