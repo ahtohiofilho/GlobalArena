@@ -80,6 +80,35 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
         return journeys is null ? world.WithWorkers(roster) : world.WithPhysicalEdgeTravel(roster, journeys);
     }
 
+    // Batch only independent in-place activity/occupation updates.
+    // Keep the immutable roster and all WorldState validators, but invoke
+    // them once for the batch instead of once per changed worker.
+    private static WorldState AssignStationaryBatch(WorldState world,
+        IReadOnlyDictionary<PhysicalWorkerId, Mode> changes)
+    {
+        if (changes.Count == 0) return world;
+        using var profile = FoundationTurnProfiler.Measure("stationary_assignment_batch");
+        var pending = world.EdgeTravels.Pending.Select(p => p.Worker).ToHashSet();
+        int matched = 0;
+        bool changed = false;
+        var roster = world.Workers.Workers.Select(worker =>
+        {
+            if (!changes.TryGetValue(worker.Id, out var mode)) return worker;
+            matched++;
+            if (worker.TacticalTileId != mode.Node || pending.Contains(worker.Id) ||
+                mode.Travel is not null || mode.Project.HasValue)
+                throw new InvalidOperationException("Stationary batch cannot change physical tasks or locations.");
+            if (worker.Activity == mode.Activity && worker.Occupation == mode.Occupation)
+                return worker;
+            changed = true;
+            return worker.WithTacticalAssignment(mode.Node, worker.CellId, mode.Activity, mode.Occupation);
+        }).ToArray();
+        if (matched != changes.Count)
+            throw new InvalidOperationException("Stationary batch references an unknown worker.");
+        return changed ? world.WithWorkers(new PhysicalWorkerRuntimeState(roster,
+            tacticalLocationsAuthoritative: true, occupationsAuthoritative: true)) : world;
+    }
+
     // Automatic availability is marked as an idle placeholder only under
     // explicit experimental policy, then resolved on the complete timeline.
     private Mode BaseMode(PhysicalWorkerRuntimeRecord worker, FoundationWorkerBaseActivity preference)
@@ -122,6 +151,19 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
         var slices = new List<FoundationPersistentWorkerSlice>();
         var automaticStarts = new Dictionary<PhysicalWorkerId, uint>();
         uint now = 0;
+        // Pure stationary turn: no task or crossing can observe another
+        // worker's temporary base assignment. Prepare these modes together.
+        // The mixed-task event-time path below remains unchanged.
+        if (state.EdgeTravels.Pending.Count == 0 &&
+            state.WorkerOrders.Queues.All(q => q.Orders.Count == 0))
+        {
+            var workers = state.Workers.Workers.ToDictionary(w => w.Id);
+            var changes = new Dictionary<PhysicalWorkerId, Mode>();
+            foreach (var q in state.WorkerOrders.Queues)
+                if (EffectiveBase(q.BaseActivity) is { } preference)
+                    changes.Add(q.Worker, BaseMode(workers[q.Worker], preference));
+            state = AssignStationaryBatch(state, changes);
+        }
         while (now < Whole)
         {
             var modes = new List<Mode>();
@@ -273,13 +315,13 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
         }
         // At an exact turn boundary, report readiness for base work only
         // when no finite task or frozen crossing remains. No extra slice.
+        var boundaryWorkers = state.Workers.Workers.ToDictionary(w => w.Id);
+        var boundaryPending = state.EdgeTravels.Pending.Select(p => p.Worker).ToHashSet();
+        var boundaryChanges = new Dictionary<PhysicalWorkerId, Mode>();
         foreach (var q in state.WorkerOrders.Queues.Where(q => EffectiveBase(q.BaseActivity) is not null &&
-            q.Orders.Count == 0 && !state.EdgeTravels.Pending.Any(p => p.Worker == q.Worker)).ToArray())
-        {
-            var worker = state.Workers.Workers.Single(w => w.Id == q.Worker);
-            var mode = BaseMode(worker, EffectiveBase(q.BaseActivity)!);
-            state = Assign(state, worker, mode.Node, worker.CellId, mode.Activity, mode.Occupation);
-        }
+            q.Orders.Count == 0 && !boundaryPending.Contains(q.Worker)))
+            boundaryChanges.Add(q.Worker, BaseMode(boundaryWorkers[q.Worker], EffectiveBase(q.BaseActivity)!));
+        state = AssignStationaryBatch(state, boundaryChanges);
         if (automaticStarts.Count > 0)
         {
             // Other workers' event boundaries can split a continuous idle
@@ -307,16 +349,22 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
                     _router.Geography, _automaticEconomy!, slices, intervals, _agriculture!, _automaticOperations,
                     context.Turn.Value - 1UL).Calendar.ToArray();
             slices = calendar.OrderBy(s => s.StartMicro).ThenBy(s => s.Worker.Value).ToList();
+            var selections = slices.ToDictionary(s => (s.Worker, s.StartMicro));
+            var workers = state.Workers.Workers.ToDictionary(w => w.Id);
+            var queues = state.WorkerOrders.Queues.ToDictionary(q => q.Worker);
+            var pending = state.EdgeTravels.Pending.Select(t => t.Worker).ToHashSet();
+            var changes = new Dictionary<PhysicalWorkerId, Mode>();
             foreach (var item in intervals)
             {
-                var selected = slices.Single(s => s.Worker == item.Worker && s.StartMicro == item.StartMicro);
-                var worker = state.Workers.Workers.Single(w => w.Id == item.Worker);
-                if (worker.TacticalTileId != selected.Node ||
-                    state.EdgeTravels.Pending.Any(t => t.Worker == item.Worker) ||
-                    state.WorkerOrders.Queues.Single(q => q.Worker == item.Worker).Orders.Count != 0)
+                var selected = selections[(item.Worker, item.StartMicro)];
+                var worker = workers[item.Worker];
+                if (worker.TacticalTileId != selected.Node || pending.Contains(item.Worker) ||
+                    queues[item.Worker].Orders.Count != 0)
                     throw new InvalidOperationException("Automatic base cannot supersede a physical task.");
-                state = Assign(state, worker, selected.Node, worker.CellId, selected.Activity, selected.Occupation);
+                changes.Add(item.Worker, new Mode(item.Worker, selected.Node, selected.Activity,
+                    selected.Occupation, null, null, selected.Crop));
             }
+            state = AssignStationaryBatch(state, changes);
         }
         foreach (var p in state.Constructions.Projects.Where(p => p.IsComplete && !p.IsActivated).ToArray())
             state = state.ActivateCompletedConstruction(p.Id);
