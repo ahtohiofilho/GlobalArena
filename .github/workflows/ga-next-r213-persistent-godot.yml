@@ -178,6 +178,10 @@ jobs:
           grep -q 'GA_NEXT_R2315_DEMOGRAPHIC_PASS cycles=3' "$RUNNER_TEMP/unit-opening.log"
           grep -q 'GA_NEXT_R2318_OPENING_REFERENCE workers=2' "$RUNNER_TEMP/unit-opening.log"
           grep -q 'GA_NEXT_R2318_UNIT_OPENING_PASS cycles=9' "$RUNNER_TEMP/unit-opening.log"
+          grep -E 'GA_NEXT_R2318E_EQUAL_SAMPLE_PASS samples=1024 .* uncommitted=true$' "$RUNNER_TEMP/unit-opening.log"
+          for cycle in {1..9}; do
+            grep -E "GA_NEXT_R2318E_BIRTH_AUDIT_PASS cycle=$cycle .* actual_batch=true$" "$RUNNER_TEMP/unit-opening.log"
+          done
           for cycle in {1..9}; do
             grep -E "GA_NEXT_R2318D_ALLOCATION_PASS cycle=$cycle own=[1-9][0-9]* .* actual_calendar=true$" "$RUNNER_TEMP/unit-opening.log"
           done
