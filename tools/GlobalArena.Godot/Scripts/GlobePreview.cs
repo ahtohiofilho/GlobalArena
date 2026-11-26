@@ -213,7 +213,7 @@ public partial class GlobePreview : SubViewportContainer
         world.AddChild(camera);
         _camera = camera;
         camera.LookAt(Vector3.Zero, Vector3.Up);
-        InitializeSphericalTradeInk();
+        InitializeSphericalTradeInk(viewport);
         GD.Print("GA_PROD_NAV_READY_03A orbit=drag zoom=wheel");
         _pickedLabel = new Label
         {

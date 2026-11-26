@@ -503,12 +503,43 @@ jobs:
             grep -q "GA_NEXT_R179_FRAME_PASS stage=$stage" "$RUNNER_TEMP/ga-godot/r179-temporal-economy.log"
             test -s "$GA_NEXT_R179_SCREENSHOT_DIR/$stage.png"
           done
+      - name: R231.10 verify real M-atlas pixels in uniform-city gameplay
+        shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          GA_FOUNDATION_GODOT_SMOKE: '0'
+          GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW: '1'
+          GA_NEXT_INTERACTIVE_ECONOMY_PREVIEW: '1'
+          GA_NEXT_QA_LOCAL_SITE_MARKERS: '1'
+          GA_NEXT_CONSTRUCTION_PREVIEW: '1'
+          GA_NEXT_PERSISTENT_ORDERS: '1'
+          GA_NEXT_CROP_PREVIEW: '1'
+          GA_NEXT_LOCAL_ECONOMY_PREVIEW: '1'
+          GA_NEXT_DEMOGRAPHIC_PREVIEW: '1'
+          GA_NEXT_BOUNDED_TRADE_PREVIEW: '1'
+          GA_NEXT_R2318_UNIT_OPENING_PREVIEW: '1'
+          GA_NEXT_R23112_UNIFORM_CITY_DEMOGRAPHY: '1'
+          GA_NEXT_R213_UI_SMOKE: '1'
+          GA_NEXT_R23110_ATLAS_SCREENSHOT_DIR: ${{ runner.temp }}/ga-godot/atlas-trade
+        run: |
+          set -euo pipefail
+          xvfb-run -a -s "-screen 0 1600x1000x24" \
+            timeout 240s "$GODOT_BIN" --path tools/GlobalArena.Godot --rendering-method gl_compatibility \
+            2>&1 | tee "$RUNNER_TEMP/ga-godot/atlas-trade.log"
+          grep -E 'GA_NEXT_R23110_ATLAS_PIXELS_PASS black=[1-9][0-9]* white=[1-9][0-9]* root_frame=true real_m=true reversible=true hash_unchanged=true$' "$RUNNER_TEMP/ga-godot/atlas-trade.log"
+          grep -q 'GA_NEXT_R23112_TRANSIT_PASS' "$RUNNER_TEMP/ga-godot/atlas-trade.log"
+          for stage in 01_atlas_routes_off 02_atlas_routes_on 03_atlas_routes_off_again; do
+            test -s "$GA_NEXT_R23110_ATLAS_SCREENSHOT_DIR/$stage.png"
+          done
+          if grep -E 'GA_NEXT_R213_PERSISTENT_UI_FAIL|GA_NEXT_FINE_HUMAN_AI_REJECTED|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/ga-godot/atlas-trade.log"; then exit 1; fi
       - name: Keep actual runtime evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ga-godot-472-mono-scene-smoke
           path: |
+            ${{ runner.temp }}/ga-godot/atlas-trade.log
+            ${{ runner.temp }}/ga-godot/atlas-trade/*.png
             ${{ runner.temp }}/ga-godot/version.log
             ${{ runner.temp }}/ga-godot/import.log
             ${{ runner.temp }}/ga-godot/smoke.log
