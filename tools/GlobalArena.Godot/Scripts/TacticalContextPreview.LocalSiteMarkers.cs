@@ -35,6 +35,9 @@ public partial class TacticalContextPreview
         Array.AsReadOnly(_localSiteMarkers.Select(x =>
             (x.TileId, x.PolygonCentroid)).ToArray());
 
+    internal float? PresentedSiteDiameter(ulong tileId) =>
+        _localSiteMarkers.SingleOrDefault(m => m.TileId == tileId)?.Dot.Size.X;
+
     internal void AssertSitePopulationPresentation()
     {
         foreach (var marker in _localSiteMarkers)

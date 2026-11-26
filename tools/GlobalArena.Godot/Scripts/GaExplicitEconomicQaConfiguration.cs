@@ -46,6 +46,9 @@ internal static class GaExplicitEconomicQaConfiguration
         return mode;
     }
 
+    internal static bool DemographicPreviewEnabled =>
+        System.Environment.GetEnvironmentVariable("GA_NEXT_DEMOGRAPHIC_PREVIEW") == "1";
+
     internal static IReadOnlyDictionary<CropId, CommodityId> CropItems() =>
         CropCatalog.All.ToDictionary(c => c.Id, c => new CommodityId((uint)c.Id + 2U));
 
@@ -110,6 +113,9 @@ internal static class GaExplicitEconomicQaConfiguration
         ArgumentNullException.ThrowIfNull(demo);
         AssertNaturalFreightHierarchy();
         var tradeFixture = TradeFixtureMode();
+        bool growth = DemographicPreviewEnabled;
+        if (growth && (!enableLocalEconomy || !enablePersistentOrders || tradeFixture is not null))
+            throw new InvalidOperationException("Demographic preview requires the signed persistent local economy, without trade acceptance fixture.");
         if (tradeFixture is not null && (!enableLocalEconomy ||
             System.Environment.GetEnvironmentVariable("GA_NEXT_R213_UI_SMOKE") != "1"))
             throw new InvalidOperationException("R231.3 trade fixture is acceptance-only and requires the eight-item local economy smoke.");
@@ -243,7 +249,8 @@ internal static class GaExplicitEconomicQaConfiguration
             physicalTravelPolicy: enableTemporalFinancialVisualSmoke || enableConstructionPreview
                 ? new FoundationGroundEdgeTravelTimePolicy(1_400_000UL)
                 : null,
-            constructionMoneyMicroPerWholeWork: enableConstructionPreview ? 1_000_000UL : null, agriculture: agriculture,
+            constructionMoneyMicroPerWholeWork: enableConstructionPreview ? 1_000_000UL : null,
+            enableDemographicGrowth: growth, agriculture: agriculture,
             operationalPolicy: enablePersistentOrders && System.Environment.GetEnvironmentVariable("GA_NEXT_OPERATIONAL_PREVIEW") == "1"
                 ? new FoundationOperationalFreightShadowPolicy(1_000_000UL, 1_000_000UL) : null,
             enableExperimentalLocalEconomy: enableLocalEconomy, enableDefaultAutomaticBase: enableLocalEconomy);

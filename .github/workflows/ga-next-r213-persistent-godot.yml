@@ -120,6 +120,22 @@ jobs:
             grep -q "GA_NEXT_R2313_TRADE_FIXTURE_PASS mode=$mode cycles=2" "$RUNNER_TEMP/trade-$mode.log"
             if grep -E 'GA_NEXT_R213_PERSISTENT_UI_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/trade-$mode.log"; then exit 1; fi
           done
+      - name: Exercise demographic growth in the normal local economy opening
+        env:
+          GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW: '1'
+          GA_NEXT_INTERACTIVE_ECONOMY_PREVIEW: '1'
+          GA_NEXT_QA_LOCAL_SITE_MARKERS: '1'
+          GA_NEXT_CONSTRUCTION_PREVIEW: '1'
+          GA_NEXT_PERSISTENT_ORDERS: '1'
+          GA_NEXT_CROP_PREVIEW: '1'
+          GA_NEXT_LOCAL_ECONOMY_PREVIEW: '1'
+          GA_NEXT_DEMOGRAPHIC_PREVIEW: '1'
+          GA_NEXT_R213_UI_SMOKE: '1'
+        run: |
+          set -o pipefail
+          timeout 180 "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --rendering-method gl_compatibility 2>&1 | tee "$RUNNER_TEMP/demographic.log"
+          grep -q 'GA_NEXT_R2315_DEMOGRAPHIC_PASS cycles=3' "$RUNNER_TEMP/demographic.log"
+          if grep -E 'GA_NEXT_R213_PERSISTENT_UI_FAIL|GA_NEXT_FINE_HUMAN_AI_REJECTED|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/demographic.log"; then exit 1; fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -130,3 +146,4 @@ jobs:
             ${{ runner.temp }}/local-economy.log
             ${{ runner.temp }}/trade-remote.log
             ${{ runner.temp }}/trade-local.log
+            ${{ runner.temp }}/demographic.log
