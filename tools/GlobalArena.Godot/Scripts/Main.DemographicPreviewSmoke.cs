@@ -52,6 +52,8 @@ public partial class Main
         var previousDiameters = openingDiameters;
         AssertCartographicPublication(host, 0UL);
         bool bandChanged = false;
+        bool bounded = GaExplicitEconomicQaConfiguration.BoundedTradePreviewEnabled;
+        bool positiveTrade = false;
         for (ulong cycle = 1; cycle <= 9; cycle++)
         {
             var opening = host.Snapshot;
@@ -116,7 +118,16 @@ public partial class Main
             var view = host.GetLastClosedEconomicTradeView(_humanCivilization);
             if (view.PublishedHash != host.StateHash)
                 throw new InvalidOperationException("Trade publication was not bound to final post-birth state.");
-            AuditNormalTradeInputs(host, opening, receipt);
+            if (bounded)
+            {
+                var sale = receipt.TemporalEconomicSettlement!;
+                Require(sale.UsedBoundedSafeProgressiveRoutes, "missing bounded policy evidence");
+                Require(sale.SellerNetScaled.Sign >= 0 && sale.Credits.All(x => x.SellerNetScaled.Sign >= 0),
+                    "negative seller credit");
+                positiveTrade |= view.UsedEdges.Count > 0 && sale.PhysicalFreightScaled.Sign > 0;
+                GD.Print($"GA_NEXT_R2317_BOUNDED_CYCLE cycle={cycle} edges={view.UsedEdges.Count} freight={sale.PhysicalFreightScaled} net={sale.SellerNetScaled} replay=true");
+            }
+            else AuditNormalTradeInputs(host, opening, receipt);
             var diameters = ReadPopulationMarkers();
             AssertCartographicPublication(host, cycle);
             bandChanged |= diameters.Any(p => previousDiameters.TryGetValue(p.Key, out var prior) && p.Value > prior);
@@ -133,6 +144,11 @@ public partial class Main
                 GD.Print("GA_NEXT_R2315_DEMOGRAPHIC_PASS cycles=3 normal_opening=true actual_births=true atomic_queues=true dot_growth=true final_hash=true");
             }
         }
-        GD.Print("GA_NEXT_R2316_NORMAL_TRADE_AUDIT_PASS cycles=9 no_market_resolve=true");
+        if (bounded)
+        {
+            if (!positiveTrade) throw new InvalidOperationException("Bounded preview did not settle any positive normal-opening remote trade.");
+            GD.Print("GA_NEXT_R2317_BOUNDED_TRADE_PASS cycles=9 positive_trade=true replay=true");
+        }
+        else GD.Print("GA_NEXT_R2316_NORMAL_TRADE_AUDIT_PASS cycles=9 no_market_resolve=true");
     }
 }

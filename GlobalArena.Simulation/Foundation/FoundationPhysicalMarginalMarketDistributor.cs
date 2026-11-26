@@ -62,7 +62,8 @@ public static class FoundationPhysicalMarginalMarketDistributor
         BigInteger BaseQuoteScaled,
         BigInteger CostScaled,
         ulong PreviousGoodsMicro,
-        ulong CargoQuantum);
+        ulong CargoQuantum,
+        ulong MaximumAdditionalGoodsMicro = ulong.MaxValue);
 
     // Worst-case final price uses all real supply of this commodity at the
     // destination. This is a conservative admissibility bound, not a quote
@@ -75,6 +76,27 @@ public static class FoundationPhysicalMarginalMarketDistributor
         var minimumPrice = FoundationPhysicalMarginalIntegratedUtility.IntegerSqrt(
             new BigInteger(demand) * Micro * Micro / totalSupply);
         return minimumPrice * Micro * (10_000U - sellerTaxBasisPoints) >= cargoCostScaled * 10_000U;
+    }
+
+    // Invert the exact existing floor-price safety inequality. The cap
+    // is total destination goods, not just the incoming shipment.
+    internal static ulong SafeDestinationCapacity(ulong demand,
+        BigInteger cargoCostScaled, uint sellerTaxBasisPoints)
+    {
+        if (demand == 0 || cargoCostScaled.Sign < 0 || sellerTaxBasisPoints > 10_000U)
+            throw new ArgumentException("Invalid safe capacity inputs.");
+        if (cargoCostScaled.IsZero) return ulong.MaxValue;
+        if (sellerTaxBasisPoints == 10_000U) return 0UL;
+        BigInteger denominator = new BigInteger(Micro) * (10_000U - sellerTaxBasisPoints);
+        BigInteger price = (cargoCostScaled * 10_000U + denominator - 1) / denominator;
+        BigInteger cap = new BigInteger(demand) * Micro * Micro / (price * price);
+        return cap >= ulong.MaxValue ? ulong.MaxValue : (ulong)cap;
+    }
+
+    internal static ulong RemainingSafeCapacity(ulong cap, ulong delivered, ulong reservedLocal)
+    {
+        if (delivered >= cap || reservedLocal >= cap - delivered) return 0UL;
+        return cap - delivered - reservedLocal;
     }
 
     internal static ulong Gcd(ulong a, ulong b)
@@ -93,8 +115,9 @@ public static class FoundationPhysicalMarginalMarketDistributor
         Buyer buyer, BigInteger lambda, ulong supplyQuanta)
     {
         var right = lambda + buyer.CostScaled;
+        ulong limit = Math.Min(supplyQuanta, buyer.MaximumAdditionalGoodsMicro / buyer.CargoQuantum);
         if (right <= 0)
-            return supplyQuanta;
+            return limit;
         BigInteger numerator = buyer.BaseQuoteScaled *
             buyer.BaseQuoteScaled * buyer.Demand.DemandMicro;
         BigInteger maximumGoodsMicro = numerator / (right * right);
@@ -103,8 +126,8 @@ public static class FoundationPhysicalMarginalMarketDistributor
         if (availableGoodsMicro <= 0)
             return 0UL;
         var quanta = availableGoodsMicro / buyer.CargoQuantum;
-        if (quanta >= supplyQuanta)
-            return supplyQuanta;
+        if (quanta >= limit)
+            return limit;
         return checked((ulong)quanta);
     }
 
@@ -434,7 +457,8 @@ public static class FoundationPhysicalMarginalMarketDistributor
         FoundationCommodityCargoConversionPolicy conversionPolicy,
         IEnumerable<FoundationCommodityMarketPlanningQuote> quotes,
         IEnumerable<FoundationPhysicalRoutingEdgeCost> edgeCosts,
-        IReadOnlyList<FoundationPhysicalEconomicTaxRate>? safeRouteTaxes = null)
+        IReadOnlyList<FoundationPhysicalEconomicTaxRate>? safeRouteTaxes = null,
+        bool useBoundedSafeRoutes = false)
     {
         ArgumentNullException.ThrowIfNull(market);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -460,6 +484,17 @@ public static class FoundationPhysicalMarginalMarketDistributor
         var supplyByCommodity = safeRouteTaxes is null ? null : market.SupplyLots.GroupBy(l => l.Commodity)
             .ToDictionary(g => g.Key, g => g.Aggregate(0UL, (sum, l) => checked(sum + l.CapacityMicroPerTurn)));
         var taxes = safeRouteTaxes?.ToDictionary(t => t.Civilization, t => t.GrossRevenueBasisPoints);
+        if (useBoundedSafeRoutes && taxes is null)
+            throw new ArgumentException("Bounded safe routes require explicit seller tax rates.");
+        // Reserve unsold local supply before admitting imports. This guarantees
+        // a local outlet for subsequent lots even after an import locks a cap.
+        // Released reservation from exports may be used by later lots only.
+        var localRemaining = useBoundedSafeRoutes ? market.SupplyLots
+            .GroupBy(l => (l.Tile, l.Commodity))
+            .ToDictionary(x => x.Key, x => x.Aggregate(0UL, (sum,l) => checked(sum + l.CapacityMicroPerTurn))) : null;
+        var lockedCaps = new Dictionary<(PhysicalTacticalTileId, CommodityId), ulong>();
+        if (localRemaining is not null && localRemaining.Keys.Any(k => !delivered.ContainsKey(k)))
+            throw new InvalidOperationException("Bounded progressive mode requires positive local demand at each supply site.");
 
         foreach (var lot in market.SupplyLots)
         {
@@ -469,6 +504,8 @@ public static class FoundationPhysicalMarginalMarketDistributor
                 lot.Tile.FineStrategicCellId.Value > (ulong)cellCount)
                 throw new InvalidOperationException(
                     "A worker produces outside the current fine topology.");
+            if (localRemaining is not null)
+                localRemaining[(lot.Tile, lot.Commodity)] -= lot.CapacityMicroPerTurn;
             var routeKey = (lot.Tile, lot.Owner);
             if (!routes.TryGetValue(routeKey, out var tree))
             {
@@ -502,12 +539,22 @@ public static class FoundationPhysicalMarginalMarketDistributor
                 BigInteger costScaled = goodsCargoFactor *
                     (new BigInteger(tree.PhysicalRate[idx]) +
                      tree.TariffRate[idx]);
-                if (taxes is not null && !IsSafeAtFinalSupplyBound(line.DemandMicro,
+                ulong additional = ulong.MaxValue;
+                if (useBoundedSafeRoutes)
+                {
+                    var marketKey = (line.Tile, line.Commodity);
+                    ulong cap = Math.Min(lockedCaps.GetValueOrDefault(marketKey, ulong.MaxValue),
+                        SafeDestinationCapacity(line.DemandMicro, costScaled, taxes![lot.Owner]));
+                    additional = RemainingSafeCapacity(cap, delivered[marketKey],
+                        localRemaining!.GetValueOrDefault(marketKey));
+                    if (additional < quantum) continue;
+                }
+                else if (taxes is not null && !IsSafeAtFinalSupplyBound(line.DemandMicro,
                     supplyByCommodity![lot.Commodity], costScaled, taxes[lot.Owner])) continue;
                 eligible.Add(new Buyer(line, quote, tree,
                     new BigInteger(quote.QuoteMicroPerWholeCommodityUnit) *
                         ScoreScale, costScaled,
-                    delivered[(line.Tile, line.Commodity)], quantum));
+                    delivered[(line.Tile, line.Commodity)], quantum, additional));
             }
             ulong[] allocation = DistributeOneLot(
                 eligible, lot.CapacityMicroPerTurn);
@@ -519,6 +566,14 @@ public static class FoundationPhysicalMarginalMarketDistributor
                 var buyer = eligible[i];
                 var key = (buyer.Demand.Tile, buyer.Demand.Commodity);
                 delivered[key] = checked(delivered[key] + quantity);
+                if (useBoundedSafeRoutes)
+                {
+                    ulong cap = Math.Min(lockedCaps.GetValueOrDefault(key, ulong.MaxValue),
+                        SafeDestinationCapacity(buyer.Demand.DemandMicro, buyer.CostScaled, taxes![lot.Owner]));
+                    lockedCaps[key] = cap;
+                    if (delivered[key] > cap || localRemaining!.GetValueOrDefault(key) > cap - delivered[key])
+                        throw new InvalidOperationException("Bounded route exceeded its safe final destination capacity.");
+                }
                 var route =
                     FoundationPhysicalTradeRouteCandidatePlanner.Reconstruct(
                         lot.Tile, buyer.Demand.Tile, buyer.Route);

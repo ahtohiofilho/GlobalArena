@@ -49,13 +49,16 @@ internal static class GaExplicitEconomicQaConfiguration
         return mode;
     }
 
+    internal static bool BoundedTradePreviewEnabled =>
+        System.Environment.GetEnvironmentVariable("GA_NEXT_BOUNDED_TRADE_PREVIEW") == "1";
+
     internal static bool DemographicPreviewEnabled =>
         System.Environment.GetEnvironmentVariable("GA_NEXT_DEMOGRAPHIC_PREVIEW") == "1";
 
     internal static IReadOnlyDictionary<CropId, CommodityId> CropItems() =>
         CropCatalog.All.ToDictionary(c => c.Id, c => new CommodityId((uint)c.Id + 2U));
 
-    internal static FoundationGameplayEconomicConfiguration Profile(bool crops = false, bool localEconomy = false) =>
+    internal static FoundationGameplayEconomicConfiguration Profile(bool crops = false, bool localEconomy = false, bool boundedTrade = false) =>
         new(
             new FoundationNaturalTransportSeedingPolicy(
                 new FoundationNaturalTransportCostBand(QaLandEdgeCostMicro, 1_000_000UL),
@@ -82,7 +85,7 @@ internal static class GaExplicitEconomicQaConfiguration
                     new FoundationPhysicalEconomicTaxRate(Blue, 500U)
                 },
                 maxProducerPasses: 64, useTemporalProgressiveDistribution: localEconomy,
-                requireSafeProgressiveRoutes: localEconomy),
+                requireSafeProgressiveRoutes: localEconomy, useBoundedSafeProgressiveRoutes: boundedTrade),
             new[]
             {
                 (Red, 0UL),
@@ -117,6 +120,8 @@ internal static class GaExplicitEconomicQaConfiguration
         AssertNaturalFreightHierarchy();
         var tradeFixture = TradeFixtureMode();
         bool growth = DemographicPreviewEnabled;
+        if (BoundedTradePreviewEnabled && (!growth || !enableLocalEconomy || tradeFixture is not null))
+            throw new InvalidOperationException("Bounded trade preview requires the normal demographic local economy.");
         if (growth && (!enableLocalEconomy || !enablePersistentOrders || tradeFixture is not null))
             throw new InvalidOperationException("Demographic preview requires the signed persistent local economy, without trade acceptance fixture.");
         if (tradeFixture is not null && (!enableLocalEconomy ||
@@ -151,7 +156,7 @@ internal static class GaExplicitEconomicQaConfiguration
             world, demo.Incidence);
         var identity = FoundationFineFirstWorldgenCanonicalSignature.Compute(
             world, demo.Incidence, fine);
-        var configuration = Profile(enableCropPreview, enableLocalEconomy);
+        var configuration = Profile(enableCropPreview, enableLocalEconomy, BoundedTradePreviewEnabled);
         // QA-only provisional equal basic-resource yields; existing commodity 1/2 are wood/stone only in this experiment.
         var basic = enableLocalEconomy ? new FoundationBasicResourceProductionPolicy(CommodityOne, CommodityTwo, 1_000_000UL, 1_000_000UL) : null;
         var agriculture = enableCropPreview ? new FoundationAgriculturalProductionPolicy(fine, demo.Incidence, CropItems(), 2_000_000UL, basic) : null;

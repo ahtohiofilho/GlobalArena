@@ -73,7 +73,8 @@ public static class FoundationTemporalFinancialReconciler
             baseline, incidence, temporal, policy.Demand, policy.Cargo,
             policy.MaxProducerPasses, signedFine, freightWorld, roads,
             policy.UseTemporalProgressiveDistribution,
-            policy.RequireSafeProgressiveRoutes ? policy.TaxRates : null);
+            policy.RequireSafeProgressiveRoutes ? policy.TaxRates : null,
+            policy.UseBoundedSafeProgressiveRoutes);
         // Matching R169's signed topology, only real permitted freight edges
         // are considered in the financial cost calculation.
         if (signedFine is not null)
