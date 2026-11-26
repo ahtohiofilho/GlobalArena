@@ -21,6 +21,8 @@ public partial class TacticalContextPreview
 
     private readonly List<LocalSiteMarker> _localSiteMarkers = new();
     private bool _localSitesEnabled;
+    private bool _siteLabelLayoutDirty = true;
+    private Vector2 _siteLabelViewportSize;
 
     // Tactical sites remain visible at every supported zoom.
     // Workforce belongs in the administration screen, not as map dots.
@@ -83,30 +85,40 @@ public partial class TacticalContextPreview
     {
         if (!_localSitesEnabled || _cachedPhysicalMap is null)
             return false;
+        // A physical dot always takes precedence over a displaced name.
+        // A hidden name has no hitbox, and nearby dots cannot steal a click
+        // from an actually visible label.
+        LocalSiteMarker? picked = null;
+        float nearest = float.PositiveInfinity;
         foreach (var site in _localSiteMarkers)
         {
             if (!site.Dot.Visible) continue;
-            var label = site.Visual;
-            var textBounds = new Rect2(label.Position,
-                new Vector2(108f, 26f));
-            // The dot is centered on the physical polygon; the name is
-            // separately offset and both select the same canonical tile.
-            var dotCenter = site.Dot.Position + site.Dot.Size * 0.5f;
-            float hitRadius = Math.Max(10f, site.Dot.Size.X * 0.5f);
-            if (!textBounds.HasPoint(localPixel) &&
-                dotCenter.DistanceSquaredTo(localPixel) > hitRadius * hitRadius)
-                continue;
-            SelectPhysicalTile(site.TileId);
-            var id = new PhysicalTacticalTileId(
-                _cachedPhysicalMap.Refinement.FineParameters,
-                new StrategicCellId(site.TileId));
-            CanonicalPhysicalTileClicked?.Invoke(id);
-            CartographicLocalSiteSelected?.Invoke(site.TileId);
-            GD.Print($"GA_NEXT_R129_LOCAL_SITE_SELECTED tile={site.TileId} " +
-                "source=real_fine_worker_tile simulated_city=false mutation=false");
-            return true;
+            float distance = (site.Dot.Position + site.Dot.Size * 0.5f).DistanceSquaredTo(localPixel);
+            float radius = site.Dot.Size.X * 0.5f;
+            if (distance <= radius * radius && distance < nearest)
+            { picked = site; nearest = distance; }
         }
-        return false;
+        picked ??= _localSiteMarkers.FirstOrDefault(s => s.Dot.Visible && s.Visual.Visible &&
+            new Rect2(s.Visual.Position, s.Visual.Size).HasPoint(localPixel));
+        if (picked is null)
+        {
+            foreach (var site in _localSiteMarkers)
+            {
+                if (!site.Dot.Visible) continue;
+                float distance = (site.Dot.Position + site.Dot.Size * 0.5f).DistanceSquaredTo(localPixel);
+                if (distance <= 100f && distance < nearest)
+                { picked = site; nearest = distance; }
+            }
+        }
+        if (picked is null) return false;
+        SelectPhysicalTile(picked.TileId);
+        var id = new PhysicalTacticalTileId(_cachedPhysicalMap.Refinement.FineParameters,
+            new StrategicCellId(picked.TileId));
+        CanonicalPhysicalTileClicked?.Invoke(id);
+        CartographicLocalSiteSelected?.Invoke(picked.TileId);
+        GD.Print($"GA_NEXT_R129_LOCAL_SITE_SELECTED tile={picked.TileId} " +
+            "source=real_fine_worker_tile simulated_city=false mutation=false");
+        return true;
     }
 
     public IReadOnlyList<ulong> LocalSiteMarkerTileIds =>
@@ -136,6 +148,7 @@ public partial class TacticalContextPreview
             prior.Visual.QueueFree();
         }
         _localSiteMarkers.Clear();
+        _siteLabelLayoutDirty = true;
 
         if (_displayWorkers.Count == 0) return;
         var occupied = _displayWorkers
@@ -290,9 +303,9 @@ public partial class TacticalContextPreview
         if (baseSize.X <= 0 || baseSize.Y <= 0) return;
         float factorX = Size.X / baseSize.X;
         float factorY = Size.Y / baseSize.Y;
-        // Render every eligible physical locality within the tactical
-        // viewport. No zoom threshold, population threshold, top-N budget,
-        // or collision suppression: those previously hid real locations.
+        // All eligible dots remain visible. Only names may move or be
+        // temporarily omitted when every adjacent text position is blocked.
+        bool dirty = _siteLabelLayoutDirty || _siteLabelViewportSize != Size;
         foreach (var place in _localSiteMarkers)
         {
             var label = place.Visual;
@@ -307,10 +320,45 @@ public partial class TacticalContextPreview
 
             // The glyph itself is centered on the polygon anchor.
             // Only the name is shifted away from the marker.
-            dot.Position = screen - dot.Size * 0.5f;
-            label.Position = screen + new Vector2(dot.Size.X * 0.5f + 6f, -13f);
+            var position = screen - dot.Size * 0.5f;
+            if (dot.Position != position || dot.Visible != inMap) dirty = true;
+            dot.Position = position;
             dot.Visible = inMap;
-            label.Visible = inMap;
+            if (!inMap) label.Visible = false;
         }
+        if (!dirty) return;
+        _siteLabelLayoutDirty = false;
+        _siteLabelViewportSize = Size;
+        var sites = _localSiteMarkers.Where(s => s.Dot.Visible).Select(s =>
+            new GaSiteLabelLayout.Site(s.TileId, s.WorkerCount,
+                new Rect2(s.Dot.Position, s.Dot.Size), s.Visual.GetCombinedMinimumSize())).ToArray();
+        var placements = GaSiteLabelLayout.Place(Size, sites);
+        foreach (var site in _localSiteMarkers)
+        {
+            if (placements.TryGetValue(site.TileId, out var rect))
+            {
+                site.Visual.Position = rect.Position;
+                site.Visual.Size = rect.Size;
+                site.Visual.Visible = true;
+            }
+            else site.Visual.Visible = false;
+        }
+    }
+
+    internal void AssertSiteLabelLayout()
+    {
+        PositionLocalSiteMarkers();
+        var dots = _localSiteMarkers.Where(s => s.Dot.Visible).ToArray();
+        var names = dots.Where(s => s.Visual.Visible).ToArray();
+        var bounds = new Rect2(Vector2.Zero, Size);
+        for (int i = 0; i < names.Length; i++)
+        {
+            var r = new Rect2(names[i].Visual.Position, names[i].Visual.Size);
+            if (!bounds.Encloses(r) || dots.Any(s => r.Intersects(new Rect2(s.Dot.Position, s.Dot.Size).Grow(2f))) ||
+                names.Skip(i + 1).Any(s => r.Intersects(new Rect2(s.Visual.Position, s.Visual.Size).Grow(2f))))
+                throw new InvalidOperationException("Visible site labels collide or leave the map.");
+        }
+        if (_localSiteMarkers.Any(s => !s.Dot.Visible && s.Visual.Visible))
+            throw new InvalidOperationException("Offscreen dot has a visible label.");
     }
 }
