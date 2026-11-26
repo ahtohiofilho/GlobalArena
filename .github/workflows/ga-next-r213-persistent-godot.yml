@@ -6,6 +6,8 @@ on:
       - 'GlobalArena.Runtime/**'
       - 'GlobalArena.Simulation/**'
       - 'docs/fixtures/GA-NEXT-R232A-UNIFORM-CITY-50-HASHES.txt'
+      - 'docs/fixtures/GA-NEXT-R232D-DISPERSED-100-HASHES.txt'
+      - 'tools/qa/compare_r232e_profiles.py'
       - 'GlobalArena.Simulation/Foundation/FoundationTacticalHumanAiTurnHost.cs'
       - '.github/workflows/ga-next-r213-persistent-godot.yml'
   workflow_dispatch:
@@ -14,14 +16,14 @@ permissions:
 jobs:
   persistent-ui:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
       - name: Compile client
-        run: dotnet build tools/GlobalArena.Godot -c Debug
+        run: dotnet build tools/GlobalArena.Godot -c Debug -p:Optimize=false
       - name: Install Godot
         run: |
           curl -fL --retry 3 https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_mono_linux_x86_64.zip -o "$RUNNER_TEMP/godot.zip"
@@ -235,6 +237,7 @@ jobs:
           GA_NEXT_R232_TURN_PROFILE: '1'
           GA_NEXT_R232_PROFILE_THROUGH_CYCLE: '50'
           GA_NEXT_R232D_DISPERSED_PROFILE: '1'
+          GA_NEXT_R232E_MANAGED_BUILD: 'debug'
         run: |
           set -o pipefail
           timeout 600 "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --rendering-method gl_compatibility 2>&1 | tee "$RUNNER_TEMP/uniform-city.log"
@@ -267,6 +270,63 @@ jobs:
             done
           done
           if grep -E 'GA_NEXT_R213_PERSISTENT_UI_FAIL|GA_NEXT_FINE_HUMAN_AI_REJECTED|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/uniform-city.log"; then exit 1; fi
+      - name: Rebuild optimized CSharp assemblies in the same Godot Debug load path
+        run: dotnet build tools/GlobalArena.Godot -c Debug --no-incremental -p:Optimize=true
+      - name: Exercise identical 100-cycle scenario with optimized managed assemblies
+        env:
+          GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW: '1'
+          GA_NEXT_INTERACTIVE_ECONOMY_PREVIEW: '1'
+          GA_NEXT_QA_LOCAL_SITE_MARKERS: '1'
+          GA_NEXT_CONSTRUCTION_PREVIEW: '1'
+          GA_NEXT_PERSISTENT_ORDERS: '1'
+          GA_NEXT_CROP_PREVIEW: '1'
+          GA_NEXT_LOCAL_ECONOMY_PREVIEW: '1'
+          GA_NEXT_DEMOGRAPHIC_PREVIEW: '1'
+          GA_NEXT_BOUNDED_TRADE_PREVIEW: '1'
+          GA_NEXT_R2318_UNIT_OPENING_PREVIEW: '1'
+          GA_NEXT_R23112_UNIFORM_CITY_DEMOGRAPHY: '1'
+          GA_NEXT_R213_UI_SMOKE: '1'
+          GA_NEXT_R232_TURN_PROFILE: '1'
+          GA_NEXT_R232_PROFILE_THROUGH_CYCLE: '50'
+          GA_NEXT_R232D_DISPERSED_PROFILE: '1'
+          GA_NEXT_R232E_MANAGED_BUILD: 'optimized'
+        run: |
+          set -o pipefail
+          timeout 600 "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --rendering-method gl_compatibility 2>&1 | tee "$RUNNER_TEMP/uniform-city-optimized.log"
+          grep -q 'GA_NEXT_R2315_DEMOGRAPHIC_PASS cycles=3' "$RUNNER_TEMP/uniform-city-optimized.log"
+          grep -q 'GA_NEXT_R2318_OPENING_REFERENCE workers=2' "$RUNNER_TEMP/uniform-city-optimized.log"
+          grep -q 'GA_NEXT_R2318_UNIT_OPENING_PASS cycles=9' "$RUNNER_TEMP/uniform-city-optimized.log"
+          grep -q 'GA_NEXT_R23112_UNIFORM_PASS cycles=9 population_per_owner=10 replay=true' "$RUNNER_TEMP/uniform-city-optimized.log"
+          grep -q 'GA_NEXT_R23111_SITE_COLORS_PASS red=true blue=true mixed_policy=true white_border=true hash_unchanged=true' "$RUNNER_TEMP/uniform-city-optimized.log"
+          grep -E 'GA_NEXT_R23112_CITY_SAMPLE_PASS samples=256 .* transit_excluded=true all_travel_skipped=true uncommitted=true$' "$RUNNER_TEMP/uniform-city-optimized.log"
+          for cycle in {1..9}; do
+            grep -E "GA_NEXT_R23112_BIRTH_PASS cycle=$cycle owners=2 uniform_city=true replay=true$" "$RUNNER_TEMP/uniform-city-optimized.log"
+          done
+          for cycle in {1..9}; do
+            grep -E "GA_NEXT_R2318D_ALLOCATION_PASS cycle=$cycle own=[1-9][0-9]* .* actual_calendar=true$" "$RUNNER_TEMP/uniform-city-optimized.log"
+          done
+          grep -q 'GA_NEXT_R23112_TRANSIT_PASS actual_crossing=true birth_skipped=true resumed_at_destination=true no_carry=true replay=true' "$RUNNER_TEMP/uniform-city-optimized.log"
+          grep -q 'GA_NEXT_R232_SCALE_PASS through=50 population=101 actual_closes=true replay=true' "$RUNNER_TEMP/uniform-city-optimized.log"
+
+          sed -nE 's/^GA_NEXT_R232_TURN cycle=([0-9]+) .* replay=True hash=WorldStateHash \{ FormatVersion = 26, HexDigest = ([A-F0-9]{64}) \} inclusive=true$/\1 \2/p' "$RUNNER_TEMP/uniform-city-optimized.log" | awk '$1 <= 50' > "$RUNNER_TEMP/r232e-optimized-50-hashes.txt"
+          diff -u docs/fixtures/GA-NEXT-R232A-UNIFORM-CITY-50-HASHES.txt "$RUNNER_TEMP/r232e-optimized-50-hashes.txt"
+          echo 'GA_NEXT_R232B_BASELINE_EQUIVALENCE_PASS cycles=50 hash_v=26'
+          grep -E 'GA_NEXT_R232D_DISPERSED_PASS through=100 population=201 own_sites=8 moves=7 travel_closes=[1-9][0-9]* stationary_closes=[1-9][0-9]* max_edges=[1-9][0-9]* positive_trade=true replay=true$' "$RUNNER_TEMP/uniform-city-optimized.log"
+          for cycle in $(seq 51 100); do
+            grep -E "GA_NEXT_R232D_CYCLE cycle=$cycle stage=(expansion|stationary) own_sites=[1-9][0-9]* workers=[1-9][0-9]* edges=[0-9]+ traveled=(True|False) replay=true$" "$RUNNER_TEMP/uniform-city-optimized.log"
+          done
+          for cycle in $(seq 1 100); do
+            grep -E "GA_NEXT_R232_TURN cycle=$cycle .* replay=True .* inclusive=true$" "$RUNNER_TEMP/uniform-city-optimized.log"
+            for phase in turn_total host_close worker_calendar automatic_allocation market_distribution financial_accounting demography independent_replay canonical_hash trade_publication ui_attach ui_refresh; do
+              grep -E "GA_NEXT_R232_PHASE cycle=$cycle phase=$phase calls=[1-9][0-9]* elapsed_us=[0-9]+ allocated_bytes=[0-9]+$" "$RUNNER_TEMP/uniform-city-optimized.log" >/dev/null
+            done
+          done
+          if grep -E 'GA_NEXT_R213_PERSISTENT_UI_FAIL|GA_NEXT_FINE_HUMAN_AI_REJECTED|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/uniform-city-optimized.log"; then exit 1; fi
+      - name: Compare matched managed builds against approved 100-cycle reference
+        run: |
+          python3 tools/qa/compare_r232e_profiles.py \
+            "$RUNNER_TEMP/uniform-city.log" "$RUNNER_TEMP/uniform-city-optimized.log" \
+            docs/fixtures/GA-NEXT-R232D-DISPERSED-100-HASHES.txt "$RUNNER_TEMP/r232e-comparison.json"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -283,3 +343,6 @@ jobs:
             ${{ runner.temp }}/individual-demography.log
             ${{ runner.temp }}/uniform-city.log
             ${{ runner.temp }}/r232b-hashes.txt
+            ${{ runner.temp }}/uniform-city-optimized.log
+            ${{ runner.temp }}/r232e-optimized-50-hashes.txt
+            ${{ runner.temp }}/r232e-comparison.json
