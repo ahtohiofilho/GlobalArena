@@ -61,6 +61,7 @@ public partial class Main
         int cropRows = 0;
         for (ulong cycle = 1; cycle <= 9; cycle++)
         {
+            var openingPrices = bounded ? ReadOpeningAllocationPrices(host) : null;
             var opening = host.Snapshot;
             var before = opening.Workers.Workers.ToArray();
             var hash = host.StateHash;
@@ -149,7 +150,7 @@ public partial class Main
                 if (cycle == 1)
                     GD.Print($"GA_NEXT_R2318_OPENING_REFERENCE workers={before.Length} aggregate_seller_net_scaled={receipt.TemporalEconomicSettlement!.SellerNetScaled} diagnostic_only=true");
             }
-            if (bounded) AuditLocalAutomaticAllocation(host, opening, receipt);
+            if (bounded) AuditLocalAutomaticAllocation(host, opening, receipt, openingPrices!);
             if (bounded && !unitOpening)
                 cropRows += ExerciseCityWorkerClosedCropRows(host, receipt);
             var diameters = ReadPopulationMarkers();
