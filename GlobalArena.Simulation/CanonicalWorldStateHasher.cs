@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Numerics;
@@ -92,9 +93,7 @@ public sealed class CanonicalWorldStateHasher
                         ? TacticalWorkerFormatVersion : PhysicalWorkerFormatVersion
                 : FormatVersion;
 
-        using var hash =
-            IncrementalHash.CreateHash(
-                HashAlgorithmName.SHA256);
+        using var hash = new BufferedCanonicalHash();
 
         hash.AppendData(
             Magic);
@@ -654,12 +653,60 @@ public sealed class CanonicalWorldStateHasher
                 digest));
     }
 
+    // Buffer only the existing ordered canonical bytes. The SHA-256 stream
+    // is identical regardless of chunk boundaries; no digest/state caching.
+    private sealed class BufferedCanonicalHash : IDisposable
+    {
+        private const int Capacity = 16 * 1024;
+        private readonly IncrementalHash _hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        private readonly byte[] _buffer;
+        private int _used;
+
+        public BufferedCanonicalHash()
+        {
+            try { _buffer = ArrayPool<byte>.Shared.Rent(Capacity); }
+            catch { _hash.Dispose(); throw; }
+        }
+
+        public void AppendData(ReadOnlySpan<byte> data)
+        {
+            if (data.Length >= Capacity)
+            {
+                Flush();
+                _hash.AppendData(data);
+                return;
+            }
+            if (data.Length > Capacity - _used) Flush();
+            data.CopyTo(_buffer.AsSpan(_used));
+            _used += data.Length;
+        }
+
+        private void Flush()
+        {
+            if (_used == 0) return;
+            _hash.AppendData(_buffer.AsSpan(0, _used));
+            _used = 0;
+        }
+
+        public byte[] GetHashAndReset()
+        {
+            Flush();
+            return _hash.GetHashAndReset();
+        }
+
+        public void Dispose()
+        {
+            try { _hash.Dispose(); }
+            finally { ArrayPool<byte>.Shared.Return(_buffer, clearArray: true); }
+        }
+    }
+
     /// <summary>
     /// Canonical exact-money encoding: unsigned, big-endian, minimal.
     /// No per-route rounding or arbitrary 64-bit cash ceiling.
     /// </summary>
     private static void AppendNonnegativeBigInteger(
-        IncrementalHash hash, BigInteger value)
+        BufferedCanonicalHash hash, BigInteger value)
     {
         if (value.Sign < 0)
             throw new InvalidOperationException(
@@ -671,7 +718,7 @@ public sealed class CanonicalWorldStateHasher
     }
 
     private static void AppendUInt32(
-        IncrementalHash hash,
+        BufferedCanonicalHash hash,
         uint value)
     {
         Span<byte> buffer =
@@ -686,7 +733,7 @@ public sealed class CanonicalWorldStateHasher
     }
 
     private static void AppendUInt64(
-        IncrementalHash hash,
+        BufferedCanonicalHash hash,
         ulong value)
     {
         Span<byte> buffer =
