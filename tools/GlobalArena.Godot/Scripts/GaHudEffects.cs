@@ -35,23 +35,27 @@ internal static class GaHudEffects
         if (LightCache.TryGetValue(plane, out var cached)) return cached;
         int w = GaHudVisualTokens.LightTextureWidth, h = GaHudVisualTokens.LightTextureHeight;
         var data = new byte[w * h * 4];
-        double strength = plane switch
+        // Raised objects face the key light. Recessed portraits receive
+        // a softer key, an inset upper occlusion and a reflected lower lip.
+        // Footer is heavier and calmer than the primary objects.
+        var (keyStrength, bounceStrength, vertical, occlusion, edgeStrength) = plane switch
         {
-            GaHudPlane.Atmosphere => 0.72,
-            GaHudPlane.Portrait => 0.80,
-            GaHudPlane.Footer => 0.85,
-            _ => 1.0
+            GaHudPlane.Portrait => (0.025, 0.025, 0.005, 0.055, -0.12),
+            GaHudPlane.Footer => (0.052, 0.025, 0.012, 0.085, 0.048),
+            GaHudPlane.Atmosphere => (0.035, 0.012, 0.008, 0.045, 0.015),
+            GaHudPlane.Structure => (0.020, 0.010, 0.005, 0.030, 0.010),
+            _ => (0.090, 0.026, 0.020, 0.115, 0.075)
         };
         for (int y = 0; y < h; y++)
         for (int x = 0; x < w; x++)
         {
             double u = x / (double)(w - 1), v = y / (double)(h - 1);
-            double key = 0.075 * Math.Exp(-((u - 0.15)*(u - 0.15)*3.5 + (v - 0.04)*(v - 0.04)*5.5));
-            double bounce = 0.022 * Math.Exp(-((u - 0.90)*(u - 0.90)*8 + (v - 0.86)*(v - 0.86)*10));
-            double directional = 0.018 * (1 - v);
-            double occlusion = (plane == GaHudPlane.Portrait ? 0.19 : 0.10) * v * v;
-            double edge = 0.065 * Math.Exp(-v * 50);
-            double signed = (key + bounce + directional + edge - occlusion) * strength;
+            double key = keyStrength * Math.Exp(-((u - 0.15)*(u - 0.15)*3.5 + (v - 0.04)*(v - 0.04)*5.5));
+            double bounce = bounceStrength * Math.Exp(-((u - 0.90)*(u - 0.90)*8 + (v - 0.86)*(v - 0.86)*10));
+            double directional = vertical * (1 - v);
+            double edge = edgeStrength * Math.Exp(-v * 22);
+            double lowerLip = plane == GaHudPlane.Portrait ? 0.075 * Math.Exp(-(1-v)*22) : 0;
+            double signed = key + bounce + directional + edge + lowerLip - occlusion * v * v;
             int i = (y * w + x) * 4;
             data[i] = data[i+1] = data[i+2] = signed >= 0 ? (byte)255 : (byte)0;
             data[i+3] = (byte)Math.Round(Math.Clamp(Math.Abs(signed), 0d, 1d) * 255d);
@@ -108,6 +112,26 @@ internal static class GaHudEffects
         if (image.GetPixel(0, 0).A <= image.GetPixel(image.GetWidth()/2, image.GetHeight()/2).A ||
             !ReferenceEquals(Light(GaHudPlane.Object), Light(GaHudPlane.Object)))
             throw new InvalidOperationException("Directional light/cache contract failed.");
+        // Sample the actual cached texture, including the sign of the light.
+        // A raised upper lip and recessed upper lip must face opposite ways.
+        static float Signed(Color pixel) => pixel.R >= 0.5f ? pixel.A : -pixel.A;
+        var portrait = Light(GaHudPlane.Portrait).GetImage();
+        var footerImage = Light(GaHudPlane.Footer).GetImage();
+        float objectTop = Signed(image.GetPixel(image.GetWidth()/4, 0));
+        float portraitTop = Signed(portrait.GetPixel(portrait.GetWidth()/4, 0));
+        float footerTop = Signed(footerImage.GetPixel(footerImage.GetWidth()/4, 0));
+        if (!(objectTop > footerTop && footerTop > 0 && portraitTop < 0) ||
+            Signed(portrait.GetPixel(portrait.GetWidth()*3/4, portrait.GetHeight()-1)) <= 0 ||
+            Signed(image.GetPixel(image.GetWidth()/2, image.GetHeight()-1)) >= 0 ||
+            !ReferenceEquals(Light(GaHudPlane.Portrait), Light(GaHudPlane.Portrait)) ||
+            !ReferenceEquals(Light(GaHudPlane.Footer), Light(GaHudPlane.Footer)) ||
+            portraits.Any(p => p.GetThemeStylebox("panel") is not StyleBoxFlat style || style.ShadowSize != 0) ||
+            objects.Any(p => p.GetThemeStylebox("panel") is not StyleBoxFlat style || style.ShadowSize != GaHudVisualTokens.ObjectShadow) ||
+            footer.GetThemeStylebox("panel") is not StyleBoxFlat footerStyle ||
+            footerStyle.ShadowSize != GaHudVisualTokens.FooterShadow ||
+            footerStyle.ShadowSize <= GaHudVisualTokens.ObjectShadow)
+            throw new InvalidOperationException("Raised and recessed material depth contract failed.");
+        GD.Print("GA_NEXT_VISUAL02C_DEPTH_PASS raised_key=true recessed_lip=true footer_depth=true cached=true");
         foreach (var action in actions)
         {
             if (!GaHudMotion.IsAttached(action) ||
