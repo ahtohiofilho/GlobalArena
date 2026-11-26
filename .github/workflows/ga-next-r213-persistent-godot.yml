@@ -154,6 +154,7 @@ jobs:
           timeout 180 "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --rendering-method gl_compatibility 2>&1 | tee "$RUNNER_TEMP/bounded-trade.log"
           grep -q 'GA_NEXT_R2315_DEMOGRAPHIC_PASS cycles=3' "$RUNNER_TEMP/bounded-trade.log"
           grep -q 'GA_NEXT_R2317_BOUNDED_TRADE_PASS cycles=9' "$RUNNER_TEMP/bounded-trade.log"
+          grep -E 'GA_NEXT_R2318C_CROP_ROWS_PASS actual_rows=[1-9][0-9]* committed_calendar=true' "$RUNNER_TEMP/bounded-trade.log"
           if grep -E 'GA_NEXT_R213_PERSISTENT_UI_FAIL|GA_NEXT_FINE_HUMAN_AI_REJECTED|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/bounded-trade.log"; then exit 1; fi
       - name: Exercise one-worker opening with individual commodity demand
         env:

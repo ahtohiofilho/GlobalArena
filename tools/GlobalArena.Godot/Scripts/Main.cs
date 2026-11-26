@@ -767,6 +767,7 @@ public partial class Main : Control
             var receipt = host.TryCloseTurn() ??
                 throw new System.InvalidOperationException(
                     "Collective turn not closed: all participants not ready.");
+            RecordCityWorkerCropEvidence(host, receipt);
             AttachRuntimeState(host.Snapshot);
             AuditPortInvestmentQa(receipt);
             var humanCount = receipt.Events.Count(x => x.Issuer == _humanCivilization);
