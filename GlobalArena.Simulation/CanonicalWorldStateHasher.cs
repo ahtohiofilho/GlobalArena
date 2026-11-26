@@ -38,6 +38,7 @@ public sealed class CanonicalWorldStateHasher
     public const uint CropIntentFormatVersion = 22U;
     public const uint BaseActivityFormatVersion = 23U;
     public const uint LocalPriceHistoryFormatVersion = 24U;
+    public const uint IndividualDemographyFormatVersion = 25U;
 
     private static readonly byte[] Magic =
     {
@@ -53,7 +54,9 @@ public sealed class CanonicalWorldStateHasher
         ArgumentNullException.ThrowIfNull(
             worldState);
 
-        var version = worldState.Treasury.LocalPriceHistory is not null
+        var version = worldState.Workers.Workers.Any(w => w.BirthWaitTurns.HasValue)
+            ? IndividualDemographyFormatVersion
+            : worldState.Treasury.LocalPriceHistory is not null
             ? LocalPriceHistoryFormatVersion
             : worldState.WorkerOrders.Queues.Any(q => q.BaseActivity is not null)
             ? BaseActivityFormatVersion
@@ -618,6 +621,17 @@ public sealed class CanonicalWorldStateHasher
                 AppendUInt64(hash, p.Commodity.Value);
                 AppendUInt64(hash, p.PriceMicro);
                 AppendUInt64(hash, p.ObservedCycleOrdinal);
+            }
+        }
+
+        if (version == IndividualDemographyFormatVersion)
+        {
+            AppendUInt32(hash, 52U);
+            AppendUInt32(hash, checked((uint)worldState.Workers.Workers.Count));
+            foreach (var worker in worldState.Workers.Workers.OrderBy(w => w.Id.Value))
+            {
+                AppendUInt64(hash, worker.Id.Value);
+                AppendUInt64(hash, worker.BirthWaitTurns ?? throw new InvalidOperationException("Missing demographic counter."));
             }
         }
 
