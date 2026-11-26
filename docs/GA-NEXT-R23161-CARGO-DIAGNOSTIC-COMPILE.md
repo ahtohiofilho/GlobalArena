@@ -1,0 +1,3 @@
+# R231.6.1 — QA cargo diagnostic assembly boundary
+
+PR #673 HEAD 8506d5d: both workflows failed CS1061 because CargoMicro is simulation-internal. The explicit Godot QA configuration already authors a uniform one-million micro-cargo per whole commodity conversion for every item. Extract that exact existing value into a shared QA constant, consumed by both policy construction and the diagnostic's exact admission inequality. No public kernel API change, no conversion or economic change. Nine real closes, prior demographic gate, and remote/local fixture coverage remain required. No diagnostic results yet; CI pending, draft no merge.

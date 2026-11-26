@@ -26,6 +26,9 @@ internal static class GaExplicitEconomicQaConfiguration
     internal const ulong QaLandEdgeCostMicro = 250_000UL;
     internal const ulong QaCoastEdgeCostMicro = 500_000UL;
     internal const ulong QaSeaEdgeCostMicro = 25_000UL;
+    // All commodities in this explicit QA profile have the same cargo
+    // conversion. Share the value with the read-only acceptance diagnostic.
+    internal const ulong QaCargoMicroPerWholeCommodity = 1_000_000UL;
 
     internal static void AssertNaturalFreightHierarchy()
     {
@@ -72,7 +75,7 @@ internal static class GaExplicitEconomicQaConfiguration
                 new FoundationCommodityCargoConversionPolicy(
                     "explicit-godot-economic-qa-only",
                     MarketItems(crops).Select(item =>
-                        new FoundationCommodityCargoConversion(item, 1_000_000UL))),
+                        new FoundationCommodityCargoConversion(item, QaCargoMicroPerWholeCommodity))),
                 new[]
                 {
                     new FoundationPhysicalEconomicTaxRate(Red, 1_000U),
