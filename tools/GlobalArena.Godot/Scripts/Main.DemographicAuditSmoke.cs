@@ -9,6 +9,70 @@ public partial class Main
     // Explicit QA only. Reuse the exact signed opening, verified time slices
     // and public pure birth planner. No births from counterfactual samples
     // are committed or made visible in interactive gameplay.
+    private void AuditUniformCityDemography(FoundationTacticalHumanAiTurnHost host,
+        WorldState opening, FoundationTacticalCollectiveReceipt receipt)
+    {
+        var hash = host.StateHash;
+        var timeline = receipt.PersistentTimeline ?? throw new InvalidOperationException("Missing uniform-city calendar.");
+        var batch = receipt.BirthBatch ?? throw new InvalidOperationException("Missing birth batch.");
+        var owners = opening.Workers.Workers.Select(w => w.Owner).Distinct().OrderBy(o => o.Value).ToArray();
+        var prior = opening.Workers.Workers.Select(w => w.Id).ToHashSet();
+        var existing = host.Snapshot.Workers.Workers.Where(w => prior.Contains(w.Id)).ToArray();
+        if (hash.FormatVersion != 26U || batch.SelectedParents is not null ||
+            !batch.Newborns.Select(w => w.Owner).SequenceEqual(owners) ||
+            host.Snapshot.Workers.Workers.Any(w => !w.UniformCityDemography || w.BirthWaitTurns.HasValue) ||
+            batch.Newborns.Any(child => !existing.Any(w => w.Owner == child.Owner &&
+                w.TacticalTileId == child.NatalNode && w.Activity != PhysicalWorkerActivity.Traveling)))
+            throw new InvalidOperationException("Stationary city birth or canonical policy mismatch.");
+
+        if (receipt.Turn.Value == 3UL)
+        {
+            // Counterfactual only: three own opening workers at two real nodes,
+            // split 2:1, and no orders. The other civilization is unchanged.
+            // The lottery must ignore the population difference.
+            var owner = owners[0];
+            var local = opening.Workers.Workers.Where(w => w.Owner == owner).OrderBy(w => w.Id.Value).ToArray();
+            var other = opening.Workers.Workers.First(w => w.Owner != owner);
+            if (local.Length != 3 || local.Any(w => w.TacticalTileId != local[0].TacticalTileId) ||
+                other.TacticalTileId == local[0].TacticalTileId)
+                throw new InvalidOperationException("Expected distinct stationary opening sites.");
+            var remote = local[2].Id;
+            var sample = opening.WithWorkers(new PhysicalWorkerRuntimeState(opening.Workers.Workers.Select(w =>
+                w.Id == remote ? w.WithTacticalAssignment(other.TacticalTileId!.Value, other.CellId,
+                    PhysicalWorkerActivity.Other, PhysicalWorkerOccupation.Unassigned) : w), true, true));
+            var sampleSlices = timeline.Slices.Select(s => s.Worker == remote
+                ? s with { Node = other.TacticalTileId!.Value, Activity = PhysicalWorkerActivity.Other,
+                    Occupation = PhysicalWorkerOccupation.Unassigned, Crop = null } : s).ToArray();
+            int remoteBirths = 0;
+            for (ulong t = 1; t <= 256; t++)
+            {
+                var plan = FoundationPhysicalPresenceDemographicProjector.PlanUniformCityBirths(sample, sampleSlices, batch.ScheduleDigest, t);
+                if (plan.Count != owners.Length) throw new InvalidOperationException("Missing eligible owner birth.");
+                if (plan.Single(b => b.Owner == owner).NatalNode == other.TacticalTileId) remoteBirths++;
+            }
+            if (remoteBirths < 90 || remoteBirths > 166)
+                throw new InvalidOperationException($"City lottery unexpectedly population-weighted: {remoteBirths}/256.");
+            WorldState Traveling(WorldState state, Func<PhysicalWorkerRuntimeRecord, bool> filter) =>
+                state.WithWorkers(new PhysicalWorkerRuntimeState(state.Workers.Workers.Select(w => filter(w)
+                    ? w.WithTacticalAssignment(w.TacticalTileId!.Value, w.CellId,
+                        PhysicalWorkerActivity.Traveling, PhysicalWorkerOccupation.Unassigned) : w), true, true));
+            var excluded = Traveling(sample, w => w.Id == remote);
+            for (ulong t = 1; t <= 16; t++)
+                if (FoundationPhysicalPresenceDemographicProjector.PlanUniformCityBirths(excluded, sampleSlices, batch.ScheduleDigest, t)
+                    .Single(b => b.Owner == owner).NatalNode != local[0].TacticalTileId)
+                    throw new InvalidOperationException("Transit-only site selected.");
+            var allOwnTravel = Traveling(sample, w => w.Owner == owner);
+            var otherOnly = FoundationPhysicalPresenceDemographicProjector.PlanUniformCityBirths(allOwnTravel, sampleSlices, batch.ScheduleDigest, 1UL);
+            var allTravel = Traveling(sample, w => true);
+            if (otherOnly.Count != owners.Length - 1 || otherOnly.Any(b => b.Owner == owner) ||
+                FoundationPhysicalPresenceDemographicProjector.PlanUniformCityBirths(allTravel, sampleSlices, batch.ScheduleDigest, 1UL).Count != 0)
+                throw new InvalidOperationException("Travel-only owners must not receive births.");
+            GD.Print($"GA_NEXT_R23112_CITY_SAMPLE_PASS samples=256 smaller={remoteBirths} transit_excluded=true all_travel_skipped=true uncommitted=true");
+        }
+        if (hash != host.StateHash) throw new InvalidOperationException("City audit mutated the host.");
+        GD.Print($"GA_NEXT_R23112_BIRTH_PASS cycle={receipt.Turn.Value} owners={owners.Length} uniform_city=true replay=true");
+    }
+
     private void AuditIndividualDemography(FoundationTacticalHumanAiTurnHost host,
         WorldState opening, FoundationTacticalCollectiveReceipt receipt)
     {
