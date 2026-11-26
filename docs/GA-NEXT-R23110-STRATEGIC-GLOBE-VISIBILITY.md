@@ -1,0 +1,7 @@
+# R231.10 — Strategic globe trade visibility
+
+Base #681 42ee03f: 13 workflows / 17 checks passed; uniform city sample 120/136 across 256 draws; actual travel exclusion and arrival resumption passed. User's R231.9 Windows turn 100 had positive tactical trade but an empty atlas. Authorized trade data and geometry were already passed to both maps; existing tests checked edge IDs and clipping rather than the actual composed atlas image.
+
+Move the existing route Control into a CanvasLayer within the physical sphere SubViewport itself, above 3D and before the container's texture is presented. Camera viewport pixels are used directly at the existing 1:1 stretch. Preserve route styling, signed geometry, horizon clipping, private authorized edge publication and all simulation contracts. This addresses a suspected compositing/layout problem; exact Windows root cause is not yet proven.
+
+Add a real OpenGL/Xvfb graphical acceptance on the R231.12 uniform-city production-target preview: after positive actual settled freight, open M, focus a real published edge, capture root viewport pixels with ink off/on/off, require reversible black and white changed pixels, then restore focus and M close with unchanged canonical hash and tactical zoom. Keep three screenshots as artifacts. Retain existing headless and economic tests. CI and Windows visual review pending; no merge. Civilizational marker colors, profiling, Visual 02 and economic AI remain in backlog.
