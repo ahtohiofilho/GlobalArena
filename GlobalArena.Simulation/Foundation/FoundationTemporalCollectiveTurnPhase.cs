@@ -159,6 +159,7 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
 
     private TurnResolutionResult ResolvePersistent(TurnResolutionInput input, WorldState beginning)
     {
+        using var profile = FoundationTurnProfiler.Measure("persistent_resolution");
         if (input.Commands.Any(c => c.Id.Turn != input.Context.Turn || c.Id.Sequence == 0) ||
             input.Commands.Select(c => c.Id).Distinct().Count() != input.Commands.Count)
             throw new InvalidOperationException("Persistent collective commands must be unique and current.");
