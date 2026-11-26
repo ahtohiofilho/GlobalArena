@@ -350,6 +350,8 @@ public partial class TacticalContextPreview
         PositionLocalSiteMarkers();
         var dots = _localSiteMarkers.Where(s => s.Dot.Visible).ToArray();
         var names = dots.Where(s => s.Visual.Visible).ToArray();
+        if (dots.Length > 0 && names.Length == 0)
+            throw new InvalidOperationException("Expected at least one readable name in the actual scale fixture.");
         var bounds = new Rect2(Vector2.Zero, Size);
         for (int i = 0; i < names.Length; i++)
         {
