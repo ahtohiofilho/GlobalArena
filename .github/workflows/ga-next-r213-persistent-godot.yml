@@ -207,17 +207,9 @@ jobs:
           grep -q 'GA_NEXT_R2318_OPENING_REFERENCE workers=2' "$RUNNER_TEMP/individual-demography.log"
           grep -q 'GA_NEXT_R2318_UNIT_OPENING_PASS cycles=9' "$RUNNER_TEMP/individual-demography.log"
           grep -q 'GA_NEXT_R2319_INDIVIDUAL_PASS cycles=9 population_per_owner=10 replay=true' "$RUNNER_TEMP/individual-demography.log"
-          grep -E 'GA_NEXT_R2319_WEIGHT_SAMPLE_PASS samples=256 .* uncommitted=true
+          grep -E 'GA_NEXT_R2319_WEIGHT_SAMPLE_PASS samples=256 .* uncommitted=true$' "$RUNNER_TEMP/individual-demography.log"
           for cycle in {1..9}; do
             grep -E "GA_NEXT_R2319_BIRTH_PASS cycle=$cycle owners=2 one_per_owner=true weights=true$" "$RUNNER_TEMP/individual-demography.log"
-          done
-          for cycle in {1..9}; do
-            grep -E "GA_NEXT_R2318D_ALLOCATION_PASS cycle=$cycle own=[1-9][0-9]* .* actual_calendar=true$" "$RUNNER_TEMP/individual-demography.log"
-          done
-          if grep -E 'GA_NEXT_R213_PERSISTENT_UI_FAIL|GA_NEXT_FINE_HUMAN_AI_REJECTED|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/individual-demography.log"; then exit 1; fi
- "$RUNNER_TEMP/individual-demography.log"
-          for cycle in {1..9}; do
-            grep -E "GA_NEXT_R2318E_BIRTH_AUDIT_PASS cycle=$cycle .* actual_batch=true$" "$RUNNER_TEMP/individual-demography.log"
           done
           for cycle in {1..9}; do
             grep -E "GA_NEXT_R2318D_ALLOCATION_PASS cycle=$cycle own=[1-9][0-9]* .* actual_calendar=true$" "$RUNNER_TEMP/individual-demography.log"
