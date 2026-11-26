@@ -66,8 +66,17 @@ public partial class TacticalContextPreview
             var occupants = _displayWorkers.Where(w => w.TacticalTileId.HasValue &&
                 w.TacticalTileId.Value.FineStrategicCellId.Value == marker.TileId).ToArray();
             int count = occupants.Length;
+            // Godot Control geometry can round position/size arithmetic in
+            // single precision when the camera rebuilds distant projections.
+            // Keep census and nominal diameter exact; tolerate only a tiny
+            // subpixel error in each actual rendered dimension.
+            float diameter = GaCartographicStyle.SiteDiameter(count);
+            const float renderedSizeTolerance = 0.001f;
             if (count <= 0 || marker.WorkerCount != count ||
-                marker.Dot.Size != new Vector2(GaCartographicStyle.SiteDiameter(count), GaCartographicStyle.SiteDiameter(count)))
+                !marker.Dot.Size.IsFinite() ||
+                marker.Dot.CustomMinimumSize != new Vector2(diameter, diameter) ||
+                Math.Abs(marker.Dot.Size.X - diameter) > renderedSizeTolerance ||
+                Math.Abs(marker.Dot.Size.Y - diameter) > renderedSizeTolerance)
                 throw new InvalidOperationException($"Site marker {marker.TileId} must represent its actual occupied population: census={count}, recorded={marker.WorkerCount}, size={marker.Dot.Size}, expected={GaCartographicStyle.SiteDiameter(count)}.");
             if (marker.Dot.GetThemeStylebox("panel") is not StyleBoxFlat disc ||
                 disc.BgColor != GaCivilizationVisualIdentity.SiteColor(occupants.Select(w => w.Owner.Value)) ||
