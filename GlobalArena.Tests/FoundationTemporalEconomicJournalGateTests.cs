@@ -869,6 +869,20 @@ public sealed class FoundationTemporalEconomicJournalGateTests
     }
 
     [Fact]
+    public void R2317BoundedCapacityIsExactAndReservesLocalSupply()
+    {
+        var freight = new BigInteger(2_351_599UL) * 1_000_000UL;
+        ulong cap = FoundationPhysicalMarginalMarketDistributor.SafeDestinationCapacity(500_001UL, freight, 1_000U);
+        Assert.True(cap > 50_000UL && cap < 1_618_192UL);
+        Assert.True(FoundationPhysicalMarginalMarketDistributor.IsSafeAtFinalSupplyBound(500_001UL, cap, freight, 1_000U));
+        Assert.False(FoundationPhysicalMarginalMarketDistributor.IsSafeAtFinalSupplyBound(500_001UL, cap + 1UL, freight, 1_000U));
+        Assert.Equal(0UL, FoundationPhysicalMarginalMarketDistributor.RemainingSafeCapacity(cap, 0UL, cap));
+        Assert.Equal(cap - 30_000UL, FoundationPhysicalMarginalMarketDistributor.RemainingSafeCapacity(cap, 10_000UL, 20_000UL));
+        Assert.Equal(0UL, FoundationPhysicalMarginalMarketDistributor.SafeDestinationCapacity(500_001UL, freight, 10_000U));
+        Assert.Equal(ulong.MaxValue, FoundationPhysicalMarginalMarketDistributor.SafeDestinationCapacity(500_001UL, BigInteger.Zero, 10_000U));
+    }
+
+    [Fact]
     public void R22813LocalBasicResourcesUseDistinctCommoditiesAndActualEffort()
     {
         var (world, worker, _, _, incidence, fine) = Fixture();

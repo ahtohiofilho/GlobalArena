@@ -26,7 +26,8 @@ public static class FoundationTemporalNativeMarginalMarketPlanner
         FoundationFineFirstPhysicalGeography? signedFine, WorldState? freightSnapshot,
         IReadOnlyList<FoundationPhysicalRoutingEdgeCost>? verifiedRoads,
         bool useProgressiveDistribution = false,
-        IReadOnlyList<FoundationPhysicalEconomicTaxRate>? safeProgressiveRouteTaxes = null)
+        IReadOnlyList<FoundationPhysicalEconomicTaxRate>? safeProgressiveRouteTaxes = null,
+        bool useBoundedSafeRoutes = false)
     {
         ArgumentNullException.ThrowIfNull(baseline);
         ArgumentNullException.ThrowIfNull(incidence);
@@ -75,7 +76,7 @@ public static class FoundationTemporalNativeMarginalMarketPlanner
             // Complete audited progressive allocation, NOT a truncated
             // failed global solve. Never certify a fixed point here.
             var progressive = FoundationPhysicalMarginalMarketDistributor.Distribute(
-                market, incidence, cargoPolicy, quotes, allowed, safeProgressiveRouteTaxes);
+                market, incidence, cargoPolicy, quotes, allowed, safeProgressiveRouteTaxes, useBoundedSafeRoutes);
             plan = new FoundationPhysicalGlobalMarginalCoordinationPlan(
                 progressive.Candidates.ToArray(), progressive.MarketTotals.ToArray(),
                 progressive.MarketTotals.ToArray(), progressive.AllocationAudit,
