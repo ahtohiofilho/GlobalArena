@@ -67,7 +67,7 @@ public partial class Main
         if (host.PersistentOrdersEnabled)
         {
             var q = host.Snapshot.WorkerOrders.Queues.SingleOrDefault(q => q.Worker == worker.Id);
-            var active = q?.Orders.FirstOrDefault(o => o.Id == q.ActiveOrderId);
+            var active = q is null ? null : q.Orders.FirstOrDefault(o => o.Id == q.ActiveOrderId);
             if (active?.Kind == FoundationWorkerOrderKind.BuildProductive) return $"Productive build order #{active.ProjectId}";
             if (active?.Kind == FoundationWorkerOrderKind.Build) return $"Connection build order #{active.ProjectId}";
         }
