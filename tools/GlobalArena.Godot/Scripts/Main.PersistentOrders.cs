@@ -751,6 +751,38 @@ public partial class Main
                     (int)c.Value - 1) == FoundationFineTransportCrossingKind.Ground);
             var target = new PhysicalTacticalTileId(host.Incidence.Refinement.FineParameters, destination);
             var mapEdge = ResolveConnectionEdge(source.FineStrategicCellId.Value, destination.Value);
+            // Choose a genuine remote ground project one walking edge away.
+            // Test UI admission, leaving the subsequent legacy movement smoke intact.
+            var remote = host.Incidence.FineTopology.Edges.First(e =>
+                e.IncidentCellIds.Contains(destination) && !e.IncidentCellIds.Contains(source.FineStrategicCellId) &&
+                fine.CrossingAtIndices((int)e.IncidentCellIds[0].Value - 1,
+                    (int)e.IncidentCellIds[1].Value - 1) == FoundationFineTransportCrossingKind.Ground &&
+                host.Snapshot.Transport.Edges.Any(p => p.Edge.FineStrategicEdgeId == e.Id &&
+                    p.NaturalConstructionCostMoneyMicro is > 0UL && p.CargoMicroAtReferenceLoad != ulong.MaxValue &&
+                    (p.OwnershipKind == PhysicalTransportOwnershipKind.NoInfrastructure ||
+                     p.InfrastructureOwner == _humanCivilization)));
+            var remoteEdge = new PhysicalTacticalEdgeId(host.Incidence.Refinement.FineParameters, remote.Id);
+            var remoteHash = host.StateHash;
+            OnR227MapConnectionRequested(remoteEdge);
+            _connectionAmount!.Text = "0.10";
+            RefreshConnectionInvestmentControls();
+            var remoteCheck = _persistentFundingWorkers!.GetChildren().OfType<CheckBox>()
+                .Single(b => b.Text.StartsWith($"Worker #{worker.Id.Value} |", StringComparison.Ordinal));
+            if (!remoteCheck.IsVisibleInTree() || !remoteCheck.Text.Contains("Travel required") ||
+                _connectionInvest!.Disabled || !_connectionInvest.IsVisibleInTree() ||
+                _connectionFunding!.IsAncestorOf(_connectionInvest))
+                throw new InvalidOperationException("Remote workforce or pinned construction action unavailable.");
+            remoteCheck.ButtonPressed = true;
+            _connectionInvest.EmitSignal(Button.SignalName.Pressed);
+            var remotePlan = host.GetHumanPersistentFunding(_humanCivilization).Single();
+            if (remotePlan.Edge != remoteEdge || remotePlan.Assignments.Count != 1 ||
+                remotePlan.Assignments[0].Worker != worker.Id || host.StateHash != remoteHash)
+                throw new InvalidOperationException("Remote build was not staged atomically for the selected worker.");
+            _connectionCancel!.EmitSignal(Button.SignalName.Pressed);
+            if (host.GetHumanPersistentFunding(_humanCivilization).Count != 0 || host.StateHash != remoteHash)
+                throw new InvalidOperationException("Remote funding cancellation failed.");
+            _r227CloseConnection!.EmitSignal(Button.SignalName.Pressed);
+            GD.Print("GA_NEXT_R235A_REMOTE_CONSTRUCTION_PASS real_controls=true remote_worker=true private_hash=true");
             var mapEdgeHash = host.StateHash;
             var mapEdgeOrders = host.GetHumanPersistentQueues(_humanCivilization).Select(q => (q.Worker, Count: q.Orders.Count)).ToArray();
             var mapEdgeFunding = host.GetHumanPersistentFunding(_humanCivilization).Count;
