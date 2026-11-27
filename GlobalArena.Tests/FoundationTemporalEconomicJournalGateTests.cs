@@ -1532,16 +1532,21 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.True(receipt.ReplayMatched);
         var funded = Assert.Single(receipt.PersistentFunding);
         Assert.Equal(edge, funded.Edge);
-        Assert.Equal(mode == 0 ? owner : human, funded.Investor);
-        Assert.Equal(mode == 0 ? 600_000UL : 300_000UL, funded.MoneyMicro);
-        Assert.Equal(mode == 0 ? GlobalArenaMoneyScale.FromMoneyMicro(600_000UL) : BigInteger.Zero,
+        // First turn starts with the lowest canonical civilization ID,
+        // irrespective of controller, submission order or funding amount.
+        var winner = mode == 0 || owner.Value < human.Value ? owner : human;
+        Assert.Equal(winner, funded.Investor);
+        Assert.Equal(winner == owner ? 600_000UL : 300_000UL, funded.MoneyMicro);
+        Assert.Equal(winner == owner ? GlobalArenaMoneyScale.FromMoneyMicro(600_000UL) : BigInteger.Zero,
             host.Snapshot.Treasury.Get(owner).TotalInfrastructureInvestmentScaled);
+        Assert.Equal(winner == human ? GlobalArenaMoneyScale.FromMoneyMicro(300_000UL) : BigInteger.Zero,
+            host.Snapshot.Treasury.Get(human).TotalInfrastructureInvestmentScaled);
         Assert.Equal(receipt.Hash, host.StateHash);
         Assert.Equal(0, host.PendingOrderCount);
 
         var manual = CreateHost(null);
         Assert.Equal(hash, manual.StateHash);
-        if (mode == 0)
+        if (winner == owner)
             manual.QueueHumanFundedConstruction(owner, edge, 600_000UL, assignments);
         else
             manual.QueueHumanFundedConstruction(human, edge, 300_000UL, Array.Empty<FoundationFundedWorkerInsertion>());
@@ -1550,6 +1555,35 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         var expected = Assert.IsType<FoundationTacticalCollectiveReceipt>(manual.TryCloseTurn());
         Assert.Equal(expected.Hash, receipt.Hash);
         Assert.Equal(expected.Revision, receipt.Revision);
+
+        if (mode is 1 or 2)
+        {
+            // Both humans may privately reserve the same edge. Reverse the
+            // admission/readiness order and attach a dependent edit to the loser.
+            var contested = CreateHost(null);
+            var loser = winner == owner ? human : owner;
+            var losingWorker = loser == owner ? worker.Id : foreign.Id;
+            var order = mode == 1 ? new[] { human, owner } : new[] { owner, human };
+            foreach (var civ in order)
+                contested.QueueHumanFundedConstruction(civ, edge, civ == owner ? 600_000UL : 300_000UL,
+                    civ == loser ? new[] { new FoundationFundedWorkerInsertion(losingWorker, 0) } :
+                    civ == owner ? assignments : Array.Empty<FoundationFundedWorkerInsertion>());
+            Assert.Equal(1, contested.GetHumanPersistentFunding(owner).Count);
+            Assert.Equal(1, contested.GetHumanPersistentFunding(human).Count);
+            Assert.Throws<InvalidOperationException>(() => contested.QueueHumanFundedConstruction(
+                loser, edge, 1UL, Array.Empty<FoundationFundedWorkerInsertion>()));
+            contested.QueueHumanPersistentEdit(loser, new FoundationPersistentOrderEdit(loser, losingWorker,
+                FoundationPersistentOrderEditKind.Remove, OrderId: 1UL));
+            Assert.Equal(hash, contested.StateHash);
+            foreach (var civ in order.Reverse()) contested.SetHumanReady(civ);
+            var resolved = Assert.IsType<FoundationTacticalCollectiveReceipt>(contested.TryCloseTurn());
+            Assert.True(resolved.ReplayMatched);
+            Assert.Equal(winner, Assert.Single(resolved.PersistentFunding).Investor);
+            Assert.Empty(resolved.PersistentEdits);
+            Assert.Equal(expected.Hash, resolved.Hash);
+            Assert.Equal(expected.Revision, resolved.Revision);
+            Assert.Equal(0, contested.PendingOrderCount);
+        }
     }
 
     [Fact]
