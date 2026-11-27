@@ -290,6 +290,43 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             new SimulationEventLogEntry(checked((ulong)index + 1UL), e.Event is FoundationPersistentWorkerTurnEvent ? forgedTimeline : e.Event,
                 wasEligible: true, wasExecuted: true)).ToArray());
         Assert.Throws<InvalidOperationException>(() => phase.ReplayPersistentJournal(ready, forgedLog, thirdContext));
+        // An independent scheduler replay does not debit construction again.
+        var scheduler = new FoundationPersistentWorkerTurnScheduler(router);
+        var scheduled = scheduler.Record(ready, thirdContext);
+        Assert.Same(ready.Treasury, scheduled.Next.Treasury);
+
+        // Concurrent road and productive teams share a calendar, not an ID namespace.
+        var crew = opening.Workers.Workers.Where(w => w.Owner == worker.Owner)
+            .OrderBy(w => w.Id.Value).ToArray();
+        Assert.Equal(3, crew.Length);
+        var destinationRegion = arrived.Workers.Workers.Single(w => w.Id == worker.Id).CellId;
+        var teamOpening = opening.WithWorkers(new PhysicalWorkerRuntimeState(opening.Workers.Workers.Select(w =>
+            w.Id == crew[0].Id || w.Id == crew[1].Id
+                ? w.WithTacticalAssignment(destination, destinationRegion, PhysicalWorkerActivity.Other, PhysicalWorkerOccupation.Unassigned)
+                : w.Id == crew[2].Id
+                    ? w.WithTacticalAssignment(source, traveler.CellId, PhysicalWorkerActivity.Other, PhysicalWorkerOccupation.Unassigned)
+                    : w), tacticalLocationsAuthoritative: true, occupationsAuthoritative: true));
+        var teamCommand = command with { MoneyMicro = investment - 1UL, Assignments = new[] {
+            new FoundationFundedWorkerInsertion(crew[0].Id, 0), new FoundationFundedWorkerInsertion(crew[1].Id, 0) } };
+        var roadCommand = new FoundationFundedWorkerIntentCommand(new CommandId(context.Turn, 1UL),
+            worker.Owner, edge, 100_000UL, new[] { new FoundationFundedWorkerInsertion(crew[2].Id, 0) });
+        var teamResult = phase.Resolve(new TurnResolutionInput(teamOpening,
+            new ISimulationCommand[] { roadCommand, teamCommand }, context), teamOpening);
+        var teamState = teamResult.ResultingWorldState;
+        var productiveTeam = Assert.Single(teamState.ProductiveInfrastructure.Projects);
+        var roadTeam = Assert.Single(teamState.Constructions.Projects);
+        Assert.Equal(roadTeam.Id, productiveTeam.Id);
+        Assert.True(productiveTeam.IsActivated);
+        Assert.True(roadTeam.IsActivated);
+        var teamSlices = Assert.Single(teamResult.Events.OfType<FoundationPersistentWorkerTurnEvent>()).Slices;
+        Assert.Equal(checked((long)(investment - 1UL)), teamSlices.Where(s => s.ProductiveProjectId == productiveTeam.Id)
+            .Sum(s => (long)s.DurationMicro));
+        Assert.Equal(100_000L, teamSlices.Where(s => s.ProjectId == roadTeam.Id).Sum(s => (long)s.DurationMicro));
+        Assert.Equal(checked((long)(investment / 2UL)), teamSlices.Where(s => s.Worker == crew[0].Id &&
+            s.ProductiveProjectId == productiveTeam.Id).Sum(s => (long)s.DurationMicro));
+        Assert.Equal(checked((long)(investment / 2UL - 1UL)), teamSlices.Where(s => s.Worker == crew[1].Id &&
+            s.ProductiveProjectId == productiveTeam.Id).Sum(s => (long)s.DurationMicro));
+        Assert.Equal(hasher.Compute(teamState), hasher.Compute(phase.ReplayPersistentJournal(teamOpening, teamResult.EventLog, context)));
     }
 
     [Fact]
