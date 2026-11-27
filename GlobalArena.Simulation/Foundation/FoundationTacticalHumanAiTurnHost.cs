@@ -209,6 +209,29 @@ public sealed class FoundationTacticalHumanAiTurnHost
         return rows is null ? null : new(viewer, node, evidence.CycleOrdinal, receipt.Hash, rows);
     }
 
+    // Internal diagnostic/authorization foundation only. Do not expose
+    // foreign workforce totals to player or AI policy views.
+    internal FoundationClosedNodeWorkEvidence? ReadLastClosedNodeWork(
+        PhysicalTacticalTileId node, CivilizationId requester,
+        IReadOnlySet<CivilizationId> eligibleOwners)
+    {
+        CheckSnapshot();
+        var receipt = _lastTemporalClose;
+        if (receipt is null || receipt.PersistentTimeline is not { } timeline ||
+            receipt.TemporalEconomicSettlement is not { } sale ||
+            !receipt.ReplayMatched || receipt.Revision != Snapshot.Revision ||
+            sale.EconomicCycleOrdinal != Snapshot.Treasury.LastSettledEconomicCycleOrdinal)
+            return null;
+        if (receipt.Turn.Value != NextTurn.Value - 1UL)
+            return null;
+        // Current persistent model retains worker identities and ownership;
+        // births after the calendar add no slices. Future conquest/death
+        // requires preserving historical owner evidence at calendar close.
+        var owners = Snapshot.Workers.Workers.ToDictionary(w => w.Id, w => w.Owner);
+        return FoundationClosedNodeWorkProjector.Read(timeline.Slices, owners,
+            node, requester, eligibleOwners);
+    }
+
     // Only the human owner's last independently verified cycle; no pending-plan data.
     public IReadOnlyList<FoundationWorkerFoodIntake>? ReadWorkerFoodIntake(
         CivilizationId viewer, PhysicalWorkerId worker)
