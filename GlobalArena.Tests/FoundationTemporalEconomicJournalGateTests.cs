@@ -181,6 +181,87 @@ public sealed class FoundationTemporalEconomicJournalGateTests
     }
 
     [Fact]
+    public void R235D2RemoteProductiveBuildUsesTypedQueueAndSharedCalendar()
+    {
+        var (legacy, traveler, destination, _, incidence, fine) = Fixture();
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL), WorldGenerationVersion.Initial,
+                new GoldbergParameters(3, 0)), workersPerCivilization: 3);
+        var signature = FoundationFineFirstWorldgenCanonicalSignature.Compute(demo.Session.GeneratedWorld, incidence, fine);
+        var bound = demo.Session.Snapshot.PromoteFineFirstBeforeTransport(demo.Session.GeneratedWorld, incidence, fine, signature)
+            .DeployInitialFineFirstPhysicalTransport(legacy.Transport, demo.Session.GeneratedWorld, incidence, fine, signature);
+        var source = traveler.TacticalTileId!.Value;
+        var opening = FoundationPersistedEdgeTravelTransitions.DeployEmpty(bound
+            .WithWorkers(new PhysicalWorkerRuntimeState(bound.Workers.Workers.Select(w =>
+                w.Id == traveler.Id ? w.WithTacticalAssignment(source, traveler.CellId,
+                    PhysicalWorkerActivity.Other, PhysicalWorkerOccupation.Unassigned) : w),
+                tacticalLocationsAuthoritative: true, occupationsAuthoritative: true))
+            .DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
+                bound.Civilizations.Civilizations.Select(c => (c, 5_000_000UL)))))
+            .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
+            .DeployInitialWorkerOrders().DeployInitialProductiveInfrastructure(ProductiveReferences());
+        var worker = opening.Workers.Workers.Single(w => w.Id == traveler.Id);
+        var target = new FoundationProductiveTarget(destination, FoundationProductiveActivity.Agriculture);
+        var edge = new PhysicalTacticalEdgeId(incidence.Refinement.FineParameters,
+            incidence.FineTopology.Edges.Single(e => e.IncidentCellIds.Contains(source.FineStrategicCellId) &&
+                e.IncidentCellIds.Contains(destination.FineStrategicCellId)).Id);
+        var travel = new FoundationGroundEdgeTravelTimePolicy(1_400_000UL);
+        var phase = new FoundationTemporalCollectiveTurnPhase(demo.Session.GeneratedWorld, incidence,
+            travel, Policy(opening.Civilizations.Civilizations), fine, signature,
+            persistentMoneyMicroPerWholeWork: 1_000_000UL);
+        var router = new FoundationConstructionApproachRouter(demo.Session.GeneratedWorld, incidence, fine, signature, travel);
+        var context = new SimulationContext(new TurnNumber(1UL), new SimulationSeed(712UL));
+        var hasher = new CanonicalWorldStateHasher();
+        var before = hasher.Compute(opening);
+        var command = new FoundationProductiveFundingCommand(new CommandId(context.Turn, 2UL),
+            worker.Owner, target, 1_600_000UL)
+            { Assignments = new[] { new FoundationFundedWorkerInsertion(worker.Id, 0) } };
+        var road = new FoundationFundedWorkerIntentCommand(new CommandId(context.Turn, 1UL),
+            worker.Owner, edge, 100_000UL, Array.Empty<FoundationFundedWorkerInsertion>());
+        var foreign = opening.Workers.Workers.First(w => w.Owner != worker.Owner);
+        Assert.Throws<InvalidOperationException>(() => phase.Resolve(new TurnResolutionInput(opening,
+            new ISimulationCommand[] { command with { Assignments = new[] { new FoundationFundedWorkerInsertion(foreign.Id, 0) } } },
+            context), opening));
+        Assert.Throws<InvalidOperationException>(() => phase.Resolve(new TurnResolutionInput(opening,
+            new ISimulationCommand[] { command with { Assignments = new[] {
+                new FoundationFundedWorkerInsertion(worker.Id, 0), new FoundationFundedWorkerInsertion(worker.Id, 0) } } },
+            context), opening));
+        Assert.Throws<InvalidOperationException>(() => opening.InsertWorkerOrder(worker.Owner, worker.Id, 0,
+            FoundationWorkerOrderKind.BuildProductive, projectId: 1UL));
+        var result = phase.Resolve(new TurnResolutionInput(opening, new ISimulationCommand[] { road, command }, context), opening);
+        var next = result.ResultingWorldState;
+        var order = Assert.Single(next.WorkerOrders.Queues.Single(q => q.Worker == worker.Id).Orders);
+        Assert.Equal(FoundationWorkerOrderKind.BuildProductive, order.Kind);
+        Assert.Equal(Assert.Single(next.Constructions.Projects).Id, order.ProjectId);
+        Assert.Equal(Assert.Single(next.ProductiveInfrastructure.Projects).Id, order.ProjectId);
+        Assert.Equal(400_000UL, Assert.Single(next.EdgeTravels.Pending, p => p.Worker == worker.Id).RemainingMicro);
+        var funding = Assert.Single(result.Events.OfType<FoundationProductiveFundingEvent>());
+        Assert.Equal(worker.Id, Assert.Single(funding.Assignments).Worker);
+        Assert.Equal(hasher.Compute(next), hasher.Compute(phase.ReplayPersistentJournal(opening, result.EventLog, context)));
+        var forged = funding with { Assignments = Array.Empty<FoundationFundedWorkerInsertion>() };
+        var tampered = new SimulationEventLog(result.EventLog.Entries.Select((e, index) =>
+            new SimulationEventLogEntry(checked((ulong)index + 1UL), e.Event is FoundationProductiveFundingEvent ? forged : e.Event,
+                wasEligible: true, wasExecuted: true)).ToArray());
+        Assert.Throws<InvalidOperationException>(() => phase.ReplayPersistentJournal(opening, tampered, context));
+        var secondContext = new SimulationContext(new TurnNumber(2UL), new SimulationSeed(712UL));
+        var second = phase.Resolve(new TurnResolutionInput(next, Array.Empty<ISimulationCommand>(), secondContext), next);
+        var arrived = second.ResultingWorldState;
+        Assert.DoesNotContain(arrived.EdgeTravels.Pending, p => p.Worker == worker.Id);
+        Assert.Equal(destination, arrived.Workers.Workers.Single(w => w.Id == worker.Id).TacticalTileId);
+        Assert.Equal(FoundationConstructionApproachStatus.AtSite, router.Plan(arrived, worker.Id).Status);
+        Assert.Equal(order, Assert.Single(arrived.WorkerOrders.Queues.Single(q => q.Worker == worker.Id).Orders));
+        Assert.Equal(0UL, Assert.Single(arrived.ProductiveInfrastructure.Projects).CompletedWorkMicro);
+        Assert.Equal(0UL, Assert.Single(arrived.Constructions.Projects).CompletedWorkMicro);
+        var slices = Assert.Single(second.Events.OfType<FoundationPersistentWorkerTurnEvent>()).Slices
+            .Where(s => s.Worker == worker.Id).ToArray();
+        Assert.Equal(400_000L, slices.Where(s => s.Activity == PhysicalWorkerActivity.Traveling).Sum(s => (long)s.DurationMicro));
+        Assert.Equal(600_000L, slices.Where(s => s.Activity == PhysicalWorkerActivity.Other).Sum(s => (long)s.DurationMicro));
+        Assert.All(slices, s => Assert.Null(s.ProjectId));
+        Assert.Equal(before, hasher.Compute(opening));
+        Assert.Equal(hasher.Compute(arrived), hasher.Compute(phase.ReplayPersistentJournal(next, second.EventLog, secondContext)));
+    }
+
+    [Fact]
     public void R235BGenericCapitalResponseIsExactMonotoneAndScaleIndependent()
     {
         const ulong natural = 1_000_000UL, reference = 10_000_000UL;

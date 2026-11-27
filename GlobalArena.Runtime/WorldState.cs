@@ -909,6 +909,7 @@ public sealed class WorldState
                 throw new InvalidOperationException("Persistent orders require complete canonical worker census.");
             var people = workerState.Workers.ToDictionary(w => w.Id);
             var projects = Constructions.Projects.ToDictionary(p => p.Id);
+            var productiveProjects = ProductiveInfrastructure.Projects.ToDictionary(p => p.Id);
             foreach (var queue in WorkerOrders.Queues)
             {
                 if (!people.TryGetValue(queue.Worker, out var person) || person.Owner != queue.Owner)
@@ -919,8 +920,14 @@ public sealed class WorldState
                     if (order.Destination is { } tile && (tile.FineGoldbergParameters != fine ||
                         tile.FineStrategicCellId.Value > fine.StrategicCellCount))
                         throw new InvalidOperationException("Order targets a foreign physical node.");
-                    if (order.ProjectId is { } id && (!projects.TryGetValue(id, out var project) || project.Investor != queue.Owner))
-                        throw new InvalidOperationException("Order references an unknown or foreign construction project.");
+                    if (order.ProjectId is { } id)
+                    {
+                        bool valid = order.Kind == FoundationWorkerOrderKind.BuildProductive
+                            ? productiveProjects.TryGetValue(id, out var productive) && productive.Investor == queue.Owner
+                            : projects.TryGetValue(id, out var project) && project.Investor == queue.Owner;
+                        if (!valid)
+                            throw new InvalidOperationException("Order references an unknown or foreign typed construction project.");
+                    }
                 }
             }
         }

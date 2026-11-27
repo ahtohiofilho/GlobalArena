@@ -40,7 +40,8 @@ public sealed class FoundationConstructionApproachRouter
         NavalTransitions = new FoundationNavalVoyageTransitions(world, map, geo, signature);
     }
 
-    public FoundationConstructionApproach Plan(WorldState world, PhysicalWorkerId workerId)
+    public FoundationConstructionApproach Plan(WorldState world, PhysicalWorkerId workerId,
+        FoundationCivilizationKnowledgeScope? productiveScope = null)
     {
         if ((world.WorldBinding != _binding && world.WorldBinding != _legacyBinding) || !world.WorkerOrders.IsInitialized || !world.EdgeTravels.IsInitialized ||
             !world.Constructions.IsInitialized || !world.Transport.IsInitialized)
@@ -48,9 +49,17 @@ public sealed class FoundationConstructionApproachRouter
         var worker = world.Workers.Workers.Single(w => w.Id == workerId);
         var queue = world.WorkerOrders.Queues.Single(q => q.Worker == workerId);
         var head = queue.Orders.FirstOrDefault();
-        if (head is null || head.Kind != FoundationWorkerOrderKind.Build)
+        if (head is null || head.Kind is not (FoundationWorkerOrderKind.Build or FoundationWorkerOrderKind.BuildProductive))
             return new(FoundationConstructionApproachStatus.NoBuildHead, null,
                 Array.Empty<PhysicalTacticalTileId>(), BigInteger.Zero);
+        if (head.Kind == FoundationWorkerOrderKind.BuildProductive)
+        {
+            var productive = world.ProductiveInfrastructure.Projects.Single(p => p.Id == head.ProjectId);
+            if (productive.IsComplete || productive.IsActivated)
+                return new(FoundationConstructionApproachStatus.NoBuildHead, productive.Id,
+                    Array.Empty<PhysicalTacticalTileId>(), BigInteger.Zero);
+            return PlanMove(world, workerId, productive.Target.Node, productiveScope) with { ProjectId = productive.Id };
+        }
         var project = world.Constructions.Projects.Single(p => p.Id == head.ProjectId);
         if (project.IsComplete || project.IsActivated)
             return new(FoundationConstructionApproachStatus.NoBuildHead, project.Id,
