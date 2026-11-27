@@ -170,6 +170,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
     private readonly IReadOnlyDictionary<CivilizationId,
         IFoundationTacticalAiTurnPolicy> _ai;
     private readonly CivilizationId[] _participants;
+    private readonly IReadOnlyDictionary<CivilizationId, FoundationCivilizationKnowledgeScope>? _knowledgeScopes;
     private readonly Dictionary<CivilizationId,
         SortedDictionary<ulong, FoundationTacticalWorkerOrder>> _plans;
     private readonly Dictionary<CivilizationId,
@@ -473,7 +474,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
         FoundationFineFirstWorldgenIdentity? fineSignature = null,
         FoundationGroundEdgeTravelTimePolicy? physicalTravelPolicy = null,
         ulong? constructionMoneyMicroPerWholeWork = null, bool enableDemographicGrowth = false, FoundationAgriculturalProductionPolicy? agriculture = null, FoundationOperationalFreightShadowPolicy? operationalPolicy = null,
-        bool enableExperimentalLocalEconomy = false, bool enableDefaultAutomaticBase = false)
+        bool enableExperimentalLocalEconomy = false, bool enableDefaultAutomaticBase = false,
+        IReadOnlyDictionary<CivilizationId, FoundationCivilizationKnowledgeScope>? knowledgeScopes = null)
     {
         AgriculturalProduction = agriculture;
         OperationalFreight = operationalPolicy;
@@ -523,6 +525,15 @@ public sealed class FoundationTacticalHumanAiTurnHost
             throw new ArgumentException(
                 "Every registered civilization needs exactly one human or AI role.");
 
+        // Null retains the historical fully revealed QA profile. When a
+        // restricted profile is supplied, missing participants fail closed.
+        if (knowledgeScopes is not null)
+        {
+            if (!_participants.ToHashSet().SetEquals(knowledgeScopes.Keys) ||
+                knowledgeScopes.Values.Any(scope => scope is null))
+                throw new ArgumentException("Restricted geography requires a scope for every participant.", nameof(knowledgeScopes));
+            _knowledgeScopes = new Dictionary<CivilizationId, FoundationCivilizationKnowledgeScope>(knowledgeScopes);
+        }
         _humans = humanArray.ToHashSet();
         _ai = new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy>(
             aiPolicies);
@@ -1004,7 +1015,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
             AutomaticBaseAvailable = ExperimentalLocalEconomyEnabled,
             DefaultAutomaticBase = DefaultAutomaticBaseEnabled,
             AdjacentOpportunities = policy.RequiresExpansionCandidates
-                ? ReadAdjacentAiOpportunities(workers, local)
+                ? ReadAdjacentAiOpportunities(civ, workers, local)
                 : Array.Empty<FoundationAiAdjacentOpportunity>()
         };
         var edits = (policy.PlanPersistent(view)
@@ -1023,15 +1034,16 @@ public sealed class FoundationTacticalHumanAiTurnHost
         _ready.Add(civ);
     }
 
-    // Current viewer exposes the terrain of adjacent tiles. Do not look
-    // up destination economic history or foreign presence. A future fog
-    // contract must constrain this candidate boundary before activation.
+    // Restrict candidate reads before evaluating terrain or productivity.
+    // A fixed scope is a QA input; persistent discovery and restricted route
+    // execution still need their own authoritative contract.
     private IReadOnlyList<FoundationAiAdjacentOpportunity> ReadAdjacentAiOpportunities(
-        FoundationPersistentAiWorker[] workers, FoundationViewerLocalEconomicClose[] local)
+        CivilizationId owner, FoundationPersistentAiWorker[] workers, FoundationViewerLocalEconomicClose[] local)
     {
         if (!DefaultAutomaticBaseEnabled || _signedFine is not { } geography ||
             AgriculturalProduction is not { BasicResources: { } basic } agriculture)
             return Array.Empty<FoundationAiAdjacentOpportunity>();
+        var scope = _knowledgeScopes is null ? null : _knowledgeScopes[owner];
         var ownNodes = workers.Select(w => w.Node).ToHashSet();
         var pricesByNode = local.ToDictionary(row => row.Node,
             row => row.Commodities.ToDictionary(c => c.Commodity, c => c.LocalPriceMicro));
@@ -1042,6 +1054,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
                 w.Queue.Orders.Count == 0 && w.Queue.BaseActivity?.Mode != FoundationWorkerBaseMode.Manual) < 3)
                 continue;
             var source = group.Key;
+            if (scope is not null && !scope.KnowsNode(source)) continue;
             int index = checked((int)source.FineStrategicCellId.Value - 1);
             if (geography.SurfaceAtIndex(index) != FoundationFineSurfaceKind.Land ||
                 !geography.CanTraverseOnFoot(index)) continue;
@@ -1064,6 +1077,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
             foreach (var adjacent in Incidence.FineTopology.Cells[index].AdjacentCellIds.OrderBy(n => n.Value))
             {
                 var destination = new PhysicalTacticalTileId(Incidence.Refinement.FineParameters, adjacent);
+                if (scope is not null && !scope.KnowsLink(source, destination)) continue;
                 int next = checked((int)adjacent.Value - 1);
                 if (ownNodes.Contains(destination) || geography.SurfaceAtIndex(next) != FoundationFineSurfaceKind.Land ||
                     !geography.CanTraverseOnFoot(next) ||
