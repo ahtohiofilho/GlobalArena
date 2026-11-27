@@ -1014,12 +1014,17 @@ public sealed class FoundationTacticalHumanAiTurnHost
             LocalEconomics = Array.AsReadOnly(local),
             AutomaticBaseAvailable = ExperimentalLocalEconomyEnabled,
             DefaultAutomaticBase = DefaultAutomaticBaseEnabled,
+            OwnCashScaled = before.Treasury.IsInitialized ? before.Treasury.Get(civ).CashScaled : null,
+            FundingAvailable = _persistentFunding is not null,
             AdjacentOpportunities = policy.RequiresExpansionCandidates
                 ? ReadAdjacentAiOpportunities(civ, workers, local)
                 : Array.Empty<FoundationAiAdjacentOpportunity>()
         };
         var edits = (policy.PlanPersistent(view)
             ?? throw new InvalidOperationException("Persistent AI returned a null plan.")).ToArray();
+        var funding = policy.PlanFunding(view);
+        if (funding is not null && edits.Length != 0)
+            throw new InvalidOperationException("Experimental AI funding must be an exclusive plan.");
         CheckSnapshot();
         if (!ReferenceEquals(before, Snapshot))
             throw new InvalidOperationException("Persistent AI mutated canonical WorldState while planning.");
@@ -1040,6 +1045,22 @@ public sealed class FoundationTacticalHumanAiTurnHost
                     throw new InvalidOperationException("Restricted AI move requires a known adjacent link.");
             }
             staged.Add(CreatePersistentEdit(civ, edit, staged.Count));
+        }
+        if (funding is not null)
+        {
+            if (_knowledgeScopes is not null)
+            {
+                var scope = _knowledgeScopes[civ];
+                var endpoints = Incidence.FineTopology.Edges
+                    .Where(e => e.Id == funding.Edge.FineStrategicEdgeId &&
+                        funding.Edge.FineGoldbergParameters == Incidence.Refinement.FineParameters)
+                    .Select(e => e.IncidentCellIds).SingleOrDefault();
+                if (endpoints is null || !scope.KnowsLink(
+                        new PhysicalTacticalTileId(Incidence.Refinement.FineParameters, endpoints[0]),
+                        new PhysicalTacticalTileId(Incidence.Refinement.FineParameters, endpoints[1])))
+                    throw new InvalidOperationException("Restricted AI funding requires a known physical link.");
+            }
+            staged.Add(CreatePersistentFunding(civ, funding.Edge, funding.MoneyMicro, funding.Assignments, 0));
         }
         _ = ProjectPersistentPlan(civ, staged);
         list.AddRange(staged);
@@ -1359,13 +1380,26 @@ public sealed class FoundationTacticalHumanAiTurnHost
         ulong moneyMicro, IEnumerable<FoundationFundedWorkerInsertion> assignments)
     {
         RequireHuman(human); CheckWritable(human);
-        if (_persistentPlans.Values.SelectMany(p => p).OfType<FoundationFundedWorkerIntentCommand>().Any(c => c.Edge == edge))
+        // Do not reveal an AI's private funding intent through human admission.
+        // Historical human/human reservation behavior remains unchanged.
+        if (_persistentPlans.Where(p => _humans.Contains(p.Key)).SelectMany(p => p.Value)
+            .OfType<FoundationFundedWorkerIntentCommand>().Any(c => c.Edge == edge))
             throw new InvalidOperationException("Construction edge already reserved.");
         var list = _persistentPlans[human];
-        var command = new FoundationFundedWorkerIntentCommand(new CommandId(NextTurn, (ulong)list.Count + 1UL),
-            human, edge, moneyMicro, Array.AsReadOnly(assignments.ToArray()));
+        var command = CreatePersistentFunding(human, edge, moneyMicro, assignments, list.Count);
         _ = ProjectPersistentPlan(human, list.Append(command));
         list.Add(command);
+    }
+
+    private FoundationFundedWorkerIntentCommand CreatePersistentFunding(
+        CivilizationId owner, PhysicalTacticalEdgeId edge, ulong moneyMicro,
+        IEnumerable<FoundationFundedWorkerInsertion> assignments, int priorCount)
+    {
+        if (!PersistentOrdersEnabled || _persistentFunding is null)
+            throw new InvalidOperationException("Persistent construction funding not configured.");
+        ArgumentNullException.ThrowIfNull(assignments);
+        return new FoundationFundedWorkerIntentCommand(new CommandId(NextTurn, (ulong)priorCount + 1UL),
+            owner, edge, moneyMicro, Array.AsReadOnly(assignments.ToArray()));
     }
 
     public IReadOnlyList<FoundationFundedWorkerIntentCommand> GetHumanPersistentFunding(CivilizationId human)
@@ -1406,6 +1440,12 @@ public sealed class FoundationTacticalHumanAiTurnHost
         // by replaying each participant's earlier fund operations in final order.
         var state = before;
         var context = new SimulationContext(turn, new SimulationSeed(712UL));
+        // Temporary QA arbitration: preserve admitted human transactions
+        // (which may have dependent edits); competing exclusive AI funds
+        // are skipped before any debit. AI/AI ties use canonical owner order.
+        var reservedFunding = _persistentPlans.Where(p => _humans.Contains(p.Key))
+            .SelectMany(p => p.Value).OfType<FoundationFundedWorkerIntentCommand>()
+            .Select(f => f.Edge).ToHashSet();
         foreach (var civ in _participants)
         {
             var local = before;
@@ -1415,6 +1455,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
                 var id = new CommandId(turn, (ulong)commands.Count + 1UL);
                 if (pending is FoundationFundedWorkerIntentCommand fund)
                 {
+                    if (!_humans.Contains(civ) && !reservedFunding.Add(fund.Edge))
+                        continue;
                     var actual = fund with { Id = id };
                     var provisional = _persistentFunding!.Record(local, new EventId(fund.Id, 1UL),
                         civ, fund.Edge, fund.MoneyMicro, fund.Assignments, context);
