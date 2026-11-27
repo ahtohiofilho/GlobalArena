@@ -16,7 +16,11 @@ public sealed record FoundationFundedWorkerIntentEvent(
 public sealed record FoundationProductiveFundingEvent(
     EventId Id, CivilizationId Investor, FoundationProductiveTarget Target,
     ulong MoneyMicro, ulong RequiredWorkMicro, ulong ProjectId,
-    WorldStateHash Before, WorldStateHash After) : ISimulationEvent;
+    WorldStateHash Before, WorldStateHash After) : ISimulationEvent
+{
+    public IReadOnlyList<FoundationFundedWorkerInsertion> Assignments { get; init; } =
+        Array.Empty<FoundationFundedWorkerInsertion>();
+}
 
 /// <summary>
 /// One immutable transaction: fund the canonical project, bind its actual
@@ -69,23 +73,33 @@ public sealed class FoundationFundedWorkerIntentJournal : ISimulationEventExecut
 
     internal (WorldState Next, FoundationProductiveFundingEvent Event) RecordProductive(
         WorldState world, EventId id, CivilizationId investor, FoundationProductiveTarget target,
-        ulong moneyMicro, SimulationContext context)
+        ulong moneyMicro, SimulationContext context,
+        IReadOnlyList<FoundationFundedWorkerInsertion>? assignments = null)
     {
+        var copy = (assignments ?? Array.Empty<FoundationFundedWorkerInsertion>()).ToArray();
+        if (copy.Any(a => a is null || !a.Worker.IsValid || a.Index < 0) ||
+            copy.Select(a => a.Worker).Distinct().Count() != copy.Length)
+            throw new InvalidOperationException("Invalid productive construction queue transaction.");
         var next = _funding.FundProductive(world, id, investor, target, moneyMicro, context);
         var project = next.ProductiveInfrastructure.Projects.Single(p => p.Target == target && !p.IsActivated);
+        foreach (var assignment in copy.OrderBy(a => a.Worker.Value))
+            next = next.InsertWorkerOrder(investor, assignment.Worker, assignment.Index,
+                FoundationWorkerOrderKind.BuildProductive, projectId: project.Id);
         return (next, new(id, investor, target, moneyMicro, project.RequiredWorkMicro,
-            project.Id, Hasher.Compute(world), Hasher.Compute(next)));
+            project.Id, Hasher.Compute(world), Hasher.Compute(next))
+            { Assignments = Array.AsReadOnly(copy.OrderBy(a => a.Worker.Value).ToArray()) });
     }
 
     public WorldState Execute(WorldState state, ISimulationEvent simulationEvent, SimulationContext context)
     {
         if (simulationEvent is FoundationProductiveFundingEvent productive)
         {
-            if (Hasher.Compute(state) != productive.Before)
+            if (Hasher.Compute(state) != productive.Before || productive.Assignments is null)
                 throw new InvalidOperationException("Stale productive funding event.");
             var (funded, expected) = RecordProductive(state, productive.Id, productive.Investor,
-                productive.Target, productive.MoneyMicro, context);
-            if (expected != productive)
+                productive.Target, productive.MoneyMicro, context, productive.Assignments);
+            if (!expected.Assignments.SequenceEqual(productive.Assignments) ||
+                (expected with { Assignments = productive.Assignments }) != productive)
                 throw new InvalidOperationException("Productive funding replay diverged.");
             return funded;
         }
