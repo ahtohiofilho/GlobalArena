@@ -128,6 +128,10 @@ internal static class GaExplicitEconomicQaConfiguration
         ArgumentNullException.ThrowIfNull(demo);
         AssertNaturalFreightHierarchy();
         var tradeFixture = TradeFixtureMode();
+        bool autonomousAi = System.Environment.GetEnvironmentVariable("GA_NEXT_R233E_AUTONOMOUS_AI") == "1";
+        if (autonomousAi && (!enableLocalEconomy || !enablePersistentOrders || tradeFixture is not null ||
+            System.Environment.GetEnvironmentVariable("GA_NEXT_R213_UI_SMOKE") == "1"))
+            throw new InvalidOperationException("Autonomous AI requires the interactive signed persistent local economy QA preview.");
         bool growth = DemographicPreviewEnabled;
         bool unitOpening = UnitOpeningPreviewEnabled;
         if (UniformCityDemographyPreviewEnabled && (!unitOpening || IndividualDemographyPreviewEnabled))
@@ -276,11 +280,11 @@ internal static class GaExplicitEconomicQaConfiguration
                 demo.Snapshot.Workers.Workers.Select(w => w.WithBirthWaitTurns(0UL)), true, true)));
         var host = new FoundationTacticalHumanAiTurnHost(
             demo.Session, demo.Incidence, demo.HumanCivilizations,
-            // This fixture's AI is the existing resume-production policy.
-            // Do not access simulation-internal bootstrap helpers from Godot.
+            // Full-map QA only; normal and existing smoke launchers unchanged.
             demo.AiCivilizations.ToDictionary(
                 civ => civ,
-                civ => enablePersistentOrders ? (IFoundationTacticalAiTurnPolicy)new FoundationTacticalAiHoldPolicy() :
+                civ => autonomousAi ? (IFoundationTacticalAiTurnPolicy)new FoundationPersistentAutonomousEconomicAiPolicy() :
+                    enablePersistentOrders ? (IFoundationTacticalAiTurnPolicy)new FoundationTacticalAiHoldPolicy() :
                     new FoundationTacticalAiResumeProductionPolicy()),
             enableMonetaryInfrastructure: true,
             settlementPolicy: configuration.Settlement,
@@ -293,6 +297,7 @@ internal static class GaExplicitEconomicQaConfiguration
             operationalPolicy: enablePersistentOrders && System.Environment.GetEnvironmentVariable("GA_NEXT_OPERATIONAL_PREVIEW") == "1"
                 ? new FoundationOperationalFreightShadowPolicy(1_000_000UL, 1_000_000UL) : null,
             enableExperimentalLocalEconomy: enableLocalEconomy, enableDefaultAutomaticBase: enableLocalEconomy);
+        if (autonomousAi) global::Godot.GD.Print("GA_NEXT_R233E_AUTONOMOUS_AI_READY experimental=true full_map_qa=true");
         if (enableLocalEconomy) global::Godot.GD.Print("GA_NEXT_R22813C_LOCAL_ECONOMY_READY experimental=true automatic_default=true commodities=8");
         return (host, fine, identity);
     }
