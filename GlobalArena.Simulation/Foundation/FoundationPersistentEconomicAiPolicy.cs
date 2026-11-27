@@ -23,15 +23,26 @@ public sealed record FoundationPersistentAiView(
         Array.Empty<FoundationViewerLocalEconomicClose>();
     public bool AutomaticBaseAvailable { get; internal init; }
     public bool DefaultAutomaticBase { get; internal init; }
+    public BigInteger? OwnCashScaled { get; internal init; }
+    public bool FundingAvailable { get; internal init; }
     public IReadOnlyList<FoundationAiAdjacentOpportunity> AdjacentOpportunities { get; internal init; } =
         Array.Empty<FoundationAiAdjacentOpportunity>();
 }
+
+/// <summary>One private ordinary construction transaction; the host supplies
+/// the issuer. Assignments are copied and validated by the existing journal.</summary>
+public sealed record FoundationAiFundingIntent(
+    PhysicalTacticalEdgeId Edge, ulong MoneyMicro,
+    IReadOnlyList<FoundationFundedWorkerInsertion> Assignments);
 
 /// <summary>Explicit opt-in persistent planning contract. Legacy policies
 /// remain unchanged. Planning proposes ordinary order edits only.</summary>
 public abstract class FoundationPersistentEconomicAiPolicy : IFoundationTacticalAiTurnPolicy
 {
     internal virtual bool RequiresExpansionCandidates => false;
+    // First QA funding boundary: exclusive with order edits in this turn,
+    // so a rejected competing fund cannot leave dependent provisional IDs.
+    public virtual FoundationAiFundingIntent? PlanFunding(FoundationPersistentAiView view) => null;
     public abstract IReadOnlyList<FoundationPersistentOrderEdit> PlanPersistent(
         FoundationPersistentAiView view);
 
