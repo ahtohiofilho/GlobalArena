@@ -936,6 +936,20 @@ public sealed class WorldState
                     "Persistent edge travel requires a bound physical workforce and transport.");
             var people = workers.Workers.ToDictionary(w => w.Id);
             var edges = transport.Edges.Select(e => e.Edge).ToHashSet();
+            if (edgeTravels.NavalVoyages is { } voyages)
+                foreach (var voyage in voyages)
+                {
+                    if (!people.TryGetValue(voyage.Worker, out var sailor) ||
+                        sailor.Owner != voyage.Owner ||
+                        sailor.Activity != PhysicalWorkerActivity.Traveling ||
+                        sailor.TacticalTileId is not { } at ||
+                        at.FineGoldbergParameters != voyage.Origin.FineGoldbergParameters ||
+                        !edges.Contains(voyage.EmbarkationEdge))
+                        throw new InvalidOperationException("Naval voyage must agree with its living traveling worker and real embarkation edge.");
+                    var crossing = edgeTravels.Pending.SingleOrDefault(p => p.Worker == voyage.Worker);
+                    if (crossing is not null && crossing.OriginalDurationMicro != voyage.CrossingTimeMicro)
+                        throw new InvalidOperationException("Naval crossing must retain its frozen vessel duration.");
+                }
             foreach (var travel in edgeTravels.Pending)
             {
                 if (!people.TryGetValue(travel.Worker, out var worker) ||

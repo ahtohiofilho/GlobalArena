@@ -1,0 +1,137 @@
+using GlobalArena.Runtime;
+using GlobalArena.World;
+
+namespace GlobalArena.Simulation.Foundation;
+
+/// <summary>Isolated physical transition foundation. Not exposed as a
+/// gameplay command until collective calendar and finance integration.</summary>
+internal sealed class FoundationNavalVoyageTransitions
+{
+    private readonly PhysicalTacticalIncidenceMap _map;
+    private readonly FoundationFineFirstPhysicalGeography _geo;
+    private readonly RuntimeWorldBinding _binding;
+
+    internal FoundationNavalVoyageTransitions(WorldGenerationResult world,
+        PhysicalTacticalIncidenceMap map, FoundationFineFirstPhysicalGeography geo,
+        FoundationFineFirstWorldgenIdentity signature)
+    {
+        _map = map;
+        _geo = geo;
+        _binding = RuntimeWorldBinding.FromFineFirst(world, map, geo, signature);
+    }
+
+    internal WorldState Deploy(WorldState world)
+    {
+        RequireWorld(world);
+        return world.WithPhysicalEdgeTravel(world.Workers, world.EdgeTravels.EnableNavalVoyages());
+    }
+
+    internal WorldState Embark(WorldState world, PhysicalWorkerId id,
+        PhysicalTacticalTileId water, ulong turn, ulong naturalCrossingTimeMicro,
+        Func<IReadOnlySet<CivilizationId>, FoundationClosedNodeWorkEvidence?> readPriorWork)
+    {
+        RequireWorld(world);
+        var worker = world.Workers.Workers.Single(w => w.Id == id);
+        var origin = worker.TacticalTileId!.Value;
+        if (world.EdgeTravels.NavalVoyages is not { } voyages ||
+            voyages.Any(v => v.Worker == id) || world.EdgeTravels.Pending.Any(p => p.Worker == id) ||
+            worker.Activity == PhysicalWorkerActivity.Traveling)
+            throw new InvalidOperationException("Worker cannot embark in current state.");
+        var decision = FoundationNavalBoardingPolicy.Evaluate(world, _map, _geo,
+            worker.Owner, origin, water, readPriorWork);
+        if (!decision.IsAllowed) throw new InvalidOperationException("Boarding denied.");
+        var edge = Edge(origin, water);
+        var row = world.Transport.Edges.Single(r => r.Edge == edge);
+        var duration = FoundationGroundEdgeTravelTimeProjector.FromInfrastructure(row,
+            new FoundationGroundEdgeTravelTimePolicy(naturalCrossingTimeMicro)).ImprovedCrossingTimeMicro;
+        var voyage = new FoundationNavalVoyage(id, worker.Owner, origin, edge, turn,
+            duration, decision.PaidNumerator, decision.PaidDenominator);
+        var ledger = world.EdgeTravels.ReplaceNavalVoyage(id, voyage)
+            .Replace(id, new(id, worker.Owner, origin, water, edge, duration, duration));
+        return Change(world, worker, origin, PhysicalWorkerActivity.Traveling, ledger);
+    }
+
+    internal WorldState StartNext(WorldState world, PhysicalWorkerId id, PhysicalTacticalTileId destination)
+    {
+        RequireWorld(world);
+        var worker = world.Workers.Workers.Single(w => w.Id == id);
+        var voyage = world.EdgeTravels.NavalVoyages?.SingleOrDefault(v => v.Worker == id)
+            ?? throw new InvalidOperationException("No active vessel.");
+        if (world.EdgeTravels.Pending.Any(p => p.Worker == id))
+            throw new InvalidOperationException("Complete the current naval crossing first.");
+        var source = worker.TacticalTileId!.Value;
+        var edge = Edge(source, destination);
+        var kind = _geo.CrossingAtIndices(Index(source), Index(destination));
+        if (_geo.SurfaceAtIndex(Index(source)) == FoundationFineSurfaceKind.Land ||
+            (kind != FoundationFineTransportCrossingKind.OpenSea &&
+             (kind != FoundationFineTransportCrossingKind.Port ||
+              _geo.SurfaceAtIndex(Index(destination)) != FoundationFineSurfaceKind.Land ||
+              !_geo.CanTraverseOnFoot(Index(destination)))))
+            throw new InvalidOperationException("Invalid naval continuation.");
+        var duration = voyage.CrossingTimeMicro;
+        var ledger = world.EdgeTravels.Replace(id, new(id, worker.Owner, source,
+            destination, edge, duration, duration));
+        return Change(world, worker, source, PhysicalWorkerActivity.Traveling, ledger);
+    }
+
+    internal (WorldState State, ulong UsedMicro, ulong ResidualMicro, FoundationNavalVoyage? Landed)
+        Advance(WorldState world, PhysicalWorkerId id, ulong availableMicro)
+    {
+        RequireWorld(world);
+        if (availableMicro == 0 || availableMicro > 1_000_000UL)
+            throw new ArgumentOutOfRangeException(nameof(availableMicro));
+        var worker = world.Workers.Workers.Single(w => w.Id == id);
+        var voyage = world.EdgeTravels.NavalVoyages?.SingleOrDefault(v => v.Worker == id)
+            ?? throw new InvalidOperationException("No active vessel.");
+        var pending = world.EdgeTravels.Pending.Single(p => p.Worker == id);
+        if (Edge(pending.Source, pending.Destination) != pending.Edge)
+            throw new InvalidOperationException("Invalid pending naval crossing.");
+        ulong used = Math.Min(availableMicro, pending.RemainingMicro);
+        ulong remaining = pending.RemainingMicro - used;
+        var ledger = world.EdgeTravels.Replace(id, remaining == 0 ? null :
+            pending with { RemainingMicro = remaining });
+        var node = remaining == 0 ? pending.Destination : pending.Source;
+        bool landed = remaining == 0 && _geo.SurfaceAtIndex(Index(node)) == FoundationFineSurfaceKind.Land;
+        if (landed) ledger = ledger.ReplaceNavalVoyage(id, null);
+        var state = Change(world, worker, node,
+            landed ? PhysicalWorkerActivity.Other : PhysicalWorkerActivity.Traveling, ledger);
+        return (state, used, availableMicro - used, landed ? voyage : null);
+    }
+
+    private void RequireWorld(WorldState world)
+    {
+        if (world.WorldBinding != _binding || !world.EdgeTravels.IsInitialized ||
+            !world.Transport.IsInitialized)
+            throw new InvalidOperationException("Naval travel requires its signed physical world.");
+    }
+
+    private int Index(PhysicalTacticalTileId node)
+    {
+        if (!node.IsValid || node.FineGoldbergParameters != _map.Refinement.FineParameters ||
+            node.FineStrategicCellId.Value > (ulong)_map.FineTopology.Cells.Count)
+            throw new InvalidOperationException("Invalid naval node.");
+        return checked((int)node.FineStrategicCellId.Value - 1);
+    }
+
+    private PhysicalTacticalEdgeId Edge(PhysicalTacticalTileId source, PhysicalTacticalTileId destination)
+    {
+        if (!_map.FineTopology.Cells[Index(source)].AdjacentCellIds.Contains(destination.FineStrategicCellId))
+            throw new InvalidOperationException("Naval travel must traverse adjacent nodes.");
+        _ = Index(destination);
+        var edge = _map.FineTopology.Edges.Single(e =>
+            e.IncidentCellIds.Contains(source.FineStrategicCellId) &&
+            e.IncidentCellIds.Contains(destination.FineStrategicCellId));
+        return new(_map.Refinement.FineParameters, edge.Id);
+    }
+
+    private WorldState Change(WorldState world, PhysicalWorkerRuntimeRecord worker,
+        PhysicalTacticalTileId node, PhysicalWorkerActivity activity, FoundationEdgeTravelRuntimeState ledger)
+    {
+        var regions = _map.TileIncidences[Index(node)].IncidentCoarseCellIds;
+        var region = regions.Contains(worker.CellId) ? worker.CellId : regions[0];
+        var updated = worker.WithTacticalLocationAndActivity(node, region, activity);
+        var roster = new PhysicalWorkerRuntimeState(world.Workers.Workers.Select(w =>
+            w.Id == worker.Id ? updated : w), tacticalLocationsAuthoritative: true, occupationsAuthoritative: true);
+        return world.WithPhysicalEdgeTravel(roster, ledger).AdvanceRevision();
+    }
+}

@@ -41,6 +41,7 @@ public sealed class CanonicalWorldStateHasher
     public const uint LocalPriceHistoryFormatVersion = 24U;
     public const uint IndividualDemographyFormatVersion = 25U;
     public const uint UniformCityDemographyFormatVersion = 26U;
+    public const uint NavalVoyageFormatVersion = 27U;
 
     private static readonly byte[] Magic =
     {
@@ -93,18 +94,16 @@ public sealed class CanonicalWorldStateHasher
                         ? TacticalWorkerFormatVersion : PhysicalWorkerFormatVersion
                 : FormatVersion;
 
+        // Keep the underlying legacy schema selection for all existing sections.
+        // The opt-in envelope records that base version explicitly.
+        var wireVersion = worldState.EdgeTravels.NavalVoyages is null ? version : NavalVoyageFormatVersion;
         using var hash = new BufferedCanonicalHash();
 
         hash.AppendData(
             Magic);
 
-        AppendUInt32(
-            hash,
-            version);
-
-        AppendUInt32(
-            hash,
-            version);
+        AppendUInt32(hash, wireVersion);
+        AppendUInt32(hash, version);
 
         if (worldState.WorldBinding is null)
         {
@@ -644,11 +643,30 @@ public sealed class CanonicalWorldStateHasher
             AppendUInt32(hash, 1U); // Uniform-city policy, no per-worker lottery history.
         }
 
+        if (worldState.EdgeTravels.NavalVoyages is { } voyages)
+        {
+            AppendUInt32(hash, 54U);
+            AppendUInt32(hash, checked((uint)voyages.Count));
+            foreach (var voyage in voyages)
+            {
+                AppendUInt64(hash, voyage.Worker.Value);
+                AppendUInt64(hash, voyage.Owner.Value);
+                AppendUInt32(hash, checked((uint)voyage.Origin.FineGoldbergParameters.M));
+                AppendUInt32(hash, checked((uint)voyage.Origin.FineGoldbergParameters.N));
+                AppendUInt64(hash, voyage.Origin.FineStrategicCellId.Value);
+                AppendUInt64(hash, voyage.EmbarkationEdge.FineStrategicEdgeId.Value);
+                AppendUInt64(hash, voyage.EmbarkationTurn);
+                AppendUInt64(hash, voyage.CrossingTimeMicro);
+                AppendUInt64(hash, voyage.PaidNumerator);
+                AppendUInt64(hash, voyage.PaidDenominator);
+            }
+        }
+
         var digest =
             hash.GetHashAndReset();
 
         return new WorldStateHash(
-            version,
+            wireVersion,
             Convert.ToHexString(
                 digest));
     }
