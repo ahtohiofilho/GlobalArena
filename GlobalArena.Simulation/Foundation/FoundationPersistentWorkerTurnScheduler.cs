@@ -143,6 +143,8 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
     private (WorldState Next, FoundationPersistentWorkerSlice[] Slices) Calculate(WorldState opening, SimulationContext context)
     {
         using var profile = FoundationTurnProfiler.Measure("worker_calendar");
+        if (opening.EdgeTravels.NavalVoyages is not null)
+            throw new InvalidOperationException("Naval ledger requires the future integrated naval calendar executor.");
         if (!opening.WorkerOrders.IsInitialized || !opening.EdgeTravels.IsInitialized ||
             !opening.Constructions.IsInitialized)
             throw new InvalidOperationException("Persistent scheduling requires deployed ledgers.");
