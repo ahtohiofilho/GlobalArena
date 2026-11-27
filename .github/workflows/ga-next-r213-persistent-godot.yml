@@ -142,6 +142,13 @@ jobs:
           for mode in remote local; do
             GA_NEXT_R2313_TRADE_FIXTURE="$mode" timeout 180 "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --rendering-method gl_compatibility 2>&1 | tee "$RUNNER_TEMP/trade-$mode.log"
             grep -q "GA_NEXT_R2313_TRADE_FIXTURE_PASS mode=$mode cycles=2" "$RUNNER_TEMP/trade-$mode.log"
+            for cycle in 1 2; do
+              if [ "$mode" = remote ]; then
+                grep -E "GA_NEXT_R235F21_TRADE_STATUS_PASS mode=remote cycle=$cycle edges=[1-9][0-9]*$" "$RUNNER_TEMP/trade-$mode.log"
+              else
+                grep -q "GA_NEXT_R235F21_TRADE_STATUS_PASS mode=local cycle=$cycle edges=0" "$RUNNER_TEMP/trade-$mode.log"
+              fi
+            done
             if grep -E 'GA_NEXT_R213_PERSISTENT_UI_FAIL|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/trade-$mode.log"; then exit 1; fi
           done
       - name: Exercise demographic growth in the normal local economy opening

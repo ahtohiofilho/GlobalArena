@@ -15,7 +15,9 @@ public partial class Main
     private static string CityTradeHeading(FoundationLastClosedEconomicTradeView view) =>
         view.Availability == FoundationEconomicTradeOverlayAvailability.NoClosedCycle
             ? "TRADE | No closed economic cycle"
-            : $"TRADE | CYCLE {view.EconomicCycleOrdinal} | Authorized cargo ({view.CargoUnitCode})";
+            : view.UsedEdges.Count == 0
+                ? $"TRADE | CYCLE {view.EconomicCycleOrdinal} | No own trade crossings in last closed cycle"
+                : $"TRADE | CYCLE {view.EconomicCycleOrdinal} | {view.UsedEdges.Count} own trade crossings | Cargo ({view.CargoUnitCode})";
 
     private static string ConnectionCargoText(FoundationLastClosedEconomicTradeView view,
         FoundationPhysicalTradeEdgeLoad? load) =>

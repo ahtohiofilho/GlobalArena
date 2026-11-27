@@ -58,6 +58,12 @@ public partial class Main
             }
             else if (view.UsedEdges.Count != 0 || local.Commodities.Any(row => row.ExportedMicro != 0UL || row.ImportedMicro != 0UL))
                 throw new InvalidOperationException("Co-located economic activity must not create trade edges.");
+            FocusCityProductionSmokeSite(host, source);
+            var expectedStatus = remote ? $"{view.UsedEdges.Count} own trade crossings | Cargo" : "No own trade crossings in last closed cycle";
+            if (_cityTradeStatus?.Text.Contains(expectedStatus, StringComparison.Ordinal) != true)
+                throw new InvalidOperationException("City trade status does not distinguish actual published crossings from zero crossings.");
+            ExerciseCityConnectionTradeReadout(host, source, cycle);
+            GD.Print($"GA_NEXT_R235F21_TRADE_STATUS_PASS mode={mode} cycle={cycle} edges={view.UsedEdges.Count}");
             GD.Print($"GA_NEXT_R2313_TRADE_CYCLE mode={mode} cycle={cycle} edges={view.UsedEdges.Count} replay=true");
         }
         GD.Print($"GA_NEXT_R2313_TRADE_FIXTURE_PASS mode={mode} cycles=2 catalog=8 real_e=true");

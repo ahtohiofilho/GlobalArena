@@ -528,6 +528,7 @@ public partial class Main : Control
         RefreshOperationalContext();
         RefreshLastTemporalEconomyReadout();
         RefreshCivilizationWindow();
+        RefreshCityOverview();
         RefreshCityProduction();
         RefreshCityWorkers();
         RefreshCityConnectionTrade();

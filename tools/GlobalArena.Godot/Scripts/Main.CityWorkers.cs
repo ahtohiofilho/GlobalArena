@@ -47,6 +47,33 @@ public partial class Main
         return ((CropId)crop).ToString();
     }
 
+    // Committed activity only: do not turn a private staged order into
+    // an assertion that a worker is already executing construction.
+    private string DescribeCommittedCityWorkerActivity(FoundationTacticalHumanAiTurnHost host, PhysicalWorkerRuntimeRecord worker)
+    {
+        if (host.Snapshot.EdgeTravels.NavalVoyages?.Any(v => v.Worker == worker.Id) == true) return "At sea";
+        if (host.Snapshot.EdgeTravels.Pending.Any(p => p.Worker == worker.Id) ||
+            worker.Activity == PhysicalWorkerActivity.Traveling) return "Traveling";
+        if (worker.Activity == PhysicalWorkerActivity.Producing)
+            return worker.Occupation switch
+            {
+                PhysicalWorkerOccupation.Agriculture => $"Producing | {CityWorkerClosedCrop(host, worker) ?? "Agriculture"}",
+                PhysicalWorkerOccupation.Forestry when host.ExperimentalLocalEconomyEnabled => "Producing wood",
+                PhysicalWorkerOccupation.Mining when host.ExperimentalLocalEconomyEnabled => "Producing stone",
+                _ => $"Producing | {worker.Occupation}"
+            };
+        if (worker.Occupation == PhysicalWorkerOccupation.LandTransport) return "Land transport";
+        if (worker.Occupation == PhysicalWorkerOccupation.PortOperations) return "Port operations";
+        if (host.PersistentOrdersEnabled)
+        {
+            var q = host.Snapshot.WorkerOrders.Queues.SingleOrDefault(q => q.Worker == worker.Id);
+            var active = q is null ? null : q.Orders.FirstOrDefault(o => o.Id == q.ActiveOrderId);
+            if (active?.Kind == FoundationWorkerOrderKind.BuildProductive) return $"Productive build order #{active.ProjectId}";
+            if (active?.Kind == FoundationWorkerOrderKind.Build) return $"Connection build order #{active.ProjectId}";
+        }
+        return worker.Activity == PhysicalWorkerActivity.Other ? "Idle" : worker.Activity.ToString();
+    }
+
     private void CreateCityWorkersTab(TabContainer tabs)
     {
         _cityWorkersTabs = tabs;
@@ -85,13 +112,7 @@ public partial class Main
         foreach (var worker in workers)
         {
             var q = queues?.GetValueOrDefault(worker.Id);
-            string activity = worker.Activity == PhysicalWorkerActivity.Producing
-                ? (worker.Occupation switch {
-                    PhysicalWorkerOccupation.Agriculture => $"Producing | {CityWorkerClosedCrop(host, worker) ?? "Agriculture"}",
-                    PhysicalWorkerOccupation.Forestry when host.ExperimentalLocalEconomyEnabled => "Producing wood",
-                    PhysicalWorkerOccupation.Mining when host.ExperimentalLocalEconomyEnabled => "Producing stone",
-                    _ => $"Producing | {worker.Occupation}" })
-                : worker.Activity.ToString();
+            string activity = DescribeCommittedCityWorkerActivity(host, worker);
             string preference = q is null ? "Not configured" : DescribeWorkerBase(host, q);
             string orders = q is null ? "Detailed planning unavailable" : $"Orders: {q.Orders.Count} | Base: {preference}";
             var button = new Button { Name = $"GANextCityWorker{worker.Id.Value}",

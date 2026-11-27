@@ -304,9 +304,7 @@ public partial class Main
             _cityConnectionDiagram.Visible = true;
         }
         _cityWindowTitle.Text = $"CITY | NODE {selected.Value}";
-        _cityOverview.Text =
-            $"Physical node #{selected.Value} on the tactical map.\n" +
-            $"{rows.Count} direct connections.";
+        RefreshCityOverview();
         foreach (var link in rows)
         {
             var edge = link.Edge;
@@ -321,6 +319,37 @@ public partial class Main
             _cityLinksList.AddChild(button);
         }
         RefreshCityConnectionTrade();
+    }
+
+    private void RefreshCityOverview()
+    {
+        if (_cityOverview is null || _cityWindowLayer?.Visible != true || _cityWindowPanel?.Visible != true) return;
+        var host = _tacticalHost;
+        if (host is null || _cityConnectionSource is not { } source)
+        {
+            _cityOverview.Text = "Select a city on the map.";
+            return;
+        }
+        var node = new PhysicalTacticalTileId(host.Incidence.Refinement.FineParameters, new StrategicCellId(source));
+        string terrain = "Unavailable";
+        if (_r123FineGeography is { } fine && source > 0UL && source <= (ulong)fine.FineElevationRaw.Count)
+            terrain = fine.SurfaceAtIndex(checked((int)source - 1)) switch
+            {
+                FoundationFineSurfaceKind.Land => "Land",
+                FoundationFineSurfaceKind.OpenWater => "Open water",
+                FoundationFineSurfaceKind.FirmSeaIce => "Firm sea ice",
+                _ => "Unknown surface"
+            };
+        var own = host.Snapshot.Workers.Workers.Where(w => w.Owner == _humanCivilization &&
+            w.TacticalTileId == node && !host.Snapshot.EdgeTravels.Pending.Any(p => p.Worker == w.Id) &&
+            host.Snapshot.EdgeTravels.NavalVoyages?.Any(v => v.Worker == w.Id) != true)
+            .OrderBy(w => w.Id.Value).ToArray();
+        var links = FoundationLocalConnectionsProjector.Read(host.Snapshot, host.Incidence, node);
+        _cityOverview.Text = $"Node {source} | Terrain: {terrain}\n{links.Count} direct connections\n\nOwn workers at site: {own.Length}";
+        if (own.Length > 0)
+            _cityOverview.Text += "\n" + string.Join("\n", own.Take(6).Select(w =>
+                $"Worker #{w.Id.Value} | {DescribeCommittedCityWorkerActivity(host, w)}"));
+        if (own.Length > 6) _cityOverview.Text += $"\n+ {own.Length - 6} more | See Workers tab";
     }
 
     private void CloseConnectionDetail()
