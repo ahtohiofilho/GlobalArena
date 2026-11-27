@@ -315,6 +315,12 @@ public partial class Main
         FocusCityProductionSmokeSite(host, node);
         var tabs = FindChild("GANextCityTabs", true, false) as TabContainer
             ?? throw new InvalidOperationException("City tabs missing.");
+        tabs.CurrentTab = 0;
+        var ownAtSite = host.Snapshot.Workers.Workers.Where(w => w.Owner == _humanCivilization && w.TacticalTileId == node).ToArray();
+        if (_cityOverview?.Text.Contains("Terrain: Land", StringComparison.Ordinal) != true ||
+            !_cityOverview.Text.Contains($"Own workers at site: {ownAtSite.Length}", StringComparison.Ordinal) ||
+            ownAtSite.Any(w => !_cityOverview.Text.Contains($"Worker #{w.Id.Value} | ", StringComparison.Ordinal)))
+            throw new InvalidOperationException("City overview missing signed terrain or own residents.");
         tabs.CurrentTab = 2;
         if (_productivePanel?.IsVisibleInTree() != true || _productiveCapital?.GetChildCount() != 16)
             throw new InvalidOperationException("Productive controls unavailable before economic close.");
@@ -330,6 +336,10 @@ public partial class Main
         RefreshProductiveInvestmentControls();
         var check = _productiveWorkers!.GetChildren().OfType<CheckBox>()
             .Single(b => b.Text.StartsWith($"Worker #{worker.Id.Value} |", StringComparison.Ordinal));
+        var committedWorker = host.Snapshot.Workers.Workers.Single(w => w.Id == worker.Id);
+        if (!check.Text.Contains(DescribeCommittedCityWorkerActivity(host, committedWorker), StringComparison.Ordinal) ||
+            check.Text.Contains("At site", StringComparison.Ordinal) || committedWorker.Activity != PhysicalWorkerActivity.Producing)
+            throw new InvalidOperationException("Productive workforce does not show committed occupation.");
         check.ButtonPressed = true;
         if (_productiveQueue?.Disabled != false) throw new InvalidOperationException("Affordable funding action unavailable.");
         _productiveQueue.EmitSignal(Button.SignalName.Pressed);
@@ -363,8 +373,10 @@ public partial class Main
             w.TacticalTileId is { } tile && !host.Snapshot.Workers.Workers.Any(own => own.Owner == _humanCivilization && own.TacticalTileId == tile));
         before = host.StateHash;
         FocusCityProductionSmokeSite(host, foreign.TacticalTileId!.Value);
-        if (_productivePanel.Visible || host.StateHash != before)
-            throw new InvalidOperationException("Foreign city exposed productive controls or mutated authority.");
+        if (_productivePanel.Visible || host.StateHash != before ||
+            _cityOverview?.Text.Contains("Own workers at site: 0", StringComparison.Ordinal) != true ||
+            _cityOverview.Text.Contains($"Worker #{foreign.Id.Value} | ", StringComparison.Ordinal))
+            throw new InvalidOperationException("Foreign city exposed private workforce or productive controls, or mutated authority.");
         GD.Print("GA_NEXT_R235F2_PRODUCTIVE_UI_PASS real_controls=true private_funding=true cancellation=true assignment=true activation=true foreign_hidden=true");
     }
 
