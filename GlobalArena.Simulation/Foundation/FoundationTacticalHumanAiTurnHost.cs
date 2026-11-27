@@ -1435,12 +1435,10 @@ public sealed class FoundationTacticalHumanAiTurnHost
         ulong moneyMicro, IEnumerable<FoundationFundedWorkerInsertion> assignments)
     {
         RequireHuman(human); CheckWritable(human);
-        // Do not reveal an AI's private funding intent through human admission.
-        // Historical human/human reservation behavior remains unchanged.
-        if (_persistentPlans.Where(p => _humans.Contains(p.Key)).SelectMany(p => p.Value)
-            .OfType<FoundationFundedWorkerIntentCommand>().Any(c => c.Edge == edge))
-            throw new InvalidOperationException("Construction edge already reserved.");
+        // Admission is private for every participant, regardless of controller.
         var list = _persistentPlans[human];
+        if (list.OfType<FoundationFundedWorkerIntentCommand>().Any(c => c.Edge == edge))
+            throw new InvalidOperationException("Construction edge already reserved in own plan.");
         var command = CreatePersistentFunding(human, edge, moneyMicro, assignments, list.Count);
         _ = ProjectPersistentPlan(human, list.Append(command));
         list.Add(command);
@@ -1495,23 +1493,35 @@ public sealed class FoundationTacticalHumanAiTurnHost
         // by replaying each participant's earlier fund operations in final order.
         var state = before;
         var context = new SimulationContext(turn, new SimulationSeed(712UL));
-        // Temporary QA arbitration: preserve admitted human transactions
-        // (which may have dependent edits); competing exclusive AI funds
-        // are skipped before any debit. AI/AI ties use canonical owner order.
-        var reservedFunding = _persistentPlans.Where(p => _humans.Contains(p.Key))
-            .SelectMany(p => p.Value).OfType<FoundationFundedWorkerIntentCommand>()
-            .Select(f => f.Edge).ToHashSet();
+        // Resolve private funding claims before publishing any commands.
+        // Rotating canonical participant order is independent of controller,
+        // arrival, readiness and bid size. Preserve the canonical journal order.
+        // A losing fund truncates its plan: later edits may depend on provisional
+        // project IDs or queue positions, even without explicit ProjectId.
+        var reservedFunding = new HashSet<PhysicalTacticalEdgeId>();
+        var acceptedPrefixes = new Dictionary<CivilizationId, int>();
+        var first = (int)((turn.Value - 1UL) % (ulong)_participants.Length);
+        for (int offset = 0; offset < _participants.Length; offset++)
+        {
+            var civ = _participants[(first + offset) % _participants.Length];
+            int count = 0;
+            foreach (var pending in _persistentPlans[civ])
+            {
+                if (pending is FoundationFundedWorkerIntentCommand fund && !reservedFunding.Add(fund.Edge))
+                    break;
+                count++;
+            }
+            acceptedPrefixes.Add(civ, count);
+        }
         foreach (var civ in _participants)
         {
             var local = before;
             var projects = new Dictionary<ulong, ulong>();
-            foreach (var pending in _persistentPlans[civ])
+            foreach (var pending in _persistentPlans[civ].Take(acceptedPrefixes[civ]))
             {
                 var id = new CommandId(turn, (ulong)commands.Count + 1UL);
                 if (pending is FoundationFundedWorkerIntentCommand fund)
                 {
-                    if (!_humans.Contains(civ) && !reservedFunding.Add(fund.Edge))
-                        continue;
                     var actual = fund with { Id = id };
                     var provisional = _persistentFunding!.Record(local, new EventId(fund.Id, 1UL),
                         civ, fund.Edge, fund.MoneyMicro, fund.Assignments, context);
