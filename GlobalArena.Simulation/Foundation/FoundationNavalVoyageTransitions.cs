@@ -124,6 +124,85 @@ internal sealed class FoundationNavalVoyageTransitions
         return null;
     }
 
+    // Read-only route estimates for the same direct-coast / ground-first
+    // contract used by the scheduler. One graph traversal per coastal
+    // neighbor, never a market solve or a hypothetical committed state.
+    internal IReadOnlyList<(PhysicalTacticalTileId Target, ulong TimeMicro, System.Numerics.BigInteger FareScaled)>
+        ReadExpansionQuotes(WorldState opening, PhysicalWorkerId id, ulong turn,
+            ulong naturalTime, FoundationCivilizationKnowledgeScope? scope, ulong horizon)
+    {
+        RequireWorld(opening);
+        if (opening.EdgeTravels.NavalCargoMicroPerWorker is not { } cargo || turn == 0 ||
+            naturalTime == 0 || horizon == 0) throw new InvalidOperationException("Priced route estimate required.");
+        var worker = opening.Workers.Workers.Single(w => w.Id == id);
+        var source = worker.TacticalTileId!.Value;
+        if (_geo.SurfaceAtIndex(Index(source)) != FoundationFineSurfaceKind.Land ||
+            !_geo.CanTraverseOnFoot(Index(source)) || (scope is not null && !scope.KnowsNode(source)))
+            return Array.Empty<(PhysicalTacticalTileId, ulong, System.Numerics.BigInteger)>();
+        PhysicalTacticalTileId Node(StrategicCellId cell) => new(_map.Refinement.FineParameters, cell);
+        bool Known(StrategicCellId a, StrategicCellId b) => scope is null || scope.KnowsLink(Node(a), Node(b));
+        int CellIndex(StrategicCellId cell) => checked((int)cell.Value - 1);
+
+        // Exclude all destinations with a known walking path, since the
+        // current executor always selects that path before considering sea.
+        var land = new HashSet<StrategicCellId> { source.FineStrategicCellId };
+        var ground = new Queue<StrategicCellId>();
+        ground.Enqueue(source.FineStrategicCellId);
+        while (ground.TryDequeue(out var at))
+            foreach (var next in _map.FineTopology.Cells[CellIndex(at)].AdjacentCellIds)
+                if (Known(at, next) && _geo.CanTraverseOnFoot(CellIndex(next)) && land.Add(next))
+                    ground.Enqueue(next);
+
+        FoundationClosedNodeWorkEvidence? Read(IReadOnlySet<CivilizationId> eligible) =>
+            opening.EdgeTravels.PriorWorkTurn == turn - 1UL && opening.EdgeTravels.PriorWork is { } work
+                ? FoundationClosedNodeWorkProjector.Read(work, source, worker.Owner, eligible) : null;
+        var chosen = new HashSet<StrategicCellId>();
+        var quotes = new List<(PhysicalTacticalTileId, ulong, System.Numerics.BigInteger)>();
+        var transport = opening.Transport.Edges.ToDictionary(r => r.Edge);
+        foreach (var first in _map.FineTopology.Cells[Index(source)].AdjacentCellIds.OrderBy(n => n.Value))
+        {
+            if (!Known(source.FineStrategicCellId, first) ||
+                _geo.CrossingAtIndices(Index(source), CellIndex(first)) != FoundationFineTransportCrossingKind.Port) continue;
+            var water = Node(first);
+            var decision = FoundationNavalBoardingPolicy.Evaluate(opening, _map, _geo, worker.Owner, source, water, Read);
+            if (!decision.IsAllowed) continue;
+            var edge = Edge(source, water);
+            var row = transport[edge];
+            ulong duration = FoundationGroundEdgeTravelTimeProjector.FromInfrastructure(row,
+                new FoundationGroundEdgeTravelTimePolicy(naturalTime)).ImprovedCrossingTimeMicro;
+            var voyage = new FoundationNavalVoyage(id, worker.Owner, source, edge, turn, duration,
+                decision.PaidNumerator, decision.PaidDenominator)
+            {
+                EmbarkationFreightMicroPerWholeCargo = FoundationPhysicalAuthoritativeTransportProjector.EffectiveUnitFreightCost(row)
+            };
+            var fare = FoundationNavalFareQuote.CalculateScaled(voyage, cargo);
+            var visited = new HashSet<StrategicCellId> { first };
+            var sea = new Queue<(StrategicCellId Cell, ulong Steps)>();
+            sea.Enqueue((first, 1UL));
+            while (sea.TryDequeue(out var entry))
+            {
+                foreach (var next in _map.FineTopology.Cells[CellIndex(entry.Cell)].AdjacentCellIds)
+                {
+                    if (!Known(entry.Cell, next)) continue;
+                    var kind = _geo.CrossingAtIndices(CellIndex(entry.Cell), CellIndex(next));
+                    if (kind == FoundationFineTransportCrossingKind.OpenSea && visited.Add(next))
+                        sea.Enqueue((next, entry.Steps + 1UL));
+                    else if (kind == FoundationFineTransportCrossingKind.Port &&
+                        _geo.SurfaceAtIndex(CellIndex(next)) == FoundationFineSurfaceKind.Land &&
+                        _geo.CanTraverseOnFoot(CellIndex(next)) && !land.Contains(next) && chosen.Add(next))
+                    {
+                        // Mark even unaffordable first-port routes: the
+                        // executor would not choose a later, cheaper port.
+                        ulong steps = entry.Steps + 1UL;
+                        if (duration <= (horizon - 1UL) / steps)
+                            quotes.Add((Node(next), duration * steps, fare));
+                    }
+                }
+            }
+        }
+        return quotes.AsReadOnly();
+    }
+
     internal WorldState StartNext(WorldState world, PhysicalWorkerId id, PhysicalTacticalTileId destination)
     {
         RequireWorld(world);
