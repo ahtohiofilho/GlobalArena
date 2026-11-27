@@ -25,6 +25,15 @@ public sealed class FoundationConstructionFundingExecutor : ISimulationEventExec
     internal ulong Quote(ulong moneyMicro) =>
         FoundationConstructionWorkPolicy.RequiredWorkMicro(moneyMicro, _moneyMicroPerWholeWork);
 
+    internal WorldState FundProductive(WorldState state, EventId id,
+        CivilizationId investor, FoundationProductiveTarget target, ulong moneyMicro,
+        SimulationContext context)
+    {
+        _admission.ValidateProductiveFunding(state, id, investor, target, context);
+        return state.FundProductiveConstruction(investor, target, moneyMicro,
+            Quote(moneyMicro)).AdvanceRevision();
+    }
+
     public WorldState Execute(WorldState state, ISimulationEvent simulationEvent,
         SimulationContext context)
     {

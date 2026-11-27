@@ -72,6 +72,8 @@ public sealed class FoundationMonetaryInfrastructureEventExecutor
     : ISimulationEventExecutor
 {
     private readonly RuntimeWorldBinding _binding;
+    private readonly FoundationFineFirstPhysicalGeography? _productiveGeography;
+    private readonly PhysicalTacticalIncidenceMap _productiveIncidence;
     private readonly HashSet<PhysicalTacticalEdgeId> _actualEdges;
     private readonly HashSet<PhysicalTacticalEdgeId> _blockedIceSeaEdges = new();
 
@@ -95,6 +97,8 @@ public sealed class FoundationMonetaryInfrastructureEventExecutor
     {
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(incidence);
+        _productiveGeography = fineGeography;
+        _productiveIncidence = incidence;
         if (incidence.Refinement.CoarseParameters !=
             world.Request.StrategicParameters)
             throw new InvalidOperationException(
@@ -127,6 +131,20 @@ public sealed class FoundationMonetaryInfrastructureEventExecutor
         ValidateFunding(state, ev.Id, ev.ExpectedRevision, ev.Investor, ev.Edge, context);
         return state.RecordMonetaryInfrastructureInvestment(
             ev.Investor, ev.Edge, ev.MoneyMicro).AdvanceRevision();
+    }
+
+    internal void ValidateProductiveFunding(WorldState state, EventId id,
+        CivilizationId investor, FoundationProductiveTarget target, SimulationContext context)
+    {
+        if (id.OriginKind != EventOriginKind.Command || id.Turn != context.Turn ||
+            state.WorldBinding != _binding || _productiveGeography is null ||
+            !state.ProductiveInfrastructure.IsInitialized ||
+            !state.Civilizations.Civilizations.Contains(investor) || !target.IsValid ||
+            target.Node.FineGoldbergParameters != _productiveIncidence.Refinement.FineParameters ||
+            target.Node.FineStrategicCellId.Value > _productiveIncidence.Refinement.FineParameters.StrategicCellCount ||
+            _productiveGeography.SurfaceAtIndex(checked((int)target.Node.FineStrategicCellId.Value - 1)) != FoundationFineSurfaceKind.Land ||
+            !_productiveGeography.CanTraverseOnFoot(checked((int)target.Node.FineStrategicCellId.Value - 1)))
+            throw new InvalidOperationException("Productive funding requires signed traversable land and real investor.");
     }
 
     internal void ValidateFunding(WorldState state, EventId id, ulong expectedRevision,

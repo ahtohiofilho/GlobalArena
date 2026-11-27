@@ -21,6 +21,10 @@ public sealed record FoundationFundedWorkerIntentCommand(
     CommandId Id, CivilizationId Issuer, PhysicalTacticalEdgeId Edge,
     ulong MoneyMicro, IReadOnlyList<FoundationFundedWorkerInsertion> Assignments) : ISimulationCommand;
 
+public sealed record FoundationProductiveFundingCommand(
+    CommandId Id, CivilizationId Issuer, FoundationProductiveTarget Target,
+    ulong MoneyMicro) : ISimulationCommand;
+
 public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
 {
     // The system sale is emitted by THIS sole atomic phase. The generic
@@ -197,6 +201,13 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
             {
                 var recorded = _funded!.Record(state, id, funding.Issuer, funding.Edge,
                     funding.MoneyMicro, funding.Assignments, input.Context);
+                state = recorded.Next;
+                operations.Add(recorded.Event);
+            }
+            else if (command is FoundationProductiveFundingCommand productive)
+            {
+                var recorded = _funded!.RecordProductive(state, id, productive.Issuer,
+                    productive.Target, productive.MoneyMicro, input.Context);
                 state = recorded.Next;
                 operations.Add(recorded.Event);
             }
