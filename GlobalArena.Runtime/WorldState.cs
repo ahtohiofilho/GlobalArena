@@ -665,6 +665,21 @@ public sealed class WorldState
             CityResidences, EdgeTravels, ledger, WorkerOrders, ProductiveInfrastructure);
     }
 
+    // Atomic productive funding, parallel to FundConstruction. Geography
+    // and the effort quote are verified by the signed command executor.
+    public WorldState FundProductiveConstruction(CivilizationId investor,
+        FoundationProductiveTarget target, ulong moneyMicro, ulong requiredWorkMicro)
+    {
+        if (!ProductiveInfrastructure.IsInitialized || !Treasury.IsInitialized ||
+            !Civilizations.Civilizations.Contains(investor))
+            throw new InvalidOperationException("Productive funding requires a deployed ledger and real investor.");
+        var ledger = ProductiveInfrastructure.Reserve(target, investor, moneyMicro, requiredWorkMicro);
+        var treasury = Treasury.DebitConstruction(investor, moneyMicro);
+        return new WorldState(Revision, WorldBinding, Civilizations, Territory,
+            Diplomacy, Economy, Population, Warfare, Workers, Transport, treasury,
+            CityResidences, EdgeTravels, Constructions, WorkerOrders, ledger);
+    }
+
     // Empty initial deployment only. No caller can inject funded capital
     // into WorldState through this schema boundary.
     public WorldState DeployInitialProductiveInfrastructure(IEnumerable<FoundationProductiveReference> references)
