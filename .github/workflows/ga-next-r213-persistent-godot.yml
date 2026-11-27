@@ -111,6 +111,22 @@ jobs:
           for cycle in 1 2 3; do
             grep -E "GA_NEXT_R22921_CITY_PRIVACY_PASS own=[0-9]+ foreign=[0-9]+ cycle=$cycle$" "$RUNNER_TEMP/local-economy.log"
           done
+      - name: Exercise productive investments in the actual City Production tab
+        env:
+          GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW: '1'
+          GA_NEXT_INTERACTIVE_ECONOMY_PREVIEW: '1'
+          GA_NEXT_QA_LOCAL_SITE_MARKERS: '1'
+          GA_NEXT_CONSTRUCTION_PREVIEW: '1'
+          GA_NEXT_PERSISTENT_ORDERS: '1'
+          GA_NEXT_CROP_PREVIEW: '1'
+          GA_NEXT_LOCAL_ECONOMY_PREVIEW: '1'
+          GA_NEXT_R235_PRODUCTIVE_PREVIEW: '1'
+          GA_NEXT_R213_UI_SMOKE: '1'
+        run: |
+          set -o pipefail
+          timeout 180 "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --rendering-method gl_compatibility 2>&1 | tee "$RUNNER_TEMP/r235f2.log"
+          grep -q 'GA_NEXT_R235F2_PRODUCTIVE_UI_PASS real_controls=true private_funding=true cancellation=true assignment=true activation=true foreign_hidden=true' "$RUNNER_TEMP/r235f2.log"
+          if grep -E 'GA_NEXT_R213_PERSISTENT_UI_FAIL|GA_NEXT_FINE_HUMAN_AI_REJECTED|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/r235f2.log"; then exit 1; fi
       - name: Require positive remote and zero-edge local eight-commodity trade
         env:
           GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW: '1'
@@ -390,6 +406,7 @@ jobs:
             ${{ runner.temp }}/r213.log
             ${{ runner.temp }}/crops.log
             ${{ runner.temp }}/local-economy.log
+            ${{ runner.temp }}/r235f2.log
             ${{ runner.temp }}/trade-remote.log
             ${{ runner.temp }}/trade-local.log
             ${{ runner.temp }}/demographic.log
