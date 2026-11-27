@@ -21,6 +21,10 @@ public sealed record FoundationFundedWorkerIntentCommand(
     CommandId Id, CivilizationId Issuer, PhysicalTacticalEdgeId Edge,
     ulong MoneyMicro, IReadOnlyList<FoundationFundedWorkerInsertion> Assignments) : ISimulationCommand;
 
+public sealed record FoundationProductiveFundingCommand(
+    CommandId Id, CivilizationId Issuer, FoundationProductiveTarget Target,
+    ulong MoneyMicro) : ISimulationCommand;
+
 public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
 {
     // The system sale is emitted by THIS sole atomic phase. The generic
