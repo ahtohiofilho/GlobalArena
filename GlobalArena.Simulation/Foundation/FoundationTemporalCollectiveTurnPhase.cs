@@ -43,6 +43,7 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
     private readonly FoundationFundedWorkerIntentJournal? _funded;
     private readonly bool _growth;
     private readonly bool _navalCollective;
+    private readonly bool _navalSettlement;
     private readonly FoundationAgriculturalProductionPolicy? _agriculture;
     private readonly FoundationOperationalFreightShadowPolicy? _operationalPolicy;
 
@@ -58,7 +59,7 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
         bool enableExperimentalAutomaticBase = false, bool enableLocalPriceAllocation = false,
         bool enableDefaultAutomaticBase = false, bool enableExclusiveNodeLabor = false,
         ulong? navalDepartureTimeMicro = null,
-        IReadOnlyDictionary<CivilizationId, FoundationCivilizationKnowledgeScope>? navalScopes = null)
+        IReadOnlyDictionary<CivilizationId, FoundationCivilizationKnowledgeScope>? navalScopes = null, bool enableNavalSettlement = false)
     {
         ArgumentNullException.ThrowIfNull(world);
         _incidence = incidence ?? throw new ArgumentNullException(nameof(incidence));
@@ -79,6 +80,9 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
         if (enableDefaultAutomaticBase && (!enableLocalPriceAllocation || agriculture?.BasicResources is null))
             throw new InvalidOperationException("Default automatic base requires the complete local economy experiment.");
         _navalCollective = navalDepartureTimeMicro.HasValue;
+        _navalSettlement = enableNavalSettlement;
+        if (_navalSettlement && (!_navalCollective || operationalPolicy is not null))
+            throw new InvalidOperationException("Naval settlement requires collective capital-only naval QA.");
         if (_navalCollective && (!persistentMoneyMicroPerWholeWork.HasValue || fine is null ||
             navalDepartureTimeMicro == 0 || !enableLocalPriceAllocation || !enableDefaultAutomaticBase))
             throw new InvalidOperationException("Collective naval QA requires signed persistent local economy and explicit positive duration.");
@@ -202,7 +206,7 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
         operations.Add(timeline.Event);
         var receipt = FoundationTemporalEconomicJournalGate.CloseAndReplayWithInvestments(
             beginning, operations, _movement, _movementPolicy, _incidence, _economy, input.Context,
-            _capitalExecutor, _fine, persistentScheduler: _persistent, fundedIntents: _funded, enableDemographicGrowth: _growth, agriculture: _agriculture, operationalPolicy: _operationalPolicy);
+            _capitalExecutor, _fine, persistentScheduler: _persistent, fundedIntents: _funded, enableDemographicGrowth: _growth, agriculture: _agriculture, operationalPolicy: _operationalPolicy, enableNavalSettlement: _navalSettlement);
         if (receipt.EconomicEvent.PreSettlementHash != new CanonicalWorldStateHasher().Compute(timeline.Next))
             throw new InvalidOperationException("Persistent timeline and economic settlement diverged.");
         return new TurnResolutionResult(receipt.Next,
@@ -214,6 +218,6 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
         if (_persistent is null) throw new InvalidOperationException("Persistent phase not configured.");
         return FoundationTemporalEconomicJournalGate.ReplayJournal(beginning, log, _movement,
             _movementPolicy, _incidence, _economy, context, _fine, _capitalExecutor,
-            persistentScheduler: _persistent, fundedIntents: _funded, enableDemographicGrowth: _growth, agriculture: _agriculture, operationalPolicy: _operationalPolicy);
+            persistentScheduler: _persistent, fundedIntents: _funded, enableDemographicGrowth: _growth, agriculture: _agriculture, operationalPolicy: _operationalPolicy, enableNavalSettlement: _navalSettlement);
     }
 }
