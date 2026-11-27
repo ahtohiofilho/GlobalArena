@@ -1117,7 +1117,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
     private IReadOnlyList<FoundationAiAdjacentOpportunity> ReadAdjacentAiOpportunities(
         CivilizationId owner, FoundationPersistentAiWorker[] workers, FoundationViewerLocalEconomicClose[] local)
     {
-        if (!DefaultAutomaticBaseEnabled || _signedFine is not { } geography ||
+        if (!DefaultAutomaticBaseEnabled || _signedFine is not { } geography || _travelPolicy is null ||
             AgriculturalProduction is not { BasicResources: { } basic } agriculture)
             return Array.Empty<FoundationAiAdjacentOpportunity>();
         var scope = _knowledgeScopes is null ? null : _knowledgeScopes[owner];
@@ -1125,6 +1125,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
         var pricesByNode = local.ToDictionary(row => row.Node,
             row => row.Commodities.ToDictionary(c => c.Commodity, c => c.LocalPriceMicro));
         var result = new List<FoundationAiAdjacentOpportunity>();
+        var transport = Snapshot.Transport.Edges.ToDictionary(e => e.Edge);
         foreach (var group in workers.GroupBy(w => w.Node).OrderBy(g => g.Key.FineStrategicCellId.Value))
         {
             if (group.Count(w => !w.Crossing && w.Activity != PhysicalWorkerActivity.Traveling &&
@@ -1159,9 +1160,10 @@ public sealed class FoundationTacticalHumanAiTurnHost
                 if (ownNodes.Contains(destination) || geography.SurfaceAtIndex(next) != FoundationFineSurfaceKind.Land ||
                     !geography.CanTraverseOnFoot(next) ||
                     geography.CrossingAtIndices(index, next) != FoundationFineTransportCrossingKind.Ground ||
-                    !_executor.CheckEdge(source, destination).HasValue)
+                    _executor.CheckEdge(source, destination) is not { } physicalEdge)
                     continue;
-                result.Add(new(source, destination, originPotential, Potential(destination)));
+                var duration = FoundationGroundEdgeTravelTimeProjector.FromInfrastructure(transport[physicalEdge], _travelPolicy).ImprovedCrossingTimeMicro;
+                result.Add(new(source, destination, originPotential, Potential(destination), duration));
             }
         }
         return Array.AsReadOnly(result.ToArray());

@@ -1657,6 +1657,10 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Equal(ids[0], policy.PlanFunding(view with { InvestmentOpportunities = new[] { tie, good } })!.Edge);
         Assert.Null(policy.PlanFunding(view with { OwnCashScaled = view.OwnCashScaled - 1 }));
         Assert.Null(policy.PlanFunding(view with { InvestmentOpportunities = new[] { bad } }));
+        Assert.NotNull(policy.PlanFunding(view with { InvestmentOpportunities = new[] { bad with
+            { UnitCostBeforeMicro = 1_000_000UL, UnitCostAfterMicro = 800_000UL } } }));
+        Assert.Null(policy.PlanFunding(view with { InvestmentOpportunities = new[] { good with
+            { CargoMicro = 0UL, UnitCostBeforeMicro = 100_000_000UL, UnitCostAfterMicro = 1UL } } }));
         Assert.Null(policy.PlanFunding(view with { InvestmentOpportunities = new[] { good with { UnitCostAfterMicro = good.UnitCostBeforeMicro } } }));
         Assert.Null(policy.PlanFunding(view with { Workers = workers.Take(2).ToArray() }));
         Assert.Null(policy.PlanFunding(view with { Workers = new[] { workers[0], workers[1], workers[2] with { Crossing = true } } }));
@@ -2298,6 +2302,19 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Equal(FoundationWorkerOrderKind.Move, decision.OrderKind);
         Assert.Equal(decision, Assert.Single(ai.PlanPersistent(view with { Workers = own.Reverse().ToArray() })));
         Assert.Empty(ai.PlanPersistent(view with { Workers = own.Take(2).ToArray() }));
+        // Equal productivity: the same opportunity becomes unattractive
+        // as physical travel takes a greater share of the planning horizon.
+        Assert.Empty(ai.PlanPersistent(view with { AdjacentOpportunities = new[] { edge with { CrossingTimeMicro = 5_000_000UL } } }));
+        Assert.Empty(ai.PlanPersistent(view with { AdjacentOpportunities = new[] { edge with { CrossingTimeMicro = 100_000_000UL } } }));
+        Assert.Equal(decision, Assert.Single(ai.PlanPersistent(view with
+        {
+            AdjacentOpportunities = new[] { edge with { CrossingTimeMicro = 2_000_000UL } }
+        })));
+        Assert.Empty(ai.PlanPersistent(view with { AdjacentOpportunities = new[] { edge with { CrossingTimeMicro = 0UL } } }));
+        Assert.Equal(decision, Assert.Single(ai.PlanPersistent(view with
+        {
+            AdjacentOpportunities = new[] { edge with { SourcePotential = 1_000_000, DestinationPotential = 1_000_000 } }
+        })));
         Assert.Empty(ai.PlanPersistent(view with { AdjacentOpportunities = new[] { edge with { DestinationPotential = 60 } } }));
         Assert.Empty(ai.PlanPersistent(view with { Workers = new[] { own[0], own[1], own[2] with { Crossing = true } } }));
         var reserved = own[2].Queue.Insert(worker.Owner, 0, FoundationWorkerOrderKind.Move, destination: destination);
@@ -2336,6 +2353,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
     [InlineData(6)] // autonomous coordinator with no known link
     [InlineData(7)] // exclusive labor, initially mixed node
     [InlineData(8)] // exclusive labor, arrival at foreign working node
+    [InlineData(9)] // known ground link but prohibitive natural crossing time
     public void R233CActualAiExpansionCrossesGroundAndResumesProduction(int knowledgeMode)
     {
         var (world, worker, _, _, incidence, fine) = Fixture();
@@ -2396,7 +2414,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             demo.Session.AcceptSnapshot(opening);
         }
         var knownNodes = knowledgeMode == 3 ? new[] { source } : new[] { source, allowedTarget };
-        var knownLinks = knowledgeMode is 2 or 5 or 8 ? new[] { (source, allowedTarget) } :
+        var knownLinks = knowledgeMode is 2 or 5 or 8 or 9 ? new[] { (source, allowedTarget) } :
             Array.Empty<(PhysicalTacticalTileId, PhysicalTacticalTileId)>();
         var scopes = knowledgeMode == 0 ? null :
             new Dictionary<CivilizationId, FoundationCivilizationKnowledgeScope>
@@ -2410,11 +2428,11 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             OrderKind: FoundationWorkerOrderKind.Move, Destination: allowedTarget) };
         IFoundationTacticalAiTurnPolicy ai = knowledgeMode == 4 ? probe :
             knowledgeMode == 7 ? new FoundationTacticalAiHoldPolicy() :
-            knowledgeMode is 5 or 6 ? new FoundationPersistentAutonomousEconomicAiPolicy() : new FoundationPersistentExpansionAiPolicy();
+            knowledgeMode is 5 or 6 or 9 ? new FoundationPersistentAutonomousEconomicAiPolicy() : new FoundationPersistentExpansionAiPolicy();
         var host = new FoundationTacticalHumanAiTurnHost(demo.Session, incidence, new[] { human },
             new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy> { [owner] = ai },
             enableMonetaryInfrastructure: true, settlementPolicy: settlement, fineGeography: fine, fineSignature: signature,
-            physicalTravelPolicy: new FoundationGroundEdgeTravelTimePolicy(1_400_000UL),
+            physicalTravelPolicy: new FoundationGroundEdgeTravelTimePolicy(knowledgeMode == 9 ? 100_000_000UL : 1_400_000UL),
             constructionMoneyMicroPerWholeWork: 1_000_000UL, agriculture: agriculture,
             enableExperimentalLocalEconomy: true, enableDefaultAutomaticBase: true, knowledgeScopes: scopes,
             enableExclusiveNodeLabor: knowledgeMode is 7 or 8);
@@ -2450,7 +2468,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         }
         host.PrepareAiCivilizations();
         Assert.Equal(hash, host.StateHash);
-        if (knowledgeMode is 1 or 3 or 4 or 6)
+        if (knowledgeMode is 1 or 3 or 4 or 6 or 9)
         {
             Assert.Equal(0, host.PendingOrderCount);
             Assert.Null(host.TryCloseTurn());

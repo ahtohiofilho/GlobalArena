@@ -85,13 +85,17 @@ public sealed class FoundationPersistentLocalProductionAiPolicy : FoundationPers
 /// price vector. Destination market prices and foreign census are not read.</summary>
 public sealed record FoundationAiAdjacentOpportunity(
     PhysicalTacticalTileId Source, PhysicalTacticalTileId Destination,
-    BigInteger SourcePotential, BigInteger DestinationPotential);
+    BigInteger SourcePotential, BigInteger DestinationPotential,
+    ulong CrossingTimeMicro = 1_000_000UL);
 
 /// <summary>First bounded expansion heuristic, not a market forecast.
 /// At most one move per civilization per turn, with a twofold hurdle
 /// against source potential per own resident and no last-resident move.</summary>
 public sealed class FoundationPersistentExpansionAiPolicy : FoundationPersistentEconomicAiPolicy
 {
+    // Provisional bounded planning horizon, in the same clock units as
+    // actual movement. Not a historical era or a physical distance.
+    internal const ulong ExpansionHorizonMicro = 10_000_000UL;
     internal override bool RequiresExpansionCandidates => true;
 
     public override IReadOnlyList<FoundationPersistentOrderEdit> PlanPersistent(FoundationPersistentAiView view)
@@ -110,7 +114,8 @@ public sealed class FoundationPersistentExpansionAiPolicy : FoundationPersistent
         {
             if (occupied.Contains(edge.Destination) || reserved.Contains(edge.Destination) ||
                 !sources.TryGetValue(edge.Source, out var residents) ||
-                edge.SourcePotential <= 0 || edge.DestinationPotential <= 0)
+                edge.SourcePotential <= 0 || edge.DestinationPotential <= 0 ||
+                edge.CrossingTimeMicro == 0 || edge.CrossingTimeMicro >= ExpansionHorizonMicro)
                 continue;
             // Count only stationary uncommanded automatic residents. The
             // others may already be leaving; never rely on them as anchors.
@@ -120,7 +125,13 @@ public sealed class FoundationPersistentExpansionAiPolicy : FoundationPersistent
                 w.Queue.BaseActivity?.Mode != FoundationWorkerBaseMode.Manual)
                 .OrderBy(w => w.Id.Value).ToArray();
             if (available.Length < 3) continue;
-            BigInteger gain = edge.DestinationPotential * available.Length - 2 * edge.SourcePotential;
+            // Preserve the existing conservative source hurdle, but credit
+            // the destination only for time remaining after actual travel.
+            // Both terms are potential revenue × micro-turns; no freight
+            // money is converted to time and no additional market is solved.
+            BigInteger gain = edge.DestinationPotential * available.Length *
+                (ExpansionHorizonMicro - edge.CrossingTimeMicro) -
+                2 * edge.SourcePotential * ExpansionHorizonMicro;
             if (gain <= 0) continue;
             choices.Add((available[^1], edge, gain));
         }
