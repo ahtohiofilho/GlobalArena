@@ -204,6 +204,13 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
                 state = recorded.Next;
                 operations.Add(recorded.Event);
             }
+            else if (command is FoundationProductiveFundingCommand productive)
+            {
+                var recorded = _funded!.RecordProductive(state, id, productive.Issuer,
+                    productive.Target, productive.MoneyMicro, input.Context);
+                state = recorded.Next;
+                operations.Add(recorded.Event);
+            }
             else throw new InvalidOperationException("Legacy commands cannot compete with persistent scheduling.");
         }
         var timeline = _persistent!.Record(state, input.Context);
