@@ -1028,7 +1028,17 @@ public sealed class FoundationTacticalHumanAiTurnHost
             throw new InvalidOperationException("Unexpected pending persistent AI plan.");
         var staged = new List<ISimulationCommand>(edits.Length);
         foreach (var edit in edits)
+        {
+            if (_knowledgeScopes is not null && edit.Kind == FoundationPersistentOrderEditKind.Insert &&
+                edit.OrderKind == FoundationWorkerOrderKind.Move)
+            {
+                var worker = workers.FirstOrDefault(w => w.Id == edit.Worker);
+                if (worker is null || !edit.Destination.HasValue ||
+                    !_knowledgeScopes[civ].KnowsLink(worker.Node, edit.Destination.Value))
+                    throw new InvalidOperationException("Restricted AI move requires a known adjacent link.");
+            }
             staged.Add(CreatePersistentEdit(civ, edit, staged.Count));
+        }
         _ = ProjectPersistentPlan(civ, staged);
         list.AddRange(staged);
         _ready.Add(civ);
