@@ -108,6 +108,79 @@ public sealed class FoundationTemporalEconomicJournalGateTests
     }
 
     [Fact]
+    public void R235D1ProductiveFundingDebitsOpeningCashAndReplaysWithoutActivation()
+    {
+        var (legacy, _, _, _, incidence, fine) = Fixture();
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL), WorldGenerationVersion.Initial,
+                new GoldbergParameters(3, 0)), workersPerCivilization: 3);
+        var signature = FoundationFineFirstWorldgenCanonicalSignature.Compute(demo.Session.GeneratedWorld, incidence, fine);
+        var bound = demo.Session.Snapshot.PromoteFineFirstBeforeTransport(demo.Session.GeneratedWorld, incidence, fine, signature)
+            .DeployInitialFineFirstPhysicalTransport(legacy.Transport, demo.Session.GeneratedWorld, incidence, fine, signature);
+        var opening = FoundationPersistedEdgeTravelTransitions.DeployEmpty(bound
+            .DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
+                bound.Civilizations.Civilizations.Select(c => (c, 5_000_000UL)))))
+            .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
+            .DeployInitialWorkerOrders().DeployInitialProductiveInfrastructure(ProductiveReferences());
+        var worker = opening.Workers.Workers.First();
+        var owner = worker.Owner;
+        var foreign = opening.Civilizations.Civilizations.Single(c => c != owner);
+        var node = new PhysicalTacticalTileId(incidence.Refinement.FineParameters,
+            incidence.FineTopology.Cells.First(c =>
+                fine.SurfaceAtIndex((int)c.Id.Value - 1) == FoundationFineSurfaceKind.Land &&
+                fine.CanTraverseOnFoot((int)c.Id.Value - 1)).Id);
+        var target = new FoundationProductiveTarget(node, FoundationProductiveActivity.Agriculture);
+        var phase = new FoundationTemporalCollectiveTurnPhase(demo.Session.GeneratedWorld, incidence,
+            new FoundationGroundEdgeTravelTimePolicy(1_400_000UL), Policy(opening.Civilizations.Civilizations),
+            fine, signature, persistentMoneyMicroPerWholeWork: 1_000_000UL);
+        var context = new SimulationContext(new TurnNumber(1UL), new SimulationSeed(712UL));
+        var hasher = new CanonicalWorldStateHasher();
+        var before = hasher.Compute(opening);
+        const ulong money = 1_600_000UL;
+        var command = new FoundationProductiveFundingCommand(new CommandId(context.Turn, 1UL), owner, target, money);
+        var result = phase.Resolve(new TurnResolutionInput(opening, new ISimulationCommand[] { command }, context), opening);
+        var control = phase.Resolve(new TurnResolutionInput(opening, Array.Empty<ISimulationCommand>(), context), opening);
+        var funded = Assert.Single(result.Events.OfType<FoundationProductiveFundingEvent>());
+        var sale = Assert.Single(result.Events.OfType<FoundationTemporalSalesSettledEvent>());
+        var controlSale = Assert.Single(control.Events.OfType<FoundationTemporalSalesSettledEvent>());
+        var next = result.ResultingWorldState;
+        var project = Assert.Single(next.ProductiveInfrastructure.Projects);
+        Assert.Equal(funded.ProjectId, project.Id);
+        Assert.Equal(money, project.RequiredWorkMicro);
+        Assert.Equal(0UL, project.CompletedWorkMicro);
+        Assert.False(project.IsActivated);
+        Assert.Equal(money, next.ProductiveInfrastructure.Read(target).PendingCapitalMoneyMicro);
+        Assert.Equal(0UL, next.ProductiveInfrastructure.Read(target).ActivatedCapitalMoneyMicro);
+        Assert.Empty(next.Constructions.Projects);
+        Assert.Equal(controlSale.ProducedGoodsMicro, sale.ProducedGoodsMicro);
+        Assert.Equal(controlSale.GrossSalesScaled, sale.GrossSalesScaled);
+        Assert.Equal(controlSale.Credits.ToArray(), sale.Credits.ToArray());
+        foreach (var account in next.Treasury.Accounts)
+            Assert.Equal(opening.Treasury.Get(account.Civilization).CashScaled +
+                sale.Credits.Single(c => c.Civilization == account.Civilization).CashCreditScaled -
+                (account.Civilization == owner ? GlobalArenaMoneyScale.FromMoneyMicro(money) : BigInteger.Zero),
+                account.CashScaled);
+        Assert.Equal(before, hasher.Compute(opening));
+        Assert.Equal(31U, hasher.Compute(next).FormatVersion);
+        Assert.Equal(hasher.Compute(next), hasher.Compute(phase.ReplayPersistentJournal(opening, result.EventLog, context)));
+        var forged = funded with { RequiredWorkMicro = funded.RequiredWorkMicro + 1UL };
+        var tampered = new SimulationEventLog(result.EventLog.Entries.Select((e, index) =>
+            new SimulationEventLogEntry(checked((ulong)index + 1UL), e.Event is FoundationProductiveFundingEvent ? forged : e.Event,
+                wasEligible: true, wasExecuted: true)).ToArray());
+        Assert.Throws<InvalidOperationException>(() => phase.ReplayPersistentJournal(opening, tampered, context));
+        var competing = new FoundationProductiveFundingCommand(new CommandId(context.Turn, 2UL), foreign, target, 1UL);
+        Assert.Throws<InvalidOperationException>(() => phase.Resolve(new TurnResolutionInput(opening,
+            new ISimulationCommand[] { command, competing }, context), opening));
+        Assert.Throws<InvalidOperationException>(() => phase.Resolve(new TurnResolutionInput(opening,
+            new ISimulationCommand[] { command with { MoneyMicro = 5_000_001UL } }, context), opening));
+        var water = new PhysicalTacticalTileId(incidence.Refinement.FineParameters,
+            incidence.FineTopology.Cells.First(c => fine.SurfaceAtIndex((int)c.Id.Value - 1) != FoundationFineSurfaceKind.Land).Id);
+        Assert.Throws<InvalidOperationException>(() => phase.Resolve(new TurnResolutionInput(opening,
+            new ISimulationCommand[] { command with { Target = target with { Node = water } } }, context), opening));
+        Assert.Equal(before, hasher.Compute(opening));
+    }
+
+    [Fact]
     public void R235BGenericCapitalResponseIsExactMonotoneAndScaleIndependent()
     {
         const ulong natural = 1_000_000UL, reference = 10_000_000UL;
