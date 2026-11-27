@@ -50,6 +50,9 @@ internal static class GaExplicitEconomicQaConfiguration
         return mode;
     }
 
+    internal static bool IntegratedProductiveSmokeEnabled =>
+        System.Environment.GetEnvironmentVariable("GA_NEXT_R235H_INTEGRATED_SMOKE") == "1";
+
     internal static bool ProductivePreviewEnabled =>
         System.Environment.GetEnvironmentVariable("GA_NEXT_R235_PRODUCTIVE_PREVIEW") == "1";
 
@@ -153,6 +156,10 @@ internal static class GaExplicitEconomicQaConfiguration
         if (autonomousAi && (!enableLocalEconomy || !enablePersistentOrders || tradeFixture is not null ||
             System.Environment.GetEnvironmentVariable("GA_NEXT_R213_UI_SMOKE") == "1"))
             throw new InvalidOperationException("Autonomous AI requires the interactive signed persistent local economy QA preview.");
+        if (IntegratedProductiveSmokeEnabled && (!ProductivePreviewEnabled || !autonomousAi ||
+            !enableLocalEconomy || DemographicPreviewEnabled || NavalPreviewEnabled ||
+            tradeFixture is not null || System.Environment.GetEnvironmentVariable("GA_NEXT_R213_UI_SMOKE") == "1"))
+            throw new InvalidOperationException("Integrated productive smoke requires autonomous productive local QA without free births, naval or historical smoke.");
         bool growth = DemographicPreviewEnabled;
         if (NavalSmokeEnabled && !NavalPreviewEnabled)
             throw new InvalidOperationException("Naval smoke requires explicit naval QA.");

@@ -824,6 +824,8 @@ public partial class Main : Control
                 }
                 if (GaExplicitEconomicQaConfiguration.DemographicPreviewEnabled)
                     _lastDemographicPreviewReceipt = receipt;
+                if (GaExplicitEconomicQaConfiguration.IntegratedProductiveSmokeEnabled)
+                    _integratedProductiveReceipt = receipt;
                 measuredReceipt = receipt;
                 GD.Print($"GA_NEXT_FINE_HUMAN_AI_COMMIT turn={receipt.Turn.Value} " +
                     $"human={humanCount} ai={aiCount} " +
@@ -2421,7 +2423,9 @@ public partial class Main : Control
                 $"worker={first.Id.Value} coarse_preview_focus={first.CellId.Value} " +
                 $"physical_worker_location_authoritative={(_tacticalHost is not null).ToString().ToLowerInvariant()} " +
                 "tactical_visible=true");
-            if (GaExplicitEconomicQaConfiguration.NavalSmokeEnabled)
+            if (GaExplicitEconomicQaConfiguration.IntegratedProductiveSmokeEnabled)
+                _ = ExerciseIntegratedProductiveSmoke();
+            else if (GaExplicitEconomicQaConfiguration.NavalSmokeEnabled)
                 ExerciseR234HNavalSmoke();
             else if (System.Environment.GetEnvironmentVariable("GA_NEXT_R213_UI_SMOKE") == "1")
                 _ = ExerciseR213PersistentInterfaceSmoke();

@@ -127,6 +127,34 @@ jobs:
           timeout 180 "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --rendering-method gl_compatibility 2>&1 | tee "$RUNNER_TEMP/r235f2.log"
           grep -q 'GA_NEXT_R235F2_PRODUCTIVE_UI_PASS real_controls=true private_funding=true cancellation=true assignment=true activation=true foreign_hidden=true' "$RUNNER_TEMP/r235f2.log"
           if grep -E 'GA_NEXT_R213_PERSISTENT_UI_FAIL|GA_NEXT_FINE_HUMAN_AI_REJECTED|SCRIPT ERROR|Unhandled Exception' "$RUNNER_TEMP/r235f2.log"; then exit 1; fi
+      - name: Exercise integrated productive and autonomous economy twice
+        env:
+          GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW: '1'
+          GA_NEXT_INTERACTIVE_ECONOMY_PREVIEW: '1'
+          GA_NEXT_QA_LOCAL_SITE_MARKERS: '1'
+          GA_NEXT_CONSTRUCTION_PREVIEW: '1'
+          GA_NEXT_PERSISTENT_ORDERS: '1'
+          GA_NEXT_CROP_PREVIEW: '1'
+          GA_NEXT_LOCAL_ECONOMY_PREVIEW: '1'
+          GA_NEXT_R235_PRODUCTIVE_PREVIEW: '1'
+          GA_NEXT_R233E_AUTONOMOUS_AI: '1'
+          GA_NEXT_R235H_INTEGRATED_SMOKE: '1'
+        run: |
+          set -euo pipefail
+          for attempt in 1 2; do
+            log="$RUNNER_TEMP/r235h-$attempt.log"
+            timeout 180 "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --rendering-method gl_compatibility 2>&1 | tee "$log"
+            grep -q 'GA_NEXT_R233E_AUTONOMOUS_AI_READY' "$log"
+            grep -E 'GA_NEXT_R235H_INTEGRATED_PASS cycles=6 human_productive=true human_logistics=true actual_main_close=true replay=true hash_v=31 ai_productive=[0-9]+ ai_logistics=[0-9]+ ai_edits=[0-9]+$' "$log"
+            for cycle in 1 2 3 4 5 6; do
+              grep -E "^GA_NEXT_R235H_CYCLE cycle=$cycle hash=[A-Fa-f0-9]{64} ai_productive=[0-9]+ ai_logistics=[0-9]+ ai_edits=[0-9]+ edges=[0-9]+ replay=true$" "$log"
+            done
+            if grep -E 'GA_NEXT_R235H_INTEGRATED_FAIL|GA_NEXT_FINE_HUMAN_AI_REJECTED|SCRIPT ERROR|Unhandled Exception' "$log"; then exit 1; fi
+            grep '^GA_NEXT_R235H_CYCLE ' "$log" > "$RUNNER_TEMP/r235h-$attempt-hashes.txt"
+            test "$(wc -l < "$RUNNER_TEMP/r235h-$attempt-hashes.txt")" -eq 6
+          done
+          diff -u "$RUNNER_TEMP/r235h-1-hashes.txt" "$RUNNER_TEMP/r235h-2-hashes.txt"
+          echo 'GA_NEXT_R235H_REPEAT_PASS cycles=6 runs=2 same_hashes=true'
       - name: Require positive remote and zero-edge local eight-commodity trade
         env:
           GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW: '1'
@@ -414,6 +442,10 @@ jobs:
             ${{ runner.temp }}/crops.log
             ${{ runner.temp }}/local-economy.log
             ${{ runner.temp }}/r235f2.log
+            ${{ runner.temp }}/r235h-1.log
+            ${{ runner.temp }}/r235h-2.log
+            ${{ runner.temp }}/r235h-1-hashes.txt
+            ${{ runner.temp }}/r235h-2-hashes.txt
             ${{ runner.temp }}/trade-remote.log
             ${{ runner.temp }}/trade-local.log
             ${{ runner.temp }}/demographic.log
