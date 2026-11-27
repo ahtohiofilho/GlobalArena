@@ -1,3 +1,4 @@
+using GlobalArena.Kernel;
 using GlobalArena.Runtime;
 using GlobalArena.World;
 
