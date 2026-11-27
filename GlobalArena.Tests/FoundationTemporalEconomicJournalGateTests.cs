@@ -2011,10 +2011,10 @@ public sealed class FoundationTemporalEconomicJournalGateTests
                 fine.CrossingAtIndices((int)cell.Id.Value - 1, (int)n.Value - 1) == FoundationFineTransportCrossingKind.Ground));
         if (knowledgeMode is 7 or 8)
         {
-            var target = knowledgeMode == 7 ? source : allowedTarget;
-            var region = incidence.TileIncidences[(int)target.FineStrategicCellId.Value - 1].IncidentCoarseCellIds[0];
+            var foreignNode = knowledgeMode == 7 ? source : allowedTarget;
+            var region = incidence.TileIncidences[(int)foreignNode.FineStrategicCellId.Value - 1].IncidentCoarseCellIds[0];
             opening = opening.WithWorkers(new PhysicalWorkerRuntimeState(opening.Workers.Workers.Select(w =>
-                w.Owner == human ? w.WithTacticalLocationAndActivity(target, region, PhysicalWorkerActivity.Other) : w),
+                w.Owner == human ? w.WithTacticalLocationAndActivity(foreignNode, region, PhysicalWorkerActivity.Other) : w),
                 tacticalLocationsAuthoritative: true, occupationsAuthoritative: true));
             demo.Session.AcceptSnapshot(opening);
         }
