@@ -29,6 +29,8 @@ public static class FoundationPersistentDemographicClose
         var slices = timeline.Slices.Select(s => new FoundationWorkerTemporalNodeSlice(s.Worker, s.Node, s.DurationMicro, s.Activity == PhysicalWorkerActivity.Producing ? s.DurationMicro : 0U, s.Activity, s.Occupation)).ToArray();
         bool uniformCity = opening.Workers.Workers.Any(w => w.UniformCityDemography);
         bool individual = opening.Workers.Workers.Any(w => w.BirthWaitTurns.HasValue);
+        if (opening.EdgeTravels.NavalVoyages is not null && !uniformCity)
+            throw new InvalidOperationException("Naval demographic QA requires stationary uniform-city births; legacy presence lotteries can select water.");
         if (uniformCity && settled.Workers.Workers.Any(w => !w.UniformCityDemography || w.BirthWaitTurns.HasValue))
             throw new InvalidOperationException("Uniform city policy changed before demographic close.");
         FoundationPhysicalTemporalPresenceReport presence;

@@ -278,6 +278,12 @@ public static class FoundationTemporalEconomicJournalGate
             localEvents.Any(ev => ev.Id.Turn != context.Turn))
             throw new InvalidOperationException(
                 "Temporal monetary evidence is not from one authoritative worker turn.");
+        // Until the naval fare journal exists, never publish a collective
+        // state that silently discards or defers a payable voyage contract.
+        if (beginning.EdgeTravels.NavalVoyages?.Any(v => v.PaidNumerator != 0UL) == true ||
+            staged.EdgeTravels.NavalVoyages?.Any(v => v.PaidNumerator != 0UL) == true ||
+            timeline?.NavalLandings.Any(l => l.Voyage.PaidNumerator != 0UL) == true)
+            throw new InvalidOperationException("Payable naval voyages require the future naval financial settlement gate.");
         var calendar = timeline is null
             ? FoundationTemporalEconomicTurnProjector.Project(beginning, staged, physicalEvents, localEvents, policy.Demand)
             : FoundationTemporalEconomicTurnProjector.ProjectPersistent(beginning, timeline.Slices, policy.Demand, agriculture);

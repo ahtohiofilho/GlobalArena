@@ -42,6 +42,7 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
     private readonly FoundationPersistentWorkerTurnScheduler? _persistent;
     private readonly FoundationFundedWorkerIntentJournal? _funded;
     private readonly bool _growth;
+    private readonly bool _navalCollective;
     private readonly FoundationAgriculturalProductionPolicy? _agriculture;
     private readonly FoundationOperationalFreightShadowPolicy? _operationalPolicy;
 
@@ -55,7 +56,9 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
         FoundationConstructionCollectiveTurnPhase? construction = null,
         ulong? persistentMoneyMicroPerWholeWork = null, bool enableDemographicGrowth = false, FoundationAgriculturalProductionPolicy? agriculture = null, FoundationOperationalFreightShadowPolicy? operationalPolicy = null,
         bool enableExperimentalAutomaticBase = false, bool enableLocalPriceAllocation = false,
-        bool enableDefaultAutomaticBase = false, bool enableExclusiveNodeLabor = false)
+        bool enableDefaultAutomaticBase = false, bool enableExclusiveNodeLabor = false,
+        ulong? navalDepartureTimeMicro = null,
+        IReadOnlyDictionary<CivilizationId, FoundationCivilizationKnowledgeScope>? navalScopes = null)
     {
         ArgumentNullException.ThrowIfNull(world);
         _incidence = incidence ?? throw new ArgumentNullException(nameof(incidence));
@@ -75,6 +78,12 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
             throw new InvalidOperationException("Basic resource production requires explicit local allocation.");
         if (enableDefaultAutomaticBase && (!enableLocalPriceAllocation || agriculture?.BasicResources is null))
             throw new InvalidOperationException("Default automatic base requires the complete local economy experiment.");
+        _navalCollective = navalDepartureTimeMicro.HasValue;
+        if (_navalCollective && (!persistentMoneyMicroPerWholeWork.HasValue || fine is null ||
+            navalDepartureTimeMicro == 0 || !enableLocalPriceAllocation || !enableDefaultAutomaticBase))
+            throw new InvalidOperationException("Collective naval QA requires signed persistent local economy and explicit positive duration.");
+        if (!_navalCollective && navalScopes is not null)
+            throw new InvalidOperationException("Naval knowledge requires collective naval QA.");
         _growth = enableDemographicGrowth;
         _agriculture = agriculture;
         _operationalPolicy = operationalPolicy;
@@ -107,7 +116,9 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
             _persistent = new FoundationPersistentWorkerTurnScheduler(new FoundationConstructionApproachRouter(
                 world, incidence, fine, signature!, movementPolicy), agriculture,
                 enableExperimentalAutomaticBase ? economy : null,
-                enableExperimentalAutomaticBase ? operationalPolicy : null, enableLocalPriceAllocation, enableDefaultAutomaticBase, enableExclusiveNodeLabor);
+                enableExperimentalAutomaticBase ? operationalPolicy : null, enableLocalPriceAllocation, enableDefaultAutomaticBase, enableExclusiveNodeLabor,
+                enableNavalContinuation: _navalCollective, navalDepartureTimeMicro: navalDepartureTimeMicro,
+                navalScopes: navalScopes);
             _funded = new FoundationFundedWorkerIntentJournal(new FoundationConstructionFundingExecutor(
                 _capitalExecutor, persistentMoneyMicroPerWholeWork.Value));
         }
@@ -125,6 +136,8 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
                 "Temporal collective economy requires a complete opt-in physical world.");
         if (stagedState.WorkerOrders.IsInitialized != (_persistent is not null))
             throw new InvalidOperationException("Persistent queue deployment and collective phase must match.");
+        if ((stagedState.EdgeTravels.NavalVoyages is not null) != _navalCollective)
+            throw new InvalidOperationException("Naval ledger deployment and collective phase must match.");
         if (_persistent is not null) return ResolvePersistent(input, stagedState);
         // Each existing phase selects only its own command type.
         var workers = _local.Resolve(input, stagedState);
