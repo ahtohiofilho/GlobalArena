@@ -55,7 +55,8 @@ internal static class FoundationLocalBaseCalendarPlanner
             }
             var candidates = eligible.Select(choice =>
             {
-                var output = agriculture.ResolveActivity(worker, idle.Node, choice.Role, choice.Crop);
+                var output = FoundationTemporalEconomicTurnProjector.ResolveOpeningOutput(opening, worker,
+                    idle.Node, choice.Role, choice.Crop, agriculture);
                 ulong goods = checked((ulong)((UInt128)output.WholeTurnOutput * idle.DurationMicro / 1_000_000UL));
                 ulong? observed = prices.TryGetValue((idle.Node, output.Commodity), out var price) ? price : null;
                 return new FoundationLocalBaseCandidate(choice.Role, choice.Crop, goods, observed,
