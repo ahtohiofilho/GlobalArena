@@ -29,6 +29,7 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
     private readonly FoundationOperationalFreightShadowPolicy? _automaticOperations;
     internal bool UsesLocalPriceAllocation { get; }
     private readonly FoundationWorkerBaseActivity? _defaultBase;
+    private readonly bool _exclusiveNodeLabor;
 
     // An absent preference stays absent in the canonical private queue.
     // Only the explicitly configured execution policy supplies the fallback.
@@ -39,7 +40,8 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
         FoundationAgriculturalProductionPolicy? agriculture = null,
         FoundationAuthoritativeEconomicSettlementPolicy? experimentalAutomaticEconomy = null,
         FoundationOperationalFreightShadowPolicy? automaticOperations = null,
-        bool enableLocalPriceAllocation = false, bool enableDefaultAutomaticBase = false)
+        bool enableLocalPriceAllocation = false, bool enableDefaultAutomaticBase = false,
+        bool enableExclusiveNodeLabor = false)
     {
         _router = router ?? throw new ArgumentNullException(nameof(router));
         _agriculture = agriculture;
@@ -48,6 +50,9 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
         UsesLocalPriceAllocation = enableLocalPriceAllocation;
         if (enableDefaultAutomaticBase && (!enableLocalPriceAllocation || agriculture?.BasicResources is null))
             throw new InvalidOperationException("Default automatic base requires explicit local allocation and basic resources.");
+        if (enableExclusiveNodeLabor && !enableDefaultAutomaticBase)
+            throw new InvalidOperationException("Exclusive node labor requires the default automatic base preview.");
+        _exclusiveNodeLabor = enableExclusiveNodeLabor;
         _defaultBase = enableDefaultAutomaticBase ? new FoundationWorkerBaseActivity(FoundationWorkerBaseMode.Automatic) : null;
         if (enableLocalPriceAllocation && experimentalAutomaticEconomy is null)
             throw new InvalidOperationException("Local allocation requires the experimental automatic mode.");
@@ -150,6 +155,17 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
         var state = opening;
         var slices = new List<FoundationPersistentWorkerSlice>();
         var automaticStarts = new Dictionary<PhysicalWorkerId, uint>();
+        // Turn-local labor reservations, not territorial title or transit rights.
+        // First actual candidate boundary claims the node for this turn.
+        var workOwners = new Dictionary<PhysicalTacticalTileId, CivilizationId>();
+        var participants = opening.Civilizations.Civilizations.OrderBy(c => c.Value).ToArray();
+        var ranks = new Dictionary<CivilizationId, int>();
+        if (_exclusiveNodeLabor)
+        {
+            int first = (int)((context.Turn.Value - 1UL) % (ulong)participants.Length);
+            for (int i = 0; i < participants.Length; i++)
+                ranks.Add(participants[(first + i) % participants.Length], i);
+        }
         uint now = 0;
         while (now < Whole)
         {
@@ -168,6 +184,7 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
                     baseChanges.Add(q.Worker, BaseMode(availableWorkers[q.Worker], preference));
             state = AssignStationaryBatch(state, baseChanges);
             var modes = new List<Mode>();
+            var automaticCandidates = new HashSet<PhysicalWorkerId>();
             foreach (var id in state.Workers.Workers.Select(w => w.Id).ToArray())
             {
                 while (true)
@@ -190,7 +207,11 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
                         {
                             var mode = BaseMode(worker, preference);
                             if (preference.Mode == FoundationWorkerBaseMode.Automatic)
-                                automaticStarts.TryAdd(id, now);
+                            {
+                                if (!_exclusiveNodeLabor) automaticStarts.TryAdd(id, now);
+                                else if (_router.Geography.SurfaceAtIndex(checked((int)node.FineStrategicCellId.Value - 1)) ==
+                                    FoundationFineSurfaceKind.Land) automaticCandidates.Add(id);
+                            }
                             state = Assign(state, worker, node, worker.CellId, mode.Activity, mode.Occupation);
                             modes.Add(mode);
                         }
@@ -247,6 +268,40 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
                 }
             }
 
+            if (_exclusiveNodeLabor)
+            {
+                bool ClaimsWork(Mode m) => m.Travel is null &&
+                    m.Activity is not (PhysicalWorkerActivity.Traveling or PhysicalWorkerActivity.Military) &&
+                    (automaticCandidates.Contains(m.Worker) || m.Project.HasValue ||
+                    (m.Activity == PhysicalWorkerActivity.Producing && Produces(m.Occupation)) ||
+                    (m.Activity == PhysicalWorkerActivity.Other &&
+                        m.Occupation is PhysicalWorkerOccupation.LandTransport or PhysicalWorkerOccupation.PortOperations));
+                foreach (var group in modes.Where(ClaimsWork).GroupBy(m => m.Node))
+                {
+                    if (!workOwners.ContainsKey(group.Key))
+                        workOwners.Add(group.Key, group.Select(m => availableWorkers[m.Worker].Owner)
+                            .OrderBy(c => ranks[c]).First());
+                }
+                for (int i = 0; i < modes.Count; i++)
+                {
+                    var mode = modes[i];
+                    if (!ClaimsWork(mode)) continue;
+                    var owner = availableWorkers[mode.Worker].Owner;
+                    if (workOwners[mode.Node] == owner)
+                    {
+                        if (automaticCandidates.Contains(mode.Worker))
+                            automaticStarts.TryAdd(mode.Worker, now);
+                        continue;
+                    }
+                    // Retain queues/preferences. No construction progress,
+                    // production or operational service from the losing claim.
+                    var worker = state.Workers.Workers.Single(w => w.Id == mode.Worker);
+                    state = Assign(state, worker, mode.Node, worker.CellId,
+                        PhysicalWorkerActivity.Other, PhysicalWorkerOccupation.Unassigned);
+                    modes[i] = new(mode.Worker, mode.Node, PhysicalWorkerActivity.Other,
+                        PhysicalWorkerOccupation.Unassigned, null, null);
+                }
+            }
             ulong step = Whole - now;
             foreach (var m in modes.Where(m => m.Travel is not null))
                 step = Math.Min(step, m.Travel!.RemainingMicro);
@@ -321,7 +376,14 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
         var boundaryChanges = new Dictionary<PhysicalWorkerId, Mode>();
         foreach (var q in state.WorkerOrders.Queues.Where(q => EffectiveBase(q.BaseActivity) is not null &&
             q.Orders.Count == 0 && !boundaryPending.Contains(q.Worker)))
-            boundaryChanges.Add(q.Worker, BaseMode(boundaryWorkers[q.Worker], EffectiveBase(q.BaseActivity)!));
+        {
+            var worker = boundaryWorkers[q.Worker];
+            var mode = BaseMode(worker, EffectiveBase(q.BaseActivity)!);
+            if (_exclusiveNodeLabor && workOwners.TryGetValue(mode.Node, out var owner) && owner != worker.Owner)
+                mode = new(mode.Worker, mode.Node, PhysicalWorkerActivity.Other,
+                    PhysicalWorkerOccupation.Unassigned, null, null);
+            boundaryChanges.Add(q.Worker, mode);
+        }
         state = AssignStationaryBatch(state, boundaryChanges);
         if (automaticStarts.Count > 0)
         {
