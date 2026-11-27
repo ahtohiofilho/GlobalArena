@@ -1668,6 +1668,147 @@ public sealed class FoundationTemporalEconomicJournalGateTests
     }
 
     [Fact]
+    public void R234D2CCollectiveCloseReplaysFreeVoyageWithSeaDemandAndLandBirths()
+    {
+        var (world, _, _, _, incidence, fine) = Fixture();
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL), WorldGenerationVersion.Initial,
+                new GoldbergParameters(3, 0)), workersPerCivilization: 3);
+        var signature = FoundationFineFirstWorldgenCanonicalSignature.Compute(demo.Session.GeneratedWorld, incidence, fine);
+        var bound = demo.Session.Snapshot.PromoteFineFirstBeforeTransport(demo.Session.GeneratedWorld, incidence, fine, signature)
+            .DeployInitialFineFirstPhysicalTransport(world.Transport, demo.Session.GeneratedWorld, incidence, fine, signature);
+        var worker = bound.Workers.Workers.First();
+        var router = new FoundationConstructionApproachRouter(demo.Session.GeneratedWorld,
+            incidence, fine, signature, new FoundationGroundEdgeTravelTimePolicy(1_400_000UL));
+        var naval = router.NavalTransitions;
+        var parameters = incidence.Refinement.FineParameters;
+        var land = incidence.FineTopology.Cells.Where(c =>
+            fine.SurfaceAtIndex((int)c.Id.Value - 1) == FoundationFineSurfaceKind.Land &&
+            fine.CanTraverseOnFoot((int)c.Id.Value - 1)).ToArray();
+        var candidate = (from a in land
+            let origin = new PhysicalTacticalTileId(parameters, a.Id)
+            from b in a.AdjacentCellIds
+            where fine.CrossingAtIndices((int)a.Id.Value - 1, (int)b.Value - 1) == FoundationFineTransportCrossingKind.Port
+            let water = new PhysicalTacticalTileId(parameters, b)
+            from c in land
+            where c.Id != a.Id
+            let target = new PhysicalTacticalTileId(parameters, c.Id)
+            where naval.FindNextLandingStep(water, target).HasValue
+            select (Origin: origin, Water: water, Target: target)).First();
+        var foreignNode = new PhysicalTacticalTileId(parameters, land.First(c => c.Id != candidate.Origin.FineStrategicCellId &&
+            c.Id != candidate.Target.FineStrategicCellId).Id);
+        var census = bound.Workers.Workers.Select(w =>
+        {
+            var node = w.Owner == worker.Owner ? candidate.Origin : foreignNode;
+            var region = incidence.TileIncidences[(int)node.FineStrategicCellId.Value - 1].IncidentCoarseCellIds[0];
+            return w.WithTacticalLocationAndActivity(node, region, PhysicalWorkerActivity.Other).WithUniformCityDemography();
+        });
+        var opening = FoundationPersistedEdgeTravelTransitions.DeployEmpty(bound.WithWorkers(
+            new PhysicalWorkerRuntimeState(census, tacticalLocationsAuthoritative: true, occupationsAuthoritative: true))
+            .DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
+                bound.Civilizations.Civilizations.Select(c => (c, 5_000_000UL)))))
+            .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
+            .DeployInitialWorkerOrders();
+        foreach (var w in opening.Workers.Workers)
+            opening = opening.SetWorkerBaseActivity(w.Owner, w.Id,
+                new FoundationWorkerBaseActivity(FoundationWorkerBaseMode.Manual, PhysicalWorkerOccupation.Mining));
+        opening = naval.Deploy(opening);
+        var nodes = new List<PhysicalTacticalTileId> { candidate.Origin, candidate.Water };
+        var links = new List<(PhysicalTacticalTileId, PhysicalTacticalTileId)> { (candidate.Origin, candidate.Water) };
+        var at = candidate.Water;
+        while (at != candidate.Target)
+        {
+            var next = naval.FindNextLandingStep(at, candidate.Target)!.Value;
+            Assert.DoesNotContain(next, nodes);
+            nodes.Add(next);
+            links.Add((at, next));
+            at = next;
+        }
+        var scope = new FoundationCivilizationKnowledgeScope(nodes, links);
+        var scopes = opening.Civilizations.Civilizations.ToDictionary(c => c, _ => scope);
+        var crops = Enum.GetValues<GlobalArena.Foundation.Agriculture.CropId>().ToDictionary(c => c, c => new CommodityId((uint)c));
+        var wood = new CommodityId(100U);
+        var stone = new CommodityId(101U);
+        var agriculture = new FoundationAgriculturalProductionPolicy(fine, incidence, crops, 2_000_000UL,
+            new FoundationBasicResourceProductionPolicy(wood, stone, 6_000_000UL, 5_000_000UL));
+        var items = crops.Values.Append(wood).Append(stone).ToArray();
+        var demand = new FoundationActivityCommodityDemandPolicy(items,
+            Enum.GetValues<FoundationPhysicalDemandProfile>().SelectMany(profile => items.Select(c =>
+                new FoundationActivityCommodityDemandCoefficient(profile, c, 1_000_000UL))));
+        var economy = new FoundationAuthoritativeEconomicSettlementPolicy(demand,
+            new FoundationCommodityCargoConversionPolicy("r234d2c", items.Select(c =>
+                new FoundationCommodityCargoConversion(c, 1_000_000UL))),
+            opening.Civilizations.Civilizations.Select(c => new FoundationPhysicalEconomicTaxRate(c, 0U)),
+            maxProducerPasses: 64, useTemporalProgressiveDistribution: true, requireSafeProgressiveRoutes: true);
+        var phase = new FoundationTemporalCollectiveTurnPhase(demo.Session.GeneratedWorld, incidence,
+            new FoundationGroundEdgeTravelTimePolicy(1_400_000UL), economy, fine, signature,
+            persistentMoneyMicroPerWholeWork: 1_000_000UL, enableDemographicGrowth: true,
+            agriculture: agriculture, enableExperimentalAutomaticBase: true, enableLocalPriceAllocation: true,
+            enableDefaultAutomaticBase: true, enableExclusiveNodeLabor: true,
+            navalDepartureTimeMicro: 1_400_000UL, navalScopes: scopes);
+        var hasher = new CanonicalWorldStateHasher();
+        var state = opening;
+        bool sawSeaDemand = false, sawLanding = false;
+        ulong lastTurn = checked(1UL + ((ulong)links.Count * 1_400_000UL + 999_999UL) / 1_000_000UL);
+        for (ulong turn = 1; turn <= lastTurn; turn++)
+        {
+            var context = new SimulationContext(new TurnNumber(turn), new SimulationSeed(712UL));
+            ISimulationCommand[] commands = turn == 2 ? new ISimulationCommand[]
+            {
+                new FoundationPersistentOrderEditCommand(new CommandId(context.Turn, 1UL),
+                    new FoundationPersistentOrderEdit(worker.Owner, worker.Id,
+                        FoundationPersistentOrderEditKind.Insert, Index: 0,
+                        OrderKind: FoundationWorkerOrderKind.Move, Destination: candidate.Target))
+            } : Array.Empty<ISimulationCommand>();
+            if (turn == 2)
+            {
+                // A payable vessel cannot enter the collective close before
+                // the financial settlement contract exists.
+                var paid = naval.Embark(state, worker.Id, candidate.Water, turn, 1_400_000UL,
+                    _ => new FoundationClosedNodeWorkEvidence(1_000_000U, 0UL, 1_000_000UL));
+                var paidHash = hasher.Compute(paid);
+                Assert.Throws<InvalidOperationException>(() => phase.Resolve(
+                    new TurnResolutionInput(paid, commands, context), paid));
+                Assert.Equal(paidHash, hasher.Compute(paid));
+            }
+            var resolved = phase.Resolve(new TurnResolutionInput(state, commands, context), state);
+            var next = resolved.ResultingWorldState;
+            var timeline = Assert.Single(resolved.Events.OfType<FoundationPersistentWorkerTurnEvent>());
+            var sale = Assert.Single(resolved.Events.OfType<FoundationTemporalSalesSettledEvent>());
+            var births = Assert.Single(resolved.Events.OfType<FoundationPhysicalBirthBatchEvent>());
+            Assert.Equal(turn, next.Treasury.LastSettledEconomicCycleOrdinal);
+            Assert.Equal(turn, next.EdgeTravels.PriorWorkTurn);
+            Assert.Equal(28U, hasher.Compute(next).FormatVersion);
+            Assert.Equal(hasher.Compute(next), hasher.Compute(phase.ReplayPersistentJournal(state, resolved.EventLog, context)));
+            Assert.Equal(sale.GrossSalesScaled, sale.TotalCivilizationCreditsScaled + sale.PhysicalFreightScaled);
+            Assert.All(births.Newborns, b => Assert.Equal(FoundationFineSurfaceKind.Land,
+                fine.SurfaceAtIndex((int)b.TacticalTileId!.Value.FineStrategicCellId.Value - 1)));
+            var waterSlices = timeline.Slices.Where(s => s.Worker == worker.Id &&
+                fine.SurfaceAtIndex((int)s.Node.FineStrategicCellId.Value - 1) != FoundationFineSurfaceKind.Land).ToArray();
+            foreach (var slice in waterSlices)
+            {
+                Assert.Equal(PhysicalWorkerActivity.Traveling, slice.Activity);
+                var rows = sale.AuditedLocalEconomics!.Read(worker.Owner, slice.Node)!;
+                Assert.Contains(rows, r => r.DemandMicro > 0UL);
+                Assert.All(rows, r => Assert.Equal(0UL, r.ProducedMicro));
+                sawSeaDemand = true;
+            }
+            if (timeline.NavalLandings.Count > 0)
+            {
+                var landing = Assert.Single(timeline.NavalLandings);
+                Assert.Equal(candidate.Target, landing.Destination);
+                Assert.Equal(0UL, landing.Voyage.PaidNumerator);
+                sawLanding = true;
+                Assert.Empty(next.EdgeTravels.NavalVoyages!);
+            }
+            state = next;
+        }
+        Assert.True(sawSeaDemand);
+        Assert.True(sawLanding);
+        Assert.Equal(candidate.Target, state.Workers.Workers.Single(w => w.Id == worker.Id).TacticalTileId);
+    }
+
+    [Fact]
     public void R234D2BPreviousWorkIsCanonicalAndNavalDepartureRespectsKnowledge()
     {
         var (world, _, _, _, incidence, fine) = Fixture();
