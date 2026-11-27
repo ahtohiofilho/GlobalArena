@@ -1725,6 +1725,34 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Equal(28U, hasher.Compute(departure).FormatVersion);
         Assert.Equal(hasher.Compute(departure), hasher.Compute(naval.TryDepart(closed, closed,
             worker.Id, candidate.Target, 2, 1_400_000UL, null)!));
+        // Only the actual sea route is known. Even if the destination is
+        // on the same continent, no unknown ground shortcut is authorized.
+        var nodes = new List<PhysicalTacticalTileId> { candidate.Origin, candidate.Water };
+        var links = new List<(PhysicalTacticalTileId, PhysicalTacticalTileId)> { (candidate.Origin, candidate.Water) };
+        var at = candidate.Water;
+        while (at != candidate.Target)
+        {
+            var next = naval.FindNextLandingStep(at, candidate.Target)!.Value;
+            Assert.DoesNotContain(next, nodes);
+            nodes.Add(next);
+            links.Add((at, next));
+            at = next;
+        }
+        var scope = new FoundationCivilizationKnowledgeScope(nodes, links);
+        var scopes = closed.Civilizations.Civilizations.ToDictionary(c => c, _ => scope);
+        var scoped = new FoundationPersistentWorkerTurnScheduler(router,
+            enableNavalContinuation: true, navalDepartureTimeMicro: 1_400_000UL, navalScopes: scopes);
+        var queued = closed.InsertWorkerOrder(worker.Owner, worker.Id, 0,
+            FoundationWorkerOrderKind.Move, candidate.Target);
+        var second = new SimulationContext(new TurnNumber(2UL), new SimulationSeed(712UL));
+        var (sailed, timeline) = scoped.Record(queued, second);
+        Assert.Equal(400_000UL, Assert.Single(sailed.EdgeTravels.Pending, p => p.Worker == worker.Id).RemainingMicro);
+        Assert.Equal(2UL, Assert.Single(sailed.EdgeTravels.NavalVoyages!).EmbarkationTurn);
+        Assert.All(timeline.Slices.Where(s => s.Worker == worker.Id),
+            s => Assert.Equal(PhysicalWorkerActivity.Traveling, s.Activity));
+        Assert.Equal(hasher.Compute(sailed), hasher.Compute(scoped.Execute(queued, timeline, second)));
+        Assert.Equal(2UL, sailed.EdgeTravels.PriorWorkTurn);
+
     }
 
     [Fact]
