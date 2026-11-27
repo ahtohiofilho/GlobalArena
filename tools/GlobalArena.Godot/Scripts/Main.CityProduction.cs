@@ -249,7 +249,8 @@ public partial class Main
         {
             var worker = host.Snapshot.Workers.Workers.Single(w => w.Id == q.Worker);
             string label = $"Worker #{q.Worker.Value} | Node {worker.TacticalTileId!.Value.FineStrategicCellId.Value}" +
-                (worker.TacticalTileId == node ? " | At site" : " | Travel required");
+                $" | {DescribeCommittedCityWorkerActivity(host, worker)}" +
+                (worker.TacticalTileId == node ? "" : " | Travel required");
             if (project is not null)
             {
                 var order = q.Orders.FirstOrDefault(o => o.Kind == FoundationWorkerOrderKind.BuildProductive && o.ProjectId == project.Id);
