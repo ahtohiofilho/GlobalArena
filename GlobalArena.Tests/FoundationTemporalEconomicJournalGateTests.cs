@@ -180,8 +180,10 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Equal(before, hasher.Compute(opening));
     }
 
-    [Fact]
-    public void R235D2RemoteProductiveBuildUsesTypedQueueAndSharedCalendar()
+    [Theory]
+    [InlineData(1_200_000UL)]
+    [InlineData(1_600_000UL)]
+    public void R235D3RemoteProductiveBuildUsesTypedQueueAndSharedCalendar(ulong investment)
     {
         var (legacy, traveler, destination, _, incidence, fine) = Fixture();
         var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
@@ -214,7 +216,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         var hasher = new CanonicalWorldStateHasher();
         var before = hasher.Compute(opening);
         var command = new FoundationProductiveFundingCommand(new CommandId(context.Turn, 2UL),
-            worker.Owner, target, 1_600_000UL)
+            worker.Owner, target, investment)
             { Assignments = new[] { new FoundationFundedWorkerInsertion(worker.Id, 0) } };
         var road = new FoundationFundedWorkerIntentCommand(new CommandId(context.Turn, 1UL),
             worker.Owner, edge, 100_000UL, Array.Empty<FoundationFundedWorkerInsertion>());
@@ -235,6 +237,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Equal(Assert.Single(next.Constructions.Projects).Id, order.ProjectId);
         Assert.Equal(Assert.Single(next.ProductiveInfrastructure.Projects).Id, order.ProjectId);
         Assert.Equal(400_000UL, Assert.Single(next.EdgeTravels.Pending, p => p.Worker == worker.Id).RemainingMicro);
+        Assert.Equal(0UL, Assert.Single(next.ProductiveInfrastructure.Projects).CompletedWorkMicro);
         var funding = Assert.Single(result.Events.OfType<FoundationProductiveFundingEvent>());
         Assert.Equal(worker.Id, Assert.Single(funding.Assignments).Worker);
         Assert.Equal(hasher.Compute(next), hasher.Compute(phase.ReplayPersistentJournal(opening, result.EventLog, context)));
@@ -250,15 +253,43 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Equal(destination, arrived.Workers.Workers.Single(w => w.Id == worker.Id).TacticalTileId);
         Assert.Equal(FoundationConstructionApproachStatus.AtSite, router.Plan(arrived, worker.Id).Status);
         Assert.Equal(order, Assert.Single(arrived.WorkerOrders.Queues.Single(q => q.Worker == worker.Id).Orders));
-        Assert.Equal(0UL, Assert.Single(arrived.ProductiveInfrastructure.Projects).CompletedWorkMicro);
+        Assert.Equal(600_000UL, Assert.Single(arrived.ProductiveInfrastructure.Projects).CompletedWorkMicro);
+        Assert.Equal(0UL, arrived.ProductiveInfrastructure.Read(target).ActivatedCapitalMoneyMicro);
+        Assert.Equal(investment, arrived.ProductiveInfrastructure.Read(target).PendingCapitalMoneyMicro);
         Assert.Equal(0UL, Assert.Single(arrived.Constructions.Projects).CompletedWorkMicro);
         var slices = Assert.Single(second.Events.OfType<FoundationPersistentWorkerTurnEvent>()).Slices
             .Where(s => s.Worker == worker.Id).ToArray();
         Assert.Equal(400_000L, slices.Where(s => s.Activity == PhysicalWorkerActivity.Traveling).Sum(s => (long)s.DurationMicro));
         Assert.Equal(600_000L, slices.Where(s => s.Activity == PhysicalWorkerActivity.Other).Sum(s => (long)s.DurationMicro));
         Assert.All(slices, s => Assert.Null(s.ProjectId));
+        Assert.Equal(600_000L, slices.Where(s => s.ProductiveProjectId == order.ProjectId).Sum(s => (long)s.DurationMicro));
         Assert.Equal(before, hasher.Compute(opening));
         Assert.Equal(hasher.Compute(arrived), hasher.Compute(phase.ReplayPersistentJournal(next, second.EventLog, secondContext)));
+        var thirdContext = new SimulationContext(new TurnNumber(3UL), new SimulationSeed(712UL));
+        var ready = arrived.InsertWorkerOrder(worker.Owner, worker.Id, 1,
+            FoundationWorkerOrderKind.Occupation, occupation: PhysicalWorkerOccupation.Agriculture);
+        var third = phase.Resolve(new TurnResolutionInput(ready, Array.Empty<ISimulationCommand>(), thirdContext), ready);
+        var completed = third.ResultingWorldState;
+        var project = Assert.Single(completed.ProductiveInfrastructure.Projects);
+        Assert.True(project.IsActivated);
+        Assert.Equal(project.RequiredWorkMicro, project.CompletedWorkMicro);
+        Assert.Equal(investment, completed.ProductiveInfrastructure.Read(target).ActivatedCapitalMoneyMicro);
+        Assert.Equal(0UL, completed.ProductiveInfrastructure.Read(target).PendingCapitalMoneyMicro);
+        Assert.Equal(0UL, Assert.Single(completed.Constructions.Projects).CompletedWorkMicro);
+        var remainingOrder = Assert.Single(completed.WorkerOrders.Queues.Single(q => q.Worker == worker.Id).Orders);
+        Assert.Equal(FoundationWorkerOrderKind.Occupation, remainingOrder.Kind);
+        var timeline = Assert.Single(third.Events.OfType<FoundationPersistentWorkerTurnEvent>());
+        var work = checked((long)(investment - 600_000UL));
+        var workerSlices = timeline.Slices.Where(s => s.Worker == worker.Id).ToArray();
+        Assert.Equal(work, workerSlices.Where(s => s.ProductiveProjectId == project.Id).Sum(s => (long)s.DurationMicro));
+        Assert.Equal(1_000_000L - work, workerSlices.Where(s => s.Activity == PhysicalWorkerActivity.Producing).Sum(s => (long)s.DurationMicro));
+        Assert.Equal(hasher.Compute(completed), hasher.Compute(phase.ReplayPersistentJournal(ready, third.EventLog, thirdContext)));
+        var forgedTimeline = timeline with { Slices = timeline.Slices.Select(s => s.ProductiveProjectId.HasValue
+            ? s with { ProductiveProjectId = null } : s).ToArray() };
+        var forgedLog = new SimulationEventLog(third.EventLog.Entries.Select((e, index) =>
+            new SimulationEventLogEntry(checked((ulong)index + 1UL), e.Event is FoundationPersistentWorkerTurnEvent ? forgedTimeline : e.Event,
+                wasEligible: true, wasExecuted: true)).ToArray());
+        Assert.Throws<InvalidOperationException>(() => phase.ReplayPersistentJournal(ready, forgedLog, thirdContext));
     }
 
     [Fact]
