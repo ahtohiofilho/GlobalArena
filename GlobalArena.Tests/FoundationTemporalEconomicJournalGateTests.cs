@@ -2038,6 +2038,20 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             var port = opening.Transport.Edges.Single(e => e.Edge == voyage.EmbarkationEdge);
             var rate = FoundationPhysicalAuthoritativeTransportProjector.EffectiveUnitFreightCost(port);
             Assert.Equal(rate, voyage.EmbarkationFreightMicroPerWholeCargo);
+            var other = opening.Civilizations.Civilizations.Single(c => c != worker.Owner);
+            var funding = opening.DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
+                opening.Civilizations.Civilizations.Select(c => (c, 100_000_000UL))));
+            var invested = funding.RecordMonetaryInfrastructureInvestment(other, port.Edge,
+                port.NaturalConstructionCostMoneyMicro!.Value);
+            var improved = invested.Transport.Edges.Single(e => e.Edge == port.Edge);
+            var improvedRate = FoundationPhysicalAuthoritativeTransportProjector.EffectiveUnitFreightCost(improved);
+            Assert.True(improvedRate < rate);
+            var foreignTrip = naval.Embark(naval.Deploy(invested, cargo), worker.Id, water, 1, 1_400_000UL,
+                _ => throw new InvalidOperationException("Activated port must bypass work."));
+            var foreignVoyage = Assert.Single(foreignTrip.EdgeTravels.NavalVoyages!);
+            Assert.Equal(improvedRate, foreignVoyage.EmbarkationFreightMicroPerWholeCargo);
+            Assert.Equal(GlobalArenaMoneyScale.FromMoneyMicro(improvedRate) * 2,
+                FoundationNavalFareQuote.CalculateScaled(foreignVoyage, cargo));
             var expected = GlobalArenaMoneyScale.FromMoneyMicro(rate) * 3 / 2;
             Assert.Equal(expected, FoundationNavalFareQuote.CalculateScaled(voyage, cargo));
             Assert.Equal(BigInteger.Zero, FoundationNavalFareQuote.CalculateScaled(voyage with { PaidNumerator = 0UL }, cargo));
