@@ -1664,6 +1664,60 @@ public sealed class FoundationTemporalEconomicJournalGateTests
     }
 
     [Fact]
+    public void R234CBoardingUsesCoastalTitleBeforeCalendarAndExactWorkShare()
+    {
+        var (world, worker, _, _, incidence, fine) = Fixture();
+        var own = worker.Owner;
+        var foreign = world.Civilizations.Civilizations.Single(c => c != own);
+        var coast = incidence.FineTopology.Edges.First(e =>
+            fine.CrossingAtIndices((int)e.IncidentCellIds[0].Value - 1,
+                (int)e.IncidentCellIds[1].Value - 1) == FoundationFineTransportCrossingKind.Port);
+        var landId = coast.IncidentCellIds.Single(n =>
+            fine.SurfaceAtIndex((int)n.Value - 1) == FoundationFineSurfaceKind.Land);
+        var origin = new PhysicalTacticalTileId(incidence.Refinement.FineParameters, landId);
+        var water = new PhysicalTacticalTileId(incidence.Refinement.FineParameters,
+            coast.IncidentCellIds.Single(n => n != landId));
+        var edge = new PhysicalTacticalEdgeId(incidence.Refinement.FineParameters, coast.Id);
+        world = world.DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
+            world.Civilizations.Civilizations.Select(c => (c, 5_000_000UL))));
+        FoundationNavalBoardingDecision Read(WorldState w,
+            Func<IReadOnlySet<CivilizationId>, FoundationClosedNodeWorkEvidence?> evidence) =>
+            FoundationNavalBoardingPolicy.Evaluate(w, incidence, fine, own, origin, water, evidence);
+        Assert.Equal(FoundationNavalBoardingStatus.NoPriorCalendar, Read(world, _ => null).Status);
+        Assert.Equal(FoundationNavalBoardingStatus.InsufficientCoverage,
+            Read(world, _ => new(999_999U, 1_000_000UL, 1_000_000UL)).Status);
+        var shared = Read(world, eligible =>
+        {
+            Assert.Contains(foreign, eligible);
+            return new(1_000_000U, 1_000_000UL, 100_000_000UL);
+        });
+        Assert.True(shared.IsAllowed);
+        Assert.Equal(99_000_000UL, shared.PaidNumerator);
+        Assert.Equal(100_000_000UL, shared.PaidDenominator);
+        Assert.Equal(0UL, Read(world, _ => new(1_000_000U, 1_000_000UL, 1_000_000UL)).PaidNumerator);
+        var enemy = world.WithDiplomacy(world.Diplomacy.WithRelation(own, foreign, BaselineDiplomacyRelationKind.Enemy));
+        Assert.Equal(FoundationNavalBoardingStatus.InsufficientCoverage, Read(enemy, eligible =>
+        {
+            Assert.DoesNotContain(foreign, eligible);
+            return new(0U, 0UL, 0UL);
+        }).Status);
+        var funded = world.RecordMonetaryInfrastructureInvestment(own, edge, 1UL);
+        FoundationClosedNodeWorkEvidence? NeverRead(IReadOnlySet<CivilizationId> _) =>
+            throw new InvalidOperationException("Infrastructure must bypass calendar.");
+        Assert.Equal(new FoundationNavalBoardingDecision(FoundationNavalBoardingStatus.Allowed),
+            Read(funded, NeverRead));
+        var otherTitle = world.RecordMonetaryInfrastructureInvestment(foreign, edge, 1UL);
+        var fullCharge = new FoundationNavalBoardingDecision(FoundationNavalBoardingStatus.Allowed, 1, 1);
+        Assert.Equal(fullCharge, Read(otherTitle, NeverRead));
+        Assert.Equal(fullCharge, Read(otherTitle.WithDiplomacy(otherTitle.Diplomacy.WithRelation(
+            own, foreign, BaselineDiplomacyRelationKind.Ally)), NeverRead));
+        Assert.Equal(FoundationNavalBoardingStatus.HostileInfrastructure,
+            Read(otherTitle.WithDiplomacy(enemy.Diplomacy), NeverRead).Status);
+        Assert.Equal(FoundationNavalBoardingStatus.InvalidCoastalCrossing,
+            FoundationNavalBoardingPolicy.Evaluate(world, incidence, fine, own, water, origin, NeverRead).Status);
+    }
+
+    [Fact]
     public void R234BWorkCoverageAndWorkShareAreIndependent()
     {
         var (world, worker, destination, _, _, _) = Fixture();
