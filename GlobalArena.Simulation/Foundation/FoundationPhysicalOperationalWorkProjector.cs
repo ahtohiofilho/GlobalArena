@@ -201,7 +201,13 @@ public static class FoundationPhysicalOperationalWorkProjector
             incident.TryGetValue(item.Key.Tile, out var edges);
             var allocation = FoundationOperationalWorkAllocator.Allocate(
                 item.Value.Land, item.Value.Port,
-                edges is null ? Array.Empty<FoundationOperationalWorkEdge>() : edges);
+                edges is null ? Array.Empty<FoundationOperationalWorkEdge>() :
+                    edges.Where(e =>
+                    {
+                        var row = transport[e.Edge];
+                        return row.OwnershipKind == PhysicalTransportOwnershipKind.NoInfrastructure ||
+                            row.InfrastructureOwner == item.Key.Owner;
+                    }).ToArray());
             answer.Add(new FoundationPhysicalOperationalNodeAllocation(
                 item.Key.Tile, item.Key.Owner, allocation));
         }
