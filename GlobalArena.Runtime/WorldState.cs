@@ -937,6 +937,14 @@ public sealed class WorldState
                     "Persistent edge travel requires a bound physical workforce and transport.");
             var people = workers.Workers.ToDictionary(w => w.Id);
             var edges = transport.Edges.Select(e => e.Edge).ToHashSet();
+            if (edgeTravels.PriorWork is { } prior)
+            {
+                var fine = workers.Workers.FirstOrDefault()?.TacticalTileId?.FineGoldbergParameters;
+                if (fine is null || prior.Any(w => !civilizationIds.Contains(w.Owner) ||
+                    w.Node.FineGoldbergParameters != fine.Value ||
+                    w.Node.FineStrategicCellId.Value > fine.Value.StrategicCellCount))
+                    throw new InvalidOperationException("Previous naval work must reference real civilizations and physical nodes.");
+            }
             if (edgeTravels.NavalVoyages is { } voyages)
                 foreach (var voyage in voyages)
                 {
