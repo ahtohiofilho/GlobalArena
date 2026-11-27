@@ -181,9 +181,10 @@ public sealed class FoundationTemporalEconomicJournalGateTests
     }
 
     [Theory]
-    [InlineData(1_200_000UL)]
-    [InlineData(1_600_000UL)]
-    public void R235D3RemoteProductiveBuildUsesTypedQueueAndSharedCalendar(ulong investment)
+    [InlineData(1_200_000UL, true)]
+    [InlineData(1_600_000UL, true)]
+    [InlineData(1_600_000UL, false)]
+    public void R235D3RemoteProductiveBuildUsesTypedQueueAndSharedCalendar(ulong investment, bool progressive)
     {
         var (legacy, traveler, destination, _, incidence, fine) = Fixture();
         var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
@@ -208,8 +209,16 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             incidence.FineTopology.Edges.Single(e => e.IncidentCellIds.Contains(source.FineStrategicCellId) &&
                 e.IncidentCellIds.Contains(destination.FineStrategicCellId)).Id);
         var travel = new FoundationGroundEdgeTravelTimePolicy(1_400_000UL);
+        // Choose the distribution contract before any turn. The legacy
+        // fractional-production nonconvergence is tracked separately (#729).
+        // Never retry a rejected market with a different settlement policy.
+        var legacyPolicy = Policy(opening.Civilizations.Civilizations);
+        var settlement = progressive ? new FoundationAuthoritativeEconomicSettlementPolicy(
+            legacyPolicy.Demand, legacyPolicy.Cargo, legacyPolicy.TaxRates,
+            maxProducerPasses: legacyPolicy.MaxProducerPasses,
+            useTemporalProgressiveDistribution: true, requireSafeProgressiveRoutes: true) : legacyPolicy;
         var phase = new FoundationTemporalCollectiveTurnPhase(demo.Session.GeneratedWorld, incidence,
-            travel, Policy(opening.Civilizations.Civilizations), fine, signature,
+            travel, settlement, fine, signature,
             persistentMoneyMicroPerWholeWork: 1_000_000UL);
         var router = new FoundationConstructionApproachRouter(demo.Session.GeneratedWorld, incidence, fine, signature, travel);
         var context = new SimulationContext(new TurnNumber(1UL), new SimulationSeed(712UL));
