@@ -1286,6 +1286,125 @@ public sealed class FoundationTemporalEconomicJournalGateTests
 
 
 
+    private sealed class R233AProbePolicy : FoundationPersistentEconomicAiPolicy
+    {
+        public int Calls { get; private set; }
+        public FoundationPersistentAiView? View { get; private set; }
+        public Func<FoundationPersistentAiView, IReadOnlyList<FoundationPersistentOrderEdit>> Decide { get; set; } =
+            _ => Array.Empty<FoundationPersistentOrderEdit>();
+
+        public override IReadOnlyList<FoundationPersistentOrderEdit> PlanPersistent(FoundationPersistentAiView view)
+        {
+            Calls++;
+            View = view;
+            return Decide(view);
+        }
+    }
+
+    [Fact]
+    public void R233APersistentAiUsesPrivateOrdinaryOrdersAndExactHumanEquivalentReplay()
+    {
+        var (world, worker, _, _, incidence, fine) = Fixture();
+        var aiOwner = worker.Owner;
+        var human = world.Civilizations.Civilizations.Single(c => c != aiOwner);
+        FoundationTacticalHumanAiTurnHost CreateHost(R233AProbePolicy? policy)
+        {
+            var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+                new WorldGenerationRequest(new WorldSeed(20261012UL),
+                    WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)), workersPerCivilization: 3);
+            var signature = FoundationFineFirstWorldgenCanonicalSignature.Compute(demo.Session.GeneratedWorld, incidence, fine);
+            var bound = demo.Session.Snapshot.PromoteFineFirstBeforeTransport(
+                demo.Session.GeneratedWorld, incidence, fine, signature)
+                .DeployInitialFineFirstPhysicalTransport(world.Transport, demo.Session.GeneratedWorld, incidence, fine, signature);
+            var beginning = FoundationPersistedEdgeTravelTransitions.DeployEmpty(
+                bound.DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
+                    bound.Civilizations.Civilizations.Select(c => (c, 5_000_000UL)))))
+                .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
+                .DeployInitialWorkerOrders();
+            demo.Session.AcceptFineFirstOpening(beginning, incidence, fine, signature);
+            var policies = new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy>();
+            if (policy is not null) policies.Add(aiOwner, policy);
+            return new FoundationTacticalHumanAiTurnHost(demo.Session, incidence,
+                policy is null ? beginning.Civilizations.Civilizations.ToArray() : new[] { human },
+                policies, enableMonetaryInfrastructure: true,
+                settlementPolicy: Policy(beginning.Civilizations.Civilizations),
+                fineGeography: fine, fineSignature: signature,
+                physicalTravelPolicy: new FoundationGroundEdgeTravelTimePolicy(1_400_000UL),
+                constructionMoneyMicroPerWholeWork: 1_000_000UL);
+        }
+
+        var edit = new FoundationPersistentOrderEdit(aiOwner, worker.Id,
+            FoundationPersistentOrderEditKind.Insert, OrderKind: FoundationWorkerOrderKind.Occupation,
+            Occupation: PhysicalWorkerOccupation.Agriculture);
+        var probe = new R233AProbePolicy();
+        var host = CreateHost(probe);
+        var before = host.Snapshot;
+        var hash = host.StateHash;
+        var foreignWorker = before.Workers.Workers.First(w => w.Owner == human);
+        // A valid first edit followed by a forged foreign worker must stage nothing.
+        probe.Decide = _ => new[] { edit, edit with { Worker = foreignWorker.Id } };
+        Assert.Throws<InvalidOperationException>(() => host.PrepareAiCivilizations());
+        Assert.Equal(0, host.PendingOrderCount);
+        Assert.Empty(host.ReadyCivilizations);
+        Assert.Same(before, host.Snapshot);
+        Assert.Equal(hash, host.StateHash);
+
+        // A separately forged issuer must also fail before admission.
+        probe.Decide = _ => new[] { edit with { Issuer = human, Worker = foreignWorker.Id } };
+        Assert.Throws<InvalidOperationException>(() => host.PrepareAiCivilizations());
+        Assert.Equal(0, host.PendingOrderCount);
+        Assert.Empty(host.ReadyCivilizations);
+        Assert.Same(before, host.Snapshot);
+
+        probe.Decide = view =>
+        {
+            Assert.Equal(aiOwner, view.Owner);
+            Assert.Equal(host.NextTurn, view.Turn);
+            Assert.Equal(before.Workers.Workers.Where(w => w.Owner == aiOwner)
+                .Select(w => w.Id.Value).OrderBy(id => id), view.Workers.Select(w => w.Id.Value));
+            Assert.All(view.Workers, w =>
+            {
+                Assert.Equal(aiOwner, w.Queue.Owner);
+                Assert.Equal(w.Id, w.Queue.Worker);
+                Assert.Empty(w.Queue.Orders);
+                Assert.False(w.Crossing);
+            });
+            return new[] { edit };
+        };
+        host.PrepareAiCivilizations();
+        int calls = probe.Calls;
+        host.PrepareAiCivilizations();
+        Assert.Equal(calls, probe.Calls);
+        Assert.Equal(1, host.PendingOrderCount);
+        Assert.Single(host.ReadyCivilizations);
+        Assert.Same(before, host.Snapshot);
+        Assert.Equal(hash, host.StateHash);
+        Assert.Throws<InvalidOperationException>(() => host.GetHumanPersistentQueues(aiOwner));
+        Assert.All(host.GetHumanPersistentQueues(human), q => Assert.Empty(q.Orders));
+        Assert.Null(host.TryCloseTurn());
+        Assert.Equal(calls, probe.Calls);
+        host.SetHumanReady(human);
+        var actual = host.TryCloseTurn();
+        Assert.NotNull(actual);
+        Assert.True(actual!.ReplayMatched);
+        Assert.Equal(edit, Assert.Single(actual.PersistentEdits).Edit);
+        Assert.Equal(host.StateHash, actual.Hash);
+        Assert.Equal(0, host.PendingOrderCount);
+
+        // Same starting world and ordinary human-issued command must close
+        // to exactly the same authoritative state, including the journal.
+        var manual = CreateHost(null);
+        Assert.Equal(hash, manual.StateHash);
+        manual.QueueHumanPersistentEdit(aiOwner, edit);
+        manual.SetHumanReady(aiOwner);
+        manual.SetHumanReady(human);
+        var expected = manual.TryCloseTurn();
+        Assert.NotNull(expected);
+        Assert.Equal(expected!.Hash, actual.Hash);
+        Assert.Equal(expected.Revision, actual.Revision);
+        Assert.Equal(Assert.Single(expected.PersistentEdits), Assert.Single(actual.PersistentEdits));
+    }
+
     [Fact]
     public void R212HostPublishesOnlyAllReadyAndInterruptsActiveOccupation()
     {

@@ -917,6 +917,11 @@ public sealed class FoundationTacticalHumanAiTurnHost
         foreach (var civ in _participants.Where(_ai.ContainsKey))
         {
             if (_ready.Contains(civ)) continue;
+            if (PersistentOrdersEnabled && _ai[civ] is FoundationPersistentEconomicAiPolicy persistentAi)
+            {
+                PreparePersistentAi(civ, persistentAi);
+                continue;
+            }
             var before = Snapshot;
             var proposed = _ai[civ].Plan(
                 civ, before, _incidence, NextTurn)
@@ -965,6 +970,34 @@ public sealed class FoundationTacticalHumanAiTurnHost
                 throw;
             }
         }
+    }
+
+    // Only committed own-worker data crosses the new policy boundary.
+    // Stage the whole batch privately before making any edit visible.
+    private void PreparePersistentAi(CivilizationId civ, FoundationPersistentEconomicAiPolicy policy)
+    {
+        var before = Snapshot;
+        var queues = before.WorkerOrders.Queues.Where(q => q.Owner == civ).ToDictionary(q => q.Worker);
+        var crossings = before.EdgeTravels.Pending.Select(p => p.Worker).ToHashSet();
+        var workers = before.Workers.Workers.Where(w => w.Owner == civ)
+            .OrderBy(w => w.Id.Value)
+            .Select(w => new FoundationPersistentAiWorker(w.Id, w.TacticalTileId!.Value,
+                w.Activity, crossings.Contains(w.Id), queues[w.Id])).ToArray();
+        var view = new FoundationPersistentAiView(civ, NextTurn, Array.AsReadOnly(workers));
+        var edits = (policy.PlanPersistent(view)
+            ?? throw new InvalidOperationException("Persistent AI returned a null plan.")).ToArray();
+        CheckSnapshot();
+        if (!ReferenceEquals(before, Snapshot))
+            throw new InvalidOperationException("Persistent AI mutated canonical WorldState while planning.");
+        var list = _persistentPlans[civ];
+        if (list.Count != 0)
+            throw new InvalidOperationException("Unexpected pending persistent AI plan.");
+        var staged = new List<ISimulationCommand>(edits.Length);
+        foreach (var edit in edits)
+            staged.Add(CreatePersistentEdit(civ, edit, staged.Count));
+        _ = ProjectPersistentPlan(civ, staged);
+        list.AddRange(staged);
+        _ready.Add(civ);
     }
 
     public FoundationTacticalCollectiveReceipt? TryCloseTurn()
@@ -1192,16 +1225,23 @@ public sealed class FoundationTacticalHumanAiTurnHost
     public void QueueHumanPersistentEdit(CivilizationId human, FoundationPersistentOrderEdit edit)
     {
         RequireHuman(human); CheckWritable(human);
-        if (edit.Issuer != human) throw new InvalidOperationException("Foreign order edit.");
+        var list = _persistentPlans[human];
+        var command = CreatePersistentEdit(human, edit, list.Count);
+        _ = ProjectPersistentPlan(human, list.Append(command));
+        list.Add(command);
+    }
+
+    private FoundationPersistentOrderEditCommand CreatePersistentEdit(
+        CivilizationId owner, FoundationPersistentOrderEdit edit, int priorCount)
+    {
+        ArgumentNullException.ThrowIfNull(edit);
+        if (edit.Issuer != owner) throw new InvalidOperationException("Foreign order edit.");
         if (!PersistentOrdersEnabled) throw new InvalidOperationException("Persistent orders not configured.");
         if ((edit.Crop.HasValue || edit.BaseActivity?.Crop is not null) && AgriculturalProduction is null)
             throw new InvalidOperationException("Crop preview not configured.");
         if (edit.BaseActivity?.Mode == FoundationWorkerBaseMode.Automatic && !ExperimentalLocalEconomyEnabled)
             throw new InvalidOperationException("Automatic base allocation is not activated.");
-        var list = _persistentPlans[human];
-        var command = new FoundationPersistentOrderEditCommand(new CommandId(NextTurn, (ulong)list.Count + 1UL), edit);
-        _ = ProjectPersistentPlan(human, list.Append(command));
-        list.Add(command);
+        return new FoundationPersistentOrderEditCommand(new CommandId(NextTurn, (ulong)priorCount + 1UL), edit);
     }
 
     // Same private plan and collective publication as every other persistent edit.
