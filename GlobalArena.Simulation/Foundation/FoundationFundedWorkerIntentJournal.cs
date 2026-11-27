@@ -13,6 +13,11 @@ public sealed record FoundationFundedWorkerIntentEvent(
     ulong MoneyMicro, IReadOnlyList<FoundationFundedWorkerInsertion> Assignments,
     ulong ProjectId, WorldStateHash Before, WorldStateHash After) : ISimulationEvent;
 
+public sealed record FoundationProductiveFundingEvent(
+    EventId Id, CivilizationId Investor, FoundationProductiveTarget Target,
+    ulong MoneyMicro, ulong RequiredWorkMicro, ulong ProjectId,
+    WorldStateHash Before, WorldStateHash After) : ISimulationEvent;
+
 /// <summary>
 /// One immutable transaction: fund the canonical project, bind its actual
 /// allocated ID to each selected worker's queue. No travel or effort here.
@@ -62,8 +67,28 @@ public sealed class FoundationFundedWorkerIntentJournal : ISimulationEventExecut
             projectId, Hasher.Compute(world), Hasher.Compute(next)));
     }
 
+    internal (WorldState Next, FoundationProductiveFundingEvent Event) RecordProductive(
+        WorldState world, EventId id, CivilizationId investor, FoundationProductiveTarget target,
+        ulong moneyMicro, SimulationContext context)
+    {
+        var next = _funding.FundProductive(world, id, investor, target, moneyMicro, context);
+        var project = next.ProductiveInfrastructure.Projects.Single(p => p.Target == target && !p.IsActivated);
+        return (next, new(id, investor, target, moneyMicro, project.RequiredWorkMicro,
+            project.Id, Hasher.Compute(world), Hasher.Compute(next)));
+    }
+
     public WorldState Execute(WorldState state, ISimulationEvent simulationEvent, SimulationContext context)
     {
+        if (simulationEvent is FoundationProductiveFundingEvent productive)
+        {
+            if (Hasher.Compute(state) != productive.Before)
+                throw new InvalidOperationException("Stale productive funding event.");
+            var (funded, expected) = RecordProductive(state, productive.Id, productive.Investor,
+                productive.Target, productive.MoneyMicro, context);
+            if (expected != productive)
+                throw new InvalidOperationException("Productive funding replay diverged.");
+            return funded;
+        }
         if (simulationEvent is not FoundationFundedWorkerIntentEvent ev ||
             Hasher.Compute(state) != ev.Before || ev.Assignments is null)
             throw new InvalidOperationException("Invalid or stale funding assignment event.");
