@@ -274,7 +274,8 @@ public partial class Main
         var committed = host.Snapshot.WorkerOrders.Queues.Single(q => q.Worker == id);
         var active = committed.Orders.FirstOrDefault(o => o.Id == committed.ActiveOrderId);
         var travel = host.Snapshot.EdgeTravels.Pending.SingleOrDefault(p => p.Worker == id);
-        string activity = travel is not null ? "Traveling" :
+        var vessel = host.Snapshot.EdgeTravels.NavalVoyages?.SingleOrDefault(v => v.Worker == id);
+        string activity = vessel is not null ? "At sea" : travel is not null ? "Traveling" :
             person.Activity == PhysicalWorkerActivity.Producing ? person.Occupation.ToString() ?? "Producing" :
             active?.Kind == FoundationWorkerOrderKind.Build ? "Construction order active" :
             person.Occupation is PhysicalWorkerOccupation.LandTransport or PhysicalWorkerOccupation.PortOperations ? person.Occupation.ToString()! :
@@ -300,6 +301,57 @@ public partial class Main
         _persistentCrossingProgress.Value = (double)percent;
         _persistentCrossingLabel.Text = FormattableString.Invariant(
             $"Crossing {travel.Source.FineStrategicCellId.Value} → {travel.Destination.FineStrategicCellId.Value} | {percent:F1}%\nRemaining: {GaDisplayNumbers.PhysicalMicro(travel.RemainingMicro)} turns");
+    }
+
+    // Separate from historical UI smoke profiles; actual Main close and
+    // worker selection paths, not a second simulation or synthetic event.
+    private void ExerciseR234HNavalSmoke()
+    {
+        try
+        {
+            var host = _tacticalHost!;
+            var worker = host.Snapshot.Workers.Workers.First(w => w.Owner == _humanCivilization);
+            var origin = worker.TacticalTileId!.Value;
+            var target = GaExplicitEconomicQaConfiguration.NavalSmokeDestination
+                ?? throw new InvalidOperationException("Missing signed naval smoke destination.");
+            var initialHash = host.StateHash;
+            OnOperationalWorkerSelected(worker.Id.Value);
+            host.QueueHumanBaseActivity(_humanCivilization, worker.Id,
+                new FoundationWorkerBaseActivity(FoundationWorkerBaseMode.Manual, PhysicalWorkerOccupation.Mining));
+            if (host.StateHash != initialHash) throw new InvalidOperationException("Pending work mutated committed state.");
+            EndFineCollectiveTurn();
+            if (host.Snapshot.EdgeTravels.PriorWorkTurn != 1UL)
+                throw new InvalidOperationException("First economic work calendar was not closed.");
+            AppendPersistentOrder(worker.Id, FoundationWorkerOrderKind.Move, destination: target);
+            for (ulong turn = 2UL; turn <= 4UL; turn++)
+            {
+                EndFineCollectiveTurn();
+                if (host.Snapshot.Treasury.LastNavalSettlementCycleOrdinal != turn ||
+                    host.StateHash.FormatVersion != 30U)
+                    throw new InvalidOperationException("Naval close did not publish its canonical journal.");
+                var person = host.Snapshot.Workers.Workers.Single(w => w.Id == worker.Id);
+                var afloat = host.Snapshot.EdgeTravels.NavalVoyages!.Any(v => v.Worker == worker.Id);
+                OnOperationalWorkerSelected(worker.Id.Value);
+                if (turn < 4UL)
+                {
+                    if (!afloat || person.Activity != PhysicalWorkerActivity.Traveling ||
+                        _selectedUnitIdentity?.Text.Contains("At sea") != true)
+                        throw new InvalidOperationException("Own worker naval state not visible.");
+                }
+                else if (afloat || person.TacticalTileId != target || person.TacticalTileId == origin ||
+                    person.Activity != PhysicalWorkerActivity.Producing ||
+                    _selectedUnitIdentity?.Text.Contains("At sea") == true ||
+                    host.Snapshot.Treasury.Get(_humanCivilization).TotalNavalFareDebitsScaled != 0)
+                    throw new InvalidOperationException("Free landing or residual production is incorrect.");
+            }
+            GD.Print("GA_NEXT_R234H_NAVAL_SMOKE_PASS cycles=4 actual_main_close=true own_readout=true free_landing=true hash_v=30");
+            GetTree().Quit();
+        }
+        catch (Exception ex)
+        {
+            GD.PrintErr($"GA_NEXT_R234H_NAVAL_SMOKE_FAIL {ex}");
+            GetTree().Quit(1);
+        }
     }
 
     private void ExerciseCropPreview(FoundationTacticalHumanAiTurnHost host)
