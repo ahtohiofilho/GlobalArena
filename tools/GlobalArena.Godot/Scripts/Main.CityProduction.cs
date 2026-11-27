@@ -304,6 +304,69 @@ public partial class Main
         catch (Exception ex) { if (_productiveFeedback is not null) _productiveFeedback.Text = "Command rejected: " + ex.Message; }
     }
 
+    private void ExerciseProductiveInvestmentSmoke(FoundationTacticalHumanAiTurnHost host)
+    {
+        if (!host.ProductiveInfrastructureEnabled || host.StateHash.FormatVersion != 31U)
+            throw new InvalidOperationException("Missing explicit productive infrastructure deployment.");
+        var worker = host.Snapshot.Workers.Workers.First(w => w.Owner == _humanCivilization &&
+            _r123FineGeography!.SurfaceAtIndex((int)w.TacticalTileId!.Value.FineStrategicCellId.Value - 1) == FoundationFineSurfaceKind.Land);
+        var node = worker.TacticalTileId!.Value;
+        FocusCityProductionSmokeSite(host, node);
+        var tabs = FindChild("GANextCityTabs", true, false) as TabContainer
+            ?? throw new InvalidOperationException("City tabs missing.");
+        tabs.CurrentTab = 2;
+        if (_productivePanel?.IsVisibleInTree() != true || _productiveCapital?.GetChildCount() != 16)
+            throw new InvalidOperationException("Productive controls unavailable before economic close.");
+        EndFineCollectiveTurn();
+        if (host.Snapshot.Treasury.LastSettledEconomicCycleOrdinal != 1UL)
+            throw new InvalidOperationException("Productive smoke could not close opening cycle.");
+        FocusCityProductionSmokeSite(host, node);
+        tabs.CurrentTab = 2;
+        var target = new FoundationProductiveTarget(node, FoundationProductiveActivity.Agriculture);
+        var before = host.StateHash;
+        const ulong money = 10_000UL;
+        _productiveAmount!.Text = GaDisplayNumbers.ExactMoneyInput(money);
+        RefreshProductiveInvestmentControls();
+        var check = _productiveWorkers!.GetChildren().OfType<CheckBox>()
+            .Single(b => b.Text.StartsWith($"Worker #{worker.Id.Value} |", StringComparison.Ordinal));
+        check.ButtonPressed = true;
+        if (_productiveQueue?.Disabled != false) throw new InvalidOperationException("Affordable funding action unavailable.");
+        _productiveQueue.EmitSignal(Button.SignalName.Pressed);
+        var plan = host.GetHumanPendingProductiveFunding(_humanCivilization).Single();
+        if (plan.Target != target || plan.MoneyMicro != money || plan.Assignments.Single().Worker != worker.Id ||
+            host.StateHash != before || host.GetHumanProductiveProjects(_humanCivilization, node).Count != 0)
+            throw new InvalidOperationException("Productive queue did not stage atomic private funding and workforce.");
+        _productiveCancel!.EmitSignal(Button.SignalName.Pressed);
+        if (host.GetHumanPendingProductiveFunding(_humanCivilization).Count != 0 || host.StateHash != before)
+            throw new InvalidOperationException("Productive funding cancellation mutated authority.");
+        _productiveQueue.EmitSignal(Button.SignalName.Pressed);
+        if (host.GetHumanPendingProductiveFunding(_humanCivilization).Single().Assignments.Count != 0)
+            throw new InvalidOperationException("Canceled workforce selection was not cleared.");
+        EndFineCollectiveTurn();
+        var pending = host.GetHumanProductiveProjects(_humanCivilization, node).Single();
+        if (pending.IsActivated || pending.CompletedWorkMicro != 0UL || _productiveProgress?.IsVisibleInTree() != true)
+            throw new InvalidOperationException("Funded project did not display actual pending progress.");
+        var assign = _productiveWorkers.GetChildren().OfType<Button>()
+            .Single(b => b.Text.StartsWith($"Worker #{worker.Id.Value} |", StringComparison.Ordinal) && b.Text.EndsWith(" | Assign", StringComparison.Ordinal));
+        before = host.StateHash;
+        assign.EmitSignal(Button.SignalName.Pressed);
+        if (host.StateHash != before || !host.GetHumanPersistentQueues(_humanCivilization).Single(q => q.Worker == worker.Id)
+            .Orders.Any(o => o.Kind == FoundationWorkerOrderKind.BuildProductive && o.ProjectId == pending.Id))
+            throw new InvalidOperationException("Productive assignment did not reach the canonical typed queue.");
+        EndFineCollectiveTurn();
+        var active = host.GetHumanProductiveCapital(_humanCivilization, node).Single(c => c.Target == target);
+        if (active.ActivatedCapitalMoneyMicro != money || active.PendingCapitalMoneyMicro != 0UL ||
+            host.Snapshot.Treasury.LastSettledEconomicCycleOrdinal != 3UL || _productiveProgress?.Visible != false)
+            throw new InvalidOperationException("Productive activation did not refresh the open City tab.");
+        var foreign = host.Snapshot.Workers.Workers.First(w => w.Owner != _humanCivilization &&
+            w.TacticalTileId is { } tile && !host.Snapshot.Workers.Workers.Any(own => own.Owner == _humanCivilization && own.TacticalTileId == tile));
+        before = host.StateHash;
+        FocusCityProductionSmokeSite(host, foreign.TacticalTileId!.Value);
+        if (_productivePanel.Visible || host.StateHash != before)
+            throw new InvalidOperationException("Foreign city exposed productive controls or mutated authority.");
+        GD.Print("GA_NEXT_R235F2_PRODUCTIVE_UI_PASS real_controls=true private_funding=true cancellation=true assignment=true activation=true foreign_hidden=true");
+    }
+
     private void FocusCityProductionSmokeSite(FoundationTacticalHumanAiTurnHost host, PhysicalTacticalTileId node)
     {
         var map = _tacticalPreview ?? throw new InvalidOperationException("Missing tactical map.");
