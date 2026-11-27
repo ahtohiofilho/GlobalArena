@@ -279,8 +279,15 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
                         state = state.CompleteWorkerOrder(worker.Owner, id, head.Id);
                         continue;
                     }
-                    var plan = head.Kind == FoundationWorkerOrderKind.Build
-                        ? _router.Plan(state, id) : _router.PlanMove(state, id, head.Destination!.Value, _navalScopes?[worker.Owner]);
+                    if (head.Kind == FoundationWorkerOrderKind.BuildProductive &&
+                        state.ProductiveInfrastructure.Projects.Single(p => p.Id == head.ProjectId).IsComplete)
+                    {
+                        state = state.CompleteWorkerOrder(worker.Owner, id, head.Id);
+                        continue;
+                    }
+                    var plan = head.Kind is FoundationWorkerOrderKind.Build or FoundationWorkerOrderKind.BuildProductive
+                        ? _router.Plan(state, id, _navalScopes?[worker.Owner])
+                        : _router.PlanMove(state, id, head.Destination!.Value, _navalScopes?[worker.Owner]);
                     if (plan.Status == FoundationConstructionApproachStatus.AtSite)
                     {
                         if (head.Kind == FoundationWorkerOrderKind.Move)
@@ -291,7 +298,8 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
                         state = Assign(state, worker, node, worker.CellId,
                             PhysicalWorkerActivity.Other, PhysicalWorkerOccupation.Unassigned);
                         modes.Add(new(id, node, PhysicalWorkerActivity.Other,
-                            PhysicalWorkerOccupation.Unassigned, head.ProjectId, null));
+                            PhysicalWorkerOccupation.Unassigned,
+                            head.Kind == FoundationWorkerOrderKind.BuildProductive ? null : head.ProjectId, null));
                         break;
                     }
                     if (plan.Status == FoundationConstructionApproachStatus.RouteAvailable)
