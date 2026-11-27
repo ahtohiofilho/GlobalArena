@@ -25,6 +25,8 @@ public sealed record FoundationPersistentAiView(
     public bool DefaultAutomaticBase { get; internal init; }
     public BigInteger? OwnCashScaled { get; internal init; }
     public bool FundingAvailable { get; internal init; }
+    public IReadOnlyList<FoundationAiInvestmentOpportunity> InvestmentOpportunities { get; internal init; } =
+        Array.Empty<FoundationAiInvestmentOpportunity>();
     public IReadOnlyList<FoundationAiAdjacentOpportunity> AdjacentOpportunities { get; internal init; } =
         Array.Empty<FoundationAiAdjacentOpportunity>();
 }
@@ -40,6 +42,7 @@ public sealed record FoundationAiFundingIntent(
 public abstract class FoundationPersistentEconomicAiPolicy : IFoundationTacticalAiTurnPolicy
 {
     internal virtual bool RequiresExpansionCandidates => false;
+    internal virtual bool RequiresInvestmentCandidates => false;
     // First QA funding boundary: exclusive with order edits in this turn,
     // so a rejected competing fund cannot leave dependent provisional IDs.
     public virtual FoundationAiFundingIntent? PlanFunding(FoundationPersistentAiView view) => null;
@@ -124,5 +127,54 @@ public sealed class FoundationPersistentExpansionAiPolicy : FoundationPersistent
         return Array.AsReadOnly(new[] { new FoundationPersistentOrderEdit(view.Owner, best.Worker.Id,
             FoundationPersistentOrderEditKind.Insert, Index: 0,
             OrderKind: FoundationWorkerOrderKind.Move, Destination: best.Edge.Destination) });
+    }
+}
+
+/// <summary>Fixed-flow estimate at a currently observed own incident ground
+/// edge. No forecast of prices, tariffs, new cargo or construction completion.</summary>
+public sealed record FoundationAiInvestmentOpportunity(
+    PhysicalTacticalEdgeId Edge, PhysicalTacticalTileId Source,
+    ulong CargoMicro, ulong MoneyMicro, ulong UnitCostBeforeMicro, ulong UnitCostAfterMicro)
+{
+    public BigInteger SavingNumerator => UnitCostBeforeMicro > UnitCostAfterMicro
+        ? new BigInteger(CargoMicro) * (UnitCostBeforeMicro - UnitCostAfterMicro)
+        : BigInteger.Zero;
+}
+
+/// <summary>Experimental investment-only policy. Invest at most one tenth
+/// of current cash and one reference quote; require ten cycles of constant
+/// participant cargo savings to exceed capital. This is not net income.</summary>
+public sealed class FoundationPersistentInvestmentAiPolicy : FoundationPersistentEconomicAiPolicy
+{
+    internal override bool RequiresInvestmentCandidates => true;
+
+    public override IReadOnlyList<FoundationPersistentOrderEdit> PlanPersistent(FoundationPersistentAiView view)
+        => Array.Empty<FoundationPersistentOrderEdit>();
+
+    public override FoundationAiFundingIntent? PlanFunding(FoundationPersistentAiView view)
+    {
+        ArgumentNullException.ThrowIfNull(view);
+        if (!view.FundingAvailable || !view.DefaultAutomaticBase || !view.AutomaticBaseAvailable ||
+            view.OwnCashScaled is not { } cash || cash <= 0)
+            return null;
+        var workers = view.Workers.Where(w => !w.Crossing &&
+            w.Activity != PhysicalWorkerActivity.Traveling && w.Queue.Orders.Count == 0 &&
+            w.Queue.BaseActivity?.Mode != FoundationWorkerBaseMode.Manual)
+            .GroupBy(w => w.Node).ToDictionary(g => g.Key, g => g.OrderBy(w => w.Id.Value).ToArray());
+        var choices = view.InvestmentOpportunities
+            .Where(c => c.MoneyMicro > 0 && c.CargoMicro > 0 &&
+                GlobalArenaMoneyScale.FromMoneyMicro(c.MoneyMicro) * 10 <= cash &&
+                workers.TryGetValue(c.Source, out var available) && available.Length >= 3)
+            .Select(c => (Opportunity: c, Surplus: 10 * c.SavingNumerator -
+                (BigInteger)c.MoneyMicro * 1_000_000UL))
+            .Where(c => c.Surplus > 0)
+            .OrderByDescending(c => c.Surplus)
+            .ThenBy(c => c.Opportunity.Edge.FineStrategicEdgeId.Value)
+            .ThenBy(c => c.Opportunity.Source.FineStrategicCellId.Value)
+            .ToArray();
+        if (choices.Length == 0) return null;
+        var best = choices[0].Opportunity;
+        return new FoundationAiFundingIntent(best.Edge, best.MoneyMicro,
+            Array.AsReadOnly(new[] { new FoundationFundedWorkerInsertion(workers[best.Source][^1].Id, 0) }));
     }
 }
