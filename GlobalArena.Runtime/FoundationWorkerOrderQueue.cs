@@ -3,7 +3,7 @@ using GlobalArena.World;
 namespace GlobalArena.Runtime.PersistentOrders;
 
 /// <summary>Intent only: no physical progress, treasury or work is stored here.</summary>
-public enum FoundationWorkerOrderKind { Move = 1, Build = 2, Occupation = 3 }
+public enum FoundationWorkerOrderKind { Move = 1, Build = 2, Occupation = 3, BuildProductive = 4 }
 
 public sealed record FoundationPersistentWorkerIntent(
     ulong Id, FoundationWorkerOrderKind Kind,
@@ -15,7 +15,7 @@ public sealed record FoundationPersistentWorkerIntent(
     {
         FoundationWorkerOrderKind.Move => Destination.HasValue && Destination.Value.IsValid &&
             ProjectId is null && Occupation is null,
-        FoundationWorkerOrderKind.Build => Destination is null &&
+        FoundationWorkerOrderKind.Build or FoundationWorkerOrderKind.BuildProductive => Destination is null &&
             ProjectId is > 0 && Occupation is null,
         FoundationWorkerOrderKind.Occupation => Destination is null &&
             ProjectId is null && Occupation.HasValue && Enum.IsDefined(Occupation.Value),
