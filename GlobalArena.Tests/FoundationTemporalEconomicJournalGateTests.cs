@@ -451,6 +451,78 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Equal(hash, hasher.Compute(ready));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void R235F1HostAdmitsPrivateProductivePlansAndArbitratesWithoutForeignDebit(bool reverse)
+    {
+        var (legacy, traveler, remote, _, incidence, fine) = Fixture();
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL), WorldGenerationVersion.Initial,
+                new GoldbergParameters(3, 0)), workersPerCivilization: 3);
+        var signature = FoundationFineFirstWorldgenCanonicalSignature.Compute(demo.Session.GeneratedWorld, incidence, fine);
+        var bound = demo.Session.Snapshot.PromoteFineFirstBeforeTransport(demo.Session.GeneratedWorld, incidence, fine, signature)
+            .DeployInitialFineFirstPhysicalTransport(legacy.Transport, demo.Session.GeneratedWorld, incidence, fine, signature);
+        var opening = FoundationPersistedEdgeTravelTransitions.DeployEmpty(bound
+            .DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
+                bound.Civilizations.Civilizations.Select(c => (c, 5_000_000UL)))))
+            .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
+            .DeployInitialWorkerOrders().DeployInitialProductiveInfrastructure(ProductiveReferences());
+        demo.Session.AcceptFineFirstOpening(opening, incidence, fine, signature);
+        var node = traveler.TacticalTileId!.Value;
+        opening = opening.WithWorkers(new PhysicalWorkerRuntimeState(opening.Workers.Workers.Select(w =>
+            w.WithTacticalAssignment(node, traveler.CellId, w.Activity, w.Occupation!.Value)),
+            tacticalLocationsAuthoritative: true, occupationsAuthoritative: true));
+        demo.Session.AcceptSnapshot(opening);
+        var civs = opening.Civilizations.Civilizations.OrderBy(c => c.Value).ToArray();
+        var scopes = civs.ToDictionary(c => c, _ => new FoundationCivilizationKnowledgeScope(
+            new[] { node }, Array.Empty<(PhysicalTacticalTileId, PhysicalTacticalTileId)>()));
+        var host = new FoundationTacticalHumanAiTurnHost(demo.Session, incidence, civs,
+            new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy>(), enableMonetaryInfrastructure: true,
+            settlementPolicy: Policy(civs), fineGeography: fine, fineSignature: signature,
+            physicalTravelPolicy: new FoundationGroundEdgeTravelTimePolicy(1_400_000UL),
+            constructionMoneyMicroPerWholeWork: 1_000_000UL, knowledgeScopes: scopes);
+        Assert.True(host.ProductiveInfrastructureEnabled);
+        var target = new FoundationProductiveTarget(node, FoundationProductiveActivity.Mining);
+        var winner = civs[0]; var loser = civs[1];
+        var builder = opening.Workers.Workers.First(w => w.Owner == winner);
+        var foreign = opening.Workers.Workers.First(w => w.Owner == loser);
+        var hash = host.StateHash;
+        Assert.Throws<InvalidOperationException>(() => host.QueueHumanProductiveFunding(winner,
+            target with { Node = remote }, 1UL, Array.Empty<FoundationFundedWorkerInsertion>()));
+        Assert.Throws<InvalidOperationException>(() => host.QueueHumanProductiveFunding(winner, target,
+            600_000UL, new[] { new FoundationFundedWorkerInsertion(foreign.Id, 0) }));
+        host.QueueHumanProductiveFunding(winner, target, 1UL, Array.Empty<FoundationFundedWorkerInsertion>());
+        Assert.True(host.CancelHumanProductiveFunding(winner, target));
+        var sequence = reverse ? civs.Reverse().ToArray() : civs;
+        foreach (var civ in sequence)
+        {
+            var person = civ == winner ? builder : foreign;
+            host.QueueHumanProductiveFunding(civ, target, civ == winner ? 600_000UL : 900_000UL,
+                new[] { new FoundationFundedWorkerInsertion(person.Id, 0) });
+            Assert.Single(host.GetHumanPendingProductiveFunding(civ));
+        }
+        Assert.Empty(host.GetHumanProductiveProjects(winner, node));
+        Assert.Empty(host.GetHumanProductiveProjects(loser, node));
+        Assert.Equal(hash, host.StateHash);
+        host.SetHumanReady(sequence[0]);
+        Assert.Null(host.TryCloseTurn());
+        host.SetHumanReady(sequence[1]);
+        var receipt = Assert.IsType<FoundationTacticalCollectiveReceipt>(host.TryCloseTurn());
+        Assert.True(receipt.ReplayMatched);
+        Assert.Equal(winner, Assert.Single(receipt.ProductiveFunding).Investor);
+        Assert.Equal(600_000UL, Assert.Single(host.GetHumanProductiveProjects(winner, node)).FundedMoneyMicro);
+        Assert.Empty(host.GetHumanProductiveProjects(loser, node));
+        Assert.Null(host.GetHumanProductiveCapital(loser, node).Single(r => r.Target == target).ReservedOwner);
+        Assert.Equal(600_000UL, host.GetHumanProductiveCapital(winner, node).Single(r => r.Target == target).ActivatedCapitalMoneyMicro);
+        Assert.Empty(host.GetHumanPendingProductiveFunding(winner));
+        Assert.Empty(host.GetHumanPendingProductiveFunding(loser));
+        var sale = receipt.TemporalEconomicSettlement!;
+        Assert.Equal(opening.Treasury.Get(loser).CashScaled +
+            sale.Credits.Single(c => c.Civilization == loser).CashCreditScaled,
+            host.Snapshot.Treasury.Get(loser).CashScaled);
+    }
+
     [Fact]
     public void R235BGenericCapitalResponseIsExactMonotoneAndScaleIndependent()
     {
