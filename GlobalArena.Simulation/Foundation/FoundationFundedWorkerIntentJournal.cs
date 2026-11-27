@@ -35,6 +35,8 @@ public sealed class FoundationFundedWorkerIntentJournal : ISimulationEventExecut
     public FoundationFundedWorkerIntentJournal(FoundationConstructionFundingExecutor funding)
         => _funding = funding ?? throw new ArgumentNullException(nameof(funding));
 
+    internal ulong QuoteWork(ulong moneyMicro) => _funding.Quote(moneyMicro);
+
     private (WorldState Next, ulong ProjectId) Apply(WorldState world, EventId id,
         CivilizationId investor, PhysicalTacticalEdgeId edge, ulong moneyMicro,
         IReadOnlyList<FoundationFundedWorkerInsertion> assignments, SimulationContext context)
