@@ -10,6 +10,69 @@ namespace GlobalArena.Tests;
 
 public sealed class FoundationTemporalEconomicJournalGateTests
 {
+    [Fact]
+    public void R235BGenericCapitalResponseIsExactMonotoneAndScaleIndependent()
+    {
+        const ulong natural = 1_000_000UL, reference = 10_000_000UL;
+        Assert.Equal(natural, FoundationInfrastructureCapitalResponse.ProjectProductiveOutput(natural, 0, reference));
+        Assert.Equal(1_414_213UL, FoundationInfrastructureCapitalResponse.ProjectProductiveOutput(natural, reference, reference));
+        Assert.Equal(2_000_000UL, FoundationInfrastructureCapitalResponse.ProjectProductiveOutput(natural, 3 * reference, reference));
+        Assert.Equal(500_000UL, FoundationInfrastructureCapitalResponse.ProjectUnitCost(natural, 3 * reference, reference));
+        Assert.Equal(0UL, FoundationInfrastructureCapitalResponse.ProjectProductiveOutput(0, ulong.MaxValue, reference));
+        Assert.Equal(1UL, FoundationInfrastructureCapitalResponse.ProjectUnitCost(1, ulong.MaxValue, 1));
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            FoundationInfrastructureCapitalResponse.ProjectProductiveOutput(natural, 0, 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            FoundationInfrastructureCapitalResponse.ProjectUnitCost(0, 1, reference));
+        Assert.Throws<OverflowException>(() =>
+            FoundationInfrastructureCapitalResponse.ProjectProductiveOutput(ulong.MaxValue, ulong.MaxValue, 1));
+        Assert.Equal(ulong.MaxValue, FoundationInfrastructureCapitalResponse.ProjectProductiveOutput(ulong.MaxValue, 0, ulong.MaxValue));
+        ulong lastOutput = natural, lastCost = natural;
+        for (ulong i = 0; i <= 100; i++)
+        {
+            ulong capital = i * reference / 10;
+            ulong output = FoundationInfrastructureCapitalResponse.ProjectProductiveOutput(natural, capital, reference);
+            ulong cost = FoundationInfrastructureCapitalResponse.ProjectUnitCost(natural, capital, reference);
+            Assert.True(output >= lastOutput);
+            Assert.True(cost <= lastCost);
+            Assert.Equal(output, FoundationInfrastructureCapitalResponse.ProjectProductiveOutput(natural, capital * 100, reference * 100));
+            Assert.Equal(cost, FoundationInfrastructureCapitalResponse.ProjectUnitCost(natural, capital * 100, reference * 100));
+            // Compare against the original exact R112 expression, independently
+            // of the refactored root implementation.
+            var radicand = (BigInteger)natural * natural * reference / ((BigInteger)reference + capital);
+            Assert.True((BigInteger)cost * cost <= radicand);
+            Assert.True(((BigInteger)cost + 1) * (cost + 1) > radicand);
+            lastOutput = output;
+            lastCost = cost;
+        }
+        var firstGain = FoundationInfrastructureCapitalResponse.ProjectProductiveOutput(natural, reference, reference) - natural;
+        var laterGain = FoundationInfrastructureCapitalResponse.ProjectProductiveOutput(natural, 2 * reference, reference)
+            - FoundationInfrastructureCapitalResponse.ProjectProductiveOutput(natural, reference, reference);
+        Assert.True(firstGain > laterGain);
+    }
+
+    [Fact]
+    public void R235BSharedAgriculturalCapitalPreservesAllSixNaturalCropYields()
+    {
+        var (_, worker, _, _, incidence, fine) = Fixture();
+        var crops = Enum.GetValues<GlobalArena.Foundation.Agriculture.CropId>()
+            .ToDictionary(c => c, c => new CommodityId((uint)c));
+        var policy = new FoundationAgriculturalProductionPolicy(fine, incidence, crops, 2_000_000UL);
+        var node = worker.TacticalTileId!.Value;
+        const ulong reference = 10_000_000UL;
+        Assert.Equal(6, crops.Count);
+        foreach (var crop in crops.Keys)
+        {
+            var (commodity, naturalOutput) = policy.Resolve(node, crop);
+            Assert.Equal(crops[crop], commodity);
+            // Same node-level agricultural capital, no crop-specific bonus.
+            Assert.Equal(checked(naturalOutput * 2),
+                FoundationInfrastructureCapitalResponse.ProjectProductiveOutput(naturalOutput, 3 * reference, reference));
+        }
+        Assert.Equal(12_000_000UL, FoundationInfrastructureCapitalResponse.ProjectProductiveOutput(6_000_000UL, 3 * reference, reference));
+        Assert.Equal(10_000_000UL, FoundationInfrastructureCapitalResponse.ProjectProductiveOutput(5_000_000UL, 3 * reference, reference));
+    }
+
     private static (WorldState World, PhysicalWorkerRuntimeRecord Worker,
         PhysicalTacticalTileId Destination,
         PhysicalTacticalWorkerMoveEventExecutor Validator,
