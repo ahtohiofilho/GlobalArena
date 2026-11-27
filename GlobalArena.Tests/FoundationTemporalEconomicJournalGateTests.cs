@@ -10,6 +10,103 @@ namespace GlobalArena.Tests;
 
 public sealed class FoundationTemporalEconomicJournalGateTests
 {
+    private static FoundationProductiveReference[] ProductiveReferences() => new[]
+    {
+        new FoundationProductiveReference(FoundationProductiveActivity.Agriculture, 2_000_000UL),
+        new FoundationProductiveReference(FoundationProductiveActivity.Forestry, 3_000_000UL),
+        new FoundationProductiveReference(FoundationProductiveActivity.Mining, 4_000_000UL)
+    };
+
+    [Fact]
+    public void R235CDetachedProductiveLedgerReservesExclusiveTitleAndActivatesOnlyCompletedCapital()
+    {
+        var (world, worker, destination, _, _, _) = Fixture();
+        var owner = worker.Owner;
+        var foreign = world.Civilizations.Civilizations.Single(c => c != owner);
+        var target = new FoundationProductiveTarget(worker.TacticalTileId!.Value, FoundationProductiveActivity.Agriculture);
+        var wood = target with { Activity = FoundationProductiveActivity.Forestry };
+        var remote = target with { Node = destination };
+        var references = ProductiveReferences();
+        var empty = FoundationProductiveInfrastructureRuntimeState.CreateEmpty(references.Reverse());
+        Assert.Equal(references, empty.References.ToArray());
+        Assert.Equal(0UL, empty.Read(target).ActivatedCapitalMoneyMicro);
+        Assert.Null(empty.Read(target).ReservedOwner);
+        Assert.Throws<ArgumentException>(() =>
+            FoundationProductiveInfrastructureRuntimeState.CreateEmpty(references.Take(2)));
+        Assert.Throws<ArgumentException>(() =>
+            FoundationProductiveInfrastructureRuntimeState.CreateEmpty(references.Select(r =>
+                r with { ConstructionMoneyMicro = 0UL })));
+        var reserved = empty.Reserve(target, owner, 6_000_000UL, 1_000_000UL);
+        var first = Assert.Single(reserved.Projects);
+        Assert.Equal(owner, reserved.Read(target).ReservedOwner);
+        Assert.Equal(6_000_000UL, reserved.Read(target).PendingCapitalMoneyMicro);
+        Assert.Equal(0UL, reserved.Read(target).ActivatedCapitalMoneyMicro);
+        Assert.Empty(empty.Projects);
+        Assert.Equal(0UL, reserved.Read(wood).PendingCapitalMoneyMicro);
+        Assert.Equal(0UL, reserved.Read(remote).PendingCapitalMoneyMicro);
+        Assert.Throws<InvalidOperationException>(() => reserved.Reserve(target, owner, 1UL, 1UL));
+        Assert.Throws<InvalidOperationException>(() => reserved.Reserve(target, foreign, 1UL, 1UL));
+        Assert.Throws<InvalidOperationException>(() => reserved.Activate(first.Id));
+        var partial = reserved.RecordWork(first.Id, 500_000UL);
+        Assert.Equal(0UL, partial.Read(target).ActivatedCapitalMoneyMicro);
+        Assert.Throws<InvalidOperationException>(() => partial.RecordWork(first.Id, 500_001UL));
+        Assert.Throws<InvalidOperationException>(() => partial.Activate(first.Id));
+        var completed = partial.RecordWork(first.Id, 500_000UL);
+        Assert.Equal(0UL, completed.Read(target).ActivatedCapitalMoneyMicro);
+        var active = completed.Activate(first.Id);
+        Assert.Equal(6_000_000UL, active.Read(target).ActivatedCapitalMoneyMicro);
+        Assert.Equal(0UL, active.Read(target).PendingCapitalMoneyMicro);
+        Assert.Throws<InvalidOperationException>(() => active.Activate(first.Id));
+        Assert.Throws<InvalidOperationException>(() => active.Reserve(target, foreign, 1UL, 1UL));
+        var next = active.Reserve(target, owner, 2_000_000UL, 1UL)
+            .Reserve(wood, owner, 3_000_000UL, 1UL).Reserve(remote, owner, 1UL, 1UL);
+        Assert.Equal(6_000_000UL, next.Read(target).ActivatedCapitalMoneyMicro);
+        Assert.Equal(2_000_000UL, next.Read(target).PendingCapitalMoneyMicro);
+        Assert.Equal(3_000_000UL, next.Read(wood).PendingCapitalMoneyMicro);
+        Assert.Equal(1UL, next.Read(remote).PendingCapitalMoneyMicro);
+        var max = empty.Reserve(target, owner, ulong.MaxValue, 1UL).RecordWork(1UL, 1UL).Activate(1UL);
+        Assert.Throws<OverflowException>(() => max.Reserve(target, owner, 1UL, 1UL));
+    }
+
+    [Fact]
+    public void R235CEmptyProductiveDeploymentHasCanonicalHashAndSurvivesWorldCopies()
+    {
+        var (legacy, _, _, _, incidence, fine) = Fixture();
+        var references = ProductiveReferences();
+        Assert.Throws<InvalidOperationException>(() => legacy.DeployInitialProductiveInfrastructure(references));
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL), WorldGenerationVersion.Initial,
+                new GoldbergParameters(3, 0)), workersPerCivilization: 3);
+        var signature = FoundationFineFirstWorldgenCanonicalSignature.Compute(demo.Session.GeneratedWorld, incidence, fine);
+        var bound = demo.Session.Snapshot.PromoteFineFirstBeforeTransport(demo.Session.GeneratedWorld, incidence, fine, signature)
+            .DeployInitialFineFirstPhysicalTransport(legacy.Transport, demo.Session.GeneratedWorld, incidence, fine, signature);
+        var opening = FoundationPersistedEdgeTravelTransitions.DeployEmpty(bound
+            .DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
+                bound.Civilizations.Civilizations.Select(c => (c, 5_000_000UL)))))
+            .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
+            .DeployInitialWorkerOrders();
+        var hasher = new CanonicalWorldStateHasher();
+        var oldHash = hasher.Compute(opening);
+        var deployed = opening.DeployInitialProductiveInfrastructure(references);
+        Assert.Equal(31U, hasher.Compute(deployed).FormatVersion);
+        Assert.Equal(oldHash, hasher.Compute(opening));
+        Assert.NotEqual(oldHash, hasher.Compute(deployed));
+        Assert.Equal(hasher.Compute(deployed), hasher.Compute(opening.DeployInitialProductiveInfrastructure(references.Reverse())));
+        Assert.NotEqual(hasher.Compute(deployed), hasher.Compute(opening.DeployInitialProductiveInfrastructure(
+            references.Select(r => r with { ConstructionMoneyMicro = r.ConstructionMoneyMicro + 1UL }))));
+        Assert.Throws<InvalidOperationException>(() => deployed.DeployInitialProductiveInfrastructure(references));
+        var worker = deployed.Workers.Workers.First();
+        var copied = deployed.AdvanceRevision().WithWorkers(deployed.Workers)
+            .SetWorkerBaseActivity(worker.Owner, worker.Id,
+                new FoundationWorkerBaseActivity(FoundationWorkerBaseMode.Manual, PhysicalWorkerOccupation.Mining))
+            .WithPhysicalEdgeTravel(deployed.Workers, deployed.EdgeTravels)
+            .WithConstructions(deployed.Constructions);
+        Assert.Same(deployed.ProductiveInfrastructure, copied.ProductiveInfrastructure);
+        Assert.Equal(31U, hasher.Compute(copied).FormatVersion);
+        Assert.Empty(copied.ProductiveInfrastructure.Projects);
+        Assert.Equal(deployed.Treasury.Get(worker.Owner).CashScaled, copied.Treasury.Get(worker.Owner).CashScaled);
+    }
+
     [Fact]
     public void R235BGenericCapitalResponseIsExactMonotoneAndScaleIndependent()
     {
