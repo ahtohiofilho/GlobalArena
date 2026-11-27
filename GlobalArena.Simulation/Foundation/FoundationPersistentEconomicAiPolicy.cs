@@ -27,6 +27,8 @@ public sealed record FoundationPersistentAiView(
     public bool FundingAvailable { get; internal init; }
     public IReadOnlyList<FoundationAiInvestmentOpportunity> InvestmentOpportunities { get; internal init; } =
         Array.Empty<FoundationAiInvestmentOpportunity>();
+    public IReadOnlyList<FoundationAiProductiveOpportunity> ProductiveOpportunities { get; internal init; } =
+        Array.Empty<FoundationAiProductiveOpportunity>();
     public IReadOnlyList<FoundationAiAdjacentOpportunity> AdjacentOpportunities { get; internal init; } =
         Array.Empty<FoundationAiAdjacentOpportunity>();
 }
@@ -43,6 +45,7 @@ public abstract class FoundationPersistentEconomicAiPolicy : IFoundationTactical
 {
     internal virtual bool RequiresExpansionCandidates => false;
     internal virtual bool RequiresInvestmentCandidates => false;
+    internal virtual bool RequiresProductiveCandidates => false;
     // First QA funding boundary: exclusive with order edits in this turn,
     // so a rejected competing fund cannot leave dependent provisional IDs.
     public virtual FoundationAiFundingIntent? PlanFunding(FoundationPersistentAiView view) => null;
@@ -53,6 +56,15 @@ public abstract class FoundationPersistentEconomicAiPolicy : IFoundationTactical
     // original two-method contract; coordinators can avoid duplicate scoring.
     internal virtual (IReadOnlyList<FoundationPersistentOrderEdit> Edits, FoundationAiFundingIntent? Funding)
         PlanTurn(FoundationPersistentAiView view) => (PlanPersistent(view), PlanFunding(view));
+
+    // Backward-compatible adapter: existing policies and tests retain their
+    // two-part plan. The host executes exactly one strategic plan.
+    internal virtual (IReadOnlyList<FoundationPersistentOrderEdit> Edits, FoundationAiFundingIntent? Funding,
+        FoundationAiProductiveFundingIntent? Productive) PlanStrategicTurn(FoundationPersistentAiView view)
+    {
+        var (edits, funding) = PlanTurn(view);
+        return (edits, funding, null);
+    }
 
     IReadOnlyList<FoundationTacticalAiDecision> IFoundationTacticalAiTurnPolicy.Plan(
         CivilizationId civilization, WorldState snapshot,
@@ -209,6 +221,57 @@ public sealed class FoundationPersistentInvestmentAiPolicy : FoundationPersisten
 }
 
 
+/// <summary>One local fixed-price productive quote. Revenue values use
+/// output-micro times price-micro, not treasury money or guaranteed receipts.</summary>
+public sealed record FoundationAiProductiveOpportunity(
+    FoundationProductiveTarget Target, ulong MoneyMicro, ulong RequiredWorkMicro,
+    BigInteger IncrementalRevenueNumerator, BigInteger BuilderRevenueNumerator)
+{
+    public BigInteger Surplus
+    {
+        get
+        {
+            BigInteger turns = ((BigInteger)RequiredWorkMicro + 999_999UL) / 1_000_000UL;
+            return (10 - turns) * IncrementalRevenueNumerator - turns * BuilderRevenueNumerator -
+                (BigInteger)MoneyMicro * 1_000_000UL;
+        }
+    }
+}
+
+public sealed record FoundationAiProductiveFundingIntent(
+    FoundationProductiveTarget Target, ulong MoneyMicro,
+    IReadOnlyList<FoundationFundedWorkerInsertion> Assignments);
+
+public sealed class FoundationPersistentProductiveInvestmentAiPolicy : FoundationPersistentEconomicAiPolicy
+{
+    internal override bool RequiresProductiveCandidates => true;
+    public override IReadOnlyList<FoundationPersistentOrderEdit> PlanPersistent(FoundationPersistentAiView view)
+        => Array.Empty<FoundationPersistentOrderEdit>();
+
+    public FoundationAiProductiveFundingIntent? PlanProductiveFunding(FoundationPersistentAiView view)
+    {
+        ArgumentNullException.ThrowIfNull(view);
+        if (!view.FundingAvailable || !view.DefaultAutomaticBase || !view.AutomaticBaseAvailable ||
+            view.OwnCashScaled is not { } cash || cash <= 0) return null;
+        var workers = view.Workers.Where(w => !w.Crossing && w.Activity != PhysicalWorkerActivity.Traveling &&
+            w.Queue.Orders.Count == 0 && w.Queue.BaseActivity?.Mode != FoundationWorkerBaseMode.Manual)
+            .GroupBy(w => w.Node).ToDictionary(g => g.Key, g => g.OrderBy(w => w.Id.Value).ToArray());
+        var best = view.ProductiveOpportunities.Where(c => c.Target.IsValid && c.MoneyMicro > 0UL &&
+            c.RequiredWorkMicro > 0UL && c.RequiredWorkMicro < 10_000_000UL &&
+            c.IncrementalRevenueNumerator > 0 && c.BuilderRevenueNumerator >= 0 &&
+            GlobalArenaMoneyScale.FromMoneyMicro(c.MoneyMicro) * 10 <= cash &&
+            workers.TryGetValue(c.Target.Node, out var available) && available.Length >= 3 && c.Surplus > 0)
+            .OrderByDescending(c => c.Surplus).ThenBy(c => c.Target.Node.FineStrategicCellId.Value)
+            .ThenBy(c => c.Target.Activity).FirstOrDefault();
+        return best is null ? null : new FoundationAiProductiveFundingIntent(best.Target, best.MoneyMicro,
+            Array.AsReadOnly(new[] { new FoundationFundedWorkerInsertion(workers[best.Target.Node][^1].Id, 0) }));
+    }
+
+    internal override (IReadOnlyList<FoundationPersistentOrderEdit> Edits, FoundationAiFundingIntent? Funding,
+        FoundationAiProductiveFundingIntent? Productive) PlanStrategicTurn(FoundationPersistentAiView view)
+        => (Array.Empty<FoundationPersistentOrderEdit>(), null, PlanProductiveFunding(view));
+}
+
 /// <summary>Opt-in economic coordinator. Alternate preferred strategic
 /// action by turn, falling back to the other when no candidate qualifies.
 /// Production remains the canonical calendar allocator; never mix a funded
@@ -217,15 +280,33 @@ public sealed class FoundationPersistentAutonomousEconomicAiPolicy : FoundationP
 {
     private readonly FoundationPersistentExpansionAiPolicy _expansion = new();
     private readonly FoundationPersistentInvestmentAiPolicy _investment = new();
+    private readonly FoundationPersistentProductiveInvestmentAiPolicy _productive = new();
 
     internal override bool RequiresExpansionCandidates => true;
     internal override bool RequiresInvestmentCandidates => true;
+    internal override bool RequiresProductiveCandidates => true;
 
     public override IReadOnlyList<FoundationPersistentOrderEdit> PlanPersistent(FoundationPersistentAiView view)
         => PlanTurn(view).Edits;
 
     public override FoundationAiFundingIntent? PlanFunding(FoundationPersistentAiView view)
         => PlanTurn(view).Funding;
+
+    internal override (IReadOnlyList<FoundationPersistentOrderEdit> Edits, FoundationAiFundingIntent? Funding,
+        FoundationAiProductiveFundingIntent? Productive) PlanStrategicTurn(FoundationPersistentAiView view)
+    {
+        // Keep the old odd-turn expansion priority. Alternate productive and
+        // transport preference on even turns, with fallback if unavailable.
+        var empty = Array.Empty<FoundationPersistentOrderEdit>();
+        if (view.Turn.Value % 4UL == 2UL && _productive.PlanProductiveFunding(view) is { } first)
+            return (empty, null, first);
+        var (edits, funding) = PlanTurn(view);
+        if (view.Turn.Value % 2UL == 0UL && funding is null &&
+            _productive.PlanProductiveFunding(view) is { } second) return (empty, null, second);
+        if (edits.Count == 0 && funding is null)
+            return (empty, null, _productive.PlanProductiveFunding(view));
+        return (edits, funding, null);
+    }
 
     internal override (IReadOnlyList<FoundationPersistentOrderEdit> Edits, FoundationAiFundingIntent? Funding)
         PlanTurn(FoundationPersistentAiView view)
