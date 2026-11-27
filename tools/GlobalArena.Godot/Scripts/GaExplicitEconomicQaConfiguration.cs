@@ -25,6 +25,7 @@ internal static class GaExplicitEconomicQaConfiguration
     // switching. Keep this isolated from production balancing.
     internal const ulong QaLandEdgeCostMicro = 250_000UL;
     internal const ulong QaCoastEdgeCostMicro = 500_000UL;
+    internal const ulong R234ACoastEdgeCostMicro = 1_000_000UL;
     internal const ulong QaSeaEdgeCostMicro = 25_000UL;
     // All commodities in this explicit QA profile have the same cargo
     // conversion. Share the value with the read-only acceptance diagnostic.
@@ -67,11 +68,11 @@ internal static class GaExplicitEconomicQaConfiguration
     internal static IReadOnlyDictionary<CropId, CommodityId> CropItems() =>
         CropCatalog.All.ToDictionary(c => c.Id, c => new CommodityId((uint)c.Id + 2U));
 
-    internal static FoundationGameplayEconomicConfiguration Profile(bool crops = false, bool localEconomy = false, bool boundedTrade = false, bool unitDemand = false) =>
+    internal static FoundationGameplayEconomicConfiguration Profile(bool crops = false, bool localEconomy = false, bool boundedTrade = false, bool unitDemand = false, bool recalibratedCoast = false) =>
         new(
             new FoundationNaturalTransportSeedingPolicy(
                 new FoundationNaturalTransportCostBand(QaLandEdgeCostMicro, 1_000_000UL),
-                new FoundationNaturalTransportCostBand(QaCoastEdgeCostMicro, 500_000UL),
+                new FoundationNaturalTransportCostBand(recalibratedCoast ? R234ACoastEdgeCostMicro : QaCoastEdgeCostMicro, 500_000UL),
                 new FoundationNaturalTransportCostBand(QaSeaEdgeCostMicro, 100_000UL),
                 10_000UL),
             new FoundationMonetaryConstructionPolicy(
@@ -128,6 +129,11 @@ internal static class GaExplicitEconomicQaConfiguration
         ArgumentNullException.ThrowIfNull(demo);
         AssertNaturalFreightHierarchy();
         var tradeFixture = TradeFixtureMode();
+        bool recalibratedCoast = System.Environment.GetEnvironmentVariable("GA_NEXT_R234A_COASTAL_FREIGHT") == "1";
+        if (recalibratedCoast && (!enableLocalEconomy || tradeFixture is not null ||
+            System.Environment.GetEnvironmentVariable("GA_NEXT_R213_UI_SMOKE") == "1" ||
+            System.Environment.GetEnvironmentVariable("GA_NEXT_QA_SHALLOW_PORTS") == "1"))
+            throw new InvalidOperationException("R234A coastal freight requires the signed local economy QA without historical smoke or shallow overlay.");
         bool autonomousAi = System.Environment.GetEnvironmentVariable("GA_NEXT_R233E_AUTONOMOUS_AI") == "1";
         if (autonomousAi && (!enableLocalEconomy || !enablePersistentOrders || tradeFixture is not null ||
             System.Environment.GetEnvironmentVariable("GA_NEXT_R213_UI_SMOKE") == "1"))
@@ -182,7 +188,7 @@ internal static class GaExplicitEconomicQaConfiguration
             world, demo.Incidence);
         var identity = FoundationFineFirstWorldgenCanonicalSignature.Compute(
             world, demo.Incidence, fine);
-        var configuration = Profile(enableCropPreview, enableLocalEconomy, BoundedTradePreviewEnabled, unitOpening);
+        var configuration = Profile(enableCropPreview, enableLocalEconomy, BoundedTradePreviewEnabled, unitOpening, recalibratedCoast);
         // QA-only provisional equal basic-resource yields; existing commodity 1/2 are wood/stone only in this experiment.
         var basic = enableLocalEconomy ? new FoundationBasicResourceProductionPolicy(CommodityOne, CommodityTwo, 1_000_000UL, 1_000_000UL) : null;
         var agriculture = enableCropPreview ? new FoundationAgriculturalProductionPolicy(fine, demo.Incidence, CropItems(), 2_000_000UL, basic) : null;
@@ -218,6 +224,38 @@ internal static class GaExplicitEconomicQaConfiguration
         var opening = FoundationFineFirstEconomicCycleGate.OpenNewEconomy(
             demo.Snapshot, world, demo.Incidence, fine, identity,
             configuration, shallow);
+        if (recalibratedCoast)
+        {
+            // Inspect actual seeded costs on the signed topology, not merely
+            // the input coefficients. Slope remains the existing land surcharge.
+            var byEdge = opening.Transport.Edges.ToDictionary(e => e.Edge);
+            int ports = 0, sea = 0, ground = 0;
+            foreach (var e in demo.Incidence.FineTopology.Edges)
+            {
+                var kind = fine.CrossingAtIndices((int)e.IncidentCellIds[0].Value - 1,
+                    (int)e.IncidentCellIds[1].Value - 1);
+                var row = byEdge[new PhysicalTacticalEdgeId(demo.Incidence.Refinement.FineParameters, e.Id)];
+                var cost = row.FreePhysicalCostMicroPerWholeCargoUnit;
+                if (kind == FoundationFineTransportCrossingKind.Port)
+                {
+                    if (cost != R234ACoastEdgeCostMicro) throw new InvalidOperationException("R234A port cost mismatch.");
+                    ports++;
+                }
+                else if (kind == FoundationFineTransportCrossingKind.OpenSea)
+                {
+                    if (cost != QaSeaEdgeCostMicro) throw new InvalidOperationException("R234A sea cost mismatch.");
+                    sea++;
+                }
+                else if (kind == FoundationFineTransportCrossingKind.Ground)
+                {
+                    if (cost < QaLandEdgeCostMicro) throw new InvalidOperationException("R234A land cost mismatch.");
+                    ground++;
+                }
+            }
+            if (ports == 0 || sea == 0 || ground == 0)
+                throw new InvalidOperationException("R234A QA requires all three crossing classes.");
+            global::Godot.GD.Print($"GA_NEXT_R234A_COASTAL_FREIGHT_PASS land_base=250000 coast=1000000 sea=25000 ports={ports} signed=true");
+        }
         demo.Session.AcceptFineFirstOpening(
             opening, demo.Incidence, fine, identity);
         if (enableTemporalFinancialVisualSmoke || enableConstructionPreview)

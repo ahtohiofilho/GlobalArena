@@ -333,6 +333,27 @@ jobs:
           python3 tools/qa/compare_r232e_profiles.py \
             "$RUNNER_TEMP/uniform-city.log" "$RUNNER_TEMP/uniform-city-optimized.log" \
             docs/fixtures/GA-NEXT-R232D-DISPERSED-100-HASHES.txt "$RUNNER_TEMP/r232e-comparison.json"
+      - name: Verify recalibrated coastal freight in signed autonomous preview
+        env:
+          GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW: '1'
+          GA_NEXT_INTERACTIVE_ECONOMY_PREVIEW: '1'
+          GA_NEXT_QA_LOCAL_SITE_MARKERS: '1'
+          GA_NEXT_CONSTRUCTION_PREVIEW: '1'
+          GA_NEXT_PERSISTENT_ORDERS: '1'
+          GA_NEXT_CROP_PREVIEW: '1'
+          GA_NEXT_LOCAL_ECONOMY_PREVIEW: '1'
+          GA_NEXT_DEMOGRAPHIC_PREVIEW: '1'
+          GA_NEXT_BOUNDED_TRADE_PREVIEW: '1'
+          GA_NEXT_R2318_UNIT_OPENING_PREVIEW: '1'
+          GA_NEXT_R23112_UNIFORM_CITY_DEMOGRAPHY: '1'
+          GA_NEXT_R233E_AUTONOMOUS_AI: '1'
+          GA_NEXT_R234A_COASTAL_FREIGHT: '1'
+        run: |
+          set -o pipefail
+          timeout 180 "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --rendering-method gl_compatibility --quit-after 30 2>&1 | tee "$RUNNER_TEMP/r234a-coast.log"
+          grep -E 'GA_NEXT_R234A_COASTAL_FREIGHT_PASS land_base=250000 coast=1000000 sea=25000 ports=[1-9][0-9]* signed=true' "$RUNNER_TEMP/r234a-coast.log"
+          grep -q 'GA_NEXT_R233E_AUTONOMOUS_AI_READY' "$RUNNER_TEMP/r234a-coast.log"
+          if grep -E 'SCRIPT ERROR|Unhandled Exception|GA_NEXT_FINE_HUMAN_AI_REJECTED' "$RUNNER_TEMP/r234a-coast.log"; then exit 1; fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -352,3 +373,4 @@ jobs:
             ${{ runner.temp }}/uniform-city-optimized.log
             ${{ runner.temp }}/r232e-optimized-50-hashes.txt
             ${{ runner.temp }}/r232e-comparison.json
+            ${{ runner.temp }}/r234a-coast.log
