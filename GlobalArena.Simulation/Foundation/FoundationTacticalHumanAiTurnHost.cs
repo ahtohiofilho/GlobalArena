@@ -1,3 +1,5 @@
+using System.Numerics;
+using GlobalArena.Foundation.Agriculture;
 using GlobalArena.Kernel;
 using GlobalArena.Runtime;
 using GlobalArena.Runtime.PersistentOrders;
@@ -1000,7 +1002,10 @@ public sealed class FoundationTacticalHumanAiTurnHost
         {
             LocalEconomics = Array.AsReadOnly(local),
             AutomaticBaseAvailable = ExperimentalLocalEconomyEnabled,
-            DefaultAutomaticBase = DefaultAutomaticBaseEnabled
+            DefaultAutomaticBase = DefaultAutomaticBaseEnabled,
+            AdjacentOpportunities = policy.RequiresExpansionCandidates
+                ? ReadAdjacentAiOpportunities(workers, local)
+                : Array.Empty<FoundationAiAdjacentOpportunity>()
         };
         var edits = (policy.PlanPersistent(view)
             ?? throw new InvalidOperationException("Persistent AI returned a null plan.")).ToArray();
@@ -1016,6 +1021,59 @@ public sealed class FoundationTacticalHumanAiTurnHost
         _ = ProjectPersistentPlan(civ, staged);
         list.AddRange(staged);
         _ready.Add(civ);
+    }
+
+    // Current viewer exposes the terrain of adjacent tiles. Do not look
+    // up destination economic history or foreign presence. A future fog
+    // contract must constrain this candidate boundary before activation.
+    private IReadOnlyList<FoundationAiAdjacentOpportunity> ReadAdjacentAiOpportunities(
+        FoundationPersistentAiWorker[] workers, FoundationViewerLocalEconomicClose[] local)
+    {
+        if (!DefaultAutomaticBaseEnabled || _signedFine is not { } geography ||
+            AgriculturalProduction is not { BasicResources: { } basic } agriculture)
+            return Array.Empty<FoundationAiAdjacentOpportunity>();
+        var ownNodes = workers.Select(w => w.Node).ToHashSet();
+        var pricesByNode = local.ToDictionary(row => row.Node,
+            row => row.Commodities.ToDictionary(c => c.Commodity, c => c.LocalPriceMicro));
+        var result = new List<FoundationAiAdjacentOpportunity>();
+        foreach (var group in workers.GroupBy(w => w.Node).OrderBy(g => g.Key.FineStrategicCellId.Value))
+        {
+            if (group.Count(w => !w.Crossing && w.Activity != PhysicalWorkerActivity.Traveling &&
+                w.Queue.Orders.Count == 0 && w.Queue.BaseActivity?.Mode != FoundationWorkerBaseMode.Manual) < 3)
+                continue;
+            var source = group.Key;
+            int index = checked((int)source.FineStrategicCellId.Value - 1);
+            if (geography.SurfaceAtIndex(index) != FoundationFineSurfaceKind.Land ||
+                !geography.CanTraverseOnFoot(index)) continue;
+            pricesByNode.TryGetValue(source, out var prices);
+            BigInteger Value(CommodityId item, ulong output) =>
+                new BigInteger(output) * (prices?.GetValueOrDefault(item) ??
+                    FoundationSettledLocalPriceSnapshot.InitialReferencePriceMicro);
+            BigInteger Potential(PhysicalTacticalTileId node)
+            {
+                var best = BigInteger.Max(Value(basic.Wood, basic.WoodWholeTurnOutput),
+                    Value(basic.Stone, basic.StoneWholeTurnOutput));
+                foreach (var crop in CropCatalog.All)
+                {
+                    var output = agriculture.Resolve(node, crop.Id);
+                    best = BigInteger.Max(best, Value(output.Commodity, output.WholeTurnOutput));
+                }
+                return best;
+            }
+            var originPotential = Potential(source);
+            foreach (var adjacent in Incidence.FineTopology.Cells[index].AdjacentCellIds.OrderBy(n => n.Value))
+            {
+                var destination = new PhysicalTacticalTileId(Incidence.Refinement.FineParameters, adjacent);
+                int next = checked((int)adjacent.Value - 1);
+                if (ownNodes.Contains(destination) || geography.SurfaceAtIndex(next) != FoundationFineSurfaceKind.Land ||
+                    !geography.CanTraverseOnFoot(next) ||
+                    geography.CrossingAtIndices(index, next) != FoundationFineTransportCrossingKind.Ground ||
+                    !_executor.CheckEdge(source, destination).HasValue)
+                    continue;
+                result.Add(new(source, destination, originPotential, Potential(destination)));
+            }
+        }
+        return Array.AsReadOnly(result.ToArray());
     }
 
     public FoundationTacticalCollectiveReceipt? TryCloseTurn()
