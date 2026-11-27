@@ -30,6 +30,7 @@ public sealed record CivilizationCashAccount(
 {
     /// <summary>Verified cumulative economic income, not opening grants.</summary>
     public BigInteger TotalSettledEconomicIncomeScaled { get; init; }
+    public BigInteger TotalNavalFareDebitsScaled { get; init; }
 }
 
 /// <summary>
@@ -63,6 +64,7 @@ public sealed class CivilizationTreasuryRuntimeState
     public IReadOnlyList<CivilizationCashAccount> Accounts { get; }
 
     public ulong LastSettledEconomicCycleOrdinal { get; }
+    public ulong? LastNavalSettlementCycleOrdinal { get; }
     public string? LastSettledCargoUnitCode { get; }
     public IReadOnlyList<CivilizationSettledFreightQuote>
         LastSettledFreightQuotes { get; }
@@ -88,7 +90,8 @@ public sealed class CivilizationTreasuryRuntimeState
         CivilizationTreasuryRuntimeState source,
         CivilizationCashAccount[] accounts, ulong ordinal,
         string cargoUnitCode, CivilizationSettledFreightQuote[] quotes,
-        IReadOnlyList<CivilizationObservedMarketPrice>? localPrices = null)
+        IReadOnlyList<CivilizationObservedMarketPrice>? localPrices = null,
+        ulong? navalSettlementOrdinal = null)
     {
         IsInitialized = source.IsInitialized;
         Accounts = Array.AsReadOnly(accounts);
@@ -96,6 +99,7 @@ public sealed class CivilizationTreasuryRuntimeState
         LastSettledCargoUnitCode = cargoUnitCode;
         LastSettledFreightQuotes = Array.AsReadOnly(quotes);
         LocalPriceHistory = localPrices ?? source.LocalPriceHistory;
+        LastNavalSettlementCycleOrdinal = navalSettlementOrdinal ?? source.LastNavalSettlementCycleOrdinal;
     }
 
     public static CivilizationTreasuryRuntimeState CreateOpening(
@@ -160,6 +164,24 @@ public sealed class CivilizationTreasuryRuntimeState
     /// system-event executor. There is deliberately NO public money-credit
     /// API for arbitrary market previews or client-provided revenues.
     /// </summary>
+    internal CivilizationTreasuryRuntimeState DebitVerifiedNavalSettlement(
+        ulong ordinal, IReadOnlyDictionary<CivilizationId, BigInteger> debits)
+    {
+        ArgumentNullException.ThrowIfNull(debits);
+        if (!IsInitialized || !HasClosedEconomicCycle || ordinal != LastSettledEconomicCycleOrdinal ||
+            (LastNavalSettlementCycleOrdinal.HasValue && ordinal <= LastNavalSettlementCycleOrdinal.Value) ||
+            debits.Count != Accounts.Count ||
+            Accounts.Any(a => !debits.TryGetValue(a.Civilization, out var amount) || amount.Sign < 0))
+            throw new InvalidOperationException("Naval debit requires a unique verified closed economic cycle.");
+        var next = Accounts.Select(a => a with
+        {
+            CashScaled = a.CashScaled - debits[a.Civilization],
+            TotalNavalFareDebitsScaled = a.TotalNavalFareDebitsScaled + debits[a.Civilization]
+        }).ToArray();
+        return new CivilizationTreasuryRuntimeState(this, next, ordinal, LastSettledCargoUnitCode!,
+            LastSettledFreightQuotes.ToArray(), navalSettlementOrdinal: ordinal);
+    }
+
     internal CivilizationTreasuryRuntimeState CloseVerifiedEconomicCycle(
         ulong economicCycleOrdinal,
         string cargoUnitCode,
