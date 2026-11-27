@@ -187,6 +187,15 @@ public sealed class FoundationTacticalHumanAiTurnHost
         RequireHuman(viewer);
         if (!Snapshot.Workers.Workers.Any(w => w.Owner == viewer && w.TacticalTileId == node))
             throw new InvalidOperationException("Local economics require own current physical presence.");
+        return ReadCommittedOwnNodeEconomics(viewer, node);
+    }
+
+    // Callers must establish current own presence before this shared read.
+    // AI uses a distinct set of its own committed nodes; public access still
+    // requires a human participant and the original presence check.
+    private FoundationViewerLocalEconomicClose? ReadCommittedOwnNodeEconomics(
+        CivilizationId viewer, PhysicalTacticalTileId node)
+    {
         var receipt = _lastTemporalClose;
         var sale = receipt?.TemporalEconomicSettlement;
         if (receipt is null || sale?.AuditedLocalEconomics is not { } evidence ||
@@ -983,7 +992,16 @@ public sealed class FoundationTacticalHumanAiTurnHost
             .OrderBy(w => w.Id.Value)
             .Select(w => new FoundationPersistentAiWorker(w.Id, w.TacticalTileId!.Value,
                 w.Activity, crossings.Contains(w.Id), queues[w.Id])).ToArray();
-        var view = new FoundationPersistentAiView(civ, NextTurn, Array.AsReadOnly(workers));
+        var local = workers.Select(w => w.Node).Distinct()
+            .OrderBy(node => node.FineStrategicCellId.Value)
+            .Select(node => ReadCommittedOwnNodeEconomics(civ, node))
+            .OfType<FoundationViewerLocalEconomicClose>().ToArray();
+        var view = new FoundationPersistentAiView(civ, NextTurn, Array.AsReadOnly(workers))
+        {
+            LocalEconomics = Array.AsReadOnly(local),
+            AutomaticBaseAvailable = ExperimentalLocalEconomyEnabled,
+            DefaultAutomaticBase = DefaultAutomaticBaseEnabled
+        };
         var edits = (policy.PlanPersistent(view)
             ?? throw new InvalidOperationException("Persistent AI returned a null plan.")).ToArray();
         CheckSnapshot();
