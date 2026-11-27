@@ -1465,6 +1465,115 @@ public sealed class FoundationTemporalEconomicJournalGateTests
     }
 
     [Fact]
+    public void R233CExpansionPolicyPreservesAnchorsAndReservations()
+    {
+        var (world, worker, destination, _, _, _) = Fixture();
+        var own = world.Workers.Workers.Where(w => w.Owner == worker.Owner).OrderBy(w => w.Id.Value)
+            .Select(w => new FoundationPersistentAiWorker(w.Id, worker.TacticalTileId!.Value,
+                PhysicalWorkerActivity.Producing, false, FoundationWorkerOrderQueue.Empty(w.Id, w.Owner))).ToArray();
+        Assert.Equal(3, own.Length);
+        var edge = new FoundationAiAdjacentOpportunity(own[0].Node, destination, 100, 100);
+        var view = new FoundationPersistentAiView(worker.Owner, new TurnNumber(1UL), own)
+        {
+            DefaultAutomaticBase = true, AutomaticBaseAvailable = true,
+            AdjacentOpportunities = new[] { edge }
+        };
+        var ai = new FoundationPersistentExpansionAiPolicy();
+        var decision = Assert.Single(ai.PlanPersistent(view));
+        Assert.Equal(own[^1].Id, decision.Worker);
+        Assert.Equal((PhysicalTacticalTileId?)destination, decision.Destination);
+        Assert.Equal(FoundationWorkerOrderKind.Move, decision.OrderKind);
+        Assert.Equal(decision, Assert.Single(ai.PlanPersistent(view with { Workers = own.Reverse().ToArray() })));
+        Assert.Empty(ai.PlanPersistent(view with { Workers = own.Take(2).ToArray() }));
+        Assert.Empty(ai.PlanPersistent(view with { AdjacentOpportunities = new[] { edge with { DestinationPotential = 60 } } }));
+        Assert.Empty(ai.PlanPersistent(view with { Workers = new[] { own[0], own[1], own[2] with { Crossing = true } } }));
+        var reserved = own[2].Queue.Insert(worker.Owner, 0, FoundationWorkerOrderKind.Move, destination: destination);
+        Assert.Empty(ai.PlanPersistent(view with { Workers = new[] { own[0], own[1], own[2] with { Queue = reserved } } }));
+        Assert.Empty(ai.PlanPersistent(view with { Workers = new[] { own[0], own[1], own[2] with { Node = destination } } }));
+    }
+
+    [Fact]
+    public void R233CActualAiExpansionCrossesGroundAndResumesProduction()
+    {
+        var (world, worker, _, _, incidence, fine) = Fixture();
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL), WorldGenerationVersion.Initial,
+                new GoldbergParameters(3, 0)), workersPerCivilization: 3);
+        var signature = FoundationFineFirstWorldgenCanonicalSignature.Compute(demo.Session.GeneratedWorld, incidence, fine);
+        var bound = demo.Session.Snapshot.PromoteFineFirstBeforeTransport(demo.Session.GeneratedWorld, incidence, fine, signature)
+            .DeployInitialFineFirstPhysicalTransport(world.Transport, demo.Session.GeneratedWorld, incidence, fine, signature);
+        var opening = FoundationPersistedEdgeTravelTransitions.DeployEmpty(bound.DeployInitialTreasury(
+            CivilizationTreasuryRuntimeState.CreateOpening(bound.Civilizations.Civilizations.Select(c => (c, 5_000_000UL)))))
+            .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
+            .DeployInitialWorkerOrders();
+        demo.Session.AcceptFineFirstOpening(opening, incidence, fine, signature);
+        var owner = worker.Owner;
+        var human = opening.Civilizations.Civilizations.Single(c => c != owner);
+        // Select a signed ground site with a ground neighbor; relocate only
+        // in this fixture before the host is created, not during gameplay.
+        var cell = incidence.FineTopology.Cells.First(c =>
+            fine.SurfaceAtIndex((int)c.Id.Value - 1) == FoundationFineSurfaceKind.Land &&
+            fine.CanTraverseOnFoot((int)c.Id.Value - 1) &&
+            c.AdjacentCellIds.Any(n => fine.SurfaceAtIndex((int)n.Value - 1) == FoundationFineSurfaceKind.Land &&
+                fine.CanTraverseOnFoot((int)n.Value - 1) &&
+                fine.CrossingAtIndices((int)c.Id.Value - 1, (int)n.Value - 1) == FoundationFineTransportCrossingKind.Ground));
+        var source = new PhysicalTacticalTileId(incidence.Refinement.FineParameters, cell.Id);
+        var coarse = incidence.TileIncidences[(int)cell.Id.Value - 1].IncidentCoarseCellIds[0];
+        opening = opening.WithWorkers(new PhysicalWorkerRuntimeState(opening.Workers.Workers.Select(w =>
+            w.Owner == owner ? w.WithTacticalLocationAndActivity(source, coarse, PhysicalWorkerActivity.Other)
+                : w.WithTacticalLocationAndActivity(w.TacticalTileId!.Value, w.CellId, PhysicalWorkerActivity.Other)),
+            tacticalLocationsAuthoritative: true, occupationsAuthoritative: true));
+        demo.Session.AcceptSnapshot(opening);
+        var crops = Enum.GetValues<GlobalArena.Foundation.Agriculture.CropId>().ToDictionary(c => c, c => new CommodityId((uint)c));
+        var wood = new CommodityId(100U);
+        var stone = new CommodityId(101U);
+        var agriculture = new FoundationAgriculturalProductionPolicy(fine, incidence, crops, 2_000_000UL,
+            new FoundationBasicResourceProductionPolicy(wood, stone, 6_000_000UL, 5_000_000UL));
+        var items = crops.Values.Append(wood).Append(stone).ToArray();
+        var demand = new FoundationActivityCommodityDemandPolicy(items,
+            Enum.GetValues<FoundationPhysicalDemandProfile>().SelectMany(profile => items.Select(c =>
+                new FoundationActivityCommodityDemandCoefficient(profile, c, 1_000_000UL))));
+        var settlement = new FoundationAuthoritativeEconomicSettlementPolicy(demand,
+            new FoundationCommodityCargoConversionPolicy("r233c", items.Select(c =>
+                new FoundationCommodityCargoConversion(c, 1_000_000UL))),
+            opening.Civilizations.Civilizations.Select(c => new FoundationPhysicalEconomicTaxRate(c, 0U)),
+            maxProducerPasses: 64, useTemporalProgressiveDistribution: true, requireSafeProgressiveRoutes: true);
+        var host = new FoundationTacticalHumanAiTurnHost(demo.Session, incidence, new[] { human },
+            new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy> { [owner] = new FoundationPersistentExpansionAiPolicy() },
+            enableMonetaryInfrastructure: true, settlementPolicy: settlement, fineGeography: fine, fineSignature: signature,
+            physicalTravelPolicy: new FoundationGroundEdgeTravelTimePolicy(1_400_000UL),
+            constructionMoneyMicroPerWholeWork: 1_000_000UL, agriculture: agriculture,
+            enableExperimentalLocalEconomy: true, enableDefaultAutomaticBase: true);
+        var hash = host.StateHash;
+        host.PrepareAiCivilizations();
+        Assert.Equal(hash, host.StateHash);
+        Assert.Equal(1, host.PendingOrderCount);
+        Assert.Null(host.TryCloseTurn());
+        host.SetHumanReady(human);
+        var first = Assert.IsType<FoundationTacticalCollectiveReceipt>(host.TryCloseTurn());
+        Assert.True(first.ReplayMatched);
+        var edit = Assert.Single(first.PersistentEdits).Edit;
+        Assert.Equal(owner, edit.Issuer);
+        Assert.Equal(FoundationWorkerOrderKind.Move, edit.OrderKind);
+        var target = edit.Destination!.Value;
+        Assert.Contains(target.FineStrategicCellId, cell.AdjacentCellIds);
+        Assert.Equal(FoundationFineTransportCrossingKind.Ground,
+            fine.CrossingAtIndices((int)cell.Id.Value - 1, (int)target.FineStrategicCellId.Value - 1));
+        Assert.Contains(first.PersistentTimeline!.Slices, s => s.Worker == edit.Worker && s.Activity == PhysicalWorkerActivity.Traveling);
+        Assert.Equal(2, first.PersistentTimeline.Slices.Where(s => s.Node == source &&
+            s.Worker != edit.Worker && opening.Workers.Workers.Any(w => w.Id == s.Worker && w.Owner == owner))
+            .Select(s => s.Worker).Distinct().Count());
+        host.SetHumanReady(human);
+        var second = Assert.IsType<FoundationTacticalCollectiveReceipt>(host.TryCloseTurn());
+        Assert.True(second.ReplayMatched);
+        Assert.Empty(second.PersistentEdits);
+        Assert.Equal(target, host.Snapshot.Workers.Workers.Single(w => w.Id == edit.Worker).TacticalTileId!.Value);
+        Assert.Contains(second.PersistentTimeline!.Slices, s => s.Worker == edit.Worker &&
+            s.Node == target && s.Activity == PhysicalWorkerActivity.Producing);
+        Assert.Equal(second.Hash, host.StateHash);
+    }
+
+    [Fact]
     public void R212HostPublishesOnlyAllReadyAndInterruptsActiveOccupation()
     {
         var (world, worker, _, _, incidence, fine) = Fixture();
