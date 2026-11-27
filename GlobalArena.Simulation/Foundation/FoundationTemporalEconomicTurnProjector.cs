@@ -72,7 +72,9 @@ public static class FoundationTemporalEconomicTurnProjector
             foreach (var slice in group.OrderBy(s => s.StartMicro))
             {
                 if (slice.StartMicro != cursor || slice.DurationMicro == 0 ||
-                    (slice.ProjectId.HasValue && slice.Activity != PhysicalWorkerActivity.Other))
+                    (slice.ProjectId.HasValue && slice.Activity != PhysicalWorkerActivity.Other) ||
+                    (slice.ProductiveProjectId.HasValue && (slice.ProjectId.HasValue || slice.Crop.HasValue ||
+                        slice.Activity != PhysicalWorkerActivity.Other || slice.Occupation != PhysicalWorkerOccupation.Unassigned)))
                     throw new InvalidOperationException("Invalid persistent worker timeline.");
                 cursor = checked(cursor + slice.DurationMicro);
             }
