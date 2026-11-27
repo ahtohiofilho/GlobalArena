@@ -21,7 +21,7 @@ public partial class Main
     private VBoxContainer? _cityLinksList;
     private GaLocalConnectionDiagram? _cityConnectionDiagram;
     private PanelContainer? _cityLinkDetail;
-    private Label? _cityLinkDetailText;
+    private Label? _cityLinkDetailText, _connectionHeading;
     private Button? _connectionInvest;
     private LineEdit? _connectionAmount;
     private Label? _connectionProjection;
@@ -155,11 +155,12 @@ public partial class Main
         _cityLinkDetail.AddChild(details);
         var detailsHeader = new HBoxContainer();
         details.AddChild(detailsHeader);
-        detailsHeader.AddChild(new Label
+        _connectionHeading = new Label
         {
             Text = "CONNECTION",
             SizeFlagsHorizontal = SizeFlags.ExpandFill
-        });
+        };
+        detailsHeader.AddChild(_connectionHeading);
         var hideDetails = _r227CloseConnection = new Button { Text = "BACK TO CITY" };
         hideDetails.Pressed += CloseConnectionDetail;
         detailsHeader.AddChild(hideDetails);
@@ -372,6 +373,7 @@ public partial class Main
             _cityWindowPanel is null || !_cityConnectionSource.HasValue)
             return;
         _connectionDestination = link.Neighbor.FineStrategicCellId.Value;
+        if (_connectionHeading is not null) _connectionHeading.Text = $"CONNECTION | {_cityConnectionSource.Value} - {_connectionDestination.Value}";
         _cityWindowPanel.Visible = false;
         _cityLinkDetail.Visible = true;
         _cityLinkDetailText.Text =
