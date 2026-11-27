@@ -1,0 +1,11 @@
+# R233D.3 — Controller-neutral persistent construction arbitration
+
+Base #704 f246067: 15 workflows passed; 19 successful checks visible on PR.
+
+Persistent human admission checks only the issuer's private plan and committed world. Other participants' pending claims do not block admission. Existing same-owner duplicate rejection and private validation remain. AI retains its one exclusive funding intent contract from R233D.1.
+
+At collective close, scan participants in canonical civilization order rotated by (turn - 1) modulo participant count. First accepted claim to a connection wins; no controller, arrival, readiness or bid-size priority. Each participant contributes a prefix of its locally valid plan, ending before its first losing fund. A rejected fund never reaches the authoritative journal, never debits cash or allocates a project ID. Its entire following suffix is conservatively rejected, including potentially independent edits, because provisional project IDs and worker queue IDs/indices can have implicit dependencies. Earlier accepted commands remain; later unaccepted claims do not reserve edges. This is a provisional QA rule, not an auction or a guarantee of equal realized outcomes.
+
+After arbitration publish accepted prefixes in the existing canonical participant order, using existing local-to-committed project ID translation, authoritative funding and edit journals and R211 replay gate. No new market solve, state field or hash schema. No new pending-plan disclosure. The receipt still reports accepted events only; player-facing scoped rejection feedback and selective dependency recovery remain future work. Legacy nonpersistent construction admission is unchanged. Default AI activation remains unchanged.
+
+Tests extend the signed R233D.1 host: human/AI first-submission permutations, both-human competing admission in both orders, same-owner duplicate rejection, dependent losing queue removal, equality to winner-only canonical receipt/hash/revision, losing treasury investment zero and turn-two priority rotation. Tests pending CI; no local compilation or merge. Next R233E: opt-in coordinator for expansion and investment, real visual acceptance and measured performance.
