@@ -1706,6 +1706,15 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         var hasher = new CanonicalWorldStateHasher();
         var context = new SimulationContext(new TurnNumber(1UL), new SimulationSeed(712UL));
         Assert.Throws<InvalidOperationException>(() => legacy.Record(started, context));
+        var afloat = naval.Advance(naval.Advance(started, worker.Id, 1_000_000UL).State, worker.Id, 400_000UL).State;
+        var order = Assert.Single(afloat.WorkerOrders.Queues.Single(q => q.Worker == worker.Id).Orders);
+        var waiting = afloat.RemoveWorkerOrder(worker.Owner, worker.Id, order.Id);
+        var (waited, waitEvent) = scheduler.Record(waiting, new SimulationContext(new TurnNumber(2UL), new SimulationSeed(712UL)));
+        Assert.Empty(waited.EdgeTravels.Pending);
+        Assert.Single(waited.EdgeTravels.NavalVoyages!);
+        Assert.All(waitEvent.Slices.Where(s => s.Worker == worker.Id), s =>
+            Assert.Equal(PhysicalWorkerActivity.Traveling, s.Activity));
+        Assert.Empty(waitEvent.NavalLandings);
         var state = started;
         for (ulong turn = 1; turn <= 3; turn++)
         {
