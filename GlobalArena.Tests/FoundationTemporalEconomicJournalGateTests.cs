@@ -1495,6 +1495,28 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         var hash = host.StateHash;
         var foreign = before.Workers.Workers.First(w => w.Owner == human);
         var assignments = new[] { new FoundationFundedWorkerInsertion(worker.Id, 0) };
+        if (mode == 0)
+        {
+            // Exclusive construction slot before activation; exclusive
+            // infrastructure title afterwards. No foreign debit or takeover.
+            var fundedWorld = before.FundConstruction(owner, edge, 600_000UL, 600_000UL);
+            Assert.Throws<InvalidOperationException>(() =>
+                fundedWorld.FundConstruction(human, edge, 300_000UL, 300_000UL));
+            Assert.Throws<InvalidOperationException>(() =>
+                fundedWorld.FundConstruction(owner, edge, 300_000UL, 300_000UL));
+            var project = Assert.Single(fundedWorld.Constructions.Projects);
+            Assert.Equal(owner, project.Investor);
+            var complete = fundedWorld.WithConstructions(new FoundationConstructionRuntimeState(
+                new[] { project with { CompletedWorkMicro = project.RequiredWorkMicro } }));
+            var activated = complete.ActivateCompletedConstruction(project.Id);
+            Assert.Equal(owner, activated.Transport.Edges.Single(e => e.Edge == edge).InfrastructureOwner);
+            Assert.Throws<InvalidOperationException>(() =>
+                activated.FundConstruction(human, edge, 300_000UL, 300_000UL));
+            Assert.Equal(BigInteger.Zero, activated.Treasury.Get(human).TotalInfrastructureInvestmentScaled);
+            var reinvested = activated.FundConstruction(owner, edge, 300_000UL, 300_000UL);
+            Assert.Equal(owner, Assert.Single(reinvested.Constructions.Projects, p => !p.IsActivated).Investor);
+            Assert.Equal(hash, host.StateHash);
+        }
         probe.Fund = view =>
         {
             Assert.Equal(owner, view.Owner);
