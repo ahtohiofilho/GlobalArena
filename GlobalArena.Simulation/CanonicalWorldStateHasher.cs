@@ -44,6 +44,7 @@ public sealed class CanonicalWorldStateHasher
     public const uint NavalVoyageFormatVersion = 27U;
     public const uint NavalPriorWorkFormatVersion = 28U;
     public const uint NavalCargoQuoteFormatVersion = 29U;
+    public const uint NavalSettlementFormatVersion = 30U;
 
     private static readonly byte[] Magic =
     {
@@ -98,7 +99,8 @@ public sealed class CanonicalWorldStateHasher
 
         // Keep the underlying legacy schema selection for all existing sections.
         // The opt-in envelope records that base version explicitly.
-        var wireVersion = worldState.EdgeTravels.NavalCargoMicroPerWorker.HasValue ? NavalCargoQuoteFormatVersion :
+        var wireVersion = worldState.Treasury.LastNavalSettlementCycleOrdinal.HasValue ? NavalSettlementFormatVersion :
+            worldState.EdgeTravels.NavalCargoMicroPerWorker.HasValue ? NavalCargoQuoteFormatVersion :
             worldState.EdgeTravels.PriorWork is not null ? NavalPriorWorkFormatVersion :
             worldState.EdgeTravels.NavalVoyages is null ? version : NavalVoyageFormatVersion;
         using var hash = new BufferedCanonicalHash();
@@ -431,7 +433,12 @@ public sealed class CanonicalWorldStateHasher
                 foreach (var account in worldState.Treasury.Accounts)
                 {
                     AppendUInt64(hash, account.Civilization.Value);
-                    AppendNonnegativeBigInteger(hash, account.CashScaled);
+                    if (worldState.Treasury.LastNavalSettlementCycleOrdinal.HasValue)
+                    {
+                        AppendUInt32(hash, account.CashScaled.Sign < 0 ? 1U : 0U);
+                        AppendNonnegativeBigInteger(hash, System.Numerics.BigInteger.Abs(account.CashScaled));
+                    }
+                    else AppendNonnegativeBigInteger(hash, account.CashScaled);
                     AppendNonnegativeBigInteger(hash,
                         account.TotalInfrastructureInvestmentScaled);
                 }
@@ -691,6 +698,18 @@ public sealed class CanonicalWorldStateHasher
             {
                 AppendUInt64(hash, voyage.Worker.Value);
                 AppendUInt64(hash, voyage.EmbarkationFreightMicroPerWholeCargo!.Value);
+            }
+        }
+
+        if (worldState.Treasury.LastNavalSettlementCycleOrdinal is { } navalOrdinal)
+        {
+            AppendUInt32(hash, 57U);
+            AppendUInt64(hash, navalOrdinal);
+            AppendUInt32(hash, checked((uint)worldState.Treasury.Accounts.Count));
+            foreach (var account in worldState.Treasury.Accounts)
+            {
+                AppendUInt64(hash, account.Civilization.Value);
+                AppendNonnegativeBigInteger(hash, account.TotalNavalFareDebitsScaled);
             }
         }
 
