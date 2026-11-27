@@ -11,9 +11,15 @@ public sealed record FoundationPersistentWorkerSlice(
     uint DurationMicro, PhysicalWorkerActivity Activity,
     PhysicalWorkerOccupation Occupation, ulong? ProjectId, byte? Crop = null);
 
+public sealed record FoundationNavalLanding(FoundationNavalVoyage Voyage,
+    PhysicalTacticalTileId Destination, uint ArrivalMicro);
+
 public sealed record FoundationPersistentWorkerTurnEvent(
     EventId Id, WorldStateHash Before, WorldStateHash After,
-    IReadOnlyList<FoundationPersistentWorkerSlice> Slices) : ISimulationEvent;
+    IReadOnlyList<FoundationPersistentWorkerSlice> Slices) : ISimulationEvent
+{
+    public IReadOnlyList<FoundationNavalLanding> NavalLandings { get; init; } = Array.Empty<FoundationNavalLanding>();
+}
 
 /// <summary>Reference synchronized event-time scheduler. All builders present
 /// during the same interval contribute simultaneously. Opening transport
@@ -30,6 +36,7 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
     internal bool UsesLocalPriceAllocation { get; }
     private readonly FoundationWorkerBaseActivity? _defaultBase;
     private readonly bool _exclusiveNodeLabor;
+    private readonly bool _navalContinuation;
 
     // An absent preference stays absent in the canonical private queue.
     // Only the explicitly configured execution policy supplies the fallback.
@@ -41,7 +48,7 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
         FoundationAuthoritativeEconomicSettlementPolicy? experimentalAutomaticEconomy = null,
         FoundationOperationalFreightShadowPolicy? automaticOperations = null,
         bool enableLocalPriceAllocation = false, bool enableDefaultAutomaticBase = false,
-        bool enableExclusiveNodeLabor = false)
+        bool enableExclusiveNodeLabor = false, bool enableNavalContinuation = false)
     {
         _router = router ?? throw new ArgumentNullException(nameof(router));
         _agriculture = agriculture;
@@ -53,6 +60,7 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
         if (enableExclusiveNodeLabor && !enableDefaultAutomaticBase)
             throw new InvalidOperationException("Exclusive node labor requires the default automatic base preview.");
         _exclusiveNodeLabor = enableExclusiveNodeLabor;
+        _navalContinuation = enableNavalContinuation;
         _defaultBase = enableDefaultAutomaticBase ? new FoundationWorkerBaseActivity(FoundationWorkerBaseMode.Automatic) : null;
         if (enableLocalPriceAllocation && experimentalAutomaticEconomy is null)
             throw new InvalidOperationException("Local allocation requires the experimental automatic mode.");
@@ -140,11 +148,11 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
             PhysicalWorkerActivity.Other, occupation, null, null, preference.Crop);
     }
 
-    private (WorldState Next, FoundationPersistentWorkerSlice[] Slices) Calculate(WorldState opening, SimulationContext context)
+    private (WorldState Next, FoundationPersistentWorkerSlice[] Slices, FoundationNavalLanding[] Landings) Calculate(WorldState opening, SimulationContext context)
     {
         using var profile = FoundationTurnProfiler.Measure("worker_calendar");
-        if (opening.EdgeTravels.NavalVoyages is not null)
-            throw new InvalidOperationException("Naval ledger requires the future integrated naval calendar executor.");
+        if (opening.EdgeTravels.NavalVoyages is not null && !_navalContinuation)
+            throw new InvalidOperationException("Naval ledger requires explicit naval calendar continuation.");
         if (!opening.WorkerOrders.IsInitialized || !opening.EdgeTravels.IsInitialized ||
             !opening.Constructions.IsInitialized)
             throw new InvalidOperationException("Persistent scheduling requires deployed ledgers.");
@@ -156,6 +164,7 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
                 throw new InvalidOperationException("Base activity execution policy is unavailable.");
         var state = opening;
         var slices = new List<FoundationPersistentWorkerSlice>();
+        var landings = new List<FoundationNavalLanding>();
         var automaticStarts = new Dictionary<PhysicalWorkerId, uint>();
         // Turn-local labor reservations, not territorial title or transit rights.
         // First actual candidate boundary claims the node for this turn.
@@ -179,6 +188,8 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
             // Preserve every task transition, revision, slice and event order.
             var availableWorkers = state.Workers.Workers.ToDictionary(w => w.Id);
             var crossingWorkers = state.EdgeTravels.Pending.Select(p => p.Worker).ToHashSet();
+            if (state.EdgeTravels.NavalVoyages is { } activeVessels)
+                crossingWorkers.UnionWith(activeVessels.Select(v => v.Worker));
             var baseChanges = new Dictionary<PhysicalWorkerId, Mode>();
             foreach (var q in state.WorkerOrders.Queues)
                 if (q.Orders.Count == 0 && !crossingWorkers.Contains(q.Worker) &&
@@ -203,6 +214,21 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
                         break;
                     }
                     var head = queue.Orders.FirstOrDefault();
+                    if (state.EdgeTravels.NavalVoyages?.Any(v => v.Worker == id) == true)
+                    {
+                        // Already embarked: preserve the vessel even without
+                        // a reachable landing order. Never work while afloat.
+                        if (head is { Kind: FoundationWorkerOrderKind.Move, Destination: { } goal } &&
+                            _router.NavalTransitions.FindNextLandingStep(node, goal) is { } stepTo)
+                        {
+                            if (!queue.ActiveOrderId.HasValue)
+                                state = state.StartWorkerOrder(worker.Owner, id);
+                            state = _router.NavalTransitions.StartNext(state, id, stepTo);
+                            pending = state.EdgeTravels.Pending.Single(p => p.Worker == id);
+                        }
+                        modes.Add(new(id, node, PhysicalWorkerActivity.Traveling, occupation, null, pending));
+                        break;
+                    }
                     if (head is null)
                     {
                         if (EffectiveBase(queue.BaseActivity) is { } preference)
@@ -343,6 +369,16 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
                         PhysicalWorkerActivity.Other, PhysicalWorkerOccupation.Unassigned, null));
                 }
                 if (m.Travel is not { } t) continue;
+                if (state.EdgeTravels.NavalVoyages?.Any(v => v.Worker == m.Worker) == true)
+                {
+                    var advance = _router.NavalTransitions.Advance(state, m.Worker, step);
+                    if (advance.UsedMicro != step || advance.ResidualMicro != 0)
+                        throw new InvalidOperationException("Naval crossing must respect the shared event boundary.");
+                    state = advance.State;
+                    if (advance.Landed is { } landed)
+                        landings.Add(new(landed, t.Destination, now + duration));
+                    continue;
+                }
                 var worker = state.Workers.Workers.Single(w => w.Id == m.Worker);
                 var remaining = t.RemainingMicro - step;
                 if (_router.Movement.CheckEdge(t.Source, t.Destination) != t.Edge)
@@ -375,6 +411,8 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
         // when no finite task or frozen crossing remains. No extra slice.
         var boundaryWorkers = state.Workers.Workers.ToDictionary(w => w.Id);
         var boundaryPending = state.EdgeTravels.Pending.Select(p => p.Worker).ToHashSet();
+        if (state.EdgeTravels.NavalVoyages is { } boundaryVessels)
+            boundaryPending.UnionWith(boundaryVessels.Select(v => v.Worker));
         var boundaryChanges = new Dictionary<PhysicalWorkerId, Mode>();
         foreach (var q in state.WorkerOrders.Queues.Where(q => EffectiveBase(q.BaseActivity) is not null &&
             q.Orders.Count == 0 && !boundaryPending.Contains(q.Worker)))
@@ -433,14 +471,15 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
         }
         foreach (var p in state.Constructions.Projects.Where(p => p.IsComplete && !p.IsActivated).ToArray())
             state = state.ActivateCompletedConstruction(p.Id);
-        return (state.AdvanceRevision(), slices.ToArray());
+        return (state.AdvanceRevision(), slices.ToArray(), landings.ToArray());
     }
 
     public (WorldState Next, FoundationPersistentWorkerTurnEvent Event) Record(WorldState opening, SimulationContext context)
     {
-        var (next, slices) = Calculate(opening, context);
-        return (next, new(EventId.ForSystemPhase(context.Turn, StablePhaseId, 2UL),
-            Hasher.Compute(opening), Hasher.Compute(next), Array.AsReadOnly(slices)));
+        var (next, slices, landings) = Calculate(opening, context);
+        return (next, new FoundationPersistentWorkerTurnEvent(EventId.ForSystemPhase(context.Turn, StablePhaseId, 2UL),
+            Hasher.Compute(opening), Hasher.Compute(next), Array.AsReadOnly(slices))
+            { NavalLandings = Array.AsReadOnly(landings) });
     }
 
     public WorldState Execute(WorldState state, ISimulationEvent simulationEvent, SimulationContext context)
@@ -449,7 +488,8 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
             ev.Id != EventId.ForSystemPhase(context.Turn, StablePhaseId, 2UL) || Hasher.Compute(state) != ev.Before)
             throw new InvalidOperationException("Stale persistent worker timeline.");
         var (next, actual) = Record(state, context);
-        if (actual.After != ev.After || !actual.Slices.SequenceEqual(ev.Slices))
+        if (actual.After != ev.After || !actual.Slices.SequenceEqual(ev.Slices) ||
+            !actual.NavalLandings.SequenceEqual(ev.NavalLandings))
             throw new InvalidOperationException("Persistent worker timeline replay diverged.");
         return next;
     }

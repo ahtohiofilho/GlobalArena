@@ -740,7 +740,8 @@ public sealed class WorldState
     {
         var next = CopyWithWorkerOrders(WorkerOrders.InterruptHead(owner, worker, id));
         var person = next.Workers.Workers.Single(w => w.Id == worker);
-        if (next.EdgeTravels.Pending.Any(p => p.Worker == worker))
+        if (next.EdgeTravels.Pending.Any(p => p.Worker == worker) ||
+            next.EdgeTravels.NavalVoyages?.Any(v => v.Worker == worker) == true)
             return next.WithWorkers(new PhysicalWorkerRuntimeState(next.Workers.Workers.Select(w =>
                 w.Id == worker ? w.WithTacticalAssignment(w.TacticalTileId!.Value, w.CellId,
                     PhysicalWorkerActivity.Traveling, PhysicalWorkerOccupation.Unassigned) : w),

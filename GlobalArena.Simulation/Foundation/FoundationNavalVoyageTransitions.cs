@@ -1,3 +1,4 @@
+using GlobalArena.Kernel;
 using GlobalArena.Runtime;
 using GlobalArena.World;
 
@@ -49,6 +50,42 @@ internal sealed class FoundationNavalVoyageTransitions
         var ledger = world.EdgeTravels.ReplaceNavalVoyage(id, voyage)
             .Replace(id, new(id, worker.Owner, origin, water, edge, duration, duration));
         return Change(world, worker, origin, PhysicalWorkerActivity.Traveling, ledger);
+    }
+
+    // Full-map QA continuation only. A vessel may traverse water and
+    // disembark at the requested land node, not cross intermediate land.
+    // Fixed edge duration makes canonical breadth-first search sufficient.
+    internal PhysicalTacticalTileId? FindNextLandingStep(
+        PhysicalTacticalTileId source, PhysicalTacticalTileId target)
+    {
+        if (_geo.SurfaceAtIndex(Index(source)) == FoundationFineSurfaceKind.Land ||
+            !_geo.CanTraverseOnFoot(Index(target)) ||
+            _geo.SurfaceAtIndex(Index(target)) != FoundationFineSurfaceKind.Land)
+            return null;
+        var start = source.FineStrategicCellId;
+        var goal = target.FineStrategicCellId;
+        var firstSteps = new Dictionary<StrategicCellId, StrategicCellId>();
+        var seen = new HashSet<StrategicCellId> { start };
+        var queue = new Queue<StrategicCellId>();
+        queue.Enqueue(start);
+        while (queue.TryDequeue(out var node))
+        {
+            int a = checked((int)node.Value - 1);
+            foreach (var next in _map.FineTopology.Cells[a].AdjacentCellIds.OrderBy(n => n.Value))
+            {
+                int b = checked((int)next.Value - 1);
+                var kind = _geo.CrossingAtIndices(a, b);
+                if (next == goal ? kind != FoundationFineTransportCrossingKind.Port :
+                    kind != FoundationFineTransportCrossingKind.OpenSea)
+                    continue;
+                if (!seen.Add(next)) continue;
+                var first = node == start ? next : firstSteps[node];
+                if (next == goal) return new PhysicalTacticalTileId(_map.Refinement.FineParameters, first);
+                firstSteps.Add(next, first);
+                queue.Enqueue(next);
+            }
+        }
+        return null;
     }
 
     internal WorldState StartNext(WorldState world, PhysicalWorkerId id, PhysicalTacticalTileId destination)
