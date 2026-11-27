@@ -1957,6 +1957,8 @@ public sealed class FoundationTemporalEconomicJournalGateTests
     [InlineData(4)] // policy attempts to bypass the known-edge boundary
     [InlineData(5)] // autonomous coordinator with one known link
     [InlineData(6)] // autonomous coordinator with no known link
+    [InlineData(7)] // exclusive labor, initially mixed node
+    [InlineData(8)] // exclusive labor, arrival at foreign working node
     public void R233CActualAiExpansionCrossesGroundAndResumesProduction(int knowledgeMode)
     {
         var (world, worker, _, _, incidence, fine) = Fixture();
@@ -2007,8 +2009,17 @@ public sealed class FoundationTemporalEconomicJournalGateTests
                 fine.SurfaceAtIndex((int)n.Value - 1) == FoundationFineSurfaceKind.Land &&
                 fine.CanTraverseOnFoot((int)n.Value - 1) &&
                 fine.CrossingAtIndices((int)cell.Id.Value - 1, (int)n.Value - 1) == FoundationFineTransportCrossingKind.Ground));
+        if (knowledgeMode is 7 or 8)
+        {
+            var target = knowledgeMode == 7 ? source : allowedTarget;
+            var region = incidence.TileIncidences[(int)target.FineStrategicCellId.Value - 1].IncidentCoarseCellIds[0];
+            opening = opening.WithWorkers(new PhysicalWorkerRuntimeState(opening.Workers.Workers.Select(w =>
+                w.Owner == human ? w.WithTacticalLocationAndActivity(target, region, PhysicalWorkerActivity.Other) : w),
+                tacticalLocationsAuthoritative: true, occupationsAuthoritative: true));
+            demo.Session.AcceptSnapshot(opening);
+        }
         var knownNodes = knowledgeMode == 3 ? new[] { source } : new[] { source, allowedTarget };
-        var knownLinks = knowledgeMode is 2 or 5 ? new[] { (source, allowedTarget) } :
+        var knownLinks = knowledgeMode is 2 or 5 or 8 ? new[] { (source, allowedTarget) } :
             Array.Empty<(PhysicalTacticalTileId, PhysicalTacticalTileId)>();
         var scopes = knowledgeMode == 0 ? null :
             new Dictionary<CivilizationId, FoundationCivilizationKnowledgeScope>
@@ -2021,14 +2032,37 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             FoundationPersistentOrderEditKind.Insert, Index: 0,
             OrderKind: FoundationWorkerOrderKind.Move, Destination: allowedTarget) };
         IFoundationTacticalAiTurnPolicy ai = knowledgeMode == 4 ? probe :
+            knowledgeMode == 7 ? new FoundationTacticalAiHoldPolicy() :
             knowledgeMode is 5 or 6 ? new FoundationPersistentAutonomousEconomicAiPolicy() : new FoundationPersistentExpansionAiPolicy();
         var host = new FoundationTacticalHumanAiTurnHost(demo.Session, incidence, new[] { human },
             new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy> { [owner] = ai },
             enableMonetaryInfrastructure: true, settlementPolicy: settlement, fineGeography: fine, fineSignature: signature,
             physicalTravelPolicy: new FoundationGroundEdgeTravelTimePolicy(1_400_000UL),
             constructionMoneyMicroPerWholeWork: 1_000_000UL, agriculture: agriculture,
-            enableExperimentalLocalEconomy: true, enableDefaultAutomaticBase: true, knowledgeScopes: scopes);
+            enableExperimentalLocalEconomy: true, enableDefaultAutomaticBase: true, knowledgeScopes: scopes,
+            enableExclusiveNodeLabor: knowledgeMode is 7 or 8);
+        if (knowledgeMode is 7 or 8)
+            foreach (var w in opening.Workers.Workers.Where(w => w.Owner == human))
+                host.QueueHumanBaseActivity(human, w.Id,
+                    new FoundationWorkerBaseActivity(FoundationWorkerBaseMode.Manual, PhysicalWorkerOccupation.Mining));
         var hash = host.StateHash;
+        if (knowledgeMode == 7)
+        {
+            var owners = opening.Workers.Workers.ToDictionary(w => w.Id, w => w.Owner);
+            var expected = opening.Civilizations.Civilizations.OrderBy(c => c.Value).ToArray();
+            foreach (var winner in expected)
+            {
+                host.SetHumanReady(human);
+                var close = Assert.IsType<FoundationTacticalCollectiveReceipt>(host.TryCloseTurn());
+                Assert.True(close.ReplayMatched);
+                var work = close.PersistentTimeline!.Slices.Where(s => s.Node == source &&
+                    s.Activity == PhysicalWorkerActivity.Producing).ToArray();
+                Assert.NotEmpty(work);
+                Assert.All(work, s => Assert.Equal(winner, owners[s.Worker]));
+                Assert.Equal(close.Hash, host.StateHash);
+            }
+            return;
+        }
         if (knowledgeMode == 4)
         {
             Assert.Throws<InvalidOperationException>(() => host.PrepareAiCivilizations());
@@ -2050,16 +2084,16 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             Assert.Equal(restricted.Hash, host.StateHash);
             return;
         }
-        Assert.Equal(1, host.PendingOrderCount);
+        Assert.Equal(knowledgeMode == 8 ? 4 : 1, host.PendingOrderCount);
         Assert.Null(host.TryCloseTurn());
         host.SetHumanReady(human);
         var first = Assert.IsType<FoundationTacticalCollectiveReceipt>(host.TryCloseTurn());
         Assert.True(first.ReplayMatched);
-        var edit = Assert.Single(first.PersistentEdits).Edit;
+        var edit = Assert.Single(first.PersistentEdits, e => e.Edit.Issuer == owner).Edit;
         Assert.Equal(owner, edit.Issuer);
         Assert.Equal(FoundationWorkerOrderKind.Move, edit.OrderKind);
         var target = edit.Destination!.Value;
-        if (knowledgeMode is 2 or 5) Assert.Equal(allowedTarget, target);
+        if (knowledgeMode is 2 or 5 or 8) Assert.Equal(allowedTarget, target);
         Assert.Contains(target.FineStrategicCellId, cell.AdjacentCellIds);
         Assert.Equal(FoundationFineTransportCrossingKind.Ground,
             fine.CrossingAtIndices((int)cell.Id.Value - 1, (int)target.FineStrategicCellId.Value - 1));
@@ -2072,8 +2106,17 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.True(second.ReplayMatched);
         Assert.Empty(second.PersistentEdits);
         Assert.Equal(target, host.Snapshot.Workers.Workers.Single(w => w.Id == edit.Worker).TacticalTileId!.Value);
-        Assert.Contains(second.PersistentTimeline!.Slices, s => s.Worker == edit.Worker &&
-            s.Node == target && s.Activity == PhysicalWorkerActivity.Producing);
+        if (knowledgeMode == 8)
+        {
+            Assert.DoesNotContain(second.PersistentTimeline!.Slices, s => s.Worker == edit.Worker &&
+                s.Node == target && s.Activity == PhysicalWorkerActivity.Producing);
+            Assert.Contains(second.PersistentTimeline.Slices, s => s.Worker == edit.Worker &&
+                s.Node == target && s.Activity == PhysicalWorkerActivity.Other &&
+                s.Occupation == PhysicalWorkerOccupation.Unassigned);
+        }
+        else
+            Assert.Contains(second.PersistentTimeline!.Slices, s => s.Worker == edit.Worker &&
+                s.Node == target && s.Activity == PhysicalWorkerActivity.Producing);
         Assert.Equal(second.Hash, host.StateHash);
     }
 
