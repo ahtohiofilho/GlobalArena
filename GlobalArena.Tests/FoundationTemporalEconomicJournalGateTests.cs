@@ -1518,6 +1518,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
     [InlineData(1)] // endpoints known to AI, edge known only to human
     [InlineData(2)] // one edge known to AI
     [InlineData(3)] // destination unknown to AI
+    [InlineData(4)] // policy attempts to bypass the known-edge boundary
     public void R233CActualAiExpansionCrossesGroundAndResumesProduction(int knowledgeMode)
     {
         var (world, worker, _, _, incidence, fine) = Fixture();
@@ -1577,16 +1578,29 @@ public sealed class FoundationTemporalEconomicJournalGateTests
                 [owner] = new(knownNodes, knownLinks),
                 [human] = new(new[] { source, allowedTarget }, new[] { (source, allowedTarget) })
             };
+        var probe = new R233AProbePolicy();
+        probe.Decide = view => new[] { new FoundationPersistentOrderEdit(owner, view.Workers[0].Id,
+            FoundationPersistentOrderEditKind.Insert, Index: 0,
+            OrderKind: FoundationWorkerOrderKind.Move, Destination: allowedTarget) };
+        IFoundationTacticalAiTurnPolicy ai = knowledgeMode == 4 ? probe : new FoundationPersistentExpansionAiPolicy();
         var host = new FoundationTacticalHumanAiTurnHost(demo.Session, incidence, new[] { human },
-            new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy> { [owner] = new FoundationPersistentExpansionAiPolicy() },
+            new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy> { [owner] = ai },
             enableMonetaryInfrastructure: true, settlementPolicy: settlement, fineGeography: fine, fineSignature: signature,
             physicalTravelPolicy: new FoundationGroundEdgeTravelTimePolicy(1_400_000UL),
             constructionMoneyMicroPerWholeWork: 1_000_000UL, agriculture: agriculture,
             enableExperimentalLocalEconomy: true, enableDefaultAutomaticBase: true, knowledgeScopes: scopes);
         var hash = host.StateHash;
+        if (knowledgeMode == 4)
+        {
+            Assert.Throws<InvalidOperationException>(() => host.PrepareAiCivilizations());
+            Assert.Empty(host.ReadyCivilizations);
+            Assert.Equal(0, host.PendingOrderCount);
+            Assert.Equal(hash, host.StateHash);
+            probe.Decide = _ => Array.Empty<FoundationPersistentOrderEdit>();
+        }
         host.PrepareAiCivilizations();
         Assert.Equal(hash, host.StateHash);
-        if (knowledgeMode is 1 or 3)
+        if (knowledgeMode is 1 or 3 or 4)
         {
             Assert.Equal(0, host.PendingOrderCount);
             Assert.Null(host.TryCloseTurn());
