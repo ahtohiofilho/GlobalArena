@@ -43,6 +43,7 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
     private readonly bool _navalContinuation;
     private readonly ulong? _navalDepartureTime;
     private readonly IReadOnlyDictionary<CivilizationId, FoundationCivilizationKnowledgeScope>? _navalScopes;
+    private readonly IReadOnlyDictionary<CivilizationId, FoundationCivilizationKnowledgeScope>? _productiveScopes;
 
     // An absent preference stays absent in the canonical private queue.
     // Only the explicitly configured execution policy supplies the fallback.
@@ -56,7 +57,8 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
         bool enableLocalPriceAllocation = false, bool enableDefaultAutomaticBase = false,
         bool enableExclusiveNodeLabor = false, bool enableNavalContinuation = false,
         ulong? navalDepartureTimeMicro = null,
-        IReadOnlyDictionary<CivilizationId, FoundationCivilizationKnowledgeScope>? navalScopes = null)
+        IReadOnlyDictionary<CivilizationId, FoundationCivilizationKnowledgeScope>? navalScopes = null,
+        IReadOnlyDictionary<CivilizationId, FoundationCivilizationKnowledgeScope>? productiveScopes = null)
     {
         _router = router ?? throw new ArgumentNullException(nameof(router));
         _agriculture = agriculture;
@@ -73,6 +75,7 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
         _navalContinuation = enableNavalContinuation;
         _navalDepartureTime = navalDepartureTimeMicro;
         _navalScopes = navalScopes?.ToDictionary(p => p.Key, p => p.Value);
+        _productiveScopes = productiveScopes?.ToDictionary(p => p.Key, p => p.Value);
         _defaultBase = enableDefaultAutomaticBase ? new FoundationWorkerBaseActivity(FoundationWorkerBaseMode.Automatic) : null;
         if (enableLocalPriceAllocation && experimentalAutomaticEconomy is null)
             throw new InvalidOperationException("Local allocation requires the experimental automatic mode.");
@@ -178,6 +181,8 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
             throw new InvalidOperationException("Naval departure requires explicit ledger deployment.");
         if (_navalScopes is not null && opening.Civilizations.Civilizations.Any(c => !_navalScopes.ContainsKey(c)))
             throw new InvalidOperationException("Naval knowledge scope must cover each participant.");
+        if (_productiveScopes is not null && opening.Civilizations.Civilizations.Any(c => !_productiveScopes.ContainsKey(c)))
+            throw new InvalidOperationException("Productive knowledge scope must cover each participant.");
         if (opening.EdgeTravels.PriorWork is not null && !_navalDepartureTime.HasValue)
             throw new InvalidOperationException("Prior naval work requires continued departure policy.");
         if (opening.EdgeTravels.PriorWorkTurn is { } priorTurn && priorTurn != context.Turn.Value - 1UL)
@@ -290,7 +295,8 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
                         continue;
                     }
                     var plan = head.Kind is FoundationWorkerOrderKind.Build or FoundationWorkerOrderKind.BuildProductive
-                        ? _router.Plan(state, id, _navalScopes?[worker.Owner])
+                        ? _router.Plan(state, id, head.Kind == FoundationWorkerOrderKind.BuildProductive
+                            ? (_productiveScopes ?? _navalScopes)?[worker.Owner] : _navalScopes?[worker.Owner])
                         : _router.PlanMove(state, id, head.Destination!.Value, _navalScopes?[worker.Owner]);
                     if (plan.Status == FoundationConstructionApproachStatus.AtSite)
                     {

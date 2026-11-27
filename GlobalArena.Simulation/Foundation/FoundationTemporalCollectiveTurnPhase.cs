@@ -67,7 +67,8 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
         bool enableExperimentalAutomaticBase = false, bool enableLocalPriceAllocation = false,
         bool enableDefaultAutomaticBase = false, bool enableExclusiveNodeLabor = false,
         ulong? navalDepartureTimeMicro = null,
-        IReadOnlyDictionary<CivilizationId, FoundationCivilizationKnowledgeScope>? navalScopes = null, bool enableNavalSettlement = false)
+        IReadOnlyDictionary<CivilizationId, FoundationCivilizationKnowledgeScope>? navalScopes = null, bool enableNavalSettlement = false,
+        IReadOnlyDictionary<CivilizationId, FoundationCivilizationKnowledgeScope>? productiveScopes = null)
     {
         ArgumentNullException.ThrowIfNull(world);
         _incidence = incidence ?? throw new ArgumentNullException(nameof(incidence));
@@ -130,7 +131,7 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
                 enableExperimentalAutomaticBase ? economy : null,
                 enableExperimentalAutomaticBase ? operationalPolicy : null, enableLocalPriceAllocation, enableDefaultAutomaticBase, enableExclusiveNodeLabor,
                 enableNavalContinuation: _navalCollective, navalDepartureTimeMicro: navalDepartureTimeMicro,
-                navalScopes: navalScopes);
+                navalScopes: navalScopes, productiveScopes: productiveScopes);
             _funded = new FoundationFundedWorkerIntentJournal(new FoundationConstructionFundingExecutor(
                 _capitalExecutor, persistentMoneyMicroPerWholeWork.Value));
         }

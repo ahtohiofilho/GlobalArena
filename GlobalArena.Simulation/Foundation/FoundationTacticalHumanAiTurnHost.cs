@@ -89,7 +89,7 @@ public sealed class FoundationTacticalCollectiveReceipt
     public FoundationEconomicSalesSettledEvent? EconomicSettlement { get; }
     public IReadOnlyList<FoundationEdgeTravelTurnEvent> EdgeTravels { get; }
     public FoundationTemporalSalesSettledEvent? TemporalEconomicSettlement { get; }
-    public int ExecutedEvents => (BirthBatch is null ? 0 : 1) + PersistentEdits.Count + PersistentFunding.Count + (PersistentTimeline is null ? 0 : 1) + Events.Count + EdgeTravels.Count + InfrastructureInvestments.Count + ConstructionFunding.Count + ConstructionWork.Count +
+    public int ExecutedEvents => (BirthBatch is null ? 0 : 1) + PersistentEdits.Count + PersistentFunding.Count + ProductiveFunding.Count + (PersistentTimeline is null ? 0 : 1) + Events.Count + EdgeTravels.Count + InfrastructureInvestments.Count + ConstructionFunding.Count + ConstructionWork.Count +
         (EconomicSettlement is null ? 0 : 1) +
         (TemporalEconomicSettlement is null ? 0 : 1);
     public IReadOnlyList<FoundationConstructionFundedEvent> ConstructionFunding { get; }
@@ -97,6 +97,7 @@ public sealed class FoundationTacticalCollectiveReceipt
     public bool ReplayMatched { get; }
     public IReadOnlyList<FoundationPersistentOrderEditEvent> PersistentEdits { get; }
     public IReadOnlyList<FoundationFundedWorkerIntentEvent> PersistentFunding { get; }
+    public IReadOnlyList<FoundationProductiveFundingEvent> ProductiveFunding { get; }
     public FoundationPersistentWorkerTurnEvent? PersistentTimeline { get; }
     public FoundationPhysicalBirthBatchEvent? BirthBatch { get; }
 
@@ -112,7 +113,8 @@ public sealed class FoundationTacticalCollectiveReceipt
         FoundationPersistentOrderEditEvent[]? persistentEdits = null,
         FoundationFundedWorkerIntentEvent[]? persistentFunding = null,
         FoundationPersistentWorkerTurnEvent? persistentTimeline = null,
-        FoundationPhysicalBirthBatchEvent? birthBatch = null)
+        FoundationPhysicalBirthBatchEvent? birthBatch = null,
+        FoundationProductiveFundingEvent[]? productiveFunding = null)
     {
         Turn = turn;
         Hash = hash;
@@ -127,6 +129,7 @@ public sealed class FoundationTacticalCollectiveReceipt
         ConstructionWork = Array.AsReadOnly(constructionWork ?? Array.Empty<FoundationConstructionWorkBatchEvent>());
         PersistentEdits = Array.AsReadOnly(persistentEdits ?? Array.Empty<FoundationPersistentOrderEditEvent>());
         PersistentFunding = Array.AsReadOnly(persistentFunding ?? Array.Empty<FoundationFundedWorkerIntentEvent>());
+        ProductiveFunding = Array.AsReadOnly(productiveFunding ?? Array.Empty<FoundationProductiveFundingEvent>());
         PersistentTimeline = persistentTimeline;
         BirthBatch = birthBatch;
         ReplayMatched = true;
@@ -165,6 +168,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
     private readonly FoundationFundedWorkerIntentJournal? _persistentFunding;
     private readonly Dictionary<CivilizationId, List<ISimulationCommand>> _persistentPlans = new();
     public bool PersistentOrdersEnabled => _persistentPhase is not null;
+    public bool ProductiveInfrastructureEnabled => PersistentOrdersEnabled && Snapshot.ProductiveInfrastructure.IsInitialized;
     public bool ExperimentalLocalEconomyEnabled { get; }
     public bool DefaultAutomaticBaseEnabled { get; }
     private readonly CanonicalWorldStateHasher _hasher = new();
@@ -704,7 +708,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
                 enableDefaultAutomaticBase: DefaultAutomaticBaseEnabled, enableExclusiveNodeLabor: enableExclusiveNodeLabor,
                 navalDepartureTimeMicro: navalDepartureTimeMicro,
                 navalScopes: navalDepartureTimeMicro.HasValue ? _knowledgeScopes : null,
-                enableNavalSettlement: navalDepartureTimeMicro.HasValue);
+                enableNavalSettlement: navalDepartureTimeMicro.HasValue,
+                productiveScopes: Snapshot.ProductiveInfrastructure.IsInitialized ? _knowledgeScopes : null);
             phases.Add(temporal);
             if (persistent)
             {
@@ -1459,6 +1464,9 @@ public sealed class FoundationTacticalHumanAiTurnHost
                 state = FoundationPersistentOrderEditJournal.Record(state, id, edit.Edit, context).Next;
             else if (command is FoundationFundedWorkerIntentCommand fund && fund.Issuer == owner)
                 state = _persistentFunding!.Record(state, id, owner, fund.Edge, fund.MoneyMicro, fund.Assignments, context).Next;
+            else if (command is FoundationProductiveFundingCommand productive && productive.Issuer == owner)
+                state = _persistentFunding!.RecordProductive(state, id, owner, productive.Target,
+                    productive.MoneyMicro, context, productive.Assignments).Next;
             else throw new InvalidOperationException("Foreign persistent plan.");
         }
         return state;
@@ -1501,6 +1509,78 @@ public sealed class FoundationTacticalHumanAiTurnHost
         ArgumentNullException.ThrowIfNull(activity);
         QueueHumanPersistentEdit(human, new FoundationPersistentOrderEdit(human, worker,
             FoundationPersistentOrderEditKind.SetBaseActivity, BaseActivity: activity));
+    }
+
+    // City operations expose only the requesting participant's committed capital.
+    // Knowledge alone does not expose foreign projects or private pending plans.
+    public IReadOnlyList<FoundationProductiveCapitalReading> GetHumanProductiveCapital(
+        CivilizationId human, PhysicalTacticalTileId node)
+    {
+        RequireHuman(human); CheckSnapshot();
+        RequireProductiveNode(human, node);
+        return Array.AsReadOnly(Enum.GetValues<FoundationProductiveActivity>().Select(activity =>
+        {
+            var reading = Snapshot.ProductiveInfrastructure.Read(new FoundationProductiveTarget(node, activity));
+            return reading.ReservedOwner == human ? reading : new FoundationProductiveCapitalReading(
+                reading.Target, null, reading.ReferenceMoneyMicro, 0UL, 0UL);
+        }).ToArray());
+    }
+
+    private void RequireProductiveNode(CivilizationId owner, PhysicalTacticalTileId node)
+    {
+        if (!ProductiveInfrastructureEnabled || !node.IsValid ||
+            node.FineGoldbergParameters != Incidence.Refinement.FineParameters ||
+            node.FineStrategicCellId.Value > Incidence.Refinement.FineParameters.StrategicCellCount ||
+            (_knowledgeScopes is not null && !_knowledgeScopes[owner].KnowsNode(node)) ||
+            !Snapshot.Workers.Workers.Any(w => w.Owner == owner && w.TacticalTileId == node))
+            throw new InvalidOperationException("Productive operations require an enabled, known node with own physical presence.");
+        int index = checked((int)node.FineStrategicCellId.Value - 1);
+        if (_signedFine is not { } geography || geography.SurfaceAtIndex(index) != FoundationFineSurfaceKind.Land ||
+            !geography.CanTraverseOnFoot(index))
+            throw new InvalidOperationException("Productive operations require traversable land.");
+    }
+
+    public IReadOnlyList<FoundationProductiveConstructionProject> GetHumanProductiveProjects(
+        CivilizationId human, PhysicalTacticalTileId node)
+    {
+        RequireHuman(human); CheckSnapshot();
+        RequireProductiveNode(human, node);
+        return Array.AsReadOnly(Snapshot.ProductiveInfrastructure.Projects
+            .Where(p => p.Investor == human && p.Target.Node == node).ToArray());
+    }
+
+    public void QueueHumanProductiveFunding(CivilizationId human, FoundationProductiveTarget target,
+        ulong moneyMicro, IEnumerable<FoundationFundedWorkerInsertion> assignments)
+    {
+        RequireHuman(human); CheckWritable(human);
+        RequireProductiveNode(human, target.Node);
+        ArgumentNullException.ThrowIfNull(assignments);
+        var list = _persistentPlans[human];
+        if (list.OfType<FoundationProductiveFundingCommand>().Any(c => c.Target == target))
+            throw new InvalidOperationException("Productive target already reserved in own plan.");
+        var command = new FoundationProductiveFundingCommand(new CommandId(NextTurn, (ulong)list.Count + 1UL),
+            human, target, moneyMicro) { Assignments = Array.AsReadOnly(assignments.ToArray()) };
+        _ = ProjectPersistentPlan(human, list.Append(command));
+        list.Add(command);
+    }
+
+    public IReadOnlyList<FoundationProductiveFundingCommand> GetHumanPendingProductiveFunding(CivilizationId human)
+    {
+        RequireHuman(human); CheckSnapshot();
+        return Array.AsReadOnly(_persistentPlans[human].OfType<FoundationProductiveFundingCommand>().ToArray());
+    }
+
+    public bool CancelHumanProductiveFunding(CivilizationId human, FoundationProductiveTarget target)
+    {
+        RequireHuman(human); CheckWritable(human);
+        var list = _persistentPlans[human];
+        var fund = list.OfType<FoundationProductiveFundingCommand>().SingleOrDefault(c => c.Target == target);
+        if (fund is null) return false;
+        if (list.Last().Id != fund.Id)
+            throw new InvalidOperationException("Cancel subsequent plan edits first, or clear the pending plan.");
+        _ = ProjectPersistentPlan(human, list.Where(c => c.Id != fund.Id));
+        list.Remove(fund);
+        return true;
     }
 
     public void QueueHumanFundedConstruction(CivilizationId human, PhysicalTacticalEdgeId edge,
@@ -1571,6 +1651,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
         // A losing fund truncates its plan: later edits may depend on provisional
         // project IDs or queue positions, even without explicit ProjectId.
         var reservedFunding = new HashSet<PhysicalTacticalEdgeId>();
+        var reservedProductive = new HashSet<FoundationProductiveTarget>();
         var acceptedPrefixes = new Dictionary<CivilizationId, int>();
         var first = (int)((turn.Value - 1UL) % (ulong)_participants.Length);
         for (int offset = 0; offset < _participants.Length; offset++)
@@ -1579,7 +1660,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
             int count = 0;
             foreach (var pending in _persistentPlans[civ])
             {
-                if (pending is FoundationFundedWorkerIntentCommand fund && !reservedFunding.Add(fund.Edge))
+                if ((pending is FoundationFundedWorkerIntentCommand fund && !reservedFunding.Add(fund.Edge)) ||
+                    (pending is FoundationProductiveFundingCommand productive && !reservedProductive.Add(productive.Target)))
                     break;
                 count++;
             }
@@ -1589,6 +1671,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
         {
             var local = before;
             var projects = new Dictionary<ulong, ulong>();
+            var productiveProjects = new Dictionary<ulong, ulong>();
             foreach (var pending in _persistentPlans[civ].Take(acceptedPrefixes[civ]))
             {
                 var id = new CommandId(turn, (ulong)commands.Count + 1UL);
@@ -1602,10 +1685,21 @@ public sealed class FoundationTacticalHumanAiTurnHost
                     projects.Add(provisional.Event.ProjectId, committed.Event.ProjectId);
                     local = provisional.Next; state = committed.Next; commands.Add(actual);
                 }
+                else if (pending is FoundationProductiveFundingCommand productive)
+                {
+                    var actual = productive with { Id = id };
+                    var provisional = _persistentFunding!.RecordProductive(local, new EventId(productive.Id, 1UL),
+                        civ, productive.Target, productive.MoneyMicro, context, productive.Assignments);
+                    var committed = _persistentFunding.RecordProductive(state, new EventId(id, 1UL),
+                        civ, productive.Target, productive.MoneyMicro, context, productive.Assignments);
+                    productiveProjects.Add(provisional.Event.ProjectId, committed.Event.ProjectId);
+                    local = provisional.Next; state = committed.Next; commands.Add(actual);
+                }
                 else if (pending is FoundationPersistentOrderEditCommand edit)
                 {
                     var input = edit.Edit;
-                    var mapped = input.ProjectId is { } p && projects.TryGetValue(p, out var real)
+                    var mapping = input.OrderKind == FoundationWorkerOrderKind.BuildProductive ? productiveProjects : projects;
+                    var mapped = input.ProjectId is { } p && mapping.TryGetValue(p, out var real)
                         ? input with { ProjectId = real } : input;
                     local = FoundationPersistentOrderEditJournal.Record(local, new EventId(edit.Id, 1UL), input, context).Next;
                     state = FoundationPersistentOrderEditJournal.Record(state, new EventId(id, 1UL), mapped, context).Next;
@@ -1628,7 +1722,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
             Array.Empty<PhysicalTacticalWorkerMovedEvent>(), temporalSettlement: sale,
             persistentEdits: resolved.Events.OfType<FoundationPersistentOrderEditEvent>().ToArray(),
             persistentFunding: resolved.Events.OfType<FoundationFundedWorkerIntentEvent>().ToArray(),
-            persistentTimeline: timeline, birthBatch: resolved.Events.OfType<FoundationPhysicalBirthBatchEvent>().SingleOrDefault());
+            persistentTimeline: timeline, birthBatch: resolved.Events.OfType<FoundationPhysicalBirthBatchEvent>().SingleOrDefault(),
+            productiveFunding: resolved.Events.OfType<FoundationProductiveFundingEvent>().ToArray());
         _lastTemporalClose = receipt;
         foreach (var plan in _persistentPlans.Values) plan.Clear();
         _ready.Clear(); _knownSnapshot = Snapshot;
