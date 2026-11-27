@@ -23,6 +23,10 @@ public sealed record FoundationNavalVoyage(
     ulong EmbarkationTurn, ulong CrossingTimeMicro,
     ulong PaidNumerator, ulong PaidDenominator);
 
+// Actual economic intervals, with owner captured at execution time.
+public sealed record FoundationPriorNodeWork(PhysicalTacticalTileId Node,
+    CivilizationId Owner, uint StartMicro, uint DurationMicro);
+
 public sealed class FoundationEdgeTravelRuntimeState
 {
     private static readonly FoundationEdgeTravelRuntimeState Missing =
@@ -33,6 +37,8 @@ public sealed class FoundationEdgeTravelRuntimeState
     public bool IsInitialized { get; }
     public IReadOnlyList<FoundationPendingEdgeTravel> Pending { get; }
     public IReadOnlyList<FoundationNavalVoyage>? NavalVoyages { get; }
+    public ulong? PriorWorkTurn { get; }
+    public IReadOnlyList<FoundationPriorNodeWork>? PriorWork { get; }
 
     public FoundationEdgeTravelRuntimeState(
         IEnumerable<FoundationPendingEdgeTravel> pending)
@@ -42,7 +48,8 @@ public sealed class FoundationEdgeTravelRuntimeState
 
     private FoundationEdgeTravelRuntimeState(bool initialized,
         FoundationPendingEdgeTravel[] records,
-        FoundationNavalVoyage[]? naval = null)
+        FoundationNavalVoyage[]? naval = null, ulong? priorTurn = null,
+        FoundationPriorNodeWork[]? priorWork = null)
     {
         if (!initialized && records.Length > 0)
             throw new InvalidOperationException("Uninitialized journeys cannot contain records.");
@@ -60,6 +67,17 @@ public sealed class FoundationEdgeTravelRuntimeState
                 throw new InvalidOperationException("A worker cannot have multiple open journeys.");
         IsInitialized = initialized;
         Pending = Array.AsReadOnly(sorted);
+        if (priorWork is not null)
+        {
+            if (naval is null || priorTurn is null || priorTurn == 0 || priorWork.Any(w => w is null ||
+                !w.Node.IsValid || !w.Owner.IsValid || w.DurationMicro == 0 ||
+                w.StartMicro >= 1_000_000U || w.DurationMicro > 1_000_000U - w.StartMicro))
+                throw new InvalidOperationException("Invalid previous work evidence.");
+            PriorWorkTurn = priorTurn;
+            PriorWork = Array.AsReadOnly(priorWork.OrderBy(w => w.Node.FineStrategicCellId.Value)
+                .ThenBy(w => w.Owner.Value).ThenBy(w => w.StartMicro).ThenBy(w => w.DurationMicro).ToArray());
+        }
+        else if (priorTurn.HasValue) throw new InvalidOperationException("Missing prior work evidence.");
         if (naval is not null)
         {
             if (!initialized || naval.Any(v => v is null || !v.Worker.IsValid ||
@@ -87,7 +105,15 @@ public sealed class FoundationEdgeTravelRuntimeState
             throw new InvalidOperationException("Naval voyage ledger replacement is not authorized.");
         var entries = NavalVoyages.Where(v => v.Worker != worker).ToList();
         if (voyage is not null) entries.Add(voyage);
-        return new FoundationEdgeTravelRuntimeState(true, Pending.ToArray(), entries.ToArray());
+        return new FoundationEdgeTravelRuntimeState(true, Pending.ToArray(), entries.ToArray(), PriorWorkTurn, PriorWork?.ToArray());
+    }
+
+    public FoundationEdgeTravelRuntimeState WithPriorWork(ulong turn, IEnumerable<FoundationPriorNodeWork> work)
+    {
+        ArgumentNullException.ThrowIfNull(work);
+        if (NavalVoyages is null || turn == 0 || (PriorWorkTurn.HasValue && turn <= PriorWorkTurn.Value))
+            throw new InvalidOperationException("Previous work must advance monotonically in naval mode.");
+        return new FoundationEdgeTravelRuntimeState(true, Pending.ToArray(), NavalVoyages.ToArray(), turn, work.ToArray());
     }
 
     public FoundationEdgeTravelRuntimeState Replace(
@@ -98,6 +124,6 @@ public sealed class FoundationEdgeTravelRuntimeState
             throw new InvalidOperationException("Travel ledger replacement is not authorized.");
         var current = Pending.Where(p => p.Worker != worker).ToList();
         if (next is not null) current.Add(next);
-        return new FoundationEdgeTravelRuntimeState(true, current.ToArray(), NavalVoyages?.ToArray());
+        return new FoundationEdgeTravelRuntimeState(true, current.ToArray(), NavalVoyages?.ToArray(), PriorWorkTurn, PriorWork?.ToArray());
     }
 }
