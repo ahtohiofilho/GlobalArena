@@ -1553,6 +1553,149 @@ public sealed class FoundationTemporalEconomicJournalGateTests
     }
 
     [Fact]
+    public void R233D2InvestmentPolicyRequiresPositivePaybackBudgetAndAvailableBuilder()
+    {
+        var (world, worker, _, _, incidence, _) = Fixture();
+        var node = worker.TacticalTileId!.Value;
+        var ids = incidence.FineTopology.Edges.Where(e => e.IncidentCellIds.Contains(node.FineStrategicCellId))
+            .OrderBy(e => e.Id.Value).Take(2)
+            .Select(e => new PhysicalTacticalEdgeId(incidence.Refinement.FineParameters, e.Id)).ToArray();
+        var workers = world.Workers.Workers.Where(w => w.Owner == worker.Owner)
+            .OrderBy(w => w.Id.Value).Select(w => new FoundationPersistentAiWorker(w.Id, node,
+                PhysicalWorkerActivity.Producing, false, FoundationWorkerOrderQueue.Empty(w.Id, w.Owner))).ToArray();
+        Assert.Equal(3, workers.Length);
+        var good = new FoundationAiInvestmentOpportunity(ids[0], node, 1_000_000UL,
+            100_000UL, 100_000UL, 80_000UL);
+        var bad = good with { Edge = ids[1], CargoMicro = 100_000UL };
+        var view = new FoundationPersistentAiView(worker.Owner, new TurnNumber(1UL), workers)
+        {
+            FundingAvailable = true, AutomaticBaseAvailable = true, DefaultAutomaticBase = true,
+            OwnCashScaled = GlobalArenaMoneyScale.FromMoneyMicro(1_000_000UL),
+            InvestmentOpportunities = new[] { bad, good }
+        };
+        var policy = new FoundationPersistentInvestmentAiPolicy();
+        Assert.Empty(policy.PlanPersistent(view));
+        var chosen = Assert.IsType<FoundationAiFundingIntent>(policy.PlanFunding(view));
+        Assert.Equal(good.Edge, chosen.Edge);
+        Assert.Equal(good.MoneyMicro, chosen.MoneyMicro);
+        Assert.Equal(new FoundationFundedWorkerInsertion(workers[^1].Id, 0), Assert.Single(chosen.Assignments));
+        var tie = good with { Edge = ids[1] };
+        Assert.Equal(ids[0], policy.PlanFunding(view with { InvestmentOpportunities = new[] { tie, good } })!.Edge);
+        Assert.Null(policy.PlanFunding(view with { OwnCashScaled = view.OwnCashScaled - 1 }));
+        Assert.Null(policy.PlanFunding(view with { InvestmentOpportunities = new[] { bad } }));
+        Assert.Null(policy.PlanFunding(view with { InvestmentOpportunities = new[] { good with { UnitCostAfterMicro = good.UnitCostBeforeMicro } } }));
+        Assert.Null(policy.PlanFunding(view with { Workers = workers.Take(2).ToArray() }));
+        Assert.Null(policy.PlanFunding(view with { Workers = new[] { workers[0], workers[1], workers[2] with { Crossing = true } } }));
+        Assert.Null(policy.PlanFunding(view with { FundingAvailable = false }));
+    }
+
+    private sealed class R233D2EvidenceProbe : FoundationPersistentEconomicAiPolicy
+    {
+        internal override bool RequiresInvestmentCandidates => true;
+        public FoundationPersistentAiView? View { get; private set; }
+        public override IReadOnlyList<FoundationPersistentOrderEdit> PlanPersistent(FoundationPersistentAiView view)
+        {
+            View = view;
+            return Array.Empty<FoundationPersistentOrderEdit>();
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void R233D2ActualParticipantTradeProjectsOnlyKnownIncidentInvestment(bool known)
+    {
+        var (world, worker, _, _, incidence, fine) = Fixture();
+        var owner = worker.Owner;
+        var human = world.Civilizations.Civilizations.Single(c => c != owner);
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL), WorldGenerationVersion.Initial,
+                new GoldbergParameters(3, 0)), workersPerCivilization: 3);
+        var signature = FoundationFineFirstWorldgenCanonicalSignature.Compute(demo.Session.GeneratedWorld, incidence, fine);
+        var bound = demo.Session.Snapshot.PromoteFineFirstBeforeTransport(demo.Session.GeneratedWorld, incidence, fine, signature)
+            .DeployInitialFineFirstPhysicalTransport(world.Transport, demo.Session.GeneratedWorld, incidence, fine, signature);
+        var opening = FoundationPersistedEdgeTravelTransitions.DeployEmpty(bound.DeployInitialTreasury(
+            CivilizationTreasuryRuntimeState.CreateOpening(bound.Civilizations.Civilizations.Select(c => (c, 5_000_000UL)))))
+            .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
+            .DeployInitialWorkerOrders();
+        demo.Session.AcceptFineFirstOpening(opening, incidence, fine, signature);
+        var crossing = incidence.FineTopology.Edges.First(e =>
+            fine.CrossingAtIndices((int)e.IncidentCellIds[0].Value - 1,
+                (int)e.IncidentCellIds[1].Value - 1) == FoundationFineTransportCrossingKind.Ground &&
+            e.IncidentCellIds.All(n => fine.SurfaceAtIndex((int)n.Value - 1) == FoundationFineSurfaceKind.Land &&
+                fine.CanTraverseOnFoot((int)n.Value - 1)));
+        var source = new PhysicalTacticalTileId(incidence.Refinement.FineParameters, crossing.IncidentCellIds[0]);
+        var target = new PhysicalTacticalTileId(incidence.Refinement.FineParameters, crossing.IncidentCellIds[1]);
+        var edge = new PhysicalTacticalEdgeId(incidence.Refinement.FineParameters, crossing.Id);
+        var census = opening.Workers.Workers.Select(w =>
+        {
+            var node = w.Owner == owner ? source : target;
+            var coarse = incidence.TileIncidences[(int)node.FineStrategicCellId.Value - 1].IncidentCoarseCellIds[0];
+            return w.WithTacticalLocationAndActivity(node, coarse, PhysicalWorkerActivity.Other);
+        });
+        opening = opening.WithWorkers(new PhysicalWorkerRuntimeState(census,
+            tacticalLocationsAuthoritative: true, occupationsAuthoritative: true));
+        demo.Session.AcceptSnapshot(opening);
+        var crops = Enum.GetValues<GlobalArena.Foundation.Agriculture.CropId>().ToDictionary(c => c, c => new CommodityId((uint)c));
+        var wood = new CommodityId(100U);
+        var stone = new CommodityId(101U);
+        var agriculture = new FoundationAgriculturalProductionPolicy(fine, incidence, crops, 2_000_000UL,
+            new FoundationBasicResourceProductionPolicy(wood, stone, 6_000_000UL, 5_000_000UL));
+        var items = crops.Values.Append(wood).Append(stone).ToArray();
+        var demand = new FoundationActivityCommodityDemandPolicy(items,
+            Enum.GetValues<FoundationPhysicalDemandProfile>().SelectMany(profile => items.Select(c =>
+                new FoundationActivityCommodityDemandCoefficient(profile, c, 1_000_000UL))));
+        var settlement = new FoundationAuthoritativeEconomicSettlementPolicy(demand,
+            new FoundationCommodityCargoConversionPolicy("r233d2", items.Select(c =>
+                new FoundationCommodityCargoConversion(c, 1_000_000UL))),
+            opening.Civilizations.Civilizations.Select(c => new FoundationPhysicalEconomicTaxRate(c, 0U)),
+            maxProducerPasses: 64, useTemporalProgressiveDistribution: true, requireSafeProgressiveRoutes: true);
+        var scopes = new Dictionary<CivilizationId, FoundationCivilizationKnowledgeScope>
+        {
+            [owner] = new(new[] { source, target }, known ? new[] { (source, target) } :
+                Array.Empty<(PhysicalTacticalTileId, PhysicalTacticalTileId)>()),
+            [human] = new(new[] { source, target }, new[] { (source, target) })
+        };
+        var probe = new R233D2EvidenceProbe();
+        var host = new FoundationTacticalHumanAiTurnHost(demo.Session, incidence, new[] { human },
+            new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy> { [owner] = probe },
+            enableMonetaryInfrastructure: true, settlementPolicy: settlement, fineGeography: fine, fineSignature: signature,
+            physicalTravelPolicy: new FoundationGroundEdgeTravelTimePolicy(1_400_000UL),
+            constructionMoneyMicroPerWholeWork: 1_000_000UL, agriculture: agriculture,
+            enableExperimentalLocalEconomy: true, enableDefaultAutomaticBase: true, knowledgeScopes: scopes);
+        foreach (var w in opening.Workers.Workers.Where(w => w.Owner == human))
+            host.QueueHumanBaseActivity(human, w.Id,
+                new FoundationWorkerBaseActivity(FoundationWorkerBaseMode.Manual, PhysicalWorkerOccupation.Mining));
+        host.PrepareAiCivilizations();
+        Assert.Empty(probe.View!.InvestmentOpportunities);
+        host.SetHumanReady(human);
+        var closed = Assert.IsType<FoundationTacticalCollectiveReceipt>(host.TryCloseTurn());
+        Assert.True(closed.ReplayMatched);
+        var load = Assert.Single(closed.TemporalEconomicSettlement!.AuditedParticipantEdges![owner].Where(e => e.Edge == edge));
+        Assert.True(load.TotalCargoMicro > 0);
+        var hash = host.StateHash;
+        host.PrepareAiCivilizations();
+        Assert.Equal(hash, host.StateHash);
+        if (!known) Assert.Empty(probe.View!.InvestmentOpportunities);
+        else
+        {
+            var candidate = Assert.Single(probe.View!.InvestmentOpportunities);
+            Assert.Equal(edge, candidate.Edge);
+            Assert.Equal(source, candidate.Source);
+            Assert.Equal(load.TotalCargoMicro, candidate.CargoMicro);
+            var actual = host.Snapshot.Transport.Edges.Single(e => e.Edge == edge);
+            Assert.Equal(FoundationPhysicalAuthoritativeTransportProjector.EffectiveUnitFreightCost(actual), candidate.UnitCostBeforeMicro);
+            Assert.Equal(FoundationPhysicalAuthoritativeTransportProjector.ProjectUnitFreightCost(actual, candidate.MoneyMicro), candidate.UnitCostAfterMicro);
+            Assert.True(GlobalArenaMoneyScale.FromMoneyMicro(candidate.MoneyMicro) * 10 <= probe.View.OwnCashScaled);
+            Assert.True(candidate.SavingNumerator > 0);
+        }
+        host.SetHumanReady(human);
+        var next = Assert.IsType<FoundationTacticalCollectiveReceipt>(host.TryCloseTurn());
+        Assert.True(next.ReplayMatched);
+        Assert.Empty(next.PersistentFunding);
+    }
+
+    [Fact]
     public void R233BLocalProductionAiDelegatesOnlyUncommandedWorkers()
     {
         var (world, worker, _, _, _, _) = Fixture();
