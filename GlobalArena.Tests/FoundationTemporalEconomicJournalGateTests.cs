@@ -1663,6 +1663,47 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Null(policy.PlanFunding(view with { FundingAvailable = false }));
     }
 
+    [Fact]
+    public void R233ECoordinatorAlternatesAndFallsBackWithoutMixedPlans()
+    {
+        var (world, worker, destination, _, incidence, _) = Fixture();
+        var source = worker.TacticalTileId!.Value;
+        var workers = world.Workers.Workers.Where(w => w.Owner == worker.Owner).OrderBy(w => w.Id.Value)
+            .Select(w => new FoundationPersistentAiWorker(w.Id, source, PhysicalWorkerActivity.Producing,
+                false, FoundationWorkerOrderQueue.Empty(w.Id, w.Owner))).ToArray();
+        var id = incidence.FineTopology.Edges.First(e => e.IncidentCellIds.Contains(source.FineStrategicCellId)).Id;
+        var investment = new FoundationAiInvestmentOpportunity(new PhysicalTacticalEdgeId(incidence.Refinement.FineParameters, id),
+            source, 1_000_000UL, 100_000UL, 100_000UL, 80_000UL);
+        var view = new FoundationPersistentAiView(worker.Owner, new TurnNumber(1UL), workers)
+        {
+            FundingAvailable = true, AutomaticBaseAvailable = true, DefaultAutomaticBase = true,
+            OwnCashScaled = GlobalArenaMoneyScale.FromMoneyMicro(1_000_000UL),
+            InvestmentOpportunities = new[] { investment },
+            AdjacentOpportunities = new[] { new FoundationAiAdjacentOpportunity(source, destination, 100, 100) }
+        };
+        var coordinator = new FoundationPersistentAutonomousEconomicAiPolicy();
+        var odd = coordinator.PlanTurn(view);
+        Assert.Equal(FoundationWorkerOrderKind.Move, Assert.Single(odd.Edits).OrderKind);
+        Assert.Null(odd.Funding);
+        var evenView = view with { Turn = new TurnNumber(2UL) };
+        var even = coordinator.PlanTurn(evenView);
+        Assert.Empty(even.Edits);
+        Assert.Equal(investment.Edge, Assert.IsType<FoundationAiFundingIntent>(even.Funding).Edge);
+        var noExpansion = coordinator.PlanTurn(view with { AdjacentOpportunities = Array.Empty<FoundationAiAdjacentOpportunity>() });
+        Assert.Empty(noExpansion.Edits);
+        Assert.Equal(investment.Edge, Assert.IsType<FoundationAiFundingIntent>(noExpansion.Funding).Edge);
+        var noFunding = coordinator.PlanTurn(evenView with { FundingAvailable = false });
+        Assert.Equal(Assert.Single(odd.Edits), Assert.Single(noFunding.Edits));
+        Assert.Null(noFunding.Funding);
+        var tooFew = coordinator.PlanTurn(evenView with { Workers = workers.Take(2).ToArray() });
+        Assert.Empty(tooFew.Edits);
+        Assert.Null(tooFew.Funding);
+        var localOnly = coordinator.PlanTurn(view with { DefaultAutomaticBase = false });
+        Assert.Equal(3, localOnly.Edits.Count);
+        Assert.All(localOnly.Edits, e => Assert.Equal(FoundationPersistentOrderEditKind.SetBaseActivity, e.Kind));
+        Assert.Null(localOnly.Funding);
+    }
+
     private sealed class R233D2EvidenceProbe : FoundationPersistentEconomicAiPolicy
     {
         internal override bool RequiresInvestmentCandidates => true;
@@ -1853,6 +1894,8 @@ public sealed class FoundationTemporalEconomicJournalGateTests
     [InlineData(2)] // one edge known to AI
     [InlineData(3)] // destination unknown to AI
     [InlineData(4)] // policy attempts to bypass the known-edge boundary
+    [InlineData(5)] // autonomous coordinator with one known link
+    [InlineData(6)] // autonomous coordinator with no known link
     public void R233CActualAiExpansionCrossesGroundAndResumesProduction(int knowledgeMode)
     {
         var (world, worker, _, _, incidence, fine) = Fixture();
@@ -1904,7 +1947,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
                 fine.CanTraverseOnFoot((int)n.Value - 1) &&
                 fine.CrossingAtIndices((int)cell.Id.Value - 1, (int)n.Value - 1) == FoundationFineTransportCrossingKind.Ground));
         var knownNodes = knowledgeMode == 3 ? new[] { source } : new[] { source, allowedTarget };
-        var knownLinks = knowledgeMode == 2 ? new[] { (source, allowedTarget) } :
+        var knownLinks = knowledgeMode is 2 or 5 ? new[] { (source, allowedTarget) } :
             Array.Empty<(PhysicalTacticalTileId, PhysicalTacticalTileId)>();
         var scopes = knowledgeMode == 0 ? null :
             new Dictionary<CivilizationId, FoundationCivilizationKnowledgeScope>
@@ -1916,7 +1959,8 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         probe.Decide = view => new[] { new FoundationPersistentOrderEdit(owner, view.Workers[0].Id,
             FoundationPersistentOrderEditKind.Insert, Index: 0,
             OrderKind: FoundationWorkerOrderKind.Move, Destination: allowedTarget) };
-        IFoundationTacticalAiTurnPolicy ai = knowledgeMode == 4 ? probe : new FoundationPersistentExpansionAiPolicy();
+        IFoundationTacticalAiTurnPolicy ai = knowledgeMode == 4 ? probe :
+            knowledgeMode is 5 or 6 ? new FoundationPersistentAutonomousEconomicAiPolicy() : new FoundationPersistentExpansionAiPolicy();
         var host = new FoundationTacticalHumanAiTurnHost(demo.Session, incidence, new[] { human },
             new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy> { [owner] = ai },
             enableMonetaryInfrastructure: true, settlementPolicy: settlement, fineGeography: fine, fineSignature: signature,
@@ -1934,7 +1978,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         }
         host.PrepareAiCivilizations();
         Assert.Equal(hash, host.StateHash);
-        if (knowledgeMode is 1 or 3 or 4)
+        if (knowledgeMode is 1 or 3 or 4 or 6)
         {
             Assert.Equal(0, host.PendingOrderCount);
             Assert.Null(host.TryCloseTurn());
@@ -1954,7 +1998,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Equal(owner, edit.Issuer);
         Assert.Equal(FoundationWorkerOrderKind.Move, edit.OrderKind);
         var target = edit.Destination!.Value;
-        if (knowledgeMode == 2) Assert.Equal(allowedTarget, target);
+        if (knowledgeMode is 2 or 5) Assert.Equal(allowedTarget, target);
         Assert.Contains(target.FineStrategicCellId, cell.AdjacentCellIds);
         Assert.Equal(FoundationFineTransportCrossingKind.Ground,
             fine.CrossingAtIndices((int)cell.Id.Value - 1, (int)target.FineStrategicCellId.Value - 1));

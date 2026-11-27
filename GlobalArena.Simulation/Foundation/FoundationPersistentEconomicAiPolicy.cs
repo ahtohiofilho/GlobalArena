@@ -49,6 +49,11 @@ public abstract class FoundationPersistentEconomicAiPolicy : IFoundationTactical
     public abstract IReadOnlyList<FoundationPersistentOrderEdit> PlanPersistent(
         FoundationPersistentAiView view);
 
+    // The host asks once for the complete plan. Existing policies keep their
+    // original two-method contract; coordinators can avoid duplicate scoring.
+    internal virtual (IReadOnlyList<FoundationPersistentOrderEdit> Edits, FoundationAiFundingIntent? Funding)
+        PlanTurn(FoundationPersistentAiView view) => (PlanPersistent(view), PlanFunding(view));
+
     IReadOnlyList<FoundationTacticalAiDecision> IFoundationTacticalAiTurnPolicy.Plan(
         CivilizationId civilization, WorldState snapshot,
         PhysicalTacticalIncidenceMap incidence, TurnNumber turn) =>
@@ -176,5 +181,41 @@ public sealed class FoundationPersistentInvestmentAiPolicy : FoundationPersisten
         var best = choices[0].Opportunity;
         return new FoundationAiFundingIntent(best.Edge, best.MoneyMicro,
             Array.AsReadOnly(new[] { new FoundationFundedWorkerInsertion(workers[best.Source][^1].Id, 0) }));
+    }
+}
+
+
+/// <summary>Opt-in economic coordinator. Alternate preferred strategic
+/// action by turn, falling back to the other when no candidate qualifies.
+/// Production remains the canonical calendar allocator; never mix a funded
+/// project with order edits in the same private AI plan.</summary>
+public sealed class FoundationPersistentAutonomousEconomicAiPolicy : FoundationPersistentEconomicAiPolicy
+{
+    private readonly FoundationPersistentExpansionAiPolicy _expansion = new();
+    private readonly FoundationPersistentInvestmentAiPolicy _investment = new();
+
+    internal override bool RequiresExpansionCandidates => true;
+    internal override bool RequiresInvestmentCandidates => true;
+
+    public override IReadOnlyList<FoundationPersistentOrderEdit> PlanPersistent(FoundationPersistentAiView view)
+        => PlanTurn(view).Edits;
+
+    public override FoundationAiFundingIntent? PlanFunding(FoundationPersistentAiView view)
+        => PlanTurn(view).Funding;
+
+    internal override (IReadOnlyList<FoundationPersistentOrderEdit> Edits, FoundationAiFundingIntent? Funding)
+        PlanTurn(FoundationPersistentAiView view)
+    {
+        ArgumentNullException.ThrowIfNull(view);
+        var empty = Array.Empty<FoundationPersistentOrderEdit>();
+        if (view.Turn.Value % 2UL == 0UL)
+        {
+            var preferred = _investment.PlanFunding(view);
+            if (preferred is not null) return (empty, preferred);
+            return (_expansion.PlanPersistent(view), null);
+        }
+        var edits = _expansion.PlanPersistent(view);
+        if (edits.Count != 0) return (edits, null);
+        return (empty, _investment.PlanFunding(view));
     }
 }
