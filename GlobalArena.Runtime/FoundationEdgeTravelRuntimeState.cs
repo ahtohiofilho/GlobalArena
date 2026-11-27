@@ -16,6 +16,13 @@ public sealed record FoundationPendingEdgeTravel(
     ulong RemainingMicro,
     ulong OriginalDurationMicro);
 
+/// <summary>Temporary vessel contract, fixed at embarkation.</summary>
+public sealed record FoundationNavalVoyage(
+    PhysicalWorkerId Worker, CivilizationId Owner,
+    PhysicalTacticalTileId Origin, PhysicalTacticalEdgeId EmbarkationEdge,
+    ulong EmbarkationTurn, ulong CrossingTimeMicro,
+    ulong PaidNumerator, ulong PaidDenominator);
+
 public sealed class FoundationEdgeTravelRuntimeState
 {
     private static readonly FoundationEdgeTravelRuntimeState Missing =
@@ -25,6 +32,7 @@ public sealed class FoundationEdgeTravelRuntimeState
 
     public bool IsInitialized { get; }
     public IReadOnlyList<FoundationPendingEdgeTravel> Pending { get; }
+    public IReadOnlyList<FoundationNavalVoyage>? NavalVoyages { get; }
 
     public FoundationEdgeTravelRuntimeState(
         IEnumerable<FoundationPendingEdgeTravel> pending)
@@ -33,7 +41,8 @@ public sealed class FoundationEdgeTravelRuntimeState
     }
 
     private FoundationEdgeTravelRuntimeState(bool initialized,
-        FoundationPendingEdgeTravel[] records)
+        FoundationPendingEdgeTravel[] records,
+        FoundationNavalVoyage[]? naval = null)
     {
         if (!initialized && records.Length > 0)
             throw new InvalidOperationException("Uninitialized journeys cannot contain records.");
@@ -51,6 +60,34 @@ public sealed class FoundationEdgeTravelRuntimeState
                 throw new InvalidOperationException("A worker cannot have multiple open journeys.");
         IsInitialized = initialized;
         Pending = Array.AsReadOnly(sorted);
+        if (naval is not null)
+        {
+            if (!initialized || naval.Any(v => v is null || !v.Worker.IsValid ||
+                !v.Owner.IsValid || !v.Origin.IsValid || !v.EmbarkationEdge.IsValid ||
+                v.Origin.FineGoldbergParameters != v.EmbarkationEdge.FineGoldbergParameters ||
+                v.EmbarkationTurn == 0 || v.CrossingTimeMicro == 0 ||
+                v.PaidDenominator == 0 || v.PaidNumerator > v.PaidDenominator) ||
+                naval.Select(v => v.Worker).Distinct().Count() != naval.Length)
+                throw new InvalidOperationException("Invalid naval voyage ledger.");
+            NavalVoyages = Array.AsReadOnly(naval.OrderBy(v => v.Worker.Value).ToArray());
+        }
+    }
+
+    public FoundationEdgeTravelRuntimeState EnableNavalVoyages()
+    {
+        if (!IsInitialized || NavalVoyages is not null)
+            throw new InvalidOperationException("Naval ledger requires an initialized legacy travel ledger.");
+        return new FoundationEdgeTravelRuntimeState(true, Pending.ToArray(), Array.Empty<FoundationNavalVoyage>());
+    }
+
+    public FoundationEdgeTravelRuntimeState ReplaceNavalVoyage(
+        PhysicalWorkerId worker, FoundationNavalVoyage? voyage)
+    {
+        if (NavalVoyages is null || !worker.IsValid || (voyage is not null && voyage.Worker != worker))
+            throw new InvalidOperationException("Naval voyage ledger replacement is not authorized.");
+        var entries = NavalVoyages.Where(v => v.Worker != worker).ToList();
+        if (voyage is not null) entries.Add(voyage);
+        return new FoundationEdgeTravelRuntimeState(true, Pending.ToArray(), entries.ToArray());
     }
 
     public FoundationEdgeTravelRuntimeState Replace(
@@ -61,6 +98,6 @@ public sealed class FoundationEdgeTravelRuntimeState
             throw new InvalidOperationException("Travel ledger replacement is not authorized.");
         var current = Pending.Where(p => p.Worker != worker).ToList();
         if (next is not null) current.Add(next);
-        return new FoundationEdgeTravelRuntimeState(current);
+        return new FoundationEdgeTravelRuntimeState(true, current.ToArray(), NavalVoyages?.ToArray());
     }
 }
