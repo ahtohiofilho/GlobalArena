@@ -1,6 +1,7 @@
 using Godot;
 using GlobalArena.Foundation.Agriculture;
 using GlobalArena.Runtime;
+using GlobalArena.Runtime.PersistentOrders;
 using GlobalArena.Simulation.Foundation;
 using GlobalArena.World;
 
@@ -13,6 +14,15 @@ public partial class Main
     private ScrollContainer? _cityProductionTab;
     private Label? _cityProductionStatus;
     private GridContainer? _cityProductionGoods, _cityProductionTrade;
+    private VBoxContainer? _productivePanel, _productiveWorkers;
+    private GridContainer? _productiveCapital;
+    private OptionButton? _productiveActivity;
+    private LineEdit? _productiveAmount;
+    private Button? _productiveQueue, _productiveCancel;
+    private Label? _productiveStatus, _productiveFeedback;
+    private ProgressBar? _productiveProgress;
+    private FoundationProductiveTarget? _productiveSelection;
+    private readonly HashSet<PhysicalWorkerId> _productiveSelectedWorkers = new();
 
     private void CreateCityProductionTab(TabContainer tabs)
     {
@@ -25,6 +35,7 @@ public partial class Main
         _cityProductionTab.AddChild(body);
         _cityProductionStatus = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
         body.AddChild(_cityProductionStatus);
+        CreateProductiveInvestmentControls(body);
         _cityProductionGoods = new GridContainer { Name = "GANextCityProductionGoods", Columns = 5,
             SizeFlagsHorizontal = SizeFlags.ExpandFill };
         body.AddChild(_cityProductionGoods);
@@ -78,6 +89,7 @@ public partial class Main
     {
         if (_cityProductionStatus is null || _cityProductionGoods is null || _cityProductionTrade is null ||
             _cityWindowLayer?.Visible != true || _cityWindowPanel?.Visible != true) return;
+        RefreshProductiveInvestmentControls();
         ClearCityProductionGrid(_cityProductionGoods);
         ClearCityProductionGrid(_cityProductionTrade);
         var host = _tacticalHost;
@@ -112,6 +124,184 @@ public partial class Main
                 FormatPhysicalMicroForDisplay(row.ExportedMicro), FormatPhysicalMicroForDisplay(row.ImportedMicro),
                 FormatExactMoneyForDisplay(row.GrossSalesScaled), FormatExactMoneyForDisplay(row.SellerNetScaled) });
         }
+    }
+
+    private void CreateProductiveInvestmentControls(VBoxContainer body)
+    {
+        _productivePanel = new VBoxContainer { Name = "GANextProductiveInvestment", Visible = false };
+        body.AddChild(_productivePanel);
+        _productivePanel.AddChild(new Label { Text = "PRODUCTIVE INFRASTRUCTURE" });
+        _productiveCapital = new GridContainer { Columns = 4, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        _productivePanel.AddChild(_productiveCapital);
+        _productiveActivity = new OptionButton { Name = "GANextProductiveActivity" };
+        foreach (var activity in Enum.GetValues<FoundationProductiveActivity>())
+            _productiveActivity.AddItem(activity.ToString(), (int)activity);
+        _productiveActivity.Select(0);
+        _productiveActivity.ItemSelected += _ => RefreshProductiveInvestmentControls();
+        _productivePanel.AddChild(_productiveActivity);
+        _productiveAmount = new LineEdit { Name = "GANextProductiveAmount", Text = "0.10", MaxLength = 32 };
+        _productivePanel.AddChild(new Label { Text = "Investment amount ($)" });
+        _productivePanel.AddChild(_productiveAmount);
+        _productiveAmount.TextChanged += _ => RefreshProductiveInvestmentControls();
+        var actions = new HBoxContainer();
+        _productivePanel.AddChild(actions);
+        _productiveQueue = new Button { Name = "GANextProductiveQueue", Text = "QUEUE PRODUCTIVE INVESTMENT", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        _productiveCancel = new Button { Name = "GANextProductiveCancel", Text = "CANCEL PENDING", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        actions.AddChild(_productiveQueue);
+        actions.AddChild(_productiveCancel);
+        _productiveQueue.Pressed += () => ChangeProductiveInvestment(false);
+        _productiveCancel.Pressed += () => ChangeProductiveInvestment(true);
+        _productiveStatus = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        _productivePanel.AddChild(_productiveStatus);
+        _productiveProgress = new ProgressBar { MinValue = 0, MaxValue = 100, ShowPercentage = true, Visible = false };
+        _productivePanel.AddChild(_productiveProgress);
+        _productiveFeedback = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        _productivePanel.AddChild(_productiveFeedback);
+        _productiveWorkers = new VBoxContainer { Name = "GANextProductiveWorkers" };
+        _productivePanel.AddChild(_productiveWorkers);
+        _productivePanel.AddChild(new HSeparator());
+    }
+
+    private bool TryReadProductiveAmount(out ulong micro)
+    {
+        micro = 0UL;
+        if (_productiveAmount is null || !decimal.TryParse(_productiveAmount.Text,
+            System.Globalization.NumberStyles.AllowDecimalPoint,
+            System.Globalization.CultureInfo.InvariantCulture, out var amount) ||
+            amount <= 0m || amount > ulong.MaxValue / 1_000_000m) return false;
+        var scaled = amount * 1_000_000m;
+        if (scaled != decimal.Truncate(scaled)) return false;
+        micro = (ulong)scaled;
+        return micro > 0UL;
+    }
+
+    private void RefreshProductiveInvestmentControls()
+    {
+        if (_productivePanel is null || _productiveCapital is null || _productiveWorkers is null ||
+            _productiveActivity is null || _productiveAmount is null || _productiveQueue is null ||
+            _productiveCancel is null || _productiveStatus is null || _productiveFeedback is null ||
+            _productiveProgress is null) return;
+        _productivePanel.Visible = false;
+        _productiveQueue.Disabled = _productiveCancel.Disabled = true;
+        ClearCityProductionGrid(_productiveCapital);
+        foreach (Node child in _productiveWorkers.GetChildren())
+        { _productiveWorkers.RemoveChild(child); child.QueueFree(); }
+        var host = _tacticalHost;
+        if (host?.ProductiveInfrastructureEnabled != true || !_interactiveEconomicPreviewActive ||
+            _cityConnectionSource is not { } source || _productiveActivity.Selected < 0) return;
+        var node = new PhysicalTacticalTileId(host.Incidence.Refinement.FineParameters, new StrategicCellId(source));
+        IReadOnlyList<FoundationProductiveCapitalReading> capital;
+        IReadOnlyList<FoundationProductiveConstructionProject> projects;
+        try
+        {
+            capital = host.GetHumanProductiveCapital(_humanCivilization, node);
+            projects = host.GetHumanProductiveProjects(_humanCivilization, node);
+        }
+        catch (InvalidOperationException) { _productiveSelection = null; _productiveSelectedWorkers.Clear(); return; }
+        _productivePanel.Visible = true;
+        var target = new FoundationProductiveTarget(node, (FoundationProductiveActivity)_productiveActivity.GetSelectedId());
+        if (_productiveSelection != target)
+        {
+            _productiveSelection = target;
+            _productiveSelectedWorkers.Clear();
+        }
+        AddCityProductionRow(_productiveCapital, new[] { "Activity", "Active ($)", "Pending ($)", "Multiplier" }, true);
+        foreach (var row in capital)
+        {
+            var multiplier = Math.Sqrt(1.0 + (double)row.ActivatedCapitalMoneyMicro / row.ReferenceMoneyMicro);
+            AddCityProductionRow(_productiveCapital, new[] { row.Target.Activity.ToString(),
+                FormatMoneyMicroForDisplay(row.ActivatedCapitalMoneyMicro),
+                FormatMoneyMicroForDisplay(row.PendingCapitalMoneyMicro),
+                FormattableString.Invariant($"{multiplier:0.00}×") });
+        }
+        var plans = host.GetHumanPendingProductiveFunding(_humanCivilization);
+        var pending = plans.SingleOrDefault(p => p.Target == target);
+        var project = projects.LastOrDefault(p => p.Target == target && !p.IsActivated);
+        bool ready = host.ReadyCivilizations.Contains(_humanCivilization);
+        var reserved = plans.Aggregate(System.Numerics.BigInteger.Zero,
+            (sum, p) => sum + GlobalArenaMoneyScale.FromMoneyMicro(p.MoneyMicro)) +
+            host.GetHumanPersistentFunding(_humanCivilization).Aggregate(System.Numerics.BigInteger.Zero,
+            (sum, p) => sum + GlobalArenaMoneyScale.FromMoneyMicro(p.MoneyMicro));
+        var available = host.Snapshot.Treasury.Get(_humanCivilization).CashScaled - reserved;
+        bool valid = TryReadProductiveAmount(out var amount);
+        var active = capital.Single(r => r.Target == target);
+        bool range = amount <= ulong.MaxValue - active.ActivatedCapitalMoneyMicro;
+        bool affordable = valid && available >= GlobalArenaMoneyScale.FromMoneyMicro(amount);
+        _productiveAmount.Editable = !ready && pending is null && project is null;
+        _productiveAmount.Visible = project is null;
+        _productiveQueue.Visible = pending is null && project is null;
+        _productiveCancel.Visible = pending is not null;
+        _productiveQueue.Disabled = ready || pending is not null || project is not null || !valid || !range || !affordable;
+        _productiveCancel.Disabled = ready || pending is null;
+        _productiveProgress.Visible = project is not null;
+        _productiveProgress.Value = project is null ? 0 : 100.0 * project.CompletedWorkMicro / project.RequiredWorkMicro;
+        _productiveStatus.Text = project is not null
+            ? $"Project #{project.Id} | Construction pending / in progress | {FormatPhysicalMicroForDisplay(project.CompletedWorkMicro)} / {FormatPhysicalMicroForDisplay(project.RequiredWorkMicro)} work"
+            : pending is not null ? $"Private funding queued: {FormatMoneyMicroForDisplay(pending.MoneyMicro)} | E to submit"
+            : active.ActivatedCapitalMoneyMicro > 0UL ? "Active capital | Benefits from the next opening cycle after completion."
+            : "No active capital for this activity.";
+        _productiveFeedback.Text = ready ? "Turn already submitted." : project is not null ? "Assign or remove construction workers." :
+            pending is not null ? "Funding is private until the turn closes." : !valid ? "Enter a positive amount (up to six decimals)." :
+            !range ? "Capital exceeds the supported range." : !affordable ? "Insufficient unreserved treasury cash." :
+            "Select workers and queue funding. Remote workers must travel to the site.";
+        _productiveWorkers.AddChild(new Label { Text = "WORKFORCE" });
+        foreach (var q in host.GetHumanPersistentQueues(_humanCivilization))
+        {
+            var worker = host.Snapshot.Workers.Workers.Single(w => w.Id == q.Worker);
+            string label = $"Worker #{q.Worker.Value} | Node {worker.TacticalTileId!.Value.FineStrategicCellId.Value}" +
+                (worker.TacticalTileId == node ? " | At site" : " | Travel required");
+            if (project is not null)
+            {
+                var order = q.Orders.FirstOrDefault(o => o.Kind == FoundationWorkerOrderKind.BuildProductive && o.ProjectId == project.Id);
+                var button = new Button { Text = label + (order is null ? " | Assign" : q.ActiveOrderId == order.Id ? " | Interrupt" : " | Remove"), Disabled = ready };
+                button.Pressed += () =>
+                {
+                    try
+                    {
+                        if (order is null) host.QueueHumanPersistentEdit(_humanCivilization, new FoundationPersistentOrderEdit(
+                            _humanCivilization, q.Worker, FoundationPersistentOrderEditKind.Insert, Index: q.Orders.Count,
+                            OrderKind: FoundationWorkerOrderKind.BuildProductive, ProjectId: project.Id));
+                        else RemovePersistentOrder(q, order.Id);
+                        RefreshFineTacticalWorkerControls();
+                    }
+                    catch (Exception ex) { _productiveFeedback!.Text = "Command rejected: " + ex.Message; }
+                };
+                _productiveWorkers.AddChild(button);
+            }
+            else
+            {
+                var check = new CheckBox { Text = label, Disabled = ready || pending is not null,
+                    ButtonPressed = pending is not null ? pending.Assignments.Any(a => a.Worker == q.Worker) : _productiveSelectedWorkers.Contains(q.Worker) };
+                check.Toggled += value => { if (value) _productiveSelectedWorkers.Add(q.Worker); else _productiveSelectedWorkers.Remove(q.Worker); };
+                _productiveWorkers.AddChild(check);
+            }
+        }
+    }
+
+    private void ChangeProductiveInvestment(bool cancel)
+    {
+        var host = _tacticalHost;
+        if (host is null || _productiveSelection is not { } target || _productivePanel?.IsVisibleInTree() != true ||
+            (cancel ? _productiveCancel?.Disabled != false : _productiveQueue?.Disabled != false)) return;
+        try
+        {
+            if (cancel)
+            {
+                if (!host.CancelHumanProductiveFunding(_humanCivilization, target))
+                    throw new InvalidOperationException("No private funding to cancel.");
+            }
+            else
+            {
+                if (!TryReadProductiveAmount(out var amount)) return;
+                var queues = host.GetHumanPersistentQueues(_humanCivilization);
+                host.QueueHumanProductiveFunding(_humanCivilization, target, amount,
+                    queues.Where(q => _productiveSelectedWorkers.Contains(q.Worker))
+                        .Select(q => new FoundationFundedWorkerInsertion(q.Worker, q.Orders.Count)));
+                _productiveSelectedWorkers.Clear();
+            }
+            RefreshFineTacticalWorkerControls();
+        }
+        catch (Exception ex) { if (_productiveFeedback is not null) _productiveFeedback.Text = "Command rejected: " + ex.Message; }
     }
 
     private void FocusCityProductionSmokeSite(FoundationTacticalHumanAiTurnHost host, PhysicalTacticalTileId node)
