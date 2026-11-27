@@ -1307,11 +1307,12 @@ public sealed class FoundationTacticalHumanAiTurnHost
             BigInteger builder = BigInteger.Zero;
             foreach (var choice in choices)
             {
-                if (!prices.TryGetValue(choice.Commodity, out var row) || row.ProducedMicro == 0UL || row.SoldMicro == 0UL) continue;
+                if (!prices.TryGetValue(choice.Commodity, out var row) || row.LocalPriceMicro is not { } price ||
+                    price == 0UL || row.ProducedMicro == 0UL || row.SoldMicro == 0UL) continue;
                 var reading = Snapshot.ProductiveInfrastructure.Read(new FoundationProductiveTarget(group.Key, choice.Activity));
                 ulong active = reading.ReservedOwner == owner ? reading.ActivatedCapitalMoneyMicro : 0UL;
                 ulong output = FoundationInfrastructureCapitalResponse.ProjectProductiveOutput(choice.Natural, active, reading.ReferenceMoneyMicro);
-                builder = BigInteger.Max(builder, (BigInteger)output * row.LocalPriceMicro);
+                builder = BigInteger.Max(builder, (BigInteger)output * price);
             }
             foreach (var activity in choices.GroupBy(c => c.Activity))
             {
@@ -1329,7 +1330,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
                 BigInteger gain = BigInteger.Zero;
                 foreach (var choice in activity)
                 {
-                    if (!prices.TryGetValue(choice.Commodity, out var row) || row.ProducedMicro == 0UL || row.SoldMicro == 0UL) continue;
+                    if (!prices.TryGetValue(choice.Commodity, out var row) || row.LocalPriceMicro is not { } price ||
+                    price == 0UL || row.ProducedMicro == 0UL || row.SoldMicro == 0UL) continue;
                     ulong prior = FoundationInfrastructureCapitalResponse.ProjectProductiveOutput(choice.Natural,
                         capital.ActivatedCapitalMoneyMicro, capital.ReferenceMoneyMicro);
                     ulong after;
@@ -1339,7 +1341,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
                             checked(capital.ActivatedCapitalMoneyMicro + spend), capital.ReferenceMoneyMicro);
                     }
                     catch (OverflowException) { continue; }
-                    gain = BigInteger.Max(gain, (BigInteger)(after - prior) * row.LocalPriceMicro);
+                    gain = BigInteger.Max(gain, (BigInteger)(after - prior) * price);
                 }
                 if (gain > 0) result.Add(new(target, spend, work, gain, builder));
             }
