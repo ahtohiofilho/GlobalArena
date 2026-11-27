@@ -1568,8 +1568,8 @@ public sealed class FoundationTemporalEconomicJournalGateTests
                 contested.QueueHumanFundedConstruction(civ, edge, civ == owner ? 600_000UL : 300_000UL,
                     civ == loser ? new[] { new FoundationFundedWorkerInsertion(losingWorker, 0) } :
                     civ == owner ? assignments : Array.Empty<FoundationFundedWorkerInsertion>());
-            Assert.Equal(1, contested.GetHumanPersistentFunding(owner).Count);
-            Assert.Equal(1, contested.GetHumanPersistentFunding(human).Count);
+            Assert.Single(contested.GetHumanPersistentFunding(owner));
+            Assert.Single(contested.GetHumanPersistentFunding(human));
             Assert.Throws<InvalidOperationException>(() => contested.QueueHumanFundedConstruction(
                 loser, edge, 1UL, Array.Empty<FoundationFundedWorkerInsertion>()));
             contested.QueueHumanPersistentEdit(loser, new FoundationPersistentOrderEdit(loser, losingWorker,
