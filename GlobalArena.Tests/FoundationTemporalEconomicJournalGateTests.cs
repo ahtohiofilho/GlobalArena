@@ -1667,8 +1667,10 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Null(policy.PlanFunding(view with { FundingAvailable = false }));
     }
 
-    [Fact]
-    public void R234D2CCollectiveCloseReplaysFreeVoyageWithSeaDemandAndLandBirths()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void R234D2CCollectiveCloseReplaysFreeVoyageWithSeaDemandAndLandBirths(bool priced)
     {
         var (world, _, _, _, incidence, fine) = Fixture();
         var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
@@ -1712,7 +1714,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         foreach (var w in opening.Workers.Workers)
             opening = opening.SetWorkerBaseActivity(w.Owner, w.Id,
                 new FoundationWorkerBaseActivity(FoundationWorkerBaseMode.Manual, PhysicalWorkerOccupation.Mining));
-        opening = naval.Deploy(opening);
+        opening = naval.Deploy(opening, priced ? 2_000_000UL : null);
         var nodes = new List<PhysicalTacticalTileId> { candidate.Origin, candidate.Water };
         var links = new List<(PhysicalTacticalTileId, PhysicalTacticalTileId)> { (candidate.Origin, candidate.Water) };
         var at = candidate.Water;
@@ -1778,7 +1780,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             var births = Assert.Single(resolved.Events.OfType<FoundationPhysicalBirthBatchEvent>());
             Assert.Equal(turn, next.Treasury.LastSettledEconomicCycleOrdinal);
             Assert.Equal(turn, next.EdgeTravels.PriorWorkTurn);
-            Assert.Equal(28U, hasher.Compute(next).FormatVersion);
+            Assert.Equal(priced ? 29U : 28U, hasher.Compute(next).FormatVersion);
             Assert.Equal(hasher.Compute(next), hasher.Compute(phase.ReplayPersistentJournal(state, resolved.EventLog, context)));
             Assert.Equal(sale.GrossSalesScaled, sale.TotalCivilizationCreditsScaled + sale.PhysicalFreightScaled);
             Assert.All(births.Newborns, b => Assert.Equal(FoundationFineSurfaceKind.Land,
@@ -1798,6 +1800,8 @@ public sealed class FoundationTemporalEconomicJournalGateTests
                 var landing = Assert.Single(timeline.NavalLandings);
                 Assert.Equal(candidate.Target, landing.Destination);
                 Assert.Equal(0UL, landing.Voyage.PaidNumerator);
+                if (priced) Assert.Equal(BigInteger.Zero, FoundationNavalFareQuote.CalculateScaled(landing.Voyage,
+                    next.EdgeTravels.NavalCargoMicroPerWorker!.Value));
                 sawLanding = true;
                 Assert.Empty(next.EdgeTravels.NavalVoyages!);
             }
@@ -1987,8 +1991,10 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         }
     }
 
-    [Fact]
-    public void R234D1NavalVesselPersistsAcrossEdgesAndDisappearsOnLanding()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void R234D1NavalVesselPersistsAcrossEdgesAndDisappearsOnLanding(bool priced)
     {
         var (world, _, _, _, incidence, fine) = Fixture();
         var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
@@ -2016,8 +2022,10 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         var hasher = new CanonicalWorldStateHasher();
         var legacyHash = hasher.Compute(opening);
         var naval = new FoundationNavalVoyageTransitions(demo.Session.GeneratedWorld, incidence, fine, signature);
-        var deployed = naval.Deploy(opening);
-        Assert.Equal(27U, hasher.Compute(deployed).FormatVersion);
+        const ulong cargo = 2_000_000UL; // explicit QA equivalence, not balance
+        Assert.Throws<InvalidOperationException>(() => naval.Deploy(opening, 0UL));
+        var deployed = naval.Deploy(opening, priced ? cargo : null);
+        Assert.Equal(priced ? 29U : 27U, hasher.Compute(deployed).FormatVersion);
         Assert.NotEqual(legacyHash, hasher.Compute(deployed));
         Assert.Throws<InvalidOperationException>(() => naval.Embark(deployed, worker.Id, water, 1, 1_400_000UL, _ => null));
         FoundationClosedNodeWorkEvidence Evidence(IReadOnlySet<CivilizationId> _) =>
@@ -2025,6 +2033,33 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         var started = naval.Embark(deployed, worker.Id, water, 1, 1_400_000UL, Evidence);
         var voyage = Assert.Single(started.EdgeTravels.NavalVoyages!);
         Assert.Equal(750_000UL, voyage.PaidNumerator);
+        if (priced)
+        {
+            var port = opening.Transport.Edges.Single(e => e.Edge == voyage.EmbarkationEdge);
+            var rate = FoundationPhysicalAuthoritativeTransportProjector.EffectiveUnitFreightCost(port);
+            Assert.Equal(rate, voyage.EmbarkationFreightMicroPerWholeCargo);
+            var expected = GlobalArenaMoneyScale.FromMoneyMicro(rate) * 3 / 2;
+            Assert.Equal(expected, FoundationNavalFareQuote.CalculateScaled(voyage, cargo));
+            Assert.Equal(BigInteger.Zero, FoundationNavalFareQuote.CalculateScaled(voyage with { PaidNumerator = 0UL }, cargo));
+            Assert.Equal(GlobalArenaMoneyScale.FromMoneyMicro(rate) * 2,
+                FoundationNavalFareQuote.CalculateScaled(voyage with { PaidNumerator = voyage.PaidDenominator }, cargo));
+            var altered = started.WithPhysicalEdgeTravel(started.Workers,
+                started.EdgeTravels.ReplaceNavalVoyage(worker.Id, voyage with { EmbarkationFreightMicroPerWholeCargo = checked(rate + 1UL) }));
+            Assert.NotEqual(hasher.Compute(started), hasher.Compute(altered));
+            Assert.NotEqual(hasher.Compute(deployed), hasher.Compute(naval.Deploy(opening, cargo + 1UL)));
+            Assert.Throws<InvalidOperationException>(() => started.EdgeTravels.ReplaceNavalVoyage(worker.Id,
+                voyage with { EmbarkationFreightMicroPerWholeCargo = null }));
+            Assert.Equal(BigInteger.Zero, FoundationNavalFareQuote.CalculateScaled(voyage with
+                { PaidNumerator = 0UL, EmbarkationFreightMicroPerWholeCargo = ulong.MaxValue }, ulong.MaxValue));
+            var large = voyage with { PaidNumerator = 1UL, PaidDenominator = 3UL, EmbarkationFreightMicroPerWholeCargo = ulong.MaxValue };
+            Assert.Equal((BigInteger)ulong.MaxValue * ulong.MaxValue * GlobalArenaMoneyScale.ExactScaledPerMoneyMicro / 3_000_000UL,
+                FoundationNavalFareQuote.CalculateScaled(large, ulong.MaxValue));
+        }
+        else
+        {
+            Assert.Null(voyage.EmbarkationFreightMicroPerWholeCargo);
+            Assert.Throws<InvalidOperationException>(() => FoundationNavalFareQuote.CalculateScaled(voyage, cargo));
+        }
         Assert.Equal(1_400_000UL, voyage.CrossingTimeMicro);
         Assert.Equal(hasher.Compute(started), hasher.Compute(naval.Embark(deployed, worker.Id, water, 1, 1_400_000UL, Evidence)));
         Assert.Throws<InvalidOperationException>(() => started.EdgeTravels.ReplaceNavalVoyage(worker.Id,
@@ -2050,7 +2085,10 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Empty(landed.State.EdgeTravels.NavalVoyages!);
         Assert.Empty(landed.State.EdgeTravels.Pending);
         Assert.Equal(origin, landed.State.Workers.Workers.Single(w => w.Id == worker.Id).TacticalTileId);
-        Assert.Equal(27U, hasher.Compute(landed.State).FormatVersion);
+        Assert.Equal(priced ? 29U : 27U, hasher.Compute(landed.State).FormatVersion);
+        if (priced)
+            Assert.Equal(FoundationNavalFareQuote.CalculateScaled(voyage, cargo),
+                FoundationNavalFareQuote.CalculateScaled(landed.Landed!, landed.State.EdgeTravels.NavalCargoMicroPerWorker!.Value));
         Assert.Equal(legacyHash, hasher.Compute(opening));
     }
 
