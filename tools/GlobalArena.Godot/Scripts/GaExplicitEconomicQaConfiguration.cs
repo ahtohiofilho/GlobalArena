@@ -399,7 +399,7 @@ internal static class GaExplicitEconomicQaConfiguration
             navalDepartureTimeMicro: NavalPreviewEnabled ? QaNavalTimeMicro : null);
         if (NavalPreviewEnabled)
             global::Godot.GD.Print($"GA_NEXT_R234H_NAVAL_READY cargo_micro={QaNavalCargoMicro} natural_time_micro={QaNavalTimeMicro} hash_v={host.StateHash.FormatVersion} smoke={NavalSmokeEnabled} experimental=true");
-        if (autonomousAi) global::Godot.GD.Print("GA_NEXT_R233E_AUTONOMOUS_AI_READY experimental=true full_map_qa=true");
+        if (autonomousAi) global::Godot.GD.Print($"GA_NEXT_R233E_AUTONOMOUS_AI_READY experimental=true full_map_qa={(navalScopes is null).ToString().ToLowerInvariant()}");
         if (exclusiveNodeLabor) global::Godot.GD.Print("GA_NEXT_R234B2_EXCLUSIVE_NODE_LABOR_READY experimental=true");
         if (enableLocalEconomy) global::Godot.GD.Print("GA_NEXT_R22813C_LOCAL_ECONOMY_READY experimental=true automatic_default=true commodities=8");
         return (host, fine, identity);
