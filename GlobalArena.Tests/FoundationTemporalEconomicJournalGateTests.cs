@@ -1493,7 +1493,33 @@ public sealed class FoundationTemporalEconomicJournalGateTests
     }
 
     [Fact]
-    public void R233CActualAiExpansionCrossesGroundAndResumesProduction()
+    public void R233C1KnownSubgraphRequiresKnownEndpointsAndUndirectedEdges()
+    {
+        var (_, worker, destination, _, _, _) = Fixture();
+        var source = worker.TacticalTileId!.Value;
+        Assert.Throws<ArgumentException>(() => new FoundationCivilizationKnowledgeScope(
+            new[] { source }, new[] { (source, destination) }));
+        var nodes = new List<PhysicalTacticalTileId> { source, destination };
+        var links = new List<(PhysicalTacticalTileId, PhysicalTacticalTileId)> { (source, destination) };
+        var scope = new FoundationCivilizationKnowledgeScope(nodes, links);
+        nodes.Clear();
+        links.Clear();
+        Assert.True(scope.KnowsNode(source));
+        Assert.True(scope.KnowsNode(destination));
+        Assert.True(scope.KnowsLink(source, destination));
+        Assert.True(scope.KnowsLink(destination, source));
+        var other = new FoundationCivilizationKnowledgeScope(new[] { source, destination },
+            Array.Empty<(PhysicalTacticalTileId, PhysicalTacticalTileId)>());
+        Assert.False(other.KnowsLink(source, destination));
+    }
+
+    [Theory]
+    [InlineData(0)] // legacy full-map QA
+    [InlineData(1)] // endpoints known to AI, edge known only to human
+    [InlineData(2)] // one edge known to AI
+    [InlineData(3)] // destination unknown to AI
+    [InlineData(4)] // policy attempts to bypass the known-edge boundary
+    public void R233CActualAiExpansionCrossesGroundAndResumesProduction(int knowledgeMode)
     {
         var (world, worker, _, _, incidence, fine) = Fixture();
         var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
@@ -1538,15 +1564,53 @@ public sealed class FoundationTemporalEconomicJournalGateTests
                 new FoundationCommodityCargoConversion(c, 1_000_000UL))),
             opening.Civilizations.Civilizations.Select(c => new FoundationPhysicalEconomicTaxRate(c, 0U)),
             maxProducerPasses: 64, useTemporalProgressiveDistribution: true, requireSafeProgressiveRoutes: true);
+        var allowedTarget = new PhysicalTacticalTileId(incidence.Refinement.FineParameters,
+            cell.AdjacentCellIds.First(n =>
+                fine.SurfaceAtIndex((int)n.Value - 1) == FoundationFineSurfaceKind.Land &&
+                fine.CanTraverseOnFoot((int)n.Value - 1) &&
+                fine.CrossingAtIndices((int)cell.Id.Value - 1, (int)n.Value - 1) == FoundationFineTransportCrossingKind.Ground));
+        var knownNodes = knowledgeMode == 3 ? new[] { source } : new[] { source, allowedTarget };
+        var knownLinks = knowledgeMode == 2 ? new[] { (source, allowedTarget) } :
+            Array.Empty<(PhysicalTacticalTileId, PhysicalTacticalTileId)>();
+        var scopes = knowledgeMode == 0 ? null :
+            new Dictionary<CivilizationId, FoundationCivilizationKnowledgeScope>
+            {
+                [owner] = new(knownNodes, knownLinks),
+                [human] = new(new[] { source, allowedTarget }, new[] { (source, allowedTarget) })
+            };
+        var probe = new R233AProbePolicy();
+        probe.Decide = view => new[] { new FoundationPersistentOrderEdit(owner, view.Workers[0].Id,
+            FoundationPersistentOrderEditKind.Insert, Index: 0,
+            OrderKind: FoundationWorkerOrderKind.Move, Destination: allowedTarget) };
+        IFoundationTacticalAiTurnPolicy ai = knowledgeMode == 4 ? probe : new FoundationPersistentExpansionAiPolicy();
         var host = new FoundationTacticalHumanAiTurnHost(demo.Session, incidence, new[] { human },
-            new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy> { [owner] = new FoundationPersistentExpansionAiPolicy() },
+            new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy> { [owner] = ai },
             enableMonetaryInfrastructure: true, settlementPolicy: settlement, fineGeography: fine, fineSignature: signature,
             physicalTravelPolicy: new FoundationGroundEdgeTravelTimePolicy(1_400_000UL),
             constructionMoneyMicroPerWholeWork: 1_000_000UL, agriculture: agriculture,
-            enableExperimentalLocalEconomy: true, enableDefaultAutomaticBase: true);
+            enableExperimentalLocalEconomy: true, enableDefaultAutomaticBase: true, knowledgeScopes: scopes);
         var hash = host.StateHash;
+        if (knowledgeMode == 4)
+        {
+            Assert.Throws<InvalidOperationException>(() => host.PrepareAiCivilizations());
+            Assert.Empty(host.ReadyCivilizations);
+            Assert.Equal(0, host.PendingOrderCount);
+            Assert.Equal(hash, host.StateHash);
+            probe.Decide = _ => Array.Empty<FoundationPersistentOrderEdit>();
+        }
         host.PrepareAiCivilizations();
         Assert.Equal(hash, host.StateHash);
+        if (knowledgeMode is 1 or 3 or 4)
+        {
+            Assert.Equal(0, host.PendingOrderCount);
+            Assert.Null(host.TryCloseTurn());
+            host.SetHumanReady(human);
+            var restricted = Assert.IsType<FoundationTacticalCollectiveReceipt>(host.TryCloseTurn());
+            Assert.True(restricted.ReplayMatched);
+            Assert.Empty(restricted.PersistentEdits);
+            Assert.Equal(restricted.Hash, host.StateHash);
+            return;
+        }
         Assert.Equal(1, host.PendingOrderCount);
         Assert.Null(host.TryCloseTurn());
         host.SetHumanReady(human);
@@ -1556,6 +1620,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Equal(owner, edit.Issuer);
         Assert.Equal(FoundationWorkerOrderKind.Move, edit.OrderKind);
         var target = edit.Destination!.Value;
+        if (knowledgeMode == 2) Assert.Equal(allowedTarget, target);
         Assert.Contains(target.FineStrategicCellId, cell.AdjacentCellIds);
         Assert.Equal(FoundationFineTransportCrossingKind.Ground,
             fine.CrossingAtIndices((int)cell.Id.Value - 1, (int)target.FineStrategicCellId.Value - 1));
