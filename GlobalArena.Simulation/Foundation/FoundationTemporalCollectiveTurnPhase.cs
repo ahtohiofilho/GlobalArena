@@ -23,7 +23,11 @@ public sealed record FoundationFundedWorkerIntentCommand(
 
 public sealed record FoundationProductiveFundingCommand(
     CommandId Id, CivilizationId Issuer, FoundationProductiveTarget Target,
-    ulong MoneyMicro) : ISimulationCommand;
+    ulong MoneyMicro) : ISimulationCommand
+{
+    public IReadOnlyList<FoundationFundedWorkerInsertion> Assignments { get; init; } =
+        Array.Empty<FoundationFundedWorkerInsertion>();
+}
 
 public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
 {
@@ -207,7 +211,8 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
             else if (command is FoundationProductiveFundingCommand productive)
             {
                 var recorded = _funded!.RecordProductive(state, id, productive.Issuer,
-                    productive.Target, productive.MoneyMicro, input.Context);
+                    productive.Target, productive.MoneyMicro, input.Context,
+                    productive.Assignments ?? throw new InvalidOperationException("Missing productive assignments."));
                 state = recorded.Next;
                 operations.Add(recorded.Event);
             }
