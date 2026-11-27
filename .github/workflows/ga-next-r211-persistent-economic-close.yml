@@ -5,6 +5,8 @@ on:
       - 'GlobalArena.Simulation/Foundation/FoundationTemporal*.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationPhysicalPresenceDemographicProjector.cs'
       - 'GlobalArena.Simulation/Foundation/FoundationPersistentWorkerTurnScheduler.cs'
+      - 'GlobalArena.Simulation/Foundation/FoundationTacticalHumanAiTurnHost.cs'
+      - 'GlobalArena.Simulation/Foundation/FoundationPersistentEconomicAiPolicy.cs'
       - 'GlobalArena.Tests/FoundationTemporalEconomicJournalGateTests.cs'
       - '.github/workflows/ga-next-r211-persistent-economic-close.yml'
   workflow_dispatch:
