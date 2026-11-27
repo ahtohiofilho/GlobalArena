@@ -21,10 +21,10 @@ internal sealed class FoundationNavalVoyageTransitions
         _binding = RuntimeWorldBinding.FromFineFirst(world, map, geo, signature);
     }
 
-    internal WorldState Deploy(WorldState world)
+    internal WorldState Deploy(WorldState world, ulong? navalCargoMicroPerWorker = null)
     {
         RequireWorld(world);
-        return world.WithPhysicalEdgeTravel(world.Workers, world.EdgeTravels.EnableNavalVoyages());
+        return world.WithPhysicalEdgeTravel(world.Workers, world.EdgeTravels.EnableNavalVoyages(navalCargoMicroPerWorker));
     }
 
     internal WorldState Embark(WorldState world, PhysicalWorkerId id,
@@ -46,7 +46,11 @@ internal sealed class FoundationNavalVoyageTransitions
         var duration = FoundationGroundEdgeTravelTimeProjector.FromInfrastructure(row,
             new FoundationGroundEdgeTravelTimePolicy(naturalCrossingTimeMicro)).ImprovedCrossingTimeMicro;
         var voyage = new FoundationNavalVoyage(id, worker.Owner, origin, edge, turn,
-            duration, decision.PaidNumerator, decision.PaidDenominator);
+            duration, decision.PaidNumerator, decision.PaidDenominator)
+        {
+            EmbarkationFreightMicroPerWholeCargo = world.EdgeTravels.NavalCargoMicroPerWorker.HasValue
+                ? FoundationPhysicalAuthoritativeTransportProjector.EffectiveUnitFreightCost(row) : null
+        };
         var ledger = world.EdgeTravels.ReplaceNavalVoyage(id, voyage)
             .Replace(id, new(id, worker.Owner, origin, water, edge, duration, duration));
         return Change(world, worker, origin, PhysicalWorkerActivity.Traveling, ledger);
