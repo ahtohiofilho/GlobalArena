@@ -88,6 +88,37 @@ public sealed class FoundationPhysicalOperationalWorkProjectorTests
     }
 
     [Fact]
+    public void R234B1ForeignTitleExcludesWorkAndConservesRemainingEffort()
+    {
+        var s = Scenario();
+        var worker = s.World.Workers.Workers.Single(w => w.Id == s.Worker);
+        var other = s.World.Civilizations.Civilizations.Single(c => c != worker.Owner);
+        var world = s.World.DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
+            s.World.Civilizations.Civilizations.Select(c => (c, 5_000_000UL))));
+        var assignments = new[] { new FoundationOperationalWorkerAssignment(
+            s.Worker, FoundationOperationalWorkKind.Land) };
+        FoundationOperationalWorkAllocation Read(WorldState snapshot) =>
+            Assert.Single(FoundationPhysicalOperationalWorkProjector.Project(
+                snapshot, s.Incidence, s.Geography, assignments)).Allocation;
+        var initial = Read(world);
+        var ground = initial.Shares.Where(x => x.Kind == FoundationOperationalWorkKind.Land)
+            .Select(x => x.Edge).ToArray();
+        Assert.NotEmpty(ground);
+        var foreign = world.RecordMonetaryInfrastructureInvestment(other, ground[0], 1UL);
+        var filtered = Read(foreign);
+        Assert.DoesNotContain(filtered.Shares, x => x.Edge == ground[0]);
+        Assert.Equal(1_000_000UL, filtered.Shares.Aggregate(
+            filtered.UnallocatedLandEffortMicro, (sum, x) => checked(sum + x.EffortMicro)));
+        foreach (var edge in ground.Skip(1))
+            foreign = foreign.RecordMonetaryInfrastructureInvestment(other, edge, 1UL);
+        var blocked = Read(foreign);
+        Assert.Equal(1_000_000UL, blocked.UnallocatedLandEffortMicro);
+        Assert.DoesNotContain(blocked.Shares, x => x.Kind == FoundationOperationalWorkKind.Land);
+        var own = world.RecordMonetaryInfrastructureInvestment(worker.Owner, ground[0], 1UL);
+        Assert.Contains(Read(own).Shares, x => x.Edge == ground[0] && x.EffortMicro > 0UL);
+    }
+
+    [Fact]
     public void NoAssignmentsMeansNoFictionalOperationalWorkers()
     {
         var s = Scenario();
