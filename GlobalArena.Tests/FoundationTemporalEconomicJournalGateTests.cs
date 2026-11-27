@@ -246,7 +246,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         var secondContext = new SimulationContext(new TurnNumber(2UL), new SimulationSeed(712UL));
         var second = phase.Resolve(new TurnResolutionInput(next, Array.Empty<ISimulationCommand>(), secondContext), next);
         var arrived = second.ResultingWorldState;
-        Assert.Empty(arrived.EdgeTravels.Pending.Where(p => p.Worker == worker.Id));
+        Assert.DoesNotContain(arrived.EdgeTravels.Pending, p => p.Worker == worker.Id);
         Assert.Equal(destination, arrived.Workers.Workers.Single(w => w.Id == worker.Id).TacticalTileId);
         Assert.Equal(FoundationConstructionApproachStatus.AtSite, router.Plan(arrived, worker.Id).Status);
         Assert.Equal(order, Assert.Single(arrived.WorkerOrders.Queues.Single(q => q.Worker == worker.Id).Orders));
