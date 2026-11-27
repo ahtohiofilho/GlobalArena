@@ -138,6 +138,8 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
             throw new InvalidOperationException("Persistent queue deployment and collective phase must match.");
         if ((stagedState.EdgeTravels.NavalVoyages is not null) != _navalCollective)
             throw new InvalidOperationException("Naval ledger deployment and collective phase must match.");
+        if (stagedState.EdgeTravels.NavalCargoMicroPerWorker.HasValue && _operationalPolicy is not null)
+            throw new InvalidOperationException("Priced naval QA requires the canonical capital-only freight profile until operational freight quotes are integrated.");
         if (_persistent is not null) return ResolvePersistent(input, stagedState);
         // Each existing phase selects only its own command type.
         var workers = _local.Resolve(input, stagedState);
