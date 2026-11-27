@@ -41,8 +41,15 @@ public partial class Main
         _worldInfrastructureSelector = new OptionButton { Name = "GANextInfrastructureConnection",
             FitToLongestItem = false, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         body.AddChild(_worldInfrastructureSelector);
-        _worldInfrastructureSelector.Visible = false; // selection model shared by diagram
-        _worldInfrastructureSelector.ItemSelected += _ => RefreshWorldInfrastructureDetail();
+        _worldInfrastructureSelector.Visible = false;
+        _worldInfrastructureSelector.TooltipText = "Choose an incident connection to manage. You can also Ctrl+click an edge on the map.";
+        _worldInfrastructureSelector.ItemSelected += index =>
+        {
+            if (!_worldInfrastructureNode.HasValue || index < 0 || index >= _worldInfrastructureLinks.Count) return;
+            _hudMapEdge = _worldInfrastructureLinks[(int)index].Edge;
+            _hudMapEdgeSource = _worldInfrastructureNode;
+            RefreshWorldInfrastructureDetail();
+        };
         _worldInfrastructureDetail = WorldLayerPlaceholder("");
         body.AddChild(_worldInfrastructureDetail);
         _worldInfrastructureDetail.Visible = false;
@@ -99,6 +106,7 @@ public partial class Main
             if (oldEdge.HasValue && link.Edge == oldEdge.Value) selected = i;
         }
         selector.Disabled = _worldInfrastructureLinks.Count == 0;
+        selector.Visible = _worldInfrastructureLinks.Count > 0;
         selector.Select(selected);
         int improved = _worldInfrastructureLinks.Count(l => l.InvestedMoneyMicro > 0UL);
         _worldInfrastructureContext.Text = source.HasValue
@@ -136,8 +144,12 @@ public partial class Main
         _worldInfrastructureProgress.Value = 0;
         var host = _tacticalHost;
         var link = SelectedWorldInfrastructure;
-        _worldInfrastructureManage.Disabled = host is null || link is null;
-        if (_hudInfrastructureKind is not null) _hudInfrastructureKind.Text = "No connection";
+        _worldInfrastructureManage.Disabled = host is null || _worldInfrastructureLinks.Count == 0;
+        _worldInfrastructureManage.TooltipText = link is null
+            ? "Choose a connection for construction or improvement"
+            : "Open Connection: construction, improvement and workforce";
+        if (_hudInfrastructureKind is not null) _hudInfrastructureKind.Text = _worldInfrastructureLinks.Count > 0
+            ? "Choose connection" : "No connection";
         if (_worldInfrastructureMetrics is not null) _worldInfrastructureMetrics.Visible = host is not null && link is not null;
         if (_hudInfrastructurePicture is not null)
         {
@@ -214,8 +226,13 @@ public partial class Main
 
     private void OpenWorldInfrastructureConnection()
     {
-        if (_hudMapEdge is { } edge && SelectedWorldInfrastructure?.Edge == edge)
-            OnR227MapConnectionRequested(edge);
+        if (SelectedWorldInfrastructure is { } link)
+            OnR227MapConnectionRequested(link.Edge);
+        else if (_worldInfrastructureLinks.Count > 0)
+        {
+            SetWidgetSectionExpanded("Infrastructure", true);
+            _worldInfrastructureSelector?.GrabFocus();
+        }
     }
 
     private void ExerciseWorldInfrastructure(FoundationTacticalHumanAiTurnHost host, PhysicalTacticalTileId node, bool fund)
@@ -241,11 +258,26 @@ public partial class Main
         var link = expected[index];
         var diagram = _worldInfrastructureDiagram ?? throw new InvalidOperationException("Missing HUD edge diagram.");
         if (!diagram.IsVisibleInTree() || !diagram.EdgeIds.OrderBy(x => x).SequenceEqual(expected.Select(x => x.Edge.FineStrategicEdgeId.Value).OrderBy(x => x)) ||
-            selector.IsVisibleInTree() || _worldInfrastructureDetail?.IsVisibleInTree() == true)
+            !selector.IsVisibleInTree() || _worldInfrastructureDetail?.IsVisibleInTree() == true)
             throw new InvalidOperationException("Infrastructure widget did not replace text selector with canonical diagram.");
         var edgeButton = diagram.EdgeButton(link.Edge.FineStrategicEdgeId.Value);
         if (!edgeButton.Disabled) throw new InvalidOperationException("Dock edge must not be a primary selector.");
-        // Use the same canonical map edge callback as Ctrl+click.
+        // The visible selector is navigation only; no funding or movement.
+        if (manage.Disabled || selector.Selected != -1)
+            throw new InvalidOperationException("Unselected node must allow opening the connection picker.");
+        SetWidgetSectionExpanded("Infrastructure", false);
+        manage.EmitSignal(Button.SignalName.Pressed);
+        if (!selector.IsVisibleInTree() || _cityLinkDetail?.IsVisibleInTree() == true)
+            throw new InvalidOperationException("Infrastructure action did not reveal connection picker.");
+        selector.Select(index);
+        selector.EmitSignal(OptionButton.SignalName.ItemSelected, (long)index);
+        if (SelectedWorldInfrastructure?.Edge != link.Edge || host.StateHash != hash)
+            throw new InvalidOperationException("Picker selected wrong connection or mutated world.");
+        manage.EmitSignal(Button.SignalName.Pressed);
+        if (_cityLinkDetail?.IsVisibleInTree() != true)
+            throw new InvalidOperationException("Picker did not open Connection.");
+        // Keep the direct map callback path covered as well.
+        _r227CloseConnection!.EmitSignal(Button.SignalName.Pressed);
         OnR227MapConnectionRequested(link.Edge);
         _r227CloseConnection!.EmitSignal(Button.SignalName.Pressed);
         if (SelectedWorldInfrastructure?.Edge != link.Edge ||
