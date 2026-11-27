@@ -353,6 +353,105 @@ public sealed class FoundationTemporalEconomicJournalGateTests
     }
 
     [Fact]
+    public void R235EOpeningCapitalChangesActualOutputAndLocalRankingOnlyForOwnerAndActivity()
+    {
+        var (legacy, traveler, remote, _, incidence, fine) = Fixture();
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL), WorldGenerationVersion.Initial,
+                new GoldbergParameters(3, 0)), workersPerCivilization: 3);
+        var signature = FoundationFineFirstWorldgenCanonicalSignature.Compute(demo.Session.GeneratedWorld, incidence, fine);
+        var bound = demo.Session.Snapshot.PromoteFineFirstBeforeTransport(demo.Session.GeneratedWorld, incidence, fine, signature)
+            .DeployInitialFineFirstPhysicalTransport(legacy.Transport, demo.Session.GeneratedWorld, incidence, fine, signature);
+        var node = traveler.TacticalTileId!.Value;
+        var opening = FoundationPersistedEdgeTravelTransitions.DeployEmpty(bound
+            .WithWorkers(new PhysicalWorkerRuntimeState(bound.Workers.Workers.Select(w =>
+                w.WithTacticalAssignment(node, traveler.CellId, PhysicalWorkerActivity.Other, PhysicalWorkerOccupation.Unassigned)),
+                tacticalLocationsAuthoritative: true, occupationsAuthoritative: true))
+            .DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
+                bound.Civilizations.Civilizations.Select(c => (c, 30_000_000UL)))))
+            .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
+            .DeployInitialWorkerOrders().DeployInitialProductiveInfrastructure(ProductiveReferences());
+        var worker = opening.Workers.Workers.Single(w => w.Id == traveler.Id);
+        var peer = opening.Workers.Workers.First(w => w.Owner == worker.Owner && w.Id != worker.Id);
+        var foreign = opening.Workers.Workers.First(w => w.Owner != worker.Owner);
+        var crops = Enum.GetValues<GlobalArena.Foundation.Agriculture.CropId>()
+            .ToDictionary(c => c, c => new CommodityId((uint)c));
+        var wood = new CommodityId(100U);
+        var stone = new CommodityId(101U);
+        var agriculture = new FoundationAgriculturalProductionPolicy(fine, incidence, crops, 1_000_000UL,
+            new FoundationBasicResourceProductionPolicy(wood, stone, 6_000_000UL, 5_000_000UL));
+        var items = crops.Values.Append(wood).Append(stone)
+            .Concat(opening.Workers.Workers.Select(w => w.Commodity)).Distinct().ToArray();
+        var demand = new FoundationActivityCommodityDemandPolicy(items,
+            Enum.GetValues<FoundationPhysicalDemandProfile>().SelectMany(profile => items.Select(item =>
+                new FoundationActivityCommodityDemandCoefficient(profile, item, 1_000_000UL))));
+        var policy = new FoundationAuthoritativeEconomicSettlementPolicy(demand,
+            new FoundationCommodityCargoConversionPolicy("r235e", items.Select(item =>
+                new FoundationCommodityCargoConversion(item, 1_000_000UL))),
+            opening.Civilizations.Civilizations.Select(c => new FoundationPhysicalEconomicTaxRate(c, 0U)),
+            maxProducerPasses: 64, useTemporalProgressiveDistribution: true, requireSafeProgressiveRoutes: true);
+        var target = new FoundationProductiveTarget(node, FoundationProductiveActivity.Mining);
+        var funded = opening.FundProductiveConstruction(worker.Owner, target, 12_000_000UL, 600_000UL);
+        var project = Assert.Single(funded.ProductiveInfrastructure.Projects);
+        var complete = funded.RecordProductiveConstructionWork(project.Id, 600_000UL);
+        var active = complete.ActivateCompletedProductiveConstruction(project.Id);
+        ulong Output(WorldState state, PhysicalWorkerRuntimeRecord person, PhysicalTacticalTileId tile,
+            PhysicalWorkerOccupation role, byte? crop = null) =>
+            FoundationTemporalEconomicTurnProjector.ResolveOpeningOutput(state, person, tile, role, crop, agriculture).WholeTurnOutput;
+        Assert.Equal(5_000_000UL, Output(opening, worker, node, PhysicalWorkerOccupation.Mining));
+        Assert.Equal(5_000_000UL, Output(funded, worker, node, PhysicalWorkerOccupation.Mining));
+        Assert.Equal(5_000_000UL, Output(complete, worker, node, PhysicalWorkerOccupation.Mining));
+        Assert.Equal(10_000_000UL, Output(active, worker, node, PhysicalWorkerOccupation.Mining));
+        Assert.Equal(5_000_000UL, Output(active, foreign, node, PhysicalWorkerOccupation.Mining));
+        Assert.Equal(6_000_000UL, Output(active, worker, node, PhysicalWorkerOccupation.Forestry));
+        Assert.Equal(Output(opening, worker, remote, PhysicalWorkerOccupation.Mining),
+            Output(active, worker, remote, PhysicalWorkerOccupation.Mining));
+        var farm = active.FundProductiveConstruction(worker.Owner,
+            target with { Activity = FoundationProductiveActivity.Agriculture }, 6_000_000UL, 1UL);
+        var farmId = farm.ProductiveInfrastructure.Projects.Single(p => p.Target.Activity == FoundationProductiveActivity.Agriculture).Id;
+        farm = farm.RecordProductiveConstructionWork(farmId, 1UL).ActivateCompletedProductiveConstruction(farmId);
+        foreach (var crop in crops.Keys)
+        {
+            ulong natural = agriculture.Resolve(node, crop).WholeTurnOutput;
+            Assert.Equal(checked(natural * 2UL), Output(farm, worker, node, PhysicalWorkerOccupation.Agriculture, (byte)crop));
+            Assert.Equal(natural, Output(farm, foreign, node, PhysicalWorkerOccupation.Agriculture, (byte)crop));
+        }
+        var calendar = opening.Workers.Workers.Select(w => new FoundationPersistentWorkerSlice(w.Id,
+            node, 0U, 1_000_000U, PhysicalWorkerActivity.Other, PhysicalWorkerOccupation.Unassigned, null)).ToArray();
+        var requests = new[] { new FoundationBaseMarginalInterval(worker.Id, 0U) };
+        var baseline = FoundationLocalBaseCalendarPlanner.Plan(opening, incidence, fine, policy, calendar, requests, agriculture);
+        var improved = FoundationLocalBaseCalendarPlanner.Plan(active, incidence, fine, policy, calendar, requests, agriculture);
+        Assert.Equal(PhysicalWorkerOccupation.Forestry, baseline.Single(s => s.Worker == worker.Id).Occupation);
+        Assert.Equal(PhysicalWorkerOccupation.Mining, improved.Single(s => s.Worker == worker.Id).Occupation);
+        var production = FoundationTemporalEconomicTurnProjector.ProjectPersistent(active, improved, demand, agriculture);
+        Assert.Equal(10_000_000UL, Assert.Single(production.Production).ProducedMicro);
+
+        // Actual commissioning at the end of a collective turn cannot boost
+        // that turn's residual production, even though the staged ledger is active.
+        var ready = funded.InsertWorkerOrder(worker.Owner, worker.Id, 0, FoundationWorkerOrderKind.BuildProductive, projectId: project.Id)
+            .InsertWorkerOrder(worker.Owner, worker.Id, 1, FoundationWorkerOrderKind.Occupation, occupation: PhysicalWorkerOccupation.Mining)
+            .InsertWorkerOrder(peer.Owner, peer.Id, 0, FoundationWorkerOrderKind.Occupation, occupation: PhysicalWorkerOccupation.Mining);
+        var phase = new FoundationTemporalCollectiveTurnPhase(demo.Session.GeneratedWorld, incidence,
+            new FoundationGroundEdgeTravelTimePolicy(1_400_000UL), policy, fine, signature,
+            persistentMoneyMicroPerWholeWork: 1_000_000UL, agriculture: agriculture,
+            enableExperimentalAutomaticBase: true, enableLocalPriceAllocation: true);
+        var hasher = new CanonicalWorldStateHasher();
+        var hash = hasher.Compute(ready);
+        var firstContext = new SimulationContext(new TurnNumber(1UL), new SimulationSeed(712UL));
+        var first = phase.Resolve(new TurnResolutionInput(ready, Array.Empty<ISimulationCommand>(), firstContext), ready);
+        var next = first.ResultingWorldState;
+        Assert.True(Assert.Single(next.ProductiveInfrastructure.Projects).IsActivated);
+        Assert.Equal(7_000_000UL, Assert.Single(first.Events.OfType<FoundationTemporalSalesSettledEvent>()).ProducedGoodsMicro);
+        Assert.Equal(hasher.Compute(next), hasher.Compute(phase.ReplayPersistentJournal(ready, first.EventLog, firstContext)));
+        var secondContext = new SimulationContext(new TurnNumber(2UL), new SimulationSeed(712UL));
+        var second = phase.Resolve(new TurnResolutionInput(next, Array.Empty<ISimulationCommand>(), secondContext), next);
+        Assert.Equal(20_000_000UL, Assert.Single(second.Events.OfType<FoundationTemporalSalesSettledEvent>()).ProducedGoodsMicro);
+        Assert.Equal(hasher.Compute(second.ResultingWorldState),
+            hasher.Compute(phase.ReplayPersistentJournal(next, second.EventLog, secondContext)));
+        Assert.Equal(hash, hasher.Compute(ready));
+    }
+
+    [Fact]
     public void R235BGenericCapitalResponseIsExactMonotoneAndScaleIndependent()
     {
         const ulong natural = 1_000_000UL, reference = 10_000_000UL;
