@@ -213,13 +213,26 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         // fractional-production nonconvergence is tracked separately (#729).
         // Never retry a rejected market with a different settlement policy.
         var legacyPolicy = Policy(opening.Civilizations.Civilizations);
+        var crops = Enum.GetValues<GlobalArena.Foundation.Agriculture.CropId>()
+            .ToDictionary(c => c, c => new CommodityId((uint)c));
+        var wood = new CommodityId(100U);
+        var stone = new CommodityId(101U);
+        var agriculture = progressive ? new FoundationAgriculturalProductionPolicy(fine, incidence,
+            crops, 2_000_000UL, new FoundationBasicResourceProductionPolicy(wood, stone, 6_000_000UL, 5_000_000UL)) : null;
+        var items = crops.Values.Append(wood).Append(stone)
+            .Concat(legacyPolicy.Demand.Commodities).Distinct().ToArray();
+        var demand = new FoundationActivityCommodityDemandPolicy(items,
+            Enum.GetValues<FoundationPhysicalDemandProfile>().SelectMany(profile => items.Select(item =>
+                new FoundationActivityCommodityDemandCoefficient(profile, item, 1_000_000UL))));
         var settlement = progressive ? new FoundationAuthoritativeEconomicSettlementPolicy(
-            legacyPolicy.Demand, legacyPolicy.Cargo, legacyPolicy.TaxRates,
+            demand, new FoundationCommodityCargoConversionPolicy("temporal-cargo", items.Select(item =>
+                new FoundationCommodityCargoConversion(item, 1_000_000UL))), legacyPolicy.TaxRates,
             maxProducerPasses: legacyPolicy.MaxProducerPasses,
             useTemporalProgressiveDistribution: true, requireSafeProgressiveRoutes: true) : legacyPolicy;
         var phase = new FoundationTemporalCollectiveTurnPhase(demo.Session.GeneratedWorld, incidence,
             travel, settlement, fine, signature,
-            persistentMoneyMicroPerWholeWork: 1_000_000UL);
+            persistentMoneyMicroPerWholeWork: 1_000_000UL, agriculture: agriculture,
+            enableExperimentalAutomaticBase: progressive, enableLocalPriceAllocation: progressive);
         var router = new FoundationConstructionApproachRouter(demo.Session.GeneratedWorld, incidence, fine, signature, travel);
         var context = new SimulationContext(new TurnNumber(1UL), new SimulationSeed(712UL));
         var hasher = new CanonicalWorldStateHasher();
@@ -300,7 +313,8 @@ public sealed class FoundationTemporalEconomicJournalGateTests
                 wasEligible: true, wasExecuted: true)).ToArray());
         Assert.Throws<InvalidOperationException>(() => phase.ReplayPersistentJournal(ready, forgedLog, thirdContext));
         // An independent scheduler replay does not debit construction again.
-        var scheduler = new FoundationPersistentWorkerTurnScheduler(router);
+        var scheduler = new FoundationPersistentWorkerTurnScheduler(router, agriculture,
+            progressive ? settlement : null, enableLocalPriceAllocation: progressive);
         var scheduled = scheduler.Record(ready, thirdContext);
         Assert.Same(ready.Treasury, scheduled.Next.Treasury);
 
