@@ -1664,6 +1664,59 @@ public sealed class FoundationTemporalEconomicJournalGateTests
     }
 
     [Fact]
+    public void R234BWorkCoverageAndWorkShareAreIndependent()
+    {
+        var (world, worker, destination, _, _, _) = Fixture();
+        var own = worker.Owner;
+        var foreign = world.Workers.Workers.First(w => w.Owner != own);
+        var node = worker.TacticalTileId!.Value;
+        var owners = world.Workers.Workers.ToDictionary(w => w.Id, w => w.Owner);
+        var eligible = new HashSet<CivilizationId> { own, foreign.Owner };
+        FoundationPersistentWorkerSlice Work(PhysicalWorkerId id, uint start, uint duration) =>
+            new(id, node, start, duration, PhysicalWorkerActivity.Producing,
+                PhysicalWorkerOccupation.Mining, null);
+        var both = new[] { Work(worker.Id, 0, 1_000_000), Work(foreign.Id, 0, 1_000_000) };
+        var equal = FoundationClosedNodeWorkProjector.Read(both, owners, node, own, eligible);
+        Assert.True(equal.HasFullCoverage);
+        Assert.Equal(1_000_000UL, equal.OwnWorkMicro);
+        Assert.Equal(2_000_000UL, equal.EligibleWorkMicro);
+        Assert.Equal(1_000_000UL, equal.ForeignWorkMicro);
+        var sequential = FoundationClosedNodeWorkProjector.Read(
+            new[] { Work(worker.Id, 0, 400_000), Work(foreign.Id, 400_000, 600_000) },
+            owners, node, own, eligible);
+        Assert.True(sequential.HasFullCoverage);
+        Assert.Equal(400_000UL, sequential.OwnWorkMicro);
+        Assert.Equal(1_000_000UL, sequential.EligibleWorkMicro);
+        var overlap = FoundationClosedNodeWorkProjector.Read(
+            new[] { Work(worker.Id, 0, 600_000), Work(foreign.Id, 0, 600_000) },
+            owners, node, own, eligible);
+        Assert.False(overlap.HasFullCoverage);
+        Assert.Equal(600_000U, overlap.CoverageMicro);
+        Assert.Equal(1_200_000UL, overlap.EligibleWorkMicro);
+        var excluded = FoundationClosedNodeWorkProjector.Read(
+            new[] { Work(worker.Id, 0, 400_000), Work(foreign.Id, 400_000, 600_000) },
+            owners, node, own, new HashSet<CivilizationId> { own });
+        Assert.Equal(400_000U, excluded.CoverageMicro);
+        Assert.Equal(400_000UL, excluded.EligibleWorkMicro);
+        var nonWork = FoundationClosedNodeWorkProjector.Read(new[]
+        {
+            Work(worker.Id, 0, 1_000_000) with { Activity = PhysicalWorkerActivity.Traveling },
+            Work(foreign.Id, 0, 1_000_000) with { Activity = PhysicalWorkerActivity.Military },
+            Work(worker.Id, 0, 1_000_000) with { Activity = PhysicalWorkerActivity.Other, Occupation = PhysicalWorkerOccupation.Unassigned },
+            Work(worker.Id, 0, 1_000_000) with { Node = destination }
+        }, owners, node, own, eligible);
+        Assert.Equal(0U, nonWork.CoverageMicro);
+        Assert.Equal(0UL, nonWork.EligibleWorkMicro);
+        var constructionAndOperation = FoundationClosedNodeWorkProjector.Read(new[]
+        {
+            Work(worker.Id, 0, 500_000) with { Activity = PhysicalWorkerActivity.Other, Occupation = PhysicalWorkerOccupation.Unassigned, ProjectId = 1UL },
+            Work(foreign.Id, 500_000, 500_000) with { Activity = PhysicalWorkerActivity.Other, Occupation = PhysicalWorkerOccupation.PortOperations }
+        }, owners, node, own, eligible);
+        Assert.True(constructionAndOperation.HasFullCoverage);
+        Assert.Equal(500_000UL, constructionAndOperation.OwnWorkMicro);
+    }
+
+    [Fact]
     public void R233ECoordinatorAlternatesAndFallsBackWithoutMixedPlans()
     {
         var (world, worker, destination, _, incidence, _) = Fixture();
@@ -1781,11 +1834,19 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         foreach (var w in opening.Workers.Workers.Where(w => w.Owner == human))
             host.QueueHumanBaseActivity(human, w.Id,
                 new FoundationWorkerBaseActivity(FoundationWorkerBaseMode.Manual, PhysicalWorkerOccupation.Mining));
+        var eligibleWorkOwners = new HashSet<CivilizationId> { owner, human };
+        Assert.Null(host.ReadLastClosedNodeWork(target, human, eligibleWorkOwners));
         host.PrepareAiCivilizations();
         Assert.Empty(probe.View!.InvestmentOpportunities);
         host.SetHumanReady(human);
         var closed = Assert.IsType<FoundationTacticalCollectiveReceipt>(host.TryCloseTurn());
         Assert.True(closed.ReplayMatched);
+        var work = Assert.IsType<FoundationClosedNodeWorkEvidence>(
+            host.ReadLastClosedNodeWork(target, human, eligibleWorkOwners));
+        Assert.True(work.HasFullCoverage);
+        Assert.Equal(3_000_000UL, work.OwnWorkMicro);
+        Assert.Equal(work.OwnWorkMicro, work.EligibleWorkMicro);
+        Assert.Equal(closed.Hash, host.StateHash);
         var load = Assert.Single(closed.TemporalEconomicSettlement!.AuditedParticipantEdges![owner], e => e.Edge == edge);
         Assert.True(load.TotalCargoMicro > 0);
         var hash = host.StateHash;
