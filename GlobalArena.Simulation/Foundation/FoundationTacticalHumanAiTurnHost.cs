@@ -1029,12 +1029,14 @@ public sealed class FoundationTacticalHumanAiTurnHost
         var staged = new List<ISimulationCommand>(edits.Length);
         foreach (var edit in edits)
         {
+            ArgumentNullException.ThrowIfNull(edit);
             if (_knowledgeScopes is not null && edit.Kind == FoundationPersistentOrderEditKind.Insert &&
                 edit.OrderKind == FoundationWorkerOrderKind.Move)
             {
                 var worker = workers.FirstOrDefault(w => w.Id == edit.Worker);
                 if (worker is null || !edit.Destination.HasValue ||
-                    !_knowledgeScopes[civ].KnowsLink(worker.Node, edit.Destination.Value))
+                    !_knowledgeScopes[civ].KnowsLink(worker.Node, edit.Destination.Value) ||
+                    !_executor.CheckEdge(worker.Node, edit.Destination.Value).HasValue)
                     throw new InvalidOperationException("Restricted AI move requires a known adjacent link.");
             }
             staged.Add(CreatePersistentEdit(civ, edit, staged.Count));
