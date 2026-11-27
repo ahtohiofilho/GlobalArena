@@ -180,11 +180,12 @@ public partial class Main
         {
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
-        body.AddChild(_cityLinkDetailText);
+
         _connectionTradeDetail = new Label { Name = "GANextConnectionTradeDetail", AutowrapMode = TextServer.AutowrapMode.WordSmart };
-        body.AddChild(_connectionTradeDetail);
+
         _connectionFunding = new VBoxContainer();
         body.AddChild(_connectionFunding);
+        _connectionFunding.AddChild(new Label { Text = "BUILD / IMPROVE TRANSPORT" });
         _connectionFunding.AddChild(new Label { Text = "Investment amount ($)" });
         _connectionAmount = new LineEdit { Text = "0.10", MaxLength = 32 };
         _connectionAmount.TextChanged += _ => RefreshConnectionInvestmentControls();
@@ -199,12 +200,12 @@ public partial class Main
         _connectionInvest.Pressed += () => ChangeConnectionInvestment(false);
         _persistentFundingWorkers = new VBoxContainer { Visible = false, Name = "GANextFundingWorkers" };
         _connectionFunding.AddChild(_persistentFundingWorkers);
-        _connectionFunding.AddChild(_connectionInvest);
+
         _connectionCancel = new Button { Text = "CANCEL PENDING INVESTMENT", Disabled = true };
         _connectionCancel.Pressed += () => ChangeConnectionInvestment(true);
-        _connectionFunding.AddChild(_connectionCancel);
+
         _connectionFeedback = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
-        body.AddChild(_connectionFeedback);
+
         _constructionSection = new VBoxContainer { Name = "GANextConstruction", Visible = false };
         body.AddChild(_constructionSection);
         _constructionSection.AddChild(new Label { Text = "CONSTRUCTION" });
@@ -216,6 +217,18 @@ public partial class Main
         _constructionSection.AddChild(_constructionWorkforceTitle);
         _constructionWorkers = new VBoxContainer();
         _constructionSection.AddChild(_constructionWorkers);
+        body.AddChild(new HSeparator());
+        body.AddChild(_cityLinkDetailText);
+        body.AddChild(_connectionTradeDetail);
+        // Keep command and rejection feedback outside the scroll viewport.
+        // Long readouts and growing workforces cannot hide the funding action.
+        var actions = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        details.AddChild(actions);
+        _connectionInvest.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        _connectionCancel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        actions.AddChild(_connectionInvest);
+        actions.AddChild(_connectionCancel);
+        details.AddChild(_connectionFeedback);
     }
 
     private void OpenSelectedCityWindow()
@@ -423,7 +436,7 @@ public partial class Main
         bool pending = pendingPlan is not null;
         bool construction = host.Snapshot.Constructions.IsInitialized;
         var project = host.Snapshot.Constructions.Projects.LastOrDefault(p => p.Edge == id && !p.IsActivated);
-        _connectionInvest.Text = construction ? "QUEUE CONSTRUCTION FUNDING" : "QUEUE INVESTMENT";
+        _connectionInvest.Text = construction ? "QUEUE CONSTRUCTION" : "QUEUE INVESTMENT";
         _connectionCancel.Text = construction ? "CANCEL PENDING FUNDING" : "CANCEL PENDING INVESTMENT";
         bool ready = host.ReadyCivilizations.Contains(_humanCivilization);
         var physical = host.Snapshot.Transport.Edges.Single(e => e.Edge == id);
@@ -456,8 +469,8 @@ public partial class Main
         }
         _connectionInvest.Disabled = ready || pending || project is not null || !financeable || !affordable || !withinRange;
         _connectionCancel.Disabled = ready || !pending;
-        _connectionCancel.Visible = !construction || pending;
-        _connectionInvest.Visible = !construction || !pending;
+        _connectionCancel.Visible = project is null && (!construction || pending);
+        _connectionInvest.Visible = project is null && (!construction || !pending);
         _connectionFeedback.Text = ready ? "Turn already submitted." :
             project is not null ? (project.Investor == _humanCivilization ? "Assign workers for this turn." : "Project funded by another civilization.") :
             pending ? "Funding pending. Press E to commit the turn." :
@@ -465,7 +478,7 @@ public partial class Main
             !valid ? "Enter a positive amount with at most six decimal places." :
             !withinRange ? "Capital exceeds the canonical money range." :
             !affordable ? "Insufficient unreserved treasury cash." :
-            "Queue funding; cash is debited only on turn settlement.";
+            "Select workforce and queue construction. Cash is debited on turn settlement.";
         RefreshPersistentFundingWorkers(id, ready, pending, project is null && financeable);
         if (host.PersistentOrdersEnabled && project is not null && project.Investor == _humanCivilization)
             _connectionFeedback.Text = "Assign or remove persistent construction orders.";
@@ -573,6 +586,8 @@ public partial class Main
         { _persistentFundingWorkers.RemoveChild(child); child.QueueFree(); }
         if (!_persistentFundingWorkers.Visible) return;
         _persistentFundingWorkers.AddChild(new Label { Text = "WORKFORCE | Select workers" });
+        _persistentFundingWorkers.AddChild(new Label { Text = "Workers may be assigned from other nodes. They travel to the site when their build order becomes active.", AutowrapMode = TextServer.AutowrapMode.WordSmart });
+        var endpoints = host.Incidence.FineTopology.Edges.Single(e => e.Id == edge.FineStrategicEdgeId).IncidentCellIds;
         if (!_fundingSelections.TryGetValue(edge, out var selected))
             _fundingSelections[edge] = selected = new HashSet<PhysicalWorkerId>();
         var committedPlan = host.GetHumanPersistentFunding(_humanCivilization).SingleOrDefault(p => p.Edge == edge);
@@ -581,7 +596,8 @@ public partial class Main
             var worker = host.Snapshot.Workers.Workers.Single(w => w.Id == q.Worker);
             var check = new CheckBox
             {
-                Text = $"Worker #{q.Worker.Value} | Node {worker.TacticalTileId!.Value.FineStrategicCellId.Value}",
+                Text = $"Worker #{q.Worker.Value} | Node {worker.TacticalTileId!.Value.FineStrategicCellId.Value}" +
+                    (endpoints.Contains(worker.TacticalTileId.Value.FineStrategicCellId) ? " | At endpoint" : " | Travel required"),
                 ButtonPressed = pending ? committedPlan!.Assignments.Any(a => a.Worker == q.Worker) : selected.Contains(q.Worker),
                 Disabled = ready || pending
             };
