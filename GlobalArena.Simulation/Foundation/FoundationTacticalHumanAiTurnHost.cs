@@ -1023,9 +1023,9 @@ public sealed class FoundationTacticalHumanAiTurnHost
                 ? ReadAdjacentAiOpportunities(civ, workers, local)
                 : Array.Empty<FoundationAiAdjacentOpportunity>()
         };
-        var edits = (policy.PlanPersistent(view)
+        var (plannedEdits, funding) = policy.PlanTurn(view);
+        var edits = (plannedEdits
             ?? throw new InvalidOperationException("Persistent AI returned a null plan.")).ToArray();
-        var funding = policy.PlanFunding(view);
         if (funding is not null && edits.Length != 0)
             throw new InvalidOperationException("Experimental AI funding must be an exclusive plan.");
         CheckSnapshot();
