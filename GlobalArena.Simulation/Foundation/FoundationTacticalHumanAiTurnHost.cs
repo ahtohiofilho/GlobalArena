@@ -1307,7 +1307,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
             BigInteger builder = BigInteger.Zero;
             foreach (var choice in choices)
             {
-                if (!prices.TryGetValue(choice.Commodity, out var row)) continue;
+                if (!prices.TryGetValue(choice.Commodity, out var row) || row.ProducedMicro == 0UL || row.SoldMicro == 0UL) continue;
                 var reading = Snapshot.ProductiveInfrastructure.Read(new FoundationProductiveTarget(group.Key, choice.Activity));
                 ulong active = reading.ReservedOwner == owner ? reading.ActivatedCapitalMoneyMicro : 0UL;
                 ulong output = FoundationInfrastructureCapitalResponse.ProjectProductiveOutput(choice.Natural, active, reading.ReferenceMoneyMicro);
