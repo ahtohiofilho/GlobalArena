@@ -1080,14 +1080,18 @@ public sealed class FoundationTacticalHumanAiTurnHost
             InvestmentOpportunities = policy.RequiresInvestmentCandidates
                 ? ReadAiInvestmentOpportunities(civ, workers)
                 : Array.Empty<FoundationAiInvestmentOpportunity>(),
+            ProductiveOpportunities = policy.RequiresProductiveCandidates
+                ? ReadAiProductiveOpportunities(civ, workers, local)
+                : Array.Empty<FoundationAiProductiveOpportunity>(),
             AdjacentOpportunities = policy.RequiresExpansionCandidates
                 ? ReadAdjacentAiOpportunities(civ, workers, local)
                 : Array.Empty<FoundationAiAdjacentOpportunity>()
         };
-        var (plannedEdits, funding) = policy.PlanTurn(view);
+        var (plannedEdits, funding, productive) = policy.PlanStrategicTurn(view);
         var edits = (plannedEdits
             ?? throw new InvalidOperationException("Persistent AI returned a null plan.")).ToArray();
-        if (funding is not null && edits.Length != 0)
+        if ((funding is not null && (edits.Length != 0 || productive is not null)) ||
+            (productive is not null && edits.Length != 0))
             throw new InvalidOperationException("Experimental AI funding must be an exclusive plan.");
         CheckSnapshot();
         if (!ReferenceEquals(before, Snapshot))
@@ -1127,6 +1131,20 @@ public sealed class FoundationTacticalHumanAiTurnHost
                     throw new InvalidOperationException("Restricted AI funding requires a known physical link.");
             }
             staged.Add(CreatePersistentFunding(civ, funding.Edge, funding.MoneyMicro, funding.Assignments, 0));
+        }
+        if (productive is not null)
+        {
+            RequireProductiveNode(civ, productive.Target.Node);
+            if (!view.ProductiveOpportunities.Any(c => c.Target == productive.Target && c.MoneyMicro == productive.MoneyMicro))
+                throw new InvalidOperationException("AI productive funding requires an authorized quote.");
+            var assignments = productive.Assignments.ToArray();
+            if (assignments.Length != 1 || assignments[0].Index != 0 ||
+                !workers.Any(w => w.Id == assignments[0].Worker && w.Node == productive.Target.Node &&
+                    !w.Crossing && w.Activity != PhysicalWorkerActivity.Traveling && w.Queue.Orders.Count == 0 &&
+                    w.Queue.BaseActivity?.Mode != FoundationWorkerBaseMode.Manual))
+                throw new InvalidOperationException("AI productive funding requires an available local builder.");
+            staged.Add(new FoundationProductiveFundingCommand(new CommandId(NextTurn, 1UL),
+                civ, productive.Target, productive.MoneyMicro) { Assignments = Array.AsReadOnly(assignments) });
         }
         _ = ProjectPersistentPlan(civ, staged);
         list.AddRange(staged);
@@ -1253,6 +1271,80 @@ public sealed class FoundationTacticalHumanAiTurnHost
         }
         return Array.AsReadOnly(result.OrderBy(c => c.Edge.FineStrategicEdgeId.Value)
             .ThenBy(c => c.Source.FineStrategicCellId.Value).ToArray());
+    }
+
+    // Frozen prior own price evidence, one observed productive activity,
+    // one local builder. No foreign price, private plan or market forecast.
+    private IReadOnlyList<FoundationAiProductiveOpportunity> ReadAiProductiveOpportunities(
+        CivilizationId owner, FoundationPersistentAiWorker[] workers, FoundationViewerLocalEconomicClose[] local)
+    {
+        if (!ProductiveInfrastructureEnabled || !DefaultAutomaticBaseEnabled || _persistentFunding is null ||
+            _signedFine is not { } geography || AgriculturalProduction is not { BasicResources: { } basic } agriculture)
+            return Array.Empty<FoundationAiProductiveOpportunity>();
+        var budget = Snapshot.Treasury.Get(owner).CashScaled / (10 * GlobalArenaMoneyScale.ExactScaledPerMoneyMicro);
+        if (budget <= 0) return Array.Empty<FoundationAiProductiveOpportunity>();
+        var scope = _knowledgeScopes is null ? null : _knowledgeScopes[owner];
+        var result = new List<FoundationAiProductiveOpportunity>();
+        foreach (var group in workers.Where(w => !w.Crossing && w.Activity != PhysicalWorkerActivity.Traveling &&
+            w.Queue.Orders.Count == 0 && w.Queue.BaseActivity?.Mode != FoundationWorkerBaseMode.Manual)
+            .GroupBy(w => w.Node).OrderBy(g => g.Key.FineStrategicCellId.Value))
+        {
+            if (group.Count() < 3 || (scope is not null && !scope.KnowsNode(group.Key))) continue;
+            int index = checked((int)group.Key.FineStrategicCellId.Value - 1);
+            if (geography.SurfaceAtIndex(index) != FoundationFineSurfaceKind.Land || !geography.CanTraverseOnFoot(index)) continue;
+            var evidence = local.SingleOrDefault(row => row.Node == group.Key);
+            if (evidence is null) continue;
+            var prices = evidence.Commodities.Where(c => c.LocalPriceMicro > 0UL)
+                .ToDictionary(c => c.Commodity, c => c);
+            var choices = new List<(FoundationProductiveActivity Activity, CommodityId Commodity, ulong Natural)>();
+            choices.Add((FoundationProductiveActivity.Forestry, basic.Wood, basic.WoodWholeTurnOutput));
+            choices.Add((FoundationProductiveActivity.Mining, basic.Stone, basic.StoneWholeTurnOutput));
+            foreach (var crop in CropCatalog.All)
+            {
+                var output = agriculture.Resolve(group.Key, crop.Id);
+                choices.Add((FoundationProductiveActivity.Agriculture, output.Commodity, output.WholeTurnOutput));
+            }
+            BigInteger builder = BigInteger.Zero;
+            foreach (var choice in choices)
+            {
+                if (!prices.TryGetValue(choice.Commodity, out var row)) continue;
+                var reading = Snapshot.ProductiveInfrastructure.Read(new FoundationProductiveTarget(group.Key, choice.Activity));
+                ulong active = reading.ReservedOwner == owner ? reading.ActivatedCapitalMoneyMicro : 0UL;
+                ulong output = FoundationInfrastructureCapitalResponse.ProjectProductiveOutput(choice.Natural, active, reading.ReferenceMoneyMicro);
+                builder = BigInteger.Max(builder, (BigInteger)output * row.LocalPriceMicro);
+            }
+            foreach (var activity in choices.GroupBy(c => c.Activity))
+            {
+                var target = new FoundationProductiveTarget(group.Key, activity.Key);
+                var capital = Snapshot.ProductiveInfrastructure.Read(target);
+                if (capital.PendingCapitalMoneyMicro != 0UL ||
+                    (capital.ReservedOwner.HasValue && capital.ReservedOwner != owner)) continue;
+                ulong spend = (ulong)BigInteger.Min(budget, BigInteger.Min(capital.ReferenceMoneyMicro,
+                    ulong.MaxValue - capital.ActivatedCapitalMoneyMicro));
+                if (spend == 0UL) continue;
+                ulong work;
+                try { work = _persistentFunding.QuoteWork(spend); }
+                catch (OverflowException) { continue; }
+                if (work == 0UL || work >= 10_000_000UL) continue;
+                BigInteger gain = BigInteger.Zero;
+                foreach (var choice in activity)
+                {
+                    if (!prices.TryGetValue(choice.Commodity, out var row) || row.ProducedMicro == 0UL || row.SoldMicro == 0UL) continue;
+                    ulong prior = FoundationInfrastructureCapitalResponse.ProjectProductiveOutput(choice.Natural,
+                        capital.ActivatedCapitalMoneyMicro, capital.ReferenceMoneyMicro);
+                    ulong after;
+                    try
+                    {
+                        after = FoundationInfrastructureCapitalResponse.ProjectProductiveOutput(choice.Natural,
+                            checked(capital.ActivatedCapitalMoneyMicro + spend), capital.ReferenceMoneyMicro);
+                    }
+                    catch (OverflowException) { continue; }
+                    gain = BigInteger.Max(gain, (BigInteger)(after - prior) * row.LocalPriceMicro);
+                }
+                if (gain > 0) result.Add(new(target, spend, work, gain, builder));
+            }
+        }
+        return Array.AsReadOnly(result.ToArray());
     }
 
     public FoundationTacticalCollectiveReceipt? TryCloseTurn()
