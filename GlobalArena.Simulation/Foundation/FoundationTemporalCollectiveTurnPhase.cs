@@ -55,7 +55,7 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
         FoundationConstructionCollectiveTurnPhase? construction = null,
         ulong? persistentMoneyMicroPerWholeWork = null, bool enableDemographicGrowth = false, FoundationAgriculturalProductionPolicy? agriculture = null, FoundationOperationalFreightShadowPolicy? operationalPolicy = null,
         bool enableExperimentalAutomaticBase = false, bool enableLocalPriceAllocation = false,
-        bool enableDefaultAutomaticBase = false)
+        bool enableDefaultAutomaticBase = false, bool enableExclusiveNodeLabor = false)
     {
         ArgumentNullException.ThrowIfNull(world);
         _incidence = incidence ?? throw new ArgumentNullException(nameof(incidence));
@@ -107,7 +107,7 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
             _persistent = new FoundationPersistentWorkerTurnScheduler(new FoundationConstructionApproachRouter(
                 world, incidence, fine, signature!, movementPolicy), agriculture,
                 enableExperimentalAutomaticBase ? economy : null,
-                enableExperimentalAutomaticBase ? operationalPolicy : null, enableLocalPriceAllocation, enableDefaultAutomaticBase);
+                enableExperimentalAutomaticBase ? operationalPolicy : null, enableLocalPriceAllocation, enableDefaultAutomaticBase, enableExclusiveNodeLabor);
             _funded = new FoundationFundedWorkerIntentJournal(new FoundationConstructionFundingExecutor(
                 _capitalExecutor, persistentMoneyMicroPerWholeWork.Value));
         }
