@@ -449,6 +449,9 @@ public partial class Main
                 physical.InfrastructureOwner == _humanCivilization);
         var reserved = plans.Aggregate(System.Numerics.BigInteger.Zero,
             (sum, p) => sum + GlobalArenaMoneyScale.FromMoneyMicro(p.MoneyMicro));
+        if (host.ProductiveInfrastructureEnabled)
+            reserved += host.GetHumanPendingProductiveFunding(_humanCivilization).Aggregate(System.Numerics.BigInteger.Zero,
+                (sum, p) => sum + GlobalArenaMoneyScale.FromMoneyMicro(p.MoneyMicro));
         var available = host.Snapshot.Treasury.Get(_humanCivilization).CashScaled - reserved;
         bool valid = TryReadConnectionAmount(out var amount);
         var projectedAmount = project?.FundedMoneyMicro ?? pendingPlan?.MoneyMicro ?? amount;

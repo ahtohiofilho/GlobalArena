@@ -179,6 +179,7 @@ public partial class Main
             {
                 FoundationWorkerOrderKind.Move => $"Move to {order.Destination!.Value.FineStrategicCellId.Value}",
                 FoundationWorkerOrderKind.Build => $"Build #{order.ProjectId}",
+                FoundationWorkerOrderKind.BuildProductive => $"Build productive #{order.ProjectId}",
                 _ => order.Crop is { } crop ? $"Grow {(CropId)crop}" : order.Occupation.ToString() ?? "Occupation"
             };
             _persistentQueueList.AddItem((q.ActiveOrderId == order.Id ? "Active | " : "") + name);
@@ -278,6 +279,7 @@ public partial class Main
         string activity = vessel is not null ? "At sea" : travel is not null ? "Traveling" :
             person.Activity == PhysicalWorkerActivity.Producing ? person.Occupation.ToString() ?? "Producing" :
             active?.Kind == FoundationWorkerOrderKind.Build ? "Construction order active" :
+            active?.Kind == FoundationWorkerOrderKind.BuildProductive ? "Productive construction order active" :
             person.Occupation is PhysicalWorkerOccupation.LandTransport or PhysicalWorkerOccupation.PortOperations ? person.Occupation.ToString()! :
             person.Activity == PhysicalWorkerActivity.Other ? "Idle" : person.Activity.ToString();
         if (host.ExperimentalLocalEconomyEnabled && travel is null && person.Activity == PhysicalWorkerActivity.Producing)
@@ -286,7 +288,8 @@ public partial class Main
             (active?.Crop ?? (active is null ? committed.BaseActivity?.Crop : null)) is { } crop)
             activity = $"Growing {(CropId)crop}";
         string target = active?.Kind == FoundationWorkerOrderKind.Move ? $" | Target {active.Destination!.Value.FineStrategicCellId.Value}" :
-            active?.Kind == FoundationWorkerOrderKind.Build ? $" | Build #{active.ProjectId}" : "";
+            active?.Kind == FoundationWorkerOrderKind.Build ? $" | Build #{active.ProjectId}" :
+            active?.Kind == FoundationWorkerOrderKind.BuildProductive ? $" | Productive build #{active.ProjectId}" : "";
         if (_persistentWorkerSummary is not null)
             _persistentWorkerSummary.Text = $"{activity} | Node {person.TacticalTileId!.Value.FineStrategicCellId.Value}{target}";
         if (_persistentCrossingLabel is null || _persistentCrossingProgress is null) return;
@@ -523,6 +526,12 @@ public partial class Main
             if (host.ExperimentalLocalEconomyEnabled)
             {
                 AssertNeutralHudStart(host);
+                if (GaExplicitEconomicQaConfiguration.ProductivePreviewEnabled)
+                {
+                    ExerciseProductiveInvestmentSmoke(host);
+                    GetTree().Quit(0);
+                    return;
+                }
                 if (GaExplicitEconomicQaConfiguration.TradeFixtureMode() is { } tradeMode)
                 {
                     await ExerciseEightCommodityTradeFixture(host, tradeMode);

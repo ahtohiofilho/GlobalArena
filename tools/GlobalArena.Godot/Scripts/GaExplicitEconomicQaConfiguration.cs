@@ -50,6 +50,9 @@ internal static class GaExplicitEconomicQaConfiguration
         return mode;
     }
 
+    internal static bool ProductivePreviewEnabled =>
+        System.Environment.GetEnvironmentVariable("GA_NEXT_R235_PRODUCTIVE_PREVIEW") == "1";
+
     internal static bool NavalPreviewEnabled =>
         System.Environment.GetEnvironmentVariable("GA_NEXT_R234H_NAVAL_PREVIEW") == "1";
     internal static bool NavalSmokeEnabled =>
@@ -175,6 +178,8 @@ internal static class GaExplicitEconomicQaConfiguration
             throw new InvalidOperationException("R231.3 trade fixture is acceptance-only and requires the eight-item local economy smoke.");
         if (enableLocalEconomy && (!enableCropPreview || !enablePersistentOrders || !enableConstructionPreview))
             throw new InvalidOperationException("Local economy preview requires signed persistent crop and construction QA.");
+        if (ProductivePreviewEnabled && (!enableLocalEconomy || !enablePersistentOrders || !enableConstructionPreview))
+            throw new InvalidOperationException("Productive infrastructure requires the signed persistent local economy preview.");
         if (enableCropPreview && !enablePersistentOrders) throw new InvalidOperationException("Crop preview requires persistent orders.");
         if (enablePersistentOrders && !enableConstructionPreview)
             throw new InvalidOperationException("Persistent preview requires construction preview.");
@@ -330,6 +335,10 @@ internal static class GaExplicitEconomicQaConfiguration
                 new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>())));
         if (enablePersistentOrders)
             demo.Session.AcceptSnapshot(demo.Snapshot.DeployInitialWorkerOrders());
+        if (ProductivePreviewEnabled)
+            demo.Session.AcceptSnapshot(demo.Snapshot.DeployInitialProductiveInfrastructure(
+                Enum.GetValues<FoundationProductiveActivity>().Select(activity =>
+                    new FoundationProductiveReference(activity, 2_000_000UL))));
         if (UniformCityDemographyPreviewEnabled)
             demo.Session.AcceptSnapshot(demo.Snapshot.WithWorkers(new PhysicalWorkerRuntimeState(
                 demo.Snapshot.Workers.Workers.Select(w => w.WithUniformCityDemography()), true, true)));

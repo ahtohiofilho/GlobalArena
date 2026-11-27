@@ -792,7 +792,7 @@ public partial class Main : Control
                     $"actions | journal replay OK | hash v{receipt.Hash.FormatVersion}";
                 if (receipt.PersistentTimeline is { } timeline)
                 {
-                    humanCount = receipt.PersistentEdits.Count(x => x.Edit.Issuer == _humanCivilization) + receipt.PersistentFunding.Count(x => x.Investor == _humanCivilization);
+                    humanCount = receipt.PersistentEdits.Count(x => x.Edit.Issuer == _humanCivilization) + receipt.PersistentFunding.Count(x => x.Investor == _humanCivilization) + receipt.ProductiveFunding.Count(x => x.Investor == _humanCivilization);
                     _localOrderStatus.Text = $"Turn {receipt.Turn.Value}: {humanCount} submitted commands | {timeline.Slices.Select(x => x.Worker).Distinct().Count()} workers scheduled | journal replay OK";
                 }
                 if (receipt.EconomicSettlement is { } settlement)
