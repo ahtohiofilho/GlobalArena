@@ -154,6 +154,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
         _economicExecutor;
     private readonly FoundationEdgeTravelEventExecutor? _travelExecutor;
     private readonly FoundationGroundEdgeTravelTimePolicy? _travelPolicy;
+    private readonly FoundationNavalVoyageTransitions? _navalTransitions;
+    private readonly ulong? _navalDepartureTimeMicro;
     private readonly FoundationAuthoritativeEconomicSettlementPolicy? _temporalPolicy;
     private readonly FoundationFineFirstPhysicalGeography? _signedFine;
     private readonly FoundationConstructionCollectiveTurnPhase? _constructionPhase;
@@ -514,7 +516,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
         FoundationGroundEdgeTravelTimePolicy? physicalTravelPolicy = null,
         ulong? constructionMoneyMicroPerWholeWork = null, bool enableDemographicGrowth = false, FoundationAgriculturalProductionPolicy? agriculture = null, FoundationOperationalFreightShadowPolicy? operationalPolicy = null,
         bool enableExperimentalLocalEconomy = false, bool enableDefaultAutomaticBase = false,
-        IReadOnlyDictionary<CivilizationId, FoundationCivilizationKnowledgeScope>? knowledgeScopes = null, bool enableExclusiveNodeLabor = false)
+        IReadOnlyDictionary<CivilizationId, FoundationCivilizationKnowledgeScope>? knowledgeScopes = null, bool enableExclusiveNodeLabor = false,
+        ulong? navalDepartureTimeMicro = null)
     {
         if (enableExclusiveNodeLabor && (!enableDefaultAutomaticBase || !session.Snapshot.WorkerOrders.IsInitialized))
             throw new InvalidOperationException("Exclusive node labor requires persistent default automatic base.");
@@ -616,6 +619,14 @@ public sealed class FoundationTacticalHumanAiTurnHost
                 "Opt-in persisted physical travel requires an explicit natural-time policy.");
         physicalTravelPolicy?.RequireValid();
         _travelPolicy = physicalTravelPolicy;
+        if ((Snapshot.EdgeTravels.NavalVoyages is not null) != navalDepartureTimeMicro.HasValue ||
+            (navalDepartureTimeMicro.HasValue && (!persistent || !enableDefaultAutomaticBase ||
+                !enableExclusiveNodeLabor || fineGeography is null || navalDepartureTimeMicro == 0UL ||
+                !Snapshot.EdgeTravels.NavalCargoMicroPerWorker.HasValue || operationalPolicy is not null)))
+            throw new InvalidOperationException("Naval host requires explicit priced signed persistent exclusive-labor QA.");
+        _navalDepartureTimeMicro = navalDepartureTimeMicro;
+        if (navalDepartureTimeMicro.HasValue)
+            _navalTransitions = new FoundationNavalVoyageTransitions(session.GeneratedWorld, incidence, fineGeography!, fineSignature!);
         _knownSnapshot = Snapshot;
         _closedTrade = new FoundationEconomicTradeCycleReadBoundary(
             Snapshot.WorldBinding ?? throw new InvalidOperationException(
@@ -690,7 +701,10 @@ public sealed class FoundationTacticalHumanAiTurnHost
                 persistent ? constructionMoneyMicroPerWholeWork : null, enableDemographicGrowth, agriculture, operationalPolicy,
                 enableExperimentalAutomaticBase: ExperimentalLocalEconomyEnabled,
                 enableLocalPriceAllocation: ExperimentalLocalEconomyEnabled,
-                enableDefaultAutomaticBase: DefaultAutomaticBaseEnabled, enableExclusiveNodeLabor: enableExclusiveNodeLabor);
+                enableDefaultAutomaticBase: DefaultAutomaticBaseEnabled, enableExclusiveNodeLabor: enableExclusiveNodeLabor,
+                navalDepartureTimeMicro: navalDepartureTimeMicro,
+                navalScopes: navalDepartureTimeMicro.HasValue ? _knowledgeScopes : null,
+                enableNavalSettlement: navalDepartureTimeMicro.HasValue);
             phases.Add(temporal);
             if (persistent)
             {
@@ -1042,6 +1056,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
         var before = Snapshot;
         var queues = before.WorkerOrders.Queues.Where(q => q.Owner == civ).ToDictionary(q => q.Worker);
         var crossings = before.EdgeTravels.Pending.Select(p => p.Worker).ToHashSet();
+        if (before.EdgeTravels.NavalVoyages is { } vessels) crossings.UnionWith(vessels.Select(v => v.Worker));
         var workers = before.Workers.Workers.Where(w => w.Owner == civ)
             .OrderBy(w => w.Id.Value)
             .Select(w => new FoundationPersistentAiWorker(w.Id, w.TacticalTileId!.Value,
@@ -1084,9 +1099,11 @@ public sealed class FoundationTacticalHumanAiTurnHost
             {
                 var worker = workers.FirstOrDefault(w => w.Id == edit.Worker);
                 if (worker is null || !edit.Destination.HasValue ||
-                    !_knowledgeScopes[civ].KnowsLink(worker.Node, edit.Destination.Value) ||
-                    !_executor.CheckEdge(worker.Node, edit.Destination.Value).HasValue)
-                    throw new InvalidOperationException("Restricted AI move requires a known adjacent link.");
+                    (!view.AdjacentOpportunities.Any(c => c.IsNaval && c.Source == worker.Node &&
+                        c.Destination == edit.Destination.Value) &&
+                     (!_knowledgeScopes[civ].KnowsLink(worker.Node, edit.Destination.Value) ||
+                      !_executor.CheckEdge(worker.Node, edit.Destination.Value).HasValue)))
+                    throw new InvalidOperationException("Restricted AI move requires a known adjacent link or authorized naval candidate.");
             }
             staged.Add(CreatePersistentEdit(civ, edit, staged.Count));
         }
@@ -1164,6 +1181,18 @@ public sealed class FoundationTacticalHumanAiTurnHost
                     continue;
                 var duration = FoundationGroundEdgeTravelTimeProjector.FromInfrastructure(transport[physicalEdge], _travelPolicy).ImprovedCrossingTimeMicro;
                 result.Add(new(source, destination, originPotential, Potential(destination), duration));
+            }
+            if (_navalTransitions is not null && _navalDepartureTimeMicro is { } navalTime)
+            {
+                var representative = group.First(w => !w.Crossing && w.Activity != PhysicalWorkerActivity.Traveling &&
+                    w.Queue.Orders.Count == 0 && w.Queue.BaseActivity?.Mode != FoundationWorkerBaseMode.Manual);
+                foreach (var quote in _navalTransitions.ReadExpansionQuotes(Snapshot, representative.Id,
+                    NextTurn.Value, navalTime, scope, FoundationPersistentExpansionAiPolicy.ExpansionHorizonMicro))
+                {
+                    if (ownNodes.Contains(quote.Target)) continue;
+                    result.Add(new FoundationAiAdjacentOpportunity(source, quote.Target, originPotential,
+                        Potential(quote.Target), quote.TimeMicro) { IsNaval = true, FareScaled = quote.FareScaled });
+                }
             }
         }
         return Array.AsReadOnly(result.ToArray());

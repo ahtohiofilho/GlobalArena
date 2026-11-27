@@ -86,7 +86,11 @@ public sealed class FoundationPersistentLocalProductionAiPolicy : FoundationPers
 public sealed record FoundationAiAdjacentOpportunity(
     PhysicalTacticalTileId Source, PhysicalTacticalTileId Destination,
     BigInteger SourcePotential, BigInteger DestinationPotential,
-    ulong CrossingTimeMicro = 1_000_000UL);
+    ulong CrossingTimeMicro = 1_000_000UL)
+{
+    public bool IsNaval { get; init; }
+    public BigInteger FareScaled { get; init; }
+}
 
 /// <summary>First bounded expansion heuristic, not a market forecast.
 /// At most one move per civilization per turn, with a twofold hurdle
@@ -115,7 +119,10 @@ public sealed class FoundationPersistentExpansionAiPolicy : FoundationPersistent
             if (occupied.Contains(edge.Destination) || reserved.Contains(edge.Destination) ||
                 !sources.TryGetValue(edge.Source, out var residents) ||
                 edge.SourcePotential <= 0 || edge.DestinationPotential <= 0 ||
-                edge.CrossingTimeMicro == 0 || edge.CrossingTimeMicro >= ExpansionHorizonMicro)
+                edge.CrossingTimeMicro == 0 || edge.CrossingTimeMicro >= ExpansionHorizonMicro ||
+                edge.FareScaled.Sign < 0 || (!edge.IsNaval && edge.FareScaled != 0) ||
+                (edge.IsNaval && edge.FareScaled > 0 &&
+                    (view.OwnCashScaled is not { } cash || cash < edge.FareScaled)))
                 continue;
             // Count only stationary uncommanded automatic residents. The
             // others may already be leaving; never rely on them as anchors.
@@ -132,6 +139,12 @@ public sealed class FoundationPersistentExpansionAiPolicy : FoundationPersistent
             BigInteger gain = edge.DestinationPotential * available.Length *
                 (ExpansionHorizonMicro - edge.CrossingTimeMicro) -
                 2 * edge.SourcePotential * ExpansionHorizonMicro;
+            // Potential = output micro * price micro. Multiply by
+            // micro-turns and compare to exact scaled treasury money.
+            // The legacy hurdle weights destination potential by the
+            // resident count; weight the one-worker fare consistently.
+            gain = gain * GlobalArenaMoneyScale.ExactScaledPerUnit -
+                edge.FareScaled * available.Length * BigInteger.Pow(1_000_000, 3);
             if (gain <= 0) continue;
             choices.Add((available[^1], edge, gain));
         }
