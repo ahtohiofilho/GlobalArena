@@ -1293,6 +1293,10 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         public Func<FoundationPersistentAiView, IReadOnlyList<FoundationPersistentOrderEdit>> Decide { get; set; } =
             _ => Array.Empty<FoundationPersistentOrderEdit>();
 
+        public Func<FoundationPersistentAiView, FoundationAiFundingIntent?> Fund { get; set; } = _ => null;
+
+        public override FoundationAiFundingIntent? PlanFunding(FoundationPersistentAiView view) => Fund(view);
+
         public override IReadOnlyList<FoundationPersistentOrderEdit> PlanPersistent(FoundationPersistentAiView view)
         {
             Calls++;
@@ -1433,6 +1437,119 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Equal(closedHash, host.StateHash);
         Assert.Throws<InvalidOperationException>(() =>
             host.GetLastClosedLocalEconomics(aiOwner, worker.TacticalTileId!.Value));
+    }
+
+    [Theory]
+    [InlineData(0)] // exact human-equivalent funding
+    [InlineData(1)] // human reserves first
+    [InlineData(2)] // AI reserves first
+    [InlineData(3)] // foreign assignment
+    [InlineData(4)] // insufficient cash
+    [InlineData(5)] // mixed dependent plan rejected
+    [InlineData(6)] // unknown link
+    public void R233D1PrivateFundingUsesOrdinaryJournalAndCollectiveConflictGate(int mode)
+    {
+        var (world, worker, _, _, incidence, fine) = Fixture();
+        var owner = worker.Owner;
+        var human = world.Civilizations.Civilizations.Single(c => c != owner);
+        var source = worker.TacticalTileId!.Value;
+        var crossing = incidence.FineTopology.Edges.First(e =>
+            e.IncidentCellIds.Contains(source.FineStrategicCellId) &&
+            fine.CrossingAtIndices((int)e.IncidentCellIds[0].Value - 1,
+                (int)e.IncidentCellIds[1].Value - 1) == FoundationFineTransportCrossingKind.Ground);
+        var edge = new PhysicalTacticalEdgeId(incidence.Refinement.FineParameters, crossing.Id);
+        var target = new PhysicalTacticalTileId(incidence.Refinement.FineParameters,
+            crossing.IncidentCellIds.Single(n => n != source.FineStrategicCellId));
+        FoundationTacticalHumanAiTurnHost CreateHost(R233AProbePolicy? ai)
+        {
+            var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+                new WorldGenerationRequest(new WorldSeed(20261012UL), WorldGenerationVersion.Initial,
+                    new GoldbergParameters(3, 0)), workersPerCivilization: 3);
+            var signature = FoundationFineFirstWorldgenCanonicalSignature.Compute(demo.Session.GeneratedWorld, incidence, fine);
+            var bound = demo.Session.Snapshot.PromoteFineFirstBeforeTransport(demo.Session.GeneratedWorld, incidence, fine, signature)
+                .DeployInitialFineFirstPhysicalTransport(world.Transport, demo.Session.GeneratedWorld, incidence, fine, signature);
+            var beginning = FoundationPersistedEdgeTravelTransitions.DeployEmpty(
+                bound.DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
+                    bound.Civilizations.Civilizations.Select(c => (c, 5_000_000UL)))))
+                .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
+                .DeployInitialWorkerOrders();
+            demo.Session.AcceptFineFirstOpening(beginning, incidence, fine, signature);
+            var scopes = new Dictionary<CivilizationId, FoundationCivilizationKnowledgeScope>
+            {
+                [owner] = new(new[] { source, target }, mode == 6
+                    ? Array.Empty<(PhysicalTacticalTileId, PhysicalTacticalTileId)>() : new[] { (source, target) }),
+                [human] = new(new[] { source, target }, new[] { (source, target) })
+            };
+            return new FoundationTacticalHumanAiTurnHost(demo.Session, incidence,
+                ai is null ? beginning.Civilizations.Civilizations.ToArray() : new[] { human },
+                ai is null ? new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy>() :
+                    new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy> { [owner] = ai },
+                enableMonetaryInfrastructure: true, settlementPolicy: Policy(beginning.Civilizations.Civilizations),
+                fineGeography: fine, fineSignature: signature,
+                physicalTravelPolicy: new FoundationGroundEdgeTravelTimePolicy(1_400_000UL),
+                constructionMoneyMicroPerWholeWork: 1_000_000UL, knowledgeScopes: scopes);
+        }
+        var probe = new R233AProbePolicy();
+        var host = CreateHost(probe);
+        var before = host.Snapshot;
+        var hash = host.StateHash;
+        var foreign = before.Workers.Workers.First(w => w.Owner == human);
+        var assignments = new[] { new FoundationFundedWorkerInsertion(worker.Id, 0) };
+        probe.Fund = view =>
+        {
+            Assert.Equal(owner, view.Owner);
+            Assert.True(view.FundingAvailable);
+            Assert.Equal((BigInteger?)GlobalArenaMoneyScale.FromMoneyMicro(5_000_000UL), view.OwnCashScaled);
+            return new FoundationAiFundingIntent(edge, mode == 4 ? 5_000_001UL : 600_000UL,
+                mode == 3 ? new[] { new FoundationFundedWorkerInsertion(foreign.Id, 0) } : assignments);
+        };
+        if (mode == 5)
+            probe.Decide = _ => new[] { new FoundationPersistentOrderEdit(owner, worker.Id,
+                FoundationPersistentOrderEditKind.Insert, OrderKind: FoundationWorkerOrderKind.Occupation,
+                Occupation: PhysicalWorkerOccupation.Agriculture) };
+        if (mode is 3 or 4 or 5 or 6)
+        {
+            Assert.Throws<InvalidOperationException>(() => host.PrepareAiCivilizations());
+            Assert.Same(before, host.Snapshot);
+            Assert.Equal(hash, host.StateHash);
+            Assert.Equal(0, host.PendingOrderCount);
+            Assert.Empty(host.ReadyCivilizations);
+            return;
+        }
+        if (mode == 1)
+            host.QueueHumanFundedConstruction(human, edge, 300_000UL, Array.Empty<FoundationFundedWorkerInsertion>());
+        host.PrepareAiCivilizations();
+        if (mode == 2)
+            host.QueueHumanFundedConstruction(human, edge, 300_000UL, Array.Empty<FoundationFundedWorkerInsertion>());
+        Assert.Same(before, host.Snapshot);
+        Assert.Equal(hash, host.StateHash);
+        Assert.Equal(mode == 0 ? 1 : 2, host.PendingOrderCount);
+        Assert.Throws<InvalidOperationException>(() => host.GetHumanPersistentFunding(owner));
+        Assert.Equal(mode == 0 ? 0 : 1, host.GetHumanPersistentFunding(human).Count);
+        Assert.Null(host.TryCloseTurn());
+        host.SetHumanReady(human);
+        var receipt = Assert.IsType<FoundationTacticalCollectiveReceipt>(host.TryCloseTurn());
+        Assert.True(receipt.ReplayMatched);
+        var funded = Assert.Single(receipt.PersistentFunding);
+        Assert.Equal(edge, funded.Edge);
+        Assert.Equal(mode == 0 ? owner : human, funded.Investor);
+        Assert.Equal(mode == 0 ? 600_000UL : 300_000UL, funded.MoneyMicro);
+        Assert.Equal(mode == 0 ? GlobalArenaMoneyScale.FromMoneyMicro(600_000UL) : BigInteger.Zero,
+            host.Snapshot.Treasury.Get(owner).TotalInfrastructureInvestmentScaled);
+        Assert.Equal(receipt.Hash, host.StateHash);
+        Assert.Equal(0, host.PendingOrderCount);
+
+        var manual = CreateHost(null);
+        Assert.Equal(hash, manual.StateHash);
+        if (mode == 0)
+            manual.QueueHumanFundedConstruction(owner, edge, 600_000UL, assignments);
+        else
+            manual.QueueHumanFundedConstruction(human, edge, 300_000UL, Array.Empty<FoundationFundedWorkerInsertion>());
+        manual.SetHumanReady(owner);
+        manual.SetHumanReady(human);
+        var expected = Assert.IsType<FoundationTacticalCollectiveReceipt>(manual.TryCloseTurn());
+        Assert.Equal(expected.Hash, receipt.Hash);
+        Assert.Equal(expected.Revision, receipt.Revision);
     }
 
     [Fact]
