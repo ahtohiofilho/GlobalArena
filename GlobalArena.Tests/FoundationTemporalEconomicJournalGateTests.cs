@@ -1360,6 +1360,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         {
             Assert.Equal(aiOwner, view.Owner);
             Assert.Equal(host.NextTurn, view.Turn);
+            Assert.Empty(view.LocalEconomics);
             Assert.Equal(before.Workers.Workers.Where(w => w.Owner == aiOwner)
                 .Select(w => w.Id.Value).OrderBy(id => id), view.Workers.Select(w => w.Id.Value));
             Assert.All(view.Workers, w =>
@@ -1403,6 +1404,64 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Equal(expected!.Hash, actual.Hash);
         Assert.Equal(expected.Revision, actual.Revision);
         Assert.Equal(Assert.Single(expected.PersistentEdits), Assert.Single(actual.PersistentEdits));
+
+        // The next AI plan receives exactly the same own-node read available
+        // to an equivalent human, not the foreign or global evidence object.
+        var closedHash = host.StateHash;
+        probe.Decide = view =>
+        {
+            Assert.False(view.AutomaticBaseAvailable);
+            Assert.False(view.DefaultAutomaticBase);
+            var reads = view.Workers.Select(w => w.Node).Distinct()
+                .OrderBy(node => node.FineStrategicCellId.Value)
+                .Select(node => manual.GetLastClosedLocalEconomics(aiOwner, node))
+                .OfType<FoundationViewerLocalEconomicClose>().ToArray();
+            Assert.NotEmpty(reads);
+            Assert.Equal(reads.Length, view.LocalEconomics.Count);
+            for (int i = 0; i < reads.Length; i++)
+            {
+                var observed = view.LocalEconomics[i];
+                Assert.Equal(aiOwner, observed.Viewer);
+                Assert.Equal(reads[i].Node, observed.Node);
+                Assert.Equal(1UL, observed.EconomicCycleOrdinal);
+                Assert.Equal(closedHash, observed.CommittedWorldHash);
+                Assert.Equal(reads[i].Commodities.ToArray(), observed.Commodities.ToArray());
+            }
+            return Array.Empty<FoundationPersistentOrderEdit>();
+        };
+        host.PrepareAiCivilizations();
+        Assert.Equal(closedHash, host.StateHash);
+        Assert.Throws<InvalidOperationException>(() =>
+            host.GetLastClosedLocalEconomics(aiOwner, worker.TacticalTileId!.Value));
+    }
+
+    [Fact]
+    public void R233BLocalProductionAiDelegatesOnlyUncommandedWorkers()
+    {
+        var (world, worker, _, _, _, _) = Fixture();
+        var queue = FoundationWorkerOrderQueue.Empty(worker.Id, worker.Owner);
+        var row = new FoundationPersistentAiWorker(worker.Id, worker.TacticalTileId!.Value,
+            worker.Activity, false, queue);
+        var view = new FoundationPersistentAiView(worker.Owner, new TurnNumber(1UL), new[] { row });
+        var policy = new FoundationPersistentLocalProductionAiPolicy();
+        Assert.Empty(policy.PlanPersistent(view));
+        var enabled = view with { AutomaticBaseAvailable = true };
+        var decision = Assert.Single(policy.PlanPersistent(enabled));
+        Assert.Equal(worker.Owner, decision.Issuer);
+        Assert.Equal(worker.Id, decision.Worker);
+        Assert.Equal(FoundationPersistentOrderEditKind.SetBaseActivity, decision.Kind);
+        Assert.Equal(FoundationWorkerBaseMode.Automatic, decision.BaseActivity!.Mode);
+        Assert.Empty(policy.PlanPersistent(enabled with { DefaultAutomaticBase = true }));
+        Assert.Empty(policy.PlanPersistent(enabled with { Workers = new[] { row with { Crossing = true } } }));
+        var manual = queue.SetBaseActivity(worker.Owner,
+            new FoundationWorkerBaseActivity(FoundationWorkerBaseMode.Manual, PhysicalWorkerOccupation.Mining));
+        Assert.Empty(policy.PlanPersistent(enabled with { Workers = new[] { row with { Queue = manual } } }));
+        var busy = queue.Insert(worker.Owner, 0, FoundationWorkerOrderKind.Occupation,
+            occupation: PhysicalWorkerOccupation.Agriculture);
+        Assert.Empty(policy.PlanPersistent(enabled with { Workers = new[] { row with { Queue = busy } } }));
+        var automatic = queue.SetBaseActivity(worker.Owner,
+            new FoundationWorkerBaseActivity(FoundationWorkerBaseMode.Automatic));
+        Assert.Empty(policy.PlanPersistent(enabled with { Workers = new[] { row with { Queue = automatic } } }));
     }
 
     [Fact]
