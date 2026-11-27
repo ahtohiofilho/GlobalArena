@@ -27,19 +27,35 @@ internal static class FoundationClosedNodeWorkProjector
         ArgumentNullException.ThrowIfNull(eligibleOwners);
         if (!node.IsValid || !requester.IsValid || !eligibleOwners.Contains(requester))
             throw new ArgumentException("Valid node and own eligibility required.");
-        ulong total = 0, own = 0;
-        var intervals = new List<(uint Start, uint End)>();
-        foreach (var slice in slices)
+        return Read(Capture(slices, owners), node, requester, eligibleOwners);
+    }
+
+    internal static FoundationPriorNodeWork[] Capture(
+        IReadOnlyList<FoundationPersistentWorkerSlice> slices,
+        IReadOnlyDictionary<PhysicalWorkerId, CivilizationId> owners)
+    {
+        return slices.Where(IsEconomicWork).Select(slice =>
         {
-            if (slice.Node != node || !IsEconomicWork(slice)) continue;
             if (!owners.TryGetValue(slice.Worker, out var owner))
                 throw new InvalidOperationException("Economic work has no worker owner.");
-            if (!eligibleOwners.Contains(owner)) continue;
+            return new FoundationPriorNodeWork(slice.Node, owner, slice.StartMicro, slice.DurationMicro);
+        }).ToArray();
+    }
+
+    internal static FoundationClosedNodeWorkEvidence Read(
+        IReadOnlyList<FoundationPriorNodeWork> work, PhysicalTacticalTileId node,
+        CivilizationId requester, IReadOnlySet<CivilizationId> eligibleOwners)
+    {
+        ulong total = 0, own = 0;
+        var intervals = new List<(uint Start, uint End)>();
+        foreach (var slice in work)
+        {
+            if (slice.Node != node || !eligibleOwners.Contains(slice.Owner)) continue;
             if (slice.DurationMicro == 0 || slice.StartMicro >= FoundationClosedNodeWorkEvidence.WholeTurnMicro ||
                 slice.DurationMicro > FoundationClosedNodeWorkEvidence.WholeTurnMicro - slice.StartMicro)
                 throw new InvalidOperationException("Invalid closed work interval.");
             total = checked(total + slice.DurationMicro);
-            if (owner == requester) own = checked(own + slice.DurationMicro);
+            if (slice.Owner == requester) own = checked(own + slice.DurationMicro);
             intervals.Add((slice.StartMicro, slice.StartMicro + slice.DurationMicro));
         }
         uint coverage = 0, start = 0, end = 0;
