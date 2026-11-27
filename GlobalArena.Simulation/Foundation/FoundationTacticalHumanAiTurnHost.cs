@@ -1016,6 +1016,9 @@ public sealed class FoundationTacticalHumanAiTurnHost
             DefaultAutomaticBase = DefaultAutomaticBaseEnabled,
             OwnCashScaled = before.Treasury.IsInitialized ? before.Treasury.Get(civ).CashScaled : null,
             FundingAvailable = _persistentFunding is not null,
+            InvestmentOpportunities = policy.RequiresInvestmentCandidates
+                ? ReadAiInvestmentOpportunities(civ, workers)
+                : Array.Empty<FoundationAiInvestmentOpportunity>(),
             AdjacentOpportunities = policy.RequiresExpansionCandidates
                 ? ReadAdjacentAiOpportunities(civ, workers, local)
                 : Array.Empty<FoundationAiAdjacentOpportunity>()
@@ -1121,6 +1124,58 @@ public sealed class FoundationTacticalHumanAiTurnHost
             }
         }
         return Array.AsReadOnly(result.ToArray());
+    }
+
+    // Read only the owner's verified participant cargo, never global load.
+    // Keep this first estimate to known, locally occupied ground links.
+    private IReadOnlyList<FoundationAiInvestmentOpportunity> ReadAiInvestmentOpportunities(
+        CivilizationId owner, FoundationPersistentAiWorker[] workers)
+    {
+        if (!DefaultAutomaticBaseEnabled || _persistentFunding is null ||
+            _signedFine is not { } geography || !Snapshot.Treasury.IsInitialized ||
+            !Snapshot.Transport.HasMonetaryConstructionCosts)
+            return Array.Empty<FoundationAiInvestmentOpportunity>();
+        var sale = _lastTemporalClose?.TemporalEconomicSettlement;
+        if (sale?.AuditedParticipantEdges is not { } audit ||
+            sale.EconomicCycleOrdinal != Snapshot.Treasury.LastSettledEconomicCycleOrdinal ||
+            !audit.TryGetValue(owner, out var used))
+            return Array.Empty<FoundationAiInvestmentOpportunity>();
+        var budget = Snapshot.Treasury.Get(owner).CashScaled /
+            (10 * GlobalArenaMoneyScale.ExactScaledPerMoneyMicro);
+        if (budget <= 0 || used.Count == 0)
+            return Array.Empty<FoundationAiInvestmentOpportunity>();
+        var sources = workers.Where(w => !w.Crossing && w.Activity != PhysicalWorkerActivity.Traveling &&
+            w.Queue.Orders.Count == 0 && w.Queue.BaseActivity?.Mode != FoundationWorkerBaseMode.Manual)
+            .GroupBy(w => w.Node).Where(g => g.Count() >= 3).Select(g => g.Key).ToHashSet();
+        if (sources.Count == 0) return Array.Empty<FoundationAiInvestmentOpportunity>();
+        var scope = _knowledgeScopes is null ? null : _knowledgeScopes[owner];
+        var active = Snapshot.Constructions.Projects.Where(p => !p.IsActivated).Select(p => p.Edge).ToHashSet();
+        var cargo = used.Where(e => e.TotalCargoMicro > 0 &&
+            (sources.Contains(e.FirstTile) || sources.Contains(e.SecondTile)) &&
+            (scope is null || scope.KnowsLink(e.FirstTile, e.SecondTile)) &&
+            !active.Contains(e.Edge))
+            .ToDictionary(e => e.Edge);
+        if (cargo.Count == 0) return Array.Empty<FoundationAiInvestmentOpportunity>();
+        var result = new List<FoundationAiInvestmentOpportunity>();
+        foreach (var edge in Snapshot.Transport.Edges)
+        {
+            if (!cargo.TryGetValue(edge.Edge, out var load) ||
+                (edge.InfrastructureOwner.HasValue && edge.InfrastructureOwner != owner) ||
+                edge.NaturalConstructionCostMoneyMicro is not { } reference || reference == 0UL ||
+                geography.CrossingAtIndices((int)load.FirstTile.FineStrategicCellId.Value - 1,
+                    (int)load.SecondTile.FineStrategicCellId.Value - 1) != FoundationFineTransportCrossingKind.Ground)
+                continue;
+            ulong invested = edge.CommittedInvestmentMoneyMicro.GetValueOrDefault();
+            ulong spend = (ulong)BigInteger.Min(budget, BigInteger.Min(reference, ulong.MaxValue - invested));
+            if (spend == 0UL) continue;
+            ulong current = FoundationPhysicalAuthoritativeTransportProjector.EffectiveUnitFreightCost(edge);
+            ulong projected = FoundationPhysicalAuthoritativeTransportProjector.ProjectUnitFreightCost(edge, spend);
+            if (projected >= current) continue;
+            foreach (var source in new[] { load.FirstTile, load.SecondTile }.Where(sources.Contains))
+                result.Add(new(edge.Edge, source, load.TotalCargoMicro, spend, current, projected));
+        }
+        return Array.AsReadOnly(result.OrderBy(c => c.Edge.FineStrategicEdgeId.Value)
+            .ThenBy(c => c.Source.FineStrategicCellId.Value).ToArray());
     }
 
     public FoundationTacticalCollectiveReceipt? TryCloseTurn()
