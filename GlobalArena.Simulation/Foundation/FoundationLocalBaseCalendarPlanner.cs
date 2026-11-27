@@ -35,7 +35,7 @@ internal static class FoundationLocalBaseCalendarPlanner
             var idle = ordered[index];
             var worker = workers[idle.Worker];
             if (idle.Activity != PhysicalWorkerActivity.Other || idle.Occupation != PhysicalWorkerOccupation.Unassigned ||
-                idle.ProjectId.HasValue || idle.Crop.HasValue || idle.DurationMicro == 0U)
+                idle.ProjectId.HasValue || idle.ProductiveProjectId.HasValue || idle.Crop.HasValue || idle.DurationMicro == 0U)
                 throw new InvalidOperationException("Only available stationary effort can be allocated.");
             if (geography.SurfaceAtIndex(checked((int)idle.Node.FineStrategicCellId.Value - 1)) != FoundationFineSurfaceKind.Land)
                 continue;

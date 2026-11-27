@@ -680,6 +680,23 @@ public sealed class WorldState
             CityResidences, EdgeTravels, Constructions, WorkerOrders, ledger);
     }
 
+    // Narrow immutable transitions used by the shared, independently replayed calendar.
+    public WorldState RecordProductiveConstructionWork(ulong projectId, ulong workMicro)
+    {
+        var ledger = ProductiveInfrastructure.RecordWork(projectId, workMicro);
+        return new WorldState(Revision, WorldBinding, Civilizations, Territory,
+            Diplomacy, Economy, Population, Warfare, Workers, Transport, Treasury,
+            CityResidences, EdgeTravels, Constructions, WorkerOrders, ledger);
+    }
+
+    public WorldState ActivateCompletedProductiveConstruction(ulong projectId)
+    {
+        var ledger = ProductiveInfrastructure.Activate(projectId);
+        return new WorldState(Revision, WorldBinding, Civilizations, Territory,
+            Diplomacy, Economy, Population, Warfare, Workers, Transport, Treasury,
+            CityResidences, EdgeTravels, Constructions, WorkerOrders, ledger);
+    }
+
     // Empty initial deployment only. No caller can inject funded capital
     // into WorldState through this schema boundary.
     public WorldState DeployInitialProductiveInfrastructure(IEnumerable<FoundationProductiveReference> references)

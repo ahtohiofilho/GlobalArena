@@ -180,8 +180,11 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Equal(before, hasher.Compute(opening));
     }
 
-    [Fact]
-    public void R235D2RemoteProductiveBuildUsesTypedQueueAndSharedCalendar()
+    [Theory]
+    [InlineData(1_200_000UL, true)]
+    [InlineData(1_600_000UL, true)]
+    [InlineData(1_600_000UL, false)]
+    public void R235D3RemoteProductiveBuildUsesTypedQueueAndSharedCalendar(ulong investment, bool progressive)
     {
         var (legacy, traveler, destination, _, incidence, fine) = Fixture();
         var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
@@ -206,15 +209,36 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             incidence.FineTopology.Edges.Single(e => e.IncidentCellIds.Contains(source.FineStrategicCellId) &&
                 e.IncidentCellIds.Contains(destination.FineStrategicCellId)).Id);
         var travel = new FoundationGroundEdgeTravelTimePolicy(1_400_000UL);
+        // Choose the distribution contract before any turn. The legacy
+        // fractional-production nonconvergence is tracked separately (#729).
+        // Never retry a rejected market with a different settlement policy.
+        var legacyPolicy = Policy(opening.Civilizations.Civilizations);
+        var crops = Enum.GetValues<GlobalArena.Foundation.Agriculture.CropId>()
+            .ToDictionary(c => c, c => new CommodityId((uint)c));
+        var wood = new CommodityId(100U);
+        var stone = new CommodityId(101U);
+        var agriculture = progressive ? new FoundationAgriculturalProductionPolicy(fine, incidence,
+            crops, 2_000_000UL, new FoundationBasicResourceProductionPolicy(wood, stone, 6_000_000UL, 5_000_000UL)) : null;
+        var items = crops.Values.Append(wood).Append(stone)
+            .Concat(legacyPolicy.Demand.Commodities).Distinct().ToArray();
+        var demand = new FoundationActivityCommodityDemandPolicy(items,
+            Enum.GetValues<FoundationPhysicalDemandProfile>().SelectMany(profile => items.Select(item =>
+                new FoundationActivityCommodityDemandCoefficient(profile, item, 1_000_000UL))));
+        var settlement = progressive ? new FoundationAuthoritativeEconomicSettlementPolicy(
+            demand, new FoundationCommodityCargoConversionPolicy("temporal-cargo", items.Select(item =>
+                new FoundationCommodityCargoConversion(item, 1_000_000UL))), legacyPolicy.TaxRates,
+            maxProducerPasses: legacyPolicy.MaxProducerPasses,
+            useTemporalProgressiveDistribution: true, requireSafeProgressiveRoutes: true) : legacyPolicy;
         var phase = new FoundationTemporalCollectiveTurnPhase(demo.Session.GeneratedWorld, incidence,
-            travel, Policy(opening.Civilizations.Civilizations), fine, signature,
-            persistentMoneyMicroPerWholeWork: 1_000_000UL);
+            travel, settlement, fine, signature,
+            persistentMoneyMicroPerWholeWork: 1_000_000UL, agriculture: agriculture,
+            enableExperimentalAutomaticBase: progressive, enableLocalPriceAllocation: progressive);
         var router = new FoundationConstructionApproachRouter(demo.Session.GeneratedWorld, incidence, fine, signature, travel);
         var context = new SimulationContext(new TurnNumber(1UL), new SimulationSeed(712UL));
         var hasher = new CanonicalWorldStateHasher();
         var before = hasher.Compute(opening);
         var command = new FoundationProductiveFundingCommand(new CommandId(context.Turn, 2UL),
-            worker.Owner, target, 1_600_000UL)
+            worker.Owner, target, investment)
             { Assignments = new[] { new FoundationFundedWorkerInsertion(worker.Id, 0) } };
         var road = new FoundationFundedWorkerIntentCommand(new CommandId(context.Turn, 1UL),
             worker.Owner, edge, 100_000UL, Array.Empty<FoundationFundedWorkerInsertion>());
@@ -235,6 +259,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Equal(Assert.Single(next.Constructions.Projects).Id, order.ProjectId);
         Assert.Equal(Assert.Single(next.ProductiveInfrastructure.Projects).Id, order.ProjectId);
         Assert.Equal(400_000UL, Assert.Single(next.EdgeTravels.Pending, p => p.Worker == worker.Id).RemainingMicro);
+        Assert.Equal(0UL, Assert.Single(next.ProductiveInfrastructure.Projects).CompletedWorkMicro);
         var funding = Assert.Single(result.Events.OfType<FoundationProductiveFundingEvent>());
         Assert.Equal(worker.Id, Assert.Single(funding.Assignments).Worker);
         Assert.Equal(hasher.Compute(next), hasher.Compute(phase.ReplayPersistentJournal(opening, result.EventLog, context)));
@@ -250,15 +275,81 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Equal(destination, arrived.Workers.Workers.Single(w => w.Id == worker.Id).TacticalTileId);
         Assert.Equal(FoundationConstructionApproachStatus.AtSite, router.Plan(arrived, worker.Id).Status);
         Assert.Equal(order, Assert.Single(arrived.WorkerOrders.Queues.Single(q => q.Worker == worker.Id).Orders));
-        Assert.Equal(0UL, Assert.Single(arrived.ProductiveInfrastructure.Projects).CompletedWorkMicro);
+        Assert.Equal(600_000UL, Assert.Single(arrived.ProductiveInfrastructure.Projects).CompletedWorkMicro);
+        Assert.Equal(0UL, arrived.ProductiveInfrastructure.Read(target).ActivatedCapitalMoneyMicro);
+        Assert.Equal(investment, arrived.ProductiveInfrastructure.Read(target).PendingCapitalMoneyMicro);
         Assert.Equal(0UL, Assert.Single(arrived.Constructions.Projects).CompletedWorkMicro);
         var slices = Assert.Single(second.Events.OfType<FoundationPersistentWorkerTurnEvent>()).Slices
             .Where(s => s.Worker == worker.Id).ToArray();
         Assert.Equal(400_000L, slices.Where(s => s.Activity == PhysicalWorkerActivity.Traveling).Sum(s => (long)s.DurationMicro));
         Assert.Equal(600_000L, slices.Where(s => s.Activity == PhysicalWorkerActivity.Other).Sum(s => (long)s.DurationMicro));
         Assert.All(slices, s => Assert.Null(s.ProjectId));
+        Assert.Equal(600_000L, slices.Where(s => s.ProductiveProjectId == order.ProjectId).Sum(s => (long)s.DurationMicro));
         Assert.Equal(before, hasher.Compute(opening));
         Assert.Equal(hasher.Compute(arrived), hasher.Compute(phase.ReplayPersistentJournal(next, second.EventLog, secondContext)));
+        var thirdContext = new SimulationContext(new TurnNumber(3UL), new SimulationSeed(712UL));
+        var ready = arrived.InsertWorkerOrder(worker.Owner, worker.Id, 1,
+            FoundationWorkerOrderKind.Occupation, occupation: PhysicalWorkerOccupation.Agriculture);
+        var third = phase.Resolve(new TurnResolutionInput(ready, Array.Empty<ISimulationCommand>(), thirdContext), ready);
+        var completed = third.ResultingWorldState;
+        var project = Assert.Single(completed.ProductiveInfrastructure.Projects);
+        Assert.True(project.IsActivated);
+        Assert.Equal(project.RequiredWorkMicro, project.CompletedWorkMicro);
+        Assert.Equal(investment, completed.ProductiveInfrastructure.Read(target).ActivatedCapitalMoneyMicro);
+        Assert.Equal(0UL, completed.ProductiveInfrastructure.Read(target).PendingCapitalMoneyMicro);
+        Assert.Equal(0UL, Assert.Single(completed.Constructions.Projects).CompletedWorkMicro);
+        var remainingOrder = Assert.Single(completed.WorkerOrders.Queues.Single(q => q.Worker == worker.Id).Orders);
+        Assert.Equal(FoundationWorkerOrderKind.Occupation, remainingOrder.Kind);
+        var timeline = Assert.Single(third.Events.OfType<FoundationPersistentWorkerTurnEvent>());
+        var work = checked((long)(investment - 600_000UL));
+        var workerSlices = timeline.Slices.Where(s => s.Worker == worker.Id).ToArray();
+        Assert.Equal(work, workerSlices.Where(s => s.ProductiveProjectId == project.Id).Sum(s => (long)s.DurationMicro));
+        Assert.Equal(1_000_000L - work, workerSlices.Where(s => s.Activity == PhysicalWorkerActivity.Producing).Sum(s => (long)s.DurationMicro));
+        Assert.Equal(hasher.Compute(completed), hasher.Compute(phase.ReplayPersistentJournal(ready, third.EventLog, thirdContext)));
+        var forgedTimeline = timeline with { Slices = timeline.Slices.Select(s => s.ProductiveProjectId.HasValue
+            ? s with { ProductiveProjectId = null } : s).ToArray() };
+        var forgedLog = new SimulationEventLog(third.EventLog.Entries.Select((e, index) =>
+            new SimulationEventLogEntry(checked((ulong)index + 1UL), e.Event is FoundationPersistentWorkerTurnEvent ? forgedTimeline : e.Event,
+                wasEligible: true, wasExecuted: true)).ToArray());
+        Assert.Throws<InvalidOperationException>(() => phase.ReplayPersistentJournal(ready, forgedLog, thirdContext));
+        // An independent scheduler replay does not debit construction again.
+        var scheduler = new FoundationPersistentWorkerTurnScheduler(router, agriculture,
+            progressive ? settlement : null, enableLocalPriceAllocation: progressive);
+        var scheduled = scheduler.Record(ready, thirdContext);
+        Assert.Same(ready.Treasury, scheduled.Next.Treasury);
+
+        // Concurrent road and productive teams share a calendar, not an ID namespace.
+        var crew = opening.Workers.Workers.Where(w => w.Owner == worker.Owner)
+            .OrderBy(w => w.Id.Value).ToArray();
+        Assert.Equal(3, crew.Length);
+        var destinationRegion = arrived.Workers.Workers.Single(w => w.Id == worker.Id).CellId;
+        var teamOpening = opening.WithWorkers(new PhysicalWorkerRuntimeState(opening.Workers.Workers.Select(w =>
+            w.Id == crew[0].Id || w.Id == crew[1].Id
+                ? w.WithTacticalAssignment(destination, destinationRegion, PhysicalWorkerActivity.Other, PhysicalWorkerOccupation.Unassigned)
+                : w.Id == crew[2].Id
+                    ? w.WithTacticalAssignment(source, traveler.CellId, PhysicalWorkerActivity.Other, PhysicalWorkerOccupation.Unassigned)
+                    : w), tacticalLocationsAuthoritative: true, occupationsAuthoritative: true));
+        var teamCommand = command with { MoneyMicro = investment - 1UL, Assignments = new[] {
+            new FoundationFundedWorkerInsertion(crew[0].Id, 0), new FoundationFundedWorkerInsertion(crew[1].Id, 0) } };
+        var roadCommand = new FoundationFundedWorkerIntentCommand(new CommandId(context.Turn, 1UL),
+            worker.Owner, edge, 100_000UL, new[] { new FoundationFundedWorkerInsertion(crew[2].Id, 0) });
+        var teamResult = phase.Resolve(new TurnResolutionInput(teamOpening,
+            new ISimulationCommand[] { roadCommand, teamCommand }, context), teamOpening);
+        var teamState = teamResult.ResultingWorldState;
+        var productiveTeam = Assert.Single(teamState.ProductiveInfrastructure.Projects);
+        var roadTeam = Assert.Single(teamState.Constructions.Projects);
+        Assert.Equal(roadTeam.Id, productiveTeam.Id);
+        Assert.True(productiveTeam.IsActivated);
+        Assert.True(roadTeam.IsActivated);
+        var teamSlices = Assert.Single(teamResult.Events.OfType<FoundationPersistentWorkerTurnEvent>()).Slices;
+        Assert.Equal(checked((long)(investment - 1UL)), teamSlices.Where(s => s.ProductiveProjectId == productiveTeam.Id)
+            .Sum(s => (long)s.DurationMicro));
+        Assert.Equal(100_000L, teamSlices.Where(s => s.ProjectId == roadTeam.Id).Sum(s => (long)s.DurationMicro));
+        Assert.Equal(checked((long)(investment / 2UL)), teamSlices.Where(s => s.Worker == crew[0].Id &&
+            s.ProductiveProjectId == productiveTeam.Id).Sum(s => (long)s.DurationMicro));
+        Assert.Equal(checked((long)(investment / 2UL - 1UL)), teamSlices.Where(s => s.Worker == crew[1].Id &&
+            s.ProductiveProjectId == productiveTeam.Id).Sum(s => (long)s.DurationMicro));
+        Assert.Equal(hasher.Compute(teamState), hasher.Compute(phase.ReplayPersistentJournal(teamOpening, teamResult.EventLog, context)));
     }
 
     [Fact]
