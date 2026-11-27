@@ -1671,7 +1671,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         host.SetHumanReady(human);
         var closed = Assert.IsType<FoundationTacticalCollectiveReceipt>(host.TryCloseTurn());
         Assert.True(closed.ReplayMatched);
-        var load = Assert.Single(closed.TemporalEconomicSettlement!.AuditedParticipantEdges![owner].Where(e => e.Edge == edge));
+        var load = Assert.Single(closed.TemporalEconomicSettlement!.AuditedParticipantEdges![owner], e => e.Edge == edge);
         Assert.True(load.TotalCargoMicro > 0);
         var hash = host.StateHash;
         host.PrepareAiCivilizations();
