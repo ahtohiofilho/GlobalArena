@@ -174,6 +174,8 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
             throw new InvalidOperationException("Naval departure requires explicit ledger deployment.");
         if (_navalScopes is not null && opening.Civilizations.Civilizations.Any(c => !_navalScopes.ContainsKey(c)))
             throw new InvalidOperationException("Naval knowledge scope must cover each participant.");
+        if (opening.EdgeTravels.PriorWork is not null && !_navalDepartureTime.HasValue)
+            throw new InvalidOperationException("Prior naval work requires continued departure policy.");
         if (opening.EdgeTravels.PriorWorkTurn is { } priorTurn && priorTurn != context.Turn.Value - 1UL)
             throw new InvalidOperationException("Stale naval work evidence.");
         var state = opening;
@@ -278,7 +280,7 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
                         continue;
                     }
                     var plan = head.Kind == FoundationWorkerOrderKind.Build
-                        ? _router.Plan(state, id) : _router.PlanMove(state, id, head.Destination!.Value);
+                        ? _router.Plan(state, id) : _router.PlanMove(state, id, head.Destination!.Value, _navalScopes?[worker.Owner]);
                     if (plan.Status == FoundationConstructionApproachStatus.AtSite)
                     {
                         if (head.Kind == FoundationWorkerOrderKind.Move)
