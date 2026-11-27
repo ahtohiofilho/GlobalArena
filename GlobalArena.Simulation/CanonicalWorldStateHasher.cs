@@ -45,6 +45,7 @@ public sealed class CanonicalWorldStateHasher
     public const uint NavalPriorWorkFormatVersion = 28U;
     public const uint NavalCargoQuoteFormatVersion = 29U;
     public const uint NavalSettlementFormatVersion = 30U;
+    public const uint ProductiveInfrastructureFormatVersion = 31U;
 
     private static readonly byte[] Magic =
     {
@@ -99,7 +100,8 @@ public sealed class CanonicalWorldStateHasher
 
         // Keep the underlying legacy schema selection for all existing sections.
         // The opt-in envelope records that base version explicitly.
-        var wireVersion = worldState.Treasury.LastNavalSettlementCycleOrdinal.HasValue ? NavalSettlementFormatVersion :
+        var wireVersion = worldState.ProductiveInfrastructure.IsInitialized ? ProductiveInfrastructureFormatVersion :
+            worldState.Treasury.LastNavalSettlementCycleOrdinal.HasValue ? NavalSettlementFormatVersion :
             worldState.EdgeTravels.NavalCargoMicroPerWorker.HasValue ? NavalCargoQuoteFormatVersion :
             worldState.EdgeTravels.PriorWork is not null ? NavalPriorWorkFormatVersion :
             worldState.EdgeTravels.NavalVoyages is null ? version : NavalVoyageFormatVersion;
@@ -710,6 +712,32 @@ public sealed class CanonicalWorldStateHasher
             {
                 AppendUInt64(hash, account.Civilization.Value);
                 AppendNonnegativeBigInteger(hash, account.TotalNavalFareDebitsScaled);
+            }
+        }
+
+        if (worldState.ProductiveInfrastructure.IsInitialized)
+        {
+            var productive = worldState.ProductiveInfrastructure;
+            AppendUInt32(hash, 58U);
+            AppendUInt32(hash, checked((uint)productive.References.Count));
+            foreach (var reference in productive.References)
+            {
+                AppendUInt32(hash, (uint)reference.Activity);
+                AppendUInt64(hash, reference.ConstructionMoneyMicro);
+            }
+            AppendUInt32(hash, checked((uint)productive.Projects.Count));
+            foreach (var project in productive.Projects)
+            {
+                AppendUInt64(hash, project.Id);
+                AppendUInt32(hash, checked((uint)project.Target.Node.FineGoldbergParameters.M));
+                AppendUInt32(hash, checked((uint)project.Target.Node.FineGoldbergParameters.N));
+                AppendUInt64(hash, project.Target.Node.FineStrategicCellId.Value);
+                AppendUInt32(hash, (uint)project.Target.Activity);
+                AppendUInt64(hash, project.Investor.Value);
+                AppendUInt64(hash, project.FundedMoneyMicro);
+                AppendUInt64(hash, project.RequiredWorkMicro);
+                AppendUInt64(hash, project.CompletedWorkMicro);
+                AppendUInt32(hash, project.IsActivated ? 1U : 0U);
             }
         }
 
