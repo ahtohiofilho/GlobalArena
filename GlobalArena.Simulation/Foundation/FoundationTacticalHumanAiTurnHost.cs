@@ -232,6 +232,22 @@ public sealed class FoundationTacticalHumanAiTurnHost
             node, requester, eligibleOwners);
     }
 
+    // Trusted read-side gate for the next naval executor. A successful
+    // decision is not yet authority to move a particular unit.
+    internal FoundationNavalBoardingDecision ReadNavalBoarding(
+        CivilizationId requester, PhysicalTacticalTileId origin, PhysicalTacticalTileId water)
+    {
+        CheckSnapshot();
+        if (!_participants.Contains(requester))
+            throw new InvalidOperationException("Unknown boarding participant.");
+        if (_signedFine is null || _persistentPhase is null)
+            throw new InvalidOperationException("Boarding requires signed persistent scheduling.");
+        if (_knowledgeScopes is not null && !_knowledgeScopes[requester].KnowsLink(origin, water))
+            return new(FoundationNavalBoardingStatus.UnknownConnection);
+        return FoundationNavalBoardingPolicy.Evaluate(Snapshot, Incidence, _signedFine,
+            requester, origin, water, eligible => ReadLastClosedNodeWork(origin, requester, eligible));
+    }
+
     // Only the human owner's last independently verified cycle; no pending-plan data.
     public IReadOnlyList<FoundationWorkerFoodIntake>? ReadWorkerFoodIntake(
         CivilizationId viewer, PhysicalWorkerId worker)

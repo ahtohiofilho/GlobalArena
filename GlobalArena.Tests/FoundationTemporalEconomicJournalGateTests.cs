@@ -1664,6 +1664,137 @@ public sealed class FoundationTemporalEconomicJournalGateTests
     }
 
     [Fact]
+    public void R234CBoardingUsesCoastalTitleBeforeCalendarAndExactWorkShare()
+    {
+        var (world, worker, _, _, incidence, fine) = Fixture();
+        var own = worker.Owner;
+        var foreign = world.Civilizations.Civilizations.Single(c => c != own);
+        var coast = incidence.FineTopology.Edges.First(e =>
+            fine.CrossingAtIndices((int)e.IncidentCellIds[0].Value - 1,
+                (int)e.IncidentCellIds[1].Value - 1) == FoundationFineTransportCrossingKind.Port);
+        var landId = coast.IncidentCellIds.Single(n =>
+            fine.SurfaceAtIndex((int)n.Value - 1) == FoundationFineSurfaceKind.Land);
+        var origin = new PhysicalTacticalTileId(incidence.Refinement.FineParameters, landId);
+        var water = new PhysicalTacticalTileId(incidence.Refinement.FineParameters,
+            coast.IncidentCellIds.Single(n => n != landId));
+        var edge = new PhysicalTacticalEdgeId(incidence.Refinement.FineParameters, coast.Id);
+        world = world.DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
+            world.Civilizations.Civilizations.Select(c => (c, 5_000_000UL))));
+        FoundationNavalBoardingDecision Read(WorldState w,
+            Func<IReadOnlySet<CivilizationId>, FoundationClosedNodeWorkEvidence?> evidence) =>
+            FoundationNavalBoardingPolicy.Evaluate(w, incidence, fine, own, origin, water, evidence);
+        Assert.Equal(FoundationNavalBoardingStatus.NoPriorCalendar, Read(world, _ => null).Status);
+        Assert.Equal(FoundationNavalBoardingStatus.InsufficientCoverage,
+            Read(world, _ => new(999_999U, 1_000_000UL, 1_000_000UL)).Status);
+        var shared = Read(world, eligible =>
+        {
+            Assert.Contains(foreign, eligible);
+            return new(1_000_000U, 1_000_000UL, 100_000_000UL);
+        });
+        Assert.True(shared.IsAllowed);
+        Assert.Equal(99_000_000UL, shared.PaidNumerator);
+        Assert.Equal(100_000_000UL, shared.PaidDenominator);
+        Assert.Equal(0UL, Read(world, _ => new(1_000_000U, 1_000_000UL, 1_000_000UL)).PaidNumerator);
+        var enemy = world.WithDiplomacy(world.Diplomacy.WithRelation(own, foreign, BaselineDiplomacyRelationKind.Enemy));
+        Assert.Equal(FoundationNavalBoardingStatus.InsufficientCoverage, Read(enemy, eligible =>
+        {
+            Assert.DoesNotContain(foreign, eligible);
+            return new(0U, 0UL, 0UL);
+        }).Status);
+        var funded = world.RecordMonetaryInfrastructureInvestment(own, edge, 1UL);
+        FoundationClosedNodeWorkEvidence? NeverRead(IReadOnlySet<CivilizationId> _) =>
+            throw new InvalidOperationException("Infrastructure must bypass calendar.");
+        Assert.Equal(new FoundationNavalBoardingDecision(FoundationNavalBoardingStatus.Allowed),
+            Read(funded, NeverRead));
+        var otherTitle = world.RecordMonetaryInfrastructureInvestment(foreign, edge, 1UL);
+        var fullCharge = new FoundationNavalBoardingDecision(FoundationNavalBoardingStatus.Allowed, 1, 1);
+        Assert.Equal(fullCharge, Read(otherTitle, NeverRead));
+        Assert.Equal(fullCharge, Read(otherTitle.WithDiplomacy(otherTitle.Diplomacy.WithRelation(
+            own, foreign, BaselineDiplomacyRelationKind.Ally)), NeverRead));
+        Assert.Equal(FoundationNavalBoardingStatus.HostileInfrastructure,
+            Read(otherTitle.WithDiplomacy(enemy.Diplomacy), NeverRead).Status);
+        Assert.Equal(FoundationNavalBoardingStatus.InvalidCoastalCrossing,
+            FoundationNavalBoardingPolicy.Evaluate(world, incidence, fine, own, water, origin, NeverRead).Status);
+    }
+
+    [Fact]
+    public void R234CActualHostNaturalBoardingRequiresPreviousCommittedWork()
+    {
+        var (world, worker, _, _, incidence, fine) = Fixture();
+        var owner = worker.Owner;
+        var foreign = world.Civilizations.Civilizations.Single(c => c != owner);
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL),
+                WorldGenerationVersion.Initial, new GoldbergParameters(3, 0)), workersPerCivilization: 3);
+        var signature = FoundationFineFirstWorldgenCanonicalSignature.Compute(demo.Session.GeneratedWorld, incidence, fine);
+        var bound = demo.Session.Snapshot.PromoteFineFirstBeforeTransport(demo.Session.GeneratedWorld, incidence, fine, signature)
+            .DeployInitialFineFirstPhysicalTransport(world.Transport, demo.Session.GeneratedWorld, incidence, fine, signature);
+        var opening = FoundationPersistedEdgeTravelTransitions.DeployEmpty(bound.DeployInitialTreasury(
+            CivilizationTreasuryRuntimeState.CreateOpening(bound.Civilizations.Civilizations.Select(c => (c, 5_000_000UL)))))
+            .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
+            .DeployInitialWorkerOrders();
+        demo.Session.AcceptFineFirstOpening(opening, incidence, fine, signature);
+        var crossing = incidence.FineTopology.Edges.First(e =>
+            fine.CrossingAtIndices((int)e.IncidentCellIds[0].Value - 1,
+                (int)e.IncidentCellIds[1].Value - 1) == FoundationFineTransportCrossingKind.Port &&
+            e.IncidentCellIds.Any(n => fine.SurfaceAtIndex((int)n.Value - 1) == FoundationFineSurfaceKind.Land &&
+                fine.CanTraverseOnFoot((int)n.Value - 1)));
+        var landId = crossing.IncidentCellIds.Single(n =>
+            fine.SurfaceAtIndex((int)n.Value - 1) == FoundationFineSurfaceKind.Land);
+        var origin = new PhysicalTacticalTileId(incidence.Refinement.FineParameters, landId);
+        var water = new PhysicalTacticalTileId(incidence.Refinement.FineParameters,
+            crossing.IncidentCellIds.Single(n => n != landId));
+        var otherLand = incidence.FineTopology.Cells.First(c => c.Id != landId &&
+            fine.SurfaceAtIndex((int)c.Id.Value - 1) == FoundationFineSurfaceKind.Land &&
+            fine.CanTraverseOnFoot((int)c.Id.Value - 1)).Id;
+        var elsewhere = new PhysicalTacticalTileId(incidence.Refinement.FineParameters, otherLand);
+        opening = opening.WithWorkers(new PhysicalWorkerRuntimeState(opening.Workers.Workers.Select(w =>
+        {
+            var node = w.Owner == owner ? origin : elsewhere;
+            var coarse = incidence.TileIncidences[(int)node.FineStrategicCellId.Value - 1].IncidentCoarseCellIds[0];
+            return w.WithTacticalLocationAndActivity(node, coarse, PhysicalWorkerActivity.Other);
+        }), tacticalLocationsAuthoritative: true, occupationsAuthoritative: true));
+        demo.Session.AcceptSnapshot(opening);
+        var crops = Enum.GetValues<GlobalArena.Foundation.Agriculture.CropId>().ToDictionary(c => c, c => new CommodityId((uint)c));
+        var wood = new CommodityId(100U);
+        var stone = new CommodityId(101U);
+        var agriculture = new FoundationAgriculturalProductionPolicy(fine, incidence, crops, 2_000_000UL,
+            new FoundationBasicResourceProductionPolicy(wood, stone, 6_000_000UL, 5_000_000UL));
+        var items = crops.Values.Append(wood).Append(stone).ToArray();
+        var demand = new FoundationActivityCommodityDemandPolicy(items,
+            Enum.GetValues<FoundationPhysicalDemandProfile>().SelectMany(profile => items.Select(c =>
+                new FoundationActivityCommodityDemandCoefficient(profile, c, 1_000_000UL))));
+        var settlement = new FoundationAuthoritativeEconomicSettlementPolicy(demand,
+            new FoundationCommodityCargoConversionPolicy("r234c", items.Select(c =>
+                new FoundationCommodityCargoConversion(c, 1_000_000UL))),
+            opening.Civilizations.Civilizations.Select(c => new FoundationPhysicalEconomicTaxRate(c, 0U)),
+            maxProducerPasses: 64, useTemporalProgressiveDistribution: true, requireSafeProgressiveRoutes: true);
+        var host = new FoundationTacticalHumanAiTurnHost(demo.Session, incidence,
+            opening.Civilizations.Civilizations, new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy>(),
+            enableMonetaryInfrastructure: true, settlementPolicy: settlement, fineGeography: fine, fineSignature: signature,
+            physicalTravelPolicy: new FoundationGroundEdgeTravelTimePolicy(1_400_000UL),
+            constructionMoneyMicroPerWholeWork: 1_000_000UL, agriculture: agriculture,
+            enableExperimentalLocalEconomy: true, enableDefaultAutomaticBase: true, enableExclusiveNodeLabor: true);
+        Assert.Equal(FoundationNavalBoardingStatus.NoPriorCalendar, host.ReadNavalBoarding(owner, origin, water).Status);
+        foreach (var w in opening.Workers.Workers)
+            host.QueueHumanBaseActivity(w.Owner, w.Id,
+                new FoundationWorkerBaseActivity(FoundationWorkerBaseMode.Manual, PhysicalWorkerOccupation.Mining));
+        Assert.Equal(FoundationNavalBoardingStatus.NoPriorCalendar, host.ReadNavalBoarding(owner, origin, water).Status);
+        host.SetHumanReady(owner);
+        Assert.Null(host.TryCloseTurn());
+        host.SetHumanReady(foreign);
+        var close = Assert.IsType<FoundationTacticalCollectiveReceipt>(host.TryCloseTurn());
+        Assert.True(close.ReplayMatched);
+        var ownDecision = host.ReadNavalBoarding(owner, origin, water);
+        Assert.True(ownDecision.IsAllowed);
+        Assert.Equal(0UL, ownDecision.PaidNumerator);
+        var foreignDecision = host.ReadNavalBoarding(foreign, origin, water);
+        Assert.True(foreignDecision.IsAllowed);
+        Assert.Equal(foreignDecision.PaidDenominator, foreignDecision.PaidNumerator);
+        Assert.Equal(close.Hash, host.StateHash);
+    }
+
+    [Fact]
     public void R234BWorkCoverageAndWorkShareAreIndependent()
     {
         var (world, worker, destination, _, _, _) = Fixture();
