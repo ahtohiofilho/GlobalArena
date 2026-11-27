@@ -1840,8 +1840,8 @@ public sealed class FoundationTemporalEconomicJournalGateTests
                     Assert.Equal(landing.Voyage.PaidDenominator, landing.Voyage.PaidNumerator);
                     Assert.True(next.Treasury.Get(worker.Owner).CashScaled.Sign < 0);
                     Assert.Throws<InvalidOperationException>(() => next.Treasury.DebitConstruction(worker.Owner, 1UL));
-                    Assert.Throws<InvalidOperationException>(() => next.RecordAuditedNavalSettlement(turn,
-                        next.Treasury.Accounts.ToDictionary(x => x.Civilization, _ => BigInteger.Zero)));
+                    Assert.Throws<InvalidOperationException>(() =>
+                        FoundationNavalSettlement.Record(state, next, timeline, context));
                 }
                 else
                 {
@@ -1871,19 +1871,15 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             Assert.Equal(debtor.TotalNavalFareDebitsScaled, cash.TotalNavalFareDebitsScaled);
             Assert.Equal(hasher.Compute(following.ResultingWorldState),
                 hasher.Compute(phase.ReplayPersistentJournal(state, following.EventLog, context)));
-            // Isolate the existing credit and funding contract: verified positive
-            // income can recover a negative balance; no grant or write-off.
-            var treasury = following.ResultingWorldState.Treasury;
-            var credits = treasury.Accounts.ToDictionary(x => x.Civilization, x =>
-                x.Civilization == worker.Owner
-                    ? BigInteger.Max(BigInteger.Zero, -x.CashScaled) + GlobalArenaMoneyScale.FromMoneyMicro(2UL)
-                    : BigInteger.Zero);
-            var recovered = treasury.CloseVerifiedEconomicCycle(treasury.LastSettledEconomicCycleOrdinal + 1UL,
-                treasury.LastSettledCargoUnitCode!, credits, treasury.LastSettledFreightQuotes,
-                Array.Empty<CivilizationObservedMarketPrice>());
-            Assert.True(recovered.Get(worker.Owner).CashScaled >= GlobalArenaMoneyScale.FromMoneyMicro(2UL));
-            Assert.Equal(recovered.Get(worker.Owner).CashScaled - GlobalArenaMoneyScale.FromMoneyMicro(1UL),
-                recovered.DebitConstruction(worker.Owner, 1UL).Get(worker.Owner).CashScaled);
+            // Use only actual verified market receipts, not the runtime's
+            // private credit capability. Investment eligibility follows
+            // the resulting balance, including partial debt amortization.
+            if (cash.CashScaled < GlobalArenaMoneyScale.FromMoneyMicro(1UL))
+                Assert.Throws<InvalidOperationException>(() =>
+                    following.ResultingWorldState.Treasury.DebitConstruction(worker.Owner, 1UL));
+            else
+                Assert.Equal(cash.CashScaled - GlobalArenaMoneyScale.FromMoneyMicro(1UL),
+                    following.ResultingWorldState.Treasury.DebitConstruction(worker.Owner, 1UL).Get(worker.Owner).CashScaled);
         }
     }
 
