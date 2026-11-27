@@ -132,7 +132,7 @@ public partial class Main : Control
         _selectedUnitIdentity.Text = worker is null ? "No unit selected" :
             (LayeredWorldDock ? $"Worker #{worker.Id.Value}\n" :
                 $"Worker #{worker.Id.Value} | Node {worker.TacticalTileId?.FineStrategicCellId.Value}\n") +
-            (worker.Activity == PhysicalWorkerActivity.Traveling ? "Traveling" : worker.Occupation == PhysicalWorkerOccupation.Unassigned ? "Idle / assigned" : worker.Occupation?.ToString() ?? worker.Activity.ToString());
+            (_tacticalHost!.Snapshot.EdgeTravels.NavalVoyages?.Any(v => v.Worker == worker.Id) == true ? "At sea" : worker.Activity == PhysicalWorkerActivity.Traveling ? "Traveling" : worker.Occupation == PhysicalWorkerOccupation.Unassigned ? "Idle / assigned" : worker.Occupation?.ToString() ?? worker.Activity.ToString());
     }
     private Label? _compactTurnPulse;
     private GaFloatingWindow? _atlasFloatingWindow;
@@ -812,6 +812,14 @@ public partial class Main : Control
                         $"sold_micro={settlement.SoldAndConsumedGoodsMicro} " +
                         $"produced_micro={settlement.ProducedGoodsMicro} " +
                         "source=authoritative_journal privacy=participant");
+                }
+                if (GaExplicitEconomicQaConfiguration.NavalPreviewEnabled && receipt.PersistentTimeline is { } navalTimeline)
+                {
+                    int afloat = host.Snapshot.EdgeTravels.NavalVoyages!.Count(v => v.Owner == _humanCivilization);
+                    int landed = navalTimeline.NavalLandings.Count(l => l.Voyage.Owner == _humanCivilization);
+                    var account = host.Snapshot.Treasury.Get(_humanCivilization);
+                    _localOrderStatus.Text += $" | At sea {afloat} | Landed {landed} | Naval fares (total) {GaDisplayNumbers.MoneyScaled(account.TotalNavalFareDebitsScaled)}";
+                    GD.Print($"GA_NEXT_R234H_NAVAL_CLOSE turn={receipt.Turn.Value} own_afloat={afloat} own_landed={landed} replay={receipt.ReplayMatched} hash_v={receipt.Hash.FormatVersion}");
                 }
                 if (GaExplicitEconomicQaConfiguration.DemographicPreviewEnabled)
                     _lastDemographicPreviewReceipt = receipt;
@@ -2362,6 +2370,8 @@ public partial class Main : Control
                 : _tacticalHost is null
                     ? "GA-NEXT / WORKFORCE 01  •  TAB personnel  •  M planetary atlas  •  E collective turn"
                     : $"GA-NEXT / TACTICAL V{_tacticalHost.StateHash.FormatVersion}  •  G step  •  P produce  •  X cancel  •  E collective";
+            if (GaExplicitEconomicQaConfiguration.NavalPreviewEnabled)
+                _status!.Text = "GA-NEXT / NAVAL ECONOMY • QA ONLY • E turn • M map";
             GD.Print("GA_VISUAL_FOUNDATION_01_READY tactical_rectangular=true theme_tokens=true " +
                 "windows=chrome native_windows=false game_authority=untouched");
             RefreshLocalWorkerOrderControls();
@@ -2410,7 +2420,9 @@ public partial class Main : Control
                 $"worker={first.Id.Value} coarse_preview_focus={first.CellId.Value} " +
                 $"physical_worker_location_authoritative={(_tacticalHost is not null).ToString().ToLowerInvariant()} " +
                 "tactical_visible=true");
-            if (System.Environment.GetEnvironmentVariable("GA_NEXT_R213_UI_SMOKE") == "1")
+            if (GaExplicitEconomicQaConfiguration.NavalSmokeEnabled)
+                ExerciseR234HNavalSmoke();
+            else if (System.Environment.GetEnvironmentVariable("GA_NEXT_R213_UI_SMOKE") == "1")
                 _ = ExerciseR213PersistentInterfaceSmoke();
             else if (legacyWorkspaceSmoke)
                 _ = new FoundationGodotWorkspaceSmoke(this, _localFoundation!).RunAsync();
