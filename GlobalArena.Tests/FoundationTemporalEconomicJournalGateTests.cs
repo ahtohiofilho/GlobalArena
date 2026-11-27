@@ -1668,9 +1668,11 @@ public sealed class FoundationTemporalEconomicJournalGateTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void R234D2CCollectiveCloseReplaysFreeVoyageWithSeaDemandAndLandBirths(bool priced)
+    [InlineData(false, false, false)]
+    [InlineData(true, false, false)]
+    [InlineData(true, true, false)]
+    [InlineData(true, true, true)]
+    public void R234D2CCollectiveCloseReplaysFreeVoyageWithSeaDemandAndLandBirths(bool priced, bool settle, bool paidTrip)
     {
         var (world, _, _, _, incidence, fine) = Fixture();
         var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
@@ -1708,13 +1710,22 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         var opening = FoundationPersistedEdgeTravelTransitions.DeployEmpty(bound.WithWorkers(
             new PhysicalWorkerRuntimeState(census, tacticalLocationsAuthoritative: true, occupationsAuthoritative: true))
             .DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
-                bound.Civilizations.Civilizations.Select(c => (c, 5_000_000UL)))))
-            .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
+                bound.Civilizations.Civilizations.Select(c => (c, 5_000_000UL)))));
+        if (paidTrip)
+        {
+            var edge = incidence.FineTopology.Edges.Single(e =>
+                e.IncidentCellIds.Contains(candidate.Origin.FineStrategicCellId) &&
+                e.IncidentCellIds.Contains(candidate.Water.FineStrategicCellId));
+            var foreign = opening.Civilizations.Civilizations.Single(c => c != worker.Owner);
+            opening = opening.RecordMonetaryInfrastructureInvestment(foreign,
+                new PhysicalTacticalEdgeId(parameters, edge.Id), 1UL);
+        }
+        opening = opening.WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
             .DeployInitialWorkerOrders();
         foreach (var w in opening.Workers.Workers)
             opening = opening.SetWorkerBaseActivity(w.Owner, w.Id,
                 new FoundationWorkerBaseActivity(FoundationWorkerBaseMode.Manual, PhysicalWorkerOccupation.Mining));
-        opening = naval.Deploy(opening, priced ? 2_000_000UL : null);
+        opening = naval.Deploy(opening, priced ? (paidTrip ? 1_000_000_000_000_000UL : 2_000_000UL) : null);
         var nodes = new List<PhysicalTacticalTileId> { candidate.Origin, candidate.Water };
         var links = new List<(PhysicalTacticalTileId, PhysicalTacticalTileId)> { (candidate.Origin, candidate.Water) };
         var at = candidate.Water;
@@ -1747,7 +1758,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             persistentMoneyMicroPerWholeWork: 1_000_000UL, enableDemographicGrowth: true,
             agriculture: agriculture, enableExperimentalAutomaticBase: true, enableLocalPriceAllocation: true,
             enableDefaultAutomaticBase: true, enableExclusiveNodeLabor: true,
-            navalDepartureTimeMicro: 1_400_000UL, navalScopes: scopes);
+            navalDepartureTimeMicro: 1_400_000UL, navalScopes: scopes, enableNavalSettlement: settle);
         var hasher = new CanonicalWorldStateHasher();
         var state = opening;
         bool sawSeaDemand = false, sawLanding = false;
@@ -1762,7 +1773,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
                         FoundationPersistentOrderEditKind.Insert, Index: 0,
                         OrderKind: FoundationWorkerOrderKind.Move, Destination: candidate.Target))
             } : Array.Empty<ISimulationCommand>();
-            if (turn == 2)
+            if (turn == 2 && !settle)
             {
                 // A payable vessel cannot enter the collective close before
                 // the financial settlement contract exists.
@@ -1780,9 +1791,34 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             var births = Assert.Single(resolved.Events.OfType<FoundationPhysicalBirthBatchEvent>());
             Assert.Equal(turn, next.Treasury.LastSettledEconomicCycleOrdinal);
             Assert.Equal(turn, next.EdgeTravels.PriorWorkTurn);
-            Assert.Equal(priced ? 29U : 28U, hasher.Compute(next).FormatVersion);
+            Assert.Equal(settle ? 30U : priced ? 29U : 28U, hasher.Compute(next).FormatVersion);
             Assert.Equal(hasher.Compute(next), hasher.Compute(phase.ReplayPersistentJournal(state, resolved.EventLog, context)));
             Assert.Equal(sale.GrossSalesScaled, sale.TotalCivilizationCreditsScaled + sale.PhysicalFreightScaled);
+            if (settle)
+            {
+                var debit = Assert.IsType<FoundationNavalSettlementEvent>(resolved.Events.Last());
+                Assert.Equal(turn, next.Treasury.LastNavalSettlementCycleOrdinal);
+                Assert.Equal(timeline.NavalLandings.Count, debit.Debits.Count);
+                foreach (var account in next.Treasury.Accounts)
+                {
+                    var amount = debit.Debits.Where(d => d.Landing.Voyage.Owner == account.Civilization)
+                        .Aggregate(BigInteger.Zero, (sum, d) => sum + d.AmountScaled);
+                    var credit = sale.Credits.Single(c => c.Civilization == account.Civilization).CashCreditScaled;
+                    var previous = state.Treasury.Get(account.Civilization);
+                    Assert.Equal(previous.CashScaled + credit - amount, account.CashScaled);
+                    Assert.Equal(previous.TotalNavalFareDebitsScaled + amount, account.TotalNavalFareDebitsScaled);
+                }
+                var omitted = new SimulationEventLog(resolved.EventLog.Entries.Take(resolved.EventLog.Entries.Count - 1).ToArray());
+                Assert.Throws<InvalidOperationException>(() => phase.ReplayPersistentJournal(state, omitted, context));
+                if (debit.Debits.Count > 0)
+                {
+                    var line = Assert.Single(debit.Debits);
+                    var forged = debit with { Debits = new[] { line with { AmountScaled = line.AmountScaled + 1 } } };
+                    var entries = resolved.EventLog.Entries.Take(resolved.EventLog.Entries.Count - 1).Append(
+                        new SimulationEventLogEntry((ulong)resolved.EventLog.Entries.Count, forged, wasEligible: true, wasExecuted: true)).ToArray();
+                    Assert.Throws<InvalidOperationException>(() => phase.ReplayPersistentJournal(state, new SimulationEventLog(entries), context));
+                }
+            }
             Assert.All(births.Newborns, b => Assert.Equal(FoundationFineSurfaceKind.Land,
                 fine.SurfaceAtIndex((int)b.TacticalTileId!.Value.FineStrategicCellId.Value - 1)));
             var waterSlices = timeline.Slices.Where(s => s.Worker == worker.Id &&
@@ -1799,9 +1835,20 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             {
                 var landing = Assert.Single(timeline.NavalLandings);
                 Assert.Equal(candidate.Target, landing.Destination);
-                Assert.Equal(0UL, landing.Voyage.PaidNumerator);
-                if (priced) Assert.Equal(BigInteger.Zero, FoundationNavalFareQuote.CalculateScaled(landing.Voyage,
-                    next.EdgeTravels.NavalCargoMicroPerWorker!.Value));
+                if (paidTrip)
+                {
+                    Assert.Equal(landing.Voyage.PaidDenominator, landing.Voyage.PaidNumerator);
+                    Assert.True(next.Treasury.Get(worker.Owner).CashScaled.Sign < 0);
+                    Assert.Throws<InvalidOperationException>(() => next.Treasury.DebitConstruction(worker.Owner, 1UL));
+                    Assert.Throws<InvalidOperationException>(() =>
+                        FoundationNavalSettlement.Record(state, next, timeline, context));
+                }
+                else
+                {
+                    Assert.Equal(0UL, landing.Voyage.PaidNumerator);
+                    if (priced) Assert.Equal(BigInteger.Zero, FoundationNavalFareQuote.CalculateScaled(landing.Voyage,
+                        next.EdgeTravels.NavalCargoMicroPerWorker!.Value));
+                }
                 sawLanding = true;
                 Assert.Empty(next.EdgeTravels.NavalVoyages!);
             }
@@ -1810,6 +1857,30 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.True(sawSeaDemand);
         Assert.True(sawLanding);
         Assert.Equal(candidate.Target, state.Workers.Workers.Single(w => w.Id == worker.Id).TacticalTileId);
+        if (paidTrip)
+        {
+            var debtor = state.Treasury.Get(worker.Owner);
+            Assert.True(debtor.CashScaled.Sign < 0);
+            var context = new SimulationContext(new TurnNumber(lastTurn + 1UL), new SimulationSeed(712UL));
+            var following = phase.Resolve(new TurnResolutionInput(state, Array.Empty<ISimulationCommand>(), context), state);
+            var followingDebit = Assert.IsType<FoundationNavalSettlementEvent>(following.Events.Last());
+            Assert.Empty(followingDebit.Debits);
+            var followingSale = Assert.Single(following.Events.OfType<FoundationTemporalSalesSettledEvent>());
+            var cash = following.ResultingWorldState.Treasury.Get(worker.Owner);
+            Assert.Equal(debtor.CashScaled + followingSale.Credits.Single(c => c.Civilization == worker.Owner).CashCreditScaled, cash.CashScaled);
+            Assert.Equal(debtor.TotalNavalFareDebitsScaled, cash.TotalNavalFareDebitsScaled);
+            Assert.Equal(hasher.Compute(following.ResultingWorldState),
+                hasher.Compute(phase.ReplayPersistentJournal(state, following.EventLog, context)));
+            // Use only actual verified market receipts, not the runtime's
+            // private credit capability. Investment eligibility follows
+            // the resulting balance, including partial debt amortization.
+            if (cash.CashScaled < GlobalArenaMoneyScale.FromMoneyMicro(1UL))
+                Assert.Throws<InvalidOperationException>(() =>
+                    following.ResultingWorldState.Treasury.DebitConstruction(worker.Owner, 1UL));
+            else
+                Assert.Equal(cash.CashScaled - GlobalArenaMoneyScale.FromMoneyMicro(1UL),
+                    following.ResultingWorldState.Treasury.DebitConstruction(worker.Owner, 1UL).Get(worker.Owner).CashScaled);
+        }
     }
 
     [Fact]

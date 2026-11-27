@@ -179,7 +179,7 @@ public static class FoundationTemporalEconomicJournalGate
         FoundationConstructionCollectiveTurnPhase? constructionPhase = null,
         FoundationPersistentWorkerTurnScheduler? persistentScheduler = null,
         FoundationFundedWorkerIntentJournal? fundedIntents = null,
-        bool enableDemographicGrowth = false, FoundationAgriculturalProductionPolicy? agriculture = null, FoundationOperationalFreightShadowPolicy? operationalPolicy = null)
+        bool enableDemographicGrowth = false, FoundationAgriculturalProductionPolicy? agriculture = null, FoundationOperationalFreightShadowPolicy? operationalPolicy = null, bool enableNavalSettlement = false)
     {
         ArgumentNullException.ThrowIfNull(beginning);
         ArgumentNullException.ThrowIfNull(physicalAndInvestmentEvents);
@@ -190,7 +190,7 @@ public static class FoundationTemporalEconomicJournalGate
                 "Temporal cash cannot close without a bound opt-in world and funded treasury.");
         using var profile = FoundationTurnProfiler.Measure("journal_close_and_replay");
         var executor = new ReplayExecutor(beginning, movement, movementPolicy,
-            incidence, economicPolicy, signedFine, investmentExecutor, constructionPhase, persistentScheduler, fundedIntents, enableDemographicGrowth, agriculture, operationalPolicy);
+            incidence, economicPolicy, signedFine, investmentExecutor, constructionPhase, persistentScheduler, fundedIntents, enableDemographicGrowth, agriculture, operationalPolicy, enableNavalSettlement);
         var staged = beginning;
         using (FoundationTurnProfiler.Measure("journal_stage_events"))
             foreach (var ev in physicalAndInvestmentEvents)
@@ -199,7 +199,7 @@ public static class FoundationTemporalEconomicJournalGate
             executor.VerifiedPhysicalEvents, executor.VerifiedLocalEvents,
             executor.VerifiedInvestmentCount,
             incidence, economicPolicy, context, signedFine, executor.VerifiedTimeline, agriculture, operationalPolicy,
-            persistentScheduler?.UsesLocalPriceAllocation == true);
+            persistentScheduler?.UsesLocalPriceAllocation == true, enableNavalSettlement);
         // Resolution solves once; the fresh journal executor below solves
         // independently once more. Avoid an unneeded third market pass.
         var actual = expected;
@@ -211,12 +211,18 @@ public static class FoundationTemporalEconomicJournalGate
             actual = birth.Next;
             events.Add(birth.Event);
         }
+        if (enableNavalSettlement)
+        {
+            var naval = FoundationNavalSettlement.Record(beginning, actual, executor.VerifiedTimeline!, context);
+            actual = naval.Next;
+            events.Add(naval.Event);
+        }
         var journal = new SimulationEventLog(events.Select((ev, index) =>
             new SimulationEventLogEntry(checked((ulong)index + 1UL), ev,
                 wasEligible: true, wasExecuted: true)).ToArray());
         var independent = ReplayJournal(beginning, journal, movement,
             movementPolicy, incidence, economicPolicy, context, signedFine,
-            investmentExecutor, constructionPhase, persistentScheduler, fundedIntents, enableDemographicGrowth, agriculture, operationalPolicy);
+            investmentExecutor, constructionPhase, persistentScheduler, fundedIntents, enableDemographicGrowth, agriculture, operationalPolicy, enableNavalSettlement);
         var hash = Hasher.Compute(actual);
         if (hash != Hasher.Compute(independent))
             throw new InvalidOperationException(
@@ -240,13 +246,13 @@ public static class FoundationTemporalEconomicJournalGate
         FoundationConstructionCollectiveTurnPhase? constructionPhase = null,
         FoundationPersistentWorkerTurnScheduler? persistentScheduler = null,
         FoundationFundedWorkerIntentJournal? fundedIntents = null,
-        bool enableDemographicGrowth = false, FoundationAgriculturalProductionPolicy? agriculture = null, FoundationOperationalFreightShadowPolicy? operationalPolicy = null)
+        bool enableDemographicGrowth = false, FoundationAgriculturalProductionPolicy? agriculture = null, FoundationOperationalFreightShadowPolicy? operationalPolicy = null, bool enableNavalSettlement = false)
     {
         ArgumentNullException.ThrowIfNull(beginning);
         ArgumentNullException.ThrowIfNull(journal);
         using var profile = FoundationTurnProfiler.Measure("independent_replay");
         var executor = new ReplayExecutor(beginning, movement, movementPolicy,
-            incidence, economicPolicy, signedFine, investmentExecutor, constructionPhase, persistentScheduler, fundedIntents, enableDemographicGrowth, agriculture, operationalPolicy);
+            incidence, economicPolicy, signedFine, investmentExecutor, constructionPhase, persistentScheduler, fundedIntents, enableDemographicGrowth, agriculture, operationalPolicy, enableNavalSettlement);
         var state = new SimulationEventLogReplayer(executor).Replay(
             new SimulationReplayInput(beginning, journal, context));
         if (!executor.IsClosed)
@@ -266,7 +272,7 @@ public static class FoundationTemporalEconomicJournalGate
         SimulationContext context,
         FoundationFineFirstPhysicalGeography? signedFine,
         FoundationPersistentWorkerTurnEvent? timeline = null, FoundationAgriculturalProductionPolicy? agriculture = null, FoundationOperationalFreightShadowPolicy? operationalPolicy = null,
-        bool retainLocalPriceHistory = false)
+        bool retainLocalPriceHistory = false, bool enableNavalSettlement = false)
     {
         using var profile = FoundationTurnProfiler.Measure("economic_derive");
         if (policy.UseTemporalProgressiveDistribution && !retainLocalPriceHistory)
@@ -280,9 +286,12 @@ public static class FoundationTemporalEconomicJournalGate
                 "Temporal monetary evidence is not from one authoritative worker turn.");
         // Until the naval fare journal exists, never publish a collective
         // state that silently discards or defers a payable voyage contract.
-        if (beginning.EdgeTravels.NavalVoyages?.Any(v => v.PaidNumerator != 0UL) == true ||
+        if (enableNavalSettlement && (beginning.EdgeTravels.NavalCargoMicroPerWorker is null || timeline is null || operationalPolicy is not null))
+            throw new InvalidOperationException("Naval settlement requires priced persistent capital-only freight.");
+        if (!enableNavalSettlement && (beginning.Treasury.LastNavalSettlementCycleOrdinal.HasValue ||
+            beginning.EdgeTravels.NavalVoyages?.Any(v => v.PaidNumerator != 0UL) == true ||
             staged.EdgeTravels.NavalVoyages?.Any(v => v.PaidNumerator != 0UL) == true ||
-            timeline?.NavalLandings.Any(l => l.Voyage.PaidNumerator != 0UL) == true)
+            timeline?.NavalLandings.Any(l => l.Voyage.PaidNumerator != 0UL) == true))
             throw new InvalidOperationException("Payable naval voyages require the future naval financial settlement gate.");
         var calendar = timeline is null
             ? FoundationTemporalEconomicTurnProjector.Project(beginning, staged, physicalEvents, localEvents, policy.Demand)
@@ -406,6 +415,8 @@ public static class FoundationTemporalEconomicJournalGate
         private int _investmentCount;
         private bool _closed;
         private bool _birthsSeen;
+        private bool _navalSeen;
+        private readonly bool _navalSettlement;
         private readonly bool _growth;
         private readonly FoundationAgriculturalProductionPolicy? _agriculture;
         private readonly FoundationOperationalFreightShadowPolicy? _operationalPolicy;
@@ -416,7 +427,7 @@ public static class FoundationTemporalEconomicJournalGate
 
         public IReadOnlyList<FoundationEdgeTravelTurnEvent> VerifiedPhysicalEvents => _events;
         public IReadOnlyList<PhysicalTacticalWorkerMovedEvent> VerifiedLocalEvents => _localEvents;
-        public bool IsClosed => _closed && (!_growth || _birthsSeen);
+        public bool IsClosed => _closed && (!_growth || _birthsSeen) && (!_navalSettlement || _navalSeen);
         public int VerifiedInvestmentCount => _investmentCount;
 
         public ReplayExecutor(
@@ -428,9 +439,14 @@ public static class FoundationTemporalEconomicJournalGate
             FoundationMonetaryInfrastructureEventExecutor? investment,
             FoundationConstructionCollectiveTurnPhase? constructionPhase,
             FoundationPersistentWorkerTurnScheduler? persistentScheduler,
-            FoundationFundedWorkerIntentJournal? fundedIntents, bool enableDemographicGrowth, FoundationAgriculturalProductionPolicy? agriculture, FoundationOperationalFreightShadowPolicy? operationalPolicy)
+            FoundationFundedWorkerIntentJournal? fundedIntents, bool enableDemographicGrowth, FoundationAgriculturalProductionPolicy? agriculture, FoundationOperationalFreightShadowPolicy? operationalPolicy, bool enableNavalSettlement)
         {
             _beginning = beginning;
+            _navalSettlement = enableNavalSettlement;
+            if (_navalSettlement && (beginning.EdgeTravels.NavalCargoMicroPerWorker is null || persistentScheduler is null || operationalPolicy is not null))
+                throw new InvalidOperationException("Naval settlement requires priced persistent capital-only freight.");
+            if (!_navalSettlement && beginning.Treasury.LastNavalSettlementCycleOrdinal.HasValue)
+                throw new InvalidOperationException("Cannot disable deployed naval settlement.");
             _growth = enableDemographicGrowth;
             _agriculture = agriculture;
             _operationalPolicy = operationalPolicy;
@@ -462,6 +478,13 @@ public static class FoundationTemporalEconomicJournalGate
         {
             if (_closed)
             {
+                if (_navalSeen) throw new InvalidOperationException("Naval settlement is the final event.");
+                if (_navalSettlement && (!_growth || _birthsSeen) && ev is FoundationNavalSettlementEvent naval)
+                {
+                    var result = FoundationNavalSettlement.Replay(_beginning, state, VerifiedTimeline!, context, naval);
+                    _navalSeen = true;
+                    return result;
+                }
                 if (!_growth || _birthsSeen || ev is not FoundationPhysicalBirthBatchEvent birth)
                     throw new InvalidOperationException("Unexpected event after economic close.");
                 var next = FoundationPersistentDemographicClose.Replay(_beginning, state,
@@ -546,7 +569,7 @@ public static class FoundationTemporalEconomicJournalGate
             var (derived, after) = Derive(_beginning, state, _events,
                 _localEvents, _investmentCount, _incidence, _policy,
                 context, _signedFine, VerifiedTimeline, _agriculture, _operationalPolicy,
-                _scheduler?.UsesLocalPriceAllocation == true);
+                _scheduler?.UsesLocalPriceAllocation == true, _navalSettlement);
             RequireIdentical(monetary, derived);
             // Older journals need not carry derived local prices. Rebuild
             // them only from the already independently verified close.

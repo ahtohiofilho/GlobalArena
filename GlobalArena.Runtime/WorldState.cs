@@ -573,6 +573,17 @@ public sealed class WorldState
     /// real production, deliveries, market prices, taxes, tolls, and
     /// freight. Buyers have no wallets; goods never become stock.
     /// </summary>
+    internal WorldState RecordAuditedNavalSettlement(
+        ulong ordinal, IReadOnlyDictionary<CivilizationId, System.Numerics.BigInteger> debits)
+    {
+        if (!EdgeTravels.NavalCargoMicroPerWorker.HasValue)
+            throw new InvalidOperationException("Naval settlement requires priced naval ledger.");
+        var settled = Treasury.DebitVerifiedNavalSettlement(ordinal, debits);
+        return new WorldState(
+            Revision, WorldBinding, Civilizations, Territory, Diplomacy,
+            Economy, Population, Warfare, Workers, Transport, settled, CityResidences, EdgeTravels, Constructions, WorkerOrders);
+    }
+
     internal WorldState RecordAuditedEconomicCycle(
         ulong ordinal, string cargoUnitCode,
         IReadOnlyDictionary<CivilizationId, System.Numerics.BigInteger>
@@ -981,7 +992,9 @@ public sealed class WorldState
                 treasury.Accounts.Count != civilizationIds.Count ||
                 treasury.Accounts.Any(account =>
                     !civilizationIds.Contains(account.Civilization) ||
-                    account.CashScaled.Sign < 0 ||
+                    (account.CashScaled.Sign < 0 && !treasury.LastNavalSettlementCycleOrdinal.HasValue) ||
+                    account.TotalNavalFareDebitsScaled.Sign < 0 ||
+                    (account.TotalNavalFareDebitsScaled.Sign != 0 && !treasury.LastNavalSettlementCycleOrdinal.HasValue) ||
                     account.TotalInfrastructureInvestmentScaled.Sign < 0 ||
                     account.TotalSettledEconomicIncomeScaled.Sign < 0))
                 throw new InvalidOperationException(
@@ -991,6 +1004,11 @@ public sealed class WorldState
         else if (treasury.Accounts.Count != 0)
             throw new InvalidOperationException(
                 "An uninitialized treasury cannot contain accounts.");
+
+        if (treasury.LastNavalSettlementCycleOrdinal is { } navalOrdinal &&
+            (navalOrdinal == 0UL || navalOrdinal > treasury.LastSettledEconomicCycleOrdinal ||
+                !edgeTravels.NavalCargoMicroPerWorker.HasValue))
+            throw new InvalidOperationException("Naval debit provenance requires priced naval world and closed cycle.");
 
         if (treasury.HasClosedEconomicCycle)
         {
