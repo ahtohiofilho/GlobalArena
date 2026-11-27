@@ -50,6 +50,14 @@ internal static class GaExplicitEconomicQaConfiguration
         return mode;
     }
 
+    internal static bool NavalPreviewEnabled =>
+        System.Environment.GetEnvironmentVariable("GA_NEXT_R234H_NAVAL_PREVIEW") == "1";
+    internal static bool NavalSmokeEnabled =>
+        System.Environment.GetEnvironmentVariable("GA_NEXT_R234H_NAVAL_SMOKE") == "1";
+    internal const ulong QaNavalTimeMicro = 1_400_000UL;
+    internal const ulong QaNavalCargoMicro = 2_000_000UL;
+    internal static PhysicalTacticalTileId? NavalSmokeDestination { get; private set; }
+
     internal static bool BoundedTradePreviewEnabled =>
         System.Environment.GetEnvironmentVariable("GA_NEXT_BOUNDED_TRADE_PREVIEW") == "1";
 
@@ -143,6 +151,14 @@ internal static class GaExplicitEconomicQaConfiguration
             System.Environment.GetEnvironmentVariable("GA_NEXT_R213_UI_SMOKE") == "1"))
             throw new InvalidOperationException("Autonomous AI requires the interactive signed persistent local economy QA preview.");
         bool growth = DemographicPreviewEnabled;
+        if (NavalSmokeEnabled && !NavalPreviewEnabled)
+            throw new InvalidOperationException("Naval smoke requires explicit naval QA.");
+        if (NavalPreviewEnabled && (!enableLocalEconomy || !enablePersistentOrders ||
+            !exclusiveNodeLabor || !autonomousAi || !recalibratedCoast ||
+            (growth && !UniformCityDemographyPreviewEnabled) || tradeFixture is not null ||
+            System.Environment.GetEnvironmentVariable("GA_NEXT_OPERATIONAL_PREVIEW") == "1" ||
+            System.Environment.GetEnvironmentVariable("GA_NEXT_R213_UI_SMOKE") == "1"))
+            throw new InvalidOperationException("Naval QA requires autonomous signed exclusive labor, recalibrated coast, capital-only freight and uniform city births if enabled.");
         bool unitOpening = UnitOpeningPreviewEnabled;
         if (UniformCityDemographyPreviewEnabled && (!unitOpening || IndividualDemographyPreviewEnabled))
             throw new InvalidOperationException("Uniform city demography requires unit opening and no legacy individual mode.");
@@ -320,6 +336,46 @@ internal static class GaExplicitEconomicQaConfiguration
         if (IndividualDemographyPreviewEnabled)
             demo.Session.AcceptSnapshot(demo.Snapshot.WithWorkers(new PhysicalWorkerRuntimeState(
                 demo.Snapshot.Workers.Workers.Select(w => w.WithBirthWaitTurns(0UL)), true, true)));
+        IReadOnlyDictionary<CivilizationId, FoundationCivilizationKnowledgeScope>? navalScopes = null;
+        NavalSmokeDestination = null;
+        if (NavalPreviewEnabled)
+        {
+            var snapshot = demo.Snapshot;
+            if (NavalSmokeEnabled)
+            {
+                // Select a real signed water node with two navigable shores.
+                // The smoke scopes authorize only this route, no ground shortcut.
+                var map = demo.Incidence;
+                var candidates = map.FineTopology.Cells.Select(cell => (cell.Id,
+                    Shores: cell.AdjacentCellIds.Where(n =>
+                        fine.CrossingAtIndices((int)cell.Id.Value - 1, (int)n.Value - 1) == FoundationFineTransportCrossingKind.Port &&
+                        fine.SurfaceAtIndex((int)n.Value - 1) == FoundationFineSurfaceKind.Land &&
+                        fine.CanTraverseOnFoot((int)n.Value - 1)).OrderBy(n => n.Value).ToArray()))
+                    .First(c => fine.SurfaceAtIndex((int)c.Id.Value - 1) != FoundationFineSurfaceKind.Land && c.Shores.Length >= 2);
+                var origin = new PhysicalTacticalTileId(map.Refinement.FineParameters, candidates.Shores[0]);
+                var water = new PhysicalTacticalTileId(map.Refinement.FineParameters, candidates.Id);
+                var destination = new PhysicalTacticalTileId(map.Refinement.FineParameters, candidates.Shores[1]);
+                var foreign = new PhysicalTacticalTileId(map.Refinement.FineParameters,
+                    map.FineTopology.Cells.First(c => c.Id != candidates.Shores[0] && c.Id != candidates.Shores[1] &&
+                        fine.SurfaceAtIndex((int)c.Id.Value - 1) == FoundationFineSurfaceKind.Land &&
+                        fine.CanTraverseOnFoot((int)c.Id.Value - 1)).Id);
+                var human = demo.HumanCivilizations.Single();
+                snapshot = snapshot.WithWorkers(new PhysicalWorkerRuntimeState(snapshot.Workers.Workers.Select(w =>
+                {
+                    var node = w.Owner == human ? origin : foreign;
+                    var region = map.TileIncidences[(int)node.FineStrategicCellId.Value - 1].IncidentCoarseCellIds[0];
+                    return w.WithTacticalLocationAndActivity(node, region, PhysicalWorkerActivity.Other);
+                }), true, true));
+                navalScopes = snapshot.Civilizations.Civilizations.ToDictionary(c => c, c => c == human
+                    ? new FoundationCivilizationKnowledgeScope(new[] { origin, water, destination },
+                        new[] { (origin, water), (water, destination) })
+                    : new FoundationCivilizationKnowledgeScope(new[] { foreign },
+                        Array.Empty<(PhysicalTacticalTileId, PhysicalTacticalTileId)>()));
+                NavalSmokeDestination = destination;
+            }
+            demo.Session.AcceptSnapshot(snapshot.WithPhysicalEdgeTravel(snapshot.Workers,
+                snapshot.EdgeTravels.EnableNavalVoyages(QaNavalCargoMicro)));
+        }
         var host = new FoundationTacticalHumanAiTurnHost(
             demo.Session, demo.Incidence, demo.HumanCivilizations,
             // Full-map QA only; normal and existing smoke launchers unchanged.
@@ -339,8 +395,11 @@ internal static class GaExplicitEconomicQaConfiguration
             operationalPolicy: enablePersistentOrders && System.Environment.GetEnvironmentVariable("GA_NEXT_OPERATIONAL_PREVIEW") == "1"
                 ? new FoundationOperationalFreightShadowPolicy(1_000_000UL, 1_000_000UL) : null,
             enableExperimentalLocalEconomy: enableLocalEconomy, enableDefaultAutomaticBase: enableLocalEconomy,
-            enableExclusiveNodeLabor: exclusiveNodeLabor);
-        if (autonomousAi) global::Godot.GD.Print("GA_NEXT_R233E_AUTONOMOUS_AI_READY experimental=true full_map_qa=true");
+            knowledgeScopes: navalScopes, enableExclusiveNodeLabor: exclusiveNodeLabor,
+            navalDepartureTimeMicro: NavalPreviewEnabled ? QaNavalTimeMicro : null);
+        if (NavalPreviewEnabled)
+            global::Godot.GD.Print($"GA_NEXT_R234H_NAVAL_READY cargo_micro={QaNavalCargoMicro} natural_time_micro={QaNavalTimeMicro} hash_v={host.StateHash.FormatVersion} smoke={NavalSmokeEnabled} experimental=true");
+        if (autonomousAi) global::Godot.GD.Print($"GA_NEXT_R233E_AUTONOMOUS_AI_READY experimental=true full_map_qa={(navalScopes is null).ToString().ToLowerInvariant()}");
         if (exclusiveNodeLabor) global::Godot.GD.Print("GA_NEXT_R234B2_EXCLUSIVE_NODE_LABOR_READY experimental=true");
         if (enableLocalEconomy) global::Godot.GD.Print("GA_NEXT_R22813C_LOCAL_ECONOMY_READY experimental=true automatic_default=true commodities=8");
         return (host, fine, identity);
