@@ -55,6 +55,34 @@ public sealed class FoundationTemporalEconomicTurnInputs
 /// </summary>
 public static class FoundationTemporalEconomicTurnProjector
 {
+    // One opening-state output quote, shared by actual production and local
+    // candidate ranking. Capital never changes natural suitability or effort.
+    internal static (CommodityId Commodity, ulong WholeTurnOutput) ResolveOpeningOutput(
+        WorldState opening, PhysicalWorkerRuntimeRecord worker, PhysicalTacticalTileId node,
+        PhysicalWorkerOccupation occupation, byte? crop, FoundationAgriculturalProductionPolicy? agriculture)
+    {
+        var natural = agriculture is not null
+            ? agriculture.ResolveActivity(worker, node, occupation, crop)
+            : (Commodity: worker.Commodity, WholeTurnOutput: worker.OutputMicroPerTurn);
+        if (!opening.ProductiveInfrastructure.IsInitialized || natural.WholeTurnOutput == 0UL)
+            return natural;
+        FoundationProductiveActivity? activity = occupation switch
+        {
+            PhysicalWorkerOccupation.Agriculture => FoundationProductiveActivity.Agriculture,
+            PhysicalWorkerOccupation.Forestry => FoundationProductiveActivity.Forestry,
+            PhysicalWorkerOccupation.Mining => FoundationProductiveActivity.Mining,
+            _ => null
+        };
+        if (activity is not { } productive) return natural;
+        var capital = opening.ProductiveInfrastructure.Read(new FoundationProductiveTarget(node, productive));
+        // Exclusive capital benefit; physical node labor admission remains a
+        // separate scheduler/host contract, not a productive tariff.
+        if (capital.ReservedOwner != worker.Owner || capital.ActivatedCapitalMoneyMicro == 0UL)
+            return natural;
+        return (natural.Commodity, FoundationInfrastructureCapitalResponse.ProjectProductiveOutput(
+            natural.WholeTurnOutput, capital.ActivatedCapitalMoneyMicro, capital.ReferenceMoneyMicro));
+    }
+
     internal static FoundationTemporalEconomicTurnInputs ProjectPersistent(
         WorldState start, IReadOnlyList<FoundationPersistentWorkerSlice> timeline,
         FoundationActivityCommodityDemandPolicy demandPolicy, FoundationAgriculturalProductionPolicy? agriculture = null)
@@ -95,9 +123,7 @@ public static class FoundationTemporalEconomicTurnProjector
             {
                 var worker = people[g.Key.Worker];
                 ulong effort = g.Aggregate(0UL, (sum, s) => checked(sum + s.DurationMicro));
-                var output = agriculture is not null
-                    ? agriculture.ResolveActivity(worker, g.Key.Node, g.Key.SliceOccupation, g.Key.Crop)
-                    : (Commodity: worker.Commodity, WholeTurnOutput: worker.OutputMicroPerTurn);
+                var output = ResolveOpeningOutput(start, worker, g.Key.Node, g.Key.SliceOccupation, g.Key.Crop, agriculture);
                 return new FoundationTemporalPhysicalProduction(worker.Id, worker.Owner, g.Key.Node,
                     output.Commodity, checked((uint)effort),
                     checked((ulong)((UInt128)output.WholeTurnOutput * effort / whole)),
