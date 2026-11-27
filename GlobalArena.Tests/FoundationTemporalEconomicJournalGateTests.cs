@@ -2653,10 +2653,14 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             var region = incidence.TileIncidences[(int)node.FineStrategicCellId.Value - 1].IncidentCoarseCellIds[0];
             return w.WithTacticalLocationAndActivity(node, region, PhysicalWorkerActivity.Other).WithUniformCityDemography();
         });
-        var opening = FoundationPersistedEdgeTravelTransitions.DeployEmpty(bound.WithWorkers(
-            new PhysicalWorkerRuntimeState(census, tacticalLocationsAuthoritative: true, occupationsAuthoritative: true))
+        // Adopt signed geography with the original census reference.
+        // Relocate the QA workers only after this one-time boundary.
+        var opening = FoundationPersistedEdgeTravelTransitions.DeployEmpty(bound
             .DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
                 bound.Civilizations.Civilizations.Select(c => (c, 5_000_000UL)))));
+        demo.Session.AcceptFineFirstOpening(opening, incidence, fine, signature);
+        opening = opening.WithWorkers(new PhysicalWorkerRuntimeState(census,
+            tacticalLocationsAuthoritative: true, occupationsAuthoritative: true));
         if (mode == 3)
         {
             var edge = incidence.FineTopology.Edges.Single(e =>
@@ -2697,7 +2701,7 @@ public sealed class FoundationTemporalEconomicJournalGateTests
                 new FoundationCommodityCargoConversion(c, 1_000_000UL))),
             opening.Civilizations.Civilizations.Select(c => new FoundationPhysicalEconomicTaxRate(c, 0U)),
             maxProducerPasses: 64, useTemporalProgressiveDistribution: true, requireSafeProgressiveRoutes: true);
-        demo.Session.AcceptFineFirstOpening(opening, incidence, fine, signature);
+        demo.Session.AcceptSnapshot(opening);
         var human = opening.Civilizations.Civilizations.Single(c => c != worker.Owner);
         ulong naturalTime = mode == 2 ? 100_000_000UL : 2_000_000UL / (ulong)links.Count;
         if (mode == 3)
