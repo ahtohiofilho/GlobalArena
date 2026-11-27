@@ -37,6 +37,7 @@ public sealed class FoundationConstructionApproachRouter
         _movement = new(world, map, geo, signature);
         _binding = RuntimeWorldBinding.FromFineFirst(world, map, geo, signature);
         _legacyBinding = RuntimeWorldBinding.FromGeneratedWorld(world);
+        NavalTransitions = new FoundationNavalVoyageTransitions(world, map, geo, signature);
     }
 
     public FoundationConstructionApproach Plan(WorldState world, PhysicalWorkerId workerId)
@@ -155,6 +156,7 @@ public sealed class FoundationConstructionApproachRouter
             Array.Empty<PhysicalTacticalTileId>(), BigInteger.Zero);
     }
 
+    internal FoundationNavalVoyageTransitions NavalTransitions { get; }
     internal PhysicalTacticalIncidenceMap Incidence => _map;
     internal FoundationFineFirstPhysicalGeography Geography => _geo;
     internal PhysicalTacticalWorkerMoveEventExecutor Movement => _movement;
