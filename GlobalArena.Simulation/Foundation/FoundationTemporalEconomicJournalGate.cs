@@ -498,7 +498,7 @@ public static class FoundationTemporalEconomicJournalGate
                     throw new InvalidOperationException("Duplicate or late persistent operation.");
                 if (ev is FoundationPersistentOrderEditEvent)
                     return new FoundationPersistentOrderEditJournal().Execute(state, ev, context);
-                if (ev is FoundationFundedWorkerIntentEvent)
+                if (ev is FoundationFundedWorkerIntentEvent or FoundationProductiveFundingEvent)
                 {
                     var funded = _fundedIntents!.Execute(state, ev, context);
                     _investmentCount++;
