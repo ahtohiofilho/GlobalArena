@@ -135,6 +135,10 @@ internal static class GaExplicitEconomicQaConfiguration
             System.Environment.GetEnvironmentVariable("GA_NEXT_QA_SHALLOW_PORTS") == "1"))
             throw new InvalidOperationException("R234A coastal freight requires the signed local economy QA without historical smoke or shallow overlay.");
         bool autonomousAi = System.Environment.GetEnvironmentVariable("GA_NEXT_R233E_AUTONOMOUS_AI") == "1";
+        bool exclusiveNodeLabor = System.Environment.GetEnvironmentVariable("GA_NEXT_R234B2_EXCLUSIVE_NODE_LABOR") == "1";
+        if (exclusiveNodeLabor && (!enableLocalEconomy || !enablePersistentOrders || tradeFixture is not null ||
+            System.Environment.GetEnvironmentVariable("GA_NEXT_R213_UI_SMOKE") == "1"))
+            throw new InvalidOperationException("Exclusive node labor requires interactive signed persistent local economy QA.");
         if (autonomousAi && (!enableLocalEconomy || !enablePersistentOrders || tradeFixture is not null ||
             System.Environment.GetEnvironmentVariable("GA_NEXT_R213_UI_SMOKE") == "1"))
             throw new InvalidOperationException("Autonomous AI requires the interactive signed persistent local economy QA preview.");
@@ -334,8 +338,10 @@ internal static class GaExplicitEconomicQaConfiguration
             enableDemographicGrowth: growth, agriculture: agriculture,
             operationalPolicy: enablePersistentOrders && System.Environment.GetEnvironmentVariable("GA_NEXT_OPERATIONAL_PREVIEW") == "1"
                 ? new FoundationOperationalFreightShadowPolicy(1_000_000UL, 1_000_000UL) : null,
-            enableExperimentalLocalEconomy: enableLocalEconomy, enableDefaultAutomaticBase: enableLocalEconomy);
+            enableExperimentalLocalEconomy: enableLocalEconomy, enableDefaultAutomaticBase: enableLocalEconomy,
+            enableExclusiveNodeLabor: exclusiveNodeLabor);
         if (autonomousAi) global::Godot.GD.Print("GA_NEXT_R233E_AUTONOMOUS_AI_READY experimental=true full_map_qa=true");
+        if (exclusiveNodeLabor) global::Godot.GD.Print("GA_NEXT_R234B2_EXCLUSIVE_NODE_LABOR_READY experimental=true");
         if (enableLocalEconomy) global::Godot.GD.Print("GA_NEXT_R22813C_LOCAL_ECONOMY_READY experimental=true automatic_default=true commodities=8");
         return (host, fine, identity);
     }
