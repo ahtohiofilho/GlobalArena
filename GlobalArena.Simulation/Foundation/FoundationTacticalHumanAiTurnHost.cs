@@ -498,8 +498,10 @@ public sealed class FoundationTacticalHumanAiTurnHost
         FoundationGroundEdgeTravelTimePolicy? physicalTravelPolicy = null,
         ulong? constructionMoneyMicroPerWholeWork = null, bool enableDemographicGrowth = false, FoundationAgriculturalProductionPolicy? agriculture = null, FoundationOperationalFreightShadowPolicy? operationalPolicy = null,
         bool enableExperimentalLocalEconomy = false, bool enableDefaultAutomaticBase = false,
-        IReadOnlyDictionary<CivilizationId, FoundationCivilizationKnowledgeScope>? knowledgeScopes = null)
+        IReadOnlyDictionary<CivilizationId, FoundationCivilizationKnowledgeScope>? knowledgeScopes = null, bool enableExclusiveNodeLabor = false)
     {
+        if (enableExclusiveNodeLabor && (!enableDefaultAutomaticBase || !session.Snapshot.WorkerOrders.IsInitialized))
+            throw new InvalidOperationException("Exclusive node labor requires persistent default automatic base.");
         AgriculturalProduction = agriculture;
         OperationalFreight = operationalPolicy;
         if (operationalPolicy is not null && (!session.Snapshot.WorkerOrders.IsInitialized || fineGeography is null)) throw new InvalidOperationException("Operational freight requires signed persistent scheduling.");
@@ -672,7 +674,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
                 persistent ? constructionMoneyMicroPerWholeWork : null, enableDemographicGrowth, agriculture, operationalPolicy,
                 enableExperimentalAutomaticBase: ExperimentalLocalEconomyEnabled,
                 enableLocalPriceAllocation: ExperimentalLocalEconomyEnabled,
-                enableDefaultAutomaticBase: DefaultAutomaticBaseEnabled);
+                enableDefaultAutomaticBase: DefaultAutomaticBaseEnabled, enableExclusiveNodeLabor: enableExclusiveNodeLabor);
             phases.Add(temporal);
             if (persistent)
             {
