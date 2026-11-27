@@ -1657,6 +1657,10 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Equal(ids[0], policy.PlanFunding(view with { InvestmentOpportunities = new[] { tie, good } })!.Edge);
         Assert.Null(policy.PlanFunding(view with { OwnCashScaled = view.OwnCashScaled - 1 }));
         Assert.Null(policy.PlanFunding(view with { InvestmentOpportunities = new[] { bad } }));
+        Assert.NotNull(policy.PlanFunding(view with { InvestmentOpportunities = new[] { bad with
+            { UnitCostBeforeMicro = 1_000_000UL, UnitCostAfterMicro = 800_000UL } } }));
+        Assert.Null(policy.PlanFunding(view with { InvestmentOpportunities = new[] { good with
+            { CargoMicro = 0UL, UnitCostBeforeMicro = 100_000_000UL, UnitCostAfterMicro = 1UL } } }));
         Assert.Null(policy.PlanFunding(view with { InvestmentOpportunities = new[] { good with { UnitCostAfterMicro = good.UnitCostBeforeMicro } } }));
         Assert.Null(policy.PlanFunding(view with { Workers = workers.Take(2).ToArray() }));
         Assert.Null(policy.PlanFunding(view with { Workers = new[] { workers[0], workers[1], workers[2] with { Crossing = true } } }));
