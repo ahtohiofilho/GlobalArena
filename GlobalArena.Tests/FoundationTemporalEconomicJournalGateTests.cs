@@ -1584,6 +1584,24 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             Assert.Equal(expected.Revision, resolved.Revision);
             Assert.Equal(0, contested.PendingOrderCount);
         }
+        if (mode == 1)
+        {
+            // No project in turn one; the same contest in turn two rotates
+            // priority to the other civilization without changing controller.
+            var rotated = CreateHost(null);
+            rotated.SetHumanReady(owner);
+            rotated.SetHumanReady(human);
+            var openingClose = Assert.IsType<FoundationTacticalCollectiveReceipt>(rotated.TryCloseTurn());
+            Assert.True(openingClose.ReplayMatched);
+            Assert.Equal(2UL, rotated.NextTurn.Value);
+            rotated.QueueHumanFundedConstruction(owner, edge, 600_000UL, assignments);
+            rotated.QueueHumanFundedConstruction(human, edge, 300_000UL, Array.Empty<FoundationFundedWorkerInsertion>());
+            rotated.SetHumanReady(owner);
+            rotated.SetHumanReady(human);
+            var second = Assert.IsType<FoundationTacticalCollectiveReceipt>(rotated.TryCloseTurn());
+            Assert.True(second.ReplayMatched);
+            Assert.Equal(winner == owner ? human : owner, Assert.Single(second.PersistentFunding).Investor);
+        }
     }
 
     [Fact]
