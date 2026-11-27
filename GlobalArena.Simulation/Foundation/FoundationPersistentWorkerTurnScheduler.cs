@@ -9,7 +9,11 @@ namespace GlobalArena.Simulation.Foundation;
 public sealed record FoundationPersistentWorkerSlice(
     PhysicalWorkerId Worker, PhysicalTacticalTileId Node, uint StartMicro,
     uint DurationMicro, PhysicalWorkerActivity Activity,
-    PhysicalWorkerOccupation Occupation, ulong? ProjectId, byte? Crop = null);
+    PhysicalWorkerOccupation Occupation, ulong? ProjectId, byte? Crop = null)
+{
+    // ProjectId is the legacy transport namespace. Productive work is distinct.
+    public ulong? ProductiveProjectId { get; init; }
+}
 
 public sealed record FoundationNavalLanding(FoundationNavalVoyage Voyage,
     PhysicalTacticalTileId Destination, uint ArrivalMicro);
@@ -83,7 +87,7 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
 
     private sealed record Mode(PhysicalWorkerId Worker, PhysicalTacticalTileId Node,
         PhysicalWorkerActivity Activity, PhysicalWorkerOccupation Occupation,
-        ulong? Project, FoundationPendingEdgeTravel? Travel, byte? Crop = null);
+        ulong? Project, FoundationPendingEdgeTravel? Travel, byte? Crop = null, bool Productive = false);
 
     private static bool Produces(PhysicalWorkerOccupation occupation) =>
         occupation is PhysicalWorkerOccupation.Agriculture or PhysicalWorkerOccupation.Forestry
@@ -299,7 +303,7 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
                             PhysicalWorkerActivity.Other, PhysicalWorkerOccupation.Unassigned);
                         modes.Add(new(id, node, PhysicalWorkerActivity.Other,
                             PhysicalWorkerOccupation.Unassigned,
-                            head.Kind == FoundationWorkerOrderKind.BuildProductive ? null : head.ProjectId, null));
+                            head.ProjectId, null, Productive: head.Kind == FoundationWorkerOrderKind.BuildProductive));
                         break;
                     }
                     if (plan.Status == FoundationConstructionApproachStatus.RouteAvailable)
@@ -366,12 +370,15 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
             ulong step = Whole - now;
             foreach (var m in modes.Where(m => m.Travel is not null))
                 step = Math.Min(step, m.Travel!.RemainingMicro);
-            var groups = modes.Where(m => m.Project.HasValue).GroupBy(m => m.Project!.Value).ToArray();
+            var groups = modes.Where(m => m.Project.HasValue)
+                .GroupBy(m => (Id: m.Project!.Value, m.Productive)).ToArray();
+            ulong Remaining(ulong id, bool productive) => productive
+                ? state.ProductiveInfrastructure.Projects.Single(p => p.Id == id).RemainingWorkMicro
+                : state.Constructions.Projects.Single(p => p.Id == id).RemainingWorkMicro;
             foreach (var team in groups)
             {
-                var project = state.Constructions.Projects.Single(p => p.Id == team.Key);
                 ulong count = (ulong)team.Count();
-                ulong remaining = project.RemainingWorkMicro;
+                ulong remaining = Remaining(team.Key.Id, team.Key.Productive);
                 step = Math.Min(step, remaining / count + (remaining % count == 0 ? 0UL : 1UL));
             }
             if (step == 0) throw new InvalidOperationException("Temporal scheduler made no progress.");
@@ -379,20 +386,23 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
             var shares = new Dictionary<PhysicalWorkerId, uint>();
             foreach (var team in groups)
             {
-                var project = state.Constructions.Projects.Single(p => p.Id == team.Key);
                 var ordered = team.OrderBy(m => m.Worker.Value).ToArray();
                 ulong count = (ulong)ordered.Length;
-                ulong used = Math.Min(project.RemainingWorkMicro, checked(step * count));
+                ulong used = Math.Min(Remaining(team.Key.Id, team.Key.Productive), checked(step * count));
                 for (int i = 0; i < ordered.Length; i++)
                     shares[ordered[i].Worker] = checked((uint)(used / count + ((ulong)i < used % count ? 1UL : 0UL)));
-                state = state.WithConstructions(new FoundationConstructionRuntimeState(
-                    state.Constructions.Projects.Select(p => p.Id == project.Id
-                        ? p with { CompletedWorkMicro = p.CompletedWorkMicro + used } : p)));
+                state = team.Key.Productive
+                    ? state.RecordProductiveConstructionWork(team.Key.Id, used)
+                    : state.WithConstructions(new FoundationConstructionRuntimeState(
+                        state.Constructions.Projects.Select(p => p.Id == team.Key.Id
+                            ? p with { CompletedWorkMicro = p.CompletedWorkMicro + used } : p)));
             }
             foreach (var m in modes)
             {
                 uint work = m.Project.HasValue ? shares[m.Worker] : duration;
-                if (work > 0) slices.Add(new(m.Worker, m.Node, now, work, m.Activity, m.Occupation, m.Project, m.Crop));
+                if (work > 0) slices.Add(new FoundationPersistentWorkerSlice(m.Worker, m.Node, now,
+                    work, m.Activity, m.Occupation, m.Productive ? null : m.Project, m.Crop)
+                    { ProductiveProjectId = m.Productive ? m.Project : null });
                 if (work < duration)
                 {
                     // Team completion can leave a sub-micro remainder for a
@@ -436,6 +446,9 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
             if ((head.Kind == FoundationWorkerOrderKind.Build &&
                 state.Constructions.Projects.Single(p => p.Id == head.ProjectId).IsComplete &&
                 !state.EdgeTravels.Pending.Any(p => p.Worker == q.Worker)) ||
+                (head.Kind == FoundationWorkerOrderKind.BuildProductive &&
+                state.ProductiveInfrastructure.Projects.Single(p => p.Id == head.ProjectId).IsComplete &&
+                !state.EdgeTravels.Pending.Any(p => p.Worker == q.Worker)) ||
                 (head.Kind == FoundationWorkerOrderKind.Move && worker.TacticalTileId == head.Destination &&
                 !state.EdgeTravels.Pending.Any(p => p.Worker == q.Worker)))
                 state = state.CompleteWorkerOrder(q.Owner, q.Worker, head.Id);
@@ -468,7 +481,7 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
                     .OrderBy(s => s.StartMicro).ToArray();
                 if (suffix.Length == 0 || suffix[0].StartMicro != item.Value ||
                     suffix.Any(s => s.Node != suffix[0].Node || s.Activity != PhysicalWorkerActivity.Other ||
-                        s.Occupation != PhysicalWorkerOccupation.Unassigned || s.ProjectId.HasValue || s.Crop.HasValue) ||
+                        s.Occupation != PhysicalWorkerOccupation.Unassigned || s.ProjectId.HasValue || s.ProductiveProjectId.HasValue || s.Crop.HasValue) ||
                     suffix.Aggregate(0UL, (sum, s) => sum + s.DurationMicro) != Whole - item.Value)
                     throw new InvalidOperationException("Automatic base must occupy only the stationary available suffix.");
                 slices.RemoveAll(s => s.Worker == item.Key && s.StartMicro >= item.Value);
@@ -504,6 +517,8 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
         }
         foreach (var p in state.Constructions.Projects.Where(p => p.IsComplete && !p.IsActivated).ToArray())
             state = state.ActivateCompletedConstruction(p.Id);
+        foreach (var p in state.ProductiveInfrastructure.Projects.Where(p => p.IsComplete && !p.IsActivated).ToArray())
+            state = state.ActivateCompletedProductiveConstruction(p.Id);
         if (_navalDepartureTime.HasValue)
         {
             var owners = opening.Workers.Workers.ToDictionary(w => w.Id, w => w.Owner);
