@@ -37,6 +37,8 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
     private readonly FoundationWorkerBaseActivity? _defaultBase;
     private readonly bool _exclusiveNodeLabor;
     private readonly bool _navalContinuation;
+    private readonly ulong? _navalDepartureTime;
+    private readonly IReadOnlyDictionary<CivilizationId, FoundationCivilizationKnowledgeScope>? _navalScopes;
 
     // An absent preference stays absent in the canonical private queue.
     // Only the explicitly configured execution policy supplies the fallback.
@@ -48,7 +50,9 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
         FoundationAuthoritativeEconomicSettlementPolicy? experimentalAutomaticEconomy = null,
         FoundationOperationalFreightShadowPolicy? automaticOperations = null,
         bool enableLocalPriceAllocation = false, bool enableDefaultAutomaticBase = false,
-        bool enableExclusiveNodeLabor = false, bool enableNavalContinuation = false)
+        bool enableExclusiveNodeLabor = false, bool enableNavalContinuation = false,
+        ulong? navalDepartureTimeMicro = null,
+        IReadOnlyDictionary<CivilizationId, FoundationCivilizationKnowledgeScope>? navalScopes = null)
     {
         _router = router ?? throw new ArgumentNullException(nameof(router));
         _agriculture = agriculture;
@@ -60,7 +64,11 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
         if (enableExclusiveNodeLabor && !enableDefaultAutomaticBase)
             throw new InvalidOperationException("Exclusive node labor requires the default automatic base preview.");
         _exclusiveNodeLabor = enableExclusiveNodeLabor;
+        if (navalDepartureTimeMicro.HasValue && (!enableNavalContinuation || navalDepartureTimeMicro.Value == 0))
+            throw new InvalidOperationException("Naval departure requires explicit continuation and positive natural duration.");
         _navalContinuation = enableNavalContinuation;
+        _navalDepartureTime = navalDepartureTimeMicro;
+        _navalScopes = navalScopes?.ToDictionary(p => p.Key, p => p.Value);
         _defaultBase = enableDefaultAutomaticBase ? new FoundationWorkerBaseActivity(FoundationWorkerBaseMode.Automatic) : null;
         if (enableLocalPriceAllocation && experimentalAutomaticEconomy is null)
             throw new InvalidOperationException("Local allocation requires the experimental automatic mode.");
@@ -162,6 +170,14 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
             if (q.BaseActivity is { } b && ((b.Mode == FoundationWorkerBaseMode.Automatic && _automaticEconomy is null) ||
                 (b.Crop.HasValue && _agriculture is null)))
                 throw new InvalidOperationException("Base activity execution policy is unavailable.");
+        if (_navalDepartureTime.HasValue && opening.EdgeTravels.NavalVoyages is null)
+            throw new InvalidOperationException("Naval departure requires explicit ledger deployment.");
+        if (_navalScopes is not null && opening.Civilizations.Civilizations.Any(c => !_navalScopes.ContainsKey(c)))
+            throw new InvalidOperationException("Naval knowledge scope must cover each participant.");
+        if (opening.EdgeTravels.PriorWork is not null && !_navalDepartureTime.HasValue)
+            throw new InvalidOperationException("Prior naval work requires continued departure policy.");
+        if (opening.EdgeTravels.PriorWorkTurn is { } priorTurn && priorTurn != context.Turn.Value - 1UL)
+            throw new InvalidOperationException("Stale naval work evidence.");
         var state = opening;
         var slices = new List<FoundationPersistentWorkerSlice>();
         var landings = new List<FoundationNavalLanding>();
@@ -219,7 +235,7 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
                         // Already embarked: preserve the vessel even without
                         // a reachable landing order. Never work while afloat.
                         if (head is { Kind: FoundationWorkerOrderKind.Move, Destination: { } goal } &&
-                            _router.NavalTransitions.FindNextLandingStep(node, goal) is { } stepTo)
+                            _router.NavalTransitions.FindNextLandingStep(node, goal, _navalScopes?[worker.Owner]) is { } stepTo)
                         {
                             if (!queue.ActiveOrderId.HasValue)
                                 state = state.StartWorkerOrder(worker.Owner, id);
@@ -264,7 +280,7 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
                         continue;
                     }
                     var plan = head.Kind == FoundationWorkerOrderKind.Build
-                        ? _router.Plan(state, id) : _router.PlanMove(state, id, head.Destination!.Value);
+                        ? _router.Plan(state, id) : _router.PlanMove(state, id, head.Destination!.Value, _navalScopes?[worker.Owner]);
                     if (plan.Status == FoundationConstructionApproachStatus.AtSite)
                     {
                         if (head.Kind == FoundationWorkerOrderKind.Move)
@@ -287,6 +303,15 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
                         state = next;
                         var travel = state.EdgeTravels.Pending.Single(p => p.Worker == id);
                         modes.Add(new(id, node, PhysicalWorkerActivity.Traveling, occupation, null, travel));
+                        break;
+                    }
+                    if (_navalDepartureTime is { } navalTime && head.Kind == FoundationWorkerOrderKind.Move &&
+                        _router.NavalTransitions.TryDepart(state, opening, id, head.Destination!.Value,
+                            context.Turn.Value, navalTime, _navalScopes?[worker.Owner]) is { } departed)
+                    {
+                        state = departed;
+                        var crossing = state.EdgeTravels.Pending.Single(p => p.Worker == id);
+                        modes.Add(new(id, node, PhysicalWorkerActivity.Traveling, PhysicalWorkerOccupation.Unassigned, null, crossing));
                         break;
                     }
                     state = Assign(state, worker, node, worker.CellId, PhysicalWorkerActivity.Other,
@@ -471,6 +496,13 @@ public sealed class FoundationPersistentWorkerTurnScheduler : ISimulationEventEx
         }
         foreach (var p in state.Constructions.Projects.Where(p => p.IsComplete && !p.IsActivated).ToArray())
             state = state.ActivateCompletedConstruction(p.Id);
+        if (_navalDepartureTime.HasValue)
+        {
+            var owners = opening.Workers.Workers.ToDictionary(w => w.Id, w => w.Owner);
+            var evidence = FoundationClosedNodeWorkProjector.Capture(slices, owners);
+            state = state.WithPhysicalEdgeTravel(state.Workers,
+                state.EdgeTravels.WithPriorWork(context.Turn.Value, evidence));
+        }
         return (state.AdvanceRevision(), slices.ToArray(), landings.ToArray());
     }
 

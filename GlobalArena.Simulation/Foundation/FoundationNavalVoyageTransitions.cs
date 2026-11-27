@@ -56,12 +56,13 @@ internal sealed class FoundationNavalVoyageTransitions
     // disembark at the requested land node, not cross intermediate land.
     // Fixed edge duration makes canonical breadth-first search sufficient.
     internal PhysicalTacticalTileId? FindNextLandingStep(
-        PhysicalTacticalTileId source, PhysicalTacticalTileId target)
+        PhysicalTacticalTileId source, PhysicalTacticalTileId target, FoundationCivilizationKnowledgeScope? scope = null)
     {
         if (_geo.SurfaceAtIndex(Index(source)) == FoundationFineSurfaceKind.Land ||
             !_geo.CanTraverseOnFoot(Index(target)) ||
             _geo.SurfaceAtIndex(Index(target)) != FoundationFineSurfaceKind.Land)
             return null;
+        if (scope is not null && (!scope.KnowsNode(source) || !scope.KnowsNode(target))) return null;
         var start = source.FineStrategicCellId;
         var goal = target.FineStrategicCellId;
         var firstSteps = new Dictionary<StrategicCellId, StrategicCellId>();
@@ -73,6 +74,8 @@ internal sealed class FoundationNavalVoyageTransitions
             int a = checked((int)node.Value - 1);
             foreach (var next in _map.FineTopology.Cells[a].AdjacentCellIds.OrderBy(n => n.Value))
             {
+                if (scope is not null && !scope.KnowsLink(new(_map.Refinement.FineParameters, node),
+                    new(_map.Refinement.FineParameters, next))) continue;
                 int b = checked((int)next.Value - 1);
                 var kind = _geo.CrossingAtIndices(a, b);
                 if (next == goal ? kind != FoundationFineTransportCrossingKind.Port :
@@ -84,6 +87,35 @@ internal sealed class FoundationNavalVoyageTransitions
                 firstSteps.Add(next, first);
                 queue.Enqueue(next);
             }
+        }
+        return null;
+    }
+
+    // Direct coastal departure when the ground router has no route.
+    // Select the first canonical authorized crossing with a reachable landing.
+    internal WorldState? TryDepart(WorldState state, WorldState opening, PhysicalWorkerId id,
+        PhysicalTacticalTileId target, ulong turn, ulong naturalCrossingTimeMicro,
+        FoundationCivilizationKnowledgeScope? scope)
+    {
+        var worker = state.Workers.Workers.Single(w => w.Id == id);
+        var origin = worker.TacticalTileId!.Value;
+        if (_geo.SurfaceAtIndex(Index(origin)) != FoundationFineSurfaceKind.Land ||
+            !_geo.CanTraverseOnFoot(Index(target)) || origin == target ||
+            (scope is not null && (!scope.KnowsNode(origin) || !scope.KnowsNode(target))))
+            return null;
+        FoundationClosedNodeWorkEvidence? Read(IReadOnlySet<CivilizationId> eligible) =>
+            opening.EdgeTravels.PriorWorkTurn == turn - 1UL && opening.EdgeTravels.PriorWork is { } work
+                ? FoundationClosedNodeWorkProjector.Read(work, origin, worker.Owner, eligible) : null;
+        foreach (var next in _map.FineTopology.Cells[Index(origin)].AdjacentCellIds.OrderBy(n => n.Value))
+        {
+            var water = new PhysicalTacticalTileId(_map.Refinement.FineParameters, next);
+            if (scope is not null && !scope.KnowsLink(origin, water)) continue;
+            if (_geo.CrossingAtIndices(Index(origin), Index(water)) != FoundationFineTransportCrossingKind.Port)
+                continue;
+            if (!FoundationNavalBoardingPolicy.Evaluate(opening, _map, _geo, worker.Owner, origin, water, Read).IsAllowed)
+                continue;
+            if (FindNextLandingStep(water, target, scope) is null) continue;
+            return Embark(state, id, water, turn, naturalCrossingTimeMicro, Read);
         }
         return null;
     }

@@ -77,7 +77,7 @@ public sealed class FoundationConstructionApproachRouter
     }
 
     public FoundationConstructionApproach PlanMove(WorldState world, PhysicalWorkerId workerId,
-        PhysicalTacticalTileId destination)
+        PhysicalTacticalTileId destination, FoundationCivilizationKnowledgeScope? scope = null)
     {
         if ((world.WorldBinding != _binding && world.WorldBinding != _legacyBinding) ||
             !world.WorkerOrders.IsInitialized || !world.EdgeTravels.IsInitialized || !world.Transport.IsInitialized)
@@ -94,11 +94,11 @@ public sealed class FoundationConstructionApproachRouter
         var goals = new HashSet<StrategicCellId>();
         if (_geo.CanTraverseOnFoot(checked((int)destination.FineStrategicCellId.Value - 1)))
             goals.Add(destination.FineStrategicCellId);
-        return FindPath(world, source, goals, null);
+        return FindPath(world, source, goals, null, scope);
     }
 
     private FoundationConstructionApproach FindPath(WorldState world, PhysicalTacticalTileId source,
-        HashSet<StrategicCellId> goals, ulong? projectId)
+        HashSet<StrategicCellId> goals, ulong? projectId, FoundationCivilizationKnowledgeScope? scope = null)
     {
         var fine = _map.Refinement.FineParameters;
         if (goals.Contains(source.FineStrategicCellId))
@@ -113,6 +113,7 @@ public sealed class FoundationConstructionApproachRouter
         foreach (var edge in _map.FineTopology.Edges)
         {
             var x = edge.IncidentCellIds[0]; var y = edge.IncidentCellIds[1];
+            if (scope is not null && !scope.KnowsLink(new(fine, x), new(fine, y))) continue;
             if (!_geo.CanTraverseOnFoot(checked((int)x.Value - 1)) ||
                 !_geo.CanTraverseOnFoot(checked((int)y.Value - 1))) continue;
             var key = new PhysicalTacticalEdgeId(fine, edge.Id);

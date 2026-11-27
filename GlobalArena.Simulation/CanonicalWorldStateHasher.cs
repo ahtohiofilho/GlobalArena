@@ -42,6 +42,7 @@ public sealed class CanonicalWorldStateHasher
     public const uint IndividualDemographyFormatVersion = 25U;
     public const uint UniformCityDemographyFormatVersion = 26U;
     public const uint NavalVoyageFormatVersion = 27U;
+    public const uint NavalPriorWorkFormatVersion = 28U;
 
     private static readonly byte[] Magic =
     {
@@ -96,7 +97,8 @@ public sealed class CanonicalWorldStateHasher
 
         // Keep the underlying legacy schema selection for all existing sections.
         // The opt-in envelope records that base version explicitly.
-        var wireVersion = worldState.EdgeTravels.NavalVoyages is null ? version : NavalVoyageFormatVersion;
+        var wireVersion = worldState.EdgeTravels.PriorWork is not null ? NavalPriorWorkFormatVersion :
+            worldState.EdgeTravels.NavalVoyages is null ? version : NavalVoyageFormatVersion;
         using var hash = new BufferedCanonicalHash();
 
         hash.AppendData(
@@ -659,6 +661,22 @@ public sealed class CanonicalWorldStateHasher
                 AppendUInt64(hash, voyage.CrossingTimeMicro);
                 AppendUInt64(hash, voyage.PaidNumerator);
                 AppendUInt64(hash, voyage.PaidDenominator);
+            }
+        }
+
+        if (worldState.EdgeTravels.PriorWork is { } prior)
+        {
+            AppendUInt32(hash, 55U);
+            AppendUInt64(hash, worldState.EdgeTravels.PriorWorkTurn!.Value);
+            AppendUInt32(hash, checked((uint)prior.Count));
+            foreach (var w in prior)
+            {
+                AppendUInt32(hash, checked((uint)w.Node.FineGoldbergParameters.M));
+                AppendUInt32(hash, checked((uint)w.Node.FineGoldbergParameters.N));
+                AppendUInt64(hash, w.Node.FineStrategicCellId.Value);
+                AppendUInt64(hash, w.Owner.Value);
+                AppendUInt32(hash, w.StartMicro);
+                AppendUInt32(hash, w.DurationMicro);
             }
         }
 
