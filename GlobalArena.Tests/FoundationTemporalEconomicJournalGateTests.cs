@@ -1664,6 +1664,84 @@ public sealed class FoundationTemporalEconomicJournalGateTests
     }
 
     [Fact]
+    public void R234D2ANavalCalendarContinuesAndReplaysLandingWithResidualWork()
+    {
+        var (world, _, _, _, incidence, fine) = Fixture();
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL), WorldGenerationVersion.Initial,
+                new GoldbergParameters(3, 0)), workersPerCivilization: 3);
+        var signature = FoundationFineFirstWorldgenCanonicalSignature.Compute(demo.Session.GeneratedWorld, incidence, fine);
+        var bound = demo.Session.Snapshot.PromoteFineFirstBeforeTransport(demo.Session.GeneratedWorld, incidence, fine, signature)
+            .DeployInitialFineFirstPhysicalTransport(world.Transport, demo.Session.GeneratedWorld, incidence, fine, signature);
+        var worker = bound.Workers.Workers.First();
+        var coast = incidence.FineTopology.Edges.First(e =>
+            fine.CrossingAtIndices((int)e.IncidentCellIds[0].Value - 1,
+                (int)e.IncidentCellIds[1].Value - 1) == FoundationFineTransportCrossingKind.Port &&
+            e.IncidentCellIds.Any(n => fine.SurfaceAtIndex((int)n.Value - 1) == FoundationFineSurfaceKind.Land &&
+                fine.CanTraverseOnFoot((int)n.Value - 1)));
+        var landId = coast.IncidentCellIds.Single(n =>
+            fine.SurfaceAtIndex((int)n.Value - 1) == FoundationFineSurfaceKind.Land);
+        var origin = new PhysicalTacticalTileId(incidence.Refinement.FineParameters, landId);
+        var water = new PhysicalTacticalTileId(incidence.Refinement.FineParameters,
+            coast.IncidentCellIds.Single(n => n != landId));
+        var region = incidence.TileIncidences[(int)landId.Value - 1].IncidentCoarseCellIds[0];
+        var opening = FoundationPersistedEdgeTravelTransitions.DeployEmpty(bound.WithWorkers(
+            new PhysicalWorkerRuntimeState(bound.Workers.Workers.Select(w => w.Id == worker.Id ?
+                w.WithTacticalLocationAndActivity(origin, region, PhysicalWorkerActivity.Other) : w),
+                tacticalLocationsAuthoritative: true, occupationsAuthoritative: true))
+            .DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
+                bound.Civilizations.Civilizations.Select(c => (c, 5_000_000UL)))))
+            .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
+            .DeployInitialWorkerOrders()
+            .SetWorkerBaseActivity(worker.Owner, worker.Id,
+                new FoundationWorkerBaseActivity(FoundationWorkerBaseMode.Manual, PhysicalWorkerOccupation.Mining))
+            .InsertWorkerOrder(worker.Owner, worker.Id, 0, FoundationWorkerOrderKind.Move, origin);
+        var router = new FoundationConstructionApproachRouter(demo.Session.GeneratedWorld,
+            incidence, fine, signature, new FoundationGroundEdgeTravelTimePolicy(1_400_000UL));
+        var naval = router.NavalTransitions;
+        var started = naval.Embark(naval.Deploy(opening), worker.Id, water, 1, 1_400_000UL,
+            _ => new FoundationClosedNodeWorkEvidence(1_000_000U, 1_000_000UL, 1_000_000UL));
+        var scheduler = new FoundationPersistentWorkerTurnScheduler(router, enableNavalContinuation: true);
+        var legacy = new FoundationPersistentWorkerTurnScheduler(router);
+        var hasher = new CanonicalWorldStateHasher();
+        var context = new SimulationContext(new TurnNumber(1UL), new SimulationSeed(712UL));
+        Assert.Throws<InvalidOperationException>(() => legacy.Record(started, context));
+        var state = started;
+        for (ulong turn = 1; turn <= 3; turn++)
+        {
+            context = new SimulationContext(new TurnNumber(turn), new SimulationSeed(712UL));
+            var (next, ev) = scheduler.Record(state, context);
+            Assert.Equal(hasher.Compute(next), hasher.Compute(scheduler.Execute(state, ev, context)));
+            Assert.All(ev.Slices.GroupBy(s => s.Worker), g => Assert.Equal(1_000_000L, g.Sum(s => (long)s.DurationMicro)));
+            var slices = ev.Slices.Where(s => s.Worker == worker.Id).ToArray();
+            if (turn < 3)
+            {
+                Assert.All(slices, s => Assert.Equal(PhysicalWorkerActivity.Traveling, s.Activity));
+                Assert.Empty(ev.NavalLandings);
+                Assert.Single(next.EdgeTravels.NavalVoyages!);
+                Assert.Equal(turn == 1 ? 400_000UL : 800_000UL,
+                    Assert.Single(next.EdgeTravels.Pending).RemainingMicro);
+            }
+            else
+            {
+                var landing = Assert.Single(ev.NavalLandings);
+                Assert.Equal(origin, landing.Destination);
+                Assert.Equal(800_000U, landing.ArrivalMicro);
+                Assert.Equal(800_000U, slices[0].DurationMicro);
+                Assert.Equal(PhysicalWorkerActivity.Traveling, slices[0].Activity);
+                Assert.Equal(200_000U, slices[1].DurationMicro);
+                Assert.Equal(PhysicalWorkerActivity.Producing, slices[1].Activity);
+                Assert.Equal(PhysicalWorkerOccupation.Mining, slices[1].Occupation);
+                Assert.Empty(next.EdgeTravels.NavalVoyages!);
+                Assert.Empty(next.WorkerOrders.Queues.Single(q => q.Worker == worker.Id).Orders);
+                Assert.Throws<InvalidOperationException>(() => scheduler.Execute(state,
+                    ev with { NavalLandings = Array.Empty<FoundationNavalLanding>() }, context));
+            }
+            state = next;
+        }
+    }
+
+    [Fact]
     public void R234D1NavalVesselPersistsAcrossEdgesAndDisappearsOnLanding()
     {
         var (world, _, _, _, incidence, fine) = Fixture();
