@@ -107,10 +107,7 @@ public static class FoundationPhysicalAuthoritativeTransportProjector
         if (reference == 0UL)
             throw new InvalidOperationException(
                 "The construction reference must be positive.");
-        BigInteger numerator = (BigInteger)natural * natural * reference;
-        BigInteger divisor = (BigInteger)reference + investment;
-        BigInteger integerCost = IntegerSquareRoot(numerator / divisor);
-        return integerCost < BigInteger.One ? 1UL : checked((ulong)integerCost);
+        return FoundationInfrastructureCapitalResponse.ProjectUnitCost(natural, investment, reference);
     }
 
     /// <summary>
@@ -175,20 +172,6 @@ public static class FoundationPhysicalAuthoritativeTransportProjector
     /// The starting bound is derived from bit length, Newton converges
     /// monotonically downward to the exact integer square root.
     /// </summary>
-    internal static BigInteger IntegerSquareRoot(BigInteger value)
-    {
-        if (value.Sign < 0)
-            throw new ArgumentOutOfRangeException(nameof(value));
-        if (value.IsZero)
-            return BigInteger.Zero;
-        int bits = checked((int)value.GetBitLength());
-        BigInteger x = BigInteger.One << ((bits + 1) / 2);
-        while (true)
-        {
-            BigInteger next = (x + value / x) >> 1;
-            if (next >= x)
-                return x;
-            x = next;
-        }
-    }
+    internal static BigInteger IntegerSquareRoot(BigInteger value) =>
+        FoundationInfrastructureCapitalResponse.IntegerSquareRoot(value);
 }
