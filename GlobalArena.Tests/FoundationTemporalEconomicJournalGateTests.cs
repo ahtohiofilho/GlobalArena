@@ -2700,6 +2700,19 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         demo.Session.AcceptFineFirstOpening(opening, incidence, fine, signature);
         var human = opening.Civilizations.Civilizations.Single(c => c != worker.Owner);
         ulong naturalTime = mode == 2 ? 100_000_000UL : 2_000_000UL / (ulong)links.Count;
+        if (mode == 3)
+        {
+            var quote = Assert.Single(naval.ReadExpansionQuotes(opening, worker.Id, 1UL, naturalTime,
+                scope, FoundationPersistentExpansionAiPolicy.ExpansionHorizonMicro));
+            var departed = Assert.IsType<WorldState>(naval.TryDepart(opening, opening, worker.Id,
+                candidate.Target, 1UL, naturalTime, scope));
+            var voyage = Assert.Single(departed.EdgeTravels.NavalVoyages!);
+            Assert.Equal(candidate.Target, quote.Target);
+            Assert.Equal(voyage.CrossingTimeMicro * (ulong)links.Count, quote.TimeMicro);
+            Assert.Equal(FoundationNavalFareQuote.CalculateScaled(voyage, opening.EdgeTravels.NavalCargoMicroPerWorker!.Value),
+                quote.FareScaled);
+            Assert.True(quote.FareScaled > opening.Treasury.Get(worker.Owner).CashScaled);
+        }
         var host = new FoundationTacticalHumanAiTurnHost(demo.Session, incidence, new[] { human },
             new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy>
             { [worker.Owner] = new FoundationPersistentAutonomousEconomicAiPolicy() },
