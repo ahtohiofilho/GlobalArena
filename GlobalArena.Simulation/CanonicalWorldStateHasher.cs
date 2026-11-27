@@ -43,6 +43,7 @@ public sealed class CanonicalWorldStateHasher
     public const uint UniformCityDemographyFormatVersion = 26U;
     public const uint NavalVoyageFormatVersion = 27U;
     public const uint NavalPriorWorkFormatVersion = 28U;
+    public const uint NavalCargoQuoteFormatVersion = 29U;
 
     private static readonly byte[] Magic =
     {
@@ -97,7 +98,8 @@ public sealed class CanonicalWorldStateHasher
 
         // Keep the underlying legacy schema selection for all existing sections.
         // The opt-in envelope records that base version explicitly.
-        var wireVersion = worldState.EdgeTravels.PriorWork is not null ? NavalPriorWorkFormatVersion :
+        var wireVersion = worldState.EdgeTravels.NavalCargoMicroPerWorker.HasValue ? NavalCargoQuoteFormatVersion :
+            worldState.EdgeTravels.PriorWork is not null ? NavalPriorWorkFormatVersion :
             worldState.EdgeTravels.NavalVoyages is null ? version : NavalVoyageFormatVersion;
         using var hash = new BufferedCanonicalHash();
 
@@ -677,6 +679,18 @@ public sealed class CanonicalWorldStateHasher
                 AppendUInt64(hash, w.Owner.Value);
                 AppendUInt32(hash, w.StartMicro);
                 AppendUInt32(hash, w.DurationMicro);
+            }
+        }
+
+        if (worldState.EdgeTravels.NavalCargoMicroPerWorker is { } cargo)
+        {
+            AppendUInt32(hash, 56U);
+            AppendUInt64(hash, cargo);
+            AppendUInt32(hash, checked((uint)worldState.EdgeTravels.NavalVoyages!.Count));
+            foreach (var voyage in worldState.EdgeTravels.NavalVoyages!)
+            {
+                AppendUInt64(hash, voyage.Worker.Value);
+                AppendUInt64(hash, voyage.EmbarkationFreightMicroPerWholeCargo!.Value);
             }
         }
 
