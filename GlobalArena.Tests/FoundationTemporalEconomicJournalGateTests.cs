@@ -1857,6 +1857,34 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.True(sawSeaDemand);
         Assert.True(sawLanding);
         Assert.Equal(candidate.Target, state.Workers.Workers.Single(w => w.Id == worker.Id).TacticalTileId);
+        if (paidTrip)
+        {
+            var debtor = state.Treasury.Get(worker.Owner);
+            Assert.True(debtor.CashScaled.Sign < 0);
+            var context = new SimulationContext(new TurnNumber(lastTurn + 1UL), new SimulationSeed(712UL));
+            var following = phase.Resolve(new TurnResolutionInput(state, Array.Empty<ISimulationCommand>(), context), state);
+            var followingDebit = Assert.IsType<FoundationNavalSettlementEvent>(following.Events.Last());
+            Assert.Empty(followingDebit.Debits);
+            var followingSale = Assert.Single(following.Events.OfType<FoundationTemporalSalesSettledEvent>());
+            var cash = following.ResultingWorldState.Treasury.Get(worker.Owner);
+            Assert.Equal(debtor.CashScaled + followingSale.Credits.Single(c => c.Civilization == worker.Owner).CashCreditScaled, cash.CashScaled);
+            Assert.Equal(debtor.TotalNavalFareDebitsScaled, cash.TotalNavalFareDebitsScaled);
+            Assert.Equal(hasher.Compute(following.ResultingWorldState),
+                hasher.Compute(phase.ReplayPersistentJournal(state, following.EventLog, context)));
+            // Isolate the existing credit and funding contract: verified positive
+            // income can recover a negative balance; no grant or write-off.
+            var treasury = following.ResultingWorldState.Treasury;
+            var credits = treasury.Accounts.ToDictionary(x => x.Civilization, x =>
+                x.Civilization == worker.Owner
+                    ? BigInteger.Max(BigInteger.Zero, -x.CashScaled) + GlobalArenaMoneyScale.FromMoneyMicro(2UL)
+                    : BigInteger.Zero);
+            var recovered = treasury.CloseVerifiedEconomicCycle(treasury.LastSettledEconomicCycleOrdinal + 1UL,
+                treasury.LastSettledCargoUnitCode!, credits, treasury.LastSettledFreightQuotes,
+                Array.Empty<CivilizationObservedMarketPrice>());
+            Assert.True(recovered.Get(worker.Owner).CashScaled >= GlobalArenaMoneyScale.FromMoneyMicro(2UL));
+            Assert.Equal(recovered.Get(worker.Owner).CashScaled - GlobalArenaMoneyScale.FromMoneyMicro(1UL),
+                recovered.DebitConstruction(worker.Owner, 1UL).Get(worker.Owner).CashScaled);
+        }
     }
 
     [Fact]
