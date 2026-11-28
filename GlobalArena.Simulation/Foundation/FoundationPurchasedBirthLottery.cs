@@ -119,8 +119,9 @@ public static class FoundationPurchasedBirthLottery
         var rows = workers.ToArray();
         var ids = selected.ToArray();
         var parents = ids.ToHashSet();
+        var eligible = rows.Where(w => w.BirthWaitTurns > 0UL).Select(w => w.Id).ToHashSet();
         if (parents.Count != ids.Length || rows.Any(w => !w.BirthWaitTurns.HasValue) ||
-            parents.Any(id => !rows.Any(w => w.Id == id && w.BirthWaitTurns > 0UL)))
+            !parents.IsSubsetOf(eligible))
             throw new InvalidOperationException("Counter reset requires distinct existing positive-weight parents.");
         return Array.AsReadOnly(rows.Select(w => w.WithBirthWaitTurns(
             parents.Contains(w.Id) ? 0UL : checked(w.BirthWaitTurns!.Value + 1UL))).ToArray());
