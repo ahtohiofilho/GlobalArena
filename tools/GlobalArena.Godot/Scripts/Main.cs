@@ -826,6 +826,11 @@ public partial class Main : Control
                     _lastDemographicPreviewReceipt = receipt;
                 if (GaExplicitEconomicQaConfiguration.IntegratedProductiveSmokeEnabled)
                     _integratedProductiveReceipt = receipt;
+                if (host.PurchasedDemographyEnabled)
+                {
+                    var births = host.GetHumanLastPurchasedNewborns(_humanCivilization);
+                    _localOrderStatus.Text += $" | Own births: {births.Count}";
+                }
                 measuredReceipt = receipt;
                 GD.Print($"GA_NEXT_FINE_HUMAN_AI_COMMIT turn={receipt.Turn.Value} " +
                     $"human={humanCount} ai={aiCount} " +
@@ -841,6 +846,7 @@ public partial class Main : Control
             {
                 RefreshFineTacticalWorkerControls();
                 RefreshInteractiveEconomyPreviewBanner();
+                RefreshVisiblePurchasedDemography(measuredReceipt is null ? _localOrderStatus.Text : null);
             }
         }
         if (profile is not null && measuredReceipt is not null)
@@ -2423,7 +2429,9 @@ public partial class Main : Control
                 $"worker={first.Id.Value} coarse_preview_focus={first.CellId.Value} " +
                 $"physical_worker_location_authoritative={(_tacticalHost is not null).ToString().ToLowerInvariant()} " +
                 "tactical_visible=true");
-            if (GaExplicitEconomicQaConfiguration.IntegratedProductiveSmokeEnabled)
+            if (GaExplicitEconomicQaConfiguration.PurchasedDemographySmokeEnabled)
+                _ = ExercisePurchasedDemographyUiSmoke();
+            else if (GaExplicitEconomicQaConfiguration.IntegratedProductiveSmokeEnabled)
                 _ = ExerciseIntegratedProductiveSmoke();
             else if (GaExplicitEconomicQaConfiguration.NavalSmokeEnabled)
                 ExerciseR234HNavalSmoke();
