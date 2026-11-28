@@ -1738,7 +1738,15 @@ public partial class Main : Control
         // of interactive states rather than per-screen debug colors.
         Theme = GaVisualFoundation.BuildTheme();
         if (System.Environment.GetEnvironmentVariable("GA_NEXT_R213_UI_SMOKE") == "1")
-            GaVisualFoundation.ExerciseGraphiteContract(Theme);
+        {
+            try { GaVisualFoundation.ExerciseGraphiteContract(this); }
+            catch (Exception error)
+            {
+                GD.PushError("GA_NEXT_R2371A_GRAPHITE_FAIL " + error);
+                GetTree().Quit(1);
+                return;
+            }
+        }
         // Prioritize a maximized production window; preserve windowed resizing and avoid headless changes.
         if (DisplayServer.GetName() != "headless")
             DisplayServer.WindowSetMode(DisplayServer.WindowMode.Maximized);

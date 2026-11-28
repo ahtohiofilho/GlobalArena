@@ -204,40 +204,63 @@ public static class GaVisualFoundation
         return result;
     }
 
-    // Exercise real Godot theme lookup on a native control. No simulation access.
-    internal static void ExerciseGraphiteContract(Theme theme)
+    // Resolve the inherited theme on a real Control inside the live scene.
+    // A detached Control is not a reliable test of its scene theme owner.
+    internal static void ExerciseGraphiteContract(Control parent)
     {
-        var button = new Button { Theme = theme, Text = "Assign" };
+        var button = new Button
+        {
+            Name = "GraphiteContractProbe",
+            Text = "Assign",
+            Visible = false,
+            MouseFilter = Control.MouseFilterEnum.Ignore
+        };
         try
         {
+            parent.AddChild(button);
+            if (!button.IsInsideTree())
+                throw new InvalidOperationException("Graphite probe must be in the scene tree.");
             StyleBoxFlat State(string name) =>
                 button.GetThemeStylebox(name) as StyleBoxFlat ??
                 throw new InvalidOperationException("Missing Graphite style: " + name);
+            static void Require(bool condition, string detail)
+            {
+                if (!condition)
+                    throw new InvalidOperationException("Graphite contract: " + detail);
+            }
+            // Native resources can round-trip floats through the engine.
+            static void ColorMatches(Color actual, Color expected, string role) =>
+                Require(Math.Abs(actual.R - expected.R) < 0.0001f &&
+                    Math.Abs(actual.G - expected.G) < 0.0001f &&
+                    Math.Abs(actual.B - expected.B) < 0.0001f &&
+                    Math.Abs(actual.A - expected.A) < 0.0001f,
+                    $"{role} expected={expected} actual={actual}");
             var normal = State("normal");
             var hover = State("hover");
             var pressed = State("pressed");
             var disabled = State("disabled");
             var focus = State("focus");
-            if (normal.BgColor != GaGraphiteTokens.Raised ||
-                hover.BgColor != GaGraphiteTokens.Hover ||
-                pressed.BgColor != GaGraphiteTokens.Pressed ||
-                disabled.BgColor != GaGraphiteTokens.DisabledSurface ||
-                focus.BgColor != Colors.Transparent ||
-                focus.BorderColor != GaGraphiteTokens.Focus ||
-                focus.BorderWidthTop != 2 ||
-                button.GetThemeColor("font_color") != GaGraphiteTokens.PrimaryText ||
-                button.GetThemeColor("font_disabled_color") != GaGraphiteTokens.DisabledText ||
-                normal.GetMinimumSize() != hover.GetMinimumSize() ||
-                normal.GetMinimumSize() != pressed.GetMinimumSize() ||
-                normal.GetMinimumSize() != disabled.GetMinimumSize())
-                throw new InvalidOperationException("Graphite theme state contract failed.");
+            ColorMatches(normal.BgColor, GaGraphiteTokens.Raised, "normal");
+            ColorMatches(hover.BgColor, GaGraphiteTokens.Hover, "hover");
+            ColorMatches(pressed.BgColor, GaGraphiteTokens.Pressed, "pressed");
+            ColorMatches(disabled.BgColor, GaGraphiteTokens.DisabledSurface, "disabled");
+            // Transparent RGB is immaterial; alpha is the rendering contract.
+            Require(focus.BgColor.A == 0f, $"focus fill alpha={focus.BgColor.A}");
+            ColorMatches(focus.BorderColor, GaGraphiteTokens.Focus, "focus border");
+            Require(focus.BorderWidthTop == 2, $"focus width={focus.BorderWidthTop}");
+            ColorMatches(button.GetThemeColor("font_color"), GaGraphiteTokens.PrimaryText, "text");
+            ColorMatches(button.GetThemeColor("font_disabled_color"), GaGraphiteTokens.DisabledText, "disabled text");
+            var minimum = normal.GetMinimumSize();
+            foreach (var name in new[] { "hover", "pressed", "hover_pressed", "disabled" })
+                Require(State(name).GetMinimumSize() == minimum,
+                    $"{name} minimum={State(name).GetMinimumSize()} expected={minimum}");
             button.ThemeTypeVariation = "GraphiteSelectedButton";
-            if (State("normal").BorderColor != GaGraphiteTokens.Attention ||
-                State("normal").BgColor != GaGraphiteTokens.SelectedSurface ||
-                State("hover").BorderColor != GaGraphiteTokens.Attention ||
-                State("normal").GetMinimumSize() != normal.GetMinimumSize() ||
-                State("focus").BorderColor != GaGraphiteTokens.Focus)
-                throw new InvalidOperationException("Graphite persistent selection contract failed.");
+            ColorMatches(State("normal").BorderColor, GaGraphiteTokens.Attention, "selected border");
+            ColorMatches(State("normal").BgColor, GaGraphiteTokens.SelectedSurface, "selected fill");
+            ColorMatches(State("hover").BorderColor, GaGraphiteTokens.Attention, "selected hover border");
+            Require(State("normal").GetMinimumSize() == minimum, "selected minimum size");
+            Require(State("hover").GetMinimumSize() == minimum, "selected hover minimum size");
+            ColorMatches(State("focus").BorderColor, GaGraphiteTokens.Focus, "selected focus border");
             GD.Print("GA_NEXT_R2371A_GRAPHITE_PASS theme=true states=6 stable_metrics=true");
         }
         finally { button.Free(); }
