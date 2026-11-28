@@ -84,9 +84,9 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             .DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
                 bound.Civilizations.Civilizations.Select(c => (c, 0UL)))))
             .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
-            .DeployInitialWorkerOrders().DeployInitialProductiveInfrastructure(ProductiveReferences())
-            .DeployInitialPurchasedDemography(10UL, 4UL);
+            .DeployInitialWorkerOrders().DeployInitialProductiveInfrastructure(ProductiveReferences());
         demo.Session.AcceptFineFirstOpening(opening, incidence, fine, signature);
+        opening = opening.DeployInitialPurchasedDemography(10UL, 4UL);
         var node = new PhysicalTacticalTileId(incidence.Refinement.FineParameters,
             incidence.FineTopology.Cells.First(c =>
                 fine.SurfaceAtIndex((int)c.Id.Value - 1) == FoundationFineSurfaceKind.Land &&
