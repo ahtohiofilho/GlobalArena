@@ -50,6 +50,14 @@ internal static class GaExplicitEconomicQaConfiguration
         return mode;
     }
 
+    internal static bool PurchasedDemographyPreviewEnabled =>
+        System.Environment.GetEnvironmentVariable("GA_NEXT_R236_PURCHASED_PREVIEW") == "1";
+    internal static bool PurchasedDemographySmokeEnabled =>
+        System.Environment.GetEnvironmentVariable("GA_NEXT_R236E2_UI_SMOKE") == "1";
+    // Explicit QA values only; not approved production balance.
+    internal const ulong QaBirthInitialMoneyMicro = 1_000_000UL;
+    internal const ulong QaBirthReferenceAcquisitions = 10UL;
+
     internal static bool IntegratedProductiveSmokeEnabled =>
         System.Environment.GetEnvironmentVariable("GA_NEXT_R235H_INTEGRATED_SMOKE") == "1";
 
@@ -169,12 +177,21 @@ internal static class GaExplicitEconomicQaConfiguration
             System.Environment.GetEnvironmentVariable("GA_NEXT_OPERATIONAL_PREVIEW") == "1" ||
             System.Environment.GetEnvironmentVariable("GA_NEXT_R213_UI_SMOKE") == "1"))
             throw new InvalidOperationException("Naval QA requires autonomous signed exclusive labor, recalibrated coast, capital-only freight and uniform city births if enabled.");
-        bool unitOpening = UnitOpeningPreviewEnabled;
+        bool purchased = PurchasedDemographyPreviewEnabled;
+        if (PurchasedDemographySmokeEnabled && !purchased)
+            throw new InvalidOperationException("Purchased smoke requires its explicit preview.");
+        if (purchased && (!enableLocalEconomy || !enablePersistentOrders || !ProductivePreviewEnabled ||
+            growth || NavalPreviewEnabled || UnitOpeningPreviewEnabled || IndividualDemographyPreviewEnabled ||
+            UniformCityDemographyPreviewEnabled || BoundedTradePreviewEnabled || tradeFixture is not null ||
+            IntegratedProductiveSmokeEnabled ||
+            System.Environment.GetEnvironmentVariable("GA_NEXT_R213_UI_SMOKE") == "1"))
+            throw new InvalidOperationException("Purchased demography requires isolated signed productive local QA without free growth or naval collective.");
+        bool unitOpening = UnitOpeningPreviewEnabled || purchased;
         if (UniformCityDemographyPreviewEnabled && (!unitOpening || IndividualDemographyPreviewEnabled))
             throw new InvalidOperationException("Uniform city demography requires unit opening and no legacy individual mode.");
         if (IndividualDemographyPreviewEnabled && !unitOpening)
             throw new InvalidOperationException("Individual demographic preview requires the one-worker opening.");
-        if (unitOpening && (!BoundedTradePreviewEnabled || !growth || !enableLocalEconomy || tradeFixture is not null))
+        if (unitOpening && !purchased && (!BoundedTradePreviewEnabled || !growth || !enableLocalEconomy || tradeFixture is not null))
             throw new InvalidOperationException("Unit opening requires bounded demographic local economy, without trade fixture.");
         if (BoundedTradePreviewEnabled && (!growth || !enableLocalEconomy || tradeFixture is not null))
             throw new InvalidOperationException("Bounded trade preview requires the normal demographic local economy.");
@@ -220,7 +237,7 @@ internal static class GaExplicitEconomicQaConfiguration
             world, demo.Incidence);
         var identity = FoundationFineFirstWorldgenCanonicalSignature.Compute(
             world, demo.Incidence, fine);
-        var configuration = Profile(enableCropPreview, enableLocalEconomy, BoundedTradePreviewEnabled, unitOpening, recalibratedCoast);
+        var configuration = Profile(enableCropPreview, enableLocalEconomy, BoundedTradePreviewEnabled, unitOpening && !purchased, recalibratedCoast);
         // QA-only provisional equal basic-resource yields; existing commodity 1/2 are wood/stone only in this experiment.
         var basic = enableLocalEconomy ? new FoundationBasicResourceProductionPolicy(CommodityOne, CommodityTwo, 1_000_000UL, 1_000_000UL) : null;
         var agriculture = enableCropPreview ? new FoundationAgriculturalProductionPolicy(fine, demo.Incidence, CropItems(), 2_000_000UL, basic) : null;
@@ -346,6 +363,9 @@ internal static class GaExplicitEconomicQaConfiguration
             demo.Session.AcceptSnapshot(demo.Snapshot.DeployInitialProductiveInfrastructure(
                 Enum.GetValues<FoundationProductiveActivity>().Select(activity =>
                     new FoundationProductiveReference(activity, 2_000_000UL))));
+        if (purchased)
+            demo.Session.AcceptSnapshot(demo.Snapshot.DeployInitialPurchasedDemography(
+                QaBirthInitialMoneyMicro, QaBirthReferenceAcquisitions));
         if (UniformCityDemographyPreviewEnabled)
             demo.Session.AcceptSnapshot(demo.Snapshot.WithWorkers(new PhysicalWorkerRuntimeState(
                 demo.Snapshot.Workers.Workers.Select(w => w.WithUniformCityDemography()), true, true)));
@@ -413,6 +433,8 @@ internal static class GaExplicitEconomicQaConfiguration
             enableExperimentalLocalEconomy: enableLocalEconomy, enableDefaultAutomaticBase: enableLocalEconomy,
             knowledgeScopes: navalScopes, enableExclusiveNodeLabor: exclusiveNodeLabor,
             navalDepartureTimeMicro: NavalPreviewEnabled ? QaNavalTimeMicro : null);
+        if (purchased)
+            global::Godot.GD.Print($"GA_NEXT_R236E2_READY founders=1 cash=zero hash_v={host.StateHash.FormatVersion} experimental=true");
         if (NavalPreviewEnabled)
             global::Godot.GD.Print($"GA_NEXT_R234H_NAVAL_READY cargo_micro={QaNavalCargoMicro} natural_time_micro={QaNavalTimeMicro} hash_v={host.StateHash.FormatVersion} smoke={NavalSmokeEnabled} experimental=true");
         if (autonomousAi) global::Godot.GD.Print($"GA_NEXT_R233E_AUTONOMOUS_AI_READY experimental=true full_map_qa={(navalScopes is null).ToString().ToLowerInvariant()}");
