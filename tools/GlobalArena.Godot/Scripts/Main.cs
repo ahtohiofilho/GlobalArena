@@ -826,6 +826,8 @@ public partial class Main : Control
                     _lastDemographicPreviewReceipt = receipt;
                 if (GaExplicitEconomicQaConfiguration.IntegratedProductiveSmokeEnabled)
                     _integratedProductiveReceipt = receipt;
+                if (GaExplicitEconomicQaConfiguration.IntegratedPurchasedDemographySmokeEnabled)
+                    _integratedPurchasedReceipt = receipt;
                 if (host.PurchasedDemographyEnabled)
                 {
                     var births = host.GetHumanLastPurchasedNewborns(_humanCivilization);
@@ -2429,7 +2431,9 @@ public partial class Main : Control
                 $"worker={first.Id.Value} coarse_preview_focus={first.CellId.Value} " +
                 $"physical_worker_location_authoritative={(_tacticalHost is not null).ToString().ToLowerInvariant()} " +
                 "tactical_visible=true");
-            if (GaExplicitEconomicQaConfiguration.PurchasedDemographySmokeEnabled)
+            if (GaExplicitEconomicQaConfiguration.IntegratedPurchasedDemographySmokeEnabled)
+                _ = ExerciseIntegratedPurchasedDemographySmoke();
+            else if (GaExplicitEconomicQaConfiguration.PurchasedDemographySmokeEnabled)
                 _ = ExercisePurchasedDemographyUiSmoke();
             else if (GaExplicitEconomicQaConfiguration.IntegratedProductiveSmokeEnabled)
                 _ = ExerciseIntegratedProductiveSmoke();

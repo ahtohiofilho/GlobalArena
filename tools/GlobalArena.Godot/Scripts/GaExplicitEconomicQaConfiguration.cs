@@ -54,6 +54,8 @@ internal static class GaExplicitEconomicQaConfiguration
         System.Environment.GetEnvironmentVariable("GA_NEXT_R236_PURCHASED_PREVIEW") == "1";
     internal static bool PurchasedDemographySmokeEnabled =>
         System.Environment.GetEnvironmentVariable("GA_NEXT_R236E2_UI_SMOKE") == "1";
+    internal static bool IntegratedPurchasedDemographySmokeEnabled =>
+        System.Environment.GetEnvironmentVariable("GA_NEXT_R236G_INTEGRATED_SMOKE") == "1";
     // Explicit QA values only; not approved production balance.
     internal const ulong QaBirthInitialMoneyMicro = 1_000_000UL;
     internal const ulong QaBirthReferenceAcquisitions = 10UL;
@@ -178,6 +180,9 @@ internal static class GaExplicitEconomicQaConfiguration
             System.Environment.GetEnvironmentVariable("GA_NEXT_R213_UI_SMOKE") == "1"))
             throw new InvalidOperationException("Naval QA requires autonomous signed exclusive labor, recalibrated coast, capital-only freight and uniform city births if enabled.");
         bool purchased = PurchasedDemographyPreviewEnabled;
+        if (IntegratedPurchasedDemographySmokeEnabled &&
+            (!purchased || !autonomousAi || PurchasedDemographySmokeEnabled))
+            throw new InvalidOperationException("Integrated purchased smoke requires the autonomous singleton profile and no other purchase smoke.");
         if (PurchasedDemographySmokeEnabled && !purchased)
             throw new InvalidOperationException("Purchased smoke requires its explicit preview.");
         if (purchased && (!enableLocalEconomy || !enablePersistentOrders || !ProductivePreviewEnabled ||
