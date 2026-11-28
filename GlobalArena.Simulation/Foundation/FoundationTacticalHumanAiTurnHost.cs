@@ -1093,6 +1093,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
             DefaultAutomaticBase = DefaultAutomaticBaseEnabled,
             OwnCashScaled = before.Treasury.IsInitialized ? before.Treasury.Get(civ).CashScaled : null,
             FundingAvailable = _persistentFunding is not null,
+            DemographicOpportunity = policy.RequiresDemographicCandidate
+                ? ReadAiDemographicOpportunity(civ) : null,
             InvestmentOpportunities = policy.RequiresInvestmentCandidates
                 ? ReadAiInvestmentOpportunities(civ, workers)
                 : Array.Empty<FoundationAiInvestmentOpportunity>(),
@@ -1106,6 +1108,18 @@ public sealed class FoundationTacticalHumanAiTurnHost
         var (plannedEdits, funding, productive) = policy.PlanStrategicTurn(view);
         var edits = (plannedEdits
             ?? throw new InvalidOperationException("Persistent AI returned a null plan.")).ToArray();
+        ulong purchase = policy.PlanDemographicPurchase(view,
+            edits.Length != 0 || funding is not null || productive is not null);
+        if (purchase != 0UL)
+        {
+            if (purchase != 1UL || view.DemographicOpportunity is not { EligibleParents: > 0 } opportunity ||
+                view.OwnCashScaled is not { } cash ||
+                cash < GlobalArenaMoneyScale.FromMoneyMicro(opportunity.MoneyMicro))
+                throw new InvalidOperationException("AI demographic proposal requires an authorized affordable single purchase.");
+            edits = Array.Empty<FoundationPersistentOrderEdit>();
+            funding = null;
+            productive = null;
+        }
         if ((funding is not null && (edits.Length != 0 || productive is not null)) ||
             (productive is not null && edits.Length != 0))
             throw new InvalidOperationException("Experimental AI funding must be an exclusive plan.");
@@ -1164,7 +1178,23 @@ public sealed class FoundationTacticalHumanAiTurnHost
         }
         _ = ProjectPersistentPlan(civ, staged);
         list.AddRange(staged);
+        if (purchase != 0UL) _demographicPlans.Add(civ, purchase);
         _ready.Add(civ);
+    }
+
+    // Conservative committed own-land candidate, not a prediction of the
+    // market or another participant's private plans. Final calendar admission
+    // is independently checked before submitting an ordinary command.
+    private FoundationAiDemographicOpportunity? ReadAiDemographicOpportunity(CivilizationId owner)
+    {
+        if (!PurchasedDemographyEnabled || _signedFine is null) return null;
+        var ledger = Snapshot.PurchasedDemography;
+        var account = ledger.Get(owner);
+        var pricing = new FoundationPurchasedDemographicPricePolicy(ledger.InitialMoneyMicro, ledger.ReferenceAcquisitions);
+        var price = pricing.QuoteMarginalMoneyMicro(account.NextHistoricalIndex);
+        if (Snapshot.Treasury.Get(owner).CashScaled < GlobalArenaMoneyScale.FromMoneyMicro(price)) return null;
+        int eligible = FoundationPurchasedBirthLottery.ReadCandidates(Snapshot, _signedFine, owner).Count;
+        return eligible == 0 ? null : new FoundationAiDemographicOpportunity(price, eligible);
     }
 
     // Restrict candidate reads before evaluating terrain or productivity.
@@ -1887,10 +1917,28 @@ public sealed class FoundationTacticalHumanAiTurnHost
         }
         // Purchase is independent of the infrastructure-prefix arbitration;
         // a lost competing reservation cannot silently delete this request.
+        // AI may abstain if final collective movement makes its opening
+        // quote ineligible. Human requests are never silently discarded.
+        // One shared calendar-only projection, only when AI purchases exist.
+        WorldState? aiCalendar = _demographicPlans.Keys.Any(_ai.ContainsKey)
+            ? _persistentPhase!.PreviewPurchasedCalendar(state, context) : null;
         foreach (var civ in _participants)
             if (_demographicPlans.TryGetValue(civ, out ulong quantity))
+            {
+                if (_ai.ContainsKey(civ))
+                {
+                    var ledger = before.PurchasedDemography;
+                    var price = new FoundationPurchasedDemographicPricePolicy(ledger.InitialMoneyMicro, ledger.ReferenceAcquisitions)
+                        .QuoteBatchMoneyMicro(ledger.Get(civ).NextHistoricalIndex, quantity);
+                    var amount = GlobalArenaMoneyScale.FromMoneyMicro(price);
+                    if (before.Treasury.Get(civ).CashScaled < amount ||
+                        aiCalendar!.Treasury.Get(civ).CashScaled < amount ||
+                        (ulong)FoundationPurchasedBirthLottery.ReadCandidates(aiCalendar, _signedFine!, civ).Count < quantity)
+                        continue;
+                }
                 commands.Add(new FoundationPurchasedDemographicCommand(
                     new CommandId(turn, (ulong)commands.Count + 1UL), civ, quantity));
+            }
         var committedTurn = _publisher.ResolveAndCommit(new TurnPolicyResolutionGateInput(
             new TurnPolicyInput(turn, allRequiredParticipantsReady: true, externalDeadlineReached: false),
             new TurnResolutionInput(before, commands.ToArray(), context)));
