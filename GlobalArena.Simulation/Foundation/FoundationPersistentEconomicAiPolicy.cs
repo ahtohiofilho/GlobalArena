@@ -13,6 +13,9 @@ public sealed record FoundationPersistentAiWorker(
     PhysicalWorkerActivity Activity, bool Crossing,
     FoundationWorkerOrderQueue Queue);
 
+// Own opening evidence only. No selected parents or foreign plans.
+public sealed record FoundationAiDemographicOpportunity(ulong MoneyMicro, int EligibleParents);
+
 public sealed record FoundationPersistentAiView(
     CivilizationId Owner, TurnNumber Turn,
     IReadOnlyList<FoundationPersistentAiWorker> Workers)
@@ -25,6 +28,7 @@ public sealed record FoundationPersistentAiView(
     public bool DefaultAutomaticBase { get; internal init; }
     public BigInteger? OwnCashScaled { get; internal init; }
     public bool FundingAvailable { get; internal init; }
+    public FoundationAiDemographicOpportunity? DemographicOpportunity { get; internal init; }
     public IReadOnlyList<FoundationAiInvestmentOpportunity> InvestmentOpportunities { get; internal init; } =
         Array.Empty<FoundationAiInvestmentOpportunity>();
     public IReadOnlyList<FoundationAiProductiveOpportunity> ProductiveOpportunities { get; internal init; } =
@@ -46,6 +50,8 @@ public abstract class FoundationPersistentEconomicAiPolicy : IFoundationTactical
     internal virtual bool RequiresExpansionCandidates => false;
     internal virtual bool RequiresInvestmentCandidates => false;
     internal virtual bool RequiresProductiveCandidates => false;
+    internal virtual bool RequiresDemographicCandidate => false;
+    internal virtual ulong PlanDemographicPurchase(FoundationPersistentAiView view, bool hasOtherAction) => 0UL;
     // First QA funding boundary: exclusive with order edits in this turn,
     // so a rejected competing fund cannot leave dependent provisional IDs.
     public virtual FoundationAiFundingIntent? PlanFunding(FoundationPersistentAiView view) => null;
@@ -285,6 +291,20 @@ public sealed class FoundationPersistentAutonomousEconomicAiPolicy : FoundationP
     internal override bool RequiresExpansionCandidates => true;
     internal override bool RequiresInvestmentCandidates => true;
     internal override bool RequiresProductiveCandidates => true;
+    internal override bool RequiresDemographicCandidate => true;
+
+    // Bootstrap has no three-worker guard. Thereafter reserve half of opening
+    // cash and rotate priority with existing strategic actions. QA heuristic,
+    // not an optimized demographic policy or a new economic rule.
+    internal override ulong PlanDemographicPurchase(FoundationPersistentAiView view, bool hasOtherAction)
+    {
+        if (view.DemographicOpportunity is not { MoneyMicro: > 0UL, EligibleParents: > 0 } quote ||
+            view.OwnCashScaled is not { } cash || view.Workers.Count == 0) return 0UL;
+        var price = GlobalArenaMoneyScale.FromMoneyMicro(quote.MoneyMicro);
+        if (cash < price) return 0UL;
+        if (view.Workers.Count == 1) return 1UL;
+        return price * 2 <= cash && (view.Turn.Value % 4UL == 3UL || !hasOtherAction) ? 1UL : 0UL;
+    }
 
     public override IReadOnlyList<FoundationPersistentOrderEdit> PlanPersistent(FoundationPersistentAiView view)
         => PlanTurn(view).Edits;

@@ -68,6 +68,104 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Throws<OverflowException>(() => max.Reserve(target, owner, 1UL, 1UL));
     }
 
+    [Fact]
+    public void R236FSingletonAiBootstrapsFromEarnedCashUnderSameAuthorityAsHuman()
+    {
+        var (legacy, _, _, _, incidence, fine) = Fixture();
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL), WorldGenerationVersion.Initial,
+                new GoldbergParameters(3, 0)), workersPerCivilization: 1);
+        var signature = FoundationFineFirstWorldgenCanonicalSignature.Compute(demo.Session.GeneratedWorld, incidence, fine);
+        var bound = demo.Session.Snapshot.PromoteFineFirstBeforeTransport(demo.Session.GeneratedWorld, incidence, fine, signature)
+            .DeployInitialFineFirstPhysicalTransport(legacy.Transport, demo.Session.GeneratedWorld, incidence, fine, signature);
+        var opening = FoundationPersistedEdgeTravelTransitions.DeployEmpty(bound
+            .DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
+                bound.Civilizations.Civilizations.Select(c => (c, 0UL)))))
+            .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
+            .DeployInitialWorkerOrders().DeployInitialProductiveInfrastructure(ProductiveReferences());
+        demo.Session.AcceptFineFirstOpening(opening, incidence, fine, signature);
+        opening = opening.DeployInitialPurchasedDemography(10UL, 4UL);
+        var node = new PhysicalTacticalTileId(incidence.Refinement.FineParameters,
+            incidence.FineTopology.Cells.First(c =>
+                fine.SurfaceAtIndex((int)c.Id.Value - 1) == FoundationFineSurfaceKind.Land &&
+                fine.CanTraverseOnFoot((int)c.Id.Value - 1)).Id);
+        // The legacy concentrated fixture deliberately starts the AI founder
+        // as Traveling. This economic bootstrap fixture starts both founders
+        // in the same stationary productive state, with identical commodity,
+        // output and demand; no starting cash or artificial sale credit.
+        opening = opening.WithWorkers(new PhysicalWorkerRuntimeState(opening.Workers.Workers.Select(w =>
+            w.WithTacticalAssignment(node, w.CellId, PhysicalWorkerActivity.Producing,
+                PhysicalWorkerOccupation.Agriculture)), true, true));
+        Assert.All(opening.Workers.Workers, w => Assert.Equal(PhysicalWorkerActivity.Producing, w.Activity));
+        Assert.All(opening.Treasury.Accounts, account => Assert.Equal(BigInteger.Zero, account.CashScaled));
+        demo.Session.AcceptSnapshot(opening);
+        var civs = opening.Civilizations.Civilizations.OrderBy(c => c.Value).ToArray();
+        var human = civs[0]; var ai = civs[1];
+        var host = new FoundationTacticalHumanAiTurnHost(demo.Session, incidence, new[] { human },
+            new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy>
+                { [ai] = new FoundationPersistentAutonomousEconomicAiPolicy() },
+            enableMonetaryInfrastructure: true, settlementPolicy: Policy(civs),
+            fineGeography: fine, fineSignature: signature,
+            physicalTravelPolicy: new FoundationGroundEdgeTravelTimePolicy(1_400_000UL),
+            constructionMoneyMicroPerWholeWork: 1_000_000UL);
+        host.SetHumanReady(human);
+        Assert.True(Assert.IsType<FoundationTacticalCollectiveReceipt>(host.TryCloseTurn()).ReplayMatched);
+        Assert.Equal(2, host.Snapshot.Workers.Workers.Count);
+        Assert.All(host.Snapshot.Workers.Workers, w => Assert.Equal(1UL, w.BirthWaitTurns!.Value));
+        Assert.Equal(host.Snapshot.Treasury.Get(human).CashScaled, host.Snapshot.Treasury.Get(ai).CashScaled);
+        Assert.True(host.Snapshot.Treasury.Get(ai).CashScaled >= GlobalArenaMoneyScale.FromMoneyMicro(13UL),
+            "Both stationary founders must earn enough from the actual first close.");
+        var before = host.StateHash;
+        host.QueueHumanDemographicPurchase(human, 1UL);
+        host.PrepareAiCivilizations();
+        Assert.Equal(before, host.StateHash);
+        Assert.Throws<InvalidOperationException>(() => host.GetHumanDemographicQuote(ai, 1UL));
+        Assert.Equal(1UL, host.GetHumanDemographicQuote(human, 1UL).PendingQuantity);
+        host.SetHumanReady(human);
+        Assert.True(Assert.IsType<FoundationTacticalCollectiveReceipt>(host.TryCloseTurn()).ReplayMatched);
+        Assert.Equal(33U, host.StateHash.FormatVersion);
+        foreach (var civ in civs)
+        {
+            Assert.Equal(2, host.Snapshot.Workers.Workers.Count(w => w.Owner == civ));
+            Assert.Equal(1UL, host.Snapshot.PurchasedDemography.Get(civ).PurchasedWorkers);
+            Assert.Equal(GlobalArenaMoneyScale.FromMoneyMicro(13UL),
+                host.Snapshot.Treasury.Get(civ).TotalDemographicPurchaseDebitsScaled);
+        }
+        Assert.All(host.Snapshot.Workers.Workers, w => Assert.Equal(0UL, w.BirthWaitTurns!.Value));
+        Assert.Equal(human, Assert.Single(host.GetHumanLastPurchasedNewborns(human)).Owner);
+        Assert.Equal(0, host.PendingOrderCount);
+        host.SetHumanReady(human);
+        Assert.True(Assert.IsType<FoundationTacticalCollectiveReceipt>(host.TryCloseTurn()).ReplayMatched);
+        Assert.Equal(4, host.Snapshot.Workers.Workers.Count);
+        Assert.All(host.Snapshot.Workers.Workers, w => Assert.Equal(1UL, w.BirthWaitTurns!.Value));
+    }
+
+    [Fact]
+    public void R236FDemographicPriorityIsBoundedAndDoesNotChangeLegacyPolicy()
+    {
+        var (world, worker, _, _, _, _) = Fixture();
+        var node = worker.TacticalTileId!.Value;
+        var people = world.Workers.Workers.Where(w => w.Owner == worker.Owner).Select(w =>
+            new FoundationPersistentAiWorker(w.Id, node, w.Activity, false,
+                FoundationWorkerOrderQueue.Empty(w.Id, w.Owner))).ToArray();
+        var policy = new FoundationPersistentAutonomousEconomicAiPolicy();
+        var view = new FoundationPersistentAiView(worker.Owner, new TurnNumber(2UL), people.Take(1).ToArray())
+        {
+            OwnCashScaled = GlobalArenaMoneyScale.FromMoneyMicro(100UL),
+            DemographicOpportunity = new FoundationAiDemographicOpportunity(100UL, 1)
+        };
+        Assert.Equal(1UL, policy.PlanDemographicPurchase(view, true));
+        Assert.Equal(0UL, policy.PlanDemographicPurchase(view with { DemographicOpportunity = null }, false));
+        Assert.Equal(0UL, policy.PlanDemographicPurchase(view with { OwnCashScaled = BigInteger.Zero }, false));
+        Assert.Equal(0UL, policy.PlanDemographicPurchase(view with { DemographicOpportunity = new(100UL, 0) }, false));
+        var grown = view with { Workers = people.Concat(people).Take(2).ToArray(),
+            OwnCashScaled = GlobalArenaMoneyScale.FromMoneyMicro(200UL) };
+        Assert.Equal(0UL, policy.PlanDemographicPurchase(grown, true));
+        Assert.Equal(1UL, policy.PlanDemographicPurchase(grown, false));
+        Assert.Equal(1UL, policy.PlanDemographicPurchase(grown with { Turn = new TurnNumber(3UL) }, true));
+        Assert.Equal(0UL, policy.PlanDemographicPurchase(grown with { OwnCashScaled = GlobalArenaMoneyScale.FromMoneyMicro(199UL) }, false));
+    }
+
     [Theory]
     [InlineData(1)]
     [InlineData(3)]
