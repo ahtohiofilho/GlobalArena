@@ -755,6 +755,7 @@ public sealed class CanonicalWorldStateHasher
                 AppendUInt64(hash, account.Civilization.Value);
                 AppendUInt64(hash, account.InitialWorkers);
                 AppendUInt64(hash, account.PurchasedWorkers);
+                AppendNonnegativeBigInteger(hash, worldState.Treasury.Get(account.Civilization).TotalDemographicPurchaseDebitsScaled);
             }
         }
 
