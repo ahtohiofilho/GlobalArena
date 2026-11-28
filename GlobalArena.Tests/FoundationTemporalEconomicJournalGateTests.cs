@@ -89,8 +89,15 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             incidence.FineTopology.Cells.First(c =>
                 fine.SurfaceAtIndex((int)c.Id.Value - 1) == FoundationFineSurfaceKind.Land &&
                 fine.CanTraverseOnFoot((int)c.Id.Value - 1)).Id);
+        // The legacy concentrated fixture deliberately starts the AI founder
+        // as Traveling. This economic bootstrap fixture starts both founders
+        // in the same stationary productive state, with identical commodity,
+        // output and demand; no starting cash or artificial sale credit.
         opening = opening.WithWorkers(new PhysicalWorkerRuntimeState(opening.Workers.Workers.Select(w =>
-            w.WithTacticalAssignment(node, w.CellId, w.Activity, w.Occupation!.Value)), true, true));
+            w.WithTacticalAssignment(node, w.CellId, PhysicalWorkerActivity.Producing,
+                PhysicalWorkerOccupation.Agriculture)), true, true));
+        Assert.All(opening.Workers.Workers, w => Assert.Equal(PhysicalWorkerActivity.Producing, w.Activity));
+        Assert.All(opening.Treasury.Accounts, account => Assert.Equal(BigInteger.Zero, account.CashScaled));
         demo.Session.AcceptSnapshot(opening);
         var civs = opening.Civilizations.Civilizations.OrderBy(c => c.Value).ToArray();
         var human = civs[0]; var ai = civs[1];
@@ -105,7 +112,9 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.True(Assert.IsType<FoundationTacticalCollectiveReceipt>(host.TryCloseTurn()).ReplayMatched);
         Assert.Equal(2, host.Snapshot.Workers.Workers.Count);
         Assert.All(host.Snapshot.Workers.Workers, w => Assert.Equal(1UL, w.BirthWaitTurns!.Value));
-        Assert.True(host.Snapshot.Treasury.Get(ai).CashScaled >= GlobalArenaMoneyScale.FromMoneyMicro(13UL));
+        Assert.Equal(host.Snapshot.Treasury.Get(human).CashScaled, host.Snapshot.Treasury.Get(ai).CashScaled);
+        Assert.True(host.Snapshot.Treasury.Get(ai).CashScaled >= GlobalArenaMoneyScale.FromMoneyMicro(13UL),
+            "Both stationary founders must earn enough from the actual first close.");
         var before = host.StateHash;
         host.QueueHumanDemographicPurchase(human, 1UL);
         host.PrepareAiCivilizations();
