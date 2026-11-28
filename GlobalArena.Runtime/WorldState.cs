@@ -716,6 +716,7 @@ public sealed class WorldState
     public WorldState DeployInitialPurchasedDemography(ulong initialMoneyMicro, ulong referenceAcquisitions)
     {
         if (PurchasedDemography.IsInitialized || !Treasury.IsInitialized || Treasury.HasClosedEconomicCycle ||
+            !Workers.HasAuthoritativeOccupations || !Workers.HasAuthoritativeTacticalLocations ||
             Workers.Workers.Any(w => w.BirthWaitTurns.HasValue || w.UniformCityDemography))
             throw new InvalidOperationException("Purchased demography requires an unused opening census and treasury.");
         var ledger = FoundationPurchasedDemographyRuntimeState.CreateOpening(
