@@ -71,6 +71,99 @@ public sealed class FoundationTemporalEconomicJournalGateTests
     [Theory]
     [InlineData(1)]
     [InlineData(3)]
+    public void R236E1HumanHostPrivatePurchaseUsesSharedCashAndPublishesOwnNewborns(int initialWorkers)
+    {
+        var (legacy, _, _, _, incidence, fine) = Fixture();
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL), WorldGenerationVersion.Initial,
+                new GoldbergParameters(3, 0)), workersPerCivilization: initialWorkers);
+        var signature = FoundationFineFirstWorldgenCanonicalSignature.Compute(demo.Session.GeneratedWorld, incidence, fine);
+        var bound = demo.Session.Snapshot.PromoteFineFirstBeforeTransport(demo.Session.GeneratedWorld, incidence, fine, signature)
+            .DeployInitialFineFirstPhysicalTransport(legacy.Transport, demo.Session.GeneratedWorld, incidence, fine, signature);
+        var opening = FoundationPersistedEdgeTravelTransitions.DeployEmpty(bound
+            .DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
+                bound.Civilizations.Civilizations.Select(c => (c, 0UL)))))
+            .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
+            .DeployInitialWorkerOrders().DeployInitialProductiveInfrastructure(ProductiveReferences())
+            .DeployInitialPurchasedDemography(10UL, 4UL);
+        demo.Session.AcceptFineFirstOpening(opening, incidence, fine, signature);
+        var node = new PhysicalTacticalTileId(incidence.Refinement.FineParameters,
+            incidence.FineTopology.Cells.First(c =>
+                fine.SurfaceAtIndex((int)c.Id.Value - 1) == FoundationFineSurfaceKind.Land &&
+                fine.CanTraverseOnFoot((int)c.Id.Value - 1)).Id);
+        opening = opening.WithWorkers(new PhysicalWorkerRuntimeState(opening.Workers.Workers.Select(w =>
+            w.WithTacticalAssignment(node, w.CellId, w.Activity, w.Occupation!.Value)), true, true));
+        demo.Session.AcceptSnapshot(opening);
+        var civs = opening.Civilizations.Civilizations.OrderBy(c => c.Value).ToArray();
+        var owner = civs[0]; var other = civs[1];
+        var host = new FoundationTacticalHumanAiTurnHost(demo.Session, incidence, civs,
+            new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy>(), enableMonetaryInfrastructure: true,
+            settlementPolicy: Policy(civs), fineGeography: fine, fineSignature: signature,
+            physicalTravelPolicy: new FoundationGroundEdgeTravelTimePolicy(1_400_000UL),
+            constructionMoneyMicroPerWholeWork: 1_000_000UL);
+        Assert.True(host.PurchasedDemographyEnabled);
+        var initialQuote = host.GetHumanDemographicQuote(owner, 1UL);
+        Assert.False(initialQuote.CanQueue);
+        Assert.Equal(0, initialQuote.EligibleParents);
+        Assert.Equal(BigInteger.Zero, initialQuote.AvailableCashScaled);
+        Assert.Throws<InvalidOperationException>(() => host.QueueHumanDemographicPurchase(owner, 1UL));
+        Assert.Throws<InvalidOperationException>(() => host.GetHumanDemographicQuote(new CivilizationId(uint.MaxValue), 1UL));
+        foreach (var civ in civs) host.SetHumanReady(civ);
+        Assert.True(Assert.IsType<FoundationTacticalCollectiveReceipt>(host.TryCloseTurn()).ReplayMatched);
+        Assert.Empty(host.GetHumanLastPurchasedNewborns(owner));
+        var hash = host.StateHash;
+        var quote = host.GetHumanDemographicQuote(owner, 1UL);
+        Assert.True(quote.CanQueue);
+        Assert.Equal(initialWorkers, quote.EligibleParents);
+        Assert.Equal(initialWorkers == 1 ? 13UL : 18UL, quote.MoneyMicro);
+        Assert.False(host.GetHumanDemographicQuote(owner, (ulong)initialWorkers + 1UL).CanQueue);
+        var target = new FoundationProductiveTarget(node, FoundationProductiveActivity.Mining);
+        ulong available = (ulong)(quote.AvailableCashScaled / GlobalArenaMoneyScale.ExactScaledPerMoneyMicro);
+        host.QueueHumanProductiveFunding(owner, target, available, Array.Empty<FoundationFundedWorkerInsertion>());
+        Assert.False(host.GetHumanDemographicQuote(owner, 1UL).CanQueue);
+        Assert.Throws<InvalidOperationException>(() => host.QueueHumanDemographicPurchase(owner, 1UL));
+        Assert.True(host.CancelHumanProductiveFunding(owner, target));
+        host.QueueHumanDemographicPurchase(owner, 1UL);
+        Assert.Equal(1UL, host.GetHumanDemographicQuote(owner, 1UL).PendingQuantity);
+        Assert.Equal(0UL, host.GetHumanDemographicQuote(other, 1UL).PendingQuantity);
+        Assert.Throws<InvalidOperationException>(() => host.QueueHumanProductiveFunding(owner, target, available,
+            Array.Empty<FoundationFundedWorkerInsertion>()));
+        Assert.Empty(host.GetHumanPendingProductiveFunding(owner));
+        Assert.True(host.CancelHumanDemographicPurchase(owner));
+        Assert.False(host.CancelHumanDemographicPurchase(owner));
+        host.QueueHumanDemographicPurchase(owner, 1UL);
+        host.ClearHumanPersistentPlan(owner);
+        Assert.Equal(0, host.PendingOrderCount);
+        host.QueueHumanDemographicPurchase(owner, 1UL);
+        if (initialWorkers == 3)
+        {
+            host.QueueHumanDemographicPurchase(owner, 2UL);
+            Assert.Equal(2UL, host.GetHumanDemographicQuote(owner, 1UL).PendingQuantity);
+        }
+        Assert.Equal(1, host.PendingOrderCount);
+        Assert.Equal(hash, host.StateHash);
+        host.SetHumanReady(owner);
+        Assert.Throws<InvalidOperationException>(() => host.CancelHumanDemographicPurchase(owner));
+        Assert.Null(host.TryCloseTurn());
+        Assert.Equal(hash, host.StateHash);
+        host.SetHumanReady(other);
+        var receipt = Assert.IsType<FoundationTacticalCollectiveReceipt>(host.TryCloseTurn());
+        Assert.True(receipt.ReplayMatched);
+        var children = host.GetHumanLastPurchasedNewborns(owner);
+        Assert.Equal(initialWorkers == 1 ? 1 : 2, children.Count);
+        Assert.All(children, w => { Assert.Equal(owner, w.Owner); Assert.Equal(node, w.NatalNode!.Value); });
+        Assert.Empty(host.GetHumanLastPurchasedNewborns(other));
+        Assert.Equal((ulong)children.Count, host.Snapshot.PurchasedDemography.Get(owner).PurchasedWorkers);
+        Assert.Equal(0UL, host.Snapshot.PurchasedDemography.Get(other).PurchasedWorkers);
+        Assert.Equal(33U, host.StateHash.FormatVersion);
+        Assert.Equal(0, host.PendingOrderCount);
+        Assert.Equal(0UL, host.GetHumanDemographicQuote(owner, 1UL).PendingQuantity);
+        Assert.Equal(2UL, host.GetLastClosedEconomicTradeView(owner).EconomicCycleOrdinal);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(3)]
     public void R236D1AdmissionUsesOnlyEarnedPreSaleCashAndFinalEligibleParents(int initialWorkers)
     {
         var (legacy, _, _, _, incidence, fine) = Fixture();
