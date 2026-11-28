@@ -69,6 +69,101 @@ public sealed class FoundationTemporalEconomicJournalGateTests
     }
 
     [Fact]
+    public void R236BHistoricalAccountsAreImmutableAndIndependentOfCurrentCensus()
+    {
+        var (world, worker, _, _, _, _) = Fixture();
+        var owner = worker.Owner;
+        var foreign = world.Civilizations.Civilizations.Single(c => c != owner);
+        var ledger = FoundationPurchasedDemographyRuntimeState.CreateOpening(
+            new[] { (foreign, 1UL), (owner, 3UL) }, 10UL, 4UL);
+        Assert.Equal(4UL, ledger.Get(owner).NextHistoricalIndex);
+        var updated = ledger.RecordAcquisitions(owner, 2UL);
+        Assert.Equal(0UL, ledger.Get(owner).PurchasedWorkers);
+        Assert.Equal(3UL, updated.Get(owner).InitialWorkers);
+        Assert.Equal(5UL, updated.Get(owner).HistoricalAcquisitions);
+        Assert.Equal(6UL, updated.Get(owner).NextHistoricalIndex);
+        Assert.Equal(ledger.Get(foreign), updated.Get(foreign));
+        var price = new FoundationPurchasedDemographicPricePolicy(updated.InitialMoneyMicro, updated.ReferenceAcquisitions);
+        Assert.Equal(23UL, price.QuoteMarginalMoneyMicro(updated.Get(owner).NextHistoricalIndex));
+        Assert.Throws<ArgumentOutOfRangeException>(() => updated.RecordAcquisitions(owner, 0UL));
+        Assert.Throws<OverflowException>(() => updated.RecordAcquisitions(owner, ulong.MaxValue));
+        Assert.Throws<ArgumentException>(() => FoundationPurchasedDemographyRuntimeState.CreateOpening(
+            new[] { (owner, 1UL), (owner, 2UL) }, 10UL, 4UL));
+        Assert.Throws<ArgumentException>(() => FoundationPurchasedDemographyRuntimeState.CreateOpening(
+            new[] { (owner, 1UL) }, 0UL, 4UL));
+    }
+
+    [Fact]
+    public void R236BOpeningDeploymentPreservesLedgerThroughFundingCalendarAndReplay()
+    {
+        var (legacy, _, _, _, incidence, fine) = Fixture();
+        Assert.Throws<InvalidOperationException>(() => legacy.DeployInitialPurchasedDemography(10UL, 4UL));
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL), WorldGenerationVersion.Initial,
+                new GoldbergParameters(3, 0)), workersPerCivilization: 3);
+        var signature = FoundationFineFirstWorldgenCanonicalSignature.Compute(demo.Session.GeneratedWorld, incidence, fine);
+        var bound = demo.Session.Snapshot.PromoteFineFirstBeforeTransport(demo.Session.GeneratedWorld, incidence, fine, signature)
+            .DeployInitialFineFirstPhysicalTransport(legacy.Transport, demo.Session.GeneratedWorld, incidence, fine, signature);
+        var opening = FoundationPersistedEdgeTravelTransitions.DeployEmpty(bound
+            .DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
+                bound.Civilizations.Civilizations.Select(c => (c, 5_000_000UL)))))
+            .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
+            .DeployInitialWorkerOrders().DeployInitialProductiveInfrastructure(ProductiveReferences());
+        var hasher = new CanonicalWorldStateHasher();
+        var oldHash = hasher.Compute(opening);
+        var deployed = opening.DeployInitialPurchasedDemography(10UL, 4UL);
+        Assert.Equal(31U, oldHash.FormatVersion);
+        Assert.Equal(32U, hasher.Compute(deployed).FormatVersion);
+        Assert.Equal(oldHash, hasher.Compute(opening));
+        Assert.NotEqual(hasher.Compute(deployed), hasher.Compute(opening.DeployInitialPurchasedDemography(11UL, 4UL)));
+        Assert.NotEqual(hasher.Compute(deployed), hasher.Compute(opening.DeployInitialPurchasedDemography(10UL, 5UL)));
+        Assert.All(deployed.PurchasedDemography.Accounts, a =>
+        {
+            Assert.Equal(3UL, a.InitialWorkers);
+            Assert.Equal(0UL, a.PurchasedWorkers);
+            Assert.Equal(4UL, a.NextHistoricalIndex);
+        });
+        Assert.All(deployed.Workers.Workers, w => Assert.Equal(0UL, w.BirthWaitTurns!.Value));
+        Assert.Same(opening.Treasury, deployed.Treasury);
+        Assert.Throws<InvalidOperationException>(() => deployed.DeployInitialPurchasedDemography(10UL, 4UL));
+        Assert.Throws<InvalidOperationException>(() => deployed.AppendPhysicalBirths(Array.Empty<PhysicalWorkerRuntimeRecord>()));
+        var worker = deployed.Workers.Workers.First();
+        var copied = deployed.AdvanceRevision().WithWorkers(deployed.Workers)
+            .SetWorkerBaseActivity(worker.Owner, worker.Id,
+                new FoundationWorkerBaseActivity(FoundationWorkerBaseMode.Manual, PhysicalWorkerOccupation.Mining))
+            .WithPhysicalEdgeTravel(deployed.Workers, deployed.EdgeTravels)
+            .WithConstructions(deployed.Constructions);
+        Assert.Same(deployed.PurchasedDemography, copied.PurchasedDemography);
+        var weighted = deployed.WithWorkers(new PhysicalWorkerRuntimeState(deployed.Workers.Workers.Select(w =>
+            w.Id == worker.Id ? w.WithBirthWaitTurns(1UL) : w), true, true));
+        Assert.NotEqual(hasher.Compute(deployed), hasher.Compute(weighted));
+        var node = new PhysicalTacticalTileId(incidence.Refinement.FineParameters,
+            incidence.FineTopology.Cells.First(c =>
+                fine.SurfaceAtIndex((int)c.Id.Value - 1) == FoundationFineSurfaceKind.Land &&
+                fine.CanTraverseOnFoot((int)c.Id.Value - 1)).Id);
+        var context = new SimulationContext(new TurnNumber(1UL), new SimulationSeed(712UL));
+        var command = new FoundationProductiveFundingCommand(new CommandId(context.Turn, 1UL),
+            worker.Owner, new FoundationProductiveTarget(node, FoundationProductiveActivity.Agriculture), 100_000UL);
+        var phase = new FoundationTemporalCollectiveTurnPhase(demo.Session.GeneratedWorld, incidence,
+            new FoundationGroundEdgeTravelTimePolicy(1_400_000UL), Policy(opening.Civilizations.Civilizations),
+            fine, signature, persistentMoneyMicroPerWholeWork: 1_000_000UL);
+        var result = phase.Resolve(new TurnResolutionInput(deployed, new ISimulationCommand[] { command }, context), deployed);
+        var next = result.ResultingWorldState;
+        Assert.Same(deployed.PurchasedDemography, next.PurchasedDemography);
+        Assert.Equal(32U, hasher.Compute(next).FormatVersion);
+        Assert.Equal(deployed.Workers.Workers.Count, next.Workers.Workers.Count);
+        Assert.Empty(result.Events.OfType<FoundationPhysicalBirthBatchEvent>());
+        Assert.Equal(hasher.Compute(next), hasher.Compute(phase.ReplayPersistentJournal(deployed, result.EventLog, context)));
+        Assert.Throws<InvalidOperationException>(() => next.DeployInitialPurchasedDemography(10UL, 4UL));
+        var free = new FoundationTemporalCollectiveTurnPhase(demo.Session.GeneratedWorld, incidence,
+            new FoundationGroundEdgeTravelTimePolicy(1_400_000UL), Policy(opening.Civilizations.Civilizations),
+            fine, signature, persistentMoneyMicroPerWholeWork: 1_000_000UL, enableDemographicGrowth: true);
+        Assert.Throws<InvalidOperationException>(() => free.Resolve(new TurnResolutionInput(deployed,
+            new ISimulationCommand[] { command }, context), deployed));
+        Assert.Equal(oldHash, hasher.Compute(opening));
+    }
+
+    [Fact]
     public void R235CEmptyProductiveDeploymentHasCanonicalHashAndSurvivesWorldCopies()
     {
         var (legacy, _, _, _, incidence, fine) = Fixture();
