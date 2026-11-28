@@ -47,6 +47,7 @@ public sealed class CanonicalWorldStateHasher
     public const uint NavalSettlementFormatVersion = 30U;
     public const uint ProductiveInfrastructureFormatVersion = 31U;
     public const uint PurchasedDemographyFormatVersion = 32U;
+    public const uint PurchasedDemographyDebitFormatVersion = 33U;
 
     private static readonly byte[] Magic =
     {
@@ -101,7 +102,10 @@ public sealed class CanonicalWorldStateHasher
 
         // Keep the underlying legacy schema selection for all existing sections.
         // The opt-in envelope records that base version explicitly.
-        var wireVersion = worldState.PurchasedDemography.IsInitialized ? PurchasedDemographyFormatVersion :
+        bool hasDemographicDebits = worldState.PurchasedDemography.IsInitialized &&
+            worldState.Treasury.Accounts.Any(a => a.TotalDemographicPurchaseDebitsScaled.Sign != 0);
+        var wireVersion = hasDemographicDebits ? PurchasedDemographyDebitFormatVersion :
+            worldState.PurchasedDemography.IsInitialized ? PurchasedDemographyFormatVersion :
             worldState.ProductiveInfrastructure.IsInitialized ? ProductiveInfrastructureFormatVersion :
             worldState.Treasury.LastNavalSettlementCycleOrdinal.HasValue ? NavalSettlementFormatVersion :
             worldState.EdgeTravels.NavalCargoMicroPerWorker.HasValue ? NavalCargoQuoteFormatVersion :
@@ -755,6 +759,8 @@ public sealed class CanonicalWorldStateHasher
                 AppendUInt64(hash, account.Civilization.Value);
                 AppendUInt64(hash, account.InitialWorkers);
                 AppendUInt64(hash, account.PurchasedWorkers);
+                if (hasDemographicDebits)
+                    AppendNonnegativeBigInteger(hash, worldState.Treasury.Get(account.Civilization).TotalDemographicPurchaseDebitsScaled);
             }
         }
 

@@ -110,9 +110,9 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         var hasher = new CanonicalWorldStateHasher();
         Assert.Equal(hasher.Compute(settled), hasher.Compute(phase.ReplayPersistentJournal(opening, close.EventLog, firstContext)));
         Assert.True(settled.Treasury.Get(owner).CashScaled > GlobalArenaMoneyScale.FromMoneyMicro(100UL));
-        // Until D.2, counter advancement is a detached fixture transition.
-        var aged = settled.WithWorkers(new PhysicalWorkerRuntimeState(
-            FoundationPurchasedBirthLottery.AdvanceWaitingCounters(settled.Workers.Workers, Array.Empty<PhysicalWorkerId>()), true, true));
+        Assert.All(settled.Workers.Workers, w => Assert.Equal(1UL, w.BirthWaitTurns!.Value));
+        Assert.Empty(Assert.Single(close.Events.OfType<FoundationPurchasedDemographicBirthEvent>()).Newborns);
+        var aged = settled;
         var secondContext = new SimulationContext(new TurnNumber(2UL), firstContext.Seed);
         var request = firstRequest with { Id = new CommandId(secondContext.Turn, 1UL) };
         var before = hasher.Compute(aged);
@@ -149,6 +149,72 @@ public sealed class FoundationTemporalEconomicJournalGateTests
             Assert.Equal(combined.Parents.ToArray(), split.Parents.ToArray());
             Assert.Equal(38UL, combined.MoneyMicro);
         }
+        Assert.Equal(before, hasher.Compute(aged));
+        Assert.Throws<InvalidOperationException>(() => phase.Resolve(new TurnResolutionInput(opening,
+            new ISimulationCommand[] { firstRequest }, firstContext), opening));
+        Assert.Throws<InvalidOperationException>(() => phase.Resolve(new TurnResolutionInput(aged,
+            new ISimulationCommand[] { request with { Quantity = (ulong)initialWorkers + 1UL } }, secondContext), aged));
+        var purchase = phase.Resolve(new TurnResolutionInput(aged,
+            new ISimulationCommand[] { request }, secondContext), aged);
+        var next = purchase.ResultingWorldState;
+        var funding = Assert.Single(purchase.Events.OfType<FoundationPurchasedDemographicFundingEvent>());
+        var birth = Assert.Single(purchase.Events.OfType<FoundationPurchasedDemographicBirthEvent>());
+        var child = Assert.Single(birth.Newborns);
+        var parent = Assert.Single(birth.SelectedParents);
+        var sale = Assert.Single(purchase.Events.OfType<FoundationTemporalSalesSettledEvent>());
+        Assert.Equal(funding.After, sale.PreSettlementHash);
+        Assert.Equal(owner, child.Owner);
+        Assert.Equal(node, child.NatalNode!.Value);
+        Assert.Equal(0UL, child.BirthWaitTurns!.Value);
+        Assert.Equal(0UL, next.Workers.Workers.Single(w => w.Id == parent).BirthWaitTurns!.Value);
+        Assert.Empty(next.WorkerOrders.Queues.Single(q => q.Worker == child.Id).Orders);
+        Assert.Equal(aged.Workers.Workers.Count + 1, next.Workers.Workers.Count);
+        Assert.Equal(1UL, next.PurchasedDemography.Get(owner).PurchasedWorkers);
+        Assert.Equal(33U, hasher.Compute(next).FormatVersion);
+        Assert.Equal(32U, hasher.Compute(aged).FormatVersion);
+        Assert.All(next.Workers.Workers.Where(w => w.Id != parent && w.Id != child.Id),
+            w => Assert.Equal(2UL, w.BirthWaitTurns!.Value));
+        Assert.Equal((ulong)initialWorkers + 2UL, next.PurchasedDemography.Get(owner).NextHistoricalIndex);
+        var oldCash = aged.Treasury.Get(owner);
+        var newCash = next.Treasury.Get(owner);
+        var debit = GlobalArenaMoneyScale.FromMoneyMicro(result.MoneyMicro);
+        Assert.Equal(debit, newCash.TotalDemographicPurchaseDebitsScaled);
+        Assert.Equal(oldCash.TotalInfrastructureInvestmentScaled, newCash.TotalInfrastructureInvestmentScaled);
+        Assert.Equal(oldCash.CashScaled - debit + sale.Credits.Single(x => x.Civilization == owner).CashCreditScaled, newCash.CashScaled);
+        var noPurchase = phase.Resolve(new TurnResolutionInput(aged, Array.Empty<ISimulationCommand>(), secondContext), aged);
+        var noPurchaseSale = Assert.Single(noPurchase.Events.OfType<FoundationTemporalSalesSettledEvent>());
+        Assert.Equal(noPurchaseSale.ProducedGoodsMicro, sale.ProducedGoodsMicro);
+        Assert.Equal(noPurchaseSale.ScheduleDigest, sale.ScheduleDigest);
+        Assert.Equal(noPurchaseSale.Credits.ToArray(), sale.Credits.ToArray());
+        Assert.Equal(32U, hasher.Compute(noPurchase.ResultingWorldState).FormatVersion);
+        Assert.All(noPurchase.ResultingWorldState.Workers.Workers, w => Assert.Equal(2UL, w.BirthWaitTurns!.Value));
+        if (initialWorkers == 3)
+        {
+            var batch = phase.Resolve(new TurnResolutionInput(aged,
+                new ISimulationCommand[] { request, request with { Id = new CommandId(secondContext.Turn, 2UL) } },
+                secondContext), aged);
+            var batchBirth = Assert.Single(batch.Events.OfType<FoundationPurchasedDemographicBirthEvent>());
+            Assert.Equal(2, batchBirth.Newborns.Count);
+            Assert.Equal(2, batchBirth.SelectedParents.Distinct().Count());
+            Assert.Equal(2UL, batch.ResultingWorldState.PurchasedDemography.Get(owner).PurchasedWorkers);
+            Assert.Equal(GlobalArenaMoneyScale.FromMoneyMicro(38UL),
+                batch.ResultingWorldState.Treasury.Get(owner).TotalDemographicPurchaseDebitsScaled);
+            Assert.Equal(hasher.Compute(batch.ResultingWorldState),
+                hasher.Compute(phase.ReplayPersistentJournal(aged, batch.EventLog, secondContext)));
+        }
+        Assert.Equal(hasher.Compute(next), hasher.Compute(phase.ReplayPersistentJournal(aged, purchase.EventLog, secondContext)));
+        SimulationEventLog Log(IEnumerable<ISimulationEvent> events) => new(events.Select((e, i) =>
+            new SimulationEventLogEntry((ulong)i + 1UL, e, true, true)).ToArray());
+        Assert.Throws<InvalidOperationException>(() => phase.ReplayPersistentJournal(aged,
+            Log(purchase.Events.Where(e => e is not FoundationPurchasedDemographicBirthEvent)), secondContext));
+        Assert.Throws<InvalidOperationException>(() => phase.ReplayPersistentJournal(aged,
+            Log(purchase.Events.Where(e => e is not FoundationPurchasedDemographicFundingEvent)), secondContext));
+        var forged = funding with { Reservations = funding.Reservations.Select(x => x with { MoneyMicro = x.MoneyMicro + 1UL }).ToArray() };
+        Assert.Throws<InvalidOperationException>(() => phase.ReplayPersistentJournal(aged,
+            Log(purchase.Events.Select(e => e is FoundationPurchasedDemographicFundingEvent ? forged : e)), secondContext));
+        var forgedBirth = birth with { Newborns = Array.Empty<PhysicalWorkerRuntimeRecord>() };
+        Assert.Throws<InvalidOperationException>(() => phase.ReplayPersistentJournal(aged,
+            Log(purchase.Events.Select(e => e is FoundationPurchasedDemographicBirthEvent ? forgedBirth : e)), secondContext));
         Assert.Equal(before, hasher.Compute(aged));
     }
 

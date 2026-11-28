@@ -195,6 +195,8 @@ public static class FoundationTemporalEconomicJournalGate
         using (FoundationTurnProfiler.Measure("journal_stage_events"))
             foreach (var ev in physicalAndInvestmentEvents)
                 staged = executor.Execute(staged, ev, context);
+        if (beginning.PurchasedDemography.IsInitialized && executor.VerifiedDemographicFunding is null)
+            throw new InvalidOperationException("Missing purchased demographic funding evidence.");
         var (settlement, expected) = Derive(beginning, staged,
             executor.VerifiedPhysicalEvents, executor.VerifiedLocalEvents,
             executor.VerifiedInvestmentCount,
@@ -204,6 +206,13 @@ public static class FoundationTemporalEconomicJournalGate
         // independently once more. Avoid an unneeded third market pass.
         var actual = expected;
         var events = physicalAndInvestmentEvents.Append((ISimulationEvent)settlement).ToList();
+        if (beginning.PurchasedDemography.IsInitialized)
+        {
+            var birth = FoundationPurchasedDemographicClose.Birth(beginning, actual,
+                executor.VerifiedDemographicFunding!, movement, context);
+            actual = birth.Next;
+            events.Add(birth.Event);
+        }
         if (enableDemographicGrowth)
         {
             var birth = FoundationPersistentDemographicClose.Record(beginning, actual,
@@ -424,10 +433,11 @@ public static class FoundationTemporalEconomicJournalGate
         private readonly FoundationFundedWorkerIntentJournal? _fundedIntents;
         private readonly HashSet<EventId> _persistentIds = new();
         public FoundationPersistentWorkerTurnEvent? VerifiedTimeline { get; private set; }
+        public FoundationPurchasedDemographicFundingEvent? VerifiedDemographicFunding { get; private set; }
 
         public IReadOnlyList<FoundationEdgeTravelTurnEvent> VerifiedPhysicalEvents => _events;
         public IReadOnlyList<PhysicalTacticalWorkerMovedEvent> VerifiedLocalEvents => _localEvents;
-        public bool IsClosed => _closed && (!_growth || _birthsSeen) && (!_navalSettlement || _navalSeen);
+        public bool IsClosed => _closed && (!(_growth || _beginning.PurchasedDemography.IsInitialized) || _birthsSeen) && (!_navalSettlement || _navalSeen);
         public int VerifiedInvestmentCount => _investmentCount;
 
         public ReplayExecutor(
@@ -448,6 +458,10 @@ public static class FoundationTemporalEconomicJournalGate
             if (!_navalSettlement && beginning.Treasury.LastNavalSettlementCycleOrdinal.HasValue)
                 throw new InvalidOperationException("Cannot disable deployed naval settlement.");
             _growth = enableDemographicGrowth;
+            if (beginning.PurchasedDemography.IsInitialized &&
+                (_growth || beginning.EdgeTravels.NavalVoyages is not null || _navalSettlement ||
+                 persistentScheduler is null || signedFine is null))
+                throw new InvalidOperationException("Purchased demography requires signed land persistent settlement without legacy growth.");
             _agriculture = agriculture;
             _operationalPolicy = operationalPolicy;
             operationalPolicy?.RequireValid();
@@ -479,6 +493,16 @@ public static class FoundationTemporalEconomicJournalGate
             if (_closed)
             {
                 if (_navalSeen) throw new InvalidOperationException("Naval settlement is the final event.");
+                if (_beginning.PurchasedDemography.IsInitialized)
+                {
+                    if (_birthsSeen || ev is not FoundationPurchasedDemographicBirthEvent purchased ||
+                        VerifiedDemographicFunding is null)
+                        throw new InvalidOperationException("Expected exactly one purchased birth close.");
+                    var result = FoundationPurchasedDemographicClose.ReplayBirth(_beginning, state,
+                        VerifiedDemographicFunding, _local, context, purchased);
+                    _birthsSeen = true;
+                    return result;
+                }
                 if (_navalSettlement && (!_growth || _birthsSeen) && ev is FoundationNavalSettlementEvent naval)
                 {
                     var result = FoundationNavalSettlement.Replay(_beginning, state, VerifiedTimeline!, context, naval);
@@ -491,6 +515,18 @@ public static class FoundationTemporalEconomicJournalGate
                     VerifiedTimeline!, _policy.Demand, _local, context, birth);
                 _birthsSeen = true;
                 return next;
+            }
+            if (ev is FoundationPurchasedDemographicFundingEvent funding)
+            {
+                if (!_beginning.PurchasedDemography.IsInitialized || VerifiedTimeline is null ||
+                    VerifiedDemographicFunding is not null || !_persistentIds.Add(ev.Id) ||
+                    funding.Commands.Any(c => _persistentIds.Contains(new EventId(c.Id, 1UL))))
+                    throw new InvalidOperationException("Duplicate or misplaced demographic funding.");
+                var verified = FoundationPurchasedDemographicClose.ReplayFunding(
+                    _beginning, state, _signedFine!, context, funding);
+                VerifiedDemographicFunding = verified.Verified;
+                _investmentCount++;
+                return verified.Next;
             }
             if (_scheduler is not null && ev is not FoundationTemporalSalesSettledEvent)
             {
@@ -566,6 +602,8 @@ public static class FoundationTemporalEconomicJournalGate
                 monetary.Id.Turn != context.Turn)
                 throw new InvalidOperationException(
                     "Only canonical physical movements and one temporal SYSTEM sale are allowed.");
+            if (_beginning.PurchasedDemography.IsInitialized && VerifiedDemographicFunding is null)
+                throw new InvalidOperationException("Missing demographic funding before sale.");
             var (derived, after) = Derive(_beginning, state, _events,
                 _localEvents, _investmentCount, _incidence, _policy,
                 context, _signedFine, VerifiedTimeline, _agriculture, _operationalPolicy,

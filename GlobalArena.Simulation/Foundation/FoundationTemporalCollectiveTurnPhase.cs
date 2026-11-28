@@ -191,10 +191,16 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
         if (input.Commands.Any(c => c.Id.Turn != input.Context.Turn || c.Id.Sequence == 0) ||
             input.Commands.Select(c => c.Id).Distinct().Count() != input.Commands.Count)
             throw new InvalidOperationException("Persistent collective commands must be unique and current.");
+        if (beginning.PurchasedDemography.IsInitialized && (_growth || _navalCollective || _fine is null))
+            throw new InvalidOperationException("Purchased demography requires signed land persistent settlement without legacy growth.");
+        var purchases = input.Commands.OfType<FoundationPurchasedDemographicCommand>().ToArray();
+        if (purchases.Length != 0 && !beginning.PurchasedDemography.IsInitialized)
+            throw new InvalidOperationException("Purchased demography is not deployed.");
         var state = beginning;
         var operations = new List<ISimulationEvent>();
         foreach (var command in input.Commands.OrderBy(c => c.Id.Sequence))
         {
+            if (command is FoundationPurchasedDemographicCommand) continue;
             var id = new EventId(command.Id, 1UL);
             if (command is FoundationPersistentOrderEditCommand edit)
             {
@@ -221,10 +227,17 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
         }
         var timeline = _persistent!.Record(state, input.Context);
         operations.Add(timeline.Event);
+        var preSale = timeline.Next;
+        if (beginning.PurchasedDemography.IsInitialized)
+        {
+            var funding = FoundationPurchasedDemographicClose.Fund(beginning, preSale, _fine!, purchases, input.Context);
+            operations.Add(funding.Event);
+            preSale = funding.Next;
+        }
         var receipt = FoundationTemporalEconomicJournalGate.CloseAndReplayWithInvestments(
             beginning, operations, _movement, _movementPolicy, _incidence, _economy, input.Context,
             _capitalExecutor, _fine, persistentScheduler: _persistent, fundedIntents: _funded, enableDemographicGrowth: _growth, agriculture: _agriculture, operationalPolicy: _operationalPolicy, enableNavalSettlement: _navalSettlement);
-        if (receipt.EconomicEvent.PreSettlementHash != new CanonicalWorldStateHasher().Compute(timeline.Next))
+        if (receipt.EconomicEvent.PreSettlementHash != new CanonicalWorldStateHasher().Compute(preSale))
             throw new InvalidOperationException("Persistent timeline and economic settlement diverged.");
         return new TurnResolutionResult(receipt.Next,
             receipt.Journal.Entries.Select(e => e.Event).ToArray(), receipt.Journal);

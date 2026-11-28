@@ -588,6 +588,44 @@ public sealed class WorldState
             Economy, Population, Warfare, Workers, Transport, settled, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure, PurchasedDemography);
     }
 
+    internal WorldState DebitAuditedDemographicPurchases(IReadOnlyDictionary<CivilizationId, ulong> debits)
+    {
+        if (!PurchasedDemography.IsInitialized)
+            throw new InvalidOperationException("Purchased demography is not deployed.");
+        var treasury = Treasury.DebitVerifiedDemographicPurchases(debits);
+        return new WorldState(Revision, WorldBinding, Civilizations, Territory,
+            Diplomacy, Economy, Population, Warfare, Workers, Transport, treasury,
+            CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure, PurchasedDemography);
+    }
+
+    // Only the verified journal executor calls this post-sale transition.
+    internal WorldState PublishAuditedPurchasedBirths(
+        IReadOnlyList<PhysicalWorkerRuntimeRecord> agedWorkers,
+        IReadOnlyList<PhysicalWorkerRuntimeRecord> children)
+    {
+        if (!PurchasedDemography.IsInitialized ||
+            !agedWorkers.Select(w => w.Id).SequenceEqual(Workers.Workers.Select(w => w.Id)))
+            throw new InvalidOperationException("Purchased birth census must match the verified settled census.");
+        ulong next = Workers.Workers.Select(w => w.Id.Value).DefaultIfEmpty(0UL).Max();
+        foreach (var child in children)
+        {
+            if (child.Id.Value != checked(++next) || child.NatalNode is null ||
+                child.NatalNode != child.TacticalTileId || child.NatalCity.HasValue ||
+                child.Activity != PhysicalWorkerActivity.Other ||
+                child.Occupation != PhysicalWorkerOccupation.Unassigned || child.BirthWaitTurns != 0UL)
+                throw new InvalidOperationException("Invalid purchased newborn.");
+        }
+        var ledger = PurchasedDemography;
+        foreach (var group in children.GroupBy(w => w.Owner).OrderBy(g => g.Key.Value))
+            ledger = ledger.RecordAcquisitions(group.Key, (ulong)group.Count());
+        var workers = new PhysicalWorkerRuntimeState(agedWorkers.Concat(children), true, true);
+        var queues = new FoundationWorkerOrderQueueSet(WorkerOrders.Queues.Concat(
+            children.Select(w => FoundationWorkerOrderQueue.Empty(w.Id, w.Owner))));
+        return new WorldState(Revision, WorldBinding, Civilizations, Territory,
+            Diplomacy, Economy, Population, Warfare, workers, Transport, Treasury,
+            CityResidences, EdgeTravels, Constructions, queues, ProductiveInfrastructure, ledger);
+    }
+
     internal WorldState RecordAuditedEconomicCycle(
         ulong ordinal, string cargoUnitCode,
         IReadOnlyDictionary<CivilizationId, System.Numerics.BigInteger>
@@ -937,6 +975,8 @@ public sealed class WorldState
                 workerState.Workers.Any(w => !w.BirthWaitTurns.HasValue || w.UniformCityDemography) ||
                 !PurchasedDemography.Accounts.Select(a => a.Civilization).ToHashSet().SetEquals(civilizations.Civilizations))
                 throw new InvalidOperationException("Purchased demography requires the complete signed persistent individual workforce.");
+            if (treasuryState.Accounts.Any(a => a.TotalDemographicPurchaseDebitsScaled.Sign < 0))
+                throw new InvalidOperationException("Invalid demographic outflow.");
             foreach (var group in workerState.Workers.GroupBy(w => w.Owner))
                 if ((ulong)group.Count() > PurchasedDemography.Get(group.Key).HistoricalAcquisitions)
                     throw new InvalidOperationException("Living population exceeds historical acquisitions.");
