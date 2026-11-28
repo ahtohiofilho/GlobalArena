@@ -71,6 +71,90 @@ public sealed class FoundationTemporalEconomicJournalGateTests
     [Theory]
     [InlineData(1)]
     [InlineData(3)]
+    public void R236D1AdmissionUsesOnlyEarnedPreSaleCashAndFinalEligibleParents(int initialWorkers)
+    {
+        var (legacy, _, _, _, incidence, fine) = Fixture();
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL), WorldGenerationVersion.Initial,
+                new GoldbergParameters(3, 0)), workersPerCivilization: initialWorkers);
+        var signature = FoundationFineFirstWorldgenCanonicalSignature.Compute(demo.Session.GeneratedWorld, incidence, fine);
+        var bound = demo.Session.Snapshot.PromoteFineFirstBeforeTransport(demo.Session.GeneratedWorld, incidence, fine, signature)
+            .DeployInitialFineFirstPhysicalTransport(legacy.Transport, demo.Session.GeneratedWorld, incidence, fine, signature);
+        var opening = FoundationPersistedEdgeTravelTransitions.DeployEmpty(bound
+            .DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
+                bound.Civilizations.Civilizations.Select(c => (c, 0UL)))))
+            .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
+            .DeployInitialWorkerOrders().DeployInitialProductiveInfrastructure(ProductiveReferences())
+            .DeployInitialPurchasedDemography(10UL, 4UL);
+        var node = new PhysicalTacticalTileId(incidence.Refinement.FineParameters,
+            incidence.FineTopology.Cells.First(c =>
+                fine.SurfaceAtIndex((int)c.Id.Value - 1) == FoundationFineSurfaceKind.Land &&
+                fine.CanTraverseOnFoot((int)c.Id.Value - 1)).Id);
+        opening = opening.WithWorkers(new PhysicalWorkerRuntimeState(opening.Workers.Workers.Select(w =>
+            w.WithTacticalAssignment(node, w.CellId, w.Activity, w.Occupation!.Value)), true, true));
+        var owner = opening.Civilizations.Civilizations.First();
+        var firstContext = new SimulationContext(new TurnNumber(1UL), new SimulationSeed(712UL));
+        var firstRequest = new FoundationPurchasedDemographicCommand(new CommandId(firstContext.Turn, 1UL), owner, 1UL);
+        Assert.Throws<InvalidOperationException>(() => FoundationPurchasedDemographicAdmission.Plan(
+            opening, opening, fine, new[] { firstRequest }, firstContext));
+        var weightedZeroCash = opening.WithWorkers(new PhysicalWorkerRuntimeState(opening.Workers.Workers.Select(w =>
+            w.WithBirthWaitTurns(1UL)), true, true));
+        Assert.Throws<InvalidOperationException>(() => FoundationPurchasedDemographicAdmission.Plan(
+            weightedZeroCash, weightedZeroCash, fine, new[] { firstRequest }, firstContext));
+
+        var phase = new FoundationTemporalCollectiveTurnPhase(demo.Session.GeneratedWorld, incidence,
+            new FoundationGroundEdgeTravelTimePolicy(1_400_000UL), Policy(opening.Civilizations.Civilizations),
+            fine, signature, persistentMoneyMicroPerWholeWork: 1_000_000UL);
+        var close = phase.Resolve(new TurnResolutionInput(opening, Array.Empty<ISimulationCommand>(), firstContext), opening);
+        var settled = close.ResultingWorldState;
+        var hasher = new CanonicalWorldStateHasher();
+        Assert.Equal(hasher.Compute(settled), hasher.Compute(phase.ReplayPersistentJournal(opening, close.EventLog, firstContext)));
+        Assert.True(settled.Treasury.Get(owner).CashScaled > GlobalArenaMoneyScale.FromMoneyMicro(100UL));
+        // Until D.2, counter advancement is a detached fixture transition.
+        var aged = settled.WithWorkers(new PhysicalWorkerRuntimeState(
+            FoundationPurchasedBirthLottery.AdvanceWaitingCounters(settled.Workers.Workers, Array.Empty<PhysicalWorkerId>()), true, true));
+        var secondContext = new SimulationContext(new TurnNumber(2UL), firstContext.Seed);
+        var request = firstRequest with { Id = new CommandId(secondContext.Turn, 1UL) };
+        var before = hasher.Compute(aged);
+        var result = Assert.Single(FoundationPurchasedDemographicAdmission.Plan(aged, aged, fine, new[] { request }, secondContext));
+        Assert.Equal(owner, result.Owner);
+        Assert.Equal((ulong)initialWorkers + 1UL, result.NextHistoricalIndex);
+        Assert.Equal(initialWorkers == 1 ? 13UL : 18UL, result.MoneyMicro);
+        Assert.Equal(node, Assert.Single(result.Parents).Node);
+        Assert.Equal(before, hasher.Compute(aged));
+        Assert.Empty(FoundationPurchasedDemographicAdmission.Plan(aged, aged, fine,
+            Array.Empty<FoundationPurchasedDemographicCommand>(), secondContext));
+        Assert.Throws<InvalidOperationException>(() => FoundationPurchasedDemographicAdmission.Plan(
+            aged, aged, fine, new[] { request, request }, secondContext));
+        Assert.Throws<InvalidOperationException>(() => FoundationPurchasedDemographicAdmission.Plan(
+            aged, aged, fine, new[] { request with { Quantity = (ulong)initialWorkers + 1UL } }, secondContext));
+        var traveling = aged.WithWorkers(new PhysicalWorkerRuntimeState(aged.Workers.Workers.Select(w =>
+            w.Owner == owner ? w.WithTacticalAssignment(node, w.CellId, PhysicalWorkerActivity.Traveling,
+                PhysicalWorkerOccupation.Unassigned) : w), true, true));
+        Assert.Throws<InvalidOperationException>(() => FoundationPurchasedDemographicAdmission.Plan(
+            aged, traveling, fine, new[] { request }, secondContext));
+        ulong availableMicro = (ulong)(aged.Treasury.Get(owner).CashScaled / GlobalArenaMoneyScale.ExactScaledPerMoneyMicro);
+        var funded = aged.FundProductiveConstruction(owner,
+            new FoundationProductiveTarget(node, FoundationProductiveActivity.Mining), availableMicro, 1UL);
+        Assert.Throws<InvalidOperationException>(() => FoundationPurchasedDemographicAdmission.Plan(
+            aged, funded, fine, new[] { request }, secondContext));
+        if (initialWorkers == 3)
+        {
+            var extra = request with { Id = new CommandId(secondContext.Turn, 2UL) };
+            var split = Assert.Single(FoundationPurchasedDemographicAdmission.Plan(
+                aged, aged, fine, new[] { extra, request }, secondContext));
+            var combined = Assert.Single(FoundationPurchasedDemographicAdmission.Plan(
+                aged, aged, fine, new[] { request with { Quantity = 2UL } }, secondContext));
+            Assert.Equal(combined.MoneyMicro, split.MoneyMicro);
+            Assert.Equal(combined.Parents.ToArray(), split.Parents.ToArray());
+            Assert.Equal(38UL, combined.MoneyMicro);
+        }
+        Assert.Equal(before, hasher.Compute(aged));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(3)]
     public void R236COpeningPopulationCanAccumulateWeightWithoutFreeBirths(int initialWorkers)
     {
         var (legacy, _, _, _, incidence, fine) = Fixture();
