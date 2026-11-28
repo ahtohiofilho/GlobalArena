@@ -606,7 +606,7 @@ public sealed class WorldState
         if (!PurchasedDemography.IsInitialized ||
             !agedWorkers.Select(w => w.Id).SequenceEqual(Workers.Workers.Select(w => w.Id)))
             throw new InvalidOperationException("Purchased birth census must match the verified settled census.");
-        ulong next = Workers.Workers.Max(w => w.Id.Value);
+        ulong next = Workers.Workers.Select(w => w.Id.Value).DefaultIfEmpty(0UL).Max();
         foreach (var child in children)
         {
             if (child.Id.Value != checked(++next) || child.NatalNode is null ||
