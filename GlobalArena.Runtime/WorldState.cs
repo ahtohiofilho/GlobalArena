@@ -39,6 +39,8 @@ public sealed class WorldState
 
     public FoundationProductiveInfrastructureRuntimeState ProductiveInfrastructure { get; }
 
+    public FoundationPurchasedDemographyRuntimeState PurchasedDemography { get; }
+
     public FoundationWorkerOrderQueueSet WorkerOrders { get; }
 
     /// <summary>
@@ -111,7 +113,7 @@ public sealed class WorldState
             Economy,
             Population,
             Warfare,
-            Workers, Transport, Treasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure);
+            Workers, Transport, Treasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure, PurchasedDemography);
     }
 
     /// <summary>
@@ -139,7 +141,7 @@ public sealed class WorldState
             strategicWorld, incidence, fine, evidence.FineIdentity);
         return new WorldState(
             Revision, binding, Civilizations, Territory, Diplomacy, Economy,
-            Population, Warfare, Workers, Transport, Treasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure);
+            Population, Warfare, Workers, Transport, Treasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure, PurchasedDemography);
     }
 
     /// <summary>
@@ -187,7 +189,7 @@ public sealed class WorldState
                 "duplicated tactical crossings or owners.");
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
-            Economy, Population, Warfare, Workers, transport, Treasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure);
+            Economy, Population, Warfare, Workers, transport, Treasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure, PurchasedDemography);
     }
 
     public WorldState WithCivilizations(
@@ -205,7 +207,7 @@ public sealed class WorldState
             Economy,
             Population,
             Warfare,
-            Workers, Transport, Treasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure);
+            Workers, Transport, Treasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure, PurchasedDemography);
     }
 
     public WorldState WithTerritory(
@@ -223,7 +225,7 @@ public sealed class WorldState
             Economy,
             Population,
             Warfare,
-            Workers, Transport, Treasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure);
+            Workers, Transport, Treasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure, PurchasedDemography);
     }
 
     public WorldState WithDiplomacy(
@@ -241,7 +243,7 @@ public sealed class WorldState
             Economy,
             Population,
             Warfare,
-            Workers, Transport, Treasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure);
+            Workers, Transport, Treasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure, PurchasedDemography);
     }
 
     public WorldState WithEconomy(
@@ -259,7 +261,7 @@ public sealed class WorldState
             economy,
             Population,
             Warfare,
-            Workers, Transport, Treasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure);
+            Workers, Transport, Treasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure, PurchasedDemography);
     }
 
     /// <summary>
@@ -280,7 +282,7 @@ public sealed class WorldState
             Economy,
             population,
             Warfare,
-            Workers, Transport, Treasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure);
+            Workers, Transport, Treasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure, PurchasedDemography);
     }
 
     /// <summary>
@@ -304,7 +306,7 @@ public sealed class WorldState
             economy,
             population,
             Warfare,
-            Workers, Transport, Treasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure);
+            Workers, Transport, Treasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure, PurchasedDemography);
     }
 
     private void RejectPopulationDowngrade(PopulationRuntimeState next)
@@ -329,7 +331,7 @@ public sealed class WorldState
             Economy,
             Population,
             warfare,
-            Workers, Transport, Treasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure);
+            Workers, Transport, Treasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure, PurchasedDemography);
     }
 
     /// <summary>
@@ -355,7 +357,7 @@ public sealed class WorldState
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
             Economy, Population, Warfare, Workers, Transport, Treasury,
-            residenceLedger, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure);
+            residenceLedger, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure, PurchasedDemography);
     }
 
     public WorldState WithWorkers(PhysicalWorkerRuntimeState workers)
@@ -377,7 +379,7 @@ public sealed class WorldState
                 "Changing worker occupation schema requires explicit full-census classification.");
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
-            Economy, Population, Warfare, workers, Transport, Treasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure);
+            Economy, Population, Warfare, workers, Transport, Treasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure, PurchasedDemography);
     }
 
     /// <summary>
@@ -434,7 +436,7 @@ public sealed class WorldState
         }
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
-            Economy, Population, Warfare, tacticalWorkers, Transport, Treasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure);
+            Economy, Population, Warfare, tacticalWorkers, Transport, Treasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure, PurchasedDemography);
     }
 
     /// <summary>
@@ -476,7 +478,7 @@ public sealed class WorldState
             occupationsAuthoritative: true);
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
-            Economy, Population, Warfare, recategorized, Transport, Treasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure);
+            Economy, Population, Warfare, recategorized, Transport, Treasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure, PurchasedDemography);
     }
 
     /// <summary>
@@ -522,7 +524,7 @@ public sealed class WorldState
                 "outside the authoritative civilization roster.");
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
-            Economy, Population, Warfare, Workers, transport, Treasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure);
+            Economy, Population, Warfare, Workers, transport, Treasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure, PurchasedDemography);
     }
 
     /// <summary>
@@ -545,7 +547,7 @@ public sealed class WorldState
                 "civilization in an authoritative monetary world.");
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
-            Economy, Population, Warfare, Workers, Transport, opening, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure);
+            Economy, Population, Warfare, Workers, Transport, opening, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure, PurchasedDemography);
     }
 
     /// <summary>
@@ -566,7 +568,7 @@ public sealed class WorldState
         var newTreasury = Treasury.DebitConstruction(investor, moneyMicro);
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
-            Economy, Population, Warfare, Workers, newTransport, newTreasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure);
+            Economy, Population, Warfare, Workers, newTransport, newTreasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure, PurchasedDemography);
     }
 
     /// <summary>
@@ -583,7 +585,7 @@ public sealed class WorldState
         var settled = Treasury.DebitVerifiedNavalSettlement(ordinal, debits);
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
-            Economy, Population, Warfare, Workers, Transport, settled, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure);
+            Economy, Population, Warfare, Workers, Transport, settled, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure, PurchasedDemography);
     }
 
     internal WorldState RecordAuditedEconomicCycle(
@@ -603,7 +605,7 @@ public sealed class WorldState
             nextFreightQuotes, observedPrices);
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
-            Economy, Population, Warfare, Workers, Transport, settled, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure);
+            Economy, Population, Warfare, Workers, Transport, settled, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure, PurchasedDemography);
     }
 
     /// <summary>
@@ -622,7 +624,7 @@ public sealed class WorldState
         return new WorldState(
             Revision, WorldBinding, Civilizations, Territory, Diplomacy,
             Economy, Population, Warfare, workers, Transport, Treasury,
-            CityResidences, journeys, Constructions, WorkerOrders, ProductiveInfrastructure);
+            CityResidences, journeys, Constructions, WorkerOrders, ProductiveInfrastructure, PurchasedDemography);
     }
 
     // Snapshot-only deployment; no funding, progress or activation event yet.
@@ -645,7 +647,7 @@ public sealed class WorldState
         var treasury = Treasury.DebitConstruction(investor, moneyMicro);
         return new WorldState(Revision, WorldBinding, Civilizations, Territory,
             Diplomacy, Economy, Population, Warfare, Workers, Transport, treasury,
-            CityResidences, EdgeTravels, ledger, WorkerOrders, ProductiveInfrastructure);
+            CityResidences, EdgeTravels, ledger, WorkerOrders, ProductiveInfrastructure, PurchasedDemography);
     }
 
     // Completion-only conversion of already financed Work into physical capital.
@@ -662,7 +664,7 @@ public sealed class WorldState
             p.Id == projectId ? p with { IsActivated = true } : p));
         return new WorldState(Revision, WorldBinding, Civilizations, Territory,
             Diplomacy, Economy, Population, Warfare, Workers, transport, Treasury,
-            CityResidences, EdgeTravels, ledger, WorkerOrders, ProductiveInfrastructure);
+            CityResidences, EdgeTravels, ledger, WorkerOrders, ProductiveInfrastructure, PurchasedDemography);
     }
 
     // Atomic productive funding, parallel to FundConstruction. Geography
@@ -677,7 +679,7 @@ public sealed class WorldState
         var treasury = Treasury.DebitConstruction(investor, moneyMicro);
         return new WorldState(Revision, WorldBinding, Civilizations, Territory,
             Diplomacy, Economy, Population, Warfare, Workers, Transport, treasury,
-            CityResidences, EdgeTravels, Constructions, WorkerOrders, ledger);
+            CityResidences, EdgeTravels, Constructions, WorkerOrders, ledger, PurchasedDemography);
     }
 
     // Narrow immutable transitions used by the shared, independently replayed calendar.
@@ -686,7 +688,7 @@ public sealed class WorldState
         var ledger = ProductiveInfrastructure.RecordWork(projectId, workMicro);
         return new WorldState(Revision, WorldBinding, Civilizations, Territory,
             Diplomacy, Economy, Population, Warfare, Workers, Transport, Treasury,
-            CityResidences, EdgeTravels, Constructions, WorkerOrders, ledger);
+            CityResidences, EdgeTravels, Constructions, WorkerOrders, ledger, PurchasedDemography);
     }
 
     public WorldState ActivateCompletedProductiveConstruction(ulong projectId)
@@ -694,7 +696,7 @@ public sealed class WorldState
         var ledger = ProductiveInfrastructure.Activate(projectId);
         return new WorldState(Revision, WorldBinding, Civilizations, Territory,
             Diplomacy, Economy, Population, Warfare, Workers, Transport, Treasury,
-            CityResidences, EdgeTravels, Constructions, WorkerOrders, ledger);
+            CityResidences, EdgeTravels, Constructions, WorkerOrders, ledger, PurchasedDemography);
     }
 
     // Empty initial deployment only. No caller can inject funded capital
@@ -706,7 +708,23 @@ public sealed class WorldState
         var productive = FoundationProductiveInfrastructureRuntimeState.CreateEmpty(references);
         return new WorldState(Revision, WorldBinding, Civilizations, Territory, Diplomacy,
             Economy, Population, Warfare, Workers, Transport, Treasury, CityResidences,
-            EdgeTravels, Constructions, WorkerOrders, productive);
+            EdgeTravels, Constructions, WorkerOrders, productive, PurchasedDemography);
+    }
+
+    // Opening only: no arbitrary historical counts or paid births can be
+    // attached by a caller. Initial workers consume the first price indices.
+    public WorldState DeployInitialPurchasedDemography(ulong initialMoneyMicro, ulong referenceAcquisitions)
+    {
+        if (PurchasedDemography.IsInitialized || !Treasury.IsInitialized || Treasury.HasClosedEconomicCycle ||
+            Workers.Workers.Any(w => w.BirthWaitTurns.HasValue || w.UniformCityDemography))
+            throw new InvalidOperationException("Purchased demography requires an unused opening census and treasury.");
+        var ledger = FoundationPurchasedDemographyRuntimeState.CreateOpening(
+            Civilizations.Civilizations.Select(c => (c, (ulong)Workers.Workers.Count(w => w.Owner == c))),
+            initialMoneyMicro, referenceAcquisitions);
+        var people = new PhysicalWorkerRuntimeState(Workers.Workers.Select(w => w.WithBirthWaitTurns(0UL)), true, true);
+        return new WorldState(Revision, WorldBinding, Civilizations, Territory, Diplomacy,
+            Economy, Population, Warfare, people, Transport, Treasury, CityResidences,
+            EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure, ledger);
     }
 
     public WorldState WithConstructions(FoundationConstructionRuntimeState constructions)
@@ -731,7 +749,7 @@ public sealed class WorldState
             throw new InvalidOperationException("Activation requires the dedicated transition.");
         return new WorldState(Revision, WorldBinding, Civilizations, Territory,
             Diplomacy, Economy, Population, Warfare, Workers, Transport, Treasury,
-            CityResidences, EdgeTravels, constructions, WorkerOrders, ProductiveInfrastructure);
+            CityResidences, EdgeTravels, constructions, WorkerOrders, ProductiveInfrastructure, PurchasedDemography);
     }
 
     /// <summary>Atomic append of journal-authorized births and empty individual queues.
@@ -740,6 +758,8 @@ public sealed class WorldState
     public WorldState AppendPhysicalBirths(IEnumerable<PhysicalWorkerRuntimeRecord> newborns)
     {
         ArgumentNullException.ThrowIfNull(newborns);
+        if (PurchasedDemography.IsInitialized)
+            throw new InvalidOperationException("Purchased demography cannot append free births.");
         if (!WorkerOrders.IsInitialized || CityResidences.IsInitialized)
             throw new InvalidOperationException("Births require persistent physical queues without legacy home census.");
         var rows = newborns.ToArray();
@@ -757,7 +777,7 @@ public sealed class WorldState
             rows.Select(w => FoundationWorkerOrderQueue.Empty(w.Id, w.Owner))));
         return new WorldState(Revision, WorldBinding, Civilizations, Territory, Diplomacy,
             Economy, Population, Warfare, workers, Transport, Treasury, CityResidences,
-            EdgeTravels, Constructions, queues, ProductiveInfrastructure);
+            EdgeTravels, Constructions, queues, ProductiveInfrastructure, PurchasedDemography);
     }
 
     public WorldState DeployInitialWorkerOrders()
@@ -815,7 +835,7 @@ public sealed class WorldState
     private WorldState CopyWithWorkerOrders(FoundationWorkerOrderQueueSet queues)
         => new WorldState(Revision, WorldBinding, Civilizations, Territory, Diplomacy,
             Economy, Population, Warfare, Workers, Transport, Treasury, CityResidences,
-            EdgeTravels, Constructions, queues, ProductiveInfrastructure);
+            EdgeTravels, Constructions, queues, ProductiveInfrastructure, PurchasedDemography);
 
     public WorldState AdvanceRevision()
     {
@@ -828,7 +848,7 @@ public sealed class WorldState
             Economy,
             Population,
             Warfare,
-            Workers, Transport, Treasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure);
+            Workers, Transport, Treasury, CityResidences, EdgeTravels, Constructions, WorkerOrders, ProductiveInfrastructure, PurchasedDemography);
     }
 
     private WorldState(
@@ -847,7 +867,8 @@ public sealed class WorldState
         FoundationEdgeTravelRuntimeState? edgeTravels = null,
         FoundationConstructionRuntimeState? constructions = null,
         FoundationWorkerOrderQueueSet? workerOrders = null,
-        FoundationProductiveInfrastructureRuntimeState? productiveInfrastructure = null)
+        FoundationProductiveInfrastructureRuntimeState? productiveInfrastructure = null,
+        FoundationPurchasedDemographyRuntimeState? purchasedDemography = null)
     {
         ArgumentNullException.ThrowIfNull(
             civilizations);
@@ -906,6 +927,19 @@ public sealed class WorldState
         Constructions = constructions ?? FoundationConstructionRuntimeState.Uninitialized;
         WorkerOrders = workerOrders ?? FoundationWorkerOrderQueueSet.Uninitialized;
         ProductiveInfrastructure = productiveInfrastructure ?? FoundationProductiveInfrastructureRuntimeState.Uninitialized;
+        PurchasedDemography = purchasedDemography ?? FoundationPurchasedDemographyRuntimeState.Uninitialized;
+        if (PurchasedDemography.IsInitialized)
+        {
+            if (worldBinding?.IsFineFirstWorld != true || !treasuryState.IsInitialized ||
+                !WorkerOrders.IsInitialized || cityState.IsInitialized ||
+                !workerState.HasAuthoritativeOccupations || !workerState.HasAuthoritativeTacticalLocations ||
+                workerState.Workers.Any(w => !w.BirthWaitTurns.HasValue || w.UniformCityDemography) ||
+                !PurchasedDemography.Accounts.Select(a => a.Civilization).ToHashSet().SetEquals(civilizations.Civilizations))
+                throw new InvalidOperationException("Purchased demography requires the complete signed persistent individual workforce.");
+            foreach (var group in workerState.Workers.GroupBy(w => w.Owner))
+                if ((ulong)group.Count() > PurchasedDemography.Get(group.Key).HistoricalAcquisitions)
+                    throw new InvalidOperationException("Living population exceeds historical acquisitions.");
+        }
         if (ProductiveInfrastructure.IsInitialized)
         {
             if (worldBinding?.IsFineFirstWorld != true || !workerState.HasAuthoritativeTacticalLocations ||
