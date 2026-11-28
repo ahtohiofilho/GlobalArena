@@ -31,6 +31,7 @@ public sealed record CivilizationCashAccount(
     /// <summary>Verified cumulative economic income, not opening grants.</summary>
     public BigInteger TotalSettledEconomicIncomeScaled { get; init; }
     public BigInteger TotalNavalFareDebitsScaled { get; init; }
+    public BigInteger TotalDemographicPurchaseDebitsScaled { get; init; }
 }
 
 /// <summary>
@@ -127,6 +128,27 @@ public sealed class CivilizationTreasuryRuntimeState
         Accounts.FirstOrDefault(x => x.Civilization == civilization) ??
         throw new InvalidOperationException(
             "This civilization has no authorized treasury account.");
+
+    // Separate from infrastructure: no investment capital is created.
+    internal CivilizationTreasuryRuntimeState DebitVerifiedDemographicPurchases(
+        IReadOnlyDictionary<CivilizationId, ulong> debits)
+    {
+        if (!IsInitialized || debits.Any(d => !d.Key.IsValid || d.Value == 0UL ||
+            Get(d.Key).CashScaled < GlobalArenaMoneyScale.FromMoneyMicro(d.Value)))
+            throw new InvalidOperationException("Demographic purchases require real available cash.");
+        if (debits.Count == 0) return this;
+        var next = Accounts.Select(row =>
+        {
+            if (!debits.TryGetValue(row.Civilization, out var money)) return row;
+            var amount = GlobalArenaMoneyScale.FromMoneyMicro(money);
+            return row with { CashScaled = row.CashScaled - amount,
+                TotalDemographicPurchaseDebitsScaled = row.TotalDemographicPurchaseDebitsScaled + amount };
+        }).ToArray();
+        return HasClosedEconomicCycle
+            ? new CivilizationTreasuryRuntimeState(this, next, LastSettledEconomicCycleOrdinal,
+                LastSettledCargoUnitCode!, LastSettledFreightQuotes.ToArray())
+            : new CivilizationTreasuryRuntimeState(true, next);
+    }
 
     public CivilizationTreasuryRuntimeState DebitConstruction(
         CivilizationId civilization, ulong moneyMicro)
