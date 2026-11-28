@@ -170,6 +170,10 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Empty(next.WorkerOrders.Queues.Single(q => q.Worker == child.Id).Orders);
         Assert.Equal(aged.Workers.Workers.Count + 1, next.Workers.Workers.Count);
         Assert.Equal(1UL, next.PurchasedDemography.Get(owner).PurchasedWorkers);
+        Assert.Equal(33U, hasher.Compute(next).FormatVersion);
+        Assert.Equal(32U, hasher.Compute(aged).FormatVersion);
+        Assert.All(next.Workers.Workers.Where(w => w.Id != parent && w.Id != child.Id),
+            w => Assert.Equal(2UL, w.BirthWaitTurns!.Value));
         Assert.Equal((ulong)initialWorkers + 2UL, next.PurchasedDemography.Get(owner).NextHistoricalIndex);
         var oldCash = aged.Treasury.Get(owner);
         var newCash = next.Treasury.Get(owner);
@@ -182,6 +186,22 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Equal(noPurchaseSale.ProducedGoodsMicro, sale.ProducedGoodsMicro);
         Assert.Equal(noPurchaseSale.ScheduleDigest, sale.ScheduleDigest);
         Assert.Equal(noPurchaseSale.Credits.ToArray(), sale.Credits.ToArray());
+        Assert.Equal(32U, hasher.Compute(noPurchase.ResultingWorldState).FormatVersion);
+        Assert.All(noPurchase.ResultingWorldState.Workers.Workers, w => Assert.Equal(2UL, w.BirthWaitTurns!.Value));
+        if (initialWorkers == 3)
+        {
+            var batch = phase.Resolve(new TurnResolutionInput(aged,
+                new ISimulationCommand[] { request, request with { Id = new CommandId(secondContext.Turn, 2UL) } },
+                secondContext), aged);
+            var batchBirth = Assert.Single(batch.Events.OfType<FoundationPurchasedDemographicBirthEvent>());
+            Assert.Equal(2, batchBirth.Newborns.Count);
+            Assert.Equal(2, batchBirth.SelectedParents.Distinct().Count());
+            Assert.Equal(2UL, batch.ResultingWorldState.PurchasedDemography.Get(owner).PurchasedWorkers);
+            Assert.Equal(GlobalArenaMoneyScale.FromMoneyMicro(38UL),
+                batch.ResultingWorldState.Treasury.Get(owner).TotalDemographicPurchaseDebitsScaled);
+            Assert.Equal(hasher.Compute(batch.ResultingWorldState),
+                hasher.Compute(phase.ReplayPersistentJournal(aged, batch.EventLog, secondContext)));
+        }
         Assert.Equal(hasher.Compute(next), hasher.Compute(phase.ReplayPersistentJournal(aged, purchase.EventLog, secondContext)));
         SimulationEventLog Log(IEnumerable<ISimulationEvent> events) => new(events.Select((e, i) =>
             new SimulationEventLogEntry((ulong)i + 1UL, e, true, true)).ToArray());
