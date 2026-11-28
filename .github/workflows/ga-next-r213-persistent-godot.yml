@@ -174,6 +174,37 @@ jobs:
           grep -q 'GA_NEXT_R236E2_READY founders=1 cash=zero hash_v=32 experimental=true' "$log"
           grep -E 'GA_NEXT_R236E2_UI_PASS founders=1 opening_cash=zero earned_cycles=[1-9][0-9]* private_queue=true cancel=true paid_birth=true next_cycle=true hash_v=33' "$log"
           if grep -E 'GA_NEXT_R236E2_UI_FAIL|GA_NEXT_FINE_HUMAN_AI_REJECTED|SCRIPT ERROR|Unhandled Exception' "$log"; then exit 1; fi
+      - name: Exercise autonomous purchased demography twice through turn 30
+        env:
+          GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW: '1'
+          GA_NEXT_INTERACTIVE_ECONOMY_PREVIEW: '1'
+          GA_NEXT_QA_LOCAL_SITE_MARKERS: '1'
+          GA_NEXT_CONSTRUCTION_PREVIEW: '1'
+          GA_NEXT_PERSISTENT_ORDERS: '1'
+          GA_NEXT_CROP_PREVIEW: '1'
+          GA_NEXT_LOCAL_ECONOMY_PREVIEW: '1'
+          GA_NEXT_R235_PRODUCTIVE_PREVIEW: '1'
+          GA_NEXT_R236_PURCHASED_PREVIEW: '1'
+          GA_NEXT_R233E_AUTONOMOUS_AI: '1'
+          GA_NEXT_R236G_INTEGRATED_SMOKE: '1'
+          GA_NEXT_R232_TURN_PROFILE: '1'
+        run: |
+          set -euo pipefail
+          for attempt in 1 2; do
+            log="$RUNNER_TEMP/r236g-$attempt.log"
+            timeout 300 "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --rendering-method gl_compatibility 2>&1 | tee "$log"
+            grep -q 'GA_NEXT_R233E_AUTONOMOUS_AI_READY' "$log"
+            grep -q 'GA_NEXT_R236G_INTEGRATED_PASS cycles=29 turn=30 human_paid=true ai_paid=true cash=true replay=true hash_v=33' "$log"
+            grep -E '^GA_NEXT_R236G_OBSERVATION first_human=[1-9][0-9]* first_ai=[1-9][0-9]* ai_purchased=[1-9][0-9]* ai_peak_sites=[0-9]+ ai_moves=[0-9]+ ai_productive=[0-9]+ ai_logistics=[0-9]+ median_ms=[0-9]+ max_ms=[0-9]+$' "$log"
+            for cycle in $(seq 1 29); do
+              grep -E "^GA_NEXT_R236G_CYCLE cycle=$cycle hash=[A-Fa-f0-9]{64} human_workers=[0-9]+ ai_workers=[0-9]+ ai_sites=[0-9]+ human_births=[01] ai_births=[01] replay=true$" "$log"
+            done
+            if grep -E 'GA_NEXT_R236G_INTEGRATED_FAIL|GA_NEXT_FINE_HUMAN_AI_REJECTED|SCRIPT ERROR|Unhandled Exception' "$log"; then exit 1; fi
+            grep '^GA_NEXT_R236G_CYCLE ' "$log" > "$RUNNER_TEMP/r236g-$attempt-hashes.txt"
+            test "$(wc -l < "$RUNNER_TEMP/r236g-$attempt-hashes.txt")" -eq 29
+          done
+          diff -u "$RUNNER_TEMP/r236g-1-hashes.txt" "$RUNNER_TEMP/r236g-2-hashes.txt"
+          echo 'GA_NEXT_R236G_REPEAT_PASS cycles=29 runs=2 same_hashes=true'
       - name: Require positive remote and zero-edge local eight-commodity trade
         env:
           GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW: '1'
@@ -462,6 +493,10 @@ jobs:
             ${{ runner.temp }}/local-economy.log
             ${{ runner.temp }}/r235f2.log
             ${{ runner.temp }}/r236e2.log
+            ${{ runner.temp }}/r236g-1.log
+            ${{ runner.temp }}/r236g-2.log
+            ${{ runner.temp }}/r236g-1-hashes.txt
+            ${{ runner.temp }}/r236g-2-hashes.txt
             ${{ runner.temp }}/r235h-1.log
             ${{ runner.temp }}/r235h-2.log
             ${{ runner.temp }}/r235h-1-hashes.txt
