@@ -155,6 +155,25 @@ jobs:
           done
           diff -u "$RUNNER_TEMP/r235h-1-hashes.txt" "$RUNNER_TEMP/r235h-2-hashes.txt"
           echo 'GA_NEXT_R235H_REPEAT_PASS cycles=6 runs=2 same_hashes=true'
+      - name: Exercise singleton purchased population in actual Godot controls
+        env:
+          GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW: '1'
+          GA_NEXT_INTERACTIVE_ECONOMY_PREVIEW: '1'
+          GA_NEXT_QA_LOCAL_SITE_MARKERS: '1'
+          GA_NEXT_CONSTRUCTION_PREVIEW: '1'
+          GA_NEXT_PERSISTENT_ORDERS: '1'
+          GA_NEXT_CROP_PREVIEW: '1'
+          GA_NEXT_LOCAL_ECONOMY_PREVIEW: '1'
+          GA_NEXT_R235_PRODUCTIVE_PREVIEW: '1'
+          GA_NEXT_R236_PURCHASED_PREVIEW: '1'
+          GA_NEXT_R236E2_UI_SMOKE: '1'
+        run: |
+          set -euo pipefail
+          log="$RUNNER_TEMP/r236e2.log"
+          timeout 180 "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --rendering-method gl_compatibility 2>&1 | tee "$log"
+          grep -q 'GA_NEXT_R236E2_READY founders=1 cash=zero hash_v=32 experimental=true' "$log"
+          grep -E 'GA_NEXT_R236E2_UI_PASS founders=1 opening_cash=zero earned_cycles=[1-9][0-9]* private_queue=true cancel=true paid_birth=true next_cycle=true hash_v=33' "$log"
+          if grep -E 'GA_NEXT_R236E2_UI_FAIL|GA_NEXT_FINE_HUMAN_AI_REJECTED|SCRIPT ERROR|Unhandled Exception' "$log"; then exit 1; fi
       - name: Require positive remote and zero-edge local eight-commodity trade
         env:
           GA_NEXT_FINE_FIRST_INTERACTIVE_PREVIEW: '1'
@@ -442,6 +461,7 @@ jobs:
             ${{ runner.temp }}/crops.log
             ${{ runner.temp }}/local-economy.log
             ${{ runner.temp }}/r235f2.log
+            ${{ runner.temp }}/r236e2.log
             ${{ runner.temp }}/r235h-1.log
             ${{ runner.temp }}/r235h-2.log
             ${{ runner.temp }}/r235h-1-hashes.txt
