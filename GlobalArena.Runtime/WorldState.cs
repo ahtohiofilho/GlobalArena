@@ -622,7 +622,7 @@ public sealed class WorldState
         var queues = new FoundationWorkerOrderQueueSet(WorkerOrders.Queues.Concat(
             children.Select(w => FoundationWorkerOrderQueue.Empty(w.Id, w.Owner))));
         return new WorldState(Revision, WorldBinding, Civilizations, Territory,
-            Economy, Population, Warfare, workers, Transport, Treasury,
+            Diplomacy, Economy, Population, Warfare, workers, Transport, Treasury,
             CityResidences, EdgeTravels, Constructions, queues, ProductiveInfrastructure, ledger);
     }
 
