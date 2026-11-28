@@ -243,6 +243,16 @@ public sealed class FoundationTemporalCollectiveTurnPhase : ITurnResolutionPhase
             receipt.Journal.Entries.Select(e => e.Event).ToArray(), receipt.Journal);
     }
 
+    // Private quote only: reuse the actual calendar, not a speculative market.
+    // The collective close independently derives the authoritative reservation.
+    internal WorldState PreviewPurchasedCalendar(WorldState staged, SimulationContext context)
+    {
+        if (_persistent is null || _fine is null || !staged.PurchasedDemography.IsInitialized ||
+            _growth || _navalCollective)
+            throw new InvalidOperationException("Purchased demographic calendar is not configured.");
+        return _persistent.Record(staged, context).Next;
+    }
+
     public WorldState ReplayPersistentJournal(WorldState beginning, SimulationEventLog log, SimulationContext context)
     {
         if (_persistent is null) throw new InvalidOperationException("Persistent phase not configured.");
