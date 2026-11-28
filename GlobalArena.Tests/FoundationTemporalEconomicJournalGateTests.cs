@@ -68,6 +68,86 @@ public sealed class FoundationTemporalEconomicJournalGateTests
         Assert.Throws<OverflowException>(() => max.Reserve(target, owner, 1UL, 1UL));
     }
 
+    [Theory]
+    [InlineData(1)]
+    [InlineData(3)]
+    public void R236COpeningPopulationCanAccumulateWeightWithoutFreeBirths(int initialWorkers)
+    {
+        var (legacy, _, _, _, incidence, fine) = Fixture();
+        var demo = FoundationConcentratedWorkforceScenario.CreatePreview(
+            new WorldGenerationRequest(new WorldSeed(20261012UL), WorldGenerationVersion.Initial,
+                new GoldbergParameters(3, 0)), workersPerCivilization: initialWorkers);
+        var signature = FoundationFineFirstWorldgenCanonicalSignature.Compute(demo.Session.GeneratedWorld, incidence, fine);
+        var bound = demo.Session.Snapshot.PromoteFineFirstBeforeTransport(demo.Session.GeneratedWorld, incidence, fine, signature)
+            .DeployInitialFineFirstPhysicalTransport(legacy.Transport, demo.Session.GeneratedWorld, incidence, fine, signature);
+        var opening = FoundationPersistedEdgeTravelTransitions.DeployEmpty(bound
+            .DeployInitialTreasury(CivilizationTreasuryRuntimeState.CreateOpening(
+                bound.Civilizations.Civilizations.Select(c => (c, 0UL)))))
+            .WithConstructions(new FoundationConstructionRuntimeState(Array.Empty<FoundationConstructionProject>()))
+            .DeployInitialWorkerOrders().DeployInitialPurchasedDemography(10UL, 4UL);
+        // Controlled traversable land placement for the eligibility test.
+        var node = new PhysicalTacticalTileId(incidence.Refinement.FineParameters,
+            incidence.FineTopology.Cells.First(c =>
+                fine.SurfaceAtIndex((int)c.Id.Value - 1) == FoundationFineSurfaceKind.Land &&
+                fine.CanTraverseOnFoot((int)c.Id.Value - 1)).Id);
+        opening = opening.WithWorkers(new PhysicalWorkerRuntimeState(opening.Workers.Workers.Select(w =>
+            w.WithTacticalAssignment(node, w.CellId, PhysicalWorkerActivity.Other, PhysicalWorkerOccupation.Unassigned)), true, true));
+        var owner = opening.Civilizations.Civilizations.First();
+        var context = new SimulationContext(new TurnNumber(2UL), new SimulationSeed(712UL));
+        Assert.Equal((ulong)initialWorkers + 1UL, opening.PurchasedDemography.Get(owner).NextHistoricalIndex);
+        Assert.Empty(FoundationPurchasedBirthLottery.ReadCandidates(opening, fine, owner));
+        Assert.Throws<InvalidOperationException>(() => FoundationPurchasedBirthLottery.Select(
+            FoundationPurchasedBirthLottery.ReadCandidates(opening, fine, owner), owner, context, 1UL));
+        var aged = opening.WithWorkers(new PhysicalWorkerRuntimeState(
+            FoundationPurchasedBirthLottery.AdvanceWaitingCounters(opening.Workers.Workers, Array.Empty<PhysicalWorkerId>()), true, true));
+        var candidates = FoundationPurchasedBirthLottery.ReadCandidates(aged, fine, owner);
+        Assert.Equal(initialWorkers, candidates.Count);
+        Assert.All(candidates, c => Assert.Equal(1UL, c.WaitTurns));
+        var selected = Assert.Single(FoundationPurchasedBirthLottery.Select(candidates, owner, context, 1UL));
+        Assert.Equal(node, selected.Node);
+        var reset = FoundationPurchasedBirthLottery.AdvanceWaitingCounters(aged.Workers.Workers, new[] { selected.Worker });
+        Assert.Equal(0UL, reset.Single(w => w.Id == selected.Worker).BirthWaitTurns!.Value);
+        Assert.All(reset.Where(w => w.Id != selected.Worker), w => Assert.Equal(2UL, w.BirthWaitTurns!.Value));
+        Assert.Equal(initialWorkers * opening.Civilizations.Civilizations.Count, opening.Workers.Workers.Count);
+        Assert.All(opening.Workers.Workers, w => Assert.Equal(0UL, w.BirthWaitTurns!.Value));
+        Assert.Equal(opening.Treasury.Get(owner).CashScaled, aged.Treasury.Get(owner).CashScaled);
+        var water = new PhysicalTacticalTileId(incidence.Refinement.FineParameters,
+            incidence.FineTopology.Cells.First(c => fine.SurfaceAtIndex((int)c.Id.Value - 1) != FoundationFineSurfaceKind.Land).Id);
+        var atSea = aged.WithWorkers(new PhysicalWorkerRuntimeState(aged.Workers.Workers.Select(w =>
+            w.Owner == owner ? w.WithTacticalAssignment(water, w.CellId, PhysicalWorkerActivity.Other, PhysicalWorkerOccupation.Unassigned) : w), true, true));
+        Assert.Empty(FoundationPurchasedBirthLottery.ReadCandidates(atSea, fine, owner));
+        var traveling = aged.WithWorkers(new PhysicalWorkerRuntimeState(aged.Workers.Workers.Select(w =>
+            w.Owner == owner ? w.WithTacticalAssignment(node, w.CellId, PhysicalWorkerActivity.Traveling, PhysicalWorkerOccupation.Unassigned) : w), true, true));
+        Assert.Empty(FoundationPurchasedBirthLottery.ReadCandidates(traveling, fine, owner));
+    }
+
+    [Fact]
+    public void R236CWeightedBatchIsDeterministicDistinctAndHandlesLargeTotals()
+    {
+        var (_, worker, destination, _, _, _) = Fixture();
+        var node = worker.TacticalTileId!.Value;
+        var rows = new[] {
+            new FoundationPurchasedBirthCandidate(new PhysicalWorkerId(1UL), node, 0UL),
+            new FoundationPurchasedBirthCandidate(new PhysicalWorkerId(2UL), node, ulong.MaxValue - 1UL),
+            new FoundationPurchasedBirthCandidate(new PhysicalWorkerId(3UL), destination, ulong.MaxValue - 1UL),
+            new FoundationPurchasedBirthCandidate(new PhysicalWorkerId(4UL), node, 1UL)
+        };
+        var context = new SimulationContext(new TurnNumber(2UL), new SimulationSeed(712UL));
+        var picked = FoundationPurchasedBirthLottery.Select(rows, worker.Owner, context, 3UL);
+        Assert.Equal(picked.ToArray(), FoundationPurchasedBirthLottery.Select(rows.Reverse(), worker.Owner, context, 3UL).ToArray());
+        Assert.Equal(new[] { 2UL, 3UL, 4UL }, picked.Select(c => c.Worker.Value).OrderBy(v => v).ToArray());
+        Assert.Throws<InvalidOperationException>(() => FoundationPurchasedBirthLottery.Select(rows, worker.Owner, context, 4UL));
+        Assert.Empty(FoundationPurchasedBirthLottery.Select(rows, worker.Owner, context, 0UL));
+        var large = Enumerable.Range(1, 10_000).Select(i =>
+            new FoundationPurchasedBirthCandidate(new PhysicalWorkerId((ulong)i), node, (ulong)(i % 97 + 1))).ToArray();
+        foreach (bool equal in new[] { false, true })
+        {
+            var batch = FoundationPurchasedBirthLottery.Select(large, worker.Owner, context, 2_000UL, equal);
+            Assert.Equal(2_000, batch.Select(c => c.Worker).Distinct().Count());
+            Assert.Equal(batch.ToArray(), FoundationPurchasedBirthLottery.Select(large.Reverse(), worker.Owner, context, 2_000UL, equal).ToArray());
+        }
+    }
+
     [Fact]
     public void R236BHistoricalAccountsAreImmutableAndIndependentOfCurrentCensus()
     {
