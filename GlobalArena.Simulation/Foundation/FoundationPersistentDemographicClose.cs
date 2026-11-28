@@ -22,6 +22,8 @@ public static class FoundationPersistentDemographicClose
         SimulationContext context)
     {
         using var profile = FoundationTurnProfiler.Measure("demography");
+        if (opening.PurchasedDemography.IsInitialized || settled.PurchasedDemography.IsInitialized)
+            throw new InvalidOperationException("Free demographic growth is incompatible with purchased demography.");
         if (!opening.WorkerOrders.IsInitialized || opening.CityResidences.IsInitialized ||
             settled.Treasury.LastSettledEconomicCycleOrdinal != checked(opening.Treasury.LastSettledEconomicCycleOrdinal + 1UL) ||
             opening.Workers.Workers.Count != settled.Workers.Workers.Count)

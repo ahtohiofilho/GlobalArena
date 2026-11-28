@@ -17,3 +17,12 @@ Implement only the provisional linear member of the proposed power family, alpha
 - R237: Explorer and GA-Arte integrated; project screen #737 and strategic marker density #736, incremental visual asset production.
 
 No local compile or merge. R236A CI pending.
+
+
+## R236B — Canonical historical acquisition ledger
+
+Base #738 20a40dd: seven workflows / eleven checks approved. Explicit opening deployment only, in a signed persistent world with authoritative worker placement and a treasury before first settlement. Each civilization retains its initial worker count, plus a separate monotone cumulative purchased count. Provisional baseline convention: initial workers consume the first historical price indices, so a civilization with three opening workers quotes its first purchase at N=4. A smaller living census does not lower the price; extinct accounts retain history, but extinction/re-entry policy remains open. The two positive linear price parameters must be explicitly supplied; no default or launcher change.
+
+The immutable ledger is propagated through all WorldState copy transitions. Its detached increment cannot be independently attached to a world: paid acquisitions must later be committed with debit and newborns. Reuse existing per-worker waiting counters, initialized to zero, without incrementing or selecting parents yet. Legacy free-birth append and demographic close reject purchased worlds. Existing undeployed worlds and hashes remain unchanged; opt-in envelope v32 hashes price parameters and sorted historical accounts, using existing individual counter encoding. No new market solve.
+
+Tests cover initial index, detached monotonic accounts, independent civilization counts, price inputs, overflow, opening admission, counter hashing, preservation through ordinary state copies and productive funding, calendar/market settlement and replay, and rejection of free growth. No actual purchases or births; no wait advancement before R236C/D. No loss/death implementation, extinction rule, cost calibration, Godot deployment or AI purchase. No local build or merge; CI pending.

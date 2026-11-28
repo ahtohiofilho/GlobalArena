@@ -46,6 +46,7 @@ public sealed class CanonicalWorldStateHasher
     public const uint NavalCargoQuoteFormatVersion = 29U;
     public const uint NavalSettlementFormatVersion = 30U;
     public const uint ProductiveInfrastructureFormatVersion = 31U;
+    public const uint PurchasedDemographyFormatVersion = 32U;
 
     private static readonly byte[] Magic =
     {
@@ -100,7 +101,8 @@ public sealed class CanonicalWorldStateHasher
 
         // Keep the underlying legacy schema selection for all existing sections.
         // The opt-in envelope records that base version explicitly.
-        var wireVersion = worldState.ProductiveInfrastructure.IsInitialized ? ProductiveInfrastructureFormatVersion :
+        var wireVersion = worldState.PurchasedDemography.IsInitialized ? PurchasedDemographyFormatVersion :
+            worldState.ProductiveInfrastructure.IsInitialized ? ProductiveInfrastructureFormatVersion :
             worldState.Treasury.LastNavalSettlementCycleOrdinal.HasValue ? NavalSettlementFormatVersion :
             worldState.EdgeTravels.NavalCargoMicroPerWorker.HasValue ? NavalCargoQuoteFormatVersion :
             worldState.EdgeTravels.PriorWork is not null ? NavalPriorWorkFormatVersion :
@@ -738,6 +740,21 @@ public sealed class CanonicalWorldStateHasher
                 AppendUInt64(hash, project.RequiredWorkMicro);
                 AppendUInt64(hash, project.CompletedWorkMicro);
                 AppendUInt32(hash, project.IsActivated ? 1U : 0U);
+            }
+        }
+
+        if (worldState.PurchasedDemography.IsInitialized)
+        {
+            var demographic = worldState.PurchasedDemography;
+            AppendUInt32(hash, 59U);
+            AppendUInt64(hash, demographic.InitialMoneyMicro);
+            AppendUInt64(hash, demographic.ReferenceAcquisitions);
+            AppendUInt32(hash, checked((uint)demographic.Accounts.Count));
+            foreach (var account in demographic.Accounts)
+            {
+                AppendUInt64(hash, account.Civilization.Value);
+                AppendUInt64(hash, account.InitialWorkers);
+                AppendUInt64(hash, account.PurchasedWorkers);
             }
         }
 
