@@ -78,6 +78,10 @@ public sealed class FoundationTacticalAiResumeProductionPolicy
 
 /// <summary>One committed v10 collective turn, with canonical replay equality
 /// and actual qualified fine edge receipts. Revisions count events.</summary>
+public sealed record FoundationHumanDemographicQuote(
+    ulong Quantity, ulong MoneyMicro, BigInteger AvailableCashScaled, int EligibleParents,
+    ulong PendingQuantity, ulong NextHistoricalIndex, bool CanQueue);
+
 public sealed class FoundationTacticalCollectiveReceipt
 {
     public TurnNumber Turn { get; }
@@ -89,7 +93,7 @@ public sealed class FoundationTacticalCollectiveReceipt
     public FoundationEconomicSalesSettledEvent? EconomicSettlement { get; }
     public IReadOnlyList<FoundationEdgeTravelTurnEvent> EdgeTravels { get; }
     public FoundationTemporalSalesSettledEvent? TemporalEconomicSettlement { get; }
-    public int ExecutedEvents => (BirthBatch is null ? 0 : 1) + PersistentEdits.Count + PersistentFunding.Count + ProductiveFunding.Count + (PersistentTimeline is null ? 0 : 1) + Events.Count + EdgeTravels.Count + InfrastructureInvestments.Count + ConstructionFunding.Count + ConstructionWork.Count +
+    public int ExecutedEvents => (PurchasedFunding is null ? 0 : 1) + (PurchasedBirth is null ? 0 : 1) + (BirthBatch is null ? 0 : 1) + PersistentEdits.Count + PersistentFunding.Count + ProductiveFunding.Count + (PersistentTimeline is null ? 0 : 1) + Events.Count + EdgeTravels.Count + InfrastructureInvestments.Count + ConstructionFunding.Count + ConstructionWork.Count +
         (EconomicSettlement is null ? 0 : 1) +
         (TemporalEconomicSettlement is null ? 0 : 1);
     public IReadOnlyList<FoundationConstructionFundedEvent> ConstructionFunding { get; }
@@ -100,6 +104,8 @@ public sealed class FoundationTacticalCollectiveReceipt
     public IReadOnlyList<FoundationProductiveFundingEvent> ProductiveFunding { get; }
     public FoundationPersistentWorkerTurnEvent? PersistentTimeline { get; }
     public FoundationPhysicalBirthBatchEvent? BirthBatch { get; }
+    internal FoundationPurchasedDemographicFundingEvent? PurchasedFunding { get; }
+    internal FoundationPurchasedDemographicBirthEvent? PurchasedBirth { get; }
 
     internal FoundationTacticalCollectiveReceipt(
         TurnNumber turn, WorldStateHash hash, ulong revision,
@@ -114,7 +120,9 @@ public sealed class FoundationTacticalCollectiveReceipt
         FoundationFundedWorkerIntentEvent[]? persistentFunding = null,
         FoundationPersistentWorkerTurnEvent? persistentTimeline = null,
         FoundationPhysicalBirthBatchEvent? birthBatch = null,
-        FoundationProductiveFundingEvent[]? productiveFunding = null)
+        FoundationProductiveFundingEvent[]? productiveFunding = null,
+        FoundationPurchasedDemographicFundingEvent? purchasedFunding = null,
+        FoundationPurchasedDemographicBirthEvent? purchasedBirth = null)
     {
         Turn = turn;
         Hash = hash;
@@ -132,6 +140,8 @@ public sealed class FoundationTacticalCollectiveReceipt
         ProductiveFunding = Array.AsReadOnly(productiveFunding ?? Array.Empty<FoundationProductiveFundingEvent>());
         PersistentTimeline = persistentTimeline;
         BirthBatch = birthBatch;
+        PurchasedFunding = purchasedFunding;
+        PurchasedBirth = purchasedBirth;
         ReplayMatched = true;
     }
 }
@@ -167,6 +177,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
     private readonly FoundationTemporalCollectiveTurnPhase? _persistentPhase;
     private readonly FoundationFundedWorkerIntentJournal? _persistentFunding;
     private readonly Dictionary<CivilizationId, List<ISimulationCommand>> _persistentPlans = new();
+    private readonly Dictionary<CivilizationId, ulong> _demographicPlans = new();
+    public bool PurchasedDemographyEnabled => PersistentOrdersEnabled && Snapshot.PurchasedDemography.IsInitialized;
     public bool PersistentOrdersEnabled => _persistentPhase is not null;
     public bool ProductiveInfrastructureEnabled => PersistentOrdersEnabled && Snapshot.ProductiveInfrastructure.IsInitialized;
     public bool ExperimentalLocalEconomyEnabled { get; }
@@ -300,7 +312,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
         new Dictionary<CivilizationId, IFoundationTacticalAiTurnPolicy>(_ai);
     public IReadOnlyList<CivilizationId> ReadyCivilizations =>
         Array.AsReadOnly(_participants.Where(_ready.Contains).ToArray());
-    public int PendingOrderCount => _persistentPlans.Values.Sum(plan => plan.Count) + _plans.Values.Sum(plan => plan.Count) +
+    public int PendingOrderCount => _demographicPlans.Count + _persistentPlans.Values.Sum(plan => plan.Count) + _plans.Values.Sum(plan => plan.Count) +
         _investmentPlans.Values.Sum(plan => plan.Count);
     /// <summary>
     /// Read-only v11 inputs for a future physical market, derived only from
@@ -595,6 +607,10 @@ public sealed class FoundationTacticalHumanAiTurnHost
             physicalTravelPolicy is not null ? settlementPolicy : null;
         _signedFine = fineGeography;
         bool persistent = Snapshot.WorkerOrders.IsInitialized;
+        if (Snapshot.PurchasedDemography.IsInitialized &&
+            (!persistent || _temporalPolicy is null || fineGeography is null ||
+             enableDemographicGrowth || navalDepartureTimeMicro.HasValue))
+            throw new InvalidOperationException("Purchased demography requires signed land persistent settlement without free growth.");
         if (enableExperimentalLocalEconomy != (settlementPolicy?.UseTemporalProgressiveDistribution == true) ||
             (enableExperimentalLocalEconomy && (!persistent || _temporalPolicy is null || agriculture is null || fineGeography is null)))
             throw new InvalidOperationException("Experimental local economy requires explicit progressive temporal policy and signed persistent crops.");
@@ -1363,7 +1379,18 @@ public sealed class FoundationTacticalHumanAiTurnHost
             throw new InvalidOperationException(
                 "Cannot publish before all civilizations are ready.");
 
-        if (PersistentOrdersEnabled) return ClosePersistentTurn();
+        if (PersistentOrdersEnabled)
+        {
+            var opening = Snapshot;
+            try { return ClosePersistentTurn(); }
+            catch (InvalidOperationException) when (_demographicPlans.Count > 0 && ReferenceEquals(opening, Snapshot))
+            {
+                // No commit happened. Retain private requests for explicit
+                // correction instead of silently discarding a purchase.
+                _ready.RemoveWhere(c => _humans.Contains(c));
+                throw;
+            }
+        }
         var before = Snapshot;
         var turn = NextTurn;
         // R141: after a completed fine-edge travel, a capable idle human
@@ -1546,7 +1573,8 @@ public sealed class FoundationTacticalHumanAiTurnHost
 
     // Private plans are validated against an immutable projection of the
     // issuer's own earlier commands; no treasury or queue is published.
-    private WorldState ProjectPersistentPlan(CivilizationId owner, IEnumerable<ISimulationCommand> commands)
+    private WorldState ProjectPersistentPlan(CivilizationId owner, IEnumerable<ISimulationCommand> commands,
+        bool validatePurchase = true)
     {
         if (!PersistentOrdersEnabled) throw new InvalidOperationException("Persistent orders disabled.");
         var state = Snapshot;
@@ -1563,14 +1591,69 @@ public sealed class FoundationTacticalHumanAiTurnHost
                     productive.MoneyMicro, context, productive.Assignments).Next;
             else throw new InvalidOperationException("Foreign persistent plan.");
         }
+        if (validatePurchase && _demographicPlans.TryGetValue(owner, out ulong quantity))
+            RequireAdmissibleDemographicQuote(ReadDemographicQuote(owner, quantity, state));
         return state;
+    }
+
+    private FoundationHumanDemographicQuote ReadDemographicQuote(CivilizationId owner, ulong quantity, WorldState projected)
+    {
+        if (!PurchasedDemographyEnabled || _signedFine is null)
+            throw new InvalidOperationException("Purchased demography is not enabled.");
+        var ledger = Snapshot.PurchasedDemography;
+        var account = ledger.Get(owner);
+        var price = new FoundationPurchasedDemographicPricePolicy(ledger.InitialMoneyMicro, ledger.ReferenceAcquisitions);
+        ulong money = price.QuoteBatchMoneyMicro(account.NextHistoricalIndex, quantity);
+        var context = new SimulationContext(NextTurn, new SimulationSeed(712UL));
+        var calendar = _persistentPhase!.PreviewPurchasedCalendar(projected, context);
+        int eligible = FoundationPurchasedBirthLottery.ReadCandidates(calendar, _signedFine, owner).Count;
+        var cash = BigInteger.Min(Snapshot.Treasury.Get(owner).CashScaled, calendar.Treasury.Get(owner).CashScaled);
+        bool canQueue = quantity > 0UL && quantity <= (ulong)eligible &&
+            cash >= GlobalArenaMoneyScale.FromMoneyMicro(money);
+        if (canQueue) _ = ledger.RecordAcquisitions(owner, quantity);
+        return new(quantity, money, cash, eligible, _demographicPlans.GetValueOrDefault(owner),
+            account.NextHistoricalIndex, canQueue);
+    }
+
+    private static void RequireAdmissibleDemographicQuote(FoundationHumanDemographicQuote quote)
+    {
+        if (!quote.CanQueue)
+            throw new InvalidOperationException("Purchase requires enough eligible workers and pre-sale cash after pending investments.");
+    }
+
+    public FoundationHumanDemographicQuote GetHumanDemographicQuote(CivilizationId human, ulong quantity)
+    {
+        RequireHuman(human); CheckSnapshot();
+        return ReadDemographicQuote(human, quantity,
+            ProjectPersistentPlan(human, _persistentPlans[human], validatePurchase: false));
+    }
+
+    public void QueueHumanDemographicPurchase(CivilizationId human, ulong quantity)
+    {
+        RequireHuman(human); CheckWritable(human);
+        var quote = GetHumanDemographicQuote(human, quantity);
+        RequireAdmissibleDemographicQuote(quote);
+        _demographicPlans[human] = quantity;
+    }
+
+    public bool CancelHumanDemographicPurchase(CivilizationId human)
+    {
+        RequireHuman(human); CheckWritable(human);
+        return _demographicPlans.Remove(human);
+    }
+
+    public IReadOnlyList<PhysicalWorkerRuntimeRecord> GetHumanLastPurchasedNewborns(CivilizationId human)
+    {
+        RequireHuman(human); CheckSnapshot();
+        return Array.AsReadOnly((_lastTemporalClose?.PurchasedBirth?.Newborns ??
+            Array.Empty<PhysicalWorkerRuntimeRecord>()).Where(w => w.Owner == human).ToArray());
     }
 
     public IReadOnlyList<FoundationWorkerOrderQueue> GetHumanPersistentQueues(CivilizationId human)
     {
         RequireHuman(human);
         CheckSnapshot();
-        return Array.AsReadOnly(ProjectPersistentPlan(human, _persistentPlans[human])
+        return Array.AsReadOnly(ProjectPersistentPlan(human, _persistentPlans[human], validatePurchase: false)
             .WorkerOrders.Queues.Where(q => q.Owner == human).ToArray());
     }
 
@@ -1727,6 +1810,7 @@ public sealed class FoundationTacticalHumanAiTurnHost
         RequireHuman(human); CheckWritable(human);
         if (!PersistentOrdersEnabled) throw new InvalidOperationException("Persistent orders disabled.");
         _persistentPlans[human].Clear();
+        _demographicPlans.Remove(human);
     }
 
     private FoundationTacticalCollectiveReceipt ClosePersistentTurn()
@@ -1801,6 +1885,12 @@ public sealed class FoundationTacticalHumanAiTurnHost
                 }
             }
         }
+        // Purchase is independent of the infrastructure-prefix arbitration;
+        // a lost competing reservation cannot silently delete this request.
+        foreach (var civ in _participants)
+            if (_demographicPlans.TryGetValue(civ, out ulong quantity))
+                commands.Add(new FoundationPurchasedDemographicCommand(
+                    new CommandId(turn, (ulong)commands.Count + 1UL), civ, quantity));
         var committedTurn = _publisher.ResolveAndCommit(new TurnPolicyResolutionGateInput(
             new TurnPolicyInput(turn, allRequiredParticipantsReady: true, externalDeadlineReached: false),
             new TurnResolutionInput(before, commands.ToArray(), context)));
@@ -1817,9 +1907,12 @@ public sealed class FoundationTacticalHumanAiTurnHost
             persistentEdits: resolved.Events.OfType<FoundationPersistentOrderEditEvent>().ToArray(),
             persistentFunding: resolved.Events.OfType<FoundationFundedWorkerIntentEvent>().ToArray(),
             persistentTimeline: timeline, birthBatch: resolved.Events.OfType<FoundationPhysicalBirthBatchEvent>().SingleOrDefault(),
-            productiveFunding: resolved.Events.OfType<FoundationProductiveFundingEvent>().ToArray());
+            productiveFunding: resolved.Events.OfType<FoundationProductiveFundingEvent>().ToArray(),
+            purchasedFunding: resolved.Events.OfType<FoundationPurchasedDemographicFundingEvent>().SingleOrDefault(),
+            purchasedBirth: resolved.Events.OfType<FoundationPurchasedDemographicBirthEvent>().SingleOrDefault());
         _lastTemporalClose = receipt;
         foreach (var plan in _persistentPlans.Values) plan.Clear();
+        _demographicPlans.Clear();
         _ready.Clear(); _knownSnapshot = Snapshot;
         return receipt;
     }
