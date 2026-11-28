@@ -45,6 +45,7 @@ jobs:
           set -o pipefail
           timeout 180 "$GODOT_BIN" --headless --path tools/GlobalArena.Godot --rendering-method gl_compatibility 2>&1 | tee "$RUNNER_TEMP/r213.log"
           grep -q 'GA_NEXT_R213_PERSISTENT_UI_PASS' "$RUNNER_TEMP/r213.log"
+          grep -q 'GA_NEXT_R2371A_GRAPHITE_PASS theme=true states=6 stable_metrics=true' "$RUNNER_TEMP/r213.log"
           grep -q 'GA_NEXT_R216_WORKER_CONTEXT_PASS' "$RUNNER_TEMP/r213.log"
           grep -q 'GA_NEXT_R218_SITE_HUD_PASS' "$RUNNER_TEMP/r213.log"
           grep -q 'GA_NEXT_R2211_HUD_POINTER_PASS' "$RUNNER_TEMP/r213.log"

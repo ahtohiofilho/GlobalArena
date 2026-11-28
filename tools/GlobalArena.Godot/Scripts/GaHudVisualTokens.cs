@@ -6,18 +6,18 @@ namespace GlobalArena.Godot;
 internal enum GaHudPlane { Atmosphere, Structure, Object, Portrait, Footer }
 internal static class GaHudVisualTokens
 {
-    internal static readonly Color Canvas = new("#111111");
-    internal static readonly Color Structure = new("#141414");
-    internal static readonly Color Object = new("#222222");
-    internal static readonly Color Portrait = new("#171717");
-    internal static readonly Color Footer = new("#1d1d1d");
-    internal static readonly Color Rim = new("#424242");
-    internal static readonly Color RecessRim = new("#303030");
-    internal static readonly Color Action = new("#303030");
-    internal static readonly Color Hover = new("#414141");
-    internal static readonly Color Pressed = new("#202020");
-    internal static readonly Color Disabled = new("#1b1b1b");
-    internal static readonly Color Focus = new("#a4a4a4");
+    internal static readonly Color Canvas = GaGraphiteTokens.Base;
+    internal static readonly Color Structure = GaGraphiteTokens.Base;
+    internal static readonly Color Object = GaGraphiteTokens.Panel;
+    internal static readonly Color Portrait = GaGraphiteTokens.Recess;
+    internal static readonly Color Footer = GaGraphiteTokens.Panel;
+    internal static readonly Color Rim = GaGraphiteTokens.Border;
+    internal static readonly Color RecessRim = GaGraphiteTokens.SubtleBorder;
+    internal static readonly Color Action = GaGraphiteTokens.Raised;
+    internal static readonly Color Hover = GaGraphiteTokens.Hover;
+    internal static readonly Color Pressed = GaGraphiteTokens.Pressed;
+    internal static readonly Color Disabled = GaGraphiteTokens.DisabledSurface;
+    internal static readonly Color Focus = GaGraphiteTokens.Focus;
     internal static readonly Color Shadow = new(0f, 0f, 0f, 0.50f);
     internal const int RadiusSmall = 3, RadiusMedium = 5, RimWidth = 1, ActionPadding = 3;
     internal const int ContactShadow = 2, ObjectShadow = 4, FooterShadow = 6;

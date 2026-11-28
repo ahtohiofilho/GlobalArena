@@ -1737,6 +1737,8 @@ public partial class Main : Control
         // Centralized production-oriented styling; Godot Theme is the owner
         // of interactive states rather than per-screen debug colors.
         Theme = GaVisualFoundation.BuildTheme();
+        if (System.Environment.GetEnvironmentVariable("GA_NEXT_R213_UI_SMOKE") == "1")
+            GaVisualFoundation.ExerciseGraphiteContract(Theme);
         // Prioritize a maximized production window; preserve windowed resizing and avoid headless changes.
         if (DisplayServer.GetName() != "headless")
             DisplayServer.WindowSetMode(DisplayServer.WindowMode.Maximized);

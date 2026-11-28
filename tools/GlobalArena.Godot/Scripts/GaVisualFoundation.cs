@@ -11,17 +11,17 @@ namespace GlobalArena.Godot;
 /// </summary>
 public static class GaVisualFoundation
 {
-    public static readonly Color Background = new("#101010");
-    public static readonly Color Surface = new("#1b1b1b");
-    public static readonly Color Raised = new("#292929");
-    public static readonly Color Header = new("#303030");
-    public static readonly Color Border = new("#454545");
-    public static readonly Color Text = new("#dedede");
-    public static readonly Color Muted = new("#ababab");
-    public static readonly Color Accent = new("#bcbcbc");
-    public static readonly Color AccentDim = new("#454545");
-    public static readonly Color Warm = new("#c7af82");
-    // Compact first-class typography scale. Art palette remains provisional.
+    public static readonly Color Background = GaGraphiteTokens.Base;
+    public static readonly Color Surface = GaGraphiteTokens.Panel;
+    public static readonly Color Raised = GaGraphiteTokens.Raised;
+    public static readonly Color Header = GaGraphiteTokens.Raised;
+    public static readonly Color Border = GaGraphiteTokens.Border;
+    public static readonly Color Text = GaGraphiteTokens.PrimaryText;
+    public static readonly Color Muted = GaGraphiteTokens.SecondaryText;
+    public static readonly Color Accent = GaGraphiteTokens.Focus;
+    public static readonly Color AccentDim = GaGraphiteTokens.SubtleBorder;
+    public static readonly Color Warm = GaGraphiteTokens.Attention;
+    // Existing logical font metrics stay stable until shell migration.
     public const int ApplicationFontSize = 19;
     public const int WindowTitleFontSize = 15;
     public const int TextFontSize = 12;
@@ -32,8 +32,8 @@ public static class GaVisualFoundation
     internal const int HudSectionFontSize = 11;
     internal const int HudMetricFontSize = 12;
     internal const int HudFeedbackFontSize = 11;
-    internal static readonly Color HudIdentityText = new("#eeeeee");
-    internal static readonly Color HudMetricText = new("#c7c7c7");
+    internal static readonly Color HudIdentityText = GaGraphiteTokens.PrimaryText;
+    internal static readonly Color HudMetricText = GaGraphiteTokens.SecondaryText;
 
     private static StyleBoxFlat SurfaceBox(
         Color background, Color border, int radius, int borderWidth,
@@ -169,18 +169,27 @@ public static class GaVisualFoundation
         result.SetColor("font_color", "Button", Text);
         result.SetColor("font_hover_color", "Button", Text);
         result.SetColor("font_pressed_color", "Button", Text);
-        result.SetColor("font_disabled_color", "Button", Muted.Darkened(0.3f));
+        result.SetColor("font_disabled_color", "Button", GaGraphiteTokens.DisabledText);
+        result.SetColor("font_focus_color", "Button", Text);
         result.SetFontSize("font_size", "Button", ControlFontSize);
         result.SetStylebox("normal", "Button",
             SurfaceBox(Raised, Border, radius: 5, borderWidth: 1, innerPadding: 4));
         result.SetStylebox("hover", "Button",
-            SurfaceBox(new Color("#3a3a3a"), Accent, radius: 5, borderWidth: 1, innerPadding: 4));
+            SurfaceBox(GaGraphiteTokens.Hover, Border, radius: 5, borderWidth: 1, innerPadding: 4));
         result.SetStylebox("pressed", "Button",
-            SurfaceBox(AccentDim, Accent, radius: 5, borderWidth: 1, innerPadding: 4));
+            SurfaceBox(GaGraphiteTokens.Pressed, Border, radius: 5, borderWidth: 1, innerPadding: 4));
+        result.SetStylebox("hover_pressed", "Button", result.GetStylebox("pressed", "Button"));
         result.SetStylebox("disabled", "Button",
-            SurfaceBox(Surface, new Color("#303030"), radius: 5,
+            SurfaceBox(GaGraphiteTokens.DisabledSurface, AccentDim, radius: 5,
                 borderWidth: 1, innerPadding: 4));
-        result.SetStylebox("focus", "Button", new StyleBoxEmpty());
+        result.SetStylebox("focus", "Button", HudFlat(Colors.Transparent,
+            GaGraphiteTokens.Focus, 5, 0, 2));
+        // Persistent selection is distinct from transient press.
+        result.SetTypeVariation("GraphiteSelectedButton", "Button");
+        result.SetStylebox("normal", "GraphiteSelectedButton",
+            HudFlat(GaGraphiteTokens.SelectedSurface, GaGraphiteTokens.Attention, 5, 4, 1));
+        result.SetStylebox("hover", "GraphiteSelectedButton",
+            HudFlat(GaGraphiteTokens.Hover, GaGraphiteTokens.Attention, 5, 4, 1));
         result.SetStylebox("panel", "PanelContainer", WindowSurface());
         result.SetColor("font_color", "CheckBox", Text);
         result.SetColor("font_color", "OptionButton", Text);
@@ -193,6 +202,45 @@ public static class GaVisualFoundation
         result.SetStylebox("panel", "PopupMenu",
             SurfaceBox(Raised, Border, radius: 5, borderWidth: 1, innerPadding: 5));
         return result;
+    }
+
+    // Exercise real Godot theme lookup on a native control. No simulation access.
+    internal static void ExerciseGraphiteContract(Theme theme)
+    {
+        var button = new Button { Theme = theme, Text = "Assign" };
+        try
+        {
+            StyleBoxFlat State(string name) =>
+                button.GetThemeStylebox(name) as StyleBoxFlat ??
+                throw new InvalidOperationException("Missing Graphite style: " + name);
+            var normal = State("normal");
+            var hover = State("hover");
+            var pressed = State("pressed");
+            var disabled = State("disabled");
+            var focus = State("focus");
+            if (normal.BgColor != GaGraphiteTokens.Raised ||
+                hover.BgColor != GaGraphiteTokens.Hover ||
+                pressed.BgColor != GaGraphiteTokens.Pressed ||
+                disabled.BgColor != GaGraphiteTokens.DisabledSurface ||
+                focus.BgColor != Colors.Transparent ||
+                focus.BorderColor != GaGraphiteTokens.Focus ||
+                focus.BorderWidthTop != 2 ||
+                button.GetThemeColor("font_color") != GaGraphiteTokens.PrimaryText ||
+                button.GetThemeColor("font_disabled_color") != GaGraphiteTokens.DisabledText ||
+                normal.GetMinimumSize() != hover.GetMinimumSize() ||
+                normal.GetMinimumSize() != pressed.GetMinimumSize() ||
+                normal.GetMinimumSize() != disabled.GetMinimumSize())
+                throw new InvalidOperationException("Graphite theme state contract failed.");
+            button.ThemeTypeVariation = "GraphiteSelectedButton";
+            if (State("normal").BorderColor != GaGraphiteTokens.Attention ||
+                State("normal").BgColor != GaGraphiteTokens.SelectedSurface ||
+                State("hover").BorderColor != GaGraphiteTokens.Attention ||
+                State("normal").GetMinimumSize() != normal.GetMinimumSize() ||
+                State("focus").BorderColor != GaGraphiteTokens.Focus)
+                throw new InvalidOperationException("Graphite persistent selection contract failed.");
+            GD.Print("GA_NEXT_R2371A_GRAPHITE_PASS theme=true states=6 stable_metrics=true");
+        }
+        finally { button.Free(); }
     }
 
     public static Label Caption(string caption)
